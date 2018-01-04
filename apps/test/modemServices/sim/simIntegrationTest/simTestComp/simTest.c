@@ -582,28 +582,28 @@ void simTest_SimAccess
 
     // Select ADF Dedicated File (DF_ADF)
     LE_ASSERT_OK(le_sim_SendApdu(simId,
-                                selectDfAdfApdu,
-                                sizeof(selectDfAdfApdu),
-                                rspImsi,
-                                &rspImsiLen));
+                                 selectDfAdfApdu,
+                                 sizeof(selectDfAdfApdu),
+                                 rspImsi,
+                                 &rspImsiLen));
     PrintApdu(rspImsi, rspImsiLen);
 
     // Select the EF(IMSI)
     rspImsiLen = SIM_RSP_LEN;
     LE_ASSERT_OK(le_sim_SendApdu(simId,
-                                selectApdu,
-                                sizeof(selectApdu),
-                                rspImsi,
-                                &rspImsiLen));
+                                 selectApdu,
+                                 sizeof(selectApdu),
+                                 rspImsi,
+                                 &rspImsiLen));
     PrintApdu(rspImsi, rspImsiLen);
 
     // Read the EF(IMSI)
     rspImsiLen = SIM_RSP_LEN;
     LE_ASSERT_OK(le_sim_SendApdu(simId,
-                                readApdu,
-                                sizeof(readApdu),
-                                rspImsi,
-                                &rspImsiLen));
+                                 readApdu,
+                                 sizeof(readApdu),
+                                 rspImsi,
+                                 &rspImsiLen));
     PrintApdu(rspImsi, rspImsiLen);
 
     //=====================================================================================
@@ -731,18 +731,18 @@ void simTest_SimAccess
     uint8_t rspLi[rspLenLi];
 
     LE_ASSERT_OK(le_sim_SendCommand(simId,
-                                   LE_SIM_READ_BINARY,
-                                   "6F05",
-                                   0,
-                                   0,
-                                   0,
-                                   NULL,
-                                   0,
-                                   dfGsmPath,
-                                   &swi1,
-                                   &swi2,
-                                   rspLi,
-                                   &rspLenLi));
+                                    LE_SIM_READ_BINARY,
+                                    "6F05",
+                                    0,
+                                    0,
+                                    0,
+                                    NULL,
+                                    0,
+                                    dfGsmPath,
+                                    &swi1,
+                                    &swi2,
+                                    rspLi,
+                                    &rspLenLi));
 
     LE_INFO("swi1=0x%02X, swi2=0x%02X", swi1, swi2);
     PrintApdu(rspLi, rspLenLi);
@@ -827,6 +827,52 @@ void simTest_SimAccess
 
     // Check it is correctly erased
     LE_ASSERT(0 == memcmp(rsp, rspLi, sizeof(rspLenLi)));
+
+    //=====================================================================================
+    // 5. Read IMSI using a dedicated logical channel
+    // Note that a SIM card supporting logical channels is necessary for this test.
+    //======================================================================================
+
+    uint8_t channel = 0;
+
+    // Open a logical channel
+    LE_ASSERT_OK(le_sim_OpenLogicalChannel(&channel));
+    LE_ASSERT(channel);
+
+    // Select ADF Dedicated File (DF_ADF)
+    selectDfAdfApdu[0] = channel;
+    LE_ASSERT_OK(le_sim_SendApduOnChannel(simId,
+                                          channel,
+                                          selectDfAdfApdu,
+                                          sizeof(selectDfAdfApdu),
+                                          rspImsi,
+                                          &rspImsiLen));
+    PrintApdu(rspImsi, rspImsiLen);
+
+    // Select the EF(IMSI)
+    rspImsiLen = SIM_RSP_LEN;
+    selectApdu[0] = channel;
+    LE_ASSERT_OK(le_sim_SendApduOnChannel(simId,
+                                          channel,
+                                          selectApdu,
+                                          sizeof(selectApdu),
+                                          rspImsi,
+                                          &rspImsiLen));
+    PrintApdu(rspImsi, rspImsiLen);
+
+    // Read the EF(IMSI)
+    rspImsiLen = SIM_RSP_LEN;
+    readApdu[0] = channel;
+    LE_ASSERT_OK(le_sim_SendApduOnChannel(simId,
+                                          channel,
+                                          readApdu,
+                                          sizeof(readApdu),
+                                          rspImsi,
+                                          &rspImsiLen));
+    PrintApdu(rspImsi, rspImsiLen);
+
+    // Close the logical channel
+    LE_ASSERT_OK(le_sim_CloseLogicalChannel(channel));
 
     LE_INFO("SIM access test OK");
 }

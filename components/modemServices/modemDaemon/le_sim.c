@@ -2209,41 +2209,18 @@ le_result_t le_sim_SendApdu
 (
     le_sim_Id_t simId,                  ///< [IN] The SIM identifier.
     const uint8_t* commandApduPtr,      ///< [IN] APDU command.
-    size_t commandApduNumElements,      ///< [IN]
+    size_t commandApduNumElements,      ///< [IN] APDU command size.
     uint8_t* responseApduPtr,           ///< [OUT] SIM response.
-    size_t* responseApduNumElementsPtr  ///< [INOUT]
+    size_t* responseApduNumElementsPtr  ///< [INOUT] SIM response size.
 )
 {
-    if ((!commandApduPtr) || (!responseApduPtr) || (!responseApduNumElementsPtr))
-    {
-        LE_ERROR("NULL pointer provided");
-        return LE_BAD_PARAMETER;
-    }
-
-    if (   (commandApduNumElements > LE_SIM_APDU_MAX_BYTES)
-        || (*responseApduNumElementsPtr > LE_SIM_RESPONSE_MAX_BYTES))
-    {
-        LE_ERROR("Too many elements");
-        return LE_BAD_PARAMETER;
-    }
-
-    if (simId >= LE_SIM_ID_MAX)
-    {
-        LE_ERROR("Invalid simId (%d) provided!", simId);
-        return LE_BAD_PARAMETER;
-    }
-
-    if (SelectSIMCard(simId) != LE_OK)
-    {
-        return LE_NOT_FOUND;
-    }
-
     // Send APDU on basic logical channel 0, which is always opened
-    return pa_sim_SendApdu(0,
-                           commandApduPtr,
-                           commandApduNumElements,
-                           responseApduPtr,
-                           responseApduNumElementsPtr);
+    return le_sim_SendApduOnChannel(simId,
+                                    0,
+                                    commandApduPtr,
+                                    commandApduNumElements,
+                                    responseApduPtr,
+                                    responseApduNumElementsPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2609,4 +2586,114 @@ void le_sim_DeleteFPLMNList
 
     // Release FPLMN list object.
     le_mem_Release(FPLMNListPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Open a logical channel on the SIM card.
+ *
+ * @return
+ *      - LE_OK            Function succeeded.
+ *      - LE_BAD_PARAMETER Invalid parameter.
+ *      - LE_FAULT         Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_OpenLogicalChannel
+(
+    uint8_t* channelPtr ///< [OUT] The number of the opened logical channel.
+)
+{
+    if (!channelPtr)
+    {
+        LE_ERROR("channelPtr is NULL");
+        return LE_BAD_PARAMETER;
+    }
+
+    // Get the logical channel to send APDU.
+    if (LE_OK != pa_sim_OpenLogicalChannel(channelPtr))
+    {
+        LE_WARN("Can't open a logical channel");
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Close a logical channel on the SIM card.
+ *
+ * @return
+ *      - LE_OK            Function succeeded.
+ *      - LE_FAULT         Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_CloseLogicalChannel
+(
+    uint8_t channel ///< [IN] The number of the logical channel to close.
+)
+{
+    // Close the logical channel.
+    if (LE_OK != pa_sim_CloseLogicalChannel(channel))
+    {
+        LE_WARN("Can't close the logical channel %d", channel);
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send APDU command on a dedicated logical channel.
+ *
+ * @return
+ *      - LE_OK             Function succeeded.
+ *      - LE_BAD_PARAMETER  A parameter is invalid.
+ *      - LE_NOT_FOUND      The function failed to select the SIM card for this operation.
+ *      - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_SendApduOnChannel
+(
+    le_sim_Id_t simId,                  ///< [IN] The SIM identifier.
+    uint8_t channel,                    ///< [IN] The logical channel number.
+    const uint8_t* commandApduPtr,      ///< [IN] APDU command.
+    size_t commandApduNumElements,      ///< [IN] APDU command size.
+    uint8_t* responseApduPtr,           ///< [OUT] SIM response.
+    size_t* responseApduNumElementsPtr  ///< [INOUT] SIM response size.
+)
+{
+    if ((!commandApduPtr) || (!responseApduPtr) || (!responseApduNumElementsPtr))
+    {
+        LE_ERROR("NULL pointer provided");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (   (commandApduNumElements > LE_SIM_APDU_MAX_BYTES)
+        || (*responseApduNumElementsPtr > LE_SIM_RESPONSE_MAX_BYTES))
+    {
+        LE_ERROR("Too many elements");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (simId >= LE_SIM_ID_MAX)
+    {
+        LE_ERROR("Invalid simId (%d) provided!", simId);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (LE_OK != SelectSIMCard(simId))
+    {
+        return LE_NOT_FOUND;
+    }
+
+    // Send APDU through opened logical channel
+    LE_DEBUG("Send APDU on logical channel %d", channel);
+    LE_DUMP(commandApduPtr, commandApduNumElements);
+    return pa_sim_SendApdu(channel,
+                           commandApduPtr,
+                           commandApduNumElements,
+                           responseApduPtr,
+                           responseApduNumElementsPtr);
 }

@@ -1092,6 +1092,89 @@ static void TestSim_SimAccess
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Test send APDU on logical channel
+ *
+ * API tested:
+ * - le_sim_OpenLogicalChannel
+ * - le_sim_SendApduOnChannel
+ * - le_sim_CloseLogicalChannel
+ *
+ * Exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void TestSim_ApduOnLogicalChannel
+(
+    void
+)
+{
+    pa_simSimu_SetSIMAccessTest(true);
+
+    uint8_t channel = 0;
+    uint8_t apdu[] = {0x00, 0xA4, 0x00, 0x0C, 0x02, 0x6F, 0x07};
+    uint8_t simResponse[10];
+    size_t rspLen = LE_SIM_RESPONSE_MAX_BYTES+1;
+    uint8_t expectedResult[] = {0x90, 0x00};
+
+    // Test le_sim_OpenLogicalChannel() API
+    LE_ASSERT(LE_BAD_PARAMETER == le_sim_OpenLogicalChannel(NULL))
+    LE_ASSERT_OK(le_sim_OpenLogicalChannel(&channel));
+    LE_ASSERT(channel);
+
+    // Test le_sim_SendApdu() API
+    LE_ASSERT(LE_BAD_PARAMETER == le_sim_SendApduOnChannel(CurrentSimId,
+                                                           channel,
+                                                           apdu,
+                                                           LE_SIM_APDU_MAX_BYTES+1,
+                                                           simResponse,
+                                                           &rspLen));
+    LE_ASSERT(LE_BAD_PARAMETER == le_sim_SendApduOnChannel(CurrentSimId,
+                                                           channel,
+                                                           apdu,
+                                                           sizeof(apdu),
+                                                           simResponse,
+                                                           &rspLen));
+    rspLen = sizeof(simResponse);
+    LE_ASSERT(LE_BAD_PARAMETER == le_sim_SendApduOnChannel(CurrentSimId,
+                                                           channel,
+                                                           NULL,
+                                                           sizeof(apdu),
+                                                           simResponse,
+                                                           &rspLen));
+    LE_ASSERT(LE_BAD_PARAMETER == le_sim_SendApduOnChannel(CurrentSimId,
+                                                           channel,
+                                                           apdu,
+                                                           sizeof(apdu),
+                                                           NULL,
+                                                           &rspLen));
+    LE_ASSERT(LE_BAD_PARAMETER == le_sim_SendApduOnChannel(CurrentSimId,
+                                                           channel,
+                                                           apdu,
+                                                           sizeof(apdu),
+                                                           simResponse,
+                                                           NULL));
+    LE_ASSERT(LE_BAD_PARAMETER == le_sim_SendApduOnChannel(LE_SIM_ID_MAX,
+                                                           channel,
+                                                           apdu,
+                                                           sizeof(apdu),
+                                                           simResponse,
+                                                           &rspLen));
+    LE_ASSERT_OK(le_sim_SendApduOnChannel(CurrentSimId,
+                                          channel,
+                                          apdu,
+                                          sizeof(apdu),
+                                          simResponse,
+                                          &rspLen));
+
+    LE_ASSERT(rspLen == sizeof(expectedResult));
+    LE_ASSERT(0 == memcmp(simResponse,expectedResult, rspLen));
+
+    // Test le_sim_CloseLogicalChannel() API
+    LE_ASSERT_OK(le_sim_CloseLogicalChannel(channel));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Test Read / write FPLMN list
  *
  * API tested:
@@ -1207,6 +1290,9 @@ COMPONENT_INIT
 
     LE_INFO("======== SIM access Test  ========");
     TestSim_SimAccess();
+
+    LE_INFO("======== APDU on logical channel Test  ========");
+    TestSim_ApduOnLogicalChannel();
 
     LE_INFO("======== Handlers removal Test  ========");
     TestSim_RemoveHandlers();

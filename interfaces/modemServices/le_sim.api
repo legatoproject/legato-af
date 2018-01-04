@@ -276,12 +276,18 @@
  *
  * @section le_sim_access SIM access
  *
+ * The SIM card content can be accessed and/or modified by several methods.
+ *
+ * @subsection le_sim_accessApdu APDU
+ *
  * The application can send an APDU (Application Protocol Data Unit) to the SIM using
  * le_sim_SendApdu() API. The user must encode the APDU as specified by in recommendation 3GPP
  * 11.11, 3GPP 51.011, 3GPP 31.102, 3GPP 31.103 or ETSI TS 102 221.
- * @note Between two successive call to le_sim_SendApdu() API, there is no locking
+ * @note Between two successive calls to le_sim_SendApdu() API, there is no locking
  * protection. In this situation, some command types and parameters can modify SIM files
  * incorrectly.
+ *
+ * @subsection le_sim_accessCommand Commands
  *
  * Using le_sim_SendCommand(), the application has easier but more limited access to the
  * SIM database. The command is transmitted to the SIM, which gives information through swi1 and
@@ -289,6 +295,21 @@
  * their coding).
  * Some parameters are platform dependent, see @subpage platformConstraintsSim "SIM constraints" for
  * their coding.
+ *
+ * @subsection le_sim_accessLogicalChannel Logical channels
+ *
+ * Logical channels are specified by the standard ETSI TS 102 221 in the section 8.7. If they are
+ * supported by the SIM card, logical channels allow to send independent APDUs on the different
+ * channels. In this case:
+ * - the basic channel 0 is always available and opened.
+ * - upon request, the card assigns a number to open a new channel. This channel remains open until
+ *   it is explicitly closed or the SIM card is deactivated.
+ *
+ * Use le_sim_OpenLogicalChannel() API to open a logical channel on the SIM card. APDUs can then
+ * be sent to the SIM card with le_sim_SendApduOnChannel(). When the logical channel is not
+ * needed anymore, it can be closed using le_sim_CloseLogicalChannel().
+ *
+ * @subsection le_sim_accessSampleCode Sample code
  *
  * A sample code can be seen in the following page:
  * - @subpage c_simTestApdu
@@ -1145,7 +1166,7 @@ FUNCTION le_result_t GetSimToolkitRefreshStage
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SendApdu
 (
-    Id           simId IN,                          ///< The SIM identifier.
+    Id           simId IN,                            ///< The SIM identifier.
     uint8        commandApdu[APDU_MAX_BYTES] IN,      ///< APDU command.
     uint8        responseApdu[RESPONSE_MAX_BYTES] OUT ///< SIM response.
 );
@@ -1309,4 +1330,53 @@ FUNCTION le_result_t GetNextFPLMNOperator
 FUNCTION DeleteFPLMNList
 (
     FPLMNList FPLMNListRef IN               ///< FPLMN list reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Open a logical channel on the SIM card.
+ *
+ * @return
+ *      - LE_OK            Function succeeded.
+ *      - LE_BAD_PARAMETER Invalid parameter.
+ *      - LE_FAULT         Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t OpenLogicalChannel
+(
+     uint8 channelPtr OUT ///< The number of the opened logical channel.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Close a logical channel on the SIM card.
+ *
+ * @return
+ *      - LE_OK            Function succeeded.
+ *      - LE_FAULT         Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t CloseLogicalChannel
+(
+    uint8 channel IN ///< The number of the logical channel to close.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send APDU command on a dedicated logical channel.
+ *
+ * @return
+ *      - LE_OK             Function succeeded.
+ *      - LE_BAD_PARAMETER  A parameter is invalid.
+ *      - LE_NOT_FOUND      The function failed to select the SIM card for this operation.
+ *      - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SendApduOnChannel
+(
+    Id           simId IN,                            ///< The SIM identifier.
+    uint8        channel IN,                          ///< The logical channel number.
+    uint8        commandApdu[APDU_MAX_BYTES] IN,      ///< APDU command.
+    uint8        responseApdu[RESPONSE_MAX_BYTES] OUT ///< SIM response.
 );
