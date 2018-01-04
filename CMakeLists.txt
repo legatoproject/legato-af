@@ -132,9 +132,6 @@ elseif(LEGATO_TARGET MATCHES "wp77xx")
     #set(LEGATO_COMPONENTS_SECSTORE "QMI")
     #set(LEGATO_COMPONENTS_FWUPDATE "QMI")
 
-# Target: em75xx
-elseif(LEGATO_TARGET MATCHES "em75xx")
-
 # Target: virt
 elseif(LEGATO_TARGET MATCHES "virt")
     set(LEGATO_COMPONENTS_MODEM "simu")

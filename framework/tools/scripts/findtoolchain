@@ -67,14 +67,6 @@ SelectToolchainDirs() {
             TOOLCHAIN_DIRS+=(/opt/swi/${v}-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi)
         done
         ;;
-    em75xx)
-        AppendYoctoBuildToolchain 'build_src' 'arm-poky-linux-gnueabi'
-        AppendYoctoBuildToolchain 'build_bin' 'arm-poky-linux-gnueabi'
-        for v in y22 y17; do
-            TOOLCHAIN_DIRS+=(/opt/swi/${v}-ext-${target}/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi)
-            TOOLCHAIN_DIRS+=(/opt/swi/${v}-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi)
-        done
-        ;;
     raspi)
         TOOLCHAIN_DIRS+=(/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin)
         for v in y22 y17; do

@@ -37,7 +37,7 @@
 
 # List of target devices needed by the release process:
 ifndef RELEASE_TARGETS
-  RELEASE_TARGETS := ar7 ar758x ar759x ar86 wp85 wp750x wp76xx wp77xx em75xx
+  RELEASE_TARGETS := ar7 ar758x ar759x ar86 wp85 wp750x wp76xx wp77xx
 endif
 
 # List of target devices supported:
@@ -352,14 +352,6 @@ stage_9x40:
 
 .PHONY: stage_ar759x
 stage_ar759x: stage_9x40 $(STAGE_SYSTOIMG) stage_mkavmodel
-
-# ==== EM75XX (9x50-based Sierra Wireless modules) ====
-
-.PHONY: stage_9x50
-stage_9x50:
-
-.PHONY: stage_em75xx
-stage_em75xx: stage_9x50 $(STAGE_SYSTOIMG) stage_mkavmodel
 
 # ==== Virtual ====
 
