@@ -1374,7 +1374,7 @@ FUNCTION le_result_t GetSatellitesStatus
  *
  * @return
  *  - LE_FAULT         Function failed to find the positionSample.
- *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT16_MAX).
+ *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to UINT16_MAX).
  *  - LE_OK            Function succeeded.
  *
  * @deprecated This function is deprecated, le_gnss_GetDilutionOfPrecision() should be used for
@@ -1400,7 +1400,7 @@ FUNCTION le_result_t GetDop
  *
  * @return
  *  - LE_FAULT         Function failed to find the DOP value.
- *  - LE_OUT_OF_RANGE  The retrieved parameter is invalid (set to INT16_MAX).
+ *  - LE_OUT_OF_RANGE  The retrieved parameter is invalid (set to UINT16_MAX).
  *  - LE_OK            Function succeeded.
  *
  * @note This function replaces the deprecated function le_gnss_GetDop().

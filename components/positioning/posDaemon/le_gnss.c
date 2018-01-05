@@ -148,15 +148,15 @@ typedef struct le_gnss_PositionSample
     bool              positionLatencyValid;   ///< if true, positionLatency is set
     uint32_t          positionLatency;        ///< Position measurement latency in milliseconds
     bool              hdopValid;              ///< if true, horizontal dilution is set
-    uint16_t          hdop;                   ///< The horizontal dilution of precision (DOP)
+    uint32_t          hdop;                   ///< The horizontal dilution of precision (DOP)
     bool              vdopValid;              ///< if true, vertical dilution is set
-    uint16_t          vdop;                   ///< The vertical dilution of precision (DOP)
+    uint32_t          vdop;                   ///< The vertical dilution of precision (DOP)
     bool              pdopValid;              ///< if true, position dilution is set
-    uint16_t          pdop;                   ///< The position dilution of precision (DOP)
+    uint32_t          pdop;                   ///< The position dilution of precision (DOP)
     bool              gdopValid;              ///< if true, geometric dilution is set
-    uint16_t          gdop;                   ///< The geometric dilution of precision (DOP)
+    uint32_t          gdop;                   ///< The geometric dilution of precision (DOP)
     bool              tdopValid;              ///< if true, time dilution is set
-    uint16_t          tdop;                   ///< The time dilution of precision (DOP)
+    uint32_t          tdop;                   ///< The time dilution of precision (DOP)
     bool              magneticDeviationValid; ///< if true, magnetic deviation is set
     int32_t           magneticDeviation;      ///< The magnetic deviation
     // Satellite Vehicles information
@@ -2313,7 +2313,7 @@ le_result_t le_gnss_GetSatellitesStatus
  *
  * @return
  *  - LE_FAULT         Function failed to find the DOP value.
- *  - LE_OUT_OF_RANGE  The retrieved parameter is invalid (set to INT16_MAX).
+ *  - LE_OUT_OF_RANGE  The retrieved parameter is invalid (set to UINT16_MAX).
  *  - LE_OK            Function succeeded.
  *
  * @note This function replaces the deprecated function le_gnss_GetDop().
@@ -2344,49 +2344,55 @@ le_result_t le_gnss_GetDilutionOfPrecision
     if (dopPtr)
     {
         *dopPtr = UINT16_MAX;
+
         switch(dopType)
         {
             case LE_GNSS_PDOP:
             {
-                if (positionSampleRequestNodePtr->positionSampleNodePtr->pdopValid)
+                if ((positionSampleRequestNodePtr->positionSampleNodePtr->pdopValid) &&
+                    (!(positionSampleRequestNodePtr->positionSampleNodePtr->pdop >> 16)))
                 {
-                    *dopPtr = positionSampleRequestNodePtr->positionSampleNodePtr->pdop;
+                    *dopPtr = (uint16_t)positionSampleRequestNodePtr->positionSampleNodePtr->pdop;
                     return LE_OK;
                 }
             }
             break;
             case LE_GNSS_HDOP:
             {
-                if (positionSampleRequestNodePtr->positionSampleNodePtr->hdopValid)
+                if ((positionSampleRequestNodePtr->positionSampleNodePtr->hdopValid) &&
+                    (!(positionSampleRequestNodePtr->positionSampleNodePtr->hdop >> 16)))
                 {
-                    *dopPtr = positionSampleRequestNodePtr->positionSampleNodePtr->hdop;
+                    *dopPtr = (uint16_t)positionSampleRequestNodePtr->positionSampleNodePtr->hdop;
                     return LE_OK;
                 }
             }
             break;
             case LE_GNSS_VDOP:
             {
-                if (positionSampleRequestNodePtr->positionSampleNodePtr->vdopValid)
+                if ((positionSampleRequestNodePtr->positionSampleNodePtr->vdopValid) &&
+                    (!(positionSampleRequestNodePtr->positionSampleNodePtr->vdop >> 16)))
                 {
-                    *dopPtr = positionSampleRequestNodePtr->positionSampleNodePtr->vdop;
+                    *dopPtr = (uint16_t)positionSampleRequestNodePtr->positionSampleNodePtr->vdop;
                     return LE_OK;
                 }
             }
             break;
             case LE_GNSS_GDOP:
             {
-                if (positionSampleRequestNodePtr->positionSampleNodePtr->gdopValid)
+                if ((positionSampleRequestNodePtr->positionSampleNodePtr->gdopValid) &&
+                    (!(positionSampleRequestNodePtr->positionSampleNodePtr->gdop >> 16)))
                 {
-                    *dopPtr = positionSampleRequestNodePtr->positionSampleNodePtr->gdop;
+                    *dopPtr = (uint16_t)positionSampleRequestNodePtr->positionSampleNodePtr->gdop;
                     return LE_OK;
                 }
             }
             break;
             case LE_GNSS_TDOP:
             {
-                if (positionSampleRequestNodePtr->positionSampleNodePtr->tdopValid)
+                if ((positionSampleRequestNodePtr->positionSampleNodePtr->tdopValid) &&
+                    (!(positionSampleRequestNodePtr->positionSampleNodePtr->tdop >> 16)))
                 {
-                    *dopPtr = positionSampleRequestNodePtr->positionSampleNodePtr->tdop;
+                    *dopPtr = (uint16_t)positionSampleRequestNodePtr->positionSampleNodePtr->tdop;
                     return LE_OK;
                 }
             }
@@ -2444,16 +2450,17 @@ le_result_t le_gnss_GetDop
 
     // Check position sample's reference
     result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
-    if (result != LE_OK)
+    if (LE_OK != result)
     {
         return result;
     }
 
     if (hdopPtr)
     {
-        if (positionSampleRequestNodePtr->positionSampleNodePtr->hdopValid)
+        if ((positionSampleRequestNodePtr->positionSampleNodePtr->hdopValid) &&
+            (!(positionSampleRequestNodePtr->positionSampleNodePtr->hdop >> 16)))
         {
-            *hdopPtr = positionSampleRequestNodePtr->positionSampleNodePtr->hdop;
+            *hdopPtr = (uint16_t)positionSampleRequestNodePtr->positionSampleNodePtr->hdop;
         }
         else
         {
@@ -2463,9 +2470,10 @@ le_result_t le_gnss_GetDop
     }
     if (vdopPtr)
     {
-        if (positionSampleRequestNodePtr->positionSampleNodePtr->vdopValid)
+        if ((positionSampleRequestNodePtr->positionSampleNodePtr->vdopValid) &&
+            (!(positionSampleRequestNodePtr->positionSampleNodePtr->vdop >> 16)))
         {
-            *vdopPtr = positionSampleRequestNodePtr->positionSampleNodePtr->vdop;
+            *vdopPtr = (uint16_t)positionSampleRequestNodePtr->positionSampleNodePtr->vdop;
         }
         else
         {
@@ -2475,9 +2483,10 @@ le_result_t le_gnss_GetDop
     }
     if (pdopPtr)
     {
-        if (positionSampleRequestNodePtr->positionSampleNodePtr->pdopValid)
+        if ((positionSampleRequestNodePtr->positionSampleNodePtr->pdopValid) &&
+            (!(positionSampleRequestNodePtr->positionSampleNodePtr->pdop >> 16)))
         {
-            *pdopPtr = positionSampleRequestNodePtr->positionSampleNodePtr->pdop;
+            *pdopPtr = (uint16_t)positionSampleRequestNodePtr->positionSampleNodePtr->pdop;
         }
         else
         {

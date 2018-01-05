@@ -109,19 +109,19 @@ typedef struct {
                                             ///  decimal place (308  = 30.8 degrees).
 
     bool                    hdopValid;      ///< if true, horizontal dilution is set
-    uint16_t                hdop;           ///< The horizontal dilution of precision (DOP)
+    uint32_t                hdop;           ///< The horizontal dilution of precision (DOP)
 
     bool                    pdopValid;      ///< if true, position dilution is set
-    uint16_t                pdop;           ///< The position dilution of precision (DOP)
+    uint32_t                pdop;           ///< The position dilution of precision (DOP)
 
     bool                    vdopValid;      ///< if true, vertical dilution is set
-    uint16_t                vdop;           ///< The vertical dilution of precision (DOP)
+    uint32_t                vdop;           ///< The vertical dilution of precision (DOP)
 
     bool                    gdopValid;      ///< if true, geometric dilution is set
-    uint16_t                gdop;           ///< The geometric dilution of precision (DOP)
+    uint32_t                gdop;           ///< The geometric dilution of precision (DOP)
 
     bool                    tdopValid;      ///< if true, time dilution is set
-    uint16_t                tdop;           ///< The time dilution of precision (DOP)
+    uint32_t                tdop;           ///< The time dilution of precision (DOP)
 
     bool                    hUncertaintyValid;  ///< if true, horizontal uncertainty is set
     uint32_t                hUncertainty;       ///< The horizontal uncertainty in meters,

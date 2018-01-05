@@ -531,6 +531,19 @@ le_result_t le_gnss_GetSatellitesStatus
         ///< Number of satellites in view used for Navigation.
 );
 
+le_result_t le_gnss_GetDilutionOfPrecision
+(
+    le_gnss_SampleRef_t positionSampleRef,
+        ///< [IN] Position sample's reference.
+
+    le_gnss_DopType_t dopType,
+        ///< [IN] Dilution of Precision type.
+
+    uint16_t* dopPtr
+        ///< [OUT] Dilution of Precision corresponding to
+        ///<       the dopType. [resolution 1e-3].
+);
+
 le_result_t le_gnss_GetDop
 (
     le_gnss_SampleRef_t positionSampleRef,
