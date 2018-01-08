@@ -355,8 +355,9 @@ static void SetConfiguration
         }
     }
 
-    LE_INFO("cid: %d pdp: %d apn: %s auth: %d username: %s password: %s", profile, pdp,
-            configuration.apn, auth, configuration.userName, configuration.password);
+    LE_INFO("cid: %d pdp: %d apn: %s auth: %d username: %s password: %s",
+            le_mdc_GetProfileIndex(*profileRefPtr), pdp, configuration.apn, auth,
+            configuration.userName, configuration.password);
 }
 //! [Profiles]
 //! [Profile_parameters]

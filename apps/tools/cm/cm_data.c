@@ -1038,42 +1038,35 @@ int cm_data_GetProfileInfo
 
     le_mdc_ProfileRef_t profileRef = GetDataProfile();
 
-    if (profileRef == NULL)
+    if (NULL == profileRef)
     {
-        printf("Invalid profile (%u)\n", le_mdc_GetProfileIndex(profileRef));
+        printf("Invalid profile %p\n", profileRef);
         return EXIT_FAILURE;
     }
 
-    le_result_t res;
-
     PrintProfileIndex(le_mdc_GetProfileIndex(profileRef));
 
-    res = PrintApnName(profileRef);
-    if (res != LE_OK)
+    if (LE_OK != PrintApnName(profileRef))
     {
         exitStatus = EXIT_FAILURE;
     }
 
-    res = PrintPdpType(profileRef);
-    if (res != LE_OK)
+    if (LE_OK != PrintPdpType(profileRef))
     {
         exitStatus = EXIT_FAILURE;
     }
 
-    res = PrintIsConnected(profileRef);
-    if (res != LE_OK)
+    if (LE_OK != PrintIsConnected(profileRef))
     {
         exitStatus = EXIT_FAILURE;
     }
 
-    res = PrintAuthentication(profileRef);
-    if (res != LE_OK)
+    if (LE_OK != PrintAuthentication(profileRef))
     {
         exitStatus = EXIT_FAILURE;
     }
 
-    res = PrintNetworkConfiguration(profileRef);
-    if (res != LE_OK)
+    if (LE_OK != PrintNetworkConfiguration(profileRef))
     {
         exitStatus = EXIT_FAILURE;
     }
