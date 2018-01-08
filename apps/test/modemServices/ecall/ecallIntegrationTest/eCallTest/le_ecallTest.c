@@ -442,6 +442,20 @@ void Testle_ecall_EraGlonassSettings
               | LE_ECALL_CRASH_INFO_CRASH_FRONT_OR_SIDE)
               == LE_OK);
 
+    /* Coordinate system type configuration */
+    uint32_t msdVersion = 0;
+    LE_ASSERT_OK(le_ecall_GetMsdVersion(&msdVersion));
+
+    /* If MSD version is 2, set following MSD parameters */
+    if (2 == msdVersion)
+    {
+        LE_ASSERT_OK(le_ecall_SetMsdEraGlonassCoordinateSystemType(testECallRef,
+                                                 LE_ECALL_MSD_COORDINATE_SYSTEM_TYPE_PZ90));
+        LE_ASSERT_OK(le_ecall_ResetMsdEraGlonassCoordinateSystemType(testECallRef));
+        LE_ASSERT_OK(le_ecall_SetMsdEraGlonassCoordinateSystemType(testECallRef,
+                                                 LE_ECALL_MSD_COORDINATE_SYSTEM_TYPE_WGS84));
+    }
+
     le_ecall_Delete(testECallRef);
 }
 
@@ -486,6 +500,9 @@ void Testle_ecall_LoadMsd
               LE_ECALL_CRASH_INFO_PRESENT_CRASH_FRONT_OR_SIDE
               | LE_ECALL_CRASH_INFO_CRASH_FRONT_OR_SIDE)
               == LE_DUPLICATE);
+    LE_ASSERT(le_ecall_ResetMsdEraGlonassCoordinateSystemType(testECallRef) == LE_DUPLICATE);
+    LE_ASSERT(le_ecall_SetMsdEraGlonassCoordinateSystemType(testECallRef,
+                                LE_ECALL_MSD_COORDINATE_SYSTEM_TYPE_WGS84) == LE_DUPLICATE);
 
     le_ecall_Delete(testECallRef);
 }

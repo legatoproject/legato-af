@@ -32,7 +32,7 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  Enumeration used to specify the type of vehicle.
+ * Enumeration used to specify the type of vehicle.
  */
 //--------------------------------------------------------------------------------------------------
 typedef enum
@@ -54,6 +54,19 @@ typedef enum
 msd_VehicleType_t;
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Enumeration used to specify the type of coordinate system.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    MSD_COORDINATE_SYSTEM_TYPE_ABSENT,   ///< Coordinate system type is absent
+    MSD_COORDINATE_SYSTEM_TYPE_WGS84,    ///< Coordinate system type WGS-84
+    MSD_COORDINATE_SYSTEM_TYPE_PZ90      ///< Coordinate system type PZ-90
+}
+msd_CoordinateSystemType_t;
+
+//--------------------------------------------------------------------------------------------------
 // Data structures.
 //--------------------------------------------------------------------------------------------------
 
@@ -69,7 +82,6 @@ typedef struct __attribute__ ((__packed__)) {
    char    isovisModelyear[1];
    char    isovisSeqPlant[7];
 } msd_Vin_t;
-
 
 /* ControlType */
 //--------------------------------------------------------------------------------------------------
@@ -201,9 +213,12 @@ typedef struct {
     * crashSeverity INTEGER(0..2047) OPTIONAL,
     * diagnosticResult DiagnosticResult OPTIONAL,
     * crashInfo CrashInfo OPTIONAL,
+    * coordinateSystemType CoordinateSystemType DEFAULT wgs84,
     * ...
     * }
     */
+   uint8_t msdVersion;
+
    bool presentCrashSeverity;
    uint32_t crashSeverity; /* INTEGER(0..2047) OPTIONAL */
 
@@ -301,6 +316,9 @@ typedef struct {
       bool presentCrashAnotherType;
       bool crashAnotherType;
    } crashType;
+
+   bool presentCoordinateSystemTypeInfo;
+   msd_CoordinateSystemType_t coordinateSystemType;
 } msd_EraGlonassData_t;
 
 //--------------------------------------------------------------------------------------------------

@@ -187,10 +187,16 @@
  * ERA-GLONASS additional data are optional and provided in the MSD message if any.
  * They are located in MSD data block number 12 as optional additional data.
  *
- * ERA-GLONASS MSD additional data describes:
+ * ERA-GLONASS MSD additional data for MSD version 1 describes:
  * - The crash severity (Accident Severity Index - ASI15)
  * - The diagnostic result
  * - The crash information
+ *
+ * ERA-GLONASS MSD additional data for MSD version 2 describes:
+ * - The crash severity (Accident Severity Index - ASI15)
+ * - The diagnostic result
+ * - The crash information
+ * - The coordinate system type
  *
  * ERA-GLONASS MSD additional data can be specified through the following functions:
  * - le_ecall_SetMsdEraGlonassCrashSeverity().
@@ -199,10 +205,12 @@
  * - le_ecall_ResetMsdEraGlonassDiagnosticResult().
  * - le_ecall_SetMsdEraGlonassCrashInfo().
  * - le_ecall_ResetMsdEraGlonassCrashInfo().
+ * - le_ecall_SetMsdEraGlonassCoordinateSystemType().
+ * - le_ecall_ResetMsdEraGlonassCoordinateSystemType().
  *
  * ERA-GLONASS additional data is encoded using the OID version "1.4.1".
  * This was assigned to ERA-GLONASS optional additional data by CEN. Content of data
- * block in the AdditionalData should be:
+ * block in the AdditionalData for MSD version 1 should be:
  *
  * @code
  *
@@ -254,6 +262,67 @@
  *    crashAnotherType BOOLEAN OPTIONAL
  * }
  * END
+ * @endcode
+ *
+ * Content of data block in the AdditionalData for MSD version 2 should be:
+ *
+ * @code
+ *
+ * ERAOADASN1Module
+ * DEFINITIONS
+ * AUTOMATIC TAGS ::=
+ * BEGIN
+ * ERADataFormatId::= INTEGER (1)
+ *
+ * ERAAdditionalData ::= SEQUENCE {
+ *    crashSeverity INTEGER(0..2047) OPTIONAL,
+ *    diagnosticResult DiagnosticResult OPTIONAL,
+ *    crashInfo CrashInfo OPTIONAL,
+ *    coordinateSystemType CoordinateSystemType DEFAULT wgs84,
+ *    ...
+ * }
+ *
+ * DiagnosticResult ::= SEQUENCE {
+ *    micConnectionFailure BOOLEAN OPTIONAL,
+ *    micFailure BOOLEAN OPTIONAL,
+ *    rightSpeakerFailure BOOLEAN OPTIONAL,
+ *    leftSpeakerFailure BOOLEAN OPTIONAL,
+ *    speakersFailure BOOLEAN OPTIONAL,
+ *    ignitionLineFailure BOOLEAN OPTIONAL,
+ *    uimFailure BOOLEAN OPTIONAL,
+ *    statusIndicatorFailure BOOLEAN OPTIONAL,
+ *    batteryFailure BOOLEAN OPTIONAL,
+ *    batteryVoltageLow BOOLEAN OPTIONAL,
+ *    crashSensorFailure BOOLEAN OPTIONAL,
+ *    firmwareImageCorruption BOOLEAN OPTIONAL,
+ *    commModuleInterfaceFailure BOOLEAN OPTIONAL,
+ *    gnssReceiverFailure BOOLEAN OPTIONAL,
+ *    raimProblem BOOLEAN OPTIONAL,
+ *    gnssAntennaFailure BOOLEAN OPTIONAL,
+ *    commModuleFailure BOOLEAN OPTIONAL,
+ *    eventsMemoryOverflow BOOLEAN OPTIONAL,
+ *    crashProfileMemoryOverflow BOOLEAN OPTIONAL,
+ *    otherCriticalFailires BOOLEAN OPTIONAL,
+ *    otherNotCriticalFailures BOOLEAN OPTIONAL
+ * }
+ *
+ * CrashInfo ::= SEQUENCE {
+ *    crashFront BOOLEAN OPTIONAL,
+ *    crashLeft BOOLEAN OPTIONAL,
+ *    crashRight BOOLEAN OPTIONAL,
+ *    crashRear BOOLEAN OPTIONAL,
+ *    crashRollover BOOLEAN OPTIONAL,
+ *    crashSide BOOLEAN OPTIONAL,
+ *    crashFrontOrSide BOOLEAN OPTIONAL,
+ *    crashAnotherType BOOLEAN OPTIONAL
+ * }
+ *
+ * CoordinateSystemType ::= ENUMERATED {
+ *    wgs64 (1),
+ *    ps90 (2)
+ * }
+ * END
+ *
  * @endcode
  *
  * @section le_ecall_redial Redial management
@@ -582,7 +651,6 @@ ENUM MsdVehicleType
     MSD_VEHICLE_MOTORCYCLE_L7E,  ///< Motorcycles (Class L7e)
 };
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Propulsion type Bit Mask
@@ -598,7 +666,6 @@ BITMASK PropulsionTypeBitMask
     PROPULSION_TYPE_HYDROGEN,        ///< Hydrogen propulsion
     PROPULSION_TYPE_OTHER,           ///< Other type of propulsions
 };
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -676,6 +743,18 @@ BITMASK CrashInfoBitMask
     CRASH_INFO_CRASH_FRONT_OR_SIDE,         ///< Front or side collision indicator.
     CRASH_INFO_PRESENT_CRASH_ANOTHER_TYPE,  ///< Present Other types of damage indicator.
     CRASH_INFO_CRASH_ANOTHER_TYPE           ///< Other types of damage indicator.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  eCall MSD coordinate system type
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM MsdCoordinateType
+{
+    MSD_COORDINATE_SYSTEM_TYPE_ABSENT,  ///< Coordinate system type is absent
+    MSD_COORDINATE_SYSTEM_TYPE_WGS84,   ///< Coordinate system type WGS-84
+    MSD_COORDINATE_SYSTEM_TYPE_PZ90     ///< Coordinate system type PZ-90
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -1456,6 +1535,7 @@ FUNCTION le_result_t GetEraGlonassDialDuration
  *  - LE_OK on success
  *  - LE_DUPLICATE an MSD has been already imported
  *  - LE_BAD_PARAMETER bad eCall reference
+ *  - LE_FAULT on other failures
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetMsdEraGlonassCrashSeverity
@@ -1473,6 +1553,7 @@ FUNCTION le_result_t SetMsdEraGlonassCrashSeverity
  *  - LE_OK on success
  *  - LE_DUPLICATE an MSD has been already imported
  *  - LE_BAD_PARAMETER bad eCall reference
+ *  - LE_FAULT on other failures
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ResetMsdEraGlonassCrashSeverity
@@ -1488,6 +1569,7 @@ FUNCTION le_result_t ResetMsdEraGlonassCrashSeverity
  *  - LE_OK on success
  *  - LE_DUPLICATE an MSD has been already imported
  *  - LE_BAD_PARAMETER bad eCall reference
+ *  - LE_FAULT on other failures
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetMsdEraGlonassDiagnosticResult
@@ -1505,6 +1587,7 @@ FUNCTION le_result_t SetMsdEraGlonassDiagnosticResult
  *  - LE_OK on success
  *  - LE_DUPLICATE an MSD has been already imported
  *  - LE_BAD_PARAMETER bad eCall reference
+ *  - LE_FAULT on other failures
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ResetMsdEraGlonassDiagnosticResult
@@ -1520,6 +1603,7 @@ FUNCTION le_result_t ResetMsdEraGlonassDiagnosticResult
  *  - LE_OK on success
  *  - LE_DUPLICATE an MSD has been already imported
  *  - LE_BAD_PARAMETER bad eCall reference
+ *  - LE_FAULT on other failures
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetMsdEraGlonassCrashInfo
@@ -1537,9 +1621,44 @@ FUNCTION le_result_t SetMsdEraGlonassCrashInfo
  *  - LE_OK on success
  *  - LE_DUPLICATE an MSD has been already imported
  *  - LE_BAD_PARAMETER bad eCall reference
+ *  - LE_FAULT on other failures
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ResetMsdEraGlonassCrashInfo
+(
+    Call        ecallRef        IN   ///< eCall reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the ERA-GLONASS coordinate system type.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_DUPLICATE an MSD has been already imported
+ *  - LE_BAD_PARAMETER bad eCall reference
+ *  - LE_FAULT on other failures
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetMsdEraGlonassCoordinateSystemType
+(
+    Call              ecallRef              IN,  ///< eCall reference
+    MsdCoordinateType coordinateSystemType  IN   ///< the ERA-GLONASS coordinate system type
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reset the ERA-GLONASS coordinate system type. Therefore that optional parameter is not included
+ * in the MSD message.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_DUPLICATE an MSD has been already imported
+ *  - LE_BAD_PARAMETER bad eCall reference
+ *  - LE_FAULT on other failures
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ResetMsdEraGlonassCoordinateSystemType
 (
     Call        ecallRef        IN   ///< eCall reference
 );

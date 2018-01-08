@@ -886,6 +886,7 @@ static msd_VehicleType_t VehicleTypeEnumToEnumAsn1
             return MSD_VEHICLE_PASSENGER_M1;
     }
 }
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Map the vehicle type string to enum.
@@ -1244,6 +1245,33 @@ static le_result_t GetPropulsionType
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Map the coordinate system type APIs enum to the asn1Msd.h enum
+ */
+//--------------------------------------------------------------------------------------------------
+static msd_CoordinateSystemType_t CoordinateSystemTypeEnumToEnumAsn1
+(
+    le_ecall_MsdCoordinateType_t coordinateType ///< [IN] Coordinate system type
+)
+{
+    switch (coordinateType)
+    {
+        case LE_ECALL_MSD_COORDINATE_SYSTEM_TYPE_ABSENT:
+            return MSD_COORDINATE_SYSTEM_TYPE_ABSENT;
+
+        case LE_ECALL_MSD_COORDINATE_SYSTEM_TYPE_WGS84:
+            return MSD_COORDINATE_SYSTEM_TYPE_WGS84;
+
+        case LE_ECALL_MSD_COORDINATE_SYSTEM_TYPE_PZ90:
+            return MSD_COORDINATE_SYSTEM_TYPE_PZ90;
+
+        default:
+            LE_ERROR( "coordinateType outside enum range");
+            return MSD_COORDINATE_SYSTEM_TYPE_ABSENT;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Load the eCall settings
  *
  * @return
@@ -1440,10 +1468,12 @@ static le_result_t EncodeMsd
         // Encode optional Data for ERA GLONASS if any
         if(SystemStandard == PA_ECALL_ERA_GLONASS)
         {
+            EraGlonassDataObj.msdVersion = eCallPtr->msd.version;
 
             if (EraGlonassDataObj.presentCrashInfo ||
                 EraGlonassDataObj.presentCrashSeverity ||
-                EraGlonassDataObj.presentDiagnosticResult)
+                EraGlonassDataObj.presentDiagnosticResult ||
+                EraGlonassDataObj.presentCoordinateSystemTypeInfo)
             {
                 if ((eCallPtr->msd.msdMsg.optionalData.dataLen =
                     msd_EncodeOptionalDataForEraGlonass(
@@ -2098,6 +2128,7 @@ le_result_t le_ecall_Init
     EraGlonassDataObj.presentCrashSeverity = false;
     EraGlonassDataObj.presentDiagnosticResult = false;
     EraGlonassDataObj.presentCrashInfo = false;
+    EraGlonassDataObj.presentCoordinateSystemTypeInfo = false;
 
     if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
     {
@@ -3811,6 +3842,84 @@ le_result_t le_ecall_ResetMsdEraGlonassCrashInfo
     LE_DEBUG("CrashInfo mask reseted");
 
     EraGlonassDataObj.presentCrashInfo = false;
+
+    return EncodeMsd(eCallPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the ERA-GLONASS coordinate system type
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_DUPLICATE an MSD has been already imported
+ *      - LE_BAD_PARAMETER bad eCall reference
+ *      - LE_FAULT on other failures
+ *
+ * @note The process exits, if an invalid eCall reference is given
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_SetMsdEraGlonassCoordinateSystemType
+(
+    le_ecall_CallRef_t           ecallRef,        ///< [IN] eCall reference
+    le_ecall_MsdCoordinateType_t coordinateType   ///< [IN] ERA-GLONASS coordinate system type
+)
+{
+    ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+
+    if (NULL == eCallPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (eCallPtr->isMsdImported)
+    {
+        LE_ERROR("An MSD has been already imported!");
+        return LE_DUPLICATE;
+    }
+
+    EraGlonassDataObj.presentCoordinateSystemTypeInfo = true;
+    EraGlonassDataObj.coordinateSystemType = CoordinateSystemTypeEnumToEnumAsn1(coordinateType);
+
+    return EncodeMsd(eCallPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reset the ERA-GLONASS coordinate system type. Optional parameter is not included
+ * in the MSD message.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_DUPLICATE an MSD has been already imported
+ *      - LE_BAD_PARAMETER bad eCall reference
+ *      - LE_FAULT on other failures
+ *
+ * @note The process exits, if an invalid eCall reference is given
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_ResetMsdEraGlonassCoordinateSystemType
+(
+    le_ecall_CallRef_t   ecallRef       ///< [IN] eCall reference
+)
+{
+    ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+
+    if (NULL == eCallPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (eCallPtr->isMsdImported)
+    {
+        LE_ERROR("An MSD has been already imported!");
+        return LE_DUPLICATE;
+    }
+
+    EraGlonassDataObj.presentCoordinateSystemTypeInfo = false;
+    EraGlonassDataObj.coordinateSystemType = MSD_COORDINATE_SYSTEM_TYPE_ABSENT;
 
     return EncodeMsd(eCallPtr);
 }

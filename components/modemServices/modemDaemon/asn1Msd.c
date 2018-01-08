@@ -272,7 +272,6 @@ static int32_t msd_EncodeMsdMessageOptionalData
  * @return the MSD message length in bytes on success
  * @return LE_FAULT on failure
  *
- * @note Only MSD version 1 is supported.
  */
 //--------------------------------------------------------------------------------------------------
 int32_t msd_EncodeMsdMessage
@@ -665,7 +664,7 @@ int32_t msd_EncodeOptionalDataForEraGlonass
     int offset=0;
     uint16_t msdMsgLen=0;
 
-    if(outDataPtr)
+    if (outDataPtr)
     {
         /* 12-A1 id Integer  1 byte   M  Version of format of additional data of MSD is set to "1".
          * Subsequent ids must be compatible with earlier ids. */
@@ -693,7 +692,14 @@ int32_t msd_EncodeOptionalDataForEraGlonass
         offset = PutBits(offset, 1 ,(uint8_t*)&eraGlonassDataPtr->presentCrashInfo
                         , outDataPtr);
 
-        if( eraGlonassDataPtr->presentCrashSeverity )
+        if (eraGlonassDataPtr->msdVersion == 2)
+        {
+            offset = PutBits(offset, 1
+                            , (uint8_t*)&eraGlonassDataPtr->presentCoordinateSystemTypeInfo
+                            , outDataPtr);
+        }
+
+        if (eraGlonassDataPtr->presentCrashSeverity)
         {
             /* crashSeverity : INTEGER (0..2047) OPTIONAL*/
             /* Fits in 11 bits */
@@ -701,7 +707,7 @@ int32_t msd_EncodeOptionalDataForEraGlonass
                                  , outDataPtr);
         }
 
-        if( eraGlonassDataPtr->presentDiagnosticResult )
+        if (eraGlonassDataPtr->presentDiagnosticResult)
         {
             /* first presence bits*/
             offset = PutBits(offset, 1
@@ -768,79 +774,79 @@ int32_t msd_EncodeOptionalDataForEraGlonass
             , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.presentOtherNotCriticalFailures
             , outDataPtr);
 
-           if( eraGlonassDataPtr->diagnosticResult.presentMicConnectionFailure)
+           if (eraGlonassDataPtr->diagnosticResult.presentMicConnectionFailure)
            {
                offset = PutBits(offset, 1
                         , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.micConnectionFailure
                         , outDataPtr);
            }
-           if( eraGlonassDataPtr->diagnosticResult.presentMicFailure)
+           if (eraGlonassDataPtr->diagnosticResult.presentMicFailure)
            {
                offset = PutBits(offset, 1
                         , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.micFailure
                         , outDataPtr);
            }
-           if( eraGlonassDataPtr->diagnosticResult.presentRightSpeakerFailure)
+           if (eraGlonassDataPtr->diagnosticResult.presentRightSpeakerFailure)
            {
                offset = PutBits(offset, 1
                         , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.rightSpeakerFailure
                         , outDataPtr);
            }
-           if( eraGlonassDataPtr->diagnosticResult.presentLeftSpeakerFailure)
+           if (eraGlonassDataPtr->diagnosticResult.presentLeftSpeakerFailure)
            {
                offset = PutBits(offset, 1
                         , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.leftSpeakerFailure
                         , outDataPtr);
            }
-           if( eraGlonassDataPtr->diagnosticResult.presentSpeakersFailure)
+           if (eraGlonassDataPtr->diagnosticResult.presentSpeakersFailure)
            {
                offset = PutBits(offset, 1
                         , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.speakersFailure
                         , outDataPtr);
            }
-           if( eraGlonassDataPtr->diagnosticResult.presentIgnitionLineFailure)
+           if (eraGlonassDataPtr->diagnosticResult.presentIgnitionLineFailure)
            {
                offset = PutBits(offset, 1
                         , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.ignitionLineFailure
                         , outDataPtr);
            }
-           if( eraGlonassDataPtr->diagnosticResult.presentUimFailure)
+           if (eraGlonassDataPtr->diagnosticResult.presentUimFailure)
            {
                offset = PutBits(offset, 1
                         , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.uimFailure
                         , outDataPtr);
            }
-           if( eraGlonassDataPtr->diagnosticResult.presentStatusIndicatorFailure)
+           if (eraGlonassDataPtr->diagnosticResult.presentStatusIndicatorFailure)
            {
                offset = PutBits(offset, 1
                         , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.statusIndicatorFailure
                         , outDataPtr);
            }
-           if( eraGlonassDataPtr->diagnosticResult.presentBatteryFailure)
+           if (eraGlonassDataPtr->diagnosticResult.presentBatteryFailure)
            {
                offset = PutBits(offset, 1
                         , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.batteryFailure
                         , outDataPtr);
            }
-           if( eraGlonassDataPtr->diagnosticResult.presentBatteryVoltageLow)
+           if (eraGlonassDataPtr->diagnosticResult.presentBatteryVoltageLow)
            {
                offset = PutBits(offset, 1
                         , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.batteryVoltageLow
                         , outDataPtr);
            }
-           if( eraGlonassDataPtr->diagnosticResult.presentCrashSensorFailure)
+           if (eraGlonassDataPtr->diagnosticResult.presentCrashSensorFailure)
            {
                offset = PutBits(offset, 1
                         , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.crashSensorFailure
                         , outDataPtr);
            }
-           if( eraGlonassDataPtr->diagnosticResult.presentFirmwareImageCorruption)
+           if (eraGlonassDataPtr->diagnosticResult.presentFirmwareImageCorruption)
            {
                offset = PutBits(offset, 1
                         , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.firmwareImageCorruption
                         , outDataPtr);
            }
-           if( eraGlonassDataPtr->diagnosticResult.presentCommModuleInterfaceFailure)
+           if (eraGlonassDataPtr->diagnosticResult.presentCommModuleInterfaceFailure)
            {
                offset = PutBits(offset, 1
                         , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.commModuleInterfaceFailure
@@ -852,43 +858,43 @@ int32_t msd_EncodeOptionalDataForEraGlonass
                         , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.gnssReceiverFailure
                         , outDataPtr);
            }
-           if( eraGlonassDataPtr->diagnosticResult.presentRaimProblem)
+           if (eraGlonassDataPtr->diagnosticResult.presentRaimProblem)
            {
                offset = PutBits(offset, 1
                         , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.raimProblem
                         , outDataPtr);
            }
-           if( eraGlonassDataPtr->diagnosticResult.presentGnssAntennaFailure)
+           if (eraGlonassDataPtr->diagnosticResult.presentGnssAntennaFailure)
            {
                offset = PutBits(offset, 1
                         , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.gnssAntennaFailure
                         , outDataPtr);
            }
-           if( eraGlonassDataPtr->diagnosticResult.presentCommModuleFailure)
+           if (eraGlonassDataPtr->diagnosticResult.presentCommModuleFailure)
            {
                offset = PutBits(offset, 1
                         , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.commModuleFailure
                         , outDataPtr);
            }
-           if( eraGlonassDataPtr->diagnosticResult.presentEventsMemoryOverflow)
+           if (eraGlonassDataPtr->diagnosticResult.presentEventsMemoryOverflow)
            {
                offset = PutBits(offset, 1
                         , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.eventsMemoryOverflow
                         , outDataPtr);
            }
-           if( eraGlonassDataPtr->diagnosticResult.presentCrashProfileMemoryOverflow)
+           if (eraGlonassDataPtr->diagnosticResult.presentCrashProfileMemoryOverflow)
            {
                offset = PutBits(offset, 1
                         , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.crashProfileMemoryOverflow
                         , outDataPtr);
            }
-           if( eraGlonassDataPtr->diagnosticResult.presentOtherCriticalFailures)
+           if (eraGlonassDataPtr->diagnosticResult.presentOtherCriticalFailures)
            {
                offset = PutBits(offset, 1
                         , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.otherCriticalFailures
                         , outDataPtr);
            }
-           if( eraGlonassDataPtr->diagnosticResult.presentOtherNotCriticalFailures)
+           if (eraGlonassDataPtr->diagnosticResult.presentOtherNotCriticalFailures)
            {
                offset = PutBits(offset, 1
                         , (uint8_t*)&eraGlonassDataPtr->diagnosticResult.otherNotCriticalFailures
@@ -926,49 +932,49 @@ int32_t msd_EncodeOptionalDataForEraGlonass
                              , outDataPtr);
 
            /* Value bits*/
-           if( eraGlonassDataPtr->crashType.presentCrashFront )
+           if (eraGlonassDataPtr->crashType.presentCrashFront)
            {
                offset = PutBits(offset, 1
                                 , (uint8_t*)&eraGlonassDataPtr->crashType.crashFront
                                 , outDataPtr);
            }
-           if( eraGlonassDataPtr->crashType.presentCrashLeft )
+           if (eraGlonassDataPtr->crashType.presentCrashLeft)
            {
                offset = PutBits(offset, 1
                                 , (uint8_t*)&eraGlonassDataPtr->crashType.crashLeft
                                 , outDataPtr);
            }
-           if( eraGlonassDataPtr->crashType.presentCrashRight )
+           if (eraGlonassDataPtr->crashType.presentCrashRight)
            {
                offset = PutBits(offset, 1
                                 , (uint8_t*)&eraGlonassDataPtr->crashType.crashRight
                                 , outDataPtr);
            }
-           if( eraGlonassDataPtr->crashType.presentCrashRear )
+           if (eraGlonassDataPtr->crashType.presentCrashRear)
            {
                offset = PutBits(offset, 1
                                 , (uint8_t*)&eraGlonassDataPtr->crashType.crashRear
                                 , outDataPtr);
            }
-           if( eraGlonassDataPtr->crashType.presentCrashRollover )
+           if (eraGlonassDataPtr->crashType.presentCrashRollover)
            {
                offset = PutBits(offset, 1
                                 , (uint8_t*)&eraGlonassDataPtr->crashType.crashRollover
                                 , outDataPtr);
            }
-           if( eraGlonassDataPtr->crashType.presentCrashSide )
+           if (eraGlonassDataPtr->crashType.presentCrashSide)
            {
                offset = PutBits(offset, 1
                                 , (uint8_t*)&eraGlonassDataPtr->crashType.crashSide
                                 , outDataPtr);
            }
-           if( eraGlonassDataPtr->crashType.presentCrashFrontOrSide )
+           if (eraGlonassDataPtr->crashType.presentCrashFrontOrSide)
            {
                offset = PutBits(offset, 1
                                 , (uint8_t*)&eraGlonassDataPtr->crashType.crashFrontOrSide
                                 , outDataPtr);
            }
-           if( eraGlonassDataPtr->crashType.presentCrashAnotherType )
+           if (eraGlonassDataPtr->crashType.presentCrashAnotherType)
            {
                offset = PutBits(offset, 1
                                 , (uint8_t*)&eraGlonassDataPtr->crashType.crashAnotherType
@@ -976,8 +982,16 @@ int32_t msd_EncodeOptionalDataForEraGlonass
            }
         }
 
+        if ((eraGlonassDataPtr->msdVersion == 2) &&
+            (eraGlonassDataPtr->presentCoordinateSystemTypeInfo))
+        {
+            offset = PutBits(offset, 2
+                             , (uint8_t*)&eraGlonassDataPtr->coordinateSystemType
+                             , outDataPtr);
+        }
+
         /* Convert MSD message length in bits to length in Bytes */
-        if(offset%8)
+        if (offset%8)
         {
             /* Modulo 8 bits requires a one Byte extension */
             msdMsgLen = (offset/8)+1;
