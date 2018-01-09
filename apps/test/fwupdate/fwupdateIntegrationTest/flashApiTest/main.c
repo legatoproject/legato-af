@@ -22,7 +22,7 @@
  *
  */
 //--------------------------------------------------------------------------------------------------
-#define MAX_ARGS   4
+#define MAX_ARGS   5
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -50,9 +50,14 @@ static le_result_t FlashApiTest_Info(char **args);
 static le_result_t FlashApiTest_Dump(char **args);
 static le_result_t FlashApiTest_Flash(char **args);
 static le_result_t FlashApiTest_FlashErase(char **args);
+static le_result_t FlashApiTest_Copy(char **args);
 static le_result_t FlashApiTest_InfoUbi(char **args);
 static le_result_t FlashApiTest_DumpUbi(char **args);
 static le_result_t FlashApiTest_FlashUbi(char **args);
+static le_result_t FlashApiTest_CreateUbi(char **args);
+static le_result_t FlashApiTest_CreateUbiVol(char **args);
+static le_result_t FlashApiTest_DeleteUbiVol(char **args);
+static le_result_t FlashApiTest_CopyUbi(char **args);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -62,26 +67,40 @@ static le_result_t FlashApiTest_FlashUbi(char **args);
 //--------------------------------------------------------------------------------------------------
 static FlashApiTest_t FlashApiTest[] =
 {
-    { "help",        0, FlashApiTest_Usage,
+    { "help",           0, FlashApiTest_Usage,
       "help: show this help",                                                   },
-    { "info",        1, FlashApiTest_Info,
+    { "info",           1, FlashApiTest_Info,
       "info paritionName: open the given partition and show information",       },
-    { "dump",        2, FlashApiTest_Dump,
+    { "dump",           2, FlashApiTest_Dump,
       "dump paritionName fileName: dump a whole partition into the given file", },
-    { "flash",       2, FlashApiTest_Flash,
+    { "flash",          2, FlashApiTest_Flash,
       "flash paritionName fileName: flash the file into the given partition",   },
-    { "flash-erase", 2, FlashApiTest_FlashErase,
+    { "flash-erase",    2, FlashApiTest_FlashErase,
       "flash-erase paritionName fileName: flash the file into the given"
            " partition and erase remaining blocks",                             },
-    { "ubi-info",    2, FlashApiTest_InfoUbi,
+    { "copy",           2, FlashApiTest_Copy,
+      "copy sourceName destinationName: copy in raw the source to the"
+           " destination",                                                      },
+    { "ubi-info",       2, FlashApiTest_InfoUbi,
       "ubi-info paritionName volumeName: open the given UBI volume in the"
            " given partition and show information",                             },
-    { "ubi-dump",    3, FlashApiTest_DumpUbi,
+    { "ubi-dump",       3, FlashApiTest_DumpUbi,
       "ubi-dump paritionName volumeName fileName: dump a whole UBI volume from"
            " the partition into the given file",                                },
-    { "ubi-flash",   3, FlashApiTest_FlashUbi,
-      "ubi-flash paritionName volume-name fileName: flash the file into the"
+    { "ubi-flash",      3, FlashApiTest_FlashUbi,
+      "ubi-flash paritionName volumeName fileName: flash the file into the"
            " given UBI volume belonging to the partition",                      },
+    { "ubi-create",     1, FlashApiTest_CreateUbi,
+      "ubi-create paritionName: Open and create an UBI partiton",               },
+    { "ubi-create-vol", 4, FlashApiTest_CreateUbiVol,
+      "ubi-create-vol paritionName volumeName volumeId volumeType: Open and"
+           " create an UBI volume into the given partition",                    },
+    { "ubi-delete-vol", 2, FlashApiTest_DeleteUbiVol,
+      "ubi-delete-vol paritionName volumeName: Delete volumeId the UBI volume"
+           " from the given partition",                                                  },
+    { "ubi-copy",       3, FlashApiTest_CopyUbi,
+      "ubi-copy sourceName volumeName destinationName: copy the UBI volume from"
+           " source to the destination",                                        },
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -142,14 +161,14 @@ static le_result_t FlashApiTest_Info
     char **args
 )
 {
-    const char *partOrUbiStr = args[0];
+    const char *partNameStr = args[0];
     le_flash_PartitionRef_t partRef = NULL;
     le_result_t res;
     uint32_t badBlock, numBlock, eraseBlockSize, pageSize;
 
     // Open the given MTD partition in R/O
-    res = le_flash_OpenMtd(partOrUbiStr, LE_FLASH_READ_ONLY, &partRef);
-    LE_INFO("partition \"%s\" open ref %p, res %d", partOrUbiStr, partRef, res);
+    res = le_flash_OpenMtd(partNameStr, LE_FLASH_READ_ONLY, &partRef);
+    LE_INFO("partition \"%s\" open ref %p, res %d", partNameStr, partRef, res);
     if (LE_OK != res)
     {
         return res;
@@ -167,7 +186,7 @@ static le_result_t FlashApiTest_Info
 
     // Close the MTD
     res = le_flash_Close(partRef);
-    LE_INFO("partition \"%s\" close ref %p, res %d", partOrUbiStr, partRef, res);
+    LE_INFO("partition \"%s\" close ref %p, res %d", partNameStr, partRef, res);
 
     return res;
 }
@@ -185,7 +204,7 @@ static le_result_t FlashApiTest_Dump
     char **args
 )
 {
-    const char *partOrUbiStr = args[0];
+    const char *partNameStr = args[0];
     const char *toFile = args[1];
     le_flash_PartitionRef_t partRef = NULL;
     le_result_t res;
@@ -202,8 +221,8 @@ static le_result_t FlashApiTest_Dump
     }
 
     // Open the given MTD partition in R/O
-    res = le_flash_OpenMtd(partOrUbiStr, LE_FLASH_READ_ONLY, &partRef);
-    LE_INFO("partition \"%s\" open ref %p, res %d", partOrUbiStr, partRef, res);
+    res = le_flash_OpenMtd(partNameStr, LE_FLASH_READ_ONLY, &partRef);
+    LE_INFO("partition \"%s\" open ref %p, res %d", partNameStr, partRef, res);
     if (LE_OK != res)
     {
         close(toFd);
@@ -245,7 +264,7 @@ static le_result_t FlashApiTest_Dump
     }
     if (LE_OK == res)
     {
-        LE_INFO("Read %u blocks from partition \"%s\"", blockIdx, partOrUbiStr);
+        LE_INFO("Read %u blocks from partition \"%s\"", blockIdx, partNameStr);
     }
     else
     {
@@ -256,7 +275,7 @@ static le_result_t FlashApiTest_Dump
 
     // Close the MTD
     res = le_flash_Close(partRef);
-    LE_INFO("partition \"%s\" close ref %p, res %d", partOrUbiStr, partRef, res);
+    LE_INFO("partition \"%s\" close ref %p, res %d", partNameStr, partRef, res);
     close(toFd);
 
     return res;
@@ -275,7 +294,7 @@ static le_result_t FlashApiTest_Flash
     char **args
 )
 {
-    const char *partOrUbiStr = args[0];
+    const char *partNameStr = args[0];
     const char *fromFile = args[1];
     le_flash_PartitionRef_t partRef = NULL;
     le_result_t res;
@@ -291,8 +310,8 @@ static le_result_t FlashApiTest_Flash
     }
 
     // Open the given MTD partition in W/O
-    res = le_flash_OpenMtd(partOrUbiStr, LE_FLASH_WRITE_ONLY, &partRef);
-    LE_INFO("partition \"%s\" open ref %p, res %d", partOrUbiStr, partRef, res);
+    res = le_flash_OpenMtd(partNameStr, LE_FLASH_WRITE_ONLY, &partRef);
+    LE_INFO("partition \"%s\" open ref %p, res %d", partNameStr, partRef, res);
     if (LE_OK != res)
     {
         close(fromFd);
@@ -347,7 +366,7 @@ static le_result_t FlashApiTest_Flash
     close(fromFd);
     if (LE_OK == res)
     {
-        LE_INFO("Written %u blocks to partition \"%s\"", blockIdx, partOrUbiStr);
+        LE_INFO("Written %u blocks to partition \"%s\"", blockIdx, partNameStr);
     }
     else
     {
@@ -367,7 +386,7 @@ static le_result_t FlashApiTest_Flash
 
     // Close the MTD
     res = le_flash_Close(partRef);
-    LE_INFO("partition \"%s\" close ref %p, res %d", partOrUbiStr, partRef, res);
+    LE_INFO("partition \"%s\" close ref %p, res %d", partNameStr, partRef, res);
     return res;
 }
 //! [Flash]
@@ -384,7 +403,7 @@ static le_result_t FlashApiTest_FlashErase
     char **args
 )
 {
-    const char *partOrUbiStr = args[0];
+    const char *partNameStr = args[0];
     const char *fromFile = args[1];
     le_flash_PartitionRef_t partRef = NULL;
     le_result_t res;
@@ -401,8 +420,8 @@ static le_result_t FlashApiTest_FlashErase
     }
 
     // Open the given MTD partition in W/O
-    res = le_flash_OpenMtd(partOrUbiStr, LE_FLASH_WRITE_ONLY, &partRef);
-    LE_INFO("partition \"%s\" open ref %p, res %d", partOrUbiStr, partRef, res);
+    res = le_flash_OpenMtd(partNameStr, LE_FLASH_WRITE_ONLY, &partRef);
+    LE_INFO("partition \"%s\" open ref %p, res %d", partNameStr, partRef, res);
     if (LE_OK != res)
     {
         close(fromFd);
@@ -457,7 +476,7 @@ static le_result_t FlashApiTest_FlashErase
     close(fromFd);
     if (LE_OK == res)
     {
-        LE_INFO("Written %u blocks to partition \"%s\"", blockIdx, partOrUbiStr);
+        LE_INFO("Written %u blocks to partition \"%s\"", blockIdx, partNameStr);
     }
     else
     {
@@ -501,10 +520,116 @@ static le_result_t FlashApiTest_FlashErase
 
     // Close the MTD
     res = le_flash_Close(partRef);
-    LE_INFO("partition \"%s\" close ref %p, res %d", partOrUbiStr, partRef, res);
+    LE_INFO("partition \"%s\" close ref %p, res %d", partNameStr, partRef, res);
     return res;
 }
 //! [FlashErase]
+
+//! [Copy]
+//--------------------------------------------------------------------------------------------------
+/**
+ * Copy in RAW a MTD partition to another MTD
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t FlashApiTest_Copy
+(
+    char **args
+)
+{
+    const char *partSrcStr = args[0];
+    const char *partDestStr = args[1];
+    le_flash_PartitionRef_t partRef = NULL, partDestRef = NULL;
+    le_result_t res;
+    uint32_t badBlock, numBlock, eraseBlockSize, pageSize, blockIdx, readSize, writeBadBlock;
+    uint8_t rData[LE_FLASH_MAX_READ_SIZE];
+
+    // Open the source MTD partition in R/O
+    res = le_flash_OpenMtd(partSrcStr, LE_FLASH_READ_ONLY, &partRef);
+    LE_INFO("partition \"%s\" open ref %p, res %d", partSrcStr, partRef, res);
+    if (LE_OK != res)
+    {
+        return res;
+    }
+
+    // Open the destination MTD partition in W/O
+    res = le_flash_OpenMtd(partDestStr, LE_FLASH_WRITE_ONLY, &partDestRef);
+    LE_INFO("partition \"%s\" open ref %p, res %d", partDestStr, partDestRef, res);
+    if (LE_OK != res)
+    {
+        le_flash_Close(partRef);
+        return res;
+    }
+
+    // Retrieve MTD flash information
+    res = le_flash_GetBlockInformation(partRef, &badBlock, &numBlock, &eraseBlockSize, &pageSize);
+    LE_INFO("Bad Block %u, Block %u, Erase Block Size %u, Page Size %u",
+            badBlock, numBlock, eraseBlockSize, pageSize);
+    if (LE_OK != res)
+    {
+        le_flash_Close(partRef);
+        le_flash_Close(partDestRef);
+        return res;
+    }
+
+    // Loop for all blocks of the partition, try to read from the file and flash the erase block
+    // into the partition
+    for(blockIdx = 0; blockIdx < numBlock; blockIdx++)
+    {
+        // Read the whole erase block size
+        readSize = eraseBlockSize;
+        res = le_flash_Read(partRef, blockIdx, rData, &readSize);
+        if (LE_OK != res)
+        {
+            LE_ERROR("le_flash_Read failed: %d", res);
+            res = LE_FAULT;
+            break;
+        }
+
+        // Write the whole erase block size
+        // As we write in RAW, the whole erase block is written at once
+        // The Flash layer will perform an erase before writing. We do not need to call it.
+        // If the write fails or the erase fails, the block will be marked bad and the write
+        // starts again at the next block.
+        res = le_flash_Write(partDestRef, blockIdx, rData, readSize);
+        if (LE_OK != res)
+        {
+            LE_ERROR("le_flash_Write failed: %d", res);
+            break;
+        }
+        // As blocks are marked bad, it may happen that we cannot write the whole file into
+        // the Flash partition if too many bad blocks are found.
+        LE_DEBUG("Write blockIdx %u size %u", blockIdx, readSize);
+    }
+    // Close the MTD
+    le_flash_Close(partRef);
+    LE_INFO("partition \"%s\" close ref %p, res %d", partSrcStr, partRef, res);
+    if (LE_OK == res)
+    {
+        LE_INFO("Written %u blocks to partition \"%s\"", blockIdx, partDestStr);
+    }
+    else
+    {
+        le_flash_Close(partDestRef);
+        return res;
+    }
+
+    // Retrieve MTD flash information to look for "new bad blocks"
+    writeBadBlock = 0;
+    res = le_flash_GetBlockInformation(partDestRef,
+                                       &writeBadBlock, &numBlock, &eraseBlockSize, &pageSize);
+    if ((LE_OK != res) || (writeBadBlock > badBlock))
+    {
+        LE_ERROR("New bad blocks marked during write: %u (%u - %u)", writeBadBlock - badBlock,
+                 writeBadBlock, badBlock);
+    }
+
+    // Close the MTD
+    res = le_flash_Close(partDestRef);
+    LE_INFO("partition \"%s\" close ref %p, res %d", partDestStr, partDestRef, res);
+    return res;
+}
+//! [Copy]
 
 //! [UbiInfo]
 //--------------------------------------------------------------------------------------------------
@@ -518,7 +643,7 @@ static le_result_t FlashApiTest_InfoUbi
     char **args
 )
 {
-    const char *partOrUbiStr = args[0];
+    const char *partNameStr = args[0];
     const char *ubiVolStr = args[1];
     le_flash_PartitionRef_t partRef = NULL;
     le_result_t res;
@@ -526,8 +651,8 @@ static le_result_t FlashApiTest_InfoUbi
     uint32_t freeBlock, volBlock, volSize;
 
     // Open the given UBI partition in R/O
-    res = le_flash_OpenUbi(partOrUbiStr, LE_FLASH_READ_ONLY, &partRef);
-    LE_INFO("partition \"%s\" open ref %p, res %d", partOrUbiStr, partRef, res);
+    res = le_flash_OpenUbi(partNameStr, LE_FLASH_READ_ONLY, &partRef);
+    LE_INFO("partition \"%s\" open ref %p, res %d", partNameStr, partRef, res);
     if (LE_OK != res)
     {
         return res;
@@ -573,7 +698,7 @@ static le_result_t FlashApiTest_InfoUbi
 
     // Close the UBI partition
     res = le_flash_Close(partRef);
-    LE_INFO("partition \"%s\" close ref %p, res %d", partOrUbiStr, partRef, res);
+    LE_INFO("partition \"%s\" close ref %p, res %d", partNameStr, partRef, res);
     return res;
 }
 //! [UbiInfo]
@@ -590,7 +715,7 @@ static le_result_t FlashApiTest_DumpUbi
     char **args
 )
 {
-    const char *partOrUbiStr = args[0];
+    const char *partNameStr = args[0];
     const char *ubiVolStr = args[1];
     const char *toFile = args[2];
     le_flash_PartitionRef_t partRef = NULL;
@@ -609,8 +734,8 @@ static le_result_t FlashApiTest_DumpUbi
     }
 
     // Open the given UBI partition in R/O
-    res = le_flash_OpenUbi(partOrUbiStr, LE_FLASH_READ_ONLY, &partRef);
-    LE_INFO("partition \"%s\" open ref %p, res %d", partOrUbiStr, partRef, res);
+    res = le_flash_OpenUbi(partNameStr, LE_FLASH_READ_ONLY, &partRef);
+    LE_INFO("partition \"%s\" open ref %p, res %d", partNameStr, partRef, res);
     if (LE_OK != res)
     {
         close(toFd);
@@ -680,7 +805,7 @@ static le_result_t FlashApiTest_DumpUbi
     if (LE_OK == res)
     {
         LE_INFO("Read %u blocks from UBI partition \"%s\" volume \"%s\"",
-                blockIdx, partOrUbiStr, ubiVolStr);
+                blockIdx, partNameStr, ubiVolStr);
         LE_INFO("Volume size read %u, expected volume size %u", readVolSize, volSize);
     }
     else
@@ -701,7 +826,7 @@ static le_result_t FlashApiTest_DumpUbi
 
     // Close the UBI partition
     res = le_flash_Close(partRef);
-    LE_INFO("partition \"%s\" close ref %p, res %d", partOrUbiStr, partRef, res);
+    LE_INFO("partition \"%s\" close ref %p, res %d", partNameStr, partRef, res);
     return res;
 }
 //! [UbiDump]
@@ -718,7 +843,7 @@ static le_result_t FlashApiTest_FlashUbi
     char **args
 )
 {
-    const char *partOrUbiStr = args[0];
+    const char *partNameStr = args[0];
     const char *ubiVolStr = args[1];
     const char *fromFile = args[2];
     le_flash_PartitionRef_t partRef = NULL;
@@ -737,9 +862,9 @@ static le_result_t FlashApiTest_FlashUbi
         return LE_FAULT;
     }
 
-    // Open the given UBI partition in R/O
-    res = le_flash_OpenUbi(partOrUbiStr, LE_FLASH_WRITE_ONLY, &partRef);
-    LE_INFO("partition \"%s\" open ref %p, res %d", partOrUbiStr, partRef, res);
+    // Open the given UBI partition in W/O
+    res = le_flash_OpenUbi(partNameStr, LE_FLASH_WRITE_ONLY, &partRef);
+    LE_INFO("partition \"%s\" open ref %p, res %d", partNameStr, partRef, res);
     if (LE_OK != res)
     {
         close(fromFd);
@@ -825,7 +950,7 @@ static le_result_t FlashApiTest_FlashUbi
     if (LE_OK == res)
     {
         LE_INFO("Write %u blocks to UBI partition \"%s\" volume \"%s\"",
-                blockIdx, partOrUbiStr, ubiVolStr);
+                blockIdx, partNameStr, ubiVolStr);
         LE_INFO("Volume size written %u, expected volume size %u",
                 writeVolSize, (uint32_t)st.st_size);
     }
@@ -880,10 +1005,371 @@ static le_result_t FlashApiTest_FlashUbi
 
     // Close the UBI partition
     res = le_flash_Close(partRef);
-    LE_INFO("partition \"%s\" close ref %p, res %d", partOrUbiStr, partRef, res);
+    LE_INFO("partition \"%s\" close ref %p, res %d", partNameStr, partRef, res);
     return res;
 }
 //! [UbiFlash]
+
+//! [UbiCreate]
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create an UBI partition
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t FlashApiTest_CreateUbi
+(
+    char **args
+)
+{
+    const char *partNameStr = args[0];
+    le_flash_PartitionRef_t partRef = NULL;
+    le_result_t res;
+    uint32_t badBlock, numBlock, eraseBlockSize, pageSize;
+
+    // Create and open the given UBI partition in W/O
+    res = le_flash_CreateUbi(partNameStr, true, &partRef);
+    LE_INFO("partition \"%s\" create ref %p, res %d", partNameStr, partRef, res);
+    if (LE_OK != res)
+    {
+        return res;
+    }
+
+    // Retrieve UBI flash information
+    res = le_flash_GetBlockInformation(partRef, &badBlock, &numBlock, &eraseBlockSize, &pageSize);
+    LE_INFO("Bad Block %u, Block %u, Erase Block Size %u, Page Size %u",
+            badBlock, numBlock, eraseBlockSize, pageSize);
+    if (LE_OK != res)
+    {
+        le_flash_Close(partRef);
+        return res;
+    }
+
+    // Close the UBI partition
+    res = le_flash_Close(partRef);
+    LE_INFO("partition \"%s\" close ref %p, res %d", partNameStr, partRef, res);
+
+    return res;
+}
+//! [UbiCreate]
+
+//! [UbiCreateVol]
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create an UBI volume into an UBI partition
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t FlashApiTest_CreateUbiVol
+(
+    char **args
+)
+{
+    const char *partNameStr = args[0];
+    const char *ubiVolStr = args[1];
+    const char *ubiVolIdStr = args[2];
+    const char *ubiVolTypeStr = args[3];
+    le_flash_PartitionRef_t partRef = NULL;
+    le_flash_UbiVolumeType_t ubiVolType;
+    int32_t ubiVolId;
+    le_result_t res;
+    uint32_t freeBlock, volBlock, volSize;
+
+    if (0 == strcmp(ubiVolTypeStr, "dynamic"))
+    {
+        ubiVolType = LE_FLASH_DYNAMIC;
+    }
+    else if (0 == strcmp(ubiVolTypeStr, "static"))
+    {
+        ubiVolType = LE_FLASH_STATIC;
+    }
+    else
+    {
+        LE_ERROR("Incorrect volume type '%s'. Must be dynamic or static.", ubiVolTypeStr);
+        return LE_BAD_PARAMETER;
+    }
+
+    if ((1 != sscanf( ubiVolIdStr, "%d", &ubiVolId )) || (ubiVolId > LE_FLASH_UBI_VOL_ID_MAX))
+    {
+        LE_ERROR("Invalid volume Id '%s'", ubiVolIdStr);
+        return LE_BAD_PARAMETER;
+    }
+
+    // Open the given UBI partition in W/O
+    res = le_flash_OpenUbi(partNameStr, LE_FLASH_WRITE_ONLY, &partRef);
+    LE_INFO("partition \"%s\" open ref %p, res %d", partNameStr, partRef, res);
+    if (LE_OK != res)
+    {
+        return res;
+    }
+
+    // Create an UBI volume belonging to this UBI partition
+    res = le_flash_CreateUbiVolume(partRef, true, ubiVolId, ubiVolType, ubiVolStr,
+                                   LE_FLASH_UBI_VOL_NO_SIZE);
+    LE_INFO("UBI volume \"%s\" id %u created ref %p, res %d", ubiVolStr, ubiVolId, partRef, res);
+    if (LE_OK != res)
+    {
+        le_flash_Close(partRef);
+        return res;
+    }
+
+    // Retrieve UBI volume information
+    res = le_flash_GetUbiVolumeInformation(partRef, &freeBlock, &volBlock, &volSize);
+    LE_INFO("Free Block %u, Allocated Block to Volume %u, Volume Size %u",
+            freeBlock, volBlock, volSize);
+    if (LE_OK != res)
+    {
+        le_flash_CloseUbiVolume(partRef);
+        le_flash_Close(partRef);
+        return res;
+    }
+
+    // Close the UBI volume
+    res = le_flash_CloseUbiVolume(partRef);
+    if (LE_OK != res)
+    {
+        le_flash_Close(partRef);
+        return res;
+    }
+
+    // Close the UBI partition
+    res = le_flash_Close(partRef);
+    LE_INFO("partition \"%s\" close ref %p, res %d", partNameStr, partRef, res);
+    return res;
+}
+//! [UbiCreateVol]
+
+//! [UbiDeleteVol]
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete an UBI volume from a partition
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t FlashApiTest_DeleteUbiVol
+(
+    char **args
+)
+{
+    const char *partNameStr = args[0];
+    const char *ubiVolStr = args[1];
+    le_flash_PartitionRef_t partRef = NULL;
+    le_result_t res;
+
+    // Open the given UBI partition in W/O
+    res = le_flash_OpenUbi(partNameStr, LE_FLASH_WRITE_ONLY, &partRef);
+    LE_INFO("partition \"%s\" open ref %p, res %d", partNameStr, partRef, res);
+    if (LE_OK != res)
+    {
+        return res;
+    }
+
+    // Delete the UBI volume from the UBI partition
+    res = le_flash_DeleteUbiVolume(partRef, ubiVolStr);
+    LE_INFO("UBI volume \"%s\" open ref %p, res %d", ubiVolStr, partRef, res);
+    if (LE_OK != res)
+    {
+        le_flash_Close(partRef);
+        return res;
+    }
+
+    // Close the UBI partition
+    res = le_flash_Close(partRef);
+    LE_INFO("partition \"%s\" close ref %p, res %d", partNameStr, partRef, res);
+
+    return res;
+}
+//! [UbiDeleteVol]
+
+//! [UbiCopy]
+//--------------------------------------------------------------------------------------------------
+/**
+ * Flash a whole UBI volume from a file into an UBI partition
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t FlashApiTest_CopyUbi
+(
+    char **args
+)
+{
+    const char *partSrcStr = args[0];
+    const char *ubiVolStr = args[1];
+    const char *partDestStr = args[2];
+    le_flash_PartitionRef_t partRef = NULL, partDestRef = NULL;
+    le_result_t res;
+    uint32_t badBlock, numBlock, eraseBlockSize, pageSize, blockIdx, readSize;
+    uint32_t freeBlock, volBlock, volSize, writeVolSize = 0, newVolSize;
+    uint8_t rData[LE_FLASH_MAX_READ_SIZE];
+
+    // Open the given UBI partition in R/O
+    res = le_flash_OpenUbi(partSrcStr, LE_FLASH_READ_ONLY, &partRef);
+    LE_INFO("partition \"%s\" open ref %p, res %d", partSrcStr, partRef, res);
+    if (LE_OK != res)
+    {
+        return res;
+    }
+
+    // Open the given UBI partition in W/O
+    res = le_flash_OpenUbi(partDestStr, LE_FLASH_WRITE_ONLY, &partDestRef);
+    LE_INFO("partition \"%s\" open ref %p, res %d", partDestStr, partDestRef, res);
+    if (LE_OK != res)
+    {
+        // If the Open fails, try to create an empty UBI partition
+        res = le_flash_CreateUbi(partDestStr, true, &partDestRef);
+        LE_INFO("partition \"%s\" create UBI ref %p, res %d", partDestStr, partDestRef, res);
+    }
+    if (LE_OK != res)
+    {
+        le_flash_Close(partRef);
+        return res;
+    }
+
+    // Open an UBI volume belonging to this UBI partition
+    // Get the size of the volume. This will be needed to "adjust" the UBI volume size after it
+    // was fully written. This size is passed to le_flash_OpenUbiVolume() and the UBI volume will
+    // be resized when le_flash_CloseUbiVolume() is called. Using LE_FLASH_UBI_VOL_NO_SIZE instead
+    // will keep the volume size unchanged.
+    res = le_flash_OpenUbiVolume(partRef, ubiVolStr, LE_FLASH_UBI_VOL_NO_SIZE);
+    LE_INFO("UBI volume \"%s\" open ref %p, res %d", ubiVolStr, partRef, res);
+    if (LE_OK != res)
+    {
+        le_flash_Close(partRef);
+        le_flash_Close(partDestRef);
+        return res;
+    }
+
+    // Retrieve UBI flash information
+    res = le_flash_GetBlockInformation(partRef, &badBlock, &numBlock, &eraseBlockSize, &pageSize);
+    LE_INFO("Bad Block %u, Block %u, Erase Block Size %u, Page Size %u",
+            badBlock, numBlock, eraseBlockSize, pageSize);
+    if (LE_OK != res)
+    {
+        le_flash_CloseUbiVolume(partRef);
+        le_flash_Close(partRef);
+        le_flash_Close(partDestRef);
+        return res;
+    }
+
+    // Retrieve UBI volume information
+    res = le_flash_GetUbiVolumeInformation(partRef, &freeBlock, &volBlock, &volSize);
+    LE_INFO("Free Block %u, Allocated Block to Volume %u, Volume Size %u",
+            freeBlock, volBlock, volSize);
+    if (LE_OK != res)
+    {
+        le_flash_CloseUbiVolume(partRef);
+        le_flash_Close(partRef);
+        le_flash_Close(partDestRef);
+        return res;
+    }
+
+    // Create the UBI volume into the UBI destination.
+    res = le_flash_CreateUbiVolume(partDestRef, true, LE_FLASH_UBI_VOL_NO_ID, LE_FLASH_STATIC,
+                                   ubiVolStr, LE_FLASH_UBI_VOL_NO_SIZE);
+    LE_INFO("UBI volume \"%s\" created ref %p, res %d", ubiVolStr, partRef, res);
+    if (LE_OK != res)
+    {
+        le_flash_CloseUbiVolume(partRef);
+        le_flash_Close(partRef);
+        le_flash_Close(partDestRef);
+        return res;
+    }
+
+    // Loop until the whole size of the file has been read.
+    for(blockIdx = 0; writeVolSize < volSize; blockIdx++)
+    {
+        // The erase block size contains all UBI header and data information. We need to
+        // remove the 2 write pages to get the whole data size.
+        readSize = eraseBlockSize - (2*pageSize);
+        res = le_flash_Read(partRef, blockIdx, rData, &readSize);
+        if (LE_OK != res)
+        {
+            LE_ERROR("le_flash_Read failed: %d", res);
+            res = LE_FAULT;
+            break;
+        }
+
+        // Write the whole erase block size
+        // As we write in UBI, the whole erase block is read by once minus some administrative
+        // pages.
+        // The Flash layer will perform an erase before writing. We do not need to call it.
+        // If the write fails or the erase fails, the block will be marked bad and the write
+        // starts again at the next block.
+        // If a new block is required to store data into the volume, the Flash layer will allocate
+        // it to the volume and fill the administrative headers.
+        res = le_flash_Write(partDestRef, blockIdx, rData, readSize);
+        if (LE_OK != res)
+        {
+            LE_ERROR("le_flash_Write failed: %d", res);
+            break;
+        }
+        LE_DEBUG("Write blockIdx %u size %u", blockIdx, readSize);
+        writeVolSize += readSize;
+    }
+    le_flash_CloseUbiVolume(partRef);
+    le_flash_Close(partRef);
+    if (LE_OK == res)
+    {
+        LE_INFO("Write %u blocks to UBI partition \"%s\" volume \"%s\"",
+                blockIdx, partDestStr, ubiVolStr);
+        LE_INFO("Volume size written %u, expected volume size %u",
+                writeVolSize, volSize);
+    }
+    else
+    {
+        le_flash_CloseUbiVolume(partDestRef);
+        le_flash_Close(partDestRef);
+        return res;
+    }
+
+    // Close the UBI volume. If a specific volume size was passed to le_flash_OpenUbiVolume(), the
+    // volume size will be adjusted to it. Blocks over the volume size will be released and given
+    // back to the UBI partition.
+    res = le_flash_CloseUbiVolume(partDestRef);
+    LE_INFO("UBI volume \"%s\" close ref %p, res %d", ubiVolStr, partDestRef, res);
+    if (LE_OK != res)
+    {
+        le_flash_Close(partDestRef);
+        return res;
+    }
+
+    // Just re-open the same volume without size to check that the UBI volume was resized correctly.
+    res = le_flash_OpenUbiVolume(partDestRef, ubiVolStr, LE_FLASH_UBI_VOL_NO_SIZE);
+    LE_INFO("UBI volume \"%s\" open ref %p, res %d", ubiVolStr, partDestRef, res);
+    if (LE_OK != res)
+    {
+        le_flash_Close(partDestRef);
+        return res;
+    }
+
+    // Retrieve UBI volume information and check that the volume size reports the good size.
+    res = le_flash_GetUbiVolumeInformation(partDestRef, &freeBlock, &volBlock, &newVolSize);
+    if (LE_OK != res)
+    {
+        le_flash_CloseUbiVolume(partRef);
+        le_flash_Close(partRef);
+        return res;
+    }
+    LE_INFO("Volume size adjusted to %u", volSize);
+    if ((volSize != newVolSize) || (volSize != writeVolSize))
+    {
+        LE_ERROR("UBI voluma has bad size: %u, expected %u", volSize, writeVolSize);
+    }
+
+    // Close the UBI volume
+    res = le_flash_CloseUbiVolume(partDestRef);
+    if (LE_OK != res)
+    {
+        le_flash_Close(partDestRef);
+        return res;
+    }
+
+    // Close the UBI partition
+    res = le_flash_Close(partDestRef);
+    LE_INFO("partition \"%s\" close ref %p, res %d", partDestStr, partDestRef, res);
+    return res;
+}
+//! [UbiCopy]
 
 //--------------------------------------------------------------------------------------------------
 /**

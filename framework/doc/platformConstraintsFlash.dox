@@ -26,44 +26,44 @@ details.
     lets the service detects the system the use want to address.
 
 <center>
-    | API partition name | mtd name               |
-    |:                  :|:                      :|
-    | sbl                | sbl                    | (see note)
-    | tz_1               | tz                     |
-    | tz_2               | tz                     |
-    | tz_active          | tz                     |
-    | tz_update          | tz                     |
-    | rpm_1              | rpm                    |
-    | rpm_2              | rpm                    |
-    | rpm_active         | rpm                    |
-    | rpm_update         | rpm                    |
-    | modem_1            | modem                  |
-    | modem_2            | modem2                 |
-    | modem_active       | modem or modem2        |
-    | modem_update       | modem or modem2        |
-    | aboot_1            | aboot                  |
-    | aboot_2            | aboot2                 |
-    | aboot_active       | aboot or aboot2        |
-    | aboot_update       | aboot or aboot2        |
-    | boot_1             | boot                   |
-    | boot_2             | boot2                  |
-    | boot_active        | boot or boot2          |
-    | boot_update        | boot or boot2          |
-    | system_1           | system                 |
-    | system_2           | system2                |
-    | system_active      | system or system2      |
-    | system_update      | system or system2      |
-    | lefwkro_1          | lefwkro                |
-    | lefwkro_2          | lefwkro2               |
-    | lefwkro_active     | lefwkro or lefwkro2    |
-    | lefwkro_update     | lefwkro or lefwkro2    |
-    | customer_1         | customer0              | (dual)
-    | customer_2         | customer1              | (dual)
-    | customer_active    | customer0 or customer1 | (dual)
-    | customer_update    | customer1 or customer1 | (dual)
-    | customer0          | customer0              | (not dual)
-    | customer1          | customer1              | (not dual)
-    | customer2          | customer2              | (not dual)
+| API partition name | mtd name               | notes       |
+| :----------------: | :--------------------: | :---------: |
+| sbl                | sbl                    | (see note)  |
+| tz_1               | tz                     |             |
+| tz_2               | tz                     |             |
+| tz_active          | tz                     |             |
+| tz_update          | tz                     |             |
+| rpm_1              | rpm                    |             |
+| rpm_2              | rpm                    |             |
+| rpm_active         | rpm                    |             |
+| rpm_update         | rpm                    |             |
+| modem_1            | modem                  |             |
+| modem_2            | modem2                 |             |
+| modem_active       | modem or modem2        |             |
+| modem_update       | modem or modem2        |             |
+| aboot_1            | aboot                  |             |
+| aboot_2            | aboot2                 |             |
+| aboot_active       | aboot or aboot2        |             |
+| aboot_update       | aboot or aboot2        |             |
+| boot_1             | boot                   |             |
+| boot_2             | boot2                  |             |
+| boot_active        | boot or boot2          |             |
+| boot_update        | boot or boot2          |             |
+| system_1           | system                 |             |
+| system_2           | system2                |             |
+| system_active      | system or system2      |             |
+| system_update      | system or system2      |             |
+| lefwkro_1          | lefwkro                |             |
+| lefwkro_2          | lefwkro2               |             |
+| lefwkro_active     | lefwkro or lefwkro2    |             |
+| lefwkro_update     | lefwkro or lefwkro2    |             |
+| customer_1         | customer0              | (dual)      |
+| customer_2         | customer1              | (dual)      |
+| customer_active    | customer0 or customer1 | (dual)      |
+| customer_update    | customer1 or customer1 | (dual)      |
+| customer0          | customer0              | (not dual)  |
+| customer1          | customer1              | (not dual)  |
+| customer2          | customer2              | (not dual)  |
 </center>
 
    - le_flash_OpenMtd() and le_flash_OpenUbi() API accept all partition name syntaxes, ie,
@@ -80,12 +80,29 @@ details.
 
 @warning This service is not supported on all platforms.
 
-The different UBI volumes are identified by the string:
-   - "binary": binary image (squashfs, etc...)
-   - "hash_tree": DM-veritry hash tree
-   - "root_hash": DM-Verity root hash
-   - "signed_root": signed root hash
-   - "certificate": trust chain certificate
+The different UBI volumes are identified by a name (i.e volume name)
+   - The volume name may contain any character up to 128 bytes length.
+   - For the system and lefwkro partitions, the following names are used. This is applied
+     to both active and update partitions.
+<center>
+| MTD partition      | UBI volume name   | Description                       |
+| :----------------: | :---------------: | :-------------------------------: |
+| modem/modem2       | modem             | Binary partition/filesystem image |
+| system/system2     | rootfs            | Binary partition/filesystem image |
+| system/system2     | rootfs_hs         | Hash tree (DM-verity)             |
+| system/system2     | rootfs_rhs        | Root hash tree (DM-verity)        |
+| system/system2     | rootfs_srhs       | Signed root (For secure boot)     |
+| system/system2     | rootfs_cert       | Certificate (For secure boot)     |
+| lefwkro/lefwkro2   | legato            | Binary partition/filesystem image |
+| lefwkro/lefwkro2   | legato_hs         | Hash tree (DM-verity)             |
+| lefwkro/lefwkro2   | legato_rhs        | Root hash tree (DM-verity)        |
+| lefwkro/lefwkro2   | legato_srhs       | Signed root (For secure boot)     |
+| lefwkro/lefwkro2   | legato_cert       | Certificate (For secure boot)     |
+</center>
+
+@note
+    The volumes hash tree, root hash tree, signed root and certificate may not be present
+    if the DM-verity or secure boot features are not available.
 
 <HR>
 

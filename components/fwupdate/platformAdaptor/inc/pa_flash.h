@@ -95,6 +95,14 @@ typedef unsigned int pa_flash_OpenMode_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Define the type of UBI volume: dynamic for UBIFS, static for SQUASHFS
+ */
+//--------------------------------------------------------------------------------------------------
+#define PA_FLASH_VOLUME_DYNAMIC    1
+#define PA_FLASH_VOLUME_STATIC     2
+
+//--------------------------------------------------------------------------------------------------
+/**
  * LEB to PEB translation array
  * Map of logical erase block (LEB) to physical erase block (PEB)
  * If a bad block is found, the PEB is incremented, but not the LEB
@@ -655,6 +663,62 @@ LE_SHARED le_result_t pa_flash_CalculateDataLength
     const void* data,           ///< [IN] a buffer with the contents of the physical eraseblock
     uint32_t*   dataSize        ///< [INOUT] input : the buffer length
                                 ///<         output: real data length align with pages size
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create UBI partition
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_BAD_PARAMETER If desc is NULL or is not a valid descriptor
+ *      - LE_BUSY          If desc refers to an UBI volume or an UBI partition
+ *      - LE_IO_ERROR      If a flash IO error occurs
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_flash_CreateUbi
+(
+    pa_flash_Desc_t desc,           ///< [IN] Private flash descriptor
+    bool            isForcedCreate  ///< [IN] If set to true the UBI partition is overwriten and the
+                                    ///<      previous content is lost
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create UBI volume
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_BAD_PARAMETER If desc is NULL or is not a valid descriptor
+ *      - LE_FORMAT_ERROR  If the flash is not in UBI format
+ *      - LE_DUPLICATE     If the volume name or volume ID already exists
+ *      - LE_IO_ERROR      If a flash IO error occurs
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_flash_CreateUbiVolume
+(
+    pa_flash_Desc_t desc,      ///< [IN] Private flash descriptor
+    uint32_t ubiVolId,         ///< [IN] UBI volume ID
+    const char* ubiVolNamePtr, ///< [IN] UBI volume name
+    uint32_t ubiVolType        ///< [IN] UBI volume type: dynamic or static
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete UBI volume
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_BAD_PARAMETER If desc is NULL or is not a valid descriptor
+ *      - LE_FORMAT_ERROR  If the flash is not in UBI format
+ *      - LE_NOT_FOUND     If the volume name does not exist
+ *      - LE_IO_ERROR      If a flash IO error occurs
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_flash_DeleteUbiVolume
+(
+    pa_flash_Desc_t desc,     ///< [IN] Private flash descriptor
+    uint32_t ubiVolId         ///< [IN] UBI volume ID
 );
 
 #endif // LEGATO_PA_FLASH_INCLUDE_GUARD

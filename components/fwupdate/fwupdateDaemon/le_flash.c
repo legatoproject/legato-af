@@ -302,42 +302,16 @@ static le_result_t ParseUbiVolumeNameAndGetVolId
     Partition_t* partPtr
 )
 {
-    int iUbiSfx, iUbiVol, suffixLen;
-    char *ubiSuffixPtr = NULL;
-    pa_fwupdate_UbiVolume_t *ubiVolPtr;
-
-    if (LE_OK != pa_fwupdate_GetUbiVolumeTab(&ubiVolPtr))
-    {
-        LE_ERROR("Unable to get the UBI volume table");
-        return LE_FAULT;
-    }
+    int iUbiVol;
 
     partPtr->ubiVolume = -1;
-    for (iUbiSfx = 0; ubiVolPtr[iUbiSfx].volumeName; iUbiSfx++)
-    {
-        if (0 == strcmp(volumeName, ubiVolPtr[iUbiSfx].volumeName))
-        {
-            ubiSuffixPtr = ubiVolPtr[iUbiSfx].suffixName;
-            suffixLen = strlen(ubiSuffixPtr);
-            break;
-        }
-    }
-    if (NULL == ubiSuffixPtr)
-    {
-        LE_ERROR("Unknown UBI volume name '%s'", volumeName);
-        return LE_BAD_PARAMETER;
-    }
-
     for (iUbiVol = 0; iUbiVol < PA_FLASH_UBI_MAX_VOLUMES; iUbiVol++)
     {
-        int nameLen;
         char *namePtr = partPtr->ubiVolNames[iUbiVol];
 
         if (*namePtr)
         {
-            nameLen = strlen(namePtr);
-            if ((nameLen > suffixLen) &&
-                (0 == strcmp(namePtr + nameLen - suffixLen, ubiSuffixPtr)))
+            if (0 == strcmp(namePtr, volumeName))
             {
                 partPtr->ubiVolume = iUbiVol;
                 LE_INFO("UBI volume name '%s', volume id %d", namePtr, partPtr->ubiVolume);
@@ -367,6 +341,9 @@ static le_result_t Open
 (
     const char*              partitionName,  ///< [IN] Partition to be opened.
     uint32_t                 mode,           ///< [IN] Opening mode.
+    bool                     isUbiToCreate,  ///< [IN] Create an UBI partition
+    bool                     isForcedCreate, ///< [IN] Force the UBI recreation and
+                                             ///<      overwrite the previous content.
     le_flash_PartitionRef_t* partitionRef    ///< [OUT] Partition reference.
 )
 {
@@ -408,6 +385,16 @@ static le_result_t Open
         goto err;
     }
 
+    if (isUbiToCreate)
+    {
+        res = pa_flash_CreateUbi(partPtr->desc, isForcedCreate);
+        if (LE_OK != res)
+        {
+            LE_ERROR("Failed to create UBI partition on MTD%d: %d", partPtr->mtdNum, res);
+            goto closeerr;
+        }
+    }
+
     partPtr->ubiVolume = -1;
     partPtr->ubiVolSize = -1;
     partPtr->mode = mode;
@@ -443,7 +430,8 @@ err:
              partPtr->partitionName, partPtr->mtdNum, mode, res);
     le_mem_Release(partPtr);
     *partitionRef = NULL;
-    return LE_FAULT;
+    return ((LE_NOT_FOUND != res) && (LE_BAD_PARAMETER != res) &&
+            (LE_DUPLICATE != res) ? LE_FAULT : res);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -855,8 +843,7 @@ le_result_t le_flash_ReleaseAccess
  * @return
  *      - LE_OK            On success
  *      - LE_BAD_PARAMETER If a parameter is invalid
- *      - LE_UNAVAILABLE   The flash access is temporarily unavailable
- *      - LE_UNSUPPORTED   If the flash device cannot be opened
+ *      - LE_NOT_FOUND     If the flash partition is not found
  *      - LE_FAULT         On failure
  *
  */
@@ -886,7 +873,7 @@ le_result_t le_flash_OpenMtd
         default:
              return LE_BAD_PARAMETER;
     }
-    return Open(partitionName, openMode, partitionRef);
+    return Open(partitionName, openMode, false, false, partitionRef);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -897,8 +884,7 @@ le_result_t le_flash_OpenMtd
  * @return
  *      - LE_OK            On success
  *      - LE_BAD_PARAMETER If a parameter is invalid
- *      - LE_UNAVAILABLE   The flash access is temporarily unavailable
- *      - LE_UNSUPPORTED   If the flash device cannot be opened
+ *      - LE_NOT_FOUND     If the flash partition is not found
  *      - LE_FAULT         On failure
  *
  */
@@ -928,7 +914,7 @@ le_result_t le_flash_OpenUbi
         default:
              return LE_BAD_PARAMETER;
     }
-    return Open(partitionName, openMode | PA_FLASH_OPENMODE_UBI, partitionRef);
+    return Open(partitionName, openMode | PA_FLASH_OPENMODE_UBI, false, false, partitionRef);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1086,6 +1072,7 @@ le_result_t le_flash_EraseBlock
  * @return
  *      - LE_OK            On success
  *      - LE_BAD_PARAMETER If a parameter is invalid
+ *      - LE_NOT_PERMITTED If the partition is an UBI and no UBI volume has been open
  *      - LE_FAULT         On other error
  */
 //--------------------------------------------------------------------------------------------------
@@ -1106,8 +1093,12 @@ le_result_t le_flash_Read
         return LE_BAD_PARAMETER;
     }
 
-    if ((partPtr->isUbi) && (-1 != partPtr->ubiVolume))
+    if (partPtr->isUbi)
     {
+        if (-1 == partPtr->ubiVolume)
+        {
+            return LE_BAD_PARAMETER;
+        }
         readSize = partPtr->mtdInfo->eraseSize - (2 * partPtr->mtdInfo->writeSize);
         if (*readDataSizePtr < readSize)
         {
@@ -1177,8 +1168,12 @@ le_result_t le_flash_Write
         return LE_BAD_PARAMETER;
     }
 
-    if ((partPtr->isUbi) && (-1 != partPtr->ubiVolume))
+    if (partPtr->isUbi)
     {
+        if (-1 == partPtr->ubiVolume)
+        {
+            return LE_BAD_PARAMETER;
+        }
         writeDataSize = partPtr->mtdInfo->eraseSize - (2 * partPtr->mtdInfo->writeSize);
         res = pa_flash_WriteUbiAtBlock(partPtr->desc, blockIndex,
                                        (uint8_t*)writeData, writeDataSize, true);
@@ -1280,4 +1275,215 @@ le_result_t le_flash_GetUbiVolumeInformation
 
     return pa_flash_GetUbiInfo(partPtr->desc,
                                freeBlockNumberPtr, allocatedBlockNumberPtr, sizeInBytesPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create an UBI partition.
+ * If the partition is already an UBI, an error is raised except if the flag isForcedCreate is set
+ * to true. In this case, the whole UBI partition is recreated and the previous content is lost.
+ * If the operation succeed, the partition is opened in write-only and this is not necessary to
+ * call le_flash_OpenUbi().
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_BAD_PARAMETER If a parameter is invalid
+ *      - LE_NOT_FOUND     If the flash partition is not found
+ *      - LE_DUPLICATE     If the partition is already an UBI partition and isForcedCreate is not
+ *                         set to true
+ *      - LE_FAULT         On failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_flash_CreateUbi
+(
+    const char*              partitionName,  ///< [IN] Partition to be opened.
+    bool                     isForcedCreate, ///< [IN] Force the UBI recreation and
+                                             ///<      overwrite the previous content.
+    le_flash_PartitionRef_t* partitionRef    ///< [OUT] Partition reference.
+
+)
+{
+    PartitionInit();
+
+    return Open(partitionName,
+                PA_FLASH_OPENMODE_WRITEONLY | PA_FLASH_OPENMODE_UBI,
+                true, isForcedCreate,
+                partitionRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create a new UBI volume into an UBI partition.
+ * If the volume name or the volume ID already exists, an error is raised except if the flag
+ * isForcedCreate is set to true. In this case, the whole UBI volume is recreated and the previous
+ * content is lost. If the operation succeed, UBI volume is opened and this is not necessary to
+ * call le_flash_OpenUbiVolume().
+ * Note that the UBI partition should be opened in write-only or read-write mode, else an error is
+ * raised.
+ * The volumeName is the same parameter as le_flash_OpenUbiVolume().
+ * A static volume cannot be extended when mounted, so it is generally used for SQUASHFS or others
+ * immutables and R/O filesystems. A dynamic volume is extensible like UBIFS volumes.
+ * The volume ID is the number of the UBI volume to be created. If set to NO_UBI_VOLUME_ID, the
+ * first free volume ID will be used.
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_BAD_PARAMETER If a parameter is invalid
+ *      - LE_NOT_PERMITTED If the UBI partition is not opened in write-only or read-write mode
+ *      - LE_DUPLICATE     If the UBI volume already exists with a same name or a same volume ID
+ *                         and isForcedCreate is not set to true
+ *      - LE_FAULT         On failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_flash_CreateUbiVolume
+(
+    le_flash_PartitionRef_t  partitionRef,   ///< [IN] Partition reference.
+    bool                     isForcedCreate, ///< [IN] Force the UBI volume recreation and
+                                             ///<      overwrite the previous content.
+    uint32_t                 volumeId,       ///< [IN] Volume ID to set.
+    le_flash_UbiVolumeType_t volumeType,     ///< [IN] Volume type to set.
+    const char*              volumeName,     ///< [IN] Volume name to be created.
+    int32_t                  volumeSize      ///< [IN] Volume size to set.
+)
+{
+    Partition_t *partPtr = GetPartitionFromRef(partitionRef);
+    int iUbiVol;
+    le_result_t res;
+
+    if ((NULL == partPtr) || !(partPtr->isWrite) ||
+        !(partPtr->isUbi) || (-1 != partPtr->ubiVolume) ||
+        ((volumeId != (uint32_t)LE_FLASH_UBI_VOL_NO_ID) && (volumeId > LE_FLASH_UBI_VOL_ID_MAX)))
+    {
+        return LE_BAD_PARAMETER;
+    }
+
+    LE_INFO("Creating UBI volume '%s' type %u partition \"%s\" MTD%d",
+            volumeName, volumeType, partPtr->partitionName, partPtr->mtdNum);
+
+    res = ParseUbiVolumeNameAndGetVolId(volumeName, partPtr);
+    partPtr->ubiVolume = -1;
+    if (LE_OK == res)
+    {
+        if (!isForcedCreate)
+        {
+            LE_ERROR("Partition \"%s\" MTD%d: UBI volume name '%s' already exists",
+                     partPtr->partitionName, partPtr->mtdNum, volumeName);
+            return LE_DUPLICATE;
+        }
+        res = le_flash_DeleteUbiVolume(partitionRef, volumeName);
+        if (LE_OK != res)
+        {
+          LE_ERROR("Partition \"%s\" MTD%d: Failed to delete volume '%s': res=%d",
+                     partPtr->partitionName, partPtr->mtdNum, volumeName, res);
+          return LE_FAULT;
+        }
+    }
+    if ((volumeId <= LE_FLASH_UBI_VOL_ID_MAX) && (*partPtr->ubiVolNames[volumeId]))
+    {
+        if (!isForcedCreate)
+        {
+          LE_ERROR("Partition \"%s\" MTD%d: UBI volume Id %d already created by volume %s",
+                   partPtr->partitionName, partPtr->mtdNum, volumeId,
+                   partPtr->ubiVolNames[volumeId]);
+          return LE_DUPLICATE;
+        }
+        res = le_flash_DeleteUbiVolume(partitionRef, partPtr->ubiVolNames[volumeId]);
+        if (LE_OK != res)
+        {
+          LE_ERROR("Partition \"%s\" MTD%d: Failed to delete volume '%s': res=%d",
+                   partPtr->partitionName, partPtr->mtdNum, partPtr->ubiVolNames[volumeId], res);
+          return LE_FAULT;
+        }
+    }
+
+    if ((uint32_t)LE_FLASH_UBI_VOL_NO_ID == volumeId)
+    {
+        for (iUbiVol = 0; iUbiVol < PA_FLASH_UBI_MAX_VOLUMES; iUbiVol++)
+        {
+            if ('\0' == *partPtr->ubiVolNames[iUbiVol])
+            {
+                volumeId = partPtr->ubiVolume = iUbiVol;
+                LE_INFO("UBI volume id %d is allocated", partPtr->ubiVolume);
+                break;
+            }
+        }
+    }
+    res = pa_flash_CreateUbiVolume( partPtr->desc,
+                                    volumeId,
+                                    volumeName,
+                                    (LE_FLASH_DYNAMIC == volumeType ? PA_FLASH_VOLUME_DYNAMIC
+                                                                      : PA_FLASH_VOLUME_STATIC));
+    if (LE_OK != res)
+    {
+        return res;
+    }
+
+    partPtr->ubiVolSize = volumeSize;
+    partPtr->ubiVolume = volumeId;
+    // Copy the created volume name into the partitionRef
+    strncpy(partPtr->ubiVolNames[partPtr->ubiVolume], volumeName, PA_FLASH_UBI_MAX_VOLUMES);
+    res = pa_flash_ScanUbi(partPtr->desc, partPtr->ubiVolume);
+    if (LE_OK != res)
+    {
+        LE_ERROR("Partition \"%s\" MTD%d: Scan failed for UBI volume name '%s', volume id %d: %d",
+                 partPtr->partitionName, partPtr->mtdNum, volumeName, partPtr->ubiVolume, res);
+        return LE_FAULT;
+    }
+
+    return res;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete an UBI volume from an UBI partition.
+ * If the volume is currently opened by le_flash_OpenUbiVolume(), it is closed first.
+ * Note that the UBI partition should be opened in write-only or read-write mode, else an error is
+ * raised.
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_BAD_PARAMETER If a parameter is invalid
+ *      - LE_NOT_PERMITTED If the UBI partition is not open in write-only or read-write mode
+ *      - LE_NOT_FOUND     If the volume name is not found
+ *      - LE_FAULT         On failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_flash_DeleteUbiVolume
+(
+    le_flash_PartitionRef_t partitionRef,   ///< [IN] Partition reference.
+    const char*             volumeName      ///< [IN] Volume name to be deleted.
+)
+{
+    Partition_t *partPtr = GetPartitionFromRef(partitionRef);
+    le_result_t res;
+
+    if ((NULL == partPtr) || !(partPtr->isWrite) ||
+        !(partPtr->isUbi) || (-1 != partPtr->ubiVolume))
+    {
+        return LE_BAD_PARAMETER;
+    }
+
+    res = ParseUbiVolumeNameAndGetVolId(volumeName, partPtr);
+    if (LE_OK != res)
+    {
+        LE_ERROR("Partition \"%s\" MTD%d: No UBI volume name '%s' matches: %d",
+                 partPtr->partitionName, partPtr->mtdNum, volumeName, res);
+        return LE_FAULT;
+    }
+
+    res = pa_flash_DeleteUbiVolume(partPtr->desc, partPtr->ubiVolume);
+    if (LE_OK != res)
+    {
+        LE_ERROR("Partition \"%s\" MTD%d: Delete failed for UBI volume name '%s', volume id %d: %d",
+                 partPtr->partitionName, partPtr->mtdNum, volumeName, partPtr->ubiVolume, res);
+        return (LE_NOT_FOUND == res ? res : LE_FAULT);
+    }
+
+    // Remove the volume name from the partitionRef
+    memset(partPtr->ubiVolNames[partPtr->ubiVolume], 0, PA_FLASH_UBI_MAX_VOLUMES);
+
+    return LE_OK;
 }

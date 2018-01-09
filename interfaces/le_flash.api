@@ -109,6 +109,9 @@
  * The whole partition available size for read and write purpose can be computed by:
  *      (number of erase blocks - number of bad blocks) * erase block size
  *
+ * A sample code showing how to open, retrieve information and close a partition can be seen below:
+ * @snippet "apps/test/fwupdate/fwupdateIntegrationTest/flashApiTest/main.c" Info
+ *
  * @section le_flash_GetUbiVolumeInformation Retrieve UBI information.
  * To get information about an UBI volume, call le_flash_GetUbiVolumeInformation(). The API
  * will return:
@@ -116,6 +119,37 @@
  *      - The currently number of blocks allocated to the UBI volume
  *      - The real size of the UBI volume
  * This API must be called after the UBI volume has been open by le_flash_OpenUbiVolume().
+ *
+ * A sample code showing how to open UBI, retrieve UBI information and close UBI can be seen below:
+ * @snippet "apps/test/fwupdate/fwupdateIntegrationTest/flashApiTest/main.c" UbiInfo
+ *
+ * @section le_flash_CreateUbi Create an UBI partition and volume
+ * le_flash_CreateUbi() is used to create an UBI partition. If the partition is already an UBI,
+ * an error LE_DUPLICATE will be reported. The overwrite of the partition can be forced by setting
+ * the flag isForcedCreate to true (all previous content will be lost).
+ *
+ * When the creation succeeded, the UBI device is opened using le_flash_OpenUbi() with
+ * LE_FLASH_READWRITE mode.
+ *
+ * To create a new volume in the created UBI partition, le_flash_CreateUbiVolume() has to be
+ * called. If a volume already exists with the same name or same ID, an error LE_DUPLICATE will
+ * be reported. The flag isForcedCreate permits to re-create the volume, but the previous content
+ * of the volume will be lost.
+ *
+ * The created volume can be opened using the le_flash_OpenUbiVolume() API.
+ *
+ * An existing volume can be deleted thanks to le_flash_DeleteUbiVolume().
+ *
+ * Please refer to @subpage platformConstraintsFlash for details.
+ *
+ * A sample code showing how to create an UBI partition can be seen below:
+ * @snippet "apps/test/fwupdate/fwupdateIntegrationTest/flashApiTest/main.c" UbiCreate
+ *
+ * A sample code showing how to create an UBI volume inside an UBI partition can be seen below:
+ * @snippet "apps/test/fwupdate/fwupdateIntegrationTest/flashApiTest/main.c" UbiCreateVol
+ *
+ * A sample code showing how to delete an UBI volume from an UBI partition can be seen below:
+ * @snippet "apps/test/fwupdate/fwupdateIntegrationTest/flashApiTest/main.c" UbiDeleteVol
  *
  * This API is synchronous: it is blocking until the write is over. After the end of the write, the
  * data are read to ensure the data has been saved correctly.
@@ -205,6 +239,20 @@ DEFINE UBI_VOL_NO_SIZE = -1;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Default volume ID to specify the automatic allocation of volume ID
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE UBI_VOL_NO_ID = -1;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum volume ID
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE UBI_VOL_ID_MAX = 127;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Open mode.
  */
 //--------------------------------------------------------------------------------------------------
@@ -213,6 +261,17 @@ ENUM OpenMode
     READ_ONLY,
     WRITE_ONLY,
     READ_WRITE
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * UBI volume type mode.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM UbiVolumeType
+{
+    DYNAMIC,
+    STATIC
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -283,8 +342,7 @@ FUNCTION le_result_t ReleaseAccess
  * @return
  *      - LE_OK            On success
  *      - LE_BAD_PARAMETER If a parameter is invalid
- *      - LE_UNAVAILABLE   The flash access is temporarily unavailable
- *      - LE_UNSUPPORTED   If the flash device cannot be opened
+ *      - LE_NOT_FOUND     If the flash partition is not found
  *      - LE_FAULT         On failure
  *
  */
@@ -304,8 +362,7 @@ FUNCTION le_result_t OpenMtd
  * @return
  *      - LE_OK            On success
  *      - LE_BAD_PARAMETER If a parameter is invalid
- *      - LE_UNAVAILABLE   The flash access is temporarily unavailable
- *      - LE_UNSUPPORTED   If the flash device cannot be opened
+ *      - LE_NOT_FOUND     If the flash partition is not found
  *      - LE_FAULT         On failure
  *
  */
@@ -327,6 +384,7 @@ FUNCTION le_result_t OpenUbi
  * @return
  *      - LE_OK            On success
  *      - LE_BAD_PARAMETER If a parameter is invalid
+ *      - LE_NOT_FOUND     If the volume name is not found
  *      - LE_FAULT         On failure
  *
  */
@@ -473,4 +531,88 @@ FUNCTION le_result_t GetUbiVolumeInformation
     uint32      freeBlockNumber                 OUT, ///< Free blocks number on the UBI partition
     uint32      allocatedBlockNumber            OUT, ///< Allocated blocks number to the UBI volume
     uint32      sizeInBytes                     OUT  ///< Real size in bytes of the UBI volume
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create an UBI partition.
+ * If the partition is already an UBI, an error is raised except if the flag isForcedCreate is set
+ * to true. In this case, the whole UBI partition is recreated and the previous content is lost.
+ * If the operation succeed, the partition is opened in write-only and this is not necessary to
+ * call le_flash_OpenUbi().
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_BAD_PARAMETER If a parameter is invalid
+ *      - LE_NOT_FOUND     If the flash partition is not found
+ *      - LE_DUPLICATE     If the partition is already an UBI partition and isForcedCreate is not
+ *                         set to true
+ *      - LE_FAULT         On failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t CreateUbi
+(
+    string      partitionName[PARTITION_NAME_MAX_BYTES]     IN, ///< Partition to be opened.
+    bool        isForcedCreate                              IN, ///< Force the UBI recreation and
+                                                                ///< overwrite the previous content.
+    Partition   partitionRef                                OUT ///< Partition reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create a new UBI volume into an UBI partition.
+ * If the volume name or the volume ID already exists, an error is raised except if the flag
+ * isForcedCreate is set to true. In this case, the whole UBI volume is recreated and the previous
+ * content is lost. If the operation succeed, UBI volume is opened and this is not necessary to
+ * call le_flash_OpenUbiVolume().
+ * Note that the UBI partition should be opened in write-only or read-write mode, else an error is
+ * raised.
+ * The volumeName is the same parameter as le_flash_OpenUbiVolume().
+ * A static volume cannot be extended when mounted, so it is generally used for SQUASHFS or others
+ * immutables and R/O filesystems. A dynamic volume is extensible like UBIFS volumes.
+ * The volume ID is the number of the UBI volume to be created. If set to NO_UBI_VOLUME_ID, the
+ * first free volume ID will be used.
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_BAD_PARAMETER If a parameter is invalid
+ *      - LE_NOT_PERMITTED If the UBI partition is not opened in write-only or read-write mode
+ *      - LE_DUPLICATE     If the UBI volume already exists with a same name or a same volume ID
+ *                         and isForcedCreate is not set to true
+ *      - LE_FAULT         On failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t CreateUbiVolume
+(
+    Partition     partitionRef                       IN, ///< Partition reference.
+    bool          isForcedCreate                     IN, ///< Force the UBI volume recreation and
+                                                         ///< overwrite the previous content.
+    uint32        volumeID                           IN, ///< Volume ID to set.
+    UbiVolumeType volumeType                         IN, ///< Volume type to set.
+    string        volumeName[VOLUME_NAME_MAX_BYTES]  IN, ///< Volume name to be created.
+    int32         volumeSize                         IN  ///< Volume size to set.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete an UBI volume from an UBI partition.
+ * If the volume is currently opened by le_flash_OpenUbiVolume(), it is closed first.
+ * Note that the UBI partition should be opened in write-only or read-write mode, else an error is
+ * raised.
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_BAD_PARAMETER If a parameter is invalid
+ *      - LE_NOT_PERMITTED If the UBI partition is not open in write-only or read-write mode
+ *      - LE_NOT_FOUND     If the volume name is not found
+ *      - LE_FAULT         On failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DeleteUbiVolume
+(
+    Partition   partitionRef                       IN, ///< Partition reference.
+    string      volumeName[VOLUME_NAME_MAX_BYTES]  IN  ///< Volume name to be deleted.
 );

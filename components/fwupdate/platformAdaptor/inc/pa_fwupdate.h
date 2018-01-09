@@ -508,20 +508,5 @@ LE_SHARED le_result_t pa_fwupdate_GetMtdPartitionTab
     pa_fwupdate_MtdPartition_t **mtdPartPtr
 );
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the UBI generic name, volume suffix and volume ID
- *
- * @return
- *      - LE_OK            on success
- *      - LE_BAD_PARAMETER if ubiVolumeTabPtr is NULL
- *      - LE_FAULT         on other errors
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_fwupdate_GetUbiVolumeTab
-(
-    pa_fwupdate_UbiVolume_t **ubiVolumeTabPtr
-);
-
 #endif // LEGATO_PA_FWUPDATE_INCLUDE_GUARD
 
