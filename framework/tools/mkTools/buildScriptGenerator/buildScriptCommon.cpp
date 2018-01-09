@@ -266,6 +266,12 @@ void BuildScriptGenerator_t::GenerateBuildRules
     {
         script << " -Wl,--build-id -g";
     }
+
+    if (!buildParams.noPie)
+    {
+      script << " -fPIE -pie";
+    }
+
     script << " -o $out $in $ldFlags";
     if (!buildParams.debugDir.empty())
     {
@@ -282,6 +288,12 @@ void BuildScriptGenerator_t::GenerateBuildRules
     {
         script << " -Wl,--build-id -g";
     }
+
+    if (!buildParams.noPie)
+    {
+      script << " -fPIE -pie";
+    }
+
     script << " -o $out $in $ldFlags";
     if (!buildParams.debugDir.empty())
     {

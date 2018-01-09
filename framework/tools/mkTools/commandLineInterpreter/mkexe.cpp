@@ -196,6 +196,11 @@ static void GetCommandLineArgs
                                   " This is useful for supporting context-sensitive auto-complete"
                                   " and related features in source code editors, for example."));
 
+    args::AddOptionalFlag(&BuildParams.noPie,
+                          'p',
+                          "no-pie",
+                          LE_I18N("Do not build executable as a position independent executable."));
+
     // Any remaining parameters on the command-line are treated as content items to be included
     // in the executable.
     args::SetLooseArgHandler(contentPush);

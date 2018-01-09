@@ -232,6 +232,12 @@ static void GetCommandLineArgs
                                   " is intended to be included in a system definition (.sdef) "
                                   " file's 'apps:' section in place of a .adef file."));
 
+    args::AddOptionalFlag(&BuildParams.noPie,
+                          'p',
+                          "no-pie",
+                          LE_I18N("Do not build application executable as a position independent"
+                                  " executable."));
+
     // Any remaining parameters on the command-line are treated as the .adef file path.
     // Note: there should only be one parameter not prefixed by an argument identifier.
     args::SetLooseArgHandler(adefFileNameSet);

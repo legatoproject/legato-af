@@ -26,6 +26,7 @@ BuildParams_t::BuildParams_t
     target("localhost"),
     codeGenOnly(false),
     isStandAloneComp(false),
+    noPie(false),
     argc(0),
     argv(NULL)
 //--------------------------------------------------------------------------------------------------

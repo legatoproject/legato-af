@@ -35,6 +35,7 @@ struct BuildParams_t
     bool                    codeGenOnly;        ///< true = only generate code, don't compile, etc.
     bool                    isStandAloneComp;   ///< true = generate stand-alone component
     bool                    binPack;            ///< true = generate a binary package for redist.
+    bool                    noPie;              ///< true = generate executable without pie.
 
     int                     argc;               ///< Number of arguments (argc to main)
     const char**            argv;               ///< Argument list (argv to main)
