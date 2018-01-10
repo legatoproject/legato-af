@@ -123,9 +123,6 @@ typedef struct
     bool     ubi;             ///< flag for UBI management on physical partition
     uint32_t ubiPebFreeCount; ///< Free UBI PEB counter, available only if ubi is true
     size_t   ubiVolFreeSize;  ///< Free size for an UBI volume, available only if ubi is true
-    uint64_t ubiMinEraseCount;///< Minimum Erase Counter on all PEB belonging to the UBI partition
-    uint64_t ubiMaxEraseCount;///< Maximum Erase Counter on all PEB belonging to the UBI partition
-    uint32_t ubiWlThreshold;  ///< Wear-Leveling threshold for the UBI partition
     char     name[PA_FLASH_MAX_INFO_NAME];
                               ///< name of the partition
 }
