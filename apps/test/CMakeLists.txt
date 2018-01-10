@@ -134,4 +134,5 @@ add_subdirectory(fwupdate/fwupdateIntegrationTest)
 add_subdirectory(powerMgr/powerMgrTest)
 
 # Port Service
-add_subdirectory(portServices/portServiceIntegrationTest)
+add_subdirectory(portService/portServiceUnitTest)
+add_subdirectory(portService/portServiceIntegrationTest)

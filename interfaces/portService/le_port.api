@@ -109,6 +109,7 @@ FUNCTION Device Request
  *      - LE_FAULT         Function failed.
  *      - LE_BAD_PARAMETER Invalid parameter.
  *      - LE_UNAVAILABLE   JSON parsing is not completed.
+ *      - LE_DUPLICATE     Device already opened in data mode.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetDataMode

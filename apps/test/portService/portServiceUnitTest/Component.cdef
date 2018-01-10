@@ -1,0 +1,12 @@
+requires:
+{
+    api:
+    {
+        portService/le_port.api      [types-only]
+    }
+}
+
+sources:
+{
+    main.c
+}

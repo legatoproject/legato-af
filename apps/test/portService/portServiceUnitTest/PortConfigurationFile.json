@@ -1,0 +1,19 @@
+{
+    "modemPort":
+    {
+        "link1":
+        {
+            "path": "/tmp/sock0",
+            "openingType": "unixSocket",
+            "possibleMode": ["AT"]
+        },
+        "link2":
+        {
+            "path": "/tmp/sock1",
+            "openingType": "unixSocket",
+            "possibleMode": ["DATA"]
+        },
+        "OpenByDefault": "true",
+        "OpenLinks": ["link1","link2"]
+    }
+}

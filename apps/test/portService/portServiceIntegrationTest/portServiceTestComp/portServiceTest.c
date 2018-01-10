@@ -1,9 +1,30 @@
  /**
   * This module implements the le_port's tests.
   *
+  * @note According to your platform, you may have to configure the mapping of the physical UART.
+  * Please refer to https://source.sierrawireless.com/resources/legato/howtos/customizeuart/ for
+  * full details.
+  * On host, open a TTY terminal to connect to the device with the following configuration:
+  * stty -F /dev/ttyUSB0 (ttyUSB0 is the serial device on the host from which the target board is
+  * connected. User has to select the device according to the serial port hardware.)
+  * Get the baud rate from this command and enter below command on the host:
+  * minicom -D /dev/ttyUSB0 -b 9600
+  *
+  * Issue the following commands:
+  * @verbatim
+   $ app start portServiceIntegrationTest
+   $ app runProc portServiceIntegrationTest --exe=portServiceTest
+   @endverbatim
+  *- Serial devices:
+  * Provide the TTY name. (tty device of target)
+  *
+  * To run port service integration test, enter below commands on the the tty device of host which
+  * has been opend by minicom command as above.
+  * - AT+TESTCMDMODE: Test AT command mode.
+  * - AT+TESTDATAMODE: Switch to data mode.
+  * - +++: Exit from data mode.
   *
   * Copyright (C) Sierra Wireless Inc.
-  *
   */
 
 #include "legato.h"
@@ -14,7 +35,29 @@
  * Byte length to read from fd.
  */
 //--------------------------------------------------------------------------------------------------
-#define READ_BYTES 100
+#define READ_BYTES          100
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Default buffer size for device information and error messages
+ */
+//--------------------------------------------------------------------------------------------------
+#define DSIZE               256
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * String size for the buffer that contains a summary of all the device information available
+ */
+//--------------------------------------------------------------------------------------------------
+#define DSIZE_INFO_STR      1600
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of monitor name
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_LEN_MONITORNAME 64
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -106,6 +149,7 @@ static void PrepareHandler
         break;
 
         default:
+            LE_ERROR("AT command type is not proper!");
             exit(EXIT_FAILURE);
         break;
     }
@@ -152,6 +196,60 @@ static void AtCmdModeHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Return a description string of err
+ */
+//--------------------------------------------------------------------------------------------------
+static char* StrError
+(
+    int err
+)
+{
+    static char errMsg[DSIZE];
+
+#ifdef __USE_GNU
+    snprintf(errMsg, DSIZE, "%s", strerror_r(err, errMsg, DSIZE));
+#else /* XSI-compliant */
+    strerror_r(err, errMsg, sizeof(errMsg));
+#endif
+    return errMsg;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is called when data are available to be read on fd
+ */
+//--------------------------------------------------------------------------------------------------
+static void RxNewData
+(
+    int fd,      ///< [IN] File descriptor to read on
+    short events ///< [IN] Event reported on fd
+)
+{
+    char buffer[READ_BYTES];
+    ssize_t count;
+
+    if (events & (POLLIN | POLLPRI))
+    {
+        count = read(fd, buffer, READ_BYTES);
+        if (-1 == count)
+        {
+            LE_ERROR("read error: %s", StrError(errno));
+            return;
+        }
+        else if (count > 0)
+        {
+            if (0 == strcmp(buffer, "+++"))
+            {
+                LE_INFO("Data received: %s", buffer);
+                le_sem_Post(Semaphore);
+                return;
+            }
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Data Mode handler
  */
 //--------------------------------------------------------------------------------------------------
@@ -164,10 +262,7 @@ static void DataModeHandler
 )
 {
     int fd;
-    le_result_t result;
-    char buffer[100];
-    ssize_t len;
-    size_t count;
+    char monitorName[MAX_LEN_MONITORNAME];
 
     le_port_ConnectService();
 
@@ -176,8 +271,7 @@ static void DataModeHandler
     // Send Final response
     LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, ""));
 
-    result = le_port_SetDataMode(devRef, &fd);
-    if (LE_OK == result)
+    if (LE_OK == le_port_SetDataMode(devRef, &fd))
     {
         LE_INFO("fd from port service is %d. le_port_SetDataMode() API success...", fd);
     }
@@ -187,48 +281,10 @@ static void DataModeHandler
         exit(EXIT_FAILURE);
     }
 
-    le_utf8_Copy(buffer, "Test data mode", sizeof(buffer), NULL);
+    // Create a File Descriptor Monitor object for the file descriptor.
+    snprintf(monitorName, sizeof(monitorName), "Monitor-%d", fd);
 
-    count = strlen(buffer);
-
-    len = write(fd, buffer, count);
-    if (len == -1)
-    {
-        LE_ERROR("Failed to write to fd %m");
-        le_tty_Close(fd);
-        le_port_Release(devRef);
-        exit(EXIT_FAILURE);
-    }
-    else if (len == count)
-    {
-        LE_INFO("Data is successfully written into device");
-    }
-    else
-    {
-        LE_ERROR("Failed to write data");
-        le_tty_Close(fd);
-        le_port_Release(devRef);
-        exit(EXIT_FAILURE);
-    }
-
-    do
-    {
-        len = read(fd, buffer, READ_BYTES);
-        if (len == -1)
-        {
-            LE_ERROR("Failed to read from fd %m");
-            le_tty_Close(fd);
-            le_port_Release(devRef);
-            exit(EXIT_FAILURE);
-        }
-        if (strstr(buffer, "+++") != NULL)
-        {
-            LE_INFO("Device will switch into AT command mode");
-            break;
-        }
-    } while (1);
-
-    le_sem_Post(Semaphore);
+    le_fdMonitor_Create(monitorName, fd, RxNewData, POLLIN | POLLPRI | POLLRDHUP);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -256,7 +312,6 @@ static void* ATServerAddHandler
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    le_result_t result;
     le_atServer_DeviceRef_t atServerDevRef;
 
     Semaphore = le_sem_Create("HandlerSem",0);
@@ -304,10 +359,10 @@ COMPONENT_INIT
     le_sem_Wait(Semaphore);
     le_thread_Cancel(AppThreadRef);
 
-    result = le_port_SetCommandMode(devRef, &atServerDevRef);
-    if (LE_OK == result)
+    if (LE_OK == le_port_SetCommandMode(devRef, &atServerDevRef))
     {
         LE_INFO("le_port_SetCommandMode() API success...");
+        LE_INFO("atServerDevRef is %p", atServerDevRef);
     }
     else
     {
@@ -315,8 +370,7 @@ COMPONENT_INIT
         exit(EXIT_FAILURE);
     }
 
-    result = le_port_Release(devRef);
-    if (LE_OK == result)
+    if (LE_OK == le_port_Release(devRef))
     {
         LE_INFO("le_port_Release() API success...");
     }

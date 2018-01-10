@@ -1,0 +1,20 @@
+requires:
+{
+    api:
+    {
+        portService/le_port.api      [types-only]
+    }
+}
+
+sources:
+{
+    ${LEGATO_ROOT}/components/portService/portDaemon/le_port.c
+    port_stub.c
+    atServer_stub.c
+}
+
+cflags:
+{
+    -Dle_msg_AddServiceCloseHandler=MyAddServiceCloseHandler
+    -I${LEGATO_ROOT}/components/watchdogChain
+}
