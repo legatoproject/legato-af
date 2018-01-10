@@ -10,6 +10,7 @@
 #include "interfaces.h"
 #include "pa_fwupdate.h"
 #include "watchdogChain.h"
+#include "fwupdate_local.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -377,6 +378,6 @@ COMPONENT_INIT
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_Init(1);
-    le_wdogChain_MonitorEventLoop(0, watchdogInterval);
+    le_wdogChain_MonitorEventLoop(FWUPDATE_WDOG_TIMER, watchdogInterval);
 }
 
