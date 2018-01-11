@@ -1,222 +1,577 @@
-/** @page basicAppsIPC Use IPC
+/** @page basicAppsIPC Explore Apps, Exes and Processes
 
-Lets explore how to use inter-process communication (IPC) between components:
+Now that you've created your first Legato app, helloWorld, we are going to build upon it and
+introduce some of the key concepts of the Application Framework.  helloWorld is a simple app that
+logs a string to the @c syslog. In this next section we are going to break helloWorld into a
+printClient and a printServer component and then use these two components to demonstrate the
+different approaches that can be used to design application architecture. The first demonstration
+starts with the two components existing within a single process, they have full access rights and
+communication to each other and processes are not protected from each other.  Next each
+component will get moved to their own process and will need to communicate over IPC and an API will
+need to be defined to facilitate the communication. Lastly, we will move each component into it's
+own application and use an API to facilitate IPC communication. The two apps will only be able to
+communicate over IPC and only have access to what is defined in the API.
 
- - Define a simple interface protocol that clients can use to ask servers to "Greet".
- - Create a server that prints "Hello world" whenever a client asks it to "Greet",
- - Create a client that asks the server to "Greet",
+@note When you are designing your own components or applications it's important to find a
+configuration that allows the access that your app needs while maintaining a secure system. We
+encourage the use of IPC and application sandboxing as they allow for secure communications between
+apps while protecting the internal components.
 
-Here's what it looks like at runtime:
+To prepare for this tutorial we first need to create a second component that
+will take the string from the first component and then use the second component to log it to the
+syslog.
 
-@image html HelloIPC.png
+@section basicAppsIPC_createComps Create Components
 
-When we show the static view of components inside executables, it looks like this:
+For these tutorials we are going to create two components: @c printClient and @c printServer.
 
-@image html HelloIPCWithComponents.png
+@subsection basicAppsIPC_createComps_dirs Create Directories
 
-Note that each interface has
- - an interface protocol
- - a friendly name.
-
-In our example, the client and server both use the same friendly name "hello" for their
-interfaces, and must use the same protocol (or they wouldn't be able to
-communicate with each other!).
-
-@section helloIPCDefiningTheAPI Define Interface Protocol
-
-First, create a directory for our little project and change directories:
+First make the directories:
 
 @verbatim
 $ mkdir helloIPC
 $ cd helloIPC
+$ mkdir printClient
+$ mkdir printServer
 @endverbatim
 
-Next, define the interface protocol to use between the client and the server.
-
-To create our greet function-call API, we create a definition file called "greet.api".
+Your directory structure should look like:
 
 @verbatim
-$ gedit greet.api
+helloIPC/
+├──printClient/
+└──printServer/
 @endverbatim
 
-Add this inside greet.api:
+@subsection basicAppsIPC_createComps_PSsource Create printServer Component
 
-@verbatim
-FUNCTION Greet
-(
-);
-@endverbatim
+@c cd into the printServer directory and create your source file: @c server.c.  The @c server.c file
+is going to take the passed in perimeter from the client and print it to the logs.
 
-This will declare a function called @c Greet that takes no arguments and returns nothing.
-
-@section basicAppsIPC_helloIPCCreateServer Create Server Component
-
-Next, create a server component called @c greetServer that offers a greeting service
-called "hello" to be accessed using our simple "greet" API.
-Do this by creating a file called "Component.cdef" in a new directory
-called "greetServer".
-
-@verbatim
-$ mkdir greetServer
-$ gedit greetServer/Component.cdef
-@endverbatim
-
-@note Keeping components in separate directories from each other is a requirement of
-      the framework.
-
-greetServer/Component.cdef should contain the following:
-
+@c server.c should contain the following:
 @code
-
-provides:
-{
-    api:
-    {
-        hello = greet.api
-    }
-}
-
-sources:
-{
-    greetServer.c
-}
-
-@endcode
-
-This declares that the component named @c greetServer (the name of the directory is the name
-of the component) provides a service called @c hello accessed using the API defined
-in @c greet.api where the source code can be found in the file @c greetServer.c.
-
-@note The source code file name extension is used to identify the programming language
-      it's written in.
-
-To implement the server (in C), create a file @c greetServer/greetServer.c:
-
-@verbatim
-$ gedit greetServer/greetServer.c
-@endverbatim
-
-Make it contain the following:
-
-@code
-
 #include "legato.h"
 #include "interfaces.h"
 
-void hello_Greet(void)
+void printer_Print(const char* message)
 {
-    LE_INFO("Hello world.");
+    LE_INFO("******** Client says '%s'", message);
 }
 
 COMPONENT_INIT
 {
-
 }
-
 @endcode
 
-The file @c interfaces.h is auto-generated based on the contents of @c greet.api and
-greetServer's @c Component.cdef. It'll contain a prototype of the function
-@c hello_Greet(), which we implemented in @c greetServer.c.
+The file @c interfaces.h is auto-generated based on the contents of printServer's @c Component.cdef.
+It'll contain a prototype of the function @c print_Print(), which we implemented in @c server.c.
 
-The function @c hello_Greet() will be called when a client binds to our @c hello service
-and calls the function @c Greet().  The name @c hello_Greet follows this pattern:
+Next, create the @c Component.cdef file so the component is built correctly with @c mktools.
 
+@code
+sources:
+{
+    server.c
+}
+@endcode
+
+@subsection basicAppsIPC_createComps_PCsource Create printClient Component
+
+Next, create the printClient component:
+
+@c cd into the printClient component directory and create a source file called @c client.c:
+
+@c client.c should contain 2 lines, the first telling the log it's asking the print function to
+print Hello, world! and then calls the print function in the server.c component to print the message
+to the log:
+
+@code
+#include "legato.h"
+#include "interfaces.h"
+
+COMPONENT_INIT
+{
+    LE_INFO("Asking server to print 'Hello, world!'");
+    printer_Print("Hello, world!");
+}
+@endcode
+
+Next create the @c Component.cdef file:
+@c vim @c Component.cdef
+
+The Component.cdef should contain:
+@code
+sources:
+{
+    client.c
+}
+@endcode
+
+Now we have the printClient and printServer components created, we will use this as a basis for the
+rest of the tutorial.
+
+Your directory for helloIPC should look like:
 @verbatim
-<interface-name> '_' <api-function-name>
+helloIPC/
+├── printClient/
+│   ├── client.c
+│   └── Component.cdef
+└── printServer/
+    ├── Component.cdef
+    └── server.c
 @endverbatim
 
-The <interface-name> is the name given to the provided interface.  In our example, it's
-the name @c hello before the @c = in the line @c hello @c = @c greet.api.
+@section basicAppsIPC_createOneExe 2 Components within 1 Executable
+
+Now that we have the two components we need to make them talk to each other from within the
+executable.  To do this we need a standard header file in the printServer component, as this is the
+function that was want to expose outside of itself.
+
+@subsection basicAppsIPC_2comp1exe_PSHeader Create printServer Header
+
+@verbatim
+$vim server.h
+@endverbatim
+
+The file should contain the following code:
+@code
+#ifndef SERVER_H_INC
+#define SERVER_H_INC
+
+LE_SHARED void printer_Print(const char* message);
+
+#endif
+@endcode
+
+By default all symbols are hidden in the Legato build process, to export symbols you need to
+explicitly define them in the header.  Because we want printClient to be able to use the
+printer_Print function in the printServer we need to add @c LE_SHARED to the function prototype so
+that the function name is added to the component's exported symbol table and printClient can use the
+function.
+
+Next add @c #include @c "server.h" in both the @c client.c and @c server.c files.
+
+@code
+#include "legato.h"
+#include "interfaces.h"
+#include "server.h"
+@endcode
+
+Now we need to tell the build tools where to find the @c server.h header file.  The server component
+@c printServer will be able to find this file automatically.  This is because the header file is in
+the same directory as the source file, @c server.c.  However, in the client component's code the
+file @server.h is located in a different directory than @c client.c.
+
+So, what we need to do is we need to tell the build tools where to find find the header file
+@c server.h.  In the component printClient's @c Component.cdef add a cflags section as follows:
+
+@code
+cflags:
+{
+    -I $CURDIR/../printServer
+}
+@endcode
+
+The @c -I tells the compiler we want to add a new directory to the search path.  When you use the
+@c #include directive you tell the compiler to search for that file.  The compiler uses a list of
+directories called a search path to perform this search.  If the file in question is not in one
+these directories it is considered not found, and the build will fail.
+
+The @c $CURDIR in the directory path is a build variable.  It is automatically set by the mktools.
+Inside of a @c Component.cdef the variable @c $CURDIR automatically points to the directory that the
+@c Component.cdef file was found.
+
+@subsection basicAppsIPC_2comp1exe_exe Create Executable
+
+We are now ready to create an executable with both components and bundle the executable into an app
+and install it on the target.
+
+First, create your @c .adef
+
+@verbatim
+$ vim helloApp.adef
+@endverbatim
+
+Add the following:
+
+@code
+executables:
+{
+    helloPrint = ( printClient printServer )
+}
+
+processes:
+{
+    run:
+    {
+        ( helloPrint )
+    }
+}
+@endcode
+
+The two components are added to the same executable, helloPrint.  helloPrint is then given a
+process to run in and bundled into the app.
+
+Your directory structure for helloIPC should look like:
+@verbatim
+helloIPC/
+├── helloApp.adef
+├── printClient/
+│   ├── client.c
+│   └── Component.cdef
+└── printServer/
+    ├── Component.cdef
+    ├── server.c
+    └── server.h
+@endverbatim
+
+@subsection basicAppsIPC_2comp1exe_app Create App
+
+Next run @c mkapp to create the update bundle for your target (the same as in @c helloWorld) and
+install it on your target.
+
+@verbatim
+$ mkapp -t wp85 helloApp.adef
+$ app install helloApp.wp85.update   # add the target IP to the command if DEST_IP is not set
+@endverbatim
+
+Running @c logread on your target you should see logs like:
+@verbatim
+<time> <target> user.info Legato:  INFO | supervisor[461]/supervisor T=main | proc.c proc_Start() 1394 | Starting process 'helloPrint' with pid 976
+<time> <target> user.info Legato:  INFO | supervisor[976]/supervisor T=main | proc.c proc_Start() 1359 | Execing 'helloPrint'
+<time> <target> user.info Legato:  INFO | helloPrint[976]/printClient T=main | client.c _printClient_COMPONENT_INIT() 7 | Asking server to print 'Hello, world!'
+<time> <target> user.info Legato:  INFO | helloPrint[976]/printServer T=main | server.c printer_Print() 7 | ******** Client says 'Hello, world!'
+@endverbatim
+
+@note @c The app is called helloPrint and only has one PID, you can see that both components are
+running in the same PID in the @c helloPrint executable.
+
+@section basicAppsIPC_2Process 1 App with 2 Processes
+
+Legato components can provide APIs for other components to use. It can be done conventionally by
+writing a C header file to define the interface. But a C header file can only be used by components
+also written in C, and functions defined in a C header file can only be implemented by C code. C
+compilers won't generate IPC code, so unless you write your own, your API implementation and its
+user are forced to run inside the same process. This can severely limit the re-usability of
+components and can force using a programming language not ideally suited to a particular problem
+domain or developer skill-set. It also leaves inter-process communication (IPC) to be implemented
+manually, which can be time-consuming and fraught with bugs and security issues.
+
+Now that we've got our app going, we are going to modify it and show the same application but with
+the components running in two separate processes.  With each component run in own process this
+allows the capability to restart each process individually.
+
+For the two components to talk to each other in different processes then an API must be used to
+facilitate the communication.  The Legato Application Framework provides
+@ref ccodingStdsMain "coding standards" and an @ref apiFiles "overview on how to create APIs".
+
+@subsection basicAppsIPC_1app2proc_api Create API
+
+First we need to remove the @c server.h file and it's references as it's not needed for this
+communication.
+
+@verbatim
+$ rm printServer/server.h
+@endverbatim
+
+Remove @c #include @c server.h from both @c printClient/client.c and @c printServer/server.c.
+
+Remove the @c cflags section in the printClient/Component.cdef as it's not needed anymore.
+
+Next, we create the API file, the API file should be created in the root of your project.
+
+@verbatim
+$ vim printer.api
+@endverbatim
+
+In your API you first want to @ref apiFilesSyntax_typesDefine the constant as a maximum length for
+a the message string.  Defining this as a constant means that it can used later in the @c client.c
+or @c server.c by referencing @c PRINTER_MESSAGE_LEN (API Name_Define Name).
+
+Next you need to define your function @c Print() and accept the message to pass to the function in
+@c server.c.
+
+@ref apiFilesSyntax_function "Define the function" for the API:
+
+In the @c printer.api file:
+@code
+DEFINE MESSAGE_LEN = 100;
+
+FUNCTION Print
+(
+    string message[MESSAGE_LEN] IN ///< message to be printed into the log, max 100 characters.
+);
+@endcode
+
+Next, we need to tell the printServer component that it is providing the API:
+
+Add the following to @c printServer/Component.cdef before the @c sources: section.
+
+@code
+provides:
+{
+    api:
+    {
+        printer = printer.api
+    }
+}
+@endcode
+
+This declares that the component named @c printServer (the name of the directory is the name
+of the component) provides a service called @c printer accessed using the API defined
+in @c printer.api while the source code can be found in the file @c server.c.
+
+@note The source code file name extension is used to identify the programming language
+      it's written in. (e.g.; The file @b server.c determines that this is c code)
+
+The function @c printer_Print() can be called when a client binds to our @c printer @c service
+calls the API function @c printer_Print().
+
+The format of the generated function names is:
+@verbatim
+<interface-name>_<api-function-name>
+@endverbatim
+
+The @c interface-name is the name given to the provided interface.  In our example, it's
+the name @c printer before the @c = in the line @c printer @c = @c printer.api. @c printer in this
+case is optional and doesn't have to be the same name as the @c .api file.  We chose to implement it
+that way as it follows the server and client para-dime we use for this tutorial.
 
 @note If you forget to implement a service function on the server or if you give it the wrong name,
       the link stage will fail and complain that the symbol is unresolved. You'll know you
       missed a function, and you'll be able to see what the correct name of the function should be.
 
-@section basicAppsIPC_helloIPCCreatingTheClient Create Client Component
+@subsection basicAppsIPC_1app2proc_app Use API in printClient
 
-Now that we have a server, let's create a client to use its service.
+Next we need to tell the client app that it requires the printer API to be able to print messages.
 
-First, create a directory for the @c greetClient component and a file in it called
-@c Component.cdef:
-
-@verbatim
-$ mkdir greetClient
-$ gedit greetClient/Component.cdef
-@endverbatim
-
-greetClient/Component.cdef should contain:
+Add the following to @c printClient/Component.cdef before the @c sources: section.
 
 @code
-
 requires:
 {
     api:
     {
-        hello = greet.api
+        printer = printer.api
+    }
+}
+@endcode
+
+Next, we have the printServer Component providing an API and the printClient Component using that
+API.  It's time to create our app and have them start communicating.
+
+Your directory structure should contain the following files now:
+@verbatim
+helloIPC/
+├── helloApp.adef
+├── printClient/
+│   ├── client.c
+│   └── Component.cdef
+├── printer.api
+└── printServer/
+    ├── Component.cdef
+    └── server.c
+@endverbatim
+
+@subsection basicAppsIPC_1app2proc_createApp Create App
+
+We are now ready to create the @c .adef and bundle the two components into one app.  This is very
+similar to what we did before except that we will be defining two executables and two processes.
+
+Start by creating the @c .adef
+@verbatim
+$ vim helloIPC1.adef
+@endverbatim
+
+Add the following into the @c helloIPC1.adef:
+@code
+executables:
+{
+    helloClient = ( printClient )
+    helloServer = ( printServer )
+}
+
+processes:
+{
+    run:
+    {
+        ( helloClient )
+        ( helloServer )
     }
 }
 
-sources:
+bindings:
 {
-    greetClient.c
+    helloClient.printClient.printer -> helloServer.printServer.printer
 }
-
 @endcode
 
-To implement the client using C, create a file called @c greetClient/greetClient.c:
+The bindings: section is used to connect the client interface to the server interface so that the
+client can call the printer functions on the server.  When the app is built it will generate the
+system information for the client so that it knows that it is allowed to use the print function in
+the server exe. Because both exe's are within one app, they have unrestricted permissions to each
+other.  @c mkapp will check that all client connections are satisfied.
+
+We are now ready to bundle up the application and install it on your target:
+
+@subsection basicAppsIPC_1app2proc_installApp Install App
 
 @verbatim
-$ gedit greetClient/greetClient.c
+$ mkapp -t wp85 helloIPC1.adef
+$ app install helloIPC1.wp85.update 192.168.2.2
 @endverbatim
 
-Make it contain the following:
+Doing a @c logread on the client you should be able to see the following logs:
+
+@verbatim
+<date> <target> user.info Legato:  INFO | supervisor[1235]/supervisor T=main | proc.c proc_Start() 1394 | Starting process 'helloClient' with pid 11185
+<date> <target> user.info Legato:  INFO | supervisor[11185]/supervisor T=main | proc.c proc_Start() 1359 | Execing 'helloClient'
+<date> <target> user.info Legato:  INFO | supervisor[1235]/supervisor T=main | proc.c proc_Start() 1394 | Starting process 'helloServer' with pid 11186
+<date> <target> user.info Legato:  INFO | supervisor[11186]/supervisor T=main | proc.c proc_Start() 1359 | Execing 'helloServer'
+<date> <target> user.info Legato:  INFO | helloClient[11185]/printClient T=main | client.c _printClient_COMPONENT_INIT() 6 | Asking server to print 'Hello, world!'
+<date> <target> user.info Legato:  INFO | helloServer[11186]/printServer T=main | server.c printer_Print() 6 | ******** Client says 'Hello, world!'
+@endverbatim
+
+You can see that each of the components start their own process independently from each other, and
+each process has it's own PID.  This allows you to kill one process if needed and not the other.
+This also allows you to monitor specific processes or if your app has a critical process set up a
+@ref basicRuntimeArch_watchdog monitor on it.
+
+The benefits of providing components their own interface are:
+- process isolation, while each component is in the same sandbox but code is isolated.
+- complexity of the app internals are hidden, the components can still talk to each other but are
+  bundled as one app.
+
+Depending on your security model you may want to separate your Components into separate apps.
+Currently the client and the server have access to the entire environment.  If this server needs to
+keep files or resources protected from the client, there is no mechanism to do that.
+
+@section basicAppsIPC_2apps Migrating to 2 Applications
+
+We can set up the printServer and printClient as two separate apps, and have them completely secure
+from each other and only able to talk to each other through the defined APIs.  This is the most
+secure method of creating apps and we recommend it when you are creating your own applications
+within the Legato Application Framework.
+
+All the code that we did in the previous step is reusable, we will just need to modify the @c .adef
+files to create 2 separate applications, one for the print client and one for the print server.
+
+@subsection basicAppsIPC_2app_PCadef Create helloClient.adef
+
+First, remove @c helloApp.adef
+@verbatim
+$ rm helloApp.adef
+@endverbatim
+
+Next, create @c helloClient.adef
+
+@verbatim
+$ vim helloClient.adef
+@endverbatim
+
+@c helloClient.adef should contain the following sections:
 
 @code
-
-#include "legato.h"
-#include "interfaces.h"
-
-COMPONENT_INIT
+executables:
 {
-    hello_Greet();
+    helloClient = ( printClient )
 }
 
-@endcode
+processes:
+{
+    run:
+    {
+        ( helloClient )
+    }
+}
 
-The @c interfaces.h file the client includes is different than the one the
-server uses. This client one is specially generated  based on the contents of
-@c greetClient/Component.cdef and @c greet.api.
-
-In the client, we use the component initializer to call @c hello_Greet() at start-up.
-
-You can add a message to the COMPONENT_INIT so the logs will show the client calling the
-server:
-@code
- {
-    LE_INFO("greetClient is calling hello_Greet \n");
-    hello_Greet();
+bindings:
+{
+    helloClient.printClient.printer -> helloServer.printer
 }
 @endcode
 
-@section basicAppsIPC_createIPCadef Declare IPC Availability
+Binding the interfaces also sets up permissions so that you are explicitly allowing the client app
+to communicate with the server app.
 
-You can create an @ref defFilesAdef file with an @ref defFilesAdef_extern
-section to declare the app is available for @ref defFilesAdef_bindings "binding":
+@subsection basicAppsIPC_2app_PSadef Create helloServer.adef
 
+Next, we need to create a @c .adef for @c helloServer.
+
+In the @c helloServer.adef we need to add an @b extern section.  The extern section publishes the
+API as public and will let other apps connect to it.
+
+@verbatim
+$ vim helloServer.adef
+@endverbatim
+
+@c helloServer.adef should contain the following sections:
 @code
+executables:
+{
+    helloServer = ( printServer )
+}
+
+processes:
+{
+    run:
+    {
+        ( helloServer )
+    }
+}
 
 extern:
 {
-    helloWorld.greetServer.greet.api
+    printer = helloServer.printServer.printer
 }
 @endcode
 
-You only need to do this if you want to leave your interface unbound, and bind it later in the
- @ref defFilesSdef_bindings ".sdef file bindings" section.
+The extern section publishes the printer api external to itself so that other applications can use
+it.  In the @c .adef for the helloClient app we already bound the app to this external interface.
 
-<HR>
+@subsection basicAppsIPC_2app_apps Create Apps
 
-Copyright (C) Sierra Wireless Inc.
+We are now ready to bundle up the applications and install them on your target.  Because we have
+two application we need to run @c mkapp on them separately and create two application bundles for
+your target.
+
+First, we will create the server app:
+@verbatim
+$ mkapp -t wp85 helloServer.adef
+$ app install helloServer.wp85.update 192.168.2.2
+@endverbatim
+
+Connect through ssh and enter @c logread on the target you should be able to see the following logs:
+
+@verbatim
+<date> <target> user.info Legato:  INFO | supervisor[1235]/supervisor T=main | proc.c proc_Start() 1394 | Starting process 'helloServer' with pid 13079
+<date> <target> user.info Legato:  INFO | supervisor[13079]/supervisor T=main | proc.c proc_Start() 1359 | Execing 'helloServer'
+@endverbatim
+
+Now we repeat the process with @c helloClient.
+
+@verbatim
+$ mkapp -t wp85 helloClient.adef
+$ app install helloClient.wp85.update 192.168.2.2
+@endverbatim
+
+@verbatim
+<date> <target> user.info Legato:  INFO | supervisor[1235]/supervisor T=main | proc.c proc_Start() 1394 | Starting process 'helloClient' with pid 13469
+<date> <target> user.info Legato:  INFO | supervisor[13469]/supervisor T=main | proc.c proc_Start() 1359 | Execing 'helloClient'
+<date> <target> user.info Legato:  INFO | helloClient[13469]/printClient T=main | client.c _printClient_COMPONENT_INIT() 6 | Asking server to print 'Hello, world!'
+<date> <target> user.info Legato:  INFO | helloServer[13079]/printServer T=main | server.c printer_Print() 6 | ******** Client says 'Hello, world!'
+@endverbatim
+
+You can see that the Client successfully starts and then sends a message to the @c helloServer app
+and asks it to print 'Hello, world!'
+
+You have now successfully explored the multiple ways to create components and bundle them within
+executables and applications as well as the benefits for each method.  This should get you started
+in designing and creating your own apps.
+
+You can also refer to our @ref howToMain section for other tutorials and our @ref sampleApps section
+for examples of howToMain to include platform services and other Legato Application Framework
+features within your own applications.
 
 **/

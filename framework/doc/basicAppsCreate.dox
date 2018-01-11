@@ -1,67 +1,77 @@
 /** @page basicAppsCreate Create Apps
 
-These are the basic steps to build an app written in C that
-logs <c>Hello World.</c> when the process it's in starts up:
+This beginning tutorial will walk you through creating @c Hello @c World by:
 
- - @ref basicAppsCreate_component
- - @ref basicAppsCreate_adef
- - @ref basicAppsCreate_buildApp
- - @ref basicAppsCreate_instTarget
- - @ref basicAppsCreate_usage "Use App"
+ - @ref basicAppsCreate_component "Create a Component"
+ - @ref basicAppsCreate_adef "Bundle the Component into an Exe and then an App"
+ - @ref basicAppsCreate_buildApp "Install the System onto a Target"
+ - @ref basicAppsCreate_usage "Test the App"
 
-Then you're ready for the next level: @ref basicAppsAddThings, @ref basicAppsIPC, and
-@ref basicAppsCompMulti.
+Walking through this tutorial will introduce you to the basic concepts that make up the Legato
+Application Framework.  Once you've completed this you can then walk through:
+@ref basicAppsAddThings, @ref basicAppsIPC, and @ref basicAppsCompMulti.
 
 @section basicAppsCreate_sampleDir Sample Directories and Files
 
-Typical apps have directories and files that look this:
-@image html sampleDirFiles.png
+Apps have a hierarchy of folders and files, with the base folder being the name of the
+app.  Each component is encapsulated in it's own subdirectory and will include the @c .c files and
+a @ref defFilesCdef (more on how to create def files in a bit).  The app directory will include an
+@ref defFilesAdef, which is used to combine all the components into executables and configure the
+process for the executable as well as define the configuration for your app.
+
+Example directory structure for @c Hello @c World:
+@verbatim
+helloWorld/
+├── helloComponent/
+│   ├── Component.cdef
+│   └── helloWorld.c
+└── helloWorld.adef
+@endverbatim
 
 @section basicAppsCreate_component Create Component
-Complete these steps to create a component: @ref basicAppsCreate_componentCreateDir,
+
+Creating a component will walk you through: @ref basicAppsCreate_componentCreateDir,
 @ref basicAppsCreate_componentC, and @ref basicAppsCreate_componentCdef
 
 @subsection basicAppsCreate_componentCreateDir Create Directory
 
-@c 1. Create a directory: the directory name will become the component name:
+Create a directory for your component: the directory name will become the component name (this
+is done for ease of organization and becomes important when you are including multiple components):
 
 @code
-$ mkdir helloComp
+$ mkdir helloComponent
 @endcode
 
 @subsection basicAppsCreate_componentC Create C Source File
 
-@c 2. Create source (implementation) file @c hello.c:
-
-@code
-$ gedit helloComp/hello.c
-@endcode
-
-It should contain the following:
-
-@code
-
-#include "legato.h"
-
-COMPONENT_INIT
-{
-    LE_INFO("Hello world.\n");
-}
-
-@endcode
-
-This looks similar to the original C @c hello, world program from Kernighan's and Richie's
+This looks similar to the original C @c helloWorld program from Kernighan's and Richie's
 "The C Programming Language", except that:
  - \#include <stdio.h> is replaced with \#include "legato.h"
  - main() is replaced with COMPONENT_INIT
 
-In fact, legato.h will include stdio.h, along with a bunch of other system headers and
-Legato framework headers. This reduces the amount of time you have to spend including
-header files to get access to the functions and data types you need.
+Create the file for helloWorld:
 
-The build tools figure out what language the source code is written in by looking at the
-filename extension.  So, because our file @c hello.c ends in @c .c, the build tools will try to use
-a C compiler to compile it into a library when it gets included in an executable.
+@code
+$ vim helloComponent/helloWorld.c  # use any editor of your choosing
+@endcode
+
+@subsubsection basicAppsCreate_includes Include legato.h
+
+First you must include @ref c_APIs "legato.h". @ref c_APIs "legato.h" is the main legato library,
+and includes stdio.h along with other system headers and Legato Framework headers.  It reduces the
+amount of time you have to spend including header files to get access to the functions and data
+types that you need. @ref c_APIs "List of includes" in "legato.h".
+
+Also <c>include "interfaces.h"</c>. interfaces.h is a C header file that automatically includes all
+client and server interface definition that your client imports and exports.  If you need to import
+or export any other API you will need to explicitly include "interfaces.h" into your C or C++ code.
+It is not used in helloWorld now, but it is a Legato best practice to include it in all of your
+Legato Component C or C++ code.
+
+@code
+#include "legato.h"
+#include "interfaces.h"
+@endcode
 
 @subsubsection basicAppsCreate_componentInit Component Initializer
 
@@ -72,165 +82,273 @@ By using component initializers instead of having each component implement their
 function, it's possible to run multiple components in the same executable and even share
 a thread between those components.
 
-The main process thread  (the main() function auto-generated by the build tools)
+@note The main process thread  (the main() function auto-generated by the build tools)
 will automatically call the component's initializer at the appropriate time during the process
 start-up sequence (based on the inter-dependencies between components). If component A
 is used by component B, then component A's initializer will be run before component B's initializer.
 Then component B can safely call the API functions of component A knowing that component A
 has already been initialized. This won't work if both components depend on each other (directly
-or indirectly through other components). That's one reason why dependency loops are not permitted between
-components. The framework will detect inter-component dependency loops at build time and
+or indirectly through other components). That's one reason why dependency loops are not permitted
+between components. The framework will detect inter-component dependency loops at build time and
 terminate the build.
 
 Component initializers don't take any parameters and don't return anything, but they
-<b> must always return </b> . Unless they experience a fatal error, in which case they <b> must
-terminate the process </b> with a non-zero exit code (which can be done using @c LE_FATAL(),
-@c LE_ASSERT(), etc. ).
+must return in order to enable the event loop. Unless it experiences a fatal error, in which case it
+<b> must terminate the process </b> with a non-zero exit code (which can be done using
+@c LE_FATAL(), @c LE_ASSERT(), etc. ).
 
 @note If a component's initializer doesn't return, the process will not be able to finish
 initializing all the components that have been deployed to it and the process's main thread
 will never process any events that are queued to it.
 
-In our "Hello World" example, we just use our component initializer to print @c Hello world to
-the log using @c LE_INFO().
+In our "Hello World" example, we use our component initializer to print @c Hello World! to
+the log using @c LE_INFO().  The component initializer will run @c LE_INFO() at start-up.
+@c LE_INFO() logs a message at the INFO severity level.
 
-@subsection basicAppsCreate_componentCdef Create cdef File
-
-@c 3. Create a @c cdef file called @c Component.cdef like this:
-
+Add the following lines to @c helloWorld.c:
 @code
-$ gedit helloComp/Component.cdef
-@endcode
 
-@code
-sources:
+COMPONENT_INIT
 {
-    hello.c
+    LE_INFO("Hello world!");
 }
 @endcode
 
-See @ref defFiles for complete info.
+Your helloWorld.c should look like this:
+
+@code
+#include "legato.h"
+#include "interfaces.h"
+
+COMPONENT_INIT
+{
+    LE_INFO("Hello world!");
+}
+@endcode
+
+That is all that our helloWorld component needs. You can now close and save the file.
+
+The build tools figure out what language the source code is written in by looking at the
+filename extension.  So, because our file @c helloWorld.c ends in @c .c, the build tools will try to
+use a C compiler to compile it into a library when helloWorld.c gets included in an executable.
+
+@subsection basicAppsCreate_componentCdef Create cdef File
+
+Legato definition files (.sdef, .adef, .cdef and .mdef) are used as instructions to the Build Tools
+(mk tools) and tell the mk tools how to bind the components, apps and systems together to create the
+Legato Runtime Environment which then gets installed on a target.
+
+@ref defFilesCdef "Component definition files" are used to specify the external interfaces and
+internal content of the components as well as defining the requirements from the system for the
+component (e.g; What access does the component need, what API will the component access, what
+external files will it access).  Each component must have a corresponding Component.cdef, which
+must be included in the same folder as the rest of the component code.
+
+Create a @c cdef file called @c Component.cdef:
+
+@code
+$ vim helloComponent/Component.cdef
+@endcode
+
+Since our helloWorld component doesn't have any external interfaces and we will be using all the
+default build locations we can create a simple @c .cdef file and only need to define the @c sources:
+
+Add the following to your @c Component.cdef file and then save and exit.
+@code
+sources:
+{
+    helloWorld.c
+}
+@endcode
+
+<b>You have now successfully created your first Legato Component.  Congratulations!</b>
 
 @section basicAppsCreate_adef Create App
 
-You need to create an @c adef file before you can build you app.
+Next lets turn your helloWorld component into an App.  Apps are the execution environment for your
+code, they contain one ore more executables that run together in a "Sandbox".  Your executables are
+made by combining one or more components.  Processes are the running executables that are actively
+running in memory.  Apps may expose external API's but generally contain all the components,
+executables, setting and files to run within it's own environment.
 
-@c 4. Create an @c adef file called @c helloWorld.adef like this:
+The @ref defFilesAdef builds the instructions to tell the mktools how to build your
+app. In the helloWorld app we need to tell the mktools to create an executable out of the
+@c helloComponent component and then tells the app to run that executable in a process.
+
+Create a @c .adef file called @c helloWorld.adef:
+
+@code
+$ vim helloWorld.adef
+@endcode
+
+First we are going to define an executable named helloWorld for the helloComponent Component.  This
+turns your source code into an executable binary.
 
 @code
 executables:
 {
-    helloWorld = ( helloComp )
+    helloWorld = ( helloComponent )
+}
+@endcode
+
+Next we need to tell the app to start the helloWorld executable within a process.
+
+@code
+processes:
+{
+    run:
+    {
+        ( helloWorld )
+    }
+}
+@endcode
+
+@note If your executable has multiple components, add more components inside the
+parentheses after the executable name: "helloWorld = ( helloComponent helloSun helloMoon )".
+
+For this example your .adef file will look like the following:
+
+@code
+executables:
+{
+    helloWorld = ( helloComponent )
 }
 
 processes:
 {
     run:
     {
-        (helloWorld)
+        ( helloWorld )
     }
 }
 @endcode
 
-This defines one executable called @c helloWorld implemented by @c helloComp
-and then starts one instance of the helloWorld executable.
-
-If your executable has multiple components, add more components inside the
-parentheses after the executable name: "helloWorld = ( helloComp foo bar )".
-
 @section basicAppsCreate_buildApp Build App
 
-@c 5. Run @c mkapp to build the executable and bundle it into an app:
+Now that all your files are created and you have provided a @c .cdef and an @c .adef for your app
+you are ready to use the @ref toolsBuild mktools to build your app into a binary and deploy it on
+your target.
 
-Use the @c -t option to build for a target other than the default "localhost"
-target.
+You should have the following directory structure for your app:
 
-This is how to build the helloWorld app to install on the
-Sierra Wireless WP85xx module:
+@verbatim
+helloWorld/
+├── helloComponent/
+│   ├── Component.cdef
+│   └── helloWorld.c
+└── helloWorld.adef
+@endverbatim
 
-@code
-$ mkapp -t wp85 helloWorld.adef
-@endcode
+Before you run @c mkapp make sure that you have @ref basicBuildMake "configured the Framework" for
+a specific target and have run @c bin/legs or sourced @c bin/configlegatoenv.
 
-@note If you're building an AR7, substitute @c ar7 in the mkapp run command.
+@c mkapp is the tool that is used to build the app into a binary package that can then be installed
+on your target.  It is important to specify the target that you are building for as @c mkapp will
+include all the libraries and dependencies that are needed for your specific target.
+
+@note If you do not use the -t option mkapp will build for the default, localhost which is only
+used for testing purposes.
+
+From the @c helloWorld directory run the following command (the target in this example is the wp85):
+
+@verbatim
+$ mkapp -t <target> helloWorld.adef
+@endverbatim
+
+Output:
+@verbatim
+$ mkapp -t wp750x helloWorld.adef
+[9/9] Packaging app
+@endverbatim
+
+A new directory @c _build_helloWorld and an update file will be created in your
+@c helloWorld directory.
+
+@verbatim
+├── _build_helloWorld/
+│   └── wp85
+│       ...
+├── helloComponent/
+│   ├── Component.cdef
+│   └── helloWorld.c
+├── helloWorld.adef
+└── helloWorld.wp85.update
+@endverbatim
+
+The @c _build directory is the intermediate directory where the complier will place all staging
+files created during the build process.  It can be removed after helloWorld.wp85.update has
+successfully been created, though it is helpful in troubleshooting build problems.
+
+@c helloWorld.wp85.update is the package that is needed to install @c helloWorld onto your target.
 
 @section basicAppsCreate_instTarget Install App to Target
 
-@c 6. Use @c update to install the app on your target:
+Use @c app install to install the app on your target, the @c app command is available both on your
+dev machine and target but when using from your dev machine you must supply the IP address of your
+target:
 
 @code
-$ update helloWorld.wp85.update <ip addr>
+$ app install helloWorld.<target>.update <ip addr>
 @endcode
 
-The second argument is the target device's IP address where to install the app.
-This will connect to the target and install the app.
+The Framework supports an environment variable called DEST_IP, if you set this to the IP of your
+target most target machine commands will default to using DEST_IP and you will not have to enter in
+your IP address every time.
+To set DEST_IP:
+@verbatim
+$ export DEST_IP=192.168.2.2  # or the IP of your target
+@endverbatim
 
-@section basicAppsCreate_usage Usage
+Now you can update your target by typing:
+@verbatim
+$ app install helloWorld.wp85.update   # add the target IP to the command if DEST_IP is not set
+@endverbatim
 
-These usage tips are based on running a secure shell (SSH) to interface with
-the target. See <a href="http://mangoh.io/mangoh-red-resources-getting-started">mangoh.io</a> if you
-need to setup your target device.
+@section basicAppsCreate_usage Test helloWorld
 
-@subsection basicAppsCreate_usageLogin Target Login
+The helloWorld app logs @c Hello world! to the syslog everytime the app is started.  To test this
+out we need to use the @c logread command to tail the logs.
 
-Login to your target using a secure shell connection:
-
-@code
+SSH to your target:
+@verbatim
 $ ssh root@192.168.2.2
-@endcode
+@endverbatim
 
-@subsection basicAppsCreate_usageStartApp Target Start App
+Run logread (on your target):
+@verbatim
+# logread -f | grep helloWorld
+@endverbatim
 
-Start your application using the <code>app start</code> command:
+From your workspace: (you must have @c configlegatoenv sourced, or run @c bin/legs and have
+@c DEST_IP set)
+@verbatim
+$ app status                            # check that <appName> is listed
+$ app start <appName>                   # e.g., app start helloWorld
+@endverbatim
 
-@code
-$ app start helloWorld
-@endcode
+In the log you should be able to see logging statements similar to:
 
-@subsection basicAppsCreate_usageViewLogs View Logs
+@verbatim
+# logread -f | grep "helloWorld"
+<TIME> <target> user.info Legato:  INFO | supervisor[465]/supervisor T=main | app.c CreateTmpFs() 1204 | Mounted tmpfs at /legato/systems/current/appsWriteable/helloWorld/tmp.
+<TIME> <target> user.info Legato:  INFO | supervisor[465]/supervisor T=main | app.c CreateFileLink() 1504 | Created file link '/tmp/legato/serviceDirectoryServer' to '/legato/systems/current/appsWriteable/helloWorld/tmp/legato/serviceDirectoryServer'.
+<TIME> <target> user.info Legato:  INFO | supervisor[465]/supervisor T=main | app.c CreateFileLink() 1504 | Created file link '/tmp/legato/serviceDirectoryClient' to '/legato/systems/current/appsWriteable/helloWorld/tmp/legato/serviceDirectoryClient'.
+<TIME> <target> user.debug Legato:  DBUG | _UNKNOWN_[1518]/<invalid> T=main | _componentMain.c _helloWorldComponent_Init() 26 | Initializing helloWorldComponent component library.
+<TIME> <target> user.info Legato:  INFO | helloWorld[1518]/helloWorldComponent T=main | helloWorldComponent.c _helloWorldComponent_COMPONENT_INIT() 5 | Hello, world.
+@endverbatim
 
-Your installed app's @c LE_INFO log message will appear in the system log ("syslog") on
-the target device.
+Stop the App (if needed):
+@verbatim
+$ app stop helloWorld                   # add the target IP if DEST_IP not set
+@endverbatim
 
-Run @c logread (on the target) to view the system log.
+Run @c app @c --help for all options on controlling apps on your target from your dev machine.
 
-@code
-# logread
-@endcode
+@c app @c list - lists all the installed apps on the target
+@c app @c remove <appName> removes the app from the target
 
-Use logread's @a -f option to start monitoring the logs and display messages as they are logged.
-
-@code
-# logread -f
-@endcode
-
-Here's a code sample accessing the logs on a target device with IP address 192.168.2.2 through an ssh connection:
-@code
-$ ssh root@192.168.2.2 '/sbin/logread -f'
-@endcode
-
-@subsection basicAppsCreate_usageRmApp Remove App
-
-From the host PC, run <code>app remove</code>  to uninstall the app:
-
-@code
-$ app remove helloWorld.wp85 <ip addr>
-@endcode
-
-From the target run:
-@code
-# app remove <app name>
-@endcode
-
-@subsection basicAppsCreate_usageLsApp List App
-
-Use <code>app list</code> to list the apps installed on a target.
-
-@code
-$ app list <ip addr>
-@endcode
-
-<HR>
+Next we are going to add a second app, communicate between the two apps and build the apps into
+a system.
 
 Copyright (C) Sierra Wireless Inc.
 
