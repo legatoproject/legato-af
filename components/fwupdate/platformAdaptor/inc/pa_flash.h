@@ -579,7 +579,7 @@ LE_SHARED le_result_t pa_flash_WriteUbiAtBlock
     pa_flash_Desc_t desc,     ///< [IN] Private flash descriptor
     uint32_t leb,             ///< [IN] LEB to write
     uint8_t *dataPtr,         ///< [IN] Pointer to data to be written
-    size_t dataSize,          ///< [IN][OUT] Size to be written
+    size_t dataSize,          ///< [IN] Size to be written
     bool isExtendUbiVolume    ///< [IN] True if the volume may be extended by one block if write
                               ///<      is the leb is outside the current volume
 );
@@ -618,6 +618,43 @@ LE_SHARED le_result_t pa_flash_GetUbiInfo
     uint32_t*       freeBlockPtr, ///< [OUT] Free blocks number in the UBI partition
     uint32_t*       volBlockPtr,  ///< [OUT] Allocated blocks number belonging to the volume
     uint32_t*       volSizePtr    ///< [OUT] Real volume size
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * pa_flash_CheckUbiMagic - check if the buffer contains the UBI magic number
+ *
+ * @return
+ *      - LE_OK             On success and found the magic number in buffer
+ *      - LE_NOT_FOUND      Cannot find the magic number in buffer
+ *      - LE_BAD_PARAMETER  If desc is NULL or is not a valid descriptor
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_flash_CheckUbiMagic
+(
+    void*    data,       ///< [IN] buffer to check
+    uint32_t pattern     ///< [IN] the pattern to check
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * pa_flash_CalculateDataLength - calculate how much real data is stored in the buffer
+ *
+ * This function calculates how much "real data" is stored in @data and
+ * returns the length @dataSize (align with pages size). Continuous 0xFF bytes at the end
+ * of the buffer are not considered as "real data".
+ *
+ * @return
+ *      - LE_OK             On success
+ *      - LE_BAD_PARAMETER  If desc is NULL or is not a valid descriptor
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_flash_CalculateDataLength
+(
+    int         pageSize,       ///< [IN] min I/O of the device
+    const void* data,           ///< [IN] a buffer with the contents of the physical eraseblock
+    uint32_t*   dataSize        ///< [INOUT] input : the buffer length
+                                ///<         output: real data length align with pages size
 );
 
 #endif // LEGATO_PA_FLASH_INCLUDE_GUARD
