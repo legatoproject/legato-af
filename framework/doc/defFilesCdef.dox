@@ -507,7 +507,8 @@ requires:
 @note   Even though the file system object appears in the app's sandbox it still needs
          permissions settings on the file.  File permissions (both DAC and MAC) and ownership
         (group and user) on the original file in the target system remain in effect inside
-        the sandbox.
+        the sandbox. Within a sandbox files can only be read and writen to, new files can not be
+        created.
 
 It's also possible to give the object a different names inside and outside of the sandbox by
  adding a name to the end of the second path.
@@ -650,7 +651,8 @@ requires:
         doesn't mean the app can access it. The directory permissions settings
         must also allow it. File permissions (both DAC and MAC) and ownership
         (group and user) on the original files in the target system remain in effect inside
-        the sandbox.
+        the sandbox. Within a sandbox files can only be read and writen to, new files can not be
+        created.
 
 @warning    Any time anything is accessible from inside an app sandbox, the security
             risks must be considered carefully.  Ask yourself if access to the object can be
@@ -662,7 +664,8 @@ requires:
         app from outside of the sandbox.  If you @a require @c /bin to appear at
         @c /usr/bin, you can't then @a bundle a file into @c /usr/bin or @a require something to appear
         in @c /usr/bin; that would have an effect on the contents of the /bin directory outside
-        of the app.
+        of the app. This also means that you <b>can not create files</b> in a mapped directory from
+        within the sandbox.
 
 @note   If an access to the directory @c /dev/shm is required, it should be listed in this
         subsection because it is treated like a directory even if it is located in @c /dev.
