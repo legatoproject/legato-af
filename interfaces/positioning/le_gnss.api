@@ -1336,16 +1336,14 @@ FUNCTION le_result_t GetSatellitesInfo
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the SBAS constellation category
+ * Get the SBAS constellation category given the SBAS satellite number ID.
  *
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION SbasConstellationCategory GetSbasConstellationCategory
 (
-    uint16      satId IN         ///< Satellites in View ID number, referring
-                                 ///< to NMEA standard.
+    uint16      satId IN         ///< SBAS satellite number ID, referring to NMEA standard.
 );
-
 
 //--------------------------------------------------------------------------------------------------
 /**

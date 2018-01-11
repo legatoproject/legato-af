@@ -2172,13 +2172,13 @@ le_result_t le_gnss_GetSatellitesInfo
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the SBAS constellation category according to Satellites in View ID number.
+ * Get the SBAS constellation given the SBAS satellite number ID.
  *
  */
 //--------------------------------------------------------------------------------------------------
 le_gnss_SbasConstellationCategory_t le_gnss_GetSbasConstellationCategory
 (
-    uint16_t  satId      ///< [IN] Satellites in View ID number, referring to NMEA standard.
+    uint16_t  satId      ///< [IN] SBAS satellite number ID, referring to NMEA standard.
 )
 {
     le_gnss_SbasConstellationCategory_t sbasCategory;
