@@ -373,17 +373,15 @@ COMPONENT_INIT
 
     // Initializing the array storing timer refs.
     TimerRefArray = malloc(TimerNum * sizeof(le_timer_Ref_t));
-    memset(&TimerRefArray, 0, TimerNum * sizeof(le_timer_Ref_t));
+    memset(TimerRefArray, 0, TimerNum * sizeof(le_timer_Ref_t));
     LE_ASSERT(NULL != TimerRefArray);
 
-    // Initializing the array storing thread refs.
-    ThreadRefArray = malloc(ThreadNum * sizeof(le_thread_Ref_t));
-    memset(&ThreadRefArray, 0, ThreadNum * sizeof(le_thread_Ref_t));
-    LE_ASSERT(NULL != ThreadRefArray);
     if (ThreadNum <= MAX_THREADS)
     {
         // Initializing the array storing thread refs.
         ThreadRefArray = malloc(ThreadNum * sizeof(le_thread_Ref_t));
+        memset(ThreadRefArray, 0, ThreadNum * sizeof(le_thread_Ref_t));
+        LE_ASSERT(NULL != ThreadRefArray);
     }
     else
     {
