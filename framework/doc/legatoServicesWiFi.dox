@@ -28,17 +28,16 @@ bindings:
 The @ref wifi_toolsTarget_wifi can be used to configure and control the client or access point from
 the command line.
 
-@section legatoServicesWifiSampleApps Test Apps
+@section legatoServicesWifiSampleApps Sample Apps
 
-The following WiFi Test Apps are available to test the client or access point and to show an example
-of developing your own wifi client or access point app.
-
+The following WiFi Sample Apps are available to test the client or access point and to show an
+example of developing your own wifi client or access point app.
 
 | Section                           | Description                             |
 | --------------------------------- | --------------------------------------- |
-| @subpage wifi_wificlient_testapp  | How to use Wifi Client API              |
-| @subpage wifi_wifiap_testapp      | How to use Wifi Access Point API        |
-| @subpage wifi_wifiwebAp_sample    | Setup the Access Point using a webpage  |
+| @ref wifi_wificlient_testapp      | How to use Wifi Client API              |
+| @ref wifi_wifiap_testapp          | How to use Wifi Access Point API        |
+| @ref wifi_wifiwebAp_sample        | Setup the Access Point using a webpage  |
 
 Copyright (C) Sierra Wireless Inc.
 
