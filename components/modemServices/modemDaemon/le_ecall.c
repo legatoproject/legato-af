@@ -3147,8 +3147,10 @@ le_result_t le_ecall_GetPsapNumber
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function can be recalled to indicate the modem to read the number to dial from the FDN/SDN
- * of the U/SIM, depending upon the eCall operating mode.
+ * When modem is in ECALL_FORCED_PERSISTENT_ONLY_MODE or ECALL_ONLY_MODE, this function
+ * can be called to request the modem to read the number to dial from the FDN/SDN of the U/SIM.
+ *
+ * @note If FDN directory is updated with new dial numbers, be sure that the SIM card is refreshed.
  *
  * @return
  *  - LE_OK on success
