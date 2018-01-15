@@ -242,6 +242,9 @@
  * The le_sim_DeleteFPLMNList() function releases all allocated resources associated with the
  * List object.
  *
+ * @note Some platforms do not support FPLMN APIs. Please refer to the @ref platformConstraintsSim
+ * "SIM constraints" page or your platform documentation for further details.
+ *
  * @section le_sim_stk SIM Toolkit
  *
  * The SIM application Toolkit allows the SIM card to initiate commands or asking input from the

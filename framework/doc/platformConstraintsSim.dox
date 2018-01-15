@@ -53,6 +53,9 @@ As indicated in the mangOH&trade;
 
 Refer to your platform documentation.
 
+@section platformConstraintsSim_FplmnList FPLMN list
+
+Forbidden PLMN (FPLMN) APIs are only supported by AR759x and AR758x platforms.
 
 @section platformConstraintsSim_References References
 
