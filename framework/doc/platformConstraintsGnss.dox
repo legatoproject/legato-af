@@ -171,6 +171,44 @@ le_gnss_GetTtff(). This API calculates the TTFF started from a succeed GNSS star
 In case of le_gnss_ForceWarmRestart(), the 10 sec delay is added before re-starting the GNSS
 session.
 
+@section platformConstraintsGnss_ColdRestart GNSS COLD restart
+
+"COLD" restart le_gnss_ForceColdRestart() API stops the current GNSS session then starts it again.
+In this case, the Ephemeris, time, almnac, and position data are being cleared.
+
+@note On modules AR758x & AR759x when performed "COLD" restart there is a possibility for
+longitude/latitude values to get retrieved from camped live cell network before getting the fix.
+
+@section platformConstraintsGnss_FactoryRestart GNSS FACTORY restart
+
+"FACTORY" restart le_gnss_ForceFactoryRestart() API stops the current GNSS session then starts
+it again. In this case, all constellation's service data are being cleared.
+
+Modem gets these constellation service data from Qualcomm CDMA Technologies(QCT) location service.
+Constellation service data:
+- Clock Information
+- Cell database service data
+   Cell database position
+   Cell database latest GPS position
+   Cell database Over The Air(OTA) position
+   Cell database external reference position
+   Cell database time tag
+   Cell database cell ID
+   Cell database cached cell ID
+   Cell database last service cell
+   Cell database current service cell
+   Cell database neighbor information
+- Common service data
+   Position estimate; common for all GNSS types
+   Reset all clock information
+   Universal Time Coordinated(UTC) estimate
+   Real Time Information(RTI)
+   Frequency bias estimate; common for all GNSS types
+- Satellite data
+
+@note On modules AR758x & AR759x when performed "FACTORY" restart there is a possibility for
+longitude/latitude values to get retrieved from camped live cell network before getting the fix.
+
 @section platformConstraintsGnss_References References
 
 See @ref c_gnss API
