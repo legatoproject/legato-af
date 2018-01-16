@@ -2416,6 +2416,12 @@ COMPONENT_INIT
     }
     else if (strcmp(commandPtr, "get") == 0)
     {
+        if (LE_GNSS_STATE_ACTIVE != le_gnss_GetState())
+        {
+            LE_ERROR("Gnss is not in active state!");
+            exit(EXIT_FAILURE);
+        }
+
         const char* paramsPtr = le_arg_GetArg(1);
         if (NULL == paramsPtr)
         {
@@ -2449,6 +2455,11 @@ COMPONENT_INIT
     }
     else if (strcmp(commandPtr, "watch") == 0)
     {
+        if (LE_GNSS_STATE_ACTIVE != le_gnss_GetState())
+        {
+            LE_ERROR("Gnss is not in active state!");
+            exit(EXIT_FAILURE);
+        }
 
         const char* watchPeriodPtr = le_arg_GetArg(1);
         uint32_t watchPeriod = DEFAULT_WATCH_PERIOD;
