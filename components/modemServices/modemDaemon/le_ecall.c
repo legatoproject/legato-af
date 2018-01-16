@@ -3141,6 +3141,9 @@ le_result_t le_ecall_UseUSimNumbers
  * @return
  *  - LE_OK on success
  *  - LE_FAULT on failure
+ *
+ * @note The formula to calculate NAD deregistration time is as below:
+ *       ECallConfiguration.nad_deregistration_time = (deregTime+59)/60;
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_SetNadDeregistrationTime
