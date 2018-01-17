@@ -339,6 +339,22 @@ FUNCTION int16 GetSignalStrength
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the Basic Service set identifier (BSSID) of the AccessPoint
+ *
+ * @return
+ *      - LE_FAULT if the function failed.
+ *      - LE_BAD_PARAMETER if some parameter is invalid.
+ *      - LE_OK if the function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetBssid
+(
+    AccessPoint accessPointRef IN,  ///< WiFi Access Point reference.
+    string bssid[le_wifiDefs.MAX_BSSID_BYTES] OUT ///< The BSSID
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the Service set identification (SSID) of the AccessPoint
  * @note that the SSID does not have to be human readable ASCII values, but often has.
  *
@@ -351,7 +367,7 @@ FUNCTION int16 GetSignalStrength
 FUNCTION le_result_t GetSsid
 (
     AccessPoint accessPointRef IN,  ///< WiFi Access Point reference.
-    uint8 Ssid[le_wifiDefs.MAX_SSID_BYTES] OUT ///< The SSID returned as a octet array.
+    uint8 ssid[le_wifiDefs.MAX_SSID_BYTES] OUT ///< The SSID returned as a octet array.
 );
 
 
