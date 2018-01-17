@@ -29,6 +29,18 @@ void example_allParameters
     size_t moreNumElements
 )
 {
+    if (bPtr == NULL)
+    {
+        LE_KILL_CLIENT("bPtr is NULL.");
+        return;
+    }
+
+    if (outputPtr == NULL)
+    {
+        LE_KILL_CLIENT("outputPtr is NULL.");
+        return;
+    }
+
     int i;
 
     // If a special value is passed down, return right away without assigning to any of the output
@@ -64,6 +76,12 @@ void example_FileTest
     int* dataOutPtr
 )
 {
+    if (dataOutPtr == NULL)
+    {
+        LE_KILL_CLIENT("dataOutPtr is NULL.");
+        return;
+    }
+
     // Read and print out whatever is read from the client fd
     char buffer[BUFFERSIZE];
     ssize_t numRead;

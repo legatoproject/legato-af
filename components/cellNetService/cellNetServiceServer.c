@@ -767,6 +767,7 @@ le_result_t le_cellnet_SetSimPinCode
  *  - LE_OVERFLOW        PIN code exceeds the maximum length of 8 digits.
  *  - LE_UNDERFLOW       The PIN code is not long enough (min 4 digits).
  *  - LE_OK              The function succeeded.
+ *  - LE_FAULT           If there are some other errors.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_cellnet_GetSimPinCode
@@ -784,6 +785,12 @@ le_result_t le_cellnet_GetSimPinCode
 
 )
 {
+    if (pinCodePtr == NULL)
+    {
+        LE_KILL_CLIENT("pinCodePtr is NULL.");
+        return LE_FAULT;
+    }
+
     le_result_t result=LE_OK;
 
     LE_DEBUG("simId= %d",simId);

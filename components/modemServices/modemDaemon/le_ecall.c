@@ -2648,6 +2648,12 @@ le_result_t le_ecall_ExportMsd
     size_t*             msdNumElementsPtr   ///< [IN,OUT] Ecoded MSD size in bytes
 )
 {
+    if (msdPtr == NULL)
+    {
+        LE_KILL_CLIENT("msdPtr is NULL.");
+        return LE_FAULT;
+    }
+
     ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
     if (eCallPtr == NULL)
     {

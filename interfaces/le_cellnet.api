@@ -190,6 +190,7 @@ FUNCTION le_result_t SetSimPinCode
  *  - LE_OVERFLOW        PIN code exceeds the maximum length of 8 digits.
  *  - LE_UNDERFLOW       The PIN code is not long enough (min 4 digits).
  *  - LE_OK              The function succeeded.
+ *  - LE_FAULT           If there are some other errors.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetSimPinCode

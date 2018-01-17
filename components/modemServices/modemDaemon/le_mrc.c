@@ -3485,6 +3485,18 @@ le_result_t le_mrc_GetNeighborCellLteIntraFreq
                                            ///< with 1 decimal place
 )
 {
+    if (rsrqPtr == NULL)
+    {
+        LE_KILL_CLIENT("rsrqPtr is NULL.");
+        return LE_FAULT;
+    }
+
+    if (rsrpPtr == NULL)
+    {
+        LE_KILL_CLIENT("rsrpPtr is NULL.");
+        return LE_FAULT;
+    }
+
     pa_mrc_CellInfo_t* cellInfoPtr = le_ref_Lookup(CellRefMap, ngbrCellInfoRef);
     if (cellInfoPtr == NULL)
     {
@@ -3520,6 +3532,18 @@ le_result_t le_mrc_GetNeighborCellLteInterFreq
                                            ///< with 1 decimal place
 )
 {
+    if (rsrqPtr == NULL)
+    {
+        LE_KILL_CLIENT("rsrqPtr is NULL.");
+        return LE_FAULT;
+    }
+
+    if (rsrpPtr == NULL)
+    {
+        LE_KILL_CLIENT("rsrpPtr is NULL.");
+        return LE_FAULT;
+    }
+
     pa_mrc_CellInfo_t* cellInfoPtr = le_ref_Lookup(CellRefMap, ngbrCellInfoRef);
     if (cellInfoPtr == NULL)
     {
@@ -3650,6 +3674,18 @@ le_result_t le_mrc_GetGsmSignalMetrics
     uint32_t*           berPtr      ///< [OUT] Bit error rate.
 )
 {
+    if (rssiPtr == NULL)
+    {
+        LE_KILL_CLIENT("rssiPtr is NULL.");
+        return LE_FAULT;
+    }
+
+    if (berPtr == NULL)
+    {
+        LE_KILL_CLIENT("berPtr is NULL.");
+        return LE_FAULT;
+    }
+
     SignalMetrics_t* signalMetricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
     if (NULL == signalMetricsPtr)
     {
@@ -3757,6 +3793,36 @@ le_result_t le_mrc_GetLteSignalMetrics
     int32_t*            snrPtr      ///< [OUT] SNR level in dB with 1 decimal place (15 = 1.5 dB)
 )
 {
+    if (ssPtr == NULL)
+    {
+        LE_KILL_CLIENT("ssPtr is NULL.");
+        return LE_FAULT;
+    }
+
+    if (blerPtr == NULL)
+    {
+        LE_KILL_CLIENT("blerPtr is NULL.");
+        return LE_FAULT;
+    }
+
+    if (rsrqPtr == NULL)
+    {
+        LE_KILL_CLIENT("rsrqPtr is NULL.");
+        return LE_FAULT;
+    }
+
+    if (rsrpPtr == NULL)
+    {
+        LE_KILL_CLIENT("rsrpPtr is NULL.");
+        return LE_FAULT;
+    }
+
+    if (snrPtr == NULL)
+    {
+        LE_KILL_CLIENT("snrPtr is NULL.");
+        return LE_FAULT;
+    }
+
     SignalMetrics_t* signalMetricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
     if (NULL == signalMetricsPtr)
     {
@@ -3805,6 +3871,36 @@ le_result_t le_mrc_GetCdmaSignalMetrics
                                     ///<       available)
 )
 {
+    if (ssPtr == NULL)
+    {
+        LE_KILL_CLIENT("ssPtr is NULL.");
+        return LE_FAULT;
+    }
+
+    if (erPtr == NULL)
+    {
+        LE_KILL_CLIENT("erPtr is NULL.");
+        return LE_FAULT;
+    }
+
+    if (ecioPtr == NULL)
+    {
+        LE_KILL_CLIENT("ecioPtr is NULL.");
+        return LE_FAULT;
+    }
+
+    if (sinrPtr == NULL)
+    {
+        LE_KILL_CLIENT("sinrPtr is NULL.");
+        return LE_FAULT;
+    }
+
+    if (ioPtr == NULL)
+    {
+        LE_KILL_CLIENT("ioPtr is NULL.");
+        return LE_FAULT;
+    }
+
     SignalMetrics_t* signalMetricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
     if (NULL == signalMetricsPtr)
     {

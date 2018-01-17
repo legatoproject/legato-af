@@ -2494,6 +2494,12 @@ le_result_t SmsInbox_GetBinary
         ///< [INOUT]
 )
 {
+    if (binPtr == NULL)
+    {
+        LE_KILL_CLIENT("binPtr is NULL.");
+        return LE_FAULT;
+    }
+
     ClientRequest_t* clientRequestPtr = le_ref_Lookup(ActivationRequestRefMap, sessionRef);
     if (NULL == clientRequestPtr)
     {
@@ -2582,6 +2588,12 @@ le_result_t SmsInbox_GetPdu
         ///< [INOUT]
 )
 {
+    if (pduPtr == NULL)
+    {
+        LE_KILL_CLIENT("pduPtr is NULL.");
+        return LE_FAULT;
+    }
+
     // Get the mbox session context
     ClientRequest_t* clientRequestPtr = le_ref_Lookup(ActivationRequestRefMap, sessionRef);
     if (NULL == clientRequestPtr)

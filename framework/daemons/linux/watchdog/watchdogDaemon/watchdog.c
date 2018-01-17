@@ -1157,6 +1157,12 @@ le_result_t le_wdog_GetWatchdogTimeout
         ///< [OUT] The watchdog timeout set for this process
 )
 {
+    if (millisecondsPtr == NULL)
+    {
+        LE_KILL_CLIENT("millisecondsPtr is NULL.");
+        return LE_FAULT;
+    }
+
     WatchdogObj_t* watchDogPtr = GetClientWatchdogPtr();
     if (watchDogPtr != NULL)
     {
@@ -1185,6 +1191,12 @@ le_result_t le_wdog_GetMaxWatchdogTimeout
         ///< [OUT] The max watchdog timeout set for this process
 )
 {
+    if (millisecondsPtr == NULL)
+    {
+        LE_KILL_CLIENT("millisecondsPtr is NULL.");
+        return LE_FAULT;
+    }
+
     WatchdogObj_t* watchDogPtr = GetClientWatchdogPtr();
     if (watchDogPtr != NULL)
     {

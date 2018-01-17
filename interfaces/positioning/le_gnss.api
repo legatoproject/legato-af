@@ -912,6 +912,7 @@ FUNCTION le_result_t ForceFactoryRestart
  *  - LE_BUSY          The position is not fixed and TTFF can't be measured.
  *  - LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
  *  - LE_OK            Function succeeded.
+ *  - LE_FAULT         If there are some other errors.
  *
  */
 //--------------------------------------------------------------------------------------------------

@@ -752,6 +752,12 @@ le_result_t le_voicecall_GetTerminationReason
         ///< Termination reason of the voice call.
 )
 {
+    if (reasonPtr == NULL)
+    {
+        LE_KILL_CLIENT("reasonPtr is NULL.");
+        return LE_FAULT;
+    }
+
     le_result_t result;
 
     VoiceCallContext_t * ctxPtr = le_ref_Lookup(VoiceCallRefMap, reference);

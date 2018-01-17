@@ -855,6 +855,12 @@ le_result_t le_flash_OpenMtd
     le_flash_PartitionRef_t* partitionRef    ///< [OUT] Partition reference.
 )
 {
+    if (partitionRef == NULL)
+    {
+        LE_KILL_CLIENT("partitionRef is NULL.");
+        return LE_FAULT;
+    }
+
     pa_flash_OpenMode_t openMode;
 
     PartitionInit();
@@ -896,6 +902,12 @@ le_result_t le_flash_OpenUbi
     le_flash_PartitionRef_t* partitionRef    ///< [OUT] Partition reference.
 )
 {
+    if (partitionRef == NULL)
+    {
+        LE_KILL_CLIENT("partitionRef is NULL.");
+        return LE_FAULT;
+    }
+
     pa_flash_OpenMode_t openMode;
 
     PartitionInit();

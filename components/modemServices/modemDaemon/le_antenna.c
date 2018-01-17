@@ -133,7 +133,7 @@ le_antenna_ObjRef_t le_antenna_Request
  * @return
  *      - LE_OK on success
  *      - LE_NOT_FOUND if the antenna reference is unknown
- *      - LE_BAD_PARAMETER Invalid reference provided.
+ *      - LE_BAD_PARAMETER if an invalid reference provided.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_antenna_GetType
@@ -147,6 +147,12 @@ le_result_t le_antenna_GetType
         ///< allocated antenna type
 )
 {
+    if (antennaTypePtr == NULL)
+    {
+        LE_KILL_CLIENT("antennaTypePtr is NULL.");
+        return LE_FAULT;
+    }
+
     if (NULL == antennaRef)
     {
         LE_ERROR("Invalid reference %p", antennaRef);

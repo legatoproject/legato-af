@@ -1935,6 +1935,12 @@ le_result_t le_atClient_SetCommandAndSend
         ///< [IN] Timeout
 )
 {
+    if (cmdRefPtr  == NULL)
+    {
+        LE_KILL_CLIENT("cmdRefPtr is NULL.");
+        return LE_FAULT;
+    }
+
     le_result_t res = LE_FAULT;
 
     *cmdRefPtr = le_atClient_Create();

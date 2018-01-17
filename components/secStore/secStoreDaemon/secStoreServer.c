@@ -1457,6 +1457,7 @@ le_result_t secStoreAdmin_Next
  * @return
  *      LE_OK if successful.
  *      LE_OVERFLOW if the buffer is too small to hold the entry name.
+ *      LE_FAULT if there was some other error.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t secStoreAdmin_GetEntry
@@ -1472,11 +1473,23 @@ le_result_t secStoreAdmin_GetEntry
     size_t nameNumElements,
         ///< [IN]
 
-    bool *isDir
+    bool* isDir
         ///< [OUT]
         ///< True if the entry is a directory, false otherwise.
 )
 {
+    if (name == NULL)
+    {
+        LE_KILL_CLIENT("name buffer is NULL.");
+        return LE_FAULT;
+    }
+
+    if (isDir == NULL)
+    {
+        LE_KILL_CLIENT("isDir is NULL.");
+        return LE_FAULT;
+    }
+
     // Get the iterator from the safe reference.
     EntryIter_t* iterPtr = GetEntryIterPtr(iterRef);
 
@@ -1686,6 +1699,12 @@ le_result_t secStoreAdmin_GetSize
         return LE_FAULT;
     }
 
+    if (sizePtr == NULL)
+    {
+        LE_KILL_CLIENT("sizePtr is NULL.");
+        return LE_FAULT;
+    }
+
     // Delete the item from the secure storage.
     size_t size = 0;
     le_result_t result = pa_secStore_GetSize(path, &size);
@@ -1717,6 +1736,18 @@ le_result_t secStoreAdmin_GetTotalSpace
         ///< Free space, in bytes, in secure storage.
 )
 {
+    if (totalSizePtr == NULL)
+    {
+        LE_KILL_CLIENT("totalSizePtr is NULL.");
+        return LE_FAULT;
+    }
+
+    if (freeSizePtr == NULL)
+    {
+        LE_KILL_CLIENT("freeSizePtr is NULL.");
+        return LE_FAULT;
+    }
+
     size_t totalSize = 0, freeSize = 0;
     le_result_t result = pa_secStore_GetTotalSpace(&totalSize, &freeSize);
 

@@ -3343,6 +3343,7 @@ le_result_t le_gnss_ForceFactoryRestart
  *  - LE_BUSY          The position is not fixed and TTFF can't be measured.
  *  - LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
  *  - LE_OK            Function succeeded.
+ *  - LE_FAULT         If there are some other errors.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -3351,6 +3352,12 @@ le_result_t le_gnss_GetTtff
     uint32_t* ttffPtr     ///< [OUT] TTFF in milliseconds
 )
 {
+    if (ttffPtr == NULL)
+    {
+        LE_KILL_CLIENT("ttffPtr is NULL.");
+        return LE_FAULT;
+    }
+
     le_result_t result = LE_FAULT;
     *ttffPtr = 0;
 

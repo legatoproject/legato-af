@@ -62,6 +62,12 @@ le_result_t le_spi_Open
                                    ///  access the SPI device
 )
 {
+    if (handle == NULL)
+    {
+        LE_KILL_CLIENT("handle is NULL.");
+        return LE_FAULT;
+    }
+
     *handle = NULL;
 
     char devicePath[256];
@@ -212,6 +218,12 @@ le_result_t le_spi_WriteReadHD
     size_t* readDataLength        ///< [in/out] Number of bytes in rx message
 )
 {
+    if (readData == NULL)
+    {
+        LE_KILL_CLIENT("readData is NULL.");
+        return LE_FAULT;
+    }
+
     Device_t* device = le_ref_Lookup(DeviceHandleRefMap, handle);
     if (device == NULL)
     {
@@ -283,6 +295,12 @@ le_result_t le_spi_WriteReadFD
     size_t *readDataLength        ///< [in/out] Number of bytes in rx message
 )
 {
+    if (readData == NULL)
+    {
+        LE_KILL_CLIENT("readData is NULL.");
+        return LE_FAULT;
+    }
+
     Device_t* device = le_ref_Lookup(DeviceHandleRefMap, handle);
     if (device == NULL)
     {
@@ -323,6 +341,12 @@ le_result_t le_spi_ReadHD
     size_t* readDataLength        ///< [in/out] Number of bytes in tx message
 )
 {
+    if (readData == NULL)
+    {
+        LE_KILL_CLIENT("readData is NULL.");
+        return LE_FAULT;
+    }
+
     Device_t* device = le_ref_Lookup(DeviceHandleRefMap, handle);
     if (device == NULL)
     {
