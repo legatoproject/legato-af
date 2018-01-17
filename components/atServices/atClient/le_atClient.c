@@ -638,6 +638,7 @@ static void RxNewData
         interfacePtr->rxParser.rxData.endBuffer += size;
 
         /* Call the parser */
+        LE_DEBUG("Parsing received data: %s", interfacePtr->rxParser.rxData.buffer);
         ParseRxBuffer(&interfacePtr->rxParser);
         ResetRxBuffer(&interfacePtr->rxParser);
     }
@@ -832,65 +833,75 @@ static void StartTimer
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function is used to check if the line match any of final string of the command
+ * This function is used to check if the line matches any of response strings of the command
  *
+ * @return
+ *      - TRUE if the line matches a response string of the command
+ *      - FALSE otherwise
  */
 //--------------------------------------------------------------------------------------------------
 static bool CheckResponse
 (
-    char*          receivedRspPtr,
-    size_t         lineSize,
-    le_dls_List_t* responseListPtr,
-    le_dls_List_t* resultListPtr
+    char*          receivedRspPtr,   ///< [IN] Received line pointer
+    size_t         lineSize,         ///< [IN] Received line size
+    le_dls_List_t* responseListPtr,  ///< [IN] List of response strings of the command
+    le_dls_List_t* resultListPtr,    ///< [OUT] List of matched strings after comparison
+    char*          cmdNamePtr        ///< [IN] Command name pointer
 )
 {
-    bool result = false;
     LE_DEBUG("Start checking response");
 
-    if (lineSize == 0)
+    if (!lineSize)
     {
         return false;
     }
 
     le_dls_Link_t* linkPtr = le_dls_Peek(responseListPtr);
+
+    LE_DEBUG("Command: %s, size: %zu", cmdNamePtr, strlen(cmdNamePtr));
+    LE_DEBUG("Received response: %s, size: %zu", receivedRspPtr, lineSize);
+
+    if (strncmp(cmdNamePtr, receivedRspPtr, strlen(cmdNamePtr)) == 0)
+    {
+        LE_DEBUG("Found command echo in response");
+        return false;
+    }
+
     /* Browse all the queue while the string is not found */
     while (linkPtr != NULL)
     {
-        RspString_t *currStringPtr = CONTAINER_OF(linkPtr,
-                                                 RspString_t,
-                                                 link);
+        RspString_t* currStringPtr = CONTAINER_OF(linkPtr,
+                                                  RspString_t,
+                                                  link);
+        LE_DEBUG("Item: %s, size: %zu", currStringPtr->line, strlen(currStringPtr->line));
 
         if ((strlen(currStringPtr->line) == 0) ||
            ((lineSize >= strlen(currStringPtr->line)) &&
-           (strncmp(currStringPtr->line,receivedRspPtr,strlen(currStringPtr->line)) == 0)))
+           (strncmp(currStringPtr->line, receivedRspPtr, strlen(currStringPtr->line)) == 0)))
         {
-            LE_DEBUG("rsp matched, size = %d", (int) lineSize);
+            LE_DEBUG("Rsp matched, size: %zu", lineSize);
 
             RspString_t* newStringPtr = le_mem_ForceAlloc(RspStringPool);
-            memset(newStringPtr,0,sizeof(RspString_t));
+            memset(newStringPtr, 0, sizeof(RspString_t));
 
             if(lineSize>LE_ATDEFS_RESPONSE_MAX_BYTES)
             {
-                LE_ERROR("string too long");
+                LE_ERROR("String too long");
                 le_mem_Release(newStringPtr);
                 return false;
             }
 
-            strncpy(newStringPtr->line,receivedRspPtr,lineSize);
-
+            strncpy(newStringPtr->line, receivedRspPtr, lineSize);
             newStringPtr->link = LE_DLS_LINK_INIT;
-
-            le_dls_Queue(resultListPtr,&(newStringPtr->link));
-
+            le_dls_Queue(resultListPtr, &(newStringPtr->link));
             return true;
         }
 
         linkPtr = le_dls_PeekNext(responseListPtr, linkPtr);
     }
 
-    return false;
     LE_DEBUG("Stop checking response");
-    return result;
+    return false;
 }
 
 
@@ -948,7 +959,8 @@ static void SendingState
             size_t lineSize = newCRLF - parserPtr->idxLastCrLf;
 
             if (CheckResponse((char*)&(parserPtr->buffer[parserPtr->idxLastCrLf]), lineSize,
-                                    &(cmdPtr->expectResponseList), &(cmdPtr->responseList)))
+                              &(cmdPtr->expectResponseList), &(cmdPtr->responseList),
+                              cmdPtr->cmd))
             {
                 LE_DEBUG("Final command found");
 
@@ -965,8 +977,8 @@ static void SendingState
             }
 
             CheckResponse((char*)&(parserPtr->buffer[parserPtr->idxLastCrLf]), lineSize,
-                                    &(cmdPtr->ExpectintermediateResponseList),
-                                    &(cmdPtr->responseList));
+                          &(cmdPtr->ExpectintermediateResponseList), &(cmdPtr->responseList),
+                          cmdPtr->cmd);
             break;
         }
         default:
