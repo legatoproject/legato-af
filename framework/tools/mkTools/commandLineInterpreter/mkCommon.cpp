@@ -74,6 +74,7 @@ std::string GetToolPath
             toolChainPrefix = envVars::Get("TOOLCHAIN_PREFIX");
         }
     }
+
     // toolChainPrefix can be blank, but still valid
     if (toolEnvVarName == "CC")
     {
@@ -89,7 +90,7 @@ std::string GetToolPath
         // tool executable name.
         auto toolName = toolEnvVarName;
         std::transform(toolName.begin(), toolName.end(), toolName.begin(), ::tolower);
-        path += toolName;
+        path = path::Combine(toolChainDir, toolChainPrefix+toolName);
     }
 
     return path;
