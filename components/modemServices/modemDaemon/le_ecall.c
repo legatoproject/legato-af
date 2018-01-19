@@ -1582,6 +1582,7 @@ static void ProcessECallState
 )
 {
     bool endOfRedialPeriod = false;
+    le_ecall_MsdTxMode_t msdTxMode = LE_ECALL_TX_MODE_PUSH;
     ECallEventData_t* eCallEventDataPtr = (ECallEventData_t*) param1Ptr;
 
     LE_DEBUG("Process new eCall state %d (sessionState %d)",
@@ -1607,6 +1608,10 @@ static void ProcessECallState
                      ECallObj.termination,
                      ECallObj.ackOrT7Received,
                      eCallEventDataPtr->terminationReceived);
+            if (LE_OK != pa_ecall_GetMsdTxMode(&msdTxMode))
+            {
+                LE_DEBUG("Unable to get MSD transfer mode of Operation");
+            }
 
             // Update eCall session state
             switch(ECallObj.sessionState)
@@ -1629,9 +1634,9 @@ static void ProcessECallState
                         // End Of Redial Period
                         endOfRedialPeriod = true;
                     }
-                    // For ERA-GL, End of Redial if call drop due to Normal Clear in Pull mode
-                    else if (    (PA_ECALL_ERA_GLONASS == SystemStandard)
-                              && (true == ECallObj.eraGlonass.pullModeSwitch)
+                    // End of Redial if call drop due to Normal Clear in Pull mode
+                    else if (    ((true == ECallObj.eraGlonass.pullModeSwitch)
+                              || (LE_ECALL_TX_MODE_PULL == msdTxMode))
                               && (true == eCallEventDataPtr->terminationReceived)
                               && (LE_MCC_TERM_REMOTE_ENDED == ECallObj.termination)
                             )
@@ -1791,7 +1796,6 @@ static void ProcessECallState
         case LE_ECALL_STATE_RESET: /* eCall session has lost synchronization and starts over */
         case LE_ECALL_STATE_MSD_TX_FAILED: /* MSD transmission has failed */
         case LE_ECALL_STATE_FAILED: /* Unsuccessful eCall session */
-        case LE_ECALL_STATE_TIMEOUT_T2: /* Timeout for T2 */
         case LE_ECALL_STATE_TIMEOUT_T3: /* Timeout for T3 */
         case LE_ECALL_STATE_TIMEOUT_T5: /* Timeout for T5 */
         case LE_ECALL_STATE_TIMEOUT_T9: /* Timeout for T9 */
@@ -1799,6 +1803,13 @@ static void ProcessECallState
         {
             // Nothing to do, just report the event
              break;
+        }
+
+        case LE_ECALL_STATE_TIMEOUT_T2: /* Timeout for T2 */
+        {
+            // End Of Redial Period
+            endOfRedialPeriod = true;
+            break;
         }
 
         case LE_ECALL_STATE_LLACK_RECEIVED: /* LL-ACK received */
