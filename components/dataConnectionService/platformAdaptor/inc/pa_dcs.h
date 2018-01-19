@@ -72,7 +72,7 @@ typedef struct
     int min;    ///< Minutes      [0-59]
     int hour;   ///< Hours        [0-23]
     int day;    ///< Day          [1-31]
-    int mon;    ///< Month        [0-11]
+    int mon;    ///< Month        [1-12]
     int year;   ///< Year
 }
 pa_dcs_TimeStruct_t;
