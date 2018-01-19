@@ -30,9 +30,9 @@
  * Default data connection is obtained using le_data_Request().  Before the data connection is
  * requested, an application registers a connection state handler using
  * le_data_AddConnectionStateHandler().  Once the data connection is established, the handler will
- * be called indicating it's now connected.  If the state of the data connection changes, then the
- * handler will be called with the new state. To release a data connection, an application can use
- * le_data_Release().
+ * be called indicating it's now connected. The interface name is sent only when the data connection
+ * is in connected state. If the state of the data connection changes, then the handler will be
+ * called with the new state. To release a data connection, an application can use le_data_Release().
  *
  * The technology of the established connection can be retrieved with le_data_GetTechnology().
  *

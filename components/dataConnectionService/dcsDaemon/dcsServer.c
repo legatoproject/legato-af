@@ -489,6 +489,9 @@ static void SendConnStateEvent
     ConnStateData_t eventData;
     eventData.isConnected = isConnected;
 
+    // Initialize interface name to empty string
+    eventData.interfaceName[0] = '\0';
+
     // Set the interface name
     switch (CurrentTech)
     {
@@ -499,19 +502,16 @@ static void SendConnStateEvent
                                         eventData.interfaceName,
                                         sizeof(eventData.interfaceName));
             }
-            else
-            {
-                // Initialize to empty string
-                eventData.interfaceName[0] = '\0';
-            }
             break;
 
         case LE_DATA_WIFI:
-            snprintf(eventData.interfaceName, sizeof(eventData.interfaceName), WIFI_INTF);
+            if (isConnected)
+            {
+                snprintf(eventData.interfaceName, sizeof(eventData.interfaceName), WIFI_INTF);
+            }
             break;
 
         default:
-            eventData.interfaceName[0] = '\0';
             LE_ERROR("Unknown current technology %d", CurrentTech);
             break;
     }

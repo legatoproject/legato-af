@@ -315,8 +315,11 @@ static void DcsStateHandler
     // Check if connection status is coherent
     LE_ASSERT(ExpectedConnectionStatus == isConnected);
 
-    // Check interface name
-    LE_ASSERT(0 == strncmp(intfName, ExpectedIntf, strlen(ExpectedIntf)));
+    // Check interface name when connected
+    if (isConnected)
+    {
+        LE_ASSERT(0 == strncmp(intfName, ExpectedIntf, strlen(ExpectedIntf)));
+    }
 
     // Note: the technology retrieved by le_data_GetTechnology() cannot be tested again an expected
     // value as it changes as soon as the current technology is not available anymore.
