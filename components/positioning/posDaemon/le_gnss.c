@@ -3750,6 +3750,10 @@ le_result_t le_gnss_DeleteSuplCertificate
  * @warning This function may be subject to limitations depending on the platform. Please refer to
  *          the @ref platformConstraintsGnss page.
  *
+ * @note Some NMEA sentences are unsupported depending on the plateform. Please refer to
+ *       @ref platformConstraintsGnss_nmeaMask section for full details. Setting an unsuported NMEA
+ *       sentence won't report an error.
+ *
  * @warning The settings are platform dependent. Please refer to
  *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  *
@@ -3820,6 +3824,10 @@ le_result_t le_gnss_SetNmeaSentences
  *
  * @note If the caller is passing an null pointer to this function, it is a fatal error
  *       and the function will not return.
+ *
+ * @note Some NMEA sentences are unsupported depending on the plateform. Please refer to
+ *       @ref platformConstraintsGnss_nmeaMask section for full details. The bit mask for an unset
+ *       or unsupported NMEA sentence is zero.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_GetNmeaSentences

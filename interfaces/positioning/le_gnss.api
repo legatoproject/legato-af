@@ -170,9 +170,15 @@
  * The le_gnss_SetNmeaSentences() function selects the enabled NMEA sentences in the
  * @ref le_gnss_NMEA with a bit mask. The supported values are listed in @ref le_gnss_NmeaBitMask_t.
  *
+ * @note This function may be subject to limitations depending on the platform. Please refer to the
+ * @ref platformConstraintsGnss page.
+ *
  * @warning Your GNSS device may require a restart to take into account this change.
  * Please refer to your platform documentation @ref platformConstraintsGnss_SettingConfiguration for
  * further details.
+ *
+ * @warning Some NMEA sentences are unsupported depending on the plateform. Please refer to
+ * @ref platformConstraintsGnss_nmeaMask section for full details.
  *
  * @note All supported NMEA sentences are enabled by default.
  *
@@ -1609,6 +1615,10 @@ FUNCTION le_result_t DeleteSuplCertificate
  * @warning This function may be subject to limitations depending on the platform. Please refer to
  *          the @ref platformConstraintsGnss page.
  *
+ * @note Some NMEA sentences are unsupported depending on the plateform. Please refer to
+ *       @ref platformConstraintsGnss_nmeaMask section for full details. Setting an unsuported NMEA
+ *       sentence won't report an error.
+ *
  * @warning The settings are platform dependent. Please refer to
  *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  *
@@ -1634,6 +1644,10 @@ FUNCTION le_result_t SetNmeaSentences
  *
  * @note If the caller is passing an null pointer to this function, it is a fatal error
  *       and the function will not return.
+ *
+ * @note Some NMEA sentences are unsupported depending on the plateform. Please refer to
+ *       @ref platformConstraintsGnss_nmeaMask section for full details. The bit mask for an unset
+ *       or unsupported NMEA sentence is zero.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetNmeaSentences

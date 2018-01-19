@@ -71,16 +71,48 @@ $GPGGA,,,,,,0,,,,,,,,*66
 
 @section platformConstraintsGnss_nmeaMask Enabled NMEA sentences
 
-The le_gnss_SetNmeaSentences() and le_gnss_GetNmeaSentences() functions configure the enabled NMEA
-sentences in the NMEA flow. Please note that the Qualcomm-based firmware release
+@c le_gnss_SetNmeaSentences() function configures the enabled NMEA sentences in the NMEA flow and
+@c le_gnss_GetNmeaSentences() function gets the enabled NMEA sentences.
+
+Not all NMEA sentences are supported by the different platforms. The table below lists the supported
+NMEA sentences for each platform.
+
+| NMEA sentences           |  AR7  | AR758x | AR759x |  AR8652 | WP750x | WP76xx | WP77xx | WP85  |
+| -------------------------| ----- | ------ | ------ | ------- | ------ | ------ | ------ | ----- |
+| LE_GNSS_NMEA_MASK_GPGGA  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
+| LE_GNSS_NMEA_MASK_GPGSA  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
+| LE_GNSS_NMEA_MASK_GPGSV  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
+| LE_GNSS_NMEA_MASK_GPRMC  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
+| LE_GNSS_NMEA_MASK_GPVTG  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
+| LE_GNSS_NMEA_MASK_GLGSV  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
+| LE_GNSS_NMEA_MASK_GNGNS  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
+| LE_GNSS_NMEA_MASK_GNGSA  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
+| LE_GNSS_NMEA_MASK_GAGGA  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
+| LE_GNSS_NMEA_MASK_GAGSA  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
+| LE_GNSS_NMEA_MASK_GAGSV  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
+| LE_GNSS_NMEA_MASK_GARMC  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
+| LE_GNSS_NMEA_MASK_GAVTG  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
+| LE_GNSS_NMEA_MASK_PSTIS  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
+| LE_GNSS_NMEA_MASK_PQXFI  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
+| LE_GNSS_NMEA_MASK_PTYPE  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
+| LE_GNSS_NMEA_MASK_GPGRS  |       |        |   X    |         |        |        |        |       |
+| LE_GNSS_NMEA_MASK_GPGLL  |       |        |   X    |         |        |        |        |       |
+| LE_GNSS_NMEA_MASK_DEBUG  |       |   X    |   X    |         |        |   X    |   X    |       |
+| LE_GNSS_NMEA_MASK_GPDTM  |       |        |   X    |         |        |        |        |       |
+| LE_GNSS_NMEA_MASK_GAGNS  |       |        |   X    |         |        |        |        |       |
+
+
+@deprecated LE_GNSS_NMEA_MASK_PQXFI is deprecated. LE_GNSS_NMEA_MASK_PTYPE supporting all
+proprietary type masks, should be used instead.
+Setting LE_GNSS_NMEA_MASK_PTYPE will also set LE_GNSS_NMEA_MASK_PQXFI.
+
+Please note that the Qualcomm-based firmware release
 <c>SWI9X15A_07.10.15.00</c> (AR755x, AR8652) is subject to some limitations:
 - Not all NMEA sentences supported by the AT!GPSNMEASENTENCE can be (de)activated through
 the Legato API: the @c GPGSV_EXTENDED and @c GPGRS NMEA sentences are not available.
 - The Galileo NMEA sentences always appear as not enabled when retrieving their status, even if
 they are enabled. This concerns the @c GAGGA, @c GAGSA, @c GAGSV, @c GARMC, and @c GAVTG
 NMEA sentences.
-
-@deprecated PQXFI is deprecated. PTYPE mask is used to support all Proprietary Type masks.
 
 @section platformConstraintsGnss_SettingConfiguration Setting configuration
 
