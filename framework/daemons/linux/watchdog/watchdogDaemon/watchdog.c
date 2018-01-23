@@ -507,7 +507,7 @@ static void WatchdogHandleExpiry
         fd = open(procPidPath, O_RDONLY);
         if (0 <= fd)
         {
-            read(fd, procName, LE_LIMIT_PROC_NAME_LEN);
+            (void) read(fd, procName, LE_LIMIT_PROC_NAME_LEN);
             close(fd);
         }
         LE_CRIT("proc %d [%s] timed out", procId, procName);
