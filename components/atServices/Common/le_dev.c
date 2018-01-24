@@ -269,20 +269,37 @@ ssize_t le_dev_Read
 {
     ssize_t count;
 
+    if (NULL == devicePtr)
+    {
+        LE_ERROR("devicePtr is NULL!");
+        return -1;
+    }
+
+    if (NULL == rxDataPtr)
+    {
+        LE_ERROR("rxDataPtr is NULL!");
+        return -1;
+    }
+
+    if (0 == size)
+    {
+        LE_ERROR("size is 0!");
+        return -1;
+    }
+
     DevInfo.fd = devicePtr->fd;
     if (!GetDeviceInformation())
     {
         LE_INFO("%s", DevInfo.devInfoStr);
     }
 
-    count = read(devicePtr->fd, rxDataPtr, (size - 1));
-    if (count == -1)
+    count = read(devicePtr->fd, rxDataPtr, size);
+    if (-1 == count)
     {
         LE_ERROR("read error: %s", StrError(errno));
         return 0;
     }
 
-    *(char *)(rxDataPtr+count) = '\0';
     PrintBuffer(devicePtr->fd, rxDataPtr, count);
 
     return count;

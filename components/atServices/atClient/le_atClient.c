@@ -627,14 +627,16 @@ static void RxNewData
     LE_DEBUG("Start read");
 
     /* Read RX data on uart */
+    // PARSER_BUFFER_MAX_BYTES length is including '\0' character.
     size = le_dev_Read(&interfacePtr->device,
                          (uint8_t *)(&interfacePtr->rxParser.rxData.buffer) +
                          interfacePtr->rxParser.rxData.idx,
-                         (PARSER_BUFFER_MAX_BYTES - interfacePtr->rxParser.rxData.idx));
+                         (PARSER_BUFFER_MAX_BYTES - interfacePtr->rxParser.rxData.idx - 1));
 
     /* Start the parsing only if we have read some bytes */
     if (size > 0)
     {
+        interfacePtr->rxParser.rxData.buffer[interfacePtr->rxParser.rxData.idx + size] = '\0';
         interfacePtr->rxParser.rxData.endBuffer += size;
 
         /* Call the parser */
