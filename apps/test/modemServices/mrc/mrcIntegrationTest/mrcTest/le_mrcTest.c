@@ -692,17 +692,28 @@ static void Testle_mrc_RatPreferences
         }
     }
 
+    res = le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_TDSCDMA);
+    LE_ASSERT((LE_OK == res) || (LE_UNSUPPORTED == res));
+
+    if (LE_OK == res)
+    {
+        LE_ASSERT_OK(le_mrc_GetRatPreferences(&bitMask));
+        PrintRat(bitMask);
+
+        LE_ASSERT(LE_MRC_BITMASK_RAT_TDSCDMA == bitMask);
+    }
+
     LE_ASSERT_OK(le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_GSM));
 
     LE_ASSERT_OK(le_mrc_GetRatPreferences(&bitMask));
     PrintRat(bitMask);
-    LE_ASSERT(bitMask == LE_MRC_BITMASK_RAT_GSM);
+    LE_ASSERT(LE_MRC_BITMASK_RAT_GSM == bitMask);
 
     LE_ASSERT_OK(le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_GSM | LE_MRC_BITMASK_RAT_UMTS));
 
     LE_ASSERT_OK(le_mrc_GetRatPreferences(&bitMask));
     PrintRat(bitMask);
-    LE_ASSERT(bitMask == (LE_MRC_BITMASK_RAT_GSM | LE_MRC_BITMASK_RAT_UMTS));
+    LE_ASSERT((LE_MRC_BITMASK_RAT_GSM | LE_MRC_BITMASK_RAT_UMTS) == bitMask);
 
     LE_ASSERT_OK(le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_ALL));
 
@@ -716,20 +727,20 @@ static void Testle_mrc_RatPreferences
 
         LE_ASSERT_OK(le_mrc_GetRatPreferences(&bitMask));
         PrintRat(bitMask);
-        LE_ASSERT(bitMask == LE_MRC_BITMASK_RAT_CDMA);
+        LE_ASSERT(LE_MRC_BITMASK_RAT_CDMA == bitMask);
     }
 
     LE_ASSERT_OK(le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_UMTS));
 
     LE_ASSERT_OK(le_mrc_GetRatPreferences(&bitMask));
     PrintRat(bitMask);
-    LE_ASSERT(bitMask == LE_MRC_BITMASK_RAT_UMTS);
+    LE_ASSERT(LE_MRC_BITMASK_RAT_UMTS == bitMask);
 
     LE_ASSERT_OK(le_mrc_SetRatPreferences(bitMaskOrigin));
 
     LE_ASSERT_OK(le_mrc_GetRatPreferences(&bitMask));
     PrintRat(bitMask);
-    LE_ASSERT(bitMask == bitMaskOrigin);
+    LE_ASSERT(bitMaskOrigin == bitMask);
 }
 //! [RAT Preferences]
 
