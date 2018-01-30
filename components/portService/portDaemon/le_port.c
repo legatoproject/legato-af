@@ -1534,8 +1534,8 @@ le_result_t le_port_SetCommandMode
                 }
 
                 // One instance supports only AT link.
-                break;
                 atLinkDetect = true;
+                break;
             }
         }
 
