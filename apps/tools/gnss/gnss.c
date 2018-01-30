@@ -466,7 +466,7 @@ static int Restart
 //-------------------------------------------------------------------------------------------------
 static int SetAcquisitionRate
 (
-    const char* acqRateStr          ///< [IN] Acquisition rate in milliseconds.
+    const char* acqRateStr          ///< [IN] Acquisition rate in milliseconds
 )
 {
     char *end;
@@ -516,7 +516,7 @@ static int SetAcquisitionRate
 //-------------------------------------------------------------------------------------------------
 static int SetMinElevation
 (
-    const char* minElevationPtr           ///< [IN] Minimum elevation in degrees [range 0..90].
+    const char* minElevationPtr           ///< [IN] Minimum elevation in degrees [range 0..90]
 )
 {
     char *end;
@@ -563,7 +563,7 @@ static int SetMinElevation
 //-------------------------------------------------------------------------------------------------
 static int SetConstellation
 (
-    const char* constellationPtr   ///< [IN] GNSS constellation used in solution.
+    const char* constellationPtr   ///< [IN] GNSS constellation used in solution
 )
 {
     uint32_t constellationMask = 0;
@@ -658,8 +658,8 @@ static int SetConstellation
 //-------------------------------------------------------------------------------------------------
 static int SetConstellationArea
 (
-    const char* constellationPtr,      ///< [IN] GNSS constellation used in solution.
-    const char* constellationAreaPtr   ///< [IN] GNSS constellation area.
+    const char* constellationPtr,      ///< [IN] GNSS constellation used in solution
+    const char* constellationAreaPtr   ///< [IN] GNSS constellation area
 )
 {
     char *endPtr;
@@ -714,7 +714,7 @@ static int SetConstellationArea
 //-------------------------------------------------------------------------------------------------
 static int SetAgpsMode
 (
-    const char* agpsModePtr    ///< [IN] agps to set.
+    const char* agpsModePtr    ///< [IN] agps to set
 )
 {
     le_gnss_AssistedMode_t suplAgpsMode;
@@ -773,7 +773,7 @@ static int SetAgpsMode
 //-------------------------------------------------------------------------------------------------
 static int SetNmeaSentences
 (
-    const char* nmeaMaskStr     ///< [IN] Enabled NMEA sentences bit mask.
+    const char* nmeaMaskStr     ///< [IN] Enabled NMEA sentences bit mask
 )
 {
     int nmeaMask = le_hex_HexaToInteger(nmeaMaskStr);
@@ -815,7 +815,7 @@ static int SetNmeaSentences
 
 //-------------------------------------------------------------------------------------------------
 /**
- * This function gets ttff(Time to First Fix) value.
+ * This function gets TTFF (Time to First Fix) value.
  *
  * @return
  *     - EXIT_SUCCESS on success.
@@ -824,12 +824,19 @@ static int SetNmeaSentences
 //-------------------------------------------------------------------------------------------------
 static int GetTtff
 (
-    void
+    le_gnss_State_t state    ///< [IN] GNSS state
 )
 {
     uint32_t ttff;
-    le_result_t result = le_gnss_GetTtff(&ttff);
+    le_result_t result;
 
+    if (LE_GNSS_STATE_ACTIVE != state)
+    {
+        printf("GNSS is not in active state!\n");
+        return EXIT_FAILURE;
+    }
+
+    result = le_gnss_GetTtff(&ttff);
     switch (result)
     {
         case LE_OK:
@@ -908,10 +915,10 @@ static int GetConstellation
     le_gnss_ConstellationBitMask_t constellationMask;
     le_result_t result = le_gnss_GetConstellation(&constellationMask);
 
-    printf("ConstellationType %d\n", constellationMask);
-
     if (result == LE_OK)
     {
+        printf("ConstellationType %d\n", constellationMask);
+
         (constellationMask & LE_GNSS_CONSTELLATION_GPS)     ? printf("GPS activated\n") :
                                                               printf("GPS not activated\n");
         (constellationMask & LE_GNSS_CONSTELLATION_GLONASS) ? printf("GLONASS activated\n") :
@@ -1895,7 +1902,7 @@ static int GetPosInfo
 )
 {
     int status = EXIT_SUCCESS;
-    status = (EXIT_FAILURE == GetTtff()) ? EXIT_FAILURE : status;
+    status = (EXIT_FAILURE == GetTtff(le_gnss_GetState())) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetPosState(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == Get2Dlocation(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetAltitude(positionSampleRef)) ? EXIT_FAILURE : status;
@@ -1925,7 +1932,7 @@ static int GetPosInfo
 //-------------------------------------------------------------------------------------------------
 static int DoPosFix
 (
-    uint32_t fixVal          ///< [IN] Position fix time in seconds.
+    uint32_t fixVal          ///< [IN] Position fix time in seconds
 )
 {
     uint32_t count = 0;
@@ -2127,7 +2134,7 @@ static void* PositionThread
 //--------------------------------------------------------------------------------------------------
 static int WatchGnssInfo
 (
-    uint32_t watchPeriod          ///< [IN] Watch period in seconds.
+    uint32_t watchPeriod          ///< [IN] Watch period in seconds
 )
 {
     le_thread_Ref_t positionThreadRef;
@@ -2194,13 +2201,14 @@ void
 //-------------------------------------------------------------------------------------------------
 static void GetGnssParams
 (
-    const char *params      ///< [IN] gnss parameters.
+    const char *params      ///< [IN] gnss parameters
 )
 {
+    le_gnss_State_t state = le_gnss_GetState();
 
     if (0 == strcmp(params, "ttff"))
     {
-        exit(GetTtff());
+        exit(GetTtff(state));
     }
     else if (0 == strcmp(params, "acqRate"))
     {
@@ -2246,6 +2254,12 @@ static void GetGnssParams
              (0 == strcmp(params, "dop"))         ||
              (0 == strcmp(params, "posInfo")))
     {
+        if (LE_GNSS_STATE_ACTIVE != state)
+        {
+            printf("GNSS is not in active state!\n");
+            exit(EXIT_FAILURE);
+        }
+
         // Copy the param
         le_utf8_Copy(ParamsName, params, sizeof(ParamsName), NULL);
 
@@ -2272,9 +2286,9 @@ static void GetGnssParams
 //-------------------------------------------------------------------------------------------------
 static int SetGnssParams
 (
-    const char * argNamePtr,    ///< [IN] gnss parameters.
-    const char * argValPtr,     ///< [IN] gnss parameters.
-    const char * arg2ValPtr     ///< [IN] gnss parameters.
+    const char * argNamePtr,    ///< [IN] gnss parameters
+    const char * argValPtr,     ///< [IN] gnss parameters
+    const char * arg2ValPtr     ///< [IN] gnss parameters
 )
 {
     int status = EXIT_FAILURE;
@@ -2416,12 +2430,6 @@ COMPONENT_INIT
     }
     else if (strcmp(commandPtr, "get") == 0)
     {
-        if (LE_GNSS_STATE_ACTIVE != le_gnss_GetState())
-        {
-            LE_ERROR("Gnss is not in active state!");
-            exit(EXIT_FAILURE);
-        }
-
         const char* paramsPtr = le_arg_GetArg(1);
         if (NULL == paramsPtr)
         {
@@ -2457,7 +2465,7 @@ COMPONENT_INIT
     {
         if (LE_GNSS_STATE_ACTIVE != le_gnss_GetState())
         {
-            LE_ERROR("Gnss is not in active state!");
+            printf("GNSS is not in active state!\n");
             exit(EXIT_FAILURE);
         }
 
