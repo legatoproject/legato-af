@@ -17,7 +17,9 @@ add_test(
 )
 
 # Extend the timeout as this test can take some time to collect enough samples
-set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 300)
+# In most PCs this should run quite fast, but if there is a lack of entropy
+# (VM for instance), install haveged to improve the performance.
+set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 600)
 
 # This is a C test
 add_dependencies(tests_c ${APP_TARGET})
