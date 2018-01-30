@@ -174,6 +174,8 @@ typedef struct AppContainer
                                           ///< this app. NULL if not connected client.
     le_appCtrl_TraceAttachHandlerFunc_t traceAttachHandler; ///< Client's trace attach handler.
     void* traceAttachContextPtr;          ///< Context for the client's trace attach handler.
+    le_timer_Ref_t CheckAppStopTimer;     ///< Timer for waiting APP stop
+    int AppStopTryCount;                  ///< Counter number for retrying to mark the stopped APP
 }
 AppContainer_t;
 
@@ -248,6 +250,29 @@ static le_mem_PoolRef_t AppProcContainerPool;
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t AppProcMap;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Timeout value for waiting processes to exit for an app.
+ */
+//--------------------------------------------------------------------------------------------------
+static const le_clk_Time_t WaitAppStopTimeout =
+{
+    .sec = 0,
+    .usec = 100*1000
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Marking an app as "stopped". Since the mechanisms to determine app stop (cgroup release_agent)
+ * and proc stop (SIGCHILD signals and the handlers) are decoupled, this function ensures that an
+ * app is marked as stopped only when all configured processes have been marked as stopped.
+ */
+//--------------------------------------------------------------------------------------------------
+static void MarkAppAsStopped
+(
+    void* param1Ptr,    ///< [IN] param 1, app ref
+    void* param2Ptr     ///< [IN] param 2, app container ref
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -605,6 +630,8 @@ static le_result_t CreateApp
     containerPtr->clientRef = NULL;
     containerPtr->traceAttachHandler = NULL;
     containerPtr->traceAttachContextPtr = NULL;
+    containerPtr->CheckAppStopTimer = NULL;
+    containerPtr->AppStopTryCount = 0;
 
     // Add this app to the inactive list.
     le_dls_Queue(&InactiveAppsList, &(containerPtr->link));
@@ -916,6 +943,87 @@ static int CreateAppStopSvSocket
     return fd;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function called when there are configured procs in the proc lists, but
+ * no actual running procs.
+ */
+//--------------------------------------------------------------------------------------------------
+static void WaitAppStopHandler
+(
+    le_timer_Ref_t timerRef
+)
+{
+    app_Ref_t appRef = (app_Ref_t)le_timer_GetContextPtr(timerRef);
+    AppContainer_t* appContainerPtr = GetActiveApp(app_GetName(appRef));
+
+    if (appContainerPtr == NULL)
+    {
+        // App may be missing in some fault cases when shutting down the system.
+        // App has already been cleaned up, so safe to ignore shutdown notification.
+        LE_WARN("Cannot find active app '%s'", app_GetName(appRef));
+    }
+    else
+    {
+        MarkAppAsStopped(appRef, appContainerPtr);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Raise a timer to check if the App has stopped.
+ */
+//--------------------------------------------------------------------------------------------------
+static void WaitAppStop
+(
+    void* param1Ptr,    ///< [IN] param 1, app ref
+    void* param2Ptr     ///< [IN] param 2, app container ref
+)
+{
+    app_Ref_t appRef = (app_Ref_t)param1Ptr;
+    AppContainer_t* appContainerPtr = (AppContainer_t*)param2Ptr;
+
+    if(appContainerPtr->CheckAppStopTimer == NULL)
+    {
+        char timerName[LIMIT_MAX_PATH_BYTES];
+        snprintf(timerName, sizeof(timerName), "%s_CheckStop", app_GetName(appRef));
+        appContainerPtr->CheckAppStopTimer = le_timer_Create(timerName);
+
+        LE_ASSERT(le_timer_SetInterval(appContainerPtr->CheckAppStopTimer,
+                                            WaitAppStopTimeout) == LE_OK);
+        LE_ASSERT(le_timer_SetContextPtr(appContainerPtr->CheckAppStopTimer,
+                                            (void*)appRef) == LE_OK);
+        LE_ASSERT(le_timer_SetHandler(appContainerPtr->CheckAppStopTimer,
+                                            WaitAppStopHandler) == LE_OK);
+    }
+
+    if (!le_timer_IsRunning(appContainerPtr->CheckAppStopTimer) &&
+        appContainerPtr->CheckAppStopTimer != NULL)
+    {
+        LE_ASSERT(le_timer_Start(appContainerPtr->CheckAppStopTimer)
+                                            == LE_OK);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete the check stop timer after the app has been stopped.
+ */
+//--------------------------------------------------------------------------------------------------
+void WaitAppStopComplete
+(
+    void* paramPtr     ///< [IN] param, app container ref
+)
+{
+    AppContainer_t* appContainerPtr = (AppContainer_t*)paramPtr;
+
+    // Since the app has already stopped, we can stop the time-out timer now.
+    if (appContainerPtr->CheckAppStopTimer != NULL)
+    {
+        le_timer_Delete(appContainerPtr->CheckAppStopTimer);
+        appContainerPtr->CheckAppStopTimer = NULL;
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -932,12 +1040,11 @@ static void MarkAppAsStopped
 {
     #define MaxRetryCount 10
     // Note that this is a global retry counter shared by all apps.
-    static int RetryCount = 0;
 
     app_Ref_t appRef = (app_Ref_t)param1Ptr;
     AppContainer_t* appContainerPtr = (AppContainer_t*)param2Ptr;
 
-    LE_FATAL_IF(RetryCount > MaxRetryCount,
+    LE_FATAL_IF(appContainerPtr->AppStopTryCount > MaxRetryCount,
           "Cannot mark app as stopped because configured procs' states can't be marked as stopped");
 
     if (app_HasConfRunningProc(appRef))
@@ -948,28 +1055,29 @@ static void MarkAppAsStopped
         // correctly, then we can proceed to set the app state as stopped.
         if (cgrp_IsEmpty(CGRP_SUBSYS_FREEZE, app_GetName(appRef)))
         {
-            RetryCount++;
+            appContainerPtr->AppStopTryCount++;
             LE_WARN("App %s still has configured running procs. Cannot yet mark app as stopped.",
                     app_GetName(appRef));
-            le_event_QueueFunction(MarkAppAsStopped, appRef, appContainerPtr);
+            le_event_QueueFunction(WaitAppStop, appRef, appContainerPtr);
         }
         // If there are configured procs in the proc lists and there are actual running procs, then
         // we are in the middle of fault action "restart" which restarts the faulty process while
         // keeping the app running. Therefore do not mark the app as stopped.
         else
         {
-            RetryCount = 0;
+            appContainerPtr->AppStopTryCount = 0;
             LE_DEBUG("Fault action 'restart' in action. Not marking app as stopped.");
         }
     }
     else
     {
-        RetryCount = 0;
+        appContainerPtr->AppStopTryCount = 0;
 
         // If there are no configured procs in the proc lists and there are no actual running procs,
         // then the app has stopped. We can proceed to mark the app as stopped.
         if (cgrp_IsEmpty(CGRP_SUBSYS_FREEZE, app_GetName(appRef)))
         {
+            WaitAppStopComplete(appContainerPtr);
             app_StopComplete(appRef);
             appContainerPtr->stopHandler(appContainerPtr);
         }
