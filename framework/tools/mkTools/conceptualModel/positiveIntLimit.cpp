@@ -39,9 +39,11 @@ PositiveIntLimit_t::PositiveIntLimit_t
  * Validates and stores the limit value.
  *
  *  @throws mk::Exception_t if value out of range.
+ *
+ *  @return reference of this object.
  */
 //--------------------------------------------------------------------------------------------------
-void PositiveIntLimit_t::operator =
+PositiveIntLimit_t& PositiveIntLimit_t::operator =
 (
     int value
 )
@@ -55,6 +57,8 @@ void PositiveIntLimit_t::operator =
     {
         NonNegativeIntLimit_t::operator =((size_t)value);
     }
+
+    return *this;
 }
 
 
@@ -63,9 +67,11 @@ void PositiveIntLimit_t::operator =
  * Validates and stores the limit value.
  *
  *  @throws mk::Exception_t if value out of range.
+ *
+ *  @return reference of this object.
  */
 //--------------------------------------------------------------------------------------------------
-void PositiveIntLimit_t::operator =
+PositiveIntLimit_t& PositiveIntLimit_t::operator =
 (
     size_t value
 )
@@ -79,6 +85,8 @@ void PositiveIntLimit_t::operator =
     {
         throw mk::Exception_t(LE_I18N("Limit must be greater than zero."));
     }
+
+    return *this;
 }
 
 

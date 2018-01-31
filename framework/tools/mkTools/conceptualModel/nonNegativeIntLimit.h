@@ -23,8 +23,8 @@ class NonNegativeIntLimit_t : public Limit_t
 
     public:
 
-        virtual void operator =(int value);
-        virtual void operator =(size_t value) { isSet = true; this->value = value; }
+        virtual NonNegativeIntLimit_t& operator =(int value);
+        virtual NonNegativeIntLimit_t& operator =(size_t value) { isSet = true; this->value = value; return *this;}
 
         virtual size_t Get() const;
 };

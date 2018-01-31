@@ -18,9 +18,11 @@ namespace model
  * Assignment operator.  Validates and stores the FaultAction_t value.
  *
  * @throws mk::Exception_t if input is not one of the valid action strings
+ *
+ * @return  Reference of this object.
  */
 //--------------------------------------------------------------------------------------------------
-void FaultAction_t::operator =
+FaultAction_t& FaultAction_t::operator =
 (
     const std::string& action
 )
@@ -45,6 +47,8 @@ void FaultAction_t::operator =
             mk::format(LE_I18N("Unknown fault action '%s'."), action)
         );
     }
+
+    return *this;
 }
 
 

@@ -18,9 +18,11 @@ namespace model
  * Validates and stores the limit value.
  *
  *  @throws mk::Exception_t if value out of range.
+ *
+ *  @return  Reference of this object.
  */
 //--------------------------------------------------------------------------------------------------
-void NonNegativeIntLimit_t::operator =
+NonNegativeIntLimit_t& NonNegativeIntLimit_t::operator =
 (
     int value
 )
@@ -34,6 +36,8 @@ void NonNegativeIntLimit_t::operator =
     {
         operator =((size_t)value);
     }
+
+    return *this;
 }
 
 

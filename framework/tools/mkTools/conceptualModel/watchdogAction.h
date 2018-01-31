@@ -23,7 +23,7 @@ class WatchdogAction_t: public Limit_t
 
     public:
 
-        void operator =(const std::string &action);
+        WatchdogAction_t& operator =(const std::string &action);
 
         const std::string& Get() const;
 };

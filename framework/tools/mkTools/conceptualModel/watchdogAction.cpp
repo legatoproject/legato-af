@@ -17,9 +17,11 @@ namespace model
  * Assignment operator.  Validates and stores the WatchdogAction_t value.
  *
  * @throws mk::Exception_t if input is not one of the valid action strings
+ *
+ * @return  Reference of this object.
  */
 //--------------------------------------------------------------------------------------------------
-void WatchdogAction_t::operator =
+WatchdogAction_t& WatchdogAction_t::operator =
 (
     const std::string& action
 )
@@ -42,6 +44,8 @@ void WatchdogAction_t::operator =
         value = action;
         isSet = true;
     }
+
+    return *this;
 }
 
 

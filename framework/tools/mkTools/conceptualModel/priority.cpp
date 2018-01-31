@@ -74,9 +74,11 @@ static int GetNumber
  * Validates and stores the limit value.
  *
  *  @throws mk::Exception_t if value out of range.
+ *
+ *  @return  Reference of this object.
  */
 //--------------------------------------------------------------------------------------------------
-void Priority_t::operator =
+Priority_t& Priority_t::operator =
 (
     const std::string& value
 )
@@ -120,6 +122,7 @@ void Priority_t::operator =
 
     this->value = value;
     isSet = true;
+    return *this;
 }
 
 
