@@ -1436,7 +1436,8 @@ static le_result_t EncodeMsd
 {
     uint8_t outOptionalDataForEraGlonass[160]={0}; ///< 160 Bytes is guaranteed enough
                                                    ///< for the data part
-    uint8_t oid[] = {1,4,1}; ///< OID version supported
+    uint8_t oid[] = {1,4,1}; ///< OID version for MSD version 1
+    uint8_t oidV2[] = {1,4,2}; ///< OID version for MSD version 2
 
     LE_FATAL_IF((eCallPtr == NULL), "eCallPtr is NULL !");
 
@@ -1486,8 +1487,17 @@ static le_result_t EncodeMsd
 
                 if( 0 < eCallPtr->msd.msdMsg.optionalData.dataLen )
                 {
-                    eCallPtr->msd.msdMsg.optionalData.oid = oid;
-                    eCallPtr->msd.msdMsg.optionalData.oidlen = sizeof( oid );
+                    if (eCallPtr->msd.version == 1)
+                    {
+                        eCallPtr->msd.msdMsg.optionalData.oid = oid;
+                        eCallPtr->msd.msdMsg.optionalData.oidlen = sizeof(oid);
+                    }
+                    else if (eCallPtr->msd.version == 2)
+                    {
+                        eCallPtr->msd.msdMsg.optionalData.oid = oidV2;
+                        eCallPtr->msd.msdMsg.optionalData.oidlen = sizeof(oidV2);
+                    }
+
                     eCallPtr->msd.msdMsg.optionalDataPres = true;
                     eCallPtr->msd.msdMsg.optionalData.data = outOptionalDataForEraGlonass;
                 }

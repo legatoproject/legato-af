@@ -208,9 +208,11 @@
  * - le_ecall_SetMsdEraGlonassCoordinateSystemType().
  * - le_ecall_ResetMsdEraGlonassCoordinateSystemType().
  *
- * ERA-GLONASS additional data is encoded using the OID version "1.4.1".
- * This was assigned to ERA-GLONASS optional additional data by CEN. Content of data
- * block in the AdditionalData for MSD version 1 should be:
+ * ERA-GLONASS additional data is encoded using the OID version "1.4.1" for
+ * MSD version 1 and the OID version "1.4.2" for MSD version 2.
+ * This was assigned to ERA-GLONASS optional additional data by CEN.
+ *
+ * Content of data block in the AdditionalData for MSD version 1 should be:
  *
  * @code
  *
