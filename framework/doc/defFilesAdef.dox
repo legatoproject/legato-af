@@ -949,6 +949,25 @@ requires:
         of the app.  This also means that you <b>can not create files</b> in a mapped directory from
         within the sandbox.
 
+@note   If an access to the directory /dev/shm is required, it should be listed in this
+        subsection as below mentioned, because it is treated like a directory even if it
+        is located in /dev.
+@code
+requires:
+{
+    dir:
+    {
+        /dev/shm    /dev/shm
+    }
+}
+@endcode
+
+@note   If your @c requires: dir: section includes /dev/shm then,
+        inside your legato application after calling:
+        shm_open (sharedMemRegion, ...)
+        you have to run:
+        chmod ("/dev/shm/sharedMemRegion", S_IRWXU | S_IRWXG | S_IRWXO);
+
 @subsection defFilesAdef_requiresFile file
 
 Declares:
@@ -1080,12 +1099,14 @@ requires:
 @endcode
 
 @warning  When something is accessible from inside an app sandbox, there are potential security
-            risks  (e.g., access to the object could be exploited by the app, or hacker, to access sensitive
-            information or launch a denial-of-service attack on other apps within the target
-            device or other devices connected to the target device).
+            risks  (e.g., access to the object could be exploited by the app, or hacker, to access
+            sensitive information or launch a denial-of-service attack on other apps within the
+            target device or other devices connected to the target device).
 
 @warning  This section is experimental.  Future releases of may not support this section.
 
+@note   If an access to the directory @c /dev/shm is required, it should be listed in the subsection
+        @c dir: because it is treated like a directory even if it is located in @c /dev.
 
 @section defFilesAdef_sandboxed sandboxed
 

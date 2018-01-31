@@ -668,8 +668,23 @@ requires:
         within the sandbox.
 
 @note   If an access to the directory @c /dev/shm is required, it should be listed in this
-        subsection because it is treated like a directory even if it is located in @c /dev.
+        subsection as below mentioned, because it is treated like a directory even if it
+        is located in @c /dev.
+@code
+requires:
+{
+    dir:
+    {
+        /dev/shm    /dev/shm
+    }
+}
+@endcode
 
+@note   If your @c requires: dir: section includes /dev/shm then,
+        inside your legato application after calling:
+        shm_open (sharedMemRegion, ...)
+        you have to run:
+        chmod ("/dev/shm/sharedMemRegion", S_IRWXU | S_IRWXG | S_IRWXO);
 
 @subsection defFilesCdef_requiresLib lib
 
