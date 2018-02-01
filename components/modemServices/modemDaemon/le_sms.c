@@ -2314,14 +2314,23 @@ static void CloseSessionEventHandler
 
     if (sessionCtxPtr)
     {
-        le_dls_Link_t* linkPtr = le_dls_Pop(&(sessionCtxPtr->msgRefList));
+        // Peek the head node of message reference list without removing the node from the list.
+        le_dls_Link_t* linkPtr = le_dls_Peek(&(sessionCtxPtr->msgRefList));
 
         while (linkPtr)
         {
             MsgRefNode_t* msgRefPtr = CONTAINER_OF(linkPtr, MsgRefNode_t, link);
             le_sms_Delete(msgRefPtr->msgRef);
 
-            linkPtr = le_dls_Pop(&(sessionCtxPtr->msgRefList));
+            // Check session context is still existing.
+            if (NULL == GetSessionCtx(sessionRef))
+            {
+                LE_DEBUG("sessionCtxPtr is not found!");
+                break;
+            }
+
+            // Get the next node from message reference list.
+            linkPtr = le_dls_PeekNext(&(sessionCtxPtr->msgRefList), linkPtr);
         }
     }
 
