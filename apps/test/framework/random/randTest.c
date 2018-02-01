@@ -10,7 +10,8 @@
 
 #define MAX_INTERVAL        100
 
-static double Chi2Dist[MAX_INTERVAL] = { 3.841,
+static double Chi2Dist[MAX_INTERVAL] = {
+                                3.841,
                                 5.991,
                                 7.815,
                                 9.488,
@@ -109,7 +110,8 @@ static double Chi2Dist[MAX_INTERVAL] = { 3.841,
                                 120.990,
                                 122.108,
                                 123.225,
-                                124.342};
+                                124.342
+                            };
 
 
 static double Chi2Dist95(size_t degreesOfFreedom)
@@ -122,7 +124,11 @@ static double Chi2Dist95(size_t degreesOfFreedom)
     return Chi2Dist[degreesOfFreedom - 1];
 }
 
-
+//--------------------------------------------------------------------------------------------------
+/**
+ * Chi-squared test.
+ */
+//--------------------------------------------------------------------------------------------------
 static bool Chi2Test(uint64_t* bucketPtr, uint32_t numBuckets, uint64_t numSamples)
 {
     // Calculate the chi-square value.  Assume buckets have equal expected values.
@@ -187,13 +193,13 @@ static bool TestRange(uint32_t min, uint32_t max, uint64_t numSamples)
         numBuckets = MAX_INTERVAL;
     }
 
-    uint64_t bucket[numBuckets];
+    uint64_t buckets[numBuckets];
 
     // Initialize the buckets.
     uint32_t j = 0;
     for (j = 0; j < numBuckets; j++)
     {
-        bucket[j] = 0;
+        buckets[j] = 0;
     }
 
     // Fill the buckets with random numbers.
@@ -212,7 +218,7 @@ static bool TestRange(uint32_t min, uint32_t max, uint64_t numSamples)
         }
 
         // Add to bucket.
-        bucket[(r - min) / bucketSize]++;
+        buckets[(r - min) / bucketSize]++;
 
         if (0 == (i % 1000000))
         {
@@ -230,25 +236,24 @@ static bool TestRange(uint32_t min, uint32_t max, uint64_t numSamples)
     }
 
     // We use a simple chi-square test here because we are only trying to detect simple biases.
-    return Chi2Test(bucket, numBuckets, numSamples);
+    return Chi2Test(buckets, numBuckets, numSamples);
 }
 
-
-static void TestSmallRange(void)
+static bool TestSmallRange(void)
 {
-    LE_ASSERT(TestRange(3, 7, 100000));
+    return TestRange(3, 7, 100000);
 }
 
-
-static void TestLargeRange(void)
+static bool TestLargeRange(void)
 {
-    LE_ASSERT(TestRange(9, 10000008, 40000000));
+    return TestRange(9, 10000008, 40000000);
 }
 
-
-static void TestBuffer(void)
+static bool TestSmallBuffer(void)
 {
     uint8_t buf[16] = {0};
+
+    LE_INFO("Test small buffer (%zd)", sizeof(buf));
 
     le_rand_GetBuffer(buf, sizeof(buf));
 
@@ -257,17 +262,57 @@ static void TestBuffer(void)
     {
         LE_INFO("Index %d, value %u", i, buf[i]);
     }
+
+    return true;
 }
 
+static bool TestLargeBuffer(void)
+{
+    uint64_t numSamples = 1024 * 1024; // 1MB
+    size_t bufSize = numSamples / sizeof(uint8_t);
+    LE_INFO("Test large buffer (%zd)", bufSize);
+
+    uint8_t * buf = malloc(bufSize);
+    memset(buf, 0, bufSize);
+
+    // Collect samples
+    le_rand_GetBuffer(buf, bufSize);
+
+    const uint32_t numBuckets = 256 >> 2;
+    uint64_t buckets[numBuckets];
+
+    // Initialize the buckets.
+    uint32_t i = 0;
+    for (i = 0; i < numBuckets; i++)
+    {
+        buckets[i] = 0;
+    }
+
+    // Fill the buckets
+    for (i = 0; i < numSamples; i++)
+    {
+        buckets[ buf[i] >> 2 ] += 1;
+    }
+
+    free(buf);
+
+    return Chi2Test(buckets, numBuckets, numSamples);
+}
 
 COMPONENT_INIT
 {
     LE_INFO("======== Begin Random Number Tests ========");
 
-    TestSmallRange();
-    TestLargeRange();
-    TestBuffer();
+    // Setup the Legato Test Framework.
+    LE_TEST_INIT;
+
+    LE_TEST(TestLargeBuffer());
+    LE_TEST(TestSmallRange());
+    LE_TEST(TestLargeRange());
+    LE_TEST(TestSmallBuffer());
 
     LE_INFO("======== Completed Random Number Tests (Passed) ========");
-    exit(EXIT_SUCCESS);
+
+    // Exit with the number of failed tests as the exit code.
+    LE_TEST_EXIT;
 }

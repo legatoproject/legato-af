@@ -8,6 +8,9 @@
  *          this module care must be taken to ensure that the underlying CPRNG and entropy pools are
  *          configured properly.
  *
+ * @note If glibc is >= 2.15, this module relies on getrandom, which takes care of the checks
+ *       regarding the configuration and initialization.
+ *
  * Copyright (C) Sierra Wireless Inc.
  */
 
@@ -136,9 +139,9 @@ void le_rand_GetBuffer
         do
         {
 #ifdef NO_SYS_RANDOM
-            c = read(fd, &(bufPtr[readCount]), bufSize);
+            c = read(fd, &(bufPtr[readCount]), (bufSize-readCount));
 #else
-            c = getrandom(&(bufPtr[readCount]), bufSize, 0);
+            c = getrandom(&(bufPtr[readCount]), (bufSize-readCount), 0);
 #endif
         }
         while ( (c == -1) && (errno == EINTR) );
