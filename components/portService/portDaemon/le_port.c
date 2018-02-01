@@ -988,11 +988,6 @@ static int32_t OpenSocket
 
     le_fdMonitor_SetContextPtr(fdMonitorRef, linkInfoPtr);
 
-    // Try to kick a couple of times before each timeout.
-    le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
-    le_wdogChain_Init(1);
-    le_wdogChain_MonitorEventLoop(0, watchdogInterval);
-
     return sockFd;
 
 exit_close_socket:
@@ -1846,4 +1841,9 @@ COMPONENT_INIT
 
     // Create the semaphore for client socket connect request.
     Semaphore = le_sem_Create("ClientConnectSem", 0);
+
+    // Try to kick a couple of times before each timeout.
+    le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
+    le_wdogChain_Init(1);
+    le_wdogChain_MonitorEventLoop(0, watchdogInterval);
 }
