@@ -135,21 +135,25 @@
  *
  * @section le_wifiClient_connect_to_ap Connecting to Access Point
  *
- * To connect to an Access Point use the function:
- * - le_wifiClient_Connect() : returns the LE_OK if the function was called ok.
+ * First of all, an Access Point reference should be created using the SSID of the target Access
+ * Point. Use the following function to create a reference:
+ * - le_wifiClient_Create(): returns Access Point reference
  *
  * To set the pass phrase prior for the Access Point use the function:
- * - le_wifiClient_SetPassphrase() : returns the LE_OK if the function was called ok.
+ * - le_wifiClient_SetPassphrase(): returns the function execution status.
  *
  * WPA-Enterprise requires a username and password to authenticate.
- * To set them use the function :
- * - le_wifiClient_SetUserCredentials() : returns the LE_OK if the function was called ok.
+ * To set them use the function:
+ * - le_wifiClient_SetUserCredentials():  returns the function execution status.
  *
- * If an Access Point is hidden, it does not announce it's presence,
- * it will not show up in the scan.
- * To be able to connect to it, the SSID must be known.
- * Use the following function to get an Access Point that can be used to connect to:
- * - le_wifiClient_Create()  : returns Access Point.
+ * If an Access Point is hidden, it does not announce its presence and will not show up in scan.
+ * So, the SSID of this Access Point must be known in advance. Then, use the following function to
+ * allow connections to hidden Access Points:
+ * le_wifiClient_SetHiddenNetworkAttribute(): returns the function execution status.
+ *
+ * Finally and when the Access Point parameters have been configured, use the following function to
+ * attempt a connection:
+ * - le_wifiClient_Connect():  returns the function execution status.
  *
  * @code
  *
@@ -445,7 +449,6 @@ FUNCTION le_result_t SetUserCredentials
     string password[le_wifiDefs.MAX_PASSWORD_BYTES] IN   ///< Password used for WPA-Enterprise.
 );
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Set the WEP key (WEP)
@@ -461,14 +464,34 @@ FUNCTION le_result_t SetWepKey
     string wepKey[le_wifiDefs.MAX_WEPKEY_BYTES] IN ///< The WEP key
 );
 
-
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function specifies whether the target Access Point is hiding its presence from clients or
+ * not. When an Access Point is hidden, it cannot be discovered by a scan process.
+ *
+ * @note By default, this attribute is not set which means that the client is unable to connect to
+ * a hidden access point. When enabled, the client will be able to connect to the access point
+ * whether it is hidden or not.
+ *
+ * @return
+ *      - LE_BAD_PARAMETER if parameter is invalid.
+ *      - LE_OK if the function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetHiddenNetworkAttribute
+(
+    AccessPoint accessPointRef IN, ///< WiFi Access Point reference.
+    bool hidden IN ///< If TRUE, the WIFI client will be able to connect to a hidden access point.
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
- * If an AccessPoint is not announcing it's precense, it will not show up in the scan.
- * But if the SSID is known, a connnection can be tried using this create function.
- * First create the AccessPoint, then le_wifiClient_Connect() to connect to it.
- * Will fail if called while scan is running.
+ * This function creates a reference to an Access Point given its SSID.
+ * If an Access Point is hidden, it will not show up in the scan. So, its SSID must be known
+ * in advance in order to create a reference.
+ *
+ * @note This function fails if called while scan is running.
  *
  * @return AccessPoint reference to the current
  */
