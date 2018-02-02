@@ -30,7 +30,11 @@ binaries/lighttpd: _build_lighttpd.tar.gz
 		make)
 	rm -rf binaries
 	mkdir -p binaries/lib
-	cp _build_lighttpd/src/.libs/mod_{cgi,dirlisting,indexfile,staticfile,status}.so binaries/lib/
+	cp _build_lighttpd/src/.libs/mod_cgi.so binaries/lib/
+	cp _build_lighttpd/src/.libs/mod_dirlisting.so binaries/lib/
+	cp _build_lighttpd/src/.libs/mod_indexfile.so binaries/lib/
+	cp _build_lighttpd/src/.libs/mod_staticfile.so binaries/lib/
+	cp _build_lighttpd/src/.libs/mod_status.so binaries/lib/
 	cp _build_lighttpd/src/lighttpd binaries
 
 cfg/server.pem:

@@ -14,4 +14,38 @@ requires:
     {
         le_data.api
     }
+
+    component:
+    {
+        ${LEGATO_ROOT}/components/3rdParty/openssl
+        ${LEGATO_ROOT}/components/3rdParty/curl
+    }
+}
+
+bundles:
+{
+    file:
+    {
+        #if file_exists(${LEGATO_SYSROOT}/usr/lib/libgnutls.so.30)
+            ${LEGATO_SYSROOT}/usr/lib/libgnutls.so.30 /usr/lib/
+        #elif file_exists(${LEGATO_SYSROOT}/usr/lib/libgnutls.so.28)
+            ${LEGATO_SYSROOT}/usr/lib/libgnutls.so.28 /usr/lib/
+        #endif
+
+        #if file_exists(${LEGATO_SYSROOT}/usr/lib/libidn.so.11)
+            ${LEGATO_SYSROOT}/usr/lib/libidn.so.11 /usr/lib/
+        #endif
+
+        #if file_exists(${LEGATO_SYSROOT}/usr/lib/libnettle.so.6)
+            ${LEGATO_SYSROOT}/usr/lib/libnettle.so.6 /usr/lib/
+        #elif file_exists(${LEGATO_SYSROOT}/usr/lib/libnettle.so.4)
+            ${LEGATO_SYSROOT}/usr/lib/libnettle.so.4 /usr/lib/
+        #endif
+
+        #if file_exists(${LEGATO_SYSROOT}/usr/lib/libhogweed.so.4)
+            ${LEGATO_SYSROOT}/usr/lib/libhogweed.so.4 /usr/lib/
+        #elif file_exists(${LEGATO_SYSROOT}/usr/lib/libhogweed.so.2)
+            ${LEGATO_SYSROOT}/usr/lib/libhogweed.so.2 /usr/lib/
+        #endif
+    }
 }

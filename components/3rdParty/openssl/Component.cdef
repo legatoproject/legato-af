@@ -1,0 +1,14 @@
+bundles:
+{
+    file:
+    {
+        #if file_exists(${LEGATO_SYSROOT}/usr/lib/libssl.so)
+            ${LEGATO_SYSROOT}/usr/lib/libssl.so /usr/lib/
+            ${LEGATO_SYSROOT}/usr/lib/libcrypto.so /usr/lib/
+        // To install the library for localhost.
+        #elif file_exists(${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libssl.so)
+            ${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/
+            ${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/
+        #endif
+    }
+}

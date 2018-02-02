@@ -1,0 +1,16 @@
+bundles:
+{
+    file:
+    {
+        #if file_exists(${LEGATO_SYSROOT}/usr/lib/libcurl.so.4)
+            ${LEGATO_SYSROOT}/usr/lib/libcurl.so.4 /usr/lib/
+        #elif file_exists(${LEGATO_SYSROOT}/usr/lib/libcurl.so.5)
+            ${LEGATO_SYSROOT}/usr/lib/libcurl.so.5 /usr/lib/
+
+
+        // To install the library for localhost.
+        #elif file_exists(${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libcurl.so.4)
+            ${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libcurl.so.4 /usr/lib/
+        #endif
+    }
+}

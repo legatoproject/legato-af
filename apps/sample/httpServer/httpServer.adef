@@ -6,6 +6,11 @@ bundles:
     {
         [x] binaries/lighttpd /usr/local/bin/
 
+        #if file_exists(${LEGATO_SYSROOT}/usr/lib/libprocps.so)
+            ${LEGATO_SYSROOT}/usr/lib/libprocps.so /usr/lib/
+        #elif file_exists(${LEGATO_SYSROOT}/lib/libproc-3.2.8.so)
+            ${LEGATO_SYSROOT}/usr/lib/libproc-3.2.8.so /usr/lib/
+        #endif
     }
 
     dir:
@@ -24,9 +29,7 @@ requires:
         /etc/nsswitch.conf /etc/nsswitch.conf
         /lib/libnss_compat.so.2 /lib/libnss_compat.so.2
         /lib/libnsl.so.1 /lib/libnsl.so.1
-        /lib/libproc-3.2.8.so /lib/libproc-3.2.8.so
         /etc/passwd /etc/passwd    // needed by python to lookup user
-        /lib/libcrypto.so.1.0.0 /lib/libcrypto.so.1.0.0
         /legato/systems/current/version /legato/systems/current/version
         /legato/systems/current/status /legato/systems/current/status
     }
@@ -87,4 +90,8 @@ processes:
     {
         (lighttpd -m /modlibs/ -D -f /cfg/lighttpd.conf )
     }
+}
+components:
+{
+    ${LEGATO_ROOT}/components/3rdParty/openssl
 }
