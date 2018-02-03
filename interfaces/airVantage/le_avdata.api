@@ -569,7 +569,8 @@ FUNCTION le_result_t SetBool
  *      - LE_UNAVAILABLE - asset data contains null value
  *      - LE_NOT_FOUND - if the path is invalid and does not point to an asset data
  *      - LE_NOT_PERMITTED - asset data being accessed does not have the right permission
- *      - LE_OK - access successful.
+ *      - LE_OVERFLOW - asset data length exceeds the maximum length
+ *      - LE_OK - access successful
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetString
@@ -653,7 +654,8 @@ FUNCTION le_result_t GetIntArg
  *
  * @return:
  *      - LE_OK on success
- *      - LE_NOT_FOUND if argument doesn't exist, or its data type doesn't match the API.
+ *      - LE_NOT_FOUND if argument doesn't exist, or its data type doesn't match the API
+ *      - LE_OVERFLOW - argument length exceeds the maximum length
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetStringArg
