@@ -87,9 +87,15 @@ void AppBuildScriptGenerator_t::GenerateAppBuildRules
         "rule PackApp\n"
         "  description = Packaging app\n"
         // Pack the staging area into a tarball.
-        "  command = (cd $workingDir/staging && find . -print0 | LC_ALL=C sort -z"
-                     " |tar --no-recursion --null -T -"
-                        " -cjf - --mtime=$adefPath) > $workingDir/$name.$target && $\n"
+
+        "  command = $\n"
+        // Change all file time stamp to generate reproducible build. Can't use gnu tar --mtime
+        // option as it is not available in other tar (e.g bsdtar)
+        "            mtime=`stat -c %Y $adefPath` && $\n"
+        "            find $workingDir/staging -exec touch --no-dereference "
+                    "--date=@$$mtime {} \\; && $\n"
+        "            (cd $workingDir/staging && find . -print0 | LC_ALL=C sort -z"
+                     " |tar --no-recursion --null -T - -cjf - ) > $workingDir/$name.$target && $\n"
         // Get the size of the tarball.
         "            tarballSize=`stat -c '%s' $workingDir/$name.$target` && $\n"
         // Get the app's MD5 hash from its info.properties file.
@@ -110,9 +116,70 @@ void AppBuildScriptGenerator_t::GenerateAppBuildRules
         "  description = Packaging app for distribution.\n"
         "  command = cp -r $stagingDir/* $workingDir/ && $\n"
         "            rm $workingDir/info.properties $workingDir/root.cfg && $\n"
+        // Change all file time stamp to generate reproducible build. Can't use gnu tar --mtime
+        // option as it is not available in other tar (e.g bsdtar)
+        "            mtime=`stat -c %Y $adefPath` && $\n"
+        "            find $workingDir -exec touch  --no-dereference --date=@$$mtime {} \\; && $\n"
         "            (cd $workingDir/ && find . -print0 |LC_ALL=C sort -z"
-                     " |tar --no-recursion --null -T - -cjf - --mtime=$adefPath) > $out\n"
+        "  |tar --no-recursion --null -T - -cjf - ) > $out\n"
         "\n";
+
+
+    if (buildParams.signPkg)
+    {
+        script <<
+            // Create an update pack file for an app.
+            "rule PackSignedApp\n"
+            "  description = Signing and packaging app\n"
+            // Require signing image. Create a separate staging area and compute its md5 hash
+            "  command = rm -rf $workingDir/staging.signed ; mkdir $workingDir/staging.signed && "
+                        "cp -r $workingDir/staging/* $workingDir/staging.signed/ && $\n"
+            // No need to recompute the md5 hash again as it is used for app version and enable
+            // signing shouldn't change the app version.
+            "            cp " << buildParams.pubCert <<
+                        " $workingDir/staging.signed/ima_pub.cert  && $\n"
+            // Change all file time stamp to generate reproducible build. Can't use gnu tar --mtime
+            // option as it is not available in other tar (e.g bsdtar)
+            "            mtime=`stat -c %Y $adefPath` && $\n"
+            "            find $workingDir/staging.signed -exec touch --no-dereference "
+                        "--date=@$$mtime {} \\; && $\n"
+            "            fakeroot ima-sign.sh --sign -y legato -d $workingDir/staging.signed "
+                        "-t $workingDir/$name.$target.signed -p " << buildParams.privKey <<" && $\n"
+            // Get the size of the tarball.
+            "            tarballSize=`stat -c '%s' $workingDir/$name.$target.signed` && $\n"
+            // Get the app's MD5 hash from its info.properties file.
+            "            md5=`grep '^app.md5=' $workingDir/staging.signed/info.properties"
+                        " | sed 's/^app.md5=//'` && $\n"
+            // Generate a JSON header and concatenate the tarball to it to create the update pack.
+            "            ( printf '{\\n' && $\n"
+            "              printf '\"command\":\"updateApp\",\\n' && $\n"
+            "              printf '\"name\":\"$name\",\\n' && $\n"
+            "              printf '\"version\":\"$version\",\\n' && $\n"
+            "              printf '\"md5\":\"%s\",\\n' \"$$md5\" && $\n"
+            "              printf '\"size\":%s\\n' \"$$tarballSize\" && $\n"
+            "              printf '}' && $\n"
+            "              cat $workingDir/$name.$target.signed $\n"
+            "            ) > $out\n"
+            "\n"
+
+            "rule BinPackSignedApp\n"
+            "  description = Signing and packaging app for distribution.\n"
+            "  command = rm -rf $workingDir/staging.signed.bin ; "
+                        "mkdir $workingDir/staging.signed.bin "
+                        "&& cp -r $stagingDir/* $workingDir/staging.signed.bin/ && $\n"
+            "            cp " <<  buildParams.pubCert  << " " <<
+                        "$workingDir/staging.signed.bin/ima_pub.cert  && $\n" <<
+            // Change all file time stamp to generate reproducible build. Can't use gnu tar --mtime
+            // option as it is not available in other tar (e.g bsdtar)
+            "            mtime=`stat -c %Y $adefPath` && $\n"
+            "            find $workingDir/staging.signed.bin -exec touch --no-dereference "
+                        "--date=@$$mtime {} \\; && $\n"
+            // Require signing image. Sign the staging area and create tarball
+            "            fakeroot ima-sign.sh --sign -y legato -d $workingDir/staging.signed.bin/ "
+                        "-t $out -p " << buildParams.privKey << "\n"
+            "\n";
+    }
+
 }
 
 
@@ -579,6 +646,26 @@ void AppBuildScriptGenerator_t::GenerateAppBundleBuildStatement
         "  workingDir = $builddir/" + appPtr->workingDir << "\n"
         "\n";
 
+    if (buildParams.signPkg)
+    {
+      // No need to check the environment variable for keys again as it is already checked
+      // after parsing mkapp input parameters.
+
+      // Now create the signed app package. This should be build after unsigned app package
+      // is built.
+      auto outputFileSigned = path::Combine(outputDir, appPtr->name) + ".$target.signed.update";
+      script << "build " << outputFileSigned << ": PackSignedApp " << infoPropertiesPath << " | "
+      // No need to include private key in dependency as public and private key come in pair.
+             << " "<< buildParams.pubCert << "\n";
+      // Tell the build rule what the app's name and version are and where its working directory
+      // is.
+      script << "  name = " << appPtr->name << "\n"
+          "  adefPath = " << appPtr->defFilePtr->path << "\n"
+          "  version = " << appPtr->version << "\n"
+          "  workingDir = $builddir/" + appPtr->workingDir << "\n"
+          "\n";
+
+    }
     // Are we building a binary app package as well?
     if (buildParams.binPack)
     {
@@ -615,6 +702,18 @@ void AppBuildScriptGenerator_t::GenerateAppBundleBuildStatement
                   "  workingDir = " << appPackDir << "\n"
                   "\n";
 
+        if (buildParams.signPkg)
+        {
+            // Now create the signed app package. This should be build after unsigned app package
+            // is built.
+            auto outputFileSigned = path::Combine(outputDir, appPtr->name) + ".$target.signed.app";
+            script << "build " << outputFileSigned << ": BinPackSignedApp " << infoPropertiesPath
+                   << " | " << " " << buildParams.pubCert << "\n"
+                    "  adefPath = " << appPtr->defFilePtr->path << "\n"
+                    "  stagingDir = $builddir/" << appPtr->workingDir << "/staging" << "\n"
+                    "  workingDir = " << appPackDir << "\n"
+                    "\n";
+        }
 
     }
 }

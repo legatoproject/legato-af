@@ -67,7 +67,7 @@ static void GetCommandLineArgs
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Lambda function that gets called once for each occurence of the --cflags (or -C)
+    // Lambda function that gets called once for each occurrence of the --cflags (or -C)
     // argument on the command line.
     auto cFlagsPush = [&](const char* arg)
         {
@@ -75,7 +75,7 @@ static void GetCommandLineArgs
             BuildParams.cFlags += arg;
         };
 
-    // Lambda function that gets called for each occurence of the --cxxflags, (or -X) argument on
+    // Lambda function that gets called for each occurrence of the --cxxflags, (or -X) argument on
     // the command line.
     auto cxxFlagsPush = [&](const char* arg)
         {
@@ -83,7 +83,7 @@ static void GetCommandLineArgs
             BuildParams.cxxFlags += arg;
         };
 
-    // Lambda function that gets called once for each occurence of the --ldflags (or -L)
+    // Lambda function that gets called once for each occurrence of the --ldflags (or -L)
     // argument on the command line.
     auto ldFlagsPush = [&](const char* arg)
         {
@@ -91,21 +91,21 @@ static void GetCommandLineArgs
             BuildParams.ldFlags += arg;
         };
 
-    // Lambda function that gets called once for each occurence of the interface search path
+    // Lambda function that gets called once for each occurrence of the interface search path
     // argument on the command line.
     auto ifPathPush = [&](const char* path)
         {
             BuildParams.interfaceDirs.push_back(path);
         };
 
-    // Lambda function that gets called once for each occurence of the source search path
+    // Lambda function that gets called once for each occurrence of the source search path
     // argument on the command line.
     auto sourcePathPush = [&](const char* path)
         {
             BuildParams.sourceDirs.push_back(path);
         };
 
-    // Lambda function that gets called once for each occurence of a .sdef file name on the
+    // Lambda function that gets called once for each occurrence of a .sdef file name on the
     // command line.
     auto sdefFileNameSet = [&](const char* param)
             {
@@ -176,6 +176,38 @@ static void GetCommandLineArgs
                                     "executables."),
                             ldFlagsPush);
 
+    args::AddOptionalFlag(&BuildParams.signPkg,
+                            'S',
+                            "ima-sign",
+                            LE_I18N("Sign the package with IMA key. If this option specified, "
+                                    "it will first look for IMA private key and public certificate"
+                                    "in command line parameter. If nothing specified in command "
+                                    "line it will look for environment variable IMA_PRIVATE_KEY ("
+                                    "private key path) and IMA_PUBLIC_CERT (public certificate "
+                                    "signed by system private key)."));
+
+    args::AddOptionalString(&BuildParams.privKey,
+                            "",
+                            'K',
+                            "key",
+                            LE_I18N("Specify the private key path which should be used to sign "
+                                    "update package. Once specified, corresponding public "
+                                    "certificate path must be specified to verify update package "
+                                    "on target."
+                                    )
+                            );
+
+    args::AddOptionalString(&BuildParams.pubCert,
+                            "",
+                            'P',
+                            "pub-cert",
+                            LE_I18N("Specify the public certificate path which should be used to "
+                                    "verify update package on target. Once specified, "
+                                    "corresponding private key path must be specified to sign "
+                                    "update package on host."
+                                    )
+                            );
+
     args::AddOptionalFlag(&DontRunNinja,
                            'n',
                            "dont-run-ninja",
@@ -207,6 +239,9 @@ static void GetCommandLineArgs
     {
         throw mk::Exception_t(LE_I18N("A system definition must be supplied."));
     }
+
+    // Now check for IMA signing
+    CheckForIMASigning(BuildParams);
 
     // Compute the system name from the .sdef file path.
     SystemName = path::RemoveSuffix(path::GetLastNode(SdefFilePath), ".sdef");
