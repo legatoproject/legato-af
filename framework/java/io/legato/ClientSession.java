@@ -75,8 +75,9 @@ public class ClientSession extends Session implements AutoCloseable {
 	 */
 	// ----------------------------------------------------------------------------------------------
 	@Override
-	protected void finalize() {
-		close();
+	protected void finalize() throws Throwable {
+	    close();
+	    super.finalize();
 	}
 
 	// ----------------------------------------------------------------------------------------------

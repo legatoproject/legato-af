@@ -53,8 +53,9 @@ public class Message implements AutoCloseable {
 	 */
 	// ----------------------------------------------------------------------------------------------
 	@Override
-	protected void finalize() {
+	protected void finalize() throws Throwable {
 		close();
+		super.finalize();
 	}
 
 	// ----------------------------------------------------------------------------------------------
