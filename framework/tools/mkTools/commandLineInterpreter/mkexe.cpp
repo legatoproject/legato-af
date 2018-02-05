@@ -61,7 +61,7 @@ static void GetCommandLineArgs
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Lambda function that gets called once for each occurence of the --cflags (or -C)
+    // Lambda function that gets called once for each occurrence of the --cflags (or -C)
     // option on the command line.
     auto cFlagsPush = [&](const char* arg)
         {
@@ -69,7 +69,7 @@ static void GetCommandLineArgs
             BuildParams.cFlags += arg;
         };
 
-    // Lambda function that gets called for each occurence of the --cxxflags, (or -X) option on
+    // Lambda function that gets called for each occurrence of the --cxxflags, (or -X) option on
     // the command line.
     auto cxxFlagsPush = [&](const char* arg)
         {
@@ -77,7 +77,7 @@ static void GetCommandLineArgs
             BuildParams.cxxFlags += arg;
         };
 
-    // Lambda function that gets called once for each occurence of the --ldflags (or -L)
+    // Lambda function that gets called once for each occurrence of the --ldflags (or -L)
     // option on the command line.
     auto ldFlagsPush = [&](const char* arg)
         {
@@ -85,14 +85,14 @@ static void GetCommandLineArgs
             BuildParams.ldFlags += arg;
         };
 
-    // Lambda function that gets called once for each occurence of the --interface-search (or -i)
+    // Lambda function that gets called once for each occurrence of the --interface-search (or -i)
     // option on the command line.
     auto interfaceDirPush = [&](const char* path)
         {
             BuildParams.interfaceDirs.push_back(path);
         };
 
-    // Lambda function that gets called once for each occurence of the --source-search (or -s)
+    // Lambda function that gets called once for each occurrence of the --source-search (or -s)
     // option on the command line.
     auto sourceDirPush = [&](const char* path)
         {

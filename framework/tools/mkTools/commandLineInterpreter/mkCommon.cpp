@@ -262,6 +262,66 @@ void FindToolChain
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Checks the info in @c buildParams object for IMA signing. If nothing specified in @c buildParams
+ * object then check environment variables for IMA signing and update @c buildParams object
+ * accordingly.
+ */
+//--------------------------------------------------------------------------------------------------
+void CheckForIMASigning
+(
+    mk::BuildParams_t& buildParams
+)
+{
+    // No ima sign flag is provided in command line, so check environment variable ENABLE_IMA
+    if (!buildParams.signPkg)
+    {
+        std::string imaEnable = envVars::Get("ENABLE_IMA");
+        if (imaEnable.compare("1") == 0)
+        {
+            buildParams.signPkg = true;
+        }
+    }
+
+    if (buildParams.signPkg)
+    {
+        // Get key value from environment variable if no path is specified
+        if (buildParams.privKey.empty() && buildParams.pubCert.empty())
+        {
+            buildParams.privKey = envVars::GetRequired("IMA_PRIVATE_KEY");
+            buildParams.pubCert = envVars::GetRequired("IMA_PUBLIC_CERT");
+        }
+
+        // Now checks whether private key exists or not. No need to check empty value, if privKey
+        // string is empty FileExists() function should return false.
+        if (!file::FileExists(buildParams.privKey))
+        {
+            throw mk::Exception_t(mk::format(LE_I18N("Bad private key location '%s'. Provide path "
+                                             "via environment variable IMA_PRIVATE_KEY or -K flag"),
+                                             buildParams.privKey));
+        }
+
+        // Now checks whether public certificate exists or not
+        if (!file::FileExists(buildParams.pubCert))
+        {
+            throw mk::Exception_t(mk::format(LE_I18N("Bad public certificate location '%s'. Provide"
+                                             " path via environment variable IMA_PUBLIC_CERT or -P"
+                                             " flag"),
+                                             buildParams.pubCert));
+        }
+    }
+    else
+    {
+        if ((false == buildParams.privKey.empty()) || (false == buildParams.pubCert.empty()))
+        {
+            throw mk::Exception_t(LE_I18N("Wrong option. Sign(-S) option or environment variable "
+                                  "ENABLE_IMA must be set to sign the package."));
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Run the Ninja build tool.  Executes the build.ninja script in the root of the working directory
  * tree, if it exists.
  *

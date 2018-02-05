@@ -93,6 +93,12 @@ endif
 
 LOCAL_MKEXE_FLAGS = $(MKEXE_FLAGS) -l $(LIB_DIR) -w $(BUILD_DIR)/tools/$@ $(LOCAL_MKTOOLS_FLAGS)
 LOCAL_MKAPP_FLAGS = $(MKAPP_FLAGS) -o $(APP_DIR) -w $(BUILD_APP_DIR)/tools/$@ $(LOCAL_MKTOOLS_FLAGS)
+LOCAL_PROPRIETARY_APPS_FLAGS = $(LOCAL_MKTOOLS_FLAGS)
+
+ifeq ($(ENABLE_IMA),1)
+  LOCAL_MKAPP_FLAGS += -S
+  LOCAL_PROPRIETARY_APPS_FLAGS += -S
+endif
 
 # Do not use clang by default.
 USE_CLANG ?= 0
@@ -195,4 +201,4 @@ ${PROPRIETARY_APPS}:
 			-t $(TARGET) \
 			-o $(LEGATO_ROOT)/build/$(TARGET)/proprietary/$@ \
 			-w $(LEGATO_ROOT)/build/$(TARGET)/apps/proprietary/$@ \
-			$(LOCAL_MKTOOLS_FLAGS)
+			$(LOCAL_PROPRIETARY_APPS_FLAGS)

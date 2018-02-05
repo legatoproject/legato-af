@@ -30,6 +30,19 @@ void FindToolChain
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Checks the info in @c buildParams object for IMA signing. If nothing specified in @c buildParams
+ * object then check environment variables for IMA signing and update @c buildParams object
+ * accordingly.
+ */
+//--------------------------------------------------------------------------------------------------
+void CheckForIMASigning
+(
+    mk::BuildParams_t& buildParams
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Run the Ninja build tool.  Executes the build.ninja script in the root of the working directory
  * tree, if it exists.
  *

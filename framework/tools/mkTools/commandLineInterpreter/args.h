@@ -164,7 +164,7 @@ void AddOptionalString
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  Add an optional string parameter.  However instead of only updating a single paramteter a value
+ *  Add an optional string parameter.  However instead of only updating a single parameter a value
  *  update callback is invoked instead.  This way the callee can update a list of values everytime
  *  the supplied callback is invoked.
  */

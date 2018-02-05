@@ -29,9 +29,15 @@ struct BuildParams_t
     std::string             workingDir;         ///< Dir path for intermediate build products.
     std::string             debugDir;           ///< Dir path for debug symbol files.
                                                 ///< If unset no debug symbols are generated.
+
     std::string             cFlags;             ///< Flags to be passed to the C compiler.
     std::string             cxxFlags;           ///< Flags to be passed to the C++ compiler.
     std::string             ldFlags;            ///< Flags to be passed to the linker.
+
+    std::string             privKey;            ///< Path for ima signing private key.
+    std::string             pubCert;            ///< Path for ima signing public certificate.
+    bool                    signPkg;            ///< true = Sign the package with ima-key
+
     bool                    codeGenOnly;        ///< true = only generate code, don't compile, etc.
     bool                    isStandAloneComp;   ///< true = generate stand-alone component
     bool                    binPack;            ///< true = generate a binary package for redist.

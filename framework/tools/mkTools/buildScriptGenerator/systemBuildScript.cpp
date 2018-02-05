@@ -52,14 +52,12 @@ void SystemBuildScriptGenerator_t::GenerateSystemBuildRules
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Generate build rule for creating a system update pack.
+    // Generate build rule for creating system info.properties.
     // This must be run if any of the apps have changed (which will show up in a change to their
     // info.properties) or if the users.cfg has changed.
-    // $out is the system update file to generate.
-    // $in is a list of all the app update packs to include in the system.
     script <<
-    "rule PackSystem\n"
-    "  description = Packaging system\n"
+    "rule MakeSystemInfoProperties\n"
+    "  description = Creating system info.properties\n"
     "  command = $\n"
 
     // Copy the framework bin and lib directories into the system's staging area.
@@ -130,7 +128,7 @@ void SystemBuildScriptGenerator_t::GenerateSystemBuildRules
 
     script <<
     // Delete the old info.properties file, if there is one.
-    "            rm -f $stagingDir/info.properties && $\n"
+    "            rm -f $out && $\n"
 
     // Compute the MD5 checksum of the staging area.
     // Don't follow symlinks (-P), and include the directory structure and the contents of symlinks
@@ -149,14 +147,26 @@ void SystemBuildScriptGenerator_t::GenerateSystemBuildRules
     // Generate the system's info.properties file.
     "            ( echo \"system.name=" << systemPtr->name << "\" && $\n"
     "              echo \"system.md5=$$md5\" $\n"
-    "            ) > $stagingDir/info.properties && $\n"
-
+    "            ) > $out && $\n"
     // Generate the system's version file
-    "            printf '%s\\n' \"$$version\" > $stagingDir/version && $\n"
+    "            printf '%s\\n' \"$$version\" > $stagingDir/version\n"
+    "\n";
 
-    // Pack the system's staging area into a compressed tarball in the working directory.
-    "            tar cjf $builddir/" << systemPtr->name << ".$target"
-                 " --mtime=" << systemPtr->defFilePtr->path << " -C $stagingDir . && $\n"
+    // New generate the unsigned system package
+    // $out is the system update file to generate.
+    // $in is a list of all the app update packs to include in the system.
+    script <<
+    "rule PackSystem\n"
+    "  description = Packaging system\n"
+    "  command = $\n"
+    // Change all file time stamp to generate reproducible build. Can't use gnu tar --mtime option
+    // as it is not available in other tar (e.g bsdtar)
+    "            mtime=`stat -c %Y " << systemPtr->defFilePtr->path <<"` && $\n"
+    "            find $stagingDir -exec touch  --no-dereference --date=@$$mtime {} \\; && $\n"
+    // Pack the system's staging area into a compressed tarball.
+    "           (cd $stagingDir && find . -print0 | LC_ALL=C sort -z"
+                                 " |tar --no-recursion --null -T -"
+                                 " -cjf - ) > $builddir/"<< systemPtr->name <<".$target && $\n"
 
     // Get the size of the tarball.
     "            tarballSize=`stat -c '%s' $builddir/" << systemPtr->name << ".$target` && $\n"
@@ -175,6 +185,46 @@ void SystemBuildScriptGenerator_t::GenerateSystemBuildRules
     "              cat $in $\n"
     "            ) > $out\n"
     "\n";
+
+    if (buildParams.signPkg)
+    {
+
+        // Generate the signed system update package
+        script <<
+        "rule PackSignedSystem\n"
+        "  description = Signing and packaging system\n"
+        "  command = rm -rf $stagingDir.signed ; mkdir $stagingDir.signed && "
+                    "cp -r $stagingDir/* $stagingDir.signed/ && $\n"
+        "            cp " << buildParams.pubCert << " $stagingDir.signed/ima_pub.cert  && $\n"
+        // Change all file time stamp to generate reproducible build. Can't use gnu tar --mtime
+        // option as it is not available in other tar (e.g bsdtar)
+        "            mtime=`stat -c %Y " << systemPtr->defFilePtr->path <<"` && $\n"
+        "            find $stagingDir.signed -exec touch  --no-dereference "
+                    "--date=@$$mtime {} \\; && $\n"
+        // No need to recompute the md5 hash again as it is used for app/system version and
+        // enable signing shouldn't change the app/system version.
+        // Require signing image. Sign the staging area and create tarball
+        "            fakeroot ima-sign.sh --sign -y legato -d $stagingDir.signed -t $builddir/"
+        << systemPtr->name << ".signed.$target" << " -p "  << buildParams.privKey << " && $\n" <<
+        // Get the size of the tarball.
+        "            tarballSize=`stat -c '%s' $builddir/" << systemPtr->name
+        << ".signed.$target` && $\n"
+
+        // Get the app's MD5 hash from its info.properties file.
+        "            md5=`grep '^system.md5=' $stagingDir.signed/info.properties | "
+                                                          "sed 's/^system.md5=//'` && $\n"
+        // Generate a JSON header and concatenate the tarball and all the app update packs to it
+        // to create the system update pack.
+        "            ( printf '{\\n' && $\n"
+        "              printf '\"command\":\"updateSystem\",\\n' && $\n"
+        "              printf '\"md5\":\"%s\",\\n' \"$$md5\" && $\n"
+        "              printf '\"size\":%s\\n' \"$$tarballSize\" && $\n"
+        "              printf '}' && $\n"
+        "              cat $builddir/" << systemPtr->name << ".signed.$target && $\n"
+        "              cat $in $\n"
+        "            ) > $out\n"
+        "\n";
+    }
 }
 
 
@@ -190,13 +240,18 @@ void SystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
 //--------------------------------------------------------------------------------------------------
 {
     // Generate build statement for zipping up the staging area into a system bundle.
-    // This depends on the system's info.properties file, which is the last thing to be added to
-    // the system's staging area.
-    auto outputFile = path::MakeAbsolute(path::Combine(buildParams.outputDir,
-                                                       systemPtr->name + ".$target.update"));
-    script << "build " << outputFile << ": PackSystem";
+    // Build the system staging area by adding framework binaries, app symlink and generate
+    // system info.properties file which is the last thing to be added to the system staging dir.
+
+    // Compute the info.properties file path.
+    std::string infoPropertiesPath = "$stagingDir/info.properties";
+
+    // Generate build statement for generating the info.properties file.
+    script << "build " << infoPropertiesPath << " : MakeSystemInfoProperties |";
 
     // Input to this is the app update packs to be included in the system update pack.
+    std::string sysAppsUpdates = " ";
+
     for (auto& mapEntry : systemPtr->apps)
     {
         auto appPtr = mapEntry.second;
@@ -205,12 +260,14 @@ void SystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
         {
             auto& appName = appPtr->name;
 
-            script << " $builddir/app/" << appName << "/" << appName << ".$target.update";
+            sysAppsUpdates += " $builddir/app/" + appName + "/" + appName + ".$target.update";
         }
     }
 
+    script << sysAppsUpdates;
+
     // This also must be run if the users.cfg has changed.
-    script << " | $builddir/staging/config/users.cfg";
+    script << " $builddir/staging/config/users.cfg";
 
     // It must also be run again if any preloaded apps have changed.
     for (auto& mapEntry : systemPtr->apps)
@@ -225,7 +282,7 @@ void SystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
         }
     }
 
-    // Also re-package system if any module binaries changed.
+    // Also recompute info.properties if any module binaries changed.
     for (auto& mapEntry : systemPtr->modules)
     {
         auto modulePtr = mapEntry.second;
@@ -237,7 +294,49 @@ void SystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
     // tools has changed.  We can detect that by checking the "md5" file in the framework's
     // build directory.
     script << " " << path::Combine(envVars::Get("LEGATO_ROOT"), "build/$target/framework/md5")
+           << "\n"
            << "\n";
+
+    // Now package the system
+    auto outputFile = path::MakeAbsolute(path::Combine(buildParams.outputDir,
+                                                       systemPtr->name + ".$target.update"));
+    script << "build " << outputFile << ": PackSystem " << sysAppsUpdates << " | "
+           << infoPropertiesPath << "\n"
+           "\n";
+
+    if (buildParams.signPkg)
+    {
+        // Now create the signed system package. This must be build after unsigned system package
+        // is built.
+        auto outputFileSigned = path::MakeAbsolute(path::Combine(buildParams.outputDir,
+                                                                 systemPtr->name +
+                                                                 ".$target.signed.update"));
+        script << "build " << outputFileSigned << ": PackSignedSystem";
+
+        // Input to this is the app update packs to be included in the system update pack.
+        for (auto& mapEntry : systemPtr->apps)
+        {
+            auto appPtr = mapEntry.second;
+
+            if (appPtr->isPreloaded == false)
+            {
+                auto& appName = appPtr->name;
+
+                script << " $builddir/app/" << appName << "/" << appName
+                       << ".$target.signed.update";
+            }
+        }
+
+        // This must be run if the public certificate has been changed. No need to include private
+        // key in dependency as public and private key come in pair. Must run if system staging
+        // directory info.properties has been changed.
+        script << " | "  << buildParams.pubCert << " " << infoPropertiesPath << "\n"
+               "\n";
+
+        // No need to check kernel module, cfg file, preloaded app  or md5 change as it is already
+        // taken care by while generating info.properties.
+
+    }
 }
 
 

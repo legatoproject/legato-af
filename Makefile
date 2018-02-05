@@ -73,6 +73,9 @@ export VERBOSE ?= 0
 # secStoreAdmin APIs disabled by default.
 export SECSTOREADMIN ?= 0
 
+# Do not enable IMA signing by default.
+export ENABLE_IMA ?= 0
+
 # In case of release, override parameters
 ifeq ($(MAKECMDGOALS),release)
   # We never build for coverage testing when building a release.
@@ -159,6 +162,13 @@ ifndef LEGATO_VERSION
       export LEGATO_VERSION := "unknown"
     endif
   endif
+endif
+
+ifeq ($(ENABLE_IMA),1)
+  # Export the variable so that sub command inherits the value. No need to check the variable value
+  # mksys and mkapp will take care of it.
+  export IMA_PRIVATE_KEY
+  export IMA_PUBLIC_CERT
 endif
 
 # Source code directories and files to include in the MD5 sum in the version and package.properties.
@@ -386,6 +396,10 @@ ifeq ($(VERBOSE),1)
   MKSYS_FLAGS += -v
 endif
 
+ifeq ($(ENABLE_IMA),1)
+  MKSYS_FLAGS += -S
+endif
+
 ifneq ($(DEBUG),yes)
   # Optimize release builds
   MKSYS_FLAGS += --cflags="-O2 -fno-omit-frame-pointer"
@@ -414,3 +428,7 @@ $(SYSTEM_TARGETS):system_%: framework_%
 			$(MKSYS_FLAGS)
 	mv build/$(TARGET)/$(notdir $(SDEF_TO_USE:%.sdef=%)).$(TARGET).update \
 	    build/$(TARGET)/system.$(TARGET).update
+	if [ $(ENABLE_IMA) -eq 1 ] ; then \
+		mv build/$(TARGET)/$(notdir $(SDEF_TO_USE:%.sdef=%)).$(TARGET).signed.update \
+			build/$(TARGET)/system.$(TARGET).signed.update ; \
+	fi
