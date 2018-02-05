@@ -757,6 +757,7 @@ FUNCTION le_result_t StartSession
  * @return
  *      - LE_OK on success
  *      - LE_FAULT on failure
+ *      - LE_DUPLICATE if already disconnected
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t StopSession
