@@ -1,0 +1,7 @@
+externalBuild:
+{
+    "mkdir -p ${LEGATO_BUILD}/3rdParty/jerryscript/lib"
+    "${CURDIR}/make.sh"
+    "cp ${LEGATO_ROOT}/3rdParty/jerryscript/build/lib/*.a ${LEGATO_BUILD}/3rdParty/jerryscript/lib"
+    "rm -rf ${LEGATO_ROOT}/3rdParty/jerryscript/build"
+}
