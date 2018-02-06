@@ -1004,25 +1004,42 @@ static void PrintSummary
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void SanitizeApiSet(model::Component_t* componentPtr,  std::set<const model::ApiFile_t*>& apiSet) {
-    for (auto iter = apiSet.begin(); iter != apiSet.end(); iter++) {
+static void SanitizeApiSet
+(
+    model::Component_t* componentPtr,
+    std::set<const model::ApiFile_t*>& apiSet
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto iter = apiSet.begin();
+    auto current = iter;
+    while(iter != apiSet.end())
+    {
+        // Save the current iterator, then increment it.
+        current = iter++;
         bool forceRemove = false;
-        for (auto comp : componentPtr->clientApis) {
-            if (comp->internalName == (*iter)->defaultPrefix) {
+        for (auto comp : componentPtr->clientApis)
+        {
+            if (comp->internalName == (*current)->defaultPrefix)
+            {
                 forceRemove = true;
                 break;
             }
         }
-        if (!forceRemove) {
-            for (auto comp : componentPtr->serverApis) {
-                if (comp->internalName == (*iter)->defaultPrefix && !comp->async) {
+        if (!forceRemove)
+        {
+            for (auto comp : componentPtr->serverApis)
+            {
+                if (comp->internalName == (*current)->defaultPrefix && !comp->async)
+                {
                     forceRemove = true;
                     break;
                 }
             }
         }
-        if (forceRemove) {
-            apiSet.erase(iter);
+        if (forceRemove)
+        {
+            apiSet.erase(current);
         }
     }
 }

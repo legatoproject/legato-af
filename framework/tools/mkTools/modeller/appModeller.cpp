@@ -656,30 +656,39 @@ static void AddProcesses
         // Otherwise, the first content token is the process name, followed by the exe path.
         auto tokens = processSpecPtr->Contents();
         auto i = tokens.begin();
-        auto procName = (*i)->text;
 
-        if (DoesProcessExist(appPtr, procName))
+        // In case the tokens are empty, go on to the next process specification.
+        if (i != tokens.end())
         {
-            (*i)->ThrowException(
-                mk::format(LE_I18N("Process name '%s' already used."
-                                   "  Process names must be unique"),
-                           procName)
-            );
-        }
+            auto procName = (*i)->text;
 
-        auto procPtr = new model::Process_t(processSpecPtr);
-        procEnvPtr->processes.push_back(procPtr);
+            if (DoesProcessExist(appPtr, procName))
+            {
+                (*i)->ThrowException(
+                    mk::format(LE_I18N("Process name '%s' already used."
+                                       "  Process names must be unique"),
+                               procName)
+                );
+            }
 
-        procPtr->SetName(procName);
-        if (processSpecPtr->firstTokenPtr->type != parseTree::Token_t::OPEN_PARENTHESIS)
-        {
-            i++;
-        }
-        procPtr->exePath = path::Unquote((*i)->text);
+            auto procPtr = new model::Process_t(processSpecPtr);
+            procEnvPtr->processes.push_back(procPtr);
 
-        for (i++ ; i != tokens.end() ; i++)
-        {
-            procPtr->commandLineArgs.push_back(path::Unquote((*i)->text));
+            procPtr->SetName(procName);
+            if (processSpecPtr->firstTokenPtr->type != parseTree::Token_t::OPEN_PARENTHESIS)
+            {
+                i++;
+            }
+
+            if (i != tokens.end())
+            {
+                procPtr->exePath = path::Unquote((*i)->text);
+            }
+
+            for (i++ ; i != tokens.end() ; i++)
+            {
+                procPtr->commandLineArgs.push_back(path::Unquote((*i)->text));
+            }
         }
     }
 }
