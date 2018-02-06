@@ -1,6 +1,6 @@
 /** @page releaseNotes18010 18.01.0 Release Notes
 
-Release Date: Feb 5, 2018
+Release Date: Feb 6, 2018
 
 See @ref aboutLicenses to view Legato AF Licensing Information.
 
@@ -79,6 +79,10 @@ investigation:
 @b eCall @b Service
 - During eCall Modem Services transmission the date and time are not updated and do not pick up the
 rtc value.
+
+@b WiFi @b Tool
+- Using the client scan function may not return all available results, in some instances it may only
+return the first result.
 
 Copyright (C) Sierra Wireless Inc.
 
