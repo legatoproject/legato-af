@@ -589,7 +589,7 @@ std::string HasSuffix
 )
 //--------------------------------------------------------------------------------------------------
 {
-    for (auto suffix: suffixList)
+    for (auto const &suffix: suffixList)
     {
         if (HasSuffix(path, suffix))
         {

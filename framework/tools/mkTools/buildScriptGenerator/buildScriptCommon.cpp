@@ -382,7 +382,7 @@ void BuildScriptGenerator_t::GenerateNinjaScriptBuildStatement
     script << "build " << scriptPath << ": RegenNinjaScript |";
 
     // Write the dependencies to the script.
-    for (auto dep : dependencies)
+    for (auto const &dep : dependencies)
     {
         script << " " << dep;
     }

@@ -1026,7 +1026,7 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
         ifPtr->apiFilePtr->GetClientUsetypesApiHeaders(apiHeaders);
 
         // If there are some, add them as order-only dependencies.
-        for (auto hFilePath : apiHeaders)
+        for (auto const &hFilePath : apiHeaders)
         {
             script << " $builddir/" << hFilePath;
         }
@@ -1036,7 +1036,7 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
         script << "\n"
                   "  cFlags = $cFlags";
         std::set<std::string> includeDirs;
-        for (auto hFilePath : apiHeaders)
+        for (auto const &hFilePath : apiHeaders)
         {
             auto dirPath = path::GetContainingDir(hFilePath);
             if (includeDirs.find(dirPath) == includeDirs.end())
@@ -1300,7 +1300,7 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
         ifPtr->apiFilePtr->GetServerUsetypesApiHeaders(apiHeaders);
 
         // If there are some, add them as order-only dependencies.
-        for (auto hFilePath : apiHeaders)
+        for (auto const &hFilePath : apiHeaders)
         {
             script << " $builddir/" << hFilePath;
         }
@@ -1310,7 +1310,7 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
         script << "\n"
                   "  cFlags = $cFlags";
         std::set<std::string> includeDirs;
-        for (auto hFilePath : apiHeaders)
+        for (auto const &hFilePath : apiHeaders)
         {
             auto dirPath = path::GetContainingDir(hFilePath);
             if (includeDirs.find(dirPath) == includeDirs.end())

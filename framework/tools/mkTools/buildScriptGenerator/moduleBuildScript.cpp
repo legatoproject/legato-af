@@ -127,11 +127,11 @@ void ModuleBuildScriptGenerator_t::GenerateMakefile
     makefile << "src = " << modulePtr->dir << "\n\n";
 
     // Add compiler and linker options
-    for (auto obj : modulePtr->cFlags)
+    for (auto const &obj : modulePtr->cFlags)
     {
         makefile << "ccflags-y += " << obj << "\n";
     }
-    for (auto obj : modulePtr->ldFlags)
+    for (auto const &obj : modulePtr->ldFlags)
     {
         makefile << "ldflags-y += " << obj << "\n";
     }

@@ -1172,7 +1172,7 @@ void Lexer_t::MarkVarsUsed
 )
 //--------------------------------------------------------------------------------------------------
 {
-    for (auto substitutedVar: localUsedVars)
+    for (auto const &substitutedVar: localUsedVars)
     {
         // No need to check if variable is already in usedVars list as insert will simply
         // fail in that case, leaving the original definition intact).

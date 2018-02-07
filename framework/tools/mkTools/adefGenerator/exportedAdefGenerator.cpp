@@ -199,7 +199,7 @@ static void GenerateBasicInfo
                      "groups:\n"
                      "{\n";
 
-        for (auto group : appPtr->groups)
+        for (auto const &group : appPtr->groups)
         {
             defStream << "    " << group << "\n";
         }
@@ -376,7 +376,7 @@ static bool GenerateEnvVars
     defStream << "    envVars:\n"
                  "    {\n";
 
-    for (auto envVar : envVars)
+    for (auto const &envVar : envVars)
     {
         defStream << "        " << envVar.first << " = \"" << envVar.second << "\"\n";
     }

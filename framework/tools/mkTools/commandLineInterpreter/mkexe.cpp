@@ -311,7 +311,7 @@ static void ConstructObjectModel
 
     // For each item of content, we have to figure out what type of content it is and
     // handle it accordingly.
-    for (auto contentName: ContentNames)
+    for (auto const &contentName: ContentNames)
     {
         // Is it a C source code file path?
         if (path::IsCSource(contentName))
@@ -402,7 +402,7 @@ static void ConstructObjectModel
                       << std::endl;
 
             std::cerr << LE_I18N("Searched in the following locations:") << std::endl;
-            for (auto path : BuildParams.sourceDirs)
+            for (auto const &path : BuildParams.sourceDirs)
             {
                 std::cerr << "    " << path << std::endl;
             }

@@ -112,7 +112,7 @@ static void GenerateGroupsConfig
     cfgStream << "  \"groups\"" << std::endl;
     cfgStream << "  {" << std::endl;
 
-    for (auto groupName : groupsList)
+    for (auto const &groupName : groupsList)
     {
         cfgStream << "    \"" << groupName << "\" \"\"" << std::endl;
     }

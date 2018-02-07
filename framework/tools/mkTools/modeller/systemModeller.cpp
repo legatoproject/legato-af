@@ -196,7 +196,7 @@ static std::string FindBinAppAdef
 {
     auto filePaths = file::ListFiles(basePath);
 
-    for (auto fileName : filePaths)
+    for (auto const &fileName : filePaths)
     {
         auto pos = fileName.rfind('.');
 

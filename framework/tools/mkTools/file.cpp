@@ -260,7 +260,7 @@ std::string FindComponent
     // that contains a file called "Component.cdef".
     else
     {
-        for (auto searchPath: searchPathList)
+        for (auto const &searchPath: searchPathList)
         {
             std::string path = searchPath + "/" + name;
 

@@ -47,7 +47,7 @@ void PrintSummary
         if (!modulePtr->cFlags.empty())
         {
             std::cout << "  With additional CFLAGS:" << std::endl;
-            for (auto cflag : modulePtr->cFlags)
+            for (auto const &cflag : modulePtr->cFlags)
             {
                 std::cout << "    " << cflag << std::endl;
             }
@@ -56,7 +56,7 @@ void PrintSummary
         if (!modulePtr->ldFlags.empty())
         {
             std::cout << "  With additional LDFLAGS:" << std::endl;
-            for (auto ldflag : modulePtr->ldFlags)
+            for (auto const &ldflag : modulePtr->ldFlags)
             {
                 std::cout << "    " << ldflag << std::endl;
             }
