@@ -249,13 +249,20 @@ model::Module_t* GetModule
     }
     if (!file::FileExists(modulePtr->kernelDir + "/.config"))
     {
-        throw std::runtime_error(mdefPath + ": error: '" + modulePtr->kernelDir + "' is not a valid kernel source directory.");
+        auto kernelDir = modulePtr->kernelDir;
+        delete modulePtr;
+        throw mk::Exception_t(
+            mk::format(LE_I18N("%s: error: '%s' is not a valid kernel source directory."),
+            mdefPath, kernelDir)
+        );
     }
 
     // We should have either provided a 'sources:' or 'preBuilt:' section
     if ((modulePtr->path.empty() && modulePtr->cObjectFiles.empty()) ||
         (!modulePtr->path.empty() && !modulePtr->cObjectFiles.empty()))
     {
+        delete modulePtr;
+
         // Throw generic exception at file level
         throw mk::Exception_t(
             mk::format(LE_I18N("%s: error: Use either 'sources' or 'preBuilt' section."), mdefPath)

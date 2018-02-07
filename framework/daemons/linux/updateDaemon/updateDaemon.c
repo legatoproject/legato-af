@@ -493,11 +493,7 @@ static le_result_t InstallSystemApps
                                                                    sizeof(appMd5Hash));
                     if (result != LE_OK)
                     {
-                        if (ftsPtr)
-                        {
-                           fts_close(ftsPtr);
-                        }
-
+                        fts_close(ftsPtr);
                         LE_CRIT("Failed to get 'app.md5' from '%s'", appPropertyPath);
                         return LE_FAULT;
                     }
@@ -508,11 +504,7 @@ static le_result_t InstallSystemApps
                                                        sizeof(appName));
                     if (result != LE_OK)
                     {
-                        if (ftsPtr)
-                        {
-                           fts_close(ftsPtr);
-                        }
-
+                        fts_close(ftsPtr);
                         LE_CRIT("Failed to get 'app.name' from '%s'", appPropertyPath);
                         return LE_FAULT;
                     }
@@ -534,6 +526,7 @@ static le_result_t InstallSystemApps
 
                     if (rename(entPtr->fts_path, appPath) != 0)
                     {
+                        fts_close(ftsPtr);
                         LE_CRIT("Failed to rename '%s' to '%s', %m.",
                                 app_UnpackPath,
                                 appPath);
@@ -543,6 +536,7 @@ static le_result_t InstallSystemApps
                     // Now setup the smack permission.
                     if (app_SetSmackPermReadOnly(appMd5Hash, appName) != LE_OK)
                     {
+                        fts_close(ftsPtr);
                         LE_CRIT("Failed to setup smack permission for app '%s<%s>'",
                                 appName,
                                 appMd5Hash);
@@ -568,6 +562,8 @@ static le_result_t InstallSystemApps
         }
 
     }
+
+    fts_close(ftsPtr);
 
     return LE_OK;
 }
@@ -647,6 +643,11 @@ static le_result_t SetupSystemAppsWritable
             LE_ERROR("Unexpected file type %d at '%s'", entPtr->fts_info, entPtr->fts_path);
         }
 
+    }
+
+    if (ftsPtr)
+    {
+       fts_close(ftsPtr);
     }
 
     return LE_OK;

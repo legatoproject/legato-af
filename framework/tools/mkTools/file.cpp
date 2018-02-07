@@ -209,6 +209,11 @@ std::list<std::string> ListFiles
     char* pathArrayPtr[] = { const_cast<char*>(path.c_str()), NULL };
     FTS* ftsPtr = fts_open(pathArrayPtr, FTS_PHYSICAL, NULL);
 
+    if (ftsPtr == NULL)
+    {
+        return files;
+    }
+
     FTSENT* entPtr;
     while ((entPtr = fts_read(ftsPtr)) != NULL)
     {
@@ -227,6 +232,8 @@ std::list<std::string> ListFiles
                 break;
         }
     }
+
+    fts_close(ftsPtr);
 
     return files;
 }
