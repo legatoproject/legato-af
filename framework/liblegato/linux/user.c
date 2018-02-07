@@ -38,6 +38,13 @@ static uid_t MaxLocalUid = 60000;
 static gid_t MinLocalGid = 1000;
 static gid_t MaxLocalGid = 60000;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * The base local user and group ID to use if /etc/passwd and /etc/group are not writable.
+ */
+//--------------------------------------------------------------------------------------------------
+#define BASE_MIN_UID       1100
+#define BASE_MIN_GID       1100
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -58,6 +65,13 @@ static gid_t MaxLocalGid = 60000;
 //--------------------------------------------------------------------------------------------------
 #define USERNAME_PREFIX                                 "app"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Username and group aliases used in case of /etc/passwd and /etc/group are not writable. These
+ * generic names should be already populated into the /etc/passwd and /etc/group.
+ */
+//--------------------------------------------------------------------------------------------------
+#define USERNAME_TABLE_PREFIX                           "appLegato"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -81,6 +95,56 @@ static size_t MaxGroupEntrySize = LIMIT_MAX_PATH_BYTES;
 #define BACKUP_GROUP_FILE       "/etc/group.bak"
 #define LOGIN_DEF_FILE          "/etc/login.defs"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Name of the apps translation table used internally to replace the write access to /etc/passwd and
+ * /etc/group.
+ */
+//--------------------------------------------------------------------------------------------------
+#define APPS_TRANSLATION_FILE   "/legato/systems/current/config/appsTab.bin"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Number of apps potentially supported by the apps translation table: 00 to 79.
+ */
+//--------------------------------------------------------------------------------------------------
+static uint32_t NbAppsInTranslationTable = 0;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Apps translation table: contains the correspondance between an apps name and the appLegatoNN user
+ * and group reserved for it.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+   char name[LIMIT_MAX_APP_NAME_BYTES];  ///< Application name
+}
+appTab_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Apps translation table: contains the correspondance between an apps name and the appLegatoNN user
+ * and group reserved for it.
+ * The index of the apps name is the uid/gid reserved for this apps + the BASE_MIN_UID/GID.
+ * When an apps is freed, the name is just filled to 0 and so may be used again for a new apps.
+ */
+//--------------------------------------------------------------------------------------------------
+static appTab_t* AppsTab;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool for apps translation table block.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t AppsTabPool = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Boolean to verify if /etc is writable or not.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsEtcWritable = false;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -172,7 +236,7 @@ static le_result_t SetFileLength
 
     // Get the file descriptor for this stream.
     int fd = fileno(filePtr);
-    LE_FATAL_IF(fd == -1, "Could not get the file descriptor for a stream.  %m.");
+    LE_CRIT_IF(fd == -1, "Could not get the file descriptor for a stream.  %m.");
 
     // Truncate the file to the desired length.
     do
@@ -193,7 +257,8 @@ static le_result_t SetFileLength
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Create backup file. Copies the contents of the original file to backup file.
+ * Create backup file. Copies the contents of the original file to backup file. If /etc is not
+ * writable, return directly.
  *
  * @return
  *      LE_OK if successful.
@@ -207,6 +272,12 @@ static le_result_t MakeBackup
     const char* backupFileNamePtr        ///< [IN] Pointer to the backup file name.
 )
 {
+    // Discard if /etc is not writable
+    if (!IsEtcWritable)
+    {
+        return LE_OK;
+    }
+
     // Delete old obsolete backup file if exists.
     if (file_Exists(backupFileNamePtr))
     {
@@ -308,7 +379,8 @@ static le_result_t MakeBackup
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Restore original file from backup file and removes the backup file.
+ * Restore original file from backup file and removes the backup file. If /etc is not writable,
+ * return directly.
  *
  * @return
  *      LE_OK if successful.
@@ -322,12 +394,18 @@ static le_result_t RestoreBackup
     const char* backupFileNamePtr       ///< [IN] Pointer to the file name of the backup file.
 )
 {
+    // Discard if /etc is not writable
+    if (!IsEtcWritable)
+    {
+        return LE_OK;
+    }
+
     // Lock the original file
     int fd = le_flock_Open(origFileNamePtr, LE_FLOCK_WRITE);
 
     if (fd < 0)
     {
-        return fd;
+        return LE_FAULT;
     }
 
     // Now rename the backup file to original file
@@ -339,6 +417,7 @@ static le_result_t RestoreBackup
     }
 
     le_flock_Close(fd);
+
     return LE_OK;
 }
 
@@ -355,6 +434,10 @@ void user_Init
 {
     // Get the min and max values for local user IDs and group IDs.
     FILE *filePtr;
+
+    // Check if /etc is writable and register the result for further checks
+    IsEtcWritable = (0 == access( PASSWORD_FILE, W_OK ) ? true : false);
+    LE_INFO("/etc is %swritable", IsEtcWritable ? "" : "NOT ");
 
     filePtr = fopen(LOGIN_DEF_FILE, "r"); // Read mode
 
@@ -387,7 +470,7 @@ void user_Init
         }
 
         // Close the file.
-        LE_FATAL_IF(fclose(filePtr) != 0, "Could not close open file.  %m.");
+        LE_CRIT_IF(fclose(filePtr) != 0, "Could not close open file.  %m.");
 
         // Check for errors.
         if (!gotMinUidValue)
@@ -429,6 +512,42 @@ void user_Init
     if (buflen == -1)
     {
         MaxGroupEntrySize = buflen;
+    }
+
+    if (!IsEtcWritable)
+    {
+        filePtr = fopen(PASSWORD_FILE, "r");
+        if (filePtr)
+        {
+            // Get the entry in the passwd file.
+            char buf[MaxPasswdEntrySize];
+            struct passwd pwd;
+            struct passwd* pwdPtr;
+            int err;
+            size_t appPrefixLen = strlen(USERNAME_TABLE_PREFIX);
+
+            do
+            {
+
+                err = fgetpwent_r(filePtr, &pwd, buf, sizeof(buf), &pwdPtr);
+                if (pwdPtr &&
+                    (0 == strncmp(pwdPtr->pw_name, USERNAME_TABLE_PREFIX, appPrefixLen)))
+                {
+                    NbAppsInTranslationTable++;
+                }
+            }
+            while (pwdPtr || (EINTR == err));
+            fclose(filePtr);
+            LE_INFO("Found %u appLegato for app translation table.", NbAppsInTranslationTable);
+        }
+
+        // Allocate the pool for apps translation table
+        AppsTabPool = le_mem_CreatePool("AppsTabPool",
+                                        sizeof(appTab_t) * NbAppsInTranslationTable);
+        le_mem_ExpandPool(AppsTabPool, 1);
+
+        AppsTab = (appTab_t *)le_mem_ForceAlloc(AppsTabPool);
+        memset(AppsTab, 0, sizeof(appTab_t) * NbAppsInTranslationTable);
     }
 }
 
@@ -566,6 +685,39 @@ static le_result_t GetIDs
     struct passwd pwd;
     struct passwd* resultPtr;
     int err;
+    uint32_t ids;
+    char appsUserName[LIMIT_MAX_APP_NAME_BYTES] = "";
+
+    if (!IsEtcWritable)
+    {
+        // /etc is not writable so try first to read the apps translation tab if it exist.
+        FILE *fd = fopen(APPS_TRANSLATION_FILE, "r");
+        if (fd)
+        {
+            size_t rc;
+            rc = fread(AppsTab, sizeof(appTab_t), NbAppsInTranslationTable, fd);
+            fclose(fd);
+            if (NbAppsInTranslationTable != rc)
+            {
+                LE_ERROR("Read of apps translation table failed (rc %zu != %u)",
+                         rc, NbAppsInTranslationTable);
+                return LE_FAULT;
+            }
+        }
+
+        for (ids = 0; ids < NbAppsInTranslationTable; ids++)
+        {
+            // Check if the apps already exists in the apps translation table.
+            if (0 == strcmp(AppsTab[ids].name, usernamePtr))
+            {
+                // App is found in the translation table. Get the username by the index.
+                snprintf(appsUserName, sizeof(appsUserName), USERNAME_TABLE_PREFIX "%02u", ids);
+                // The user name to check in /etc/passwd is appsLegatoNN.
+                usernamePtr = appsUserName;
+                break;
+            }
+        }
+    }
 
     do
     {
@@ -650,6 +802,39 @@ static le_result_t GetGid
     struct group grp;
     struct group* resultPtr;
     int err;
+    uint32_t ids;
+    char appsGroupName[LIMIT_MAX_APP_NAME_BYTES] = "";
+
+    if (!IsEtcWritable)
+    {
+        // /etc is not writable so try first to read the apps translation tab if it exist.
+        FILE *fd = fopen(APPS_TRANSLATION_FILE, "r");
+        if (fd)
+        {
+            size_t rc;
+            rc = fread(AppsTab, sizeof(appTab_t), NbAppsInTranslationTable, fd);
+            fclose(fd);
+            if (NbAppsInTranslationTable != rc)
+            {
+                LE_ERROR("Read of apps translation table failed (rc %zu != %u)",
+                         rc, NbAppsInTranslationTable);
+                return LE_FAULT;
+            }
+        }
+
+        for (ids = 0; ids < NbAppsInTranslationTable; ids++)
+        {
+            // Check if the apps already exists in the apps translation table.
+            if (0 == strcmp(AppsTab[ids].name, groupNamePtr))
+            {
+                // App is found in the translation table. Get the group name by the index.
+                snprintf(appsGroupName, sizeof(appsGroupName), USERNAME_TABLE_PREFIX "%02u", ids);
+                // The group name to check in /etc/group is appsLegatoNN.
+                groupNamePtr = appsGroupName;
+                break;
+            }
+        }
+    }
 
     do
     {
@@ -697,24 +882,38 @@ static le_result_t GetAvailUid
 {
     // Get the first available uid.
     char dummy[1];
-    uid_t uid = MinLocalUid;
+    uid_t uid;
 
-    for (; uid <= MaxLocalUid; uid++)
+    if (!IsEtcWritable)
     {
-        le_result_t r = GetName(uid, dummy, sizeof(dummy));
-
-        if (r == LE_NOT_FOUND)
+        // /etc is not writable so try first to look into the apps translation tab.
+        for (uid = 0; uid < NbAppsInTranslationTable; uid++)
         {
-            // This uid is available.
-            *uidPtr = uid;
-            return LE_OK;
-        }
-        else if (r == LE_FAULT)
-        {
-            return LE_FAULT;
+            if ('\0' == AppsTab[uid].name[0])
+            {
+                *uidPtr = BASE_MIN_UID + uid;
+                return LE_OK;
+            }
         }
     }
+    else
+    {
+        for (uid = MinLocalUid; uid <= MaxLocalUid; uid++)
+        {
+            le_result_t r = GetName(uid, dummy, sizeof(dummy));
 
+            if (r == LE_NOT_FOUND)
+            {
+                // This uid is available.
+                *uidPtr = uid;
+                return LE_OK;
+            }
+            else if (r == LE_FAULT)
+            {
+                return LE_FAULT;
+            }
+        }
+    }
     LE_CRIT("There are too many users in the system.  No more users can be created.");
     return LE_NOT_FOUND;
 }
@@ -738,21 +937,36 @@ static le_result_t GetAvailGid
 {
     // Get the first available uid.
     char dummy[1];
-    gid_t gid = MinLocalGid;
+    gid_t gid;
 
-    for (; gid <= MaxLocalGid; gid++)
+    if (!IsEtcWritable)
     {
-        le_result_t r = GetGroupName(gid, dummy, sizeof(dummy));
-
-        if (r == LE_NOT_FOUND)
+        // /etc is not writable so try first to look into the apps translation tab.
+        for (gid = 0; gid < NbAppsInTranslationTable; gid++)
         {
-            // This gid is available.
-            *gidPtr = gid;
-            return LE_OK;
+            if ('\0' == AppsTab[gid].name[0])
+            {
+                *gidPtr = BASE_MIN_GID + gid;
+                return LE_OK;
+            }
         }
-        else if (r == LE_FAULT)
+    }
+    else
+    {
+        for (gid = MinLocalGid; gid <= MaxLocalGid; gid++)
         {
-            return LE_FAULT;
+            le_result_t r = GetGroupName(gid, dummy, sizeof(dummy));
+
+            if (r == LE_NOT_FOUND)
+            {
+                // This gid is available.
+                *gidPtr = gid;
+                return LE_OK;
+            }
+            else if (r == LE_FAULT)
+            {
+                return LE_FAULT;
+            }
         }
     }
 
@@ -833,7 +1047,7 @@ static le_result_t CreateUser
 
     if (putpwent(&passEntry, passwdFilePtr) == -1)
     {
-        LE_FATAL("Could not write to passwd file.  %m.");
+        LE_ERROR("Could not write to passwd file.  %m.");
     }
 
     return LE_OK;
@@ -869,25 +1083,117 @@ le_result_t user_Create
     bool isDuplicate = true;
 
     // Create a backup file for the group file.
-    if (MakeBackup(GROUP_FILE, BACKUP_GROUP_FILE) != LE_OK)
+    if (IsEtcWritable && MakeBackup(GROUP_FILE, BACKUP_GROUP_FILE) != LE_OK)
     {
         return LE_FAULT;
     }
 
-    // Lock the passwd file for reading and writing.
-    FILE* passwdFilePtr = le_atomFile_OpenStream(PASSWORD_FILE, LE_FLOCK_READ_AND_APPEND, NULL);
+    char appsUserName[LIMIT_MAX_APP_NAME_BYTES] = "";
+
+    if (!IsEtcWritable)
+    {
+        // /etc is not writable. Use the apps translation table instead /etc/passwd.
+        uint32_t ids;
+        uint32_t uidfree = (uint32_t)-1;
+        FILE *fd = fopen(APPS_TRANSLATION_FILE, "r");
+        if (fd)
+        {
+            size_t rc;
+            rc = fread(AppsTab, sizeof(appTab_t), NbAppsInTranslationTable, fd);
+            fclose(fd);
+            if (NbAppsInTranslationTable != rc)
+            {
+                LE_ERROR("Read of apps translation table failed (rc %zu != %u)",
+                         rc, NbAppsInTranslationTable);
+                return LE_FAULT;
+            }
+        }
+
+        for (ids = 0; ids < NbAppsInTranslationTable; ids++)
+        {
+            // Check if the app is already present into the apps translation table.
+            if (0 == strcmp(AppsTab[ids].name, usernamePtr))
+            {
+                snprintf(appsUserName, sizeof(appsUserName), USERNAME_TABLE_PREFIX "%02u", ids);
+                usernamePtr = appsUserName;
+                break;
+            }
+            // Register the first index free for future usage
+            if (('\0' == AppsTab[ids].name[0]) && ((uint32_t)-1 == uidfree) )
+            {
+                uidfree = ids;
+            }
+        }
+
+        // No apps already found?
+        if (NbAppsInTranslationTable == ids)
+        {
+            // Free entry in the apps translation table?
+            if ((uint32_t)-1 == uidfree)
+            {
+                LE_ERROR("No entry free in apps translation table");
+            }
+            else
+            {
+                // Yes. Copy the apps username into the apps translation table.
+                snprintf(appsUserName, sizeof(appsUserName), USERNAME_TABLE_PREFIX "%02u", uidfree);
+                snprintf(AppsTab[uidfree].name, sizeof(appTab_t), "%s", usernamePtr);
+                // Write the apps translation table into flash
+                fd = fopen(APPS_TRANSLATION_FILE, "w");
+                if (fd)
+                {
+                    size_t rc;
+                    rc = fwrite(AppsTab, sizeof(appTab_t), NbAppsInTranslationTable, fd);
+                    fclose(fd);
+                    if (NbAppsInTranslationTable != rc)
+                    {
+                        LE_ERROR("Write of apps translation table failed (rc %zu != %u)",
+                                 rc, NbAppsInTranslationTable);
+                        return LE_FAULT;
+                    }
+                }
+                usernamePtr = appsUserName;
+            }
+        }
+    }
+
+    FILE* passwdFilePtr;
+    if (IsEtcWritable)
+    {
+        // Lock the passwd file for reading and writing.
+        passwdFilePtr = le_atomFile_OpenStream(PASSWORD_FILE, LE_FLOCK_READ_AND_APPEND, NULL);
+    }
+    else
+    {
+        passwdFilePtr = fopen( PASSWORD_FILE, "r" );
+    }
     if (passwdFilePtr == NULL)
     {
         LE_ERROR("Could not open file %s.  %m.", PASSWORD_FILE);
         return LE_FAULT;
     }
 
+    FILE* groupFilePtr;
     // Lock the group file for reading and writing.
-    FILE* groupFilePtr = le_atomFile_OpenStream(GROUP_FILE, LE_FLOCK_READ_AND_APPEND, NULL);
+    if (IsEtcWritable)
+    {
+        groupFilePtr = le_atomFile_OpenStream(GROUP_FILE, LE_FLOCK_READ_AND_APPEND, NULL);
+    }
+    else
+    {
+        groupFilePtr = fopen( GROUP_FILE, "r" );
+    }
     if (groupFilePtr == NULL)
     {
         LE_ERROR("Could not open file %s.  %m.", GROUP_FILE);
-        le_atomFile_CancelStream(passwdFilePtr);
+        if (IsEtcWritable)
+        {
+            le_atomFile_CancelStream(passwdFilePtr);
+        }
+        else
+        {
+            fclose(passwdFilePtr);
+        }
         return LE_FAULT;
     }
 
@@ -954,23 +1260,45 @@ le_result_t user_Create
             goto cleanup;
     }
 
-    result = le_atomFile_CloseStream(groupFilePtr);
+    if (IsEtcWritable)
+    {
+        result = le_atomFile_CloseStream(groupFilePtr);
+    }
+    else
+    {
+        fclose(groupFilePtr);
+        result = LE_OK;
+    }
 
     if (result != LE_OK)
     {
         DeleteFile(BACKUP_GROUP_FILE);
-        le_atomFile_CancelStream(passwdFilePtr);
+        if (IsEtcWritable)
+        {
+            le_atomFile_CancelStream(passwdFilePtr);
+        }
+        else
+        {
+            fclose(passwdFilePtr);
+        }
         return result;
     }
 
-    result = le_atomFile_CloseStream(passwdFilePtr);
+    if (IsEtcWritable)
+    {
+        result = le_atomFile_CloseStream(passwdFilePtr);
+    }
+    else
+    {
+        fclose(passwdFilePtr);
+        result = LE_OK;
+    }
 
     if (result != LE_OK)
     {
         // Restore group file. If restoration succeed, it will automatically delete the backup file.
-        LE_FATAL_IF(RestoreBackup(GROUP_FILE, BACKUP_GROUP_FILE) != LE_OK,
+        LE_CRIT_IF(RestoreBackup(GROUP_FILE, BACKUP_GROUP_FILE) != LE_OK,
                     "Can't restore group file from backup.");
-
         return result;
     }
     else
@@ -994,8 +1322,16 @@ le_result_t user_Create
 
 cleanup:
     DeleteFile(BACKUP_GROUP_FILE);
-    le_atomFile_CancelStream(passwdFilePtr);
-    le_atomFile_CancelStream(groupFilePtr);
+    if (IsEtcWritable)
+    {
+        le_atomFile_CancelStream(passwdFilePtr);
+        le_atomFile_CancelStream(groupFilePtr);
+    }
+    else
+    {
+        fclose(passwdFilePtr);
+        fclose(groupFilePtr);
+    }
     return result;
 }
 
@@ -1018,7 +1354,17 @@ le_result_t user_CreateGroup
 )
 {
     // Lock the group file for reading and writing.
-    FILE* groupFilePtr = le_atomFile_OpenStream(GROUP_FILE, LE_FLOCK_READ_AND_APPEND, NULL);
+    FILE* groupFilePtr;
+
+    if (IsEtcWritable)
+    {
+        groupFilePtr = le_atomFile_OpenStream(GROUP_FILE, LE_FLOCK_READ_AND_APPEND, NULL);
+    }
+    else
+    {
+        groupFilePtr = fopen(GROUP_FILE, "r");
+    }
+
     if (groupFilePtr == NULL)
     {
         LE_ERROR("Could not open file %s.  %m.", GROUP_FILE);
@@ -1032,14 +1378,28 @@ le_result_t user_CreateGroup
     if (result == LE_OK)
     {
         LE_WARN("Group '%s' already exists.", groupNamePtr);
-        le_atomFile_CancelStream(groupFilePtr);
+        if (IsEtcWritable)
+        {
+            le_atomFile_CancelStream(groupFilePtr);
+        }
+        else
+        {
+            fclose(groupFilePtr);
+        }
 
         *gidPtr = gid;
         return LE_DUPLICATE;
     }
     else if (result == LE_FAULT)
     {
-        le_atomFile_CancelStream(groupFilePtr);
+        if (IsEtcWritable)
+        {
+            le_atomFile_CancelStream(groupFilePtr);
+        }
+        else
+        {
+            fclose(groupFilePtr);
+        }
         return LE_FAULT;
     }
 
@@ -1048,15 +1408,29 @@ le_result_t user_CreateGroup
 
     if (result != LE_OK)
     {
-        le_atomFile_CancelStream(groupFilePtr);
+        if (IsEtcWritable)
+        {
+            le_atomFile_CancelStream(groupFilePtr);
+        }
+        else
+        {
+            fclose(groupFilePtr);
+        }
         return LE_FAULT;
     }
 
     result = CreateGroup(groupNamePtr, gid, groupFilePtr);
+    if (!IsEtcWritable)
+    {
+        fclose(groupFilePtr);
+    }
 
     if (result == LE_OK)
     {
-        result = le_atomFile_CloseStream(groupFilePtr);
+        if (IsEtcWritable)
+        {
+            result = le_atomFile_CloseStream(groupFilePtr);
+        }
 
         if (result == LE_OK)
         {
@@ -1066,7 +1440,10 @@ le_result_t user_CreateGroup
     }
     else
     {
-        le_atomFile_CancelStream(groupFilePtr);
+        if (IsEtcWritable)
+        {
+            le_atomFile_CancelStream(groupFilePtr);
+        }
     }
 
     return result;
@@ -1187,94 +1564,139 @@ static le_result_t DeleteUser
     FILE* passwdFilePtr         ///< [IN] Pointer to the passwd file.
 )
 {
-    struct passwd passwdEntry;
-    char buf[MaxPasswdEntrySize];
-    struct passwd *passwdEntryPtr;
-
-    rewind(passwdFilePtr);
-
-    long readPos = ftell(passwdFilePtr);
-
-    if (readPos == -1)
+    if (IsEtcWritable)
     {
-        LE_ERROR("Failed to get current position of group file. %m");
-        return LE_FAULT;
-    }
+        struct passwd passwdEntry;
+        char buf[MaxPasswdEntrySize];
+        struct passwd *passwdEntryPtr;
 
-    long writePos = readPos;
+        rewind(passwdFilePtr);
 
-    // Read each entry in the backup file.
-    int result;
-    bool skippedEntry = false;
+        long readPos = ftell(passwdFilePtr);
 
-    while ((result = fgetpwent_r(passwdFilePtr, &passwdEntry, buf, sizeof(buf), &passwdEntryPtr)) == 0)
-    {
-
-        if (strcmp(passwdEntry.pw_name, namePtr) == 0)
+        if (readPos == -1)
         {
-            skippedEntry = true;
-
-        }
-        else if (skippedEntry)
-        {
-            if ((readPos = ftell(passwdFilePtr)) == -1)
-            {
-                LE_ERROR("Failed to position of passwd file. %m");
-                return LE_FAULT;
-            }
-
-            if (fseek(passwdFilePtr, writePos, SEEK_SET) == -1)
-            {
-                LE_ERROR("Can't set position in passwd file. %m");
-                return LE_FAULT;
-            }
-
-            // Write the entry into the passwd file.
-            if (putpwent(&passwdEntry, passwdFilePtr) == -1)
-            {
-                LE_ERROR("Could not write into passwd file.  %m.");
-                return LE_FAULT;
-            }
-
-            if ((writePos = ftell(passwdFilePtr)) == -1)
-            {
-                LE_ERROR("Failed to position of passwd file. %m");
-                return LE_FAULT;
-            }
-
-            if (fseek(passwdFilePtr, readPos, SEEK_SET) == -1)
-            {
-                LE_ERROR("Can't set position in passwd file. %m");
-                return LE_FAULT;
-            }
+            LE_ERROR("Failed to get current position of group file. %m");
+            return LE_FAULT;
         }
 
-        if (!skippedEntry)
+        long writePos = readPos;
+
+        // Read each entry in the backup file.
+        int result;
+        bool skippedEntry = false;
+
+        while ((result = fgetpwent_r(passwdFilePtr, &passwdEntry, buf, sizeof(buf), &passwdEntryPtr)) == 0)
         {
-            // No matched entry found yet, so update write position to current position in file.
-            if ((writePos = ftell(passwdFilePtr)) == -1)
+
+            if (strcmp(passwdEntry.pw_name, namePtr) == 0)
             {
-                LE_ERROR("Failed to position of passwd file. %m");
+                skippedEntry = true;
+
+            }
+            else if (skippedEntry)
+            {
+                if ((readPos = ftell(passwdFilePtr)) == -1)
+                {
+                    LE_ERROR("Failed to position of passwd file. %m");
+                    return LE_FAULT;
+                }
+
+                if (fseek(passwdFilePtr, writePos, SEEK_SET) == -1)
+                {
+                    LE_ERROR("Can't set position in passwd file. %m");
+                    return LE_FAULT;
+                }
+
+                // Write the entry into the passwd file.
+                if (putpwent(&passwdEntry, passwdFilePtr) == -1)
+                {
+                    LE_ERROR("Could not write into passwd file.  %m.");
+                    return LE_FAULT;
+                }
+
+                if ((writePos = ftell(passwdFilePtr)) == -1)
+                {
+                    LE_ERROR("Failed to position of passwd file. %m");
+                    return LE_FAULT;
+                }
+
+                if (fseek(passwdFilePtr, readPos, SEEK_SET) == -1)
+                {
+                    LE_ERROR("Can't set position in passwd file. %m");
+                    return LE_FAULT;
+                }
+            }
+
+            if (!skippedEntry)
+            {
+                // No matched entry found yet, so update write position to current position in file.
+                if ((writePos = ftell(passwdFilePtr)) == -1)
+                {
+                    LE_ERROR("Failed to position of passwd file. %m");
+                    return LE_FAULT;
+                }
+            }
+        }
+
+        if (result == ERANGE)
+        {
+            LE_ERROR("Could not read passwd file buffer size (%zd) is too small.", sizeof(buf));
+            return LE_FAULT;
+        }
+
+        result = SetFileLength(passwdFilePtr, writePos);
+
+        if (result != LE_OK)
+        {
+            LE_ERROR("Could not update password file. %m");
+            return LE_FAULT;
+        }
+
+        return result;
+    }
+    else
+    {
+        uint32_t uid;
+        FILE* fd = fopen(APPS_TRANSLATION_FILE, "r");
+        if (fd)
+        {
+            size_t rc;
+            rc = fread(AppsTab, sizeof(appTab_t), NbAppsInTranslationTable, fd);
+            fclose(fd);
+            if (NbAppsInTranslationTable != rc)
+            {
+                LE_ERROR("Read of apps translation table failed (rc %zu != %u)",
+                         rc, NbAppsInTranslationTable);
                 return LE_FAULT;
+            }
+        }
+
+        for (uid = 0; uid < NbAppsInTranslationTable; uid++)
+        {
+            if (0 == strcmp(AppsTab[uid].name, namePtr))
+            {
+                size_t rc;
+
+                memset(AppsTab[uid].name, 0, sizeof(appTab_t));
+                fd = fopen(APPS_TRANSLATION_FILE, "w");
+                if (fd)
+                {
+                    rc = fwrite(AppsTab, sizeof(appTab_t), NbAppsInTranslationTable, fd);
+                    fclose(fd);
+                    if (NbAppsInTranslationTable != rc)
+                    {
+                        LE_ERROR("Write of apps translation table failed (rc %zu != %u)",
+                                 rc, NbAppsInTranslationTable);
+                        return LE_FAULT;
+                    }
+                }
+                return LE_OK;
             }
         }
     }
 
-    if (result == ERANGE)
-    {
-        LE_ERROR("Could not read passwd file buffer size (%zd) is too small.", sizeof(buf));
-        return LE_FAULT;
-    }
-
-    result = SetFileLength(passwdFilePtr, writePos);
-
-    if (result != LE_OK)
-    {
-        LE_ERROR("Could not update password file. %m");
-        return LE_FAULT;
-    }
-
-    return result;
+    return LE_FAULT;
 }
 
 
@@ -1293,27 +1715,47 @@ le_result_t user_Delete
     const char* namePtr     ///< [IN] Pointer to the name of the user to delete.
 )
 {
-    // Create a backup file for the group file.
-    if (MakeBackup(GROUP_FILE, BACKUP_GROUP_FILE) != LE_OK)
-    {
-        return LE_FAULT;
-    }
+    FILE* passwdFilePtr;
+    FILE* groupFilePtr;
 
-    // Lock the passwd file for reading and writing.
-    FILE* passwdFilePtr = le_atomFile_OpenStream(PASSWORD_FILE, LE_FLOCK_READ_AND_WRITE, NULL);
-    if (passwdFilePtr == NULL)
+    if (IsEtcWritable)
     {
-        LE_ERROR("Could not open file %s.  %m.", PASSWORD_FILE);
-        return LE_FAULT;
-    }
+        // Create a backup file for the group file.
+        if (MakeBackup(GROUP_FILE, BACKUP_GROUP_FILE) != LE_OK)
+        {
+            return LE_FAULT;
+        }
 
-    // Lock the group file for reading and writing.
-    FILE* groupFilePtr = le_atomFile_OpenStream(GROUP_FILE, LE_FLOCK_READ_AND_WRITE, NULL);
-    if (groupFilePtr == NULL)
+        // Lock the passwd file for reading and writing.
+        passwdFilePtr = le_atomFile_OpenStream(PASSWORD_FILE, LE_FLOCK_READ_AND_WRITE, NULL);
+        if (NULL == passwdFilePtr)
+        {
+            LE_ERROR("Could not open file %s.  %m.", PASSWORD_FILE);
+            return LE_FAULT;
+        }
+
+        // Lock the group file for reading and writing.
+        groupFilePtr = le_atomFile_OpenStream(GROUP_FILE, LE_FLOCK_READ_AND_WRITE, NULL);
+        if (NULL == groupFilePtr)
+        {
+            LE_ERROR("Could not open file %s.  %m.", GROUP_FILE);
+            le_atomFile_CancelStream(passwdFilePtr);
+            return LE_FAULT;
+        }
+    }
+    else
     {
-        LE_ERROR("Could not open file %s.  %m.", GROUP_FILE);
-        le_atomFile_CancelStream(passwdFilePtr);
-        return LE_FAULT;
+        passwdFilePtr = fopen(PASSWORD_FILE, "r");
+        if (NULL == passwdFilePtr)
+        {
+            return LE_FAULT;
+        }
+        groupFilePtr = fopen(GROUP_FILE, "r");
+        if (NULL == groupFilePtr)
+        {
+            fclose(passwdFilePtr);
+            return LE_FAULT;
+        }
     }
 
     uid_t uid;
@@ -1373,43 +1815,60 @@ le_result_t user_Delete
             goto cleanup;
     }
 
-    result = le_atomFile_CloseStream(groupFilePtr);
-
-    if (result != LE_OK)
+    if (IsEtcWritable)
     {
-        DeleteFile(BACKUP_GROUP_FILE);
-        le_atomFile_CancelStream(passwdFilePtr);
-        return result;
-    }
+        result = le_atomFile_CloseStream(groupFilePtr);
 
-    result = le_atomFile_CloseStream(passwdFilePtr);
-
-    if (result != LE_OK)
-    {
-        // Restore group file. If restoration succeed, it will automatically delete the backup file.
-        LE_FATAL_IF(RestoreBackup(GROUP_FILE, BACKUP_GROUP_FILE) != LE_OK,
-                    "Can't restore group file from backup.");
-        return result;
-    }
-    else
-    {
-        DeleteFile(BACKUP_GROUP_FILE);
-
-        if (isDeleted)
+        if (result != LE_OK)
         {
-            LE_INFO("Deleted user '%s'.", namePtr);
-            return LE_OK;
+            DeleteFile(BACKUP_GROUP_FILE);
+            le_atomFile_CancelStream(passwdFilePtr);
+            return result;
+        }
+
+        result = le_atomFile_CloseStream(passwdFilePtr);
+
+        if (result != LE_OK)
+        {
+            // Restore group file. If restoration succeed, it will automatically delete the backup file.
+            LE_CRIT_IF(RestoreBackup(GROUP_FILE, BACKUP_GROUP_FILE) != LE_OK,
+                        "Can't restore group file from backup.");
+            return result;
         }
         else
         {
-            return LE_NOT_FOUND;
+            DeleteFile(BACKUP_GROUP_FILE);
+
+            if (isDeleted)
+            {
+                LE_INFO("Deleted user '%s'.", namePtr);
+                return LE_OK;
+            }
+            else
+            {
+                return LE_NOT_FOUND;
+            }
         }
+    }
+    else
+    {
+        fclose(groupFilePtr);
+        fclose(passwdFilePtr);
+        return (isDeleted ? LE_OK : LE_NOT_FOUND);
     }
 
 cleanup:
-    DeleteFile(BACKUP_GROUP_FILE);
-    le_atomFile_CancelStream(passwdFilePtr);
-    le_atomFile_CancelStream(groupFilePtr);
+    if (IsEtcWritable)
+    {
+        DeleteFile(BACKUP_GROUP_FILE);
+        le_atomFile_CancelStream(passwdFilePtr);
+        le_atomFile_CancelStream(groupFilePtr);
+    }
+    else
+    {
+        fclose(passwdFilePtr);
+        fclose(groupFilePtr);
+    }
     return result;
 }
 
@@ -1429,8 +1888,17 @@ le_result_t user_DeleteGroup
     const char* groupNamePtr     ///< [IN] Pointer to the name of the group to delete.
 )
 {
-    // Lock the group file for reading and writing.
-    FILE* groupFilePtr = le_atomFile_OpenStream(GROUP_FILE, LE_FLOCK_READ_AND_WRITE, NULL);
+    FILE* groupFilePtr;
+
+    if (IsEtcWritable)
+    {
+        // Lock the group file for reading and writing.
+        groupFilePtr = le_atomFile_OpenStream(GROUP_FILE, LE_FLOCK_READ_AND_WRITE, NULL);
+    }
+    else
+    {
+        groupFilePtr = fopen(GROUP_FILE, "r");
+    }
     if (groupFilePtr == NULL)
     {
         LE_ERROR("Could not open file %s.  %m.", GROUP_FILE);
@@ -1443,7 +1911,14 @@ le_result_t user_DeleteGroup
 
     if (result != LE_OK)
     {
-        le_atomFile_CancelStream(groupFilePtr);
+        if (IsEtcWritable)
+        {
+            le_atomFile_CancelStream(groupFilePtr);
+        }
+        else
+        {
+            fclose(groupFilePtr);
+        }
         return result;
     }
 
@@ -1451,13 +1926,29 @@ le_result_t user_DeleteGroup
 
     if (result != LE_OK)
     {
-        le_atomFile_CancelStream(groupFilePtr);
+        if (IsEtcWritable)
+        {
+            le_atomFile_CancelStream(groupFilePtr);
+        }
+        else
+        {
+            fclose(groupFilePtr);
+        }
+
         return result;
     }
 
-    result = le_atomFile_CloseStream(groupFilePtr);
+    if (IsEtcWritable)
+    {
+        result = le_atomFile_CloseStream(groupFilePtr);
+    }
+    else
+    {
+        fclose(groupFilePtr);
+        result = LE_OK;
+    }
 
-    if (result  == LE_OK)
+    if (result == LE_OK)
     {
         LE_INFO("Successfully deleted group '%s'.", groupNamePtr);
     }

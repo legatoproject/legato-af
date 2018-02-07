@@ -45,6 +45,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Temp directory to use for lock file when directory is not writable
+ */
+//--------------------------------------------------------------------------------------------------
+#define LOCK_FILE_TEMP_DIR        "/tmp/"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Mutex used to protect shared data structures in this module.
  */
 //--------------------------------------------------------------------------------------------------
@@ -203,7 +211,8 @@ static le_result_t DeleteFile
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get file path with file extension appended.
+ * Get file path with file extension appended. If the directory is not writable, the lock is created
+ * into /tmp instead and in path name '/' are replaced by '.'.
  **/
 //--------------------------------------------------------------------------------------------------
 static void GetFilePath
@@ -215,21 +224,62 @@ static void GetFilePath
 )
 {
     char basePath[PATH_MAX];
+    bool isDirWritable = false;
+    bool isLockFile = (0 == strcmp(fileExtension, LOCK_FILE_EXTENSION) ? true : false);
+
     LE_ASSERT(le_path_GetDir(originFilePath, "/", basePath, sizeof(basePath)) == LE_OK);
 
     if (le_dir_IsDir(basePath))
     {
-        LE_ASSERT(snprintf(outFilePath, filePathSize, "%s%s", originFilePath, fileExtension)
-                      < filePathSize);
+        // Directory is not writable and the file is a lock
+        if (access(basePath, W_OK) && isLockFile)
+        {
+            LE_ASSERT(snprintf(outFilePath, filePathSize,
+                               LOCK_FILE_TEMP_DIR "%s%s", originFilePath, fileExtension)
+                          < filePathSize);
+        }
+        else
+        {
+            LE_ASSERT(snprintf(outFilePath, filePathSize,
+                               "%s%s", originFilePath, fileExtension)
+                          < filePathSize);
+            isDirWritable = true;
+        }
     }
     else
     {
         // Origin path only file name., i.e. something like "fileName.extension". Consider it is
         // in current directory, so add "./" in path
-        LE_ASSERT(snprintf(outFilePath, filePathSize, "./%s%s", originFilePath, fileExtension)
-                      < filePathSize);
+        if (access(".", W_OK) && isLockFile)
+        {
+            LE_ASSERT(snprintf(outFilePath, filePathSize,
+                               LOCK_FILE_TEMP_DIR "./%s%s", originFilePath, fileExtension)
+                          < filePathSize);
+        }
+        else
+        {
+            LE_ASSERT(snprintf(outFilePath, filePathSize,
+                               "./%s%s", originFilePath, fileExtension)
+                          < filePathSize);
+            isDirWritable = true;
+        }
     }
 
+    if (!isDirWritable && isLockFile)
+    {
+        // If directory is not writable, opening a file with lock even in R/O will fail due to
+        // lock path name. So we replace the lock path with a file into /tmp directory with the
+        // '/' replaced by '.'.
+        int i;
+        // Replace '/' after "/tmp/" by '.' as the directory is not writable.
+        for( i = strlen(LOCK_FILE_TEMP_DIR); outFilePath[i]; i++ )
+        {
+            if( '/' == outFilePath[i] )
+            {
+                 outFilePath[i] = '.';
+            }
+        }
+    }
 }
 
 

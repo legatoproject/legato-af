@@ -1509,36 +1509,40 @@ static void UpdateUsersAndGroups
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Create a new passwd file and group file.
-    static const char* newPasswdFilePath = "/etc/newpasswd";
-    static const char* newGroupFilePath = "/etc/newgroup";
-    FILE* newPasswdFile = fopen(newPasswdFilePath, "w");
-    LE_FATAL_IF(newPasswdFile == NULL, "Failed to create '%s'.", newPasswdFilePath);
-    FILE* newGroupFile = fopen(newGroupFilePath, "w");
-    LE_FATAL_IF(newGroupFile == NULL, "Failed to create '%s'.", newGroupFilePath);
+    // Check if /etc is writable. Else skip the /etc/passwd and /etc/group update
+    if (0 == access("/etc/passwd", W_OK))
+    {
+        // Create a new passwd file and group file.
+        static const char* newPasswdFilePath = "/etc/newpasswd";
+        static const char* newGroupFilePath = "/etc/newgroup";
+        FILE* newPasswdFile = fopen(newPasswdFilePath, "w");
+        LE_FATAL_IF(newPasswdFile == NULL, "Failed to create '%s'.", newPasswdFilePath);
+        FILE* newGroupFile = fopen(newGroupFilePath, "w");
+        LE_FATAL_IF(newGroupFile == NULL, "Failed to create '%s'.", newGroupFilePath);
 
-    // Set correct access permissions: ug=rw,o=r
-    LE_FATAL_IF(chmod(newPasswdFilePath, (S_IWUSR|S_IRUSR|S_IWGRP|S_IRGRP|S_IROTH)),
-                "Failed to set permissions 0664 to '%s'.", newPasswdFilePath);
-    // Set correct access permissions: ug=rw,o=r
-    LE_FATAL_IF(chmod(newGroupFilePath, (S_IWUSR|S_IRUSR|S_IWGRP|S_IRGRP|S_IROTH)),
-                "Failed to set permissions 0664 to '%s'.", newGroupFilePath);
+        // Set correct access permissions: ug=rw,o=r
+        LE_FATAL_IF(chmod(newPasswdFilePath, (S_IWUSR|S_IRUSR|S_IWGRP|S_IRGRP|S_IROTH)),
+                    "Failed to set permissions 0664 to '%s'.", newPasswdFilePath);
+        // Set correct access permissions: ug=rw,o=r
+        LE_FATAL_IF(chmod(newGroupFilePath, (S_IWUSR|S_IRUSR|S_IWGRP|S_IRGRP|S_IROTH)),
+                    "Failed to set permissions 0664 to '%s'.", newGroupFilePath);
 
-    // Copy existing passwd file and group file contents that we need for the current system.
-    CopyExistingUserOrGroupLines(newPasswdFile, "/etc/passwd");
-    CopyExistingUserOrGroupLines(newGroupFile, "/etc/group");
+        // Copy existing passwd file and group file contents that we need for the current system.
+        CopyExistingUserOrGroupLines(newPasswdFile, "/etc/passwd");
+        CopyExistingUserOrGroupLines(newGroupFile, "/etc/group");
 
-    // Close the new passwd and group files.
-    LE_FATAL_IF(fclose(newPasswdFile) != 0, "Failed to close '%s' (%m).", newPasswdFilePath);
-    LE_FATAL_IF(fclose(newGroupFile) != 0, "Failed to close '%s' (%m).", newGroupFilePath);
+        // Close the new passwd and group files.
+        LE_FATAL_IF(fclose(newPasswdFile) != 0, "Failed to close '%s' (%m).", newPasswdFilePath);
+        LE_FATAL_IF(fclose(newGroupFile) != 0, "Failed to close '%s' (%m).", newGroupFilePath);
 
-    // Rename the new passwd and group files over top of the old ones.
-    LE_FATAL_IF(rename(newPasswdFilePath, "/etc/passwd") != 0,
-                "Failed to rename '%s' to '/etc/passwd' (%m).",
-                newPasswdFilePath);
-    LE_FATAL_IF(rename(newGroupFilePath, "/etc/group") != 0,
-                "Failed to rename '%s' to '/etc/group' (%m).",
-                newGroupFilePath);
+        // Rename the new passwd and group files over top of the old ones.
+        LE_FATAL_IF(rename(newPasswdFilePath, "/etc/passwd") != 0,
+                    "Failed to rename '%s' to '/etc/passwd' (%m).",
+                    newPasswdFilePath);
+        LE_FATAL_IF(rename(newGroupFilePath, "/etc/group") != 0,
+                    "Failed to rename '%s' to '/etc/group' (%m).",
+                    newGroupFilePath);
+    }
 
     // Walk the apps directory under the current system, and for each app in the directory,
     // make sure it has a user account and primary group in the new passwd and group files.

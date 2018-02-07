@@ -49,30 +49,49 @@ case "$1" in
         fi
 
         cd /mnt/legato/
-        # Check if legato is read-only
-        if [ -f systems/current/read-only ]; then
-
+        if [ -z ""`grep -a '^/legato/.*/liblegato.so$' /etc/ld.so.cache` ]; then
             # On some platforms, the '[ -w ... ]' returns true even it is located to read-only
             # file system. Protect against by performing the action in read-write and if failed
             # replay the action in read-only.
             LDCONFIG=""
             if [ -w /etc/ld.so.cache ]; then
-                ldconfig -i /legato/systems/current/lib && LDCONFIG="RW"
+               ldconfig -i /legato/systems/current/lib 2>/dev/null && LDCONFIG="RW"
             fi
             if [ "RW" != "$LDCONFIG" ]; then
-                # Update ld.so cache
-                if [ -f /tmp/ld.so.cache ]; then
-                    umount /etc/ld.so.cache 2>/dev/null
-                fi
-                cp /etc/ld.so.cache /tmp/ld.so.cache &&
-                ldconfig -i /legato/systems/current/lib -C /tmp/ld.so.cache &&
-                chmod 644 /tmp/ld.so.cache &&
-                mount -o bind /tmp/ld.so.cache /etc/ld.so.cache
+               echo "/etc/ld.so.cache is R/O"
+               # Update ld.so cache
+               if [ -f /tmp/ld.so.cache ]; then
+                   umount /etc/ld.so.cache 2>/dev/null
+               fi
+               cp /etc/ld.so.cache /tmp/ld.so.cache
+               ldconfig -i /legato/systems/current/lib -C /tmp/ld.so.cache
+               # When installed from scratch, no /legato/systems/current exits, so we need to
+               # add the installation path to have the Legato starting.
+               [ ! -d /legato/systems/current/lib ] &&
+                   ldconfig -i /mnt/legato/system/lib -C /tmp/ld.so.cache
+               chmod 644 /tmp/ld.so.cache
+               mount -o bind /tmp/ld.so.cache /etc/ld.so.cache
             fi
+        fi
+
+        # Check if legato is read-only
+        if [ -f systems/current/read-only ]; then
 
             # Start the legato
             ./systems/current/bin/startSystem
         else
+            if [ -e /tmp/ld.so.cache ]; then
+                # Assume that /etc is NOT writable. So, copy /etc/hosts and /etc/resolv.conf
+                # to /tmp and perform a mount -o bind to have these files writable.
+                for file in hosts resolv.conf; do
+                    # Skip if file in /etc is a symbolic link
+                    test -L /etc/$file && continue
+                    umount /etc/$file 2>/dev/null
+                    cp /etc/$file /tmp/
+                    mount -o bind /tmp/$file /etc/$file
+                    [ $? -ne 0 ] && echo "Cannot mount /etc/$file writable" >/dev/stderr
+                done
+            fi
             cd /mnt/legato
             ./system/bin/startSystem
         fi

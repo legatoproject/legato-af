@@ -5,20 +5,17 @@ ecm_dhcp_conf=/etc/dnsmasq.d/dnsmasq.ecm.conf
 ecm_iface=$(ls -1 /sys/class/net/ | egrep '(e[ec]m|usb)0')
 
 legato_ro=/mnt/legato/systems/current/read-only
+etc_ro=`(mount | grep -q " /etc ") || echo "RO"`
 
-if [ ! -w `dirname $ecm_dhcp_conf` -a -e $legato_ro ]; then
+if [ ! -w `dirname $ecm_dhcp_conf` -a -e $legato_ro -o "${etc_ro}" == "RO" ]; then
     # Because dnsmasq.ecm.conf should be writeable to work with configEcm
     # if it is only R/O, we create an overlay on this file to work
-    mkdir -p /tmp/etc/dnsmasq.d /tmp/etc/dnsmasq.d_wk
-    mount -t overlay \
-          -o upperdir=/tmp/etc/dnsmasq.d,workdir=/tmp/etc/dnsmasq.d_wk,lowerdir=/etc/dnsmasq.d \
-          overlay /etc/dnsmasq.d
+    cp -a /etc/dnsmasq.d /tmp/etc_dnsmasq.d
+    mount -o bind /tmp/etc_dnsmasq.d /etc/dnsmasq.d
 fi
-if [ ! -w `dirname $ecm_conf` -a -e $legato_ro ]; then
-    mkdir -p /tmp/etc/legato /tmp/etc/legato_wk
-    mount -t overlay \
-          -o upperdir=/tmp/etc/legato,workdir=/tmp/etc/legato_wk,lowerdir=/etc/legato \
-          overlay /etc/legato
+if [ ! -w `dirname $ecm_conf` -a -e $legato_ro -o "${etc_ro}" == "RO" ]; then
+    cp -a /etc/legato /tmp/etc_legato
+    mount -o bind /tmp/etc_legato /etc/legato
 fi
 
 command_name=$(basename $0)
