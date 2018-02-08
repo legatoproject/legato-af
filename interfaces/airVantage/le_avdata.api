@@ -30,8 +30,8 @@
  * AirVantage server.
  *
  * A field can be:
- * - @b variable allowing an App to read/write the value, and can be read from the AV server.
- * - @b setting allowing the AirVantage server to read/write the value, and can be read by an App.
+ * - @b variable allowing the AirVantage server to read the value, and can be read/writtten to by an App.
+ * - @b setting allowing the AirVantage server to read/write the value, and can be read/written to by an App.
  * - @b command allowing the AirVantage server to invoke a function in the App.
  *
  * Fields are referred to by paths and need to follow these rules:
@@ -284,14 +284,14 @@ DEFINE STRING_VALUE_BYTES = (STRING_VALUE_LEN + 1);
 /**
  * Resource access modes:
  *   - Variable: read (server), read/write (client)
- *   - Setting: read/write (server), read (client)
+ *   - Setting: read/write (server), read/write (client)
  *   - Command: execute (server)
  */
 //--------------------------------------------------------------------------------------------------
 ENUM AccessMode
 {
     ACCESS_VARIABLE,        ///< read(server) or read/write(client)
-    ACCESS_SETTING,         ///< read/write (server) or read (client)
+    ACCESS_SETTING,         ///< read/write (server) or read/write (client)
     ACCESS_COMMAND          ///< execute (server)
 };
 
