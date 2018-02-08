@@ -14,6 +14,13 @@
 #include "legato.h"
 #include "interfaces.h"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum message count for SMS Inbox.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_MESSAGE_INVALID_COUNT 101
+#define MAX_MESSAGE_VALID_COUNT   10
 
 static le_smsInbox1_RxMessageHandlerRef_t  HandlerRef = NULL;
 
@@ -259,6 +266,9 @@ COMPONENT_INIT
 {
     if (le_arg_NumArgs() >= 1)
     {
+        // Maximum number of messages configured for SMS Inbox.
+        uint32_t maxMsgCount;
+
         LE_INFO("======== Start SMS Inbox service test ======== ");
 
         // Register a signal event handler for SIGINT when user interrupts/terminates process
@@ -273,6 +283,13 @@ COMPONENT_INIT
         LE_INFO("   Test case.%s", testCase);
 
         MyMbx1Ref = le_smsInbox1_Open ();
+
+        LE_ASSERT(LE_OVERFLOW == le_smsInbox1_SetMaxMessages(MAX_MESSAGE_INVALID_COUNT));
+        LE_ASSERT_OK(le_smsInbox1_SetMaxMessages(MAX_MESSAGE_VALID_COUNT));
+
+        LE_ASSERT(LE_BAD_PARAMETER == le_smsInbox1_GetMaxMessages(NULL));
+        LE_ASSERT_OK(le_smsInbox1_GetMaxMessages(&maxMsgCount));
+        LE_ASSERT(MAX_MESSAGE_VALID_COUNT == maxMsgCount);
 
         if (strncmp(testCase, "read", strlen("read")) == 0)
         {

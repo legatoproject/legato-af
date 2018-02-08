@@ -23,10 +23,17 @@
  * SMSInbox directory path length.
  */
 //--------------------------------------------------------------------------------------------------
-#define MAX_FILE_PATH_LEN       512
-#define MAX_SIMU_PATH_LEN       20
-#define MAX_CMD_ARG             5
-#define MAX_MESSAGE_COUNT       50
+#define MAX_FILE_PATH_LEN         512
+#define MAX_SIMU_PATH_LEN         20
+#define MAX_CMD_ARG               5
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum message count for SMS Inbox.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_MESSAGE_INVALID_COUNT 101
+#define MAX_MESSAGE_COUNT         50
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -478,6 +485,8 @@ static void Testle_smsInbox_SetMaxMessages
 )
 {
     LE_INFO("Set Maximum number of messages for message box");
+
+    LE_ASSERT(LE_OVERFLOW == le_smsInbox1_SetMaxMessages(MAX_MESSAGE_INVALID_COUNT));
     LE_ASSERT_OK(le_smsInbox1_SetMaxMessages(maxMessageCount));
 }
 
@@ -494,8 +503,10 @@ static void Testle_smsInbox_GetMaxMessages
     uint32_t maxMessageCount;
 
     LE_INFO("Get Maximum number of messages for message box");
-    LE_ASSERT_OK(le_smsInbox1_GetMaxMessages(&maxMessageCount));
 
+    LE_ASSERT(LE_BAD_PARAMETER == le_smsInbox1_GetMaxMessages(NULL));
+
+    LE_ASSERT_OK(le_smsInbox1_GetMaxMessages(&maxMessageCount));
     LE_ASSERT(maxMessageCount == MAX_MESSAGE_COUNT);
 }
 
