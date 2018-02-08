@@ -31,11 +31,12 @@ Each target maintains it's own unique toolchain as the toolchain needs to be bui
 distribution.  Visit [source.sierrawireless.com](https://source.sierrawireless.com/) to download and
 install the toolchain for your target.
 
-| Module         | Download Site                                                                   |
-| -------------- | ------------------------------------------------------------------------------- |
-| WPX5XX         | [WPX5XX Download Page](https://source.sierrawireless.com/resources/legato/downloads/)                                                 |
+| Module         | Download Site                                                                                                                         |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| WPX5XX         | [WPX5XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wpx5xx/wpx5xx-firmware-latest-release/) |
 | WP76XX         | [WP76XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wp76xx/wp76xx-firmware-latest-release/) |
-| AR Modules     | See your FAE to download and install the toolchain for your module              |
+| WP77XX         | [WP77XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wp77xx/wp77xx-firmware-latest-release/) |
+| AR Modules     | See your FAE to download and install the toolchain for your module                                                                    |
 
 After downloading the toolchain installer copy it into your workspace for safe keeping:
 @verbatim

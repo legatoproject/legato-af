@@ -43,12 +43,13 @@ device.  The toolchain is specific to the Linux Distribution and the Module so e
 are building for must have its own toolchain installed.  Toolchains can be downloaded from your
 vendor.
 
-| Module         | Download Site                                                                   |
-| -------------- | ------------------------------------------------------------------------------- |
-| WPX5XX         | [WPX5XX Download Page](https://source.sierrawireless.com/resources/legato/downloads/)                                                 |
+| Module         | Download Site                                                                                                                         |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| WPX5XX         | [WPX5XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wpx5xx/wpx5xx-firmware-latest-release/) |
 | WP76XX         | [WP76XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wp76xx/wp76xx-firmware-latest-release/) |
-| Raspberry Pi   | Clone from github: git clone [https://github.com/raspberrypi/tools](https://github.com/raspberrypi/tools)                             |
-| All AR Modules | See your FAE to download and install the toolchain for your module              |
+| WP77XX         | [WP76XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wp77xx/wp77xx-firmware-latest-release/) |
+| Raspberry Pi   | Clone from github: (git clone)[https://github.com/raspberrypi/tools](https://github.com/raspberrypi/tools)                            |
+| All AR Modules | See your FAE to download and install the toolchain for your module                                                                    |
 
 
 <h1> Platform Services and Platform Adapters </h1>
