@@ -982,23 +982,6 @@ static void CleanupWdog
     }
 }
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Do not allow mandatory watchdogs to be deleted unless the app has been uninstalled.
- * That's what makes them mandatory.
- */
-//--------------------------------------------------------------------------------------------------
-static void CleanupMandatoryWdog
-(
-    void* objPtr
-)
-{
-    MandatoryWatchdogObj_t* newDogPtr = objPtr;
-
-    LE_FATAL("Cannot destroy mandatory watchdog for %s[%s]",
-             newDogPtr->key.appName, newDogPtr->key.procName);
-}
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1266,7 +1249,6 @@ static le_result_t InitializeTimerContainer
     LE_ASSERT(WatchdogRefsContainer != NULL);
 
     MandatoryWatchdogPool = le_mem_CreatePool("MandatoryWdogPool", sizeof(MandatoryWatchdogObj_t));
-    le_mem_SetDestructor(MandatoryWatchdogPool, CleanupMandatoryWdog);
     MandatoryWatchdogRefs = le_hashmap_Create(
         "wdog_mandatoryWatchdogRefs",
         LE_WDOG_HASTABLE_WIDTH,
@@ -1407,8 +1389,10 @@ void HandleAppUninstall
 
         if (0 == strcmp(mandatoryWdogPtr->key.appName, appName))
         {
-            // This watchdog belongs to the app which has just been uninstalled; remove it.
-            LE_ASSERT(LE_OK == le_hashmap_Remove(MandatoryWatchdogRefs, &(mandatoryWdogPtr->key)));
+            // This watchdog belongs to the app which has just been uninstalled.
+            // Stop timer and remove it.
+            le_timer_Stop(mandatoryWdogPtr->watchdog.timer);
+            LE_ASSERT(NULL != le_hashmap_Remove(MandatoryWatchdogRefs, &(mandatoryWdogPtr->key)));
             le_mem_Release(mandatoryWdogPtr);
         }
     }
