@@ -4,28 +4,29 @@
 The Legato team has included sample Apps to show examples of concepts and give code examples for you
 to follow to create your own Apps.
 
-| App                                    | Description                                                      |
-|----------------------------------------|------------------------------------------------------------------|
-| @subpage sampleApps_AV                 | App demonstrates using the AirVantage Service                    |
-| @subpage sampleApps_AVAssetData        | App demonstrates using Asset Data with AirVantage                |
-| @subpage sampleApps_commandLine        | App demonstrates an example of a sandboxing an App               |
-| @subpage sampleApps_eCall              | App demonstrates testing an eCall session                        |
-| @subpage sampleApps_gpioCf3            | App demonstrates using the GPIO service                          |
-| @subpage sampleApps_helloIpc           | App demonstrates host and target communications                  |
-| @subpage sampleApps_helloWorld         | App demonstrates starting Legato AF concepts                     |
-| @subpage sampleApps_httpGet            | App demonstrates opening an data connection                      |
-| @subpage sampleApps_httpServer         | App demonstrates how to create an HTTP server                    |
-| @subpage sampleApps_karaoke            | App demonstrates user interactivity                              |
-| @subpage sampleApps_legacy             | App demonstrates steps to port Legacy C code to Legato           |
-| @subpage sampleApps_lowPower           | App demonstrates the Ultra Low Power Service                     |
-| @subpage sampleApps_modemDemo          | App demonstrates how to interact with the Modem Service          |
-| @subpage sampleApps_shellPiping        | App demonstrates using tools within a sandbox                    |
-| @subpage sampleApps_sms                | App demonstrates using the SMS service                           |
-| @subpage sampleApps_fwupdateDownloader | App demonstrates using the fwupdate service                      |
-| @subpage sampleApps_streamMedia        | App demonstrates audio streaming over IP interface               |
-| @subpage wifi_wifiap_testapp           | App demonstrates the WiFi Access Point API                       |
-| @subpage wifi_wificlient_testapp       | App demonstrates the WiFi Client API                             |
-| @subpage wifi_wifiwebAp_sample         | App demonstrates configuring the target as a Wifi Access Point   |
+| App                                          | Description                                                      |
+|----------------------------------------------|------------------------------------------------------------------|
+| @subpage sampleApps_AV                       | App demonstrates using the AirVantage Service                    |
+| @subpage sampleApps_AVAssetData              | App demonstrates using Asset Data with AirVantage                |
+| @subpage sampleApps_commandLine              | App demonstrates an example of a sandboxing an App               |
+| @subpage sampleApps_eCall                    | App demonstrates testing an eCall session                        |
+| @subpage sampleApps_gpioCf3                  | App demonstrates using the GPIO service                          |
+| @subpage sampleApps_helloIpc                 | App demonstrates host and target communications                  |
+| @subpage sampleApps_helloWorld               | App demonstrates starting Legato AF concepts                     |
+| @subpage sampleApps_httpGet                  | App demonstrates opening an data connection                      |
+| @subpage sampleApps_httpServer               | App demonstrates how to create an HTTP server                    |
+| @subpage sampleApps_karaoke                  | App demonstrates user interactivity                              |
+| @subpage sampleApps_legacy                   | App demonstrates steps to port Legacy C code to Legato           |
+| @subpage sampleApps_lowPower                 | App demonstrates the Ultra Low Power Service                     |
+| @subpage sampleApps_modemDemo                | App demonstrates how to interact with the Modem Service          |
+| @subpage sampleApps_shellPiping              | App demonstrates using tools within a sandbox                    |
+| @subpage sampleApps_sms                      | App demonstrates using the SMS service                           |
+| @subpage sampleApps_fwupdateDownloader       | App demonstrates using the fwupdate service                      |
+| @subpage sampleApps_fwupdateDownloaderResume | App demonstrates using the fwupdate resume serivce               |
+| @subpage sampleApps_streamMedia              | App demonstrates audio streaming over IP interface               |
+| @subpage wifi_wifiap_testapp                 | App demonstrates the WiFi Access Point API                       |
+| @subpage wifi_wificlient_testapp             | App demonstrates the WiFi Client API                             |
+| @subpage wifi_wifiwebAp_sample               | App demonstrates configuring the target as a Wifi Access Point   |
 
 All sample apps are located in @c $LEGATO_ROOT/apps/sample/. The built Apps are located in
 <code>build/\<target\>/bin/samples</code>.

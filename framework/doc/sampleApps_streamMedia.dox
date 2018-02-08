@@ -13,7 +13,7 @@ It uses:
 - the audio services with @c .adef bindings and related @c .cdef requires provides, and sources
   sections.
 
-The streamMedia sample implements an experimental service app exposing the @ref c_streamMedia.
+The streamMedia sample implements an experimental service app exposing the @subpage c_streamMedia.
 Moreover, it also implements one additional test app beside the service app: the
 <b>streamMediaTest app</b> that contains two executables that show how to use the
 @ref c_streamMedia.

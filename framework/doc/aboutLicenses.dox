@@ -1,10 +1,10 @@
 /** @page aboutLicenses Licenses
 
-The  Legato Application Framework is licensed under @ref aboutLicensesMPLv2
+The  Legato Application Framework is licensed under @subpage aboutLicensesMPLv2
 "Mozilla Public License Version 2.0 (MPLv2)".  There are exceptions that are handled on a
 case-by-case basis and are documented in the source code.
 
-Current list of exceptions:
+Current @subpage aboutLicensesOSL "list" of exceptions:
 
 | Package                   | License                 |
 | ------------------------- | ----------------------- |
