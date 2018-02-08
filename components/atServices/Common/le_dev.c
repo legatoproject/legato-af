@@ -297,7 +297,7 @@ ssize_t le_dev_Read
     if (-1 == count)
     {
         LE_ERROR("read error: %s", StrError(errno));
-        return 0;
+        return -1;
     }
 
     PrintBuffer(devicePtr->fd, rxDataPtr, count);

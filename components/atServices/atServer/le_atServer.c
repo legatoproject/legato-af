@@ -2191,6 +2191,19 @@ static void ReceiveCmd
                 (uint8_t *)(devPtr->currentCmd + devPtr->indexRead),
                 (LE_ATDEFS_COMMAND_MAX_LEN - devPtr->indexRead));
 
+    // Value of size is negative.
+    if (0 > size)
+    {
+        LE_ERROR("le_dev_Read failed!");
+        return;
+    }
+    // Value of size is 0.
+    else if (0 == size)
+    {
+        LE_DEBUG("Read data size 0.");
+        return;
+    }
+
     // Echo is activated
     if (devPtr->echo)
     {
