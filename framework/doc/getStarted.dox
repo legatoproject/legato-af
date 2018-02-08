@@ -1,0 +1,67 @@
+/** @page getStarted Get Started
+
+Welcome to the Legato Application Framework. This getting start section will will walk you through
+- installing the framework on your dev machine.
+- configuring your target.
+- creating a couple of simple applications to demonstrate some of our main concepts.
+
+Completing this section will familiarize you with the Legato Application Framework concepts and
+prepare you to start developing your own components and apps.
+
+<h1> Install and Build the Legato Application Framework </h1>
+
+The first thing to do to get started is to install the Source Code, Tools and do an initial Build
+of the Application Framework for your target.
+
+<b>@subpage basicBuild "Install and Build" </b> the Legato Application Framework from GitHub.
+
+If you need help configuring your target for first time use:
+
+| Module                  | Description                                                            |
+| ----------------------- | ---------------------------------------------------------------------- |
+| @subpage basicTarget    | Configure a Sierra Wireless Target                                     |
+| @subpage raspbianMain   | Configure the Legato Application Framework for a Raspberry Pi          |
+
+
+<h1> Develop Components and Apps </h1>
+
+Now you are ready to start developing apps and installing them on your target. We first recommend
+starting with our <b> @ref basicAppsCreate "HelloWorld tutorial"</b> as it walks you through
+some of the basic concepts and <b> how to create, install and test </b> your first application.
+
+Once you have mastered HelloWorld walk through our <b> @ref basicAppsIPC "HelloIPC tutorials"
+</b> which will <b> demonstrate 3 different ways to create components and applications </b> and how
+to communicate between components and apps.
+
+| Tutorial                 | Description                                                                                                      |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| @subpage basicAppsCreate | Create Legato's version of Hello World and learn how to create components and apps                               |
+| @subpage basicAppsIPC    | Modify Hello World into a two components and learn the different ways to communicate between components and apps |
+
+<h1> Concepts and Conventions </h1>
+
+Now that you are familiar with the basic flow of the Legato Application Framework explore our
+documentation on our concepts and the programing conventions to create apps and systems with
+the Legato Application Framework.
+
+| Section              | Description                                                               |
+| -------------------- | ------------------------------------------------------------------------- |
+| @ref basicConcepts   | Introduction to the Concepts that make up Legato AF                       |
+| @ref defFiles        | Use Definition Files to build systems, Apps, components and drivers       |
+| @ref apiFiles        | Work with the API files to develop Apps                                   |
+| @ref ccodingStdsMain | C Language Coding Standards                                               |
+
+
+<h1> Sample Apps and How To's </h1>
+
+Our @ref howToMain section contains useful articles to walk through some of our advance concepts
+and tools. There is also a repo of @ref sampleApps "Sample Apps" that provide demo apps
+and apps showing how to connect to and consume specific @ref apiGuidesMain "APIs".
+
+| Section                 | Description                                                            |
+| ----------------------- | ---------------------------------------------------------------------- |
+| @subpage howToMain      | How To and Troubleshooting articles for common features                |
+| @subpage sampleApps     | Sample Applications                                                    |
+
+
+**/

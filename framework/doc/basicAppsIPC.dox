@@ -1,4 +1,4 @@
-/** @page basicAppsIPC Explore Apps, Exes and Processes
+/** @page basicAppsIPC Extend helloWorld
 
 Now that you've created your first Legato app, helloWorld, we are going to build upon it and
 introduce some of the key concepts of the Application Framework.  helloWorld is a simple app that
