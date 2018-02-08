@@ -63,4 +63,7 @@ cflags:
     // PDP Contexts
     -DPDP_MAX_PROFILE=16
     -DPDP_MAX_MULTIPDP=8
+
+    // Embedded UICC
+    -DEUICC
 }
