@@ -404,6 +404,9 @@ static le_result_t StartVoiceCallTest
     void
 )
 {
+    // Mcc initialization
+    le_mcc_Init();
+
     // Initialize application contexts
     memset(&AppCtx, 0, sizeof(AppContext_t));
 
@@ -419,6 +422,9 @@ static le_result_t StartVoiceCallTest
     le_event_QueueFunctionToThread(AppCtx.appThreadRef,
                                    Testle_voicecall_Start, &AppCtx, NULL);
     SynchronizeTest();
+
+    // Wait for le_mcc_Start().
+    le_mccTest_SimulateWaitMccStart();
 
     SimulateMccStateAndSetExpectedVoiceCallEvent(LE_MCC_EVENT_ALERTING,
                                                  LE_VOICECALL_EVENT_ALERTING);

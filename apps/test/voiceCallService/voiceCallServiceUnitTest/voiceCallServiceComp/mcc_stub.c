@@ -10,6 +10,13 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Semaphore timeout in seconds
+ */
+//--------------------------------------------------------------------------------------------------
+#define SEMAPHORE_TIMEOUT    5
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Event for new MCC call state
  */
 //--------------------------------------------------------------------------------------------------
@@ -54,6 +61,14 @@ static MccContext_t MccCtx =
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Semaphore for event synchronization.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_sem_Ref_t MccSemaphore;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Simulate a new MCC call event
  */
 //--------------------------------------------------------------------------------------------------
@@ -71,6 +86,20 @@ void le_mccTest_SimulateState
         // Notify all the registered client handlers
         le_event_Report(MccCallEventId, mccCtxPtr, sizeof(MccContext_t));
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Synchronization function to wait for le_mcc_Start().
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mccTest_SimulateWaitMccStart
+(
+    void
+)
+{
+    le_clk_Time_t timeToWait = {SEMAPHORE_TIMEOUT, 0};
+    LE_ASSERT_OK(le_sem_WaitWithTimeOut(MccSemaphore, timeToWait));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -117,6 +146,8 @@ le_result_t le_mcc_Start
     le_mcc_CallRef_t callRef   ///< [IN] Reference to the call object.
 )
 {
+    // Post the mcc semaphore.
+    le_sem_Post(MccSemaphore);
     return LE_OK;
 }
 
@@ -163,12 +194,12 @@ static void FirstLayerStateHandler
 le_mcc_CallEventHandlerRef_t le_mcc_AddCallEventHandler
 (
     le_mcc_CallEventHandlerFunc_t       handlerFuncPtr, ///< [IN] The event handler function.
-    void*                                   contextPtr      ///< [IN] The handlers context.
+    void*                               contextPtr      ///< [IN] The handlers context.
 )
 {
     le_event_HandlerRef_t        handlerRef;
 
-    if (handlerFuncPtr == NULL)
+    if (NULL == handlerFuncPtr)
     {
         LE_ERROR("Handler function is NULL !");
         return NULL;
@@ -262,5 +293,20 @@ le_result_t le_mcc_HangUp
     le_mcc_CallRef_t callRef   ///< [IN] The call to end.
 )
 {
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * le_mcc_Init() stub.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mcc_Init
+(
+    void
+)
+{
+    // Create semaphore for le_mcc_Start synchronization.
+    MccSemaphore = le_sem_Create("mccSemaphore", 0);
     return LE_OK;
 }
