@@ -13,7 +13,7 @@ package io.legato;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
+import java.security.SecureRandom;
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -53,7 +53,7 @@ public class SafeRef<RefType> {
 		// Create our hash map, and acquire a random starting point to make it harder to
 		// accidentally use a ref from a different map.
 		refMap = new HashMap<Long, RefType>();
-		nextRef = new Random().nextInt() | 1;
+		nextRef = new SecureRandom().nextInt() | 1;
 	}
 
 	// ---------------------------------------------------------------------------------------------

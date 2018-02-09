@@ -361,13 +361,7 @@ std::string DoSubstitution
         case UNBRACKETED_VAR_NAME:
             // The end of the string terminates the environment variable name.
             // Look up the environment variable, and if found, add its value to the result.
-            {
-                const char* envVarPtr = getenv(envVarName.c_str());
-                if (envVarPtr != NULL)
-                {
-                    result += envVarPtr;
-                }
-            }
+            result += Get(envVarName);
             break;
 
         case BRACKETED_VAR_NAME:
