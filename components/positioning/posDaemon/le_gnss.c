@@ -60,6 +60,11 @@
 #define SBAS_MSAS_SV_ID_42    42
 #define SBAS_MSAS_SV_ID_50    50
 
+// SDCM SBAS category
+#define SBAS_SDCM_SV_ID_38    38
+#define SBAS_SDCM_SV_ID_53    53
+#define SBAS_SDCM_SV_ID_54    54
+
 //--------------------------------------------------------------------------------------------------
 // Data structures.
 //--------------------------------------------------------------------------------------------------
@@ -2218,6 +2223,11 @@ le_gnss_SbasConstellationCategory_t le_gnss_GetSbasConstellationCategory
         case SBAS_MSAS_SV_ID_42:
         case SBAS_MSAS_SV_ID_50:
             sbasCategory = LE_GNSS_SBAS_MSAS;
+            break;
+        case SBAS_SDCM_SV_ID_38:
+        case SBAS_SDCM_SV_ID_53:
+        case SBAS_SDCM_SV_ID_54:
+            sbasCategory = LE_GNSS_SBAS_SDCM;
             break;
         default:
             sbasCategory = LE_GNSS_SBAS_UNKNOWN;

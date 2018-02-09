@@ -537,6 +537,8 @@ ENUM SbasConstellationCategory
                         ///< (SBAS) GAGAN constellation.
     SBAS_MSAS,          ///< Satellite Vehicle of Satellite-based augmentation system
                         ///< (SBAS) MSAS constellation.
+    SBAS_SDCM,          ///< Satellite Vehicle of Satellite-based augmentation system
+                        ///< (SBAS) SDCM constellation.
     SBAS_UNKNOWN        ///< Satellite Vehicle of Satellite-based augmentation system
                         ///< (SBAS) unknown constellation.
 };

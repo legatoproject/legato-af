@@ -26,6 +26,11 @@
 #define SBAS_GAGAN_SV_ID_40            40
 // MSAS SBAS category
 #define SBAS_MSAS_SV_ID_50             50
+// SDCM SBAS category
+#define SBAS_SDCM_SV_ID_38             38
+#define SBAS_SDCM_SV_ID_53             53
+#define SBAS_SDCM_SV_ID_54             54
+
 // Unknown category
 #define UNKNOWN                         0
 
@@ -496,6 +501,9 @@ static void Testle_gnss_GetSbasConstellationCategory
     LE_ASSERT(LE_GNSS_SBAS_WAAS == (le_gnss_GetSbasConstellationCategory(SBAS_WAAS_SV_ID_51)));
     LE_ASSERT(LE_GNSS_SBAS_GAGAN == (le_gnss_GetSbasConstellationCategory(SBAS_GAGAN_SV_ID_40)));
     LE_ASSERT(LE_GNSS_SBAS_MSAS == (le_gnss_GetSbasConstellationCategory(SBAS_MSAS_SV_ID_50)));
+    LE_ASSERT(LE_GNSS_SBAS_SDCM == (le_gnss_GetSbasConstellationCategory(SBAS_SDCM_SV_ID_38)));
+    LE_ASSERT(LE_GNSS_SBAS_SDCM == (le_gnss_GetSbasConstellationCategory(SBAS_SDCM_SV_ID_53)));
+    LE_ASSERT(LE_GNSS_SBAS_SDCM == (le_gnss_GetSbasConstellationCategory(SBAS_SDCM_SV_ID_54)));
     LE_ASSERT(LE_GNSS_SBAS_UNKNOWN == (le_gnss_GetSbasConstellationCategory(UNKNOWN)));
 }
 
