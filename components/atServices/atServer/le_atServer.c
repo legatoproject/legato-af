@@ -3035,6 +3035,10 @@ void le_atServer_RemoveCommandHandler
  *      - LE_OK            The function succeeded.
  *      - LE_FAULT         The function failed to get the requested parameter.
  *
+ * @note If the parameter is parsed with quotes, the quotes are removed when retrieving the
+ * parameter value using this API. If a parmeter is not parsed with quotes, that parameter is
+ * converted to uppercase equivalent.
+ *
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_atServer_GetParameter

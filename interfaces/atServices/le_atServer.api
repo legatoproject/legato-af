@@ -128,6 +128,10 @@
  * are also applicable here to basic format commands to detect commands with parameters, or read
  * values (e.g. ATS<parameter_number>?).
  *
+ * @note If the parameter is parsed with quotes, the quotes are removed when retrieving the
+ * parameter value using le_atServer_GetParameter() API. If a parmeter is not parsed with quotes,
+ * that parameter is converted to uppercase equivalent.
+ *
  * @section atServer_responses Responses
  *
  * @subsection intermediateRsp Intermediate response
@@ -504,6 +508,10 @@ EVENT Command
  * @return
  *      - LE_OK            The function succeeded.
  *      - LE_FAULT         The function failed to get the requested parameter.
+ *
+ * @note If the parameter is parsed with quotes, the quotes are removed when retrieving the
+ * parameter value using this API. If a parmeter is not parsed with quotes, that parameter is
+ * converted to uppercase equivalent.
  *
  */
 //--------------------------------------------------------------------------------------------------
