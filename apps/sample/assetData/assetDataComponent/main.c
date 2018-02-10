@@ -132,12 +132,12 @@ static void TempSettingHandler
         }
         LE_INFO("Setting Write turning on AC variable request: %s", "IS_AC_ON_VAR_RES");
     }else{
-        le_result_t resultSetAC = le_avdata_SetBool(IS_AC_ON_VAR_RES, true);
+        le_result_t resultSetAC = le_avdata_SetBool(IS_AC_ON_VAR_RES, false);
         if (LE_FAULT == resultSetAC)
         {
             LE_ERROR("Error in setting IS_AC_ON_VAR_RES");
         }
-        LE_INFO("Setting Write turning on AC variable request: %s", "IS_AC_ON_VAR_RES");
+        LE_INFO("Setting Write turning off AC variable request: %s", "IS_AC_ON_VAR_RES");
     }
 }
 // [DataHandlerFunction]
@@ -160,7 +160,7 @@ static void ExecACCtrlCmd
 // [VariableExectACCtrlCmd]
 {
     ExecACCmd++;
-    LE_INFO("------------------- Exec AC Commnad [%d] times ------------",
+    LE_INFO("------------------- Exec AC Command [%d] times ------------",
                 ExecACCmd);
     le_result_t setACVAR = le_avdata_SetBool(IS_AC_ON_VAR_RES,false);
     if (LE_FAULT == setACVAR)
@@ -168,6 +168,9 @@ static void ExecACCtrlCmd
         LE_ERROR("Error in setting IS_AC_ON_VAR_RES");
     }
     LE_INFO("Command exec turning off AC variable request: %s", "IS_AC_ON_VAR_RES");
+
+    // Replies to the AirVantage Server with the command execution result
+    le_avdata_ReplyExecResult(argumentList, setACVAR);
 }
 
 double ConvergeTemperature(double currentTemperature, int targetTemperature)
