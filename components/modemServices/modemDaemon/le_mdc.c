@@ -1157,10 +1157,14 @@ void le_mdc_StopSessionAsync
  * @return
  *      - LE_OK on success
  *      - LE_BAD_PARAMETER if the input parameter is not valid
+ *      - LE_UNSUPPORTED if not supported by the target
  *      - LE_FAULT for other failures
  *
  * @note
  *      The process exits, if an invalid profile object is given
+ *
+ * @warning The MT-PDP context activation feature is not supported on all platforms. Please refer to
+ * @ref MT-PDP_context section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mdc_RejectMtPdpSession
@@ -1267,6 +1271,9 @@ le_mdc_SessionStateHandlerRef_t le_mdc_AddSessionStateHandler
  *
  * @note
  *      Process exits on failure.
+ *
+ * @warning The MT-PDP context activation feature is not supported on all platforms. Please refer to
+ * @ref MT-PDP_context section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 le_mdc_MtPdpSessionStateHandlerRef_t le_mdc_AddMtPdpSessionStateHandler
@@ -1322,6 +1329,9 @@ void le_mdc_RemoveSessionStateHandler
  *
  * @note
  *      The process exits on failure
+ *
+ * @warning The MT-PDP context activation feature is not supported on all platforms. Please refer to
+ * @ref MT-PDP_context section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 void le_mdc_RemoveMtPdpSessionStateHandler

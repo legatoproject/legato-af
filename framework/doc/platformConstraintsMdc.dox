@@ -24,6 +24,16 @@ The maximum APN length is limited by the platform.<br>
 | ----------------------------- --| :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
 | Maxmium APN length              |        | 62     | 62     |        |        |        |        | 100    |
 
+
+@section MT-PDP_context Mobile Terminated PDP context
+The Mobile Terminated Packet Data Protocol (PDP) context feature is not supported on all platforms.
+The table below indicates on which platform the feature is supported. (<b>'X'</b> means the feature
+is supported)
+
+|                          | AR7 | AR755x | AR758x | AR759x | AR8652 | WPx5xx | WP750x | WP76xx | WP77xx | WP85xx |
+| -------------------------| :-: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
+| MT-PDP context feature   |  X  |        |        |        |    X   |        |    X   |        |        |    X   |
+
 See @ref  c_mrc API<br>
 See @ref c_mdc API<br>
 Copyright (C) Sierra Wireless Inc.

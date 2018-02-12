@@ -204,7 +204,7 @@ le_result_t pa_mdc_StopSession
  *
  * @return
  *      - LE_OK on success
- *      - LE_BAD_PARAMETER if the input parameter is not valid
+ *      - LE_UNSUPPORTED if not supported by the target
  *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
@@ -214,7 +214,7 @@ le_result_t pa_mdc_RejectMtPdpSession
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------

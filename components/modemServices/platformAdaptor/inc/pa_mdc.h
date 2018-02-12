@@ -399,7 +399,7 @@ LE_SHARED le_result_t pa_mdc_StopSession
  *
  * @return
  *      - LE_OK on success
- *      - LE_BAD_PARAMETER if the input parameter is not valid
+ *      - LE_UNSUPPORTED if not supported by the target
  *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------

@@ -91,7 +91,7 @@
  * handler using le_mdc_AddMtPdpSessionStateHandler().
  * When the incoming MT-PDP context request is notified,
  * the application takes responsibility to trigger the data session for that MT PDP request using
- * le_mdc_StartSession. That data session can be stopped using le_mdc_StopSession().
+ * le_mdc_StartSession(). That data session can be stopped using le_mdc_StopSession().
  *
  * The network interface settings of that MT-PDP context can be retrieved using the provided
  * Data Profile.
@@ -102,6 +102,9 @@
  * but cannot be more than the maximum number of supported profiles.
  *
  * The handler can be released using le_mdc_RemoveMtPdpSessionStateHandler().
+ *
+ * @warning The MT-PDP context activation feature is not supported on all platforms. Please refer to
+ * @ref MT-PDP_context section for full details.
  *
  * @subsection le_mdc_session_networkItf Network interface settings
  * Once a data session starts, a Linux network interface is created.  It's the application's
@@ -540,6 +543,9 @@ FUNCTION StartSessionAsync
  *
  * @note
  *      The process exits, if an invalid profile object is given
+ *
+ * @warning The MT-PDP context activation feature is not supported on all platforms. Please refer to
+ * @ref MT-PDP_context section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t StopSession
@@ -570,10 +576,14 @@ FUNCTION StopSessionAsync
  * @return
  *      - LE_OK on success
  *      - LE_BAD_PARAMETER if the input parameter is not valid
+ *      - LE_UNSUPPORTED if not supported by the target
  *      - LE_FAULT for other failures
  *
  * @note
  *      The process exits, if an invalid profile object is given
+ *
+ * @warning The MT-PDP context activation feature is not supported on all platforms. Please refer to
+ * @ref MT-PDP_context section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t RejectMtPdpSession
