@@ -194,6 +194,13 @@ static le_timer_Ref_t StopDcsTimer = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set DNS Configuration Timer reference
+ */
+//--------------------------------------------------------------------------------------------------
+static le_timer_Ref_t SetDNSConfigTimer = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Event for sending command to Process command handler
  */
 //--------------------------------------------------------------------------------------------------
@@ -1264,11 +1271,57 @@ static le_result_t SetDefaultRouteAndDns
     // if the default route is not set
     if (LE_OK != SetDnsConfiguration(MobileProfileRef, !(setDefaultRoute)))
     {
-        LE_ERROR("Failed to set DNS configuration");
-        return LE_FAULT;
+        LE_INFO("Failed to set DNS configuration. Retry later");
+
+        if (!le_timer_IsRunning(SetDNSConfigTimer))
+        {
+            if (LE_OK != le_timer_Start(SetDNSConfigTimer))
+            {
+                LE_ERROR("Could not start the SetDNSConfig timer!");
+                return LE_FAULT;
+            }
+        }
+    }
+    else
+    {
+        LE_INFO("DNS configuration is set successfully");
     }
 
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set DNS Configuration Service Timer Handler.
+ * When the timer expires, this handler attempts to set DNS configuration.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SetDNSConfigTimerHandler
+(
+    le_timer_Ref_t timerRef    ///< [IN] Timer used to ensure DNS address is present.
+)
+{
+    le_mdc_ConState_t  sessionState;
+    le_result_t result;
+
+    if(0 == RequestCount)
+    {
+        // Release has been requested in the meantime, We must cancel the Request command process.
+        return;
+    }
+
+    result = le_mdc_GetSessionState(MobileProfileRef, &sessionState);
+    if ((LE_OK == result) && (LE_MDC_CONNECTED == sessionState))
+    {
+        if (LE_OK != SetDnsConfiguration(MobileProfileRef, !DefaultRouteStatus))
+        {
+            LE_ERROR("Failed to set DNS configuration.");
+        }
+        else
+        {
+            LE_INFO("DNS configuration is set successfully");
+        }
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2558,6 +2611,18 @@ COMPONENT_INIT
     // Create safe reference map for request references. The size of the map should be based on
     // the expected number of simultaneous data requests, so take a reasonable guess.
     RequestRefMap = le_ref_CreateMap("Requests", 5);
+
+    // Set a one-shot timer for requesting the DNS configuration.
+    SetDNSConfigTimer = le_timer_Create("SetDNSConfigTimer");
+    le_clk_Time_t dnsInterval = {30, 0}; // 30 seconds
+
+    if (   (LE_OK != le_timer_SetHandler(SetDNSConfigTimer, SetDNSConfigTimerHandler))
+        || (LE_OK != le_timer_SetRepeat(SetDNSConfigTimer, 1))    // One shot timer
+        || (LE_OK != le_timer_SetInterval(SetDNSConfigTimer, dnsInterval))
+       )
+    {
+        LE_ERROR("Could not start the SetDNSConfig timer!");
+    }
 
     // Retrieve default gateway activation status
     DefaultRouteStatus = GetDefaultRouteStatus();
