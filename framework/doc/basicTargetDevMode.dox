@@ -1,7 +1,7 @@
 /** @page basicTargetDevMode Developer Mode
 
-Developer Mode is provided as a pre-built core app (but not installed by default).
-Developer Mode (@c devMode) was created to provide helpful features to Developers.
+Developer Mode is provided as a pre-built core app (but not installed by default) created to bundle
+tools and features for developers that are not meant to be put on production targets.
 
 @c devMode provides the following features:
   - bundles @ref howToDebugGDB "gdbserver" executable for use on the target device, allowing
@@ -11,9 +11,15 @@ Developer Mode (@c devMode) was created to provide helpful features to Developer
   - holds a wake lock, so the target won't go to sleep when disconnected from USB.
   - removes the boot count file on startup to disable the boot loop detection feature of Legato.
 
+@warning Before deploying your system image or target in a production environment devMode must be
+uninstalled. devMode installs gdbserver which is licensed with
+[GPLv3](https://www.gnu.org/licenses/gpl-3.0.en.html), uninstalling devMode removes all GPLv3
+software from your target.
+
 @section howToDevMode_installDev Installing Developer Mode
 
-@c devMode is a core app that is built during the @c make @c <target> process but it is not included by default in the @c system.sdef.
+@c devMode is a core app that is built during the @c make @c <target> process but it is not included
+by default in the @c system.sdef.
 
 To install @c devMode:
 
@@ -34,8 +40,8 @@ Modify the config on the target to enable starting devMode upon reboot:
 
 @verbatim config set /apps/devMode/startManual false bool @endverbatim
 
-To configure enabling/disabling @c devMode (even after a system rebuild) add a start: auto (enabled) or
-start: manual (disabled) to the @c devMode adef.
+To configure enabling/disabling @c devMode (even after a system rebuild) add a start: auto (enabled)
+or start: manual (disabled) to the @c devMode adef.
 
 Example devMode adef:
 

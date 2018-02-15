@@ -25,6 +25,28 @@ If you need help configuring your target for first time use:
 
 <h1> Develop Components and Apps </h1>
 
+We provide two options for development environments:
+- the Legato Application Framework which contains tools to build systems for your target and
+  configure your target through the command line.
+- [Developer Studio](https://source.sierrawireless.com/resources/legato/developerstudio/),
+that Sierra Wireless has developed to use with officially support releases of the WP Smart Modules.
+
+The Legato Application Framework tools are automatically installed and configured when you go
+through the  setup process and @ref basicBuildMake "make" your first build for a target. To install
+Developer Studio follow the instructions on the
+[Sierra Wireless Source](https://source.sierrawireless.com/resources/legato/developerstudio/).
+
+The Framework also comes with a @subpage basicTargetDevMode "developer mode" app, which when
+installed on a target provides the following tools and settings specific for development:
+ - bundles @ref howToDebugGDB "gdbserver" executable for use on the target device, allowing
+   step-by-step debugging of Legato apps.
+ - runs the tcf-agent, so the target is auto discoverable by Developer Studio.
+ - sets the probation period of apps to 10 seconds, to prevent aggressive roll-back.
+ - holds a wake lock, so the target won't go to sleep when disconnected from USB.
+ - removes the boot count file on startup to disable the boot loop detection feature of Legato.
+
+To install devMode on your target follow these @ref howToDevMode_installDev "install instructions".
+
 Now you are ready to start developing apps and installing them on your target. We first recommend
 starting with our <b> @ref basicAppsCreate "HelloWorld tutorial"</b> as it walks you through
 some of the basic concepts and <b> how to create, install and test </b> your first application.
@@ -44,12 +66,12 @@ Now that you are familiar with the basic flow of the Legato Application Framewor
 documentation on our concepts and the programing conventions to create apps and systems with
 the Legato Application Framework.
 
-| Section              | Description                                                               |
-| -------------------- | ------------------------------------------------------------------------- |
-| @ref basicConcepts   | Introduction to the Concepts that make up Legato AF                       |
-| @ref defFiles        | Use Definition Files to build systems, Apps, components and drivers       |
-| @ref apiFiles        | Work with the API files to develop Apps                                   |
-| @ref ccodingStdsMain | C Language Coding Standards                                               |
+| Section                | Description                                                               |
+| ---------------------- | ------------------------------------------------------------------------- |
+| @ref buildAppsConcepts | Introduction to the Concepts that make up Legato AF                       |
+| @ref defFiles          | Use Definition Files to build systems, Apps, components and drivers       |
+| @ref apiFiles          | Work with the API files to develop Apps                                   |
+| @ref ccodingStdsMain   | C Language Coding Standards                                               |
 
 
 <h1> Sample Apps and How To's </h1>

@@ -102,7 +102,7 @@ $ update build/raspi/system.raspi.update <target IP>
 Now you are ready to start your first project, we suggest starting with our
 @ref basicApps "helloWorld tutorial" and then work your way through @ref basicAppsIPC "helloIPC"
 before starting coding your own projects.  The hello tutorials introduce you to some of the
-@ref basicConcepts "methodologies and concepts" of how build apps and systems for your target.
+@ref buildAppsConcepts "methodologies and concepts" of how build apps and systems for your target.
 
 In your workspace directory create a folder for your project.
 
