@@ -83,7 +83,7 @@ COMPONENT_INIT
     LE_ASSERT(currentPosition == currentOffset);
 
     // Read 3 bytes from the current position
-    uint8_t readData[SHORT_DATA_LENGTH];
+    uint8_t readData[SHORT_DATA_LENGTH+1];
     memset(readData, '\0', sizeof(readData));
     size_t readLength = 3;
     size_t expectedReadLength = readLength;
@@ -295,8 +295,8 @@ facilisis erat, a imperdiet risus eleifend nec.";
     LE_ASSERT(offset == currentOffset);
 
     // Read 5000 bytes from the current position
-    uint8_t readLoremIpsum[LONG_DATA_LENGTH];
-    memset(readLoremIpsum, '\0', LONG_DATA_LENGTH);
+    uint8_t readLoremIpsum[LONG_DATA_LENGTH+1];
+    memset(readLoremIpsum, '\0', sizeof(readLoremIpsum));
     readLength = LONG_DATA_LENGTH;
     LE_ASSERT_OK(le_fs_Read(fileRef, readLoremIpsum, &readLength));
     printf("Read %d bytes: '%s'\n", (int)readLength, readLoremIpsum);
@@ -310,7 +310,7 @@ facilisis erat, a imperdiet risus eleifend nec.";
     LE_ASSERT(offset == currentOffset);
 
     // Read 150 bytes from the current position
-    memset(readLoremIpsum, '\0', LONG_DATA_LENGTH);
+    memset(readLoremIpsum, '\0', sizeof(readLoremIpsum));
     readLength = SHORT_DATA_LENGTH;
     LE_ASSERT_OK(le_fs_Read(fileRef, readLoremIpsum, &readLength));
     printf("Read %d bytes: '%s'\n", (int)readLength, readLoremIpsum);
