@@ -73,11 +73,11 @@ static void RxNewData
         ssize_t count;
         int i=0;
 
-        count = read(autoTestCtxPtr->socketFd, rsp, sizeof(rsp));
+        count = read(fd, rsp, sizeof(rsp));
 
         while (i < count)
         {
-            LE_INFO("%c, %d", rsp[i], autoTestCtxPtr->nbExpectedCharReceived);
+            LE_DEBUG("%c, %c", rsp[i], expectedRsp[autoTestCtxPtr->nbExpectedCharReceived]);
 
             if ( rsp[i] == expectedRsp[autoTestCtxPtr->nbExpectedCharReceived] )
             {

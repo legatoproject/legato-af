@@ -6,16 +6,26 @@
   $ app start atServerIntegrationTest
   $ app runProc atServerIntegrationTest --exe=atServerTest -- <socket/tty> <tty name>
   @endverbatim
- *- Socket:
- * Use a TCP socket to connect to the atServer:
- * Open a connection (with telnet for instance) on port 1234
- *- Serial devices:
- * Provide the TTY name to connect to the atServer
- * @note According to your platform, you may have to configure the mapping of the physical UART.
+ *
+ * For serial device, the following configuration is required:
+ * 1) According to your platform, you may have to configure the mapping of the physical UART.
  * Please refer to https://source.sierrawireless.com/resources/legato/howtos/customizeuart/ for full
  * details.
- * On host, open a TTY terminal to connect to the device with the following configuration:
+ * 2) On host, open a TTY terminal to connect to the device with the following configuration:
  * Speed(baud): 115200, Data bits: 8, Stop bits: 1, Parity: None, Flow control: None.
+ * 3) Enter the AT commands that are registered in atServerTest.c file on UART.
+ * 4) Press ^C to stop the application.
+ *
+ * For a socket device, the following configuration is required:
+ * 1) Open target console with UART port. Enter these commands to configure firewall:
+ * iptables -S
+ * iptables -I INPUT -j ACCEPT
+ * 2) Open a SSH client (e.g: putty) and configure it as below:
+ * connection type: Raw, Host Name: IP address of target, port: 1235, In Terminal tab: "local echo"
+ * and "local line editing" to be "force off".
+ * 3) Enter any AT commands that are registered in atServerTest.c file on putty terminal.
+ * 4) Press ^C to stop the application.
+ * 5) Delete the previously added rule: iptables -D INPUT -j ACCEPT
  *
  * The AT server bridge can be activated thanks to the AT command AT+BRIDGE:
  * - AT+BRIDGE="OPEN" opens the bridge
@@ -24,6 +34,11 @@
  * - AT+BRIDGE="CLOSE" closes the current device to the bridge
  * note that the bridge is opened on the device /dev/ttyAT (directed to the modem) and may have to
  * be changed depending on the used target.
+ *
+ * AT command AT+TEST="<AT command to test>": User can enter any AT command inside the parameter of
+ * AT+TEST AT command.
+ *
+ * @note AT+TEST is working only into the socket mode.
  *
  * Copyright (C) Sierra Wireless Inc.
  *
@@ -135,6 +150,14 @@ TestCtx_t;
  */
 //--------------------------------------------------------------------------------------------------
 static TestCtx_t TestCtx;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * File descriptors for socket connection.
+ */
+//--------------------------------------------------------------------------------------------------
+static int SockFd = -1;
+static int ConnFd = -1;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -985,24 +1008,23 @@ static void* SocketThread
     int ret, optVal = 1;
     struct sockaddr_in myAddress, clientAddress;
     le_atServer_DeviceRef_t devRef = NULL;
-    int sockFd;
     TestCtx_t* testCtxPtr = contextPtr;
 
     // Create the socket
-    sockFd = socket (AF_INET, SOCK_STREAM, 0);
+    SockFd = socket (AF_INET, SOCK_STREAM, 0);
 
-    if (sockFd < 0)
+    if (SockFd < 0)
     {
         LE_ERROR("creating socket failed: %m");
         return NULL;
     }
 
     // Set socket option
-    ret = setsockopt(sockFd, SOL_SOCKET, SO_REUSEADDR, &optVal, sizeof(optVal));
+    ret = setsockopt(SockFd, SOL_SOCKET, SO_REUSEADDR, &optVal, sizeof(optVal));
     if (ret)
     {
         // Close the fd
-        close(sockFd);
+        close(SockFd);
         LE_ERROR("error setting socket option %m");
         return NULL;
     }
@@ -1014,26 +1036,36 @@ static void* SocketThread
     myAddress.sin_addr.s_addr = htonl(INADDR_ANY);
 
     // Bind server - socket
-    ret = bind(sockFd,(struct sockaddr_in *)&myAddress,sizeof(myAddress));
+    ret = bind(SockFd,(struct sockaddr_in *)&myAddress,sizeof(myAddress));
     if (ret)
     {
         // Close the fd
-        close(sockFd);
+        close(SockFd);
         LE_ERROR("%m");
         return NULL;
     }
 
     // Listen on the socket
-    listen(sockFd, NB_CLIENT_MAX);
+    listen(SockFd, NB_CLIENT_MAX);
 
     socklen_t addressLen = sizeof(clientAddress);
 
     while (1)
     {
-        int connFd = 0;
-        connFd = accept(sockFd, (struct sockaddr *)&clientAddress, &addressLen);
+        int fd;
+        ConnFd = accept(SockFd, (struct sockaddr *)&clientAddress, &addressLen);
 
-        devRef = le_atServer_Open(dup(connFd));
+        fd = dup(ConnFd);
+        if (-1 == fd)
+        {
+            // Close the fd
+            close(SockFd);
+            close(ConnFd);
+            LE_ERROR("%m");
+            return NULL;
+        }
+
+        devRef = le_atServer_Open(fd);
         LE_ASSERT(devRef != NULL);
 
         // Create device context and monitor the socket
@@ -1041,14 +1073,22 @@ static void* SocketThread
         LE_ASSERT(deviceCtxPtr != NULL);
 
         deviceCtxPtr->devRef = devRef;
-        deviceCtxPtr->fd = connFd;
+        deviceCtxPtr->fd = dup(ConnFd);
+        if (-1 == deviceCtxPtr->fd)
+        {
+            // Close the fd
+            close(SockFd);
+            close(ConnFd);
+            LE_ERROR("%m");
+            return NULL;
+        }
 
         le_event_QueueFunctionToThread(testCtxPtr->mainThreadRef,
                                        AddMonitoring,
                                        deviceCtxPtr,
                                        NULL);
         // Close the fd
-        close(connFd);
+        close(ConnFd);
     }
 }
 
@@ -1152,6 +1192,29 @@ static void Print
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * The signal event handler function for SIGINT/SIGTERM when process dies.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SigHandler
+(
+    int sigNum
+)
+{
+    if (-1 != SockFd)
+    {
+        close(SockFd);
+    }
+
+    if (-1 != ConnFd)
+    {
+        close(ConnFd);
+    }
+
+    exit(EXIT_SUCCESS);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Main of the test
  *
  */
@@ -1174,6 +1237,9 @@ COMPONENT_INIT
         LE_ERROR("testString is NULL");
         goto err_exit;
     }
+
+    // Register a signal event handler for SIGINT when user interrupts/terminates process
+    le_sig_SetEventHandler(SIGINT, SigHandler);
 
     if (0 == strncmp(testString, "socket", strlen("socket")))
     {
