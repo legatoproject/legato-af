@@ -135,20 +135,21 @@ Other APIs don't write the setting into a non volatile memory making it lost aft
 This setting is operational imediately in the next GNSS session (no reboot is needed).
 However, there are difference upon GNSS restart session and upon Legato restart.
 
-The following APIs write the setting to NV, the setting is persistent and effective after reboot:
-    le_gnss_SetConstellation()
-    le_gnss_EnableExtendedEphemerisFile()
-    le_gnss_DisableExtendedEphemerisFile()
-    le_gnss_SetSuplServerUrl()
-    le_gnss_SetNmeaSentences()
-    le_gnss_SetMinElevation()
+The following APIs write the setting to NV, the setting is persistent and effective after
+reboot:<br>
+    le_gnss_SetConstellation()<br>
+    le_gnss_EnableExtendedEphemerisFile()<br>
+    le_gnss_DisableExtendedEphemerisFile()<br>
+    le_gnss_SetSuplServerUrl()<br>
+    le_gnss_SetNmeaSentences()<br>
+    le_gnss_SetMinElevation()<br>
 
 The following APIs don't write the setting to NV, the setting is thus not persistent to reboot but
 effective imediately in next GNSS session. The setting is persistent to GNSS factory/cold/warm/hot
-restart, but is lost after Legato restart:
-    le_gnss_Enable()
-    le_gnss_Disable()
-    le_gnss_SetAcquisitionRate()
+restart, but is lost after Legato restart:<br>
+    le_gnss_Enable()<br>
+    le_gnss_Disable()<br>
+    le_gnss_SetAcquisitionRate()<br>
 
 The following APIs don't write the setting to NV, the setting is thus not persistent to reboot but
 effective imediately in next GNSS session. The setting is persistent to GNSS factory/cold/warm/hot
@@ -184,27 +185,28 @@ longitude/latitude values to get retrieved from camped live cell network before 
 "FACTORY" restart le_gnss_ForceFactoryRestart() API stops the current GNSS session then starts
 it again. In this case, all constellation's service data are being cleared.
 
-Modem gets these constellation service data from Qualcomm CDMA Technologies(QCT) location service.
-Constellation service data:
-- Clock Information
-- Cell database service data
-   Cell database position
-   Cell database latest GPS position
-   Cell database Over The Air(OTA) position
-   Cell database external reference position
-   Cell database time tag
-   Cell database cell ID
-   Cell database cached cell ID
-   Cell database last service cell
-   Cell database current service cell
-   Cell database neighbor information
-- Common service data
-   Position estimate; common for all GNSS types
-   Reset all clock information
-   Universal Time Coordinated(UTC) estimate
-   Real Time Information(RTI)
-   Frequency bias estimate; common for all GNSS types
-- Satellite data
+Modem gets these constellation service data from Qualcomm CDMA Technologies(QCT) location
+service.<br><br>
+<b>Constellation service data:</b><br>
+- <b>Clock Information</b><br>
+- <b>Cell database service data</b><br>
+   Cell database position<br>
+   Cell database latest GPS position<br>
+   Cell database Over The Air(OTA) position<br>
+   Cell database external reference position<br>
+   Cell database time tag<br>
+   Cell database cell ID<br>
+   Cell database cached cell ID<br>
+   Cell database last service cell<br>
+   Cell database current service cell<br>
+   Cell database neighbor information<br>
+- <b>Common service data</b><br>
+   Position estimate; common for all GNSS types<br>
+   Reset all clock information<br>
+   Universal Time Coordinated(UTC) estimate<br>
+   Real Time Information(RTI)<br>
+   Frequency bias estimate; common for all GNSS types<br>
+- <b>Satellite data</b><br>
 
 @note On modules AR758x & AR759x when performed "FACTORY" restart there is a possibility for
 longitude/latitude values to get retrieved from camped live cell network before getting the fix.
