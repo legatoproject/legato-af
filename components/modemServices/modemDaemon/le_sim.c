@@ -1085,6 +1085,9 @@ le_result_t le_sim_GetICCID
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
+ *
+ * @warning le_sim_GetEID() function is platform dependent. Please refer to the
+ *          @ref platformConstraintsSim_EID section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t  le_sim_GetEID

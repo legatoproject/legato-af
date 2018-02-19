@@ -57,6 +57,11 @@ Refer to your platform documentation.
 
 Forbidden PLMN (FPLMN) APIs are only supported by AR759x and AR758x platforms.
 
+@section platformConstraintsSim_EID EID
+
+Embedded Universal Integrated Circuit Card identifier (EID) function is only supported by
+AR759x platform at this time.
+
 @section platformConstraintsSim_References References
 
 See @ref c_sim API
