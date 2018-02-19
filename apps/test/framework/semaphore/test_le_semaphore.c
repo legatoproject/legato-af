@@ -65,6 +65,41 @@ void testWait(void)
     CU_PASS("Destruct semaphore\n");
 }
 
+void testFindSemaphore(void)
+{
+    le_sem_Ref_t semPtr=NULL,semPtr2=NULL,FindPtr=NULL;
+    //Not Found semaphore should return NULL
+    semPtr = le_sem_FindSemaphore("SEMAPHORE-1");
+    CU_ASSERT_EQUAL(semPtr, NULL);
+
+    //Create sem-1
+    semPtr = le_sem_Create("SEMAPHORE-1", 1);
+    CU_ASSERT_PTR_NOT_EQUAL(semPtr, NULL);
+
+    //Create Sem-2
+    semPtr2 = le_sem_Create("SEMAPHORE-2", 1);
+    CU_ASSERT_PTR_NOT_EQUAL(semPtr2, NULL);
+
+    //Find sem-1 and match their reference
+    FindPtr = le_sem_FindSemaphore("SEMAPHORE-1");
+    CU_ASSERT_PTR_NOT_EQUAL(FindPtr, NULL);
+    CU_ASSERT_EQUAL(semPtr, FindPtr);
+
+    FindPtr = le_sem_FindSemaphore("SEMAPHORE-2");
+    CU_ASSERT_PTR_NOT_EQUAL(FindPtr, NULL);
+    CU_ASSERT_EQUAL(semPtr2, FindPtr);
+
+    //Delete the Sem-2 and search again sem-2
+    le_sem_Delete(FindPtr);
+    CU_PASS("Destruct semaphore\n");
+    FindPtr = le_sem_FindSemaphore("SEMAPHORE-2");
+    CU_ASSERT_EQUAL(FindPtr, NULL);
+
+    //Delete sem-1
+    le_sem_Delete(semPtr);
+    CU_PASS("Destruct semaphore\n");
+}
+
 void testTryWait(void)
 {
     le_sem_Ref_t semPtr=NULL;
@@ -312,6 +347,7 @@ COMPONENT_INIT
     { "trywait"                 , testTryWait },
     { "post"                    , testPostOK },
     { "value"                   , testGetValue },
+    { "find"                    , testFindSemaphore},
     CU_TEST_INFO_NULL,
     };
 

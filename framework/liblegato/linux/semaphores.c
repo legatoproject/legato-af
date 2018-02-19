@@ -288,6 +288,7 @@ void le_sem_Delete
  *
  * @return
  *      Reference to the semaphore, or NULL if the semaphore doesn't exist.
+ *      Invalid Name will do LE_FATAL
  */
 //--------------------------------------------------------------------------------------------------
 le_sem_Ref_t le_sem_FindSemaphore
@@ -295,7 +296,33 @@ le_sem_Ref_t le_sem_FindSemaphore
     const char* name    ///< [IN] The name of the semaphore.
 )
 {
-    // TODO
+    le_dls_Link_t *semaphorePtr;
+    Semaphore_t *Nodeptr;
+
+    //Invalid Semaphore Name
+    if ((NULL == name) || (strlen(name) > LIMIT_MAX_SEMAPHORE_NAME_LEN))
+    {
+        LE_FATAL("Invalid Semaphore Name");
+    }
+    LOCK_SEMAPHORE_LIST();
+    semaphorePtr = le_dls_Peek(&SemaphoreList);
+    do
+    {
+        if (NULL == semaphorePtr)
+        {
+            break;
+        }
+        Nodeptr = CONTAINER_OF(semaphorePtr,Semaphore_t,semaphoreListLink);
+        if (0 == strcmp(name,Nodeptr->nameStr))
+        {
+            UNLOCK_SEMAPHORE_LIST();
+            return Nodeptr;
+        }
+        // Get Next element
+        semaphorePtr = le_dls_PeekNext(&SemaphoreList,semaphorePtr);
+    } while (NULL != semaphorePtr);
+
+    UNLOCK_SEMAPHORE_LIST();
     return NULL;
 }
 
