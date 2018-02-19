@@ -185,7 +185,8 @@ static void TestGetWrongExtendedEphemeris
         LE_DEBUG("Received LE_FORMAT_ERROR");
     }
 
-    close(fd);
+    // Closing fd is unnecessary since the messaging infrastructure underneath
+    // le_gnss_LoadExtendedEphemerisFile API that use it would close it.
 
 }
 

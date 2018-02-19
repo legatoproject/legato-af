@@ -111,9 +111,8 @@ static void SocketEventHandler
         else
         {
             LE_ERROR("Connection error %d", result);
+            close(connFd);
         }
-
-        close(connFd);
     }
 }
 

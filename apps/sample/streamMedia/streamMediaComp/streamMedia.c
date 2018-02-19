@@ -788,7 +788,9 @@ void streamMedia_Close
 
         if (RtpSession.rxPipefd[0] > 0)
         {
-            close(RtpSession.rxPipefd[0]);
+            // Closing RtpSession.rxPipefd[0] is unnecessary since the messaging infrastructure
+            // underneath the le_audio_PlaySamples API that use it would close it.
+
             RtpSession.rxPipefd[0] = -1;
         }
         if (RtpSession.rxPipefd[1] > 0)
@@ -815,7 +817,9 @@ void streamMedia_Close
         }
         if (RtpSession.txPipefd[1] > 0)
         {
-            close(RtpSession.txPipefd[1]);
+            // Closing RtpSession.txPipefd[1] is unnecessary since the messaging infrastructure
+            // underneath le_audio_GetSamples API that use it would close it.
+
             RtpSession.txPipefd[1] = -1;
         }
 

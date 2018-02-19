@@ -456,8 +456,8 @@ static void Update
             break;
     }
 
-    // Close the fd
-    close(fd);
+    // Closing fd is unnecessary since the messaging infrastructure underneath
+    // le_update_Start API that use it would close it.
 
     if (result != LE_OK)
     {

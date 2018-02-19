@@ -213,7 +213,8 @@ static void DisconnectAllAudio
     }
 
     close(AudioFileFd);
-    close(Pipefd[0]);
+    // Closing Pipefd[0] is unnecessary since the messaging infrastructure underneath
+    // le_audio_PlaySamples API that use it would close it.
     close(Pipefd[1]);
 
     if ( DecodingMode == MODE_AMR_NB )

@@ -756,8 +756,6 @@ static void AtBridgeHandler
             testCtxPtr->bridgeRef = le_atServer_OpenBridge(fdTtyAT);
             if (testCtxPtr->bridgeRef == NULL)
             {
-               // Close the fd
-               close(fdTtyAT);
                LE_FATAL("Assert Failed:testCtxPtr->bridgeRef != NULL");
             }
 

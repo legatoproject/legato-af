@@ -202,12 +202,9 @@ static le_result_t DownloadFirmware
     }
     else
     {
-        close(fd);
         printf("Error in download\n");
         return LE_FAULT;
     }
-
-    close(fd);
 
     return LE_OK;
 }

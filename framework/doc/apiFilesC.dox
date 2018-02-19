@@ -226,6 +226,19 @@ The async-server functionality is not enabled by default.
 Enable it by using the .cdef provides @ref defFilesCdef_providesApiAsync.
 
 
+@section apiFilesC_sendFd Sending File Descriptors
+
+If a file descriptor is sent over the Legato IPC, the underlying messaging infrastructure would
+close the file descriptor.  Therefore, after the file descriptor is passed as an "IN parameter" to a
+function that uses Legato IPC, the file descriptor should not be explicitly closed. If the file
+descriptor is needed after calling such function, it should be duplicated before being passed to the
+function.
+
+See the "file" type in @ref apiFilesSyntax_types.
+
+See @ref c_messagingSendingFileDescriptors for more detail.
+
+
 @section apiFilesC_sampleAPI API File Sample Output
 
 Here's the generated client interface header file for the defn.api file from @ref apiFilesC_sampleAPI

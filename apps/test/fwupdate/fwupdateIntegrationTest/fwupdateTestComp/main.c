@@ -173,7 +173,8 @@ COMPONENT_INIT
             result = le_fwupdate_Download (fd);
             snprintf (string, sizeof(string), "le_fwupdate_Download %d", result);
             Print (string);
-            close (fd);
+            // Closing fd is unnecessary since the messaging infrastructure underneath
+            // le_fwupdate_Download API that use it would close it.
         }
         exit(0);
     }

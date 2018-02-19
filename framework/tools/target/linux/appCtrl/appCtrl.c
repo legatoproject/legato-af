@@ -1697,10 +1697,6 @@ static void RunProc
 
     // Setup the standard streams.
     le_appProc_SetStdIn(appProcRef, STDIN_FILENO);
-
-    // Close local stdin
-    close(STDIN_FILENO);
-
     le_appProc_SetStdOut(appProcRef, STDOUT_FILENO);
     le_appProc_SetStdErr(appProcRef, STDERR_FILENO);
 

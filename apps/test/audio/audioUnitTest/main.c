@@ -636,8 +636,8 @@ void Testle_audio_PlaySamples
     // Stop
     LE_ASSERT(le_audio_Stop(playbackStreamRef) == LE_OK);
 
-    // Close the input pipe
-    close(Pipefd[1]);
+    // Closing the input pipe is unncessary since the messaging infrastructure underneath
+    // le_audio_PlaySamples would close it.
 
     // Stop the test thread
     le_thread_Cancel(TestThreadRef);
@@ -703,8 +703,8 @@ void Testle_audio_PlayFile
     // Wait the event LE_AUDIO_MEDIA_ENDED
     le_sem_Wait(ThreadSemaphore);
 
-    // Close the fd
-    close(FileFd);
+    // Closing the fd is unncessary since the messaging infrastructure underneath
+    // le_audio_PlayFile would close it.
 
     // Get the buffer address of the received data in the pa_pcm_simu
     uint8_t* sentPcmPtr = pa_pcmSimu_GetDataPtr();
@@ -784,8 +784,8 @@ void Testle_audio_CaptureSamples
     // All the expected data are received: stop the recoding
     LE_ASSERT(le_audio_Stop(captureStreamRef) == LE_OK);
 
-    // Close the output pipe
-    close(Pipefd[0]);
+    // Closing the output pipe is unncessary since the messaging infrastructure underneath
+    // le_audio_CaptureSamples would close it.
 
     // Check data
     LE_ASSERT(memcmp(Buffer, receivedPcmFramesPtr, BUFFER_LEN) == 0);
@@ -928,7 +928,8 @@ void Testle_audio_RecordFile
     le_audio_Close(captureStreamRef);
 
     // Close the fd
-    close(FileFd);
+    // Closing the fd is unncessary since the messaging infrastructure underneath
+    // le_audio_RecordFiles would close it.
 
     // Check recording file
     FileFd = open("./test.wav", O_RDONLY);

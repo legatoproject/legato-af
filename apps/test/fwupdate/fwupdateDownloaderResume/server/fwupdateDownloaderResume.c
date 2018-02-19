@@ -118,6 +118,7 @@ static void SocketEventHandler
     struct sockaddr_in clientAddress;
     le_result_t result;
     int connFd;
+    bool connFdClosed = false;
 
     socklen_t addressLen = sizeof(clientAddress);
 
@@ -178,6 +179,7 @@ static void SocketEventHandler
             else
             {
                 result = le_fwupdate_Download(connFd);
+                connFdClosed = true; // le_fwupdate_Download closes connFd
 
                 LE_INFO("Download result=%s", LE_RESULT_TXT(result));
                 if (result == LE_OK)
@@ -198,7 +200,10 @@ static void SocketEventHandler
             LE_ERROR("Connection error %d", result);
         }
 
-        close(connFd);
+        if (connFdClosed == false)
+        {
+            close(connFd);
+        }
     }
 }
 

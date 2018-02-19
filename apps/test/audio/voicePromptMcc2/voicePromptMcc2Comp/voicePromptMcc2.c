@@ -121,7 +121,8 @@ static void StopFilePlayback
     LE_INFO("Stop file playback on fd.%d", AudioFileFd);
     LE_FATAL_IF((le_audio_Stop(PlayerRef) != LE_OK), "Cannot stop file");
 
-    close(AudioFileFd);
+    // Closing AudioFileFd is unnecessary since the messaging infrastructure underneath
+    // le_audio_xxx APIs that use it would close it.
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -342,7 +343,8 @@ static void SigHandler
         le_mcc_HangUp(TestCallRef);
     }
 
-    close(AudioFileFd);
+    // Closing AudioFileFd is unnecessary since the messaging infrastructure underneath
+    // le_audio_xxx APIs that use it would close it.
 
     // If Ctrl-C is issued while the call is connected, the last voice prompt (VOICE_PROMPT_END)
     // won't be played since we exit before the playback starts.

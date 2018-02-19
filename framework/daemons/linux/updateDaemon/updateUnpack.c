@@ -27,6 +27,10 @@
 /// File descriptor to read the update pack from.
 static int InputFd = -1;
 
+/// InputFd could have been closed by the legato messaging infrastructure; and in that case it
+/// shouldn't be closed again.
+static bool InputFdClosed = false;
+
 /// Reference to the FD Monitor for the input stream (NULL if not unpacking).
 static le_fdMonitor_Ref_t InputFdMonitor = NULL;
 
@@ -164,7 +168,12 @@ static void Reset
     // Close the pipes.
     if (InputFd != -1)
     {
-        fd_Close(InputFd);
+        // Close InputFd only if it hasn't been closed by the Legato messaging infrastructure.
+        if (InputFdClosed == false)
+        {
+            fd_Close(InputFd);
+        }
+
         InputFd = -1;
     }
     if (PipelineFd != -1)
@@ -760,7 +769,11 @@ static void StartFirmwareUpdate
 
     LE_INFO("Starting firmware update.");
 
-    if ( le_fwupdate_Download(InputFd) == LE_OK )
+    le_result_t result = le_fwupdate_Download(InputFd);
+    // le_fwupdate_Download would close InputFd, so it shouldn't be closed again.
+    InputFdClosed = true;
+
+    if ( result == LE_OK )
     {
         LE_INFO("Firmware update download successful. Waiting for modem to reset.");
 
@@ -1211,6 +1224,7 @@ void updateUnpack_Start
     LE_ASSERT(State == STATE_IDLE);
 
     InputFd = fd;
+    InputFdClosed = false; // reset InputFdClosed since it's initialized.
     ProgressFunc = progressFunc;
     PercentDone = 0;
 

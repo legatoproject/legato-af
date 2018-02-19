@@ -218,7 +218,9 @@ static void DestroyRecThread
     PbRecSamplesThreadCtx_t *threadCtxPtr = (PbRecSamplesThreadCtx_t*) contextPtr;
 
     LE_INFO("wroteLen %d", threadCtxPtr->wroteLen);
-    close(AudioFileFd);
+
+    // Closing AudioFileFd is unnecessary since the messaging infrastructure underneath
+    // le_audio_xxx APIs that use it would close it.
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -602,8 +604,9 @@ void OptionTimerHandler
 
             if ( strncmp(AudioTestCase,"PB_SAMPLES",10)==0 )
             {
-                close(PbRecSamplesThreadCtx.pipefd[0]);
-                close(PbRecSamplesThreadCtx.pipefd[1]);
+                // Closing PbRecSamplesThreadCtx.pipefd[] is unnecessary since the messaging
+                // infrastructure underneath le_audio_xxx APIs that use it would close it.
+
                 PbRecSamplesThreadCtx.pipefd[0] = -1;
                 PbRecSamplesThreadCtx.pipefd[1] = -1;
                 PbRecSamplesThreadCtx.playDone = 0;
@@ -1172,7 +1175,8 @@ static void DisconnectAllAudio
         FeOutRef = NULL;
     }
 
-    close(AudioFileFd);
+    // Closing AudioFileFd is unnecessary since the messaging infrastructure underneath
+    // le_audio_xxx APIs that use it would close it.
 
     exit(0);
 }

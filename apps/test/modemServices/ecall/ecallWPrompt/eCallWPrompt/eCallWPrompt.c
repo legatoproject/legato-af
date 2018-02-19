@@ -66,7 +66,8 @@ static void DisconnectAudio
         FeOutRef = NULL;
     }
 
-    close(AudioFileFd);
+    // Closing AudioFileFd is unnecessary since the messaging infrastructure underneath
+    // le_audio_xxx APIs that use it would close it.
 }
 
 
