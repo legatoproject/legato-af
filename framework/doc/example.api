@@ -29,7 +29,7 @@ EVENT TestA
 (
     uint32 data,          ///< Used when registering the handler i.e. it is
                           ///< passed into the generated ADD_HANDLER function.
-    handler TestAHandler
+    TestAHandler handler
 );
 
 
