@@ -827,9 +827,9 @@ void streamMedia_Close
     if ((NULL == RtpSession.receptionPlayerRef) &&
         (NULL == RtpSession.transmissionRecorderRef) && RtpSession.isInit)
     {
-        pjmedia_transport_detach(RtpSession.pjTransportPtr, NULL);
         if (RtpSession.pjTransportPtr)
         {
+            pjmedia_transport_detach(RtpSession.pjTransportPtr, NULL);
             pjmedia_transport_close(RtpSession.pjTransportPtr);
             RtpSession.pjTransportPtr = NULL;
         }

@@ -1193,6 +1193,11 @@ COMPONENT_INIT
             goto err_exit;
         }
     }
+    else
+    {
+        LE_ERROR("Invalid argument");
+        goto err_exit;
+    }
 
     memset(&TestCtx, 0, sizeof(TestCtx));
 

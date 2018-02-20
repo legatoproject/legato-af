@@ -273,6 +273,7 @@ static bool TestLargeBuffer(void)
     LE_INFO("Test large buffer (%zd)", bufSize);
 
     uint8_t * buf = malloc(bufSize);
+    LE_ASSERT(buf != NULL);
     memset(buf, 0, bufSize);
 
     // Collect samples
