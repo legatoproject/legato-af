@@ -48,6 +48,7 @@ else
     endif
     export TOOLCHAIN_DIR := $($(TARGET_CAPS)_TOOLCHAIN_DIR)
     export TOOLCHAIN_PREFIX := $($(TARGET_CAPS)_TOOLCHAIN_PREFIX)
+    export LEGATO_SYSROOT ?= $($(TARGET_CAPS)_SYSROOT)
 endif
 
 
