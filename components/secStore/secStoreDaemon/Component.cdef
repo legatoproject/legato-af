@@ -5,6 +5,7 @@ sources:
 
 cflags:
 {
+    -DSECSTOREADMIN=${SECSTOREADMIN}
     -I$CURDIR/../platformAdaptor/inc
     -I$LEGATO_ROOT/components/appCfg
     -I$LEGATO_ROOT/framework/liblegato

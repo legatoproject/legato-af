@@ -157,6 +157,14 @@ RunSecStoreTestGlobal()
     echo "Grepping the logs to check the results."
     CheckLogStr "==" 1 "============ SecStoreTestGlobal PASSED ============="
 
+    # Check that secure storage can be accessed using secstore
+    VALUE=$(ssh root@$targetAddr "$BIN_PATH/secstore ls")
+    RETVAL=$?
+    if [ $RETVAL -ne 0 ]; then
+        echo "secStoreAdmin is not supported. Checking for entries after app uninstall is omitted"
+        exit 0
+    fi
+
     # Check that the entries created by the app are still present
     # after uninstall
     KEY=/global/file1

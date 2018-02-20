@@ -70,6 +70,9 @@ export INCLUDE_ECALL ?= 1
 # Do not be verbose by default.
 export VERBOSE ?= 0
 
+# secStoreAdmin APIs disabled by default.
+export SECSTOREADMIN ?= 0
+
 # In case of release, override parameters
 ifeq ($(MAKECMDGOALS),release)
   # We never build for coverage testing when building a release.
@@ -289,6 +292,7 @@ $(foreach target,$(TARGETS),build/$(target)/Makefile):
 			-DTEST_COVERAGE=$(TEST_COVERAGE) \
 			-DINCLUDE_ECALL=$(INCLUDE_ECALL) \
 			-DUSE_CLANG=$(USE_CLANG) \
+			-DSECSTOREADMIN=$(SECSTOREADMIN) \
 			-DDISABLE_SMACK=$(DISABLE_SMACK) \
 			-DPLATFORM_SIMULATION=$(PLATFORM_SIMULATION) \
 			-DTOOLCHAIN_PREFIX=$(TOOLCHAIN_PREFIX) \

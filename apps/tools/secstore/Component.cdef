@@ -10,3 +10,8 @@ sources:
 {
     secStoreTool.c
 }
+
+cflags:
+{
+    -DSECSTOREADMIN=${SECSTOREADMIN}
+}

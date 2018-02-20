@@ -1,6 +1,6 @@
-/** @file appCtrl.c
+/** @file secStoreTool.c
  *
- * Control Legato applications.
+ * Secure storage command line tool
  *
  * Copyright (C) Sierra Wireless Inc.
  */
@@ -66,7 +66,16 @@ static void PrintHelp
         "NAME:\n"
         "    secstore - Used to perform administrative functions on secure storage.\n"
         "\n"
+        "AVAILABILITY:\n"
+#if (SECSTOREADMIN == 1)
+        "    secstore commands are fully available\n"
+#else
+        "    secstore administrative commands are disabled. Only commands to retrieve non\n"
+        "    sensitive info are available. Refer to the API documentation for further details\n"
+#endif
+        "\n"
         "DESCRIPTION:\n"
+#if (SECSTOREADMIN == 1)
         "    secstore ls [OPTIONS] <path>\n"
         "       List all the secure storage entries under <path>.  <path> is assumed to be absolute.\n"
         "\n"
@@ -87,15 +96,16 @@ static void PrintHelp
         "    secstore rm <path>\n"
         "       Deletes <path> and all items under it.  <path> is assumed to be absolute.\n"
         "\n"
+        "\n"
+        "    secstore readmeta\n"
+        "       Prints the contents of the meta file.\n"
+        "\n"
+#endif
         "    secstore size <path>\n"
         "       Gets the size of all items under <path>.  <path> is assumed to be absolute.\n"
         "\n"
         "    secstore total\n"
         "       Gets the total space and free space, in bytes, for all of secure storage.\n"
-        "\n"
-        "    secstore readmeta\n"
-        "       Prints the contents of the meta file.\n"
-        "\n"
         );
 
     exit(EXIT_SUCCESS);
@@ -307,6 +317,8 @@ static void WriteEntry
     }
     while ( (numBytes == -1) && (errno == EINTR) );
 
+    close(fd);
+
     if (numBytes >= 0)
     {
         // Write the buffer to secure storage.
@@ -333,8 +345,6 @@ static void WriteEntry
         fprintf(stderr, "Could not read from %s.  %m.\n", InputFilePtr);
         exit(EXIT_FAILURE);
     }
-
-    close(fd);
 }
 
 

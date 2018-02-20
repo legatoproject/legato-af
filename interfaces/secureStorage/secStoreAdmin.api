@@ -7,14 +7,23 @@
  *
  * <HR>
  *
- * This API provides administrative control for secure storage.
+ * This API provides administrative control for secure storage. It gives the rights to read, write
+ * and delete files recorded in the SFS Legato tree. This API should be used with extreme caution.
  *
- * @caution It should only be used by privileged users.
+ * @caution The full API should only be used by privileged users
  *
- * Secure storage is used to store sensitive info like passwords, keys, certificates,
- * etc. All data in the secure storage is in an encrypted format.
+ * Secure storage allows privileged users (e.g: administrators) to provision secure storage data by
+ * storing sensitive info like passwords, keys, certificates, etc. All data in the secure storage
+ * is in an encrypted format. It also allows privileged users to debug stored data issues.
+
+ * @note This API is mostly disabled by default in Legato Framework for security concerns. Only
+ * few functions remains to get non sensitive information about secure storage. In order
+ * to make the secure storage admin API fully available, Legato has be to be compiled using a
+ * special flag: SECSTOREADMIN=1 make
  *
- * This API allows an administrator to provision secure storage data and debug stored data issues.
+ * Two functions are enabled by default whether the flag SECSTOREADMIN is set or not:
+ * - secStoreAdmin_GetTotalSpace(): gets total space and available free space in secure storage.
+ * - secStoreAdmin_GetSize(): gets the size, in bytes, of all items under the specified path
  *
  * <HR>
  *
