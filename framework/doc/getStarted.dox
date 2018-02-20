@@ -55,10 +55,9 @@ Once you have mastered HelloWorld walk through our <b> @ref basicAppsIPC "HelloI
 </b> which will <b> demonstrate 3 different ways to create components and applications </b> and how
 to communicate between components and apps.
 
-| Tutorial                 | Description                                                                                                      |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| @subpage basicAppsCreate | Create Legato's version of Hello World and learn how to create components and apps                               |
-| @subpage basicAppsIPC    | Modify Hello World into a two components and learn the different ways to communicate between components and apps |
+| Tutorial                 | Description                                                                                                                |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| @subpage basicApps       | Create and modify Legato's version of Hello World and learn how to create components and apps and communicate between them |
 
 <h1> Concepts and Conventions </h1>
 

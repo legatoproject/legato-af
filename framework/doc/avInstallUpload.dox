@@ -78,7 +78,7 @@ This requires either:
 download and installation. See @ref c_le_avc API for details.
 - using AT commands to download and install the update.  For information on AT Commands download the
 AT Command Reference from your module provider. (e.g.,
-[AirPrime WPX5XX/WP76XX AT Command Reference](https://source.sierrawireless.com/resources/airprime/software/airprime_wpx5xx_wp76xx_at_command_reference_r3/) ).
+[AirPrime WPX5XX/WP76XX AT Command Reference](https://source.sierrawireless.com/resources/airprime/software/airprime_wpx5xx_wp76xx_wp77xx_at_command_reference/) ).
 
 @subsection avInstallUploadStatus Check Success Status on AirVantage
 

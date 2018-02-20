@@ -1,0 +1,105 @@
+/** @page releaseNotes18020 18.02.0 Release Notes
+
+Release Date: Mar 13, 2018
+
+See @ref aboutLicenses to view Legato AF Licensing Information.
+
+The following provides a summary of changes that have been made in the 18.02 Legato AF Release.
+
+<b> Download the @ref aboutReleaseInfo "source code" and get started with @ref basicBuild
+"building Legato AF". </b>
+
+@section rn1802_Features New Features
+
+The following are the list of new features that have been added into the 18.02 Release:
+
+@subsection rn1802_Features_AV  AirVantage Improvements
+
+Version 18.02.0 introduces further stability updates to the AirVantage Connector and underlaying
+Platform Adapters. The code changes provide stability to over-the-air downloads and installs, and
+improves the reliability of downloads and installs resuming after the device has lost power or has
+been rebooted.
+
+The @ref le_avdata_overview "AirVantage Data API" now supports @b variables and @b settings being
+both read and @b written to by apps.
+
+ An avData field can now be a:
+- @b variable allowing the AirVantage server to read the value, and can be read/written to by an
+  app.
+- @b setting allowing the AirVantage server to read/write the value, and can be read/written to by
+  an app.
+- @b command allowing the AirVantage server to invoke a function in the app.
+
+@subsection rn1802_Features_eCall eCall Support for MSD Version 2
+
+eCall now supports @ref le_ecall_eraGlonassData "MSD version 2 for additional data" and describes:
+- The crash severity (Accident Severity Index - ASI15)
+- The diagnostic result
+- The crash information
+- <b> The coordinate system type </b>
+
+Two new functions have been added to the @ref c_ecall "eCall API" to support MSD version 2 features:
+- le_ecall_SetMsdEraGlonassCoordinateSystemType()
+- le_ecall_ResetMsdEraGlonassCoordinateSystemType()
+
+@subsection rn1802_Features_jammingDectection Modem Radio Control Service
+
+The Modem Radio Control Service now supports @ref le_mrc_jamming "jamming detection"
+on GSM networks and new functions have been added to the @ref c_mex "le_mrc.api" to configure
+monitoring for detection of jamming.
+
+@subsection rn1802_Features_docs Documentation Improvements
+
+A new @ref getStarted "Getting Started" section has been added that walks users through installing,
+building and configuring the Legato Application Framework, as well as starting tutorials, sample
+apps and how to guides. Everything to get started is now in one easy to find location.
+
+@section rn1802_Fixes Fixed Issues
+
+All development work is tagged in GitHub as "18.02.0".  The list of changes and commit
+messages can be found on GitHub.
+
+- [Legato AF 18.02.0 Fixes](https://github.com/legatoproject/legato-af/commits/18.02.0)
+
+@note This is only the list of fixes for the Application Framework and Platform Services, for the
+list of changes in the Platform Adapters and AVC Service view the commits under the tag 18.02.0 in
+the individual repositories on GitHub.
+
+@section rn1802_KnownIssues Known Issues
+
+@subsection rn1802_Constraints Constraints and Limitations
+
+@subsubsection rn1802_ContraintsLinuxSupport Dev Machine Linux Version
+
+To develop applications within the Legato Application Framework, a current supported
+[Long Term Support version of Ubuntu Linux](https://www.ubuntu.com/info/release-end-of-life) is
+required on your dev machine (or running in a virtual box on Windows).  Ubuntu 16.04 is the current
+@b recommended version to use on your dev machine.
+
+@subsubsection rn1802_ConstECMUSB ECM-USB modem manager issue
+
+Ubuntu 15.10 and newer has Modem Manager version @c 1.4.12-1ubuntu1  installed by default which
+conflicts with the ECM-USB driver when connecting a target.  Modem manager may cause the Ubuntu
+Network Manager to crash on your host and/or your target device to become unavailable over USB.
+
+@b Symptoms:
+- NetworkManager crashing when plugging into your device over USB, or
+- The target device becomes inaccessible after 30 seconds.
+
+@b Recommended  @b Work  @b Around:
+- Uninstall @c modemmanager from Ubuntu or
+- [Downgrade @c modemmanager to version 1.0.0-2ubuntu1](http://packages.ubuntu.com/trusty/modemmanager)
+
+@subsection rn1802_OpenIssues Open Issues
+
+The following is the list of known issues that still exist in Legato 18.02.0 and are currently under
+investigation:
+
+@b eCall @b Service
+- During eCall Modem Services transmission the date and time are not updated and do not pick up the
+rtc value.
+
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

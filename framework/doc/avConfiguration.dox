@@ -190,7 +190,7 @@ OK
 
 For information on AT Commands download the AT Command Reference from your module provider.
 
-[AirPrime WPX5XX/WP76XX AT Command Reference](https://source.sierrawireless.com/resources/airprime/software/airprime_wpx5xx_wp76xx_at_command_reference_r3/)
+[AirPrime WPX5XX/WP76XX AT Command Reference](https://source.sierrawireless.com/resources/airprime/software/airprime_wpx5xx_wp76xx_wp77xx_at_command_reference/)
 
 If you check on the AirVantage Web Admin Console you will see that the "Comm. Status"
 should be green and the Last Seen should indicate very recent.
