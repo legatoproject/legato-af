@@ -14,12 +14,11 @@ src="https://www.youtube.com/embed/YcC9eGOii74">
 
 <h1> What is the Legato Application Framework? </h1>
 
-The Legato Application Framework allows developers to focus on building applications by <b>providing
-tools and a rich set of APIs</b>. It simplifies the complexity of interfacing with the underlaying
-Operating System and hardware.  It also introduces <b>layers of security</b> that ensure that
-applications only have the permissions and access to the resources that they need. All permissions
-are given explicitly and applications natively run in a isolated environment unless explicitly
-configured not to.
+The Legato Application Framework <b>provides rich tools and APIs</b> for developers to build embedded
+system applications. The framework simplifies the complexity of interfacing the underlying Operating
+System with hardware, and introduces <b>layers of security</b> to ensure applications having necessary
+permissions to access resources. Such applications run in an isolated environment and its permissions
+can be explicitly configured.
 
 @image html LegatoAFRuntime.png
 
