@@ -104,11 +104,14 @@ ifneq ($(MAKECMDGOALS),clean)
 
   ifeq ($(USE_CLANG),1)
     export TARGET_CC = $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)clang
+    export TARGET_CXX = $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)clang++
   else
     export TARGET_CC = $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)gcc
+    export TARGET_CXX = $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)g++
   endif
 
   export $(TARGET)_CC = $(TARGET_CC)
+  export $(TARGET)_CXX = $(TARGET_CXX)
 
 endif
 
@@ -277,7 +280,7 @@ TESTS_TARGETS = $(foreach target,$(TARGETS),tests_$(target))
 .PHONY: $(TESTS_TARGETS)
 $(TESTS_TARGETS):tests_%: % framework_% build/%/Makefile
 	$(MAKE) -C build/$(TARGET)
-	$(MAKE) -C apps/test/framework/mk
+	$(MAKE) -C apps/test/framework/mk CC=$(TARGET_CC)
 # Rule for invoking CMake to generate the Makefiles inside the build directory.
 # Depends on the build directory being there.
 # NOTE: CMake is only used to build tests and samples.

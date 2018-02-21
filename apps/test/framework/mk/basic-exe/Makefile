@@ -11,4 +11,4 @@ test1:  $(BUILD_DIR)/lib/libexternal.so
 
 $(BUILD_DIR)/lib/libexternal.so:
 	mkdir -p $(@D)
-	$(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)gcc $(CFLAGS) -fPIC -shared -o $@ libexternal.c
+	$(CC) $(CFLAGS) -fPIC -shared -o $@ libexternal.c

@@ -8,10 +8,6 @@ all: $(TARGET)
 BUILD_DIR :=  ${LEGATO_ROOT}/build/$(TARGET)/$(subst ${LEGATO_ROOT}/,,$(CURDIR))
 export BUILD_DIR
 
-localhost: CC ?= gcc
-ar7: CC ?= $(AR7_TOOLCHAIN_DIR)/arm-poky-linux-gnueabi-gcc
-wp85: CC ?= $(WP85_TOOLCHAIN_DIR)/arm-poky-linux-gnueabi-gcc
-
 VERBOSE := -v
 
 clean:

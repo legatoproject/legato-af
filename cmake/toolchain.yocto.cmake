@@ -21,11 +21,17 @@ endif()
 
 set(TARGET_CC "$ENV{TARGET_CC}")
 
+if(NOT DEFINED ENV{TARGET_CXX})
+    message(FATAL_ERROR "TARGET_CXX not set")
+endif()
+
+set(TARGET_CXX "$ENV{TARGET_CXX}")
+
 if(NOT DEFINED USE_CLANG)
     set(USE_CLANG $ENV{USE_CLANG})
 endif()
 
-message("Target compiler: ${TARGET_CC}")
+message("Target compilers: ${TARGET_CC} ${TARGET_CXX}")
 
 # Check for sysroot override via TARGET_SYSROOT environment variable.
 if (DEFINED ENV{TARGET_SYSROOT})
@@ -45,6 +51,7 @@ endif()
 message("Target sysroot: ${TARGET_SYSROOT}")
 
 CMAKE_FORCE_C_COMPILER("${TARGET_CC}" GNU)
+CMAKE_FORCE_CXX_COMPILER("${TARGET_CXX}" GNU)
 
 SET(CMAKE_REQUIRED_FLAGS "--sysroot=${TARGET_SYSROOT}")
 add_definitions(--sysroot=${TARGET_SYSROOT})

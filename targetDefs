@@ -52,13 +52,31 @@ else
 endif
 
 
-## Set the STRIP, OBJCOPY, and READELF variables for use by the Legato framework build, if
+## Set the LD, AR, AS, STRIP, OBJCOPY, and READELF variables for use by the Legato framework build, if
 ## they are not set yet.
 
 ifneq ($(TOOLCHAIN_DIR),)
     TOOLCHAIN_PATH_PREFIX := $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)
 else
     TOOLCHAIN_PATH_PREFIX := $(TOOLCHAIN_PREFIX)
+endif
+
+ifeq ($(wildcard $(TOOLCHAIN_PATH_PREFIX)ld),)
+    export LD := ld
+else
+    export LD := $(TOOLCHAIN_PATH_PREFIX)ld
+endif
+
+ifeq ($(wildcard $(TOOLCHAIN_PATH_PREFIX)ar),)
+    export AR := ar
+else
+    export AR := $(TOOLCHAIN_PATH_PREFIX)ar
+endif
+
+ifeq ($(wildcard $(TOOLCHAIN_PATH_PREFIX)as),)
+    export AS := as
+else
+    export AS := $(TOOLCHAIN_PATH_PREFIX)as
 endif
 
 ifeq ($(wildcard $(TOOLCHAIN_PATH_PREFIX)strip),)
@@ -78,3 +96,4 @@ ifeq ($(wildcard $(TOOLCHAIN_PATH_PREFIX)readelf),)
 else
     export READELF := $(TOOLCHAIN_PATH_PREFIX)readelf
 endif
+
