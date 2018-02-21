@@ -34,6 +34,14 @@ is supported)
 | -------------------------| :-: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
 | MT-PDP context feature   |  X  |        |        |        |    X   |        |    X   |        |        |    X   |
 
+@section mrc_JammingDetection Jamming detection
+
+The jamming detection feature is supported on following platforms:<br>
+
+|                            | AR755x | AR758x | AR759x | AR8652 | WP750x | WP76xx | WP77xx | WP8548 |
+| -------------------------- | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
+| Jamming detection support  |        |        |        |        |        |   X    |        |        |
+
 See @ref  c_mrc API<br>
 See @ref c_mdc API<br>
 Copyright (C) Sierra Wireless Inc.

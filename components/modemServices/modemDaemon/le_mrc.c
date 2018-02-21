@@ -380,11 +380,28 @@ static le_event_Id_t PSChangeId;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Event IDs for Signal Strength notification.
+ * Event ID for Signal Strength notification.
  *
  */
 //--------------------------------------------------------------------------------------------------
 static le_event_Id_t NetworkRejectIndId;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Event ID for jamming detection notification.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t JammingDetectionIndId;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Jamming detection start request number.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static uint32_t JammingDetectionStartNb;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -432,7 +449,6 @@ static le_event_Id_t MrcCommandEventId;
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t PreferredNetworkOperatorPool;
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1148,6 +1164,23 @@ static void NetworkRejectIndHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * The jamming detection indication handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void JammingDetectionIndHandler
+(
+    pa_mrc_JammingDetectionIndication_t* jammingDetectionIndPtr
+)
+{
+    LE_INFO("Jamming detection Handler called with report %d, status %d",
+             jammingDetectionIndPtr->report, jammingDetectionIndPtr->status);
+
+    le_event_ReportWithRefCounting(JammingDetectionIndId, jammingDetectionIndPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * handler function to release memory objects of modem radio control service.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1258,6 +1291,29 @@ static void CloseSessionEventHandler
 }
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * The first-layer jamming detection event Handler
+ */
+//--------------------------------------------------------------------------------------------------
+static void FirstLayerJammingDetectionHandler
+(
+    void* reportPtr,
+    void* secondLayerHandlerFunc
+)
+{
+    pa_mrc_JammingDetectionIndication_t* eventDataPtr = reportPtr;
+    le_mrc_JammingDetectionHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+
+    clientHandlerFunc(eventDataPtr->report,
+                      eventDataPtr->status,
+                      le_event_GetContextPtr());
+
+    // The reportPtr is a reference counted object, so need to release it
+    le_mem_Release(reportPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
 // APIs.
 //--------------------------------------------------------------------------------------------------
 
@@ -1366,6 +1422,12 @@ void le_mrc_Init
 
     // Register a handler function for Signal Strength change indication
     pa_mrc_AddSignalStrengthIndHandler(SignalStrengthIndHandlerFunc, NULL);
+
+    // Create an event Id for jamming detection indication
+    JammingDetectionIndId = le_event_CreateIdWithRefCounting("JammingDetectionInd");
+
+    // Register a handler function for jamming detection indication
+    pa_mrc_AddJammingDetectionIndHandler(JammingDetectionIndHandler, NULL);
 
     MrcCommandEventId = le_event_CreateId("CommandEvent", sizeof(CmdRequest_t));
 
@@ -4303,6 +4365,104 @@ le_mrc_NetworkRejectHandlerRef_t le_mrc_AddNetworkRejectHandler
 void le_mrc_RemoveNetworkRejectHandler
 (
     le_mrc_NetworkRejectHandlerRef_t handlerRef ///< [IN] The handler reference
+)
+{
+    le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start the jamming detection monitoring.
+ *
+ * @warning The jamming detection feature might be limited by the platform.
+ *          Please refer to the platform documentation @ref platformConstraintsMrc.
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_FAULT          The function failed.
+ *      - LE_DUPLICATE      The feature is already activated and an activation is requested.
+ *      - LE_UNSUPPORTED    The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_StartJammingDetection
+(
+    void
+)
+{
+    le_result_t res = pa_mrc_SetJammingDetection(true);
+    if (LE_OK == res)
+    {
+        JammingDetectionStartNb++;
+    }
+    return res;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop the jamming detection monitoring.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed.
+ *      - LE_UNSUPPORTED    The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_StopJammingDetection
+(
+    void
+)
+{
+    LE_DEBUG("Stop jamming detection JammingDetectionStartNb = %d", JammingDetectionStartNb);
+    JammingDetectionStartNb--;
+    if (!JammingDetectionStartNb)
+    {
+        LE_DEBUG("Request to stop jamming detection");
+        return pa_mrc_SetJammingDetection(false);
+    }
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add an event handler for jamming detection
+ *
+ * @return
+ *      - handlerPtr       Handler reference
+ */
+//--------------------------------------------------------------------------------------------------
+le_mrc_JammingDetectionEventHandlerRef_t le_mrc_AddJammingDetectionEventHandler
+(
+    le_mrc_JammingDetectionHandlerFunc_t    handlerPtr,     ///< [IN] Pointer on handler function
+    void*                                   contextPtr      ///< [IN] Context pointer
+)
+{
+    le_event_HandlerRef_t handlerRef;
+
+    // handlerPtr must be valid
+    if (!handlerPtr)
+    {
+        LE_KILL_CLIENT("Null handlerPtr");
+        return NULL;
+    }
+
+    // Register the user app handler
+    handlerRef = le_event_AddLayeredHandler("JammingDetectionHandler",
+                                            JammingDetectionIndId,
+                                            FirstLayerJammingDetectionHandler,
+                                            (le_event_HandlerFunc_t)handlerPtr);
+    le_event_SetContextPtr(handlerRef, contextPtr);
+
+    return (le_mrc_JammingDetectionEventHandlerRef_t)handlerRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove an event handler for jamming detection
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mrc_RemoveJammingDetectionEventHandler
+(
+    le_mrc_JammingDetectionEventHandlerRef_t handlerRef     ///< [IN] Handler to remove
 )
 {
     le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);

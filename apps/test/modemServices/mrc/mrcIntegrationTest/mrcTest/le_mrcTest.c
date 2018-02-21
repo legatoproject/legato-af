@@ -58,6 +58,13 @@ static le_thread_Ref_t  SignalStrengthChangeThreadRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Jamming detection Thread reference.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_thread_Ref_t  JammingDetectionTreadRef = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Home PLMN references
  */
 //--------------------------------------------------------------------------------------------------
@@ -1957,6 +1964,105 @@ static void Testle_mrc_GetBandCapabilities
 }
 //! [Band Capabilities]
 
+//! [Jamming detection]
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Jamming detection.
+ *
+ * le_mrc_StartJammingDetection() API test
+ * le_mrc_StopJammingDetection() API test
+ * le_mrc_AddJammingDetectionEventHandler() API test
+ * le_mrc_RemoveJammingDetectionEventHandler() API test
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mrc_JammingDetectionEventHandlerRef_t testJammingHdlrRef = NULL;
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Jamming detection event handler
+ */
+//-------------------------------------------------------------------------------------------------
+static void TestJammingHandler
+(
+    le_mrc_JammingReport_t  report,     ///< [IN] Report type.
+    le_mrc_JammingStatus_t  status,     ///< [IN] Jamming detection status.
+    void*                   contextPtr  ///< [IN] Handler context.
+)
+{
+    LE_DEBUG("Jamming detection notification: report %d, status %d", report, status);
+    if (LE_MRC_JAMMING_REPORT_FINAL == report)
+    {
+        le_mrc_RemoveJammingDetectionEventHandler(testJammingHdlrRef);
+        testJammingHdlrRef = NULL;
+        LE_ASSERT_OK(le_mrc_StopJammingDetection());
+        le_sem_Post(ThreadSemaphore);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Thread for test Signal Strength indication.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void* MyJammingDetectionThread
+(
+    void* context   ///< Context
+)
+{
+    le_mrc_ConnectService();
+
+    LE_ASSERT_OK(le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_LTE));
+
+    sleep(SLEEP_5S);
+
+    testJammingHdlrRef = le_mrc_AddJammingDetectionEventHandler(TestJammingHandler, NULL);
+    LE_ASSERT(testJammingHdlrRef);
+    LE_ASSERT_OK(le_mrc_StartJammingDetection());
+    LE_ASSERT_OK(le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_GSM));
+
+    le_event_RunLoop();
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Jamming detection.
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_JammingDetection
+(
+    void
+)
+{
+    le_mrc_RatBitMask_t bitMaskOrigin;
+    le_clk_Time_t time1;
+    le_result_t res;
+
+    sleep(SLEEP_5S);
+
+    time1.sec = 150;
+    time1.usec = 0;
+
+    LE_ASSERT_OK(le_mrc_GetRatPreferences(&bitMaskOrigin));
+    PrintRat(bitMaskOrigin);
+
+    // Init the semaphore for asynchronous callback
+    ThreadSemaphore = le_sem_Create("JammingDetection", 0);
+
+    JammingDetectionTreadRef = le_thread_Create("ThreadJammingInd", MyJammingDetectionThread, NULL);
+    le_thread_Start(JammingDetectionTreadRef);
+
+    // Wait for complete asynchronous registration
+    res = le_sem_WaitWithTimeOut(ThreadSemaphore, time1);
+    LE_ASSERT_OK(res);
+
+    le_thread_Cancel(JammingDetectionTreadRef);
+    le_sem_Delete(ThreadSemaphore);
+
+    LE_ASSERT_OK(le_mrc_SetRatPreferences(bitMaskOrigin));
+}
+//! [Jamming detection]
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1966,6 +2072,10 @@ static void Testle_mrc_GetBandCapabilities
 COMPONENT_INIT
 {
     LE_INFO("======== Start MRC Modem Services implementation Test========");
+
+    LE_INFO("======== Jamming detection Test ========");
+    Testle_mrc_JammingDetection();
+    LE_INFO("======== Jamming detection Test PASSED ========");
 
     LE_INFO("======== PSHdlr Test ========");
     Testle_mrc_PSHdlr();

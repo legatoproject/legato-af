@@ -237,6 +237,18 @@ pa_mrc_NetworkRejectIndication_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Jamming detection indication structure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+    le_mrc_JammingReport_t  report;     ///< Notification type
+    le_mrc_JammingStatus_t  status;     ///< Jamming status
+}
+pa_mrc_JammingDetectionIndication_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Prototype for handler functions used to report Signal Strength changes.
  *
  * @param ssIndPtr The Signal Strength change indication.
@@ -293,6 +305,18 @@ typedef void (*pa_mrc_ServiceChangeHdlrFunc_t)
 typedef void (*pa_mrc_NetworkRejectIndHdlrFunc_t)
 (
     pa_mrc_NetworkRejectIndication_t* networkRejectIndPtr
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Prototype for handler functions used to report Jamming detection notifications.
+ *
+ * @param servicePtr The service state.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*pa_mrc_JammingDetectionHandlerFunc_t)
+(
+    pa_mrc_JammingDetectionIndication_t* jammingIndPtr
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1015,6 +1039,40 @@ LE_SHARED le_event_HandlerRef_t pa_mrc_AddNetworkRejectIndHandler
 LE_SHARED void pa_mrc_RemoveNetworkRejectIndHandler
 (
     le_event_HandlerRef_t handlerRef
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register a handler for jamming detection indication.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_event_HandlerRef_t pa_mrc_AddJammingDetectionIndHandler
+(
+    pa_mrc_JammingDetectionHandlerFunc_t JammingDetectionIndHandler, ///< [IN] The handler function
+                                                                     ///  to handle jamming
+                                                                     ///  detection indication.
+    void*                               contextPtr                   ///< [IN] The context to be
+                                                                     ///  given to the handler.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function activates or deactivates jamming detection notification.
+ *
+ * * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ *      - LE_DUPLICATE if jamming detection is already activated and an activation is requested
+ *      - LE_UNSUPPORTED if jamming detection is not supported
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mrc_SetJammingDetection
+(
+    bool activation     ///< [IN] Notification activation request
 );
 
 #endif // LEGATO_PARC_INCLUDE_GUARD

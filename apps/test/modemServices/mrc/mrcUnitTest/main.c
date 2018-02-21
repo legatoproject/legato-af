@@ -576,6 +576,45 @@ static void Testle_mrc_PSHdlr
     le_mrc_RemovePacketSwitchedChangeHandler(testHdlrRef);
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * Jamming detection event handler
+ */
+//-------------------------------------------------------------------------------------------------
+static void TestJammingHandler
+(
+    le_mrc_JammingReport_t  report,     ///< [IN] Report type.
+    le_mrc_JammingStatus_t  status,     ///< [IN] Jamming detection status.
+    void*                   contextPtr  ///< [IN] Handler context.
+)
+{
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * MRC Jamming detection Tests
+ * APIs tested:
+ * - le_mrc_StartJammingDetection()
+ * - le_mrc_StopJammingDetection()
+ * - le_mrc_AddJammingDetectionEventHandler()
+ * - le_mrc_RemoveJammingDetectionEventHandler()
+ */
+//--------------------------------------------------------------------------------------------------
+void Testle_mrc_JammingTest
+(
+    void
+)
+{
+    le_mrc_JammingDetectionEventHandlerRef_t testJammingHdlrRef;
+
+    LE_ASSERT_OK(le_mrc_StartJammingDetection());
+    LE_ASSERT_OK(le_mrc_StopJammingDetection());
+
+    testJammingHdlrRef = le_mrc_AddJammingDetectionEventHandler(TestJammingHandler, NULL);
+    LE_ASSERT(testJammingHdlrRef);
+    le_mrc_RemoveJammingDetectionEventHandler(testJammingHdlrRef);
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * main of the test
@@ -638,6 +677,10 @@ COMPONENT_INIT
     LE_INFO("======== le_mrc_SetSignalStrengthIndDelta Test ========");
     Testle_mrc_SetSignalStrengthIndDelta();
     LE_INFO("======== le_mrc_SetSignalStrengthIndDelta Test PASSED ========");
+
+    LE_INFO("======== MRC Jamming detection Test ========");
+    Testle_mrc_JammingTest();
+    LE_INFO("======== MRC Jamming detection Test PASSED ========");
 
     LE_INFO("======== UnitTest of MRC API ends with SUCCESS ========");
 
