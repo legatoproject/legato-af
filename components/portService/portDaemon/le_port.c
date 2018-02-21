@@ -660,6 +660,8 @@ static void PossibleModeEventHandler
             break;
 
         case LE_JSON_ARRAY_END:
+            // Increment link counter here, as all link information are captured.
+            instanceConfigPtr->linkCounter++;
             le_json_SetEventHandler(DeviceEventHandler);
             break;
 
@@ -721,8 +723,12 @@ static void DeviceEventHandler
                 // Get the instance config pointer from the list.
                 InstanceConfiguration_t* instanceConfigPtr = GetCurrentInstance();
 
-                instanceConfigPtr->linkCounter++;
-
+                if (NULL == instanceConfigPtr)
+                {
+                    LE_ERROR("instanceConfigPtr is NULL!");
+                    CleanJsonConfig();
+                    break;
+                }
                 // Check if the instance contains more than MAX_LINKS links.
                 if (instanceConfigPtr->linkCounter > (MAX_LINKS - 1))
                 {
@@ -1009,7 +1015,7 @@ static le_result_t OpenInstanceLinks
 
     le_dls_Link_t* linkPtr = le_dls_Peek(&(instanceConfigPtr->linkList));
 
-    for (i = 0; (i <= (instanceConfigPtr->linkCounter)) && (NULL != linkPtr); i++)
+    for (i = 0; (i < (instanceConfigPtr->linkCounter)) && (NULL != linkPtr); i++)
     {
         LinkList_t* linkListPtr = CONTAINER_OF(linkPtr, LinkList_t, link);
 
@@ -1142,7 +1148,7 @@ static void JsonEventHandler
                 }
 
                 // Initialize the link counter.
-                instanceConfigurationPtr->linkCounter = -1;
+                instanceConfigurationPtr->linkCounter = 0;
 
                 // Initialization of linkList.
                 instanceConfigurationPtr->linkList = LE_DLS_LIST_INIT;
@@ -1189,7 +1195,7 @@ static bool GetAtServerDeviceRef
     int i;
     bool allowSuspend = false;
 
-    for (i = 0; i <= (instanceConfigPtr->linkCounter); i++)
+    for (i = 0; i < (instanceConfigPtr->linkCounter); i++)
     {
         // Check if the same link supports AT and DATA as possiblemode.
         if (((0 == strcmp(instanceConfigPtr->linkInfo[i]->possibleMode[0], "AT")) &&
@@ -1384,7 +1390,7 @@ le_result_t le_port_SetDataMode
     *fdPtr = -1;
 
     // Check all the links. Open the link which contains "DATA" as possibleMode.
-    for (i = 0; i <= instanceConfigPtr->linkCounter; i++)
+    for (i = 0; i < (instanceConfigPtr->linkCounter); i++)
     {
         for (j = 0; j < MAX_POSSIBLE_MODES; j++)
         {
@@ -1501,7 +1507,7 @@ le_result_t le_port_SetCommandMode
 
     // Check all the links. Open the link which contains "AT" as possibleMode if not opened in AT
     // command mode.
-    for (i = 0; i <= instanceConfigPtr->linkCounter; i++)
+    for (i = 0; i < (instanceConfigPtr->linkCounter); i++)
     {
         for (j = 0; j < MAX_POSSIBLE_MODES; j++)
         {
@@ -1576,7 +1582,7 @@ static void CloseAllFd
 {
     int i;
 
-    for (i = 0; i <= (instanceConfigPtr->linkCounter); i++)
+    for (i = 0; i < (instanceConfigPtr->linkCounter); i++)
     {
         if (-1 != instanceConfigPtr->linkInfo[i]->fd)
         {
@@ -1641,7 +1647,7 @@ le_result_t le_port_Release
         return LE_FAULT;
     }
 
-    for (i = 0; i <= (instanceConfigPtr->linkCounter); i++)
+    for (i = 0; i < (instanceConfigPtr->linkCounter); i++)
     {
         for (j = 0; j < MAX_POSSIBLE_MODES; j++)
         {
@@ -1731,7 +1737,7 @@ le_result_t le_port_GetPortReference
             return LE_FAULT;
         }
 
-        for (i = 0; i < instanceConfigPtr->linkCounter; i++)
+        for (i = 0; i < (instanceConfigPtr->linkCounter); i++)
         {
             if (instanceConfigPtr->linkInfo[i]->atServerDevRef == atServerDevRef)
             {
