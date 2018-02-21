@@ -31,7 +31,11 @@ requires:
 {
     device:
     {
+#if ${SPI_PRIMARY_BUS} = ""
         [rw] /dev/spidev0.0 /dev/
+#else
+        [rw] /dev/spidev${SPI_PRIMARY_BUS}.0 /dev/
+#endif
     }
 }
 
