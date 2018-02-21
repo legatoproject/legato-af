@@ -12,6 +12,7 @@ buildVars:
     LEGATO_QMI_FWUPDATE_PA_SRC = ${PA_DIR}/qmi/src/components/le_pa_fwupdate/fdt/le_pa_fwupdate
     LEGATO_QMI_UTIL_SRC = ${PA_DIR}/qmi/src/components/swiQmi/mdm9x28/swiQmi
     LEGATO_QMI_RSIM_PA_SRC = ${PA_DIR}/qmi/src/components/le_pa_remotesim
+    SPI_PRIMARY_BUS = 1
 }
 
 #include mdm9xxx.sinc
