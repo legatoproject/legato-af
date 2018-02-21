@@ -1581,18 +1581,22 @@ static void CloseAllFd
         if (-1 != instanceConfigPtr->linkInfo[i]->fd)
         {
             CloseWarn(instanceConfigPtr->linkInfo[i]->fd);
+            instanceConfigPtr->linkInfo[i]->fd = -1;
         }
         if (-1 != instanceConfigPtr->linkInfo[i]->dataModeFd)
         {
             CloseWarn(instanceConfigPtr->linkInfo[i]->dataModeFd);
+            instanceConfigPtr->linkInfo[i]->dataModeFd = -1;
         }
         if (-1 != instanceConfigPtr->linkInfo[i]->atModeSockFd)
         {
             CloseWarn(instanceConfigPtr->linkInfo[i]->atModeSockFd);
+            instanceConfigPtr->linkInfo[i]->atModeSockFd = -1;
         }
         if (-1 != instanceConfigPtr->linkInfo[i]->dataModeSockFd)
         {
             CloseWarn(instanceConfigPtr->linkInfo[i]->dataModeSockFd);
+            instanceConfigPtr->linkInfo[i]->dataModeSockFd = -1;
         }
     }
 }
