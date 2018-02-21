@@ -1241,6 +1241,9 @@ FUNCTION le_result_t GetDate
  *
  * @note If the caller is passing an invalid Position sample reference into this function,
  *       it is a fatal error, the function will not return.
+ *
+ * @warning The Horizontal speed accuracy is platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_speedAccuracies section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetHorizontalSpeed
@@ -1267,6 +1270,9 @@ FUNCTION le_result_t GetHorizontalSpeed
  *
  * @note If the caller is passing an invalid Position sample reference into this function,
  *       it is a fatal error, the function will not return.
+ *
+ * @warning The Vertical speed accuracy is platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_speedAccuracies section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetVerticalSpeed

@@ -211,6 +211,22 @@ service.<br><br>
 @note On modules AR758x & AR759x when performed "FACTORY" restart there is a possibility for
 longitude/latitude values to get retrieved from camped live cell network before getting the fix.
 
+@section platformConstraintsGnss_speedAccuracies Horizontal and Vertical speed accuracies
+
+@c le_gnss_GetVerticalSpeed() function returns the vertical speed accuracy.
+@c le_gnss_GetHorizontalSpeed() function returns the horizontal speed accuracy.
+
+The vertical speed accuracy and the horizontal speed accuracy are calculated differently depending
+on the platforms:
+
+On AR7, AR8652, WP750x and WP85, horizontal and vertical speed accuracies are calculated based on
+the 3-D Speed uncertainty (unis: units: meters/second).
+
+On AR758x, AR759x, WP76xx and WP77xx horizontal and vertical speed accuracies are calculated with
+the velocity uncertainty information for ENU (East, North and Up) direction (units: meters/second).
+Horizontal speed accuracy = sqrt(East^2 + North^2) and vertical speed accuracy = Up
+
+
 @section platformConstraintsGnss_References References
 
 See @ref c_gnss API
