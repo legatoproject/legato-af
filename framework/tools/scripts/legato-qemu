@@ -9,6 +9,7 @@ TELNET_PORT=${TELNET_PORT:=$(($OFFSET_PORT + 21))}
 SSH_PORT=${SSH_PORT:=$(($OFFSET_PORT + 22))}
 SIMU_PORT=${SIMU_PORT:=$(($OFFSET_PORT + 5000))}
 ONLY_PREPARE=${ONLY_PREPARE:-0}
+RESTART_ON_ERROR=${RESTART_ON_ERROR:-1}
 
 ROOTFS_METHOD=-sd
 
@@ -34,6 +35,7 @@ if [[ "$1" == "--help" ]]; then
     echo -e "ENVIRONMENT"
     echo -e "\tThis script is parametrized through environment variables."
     echo -e "\t\tONLY_PREPARE: Do not run qemu, only prepare the environment"
+    echo -e "\t\tRESTART_ON_ERROR: If 1 (default), relaunch qemu on errors"
     echo -e "\t\tOPT_LEGATO_IMG: Path to a Legato image"
     echo -e "\t\tOPT_TARGET: Platform to emulate"
     echo -e "\t\tOPT_PERSIST: Make changes to the image persistant or not"
@@ -109,9 +111,9 @@ COLOR_OK="\033[1;32m"
 COLOR_RESET="\033[0m"
 
 function message {
-    local color=$1
-    local message=$2
-    echo -e $color $message $COLOR_RESET
+    local color="$1"
+    local message="$2"
+    echo -e "$color" "$message" $COLOR_RESET
 }
 
 function check_ret {
@@ -358,6 +360,7 @@ if [[ "$OPT_TARGET" == "virt" ]]; then
     OPT_TARGET="virt-$VIRT_TARGET_ARCH"
 fi
 
+# Configure
 function configure_virt_common {
     message $COLOR_TITLE "Virtual target ($VIRT_TARGET_ARCH)"
 
@@ -411,19 +414,20 @@ function configure_virt_common {
     fi
 }
 
+ARG_TARGET=''
+CONSOLE_TTY='ttyS0'
+ROOTFS_METHOD=-hda
 if [[ "$OPT_TARGET" == "virt-x86" ]]; then
 
-    CMDLINE="root=/dev/hda1 console=ttyS0 rw mem=128M"
-    ARG_TARGET=''
-    ROOTFS_METHOD=-hda
+    CMDLINE="root=/dev/hda1 rw"
 
     configure_virt_common
 
 elif [[ "$OPT_TARGET" == "virt-arm" ]]; then
 
-    CMDLINE="root=/dev/sda1 console=ttyS0 rootwait mem=128M"
-    ARG_TARGET='-M versatilepb -m 128'
-    ROOTFS_METHOD=-hda
+    CMDLINE="root=/dev/sda1 rootwait"
+    ARG_TARGET='-machine versatilepb'
+    CONSOLE_TTY='ttyAMA0'
 
     configure_virt_common
 
@@ -448,6 +452,16 @@ else
     fi
 fi
 
+# DTB
+if [ -e "$DTB_IMG" ]; then
+    ARG_DTB="-dtb ${DTB_IMG}"
+fi
+
+# Initrd image
+if [ -e "$INITRD_IMG" ]; then
+    ARG_INITRD="-initrd ${INITRD_IMG}"
+fi
+
 # Legato image
 if [ -e "$LEGATO_IMG" ]; then
     ARG_LEGATO="-drive format=raw,index=1,file=${LEGATO_IMG}"
@@ -461,7 +475,7 @@ fi
 # Kernel Messages
 if [ "$OPT_KMESG" -eq 1 ]; then
     message $COLOR_MSG "Kernel messages to console"
-    CMDLINE="$CMDLINE console=ttyAMA0,115200"
+    CMDLINE="$CMDLINE console=$CONSOLE_TTY"
 else
     message $COLOR_MSG "Kernel messages discarded"
 fi
@@ -591,9 +605,18 @@ message $COLOR_MSG " => $CMDLINE"
 message $COLOR_MSG "QEmu binary ($QEMU_ARCH):"
 message $COLOR_MSG " => $QEMU_BIN ($QEMU_VERSION)"
 
-ARGS="-kernel $KERNEL_IMG $ROOTFS $ARG_LEGATO $ARG_USERFS $ARG_COMMON $ARG_TARGET $ARG_PERSIST $ARG_NET $ARG_NET2 $ARG_SERIAL $ARG_SOUND $ARG_PID $ARG_GDB $ARG_KVM $ARG_ATCMD $ARG_PPPCMD"
+ARGS="-kernel $KERNEL_IMG $ROOTFS $ARG_DTB $ARG_INITRD $ARG_LEGATO $ARG_USERFS $ARG_COMMON $ARG_TARGET $ARG_PERSIST $ARG_NET $ARG_NET2 $ARG_SERIAL $ARG_SOUND $ARG_PID $ARG_GDB $ARG_KVM $ARG_ATCMD $ARG_PPPCMD"
 message $COLOR_MSG "QEmu arguments:"
-message $COLOR_MSG " => $ARGS"
+message $COLOR_MSG " => $(echo "$ARGS" | sed 's/ -/\\n     -/g')"
+
+if [ "$RESTART_ON_ERROR" -eq 1 ]; then
+    message $COLOR_MSG "Restarting on errors"
+fi
+
+if [ "$ONLY_PREPARE" -eq 1 ]; then
+    message $COLOR_MSG "Only preparing"
+    exit 0
+fi
 
 message $COLOR_OK "Starting ..."
 
@@ -601,13 +624,24 @@ if [ "$OPT_KMESG" -ne 1 ]; then
    message $COLOR_WARN " Kernel logs disabled, it should take few seconds to boot"
 fi
 
-if [[ "$ONLY_PREPARE" == 1 ]]; then
-    message $COLOR_MSG "Only preparing"
-    exit 0
-fi
+while true; do
+    QEMU_START=$(date +%s)
 
-$QEMU_BIN $ARGS -append "$CMDLINE"
-EXIT_CODE=$?
+    $QEMU_BIN $ARGS -append "$CMDLINE"
+    EXIT_CODE=$?
+
+    QEMU_END=$(date +%s)
+
+    # Restart on error, if enabled and if the process took more than 5 seconds to exit.
+    if [ $EXIT_CODE -ne 0 ] && \
+       [ $(( $QEMU_END - $QEMU_START)) -gt 5 ] && \
+       [ "$RESTART_ON_ERROR" -eq 1 ]; then
+        echo "QEmu Exit: $EXIT_CODE (restarting)"
+    else
+        echo "QEmu Exit: $EXIT_CODE"
+        break
+    fi
+done
 
 if [ -e "$PID_FILE" ]; then
     rm $PID_FILE

@@ -131,3 +131,5 @@ fi
 
 echo "$LONG_BUILD_ID" > image.id
 
+docker save -o virt.img "$LONG_BUILD_ID"
+
