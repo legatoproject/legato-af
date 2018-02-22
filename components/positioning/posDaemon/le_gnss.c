@@ -1230,6 +1230,8 @@ le_result_t le_gnss_GetLocation
  *
  * @note For a 2D position fix, the altitude will be indicated as invalid and set to INT32_MAX
  *
+ * @note Vertical position accuracy is in meters with 1 decimal places (3047 = 3.0 meters).
+ *
  * @note If the caller is passing an invalid Position reference into this function,
  *       it is a fatal error, the function will not return.
  *
@@ -1747,6 +1749,10 @@ le_result_t le_gnss_GetDate
  *
  * @note hSpeedPtr, hSpeedAccuracyPtr can be set to NULL if not needed.
  *
+ * @note Horizontal speed is in meters/second with 2 decimal places (3047 = 30.47).
+ *
+ * @note Horizontal speed accuracy estimate is in meters/second with 1 decimal place (304 = 30.4).
+ *
  * @note If the caller is passing an invalid Position sample reference into this function,
  *       it is a fatal error, the function will not return.
  *
@@ -1897,7 +1903,8 @@ le_result_t le_gnss_GetVerticalSpeed
  *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to UINT32_MAX).
  *  - LE_OK            Function succeeded.
  *
- * @note Direction is given in degrees with 1 decimal place: 1755 = 175,5 degrees.
+ * @note Direction and direction accuracy are given in degrees with 1 decimal place: 1755 = 175.5
+ *       degrees.
  *       Direction ranges from 0 to 359.9 degrees, where 0 is True North.
  *
  * @note directionPtr, directionAccuracyPtr can be set to NULL if not needed.

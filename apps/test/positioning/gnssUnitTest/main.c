@@ -82,6 +82,24 @@ static le_clk_Time_t                TimeToWait = { 5, 0 };
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function tests the rounding to the nearest of different GNSS SV position values
+ *
+ * PA function tested:
+ * - RoundToNearest
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+extern le_result_t pa_gnssSimu_RoundingPositionValues(void);
+static void Testle_gnss_RoundValue
+(
+    void
+)
+{
+    LE_ASSERT_OK(pa_gnssSimu_RoundingPositionValues());
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Handler function for Position Notifications.
  *
  */
@@ -781,6 +799,9 @@ COMPONENT_INIT
 
     LE_INFO("======== GNSS Uninitilize state test========");
     Testset_gnss_UninitializedState();
+
+    LE_INFO("======== GNSS round position values Test========");
+    Testle_gnss_RoundValue();
 
     LE_INFO("======== GNSS Position Handler Test========");
     Testle_gnss_AddHandlers();
