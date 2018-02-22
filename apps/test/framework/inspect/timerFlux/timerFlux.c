@@ -14,6 +14,7 @@
 #include "thread.h"
 
 #define MAX_THREADS 100
+#define FIRST_ARG_SIZE 100
 
 static long SleepIntervalNano;
 static long ThreadNum;
@@ -333,7 +334,7 @@ COMPONENT_INIT
     const char* sleepIntervalNanoPtr = le_arg_GetArg(1);
     const char* timerNumPtr = le_arg_GetArg(2);
     const char* threadNumPtr = le_arg_GetArg(3);
-    char argDeleteStrat[100];
+    char argDeleteStrat[FIRST_ARG_SIZE];
 
     if (le_arg_NumArgs() != 4)
     {
@@ -366,7 +367,7 @@ COMPONENT_INIT
         LE_ERROR("threadNumPtr is NULL");
         exit(EXIT_FAILURE);
     }
-    strcpy(argDeleteStrat, argDeleteStratPtr);
+    (void) snprintf(argDeleteStrat, FIRST_ARG_SIZE, "%s", argDeleteStratPtr);
     SleepIntervalNano = strtol(sleepIntervalNanoPtr, NULL, 0);
     TimerNum = strtol(timerNumPtr, NULL, 0);
     ThreadNum = strtol(threadNumPtr, NULL, 0);

@@ -9,6 +9,7 @@
 #include "legato.h"
 
 #define SubpoolNameBufferSize 50 // 50 characters for a subpool name should be plenty
+#define FIRST_ARG_SIZE 100
 
 long SubpoolNum;
 char SubpoolNameBuffer[SubpoolNameBufferSize] = {0};
@@ -126,7 +127,7 @@ COMPONENT_INIT
     const char* argDeleteStratPtr;
     const char* argSleepIntervalNanoPtr;
     const char* subpoolNumPtr;
-    char argDeleteStrat[100];
+    char argDeleteStrat[FIRST_ARG_SIZE];
     long argSleepIntervalNano;
 
     if (le_arg_NumArgs() != 3)
@@ -155,7 +156,7 @@ COMPONENT_INIT
         exit(EXIT_FAILURE);
     }
 
-    strcpy(argDeleteStrat, argDeleteStratPtr);
+    (void) snprintf(argDeleteStrat, FIRST_ARG_SIZE, "%s", argDeleteStratPtr);
     argSleepIntervalNano = strtol(argSleepIntervalNanoPtr, NULL, 0);
     SubpoolNum = strtol(subpoolNumPtr, NULL, 0);
 

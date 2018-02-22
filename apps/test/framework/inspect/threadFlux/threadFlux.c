@@ -9,6 +9,7 @@
 
 #define ThreadNameBufferSize 50
 #define MAX_THREADS 2000
+#define FIRST_ARG_SIZE 100
 
 static long ThreadNum;
 static char ThreadNameBuffer[ThreadNameBufferSize] = {0};
@@ -88,7 +89,7 @@ void deleteThreadsFrom1ToN
 
 COMPONENT_INIT
 {
-    char argDeleteStrat[100];
+    char argDeleteStrat[FIRST_ARG_SIZE];
     const char* argDeleteStratPtr;
     const char* argSleepIntervalNanoPtr;
     const char* threadNumPtr;
@@ -118,7 +119,7 @@ COMPONENT_INIT
         exit(EXIT_FAILURE);
     }
 
-    strcpy(argDeleteStrat, argDeleteStratPtr);
+    (void) snprintf(argDeleteStrat, FIRST_ARG_SIZE, "%s", argDeleteStratPtr);
     argSleepIntervalNano = strtol(argSleepIntervalNanoPtr, NULL, 0);
     ThreadNum = strtol(threadNumPtr, NULL, 0);
 
