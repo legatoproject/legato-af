@@ -13,5 +13,9 @@ sources:
 
 cflags:
 {
-    -DSECSTOREADMIN=${SECSTOREADMIN}
+    #if ${SECSTOREADMIN} = ""
+        -DSECSTOREADMIN=0
+    #else
+        -DSECSTOREADMIN=${SECSTOREADMIN}
+    #endif
 }
