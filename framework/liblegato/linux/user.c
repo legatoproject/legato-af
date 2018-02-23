@@ -236,7 +236,12 @@ static le_result_t SetFileLength
 
     // Get the file descriptor for this stream.
     int fd = fileno(filePtr);
-    LE_CRIT_IF(fd == -1, "Could not get the file descriptor for a stream.  %m.");
+
+    if (-1 == fd)
+    {
+        LE_CRIT("Could not get the file descriptor for a stream");
+        return LE_FAULT;
+    }
 
     // Truncate the file to the desired length.
     do
