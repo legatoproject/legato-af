@@ -81,8 +81,17 @@ ENUM <name>
 @endverbatim
 
 The @c elementList is a comma separated list of elements.  The elements should all be uppper-case.
-Element values assigned are internally generated and can't be explicitly given.
+Element values assigned are internally generated. Element values can also be assigned explicitly as
+below:
 
+@verbatim
+ENUM <name>
+{
+    <element1> = 1,
+    <element2>,
+    <element3>
+};
+@endverbatim
 
 @subsection apiFilesSyntax_typesBitmask BITMASK
 
