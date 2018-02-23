@@ -3911,6 +3911,11 @@ le_result_t le_ecall_SetMsdEraGlonassCoordinateSystemType
     EraGlonassDataObj.presentCoordinateSystemTypeInfo = true;
     EraGlonassDataObj.coordinateSystemType = CoordinateSystemTypeEnumToEnumAsn1(coordinateType);
 
+    if (MSD_COORDINATE_SYSTEM_TYPE_ABSENT == EraGlonassDataObj.coordinateSystemType)
+    {
+        EraGlonassDataObj.presentCoordinateSystemTypeInfo = false;
+    }
+
     return EncodeMsd(eCallPtr);
 }
 
