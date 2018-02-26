@@ -1749,9 +1749,10 @@ le_result_t le_gnss_GetDate
  *
  * @note hSpeedPtr, hSpeedAccuracyPtr can be set to NULL if not needed.
  *
- * @note Horizontal speed is in meters/second with 2 decimal places (3047 = 30.47).
+ * @note Horizontal speed is in meters/second with 2 decimal places (3047 = 30.47 meters/second).
  *
- * @note Horizontal speed accuracy estimate is in meters/second with 1 decimal place (304 = 30.4).
+ * @note Horizontal speed accuracy estimate is in meters/second with 1 decimal place
+ *       (304 = 30.4 meters/second).
  *
  * @note If the caller is passing an invalid Position sample reference into this function,
  *       it is a fatal error, the function will not return.
