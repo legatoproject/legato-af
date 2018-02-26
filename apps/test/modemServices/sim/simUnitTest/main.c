@@ -1282,6 +1282,27 @@ static void TestSIm_FPLMNList
     res = le_sim_GetNextFPLMNOperator(FPLMNListRef, mcc, LE_MRC_MCC_BYTES, NULL, LE_MRC_MNC_BYTES);
     LE_ASSERT(res == LE_FAULT);
 }
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test powers up or down the current SIM card.
+ *
+ * API tested:
+ * - le_sim_SetPower
+ *
+ * Exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void TestSim_PowerUpDown
+(
+    void
+)
+{
+    int invalidPower = 2;
+    LE_ASSERT_OK(le_sim_SetPower(CurrentSimId, LE_ON));
+    LE_ASSERT_OK(le_sim_SetPower(CurrentSimId, LE_OFF));
+    LE_ASSERT(LE_FAULT == le_sim_SetPower(CurrentSimId, invalidPower));
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1328,6 +1349,9 @@ static void* TestThread
 
     LE_INFO("======== FPLMN list Test  ========");
     TestSIm_FPLMNList();
+
+    LE_INFO("======== UIM module powers up or down ========");
+    TestSim_PowerUpDown();
 
     LE_INFO("======== UnitTest of SIM API ends with SUCCESS ========");
     exit(0);

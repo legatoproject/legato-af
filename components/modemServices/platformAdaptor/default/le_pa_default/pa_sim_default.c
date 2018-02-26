@@ -635,3 +635,21 @@ le_result_t pa_sim_GetLastStkStatus
     LE_ERROR("Unsupported function called");
     return LE_UNSUPPORTED;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Powers up or down the current SIM card.
+ *
+ * @return
+ *      - LE_OK          On success
+ *      - LE_FAULT       For unexpected error
+ *      - LE_UNSUPPORTED The platform does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_SetPower
+(
+    le_onoff_t power     ///< [IN] The power state.
+)
+{
+    return LE_UNSUPPORTED;
+}

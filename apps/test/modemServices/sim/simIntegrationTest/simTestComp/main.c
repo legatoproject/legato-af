@@ -84,6 +84,7 @@ static void PrintUsage
      "SIM GetICCID test: app runProc simTest --exe=simTest -- iccid <emb/ext1/ext2/rem>",
      "SIM GetEID test: app runProc simTest --exe=simTest -- eid <emb/ext1/ext2/rem>",
      "SIM send apdu test: app runProc simTest --exe=simTest -- access <emb/ext1/ext2/rem>",
+     "SIM allocation test: app runProc simTest --exe=simTest -- powerUpDown",
      "",
     };
 
@@ -276,6 +277,11 @@ COMPONENT_INIT
     {
         // Call the test function
         simTest_SimGetIccid(cardId);
+    }
+    else if (strcmp(testString, "powerUpDown") == 0)
+    {
+        // Powers up current SIM card
+        simTest_SimPowerUpDown();
     }
     // Test: SIM Get EID
     else if (strcmp(testString, "eid") == 0)

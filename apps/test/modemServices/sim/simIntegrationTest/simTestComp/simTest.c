@@ -558,6 +558,31 @@ void simTest_SimGetEid
     Print(string);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Powers up or down the current SIM card.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void simTest_SimPowerUpDown
+(
+    void
+)
+{
+    le_sim_States_t             state;
+    // Get current SimId
+    le_sim_Id_t simId = le_sim_GetSelectedCard();
+    // Power down cases
+    state = le_sim_GetState(simId);
+    LE_INFO("test: SIM state %d", state);
+    LE_ASSERT(LE_SIM_READY == state);
+    LE_ASSERT_OK(le_sim_SetPower(simId, LE_OFF));
+    LE_INFO("Powers Down current SIM: success");
+    // Power up cases
+    LE_ASSERT_OK(le_sim_SetPower(simId, LE_ON));
+    LE_INFO("Powers On current SIM: success");
+}
+
 //! [Apdu]
 //--------------------------------------------------------------------------------------------------
 /**

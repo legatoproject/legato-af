@@ -2756,3 +2756,24 @@ le_result_t le_sim_SendApduOnChannel
                            responseApduPtr,
                            responseApduNumElementsPtr);
 }
+//--------------------------------------------------------------------------------------------------
+/**
+ * Powers up or down the current SIM card.
+ *
+ * @return LE_OK            Function succeeded.
+ * @return LE_FAULT         Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_SetPower
+(
+    le_sim_Id_t simId,    ///< [IN] The SIM identifier.
+    le_onoff_t  power     ///< [IN] The power state.
+)
+{
+    if (LE_OK != SelectSIMCard(simId))
+    {
+        return LE_FAULT;
+    }
+
+    return pa_sim_SetPower(power);
+}

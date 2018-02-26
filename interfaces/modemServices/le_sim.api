@@ -15,8 +15,6 @@
  *
  * Most SIM cards can store a number of SMS messages and phone book contacts.
  *
- * le_sim_GetSelectedCard() returns the selected SIM card number.
- *
  * @section le_sim_binding IPC interfaces binding
  *
  * All the functions of this API are provided by the @b modemService.
@@ -179,6 +177,8 @@
  *
  * A sample code can be seen in the following page:
  * - @subpage c_simTestStates
+ *
+ * le_sim_SetPower() powers up or down the current SIM card.
  *
  * @section le_sim_profile_switch Local SIM profile switch
  *
@@ -1387,4 +1387,18 @@ FUNCTION le_result_t SendApduOnChannel
     uint8        channel IN,                          ///< The logical channel number.
     uint8        commandApdu[APDU_MAX_BYTES] IN,      ///< APDU command.
     uint8        responseApdu[RESPONSE_MAX_BYTES] OUT ///< SIM response.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Power up or down the SIM.
+ *
+ * @return LE_OK        Function succeeded.
+ * @return LE_FAULT     Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetPower
+(
+    Id           simId IN,                  ///< The SIM identifier.
+    le_onoff_t   power IN                   ///< The power state.
 );
