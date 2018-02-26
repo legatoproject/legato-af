@@ -1260,7 +1260,7 @@ le_result_t proc_Start
     EnvVar_t envVars[LIMIT_MAX_NUM_ENV_VARS] = {{{ 0 }}};
     int numEnvVars = GetEnvironmentVariables(procRef, envVars, LIMIT_MAX_NUM_ENV_VARS);
 
-    if (numEnvVars == LE_FAULT)
+    if ((numEnvVars < 0) || (numEnvVars > LIMIT_MAX_NUM_ENV_VARS))
     {
         LE_ERROR("Error getting environment variables.  Process '%s' cannot be started.",
                  procRef->namePtr);
@@ -1317,11 +1317,6 @@ le_result_t proc_Start
         sigset_t sigSet;
         LE_ASSERT(0 == sigfillset(&sigSet));
         LE_ASSERT(0 == pthread_sigmask(SIG_UNBLOCK, &sigSet, NULL));
-
-        if (LIMIT_MAX_NUM_ENV_VARS < numEnvVars)
-        {
-            LE_ERROR("The environment variable counts: %d are more than maximum limit", numEnvVars);
-        }
 
         SetEnvironmentVariables(envVars, numEnvVars);
 

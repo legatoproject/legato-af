@@ -473,6 +473,8 @@ static le_result_t AppendNode
 
         ssize_t position = FindPrevNodeIndex(iterPtr, iterPtr->pathSize);
 
+        LE_ASSERT(position != -1);
+
         if (position > iterPtr->separatorSize)
         {
             position -= iterPtr->separatorSize;

@@ -32,6 +32,8 @@ static char* PrettyPrint
     char* strPtr
 )
 {
+    LE_ASSERT(strlen(strPtr) <= (DSIZE-1));
+
     static char copy[DSIZE];
     char* swapPtr;
 

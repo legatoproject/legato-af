@@ -302,7 +302,8 @@ static void IteratePath
 (
     le_pathIter_Ref_t iteratorRef,
     const char* originalPath,
-    const char* nodes[]
+    const char* nodes[],
+    size_t nodesSize
 )
 {
     char fullPath[LARGE_BUFFER_SIZE] = { 0 };
@@ -324,6 +325,9 @@ static void IteratePath
         LE_TEST(le_pathIter_GetCurrentNode(iteratorRef,
                                             buffer,
                                             LARGE_BUFFER_SIZE) != LE_OVERFLOW);
+
+        LE_TEST(index < nodesSize);
+
         LE_INFO("> Found: %s, Expect: %s", buffer, nodes[index]);
         LE_TEST(strcmp(buffer, nodes[index]) == 0);
         index++;
@@ -343,6 +347,9 @@ static void IteratePath
         LE_TEST(le_pathIter_GetCurrentNode(iteratorRef,
                                             buffer,
                                             LARGE_BUFFER_SIZE) != LE_OVERFLOW);
+
+        LE_TEST(index > -1);
+
         LE_INFO("< Found: %s, Expect: %s", buffer, nodes[index]);
         LE_TEST(strcmp(buffer, nodes[index]) == 0);
         index--;
@@ -364,7 +371,7 @@ static void TestUnixStyleIterator(void)
         static const char path[] = "/a/path/to/some/end";
 
         le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix(path);
-        IteratePath(iteratorRef, path, nodes);
+        IteratePath(iteratorRef, path, nodes, NUM_ARRAY_MEMBERS(nodes));
         le_pathIter_Delete(iteratorRef);
     }
 
@@ -372,7 +379,7 @@ static void TestUnixStyleIterator(void)
         static const char path[] = "::a::path::to::some::end";
 
         le_pathIter_Ref_t iteratorRef = le_pathIter_Create(path, "::", "..", ".");
-        IteratePath(iteratorRef, path, nodes);
+        IteratePath(iteratorRef, path, nodes, NUM_ARRAY_MEMBERS(nodes));
         le_pathIter_Delete(iteratorRef);
     }
 
@@ -380,7 +387,7 @@ static void TestUnixStyleIterator(void)
         static const char path[] = "/a/b/c/d/e";
 
         le_pathIter_Ref_t iteratorRef = le_pathIter_CreateForUnix(path);
-        IteratePath(iteratorRef, path, nodes2);
+        IteratePath(iteratorRef, path, nodes2, NUM_ARRAY_MEMBERS(nodes2));
         le_pathIter_Delete(iteratorRef);
     }
 
@@ -388,7 +395,7 @@ static void TestUnixStyleIterator(void)
         static const char path[] = "::a::b::c::d::e";
 
         le_pathIter_Ref_t iteratorRef = le_pathIter_Create(path, "::", "..", ".");
-        IteratePath(iteratorRef, path, nodes2);
+        IteratePath(iteratorRef, path, nodes2, NUM_ARRAY_MEMBERS(nodes2));
         le_pathIter_Delete(iteratorRef);
     }
 
