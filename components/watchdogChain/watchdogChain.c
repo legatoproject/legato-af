@@ -34,6 +34,20 @@
 //--------------------------------------------------------------------------------------------------
 #define MAX_EVENT_LOOPS                  8
 
+/// Macro used to generate trace output in this module.
+/// Takes the same parameters as LE_DEBUG() et. al.
+#define TRACE(...) LE_TRACE(TraceRef, ##__VA_ARGS__)
+
+/// Macro used to query current trace state in this module
+#define IS_TRACE_ENABLED LE_IS_TRACE_ENABLED(TraceRef)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Trace reference used for controlling tracing in this module.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_log_TraceRef_t TraceRef;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Watchdog chain.  Statically allocated with the maximum number of allowed watchdogs.
@@ -84,20 +98,6 @@ static WatchdogObj_t* WatchdogList[MAX_WATCHDOGS];
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Trace reference used for controlling tracing in this module.
- */
-//--------------------------------------------------------------------------------------------------
-static le_log_TraceRef_t TraceRef;
-
-/// Macro used to generate trace output in this module.
-/// Takes the same parameters as LE_DEBUG() et. al.
-#define TRACE(...) LE_TRACE(TraceRef, ##__VA_ARGS__)
-
-/// Macro used to query current trace state in this module
-#define IS_TRACE_ENABLED LE_IS_TRACE_ENABLED(TraceRef)
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Timer to queue function to kick watchdog chain. If our queued function is called, it implies
  * the event loop is still running.
  */
@@ -117,7 +117,10 @@ static void CheckEventLoopHandler
         return;
     }
 
-    TRACE("Kicking watchdog chain: %d", watchdog);
+    if (IS_TRACE_ENABLED)
+    {
+        TRACE("Kicking watchdog chain: %d", watchdog);
+    }
 
     le_wdogChain_Kick(watchdog);
     le_timer_Restart(watchdogPtr->timer);
@@ -142,7 +145,10 @@ void CheckChain
         // Yes; kick watchdog and reset kick list.  Could potentially be double kicked if
         // another thread calls le_wdogChain_Kick in here somewhere, but a double kick is not
         // a problem.
-        TRACE("Watchdog chain is all kicked, kick watchdog.");
+        if (IS_TRACE_ENABLED)
+        {
+            TRACE("Watchdog chain is all kicked, kick watchdog.");
+        }
 
         le_wdog_Kick();
         __sync_and_and_fetch(&WatchdogChain, ((uint64_t)-(INT64_C(1) << MAX_WATCHDOGS)));

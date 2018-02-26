@@ -210,6 +210,20 @@
 //--------------------------------------------------------------------------------------------------
 #define SYSTEM_FRAMEWORK_CFG "/framework"
 
+/// Macro used to generate trace output in this module.
+/// Takes the same parameters as LE_DEBUG() et. al.
+#define TRACE(...) LE_TRACE(TraceRef, ##__VA_ARGS__)
+
+/// Macro used to query current trace state in this module
+#define IS_TRACE_ENABLED LE_IS_TRACE_ENABLED(TraceRef)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Trace reference used for controlling tracing in this module.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_log_TraceRef_t TraceRef;
+
 //--------------------------------------------------------------------------------------------------
 /**
  *  Definition of Watchdog object, pool for allocation of watchdogs and container for organizing and
@@ -272,20 +286,6 @@ static le_mem_PoolRef_t MandatoryWatchdogPool;  ///< The memory pool the mandato
 static le_hashmap_Ref_t MandatoryWatchdogRefs;  ///< The container used to track mandatory watchdogs
 
 static le_timer_Ref_t DefaultExternalWdogTimer; ///< Default external wdog timer
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Trace reference used for controlling tracing in this module.
- */
-//--------------------------------------------------------------------------------------------------
-static le_log_TraceRef_t TraceRef;
-
-/// Macro used to generate trace output in this module.
-/// Takes the same parameters as LE_DEBUG() et. al.
-#define TRACE(...) LE_TRACE(TraceRef, ##__VA_ARGS__)
-
-/// Macro used to query current trace state in this module
-#define IS_TRACE_ENABLED LE_IS_TRACE_ENABLED(TraceRef)
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1120,7 +1120,11 @@ void le_wdog_Kick
     void
 )
 {
-    TRACE("Attempting to kick the dog timer!");
+    if (IS_TRACE_ENABLED)
+    {
+        TRACE("Attempting to kick the dog timer!");
+    }
+
     ResetClientWatchdog(TIMEOUT_KICK);
 }
 
