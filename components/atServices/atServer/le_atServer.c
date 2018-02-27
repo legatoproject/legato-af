@@ -985,7 +985,7 @@ static void SendFinalRsp
 )
 {
     UserErrorCode_t* errorCodePtr;
-    int patternLength = 0;
+    size_t patternLength = 0;
 
     devPtr->rspState = AT_RSP_FINAL;
 
@@ -2131,9 +2131,11 @@ static void ParseBuffer
                                      LE_ATDEFS_COMMAND_MAX_LEN,
                                      NULL);
 
+                        size_t offset = strnlen(devPtr->cmdParser.foundCmd, sizeof(devPtr->cmdParser.foundCmd)) - 1;
+                        LE_ASSERT(offset >= 0);
+                        devPtr->cmdParser.lastCharPtr = devPtr->cmdParser.foundCmd + offset;
+
                         devPtr->cmdParser.currentCharPtr = devPtr->cmdParser.foundCmd;
-                        devPtr->cmdParser.lastCharPtr = devPtr->cmdParser.foundCmd +
-                                                         strlen(devPtr->cmdParser.foundCmd) - 1;
                         devPtr->cmdParser.currentAtCmdPtr = devPtr->cmdParser.foundCmd;
 
                         ParseAtCmd(devPtr);

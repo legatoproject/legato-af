@@ -658,7 +658,15 @@ static le_result_t ModifyMsgEntry
     }
     else
     {
-        res = ModifyJsonObj(jsonSubObjPtr, jsonValPtr, keyPtr[indexKey], modifPtr);
+        if ((indexKey > -1) && (indexKey < nbKey))
+        {
+            res = ModifyJsonObj(jsonSubObjPtr, jsonValPtr, keyPtr[indexKey], modifPtr);
+        }
+        else
+        {
+            LE_ERROR("IndexKey: %d is out of range", indexKey);
+            res = LE_FAULT;
+        }
     }
 
     if ( res == LE_OK )
