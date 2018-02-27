@@ -57,7 +57,7 @@ public class JavaServer extends Component implements ipcTest {
 	@Override
 	public void EchoString(String InString, Ref<String> OutString) {
 		if (OutString != null) {
-			OutString.setValue(new String(InString));
+			OutString.setValue(InString);
 		}
 	}
 

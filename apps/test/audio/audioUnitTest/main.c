@@ -802,6 +802,8 @@ void Testle_audio_CaptureSamples
 
     // Check that no more call of the semaphore
     LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
+
+    free(receivedPcmFramesPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
