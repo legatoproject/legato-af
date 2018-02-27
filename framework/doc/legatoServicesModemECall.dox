@@ -1,0 +1,484 @@
+/** @page legatoServicesModemECall eCall Overview
+
+@section eCall_AutomatedeCall Automated eCall
+
+This document describes the eCall interface of the LEGATO platform. It provides a manager for the
+InBand Modem that complies with either PAN European eCall or Russian ERA GLONASS.
+
+The LEGATO eCall solution is started in the mode set in the Configuration tree settings.
+
+It also provides functionality for reading emergency numbers from SIM and managing eCall Only mode.
+
+@subsection eCall_OverviewIntro Introduction
+
+Normal emergency call has been around for a long time and is well established. A problem is that
+persons involved in car accidents are often unable to call the emergency operator.
+
+If the vehicle could automatically launch an emergency call to the emergency operator and also
+transmit position and status of the vehicle many more lives could be saved.
+
+An effort was launched to see what could be done. The result was a modem, called InBand Modem,
+that uses the voice channel was developed and tested in collaboration with the concerned parties.
+
+@image html legatoServicesModemECall_Intro.png
+
+@subsection eCall_OverviewInBandModem InBand Modem
+
+The InBand Modem, is a modem that uses a normal voice connection to transfer data from the IVS to
+the PSAP. At the connection phase, it is able to uses different modulation to be able to handle
+bad connections.
+
+The code and behavior of the InBand Modem is standardized by 3GPP [6].
+
+@subsection eCall_OverviewMSD MSD
+
+Minimum Set Data, MSD, is the data that should be collected and sent by the vehicle. The MSD
+includes accident information like time, location, driving direction, and vehicle description.
+
+Please refer to Intelligent transport systems - ESafety - ECall minimum set of data.
+It is encoded into ANS.1 unaligned PER encoding and sent using the InBand Modem. Currently there
+exists a version 1 and 2 of the MSD.
+
+Note that the MSD also contains an optional part in the end. As of writing only ERA GLONASS uses
+this part.
+
+@subsection eCall_OverviewPSAP PSAP
+
+The Public Safety Answering Point, PSAP, is the emergency operator. It also contains an InBand Modem
+and is able to receive a MSD.
+
+The IVS normally sends the MSD automatically the first time the call is established. Once the IVS
+has tried to send the MSD, the call is unmuted, and there PSAP operator should be able to
+communicate with passengers in vehicle over the hands-free speaker system. No action is normally
+
+necessary from the passengers.
+The PSAP operator is able to request new MSD from the IVS during a call.
+
+@subsection eCall_OverviewIVS IVS
+
+The In Vehicle System (IVS) is all that is in the vehicle. It is the part responsible for gathering
+information, establishing the eCall and handling audio and speaker system.
+
+The call can be triggered automatically or manually. It is also responsible for conforming to the
+audio requirements for mute and unmute during the InBand Modem activities.
+
+@subsection eCall_OverviewPanECall PAN European eCall
+
+The EU launched an effort to introduce automate emergency call in all vehicles sold within the
+European Union, it resulted in a standard, referred to as PAN European eCall.
+The standard covers redial behavior and more, please refer to the following documents for more
+information [1][2][3][4].
+
+@subsection eCall_OverviewEraGlonass ERA GLONASS
+
+Russia, neighboring the EU, decided to also develop a compatible version of automated eCall, called
+ERA GLONASS. As the names gives, the ERA GLONASS solution mandates that the GNSS receiver used must
+support GLONASS.
+
+The standard covers redial behavior, which differs from PAN EU, and more, please refer to the
+following GOST document for more information [5].
+
+@section eCall_LegatoeCallInterface Legato eCall interface
+
+The Legato eCall solution offers an eCall solution that is compatible with either PAN European eCall
+or ERA GLONASS. The desired one is set at initialization. The preferred system standard defaults to
+PAN-EUROPEAN.
+
+System standard can be set an gotten with the following functions:
+- le_ecall_SetSystemStandard()
+- le_ecall_GetSystemStandard()
+
+The Legato system in overview is as follows:
+@image html legatoServicesModemECall_Interface.png
+
+@section eCall_leeCall le_ecall API
+
+The Legato eCall handles in principle:
+- The call and retries
+- InBand Modem
+- MSD encoding
+- eCall Only mode
+- Reads Test and Reconfiguration from SIM
+
+The service tries to establish the call and handles redials according to standards if the call
+attempt fails.
+
+An eCall session is started by creating an eCall object with the le_ecall_Create() function.The
+eCall session can then be stopped with le_ecall_End().
+
+The eCall type and the kind of activation are specified using different functions to start the
+eCall session:
+- le_ecall_StartManual(): initiate a manual eCall session (triggered by a passenger).
+- le_ecall_StartAutomatic(): initiate an automatic eCall session (automatically triggered by
+the IVS in case of accident).
+ - le_ecall_StartTest(): initiate a test eCall session (to test the communication between the
+IVS and the PSAP).
+
+When the eCall object is no longer needed, call le_ecall_Delete() to free all allocated resources
+associated with the object.
+Legato eCall monitors the eCall session with LE_ECALL_STATE_XXX events and runs the underlying
+InBand Modem and tries to send the MSD. The current state of an eCall session can be queried using
+le_ecall_GetState(). Alternatively, an application can register a handler be notified when the
+session state changes. The handler can be managed using le_ecall_AddStateChangeHandler() and
+le_ecall_RemoveStateChangeHandler().
+
+Legato eCall handles the eCall Only Mode behavior during the call. eCall Only Mode is when the unit
+does not register at startup, but only when the call is initiated. It also stays registered after a
+call, allowing PSAP callback, in accordance to specifications.
+
+It also automatically answers when the PSAP recalls the IVS.
+
+<b>eCall Test Call:</b>
+The PSAP number to be dialed can be set for eCall Test call
+The PSAP phone number can be queried and set with:
+- le_ecall_GetPsapNumber()
+- le_ecall_SetPsapNumber()
+
+If  USIM  is an eCall Only, the API le_ecall_UseUSimNumbers() shall be used in order to dials first
+index stored into FDN/SDN directory. It is possible to use le_ecall_SetPsapNumber() if the PSAP
+number is the same as the number stored into first index of FDN directory.
+
+If USIM is not eCall Only but_le_ecall_ForceOnlyMode is forced to simulate eCallOnly behavior
+(ex deregistration timer) the API le_ecall_UseUSimNumbers() may be used. Before that store the PSAP
+number into the first index of FDN directory and active the facility lock on FDN.
+PSAP number shall be defined before to start eCall Test. It is not possible to set it when eCall
+session is on progress.
+
+<b>eCall Automatic or Manual Call:</b>
+The PSAP number is not applied to a manual or an automatically initiated eCall. For these modes, an
+emergency call is launched.
+
+@subsection eCall_leeCall_OppMode Operation Modes
+
+The LE_ECALL component offers interfaces for the Client Application to handle the different eCall
+operation modes. In eCall Only mode, the IVS does not register to the network beforehand, thus not
+giving any burden to the network. It does however listen to cells to be prepared for make an eCall.
+To allow callback after an eCall, it is stated that the IVS should stay registered on the network
+minimum 1 hour (T9) and maximally 12 hours (T10).
+
+The modem can be configured to operate in three different operation modes:
+- le_ecall_ForceOnlyMode(): This function configures the eCall operation mode to eCall only. At
+  startup, the modem doesn't try to register on the cellular network. This function forces the modem
+  to behave as eCall only mode whatever U/SIM operation mode. The change doesn't persist over power
+  cycles.
+- le_ecall_ForcePersistentOnlyMode(): Same as le_ecall_ForceOnlyMode(), but the change persists over
+  power cycles.
+- le_ecall_ExitOnlyMode(): This function exits from eCall Only mode. It configures the eCall
+  operation mode to Normal mode, the modem uses the default operation mode at power up (or after
+  U/SIM hotswap). The modem behaves following the U/SIM eCall operation mode.
+
+The function le_ecall_GetConfiguredOperationMode() allows the user to retrieve the configured operation mode.
+
+@subsection eCall_leeCall_TransMode Trasmission Modes
+
+MSD transmission can be initiated by either IVS or PSAP. Transmission mode decides how the
+transmission of MSD is initiated. The transmission mode can be as below:
+- Push mode:  IVS initiates the MSD transmissionby sending the INITIATION signal to PSAP. The event
+  LE_ECALL_STATE_WAITING_PSAP_START_IND is sent to app, to notify that IVS waits SEND MSD request
+  from PSAP.
+- Pull mode: IVS waits for SEND MSD request from PSAP to send MSD. IVS does not send INITIATION
+  signal to PSAP. The voice connection is established right after the call is connected.
+
+The MSD transmission mode can be set or get with:
+- le_ecall_SetMsdTxMode()
+- le_ecall_GetMsdTxMode()
+
+Legato sets the correct transmission mode during eCall start and redialing based on eCall standard.
+There is no need to call these APIs explicitly. However client application can use this API to
+change default values. It means that it can force IVS to PULL mode for outing calls (default value
+is PUSH mode) or force IVS to PUSH mode when incoming call are answered (default value in this case
+is PULL).
+
+@subsection eCall_leeCall_NADTime NAD Deregistration Time
+
+In eCall Only mode, the IVS does not register to the network beforehand, thus not giving any burden
+to the network. It does however listen to cells to be prepared for make an eCall.
+To allow callback after an eCall, it is stated that the IVS should stay registered on the network
+for a time interval determined by the NAD deregistration time setting.
+After termination of an emergency call the in-vehicle system remains registered on the network for
+the period of time, defined by the parameter NAD Deregistration Time.
+
+The NAD (Network Access Device, i.e. the Modem) deregistration time value can be set and retrieved
+with the following APIs:
+- le_ecall_SetNadDeregistrationTime()
+- le_ecall_GetNadDeregistrationTime()
+
+@subsubsection eCall_leeCall_NADTimePE PAN-EUROPEAN
+
+Pan-Eurpean standard defines the T9 and T10 timers. After an eCall clear-down, an eCall only IVS
+shall remain registered on the network for at least the duration of T9, which is set to one hour by
+default. It should deregister from the network after the expiration of T10, which duration is set to
+twelve hours by default.
+
+As the T9 timer duration is fixed to one hour, the notified events depend on the deregistration
+timer duration. If its duration is set to one hour, the T9 Timeout event will be reported. In this
+case deregistration is automatically performed when the T9 timeout indication is received. If its
+duration is set to more than one hour and less than twelve hours then the T10 Timeout event will be
+reported when the deregistration timer expires.
+
+The T9 timeout will not be notified. In this case deregistration is automatically performed when the
+deregistration timer expires, provided that the application didn't already deregister from the
+network before.
+
+@subsubsection eCall_leeCall_NADTimeEG ERA-GLONASS
+
+Era-Glonass standard defines only the T10 timer. The standard defines the NAD deregistration time
+with a minimal value of  two hours and a maximum value of twelve hours. After an eCall clear-down,
+the IVS shall remain registered on the network and deregister from the network after the expiration
+of the NAD deregistration time.
+
+T9 Timeout event is not reported as it is not defined in the ERA-GLONASS standard. The NAD
+deregistration time default value is eight hours. It can be set between two and twelve hours.
+
+T10 Timeout event will be reported when the NAD deregistration time expires.
+
+@subsection eCall_leeCall_Redial Redail Mechanism
+
+When an eCall is disconnected, IVS might do a redial depending on several aspects. This part
+describes how the redial works for the two standards.
+
+@subsubsection eCall_leeCall_RedialPE PAN-EUROPEAN Redialing
+
+The PAN European [1] redialing is differently restricted. Before the call is connected the first
+time, there is no formal restriction to the number of retries. In this case it is up to the
+application to implement eventual limits.
+
+@note If first connection is unsuccessful IVS redials until find the network coverage.
+
+But if a call has been connected once before, and the MSD has not yet been sent, it has 120 seconds
+to reconnect the call. The 120 seconds are counted from the time the connected call was
+disconnected. This is because a PAN European eCall PSAP should call back after 3 minutes.
+If the MSD has been successfully sent, there will be no redials from the IVS if the call is
+disconnected.
+
+The retries are spaced out in time. The default is a 30 seconds interval between each start of each
+call attempt. It can be changed via le_ecall_SetIntervalBetweenDialAttempts(). If a call attempt
+takes longer than 30 seconds before failing, it will start directly after 1 second.
+
+@subsubsection eCall_leeCall_RedialEG ERA-GLONASS Redialing
+
+ERA GLONASS has a restriction in the specification of either dial attempts of 10 tries
+(default value) or dial duration of 5 minutes (default value), whatever comes first. The timer, with
+default value of 5 minutes, will be referred to as ECALL_DIAL_DURATION. The value is set by
+SetEraGlonassDialDuration().
+
+The counter, with default value of 10, which is called either @c ECALL_AUTO_DIAL_ATTEMPTS or
+@c ECALL_MANUAL_DIAL_ATTEMPTS will be referred to as “ECALL*DIAL_ATTEMPTS” from now on. These
+default values can be changed via SetEraGlonassManualDialAttempts() or
+SetEraGlonassAutoDialAttempts().
+
+The timer and redial counter is implemented as follows.
+Every time a call is triggered, the ECALL_DIAL_DURATION (5 minutes by default) is started and call
+attempts are performed. If ECALL_DIAL_DURATION time expires, or all ECALL_*DIAL_ATTEMPS are
+performed (whatever happens first), no more attemps will be performed and ECALL_DIAL_DURATION timer
+will be stopped.
+
+But if the call connects the timer is stopped and the attempts counter is reset. If a connected call
+is cut it will start a new redial attempt. For this redial attempt a new @c DIAL_DURATION timer
+period of 5 min and the attempts counter is again set to ECALL*DIAL_ATTEMPTS, default 10, tries. In
+order not to exhaust the @c ECALL*DIAL_ATTEMPTS times in case of bad radio conditions, the retries
+are spaced out in time. The default is a 30 seconds interval between each start of each call
+attempt. It can be changed via le_ecall_SetIntervalBetweenDialAttempts().
+
+If a call attempt takes longer than the IntervalBetweenDialAttempts before failing, it will start
+directly after 1 second. When the redial is initiated because of a call drop then it pauses only 1
+second to allow the network stack to get ready before starting a new dial attempt.
+
+@note If call drop is produced before ALACK reception then IVS radials in PUSH mode. If call drops
+with abnormal cause is produced after ALACK then IVS redials in PULL mode.
+
+@subsection eCall_leeCall_StateMach State Machine & Events
+
+The LE_ECALL component does not expose any internal state machine. It does however expose the
+following events that indicates what is happening.
+
+| Event Name                               | Comment                                                                                                                                                                       | In Band Modem State After Event |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| LE_ECALL_STATE_STARTED                   | eCall session started                                                                                                                                                         | Active                          |
+| LE_ECALL_STATE_CONNECTED                 | Emergency call is established                                                                                                                                                 | Active                          |
+| LE_ECALL_STATE_DISCONNECTED              | Emergency call is disconnected                                                                                                                                                | Not Active                      |
+| LE_ECALL_STATE_WAITING_PSAP_START_IND    | Waiting for PSAP start indication                                                                                                                                             | Active                          |
+| LE_ECALL_STATE_MSD_TX_STARTED            | MSD transmission is started.                                                                                                                                                  | Active                          |
+| LE_ECALL_STATE_LLNACK_RECEIVED           | LL-NACK received.                                                                                                                                                             | Active                          |
+| LE_ECALL_STATE_LLACK_RECEIVED            | LL-ACK received.                                                                                                                                                              | Active                          |
+| LE_ECALL_STATE_MSD_TX_COMPLETED          | MSD transmission is complete.                                                                                                                                                 | Active                          |
+| LE_ECALL_STATE_MSD_TX_FAILED             | MSD transmission has failed.                                                                                                                                                  | Active                          |
+| LE_ECALL_STATE_ALACK_RECEIVED_POSITIVE   | AL-ACK received.                                                                                                                                                              | Active                          |
+| LE_ECALL_STATE_ALACK_RECEIVED_CLEAR_DOWN | AL-ACK clear-down received.                                                                                                                                                   | Active                          |
+| LE_ECALL_STATE_STOPPED                   | eCall session has been stopped.                                                                                                                                               | Not Active                      |
+| LE_ECALL_STATE_RESET                     | eCall session has lost synchronization                                                                                                                                        | Active                          |
+| LE_ECALL_STATE_COMPLETED                 | eCall session completed. The modem successfully completed the MSD transmission and received two AL-ACKs (positive). Can now switch to voice path.                             | Not Active                      |
+| LE_ECALL_STATE_FAILED                    | Unsuccessful eCall session.                                                                                                                                                   | Active                          |
+| LE_ECALL_STATE_END_OF_REDIAL_PERIOD      | End of the redial period.                                                                                                                                                     | Not Active                      |
+| LE_ECALL_STATE_TIMEOUT_T2                | IVS Call ClearDown Fallback Timer (CCFT) If IVS does not receives the ALACK_CLEARDOWN from PSAP or PSAP does not hang up the call. Modem clears the call after T2expire.(1hr) | Active                          |
+| LE_ECALL_STATE_TIMEOUT_T3                | IVS INITIATION signal duration (2s)                                                                                                                                           | Active                          |
+| LE_ECALL_STATE_TIMEOUT_T5                | IVS wait for SEND MSD period ( 5s). Unmute the audio.                                                                                                                         | Active                          |
+| LE_ECALL_STATE_TIMEOUT_T6                | IVS wait for AL-ACK period (5s). Unmute the audio.                                                                                                                            | Active                          |
+| LE_ECALL_STATE_TIMEOUT_T7                | IVS MSD maximum transmission time (20s). Unmute the audio.                                                                                                                    | Active                          |
+| LE_ECALL_STATE_TIMEOUT_T9                | IVS NAD minimum network registration period (3600s) Applies to eCall-Only mode.                                                                                               | Not Active                      |
+| LE_ECALL_STATE_TIMEOUT_T10               | IVS NAD network Deregistration Fallback Timer (DFT).                                                                                                                          | Not Active                      |
+
+@subsection eCall_leeCall_InBandTimer State InBand Modem Timer Values
+
+| Name   | Description                                                                                            | Default Value | Handled by LE_ECALL |
+| ------ | ------------------------------------------------------------------------------------------------------ |:-------------:|:-------------------:|
+| T1         | Manually initiated eCall (MIeC) false triggering cancellation period.                              | -             | No                  |
+| T2         | IVS Call Cleardown Fallback Timer (CCFT)                                                           | 3600 s (1h)   | Yes                 |
+| T3         | IVS INITIATION signal duration                                                                     | 2 s           | Yes                 |
+| T5         | IVS wait for SEND MSD period                                                                       | 5 s           | Yes                 |
+| T6         | IVS wait for AL-ACK period                                                                         | 5 s           | Yes                 |
+| T7         | IVS MSD maximum transmission time                                                                  | 20s           | Yes                 |
+| T9         | IVS NAD minimum network registration period. See T10.                                              | 3600s         | Yes                 |
+| T10        | IVS NAD network "Deregistration Fallback Timer" (DFT). It is only applicable to eCall Only mode.   | 12h           |    Yes              |
+
+@section eCall_ClientApp Client Application
+
+The client eCall application is responsible for a number of things:
+- Initiating the eCall
+- Driving the GNSS and saving positions.
+- Gathering vehicle info and setting MSD
+- Handling Audio
+- Playing audio prompt - mute/unmute
+- Speaker and microphone.
+- Implement E-SMS for ERA-Glonass
+
+The client application detects the eCall trigger and initiates the eCall.
+
+The client application drives the GNSS and should have a position, both present and optionally
+pasted, ready when the eCall is triggered. Note that ERA GLONASS mandates that the GNSS supports
+GLONASS.
+
+Construct the MSD: The client app can fully build the MSD by itself or let Legato build it, it must
+call the corresponding le_ecall functions in that case. The dynamic values of the MSD can be set
+with le_ecall_SetMsdXXX() functions. The MSD is automatically encoded with the values previously
+set. The Client app must perform the MSD transmission by calling le_ecall_SendMsd() when the
+@c LE_ECALL_STATE_PSAP_START_IND_RECEIVED event is received.The MSD can be updated before calling
+le_ecall_SendMsd(), using the e_ecall_ImportMsd() function or the le_ecall_SetMsdXxx() functions.
+
+The fully prepared MSD can be imported using the le_ecall_ImportMsd() function. The prepared MSD
+must answer the requirements described in the "EN 15722:2013" publication. The imported MSD doesn't
+take into account the values provided by the le_ecall_SetMsdXxx() functions. It overwrites any
+previous imported MSD or encoded MSD. It even imports optional data for ERA-Glonass. The encoded MSD
+can be retrieved with le_ecall_ExportMsd() function. Function le_ecall_ExportMsd() even exports the
+optional additional data of ERA-Glonass.
+
+@note le_ecall_ExportMsd() API is not applicable if MSD is imported. Date/time on MSD information is
+set automatically with RTC from the linux system.
+
+The Client application is also responsible for audio handling.
+
+The audio handling should be synchronized with the MSD sending. It is recommended to mute the audio
+of the call when the eCall is triggered, until such a time that the Legato eCall Service reports
+that the MSD sending phase is over.
+
+During this time an audio prompt should be played giving the passengers in the vehicle an indication
+of what is happening over the speaker system.
+
+Please refer to the respective standard documents for exact details.
+
+@subsection eCall_ClientApp_StartPSAP Start eCall to Test PSAP Server
+
+Be careful starting Automatic or manual e-Calls. This operation will dial a real emergency call.
+
+Please note that the mute and unmute is up to the client application to fine tune. The timing for
+doing this has been illustrated in the diagram below. Note that the unmute of the speaker is
+recommended to be slightly delayed to avoid noise. The following diagram shows an eCall with the
+audio interaction marked.
+
+Refer to below diagram, when eCall is started speaker is connected to playback. Audio prompt is
+played in speaker. After the MSD sending part is over, the voice prompt should be stopped and
+microphone and speaker attached to the modems Tx (Transmit) and Rx (Receive) paths in the ongoing
+call. Slight delay is recommended before attaching microphone and speaker to the modems Tx and Rx
+paths after the the MSD sending part is over.
+
+
+See the  Audio Handling Example section for detailed implementation of audio handling during an
+eCall session.
+
+@image html legatoServicesModemECall_PSAPServer.png
+
+@subsection eCall_ClientApp_Audio Audio Handling Example
+
+This following part describes a proposed way to handle the audio paths and voice prompt for the
+eCalls different steps. This is to avoid noise in the vehicles speakers and from the microphone
+before, after and during the MSD sending.
+
+<b>Play audio prompt in Speaker</b>
+
+This is a sequence diagram of the audio calls for MyConnectAndPlay().
+
+All audio paths and connectors should be setup before the call is launched with le_ecall_StartXXX().
+Audio File containing information can be used to play voice prompt. Speaker is connected to playback
+and modems Receive (Rx) path. Microphone is connected to Transmit (Tx) path. Tx and Rx are muted
+during MSD transmission. Voice prompt will be played through playback connected to a speaker.
+
+@image html legatoServicesModemECall_AudioEx.png
+
+@subsubsection eCall_ClientApp_AudioStop Connect Mic/Speaker
+
+After the MSD sending part is over, the voice prompt should be stopped. Microphone and speaker
+attached to the modems Transmit (Tx) and Receive (Rx) paths in the ongoing call.
+
+Connecting the speaker should be done a few seconds after the MSD sending part is over. This is
+because in some cases where the MSD sending fails, the PSAP might still be sending data and noise
+could be heard.
+
+This is a sequence diagram of the audio calls for the function MyOpenVoice().
+
+Refer to diagram, speaker(Spk) is connected playback used to play audio prompt (File) and modem
+Rx path. Microphone(mic) is connected to modem Tx path. After MSD sending part is over, playback
+will be muted and Rx and Tx path will be unmuted after a slight delay.
+
+@image html legatoServicesModemECall_AudioExMic.png
+
+@subsection eCall_ClientApp_EGeCall ERA GLONASS eCall and Call Fails
+
+This simulates that a call in ERA GLONASS mode that is being made and the call fails due to busy.
+The IVS the redials by default, 10x within the 5 min limit, with each redial spaced out in intervals
+less than 30s.
+
+@image html legatoServicesModemECall_EGFail.png
+
+@subsection eCall_ClientApp_PEeCall PAN EU eCall and Call Fails
+
+This simulates that a call in PAN EU mode that is being made and the call fails without ever
+connecting. The Legato eCall Service redials until connected or action is stopped by Client
+Application.
+
+@image html legatoServicesModemECall_PEFail.png
+
+@subsection eCall_ClientApp_PEeCallCon PAN EU eCall Connects then Fails
+
+This simulates that a call in PAN EU mode that connects and then fails. The Legato eCall Service
+then redials during maximally 120s from the call disconnected. Interval between dial attempts is set
+to a big value just for this demonstration.
+
+If the call would reconnect and then drop, then the 120s timer would restart.
+
+@image html legatoServicesModemECall_PECon.png
+
+@section eCall_References References
+
+<b>List of References</b><br>
+@c 1. Intelligent transport systems - ESafety - eCall high level application requirements (HLAP)
+using GSM/UMTS circuit switched networks CEN - FprEN 16062:2015 (E) <br>
+@c 2. Intelligent transport systems - ESafety - ECall minimum set of data CEN - BS EN 15722:2015 <br>
+@c 3. Intelligent transport systems - ESafety - ECall end to end conformance testing CEN -
+prEN 16454:2014 E <br>
+@c 4. Intelligent transport systems - ESafety - Pan-European eCall operating requirements CEN -
+BS EN 16072:2015 <br>
+@c 5. Global navigation satellite system ROAD ACCIDENT EMERGENCY RESPONSE SYSTEM GOST R 33454-2015 <br>
+@c 6. eCall Data Transfer; In-band modem solution; General description 3GPP TS 26.267: <br>
+
+<b>Patents</b>
+
+This product may contain technology developed by or for Sierra Wireless Inc.
+This product includes technology licensed from QUALCOMM®.
+This product is manufactured or sold by Sierra Wireless Inc. or its affiliates under one or more
+patents licensed from InterDigital Group and MMP Portfolio Licensing.
+
+<b>Copyright</b>
+This document contains images with
+[authorization EU](http://ec.europa.eu/geninfo/legal_notices_en.htm#copyright)
+
+**/

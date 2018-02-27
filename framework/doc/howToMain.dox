@@ -8,7 +8,6 @@ This section contains topics about frequently needed tasks:
 | @subpage howToDebug                | Debug - General tips and tricks                             |
 | @subpage howToDebugGDB             | Debug Apps using GDB                                        |
 | @subpage howToPowerMgmt            | Manage device power                                         |
-| @subpage howToEcall                | Manage Legato eCall features                                |
 | @subpage howToGNSS                 | Mange GNSS on a target device                               |
 | @subpage howToSecurity             | Configure sandboxes and SMACK                               |
 | @subpage howToPortLegacyGen        | Port legacy Apps to Legato                                  |
