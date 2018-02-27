@@ -1753,6 +1753,11 @@ static void CellNetStateHandler
         case LE_CELLNET_REG_EMERGENCY:
         case LE_CELLNET_REG_UNKNOWN:
         case LE_CELLNET_SIM_ABSENT:
+            if ((LE_DATA_CELLULAR == CurrentTech) && (RequestCount > 0) && (!IsConnected))
+            {
+                // Impossible to use this technology, try the next one
+                ConnectionStatusHandler(LE_DATA_CELLULAR, false);
+            }
             break;
 
         case LE_CELLNET_REG_HOME:
