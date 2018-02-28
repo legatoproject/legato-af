@@ -215,6 +215,102 @@ static void Testle_pos_Get2DLocation
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Tested API: le_pos_SetDistanceResolution()
+ *
+ * Verify that le_pos_Get3DLocation() gives distance values in the correct resolution
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_pos_GetDistanceResolution
+(
+    void
+)
+{
+    le_result_t result;
+    int32_t latitude, longitude, hAccuracy, altitude, vAccuracy;
+    gnssSimuLocation_t gnssLocation;
+    gnssSimuAltitude_t gnssAltitude;
+
+    gnssLocation.latitude = 48823091;
+    gnssLocation.longitude = 2249324;
+    gnssLocation.accuracy = 200;   // horizontal accuracy in centimeters
+    gnssLocation.result = LE_OK;
+
+    le_gnssSimu_SetLocation(gnssLocation);
+
+    gnssAltitude.altitude = 32000;  // altitude in millimeters (32 m)
+    gnssAltitude.accuracy = 10;     // vertical accuracy in decimeters
+    gnssAltitude.result = LE_OK;
+
+    le_gnssSimu_SetAltitude(gnssAltitude);
+
+    LE_ASSERT(LE_BAD_PARAMETER == le_pos_SetDistanceResolution(LE_POS_UNKNOWN_RES));
+
+    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_DECIMETER_RES));
+
+    result = le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy, &altitude, &vAccuracy);
+
+    LE_INFO("hAccuracy %d, altitude %d, vAccuracy %d, result %d",
+            hAccuracy, altitude, vAccuracy, result);
+    LE_ASSERT(
+        (48823091 == latitude) &&
+        (2249324 == longitude) &&
+        (20 == hAccuracy) &&
+        (320 == altitude) &&
+        (10 == vAccuracy) &&
+        (LE_OK == result)
+        );
+
+    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_CENTIMETER_RES));
+
+    result = le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy,
+                &altitude, &vAccuracy);
+
+    LE_INFO("hAccuracy %d, altitude %d, vAccuracy %d, result %d",
+            hAccuracy, altitude, vAccuracy, result);
+    LE_ASSERT(
+        (48823091 == latitude) &&
+        (2249324 == longitude) &&
+        (200 == hAccuracy) &&
+        (3200 == altitude) &&
+        (100 == vAccuracy) &&
+        (LE_OK == result)
+        );
+
+    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_MILLIMETER_RES));
+
+    result = le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy,
+                &altitude, &vAccuracy);
+
+    LE_INFO("hAccuracy %d, altitude %d, vAccuracy %d, result %d",
+            hAccuracy, altitude, vAccuracy, result);
+    LE_ASSERT(
+        (48823091 == latitude) &&
+        (2249324 == longitude) &&
+        (2000 == hAccuracy) &&
+        (32000 == altitude) &&
+        (1000 == vAccuracy) &&
+        (LE_OK == result)
+        );
+
+    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_METER_RES));
+
+    result = le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy,
+                &altitude, &vAccuracy);
+
+    LE_INFO("hAccuracy %d, altitude %d, vAccuracy %d, result %d",
+            hAccuracy, altitude, vAccuracy, result);
+    LE_ASSERT(
+        (48823091 == latitude) &&
+        (2249324 == longitude) &&
+        (2 == hAccuracy) &&
+        (32 == altitude) &&
+        (1 == vAccuracy) &&
+        (LE_OK == result)
+        );
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Tested API: le_pos_Get3DLocation()
  *
  * Verify that le_pos_Get3DLocation() behaves as expected in failure and success
@@ -887,6 +983,7 @@ COMPONENT_INIT
     // tests
     Testle_pos_Get2DLocation();
     Testle_pos_Get3DLocation();
+    Testle_pos_GetDistanceResolution();
     Testle_pos_GetDirection();
     Testle_pos_GetHeading();
     Testle_pos_GetMotion();

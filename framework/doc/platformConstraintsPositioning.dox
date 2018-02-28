@@ -1,0 +1,27 @@
+/** @page platformConstraintsPositioning Positioning platform constraints
+
+@section platformConstraintsPositioning_SettingResolution Distance values resolution
+
+@c le_pos_Get2DLocation(), @c le_pos_Get3DLocation(), @c le_pos_sample_GetAltitude,
+@c le_pos_sample_Get2DLocation and @c le_pos_sample_GetAltitude functions return, among others, the
+altitude, the horizontal and the vertical accuracies. These values are expressed in meters by
+default. It is possible to modifiy the resolution by calling @c le_pos_SetDistanceResolution()
+function.
+
+However, on Qualcomm-based platform, the maximal resolution of these distance parameters is limited.
+This means that each parameter cannot be expressed beyond a defined limit.
+Altitude maximum resolution is the millimeter, horizontal accuracy maximum resolution is the
+centimeter and vertical accuracy maximum resolution is the decimeter.
+
+When @c le_pos_SetDistanceResolution() sets a resolution for a distance parameter higher than its
+maximal limit, zeros are added (padding).
+For example, for a vertical accuracy of 20 decimeter, setting a resolution in millimeter will return
+2000.
+
+@section platformConstraintsPositioning_References References
+
+See @ref c_pos API
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

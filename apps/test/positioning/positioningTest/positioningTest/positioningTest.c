@@ -10,7 +10,6 @@
 
 #include "interfaces.h"
 
-void Testle_pos_GetInfo();
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -18,7 +17,11 @@ void Testle_pos_GetInfo();
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void NavigationHandler(le_pos_SampleRef_t positionSampleRef, void* contextPtr)
+static void NavigationHandler
+(
+    le_pos_SampleRef_t positionSampleRef,
+    void* contextPtr
+)
 {
     int32_t  val, val1, accuracy;
     uint32_t uval, uAccuracy;
@@ -33,7 +36,7 @@ static void NavigationHandler(le_pos_SampleRef_t positionSampleRef, void* contex
     uint16_t milliseconds;
     le_pos_FixState_t fixState;
 
-    if(positionSampleRef == NULL)
+    if (NULL == positionSampleRef)
     {
         LE_ERROR("New Position sample is NULL!");
     }
@@ -79,13 +82,17 @@ static void NavigationHandler(le_pos_SampleRef_t positionSampleRef, void* contex
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void TwentyMeterNavigationHandler(le_pos_SampleRef_t positionSampleRef, void* contextPtr)
+static void TwentyMeterNavigationHandler
+(
+    le_pos_SampleRef_t positionSampleRef,
+    void* contextPtr
+)
 {
     int32_t  val, val1, accuracy;
     uint32_t uval, uAccuracy;
     le_pos_FixState_t fixState;
 
-    if(positionSampleRef == NULL)
+    if (NULL == positionSampleRef)
     {
         LE_ERROR("New Position sample is NULL!");
     }
@@ -136,13 +143,131 @@ static void* NavigationThread
 
     LE_INFO("======== Navigation Handler thread  ========");
     navigationHandlerRef = le_pos_AddMovementHandler(0, 0, NavigationHandler, NULL);
-    LE_ASSERT(navigationHandlerRef != NULL);
+    LE_ASSERT(NULL != navigationHandlerRef);
 
     navigationHandlerRef = le_pos_AddMovementHandler(20, 0, TwentyMeterNavigationHandler, NULL);
-    LE_ASSERT(navigationHandlerRef != NULL);
+    LE_ASSERT(NULL != navigationHandlerRef);
 
     le_event_RunLoop();
     return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: le_pos_SetDistanceResolution
+ *
+ * The results can also be cheched visualy
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_pos_DistanceResolutionUpdate
+(
+    void
+)
+{
+    int32_t           latitude;
+    int32_t           longitude;
+    int32_t           altitude, altitudeSav;
+    int32_t           hAccuracy, hAccuracySav;
+    int32_t           vAccuracy, vAccuracySav;
+    le_result_t       res;
+
+    LE_ASSERT(LE_BAD_PARAMETER == le_pos_SetDistanceResolution(LE_POS_UNKNOWN_RES));
+
+    // get the default values (in meters)
+    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_METER_RES));
+    res = le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy, &altitude, &vAccuracy);
+    LE_ASSERT((LE_OK == res) || (LE_OUT_OF_RANGE == res));
+    LE_INFO("Meter resolution: hAccuracy %d, altitude %d, vAccuracy %d",
+            hAccuracy, altitude, vAccuracy);
+    altitudeSav = altitude;
+    hAccuracySav = hAccuracy;
+    vAccuracySav = vAccuracy;
+
+    // test decmeter resolution
+    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_DECIMETER_RES));
+    res = le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy, &altitude, &vAccuracy);
+    LE_ASSERT((LE_OK == res) || (LE_OUT_OF_RANGE == res));
+    LE_INFO("Decimeter: hAccuracy %d, altitude %d, vAccuracy %d", hAccuracy, altitude, vAccuracy);
+
+    if ((UINT32_MAX != hAccuracy) && (UINT32_MAX != hAccuracySav))
+    {
+        LE_ASSERT(hAccuracy != hAccuracySav);
+    }
+    if ((UINT32_MAX != vAccuracy) && (UINT32_MAX != vAccuracySav))
+    {
+        LE_ASSERT(vAccuracy != vAccuracySav);
+    }
+    if ((UINT32_MAX != altitude) && (UINT32_MAX != altitudeSav))
+    {
+        LE_ASSERT(altitude != altitudeSav);
+    }
+    altitudeSav = altitude;
+    hAccuracySav = hAccuracy;
+    vAccuracySav = vAccuracy;
+
+    // test centimeter resolution
+    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_CENTIMETER_RES));
+    res = le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy, &altitude, &vAccuracy);
+    LE_ASSERT((LE_OK == res) || (LE_OUT_OF_RANGE == res));
+    LE_INFO("Centimeter: hAccuracy.%d, altitude.%d, vAccuracy.%d", hAccuracy, altitude, vAccuracy);
+
+    if ((UINT32_MAX != hAccuracy) && (UINT32_MAX != hAccuracySav))
+    {
+        LE_ASSERT(hAccuracy != hAccuracySav);
+    }
+    if ((UINT32_MAX != vAccuracy) && (UINT32_MAX != vAccuracySav))
+    {
+        LE_ASSERT(vAccuracy != vAccuracySav);
+    }
+    if ((UINT32_MAX != altitude) && (UINT32_MAX != altitudeSav))
+    {
+        LE_ASSERT(altitude != altitudeSav);
+    }
+    altitudeSav = altitude;
+    hAccuracySav = hAccuracy;
+    vAccuracySav = vAccuracy;
+
+    // test millimeter resolution
+    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_MILLIMETER_RES));
+    res = le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy, &altitude, &vAccuracy);
+    LE_ASSERT((LE_OK == res) || (LE_OUT_OF_RANGE == res));
+    LE_INFO("Millimeter: hAccuracy.%d, altitude.%d, vAccuracy.%d", hAccuracy, altitude, vAccuracy);
+
+    if ((UINT32_MAX != hAccuracy) && (UINT32_MAX != hAccuracySav))
+    {
+        LE_ASSERT(hAccuracy != hAccuracySav);
+    }
+    if ((UINT32_MAX != vAccuracy) && (UINT32_MAX != vAccuracySav))
+    {
+        LE_ASSERT(vAccuracy != vAccuracySav);
+    }
+    if ((UINT32_MAX != altitude) && (UINT32_MAX != altitudeSav))
+    {
+        LE_ASSERT(altitude != altitudeSav);
+    }
+    altitudeSav = altitude;
+    hAccuracySav = hAccuracy;
+    vAccuracySav = vAccuracy;
+
+    // test meter resolution
+    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_METER_RES));
+    res = le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy, &altitude, &vAccuracy);
+    LE_ASSERT((LE_OK == res) || (LE_OUT_OF_RANGE == res));
+    LE_INFO("Meter: hAccuracy.%d, altitude.%d, vAccuracy.%d", hAccuracy, altitude, vAccuracy);
+
+    if ((UINT32_MAX != hAccuracy) && (UINT32_MAX != hAccuracySav))
+    {
+        LE_ASSERT(hAccuracy != hAccuracySav);
+    }
+    if ((UINT32_MAX != vAccuracy) && (UINT32_MAX != vAccuracySav))
+    {
+        LE_ASSERT(vAccuracy != vAccuracySav);
+    }
+    if ((UINT32_MAX != altitude) && (UINT32_MAX != altitudeSav))
+    {
+        LE_ASSERT(altitude != altitudeSav);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -151,7 +276,10 @@ static void* NavigationThread
  *
  */
 //--------------------------------------------------------------------------------------------------
-void Testle_pos_GetInfo()
+static void Testle_pos_GetInfo
+(
+    void
+)
 {
     int32_t           latitude;
     int32_t           longitude;
@@ -176,64 +304,64 @@ void Testle_pos_GetInfo()
     le_pos_FixState_t fixState;
     le_result_t       res;
 
-    LE_ASSERT((le_pos_GetFixState(&fixState) == LE_OK));
+    LE_ASSERT_OK(le_pos_GetFixState(&fixState));
     LE_INFO("position fix state %d", fixState);
 
-    res= le_pos_Get2DLocation(&latitude, &longitude, &hAccuracy);
-    LE_INFO("le_pos_Get2DLocation %s"
-            , (res==LE_OK)?"OK":(res==LE_OUT_OF_RANGE)?"parameter(s) out of range":"ERROR");
-    LE_ASSERT((res ==LE_OK)||(res == LE_OUT_OF_RANGE));
-    LE_INFO("Check le_pos_Get2DLocation latitude.%d, longitude.%d, hAccuracy.%d"
-            , latitude, longitude, hAccuracy);
+    res = le_pos_Get2DLocation(&latitude, &longitude, &hAccuracy);
+    LE_INFO("le_pos_Get2DLocation %s",
+            (LE_OK == res) ? "OK" : (LE_OUT_OF_RANGE == res) ? "parameter(s) out of range":"ERROR");
+    LE_ASSERT((LE_OK == res) || (LE_OUT_OF_RANGE == res));
+    LE_INFO("Check le_pos_Get2DLocation latitude.%d, longitude.%d, hAccuracy.%d",
+            latitude, longitude, hAccuracy);
 
-    res= le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy, &altitude, &vAccuracy);
-    LE_INFO("le_pos_Get3DLocation %s"
-            , (res==LE_OK)?"OK":(res==LE_OUT_OF_RANGE)?"parameter(s) out of range":"ERROR");
-    LE_ASSERT((res ==LE_OK)||(res == LE_OUT_OF_RANGE));
+    res = le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy, &altitude, &vAccuracy);
+    LE_INFO("le_pos_Get3DLocation %s",
+            (LE_OK == res) ? "OK" : (LE_OUT_OF_RANGE == res) ? "parameter(s) out of range":"ERROR");
+    LE_ASSERT((LE_OK == res) || (LE_OUT_OF_RANGE == res));
     LE_INFO("Check le_pos_Get3DLocation latitude.%d, longitude.%d, hAccuracy.%d, altitude.%d"
-            ", vAccuracy.%d"
-            , latitude, longitude, hAccuracy, altitude, vAccuracy);
+            ", vAccuracy.%d",
+            latitude, longitude, hAccuracy, altitude, vAccuracy);
 
-    res= le_pos_GetDate(&year, &month, &day);
-    LE_INFO("le_pos_GetDate %s"
-            , (res==LE_OK)?"OK":(res==LE_OUT_OF_RANGE)?"parameter(s) out of range":"ERROR");
-    LE_ASSERT((res ==LE_OK)||(res == LE_OUT_OF_RANGE));
-    LE_INFO("Check le_pos_GetDate year.%d, month.%d, day.%d"
-            , year, month, day);
+    res = le_pos_GetDate(&year, &month, &day);
+    LE_INFO("le_pos_GetDate %s",
+            (LE_OK == res) ? "OK" : (LE_OUT_OF_RANGE == res) ? "parameter(s) out of range":"ERROR");
+    LE_ASSERT((LE_OK == res) || (LE_OUT_OF_RANGE == res));
+    LE_INFO("Check le_pos_GetDate year.%d, month.%d, day.%d",
+            year, month, day);
 
-    res= le_pos_GetTime(&hours, &minutes, &seconds, &milliseconds);
-    LE_INFO("le_pos_GetTime %s"
-            , (res==LE_OK)?"OK":(res==LE_OUT_OF_RANGE)?"parameter(s) out of range":"ERROR");
-    LE_ASSERT((res ==LE_OK)||(res == LE_OUT_OF_RANGE));
-    LE_INFO("Check le_pos_GetTime hours.%d, minutes.%d, seconds.%d, milliseconds.%d"
-            , hours, minutes, seconds, milliseconds);
+    res = le_pos_GetTime(&hours, &minutes, &seconds, &milliseconds);
+    LE_INFO("le_pos_GetTime %s",
+            (LE_OK == res) ? "OK" : (LE_OUT_OF_RANGE == res) ? "parameter(s) out of range":"ERROR");
+    LE_ASSERT((LE_OK == res) || (LE_OUT_OF_RANGE == res));
+    LE_INFO("Check le_pos_GetTime hours.%d, minutes.%d, seconds.%d, milliseconds.%d",
+            hours, minutes, seconds, milliseconds);
 
-    res= le_pos_GetMotion(&hSpeed, &hSpeedAccuracy, &vSpeed, &vSpeedAccuracy);
-    LE_INFO("le_pos_GetMotion %s"
-            , (res==LE_OK)?"OK":(res==LE_OUT_OF_RANGE)?"parameter(s) out of range":"ERROR");
-    LE_ASSERT((res ==LE_OK)||(res == LE_OUT_OF_RANGE));
-    LE_INFO("Check le_pos_GetMotion hSpeed.%u, hSpeedAccuracy.%u, vSpeed.%d, vSpeedAccuracy.%d"
-            , hSpeed, hSpeedAccuracy, vSpeed, vSpeedAccuracy);
+    res = le_pos_GetMotion(&hSpeed, &hSpeedAccuracy, &vSpeed, &vSpeedAccuracy);
+    LE_INFO("le_pos_GetMotion %s",
+            (LE_OK == res) ? "OK" : (LE_OUT_OF_RANGE == res) ? "parameter(s) out of range":"ERROR");
+    LE_ASSERT((LE_OK == res) || (LE_OUT_OF_RANGE == res));
+    LE_INFO("Check le_pos_GetMotion hSpeed.%u, hSpeedAccuracy.%u, vSpeed.%d, vSpeedAccuracy.%d",
+            hSpeed, hSpeedAccuracy, vSpeed, vSpeedAccuracy);
 
-    res= le_pos_GetHeading(&heading, &headingAccuracy);
-    LE_INFO("le_pos_GetHeading %s"
-            , (res==LE_OK)?"OK":(res==LE_OUT_OF_RANGE)?"parameter(s) out of range":"ERROR");
-    LE_ASSERT((res ==LE_OK)||(res == LE_OUT_OF_RANGE));
-    LE_INFO("Check le_pos_GetHeading heading.%u, headingAccuracy.%u"
-            , heading, headingAccuracy);
+    res = le_pos_GetHeading(&heading, &headingAccuracy);
+    LE_INFO("le_pos_GetHeading %s",
+            (LE_OK == res) ? "OK" : (LE_OUT_OF_RANGE == res) ? "parameter(s) out of range":"ERROR");
+    LE_ASSERT((LE_OK == res) || (LE_OUT_OF_RANGE == res));
+    LE_INFO("Check le_pos_GetHeading heading.%u, headingAccuracy.%u",
+            heading, headingAccuracy);
 
-    res= le_pos_GetDirection(&direction, &directionAccuracy);
-    LE_INFO("le_pos_GetDirection %s"
-            , (res==LE_OK)?"OK":(res==LE_OUT_OF_RANGE)?"parameter(s) out of range":"ERROR");
-    LE_ASSERT((res ==LE_OK)||(res == LE_OUT_OF_RANGE));
-    LE_INFO("Check le_pos_GetDirection direction.%u, directionAccuracy.%u"
-            , direction, directionAccuracy);
+    res = le_pos_GetDirection(&direction, &directionAccuracy);
+    LE_INFO("le_pos_GetDirection %s",
+            (LE_OK == res) ? "OK" : (LE_OUT_OF_RANGE == res) ? "parameter(s) out of range":"ERROR");
+    LE_ASSERT((LE_OK == res) || (LE_OUT_OF_RANGE == res));
+    LE_INFO("Check le_pos_GetDirection direction.%u, directionAccuracy.%u",
+            direction, directionAccuracy);
 
     // Test NULL pointer (regression test for LE-4708)
-    res=le_pos_GetDirection(&direction, NULL);
-    LE_INFO("le_pos_GetDirection %s"
-            , (res==LE_OK)?"OK":(res==LE_OUT_OF_RANGE)?"parameter(s) out of range":"ERROR");
-    LE_ASSERT((res ==LE_OK)||(res == LE_OUT_OF_RANGE));
+    res = le_pos_GetDirection(&direction, NULL);
+    LE_INFO("le_pos_GetDirection %s",
+            (LE_OK == res) ? "OK" : (LE_OUT_OF_RANGE == res) ? "parameter(s) out of range":"ERROR");
+    LE_ASSERT((LE_OK == res) || (LE_OUT_OF_RANGE == res));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -242,15 +370,18 @@ void Testle_pos_GetInfo()
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_pos_TestAcquisitionRate()
+static void Testle_pos_TestAcquisitionRate
+(
+    void
+)
 {
-    LE_ASSERT(le_pos_SetAcquisitionRate(3000) == LE_OK);
-    LE_ASSERT(le_pos_GetAcquisitionRate() == 3000);
+    LE_ASSERT_OK(le_pos_SetAcquisitionRate(3000));
+    LE_ASSERT(3000 == le_pos_GetAcquisitionRate());
 
-    LE_ASSERT(le_pos_SetAcquisitionRate(0) == LE_OUT_OF_RANGE);
+    LE_ASSERT(LE_OUT_OF_RANGE == le_pos_SetAcquisitionRate(0));
 
-    LE_ASSERT(le_pos_SetAcquisitionRate(1000) == LE_OK);
-    LE_ASSERT(le_pos_GetAcquisitionRate() == 1000);
+    LE_ASSERT_OK(le_pos_SetAcquisitionRate(1000));
+    LE_ASSERT(1000 == le_pos_GetAcquisitionRate());
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -392,9 +523,6 @@ COMPONENT_INIT
 
 
     LE_INFO("======== Positioning Test started  ========");
-
-    Testle_pos_ActivateGpsNmeaSentences();
-
     Testle_pos_TestAcquisitionRate();
     // Add Position Handler Test
     navigationThreadRef = le_thread_Create("NavigationThread",NavigationThread,NULL);
@@ -406,6 +534,7 @@ COMPONENT_INIT
     LE_ASSERT((activationRef = le_posCtrl_Request()) != NULL);
     LE_INFO("Wait 120 seconds for a 3D fix");
     sleep(120);
+    Testle_pos_DistanceResolutionUpdate();
     Testle_pos_GetInfo();
     sleep(1);
     LE_INFO("Release the positioning service");
@@ -415,6 +544,7 @@ COMPONENT_INIT
     // Stop Navigation thread
     le_thread_Cancel(navigationThreadRef);
 
+    Testle_pos_ActivateGpsNmeaSentences();
     Testle_pos_ResetGpsNmeaSentences();
 
     exit(EXIT_SUCCESS);
