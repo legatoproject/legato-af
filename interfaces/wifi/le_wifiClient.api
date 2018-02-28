@@ -208,7 +208,8 @@ ENUM Event
 {
     EVENT_CONNECTED,     ///< WiFi Client Connected
     EVENT_DISCONNECTED,  ///< WiFi Client Disconnected
-    EVENT_SCAN_DONE      ///< WiFi Scan result for available Access Points available
+    EVENT_SCAN_DONE,     ///< WiFi Scan result for available Access Points available
+    EVENT_SCAN_FAILED    ///< WiFi Scan failed
 };
 
 //--------------------------------------------------------------------------------------------------
