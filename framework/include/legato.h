@@ -32,6 +32,7 @@
  * @subpage c_path <br>
  * @subpage c_pathIter <br>
  * @subpage c_print <br>
+ * @subpage c_rand <br>
  * @subpage c_safeRef <br>
  * @subpage c_semaphore <br>
  * @subpage c_signals <br>
