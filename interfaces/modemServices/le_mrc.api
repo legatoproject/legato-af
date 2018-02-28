@@ -1058,8 +1058,9 @@ FUNCTION le_result_t GetBandPreferences
  * Set the LTE Band preferences by using a bit mask.
  *
  * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ *  - LE_FAULT        Function failed.
+ *  - LE_OK           Function succeeded.
+ *  - LE_UNSUPPORTED  The platform doesn't support setting LTE Band preferences.
  *
  * @note <b>NOT multi-app safe</b>
  */

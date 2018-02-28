@@ -740,6 +740,7 @@ LE_SHARED le_result_t pa_mrc_GetBandPreferences
  * @return
  * - LE_OK              on success
  * - LE_FAULT           on failure
+ * - LE_UNSUPPORTED     the platform doesn't support setting LTE Band preferences.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_mrc_SetLteBandPreferences

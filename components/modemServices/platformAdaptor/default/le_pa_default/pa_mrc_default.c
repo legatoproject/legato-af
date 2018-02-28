@@ -568,6 +568,7 @@ le_result_t pa_mrc_GetBandPreferences
  * @return
  * - LE_OK              on success
  * - LE_FAULT           on failure
+ * - LE_UNSUPPORTED     the platform doesn't support setting LTE Band preferences.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mrc_SetLteBandPreferences
@@ -576,7 +577,7 @@ le_result_t pa_mrc_SetLteBandPreferences
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------

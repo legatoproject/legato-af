@@ -1811,8 +1811,9 @@ le_result_t le_mrc_GetBandPreferences
  * Set the LTE Band preferences by using a bit mask.
  *
  * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ *  - LE_FAULT        Function failed.
+ *  - LE_OK           Function succeeded.
+ *  - LE_UNSUPPORTED  The platform doesn't support setting LTE Band preferences.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_SetLteBandPreferences
@@ -1820,21 +1821,14 @@ le_result_t le_mrc_SetLteBandPreferences
     le_mrc_LteBandBitMask_t bandMask  ///< [IN] Bit mask for LTE Band preferences.
 )
 {
-    if (bandMask == 0)
+
+    if (0 == bandMask)
     {
         LE_ERROR("No Band Selected");
         return LE_FAULT;
     }
 
-    if ( pa_mrc_SetLteBandPreferences(bandMask) != LE_OK )
-    {
-        LE_ERROR("Unable to set the LTE Band preferences.");
-        return LE_FAULT;
-    }
-    else
-    {
-        return LE_OK;
-    }
+    return pa_mrc_SetLteBandPreferences(bandMask);
 }
 
 //--------------------------------------------------------------------------------------------------
