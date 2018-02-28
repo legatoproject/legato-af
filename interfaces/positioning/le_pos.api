@@ -30,7 +30,7 @@
  *
  * - latitude is in degrees, positive North.
  * - longitude is in degrees, positive East.
- * - horizontal accuracy is in meters.
+ * - horizontal accuracy is in meters by default.
  *
  * The latitude and longitude are given in degrees with 6 decimal places like:
  * - Latitude +48858300  = 48.858300 degrees North
@@ -38,8 +38,9 @@
  *
  * The @c le_pos_Get3DLocation() function gets the last updated latitude, longitude,
  * altitude and their associated accuracy values.
- * - altitude is in meters, above Mean Sea Level, with 3 decimal places (3047 = 3.047 meters).
- * - horizontal and vertical accuracies are in meters.
+ * - altitude is in meters by default, above Mean Sea Level, with 3 decimal places
+ * (3047 = 3.047 meters).
+ * - horizontal and vertical accuracies are in meters by default.
  *
  * The @c le_pos_GetTime() function gets the time of last updated position:
  * - Hours into the day [range 0..23].
@@ -69,6 +70,9 @@
 
  * The @c le_pos_GetFixState() function gets the position fix state. The fix state allows the user
  * to determine if it is a 2-Dimensional or a 3-Dimensional position fix.
+ *
+ * The @c le_pos_SetDistanceResolution() function sets the resolution for the positioning distance
+ * values.
  *
  * A sample code can be seen in the following page:
  * - @subpage c_posSampleCodeFixOnDemand
@@ -150,7 +154,21 @@ ENUM FixState
     STATE_FIX_2D,              ///< 2-Dimensional position fix.
     STATE_FIX_3D,              ///< 3-Dimensional position fix.
     STATE_FIX_ESTIMATED,       ///< Estimated (i.e. forward predicted) position fix.
-    STATE_UNKNOWN              ///< Unknow state.
+    STATE_UNKNOWN              ///< Unknown state.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Resolution values.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Resolution
+{
+    METER_RES,                     ///< Resolution in meter.
+    DECIMETER_RES,                 ///< Resolution in decimeter.
+    CENTIMETER_RES,                ///< Resolution in centimeter.
+    MILLIMETER_RES,                ///< Resolution in millimeter.
+    UNKNOWN_RES                    ///< Unknown resolution.
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -204,7 +222,7 @@ FUNCTION le_result_t Get2DLocation
 (
     int32 latitude OUT,     ///< WGS84 Latitude in degrees, positive North [resolution 1e-6].
     int32 longitude OUT,    ///< WGS84 Longitude in degrees, positive East [resolution 1e-6].
-    int32 hAccuracy OUT     ///< Horizontal position's accuracy in meters.
+    int32 hAccuracy OUT     ///< Horizontal position's accuracy in meters by default.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -224,9 +242,9 @@ FUNCTION le_result_t Get3DLocation
 (
     int32 latitude OUT,     ///< WGS84 Latitude in degrees, positive North [resolution 1e-6].
     int32 longitude OUT,    ///< WGS84 Longitude in degrees, positive East [resolution 1e-6].
-    int32 hAccuracy OUT,    ///< Horizontal position's accuracy in meters.
-    int32 altitude OUT,     ///< Altitude in meters, above Mean Sea Level.
-    int32 vAccuracy OUT     ///< Vertical position's accuracy in meters.
+    int32 hAccuracy OUT,    ///< Horizontal position's accuracy in meters by default.
+    int32 altitude OUT,     ///< Altitude above Mean Sea Level in meters by default.
+    int32 vAccuracy OUT     ///< Vertical position's accuracy in meters by default.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -365,7 +383,7 @@ FUNCTION le_result_t sample_Get2DLocation
     Sample positionSampleRef,     ///< Position sample's reference.
     int32 latitude OUT,           ///< WGS84 Latitude in degrees, positive North [resolution 1e-6].
     int32 longitude OUT,          ///< WGS84 Longitude in degrees, positive East [resolution 1e-6].
-    int32 horizontalAccuracy OUT  ///< Horizontal position's accuracy in meters.
+    int32 horizontalAccuracy OUT  ///< Horizontal position's accuracy in meters by default.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -422,8 +440,8 @@ FUNCTION le_result_t sample_GetDate
 FUNCTION le_result_t sample_GetAltitude
 (
     Sample positionSampleRef,           ///< Position sample's reference.
-    int32 altitude OUT,                 ///< Altitude in meters, above Mean Sea Level.
-    int32 altitudeAccuracy OUT          ///< Vertical position's accuracy in meters.
+    int32 altitude OUT,                 ///< Altitude above Mean Sea Level in meters by default.
+    int32 altitudeAccuracy OUT          ///< Vertical position's accuracy in meters by default.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -578,3 +596,22 @@ FUNCTION uint32 GetAcquisitionRate
 (
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the resolution for the positioning distance values.
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_BAD_PARAMETER    Invalid parameter provided.
+ *
+ * @note The positioning distance values are: the altitude above sea level, the horizontal
+ *       position accuracy and the vertical position accuracy. The API sets the same resolution to
+ *       all distance values. The resolution change request takes effect immediately.
+ *
+ * @warning The positioning distance values resolutions are platform dependent. Please refer to
+ *          @ref platformConstraintsPositioning_SettingResolution section for full details.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetDistanceResolution
+(
+    Resolution resolution          IN        ///< Resolution.
+);

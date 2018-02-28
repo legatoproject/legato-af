@@ -57,6 +57,19 @@
 //--------------------------------------------------------------------------------------------------
 static int CurrentActivationsCount = 0;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Position data type.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    ALTITUDE,       ///< Altitude in meters, above Mean Sea Level
+    H_ACCURACY,     ///< Horizontal position accuracy
+    V_ACCURACY      ///< Vertical position accuracy
+}
+le_pos_DistanceValueType_t;
+
 
 //--------------------------------------------------------------------------------------------------
 // Data structures.
@@ -295,6 +308,13 @@ static bool IsGNSSAvailable
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * The resolution for the positioning distance parameters.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_pos_Resolution_t DistanceResolution = LE_POS_METER_RES;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Pos Sample destructor.
  *
  */
@@ -515,6 +535,92 @@ static uint32_t ComputeCommonSmallestRate
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Convert the value in the selected resolution.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static uint32_t ConvertDistance
+(
+    uint32_t value,
+    le_pos_DistanceValueType_t type
+)
+{
+    uint32_t resValue = 0;
+    switch(type)
+    {
+        case ALTITUDE:
+            // altitude is got to the function in millimeters
+            switch(DistanceResolution)
+            {
+                case LE_POS_DECIMETER_RES:
+                    resValue = value/100;
+                    break;
+                case LE_POS_CENTIMETER_RES:
+                    resValue = value/10;
+                    break;
+                case LE_POS_MILLIMETER_RES:
+                    resValue = value;
+                    break;
+                case LE_POS_METER_RES:
+                default:
+                    // treat unknown resolution as meters by default
+                    resValue = value/1000;
+                    break;
+            };
+            break;
+
+        case H_ACCURACY:
+            // hAccuracy is got to the function in centimeters-
+            switch(DistanceResolution)
+            {
+                case LE_POS_DECIMETER_RES:
+                    resValue = value/10;
+                    break;
+                case LE_POS_CENTIMETER_RES:
+                    resValue = value;
+                    break;
+                case LE_POS_MILLIMETER_RES:
+                    resValue = value*10;
+                    break;
+                case LE_POS_METER_RES:
+                default:
+                    // treat unknown resolution as meters by default
+                    resValue = value/100;
+                    break;
+           };
+            break;
+
+        case V_ACCURACY:
+            // Vaccuracy in got to the function in decimeters.
+            switch(DistanceResolution)
+            {
+                case LE_POS_DECIMETER_RES:
+                    resValue = value;
+                    break;
+                case LE_POS_CENTIMETER_RES:
+                    resValue = value*10;
+                    break;
+                case LE_POS_MILLIMETER_RES:
+                    resValue = value*100;
+                    break;
+                case LE_POS_METER_RES:
+                default:
+                    // treat unknown resolution as meters by default
+                    resValue = value/10;
+                    break;
+            };
+            break;
+
+        default:
+          LE_ERROR("Wrong type");
+          break;
+    }
+
+    return resValue;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Compute horizontal and vertical move
  *
  * @return LE_FAULT         Function failed.
@@ -680,7 +786,8 @@ static void PosSampleHandlerfunc
         ((LE_OUT_OF_RANGE == result) && (INT32_MAX != latitude) && (INT32_MAX != longitude)))
     {
         locationValid = true;
-        LE_DEBUG("Position lat.%d, long.%d, hAccuracy.%d", latitude, longitude, hAccuracy/100);
+        LE_DEBUG("Position lat.%d, long.%d, hAccuracy.%d",
+                 latitude, longitude, ConvertDistance(hAccuracy, H_ACCURACY));
     }
     else
     {
@@ -695,7 +802,8 @@ static void PosSampleHandlerfunc
         ((LE_OUT_OF_RANGE != result) && (INT32_MAX != altitude)))
     {
         altitudeValid = true;
-        LE_DEBUG("Altitude.%d, vAccuracy.%d", altitude/1000, vAccuracy/10);
+        LE_DEBUG("Altitude.%d, vAccuracy.%d", ConvertDistance(altitude, ALTITUDE),
+                                              ConvertDistance(vAccuracy, V_ACCURACY));
     }
     else
     {
@@ -1091,7 +1199,6 @@ COMPONENT_INIT
     LE_DEBUG("Positioning service started.");
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Request activation of the positioning service.
@@ -1379,7 +1486,8 @@ le_result_t le_pos_sample_Get2DLocation
         if (posSampleRequestPtr->posSampleNodePtr->hAccuracyValid)
         {
             // Update resolution
-            *horizontalAccuracyPtr = posSampleRequestPtr->posSampleNodePtr->hAccuracy/100;
+            *horizontalAccuracyPtr =
+               ConvertDistance(posSampleRequestPtr->posSampleNodePtr->hAccuracy, H_ACCURACY);
         }
         else
         {
@@ -1585,7 +1693,8 @@ le_result_t le_pos_sample_GetAltitude
         if (posSampleRequestPtr->posSampleNodePtr->altitudeValid)
         {
             // Update resolution
-            *altitudePtr = posSampleRequestPtr->posSampleNodePtr->altitude/1000;
+            *altitudePtr =
+               ConvertDistance(posSampleRequestPtr->posSampleNodePtr->altitude, ALTITUDE);
         }
         else
         {
@@ -1598,7 +1707,8 @@ le_result_t le_pos_sample_GetAltitude
         if (posSampleRequestPtr->posSampleNodePtr->vAccuracyValid)
         {
             // Update resolution
-            *altitudeAccuracyPtr = posSampleRequestPtr->posSampleNodePtr->vAccuracy/10;
+            *altitudeAccuracyPtr =
+               ConvertDistance(posSampleRequestPtr->posSampleNodePtr->vAccuracy, V_ACCURACY);
         }
         else
         {
@@ -1655,7 +1765,8 @@ le_result_t le_pos_sample_GetHorizontalSpeed
     {
         if (posSampleRequestPtr->posSampleNodePtr->hSpeedValid)
         {
-            *hSpeedPtr = posSampleRequestPtr->posSampleNodePtr->hSpeed/100; // Update resolution
+            // Update resolution
+            *hSpeedPtr = posSampleRequestPtr->posSampleNodePtr->hSpeed/100;
         }
         else
         {
@@ -2026,7 +2137,8 @@ le_result_t le_pos_Get2DLocation
             }
             else
             {
-                *hAccuracyPtr = hAccuracy/100; // Update resolution
+                // Update resolution
+                *hAccuracyPtr = ConvertDistance(hAccuracy, H_ACCURACY);
             }
         }
     }
@@ -2121,7 +2233,8 @@ le_result_t le_pos_Get3DLocation
             }
             else
             {
-                *hAccuracyPtr = hAccuracy/100; // Update resolution
+                // Update resolution
+                *hAccuracyPtr = ConvertDistance(hAccuracy, H_ACCURACY);
             }
         }
     }
@@ -2145,7 +2258,8 @@ le_result_t le_pos_Get3DLocation
             }
             else
             {
-                *altitudePtr = altitude/1000; // Update resolution
+                // Update resolution
+                *altitudePtr = ConvertDistance(altitude, ALTITUDE);
             }
         }
         if (vAccuracyPtr)
@@ -2157,7 +2271,7 @@ le_result_t le_pos_Get3DLocation
             }
             else
             {
-                *vAccuracyPtr = vAccuracy/10; // Update resolution
+                *vAccuracyPtr = ConvertDistance(vAccuracy, V_ACCURACY);
             }
         }
     }
@@ -2605,3 +2719,34 @@ uint32_t le_pos_GetAcquisitionRate
     return acquisitionRate;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the resolution for the positioning distance values.
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_BAD_PARAMETER    Invalid parameter provided.
+ *
+ * @note The positioning distance values are: the altitude above sea level, the horizontal
+ *       position accuracy and the vertical position accuracy. The API sets the same resolution to
+ *       all distance values. The resolution change request takes effect immediately.
+ *
+ * @warning The positioning distance values resolutions are platform dependent. Please refer to
+ *          @ref platformConstraintsPositioning_SettingResolution section for full details.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_pos_SetDistanceResolution
+(
+    le_pos_Resolution_t resolution    ///< IN Resolution.
+)
+{
+    if (resolution >= LE_POS_UNKNOWN_RES)
+    {
+        LE_ERROR("Invalid resolution (%d)", resolution);
+        return LE_BAD_PARAMETER;
+    }
+
+    LE_DEBUG("resolution %d saved", resolution);
+
+    DistanceResolution = resolution;
+    return LE_OK;
+}

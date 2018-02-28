@@ -18,6 +18,7 @@ the User must consider the constraints described in the corresponding page.
 | @subpage platformConstraintsAdc (@ref c_adc "le_adc")                  | X      | X      | X      | X      | X      | X      | X      |
 | @subpage platformConstraintsAudio (@ref c_audio "le_audio")            | X      | X      | X      | X      | X      | X      | X      |
 | @subpage platformConstraintsGnss (@ref c_gnss "le_gnss")               | X      | X      | X      | X      | X      | X      | X      |
+| @subpage platformConstraintsPositioning (@ref c_pos "le_pos")          | X      | X      | X      | X      | X      | X      | X      |
 | @subpage platformConstraintsSecStorage (@ref c_secStore "le_secStore") | X      | X      | X      | X      | X      | X      | X      |
 | @subpage platformConstraintsSim (@ref c_sim "le_sim")                  | X      | X      | X      | X      | X      | X      | X      |
 | @subpage platformConstraintsStk (@ref le_sim_stk "le_sim for STK")     | X      | X      | X      | X      | X      | X      | X      |
