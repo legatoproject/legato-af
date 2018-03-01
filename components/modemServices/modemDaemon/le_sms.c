@@ -1648,6 +1648,7 @@ static void NewSmsHandler
 )
 {
     pa_sms_Pdu_t messagePdu;
+    memset(&messagePdu, 0, sizeof(pa_sms_Pdu_t));
     le_result_t res = LE_OK;
     bool handlerPresent = false;
     bool smscInfoPresent = true;

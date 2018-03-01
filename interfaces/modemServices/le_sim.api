@@ -1131,6 +1131,7 @@ FUNCTION le_result_t RejectSimToolkitCommand
  *  - LE_BAD_PARAMETER  A parameter is invalid.
  *  - LE_UNAVAILABLE    The last SIM Toolkit command is not a Refresh command.
  *  - LE_FAULT          The function failed.
+ *  - LE_UNSUPPORTED    The platform does not support this operation.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetSimToolkitRefreshMode

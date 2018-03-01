@@ -511,6 +511,8 @@ static void OpenByDefaultEventHandler
             // Get the JSON configuration pointer from the list.
             InstanceConfiguration_t* instanceConfigPtr = GetCurrentInstance();
 
+            LE_ASSERT(instanceConfigPtr != NULL);
+
             if (0 == strcmp(memberName, "true"))
             {
                 instanceConfigPtr->openByDefault = 1;
@@ -564,6 +566,8 @@ static void PathEventHandler
             // Get the instance config pointer from the list.
             InstanceConfiguration_t* instanceConfigPtr = GetCurrentInstance();
 
+            LE_ASSERT(instanceConfigPtr != NULL);
+
             if (LE_OK != le_utf8_Copy(instanceConfigPtr->linkInfo[instanceConfigPtr->linkCounter]
                                       ->path, memberName, PATH_MAX_BYTES, NULL))
             {
@@ -612,6 +616,8 @@ static void OpeningTypeEventHandler
             // Get the instance config pointer from the list.
             InstanceConfiguration_t* instanceConfigPtr = GetCurrentInstance();
 
+            LE_ASSERT(instanceConfigPtr != NULL);
+
             if (LE_OK != le_utf8_Copy(instanceConfigPtr->linkInfo[instanceConfigPtr->linkCounter]
                                       ->openingType, memberName, OPEN_TYPE_MAX_BYTES, NULL))
             {
@@ -653,6 +659,8 @@ static void PossibleModeEventHandler
 {
     // Get the instance config pointer from the list.
     InstanceConfiguration_t* instanceConfigPtr = GetCurrentInstance();
+
+    LE_ASSERT(instanceConfigPtr != NULL);
 
     switch (event)
     {

@@ -242,6 +242,13 @@ static void OnClientDisconnect
 
     // Find and remove client record from table
     c = to_Client_t(le_hashmap_Remove(PowerManager.clients, sessionRef));
+
+    if (c == NULL)
+    {
+        LE_ERROR("Cannot remove sessionRef %p from table.", sessionRef);
+        return;
+    }
+
     LE_INFO("Client pid %d disconnected.", c->pid);
 
     // Find and remove all wakeup sources held for this client
@@ -419,6 +426,12 @@ le_pm_WakeupSourceRef_t le_pm_NewWakeupSource
     // Find and validate client record
     cl = to_Client_t(le_hashmap_Get(PowerManager.clients,
                                     le_pm_GetClientSessionRef()));
+
+    if (cl == NULL)
+    {
+        LE_ERROR("Cannot find client record.");
+        return NULL;
+    }
 
     // Check if identical wakeup source already exists for this client
     snprintf(name, sizeof(name), LEGATO_WS_NAME_FORMAT, tag, cl->name);

@@ -2121,6 +2121,7 @@ le_result_t le_sim_RejectSimToolkitCommand
  *  - LE_BAD_PARAMETER  A parameter is invalid.
  *  - LE_UNAVAILABLE    The last SIM Toolkit command is not a Refresh command.
  *  - LE_FAULT          The function failed.
+ *  - LE_UNSUPPORTED    The platform does not support this operation.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_GetSimToolkitRefreshMode
@@ -2142,7 +2143,12 @@ le_result_t le_sim_GetSimToolkitRefreshMode
         return LE_FAULT;
     }
 
-    pa_sim_GetLastStkStatus(&stkStatus);
+    le_result_t result = pa_sim_GetLastStkStatus(&stkStatus);
+    if (LE_OK != result)
+    {
+        return result;
+    }
+
     if (LE_SIM_REFRESH != stkStatus.stkEvent)
     {
         LE_INFO("Wrong event. Expected LE_SIM_REFRESH");
@@ -2183,7 +2189,11 @@ le_result_t le_sim_GetSimToolkitRefreshStage
         return LE_FAULT;
     }
 
-    pa_sim_GetLastStkStatus(&stkStatus);
+    if (LE_OK != pa_sim_GetLastStkStatus(&stkStatus))
+    {
+        return LE_FAULT;
+    }
+
     if (LE_SIM_REFRESH != stkStatus.stkEvent)
     {
         LE_INFO("Wrong event. Expected LE_SIM_REFRESH");

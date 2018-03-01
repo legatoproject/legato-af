@@ -2131,8 +2131,8 @@ static void ParseBuffer
                                      LE_ATDEFS_COMMAND_MAX_LEN,
                                      NULL);
 
-                        size_t offset = strnlen(devPtr->cmdParser.foundCmd, sizeof(devPtr->cmdParser.foundCmd)) - 1;
-                        LE_ASSERT(offset >= 0);
+                        ssize_t offset = strnlen(devPtr->cmdParser.foundCmd, sizeof(devPtr->cmdParser.foundCmd)) - 1;
+                        LE_ASSERT((offset >= 0) && (offset < sizeof(devPtr->cmdParser.foundCmd)));
                         devPtr->cmdParser.lastCharPtr = devPtr->cmdParser.foundCmd + offset;
 
                         devPtr->cmdParser.currentCharPtr = devPtr->cmdParser.foundCmd;
@@ -2371,7 +2371,7 @@ static void ReceiveText
     }
 
     count = le_dev_Read(&device, (uint8_t *)bufPtr, size);
-    if (!count)
+    if (count <= 0)
     {
         LE_ERROR("connection closed");
         if (textPtr->callback)
@@ -2381,6 +2381,9 @@ static void ReceiveText
         textPtr->mode = false;
         return;
     }
+
+    // Ensure the string point to by bufPtr is null-terminated
+    bufPtr[size] = '\0';
 
     while (strchr((const char *)bufPtr, '\b'))
     {
