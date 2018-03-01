@@ -172,10 +172,10 @@ static void Testle_pos_DistanceResolutionUpdate
     int32_t           vAccuracy, vAccuracySav;
     le_result_t       res;
 
-    LE_ASSERT(LE_BAD_PARAMETER == le_pos_SetDistanceResolution(LE_POS_UNKNOWN_RES));
+    LE_ASSERT(LE_BAD_PARAMETER == le_pos_SetDistanceResolution(LE_POS_RES_UNKNOWN));
 
     // get the default values (in meters)
-    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_METER_RES));
+    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_RES_METER));
     res = le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy, &altitude, &vAccuracy);
     LE_ASSERT((LE_OK == res) || (LE_OUT_OF_RANGE == res));
     LE_INFO("Meter resolution: hAccuracy %d, altitude %d, vAccuracy %d",
@@ -185,7 +185,7 @@ static void Testle_pos_DistanceResolutionUpdate
     vAccuracySav = vAccuracy;
 
     // test decmeter resolution
-    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_DECIMETER_RES));
+    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_RES_DECIMETER));
     res = le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy, &altitude, &vAccuracy);
     LE_ASSERT((LE_OK == res) || (LE_OUT_OF_RANGE == res));
     LE_INFO("Decimeter: hAccuracy %d, altitude %d, vAccuracy %d", hAccuracy, altitude, vAccuracy);
@@ -207,7 +207,7 @@ static void Testle_pos_DistanceResolutionUpdate
     vAccuracySav = vAccuracy;
 
     // test centimeter resolution
-    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_CENTIMETER_RES));
+    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_RES_CENTIMETER));
     res = le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy, &altitude, &vAccuracy);
     LE_ASSERT((LE_OK == res) || (LE_OUT_OF_RANGE == res));
     LE_INFO("Centimeter: hAccuracy.%d, altitude.%d, vAccuracy.%d", hAccuracy, altitude, vAccuracy);
@@ -229,7 +229,7 @@ static void Testle_pos_DistanceResolutionUpdate
     vAccuracySav = vAccuracy;
 
     // test millimeter resolution
-    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_MILLIMETER_RES));
+    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_RES_MILLIMETER));
     res = le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy, &altitude, &vAccuracy);
     LE_ASSERT((LE_OK == res) || (LE_OUT_OF_RANGE == res));
     LE_INFO("Millimeter: hAccuracy.%d, altitude.%d, vAccuracy.%d", hAccuracy, altitude, vAccuracy);
@@ -251,7 +251,7 @@ static void Testle_pos_DistanceResolutionUpdate
     vAccuracySav = vAccuracy;
 
     // test meter resolution
-    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_METER_RES));
+    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_RES_METER));
     res = le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy, &altitude, &vAccuracy);
     LE_ASSERT((LE_OK == res) || (LE_OUT_OF_RANGE == res));
     LE_INFO("Meter: hAccuracy.%d, altitude.%d, vAccuracy.%d", hAccuracy, altitude, vAccuracy);

@@ -243,9 +243,9 @@ static void Testle_pos_GetDistanceResolution
 
     le_gnssSimu_SetAltitude(gnssAltitude);
 
-    LE_ASSERT(LE_BAD_PARAMETER == le_pos_SetDistanceResolution(LE_POS_UNKNOWN_RES));
+    LE_ASSERT(LE_BAD_PARAMETER == le_pos_SetDistanceResolution(LE_POS_RES_UNKNOWN));
 
-    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_DECIMETER_RES));
+    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_RES_DECIMETER));
 
     result = le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy, &altitude, &vAccuracy);
 
@@ -260,7 +260,7 @@ static void Testle_pos_GetDistanceResolution
         (LE_OK == result)
         );
 
-    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_CENTIMETER_RES));
+    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_RES_CENTIMETER));
 
     result = le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy,
                 &altitude, &vAccuracy);
@@ -276,7 +276,7 @@ static void Testle_pos_GetDistanceResolution
         (LE_OK == result)
         );
 
-    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_MILLIMETER_RES));
+    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_RES_MILLIMETER));
 
     result = le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy,
                 &altitude, &vAccuracy);
@@ -292,7 +292,7 @@ static void Testle_pos_GetDistanceResolution
         (LE_OK == result)
         );
 
-    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_METER_RES));
+    LE_ASSERT_OK(le_pos_SetDistanceResolution(LE_POS_RES_METER));
 
     result = le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy,
                 &altitude, &vAccuracy);

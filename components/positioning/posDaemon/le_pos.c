@@ -311,7 +311,7 @@ static bool IsGNSSAvailable
  * The resolution for the positioning distance parameters.
  */
 //--------------------------------------------------------------------------------------------------
-static le_pos_Resolution_t DistanceResolution = LE_POS_METER_RES;
+static le_pos_Resolution_t DistanceResolution = LE_POS_RES_METER;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -552,16 +552,16 @@ static uint32_t ConvertDistance
             // altitude is got to the function in millimeters
             switch(DistanceResolution)
             {
-                case LE_POS_DECIMETER_RES:
+                case LE_POS_RES_DECIMETER:
                     resValue = value/100;
                     break;
-                case LE_POS_CENTIMETER_RES:
+                case LE_POS_RES_CENTIMETER:
                     resValue = value/10;
                     break;
-                case LE_POS_MILLIMETER_RES:
+                case LE_POS_RES_MILLIMETER:
                     resValue = value;
                     break;
-                case LE_POS_METER_RES:
+                case LE_POS_RES_METER:
                 default:
                     // treat unknown resolution as meters by default
                     resValue = value/1000;
@@ -573,16 +573,16 @@ static uint32_t ConvertDistance
             // hAccuracy is got to the function in centimeters-
             switch(DistanceResolution)
             {
-                case LE_POS_DECIMETER_RES:
+                case LE_POS_RES_DECIMETER:
                     resValue = value/10;
                     break;
-                case LE_POS_CENTIMETER_RES:
+                case LE_POS_RES_CENTIMETER:
                     resValue = value;
                     break;
-                case LE_POS_MILLIMETER_RES:
+                case LE_POS_RES_MILLIMETER:
                     resValue = value*10;
                     break;
-                case LE_POS_METER_RES:
+                case LE_POS_RES_METER:
                 default:
                     // treat unknown resolution as meters by default
                     resValue = value/100;
@@ -594,16 +594,16 @@ static uint32_t ConvertDistance
             // Vaccuracy in got to the function in decimeters.
             switch(DistanceResolution)
             {
-                case LE_POS_DECIMETER_RES:
+                case LE_POS_RES_DECIMETER:
                     resValue = value;
                     break;
-                case LE_POS_CENTIMETER_RES:
+                case LE_POS_RES_CENTIMETER:
                     resValue = value*10;
                     break;
-                case LE_POS_MILLIMETER_RES:
+                case LE_POS_RES_MILLIMETER:
                     resValue = value*100;
                     break;
-                case LE_POS_METER_RES:
+                case LE_POS_RES_METER:
                 default:
                     // treat unknown resolution as meters by default
                     resValue = value/10;
@@ -2739,7 +2739,7 @@ le_result_t le_pos_SetDistanceResolution
     le_pos_Resolution_t resolution    ///< IN Resolution.
 )
 {
-    if (resolution >= LE_POS_UNKNOWN_RES)
+    if (resolution >= LE_POS_RES_UNKNOWN)
     {
         LE_ERROR("Invalid resolution (%d)", resolution);
         return LE_BAD_PARAMETER;
