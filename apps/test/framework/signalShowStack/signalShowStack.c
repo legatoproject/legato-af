@@ -16,6 +16,8 @@
 #include "legato.h"
 #include "fenv.h"
 
+#define SIG_RETRY   100
+
 double NaN = NAN, nNaN = NAN;
 double z = 0.0, zz = 0.0;
 uint64_t uz = 0ULL;
@@ -107,14 +109,24 @@ void fpe
 {
     double f = 123.4567890;
     uint64_t u = 1234ULL;
+    int i;
     feenableexcept(FE_ALL_EXCEPT);
-    // Some bad operations to trigger the SIGFPE. Depending on the platform, the
-    // SIGFPE will be raise by one of these ops.
-    fdoublePtr->f = f / z;
-    fdoublePtr->z = zz / z;
-    fdoublePtr->nan1 = NaN / z;
-    fdoublePtr->nan2 = nNaN / NaN;
-    fdoublePtr->u = (double)(u / uz);
+
+    for(i = 0; i < SIG_RETRY; i++)
+    {
+        // Some bad operations to trigger the SIGFPE. Depending on the platform, the
+        // SIGFPE will be raise by one of these ops.
+        fdoublePtr->f = f / z;
+        fprintf(stderr, "... try [%03d] 1 %f\n", i, fdoublePtr->f);
+        fdoublePtr->z = zz / z;
+        fprintf(stderr, "... try [%03d] 2 %f\n", i, fdoublePtr->z);
+        fdoublePtr->nan1 = NaN / z;
+        fprintf(stderr, "... try [%03d] 3 %f\n", i, fdoublePtr->nan1);
+        fdoublePtr->nan2 = nNaN / NaN;
+        fprintf(stderr, "... try [%03d] 4 %f\n", i, fdoublePtr->nan2);
+        fdoublePtr->u = (double)(u / uz);
+        fprintf(stderr, "... try [%03d] 5 %f\n", i, fdoublePtr->u);
+    }
 }
 
 void run_fpe
@@ -170,7 +182,7 @@ char *abrt
     // Use malloc(3) as malloc(3)/free(3) as LIBC will trig a SIGABRT on misusage
     char *ptr = malloc(1);
 
-    fprintf(stderr, "ptr allocated at %p", ptr);
+    fprintf(stderr, "ptr allocated at %p\n", ptr);
     free(ptr);
     return ptr;
 }
@@ -181,10 +193,14 @@ void run_abrt
 )
 {
     char *abrtPtr;
+    int i;
     fprintf(stderr, "DO ABRT\n");
     abrtPtr = abrt();
     // Free the pointer again. Double call to free(3) trig a SIGABRT
-    free(abrtPtr);
+    for(i = 0; i < SIG_RETRY; i++)
+    {
+        free(abrtPtr);
+    }
 }
 
 COMPONENT_INIT
@@ -229,6 +245,9 @@ COMPONENT_INIT
             fprintf(stderr, "Unknown argument %s", argPtr);
             exit(EXIT_FAILURE);
         }
+
+        // Should not reach here
+        fprintf(stderr, "Failed to generate signal %s\n", argPtr);
         LE_ASSERT(0);
     }
     fprintf(stderr, "Need argument to raise signal: SEGV CRUSH ILL FPE BUS ABRT\n");
