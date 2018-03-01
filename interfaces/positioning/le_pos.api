@@ -164,11 +164,11 @@ ENUM FixState
 //--------------------------------------------------------------------------------------------------
 ENUM Resolution
 {
-    METER_RES,                     ///< Resolution in meter.
-    DECIMETER_RES,                 ///< Resolution in decimeter.
-    CENTIMETER_RES,                ///< Resolution in centimeter.
-    MILLIMETER_RES,                ///< Resolution in millimeter.
-    UNKNOWN_RES                    ///< Unknown resolution.
+    RES_METER,                     ///< Resolution in meter.
+    RES_DECIMETER,                 ///< Resolution in decimeter.
+    RES_CENTIMETER,                ///< Resolution in centimeter.
+    RES_MILLIMETER,                ///< Resolution in millimeter.
+    RES_UNKNOWN                    ///< Unknown resolution.
 };
 
 //--------------------------------------------------------------------------------------------------
