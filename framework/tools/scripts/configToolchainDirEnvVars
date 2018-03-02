@@ -14,25 +14,26 @@ fi
 
 set_toolchain_dir ()
 {
-    TARGET=$1
+    local target=$1
 
-    toolchain_dir_env_name="$(echo "$TARGET" | tr '[:lower:]' '[:upper:]')_TOOLCHAIN_DIR"
-    toolchain_prefix_env_name="$(echo "$TARGET" | tr '[:lower:]' '[:upper:]')_TOOLCHAIN_PREFIX"
+    toolchain_dir_env_name="$(echo "$target" | tr '[:lower:]' '[:upper:]')_TOOLCHAIN_DIR"
+    toolchain_prefix_env_name="$(echo "$target" | tr '[:lower:]' '[:upper:]')_TOOLCHAIN_PREFIX"
 
-    echo -en "${COLOR_TITLE}[${TARGET}] ${COLOR_warn}"
-
-    toolchain_dir=$(findtoolchain "$TARGET" dir)
+    toolchain_dir=$(findtoolchain "$target" dir 2>/dev/null)
     if [ -z "$toolchain_dir" ] || ! [ -e "$toolchain_dir" ]; then
-        echo -ne "${COLOR_RESET}"
+        toolchain_err=$(findtoolchain "$target" dir 1>/dev/null 2>&1)
+        if [ -n "$toolchain_err" ]; then
+            echo -e "${COLOR_TITLE}[${target}] ${COLOR_warn}${toolchain_error}${COLOR_RESET}"
+        fi
         return 1
     fi
 
-    toolchain_prefix=$(findtoolchain "$TARGET" prefix)
+    toolchain_prefix=$(findtoolchain "$target" prefix)
 
     eval "export ${toolchain_dir_env_name}=$toolchain_dir"
     eval "export ${toolchain_prefix_env_name}=$toolchain_prefix"
 
-    echo -e "${COLOR_pass}Toolchain dir[$toolchain_dir] prefix[$toolchain_prefix]${COLOR_RESET}"
+    echo -e "${COLOR_TITLE}[${target}] ${COLOR_pass}Toolchain dir[$toolchain_dir] prefix[$toolchain_prefix]${COLOR_RESET}"
 
     return 0
 }

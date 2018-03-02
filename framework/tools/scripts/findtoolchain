@@ -183,7 +183,7 @@ TOOLCHAIN_DIR_ENV="${TARGET^^}_TOOLCHAIN_DIR"
 TOOLCHAIN_DIR="${!TOOLCHAIN_DIR_ENV}"
 if [ -n "$TOOLCHAIN_DIR" ]
 then
-    if ! CheckToolchainDir $TOOLCHAIN_DIR; then
+    if ! CheckToolchainDir "$TOOLCHAIN_DIR"; then
         echo "Toolchain specified for target '$1' is invalid." >&2
         exit 1
     fi
@@ -199,6 +199,5 @@ do
     fi
 done
 
-echo "No toolchain found for target '$1'." >&2
 exit 1
 
