@@ -6,7 +6,7 @@ then
     echo "***ERROR: '$PWD' doesn't look like the root directory of a Legato repository."
 else
     export LEGATO_ROOT=$PWD
-    export PATH=$LEGATO_ROOT/bin:$PATH:$LEGATO_ROOT/build/localhost/bin
+    export PATH=$LEGATO_ROOT/bin:$PATH:$LEGATO_ROOT/build/localhost/framework/bin
 
     source $LEGATO_ROOT/framework/tools/scripts/configToolchainDirEnvVars
     source $LEGATO_ROOT/framework/tools/autocomplete/init.sh
