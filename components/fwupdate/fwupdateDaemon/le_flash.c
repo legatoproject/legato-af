@@ -1313,9 +1313,13 @@ le_result_t le_flash_CreateUbi
     bool                     isForcedCreate, ///< [IN] Force the UBI recreation and
                                              ///<      overwrite the previous content.
     le_flash_PartitionRef_t* partitionRef    ///< [OUT] Partition reference.
-
 )
 {
+    if (NULL == partitionRef)
+    {
+        return LE_BAD_PARAMETER;
+    }
+
     PartitionInit();
 
     return Open(partitionName,

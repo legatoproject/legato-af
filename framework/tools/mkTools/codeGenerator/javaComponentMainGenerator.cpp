@@ -143,7 +143,7 @@ void GenerateJavaComponentMainFile
                   "{\n"
                << instanceNames
                << serverVars
-               << "    public static Component CreateComponent(Logger logger) throws Exception\n"
+               << "    public static Component createComponent(Logger logger) throws Exception\n"
                   "    {\n"
                   "        // Construct component.\n"
                   "        " << compName << " component = new " << compName << "();\n"

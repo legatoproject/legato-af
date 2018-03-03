@@ -17,6 +17,7 @@ package io.legato.api.implementation;
 import java.io.FileDescriptor;
 import java.math.BigInteger;
 import java.lang.AutoCloseable;
+import java.security.InvalidParameterException;
 import io.legato.Ref;
 import io.legato.Result;
 import io.legato.OnOff;
@@ -55,7 +56,7 @@ public class {{apiName}}Server implements AutoCloseable {
 	public void open(String serviceName) {
 		currentSession = null;
 		service = new Service(new Protocol(protocolIdStr, maxMsgSize), serviceName);
-		service.setReceiveHandler(this::OnClientMessageReceived);
+		service.setReceiveHandler(this::onClientMessageReceived);
 		service.addCloseHandler(session -> {
 			// TODO: Clean up...
 		});
@@ -153,10 +154,13 @@ public class {{apiName}}Server implements AutoCloseable {
 	private static final int MessageID_{{function.name}} = {{loop.index0}};
 {%- endfor %}
 
-	private void OnClientMessageReceived(Message clientMessage) {
+	private void onClientMessageReceived(Message clientMessage) {
 		MessageBuffer buffer = null;
 		try {
 			buffer = clientMessage.getBuffer();
+			if (buffer == null) {
+				throw new InvalidParameterException("clientMessage contains null buffer");
+			}
 			currentSession = clientMessage.getServerSession();
 			int messageId = buffer.readInt();
 			switch (messageId) {
