@@ -33,9 +33,21 @@ static const char* CommandPtr = NULL;
 
 
 //--------------------------------------------------------------------------------------------------
-/// Format option string.
+/// Format option string.  NULL = default format.
 //--------------------------------------------------------------------------------------------------
 static const char* FormatPtr = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
+/// Client interface specifier string (used by Bind()).
+//--------------------------------------------------------------------------------------------------
+static const char* ClientIfPtr = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
+/// Server interface specifier string (used by Bind()).
+//--------------------------------------------------------------------------------------------------
+static const char* ServerIfPtr = NULL;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -56,6 +68,10 @@ static void PrintHelpAndExit
         "    sdir list\n"
         "    sdir list --format=json\n"
         "    sdir load\n"
+        "    sdir bind CLIENT_IF SERVER_IF\n"
+        "    sdir help\n"
+        "    sdir -h\n"
+        "    sdir --help\n"
         "\n"
         "DESCRIPTION:\n"
         "    sdir list\n"
@@ -65,11 +81,25 @@ static void PrintHelpAndExit
         "            Lists bindings, services, and waiting clients in json format.\n"
         "\n"
         "    sdir load\n"
-        "            Updates the Service Directory's bindings with the current state.\n"
+        "            Updates the Service Directory's bindings with the current state\n"
         "            of the binding configuration settings in the configuration tree.\n"
         "\n"
         "            The tool will not exit until it gets confirmation from\n"
         "            the Service Directory that the changes have been applied.\n"
+        "\n"
+        "    sdir bind CLIENT_IF SERVER_IF\n"
+        "            Creates a temporary binding in the Service Directory from\n"
+        "            client-side IPC interface CLIENT_IF to server-side IPC interface\n"
+        "            SERVER_IF.  Each of the interfaces is specified in one of the\n"
+        "            following forms:\n"
+        "                appName.componentName.interfaceName\n"
+        "                appName.externInterfaceName\n"
+        "                <userName>.externInterfaceName\n"
+        "\n"
+        "    sdir help\n"
+        "    sdir -h\n"
+        "    sdir --help\n"
+        "           Print this help text and exit.\n"
         "\n"
         "    All output is always sent to stdout and error messages to stderr.\n"
         "\n"
@@ -164,7 +194,7 @@ static void ExitWithErrorMsg
     const char* programNamePtr = le_arg_GetProgramName();
 
     fprintf(stderr, "* %s: %s\n", programNamePtr, errorMsg);
-    fprintf(stderr, "Try '%s --help'.\n", programNamePtr);
+    fprintf(stderr, "Try '%s help'.\n", programNamePtr);
 
     exit(EXIT_FAILURE);
 }
@@ -368,7 +398,7 @@ static le_result_t GetServerUid
  * Send a binding from a configuration tree iterator's current node to the Service Directory.
  */
 //--------------------------------------------------------------------------------------------------
-static void SendBindRequest
+static void SendCfgBindRequest
 (
     uid_t uid,                  ///< [in] Unix user ID of the client whose binding is being created.
     le_cfg_IteratorRef_t i      ///< [in] Configuration read iterator.
@@ -569,7 +599,7 @@ static void Load
             result = le_cfg_GoToFirstChild(i);
             while (result == LE_OK)
             {
-                SendBindRequest(uid, i);
+                SendCfgBindRequest(uid, i);
 
                 result = le_cfg_GoToNextSibling(i);
             }
@@ -597,7 +627,7 @@ static void Load
             result = le_cfg_GoToFirstChild(i);
             while (result == LE_OK)
             {
-                SendBindRequest(uid, i);
+                SendCfgBindRequest(uid, i);
 
                 result = le_cfg_GoToNextSibling(i);
             }
@@ -617,6 +647,187 @@ static void Load
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Parse an interface specifier and extract the user ID and interface name.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ParseInterfaceSpec
+(
+    const char* spec,
+    uid_t* uidPtr,      /// [OUT] Ptr to where the UID will be stored.
+    char* ifName,       /// [OUT] Ptr to where the interface name will be copied.
+    size_t ifNameSize   /// [IN] Number of bytes in the ifName buffer.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    size_t i; // Index into the spec string.
+    char userName[LIMIT_MAX_USER_NAME_BYTES];
+
+    // If the interface spec starts with a '<', then it must be a user name.
+    if (spec[0] == '<')
+    {
+        for (i = 1; spec[i] != '>'; i++)
+        {
+            if (i >= (sizeof(userName) - 1))
+            {
+                fprintf(stderr, "User name too long in interface specifier '%s'.\n", spec);
+                exit(EXIT_FAILURE);
+            }
+
+            if (spec[i] == '\0')
+            {
+                fprintf(stderr,
+                        "Missing terminating '>' after user name in interface specifier '%s'.\n",
+                        spec);
+                exit(EXIT_FAILURE);
+            }
+
+            userName[i - 1] = spec[i];
+        }
+
+        // Null-terminate the user name.
+        userName[i] = '\0';
+
+        // Move past the '>' in the spec string.
+        i++;
+    }
+    else
+    {
+        // Extract the app name and convert it into a user name.
+        char appName[LIMIT_MAX_APP_NAME_BYTES];
+        for (i = 0; spec[i] != '.'; i++)
+        {
+            if (i >= (sizeof(appName) - 1))
+            {
+                fprintf(stderr, "App name too long in interface specifier '%s'.\n", spec);
+                exit(EXIT_FAILURE);
+            }
+
+            if (spec[i] == '\0')
+            {
+                fprintf(stderr, "Missing '.' after app name in interface specifier '%s'.\n", spec);
+                exit(EXIT_FAILURE);
+            }
+
+            appName[i] = spec[i];
+        }
+
+        // Null-terminate the app name.
+        appName[i] = '\0';
+
+        if (LE_OK != user_AppNameToUserName(appName, userName, sizeof(userName)))
+        {
+            LE_FATAL("userName buffer overflow.");
+        }
+    }
+
+    // Convert the user name into a UID.
+    if (user_GetUid(userName, uidPtr) != LE_OK)
+    {
+        fprintf(stderr, "Failed to get user ID for user '%s'.\n", userName);
+        exit(EXIT_FAILURE);
+    }
+
+    // Move past the first '.' in the spec string.
+    i++;
+
+    if (spec[i] == '\0')
+    {
+        fprintf(stderr, "Missing interface name in interface specifier '%s'.\n", spec);
+        exit(EXIT_FAILURE);
+    }
+
+    // The rest of the spec string is the interface name.
+    if (LE_OK != le_utf8_Copy(ifName, spec + i, ifNameSize, NULL))
+    {
+        fprintf(stderr, "Interface name too long in interface specifier '%s'.\n", spec);
+        exit(EXIT_FAILURE);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Execute the 'bind' command.
+ */
+//--------------------------------------------------------------------------------------------------
+static void Bind
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Initialize the "User API".
+    user_Init();
+
+    // Construct the request message.
+    le_msg_MessageRef_t msgRef = le_msg_CreateMsg(SessionRef);
+    le_sdtp_Msg_t* msgPtr = le_msg_GetPayloadPtr(msgRef);
+
+    msgPtr->msgType = LE_SDTP_MSGID_BIND;
+
+    // Parse the client interface specifier.
+    ParseInterfaceSpec(ClientIfPtr,
+                       &msgPtr->client,
+                       msgPtr->clientInterfaceName,
+                       sizeof(msgPtr->clientInterfaceName));
+
+    // Parse the server interface specifier.
+    ParseInterfaceSpec(ServerIfPtr,
+                       &msgPtr->server,
+                       msgPtr->serverInterfaceName,
+                       sizeof(msgPtr->serverInterfaceName));
+
+    // Send the message and wait for a response.
+    msgRef = le_msg_RequestSyncResponse(msgRef);
+
+    // If a response message was not received, then the operation failed.
+    if (msgRef == NULL)
+    {
+        ExitWithErrorMsg("Communication with Service Directory failed.");
+    }
+
+    le_msg_ReleaseMsg(msgRef);
+
+    exit(EXIT_SUCCESS);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Positional argument callback function that gets called with the CLIENT_IF argument from the
+ * command line.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void ClientIfArgHandler
+(
+    const char* argPtr  ///< Pointer to the argument string.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Just save it for now.
+    ClientIfPtr = argPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Positional argument callback function that gets called with the SERVER_IF argument from the
+ * command line.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void ServerIfArgHandler
+(
+    const char* argPtr  ///< Pointer to the argument string.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Just save it for now.
+    ServerIfPtr = argPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Positional argument callback function that gets called with the command argument from the
  * command line.
  **/
@@ -629,13 +840,11 @@ static void CommandArgHandler
 {
     CommandPtr = commandPtr;
 
-    if ((strcmp(CommandPtr, "list") != 0) && (strcmp(CommandPtr, "load") != 0))
+    // The bind command expects two positional arguments: the client and the server interfaces.
+    if (strcmp(CommandPtr, "bind") == 0)
     {
-       char errorMessage[255];
-
-       snprintf(errorMessage, sizeof(errorMessage), "Unrecognized command '%s'.", CommandPtr);
-
-       ExitWithErrorMsg(errorMessage);
+        le_arg_AddPositionalCallback(ClientIfArgHandler);
+        le_arg_AddPositionalCallback(ServerIfArgHandler);
     }
 }
 
@@ -655,11 +864,11 @@ static void FormatArgHandler
 
     if (strcmp(FormatPtr, "json") != 0)
     {
-      char errorMessage[255];
+        char errorMessage[255];
 
-      snprintf(errorMessage, sizeof(errorMessage), "Unrecognized command '%s'.", FormatPtr);
+        snprintf(errorMessage, sizeof(errorMessage), "Unrecognized command '%s'.", FormatPtr);
 
-      ExitWithErrorMsg(errorMessage);
+        ExitWithErrorMsg(errorMessage);
     }
 }
 
@@ -667,7 +876,7 @@ static void FormatArgHandler
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    // The first (and only) positional argument is the command.
+    // The first positional argument is the command.
     // CommandArgHandler() will set the CommandPtr to point to the command argument string.
     le_arg_AddPositionalCallback(CommandArgHandler);
 
@@ -686,16 +895,36 @@ COMPONENT_INIT
         PrintHelpAndExit();
     }
 
+    // Processing of all other commands requires a connection to the Service Directory.
     ConnectToServiceDirectory();
 
-    // Act on the command. Right now only two command(load and list) is allowed.
     if (strcmp(CommandPtr, "list") == 0)
     {
         List();
     }
-    else
+    // --format= option is not valid for any commands other than 'list'.
+    else if (FormatPtr != NULL)
+    {
+        char errorMsg[255];
+        snprintf(errorMsg,
+                 sizeof(errorMsg),
+                 "Format specifier (--format=%s) not valid for command '%s'.",
+                 FormatPtr,
+                 CommandPtr);
+        ExitWithErrorMsg(errorMsg);
+    }
+    else if (strcmp(CommandPtr, "load") == 0)
     {
         Load();
     }
-
+    else if (strcmp(CommandPtr, "bind") == 0)
+    {
+        Bind();
+    }
+    else
+    {
+       char errorMsg[255];
+       snprintf(errorMsg, sizeof(errorMsg), "Unrecognized command '%s'.", CommandPtr);
+       ExitWithErrorMsg(errorMsg);
+    }
 }
