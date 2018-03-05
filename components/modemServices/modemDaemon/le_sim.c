@@ -312,13 +312,16 @@ static le_result_t LocalSwap
         return LE_FAULT;
     }
 
-    if ((manufacturer == LE_SIM_OBERTHUR)
-         || (manufacturer == LE_SIM_MORPHO))
+    if ((LE_SIM_OBERTHUR == manufacturer) ||
+        (LE_SIM_MORPHO == manufacturer) ||
+        (LE_SIM_G_AND_D == manufacturer))
     {
         return LE_OK;
     }
-
-    return pa_sim_Refresh();
+    else
+    {
+        return pa_sim_Refresh();
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
