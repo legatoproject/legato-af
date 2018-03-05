@@ -475,6 +475,7 @@ DEFINE NMEA_SENTENCES_MAX = 0x003FFFFF;
 //--------------------------------------------------------------------------------------------------
 /**
  * @deprecated LE_GNSS_NMEA_MASK_PQXFI is deprecated. LE_GNSS_NMEA_MASK_PTYPE is to be used instead.
+ * Setting LE_GNSS_NMEA_MASK_PTYPE will also set LE_GNSS_NMEA_MASK_PQXFI.
  * LE_GNSS_NMEA_MASK_PTYPE supports all Proprietary type masks: PQXFI, PQGSA and PQGSV.
  */
 //--------------------------------------------------------------------------------------------------
