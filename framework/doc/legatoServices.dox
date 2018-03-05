@@ -48,6 +48,7 @@ Platform Services provide full-featured interface access to system and modem res
 | @subpage c_le_voicecall               | Voice communications                    | @image html green_dot.png |
 | @subpage legatoServicesWiFi           | WiFi                                    |                           |
 | @subpage legatoAtServices             | AT commands services                    | @image html green_dot.png |
+| @subpage c_port                       | Port service                            |                           |
 
 @warning Some Services shouldn't be used together in the same app (e.g, if you use a multi-app safe
 service like Data Connection, you can't also use the Modem Data Control Service).
