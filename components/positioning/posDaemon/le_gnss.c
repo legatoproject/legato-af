@@ -2926,8 +2926,12 @@ void le_gnss_ReleaseSampleRef
  *  - LE_NOT_PERMITTED If the GNSS device is not initialized, disabled or active.
  *  - LE_OK            The function succeeded.
  *
+ * @warning Some constellation types are unsupported depending on the plateform. Please refer to
+ *          @ref platformConstraintsGnss_ConstellationType section for full details.
+ *
  * @warning The settings are platform dependent. Please refer to
  *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
+ *
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_SetConstellation
@@ -2971,9 +2975,9 @@ le_result_t le_gnss_SetConstellation
 /**
  * Get the GNSS constellation bit mask
  *
-* @return
-*  - LE_OK on success
-*  - LE_FAULT on failure
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_GetConstellation

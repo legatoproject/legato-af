@@ -114,6 +114,23 @@ the Legato API: the @c GPGSV_EXTENDED and @c GPGRS NMEA sentences are not availa
 they are enabled. This concerns the @c GAGGA, @c GAGSA, @c GAGSV, @c GARMC, and @c GAVTG
 NMEA sentences.
 
+@section platformConstraintsGnss_ConstellationType Constellation type
+
+@c le_gnss_SetConstellation() function configures the constellation type and
+@c le_gnss_GetConstellation() function gets the enabled constellation type.
+
+Not all constellation types are supported by the different platforms. The table below lists the
+supported constellation types for each platform.
+
+| Constellation type            | AR7 | AR758x | AR759x | AR8652 | WP750x | WP76xx | WP77xx | WP85 |
+| ----------------------------- | --- | ------ | ------ | ------ | ------ | ------ | ------ | ---- |
+| LE_GNSS_CONSTELLATION_GPS     |     |   X    |   X    |        |        |        |        |  X   |
+| LE_GNSS_CONSTELLATION_GLONASS |     |   X    |   X    |        |        |        |        |  X   |
+| LE_GNSS_CONSTELLATION_BEIDOU  |     |   X    |   X    |        |        |        |        |      |
+| LE_GNSS_CONSTELLATION_GALILEO |     |   X    |   X    |        |        |        |        |      |
+| LE_GNSS_CONSTELLATION_SBAS    |     |        |        |        |        |        |        |      |
+| LE_GNSS_CONSTELLATION_QZSS    |     |   X    |   X    |        |        |        |        |      |
+
 @section platformConstraintsGnss_SettingConfiguration Setting configuration
 
 This section summarizes for each GNSS setting API, on Qualcomm-based platform, how the setting is

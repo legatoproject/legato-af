@@ -145,6 +145,9 @@
  * Combinations of constellation for GPS, GLONASS, BDS, GALILEO and QZSS satellites are currently
  * supported. Constellation for SBAS satellites is not supported.
  *
+ * @warning Some constellation types are unsupported depending on the plateform. Please refer to
+ * @ref platformConstraintsGnss_ConstellationType section for full details.
+ *
  * All supported GNSS constellations are enabled by default.
  * The le_gnss_GetConstellation() function gets the GNSS constellation(s) enabled to be used
  * in solution.
@@ -272,6 +275,9 @@
  * As @c le_gnss_SetDopResolution() sets the resolution per client session,
  * @c le_gnss_SetDopResolution() and @c le_gnss_GetDilutionOfPrecision() functions should be called
  * in the same thread or client session.
+ *
+ * A sample code can be seen in the following page:
+ * - @subpage c_gnssSampleCodePosition
  *
  * The handler can be managed using le_gnss_AddPositionHandler()
  * and le_gnss_RemovePositionHandler().
@@ -695,8 +701,12 @@ BITMASK NmeaBitMask
  *  - LE_NOT_PERMITTED If the GNSS device is not initialized, disabled or active.
  *  - LE_OK            The function succeeded.
  *
+ * @warning Some constellation types are unsupported depending on the plateform. Please refer to
+ *          @ref platformConstraintsGnss_ConstellationType section for full details.
+ *
  * @warning The settings are platform dependent. Please refer to
  *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
+ *
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetConstellation
