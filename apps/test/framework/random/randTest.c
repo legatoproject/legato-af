@@ -1,14 +1,24 @@
 /*
  * Test the le_rand API.
  *
- * This test assumes that the le_rand API is built on top of a good random number generator and so
- * does not attempt to test the "randomness" of the numbers.  Rather, this test attempts only to
- * test that the le_rand API itself does not introduce biases when giving random numbers in a range.
+ * This test can be ran in two modes:
+ * - (default): unit-test: only test API calls.
+ * - -p or --performance: performance test: make sure that the device that this is executed on meets
+ *                                          valid level of randomness.
  */
 
 #include "legato.h"
 
 #define MAX_INTERVAL        100
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test 'mode', which can be:
+ * - false == unit-test mode
+ * - true == performance test mode
+ */
+//--------------------------------------------------------------------------------------------------
+static bool PerformanceTest = false;
 
 static double Chi2Dist[MAX_INTERVAL] = {
                                 3.841,
@@ -113,7 +123,6 @@ static double Chi2Dist[MAX_INTERVAL] = {
                                 124.342
                             };
 
-
 static double Chi2Dist95(size_t degreesOfFreedom)
 {
     if ( (degreesOfFreedom < 1) || (degreesOfFreedom > MAX_INTERVAL) )
@@ -156,14 +165,22 @@ static bool Chi2Test(uint64_t* bucketPtr, uint32_t numBuckets, uint64_t numSampl
     {
         LE_ERROR("The sample shows bias at 95%% significance level.");
 
-        return false;
+        // Only fail the test if we care about performance.
+        if(PerformanceTest)
+        {
+            return false;
+        }
+        else
+        {
+            LE_INFO("Not failing as test is not run in performance mode.");
+        }
     }
     else
     {
         LE_INFO("The sample does not show bias at 95%% significance level.");
-
-        return true;
     }
+
+    return true;
 }
 
 
@@ -303,6 +320,21 @@ static bool TestLargeBuffer(void)
 COMPONENT_INIT
 {
     LE_INFO("======== Begin Random Number Tests ========");
+
+    // Determine the execution mode
+    if(LE_OK == le_arg_GetFlagOption("p", "performance"))
+    {
+        PerformanceTest = true;
+    }
+
+    if(PerformanceTest)
+    {
+        LE_INFO("==> Performance test");
+    }
+    else
+    {
+        LE_INFO("==> Unit test");
+    }
 
     // Setup the Legato Test Framework.
     LE_TEST_INIT;

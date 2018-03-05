@@ -43,6 +43,7 @@ function RunTest()
 }
 
 # Run tests.
+RunTest framework/random/randTest.sh
 #RunTest framework/supervisor/supervisorTest.sh
 #RunTest framework/watchdog/watchdogTest.sh
 RunTest framework/configTree/configTargetTests.sh

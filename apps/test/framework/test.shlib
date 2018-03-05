@@ -1,7 +1,11 @@
+#!/bin/bash
 # Copyright (C) Sierra Wireless Inc.
 
 # This file contains a few functions that are used in multiple test scripts.
 # Source this file to use the functions
+
+# Load generic shlib
+. $LEGATO_ROOT/framework/tools/scripts/shlib
 
 # This is the path to the utilities on the target. It is not part of the
 # defined path on ssh log in.

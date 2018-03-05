@@ -12,6 +12,8 @@ LoadTestLib
 targetAddr=$1
 targetType=${2:-ar7}
 
+SetTargetIP "$targetAddr"
+
 appList="cfgSelfRead cfgSelfWrite cfgSystemRead cfgSystemWrite"
 
 OnFail() {
