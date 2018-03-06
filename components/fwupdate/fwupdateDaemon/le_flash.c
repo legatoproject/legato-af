@@ -212,40 +212,44 @@ static le_result_t ParsePartitionNameAndGetMtd
     }
     if (NULL == mtdPartPtr[iPart].name)
     {
-        LE_ERROR("Unsupported partiton \"%s\"\n", partitionName);
-        return LE_NOT_FOUND;
+        LE_WARN("Partiton \"%s\" is not in dual system table. Assuming full name\n",
+                partitionName);
+        // Assume this is a "customer partition". So use the whole name passed into argument.
+        snprintf(namePtr, LE_FLASH_PARTITION_NAME_MAX_BYTES, "%s", partitionName);
     }
-
-    if (markPtr)
+    else
     {
-        if (0 == strcmp("1", markPtr))
+        if (markPtr)
         {
-            inSystem = 0;
+            if (0 == strcmp("1", markPtr))
+            {
+                inSystem = 0;
+            }
+            else if (0 == strcmp("2", markPtr))
+            {
+                inSystem = 1;
+            }
+            else if (0 == strcmp("active", markPtr))
+            {
+                inSystem = (ActiveSystemMask & (1 << partPtr->systemMask) ? 1 : 0);
+            }
+            else if (0 == strcmp("update", markPtr))
+            {
+                inSystem = (ActiveSystemMask & (1 << partPtr->systemMask) ? 0 : 1);
+            }
+            else
+            {
+                LE_ERROR("Badly formed partition name \"%s\"", partitionName);
+                return LE_BAD_PARAMETER;
+            }
         }
-        else if (0 == strcmp("2", markPtr))
-        {
-            inSystem = 1;
-        }
-        else if (0 == strcmp("active", markPtr))
-        {
-            inSystem = (ActiveSystemMask & (1 << partPtr->systemMask) ? 1 : 0);
-        }
-        else if (0 == strcmp("update", markPtr))
-        {
-            inSystem = (ActiveSystemMask & (1 << partPtr->systemMask) ? 0 : 1);
-        }
-        else
-        {
-            LE_ERROR("Badly formed partition name \"%s\"", partitionName);
-            return LE_BAD_PARAMETER;
-        }
-    }
 
-    memset(namePtr, 0, LE_FLASH_PARTITION_NAME_MAX_BYTES);
-    snprintf(namePtr, LE_FLASH_PARTITION_NAME_MAX_BYTES, "%s",
-             mtdPartPtr[iPart].systemName[inSystem]);
+        partPtr->isDual = (((partPtr->isLogical) && (1 == inSystem)) ? true : false);
+        memset(namePtr, 0, LE_FLASH_PARTITION_NAME_MAX_BYTES);
+        snprintf(namePtr, LE_FLASH_PARTITION_NAME_MAX_BYTES, "%s",
+                 mtdPartPtr[iPart].systemName[inSystem]);
+    }
     nameLen = strlen(namePtr);
-    partPtr->isDual = (((partPtr->isLogical) && (1 == inSystem)) ? true : false);
 
     LE_DEBUG("Fetching partiton \"%s\"", namePtr);
     // Open the /proc/mtd partition
