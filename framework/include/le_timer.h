@@ -15,21 +15,25 @@
  *
  * @section timer_objects Creating/Deleting Timer Objects
  *
- * Timers are created using @ref le_timer_Create. The timer name is used for logging purposes only.
+ * Timers are created using le_timer_Create(). The timer name is used for diagnostic purposes only.
  *
  * The following attributes of the timer can be set:
- *  - @ref le_timer_SetHandler
- *  - @ref le_timer_SetInterval
- *  - @ref le_timer_SetRepeat
- *  - @ref le_timer_SetContextPtr
+ *  - le_timer_SetHandler()
+ *  - le_timer_SetInterval() (or le_timer_SetMsInterval())
+ *  - le_timer_SetRepeat()
+ *  - le_timer_SetContextPtr()
+ *
+ * The following attributes of the timer can be retrieved:
+ *  - le_timer_GetInterval() (or le_timer_GetMsInterval())
+ *  - le_timer_GetContextPtr()
  *
  * The repeat count defaults to 1, so that the timer is initially a one-shot timer. All the other
  * attributes must be explicitly set.  At a minimum, the interval must be set before the timer can be
  * used.  Note that these attributes can only be set if the timer is not currently running; otherwise,
  * an error will be returned.
  *
- * Timers must be explicitly deleted using @ref le_timer_Delete. If the timer is currently running,
- * it'll be stopped before being deleted. If a timer uses @ref le_timer_SetContextPtr, and the
+ * Timers must be explicitly deleted using le_timer_Delete(). If the timer is currently running,
+ * it'll be stopped before being deleted. If a timer uses le_timer_SetContextPtr(), and the
  * context pointer is allocated memory, then the context pointer must be freed when deleting the timer.
  * The following function can be used for this:
  * @code
@@ -44,23 +48,26 @@
  *
  * @section timer_usage Using Timers
  *
- * A timer is started using @ref le_timer_Start. If it's already running, then it won't be
- * modified; instead an error will be returned. To restart a currently running timer, use @ref
- * le_timer_Restart.
+ * A timer is started using le_timer_Start(). If it's already running, then it won't be
+ * modified; instead an error will be returned. To restart a currently running timer, use
+ * le_timer_Restart().
  *
- * A timer is stopped using @ref le_timer_Stop.  If it's not currently running, an error
+ * A timer is stopped using le_timer_Stop().  If it's not currently running, an error
  * will be returned, and nothing more will be done.
  *
- * To determine if the timer is currently running, use @ref le_timer_IsRunning.
+ * To determine if the timer is currently running, use le_timer_IsRunning().
  *
- * When a timer expires, if the timer expiry handler is set by @ref le_timer_SetHandler, the
+ * To find out how much time is remaining before the next expiry, call either
+ * le_timer_GetTimeRemaining() or le_timer_GetMsTimeRemaining().
+ *
+ * When a timer expires, if the timer expiry handler is set by le_timer_SetHandler(), the
  * handler will be called with a reference to the expired timer. If additional data is required in the
- * handler, @ref le_timer_SetContextPtr can be used to set the appropriate context before starting the
- * timer, and @ref le_timer_GetContextPtr can be used to retrieve the context while in the handler.
+ * handler, le_timer_SetContextPtr() can be used to set the appropriate context before starting the
+ * timer, and le_timer_GetContextPtr() can be used to retrieve the context while in the handler.
  * In addition, a suspended system will also wake up by default if the timer expires. If this behaviour
- * is not desired, user can disable the wake up by passing false into @ref le_timer_SetWakeup.
+ * is not desired, user can disable the wake up by passing false into le_timer_SetWakeup().
  *
- * The number of times that a timer has expired can be retrieved by @ref le_timer_GetExpiryCount. This
+ * The number of times that a timer has expired can be retrieved by le_timer_GetExpiryCount(). This
  * count is independent of whether there is an expiry handler for the timer.
  *
  * @section le_timer_thread Thread Support
@@ -87,17 +94,22 @@
  *
  * The process will exit under any of the following conditions:
  *  - If an invalid timer object is given to:
- *     - @ref le_timer_Delete
- *     - @ref le_timer_SetHandler
- *     - @ref le_timer_SetInterval
- *     - @ref le_timer_SetRepeat
- *     - @ref le_timer_Start
- *     - @ref le_timer_Stop
- *     - @ref le_timer_Restart
- *     - @ref le_timer_SetContextPtr
- *     - @ref le_timer_GetContextPtr
- *     - @ref le_timer_GetExpiryCount
- *     - @ref le_timer_SetWakeup
+ *     - le_timer_Delete()
+ *     - le_timer_SetHandler()
+ *     - le_timer_SetInterval()
+ *     - le_timer_GetInterval()
+ *     - le_timer_SetMsInterval()
+ *     - le_timer_GetMsInterval()
+ *     - le_timer_SetRepeat()
+ *     - le_timer_Start()
+ *     - le_timer_Stop()
+ *     - le_timer_Restart()
+ *     - le_timer_SetContextPtr()
+ *     - le_timer_GetContextPtr()
+ *     - le_timer_GetExpiryCount()
+ *     - le_timer_GetTimeRemaining()
+ *     - le_timer_GetMsTimeRemaining()
+ *     - le_timer_SetWakeup()
  *
  * @section timer_troubleshooting Troubleshooting
  *
@@ -201,11 +213,13 @@ le_result_t le_timer_SetHandler
 /**
  * Set the timer interval.
  *
- * Timer will expire after the interval has elapsed.
+ * Timer will expire after the interval has elapsed since it was last started or restarted.
+ *
+ * If the timer is running when the interval is changed and the new interval is shorter than the
+ * period of time since the timer last (re)started, the timer will expire immediately.
  *
  * @return
  *      - LE_OK on success
- *      - LE_BUSY if the timer is currently running
  *
  * @note
  *      If an invalid timer object is given, the process exits.
@@ -220,13 +234,32 @@ le_result_t le_timer_SetInterval
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the timer interval.
+ *
+ * @return
+ *      The timer interval.  If it hasn't been set yet, {0, 0} will be returned.
+ *
+ * @note
+ *      If an invalid timer object is given, the process exits.
+ */
+//--------------------------------------------------------------------------------------------------
+le_clk_Time_t le_timer_GetInterval
+(
+    le_timer_Ref_t timerRef      ///< [IN] Timer object.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Set the timer interval using milliseconds.
  *
- * Timer will expire after the interval has elapsed.
+ * Timer will expire after the interval has elapsed since it was last started or restarted.
+ *
+ * If the timer is running when the interval is changed and the new interval is shorter than the
+ * period of time since the timer last (re)started, the timer will expire immediately.
  *
  * @return
  *      - LE_OK on success
- *      - LE_BUSY if the timer is currently running
  *
  * @note
  *      If an invalid timer object is given, the process exits.
@@ -236,6 +269,23 @@ le_result_t le_timer_SetMsInterval
 (
     le_timer_Ref_t timerRef,     ///< [IN] Set interval for this timer object.
     uint32_t interval            ///< [IN] Timer interval in milliseconds.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the timer interval in milliseconds.
+ *
+ * @return
+ *      The timer interval (ms).  If it hasn't been set yet, 0 will be returned.
+ *
+ * @note
+ *      If an invalid timer object is given, the process exits.
+ */
+//--------------------------------------------------------------------------------------------------
+uint32_t le_timer_GetMsInterval
+(
+    le_timer_Ref_t timerRef      ///< [IN] Timer object.
 );
 
 
@@ -336,6 +386,42 @@ void* le_timer_GetContextPtr
  */
 //--------------------------------------------------------------------------------------------------
 uint32_t le_timer_GetExpiryCount
+(
+    le_timer_Ref_t timerRef      ///< [IN] Get expiry count for this timer object
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the time remaining until the next scheduled expiry.
+ *
+ * @return
+ *      Time remaining.
+ *      {0, 0} if the timer is stopped or if it has reached its expiry time.
+ *
+ * @note
+ *      If an invalid timer object is given, the process exits.
+ */
+//--------------------------------------------------------------------------------------------------
+le_clk_Time_t le_timer_GetTimeRemaining
+(
+    le_timer_Ref_t timerRef      ///< [IN] Get expiry count for this timer object
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the time remaining (in milliseconds) until the next scheduled expiry.
+ *
+ * @return
+ *      Time remaining (in milliseconds).
+ *      0 if the timer is stopped or if it has reached its expiry time.
+ *
+ * @note
+ *      If an invalid timer object is given, the process exits.
+ */
+//--------------------------------------------------------------------------------------------------
+uint32_t le_timer_GetMsTimeRemaining
 (
     le_timer_Ref_t timerRef      ///< [IN] Get expiry count for this timer object
 );

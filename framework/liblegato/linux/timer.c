@@ -243,29 +243,18 @@ static Timer_t* PopFromTimerList
 //--------------------------------------------------------------------------------------------------
 /**
  * Remove the timer from the given timer list
- *
- * @return
- *      - LE_OK on success
- *      - LE_FAULT if the timer was not in the list
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t RemoveFromTimerList
+static void RemoveFromTimerList
 (
     le_dls_List_t* listPtr,             ///< [IN] The list to look at.
     Timer_t* timerPtr                   ///< [IN] The timer to remove
 )
 {
-    if ( ! timerPtr->isActive )
-    {
-        return LE_FAULT;
-    }
-
     // Remove the timer from the active list
     timerPtr->isActive = false;
     TimerListChangeCount++;
     le_dls_Remove(listPtr, &timerPtr->link);
-
-    return LE_OK;
 }
 
 
@@ -407,6 +396,76 @@ static void StopTimerFD
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Run a given timer, by adding it to the Timer List and restarting the Timer FD, if necessary.
+ *
+ * @warning The timer must not be currently on the Timer List.
+ */
+//--------------------------------------------------------------------------------------------------
+static void RunTimer
+(
+    Timer_t* timerPtr   ///< Timer that has its expiryTime member set, but is not on the timer list.
+)
+{
+    TRACE("Starting timer '%s'", timerPtr->name);
+
+    timer_ThreadRec_t* threadRecPtr = GetThreadTimerRec(timerPtr);
+
+    Timer_t* firstTimerPtr;
+
+    AddToTimerList(&threadRecPtr->activeTimerList, timerPtr);
+    //PrintTimerList(&threadRecPtr->activeTimerList);
+
+    // Get the first timer from the active list. This is needed to determine whether the timerFD
+    // needs to be restarted, in case the new timer was put at the beginning of the list.
+    firstTimerPtr = PeekFromTimerList(&threadRecPtr->activeTimerList);
+
+    // If the timerFD is not running, or it is running a timer that is no longer at the beginning
+    // of the active list, then (re)start the timerFD.
+    if ( threadRecPtr->firstTimerPtr != firstTimerPtr )
+    {
+        RestartTimerFD(firstTimerPtr);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop a given timer.
+ *
+ * @warning The timer must be running.
+ */
+//--------------------------------------------------------------------------------------------------
+static void StopTimer
+(
+    Timer_t* timerPtr
+)
+{
+    timer_ThreadRec_t* threadRecPtr = GetThreadTimerRec(timerPtr);
+
+    RemoveFromTimerList(&threadRecPtr->activeTimerList, timerPtr);
+
+    // If the timer was at the start of the active list, then restart the timerFD using the next
+    // timer on the active list, if any.  Otherwise, stop the timerFD.
+    if (timerPtr == threadRecPtr->firstTimerPtr)
+    {
+        TRACE("Stopping the first active timer");
+        threadRecPtr->firstTimerPtr = NULL;
+
+        Timer_t* firstTimerPtr = PeekFromTimerList(&threadRecPtr->activeTimerList);
+        if (firstTimerPtr != NULL)
+        {
+            RestartTimerFD(firstTimerPtr);
+        }
+        else
+        {
+            StopTimerFD(threadRecPtr);
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Process a single expired timer
  */
 //--------------------------------------------------------------------------------------------------
@@ -479,7 +538,7 @@ static void TimerFdHandler
     {
         if ( errno == EAGAIN )
         {
-            LE_INFO("Stale timer expired");
+            TRACE("Stale timer expired");
             return;
         }
         else
@@ -788,11 +847,13 @@ le_result_t le_timer_SetHandler
 /**
  * Set the timer interval
  *
- * The timer will expire after the interval has elapsed.
+ * Timer will expire after the interval has elapsed since it was last started or restarted.
+ *
+ * If the timer is running when the interval is changed and the new interval is shorter than the
+ * period of time since the timer last (re)started, the timer will expire immediately.
  *
  * @return
  *      - LE_OK on success
- *      - LE_BUSY if the timer is currently running
  *
  * @note
  *      If an invalid timer object is given, the process exits
@@ -807,12 +868,28 @@ le_result_t le_timer_SetInterval
     Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
     LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
-    if ( timerPtr->isActive )
+    if ( le_clk_Equal(timerPtr->interval, interval))
     {
-        return LE_BUSY;
+        return LE_OK;
     }
 
-    timerPtr->interval = interval;
+    if ( timerPtr->isActive )
+    {
+        // Compute when it should expire with the new interval, as if it was started with this
+        // interval.
+        le_clk_Time_t expiryTime = le_clk_Add(le_clk_Sub(timerPtr->expiryTime, timerPtr->interval),
+                                              interval);
+
+        // Stop it, update its interval and expiry time, and start it running again.
+        StopTimer(timerPtr);
+        timerPtr->interval = interval;
+        timerPtr->expiryTime = expiryTime;
+        RunTimer(timerPtr);
+    }
+    else
+    {
+        timerPtr->interval = interval;
+    }
 
     return LE_OK;
 }
@@ -820,13 +897,39 @@ le_result_t le_timer_SetInterval
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the timer interval.
+ *
+ * @return
+ *      The timer interval.  If it hasn't been set yet, (le_clk_Time_t){0, 0} will be returned.
+ *
+ * @note
+ *      If an invalid timer object is given, the process exits.
+ */
+//--------------------------------------------------------------------------------------------------
+le_clk_Time_t le_timer_GetInterval
+(
+    le_timer_Ref_t timerRef      ///< [IN] Timer object.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
+
+    return (timerPtr->interval);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Set the timer interval using milliseconds.
  *
- * Timer will expire after the interval has elapsed.
+ * Timer will expire after the interval has elapsed since it was last started or restarted.
+ *
+ * If the timer is running when the interval is changed and the new interval is shorter than the
+ * period of time since the timer last (re)started, the timer will expire immediately.
  *
  * @return
  *      - LE_OK on success
- *      - LE_BUSY if the timer is currently running
  *
  * @note
  *      If an invalid timer object is given, the process exits.
@@ -838,19 +941,36 @@ le_result_t le_timer_SetMsInterval
     uint32_t interval            ///< [IN] Timer interval in milliseconds.
 )
 {
+    time_t seconds = interval / 1000;
+    le_clk_Time_t timeStruct;
+    timeStruct.sec = seconds;
+    timeStruct.usec = (interval - (seconds * 1000)) * 1000;
+
+    return le_timer_SetInterval(timerRef, timeStruct);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the timer interval in milliseconds.
+ *
+ * @return
+ *      The timer interval (ms).  If it hasn't been set yet, 0 will be returned.
+ *
+ * @note
+ *      If an invalid timer object is given, the process exits.
+ */
+//--------------------------------------------------------------------------------------------------
+uint32_t le_timer_GetMsInterval
+(
+    le_timer_Ref_t timerRef      ///< [IN] Timer object.
+)
+//--------------------------------------------------------------------------------------------------
+{
     Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
     LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
-    if ( timerPtr->isActive )
-    {
-        return LE_BUSY;
-    }
-
-    time_t seconds = interval / 1000;
-    timerPtr->interval.sec = seconds;
-    timerPtr->interval.usec = (interval - (seconds * 1000)) * 1000;
-
-    return LE_OK;
+    return ((timerPtr->interval.sec * 1000) + (timerPtr->interval.usec / 1000));
 }
 
 
@@ -1009,6 +1129,74 @@ uint32_t le_timer_GetExpiryCount
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the time remaining until the next scheduled expiry.
+ *
+ * @return
+ *      Time remaining (in milliseconds).
+ *      (le_clk_Time_t){0, 0} if the timer is stopped or if it has reached its expiry time.
+ *
+ * @note
+ *      If an invalid timer object is given, the process exits.
+ */
+//--------------------------------------------------------------------------------------------------
+le_clk_Time_t le_timer_GetTimeRemaining
+(
+    le_timer_Ref_t timerRef      ///< [IN] Get expiry count for this timer object
+)
+//--------------------------------------------------------------------------------------------------
+{
+    Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
+
+    // If the timer is not running, return 0.
+    if (timerPtr->isActive == false)
+    {
+        return (le_clk_Time_t){0, 0};
+    }
+
+    // Compute the time remaining by subtracting the current time from the expiry time.
+    le_clk_Time_t timeRemaining = le_clk_Sub(timerPtr->expiryTime,
+                                             clk_GetRelativeTime(timerPtr->isWakeupEnabled));
+
+    // If the time remaining is negative, it means this timer has expired and is waiting to
+    // have that expiry processed.
+    if (timeRemaining.sec < 0)
+    {
+        return (le_clk_Time_t){0, 0};
+    }
+
+    return timeRemaining;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the time remaining (in milliseconds) until the next scheduled expiry.
+ *
+ * @return
+ *      Time remaining (in milliseconds).
+ *      0 if the timer is stopped or if it has reached its expiry time.
+ *
+ * @note
+ *      If an invalid timer object is given, the process exits.
+ */
+//--------------------------------------------------------------------------------------------------
+uint32_t le_timer_GetMsTimeRemaining
+(
+    le_timer_Ref_t timerRef      ///< [IN] Get expiry count for this timer object
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Get the time remaining in the form of an le_clk_Time_t.
+    le_clk_Time_t timeRemaining = le_timer_GetTimeRemaining(timerRef);
+
+    // Convert to ms and return the result.
+    return ((timeRemaining.sec * 1000) + (timeRemaining.usec / 1000));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Start the timer
  *
  * Start the given timer. The timer must not be currently running.
@@ -1040,12 +1228,7 @@ le_result_t le_timer_Start
 
     timer_ThreadRec_t* threadRecPtr = GetThreadTimerRec(timerPtr);
 
-    Timer_t* firstTimerPtr;
-
-    // todo: verify that the minimum number of fields have been appropriately initialized
-
     // If the current thread does not already have a timerFD, then create a new one.
-    // todo: should we do this when the timer is first created, instead of here?
     if ( IS_TRACE_ENABLED )
     {
         LE_PRINT_VALUE("%i", threadRecPtr->timerFD);
@@ -1069,8 +1252,10 @@ le_result_t le_timer_Start
         }
 
         if (0 > threadRecPtr->timerFD)
+        {
             // Should have succeeded if checks in timer_Init() passed.
             LE_FATAL("timerfd_create() failed with errno = %d (%m)", errno);
+        }
 
         LE_PRINT_VALUE("%i", threadRecPtr->timerFD);
         threadRecPtr->firstTimerPtr = NULL;
@@ -1085,19 +1270,7 @@ le_result_t le_timer_Start
     timerPtr->expiryCount = 0;
     timerPtr->expiryTime = le_clk_Add(clk_GetRelativeTime(timerPtr->isWakeupEnabled),
                                       timerPtr->interval);
-    AddToTimerList(&threadRecPtr->activeTimerList, timerPtr);
-    //PrintTimerList(&threadRecPtr->activeTimerList);
-
-    // Get the first timer from the active list. This is needed to determine whether the timerFD
-    // needs to be restarted, in case the new timer was put at the beginning of the list.
-    firstTimerPtr = PeekFromTimerList(&threadRecPtr->activeTimerList);
-    LE_FATAL_IF(NULL == firstTimerPtr, "Invalid firstTimerPtr reference %p.", firstTimerPtr);
-    // If the timerFD is not running, or it is running a timer that is no longer at the beginning
-    // of the active list, then (re)start the timerFD.
-    if ( threadRecPtr->firstTimerPtr != firstTimerPtr )
-    {
-        RestartTimerFD(firstTimerPtr);
-    }
+    RunTimer(timerPtr);
 
     return LE_OK;
 }
@@ -1131,35 +1304,9 @@ le_result_t le_timer_Stop
     }
 
     // Timer is valid and active; proceed with stopping it.
-    le_result_t result;
-    Timer_t* firstTimerPtr;
+    StopTimer(timerPtr);
 
-    timer_ThreadRec_t* threadRecPtr = GetThreadTimerRec(timerPtr);
-
-    result = RemoveFromTimerList(&threadRecPtr->activeTimerList, timerPtr);
-    if (result == LE_OK)
-    {
-        // If the timer was at the start of the active list, then restart the timerFD using the next
-        // timer on the active list, if any.  Otherwise, stop the timerFD.
-        if (timerPtr == threadRecPtr->firstTimerPtr)
-        {
-            TRACE("Stopping the first active timer");
-            threadRecPtr->firstTimerPtr = NULL;
-
-            firstTimerPtr = PeekFromTimerList(&threadRecPtr->activeTimerList);
-            if (firstTimerPtr != NULL)
-            {
-                RestartTimerFD(firstTimerPtr);
-            }
-            else
-            {
-                StopTimerFD(threadRecPtr);
-
-            }
-        }
-    }
-
-    return result;
+    return LE_OK;
 }
 
 
@@ -1186,7 +1333,7 @@ void le_timer_Restart
     (void)le_timer_Stop(timerRef);
 
     // We should not receive any error that the timer is currently running
-    le_timer_Start(timerRef);
+    (void)le_timer_Start(timerRef);
 }
 
 
