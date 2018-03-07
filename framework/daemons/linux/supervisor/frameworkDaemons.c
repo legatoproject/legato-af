@@ -158,6 +158,50 @@ static void LoadIpcBindingConfig
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Handler for SIGCHLD while framework daemons are starting up. If one exits or traps, that means
+ * that the Legato system is unworkable. Exit from supervisor to trigger a reboot.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SigChldStartingHandler
+(
+    int sigNum,
+    siginfo_t *sigInfoPtr,
+    void *dummyPtr
+)
+{
+    // Parameter is not used.
+    (void)dummyPtr;
+    if (SIGCHLD != sigNum)
+    {
+        return;
+    }
+
+    int i;
+    // Loop on all framework system processes. If one has exited or was killed, the Legato system
+    // is not workable. Exiting with LE_FATAL() will trigger a reboot from startSystem process
+    // after some reboots, trigger a roll-back or a swap (dual-systems).
+    for (i = 0; i < NUM_ARRAY_MEMBERS(FrameworkDaemons); i++)
+    {
+        if ((-1 != FrameworkDaemons[i].pid) && (sigInfoPtr->si_pid == FrameworkDaemons[i].pid))
+        {
+            LE_CRIT("System process '%s' raising SIGCHLD", FrameworkDaemons[i].path);
+            if (CLD_EXITED == sigInfoPtr->si_code)
+            {
+                LE_CRIT("System process has exited with status %d", (sigInfoPtr->si_status));
+            }
+            else
+            {
+                LE_CRIT("System process has been terminated with si_code: %d",
+                        sigInfoPtr->si_code);
+            }
+            LE_FATAL("**** SYSTEM IS UNWORKABLE ****");
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Start a framework daemon.
  */
 //--------------------------------------------------------------------------------------------------
@@ -167,9 +211,6 @@ static void StartDaemon
 )
 {
     const char* daemonNamePtr = le_path_GetBasenamePtr(daemonPtr->path, "/");
-
-    // Kill all other instances of this process just in case.
-    kill_ByName(daemonNamePtr);
 
     // Create a synchronization pipe.
     int syncPipeFd[2];
@@ -233,7 +274,7 @@ static void StartDaemon
     {
         numBytesRead = read(syncPipeFd[0], &dummyBuf, 1);
     }
-    while ( ((numBytesRead == -1)  && (errno == EINTR)) || (numBytesRead != 0) );
+    while ( ((numBytesRead == -1) && (errno == EINTR)) || (numBytesRead != 0) );
 
     LE_FATAL_IF(numBytesRead == -1, "Could not read synchronization pipe.  %m.");
 
@@ -257,10 +298,35 @@ void fwDaemons_Start
     int i;
     for (i = 0; i < NUM_ARRAY_MEMBERS(FrameworkDaemons); i++)
     {
+        char* daemonNamePtr = le_path_GetBasenamePtr(FrameworkDaemons[i].path, "/");
+        // Kill all other instances of this process just in case.
+        kill_ByName(daemonNamePtr);
+    }
+
+    int rc;
+    struct sigaction sa, so;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_NOCLDWAIT | SA_SIGINFO | SA_NODEFER;
+    sa.sa_sigaction = SigChldStartingHandler;
+    rc = sigaction(SIGCHLD, &sa, &so);
+    if (rc)
+    {
+        LE_FATAL("Unable to install SIGCHLD handler: %m");
+    }
+
+    for (i = 0; i < NUM_ARRAY_MEMBERS(FrameworkDaemons); i++)
+    {
         StartDaemon(&(FrameworkDaemons[i]));
     }
 
     LE_INFO("All framework daemons ready.");
+
+    // Restore old SIGCHLD handler
+    rc = sigaction(SIGCHLD, &so, NULL);
+    if (rc)
+    {
+        LE_FATAL("Unable to restore SIGCHLD handler: %m");
+    }
 
     // Load the current IPC binding configuration into the Service Directory.
     LoadIpcBindingConfig();

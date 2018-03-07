@@ -1573,7 +1573,8 @@ static void UpdateUsersAndGroups
                 }
                 else
                 {
-                    LE_FATAL("Failed to create user '%s' (%s)", userName, LE_RESULT_TXT(result));
+                    LE_CRIT("Failed to create user '%s' (%s)", userName, LE_RESULT_TXT(result));
+                    LE_FATAL("Legato installation failure. System is unworkable");
                 }
 
                 // We don't need to go into this directory.

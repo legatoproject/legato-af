@@ -952,7 +952,6 @@ COMPONENT_INIT
     ParseCommandLine();
 
     // Block Signals that we are going to use.
-    le_sig_Block(SIGCHLD);
     le_sig_Block(SIGPIPE);
 
     // Set our nice level.
@@ -1042,6 +1041,8 @@ COMPONENT_INIT
     }
 
     StartFramework();
+
+    le_sig_Block(SIGCHLD);
 
     // All the framework daemons are active now. Now set the reboot expiry timer if it is not a
     // RO system.
