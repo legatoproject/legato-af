@@ -1,22 +1,28 @@
 /** @page basicTargetDevMode Developer Mode
 
-Developer Mode is provided as a pre-built core app (but not installed by default) created to bundle
-tools and features for developers that are not meant to be put on production targets.
+Developer Mode is provided as a pre-built core app (but is not installed by default).  It is created
+to install tools and features for use by developers that should be removed before the target is
+deployed into production.
 
-@c devMode provides the following features:
-  - bundles @ref howToDebugGDB "gdbserver" executable for use on the target device, allowing
-    step-by-step debugging of Legato apps.
-  - sets the probation period of apps to 10 seconds, to prevent aggressive roll-back.
-  - runs the tcf-agent, so the target is auto discoverable by Developer Studio.
-  - holds a wake lock, so the target won't go to sleep when disconnected from USB.
-  - removes the boot count file on startup to disable the boot loop detection feature of Legato.
+@c devMode provides the following features:<br>
+- installs @ref howToDebugGDB "gdbserver" executable for use on the target device, allowing
+  step-by-step debugging of Legato apps.
+- installs strace for use on the target device, allowing tracing of kernel calls.
+- sets the probation period of apps to 10 seconds, to prevent aggressive roll-back.
+- holds a wake lock, so the target won't go to sleep when disconnected from USB.
+- removes the boot count file on startup to disable the boot loop detection feature of Legato.
+
+@c devMode also provides specific tools for Developer Studio support:
+- tcf-agent, making the target is able to be auto-discoverable by Developer Studio.
+- enables SFTP for use over SSH, facilitating file transfers from Developer Studio to the target
+  (SFTP can also be used as an alternative for scp through the CLI).
 
 @warning Before deploying your system image or target in a production environment devMode must be
 uninstalled. devMode installs gdbserver which is licensed with
 [GPLv3](https://www.gnu.org/licenses/gpl-3.0.en.html), uninstalling devMode removes all GPLv3
 software from your target.
 
-@section howToDevMode_installDev Installing Developer Mode
+@section howToDevMode_installDev Install Developer Mode
 
 @c devMode is a core app that is built during the @c make @c <target> process but it is not included
 by default in the @c system.sdef.
@@ -28,7 +34,7 @@ $ make wp85
 $ app install $LEGATO_ROOT/build/wp85/tools/devMode.wp85.update 192.168.2.2
 @endverbatim
 
-@section devMode_enableDev Enabling Developer Mode
+@section devMode_enableDev Enable Developer Mode
 
 To start @c devMode on your target (if it's disabled):
 
@@ -60,13 +66,13 @@ processes:
     {
 @endverbatim
 
-@section DevMode_disableDev Disabling Developer Mode
+@section DevMode_disableDev Disable Developer Mode
 
 To temporarily stop devMode:
 
 @verbatim app stop devMode @endverbatim
 
-@section devMode_removeDev Removing Developer Mode
+@section devMode_removeDev Remove Developer Mode
 
 To remove devMode from your target:
 
