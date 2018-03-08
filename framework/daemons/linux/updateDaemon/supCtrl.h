@@ -47,4 +47,17 @@ void supCtrl_RestartLegato
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Import the IMA public certificate
+ *
+ * @return LE_OK if the certificate was imported, otherwise, LE_FAULT.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t supCtrl_ImportImaCert
+(
+    const char* certPath  ///< [IN] Path to IMA public certificate
+);
+
+
 #endif // __UPDATE_DAEMON_SUP_CTRL_H_INCLUDE_GUARD

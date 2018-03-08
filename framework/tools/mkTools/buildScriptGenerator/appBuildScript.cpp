@@ -138,6 +138,21 @@ void AppBuildScriptGenerator_t::GenerateAppBuildRules
             // signing shouldn't change the app version.
             "            cp " << buildParams.pubCert <<
                         " $workingDir/staging.signed/ima_pub.cert  && $\n"
+            // Recompute the MD5 checksum of the staging area.
+            // Don't follow symlinks (-P), and include the directory structure and the contents
+            // of symlinks as part of the MD5 hash.
+            "            md5signed=$$( ( cd $workingDir/staging.signed && $\n"
+            "                      find -P -print0 |LC_ALL=C sort -z && $\n"
+            "                      find -P -type f -print0 |LC_ALL=C sort -z |xargs -0 md5sum && $\n"
+            "                      find -P -type l -print0 |LC_ALL=C sort -z"
+                                 " |xargs -0 -r -n 1 readlink $\n"
+            "                    ) | md5sum) && $\n"
+            "            md5signed=$${md5signed%% *} && $\n"
+            // Get the app's MD5 hash from its info.properties file and replace with signed one.
+            "            md5=`grep '^app.md5=' $workingDir/staging.signed/info.properties"
+                        " | sed 's/^app.md5=//'` && $\n"
+            "            sed -i \"s/$$md5/$$md5signed/g\" "
+                                                "$workingDir/staging.signed/info.properties && $\n"
             // Change all file time stamp to generate reproducible build. Can't use gnu tar --mtime
             // option as it is not available in other tar (e.g bsdtar)
             "            mtime=`stat -c %Y $adefPath` && $\n"
@@ -147,15 +162,12 @@ void AppBuildScriptGenerator_t::GenerateAppBuildRules
                         "-t $workingDir/$name.$target.signed -p " << buildParams.privKey <<" && $\n"
             // Get the size of the tarball.
             "            tarballSize=`stat -c '%s' $workingDir/$name.$target.signed` && $\n"
-            // Get the app's MD5 hash from its info.properties file.
-            "            md5=`grep '^app.md5=' $workingDir/staging.signed/info.properties"
-                        " | sed 's/^app.md5=//'` && $\n"
             // Generate a JSON header and concatenate the tarball to it to create the update pack.
             "            ( printf '{\\n' && $\n"
             "              printf '\"command\":\"updateApp\",\\n' && $\n"
             "              printf '\"name\":\"$name\",\\n' && $\n"
             "              printf '\"version\":\"$version\",\\n' && $\n"
-            "              printf '\"md5\":\"%s\",\\n' \"$$md5\" && $\n"
+            "              printf '\"md5\":\"%s\",\\n' \"$$md5signed\" && $\n"
             "              printf '\"size\":%s\\n' \"$$tarballSize\" && $\n"
             "              printf '}' && $\n"
             "              cat $workingDir/$name.$target.signed $\n"

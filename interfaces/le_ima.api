@@ -1,0 +1,70 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_ima IMA Key Management API
+ *
+ * @ref le_ima_interface.h "API Reference"
+ *
+ * To run a signed executable in IMA-enabled linux, public part of the signing key (i.e. public
+ * certificate) must be imported in linux keyring. For security reason, no other apps or framework
+ * daemons except startSystem and supervisor has the privilege to import public certificate. This
+ * API provides a way to request supervisor to do this.
+ *
+ * @warning This API should only be made available to privileged users (e.g. framework daemons,
+ *          platformServices) as it allows to import certificate in linux keyring. Importing public
+ *          certificate will allow to run the executable-files (signed by private key) in
+ *          IMA-enabled linux.
+ *
+ * Example of importing certificate in keyring
+ * @code
+ *
+ * #define CERT_PATH "/legato/system/current/ima_pub.cert"
+ *
+ * void ImportPubCert(void)
+ * {
+ *     le_result_t result = le_ima_ImportCert(CERT_PATH);
+ *
+ *     if (LE_OK != result)
+ *     {
+ *         LE_DEBUG("Imported certificate '%s'", CERT_PATH);
+ *     }
+ *     else
+ *     {
+ *         LE_ERROR("Failed to imported certificate '%s'", CERT_PATH);
+ *     }
+ * }
+ * @endcode
+ *
+ * @section legatoSupervisorIma_binding Binding
+ *
+ * You can use a definition @c .adef file to bind your client-side app and component to the
+ * server-side IMA key management service.
+ *
+ * This code sample shows how to bind an app to this service:
+ * @code
+ * bindings
+ * {
+ *     myExe.myComp.le_ima -> <root>.le_ima
+ * }
+ * @endcode
+ *
+ * See @ref defFilesAdef for details on binding APIs to an app.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+USETYPES le_limit.api;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Import a public certificate in linux keyring.
+ *
+ * @return
+ *     - LE_OK if successful
+ *     - LE_FAULT if there is a failure.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ImportCert
+(
+    string certPath[le_limit.MAX_PATH_LEN] IN ///< Path to the certificate to import.
+);

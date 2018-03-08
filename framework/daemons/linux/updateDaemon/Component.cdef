@@ -16,6 +16,7 @@ requires:
     {
         le_cfg.api
         le_cfgAdmin.api
+        le_ima.api [manual-start]
         le_fwupdate.api  [manual-start]
         le_appCtrl.api [manual-start]
         le_framework.api [manual-start]

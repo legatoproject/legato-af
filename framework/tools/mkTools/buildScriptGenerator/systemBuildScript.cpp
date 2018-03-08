@@ -196,6 +196,52 @@ void SystemBuildScriptGenerator_t::GenerateSystemBuildRules
         "  command = rm -rf $stagingDir.signed ; mkdir $stagingDir.signed && "
                     "cp -r $stagingDir/* $stagingDir.signed/ && $\n"
         "            cp " << buildParams.pubCert << " $stagingDir.signed/ima_pub.cert  && $\n"
+        // Remove the contents inside apps directory as we need to recreate the symlinks again
+        "            rm $stagingDir.signed/apps/*  && $\n";
+        // Create symlinks inside the system's "apps" directory that point to the apps actual
+        // install location on target (under /legato/apps/).
+        for (auto& mapEntry : systemPtr->apps)
+        {
+            auto appPtr = mapEntry.second;
+            std::string appInfoFile = "$builddir/app/" + appPtr->name +
+                                       "/staging.signed/info.properties";
+            std::string symLink = "$stagingDir.signed/apps/" + appPtr->name;
+
+            // If the app is "preloaded" on the target and its MD5 is specified in the .sdef file,
+            // then "hard code" the specified MD5 into the build script.
+            // Otherwise, extract the app's MD5 hash from the info.properties file.
+            if (appPtr->isPreloaded && !appPtr->preloadedMd5.empty())
+            {
+                script <<
+                "            md5=" << appPtr->preloadedMd5 << " && $\n";
+            }
+            else
+            {
+                script <<
+                "            md5=`grep '^app.md5=' " << appInfoFile
+                             << " | sed 's/^app.md5=//'` && $\n";
+            }
+
+            // Add a symlink to /legato/apps/$HASH from staging/system/apps/appName.
+            script <<
+            "            ln -sf /legato/apps/$$md5 " << symLink << " && $\n";
+        }
+
+        script <<
+        // Recompute the MD5 checksum of the staging area.
+        // Don't follow symlinks (-P), and include the directory structure and the contents
+        // of symlinks as part of the MD5 hash.
+        "            md5signed=$$( ( cd $stagingDir.signed && $\n"
+        "                      find -P -print0 |LC_ALL=C sort -z && $\n"
+        "                      find -P -type f -print0 |LC_ALL=C sort -z |xargs -0 md5sum && $\n"
+        "                      find -P -type l -print0 |LC_ALL=C sort -z "
+                               "|xargs -0 -r -n 1 readlink $\n"
+        "                    ) | md5sum) && $\n"
+        "            md5signed=$${md5signed%% *} && $\n"
+        // Get the systems's MD5 hash from its info.properties file and replace with signed one
+        "            md5=`grep '^system.md5=' $stagingDir.signed/info.properties | "
+                                                          "sed 's/^system.md5=//'` && $\n"
+        "            sed -i \"s/$$md5/$$md5signed/g\" $stagingDir.signed/info.properties && $\n"
         // Change all file time stamp to generate reproducible build. Can't use gnu tar --mtime
         // option as it is not available in other tar (e.g bsdtar)
         "            mtime=`stat -c %Y " << systemPtr->defFilePtr->path <<"` && $\n"
@@ -209,15 +255,11 @@ void SystemBuildScriptGenerator_t::GenerateSystemBuildRules
         // Get the size of the tarball.
         "            tarballSize=`stat -c '%s' $builddir/" << systemPtr->name
         << ".signed.$target` && $\n"
-
-        // Get the app's MD5 hash from its info.properties file.
-        "            md5=`grep '^system.md5=' $stagingDir.signed/info.properties | "
-                                                          "sed 's/^system.md5=//'` && $\n"
         // Generate a JSON header and concatenate the tarball and all the app update packs to it
         // to create the system update pack.
         "            ( printf '{\\n' && $\n"
         "              printf '\"command\":\"updateSystem\",\\n' && $\n"
-        "              printf '\"md5\":\"%s\",\\n' \"$$md5\" && $\n"
+        "              printf '\"md5\":\"%s\",\\n' \"$$md5signed\" && $\n"
         "              printf '\"size\":%s\\n' \"$$tarballSize\" && $\n"
         "              printf '}' && $\n"
         "              cat $builddir/" << systemPtr->name << ".signed.$target && $\n"
@@ -309,8 +351,7 @@ void SystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
 
     if (buildParams.signPkg)
     {
-        // Now create the signed system package. This must be build after unsigned system package
-        // is built.
+        // Now create the signed system package.
         auto outputFileSigned = path::MakeAbsolute(path::Combine(buildParams.outputDir,
                                                                  systemPtr->name +
                                                                  ".$target.signed.update"));

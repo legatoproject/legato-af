@@ -218,6 +218,7 @@
 #include "start.h"
 #include "sysPaths.h"
 #include "sysStatus.h"
+#include "ima.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -446,6 +447,7 @@ static void StartFramework
     supervisorWdog_AdvertiseService();
     le_appInfo_AdvertiseService();
     le_appProc_AdvertiseService();
+    le_ima_AdvertiseService();
 
     // Initialize the apps sub system.
     apps_Init();
@@ -626,6 +628,7 @@ static void PrepareFullShutdown
     le_msg_HideService(supervisorWdog_GetServiceRef());
     le_msg_HideService(le_appInfo_GetServiceRef());
     le_msg_HideService(le_appProc_GetServiceRef());
+    le_msg_HideService(le_ima_GetServiceRef());
 }
 
 
@@ -859,6 +862,28 @@ void le_framework_Restart
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Import a public certificate in linux keyring.
+ *
+ * @return
+ *     - LE_OK if successful
+ *     - LE_FAULT if there is a failure.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ima_ImportCert
+(
+    const char* certPath
+)
+{
+    if ((NULL == certPath) || (0 == strcmp(certPath, "")))
+    {
+        LE_KILL_CLIENT("Certificate path cannot be empty.");
+        return LE_FAULT;
+    }
+
+    return ima_ImportPublicCert(certPath);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

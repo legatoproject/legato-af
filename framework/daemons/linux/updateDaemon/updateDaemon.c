@@ -51,6 +51,8 @@
 #include "installer.h"
 #include "properties.h"
 #include "fsSys.h"
+#include "ima.h"
+#include "file.h"
 
 // Default probation period.
 #ifndef PROBATION_PERIOD
@@ -656,6 +658,181 @@ static le_result_t SetupSystemAppsWritable
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Recursively traverse the directory and verify each file IMA signature against the public
+ * certificate.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if no app unpack directory exists
+ *      - LE_FAULT otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t  VerifyAppUnpackDir
+(
+    void
+)
+{
+    char path[LIMIT_MAX_PATH_BYTES] = "";
+    snprintf(path, sizeof(path), "%s/%s", app_UnpackPath, PUB_CERT_NAME);
+
+    if (!le_dir_IsDir(app_UnpackPath))
+    {
+        // No unpack directory exists, this means we tried to install the same app again.
+        LE_INFO("'%s' does not exists", app_UnpackPath);
+        return LE_NOT_FOUND;
+    }
+
+    if (!file_Exists(path))
+    {
+        LE_CRIT("Bad public certificate path '%s'", path);
+        return LE_FAULT;
+    }
+
+    if (LE_OK != supCtrl_ImportImaCert(path))
+    {
+        LE_CRIT("Failed to import public certificate '%s'", path);
+        return LE_FAULT;
+    }
+
+    return ima_VerifyDir(app_UnpackPath, path);
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Recursively traverse the directory and verify each file IMA signature against the public
+ * certificate.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t  VerifyUnpackedSystem
+(
+    void
+)
+{
+    char path[LIMIT_MAX_PATH_BYTES] = "";
+    snprintf(path, sizeof(path), "%s/%s", system_UnpackPath, PUB_CERT_NAME);
+
+    if (!file_Exists(path))
+    {
+        LE_CRIT("Bad public certificate path '%s'", path);
+        return LE_FAULT;
+    }
+
+    // UpdateDaemon doesn't have privilege to import certificate to linux keyring. Ask supervisor
+    // to import certificate in keyring.
+    LE_DEBUG("Import certificate '%s'", path);
+    le_result_t result = supCtrl_ImportImaCert(path);
+
+    if (LE_OK != result)
+    {
+        LE_CRIT("Failed to import public certificate '%s'", path);
+        return LE_FAULT;
+    }
+
+    LE_DEBUG("Verify dir: '%s' with certificate '%s'", system_UnpackPath, path);
+    result = ima_VerifyDir(system_UnpackPath, path);
+
+    if (LE_OK != result)
+    {
+        LE_CRIT("Failed to verify files  '%s' directory", system_UnpackPath);
+        return LE_FAULT;
+    }
+
+    // Now traverse the system app unpack directory and verify each app files
+    char* pathArrayPtr[] = {(char *)app_UnpackPath,
+                                NULL};
+
+    // Open the directory tree to traverse.
+    FTS* ftsPtr = fts_open(pathArrayPtr,
+                           FTS_PHYSICAL,
+                           NULL);
+
+    if (NULL == ftsPtr)
+    {
+        LE_ERROR("Could not access dir '%s'.  %m.", pathArrayPtr[0]);
+        return LE_FAULT;
+    }
+
+    // Traverse through the directory tree.
+    FTSENT* entPtr;
+    char appPubCertPath[LIMIT_MAX_PATH_BYTES] = "";
+
+    while (NULL != (entPtr = fts_read(ftsPtr)))
+    {
+        LE_DEBUG("Filename: %s, filePath: %s, rootPath: %s, fts_info: %d", entPtr->fts_name,
+                                entPtr->fts_accpath,
+                                entPtr->fts_path,
+                                entPtr->fts_info);
+        switch (entPtr->fts_info)
+        {
+            case FTS_D:
+                if (1 == entPtr->fts_level)
+                {
+                    snprintf(appPubCertPath,
+                             sizeof(appPubCertPath),
+                             "%s/%s",
+                             entPtr->fts_path, PUB_CERT_NAME );
+
+                    if (file_Exists(appPubCertPath))
+                    {
+                        result = supCtrl_ImportImaCert(appPubCertPath);
+
+                        if (LE_OK != result)
+                        {
+                            LE_CRIT("Failed to import public certificate '%s'", appPubCertPath);
+                            fts_close(ftsPtr);
+                            return LE_FAULT;
+                        }
+                    }
+                    else
+                    {
+                        memset(appPubCertPath, 0, sizeof(appPubCertPath));
+                    }
+                }
+                break;
+
+            case FTS_SL:
+            case FTS_SLNONE:
+                break;
+
+            case FTS_F:
+                // As directories are visiting preorder, verifying files using last received
+                // certificate should be ok.
+                if (file_Exists(appPubCertPath))
+                {
+                    result = ima_VerifyFile(entPtr->fts_accpath, appPubCertPath);
+                }
+                else
+                {
+                    result = ima_VerifyFile(entPtr->fts_accpath, path);
+                }
+
+                if (LE_OK != result)
+                {
+                    LE_CRIT("Failed to verify file '%s' with public certificate '%s'",
+                            entPtr->fts_accpath,
+                            file_Exists(appPubCertPath) ? appPubCertPath : path);
+                    fts_close(ftsPtr);
+                    return LE_FAULT;
+                }
+                break;
+        }
+
+    }
+
+    fts_close(ftsPtr);
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Apply a system update.
  **/
 //--------------------------------------------------------------------------------------------------
@@ -665,19 +842,29 @@ static void ApplySystemUpdate
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (InstallSystemApps() != LE_OK)
+    if (ima_IsEnabled())
+    {
+        if (LE_OK != VerifyUnpackedSystem())
+        {
+            LE_CRIT("Failed to unpacked system");
+            UpdateFailed(LE_UPDATE_ERR_INTERNAL_ERROR);
+            return;
+        }
+    }
+
+    if (LE_OK != InstallSystemApps())
     {
         UpdateFailed(LE_UPDATE_ERR_INTERNAL_ERROR);
         return;
     }
 
-    if (SetupSystemAppsWritable() != LE_OK)
+    if (LE_OK != SetupSystemAppsWritable())
     {
         UpdateFailed(LE_UPDATE_ERR_INTERNAL_ERROR);
         return;
     }
 
-    if (system_FinishUpdate() == LE_OK)
+    if (LE_OK == system_FinishUpdate())
     {
         ReportUpdateDone();
         // Just ask the Supervisor to restart Legato.
@@ -704,18 +891,32 @@ static void ApplyAppUpdate
 {
     const char* appName = updateUnpack_GetAppName();
     const char* md5 = updateUnpack_GetAppMd5();
+    le_result_t result = LE_OK;
+
+    if (ima_IsEnabled())
+    {
+        result = VerifyAppUnpackDir();
+
+        if (LE_FAULT == result)
+        {
+            LE_CRIT("Failed to install app '%s<%s>'.", appName, md5);
+            UpdateFailed(LE_UPDATE_ERR_INTERNAL_ERROR);
+            return;
+        }
+
+    }
 
     // Install the app in the current running system.
-    le_result_t result = app_InstallIndividual(md5, appName);
+    result = app_InstallIndividual(md5, appName);
 
-    if (result == LE_OK)
+    if (LE_OK == result)
     {
        LE_INFO("App '%s<%s>' installed properly.", appName, md5);
        ReportUpdateDone();
        // App is installed, now start probation
        StartProbation();
     }
-    else if (result == LE_DUPLICATE)
+    else if (LE_DUPLICATE == result)
     {
         LE_INFO("App '%s<%s>' already installed. Discarded app installation.", appName, md5);
         ReportUpdateDone();

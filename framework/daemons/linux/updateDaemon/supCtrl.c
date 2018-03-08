@@ -14,6 +14,7 @@
 // Have I already connected the supervisor services?
 static bool ConnectedToAppsService = false;
 static bool ConnectedToFrameworkService = false;
+static bool ConnectedToImaService = false;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -132,4 +133,31 @@ void supCtrl_RestartLegato
     {
         LE_INFO("Legato restart request accepted.");
     }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Import the IMA public certificate
+ *
+ * @return LE_OK if the certificate was imported, otherwise, LE_FAULT.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t supCtrl_ImportImaCert
+(
+    const char* certPath  ///< [IN] Path to IMA public certificate
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Connect to the supervisor and start the application.
+
+    if (!ConnectedToImaService)
+    {
+        le_ima_ConnectService();
+        ConnectedToImaService = true;
+    }
+
+    LE_INFO("Requesting to import certificate '%s'.", certPath);
+
+    return le_ima_ImportCert(certPath);
 }

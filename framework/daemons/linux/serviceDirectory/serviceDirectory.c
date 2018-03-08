@@ -975,6 +975,7 @@ static void CreateHardCodedBindings
     CreateBinding(uid, "le_instStat", uid, "le_instStat");
     CreateBinding(uid, "le_appInfo", uid, "le_appInfo");
     CreateBinding(uid, "le_appProc", uid, "le_appProc");
+    CreateBinding(uid, "le_ima", uid, "le_ima");
     CreateBinding(uid, "appSmack", uid, "appSmack");
     CreateBinding(uid, "logFd", uid, "logFd");
 

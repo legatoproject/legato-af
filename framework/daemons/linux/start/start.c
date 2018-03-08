@@ -38,6 +38,7 @@
 #include "sysStatus.h"
 #include <mntent.h>
 #include <linux/limits.h>
+#include <ima.h>
 
 /// Default DAC permissions for directory creation.
 #define DEFAULT_PERMS (S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
@@ -1678,6 +1679,89 @@ static int InstallGolden
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Traverse the current system directory and install all public certificates
+ *
+ * @returns
+ *      - LE_OK if installation of all public certificate passes.
+ *      - LE_FAULT if any error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t InstallCurrentSystemCert
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    char path[PATH_MAX] = "";
+    snprintf(path, sizeof(path), "%s/%s", CURRENT_SYSTEM_PATH, PUB_CERT_NAME );
+
+    // There is a chance that no certificate may exists in system  directory (e.g. golden image).
+    // So don't throw any error if no certificate exists in system directory.
+
+    // Look for certificate in current system directory. If any certificate exists, import it.
+    if (file_Exists(path))
+    {
+        if (LE_OK != ima_ImportPublicCert(path))
+        {
+            LE_CRIT("Failed to import public certificate '%s'", path);
+            return LE_FAULT;
+        }
+    }
+
+    char* pathArrayPtr[] = {(char *)APPS_INSTALL_DIR,
+                            NULL};
+
+    // Open the app directory tree in current system to search. We just need to traverse top level
+    // directory.
+    FTS* ftsPtr = fts_open(pathArrayPtr,
+                           FTS_LOGICAL,
+                           NULL);
+
+    if (NULL == ftsPtr)
+    {
+        LE_ERROR("Could not access dir '%s'.  %m.", pathArrayPtr[0]);
+        return LE_FAULT;
+    }
+
+    // Traverse through the directory tree.
+    FTSENT* entPtr;
+
+    while (NULL != (entPtr = fts_read(ftsPtr)))
+    {
+        switch (entPtr->fts_info)
+        {
+            case FTS_D:
+                if (1 == entPtr->fts_level)
+                {
+                    char appPubCertPath[LIMIT_MAX_PATH_BYTES];
+
+                    snprintf(appPubCertPath,
+                             sizeof(appPubCertPath),
+                             "%s/%s",
+                             entPtr->fts_path, PUB_CERT_NAME );
+
+                    if (file_Exists(appPubCertPath))
+                    {
+                        if (LE_OK != ima_ImportPublicCert(appPubCertPath))
+                        {
+                            LE_CRIT("Failed to import public certificate '%s'", appPubCertPath);
+                            fts_close(ftsPtr);
+                            return LE_FAULT;
+                        }
+                    }
+                    // We don't need to go into this directory.
+                    fts_set(ftsPtr, entPtr, FTS_SKIP);
+                }
+                break;
+        }
+
+    }
+
+    fts_close(ftsPtr);
+    return LE_OK;
+}
+//--------------------------------------------------------------------------------------------------
+/**
  * Verify and install the current system
  *
  * @return None
@@ -1798,6 +1882,11 @@ static void CheckAndInstallCurrentSystem
     if (FileExists(LdconfigNotDoneMarkerFile))
     {
         UpdateLdSoCache(CurrentSystemDir);
+    }
+
+    if (ima_IsEnabled())
+    {
+        InstallCurrentSystemCert();
     }
 }
 
