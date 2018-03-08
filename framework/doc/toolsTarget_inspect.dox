@@ -1,13 +1,30 @@
 /** @page toolsTarget_inspect inspect
 
-Use the Inspect tool to examine running Legato processes.
-Currently, only memory pools are supported; later versions will add more capabilities.
-
-Prints memory pools' usage to stdout for the specified process.
+Use the Inspect tool to examine  the internal structures such as memory pools, timers, etc. of a
+Legato process.
 
 <h1>Usage</h1>
 
-<b><c>inspect [OPTIONS] PID</c></b>
+<b><c>inspect <pools|threads|timers|mutexes|semaphores> [OPTIONS] PID </c></b>
+<b><c>inspect ipc <servers|clients [sessions]> [OPTIONS] PID </c></b>
+
+@verbatim inspect pools @endverbatim
+ > Prints the memory pools usage for the specified process.
+
+@verbatim inspect threads @endverbatim
+ > Prints the info of threads for the specified process.
+
+@verbatim inspect timers @endverbatim
+ > Prints the info of timers in all threads for the specified process.
+
+@verbatim inspect mutexes @endverbatim
+ > Prints the info of mutexes in all threads for the specified process.
+
+@verbatim inspect semaphores @endverbatim
+ > Prints the info of semaphores in all threads for the specified process.
+
+@verbatim inspect ipc @endverbatim
+ > Prints the info of ipc in all threads for the specified process.
 
 <h1>Options</h1>
 
@@ -56,9 +73,6 @@ TOTAL BLKS  USED BLKS   MAX USED  OVERFLOWS     ALLOCS  MEMORY POOL
         10          0          2          0          4  LogControlProtocol-Msgs
       1567       1567       1567       1567       1567  EmployeePool
 @endverbatim
-
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc.
 
