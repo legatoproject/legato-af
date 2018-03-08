@@ -3209,7 +3209,7 @@ le_result_t le_ecall_UseUSimNumbers
  *  - LE_OK on success
  *  - LE_FAULT on failure
  *
- * @note The formula to calculate NAD deregistration time is as below:
+ * @note The formula to calculate NAD deregistration time for PAN_EUROPEAN is as below:
  *       ECallConfiguration.nad_deregistration_time = (deregTime+59)/60;
  */
 //--------------------------------------------------------------------------------------------------

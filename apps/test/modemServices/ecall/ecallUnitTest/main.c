@@ -652,6 +652,10 @@ static void Testle_ecall_ConfigSettings
     LE_ASSERT((LE_OK == le_ecall_GetSystemStandard(&systemStandard)));
     LE_ASSERT(LE_ECALL_ERA_GLONASS == systemStandard);
 
+    LE_ASSERT_OK(le_ecall_SetNadDeregistrationTime(200));
+    LE_ASSERT_OK(le_ecall_GetNadDeregistrationTime(&deregTime));
+    LE_ASSERT(deregTime == 200);
+
     LE_ASSERT((LE_OK == le_ecall_SetMsdVersion(msdVersion)));
     msdVersion = 42;
     LE_ASSERT((LE_OK == le_ecall_GetMsdVersion(&msdVersion)));

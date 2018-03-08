@@ -403,10 +403,10 @@ void Testle_ecall_EraGlonassSettings
     void
 )
 {
-    uint16_t                            attempts = 0;
-    uint16_t                            duration = 0;
-    le_ecall_CallRef_t                  testECallRef = 0x00;
-
+    uint16_t             attempts = 0;
+    uint16_t             duration = 0;
+    le_ecall_CallRef_t   testECallRef = 0x00;
+    uint16_t             deregistrationTime = 0;
 
     LE_INFO("Start Testle_ecall_EraGlonassSettings");
 
@@ -428,6 +428,14 @@ void Testle_ecall_EraGlonassSettings
     LE_ASSERT_OK(le_ecall_SetEraGlonassFallbackTime(70));
     LE_ASSERT_OK(le_ecall_GetEraGlonassFallbackTime(&duration));
     LE_ASSERT(duration == 70);
+
+    //! [NadTime]
+    LE_ASSERT_OK(le_ecall_SetNadDeregistrationTime(200));
+
+    LE_ASSERT_OK(le_ecall_GetNadDeregistrationTime(&deregistrationTime));
+    LE_INFO("Deregistration time: %d minutes", deregistrationTime);
+    //! [NadTime]
+    LE_ASSERT(deregistrationTime == 200);
 
     //! [DialConfig]
     LE_ASSERT_OK(le_ecall_SetEraGlonassManualDialAttempts(7));
