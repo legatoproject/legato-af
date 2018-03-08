@@ -410,44 +410,59 @@ void Testle_ecall_EraGlonassSettings
 
     LE_INFO("Start Testle_ecall_EraGlonassSettings");
 
-    LE_ASSERT((testECallRef=le_ecall_Create()) != NULL);
+    LE_ASSERT(NULL != (testECallRef=le_ecall_Create()));
+
+    //! [FallbackTimer]
+    /* Check that default value is not below 60 minutes */
+    LE_ASSERT_OK(le_ecall_GetEraGlonassFallbackTime(&duration));
+    LE_ASSERT(duration >= 60);
+
+    /* Check that values below 60 are rejected */
+    duration = 0;
+    LE_ASSERT(LE_FAULT == le_ecall_SetEraGlonassFallbackTime(50));
+    LE_ASSERT_OK(le_ecall_GetEraGlonassFallbackTime(&duration));
+    LE_ASSERT(duration >= 60);
+
+    /* Check that a valid value can be set */
+    duration = 0;
+    LE_ASSERT_OK(le_ecall_SetEraGlonassFallbackTime(70));
+    LE_ASSERT_OK(le_ecall_GetEraGlonassFallbackTime(&duration));
+    LE_ASSERT(duration == 70);
 
     //! [DialConfig]
-    LE_ASSERT(le_ecall_SetEraGlonassManualDialAttempts(7) == LE_OK);
-    LE_ASSERT(le_ecall_GetEraGlonassManualDialAttempts(&attempts) == LE_OK);
+    LE_ASSERT_OK(le_ecall_SetEraGlonassManualDialAttempts(7));
+    LE_ASSERT_OK(le_ecall_GetEraGlonassManualDialAttempts(&attempts));
     LE_ASSERT(attempts == 7);
 
-    LE_ASSERT(le_ecall_SetEraGlonassAutoDialAttempts(9) == LE_OK);
-    LE_ASSERT(le_ecall_GetEraGlonassAutoDialAttempts(&attempts) == LE_OK);
+    LE_ASSERT_OK(le_ecall_SetEraGlonassAutoDialAttempts(9));
+    LE_ASSERT_OK(le_ecall_GetEraGlonassAutoDialAttempts(&attempts));
     LE_ASSERT(attempts == 9);
 
-    LE_ASSERT(le_ecall_SetEraGlonassDialDuration(240) == LE_OK);
-    LE_ASSERT(le_ecall_GetEraGlonassDialDuration(&duration) == LE_OK);
+    LE_ASSERT_OK(le_ecall_SetEraGlonassDialDuration(240));
+    LE_ASSERT_OK(le_ecall_GetEraGlonassDialDuration(&duration));
     LE_ASSERT(duration == 240);
     //! [DialConfig]
 
     //! [OptData]
     /* Crash Severity configuration */
-    LE_ASSERT(le_ecall_SetMsdEraGlonassCrashSeverity(testECallRef, 0) == LE_OK);
-    LE_ASSERT(le_ecall_ResetMsdEraGlonassCrashSeverity(testECallRef) == LE_OK);
-    LE_ASSERT(le_ecall_SetMsdEraGlonassCrashSeverity(testECallRef, 99) == LE_OK);
+    LE_ASSERT_OK(le_ecall_SetMsdEraGlonassCrashSeverity(testECallRef, 0));
+    LE_ASSERT_OK(le_ecall_ResetMsdEraGlonassCrashSeverity(testECallRef));
+    LE_ASSERT_OK(le_ecall_SetMsdEraGlonassCrashSeverity(testECallRef, 99));
 
     /* DataDiagnosticResult configuration */
-    LE_ASSERT(le_ecall_SetMsdEraGlonassDiagnosticResult(testECallRef, 0x3FFFFFFFFFF) == LE_OK);
-    LE_ASSERT(le_ecall_SetMsdEraGlonassDiagnosticResult(testECallRef, 0) == LE_OK);
-    LE_ASSERT(le_ecall_ResetMsdEraGlonassDiagnosticResult(testECallRef) == LE_OK);
-    LE_ASSERT(le_ecall_SetMsdEraGlonassDiagnosticResult(testECallRef,
-              LE_ECALL_DIAG_RESULT_PRESENT_MIC_CONNECTION_FAILURE)
-              == LE_OK);
+    LE_ASSERT_OK(le_ecall_SetMsdEraGlonassDiagnosticResult(testECallRef, 0x3FFFFFFFFFF));
+    LE_ASSERT_OK(le_ecall_SetMsdEraGlonassDiagnosticResult(testECallRef, 0));
+    LE_ASSERT_OK(le_ecall_ResetMsdEraGlonassDiagnosticResult(testECallRef));
+    LE_ASSERT_OK(le_ecall_SetMsdEraGlonassDiagnosticResult(testECallRef,
+                 LE_ECALL_DIAG_RESULT_PRESENT_MIC_CONNECTION_FAILURE));
 
     /* CrashInfo configuration */
-    LE_ASSERT(le_ecall_SetMsdEraGlonassCrashInfo(testECallRef, 0xFFFF) == LE_OK);
-    LE_ASSERT(le_ecall_SetMsdEraGlonassCrashInfo(testECallRef, 0) == LE_OK);
-    LE_ASSERT(le_ecall_ResetMsdEraGlonassCrashInfo(testECallRef) == LE_OK);
-    LE_ASSERT(le_ecall_SetMsdEraGlonassCrashInfo(testECallRef,
-              LE_ECALL_CRASH_INFO_PRESENT_CRASH_FRONT_OR_SIDE
-              | LE_ECALL_CRASH_INFO_CRASH_FRONT_OR_SIDE)
-              == LE_OK);
+    LE_ASSERT_OK(le_ecall_SetMsdEraGlonassCrashInfo(testECallRef, 0xFFFF));
+    LE_ASSERT_OK(le_ecall_SetMsdEraGlonassCrashInfo(testECallRef, 0));
+    LE_ASSERT_OK(le_ecall_ResetMsdEraGlonassCrashInfo(testECallRef));
+    LE_ASSERT_OK(le_ecall_SetMsdEraGlonassCrashInfo(testECallRef,
+                 LE_ECALL_CRASH_INFO_PRESENT_CRASH_FRONT_OR_SIDE |
+                 LE_ECALL_CRASH_INFO_CRASH_FRONT_OR_SIDE));
 
     /* Coordinate system type configuration */
     uint32_t msdVersion = 0;

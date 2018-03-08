@@ -113,6 +113,13 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Default value of ERA GLONASS Call Cleardown Fallback Timer (CCFT) expressed in minutes
+ */
+//--------------------------------------------------------------------------------------------------
+#define ERA_GLONASS_CCFT_MIN       60
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Size of eCall events memory pool
  */
 //--------------------------------------------------------------------------------------------------
@@ -3329,9 +3336,9 @@ le_result_t le_ecall_GetIntervalBetweenDialAttempts
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the MANUAL_DIAL_ATTEMPTS value. If a dial attempt under manual emergency call initiation
- * failed, it should be repeated maximally ECALL_MANUAL_DIAL_ATTEMPTS-1 times within the maximal
- * time limit of ECALL_DIAL_DURATION. The default value is 10.
+ * Set the ECALL_MANUAL_DIAL_ATTEMPTS value. If a dial attempt under manual emergency call
+ * initiation failed, it should be repeated maximally ECALL_MANUAL_DIAL_ATTEMPTS-1 times within
+ * the maximal time limit of ECALL_DIAL_DURATION. The default value is 10.
  * Redial attempts stop once the call has been cleared down correctly, or if counter/timer reached
  * their limits. Available for both manual and test modes.
  *
@@ -3342,7 +3349,7 @@ le_result_t le_ecall_GetIntervalBetweenDialAttempts
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_SetEraGlonassManualDialAttempts
 (
-    uint16_t    attempts  ///< [IN] MANUAL_DIAL_ATTEMPTS value
+    uint16_t    attempts  ///< [IN] ECALL_MANUAL_DIAL_ATTEMPTS value
 )
 {
     ECallObj.eraGlonass.manualDialAttempts = attempts;
@@ -3351,9 +3358,9 @@ le_result_t le_ecall_SetEraGlonassManualDialAttempts
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set tthe AUTO_DIAL_ATTEMPTS value. If a dial attempt under automatic emergency call initiation
- * failed, it should be repeated maximally ECALL_AUTO_DIAL_ATTEMPTS-1 times within the maximal time
- * limit of ECALL_DIAL_DURATION. The default value is 10.
+ * Set tthe ECALL_AUTO_DIAL_ATTEMPTS value. If a dial attempt under automatic emergency call
+ * initiation failed, it should be repeated maximally ECALL_AUTO_DIAL_ATTEMPTS-1 times within
+ * the maximal time limit of ECALL_DIAL_DURATION. The default value is 10.
  * Redial attempts stop once the call has been cleared down correctly, or if counter/timer reached
  * their limits.
  *
@@ -3364,7 +3371,7 @@ le_result_t le_ecall_SetEraGlonassManualDialAttempts
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_SetEraGlonassAutoDialAttempts
 (
-    uint16_t    attempts  ///< [IN] AUTO_DIAL_ATTEMPTS value
+    uint16_t    attempts  ///< [IN] ECALL_AUTO_DIAL_ATTEMPTS value
 )
 {
     ECallObj.eraGlonass.autoDialAttempts = attempts;
@@ -3406,16 +3413,46 @@ le_result_t le_ecall_SetEraGlonassDialDuration
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the MANUAL_DIAL_ATTEMPTS value.
+ * Set the ECALL_CCFT time which is the maximum delay before initiating an automatic call
+ * termination. When the delay is reached and IVS NAD didn't receive a call clear-down indication
+ * is immediatly terminated.
+ *
+ * @note Default value of the ECALL_CCFT time is 60 minutes. When changing the ECALL_CCFT, a value
+ * greater than 60 minutes must be provided.
  *
  * @return
  *  - LE_OK on success
  *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_SetEraGlonassFallbackTime
+(
+    uint16_t    duration   ///< [IN] ECALL_CCFT time value (in minutes)
+)
+{
+    if (duration < ERA_GLONASS_CCFT_MIN)
+    {
+        LE_ERROR("Minimum value for CCFT timer is %d minutes", ERA_GLONASS_CCFT_MIN);
+        return LE_FAULT;
+    }
+
+    return pa_ecall_SetEraGlonassFallbackTime(duration);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the ECALL_MANUAL_DIAL_ATTEMPTS value.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_GetEraGlonassManualDialAttempts
 (
-    uint16_t*    attemptsPtr  ///< [OUT] MANUAL_DIAL_ATTEMPTS value
+    uint16_t*    attemptsPtr  ///< [OUT] ECALL_MANUAL_DIAL_ATTEMPTS value
 )
 {
     if (attemptsPtr == NULL)
@@ -3432,7 +3469,7 @@ le_result_t le_ecall_GetEraGlonassManualDialAttempts
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the AUTO_DIAL_ATTEMPTS value.
+ * Get the ECALL_AUTO_DIAL_ATTEMPTS value.
  *
  * @return
  *  - LE_OK on success
@@ -3441,7 +3478,7 @@ le_result_t le_ecall_GetEraGlonassManualDialAttempts
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_GetEraGlonassAutoDialAttempts
 (
-    uint16_t*    attemptsPtr  ///< [OUT] AUTO_DIAL_ATTEMPTS value
+    uint16_t*    attemptsPtr  ///< [OUT] ECALL_AUTO_DIAL_ATTEMPTS value
 )
 {
     if (attemptsPtr == NULL)
@@ -3480,6 +3517,31 @@ le_result_t le_ecall_GetEraGlonassDialDuration
 
     *durationPtr = ECallObj.eraGlonass.dialDuration;
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the ECALL_CCFT time.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on execution failure
+ *
+ * @warning Introducing a NULL pointer as argument of this function leads to a client kill.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_GetEraGlonassFallbackTime
+(
+    uint16_t*    durationPtr  ///< [OUT] ECALL_CCFT time value (in minutes)
+)
+{
+    if (durationPtr == NULL)
+    {
+        LE_KILL_CLIENT("durationPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    return pa_ecall_GetEraGlonassFallbackTime(durationPtr);
 }
 
 //--------------------------------------------------------------------------------------------------

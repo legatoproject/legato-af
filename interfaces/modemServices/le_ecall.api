@@ -158,15 +158,15 @@
  * Moreover, the User can set some specific configuration settings in accordance with the PSAP
  * configuration:
  *
- * - le_ecall_SetEraGlonassManualDialAttempts(): set the MANUAL_DIAL_ATTEMPTS value. If a dial
+ * - le_ecall_SetEraGlonassManualDialAttempts(): set the ECALL_MANUAL_DIAL_ATTEMPTS value. If a dial
  *   attempt under manual emergency call initiation failed, it should be repeated maximally
  *   ECALL_MANUAL_DIAL_ATTEMPTS-1 times within the maximal time limit of ECALL_DIAL_DURATION.
  *   The default value is 10.
  *   Redial attempts stop once the call has been cleared down correctly, or if counter / timer
  *   reached their limits.
  *   Available for both manual and test modes.
- * - le_ecall_SetEraGlonassAutoDialAttempts(): set the AUTO_DIAL_ATTEMPTS value. If a dial attempt
- *   under automatic emergency call initiation failed, it should be repeated maximally
+ * - le_ecall_SetEraGlonassAutoDialAttempts(): set the ECALL_AUTO_DIAL_ATTEMPTS value. If a dial
+ *   attempt under automatic emergency call initiation failed, it should be repeated maximally
  *   ECALL_AUTO_DIAL_ATTEMPTS-1 times within the maximal time limit of ECALL_DIAL_DURATION.
  *   The default value is 10.
  *   Redial attempts stop once the call has been cleared down correctly, or if counter / timer
@@ -175,12 +175,16 @@
  *   the IVS have to connect the emergency call to the PSAP, including all redial attempts.
  *   If the call is not connected within this time (or ManualDialAttempts/AutoDialAttempts dial
  *   attempts), it will stop.
+ * - le_ecall_SetEraGlonassFallbackTime(): set the ECALL_CCFT time. When the specified timer
+ *   duration is reached and IVS NAD didn't receive a call clear-down indication then the call
+ *   is automatically terminated.
  *
  * The corresponding getter functions let you retrieve the configuration settings values:
  *
- * - le_ecall_GetEraGlonassManualDialAttempts(): get the MANUAL_DIAL_ATTEMPTS value.
- * - le_ecall_GetEraGlonassAutoDialAttempts(): get the AUTO_DIAL_ATTEMPTS value.
+ * - le_ecall_GetEraGlonassManualDialAttempts(): get the ECALL_MANUAL_DIAL_ATTEMPTS value.
+ * - le_ecall_GetEraGlonassAutoDialAttempts(): get the ECALL_AUTO_DIAL_ATTEMPTS value.
  * - le_ecall_GetEraGlonassDialDuration(): get the ECALL_DIAL_DURATION time.
+ * - le_ecall_GetEraGlonassFallbackTime(): get the ECALL_CCFT time.
  *
  * @section le_ecall_eraGlonassData ERA-GLONASS MSD additional data
  *
@@ -1441,9 +1445,9 @@ FUNCTION le_result_t GetIntervalBetweenDialAttempts
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the MANUAL_DIAL_ATTEMPTS value. If a dial attempt under manual emergency call initiation
- * failed, it should be repeated maximally ECALL_MANUAL_DIAL_ATTEMPTS-1 times within the maximal
- * time limit of ECALL_DIAL_DURATION. The default value is 10.
+ * Set the ECALL_MANUAL_DIAL_ATTEMPTS value. If a dial attempt under manual emergency call
+ * initiation failed, it should be repeated maximally ECALL_MANUAL_DIAL_ATTEMPTS-1 times within
+ * the maximal time limit of ECALL_DIAL_DURATION. The default value is 10.
  * Redial attempts stop once the call has been cleared down correctly, or if counter/timer reached
  * their limits.
  *
@@ -1454,14 +1458,14 @@ FUNCTION le_result_t GetIntervalBetweenDialAttempts
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetEraGlonassManualDialAttempts
 (
-    uint16    attempts  IN  ///< the MANUAL_DIAL_ATTEMPTS value
+    uint16    attempts  IN  ///< the ECALL_MANUAL_DIAL_ATTEMPTS value
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set tthe AUTO_DIAL_ATTEMPTS value. If a dial attempt under automatic emergency call initiation
- * failed, it should be repeated maximally ECALL_AUTO_DIAL_ATTEMPTS-1 times within the maximal time
- * limit of ECALL_DIAL_DURATION. The default value is 10.
+ * Set the ECALL_AUTO_DIAL_ATTEMPTS value. If a dial attempt under automatic emergency call
+ * initiation failed, it should be repeated maximally ECALL_AUTO_DIAL_ATTEMPTS-1 times within
+ * the maximal time limit of ECALL_DIAL_DURATION. The default value is 10.
  * Redial attempts stop once the call has been cleared down correctly, or if counter/timer reached
  * their limits.
  *
@@ -1472,7 +1476,7 @@ FUNCTION le_result_t SetEraGlonassManualDialAttempts
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetEraGlonassAutoDialAttempts
 (
-    uint16    attempts  IN  ///< the AUTO_DIAL_ATTEMPTS value
+    uint16    attempts  IN  ///< the ECALL_AUTO_DIAL_ATTEMPTS value
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1485,6 +1489,7 @@ FUNCTION le_result_t SetEraGlonassAutoDialAttempts
  * @return
  *  - LE_OK on success
  *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetEraGlonassDialDuration
@@ -1494,7 +1499,28 @@ FUNCTION le_result_t SetEraGlonassDialDuration
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the MANUAL_DIAL_ATTEMPTS value.
+ * Set the ECALL_CCFT time. It's the maximum delay before initiating an an automatic call
+ * termination.
+ * When the delay is reached and IVS NAD didn't receive a call clear-down indication then the call
+ * is immediatly terminated.
+ *
+ * @note Default value of the ECALL_CCFT time is 60 minutes. When changing the ECALL_CCFT, a value
+ * greater than 60 minutes must be provided.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetEraGlonassFallbackTime
+(
+    uint16    duration  IN  ///< the ECALL_CCFT time value (in minutes)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the ECALL_MANUAL_DIAL_ATTEMPTS value.
  *
  * @return
  *  - LE_OK on success
@@ -1503,12 +1529,12 @@ FUNCTION le_result_t SetEraGlonassDialDuration
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetEraGlonassManualDialAttempts
 (
-    uint16    attempts  OUT  ///< the MANUAL_DIAL_ATTEMPTS value
+    uint16    attempts  OUT  ///< the ECALL_MANUAL_DIAL_ATTEMPTS value
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the AUTO_DIAL_ATTEMPTS value.
+ * Get the ECALL_AUTO_DIAL_ATTEMPTS value.
  *
  * @return
  *  - LE_OK on success
@@ -1517,7 +1543,7 @@ FUNCTION le_result_t GetEraGlonassManualDialAttempts
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetEraGlonassAutoDialAttempts
 (
-    uint16    attempts  OUT  ///< the AUTO_DIAL_ATTEMPTS value
+    uint16    attempts  OUT  ///< the ECALL_AUTO_DIAL_ATTEMPTS value
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1532,6 +1558,20 @@ FUNCTION le_result_t GetEraGlonassAutoDialAttempts
 FUNCTION le_result_t GetEraGlonassDialDuration
 (
     uint16    duration  OUT  ///< the ECALL_DIAL_DURATION time value (in seconds)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the ECALL_CCFT time.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetEraGlonassFallbackTime
+(
+    uint16    duration  OUT  ///< the ECALL_CCFT time value (in minutes)
 );
 
 //--------------------------------------------------------------------------------------------------
