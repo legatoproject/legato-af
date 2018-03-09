@@ -1291,6 +1291,9 @@ static void UnsolicitedPoolDestructor
     {
         le_dls_Remove(listPtr, linkPtr);
     }
+
+    // Delete the reference for unsolicited structure pointer.
+    le_ref_DeleteRef(UnsolRefMap, unsolicitedPtr->ref);
 }
 
 //--------------------------------------------------------------------------------------------------
