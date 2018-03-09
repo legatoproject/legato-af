@@ -437,6 +437,19 @@ void Testle_ecall_EraGlonassSettings
     //! [NadTime]
     LE_ASSERT(deregistrationTime == 200);
 
+    //! [AutoAnswerTimer]
+    /* Check that a valid value can be set */
+    duration = 0;
+    LE_ASSERT_OK(le_ecall_SetEraGlonassAutoAnswerTime(30));
+    LE_ASSERT_OK(le_ecall_GetEraGlonassAutoAnswerTime(&duration));
+    LE_ASSERT(30 == duration);
+
+    //! [MSDMaxTransTime]
+    duration = 0;
+    LE_ASSERT_OK(le_ecall_SetEraGlonassMSDMaxTransmissionTime(60));
+    LE_ASSERT_OK(le_ecall_GetEraGlonassMSDMaxTransmissionTime(&duration));
+    LE_ASSERT(60 == duration);
+
     //! [DialConfig]
     LE_ASSERT_OK(le_ecall_SetEraGlonassManualDialAttempts(7));
     LE_ASSERT_OK(le_ecall_GetEraGlonassManualDialAttempts(&attempts));

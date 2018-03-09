@@ -178,6 +178,11 @@
  * - le_ecall_SetEraGlonassFallbackTime(): set the ECALL_CCFT time. When the specified timer
  *   duration is reached and IVS NAD didn't receive a call clear-down indication then the call
  *   is automatically terminated.
+ * - le_ecall_SetEraGlonassAutoAnswerTime(): sets the ECALL_AUTO_ANSWER_TIME time, the
+ *   maximum time interval wherein IVDS responds to incoming calls automatically after emergency
+ *   call completion.
+ * - le_ecall_SetEraGlonassMSDMaxTransmissionTime(): sets the ECALL_MSD_MAX_TRANSMISSION_TIME time,
+ *   the maximum time for MSD transmission.
  *
  * The corresponding getter functions let you retrieve the configuration settings values:
  *
@@ -185,6 +190,8 @@
  * - le_ecall_GetEraGlonassAutoDialAttempts(): get the ECALL_AUTO_DIAL_ATTEMPTS value.
  * - le_ecall_GetEraGlonassDialDuration(): get the ECALL_DIAL_DURATION time.
  * - le_ecall_GetEraGlonassFallbackTime(): get the ECALL_CCFT time.
+ * - le_ecall_GetEraGlonassAutoAnswerTime(): get the ECALL_AUTO_ANSWER_TIME time.
+ * - le_ecall_GetEraGlonassMSDMaxTransmissionTime(): get the ECALL_MSD_MAX_TRANSMISSION_TIME time.
  *
  * @section le_ecall_eraGlonassData ERA-GLONASS MSD additional data
  *
@@ -1520,6 +1527,41 @@ FUNCTION le_result_t SetEraGlonassFallbackTime
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the ECALL_AUTO_ANSWER_TIME time, the time interval wherein IVDS responds to incoming calls
+ * automatically after emergency call completion.
+ *
+ * @note Default value of auto answer time is 20 minutes.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetEraGlonassAutoAnswerTime
+(
+    uint16 autoAnswerTime IN ///< The ECALL_AUTO_ANSWER_TIME time value (in minutes)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the ECALL_MSD_MAX_TRANSMISSION_TIME time, the time period for MSD transmission.
+ *
+ * @note Default value of MSD transmission time is 20 seconds.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetEraGlonassMSDMaxTransmissionTime
+(
+    uint16 msdMaxTransTime IN ///< The ECALL_MSD_MAX_TRANSMISSION_TIME time value (in seconds)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the ECALL_MANUAL_DIAL_ATTEMPTS value.
  *
  * @return
@@ -1572,6 +1614,35 @@ FUNCTION le_result_t GetEraGlonassDialDuration
 FUNCTION le_result_t GetEraGlonassFallbackTime
 (
     uint16    duration  OUT  ///< the ECALL_CCFT time value (in minutes)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the ECALL_AUTO_ANSWER_TIME time.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on execution failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetEraGlonassAutoAnswerTime
+(
+    uint16 autoAnswerTime OUT ///< The ECALL_AUTO_ANSWER_TIME time value (in minutes)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the ECALL_MSD_MAX_TRANSMISSION_TIME time.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetEraGlonassMSDMaxTransmissionTime
+(
+    uint16 msdMaxTransTime OUT ///< The ECALL_MSD_MAX_TRANSMISSION_TIME time value (in seconds)
 );
 
 //--------------------------------------------------------------------------------------------------

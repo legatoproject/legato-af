@@ -732,6 +732,24 @@ static void Testle_ecall_EraGlonassSettings
     LE_ASSERT_OK(le_ecall_GetEraGlonassFallbackTime(&duration));
     LE_ASSERT(duration == 70);
 
+    LE_ASSERT_OK(le_ecall_GetEraGlonassAutoAnswerTime(&duration));
+    LE_ASSERT(duration >= 20);
+
+    duration = 0;
+    LE_ASSERT_OK(le_ecall_SetEraGlonassAutoAnswerTime(10));
+    LE_ASSERT_OK(le_ecall_GetEraGlonassAutoAnswerTime(&duration));
+    LE_ASSERT(duration == 10);
+
+    duration = 0;
+    LE_ASSERT_OK(le_ecall_SetEraGlonassAutoAnswerTime(30));
+    LE_ASSERT_OK(le_ecall_GetEraGlonassAutoAnswerTime(&duration));
+    LE_ASSERT(30 == duration);
+
+    duration = 0;
+    LE_ASSERT_OK(le_ecall_SetEraGlonassMSDMaxTransmissionTime(60));
+    LE_ASSERT_OK(le_ecall_GetEraGlonassMSDMaxTransmissionTime(&duration));
+    LE_ASSERT(60 == duration);
+
     LE_ASSERT_OK(le_ecall_SetEraGlonassManualDialAttempts(7));
     LE_ASSERT_OK(le_ecall_GetEraGlonassManualDialAttempts(&attempts));
     LE_ASSERT(attempts == 7);

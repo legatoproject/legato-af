@@ -120,6 +120,13 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Default value of ERA GLONASS eCall auto answer timer expressed in minutes
+ */
+//--------------------------------------------------------------------------------------------------
+#define ERA_GLONASS_AUTOANSTIME_MAX      720
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Size of eCall events memory pool
  */
 //--------------------------------------------------------------------------------------------------
@@ -3442,6 +3449,53 @@ le_result_t le_ecall_SetEraGlonassFallbackTime
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the ECALL_AUTO_ANSWER_TIME time. It is a time interval wherein IVDS responds to incoming
+ * calls automatically after emergency call completion.
+ *
+ * @note Default value of auto answer time is 20 minutes.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_SetEraGlonassAutoAnswerTime
+(
+    uint16_t autoAnswerTime ///< [IN] ECALL_AUTO_ANSWER_TIME time value (in minutes)
+)
+{
+    if (autoAnswerTime > ERA_GLONASS_AUTOANSTIME_MAX)
+    {
+        LE_ERROR("Maximum value for auto answer time is %d minutes", ERA_GLONASS_AUTOANSTIME_MAX);
+        return LE_FAULT;
+    }
+
+    return pa_ecall_SetEraGlonassAutoAnswerTime(autoAnswerTime);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the ECALL_MSD_MAX_TRANSMISSION_TIME time. It is a time period for MSD transmission.
+ *
+ * @note Default value of MSD transmission time is 20 seconds.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_SetEraGlonassMSDMaxTransmissionTime
+(
+    uint16_t msdMaxTransTime ///< [IN] ECALL_MSD_MAX_TRANSMISSION_TIME time value (in seconds)
+)
+{
+    return pa_ecall_SetEraGlonassMSDMaxTransmissionTime(msdMaxTransTime);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the ECALL_MANUAL_DIAL_ATTEMPTS value.
  *
  * @return
@@ -3542,6 +3596,55 @@ le_result_t le_ecall_GetEraGlonassFallbackTime
     }
 
     return pa_ecall_GetEraGlonassFallbackTime(durationPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the ECALL_AUTO_ANSWER_TIME time.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on execution failure
+ *
+ * @warning Introducing a NULL pointer as argument of this function leads to a client kill.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_GetEraGlonassAutoAnswerTime
+(
+    uint16_t* autoAnswerTimePtr ///< [OUT] ECALL_AUTO_ANSWER_TIME time value (in minutes)
+)
+{
+    if (NULL == autoAnswerTimePtr)
+    {
+        LE_KILL_CLIENT("autoAnswerTimePtr is NULL!");
+        return LE_FAULT;
+    }
+
+    return pa_ecall_GetEraGlonassAutoAnswerTime(autoAnswerTimePtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the ECALL_MSD_MAX_TRANSMISSION_TIME time.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_GetEraGlonassMSDMaxTransmissionTime
+(
+    uint16_t* msdMaxTransTimePtr ///< [OUT] ECALL_MSD_MAX_TRANSMISSION_TIME time value (in seconds)
+)
+{
+    if (NULL == msdMaxTransTimePtr)
+    {
+        LE_KILL_CLIENT("msdMaxTransTimePtr is NULL!");
+        return LE_FAULT;
+    }
+
+    return pa_ecall_GetEraGlonassMSDMaxTransmissionTime(msdMaxTransTimePtr);
 }
 
 //--------------------------------------------------------------------------------------------------

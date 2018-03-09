@@ -304,6 +304,82 @@ le_result_t pa_ecall_GetEraGlonassFallbackTime
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the 'ECALL_AUTO_ANSWER_TIME' time value in minutes.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_ecall_SetEraGlonassAutoAnswerTime
+(
+    uint16_t autoAnswerTime  ///< [IN] The ECALL_AUTO_ANSWER_TIME time value in minutes.
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the 'ECALL_AUTO_ANSWER_TIME' time value in minutes.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_ecall_GetEraGlonassAutoAnswerTime
+(
+    uint16_t* autoAnswerTimePtr  ///< [OUT] The ECALL_AUTO_ANSWER_TIME time value in minutes.
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the 'ECALL_MSD_MAX_TRANSMISSION_TIME' time. It is a time period for MSD transmission.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_ecall_SetEraGlonassMSDMaxTransmissionTime
+(
+    uint16_t msdMaxTransTime ///< [IN] ECALL_MSD_MAX_TRANSMISSION_TIME time value (in seconds)
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the 'ECALL_MSD_MAX_TRANSMISSION_TIME' time. It is a time period for MSD transmission.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_ecall_GetEraGlonassMSDMaxTransmissionTime
+(
+    uint16_t* msdMaxTransTimePtr ///< [OUT] ECALL_MSD_MAX_TRANSMISSION_TIME time value (in seconds)
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to send the Minimum Set of Data for the eCall.
  *
  * @return LE_FAULT  The function failed.
