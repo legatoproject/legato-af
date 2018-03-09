@@ -268,18 +268,25 @@ static void* RecSamplesThread
     LE_INFO("Start getting samples...");
 
     int32_t readLen;
+    int32_t writeLen;
 
     while ((readLen = read( pipefd[0], data, len )))
     {
-        int32_t len = write( AudioFileFd, data, readLen );
-
-        if (len < 0)
+        if (readLen < 0)
         {
-            LE_ERROR("write error %d %d", readLen, len);
+            LE_ERROR("read error %d %d", len, readLen);
             break;
         }
 
-        threadCtxPtr->wroteLen += len;
+        writeLen = write( AudioFileFd, data, readLen );
+
+        if (writeLen < 0)
+        {
+            LE_ERROR("write error %d %d", readLen, writeLen);
+            break;
+        }
+
+        threadCtxPtr->wroteLen += writeLen;
     }
 
     return NULL;

@@ -101,8 +101,7 @@ void GenerateJavaExeMain
                            << "\";\n";
             }
 
-            outputFile << "            Object "
-                       << name << "Instance = io.legato.generated.component."
+            outputFile << "            io.legato.generated.component."
                        << name << ".Factory.createComponent(logger);\n"
                           "\n";
         }
