@@ -1334,14 +1334,13 @@ static void TryStartDataSession
     void
 )
 {
+    le_result_t result = le_mdc_StartSession(MobileProfileRef);
+
     // Start data session
-    if (LE_OK != le_mdc_StartSession(MobileProfileRef))
+    if (result == LE_OK)
     {
-        // Impossible to use this technology, try the next one
-        ConnectionStatusHandler(LE_DATA_CELLULAR, false);
-    }
-    else
-    {
+        LE_DEBUG("Data connection has been started successfully.");
+
         // First wait a few seconds for the default DHCP client
         sleep(3);
 
@@ -1354,8 +1353,20 @@ static void TryStartDataSession
         else
         {
             // Wait a few seconds to prevent rapid toggling of data connection
+            LE_DEBUG("Waiting a few seconds to prevent rapid toggling of data connection.");
             sleep(5);
         }
+    }
+    else if (result == LE_DUPLICATE)
+    {
+        // Connection already established, don't do anything
+        LE_DEBUG("Data connection is already established.");
+        return;
+    }
+    else
+    {
+        // Impossible to use this technology, try the next one
+        ConnectionStatusHandler(LE_DATA_CELLULAR, false);
     }
 }
 
