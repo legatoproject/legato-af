@@ -1434,13 +1434,16 @@ le_result_t le_flash_CreateUbiVolume
                                     volumeId,
                                     volumeName,
                                     (LE_FLASH_DYNAMIC == volumeType ? PA_FLASH_VOLUME_DYNAMIC
-                                                                      : PA_FLASH_VOLUME_STATIC));
+                                                                    : PA_FLASH_VOLUME_STATIC),
+                                    (LE_FLASH_DYNAMIC == volumeType ? volumeSize
+                                                                    : LE_FLASH_UBI_VOL_NO_SIZE) );
     if (LE_OK != res)
     {
         return res;
     }
 
-    partPtr->ubiVolSize = volumeSize;
+    partPtr->ubiVolSize = (LE_FLASH_DYNAMIC == volumeType ? volumeSize
+                                                          : LE_FLASH_UBI_VOL_NO_SIZE);
     partPtr->ubiVolume = volumeId;
     // Copy the created volume name into the partitionRef
     strncpy(partPtr->ubiVolNames[partPtr->ubiVolume], volumeName, PA_FLASH_UBI_MAX_VOLUMES);

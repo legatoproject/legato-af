@@ -92,12 +92,12 @@ static FlashApiTest_t FlashApiTest[] =
            " given UBI volume belonging to the partition",                      },
     { "ubi-create",     1, FlashApiTest_CreateUbi,
       "ubi-create paritionName: Open and create an UBI partiton",               },
-    { "ubi-create-vol", 4, FlashApiTest_CreateUbiVol,
-      "ubi-create-vol paritionName volumeName volumeId volumeType: Open and"
-           " create an UBI volume into the given partition",                    },
+    { "ubi-create-vol", 5, FlashApiTest_CreateUbiVol,
+      "ubi-create-vol paritionName volumeName volumeId volumeType volumeSize:"
+           "Open and create an UBI volume into the given partition",            },
     { "ubi-delete-vol", 2, FlashApiTest_DeleteUbiVol,
       "ubi-delete-vol paritionName volumeName: Delete volumeId the UBI volume"
-           " from the given partition",                                                  },
+           " from the given partition",                                         },
     { "ubi-copy",       3, FlashApiTest_CopyUbi,
       "ubi-copy sourceName volumeName destinationName: copy the UBI volume from"
            " source to the destination",                                        },
@@ -1069,9 +1069,10 @@ static le_result_t FlashApiTest_CreateUbiVol
     const char *ubiVolStr = args[1];
     const char *ubiVolIdStr = args[2];
     const char *ubiVolTypeStr = args[3];
+    const char *ubiVolSizeStr = args[4];
     le_flash_PartitionRef_t partRef = NULL;
     le_flash_UbiVolumeType_t ubiVolType;
-    int32_t ubiVolId;
+    int32_t ubiVolId, ubiVolSize;
     le_result_t res;
     uint32_t freeBlock, volBlock, volSize;
 
@@ -1095,6 +1096,12 @@ static le_result_t FlashApiTest_CreateUbiVol
         return LE_BAD_PARAMETER;
     }
 
+    if (1 != sscanf( ubiVolSizeStr, "%d", &ubiVolSize ))
+    {
+        LE_ERROR("Invalid volume Size '%s'", ubiVolSizeStr);
+        return LE_BAD_PARAMETER;
+    }
+
     // Open the given UBI partition in W/O
     res = le_flash_OpenUbi(partNameStr, LE_FLASH_WRITE_ONLY, &partRef);
     LE_INFO("partition \"%s\" open ref %p, res %d", partNameStr, partRef, res);
@@ -1104,8 +1111,7 @@ static le_result_t FlashApiTest_CreateUbiVol
     }
 
     // Create an UBI volume belonging to this UBI partition
-    res = le_flash_CreateUbiVolume(partRef, true, ubiVolId, ubiVolType, ubiVolStr,
-                                   LE_FLASH_UBI_VOL_NO_SIZE);
+    res = le_flash_CreateUbiVolume(partRef, true, ubiVolId, ubiVolType, ubiVolStr, ubiVolSize);
     LE_INFO("UBI volume \"%s\" id %u created ref %p, res %d", ubiVolStr, ubiVolId, partRef, res);
     if (LE_OK != res)
     {

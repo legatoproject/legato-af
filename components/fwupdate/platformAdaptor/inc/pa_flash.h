@@ -693,6 +693,7 @@ LE_SHARED le_result_t pa_flash_CreateUbi
  *      - LE_FORMAT_ERROR  If the flash is not in UBI format
  *      - LE_DUPLICATE     If the volume name or volume ID already exists
  *      - LE_IO_ERROR      If a flash IO error occurs
+ *      - LE_NO_MEMORY     If a volume requires more PEBs than the partition size
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_flash_CreateUbiVolume
@@ -700,7 +701,8 @@ LE_SHARED le_result_t pa_flash_CreateUbiVolume
     pa_flash_Desc_t desc,      ///< [IN] Private flash descriptor
     uint32_t ubiVolId,         ///< [IN] UBI volume ID
     const char* ubiVolNamePtr, ///< [IN] UBI volume name
-    uint32_t ubiVolType        ///< [IN] UBI volume type: dynamic or static
+    uint32_t ubiVolType,       ///< [IN] UBI volume type: dynamic or static
+    uint32_t ubiVolSize        ///< [IN] UBI volume size (for dynamic volumes only)
 );
 
 //--------------------------------------------------------------------------------------------------
