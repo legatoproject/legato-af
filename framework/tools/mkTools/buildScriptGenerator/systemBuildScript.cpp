@@ -287,7 +287,10 @@ void SystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
     {
         auto modulePtr = mapEntry.second;
 
-        script << " $builddir/" << modulePtr->koFilePtr->path;
+        for (auto const& it: modulePtr->koFiles)
+        {
+            script << " $builddir/" << it.second->path;
+        }
     }
 
     // This must also be done again if any of the Legato framework daemons or on-target

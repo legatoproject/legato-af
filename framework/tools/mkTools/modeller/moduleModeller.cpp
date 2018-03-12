@@ -27,13 +27,17 @@ void PrintSummary
     std::cout << std::endl << "== '" << modulePtr->name << "' kernel module summary ==" << std::endl
               << std::endl;
 
-    if (!modulePtr->path.empty())
+    if (modulePtr->moduleBuildType == model::Module_t::Prebuilt)
     {
         std::cout << "  Pre-built module at:" << std::endl;
-        std::cout << "    '" << modulePtr->path << "'" << std::endl;
+
+        for (auto const& it : modulePtr->koFiles)
+        {
+             std::cout << "    '" << it.first << "'" << std::endl;
+        }
     }
 
-    if (!modulePtr->cObjectFiles.empty())
+    if (modulePtr->moduleBuildType == model::Module_t::Sources)
     {
         std::cout << "  Built from source files:" << std::endl;
         for (auto obj : modulePtr->cObjectFiles)
@@ -78,6 +82,17 @@ static void AddSources
 {
     auto tokenListPtr = static_cast<parseTree::TokenList_t*>(sectionPtr);
 
+    if (modulePtr->moduleBuildType != model::Module_t::Prebuilt)
+    {
+        // Allow either Sources or Prebuilt section, not both
+        modulePtr->moduleBuildType = model::Module_t::Sources;
+    }
+    else
+    {
+        throw mk::Exception_t(
+                  LE_I18N("error: Use either 'sources' or 'preBuilt' section."));
+    }
+
     for (auto contentPtr: tokenListPtr->Contents())
     {
         auto filePath = path::Unquote(envVars::DoSubstitution(contentPtr->text));
@@ -116,8 +131,41 @@ static void AddSources
             sectionPtr->ThrowException("File '" + contentPtr->text + "' does not exist.");
         }
     }
+
+    modulePtr->SetBuildEnvironment(modulePtr->moduleBuildType, modulePtr->defFilePtr->path);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Adds the prebuilt files from a given "preBuilt:" section to a given Module_t object.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddPrebuilt
+(
+    model::Module_t* modulePtr,
+    std::string prebuiltFile
+)
+{
+    if (modulePtr->moduleBuildType != model::Module_t::Sources)
+    {
+        //Allow either Sources or PreBuilt section, not both
+        modulePtr->moduleBuildType = model::Module_t::Prebuilt;
+    }
+    else
+    {
+        throw mk::Exception_t(
+                  LE_I18N("error: Use either 'sources' or 'preBuilt' section."));
+    }
+
+    auto searchFile = modulePtr->koFiles.find(prebuiltFile);
+    if (searchFile != modulePtr->koFiles.end())
+    {
+        throw mk::Exception_t(
+                  mk::format(LE_I18N("error: Duplicate preBuilt file %s."), prebuiltFile));
+    }
+
+    modulePtr->SetBuildEnvironment(modulePtr->moduleBuildType, prebuiltFile);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -224,7 +272,7 @@ model::Module_t* GetModule
                     mk::format(LE_I18N("Module file '%s' does not exist."),  modulePath)
                 );
             }
-            modulePtr->path = modulePath;
+            AddPrebuilt(modulePtr, modulePath);
         }
         else if ("sources" == sectionName)
         {
@@ -238,6 +286,17 @@ model::Module_t* GetModule
         {
             AddLdFlags(modulePtr, sectionPtr);
         }
+    }
+
+    // We should have either provided a 'sources:' or 'preBuilt:' section
+    if (modulePtr->moduleBuildType == model::Module_t::Invalid)
+    {
+        delete modulePtr;
+
+        // Throw generic exception at file level
+        throw mk::Exception_t(
+            mk::format(LE_I18N("%s: error: Use either 'sources' or 'preBuilt' section."), mdefPath)
+        );
     }
 
     // Setup path to kernel sources from KERNELROOT or SYSROOT variables
@@ -256,21 +315,6 @@ model::Module_t* GetModule
             mdefPath, kernelDir)
         );
     }
-
-    // We should have either provided a 'sources:' or 'preBuilt:' section
-    if ((modulePtr->path.empty() && modulePtr->cObjectFiles.empty()) ||
-        (!modulePtr->path.empty() && !modulePtr->cObjectFiles.empty()))
-    {
-        delete modulePtr;
-
-        // Throw generic exception at file level
-        throw mk::Exception_t(
-            mk::format(LE_I18N("%s: error: Use either 'sources' or 'preBuilt' section."), mdefPath)
-        );
-    }
-
-    // All ok, set build environment
-    modulePtr->SetBuildEnvironment();
 
     // Restore the previous contents of the CURDIR environment variable.
     envVars::Set("CURDIR", oldDir);

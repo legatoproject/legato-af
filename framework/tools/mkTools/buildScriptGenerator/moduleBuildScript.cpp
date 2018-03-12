@@ -49,20 +49,33 @@ void ModuleBuildScriptGenerator_t::GenerateBuildStatements
 )
 //--------------------------------------------------------------------------------------------------
 {
-    script << "build " << "$builddir/" << modulePtr->koFilePtr->path << ": ";
-
-    if (modulePtr->path.empty() || !file::FileExists(modulePtr->path))
+    if (modulePtr->moduleBuildType == model::Module_t::Sources)
     {
+        // In case of Sources, koFiles map will consist of only one element.
+        // Hence, use the first element in koFiles for generating build statement.
+        script << "build " << "$builddir/" << modulePtr->koFiles.begin()->second->path << ": ";
+
         // No pre-built module: generate and invoke a Makefile
         GenerateMakefile(modulePtr);
         script << "MakeKernelModule " << "$builddir/"
-               << path::GetContainingDir(modulePtr->koFilePtr->path) << "\n";
+               << path::GetContainingDir(modulePtr->koFiles.begin()->second->path) << "\n";
+    }
+    else if (modulePtr->moduleBuildType == model::Module_t::Prebuilt)
+    {
+        for (auto const& it: modulePtr->koFiles)
+        {
+            script << "build " << "$builddir/" << it.second->path << ": ";
+
+            // Pre-built module: add build statement for bundling the .ko file
+            script << "BundleFile " << it.first << "\n"
+                   << "  modeFlags = u+rw-x,g+r-wx,o+r-wx\n";
+        }
     }
     else
     {
-        // Pre-built module: add build statement for copying the .ko file
-        script << "CopyFile " << modulePtr->path << "\n"
-               << "  modeFlags = u+rw-x,g+r-wx,o+r-wx\n";
+        throw mk::Exception_t(
+                  mk::format(LE_I18N("error: %s must have either 'sources' or 'preBuilt' section."),
+                              modulePtr->defFilePtr->path.c_str()));
     }
     script << "\n";
 }
@@ -82,7 +95,12 @@ void ModuleBuildScriptGenerator_t::GenerateNinjaScriptBuildStatement
     // The build.ninja depends on module .mdef and .ko files
     // Create a set of dependencies.
     std::set<std::string> dependencies;
-    dependencies.insert(modulePtr->path);
+
+    for (auto const& it : modulePtr->koFiles)
+    {
+        dependencies.insert(it.first);
+    }
+
     dependencies.insert(modulePtr->defFilePtr->path);
     // It also depends on changes to the mk tools.
     dependencies.insert(path::Combine(envVars::Get("LEGATO_ROOT"), "build/tools/mk"));

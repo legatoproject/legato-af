@@ -21,7 +21,7 @@ Module_t::Module_t(parseTree::MdefFile_t *filePtr)
 //--------------------------------------------------------------------------------------------------
 : defFilePtr(filePtr),
   dir(path::GetContainingDir(filePtr->path)),
-  koFilePtr(NULL)
+  moduleBuildType(Invalid)
 //--------------------------------------------------------------------------------------------------
 {
 }
@@ -32,12 +32,21 @@ Module_t::Module_t(parseTree::MdefFile_t *filePtr)
  * Set build environment and artifacts related to this module.
  **/
 //--------------------------------------------------------------------------------------------------
-void Module_t::SetBuildEnvironment(void)
+void Module_t::SetBuildEnvironment(ModuleBuildType_t type, std::string path)
 {
-    name = path::RemoveSuffix(path::GetLastNode(defFilePtr->path), ".mdef");
+    if (type == Prebuilt)
+    {
+        name = path::RemoveSuffix(path::GetLastNode(path), ".ko");
+    }
+    else
+    {
+        name = path::RemoveSuffix(path::GetLastNode(path), ".mdef");
+    }
+
     workingDir = "modules/" + name;
     auto koFilePath = workingDir + "/" + name + ".ko";
-    koFilePtr = new model::ObjectFile_t(koFilePath, defFilePtr->path);
+    auto koFileObj = new model::ObjectFile_t(koFilePath, path);
+    koFiles.insert(std::make_pair(path, koFileObj));
 }
 
 
@@ -50,6 +59,5 @@ void Module_t::AddParam(std::string name, std::string value)
 {
     params[name] = value;
 }
-
 
 } // namespace modeller

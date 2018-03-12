@@ -25,8 +25,6 @@ struct Module_t : public HasTargetInfo_t
 
     std::string dir;        ///< Absolute path to the directory containing the .mdef file.
 
-    std::string path;  ///< Path to pre-built module binary file
-
     std::string workingDir;   ///< Module target directory
 
     std::string kernelDir;    ///< Kernel build directory
@@ -37,13 +35,21 @@ struct Module_t : public HasTargetInfo_t
 
     std::list<ObjectFile_t*> cObjectFiles;  ///< List of .o files to build from C source files.
 
-    ObjectFile_t *koFilePtr;   ///< Pointer to .ko file in target directory
+    enum ModuleBuildType_t : int {Invalid = 0, Sources, Prebuilt};
 
-    const parseTree::Module_t* parseTreePtr; ///< Ptr to this module's section in the .sdef file parse tree.
+    ModuleBuildType_t moduleBuildType; ///< Enum to differentiate type of kernel module:
+                                       ///< Sources or Prebuilt
+
+    std::map<std::string, ObjectFile_t*> koFiles; ///< Map of kernel object (.ko) file and pointer
+                                                  ///< to .ko file in target directory
+
+    const parseTree::Module_t* parseTreePtr; ///< Ptr to this module's section in the .sdef file
+                                             ///< parse tree.
 
     std::map<std::string, std::string> params; ///< Module insmod parameters
 
-    void SetBuildEnvironment();   ///< Set build targets and environment
+    void SetBuildEnvironment(ModuleBuildType_t type, std::string path);  ///< Set build targets and
+                                                                         ///< environment
 
     void AddParam(std::string name, std::string value);  ///< Add module param
 };
