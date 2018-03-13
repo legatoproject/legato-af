@@ -1,6 +1,13 @@
 /** @page platformConstraintsSpecificErrorCodes Platform specific error codes
 
-@note These specific error codes are valid for AR758x.
+@note The table below lists the supported platform specific error code functions for each platform.
+
+| specific error code APIs                          | AR755x | AR758x | AR759x | AR8652 | WP85xx | WP76xx |
+| --------------------------------------------------| :----: | :----: | :----: | :----: | :-----:| :-----:|
+| le_mcc_GetPlatformSpecificTerminationCode()       |   X    |   X    |   X    |   X    |    X   |   X    |
+| le_mdc_GetPlatformSpecificDisconnectionCode()     |   X    |   X    |   X    |   X    |    X   |   X    |
+| le_mrc_GetPlatformSpecificRegistrationErrorCode() |   X    |   X    |   X    |   X    |    X   |   X    |
+| le_sms_GetPlatformSpecificErrorCode()             |   X    |   X    |   X    |   X    |    X   |   X    |
 
 <b>@subpage c_mcc :</b>
  - le_mcc_GetPlatformSpecificTerminationCode() returns the termination code from
@@ -296,6 +303,13 @@
    CALL_END_CAUSE_FALLBACK_TO_CS = 0x17C,<br>
    CALL_END_CAUSE_DEAD_BATTERY = 0x17D,<br>
    CALL_END_CAUSE_HO_NOT_FEASIBLE = 0x17E,<br>
+   CALL_END_CAUSE_PDN_DISCONNECTED = 0x17F,<br>
+   CALL_END_CAUSE_REJECTED_ELSEWHERE = 0x180,<br>
+   CALL_END_CAUSE_CALL_PULLED = 0x181,<br>
+   CALL_END_CAUSE_CALL_PULL_OUT_OF_SYNC = 0x182,<br>
+   CALL_END_CAUSE_HOLD_RESUME_FAILED = 0x183,<br>
+   CALL_END_CAUSE_HOLD_RESUME_CANCELED = 0x184,<br>
+   CALL_END_CAUSE_REINVITE_COLLISION = 0x185,<br>
    CALL_END_CAUSE_1XCSFB_MSG_INVAILD = 0x1F4,<br>
    CALL_END_CAUSE_1XCSFB_MSG_IGNORE = 0x1F5,<br>
    CALL_END_CAUSE_1XCSFB_FAIL_ACQ_FAIL = 0x1F6,<br>
@@ -317,6 +331,20 @@
    CALL_END_CAUSE_EMM_REJ_SERVICE_REQ_FAILURE_LTE_NW_REJECT = 0x25A,<br>
    CALL_END_CAUSE_EMM_REJ_SERVICE_REQ_FAILURE_CS_DOMAIN_NOT_AVAILABLE = 0x25B,<br>
    CALL_END_CAUSE_EMM_REJ = 0x25C,<br>
+
+@note Specific error codes are platform dependent and may not be available for some platforms.
+
+le_mcc_GetPlatformSpecificTerminationCode() platform specific error codes:
+
+   | call end reason                       | AR755x | AR758x | AR759x | AR8652 | WP85xx | WP76xx |
+   | -----------------------------------   | :----: | :----: | :----: | :----: | :-----:| :-----:|
+   | CALL_END_CAUSE_PDN_DISCONNECTED       |  NA    |   X    |   NA   |   NA   |   NA   |   X    |
+   | CALL_END_CAUSE_REJECTED_ELSEWHERE     |  NA    |   X    |   NA   |   NA   |   NA   |   X    |
+   | CALL_END_CAUSE_CALL_PULLED            |  NA    |   X    |   NA   |   NA   |   NA   |   X    |
+   | CALL_END_CAUSE_CALL_PULL_OUT_OF_SYNC  |  NA    |   X    |   NA   |   NA   |   NA   |   X    |
+   | CALL_END_CAUSE_HOLD_RESUME_FAILED     |  NA    |   X    |   NA   |   NA   |   NA   |   X    |
+   | CALL_END_CAUSE_HOLD_RESUME_CANCELED   |  NA    |   X    |   NA   |   NA   |   NA   |   X    |
+   | CALL_END_CAUSE_REINVITE_COLLISION     |  NA    |   X    |   NA   |   NA   |   NA   |   X    |
 
 <b>@subpage c_mdc :</b>
  - le_mdc_GetPlatformSpecificDisconnectionCode() returns the call end failure code
