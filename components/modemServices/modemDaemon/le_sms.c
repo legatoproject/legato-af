@@ -2321,17 +2321,13 @@ static void CloseSessionEventHandler
         while (linkPtr)
         {
             MsgRefNode_t* msgRefPtr = CONTAINER_OF(linkPtr, MsgRefNode_t, link);
-            le_sms_Delete(msgRefPtr->msgRef);
-
-            // Check session context is still existing.
-            if (NULL == GetSessionCtx(sessionRef))
-            {
-                LE_DEBUG("sessionCtxPtr is not found!");
-                break;
-            }
 
             // Get the next node from message reference list.
             linkPtr = le_dls_PeekNext(&(sessionCtxPtr->msgRefList), linkPtr);
+
+            // Delete the message data structure,
+            // Delete the session context if no more message data
+            le_sms_Delete(msgRefPtr->msgRef);
         }
     }
 
