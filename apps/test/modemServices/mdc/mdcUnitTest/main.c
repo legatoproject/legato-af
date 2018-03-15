@@ -8,6 +8,7 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "le_mdc_local.h"
+#include "le_sim_local.h"
 #include "log.h"
 #include "pa_mdc.h"
 #include "pa_mdc_simu.h"
@@ -20,7 +21,8 @@
 
 typedef void (*StartStopAsyncFunc_t) (le_mdc_ProfileRef_t,le_mdc_SessionHandlerFunc_t,void*);
 
-static le_sem_Ref_t    ThreadSemaphore;
+static le_sem_Ref_t  ThreadSemaphore;
+static le_sem_Ref_t  SimRefreshSemaphore;
 static le_mdc_ProfileRef_t ProfileRef[NB_PROFILE];
 static le_mdc_SessionStateHandlerRef_t SessionStateHandler[NB_PROFILE];
 static le_mdc_ProfileRef_t ProfileRefReceivedByHandler = NULL;
@@ -92,6 +94,57 @@ le_msg_SessionRef_t le_sim_GetClientSessionRef
     return _ClientSessionRef;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * SIM Refresh handler: this handler is called on STK event
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void SimRefreshHandler
+(
+    le_sim_Id_t simId,
+    le_sim_StkEvent_t stkEvent,
+    void* contextPtr
+)
+{
+    LE_INFO("SIM refresh performed");
+    le_sem_Post(SimRefreshSemaphore);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a handler to monitor SIM refresh events
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void InitSimRefresh
+(
+    void
+)
+{
+    // Create a semaphore to coordinate the test when SIM is refreshed
+    SimRefreshSemaphore = le_sem_Create("SimRefreshSem", 0);
+
+    le_sim_AddSimToolkitEventHandler(SimRefreshHandler, NULL);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function should be called to trigger a refresh in le_sim side when a SIM information has
+ * changed in PA level
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void TriggerSimRefresh
+(
+    void
+)
+{
+    pa_simSimu_SetRefreshMode(LE_SIM_REFRESH_FCN);
+    pa_simSimu_SetRefreshStage(LE_SIM_STAGE_END_WITH_SUCCESS);
+    pa_simSimu_ReportSTKEvent(LE_SIM_REFRESH);
+    le_sem_Wait(SimRefreshSemaphore);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -248,6 +301,8 @@ static void TestMdc_Configuration( void )
     pa_simSimu_ReportSIMState(LE_SIM_READY);
     pa_simSimu_SetHomeNetworkMccMnc(homeMcc, homeMnc);
     pa_simSimu_SetCardIdentification("");
+    TriggerSimRefresh();
+
     LE_ASSERT(LE_FAULT == le_mdc_SetDefaultAPN(ProfileRef[2]));
 
     /* Set default APN based on MCC and MNC */
@@ -261,7 +316,10 @@ static void TestMdc_Configuration( void )
 
     /* Set default APN based on ICCID, MCC and MNC */
     char iccid[] = "89332422217010081060";
+
     pa_simSimu_SetCardIdentification(iccid);
+    TriggerSimRefresh();
+
     LE_ASSERT_OK(le_mdc_SetDefaultAPN(ProfileRef[2]));
     /* Check APN */
     LE_ASSERT_OK(le_mdc_GetAPN(ProfileRef[2], apn, sizeof(apn)));
@@ -815,23 +873,15 @@ static void TestMdc_StartStopAsync
 
 //--------------------------------------------------------------------------------------------------
 /**
- * main of the test
+ * Thread used to run MDC unit tests
  *
  */
 //--------------------------------------------------------------------------------------------------
-COMPONENT_INIT
+static void* TestThread
+(
+    void* context
+)
 {
-    // To reactivate for all DEBUG logs
-    // le_log_SetFilterLevel(LE_LOG_DEBUG);
-
-    // pa simu init */
-    pa_mdcSimu_Init();
-
-    /* init the le_mdc service */
-    le_mdc_Init();
-
-    /* init the pa_simu */
-    pa_simSimu_Init();
 
     LE_INFO("======== Start UnitTest of MDC API ========");
 
@@ -856,6 +906,38 @@ COMPONENT_INIT
     LE_INFO("======== UnitTest of MDC API ends with SUCCESS ========");
 
     exit(EXIT_SUCCESS);
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * main of the test
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+COMPONENT_INIT
+{
+    // To reactivate for all DEBUG logs
+    le_log_SetFilterLevel(LE_LOG_DEBUG);
+
+    /* init the pa_simu */
+    pa_simSimu_Init();
+
+    // Init le_sim
+    le_sim_Init();
+
+    // pa simu init */
+    pa_mdcSimu_Init();
+
+    /* init the le_mdc service */
+    le_mdc_Init();
+
+    /* Add a handler to monitor SIM refresh and synchronize the tests */
+    InitSimRefresh();
+
+    // Start unit tests
+    le_thread_Start(le_thread_Create("TestThread", TestThread,NULL));
+
 }
 
 

@@ -56,6 +56,8 @@ typedef struct le_sim_Obj
     char             EID[LE_SIM_EID_BYTES];      ///< eUICCID unique identifier (EID).
     char             phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; /// < The Phone Number.
     bool             isPresent;                  ///< 'isPresent' flag.
+    bool             isReacheable;               ///< SIM is reachable when its state is inserted,
+                                                 ///< ready or blocked
     Subscription_t   subscription;               ///< Subscription type
 }
 Sim_t;
@@ -138,13 +140,6 @@ static le_event_Id_t SimToolkitEventId;
  */
 //--------------------------------------------------------------------------------------------------
 static uint32_t SimToolkitHandlerCount = 0;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * PA SIM Toolkit handler reference.
- */
-//--------------------------------------------------------------------------------------------------
-static le_event_HandlerRef_t PaSimToolkitHandlerRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -370,86 +365,158 @@ static void FirstLayerNewSimStateHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the SIM card EID.
+ * Get the SIM card EID and store it in the SIM structure.
  *
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t GetEID
 (
-    Sim_t* simPtr   ///< [IN] The SIM structure.
+    Sim_t* simPtr   ///< [IN,OUT] The SIM structure.
 )
 {
-  pa_sim_Eid_t eid;
+    pa_sim_Eid_t eid;
 
-  if (LE_OK != pa_sim_GetCardEID(eid))
-  {
+    // EID has already been retreived and stored in SIM structure. No need to read it again.
+    if (0 != simPtr->EID[0])
+    {
+        return LE_OK;
+    }
+
+    // Select SIM card and attempt to read EID from PA.
+    if (LE_OK != SelectSIMCard(simPtr->simId))
+    {
+        return LE_FAULT;
+    }
+
+    if (false == simPtr->isReacheable)
+    {
+        LE_ERROR("SIM (%u) is unreacheable", simPtr->simId);
+        return LE_FAULT;
+    }
+
+    if (LE_OK != pa_sim_GetCardEID(eid))
+    {
       return LE_FAULT;
-  }
+    }
 
-  return le_utf8_Copy(simPtr->EID, eid, sizeof(simPtr->EID), NULL);
+    return le_utf8_Copy(simPtr->EID, eid, sizeof(simPtr->EID), NULL);
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the SIM card ICCID.
+ * Get the SIM card ICCID and store it in the SIM structure.
  *
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t GetICCID
 (
-    Sim_t* simPtr   ///< [IN] The SIM structure.
+    Sim_t* simPtr   ///< [IN,OUT] The SIM structure.
 )
 {
-  pa_sim_CardId_t  iccid;
+    pa_sim_CardId_t  iccid;
 
-  if (LE_OK != pa_sim_GetCardIdentification(iccid))
-  {
+    // ICCID has already been retreived and stored in SIM structure. No need to read it again.
+    if (0 != simPtr->ICCID[0])
+    {
+        return LE_OK;
+    }
+
+    // Select SIM card and attempt to read ICCID from PA.
+    if (LE_OK != SelectSIMCard(simPtr->simId))
+    {
+        return LE_FAULT;
+    }
+
+    if (false == simPtr->isReacheable)
+    {
+        LE_ERROR("SIM (%u) is unreacheable", simPtr->simId);
+        return LE_FAULT;
+    }
+
+    if (LE_OK != pa_sim_GetCardIdentification(iccid))
+    {
       return LE_FAULT;
-  }
+    }
 
-  return le_utf8_Copy(simPtr->ICCID, iccid, sizeof(simPtr->ICCID), NULL);
+    return le_utf8_Copy(simPtr->ICCID, iccid, sizeof(simPtr->ICCID), NULL);
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the SIM card IMSI.
+ * Get the SIM card IMSI and store it in the SIM structure.
  *
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t GetIMSI
 (
-    Sim_t* simPtr   ///< [IN] The SIM structure.
+    Sim_t* simPtr   ///< [IN,OUT] The SIM structure.
 )
 {
-  pa_sim_Imsi_t    imsi;
+    pa_sim_Imsi_t    imsi;
 
-  if (LE_OK != pa_sim_GetIMSI(imsi))
-  {
+    // IMSI has already been retreived and stored in SIM structure. No need to read it again.
+    if (0 != simPtr->IMSI[0])
+    {
+        return LE_OK;
+    }
+
+    // Select SIM card and attempt to read IMSI from PA.
+    if (LE_OK != SelectSIMCard(simPtr->simId))
+    {
+        return LE_FAULT;
+    }
+
+    if (false == simPtr->isReacheable)
+    {
+        LE_ERROR("SIM (%u) is unreacheable", simPtr->simId);
+        return LE_FAULT;
+    }
+
+    if (LE_OK != pa_sim_GetIMSI(imsi))
+    {
       return LE_FAULT;
-  }
+    }
 
-  return le_utf8_Copy(simPtr->IMSI, imsi, sizeof(simPtr->IMSI), NULL);
+    return le_utf8_Copy(simPtr->IMSI, imsi, sizeof(simPtr->IMSI), NULL);
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the SIM Phone Number.
+ * Get the SIM Phone Number and store it in the SIM structure.
  *
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t GetPhoneNumber
 (
-    Sim_t* simPtr   ///< [IN] The SIM structure.
+    Sim_t* simPtr   ///< [IN,OUT] The SIM structure.
 )
 {
-  char phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
+    char phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
 
-  if (LE_OK != pa_sim_GetSubscriberPhoneNumber(phoneNumber, sizeof(phoneNumber)))
-  {
+    // Phone number has already been retreived and stored. No need to read it again from PA.
+    if (0 != simPtr->phoneNumber[0])
+    {
+        return LE_OK;
+    }
+
+    // Select SIM card and attempt to read IMSI from PA.
+    if (LE_OK != SelectSIMCard(simPtr->simId))
+    {
+        return LE_FAULT;
+    }
+
+    if (false == simPtr->isReacheable)
+    {
+        LE_ERROR("SIM (%u) is unreacheable", simPtr->simId);
+        return LE_FAULT;
+    }
+
+    if (LE_OK != pa_sim_GetSubscriberPhoneNumber(phoneNumber, sizeof(phoneNumber)))
+    {
       return LE_FAULT;
-  }
+    }
 
-  return le_utf8_Copy(simPtr->phoneNumber, phoneNumber, sizeof(simPtr->phoneNumber), NULL);
+    return le_utf8_Copy(simPtr->phoneNumber, phoneNumber, sizeof(simPtr->phoneNumber), NULL);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -464,9 +531,11 @@ static void GetSimCardInformation
     le_sim_States_t state
 )
 {
+
     switch(state)
     {
         case LE_SIM_ABSENT:
+            simPtr->isReacheable = false;
             simPtr->ICCID[0] = '\0';
             simPtr->IMSI[0] = '\0';
             simPtr->EID[0] = '\0';
@@ -476,23 +545,28 @@ static void GetSimCardInformation
 
         case LE_SIM_INSERTED:
         case LE_SIM_BLOCKED:
+            simPtr->isReacheable = true;
             simPtr->isPresent = true;
             simPtr->IMSI[0] = '\0';
             simPtr->EID[0] = '\0';
             GetICCID(simPtr);
+            GetIMSI(simPtr);
             GetEID(simPtr);
+            GetPhoneNumber(simPtr);
             break;
 
         case LE_SIM_READY:
+            simPtr->isReacheable = true;
             simPtr->isPresent = true;
-            // Get identification information
             GetICCID(simPtr);
             GetIMSI(simPtr);
             GetEID(simPtr);
+            GetPhoneNumber(simPtr);
             break;
 
         case LE_SIM_BUSY:
         case LE_SIM_STATE_UNKNOWN:
+            simPtr->isReacheable = false;
             simPtr->isPresent = true;
             break;
     }
@@ -575,8 +649,36 @@ static void SimToolkitHandler
     pa_sim_StkEvent_t* eventPtr
 )
 {
-    LE_DEBUG("Report STK event %d on SIM %d", eventPtr->stkEvent, eventPtr->simId);
-    le_event_Report(SimToolkitEventId, eventPtr, sizeof(pa_sim_StkEvent_t));
+    if (LE_SIM_REFRESH == eventPtr->stkEvent)
+    {
+        switch (eventPtr->stkRefreshStage)
+        {
+            case LE_SIM_STAGE_WAITING_FOR_OK:
+                if (0 == SimToolkitHandlerCount)
+                {
+                    // Accept the refresh automatically if no other handler has been subscribed
+                    le_sim_AcceptSimToolkitCommand(eventPtr->simId);
+                }
+                break;
+
+            case LE_SIM_STAGE_END_WITH_SUCCESS:
+                LE_INFO("Update SIM Card information after a refresh");
+
+                // Discard old SIM card information and perform a new read.
+                GetSimCardInformation(&SimList[eventPtr->simId], LE_SIM_ABSENT);
+                GetSimCardInformation(&SimList[eventPtr->simId], LE_SIM_READY);
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    if (SimToolkitHandlerCount)
+    {
+        LE_DEBUG("Report STK event %d on SIM %d", eventPtr->stkEvent, eventPtr->simId);
+        le_event_Report(SimToolkitEventId, eventPtr, sizeof(pa_sim_StkEvent_t));
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -811,6 +913,7 @@ le_result_t le_sim_Init
 )
 {
     int i;
+    le_sim_States_t  state;
 
     // Initialize the SIM list
     for (i = 0; i < LE_SIM_ID_MAX; i++)
@@ -821,8 +924,8 @@ le_result_t le_sim_Init
         SimList[i].EID[0] = '\0';
         SimList[i].phoneNumber[0] = '\0';
         SimList[i].isPresent = false;
+        SimList[i].isReacheable = false;
         SimList[i].subscription = UNKNOWN_SUBSCRIPTION;
-        GetSimCardInformation(&SimList[i], LE_SIM_ABSENT);
     }
 
     // Create FPLMN list pool
@@ -844,23 +947,36 @@ le_result_t le_sim_Init
     SimToolkitEventId = le_event_CreateId("SimToolkitEventId", sizeof(pa_sim_StkEvent_t));
 
     SimToolkitHandlerCount = 0;
-    PaSimToolkitHandlerRef = NULL;
 
     // Register a handler function for new SIM state notification
-    if (pa_sim_AddNewStateHandler(NewSimStateHandler) == NULL)
+    if (NULL == pa_sim_AddNewStateHandler(NewSimStateHandler))
     {
         LE_CRIT("Add new SIM state handler failed");
         return LE_FAULT;
     }
 
-    if (pa_sim_GetSelectedCard(&SelectedCard) != LE_OK)
+    // Register a handler function for SIM Toolkit notification
+    if (NULL == pa_sim_AddSimToolkitEventHandler(SimToolkitHandler, NULL))
+    {
+        LE_ERROR("Add PA SIM Toolkit handler failed");
+        return LE_FAULT;
+    }
+
+    if (LE_OK != pa_sim_GetSelectedCard(&SelectedCard))
     {
         LE_CRIT("Unable to get selected card.");
         return LE_FAULT;
     }
-    GetSimCardInformation(&SimList[SelectedCard], LE_SIM_STATE_UNKNOWN);
 
     LE_DEBUG("SIM %u is selected.", SelectedCard);
+
+    if (LE_OK != pa_sim_GetState(&state))
+    {
+        LE_CRIT("Uable to get the initial card state");
+        return LE_FAULT;
+    }
+
+    GetSimCardInformation(&SimList[SelectedCard], state);
 
     return LE_OK;
 }
@@ -923,8 +1039,6 @@ le_result_t le_sim_GetICCID
     size_t      iccidLen      ///< [IN] Buffer length
 )
 {
-    le_sim_States_t  state;
-    le_result_t      res;
     Sim_t*           simPtr = NULL;
 
     if (simId >= LE_SIM_ID_MAX)
@@ -932,7 +1046,6 @@ le_result_t le_sim_GetICCID
         LE_ERROR("Invalid simId (%d) provided!", simId);
         return LE_BAD_PARAMETER;
     }
-    simPtr = &SimList[simId];
 
     if (NULL == iccidPtr)
     {
@@ -940,36 +1053,21 @@ le_result_t le_sim_GetICCID
         return LE_BAD_PARAMETER;
     }
 
-    if ((LE_OK == SelectSIMCard(simPtr->simId)) &&
-        (LE_OK == pa_sim_GetState(&state)) &&
-        ((LE_SIM_INSERTED == state) || (LE_SIM_READY == state) || (LE_SIM_BLOCKED == state))
-       )
+    if (iccidLen < LE_SIM_ICCID_BYTES)
     {
-        // Get ICCID
-        res = GetICCID(simPtr);
+        LE_ERROR("Incorrect buffer size");
+        return LE_OVERFLOW;
     }
-    else
+
+    simPtr = &SimList[simId];
+
+    if (LE_OK != GetICCID(simPtr))
     {
         LE_ERROR("Failed to get the ICCID of sim identifier.%d", simPtr->simId);
-        simPtr->ICCID[0] = '\0';
         return LE_FAULT;
     }
 
-    // The ICCID is available. Copy it to the result buffer.
-    if (LE_OK == res)
-    {
-        res = le_utf8_Copy(iccidPtr, simPtr->ICCID, iccidLen, NULL);
-    }
-
-    // If the ICCID could not be retrieved for some reason, or a truncation error occurred when
-    // copying the result, then ensure the cache is cleared.
-    if (LE_OK != res)
-    {
-        LE_ERROR("Failed to get the ICCID of sim identifier.%d", simPtr->simId);
-        simPtr->ICCID[0] = '\0';
-    }
-
-    return res;
+    return le_utf8_Copy(iccidPtr, simPtr->ICCID, iccidLen, NULL);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -993,8 +1091,6 @@ le_result_t  le_sim_GetEID
     size_t      eidLen      ///< [IN] Buffer length.
 )
 {
-    le_sim_States_t  state;
-    le_result_t      res;
     Sim_t*           simPtr = NULL;
 
     if (simId >= LE_SIM_ID_MAX)
@@ -1002,7 +1098,6 @@ le_result_t  le_sim_GetEID
         LE_ERROR("Invalid simId (%d) provided!", simId);
         return LE_BAD_PARAMETER;
     }
-    simPtr = &SimList[simId];
 
     if (NULL == eidPtr)
     {
@@ -1010,40 +1105,26 @@ le_result_t  le_sim_GetEID
         return LE_BAD_PARAMETER;
     }
 
-    if ((LE_OK == SelectSIMCard(simPtr->simId)) &&
-        (LE_OK == pa_sim_GetState(&state)) &&
-        ((LE_SIM_INSERTED == state) || (LE_SIM_READY == state) || (LE_SIM_BLOCKED == state))
-       )
+    if (eidLen < LE_SIM_EID_BYTES)
     {
-        res = GetEID(simPtr);
+        LE_ERROR("Incorrect buffer size");
+        return LE_OVERFLOW;
     }
-    else
+
+    simPtr = &SimList[simId];
+
+    if (LE_OK != GetEID(simPtr))
     {
         LE_ERROR("Failed to get the EID of sim identifier.%d", simPtr->simId);
-        simPtr->EID[0] = '\0';
         return LE_FAULT;
     }
 
-    // The EID is available. Copy it to the result buffer.
-    if (LE_OK == res)
-    {
-        res = le_utf8_Copy(eidPtr, simPtr->EID, eidLen, NULL);
-    }
-
-    // If the EID could not be retrieved for some reason, or a truncation error occurred when
-    // copying the result, then ensure the cache is cleared.
-    if (LE_OK != res)
-    {
-        LE_ERROR("Failed to get the EID of sim identifier.%d", simPtr->simId);
-        simPtr->EID[0] = '\0';
-    }
-
-    return res;
+    return le_utf8_Copy(eidPtr, simPtr->EID, eidLen, NULL);
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function retrieves the identification number (IMSI) of the SIM card. (max 15 digits)
+ * This function retrieves the identification number (IMSI) of the SIM card. (15 digits)
  *
  * @return LE_OK            The IMSI was successfully retrieved.
  * @return LE_OVERFLOW      The imsiPtr buffer was too small for the IMSI.
@@ -1059,8 +1140,6 @@ le_result_t le_sim_GetIMSI
     size_t      imsiLen      ///< [IN] Buffer length
 )
 {
-    le_sim_States_t  state;
-    le_result_t      res;
     Sim_t*           simPtr = NULL;
 
     if (simId >= LE_SIM_ID_MAX)
@@ -1068,7 +1147,6 @@ le_result_t le_sim_GetIMSI
         LE_ERROR("Invalid simId (%d) provided!", simId);
         return LE_BAD_PARAMETER;
     }
-    simPtr = &SimList[simId];
 
     if (NULL == imsiPtr)
     {
@@ -1076,36 +1154,71 @@ le_result_t le_sim_GetIMSI
         return LE_BAD_PARAMETER;
     }
 
-    if ((LE_OK == SelectSIMCard(simPtr->simId)) &&
-        (LE_OK == pa_sim_GetState(&state)) &&
-        (LE_SIM_READY == state)
-       )
+    if (imsiLen < LE_SIM_IMSI_BYTES)
     {
-        // Get identification information
-        res = GetIMSI(simPtr);
+        LE_ERROR("Incorrect buffer size");
+        return LE_OVERFLOW;
     }
-    else
+
+    simPtr = &SimList[simId];
+
+    if (LE_OK != GetIMSI(simPtr))
     {
         LE_ERROR("Failed to get the IMSI of sim identifier.%d", simPtr->simId);
-        simPtr->IMSI[0] = '\0';
         return LE_FAULT;
     }
 
-    // The IMSI is available. Copy it to the result buffer.
-    if (LE_OK == res)
+    return le_utf8_Copy(imsiPtr, simPtr->IMSI, imsiLen, NULL);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the SIM Phone Number.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the Phone Number can't fit in phoneNumberStr
+ *      - LE_BAD_PARAMETER if a parameter is invalid
+ *      - LE_FAULT on any other failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_GetSubscriberPhoneNumber
+(
+    le_sim_Id_t     simId,             ///< [IN] SIM identifier.
+    char*           phoneNumberStr,    ///< [OUT] Phone Number
+    size_t          phoneNumberStrSize ///< [IN]  Size of phoneNumberStr
+)
+{
+    Sim_t*           simPtr = NULL;
+
+    if (simId >= LE_SIM_ID_MAX)
     {
-        res = le_utf8_Copy(imsiPtr, simPtr->IMSI, imsiLen, NULL);
+        LE_ERROR("Invalid simId (%d) provided!", simId);
+        return LE_BAD_PARAMETER;
     }
 
-    // If the IMSI could not be retrieved for some reason, or a truncation error occurred when
-    // copying the result, then ensure the cache is cleared.
-    if (LE_OK != res)
+    if (NULL == phoneNumberStr)
     {
-        LE_ERROR("Failed to get the IMSI of sim identifier.%d", simPtr->simId);
-        simPtr->IMSI[0] = '\0';
+        LE_KILL_CLIENT("phoneNumberStr is NULL !");
+        return LE_BAD_PARAMETER;
     }
 
-    return res;
+    if (phoneNumberStrSize < LE_MDMDEFS_PHONE_NUM_MAX_BYTES)
+    {
+        LE_ERROR("Incorrect buffer size");
+        return LE_OVERFLOW;
+    }
+
+    simPtr = &SimList[simId];
+
+    if (LE_OK != GetPhoneNumber(simPtr))
+    {
+        LE_ERROR("Failed to get the Phone Number of sim identifier.%d", simPtr->simId);
+        return LE_FAULT;
+    }
+
+    return le_utf8_Copy(phoneNumberStr,simPtr->phoneNumber,phoneNumberStrSize,NULL);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1653,7 +1766,7 @@ le_sim_NewStateHandlerRef_t le_sim_AddNewStateHandler
 {
     le_event_HandlerRef_t handlerRef;
 
-    if (handlerPtr == NULL)
+    if (NULL == handlerPtr)
     {
         LE_KILL_CLIENT("Handler function is NULL !");
         return NULL;
@@ -1682,73 +1795,6 @@ void le_sim_RemoveNewStateHandler
 )
 {
     le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the SIM Phone Number.
- *
- * @return
- *      - LE_OK on success
- *      - LE_OVERFLOW if the Phone Number can't fit in phoneNumberStr
- *      - LE_BAD_PARAMETER if a parameter is invalid
- *      - LE_FAULT on any other failure
- *
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_sim_GetSubscriberPhoneNumber
-(
-    le_sim_Id_t     simId,             ///< [IN] SIM identifier.
-    char*           phoneNumberStr,    ///< [OUT] Phone Number
-    size_t          phoneNumberStrSize ///< [IN]  Size of phoneNumberStr
-)
-{
-    le_sim_States_t  state;
-    le_result_t      res = LE_FAULT;
-    Sim_t*           simPtr = NULL;
-
-    if (simId >= LE_SIM_ID_MAX)
-    {
-        LE_ERROR("Invalid simId (%d) provided!", simId);
-        return LE_BAD_PARAMETER;
-    }
-    simPtr = &SimList[simId];
-
-    if (NULL == phoneNumberStr)
-    {
-        LE_KILL_CLIENT("phoneNumberStr is NULL !");
-        return LE_BAD_PARAMETER;
-    }
-
-    if ((LE_OK == SelectSIMCard(simPtr->simId)) &&
-        (LE_OK == pa_sim_GetState(&state)) &&
-        ((LE_SIM_INSERTED == state) || (LE_SIM_READY == state) || (LE_SIM_BLOCKED == state))
-       )
-    {
-        // Get the phone number
-        res = GetPhoneNumber(simPtr);
-    }
-    else
-    {
-        LE_ERROR("Failed to get the Phone Number of sim identifier.%d", simPtr->simId);
-        simPtr->phoneNumber[0] = '\0';
-        return LE_FAULT;
-    }
-
-    // The phone number is available. Copy it to the result buffer.
-    if (LE_OK == res)
-    {
-        res = le_utf8_Copy(phoneNumberStr,simPtr->phoneNumber,phoneNumberStrSize,NULL);
-    }
-
-    // If the phone number could not be retrieved for some reason, or a truncation error occurred
-    // when copying the result, then ensure the cache is cleared.
-    if (LE_OK != res)
-    {
-        simPtr->phoneNumber[0] = '\0';
-    }
-
-    return res;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1809,13 +1855,13 @@ le_result_t le_sim_GetHomeNetworkOperator
         return LE_FAULT;
     }
 
-    if (mccPtr == NULL)
+    if (NULL == mccPtr)
     {
         LE_KILL_CLIENT("mccPtr is NULL");
         return LE_FAULT;
     }
 
-    if (mncPtr == NULL)
+    if (NULL == mncPtr)
     {
         LE_KILL_CLIENT("mncPtr is NULL");
         return LE_FAULT;
@@ -2022,21 +2068,10 @@ le_sim_SimToolkitEventHandlerRef_t le_sim_AddSimToolkitEventHandler
 {
     le_event_HandlerRef_t handlerRef;
 
-    if (handlerPtr == NULL)
+    if (NULL == handlerPtr)
     {
         LE_KILL_CLIENT("Handler function is NULL !");
         return NULL;
-    }
-
-    if (!SimToolkitHandlerCount)
-    {
-        // Register a handler function for SIM Toolkit notification
-        PaSimToolkitHandlerRef = pa_sim_AddSimToolkitEventHandler(SimToolkitHandler, NULL);
-        if (!PaSimToolkitHandlerRef)
-        {
-            LE_ERROR("Add PA SIM Toolkit handler failed");
-            return NULL;
-        }
     }
 
     handlerRef = le_event_AddLayeredHandler("SimToolkitHandler",
@@ -2062,12 +2097,17 @@ void le_sim_RemoveSimToolkitEventHandler
     le_sim_SimToolkitEventHandlerRef_t handlerRef   ///< [IN] Handler reference.
 )
 {
-    SimToolkitHandlerCount--;
-    if (!SimToolkitHandlerCount)
+    if (NULL == handlerRef)
     {
-        pa_sim_RemoveSimToolkitEventHandler(PaSimToolkitHandlerRef);
+        LE_ERROR("Null handler reference");
+        return;
     }
-    le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
+
+    if (SimToolkitHandlerCount)
+    {
+        SimToolkitHandlerCount--;
+        le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2583,7 +2623,7 @@ void le_sim_DeleteFPLMNList
 {
     le_sim_FPLMNList_t* FPLMNListPtr = le_ref_Lookup(FPLMNListRefMap, FPLMNListRef);
 
-    if (FPLMNListPtr == NULL)
+    if (NULL == FPLMNListPtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", FPLMNListRef);
         return;

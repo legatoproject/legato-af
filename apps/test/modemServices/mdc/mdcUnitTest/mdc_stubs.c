@@ -34,3 +34,19 @@ void le_wdogChain_MonitorEventLoop
 )
 {
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add service close handler stub.
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_SessionEventHandlerRef_t MyAddServiceCloseHandler
+(
+    le_msg_ServiceRef_t serviceRef,            ///< [IN] Service reference.
+    le_msg_SessionEventHandler_t handlerFunc,  ///< [IN] Handler function pointer.
+    void* contextPtr                           ///< [IN] Context pointer.
+)
+{
+    return NULL;
+}
+

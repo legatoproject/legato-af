@@ -264,6 +264,7 @@
  * The last received SIM Toolkit command can:
  * - Either be accepted by the device with the le_sim_AcceptSimToolkitCommand() API
  * - Or be rejected by the device with the le_sim_RejectSimToolkitCommand() API.
+ * Note that if no handler is registered, refresh requests are automatically accepted.
  *
  * In case the last SIM Toolkit command is a Refresh command (@ref LE_SIM_REFRESH), additional
  * information can be retrieved:

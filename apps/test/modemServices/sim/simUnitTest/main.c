@@ -696,9 +696,9 @@ static void TestSim_SimCardInformation
     void
 )
 {
-    char iccid[PA_SIM_CARDID_MAX_LEN+1];
-    char imsi[PA_SIM_IMSI_MAX_LEN+1];
-    char eid[PA_SIM_EID_MAX_LEN+1];
+    char iccid[LE_SIM_ICCID_BYTES];
+    char imsi[LE_SIM_IMSI_BYTES];
+    char eid[LE_SIM_EID_BYTES];
     char phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
 
     // Start in ABSENT state
@@ -712,9 +712,9 @@ static void TestSim_SimCardInformation
     CheckStateHandlerResult();
 
     // Try to get information: error are expected as there's no SIM
-    LE_ASSERT(LE_FAULT == le_sim_GetICCID(CurrentSimId, iccid, PA_SIM_CARDID_MAX_LEN));
-    LE_ASSERT(LE_FAULT == le_sim_GetIMSI(CurrentSimId, imsi, PA_SIM_IMSI_MAX_LEN));
-    LE_ASSERT(LE_FAULT == le_sim_GetEID(CurrentSimId, eid, PA_SIM_EID_MAX_LEN));
+    LE_ASSERT(LE_FAULT == le_sim_GetICCID(CurrentSimId, iccid, LE_SIM_ICCID_BYTES));
+    LE_ASSERT(LE_FAULT == le_sim_GetIMSI(CurrentSimId, imsi, LE_SIM_IMSI_BYTES));
+    LE_ASSERT(LE_FAULT == le_sim_GetEID(CurrentSimId, eid, LE_SIM_EID_BYTES));
     LE_ASSERT(LE_FAULT == le_sim_GetSubscriberPhoneNumber( CurrentSimId,
                                                 phoneNumber,
                                                 LE_MDMDEFS_PHONE_NUM_MAX_BYTES));
@@ -729,21 +729,21 @@ static void TestSim_SimCardInformation
     CheckStateHandlerResult();
 
     // Try to get informations, check values (OK expected)
-    LE_ASSERT_OK(le_sim_GetICCID(CurrentSimId, iccid, PA_SIM_CARDID_MAX_LEN+1));
-    LE_ASSERT(0 == strncmp(iccid,Iccid,PA_SIM_CARDID_MAX_LEN));
-    LE_ASSERT_OK(le_sim_GetIMSI(CurrentSimId, imsi, PA_SIM_IMSI_MAX_LEN+1));
-    LE_ASSERT(0 == strncmp(imsi,Imsi,PA_SIM_IMSI_MAX_LEN));
-    LE_ASSERT_OK(le_sim_GetEID(CurrentSimId, eid, PA_SIM_EID_MAX_LEN+1));
-    LE_ASSERT(0 == strncmp(eid,Eid,PA_SIM_EID_MAX_LEN));
+    LE_ASSERT_OK(le_sim_GetICCID(CurrentSimId, iccid, LE_SIM_ICCID_BYTES));
+    LE_ASSERT(0 == strncmp(iccid,Iccid,LE_SIM_ICCID_LEN));
+    LE_ASSERT_OK(le_sim_GetIMSI(CurrentSimId, imsi, LE_SIM_IMSI_BYTES));
+    LE_ASSERT(0 == strncmp(imsi,Imsi,LE_SIM_IMSI_LEN));
+    LE_ASSERT_OK(le_sim_GetEID(CurrentSimId, eid, LE_SIM_EID_BYTES));
+    LE_ASSERT(0 == strncmp(eid,Eid,LE_SIM_EID_LEN));
     LE_ASSERT_OK( le_sim_GetSubscriberPhoneNumber( CurrentSimId,
                                                 phoneNumber,
                                                 LE_MDMDEFS_PHONE_NUM_MAX_BYTES ));
     LE_ASSERT(0 == strncmp(phoneNumber,PhoneNum,LE_MDMDEFS_PHONE_NUM_MAX_BYTES));
 
     // Try to get infomartions with a too small buffer (error expected)
-    LE_ASSERT(LE_OVERFLOW == le_sim_GetICCID(CurrentSimId, iccid, PA_SIM_CARDID_MAX_LEN));
-    LE_ASSERT(LE_OVERFLOW == le_sim_GetIMSI(CurrentSimId, imsi, PA_SIM_IMSI_MAX_LEN));
-    LE_ASSERT(LE_OVERFLOW == le_sim_GetEID(CurrentSimId, eid, PA_SIM_EID_MAX_LEN));
+    LE_ASSERT(LE_OVERFLOW == le_sim_GetICCID(CurrentSimId, iccid, LE_SIM_ICCID_LEN));
+    LE_ASSERT(LE_OVERFLOW == le_sim_GetIMSI(CurrentSimId, imsi, LE_SIM_IMSI_LEN));
+    LE_ASSERT(LE_OVERFLOW == le_sim_GetEID(CurrentSimId, eid, LE_SIM_EID_LEN));
 
     // Check that all handlers have been called as expected
     LE_ASSERT(0 == le_sem_GetValue(ThreadSemaphore));
@@ -826,10 +826,41 @@ static void TestSim_Stk
     void
 )
 {
+    pa_sim_CardId_t iccid, newIccid = "12121212901234567812";
+    pa_sim_Imsi_t imsi, newImsi = "121212125678910";
+    pa_sim_Eid_t eid, newEid = "12121201010101010101010101050028";
+
     // STK handler semaphore
     StkHandlerSem = (le_sem_Ref_t) le_sem_Create("StkHandlerSem",1);
 
-    // each thread subscribes to state handler using le_sim_AddSimToolkitEventHandler
+    // Test le_sim_AcceptSimToolkitCommand and le_sim_RejectSimToolkitCommand
+    pa_simSimu_SetExpectedSTKConfirmationCommand(true);
+    LE_ASSERT( le_sim_AcceptSimToolkitCommand(CurrentSimId) == LE_OK );
+    pa_simSimu_SetExpectedSTKConfirmationCommand(false);
+    LE_ASSERT( le_sim_RejectSimToolkitCommand(CurrentSimId) == LE_OK );
+
+    // Set SIM card new information
+    pa_simSimu_SetCardIdentification(newIccid);
+    pa_simSimu_SetIMSI(newImsi);
+    pa_simSimu_SetEID(newEid);
+
+    // Check that le_sim automatically accept refresh requests when no handler is subscribed
+    StkEvent = LE_SIM_REFRESH;
+    StkRefreshMode = LE_SIM_REFRESH_FCN;
+    StkRefreshStage = LE_SIM_STAGE_WAITING_FOR_OK;
+
+    pa_simSimu_SetRefreshMode(StkRefreshMode);
+    pa_simSimu_SetRefreshStage(StkRefreshStage);
+    pa_simSimu_SetExpectedSTKConfirmationCommand(true);
+
+    // Invoke STK event and check that STK confirmation is accepted as expected. Note that
+    // the assert is done in simu side.
+    pa_simSimu_CreateSempahoreForSTKConfirmation();
+    pa_simSimu_ReportSTKEvent(StkEvent);
+    pa_simSimu_WaitForSTKConfirmation();
+    pa_simSimu_DeleteSempahoreForSTKConfirmation();
+
+    // Each thread subscribes to state handler using le_sim_AddSimToolkitEventHandler
     // This API has to be called by threads
     int i=0;
     for (; i<NB_CLIENT; i++)
@@ -840,31 +871,38 @@ static void TestSim_Stk
                                         NULL );
     }
 
-    // Wait for the tasks
+    // Wait for the handlers to be added
     SynchTest();
 
-    StkEvent = LE_SIM_REFRESH;
+    // Since SIM refresh has been automatically accepted earlier, notify the completion of the
+    // refresh
+    StkRefreshStage = LE_SIM_STAGE_END_WITH_SUCCESS;
+    pa_simSimu_SetRefreshStage(StkRefreshStage);
 
-    // Invoke STK event
+    // Invoke STK event and wait for event completion.
     pa_simSimu_ReportSTKEvent(StkEvent);
 
     // Wait for the call of the handlers
     SynchTest();
 
-    // Check the result
+    // Check that all clients received the refresh event
     for (i=0; i<NB_CLIENT; i++)
     {
         LE_ASSERT(AppCtx[i].stkEvent == StkEvent);
         AppCtx[i].stkEvent = 0;
     }
 
-    // Test le_sim_AcceptSimToolkitCommand and le_sim_RejectSimToolkitCommand
-    pa_simSimu_SetExpectedSTKConfirmationCommand(true);
-    LE_ASSERT( le_sim_AcceptSimToolkitCommand(CurrentSimId) == LE_OK );
-    pa_simSimu_SetExpectedSTKConfirmationCommand(false);
-    LE_ASSERT( le_sim_RejectSimToolkitCommand(CurrentSimId) == LE_OK );
+    pa_sim_GetCardIdentification(iccid);
+    pa_sim_GetIMSI(imsi);
+    pa_sim_GetCardEID(eid);
 
-    // Change refresh mode and stage
+    // Check that SIM information has been modified correctly
+    LE_ASSERT(strcmp(iccid, newIccid)==0);
+    LE_ASSERT(strcmp(imsi, newImsi)==0);
+    LE_ASSERT(strcmp(eid, newEid)==0);
+
+
+    // Change refresh mode and stage and check that clients receive them
     StkEvent = LE_SIM_REFRESH;
     StkRefreshMode = LE_SIM_REFRESH_INIT_FULL_FCN;
     StkRefreshStage = LE_SIM_STAGE_END_WITH_SUCCESS;
@@ -1247,24 +1285,15 @@ static void TestSIm_FPLMNList
 
 //--------------------------------------------------------------------------------------------------
 /**
- * main of the test
+ * Thread used to run SIM unit tests
  *
  */
 //--------------------------------------------------------------------------------------------------
-COMPONENT_INIT
+static void* TestThread
+(
+    void* context
+)
 {
-    // To reactivate for all DEBUG logs
- //   le_log_SetFilterLevel(LE_LOG_DEBUG);
-
-    // Init pa simu
-    pa_simSimu_Init();
-
-    // Set Sim card info in the pa_simu
-    SetSimCardInfo();
-
-    // Init le_sim
-    le_sim_Init();
-
     LE_INFO("======== Start UnitTest of SIM API ========");
 
     LE_INFO("======== AddHandlers Test  ========");
@@ -1302,4 +1331,30 @@ COMPONENT_INIT
 
     LE_INFO("======== UnitTest of SIM API ends with SUCCESS ========");
     exit(0);
+
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * main of the test
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+COMPONENT_INIT
+{
+    // To reactivate for all DEBUG logs
+ //   le_log_SetFilterLevel(LE_LOG_DEBUG);
+
+    // Init pa simu
+    pa_simSimu_Init();
+
+    // Set Sim card info in the pa_simu
+    SetSimCardInfo();
+
+    // Init le_sim
+    le_sim_Init();
+
+    // Start unit tests
+    le_thread_Start(le_thread_Create("TestThread", TestThread,NULL));
 }

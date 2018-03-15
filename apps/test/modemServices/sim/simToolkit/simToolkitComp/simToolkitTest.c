@@ -39,12 +39,20 @@ static void TestSimToolkitHandler
         case LE_SIM_OPEN_CHANNEL:
             LE_INFO("-TEST- OPEN_CHANNEL SIM Toolkit event for SIM card.%d", simId);
             break;
+
         case LE_SIM_REFRESH:
             LE_INFO("-TEST- REFRESH SIM Toolkit event for SIM card.%d", simId);
             LE_ASSERT_OK(le_sim_GetSimToolkitRefreshMode(simId, &refreshMode));
             LE_ASSERT_OK(le_sim_GetSimToolkitRefreshStage(simId, &refreshStage));
             LE_INFO("REFRESH SIM MODE: %d, STAGE: %d", refreshMode, refreshStage);
+
+            // No need to accept/reject any stage other than LE_SIM_STAGE_WAITING_FOR_OK
+            if (LE_SIM_STAGE_WAITING_FOR_OK != refreshStage)
+            {
+                return;
+            }
             break;
+
         case LE_SIM_STK_EVENT_MAX:
         default:
             LE_INFO("-TEST- Unknown SIM Toolkit event %d for SIM card.%d", stkEvent, simId);

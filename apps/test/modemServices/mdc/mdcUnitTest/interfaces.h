@@ -36,6 +36,20 @@ le_msg_ServiceRef_t le_sim_GetServiceRef
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Registers a function to be called whenever one of this service's sessions is closed by
+ * the client.  (STUBBED FUNCTION)
+
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_SessionEventHandlerRef_t MyAddServiceCloseHandler
+(
+    le_msg_ServiceRef_t             serviceRef, ///< [IN] Reference to the service.
+    le_msg_SessionEventHandler_t    handlerFunc,///< [IN] Handler function.
+    void*                           contextPtr  ///< [IN] Opaque pointer value to pass to handler.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the client session reference for the current message
  */
 //--------------------------------------------------------------------------------------------------
