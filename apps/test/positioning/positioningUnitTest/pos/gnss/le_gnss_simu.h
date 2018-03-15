@@ -21,7 +21,6 @@
 //--------------------------------------------------------------------------------------------------
 /**
  * gnssSimuLocation_t: a structure that holds simulated location data
- *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct {
@@ -35,7 +34,6 @@ gnssSimuLocation_t;
 //--------------------------------------------------------------------------------------------------
 /**
  * gnssSimuAltitude_t: a structure that holds simulated altitude data
- *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct {
@@ -48,7 +46,6 @@ gnssSimuAltitude_t;
 //--------------------------------------------------------------------------------------------------
 /**
  * gnssSimuDate_t: a structure that holds simulated date data
- *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct {
@@ -62,7 +59,6 @@ gnssSimuDate_t;
 //--------------------------------------------------------------------------------------------------
 /**
  * gnssSimuDirection_t: a structure that holds simulated direction data
- *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct {
@@ -75,7 +71,6 @@ gnssSimuDirection_t;
 //--------------------------------------------------------------------------------------------------
 /**
  * gnssSimuHSpeed_t: a structure that holds simulated horizontal speed data
- *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct {
@@ -88,7 +83,6 @@ gnssSimuHSpeed_t;
 //--------------------------------------------------------------------------------------------------
 /**
  * gnssSimuVSpeed_t: a structure that holds simulated vertical speed data
- *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct {
@@ -100,8 +94,22 @@ gnssSimuVSpeed_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * gnssSimuDop_t: a structure that holds simulated DOP data
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+    uint32_t pDop;
+    uint32_t hDop;
+    uint32_t vDop;
+    uint32_t gDop;
+    uint32_t tDop;
+    le_result_t result;
+}
+gnssSimuDop_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * gnssSimuTime_t: a structure that holds simulated time data
- *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct {
@@ -116,7 +124,6 @@ gnssSimuTime_t;
 //--------------------------------------------------------------------------------------------------
 /**
  * gnssSimuPositionState_t: a structure that holds simulated position state data
- *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct {
@@ -132,6 +139,7 @@ void le_gnssSimu_SetDirection(gnssSimuDirection_t gnssDirection);
 void le_gnssSimu_SetHSpeed(gnssSimuHSpeed_t gnssHSpeed);
 void le_gnssSimu_SetVSpeed(gnssSimuVSpeed_t gnssVSpeed);
 void le_gnssSimu_SetTime(gnssSimuTime_t gnssTime);
+void le_gnssSimu_SetDop(gnssSimuDop_t dop);
 void le_gnssSimu_SetSampleRef(le_gnss_SampleRef_t sample);
 void le_gnssSimu_SetPositionState(gnssSimuPositionState_t state);
 void le_gnssSimu_ReportEvent(void);         ///to report the event for handler
@@ -169,7 +177,6 @@ le_gnss_SvMeas_t;
 //--------------------------------------------------------------------------------------------------
 /**
  * Position Sample structure.
- *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct le_gnss_PositionSample
@@ -254,7 +261,6 @@ le_gnss_PositionSample_t;
 //--------------------------------------------------------------------------------------------------
 /**
  * Position Sample's Handler structure.
- *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct le_gnss_PositionHandler

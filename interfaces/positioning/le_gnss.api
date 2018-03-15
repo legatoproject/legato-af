@@ -265,6 +265,14 @@
  * - le_gnss_GetAltitudeOnWgs84()
  * - le_gnss_GetMagneticDeviation()
  *
+ * le_gnss_GetDilutionOfPrecision() gets the DOP parameters (Dilution Of Precision) with a
+ * resolution of 3 decimal places by default. This resolution can be modified by calling the
+ * @c le_gnss_SetDopResolution() function first.
+ *
+ * As @c le_gnss_SetDopResolution() sets the resolution per client session,
+ * @c le_gnss_SetDopResolution() and @c le_gnss_GetDilutionOfPrecision() functions should be called
+ * in the same thread or client session.
+ *
  * The handler can be managed using le_gnss_AddPositionHandler()
  * and le_gnss_RemovePositionHandler().
  * When a position is computed, the handler is called.
@@ -520,6 +528,20 @@ ENUM FixState
     STATE_FIX_2D,              ///< 2-Dimensional position fix.
     STATE_FIX_3D,              ///< 3-Dimensional position fix.
     STATE_FIX_ESTIMATED        ///< Estimated (i.e. forward predicted) position fix.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Resolutions values.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Resolution
+{
+    RES_ZERO_DECIMAL,          ///< Resolution of 0 decimal place.
+    RES_ONE_DECIMAL,           ///< Resolution of 1 decimal place.
+    RES_TWO_DECIMAL,           ///< Resolution of 2 decimal places.
+    RES_THREE_DECIMAL,         ///< Resolution of 3 decimal places (default).
+    RES_UNKNOWN                ///< Unknown resolution.
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -1431,7 +1453,8 @@ FUNCTION le_result_t GetDop
  *
  * @note This function replaces the deprecated function le_gnss_GetDop().
  *
- * @note The DOP value is given with 3 decimal places like: DOP value 2200 = 2.200
+ * @note The DOP value is given with 3 decimal places by default like: DOP value 2200 = 2.200
+ *       The resolution can be modified by calling the @c le_gnss_SetDopResolution() function.
  *
  * @note If the caller is passing an invalid Position sample reference into this function,
  *       it is a fatal error, the function will not return.
@@ -1442,7 +1465,7 @@ FUNCTION le_result_t GetDilutionOfPrecision
     Sample positionSampleRef IN,           ///< Position sample's reference.
     DopType dopType IN,                    ///< Dilution of Precision type.
     uint16 dop OUT                         ///< Dilution of Precision corresponding to the dopType
-                                           /// [resolution 1e-3].
+                                           /// in the specified resolution.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1722,4 +1745,23 @@ FUNCTION le_result_t SetMinElevation
 FUNCTION le_result_t GetMinElevation
 (
    uint8  minElevationPtr     OUT  ///< Minimum elevation in degrees [range 0..90].
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the resolution for the DOP parameters
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_BAD_PARAMETER    Invalid parameter provided.
+ * @return LE_FAULT            Function failed.
+ *
+ * @note The function sets the same resolution to all DOP values returned by
+ *       le_gnss_GetDilutionOfPrecision() API. The resolution setting takes effect immediately.
+ *
+ * @note The resolution setting is done per client session.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetDopResolution
+(
+    Resolution resolution    IN    ///< Resolution.
 );

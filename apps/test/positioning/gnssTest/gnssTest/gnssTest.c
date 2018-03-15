@@ -27,6 +27,9 @@ static uint64_t EpochTime=0;
 // Time uncertainty in Milliseconds
 static uint32_t TimeAccuracy=0;
 
+// DOP resolution
+static le_gnss_Resolution_t DopRes = LE_GNSS_RES_THREE_DECIMAL;
+
 //--------------------------------------------------------------------------------------------------
 //                                       Test Functions
 //--------------------------------------------------------------------------------------------------
@@ -346,20 +349,48 @@ static void PositionHandlerFunction
         LE_INFO("AltitudeOnWgs84 unknown [%d]", altitudeOnWgs84);
     }
 
-    // Get DOP parameter
+    LE_INFO("Dop parameters: \n");
+
+    // Set the DOP resolution
+    if (LE_GNSS_RES_UNKNOWN == ++DopRes)
+    {
+        DopRes = LE_GNSS_RES_ZERO_DECIMAL;
+    }
+    LE_ASSERT_OK(le_gnss_SetDopResolution(DopRes));
+    LE_INFO("Set DOP resolution: %d decimal place\n", DopRes);
+
     do
     {
-        result = le_gnss_GetDilutionOfPrecision(positionSampleRef,
-                                               dopType,
-                                               &dop);
+        // Get DOP parameter
+        result = le_gnss_GetDilutionOfPrecision(positionSampleRef, dopType, &dop);
         LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
         if (LE_OK == result)
         {
-            printf("%s %.3f\n", tabDop[dopType], (float)(dop)/1000);
+            switch(DopRes)
+
+            {
+                case LE_GNSS_RES_ZERO_DECIMAL:
+                     LE_INFO("resolution: %d decimal place, %s %.1f\n",
+                            DopRes, tabDop[dopType], (float)dop);
+                     break;
+                case LE_GNSS_RES_ONE_DECIMAL:
+                     LE_INFO("resolution: %d decimal place, %s %.1f\n",
+                            DopRes, tabDop[dopType], (float)(dop)/10);
+                     break;
+                case LE_GNSS_RES_TWO_DECIMAL:
+                     LE_INFO("resolution: %d decimal place, %s %.2f\n",
+                            DopRes, tabDop[dopType], (float)(dop)/100);
+                     break;
+                case LE_GNSS_RES_THREE_DECIMAL:
+                default:
+                     LE_INFO("resolution: %d decimal place, %s %.3f\n",
+                            DopRes, tabDop[dopType], (float)(dop)/1000);
+                     break;
+            }
         }
         else
         {
-            printf("%s invalid %d\n", tabDop[dopType], dop);
+            LE_INFO("%s invalid %d\n", tabDop[dopType], dop);
         }
         dopType++;
     }
@@ -531,8 +562,12 @@ static void TestLeGnssPositionHandler
     // NMEA frame GPGSA is checked that no SV with elevation below 10
     // degrees are given.
     minElevation = 10;
-    LE_ASSERT_OK(le_gnss_SetMinElevation(minElevation));
-    LE_INFO("Set minElevation %d",minElevation);
+    result = le_gnss_SetMinElevation(minElevation);
+    LE_ASSERT((LE_OK == result) || (LE_OUT_OF_RANGE == result));
+    if (LE_OK == result)
+    {
+        LE_INFO("Set minElevation %d",minElevation);
+    }
 
     LE_INFO("Start GNSS");
     LE_ASSERT_OK(le_gnss_Start());
@@ -561,6 +596,11 @@ static void TestLeGnssPositionHandler
     LE_ASSERT(LE_BUSY == result);
     LE_INFO("TTFF is checked as not available immediatly after a Cold restart");
 
+    LE_ASSERT(LE_BAD_PARAMETER == le_gnss_SetDopResolution(LE_GNSS_RES_UNKNOWN));
+
+    // first test in ConvertDop() in le_gnss.c to find the default resolution.
+    // Test that the chosen resolution in PositionHandlerFunction is LE_GNSS_RES_THREE_DECIMAL
+
     // Wait for a 3D fix
     LE_INFO("Wait 60 seconds for a 3D fix");
     sleep(60);
@@ -577,13 +617,11 @@ static void TestLeGnssPositionHandler
     }
 
     le_gnss_RemovePositionHandler(PositionHandlerRef);
-
     LE_INFO("Wait 5 seconds");
     sleep(5);
 
     // stop thread
     le_thread_Cancel(positionThreadRef);
-
     // Get Epoch time, get last position sample
     positionSampleRef = le_gnss_GetLastSampleRef();
     LE_ASSERT_OK(le_gnss_GetEpochTime(positionSampleRef, &epochTime));

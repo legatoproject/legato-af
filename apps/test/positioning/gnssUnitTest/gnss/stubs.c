@@ -11,7 +11,6 @@
 //--------------------------------------------------------------------------------------------------
 /**
  * Get the server service reference stub for le_gnss
- *
  */
 //--------------------------------------------------------------------------------------------------
 le_msg_ServiceRef_t le_gnss_GetServiceRef
@@ -25,7 +24,6 @@ le_msg_ServiceRef_t le_gnss_GetServiceRef
 //--------------------------------------------------------------------------------------------------
 /**
  * Get the client session reference stub for le_gnss
- *
  */
 //--------------------------------------------------------------------------------------------------
 le_msg_SessionRef_t le_gnss_GetClientSessionRef
@@ -80,7 +78,6 @@ int32_t le_cfg_GetInt
 /**
  * Registers a function to be called whenever one of this service's sessions is closed by
  * the client.  (STUBBED FUNCTION)
-
  */
 //--------------------------------------------------------------------------------------------------
 le_msg_SessionEventHandlerRef_t MyAddServiceCloseHandler

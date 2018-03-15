@@ -203,12 +203,28 @@ le_gnss_PositionHandler_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_gnss_SampleRef_t             positionSampleRef;  ///< Store position smaple reference.
+    le_gnss_SampleRef_t             positionSampleRef;  ///< Store position sample reference.
     le_gnss_PositionSample_t*       positionSampleNodePtr; ///< Position sample node pointer.
     le_msg_SessionRef_t             sessionRef;         ///< Client session identifier.
     le_dls_Link_t                   link;               ///< Object node link.
 }
 le_gnss_PositionSampleRequest_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Client session object structure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    void*                           clientRefPtr;           ///< Store Client object reference.
+    le_msg_SessionRef_t             sessionRef;             ///< Client session identifier.
+    le_gnss_Resolution_t            dopResolution;          ///< Client resolution.
+    le_dls_Link_t                   link;                   ///< Object node link.
+}
+le_gnss_Client_t;
 
 //--------------------------------------------------------------------------------------------------
 // Static declarations.
@@ -280,6 +296,14 @@ static le_mem_PoolRef_t   PositionSamplePoolRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Memory Pool for Client Handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t   ClientPoolRef;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Memory Pool for position samples request object.
  *
  */
@@ -301,6 +325,14 @@ static le_dls_List_t PositionSampleList = LE_DLS_LIST_INIT;
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t PositionSampleMap;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe Reference Map for client Sample objects.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t ClientRequestRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -681,6 +713,118 @@ static void SigPipeHandler
     LE_INFO("%s received through SigPipeHandler.", strsignal(sigNum));
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * The function returns the Client session reference if exists else it returns NULL.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_gnss_Client_t* FindClientSessionReference
+(
+    le_msg_SessionRef_t sessionRef   ///< [IN] Session reference.
+)
+{
+    le_ref_IterRef_t iterRef = le_ref_GetIterator(ClientRequestRefMap);
+    le_result_t result = le_ref_NextNode(iterRef);
+
+    while (LE_OK == result)
+    {
+        le_gnss_Client_t* gnssCtrlPtr = (le_gnss_Client_t*) le_ref_GetValue(iterRef);
+
+        LE_DEBUG("gnssCtrlPtr %p, gnssCtrlPtr->sessionRef %p, sessionRef %p",
+                 gnssCtrlPtr, gnssCtrlPtr->sessionRef, sessionRef);
+
+        // Check if the session reference saved matchs with the current session reference.
+        if (sessionRef == gnssCtrlPtr->sessionRef)
+        {
+             LE_DEBUG("SessionRef %p found in Client session", sessionRef);
+             return gnssCtrlPtr;
+        }
+        // Get the next value in the reference map
+        result = le_ref_NextNode(iterRef);
+    }
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The function returns a client session reference. It checks if it already exist, else it creates
+ * one.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_gnss_Client_t* GetClientSessionReference
+(
+    void
+)
+{
+    le_gnss_Client_t* clientRequestPtr = NULL;
+    le_msg_SessionRef_t sessionRef = le_gnss_GetClientSessionRef();
+
+    clientRequestPtr = FindClientSessionReference(sessionRef);
+
+    if (NULL == clientRequestPtr)
+    {
+        clientRequestPtr = le_mem_ForceAlloc(ClientPoolRef);
+
+        // On le_mem_ForceAlloc failure, the process exits, so function doesn't need to checking the
+        // returned pointer for validity.
+
+        // Need to return a unique reference that will be used by Release.
+        void* reqRefPtr = le_ref_CreateRef(ClientRequestRefMap, clientRequestPtr);
+
+        LE_DEBUG("SessionRef %p was not found, Create Client session", sessionRef);
+        LE_DEBUG("reqRefPtr %p, clientRequestPtr %p", reqRefPtr, clientRequestPtr);
+
+        // Save the client session "sessionRef" associated with the request reference "reqRef"
+        clientRequestPtr->sessionRef = sessionRef;
+        clientRequestPtr->clientRefPtr = reqRefPtr;
+    }
+
+    return clientRequestPtr;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert the DOP value in the selected resolution.
+ */
+//--------------------------------------------------------------------------------------------------
+static uint32_t ConvertDop
+(
+    uint32_t dopValue    ///< [IN] Dilution of Precision value to convert.
+)
+{
+    uint16_t resValue = 0;
+
+    le_gnss_Client_t* clientRequestPtr = NULL;
+    le_msg_SessionRef_t sessionRef = le_gnss_GetClientSessionRef();
+    le_gnss_Resolution_t resolution = LE_GNSS_RES_UNKNOWN;
+
+    clientRequestPtr = FindClientSessionReference(sessionRef);
+
+    if (NULL != clientRequestPtr)
+    {
+        resolution = clientRequestPtr->dopResolution;
+    }
+
+    switch(resolution)
+    {
+        case LE_GNSS_RES_ZERO_DECIMAL:
+             resValue = dopValue/1000;
+             break;
+        case LE_GNSS_RES_ONE_DECIMAL:
+             resValue = dopValue/100;
+             break;
+        case LE_GNSS_RES_TWO_DECIMAL:
+             resValue = dopValue/10;
+             break;
+        case LE_GNSS_RES_THREE_DECIMAL:
+        default:
+             // treat unknown resolution as a resolution of 3 decimal places (default).
+             resValue = dopValue;
+             break;
+    }
+    LE_DEBUG("resolution %d, dopValue %d, new dopValue %d", (int)resolution, dopValue, resValue);
+    return resValue;
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -784,6 +928,32 @@ static void PaPositionHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function must be called to release the client reference
+ *
+ * @note If the caller is passing an invalid Position reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+static void le_gnss_ReleaseClientRef
+(
+    void* RefPtr    ///< [IN] The client reference.
+)
+{
+    void* clientPosPtr = le_ref_Lookup(ClientRequestRefMap, RefPtr);
+    if (NULL == clientPosPtr)
+    {
+        LE_KILL_CLIENT("Invalid positioning service activation reference %p", RefPtr);
+    }
+    else
+    {
+        le_ref_DeleteRef(ClientRequestRefMap, RefPtr);
+        LE_DEBUG("Remove Client Position Ctrl (%p)",RefPtr);
+        le_mem_Release(clientPosPtr);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
 * Handler function to close session service for le_gnss APIs
 *
 */
@@ -815,13 +985,34 @@ static void CloseSessionEventHandler
         if (positionSampleRequestPtr->sessionRef == sessionRef)
         {
             le_gnss_SampleRef_t safeRef = (le_gnss_SampleRef_t)le_ref_GetSafeRef(iterRef);
-            LE_DEBUG("Release le_gnss_ReleaseSampleRef 0x%p, Session 0x%p\n", safeRef, sessionRef);
+            LE_DEBUG("Release le_gnss_ReleaseSampleRef 0x%p, Session 0x%p", safeRef, sessionRef);
 
             // Release positioning client control request reference found.
             le_gnss_ReleaseSampleRef(safeRef);
         }
 
         // Get the next value in the reference mpa.
+        result = le_ref_NextNode(iterRef);
+    }
+
+    iterRef = le_ref_GetIterator(ClientRequestRefMap);
+    result = le_ref_NextNode(iterRef);
+    while (LE_OK == result)
+    {
+        le_gnss_Client_t* gnssCtrlPtr = (le_gnss_Client_t*) le_ref_GetValue(iterRef);
+
+        // Check if the session reference saved matchs with the current session reference.
+        if (sessionRef == gnssCtrlPtr->sessionRef)
+        {
+            void* safeRefPtr = (void*)le_ref_GetSafeRef(iterRef);
+            LE_DEBUG("Release le_gnss_ReleaseClientRef 0x%p, Session 0x%p",
+                     safeRefPtr, gnssCtrlPtr->sessionRef);
+
+            // Release positioning client control request reference found.
+            le_gnss_ReleaseClientRef(safeRefPtr);
+        }
+
+        // Get the next value in the reference map
         result = le_ref_NextNode(iterRef);
     }
 }
@@ -929,6 +1120,13 @@ le_result_t gnss_Init
 
     // Create the reference HashMap for positioning sample
     PositionSampleMap = le_ref_CreateMap("PositionSampleMap", GNSS_POSITION_SAMPLE_MAX);
+
+    // Create safe reference map for request references.
+    ClientRequestRefMap = le_ref_CreateMap("ClientRequestRefMap", GNSS_POSITION_ACTIVATION_MAX);
+
+    // Create a pool for client session object structure.
+    ClientPoolRef = le_mem_CreatePool("ClientPoolRef", sizeof(le_gnss_Client_t));
+    le_mem_ExpandPool(ClientPoolRef, GNSS_POSITION_ACTIVATION_MAX);
 
     // Initialize the event client close function handler.
     le_msg_ServiceRef_t msgService = le_gnss_GetServiceRef();
@@ -2342,7 +2540,8 @@ le_result_t le_gnss_GetSatellitesStatus
  *
  * @note This function replaces the deprecated function le_gnss_GetDop().
  *
- * @note The DOP value is given with 3 decimal places like: DOP value 2200 = 2.200
+ * @note The DOP value is given with 3 decimal places by default like: DOP value 2200 = 2.200
+ *       The resolution can be modified by calling @c le_gnss_SetDopResolution() function.
  *
  * @note If the caller is passing an invalid Position sample reference into this function,
  *       it is a fatal error, the function will not return.
@@ -2353,9 +2552,11 @@ le_result_t le_gnss_GetDilutionOfPrecision
     le_gnss_SampleRef_t positionSampleRef,      ///< [IN] Position sample's reference.
     le_gnss_DopType_t dopType,                  ///< [IN] Dilution of Precision type.
     uint16_t* dopPtr                            ///< [OUT] Dilution of Precision corresponding to
-                                                ///< the dopType. [resolution 1e-3].
+                                                ///< the dopType in the specified resolution.
 )
 {
+    uint32_t dop;
+    bool dopValid = false;
     le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr
                                             = le_ref_Lookup(PositionSampleMap,positionSampleRef);
     // Check position sample's reference
@@ -2373,51 +2574,51 @@ le_result_t le_gnss_GetDilutionOfPrecision
         {
             case LE_GNSS_PDOP:
             {
-                if ((positionSampleRequestNodePtr->positionSampleNodePtr->pdopValid) &&
-                    (!(positionSampleRequestNodePtr->positionSampleNodePtr->pdop >> 16)))
+                if (positionSampleRequestNodePtr->positionSampleNodePtr->pdopValid)
                 {
-                    *dopPtr = (uint16_t)positionSampleRequestNodePtr->positionSampleNodePtr->pdop;
-                    return LE_OK;
+                    // update resolution
+                    dop = ConvertDop(positionSampleRequestNodePtr->positionSampleNodePtr->pdop);
+                    dopValid = true;
                 }
             }
             break;
             case LE_GNSS_HDOP:
             {
-                if ((positionSampleRequestNodePtr->positionSampleNodePtr->hdopValid) &&
-                    (!(positionSampleRequestNodePtr->positionSampleNodePtr->hdop >> 16)))
+                if (positionSampleRequestNodePtr->positionSampleNodePtr->hdopValid)
                 {
-                    *dopPtr = (uint16_t)positionSampleRequestNodePtr->positionSampleNodePtr->hdop;
-                    return LE_OK;
+                    // update resolution
+                    dop = ConvertDop(positionSampleRequestNodePtr->positionSampleNodePtr->hdop);
+                    dopValid = true;
                 }
             }
             break;
             case LE_GNSS_VDOP:
             {
-                if ((positionSampleRequestNodePtr->positionSampleNodePtr->vdopValid) &&
-                    (!(positionSampleRequestNodePtr->positionSampleNodePtr->vdop >> 16)))
+                if (positionSampleRequestNodePtr->positionSampleNodePtr->vdopValid)
                 {
-                    *dopPtr = (uint16_t)positionSampleRequestNodePtr->positionSampleNodePtr->vdop;
-                    return LE_OK;
+                    // update resolution
+                    dop = ConvertDop(positionSampleRequestNodePtr->positionSampleNodePtr->vdop);
+                    dopValid = true;
                 }
             }
             break;
             case LE_GNSS_GDOP:
             {
-                if ((positionSampleRequestNodePtr->positionSampleNodePtr->gdopValid) &&
-                    (!(positionSampleRequestNodePtr->positionSampleNodePtr->gdop >> 16)))
+                if (positionSampleRequestNodePtr->positionSampleNodePtr->gdopValid)
                 {
-                    *dopPtr = (uint16_t)positionSampleRequestNodePtr->positionSampleNodePtr->gdop;
-                    return LE_OK;
+                    // update resolution
+                    dop = ConvertDop(positionSampleRequestNodePtr->positionSampleNodePtr->gdop);
+                    dopValid = true;
                 }
             }
             break;
             case LE_GNSS_TDOP:
             {
-                if ((positionSampleRequestNodePtr->positionSampleNodePtr->tdopValid) &&
-                    (!(positionSampleRequestNodePtr->positionSampleNodePtr->tdop >> 16)))
+                if (positionSampleRequestNodePtr->positionSampleNodePtr->tdopValid)
                 {
-                    *dopPtr = (uint16_t)positionSampleRequestNodePtr->positionSampleNodePtr->tdop;
-                    return LE_OK;
+                    // update resolution
+                    dop = ConvertDop(positionSampleRequestNodePtr->positionSampleNodePtr->tdop);
+                    dopValid = true;
                 }
             }
             break;
@@ -2428,6 +2629,14 @@ le_result_t le_gnss_GetDilutionOfPrecision
             break;
          };
     }
+
+    // Test if the dop value exceeds a uint16_t after the conversion
+    if ((true == dopValid) && (!(dop >> 16)))
+    {
+        *dopPtr = (uint16_t)dop;
+        return LE_OK;
+    }
+
     return LE_OUT_OF_RANGE;
 }
 
@@ -3976,4 +4185,45 @@ le_result_t le_gnss_GetMinElevation
     }
 
     return pa_gnss_GetMinElevation(minElevationPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the resolution for the DOP parameters
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_BAD_PARAMETER    Invalid parameter provided.
+ * @return LE_FAULT            Function failed.
+ *
+ * @note The function sets the same resolution to all DOP values returned by
+ *       le_gnss_GetDilutionOfPrecision() API. The resolution setting takes effect immediately.
+ *
+ * @note The resolution setting is done per client session.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_SetDopResolution
+(
+    le_gnss_Resolution_t resolution    ///< [IN] Resolution.
+)
+{
+    le_gnss_Client_t* clientRequestPtr = NULL;
+
+    if (resolution >= LE_GNSS_RES_UNKNOWN)
+    {
+        LE_ERROR("Invalid resolution (%d)", resolution);
+        return LE_BAD_PARAMETER;
+    }
+
+    // No need to check for function return
+    clientRequestPtr = GetClientSessionReference();
+
+    if (NULL == clientRequestPtr)
+    {
+        LE_ERROR("clientRequestPtr is NULL");
+        return LE_FAULT;
+    }
+
+    clientRequestPtr->dopResolution = resolution;
+    LE_DEBUG("clientRequest %p, resolution %d saved", clientRequestPtr, (int)resolution);
+    return LE_OK;
 }
