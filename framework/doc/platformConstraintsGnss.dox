@@ -92,7 +92,7 @@ NMEA sentences for each platform.
 | LE_GNSS_NMEA_MASK_GAGSV  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
 | LE_GNSS_NMEA_MASK_GARMC  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
 | LE_GNSS_NMEA_MASK_GAVTG  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
-| LE_GNSS_NMEA_MASK_PSTIS  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
+| LE_GNSS_NMEA_MASK_PSTIS  |   X   |        |        |    X    |    X   |   X    |   X    |   X   |
 | LE_GNSS_NMEA_MASK_PQXFI  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
 | LE_GNSS_NMEA_MASK_PTYPE  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
 | LE_GNSS_NMEA_MASK_GPGRS  |       |        |   X    |         |        |        |        |       |

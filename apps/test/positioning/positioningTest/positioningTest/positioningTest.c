@@ -420,7 +420,6 @@ static void Testle_pos_ActivateGpsNmeaSentences
         LE_GNSS_NMEA_MASK_GAGSV,
         LE_GNSS_NMEA_MASK_GARMC,
         LE_GNSS_NMEA_MASK_GAVTG,
-        LE_GNSS_NMEA_MASK_PSTIS,
         0
     };
 
@@ -439,6 +438,10 @@ static void Testle_pos_ActivateGpsNmeaSentences
     LE_ASSERT_OK(le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_PTYPE));
     LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
     LE_ASSERT(nmeaMask == (LE_GNSS_NMEA_MASK_PQXFI | LE_GNSS_NMEA_MASK_PTYPE));
+
+    LE_ASSERT_OK(le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_PSTIS));
+    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
+    LE_ASSERT((LE_GNSS_NMEA_MASK_GPGRS == nmeaMask) || (0 == nmeaMask));
 
     LE_ASSERT_OK(le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_GPGRS));
     LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
@@ -464,8 +467,7 @@ static void Testle_pos_ActivateGpsNmeaSentences
                    LE_GNSS_NMEA_MASK_GPRMC | LE_GNSS_NMEA_MASK_GPVTG | LE_GNSS_NMEA_MASK_GLGSV |
                    LE_GNSS_NMEA_MASK_GNGNS | LE_GNSS_NMEA_MASK_GNGSA | LE_GNSS_NMEA_MASK_GAGGA |
                    LE_GNSS_NMEA_MASK_GAGSA | LE_GNSS_NMEA_MASK_GAGSV | LE_GNSS_NMEA_MASK_GARMC |
-                   LE_GNSS_NMEA_MASK_GAVTG | LE_GNSS_NMEA_MASK_PSTIS | LE_GNSS_NMEA_MASK_PQXFI |
-                   LE_GNSS_NMEA_MASK_PTYPE;
+                   LE_GNSS_NMEA_MASK_GAVTG | LE_GNSS_NMEA_MASK_PQXFI | LE_GNSS_NMEA_MASK_PTYPE;
 
     LE_ASSERT_OK(le_gnss_SetNmeaSentences(saveNmeaMask));
     LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
