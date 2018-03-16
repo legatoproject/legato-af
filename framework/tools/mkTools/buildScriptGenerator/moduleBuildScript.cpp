@@ -53,12 +53,22 @@ void ModuleBuildScriptGenerator_t::GenerateBuildStatements
     {
         // In case of Sources, koFiles map will consist of only one element.
         // Hence, use the first element in koFiles for generating build statement.
-        script << "build " << "$builddir/" << modulePtr->koFiles.begin()->second->path << ": ";
+        auto const it = modulePtr->koFiles.begin();
+        if (it != modulePtr->koFiles.end())
+        {
+            script << "build " << "$builddir/" << it->second->path << ": ";
 
-        // No pre-built module: generate and invoke a Makefile
-        GenerateMakefile(modulePtr);
-        script << "MakeKernelModule " << "$builddir/"
-               << path::GetContainingDir(modulePtr->koFiles.begin()->second->path) << "\n";
+            // No pre-built module: generate and invoke a Makefile
+            GenerateMakefile(modulePtr);
+            script << "MakeKernelModule " << "$builddir/"
+                   << path::GetContainingDir(it->second->path) << "\n";
+        }
+        else
+        {
+            throw mk::Exception_t(
+                      mk::format(LE_I18N("error: %s container of kernel object file is empty."),
+                                 modulePtr->defFilePtr->path));
+        }
     }
     else if (modulePtr->moduleBuildType == model::Module_t::Prebuilt)
     {
@@ -75,7 +85,7 @@ void ModuleBuildScriptGenerator_t::GenerateBuildStatements
     {
         throw mk::Exception_t(
                   mk::format(LE_I18N("error: %s must have either 'sources' or 'preBuilt' section."),
-                              modulePtr->defFilePtr->path.c_str()));
+                              modulePtr->defFilePtr->path));
     }
     script << "\n";
 }
