@@ -1,0 +1,8 @@
+
+DEFINE MSG_LEN = 255;
+DEFINE MSG_LEN_BYTES = MSG_LEN + 1;
+
+FUNCTION Print
+(
+    string message[MSG_LEN] IN ///< message to be printed into the log.
+);

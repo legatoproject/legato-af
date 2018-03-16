@@ -95,7 +95,7 @@ static void AddSources
 
     for (auto contentPtr: tokenListPtr->Contents())
     {
-        auto filePath = path::Unquote(envVars::DoSubstitution(contentPtr->text));
+        auto filePath = path::Unquote(DoSubstitution(contentPtr));
         // Find the file (returns an absolute path or "" if not found).
         auto fullFilePath = file::FindFile(filePath, { modulePtr->dir });
 
@@ -184,7 +184,7 @@ static void AddCFlags
     // The section contains a list of FILE_PATH tokens.
     for (auto contentPtr: tokenListPtr->Contents())
     {
-        modulePtr->cFlags.push_back(envVars::DoSubstitution(contentPtr->text));
+        modulePtr->cFlags.push_back(DoSubstitution(contentPtr));
     }
 }
 
@@ -206,7 +206,7 @@ static void AddLdFlags
     // The section contains a list of FILE_PATH tokens.
     for (auto contentPtr: tokenListPtr->Contents())
     {
-        modulePtr->ldFlags.push_back(envVars::DoSubstitution(contentPtr->text));
+        modulePtr->ldFlags.push_back(DoSubstitution(contentPtr));
     }
 }
 
@@ -227,10 +227,6 @@ model::Module_t* GetModule
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Save the old CURDIR environment variable value and set it to the dir containing this file.
-    auto oldDir = envVars::Get("CURDIR");
-    envVars::Set("CURDIR", path::MakeAbsolute(path::GetContainingDir(mdefPath)));
-
     auto mdefFilePtr = parser::mdef::Parse(mdefPath, buildParams.beVerbose);
     auto modulePtr = new model::Module_t(mdefFilePtr);
 
@@ -256,8 +252,9 @@ model::Module_t* GetModule
         }
         else if ("preBuilt" == sectionName)
         {
+            auto simpleSectionPtr = ToSimpleSectionPtr(sectionPtr);
             auto modulePath =
-                path::Unquote(envVars::DoSubstitution(ToSimpleSectionPtr(sectionPtr)->Text()));
+                path::Unquote(DoSubstitution(simpleSectionPtr->Text(), simpleSectionPtr));
             if (!path::HasSuffix(modulePath, ".ko"))
             {
                 // Throw exception: not a kernel module
@@ -301,7 +298,7 @@ model::Module_t* GetModule
 
     // Setup path to kernel sources from KERNELROOT or SYSROOT variables
     auto kernel = envVars::Get("LEGATO_KERNELROOT");
-    modulePtr->kernelDir = path::Unquote(envVars::DoSubstitution(kernel));
+    modulePtr->kernelDir = path::Unquote(parseTree::DoSubstitution(kernel));
     if (modulePtr->kernelDir.empty())
     {
         modulePtr->kernelDir = path::Combine(envVars::Get("LEGATO_SYSROOT"), "usr/src/kernel");
@@ -315,9 +312,6 @@ model::Module_t* GetModule
             mdefPath, kernelDir)
         );
     }
-
-    // Restore the previous contents of the CURDIR environment variable.
-    envVars::Set("CURDIR", oldDir);
 
     return modulePtr;
 }

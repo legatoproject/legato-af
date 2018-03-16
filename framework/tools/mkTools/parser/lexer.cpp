@@ -782,8 +782,7 @@ void Lexer_t::ProcessIncludeDirective
     parseTree::Token_t* includePathPtr = PullRaw(parseTree::Token_t::FILE_PATH);
     std::set<std::string> substitutedVars;
 
-    auto filePath = path::Unquote(envVars::DoSubstitution(includePathPtr->text,
-                                                          &substitutedVars));
+    auto filePath = path::Unquote(DoSubstitution(includePathPtr, &substitutedVars));
 
     MarkVarsUsed(substitutedVars, includePathPtr);
 
@@ -1090,12 +1089,12 @@ bool Lexer_t::PullAndEvalBoolExpression
 
             parseTree::Token_t* operand2Ptr = PullTokenOrDirective(parseTree::Token_t::FILE_PATH);
 
-            std::string operand1 = path::Unquote(envVars::DoSubstitution(operand1Ptr->text,
-                                                                         &substitutedVarsOperand1));
+            std::string operand1 = path::Unquote(DoSubstitution(operand1Ptr,
+                                                                &substitutedVarsOperand1));
             MarkVarsUsed(substitutedVarsOperand1, operand1Ptr);
 
-            std::string operand2 = path::Unquote(envVars::DoSubstitution(operand2Ptr->text,
-                                                                         &substitutedVarsOperand2));
+            std::string operand2 = path::Unquote(DoSubstitution(operand2Ptr,
+                                                                &substitutedVarsOperand2));
             MarkVarsUsed(substitutedVarsOperand2, operand2Ptr);
 
             return operand1 == operand2;
@@ -1113,8 +1112,7 @@ bool Lexer_t::PullAndEvalBoolExpression
                 parseTree::Token_t* fileNamePtr = PullTokenOrDirective(
                     parseTree::Token_t::FILE_PATH
                 );
-                std::string fileName = path::Unquote(envVars::DoSubstitution(fileNamePtr->text,
-                                                                             &substitutedVars));
+                std::string fileName = path::Unquote(DoSubstitution(fileNamePtr, &substitutedVars));
                 auto curDir = path::GetContainingDir(context.top().filePtr->path);
 
                 result = (file::FindFile(fileName, { curDir }) != "");
@@ -1127,8 +1125,7 @@ bool Lexer_t::PullAndEvalBoolExpression
                 parseTree::Token_t* fileNamePtr = PullTokenOrDirective(
                     parseTree::Token_t::FILE_PATH
                 );
-                std::string fileName = path::Unquote(envVars::DoSubstitution(fileNamePtr->text,
-                                                                             &substitutedVars));
+                std::string fileName = path::Unquote(DoSubstitution(fileNamePtr, &substitutedVars));
                 auto curDir = path::GetContainingDir(context.top().filePtr->path);
 
                 result = (file::FindDirectory(fileName, { curDir }) != "");

@@ -1,0 +1,28 @@
+
+interfaceSearch:
+{
+    ${CURDIR}/interfaces
+}
+
+appSearch:
+{
+    ${CURDIR}/apps
+}
+
+componentSearch:
+{
+    ${CURDIR}/components
+}
+
+
+apps:
+{
+    printServerApp
+    printClientApp
+}
+
+
+bindings:
+{
+    printClientApp.printer -> printServerApp.printer
+}

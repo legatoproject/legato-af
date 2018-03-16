@@ -279,15 +279,15 @@ static model::FileSystemObject_t* GetPermissionItem
 {
     auto fileSystemObjectPtr = new model::FileSystemObject_t(itemPtr);
 
-    const std::string* srcPathPtr;
-    const std::string* destPathPtr;
+    const parseTree::Token_t* srcPathPtr;
+    const parseTree::Token_t* destPathPtr;
 
     // Optionally, there may be permissions.
     auto firstTokenPtr = itemPtr->Contents()[0];
     if (firstTokenPtr->type == parseTree::Token_t::FILE_PERMISSIONS)
     {
-        srcPathPtr = &(itemPtr->Contents()[1]->text);
-        destPathPtr = &(itemPtr->Contents()[2]->text);
+        srcPathPtr = itemPtr->Contents()[1];
+        destPathPtr = itemPtr->Contents()[2];
 
         GetPermissions(fileSystemObjectPtr->permissions, firstTokenPtr);
 
@@ -302,14 +302,14 @@ static model::FileSystemObject_t* GetPermissionItem
     // If no permissions, default to read-only.
     else
     {
-        srcPathPtr = &(firstTokenPtr->text);
-        destPathPtr = &(itemPtr->Contents()[1]->text);
+        srcPathPtr = firstTokenPtr;
+        destPathPtr = itemPtr->Contents()[1];
 
         fileSystemObjectPtr->permissions.SetReadable();
     }
 
-    fileSystemObjectPtr->srcPath = path::Unquote(envVars::DoSubstitution(*srcPathPtr));
-    fileSystemObjectPtr->destPath = path::Unquote(envVars::DoSubstitution(*destPathPtr));
+    fileSystemObjectPtr->srcPath = path::Unquote(DoSubstitution(srcPathPtr));
+    fileSystemObjectPtr->destPath = path::Unquote(DoSubstitution(destPathPtr));
 
     // If the destination path ends in a slash, append the last path node from the source to it.
     if (fileSystemObjectPtr->destPath.back() == '/')
@@ -354,8 +354,8 @@ model::FileSystemObject_t* GetRequiredFileOrDir
     auto srcPathTokenPtr = itemPtr->Contents()[0];
     auto destPathTokenPtr = itemPtr->Contents()[1];
 
-    std::string srcPath = path::Unquote(envVars::DoSubstitution(srcPathTokenPtr->text));
-    std::string destPath = path::Unquote(envVars::DoSubstitution(destPathTokenPtr->text));
+    std::string srcPath = path::Unquote(DoSubstitution(srcPathTokenPtr));
+    std::string destPath = path::Unquote(DoSubstitution(destPathTokenPtr));
 
     // The source path must not end in a slash.
     if (srcPath.back() == '/')

@@ -26,3 +26,5 @@ bindings:
 {
     app2.client -> <baz>.server
 }
+
+#include "subsystem/subsystem.sinc"

@@ -8,6 +8,119 @@ limits.
 
 <c>.sdef</c> files can contain these sections:
 
+@section defFilesSdef_searchPaths Search Paths
+
+These sections are used to specify directories in which @c mksys should look for the various files
+that make up your system.
+
+@note @c mksys allows the command line arguments <c>-i</c> or <c>--interface-search</c> to also
+specify the interface search path(s).  For backwards compatability, all other search paths fall
+under the command line arguments  <c>-s</c> or <c>--source-search</c>.  To add multiple search paths
+simply add multiple instances of <c>-i</c> or <c>-s</c> to your command.
+
+When building @c systems that are intended to be inherited by other projects it is recommended to
+use the search paths within your included @c .sdef file.  This way each individual subsystem can be
+added to a top level @c .sdef file without forcing the user to append many search paths to their
+command line when running @c mksys.
+
+@section defFilesSdef_searchPathsInterface interfaceSearch
+
+The interface search is used to find the @c .api files referenced in your system, your applications,
+and the components that make up your applications.
+
+To allow components to be relocated in the build host file system, components should not specify
+interface file search paths outside of their own directories.  To separate interfaces from
+implementation, interfaces should be kept outside of components. This can be accomplished by adding
+interface search directory paths to the @c interfaceSearch section in the .sdef file.
+
+This way components can be kept in a components directory, and interfaces can be kept within an
+interface directory.  Keeping these API files seperated from compoents can make it easier to share
+between clients and servers, as well as between seperate server implementations.
+
+So, for example, in a Legato system definition there would be a interface search paths setup for the
+APIs offered by Legato itself under @c default.sdef:
+
+@verbatim
+interfaceSearch:
+{
+    $LEGATO_ROOT/interfaces                 // Directory contianing
+    $LEGATO_ROOT/interfaces/modemServices   // Directory containing Legato modem services APIs.
+}
+@endverbatim
+
+In your sdef, after defining LEGATO_ROOT you can include Legato's search paths and append your own.
+
+@verbatim
+#include "$LEGATO_ROOT/default.sdef"
+
+interfaceSearch:
+{
+    $CURDIR/interfaces   // Directory containing custom interfaces belonging to this system.
+}
+@endverbatim
+
+Now your components and applications can find all of your custom APIs as well as those that come
+with Legato.
+
+@note @c CURDIR is a mktools managed variable.  @c CURDIR always refers to the directory that your
+.def file is residing in.  So, if your def file is in @c ~/myProject/mySystem.sdef then @c CURDIR
+would be the full path to the def's directory: @c /home/username/myProject/  See
+@ref defFileFormatUsingEnvVarsIn for more details on the automatic variables.
+
+For example, inside of one of your @c Component.cdef files:
+
+@verbatim
+requires:
+{
+    api:
+    {
+        le_sms.api       // Make use of one of the modem service APIs.
+        myCustomApi.api  // Also, make use of your own custom APIs.
+    }
+}
+@endverbatim
+
+@section defFilesSdef_searchPathsApp appSearch
+
+This search path is used when specifiing @b apps in your @c .sdef's @c apps: section.  Instead of
+having to specify a full path to your applications, you can specify locations for where they should
+be found.
+
+@verbatim
+appSearch:
+{
+    $CURDIR/applications  // Search for apps in a subdirectory of the directory that holds your
+                          // .sdef or .sinc file.
+}
+@endverbatim
+
+@section defFilesSdef_searchPathsComponent componentSearch
+
+Use the @c componentSearch to add your paths to the directories that the build system uses to find
+your components.
+
+@verbatim
+componentSearch:
+{
+    $CURDIR/components  // Search for components in a subdirectory of the directory that holds your
+                        // .sdef or .sinc file.
+}
+@endverbatim
+
+This way, when you are defining your applications executables within an @c executables: section you
+do not need to specify the full path to your component's executables.  For example, your application
+executable @myExe is composed of two components, @c mainComp and @c helperComp.  Using a component
+search path, you can easily share helperComp between different executables and different
+applications.
+
+@verbatim
+executables:
+{
+    myExe = ( mainComp helperComp )
+}
+@endverbatim
+
+
 @section defFilesSdef_apps apps
 
 An <c>apps:</c> section declares one or more apps to be deployed to
@@ -134,31 +247,6 @@ for adef information overridden in the sdef, please do not remove.
 <DIV id="defFilesSdef_maxWatchdogTimeout">
 @ref defFilesAdef_maxWatchdogTimeout
 </DIV>
-
-
-@section defFilesSdef_appsInterfaceSearch interfaceSearch
-
-This section is used to specify directories in which @c mksys should look for interface files,
-such as @c .api files and @c .h files, when building components in the system.
-
-@verbatim
-interfaceSearch:
-{
-    $LEGATO_ROOT/interfaces/modemServices   // Dir containing Legato modem services APIs.
-
-    interfaces  // Dir containing custom interfaces belonging to this system.
-}
-@endverbatim
-
-To allow components to be relocated in the build host file system, components should not specify
-interface file search paths outside of their own directories. But, to truly separate interfaces
-from implementation, interfaces should be kept outside of components. This can be accomplished
-by adding interface search directory paths to the @c interfaceSearch section in the .sdef file.
-
-@note @c mksys command-line arguments (<c>-i</c> or <c>--interface-search</c>) could also be
-used to solve this problem, but that forces the developer to use a build script to launch @c mksys
-(so they don't have to remember all the right interface directory paths and type them on the
-command line each time they run @c mksys).
 
 
 @subsection defFilesSdef_appsMaxPriority maxPriority

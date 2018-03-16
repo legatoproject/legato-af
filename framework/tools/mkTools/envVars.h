@@ -87,22 +87,6 @@ bool IsReserved
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Look for environment variables (specified as "$VAR_NAME" or "${VAR_NAME}") in a given string
- * and replace with environment variable contents.
- *
- * @return The converted string.
- **/
-//--------------------------------------------------------------------------------------------------
-std::string DoSubstitution
-(
-    const std::string& path,
-    std::set<std::string>* usedVarsPtr = NULL ///< If not null, returns a list of all
-                                              ///  variable names used in this substitution.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Saves the environment variables (in a file in the build's working directory)
  * for later use by MatchesSaved().
  */

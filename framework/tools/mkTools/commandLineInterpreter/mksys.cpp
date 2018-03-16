@@ -102,6 +102,11 @@ static void GetCommandLineArgs
     // argument on the command line.
     auto sourcePathPush = [&](const char* path)
         {
+            // In order to preserve original command line functionality, we push this new path into
+            // all of the various search paths.
+            BuildParams.moduleDirs.push_back(path);
+            BuildParams.appDirs.push_back(path);
+            BuildParams.componentDirs.push_back(path);
             BuildParams.sourceDirs.push_back(path);
         };
 
@@ -263,6 +268,9 @@ static void GetCommandLineArgs
     // Add the directory containing the .sdef file to the list of source search directories
     // and the list of interface search directories.
     std::string sdefFileDir = path::GetContainingDir(SdefFilePath);
+    BuildParams.moduleDirs.push_back(sdefFileDir);
+    BuildParams.appDirs.push_back(sdefFileDir);
+    BuildParams.componentDirs.push_back(sdefFileDir);
     BuildParams.sourceDirs.push_back(sdefFileDir);
     BuildParams.interfaceDirs.push_back(sdefFileDir);
 }

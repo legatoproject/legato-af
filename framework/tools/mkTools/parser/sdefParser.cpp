@@ -46,7 +46,7 @@ static void SetBuildVar
 
     // Unquote and do environment variable substitution
     auto valueTokenPtr = buildVarPtr->Contents()[0];
-    std::string value = path::Unquote(envVars::DoSubstitution(valueTokenPtr->text));
+    std::string value = path::Unquote(DoSubstitution(valueTokenPtr));
 
     // Do not allow redefinition of a variable which has already been used by the lexer to
     // a different value.  This would result in different definitions being used in different
@@ -478,6 +478,14 @@ static parseTree::CompoundItem_t* ParseSection
         return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
     }
     else if (sectionName == "interfaceSearch")
+    {
+        return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
+    }
+    else if (sectionName == "appSearch")
+    {
+        return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
+    }
+    else if (sectionName == "componentSearch")
     {
         return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
     }

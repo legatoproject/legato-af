@@ -68,7 +68,7 @@ struct FileSystemObject_t
         throw mk::Exception_t(LE_I18N("Unknown bundled file access type."));
     }
 
-    /// Two file sytem objects refer to the same file if the destination paths are the same.
+    /// Two file system objects refer to the same file if the destination paths are the same.
     bool operator==(const FileSystemObject_t& a) const
     {
         return destPath == a.destPath;

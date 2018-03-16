@@ -1,0 +1,18 @@
+
+executables:
+{
+    clientExe = ( printClientComponent )
+}
+
+processes:
+{
+    run:
+    {
+        ( clientExe )
+    }
+}
+
+extern:
+{
+    clientExe.printClientComponent.printer
+}

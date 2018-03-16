@@ -394,7 +394,7 @@ static model::ApiFile_t* GetPreBuiltInterface
     if (contentList[0]->type == parseTree::Token_t::DOTTED_NAME)
     {
         interfaceName = contentList[0]->text;
-        apiFilePath = file::FindFile(envVars::DoSubstitution(contentList[1]->text),
+        apiFilePath = file::FindFile(DoSubstitution(contentList[1]),
                                      buildParams.interfaceDirs);
         if (apiFilePath == "")
         {
@@ -404,13 +404,13 @@ static model::ApiFile_t* GetPreBuiltInterface
     // If the first content item is not a NAME, then it must be the API file path.
     else
     {
-        apiFilePath = file::FindFile(envVars::DoSubstitution(contentList[0]->text),
+        apiFilePath = file::FindFile(DoSubstitution(contentList[0]),
                                      buildParams.interfaceDirs);
         if (apiFilePath == "")
         {
             contentList[0]->ThrowException(
                                  mk::format(LE_I18N("Couldn't find file, '%s'."),
-                                                    envVars::DoSubstitution(contentList[0]->text)));
+                                                    DoSubstitution(contentList[0])));
         }
     }
 
@@ -726,9 +726,9 @@ static void AddProcessesSection
             {
                 auto envVarPtr = ToTokenListPtr(itemPtr);
                 auto& name = envVarPtr->firstTokenPtr->text;
-                auto& value = envVarPtr->Contents()[0]->text;
+                auto& value = envVarPtr->Contents()[0];
 
-                procEnvPtr->envVars[name] = path::Unquote(envVars::DoSubstitution(value));
+                procEnvPtr->envVars[name] = path::Unquote(DoSubstitution(value));
             }
         }
         else if (subsectionName == "faultAction")
@@ -1688,10 +1688,6 @@ model::App_t* GetApp
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Save the old CURDIR environment variable value and set it to the dir containing this file.
-    auto oldDir = envVars::Get("CURDIR");
-    envVars::Set("CURDIR", path::MakeAbsolute(path::GetContainingDir(adefPath)));
-
     // Parse the .adef file.
     const auto adefFilePtr = parser::adef::Parse(adefPath, buildParams.beVerbose);
 
@@ -1798,7 +1794,7 @@ model::App_t* GetApp
             if (appPtr->version[0] == '$')
             {
                 // If confirmed, process the label
-                appPtr->version = envVars::DoSubstitution(appPtr->version);
+                appPtr->version = DoSubstitution(appPtr->version, sectionPtr);
             }
         }
         else if (sectionName == "watchdogAction")
@@ -1834,9 +1830,6 @@ model::App_t* GetApp
 
     // Ensure that all processes have a PATH environment variable.
     EnsurePathIsSet(appPtr);
-
-    // Restore the previous contents of the CURDIR environment variable.
-    envVars::Set("CURDIR", oldDir);
 
     return appPtr;
 }

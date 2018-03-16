@@ -32,7 +32,7 @@ static std::string FindSourceFile
 )
 //--------------------------------------------------------------------------------------------------
 {
-    auto filePath = path::Unquote(envVars::DoSubstitution(tokenPtr->text));
+    auto filePath = path::Unquote(DoSubstitution(tokenPtr));
 
     // If the environment variable substitution resulted in an empty string, then just
     // skip this file.
@@ -75,9 +75,7 @@ static void AddExternalBuild
 
     for (auto contentPtr: tokenListPtr->Contents())
     {
-        componentPtr->externalBuildCommands.push_back(
-            path::Unquote(envVars::DoSubstitution(contentPtr->text))
-        );
+        componentPtr->externalBuildCommands.push_back(path::Unquote(DoSubstitution(contentPtr)));
     }
 
     if (componentPtr->HasIncompatibleLanguageCode())
@@ -281,7 +279,7 @@ static void AddCFlags
     // The section contains a list of FILE_PATH tokens.
     for (auto contentPtr: tokenListPtr->Contents())
     {
-        componentPtr->cFlags.push_back(envVars::DoSubstitution(contentPtr->text));
+        componentPtr->cFlags.push_back(DoSubstitution(contentPtr));
     }
 }
 
@@ -303,7 +301,7 @@ static void AddCxxFlags
     // The section contains a list of FILE_PATH tokens.
     for (auto contentPtr: tokenListPtr->Contents())
     {
-        componentPtr->cxxFlags.push_back(envVars::DoSubstitution(contentPtr->text));
+        componentPtr->cxxFlags.push_back(DoSubstitution(contentPtr));
     }
 }
 
@@ -325,7 +323,7 @@ static void AddLdFlags
     // The section contains a list of FILE_PATH tokens.
     for (auto contentPtr: tokenListPtr->Contents())
     {
-        componentPtr->ldFlags.push_back(envVars::DoSubstitution(contentPtr->text));
+        componentPtr->ldFlags.push_back(DoSubstitution(contentPtr));
     }
 }
 
@@ -466,8 +464,7 @@ static void GetProvidedApi
     if (contentList[0]->type == parseTree::Token_t::NAME)
     {
         internalName = contentList[0]->text;
-        apiFilePath = file::FindFile(envVars::DoSubstitution(contentList[1]->text),
-                                     buildParams.interfaceDirs);
+        apiFilePath = file::FindFile(DoSubstitution(contentList[1]), buildParams.interfaceDirs);
         if (apiFilePath == "")
         {
             contentList[1]->ThrowException(
@@ -478,8 +475,7 @@ static void GetProvidedApi
     // If the first content item is not a NAME, then it must be the file path.
     else
     {
-        apiFilePath = file::FindFile(envVars::DoSubstitution(contentList[0]->text),
-                                     buildParams.interfaceDirs);
+        apiFilePath = file::FindFile(DoSubstitution(contentList[0]), buildParams.interfaceDirs);
         if (apiFilePath == "")
         {
             contentList[0]->ThrowException(
@@ -590,8 +586,7 @@ static void GetRequiredApi
     if (contentList[0]->type == parseTree::Token_t::NAME)
     {
         internalName = contentList[0]->text;
-        apiFilePath = file::FindFile(envVars::DoSubstitution(contentList[1]->text),
-                                     buildParams.interfaceDirs);
+        apiFilePath = file::FindFile(DoSubstitution(contentList[1]), buildParams.interfaceDirs);
         if (apiFilePath == "")
         {
             contentList[1]->ThrowException(
@@ -602,14 +597,12 @@ static void GetRequiredApi
     // If the first content item is not a NAME, then it must be the file path.
     else
     {
-        apiFilePath = file::FindFile(envVars::DoSubstitution(contentList[0]->text),
-                                     buildParams.interfaceDirs);
+        auto substString = DoSubstitution(contentList[0]);
+        apiFilePath = file::FindFile(substString, buildParams.interfaceDirs);
         if (apiFilePath == "")
         {
-            contentList[0]->ThrowException(
-                mk::format(LE_I18N("Couldn't find file '%s.'"),
-                           envVars::DoSubstitution(contentList[0]->text))
-            );
+            contentList[0]->ThrowException(mk::format(LE_I18N("Couldn't find file '%s.'"),
+                                                      substString));
         }
     }
 
@@ -687,7 +680,7 @@ static void AddRequiredLib
 )
 //--------------------------------------------------------------------------------------------------
 {
-    auto lib = envVars::DoSubstitution(tokenPtr->text);
+    auto lib = DoSubstitution(tokenPtr);
     // Skip if environment variable substitution resulted in an empty string.
     if (!lib.empty())
     {
@@ -1066,10 +1059,6 @@ model::Component_t* GetComponent
         return componentPtr;
     }
 
-    // Save the old CURDIR environment variable value and set it to the dir containing this file.
-    auto oldDir = envVars::Get("CURDIR");
-    envVars::Set("CURDIR", path::MakeAbsolute(componentDir));
-
     // Parse the .cdef file.
     auto cdefFilePath = path::Combine(componentDir, "Component.cdef");
     auto cdefFilePtr = parser::cdef::Parse(cdefFilePath, buildParams.beVerbose);
@@ -1181,9 +1170,6 @@ model::Component_t* GetComponent
         PrintSummary(componentPtr);
     }
 
-    // Restore the previous contents of the CURDIR environment variable.
-    envVars::Set("CURDIR", oldDir);
-
     return componentPtr;
 }
 
@@ -1208,7 +1194,7 @@ model::Component_t* GetComponent
 //--------------------------------------------------------------------------------------------------
 {
     // Resolve the path to the component.
-    std::string componentPath = path::Unquote(envVars::DoSubstitution(tokenPtr->text));
+    std::string componentPath = path::Unquote(DoSubstitution(tokenPtr));
 
     // Skip if environment variable substitution resulted in an empty string.
     if (componentPath.empty())
@@ -1219,7 +1205,7 @@ model::Component_t* GetComponent
     auto resolvedPath = file::FindComponent(componentPath, preSearchDirs);
     if (resolvedPath.empty())
     {
-        resolvedPath = file::FindComponent(componentPath, buildParams.sourceDirs);
+        resolvedPath = file::FindComponent(componentPath, buildParams.componentDirs);
     }
     if (resolvedPath.empty())
     {

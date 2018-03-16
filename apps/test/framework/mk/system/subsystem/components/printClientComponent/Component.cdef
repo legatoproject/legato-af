@@ -1,0 +1,18 @@
+
+sources:
+{
+    clientComponent.c
+}
+
+requires:
+{
+    component:
+    {
+        sharedComponent
+    }
+
+    api:
+    {
+        printer.api
+    }
+}

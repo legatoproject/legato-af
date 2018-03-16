@@ -114,6 +114,11 @@ static void GetCommandLineArgs
     // argument on the command line.
     auto sourcePathPush = [&](const char* path)
         {
+            // In order to preserve original command line functionality, we push this new path into
+            // all of the various search paths.
+            BuildParams.moduleDirs.push_back(path);
+            BuildParams.appDirs.push_back(path);
+            BuildParams.componentDirs.push_back(path);
             BuildParams.sourceDirs.push_back(path);
         };
 
@@ -311,6 +316,9 @@ static void GetCommandLineArgs
     // Add the directory containing the .adef file to the list of source search directories
     // and the list of interface search directories.
     std::string aDefFileDir = path::GetContainingDir(AdefFilePath);
+    BuildParams.moduleDirs.push_back(aDefFileDir);
+    BuildParams.appDirs.push_back(aDefFileDir);
+    BuildParams.componentDirs.push_back(aDefFileDir);
     BuildParams.sourceDirs.push_back(aDefFileDir);
     BuildParams.interfaceDirs.push_back(aDefFileDir);
 }

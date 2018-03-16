@@ -233,7 +233,7 @@ static void ModelApp
 
     // The first token in the app subsection could be the name of an app or a .adef/.app file path.
     // Find the app name and .adef/.app file.
-    const auto appSpec = path::Unquote(envVars::DoSubstitution(sectionPtr->firstTokenPtr->text));
+    const auto appSpec = path::Unquote(DoSubstitution(sectionPtr->firstTokenPtr));
 
     // Build a proper .app suffix that includes the target that the app was built against.
     const std::string appSuffix = "." + buildParams.target + ".app";
@@ -242,22 +242,22 @@ static void ModelApp
     if (path::HasSuffix(appSpec, ".adef"))
     {
         appName = path::RemoveSuffix(path::GetLastNode(appSpec), ".adef");
-        filePath = file::FindFile(appSpec, buildParams.sourceDirs);
+        filePath = file::FindFile(appSpec, buildParams.appDirs);
     }
     else if (path::HasSuffix(appSpec, appSuffix))
     {
         appName = path::RemoveSuffix(path::GetLastNode(appSpec), appSuffix);
-        filePath = file::FindFile(appSpec, buildParams.sourceDirs);
+        filePath = file::FindFile(appSpec, buildParams.appDirs);
         isBinApp = true;
     }
     else
     {
         appName = path::GetLastNode(appSpec);
-        filePath = file::FindFile(appSpec + ".adef", buildParams.sourceDirs);
+        filePath = file::FindFile(appSpec + ".adef", buildParams.appDirs);
 
         if (filePath.empty())
         {
-            filePath = file::FindFile(appSpec + appSuffix, buildParams.sourceDirs);
+            filePath = file::FindFile(appSpec + appSuffix, buildParams.appDirs);
             isBinApp = true;
         }
     }
@@ -279,7 +279,7 @@ static void ModelApp
                                appName + appSuffix,
                                appSpec);
 
-        for (auto& dir : buildParams.sourceDirs)
+        for (auto& dir : buildParams.appDirs)
         {
             formattedMsg += "    '" + dir + "'\n";
         }
@@ -372,17 +372,17 @@ static void ModelKernelModule
 
     // Tokens in the module subsection are paths to their .mdef file
     // Assume that modules are built outside of Legato
-    const auto moduleSpec = path::Unquote(envVars::DoSubstitution(sectionPtr->firstTokenPtr->text));
+    const auto moduleSpec = path::Unquote(DoSubstitution(sectionPtr->firstTokenPtr));
     if (path::HasSuffix(moduleSpec, ".mdef"))
     {
         moduleName = path::RemoveSuffix(path::GetLastNode(moduleSpec), ".mdef");
-        modulePath = file::FindFile(moduleSpec, buildParams.sourceDirs);
+        modulePath = file::FindFile(moduleSpec, buildParams.moduleDirs);
     }
     else
     {
         // Try by appending ".mdef" to path
         moduleName = path::GetLastNode(moduleSpec);
-        modulePath = file::FindFile(moduleSpec + ".mdef", buildParams.sourceDirs);
+        modulePath = file::FindFile(moduleSpec + ".mdef", buildParams.moduleDirs);
     }
 
     if (modulePath.empty())
@@ -391,7 +391,7 @@ static void ModelKernelModule
             mk::format(LE_I18N("Can't find definition file (.mdef) "
                                "for module specification '%s'.\n"
                                "note: Looked in the following places:\n"), moduleSpec);
-        for (auto& dir : buildParams.sourceDirs)
+        for (auto& dir : buildParams.moduleDirs)
         {
             formattedMsg += "    '" + dir + "'\n";
         }
@@ -759,7 +759,7 @@ static void ModelCommandsSection
         auto commandPtr = new model::Command_t(commandSpecPtr);
 
         // The first token is the command name.
-        commandPtr->name = path::Unquote(envVars::DoSubstitution(tokens[0]->text));
+        commandPtr->name = path::Unquote(DoSubstitution(tokens[0]));
 
         // Check for duplicates.
         auto commandIter = systemPtr->commands.find(commandPtr->name);
@@ -821,12 +821,14 @@ static void ModelCommands
 /**
  * Get interface search directory paths from an "interfaceSearch:" section and add them to the
  * list in the buildParams object.
+ *
+ * Get search directory paths from a *Search: section, and add them to the specified list.
  */
 //--------------------------------------------------------------------------------------------------
-static void GetInterfaceSearchDirs
+static void ReadSearchDirs
 (
-    mk::BuildParams_t& buildParams, ///< Object to add interface search dir paths to.
-    const parseTree::TokenList_t* sectionPtr
+    std::list<std::string>& searchPathList,   ///< And add the new search paths to this list.
+    const parseTree::TokenList_t* sectionPtr  ///< From the search paths from this section.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -835,12 +837,12 @@ static void GetInterfaceSearchDirs
     {
         auto tokenPtr = dynamic_cast<const parseTree::Token_t*>(contentItemPtr);
 
-        auto dirPath = path::Unquote(envVars::DoSubstitution(tokenPtr->text));
+        auto dirPath = path::Unquote(DoSubstitution(tokenPtr));
 
         // If the environment variable substitution resulted in an empty string, just ignore this.
         if (!dirPath.empty())
         {
-            buildParams.interfaceDirs.push_back(dirPath);
+            searchPathList.push_back(dirPath);
         }
     }
 }
@@ -864,7 +866,7 @@ static void GetToolFlags
     {
         auto tokenPtr = dynamic_cast<const parseTree::Token_t*>(contentItemPtr);
 
-        auto flag = path::Unquote(envVars::DoSubstitution(tokenPtr->text));
+        auto flag = path::Unquote(DoSubstitution(tokenPtr));
 
         // If environment variable substitution resulted in an empty string, just ignore this.
         if (!flag.empty())
@@ -906,10 +908,6 @@ model::System_t* GetSystem
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Save the old CURDIR environment variable value and set it to the dir containing this file.
-    auto oldDir = envVars::Get("CURDIR");
-    envVars::Set("CURDIR", path::MakeAbsolute(path::GetContainingDir(sdefPath)));
-
     // Parse the .sdef file.
     const auto sdefFilePtr = parser::sdef::Parse(sdefPath, buildParams.beVerbose);
 
@@ -974,8 +972,19 @@ model::System_t* GetSystem
         }
         else if (sectionName == "interfaceSearch")
         {
-            GetInterfaceSearchDirs(buildParams,
-                                   ToTokenListPtr(sectionPtr));
+            ReadSearchDirs(buildParams.interfaceDirs, ToTokenListPtr(sectionPtr));
+        }
+        else if (sectionName == "moduleSearch")
+        {
+            ReadSearchDirs(buildParams.moduleDirs, ToTokenListPtr(sectionPtr));
+        }
+        else if (sectionName == "appSearch")
+        {
+            ReadSearchDirs(buildParams.appDirs, ToTokenListPtr(sectionPtr));
+        }
+        else if (sectionName == "componentSearch")
+        {
+            ReadSearchDirs(buildParams.componentDirs, ToTokenListPtr(sectionPtr));
         }
         else if (sectionName == "externalWatchdogKick")
         {
@@ -1006,9 +1015,6 @@ model::System_t* GetSystem
     // Model kernel modules.  This must be done after all the build environment variable settings
     // have been parsed.
     ModelKernelModules(systemPtr, kernelModulesSections, buildParams);
-
-    // Restore the previous contents of the CURDIR environment variable.
-    envVars::Set("CURDIR", oldDir);
 
     return systemPtr;
 }

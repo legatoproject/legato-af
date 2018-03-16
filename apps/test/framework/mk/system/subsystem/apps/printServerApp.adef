@@ -1,0 +1,18 @@
+
+executables:
+{
+    serverExe = ( printServerComponent )
+}
+
+processes:
+{
+    run:
+    {
+        ( serverExe )
+    }
+}
+
+extern:
+{
+    serverExe.printServerComponent.printer
+}

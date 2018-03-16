@@ -117,23 +117,21 @@ std::string FindFile
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::string actualPath = envVars::DoSubstitution(path);
-
-    if (path::IsAbsolute(actualPath))
+    if (path::IsAbsolute(path))
     {
-        if (FileExists(actualPath) == false)
+        if (FileExists(path) == false)
         {
             return "";
         }
 
-        return actualPath;
+        return path;
     }
 
     for (const auto& searchPath : searchPaths)
     {
         if (DirectoryExists(searchPath))
         {
-            std::string newPath = path::Combine(searchPath, actualPath);
+            std::string newPath = path::Combine(searchPath, path);
 
             if (FileExists(newPath))
             {
@@ -164,23 +162,21 @@ std::string FindDirectory
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::string actualPath = envVars::DoSubstitution(path);
-
-    if (path::IsAbsolute(actualPath))
+    if (path::IsAbsolute(path))
     {
-        if (DirectoryExists(actualPath) == false)
+        if (DirectoryExists(path) == false)
         {
             return "";
         }
 
-        return actualPath;
+        return path;
     }
 
     for (const auto& searchPath : searchPaths)
     {
         if (DirectoryExists(searchPath))
         {
-            std::string newPath = path::Combine(searchPath, actualPath);
+            std::string newPath = path::Combine(searchPath, path);
 
             if (DirectoryExists(newPath))
             {

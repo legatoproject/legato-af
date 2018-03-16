@@ -23,6 +23,9 @@ struct BuildParams_t
     bool                    beVerbose;          ///< true = output progress msgs to stdout.
     std::string             target;             ///< (e.g., "localhost" or "ar7")
     std::list<std::string>  interfaceDirs;      ///< Interface search directory paths.
+    std::list<std::string>  moduleDirs;         ///< Kernel module search paths.
+    std::list<std::string>  appDirs;            ///< Application search paths.
+    std::list<std::string>  componentDirs;      ///< Component search paths.
     std::list<std::string>  sourceDirs;         ///< Source search directory paths.
     std::string             libOutputDir;       ///< Dir path for built libraries ("" if not set).
     std::string             outputDir;          ///< Dir path for built products ("" if not set).

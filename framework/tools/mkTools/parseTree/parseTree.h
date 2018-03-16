@@ -34,6 +34,7 @@ namespace parseTree
 #include "token.h"
 #include "compoundItem.h"
 #include "defFile.h"
+#include "substitution.h"
 
 } // namespace parseTree
 

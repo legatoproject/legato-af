@@ -1,0 +1,21 @@
+
+sources:
+{
+    serverComponent.c
+}
+
+requires:
+{
+    component:
+    {
+        sharedComponent
+    }
+}
+
+provides:
+{
+    api:
+    {
+        printer.api
+    }
+}

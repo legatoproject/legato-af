@@ -96,6 +96,11 @@ static void GetCommandLineArgs
     // option on the command line.
     auto sourceDirPush = [&](const char* path)
         {
+            // In order to preserve original command line functionality, we push this new path into
+            // all of the various search paths.
+            BuildParams.moduleDirs.push_back(path);
+            BuildParams.appDirs.push_back(path);
+            BuildParams.componentDirs.push_back(path);
             BuildParams.sourceDirs.push_back(path);
         };
 
@@ -210,6 +215,9 @@ static void GetCommandLineArgs
 
     // Add the current working directory to the list of source search directories and the
     // list of interface search directories.
+    BuildParams.moduleDirs.push_back(".");
+    BuildParams.appDirs.push_back(".");
+    BuildParams.componentDirs.push_back(".");
     BuildParams.sourceDirs.push_back(".");
     BuildParams.interfaceDirs.push_back(".");
 
@@ -381,7 +389,7 @@ static void ConstructObjectModel
             BuildParams.ldFlags += " " + contentName;
         }
         // Is it a path to a component directory?
-        else if ((componentPath = file::FindComponent(contentName, BuildParams.sourceDirs)) != "")
+        else if ((componentPath = file::FindComponent(contentName, BuildParams.componentDirs)) != "")
         {
             componentPath = path::MakeAbsolute(componentPath);
 
