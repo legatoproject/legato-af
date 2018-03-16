@@ -622,6 +622,16 @@ static void DiscardPayloadBytes
 
             LE_ERROR("Failed to read from input stream (%m).");
             HandleInternalError();
+            break;
+        }
+
+        if (0 == readResult)
+        {
+            LE_ERROR("Unexpected early end of input after %zu bytes of %zu.",
+                     PayloadBytesCopied,
+                     PayloadSize);
+            HandleInternalError();
+            break;
         }
 
         // Update the static progress variables and report progress to the client.
