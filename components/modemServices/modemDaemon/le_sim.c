@@ -272,6 +272,7 @@ static le_result_t LocalSwap
                                      sizeof(pduReq), resp, &lenResp))
         {
             LE_ERROR("Cannot send APDU message!");
+            pa_sim_CloseLogicalChannel(channel);
             return LE_FAULT;
         }
 
@@ -279,6 +280,7 @@ static le_result_t LocalSwap
         if (!IsCommandCorrectlyExecuted(resp, lenResp))
         {
             LE_ERROR("APDU response: %02X, %02X", resp[0], resp[1]);
+            pa_sim_CloseLogicalChannel(channel);
             return LE_FAULT;
         }
 
@@ -291,6 +293,7 @@ static le_result_t LocalSwap
                                  resp, &lenResp))
     {
         LE_ERROR("Cannot swap subscription!");
+        pa_sim_CloseLogicalChannel(channel);
         return LE_FAULT;
     }
 
