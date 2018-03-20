@@ -1,16 +1,28 @@
+requires:
+{
+    component:
+    {
+        ${LEGATO_ROOT}/components/3rdParty/openssl
+        ${LEGATO_ROOT}/components/3rdParty/zlib
+    }
+}
+
 bundles:
 {
     file:
     {
+        // .so.4 is actually more recent than .so.5 ...
         #if file_exists(${LEGATO_SYSROOT}/usr/lib/libcurl.so.4)
-            ${LEGATO_SYSROOT}/usr/lib/libcurl.so.4 /usr/lib/
+            ${LEGATO_SYSROOT}/usr/lib/libcurl.so.4 /lib/
         #elif file_exists(${LEGATO_SYSROOT}/usr/lib/libcurl.so.5)
-            ${LEGATO_SYSROOT}/usr/lib/libcurl.so.5 /usr/lib/
-
+            ${LEGATO_SYSROOT}/usr/lib/libcurl.so.5 /lib/
 
         // To install the library for localhost.
         #elif file_exists(${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libcurl.so.4)
-            ${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libcurl.so.4 /usr/lib/
+            ${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libcurl.so.4 /lib/
+
+        #else
+            /curl/not/found /lib/
         #endif
     }
 }

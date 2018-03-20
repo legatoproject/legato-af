@@ -2,13 +2,36 @@ bundles:
 {
     file:
     {
-        #if file_exists(${LEGATO_SYSROOT}/usr/lib/libssl.so)
-            ${LEGATO_SYSROOT}/usr/lib/libssl.so /usr/lib/
-            ${LEGATO_SYSROOT}/usr/lib/libcrypto.so /usr/lib/
+        // Use specific library version as, unlike most libraries, OpenSSL is very precise
+        // in term of the version that is required by software linked against.
+        // Meaning that if a software links against libssl.so.1, if that is a symlink to
+        // libssl.so.1.0.2, then libssl.so.1.0.2 must be used at runtime.
+        #if file_exists(${LEGATO_SYSROOT}/usr/lib/libssl.so.1.1)
+            ${LEGATO_SYSROOT}/usr/lib/libssl.so.1.1 /lib/
+            ${LEGATO_SYSROOT}/usr/lib/libcrypto.so.1.1 /lib/
+        #elif file_exists(${LEGATO_SYSROOT}/usr/lib/libssl.so.1.0.2)
+            ${LEGATO_SYSROOT}/usr/lib/libssl.so.1.0.2 /lib/
+            ${LEGATO_SYSROOT}/usr/lib/libcrypto.so.1.0.2 /lib/
+        #elif file_exists(${LEGATO_SYSROOT}/usr/lib/libssl.so.1.0.0)
+            ${LEGATO_SYSROOT}/usr/lib/libssl.so.1.0.0 /lib/
+            ${LEGATO_SYSROOT}/usr/lib/libcrypto.so.1.0.0 /lib/
+
         // To install the library for localhost.
-        #elif file_exists(${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libssl.so)
-            ${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/
-            ${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/
+        #elif file_exists(${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libssl.so.1.1)
+            ${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libssl.so.1.1 /lib/
+            ${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1 /lib/
+        #elif file_exists(${LEGATO_SYSROOT}/lib/x86_64-linux-gnu/libssl.so.1.1)
+            ${LEGATO_SYSROOT}/lib/x86_64-linux-gnu/libssl.so.1.1 /lib/
+            ${LEGATO_SYSROOT}/lib/x86_64-linux-gnu/libcrypto.so.1.1 /lib/
+        #elif file_exists(${LEGATO_SYSROOT}/lib/x86_64-linux-gnu/libssl.so.1.0.2)
+            ${LEGATO_SYSROOT}/lib/x86_64-linux-gnu/libssl.so.1.0.2 /lib/
+            ${LEGATO_SYSROOT}/lib/x86_64-linux-gnu/libcrypto.so.1.0.2 /lib/
+        #elif file_exists(${LEGATO_SYSROOT}/lib/x86_64-linux-gnu/libssl.so.1.0.0)
+            ${LEGATO_SYSROOT}/lib/x86_64-linux-gnu/libssl.so.1.0.0 /lib/
+            ${LEGATO_SYSROOT}/lib/x86_64-linux-gnu/libcrypto.so.1.0.0 /lib/
+
+        #else
+            /openssl/not/found /lib/
         #endif
     }
 }

@@ -37,6 +37,10 @@ AppendYoctoSwiToolchain() {
     local swi_prefix=$1
     local gcc_prefix=$2
 
+    if ! [ -e "/opt/swi" ]; then
+        return 0
+    fi
+
     for entry_dir in $(find /opt/swi -maxdepth 1 -name "${swi_prefix}" | sort -r); do
         TOOLCHAIN_DIRS+=("${entry_dir}/sysroots/${HOST_ARCH}-pokysdk-linux/usr/bin/${gcc_prefix}")
     done

@@ -354,8 +354,9 @@ void BuildScriptGenerator_t::GenerateBuildRules
               "            LDFLAGS=\"" << sysrootOption << " $ldFlags\" $\n";
     if (!crossToolPath.empty())
     {
-        script << "            PATH=\"" << crossToolPath << ":$$PATH\" && $\n";
+        script << "            PATH=\"" << crossToolPath << ":$$PATH\" $\n";
     }
+    script << "            && $\n";
     script << "            $externalCommand\n"
               "\n";
 

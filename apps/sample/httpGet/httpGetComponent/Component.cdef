@@ -5,11 +5,6 @@ sources:
 
 requires:
 {
-    lib:
-    {
-        curl
-    }
-
     api:
     {
         le_data.api
@@ -17,8 +12,12 @@ requires:
 
     component:
     {
-        ${LEGATO_ROOT}/components/3rdParty/openssl
         ${LEGATO_ROOT}/components/3rdParty/curl
+    }
+
+    lib:
+    {
+        curl
     }
 }
 
@@ -26,26 +25,34 @@ bundles:
 {
     file:
     {
+        // Shipping dependencies directly with the component as to
+        // make the application more robust to toolchain vs rootfs
+        // version mismatch.
+
         #if file_exists(${LEGATO_SYSROOT}/usr/lib/libgnutls.so.30)
-            ${LEGATO_SYSROOT}/usr/lib/libgnutls.so.30 /usr/lib/
+            ${LEGATO_SYSROOT}/usr/lib/libgnutls.so.30 /lib/
         #elif file_exists(${LEGATO_SYSROOT}/usr/lib/libgnutls.so.28)
-            ${LEGATO_SYSROOT}/usr/lib/libgnutls.so.28 /usr/lib/
+            ${LEGATO_SYSROOT}/usr/lib/libgnutls.so.28 /lib/
         #endif
 
         #if file_exists(${LEGATO_SYSROOT}/usr/lib/libidn.so.11)
-            ${LEGATO_SYSROOT}/usr/lib/libidn.so.11 /usr/lib/
+            ${LEGATO_SYSROOT}/usr/lib/libidn.so.11 /lib/
+        #endif
+
+        #if file_exists(${LEGATO_SYSROOT}/usr/lib/libgmp.so.10)
+            ${LEGATO_SYSROOT}/usr/lib/libgmp.so.10 /lib/
         #endif
 
         #if file_exists(${LEGATO_SYSROOT}/usr/lib/libnettle.so.6)
-            ${LEGATO_SYSROOT}/usr/lib/libnettle.so.6 /usr/lib/
+            ${LEGATO_SYSROOT}/usr/lib/libnettle.so.6 /lib/
         #elif file_exists(${LEGATO_SYSROOT}/usr/lib/libnettle.so.4)
-            ${LEGATO_SYSROOT}/usr/lib/libnettle.so.4 /usr/lib/
+            ${LEGATO_SYSROOT}/usr/lib/libnettle.so.4 /lib/
         #endif
 
         #if file_exists(${LEGATO_SYSROOT}/usr/lib/libhogweed.so.4)
-            ${LEGATO_SYSROOT}/usr/lib/libhogweed.so.4 /usr/lib/
+            ${LEGATO_SYSROOT}/usr/lib/libhogweed.so.4 /lib/
         #elif file_exists(${LEGATO_SYSROOT}/usr/lib/libhogweed.so.2)
-            ${LEGATO_SYSROOT}/usr/lib/libhogweed.so.2 /usr/lib/
+            ${LEGATO_SYSROOT}/usr/lib/libhogweed.so.2 /ib/
         #endif
     }
 }

@@ -1,3 +1,11 @@
+externalBuild:
+{
+    "mkdir -p ${LEGATO_BUILD}/3rdParty/lib ${LEGATO_BUILD}/3rdParty/inc/tinycbor"
+    "${CURDIR}/make.sh"
+    "cp lib/libtinycbor.* ${LEGATO_BUILD}/3rdParty/lib/"
+    "cd ${LEGATO_ROOT}/3rdParty/tinycbor/src && cp cbor.h ${LEGATO_BUILD}/3rdParty/inc/tinycbor/"
+}
+
 bundles:
 {
     file:
@@ -6,10 +14,7 @@ bundles:
     }
 }
 
-externalBuild:
+ldflags:
 {
-    "mkdir -p ${LEGATO_BUILD}/3rdParty/lib ${LEGATO_BUILD}/3rdParty/inc/tinycbor"
-    "${CURDIR}/make.sh"
-    "cp lib/libtinycbor.* ${LEGATO_BUILD}/3rdParty/lib/"
-    "cd ${LEGATO_ROOT}/3rdParty/tinycbor/src && cp cbor.h ${LEGATO_BUILD}/3rdParty/inc/tinycbor/"
+    -L${LEGATO_BUILD}/3rdParty/lib
 }
