@@ -87,6 +87,13 @@ static le_clk_Time_t                TimeToWait = { 5, 0 };
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * DOP resolution.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_gnss_Resolution_t DopRes = LE_GNSS_RES_THREE_DECIMAL;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function tests the rounding to the nearest of different GNSS SV position values
  *
  * PA function tested:
@@ -101,6 +108,125 @@ static void Testle_gnss_RoundValue
 )
 {
     LE_ASSERT_OK(pa_gnssSimu_RoundingPositionValues());
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: API testing for le_gnss_SetDopResolution() and le_gnss_GetDilutionOfPrecision().
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_gnss_SetGetDOPResolution
+(
+    le_gnss_SampleRef_t positionSampleRef
+)
+{
+    static const char *tabDop[] =
+    {
+        "Position dilution of precision (PDOP)",
+        "Horizontal dilution of precision (HDOP)",
+        "Vertical dilution of precision (VDOP)",
+        "Geometric dilution of precision (GDOP)",
+        "Time dilution of precision (TDOP)"
+    };
+
+    le_gnss_DopType_t dopType = LE_GNSS_PDOP;
+    // DOP parameter
+    uint16_t dop;
+    // Original DOP value with default resolution
+    uint16_t dopValue;
+    le_result_t result;
+
+    // Set gnss client number.
+    le_gnss_SetClientSimu(CLIENT1);
+    LE_ASSERT(LE_BAD_PARAMETER == (le_gnss_SetDopResolution(LE_GNSS_RES_UNKNOWN)));
+    LE_ASSERT_OK(le_gnss_SetDopResolution(LE_GNSS_RES_TWO_DECIMAL));
+
+    // Pass invalid sample reference
+    LE_ASSERT(LE_FAULT == (le_gnss_GetDilutionOfPrecision(GnssPositionSampleRef, dopType, &dop)));
+    LE_ASSERT(LE_OUT_OF_RANGE == (le_gnss_GetDilutionOfPrecision(positionSampleRef,
+                                                                 LE_GNSS_DOP_LAST, &dop)));
+
+    do
+    {
+        // Set the DOP resolution
+        if (LE_GNSS_RES_UNKNOWN == ++DopRes)
+        {
+            DopRes = LE_GNSS_RES_ZERO_DECIMAL;
+        }
+
+        LE_ASSERT_OK(le_gnss_SetDopResolution(DopRes));
+        LE_INFO("Set DOP resolution: %d decimal place\n", DopRes);
+
+        pa_gnssSimu_GetDOPValue(dopType, &dopValue);
+        result = le_gnss_GetDilutionOfPrecision(positionSampleRef, dopType, &dop);
+        LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+
+        if (LE_OK == result)
+        {
+            switch(DopRes)
+
+            {
+                case LE_GNSS_RES_ZERO_DECIMAL:
+                     LE_INFO("resolution: %d decimal place, %s %.1f\n",
+                            DopRes, tabDop[dopType], (float)dop);
+                     // Check whether values received from le_gnss_GetDilutionOfPrecision() API is
+                     // as per decimal places.
+                     LE_ASSERT(dopValue == (dop * 1000));
+                     break;
+                case LE_GNSS_RES_ONE_DECIMAL:
+                     LE_INFO("resolution: %d decimal place, %s %.1f\n",
+                            DopRes, tabDop[dopType], (float)(dop)/10);
+                     // Check whether values received from le_gnss_GetDilutionOfPrecision() API is
+                     // as per decimal places.
+                     LE_ASSERT(dopValue == (dop * 100));
+                     break;
+                case LE_GNSS_RES_TWO_DECIMAL:
+                     LE_INFO("resolution: %d decimal place, %s %.2f\n",
+                            DopRes, tabDop[dopType], (float)(dop)/100);
+                     // Check whether values received from le_gnss_GetDilutionOfPrecision() API is
+                     // as per decimal places.
+                     LE_ASSERT(dopValue == (dop * 10));
+                     break;
+                case LE_GNSS_RES_THREE_DECIMAL:
+                default:
+                     LE_INFO("resolution: %d decimal place, %s %.3f\n",
+                            DopRes, tabDop[dopType], (float)(dop)/1000);
+                      // Check whether values received from le_gnss_GetDilutionOfPrecision() API is
+                     // as per decimal places.
+                     LE_ASSERT(dopValue == dop);
+                     break;
+            }
+        }
+        else
+        {
+            LE_INFO("%s invalid %d\n", tabDop[dopType], dop);
+        }
+        dopType++;
+    }
+    while (dopType != LE_GNSS_DOP_LAST);
+
+    // Set resolution as two decimal place for CLIENT1.
+    LE_ASSERT_OK(le_gnss_SetDopResolution(LE_GNSS_RES_TWO_DECIMAL));
+
+    // Set client number. Test case for multi-client.
+    le_gnss_SetClientSimu(CLIENT2);
+
+    // Set resolution as one decimal place for CLIENT2.
+    LE_ASSERT_OK(le_gnss_SetDopResolution(LE_GNSS_RES_ONE_DECIMAL));
+
+    dopType = LE_GNSS_PDOP;
+    pa_gnssSimu_GetDOPValue(dopType, &dopValue);
+    result = le_gnss_GetDilutionOfPrecision(positionSampleRef, dopType, &dop);
+    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+
+    if (LE_OK == result)
+    {
+        LE_INFO("resolution: %d decimal place, %s %.1f\n",
+                DopRes, tabDop[dopType], (float)(dop)/10);
+        // Check whether values received from le_gnss_GetDilutionOfPrecision() API is
+        // as per decimal places. Also check decimal place are fatching correctly for CLIENT2.
+        LE_ASSERT(dopValue == (dop * 100));
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -140,8 +266,6 @@ static void GnssPositionHandlerFunction
     int32_t altitudeOnWgs84;
     int32_t hAccuracy;
     int32_t magneticDeviation;
-    // DOP parameter
-    uint16_t dop;
     // Horizontal speed
     uint32_t hSpeed;
     uint32_t hSpeedAccuracy;
@@ -151,7 +275,6 @@ static void GnssPositionHandlerFunction
     // Direction
     uint32_t direction;
     uint32_t directionAccuracy;
-    le_gnss_DopType_t dopType = LE_GNSS_PDOP;
     uint64_t EpochTime;
     uint16_t hdopPtr, vdopPtr, pdopPtr;
     uint32_t timeAccuracy;
@@ -273,26 +396,6 @@ static void GnssPositionHandlerFunction
     LE_ASSERT(LE_FAULT == (le_gnss_GetSatellitesStatus(GnssPositionSampleRef, &satsInViewCount,
                                                        &satsTrackingCount, &satsUsedCount)));
 
-    // Get DOP parameter
-    result = le_gnss_GetDilutionOfPrecision(positionSampleRef, dopType, &dop);
-    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
-    dopType = LE_GNSS_HDOP;
-    result = le_gnss_GetDilutionOfPrecision(positionSampleRef, dopType, &dop);
-    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
-    dopType = LE_GNSS_VDOP;
-    result = le_gnss_GetDilutionOfPrecision(positionSampleRef, dopType, &dop);
-    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
-    dopType = LE_GNSS_GDOP;
-    result = le_gnss_GetDilutionOfPrecision(positionSampleRef, dopType, &dop);
-    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
-    dopType = LE_GNSS_TDOP;
-    result = le_gnss_GetDilutionOfPrecision(positionSampleRef, dopType, &dop);
-    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
-
-    // Pass invalid sample reference
-    LE_ASSERT(LE_FAULT == (le_gnss_GetDilutionOfPrecision(GnssPositionSampleRef, dopType,
-                                                          &dop)));
-
     // Satellites information
     uint16_t satIdPtr[0];
     size_t satIdNumElements = sizeof(satIdPtr);
@@ -321,6 +424,9 @@ static void GnssPositionHandlerFunction
                                         satElevPtr,
                                         &satElevNumElements);
     LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+
+    LE_INFO("======== GNSS SetGetDOPResolution========");
+    Testle_gnss_SetGetDOPResolution(positionSampleRef);
 
     le_gnss_ReleaseSampleRef(positionSampleRef);
     le_sem_Post(ThreadSemaphore);

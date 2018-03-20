@@ -8,6 +8,14 @@
 #include "legato.h"
 #include "interfaces.h"
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Store client number.
+ */
+//--------------------------------------------------------------------------------------------------
+static Client_t Client;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Get the server service reference stub for le_gnss
@@ -31,7 +39,34 @@ le_msg_SessionRef_t le_gnss_GetClientSessionRef
     void
 )
 {
-    return NULL;
+    le_msg_SessionRef_t sessionRef = NULL;
+
+    if (CLIENT1 == Client)
+    {
+        sessionRef = (le_msg_SessionRef_t)(0x1234);
+    }
+    else if (CLIENT2 == Client)
+    {
+        sessionRef = (le_msg_SessionRef_t)(0x5678);
+    }
+    return sessionRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the client number for simulation of le_gnss_GetClientSessionRef() API.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_gnss_SetClientSimu(Client_t client)
+{
+    if (CLIENT1 == client)
+    {
+        Client = CLIENT1;
+    }
+    else if (CLIENT2 == client)
+    {
+        Client = CLIENT2;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
