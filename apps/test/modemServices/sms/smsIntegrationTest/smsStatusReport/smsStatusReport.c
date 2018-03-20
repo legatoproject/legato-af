@@ -144,7 +144,9 @@ COMPONENT_INIT
     le_thread_Ref_t rxThread;
     bool statusReportEnabled;
     le_sms_MsgRef_t myMsg;
-    uint8_t messageReference = 0;
+    uint8_t oldMessageReference = 0;
+    uint8_t txMessageReference = 0;
+    uint8_t rxMessageReference = 0;
     uint8_t tora = 0;
     char    ra[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
     char    timestamp[LE_SMS_TIMESTAMP_MAX_BYTES];
@@ -190,6 +192,9 @@ COMPONENT_INIT
     LE_ASSERT_OK(le_sms_SetDestination(myMsg, DestinationNumber));
     LE_ASSERT_OK(le_sms_SetText(myMsg, "Do not send a SMS Status Report!"));
     LE_ASSERT_OK(le_sms_Send(myMsg));
+    LE_ASSERT_OK(le_sms_GetTpMr(myMsg, &txMessageReference));
+    LE_INFO("Message sent with reference: %d", txMessageReference);
+    oldMessageReference = txMessageReference;
     le_sms_Delete(myMsg);
 
     // Wait to check that no Status Report is received
@@ -202,13 +207,18 @@ COMPONENT_INIT
     LE_ASSERT_OK(le_sms_IsStatusReportEnabled(&statusReportEnabled));
     LE_ASSERT(true == statusReportEnabled);
 
-     // Send a message
+     // Send a new message
     LE_INFO("Send a SMS");
     LE_ASSERT(myMsg = le_sms_Create());
     LE_ASSERT_OK(le_sms_SetDestination(myMsg, DestinationNumber));
     LE_ASSERT_OK(le_sms_SetText(myMsg, "Send a SMS Status Report please!"));
     LE_ASSERT_OK(le_sms_Send(myMsg));
+    LE_ASSERT_OK(le_sms_GetTpMr(myMsg, &txMessageReference));
+    LE_INFO("Message sent with reference: %d", txMessageReference);
     le_sms_Delete(myMsg);
+
+    // Check that message reference has been correctly incremented
+    LE_ASSERT(txMessageReference == (oldMessageReference + 1));
 
     // Wait to check that a Status Report is received
     LE_INFO("Check that a SMS Status Report is received");
@@ -216,8 +226,8 @@ COMPONENT_INIT
 
     // Display SMS Status Report data
     LE_ASSERT(LE_SMS_TYPE_STATUS_REPORT == le_sms_GetType(ReceivedSmsRef));
-    LE_ASSERT_OK(le_sms_GetTpMr(ReceivedSmsRef, &messageReference));
-    LE_INFO("Message reference: %d", messageReference);
+    LE_ASSERT_OK(le_sms_GetTpMr(ReceivedSmsRef, &rxMessageReference));
+    LE_INFO("Message reference: %d", rxMessageReference);
     LE_ASSERT_OK(le_sms_GetTpRa(ReceivedSmsRef, &tora, ra, sizeof(ra)));
     LE_INFO("Recipient Address: %s (Type of Address %d)", ra, tora);
     LE_ASSERT_OK(le_sms_GetTpScTs(ReceivedSmsRef, timestamp, sizeof(timestamp)));
@@ -226,6 +236,9 @@ COMPONENT_INIT
     LE_INFO("Discharge Time: %s", timestamp);
     LE_ASSERT_OK(le_sms_GetTpSt(ReceivedSmsRef, &status));
     LE_INFO("Status: %d", status);
+
+    // Check that the message reference of Status Report is the same as the message previously sent
+    LE_ASSERT(rxMessageReference == txMessageReference)
 
     // Clean up
     le_sem_Delete(SyncSemRef);

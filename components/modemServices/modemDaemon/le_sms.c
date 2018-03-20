@@ -2222,9 +2222,9 @@ static void ProcessSmsSendingCommandHandler
                 }
                 else
                 {
-                    res = pa_sms_SendPduMsg(msgPtr->protocol,
-                                    msgPtr->pdu.dataLen, msgPtr->pdu.data,
-                                    remainingTime, &msgPtr->pdu.errorCode);
+                    res = pa_sms_SendPduMsg(msgPtr->protocol, msgPtr->pdu.dataLen, msgPtr->pdu.data,
+                                            &msgPtr->messageReference, remainingTime,
+                                            &msgPtr->pdu.errorCode);
                     if (LE_OK == res)
                     {
                         msgPtr->pdu.status = LE_SMS_SENT;
@@ -3872,8 +3872,9 @@ le_result_t le_sms_Send
                         msgPtr, msgPtr->pdu.data, msgPtr->pdu.dataLen, msgPtr->protocol);
 
         le_sem_Wait(SmsSem);
-        result = pa_sms_SendPduMsg(msgPtr->protocol, msgPtr->pdu.dataLen,
-                        msgPtr->pdu.data, PA_SMS_SENDING_TIMEOUT, &msgPtr->pdu.errorCode);
+        result = pa_sms_SendPduMsg(msgPtr->protocol, msgPtr->pdu.dataLen, msgPtr->pdu.data,
+                                   &msgPtr->messageReference, PA_SMS_SENDING_TIMEOUT,
+                                   &msgPtr->pdu.errorCode);
         le_sem_Post(SmsSem);
 
         if (result < 0)
@@ -3886,7 +3887,6 @@ le_result_t le_sms_Send
         }
         else
         {
-            /* @todo Get message reference for acknowledge message feature */
             msgPtr->pdu.status = LE_SMS_SENT;
             result = LE_OK;
 
@@ -4945,13 +4945,15 @@ le_result_t le_sms_IsStatusReportEnabled
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get TP-Message-Reference of SMS Status Report.
+ * Get TP-Message-Reference of a message. Message type should be either a SMS Status Report or an
+ * outgoing SMS.
  * TP-Message-Reference is defined in 3GPP TS 23.040 section 9.2.3.6.
  *
  * @return
  *  - LE_OK             Function succeeded.
  *  - LE_BAD_PARAMETER  A parameter is invalid.
  *  - LE_FAULT          Function failed.
+ *  - LE_UNAVAILABLE    Outgoing SMS message is not sent.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sms_GetTpMr
@@ -4975,10 +4977,16 @@ le_result_t le_sms_GetTpMr
         return LE_BAD_PARAMETER;
     }
 
-    if (msgPtr->type != LE_SMS_TYPE_STATUS_REPORT)
+    if ((msgPtr->type != LE_SMS_TYPE_STATUS_REPORT) && (msgPtr->type != LE_SMS_TYPE_TX))
     {
-        LE_ERROR("It is not a SMS Status Report Message");
+        LE_ERROR("Cannot get message reference for this type of message (%d)", msgPtr->type);
         return LE_FAULT;
+    }
+
+    if ((msgPtr->type == LE_SMS_TYPE_TX) && (msgPtr->pdu.status != LE_SMS_SENT))
+    {
+        LE_ERROR("Cannot get message reference before SMS message is sent");
+        return LE_UNAVAILABLE;
     }
 
     *tpMrPtr = msgPtr->messageReference;

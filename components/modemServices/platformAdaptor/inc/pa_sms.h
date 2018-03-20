@@ -375,19 +375,20 @@ LE_SHARED void pa_sms_RemoveStorageStatusHandler
 //--------------------------------------------------------------------------------------------------
 /**
  * This function sends a message in PDU mode.
+ *
+ * @return LE_OK              The function succeeded.
  * @return LE_FAULT           The function failed to send a message in PDU mode.
- * @return LE_BAD_PARAMETER   The parameters are invalid.
  * @return LE_TIMEOUT         No response was received from the Modem.
- * @return a positive value   The function succeeded. The value represents the message reference.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED int32_t pa_sms_SendPduMsg
+LE_SHARED le_result_t pa_sms_SendPduMsg
 (
     pa_sms_Protocol_t        protocol,   ///< [IN] protocol to use
     uint32_t                 length,     ///< [IN] The length of the TP data unit in bytes.
-    const uint8_t           *dataPtr,    ///< [IN] The message.
+    const uint8_t*           dataPtr,    ///< [IN] The message.
+    uint8_t*                 msgRef,     ///< [OUT] Message reference (TP-MR)
     uint32_t                 timeout,    ///< [IN] Timeout in seconds.
-    pa_sms_SendingErrCode_t *errorCode   ///< [OUT] The error code.
+    pa_sms_SendingErrCode_t* errorCode   ///< [OUT] The error code.
 );
 
 //--------------------------------------------------------------------------------------------------

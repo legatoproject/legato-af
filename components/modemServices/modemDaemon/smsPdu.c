@@ -1368,7 +1368,7 @@ static le_result_t DecodePduStatusReport
     {
         return result;
     }
-    smsPtr->smsDeliver.option |= PA_SMS_OPTIONMASK_RA;
+
     LE_DEBUG("TP-RA: %s", smsPtr->smsStatusReport.ra);
     if ('+' == smsPtr->smsStatusReport.ra[0])
     {
@@ -1384,7 +1384,7 @@ static le_result_t DecodePduStatusReport
                                       7,
                                       smsPtr->smsStatusReport.scts,
                                       sizeof(smsPtr->smsStatusReport.scts));
-    smsPtr->smsDeliver.option |= PA_SMS_OPTIONMASK_SCTS;
+
     LE_DEBUG("TP-SCTS: %s", smsPtr->smsStatusReport.scts);
 
     // TP Discharge Time

@@ -11,10 +11,6 @@ processes:
     {
         LE_LOG_LEVEL = DEBUG
     }
-    run:
-    {
-        ( smsStatusReport )
-    }
 }
 
 bindings:

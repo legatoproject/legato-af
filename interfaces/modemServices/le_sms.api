@@ -1742,16 +1742,17 @@ FUNCTION le_result_t IsStatusReportEnabled
     bool enabled    OUT     ///< True when SMS Status Report is enabled, false otherwise.
 );
 
-
 //--------------------------------------------------------------------------------------------------
 /**
- * Get TP-Message-Reference of SMS Status Report.
+ * Get TP-Message-Reference of a message. Message type should be either a SMS Status Report or an
+ * outgoing SMS.
  * TP-Message-Reference is defined in 3GPP TS 23.040 section 9.2.3.6.
  *
  * @return
  *  - LE_OK             Function succeeded.
  *  - LE_BAD_PARAMETER  Parameter is invalid.
  *  - LE_FAULT          Function failed.
+ *  - LE_UNAVAILABLE    Outgoing SMS message is not sent.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetTpMr
