@@ -1,4 +1,5 @@
-#! /usr/bin/python
+#!/usr/bin/env python
+
 import os
 import sys
 from utils import *
@@ -41,5 +42,6 @@ def main():
     }}</script>''' % dct.get('command','')  if KEEP_PREVIOUS_COMMAND else ''
     print '''</body>
     </html>  '''
+
 if __name__ == '__main__':
     main()

@@ -10,7 +10,7 @@ bundles:
 {
     file:
     {
-        $LEGATO_BUILD/3rdParty/lib/libtinycbor.so.0 /lib/libtinycbor.so.0
+        ${LEGATO_BUILD}/3rdParty/lib/libtinycbor.so.0 /lib/libtinycbor.so.0
     }
 }
 

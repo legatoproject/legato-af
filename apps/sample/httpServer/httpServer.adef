@@ -2,20 +2,8 @@ sandboxed: true
 
 bundles:
 {
-    file:
-    {
-        [x] binaries/lighttpd /usr/local/bin/
-
-        #if file_exists(${LEGATO_SYSROOT}/usr/lib/libprocps.so)
-            ${LEGATO_SYSROOT}/usr/lib/libprocps.so /usr/lib/
-        #elif file_exists(${LEGATO_SYSROOT}/lib/libproc-3.2.8.so)
-            ${LEGATO_SYSROOT}/usr/lib/libproc-3.2.8.so /usr/lib/
-        #endif
-    }
-
     dir:
     {
-        binaries/lib /modlibs
         pages /pages
         cfg /cfg
     }
@@ -88,10 +76,13 @@ processes:
 
     run:
     {
-        (lighttpd -m /modlibs/ -D -f /cfg/lighttpd.conf )
+        ( lighttpd -m /modlibs/ -D -f /cfg/lighttpd.conf )
     }
 }
+
 components:
 {
     ${LEGATO_ROOT}/components/3rdParty/openssl
+    ${LEGATO_ROOT}/components/3rdParty/lighttpd
+    sslCertComponent
 }

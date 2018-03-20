@@ -1,4 +1,5 @@
-#! /usr/bin/python
+#!/usr/bin/env python
+
 import os
 import sys
 
@@ -7,7 +8,6 @@ from utils import *
 def main():
     print 'Content-Type: text/html'
     print ''
-
 
     print '''<html>
     <head>
@@ -44,7 +44,6 @@ def main():
     print '<pre>'
     print shell('ps aux')
     print '</pre>'
-
 
     print '''</body>
     </html>  '''

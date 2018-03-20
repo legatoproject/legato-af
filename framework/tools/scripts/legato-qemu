@@ -8,6 +8,8 @@ OFFSET_PORT=${OFFSET_PORT:=10000}
 TELNET_PORT=${TELNET_PORT:=$(($OFFSET_PORT + 21))}
 SSH_PORT=${SSH_PORT:=$(($OFFSET_PORT + 22))}
 SIMU_PORT=${SIMU_PORT:=$(($OFFSET_PORT + 5000))}
+HTTP_PORT=${HTTP_PORT:=$(($OFFSET_PORT + 8080))}
+HTTPS_PORT=${HTTPS_PORT:=$(($OFFSET_PORT + 8443))}
 ONLY_PREPARE=${ONLY_PREPARE:-0}
 RESTART_ON_ERROR=${RESTART_ON_ERROR:-1}
 
@@ -524,7 +526,11 @@ if [ "$OPT_NET" == "user" ]; then
     NET_ADDR=",net=192.168.76.0/24"
 
     # Ports forwarded from guest to host
-    NET_HOSTFWD=",hostfwd=tcp::$SSH_PORT-:22,hostfwd=tcp::$SIMU_PORT-:5000"
+    NET_HOSTFWD=",hostfwd=tcp::$SSH_PORT-:22"
+    NET_HOSTFWD="${NET_HOSTFWD},hostfwd=tcp::$SIMU_PORT-:5000"
+    # Ports used by the sample app 'httpServer'
+    NET_HOSTFWD="${NET_HOSTFWD},hostfwd=tcp::$HTTP_PORT-:8080"
+    NET_HOSTFWD="${NET_HOSTFWD},hostfwd=tcp::$HTTPS_PORT-:8443"
 
     # Restrict = when yes, isolate guest from host network
     #NET_RESTRICT=",restrict=yes"

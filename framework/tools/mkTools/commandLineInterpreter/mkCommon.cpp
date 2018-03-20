@@ -276,9 +276,10 @@ std::list<std::string> GetCrossToolPaths
 
     for (size_t i = 0; i < sizeof(relPaths)/sizeof(relPaths[0]); i++)
     {
-        if (file::DirectoryExists(toolChainHostRoot + relPaths[i]))
+        auto toolChainHostDir = toolChainHostRoot + relPaths[i];
+        if (file::DirectoryExists(toolChainHostDir))
         {
-            crossToolPaths.push_back(toolChainHostRoot + relPaths[i]);
+            crossToolPaths.push_back(toolChainHostDir);
         }
     }
 

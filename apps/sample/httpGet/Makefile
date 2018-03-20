@@ -1,14 +1,4 @@
-TARGETS = \
-	ar7 \
-	ar758x \
-	ar759x \
-	ar86 \
-	wp750x \
-	wp76xx \
-	wp85 \
-	raspi \
-	virt \
-	localhost
+TARGETS := $(MAKECMDGOALS)
 
 .PHONY: all $(TARGETS)
 all: $(TARGETS)
