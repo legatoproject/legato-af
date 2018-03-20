@@ -1,4 +1,5 @@
-#! /usr/bin/python
+#!/usr/bin/env python
+
 def main():
     print 'Content-Type: text/html'
     print ''

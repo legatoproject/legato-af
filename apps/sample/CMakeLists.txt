@@ -74,7 +74,12 @@ add_subdirectory(watchdog)
 # Application adding the streamMedia API which allows audio streaming through RTP
 add_subdirectory(streamMedia)
 
-# httpGet
+# Application that gets online and fetches an URL with curl
 if (NOT (LEGATO_TARGET STREQUAL "ar7" OR LEGATO_TARGET STREQUAL "ar86"))
     add_subdirectory(httpGet)
+endif()
+
+# Application that exposes a webserver (lighttpd) and few sample pages
+if (NOT (LEGATO_TARGET STREQUAL "ar7" OR LEGATO_TARGET STREQUAL "ar86" OR LEGATO_TARGET STREQUAL "localhost"))
+    add_subdirectory(httpServer)
 endif()

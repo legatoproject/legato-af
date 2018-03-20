@@ -1,14 +1,16 @@
-#! /usr/bin/python
+#!/usr/bin/env python
+
 import os
 import sys
 from utils import *
 import re
 import time
+
 def main():
     print 'Content-Type: text/html'
     print ''
 
-    query_string=os.environ.get("QUERY_STRING", None)
+    query_string = os.environ.get("QUERY_STRING", None)
     dct = decode_params(query_string)
 
     print '''<html>
@@ -31,6 +33,7 @@ def main():
             print '</pre>'
     print '''</body>
     </html>  '''
+
 def handle_update():
     boundary = sys.stdin.readline().rstrip()
     content_disposition_line = sys.stdin.readline()
@@ -43,13 +46,23 @@ def handle_update():
     # begin downloading to file, stopping at "[boundary]--"
     templog = "/web_appinstaller_%s.log" % str(int(time.time()))
     with os.popen('/legato/systems/current/bin/update > ' + templog, 'w') as f:
+        data = None
         for line in sys.stdin:
             if line != boundary + '--\r\n':
+                if data:
+                    f.write(data)
                 data = line
+            else:
+                # Remove \r\n at the end
+                if data[-2:] != "\r\n":
+                    sys.stderr.write("Error while parsing the request %x %x" % (ord(data[-2]), ord(data[-1])))
+                    return
+                data = data[:-2]
                 f.write(data)
     with open(templog) as f:
         output = f.read()
     print(output)
     os.remove(templog)
+
 if __name__ == '__main__':
     main()

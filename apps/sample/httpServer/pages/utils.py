@@ -19,13 +19,22 @@ def escape(s):
     s = s.replace(">", "&gt;" )
     s = s.replace('"', "&quot;")
     return s
+
 def decode_params(querystr):
     if querystr is None:
         return {}
-    queries=querystr.split('&')
-    return {urldecode(x[0]):urldecode(x[1]) for x in [z.split("=") for z in queries]}
+
+    queries = querystr.split('&')
+    params = {}
+    for x in [z.split("=") for z in queries]:
+        if len(x) == 2:
+            params[urldecode(x[0])] = urldecode(x[1])
+
+    return params
+
 def urldecode(s):
     return unquote(s.replace('+',' '))
+
 #http://stackoverflow.com/a/15627281/765210
 def unquote(url):
     return re.compile('%([0-9a-fA-F]{2})',re.M).sub(lambda m: chr(int(m.group(1),16)), url)

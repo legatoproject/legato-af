@@ -1,0 +1,29 @@
+externalBuild:
+{
+    "${CURDIR}/make.sh"
+}
+
+bundles:
+{
+    file:
+    {
+        [rx] $LEGATO_BUILD/3rdParty/lighttpd/sbin/lighttpd /bin/
+
+        $LEGATO_BUILD/3rdParty/lighttpd/lib/mod_cgi.so /modlibs/
+        $LEGATO_BUILD/3rdParty/lighttpd/lib/mod_dirlisting.so /modlibs/
+        $LEGATO_BUILD/3rdParty/lighttpd/lib/mod_indexfile.so /modlibs/
+        $LEGATO_BUILD/3rdParty/lighttpd/lib/mod_staticfile.so /modlibs/
+        $LEGATO_BUILD/3rdParty/lighttpd/lib/mod_status.so /modlibs/
+        $LEGATO_BUILD/3rdParty/lighttpd/lib/mod_openssl.so /modlibs/
+
+        #if file_exists(${LEGATO_SYSROOT}/usr/lib/libprocps.so)
+            ${LEGATO_SYSROOT}/usr/lib/libprocps.so /usr/lib/
+        #elif file_exists(${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libprocps.so)
+            ${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libprocps.so /usr/lib/
+        #elif file_exists(${LEGATO_SYSROOT}/lib/libproc-3.2.8.so)
+            ${LEGATO_SYSROOT}/usr/lib/libproc-3.2.8.so /usr/lib/
+        #else
+            /libproc/not/found /lib/
+        #endif
+    }
+}

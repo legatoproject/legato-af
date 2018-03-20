@@ -177,7 +177,7 @@ bundles:
 
 externalBuild:
 {
-    "${CURDIR}/configure --target=$${TARGET_TOOLCHAIN_PREFIX%-}"
+    "${CURDIR}/configure --target=$${TOOLCHAIN_PREFIX%-}"
     make
 }
 @endcode

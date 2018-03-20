@@ -1,0 +1,12 @@
+externalBuild:
+{
+    "${CURDIR}/gen.sh ${CURDIR}/server.pem"
+}
+
+bundles:
+{
+    file:
+    {
+        server.pem /cfg/
+    }
+}

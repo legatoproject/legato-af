@@ -351,13 +351,10 @@ void BuildScriptGenerator_t::GenerateBuildRules
               "  command = cd $builddir/$workingdir && $\n"
               "            export CFLAGS=\"" << sysrootOption << " $cFlags\" $\n"
               "            CXXFLAGS=\"" << sysrootOption << " $cxxFlags\" $\n"
-              "            LDFLAGS=\"" << sysrootOption << " $ldFlags\" $\n";
-    if (!crossToolPath.empty())
-    {
-        script << "            PATH=\"" << crossToolPath << ":$$PATH\" $\n";
-    }
-    script << "            && $\n";
-    script << "            $externalCommand\n"
+              "            LDFLAGS=\"" << sysrootOption << " $ldFlags\" $\n"
+              "            " << GetPathEnvVarDecl() << " $\n"
+              "            && $\n"
+              "            $externalCommand\n"
               "\n";
 
     // Generate a rule for running ifgen.

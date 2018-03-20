@@ -20,6 +20,7 @@ _build_*
 /system.sdef
 binaries
 /framework/tools/ifgen/cache
+server.pem
 
 # Update pack files
 *.update
