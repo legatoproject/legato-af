@@ -319,6 +319,7 @@ void BuildScriptGenerator_t::GenerateBuildRules
     // Generate rules for building drivers.
     script << "rule MakeKernelModule\n"
               "  description = Build kernel driver module\n"
+              "  depfile = $out.d\n" // Tell ninja where gcc will put the dependencies.
               "  command = make -C $in\n"
               "\n";
 
