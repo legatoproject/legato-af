@@ -124,6 +124,9 @@ include $(wildcard modules/*/moduleDefs)
 READ_ONLY ?= 0
 
 # Disable SMACK
+ifneq (,$(filter $(TARGET),virt))
+  export DISABLE_SMACK ?= 1
+endif
 export DISABLE_SMACK ?= 0
 
 STAGE_SYSTOIMG = stage_systoimg
