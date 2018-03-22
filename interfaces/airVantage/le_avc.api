@@ -500,6 +500,20 @@ DEFINE  COMM_INFO_STR_MAX_LEN = 256;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum length of a LwM2M resource excluding any termination character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_LWM2M_RESOURCE_LEN = 512;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of a LwM2M resource. One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_LWM2M_RESOURCE_BYTES = (MAX_LWM2M_RESOURCE_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Communication info codes
  */
 //--------------------------------------------------------------------------------------------------
@@ -1166,4 +1180,23 @@ FUNCTION le_result_t GetUserAgreement
 (
     UserAgreement updateStatus IN,         ///< Operation for which user agreements has to be read.
     bool enable OUT                        ///< true = enable, false = disable.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to read a resource from a LWM2M object
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if failed.
+ *      - LE_UNSUPPORTED if unsupported.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ReadLwm2mResource
+(
+    uint16 objectId IN,                           ///< Object identifier
+    uint16 objectInstanceId IN,                   ///< Object instance identifier
+    uint16 resourceId IN,                         ///< Resource identifier
+    uint16 resourceInstanceId IN,                 ///< Resource instance identifier
+    string data[MAX_LWM2M_RESOURCE_BYTES] OUT     ///< String of requested resources to be read
 );

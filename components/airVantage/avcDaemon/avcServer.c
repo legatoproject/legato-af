@@ -1909,6 +1909,27 @@ void le_avc_UnblockInstall
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Function to read a resource from a LwM2M object
+ *
+ * @return
+ *      - LE_UNSUPPORTED if unsupported.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_avc_ReadLwm2mResource
+(
+   uint16_t objectId,               ///< [IN] Object identifier
+   uint16_t objectInstanceId,       ///< [IN] Object instance identifier
+   uint16_t resourceId,             ///< [IN] Resource identifier
+   uint16_t resourceInstanceId,     ///< [IN] Resource instance identifier
+   char* dataPtr,                   ///< [IN/OUT] String of requested resources to be read
+   size_t dataSize                  ///< [IN/OUT] Size of the array
+)
+{
+   return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initialization function for AVC Daemon
  */
 //--------------------------------------------------------------------------------------------------
