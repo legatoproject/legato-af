@@ -46,9 +46,7 @@ rm -rf "$OUTPUT_DIR"
 
 # Handle smack
 mkdir -p "${OUTPUT_DIR}/systems/current"
-if [ $DISABLE_SMACK -eq 1 ]; then
-    touch "${OUTPUT_DIR}/SMACK_DISABLED"
-else
+if [ $DISABLE_SMACK -eq 0 ]; then
     mkdir -p "${OUTPUT_DIR}/smack"
 fi
 

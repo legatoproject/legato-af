@@ -321,6 +321,10 @@ ifneq ($(STRIP_STAGING_TREE),0)
   MKSYS_FLAGS += -d build/$(TARGET)/debug
 endif
 
+ifeq ($(DISABLE_SMACK),1)
+  SYSTOIMG_FLAGS += --disable-smack
+endif
+
 .PHONY: stage_systoimg
 stage_systoimg:
 	systoimg $(SYSTOIMG_FLAGS) $(TARGET) build/$(TARGET)/system.$(TARGET).update build/$(TARGET)
