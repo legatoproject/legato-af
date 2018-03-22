@@ -56,6 +56,11 @@ for tool in $(find -type f -and -not -name "*.pyc" | sed 's/^\.\///' | grep -v "
     install -D $tool ${STAGING_DIR}/bin/$tool
 done
 
+# IMA
+cd $LEGATO_ROOT
+install 3rdParty/ima-support-tools/ima-sign.sh ${STAGING_DIR}/bin/
+install 3rdParty/ima-support-tools/ima-gen-keys.sh ${STAGING_DIR}/bin/
+
 echo "Releasing ..."
 mkdir -p $RELEASE_DIR
 cd $STAGING_DIR
