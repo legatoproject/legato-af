@@ -1908,6 +1908,14 @@ int main
         // Bind mount if they are not already mounted.
         BindMount("/mnt/flash/legato", "/legato");
         BindMount("/mnt/flash/home", "/home");
+
+        // Set the SMACK label for /legato depending if SMACK is enabled or disabled
+        char* smackLegatoLabelPtr = (smack_IsEnabled() ? "framework" : "_");
+        if (-1 == setxattr("/legato", "security.SMACK64",
+                          smackLegatoLabelPtr, strlen(smackLegatoLabelPtr), 0))
+        {
+            LE_CRIT("Could not set SMACK label for '/legato': %m.");
+        }
     }
     if (0 == access("/home", W_OK))
     {
