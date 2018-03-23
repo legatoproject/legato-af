@@ -1,22 +1,22 @@
 WAKAAMA_SOURCES=\
-    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/er-coap-13/er-coap-13.c \
-    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/acl.c \
-    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/bootstrap.c \
-    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/block1.c \
-    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/data.c \
-    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/discover.c \
-    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/json.c \
-    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/liblwm2m.c \
-    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/list.c \
-    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/management.c \
-    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/objects.c \
-    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/observe.c \
-    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/packet.c \
-    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/registration.c \
-    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/tlv.c \
-    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/transaction.c \
-    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/uri.c \
-    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/utils.c
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/er-coap-13/er-coap-13.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/acl.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/bootstrap.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/block1.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/data.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/discover.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/json.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/liblwm2m.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/list.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/management.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/objects.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/observe.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/packet.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/registration.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/tlv.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/transaction.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/uri.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/utils.c
 
 INCLUDES=\
     -I${LEGATO_ROOT}/framework/include \
@@ -26,8 +26,8 @@ INCLUDES=\
     -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/sessionManager \
     -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/objectManager \
     -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/packageDownloader \
-    -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core \
-    -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/er-coap-13 \
+    -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core \
+    -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/er-coap-13 \
     -I${LEGATO_BUILD}/3rdParty/tinydtls/include/tinydtls
 
 CFLAGS+=\
@@ -58,11 +58,11 @@ DEPFLAGS=-fPIC
 
 OBJDIR?=./obj
 
-WAKAAMA_OBJ=$(patsubst ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/%.c,${OBJDIR}/%.o,${WAKAAMA_SOURCES})
+WAKAAMA_OBJ=$(patsubst ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/%.c,${OBJDIR}/%.o,${WAKAAMA_SOURCES})
 
 wakaama: libwakaama.so libwakaama.a
 
-$(OBJDIR)/%.o: ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/%.c
+$(OBJDIR)/%.o: ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/%.c
 	${LOG_DEBUG}mkdir -p $(dir $@)
 	${LOG_DEBUG}${CC} ${DEPFLAGS} ${CFLAGS} ${INCLUDES} -c -o $@ $<
 
