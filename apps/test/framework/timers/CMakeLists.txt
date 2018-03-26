@@ -13,6 +13,9 @@ add_legato_executable(${APP_TARGET} ${APP_SOURCES})
 
 add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
 
+# This is a C test
+add_dependencies(tests_c testFwTimers)
+
 #
 # Build test for timer expiry fixes.  This is not run as part of the standard
 # tests, at least for now.

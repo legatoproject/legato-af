@@ -421,7 +421,7 @@ static void RunTimer
 
     // If the timerFD is not running, or it is running a timer that is no longer at the beginning
     // of the active list, then (re)start the timerFD.
-    if ( threadRecPtr->firstTimerPtr != firstTimerPtr )
+    if ( (NULL != firstTimerPtr) && (threadRecPtr->firstTimerPtr != firstTimerPtr) )
     {
         RestartTimerFD(firstTimerPtr);
     }

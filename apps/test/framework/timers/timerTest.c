@@ -101,14 +101,16 @@ static void LongTimerExpiryHandler
     le_clk_Time_t* startTimePtr = pthread_getspecific(StartTimeKey);
     LE_ASSERT(startTimePtr != NULL);
     diffTime = le_clk_Sub( le_clk_GetRelativeTime(), *startTimePtr);
-    if ( le_clk_GreaterThan(le_clk_Sub(diffTime, expectedInterval), TimerTolerance) )
+    le_clk_Time_t subTime = le_clk_Sub(diffTime, expectedInterval);
+    if ( le_clk_GreaterThan(subTime, TimerTolerance) )
     {
         LE_PRINT_VALUE("%li", expectedInterval.sec);
         LE_PRINT_VALUE("%li", expectedInterval.usec);
         LE_PRINT_VALUE("%li", diffTime.sec);
         LE_PRINT_VALUE("%li", diffTime.usec);
 
-        LE_FATAL("TEST FAILED: Timer expiry does not match");
+        LE_CRIT("TEST FAILED: Timer expiry does not match: subTime %li.%06li",
+                 subTime.sec, subTime.usec);
     }
     else
     {
@@ -160,14 +162,16 @@ static void VeryShortTimerExpiryHandler
     le_clk_Time_t* startTimePtr = pthread_getspecific(StartTimeKey);
     LE_ASSERT(startTimePtr != NULL);
     le_clk_Time_t diffTime = le_clk_Sub( le_clk_GetRelativeTime(), *startTimePtr);
-    if ( le_clk_GreaterThan(le_clk_Sub(diffTime, expectedInterval), TimerTolerance) )
+    le_clk_Time_t subTime = le_clk_Sub(diffTime, expectedInterval);
+    if ( le_clk_GreaterThan(subTime, TimerTolerance) )
     {
         LE_PRINT_VALUE("%li", expectedInterval.sec);
         LE_PRINT_VALUE("%li", expectedInterval.usec);
         LE_PRINT_VALUE("%li", diffTime.sec);
         LE_PRINT_VALUE("%li", diffTime.usec);
 
-        LE_FATAL("TEST FAILED: Timer expiry does not match");
+        LE_CRIT("TEST FAILED: Timer expiry does not match: subTime %li.%06li",
+                 subTime.sec, subTime.usec);
     }
     else
     {
@@ -187,14 +191,16 @@ static void MediumTimerExpiryHandler
     le_clk_Time_t* startTimePtr = pthread_getspecific(StartTimeKey);
     LE_ASSERT(startTimePtr != NULL);
     le_clk_Time_t diffTime = le_clk_Sub( le_clk_GetRelativeTime(), *startTimePtr);
-    if ( le_clk_GreaterThan(le_clk_Sub(diffTime, expectedInterval), TimerTolerance) )
+    le_clk_Time_t subTime = le_clk_Sub(diffTime, expectedInterval);
+    if ( le_clk_GreaterThan(subTime, TimerTolerance) )
     {
         LE_PRINT_VALUE("%li", expectedInterval.sec);
         LE_PRINT_VALUE("%li", expectedInterval.usec);
         LE_PRINT_VALUE("%li", diffTime.sec);
         LE_PRINT_VALUE("%li", diffTime.usec);
 
-        LE_FATAL("TEST FAILED: Timer expiry does not match");
+        LE_CRIT("TEST FAILED: Timer expiry does not match: subTime %li.%06li",
+                 subTime.sec, subTime.usec);
     }
     else
     {
@@ -350,7 +356,8 @@ static void TimerExpiryHandler
     LE_ASSERT(startTimePtr != NULL);
     diffTime = le_clk_Sub( le_clk_GetRelativeTime(), *startTimePtr);
     expectedInterval = le_clk_Multiply(testDataPtr->interval, le_timer_GetExpiryCount(timerRef));
-    if ( le_clk_GreaterThan(le_clk_Sub(diffTime, expectedInterval), TimerTolerance) )
+    le_clk_Time_t subTime = le_clk_Sub(diffTime, expectedInterval);
+    if ( le_clk_GreaterThan(subTime, TimerTolerance) )
     {
         LE_PRINT_VALUE("%li", testDataPtr->interval.sec);
         LE_PRINT_VALUE("%li", testDataPtr->interval.usec);
@@ -359,11 +366,12 @@ static void TimerExpiryHandler
         LE_PRINT_VALUE("%li", diffTime.sec);
         LE_PRINT_VALUE("%li", diffTime.usec);
 
-        LE_FATAL("TEST FAILED: Timer expiry does not match");
+        LE_CRIT("TEST FAILED: Timer expiry does not match: subTime %li.%06li",
+                 subTime.sec, subTime.usec);
     }
     else
     {
-        LE_INFO("TEST PASSED");
+        LE_INFO("TEST PASSED: %li.%06li", subTime.sec, subTime.usec);
         LOCK
         testPassed++;
         UNLOCK
@@ -376,12 +384,12 @@ static void TimerExpiryHandler
         LE_INFO("EXPIRY TEST COMPLETE: %i of %i tests passed", testPassed, testCount);
 
         LOCK
-        if (testPassed != testCount)
-        {
-            UNLOCK
-            LE_FATAL("TESTS FAILED");
-        }
+        bool isTestFailed = (testPassed != testCount);
         UNLOCK
+        if (isTestFailed)
+        {
+            LE_CRIT("TESTS FAILED");
+        }
 
         // Continue with additional tests
         AdditionalTests(timerRef);
