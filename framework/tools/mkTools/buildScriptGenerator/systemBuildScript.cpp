@@ -197,7 +197,8 @@ void SystemBuildScriptGenerator_t::GenerateSystemBuildRules
                     "cp -r $stagingDir/* $stagingDir.signed/ && $\n"
         "            cp " << buildParams.pubCert << " $stagingDir.signed/ima_pub.cert  && $\n"
         // Remove the contents inside apps directory as we need to recreate the symlinks again
-        "            rm $stagingDir.signed/apps/*  && $\n";
+        "            rm -rf $stagingDir.signed/apps/* && $\n";
+
         // Create symlinks inside the system's "apps" directory that point to the apps actual
         // install location on target (under /legato/apps/).
         for (auto& mapEntry : systemPtr->apps)
