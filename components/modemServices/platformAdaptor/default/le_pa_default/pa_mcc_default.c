@@ -176,3 +176,39 @@ le_result_t pa_mcc_ActivateCall
     LE_ERROR("Unsupported function called");
     return LE_FAULT;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function enables/disables the audio AMR Wideband capability.
+ *
+ * @return
+ *     - LE_OK            The function succeeded.
+ *     - LE_UNSUPPORTED   The service is not available.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mcc_SetAmrWbCapability
+(
+    bool  enable    ///< [IN] True enables the AMR Wideband capability, false disables it.
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the audio AMR Wideband capability
+ *
+ * @return
+ *     - LE_OK             The function succeeded.
+ *     - LE_UNSUPPORTED    The service is not available.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mcc_GetAmrWbCapability
+(
+    bool*  enabled     ///< [OUT] True if AMR Wideband capability is enabled, false otherwise.
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}

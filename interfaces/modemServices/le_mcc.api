@@ -57,7 +57,14 @@
  * threads are being used to work with the same call, a comparison of the call references themselves
  * can't be used to tell whether or not they refer to the same call.
  *
+ * The Adaptive Multi Rate (AMR) is an audio compression format optimized for speech coding and used
+ * during a voice call. Two AMRs are supported:
+ * An AMR Narrowband that encodes a bandwidth of 200–3400 Hz signals at variable bitrates ranging
+ * from 4.75 to 12.2 kbit/s and an AMR Wideband that encodes a wider bandwidth of 50–7000 Hz and
+ * thus improves the speech quality.
  *
+ * le_mcc_SetAmrWbCapability() function enables or disables the AMR Wideband supported capability.
+ * le_mcc_GetAmrWbCapability() function returns the AMR Wideband capability status.
  *
  * @section le_mcc_answering_a_call Answering a call
  *
@@ -514,3 +521,34 @@ FUNCTION le_result_t ActivateCall
     Call callRef IN                 ///< The call reference.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function enables/disables the audio AMR Wideband capability.
+ *
+ * @return
+ *     -  LE_OK             The function succeeded.
+ *     -  LE_UNAVAILABLE    The service is not available.
+ *     -  LE_FAULT          On any other failure.
+ *
+ * @note The capability setting takes effect immediately and is not persistent to reset.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetAmrWbCapability
+(
+    bool enable IN   ///< True enables the AMR Wideband capability, false disables it.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the audio AMR Wideband capability.
+ *
+ * @return
+ *     - LE_OK            The function succeeded.
+ *     - LE_UNAVAILABLE   The service is not available.
+ *     - LE_FAULT         On any other failure.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetAmrWbCapability
+(
+    bool enabled OUT  ///< True if AMR Wideband capability is enabled, false otherwise.
+);

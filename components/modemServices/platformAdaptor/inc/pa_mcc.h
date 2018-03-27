@@ -242,5 +242,32 @@ LE_SHARED le_result_t pa_mcc_ActivateCall
     uint8_t  callId     ///< [IN] The active call ID
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function enables/disables the audio AMR Wideband capability.
+ *
+ * @return
+ *     - LE_OK       The function succeeded.
+ *     - LE_FAULT    The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mcc_SetAmrWbCapability
+(
+    bool  enable   ///< [IN] True enables the AMR Wideband capability, false disables it.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the audio AMR Wideband capability
+ *
+ * @return
+ *     - LE_OK       The function succeeded.
+ *     - LE_FAULT    The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mcc_GetAmrWbCapability
+(
+    bool*  enabled   ///< [OUT] True if AMR Wideband capability is enabled, false otherwise.
+);
 
 #endif // LEGATO_PA_MCC_INCLUDE_GUARD

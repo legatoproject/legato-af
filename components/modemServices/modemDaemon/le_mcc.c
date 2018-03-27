@@ -1717,3 +1717,47 @@ le_result_t le_mcc_ActivateCall
 
     return pa_mcc_ActivateCall(callPtr->callId);
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function enables/disables the audio AMR Wideband capability.
+ *
+ * @return
+ *     - LE_OK             The function succeeded.
+ *     - LE_UNAVAILABLE    The service is not available.
+ *     - LE_FAULT          On any other failure.
+ *
+ * @note The capability setting takes effect immediately and is not persistent to reset.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mcc_SetAmrWbCapability
+(
+    bool  enable   ///< [IN] True enables the AMR Wideband capability, false disables it.
+)
+{
+    return pa_mcc_SetAmrWbCapability(enable);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the audio AMR Wideband capability.
+ *
+ * @return
+ *     - LE_OK            The function succeeded.
+ *     - LE_UNAVAILABLE   The service is not available.
+ *     - LE_FAULT         On any other failure.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mcc_GetAmrWbCapability
+(
+    bool*  enabledPtr   ///< [OUT] True if AMR Wideband capability is enabled, false otherwise.
+)
+{
+    if (NULL == enabledPtr)
+    {
+        LE_ERROR("enabledPtr is Null");
+        return LE_FAULT;
+    }
+
+    return pa_mcc_GetAmrWbCapability(enabledPtr);
+}

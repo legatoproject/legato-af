@@ -892,6 +892,36 @@ static void* UnitTestInit
     le_event_RunLoop();
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: enable/disable the audio AMR Wideband capability.
+ *
+ * API tested:
+ * - le_mcc_SetAmrWbCapability
+ * - le_mcc_GetAmrWbCapability
+ *
+ * Exit if failed
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mcc_SetGetAmrWbCapability
+(
+    void
+)
+{
+    bool  AmrWbCapState;
+
+    LE_ASSERT_OK(le_mcc_SetAmrWbCapability(false));
+    LE_ASSERT_OK(le_mcc_GetAmrWbCapability(&AmrWbCapState));
+
+    LE_ASSERT(false == AmrWbCapState);
+
+    LE_ASSERT_OK(le_mcc_SetAmrWbCapability(true));
+    LE_ASSERT_OK(le_mcc_GetAmrWbCapability(&AmrWbCapState));
+
+    LE_ASSERT(true == AmrWbCapState);
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * main of the test
@@ -910,6 +940,8 @@ COMPONENT_INIT
 
     LE_INFO("======== Start UnitTest of MCC API ========");
 
+    LE_INFO("======== SetGetAmrWbCapability Test  ========");
+    Testle_mcc_SetGetAmrWbCapability();
     LE_INFO("======== SetClir Test  ========");
     Testle_mcc_SetClir();
     LE_INFO("======== AddHandlers Test  ========");
