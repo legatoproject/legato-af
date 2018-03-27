@@ -48,6 +48,7 @@ if [[ "$1" == "--help" ]]; then
     echo -e "\t\tOPT_NET: Networking interface"
     echo -e "\t\t         - user (default) = simulated internal qemu networking"
     echo -e "\t\t         - tap = Uses a tap interface (requires priviledges)"
+    echo -e "\t\tOPT_IMA: Enable IMA (Integrity Measurement Architecture)"
     echo -e ""
     exit 0
 fi
@@ -100,6 +101,11 @@ fi
 if [ -z "$OPT_NET2" ]; then
     OPT_NET2=""
     #OPT_NET2="simu"
+fi
+
+# IMA
+if [ -z "$OPT_IMA" ]; then
+    OPT_IMA=0
 fi
 
 COLOR_TITLE="\033[1;94m"
@@ -555,6 +561,26 @@ if which pulseaudio > /dev/null && pulseaudio --check; then
 else
     message $COLOR_INFO " => No sound emulation"
     export QEMU_AUDIO_DRV=none
+fi
+
+# IMA
+if [[ "$OPT_IMA" == "1" ]] || \
+   [[ "$OPT_IMA" == "fix" ]] || \
+   [[ "$OPT_IMA" == "log" ]]; then
+    if [[ "$OPT_IMA" == "fix" ]]; then
+        IMA_KERNEL_CMDLINE_OPTIONS="${IMA_KERNEL_CMDLINE_OPTIONS//enforce/fix}"
+    elif [[ "$OPT_IMA" == "log" ]]; then
+        IMA_KERNEL_CMDLINE_OPTIONS="${IMA_KERNEL_CMDLINE_OPTIONS//enforce/log}"
+    fi
+
+    message $COLOR_INFO " => With IMA ($IMA_KERNEL_CMDLINE_OPTIONS)"
+
+    if [[ "$IMA_BUILD" != "1" ]] || [ -z "$IMA_KERNEL_CMDLINE_OPTIONS" ]; then
+        message $COLOR_ERROR "Trying to enable IMA while Linux build is not IMA-enabled."
+        exit 1
+    fi
+
+    CMDLINE="$CMDLINE $IMA_KERNEL_CMDLINE_OPTIONS"
 fi
 
 # QEmu Pid file
