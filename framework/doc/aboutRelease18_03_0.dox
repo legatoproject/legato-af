@@ -1,0 +1,83 @@
+/** @page releaseNotes18030 18.03.0 Release Notes
+
+Release Date: Apr 6, 2018
+
+See @ref aboutLicenses to view Legato AF Licensing Information.
+
+The following provides a summary of changes that have been made in the 18.03 Legato AF Release.
+
+<b> Download the @ref aboutReleaseInfo "source code" and get started with @ref basicBuild
+"building Legato AF". </b>
+
+@section rn1803_Features New Features
+
+The following are the list of new features that have been added into the 18.03 Release:
+
+@subsection rn1803_Features_Audio MCC Audio Format
+
+2 new adaptive multi-rate audio compression formats are supported by the @ref c_mcc API. These
+formats can be enabled with the following functions:
+- le_mcc_GetAmrWbCapability() function returns the AMR Wideband capability status.
+- le_mcc_SetAmrWbCapability() function enables or disables the AMR Wideband supported capability.
+
+@subsection rn1803_Features_eCall  eCall Updates
+
+Version 18.03.0 introduces a number of bug fixes and stability updates for the eCall features as
+well as providing support for MSD version 2.  The @ref legatoServicesModemECall "eCall Overview" has
+also been moved from a how to article to part of the moded Documentation. Please review the
+@ref c_ecall "eCall API" for more information on new functions and features for eCall.
+
+@subsection rn1803_Features_SIM SIM Updates
+
+@ref c_sim information for the ICCID, IMSI, EID and Phone number are now cached and are only updated
+after a refresh of the SIM FCN mode.
+
+@subsection rn1803_Features_Timer Timer Updates
+
+The @ref c_timer API now includes functions to get the next interval for the timer in seconds or
+mili-seconds. le_timer also retrieves the remaining time until the next scheduled expiry in either
+seconds or mili-seconds.
+- le_timer_GetInterval()
+- le_timer_GetMsInterval()
+- le_timer_GetTimeRemaining()
+- le_timer_GetMsTimeRemaining()
+
+@section rn1803_Fixes Fixed Issues
+
+All development work is tagged in GitHub as "18.03.0".  The list of changes and commit
+messages can be found on GitHub.
+
+- [Legato AF 18.03.0 Fixes](https://github.com/legatoproject/legato-af/commits/18.03.0)
+
+@note This is only the list of fixes for the Application Framework and Platform Services, for the
+list of changes in the Platform Adapters and AVC Service view the commits under the tag 18.03.0 in
+the individual repositories on GitHub.
+
+@section rn1803_KnownIssues Known Issues
+
+@subsection rn1803_Constraints Constraints and Limitations
+
+@subsubsection rn1803_ContraintsLinuxSupport Dev Machine Linux Version
+
+To develop applications within the Legato Application Framework, a current supported
+[Long Term Support version of Ubuntu Linux](https://www.ubuntu.com/info/release-end-of-life) is
+required on your dev machine (or running in a virtual box on Windows).  Ubuntu 16.04 is the current
+@b recommended version to use on your dev machine.
+
+@subsubsection rn1803_ConstECMUSB ECM-USB modem manager issue
+
+Ubuntu 15.10 and newer has Modem Manager version @c 1.4.12-1ubuntu1  installed by default which
+conflicts with the ECM-USB driver when connecting a target.  Modem manager may cause the Ubuntu
+Network Manager to crash on your host and/or your target device to become unavailable over USB.
+
+@b Symptoms:
+- NetworkManager crashing when plugging into your device over USB, or
+- The target device becomes inaccessible after 30 seconds.
+
+@b Recommended  @b Work  @b Around:
+- Uninstall @c modemmanager from Ubuntu or
+- [Downgrade @c modemmanager to version 1.0.0-2ubuntu1](http://packages.ubuntu.com/trusty/modemmanager)
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

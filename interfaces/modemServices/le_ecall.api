@@ -3,11 +3,9 @@
  * @page c_ecall eCall
  *
  * @ref le_ecall_interface.h "API Reference" <br>
- * @ref howToEcall <br>
+ * @ref legatoServicesModemECall <br>
  * @ref sampleApps_eCall sample app <br>
  * @ref le_ecall_samples <br>
- *
- * <HR>
  *
  * eCall is a technology initiative intended to bring rapid assistance to auto
  * accidents anywhere in the European Union. When a serious vehicle accident occurs,
