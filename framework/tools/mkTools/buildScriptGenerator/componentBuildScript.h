@@ -86,8 +86,7 @@ class ComponentBuildScriptGenerator_t : protected RequireBaseGenerator_t
         virtual void GenerateJavaBuildCommand(const std::string& outputJar,
                                               const std::string& classDestPath,
                                               const std::list<std::string>& sources,
-                                              const std::list<std::string>& classPath,
-                                              const std::list<std::string>& dependencies);
+                                              const std::list<std::string>& jarClassPath);
         virtual void GenerateRunPathLdFlags(void);
 
     public:

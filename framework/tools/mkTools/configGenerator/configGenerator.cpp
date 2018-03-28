@@ -431,6 +431,14 @@ static std::string GenerateClassPath
 
         if (componentPtr->HasJavaCode())
         {
+            std::list<std::string> bundledJars;
+            componentPtr->GetBundledFilesOfType(model::BundleAccess_t::Dest, ".jar", bundledJars);
+
+            for (const auto& jarFile : bundledJars)
+            {
+                classPath += ":" + jarFile;
+            }
+
             classPath += ":lib/" +
                 path::GetLastNode(componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib);
         }

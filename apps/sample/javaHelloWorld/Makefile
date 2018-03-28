@@ -4,8 +4,7 @@ TARGETS := $(MAKECMDGOALS)
 all: $(TARGETS)
 
 $(TARGETS):
-	mkapp -v -t $@ \
-		javaHelloWorld.adef
+	mkapp -v -t $@ -s $(LEGATO_ROOT)/components javaHelloWorld.adef
 
 clean:
 	rm -rf _build_* *.update

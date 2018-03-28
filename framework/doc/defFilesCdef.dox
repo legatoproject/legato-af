@@ -789,9 +789,8 @@ loops and report any error.
 
 
 @section defFilesCdef_requiresJavaPackage javaPackage
-
-You create a @c javaPackage: section in the @ .cdef listing Java packages to build. It should look
-something like this:
+When creating a Java based component, you can create a @c javaPackage: section in the @ .cdef
+listing Java packages to build. It should look something like this:
 
 @code
 javaPackage:
@@ -800,8 +799,8 @@ javaPackage:
 }
 @endcode
 
-
-The build tools will look for Java to code under @c COMPONENT_DIR/src/io/legato/samples/ *.java
+Where you supply the name of the package where your java code will be found.  The build tools will
+look for Java to code under @c COMPONENT_DIR/src/io/legato/samples/ *.java
 
 It won't recurse automatically into subdirectories; if you want subdirectories, they also must
 added to the JavaPackage section.
@@ -830,6 +829,31 @@ A hello world Java app folder structure should look something like this:
 |                   +-- javaHelloComponent.java
 +-- jHello.adef
 @endcode
+
+It is also possible to bundle pre-built Jar files with your component.  Simply add the Jar files to
+your bundles section of the same @c .cdef file containing your Java source.  Note that the extension
+of the file does have to be @c .jar in order to be detected by the build tools.
+
+For example in your @c Component.cdef:
+
+@code
+javaPackage:
+{
+    com.yourcompany.yourproject
+}
+
+bundles:
+{
+    file:
+    {
+        path/to/my/lib/MyHandyLib.jar  /lib/
+    }
+}
+@endcode
+
+Will bundle the lib @c MyHandyLib.jar in the application's @c lib directory.  In addition to this,
+the Jar file will also be automatically be added in your classpath.  Allowing your code to make use
+of the code within that Java library.
 
 @section defFilesCdef_sources sources
 

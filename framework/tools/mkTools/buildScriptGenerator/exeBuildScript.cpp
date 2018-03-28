@@ -341,16 +341,16 @@ void ExeBuildScriptGenerator_t::GenerateBuildStatements
             {
                 classPath.push_back(componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()
                                                 ->lib);
-                dependencies.push_back(componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()
-                                                   ->lib);
+                componentPtr->GetBundledFilesOfType(model::BundleAccess_t::Source,
+                                                    ".jar",
+                                                    classPath);
             }
         }
 
         componentGeneratorPtr->GenerateJavaBuildCommand(path::Combine("$builddir/", exePtr->path),
                                                         classDestPath,
                                                         { mainObjectFile.sourceFilePath },
-                                                        classPath,
-                                                        dependencies);
+                                                        classPath);
     }
     else if (exePtr->hasPythonCode)
     {

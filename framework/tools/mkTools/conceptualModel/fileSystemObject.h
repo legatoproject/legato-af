@@ -12,6 +12,19 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Enumeration used by GetBundledPath to enable generically accesing the source and destination of
+ * the FileSystem object.
+ */
+//--------------------------------------------------------------------------------------------------
+enum class BundleAccess_t
+{
+    Source,
+    Dest
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Represents a file system object, such as a file or directory.
  */
 //--------------------------------------------------------------------------------------------------
@@ -39,6 +52,21 @@ struct FileSystemObject_t
     std::string srcPath;        ///< File system path where the object is found.
     std::string destPath;       ///< Path to where the object will be put on target.
     Permissions_t permissions;  ///< Read, write, and/or execute permissions on the object.
+
+    // Return either the source or dest path based on the accessFlag.
+    inline const std::string& GetBundledPath(BundleAccess_t accessFlag) const
+    {
+        switch (accessFlag)
+        {
+            case BundleAccess_t::Source:
+                return srcPath;
+
+            case BundleAccess_t::Dest:
+                return destPath;
+        }
+
+        throw mk::Exception_t(LE_I18N("Unknown bundled file access type."));
+    }
 
     /// Two file sytem objects refer to the same file if the destination paths are the same.
     bool operator==(const FileSystemObject_t& a) const

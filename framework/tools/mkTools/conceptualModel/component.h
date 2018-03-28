@@ -63,6 +63,9 @@ struct Component_t : public HasTargetInfo_t
     // @throw model::Exception_t if already exists.
     static Component_t* CreateComponent(const parseTree::CdefFile_t* filePtr);
 
+    void GetBundledFilesOfType(BundleAccess_t access, const std::string& fileType,
+                               std::list<std::string>& fileList);
+
     // Does the component have C code?
     bool HasCCode() const
     {

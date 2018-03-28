@@ -639,8 +639,7 @@ void ComponentBuildScriptGenerator_t::GenerateJavaBuildCommand
     const std::string& outputJar,
     const std::string& classDestPath,
     const std::list<std::string>& sources,
-    const std::list<std::string>& classPath,
-    const std::list<std::string>& dependencies
+    const std::list<std::string>& jarClassPath
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -656,7 +655,7 @@ void ComponentBuildScriptGenerator_t::GenerateJavaBuildCommand
 
     script << " $\n  |";
 
-    for (auto& dep : dependencies)
+    for (auto& dep : jarClassPath)
     {
         script << " " << dep;
     }
@@ -664,9 +663,9 @@ void ComponentBuildScriptGenerator_t::GenerateJavaBuildCommand
     script << "\n"
               "  classPath = ";
 
-    for (auto iter = classPath.begin(); iter != classPath.end(); ++iter)
+    for (auto iter = jarClassPath.begin(); iter != jarClassPath.end(); ++iter)
     {
-        if (iter != classPath.begin())
+        if (iter != jarClassPath.begin())
         {
             script << ":";
         }
@@ -680,9 +679,9 @@ void ComponentBuildScriptGenerator_t::GenerateJavaBuildCommand
               "  : MakeJar " << path::Combine(classDestPath, "build.stamp") << "\n"
               "  classPath = ";
 
-    for (auto iter = classPath.begin(); iter != classPath.end(); ++iter)
+    for (auto iter = jarClassPath.begin(); iter != jarClassPath.end(); ++iter)
     {
-        if (iter != classPath.begin())
+        if (iter != jarClassPath.begin())
         {
             script << ":";
         }
@@ -764,11 +763,14 @@ void ComponentBuildScriptGenerator_t::GenerateBuildStatements
                                            "build/$target/framework/lib/legato.jar");
         auto classDestPath = "$builddir/" + componentPtr->workingDir + "/obj";
 
+        // Append to the class path based on the component's bundled .jar files.
+        std::list<std::string> classPath = { legatoJarPath };
+        componentPtr->GetBundledFilesOfType(model::BundleAccess_t::Source, ".jar", classPath);
+
         GenerateJavaBuildCommand(componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib,
                                  classDestPath,
                                  sourceList,
-                                 { legatoJarPath },
-                                 { legatoJarPath });
+                                 classPath);
     }
     else if (componentPtr->HasExternalBuild())
     {

@@ -91,6 +91,47 @@ Component_t* Component_t::CreateComponent
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Build a list of bundled files that are of the same type.
+ **/
+//--------------------------------------------------------------------------------------------------
+void Component_t::GetBundledFilesOfType
+(
+    BundleAccess_t access,             ///< Are we searching the source or dest paths?
+    const std::string& fileType,       ///< What kind of file are we looking for?
+    std::list<std::string>& fileList   ///< Add the found files to this list.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (const auto& bundledDir : bundledDirs)
+    {
+        const auto& dirPath = bundledDir->GetBundledPath(access);
+        auto bundledFiles = file::ListFiles(dirPath);
+
+        for (const auto& file : bundledFiles)
+        {
+            if (path::GetFileNameExtension(file) == fileType)
+            {
+                fileList.push_back(file);
+            }
+        }
+    }
+
+    for (const auto& bundledFile : bundledFiles)
+    {
+        const auto& filePath = bundledFile->GetBundledPath(access);
+        auto extension = path::GetFileNameExtension(filePath);
+
+        if (extension == fileType)
+        {
+            fileList.push_back(filePath);
+        }
+    }
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Throw error message about incompatible source or build methods.
  */
 //--------------------------------------------------------------------------------------------------
