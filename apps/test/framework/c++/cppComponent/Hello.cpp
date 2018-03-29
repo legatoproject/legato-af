@@ -35,7 +35,7 @@ COMPONENT_INIT
     std::list<std::string> stuff;
 
     // C++ 11
-    for (auto s : stuff)
+    for (auto const &s : stuff)
     {
         std::cout << "stuff: " << s << std::endl;
     }
