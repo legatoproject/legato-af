@@ -1,0 +1,33 @@
+start: manual
+
+executables:
+{
+    client = (imaFileClient)
+}
+
+processes:
+{
+    run:
+    {
+        (client)
+    }
+}
+
+bundles:
+{
+    file:
+    {
+        [rw] testFile  /bin/
+        [r] helloShell /usr/bin/
+    }
+
+    dir:
+    {
+        [r] testDir    /testDir
+    }
+}
+
+bindings:
+{
+    client.imaFileClient.filePasser -> imaFileServer.filePasser
+}

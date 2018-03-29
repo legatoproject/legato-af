@@ -1,0 +1,19 @@
+start: manual
+sandboxed: false
+executables:
+{
+    server = (imaFileServer)
+}
+
+processes:
+{
+    run:
+    {
+        (server)
+    }
+}
+
+extern:
+{
+    filePasser = server.imaFileServer.filePasser
+}

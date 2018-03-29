@@ -39,6 +39,7 @@
 #include "smack.h"
 #include "sysPaths.h"
 #include "fileSystem.h"
+#include "ima.h"
 
 
 static const char* InstallHookScriptPath = "/legato/systems/current/bin/install-hook";
@@ -263,7 +264,7 @@ static le_result_t SetSmackPermReadOnlyDir
                     n = snprintf(dirLabel, sizeof(dirLabel), "%s%s", fileLabel, dirPerm);
                     LE_ASSERT(n < sizeof(dirLabel));
                     // These are directories, visited in pre-order. Set the SMACK label.
-                    LE_DEBUG("Setting smack label: '%s' for directory: '%s'", dirLabel,
+                    LE_DEBUG("Setting SMACK label: '%s' for directory: '%s'", dirLabel,
                              entPtr->fts_accpath);
                     result = smack_SetLabel(entPtr->fts_accpath, dirLabel);
                 }
@@ -275,9 +276,31 @@ static le_result_t SetSmackPermReadOnlyDir
 
             case FTS_F:
                 // These are files. Set the SMACK label.
-                LE_DEBUG("Setting smack label: '%s' for file: '%s'", fileLabel,
-                           entPtr->fts_accpath);
-                result = smack_SetLabel(entPtr->fts_accpath, fileLabel);
+                if (ima_IsEnabled())
+                {
+                    int accessMode = entPtr->fts_statp->st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
+                    // If the file has executable or write (for group/other) flag, set the SMACK
+                    // label as per appName (i.e. app.appName). Otherwise file is considered as
+                    // read-only and set SMACK label to give IMA read-protection.
+                    if (accessMode & (S_IXUSR | S_IWGRP | S_IXGRP | S_IWOTH | S_IXOTH))
+                    {
+                        LE_DEBUG("Setting SMACK label: '%s' for file: '%s'", fileLabel,
+                                                       entPtr->fts_accpath);
+                        result = smack_SetLabel(entPtr->fts_accpath, fileLabel);
+                    }
+                    else
+                    {
+                        LE_DEBUG("Setting SMACK label:  for file: '%s'",
+                                   entPtr->fts_accpath);
+                        result = smack_SetLabel(entPtr->fts_accpath, IMA_SMACK_LABEL);
+                    }
+                }
+                else
+                {
+                    LE_DEBUG("Setting SMACK label: '%s' for file: '%s'", fileLabel,
+                               entPtr->fts_accpath);
+                    result = smack_SetLabel(entPtr->fts_accpath, fileLabel);
+                }
                 break;
 
             case FTS_NS:
@@ -308,7 +331,7 @@ static le_result_t SetSmackPermReadOnlyDir
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Recursively sets the smack permissions for directories under apps writeable directory.
+ * Recursively sets the SMACK permissions for directories under apps writeable directory.
  *
  * returns LE_OK if successful, LE_FAULT if fails.
  */
@@ -316,7 +339,7 @@ static le_result_t SetSmackPermReadOnlyDir
 static le_result_t SetPermAppWritableDir
 (
     const char* appWritableDir,  ///< [IN] Path to apps writable directory.
-    const char* appLabel        ///< [IN] App smack label.
+    const char* appLabel        ///< [IN] App SMACK label.
 )
 {
 
@@ -359,7 +382,7 @@ static le_result_t SetPermAppWritableDir
                     LE_ASSERT(snprintf(dirLabel, sizeof(dirLabel), "%s%s", appLabel, dirPerm)
                               < sizeof(dirLabel));
                     // These are directories, visited in pre-order. Set the SMACK label.
-                    LE_DEBUG("Setting smack label: '%s' for directory: '%s'", dirLabel,
+                    LE_DEBUG("Setting SMACK label: '%s' for directory: '%s'", dirLabel,
                              entPtr->fts_accpath);
                     result = smack_SetLabel(entPtr->fts_accpath, dirLabel);
                 }
@@ -477,10 +500,10 @@ static le_result_t PerformAppInstall
             return LE_FAULT;
         }
 
-        // While copying file, directories smack permission was not properly. Set it now.
+        // While copying file, directories SMACK permission was not properly. Set it now.
         if (SetPermAppWritableDir(destDir, appLabel) != LE_OK)
         {
-            LE_ERROR("Failed to set smack permission in directory '%s'", destDir);
+            LE_ERROR("Failed to set SMACK permission in directory '%s'", destDir);
             return LE_FAULT;
         }
     }
@@ -537,7 +560,7 @@ static le_result_t PerformAppDelete
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Setup smack permission for contents in app's read-only directory.
+ * Setup SMACK permission for contents in app's read-only directory.
  *
  * @return LE_OK if successful, LE_FAULT if fails.
  *

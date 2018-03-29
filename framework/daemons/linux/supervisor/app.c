@@ -59,6 +59,7 @@
 #include "fileDescriptor.h"
 #include "fileSystem.h"
 #include "file.h"
+#include "ima.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -854,6 +855,10 @@ static void SetDefaultSmackRules
 
     // Set default permissions between the app and the framework.
     smack_SetRule("framework", "w", appLabelPtr);
+    if (ima_IsEnabled())
+    {
+        smack_SetRule(appLabelPtr, "rx", IMA_SMACK_LABEL);
+    }
     smack_SetRule(appLabelPtr, "rw", "framework");
 
     // Set default permissions to allow the app to access the syslog.

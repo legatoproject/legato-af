@@ -1,0 +1,12 @@
+sources:
+{
+    client.c
+}
+
+requires:
+{
+    api:
+    {
+        filePasser = file.api
+    }
+}

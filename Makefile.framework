@@ -97,6 +97,17 @@ ifeq ($(BUILD_LIBLEGATO_PY),1)
   endif
 endif
 
+IMA_SMACK_FLAGS =
+IMA_SMACK_CFLAGS =
+ifeq ($(ENABLE_IMA),1)
+  # Check whether something specified in IMA_SMACK environment variable.
+  ifneq ($(strip $(IMA_SMACK)),)
+    IMA_SMACK_FLAGS := -DIMA_SMACK=$(IMA_SMACK)
+    IMA_SMACK_CFLAGS := --cflags=-DIMA_SMACK=$(IMA_SMACK)
+  endif
+endif
+
+
 .PHONY: all
 all: liblegato daemons targetTools $(LEGATO_JAVA) $(LEGATO_PY)
 	# Computing MD5 hash for contents of framework bin and lib directories.
@@ -204,6 +215,7 @@ start: liblegato $(BIN_DIR)
                 -I$(LEGATO_ROOT)/framework/liblegato/linux \
 		-DVERSION=\"$(VERSION)\" \
 		-DDISABLE_SMACK=$(DISABLE_SMACK) \
+		$(IMA_SMACK_FLAGS) \
 		-Wl,--enable-new-dtags,-rpath="\$$ORIGIN/../lib" \
 		-L$(LIB_DIR) -llegato
 
@@ -217,6 +229,7 @@ supervisor: liblegato $(BIN_DIR)
 		-i $(LEGATO_ROOT)/framework/daemons/linux/start \
 		-s $(SRC_DIR)/supervisor \
 		--cflags=-DDISABLE_SMACK=$(DISABLE_SMACK) \
+		$(IMA_SMACK_CFLAGS) \
 		--cflags=-DNO_LOG_CONTROL \
 		--cflags=-DLEGATO_FRAMEWORK_NICE_LEVEL=$(LEGATO_FRAMEWORK_NICE_LEVEL)
 
@@ -266,6 +279,7 @@ updateDaemon: liblegato $(BIN_DIR)
 		-i $(LEGATO_ROOT)/framework/liblegato/linux \
 		-s $(LEGATO_ROOT)/components \
 		-s $(SRC_DIR)/updateDaemon \
+		$(IMA_SMACK_CFLAGS) \
 		--ldflags=-L$(LIB_DIR)
 
 # If the ninja script doesn't exist, we generate it using the ninja-generator script.

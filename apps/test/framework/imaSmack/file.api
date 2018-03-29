@@ -1,0 +1,15 @@
+// Check whether server can read passed fd.
+FUNCTION PassFd
+(
+    file fileDescriptor IN ///< Open file descriptor to be read by the server.
+);
+
+// Request rogue access to files where it has no permission
+FUNCTION RogueAccess
+(
+);
+
+// Request rogue writing where it shouldn't be able to write
+FUNCTION RogueWrite
+(
+);

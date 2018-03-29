@@ -172,6 +172,11 @@ ifeq ($(ENABLE_IMA),1)
   # mksys and mkapp will take care of it.
   export IMA_PRIVATE_KEY
   export IMA_PUBLIC_CERT
+
+  # Check whether something specified in IMA_SMACK environment variable. If yes, export it.
+  ifneq ($(strip $(IMA_SMACK)),)
+    export IMA_SMACK := $(strip $(IMA_SMACK))
+  endif
 endif
 
 # Source code directories and files to include in the MD5 sum in the version and package.properties.
