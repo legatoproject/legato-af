@@ -164,11 +164,6 @@ echo "Preparing staging directory $INTERMEDIATE_DIR"
 cp "${LEGATO_ROOT}/framework/tools/target/linux/bin/start" "$INTERMEDIATE_DIR"
 CheckRet "Unable to copy start file"
 
-if [ $DISABLE_SMACK -eq 1 ]; then
-    echo "Disabling SMACK"
-    touch "${INTERMEDIATE_DIR}/SMACK_DISABLED"
-fi
-
 if [ $READ_ONLY -eq 1 ]; then
     READONLY_DIR="${OUTPUT_DIR}/_staging_${SYSTEM_NAME}_ro"
 
@@ -179,6 +174,11 @@ if [ $READ_ONLY -eq 1 ]; then
     STAGING_DIR="$READONLY_DIR"
 else
     STAGING_DIR="$INTERMEDIATE_DIR"
+fi
+
+if [ $DISABLE_SMACK -eq 1 ]; then
+    echo "Disabling SMACK"
+    touch "${STAGING_DIR}/SMACK_DISABLED"
 fi
 
 MKLEGATOIMG_ARGS=""

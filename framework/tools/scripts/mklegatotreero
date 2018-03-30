@@ -132,6 +132,17 @@ for f in *; do ln=`ls -l ../apps/$f | sed 's,^.*/legato/,,'`; echo $f $ln;
    fi
 done
 
+
+# Deploy all libs .so into /legato/systems/current/lib if SMACK is disabled
+if [ $DISABLE_SMACK -eq 1 ]; then
+    for libpath in `find . -name "libComponent*.so"`; do
+        lib=`basename $libpath`
+        if [ ! -e ../lib/$lib ]; then
+            ln -s /legato/systems/current/appsWriteable/$libpath ../lib/$lib 2>/dev/null
+        fi
+    done
+fi
+
 # Add some directory and links for powerMgr tools
 mkdir -p powerMgr/sys/power
 ln -s /sys/power/wake_lock powerMgr/sys/power
