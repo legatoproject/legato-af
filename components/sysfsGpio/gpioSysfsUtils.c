@@ -30,6 +30,33 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Remove the change callback for the given GPIO
+ */
+//--------------------------------------------------------------------------------------------------
+static void RemoveChangeCallback
+(
+    gpioSysfs_GpioRef_t gpioRef  ///< GPIO to remove the change callback from
+)
+{
+    // If there is an fd monitor then stop it
+    if (gpioRef->fdMonitor != NULL)
+    {
+        LE_DEBUG("Stopping fd monitor");
+        const int fd = le_fdMonitor_GetFd(gpioRef->fdMonitor);
+        le_fdMonitor_Delete(gpioRef->fdMonitor);
+        gpioRef->fdMonitor = NULL;
+        const int ret = close(fd);
+        LE_WARN_IF(ret == -1, "Failed to close file descriptor for gpio %d: %m", gpioRef->pinNum);
+    }
+
+    LE_DEBUG("Removing callback references");
+    // If there is a callback registered then forget it
+    gpioRef->callbackContextPtr = NULL;
+    gpioRef->handlerPtr = NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Check if sysfs gpio path exists.
  * @return
  * - true: gpio path exists
@@ -65,7 +92,7 @@ static bool CheckGpioPathExist
  * - LE_IO_ERROR if it failed
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t ExportGpio
+static le_result_t ExportGpio
 (
     const gpioSysfs_GpioRef_t gpioRef
 )
@@ -621,10 +648,10 @@ void* gpioSysfs_SetChangeCallback
 
     LE_DEBUG("Setting up file monitor for fd %d and pin %s", monFd, gpioRef->gpioName);
     gpioRef->fdMonitor = le_fdMonitor_Create (gpioRef->gpioName, monFd, fdMonFunc, POLLPRI);
-    gpioRef->monitorFd = monFd;
 
-    return &(gpioRef->gpioName);
+    return gpioRef;
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -639,21 +666,14 @@ void gpioSysfs_RemoveChangeCallback
     void * addHandlerRef               ///< [IN] The reference from when the handler was added
 )
 {
-    // We should check the reference here, but only one handler is allowed
-    // so it isn't that important
-
-    // If there is an fd monitor then stop it
-    if (gpioRef->fdMonitor != NULL)
+    if (addHandlerRef != gpioRef)
     {
-        le_fdMonitor_Delete(gpioRef->fdMonitor);
-        gpioRef->fdMonitor = NULL;
+        LE_KILL_CLIENT("Invalid GPIO reference provided");
     }
-
-    // If there is a callback registered then forget it
-    gpioRef->callbackContextPtr = NULL;
-    gpioRef->handlerPtr = NULL;
-
-    return;
+    else
+    {
+        RemoveChangeCallback(gpioRef);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1158,25 +1178,8 @@ void gpioSysfs_SessionCloseHandlerFunc
     LE_INFO("Releasing GPIO %d", gpioRef->pinNum);
     gpioRef->inUse = false;
 
-    // If there is an fd monitor then stop it
-    if (gpioRef->fdMonitor != NULL)
-    {
-        LE_DEBUG("Stopping fd monitor");
-        le_fdMonitor_Delete(gpioRef->fdMonitor);
-        gpioRef->fdMonitor = NULL;
-        int ret = 0;
-        do
-        {
-            ret = close(gpioRef->monitorFd);
-        }
-        while ((ret != 0) && (errno == EINTR));
-        gpioRef->monitorFd = -1;
-    }
+    RemoveChangeCallback(gpioRef);
 
-    LE_DEBUG("Removing callback references");
-    // If there is a callback registered then forget it
-    gpioRef->callbackContextPtr = NULL;
-    gpioRef->handlerPtr = NULL;
     gpioRef->currentSession = NULL;
 }
 
