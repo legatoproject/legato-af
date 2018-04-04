@@ -583,6 +583,35 @@ static le_result_t GetName
     struct passwd* resultPtr;
     int err;
 
+    // If /etc is not writable, look first into the apps translation table indexed by the uid.
+    if ((!IsEtcWritable) && (uid >= BASE_MIN_UID) &&
+        ((uid - BASE_MIN_UID) < NbAppsInTranslationTable))
+    {
+        uint32_t ids = uid - BASE_MIN_UID;
+
+        // /etc is not writable so try first to read the apps translation tab if it exist.
+        FILE *fd = fopen(APPS_TRANSLATION_FILE, "r");
+        if (fd)
+        {
+            size_t rc;
+            rc = fread(AppsTab, sizeof(appTab_t), NbAppsInTranslationTable, fd);
+            fclose(fd);
+            if (NbAppsInTranslationTable != rc)
+            {
+                LE_ERROR("Read of apps translation table failed (rc %zu != %u)",
+                         rc, NbAppsInTranslationTable);
+                return LE_FAULT;
+            }
+
+            // Check if the apps already exists in the apps translation table.
+            if ('\0' != AppsTab[ids].name[0])
+            {
+                // Copy the username to the caller's buffer.
+                return le_utf8_Copy(nameBufPtr, AppsTab[ids].name, nameBufSize, NULL);
+            }
+        }
+    }
+
     do
     {
         err = getpwuid_r(uid, &pwd, buf, sizeof(buf), &resultPtr);
@@ -635,6 +664,35 @@ static le_result_t GetGroupName
     struct group grp;
     struct group* resultPtr;
     int err;
+
+    // If /etc is not writable, look first into the apps translation table indexed by the gid.
+    if ((!IsEtcWritable) && (gid >= BASE_MIN_GID) &&
+        ((gid - BASE_MIN_GID) < NbAppsInTranslationTable))
+    {
+        uint32_t ids = gid - BASE_MIN_UID;
+
+        // /etc is not writable so try first to read the apps translation tab if it exist.
+        FILE *fd = fopen(APPS_TRANSLATION_FILE, "r");
+        if (fd)
+        {
+            size_t rc;
+            rc = fread(AppsTab, sizeof(appTab_t), NbAppsInTranslationTable, fd);
+            fclose(fd);
+            if (NbAppsInTranslationTable != rc)
+            {
+                LE_ERROR("Read of apps translation table failed (rc %zu != %u)",
+                         rc, NbAppsInTranslationTable);
+                return LE_FAULT;
+            }
+
+            // Check if the apps already exists in the apps translation table.
+            if ('\0' != AppsTab[ids].name[0])
+            {
+                // Copy the username to the caller's buffer.
+                return le_utf8_Copy(nameBufPtr, AppsTab[ids].name, nameBufSize, NULL);
+            }
+        }
+    }
 
     do
     {
