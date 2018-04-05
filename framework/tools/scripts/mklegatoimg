@@ -542,7 +542,6 @@ case $TARGET in
         DefaultImg yaffs2
         ;;
     wp750x | wp85)
-        CreateImg_mdm9x15 yaffs2
         CreateImg_mdm9x15 ubi squashfs
         DefaultImg "squashfs.ubi"
         ;;
