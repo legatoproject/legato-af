@@ -146,6 +146,28 @@ void BuildScriptGenerator_t::GenerateIfgenFlagsDef
     script << "\n\n";
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the PATH environment variable declaration.
+ **/
+//--------------------------------------------------------------------------------------------------
+std::string BuildScriptGenerator_t::GetPathEnvVarDecl
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string pathStr = "PATH=\"$${LEGATO_ROOT}/bin";
+
+    for (const auto &crossToolPath : buildParams.crossToolPaths)
+    {
+        pathStr += ":" + crossToolPath;
+    }
+
+    pathStr += ":$$PATH\"";
+
+    return pathStr;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

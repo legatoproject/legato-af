@@ -158,6 +158,7 @@ void AppBuildScriptGenerator_t::GenerateAppBuildRules
             "            mtime=`stat -c %Y $adefPath` && $\n"
             "            find $workingDir/staging.signed -exec touch --no-dereference "
                         "--date=@$$mtime {} \\; && $\n"
+            "            "<< baseGeneratorPtr->GetPathEnvVarDecl() << " && $\n"
             "            fakeroot ima-sign.sh --sign -y legato -d $workingDir/staging.signed "
                         "-t $workingDir/$name.$target.signed -p " << buildParams.privKey <<" && $\n"
             // Get the size of the tarball.
@@ -187,6 +188,7 @@ void AppBuildScriptGenerator_t::GenerateAppBuildRules
             "            find $workingDir/staging.signed.bin -exec touch --no-dereference "
                         "--date=@$$mtime {} \\; && $\n"
             // Require signing image. Sign the staging area and create tarball
+            "            "<< baseGeneratorPtr->GetPathEnvVarDecl() << " && $\n"
             "            fakeroot ima-sign.sh --sign -y legato -d $workingDir/staging.signed.bin/ "
                         "-t $out -p " << buildParams.privKey << "\n"
             "\n";

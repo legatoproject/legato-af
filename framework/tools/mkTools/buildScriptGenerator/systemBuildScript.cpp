@@ -251,6 +251,7 @@ void SystemBuildScriptGenerator_t::GenerateSystemBuildRules
         // No need to recompute the md5 hash again as it is used for app/system version and
         // enable signing shouldn't change the app/system version.
         // Require signing image. Sign the staging area and create tarball
+        "            "<< baseGeneratorPtr->GetPathEnvVarDecl() << " && $\n"
         "            fakeroot ima-sign.sh --sign -y legato -d $stagingDir.signed -t $builddir/"
         << systemPtr->name << ".signed.$target" << " -p "  << buildParams.privKey << " && $\n" <<
         // Get the size of the tarball.

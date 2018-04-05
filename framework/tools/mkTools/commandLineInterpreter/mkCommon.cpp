@@ -18,6 +18,34 @@ namespace
 
 //----------------------------------------------------------------------------------------------
 /**
+ * Get the path to the toolchain
+ *
+ * @return  The path to the toolchain, or an empty string if not specified.
+ */
+//----------------------------------------------------------------------------------------------
+std::string GetToolChainDir
+(
+    const std::string& target          ///< The target device type (e.g., wp85)
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto allCapsPrefix = target + "_";
+    auto toolChainDir = envVars::Get(allCapsPrefix + "TOOLCHAIN_DIR");   // WP
+    if (toolChainDir.empty())
+    {
+        toolChainDir = envVars::Get(target + "_" + "TOOLCHAIN_DIR");
+        if (toolChainDir.empty())
+        {
+            toolChainDir = envVars::Get("TOOLCHAIN_DIR");
+        }
+    }
+
+    return toolChainDir;
+}
+
+
+//----------------------------------------------------------------------------------------------
+/**
  * Get the path to a specific build tool.
  *
  * @return  The path to the tool, or an empty string if not specified.
@@ -56,15 +84,8 @@ std::string GetToolPath
     // Else look for XXXX_TOOLCHAIN_DIR and/or XXXX_TOOLCHAIN_PREFIX environment variables, and
     // if they're set, use those to generate the tool path, assuming the toolchain is the
     // GNU Compiler Collection.
-    auto toolChainDir = envVars::Get(allCapsPrefix + "TOOLCHAIN_DIR");   // WP
-    if (toolChainDir.empty())
-    {
-        toolChainDir = envVars::Get(target + "_" + "TOOLCHAIN_DIR");
-        if (toolChainDir.empty())
-        {
-            toolChainDir = envVars::Get("TOOLCHAIN_DIR");
-        }
-    }
+    auto toolChainDir = GetToolChainDir(target);
+
     auto toolChainPrefix = envVars::Get(allCapsPrefix + "TOOLCHAIN_PREFIX");
     if (toolChainPrefix.empty())
     {
@@ -212,6 +233,58 @@ std::string GetSysRootPath
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a list of cross tool paths. Currently assuming Yocto toolchain only. If different
+ * toolchains are available in the future, the different ways to get the tool paths can be
+ * case-switched according to the provided target.
+ *
+ * @return  A list of cross tool paths. Or an empty list if the toolchain directory can't be found.
+ */
+//--------------------------------------------------------------------------------------------------
+std::list<std::string> GetCrossToolPaths
+(
+    const std::string& target           ///< The target device type (e.g., wp85)
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::list<std::string> crossToolPaths;
+    auto toolChainDir = GetToolChainDir(target);
+
+    if (toolChainDir.empty())
+    {
+        // return an empty list
+        return crossToolPaths;
+    }
+    else
+    {
+        crossToolPaths.push_back(toolChainDir);
+    }
+
+    // Assuming Yocto toolchain; deducing toochain root for the host tools from the toolchain dir.
+    std::string toolChainHostRoot = path::GetContainingDir(
+                                    path::GetContainingDir(
+                                    path::GetContainingDir(toolChainDir)));
+
+    const char* relPaths[] = {
+                              "/usr/bin",
+                              "/usr/sbin",
+                              "/bin",
+                              "/sbin"
+                             };
+
+    for (size_t i = 0; i < sizeof(relPaths)/sizeof(relPaths[0]); i++)
+    {
+        if (file::DirectoryExists(toolChainHostRoot + relPaths[i]))
+        {
+            crossToolPaths.push_back(toolChainHostRoot + relPaths[i]);
+        }
+    }
+
+    return crossToolPaths;
+}
+
+
 } // anonymous namespace
 
 
@@ -244,6 +317,7 @@ void FindToolChain
     buildParams.stripPath = GetToolPath(buildParams.target, "STRIP");
     buildParams.objcopyPath = GetToolPath(buildParams.target, "OBJCOPY");
     buildParams.readelfPath = GetToolPath(buildParams.target, "READELF");
+    buildParams.crossToolPaths = GetCrossToolPaths(buildParams.target);
 
     if (buildParams.beVerbose)
     {
@@ -256,6 +330,13 @@ void FindToolChain
         std::cout << "Debug symbol stripper = " << buildParams.stripPath << std::endl;
         std::cout << "Object file copier/translator = " << buildParams.objcopyPath << std::endl;
         std::cout << "ELF file info extractor = " << buildParams.readelfPath << std::endl;
+
+        std::cout << "Cross tool paths = ";
+        for (const auto &crossToolPath : buildParams.crossToolPaths)
+        {
+            std::cout << crossToolPath << ":";
+        }
+        std::cout << std::endl;
     }
 }
 

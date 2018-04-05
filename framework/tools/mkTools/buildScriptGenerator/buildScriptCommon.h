@@ -70,6 +70,8 @@ class BuildScriptGenerator_t
         virtual void GenerateBuildRules(void);
 
         virtual void GenerateNinjaScriptBuildStatement(const std::set<std::string>& dependencies);
+
+        std::string GetPathEnvVarDecl(void);
     public:
         BuildScriptGenerator_t(const std::string scriptPath,
                                const mk::BuildParams_t& buildParams);
