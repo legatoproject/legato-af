@@ -258,14 +258,25 @@ typedef struct
 //--------------------------------------------------------------------------------------------------
 /**
  * Signal metrics structure.
- *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    pa_mrc_SignalMetrics_t *paSignalMetricsPtr;      ///< Signal metrics from platform apaptor.
-    le_msg_SessionRef_t sessionRef;                  ///< Message session reference.
+    pa_mrc_SignalMetrics_t* paSignalMetricsPtr;      ///< Signal metrics from platform apaptor.
+    le_msg_SessionRef_t     sessionRef;              ///< Message session reference.
 } SignalMetrics_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Jamming detection reference structure.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_msg_SessionRef_t sessionRef;     ///< Message session reference
+    le_dls_Link_t       link;           ///< Object node link
+}
+JammingDetectionRef_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -396,12 +407,10 @@ static le_event_Id_t JammingDetectionIndId;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Jamming detection start request number.
- *
+ * Memory Pool for listed jamming detection references.
  */
 //--------------------------------------------------------------------------------------------------
-static uint32_t JammingDetectionStartNb;
-
+static le_mem_PoolRef_t  JammingDetectionListPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -449,6 +458,13 @@ static le_event_Id_t MrcCommandEventId;
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t PreferredNetworkOperatorPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * List of session reference for jamming detection
+ */
+//--------------------------------------------------------------------------------------------------
+static le_dls_List_t  JammingSessionRefList;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1165,18 +1181,85 @@ static void NetworkRejectIndHandler
 //--------------------------------------------------------------------------------------------------
 /**
  * The jamming detection indication handler.
- *
- */
+  */
 //--------------------------------------------------------------------------------------------------
 static void JammingDetectionIndHandler
 (
-    pa_mrc_JammingDetectionIndication_t* jammingDetectionIndPtr
+    pa_mrc_JammingDetectionIndication_t* jammingDetectionIndPtr ///< [IN] Jamming data structure
 )
 {
     LE_INFO("Jamming detection Handler called with report %d, status %d",
              jammingDetectionIndPtr->report, jammingDetectionIndPtr->status);
 
     le_event_ReportWithRefCounting(JammingDetectionIndId, jammingDetectionIndPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static function to stop the jamming detection.
+ *
+ * @return
+ *  - LE_OK            The function succeeded.
+ *  - LE_FAULT         The function failed or the application did not start the jamming detection.
+ *  - LE_UNSUPPORTED   The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t StopJammingDetection
+(
+    void
+)
+{
+    LE_DEBUG("Request to stop jamming detection");
+
+    if (le_dls_IsEmpty(&JammingSessionRefList))
+    {
+        LE_DEBUG("Send QMI");
+        return pa_mrc_SetJammingDetection(false);
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The jamming detection indication handler.
+ * If the reference is present in the jamming detection reference list, le_mrc_StopJammingDetection
+ * API is called.
+ *
+ * @return
+ *  - true when the reference was correctly removed
+ *  - false else
+ */
+//--------------------------------------------------------------------------------------------------
+static bool JammingDetectionRemoveReference
+(
+    le_msg_SessionRef_t sessionRef   ///< [IN] Reference to remove
+)
+{
+    le_dls_Link_t* linkPtr = le_dls_Peek(&JammingSessionRefList);
+    JammingDetectionRef_t* jammingDetectionNodePtr;
+
+    LE_DEBUG("JammingDetectionRemoveReference for session 0x%p\n", sessionRef);
+
+    // Read all nodes of the jamming detection reference list
+    while (NULL != linkPtr)
+    {
+        jammingDetectionNodePtr = CONTAINER_OF(linkPtr, JammingDetectionRef_t, link);
+        // Check the session reference
+        if ((jammingDetectionNodePtr->sessionRef) == sessionRef)
+        {
+            // Remove the node from the jamming detection reference list
+            le_dls_Remove(&JammingSessionRefList, linkPtr);
+            LE_DEBUG("Stop jamming for session 0x%p\n", sessionRef);
+
+            // Release reference node.
+            le_mem_Release(jammingDetectionNodePtr);
+
+            return true;
+        }
+        linkPtr = le_dls_PeekNext(&JammingSessionRefList, linkPtr);
+    }
+    return false;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1287,6 +1370,12 @@ static void CloseSessionEventHandler
 
         // Get the next value in the reference
         result = le_ref_NextNode(iterRef);
+    }
+
+    // Check if the application started the jamming detection
+    if (true == JammingDetectionRemoveReference(sessionRef))
+    {
+        StopJammingDetection();
     }
 }
 
@@ -1422,6 +1511,12 @@ void le_mrc_Init
 
     // Register a handler function for Signal Strength change indication
     pa_mrc_AddSignalStrengthIndHandler(SignalStrengthIndHandlerFunc, NULL);
+
+    JammingDetectionListPool = le_mem_CreatePool("JammingDetectionListPool",
+                                                 sizeof(JammingDetectionRef_t));
+
+    // Session reference list init for jamming detection
+    JammingSessionRefList = LE_DLS_LIST_INIT;
 
     // Create an event Id for jamming detection indication
     JammingDetectionIndId = le_event_CreateIdWithRefCounting("JammingDetectionInd");
@@ -4372,10 +4467,10 @@ void le_mrc_RemoveNetworkRejectHandler
  *          Please refer to the platform documentation @ref platformConstraintsMrc.
  *
  * @return
- *      - LE_OK             The function succeeded.
- *      - LE_FAULT          The function failed.
- *      - LE_DUPLICATE      The feature is already activated and an activation is requested.
- *      - LE_UNSUPPORTED    The feature is not supported.
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed.
+ *  - LE_DUPLICATE      The feature is already activated and an activation is requested.
+ *  - LE_UNSUPPORTED    The feature is not supported.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_StartJammingDetection
@@ -4383,11 +4478,71 @@ le_result_t le_mrc_StartJammingDetection
     void
 )
 {
-    le_result_t res = pa_mrc_SetJammingDetection(true);
-    if (LE_OK == res)
+    le_result_t res = LE_OK;
+    le_msg_SessionRef_t sessionRef = le_mrc_GetClientSessionRef();
+    bool isPresent = false;
+
+    le_dls_Link_t* linkPtr = le_dls_Peek(&JammingSessionRefList);
+    le_dls_Link_t* nextLinkPtr = NULL;
+    le_msg_SessionRef_t storedSessionRef;
+
+    LE_INFO("session to add %p", sessionRef);
+
+    // Check if the application already started the jamming
+    while (NULL != linkPtr)
     {
-        JammingDetectionStartNb++;
+        nextLinkPtr = le_dls_PeekNext(&JammingSessionRefList, linkPtr);
+
+        if (NULL == nextLinkPtr)
+        {
+            break;
+        }
+
+        storedSessionRef = CONTAINER_OF(nextLinkPtr, JammingDetectionRef_t, link)->sessionRef;
+        if (storedSessionRef == sessionRef)
+        {
+            // The application reference is already stored in the list
+            isPresent = true;
+            break;
+        }
+        linkPtr = le_dls_PeekNext(&JammingSessionRefList, linkPtr);
     }
+
+    LE_INFO("Start Jamming: link present ?: %d", isPresent);
+
+    if (isPresent)
+    {
+        LE_DEBUG("Jamming already activated by the application");
+        return LE_DUPLICATE;
+    }
+    else
+    {
+        LE_DEBUG("Jamming activated by a new application");
+
+        res = LE_OK;
+
+        // Activation only if the list is empty
+        if (le_dls_IsEmpty(&JammingSessionRefList))
+        {
+            res = pa_mrc_SetJammingDetection(true);
+        }
+
+        if (LE_OK == res)
+        {
+            // Add the reference
+            JammingDetectionRef_t* jammingDetectionNodePtr =
+                                        le_mem_ForceAlloc(JammingDetectionListPool);
+
+            jammingDetectionNodePtr->sessionRef = sessionRef;
+
+            // Initialize the node's link.
+            jammingDetectionNodePtr->link = LE_DLS_LINK_INIT;
+
+            // Store the node
+            le_dls_Queue(&JammingSessionRefList, &jammingDetectionNodePtr->link);
+        }
+    }
+
     return res;
 }
 
@@ -4396,9 +4551,9 @@ le_result_t le_mrc_StartJammingDetection
  * Stop the jamming detection monitoring.
  *
  * @return
- *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed.
- *      - LE_UNSUPPORTED    The feature is not supported.
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed.
+ *  - LE_UNSUPPORTED    The feature is not supported.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_StopJammingDetection
@@ -4406,14 +4561,14 @@ le_result_t le_mrc_StopJammingDetection
     void
 )
 {
-    LE_DEBUG("Stop jamming detection JammingDetectionStartNb = %d", JammingDetectionStartNb);
-    JammingDetectionStartNb--;
-    if (!JammingDetectionStartNb)
+    // Check if the application started the jamming detection
+    if (false == JammingDetectionRemoveReference(le_mrc_GetClientSessionRef()))
     {
-        LE_DEBUG("Request to stop jamming detection");
-        return pa_mrc_SetJammingDetection(false);
+        // The application did not start the jamming detection
+        return LE_FAULT;
     }
-    return LE_OK;
+
+    return StopJammingDetection();
 }
 
 //--------------------------------------------------------------------------------------------------

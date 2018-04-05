@@ -2114,10 +2114,10 @@ EVENT JammingDetectionEvent
  *          Please refer to the platform documentation @ref platformConstraintsMdc.
  *
  * @return
- *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed.
- *      - LE_DUPLICATE      The feature is already activated and an activation is requested.
- *      - LE_UNSUPPORTED    The feature is not supported.
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed.
+ *  - LE_DUPLICATE      The feature is already activated and an activation is requested.
+ *  - LE_UNSUPPORTED    The feature is not supported.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t StartJammingDetection
@@ -2129,9 +2129,9 @@ FUNCTION le_result_t StartJammingDetection
  * Stop the jamming detection monitoring.
  *
  * @return
- *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed.
- *      - LE_UNSUPPORTED    The feature is not supported.
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed or the application did not start the jamming detection.
+ *  - LE_UNSUPPORTED    The feature is not supported.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t StopJammingDetection
