@@ -1,0 +1,125 @@
+#!/bin/sh
+##  A tool determine the Proportional Set Size of a process on Linux.
+
+PID=
+FOLLOW=0
+SORT="-nk1"
+S0=' ^'
+D=$(printf "\t")
+
+##  Print usage information.
+usage() {
+    cat 1>&2 <<EOU
+Get the proportional set size (PSS) for one or more processes.
+
+For comparison, the RSS value is also presented.  The PSS and RSS values are
+given in kB.
+
+Usage: pss [-h] [-c] [-p <pid>] [-l <interval>] [-s <field>]
+
+Parameters:
+    -h              Display this help and exit.
+    -c              Output in CSV format.
+    -p <pid>        Set PID to analyze.
+    -l <interval>   Live status, printing every <interval> seconds.
+    -s <field>      Sort by the given field.
+EOU
+}
+
+##  Print table header.
+header() {
+    printf "PID%s%sRSS%s%sPSS%s%sCOMMAND%s\n" \
+        "${S0}" "${D}" "${S1}" "${D}" "${S2}" "${D}" "${S3}"
+}
+
+##  Get and format as a table row the data for one process.
+##  Processes with empty fields are ignored, as they are either kernel threads or processes that
+##  ended while being scanned.
+##
+##  @param  $1  PID to analyze.
+process_pid() {
+    local P=$1
+    local RSS=$(awk '/Rss:/ { sum += $2; } END { print sum; }' "/proc/${P}/smaps" 2> /dev/null)
+    local PSS=$(awk '/Pss:/ { sum += $2; } END { print sum; }' "/proc/${P}/smaps" 2> /dev/null)
+    local CMD=$(cat "/proc/${P}/cmdline" 2> /dev/null | tr '\000' ' ' | sed 's/ $//')
+
+    if [ ${#CMD} -gt 72 ]; then
+        CMD=$(echo "${CMD}" | cut -c -72)
+        CMD="${CMD}..."
+    fi
+
+    if [ -n "${CMD}" -a -n "${RSS}" -a -n "${PSS}" ]; then
+        printf "%u%s%u%s%u%s%s\n" $P "${D}" $RSS "${D}" $PSS "${D}" "${CMD}"
+    fi
+}
+
+##  Output rows for all current processes.
+process_all() {
+    for DIR in /proc/[0-9]*; do
+        local P=$(basename $DIR)
+        process_pid $P
+    done
+}
+
+##  Handle commmand-line arguments.
+##
+##  @param  $@  Argument list.
+handle_args() {
+    while getopts ':p:l:s:hc' OPT; do
+        case $OPT in
+            p)  PID="${OPTARG}"     ;;
+            l)  FOLLOW="${OPTARG}"  ;;
+            s)
+                S0=
+                case "${OPTARG}" in
+                    RSS)
+                        SORT="-rnk2"
+                        S1=' v'         ;;
+                    PSS)
+                        SORT="-rnk3"
+                        S2=' v'         ;;
+                    COMMAND)
+                        SORT="-k4"
+                        S3=' ^'         ;;
+                    *)
+                        SORT="-nk1"
+                        S0=' ^'         ;;
+                esac                ;;
+            c)  D=","               ;;
+            h)  usage
+                exit 0              ;;
+            \?) printf "Invalid option: -%s\n" "${OPTARG}" 1>&2
+                usage
+                exit 1              ;;
+            :)  printf "Option -%s missing required argument\n" "${OPTARG}" 1>&2
+                usage
+                exit 1              ;;
+        esac
+    done
+    shift $(( $OPTIND - 1 ))
+
+    if [ "${D}" = "," ]; then
+        S0=
+        S1=
+        S2=
+        S3=
+    fi
+}
+
+##  Scan process(es) according to the arguments.
+main() {
+    handle_args "${@}"
+
+    header
+    while :; do
+        if [ -z "${PID}" ]; then
+            process_all | sort -t "${D}" ${SORT}
+        else
+            process_pid $PID
+        fi
+        [ $FOLLOW -gt 0 ] || break
+        sleep $FOLLOW
+    done
+}
+
+main "${@}"
