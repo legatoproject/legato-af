@@ -308,7 +308,10 @@ static void WriteEntry
     }
 
     // Read the contents of the input file.
-    uint8_t buf[LE_SECSTORE_MAX_ITEM_SIZE];
+    // Add A byte more and try to read over the LE_SECSTORE_MAX_ITEM_SIZE limit.
+    // If something is read over this limit, the input file is assumed to be too large and
+    // the write will be rejected.
+    uint8_t buf[LE_SECSTORE_MAX_ITEM_SIZE + 1];
     ssize_t numBytes;
 
     do
@@ -318,6 +321,13 @@ static void WriteEntry
     while ( (numBytes == -1) && (errno == EINTR) );
 
     close(fd);
+
+    if (LE_SECSTORE_MAX_ITEM_SIZE < numBytes)
+    {
+        fprintf(stderr, "The file '%s' is too large. Size is > %u\n",
+                InputFilePtr, LE_SECSTORE_MAX_ITEM_SIZE);
+        exit(EXIT_FAILURE);
+    }
 
     if (numBytes >= 0)
     {
