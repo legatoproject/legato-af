@@ -55,6 +55,13 @@
  * operator-specific structure.
  *
  * le_sim_GetICCID() API reads the identification number (ICCID).
+ * le_sim_AddIccidChangeHandler() function registers a handler to be notified when ICCID changes.
+ * le_sim_RemoveIccidChangeHandler() function unregisters the handler.
+ *
+ * @note During the initialization phase of the service, each new subscription to the ICCID change
+ * event is notified by the last change event. This behavior lasts only for 5 seconds and allows
+ * freshly registered clients to receive any ICCID changes that occured during the module start-up
+ * phase.
  *
  * Using this API selects the requested SIM.
  *
@@ -678,6 +685,28 @@ EVENT SimToolkitEvent
     SimToolkitEventHandler handler
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for ICCID change events.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER IccidChangeHandler
+(
+    Id       simId IN,               ///< The SIM identifier.
+    string   iccid[ICCID_LEN] IN     ///< ICCID
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on ICCID
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT IccidChange
+(
+    IccidChangeHandler handler
+);
 
 //--------------------------------------------------------------------------------------------------
 /**

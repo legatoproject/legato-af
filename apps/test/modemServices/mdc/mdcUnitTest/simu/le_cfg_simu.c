@@ -49,7 +49,6 @@ void le_cfg_ConnectService
     void
 )
 {
-    return;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -68,7 +67,7 @@ void le_cfg_ConnectService
 //--------------------------------------------------------------------------------------------------
 le_cfg_IteratorRef_t le_cfg_CreateReadTxn
 (
-    const char* basePath    ///< [IN] Path to the location to create the new iterator.
+    const char* basePathPtr    ///< [IN] Path to the location to create the new iterator
 )
 {
     return (le_cfg_IteratorRef_t)SimuIteratorRef;
@@ -92,7 +91,7 @@ le_cfg_IteratorRef_t le_cfg_CreateReadTxn
 //--------------------------------------------------------------------------------------------------
 le_cfg_IteratorRef_t le_cfg_CreateWriteTxn
 (
-    const char* basePath    ///< [IN] Path to the location to create the new iterator.
+    const char* basePathPtr    ///< [IN] Path to the location to create the new iterator
 )
 {
     return (le_cfg_IteratorRef_t)SimuIteratorRef;
@@ -108,10 +107,9 @@ le_cfg_IteratorRef_t le_cfg_CreateWriteTxn
 //--------------------------------------------------------------------------------------------------
 void le_cfg_CommitTxn
 (
-    le_cfg_IteratorRef_t iteratorRef    ///< [IN] Iterator object to commit.
+    le_cfg_IteratorRef_t iteratorRef    ///< [IN] Iterator object to commit
 )
 {
-    return;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -124,10 +122,9 @@ void le_cfg_CommitTxn
 //--------------------------------------------------------------------------------------------------
 void le_cfg_CancelTxn
 (
-    le_cfg_IteratorRef_t iteratorRef    ///< [IN] Iterator object to close.
+    le_cfg_IteratorRef_t iteratorRef    ///< [IN] Iterator object to close
 )
 {
-    return;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -137,26 +134,26 @@ void le_cfg_CancelTxn
 //--------------------------------------------------------------------------------------------------
 void le_cfgSimu_SetFloatNodeValue
 (
-    le_cfg_IteratorRef_t iteratorRef,   ///< [IN] Iterator to use as a basis for the transaction.
-    const char* path,                   ///< [IN] Path to the target node. Can be an absolute path,
+    le_cfg_IteratorRef_t iteratorRef,   ///< [IN] Iterator to use as a basis for the transaction
+    const char* pathPtr,                ///< [IN] Path to the target node. Can be an absolute path,
                                         ///<      or a path relative from the iterator's current
-                                        ///<      position.
-    double value                        ///< [IN] Value to write.
+                                        ///<      position
+    double value                        ///< [IN] Value to write
 )
 {
     SimuIteratorRef = iteratorRef;
 
-    if (0 == strncmp(path, CFG_NODE_RX_BYTES, strlen(CFG_NODE_RX_BYTES)))
+    if (0 == strncmp(pathPtr, CFG_NODE_RX_BYTES, strlen(CFG_NODE_RX_BYTES)))
     {
         RxBytes = value;
     }
-    else if (0 == strncmp(path, CFG_NODE_TX_BYTES, strlen(CFG_NODE_TX_BYTES)))
+    else if (0 == strncmp(pathPtr, CFG_NODE_TX_BYTES, strlen(CFG_NODE_TX_BYTES)))
     {
         TxBytes = value;
     }
     else
     {
-        LE_ERROR("Unsupported path '%s'", path);
+        LE_ERROR("Unsupported path '%s'", pathPtr);
     }
 }
 
@@ -167,22 +164,22 @@ void le_cfgSimu_SetFloatNodeValue
 //--------------------------------------------------------------------------------------------------
 void le_cfgSimu_SetBoolNodeValue
 (
-    le_cfg_IteratorRef_t iteratorRef,   ///< [IN] Iterator to use as a basis for the transaction.
-    const char* path,                   ///< [IN] Path to the target node. Can be an absolute path,
+    le_cfg_IteratorRef_t iteratorRef,   ///< [IN] Iterator to use as a basis for the transaction
+    const char* pathPtr,                ///< [IN] Path to the target node. Can be an absolute path,
                                         ///<      or a path relative from the iterator's current
-                                        ///<      position.
-    bool value                          ///< [IN] Value to write.
+                                        ///<      position
+    bool value                          ///< [IN] Value to write
 )
 {
     SimuIteratorRef = iteratorRef;
 
-    if (0 == strncmp(path, CFG_NODE_COUNTING, strlen(CFG_NODE_COUNTING)))
+    if (0 == strncmp(pathPtr, CFG_NODE_COUNTING, strlen(CFG_NODE_COUNTING)))
     {
         BytesCounting = value;
     }
     else
     {
-        LE_ERROR("Unsupported path '%s'", path);
+        LE_ERROR("Unsupported path '%s'", pathPtr);
     }
 }
 
@@ -198,28 +195,28 @@ void le_cfgSimu_SetBoolNodeValue
 //--------------------------------------------------------------------------------------------------
 double le_cfg_GetFloat
 (
-    le_cfg_IteratorRef_t iteratorRef,   ///< [IN] Iterator to use as a basis for the transaction.
-    const char* path,                   ///< [IN] Path to the target node. Can be an absolute path,
+    le_cfg_IteratorRef_t iteratorRef,   ///< [IN] Iterator to use as a basis for the transaction
+    const char* pathPtr,                ///< [IN] Path to the target node. Can be an absolute path,
                                         ///<      or a path relative from the iterator's current
                                         ///<      position
     double defaultValue                 ///< [IN] Default value to use if the original can't be
-                                        ///<      read.
+                                        ///<      read
 )
 {
     double value;
 
-    if (0 == strncmp(path, CFG_NODE_RX_BYTES, strlen(CFG_NODE_RX_BYTES)))
+    if (0 == strncmp(pathPtr, CFG_NODE_RX_BYTES, strlen(CFG_NODE_RX_BYTES)))
     {
         value = RxBytes;
     }
-    else if (0 == strncmp(path, CFG_NODE_TX_BYTES, strlen(CFG_NODE_TX_BYTES)))
+    else if (0 == strncmp(pathPtr, CFG_NODE_TX_BYTES, strlen(CFG_NODE_TX_BYTES)))
     {
         value = TxBytes;
     }
     else
     {
         value = defaultValue;
-        LE_ERROR("Unsupported path '%s', using default value %f", path, defaultValue);
+        LE_ERROR("Unsupported path '%s', using default value %f", pathPtr, defaultValue);
     }
 
     return value;
@@ -235,14 +232,14 @@ double le_cfg_GetFloat
 //--------------------------------------------------------------------------------------------------
 void le_cfg_SetFloat
 (
-    le_cfg_IteratorRef_t iteratorRef,   ///< [IN] Iterator to use as a basis for the transaction.
-    const char* path,                   ///< [IN] Path to the target node. Can be an absolute path,
+    le_cfg_IteratorRef_t iteratorRef,   ///< [IN] Iterator to use as a basis for the transaction
+    const char* pathPtr,                ///< [IN] Path to the target node. Can be an absolute path,
                                         ///<      or a path relative from the iterator's current
                                         ///<      position
-    double value                        ///< [IN] Value to write.
+    double value                        ///< [IN] Value to write
 )
 {
-    le_cfgSimu_SetFloatNodeValue(iteratorRef, path, value);
+    le_cfgSimu_SetFloatNodeValue(iteratorRef, pathPtr, value);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -258,24 +255,24 @@ void le_cfg_SetFloat
 //--------------------------------------------------------------------------------------------------
 bool le_cfg_GetBool
 (
-    le_cfg_IteratorRef_t iteratorRef,   ///< [IN] Iterator to use as a basis for the transaction.
-    const char* path,                   ///< [IN] Path to the target node. Can be an absolute path,
+    le_cfg_IteratorRef_t iteratorRef,   ///< [IN] Iterator to use as a basis for the transaction
+    const char* pathPtr,                ///< [IN] Path to the target node. Can be an absolute path,
                                         ///<      or a path relative from the iterator's current
                                         ///<      position
     bool defaultValue                   ///< [IN] Default value to use if the original can't be
-                                        ///<      read.
+                                        ///<      read
 )
 {
     bool value;
 
-    if (0 == strncmp(path, CFG_NODE_COUNTING, strlen(CFG_NODE_COUNTING)))
+    if (0 == strncmp(pathPtr, CFG_NODE_COUNTING, strlen(CFG_NODE_COUNTING)))
     {
         value = BytesCounting;
     }
     else
     {
         value = defaultValue;
-        LE_ERROR("Unsupported path '%s', using default value %d", path, defaultValue);
+        LE_ERROR("Unsupported path '%s', using default value %d", pathPtr, defaultValue);
     }
 
     return value;
@@ -291,12 +288,46 @@ bool le_cfg_GetBool
 //--------------------------------------------------------------------------------------------------
 void le_cfg_SetBool
 (
-    le_cfg_IteratorRef_t iteratorRef,   ///< [IN] Iterator to use as a basis for the transaction.
-    const char* path,                   ///< [IN] Path to the target node. Can be an absolute path,
+    le_cfg_IteratorRef_t iteratorRef,   ///< [IN] Iterator to use as a basis for the transaction
+    const char* pathPtr,                ///< [IN] Path to the target node. Can be an absolute path,
                                         ///<      or a path relative from the iterator's current
                                         ///<      position
-    bool value                          ///< [IN] Value to write.
+    bool value                          ///< [IN] Value to write
 )
 {
-    le_cfgSimu_SetBoolNodeValue(iteratorRef, path, value);
+    le_cfgSimu_SetBoolNodeValue(iteratorRef, pathPtr, value);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read a string value from the config tree. If the value isn't a string, or if the node is
+ * empty or doesn't exist, the default value will be returned.
+ *
+ * @return LE_OK       Read was completed successfully
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_cfg_GetString
+(
+    le_cfg_IteratorRef_t iteratorRef, ///< [IN] Iterator to use as a basis for the transaction
+    const char* pathPtr,              ///< [IN] Path to the target node
+    char* valuePtr,                   ///< [OUT] Buffer to write the value into
+    size_t valueNumElements,          ///< [IN] Number of elements to copy
+    const char* defaultValuePtr       ///< [IN] Default value to use if the original can't be read
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write a string value to the config tree. Only valid during a write transaction.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_cfg_SetString
+(
+    le_cfg_IteratorRef_t iteratorRef, ///< [IN] Iterator to use as a basis for the transaction
+    const char* pathPtr,              ///< [IN] Path to the target node
+    const char* valuePtr              ///< [IN] Value to write
+)
+{
 }

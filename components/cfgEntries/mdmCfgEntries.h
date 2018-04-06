@@ -52,4 +52,14 @@
 #define CFG_NODE_RX_BYTES                   "rxBytes"
 #define CFG_NODE_TX_BYTES                   "txBytes"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Paths to SIM data in the config tree
+ */
+//--------------------------------------------------------------------------------------------------
+#define CFG_NODE_SIM                        "sim"
+#define CFG_MODEMSERVICE_SIM_PATH           MODEMSERVICE_CONFIG_TREE_ROOT_DIR"/"CFG_NODE_SIM
+#define CFG_NODE_ICCID                      "iccid"
+
+
 #endif // LEGATO_MDMCFGENTRIES_INCLUDE_GUARD

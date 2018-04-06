@@ -322,3 +322,38 @@ void le_cfg_SetBool
 {
     le_cfgSimu_SetBoolNodeValue(iteratorRef, path, value);
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read a string value from the config tree. If the value isn't a string, or if the node is
+ * empty or doesn't exist, the default value will be returned.
+ *
+ * @return LE_OK       Read was completed successfully
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_cfg_GetString
+(
+    le_cfg_IteratorRef_t iteratorRef, ///< [IN] Iterator to use as a basis for the transaction
+    const char* pathPtr,              ///< [IN] Path to the target node
+    char* valuePtr,                   ///< [OUT] Buffer to write the value into
+    size_t valueNumElements,          ///< [IN] Number of elements to copy
+    const char* defaultValuePtr       ///< [IN] Default value to use if the original can't be read
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write a string value to the config tree. Only valid during a write
+ * transaction.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_cfg_SetString
+(
+    le_cfg_IteratorRef_t iteratorRef, ///< [IN] Iterator to use as a basis for the transaction
+    const char* pathPtr,              ///< [IN] Path to the target node
+    const char* valuePtr              ///< [IN] Value to write
+)
+{
+}

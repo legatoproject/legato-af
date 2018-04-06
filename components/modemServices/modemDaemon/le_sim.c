@@ -10,6 +10,7 @@
 #include "interfaces.h"
 #include "pa_sim.h"
 #include "le_mrc_local.h"
+#include "mdmCfgEntries.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -29,9 +30,9 @@
 //--------------------------------------------------------------------------------------------------
 typedef enum
 {
-    COMMERCIAL,           ///< Commercial subscription.
-    ECS,                  ///< Emergency Call subscription.
-    UNKNOWN_SUBSCRIPTION, ///< Unknown subscription.
+    COMMERCIAL,           ///< Commercial subscription
+    ECS,                  ///< Emergency Call subscription
+    UNKNOWN_SUBSCRIPTION, ///< Unknown subscription
     SUBSCRIPTION_MAX
 }
 Subscription_t;
@@ -48,14 +49,14 @@ Subscription_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct le_sim_Obj
 {
-    le_sim_Id_t      simId;                      ///< SIM identifier.
-    char             ICCID[LE_SIM_ICCID_BYTES];  ///< Integrated circuit card identifier.
-    char             IMSI[LE_SIM_IMSI_BYTES];    ///< International mobile subscriber identity.
-    char             PIN[LE_SIM_PIN_MAX_BYTES];  ///< PIN code.
-    char             PUK[LE_SIM_PUK_MAX_BYTES];  ///< PUK code.
-    char             EID[LE_SIM_EID_BYTES];      ///< eUICCID unique identifier (EID).
-    char             phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; /// < The Phone Number.
-    bool             isPresent;                  ///< 'isPresent' flag.
+    le_sim_Id_t      simId;                      ///< SIM identifier
+    char             ICCID[LE_SIM_ICCID_BYTES];  ///< Integrated circuit card identifier
+    char             IMSI[LE_SIM_IMSI_BYTES];    ///< International mobile subscriber identity
+    char             PIN[LE_SIM_PIN_MAX_BYTES];  ///< PIN code
+    char             PUK[LE_SIM_PUK_MAX_BYTES];  ///< PUK code
+    char             EID[LE_SIM_EID_BYTES];      ///< eUICCID unique identifier (EID)
+    char             phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; /// < The Phone Number
+    bool             isPresent;                  ///< 'isPresent' flag
     bool             isReacheable;               ///< SIM is reachable when its state is inserted,
                                                  ///< ready or blocked
     Subscription_t   subscription;               ///< Subscription type
@@ -70,9 +71,21 @@ Sim_t;
 typedef struct
 {
     le_sim_Id_t      simId;   ///< SIM identififier
-    le_sim_States_t  state;   ///< SIM state.
+    le_sim_States_t  state;   ///< SIM state
 }
 Sim_Event_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * ICCID change event.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_sim_Id_t      simId;                       ///< SIM identififier
+    char             ICCID[LE_SIM_ICCID_BYTES];   ///< Integrated circuit card identifier
+}
+Sim_IccidChangeEvent_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -81,10 +94,10 @@ Sim_Event_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_sim_FPLMNListRef_t FPLMNListRef;      ///< FPLMN List reference.
-    le_msg_SessionRef_t   sessionRef;        ///< Client session reference.
-    le_dls_List_t         list;              ///< Link list to insert new FPLMN operator.
-    le_dls_Link_t*        currentLink;       ///< Link list pointed to current FPLMN operator.
+    le_sim_FPLMNListRef_t FPLMNListRef;      ///< FPLMN List reference
+    le_msg_SessionRef_t   sessionRef;        ///< Client session reference
+    le_dls_List_t         list;              ///< Link list to insert new FPLMN operator
+    le_dls_Link_t*        currentLink;       ///< Link list pointed to current FPLMN operator
 }
 le_sim_FPLMNList_t;
 
@@ -122,6 +135,15 @@ static le_sim_Id_t  SelectedCard;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * During initialization of the service, each new subscription to the ICCID change event is notified
+ * by the last monitored event.
+ * On expiry, this timer is used to stop this special behavior of the service.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_timer_Ref_t EventTimerRef;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Event ID for New SIM state notification.
  */
 //--------------------------------------------------------------------------------------------------
@@ -136,10 +158,35 @@ static le_event_Id_t SimToolkitEventId;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Event ID for ICCID change notification.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t IccidChangeEventId;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Counter for SIM Toolkit event handlers.
  */
 //--------------------------------------------------------------------------------------------------
 static uint32_t SimToolkitHandlerCount = 0;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Forward the last ICCID change to every new subscribed client to the ICCID change event.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool ForwardLastIccidChange = true;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Last ICCID change event.
+ */
+//--------------------------------------------------------------------------------------------------
+static Sim_IccidChangeEvent_t LastIccidChange =
+{
+    .simId = LE_SIM_ID_MAX,
+    .ICCID = {0}
+};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -245,9 +292,9 @@ static bool IsCommandCorrectlyExecuted
 //--------------------------------------------------------------------------------------------------
 static le_result_t LocalSwap
 (
-    le_sim_Manufacturer_t manufacturer,   ///< [IN] The card manufacturer.
-    uint8_t*              swapApduReqPtr, ///< [IN] The swap APDU message.
-    uint32_t              swapApduLen     ///< [IN] The swap APDU message length in bytes.
+    le_sim_Manufacturer_t manufacturer,   ///< [IN] The card manufacturer
+    uint8_t*              swapApduReqPtr, ///< [IN] The swap APDU message
+    uint32_t              swapApduLen     ///< [IN] The swap APDU message length in bytes
 )
 {
     uint8_t channel = 0;
@@ -326,11 +373,14 @@ static le_result_t LocalSwap
 /**
  * SIM card selector.
  *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if unable to select the SIM card
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t SelectSIMCard
 (
-    le_sim_Id_t simId    ///< [IN] The SIM identifier.
+    le_sim_Id_t simId    ///< [IN] SIM identifier
 )
 {
     if(simId != SelectedCard)
@@ -349,7 +399,7 @@ static le_result_t SelectSIMCard
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The first-layer New SIM state notification Handler.
+ * First layer: New SIM state notification handler.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -359,22 +409,56 @@ static void FirstLayerNewSimStateHandler
     void* secondLayerHandlerFunc
 )
 {
-    Sim_Event_t*                  simEvent = reportPtr;
+    Sim_Event_t* simEventPtr = reportPtr;
+
+    if (!simEventPtr)
+    {
+       LE_ERROR("Null pointer provided!");
+       return;
+    }
 
     le_sim_NewStateHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
-    clientHandlerFunc(simEvent->simId, simEvent->state, le_event_GetContextPtr());
+    clientHandlerFunc(simEventPtr->simId, simEventPtr->state, le_event_GetContextPtr());
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * First- layer: ICCID change notification handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void FirstLayerIccidChangeHandler
+(
+    void* reportPtr,
+    void* secondLayerHandlerFunc
+)
+{
+    Sim_IccidChangeEvent_t* eventDataPtr = reportPtr;
+
+    if (!eventDataPtr)
+    {
+       LE_ERROR("Null pointer provided!");
+       return;
+    }
+
+    le_sim_IccidChangeHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+
+    clientHandlerFunc(eventDataPtr->simId, eventDataPtr->ICCID, le_event_GetContextPtr());
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Get the SIM card EID and store it in the SIM structure.
  *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t GetEID
 (
-    Sim_t* simPtr   ///< [IN,OUT] The SIM structure.
+    Sim_t* simPtr   ///< [IN,OUT] The SIM structure
 )
 {
     pa_sim_Eid_t eid;
@@ -409,11 +493,14 @@ static le_result_t GetEID
 /**
  * Get the SIM card ICCID and store it in the SIM structure.
  *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t GetICCID
 (
-    Sim_t* simPtr   ///< [IN,OUT] The SIM structure.
+    Sim_t* simPtr   ///< [IN,OUT] The SIM structure
 )
 {
     pa_sim_CardId_t  iccid;
@@ -448,11 +535,14 @@ static le_result_t GetICCID
 /**
  * Get the SIM card IMSI and store it in the SIM structure.
  *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t GetIMSI
 (
-    Sim_t* simPtr   ///< [IN,OUT] The SIM structure.
+    Sim_t* simPtr   ///< [IN,OUT] The SIM structure
 )
 {
     pa_sim_Imsi_t    imsi;
@@ -487,11 +577,14 @@ static le_result_t GetIMSI
 /**
  * Get the SIM Phone Number and store it in the SIM structure.
  *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t GetPhoneNumber
 (
-    Sim_t* simPtr   ///< [IN,OUT] The SIM structure.
+    Sim_t* simPtr   ///< [IN,OUT] The SIM structure
 )
 {
     char phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
@@ -520,6 +613,107 @@ static le_result_t GetPhoneNumber
     }
 
     return le_utf8_Copy(simPtr->phoneNumber, phoneNumber, sizeof(simPtr->phoneNumber), NULL);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Compare the current ICCID value with the ICCID stored in config tree
+ *
+ * @return
+ *       - TRUE if the current ICCID is different from the stored ICCID.
+ *       - FALSE otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsNewICCID
+(
+    Sim_t* simPtr   ///< [IN,OUT] The SIM structure
+)
+{
+    le_cfg_IteratorRef_t iteratorRef;
+    char storedICCID[LE_SIM_ICCID_BYTES] = {0};
+
+    if (NULL == simPtr)
+    {
+        LE_ERROR("Null pointer provided");
+        return false;
+    }
+
+    // Get ICCID from config tree
+    iteratorRef = le_cfg_CreateReadTxn(CFG_MODEMSERVICE_SIM_PATH);
+    le_cfg_GetString(iteratorRef, CFG_NODE_ICCID, storedICCID, LE_SIM_ICCID_BYTES, "");
+    le_cfg_CancelTxn(iteratorRef);
+
+    if (!memcmp(simPtr->ICCID, storedICCID, LE_SIM_ICCID_BYTES))
+    {
+        return false;
+    }
+    else
+    {
+        return true;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Save the current ICCID in config tree
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SaveICCID
+(
+    Sim_t* simPtr   ///< [IN,OUT] The SIM structure
+)
+{
+    le_cfg_IteratorRef_t iteratorRef;
+
+    if (NULL == simPtr)
+    {
+        LE_ERROR("Null pointer provided");
+        return LE_FAULT;
+    }
+
+    iteratorRef = le_cfg_CreateWriteTxn(CFG_MODEMSERVICE_SIM_PATH);
+    le_cfg_SetString(iteratorRef, CFG_NODE_ICCID, simPtr->ICCID);
+    le_cfg_CommitTxn(iteratorRef);
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Report an event in case the current ICCID value is different than the value stored in config tree
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void MonitorICCIDChange
+(
+    Sim_t* simPtr   ///< [IN,OUT] The SIM structure
+)
+{
+    if (NULL == simPtr)
+    {
+        LE_ERROR("Null pointer provided");
+        return;
+    }
+
+    if (!simPtr->isReacheable)
+    {
+        return;
+    }
+
+    if (IsNewICCID(simPtr))
+    {
+        // Report the ICCID change event
+        LastIccidChange.simId = simPtr->simId;
+        memcpy(LastIccidChange.ICCID, simPtr->ICCID, LE_SIM_ICCID_BYTES);
+        le_event_Report(IccidChangeEventId, &LastIccidChange, sizeof(Sim_IccidChangeEvent_t));
+
+        // Save the current ICCID in config tree
+        SaveICCID(simPtr);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -593,6 +787,9 @@ static void NewSimStateHandler
         eventPtr->simId, eventPtr);
     simPtr = &SimList[eventPtr->simId];
     GetSimCardInformation(simPtr, eventPtr->state);
+
+    // Check if ICCID value changed
+    MonitorICCIDChange(&SimList[eventPtr->simId]);
 
     // Discard transitional states
     switch (eventPtr->state)
@@ -670,6 +867,9 @@ static void SimToolkitHandler
                 // Discard old SIM card information and perform a new read.
                 GetSimCardInformation(&SimList[eventPtr->simId], LE_SIM_ABSENT);
                 GetSimCardInformation(&SimList[eventPtr->simId], LE_SIM_READY);
+
+                // Check if ICCID value changed
+                MonitorICCIDChange(&SimList[eventPtr->simId]);
                 break;
 
             default:
@@ -696,7 +896,7 @@ static void SimToolkitHandler
 //--------------------------------------------------------------------------------------------------
 static le_result_t CheckSimValidity
 (
-    le_sim_Id_t simId   ///< [IN] The SIM identifier.
+    le_sim_Id_t simId   ///< [IN] The SIM identifier
 )
 {
     Sim_t*    simPtr;
@@ -733,7 +933,7 @@ static le_result_t CheckSimValidity
 //--------------------------------------------------------------------------------------------------
 static le_result_t GetFPLMNOperatorsList
 (
-    le_dls_List_t* FPLMNListPtr    ///< [IN/OUT] The FPLMN operators list.
+    le_dls_List_t* FPLMNListPtr    ///< [IN/OUT] The FPLMN operators list
 )
 {
     uint32_t total = 0;
@@ -797,12 +997,12 @@ static le_result_t GetFPLMNOperatorsList
 //--------------------------------------------------------------------------------------------------
 static le_result_t GetFPLMNOperator
 (
-    le_sim_FPLMNList_t* FPLMNListPtr,         ///< [IN] FPLMN list pointer.
-    le_dls_Link_t* FPLMNLinkPtr,              ///< [IN] FPLMN operator link.
-    char* mccPtr,                             ///< [OUT] Mobile Country Code.
-    size_t mccPtrSize,                        ///< [IN] Size of Mobile Country Code.
-    char* mncPtr,                             ///< [OUT] Mobile Network Code.
-    size_t mncPtrSize                         ///< [IN] Size of Mobile Network Code.
+    le_sim_FPLMNList_t* FPLMNListPtr,         ///< [IN] FPLMN list pointer
+    le_dls_Link_t* FPLMNLinkPtr,              ///< [IN] FPLMN operator link
+    char* mccPtr,                             ///< [OUT] Mobile Country Code
+    size_t mccPtrSize,                        ///< [IN] Size of Mobile Country Code
+    char* mncPtr,                             ///< [OUT] Mobile Network Code
+    size_t mncPtrSize                         ///< [IN] Size of Mobile Network Code
 )
 {
     pa_sim_FPLMNOperator_t* FPLMNOperatorPtr;
@@ -843,7 +1043,7 @@ static le_result_t GetFPLMNOperator
 //--------------------------------------------------------------------------------------------------
 static void DeleteFPLMNOperatorsList
 (
-    le_dls_List_t *FPLMNOperatorsListPtr ///< [IN] List of FPLMN operators.
+    le_dls_List_t *FPLMNOperatorsListPtr ///< [IN] List of FPLMN operators
 )
 {
     pa_sim_FPLMNOperator_t* nodePtr;
@@ -858,14 +1058,30 @@ static void DeleteFPLMNOperatorsList
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Timer handler: On expiry, this function stops the forwarding of the last ICCID change to new
+ * registered clients
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void EventTimerHandler
+(
+    le_timer_Ref_t timerRef    ///< [IN] This timer has expired
+)
+{
+    LE_INFO("Disabling last ICCID change forwarding");
+    ForwardLastIccidChange = false;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Handler function to the close session service.
  *
  */
 //--------------------------------------------------------------------------------------------------
 static void CloseSessionEventHandler
 (
-    le_msg_SessionRef_t sessionRef,  ///< [IN] Session reference of client application.
-    void*               contextPtr   ///< [IN] Context pointer of CloseSessionEventHandler.
+    le_msg_SessionRef_t sessionRef,  ///< [IN] Session reference of client application
+    void*               contextPtr   ///< [IN] Context pointer of CloseSessionEventHandler
 )
 {
     if (!sessionRef)
@@ -946,6 +1162,9 @@ le_result_t le_sim_Init
     // Create an event Id for new SIM state notifications
     NewSimStateEventId = le_event_CreateId("NewSimStateEventId", sizeof(Sim_Event_t));
 
+    // Create an event Id for ICCID change notifications
+    IccidChangeEventId = le_event_CreateId("IccidChangeEventId", sizeof(Sim_IccidChangeEvent_t));
+
     // Create an event Id for SIM Toolkit notifications
     SimToolkitEventId = le_event_CreateId("SimToolkitEventId", sizeof(pa_sim_StkEvent_t));
 
@@ -980,6 +1199,15 @@ le_result_t le_sim_Init
     }
 
     GetSimCardInformation(&SimList[SelectedCard], state);
+
+    MonitorICCIDChange(&SimList[SelectedCard]);
+
+    // Create a one-shot timer to delimit the initialization phase of the daemon.
+    EventTimerRef = le_timer_Create("EventTimer");
+    le_timer_SetMsInterval(EventTimerRef, 5000);
+    le_timer_SetRepeat(EventTimerRef, 1);
+    le_timer_SetHandler(EventTimerRef, EventTimerHandler);
+    le_timer_Start(EventTimerRef);
 
     return LE_OK;
 }
@@ -1037,8 +1265,8 @@ le_result_t le_sim_SelectCard
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_GetICCID
 (
-    le_sim_Id_t simId,        ///< [IN] The SIM identifier.
-    char *      iccidPtr,     ///< [OUT] Buffer to hold the ICCID.
+    le_sim_Id_t simId,        ///< [IN] The SIM identifier
+    char *      iccidPtr,     ///< [OUT] Buffer to hold the ICCID
     size_t      iccidLen      ///< [IN] Buffer length
 )
 {
@@ -1092,9 +1320,9 @@ le_result_t le_sim_GetICCID
 //--------------------------------------------------------------------------------------------------
 le_result_t  le_sim_GetEID
 (
-    le_sim_Id_t simId,      ///< [IN] The SIM identifier.
-    char*       eidPtr,     ///< [OUT] Buffer to hold the EID.
-    size_t      eidLen      ///< [IN] Buffer length.
+    le_sim_Id_t simId,      ///< [IN] The SIM identifier
+    char*       eidPtr,     ///< [OUT] Buffer to hold the EID
+    size_t      eidLen      ///< [IN] Buffer length
 )
 {
     Sim_t*           simPtr = NULL;
@@ -1141,8 +1369,8 @@ le_result_t  le_sim_GetEID
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_GetIMSI
 (
-    le_sim_Id_t simId,       ///< [IN] The SIM identifier.
-    char *      imsiPtr,     ///< [OUT] Buffer to hold the IMSI.
+    le_sim_Id_t simId,       ///< [IN] The SIM identifier
+    char *      imsiPtr,     ///< [OUT] Buffer to hold the IMSI
     size_t      imsiLen      ///< [IN] Buffer length
 )
 {
@@ -1191,7 +1419,7 @@ le_result_t le_sim_GetIMSI
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_GetSubscriberPhoneNumber
 (
-    le_sim_Id_t     simId,             ///< [IN] SIM identifier.
+    le_sim_Id_t     simId,             ///< [IN] SIM identifier
     char*           phoneNumberStr,    ///< [OUT] Phone Number
     size_t          phoneNumberStrSize ///< [IN]  Size of phoneNumberStr
 )
@@ -1238,7 +1466,7 @@ le_result_t le_sim_GetSubscriberPhoneNumber
 //--------------------------------------------------------------------------------------------------
 bool le_sim_IsPresent
 (
-    le_sim_Id_t simId   ///< [IN] The SIM identifier.
+    le_sim_Id_t simId   ///< [IN] The SIM identifier
 )
 {
     le_sim_States_t  state;
@@ -1288,7 +1516,7 @@ bool le_sim_IsPresent
 //--------------------------------------------------------------------------------------------------
 bool le_sim_IsReady
 (
-    le_sim_Id_t simId   ///< [IN] SIM identifier.
+    le_sim_Id_t simId   ///< [IN] SIM identifier
 )
 {
     le_sim_States_t  state;
@@ -1332,8 +1560,8 @@ bool le_sim_IsReady
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_EnterPIN
 (
-    le_sim_Id_t  simId,     ///< [IN] SIM identifier.
-    const char*  pinPtr     ///< [IN] PIN code.
+    le_sim_Id_t  simId,     ///< [IN] SIM identifier
+    const char*  pinPtr     ///< [IN] PIN code
 )
 {
     pa_sim_Pin_t pinloc;
@@ -1394,9 +1622,9 @@ le_result_t le_sim_EnterPIN
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_ChangePIN
 (
-    le_sim_Id_t   simId,     ///< [IN] SIM identifier.
-    const char*   oldpinPtr, ///< [IN] Old PIN code.
-    const char*   newpinPtr  ///< [IN] New PIN code.
+    le_sim_Id_t   simId,     ///< [IN] SIM identifier
+    const char*   oldpinPtr, ///< [IN] Old PIN code
+    const char*   newpinPtr  ///< [IN] New PIN code
 )
 {
     pa_sim_Pin_t oldpinloc;
@@ -1462,7 +1690,7 @@ le_result_t le_sim_ChangePIN
 //--------------------------------------------------------------------------------------------------
 int32_t le_sim_GetRemainingPINTries
 (
-    le_sim_Id_t simId   ///< [IN] The SIM identifier.
+    le_sim_Id_t simId   ///< [IN] The SIM identifier
 )
 {
     uint32_t  attempts=0;
@@ -1497,8 +1725,8 @@ int32_t le_sim_GetRemainingPINTries
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_GetRemainingPUKTries
 (
-    le_sim_Id_t simId,                 ///< [IN] The SIM identifier.
-    uint32_t*   remainingPukTriesPtr   ///< [OUT] The number of remaining PUK insertion tries.
+    le_sim_Id_t simId,                 ///< [IN] The SIM identifier
+    uint32_t*   remainingPukTriesPtr   ///< [OUT] The number of remaining PUK insertion tries
 )
 {
     le_result_t res;
@@ -1540,8 +1768,8 @@ le_result_t le_sim_GetRemainingPUKTries
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_Unlock
 (
-    le_sim_Id_t     simId,   ///< [IN] SIM identifier.
-    const char*     pinPtr   ///< [IN] PIN code.
+    le_sim_Id_t     simId,   ///< [IN] SIM identifier
+    const char*     pinPtr   ///< [IN] PIN code
 )
 {
     pa_sim_Pin_t  pinloc;
@@ -1602,8 +1830,8 @@ le_result_t le_sim_Unlock
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_Lock
 (
-    le_sim_Id_t     simId,   ///< [IN] SIM identifier.
-    const char*     pinPtr   ///< [IN] PIN code.
+    le_sim_Id_t     simId,   ///< [IN] SIM identifier
+    const char*     pinPtr   ///< [IN] PIN code
 )
 {
     pa_sim_Pin_t pinloc;
@@ -1668,9 +1896,9 @@ le_result_t le_sim_Lock
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_Unblock
 (
-    le_sim_Id_t     simId,     ///< [IN] SIM identifier.
-    const char*     pukPtr,    ///< [IN] PUK code.
-    const char*     newpinPtr  ///< [IN] New PIN code.
+    le_sim_Id_t     simId,     ///< [IN] SIM identifier
+    const char*     pukPtr,    ///< [IN] PUK code
+    const char*     newpinPtr  ///< [IN] New PIN code
 )
 {
     pa_sim_Puk_t pukloc;
@@ -1732,7 +1960,7 @@ le_result_t le_sim_Unblock
 //--------------------------------------------------------------------------------------------------
 le_sim_States_t le_sim_GetState
 (
-    le_sim_Id_t simId   ///< [IN] SIM identifier.
+    le_sim_Id_t simId   ///< [IN] SIM identifier
 )
 {
     le_sim_States_t state;
@@ -1764,10 +1992,10 @@ le_sim_States_t le_sim_GetState
 le_sim_NewStateHandlerRef_t le_sim_AddNewStateHandler
 (
     le_sim_NewStateHandlerFunc_t handlerPtr,
-        ///< [IN] Handler function for New State notification.
+        ///< [IN] Handler function for New State notification
 
     void* contextPtr
-        ///< [IN] Handler's context.
+        ///< [IN] Handler's context
 )
 {
     le_event_HandlerRef_t handlerRef;
@@ -1797,7 +2025,7 @@ le_sim_NewStateHandlerRef_t le_sim_AddNewStateHandler
 //--------------------------------------------------------------------------------------------------
 void le_sim_RemoveNewStateHandler
 (
-    le_sim_NewStateHandlerRef_t   handlerRef ///< [IN] Handler reference.
+    le_sim_NewStateHandlerRef_t   handlerRef ///< [IN] Handler reference
 )
 {
     le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
@@ -1818,7 +2046,7 @@ void le_sim_RemoveNewStateHandler
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_GetHomeNetworkOperator
 (
-    le_sim_Id_t        simId,          ///< [IN] SIM identifier.
+    le_sim_Id_t        simId,          ///< [IN] SIM identifier
     char              *nameStr,        ///< [OUT] Home network Name
     size_t             nameStrSize     ///< [IN] nameStr size
 )
@@ -1849,7 +2077,7 @@ le_result_t le_sim_GetHomeNetworkOperator
 //--------------------------------------------------------------------------------------------------
  le_result_t le_sim_GetHomeNetworkMccMnc
 (
-    le_sim_Id_t       simId,          ///< [IN] SIM identifier.
+    le_sim_Id_t       simId,          ///< [IN] SIM identifier
     char             *mccPtr,         ///< [OUT] Mobile Country Code
     size_t            mccPtrSize,     ///< [IN] mccPtr buffer size
     char             *mncPtr,         ///< [OUT] Mobile Network Code
@@ -1895,8 +2123,8 @@ le_result_t le_sim_GetHomeNetworkOperator
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_LocalSwapToEmergencyCallSubscription
 (
-    le_sim_Id_t           simId,          ///< [IN] The SIM identifier.
-    le_sim_Manufacturer_t manufacturer    ///< [IN] The card manufacturer.
+    le_sim_Id_t           simId,          ///< [IN] The SIM identifier
+    le_sim_Manufacturer_t manufacturer    ///< [IN] The card manufacturer
 )
 {
     Sim_t* simPtr;
@@ -1951,8 +2179,8 @@ le_result_t le_sim_LocalSwapToEmergencyCallSubscription
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_LocalSwapToCommercialSubscription
 (
-    le_sim_Id_t           simId,          ///< [IN] SIM identifier.
-    le_sim_Manufacturer_t manufacturer    ///< [IN] The card manufacturer.
+    le_sim_Id_t           simId,          ///< [IN] SIM identifier
+    le_sim_Manufacturer_t manufacturer    ///< [IN] The card manufacturer
 )
 {
     Sim_t* simPtr;
@@ -2004,7 +2232,7 @@ le_result_t le_sim_LocalSwapToCommercialSubscription
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_IsEmergencyCallSubscriptionSelected
 (
-    le_sim_Id_t simId,   ///< [IN] SIM identifier.
+    le_sim_Id_t simId,   ///< [IN] SIM identifier
     bool*       isEcsPtr ///< [OUT] true if Emergency Call Subscription (ECS) is selected,
                          ///<       false if Commercial Subscription is selected
 )
@@ -2058,6 +2286,67 @@ le_result_t le_sim_IsEmergencyCallSubscriptionSelected
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function must be called to register a handler function for ICCID change notification.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure; there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+le_sim_IccidChangeHandlerRef_t le_sim_AddIccidChangeHandler
+(
+    le_sim_IccidChangeHandlerFunc_t handlerPtr,     ///< [IN] Handler function
+    void* contextPtr                                ///< [IN] Handler's context
+)
+{
+    le_event_HandlerRef_t handlerRef;
+
+    if (NULL == handlerPtr)
+    {
+        LE_KILL_CLIENT("Handler function is NULL !");
+        return NULL;
+    }
+
+    handlerRef = le_event_AddLayeredHandler("IccidChangeHandler",
+                                            IccidChangeEventId,
+                                            FirstLayerIccidChangeHandler,
+                                            (le_event_HandlerFunc_t)handlerPtr);
+
+    le_event_SetContextPtr(handlerRef, contextPtr);
+
+    // During initialization of the daemon, each new subscription to the ICCID change event is
+    // notified by the last monitored event.
+    if ((ForwardLastIccidChange) && (LE_SIM_ID_MAX != LastIccidChange.simId))
+    {
+        handlerPtr(LastIccidChange.simId, LastIccidChange.ICCID, contextPtr);
+    }
+
+    return (le_sim_IccidChangeHandlerRef_t)(handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to unregister the handler function for ICCID change notification.
+ *
+ * @note Doesn't return on failure; there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sim_RemoveIccidChangeHandler
+(
+    le_sim_IccidChangeHandlerRef_t handlerRef   ///< [IN] Handler reference
+)
+{
+    if (NULL == handlerRef)
+    {
+        LE_ERROR("Null handler reference");
+        return;
+    }
+
+    le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to register an handler function for Sim Toolkit notification.
  *
  * @return A handler reference, which is only needed for later removal of the handler.
@@ -2068,8 +2357,8 @@ le_result_t le_sim_IsEmergencyCallSubscriptionSelected
 le_sim_SimToolkitEventHandlerRef_t le_sim_AddSimToolkitEventHandler
 (
     le_sim_SimToolkitEventHandlerFunc_t handlerPtr,     ///< [IN] Handler function for
-                                                        ///<      New State notification.
-    void* contextPtr                                    ///< [IN] Handler's context.
+                                                        ///<      New State notification
+    void* contextPtr                                    ///< [IN] Handler's context
 )
 {
     le_event_HandlerRef_t handlerRef;
@@ -2100,7 +2389,7 @@ le_sim_SimToolkitEventHandlerRef_t le_sim_AddSimToolkitEventHandler
 //--------------------------------------------------------------------------------------------------
 void le_sim_RemoveSimToolkitEventHandler
 (
-    le_sim_SimToolkitEventHandlerRef_t handlerRef   ///< [IN] Handler reference.
+    le_sim_SimToolkitEventHandlerRef_t handlerRef   ///< [IN] Handler reference
 )
 {
     if (NULL == handlerRef)
@@ -2127,7 +2416,7 @@ void le_sim_RemoveSimToolkitEventHandler
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_AcceptSimToolkitCommand
 (
-    le_sim_Id_t simId   ///< [IN] SIM identifier.
+    le_sim_Id_t simId   ///< [IN] SIM identifier
 )
 {
     if (LE_OK != SelectSIMCard(simId))
@@ -2149,7 +2438,7 @@ le_result_t le_sim_AcceptSimToolkitCommand
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_RejectSimToolkitCommand
 (
-    le_sim_Id_t simId   ///< [IN] SIM identifier.
+    le_sim_Id_t simId   ///< [IN] SIM identifier
 )
 {
     if (LE_OK != SelectSIMCard(simId))
@@ -2175,8 +2464,8 @@ le_result_t le_sim_RejectSimToolkitCommand
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_GetSimToolkitRefreshMode
 (
-    le_sim_Id_t              simId,         ///< The SIM identifier.
-    le_sim_StkRefreshMode_t* refreshModePtr ///< The Refresh mode.
+    le_sim_Id_t              simId,         ///< The SIM identifier
+    le_sim_StkRefreshMode_t* refreshModePtr ///< The Refresh mode
 )
 {
     pa_sim_StkEvent_t stkStatus;
@@ -2221,8 +2510,8 @@ le_result_t le_sim_GetSimToolkitRefreshMode
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_GetSimToolkitRefreshStage
 (
-    le_sim_Id_t               simId,            ///< The SIM identifier.
-    le_sim_StkRefreshStage_t* refreshStagePtr   ///< The Refresh stage.
+    le_sim_Id_t               simId,            ///< The SIM identifier
+    le_sim_StkRefreshStage_t* refreshStagePtr   ///< The Refresh stage
 )
 {
     pa_sim_StkEvent_t stkStatus;
@@ -2266,11 +2555,11 @@ le_result_t le_sim_GetSimToolkitRefreshStage
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_SendApdu
 (
-    le_sim_Id_t simId,                  ///< [IN] The SIM identifier.
-    const uint8_t* commandApduPtr,      ///< [IN] APDU command.
-    size_t commandApduNumElements,      ///< [IN] APDU command size.
-    uint8_t* responseApduPtr,           ///< [OUT] SIM response.
-    size_t* responseApduNumElementsPtr  ///< [INOUT] SIM response size.
+    le_sim_Id_t simId,                  ///< [IN] The SIM identifier
+    const uint8_t* commandApduPtr,      ///< [IN] APDU command
+    size_t commandApduNumElements,      ///< [IN] APDU command size
+    uint8_t* responseApduPtr,           ///< [OUT] SIM response
+    size_t* responseApduNumElementsPtr  ///< [INOUT] SIM response size
 )
 {
     // Send APDU on basic logical channel 0, which is always opened
@@ -2298,18 +2587,18 @@ le_result_t le_sim_SendApdu
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_SendCommand
 (
-    le_sim_Id_t simId,              ///< [IN] The SIM identifier.
-    le_sim_Command_t command,       ///< [IN] The SIM command.
+    le_sim_Id_t simId,              ///< [IN] The SIM identifier
+    le_sim_Command_t command,       ///< [IN] The SIM command
     const char* fileIdentifier,     ///< [IN] File identifier
     uint8_t p1,                     ///< [IN] Parameter P1 passed to the SIM
     uint8_t p2,                     ///< [IN] Parameter P2 passed to the SIM
     uint8_t p3,                     ///< [IN] Parameter P3 passed to the SIM
-    const uint8_t* dataPtr,         ///< [IN] data command.
+    const uint8_t* dataPtr,         ///< [IN] data command
     size_t dataNumElements,         ///< [IN]
     const char* path,               ///< [IN] path of the elementary file
     uint8_t* sw1Ptr,                ///< [OUT] SW1 received from the SIM
     uint8_t* sw2Ptr,                ///< [OUT] SW2 received from the SIM
-    uint8_t* responsePtr,           ///< [OUT] SIM response.
+    uint8_t* responsePtr,           ///< [OUT] SIM response
     size_t* responseNumElementsPtr  ///< [INOUT]
 )
 {
@@ -2406,9 +2695,9 @@ le_sim_FPLMNListRef_t le_sim_CreateFPLMNList
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_AddFPLMNOperator
 (
-    le_sim_FPLMNListRef_t FPLMNListRef,    ///< [IN] FPLMN list reference.
-    const char* mcc,                       ///< [IN] Mobile Country Code.
-    const char* mnc                        ///< [IN] Mobile Network Code.
+    le_sim_FPLMNListRef_t FPLMNListRef,    ///< [IN] FPLMN list reference
+    const char* mcc,                       ///< [IN] Mobile Country Code
+    const char* mnc                        ///< [IN] Mobile Network Code
 )
 {
     pa_sim_FPLMNOperator_t* FPLMNOperatorPtr;
@@ -2449,8 +2738,8 @@ le_result_t le_sim_AddFPLMNOperator
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_WriteFPLMNList
 (
-    le_sim_Id_t simId,                    ///< [IN] The SIM identifier.
-    le_sim_FPLMNListRef_t FPLMNListRef    ///< [IN] FPLMN list reference.
+    le_sim_Id_t simId,                    ///< [IN] The SIM identifier
+    le_sim_FPLMNListRef_t FPLMNListRef    ///< [IN] FPLMN list reference
 )
 {
     le_sim_FPLMNList_t *FPLMNListPtr = le_ref_Lookup(FPLMNListRefMap, FPLMNListRef);
@@ -2486,7 +2775,7 @@ le_result_t le_sim_WriteFPLMNList
 //--------------------------------------------------------------------------------------------------
 le_sim_FPLMNListRef_t le_sim_ReadFPLMNList
 (
-    le_sim_Id_t simId                       ///< [IN] The SIM identifier.
+    le_sim_Id_t simId                       ///< [IN] The SIM identifier
 )
 {
     le_sim_FPLMNList_t* FPLMNListPtr = (le_sim_FPLMNList_t*)le_mem_ForceAlloc(FPLMNListPool);
@@ -2529,11 +2818,11 @@ le_sim_FPLMNListRef_t le_sim_ReadFPLMNList
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_GetFirstFPLMNOperator
 (
-    le_sim_FPLMNListRef_t FPLMNListRef,       ///< [IN] FPLMN list reference.
-    char* mccPtr,                             ///< [OUT] Mobile Country Code.
-    size_t mccPtrSize,                        ///< [IN] Size of Mobile Country Code.
-    char* mncPtr,                             ///< [OUT] Mobile Network Code.
-    size_t mncPtrSize                         ///< [IN] Size of Mobile Network Code.
+    le_sim_FPLMNListRef_t FPLMNListRef,       ///< [IN] FPLMN list reference
+    char* mccPtr,                             ///< [OUT] Mobile Country Code
+    size_t mccPtrSize,                        ///< [IN] Size of Mobile Country Code
+    char* mncPtr,                             ///< [OUT] Mobile Network Code
+    size_t mncPtrSize                         ///< [IN] Size of Mobile Network Code
 )
 {
     le_dls_Link_t*          FPLMNLinkPtr;
@@ -2578,11 +2867,11 @@ le_result_t le_sim_GetFirstFPLMNOperator
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_GetNextFPLMNOperator
 (
-    le_sim_FPLMNListRef_t FPLMNListRef,       ///< [IN] FPLMN list reference.
-    char* mccPtr,                             ///< [OUT] Mobile Country Code.
-    size_t mccPtrSize,                        ///< [IN] Size of Mobile Country Code.
-    char* mncPtr,                             ///< [OUT] Mobile Network Code.
-    size_t mncPtrSize                         ///< [IN] Size of Mobile Network Code.
+    le_sim_FPLMNListRef_t FPLMNListRef,       ///< [IN] FPLMN list reference
+    char* mccPtr,                             ///< [OUT] Mobile Country Code
+    size_t mccPtrSize,                        ///< [IN] Size of Mobile Country Code
+    char* mncPtr,                             ///< [OUT] Mobile Network Code
+    size_t mncPtrSize                         ///< [IN] Size of Mobile Network Code
 )
 {
     le_dls_Link_t*          FPLMNLinkPtr;
@@ -2624,7 +2913,7 @@ le_result_t le_sim_GetNextFPLMNOperator
 //--------------------------------------------------------------------------------------------------
 void le_sim_DeleteFPLMNList
 (
-    le_sim_FPLMNListRef_t FPLMNListRef               ///< [IN] FPLMN list reference.
+    le_sim_FPLMNListRef_t FPLMNListRef               ///< [IN] FPLMN list reference
 )
 {
     le_sim_FPLMNList_t* FPLMNListPtr = le_ref_Lookup(FPLMNListRefMap, FPLMNListRef);
@@ -2715,12 +3004,12 @@ le_result_t le_sim_CloseLogicalChannel
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_SendApduOnChannel
 (
-    le_sim_Id_t simId,                  ///< [IN] The SIM identifier.
-    uint8_t channel,                    ///< [IN] The logical channel number.
-    const uint8_t* commandApduPtr,      ///< [IN] APDU command.
-    size_t commandApduNumElements,      ///< [IN] APDU command size.
-    uint8_t* responseApduPtr,           ///< [OUT] SIM response.
-    size_t* responseApduNumElementsPtr  ///< [INOUT] SIM response size.
+    le_sim_Id_t simId,                  ///< [IN] The SIM identifier
+    uint8_t channel,                    ///< [IN] The logical channel number
+    const uint8_t* commandApduPtr,      ///< [IN] APDU command
+    size_t commandApduNumElements,      ///< [IN] APDU command size
+    uint8_t* responseApduPtr,           ///< [OUT] SIM response
+    size_t* responseApduNumElementsPtr  ///< [INOUT] SIM response size
 )
 {
     if ((!commandApduPtr) || (!responseApduPtr) || (!responseApduNumElementsPtr))

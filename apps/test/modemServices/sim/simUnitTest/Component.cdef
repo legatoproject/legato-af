@@ -4,6 +4,7 @@ requires:
     {
         modemServices/le_mrc.api         [types-only]
         modemServices/le_sim.api         [types-only]
+        le_cfg.api                       [types-only]
     }
 }
 

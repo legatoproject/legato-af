@@ -5,6 +5,7 @@ requires:
         modemServices/le_mdmDefs.api       [types-only]
         modemServices/le_sim.api           [types-only]
         modemServices/le_mrc.api           [types-only]
+        le_cfg.api                         [types-only]
     }
 }
 

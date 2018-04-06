@@ -18,13 +18,15 @@ typedef struct
 {
     uint32_t appId;
     le_thread_Ref_t appThreadRef;
-    le_sim_NewStateHandlerRef_t statHandler;
+    le_sim_NewStateHandlerRef_t stateHandler;
     le_sim_Id_t simId;
     le_sim_States_t simState;
     le_sim_SimToolkitEventHandlerRef_t stkHandler;
     le_sim_StkEvent_t  stkEvent;
     le_sim_StkRefreshMode_t stkRefreshMode;
     le_sim_StkRefreshStage_t stkRefreshStage;
+    le_sim_IccidChangeHandlerRef_t iccidChangeHandler;
+    char iccid[LE_SIM_ICCID_BYTES];
 } AppContext_t;
 
 static AppContext_t AppCtx[NB_CLIENT];
@@ -209,7 +211,8 @@ static void SimStateHandler
     void* contextPtr
 )
 {
-    AppContext_t * appCtxPtr = (AppContext_t*) contextPtr;
+    AppContext_t* appCtxPtr = (AppContext_t*)contextPtr;
+    LE_ASSERT(NULL != appCtxPtr);
 
     LE_DEBUG("App id: %d", appCtxPtr->appId);
 
@@ -234,13 +237,14 @@ static void* AppHandler
     void* ctxPtr
 )
 {
-    AppContext_t * appCtxPtr = (AppContext_t*) ctxPtr;
+    AppContext_t* appCtxPtr = (AppContext_t*)ctxPtr;
+    LE_ASSERT(NULL != appCtxPtr);
 
     LE_DEBUG("App id: %d", appCtxPtr->appId);
 
     // Subscribe to SIM state handler
-    appCtxPtr->statHandler = le_sim_AddNewStateHandler(SimStateHandler, ctxPtr);
-    LE_ASSERT(appCtxPtr->statHandler != NULL);
+    appCtxPtr->stateHandler = le_sim_AddNewStateHandler(SimStateHandler, ctxPtr);
+    LE_ASSERT(NULL != appCtxPtr->stateHandler);
 
     // Semaphore is used to synchronize the task execution with the core test
     le_sem_Post(ThreadSemaphore);
@@ -261,7 +265,8 @@ static void StkHandler
     void* contextPtr
 )
 {
-    AppContext_t * appCtxPtr = (AppContext_t*) contextPtr;
+    AppContext_t* appCtxPtr = (AppContext_t*)contextPtr;
+    LE_ASSERT(NULL != appCtxPtr);
     LE_ASSERT(CurrentSimId == simId);
     LE_ASSERT(StkEvent == stkEvent);
 
@@ -289,14 +294,15 @@ static void AddStkHandler
     void* param2Ptr
 )
 {
-    AppContext_t * appCtxPtr = (AppContext_t*) param1Ptr;
+    AppContext_t* appCtxPtr = (AppContext_t*)param1Ptr;
+    LE_ASSERT(NULL != appCtxPtr);
 
-    // internal semaphore: le_sim internal variable SimToolkitHandlerCount must be correctly updated
+    // Internal semaphore: le_sim internal variable SimToolkitHandlerCount must be correctly updated
     // before calling le_sim_AddSimToolkitEventHandler again
     le_sem_Wait(StkHandlerSem);
 
     appCtxPtr->stkHandler = le_sim_AddSimToolkitEventHandler(StkHandler, appCtxPtr);
-    LE_ASSERT(appCtxPtr->stkHandler != NULL);
+    LE_ASSERT(NULL != appCtxPtr->stkHandler);
 
     le_sem_Post(StkHandlerSem);
 
@@ -316,11 +322,80 @@ static void RemoveHandler
     void* param2Ptr
 )
 {
-    AppContext_t * appCtxPtr = (AppContext_t*) param1Ptr;
+    AppContext_t* appCtxPtr = (AppContext_t*)param1Ptr;
+    LE_ASSERT(NULL != appCtxPtr);
 
-    le_sim_RemoveNewStateHandler( appCtxPtr->statHandler );
+    le_sim_RemoveNewStateHandler(appCtxPtr->stateHandler);
 
-    le_sim_RemoveSimToolkitEventHandler( appCtxPtr->stkHandler );
+    le_sim_RemoveSimToolkitEventHandler(appCtxPtr->stkHandler);
+
+    // Semaphore is used to synchronize the task execution with the core test
+    le_sem_Post(ThreadSemaphore);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * ICCID change handler: this handler is called when ICCID value changes
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void IccidChangeHandler
+(
+    le_sim_Id_t simId,
+    const char* iccidPtr,
+    void*       contextPtr
+)
+{
+    AppContext_t* appCtxPtr = (AppContext_t*)contextPtr;
+    LE_ASSERT(NULL != appCtxPtr);
+    LE_ASSERT(CurrentSimId == simId);
+
+    LE_ASSERT(0 != memcmp(iccidPtr, appCtxPtr->iccid, LE_SIM_ICCID_BYTES));
+
+    memcpy(appCtxPtr->iccid, iccidPtr, LE_SIM_ICCID_BYTES);
+
+    // Semaphore is used to synchronize the task execution with the core test
+    le_sem_Post(ThreadSemaphore);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add ICCID change handler: this function is used to add an ICCID change event handler
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddIccidChangeHandler
+(
+    void* param1Ptr,
+    void* param2Ptr
+)
+{
+    AppContext_t* appCtxPtr = (AppContext_t*)param1Ptr;
+    LE_ASSERT(NULL != appCtxPtr);
+
+    appCtxPtr->iccidChangeHandler = le_sim_AddIccidChangeHandler(IccidChangeHandler, appCtxPtr);
+    LE_ASSERT(NULL != appCtxPtr->iccidChangeHandler);
+
+    // Semaphore is used to synchronize the task execution with the core test
+    le_sem_Post(ThreadSemaphore);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove ICCID change handler: this function is used to remove an ICCID change event handler
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void RemoveIccidChangeHandler
+(
+    void* param1Ptr,
+    void* param2Ptr
+)
+{
+    AppContext_t* appCtxPtr = (AppContext_t*)param1Ptr;
+    LE_ASSERT(NULL != appCtxPtr);
+
+    le_sim_RemoveIccidChangeHandler(appCtxPtr->iccidChangeHandler);
 
     // Semaphore is used to synchronize the task execution with the core test
     le_sem_Post(ThreadSemaphore);
@@ -929,6 +1004,57 @@ static void TestSim_Stk
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Test ICCID change notification
+ *
+ * Exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void TestSim_ICCIDChange
+(
+    void
+)
+{
+    pa_sim_CardId_t iccid = "13141512901234567812";
+
+    // Subscribe an ICCID change handler to each running thread
+    int i=0;
+    for (; i<NB_CLIENT; i++)
+    {
+        le_event_QueueFunctionToThread( AppCtx[i].appThreadRef,
+                                        AddIccidChangeHandler,
+                                        &AppCtx[i],
+                                        NULL );
+    }
+    SynchTest();
+
+
+    // Change ICCID and trigger a refresh procedure to take it into account
+    StkEvent = LE_SIM_REFRESH;
+    pa_simSimu_SetCardIdentification(iccid);
+    pa_simSimu_SetRefreshMode(LE_SIM_REFRESH_FCN);
+    pa_simSimu_SetRefreshStage(LE_SIM_STAGE_END_WITH_SUCCESS);
+    pa_simSimu_SetExpectedSTKConfirmationCommand(true);
+    pa_simSimu_ReportSTKEvent(StkEvent);
+
+
+    // Wait for ICCID change handlers to end. An assert statement is implemented in each handler
+    // to check that the ICCID has changed.
+    SynchTest();
+
+    // Remove the handlers
+    for (i=0; i<NB_CLIENT; i++)
+    {
+        le_event_QueueFunctionToThread( AppCtx[i].appThreadRef,
+                                        RemoveIccidChangeHandler,
+                                        &AppCtx[i],
+                                        NULL );
+    }
+    SynchTest();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Test the multi-profile eUICC swap
  *
  * API tested:
@@ -1332,6 +1458,9 @@ static void* TestThread
     LE_INFO("======== Home network Test  ========");
     TestSim_HomeNetwork();
 
+    LE_INFO("======== Sim ICCID change Test ========");
+    TestSim_ICCIDChange();
+
     LE_INFO("======== Sim toolkit Test  ========");
     TestSim_Stk();
 
@@ -1367,8 +1496,14 @@ static void* TestThread
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+    le_cfg_IteratorRef_t iteratorRef = NULL;
+    char* pathPtr = NULL;
+
     // To reactivate for all DEBUG logs
- //   le_log_SetFilterLevel(LE_LOG_DEBUG);
+    // le_log_SetFilterLevel(LE_LOG_DEBUG);
+
+    // Init the config tree
+    le_cfg_SetString(iteratorRef, pathPtr, Iccid);
 
     // Init pa simu
     pa_simSimu_Init();
