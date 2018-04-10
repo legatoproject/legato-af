@@ -25,6 +25,10 @@
 //float - target temperature setting
 #define TARGET_TEMP_SET_RES "/home1/room1/thermostat/targetTemp"
 
+//Device configuration path
+#define DEVICE_CONFIG_SET_RES    "/deviceConfig"
+#define MAX_RESOURCES           20
+
 /* commands */
 
 // commands to turn off the air conditioning
@@ -73,6 +77,38 @@ static int OutsideTemp = 30;
  * Asset data handlers
  */
 //-------------------------------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Device Config setting data handler.
+ * This function is returned whenever AirVantage performs a write on /deviceConfig
+ */
+//-------------------------------------------------------------------------------------------------
+static void DeviceConfigHandler
+(
+    const char* path,
+    le_avdata_AccessType_t accessType,
+    le_avdata_ArgumentListRef_t argumentList,
+    void* contextPtr
+)
+{
+    int newValue;
+
+    // User has to append the app name to asset data path while writing from server side.
+    // Hence use global name space for accessing the value written to this path.
+    le_avdata_SetNamespace(LE_AVDATA_NAMESPACE_GLOBAL);
+    le_result_t resultGetInt = le_avdata_GetInt(path, &newValue);
+    le_avdata_SetNamespace(LE_AVDATA_NAMESPACE_APPLICATION);
+
+    if (LE_OK == resultGetInt)
+    {
+        LE_INFO("%s set to %d", path, newValue);
+    }
+    else
+    {
+        LE_ERROR("Error in getting setting %s - Error = %d", path, resultGetInt);
+    }
+}
 
 // [VariableDataHandler]
 //-------------------------------------------------------------------------------------------------
@@ -461,4 +497,26 @@ COMPONENT_INIT
     //start timer
     le_timer_Start(serverUpdateTimerRef);
     // [PushTimer]
+
+    le_result_t resultDeviceConfig;
+    char path[LE_AVDATA_PATH_NAME_BYTES];
+    int i;
+
+    // Create device config resources
+    for (i = 0; i < MAX_RESOURCES; i++)
+    {
+        snprintf(path, sizeof(path), "%s/%d", DEVICE_CONFIG_SET_RES, i);
+
+        LE_INFO("Creating asset %s", path);
+
+        resultDeviceConfig = le_avdata_CreateResource(path, LE_AVDATA_ACCESS_SETTING);
+        if (LE_FAULT == resultDeviceConfig)
+        {
+           LE_ERROR("Error in creating DEVICE_CONFIG_SET_RES");
+        }
+    }
+
+    // Add resource handler at the device config (root)
+    LE_INFO("Add resource event handler");
+    le_avdata_AddResourceEventHandler(DEVICE_CONFIG_SET_RES, DeviceConfigHandler, NULL);
 }

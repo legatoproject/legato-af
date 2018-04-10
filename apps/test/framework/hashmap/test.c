@@ -440,6 +440,8 @@ void TestIterRemove(le_hashmap_Ref_t map)
     {
         itercnt++;
         const uint32_t* keyPtr = le_hashmap_GetKey(mapIt);
+        LE_ASSERT(NULL != keyPtr);
+
         const uint32_t* valuePtr = le_hashmap_GetValue(mapIt);
 
         LE_ASSERT(*valuePtr == (*keyPtr * 2));
