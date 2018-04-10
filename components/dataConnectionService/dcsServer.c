@@ -157,7 +157,7 @@ static void ConnectionStatusHandler(le_data_Technology_t technology, bool connec
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Timer reference
+ * Stop Timer reference
  */
 //--------------------------------------------------------------------------------------------------
 static le_timer_Ref_t StopDcsTimer = NULL;
@@ -168,6 +168,13 @@ static le_timer_Ref_t StopDcsTimer = NULL;
  */
 //--------------------------------------------------------------------------------------------------
 static le_timer_Ref_t SetDNSConfigTimer = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retry Tech Timer reference
+ */
+//--------------------------------------------------------------------------------------------------
+static le_timer_Ref_t RetryTechTimer = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -196,6 +203,13 @@ static le_mdc_ProfileRef_t MobileProfileRef = NULL;
  */
 //--------------------------------------------------------------------------------------------------
 static le_mdc_SessionStateHandlerRef_t MobileSessionStateHandlerRef = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Store the packet session state handler
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mrc_PacketSwitchedChangeHandlerRef_t PacketSwitchStateHandlerRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1646,16 +1660,18 @@ static void TryStartDataSession
 {
     le_result_t result = le_mdc_StartSession(MobileProfileRef);
 
+    LE_DEBUG("%s: le_mdc_StartSession return code: %d", __func__, result);
+
     // Start data session
     if (result == LE_OK)
     {
-        LE_DEBUG("Data connection has been started successfully.");
-
-        // First wait a few seconds for the default DHCP client
+       // First wait a few seconds for the default DHCP client
         sleep(3);
 
         // Set the gateway retrieved from the modem
-        if (LE_OK != SetModemGateway())
+        result = SetModemGateway();
+        LE_DEBUG("%s: SetModemGateway return code: %d", __func__, result);
+        if (LE_OK != result)
         {
             // Impossible to use this technology, try the next one
             ConnectionStatusHandler(LE_DATA_CELLULAR, false);
@@ -1663,14 +1679,14 @@ static void TryStartDataSession
         else
         {
             // Wait a few seconds to prevent rapid toggling of data connection
+
             LE_DEBUG("Waiting a few seconds to prevent rapid toggling of data connection.");
             sleep(5);
         }
     }
     else if (result == LE_DUPLICATE)
     {
-        // Connection already established, don't do anything
-        LE_DEBUG("Data connection is already established.");
+        LE_INFO("Data connection is already established.");
         return;
     }
     else
@@ -1753,6 +1769,8 @@ static void TryStartTechSession
     le_data_Technology_t technology     ///< [IN] Technology to use for the data session
 )
 {
+    LE_DEBUG("%s: technology passed: %d", __func__, technology);
+
     if (LE_DATA_MAX == technology)
     {
         LE_ERROR("Unknown technology used to start the data session!");
@@ -1856,6 +1874,8 @@ static void TryStopDataSession
 
     // Check if the mobile data session is already disconnected
     result = le_mdc_GetSessionState(MobileProfileRef, &sessionState);
+    LE_DEBUG("%s: result:  %d, sessionState: %d", __func__, result, sessionState);
+
     if ((LE_OK == result) && (!sessionState))
     {
         IsConnected = false;
@@ -1869,8 +1889,20 @@ static void TryStopDataSession
     }
     else
     {
-        // Try to shutdown the connection anyway
-        if (LE_OK != le_mdc_StopSession(MobileProfileRef))
+        // Only tear down the session if no request has been made
+        if (0 == RequestCount)
+        {
+            LE_INFO("Tearing down data session");
+        }
+        else
+        {
+            LE_INFO("There is a request for a data session, do not try and stop.");
+            return;
+        }
+
+        result = le_mdc_StopSession(MobileProfileRef);
+        LE_INFO("%s: le_mdc_StopSession return code: %d", __func__, result);
+        if (LE_OK != result)
         {
             LE_ERROR("Impossible to stop mobile data session");
 
@@ -1880,9 +1912,16 @@ static void TryStopDataSession
             // Start timer
             if (!le_timer_IsRunning(timerRef))
             {
-                if (LE_OK != le_timer_Start(timerRef))
+                if (LE_OK != le_timer_SetContextPtr(timerRef, (void*)((intptr_t)LE_DATA_CELLULAR)))
                 {
-                    LE_ERROR("Could not start the StopDcs timer!");
+                    LE_ERROR("Could not set context pointer for the StopDcs timer!");
+                }
+                else
+                {
+                    if (LE_OK != le_timer_Start(timerRef))
+                    {
+                        LE_ERROR("Could not start the StopDcs timer!");
+                    }
                 }
             }
         }
@@ -1920,9 +1959,16 @@ static void TryStopWifiSession
         // Start timer
         if (!le_timer_IsRunning(timerRef))
         {
-            if (LE_OK != le_timer_Start(timerRef))
+            if (LE_OK != le_timer_SetContextPtr(timerRef, (void*)((intptr_t)LE_DATA_WIFI)))
             {
-                LE_ERROR("Could not start the StopDcs timer!");
+                LE_ERROR("Could not set context pointer for the StopDcs timer!");
+            }
+            else
+            {
+                if (LE_OK != le_timer_Start(timerRef))
+                {
+                    LE_ERROR("Could not start the StopDcs timer!");
+                }
             }
         }
     }
@@ -1977,6 +2023,8 @@ static void StopDcsTimerHandler
     le_timer_Ref_t timerRef     ///< [IN] Timer used to ensure the end of the session
 )
 {
+    le_data_Technology_t technology = (intptr_t)le_timer_GetContextPtr(timerRef);
+
     if (0 != RequestCount)
     {
         // Request has been requested in the meantime, the Release command process
@@ -1987,7 +2035,7 @@ static void StopDcsTimerHandler
     }
     else
     {
-        switch (CurrentTech)
+        switch (technology)
         {
             case LE_DATA_CELLULAR:
             {
@@ -2030,6 +2078,27 @@ static void StopDcsTimerHandler
                 break;
         }
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retry next tech Timer Handler
+ * When the timer expires, proceed to trying the next technology.
+ */
+//--------------------------------------------------------------------------------------------------
+static void RetryTechTimerHandler
+(
+    le_timer_Ref_t timerRef     ///< [IN] Timer used to ensure the end of the session
+)
+{
+    le_data_Technology_t technology = (intptr_t)le_timer_GetContextPtr(timerRef);
+    LE_DEBUG("Retrying tech timer: %d", technology);
+
+    // Disconnect the current technology which is not available anymore
+    TryStopTechSession(technology);
+
+    // Connect the next technology to use
+    TryStartTechSession(GetNextTech(technology));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2080,13 +2149,53 @@ static void ProcessCommand
 
         if (0 == RequestCount)
         {
-            // Try and disconnect the current technology
             TryStopTechSession(CurrentTech);
+
+            // Try and disconnect the current technology
+            if (NULL != PacketSwitchStateHandlerRef)
+            {
+                le_mrc_RemovePacketSwitchedChangeHandler(PacketSwitchStateHandlerRef);
+                PacketSwitchStateHandlerRef = NULL;
+            }
         }
     }
     else
     {
         LE_ERROR("Command %i is not valid", command);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function for PS change notifications.
+ * When the connection is disconnected, we depend on packet switch event to determine when to try
+ * again.
+ */
+//--------------------------------------------------------------------------------------------------
+static void PacketSwitchHandler
+(
+    le_mrc_NetRegState_t psState,
+    void*        contextPtr
+)
+{
+    LE_DEBUG("New PS state: %d", psState);
+    switch(psState)
+    {
+        case LE_MRC_REG_NONE:
+            LE_DEBUG("New PS state LE_MRC_REG_NONE");
+            break;
+        case LE_MRC_REG_HOME:
+        case LE_MRC_REG_ROAMING:
+            LE_DEBUG("New PS state ATTACHED");
+            if ((LE_DATA_CELLULAR == CurrentTech) && (RequestCount > 0) && (!IsConnected))
+            {
+                // Start a connection
+                TryStartDataSession();
+            }
+            break;
+        default:
+            LE_ERROR("New PS state unknown PS state %d", psState);
+            break;
     }
 }
 
@@ -2116,7 +2225,27 @@ static void CellNetStateHandler
             // Check if the mobile data session should be started
             if ((LE_DATA_CELLULAR == CurrentTech) && (RequestCount > 0) && (!IsConnected))
             {
-                TryStartDataSession();
+                // Register for packet switch state change
+                // This will be the only case where we will open a connection based on registration state,
+                // subsequent retries will be driven from ps state event.
+                if (NULL == PacketSwitchStateHandlerRef)
+                {
+                    LE_DEBUG("Registering for packet switch state change");
+                    PacketSwitchStateHandlerRef = le_mrc_AddPacketSwitchedChangeHandler(PacketSwitchHandler, NULL);
+                }
+
+                // Check if the device is attached yet
+                le_mrc_NetRegState_t serviceState;
+                le_result_t res = le_mrc_GetPacketSwitchedState(&serviceState);
+
+                if ((res == LE_OK) &&
+                    ((LE_MRC_REG_HOME == serviceState) || (LE_MRC_REG_ROAMING == serviceState)))
+                {
+                    LE_INFO("Device is attached, ready to start a data session");
+
+                    // Start a connection
+                    TryStartDataSession();
+                }
             }
             break;
     }
@@ -2133,14 +2262,27 @@ static void ConnectionStatusHandler
     bool connected                      ///< [IN] Connection status
 )
 {
+    LE_DEBUG("%s: technology passed :  %d", __func__, technology);
+    LE_DEBUG("%s: connected passed  :  %d", __func__, connected);
+
     // Check if the default data connection is still necessary
     if ((false == connected) && (RequestCount > 0))
     {
-        // Disconnect the current technology which is not available anymore
-        TryStopTechSession(CurrentTech);
-
-        // Connect the next technology to use
-        TryStartTechSession(GetNextTech(CurrentTech));
+        // Start timer to start the next technology
+        if (!le_timer_IsRunning(RetryTechTimer))
+        {
+            if (LE_OK != le_timer_SetContextPtr(RetryTechTimer, (void*)((intptr_t)technology)))
+            {
+                LE_ERROR("Could not set context pointer for the RetryTechTimer timer!");
+            }
+            else
+            {
+                if (LE_OK != le_timer_Start(RetryTechTimer))
+                {
+                    LE_ERROR("Could not start the RetryTechTimer timer!");
+                }
+            }
+        }
     }
 }
 
@@ -2611,14 +2753,26 @@ COMPONENT_INIT
 
     // Set a timer to retry the stop data session
     StopDcsTimer = le_timer_Create("StopDcsTimer");
-    le_clk_Time_t interval = {0, 5};    // 5 seconds
+    le_clk_Time_t stopInterval = {0, 5};    // 5 seconds
 
     if (   (LE_OK != le_timer_SetHandler(StopDcsTimer, StopDcsTimerHandler))
         || (LE_OK != le_timer_SetRepeat(StopDcsTimer, 1))       // One shot timer
-        || (LE_OK != le_timer_SetInterval(StopDcsTimer, interval))
+        || (LE_OK != le_timer_SetInterval(StopDcsTimer, stopInterval))
        )
     {
         LE_ERROR("Could not configure the StopDcs timer!");
+    }
+
+    // Set a timer to retry the tech
+    RetryTechTimer = le_timer_Create("RetryTechTimer");
+    le_clk_Time_t retryInterval = {5, 0};    // 5 seconds
+
+    if (   (LE_OK != le_timer_SetHandler(RetryTechTimer, RetryTechTimerHandler))
+        || (LE_OK != le_timer_SetRepeat(RetryTechTimer, 1))       // One shot timer
+        || (LE_OK != le_timer_SetInterval(RetryTechTimer, retryInterval))
+       )
+    {
+        LE_ERROR("Could not configure the RetryTechTimer timer!");
     }
 
     // Add a handler to the close session service

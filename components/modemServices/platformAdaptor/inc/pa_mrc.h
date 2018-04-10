@@ -244,6 +244,19 @@ typedef void (*pa_mrc_RatChangeHdlrFunc_t)
 );
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Prototype for handler functions used to report the Service state change.
+ *
+ * @param servicePtr The service state.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*pa_mrc_ServiceChangeHdlrFunc_t)
+(
+    le_mrc_NetRegState_t* servicePtr
+);
+
+//--------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 // APIs.
 //--------------------------------------------------------------------------------------------------
 
@@ -295,6 +308,32 @@ LE_SHARED le_event_HandlerRef_t pa_mrc_SetRatChangeHandler
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED void pa_mrc_RemoveRatChangeHandler
+(
+    le_event_HandlerRef_t handlerRef
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register a handler for Packet Switched change handling.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_event_HandlerRef_t pa_mrc_SetPSChangeHandler
+(
+    pa_mrc_ServiceChangeHdlrFunc_t handlerFuncPtr ///< [IN] The handler function.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to unregister the handler for Packet Switched change
+ * handling.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void pa_mrc_RemovePSChangeHandler
 (
     le_event_HandlerRef_t handlerRef
 );
@@ -871,6 +910,21 @@ LE_SHARED le_result_t pa_mrc_GetLteBandCapabilities
 LE_SHARED le_result_t pa_mrc_GetTdScdmaBandCapabilities
 (
     le_mrc_TdScdmaBandBitMask_t* bandsPtr ///< [OUT] Bit mask to get the TD-SCDMA Band capabilities.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Packet Switched state.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mrc_GetPacketSwitchedState
+(
+    le_mrc_NetRegState_t* statePtr  ///< [OUT] The current Packet switched state.
 );
 
 #endif // LEGATO_PARC_INCLUDE_GUARD

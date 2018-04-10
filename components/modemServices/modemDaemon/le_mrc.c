@@ -353,6 +353,14 @@ static le_event_Id_t RatChangeId;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Event ID for New Packet Switched change notification.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t PSChangeId;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Memory Pool for Signal Metrics data.
  */
 //--------------------------------------------------------------------------------------------------
@@ -517,6 +525,28 @@ static void FirstLayerRatChangeHandler
     le_mem_Release(reportPtr);
 }
 
+//--------------------------------------------------------------------------------------------------Rat
+/**
+ * The first-layer Packet Switched Change Handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void FirstLayerPSChangeHandler
+(
+    void* reportPtr,
+    void* secondLayerHandlerFunc
+)
+{
+    le_mrc_NetRegState_t*         serviceStatePtr = (le_mrc_NetRegState_t*) reportPtr;
+    le_mrc_PacketSwitchedChangeHandlerFunc_t clientHandlerFunc =
+                    (le_mrc_PacketSwitchedChangeHandlerFunc_t) secondLayerHandlerFunc;
+
+    clientHandlerFunc(*serviceStatePtr, le_event_GetContextPtr());
+
+    // The reportPtr is a reference counted object, so need to release it
+    le_mem_Release(reportPtr);
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Radio Access Technology Change handler function.
@@ -532,6 +562,23 @@ static void RatChangeHandler
 
     // Notify all the registered client's handlers
     le_event_ReportWithRefCounting(RatChangeId, ratPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Packet Switched Change handler function.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void PSChangeHandler
+(
+    le_mrc_NetRegState_t* serviceStatePtr
+)
+{
+    LE_DEBUG("Handler Function called with PS %d", *serviceStatePtr);
+
+    // Notify all the registered client's handlers
+    le_event_ReportWithRefCounting(PSChangeId, serviceStatePtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1043,6 +1090,9 @@ void le_mrc_Init
     // Create an event Id for RAT change notification
     RatChangeId = le_event_CreateIdWithRefCounting("RatChange");
 
+    // Create an event Id for Packet Switched change notification
+    PSChangeId = le_event_CreateIdWithRefCounting("PSChange");
+
     // Create an event Id for Signal Strength change notification
     GsmSsChangeId = le_event_CreateIdWithRefCounting("GsmSsChange");
     UmtsSsChangeId = le_event_CreateIdWithRefCounting("UmtsSsChange");
@@ -1051,6 +1101,9 @@ void le_mrc_Init
 
     // Register a handler function for new Registration State indication
     pa_mrc_AddNetworkRegHandler(NewRegStateHandler);
+
+    // Register a handler function for new Packet Switched change indication
+    pa_mrc_SetPSChangeHandler(PSChangeHandler);
 
     // Register a handler function for new RAT change indication
     pa_mrc_SetRatChangeHandler(RatChangeHandler);
@@ -2108,6 +2161,52 @@ void le_mrc_RemoveRatChangeHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Add handler function for EVENT 'le_mrc_PacketSwitchedChange'
+ *
+ * This event provides information on Packet Switched service changes.
+ *
+ * @note <b>multi-app safe</b>
+ */
+//--------------------------------------------------------------------------------------------------
+le_mrc_PacketSwitchedChangeHandlerRef_t le_mrc_AddPacketSwitchedChangeHandler
+(
+    le_mrc_PacketSwitchedChangeHandlerFunc_t packetHandlerPtr,  ///< [IN] The handler function.
+    void* contextPtr                                            ///< [IN] The handler's context.
+)
+{
+    le_event_HandlerRef_t        handlerRef;
+
+    if (NULL == packetHandlerPtr)
+    {
+        LE_KILL_CLIENT("Handler function is NULL !");
+        return NULL;
+    }
+
+    handlerRef = le_event_AddLayeredHandler("PacketSwitchedChangeHandler",
+        PSChangeId,
+        FirstLayerPSChangeHandler,
+        (le_event_HandlerFunc_t)packetHandlerPtr);
+
+    le_event_SetContextPtr(handlerRef, contextPtr);
+
+    return (le_mrc_PacketSwitchedChangeHandlerRef_t)(handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove handler function for EVENT 'le_mrc_PacketSwitchedChange'
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mrc_RemovePacketSwitchedChangeHandler
+(
+    le_mrc_PacketSwitchedChangeHandlerRef_t handlerRef ///< [IN]
+)
+{
+    le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to set the power of the Radio Module.
  *
  * @return LE_FAULT  The function failed.
@@ -2379,6 +2478,25 @@ le_result_t le_mrc_GetCurrentNetworkMccMnc
         return LE_FAULT;
 
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Packet Switched state.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ *
+ * @note <b>multi-app safe</b>
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetPacketSwitchedState
+(
+    le_mrc_NetRegState_t* statePtr ///< [OUT] The current Packet switched state.
+)
+{
+    return pa_mrc_GetPacketSwitchedState(statePtr);
 }
 
 //--------------------------------------------------------------------------------------------------

@@ -663,6 +663,29 @@ EVENT RatChange
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Handler for Packet Switched service state changes.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER PacketSwitchedChangeHandler
+(
+    NetRegState state    ///< Parameter ready to receive the Packet Switched service state.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on Packet Switched service changes.
+ *
+ * @note <b>multi-app safe</b>
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT PacketSwitchedChange
+(
+    PacketSwitchedChangeHandler packetHandler
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Handler for Signal Strength value changes.
  *
  */
@@ -785,6 +808,21 @@ FUNCTION le_result_t GetRegisterMode
     string mncPtr[MNC_LEN] OUT  ///< Mobile Network Code
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Packet Switched state.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ *
+ * @note <b>multi-app safe</b>
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPacketSwitchedState
+(
+    NetRegState state OUT ///< The current Packet switched state.
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
