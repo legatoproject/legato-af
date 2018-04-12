@@ -743,6 +743,8 @@ static void AddRequiredItems
 )
 //--------------------------------------------------------------------------------------------------
 {
+    std::list<const parseTree::CompoundItem_t*> reqKernelModulesSections;
+
     // "requires:" section is comprised of subsections,
     for (auto memberPtr : static_cast<const parseTree::ComplexSection_t*>(sectionPtr)->Contents())
     {
@@ -816,6 +818,10 @@ static void AddRequiredItems
                 AddRequiredLib(componentPtr, itemPtr, buildParams);
             }
         }
+        else if (subsectionName == "kernelModules")
+        {
+            reqKernelModulesSections.push_back(memberPtr);
+        }
         else
         {
             memberPtr->ThrowException(
@@ -823,6 +829,8 @@ static void AddRequiredItems
             );
         }
     }
+
+    AddRequiredKernelModules(componentPtr->requiredModules, reqKernelModulesSections, buildParams);
 }
 
 

@@ -54,6 +54,7 @@ struct App_t : public HasTargetInfo_t
     FileObjectPtrSet_t requiredFiles; ///< List of files to be imported into the app.
     FileObjectPtrSet_t requiredDirs;  ///< List of dirs to be imported into the app.
     FileObjectPtrSet_t requiredDevices;///< List of devices to be imported into the app.
+    std::set<std::string> requiredModules;  ///< Set of required modules in the app.
 
     std::list<ProcessEnv_t*> processEnvs;   ///< Process environments defined in the app.
 

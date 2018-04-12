@@ -569,6 +569,10 @@ static parseTree::CompoundItem_t* ParseRequiresSubsection
     {
         return ParseComplexSection(lexer, subsectionNameTokenPtr, ParseRequiredDevice);
     }
+    else if (subsectionName == "kernelModules")
+    {
+        return ParseComplexSection(lexer, subsectionNameTokenPtr, ParseRequiredModule);
+    }
     else
     {
         lexer.ThrowException(

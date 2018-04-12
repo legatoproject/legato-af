@@ -24,7 +24,6 @@ namespace model
 std::map<std::string, Component_t*> Component_t::ComponentMap;
 
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Get a pre-existing Component object for the component found at a given directory path.

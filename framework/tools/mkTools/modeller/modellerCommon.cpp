@@ -658,6 +658,35 @@ void SetStart
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets whether the Supervisor will load the module automatically at system start-up,
+ * or only when asked to do so, based on the contents of a "load:" section in the parse tree.
+ */
+//--------------------------------------------------------------------------------------------------
+void SetLoad
+(
+    model::Module_t* modulePtr,
+    const parseTree::SimpleSection_t* sectionPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto& mode = sectionPtr->Text();
+
+    if (mode == "auto")
+    {
+        modulePtr->loadTrigger = model::Module_t::AUTO;
+    }
+    else if (mode == "manual")
+    {
+        modulePtr->loadTrigger = model::Module_t::MANUAL;
+    }
+    else
+    {
+        sectionPtr->Contents()[0]->ThrowException(LE_I18N("Internal error: "
+                                                          "unexpected module load option."));
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -792,6 +821,104 @@ model::ApiFile_t* GetApiFilePtr
     return apiFilePtr;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add each kernel module name within "requires: kernelModules:" section to the dependency list.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ReqKernelModule
+(
+    std::set<std::string>& requiredModules,
+    const parseTree::Module_t* sectionPtr,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string moduleName;
+    std::string modulePath;
+
+    // Tokens in the module subsection are paths to their .mdef file
+    const auto moduleSpec = path::Unquote(DoSubstitution(sectionPtr->firstTokenPtr));
+    if (path::HasSuffix(moduleSpec, ".mdef"))
+    {
+        moduleName = path::RemoveSuffix(path::GetLastNode(moduleSpec), ".mdef");
+        modulePath = file::FindFile(moduleSpec, buildParams.moduleDirs);
+    }
+    else
+    {
+        // Append ".mdef" to path
+        moduleName = path::GetLastNode(moduleSpec);
+        modulePath = file::FindFile(moduleSpec + ".mdef", buildParams.moduleDirs);
+    }
+
+    if (modulePath.empty())
+    {
+        std::string formattedMsg =
+            mk::format(LE_I18N("Can't find definition file (.mdef) "
+                               "for module specification '%s'.\n"
+                               "note: Looked in the following places:\n"), moduleSpec);
+        for (auto& dir : buildParams.moduleDirs)
+        {
+            formattedMsg += "    '" + dir + "'\n";
+        }
+        sectionPtr->ThrowException(formattedMsg);
+    }
+
+    // Check for duplicates.
+    auto modulesIter = requiredModules.find(moduleName);
+    if (modulesIter != requiredModules.end())
+    {
+        sectionPtr->ThrowException(
+            mk::format(LE_I18N("Module '%s' added to the app more than once.\n"),
+                       moduleName)
+        );
+    }
+
+    requiredModules.insert(moduleName);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Iterate through each kernel module listed in "requires: kernelModules:" section.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ReqKernelModulesSection
+(
+    std::set<std::string>& requiredModules,
+    const parseTree::CompoundItem_t* sectionPtr,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto moduleSectionPtr = dynamic_cast<const parseTree::CompoundItemList_t*>(sectionPtr);
+
+    for (auto itemPtr : moduleSectionPtr->Contents())
+    {
+        ReqKernelModule(requiredModules,
+                        dynamic_cast<const parseTree::Module_t*>(itemPtr),
+                        buildParams);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add required kernel module section from "requires:" "kernelModules:" section to a given object.
+ */
+//--------------------------------------------------------------------------------------------------
+void AddRequiredKernelModules
+(
+    std::set<std::string>& requiredModules,
+    const std::list<const parseTree::CompoundItem_t*>& reqKernelModulesSections,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto sectionPtr : reqKernelModulesSections)
+    {
+        ReqKernelModulesSection(requiredModules, sectionPtr, buildParams);
+    }
+}
 
 
 

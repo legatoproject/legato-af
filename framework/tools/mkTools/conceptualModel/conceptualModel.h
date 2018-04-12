@@ -100,8 +100,8 @@ namespace model
 #include "exe.h"
 #include "process.h"
 #include "processEnvironment.h"
-#include "app.h"
 #include "module.h"
+#include "app.h"
 #include "command.h"
 #include "system.h"
 

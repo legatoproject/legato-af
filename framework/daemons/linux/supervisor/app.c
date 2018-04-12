@@ -60,7 +60,7 @@
 #include "fileSystem.h"
 #include "file.h"
 #include "ima.h"
-
+#include "kernelModules.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -158,6 +158,14 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define CFG_NODE_DEVICES                                "devices"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The name of the node in the config tree that contains the list of kernel modules that
+ * an application needs.
+ */
+//--------------------------------------------------------------------------------------------------
+#define CFG_NODE_KERNELMODULES                           "kernelModules"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -342,6 +350,7 @@ typedef struct app_Ref
     le_timer_Ref_t  killTimer;          // Timeout timer for killing processes.
     le_sls_List_t   additionalLinks;    // List of additional links that are temporarily added to
                                         // the app.
+    le_sls_List_t reqModuleName;        // List of required kernel module names
 }
 App_t;
 
@@ -408,6 +417,14 @@ ProcContainer_t;
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t ProcContainerPool;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The memory pool for required kernel modules strings.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t ReqModStringPool;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -2379,6 +2396,55 @@ static le_result_t CheckPathConflict
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get kernel modules dependency from configTree and trigger installation of unloaded modules
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetKernelModules(app_Ref_t appRef)
+{
+    ModNameNode_t* modNameNodePtr;
+    // Get a config iterator for this app.
+    le_cfg_IteratorRef_t iter = le_cfg_CreateReadTxn(appRef->cfgPathRoot);
+
+    // Go to the required kernelModules section.
+    le_cfg_GoToNode(iter, CFG_NODE_REQUIRES "/" CFG_NODE_KERNELMODULES);
+
+    if (le_cfg_GoToFirstChild(iter) == LE_OK)
+    {
+        do
+        {
+            if (le_cfg_GetNodeType(iter, ".") != LE_CFG_TYPE_STRING)
+            {
+                LE_WARN("Found non-string type kernel module dependency");
+                continue;
+            }
+
+            modNameNodePtr = le_mem_ForceAlloc(ReqModStringPool);
+            modNameNodePtr->link = LE_SLS_LINK_INIT;
+
+            le_cfg_GetString(iter, "", modNameNodePtr->modName, sizeof(modNameNodePtr->modName), "");
+
+            if (strncmp(modNameNodePtr->modName, "", sizeof(modNameNodePtr->modName)) == 0)
+            {
+                LE_WARN("Found empty kernel module dependency");
+                le_mem_Release(modNameNodePtr);
+                continue;
+            }
+            le_sls_Queue(&(appRef->reqModuleName), &(modNameNodePtr->link));
+        }
+        while (le_cfg_GoToNextSibling(iter) == LE_OK);
+    }
+
+    le_cfg_CancelTxn(iter);
+
+    if (!le_sls_IsEmpty(&(appRef->reqModuleName)))
+    {
+        kernelModules_InsertListOfModules(appRef->reqModuleName);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Checks if the path refers to a directory.
  *
  * @return
@@ -2491,6 +2557,7 @@ void app_Init
     AppPool = le_mem_CreatePool("Apps", sizeof(App_t));
     FileLinkNodePool = le_mem_CreatePool("Links", sizeof(FileLinkNode_t));
     ProcContainerPool = le_mem_CreatePool("ProcContainers", sizeof(ProcContainer_t));
+    ReqModStringPool = le_mem_CreatePool("Required Modules", sizeof(ModNameNode_t));
 
     proc_Init();
 
@@ -2644,6 +2711,7 @@ app_Ref_t app_Create
     appPtr->additionalLinks = LE_SLS_LIST_INIT;
     appPtr->state = APP_STATE_STOPPED;
     appPtr->killTimer = NULL;
+    appPtr->reqModuleName = LE_SLS_LIST_INIT;
 
     // Get a config iterator for this app.
     le_cfg_IteratorRef_t cfgIterator = le_cfg_CreateReadTxn(appPtr->cfgPathRoot);
@@ -2760,6 +2828,7 @@ app_Ref_t app_Create
         goto failed;
     }
 
+    GetKernelModules(appPtr);
     le_cfg_CancelTxn(cfgIterator);
     return appPtr;
 
@@ -2823,7 +2892,7 @@ void app_Delete
         le_timer_Delete(appRef->killTimer);
     }
 
-    // Relesase app.
+    // Release app.
     le_mem_Release(appRef);
 }
 
@@ -2918,6 +2987,11 @@ void app_Stop
 )
 {
     LE_INFO("Stopping app '%s'", appRef->name);
+
+    if (!le_sls_IsEmpty(&(appRef->reqModuleName)))
+    {
+        kernelModules_RemoveListOfModules(appRef->reqModuleName);
+    }
 
     if (appRef->state == APP_STATE_STOPPED)
     {

@@ -143,8 +143,6 @@ void PrintSummary
     model::System_t* systemPtr
 );
 
-
-
 } // namespace modeller
 
 #endif // LEGATO_MKTOOLS_MODELLER_H_INCLUDE_GUARD

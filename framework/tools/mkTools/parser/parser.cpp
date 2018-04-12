@@ -428,6 +428,22 @@ parseTree::CompoundItemList_t* ParseBundlesSubsection
     return ParseComplexSection(lexer, nameTokenPtr, itemParser);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parses an entry in the required "kernelModules:" section in a .mdef file.
+ *
+ * @return Pointer to the item.
+ */
+//--------------------------------------------------------------------------------------------------
+parseTree::CompoundItemList_t* ParseRequiredModule
+(
+    Lexer_t& lexer
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Pull the module filename and create a new object for it.
+    return new parseTree::Module_t(lexer.Pull(parseTree::Token_t::FILE_PATH));
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

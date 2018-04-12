@@ -1108,6 +1108,30 @@ requires:
 @note   If an access to the directory @c /dev/shm is required, it should be listed in the subsection
         @c dir: because it is treated like a directory even if it is located in @c /dev.
 
+
+@subsection defFilesAdef_requireskm kernelModules
+
+Your app may depend on one or more kernel modules to load before the app starts. Use
+@c kernelModules: section to declare the app dependencies on kernel modules. Each entry is a path
+to another @ref defFilesMdef ".mdef" definition file. This section marks that the app has a
+requirement on a kernel module but does not add the kernel module to the Legato system. The kernel
+module needs to be @b explicitly @b added to kernelModules: section of your systems
+@ref defFilesSdef ".sdef". After the kernel modules are added to the sdef, the modules will be
+bundled as a part of the application and installed with the Legato system. The listed modules will
+be installed before the app starts. In the example below, hello and world kernel modules will be
+installed before the app starts.
+
+@code
+requires:
+{
+    kernelModules:
+    {
+       $CURDIR/kernelmodule/hello
+       $CURDIR/kernelmodule/world
+    }
+}
+@endcode
+
 @section defFilesAdef_sandboxed sandboxed
 
 Specifies if the app will be launched inside a sandbox.

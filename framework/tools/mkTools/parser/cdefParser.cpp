@@ -185,6 +185,10 @@ static parseTree::CompoundItem_t* ParseRequiresSubsection
     {
         return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
     }
+    else if (subsectionName == "kernelModules")
+    {
+        return ParseComplexSection(lexer, sectionNameTokenPtr, ParseRequiredModule);
+    }
     else
     {
         lexer.ThrowException(

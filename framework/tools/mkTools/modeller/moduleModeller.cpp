@@ -66,6 +66,17 @@ void PrintSummary
             }
         }
     }
+
+    // load trigger.
+    if (modulePtr->loadTrigger == model::Module_t::AUTO)
+    {
+        std::cout << LE_I18N("  Will be loaded automatically when the Legato framework starts.")
+                  << std::endl;
+    }
+    else
+    {
+        std::cout << LE_I18N("  Will only load when requested to start.") << std::endl;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -211,9 +222,44 @@ static void AddLdFlags
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Model a "requires:" section.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddRequiredItems
+(
+    model::Module_t* modulePtr,
+    const parseTree::Content_t* sectionPtr,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::list<const parseTree::CompoundItem_t*> reqKernelModulesSections;
+
+    for (auto subsectionPtr : ToCompoundItemListPtr(sectionPtr)->Contents())
+    {
+        auto& subsectionName = subsectionPtr->firstTokenPtr->text;
+
+        if ("kernelModules" == subsectionName)
+        {
+           reqKernelModulesSections.push_back(subsectionPtr);
+        }
+        else
+        {
+            subsectionPtr->ThrowException(
+                mk::format(LE_I18N("Internal error: Unrecognized sub-section '%s'."),
+                           subsectionName)
+            );
+        }
+    }
+
+    // Add the required kernel modules.
+    AddRequiredKernelModules(modulePtr->requiredModules, reqKernelModulesSections, buildParams);
+}
+
 
 //--------------------------------------------------------------------------------------------------
-
 /**
  * Get a conceptual model for a module whose .mdef file can be found at a given path.
  *
@@ -282,6 +328,20 @@ model::Module_t* GetModule
         else if ("ldflags" == sectionName)
         {
             AddLdFlags(modulePtr, sectionPtr);
+        }
+        else if ("requires" == sectionName)
+        {
+            AddRequiredItems(modulePtr, sectionPtr, buildParams);
+        }
+        else if (sectionName == "load")
+        {
+            SetLoad(modulePtr, ToSimpleSectionPtr(sectionPtr));
+        }
+        else
+        {
+            sectionPtr->ThrowException(
+                mk::format(LE_I18N("Internal error: Unrecognized section '%s'."), sectionName)
+            );
         }
     }
 

@@ -48,10 +48,21 @@ struct Module_t : public HasTargetInfo_t
 
     std::map<std::string, std::string> params; ///< Module insmod parameters
 
+    std::set<std::string> requiredModules;  ///< Set of required kernel modules
+
+    enum {AUTO, MANUAL} loadTrigger;  ///< Module is loaded either auto at startup or manually
+
     void SetBuildEnvironment(ModuleBuildType_t type, std::string path);  ///< Set build targets and
                                                                          ///< environment
 
     void AddParam(std::string name, std::string value);  ///< Add module param
+
+    static Module_t* GetModule(const std::string& path); ///< Get module object for a module name
+
+protected:
+
+    static std::map<std::string, Module_t*> ModuleMap;  ///< Map of module name to module objects
+
 };
 
 

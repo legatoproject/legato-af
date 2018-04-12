@@ -566,10 +566,13 @@ static void AddConfigTree
 static void AddRequiredItems
 (
     model::App_t* appPtr,
-    const parseTree::Content_t* sectionPtr
+    const parseTree::Content_t* sectionPtr,
+    const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
+    std::list<const parseTree::CompoundItem_t*> reqKernelModulesSections;
+
     for (auto subsectionPtr : ToCompoundItemListPtr(sectionPtr)->Contents())
     {
         auto& subsectionName = subsectionPtr->firstTokenPtr->text;
@@ -614,6 +617,10 @@ static void AddRequiredItems
                             static_cast<const parseTree::RequiredConfigTree_t*>(configTreeSpecPtr));
             }
         }
+        else if (subsectionName == "kernelModules")
+        {
+            reqKernelModulesSections.push_back(subsectionPtr);
+        }
         else
         {
             subsectionPtr->ThrowException(
@@ -622,6 +629,7 @@ static void AddRequiredItems
             );
         }
     }
+    AddRequiredKernelModules(appPtr->requiredModules, reqKernelModulesSections, buildParams);
 }
 
 
@@ -1672,6 +1680,56 @@ static void EnsurePathIsSet
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the list of all the required kernel modules of all the components listed.
+ */
+//--------------------------------------------------------------------------------------------------
+void GetRequiredKModules
+(
+    model::App_t* appPtr,
+    std::list<model::Component_t*> compList
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto const& it : compList)
+    {
+        model::Component_t *compPtr = it;
+        if (compPtr->subComponents.size() != 0)
+        {
+            GetRequiredKModules(appPtr, compPtr->subComponents);
+        }
+        appPtr->requiredModules.insert(compPtr->requiredModules.begin(),
+                                       compPtr->requiredModules.end());
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the list of all the required kernel modules of all the components listed on the executables
+ * section of the adef.
+ */
+//--------------------------------------------------------------------------------------------------
+void GetKModuleFromExecs
+(
+    model::App_t* appPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (const auto& iter : appPtr->executables)
+    {
+        model::Exe_t *exec = iter.second;
+        for (auto const& it : exec->componentInstances)
+        {
+            model::Component_t *compPtr = it->componentPtr;
+            GetRequiredKModules(appPtr, compPtr->subComponents);
+            appPtr->requiredModules.insert(compPtr->requiredModules.begin(),
+                                           compPtr->requiredModules.end());
+        }
+    }
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1776,7 +1834,7 @@ model::App_t* GetApp
         }
         else if (sectionName == "requires")
         {
-            AddRequiredItems(appPtr, sectionPtr);
+            AddRequiredItems(appPtr, sectionPtr, buildParams);
         }
         else if (sectionName == "sandboxed")
         {
@@ -1831,9 +1889,19 @@ model::App_t* GetApp
     // Ensure that all processes have a PATH environment variable.
     EnsurePathIsSet(appPtr);
 
+    std::list<model::Component_t *> compList;
+
+    for(auto it : appPtr->components)
+    {
+        compList.push_back(it);
+    }
+
+    GetRequiredKModules(appPtr, compList);
+
+    GetKModuleFromExecs(appPtr);
+
     return appPtr;
 }
-
 
 
 } // namespace modeller

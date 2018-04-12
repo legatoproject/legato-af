@@ -44,6 +44,7 @@ struct Component_t : public HasTargetInfo_t
     FileObjectPtrSet_t requiredFiles; ///< List of files to be imported into the app.
     FileObjectPtrSet_t requiredDirs;  ///< List of dirs to be imported into the app.
     FileObjectPtrSet_t requiredDevices;///< List of devices to be imported into the app.
+    std::set<std::string> requiredModules;  ///< Set of required modules in the component.
 
     std::list<ApiTypesOnlyInterface_t*> typesOnlyApis;///< List of API files to import types from.
     std::list<ApiServerInterface_t*> serverApis;  ///< List of server-side interfaces implemented.

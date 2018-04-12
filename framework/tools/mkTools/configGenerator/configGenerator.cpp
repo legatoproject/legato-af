@@ -11,7 +11,6 @@
 namespace config
 {
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Generate the application version.
@@ -302,6 +301,41 @@ static void GenerateFileMappingConfig
     }
 
     cfgStream << "    }" << std::endl;
+
+    cfgStream << "    \"kernelModules\"" << std::endl;
+    cfgStream << "    {" << std::endl;
+
+    // For each parameter in required kernel modules list
+    int kmodnum = 1;
+    for (auto reqKMod : appPtr->requiredModules)
+    {
+        auto modulePtr = model::Module_t::GetModule(reqKMod);
+        if (modulePtr == NULL)
+        {
+            throw mk::Exception_t(
+                mk::format(LE_I18N("INTERNAL ERROR: '%s' module name not found."), reqKMod)
+            );
+        }
+
+        if (modulePtr->moduleBuildType == model::Module_t::Prebuilt)
+        {
+            int kmodprebuiltnum = 1;
+            for (auto &mapEntrykoFiles : modulePtr->koFiles)
+            {
+                cfgStream << "       \"" << "kernelModule" << kmodprebuiltnum << "\" \""
+                           << path::GetLastNode(mapEntrykoFiles.first) << "\"\n";
+                kmodprebuiltnum++;
+            }
+        }
+        else
+        {
+            cfgStream << "       \"" << "kernelModule" << kmodnum << "\" \""
+                      << reqKMod << ".ko" << "\"\n";
+            kmodnum++;
+        }
+    }
+
+    cfgStream << "    }\n";
 
     cfgStream << "  }" << std::endl << std::endl;
 
@@ -838,6 +872,72 @@ void Generate
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Generate kernel module configuration for each module.
+ */
+//--------------------------------------------------------------------------------------------------
+static void GenerateConfigEachModuleFile
+(
+    model::System_t* systemPtr,
+    model::Module_t* modulePtr,
+    std::ofstream& cfgStream
+)
+{
+    cfgStream << "  {\n";
+
+    if (modulePtr->loadTrigger == model::Module_t::MANUAL)
+    {
+        cfgStream << "    \"loadManual\" !t" << std::endl;
+    }
+
+    cfgStream << "    \"params\"\n";
+    cfgStream << "    {\n";
+
+    // For each parameter in module parameter list
+    for (auto mapEntry : modulePtr->params)
+    {
+        cfgStream << "       \"" << mapEntry.first << "\" \""
+                  << mapEntry.second << "\"\n";
+    }
+
+    cfgStream << "    }\n";
+
+    cfgStream << "    \"requires\"" << std::endl;
+    cfgStream << "    {" << std::endl;
+    cfgStream << "      \"kernelModules\"" << std::endl;
+    cfgStream << "      {" << std::endl;
+
+    // For each parameter in required kernel modules list
+    int kmodnum = 1;
+    for (auto setEntry : modulePtr->requiredModules)
+    {
+        auto mapEntry = systemPtr->modules.find(setEntry);
+        if (mapEntry->second->moduleBuildType == model::Module_t::Prebuilt)
+        {
+            int kmodprebuiltnum = 1;
+            for (auto &mapEntrykoFiles : mapEntry->second->koFiles)
+            {
+                 cfgStream << "         \"" << "kernelModule" << kmodprebuiltnum << "\" \""
+                           << path::GetLastNode(mapEntrykoFiles.first) << "\"\n";
+                kmodprebuiltnum++;
+            }
+        }
+        else
+        {
+            cfgStream << "         \"" << "kernelModule" << kmodnum << "\" \""
+                      << mapEntry->first << ".ko" << "\"\n";
+            kmodnum++;
+        }
+    }
+
+    cfgStream << "      }\n";
+    cfgStream << "    }\n";
+
+    cfgStream << "  }\n";
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Generate kernel module configuration in a file called config/modules.cfg under
  * the system's staging directory.
  */
@@ -874,26 +974,23 @@ static void GenerateModulesConfig
     {
         auto modulePtr = mapEntry.second;
 
-        cfgStream << "  \"" << modulePtr->name << ".ko" << "\"\n";
-        cfgStream << "  {\n";
-        cfgStream << "    \"params\"\n";
-        cfgStream << "    {\n";
-
-        // For each parameter in module parameter list
-        for (auto mapEntry : modulePtr->params)
+        if (modulePtr->moduleBuildType == model::Module_t::Prebuilt)
         {
-            cfgStream << "       \"" << mapEntry.first << "\" \""
-                      << mapEntry.second << "\"\n";
+            for (auto &mapEntrykoFiles : modulePtr->koFiles)
+            {
+                cfgStream << "  \"" << path::GetLastNode(mapEntrykoFiles.first) << "\"\n";
+                GenerateConfigEachModuleFile(systemPtr, modulePtr, cfgStream);
+            }
         }
-
-        cfgStream << "    }\n";
-        cfgStream << "  }\n";
+        else
+        {
+            cfgStream << "  \"" << modulePtr->name << ".ko" << "\"\n";
+            GenerateConfigEachModuleFile(systemPtr, modulePtr, cfgStream);
+        }
     }
 
     cfgStream << "}\n";
 }
-
-
 
 
 //--------------------------------------------------------------------------------------------------

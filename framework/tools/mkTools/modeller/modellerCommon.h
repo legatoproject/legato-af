@@ -163,6 +163,17 @@ void SetStart
     const parseTree::SimpleSection_t* sectionPtr
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets whether the Supervisor will load the module automatically at system start-up,
+ * or only when asked to do so, based on the contents of a "load:" section in the parse tree.
+ */
+//--------------------------------------------------------------------------------------------------
+void SetLoad
+(
+    model::Module_t* modulePtr,
+    const parseTree::SimpleSection_t* sectionPtr
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -213,6 +224,17 @@ model::ApiFile_t* GetApiFilePtr
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add required kernel module section from "requires:" "kernelModules:" section to a given object.
+ **/
+//--------------------------------------------------------------------------------------------------
+void AddRequiredKernelModules
+(
+    std::set<std::string>& requiredModules,
+    const std::list<const parseTree::CompoundItem_t*>& reqKernelModulesSections,
+    const mk::BuildParams_t& buildParams
+);
 
 } // namespace modeller
 

@@ -205,6 +205,17 @@ parseTree::CompoundItemList_t* ParseBundlesSubsection
     Lexer_t& lexer
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parse a subsection inside a "requires:" section.
+ *
+ * @return Pointer to the subsection.
+ */
+//--------------------------------------------------------------------------------------------------
+parseTree::CompoundItemList_t* ParseRequiredModule
+(
+    Lexer_t& lexer
+);
 
 //--------------------------------------------------------------------------------------------------
 /**

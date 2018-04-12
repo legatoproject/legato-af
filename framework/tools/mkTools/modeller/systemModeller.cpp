@@ -402,11 +402,11 @@ static void ModelKernelModule
     auto modulesIter = systemPtr->modules.find(moduleName);
     if (modulesIter != systemPtr->modules.end())
     {
-        sectionPtr->ThrowException(
-            mk::format(LE_I18N("Module '%s' added to the system more than once.\n"
-                               "%s: note: Previously added here."),
-                       moduleName, modulesIter->second->parseTreePtr->firstTokenPtr->GetLocation())
-        );
+            sectionPtr->ThrowException(
+                mk::format(LE_I18N("Module '%s' added to the system more than once.\n"
+                                   "%s: note: Previously added here."),
+                           moduleName, modulesIter->second->parseTreePtr->firstTokenPtr->GetLocation())
+            );
     }
 
     // Model this module.
@@ -893,6 +893,52 @@ static void GetExternalWdogKick
     systemPtr->externalWatchdogKick = value;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Make sure that the required kernel modules listed in app and modules are in sdef.
+ */
+//--------------------------------------------------------------------------------------------------
+static void EnsureRequiredKernelModuleinSystem
+(
+    model::System_t* systemPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto& appMapEntry : systemPtr->apps)
+    {
+        auto appPtr = appMapEntry.second;
+
+        for (auto const& it : appPtr->requiredModules)
+        {
+            auto searchModule = systemPtr->modules.find(it);
+            if (searchModule == systemPtr->modules.end())
+            {
+                throw mk::Exception_t(
+                    mk::format(
+                        LE_I18N("Kernel module %s.mdef must be listed in sdef file."), it)
+                );
+            }
+        }
+    }
+
+    for (auto& moduleMapEntry : systemPtr->modules)
+    {
+        auto modulePtr = moduleMapEntry.second;
+
+        for (auto const& it : modulePtr->requiredModules)
+        {
+            auto searchModule = systemPtr->modules.find(it);
+            if (searchModule == systemPtr->modules.end())
+            {
+                throw mk::Exception_t(
+                    mk::format(
+                        LE_I18N("Kernel module %s.mdef must be listed in sdef file."), it)
+                );
+            }
+        }
+    }
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1015,6 +1061,9 @@ model::System_t* GetSystem
     // Model kernel modules.  This must be done after all the build environment variable settings
     // have been parsed.
     ModelKernelModules(systemPtr, kernelModulesSections, buildParams);
+
+    // Ensure that all required kernel modules are listed in the kernelModules: section of sdef
+    EnsureRequiredKernelModuleinSystem(systemPtr);
 
     return systemPtr;
 }

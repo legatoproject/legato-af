@@ -340,7 +340,6 @@ void MakeApp
 
     BuildParams.argc = argc;
     BuildParams.argv = argv;
-
     // Get tool chain info from environment variables.
     // (Must be done after command-line args parsing and before setting target-specific env vars.)
     FindToolChain(BuildParams);
@@ -390,6 +389,12 @@ void MakeApp
     else if (VersionSuffix.empty() == false)
     {
         appPtr->version += '.' + VersionSuffix;
+    }
+
+    if (!appPtr->requiredModules.empty())
+    {
+        throw mk::Exception_t(
+                    LE_I18N("Kernel modules cannot be added to an application without a system."));
     }
 
     // Ensure that all client-side interfaces have either been bound to something or declared

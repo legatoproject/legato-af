@@ -11,6 +11,7 @@
 namespace model
 {
 
+ std::map<std::string, Module_t*> Module_t::ModuleMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -21,9 +22,42 @@ Module_t::Module_t(parseTree::MdefFile_t *filePtr)
 //--------------------------------------------------------------------------------------------------
 : defFilePtr(filePtr),
   dir(path::GetContainingDir(filePtr->path)),
-  moduleBuildType(Invalid)
+  moduleBuildType(Invalid),
+  loadTrigger(AUTO)
 //--------------------------------------------------------------------------------------------------
 {
+    std::string canonicalPath = path::MakeCanonical(filePtr->path);
+    std::string moduleName;
+
+    moduleName = path::RemoveSuffix(path::GetLastNode(canonicalPath), ".mdef");
+    ModuleMap[moduleName] = this;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a pre-existing module object for the given module name found.
+ *
+ * @return Pointer to the object or NULL if not found.
+ **/
+//--------------------------------------------------------------------------------------------------
+
+Module_t* Module_t::GetModule
+(
+    const std::string& name
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto i = ModuleMap.find(name);
+
+    if (i == ModuleMap.end())
+    {
+        return NULL;
+    }
+    else
+    {
+        return i->second;
+    }
 }
 
 
