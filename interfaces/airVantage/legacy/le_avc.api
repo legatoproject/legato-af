@@ -392,6 +392,7 @@ EVENT SessionRequestEvent
  * @return
  *      - LE_OK on success
  *      - LE_FAULT on failure
+ *      - LE_DUPLICATE if already connected to AirVantage server.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t StartSession
