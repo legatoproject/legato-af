@@ -187,7 +187,7 @@
  *
  * le_sim_SetPower() powers up or down the current SIM card.
  *
- * @section le_sim_profile_switch Local SIM profile switch
+ * @section le_sim_profile_switch SIM profile switch
  *
  * As soon as there are several subscriptions/profiles in the eUICC (multi-profile), and one of
  * them is dedicated to emergency calls (ex: eCall, ERA-Glonass), local swap is needed to swap as
@@ -208,7 +208,22 @@
  * back to commercial subscription and to refresh. The User's application must wait for eUICC reboot
  * to be finished and network connection available.
  *
- * The User's application can install an handler with le_sim_AddNewStateHandler() to receive eUICC's
+ * eUICC allows support of multiple SIM profiles. These profiles can also be managed remotely from
+ * a Subscription Manager Server. Changing the SIM profile remotely may impact the customer
+ * application especially if there is an ongoing data transmission. To prevent any data loss,
+ * switching SIM profiles is subject to a user agreement. This way, the customer application will
+ * be able to properly finalize its current procedure (emergency call for instance) before accepting
+ * the SIM swap.
+ *
+ * The application can subscribe a handler using le_sim_AddProfileUpdateHandler() to monitor SIM
+ * profile change requests. Thus, the application can choose to accept or reject the SIM profile
+ * swap procedure using le_sim_AcceptSimToolkitCommand() or le_sim_RejectSimToolkitCommand().
+ *
+ * @warning
+ * If there is no subscribed handler, the SIM service automatically accepts any SIM profile swap
+ * request.
+ *
+ * The User's application can install a handler with le_sim_AddNewStateHandler() to receive eUICC's
  * state notifications.
  *
  * @warning
@@ -660,6 +675,29 @@ HANDLER NewStateHandler
 EVENT NewState
 (
     NewStateHandler handler
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for profile update events.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER ProfileUpdateHandler
+(
+    Id       simId IN,             ///< The SIM identifier.
+    StkEvent stkEvent IN           ///< The SIM state.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on profile update
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT ProfileUpdate
+(
+    ProfileUpdateHandler handler
 );
 
 //--------------------------------------------------------------------------------------------------

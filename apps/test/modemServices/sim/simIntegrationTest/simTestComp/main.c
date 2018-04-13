@@ -48,6 +48,7 @@ static const SimIdStringAssoc_t SimIdStringAssocs[] =
 static le_sim_IccidChangeHandlerRef_t IccidChangeHandlerRef = NULL;
 static le_sim_SimToolkitEventHandlerRef_t StkHandlerRef = NULL;
 static le_sim_NewStateHandlerRef_t NewSimHandlerRef = NULL;
+static le_sim_ProfileUpdateHandlerRef_t ProfileUpdateHandlerRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -197,6 +198,23 @@ static void IccidChangeHandler
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler function for new SIM notification
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void ProfileUpdatehandler
+(
+    le_sim_Id_t       simId,     ///< [IN] SIM identifier
+    le_sim_StkEvent_t stkEvent,  ///< [IN] SIM Toolkit event
+    void*             contextPtr ///< [IN] Context pointer
+)
+{
+    LE_INFO("Profile update request");
+    LE_INFO("Event: %d", stkEvent);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function for profile update notification
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -400,6 +418,9 @@ COMPONENT_INIT
 
         NewSimHandlerRef = le_sim_AddNewStateHandler(NewSimHandler, NULL);
         LE_ASSERT(NewSimHandlerRef!=NULL);
+
+        ProfileUpdateHandlerRef = le_sim_AddProfileUpdateHandler(ProfileUpdatehandler, NULL);
+        LE_ASSERT(ProfileUpdateHandlerRef!=NULL);
 
         freeRunningApp = true;
     }

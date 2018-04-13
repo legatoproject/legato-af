@@ -144,6 +144,14 @@ static le_timer_Ref_t EventTimerRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Event ID for SIM profile notification.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t SimProfileEventId;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Event ID for New SIM state notification.
  */
 //--------------------------------------------------------------------------------------------------
@@ -169,6 +177,13 @@ static le_event_Id_t IccidChangeEventId;
  */
 //--------------------------------------------------------------------------------------------------
 static uint32_t SimToolkitHandlerCount = 0;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Counter for SIM profile event handlers.
+ */
+//--------------------------------------------------------------------------------------------------
+static uint32_t SimProfileHandlerCount = 0;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -399,7 +414,32 @@ static le_result_t SelectSIMCard
 
 //--------------------------------------------------------------------------------------------------
 /**
- * First layer: New SIM state notification handler.
+ * First layer: Profile update notification handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void FirstLayerProfileUpdateHandler
+(
+    void* reportPtr,
+    void* secondLayerHandlerFunc
+)
+{
+    pa_sim_StkEvent_t* eventDataPtr = reportPtr;
+
+    if (!eventDataPtr)
+    {
+       LE_ERROR("Null pointer provided!");
+       return;
+    }
+
+    le_sim_ProfileUpdateHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+
+    clientHandlerFunc(eventDataPtr->simId, eventDataPtr->stkEvent, le_event_GetContextPtr());
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The first-layer New SIM state notification Handler.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -746,6 +786,8 @@ static void GetSimCardInformation
             simPtr->isPresent = true;
             simPtr->IMSI[0] = '\0';
             simPtr->EID[0] = '\0';
+            simPtr->ICCID[0] = '\0';
+            simPtr->phoneNumber[0] = '\0';
             GetICCID(simPtr);
             GetIMSI(simPtr);
             GetEID(simPtr);
@@ -854,10 +896,19 @@ static void SimToolkitHandler
         switch (eventPtr->stkRefreshStage)
         {
             case LE_SIM_STAGE_WAITING_FOR_OK:
-                if (0 == SimToolkitHandlerCount)
+                if ((SimProfileHandlerCount) && (LE_SIM_REFRESH_RESET == eventPtr->stkRefreshMode))
                 {
-                    // Accept the refresh automatically if no other handler has been subscribed
-                    le_sim_AcceptSimToolkitCommand(eventPtr->simId);
+                    // Do not accept or reject the toolkit command because a SIM profile update
+                    // handler is subscribed.
+                    le_event_Report(SimProfileEventId, eventPtr, sizeof(pa_sim_StkEvent_t));
+                }
+                else
+                {
+                    if (0 == SimToolkitHandlerCount)
+                    {
+                        // Accept the refresh automatically if no other handler has been subscribed
+                        le_sim_AcceptSimToolkitCommand(eventPtr->simId);
+                    }
                 }
                 break;
 
@@ -875,6 +926,23 @@ static void SimToolkitHandler
             default:
                 break;
         }
+    }
+    else if (LE_SIM_OPEN_CHANNEL == eventPtr->stkEvent)
+    {
+        if (0 == SimProfileHandlerCount)
+        {
+            // Accept the refresh automatically if no other handler has been subscribed
+            le_sim_AcceptSimToolkitCommand(eventPtr->simId);
+        }
+        else
+        {
+            le_event_Report(SimProfileEventId, eventPtr, sizeof(pa_sim_StkEvent_t));
+        }
+    }
+    else
+    {
+        LE_ERROR("Unsupported event");
+        return;
     }
 
     if (SimToolkitHandlerCount)
@@ -1168,7 +1236,14 @@ le_result_t le_sim_Init
     // Create an event Id for SIM Toolkit notifications
     SimToolkitEventId = le_event_CreateId("SimToolkitEventId", sizeof(pa_sim_StkEvent_t));
 
+    // Create an event Id for SIM profile notifications
+    SimProfileEventId = le_event_CreateId("SimProfileEventId", sizeof(pa_sim_StkEvent_t));
+
+    // Initialize handler counter for SIM Toolkit event
     SimToolkitHandlerCount = 0;
+
+    // Initialize handler counter for SIM profile event
+    SimProfileHandlerCount = 0;
 
     // Register a handler function for new SIM state notification
     if (NULL == pa_sim_AddNewStateHandler(NewSimStateHandler))
@@ -2321,14 +2396,13 @@ le_sim_IccidChangeHandlerRef_t le_sim_AddIccidChangeHandler
         handlerPtr(LastIccidChange.simId, LastIccidChange.ICCID, contextPtr);
     }
 
-    return (le_sim_IccidChangeHandlerRef_t)(handlerRef);
+    return (le_sim_IccidChangeHandlerRef_t)handlerRef;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to unregister the handler function for ICCID change notification.
  *
- * @note Doesn't return on failure; there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 void le_sim_RemoveIccidChangeHandler
@@ -2401,6 +2475,64 @@ void le_sim_RemoveSimToolkitEventHandler
     if (SimToolkitHandlerCount)
     {
         SimToolkitHandlerCount--;
+        le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register a handler function for SIM profile update notification.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure; there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+le_sim_ProfileUpdateHandlerRef_t le_sim_AddProfileUpdateHandler
+(
+    le_sim_ProfileUpdateHandlerFunc_t handlerPtr,     ///< [IN] Handler function
+    void* contextPtr                                  ///< [IN] Handler's context
+)
+{
+    le_event_HandlerRef_t handlerRef;
+
+    if (NULL == handlerPtr)
+    {
+        LE_KILL_CLIENT("Handler function is NULL !");
+        return NULL;
+    }
+
+    handlerRef = le_event_AddLayeredHandler("ProfileUpdateHandler",
+                                            SimProfileEventId,
+                                            FirstLayerProfileUpdateHandler,
+                                            (le_event_HandlerFunc_t)handlerPtr);
+
+    le_event_SetContextPtr(handlerRef, contextPtr);
+    SimProfileHandlerCount++;
+
+    return (le_sim_ProfileUpdateHandlerRef_t)(handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to unregister the handler function for SIM profile update
+ * notification.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sim_RemoveProfileUpdateHandler
+(
+    le_sim_ProfileUpdateHandlerRef_t handlerRef   ///< [IN] Handler reference
+)
+{
+    if (NULL == handlerRef)
+    {
+        LE_ERROR("Null handler reference");
+        return;
+    }
+
+    if (SimProfileHandlerCount)
+    {
+        SimProfileHandlerCount--;
         le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
     }
 }

@@ -26,6 +26,7 @@ typedef struct
     le_sim_StkRefreshMode_t stkRefreshMode;
     le_sim_StkRefreshStage_t stkRefreshStage;
     le_sim_IccidChangeHandlerRef_t iccidChangeHandler;
+    le_sim_ProfileUpdateHandlerRef_t profileUpdateHandler;
     char iccid[LE_SIM_ICCID_BYTES];
 } AppContext_t;
 
@@ -348,6 +349,7 @@ static void IccidChangeHandler
 {
     AppContext_t* appCtxPtr = (AppContext_t*)contextPtr;
     LE_ASSERT(NULL != appCtxPtr);
+    LE_ASSERT(NULL != iccidPtr);
     LE_ASSERT(CurrentSimId == simId);
 
     LE_ASSERT(0 != memcmp(iccidPtr, appCtxPtr->iccid, LE_SIM_ICCID_BYTES));
@@ -396,6 +398,77 @@ static void RemoveIccidChangeHandler
     LE_ASSERT(NULL != appCtxPtr);
 
     le_sim_RemoveIccidChangeHandler(appCtxPtr->iccidChangeHandler);
+
+    // Semaphore is used to synchronize the task execution with the core test
+    le_sem_Post(ThreadSemaphore);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Profile update handler: this handler is called a SIM profile update is pending
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void ProfileUpdateHandler
+(
+    le_sim_Id_t simId,
+    le_sim_StkEvent_t stkEvent,
+    void* contextPtr
+)
+{
+    AppContext_t* appCtxPtr = (AppContext_t*)contextPtr;
+    LE_ASSERT(NULL != appCtxPtr);
+    LE_ASSERT(CurrentSimId == simId);
+
+    if (LE_SIM_REFRESH == stkEvent)
+    {
+        LE_ASSERT_OK(le_sim_GetSimToolkitRefreshMode(simId, &appCtxPtr->stkRefreshMode));
+        LE_ASSERT(LE_SIM_REFRESH_RESET == appCtxPtr->stkRefreshMode);
+    }
+
+    // Semaphore is used to synchronize the task execution with the core test
+    le_sem_Post(ThreadSemaphore);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add SIM profile update handler
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddProfileUpdateHandler
+(
+    void* param1Ptr,
+    void* param2Ptr
+)
+{
+    AppContext_t* appCtxPtr = (AppContext_t*)param1Ptr;
+    LE_ASSERT(NULL != appCtxPtr);
+
+    appCtxPtr->profileUpdateHandler = le_sim_AddProfileUpdateHandler(ProfileUpdateHandler,
+                                                                     appCtxPtr);
+    LE_ASSERT(NULL != appCtxPtr->profileUpdateHandler);
+
+    // Semaphore is used to synchronize the task execution with the core test
+    le_sem_Post(ThreadSemaphore);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove SIM profile update handler
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void RemoveProfileUpdateHandler
+(
+    void* param1Ptr,
+    void* param2Ptr
+)
+{
+    AppContext_t* appCtxPtr = (AppContext_t*)param1Ptr;
+    LE_ASSERT(NULL != appCtxPtr);
+
+    le_sim_RemoveProfileUpdateHandler(appCtxPtr->profileUpdateHandler);
 
     // Semaphore is used to synchronize the task execution with the core test
     le_sem_Post(ThreadSemaphore);
@@ -1112,6 +1185,75 @@ static void TestSim_LocalSwap
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Test SIM profile update
+ *
+ * API tested:
+ * - le_sim_AddProfileUpdateHandler
+ * - le_sim_RemoveProfileUpdateHandler
+ *
+ * Exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void TestSim_ProfileUpdate
+(
+    void
+)
+{
+    le_sim_StkRefreshMode_t mode;
+    int i;
+
+    // Subscribe a profile update handler to each running thread
+    for (i=0; i<NB_CLIENT; i++)
+    {
+        le_event_QueueFunctionToThread( AppCtx[i].appThreadRef,
+                                        AddProfileUpdateHandler,
+                                        &AppCtx[i],
+                                        NULL );
+    }
+    SynchTest();
+
+    // Only a LE_SIM_REFRESH_RESET and LE_SIM_OPEN_CHANNEL should be reported to profile update
+    // handlers. So, any other refresh mode should not report an event.
+    StkEvent = LE_SIM_REFRESH;
+    pa_simSimu_SetRefreshStage(LE_SIM_STAGE_WAITING_FOR_OK);
+
+    for (mode=0; mode<LE_SIM_REFRESH_MODE_MAX; mode++)
+    {
+        if (LE_SIM_REFRESH_RESET != mode)
+        {
+            pa_simSimu_SetRefreshMode(mode);
+            pa_simSimu_ReportSTKEvent(StkEvent);
+        }
+    }
+
+    // Trigger a RESET SIM refresh
+    pa_simSimu_SetRefreshMode(LE_SIM_REFRESH_RESET);
+    pa_simSimu_ReportSTKEvent(StkEvent);
+
+    // Wait for profile update handlers to end.
+    SynchTest();
+
+    // Trigger an OPEN CHANNEL event
+    StkEvent = LE_SIM_OPEN_CHANNEL;
+    pa_simSimu_ReportSTKEvent(StkEvent);
+
+    // Wait for profile update handlers to end.
+    SynchTest();
+
+    // Remove the handlers
+    for (i=0; i<NB_CLIENT; i++)
+    {
+        le_event_QueueFunctionToThread( AppCtx[i].appThreadRef,
+                                        RemoveProfileUpdateHandler,
+                                        &AppCtx[i],
+                                        NULL );
+    }
+    SynchTest();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Test remove handlers
  *
  * API tested:
@@ -1452,19 +1594,22 @@ static void* TestThread
     LE_INFO("======== lock/unlock/change pin Test  ========");
     TestSim_LockUnlockChange();
 
-    LE_INFO("======== Sim card information Test  ========");
+    LE_INFO("======== SIM card information Test  ========");
     TestSim_SimCardInformation();
 
     LE_INFO("======== Home network Test  ========");
     TestSim_HomeNetwork();
 
-    LE_INFO("======== Sim ICCID change Test ========");
+    LE_INFO("======== SIM ICCID change Test ========");
     TestSim_ICCIDChange();
 
-    LE_INFO("======== Sim toolkit Test  ========");
+    LE_INFO("======== SIM profile update Test  ========");
+    TestSim_ProfileUpdate();
+
+    LE_INFO("======== SIM toolkit Test  ========");
     TestSim_Stk();
 
-    LE_INFO("======== multi-profile Test  ========");
+    LE_INFO("======== Local swap Test  ========");
     TestSim_LocalSwap();
 
     LE_INFO("======== SIM access Test  ========");
@@ -1497,7 +1642,7 @@ static void* TestThread
 COMPONENT_INIT
 {
     le_cfg_IteratorRef_t iteratorRef = NULL;
-    char* pathPtr = NULL;
+    char* pathPtr = "";
 
     // To reactivate for all DEBUG logs
     // le_log_SetFilterLevel(LE_LOG_DEBUG);
