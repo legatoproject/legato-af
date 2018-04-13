@@ -1,13 +1,12 @@
 ![Legato logo](http://legato.io/resources/img/legato_logo.png)
- 
-==================
+
+---
 
 ![Build Status](https://travis-ci.org/legatoproject/legato-af.svg)
 
-Legato Open Source Project started out as an initiative by Sierra Wireless Inc. to provide an open, secure and easy to use Application Framework to lower the barrier for developers, who are not familiar with embedded programming, to participate in the exponential growth of "Internet of Things".
-Visit [legato.io](legato.io) to learn more or visit the [Legato forum](forum.legato.io).
+Legato Open Source Project started out as an initiative by Sierra Wireless Inc. to provide an open, secure and easy to use Application Framework to lower the barrier for developers, who are not familiar with embedded programming, to participate in the exponential growth of "Internet of Things". Visit [legato.io](legato.io) to learn more or visit the [Legato forum](forum.legato.io).
 
-#### Dependencies
+#### Prerequisite
 
   - A [maintained](https://wiki.ubuntu.com/Releases) Long Term Support (LTS) version of Ubuntu
   - Install required packages:
@@ -27,7 +26,9 @@ Optional packages: ```openjdk-8-jdk``` (for Java support, at least Java 8 is req
   - Cross-build toolchain(s)<br/>
     For Sierra Wireless platforms, toolchains are available at https://source.sierrawireless.com/resources/legato/downloads/
 
-#### Clone from GitHub
+#### Installation
+
+##### Clone from GitHub
 
 Legato uses [git-repo](https://code.google.com/p/git-repo/) as it is distributed as multiple repositories.
 
@@ -62,9 +63,8 @@ Legato uses [git-repo](https://code.google.com/p/git-repo/) as it is distributed
   $ repo sync
   ```
 
-#### Installation
 
-##### To install the Legato framework on your development PC
+##### Install the Legato framework on your development PC
 
   1. Clone it from GitHub or untar a release archive into a directory
 
@@ -72,7 +72,7 @@ Legato uses [git-repo](https://code.google.com/p/git-repo/) as it is distributed
 
   3. Run ```make```
 
-##### To configure your bash shell's environment for the Legato application build tools
+##### Configure your bash shell's environment for the Legato application build tools
 
 Source ```bin/configlegatoenv```:
 ```bash
@@ -83,7 +83,9 @@ OR, run the interactive bash shell ```bin/legs```:
 $ bin/legs
 ```
 
-##### To build support for cross-build targets, run [```make <target>```](http://legato.io/legato-docs/latest/basicBuildLegato_make.html).
+#### Run on Target Devices
+
+##### Build support for cross-build targets, run [```make <target>```](http://legato.io/legato-docs/latest/basicBuildLegato_make.html).
 
 For example, to enable support for the Sierra Wireless WP85xx devices, run ```make wp85```.<br/>
 Of course, each of these depends on the cross-build toolchain for that target,
@@ -114,25 +116,6 @@ Target  |  Description                    | Environment variables
  wp77xx | Sierra Wireless WP77xx module   | ```WP77XX_TOOLCHAIN_DIR```,```WP77XX_TOOLCHAIN_PREFIX```
  raspi  | Raspberry Pi                    | ```RASPI_TOOLCHAIN_DIR```,```RASPI_TOOLCHAIN_PREFIX```
 
-#### Documentation
-
-Once you have completed the first three installation steps above, you will find a set of
-HTML documentation under the "Documentation" directory.<br/>
-Point your web browser at ```Documentation/index.html``` to view it:
-```
-xdg-open Documentatation/index.html
-```
-
-The latest release documentation is available at: http://legato.io/legato-docs/latest/
-
-#### Uninstallation
-
-To uninstall Legato from your development PC:
-
-  - Delete the directory you unzipped Legato under
-  - Revert any changes you may have made to your ```.bashrc```, etc. to set up ```xxxxxx_TOOLCHAIN_DIR```
-    environment variables.
-
 #### Directory Structure
 
  The top level directory structure is as follows:
@@ -161,6 +144,27 @@ To uninstall Legato from your development PC:
    ```./platformAdaptor``` - contains components that are specific to certain platforms.
 
    ```./modules``` - contains other repositories that are extending Legato.
+
+#### Documentation
+
+Once you have completed the first three installation steps above, you will find a set of
+HTML documentation under the "Documentation" directory.<br/>
+Point your web browser at ```Documentation/index.html``` to view it:
+```
+xdg-open Documentatation/index.html
+```
+
+The latest release documentation is available at: http://legato.io/legato-docs/latest/
+
+#### Uninstallation
+
+To uninstall Legato from your development PC:
+
+  - Delete the directory you unzipped Legato under
+  - Revert any changes you may have made to your ```.bashrc```, etc. to set up ```xxxxxx_TOOLCHAIN_DIR```
+    environment variables.
+
+
 
 * * *
 _Copyright (C) Sierra Wireless Inc. _
