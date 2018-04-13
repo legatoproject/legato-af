@@ -6,7 +6,7 @@
 
 Legato Open Source Project started out as an initiative by Sierra Wireless Inc. to provide an open, secure and easy to use Application Framework to lower the barrier for developers, who are not familiar with embedded programming, to participate in the exponential growth of "Internet of Things". Visit [legato.io](legato.io) to learn more or visit the [Legato forum](forum.legato.io).
 
-#### Prerequisite
+### Prerequisite
 
   - A [maintained](https://wiki.ubuntu.com/Releases) Long Term Support (LTS) version of Ubuntu
   - Install required packages:
