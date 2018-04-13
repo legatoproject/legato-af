@@ -1518,8 +1518,7 @@ FUNCTION le_result_t SetEraGlonassDialDuration
  * When the delay is reached and IVS NAD didn't receive a call clear-down indication then the call
  * is immediatly terminated.
  *
- * @note Default value of the ECALL_CCFT time is 60 minutes. When changing the ECALL_CCFT, a value
- * greater than 60 minutes must be provided.
+ * @note Allowed range of values is 1 to 720 minutes.
  *
  * @return
  *  - LE_OK on success
@@ -1537,7 +1536,7 @@ FUNCTION le_result_t SetEraGlonassFallbackTime
  * Set the ECALL_AUTO_ANSWER_TIME time, the time interval wherein IVDS responds to incoming calls
  * automatically after emergency call completion.
  *
- * @note Default value of auto answer time is 20 minutes.
+ * @note Default value of auto answer time is 20 minutes. Maximum value is 720 minutes.
  *
  * @return
  *  - LE_OK on success

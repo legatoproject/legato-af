@@ -176,6 +176,20 @@ le_msg_SessionEventHandlerRef_t le_msgSimu_AddServiceCloseHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Minimum value of ERA GLONASS Call Cleardown Fallback Timer (CCFT) expressed in minutes
+ */
+//--------------------------------------------------------------------------------------------------
+#define ERA_GLONASS_CCFT_MIN              1
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum value of ERA GLONASS Call Cleardown Fallback Timer (CCFT) expressed in minutes
+ */
+//--------------------------------------------------------------------------------------------------
+#define ERA_GLONASS_CCFT_MAX             720
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Task context structure.
  */
 //--------------------------------------------------------------------------------------------------
@@ -720,17 +734,33 @@ static void Testle_ecall_EraGlonassSettings
     LE_ASSERT(NULL != (testECallRef=le_ecall_Create()));
 
     LE_ASSERT_OK(le_ecall_GetEraGlonassFallbackTime(&duration));
-    LE_ASSERT(duration >= 60);
+    LE_ASSERT(duration <= ERA_GLONASS_CCFT_MAX);
+    LE_ASSERT(duration >= ERA_GLONASS_CCFT_MIN);
 
     duration = 0;
-    LE_ASSERT(LE_FAULT == le_ecall_SetEraGlonassFallbackTime(50));
+    LE_ASSERT(LE_FAULT == le_ecall_SetEraGlonassFallbackTime(ERA_GLONASS_CCFT_MAX+1));
     LE_ASSERT_OK(le_ecall_GetEraGlonassFallbackTime(&duration));
-    LE_ASSERT(duration >= 60);
+    LE_ASSERT(duration <= ERA_GLONASS_CCFT_MAX);
 
     duration = 0;
-    LE_ASSERT_OK(le_ecall_SetEraGlonassFallbackTime(70));
+    LE_ASSERT(LE_FAULT == le_ecall_SetEraGlonassFallbackTime(ERA_GLONASS_CCFT_MIN-1));
     LE_ASSERT_OK(le_ecall_GetEraGlonassFallbackTime(&duration));
-    LE_ASSERT(duration == 70);
+    LE_ASSERT(duration >= ERA_GLONASS_CCFT_MIN);
+
+    duration = 0;
+    LE_ASSERT_OK(le_ecall_SetEraGlonassFallbackTime(ERA_GLONASS_CCFT_MIN));
+    LE_ASSERT_OK(le_ecall_GetEraGlonassFallbackTime(&duration));
+    LE_ASSERT(duration == ERA_GLONASS_CCFT_MIN);
+
+    duration = 0;
+    LE_ASSERT_OK(le_ecall_SetEraGlonassFallbackTime(ERA_GLONASS_CCFT_MAX));
+    LE_ASSERT_OK(le_ecall_GetEraGlonassFallbackTime(&duration));
+    LE_ASSERT(duration == ERA_GLONASS_CCFT_MAX);
+
+    duration = 0;
+    LE_ASSERT_OK(le_ecall_SetEraGlonassFallbackTime(20));
+    LE_ASSERT_OK(le_ecall_GetEraGlonassFallbackTime(&duration));
+    LE_ASSERT(duration == 20);
 
     LE_ASSERT_OK(le_ecall_GetEraGlonassAutoAnswerTime(&duration));
     LE_ASSERT(duration >= 20);

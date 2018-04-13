@@ -113,14 +113,21 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Default value of ERA GLONASS Call Cleardown Fallback Timer (CCFT) expressed in minutes
+ * Minimum value of ERA GLONASS Call Cleardown Fallback Timer (CCFT) expressed in minutes
  */
 //--------------------------------------------------------------------------------------------------
-#define ERA_GLONASS_CCFT_MIN       60
+#define ERA_GLONASS_CCFT_MIN              1
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Default value of ERA GLONASS eCall auto answer timer expressed in minutes
+ * Maximum value of ERA GLONASS Call Cleardown Fallback Timer (CCFT) expressed in minutes
+ */
+//--------------------------------------------------------------------------------------------------
+#define ERA_GLONASS_CCFT_MAX             720
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum value of ERA GLONASS eCall auto answer timer expressed in minutes
  */
 //--------------------------------------------------------------------------------------------------
 #define ERA_GLONASS_AUTOANSTIME_MAX      720
@@ -3424,8 +3431,7 @@ le_result_t le_ecall_SetEraGlonassDialDuration
  * termination. When the delay is reached and IVS NAD didn't receive a call clear-down indication
  * is immediatly terminated.
  *
- * @note Default value of the ECALL_CCFT time is 60 minutes. When changing the ECALL_CCFT, a value
- * greater than 60 minutes must be provided.
+ * @note Allowed range of values is 1 to 720 minutes.
  *
  * @return
  *  - LE_OK on success
@@ -3438,9 +3444,10 @@ le_result_t le_ecall_SetEraGlonassFallbackTime
     uint16_t    duration   ///< [IN] ECALL_CCFT time value (in minutes)
 )
 {
-    if (duration < ERA_GLONASS_CCFT_MIN)
+    if ((duration < ERA_GLONASS_CCFT_MIN) || (duration > ERA_GLONASS_CCFT_MAX))
     {
-        LE_ERROR("Minimum value for CCFT timer is %d minutes", ERA_GLONASS_CCFT_MIN);
+        LE_ERROR("Allowed range of values for CCFT timer is %d to %d minutes. %d given",
+                 ERA_GLONASS_CCFT_MIN, ERA_GLONASS_CCFT_MAX, duration);
         return LE_FAULT;
     }
 
@@ -3452,7 +3459,7 @@ le_result_t le_ecall_SetEraGlonassFallbackTime
  * Set the ECALL_AUTO_ANSWER_TIME time. It is a time interval wherein IVDS responds to incoming
  * calls automatically after emergency call completion.
  *
- * @note Default value of auto answer time is 20 minutes.
+ * @note Default value of auto answer time is 20 minutes. Maximum value is 720 minutes.
  *
  * @return
  *  - LE_OK on success

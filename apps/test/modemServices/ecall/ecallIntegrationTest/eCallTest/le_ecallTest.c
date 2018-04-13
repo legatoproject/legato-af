@@ -15,6 +15,26 @@
 #include "interfaces.h"
 #include "mdmCfgEntries.h"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Minimum value of ERA GLONASS Call Cleardown Fallback Timer (CCFT) expressed in minutes
+ */
+//--------------------------------------------------------------------------------------------------
+#define ERA_GLONASS_CCFT_MIN              1
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum value of ERA GLONASS Call Cleardown Fallback Timer (CCFT) expressed in minutes
+ */
+//--------------------------------------------------------------------------------------------------
+#define ERA_GLONASS_CCFT_MAX             720
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * MSD configurations for testing purposes
+ */
+//--------------------------------------------------------------------------------------------------
 #if 0
 // keep different testing Msd configurations.
 // VIN: WM9VDSVDSYA123456
@@ -46,8 +66,18 @@ static uint8_t ImportedMsd[] =
                        0x2C, 0xC3, 0x4E, 0x3D, 0x05, 0x1B, 0x18, 0x48, 0x61, 0xEB, 0xA0, 0xC8,
                        0xFF, 0x73, 0x7E, 0x64, 0x20, 0xD1, 0x04, 0x01, 0x3F, 0x81, 0x00};
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * PSAP number
+ */
+//--------------------------------------------------------------------------------------------------
+static const char*         PsapNumber = NULL;
 
-static const char *         PsapNumber = NULL;
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference to the last eCall test
+ */
+//--------------------------------------------------------------------------------------------------
 static le_ecall_CallRef_t   LastTestECallRef;
 
 //--------------------------------------------------------------------------------------------------
@@ -413,21 +443,40 @@ void Testle_ecall_EraGlonassSettings
     LE_ASSERT(NULL != (testECallRef=le_ecall_Create()));
 
     //! [FallbackTimer]
-    /* Check that default value is not below 60 minutes */
+    /* Check that default value is within the allowed range */
     LE_ASSERT_OK(le_ecall_GetEraGlonassFallbackTime(&duration));
-    LE_ASSERT(duration >= 60);
+    LE_ASSERT(duration <= ERA_GLONASS_CCFT_MAX);
+    LE_ASSERT(duration >= ERA_GLONASS_CCFT_MIN);
 
-    /* Check that values below 60 are rejected */
+    /* Check that values above the maximum value are rejected */
     duration = 0;
-    LE_ASSERT(LE_FAULT == le_ecall_SetEraGlonassFallbackTime(50));
+    LE_ASSERT(LE_FAULT == le_ecall_SetEraGlonassFallbackTime(ERA_GLONASS_CCFT_MAX+1));
     LE_ASSERT_OK(le_ecall_GetEraGlonassFallbackTime(&duration));
-    LE_ASSERT(duration >= 60);
+    LE_ASSERT(duration <= ERA_GLONASS_CCFT_MAX);
 
-    /* Check that a valid value can be set */
+    /* Check that values below the minimum value are rejected */
     duration = 0;
-    LE_ASSERT_OK(le_ecall_SetEraGlonassFallbackTime(70));
+    LE_ASSERT(LE_FAULT == le_ecall_SetEraGlonassFallbackTime(ERA_GLONASS_CCFT_MIN-1));
     LE_ASSERT_OK(le_ecall_GetEraGlonassFallbackTime(&duration));
-    LE_ASSERT(duration == 70);
+    LE_ASSERT(duration >= ERA_GLONASS_CCFT_MIN);
+
+    /* Check that the minimum value can be set */
+    duration = 0;
+    LE_ASSERT_OK(le_ecall_SetEraGlonassFallbackTime(ERA_GLONASS_CCFT_MIN));
+    LE_ASSERT_OK(le_ecall_GetEraGlonassFallbackTime(&duration));
+    LE_ASSERT(duration == ERA_GLONASS_CCFT_MIN);
+
+    /* Check that the maximum value can be set */
+    duration = 0;
+    LE_ASSERT_OK(le_ecall_SetEraGlonassFallbackTime(ERA_GLONASS_CCFT_MAX));
+    LE_ASSERT_OK(le_ecall_GetEraGlonassFallbackTime(&duration));
+    LE_ASSERT(duration == ERA_GLONASS_CCFT_MAX);
+
+    /* Check that a value within the range can be set */
+    duration = 0;
+    LE_ASSERT_OK(le_ecall_SetEraGlonassFallbackTime(30));
+    LE_ASSERT_OK(le_ecall_GetEraGlonassFallbackTime(&duration));
+    LE_ASSERT(duration == 30);
 
     //! [NadTime]
     LE_ASSERT_OK(le_ecall_SetNadDeregistrationTime(200));
