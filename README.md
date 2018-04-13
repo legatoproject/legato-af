@@ -3,7 +3,7 @@ Welcome to Legato!
 
 ![Build Status](https://travis-ci.org/legatoproject/legato-af.svg)
 
-#### Dependencies
+#### Dependencies Alan
 
   - A [maintained](https://wiki.ubuntu.com/Releases) Long Term Support (LTS) version of Ubuntu
   - Install required packages:
