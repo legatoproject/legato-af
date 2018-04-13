@@ -26,9 +26,9 @@ Optional packages: ```openjdk-8-jdk``` (for Java support, at least Java 8 is req
   - Cross-build toolchain(s)<br/>
     For Sierra Wireless platforms, toolchains are available at https://source.sierrawireless.com/resources/legato/downloads/
 
-#### Installation
+### Installation
 
-##### Clone from GitHub
+#### Clone from GitHub
 
 Legato uses [git-repo](https://code.google.com/p/git-repo/) as it is distributed as multiple repositories.
 
@@ -64,7 +64,7 @@ Legato uses [git-repo](https://code.google.com/p/git-repo/) as it is distributed
   ```
 
 
-##### Install the Legato framework on your development PC
+#### Install the Legato framework on your development PC
 
   1. Clone it from GitHub or untar a release archive into a directory
 
@@ -72,7 +72,7 @@ Legato uses [git-repo](https://code.google.com/p/git-repo/) as it is distributed
 
   3. Run ```make```
 
-##### Configure your bash shell's environment for the Legato application build tools
+#### Configure your bash shell's environment for the Legato application build tools
 
 Source ```bin/configlegatoenv```:
 ```bash
@@ -83,9 +83,9 @@ OR, run the interactive bash shell ```bin/legs```:
 $ bin/legs
 ```
 
-#### Run on Target Devices
+### Run on Target Devices
 
-##### Build support for cross-build targets, run [```make <target>```](http://legato.io/legato-docs/latest/basicBuildLegato_make.html).
+#### Build support for cross-build targets, run [```make <target>```](http://legato.io/legato-docs/latest/basicBuildLegato_make.html).
 
 For example, to enable support for the Sierra Wireless WP85xx devices, run ```make wp85```.<br/>
 Of course, each of these depends on the cross-build toolchain for that target,
@@ -116,7 +116,7 @@ Target  |  Description                    | Environment variables
  wp77xx | Sierra Wireless WP77xx module   | ```WP77XX_TOOLCHAIN_DIR```,```WP77XX_TOOLCHAIN_PREFIX```
  raspi  | Raspberry Pi                    | ```RASPI_TOOLCHAIN_DIR```,```RASPI_TOOLCHAIN_PREFIX```
 
-#### Directory Structure
+### Directory Structure
 
  The top level directory structure is as follows:
 
@@ -145,7 +145,7 @@ Target  |  Description                    | Environment variables
 
    ```./modules``` - contains other repositories that are extending Legato.
 
-#### Documentation
+### Documentation
 
 Once you have completed the first three installation steps above, you will find a set of
 HTML documentation under the "Documentation" directory.<br/>
@@ -156,7 +156,7 @@ xdg-open Documentatation/index.html
 
 The latest release documentation is available at: http://legato.io/legato-docs/latest/
 
-#### Uninstallation
+### Uninstallation
 
 To uninstall Legato from your development PC:
 
