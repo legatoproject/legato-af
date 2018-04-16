@@ -79,13 +79,30 @@ processes:
 }
 @endcode
 
-@c 2. Run @c mkapp to generate an application bundle for your target:
+@c 2a. Run @c mkapp to generate an application bundle for your target:
 
 @code
 $ mkapp -t wp85 legacyProgram.adef
 @endcode
 
-@c 3. Install the app bundle on the target using @c update:
+@c 2b. Alternatively you can add the program to your system and build and include your app in your
+system update for your target.
+
+Add your app to your systems @c .sdef file in the apps section.
+@code
+apps:
+{
+    $LEGATO_ROOT/apps/legacyProgram
+}
+@endcode
+
+Run @c mksys to generate the system bundle for your target:
+@code
+$ mksys -t wp85 mySystem.sdef
+@endcode
+
+@c 3a. If you have created an app install bundle, install the app bundle on the target using
+@c update:
 
 @code
 $ update legacyProgram.wp85.update
@@ -93,6 +110,18 @@ Installing application 'legacyProgram' from file 'legacyProgram.wp85'.
 Installing app 'legacyProgram'...
 Created user 'applegacyProgram' (uid 1011, gid 1011).
 DONE
+@endcode
+
+@c 3b. If you have added your app to your system, install the system bundle on the target using
+@c update:
+
+@code
+$ update mySystem.wp85.update $DEST_IP
+Unpacking package: 100% ++++++++++++++++++++++++++++++++++++++++++++++++++
+Unpacking package: 100% ++++++++++++++++++++++++++++++++++++++++++++++++++
+Unpacking package: 100% ++++++++++++++++++++++++++++++++++++++++++++++++++
+Applying update: 100% ++++++++++++++++++++++++++++++++++++++++++++++++++
+SUCCESS
 @endcode
 
 @c 4. From the target's command line, use <code>app start</code> to run the program:
@@ -231,8 +260,9 @@ bindings:
 would specify which one to use; and even when there's only one instance, we create a binding anyway
 to explicitly grant access permission so access is never unknowingly granted.
 
-@c 9. Re-generate your application bundle, install it, and run it on target:
+@c 9. Re-generate your app or system bundle, install it, and run it on target:
 
+App bundle example:
 @code
 $ mkapp -t wp85 legacyProgram.adef
 $ update legacyProgram.update.wp85 192.168.2.2
@@ -244,6 +274,20 @@ Created user 'applegacyProgram' (uid 1011, gid 1011).
 DONE
 $ app start legacyProgram 192.168.2.2
 @endcode
+
+System bundle example:
+@code
+$ mksys -t wp85 mySystem.sdef
+$ update mySystem.update.wp85 $DEST_IP
+Unpacking package: 100% ++++++++++++++++++++++++++++++++++++++++++++++++++
+Unpacking package: 100% ++++++++++++++++++++++++++++++++++++++++++++++++++
+Unpacking package: 100% ++++++++++++++++++++++++++++++++++++++++++++++++++
+Applying update: 100% ++++++++++++++++++++++++++++++++++++++++++++++++++
+SUCCESS
+@endcode
+
+@note Because you are overlaying a new system with the updated system, the apps are not uninstalled
+and reinstalled, the whole system is replaced.
 
 @section howtoPortingLegacyC_handlers Callbacks from Legato APIs
 

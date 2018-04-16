@@ -1,79 +1,51 @@
-/** @page howToKernelObject Build and Install a Kernel Object
+/** @page getStartedKO Kernel Modules
 
 Loadable kernel modules (.ko files) are object files that are used to extend the kernel of the
 Linux Distribution.  They are used to provide drivers for new hardware like IoT expansion cards that
 have not been included in the Linux Distribution.
 
-This tutorial walks you through building a .ko file, bundling the kernel object with your Legato
+This tutorial walks you through building a .ko file, bundling the kernel module with your Legato
 System and updating the Legato Runtime Environment.  The benefit of this is that you can provide
 any drivers needed for your hardware with your applications and easily install the drivers on your
 target device without having to rebuild the Linux Distribution.
 
 The files that are used in this tutorial are located in @c $LEGATO_ROOT/drivers/example
 
-This tutorial is specific to building kernel objects on Sierra Wireless Modules.  It references
-toolchains for the WP Series Modules and has been tested on both the WPX5XX and WP76XX modules.
+This tutorial is specific to building kernel modules on Sierra Wireless Targets.  It references
+toolchains for the WP Series Targets and has been tested on both the WPX5XX and WP76XX targets.
 
-@section howToKernelObject_PreReq Pre-Requisites
+@section getStartedKO_PreReq Pre-Requisites
 
 This tutorial requires you to have:
 - Legato AF version 16.10.3 or newer installed on your dev machine and target device.
 - The @ref basicBuildToolchain "toolchain" associated with your Module and Linux Distribution
   installed on your dev machine.
-- The source driver files for the IoT expansion card (.c files) or the pre-built kernel object
+- The source driver files for the IoT expansion card (.c files) or the pre-built kernel module
   (.ko file)
 
 @warning This tutorial is designed to teach the software aspects of building, installing and loading
-drivers into the kernel using the Legato Application Framework.  It does not focus on setting up or
+drivers into the kernel using the Legato Application Framework. It does not focus on setting up or
 interfacing with specific hardware. It also does not cover writing or compiling source driver files
-for specific kernels.  The source driver files must be compatible with the kernel on your target
+for specific kernels. The source driver files must be compatible with the kernel on your target
 device.
 
-@section howToKernelObject_SetUp First Time Setup
+@section getStartedKO_SetUp Toolchain Setup
 
-If this is your first time building .ko files, you have to run the kernel build scripts that are
-used to compile your module on your dev machine; the script to build the objects is included
-in a directory in the toolchain.  If you have installed the toolchain with Developer Studio or
-legato-spm these steps are already done for you.
+If you have manually installed the toolchain (not installed through Leaf or Developer
+Studio) and are using a WPX5XX module then you will have to run through an extra set-up script
+before you can build your kernel module against the toolchain. See
+@ref basicBuildLegato_ToolchainSWI_KO.
 
-@c 1. Verify that you have installed the @ref basicBuildToolchain "toolchain" for your specific
-   target.
+@section getStartedKO_defFiles Configuring Def Files
 
-@c 2. Add the following directory to your PATH:
-@c /opt/swi/y17-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
-
-@verbatim
-$ export PATH=/opt/swi/y17-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi:$PATH
-@endverbatim
-
-@c 3. Change directory to:
-@c /opt/swi/y17-ext/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/src/kernel
-
-@verbatim
-$ cd /opt/swi/y17-ext/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/src/kernel
-@endverbatim
-
-@c 4. Take ownership of the files in the directory and run @c make @c scripts, when done return
-ownership to the root user.
-
-@note The root user does not know the path to the Legato compiler so file ownership must be
-temporarily transfered to yourself so that the scripts build properly and then given back when the
-script is completed.
-
-@verbatim
-$ sudo chown -R $USER .
-$ ARCH=arm CROSS_COMPILE=arm-poky-linux-gnueabi- make scripts
-$ sudo chown -R root .
-@endverbatim
-
-@warning The last step must be repeated every time that you install a new version of the toolchain
-or install a new toolchain for a different module/target.
-
-@section howToKernelObject_defFiles Configuring Def Files
-
-To load the kernel object into the Legato Runtime Environment you must configure your app's @c mdef
-file to include the source files for the driver; next configure your target's sdef to include the
+To load the kernel module into the Legato Runtime Environment you must configure a @c mdef
+file to include the source files for the driver and then configure your target's sdef to include the
 driver at build time.
+
+@note When the mdef is built the source files are built against Linux header files
+(which are included with the toolchain), if the toolchain does not match the Linux version that is
+installed on your target then the module won't run, you need to make sure that you are using the
+toolchain that matches the Linux version on your target.
 
 If you have the source code driver files then your @ref defFilesMdef "mdef" must include the
 @ref defFilesMdef_sources section of the @ref defFilesMdef "mdef".
@@ -90,7 +62,7 @@ sources:
 @note If your kernel module sources needs any parameters or flags use the @ref defFilesMdef_params
 or @ref defFilesMdef_flags sections of the @ref defFilesMdef.
 
-If you have a compiled binary kernel object that matches your kernel, then your
+If you have a compiled binary kernel module that matches your kernel, then your
 @ref defFilesMdef "mdef" must include the @ref defFilesMdef_preBuilt section of the
 @ref defFilesMdef "mdef".
 
@@ -102,6 +74,8 @@ preBuilt:
    ~/drivers/example/example.ko
 }
 @endcode
+
+@note You are able to add multiple @b prebuilt @c .ko files into the same mdef if needed.
 
 The @c kernelModules: section in the @sdef declares the kernel modules to be bundled and
 installed into the Runtime Environment.
@@ -115,25 +89,31 @@ kernelModules:
 }
 @endcode
 
-@section howToKernelObject_Building Building your System
+@section getStartedKO_Building Building your System
 
 Once you've set up your system to include the source driver files or binary .ko the next step
-is to build your update system by running @ref basicBuildMake "make <target>".
+is to build your update system by running @ref toolsBuild_mksys.
 
-@warning @c make @c clean must be run before making a build with a new .ko file or the .ko file will
-not build.
-
-Example of running make for a wp85:
+Example of running mksys for a wp85:
 @verbatim
-$ make clean
-$ make wp85
+$ mksys -t wp85 mySystem.sdef
 @endverbatim
 
 This will build the system update file and place it in the @c build directory under @c $LEGATO_ROOT.
 For example, if you @c make @c wp85 then the update file will be called @c system.wp85.update and
 will be located in the @c $LEGATO_ROOT/build/wp85 directory.
 
-You can also do a search for the .ko file to view the kernel object.
+@note If you are building your files from source you need to make sure that they are supported by
+the Linux Kernel that is installed on your target. Drivers from a 3rd party may need to be verified
+that they can be build against the kernel version on the target. To check the Linux version on your
+target run <c># fwupdate query</c>.
+
+@warning When the mdef is built the source files are built against Linux header files
+(which are included with the toolchain), if the toolchain does not match the Linux version that is
+installed on your target then the module won't run, you need to make sure that you are using the
+toolchain that matches the Linux version on your target.
+
+You can also do a search for the .ko file to view the kernel module.
 @verbatim
 $ cd $LEGATO_ROOT/build/wp85
 $ find -name \*.ko
@@ -151,18 +131,14 @@ $ find -name \*.ko
 target machine. If the .ko is needed for other targets with a different models of module then the
 .ko file must be built using that target's toolchain.
 
-@section howToKernelObject_Installing Installing the System
+@section getStartedKO_Installing Installing the System
 
 Now that you have your @c .update file you can use tools included in the Legato AF to install
 the update on your target.  @ref toolsHost_update and @ref toolsHost_instlegato will both update
 the Legato system on your target.
 
-@note If you wish to @ref howToKernelObject_InstallingVerify with @c logread, you must set up the
+@note If you wish to @ref getStartedKO_InstallingVerify with @c logread, you must set up the
 @c logread before installing the Legato system update.
-
-As long your build is in the normal build location (e.g.; $LEGATO_ROOT/build) then only the
-target's platform and the target's IP needs to be specified with using @c instlegato.  If it it
-built to a different location then the full path to the @c .update file must be provided.
 
 To access the Legato target management tools @c bin/legs or @c source @c bin/configlegatoenv must
 be run first. This step is not necessary if @c bin/configlegatoenv has been added to your bash
@@ -170,28 +146,27 @@ profile.
 
 From the $LEGATO_ROOT directory:
 @verbatim
-$ bin/legs
-$ instlegato <target's platform> <target's IP>
+$ update <target's platform> <target's IP>
 @endverbatim
 
 Example command and output:
 @verbatim
 $ bin/legs
-$ instlegato wp85 192.168.2.2
-Installing Legato system update pack build/wp85/system.wp85.update
-Applying update from file 'build/wp85/system.wp85.update' to device at address '192.168.2.2'.
+$ update $LEGATO_ROOT/build/mySystem.wp85.update 192.168.2.2
+Installing Legato system update pack build/wp85/mySystem.wp85.update
+Applying update from file 'build/wp85/mySystem.wp85.update' to device at address '192.168.2.2'.
 Unpacking package: 100% ++++++++++++++++++++++++++++++++++++++++++++++++++
 Applying update: 100% ++++++++++++++++++++++++++++++++++++++++++++++++++
 SUCCESS
 Done
 @endverbatim
 
-@subsection howToKernelObject_InstallingVerify Verify the Update
+@subsection getStartedKO_InstallingVerify Verify the Update
 
-Depending on what your kernel object does there are a couple of ways to verify that it was
+Depending on what your kernel module does there are a couple of ways to verify that it was
 successfully installed.
 
-@subsubsection howToKernelObject_InstallingVerify_legatoStatus legato status
+@subsubsection getStartedKO_InstallingVerify_legatoStatus legato status
 
 To verify that your system was updated, from your target:
 
@@ -218,7 +193,7 @@ the same kernel version as what is on your target.  This should not happen if yo
 system with the source code driver files as long as the source code driver files are compatible with
 the target's kernel.
 
-@subsubsection howToKernelObject_InstallingVerify_lsmod lsmod
+@subsubsection getStartedKO_InstallingVerify_lsmod lsmod
 
 @c lsmod (a Linux command) will display what kernel modules have been installed into the target's
 kernel.
@@ -235,7 +210,7 @@ example 755 0 - Live 0xbf133000 (O)
 @c example.ko. The kernel is labeled "Tainted" if it is not in a state that is supported by the
 Linux Community, but can be safely ignored in this case.
 
-@subsubsection howToKernelObject_InstallingVerify_logread logread
+@subsubsection getStartedKO_InstallingVerify_logread logread
 
 Following the log files as the system update is installed will display the modules being loaded into
 the system.
@@ -251,9 +226,9 @@ On your dev machine install the updated Legato system:
 
 Example command and output:
 @verbatim
-$ instlegato wp85 192.168.2.2
-Installing Legato system update pack build/wp85/system.wp85.update
-Applying update from file 'build/wp85/system.wp85.update' to device at address '192.168.2.2'.
+$ update mySystem.wp85.update 192.168.2.2
+Installing Legato system update pack build/wp85/mySystem.wp85.update
+Applying update from file 'build/wp85/mySystem.wp85.update' to device at address '192.168.2.2'.
 Unpacking package: 100% ++++++++++++++++++++++++++++++++++++++++++++++++++
 Applying update: 100% ++++++++++++++++++++++++++++++++++++++++++++++++++
 SUCCESS
@@ -266,7 +241,7 @@ On the target you should be able to see something like the following message in 
 Legato:  INFO | supervisor[1956]/supervisor T=main | kernelModules.c ModuleInsert() 285 | New kernel module 'example'
 @endverbatim
 
-@section howToKernelObject_CheckKernel Verifying the Kernel Version
+@section getStartedKO_CheckKernel Verifying the Kernel Version
 
 If the kernel module does not show in the list of @c lsmod it means that it was not successfully
 loaded onto your target.  The most common cause of this is that your toolchain version and firmware
@@ -275,7 +250,7 @@ modules with the same version of toolchain that matches the firmware on your dev
 
 The following command will grep for the kernel version of the kernel module:
 @verbatim
-# strings /path/to/kernel/object/example.ko |grep vermagic
+# strings /path/to/kernel/module/example.ko |grep vermagic
 @endverbatim
 
 Example of using grep on example.ko:
@@ -318,5 +293,6 @@ Firmware Version: SWI9X15Y_07.12.09.00 r34123 CARMD-EV-FRMWR1 2017/04/26 23:34:1
 Bootloader Version: SWI9X15Y_07.12.09.00 r34123 CARMD-EV-FRMWR1 2017/04/26 23:34:19
 Linux Version: 3.14.29ltsi-961ca71325_ab5094eade #2 PREEMPT Thu Apr 27 02:17:10 PDT 2017
 @endverbatim
+
 
 **/

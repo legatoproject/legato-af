@@ -2,9 +2,9 @@
 
 This topic provides details about Legato's Application Definition file.
 
-See @ref howToSecurity for details on how to @ref howToSecuritySandboxUse and understand
-@ref howToSecuritySandboxLimits_app "app" and @ref howToSecuritySandboxLimits_process "process"
-limits.
+See @ref conceptsSecurity for details on how to @ref conceptsSecuritySandboxUse and understand
+@ref conceptsSecuritySandboxLimits_app "app" and
+@ref conceptsSecuritySandboxLimits_process "process" limits.
 
 <c>.adef</c> files can contain these sections:
 
@@ -637,7 +637,7 @@ maxLockedMemoryBytes: 100K
 @subsection defFilesAdef_processwatchdogAction watchdogAction
 
 Specifies the action the Supervisor should take when a @b process that is subscribed
-to the @ref basicRuntimeArch_watchdog "watchdog daemon" fails to kick the watchdog before the
+to the @ref conceptsRuntimeArch_watchdog "watchdog daemon" fails to kick the watchdog before the
 process reaches it's timeout value.
 
 Possible watchdog actions:
@@ -1161,7 +1161,7 @@ version: 0.3a
 @section defFilesAdef_watchdogAction watchdogAction
 
 Specifies the action the Supervisor should take when any app's process fails to kick the
-@ref basicRuntimeArch_watchdog "watchdog daemon" before the app reaches it's timeout value. If a
+@ref conceptsRuntimeArch_watchdog "watchdog daemon" before the app reaches it's timeout value. If a
 specific action need to be taken for individual processes then that should be set in the
 @ref defFilesAdef_processwatchdogAction .
 

@@ -1,4 +1,4 @@
-/** @page basicInterfaces Interfaces
+/** @page conceptsInterfaces Interfaces
 
 To maximize component reuse, it's vital components be designed for reuse.
 Reusability partly depends on portability, which the Legato framework provides, but it also
@@ -26,9 +26,9 @@ Legato supports networking, if that's what's needed, but it also has tools to im
 lighter-weight, language-independent communication between components that exist on the same
 host device or even running within the same process.
 
-@ref basicIPC
+@ref conceptsIPC
 
-@section functionCallAPIs Function Call APIs
+@section conceptsInterfaces_functionCallAPIs Function Call APIs
 
 Virtually all programmers are familiar with function calls. While Legato
 allows normal libraries to use their specific programming-language function call
@@ -44,9 +44,6 @@ return codes into messages, and send them over the IPC system.
 
 See @ref apiFiles for more information.
 
-<HR>
-
 Copyright (C) Sierra Wireless Inc.
 
 **/
-

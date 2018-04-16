@@ -1,0 +1,174 @@
+/** @page conceptsEnvironment Systems, Apps & Components
+
+Legato Application Framework supports a hierarchy of Systems, Apps and Components.  The tools help you
+develop and build your code into @b components.  Components are then collected into @b executables
+and run within processes which then forms an app. @b Apps run their own secure sandbox and are
+assigned their unique user ID and file permissions are only granted to that user.  Apps are then
+added to a @b System and the system is used to configure what Platform Services, other
+apps, build variables, kernel modules, commands and monitoring that is needed for your target.
+
+@image html getStartedApps-Overview.png
+
+@section conceptsEnvironment__comp Components
+
+Components can contain any number of source code files, pre-compiled binary files, resource files
+(e.g., audio files or images), or whatever files the component needs.
+
+A component is defined by creating a folder in your system and naming it the name of your component.
+Components can be "built" generating output like object code libraries and other files. These files
+can be incorporated into applications and run on a target device
+
+Each component must have a @ref defFileCdef Component.cdef file.  The file describes the component
+and how to build it for the @ref toolsBuild Build Tools.  Think of it like a manifest or recipe for
+your source code.  the @c Component.cdef are also used to specify the @b external @b interfaces
+and @b internal @b content of the components as well as defining the requirements from the system
+for the component.
+
+A component can either contain customized code or can also use to bundle in programs and libraries
+that were built outside of legato.
+
+Learn more about why Legato uses the @subpage basicComponents component based model, and the
+rationale behind it.
+
+| Tutorial                       | Description                                                     |
+| ------------------------------ | ----------------------------------------------------------------|
+| @ref getStartedHW_component    | How to create a @c Component.cdef for source code               |
+
+Example @c Component.cdef that contains 1 source file and provides 1 API and requires 1 API from
+another source:
+@code
+sources:
+{
+    myComponent.c
+}
+
+provides:
+{
+    api:
+    {
+        myComponent = firstComponent.api
+    }
+}
+
+requires:
+{
+    api:
+    {
+        anotherComponent.api
+    }
+}
+@endcode
+
+@section conceptsEnvironment__app Apps
+
+Apps are the execution environment for your code, they contain one or more executables that run
+together in a @ref conceptsSecuritySandboxOverview "sandbox". Executables are created by combining
+one or more components. Executables are then given a process to run from within the app. Components
+within the app have liberal privileges between each other and can access shared files in and
+resources from within the app.
+
+Each app must have an @ref defFilesAdef file which contains all the instructions and flags on how
+the app should behave and run. @c .adef file names are the name of the app.
+
+Apps can also be used to wrap around 3rd party programs and libraries to run them within the Legato
+Application Framework.
+
+| Tutorial                       | Description                                                     |
+| ------------------------------ | ----------------------------------------------------------------|
+| @ref getStartedHW_buildApp     | How to create an app with 1 component                           |
+| @ref howToPortLegacyC          | How to bundle external programs and libraries into Legato       |
+| @ref howToAdd3rdParty          | How to add 3rd party files and code to an application           |
+
+Example @c .adef, with 2 components running in separate processes:
+@code
+sandboxed: true
+start: auto
+
+executables:
+{
+    myComponent = ( myComponent )
+    anotherComponent = ( anotherComponent )
+}
+
+processes:
+{
+    run:
+    {
+        ( myComponent )
+        ( anotherComponent )
+    }
+
+    faultAction: restart
+}
+
+bundles:
+{
+    file:
+    {
+        [rx] script/example.sh /bin/
+    }
+}
+
+bindings:
+{
+    myComponent.myComponent.dataRouter -> dataRouter.dataRouter
+}
+@endcode
+
+@section conceptsEnvironment__systems Systems
+
+Systems are the collection of apps, kernel modules(drivers) and configuration settings that are used
+to build the Legato Runtime Environment that gets installed on your target.  It includes all
+configuration and settings that are specific for a target and can also include other @c .sdefs and
+include files to build your full target. Each system must have a @ref defFileSdef will contains
+all the configuration for your system to be built for a target.
+
+For example, the Legato Application Framework includes a @c default.sdef file which includes all the
+configuration, platform services and tools that are needed to enable the hardware on a supported
+target.  It contains environment variables so that when you run @c mksys -t <target>, it knows how
+to include all the configuration that is specific to that target. When you build your own system
+you need to include the default.sdef file so that your system is not only built with your apps but
+also includes all the default configuration and platform services built for your target.
+
+| Tutorial                       | Description                                                     |
+| ------------------------------ | ----------------------------------------------------------------|
+|@ref getStartedSystems          | How to create a basic system                                    |
+|@ref getStartedKO               | How to add a Kernel Object into a system                        |
+
+Example basic @c .sdef:
+@code
+//-------------------------------------------------------------------------------------------------
+// sample system definition that extends the default Legato system and includes configuration
+// specific to XXXX company.
+//
+// Copyright(C) XXXX company.  Use of this work is subject to license.
+//-------------------------------------------------------------------------------------------------
+
+//Provides all default platform services and target specific configuration.
+#include "$LEGATO_ROOT/default.sdef"
+
+apps:
+    {
+        $MYPROJECT/apps/myApp
+    }
+
+commands:
+    {
+        myTool = tools:/scripts/myTool
+    }
+
+interfaceSearch:
+    {
+        $MYPROJECT/interfaces
+    }
+
+kernelModules:
+    {
+        $MYPROJECT/drivers/example
+    }
+
+@endcode
+@note It is highly recommended that you comment your def files so that other users will be able to
+know what they need to include or exclude if extending your @c .sdef.
+
+**/

@@ -1,11 +1,13 @@
 /** @page avInstallUpload Create and Install Bundles
 
-Build and update system and App bundles and upload them to AirVantage to deploy on your target.
+Build and update system and App or System bundles and upload them to AirVantage to deploy on your
+target.
 
 @section avInstall Create App or System Bundle
 
-AirVantage supports installing App bundles over the air to remote targets.  The app
-bundle must be created and then packaged by the @ref toolsHost_av-pack tool.
+AirVantage supports installing App or System bundles over the air to remote targets.  The bundle
+must be created and then packaged by the @ref toolsHost_av-pack tool.
+
 @c Av-pack creates a manifest xml file for AirVantage with the binary image ready to
 upload to the AirVantage server.
 
@@ -16,13 +18,23 @@ $ av-pack -u helloWorld.wp85.update -b _build_helloWorld/wp85 -t abcCo.jsmith.he
 @endverbatim
 
 @ref buildToolsmkapp builds the @c helloWorld app for the @c wp85 target. The update pack file
-@c helloWorld.wp85.update and the AirVaSntage manifest file @c manifest.app are generated.
+@c helloWorld.wp85.update and the AirVantage manifest file @c manifest.app are generated.
 
 The @c manifest.app file is generated under the builds working directory (e.g.,
 @c ./_build_helloWorld/wp85 ).
 
 @ref toolsHost_av-pack packs these two files together and sets the apps @b type to
 <c>abcCo.jsmith.helloWorld</c>.
+
+Example of building a system for deployment through AirVantage:
+
+@verbatim
+$ mksys -t wp85 mySystem.sdef
+$ av-pack -u mySystem.wp85.update -b build/wp85 -t abcCo.jsmith.mySystem
+@endverbatim
+
+@ref buildToolsmksys builds the @c mySystem system for the @c wp85 target. The update pack file
+@c mySystem.wp85.update and the AirVantage manifest file @c manifest.sys are generated.
 
 @subsection avInstallAppType Setting an App Type
 
@@ -52,7 +64,7 @@ $ cat helloWorld.wp85.update | myAppSigner > helloWorld.wp85.signed
 $ av-pack -f helloWorld.wp85.signed abcCo.jsmith.helloWorld _build_helloWorld/wp85
 @endverbatim
 
-@section avInstallCreateInstJob Create App Installation job
+@section avInstallCreateInstJob Create Installation job
 
 To install your App on a remote target, you must first upload your app to AirVantage and then
 Create an App install job to install the App on the remote target.

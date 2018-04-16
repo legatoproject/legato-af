@@ -1,63 +1,104 @@
 /** @page getStarted Get Started
 
-Welcome to the Legato Application Framework. This getting start section will will walk you through
-- installing the framework on your dev machine.
-- configuring your target.
-- creating a couple of simple applications to demonstrate some of our main concepts.
+<b>Congratulations on taking the first step to developing applications and systems with the Legato
+Application Framework!</b>
 
-Completing this section will familiarize you with the Legato Application Framework concepts and
-prepare you to start developing your own components and apps.
+Completing this section will familiarize you with the Legato Application Framework workflow and
+prepare you to start developing for your target.
 
-<h1> Install and Build the Legato Application Framework </h1>
+Our tools and design patterns have been developed to make it easy to <b>set up your development
+environment; develop, customize and/or update a system and/or apps; build the Legato runtime for
+your target; and install the updates on the target.</b>
+@image html getStarted-Overview.png
+
+<h1> Setup Development Environment </h1>
 
 The first thing to do to get started is to install the Source Code, Tools and do an initial Build
 of the Application Framework for your target.
 
-<b>@subpage basicBuild "Install and Build" </b> the Legato Application Framework from GitHub.
-
-If you need help configuring your target for first time use:
+<b>@ref basicBuild "Install and Build" </b> the Legato Application Framework from GitHub.
 
 | Module                  | Description                                                            |
 | ----------------------- | ---------------------------------------------------------------------- |
-| @subpage basicTarget    | Configure a Sierra Wireless Target                                     |
-| @subpage raspbianMain   | Configure the Legato Application Framework for a Raspberry Pi          |
+| @subpage basicBuild     | Install the source code and build the framework for a target           |
+| @ref basicTarget        | Configure a Sierra Wireless Target                                     |
+| @ref raspbianMain       | Configure the Legato Application Framework for a Raspberry Pi          |
 
+<h1> Customize, Develop and Update </h1>
 
-<h1> Develop Components and Apps </h1>
-
-We provide two options for development environments:
+There are two options for development environments:
 - the Legato Application Framework which contains tools to build systems for your target and
-  configure your target through the command line.
-- [Developer Studio](https://source.sierrawireless.com/resources/legato/developerstudio/),
-that Sierra Wireless has developed to use with officially support releases of the WP Smart Modules.
+  configure your target through the command line on Linux.
+- [Developer Studio](https://source.sierrawireless.com/resources/legato/developerstudio/) -
+Sierra Wireless has developed and IDE to use with officially support releases of the WP Smart
+Modules and runs on both Linux and Windows environments.
+
+<h2> Command Line Install </h2>
 
 The Legato Application Framework tools are automatically installed and configured when you go
-through the  setup process and @ref basicBuildMake "make" your first build for a target. To install
-Developer Studio follow the instructions on the
+through the  setup process and @ref basicBuildMake "make" your first build for a target.
+
+To use the tools that are provided with the Framework you need to
+@ref toolsConfigShell "source the tools into your environment".
+by either adding @ref configlegatoenv to your bash profile or running @ref toolsBinlegs, which
+spawns a new shell.
+
+<h2> Developer Studio Install </h2>
+
+To install Developer Studio follow the instructions on the
 [Sierra Wireless Source](https://source.sierrawireless.com/resources/legato/developerstudio/).
 
-The Framework also comes with a @subpage basicTargetDevMode "developer mode" app, which when
-installed on a target provides the following tools and settings specific for development:
+<h2> Developer Mode App </h2>
+
+When your target gets shipped to you it may be set up for production use. A number of libraries and
+settings will be removed from the Framework and the underlying OS because of licensing or security
+concerns. The Dev Mode app bundles up those libraries and sets configuration and sets the target up
+for development.
+
+The @subpage basicTargetDevMode "developer mode" app, provides the following tools and settings
+specific for development:
  - bundles @ref howToDebugGDB "gdbserver" executable for use on the target device, allowing
    step-by-step debugging of Legato apps.
- - runs the tcf-agent, so the target is auto discoverable by Developer Studio.
- - sets the probation period of apps to 10 seconds, to prevent aggressive roll-back.
+  - sets the probation period of apps to 10 seconds, to prevent aggressive roll-back.
  - holds a wake lock, so the target won't go to sleep when disconnected from USB.
  - removes the boot count file on startup to disable the boot loop detection feature of Legato.
+ - runs the tcf-agent, so the target is auto discoverable by Developer Studio.
+ - sets firewall rules to allow more permissive network access.
 
 To install devMode on your target follow these @ref howToDevMode_installDev "install instructions".
 
+<h2> Tutorials </h2>
+
 Now you are ready to start developing apps and installing them on your target. We first recommend
-starting with our <b> @ref basicAppsCreate "HelloWorld tutorial"</b> as it walks you through
-some of the basic concepts and <b> how to create, install and test </b> your first application.
+starting with our <b> @subpage getStartedApps</b>; they walk you through
+some of the basic concepts and <b> how to create, install and test </b> your first component and
+application.
 
-Once you have mastered HelloWorld walk through our <b> @ref basicAppsIPC "HelloIPC tutorials"
-</b> which will <b> demonstrate 3 different ways to create components and applications </b> and how
-to communicate between components and apps.
+| Tutorial                 | Description                                                                                               |
+| ------------------------ | --------------------------------------------------------------------------------------------------------- |
+| @ref getStartedHW        | Create a "helloWorld" app and deploying it on a target                                                    |
+| @ref getStartedIPC       | Create two apps and use IPC to communicate between the apps                                               |
 
-| Tutorial                 | Description                                                                                                                |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| @subpage basicApps       | Create and modify Legato's version of Hello World and learn how to create components and apps and communicate between them |
+<h1> Build  and Update Target </h1>
+
+When you are ready to update your target with the new software that you have created you need to
+combine it all into a system and then update your target with that system. While you can update
+each app on a target, it is recommended to build all of your apps together into a cohesive @b system.
+When your apps are combined and built into a system it validates inter-app dependencies and
+conflicts and will help you resolve binding issues at build time instead of at runtime.
+
+<h2> Tutorials </h2>
+
+The following tutorials walk you through:
+- creating a system containing your sample apps
+- adding in optional kernel modules to your existing system (driver to enable hardware)
+- updating your target to a new system that includes your apps and an example kernel module
+
+| Tutorial                 | Description                                                                                               |
+| ------------------------ | --------------------------------------------------------------------------------------------------------- |
+| @ref getStartedSystems   | Create a system using a the default set of Platform Services and the helloWorld and helloIPC  apps        |
+| @ref getStartedKO        | Add an example driver to your system                                                                      |
+| @ref getStartedUpdate    | Update your target with your new system files                                                             |
 
 <h1> Concepts and Conventions </h1>
 
@@ -65,13 +106,11 @@ Now that you are familiar with the basic flow of the Legato Application Framewor
 documentation on our concepts and the programing conventions to create apps and systems with
 the Legato Application Framework.
 
-| Section                | Description                                                               |
-| ---------------------- | ------------------------------------------------------------------------- |
-| @ref buildAppsConcepts | Introduction to the Concepts that make up Legato AF                       |
-| @ref defFiles          | Use Definition Files to build systems, Apps, components and drivers       |
-| @ref apiFiles          | Work with the API files to develop Apps                                   |
-| @ref ccodingStdsMain   | C Language Coding Standards                                               |
-
+| Section                | Description                                                             |
+| ---------------------- | ----------------------------------------------------------------------- |
+| @ref defFiles          | Use Definition Files to build systems, Apps, components and drivers     |
+| @ref apiFiles          | Work with the API files to develop Apps                                 |
+| @ref ccodingStdsMain   | C Language Coding Standards                                             |
 
 <h1> Sample Apps and How To's </h1>
 
@@ -81,8 +120,7 @@ and apps showing how to connect to and consume specific @ref apiGuidesMain "APIs
 
 | Section                 | Description                                                            |
 | ----------------------- | ---------------------------------------------------------------------- |
-| @subpage howToMain      | How To and Troubleshooting articles for common features                |
+| @ref howToMain          | How To and Troubleshooting articles for common features                |
 | @subpage sampleApps     | Sample Applications                                                    |
-
 
 **/

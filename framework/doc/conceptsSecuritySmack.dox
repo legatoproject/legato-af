@@ -1,19 +1,15 @@
-/** @page howToSecuritySmack Implementing SMACK
-
-See @ref basicSecuritySmack basics.
-
-@section howToSandboxSmack_overview Overview
+/** @page conceptsSecuritySmack Implementing SMACK
 
 Simplified Mandatory Access Control Kernel (SMACK) provides a simple solution
- for mandatory access control (MAC). MAC provides the ability for a centralized entity to
- set access policy for system resources.
+for mandatory access control (MAC). MAC provides the ability for a centralized entity to
+set access policy for system resources.
 
- Linux's default access control policy is governed by permission bits on system resources
- (files, directories, devices, etc.). Permission bits can be modified by the resource owner
- (process with the same user ID as the resource). The access control policy is at
- the discretion of the resource owner; this system is classified as DAC (discretionary
- access control).  With DAC, policies are set in a distributed manner as there
- are often many system users, each setting the access policy for its own resources.
+Linux's default access control policy is governed by permission bits on system resources
+(files, directories, devices, etc.). Permission bits can be modified by the resource owner
+(process with the same user ID as the resource). The access control policy is at
+the discretion of the resource owner; this system is classified as DAC (discretionary
+access control).  With DAC, policies are set in a distributed manner as there
+are often many system users, each setting the access policy for its own resources.
 
 In contrast, MAC policies are set for all system resources by a centralized entity.
 
@@ -47,14 +43,14 @@ Rule 6 lets us use explicit rules through adding specific labels. Explicit rules
 define the access rights a subject label can have on an object label. Only privileged processes
 can set rules.
 
-@section howToSandboxSmack_privProcess Privileged Processess
+@section conceptsSecuritySmack_privProcess Privileged Processess
 
 Privileged processes use the CAP_MAC_OVERRIDE capability. It's also possible to configure
 the system so the CAP_MAC_OVERRIDE is honoured only for processes with a specific label. This
 configuration allows the system to restrict root processes (have CAP_MAC_OVERRIDE) that don't
 have the proper SMACK label.
 
-@section howToSandboxSmack_assignLabels Assigning Labels
+@section conceptsSecuritySmack_assignLabels Assigning Labels
 
 Use smack_SetMyLabel() to set the SMACK label for the calling process. The calling process must
 be a privileged process. Setting SMACK labels for other processes isn't possible.
@@ -62,12 +58,12 @@ be a privileged process. Setting SMACK labels for other processes isn't possible
 To set the SMACK label for file system objects use smack_SetLabel(), again the calling process
 must be privileged.
 
-@section howToSandboxSmack_setRules Set Rules
+@section conceptsSecuritySmack_setRules Set Rules
 
 Use smack_SetRule() to set an explicit SMACK rule that gives a specified subject access to a
 specified object.
 
-@section howToSandboxSmack_supervisor Supervisor
+@section conceptsSecuritySmack_supervisor Supervisor
 
 SMACK policies are set by the Legato startup scripts, the Legato Installer, and the Legato
 Supervisor.
@@ -119,7 +115,7 @@ supports passing file descriptors from one app to another. However, the
 file descriptor can't be passed onto a third app.
 
 
-@section howToSandboxSmack_limitations Limitations
+@section conceptsSecuritySmack_limitations Limitations
 
 Extended attributes used to store the SMACK label are available on
 all file systems we currently use with one key feature is missing: when a new file is created, the
@@ -145,8 +141,6 @@ current implementation of SMACK has the following limitations:
    to only allow access to the app that requires it.  However, there currently isn't a
    way to specify this in the xdef file.
 
-
-<HR>
 Copyright (C) Sierra Wireless Inc.
 
 **/

@@ -2,8 +2,6 @@
  * @page c_logging Logging API
  *
  * @ref le_log.h "API Reference" <br>
- * @ref howToLogs
- * <HR>
  *
  * The Legato Logging API provides a toolkit allowing code to be instrumented with error, warning,
  * informational, and debugging messages. These messages can be turned on or off remotely and pushed or pulled

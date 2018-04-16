@@ -42,7 +42,7 @@ unix 28948 625 - Live 0xbf000000
 @endcode
 
 Next, you'll need to create a kernel module @c .ko file. Follow the instructions in
-Out of Tree Kernel Module topic @ref howToAddKernelDriver_makeKernel. Your @c .ko file should use
+Out of Tree Kernel Module topic @ref basicBuildLegato_ToolchainSWI_KO. Your @c .ko file should use
 the code in the files located in <c>legato/drivers/spisvc: Makefile, spisvc.c, and spisvc.mdef</c>.
 Use @c scp to copy your  kernel module (driver) onto the target like this:
 @code

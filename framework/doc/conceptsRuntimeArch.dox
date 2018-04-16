@@ -1,15 +1,15 @@
-/** @page basicRuntimeArch Runtime Architecture
+/** @page conceptsRuntimeArch Runtime Architecture
 
 Legato's runtime architecture manages each app in its own sandbox.
 
-@image html LayeredArchitecture.png
+@image html conceptsRuntimeArch_LayeredArchitecture.png
 
 Apps communicate with each other using access-controlled message-passing
 services.
 
 The Supervisor automatically creates sandboxes.
 
-@section basicRuntimeArch_apps Applications
+@section conceptsRuntimeArch_apps Applications
 
 An application (we call them 'apps') is a collection of executable files, libraries, and/or other
 resource files (e.g., audio files, web pages) that can be deployed to a target device.
@@ -19,24 +19,24 @@ By default, each app runs in its own sandbox. When an app is constructed, all
 the files and IPC services it needs to access are declared.  At runtime, the Supervisor and
 the Service Directory enforce that only approved files and IPC services are accessed by that app.
 
-@ref basicAppsCreate
+@ref getStartedApps
 
-@section basicRuntimeArch_supervisor Supervisor
+@section conceptsRuntimeArch_supervisor Supervisor
 
 The Supervisor is a privileged process running on the target device that:
- - creates and destroys @ref basicSecuritySandbox for apps
+ - creates and destroys @ref conceptsSecuritySandbox for apps
  - starts and stops apps
  - performs fault recovery when apps fail (e.g., restarting the app).
 
-@section basicRuntimeArch_serviceDirectory Service Directory
+@section conceptsRuntimeArch_serviceDirectory Service Directory
 
 Legato's Service Directory provides a secure way for client processes to find servers offering
 services they need, which ensures only authorized connections are established.
 
 @ref legatoServices <br>
-@ref basicInterfaces
+@ref conceptsInterfaces
 
-@section basicRuntimeArch_configTree Config Tree
+@section conceptsRuntimeArch_configTree Config Tree
 
 The Config Tree provides persistent @ref basicConfig data
 storage organized in a tree structure.
@@ -44,7 +44,7 @@ storage organized in a tree structure.
 Command line @ref toolsTarget_config tool <br>
 @ref c_config
 
-@section basicRuntimeArch_watchdog Watchdog
+@section conceptsRuntimeArch_watchdog Watchdog
 
 Legato provides a monitoring service for applications with the @c watchdog daemon which runs within
 the Legato Runtime Environment.  If your target supports it, the watchdog daemon can also be enabled
@@ -55,7 +55,7 @@ section to your systems @ref defFilesSdef .
 
 The daemon monitors app's processes for hangs or freezing and if the process doesn't
 "kick" the watchdog daemon in a specified time (the default is @b 30 @b seconds), the watchdog
-signals the @ref basicRuntimeArch_supervisor to perform a specified action.  Critical services
+signals the @ref conceptsRuntimeArch_supervisor to perform a specified action.  Critical services
 should also set the maxWatchdogTimeout to further ensure that the system is running with all
 critical services started.
 
@@ -111,14 +111,14 @@ To disable the watchdog for the Platform Services on your target set
 @c LEGATO_SERVICES_WDOG_DISABLE=1 within the @ref defFilesSdef_buildVars section of your
 @ref defFilesSdef .
 
-@section basicRuntimeArch_logs Logs
+@section conceptsRuntimeArch_logs Logs
 
 Legato provides a user-friendly way to control log message filtering for running app processes.
 
 Command line @ref toolsTarget_log tool <br>
 @ref c_logging.
 
-@section basicRuntimeArch_updateDaemon Update Daemon
+@section conceptsRuntimeArch_updateDaemon Update Daemon
 
 The Update Daemon accepts @e update @e pack files that contain software/firmware update
 instructions and associated data like libraries, executables, and resource files.
@@ -128,8 +128,6 @@ through the @ref toolsTarget_update tool.
 
 The Update Daemon includes hooks that allow update packs to be digitally signed and/or encrypted
 for security reasons.
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc.
 

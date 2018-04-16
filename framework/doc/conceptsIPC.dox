@@ -1,4 +1,4 @@
-/** @page basicIPC Inter-process Communication
+/** @page conceptsIPC Inter-process Communication
 
 Inter-process communication (IPC) allows communication between different processes.
 A process is one or more threads running inside its own, isolated address space.
@@ -38,18 +38,12 @@ code written in other languages.
 
 Related info
 
-@ref basicInterfaces <br>
+@ref conceptsInterfaces <br>
 @ref apiFiles <br>
-@ref basicAppsIPC <br>
+@ref getStartedIPC <br>
 @ref defFiles <br>
 @ref legatoServices
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc.
 
 **/
-
-
-
-

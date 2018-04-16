@@ -1,19 +1,21 @@
-/** @page howToLogs Use Logs
+/** @page conceptsLogs    Logging
 
-This topic summarizes how to use Legato logging.
-
-There's also some @ref basicLog "background" info.
-
-<HR>
+Logging is a critical part of any embedded development framework. Most devices can't
+display error or warning messages and don't have a human user monitoring them.
+Even when a device does have a display and a user watching it, the log
+messages often don't help the device's primary user.
+Displaying messages on a screen doesn't support
+remote troubleshooting; especially when the device is hidden from view inside
+a piece of equipment or located in remote geographic regions.
 
 Legato creates log messages in LE_INFO() by default
 Only minimal info is reported, and only for the current app: essentially logs if the app is
 communicating. You need to modify default settings to enable monitoring for anything else.
 
 There are two built-in features to control logging using the @ref
-howToLogs_tool or @ref howToLogs_api. There are also @ref c_log_debugFiles.
+concepsLogs_tool or @ref conceptsLogs_api. There are also @ref c_log_debugFiles.
 
-@section howToLogs_run Access Logs
+@section conceptsLogs_run Access Logs
 Run @c logread on the target to view the system log.
 
 Run <code>logread -f </code> to start monitoring the logs and display
@@ -22,7 +24,7 @@ messages as they are logged.
 The installed app's output LE_INFO() log message will appear in the target's
 system log (syslog).
 
-@section howToLogs_tool Logging Tool
+@section conceptsoLogs_tool Logging Tool
 
 The target @c log tool is the easiest way to set logging controls. You can
 control what's being logged, filter levels, trace keywords, and processes
@@ -36,7 +38,7 @@ keyword trace.
 
 See @ref toolsTarget_log for details.
 
-@section howToLogs_syslogDefault  Default syslog
+@section conceptsLogs_syslogDefault  Default syslog
 
 By default, app processes will have their @c stdout and @c stderr redirected to the @c syslog.  Each
 process’s stdout will be logged at INFO severity level; it’s stderr will be logged at
@@ -44,7 +46,7 @@ process’s stdout will be logged at INFO severity level; it’s stderr will be 
 
 See @ref c_log_basic_defaultSyslog for more info.
 
-@section howToLogs_api Logging API
+@section conceptsLogs_api Logging API
 
 The Logging API provides a toolkit to set error, warning, info, and
 debugging messages with macros and condition support including default environment variable
@@ -52,8 +54,6 @@ controls that can be output to different devices and formats.
 
 See @ref c_logging for details.
 
-<HR>
-
 Copyright (C) Sierra Wireless Inc.
 
- **/
+**/

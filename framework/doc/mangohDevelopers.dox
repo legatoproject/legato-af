@@ -13,9 +13,9 @@ code files were loaded onto your computer. When you ran @c helloWorld, you used 
 
 @section mangohDevelopers_helloWorld What helloWorld used
 By making and then running the helloWorld sample app, you've already used all the
-@ref basicAppsCreate "basic pieces" required by a Legato app:
+@ref getStartedApps "basic pieces" required by a Legato app:
 - one component containing its @ref defFilesCdef ".cdef" file
-- one @ref basicAppsCreate_adef "app" source file
+- one @ref getStartedApps_adef "app" source file
 - @ref defFilesAdef ".adef" file of the app
 
 When you built helloWorld (by running <code>$ mkapp -t wp85 helloWorld.adef</code>), the
@@ -27,12 +27,12 @@ helloApp/_build_testApp/wp85/staging/lib/.
 
 @section mangohDevelopers_nextSteps Next Steps
 @ref buildAppsMain is super easy. All you do is:
-- @ref basicAppsCreate_component "create a component"
-- @ref basicAppsCreate_adef "create an app definition file"
-- @ref basicAppsCreate_buildApp "build your app"
-- @ref basicAppsCreate_instTarget "install app on target".
+- @ref getStartedApps_component "create a component"
+- @ref getStartedApps_adef "create an app definition file"
+- @ref getStartedApps_buildApp "build your app"
+- @ref getStartedApps_instTarget "install app on target".
 
-That's it! You're ready to @ref basicAppsCreate_usage "use Legato apps".
+That's it! You're ready to @ref getStartedApps_usage "use Legato apps".
 
 You can develop starting with pre-built sample apps: <br>
 - @ref sampleApps available in the app/sample/ directories.
@@ -40,7 +40,7 @@ You can develop starting with pre-built sample apps: <br>
 clone the sample apps from GitHub.
 
 Or you can develop apps from scratch:
-- @ref basicApps
+- @ref getStartedApps
 - @ref howToMain
 
 

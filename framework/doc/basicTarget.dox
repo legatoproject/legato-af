@@ -1,4 +1,6 @@
-/** @page basicTarget Configure Sierra Wireless Module
+/** @page basicTarget Configure SWI Target
+
+The following contains different methods on setting up and configuring a Sierra Wireless Module.
 
 To connect to your device you must use either a USB or Serial cable and connect the device directly
 to your Dev Machine.  All other interfaces are turned off by default for security reasons.

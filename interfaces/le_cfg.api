@@ -20,7 +20,7 @@
  * Apps are able to search over the tree for data, although it's generally expected that the location
  * will be known to the app and that the app will point to the right node to retrieve the value.
  *
- * More on the @ref basicConfig "Config Strategy" for the Legato AF.
+ * More on the @ref conceptsConfig "Config Strategy" for the Legato AF.
  *
  * @section cfg_Overview Overview
  *

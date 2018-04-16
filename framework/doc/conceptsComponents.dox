@@ -1,4 +1,4 @@
-/** @page basicComponents Components
+/** @page conceptsComponents Components
 
 In Legato, a component is a collection of code and other files that are functionally related,
 along with one or more licenses that apply to the components' files.
@@ -6,10 +6,10 @@ along with one or more licenses that apply to the components' files.
 Components can be "built" generating output like object code libraries and
 other files. These files can be incorporated into applications and run on a target device.
 
-Legato components can also have @ref basicInterfaces "language-independent interfaces"
-and @ref basicConfig "configuration data".
+Legato components can also have @ref conceptsInterfaces "language-independent interfaces"
+and @ref conceptsConfig "configuration data".
 
-@section basicComponentsRationale Rationale
+@section conceptsComponents_Rationale Rationale
 
 It's important to manage complexity. The more complex a system becomes,
 the harder it is to ensure required behavior without unwanted effects.
@@ -59,7 +59,7 @@ A further potential of component-based development is the ease of sharing (for f
 for pay) of these reusable components.  If a component is very useful to others, it can be
 shared and reused in accordance with the license that the author has chosen to release it under.
 
-@section basicComponentsLegato Legato Components
+@section conceptsComponents_Legato Legato Components
 
 In the Legato world, each component is kept in its own directory.  The name of the directory
 is also the name of the component.
@@ -77,7 +77,7 @@ will generate the appropriate start-up code for the executable to ensure that th
 initialized when the executable is started.
 
 
-@section basicComponentsProgrammingModel Component Programming Model
+@section conceptsComponents_ProgrammingModel Component Programming Model
 
 Generally, Legato components are written using an event-driven model. Callback functions
 called "event handlers" (or "handlers" for short) are attached to specific events, and when
@@ -107,7 +107,7 @@ And any thread can run its own event loop if an event-driven thread with blockin
 is desired.
 
 
-@section basicComponentsLegacyCode Legacy Code
+@section conceptsComponents_LegacyCode Legacy Code
 
 Sometimes you'll have a legacy program you want to include in your app without rewriting it
 in the style of a Legato component.  This can be done by building your legacy app using your
@@ -119,4 +119,3 @@ device) and @b bundling the built programs and libraries into the app.
 Copyright (C) Sierra Wireless Inc.
 
 **/
-

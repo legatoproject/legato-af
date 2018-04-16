@@ -6,11 +6,11 @@ Common Legato Terms:
 | ----------------------                                | ------------- |
 | @ref defFilesAdef "adef"                              | Application definition file - defines the external interfaces and internal content of apps including bindings, bundles, components and system settings |
 | .api files                                            | Interface definition language (IDL) file for defining function-call-oriented APIs that are used over IPC by programs written in different programming languages than the language used to implement the API. (e.g., the functions defined in the API are implemented in C while a program that calls the API is written in Java) |
-| @ref howToAV "AirVantage"                             | Sierra Wireless' IoT cloud that allows management of a fleet of remote machines|
+| @ref legatoServicesAirVantage "AirVantage"            | Sierra Wireless' IoT cloud that allows management of a fleet of remote machines|
 | @ref platformConstraintsAtCmd "AT"                    | Instruction set to send commands to a modem through AT Commands |
 | Build Environment                                     | Collection of tools and environment variables to build and deploy applications on the Legato AF |
 | @ref defFilesCdef "cdef"                              | Component definition file - defines the external interfaces and internal content of software components |
-| @ref basicComponents "Component"                      | Collection of functionally-related source code and other files that are grouped into a single, reusable unit for sharing between projects |
+| @ref conceptsComponents "Component"                   | Collection of functionally-related source code and other files that are grouped into a single, reusable unit for sharing between projects |
 | @ref legatoServicesConfigTree "Config Tree"           | Non-volatile data structure that stores configuration values. The trees are accessible through the Config Tree API or the Legato AF config tool |
 | @ref defFiles "Definition Files"                      | Configuration files that define the system, application, APIs, kernel module or component pieces needed to build your code within the Legato AF |
 | Development Host (Host)                               | Computer system operated by a human developer to develop (write, build, test, debug) software |
@@ -25,11 +25,11 @@ Common Legato Terms:
 | Legato Reference BSP                                  | Software package consisting of kernel, kernel modules, complier and boot-loader for a specific FS/OS/HW target that is currently used to run the Legato platform.  Mostly open source, but could include binary or proprietary components depending on the target |
 | <a href="http://mangoh.io" target="_blank">mangOH</a> | Sierra Wireless' open hardware platform for IoT |
 | @ref defFilesMdef "mdef"                              | Module definition file - bundles Linux Kernel Modules for the Legato AF |
-| @ref howToSecurity "Sandbox"                          | The core security mechanism for running applications in separate secure containers |
+| @ref conceptsSecurity "Sandbox"                       | The core security mechanism for running applications in separate secure containers |
 | @ref defFilesSdef "sdef"                              | System definition file - builds and interconnects apps with each other and within the runtime environment |
 | SOTA                                                  | Software Over the Air - service to update software from a remote location |
 | @ref legatoServicesSupervisor "Supervisor"            | Daemon process that supervises Legato apps running on the target device; controls the startup, shutdown, and fault recovery of apps; creates and destroys Sandboxes |
-| @ref basicSecuritySmack "SMACK"                       | Simplified Mandatory Access Control Kernel - Built-in Linux solution for mandatory access control |
+| @ref conceptsSecuritySmack "SMACK"                    | Simplified Mandatory Access Control Kernel - Built-in Linux solution for mandatory access control |
 | Target (device)                                       | Device that the Legato AF is installed onto (e.g. mangOH or Raspberry Pi) |
 | Toolchain                                             | Collection of build tools, including compilers and linkers needed to build programs to run on a target device |
 | <a href="https://www.yoctoproject.org/" target="_blank">Yocto</a> | Open source collaboration project that provides templates, tools and methods to help create custom Linux-based systems for embedded products regardless of the hardware architecture |

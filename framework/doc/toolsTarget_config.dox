@@ -164,9 +164,6 @@ name and actual value:
     afloatValue<float> == 10.24
 @endverbatim
 
-The @config tool is designed to be easily used in external scripts.  The
-@ref howToUpgradeAppConfigTree is a good example of using the @c config tool to backup and restore
-an app's config tool
 
 Copyright (C) Sierra Wireless Inc.
 

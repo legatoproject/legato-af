@@ -1,16 +1,50 @@
 /** @page basicBuild Install/Build Legato
 
-These topics contain info on how to build, install and remove the Legato Application Framework:
+How to manually build, install and remove the Legato Application Framework:
+
+To install and get started with the Legato Application Framework you need to install and configure:
+- The Legato Application Framework on a development PC(host) running an LTS version of Ubuntu
+- A toolchain that corisponds to the Linux Distro installed on your target.
+- Configure the Legato Application Framework for your target.
 
 | Section                            | Description                                                         |
 | ---------------------------------- | ------------------------------------------------------------------- |
 | @subpage basicBuildLegato          | Install the Application Framework on a Linux development machine    |
 | @subpage basicBuildToolchain       | Install a toolchain for your target                                 |
 | @subpage basicBuildMake            | Configure your environment and update your target                   |
+
+If you wish to upgrade to a new version of the Framework or to uninstall exisiting versions:
+
+| Section                            | Description                                                         |
+| ---------------------------------- | ------------------------------------------------------------------- |
 | @subpage basicBuildUpdate          | Update the Application Framework to a new version                   |
 | @subpage basicBuildUninstall       | Uninstall the Application Framework from a development machine      |
-| @ref basicTarget                   | Setup and configure a Sierra Wireless target device                 |
-| @ref raspbianMain                  | Setup and configure a Raspberry Pi target device                    |
+
+@section basicBuild_CheckVersion Verify Target
+
+To check the version of Legato installed on your target:
+
+@verbatim
+# legato version
+@endverbatim
+
+Example Output:
+@verbatim
+17.11.0_31b9a1260bc1e45310ccf15491352a01
+@endverbatim
+
+To check the version of Firmware and Linux Distribution on your target:
+
+@verbatim
+# fwupdate query
+@endverbatim
+
+Example Output:
+@verbatim
+Firmware Version: SWI9X07Y_02.10.01.00 000000 jenkins 2017/12/03 03:05:33
+Bootloader Version: SWI9X07Y_02.10.01.00 000000 jenkins 2017/12/03 03:05:33
+Linux Version: 3.18.44 #2 PREEMPT Thu Dec 21 22:18:24 UTC 2017
+@endverbatim
 
 Copyright (C) Sierra Wireless Inc.
 

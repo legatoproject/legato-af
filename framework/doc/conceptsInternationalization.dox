@@ -1,4 +1,4 @@
-/** @page basicInternationalization Internationalization
+/** @page conceptsInternationalization Internationalization
 
 Legato provides string manipulation functions that support UTF-8 encoding.
 
@@ -8,9 +8,7 @@ developers.
 @todo Do we need to provide locale-specific formatting tools (e.g., comma vs. period for decimals,
 date format specification, etc.), or can we just leave that up to developers to sort out themselves?
 
-<HR>
 
 Copyright (C) Sierra Wireless Inc.
 
 **/
-

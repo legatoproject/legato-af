@@ -1,9 +1,6 @@
-/** @page basicSecuritySandbox Sandboxes
+/** @page conceptsSecurity Security
 
-Also see <br>
-@ref howToSecuritySandboxOverview <br>
-@ref howToSecuritySandboxConfigSample <br>
-@ref howToSecuritySandboxHelper
+<h1> Sandboxing Apps </h1>
 
 Legato uses sandboxes to provide a security layer between apps running in the same
 system. Legato sandboxes isolate apps from the rest of the system. This allows
@@ -40,6 +37,44 @@ to another
 Legato sandboxes also provide <i>resource limitations</i>. Resource limitations place
 limits on the amount of system resources an app is allowed to consume. Without
 resource limits, an isolated app can still cause damage by consuming all available resources.
+
+For more details on Sandbox Security:
+
+|Section                                           | Description                                          |
+|--------------------------------------------------|------------------------------------------------------|
+| @subpage conceptsSecuritySandboxOverview         | Overview of Sandbox Security                         |
+| @subpage conceptsSecuritySandboxConfigSample     | Configuration Sample of adding Sandboxing to an app  |
+| @subpage conceptsSecuritySandboxLimits           | Sandbox limitations                                  |
+
+<h1> SMACK </h1>
+
+Simplified Mandatory Access Control Kernel (SMACK) provides a simple solution
+for mandatory access control (MAC). MAC provides the ability for a centralized entity to
+set access policy for system resources.
+
+The Linux default access control policy is governed by permission bits on system resources
+at the discretion of the resource owner: discretionary access control (DAC).
+Policies are set in a distributed way so different system users can set
+access policy for their own resources.
+
+MAC policies are often used to overcome DAC limitations for systems that require a higher level of
+security.
+
+SMACK is used to supplement DAC. DAC permissions are checked first; if access is granted, SMACK
+permissions are then checked. SMACK can only limit access, it can't grant access beyond DAC
+permissions.
+
+SMACK uses 'labels' on resources (objects in SMACK terminology) and
+processes (subjects) to determine access. Labels on resources can only be
+set by a privileged process (the @c CAP_MAC_OVERRIDE label designates
+a process as @a privileged)
+
+SMACK policies are set by the Legato startup scripts, the Legato Installer
+and the Legato Supervisor.
+
+|Section                              | Description                                                |
+|-------------------------------------|------------------------------------------------------------|
+| @subpage conceptsSecuritySmack      | Overview of SMACK security as implimented in the Framework |
 
 @todo Add support for flash and network consumption limits on apps.
 

@@ -1,0 +1,57 @@
+/** @page concepts Concepts
+
+The Legato Application Framework is designed to simplify embedded IoT development and connect your
+applications to the cloud and network services. <b>But how do we do that?</b> We've developed a set
+of conventions and tools that let you easily hook up your custom apps to existing service apps
+(platform services) which then in turn hook up to the OS and hardware through an adapter. When you
+are developing your apps for a target you only need to worry about how to connect to services
+and send or receive data.
+
+This section explains all of our concepts and how to integrate the concepts into developing your
+apps and building your system. Refer to our @subpage aboutDocsGlossary "glossary" to define some of
+our basic terminology.
+
+<h1> Develop </h1>
+
+The built product of the Legato Application Framework is the Legato runtime environment which is
+created from a system. A system is how you configure and customize the Legato Runtime Environment
+for your target and define what apps and platform services that you want to use.  Apps are
+collections of components and files that run in a secure environment called a sandbox.
+At the heart of every app is one or more components, the component is the collection of code or
+other files that are functionally related and need to exist in the same space. Components
+communicate with each other and/or other apps through interfaces.
+
+The following sections explain our strategies to use components and interfaces in developing your
+components, apps and systems:
+
+| Section                               | Description                                                    |
+| ------------------------------------- | -------------------------------------------------------------- |
+| @subpage conceptsEnvironment          | Overview of Systems, Apps and Components                       |
+| @subpage defFiles                     | Use Definition Files to build systems, apps, and components    |
+| @subpage conceptsComponents           | Learn about components and how to integrate your code into one |
+| @subpage conceptsInterfaces           | Use interfaces to facilitate component and app communication   |
+| @subpage conceptsIPC                  | Use IPC to communicate between different processes             |
+| @subpage conceptsEvents               | Use Event-driven Programming to trigger callback functions     |
+| @subpage apiFiles                     | Work with the API files to develop Apps                        |
+| @subpage ccodingStdsMain              | Learn about the C Language Coding Standards used               |
+| @subpage conceptsInternationalization | Learn about our basic Internationalization standards           |
+
+<h1> Runtime </h1>
+
+Once you have created your components and apps you will be combining them into a system, and then
+installing that system onto a target. The runtime environment is the combination of your custom apps
+any platform services that you have included (or have been defaultly built into the system) and
+Legato Daemons that take care of the management of the target and the apps installed on the target.
+
+The following sections provide more details on the runtime architecture:
+
+| Section                             | Description                                                         |
+| ----------------------------------- | ------------------------------------------------------------------- |
+| @subpage conceptsRuntimeArch        | Learn about the daemons that administrate and monitor your apps     |
+| @subpage conceptsSecurity           | Learn about the Legato Security model                               |
+| @subpage conceptsConfig             | Learn about our Configuration Management model for systems and apps |
+| @subpage conceptsLogs               | Learn how Legato deals with logging                                 |
+| @subpage conceptsUpdates            | Learn the different methods of updating your target                 |
+| @subpage conceptsPwrMgmt            | Learn about power management strategies within apps                 |
+
+**/

@@ -1,4 +1,4 @@
-/** @page basicConfig App/System Configuration
+/** @page conceptsConfig App/System Configuration
 
 This topic describes how application and system configuration works in Legato AF.
 
@@ -14,7 +14,7 @@ Regardless of the device's customization, the device needs to be:
    - multi-threaded race conditions
    - untimely device reset or power loss
 
-@section basicConfig_treestructs Tree Structure
+@section conceptsConfig_treestructs Tree Structure
 
 Config data is stored in a tree structure, where each node is made up of a stem or a leaf.  Stem
 nodes can contain any number of child nodes, each with its own name. Leaf nodes can either be empty
@@ -54,7 +54,7 @@ much like file system paths, which makes it much easier to access config data vi
 SNMP, OMA-DM, and other protocols. It also allows the config database to be explored using
 tree walking algorithms and tools.
 
-@section basicConfig_trans Transactions
+@section conceptsConfig_trans Transactions
 
 Config data can be shared by multiple processes and threads. This can sometimes result in race
 conditions that can threaten data integrity. E.g., if threads A and B both use data
@@ -83,7 +83,7 @@ To prevent denial of service problems (either accidental or malicious), transact
 limited lifetime. If a transaction remains open for too long, it will be automatically terminated;
 the configuration database will drop its connection to the offending client.
 
-@section basicConfig_growth Config Data Growth
+@section conceptsConfig_growth Config Data Growth
 
 Config structure will change over time as your app is developed and new features are added.  Config
 tree changes need to be managed in a way that supports the growth and the upgrades.
@@ -98,7 +98,7 @@ Recommended strategies when upgrading your app's tree:
  - If you are backing up the original config tree keep in mind the limited space requirements of the
    non-volatile memory, or the time and data cost of over-the-air bandwidth.
 
-@section basicConfig_updateRollback Software Updates and Roll-Back
+@section conceptsConfig_updateRollback Software Updates and Roll-Back
 
 When you update apps that use Config Trees, and the upgrade is done using the @ref c_update API:
 - the updated new system automatically inherits (copies) the trees from the old system.
@@ -108,13 +108,13 @@ before the update).
 
 @note The @ref toolsTarget_update tool uses the @ref c_update API.
 
-@section basicconfig_changeNotif Config Change Notifications
+@section conceptsConfig_changeNotif Config Change Notifications
 
 Sometimes, action needs to be taken whenever a config data field changes value. The
 @ref c_config allows client software to register for notification when changes are committed to
 a particular branch of the config tree.
 
-@section basicConfig_accessControl Access Control
+@section conceptsConfig_accessControl Access Control
 
 Because the behavior of apps can be affected by the config data that they use,
 config data can be used as an attack vector for malicious software. As a result,

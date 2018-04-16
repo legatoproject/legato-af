@@ -1,17 +1,16 @@
-/** @page basicAppsCreate helloWorld
+/** @page getStartedHW helloWorld
 
-This beginning tutorial will walk you through creating @c Hello @c World by:
+This starting tutorial will walk you through creating @c Hello @c World by:
 
- - @ref basicAppsCreate_component "Create a Component"
- - @ref basicAppsCreate_adef "Bundle the Component into an Exe and then an App"
- - @ref basicAppsCreate_buildApp "Install the System onto a Target"
- - @ref basicAppsCreate_usage "Test the App"
+ - @ref getStartedHW_component "Create a Component"
+ - @ref getStartedHW_adef "Bundle the Component into an Exe and then an App"
+ - @ref getStartedHW_buildApp "Install the System onto a Target"
+ - @ref getStartedHW_usage "Test the App"
 
 Walking through this tutorial will introduce you to the basic concepts that make up the Legato
-Application Framework.  Once you've completed this you can then walk through:
-@ref basicAppsAddThings, @ref basicAppsIPC, and @ref basicAppsCompMulti.
+Application Framework.
 
-@section basicAppsCreate_sampleDir Sample Directories and Files
+@section getStartedHW_sampleDir Sample Directories and Files
 
 Apps have a hierarchy of folders and files, with the base folder being the name of the
 app.  Each component is encapsulated in it's own subdirectory and will include the @c .c files and
@@ -28,12 +27,12 @@ helloWorld/
 └── helloWorld.adef
 @endverbatim
 
-@section basicAppsCreate_component Create Component
+@section getStartedHW_component Create Component
 
-Creating a component will walk you through: @ref basicAppsCreate_componentCreateDir,
-@ref basicAppsCreate_componentC, and @ref basicAppsCreate_componentCdef
+Creating a component will walk you through: @ref getStartedHW_componentCreateDir,
+@ref getStartedHW_componentC, and @ref getStartedHW_componentCdef
 
-@subsection basicAppsCreate_componentCreateDir Create Directory
+@subsection getStartedHW_componentCreateDir Create Directory
 
 Create a directory for your component: the directory name will become the component name (this
 is done for ease of organization and becomes important when you are including multiple components):
@@ -42,7 +41,7 @@ is done for ease of organization and becomes important when you are including mu
 $ mkdir helloComponent
 @endcode
 
-@subsection basicAppsCreate_componentC Create C Source File
+@subsection getStartedHW_componentC Create C Source File
 
 This looks similar to the original C @c helloWorld program from Kernighan's and Richie's
 "The C Programming Language", except that:
@@ -55,7 +54,7 @@ Create the file for helloWorld:
 $ vim helloComponent/helloWorld.c  # use any editor of your choosing
 @endcode
 
-@subsubsection basicAppsCreate_includes Include legato.h
+@subsubsection getStartedHW_includes Include legato.h
 
 First you must include @ref c_APIs "legato.h". @ref c_APIs "legato.h" is the main legato library,
 and includes stdio.h along with other system headers and Legato Framework headers.  It reduces the
@@ -73,7 +72,7 @@ Legato Component C or C++ code.
 #include "interfaces.h"
 @endcode
 
-@subsubsection basicAppsCreate_componentInit Component Initializer
+@subsubsection getStartedHW_componentInit Component Initializer
 
 The @c COMPONENT_INIT macro is used to identify your <b> component initializer</b>.
 Every component must have a component initializer.
@@ -132,7 +131,7 @@ The build tools figure out what language the source code is written in by lookin
 filename extension.  So, because our file @c helloWorld.c ends in @c .c, the build tools will try to
 use a C compiler to compile it into a library when helloWorld.c gets included in an executable.
 
-@subsection basicAppsCreate_componentCdef Create cdef File
+@subsection getStartedHW_componentCdef Create cdef File
 
 Legato definition files (.sdef, .adef, .cdef and .mdef) are used as instructions to the Build Tools
 (mk tools) and tell the mk tools how to bind the components, apps and systems together to create the
@@ -163,7 +162,7 @@ sources:
 
 <b>You have now successfully created your first Legato Component.  Congratulations!</b>
 
-@section basicAppsCreate_adef Create App
+@section getStartedHW_adef Create App
 
 Next lets turn your helloWorld component into an App.  Apps are the execution environment for your
 code, they contain one ore more executables that run together in a "Sandbox".  Your executables are
@@ -223,7 +222,7 @@ processes:
 }
 @endcode
 
-@section basicAppsCreate_buildApp Build App
+@section getStartedHW_buildApp Build App
 
 Now that all your files are created and you have provided a @c .cdef and an @c .adef for your app
 you are ready to use the @ref toolsBuild mktools to build your app into a binary and deploy it on
@@ -281,7 +280,7 @@ successfully been created, though it is helpful in troubleshooting build problem
 
 @c helloWorld.wp85.update is the package that is needed to install @c helloWorld onto your target.
 
-@section basicAppsCreate_instTarget Install App to Target
+@section getStartedHW_instTarget Install App to Target
 
 Use @c app install to install the app on your target, the @c app command is available both on your
 dev machine and target but when using from your dev machine you must supply the IP address of your
@@ -304,9 +303,9 @@ Now you can update your target by typing:
 $ app install helloWorld.wp85.update   # add the target IP to the command if DEST_IP is not set
 @endverbatim
 
-@section basicAppsCreate_usage Test helloWorld
+@section getStartedHW_usage Test helloWorld
 
-The helloWorld app logs @c Hello world! to the syslog everytime the app is started.  To test this
+The helloWorld app logs @c Hello world! to the syslog every time the app is started.  To test this
 out we need to use the @c logread command to tail the logs.
 
 SSH to your target:

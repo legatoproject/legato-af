@@ -1,0 +1,256 @@
+/** @page getStartedSystems Legato Systems
+
+This systems tutorial will walk you through creating a system that includes:
+
+ - The default platform services and system configuration for your target
+ - The helloWorld app that you created in the first tutorial
+ - The 2 apps that were created in the hello IPC tutorial
+
+ A system is the glue that binds all your apps, kernel modules, Platform Services and configuration
+ together to create the runtime environment for your target. A system tells your target how to
+ behave and contains all the settings and drivers to let your apps communicate with the underlying
+ OS and hardware.
+
+ We are going to add the apps that you've created and the default configuration settings to a system
+ and then build that system and install it on your target.
+
+ @section getStartedSystems_prereq Pre-Requisites:
+
+This tutorial requires you to have:
+- A copy of helloWorld and helloIPC created or copied from the @c apps/samples section.
+- You legato environment configured for your target. See @ref basicBuild for instructions.
+- Make sure that your $LEGATO_ROOT environment variable has been defined.
+- A version of Legato that has been pre-built (make <target>) has been run for your target.
+
+Your project directory should look something like this:
+@verbatim
+.
+├── apps
+│   ├── helloIpc
+│   │   ├── CMakeLists.txt
+│   │   ├── printClient
+│   │   │   ├── client.c
+│   │   │   └── Component.cdef
+│   │   ├── printClient.adef
+│   │   ├── printServer
+│   │   │   ├── Component.cdef
+│   │   │   └── server.c
+│   │   └── printServer.adef
+│   └── helloWorld
+│       ├── CMakeLists.txt
+│       ├── helloComponent
+│       │   ├── Component.cdef
+│       │   └── helloWorld.c
+│       └── helloWorld.adef
+└── interfaces
+    └── printer.api
+@endverbatim
+
+@section getStartedSystems_sdef Create System
+
+First we are going to make an sdef file called mySystem. The @c .sdef files are used to interconnect
+applications with each other and with the target's runtime environment (e.g.; hardware and OS).
+
+@verbatim
+$ vim mySystem.sdef
+@endverbatim
+
+First, create your header (optional but highly recommend):
+
+@verbatim
+//--------------------------------------------------------------------------------------------------
+// mySystem system definition to provide sample apps and system for a target.
+//
+// Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+//--------------------------------------------------------------------------------------------------
+@endverbatim
+
+@subsection getStartedSystems_default Default System
+
+The Legato Application Framework comes with a @c default.sdef. This includes preconfigured
+information for all of the Legato's supported targets including platform services, target commands
+and target specific configuration. <b>Do not change information in
+the @c default.sdef</b> and do not copy the contents into your own sdef, this may cause issues with
+future upgrades of the Legato Application Framework.
+
+@note Changes may be made to the default.sdef upon upgrading to a newer version of the Legato
+Application Framework. New platform services may be added, or new targets may get
+added to the default.sdef with newer releases of the Framework, by including the default.sdef into
+your system configuration, you automatically will get any configuration changes for your target(s).
+
+Include the @c default.sdef provided by the Framework:
+
+@verbatim
+#include "$LEGATO_ROOT/default.sdef"
+@endverbatim
+
+@note if you have other systems that you need to include like one specific for the mangOh you will
+also add the sdef with the #include directive.
+
+@subsection getStartedSystems_apps Add apps
+
+Add the @c apps: section and add in the location to your app's @c .adef.  The apps just name the app
+itself, we also need to add sections to point to where the app and the interfaces reside in your
+system so that the build tools know where to look for them.
+
+@verbatim
+apps:
+{
+    helloWorld
+    printServer
+    printClient
+}
+@endverbatim
+The apps section is very flexible and supports different ways of specifying your apps. In this
+tutorial we are going to use the appSearch: function to define the folders to look in for the
+@c .adef files. Depending on how you structure your project files you may not need to use the
+appSearch: section. See @ref defFilesSdef section for the various ways you can define your apps.
+
+Next, add the appSearch: section to tell the system what directories to find the apps in. In our
+case:
+
+@verbatim
+appSearch:
+{
+    $CURDIR/apps/helloIpc
+    $CURDIR/apps/helloWorld
+}
+@endverbatim
+
+@note appSearch, interfaceSearch and componentSearch search in the directory only, any
+subdirectories will need to be explicitly added to the search path.
+
+You could also take your organization one step further and put all your @c .adef files in the apps
+directory and your components in a @c component directory and point the @c .adefs and @c .sdef files
+appropriately.  This would allow for reuse of components if needed and allow different apps to use
+the same implementation of components.
+
+@subsection getStartedSystems_interface Define Interfaces
+
+Remember from the previous tutorial that helloIPC contains two apps, printClient and printServer and
+the printServer app provides the printer.api.  For the system to be able to find the printer.api
+we need to tell the system where to look for it, by adding the folder to the @c interfaceSearch:
+section.
+
+@verbatim
+interfaceSearch:
+{
+    $CURDIR/interfaces/
+}
+@endverbatim
+
+@note By default the build tools look in $LEGATO_ROOT/interfaces, this will find all the interfaces
+for the Platform Services and default Legato apps.  We recommend setting up your own interface
+directory within your project and then specify that directory with in your system sdef.
+
+Your mySystem.sdef should now contain the following:
+
+@verbatim
+//--------------------------------------------------------------------------------------------------
+// mySystem system definition to provide sample apps and system to a target.
+//
+// Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+//--------------------------------------------------------------------------------------------------
+
+#include "$LEGATO_ROOT/default.sdef"
+
+apps:
+{
+    helloWorld
+    printServer
+    printClient
+}
+
+appSearch:
+{
+    $CURDIR/apps/helloIpc
+    $CURDIR/apps/helloWorld
+}
+
+interfaceSearch:
+{
+    $CURDIR/interfaces/
+}
+@endverbatim
+
+@section getStartedSystems_install Build and Install
+
+You now have a system that you can create an update pack for and update your target and update your
+target. In earlier tutorials we used mkapp to create an update and update a target.  @c mksys is a
+tool from the same family.  @c mksys will run mkapp and the other @c mktools when building the
+system so there is no need to run @c mkapp before hand.
+
+To run @c mksys you need to specify the target that you are building for with a @c -t and point
+the tool to your mySystem.sdef.
+
+@verbatim
+$ mksys -t wp85 mySystem.sdef
+@endverbatim
+
+Output will look like:
+@verbatim
+$ ~/releases/legato$ mksys -t wp76xx mySystem.sdef
+[1/1] Regenerating build script
+[118/467] Running external build step
+...
+[467/467] Packaging system
+@endverbatim
+
+@c mksys will create a @c _build_mySystem directory which includes all the staging files and output
+of the build files and an update pack (created in the same directory as your mySystem.sdef) for you
+to use to update your target. @c mySystem.wp85.update
+
+Next use the @ref toolsHost_update tool to transfer the update pack to your target and update your
+system.
+
+@note If you are using a newer version of the Legato Application Framework on your dev machine,
+updating your target with the system update pack will upgrade the Legato version that is running
+on your target.
+
+Example output from updating your target:
+@verbatim
+$ update mySystem.wp85.update 192.168.2.2
+Applying update from file 'mySystem.wp85.update' to device at address '192.168.2.2'.
+Unpacking package: 100% ++++++++++++++++++++++++++++++++++++++++++++++++++
+Unpacking package: 100% ++++++++++++++++++++++++++++++++++++++++++++++++++
+...
+Applying update: 100% ++++++++++++++++++++++++++++++++++++++++++++++++++
+SUCCESS
+Done
+@endverbatim
+
+If you ssh to your target and do a @c legato @c version and an @c app @c list you will see the
+updated (if it has been) version of legato and the @c helloWorld, @c printClient, and @c printServer
+apps installed and running along with all the @b default apps that were installed by including the
+@c default.sdef in your mySystem.sdef.
+
+@verbatim
+# legato version
+18.03.0_618b31a2a0c37dfcce9ed508acd3f00d
+
+# app list
+atAirVantage
+atQmiLinker
+atService
+audioService
+avcService
+cellNetService
+dataConnectionService
+fwupdateService
+gpioService
+helloWorld                              <-- Custom App installed by mySystem.sdef
+modemService
+portService
+positioningService
+powerMgr
+printClient                             <-- Custom App installed by mySystem.sdef
+printServer                             <-- Custom App installed by mySystem.sdef
+qmiAirVantage
+secStore
+smsInboxService
+spiService
+tools
+voiceCallService
+@endverbatim
+
+**/

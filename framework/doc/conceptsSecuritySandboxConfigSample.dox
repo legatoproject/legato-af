@@ -1,10 +1,9 @@
-/** @page howToSecuritySandboxConfigSample Sandbox Config Sample
-
+/** @page conceptsSecuritySandboxConfigSample Sandbox Config Sample
 
 This topic describes how to configure your sandboxed app, and find the root causes of sandbox
 related problems.
 
-By default, all apps are @ref @ref basicSecuritySandbox "sandboxed". If your app is written in C or
+By default, all apps are @ref conceptsSecuritySandbox "sandboxed". If your app is written in C or
 C++, and only uses Legato APIs and standard libraries, then you may already be running your app in
 a sandbox without even knowing it. Sometimes you need more, and therefore, may be prevented
 from accessing something you need.
@@ -14,16 +13,14 @@ We'll use a trivial Python program example to demonstrate how to sandbox apps pr
 When shell command samples are provided, lines beginning with '$' are run on the development PC, and
 lines beginning with '#' are run on the target device (either through @c ssh or the serial console).
 
-See @ref basicAppsCreate for details on on how to create Legato apps.
+See @ref getStartedApps for details on on how to create Legato apps.
 
-@section howToSecurity_Sandbox_createApp Create App
+@section conceptsSecuritySandbox_createApp Create App
 
 Create your @c hello.py app like this:
 @code
-
 python
 print("Hello world!")
-
 @endcode
 
 Now create an @c .adef file called @c helloPython.adef that looks like this:
@@ -52,14 +49,14 @@ Now create an @c .adef file called @c helloPython.adef that looks like this:
     }
 @endcode
 
-@section howToSandbox_build Build and Install App
+@section conceptsSecuritySandbox_build Build and Install App
 
 You're ready to build and install your sandboxed app:
 @code
 $ mkapp helloPython.adef  -t wp85 && update helloPython.wp85.update 192.168.2.2
 @endcode
 
-@section howToSandbox_checkLogs Check Logs
+@section conceptsSecuritySandbox_checkLogs Check Logs
 
 To ensure everything fired correctly, you need to check your target's log:
 @code
@@ -114,7 +111,7 @@ Check the log, and it's still complaining about @c libutil.so.1, so we add
     }
 @endcode
 
-@section howToSandbox_strace Using strace
+@section conceptsSecuritySandbox_strace Using strace
 
 If the logs don't indicate what the problem is, you can use @c strace to trace all the
 system calls that the program performs, and look for failed calls to <code>open()</code>.
@@ -132,7 +129,7 @@ section of the .adef:
     }
 @endcode
 
-@section howToSandbox_requiresDirs Requiring Whole Directories
+@section conceptsSecuritySandbox_requiresDirs Requiring Whole Directories
 
 Continuing your investigation, you find your app needs stuff from
 <c>/usr/lib/python2.7</c> and <c>/usr/include/python2.7</c>.
@@ -153,7 +150,7 @@ add the whole directories to your sandbox using a @c requires/dir section in you
     }
 @endcode
 
-@section howToSandbox_envVars Environment Variables
+@section conceptsSecuritySandbox_envVars Environment Variables
 
 The log will now display something like:
 @verbatim
@@ -171,7 +168,7 @@ processes section:
 
 @endcode
 
-@section howToSandbox_success Sandbox Working Correctly
+@section conceptsSecuritySandbox_success Sandbox Working Correctly
 
 Viewing the logs one more time, you see:
 @verbatim

@@ -1,6 +1,6 @@
-/** @page basicEvents Event-driven Programming
+/** @page conceptsEvents Event-driven Programming
 
-In event-drivent programming, the flow of a program is determined by events triggered through
+In event-driven programming, the flow of a program is determined by events triggered through
 a defined interaction (e.g., user interaction, exceeding threshold limit, etc. ).
 Usually, a main loop listens for events, and then triggers a callback function when an event is detected.
 
@@ -24,7 +24,7 @@ Sometimes, the @a judicious use of threads can considerably simplify a program, 
 multi-threading is also supported by Legato along with the usual thread synchronization constructs
 (mutexes, semaphores, etc.).
 
-@section basicEvents_eventLoop Event Loop API
+@section conceptsEvents_eventLoop Event Loop API
 
 Legato's Event Loop API uses a central <b> event loop </b> that calls <b> event handler </b> functions in
  response to <b>event reports</b>. See @ref c_eventLoop
@@ -43,9 +43,7 @@ The following different usage patterns are supported by the Event Loop API:
 @ref c_event_layeredPublishSubscribe <br>
 @ref c_event_dispatchingToOtherThreads <br>
 
-<HR>
 
 Copyright (C) Sierra Wireless Inc.
 
 **/
-

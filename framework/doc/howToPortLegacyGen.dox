@@ -8,22 +8,25 @@ There's also specific info available to @subpage howToPortLegacyC.
 
 High-level steps for <b>porting your app to Legato</b>:
 
-- Build the app’s executables and libraries using the legacy program’s build system, but using the appropriate cross-build tool chain.
+- Build the app’s executables and libraries using the legacy program’s build system, but using the
+  appropriate cross-build tool chain.
 - Create an @ref defFilesAdef ".adef file" for your app.
 - Leave the @c executables: section in <c> .adef </c> empty (or omit that section entirely).
 - Include files to be installed as part of the app (executables, libraries, configuration files,
-devices, etc.) in the @c files: subsection of the @ref defFilesAdef_bundles "bundles: section of the .adef file".
-- Use the @ref defFilesAdef_requiresFile "requires: section of the .adef file" to include files and directories that need to
-be imported into the sandbox from the target’s file system.
-- Add @ref defFilesAdef_processRun "run: lines in the @c processes: section in the .adef" to define processes that should run in the app.
-- Run @ref buildToolsmkapp on the <c> .adef </c> file to create the app bundle (i.e., @c .update file) to be installed on the target.
-
-An app bundle (@c .update file) produced like this can be installed exactly the same as any other Legato app bundle.
+  devices, etc.) in the @c files: subsection of the @ref defFilesAdef_bundles "bundles: section of
+  the @c .adef file".
+- Use the @ref defFilesAdef_requiresFile "requires: section of the .adef file" to include files and
+  directories that need to be imported into the sandbox from the target’s file system.
+- Add @ref defFilesAdef_processRun "run: lines in the @c processes: section in the .adef" to define
+  processes that should run in the app.
+- Add the app to your system's @c .sdef file.
+- Alternatively you can run @ref buildToolsmkapp on the <c> .adef </c> file to create the app bundle
+  (i.e., @c .update file) to be installed on the target.
 
 Detailed info:
 
 @ref defFiles <br>
-@ref basicAppsCreate <br>
+@ref getStartedApps <br>
 @ref howToPortLegacyC
 
 Here's a @c foo.adef sample (for application foo) with executables bar1 and bar2 needing library
@@ -50,12 +53,25 @@ processes:
 }
 @endcode
 
-To bundle everything into an app, run:
-@code mkapp foo.adef -t [target] @endcode where [target] is something like "ar7" or "wp85".
+Add the app to your system's @c .sdef:
 
-The app bundle file can be installed using the @c update tool.
+@code
+apps:
+{
+    $LEGATO_ROOT/apps/foo
+}
+@endcode
 
-@note Other app settings (e.g., @c faultAction) can also be set in the .adef files. See @ref defFilesAdef.
+Alternatively you can also bundle everything into an app:
+@code
+mkapp foo.adef -t [target]
+@endcode
+where [target] is something like "virt", "ar7" or "wp85".
+
+The bundle(system or app) file can be installed using the @c update tool.
+
+@note Other app settings (e.g., @c faultAction) can also be set in the .adef files and @c .sdef file
+. See @ref defFilesAdef.
 
 @section howToPortLegacyGen_portRootAccess Porting Apps with Root Access
 
@@ -72,8 +88,6 @@ sandboxed: false
 @note It can sometimes be easier to begin porting an application with sandboxing turned off and,
 when you have it working, turn sandboxing on and fix the resulting permissions issues by importing
 required files into your app using @ref defFilesAdef_requires "the .adef requires section".
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc.
 

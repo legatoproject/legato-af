@@ -1,0 +1,68 @@
+/** @page getStartedApps Tutorials
+
+The Legato Application Framework provides you with a set of tools and structures to build a system
+for your target.  The system contains all the pieces that are needed for your target to interact
+with hardware and send data over a network.  You are able to customize the system to only enable the
+hardware and software that is needed to perform the tasks you require.
+
+The following tutorials will guide you through a very basic example of turning code into an
+app and then building the app into a system.
+
+In the Application Framework we break down Systems into Apps; Apps into Executables; Executables
+into Components.
+
+@image html getStartedApps-Overview.png
+
+To build a system or an app we start with building a @b component, a collection of code and other
+files that are functionally related.  Each component is kept within its own directory (that is named
+the name of the component) and each component also contains @ref defFilesCdef "Component.cdef" file
+which describes the component to the build tools and gives the build tools the instructions on how
+to build the component.
+
+Once you have one or more components created you then can bundle them into @b executables.
+@b Applications are comprised of one or more executables.  These executables can be configured to
+automatically run within a process. An automatically run process is a process that gets started
+every time an application is started. This also provides the ability to configure monitoring and
+fault handling per process instead of per application. This is all done at the application level and
+within the @ref defFilesAdef "application's definition file".
+
+@note Processes do not need to be built by the mktools to run. It is also possible to bundle in
+executables from the external Linux file system. (e.g.; You are able to run shell scripts within a
+Legato application by binding the system shell and the supporting utilities within the application
+and configure a process to run your shell script)
+
+Legato apps automatically run inside a secure sandbox, can automatically start at boot, and are
+monitored by the Supervisor daemon. Apps are also built to automatically make full use of the
+Application Framework, like autonomous-fault recovery and logging.
+
+Just like any embedded Linux platform, you can also install individual executables, libraries,
+resource files, etc. You can write init scripts, and implement security sandboxes, fault monitoring,
+and fault recovery on these executables, libraries and resource files. Legato provides the platform
+to do all that so you can focus on your business' unique value-add instead.
+
+Once you have one or more apps then you can combine them into a @b system using a @ref defFilesSdef.
+You system will contain your user apps plus any kernel modules that are needed to enable hardware,
+and the Platform Services that are used to enable the default hardware on your target and expose
+APIs for you to bind to your user apps and enable hardware or OS specific features in your app.
+Your system is what pulls together all the pieces configures the Legato runtime environment that
+runs on your target.
+
+@note Platform Services are a set of applications that are included with the Legato Application
+Framework that provide APIs for you to bind into your apps to enable hardware and services provided
+by the different modules on your target. The platform services are not hardware specific and
+communicate with the hardware and OS features through a layer of Platform Adapters (HAL).
+
+Let's get started with a few sample tutorials to walk you through implementing these concepts into
+practice.
+
+| Tutorial                     | Description                                                                                        |
+|------------------------------|----------------------------------------------------------------------------------------------------|
+| @subpage getStartedHW        | Create a "helloWorld" app and deploying it on a target                                             |
+| @subpage getStartedIPC       | Create two apps and use IPC to communicate between the apps                                        |
+| @subpage getStartedSystems   | Create a system using a the default set of Platform Services and the helloWorld and helloIPC  apps |
+| @subpage getStartedKO        | Add an example driver to your system                                                               |
+| @subpage getStartedUpdate    | Update your target to a new version of a Legato Platform                                           |
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

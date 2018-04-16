@@ -53,7 +53,7 @@ processes:
 }
 @endcode
 
-See @ref basicAppsCreate for more info.
+See @ref getStartedApps for more info.
 
 @subsection howToDebugGDB_sampleCode_cdef .cdef
 
@@ -78,7 +78,7 @@ COMPONENT_INIT
 }
 @endcode
 
-See @ref basicAppsCreate for more info.
+See @ref getStartedApps for more info.
 
 @section howToDebugGDB_building Building with Debug Symbols
 

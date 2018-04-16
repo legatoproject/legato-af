@@ -4,7 +4,7 @@ This topic summarizes different ways to debug apps running on Legato.
 
 There are various tools available to determine why your app is failing or blocking:
 
-- @ref howToLogs to set filters, tracing, etc.
+- @ref conceptsLogs to set filters, tracing, etc.
 - @ref howToDebug_appStatus for current app info.
 - @ref howToDebug_sdir to check if your app is connected.
 - @ref howToDebug_appRunProc to run or rerun a process in an app.

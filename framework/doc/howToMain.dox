@@ -1,20 +1,43 @@
 /** @page howToMain How To
 
-This section contains topics about frequently needed tasks:
+This page contains tutorials and articles on how to navigate through the Legato Application
+Framework.
+
+<h1> Getting Started Tutorials </h1>
+
+If you are just @ref getStarted "getting started" with the Legato Application Framework, try out
+the following tutorials:
+
+| Tutorial                 | Description                                                                                        |
+|--------------------------|----------------------------------------------------------------------------------------------------|
+| @ref getStartedHW        | Create a "helloWorld" app and deploying it on a target                                             |
+| @ref getStartedIPC       | Create two apps and use IPC to communicate between the apps                                        |
+| @ref getStartedSystems   | Create a system using a the default set of Platform Services and the helloWorld and helloIPC apps  |
+| @ref getStartedKO        | Add an example driver to your system                                                               |
+| @ref getStartedUpdate    | Update your target to a new version of a Legato Platform                                           |
+
+<h1> Target Configuration Articles </h1>
+
 | Section                            | Description                                                 |
 | ---------------------------------- | ------------------------------------------------------------|
 | @subpage howToLoginAuthentication  | Set up secure shell with ssh keys and passwords             |
-| @subpage howToKernelObject         | Build and Install a Kernel Object with Legato               |
+| @subpage howToGNSS                 | Mange GNSS on a target device                               |
+| @subpage howToSetUserTimebase      | Set up user timebase                                        |
+| @subpage howToSoftwareUpdate       | Update Software                                             |
+| @subpage howToSPI                  | Set up a target to use SPI                                  |
+
+<h1> Development Articles </h1>
+
+| Section                            | Description                                                 |
+| ---------------------------------- | ------------------------------------------------------------|
 | @subpage howToDebug                | Debug - General tips and tricks                             |
 | @subpage howToDebugGDB             | Debug Apps using GDB                                        |
-| @subpage howToPowerMgmt            | Manage device power                                         |
-| @subpage howToGNSS                 | Mange GNSS on a target device                               |
-| @subpage howToSecurity             | Configure sandboxes and SMACK                               |
-| @subpage howToPortLegacyGen        | Port legacy Apps to Legato                                  |
-| @subpage howToSetUserTimebase      | Set up user timebase                                        |
-| @subpage howToLogs                 | Access and use Legato Logs                                  |
-| @subpage howToSoftwareUpdate       | Update Software                                             |
+| @subpage howToSandboxHelper        | How to troubleshoot sandbox issues                          |
+| @subpage howToPortLegacyGen        | Port external Apps to Legato                                |
+| @subpage howToAdd3rdParty          | Add 3rd party libraries and external files to an app        |
 
+@note This page is getting revamped and we will be working to add some new tutorials and how to
+articles in the coming releases.
 
 Copyright (C) Sierra Wireless Inc.
 

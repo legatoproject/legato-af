@@ -1,4 +1,4 @@
-/** @page howToSecuritySandboxLimits Sandboxed App Limits
+/** @page conceptsSecuritySandboxLimits Sandboxed App Limits
 
 This topic provides details on sandboxed apps' limits.
 
@@ -8,7 +8,7 @@ There are two sandboxed app limit types:
 
 When a resource limit is reached, the resulting behaviour depends on the resource type.
 
-@section howToSecuritySandboxLimits_app App Limits
+@section conceptsSecuritySandboxLimits_app App Limits
 
 This is what happens when app limits are reached:
 
@@ -20,7 +20,7 @@ not actually a limit; it's a share of the cpu for all currently running processe
 - @ref defFilesAdef_maxThreads fork() calls return EAGAIN.
 - @ref defFilesAdef_maxQueuedSignals sigqueue() calls return EAGAIN.
 
-@section howToSecuritySandboxLimits_process Process Limits
+@section conceptsSecuritySandboxLimits_process Process Limits
 
 This is what happens when process limits are reached:
 

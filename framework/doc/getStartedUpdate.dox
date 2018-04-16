@@ -1,0 +1,169 @@
+/** @page getStartedUpdate Update Target
+
+The Legato Application Framework has included tools to make updating your target as easy as
+possible.
+
+There are several different update methods and tools with Legato.  Depending on how the Legato
+Application Framework has been implemented on your target different updates do different things.
+We are going to use the Sierra Wireless WP module implementation as the basis for this tutorial,
+but for the specifics you should check with your module provider or field application engineer for
+the specifics of how the Framework is implemented on your target and what update methods will work
+best for you.
+
+@image html getStarted-Update.png
+
+If you are testing new apps and doing general development work with your target you will want to
+mainly use the @ref toolsHost_update tool to update the Legato runtime on your target.
+
+Use @ref toolsBuild_mksys to build your @c update pack for your target.
+
+@verbatim
+$ mksys -t wp85 mySystem.default
+@endverbatim
+
+This creates the _build_<system> directory which contains all the staging files for your target and
+the update pack, that will be created in the same directory as your @c .sdef.
+<systemName>.<targetName>.update
+
+Use @ref toolsHost_update to install your @c update pack for your target.
+
+@verbatim
+$ update mySystem.wp85.update 192.168.2.2
+@endverbatim
+
+Log on to your target to see the update and look at the status of the system. (You may have to wait
+for your target to reboot first)
+
+@verbatim
+$ ssh 192.168.2.2
+# legato status
+Systems installed:
+  2 [good]
+  3 [tried 1] <-- current
+Legato framework is running.
+@endverbatim
+
+Whenever a new system is installed, a probation period starts. If the system stays running for
+the entire probation period, the system is marked "good". If during the probation period an
+app faults enough times the @c Supervisor daemon will mark the system as "bad" and the system is
+rolled-back to the last known "good" system.
+
+This shows us that system number @b 2 is the last known good (systems incriment each time a new
+system is installed) and system nubmer @b 3 is the current system and is currently in a
+probation period (the default probation period is 30 minutes).
+
+If the system faults 4 times in the probation period it will roll back to the previously "marked
+good" system.  We can simulate this and mark the system as "bad" to see how the rollback works.
+
+On the target run @c update @c -b to mark the system as bad and initiate a rollback.
+
+@verbatim
+# update -b
+# legato status
+Systems installed:
+  2 [good]
+  3 [bad] <-- current
+Legato framework is NOT running.
+@endverbatim
+
+If you quickly run legato status (you have about 10 seconds before the system reboots) you can see
+that the system has been marked as bad, and then the target will initiate a "rollback" to system 2.
+
+After the target reboots log back in and check the status again:
+
+@verbatim
+$ssh 192.168.2.2
+# legato status
+Systems installed:
+  2 [good] <-- current
+Legato framework is running.
+@endverbatim
+
+Installing a new system again will then increment the system by 1 and start the probation period
+over again.
+
+@verbatim
+$ssh 192.168.2.2
+# legato status
+Systems installed:
+  2 [good]
+  3 [tried 1] <-- current
+Legato framework is running.
+@endverbatim
+
+After 30 minutes you will see system number 3 be marked as good and legato status will show that
+system 3 is the new @b good system. You can also manually mark your system as good by running
+@c update @c -g on the target.
+
+@verbatim
+# update -g
+System is now marked 'Good'.
+# legato status
+Systems installed:
+  3 [good] <-- current
+Legato framework is running.
+@endverbatim
+
+@section getStartedUpdate_firmware Update Firmware
+
+All targets will have firmware created and maintained by the vendor. The firmware usually contains
+modem specific firmware and an embedded operating system.
+
+The Legato Application Framework includes a tool to help you easily upgrade your firmware to any new
+versions for Sierra Wireless Modules.
+
+@warning If your OS firmware has been upgraded remember to uninstall your current toolchain and
+install the version of the toolchain that matches the firmware.
+
+Download the firmware update from the [Sierra Wireless Source](https://source.sierrawireless.com/).
+You are looking for a complete image (@c .spk file, or individual images @c .cwe files)
+
+Once you have downloaded it to your dev machine you can install it with the @ref toolsHost_fwupdate
+tool.
+
+@warning Upgrading the firmware on your target will replace the legato version as well, as any
+customized apps or systems that you have installed. After a firmware update you must reinstall
+your system and/or apps.
+
+@note Ubuntu also provides a tool called fwupdate, make sure that you have sourced the legato
+environment and are using the tool that is included with the Application Framework.
+
+Run @ref toolsHost_fwupdate to download and install the firmware onto your target.
+<code>fwupdate download <target firmware image> <target IP address></code>
+
+@verbatim
+$ fwupdate download WP76xx_Release8_RC4_GENERIC_SPK.spk 192.168.2.2
+Connecting to service ...
+Connecting to service ...
+Download started ...
+Download successful
+@endverbatim
+
+Your target will now reboot and once it has started up again you should be able to see the new
+firmware, OS and Legato Version installed.
+
+@verbatim
+$ ssh 192.168.2.2
+# fwupdate query
+Connecting to service ...
+Firmware Version: SWI9X07Y_02.14.04.00 000000 jenkins 2018/02/14 20:19:41
+Bootloader Version: SWI9X07Y_02.14.04.00 000000 jenkins 2018/02/14 20:19:41
+Linux Version: 3.18.44 #2 PREEMPT Wed Feb 14 21:24:42 UTC 2018
+@endverbatim
+
+You should also check the @c legato @c version and @c legato @c status (you should be able to see
+that the system number has incremented by 1 again). Because you have installed new firmware and the
+target has successfully rebooted the system is automatically marked as good and there is no
+probation period.
+
+@verbatim
+# legato version
+18.01.0_607d14ac5f0edd90fada704659a46736
+
+# legato status
+Systems installed:
+  4 [good] <-- current
+Legato framework is running.
+@endverbatim
+
+**/

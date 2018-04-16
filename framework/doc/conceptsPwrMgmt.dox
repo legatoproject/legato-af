@@ -1,9 +1,40 @@
-/** @page howToPowerMgmt Manage Device Power
+/** @page conceptsPwrMgmt Power Management
 
-This topic summarizes how to manage device power. Information is provided on the Legato power
-management framework implementation with guidelines how to write power-efficient Legato apps.
+Peripheral device power management is usually handled by device drivers and the
+operating system. If a device isn't in use, the driver automatically keeps
+that device in its lowest power state.
 
-See @ref basicPwrMgmt for general info on managing device power.
+App behaviour drives power consumption. If app code is uses a peripheral device
+when it doesn't need to, power will be wasted. Power is also wasted if app code
+runs busy-wait loops or periodically polls for events.
+
+To conserve power, apps should register call-back functions only triggered when events occur.
+This way app code only runs when an event occurs, rather than waking up to check
+for events that haven't happened. Every CPU cycle uses power, so when a power-sensitive
+app is woken up, it should execute as few instructions as possible before going back
+to sleep.
+
+When all threads are sleeping, the O/S will reduce the CPU power state
+automatically. When an event handler function returns back to the Legato event loop,
+it puts the thread to sleep (unless there's another event waiting). If your thread isn't running
+the Legato event loop, block your thread to put it to sleep when it's not working through
+@c poll(),  @c select(),  @c read(),  @c write(),  @c recv(), etc.
+
+If you use a periodic timer (like @ref c_timer) to wake up your app, it will consume power.
+Set the timer period as long possible to conserve power, and let the O/S go into deeper sleep
+states.
+
+To maximize power savings, the system can use the Linux auto-sleep feature.
+Unless the system is busy processing a non-deferrable event, this feature
+puts the hardware into a @c SUSPEND state where all peripherals and the CPU are
+placed into low-power mode. Apps with the appropriate credentials have
+the option to control the system power state while performing critical operations.
+
+Use Legato's @ref c_pm to control the system's wake-up (powered) state.
+Operations needing fast response times or those resulting in high interrupt rates may benefit
+from keeping the system awake. This provides better performance, but worse power efficiency.
+
+@section conceptsPwrMgmt_Techniques Techniques
 
 Legato uses Linux power management techniques to minimize device power consumption:
 
@@ -19,7 +50,7 @@ the CPU frequency and voltage as necessary.
 While CPUIDLE and CPUFREQ seamlessly run in the O/S background, Legato apps
 have significant impact on the efficiency of system SUSPEND functionality.
 
-@section howToPowerMgmt_wakeupSources Wakeup Sources
+@section conceptsPwrMgmt_wakeupSources Wakeup Sources
 
 Legato uses Linux wakeup sources (called wake locks in Android) to control the system
 power state. If a component with appropriate privileges wants to prevent the system from entering
@@ -53,7 +84,9 @@ le_pm_Relax() release a wakeup source.
 When the Power Manager receives a request from another component via
 le_pm_NewWakeupSource(), it'll prefix the requested tag with string @c legato_ and
 post-fix it with the requestor’s process ID resulting in the wakeup source name format
-@verbatim  legato_<tag>_<process-id> @endverbatim
+@verbatim
+legato_<tag>_<process-id>
+@endverbatim
 
 This name format allows for easy traceability of wakeup sources. The process ID refers
 to a particular Legato app and the tag refers to a particular wakeup source within that app.
@@ -65,7 +98,7 @@ and le_pm_Relax() calls.
 Stale wakeup sources are automatically released by the Power Manager when their
 requestor exits and/or disconnects from the Power Manager.
 
-@section howToPowerMgmt_wakeupAndDeferrable Wakeup & Deferrable Events
+@section conceptsPwrMgmt_wakeupAndDeferrable Wakeup & Deferrable Events
 
 Legato apps run in an event-driven model so the app remains idle until there's an event to be
 processed. Once an event occurs, Legato detects it and dispatches it to one of its threads for
@@ -105,13 +138,13 @@ to keep the system powered between two Legato events using wakeup source tagged
 @b lock. Wakeup sources are handed off to achieve this functionality. The system remains powered
 from the moment the first event occurs until the second event is fully processed.
 
-@image html wakeup_sources.png
+@image html conceptsPwrMgmt_wakeupSources.png
 
 App components that subscribe to wakeup events must have CAP_BLOCK_SUSPEND Linux
 capability assigned. If not, all events will be assumed deferrable and calling
 le_fdMonitor_SetDeferrable() will have no effect.
 
-@section howToPowerMgmt_clients Power Manager Clients
+@section conceptsPwrMgmt_clients Power Manager Clients
 
 Using wakeup sources and EPOLLWAKEUP provides a simple programming model to write Power Manager
 clients. Here are some guidelines:
@@ -132,7 +165,7 @@ A typical use case is e.g. composing and sending a text message: a Legato callba
 events may typically be handled in a callback, but if the system needs to stay powered across multiple
 states, a wakeup source is required.
 
-@section howToPowerMgmt_troubleshooting Troubleshooting
+@section conceptsPwrMgmt_troubleshooting Troubleshooting
 
 <h4>Problem </h4>
 
@@ -186,10 +219,11 @@ files and check which devices have wakeup interrupts enabled.
 
 @a Command
 
-@verbatim find /sys/devices –name wakeup –exec cat “{}” “;” -print @endverbatim
+@verbatim
+find /sys/devices –name wakeup –exec cat “{}” “;” -print
+@endverbatim
 
-<HR>
 
 Copyright (C) Sierra Wireless Inc.
 
- **/
+**/

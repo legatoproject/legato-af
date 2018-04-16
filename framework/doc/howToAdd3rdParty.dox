@@ -1,8 +1,7 @@
-/** @page basicAppsAddThings Add Things
+/** @page howToAdd3rdParty Add 3rd Party Files
 
-After you've created your executable and turned it into an app (.adef), you can add
-others things you might need (e.g., a third-party library, some data files, a script or a
-legacy program built on another system).
+App can also contain external third-party libraries, data files, scripts or a
+program built on another system.
 
 To add other files to applications, you add other sections to your application's @c .adef file.
 
@@ -56,9 +55,6 @@ processes:
 This grabs a copy of ./otherProject/bin/bar (relative to the directory where @c mkapp is run),
 puts it in the application sandbox's /usr/bin/bar directory, and starts one instance of
 it when the application starts.
-
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc.
 
