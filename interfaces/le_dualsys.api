@@ -1,10 +1,9 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * @page c_le_dualsys Dual systems partition definition
+ * @page c_le_dualsys Dual Systems Update API
  *
  * @ref le_dualsys_interface.h "API Reference"
  *
- * <HR>
  *
  * Dual systems are systems composed with two set of partitions: one is said "ACTIVE", so currently
  * in use, and the other said "UPDATE", so not used but ready-to-use.
