@@ -92,8 +92,9 @@ static void PrintHelpAndExit
         "            client-side IPC interface CLIENT_IF to server-side IPC interface\n"
         "            SERVER_IF.  Each of the interfaces is specified in one of the\n"
         "            following forms:\n"
-        "                appName.componentName.interfaceName\n"
+        "                appName.executableName.componentName.interfaceName\n"
         "                appName.externInterfaceName\n"
+        "                <userName>.executableName.componentName.interfaceName\n"
         "                <userName>.externInterfaceName\n"
         "\n"
         "    sdir help\n"
@@ -660,7 +661,7 @@ static void ParseInterfaceSpec
 //--------------------------------------------------------------------------------------------------
 {
     size_t i; // Index into the spec string.
-    char userName[LIMIT_MAX_USER_NAME_BYTES];
+    char userName[LIMIT_MAX_USER_NAME_BYTES] = {0};
 
     // If the interface spec starts with a '<', then it must be a user name.
     if (spec[0] == '<')
@@ -684,16 +685,14 @@ static void ParseInterfaceSpec
             userName[i - 1] = spec[i];
         }
 
-        // Null-terminate the user name.
-        userName[i] = '\0';
-
         // Move past the '>' in the spec string.
         i++;
     }
     else
     {
         // Extract the app name and convert it into a user name.
-        char appName[LIMIT_MAX_APP_NAME_BYTES];
+        char appName[LIMIT_MAX_APP_NAME_BYTES] = {0};
+
         for (i = 0; spec[i] != '.'; i++)
         {
             if (i >= (sizeof(appName) - 1))
@@ -710,9 +709,6 @@ static void ParseInterfaceSpec
 
             appName[i] = spec[i];
         }
-
-        // Null-terminate the app name.
-        appName[i] = '\0';
 
         if (LE_OK != user_AppNameToUserName(appName, userName, sizeof(userName)))
         {
