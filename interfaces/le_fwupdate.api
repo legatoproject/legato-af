@@ -1,6 +1,6 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * @page c_fwupdate Modem Firmware Update
+ * @page c_fwupdate Firmware Update API
  *
  * @ref le_fwupdate_interface.h "API Reference"
  *

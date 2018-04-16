@@ -27,7 +27,7 @@ control services and Apps:
 | @subpage legatoServicesConfigTree     | Target configuration database           | @image html green_dot.png |
 | @subpage c_logging                    | Control logging messages and outputs    | @image html green_dot.png |
 | @subpage legatoServicesSupervisor     | Control framework, services and Apps    | @image html green_dot.png |
-| @subpage legatoServicesUpdateMain     | Update Legato System and Apps           | @image html green_dot.png |
+| @subpage legatoServicesUpdate         | Update Legato System and Apps           | @image html green_dot.png |
 | @subpage c_wdog                       | Configures watchdogs for Apps           | @image html green_dot.png |
 
 Platform Services provide full-featured interface access to system and modem resources:

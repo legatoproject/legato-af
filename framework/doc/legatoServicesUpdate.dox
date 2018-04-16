@@ -1,62 +1,108 @@
-/** @page legatoServicesUpdate Update Process
+/** @page legatoServicesUpdate Update
 
-@ref legatoServicesUpdatePack <br>
-@ref c_update API <br>
-@ref getStartedUpdate <br>
 
-This topic provides detailed info about the @ref c_update process.
+@section legatoServicesUpdate_Overview Overview
 
-@section legatoServicesUpdate_summary Summary
+The process of updating software in a Legato based system split into multiple parts:
+- the @c updateDaemon service which accepts updates over it's API @ref c_update.
+- separate update clients, provide the ability to initiate updates over various channels (command
+  line, ssh, or even from the cloud using an appropriate cloud client).
+- parts of the Legato software stack assist the update service in providing its functionality.
+- the startup system also plays a roll in update and rollback.
 
-Software update is primarily carried out by the Update Daemon, but the Supervisor and
-the start-up code also affect rolling-back when updates fail.
+For the specifics of what the update service does and the actions that it performs see
+@ref conceptsUpdates.
 
-The Update Daemon accepts <b>update pack</b> files that contain software/firmware update
-instructions and associated data (e.g., libraries, executables, resource files).
+@note Because the specifics of how platforms function can differ, the behavior of the of the update
+service can vary by platform.  This document focuses on the update process for common Sierra
+Wireless modules.
 
-Update packs can be fed to the Update Daemon through the @ref c_update API or
-through the @ref toolsTarget_update tool.
+@subsection legatoServicesUpdate_AboutService Update Service
 
-<b>System</b> update packs are created by @ref buildToolsmksys.
+The @c updateDaemon process is part of Legato's core system services.  It is run and controlled by
+the Supervisor and isn't a Legato app, so can't be started or stopped.
 
-<b>App</b> update packs are created by @ref buildToolsmkapp.
+When the update receives a @subpage legatoServicesUpdatePack ".update file" it extracts update
+commands and files from the @c .update pack and applies them to the target.
 
-<b>App removal</b> update packs can be created using @ref toolsHost_update-pack.
+The @c .update file commands understood by the service are:
+-  Update System -- <b>Install a Legato system.</b>  Updates the runtime environment but doesn't
+   modify the OS or any support device firmware.
+-  Update App -- <b>Install an application.</b>  If an application of the same name is already
+   installed it is replaced with the version found within the @c .update pack.
+-  Remove App -- <b>Removes the named application.</b>  This is the only update command that doesn't
+   have any data files associated with it.
+-  Update Firmware -- </b>Update the firmware of an attached hardware device.</b>  For example the
+   cellular modem found in wireless modules.  On systems without a firmware portion, like the
+   virtual platform, this command is unsupported.
 
-<b>Firmware</b> update packs can be created from a firmware (.cwe) file using
-@ref toolsHost_update-pack.
+@note On Sierra Wireless modules, firmware level updates can include replacement copies of
+whole partition file systems.  It is possible to replace the "Base" version of Legato this
+way.  See @ref legatoServicesUpdate_Base for more details on this.  It is also possible to
+create a @c .cwe file that instructs the modem to erase and reformat the user data partition
+allowing the user to create an update that takes their module back to a factor default state.
 
-See the @ref legatoServicesUpdatePack file format info.
+@note On Sierra Wireless modules when firmware updates are installed a full reboot of the module
+will be triggered.  For system updates only the runtime environment will be restarted.
 
-@section legatoServicesSoftwareUpdate_security Security
+@subsection legatoServicesUpdate_APIs Update APIs
 
-The Update Daemon includes hooks that allow update packs to be digitally signed and/or encrypted
-for security reasons. To use this feature, you must build your own signing/encryption tool and replace
-the file @c security-unpack in the framework with a program that knows how to check the signature
-and/or decrypt the signed/encrypted update pack.
+The following APIs are provided by the update service to monitor and control the update process:
+- @ref c_update
+- @ref c_updateCtrl
+- @ref c_le_instStat
+- @ref c_le_appRemove
 
-The signing/encryption tool must sign/encrypt a complete update pack file. This @e secure version of
-the update pack is then passed to the Update Daemon. The Update Daemon:
-1. launches the security-unpack program
-2. feeds the secure update pack through its standard input stream
-3. reads the decrypted update pack from the security-unpack process's standard output stream.
+@subsubsection legatoServicesUpdate_APIs_update Update API
 
-If the security-unpack program detects anything wrong with the update pack, it must exit with a
-non-zero exit code. The Update Daemon responds by cancelling the update. The exit code
-@c EXIT_SUCCESS (1) is used to specifically indicate a security violation, such as a failed
-digital signature check.
+<b>API: @ref c_update </b>
 
-@section legatoServicesUpdate_goldenSys Golden System
+The Update API is used to push an update to the service and provides functions for getting
+information about the current and previously installed system.
 
-Legato start-up code also supports using a full @e golden system found in a read-only
-file system mounted at /mnt/legato. This /mnt/legato system has to be updated through some
-external mechanism (e.g., a modem firmware update (FOTA) or factory programming tool). The Legato
-start-up code recognizes that a new system has been placed in /mnt/legato. It will use that
-system assuming it's @e good (i.e.,  it will never roll-back from this system to an older system).
-Rolling-back past this point isn't possible because the previous @e good system may have
-included apps from the old (replaced) /mnt/legato image.
+@subsubsection legatoServicesUpdate_APIs_updateCtrl Update Control API
 
-<HR>
+<b>API: @ref c_updateCtrl</b>
+
+The update control API is used to control the update process.  For example, applying an
+update can cause the system to restart itself, an application can use le_updateCtrl.api to choose to
+block updates from being applied, if it is running a critical process that can't be interrupted.
+
+@subsubsection legatoServicesUpdate_APIs_instStat Install Status API
+
+<b>API:  @ref c_le_instStat</b>
+
+The API Install Status can be used by an application to watch for other applications being installed
+or uninstalled from a system.
+
+@subsubsection legatoServicesUpdate_APIs_appRemove App Remove API
+
+<b>API: @ref c_le_appRemove</b>
+
+The App Remove API is used to remove applications from the running system.
+
+@subsection legatoServicesUpdate_Tools Update Clients
+
+Within the application framework there are multiple clients that use the update service:
+- a command line client @ref toolsHost_update tool, used to transfer update packs from your dev
+machine to the target for installation.
+- @ref legatoServicesAirVantage uses the @c update service to receive and install software updates
+from the AirVantage server.
+
+You are also able to create your own app to handle updates. If you have your own method or protocol
+for delivering updates, you can build a service to download and control the updates.
+
+<h1>API Overview </h1>
+
+| Service                            | Description                                        | multi-app safe             |
+| ---------------------------------- | -------------------------------------------------- | :------------------------: |
+| @subpage c_update                  | Apply app and firmware updates                     | @image html green_dot.png  |
+| @subpage c_updateCtrl              | Control app and firmware updates                   | @image html green_dot.png  |
+| @subpage c_le_instStat             | App install/uninstall notification                 | @image html green_dot.png  |
+| @subpage c_fwupdate                | Firmware image updates                             |                            |
+| @subpage c_flash                   | Flash management                                   | @image html green_dot.png  |
+| @subpage c_le_dualsys              | Dual systems partition definition                  |                            |
 
 Copyright (C) Sierra Wireless Inc.
-*/
+
+**/

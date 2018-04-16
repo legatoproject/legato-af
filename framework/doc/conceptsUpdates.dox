@@ -8,13 +8,226 @@ updating software on devices operating in the field:
 - Reduce flash consumption by sharing read-only app files that are the same in different software
   versions.
 
-Legato's primary @ref legatoServicesUpdate uses @c update pack files that contain all
+Legato's primary @ref legatoServicesUpdate Service uses @c update pack files that contain all
 software/firmware update instructions and associated data (e.g., libraries, executables, resource
 files).
 
-Legato supports @ref legatoServicesAirVantage to remotely update target devices in the field.
+Legato also supports @ref legatoServicesAirVantage to remotely update target devices in the field.
 
-There's also a @ref toolsTarget_fwUpdate target tool available.
+@section conceptsUpdates_Structure System Structure
+
+On a Legato enabled module the Legato runtime files reside in two places
+- @c /legato - the overlay version of the runtime environment
+- @c /mnt/flash/legato - the base read-only version of the runtime environment.
+
+@subsection conceptsUpdates_Base Base Read-Only System
+
+The base read-only version of the runtime environment is typically the version of Legato that gets
+installed in the factory as part of the original software installation and gets replaced with a
+firmware update.
+
+If the overlay version of the runtime environment ever gets corrupted, the factory install version
+of Legato will replace the faulty version.  If a new version of Legato is installed
+through the @c .cwe install process, that new version of Legato will then replace and become the
+new base version.
+
+Legato is never actively run from @c /mnt/flash/legato but instead gets installed under /legato as
+the current system.
+
+@subsection conceptsUpdates_Overlay Overlay Read-Write System
+
+The primary subdirectories of @c /legato are @c /legato/apps and @c /legato/systems.
+
+Under @c /legato/systems is a list of installed Legato systems.  The running system is under
+@c /legato/systems/current.  If there are any previous systems available, they are listed under
+their index.  Every time a Legato system is updated, the new version of the system gets a new index.
+
+For example, if a system is index # 5, then it's files would be under @c /legato/systems/5
+
+To see what system is currently running and the state enter <c> legato status</c> on your target.
+
+The top level directory structure of the runtime environment:
+
+| Item               | Description                                                                                                             |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| @c apps/           | Directory of the apps in the current system                                                                             |
+| @c appsWriteable/  | Directory where the application writable files are stored.  The application sandboxes are also run from this location.  |
+| @c bin/            | Legato tools for working with the system from the command line and the runtime itself.                                  |
+| @c config/         | The configuration database.                                                                                             |
+| @c lib/            | Libraries used by the system tools.                                                                                     |
+| @c modules/        | Kernel modules installed with the system.                                                                               |
+| @c index           | File that records the index # of this system.                                                                           |
+| @c info.properties | Stores the md5 hash of the system.                                                                                      |
+| @c status          | This systems status, if the system is good, bad, or being tried in probation.                                           |
+| @c version         | The version information for this system.                                                                                |
+
+It is possible to have multiple systems under @c /legato/systems for instance, upgrading from one
+version of Legato to another.  Often many individual apps are the same between Legato
+versions and so could be shared between systems.  @c /legato/apps acts as a cache where each
+app is stored under it's md5 hash.  The subdirectories under @c /legato/systems/current/apps are
+symlinks to the application directories under @c /legato/apps.
+
+@subsection conceptsUpdates_OldSystems Previous Systems
+
+Non-current systems, are all stored under their numeric index.  Unless in the middle of an upgrade
+the only system under @c /legato/systems will be the current system. While the system is updating
+the the @c /legato/systems directory will contain the current and previous systems.
+
+@section conceptsUpdates_Process Update Process
+
+Installation and removal of Legato application and systems participate in update and rollback. When
+an application or system is installed the system is monitored for problems. If too many errors are
+encountered, the whole system is rolled back to where it was before the update occurred.
+
+Updates are atomic in the sense that the update is either fully applied, or not
+applied at all. The update system prevents partial updates. If a update fails in the middle of
+installing, the system is rolled back to the previous system.
+
+In a @c .update file.  The update is broken down into multiple parts as follows:
+
+@verbatim
+ |-----------------------------|
+ | Update Command              |
+ |-----------------------------|
+ | tar.gz: Core system files   |
+ |-----------------------------|
+ | App Update Command          |
+ |-----------------------------|
+ | tar.gz Application 1 files  |
+ |-----------------------------|
+ | ...                         |
+ |-----------------------------|
+ | App Update Command          |
+ |-----------------------------|
+ | tar.gz Application x, files |
+@endverbatim
+
+The @c .update file contains system update command, followed by the compressed system files.  These
+system files are extracted to @c /legato/systems/unpack.  After the system files each of the
+applications in that system are packed as an app update command followed by the app's files.
+
+When applying app updates, either alone or as part of a system update, each application is
+extracted to the temporary app unpack directory: @c /legato/apps/unpack
+
+When a system update is installed, old systems are deleted. (Outside of the read-only base legato 
+layer, it only makes sense to keep around 1 system that has been marked good.)
+
+After old systems are purged, the app cache is scanned and any orphaned applications are also
+cleared out.
+
+When applications are installed they are moved from their unpack directory into the app cache.  For
+applications that are being installed new, their writable data is copied under the appsWriteable
+directory in the system the app is a part of.  Applications that are being upgraded over a previous
+system will have it's writable files migrated to the new system.
+
+The current system's config data is migrated over to the new system and used as a base line for the
+new system.
+
+Once all new applications are installed and writable data copied over, the new system is given it's
+index, one greater than the last system installed.  The new system is moved from the unpack
+directory to a new directory under the new systems index number.
+
+If the new system index is determined to be 5, the system will be moved from
+@c /legato/systems/unpack to @c /legato/systems/5.
+
+Legato is now rebooted and the start process then takes over.  It searches for the newest system
+index and determines that this system has been newly installed.  So the current system is renamed to
+it's index and the new system is made current.  Older system are moved from
+@c /legato/systems/current to @c /legato/systems/4.  The new system is then renamed from
+@c /legato/systems/5 to /legato/systems/current.  Once the systems are moved, the new current system
+is booted.
+
+On first boot, all important configuration is imported into the system tree.  Any application
+private config data is left alone having been migrated from the previous system.
+
+At this point the system enters probation,  Once the probation timer expires, (the default being 30
+minutes,) the new system is marked good.
+
+If the system reboots too many times during probation or encounters other problems it is rolled back
+to either the last system to have been marked good, or to the golden master image if no good system
+is available.
+
+@section conceptsUpdates_Rollback Rollback Process
+
+When a rollback is called for, the current system is marked bad.  Legato then reboots itself and
+begins the rollback process.
+
+The start program will detect that the current system is bad and will proceed to look for a viable
+system to replace it.  If our current system is index 5, and the previous good system is 4 our
+newer system is deleted, and the older system is renamed from @c /legato/systems/4 to
+@c /legato/systems/current.  When the older system is restored all configuration data reverts to how
+it was when that system snapshot was taken.  If any changes happened to applications config or
+writable files since the new system version was installed, these changes are lost.
+
+If no good system can be found, the factory gold image is used as the restore point.
+
+Finally, the restored image is booted and as it's already marked good, no probation for the restored
+system occurs.
+
+@section conceptsUpdates_FileDiff Supported File Extensions
+
+The @c update service handles files of the following types:
+- @c .update
+- @c .cwe
+- @c .spk
+
+@subsection conceptsUpdates_FileDiff_Update .update Files
+
+Update files are built by the @ref toolsBuild "Legato build tools" and are the primary method of
+updating Systems and Apps on a target. @c .update files are the only update packs that use
+the runtime environments update and rollback feature.
+
+The Raspberry Pi and Virtual Target only support @c .update files.
+
+@note It is possible to bundle a @c .cwe or @c .spk file into a .update file.  However these bundled
+updates are still passed off to the modem for handling.
+
+@subsection conceptsUpdates_FileDiff_Cwe .cwe .spk Files
+
+These files are Sierra Wireless specific and are processed by the modem firmware. Legato platforms
+like the Virtual Target and the Raspberry Pi do not support @c .cwe file based updates.
+
+On a Sierra modules, the modem core manages the modules partition structure.  The
+Linux system, Legato Application Framework, and user applications all run on the application core.
+Updates that change the modem are packaged up in @c .cwe files, and are passed to the modem
+through the @c fwupdate service.
+
+The @c .cwe instructs the modem to replace the contents of one partition with the contents of the
+given file.  @c cwe files are primarily used to package up filesystem images.
+
+On a typical Sierra module, you will find at least 4 partitions, User, Legato Master, Linux,
+and Modem.  The modem partition isn't even visible from user applications or the Linux system.  For
+security, all other partitions but the User partition are handled as read-only on the application
+side.
+
+@image html getStarted-Update.png
+
+If you want to update the Linux system image or the Legato master image it has to be packaged
+up as a @c .cwe file.  @.cwe updates are an all or nothing approach, the whole filesystem is
+replaced during this update.  The runtime environment is installed on the user partition to enable
+apps to be able to read and write files, alter config, etc.  See the section
+@ref conceptsUpdates_Structure for more details on how Legato makes use of the read-only
+and writable partitions to provide update and rollback.
+
+The user partition is usually ignored by .cwe files.  This is because it is up to the runtime
+environment and applications are installed in this partition.
+
+@note It is possible to create a @c .cwe file that instructs the modem to format the user partition.
+This is usually used in addition with @c .spk files. Contact Sierra Wireless for specifics on how
+to create a @c .cwe file that formats the user partition.
+
+@c .spk files package up multiple @c .cwe files into one package.  The @c .spk update file provides
+a way to update the Legato gold master, update Linux, and the modem
+firmware in one step.
+
+@section conceptsUpdates_BestPractices Best Practices
+
+Legato updates and rollbacks only modify files under @/legato.  The golden image is never modified
+and when that image is made current it isn't copied to under @c /legato but instead symlinks are
+created to point to the master image.
+
+If you need to keep data outside of the Legato rollback process.  Then the best idea is to store
+this outside of @c /legato.
 
 Copyright (C) Sierra Wireless Inc.
 **/

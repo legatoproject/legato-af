@@ -3,6 +3,8 @@
 The Legato Application Framework has included tools to make updating your target as easy as
 possible.
 
+See @ref conceptsUpdates for information on how Legato handles updating targets.
+
 There are several different update methods and tools with Legato.  Depending on how the Legato
 Application Framework has been implemented on your target different updates do different things.
 We are going to use the Sierra Wireless WP module implementation as the basis for this tutorial,

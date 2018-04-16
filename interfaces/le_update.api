@@ -1,16 +1,18 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * @page c_update Software Update
+ * @page c_update Update API
  *
  * @ref le_update_interface.h "API Reference" <br>
- * @subpage legatoServicesUpdate <br>
- * @subpage legatoServicesUpdatePack <br>
+ * @ref legatoServicesUpdate <br>
+ * @ref legatoServicesUpdatePack <br>
+ * @ref conceptsUpdates <br>
+ * @ref getStartedUpdate
  *
  *
  * This API uses @ref legatoServicesUpdatePack to update a target device software/firmware.
  *
  * Update packs can contain one or more @e tasks to be performed by the
- * @ref conceptsRuntimeArch_updateDaemon.
+ * @ref basicRuntimeArch_updateDaemon.
  *
  * From the client view, the update service follows this state machine
  * while doing an update:
@@ -29,7 +31,7 @@
  * 3. If the update fails, le_update_GetErrorCode() can be used to find out more info.
  *
  * 4. When the client is finished with the update, the client MUST call le_update_End() to
- *    locate resources.
+ *    relocate resources.
  *
  * To cancel an update before it finishes, call le_update_End().
  *
