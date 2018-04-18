@@ -312,76 +312,88 @@ static le_result_t LocalSwap
     uint32_t              swapApduLen     ///< [IN] The swap APDU message length in bytes
 )
 {
+    le_result_t status = LE_OK;
     uint8_t channel = 0;
     uint8_t resp[LE_SIM_RESPONSE_MAX_BYTES] = {0};
     size_t  lenResp = LE_SIM_RESPONSE_MAX_BYTES;
+    bool useLogicalChannel;
 
-    // Get the logical channel to send APDu command.
-    if (LE_OK != pa_sim_OpenLogicalChannel(&channel))
+    // On Oberthur and Gemalto SIM cards, it's not possible to change the SIM profile when using
+    // a logical channel.
+    if ((LE_SIM_OBERTHUR == manufacturer) || (LE_SIM_GEMALTO == manufacturer))
     {
-        LE_ERROR("Cannot open logical channel!");
-        return LE_FAULT;
-    }
-
-    if (LE_SIM_G_AND_D == manufacturer)
-    {
-        uint8_t  pduReq[] = {0x00, 0xA4, 0x04, 0x00, 0x10, 0xD2, 0x76, 0x00,
-                             0x01, 0x18, 0x00, 0x02, 0xFF, 0x34, 0x10, 0x25,
-                             0x89, 0xC0, 0x02, 0x10, 0x01};
-
-        pduReq[0] = channel;
-        if (LE_OK != pa_sim_SendApdu(channel, pduReq,
-                                     sizeof(pduReq), resp, &lenResp))
-        {
-            LE_ERROR("Cannot send APDU message!");
-            pa_sim_CloseLogicalChannel(channel);
-            return LE_FAULT;
-        }
-
-        // Check if the command is successfully executed.
-        if (!IsCommandCorrectlyExecuted(resp, lenResp))
-        {
-            LE_ERROR("APDU response: %02X, %02X", resp[0], resp[1]);
-            pa_sim_CloseLogicalChannel(channel);
-            return LE_FAULT;
-        }
-
-        swapApduReqPtr[0] = channel;
-    }
-
-    if (LE_OK != pa_sim_SendApdu(channel,
-                                 swapApduReqPtr,
-                                 swapApduLen,
-                                 resp, &lenResp))
-    {
-        LE_ERROR("Cannot swap subscription!");
-        pa_sim_CloseLogicalChannel(channel);
-        return LE_FAULT;
-    }
-
-    if (LE_OK != pa_sim_CloseLogicalChannel(channel))
-    {
-        LE_ERROR("Cannot close Logical Channel!");
-        return LE_FAULT;
-    }
-
-    // Check if the command is successfully executed.
-    if (!IsCommandCorrectlyExecuted(resp, lenResp))
-    {
-        LE_ERROR("APDU response: %02X, %02X", resp[0], resp[1]);
-        return LE_FAULT;
-    }
-
-    if ((LE_SIM_OBERTHUR == manufacturer) ||
-        (LE_SIM_MORPHO == manufacturer) ||
-        (LE_SIM_G_AND_D == manufacturer))
-    {
-        return LE_OK;
+        useLogicalChannel = false;
     }
     else
     {
-        return pa_sim_Refresh();
+        useLogicalChannel = true;
+        status = pa_sim_OpenLogicalChannel(&channel);
+        if (LE_OK != status)
+        {
+            LE_ERROR("Cannot open logical channel!");
+            return status;
+        }
     }
+
+    // On G_AND_D SIM cards, an ERA Glonass applet is present. This applet should be selected before
+    // performing the SIM profile swap.
+    if (LE_SIM_G_AND_D == manufacturer)
+    {
+        uint8_t apduLen   = 21;
+        uint8_t apduReq[] = {0x00, 0xA4, 0x04, 0x00, 0x10, 0xD2, 0x76, 0x00,
+                             0x01, 0x18, 0x00, 0x02, 0xFF, 0x34, 0x10, 0x25,
+                             0x89, 0xC0, 0x02, 0x10, 0x01};
+
+        // Channel number must be specified in the CLI field of the APDU requests for G_AND_D SIMs.
+        apduReq[0] = channel;
+        swapApduReqPtr[0] = channel;
+
+        status = pa_sim_SendApdu(channel, apduReq, apduLen, resp, &lenResp);
+        if (LE_OK != status)
+        {
+            LE_ERROR("Cannot send APDU message!");
+            goto end;
+        }
+
+        if (!IsCommandCorrectlyExecuted(resp, lenResp))
+        {
+            LE_ERROR("APDU response: %02X, %02X", resp[0], resp[1]);
+            status = LE_FAULT;
+            goto end;
+        }
+    }
+
+    // Send the APDU request to swap SIM profile and check response.
+    status = pa_sim_SendApdu(channel, swapApduReqPtr, swapApduLen, resp, &lenResp);
+    if (LE_OK != status)
+    {
+        LE_ERROR("Cannot swap subscription!");
+        goto end;
+    }
+
+    if (!IsCommandCorrectlyExecuted(resp, lenResp))
+    {
+        LE_ERROR("APDU response: %02X, %02X", resp[0], resp[1]);
+        status = LE_FAULT;
+    }
+
+end:
+    // Clean ressources if needed.
+    if (useLogicalChannel)
+    {
+        status = pa_sim_CloseLogicalChannel(channel);
+    }
+
+    // Gemalto and Valid SIMs don't trigger a refresh automatically when swapping. So, request it.
+    if (LE_OK == status)
+    {
+        if ((LE_SIM_GEMALTO == manufacturer) || (LE_SIM_VALID == manufacturer))
+        {
+            status = pa_sim_Refresh();
+        }
+    }
+
+    return status;
 }
 
 //--------------------------------------------------------------------------------------------------
