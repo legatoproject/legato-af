@@ -10,6 +10,14 @@
 
 #include "interfaces.h"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Movement Handler References
+ */
+//--------------------------------------------------------------------------------------------------
+static le_pos_MovementHandlerRef_t  NavigationHandlerRef;
+static le_pos_MovementHandlerRef_t  FiftyNavigationHandlerRef;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -82,7 +90,7 @@ static void NavigationHandler
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void TwentyMeterNavigationHandler
+static void FiftyMeterNavigationHandler
 (
     le_pos_SampleRef_t positionSampleRef,
     void* contextPtr
@@ -136,17 +144,29 @@ static void* NavigationThread
     void* context
 )
 {
-    le_pos_MovementHandlerRef_t     navigationHandlerRef;
-
-
     le_pos_ConnectService();
 
     LE_INFO("======== Navigation Handler thread  ========");
-    navigationHandlerRef = le_pos_AddMovementHandler(0, 0, NavigationHandler, NULL);
-    LE_ASSERT(NULL != navigationHandlerRef);
 
-    navigationHandlerRef = le_pos_AddMovementHandler(20, 0, TwentyMeterNavigationHandler, NULL);
-    LE_ASSERT(NULL != navigationHandlerRef);
+    // Test the registration of an handler for movement notifications.
+    // The movement notification range can be set to an horizontal and a vertical magnitude of 50
+    // meters each.
+    FiftyNavigationHandlerRef = le_pos_AddMovementHandler(50, 50, FiftyMeterNavigationHandler, NULL);
+    LE_ASSERT(NULL != FiftyNavigationHandlerRef);
+
+    // le_pos_AddMovementHandler calculates an acquisitionRate (look at le_pos_AddMovementHandler
+    // and CalculateAcquisitionRate())
+    // Test that the acquisitionRate is 4000 msec.
+    LE_ASSERT(4000 == le_pos_GetAcquisitionRate());
+
+    // Test the registration of an handler for movement notifications with horizontal or vertical
+    // magnitude of 0 meters. (It will set an acquisition rate of 1sec).
+    NavigationHandlerRef = le_pos_AddMovementHandler(0, 0, NavigationHandler, NULL);
+    LE_ASSERT(NULL != NavigationHandlerRef);
+
+    // Test that the acquisitionRate is 1000 msec
+    // (because final acquisitionRate is the smallest calculated).
+    LE_ASSERT(1000 == le_pos_GetAcquisitionRate());
 
     le_event_RunLoop();
     return NULL;
@@ -512,6 +532,24 @@ static void Testle_pos_ResetGpsNmeaSentences
     LE_ASSERT(nmeaMask == gpsNmeaMask);
 }
 
+//--------------------------------------------------------------------------------------------
+/**
+ * Remove the movement handlers
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void RemoveMovementHandlers
+(
+    void
+)
+{
+    le_pos_RemoveMovementHandler(NavigationHandlerRef);
+    NavigationHandlerRef = NULL;
+
+    le_pos_RemoveMovementHandler(FiftyNavigationHandlerRef);
+    FiftyNavigationHandlerRef = NULL;
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * App init.
@@ -543,6 +581,8 @@ COMPONENT_INIT
     le_posCtrl_Release(activationRef);
     LE_INFO("======== Positioning Test finished ========");
 
+    //Remove the movement handlers
+    RemoveMovementHandlers();
     // Stop Navigation thread
     le_thread_Cancel(navigationThreadRef);
 

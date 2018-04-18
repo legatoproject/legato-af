@@ -14,7 +14,7 @@
  */
 //--------------------------------------------------------------------------------------------------
 static le_pos_MovementHandlerRef_t  NavigationHandlerRef;
-
+static le_pos_MovementHandlerRef_t  FiftyNavigationHandlerRef;
 //--------------------------------------------------------------------------------------------------
 /**
  * Server Service Reference
@@ -794,6 +794,63 @@ static void Testle_pos_GetAcquisitionRate
  *
  */
 //--------------------------------------------------------------------------------------------------
+static void FiftyNavigationHandler
+(
+    le_pos_SampleRef_t positionSampleRef,
+    void* contextPtr
+)
+{
+    int32_t latitude, longitude, horizontalAccuracy;
+    uint16_t hrs, min, sec, msec;
+    uint16_t year, month, day;
+    uint32_t heading, headingAccuracy;
+    uint32_t direction, directionAccuracy;
+    int32_t altitude, altitudeAccuracy;
+    uint32_t hSpeed, hSpeedAccuracy;
+    int32_t vSpeed, vSpeedAccuracy;
+    le_pos_FixState_t state;
+
+    LE_ASSERT(NULL != positionSampleRef);
+
+    Testle_pos_GetFixState();
+    Testle_pos_Get2DLocation();
+    Testle_pos_GetDate();
+    Testle_pos_GetTime();
+    Testle_pos_GetHeading();
+    Testle_pos_GetDirection();
+
+    // test for NULL pointers
+    LE_ASSERT(LE_BAD_PARAMETER == (le_pos_sample_Get2DLocation(NULL, NULL, NULL, NULL)));
+    LE_ASSERT(LE_BAD_PARAMETER == (le_pos_sample_GetTime(NULL, NULL, NULL, NULL, NULL)));
+    LE_ASSERT(LE_BAD_PARAMETER == (le_pos_sample_GetDate(NULL, NULL, NULL, NULL)));
+    LE_ASSERT(LE_BAD_PARAMETER == (le_pos_sample_GetDirection(NULL, NULL, NULL)));
+    LE_ASSERT(LE_BAD_PARAMETER == (le_pos_sample_GetAltitude(NULL, NULL, NULL)));
+    LE_ASSERT(LE_BAD_PARAMETER == (le_pos_sample_GetHorizontalSpeed(NULL, NULL, NULL)));
+    LE_ASSERT(LE_BAD_PARAMETER == (le_pos_sample_GetVerticalSpeed(NULL, NULL, NULL)));
+    LE_ASSERT(LE_BAD_PARAMETER == (le_pos_sample_GetFixState(NULL, NULL)));
+    LE_ASSERT(LE_BAD_PARAMETER == (le_pos_sample_GetHeading(NULL, NULL, NULL)));
+
+    // test for Normal Behaviour
+    LE_ASSERT_OK(le_pos_sample_Get2DLocation(positionSampleRef, &latitude,
+                                             &longitude, &horizontalAccuracy));
+    LE_ASSERT_OK(le_pos_sample_GetTime(positionSampleRef, &hrs, &min, &sec, &msec));
+    LE_ASSERT_OK(le_pos_sample_GetDate(positionSampleRef, &year, &month, &day));
+    LE_ASSERT_OK(le_pos_sample_GetDirection(positionSampleRef, &direction, &directionAccuracy));
+    LE_ASSERT_OK(le_pos_sample_GetAltitude(positionSampleRef, &altitude, &altitudeAccuracy));
+    LE_ASSERT_OK(le_pos_sample_GetHorizontalSpeed(positionSampleRef, &hSpeed, &hSpeedAccuracy));
+    LE_ASSERT_OK(le_pos_sample_GetVerticalSpeed(positionSampleRef, &vSpeed, &vSpeedAccuracy));
+    LE_ASSERT_OK(le_pos_sample_GetFixState(positionSampleRef, &state));
+    LE_ASSERT(LE_OUT_OF_RANGE == (le_pos_sample_GetHeading(positionSampleRef, &heading,
+                                                           &headingAccuracy)));
+    le_pos_sample_Release(positionSampleRef);
+    le_sem_Post(ThreadSemaphore);
+}
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function for Navigation notification.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
 static void NavigationHandler
 (
     le_pos_SampleRef_t positionSampleRef,
@@ -863,8 +920,25 @@ static void* NavigationThread
 
     // test for Normal Behaviour
     LOCK
+    // Test the registration of an handler for movement notifications.
+    // The movement notification range can be set to an horizontal and a vertical magnitude of 50
+    // meters each.
+    FiftyNavigationHandlerRef = le_pos_AddMovementHandler(50, 50, FiftyNavigationHandler, NULL);
+    LE_ASSERT(FiftyNavigationHandlerRef != NULL);
+
+    // le_pos_AddMovementHandler calculates an acquisitionRate (look at le_pos_AddMovementHandler
+    // and CalculateAcquisitionRate().
+    // Test that the acquisitionRate is 4000 msec.
+    LE_ASSERT(4000 == le_pos_GetAcquisitionRate());
+
+    // Test the registration of an handler for movement notifications with horizontal or vertical
+    // magnitude of 0 meters. (It will set an acquisition rate of 1sec).
     NavigationHandlerRef = le_pos_AddMovementHandler(0, 0, NavigationHandler, NULL);
     LE_ASSERT(NavigationHandlerRef != NULL);
+    // Test that the acquisitionRate is 1000 msec
+    // (because final acquisitionRate is the smallest calculated).
+    LE_ASSERT(1000 == le_pos_GetAcquisitionRate());
+
     UNLOCK
 
     le_sem_Post(ThreadSemaphore);
@@ -921,6 +995,11 @@ static void RemoveHandler
     le_pos_RemoveMovementHandler(NavigationHandlerRef);
 
     NavigationHandlerRef = NULL;
+
+    // test for Remove Handler when HandleRef is initialized
+    le_pos_RemoveMovementHandler(FiftyNavigationHandlerRef);
+
+    FiftyNavigationHandlerRef = NULL;
 
     // Semaphore is used to synchronize the task execution with the core test
     le_sem_Post(ThreadSemaphore);

@@ -21,8 +21,8 @@
 // Symbol and Enum definitions.
 // TODO move to configuration module? or retrieve it from a speedometer?
 //--------------------------------------------------------------------------------------------------
-#define SUPPOSED_AVERAGE_SPEED       50  // 50 km/h
-#define DEFAULT_ACQUISITION_RATE     5000   // 5 seconds
+#define SUPPOSED_AVERAGE_SPEED       50     // 50 km/h
+#define DEFAULT_ACQUISITION_RATE     1000   // one second
 #define DEFAULT_POWER_STATE          true
 
 
@@ -47,6 +47,14 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define MS_WDOG_INTERVAL 8
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enumeration for time conversion
+ */
+//--------------------------------------------------------------------------------------------------
+#define SEC_TO_MSEC            1000
+#define HOURS_TO_SEC           3600
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -290,7 +298,7 @@ static le_gnss_PositionHandlerRef_t GnssHandlerRef = NULL;
  * The acquisition rate in milliseconds.
  */
 //--------------------------------------------------------------------------------------------------
-static uint32_t AcqRate = 1000; // in milliseconds.
+static uint32_t AcqRate = DEFAULT_ACQUISITION_RATE;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -394,30 +402,37 @@ static void PosSampleHandlerDestructor
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Calculate the GNSS's Acquisistion rate.
+ * Calculate the GNSS's Acquisistion rate in seconds.
  *
  */
 //--------------------------------------------------------------------------------------------------
 static uint32_t CalculateAcquisitionRate
 (
-    uint32_t averageSpeed,         // km/h
+    uint32_t averageSpeed,         // km/h.
     uint32_t horizontalMagnitude,  // The horizontal magnitude in meters.
     uint32_t verticalMagnitude     // The vertical magnitude in meters.
 )
 {
     uint32_t  rate;
-    uint32_t  metersec = averageSpeed*1000/3600; // convert speed in m/sec
+    uint32_t  metersec = averageSpeed * SEC_TO_MSEC/HOURS_TO_SEC;
 
-    if ((horizontalMagnitude<metersec) || (verticalMagnitude<metersec))
+    LE_DEBUG("metersec %d (m/sec), h_Magnitude %d, v_Magnitude %d",
+                  metersec,
+                  horizontalMagnitude,
+                  verticalMagnitude);
+
+    if ((horizontalMagnitude < metersec) || (verticalMagnitude < metersec))
     {
         return 1;
     }
 
     rate = 0;
     while (! (((horizontalMagnitude >= (metersec + metersec*rate)) &&
-               (verticalMagnitude >= (metersec + metersec*rate))) &&
+               (verticalMagnitude >= (metersec + metersec*rate)))
+             &&
              ((horizontalMagnitude < (metersec + metersec*(rate+1))) ||
-              (verticalMagnitude < (metersec + metersec*(rate+1))))))
+              (verticalMagnitude < (metersec + metersec*(rate+1)))))
+          )
     {
         rate++;
     }
@@ -1308,10 +1323,9 @@ le_pos_MovementHandlerRef_t le_pos_AddMovementHandler
     void*                        contextPtr           ///< [IN] The context pointer
 )
 {
-    uint32_t                 rate = 0;
     le_pos_SampleHandler_t*  posSampleHandlerNodePtr=NULL;
 
-    if (handlerPtr == NULL)
+    if (NULL == handlerPtr)
     {
         LE_KILL_CLIENT("handlerPtr pointer is NULL!");
         return NULL;
@@ -1321,22 +1335,24 @@ le_pos_MovementHandlerRef_t le_pos_AddMovementHandler
     posSampleHandlerNodePtr = (le_pos_SampleHandler_t*)le_mem_ForceAlloc(PosSampleHandlerPoolRef);
     posSampleHandlerNodePtr->handlerFuncPtr = handlerPtr;
     posSampleHandlerNodePtr->handlerContextPtr = contextPtr;
-    posSampleHandlerNodePtr->acquisitionRate = CalculateAcquisitionRate(SUPPOSED_AVERAGE_SPEED,
-                                                                        horizontalMagnitude,
-                                                                        verticalMagnitude);
-
+    posSampleHandlerNodePtr->acquisitionRate =
+                                        CalculateAcquisitionRate(SUPPOSED_AVERAGE_SPEED,
+                                                                 horizontalMagnitude,
+                                                                 verticalMagnitude) * SEC_TO_MSEC;
     posSampleHandlerNodePtr->sessionRef = le_pos_GetClientSessionRef();
     AcqRate = ComputeCommonSmallestRate(posSampleHandlerNodePtr->acquisitionRate);
-    LE_DEBUG("Computed Acquisistion rate is %d sec for an average speed of %d km/h",
-             rate,
+
+    LE_DEBUG("Calculated acquisition rate %d msec for an average speed of %d km/h",
+             posSampleHandlerNodePtr->acquisitionRate,
              SUPPOSED_AVERAGE_SPEED);
+    LE_DEBUG("Smallest computed acquisition rate %d msec", AcqRate);
 
     // update configDB with the new rate.
     {
         // Add the default acquisition rate,.
         le_cfg_IteratorRef_t posCfg = le_cfg_CreateWriteTxn(CFG_POSITIONING_PATH);
         // enter default the value
-        le_cfg_SetInt(posCfg,CFG_NODE_RATE,rate);
+        le_cfg_SetInt(posCfg, CFG_NODE_RATE, AcqRate);
         le_cfg_CommitTxn(posCfg);
     }
 
@@ -1349,9 +1365,9 @@ le_pos_MovementHandlerRef_t le_pos_AddMovementHandler
     posSampleHandlerNodePtr->lastAlt = 0;
 
     // Start acquisition
-    if (NumOfHandlers == 0)
+    if (0 == NumOfHandlers)
     {
-        if ((GnssHandlerRef=le_gnss_AddPositionHandler(PosSampleHandlerfunc, NULL)) == NULL)
+        if (NULL == (GnssHandlerRef=le_gnss_AddPositionHandler(PosSampleHandlerfunc, NULL)))
         {
             LE_ERROR("Failed to add PA GNSS's handler!");
             le_mem_Release(posSampleHandlerNodePtr);

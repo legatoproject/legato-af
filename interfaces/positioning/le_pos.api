@@ -111,12 +111,15 @@
  *
  * The acquisition rate value can be set or get with le_pos_SetAcquisitionRate() and
  * le_pos_GetAcquisitionRate().
+ * It is also set when calling le_pos_AddMovementHandler(). The acquisition rate is calculated
+ * from the horizontal and vertical magnitude parameters set in this function.
+ * This calculated acquisition rate can be retrieved by calling le_pos_GetAcquisitionRate().
+ * @note
+ * The acquisition rate set will take effect once a request of activation of the positioning service
+ * by le_posCtrl_Request() is done.
  * @note
  * If the acquisition rate was not previously configured, it will be set to a default value
- * of 5 seconds.
- * @note
- * The acquisition rate set with le_pos_SetAcquisitionRate() will take effect once a request of
- * activation of the positioning service by le_posCtrl_Request() is done.
+ * of one second once le_posCtrl_Request() is called.
  *
  * Copyright (C) Sierra Wireless Inc.
  */
