@@ -789,16 +789,13 @@ static void ProcessMrcCommandEventHandler
 )
 {
     le_result_t res;
+    CmdRequest_t *cmdRequest = msgCommand;
 
-    void * ctxPtr = ((CmdRequest_t*) msgCommand)->contextPtr;
-    CmdType_t command = ((CmdRequest_t*) msgCommand)->command;
-
-    if (LE_MRC_CMD_TYPE_ASYNC_REGISTRATION == command)
+    if (cmdRequest->command == LE_MRC_CMD_TYPE_ASYNC_REGISTRATION)
     {
-        char * mccStr = ((CmdRequest_t*) msgCommand)->selection.mccStr;
-        char * mncStr = ((CmdRequest_t*) msgCommand)->selection.mncStr;
-        le_mrc_ManualSelectionHandlerFunc_t handlerFunc =
-                           ((CmdRequest_t*) msgCommand)->callBackPtr;
+        char * mccStr = cmdRequest->selection.mccStr;
+        char * mncStr = cmdRequest->selection.mncStr;
+        le_mrc_ManualSelectionHandlerFunc_t handlerFunc = cmdRequest->callBackPtr;
 
         LE_DEBUG("Register plmn (%s,%s)", mccStr, mncStr);
 
@@ -816,19 +813,17 @@ static void ProcessMrcCommandEventHandler
         if (handlerFunc)
         {
             LE_DEBUG("Calling handler (%p), Status %d", handlerFunc, res);
-            handlerFunc (res, ctxPtr);
+            handlerFunc(res, cmdRequest->contextPtr);
         }
         else
         {
             LE_WARN("No handler function, status %d!!", res);
         }
     }
-    else if (command == LE_MRC_CMD_TYPE_ASYNC_SCAN)
+    else if (cmdRequest->command == LE_MRC_CMD_TYPE_ASYNC_SCAN)
     {
-        le_mrc_CellularNetworkScanHandlerFunc_t handlerFunc =
-                        ((CmdRequest_t*) msgCommand)->callBackPtr;
-        le_mrc_RatBitMask_t ratMask =
-                        ((CmdRequest_t*) msgCommand)->scan.ratMask;
+        le_mrc_CellularNetworkScanHandlerFunc_t handlerFunc = cmdRequest->callBackPtr;
+        le_mrc_RatBitMask_t ratMask = cmdRequest->scan.ratMask;
 
         ScanInfoList_t* newScanInformationListPtr = NULL;
         le_mrc_ScanInformationListRef_t scanInformationListRef = NULL;
@@ -850,7 +845,7 @@ static void ProcessMrcCommandEventHandler
         else
         {
             // Store message session reference.
-            newScanInformationListPtr->sessionRef = ((CmdRequest_t*)msgCommand)->sessionRef;
+            newScanInformationListPtr->sessionRef = cmdRequest->sessionRef;
 
             scanInformationListRef =
                      le_ref_CreateRef(ScanInformationListRefMap, newScanInformationListPtr);
@@ -860,12 +855,16 @@ static void ProcessMrcCommandEventHandler
         if (handlerFunc)
         {
             LE_DEBUG("Sending Scan information list ref (%p)", scanInformationListRef);
-            handlerFunc (scanInformationListRef, ctxPtr);
+            handlerFunc(scanInformationListRef, cmdRequest->contextPtr);
         }
         else
         {
             LE_WARN("No handler function, status %d!!", res);
         }
+    }
+    else
+    {
+        LE_FATAL("Invalid command type (%d)", cmdRequest->command);
     }
 }
 
