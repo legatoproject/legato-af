@@ -2163,35 +2163,32 @@ le_mrc_PreferredOperatorListRef_t le_mrc_GetPreferredOperatorsList
 )
 {
     PreferredOperatorsList_t * OperatorListPtr = le_mem_ForceAlloc(PrefOpsListPool);
-
     OperatorListPtr->paPrefOpList = LE_DLS_LIST_INIT;
     OperatorListPtr->safeRefPrefOpList = LE_DLS_LIST_INIT;
     OperatorListPtr->currentLinkPtr = NULL;
+
     le_result_t res = GetPreferredOperatorsList(
         &(OperatorListPtr->paPrefOpList), false, true, &OperatorListPtr->opsCount);
-
-    if (LE_OK == res)
+    if (res != LE_OK)
     {
-        if (OperatorListPtr->opsCount)
-        {
-            // Save message session reference.
-            OperatorListPtr->sessionRef = le_mrc_GetClientSessionRef();
-
-            // Create and return a Safe Reference for this List object.
-            return le_ref_CreateRef(PreferredOperatorsListRefMap, OperatorListPtr);
-        }
-        else
-        {
-            // no item in list
-            return NULL;
-        }
+        goto fault;
     }
-    else
+    else if (OperatorListPtr->opsCount == 0)
     {
-        le_mem_Release(OperatorListPtr);
-        LE_WARN("Unable to retrieve the list of the preferred operators!");
-        return NULL;
+        goto cleanup;
     }
+
+    // Save message session reference.
+    OperatorListPtr->sessionRef = le_mrc_GetClientSessionRef();
+
+    // Create and return a Safe Reference for this List object.
+    return le_ref_CreateRef(PreferredOperatorsListRefMap, OperatorListPtr);
+
+fault:
+    LE_WARN("Unable to retrieve the list of the preferred operators!");
+cleanup:
+    le_mem_Release(OperatorListPtr);
+    return NULL;
 }
 
 //--------------------------------------------------------------------------------------------------
