@@ -1190,7 +1190,7 @@ le_result_t le_flash_Write
         {
             return LE_BAD_PARAMETER;
         }
-        writeDataSize = partPtr->mtdInfo->eraseSize - (2 * partPtr->mtdInfo->writeSize);
+        LE_INFO("MTD%d BlockIndex %u WriteDataSize %zu", partPtr->mtdNum, blockIndex, writeDataSize);
         res = pa_flash_WriteUbiAtBlock(partPtr->desc, blockIndex,
                                        (uint8_t*)writeData, writeDataSize, true);
         if (LE_OK != res)

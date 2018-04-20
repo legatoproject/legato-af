@@ -361,7 +361,7 @@ static le_result_t FlashApiTest_Flash
         }
         // As blocks are marked bad, it may happen that we cannot write the whole file into
         // the Flash partition if too many bad blocks are found.
-        LE_DEBUG("Write blockIdx %u size %u", blockIdx, size);
+        LE_DEBUG("Write blockIdx %u size %u", blockIdx, readSize);
     }
     close(fromFd);
     if (LE_OK == res)
