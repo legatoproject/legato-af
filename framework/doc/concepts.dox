@@ -28,6 +28,7 @@ components, apps and systems:
 | ------------------------------------- | -------------------------------------------------------------- |
 | @subpage conceptsEnvironment          | Overview of Systems, Apps and Components                       |
 | @subpage defFiles                     | Use Definition Files to build systems, apps, and components    |
+| @subpage conceptsKernelModule         | Learn about Kernel Modules within a Legato System              |
 | @subpage conceptsComponents           | Learn about components and how to integrate your code into one |
 | @subpage conceptsInterfaces           | Use interfaces to facilitate component and app communication   |
 | @subpage conceptsIPC                  | Use IPC to communicate between different processes             |

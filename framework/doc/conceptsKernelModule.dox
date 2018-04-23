@@ -1,0 +1,124 @@
+/** @page conceptsKernelModule Kernel Modules
+
+A loadable kernel module is a way to add or remove code from the kernel at runtime. It is an ideal
+way to create device drivers and enable the kernel to interface with hardware on your target. The
+alternative to this is to add your hardware code into your kernel which can make the kernel very
+monolithic (not good on a small embedded system) and this also requires you to create and maintain
+your own OS distribution.
+
+In the Framework we have provided a method to add loadable kernel modules within a Legato System.
+This allows you to add the device drivers for any sensors or IoT devices that you are adding to your
+target, include them with a system and install, upgrade and test them on your target all without
+rebuilding the OS.
+
+The general workflow for adding a kernel module is to take either the source files or an already
+existing @c .ko file and describe it with a @ref defFilesMdef.  Once you have the @c .mdef file for
+your kernel module then you add it to your @ref defFilesSdef and build your system with @c mksys.
+Building your system will build your kernel module and use the kernel headers that have been
+included with your toolchain. Once the system is built then you can @ref toolsHost_update your
+target with the new system and install the kernel module.
+
+See @ref getStartedKO Tutorial to walk you through the step by step instructions of building an
+@c .mdef for your kernel module and add and update your system. Find detailed specifications on
+adding a kernel module to your target in our @ref defFilesMdef reference.
+
+@section conceptsKernelModule_version Kernel Versions
+
+Kernel modules must be specifically built to work with the Linux Kernel.  To successfully run a
+Kernel Module on your target it must be built with the @b exact toolchain with the same header files
+that were used to build the Linux Distribution on your target. Many targets may not be running the
+latest kernel due to chipset limitations and support. Make sure when you are writing and testing
+the kernel module that you are using the matching toolchain.
+
+The following command will grep for the kernel version of the kernel module:
+@verbatim
+# strings /path/to/kernel/module/example.ko |grep vermagic
+@endverbatim
+
+Example of using grep on example.ko:
+@verbatim
+# strings /legato/systems/current/modules/example.ko |grep vermagic
+vermagic=3.14.29ltsi-961ca71325_ab5094eade preempt mod_unload ARMv7
+__UNIQUE_ID_vermagic0
+__UNIQUE_ID_vermagic0
+@endverbatim
+
+To find the kernel version that your target is using:
+@verbatim
+# uname -a
+@endverbatim
+
+Example of finding the kernel on a target:
+@verbatim
+# uname -a
+Linux swi-mdm9x15 3.14.29ltsi-961ca71325_ab5094eade #2 PREEMPT Thu Apr 27 02:17:10 PDT 2017 armv7l GNU/Linux
+@endverbatim
+
+In this example both kernels are version @b 3.14.29ltsi-961ca71325_ab5094eade, if they are different
+at all the kernel module or system will fail to load and the system may rollback to the previous
+known good system.
+
+@warning If you are using a custom version of the Linux Distro then you must also rebuild the
+toolchain and build the kernel modules with that custom version of the toolchain. The Linux version
+must match exactly before kernel modules can be installed on the target. This also means that if you
+upgrade your firmware for your target you must rebuild and reinstall your Legato system, so that the
+Kernel Module gets rebuilt with the new version of the toolchain.
+
+It is very important that your source files that you are using for your kernel module are built
+specifically for that linux kernel. The toolchain that is provided by Sierra Wireless will match the
+Linux kernel included in the Linux Distribution, if you update the firmware on your target you must
+install the matching toolchain so that your kernel modules get built properly for the target.
+
+@section conceptsKernelModule_prebvssource Pre-built and Source Modules
+
+Kernel modules can either be added to an .sdef as either a pre-built (already built) module or
+the sources can be included so that when your Legato System is built it will build the source files
+against the installed toolchain. The benefit to adding the source files is that the kernel module
+gets built each time you run @c mksys. If you upgrade your targets firmware (including the
+toolchain) the source files will get built against the new kernel headers automatically.
+
+Set up your kernel module with a @ref defFilesMdef and specify if you wish to use pre-built or
+source files for your kernel module.
+
+@section conceptsKernelModule_dependencies Kernel Dependencies
+
+In the @ref defFiles you are able to specify kernel module dependencies. There are two types of
+dependencies:
+- In the @ref defFilesMdef you can specify a hierarchy of kernel module dependencies and specify a
+load order to the kernel modules that you have installed within your Legato System.
+- In the @ref defFilesCdef and @ref defFilesAdef you can specify which kernel modules the app or
+component depends on. This will check that the module is included with the system at build time.
+
+To set up kernel module dependencies review the @c requires: section of the @ref defFilesMdef.
+
+To set up app or component dependencies then review the @c kernelModule: section of the
+@ref defFilesCdef and @ref defFilesAdef.
+
+@section conceptsKernelModule_bundlesScripts Bundles and Scripts
+
+Sometimes binary and firmware files many need to be bundled with your kernel module so that the
+kernel module can run through additional setup or removal steps.  Support has been added so that you
+can bundle in external files with your kernel module and supply scripts with further information to
+setup or remove your kernel module.
+
+Within the kernel module's @c .mdef file the @c bundles: section can be used to add additional
+files to the kernel module. If you have added any extra files you also need to have a @c script that
+provides further instructions to the target on how to load/unload the additional files.
+
+@note The script must also handle the loading and unloading of the kernel module with @c insmod and
+@c rmmod.
+
+To install the kernel module when using the @ref defFilesMdef_bundles "bundles:" section, you must
+@ref defFilesMdef_scripts "specify an installScript and a removeScript". The Framework will use
+those scripts to load and unload the kernel module on your target. If no scripts are specified the
+kernel module will be loaded with @c insmod but the bundled files will not be handled at all.
+
+@section conceptsKernelModule_bundlesTools Tools and APIs
+
+A @ref c_kernelModule API is provided from the Supervisor daemon to call the loading and unloading of
+kernel modules from within your app.
+
+The target also includes a tool @ref toolsTarget_kmod so that you can load and unload modules from
+the command line.
+
+**/
