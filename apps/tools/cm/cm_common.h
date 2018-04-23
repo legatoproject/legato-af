@@ -23,6 +23,8 @@
 #define CMODEM_COMMON_PROFILE_IDX_STR_LEN   5
 #define CMODEM_COMMON_TIMEOUT_STR_LEN       5
 
+#define CMODEM_COMMON_COLUMN_LEN            22
+
 
 //-------------------------------------------------------------------------------------------------
 /**

@@ -57,37 +57,58 @@ handle_err() {
     fi
 }
 
-update_route() {
-    local default_route=$(ip route show | grep "default")
-    if [ ! -z "${default_route// }" ]; then
-        echo "$default_route" > $DEFAULT_ROUTE
-        ip route del default
+delete_default_route() {
+    local family=$1
+    local bkp=${2:-true}
+    local default_route=$(ip -family $family route show default)
+    if [ -n "${default_route// }" ]; then
+        if [ "x$bkp" = "xtrue" ]; then
+            echo "$default_route $family" >> "$DEFAULT_ROUTE"
+        fi
+        ip -family $family route del default
     fi
+}
 
-    if [ "$1" == "connect" ]; then
+update_route() {
+    if [ "x$1" = "xconnect" ]; then
         local family=$2
         local iface=$3
         local gw=$4
-        echo -n "Routing ... "
+
+        # Backup existing route
+        delete_default_route $family
+
+        if [ -z "$gw" ] || [ "x$gw" = "xN/A" ]; then
+            return
+        fi
+
+        echo -n "Routing $family ... "
         ip -family $family route add default via $gw dev $iface > $LOG 2>&1
         handle_err $?
-   elif [ "$1" == "disconnect" ]; then
+   elif [ "x$1" = "xdisconnect" ]; then
+
+        # Restore previous routes
         if [ -f "$DEFAULT_ROUTE" ]; then
-            local gw=$(cat $DEFAULT_ROUTE | cut -d' ' -f3)
-            local iface=$(cat $DEFAULT_ROUTE | cut -d' ' -f5)
-            echo -n "Routing ... "
-            ip route add default via $gw dev $iface > $LOG 2>&1
-            handle_err $?
+            for family in inet inet6; do
+                local gw=$(grep $family $DEFAULT_ROUTE | cut -d' ' -f3)
+                local iface=$(grep $family $DEFAULT_ROUTE | cut -d' ' -f5)
+                delete_default_route $family false
+                if [ -n "$gw" ]; then
+                    echo -n "Routing $family ... "
+                    ip -family $family route add default via $gw dev $iface > $LOG 2>&1
+                    handle_err $?
+                fi
+            done
         fi
     fi
 }
 
 update_dns() {
-    if [ "$1" == "connect" ]; then
+    if [ "x$1" = "xconnect" ]; then
         if [ -f "$RESOLV_CONF" ]; then
             mv "$RESOLV_CONF" "$DEFAULT_RESOLV_CONF"
         fi
-    elif [ "$1" == "disconnect" ]; then
+    elif [ "x$1" = "xdisconnect" ]; then
         if [ -f "$DEFAULT_RESOLV_CONF" ]; then
             mv "$DEFAULT_RESOLV_CONF" "$RESOLV_CONF"
         fi
@@ -95,7 +116,7 @@ update_dns() {
     shift 1
 
     for i in $@; do
-        if [ "$1" != "N/A" ]; then
+        if [ "x$1" != "xN/A" ]; then
             grep $1 $RESOLV_CONF > /dev/null 2>&1
             if [ $? -ne 0 ]; then
                 echo -n "Updating /etc/resolv.conf ... "
@@ -172,37 +193,42 @@ cm_data_connect () {
         exit 1
     fi
 
-    local family=$(cm_data_get_param "$info" "Family")
-
-    if [ -z "$family" ]; then
-        echo "No family, cannot proceed."
-        exit 1
-    fi
-
-    local gw=$(cm_data_get_param "$info" "Gateway")
-
-    if [ -z "$gw" ]; then
-        echo "No gateway."
-    fi
-
-    local dns1=$(cm_data_get_param "$info" "Dns1")
-    local dns2=$(cm_data_get_param "$info" "Dns2")
-
-    if [ -z "$dns1" ]; then
-        echo "No dns1."
-    fi
-
-    if [ -z "$dns2" ]; then
-        echo "No dns2."
-    fi
-
-    echo -n "Checking if device is up ... "
+    echo -n "Checking if device '$iface' is up ... "
     ifconfig | grep "$iface" > /dev/null 2>&1
     handle_err $?
 
-    update_route connect $family $iface $gw
+    local family
 
-    update_dns connect $dns1 $dns2
+    # Remove route backup file
+    rm -f $DEFAULT_ROUTE
+
+    for ipversion in IPv4 IPv6; do
+        family=$(cm_data_get_param "$info" "Family\[${ipversion}\]")
+
+        if [ -z "$family" ]; then
+            continue
+        fi
+
+        local gw=$(cm_data_get_param "$info" "Gateway\[${ipversion}\]")
+
+        if [ -z "$gw" ]; then
+            echo "No gateway."
+        fi
+
+        local dns1=$(cm_data_get_param "$info" "Dns1\[${ipversion}\]")
+        local dns2=$(cm_data_get_param "$info" "Dns2\[${ipversion}\]")
+
+        if [ -z "$dns1" ]; then
+            echo "No ${ipversion} dns1."
+        fi
+
+        if [ -z "$dns2" ]; then
+            echo "No ${ipversion} dns2."
+        fi
+
+        update_route connect $family $iface $gw
+        update_dns connect $dns1 $dns2
+    done
 
     echo -n "Testing connection ... "
     curl --silent $TEST_SITE > $LOG 2>&1
@@ -216,6 +242,9 @@ if [ "$1" = "data" ]; then
         mkdir -p $RUN_TIME
         shift 2
         cm_data_connect $@
+    elif [ "$2" = "disconnect" ] && [ $# -le 2 ]; then
+        mkdir -p $RUN_TIME
+        cm_data_connect -1
     fi
 fi
 

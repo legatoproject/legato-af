@@ -39,7 +39,7 @@ void cm_data_PrintDataHelp
             "To start a data connection:\n"
             "\tcm data connect <optional timeout (secs)>\n\n"
             "To stop a data connection:\n"
-            "\tcm data connect -1\n\n"
+            "\tcm data disconnect\n\n"
             "To monitor the data connection:\n"
             "\tcm data watch\n\n"
             "To start a data connection, please ensure that your profile has been configured correctly.\n"
@@ -86,17 +86,28 @@ static DataBearerTechnologies_t DataBearerTechnologies = {
 
 //-------------------------------------------------------------------------------------------------
 /**
+ * Network configuration structure for per IP version
+ */
+//-------------------------------------------------------------------------------------------------
+typedef struct {
+        char family[8];                 ///< IP family
+        char ip[MAX_STR_SIZE];          ///< IP address
+        char gw[MAX_STR_SIZE];          ///< Gateway address
+        char dns1[MAX_STR_SIZE];        ///< DNS1 address
+        char dns2[MAX_STR_SIZE];        ///< DNS2 address
+}
+NetConfIp_t;
+
+//-------------------------------------------------------------------------------------------------
+/**
  * Network configuration structure
  */
 //-------------------------------------------------------------------------------------------------
 typedef struct {
-    le_mdc_ProfileRef_t profile;    ///< profile reference
-    char family[8];                 ///< ip family
-    char itfName[MAX_STR_SIZE];     ///< interface name
-    char ip[MAX_STR_SIZE];          ///< ip address
-    char gw[MAX_STR_SIZE];          ///< gateway address
-    char dns1[MAX_STR_SIZE];        ///< dns1 address
-    char dns2[MAX_STR_SIZE];        ///< dns2 address
+    le_mdc_ProfileRef_t profile;    ///< Profile reference
+    char itfName[MAX_STR_SIZE];     ///< Interface name
+    NetConfIp_t ipv4;               ///< IPv4 info
+    NetConfIp_t ipv6;               ///< IPv6 info
 }
 NetConf_t;
 
@@ -112,9 +123,7 @@ static void HandleResult
     bool quit
 )
 {
-    FILE *stream;
-
-    result?(stream=stderr):(stream=stdout);
+    FILE *stream = (result != LE_OK) ? stderr : stdout;
 
     fprintf(stream, "%s: %s\n", msg, LE_RESULT_TXT(result));
 
@@ -175,50 +184,49 @@ static le_mdc_ProfileRef_t GetDataProfile
 //-------------------------------------------------------------------------------------------------
 static le_result_t GetIPv4Configuration
 (
-    NetConf_t *netConf
+    const le_mdc_ProfileRef_t profileRef,
+    NetConfIp_t *netConfIp
 )
 {
     le_result_t result;
 
-    if (!netConf)
+    if (!netConfIp)
     {
         return LE_FAULT;
     }
 
-    result = le_mdc_GetIPv4Address(netConf->profile,
-                netConf->ip, sizeof(netConf->ip));
+    result = le_mdc_GetIPv4Address(profileRef,
+                                   netConfIp->ip, sizeof(netConfIp->ip));
     if (result)
     {
         HandleResult("Failed to get IP address",result, false);
-        snprintf(netConf->ip, sizeof(netConf->ip), "N/A");
+        snprintf(netConfIp->ip, sizeof(netConfIp->ip), "N/A");
     }
 
-    result = le_mdc_GetIPv4GatewayAddress(netConf->profile,
-                netConf->gw, sizeof(netConf->gw));
+    result = le_mdc_GetIPv4GatewayAddress(profileRef,
+                                          netConfIp->gw, sizeof(netConfIp->gw));
     if (result)
     {
         HandleResult("Failed to get Gateway address", result, false);
-        snprintf(netConf->gw, sizeof(netConf->gw), "N/A");
+        snprintf(netConfIp->gw, sizeof(netConfIp->gw), "N/A");
     }
 
-    result = le_mdc_GetIPv4DNSAddresses(netConf->profile,
-                netConf->dns1, sizeof(netConf->dns1),
-                netConf->dns2, sizeof(netConf->dns2));
+    result = le_mdc_GetIPv4DNSAddresses(profileRef,
+                                        netConfIp->dns1, sizeof(netConfIp->dns1),
+                                        netConfIp->dns2, sizeof(netConfIp->dns2));
     if (result)
     {
         HandleResult("Failed to get DNS addresses", result, false);
-        snprintf(netConf->dns1, sizeof(netConf->dns1), "N/A");
-        snprintf(netConf->dns2, sizeof(netConf->dns2), "N/A");
     }
 
-    if (!strcmp(netConf->dns1, "\0"))
+    if (netConfIp->dns1[0] == '\0')
     {
-        snprintf(netConf->dns1, sizeof(netConf->dns1), "N/A");
+        snprintf(netConfIp->dns1, sizeof(netConfIp->dns1), "N/A");
     }
 
-    if (!strcmp(netConf->dns2, "\0"))
+    if (netConfIp->dns2[0] == '\0')
     {
-        snprintf(netConf->dns2, sizeof(netConf->dns2), "N/A");
+        snprintf(netConfIp->dns2, sizeof(netConfIp->dns2), "N/A");
     }
 
     return LE_OK;
@@ -232,50 +240,57 @@ static le_result_t GetIPv4Configuration
 //-------------------------------------------------------------------------------------------------
 static le_result_t GetIPv6Configuration
 (
-    NetConf_t *netConf
+    const le_mdc_ProfileRef_t profileRef,
+    NetConfIp_t *netConfIp
 )
 {
     le_result_t result;
 
-    if (!netConf)
+    if (!netConfIp)
     {
         return LE_FAULT;
     }
 
-    result = le_mdc_GetIPv6Address(netConf->profile,
-                netConf->ip, sizeof(netConf->ip));
+    result = le_mdc_GetIPv6Address(profileRef,
+                                   netConfIp->ip, sizeof(netConfIp->ip));
     if (result)
     {
         HandleResult("Failed to get IP address", result, false);
-        snprintf(netConf->ip, sizeof(netConf->ip), "N/A");
     }
 
-    result = le_mdc_GetIPv6GatewayAddress(netConf->profile,
-                netConf->gw, sizeof(netConf->gw));
+    result = le_mdc_GetIPv6GatewayAddress(profileRef,
+                                          netConfIp->gw, sizeof(netConfIp->gw));
     if (result)
     {
         HandleResult("Failed to get Gateway address", result, false);
-        snprintf(netConf->gw, sizeof(netConf->gw), "N/A");
     }
 
-    result = le_mdc_GetIPv6DNSAddresses(netConf->profile,
-                netConf->dns1, sizeof(netConf->dns1),
-                netConf->dns2, sizeof(netConf->dns2));
+    result = le_mdc_GetIPv6DNSAddresses(profileRef,
+                                        netConfIp->dns1, sizeof(netConfIp->dns1),
+                                        netConfIp->dns2, sizeof(netConfIp->dns2));
     if (result)
     {
         HandleResult("Failed to get DNS addresses", result, false);
-        snprintf(netConf->dns1, sizeof(netConf->dns1), "N/A");
-        snprintf(netConf->dns2, sizeof(netConf->dns2), "N/A");
     }
 
-    if (!strcmp(netConf->dns1, "\0"))
+    if (netConfIp->ip[0] == '\0')
     {
-        snprintf(netConf->dns1, sizeof(netConf->dns1), "N/A");
+        snprintf(netConfIp->ip, sizeof(netConfIp->ip), "N/A");
     }
 
-    if (!strcmp(netConf->dns2, "\0"))
+    if (netConfIp->gw[0] == '\0')
     {
-        snprintf(netConf->dns2, sizeof(netConf->dns2), "N/A");
+        snprintf(netConfIp->gw, sizeof(netConfIp->gw), "N/A");
+    }
+
+    if (netConfIp->dns1[0] == '\0')
+    {
+        snprintf(netConfIp->dns1, sizeof(netConfIp->dns1), "N/A");
+    }
+
+    if (netConfIp->dns2[0] == '\0')
+    {
+        snprintf(netConfIp->dns2, sizeof(netConfIp->dns2), "N/A");
     }
 
     return LE_OK;
@@ -312,7 +327,7 @@ static le_result_t GetNetworkConfiguration
     }
 
     result = le_mdc_GetInterfaceName(netConf->profile,
-                netConf->itfName, sizeof(netConf->itfName));
+                                     netConf->itfName, sizeof(netConf->itfName));
     if (result)
     {
         HandleResult("Failed to get interface name", result, false);
@@ -321,9 +336,9 @@ static le_result_t GetNetworkConfiguration
 
     if (le_mdc_IsIPv4(netConf->profile))
     {
-        snprintf(netConf->family, sizeof(netConf->family), "inet");
+        snprintf(netConf->ipv4.family, sizeof(netConf->ipv4.family), "inet");
 
-        if (GetIPv4Configuration(netConf))
+        if (GetIPv4Configuration(netConf->profile, &(netConf->ipv4)))
         {
             HandleResult("Failed to get IPv4 configuration", LE_FAULT, false);
             return LE_FAULT;
@@ -332,9 +347,9 @@ static le_result_t GetNetworkConfiguration
 
     if (le_mdc_IsIPv6(netConf->profile))
     {
-        snprintf(netConf->family, sizeof(netConf->family), "inet6");
+        snprintf(netConf->ipv6.family, sizeof(netConf->ipv6.family), "inet6");
 
-        if (GetIPv6Configuration(netConf))
+        if (GetIPv6Configuration(netConf->profile, &(netConf->ipv6)))
         {
             HandleResult("Failed to get IPv6 configuration", LE_FAULT, false);
             return LE_FAULT;
@@ -343,6 +358,7 @@ static le_result_t GetNetworkConfiguration
 
     return LE_OK;
 }
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Function to convert a le_mdc_DataBearerTechnology_t to a string
@@ -1001,7 +1017,7 @@ static le_result_t PrintNetworkConfiguration
 )
 {
     le_result_t result;
-    NetConf_t netConf;
+    NetConf_t netConf = {0};
 
     netConf.profile = profile;
 
@@ -1009,11 +1025,36 @@ static le_result_t PrintNetworkConfiguration
     if (result == LE_OK)
     {
         cm_cmn_FormatPrint("Interface", netConf.itfName);
-        cm_cmn_FormatPrint("Family", netConf.family);
-        cm_cmn_FormatPrint("IP", netConf.ip);
-        cm_cmn_FormatPrint("Gateway", netConf.gw);
-        cm_cmn_FormatPrint("Dns1", netConf.dns1);
-        cm_cmn_FormatPrint("Dns2", netConf.dns2);
+
+        // Per IP family
+        int i = 0;
+        for (; i <= 1; i++)
+        {
+            NetConfIp_t * netConfIp = &(netConf.ipv4);
+            const char * netConfName = "IPv4";
+            char lineName[CMODEM_COMMON_COLUMN_LEN+1];
+            if (i == 1)
+            {
+                netConfIp = &(netConf.ipv6);
+                netConfName = "IPv6";
+            }
+
+            if (netConfIp->family[0] == '\0')
+            {
+                continue;
+            }
+
+            snprintf(lineName, sizeof(lineName), "Family[%s]", netConfName);
+            cm_cmn_FormatPrint(lineName, netConfIp->family);
+            snprintf(lineName, sizeof(lineName), "IP[%s]", netConfName);
+            cm_cmn_FormatPrint(lineName, netConfIp->ip);
+            snprintf(lineName, sizeof(lineName), "Gateway[%s]", netConfName);
+            cm_cmn_FormatPrint(lineName, netConfIp->gw);
+            snprintf(lineName, sizeof(lineName), "Dns1[%s]", netConfName);
+            cm_cmn_FormatPrint(lineName, netConfIp->dns1);
+            snprintf(lineName, sizeof(lineName), "Dns2[%s]", netConfName);
+            cm_cmn_FormatPrint(lineName, netConfIp->dns2);
+        }
     }
 
     return result;

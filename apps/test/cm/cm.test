@@ -71,19 +71,19 @@ export CURL=curl_stub
 
 # a stubbed version of cm data info command that returns the needed info
 data_info_stub() {
-    echo "Index:      $PROFILE"
-    echo "APN:        $APN"
-    echo "PDP Type:   $PDP"
-    echo "Connected:  $CONNECTED"
-    echo "Auth type:  $AUTH"
-    echo "User name:  $USR"
-    echo "Password:   $PASSWD"
-    echo "Interface:  $IFACE"
-    echo "Family:     $FAMILY"
-    echo "IP:         $IPADDR"
-    echo "Gateway:    $GW"
-    echo "Dns1:       $DNS1"
-    echo "Dns2:       $DNS2"
+    echo "Index:         $PROFILE"
+    echo "APN:           $APN"
+    echo "PDP Type:      $PDP"
+    echo "Connected:     $CONNECTED"
+    echo "Auth type:     $AUTH"
+    echo "User name:     $USR"
+    echo "Password:      $PASSWD"
+    echo "Interface:     $IFACE"
+    echo "Family[$IPV]:  $FAMILY"
+    echo "IP[$IPV]:      $IPADDR"
+    echo "Gateway[$IPV]: $GW"
+    echo "Dns1[$IPV]:    $DNS1"
+    echo "Dns2[$IPV]:    $DNS2"
 }
 
 export -f data_info_stub
@@ -151,12 +151,13 @@ cm_stub() {
 export -f cm_stub
 export CM=cm_stub
 
+export RUN_TIME="$PWD/runtime"
 export RESOLV_CONF="$PWD/resolv.conf" LOG="$PWD/cm.log"
 
 export IP_EXIT_CODE=0 IFCONFIG_EXIT_CODE=0 CURL_EXIT_CODE=0 APN_EXIT_CODE=0 \
     PDP_EXIT_CODE=0 AUTH_EXIT_CODE=0 CONNECT_EXIT_CODE=0
 
-export PROFILE="2" APN="orange" PDP="IPV4" CONNECTED="no" AUTH="PAP" \
+export PROFILE="2" APN="orange" PDP="IPV4" IPV="IPv4" CONNECTED="no" AUTH="PAP" \
     USR="orange" PASSWD="orange" IFACE="rmnet0" FAMILY="inet" \
     IPADDR="10.134.198.59" GW="10.134.198.60" DNS1="192.168.10.110" \
     DNS2="192.168.10.111" ROUTED=0

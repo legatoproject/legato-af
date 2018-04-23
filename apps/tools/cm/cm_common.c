@@ -24,9 +24,9 @@ void cm_cmn_FormatPrint
     const char * desc     ///< [IN] Pointer to the description string to be printed
 )
 {
-    char sysInfoColon[30];
+    char sysInfoColon[CMODEM_COMMON_COLUMN_LEN+2];
     snprintf(sysInfoColon, sizeof(sysInfoColon), "%s:", data);
-    printf("%-22s %s\n", sysInfoColon, desc);
+    printf("%-"STRINGIZE(CMODEM_COMMON_COLUMN_LEN)"s %s\n", sysInfoColon, desc);
 }
 
 
