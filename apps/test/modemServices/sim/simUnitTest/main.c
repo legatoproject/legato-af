@@ -493,11 +493,13 @@ static void LocalSwap
     {
         LE_ASSERT(LE_OK == le_sim_LocalSwapToCommercialSubscription(CurrentSimId,
                                                                     LE_SIM_OBERTHUR));
+        firstCall = false;
     }
     else
     {
         LE_ASSERT(LE_OK == le_sim_LocalSwapToEmergencyCallSubscription(CurrentSimId,
                                                                        LE_SIM_MORPHO));
+        firstCall = true;
     }
 
     // we have no semaphore here as these functions are blocking (waiting for a SIM refresh done by

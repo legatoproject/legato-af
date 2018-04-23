@@ -2202,6 +2202,7 @@ le_result_t le_sim_GetHomeNetworkOperator
  *      - LE_BAD_PARAMETER invalid SIM identifier
  *      - LE_BUSY when a profile swap is already in progress
  *      - LE_FAULT for unexpected error
+ *      - LE_DUPLICATE for duplicate operation
  *
  * @warning If you use a Morpho or Oberthur card, the SIM_REFRESH PRO-ACTIVE command must be
  *          accepted with le_sim_AcceptSimToolkitCommand() in order to complete the profile swap
@@ -2227,6 +2228,12 @@ le_result_t le_sim_LocalSwapToEmergencyCallSubscription
         return LE_FAULT;
     }
     simPtr = &SimList[simId];
+
+    if (ECS == simPtr->subscription)
+    {
+        LE_ERROR("Duplicate operation on swapping to ESC!");
+        return LE_DUPLICATE;
+    }
 
     //Clear sim information.
     simPtr->ICCID[0] = '\0';
@@ -2258,6 +2265,7 @@ le_result_t le_sim_LocalSwapToEmergencyCallSubscription
  *      - LE_BAD_PARAMETER invalid SIM identifier
  *      - LE_BUSY when a profile swap is already in progress
  *      - LE_FAULT for unexpected error
+ *      - LE_DUPLICATE for duplicate operation
  *
  * @warning If you use a Morpho or Oberthur card, the SIM_REFRESH PRO-ACTIVE command must be
  *          accepted with le_sim_AcceptSimToolkitCommand() in order to complete the profile swap
@@ -2283,6 +2291,12 @@ le_result_t le_sim_LocalSwapToCommercialSubscription
         return LE_FAULT;
     }
     simPtr = &SimList[simId];
+
+    if (COMMERCIAL == simPtr->subscription)
+    {
+        LE_ERROR("Duplicate operation on swapping back to Commercial subscription!");
+        return LE_DUPLICATE;
+    }
 
     //Clear sim information (do not clear EID).
     simPtr->ICCID[0] = '\0';
