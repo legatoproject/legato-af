@@ -253,7 +253,7 @@ void cm_info_PrintGetPriId
                            LE_INFO_MAX_PRIID_REV_BYTES);
     if (LE_OK != res)
     {
-        printf("The function failed to get the value.");
+        LE_ERROR("The function failed to get the value.");
         return;
     }
     if(withHeaders)
