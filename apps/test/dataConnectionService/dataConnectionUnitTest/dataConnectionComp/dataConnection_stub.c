@@ -70,6 +70,14 @@ static le_event_Id_t CellNetStateEvent = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Event ID for New Packet Switched change notification.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t PSChangeId = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Data Control Profile structure
  */
 //--------------------------------------------------------------------------------------------------
@@ -1385,6 +1393,106 @@ void le_mrcTest_SetRatInUse
     {
         RatInUse = rat;
     }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The first-layer Packet Switched Change Handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void FirstLayerPSChangeHandler
+(
+    void* reportPtr,
+    void* secondLayerHandlerFunc
+)
+{
+    le_mrc_NetRegState_t*         serviceStatePtr = (le_mrc_NetRegState_t*) reportPtr;
+    le_mrc_PacketSwitchedChangeHandlerFunc_t clientHandlerFunc =
+                    (le_mrc_PacketSwitchedChangeHandlerFunc_t) secondLayerHandlerFunc;
+
+    clientHandlerFunc(*serviceStatePtr, le_event_GetContextPtr());
+
+    // The reportPtr is a reference counted object, so need to release it
+    le_mem_Release(reportPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add handler function for EVENT 'le_mrc_PacketSwitchedChange'
+ *
+ * This event provides information on Packet Switched service changes.
+ *
+ * @note <b>multi-app safe</b>
+ */
+//--------------------------------------------------------------------------------------------------
+le_mrc_PacketSwitchedChangeHandlerRef_t le_mrc_AddPacketSwitchedChangeHandler
+(
+    le_mrc_PacketSwitchedChangeHandlerFunc_t packetHandlerPtr,  ///< [IN] The handler function.
+    void* contextPtr                                            ///< [IN] The handler's context.
+)
+{
+    if (!PSChangeId)
+    {
+        PSChangeId = le_event_CreateId("Packet switch state", sizeof(le_mrc_NetRegState_t));
+    }
+
+    le_event_HandlerRef_t        handlerRef;
+
+    if (NULL == packetHandlerPtr)
+    {
+        LE_KILL_CLIENT("Handler function is NULL !");
+        return NULL;
+    }
+
+    handlerRef = le_event_AddLayeredHandler("PacketSwitchedChangeHandler",
+                                            PSChangeId,
+                                            FirstLayerPSChangeHandler,
+                                            (le_event_HandlerFunc_t)packetHandlerPtr);
+
+    le_event_SetContextPtr(handlerRef, contextPtr);
+
+    return (le_mrc_PacketSwitchedChangeHandlerRef_t)(handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove handler function for EVENT 'le_mrc_PacketSwitchedChange'
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mrc_RemovePacketSwitchedChangeHandler
+(
+    le_mrc_PacketSwitchedChangeHandlerRef_t handlerRef ///< [IN]
+)
+{
+    le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ *
+ * @note <b>multi-app safe</b>
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetPacketSwitchedState
+(
+    le_mrc_NetRegState_t* statePtr ///< [OUT] The current Packet switched state.
+)
+{
+    if (statePtr == NULL)
+    {
+        LE_KILL_CLIENT("Parameters pointer are NULL!!");
+        return LE_FAULT;
+    }
+
+    *statePtr = LE_MRC_REG_HOME;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
