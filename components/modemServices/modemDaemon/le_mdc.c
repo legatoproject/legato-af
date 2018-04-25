@@ -600,35 +600,19 @@ static void ProcessCommandEventHandler
     {
         if (cmdRequestPtr->command == START_SESSION)
         {
-            switch (profilePtr->modemData.pdp)
+            result = le_mdc_StartSession(cmdRequestPtr->profileRef);
+            if (result != LE_OK)
             {
-                case LE_MDC_PDP_IPV4:
-                {
-                    result = pa_mdc_StartSessionIPV4(profilePtr->profileIndex);
-                }
-                break;
-                case LE_MDC_PDP_IPV6:
-                {
-                    result = pa_mdc_StartSessionIPV6(profilePtr->profileIndex);
-                }
-                break;
-                case LE_MDC_PDP_IPV4V6:
-                {
-                    result = pa_mdc_StartSessionIPV4V6(profilePtr->profileIndex);
-                }
-                break;
-                default:
-                    result = LE_FAULT;
+                LE_ERROR("le_mdc_StartSession error %d", result);
             }
         }
         else if(cmdRequestPtr->command == STOP_SESSION)
         {
-            uint64_t rxBytes, txBytes;
-
-            // Store data counters
-            le_mdc_GetBytesCounters(&rxBytes, &txBytes);
-
-            result = pa_mdc_StopSession(profilePtr->profileIndex);
+            result = le_mdc_StopSession(cmdRequestPtr->profileRef);
+            if (result != LE_OK)
+            {
+                LE_ERROR("le_mdc_StopSession error %d", result);
+            }
         }
         else
         {
