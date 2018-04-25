@@ -190,8 +190,11 @@ typedef struct le_gnss_PositionSample
     int32_t            hAccuracy;       ///< horizontal accuracy
     bool               altitudeValid;   ///< if true, altitude is set
     int32_t            altitude;        ///< altitude
+    bool               altitudeAssumedValid; ///< if true, altitude assumed is set
+    bool               altitudeAssumed;  ///< if false, the altitude is calculated
+                                         ///< if true the altitude is assumed.
     bool               altitudeOnWgs84Valid;///< if true, altitude with respect to the WGS-84 is set
-    int32_t            altitudeOnWgs84;      ///< altitude with respect to the WGS-84 ellipsoid
+    int32_t            altitudeOnWgs84; ///< altitude with respect to the WGS-84 ellipsoid
     bool               vAccuracyValid;  ///< if true, vertical accuracy is set
     int32_t            vAccuracy;       ///< vertical accuracy
     bool               hSpeedValid;     ///< if true, horizontal speed is set

@@ -84,6 +84,12 @@
  * @subsubsection le_gnss_TTFF Time To First Fix (TTFF)
  * The le_gnss_GetTtff() function provides the TTFF (first between 2-Dimensional or 3-Dimensional
  * position fix) of the last position fix.
+ * The GNSS fix position is calculated by the GNSS engine. Its state can be retrieved by
+ * le_gnss_GetPositionState() function. The GNSS fix position states are given by le_gnss_FixState_t
+ * enum.
+ * @note The "estimated" fix is obtained when less than 3 Satellites Vehicle (SV) are used to
+ * establish the fix. It includes the case when no SVs are used.
+ *
  * Please refer to @ref le_gnss_APIcallsRequirements. Also see @ref howToGNSS.
  *
  * A sample code can be seen in the following page:

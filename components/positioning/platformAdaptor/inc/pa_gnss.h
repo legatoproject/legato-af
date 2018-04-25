@@ -115,6 +115,10 @@ typedef struct {
     int32_t            altitude;  ///< The Altitude in meters, above Mean Sea Level,
                                   ///  with 3 decimal places.
 
+    bool               altitudeAssumedValid; ///< if true, altitude assumed is set
+    bool               altitudeAssumed;  ///< if false, the altitude is calculated
+                                         ///< if true the altitude is assumed.
+
     bool               altitudeOnWgs84Valid; ///< if true, altitudeOnWgs84 is set
     int32_t            altitudeOnWgs84;  ///< The altitudeOnWgs84 in meters, between WGS-84 earth
                                          ///  ellipsoid and mean sea level with 3 decimal places.
