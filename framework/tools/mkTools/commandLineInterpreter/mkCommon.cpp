@@ -30,6 +30,7 @@ std::string GetToolChainDir
 //--------------------------------------------------------------------------------------------------
 {
     auto allCapsPrefix = target + "_";
+    std::transform(allCapsPrefix.begin(), allCapsPrefix.end(), allCapsPrefix.begin(), ::toupper);
     auto toolChainDir = envVars::Get(allCapsPrefix + "TOOLCHAIN_DIR");   // WP
     if (toolChainDir.empty())
     {
