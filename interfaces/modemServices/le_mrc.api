@@ -229,8 +229,8 @@
  * the new ones if the function is called with the same RAT. The event is notified when we cross the
  * range limits in both direction.
  *
- * @warning The threshold values must be in the allowed platform range and the RAT must be valid,
- *          else, it's a fatal error, le_mrc_AddSignalStrengthChangeHandler API won't return.
+ * @warning A fatal error will be thrown if the RAT is not valid and the
+ *  le_mrc_AddSignalStrengthChangeHandler function won't return.
  *
  * le_mrc_RemoveSignalStrengthChangeHandler() API uninstalls the handler function.
  *

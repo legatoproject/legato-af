@@ -4150,7 +4150,7 @@ le_result_t le_mrc_SetSignalStrengthIndDelta
  *
  * @return A handler reference, which is only needed for later removal of the handler.
  *
- * @note  If the caller is passing a null handler function, thresholds values out of range or an
+ * @note  If the caller is passing a null handler function or an
  *        invalid RAT into this function, it's a fatal error, the function won't return. No need
  *        then to check the return value for errors.
  */
@@ -4191,7 +4191,7 @@ le_mrc_SignalStrengthChangeHandlerRef_t le_mrc_AddSignalStrengthChangeHandler
                                               lowerRangeThreshold,
                                               upperRangeThreshold) != LE_OK)
     {
-        LE_KILL_CLIENT("Failed to set PA Signal Strength Indication thresholds!");
+        LE_ERROR("Failed to set PA Signal Strength Indication thresholds!");
         return NULL;
     }
 

@@ -1613,6 +1613,14 @@ static void Testle_mrc_SsHdlr
     le_mrc_SignalStrengthChangeHandlerRef_t testHdlrRef3 = NULL;
     le_mrc_SignalStrengthChangeHandlerRef_t testHdlrRef4 = NULL;
 
+    LE_INFO("Set Signal handler with lowerRangeThreshold out of range to be rejected by PA QMI");
+    testHdlrRef1 = le_mrc_AddSignalStrengthChangeHandler(LE_MRC_RAT_GSM,
+                                                        -40000,
+                                                        -32000,
+                                                        TestSsHandler,
+                                                        NULL);
+    LE_ASSERT(NULL == testHdlrRef1);
+
     testHdlrRef1 = le_mrc_AddSignalStrengthChangeHandler(LE_MRC_RAT_GSM,
                                                         -80,
                                                         -70,
