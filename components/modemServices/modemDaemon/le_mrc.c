@@ -1239,7 +1239,7 @@ static bool JammingDetectionRemoveReference
     le_dls_Link_t* linkPtr = le_dls_Peek(&JammingSessionRefList);
     JammingDetectionRef_t* jammingDetectionNodePtr;
 
-    LE_DEBUG("JammingDetectionRemoveReference for session 0x%p\n", sessionRef);
+    LE_DEBUG("JammingDetectionRemoveReference for session 0x%p", sessionRef);
 
     // Read all nodes of the jamming detection reference list
     while (NULL != linkPtr)
@@ -1250,7 +1250,7 @@ static bool JammingDetectionRemoveReference
         {
             // Remove the node from the jamming detection reference list
             le_dls_Remove(&JammingSessionRefList, linkPtr);
-            LE_DEBUG("Stop jamming for session 0x%p\n", sessionRef);
+            LE_DEBUG("Stop jamming for session 0x%p", sessionRef);
 
             // Release reference node.
             le_mem_Release(jammingDetectionNodePtr);
@@ -4483,7 +4483,6 @@ le_result_t le_mrc_StartJammingDetection
     bool isPresent = false;
 
     le_dls_Link_t* linkPtr = le_dls_Peek(&JammingSessionRefList);
-    le_dls_Link_t* nextLinkPtr = NULL;
     le_msg_SessionRef_t storedSessionRef;
 
     LE_INFO("session to add %p", sessionRef);
@@ -4491,14 +4490,7 @@ le_result_t le_mrc_StartJammingDetection
     // Check if the application already started the jamming
     while (NULL != linkPtr)
     {
-        nextLinkPtr = le_dls_PeekNext(&JammingSessionRefList, linkPtr);
-
-        if (NULL == nextLinkPtr)
-        {
-            break;
-        }
-
-        storedSessionRef = CONTAINER_OF(nextLinkPtr, JammingDetectionRef_t, link)->sessionRef;
+        storedSessionRef = CONTAINER_OF(linkPtr, JammingDetectionRef_t, link)->sessionRef;
         if (storedSessionRef == sessionRef)
         {
             // The application reference is already stored in the list
@@ -4524,7 +4516,25 @@ le_result_t le_mrc_StartJammingDetection
         // Activation only if the list is empty
         if (le_dls_IsEmpty(&JammingSessionRefList))
         {
-            res = pa_mrc_SetJammingDetection(true);
+            bool activationStatus = false;
+            // Check if the jamming detection is already activated
+            // This could be activated in following use case:
+            // An application activates the jamming detection and before deactivating it,
+            // a legato restart is requested.
+            // In this case, the jamming detection is still activated but the list is empty
+            res = pa_mrc_GetJammingDetection(&activationStatus);
+            if ((LE_OK == res) && activationStatus)
+            {
+                // Jamming already activated
+                LE_DEBUG("Jamming is already activated");
+            }
+            else
+            {
+                // Do not test the pa_mrc_GetJammingDetection
+                // Some platform support jamming detection without supporting
+                // pa_mrc_GetJammingDetection function
+                res = pa_mrc_SetJammingDetection(true);
+            }
         }
 
         if (LE_OK == res)

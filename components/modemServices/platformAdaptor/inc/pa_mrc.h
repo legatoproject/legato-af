@@ -241,7 +241,8 @@ pa_mrc_NetworkRejectIndication_t;
  *
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct {
+typedef struct
+{
     le_mrc_JammingReport_t  report;     ///< Notification type
     le_mrc_JammingStatus_t  status;     ///< Jamming status
 }
@@ -1074,6 +1075,22 @@ LE_SHARED le_event_HandlerRef_t pa_mrc_AddJammingDetectionIndHandler
 LE_SHARED le_result_t pa_mrc_SetJammingDetection
 (
     bool activation     ///< [IN] Notification activation request
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function returns the jamming detection notification status.
+ *
+ * * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if the parameter is invalid
+ *      - LE_FAULT on failure
+ *      - LE_UNSUPPORTED if jamming detection is not supported or if this request is not supported
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mrc_GetJammingDetection
+(
+    bool* activationPtr     ///< [IN] Notification activation request
 );
 
 #endif // LEGATO_PARC_INCLUDE_GUARD

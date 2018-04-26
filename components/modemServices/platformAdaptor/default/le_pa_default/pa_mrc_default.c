@@ -968,7 +968,27 @@ le_result_t pa_mrc_SetJammingDetection
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function returns the jamming detection notification status.
+ *
+ * * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if the parameter is invalid
+ *      - LE_FAULT on failure
+ *      - LE_UNSUPPORTED if jamming detection is not supported or if this request is not supported
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_GetJammingDetection
+(
+    bool* activationPtr     ///< [IN] Notification activation request
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------

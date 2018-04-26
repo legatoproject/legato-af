@@ -37,6 +37,46 @@ static le_msg_SessionRef_t _ClientSessionRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Semaphore for thread synchronization (jamming detection test)
+ */
+//--------------------------------------------------------------------------------------------------
+static le_sem_Ref_t     ThreadSemaphore;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Timeout for semaphore
+ */
+//--------------------------------------------------------------------------------------------------
+static le_clk_Time_t    TimeToWait = { 0, 1000000 };
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Client Session Reference for the current message received from a client
+ */
+//--------------------------------------------------------------------------------------------------
+#define APPLICATION_NB        2
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Thread context
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    uint32_t                                    appId;          ///< Application Id
+    le_thread_Ref_t                             appThreadRef;   ///< Thread reference
+    le_mrc_JammingDetectionEventHandlerRef_t    stateHandler;   ///< Jamming handler
+} AppContext_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Context for simulated applications
+ */
+//--------------------------------------------------------------------------------------------------
+static AppContext_t AppCtx[APPLICATION_NB];
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the server service reference (STUBBED FUNCTION)
  */
 //--------------------------------------------------------------------------------------------------
@@ -85,6 +125,46 @@ le_msg_SessionRef_t le_sim_GetClientSessionRef
 )
 {
     return _ClientSessionRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set a client session reference value
+ */
+//--------------------------------------------------------------------------------------------------
+static void SetClientSessionRef
+(
+    uint32_t*   valuePtr,      ///< [IN] New value
+    bool        isNull         ///< [IN] Set to NULL is true
+)
+{
+    if (isNull)
+    {
+        _ClientSessionRef = NULL;
+    }
+    else
+    {
+        _ClientSessionRef = (le_msg_SessionRef_t)valuePtr;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Synchronize test thread (i.e. main) and tasks
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void SynchTest
+(
+    int number
+)
+{
+    int i = 0;
+
+    for (i = 0; i < number; i++)
+    {
+        LE_ASSERT(le_sem_WaitWithTimeOut(ThreadSemaphore, TimeToWait) == LE_OK);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -588,6 +668,100 @@ static void TestJammingHandler
     void*                   contextPtr  ///< [IN] Handler context.
 )
 {
+    LE_INFO("Jamming report");
+    switch(report)
+    {
+        case LE_MRC_JAMMING_REPORT_FINAL:
+            LE_DEBUG("FINAL REPORT");
+            break;
+
+        case LE_MRC_JAMMING_REPORT_INTERMEDIATE:
+            LE_DEBUG("INTERMEDIATE REPORT");
+            break;
+
+        default:
+            LE_DEBUG("Unsupported report");
+            return;
+    }
+
+    switch(status)
+    {
+        case LE_MRC_JAMMING_STATUS_UNKNOWN:
+            LE_DEBUG("Unknown\n");
+            break;
+
+        case LE_MRC_JAMMING_STATUS_NULL:
+            LE_DEBUG("NULL\n");
+            break;
+
+        case LE_MRC_JAMMING_STATUS_LOW:
+            LE_DEBUG("Low\n");
+            break;
+
+        case LE_MRC_JAMMING_STATUS_MEDIUM:
+            LE_DEBUG("Medium");
+            break;
+
+        case LE_MRC_JAMMING_STATUS_HIGH:
+            LE_DEBUG("High");
+            break;
+
+        case LE_MRC_JAMMING_STATUS_JAMMED:
+            LE_DEBUG("Jammed!!!!");
+            break;
+
+        default:
+            LE_DEBUG("Invalid status");
+            break;
+    }
+    // Semaphore is used to synchronize the task execution with the core test
+    le_sem_Post(ThreadSemaphore);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test tasks: this function handles the task and run an eventLoop
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void* AppHandler
+(
+    void* ctxPtr
+)
+{
+    AppContext_t* appCtxPtr = (AppContext_t*)ctxPtr;
+    LE_ASSERT(NULL != appCtxPtr);
+
+    // Subscribe to SIM state handler
+    appCtxPtr->stateHandler = le_mrc_AddJammingDetectionEventHandler(TestJammingHandler, NULL);
+    LE_ASSERT(NULL != appCtxPtr->stateHandler);
+
+    // Semaphore is used to synchronize the task execution with the core test
+    le_sem_Post(ThreadSemaphore);
+
+    le_event_RunLoop();
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove jamming detection handler
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void RemoveJammingHandler
+(
+    void* param1Ptr,
+    void* param2Ptr
+)
+{
+    AppContext_t* appCtxPtr = (AppContext_t*)param1Ptr;
+    LE_ASSERT(appCtxPtr);
+
+    le_mrc_RemoveJammingDetectionEventHandler(appCtxPtr->stateHandler);
+
+    // Semaphore is used to synchronize the task execution with the core test
+    le_sem_Post(ThreadSemaphore);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -605,46 +779,118 @@ void Testle_mrc_JammingTest
     void
 )
 {
-    le_mrc_JammingDetectionEventHandlerRef_t testJammingHdlrRef;
+    #define THREAD_NAME_LEN 15
+    int i = 0;
 
+    uint32_t clientSessionRef1 = 0x1234;
+    uint32_t clientSessionRef2 = 0x4321;
+
+    char string[THREAD_NAME_LEN]={0};
+
+    // Test NULL cases
+    LE_ASSERT(!le_mrc_AddJammingDetectionEventHandler(NULL, NULL));
+
+    // Create a semaphore to coordinate the test
+    ThreadSemaphore = le_sem_Create("HandlerSem", 0);
+
+    // int app context
+    memset(AppCtx, 0, APPLICATION_NB*sizeof(AppContext_t));
+
+    // Simulate one application which subcribes to jamming handler using
+    // le_mrc_AddJammingDetectionEventHandler
+    snprintf(string, THREAD_NAME_LEN, "app%dhandler", i);
+    AppCtx[i].appId = i;
+    AppCtx[i].appThreadRef = le_thread_Create(string, AppHandler, &AppCtx[i]);
+    le_thread_Start(AppCtx[i].appThreadRef);
+
+    // Wait that the tasks have started before continuing the test
+    SynchTest(1);
+
+    // Set client session reference for application 1
+    SetClientSessionRef(&clientSessionRef1, false);
+
+    // Set jamming detection feature to unsupported
+    pa_mrcSimu_SetJammingDetection(PA_MRCSIMU_JAMMING_UNSUPPORTED);
+    LE_ASSERT(LE_UNSUPPORTED == le_mrc_StartJammingDetection());
+
+    // Stop jamming but the application does not started it: LE_FAULT is expected
+    LE_ASSERT(LE_FAULT == le_mrc_StopJammingDetection());
+
+    // Set jamming detection feature to deactivated
+    pa_mrcSimu_SetJammingDetection(PA_MRCSIMU_JAMMING_DEACTIVATED);
     LE_ASSERT_OK(le_mrc_StartJammingDetection());
-    LE_ASSERT_OK(le_mrc_StopJammingDetection());
+    LE_ASSERT(LE_DUPLICATE == le_mrc_StartJammingDetection());
+    LE_ASSERT(PA_MRCSIMU_JAMMING_ACTIVATED == pa_mrcSimu_GetJammingDetection());
 
-    testJammingHdlrRef = le_mrc_AddJammingDetectionEventHandler(TestJammingHandler, NULL);
-    LE_ASSERT(testJammingHdlrRef);
-    le_mrc_RemoveJammingDetectionEventHandler(testJammingHdlrRef);
+    pa_mrcSimu_ReportJammingDetection(LE_MRC_JAMMING_REPORT_INTERMEDIATE,
+                                      LE_MRC_JAMMING_STATUS_LOW);
+    SynchTest(1);
+
+    LE_ASSERT_OK(le_mrc_StopJammingDetection());
+    LE_ASSERT(PA_MRCSIMU_JAMMING_DEACTIVATED == pa_mrcSimu_GetJammingDetection());
+
+
+    // Simulate two application with one handler for each application
+    i++;
+    snprintf(string, THREAD_NAME_LEN, "app%dhandler", i);
+    AppCtx[i].appId = i;
+    AppCtx[i].appThreadRef = le_thread_Create(string, AppHandler, &AppCtx[i]);
+    le_thread_Start(AppCtx[i].appThreadRef);
+
+    // Wait that the tasks have started before continuing the test
+    SynchTest(1);
+
+    /*le_event_QueueFunctionToThread(AppCtx[1].appThreadRef, AddJammingHandler, &AppCtx[1], NULL);
+    SynchTest(1);*/
+    pa_mrcSimu_SetJammingDetection(PA_MRCSIMU_JAMMING_DEACTIVATED);
+
+    // Start jamming with application 1
+    SetClientSessionRef(&clientSessionRef1, false);
+    LE_ASSERT_OK(le_mrc_StartJammingDetection());
+    LE_ASSERT(PA_MRCSIMU_JAMMING_ACTIVATED == pa_mrcSimu_GetJammingDetection());
+
+    // Start jamming with application 2
+    SetClientSessionRef(&clientSessionRef2, false);
+    LE_ASSERT_OK(le_mrc_StartJammingDetection());
+    LE_ASSERT(PA_MRCSIMU_JAMMING_ACTIVATED == pa_mrcSimu_GetJammingDetection());
+
+    pa_mrcSimu_ReportJammingDetection(LE_MRC_JAMMING_REPORT_INTERMEDIATE,
+                                      LE_MRC_JAMMING_STATUS_LOW);
+
+    SynchTest(APPLICATION_NB);
+
+    // Stop jamming with application 2
+    LE_ASSERT_OK(le_mrc_StopJammingDetection());
+    LE_ASSERT(PA_MRCSIMU_JAMMING_ACTIVATED == pa_mrcSimu_GetJammingDetection());
+
+    // Stop jamming with application 1
+    SetClientSessionRef(&clientSessionRef1, false);
+    LE_ASSERT_OK(le_mrc_StopJammingDetection());
+    LE_ASSERT(PA_MRCSIMU_JAMMING_DEACTIVATED == pa_mrcSimu_GetJammingDetection());
+
+    for (i = 0; i<APPLICATION_NB; i++)
+    {
+        le_event_QueueFunctionToThread(AppCtx[i].appThreadRef,
+                                       RemoveJammingHandler,
+                                       &AppCtx[i],
+                                       NULL);
+       le_thread_Cancel(AppCtx[i].appThreadRef);
+    }
+
+    SetClientSessionRef(0, true);
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * main of the test
- * Check The test exit successfully by checking the following trace:
- *  ======== UnitTest of MRC API ends with SUCCESS ========
+ * Thread used to run SIM unit tests
+ *
  */
 //--------------------------------------------------------------------------------------------------
-COMPONENT_INIT
+static void* TestThread
+(
+    void* context
+)
 {
-    // To reactivate for all DEBUG logs
-    //le_log_SetFilterLevel(LE_LOG_DEBUG);
-
-    // Init PA simu
-    pa_simSimu_Init();
-    // Init le_sim
-    le_sim_Init();
-
-    // Configure PA SIM simu
-    pa_simSimu_SetPIN(PIN_CODE);
-    pa_simSimu_SetIMSI(IMSI);
-    pa_simSimu_SetCardIdentification(ICCID);
-    pa_simSimu_SetHomeNetworkMccMnc(MCC, MNC);
-    pa_simSimu_SetHomeNetworkOperator(OPERATOR);
-    pa_sim_EnterPIN(PA_SIM_PIN, PIN_CODE);
-
-    // Init and configure PA MRC simu
-    mrc_simu_Init();
-    // Init le_mrc
-    le_mrc_Init();
-
     LE_INFO("======== Start UnitTest of MRC API ========");
 
     LE_INFO("======== MRC Power Test ========");
@@ -684,5 +930,42 @@ COMPONENT_INIT
 
     LE_INFO("======== UnitTest of MRC API ends with SUCCESS ========");
 
-    exit(EXIT_SUCCESS);
+    exit(0);
+
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * main of the test
+ * Check The test exit successfully by checking the following trace:
+ *  ======== UnitTest of MRC API ends with SUCCESS ========
+ */
+//--------------------------------------------------------------------------------------------------
+COMPONENT_INIT
+{
+    // To reactivate for all DEBUG logs
+    //le_log_SetFilterLevel(LE_LOG_DEBUG);
+
+    // Init PA simu
+    pa_simSimu_Init();
+
+    // Init le_sim
+    le_sim_Init();
+
+    // Configure PA SIM simu
+    pa_simSimu_SetPIN(PIN_CODE);
+    pa_simSimu_SetIMSI(IMSI);
+    pa_simSimu_SetCardIdentification(ICCID);
+    pa_simSimu_SetHomeNetworkMccMnc(MCC, MNC);
+    pa_simSimu_SetHomeNetworkOperator(OPERATOR);
+    pa_sim_EnterPIN(PA_SIM_PIN, PIN_CODE);
+
+    // Init and configure PA MRC simu
+    mrc_simu_Init();
+
+    // Init le_mrc
+    le_mrc_Init();
+
+    le_thread_Start(le_thread_Create("TestThread", TestThread, NULL));
 }
