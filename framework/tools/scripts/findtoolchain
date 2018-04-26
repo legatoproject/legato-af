@@ -63,10 +63,10 @@ SelectToolchainDirs() {
         case "$target" in
         wp85 | wp750x)
             local lxswi_target=wp85xx
-            AppendYoctoSwiToolchain "LXSWI.*+${lxswi_target}" 'arm-poky-linux-gnueabi'
+            AppendYoctoSwiToolchain "LXSWI*+${lxswi_target}" 'arm-poky-linux-gnueabi'
             ;;
         *)
-            AppendYoctoSwiToolchain "LXSWI.*+${target}" 'arm-poky-linux-gnueabi'
+            AppendYoctoSwiToolchain "LXSWI*+${target}" 'arm-poky-linux-gnueabi'
             ;;
         esac
 
@@ -94,9 +94,9 @@ SelectToolchainDirs() {
         ;;
     raspi)
         TOOLCHAIN_DIRS+=(/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin)
-        AppendYoctoSwiToolchain "LXSWI.*+${target}" 'arm-poky-linux-gnueabi'
+        AppendYoctoSwiToolchain "LXSWI*+${target}" 'arm-poky-linux-gnueabi'
         # Use virt toolchain since there is no raspi system ref at the moment.
-        AppendYoctoSwiToolchain "LXSWI.*+virt"      'arm-poky-linux-gnueabi'
+        AppendYoctoSwiToolchain "LXSWI*+virt"      'arm-poky-linux-gnueabi'
         for v in y22 y17; do
             AppendYoctoSwiToolchain "${v}-${target}"     'arm-poky-linux-gnueabi'
             AppendYoctoSwiToolchain "${v}"               'arm-poky-linux-gnueabi'
@@ -104,7 +104,7 @@ SelectToolchainDirs() {
         ;;
     virt_arm)
         AppendYoctoBuildToolchain 'build_virt-arm' 'arm-poky-linux-gnueabi'
-        AppendYoctoSwiToolchain "LXSWI.*+virt"     'arm-poky-linux-gnueabi'
+        AppendYoctoSwiToolchain "LXSWI*+virt"      'arm-poky-linux-gnueabi'
         for v in y22 y17; do
             AppendYoctoSwiToolchain "${v}-${target}"     'arm-poky-linux-gnueabi'
             AppendYoctoSwiToolchain "${v}"               'arm-poky-linux-gnueabi'
@@ -112,7 +112,7 @@ SelectToolchainDirs() {
         ;;
     virt_x86)
         AppendYoctoBuildToolchain 'build_virt-x86' 'i586-poky-linux'
-        AppendYoctoSwiToolchain "LXSWI.*+virt"     'i586-poky-linux'
+        AppendYoctoSwiToolchain "LXSWI*+virt"      'i586-poky-linux'
         for v in y22 y17; do
             AppendYoctoSwiToolchain "${v}-${target}"     'i586-poky-linux'
             AppendYoctoSwiToolchain "${v}"               'i586-poky-linux'
@@ -188,7 +188,7 @@ then
 fi
 
 # Go down the list until we find one that exists.
-for dir in ${TOOLCHAIN_DIRS[*]}
+for dir in "${TOOLCHAIN_DIRS[@]}"
 do
     if CheckToolchainDir "$dir"; then
         exit 0

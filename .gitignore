@@ -25,9 +25,7 @@ binaries
 *.update
 
 # Binary app files
-*.localhost.app
-*.virt.app
-*.wp85.app
+*.*.app
 
 # Vim
 *.swp
@@ -66,5 +64,6 @@ docManagement
 # 3rd Party content
 3rdParty/*
 
-# AVC
+# Apps
 apps/platformServices/airVantageConnector/
+apps/leTP
