@@ -124,7 +124,6 @@ void AppBuildScriptGenerator_t::GenerateAppBuildRules
         "  |tar --no-recursion --null -T - -cjf - ) > $out\n"
         "\n";
 
-
     if (buildParams.signPkg)
     {
         script <<
@@ -722,10 +721,10 @@ void AppBuildScriptGenerator_t::GenerateAppBundleBuildStatement
             // is built.
             auto outputFileSigned = path::Combine(outputDir, appPtr->name) + ".$target.signed.app";
             script << "build " << outputFileSigned << ": BinPackSignedApp " << infoPropertiesPath
-                   << " | " << " " << buildParams.pubCert << "\n"
+                   << " | " << " " << buildParams.pubCert << " " << outputFile << "\n"
                     "  adefPath = " << appPtr->defFilePtr->path << "\n"
-                    "  stagingDir = $builddir/" << appPtr->workingDir << "/staging" << "\n"
-                    "  workingDir = " << appPackDir << "\n"
+                    "  stagingDir = " << appPackDir << "\n"
+                    "  workingDir = " << "$builddir/" << "\n"
                     "\n";
         }
 

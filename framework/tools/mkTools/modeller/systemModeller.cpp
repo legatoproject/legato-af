@@ -236,6 +236,7 @@ static void ModelApp
     const auto appSpec = path::Unquote(DoSubstitution(sectionPtr->firstTokenPtr));
 
     // Build a proper .app suffix that includes the target that the app was built against.
+    const std::string appSuffixSigned = "." + buildParams.target + ".signed.app";
     const std::string appSuffix = "." + buildParams.target + ".app";
     bool isBinApp = false;
 
@@ -247,6 +248,12 @@ static void ModelApp
     else if (path::HasSuffix(appSpec, appSuffix))
     {
         appName = path::RemoveSuffix(path::GetLastNode(appSpec), appSuffix);
+        filePath = file::FindFile(appSpec, buildParams.appDirs);
+        isBinApp = true;
+    }
+    else if (path::HasSuffix(appSpec, appSuffixSigned))
+    {
+        appName = path::RemoveSuffix(path::GetLastNode(appSpec), appSuffixSigned);
         filePath = file::FindFile(appSpec, buildParams.appDirs);
         isBinApp = true;
     }
