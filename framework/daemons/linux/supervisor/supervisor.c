@@ -791,6 +791,58 @@ static void SigChildHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Recursively update the SMACK labels (ignore EROFS or ENOENT errors).
+ */
+//--------------------------------------------------------------------------------------------------
+static void UpdateSmackLabelRecursive
+(
+    const char* pathNamePtr,          ///< [IN] The path to the directory to update.
+    const char* smackLegatoLabelPtr   ///< [IN] The SMACK label for Legato objects.
+)
+{
+    // Open the directory tree to search.
+    char* pathArrayPtr[] = {(char*)pathNamePtr, NULL};
+
+    errno = 0;
+    FTS* ftsPtr = fts_open(pathArrayPtr, FTS_PHYSICAL | FTS_NOSTAT, NULL);
+
+    if (ftsPtr == NULL)
+    {
+        LE_CRIT("Cannot open path '%s': %m.", pathNamePtr);
+        return;
+    }
+
+    // Step through the directory tree.
+    FTSENT* entPtr;
+    while ((entPtr = fts_read(ftsPtr)) != NULL)
+    {
+        switch (entPtr->fts_info)
+        {
+            case FTS_D:
+            case FTS_F:
+            case FTS_SL:
+            case FTS_NSOK:
+                LE_DEBUG("Type (%d): %s", entPtr->fts_info, entPtr->fts_path);
+                if ((-1 == setxattr(entPtr->fts_path, "security.SMACK64",
+                                    smackLegatoLabelPtr, strlen(smackLegatoLabelPtr), 0)) &&
+                    ((EROFS != errno) && (ENOENT != errno)))
+                {
+                    LE_CRIT("Could not set SMACK label for '%s': %m.", entPtr->fts_path);
+                }
+                break;
+
+            case FTS_SLNONE:
+                LE_DEBUG("Skipping (%d): %s", entPtr->fts_info, entPtr->fts_path);
+                break;
+        }
+    }
+
+    fts_close(ftsPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Stops the Legato framework.
  *
  * Async API function.  Calls le_framework_StopRespond() to report results.
@@ -1031,9 +1083,6 @@ COMPONENT_INIT
 
     cgrp_Init();
 
-    // Register a signal event handler for SIGCHLD so we know when processes die.
-    le_sig_SetEventHandler(SIGCHLD, SigChildHandler);
-
     if (!fs_IsMountPoint(CURRENT_SYSTEM_PATH))
     {
         // Bind mount the root of the system unto itself so that we just lazy umount this when we
@@ -1066,6 +1115,51 @@ COMPONENT_INIT
             }
         }
     }
+    else
+    {
+        // Update the SMACK label for /legato depending if SMACK is enabled or disabled
+        char* smackLegatoLabelPtr = (smack_IsEnabled() ? "framework" : "_");
+        char smackCurrentLabel[PATH_MAX];
+        bool isSmackLabelToSet = false;
+
+        if (-1 == getxattr("/legato", "security.SMACK64",
+                           smackCurrentLabel, sizeof(smackCurrentLabel)))
+        {
+            isSmackLabelToSet = (ENODATA == errno || ERANGE == errno);
+        }
+        else
+        {
+            isSmackLabelToSet = (0 != strcmp(smackCurrentLabel, smackLegatoLabelPtr));
+        }
+
+        LE_DEBUG("isSmackLabelToSet %d smackCurrentLabel = \"%s\" smackLegatoLabelPtr = \"%s\"",
+                 isSmackLabelToSet, smackCurrentLabel, smackLegatoLabelPtr);
+        if (isSmackLabelToSet)
+        {
+            LE_INFO("Updating SMACK label to \"%s\"", smackLegatoLabelPtr);
+            if (-1 == setxattr("/legato", "security.SMACK64",
+                               smackLegatoLabelPtr, strlen(smackLegatoLabelPtr), 0))
+            {
+                LE_CRIT("Could not set SMACK label for '/legato': %m.");
+            }
+
+            UpdateSmackLabelRecursive("/legato/systems", smackLegatoLabelPtr);
+            UpdateSmackLabelRecursive("/legato/apps", smackLegatoLabelPtr);
+        }
+        else
+        {
+            LE_INFO("SMACK label \"%s\" is up to date", smackLegatoLabelPtr);
+        }
+    }
+
+    if (!smack_IsEnabled())
+    {
+        // Try to umount /legato/smack as we do no use SMACK anymore at this point.
+        umount("/legato/smack");
+    }
+
+    // Register a signal event handler for SIGCHLD so we know when processes die.
+    le_sig_SetEventHandler(SIGCHLD, SigChildHandler);
 
     StartFramework();
 
