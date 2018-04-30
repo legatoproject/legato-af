@@ -1,6 +1,6 @@
 /** @page releaseNotes18040 18.04.0 Release Notes
 
-Release Date: May 4, 2018
+Release Date: May 9, 2018
 
 See @ref aboutLicenses to view Legato AF Licensing Information.
 
@@ -20,14 +20,6 @@ The following are the list of new features that have been added into the 18.04 R
 - new tutorials for @ref getStartedApps "systems and updates"
 - improved documentation on the @ref conceptsUpdates "update and rollback process"
 - reorganized documentation in the @ref concepts "concepts section"
-
-@subsection rn1804_Features_KO  Kernel Module Improvement
-
-New Kernel Module support has been introduced as an experimental feature for 18.04. Building Kernel
-Modules in Legato now supports specifying @ref defFilesMdef_load "dependencies" on either other
-kernel modules or on @ref defFilesAdef_requiresKernelModules "apps"
-and @ref defFilesCdef_requiresKernelModules components. The feature is planned to be finalized for
-18.05.
 
 @subsection rn1804_Features_sdef sdef Improvement
 
