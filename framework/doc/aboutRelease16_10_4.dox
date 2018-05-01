@@ -6,7 +6,7 @@ See @ref aboutLicenses for Legato AF License information.
 
 The following provides a summary of changes that have been made in the 16.10.4 Legato AF Release.
 For a list of the changes in 16.10.0 and 16.10.1 see:
-[16.10.1 Release Notes](http://legato.io/legato-docs/16_10/Legato_16_10_1_ReleaseNotes.pdf)
+[16.10.1 Release Notes](https://docs.legato.io/16_10/Legato_16_10_1_ReleaseNotes.pdf)
 
 <b> Download the @ref aboutReleaseInfo "source code" and get started with @ref basicBuild
 "building Legato AF". </b>
@@ -37,7 +37,7 @@ Further improvements have been made to the Developer Mode core app:
 - GDB server is now bundled with @c devMode to enable easy removal for production deployments.
 
 More information on @ref basicTargetDevMode "how to install @c devMode"
-and @ref howToDebugGDB "GDB debugging" info can be found in on [legato.io](http://legato.io).
+and @ref howToDebugGDB "GDB debugging" info can be found in on [legato.io](https://legato.io).
 
 @note To install @c devMode using
 [Developer Studio](https://source.sierrawireless.com/resources/airprime/software/developer-studio-installinstructions)

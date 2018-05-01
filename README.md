@@ -1,4 +1,4 @@
-![Legato](http://legato.io/resources/img/legato_logo.png)
+![Legato](https://legato.io/resources/img/legato_logo.png)
 
 ---
 
@@ -89,7 +89,7 @@ $ bin/legs
 
 ### Run on Target Devices
 
-#### Build support for cross-build targets, run [```make <target>```](http://legato.io/legato-docs/latest/basicBuildLegato_make.html).
+#### Build support for cross-build targets, run [```make <target>```](https://docs.legato.io/latest/basicBuildLegato_make.html).
 
 For example, to enable support for the Sierra Wireless WP85xx devices, run ```make wp85```.<br/>
 Of course, each of these depends on the cross-build toolchain for that target,
@@ -158,7 +158,7 @@ Point your web browser at ```Documentation/index.html``` to view it:
 xdg-open Documentatation/index.html
 ```
 
-The latest release documentation is available at: http://legato.io/legato-docs/latest/
+The latest release documentation is available at: https://docs.legato.io/latest/
 
 ### Uninstallation
 

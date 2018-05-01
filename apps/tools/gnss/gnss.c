@@ -114,7 +114,7 @@ void PrintGnssHelp
          "\t\t\t\t\t- cold\n"
          "\t\t\t\t\t- factory\n"
          "\t\t\t\tTo know more about these restart types, please look at: \n"
-         "\t\t\t\t           http://legato.io/legato-docs/latest/c_gnss.html\n\n"
+         "\t\t\t\t           https://docs.legato.io/latest/c_gnss.html\n\n"
          "\t\t\tgnss fix [FixTime in seconds]\n"
          "\t\t\t\t- Loop for certain time for first position fix. Here, FixTime is optional.\n"
          "\t\t\t\t  Default time(60s) will be used if not specified\n\n"
@@ -220,8 +220,8 @@ void PrintGnssHelp
          "\t\t\t\t  specified\n\n"
          "\tPlease note, some commands require gnss device to be in specific state\n"
          "\t(and platform reboot) to produce valid result. Please look :\n"
-         "\thttp://legato.io/legato-docs/latest/howToGNSS.html,\n"
-         "\thttp://legato.io/legato-docs/latest/c_gnss.html and platform documentation for more\n"
+         "\thttps://docs.legato.io/latest/howToGNSS.html,\n"
+         "\thttps://docs.legato.io/latest/c_gnss.html and platform documentation for more\n"
          "\tdetails.\n"
          );
 }
