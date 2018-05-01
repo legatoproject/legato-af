@@ -255,6 +255,42 @@ le_result_t le_fwupdate_GetBootloaderVersion
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the app bootloader version string
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the version string is not available
+ *      - LE_OVERFLOW if version string to big to fit in provided buffer
+ *      - LE_BAD_PARAMETER bad parameter
+ *      - LE_UNSUPPORTED not supported
+ *      - LE_FAULT for any other errors
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_fwupdate_GetAppBootloaderVersion
+(
+    char* versionPtr, ///< [OUT] App Bootloader version string
+    size_t bufferSize ///< [IN] Buffer size
+)
+{
+    // Check input parameters
+    if (versionPtr == NULL)
+    {
+        LE_KILL_CLIENT("versionPtr is NULL !");
+        return LE_BAD_PARAMETER;
+    }
+    if (bufferSize == 0)
+    {
+        LE_ERROR("buffer size is 0");
+        return LE_BAD_PARAMETER;
+    }
+    return pa_fwupdate_GetAppBootloaderVersion(versionPtr, bufferSize);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the status of the system.
  *
  * Dual System: Indicates if Active and Update systems are synchronized

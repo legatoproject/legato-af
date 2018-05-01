@@ -233,6 +233,26 @@ FUNCTION le_result_t GetBootloaderVersion
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the app bootloader version string
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_NOT_FOUND      if the version string is not available
+ *      - LE_OVERFLOW       if version string to big to fit in provided buffer
+ *      - LE_BAD_PARAMETER  bad parameter
+ *      - LE_UNSUPPORTED    not supported
+ *      - LE_FAULT          for any other errors
+ *
+ * @note If the caller passes in a bad pointer, it is a fatal error and the function won't return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetAppBootloaderVersion
+(
+    string version[MAX_VERS_LEN] OUT     ///< Bootloader version string
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the status of the system.
  *
  * Dual System: Indicates if Active and Update systems are synchronized

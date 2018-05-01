@@ -55,7 +55,7 @@ le_result_t pa_fwupdate_GetResumePosition
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -77,7 +77,7 @@ le_result_t pa_fwupdate_GetUpdateStatus
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -96,7 +96,7 @@ le_result_t pa_fwupdate_Read
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -143,6 +143,29 @@ le_result_t pa_fwupdate_GetBootloaderVersion
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the app bootloader version string
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the version string is not available
+ *      - LE_OVERFLOW if version string to big to fit in provided buffer
+ *      - LE_BAD_PARAMETER bad parameter
+ *      - LE_UNSUPPORTED not supported
+ *      - LE_FAULT for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_fwupdate_GetAppBootloaderVersion
+(
+    char* versionPtr,        ///< [OUT] Firmware version string
+    size_t versionSize       ///< [IN] Size of version buffer
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Installs the firmware package.
  *
  * @return
@@ -157,7 +180,7 @@ le_result_t pa_fwupdate_Install
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -177,7 +200,7 @@ le_result_t pa_fwupdate_MarkGood
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -196,7 +219,7 @@ le_result_t pa_fwupdate_GetSystemState
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -229,7 +252,7 @@ le_result_t pa_fwupdate_DualSysCheckSync
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -251,7 +274,7 @@ le_result_t le_fwupdate_InstallAndMarkGood
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -289,7 +312,7 @@ le_result_t pa_fwupdate_NvupApply
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -308,7 +331,7 @@ le_result_t pa_fwupdate_InitDownload
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -334,7 +357,7 @@ le_result_t pa_fwupdate_DisableSyncBeforeUpdate
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -355,7 +378,7 @@ le_result_t pa_fwupdate_SetSystem
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -375,7 +398,7 @@ le_result_t pa_fwupdate_GetSystem
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------

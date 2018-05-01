@@ -249,6 +249,25 @@ LE_SHARED le_result_t pa_fwupdate_GetBootloaderVersion
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the app bootloader version string
+ *
+ * @return
+ *      - LE_OK            on success
+ *      - LE_NOT_FOUND     if the version string is not available
+ *      - LE_OVERFLOW      if version string to big to fit in provided buffer
+ *      - LE_BAD_PARAMETER bad parameter
+ *      - LE_UNSUPPORTED   not supported
+ *      - LE_FAULT         for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fwupdate_GetAppBootloaderVersion
+(
+    char* versionPtr,        ///< [OUT] App Bootloader version string
+    size_t versionSize       ///< [IN] Size of version buffer
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Mark the current system as good.
  *
  * @return
