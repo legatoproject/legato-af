@@ -29,10 +29,16 @@ and components the same way that you could already do with interfaces. You now h
 include the search path from within the sdef instead of having to provide it to @c mksys via the
 @c -s flag on the command line.
 
-@subsection rn1804_Features_SIM SIM Updates
+@section rn1804_AFeatures Alpha Features
+
+The following are the list of features that have been added into the 18.04 Release but are still in
+a testing phase and should not be used on production targets:
+
+@subsection rn1804_AFeatures_SIM Multiple SIM Support
 
 The framework now contains support for @ref le_sim_profile_switch "multiple embedded SIM profiles"
-and the ability to switch between the multiple sims.
+and the ability to switch between the multiple SIMs and be managed by a subscription management
+server such as AirVantage.
 
 @section rn1804_Fixes Fixed Issues
 
