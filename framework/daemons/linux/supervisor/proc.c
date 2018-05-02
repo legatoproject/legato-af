@@ -24,6 +24,8 @@
 #include "killProc.h"
 #include "interfaces.h"
 #include "sysStatus.h"
+#include <linux/capability.h>
+#include <sys/prctl.h>
 
 
 //--------------------------------------------------------------------------------------------------
@@ -986,6 +988,22 @@ static void ConfigNonSandboxedProcess
     // NOTE: For now, at least, we run all unsandboxed apps as root to prevent major permissions
     //       issues when trying to perform system operations, such as changing routing tables.
     //       Consider using non-root users with capabilities later for another security layer.
+
+    // Unset some capabilities from apps to prevent admin access and/or operations.
+    unsigned long capDropped[] =
+    {
+        CAP_MAC_ADMIN,     // Prevent apps to change its own SMACK label.
+        // ... other capabilities to drop here ...
+    };
+    int capIndex;
+
+    for( capIndex = 0; capIndex < NUM_ARRAY_MEMBERS(capDropped); capIndex++ )
+    {
+        if (prctl(PR_CAPBSET_DROP, capDropped[capIndex], 0, 0, 0))
+        {
+            LE_CRIT("Clearing capability %lu with prctl() failed: %m.", capDropped[capIndex]);
+        }
+    }
 }
 
 
