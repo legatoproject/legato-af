@@ -212,7 +212,7 @@ def _TailAllTypes(interface, typeSet, seenImports):
 def AllTypes(interface):
     typeSet = set()
     _TailAllTypes(interface, typeSet, set())
-    return typeSet
+    return sorted(typeSet)
 
 #
 # Main
