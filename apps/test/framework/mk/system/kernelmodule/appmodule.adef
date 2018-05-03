@@ -1,0 +1,12 @@
+executables:
+{
+    compmodule = ( componentModule )
+}
+
+requires:
+{
+    kernelModules:
+    {
+        $CURDIR/module/module1.mdef
+    }
+}

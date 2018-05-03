@@ -1,0 +1,10 @@
+sources:
+{
+    module3.c
+}
+
+params:
+{
+    param1 = "module3"
+    param2 = "loadable kernel module"
+}

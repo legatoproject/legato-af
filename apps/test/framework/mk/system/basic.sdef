@@ -28,3 +28,25 @@ bindings:
 }
 
 #include "subsystem/subsystem.sinc"
+
+// Skip building kernel modules for these targets for now because of toolchain not supporting
+// building kernel modules for them. In addition, kernel source must be present on the
+// build host for 'localhost' target to build kernel module.
+
+#if ${TARGET} = localhost
+#elif ${TARGET} = ar7
+#elif ${TARGET} = ar86
+#elif ${TARGET} = raspi
+#else
+apps:
+{
+    kernelmodule/appmodule.adef
+}
+
+kernelModules:
+{
+    $CURDIR/kernelmodule/module/module1.mdef
+    $CURDIR/kernelmodule/module/module2.mdef
+    $CURDIR/kernelmodule/module/module3.mdef
+}
+#endif

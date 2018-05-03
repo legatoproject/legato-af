@@ -1,0 +1,12 @@
+sources:
+{
+    compmodule.c
+}
+
+requires:
+{
+    kernelModules:
+    {
+        $CURDIR/../module/module3.mdef
+    }
+}
