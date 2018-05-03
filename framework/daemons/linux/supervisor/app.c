@@ -1529,6 +1529,20 @@ static le_result_t CreateFileLink
         goto failure;
     }
 
+    // Treat files located in /dev/shm differently.  These are shared memory expected to be
+    // shared between other apps but also other userland processes.  So set the SMACK label
+    // to '*' to grant access to all.
+    if (le_path_IsEquivalent("/dev/shm", srcPtr, "/") ||
+        le_path_IsSubpath("/dev/shm", srcPtr, "/"))
+    {
+        if (smack_SetLabel(srcPtr, "*") != LE_OK)
+        {
+            LE_ERROR("Couldn't set SMACK label to '*' for %s", srcPtr);
+            goto failure;
+        }
+        return LE_OK;
+    }
+
     // See if the destination already exists.
     if (DoesLinkExist(appRef, srcStat, destPath))
     {

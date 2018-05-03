@@ -1037,6 +1037,27 @@ requires:
             information or launch a denial-of-service attack on other apps within the target
             device or other devices connected to the target device).
 
+If apps require access to shared memory located into /dev/shm, these entries need to be declared
+inside this section to have the right access and the correct SMACK label set by the supervisor.
+Apps that create the shared memory do not need to explicitly state them in the @c requires:
+section. This is only need for apps that want to access another apps shared memory.
+
+For example, appA will create the shared memory files /dev/shm/appShm00 and /dev/shm/shamem. If
+a second app, called appB wants to access to these files, it needs to define them inside its
+@c appB.adef as shown below:
+
+@code
+requires:
+{
+    file:
+    {
+        // Import the shared memory /dev/shm/appShm00 and /dev/shm/shamem into the appB.
+        /dev/shm/appShm00  /dev/shm/appShm00
+        /dev/shm/shamem    /dev/shm/shamem
+    }
+}
+@endcode
+
 @subsection defFilesAdef_requiresDevice device
 
 Declares:
