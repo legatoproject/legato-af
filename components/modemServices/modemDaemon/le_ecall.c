@@ -268,6 +268,7 @@ typedef struct
                                                                         ///< termination reason
     bool                    ackOrT7Received;                            ///< LL-ACK, HL-ACK,
                                                                         ///< T7 timeout received
+    bool                    t5Received;                                 ///< T5 timeout received
 }
 ECall_t;
 
@@ -498,6 +499,9 @@ static void RedialStart
     void
 )
 {
+    LE_DEBUG("Start redial: state %d, isPush %d, SystemStandard %d",
+             ECallObj.redial.state, ECallObj.isPushed, SystemStandard);
+
     // Check redial state
     switch(ECallObj.redial.state)
     {
@@ -512,8 +516,6 @@ static void RedialStart
             return;
     }
 
-    LE_DEBUG("Start redial: state %d", ECallObj.redial.state);
-
     // Update redial state machine
     ECallObj.redial.state = ECALL_REDIAL_ACTIVE;
 
@@ -521,7 +523,7 @@ static void RedialStart
     {
         if (!ECallObj.isPushed)
         {
-            if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
+            if (le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
             {
                 LE_WARN("Unable to set the Push mode!");
             }
@@ -598,6 +600,7 @@ static void RedialClear
 
     // Initialize dial attempt counter
     ECallObj.redial.dialAttemptsCount = 0;
+
     // Initialize max dial attempt
     if (SystemStandard == PA_ECALL_PAN_EUROPEAN)
     {
@@ -705,13 +708,15 @@ static le_result_t DialAttempt
             return LE_FAULT;
     }
 
+    LE_DEBUG("isPush %d, SystemStandard %d", ECallObj.isPushed, SystemStandard);
+
     // Management of PUSH/PULL mode
     if (SystemStandard == PA_ECALL_ERA_GLONASS)
     {
         // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2
         if ((ECallObj.eraGlonass.pullModeSwitch) && (ECallObj.isPushed))
         {
-            if (LE_OK != pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PULL))
+            if (LE_OK != le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PULL))
             {
                 LE_WARN("Unable to set the Pull mode!");
             }
@@ -725,7 +730,7 @@ static le_result_t DialAttempt
     {
         if (!ECallObj.isPushed)
         {
-            if (LE_OK != pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH))
+            if (LE_OK != le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH))
             {
                 LE_WARN("Unable to set the Push mode!");
             }
@@ -1487,6 +1492,8 @@ static le_result_t EncodeMsd
                 eCallPtr->msd.msdMsg.msdStruct.numberOfPassengersPres,
                 eCallPtr->msd.msdMsg.msdStruct.numberOfPassengers);
 
+        LE_DEBUG("isPush %d, SystemStandard %d", ECallObj.isPushed, SystemStandard);
+
         // Encode optional Data for ERA GLONASS if any
         if(SystemStandard == PA_ECALL_ERA_GLONASS)
         {
@@ -1620,19 +1627,25 @@ static void ProcessECallState
             ECallObj.termination = LE_MCC_TERM_UNDEFINED;
             ECallObj.specificTerm = 0;
             ECallObj.ackOrT7Received = false;
+            ECallObj.t5Received = false;
             break;
         }
 
         case LE_ECALL_STATE_DISCONNECTED: /* Emergency call is disconnected */
         {
-            LE_DEBUG("Termination reason: %d, ackOrT7Received: %d, terminationReceived: %d",
+            if (LE_OK != le_ecall_GetMsdTxMode(&msdTxMode))
+            {
+                LE_ERROR("Unable to get MSD transfer mode of Operation");
+            }
+
+            LE_DEBUG("Termination %d, ackOrT7Received %d, t5Received %d, terminationReceived %d",
                      ECallObj.termination,
                      ECallObj.ackOrT7Received,
+                     ECallObj.t5Received,
                      eCallEventDataPtr->terminationReceived);
-            if (LE_OK != pa_ecall_GetMsdTxMode(&msdTxMode))
-            {
-                LE_DEBUG("Unable to get MSD transfer mode of Operation");
-            }
+
+            LE_DEBUG("msdTxMode %d, isPush %d, SystemStandard %d, pullMode %d",
+                  msdTxMode, ECallObj.isPushed, SystemStandard, ECallObj.eraGlonass.pullModeSwitch);
 
             // Update eCall session state
             switch(ECallObj.sessionState)
@@ -1641,16 +1654,16 @@ static void ProcessECallState
                 {
                     // Check redial condition (cf N16062:2014 7.9)
                     if (   (true == eCallEventDataPtr->terminationReceived)
-                        && (ECallObj.ackOrT7Received)
+                        && ((ECallObj.ackOrT7Received) || (ECallObj.t5Received))
                         && (LE_MCC_TERM_REMOTE_ENDED == ECallObj.termination)
                         && (PA_ECALL_PAN_EUROPEAN == SystemStandard)
                        )
                     {
                         // After the IVS has received an LL-ACK or AL-ACK
-                        // or T7 – IVS MSD maximum transmission time ends,
-                        // the IVS shall recognize a normal hang-up from the network.
-                        // The IVS shall not attempt an automatic redial following
-                        // a call clear-down.
+                        // or T7-IVS MSD maximum transmission time ends or T5-IVS waits
+                        // for SEND MSD period ends, the IVS shall recognize a normal
+                        // hang-up from the network. The IVS shall not attempt an
+                        // automatic redial following a call clear-down.
 
                         // End Of Redial Period
                         endOfRedialPeriod = true;
@@ -1764,7 +1777,7 @@ static void ProcessECallState
 
         case LE_ECALL_STATE_ALACK_RECEIVED_POSITIVE: /* eCall session completed */
         {
-            // To check redial condition (cf N16062:2014 7.9)
+            // Redial condition (cf N16062:2014 7.9)
             ECallObj.ackOrT7Received = true;
 
             if (PA_ECALL_ERA_GLONASS == SystemStandard)
@@ -1818,12 +1831,19 @@ static void ProcessECallState
         case LE_ECALL_STATE_MSD_TX_FAILED: /* MSD transmission has failed */
         case LE_ECALL_STATE_FAILED: /* Unsuccessful eCall session */
         case LE_ECALL_STATE_TIMEOUT_T3: /* Timeout for T3 */
-        case LE_ECALL_STATE_TIMEOUT_T5: /* Timeout for T5 */
         case LE_ECALL_STATE_TIMEOUT_T9: /* Timeout for T9 */
         case LE_ECALL_STATE_TIMEOUT_T10: /* Timeout for T10 */
         {
             // Nothing to do, just report the event
              break;
+        }
+
+        case LE_ECALL_STATE_TIMEOUT_T5: /* Timeout for T5 */
+        {
+            // Redial condition (cf N16062:2014 7.9)
+            LE_DEBUG("STATE_TIMEOUT_T5");
+            ECallObj.t5Received = true;
+            break;
         }
 
         case LE_ECALL_STATE_TIMEOUT_T2: /* Timeout for T2 */
@@ -2133,6 +2153,7 @@ le_result_t le_ecall_Init
     ECallObj.redial.intervalBetweenAttempts = 30; // 30 seconds
     ECallObj.redial.dialDurationTimer = le_timer_Create("dialDurationTimer");
     ECallObj.ackOrT7Received = false;
+    ECallObj.t5Received = false;
 
     ECallObj.eraGlonass.manualDialAttempts = 10;
     ECallObj.eraGlonass.autoDialAttempts = 10;
@@ -2172,12 +2193,12 @@ le_result_t le_ecall_Init
     EraGlonassDataObj.presentCrashInfo = false;
     EraGlonassDataObj.presentCoordinateSystemTypeInfo = false;
 
-    if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
+    if (le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
     {
         LE_WARN("Unable to set the Push mode!");
     }
 
-    if (pa_ecall_GetMsdTxMode(&msdTxMode) != LE_OK)
+    if (le_ecall_GetMsdTxMode(&msdTxMode) != LE_OK)
     {
         LE_WARN("Unable to retrieve the configured Push/Pull mode!");
     }
@@ -2797,7 +2818,7 @@ le_result_t le_ecall_StartAutomatic
 
     if (!ECallObj.isPushed)
     {
-        if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
+        if (le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
         {
             LE_WARN("Unable to set the Push mode!");
         }
@@ -2882,7 +2903,7 @@ le_result_t le_ecall_StartManual
 
     if (!ECallObj.isPushed)
     {
-        if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
+        if (le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
         {
             LE_WARN("Unable to set the Push mode!");
         }
@@ -2967,7 +2988,7 @@ le_result_t le_ecall_StartTest
 
     if (!ECallObj.isPushed)
     {
-        if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
+        if (le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
         {
             LE_WARN("Unable to set the Push mode!");
         }
@@ -3277,6 +3298,7 @@ le_result_t le_ecall_SetMsdTxMode
     le_ecall_MsdTxMode_t mode   ///< [IN] Transmission mode
 )
 {
+    LE_DEBUG("set MsdTx %d", mode);
     return (pa_ecall_SetMsdTxMode(mode));
 }
 
