@@ -175,6 +175,8 @@
  *
  * Another great advantage of reference counting is it enables @ref mem_destructors.
  *
+ * @note le_mem_GetRefCount() can be used to check the current reference count on an object.
+ *
  * @section mem_destructors Destructors
  *
  * Destructors are a powerful feature of C++.  Anyone who has any non-trivial experience with C++ has
@@ -707,9 +709,6 @@ void le_mem_SetNumObjsToForce
      * Increments the reference count on an object by 1.
      *
      * See @ref mem_ref_counting for more information.
-     *
-     * @return
-     *      Nothing.
      */
     //----------------------------------------------------------------------------------------------
     void le_mem_AddRef
@@ -730,6 +729,26 @@ void le_mem_SetNumObjsToForce
                       (objPtr));                                                                    \
         _le_mem_AddRef(objPtr);
 #endif
+
+
+//----------------------------------------------------------------------------------------------
+/**
+ * Fetches the reference count on an object.
+ *
+ * See @ref mem_ref_counting for more information.
+ *
+ * @warning If using this in a multi-threaded application that shares memory pool objects
+ *          between threads, steps must be taken to coordinate the threads (e.g., using a mutex)
+ *          to ensure that the reference count value fetched remains correct when it is used.
+ *
+ * @return
+ *      The reference count on the object.
+ */
+//----------------------------------------------------------------------------------------------
+size_t le_mem_GetRefCount
+(
+    void*   objPtr  ///< [IN] Pointer to the object.
+);
 
 
 //--------------------------------------------------------------------------------------------------

@@ -1001,6 +1001,30 @@ void le_mem_AddRef
 }
 
 
+//----------------------------------------------------------------------------------------------
+/**
+ * Fetches the reference count on an object.
+ *
+ * See @ref mem_ref_counting for more information.
+ *
+ * @return
+ *      The reference count on the object.
+ */
+//----------------------------------------------------------------------------------------------
+size_t le_mem_GetRefCount
+(
+    void*   objPtr  ///< [IN] Pointer to the object.
+)
+{
+    #ifdef USE_GUARD_BAND
+        objPtr = (((uint8_t*)objPtr) - GUARD_BAND_SIZE);
+    #endif
+    MemBlock_t* memBlockPtr = CONTAINER_OF(objPtr, MemBlock_t, data);
+
+    return memBlockPtr->refCount;
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Sets the destructor function for a given pool.
