@@ -83,18 +83,39 @@ To change versions update the soft link to point to the new Legato version you a
 If you wish to include kernel objects within your Legato System (e.g.; the sensor you have
 connected to your target has it's own driver) you must run the kernel build scripts first.
 
-Add the following directory to your PATH:
-@c /opt/swi/y17-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
 
+Add the following directory to your PATH, if you have changed the default location of your toolchain
+you must add the path specific to your toolchain.
+
+Default path:
+WPX5XX: @c /opt/swi/y17-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
+WP76XX and WP77XX: @c /opt/swi/y22-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
+
+Example for the WPX5XX:
 @verbatim
 $ export PATH=/opt/swi/y17-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi:$PATH
 @endverbatim
 
-Change directory to: @c /opt/swi/y17-ext/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/src/kernel
+Example for the WP76XX, WP77XX:
+@verbatim
+$ export PATH=/opt/swi/y22-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi:$PATH
+@endverbatim
 
+
+Change directory to: @c <toolchain path>/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/src/kernel.
+The module path for the WPX5XX is @c /opt/swi/y17-ext and the default module path for the
+WP76XX/WP77XX is @c /opt/swi/y22-ext.
+
+Example for WPX5XX:
 @verbatim
 $ cd /opt/swi/y17-ext/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/src/kernel
 @endverbatim
+
+Example for WP76XX, WP77XX:
+@verbatim
+$ cd /opt/swi/y22-ext/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/src/kernel
+@endverbatim
+
 
 Take ownership of the files in the directory and run make scripts, when done return ownership to the
 root user.

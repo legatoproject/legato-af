@@ -31,8 +31,8 @@ device.
 
 @section getStartedKO_SetUp Toolchain Setup
 
-If you have manually installed the toolchain (not installed through Leaf or Developer
-Studio) and are using a WPX5XX module then you will have to run through an extra set-up script
+If you have manually installed the toolchain (not installed through Developer
+Studio) and are using a WP module then you will have to run through an extra set-up script
 before you can build your kernel module against the toolchain. See
 @ref basicBuildLegato_ToolchainSWI_KO.
 

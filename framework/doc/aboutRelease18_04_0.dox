@@ -1,6 +1,6 @@
 /** @page releaseNotes18040 18.04.0 Release Notes
 
-Release Date: May 9, 2018
+Release Date: May 8, 2018
 
 See @ref aboutLicenses to view Legato AF Licensing Information.
 
@@ -75,6 +75,29 @@ Network Manager to crash on your host and/or your target device to become unavai
 @b Recommended  @b Work  @b Around:
 - Uninstall @c modemmanager from Ubuntu or
 - [Downgrade @c modemmanager to version 1.0.0-2ubuntu1](http://packages.ubuntu.com/trusty/modemmanager)
+
+@subsubsection rn1804_ConstraintsTC Sierra Wireless Toolchain Install
+
+There is currently an error with setting up the WP76XX and WP77XX toolchain and the toolchain only
+partially installs.  The part of the script to install and setup the kernel headers does not run and
+produces the following errors:
+
+@verbatim
+scripts/kconfig/Makefile:36: recipe for target 'silentoldconfig' failed
+make[2]: *** [silentoldconfig] Error 1
+Makefile:546: recipe for target 'silentoldconfig' failed
+make[1]: *** [silentoldconfig] Error 2
+make: *** No rule to make target 'include/config/auto.conf', needed by 'scripts'.  Stop.
+@endverbatim
+
+To resolve this remove the installed toolchain and reinstall with @c sudo privileges.
+
+Example of setting up the toolchain for a 64bit dev machine and a WP76 module with product release
+9:
+@verbatim
+$ rm -rf /opt/swi/y22-ext
+$ sudo poky-swi-ext-glibc-x86_64-meta-toolchain-swi-ext-armv7a-neon-toolchain-swi-ext-2.2.3.sh
+@endverbatim
 
 Copyright (C) Sierra Wireless Inc.
 
