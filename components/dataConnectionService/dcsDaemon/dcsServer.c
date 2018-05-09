@@ -994,22 +994,26 @@ static le_result_t LoadSelectedTechProfile
 
             // Passphrase
             // TODO: passphrase should not be stored without ciphering in the config tree
-            if (le_cfg_NodeExists(cfg, CFG_NODE_PASSPHRASE))
+            if ((LE_WIFICLIENT_SECURITY_WPA_PSK_PERSONAL == SecProtocol) ||
+                (LE_WIFICLIENT_SECURITY_WPA2_PSK_PERSONAL == SecProtocol))
             {
-                if (LE_OK != le_cfg_GetString(cfg, CFG_NODE_PASSPHRASE, Passphrase,
-                                              sizeof(Passphrase), "passphrase"))
+                if (le_cfg_NodeExists(cfg, CFG_NODE_PASSPHRASE))
                 {
-                    LE_WARN("String value for '%s' too large", CFG_NODE_PASSPHRASE);
-                    le_cfg_CancelTxn(cfg);
-                    return LE_OVERFLOW;
+                    if (LE_OK != le_cfg_GetString(cfg, CFG_NODE_PASSPHRASE, Passphrase,
+                                                  sizeof(Passphrase), "passphrase"))
+                    {
+                        LE_WARN("String value for '%s' too large", CFG_NODE_PASSPHRASE);
+                        le_cfg_CancelTxn(cfg);
+                        return LE_OVERFLOW;
+                    }
+                    LE_DEBUG("AP configuration, Passphrase: '%s'", Passphrase);
                 }
-                LE_DEBUG("AP configuration, Passphrase: '%s'", Passphrase);
-            }
-            else
-            {
-                LE_WARN("No value set for '%s'!", CFG_NODE_PASSPHRASE);
-                le_cfg_CancelTxn(cfg);
-                return LE_NOT_FOUND;
+                else
+                {
+                    LE_WARN("No value set for '%s'!", CFG_NODE_PASSPHRASE);
+                    le_cfg_CancelTxn(cfg);
+                    return LE_NOT_FOUND;
+                }
             }
 
             le_cfg_CancelTxn(cfg);
@@ -1021,7 +1025,12 @@ static le_result_t LoadSelectedTechProfile
             {
                 // Configure the Access Point
                 LE_ASSERT(LE_OK == le_wifiClient_SetSecurityProtocol(AccessPointRef, SecProtocol));
-                LE_ASSERT(LE_OK == le_wifiClient_SetPassphrase(AccessPointRef, Passphrase));
+
+                if ((LE_WIFICLIENT_SECURITY_WPA_PSK_PERSONAL == SecProtocol) ||
+                    (LE_WIFICLIENT_SECURITY_WPA2_PSK_PERSONAL == SecProtocol))
+                {
+                    LE_ASSERT(LE_OK == le_wifiClient_SetPassphrase(AccessPointRef, Passphrase));
+                }
 
                 // Register for Wifi Client state changes if not already done
                 if (NULL == WifiEventHandlerRef)
