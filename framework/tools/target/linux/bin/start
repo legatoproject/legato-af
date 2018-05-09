@@ -2,7 +2,7 @@
 # Copyright (C) Sierra Wireless Inc.
 
 LEGATO_SYSTEM_PATH="/legato/systems/current/bin"
-
+LD_CACHE_SCRIPT_PATH="/usr/sbin/update-ld-cache"
 # Add LEGATO_SYSTEM_PATH with PATH.
 export PATH=$LEGATO_SYSTEM_PATH:$PATH
 
@@ -48,32 +48,40 @@ case "$1" in
             echo "export PATH=$LEGATO_SYSTEM_PATH:\$PATH" >> /etc/profile
         fi
 
-        cd /mnt/legato/
-        if [ -z ""`grep -a '^/legato/.*/liblegato.so$' /etc/ld.so.cache` ]; then
-            # On some platforms, the '[ -w ... ]' returns true even it is located to read-only
-            # file system. Protect against by performing the action in read-write and if failed
-            # replay the action in read-only.
-            LDCONFIG=""
-            if [ -w /etc/ld.so.cache ]; then
-               ldconfig -i /legato/systems/current/lib 2>/dev/null && LDCONFIG="RW"
-            fi
-            if [ "RW" != "$LDCONFIG" ]; then
-               echo "/etc/ld.so.cache is R/O"
-               # Update ld.so cache
-               if [ -f /tmp/ld.so.cache ]; then
-                   umount /etc/ld.so.cache 2>/dev/null
-               fi
-               cp /etc/ld.so.cache /tmp/ld.so.cache
-               ldconfig -i /legato/systems/current/lib -C /tmp/ld.so.cache
-               # When installed from scratch, no /legato/systems/current exits, so we need to
-               # add the installation path to have the Legato starting.
-               [ ! -d /legato/systems/current/lib ] &&
-                   ldconfig -i /mnt/legato/system/lib -C /tmp/ld.so.cache
-               chmod 644 /tmp/ld.so.cache
-               mount -o bind /tmp/ld.so.cache /etc/ld.so.cache
+        # Need to support backward compatibility. Check whether yocto providing any script to load
+        # legato library. If not then follow the old way.
+        if [ -f $LD_CACHE_SCRIPT_PATH ]; then
+            [ ! -d /legato/systems/current/lib ] &&
+            $LD_CACHE_SCRIPT_PATH /mnt/legato/system/lib >/dev/null ||
+            $LD_CACHE_SCRIPT_PATH /legato/systems/current/lib >/dev/null
+        else
+            if [ -z ""`grep -a '^/legato/.*/liblegato.so$' /etc/ld.so.cache` ]; then
+                # On some platforms, the '[ -w ... ]' returns true even it is located to read-only
+                # file system. Protect against by performing the action in read-write and if failed
+                # replay the action in read-only.
+                LDCONFIG=""
+                if [ -w /etc/ld.so.cache ]; then
+                   ldconfig -i /legato/systems/current/lib 2>/dev/null && LDCONFIG="RW"
+                fi
+                if [ "RW" != "$LDCONFIG" ]; then
+                   echo "/etc/ld.so.cache is R/O"
+                   # Update ld.so cache
+                   if [ -f /tmp/ld.so.cache ]; then
+                       umount /etc/ld.so.cache 2>/dev/null
+                   fi
+                   cp /etc/ld.so.cache /tmp/ld.so.cache
+                   ldconfig -i /legato/systems/current/lib -C /tmp/ld.so.cache
+                   # When installed from scratch, no /legato/systems/current exits, so we need to
+                   # add the installation path to have the Legato starting.
+                   [ ! -d /legato/systems/current/lib ] &&
+                       ldconfig -i /mnt/legato/system/lib -C /tmp/ld.so.cache
+                   chmod 644 /tmp/ld.so.cache
+                   mount -o bind /tmp/ld.so.cache /etc/ld.so.cache
+                fi
             fi
         fi
 
+        cd /mnt/legato/
         # Check if legato is read-only
         if [ -f systems/current/read-only ]; then
 
