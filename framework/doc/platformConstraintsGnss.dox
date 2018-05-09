@@ -97,7 +97,7 @@ NMEA sentences for each platform.
 | LE_GNSS_NMEA_MASK_PTYPE  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
 | LE_GNSS_NMEA_MASK_GPGRS  |       |        |   X    |         |        |        |        |       |
 | LE_GNSS_NMEA_MASK_GPGLL  |       |        |   X    |         |        |        |        |       |
-| LE_GNSS_NMEA_MASK_DEBUG  |       |   X    |   X    |         |        |   X    |   X    |       |
+| LE_GNSS_NMEA_MASK_DEBUG  |       |        |        |         |        |   X    |   X    |       |
 | LE_GNSS_NMEA_MASK_GPDTM  |       |        |   X    |         |        |        |        |       |
 | LE_GNSS_NMEA_MASK_GAGNS  |       |        |   X    |         |        |        |        |       |
 
