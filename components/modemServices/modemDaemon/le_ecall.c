@@ -2801,6 +2801,9 @@ le_result_t le_ecall_StartAutomatic
         return LE_FAULT;
     }
 
+    // Update eCall start type
+    ECallObj.startType = PA_ECALL_START_AUTO;
+
     // Initialize redial state machine
     RedialInit();
     // Start redial period for ERA GLONASS system standard
@@ -2811,9 +2814,6 @@ le_result_t le_ecall_StartAutomatic
         // Start redial
         RedialStart();
     }
-
-    // Update eCall start type
-    ECallObj.startType = PA_ECALL_START_AUTO;
 
     if (!ECallObj.isPushed)
     {
@@ -2886,6 +2886,9 @@ le_result_t le_ecall_StartManual
         return LE_FAULT;
     }
 
+    // Update eCall start type
+    ECallObj.startType = PA_ECALL_START_MANUAL;
+
     // Initialize redial state machine
     RedialInit();
     // Start redial period for ERA GLONASS system standard
@@ -2896,9 +2899,6 @@ le_result_t le_ecall_StartManual
         // Start redial
         RedialStart();
     }
-
-    // Update eCall start type
-    ECallObj.startType = PA_ECALL_START_MANUAL;
 
     if (!ECallObj.isPushed)
     {
@@ -2971,6 +2971,9 @@ le_result_t le_ecall_StartTest
         return LE_FAULT;
     }
 
+    // Update eCall start type
+    ECallObj.startType = PA_ECALL_START_TEST;
+
     // Initialize redial state machine
     RedialInit();
     // Start redial period for ERA GLONASS system standard
@@ -2981,9 +2984,6 @@ le_result_t le_ecall_StartTest
         // Start redial
         RedialStart();
     }
-
-    // Update eCall start type
-    ECallObj.startType = PA_ECALL_START_TEST;
 
     if (!ECallObj.isPushed)
     {
