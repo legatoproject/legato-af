@@ -321,6 +321,9 @@ maxFileSystemBytes: 120K
 
 @note The file system size will also be limited by the @c maxMemoryBytes limit.
 
+@warning maxFileSystemBytes is not currently supported on Linux OS's and setting this variable
+will have no effect on the target.
+
 @section defFilesAdef_maxMemoryBytes maxMemoryBytes
 
 Specifies the maximum amount of memory (in bytes) that all processes in an app can share.
