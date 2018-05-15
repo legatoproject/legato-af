@@ -104,12 +104,12 @@
         {{- caller() }}
     }
     {%- elif parameter.apiType is BasicType and parameter.apiType.name == 'file' %}
-    {{parameter.apiType|FormatType}} {{parameter.name}};
-    {{parameter.name}} = le_msg_GetFd(_msgRef);
+    {{parameter.apiType|FormatType}} {{parameter.name|DecorateName}};
+    {{parameter.name|DecorateName}} = le_msg_GetFd(_msgRef);
     {%- else %}
-    {{parameter.apiType|FormatType}} {{parameter.name}};
+    {{parameter.apiType|FormatType}} {{parameter.name|DecorateName}};
     if (!{{parameter.apiType|UnpackFunction}}( &_msgBufPtr, &_msgBufSize,
-                                               &{{parameter.name}} ))
+                                               &{{parameter.name|DecorateName}} ))
     {
         {{- caller() }}
     }

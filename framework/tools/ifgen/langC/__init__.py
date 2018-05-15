@@ -14,7 +14,8 @@ def AddLangArgumentGroup(parser):
                         help='generate asynchronous-style server functions')
 
 # Custom filters needed for C templates
-Filters = { 'EscapeString':        codeGenHelpers.EscapeString,
+Filters = { 'DecorateName':        codeGenHelpers.DecorateName,
+            'EscapeString':        codeGenHelpers.EscapeString,
             'FormatHeaderComment': codeGenHelpers.FormatHeaderComment,
             'FormatDirection':     codeGenHelpers.FormatDirection,
             'FormatType':          codeGenHelpers.FormatType,
