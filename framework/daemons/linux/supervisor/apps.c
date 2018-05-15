@@ -1300,12 +1300,7 @@ void apps_Shutdown
     {
         le_fdMonitor_Delete(AppStopSvSocketFdMonRef);
 
-        int res;
-        do
-        {
-            res = close(AppStopSvSocketFd);
-        }
-        while ((res == -1) && (errno == EINTR));
+        close(AppStopSvSocketFd);
 
         if (AllAppsShutdownHandler != NULL)
         {

@@ -139,13 +139,7 @@ void le_cfgAdmin_ImportTree
         le_cfgAdmin_ImportTreeRespond(commandRef, result);
 
         // Close up the file and we're done.
-        int retVal = -1;
-
-        do
-        {
-            retVal = close(fid);
-        }
-        while ((retVal == -1) && (errno == EINTR));
+        close(fid);
     }
 }
 
@@ -219,15 +213,7 @@ void le_cfgAdmin_ExportTree
         result = LE_FAULT;
     }
 
-
-    int retVal = -1;
-
-    do
-    {
-        retVal = close(fid);
-    }
-    while ((retVal == -1) && (errno == EINTR));
-
+    close(fid);
 
     le_cfgAdmin_ExportTreeRespond(commandRef, result);
 }

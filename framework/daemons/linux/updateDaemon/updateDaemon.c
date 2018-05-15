@@ -1695,7 +1695,7 @@ static void CopyExistingUserOrGroupLines
     }
 
     // Close the existing passwd file.
-    LE_FATAL_IF(fclose(inputFile) != 0, "Failed to close file '%s' (%m)", inputFilePath);
+    LE_CRIT_IF(fclose(inputFile) != 0, "Failed to close file '%s' (%m)", inputFilePath);
 }
 
 
@@ -1734,8 +1734,8 @@ static void UpdateUsersAndGroups
         CopyExistingUserOrGroupLines(newGroupFile, "/etc/group");
 
         // Close the new passwd and group files.
-        LE_FATAL_IF(fclose(newPasswdFile) != 0, "Failed to close '%s' (%m).", newPasswdFilePath);
-        LE_FATAL_IF(fclose(newGroupFile) != 0, "Failed to close '%s' (%m).", newGroupFilePath);
+        LE_CRIT_IF(fclose(newPasswdFile) != 0, "Failed to close '%s' (%m).", newPasswdFilePath);
+        LE_CRIT_IF(fclose(newGroupFile) != 0, "Failed to close '%s' (%m).", newGroupFilePath);
 
         // Rename the new passwd and group files over top of the old ones.
         LE_FATAL_IF(rename(newPasswdFilePath, "/etc/passwd") != 0,

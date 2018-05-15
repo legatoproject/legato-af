@@ -2513,13 +2513,7 @@ static void LoadTree
                 treeRef->rootNodeRef = NewNode();
             }
 
-            int retVal = -1;
-
-            do
-            {
-                retVal = close(fileRef);
-            }
-            while ((retVal == -1) && (errno == EINTR));
+            close(fileRef);
         }
     }
 }
@@ -2706,14 +2700,8 @@ static FILE* OpenFilePtr
     {
         // The open failed, so clean up the dangling descriptor.
         int oldErrno = errno;
-        int closeResult;
 
-        do
-        {
-            closeResult = close(newDescriptor);
-        }
-        while (   (closeResult == -1)
-               && (errno == EINTR));
+        close(newDescriptor);
 
         LE_ERROR("Could not access the input stream for tree import, reason: %s",
                  strerror(oldErrno));
@@ -3185,14 +3173,9 @@ void tdb_MergeTree
     le_result_t writeResult = tdb_WriteTreeNode(originalTreeRef->rootNodeRef, fileRef);
     int retVal = -1;
 
-    do
-    {
-        retVal = close(fileRef);
-    }
-    while ((retVal == -1) && (errno == EINTR));
+    retVal = close(fileRef);
 
     LE_EMERG_IF(retVal == -1, "An error occurred while closing the tree file: %s", strerror(errno));
-
 
     // Finally remove the old version of the tree file, if there is one.
     if (writeResult == LE_OK)

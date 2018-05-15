@@ -1138,15 +1138,11 @@ static int HandleCopy
     // Finally, clean up our temp file and report our results.
     int closeRetVal;
 
-    do
-    {
-        closeRetVal = close(tempFd);
-    }
-    while ((closeRetVal == -1) && (errno == EINTR));
+    closeRetVal = close(tempFd);
 
-    if (closeRetVal == -1)
+    if ((closeRetVal == -1) && (errno != EINTR))
     {
-        fprintf(stderr, "Could not close temp file. Reason, %s (%d).", strerror(errno), errno);
+        fprintf(stderr, "Could not close temp file (%m).");
         exitResult = EXIT_FAILURE;
     }
 

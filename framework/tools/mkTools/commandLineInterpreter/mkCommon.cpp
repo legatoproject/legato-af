@@ -201,14 +201,9 @@ std::string GetSysRootPath
         }
 
         // Close the connection and collect the exit code from the compiler.
-        int result;
-        do
-        {
-            result = pclose(output);
+        int result = pclose(output);
 
-        } while ((result == -1) && (errno == EINTR));
-
-        if (result == -1)
+        if ( (result == -1) && (errno != EINTR) )
         {
             throw mk::Exception_t(
                 mk::format(LE_I18N("Failed to receive the sysroot path from the compiler '%s'. "

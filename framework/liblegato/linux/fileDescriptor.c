@@ -73,16 +73,18 @@ void fd_Close
 {
     int result;
 
-    // Keep trying to close the fd as long as it keeps getting interrupted by signals.
-    do
-    {
-        result = close(fd);
-    }
-    while ((result == -1) && (errno == EINTR));
+    result = close(fd);
 
     if (result != 0)
     {
-        LE_CRIT("Failed to close file descriptor %d. Errno = %d (%m).", fd, errno);
+        if (errno == EINTR)
+        {
+            LE_WARN("Closing file descriptor '%d' caused EINTR. Proceeding anyway.", fd);
+        }
+        else
+        {
+            LE_CRIT("Failed to close file descriptor %d. Errno = %d (%m).", fd, errno);
+        }
     }
 }
 
@@ -111,10 +113,7 @@ void fd_CloseAllNonStd
     {
         int result;
 
-        do
-        {
-            result = close(fd);
-        } while ( (result == -1) && (errno == EINTR) );
+        result = close(fd);
 
         if ( (result == -1) && (errno != EBADF) )
         {
