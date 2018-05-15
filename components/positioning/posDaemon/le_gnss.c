@@ -219,10 +219,14 @@ le_gnss_PositionSampleRequest_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    void*                           clientRefPtr;           ///< Store Client object reference.
-    le_msg_SessionRef_t             sessionRef;             ///< Client session identifier.
-    le_gnss_Resolution_t            dopResolution;          ///< Client resolution.
-    le_dls_Link_t                   link;                   ///< Object node link.
+    void*                       clientRefPtr;               ///< Store Client object reference.
+    le_msg_SessionRef_t         sessionRef;                 ///< Client session identifier.
+    le_gnss_Resolution_t        dopResolution;              ///< Client resolution.
+    le_gnss_Resolution_t        vAccuracyResolution;        ///< Vertical accuracy resolution.
+    le_gnss_Resolution_t        vSpeedAccuracyResolution;   ///< Vertical speed accuracy resolution.
+    le_gnss_Resolution_t        hSpeedAccuracyResolution;   ///< Horizontal speed accuracy
+                                                            ///< resolution.
+    le_dls_Link_t               link;                       ///< Object node link.
 }
 le_gnss_Client_t;
 
@@ -715,6 +719,23 @@ static void SigPipeHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * The function sets the client request data to default value.
+ */
+//--------------------------------------------------------------------------------------------------
+static void InitClientRequest
+(
+    le_gnss_Client_t* clientRequestPtr
+)
+{
+    // Init default resolution
+    clientRequestPtr->dopResolution = LE_GNSS_RES_THREE_DECIMAL;
+    clientRequestPtr->vAccuracyResolution = LE_GNSS_RES_ONE_DECIMAL;
+    clientRequestPtr->vSpeedAccuracyResolution = LE_GNSS_RES_ONE_DECIMAL;
+    clientRequestPtr->hSpeedAccuracyResolution = LE_GNSS_RES_ONE_DECIMAL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The function returns the Client session reference if exists else it returns NULL.
  */
 //--------------------------------------------------------------------------------------------------
@@ -764,6 +785,8 @@ static le_gnss_Client_t* GetClientSessionReference
     if (NULL == clientRequestPtr)
     {
         clientRequestPtr = le_mem_ForceAlloc(ClientPoolRef);
+
+        InitClientRequest(clientRequestPtr);
 
         // On le_mem_ForceAlloc failure, the process exits, so function doesn't need to checking the
         // returned pointer for validity.
@@ -826,6 +849,93 @@ static uint32_t ConvertDop
     return resValue;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert the position data in the selected resolution.
+ *
+ * @return
+ *  - LE_OK     The function succeed.
+ *  - LE_FAULT  The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t ConvertPositionData
+(
+    int32_t value,                 ///< [IN] Data value to convert.
+    le_gnss_DataType_t dataType,   ///< [IN] Data type.
+    int32_t* valuePtr              ///< [OUT] The converted data value.
+)
+{
+    le_gnss_Client_t* clientRequestPtr = NULL;
+    le_msg_SessionRef_t sessionRef = le_gnss_GetClientSessionRef();
+    le_gnss_Resolution_t resolution = LE_GNSS_RES_UNKNOWN;
+
+    if (NULL == valuePtr)
+    {
+        LE_ERROR("valuePtr is NULL");
+        return LE_FAULT;
+    }
+
+    clientRequestPtr = FindClientSessionReference(sessionRef);
+
+    if (NULL != clientRequestPtr)
+    {
+        switch(dataType)
+        {
+            case LE_GNSS_DATA_VACCURACY:
+                resolution = clientRequestPtr->vAccuracyResolution;
+                break;
+            case LE_GNSS_DATA_VSPEEDACCURACY:
+                resolution = clientRequestPtr->vSpeedAccuracyResolution;
+                break;
+            case LE_GNSS_DATA_HSPEEDACCURACY:
+                resolution = clientRequestPtr->hSpeedAccuracyResolution;
+                break;
+            default:
+                LE_ERROR("Unsupported data type.");
+                return LE_FAULT;
+        }
+    }
+    else
+    {
+        // Set resolution to default value.
+        switch(dataType)
+        {
+            case LE_GNSS_DATA_VACCURACY:
+                resolution = LE_GNSS_RES_ONE_DECIMAL;
+                break;
+            case LE_GNSS_DATA_VSPEEDACCURACY:
+                resolution = LE_GNSS_RES_ONE_DECIMAL;
+                break;
+            case LE_GNSS_DATA_HSPEEDACCURACY:
+                resolution = LE_GNSS_RES_ONE_DECIMAL;
+                break;
+            default:
+                LE_ERROR("Unsupported data type.");
+                return LE_FAULT;
+        }
+    }
+
+    switch(resolution)
+    {
+        case LE_GNSS_RES_ZERO_DECIMAL:
+             *valuePtr = value / 1000;
+             break;
+        case LE_GNSS_RES_ONE_DECIMAL:
+             *valuePtr = value / 100;
+             break;
+        case LE_GNSS_RES_TWO_DECIMAL:
+             *valuePtr = value / 10;
+             break;
+        case LE_GNSS_RES_THREE_DECIMAL:
+             *valuePtr = value;
+             break;
+        default:
+             LE_ERROR("Unsupported resolution.");
+             return LE_FAULT;
+    }
+    LE_DEBUG("resolution %d, value %d, new value %d", (int)resolution, value, *valuePtr);
+    return LE_OK;
+}
 
 //--------------------------------------------------------------------------------------------------
 // APIs.
@@ -1433,7 +1543,10 @@ le_result_t le_gnss_GetLocation
  *
  * @note For a 2D position fix, the altitude will be indicated as invalid and set to INT32_MAX
  *
- * @note Vertical position accuracy is in meters with 1 decimal places (3047 = 3.0 meters).
+ * @note Vertical position accuracy is default set to meters with 1 decimal place (3047 = 3.0
+ *       meters). To change its accuracy, call the @c le_gnss_SetDataResolution() function. Vertical
+ *       position accuracy is set as data type and accuracy from 0 to 3 decimal place is set as
+ *       resolution.
  *
  * @note If the caller is passing an invalid Position reference into this function,
  *       it is a fatal error, the function will not return.
@@ -1444,16 +1557,11 @@ le_result_t le_gnss_GetLocation
 le_result_t le_gnss_GetAltitude
 (
     le_gnss_SampleRef_t positionSampleRef,
-        ///< [IN]
-        ///< Position sample's reference.
-
+        ///< [IN] Position sample's reference.
     int32_t* altitudePtr,
-        ///< [OUT]
-        ///< Altitude in meters, above Mean Sea Level [resolution 1e-3].
-
+        ///< [OUT] Altitude in meters, above Mean Sea Level [resolution 1e-3].
     int32_t* vAccuracyPtr
-        ///< [OUT]
-        ///< Vertical position's accuracy in meters [resolution 1e-1].
+        ///< [OUT] Vertical position's accuracy in meters.
 )
 {
     le_result_t result = LE_OK;
@@ -1481,11 +1589,12 @@ le_result_t le_gnss_GetAltitude
     }
     if (vAccuracyPtr)
     {
-        if (positionSampleRequestNodePtr->positionSampleNodePtr->vAccuracyValid)
-        {
-            *vAccuracyPtr = positionSampleRequestNodePtr->positionSampleNodePtr->vAccuracy;
-        }
-        else
+        if ((false == positionSampleRequestNodePtr->positionSampleNodePtr->vAccuracyValid) ||
+            (LE_OK != ConvertPositionData(
+                                     positionSampleRequestNodePtr->positionSampleNodePtr->vAccuracy,
+                                     LE_GNSS_DATA_VACCURACY,
+                                     vAccuracyPtr))
+           )
         {
             *vAccuracyPtr = INT32_MAX;
             result = LE_OUT_OF_RANGE;
@@ -1945,7 +2054,6 @@ le_result_t le_gnss_GetDate
 /**
  * Get the position sample's horizontal speed.
  *
- * @return
  *  - LE_FAULT         Function failed to find the positionSample.
  *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to UINT32_MAX).
  *  - LE_OK            Function succeeded.
@@ -1954,8 +2062,10 @@ le_result_t le_gnss_GetDate
  *
  * @note Horizontal speed is in meters/second with 2 decimal places (3047 = 30.47 meters/second).
  *
- * @note Horizontal speed accuracy estimate is in meters/second with 1 decimal place
- *       (304 = 30.4 meters/second).
+ * @note Horizontal speed accuracy estimate is default set to meters/second with 1 decimal place
+ *       (304 = 30.4 meters/second). To change its accuracy, call the @c le_gnss_SetDataResolution()
+ *       function. Horizontal speed accuracy estimate is set as data type and accuracy from 0 to 3
+ *       decimal place is set as resolution.
  *
  * @note If the caller is passing an invalid Position sample reference into this function,
  *       it is a fatal error, the function will not return.
@@ -1967,17 +2077,11 @@ le_result_t le_gnss_GetDate
 le_result_t le_gnss_GetHorizontalSpeed
 (
     le_gnss_SampleRef_t positionSampleRef,
-        ///< [IN]
-        ///< Position sample's reference.
-
+        ///< [IN] Position sample's reference.
     uint32_t* hspeedPtr,
-        ///< [OUT]
-        ///< Horizontal speed in meters/second [resolution 1e-2].
-
+        ///< [OUT] Horizontal speed in meters/second [resolution 1e-2].
     uint32_t* hspeedAccuracyPtr
-        ///< [OUT]
-        ///< Horizontal speed's accuracy estimate
-        ///< in meters/second [resolution 1e-1].
+        ///< [OUT] Horizontal speed's accuracy estimate in meters/second.
 )
 {
     le_result_t result = LE_OK;
@@ -2005,12 +2109,12 @@ le_result_t le_gnss_GetHorizontalSpeed
     }
     if (hspeedAccuracyPtr)
     {
-        if (positionSampleRequestNodePtr->positionSampleNodePtr->hSpeedAccuracyValid)
-        {
-            *hspeedAccuracyPtr = positionSampleRequestNodePtr->positionSampleNodePtr->
-                                                               hSpeedAccuracy;
-        }
-        else
+        if ((false == positionSampleRequestNodePtr->positionSampleNodePtr->hSpeedAccuracyValid) ||
+            (LE_OK != ConvertPositionData(
+                                positionSampleRequestNodePtr->positionSampleNodePtr->hSpeedAccuracy,
+                                LE_GNSS_DATA_HSPEEDACCURACY,
+                                (int32_t*)hspeedAccuracyPtr))
+           )
         {
             *hspeedAccuracyPtr = UINT32_MAX;
             result = LE_OUT_OF_RANGE;
@@ -2034,6 +2138,11 @@ le_result_t le_gnss_GetHorizontalSpeed
  * @note For a 2D position Fix, the vertical speed will be indicated as invalid
  * and set to INT32_MAX.
  *
+ * @note Vertical speed accuracy estimate is default set to meters/second with 1 decimal place
+ *       (304 = 30.4 meters/second). To change its accuracy, call the @c le_gnss_SetDataResolution()
+ *       function. Vertical speed accuracy estimate is set as data type and accuracy from 0 to 3
+ *       decimal place is set as resolution.
+ *
  * @note If the caller is passing an invalid Position sample reference into this function,
  *       it is a fatal error, the function will not return.
  *
@@ -2044,17 +2153,12 @@ le_result_t le_gnss_GetHorizontalSpeed
 le_result_t le_gnss_GetVerticalSpeed
 (
     le_gnss_SampleRef_t positionSampleRef,
-        ///< [IN]
-        ///< Position sample's reference.
-
+        ///< [IN] Position sample's reference.
     int32_t* vspeedPtr,
-        ///< [OUT]
-        ///< Vertical speed in meters/second [resolution 1e-2].
-
+        ///< [OUT] Vertical speed in meters/second [resolution 1e-2].
     int32_t* vspeedAccuracyPtr
-        ///< [OUT]
-        ///< Vertical speed's accuracy estimate
-        ///< in meters/second [resolution 1e-1].
+        ///< [OUT] Vertical speed's accuracy estimate
+        ///<       in meters/second.
 )
 {
     le_result_t result = LE_OK;
@@ -2082,12 +2186,12 @@ le_result_t le_gnss_GetVerticalSpeed
     }
     if (vspeedAccuracyPtr)
     {
-        if (positionSampleRequestNodePtr->positionSampleNodePtr->vSpeedAccuracyValid)
-        {
-            *vspeedAccuracyPtr = positionSampleRequestNodePtr->positionSampleNodePtr->
-                                                               vSpeedAccuracy;
-        }
-        else
+        if ((false == positionSampleRequestNodePtr->positionSampleNodePtr->vSpeedAccuracyValid) ||
+            (LE_OK != ConvertPositionData(
+                                positionSampleRequestNodePtr->positionSampleNodePtr->vSpeedAccuracy,
+                                LE_GNSS_DATA_VSPEEDACCURACY,
+                                vspeedAccuracyPtr))
+           )
         {
             *vspeedAccuracyPtr = INT32_MAX;
             result = LE_OUT_OF_RANGE;
@@ -4218,7 +4322,6 @@ le_result_t le_gnss_SetDopResolution
         return LE_BAD_PARAMETER;
     }
 
-    // No need to check for function return
     clientRequestPtr = GetClientSessionReference();
 
     if (NULL == clientRequestPtr)
@@ -4229,5 +4332,63 @@ le_result_t le_gnss_SetDopResolution
 
     clientRequestPtr->dopResolution = resolution;
     LE_DEBUG("clientRequest %p, resolution %d saved", clientRequestPtr, (int)resolution);
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the resolution for the specific type of data
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_BAD_PARAMETER    Invalid parameter provided.
+ * @return LE_FAULT            Function failed.
+ *
+ * @note The resolution setting takes effect immediately.
+ *
+ * @note The resolution setting is done per client session.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_SetDataResolution
+(
+    le_gnss_DataType_t dataType,
+        ///< [IN] Data type.
+    le_gnss_Resolution_t resolution
+        ///< [IN] Resolution.
+)
+{
+    le_gnss_Client_t* clientRequestPtr = NULL;
+
+    if (resolution >= LE_GNSS_RES_UNKNOWN)
+    {
+        LE_ERROR("Invalid resolution (%d)", resolution);
+        return LE_BAD_PARAMETER;
+    }
+
+    clientRequestPtr = GetClientSessionReference();
+
+    if (NULL == clientRequestPtr)
+    {
+        LE_ERROR("clientRequestPtr is NULL");
+        return LE_FAULT;
+    }
+
+    switch(dataType)
+    {
+        case LE_GNSS_DATA_VACCURACY:
+            clientRequestPtr->vAccuracyResolution = resolution;
+            break;
+        case LE_GNSS_DATA_VSPEEDACCURACY:
+            clientRequestPtr->vSpeedAccuracyResolution = resolution;
+            break;
+        case LE_GNSS_DATA_HSPEEDACCURACY:
+            clientRequestPtr->hSpeedAccuracyResolution = resolution;
+            break;
+        default:
+            LE_ERROR("Unknown data type");
+            return LE_BAD_PARAMETER;
+    }
+
+    LE_DEBUG("clientRequest %p, data type %d, resolution %d saved",
+             clientRequestPtr, (int)dataType, (int)resolution);
     return LE_OK;
 }

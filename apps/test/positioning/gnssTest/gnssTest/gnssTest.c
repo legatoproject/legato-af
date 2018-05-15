@@ -86,7 +86,7 @@ static void TestLeGnssDevice
 
     LE_ASSERT((le_gnss_GetAcquisitionRate(&acqRate)) == LE_NOT_PERMITTED);
     result = le_gnss_SetAcquisitionRate(acqRate);
-    LE_ASSERT((result == LE_NOT_PERMITTED)||(result == LE_OUT_OF_RANGE));
+    LE_ASSERT((result == LE_NOT_PERMITTED) || (result == LE_OUT_OF_RANGE));
     LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_NOT_PERMITTED);
 
@@ -154,7 +154,7 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_GetConstellation(&constellationMask)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetAcquisitionRate(&acqRate)) == LE_NOT_PERMITTED);
     result = le_gnss_SetAcquisitionRate(acqRate);
-    LE_ASSERT((result == LE_NOT_PERMITTED)||(result == LE_OUT_OF_RANGE));
+    LE_ASSERT((result == LE_NOT_PERMITTED) || (result == LE_OUT_OF_RANGE));
     LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_NOT_PERMITTED);
 
@@ -242,6 +242,7 @@ static void PositionHandlerFunction
     uint32_t direction;
     uint32_t directionAccuracy;
     le_gnss_DopType_t dopType = LE_GNSS_PDOP;
+    le_gnss_Resolution_t dataRes = LE_GNSS_RES_ZERO_DECIMAL;
 
     static const char *tabDop[] =
     {
@@ -263,11 +264,11 @@ static void PositionHandlerFunction
 
     // Get UTC date
     result = le_gnss_GetDate(positionSampleRef, &year, &month, &day);
-    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+    LE_ASSERT((LE_OK == result) || (LE_OUT_OF_RANGE == result));
 
     // Get UTC time
     result = le_gnss_GetTime(positionSampleRef, &hours, &minutes, &seconds, &milliseconds);
-    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+    LE_ASSERT((LE_OK == result) || (LE_OUT_OF_RANGE == result));
 
     // Get Epoch time
     LE_ASSERT_OK(le_gnss_GetEpochTime(positionSampleRef, &EpochTime));
@@ -282,19 +283,19 @@ static void PositionHandlerFunction
 
     // Get GPS time
     result = le_gnss_GetGpsTime(positionSampleRef, &gpsWeek, &gpsTimeOfWeek);
-    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+    LE_ASSERT((LE_OK == result) || (LE_OUT_OF_RANGE == result));
 
     LE_INFO("GPS time W %02d:ToW %dms", gpsWeek, gpsTimeOfWeek);
 
     // Get time accuracy
     result = le_gnss_GetTimeAccuracy(positionSampleRef, &TimeAccuracy);
-    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+    LE_ASSERT((LE_OK == result) || (LE_OUT_OF_RANGE == result));
 
     LE_INFO("GPS time acc %d", TimeAccuracy);
 
     // Get UTC leap seconds in advance
     result = le_gnss_GetGpsLeapSeconds(positionSampleRef, &leapSeconds);
-    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+    LE_ASSERT((LE_OK == result) || (LE_OUT_OF_RANGE == result));
 
     LE_INFO("UTC leap seconds in advance %d", leapSeconds);
 
@@ -308,7 +309,7 @@ static void PositionHandlerFunction
 
     // Get Location
     result = le_gnss_GetLocation(positionSampleRef, &latitude, &longitude, &hAccuracy);
-    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+    LE_ASSERT((LE_OK == result) || (LE_OUT_OF_RANGE == result));
 
     if (LE_OK == result)
     {
@@ -323,22 +324,49 @@ static void PositionHandlerFunction
     }
 
     // Get altitude
-    result = le_gnss_GetAltitude( positionSampleRef, &altitude, &vAccuracy);
-    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+    LE_INFO("Test SetDataResolution() for vAccuracy parameter of le_gnss_GetAltitude() function");
 
-    if (LE_OK == result)
+    for (dataRes=LE_GNSS_RES_ZERO_DECIMAL; dataRes<LE_GNSS_RES_UNKNOWN; dataRes++)
     {
-        LE_INFO("Altitude.%f, vAccuracy.%f", (float)altitude/1000.0, (float)vAccuracy/10.0);
-    }
-    else
-    {
-        LE_INFO("Altitude unknown [%d,%d]", altitude, vAccuracy);
+        LE_ASSERT_OK(le_gnss_SetDataResolution(LE_GNSS_DATA_VACCURACY, dataRes));
+        result = le_gnss_GetAltitude( positionSampleRef, &altitude, &vAccuracy);
+        LE_ASSERT((LE_OK == result) || (LE_OUT_OF_RANGE == result));
+
+        if (LE_OK == result)
+        {
+            switch(dataRes)
+            {
+                case LE_GNSS_RES_ZERO_DECIMAL:
+                    LE_INFO("Resolution: %d decimal place, altitude.%f, vAccuracy.%f",
+                            dataRes, (float)altitude/1000.0, (float)vAccuracy);
+                    break;
+                case LE_GNSS_RES_ONE_DECIMAL:
+                    LE_INFO("Resolution: %d decimal place, altitude.%f, vAccuracy.%f",
+                            dataRes, (float)altitude/1000.0, (float)vAccuracy/10.0);
+                    break;
+                case LE_GNSS_RES_TWO_DECIMAL:
+                    LE_INFO("Resolution: %d decimal place, altitude.%f, vAccuracy.%f",
+                            dataRes, (float)altitude/1000.0, (float)vAccuracy/100.0);
+                    break;
+                case LE_GNSS_RES_THREE_DECIMAL:
+                    LE_INFO("Resolution: %d decimal place, altitude.%f, vAccuracy.%f",
+                            dataRes, (float)altitude/1000.0, (float)vAccuracy/1000.0);
+                    break;
+                default:
+                    LE_INFO("Unknown resolution.");
+                    break;
+            }
+        }
+        else
+        {
+            LE_INFO("Altitude unknown [%d,%d]", altitude, vAccuracy);
+        }
     }
 
     // Get altitude in meters, between WGS-84 earth ellipsoid
     // and mean sea level [resolution 1e-3]
     result = le_gnss_GetAltitudeOnWgs84(positionSampleRef, &altitudeOnWgs84);
-    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+    LE_ASSERT((LE_OK == result) || (LE_OUT_OF_RANGE == result));
 
     if (LE_OK == result)
     {
@@ -363,7 +391,7 @@ static void PositionHandlerFunction
     {
         // Get DOP parameter
         result = le_gnss_GetDilutionOfPrecision(positionSampleRef, dopType, &dop);
-        LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
+        LE_ASSERT((result == LE_OK) || (result == LE_OUT_OF_RANGE));
         if (LE_OK == result)
         {
             switch(DopRes)
@@ -397,32 +425,90 @@ static void PositionHandlerFunction
     while (dopType != LE_GNSS_DOP_LAST);
 
     // Get horizontal speed
-    result = le_gnss_GetHorizontalSpeed( positionSampleRef, &hSpeed, &hSpeedAccuracy);
-    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
-    if (LE_OK == result)
+    LE_INFO("Test SetDataResolution() for hSpeedAccuracy parameter of le_gnss_GetHorizontalSpeed() \
+            function");
+
+    for (dataRes=LE_GNSS_RES_ZERO_DECIMAL; dataRes<LE_GNSS_RES_UNKNOWN; dataRes++)
     {
-        LE_INFO("hSpeed %u - Accuracy %u", hSpeed/100, hSpeedAccuracy/10);
-    }
-    else
-    {
-        LE_INFO("hSpeed unknown [%u,%u]", hSpeed, hSpeedAccuracy);
+        LE_ASSERT_OK(le_gnss_SetDataResolution(LE_GNSS_DATA_HSPEEDACCURACY, dataRes));
+        result = le_gnss_GetHorizontalSpeed( positionSampleRef, &hSpeed, &hSpeedAccuracy);
+        LE_ASSERT((LE_OK == result) || (LE_OUT_OF_RANGE == result));
+
+        if (LE_OK == result)
+        {
+            switch(dataRes)
+            {
+                case LE_GNSS_RES_ZERO_DECIMAL:
+                    LE_INFO("Resolution: %d decimal place, hSpeed %u - Accuracy %.3f",
+                            dataRes, hSpeed/100, (float)hSpeedAccuracy);
+                    break;
+                case LE_GNSS_RES_ONE_DECIMAL:
+                    LE_INFO("Resolution: %d decimal place, hSpeed %u - Accuracy %.3f",
+                            dataRes, hSpeed/100, (float)hSpeedAccuracy/10);
+                    break;
+                case LE_GNSS_RES_TWO_DECIMAL:
+                    LE_INFO("Resolution: %d decimal place, hSpeed %u - Accuracy %.3f",
+                            dataRes, hSpeed/100, (float)hSpeedAccuracy/100);
+                    break;
+                case LE_GNSS_RES_THREE_DECIMAL:
+                    LE_INFO("Resolution: %d decimal place, hSpeed %u - Accuracy %.3f",
+                            dataRes, hSpeed/100, (float)hSpeedAccuracy/1000);
+                    break;
+                default:
+                    LE_INFO("Unknown resolution.");
+                    break;
+            }
+        }
+        else
+        {
+            LE_INFO("hSpeed unknown [%u,%.3f]", hSpeed, (float)hSpeedAccuracy);
+        }
     }
 
     // Get vertical speed
-    result = le_gnss_GetVerticalSpeed( positionSampleRef, &vSpeed, &vSpeedAccuracy);
-    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
-    if (LE_OK == result)
+    LE_INFO("Test SetDataResolution() for vSpeedAccuracy parameter of le_gnss_GetVerticalSpeed() \
+            function");
+
+    for (dataRes=LE_GNSS_RES_ZERO_DECIMAL; dataRes<LE_GNSS_RES_UNKNOWN; dataRes++)
     {
-        LE_INFO("vSpeed %d - Accuracy %d", vSpeed/100, vSpeedAccuracy/10);
-    }
-    else
-    {
-        LE_INFO("vSpeed unknown [%d,%d]", vSpeed, vSpeedAccuracy);
+        LE_ASSERT_OK(le_gnss_SetDataResolution(LE_GNSS_DATA_VSPEEDACCURACY, dataRes));
+        result = le_gnss_GetVerticalSpeed( positionSampleRef, &vSpeed, &vSpeedAccuracy);
+        LE_ASSERT((LE_OK == result) || (LE_OUT_OF_RANGE == result));
+
+        if (LE_OK == result)
+        {
+            switch(dataRes)
+            {
+                case LE_GNSS_RES_ZERO_DECIMAL:
+                    LE_INFO("Resolution: %d decimal place, vSpeed %d - Accuracy %.3f",
+                            dataRes, vSpeed/100, (float)vSpeedAccuracy);
+                    break;
+                case LE_GNSS_RES_ONE_DECIMAL:
+                    LE_INFO("Resolution: %d decimal place, vSpeed %d - Accuracy %.3f",
+                            dataRes, vSpeed/100, (float)vSpeedAccuracy/10);
+                    break;
+                case LE_GNSS_RES_TWO_DECIMAL:
+                    LE_INFO("Resolution: %d decimal place, vSpeed %d - Accuracy %.3f",
+                            dataRes, vSpeed/100, (float)vSpeedAccuracy/100);
+                    break;
+                case LE_GNSS_RES_THREE_DECIMAL:
+                    LE_INFO("Resolution: %d decimal place, vSpeed %d - Accuracy %.3f",
+                            dataRes, vSpeed/100, (float)vSpeedAccuracy/1000);
+                    break;
+                default:
+                    LE_INFO("Unknown resolution.");
+                    break;
+            }
+        }
+        else
+        {
+            LE_INFO("vSpeed unknown [%d,%.3f]", vSpeed, (float)vSpeedAccuracy);
+        }
     }
 
     // Get direction
     result = le_gnss_GetDirection( positionSampleRef, &direction, &directionAccuracy);
-    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+    LE_ASSERT((LE_OK == result) || (LE_OUT_OF_RANGE == result));
     if (LE_OK == result)
     {
         LE_INFO("direction %u - Accuracy %u", direction/10, directionAccuracy/10);
@@ -434,7 +520,7 @@ static void PositionHandlerFunction
 
     // Get the magnetic deviation
     result = le_gnss_GetMagneticDeviation( positionSampleRef, &magneticDeviation);
-    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+    LE_ASSERT((LE_OK == result) || (LE_OUT_OF_RANGE == result));
     if (LE_OK == result)
     {
         LE_INFO("magnetic deviation %d", magneticDeviation/10);
@@ -454,7 +540,7 @@ static void PositionHandlerFunction
                                           &satsTrackingCount,
                                           &satsUsedCount);
 
-    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+    LE_ASSERT((LE_OK == result) || (LE_OUT_OF_RANGE == result));
 
     LE_INFO("satsInView %d - satsTracking %d - satsUsed %d",
             satsInViewCount,
@@ -490,10 +576,10 @@ static void PositionHandlerFunction
                                         satElevPtr,
                                         &satElevNumElements);
 
-    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+    LE_ASSERT((LE_OK == result) || (LE_OUT_OF_RANGE == result));
 
     // Satellite Vehicle information
-    for(i=0; i<satIdNumElements; i++)
+    for (i=0; i<satIdNumElements; i++)
     {
         if ((0 != satIdPtr[i]) && (UINT16_MAX != satIdPtr[i]))
         {
@@ -569,10 +655,18 @@ static void TestLeGnssPositionHandler
         LE_INFO("Set minElevation %d",minElevation);
     }
 
+    // Test le_gnss_SetDataResolution() before starting GNSS
+    LE_INFO("Sanity test for le_gnss_SetDataResolution");
+    LE_ASSERT(LE_BAD_PARAMETER == le_gnss_SetDataResolution(LE_GNSS_DATA_UNKNOWN,
+                                                            LE_GNSS_RES_ONE_DECIMAL));
     LE_INFO("Start GNSS");
     LE_ASSERT_OK(le_gnss_Start());
     LE_INFO("Wait 5 seconds");
     sleep(5);
+
+    // Test le_gnss_SetDataResolution() after starting GNSS
+    LE_ASSERT(LE_BAD_PARAMETER == le_gnss_SetDataResolution(LE_GNSS_DATA_VACCURACY,
+                                                            LE_GNSS_RES_UNKNOWN));
 
     // Add Position Handler Test
     positionThreadRef = le_thread_Create("PositionThread",PositionThread,NULL);
@@ -606,7 +700,7 @@ static void TestLeGnssPositionHandler
     sleep(60);
     // Get TTFF
     result = le_gnss_GetTtff(&ttff);
-    LE_ASSERT((LE_OK == result)||(LE_BUSY == result));
+    LE_ASSERT((LE_OK == result) || (LE_BUSY == result));
     if(result == LE_OK)
     {
         LE_INFO("TTFF cold restart = %d msec", ttff);
@@ -679,7 +773,7 @@ static void TestLeGnssStart
 
     // Get TTFF
     result = le_gnss_GetTtff(&ttff);
-    LE_ASSERT((result == LE_OK)||(result == LE_BUSY));
+    LE_ASSERT((result == LE_OK) || (result == LE_BUSY));
     if(result == LE_OK)
     {
         LE_INFO("TTFF start = %d msec", ttff);
@@ -724,7 +818,7 @@ static void TestLeGnssRestart
     sleep(60);
     // Get TTFF
     result = le_gnss_GetTtff(&ttff);
-    LE_ASSERT((result == LE_OK)||(result == LE_BUSY));
+    LE_ASSERT((result == LE_OK) || (result == LE_BUSY));
     if(result == LE_OK)
     {
         LE_INFO("TTFF start = %d msec", ttff);
@@ -743,7 +837,7 @@ static void TestLeGnssRestart
     sleep(60);
     // Get TTFF
     result = le_gnss_GetTtff(&ttff);
-    LE_ASSERT((result == LE_OK)||(result == LE_BUSY));
+    LE_ASSERT((result == LE_OK) || (result == LE_BUSY));
     if(result == LE_OK)
     {
         LE_INFO("TTFF Hot restart = %d msec", ttff);
@@ -762,7 +856,7 @@ static void TestLeGnssRestart
     sleep(60);
     // Get TTFF
     result = le_gnss_GetTtff(&ttff);
-    LE_ASSERT((result == LE_OK)||(result == LE_BUSY));
+    LE_ASSERT((result == LE_OK) || (result == LE_BUSY));
     if(result == LE_OK)
     {
         LE_INFO("TTFF Warm restart = %d msec", ttff);
@@ -788,7 +882,7 @@ static void TestLeGnssRestart
     sleep(60);
     // Get TTFF
     result = le_gnss_GetTtff(&ttff);
-    LE_ASSERT((result == LE_OK)||(result == LE_BUSY));
+    LE_ASSERT((result == LE_OK) || (result == LE_BUSY));
     if(result == LE_OK)
     {
         LE_INFO("TTFF Cold restart = %d msec", ttff);
@@ -818,7 +912,7 @@ static void TestLeGnssRestart
     sleep(60);
     // Get TTFF
     result = le_gnss_GetTtff(&ttff);
-    LE_ASSERT((result == LE_OK)||(result == LE_BUSY));
+    LE_ASSERT((result == LE_OK) || (result == LE_BUSY));
     if(result == LE_OK)
     {
         LE_INFO("TTFF Factory restart = %d msec", ttff);
@@ -854,7 +948,7 @@ static void LoopToGet3Dfix
     {
         // Get TTFF
         result = le_gnss_GetTtff(ttffPtr);
-        LE_ASSERT((result == LE_OK)||(result == LE_BUSY));
+        LE_ASSERT((result == LE_OK) || (result == LE_BUSY));
         if(result == LE_OK)
         {
             LE_INFO("TTFF start = %d msec", *ttffPtr);
