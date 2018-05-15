@@ -789,16 +789,13 @@ static void ProcessMrcCommandEventHandler
 )
 {
     le_result_t res;
+    CmdRequest_t *cmdRequest = msgCommand;
 
-    void * ctxPtr = ((CmdRequest_t*) msgCommand)->contextPtr;
-    CmdType_t command = ((CmdRequest_t*) msgCommand)->command;
-
-    if (LE_MRC_CMD_TYPE_ASYNC_REGISTRATION == command)
+    if (cmdRequest->command == LE_MRC_CMD_TYPE_ASYNC_REGISTRATION)
     {
-        char * mccStr = ((CmdRequest_t*) msgCommand)->selection.mccStr;
-        char * mncStr = ((CmdRequest_t*) msgCommand)->selection.mncStr;
-        le_mrc_ManualSelectionHandlerFunc_t handlerFunc =
-                           ((CmdRequest_t*) msgCommand)->callBackPtr;
+        char * mccStr = cmdRequest->selection.mccStr;
+        char * mncStr = cmdRequest->selection.mncStr;
+        le_mrc_ManualSelectionHandlerFunc_t handlerFunc = cmdRequest->callBackPtr;
 
         LE_DEBUG("Register plmn (%s,%s)", mccStr, mncStr);
 
@@ -816,19 +813,17 @@ static void ProcessMrcCommandEventHandler
         if (handlerFunc)
         {
             LE_DEBUG("Calling handler (%p), Status %d", handlerFunc, res);
-            handlerFunc (res, ctxPtr);
+            handlerFunc(res, cmdRequest->contextPtr);
         }
         else
         {
             LE_WARN("No handler function, status %d!!", res);
         }
     }
-    else if (command == LE_MRC_CMD_TYPE_ASYNC_SCAN)
+    else if (cmdRequest->command == LE_MRC_CMD_TYPE_ASYNC_SCAN)
     {
-        le_mrc_CellularNetworkScanHandlerFunc_t handlerFunc =
-                        ((CmdRequest_t*) msgCommand)->callBackPtr;
-        le_mrc_RatBitMask_t ratMask =
-                        ((CmdRequest_t*) msgCommand)->scan.ratMask;
+        le_mrc_CellularNetworkScanHandlerFunc_t handlerFunc = cmdRequest->callBackPtr;
+        le_mrc_RatBitMask_t ratMask = cmdRequest->scan.ratMask;
 
         ScanInfoList_t* newScanInformationListPtr = NULL;
         le_mrc_ScanInformationListRef_t scanInformationListRef = NULL;
@@ -850,7 +845,7 @@ static void ProcessMrcCommandEventHandler
         else
         {
             // Store message session reference.
-            newScanInformationListPtr->sessionRef = ((CmdRequest_t*)msgCommand)->sessionRef;
+            newScanInformationListPtr->sessionRef = cmdRequest->sessionRef;
 
             scanInformationListRef =
                      le_ref_CreateRef(ScanInformationListRefMap, newScanInformationListPtr);
@@ -860,12 +855,16 @@ static void ProcessMrcCommandEventHandler
         if (handlerFunc)
         {
             LE_DEBUG("Sending Scan information list ref (%p)", scanInformationListRef);
-            handlerFunc (scanInformationListRef, ctxPtr);
+            handlerFunc(scanInformationListRef, cmdRequest->contextPtr);
         }
         else
         {
             LE_WARN("No handler function, status %d!!", res);
         }
+    }
+    else
+    {
+        LE_FATAL("Invalid command type (%d)", cmdRequest->command);
     }
 }
 
@@ -1005,10 +1004,6 @@ static le_result_t AddPreferredOperators
     }
 
     nodePtr = le_mem_ForceAlloc(PreferredNetworkOperatorPool);
-    if (nodePtr == NULL)
-    {
-        return LE_FAULT;
-    }
 
     le_utf8_Copy(nodePtr->mobileCode.mcc, mccPtr, LE_MRC_MCC_BYTES, NULL);
     le_utf8_Copy(nodePtr->mobileCode.mnc, mncPtr, LE_MRC_MNC_BYTES, NULL);
@@ -1101,7 +1096,6 @@ static le_result_t GetPreferredOperatorsList
                 for (i=0; i < total; i++)
                 {
                     pa_mrc_PreferredNetworkOperator_t* prefNetworkPtr =
-                                    (pa_mrc_PreferredNetworkOperator_t*)
                                     le_mem_ForceAlloc(PreferredNetworkOperatorPool);
 
                     memcpy(prefNetworkPtr, &mrcPrefNetworkPtr[i],
@@ -2168,42 +2162,32 @@ le_mrc_PreferredOperatorListRef_t le_mrc_GetPreferredOperatorsList
     void
 )
 {
-    PreferredOperatorsList_t * OperatorListPtr =
-                    (PreferredOperatorsList_t *) le_mem_ForceAlloc(PrefOpsListPool);
+    PreferredOperatorsList_t * OperatorListPtr = le_mem_ForceAlloc(PrefOpsListPool);
+    OperatorListPtr->paPrefOpList = LE_DLS_LIST_INIT;
+    OperatorListPtr->safeRefPrefOpList = LE_DLS_LIST_INIT;
+    OperatorListPtr->currentLinkPtr = NULL;
 
-    if (OperatorListPtr != NULL)
+    le_result_t res = GetPreferredOperatorsList(
+        &(OperatorListPtr->paPrefOpList), false, true, &OperatorListPtr->opsCount);
+    if (res != LE_OK)
     {
-        OperatorListPtr->paPrefOpList = LE_DLS_LIST_INIT;
-        OperatorListPtr->safeRefPrefOpList = LE_DLS_LIST_INIT;
-        OperatorListPtr->currentLinkPtr = NULL;
-        le_result_t res = GetPreferredOperatorsList(
-            &(OperatorListPtr->paPrefOpList), false, true, &OperatorListPtr->opsCount);
-
-        if (LE_OK == res)
-        {
-            if (OperatorListPtr->opsCount)
-            {
-                // Save message session reference.
-                OperatorListPtr->sessionRef = le_mrc_GetClientSessionRef();
-
-                // Create and return a Safe Reference for this List object.
-                return le_ref_CreateRef(PreferredOperatorsListRefMap, OperatorListPtr);
-            }
-            else
-            {
-                // no item in list
-                return NULL;
-            }
-        }
-        else
-        {
-            le_mem_Release(OperatorListPtr);
-            LE_WARN("Unable to retrieve the list of the preferred operators!");
-            return NULL;
-        }
+        goto fault;
+    }
+    else if (OperatorListPtr->opsCount == 0)
+    {
+        goto cleanup;
     }
 
-    LE_ERROR("Unable allocated memory for the list of the preferred operators!");
+    // Save message session reference.
+    OperatorListPtr->sessionRef = le_mrc_GetClientSessionRef();
+
+    // Create and return a Safe Reference for this List object.
+    return le_ref_CreateRef(PreferredOperatorsListRefMap, OperatorListPtr);
+
+fault:
+    LE_WARN("Unable to retrieve the list of the preferred operators!");
+cleanup:
+    le_mem_Release(OperatorListPtr);
     return NULL;
 }
 
@@ -3331,32 +3315,24 @@ le_mrc_NeighborCellsRef_t le_mrc_GetNeighborCellsInfo
     void
 )
 {
-    CellList_t* ngbrCellsInfoListPtr = (CellList_t*)le_mem_ForceAlloc(CellListPool);
+    CellList_t* ngbrCellsInfoListPtr = le_mem_ForceAlloc(CellListPool);
 
-    if (ngbrCellsInfoListPtr != NULL)
+    ngbrCellsInfoListPtr->paNgbrCellInfoList = LE_DLS_LIST_INIT;
+    ngbrCellsInfoListPtr->safeRefCellInfoList = LE_DLS_LIST_INIT;
+    ngbrCellsInfoListPtr->currentLinkPtr = NULL;
+    ngbrCellsInfoListPtr->cellsCount = pa_mrc_GetNeighborCellsInfo(
+                                            &(ngbrCellsInfoListPtr->paNgbrCellInfoList));
+    if (ngbrCellsInfoListPtr->cellsCount > 0)
     {
-        ngbrCellsInfoListPtr->paNgbrCellInfoList = LE_DLS_LIST_INIT;
-        ngbrCellsInfoListPtr->safeRefCellInfoList = LE_DLS_LIST_INIT;
-        ngbrCellsInfoListPtr->currentLinkPtr = NULL;
-        ngbrCellsInfoListPtr->cellsCount = pa_mrc_GetNeighborCellsInfo(
-                                                &(ngbrCellsInfoListPtr->paNgbrCellInfoList));
-        if (ngbrCellsInfoListPtr->cellsCount > 0)
-        {
-            // Save message session reference.
-            ngbrCellsInfoListPtr->sessionRef = le_mrc_GetClientSessionRef();
+        // Save message session reference.
+        ngbrCellsInfoListPtr->sessionRef = le_mrc_GetClientSessionRef();
 
-            // Create and return a Safe Reference for this List object.
-            return le_ref_CreateRef(CellListRefMap, ngbrCellsInfoListPtr);
-        }
-        else
-        {
-            le_mem_Release(ngbrCellsInfoListPtr);
-            LE_WARN("Unable to retrieve the Neighboring Cells information!");
-            return NULL;
-        }
+        // Create and return a Safe Reference for this List object.
+        return le_ref_CreateRef(CellListRefMap, ngbrCellsInfoListPtr);
     }
     else
     {
+        le_mem_Release(ngbrCellsInfoListPtr);
         LE_WARN("Unable to retrieve the Neighboring Cells information!");
         return NULL;
     }
@@ -3723,20 +3699,9 @@ le_mrc_MetricsRef_t le_mrc_MeasureSignalMetrics
     void
 )
 {
-    SignalMetrics_t* signalMetricsPtr = (SignalMetrics_t*)le_mem_ForceAlloc(MetricsSessionPool);
-    if (NULL == signalMetricsPtr)
-    {
-        LE_ERROR("Unable to allocate memory for current client signal metrics!");
-        return NULL;
-    }
+    SignalMetrics_t* signalMetricsPtr = le_mem_ForceAlloc(MetricsSessionPool);
 
-    signalMetricsPtr->paSignalMetricsPtr = (pa_mrc_SignalMetrics_t*)le_mem_ForceAlloc(MetricsPool);
-    if (NULL == signalMetricsPtr->paSignalMetricsPtr)
-    {
-        le_mem_Release(signalMetricsPtr);
-        LE_ERROR("Unable to allocate memory for signal metrics!");
-        return NULL;
-    }
+    signalMetricsPtr->paSignalMetricsPtr = le_mem_ForceAlloc(MetricsPool);
 
     if (LE_OK != pa_mrc_MeasureSignalMetrics(signalMetricsPtr->paSignalMetricsPtr))
     {
