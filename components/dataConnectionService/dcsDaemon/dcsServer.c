@@ -208,6 +208,14 @@ static le_timer_Ref_t RetryTechTimer = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Timer to delay connection request to the modem.
+ * This is a workaround until the bug in QTI netmgr is addressed.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_timer_Ref_t DelayRequestTimer = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Event for sending command to Process command handler
  */
 //--------------------------------------------------------------------------------------------------
@@ -705,6 +713,9 @@ static void DataSessionStateHandler
     {
         return;
     }
+
+    // Restart timer to delay connection request to modem
+    le_timer_Restart(DelayRequestTimer);
 
     // Update connection status and send notification to registered applications
     IsConnected = (connectionStatus == LE_MDC_CONNECTED) ? true : false;
@@ -1357,6 +1368,13 @@ static void TryStartDataSession
     void
 )
 {
+    if (le_timer_IsRunning(DelayRequestTimer))
+    {
+        LE_INFO("Delaying data connection attempt.");
+        ConnectionStatusHandler(LE_DATA_CELLULAR, false);
+        return;
+    }
+
     le_result_t result = le_mdc_StartSession(MobileProfileRef);
 
     // Start data session
@@ -2783,6 +2801,7 @@ COMPONENT_INIT
         LE_ERROR("Could not configure the RetryTechTimer timer!");
     }
 
+
     // Set a timer to retry the stop data session
     StopDcsTimer = le_timer_Create("StopDcsTimer");
     le_clk_Time_t interval = {0, 5};    // 5 seconds
@@ -2793,6 +2812,16 @@ COMPONENT_INIT
        )
     {
         LE_ERROR("Could not configure the StopDcs timer!");
+    }
+
+    // Set a timer to delay connection request to the modem
+    DelayRequestTimer = le_timer_Create("DelayRequestTimer");
+    le_clk_Time_t delayInterval = {60, 0};   // 60 seconds
+    if (   (LE_OK != le_timer_SetRepeat(DelayRequestTimer, 1))       // One shot timer
+        || (LE_OK != le_timer_SetInterval(DelayRequestTimer, delayInterval))
+       )
+    {
+        LE_ERROR("Could not configure the DelayRequestTimer timer!");
     }
 
     // Add a handler to the close session service
