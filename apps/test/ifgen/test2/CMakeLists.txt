@@ -40,6 +40,9 @@ set(TEST_SERVER testIfGen2_server)
 add_legato_internal_executable(${TEST_CLIENT} example_client.c clientMain.c)
 add_legato_internal_executable(${TEST_SERVER} example_server.c serverMain.c)
 
+# This is a C test
+add_dependencies(tests_c ${TEST_CLIENT} ${TEST_SERVER})
+
 # This goes into the "tests" directory, with all the other executables
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SCRIPT}.in
                ${EXECUTABLE_OUTPUT_PATH}/${TEST_SCRIPT})
@@ -53,6 +56,9 @@ set(TEST_SERVER testMulti2_server)
 
 add_legato_internal_executable(${TEST_CLIENT} example_client.c multiClientMain.c)
 add_legato_internal_executable(${TEST_SERVER} example_server.c multiServerMain.c)
+
+# This is a C test
+add_dependencies(tests_c ${TEST_CLIENT} ${TEST_SERVER})
 
 # This goes into the "tests" directory, with all the other executables
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SCRIPT}.in
@@ -82,6 +88,9 @@ set(TEST_SERVER testAsync2_server)
 add_legato_internal_executable(${TEST_CLIENT} example_client.c clientMain.c)
 add_legato_internal_executable(${TEST_SERVER} async_server.c asyncServerMain.c)
 
+# This is a C test
+add_dependencies(tests_c ${TEST_CLIENT} ${TEST_SERVER})
+
 # This goes into the "tests" directory, with all the other executables
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SCRIPT}.in
                ${EXECUTABLE_OUTPUT_PATH}/${TEST_SCRIPT})
@@ -97,6 +106,9 @@ set(TEST_SERVER testApiSharing_server)
 mkexe(${TEST_CLIENT} ${TEST_CLIENT})
 mkexe(${TEST_SERVER} ${TEST_SERVER})
 
+# This is a C test
+add_dependencies(tests_c ${TEST_CLIENT} ${TEST_SERVER})
+
 # This goes into the "tests" directory, with all the other executables
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SCRIPT}.in
                ${EXECUTABLE_OUTPUT_PATH}/${TEST_SCRIPT})
@@ -107,4 +119,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SCRIPT}.in
 
 set(TEST_CLIENT testEmptyApi_client)
 mkexe(${TEST_CLIENT} ${TEST_CLIENT})
+
+# This is a C test
+add_dependencies(tests_c ${TEST_CLIENT})
 

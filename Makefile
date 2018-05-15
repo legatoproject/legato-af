@@ -12,7 +12,11 @@
 #  - on-target tools
 #  - a basic working system (see system.sdef)
 #
-# To build sample apps and tests for a target X, build tests_X (e.g., 'make tests_wp85').
+# To build tests for a target X, build tests_X (e.g., 'make tests_wp85').
+#
+# To build samples for a target X, build samples_X (e.g., 'make samples_wp85').
+#
+# To build everything for a target X, build all_X (e.g., 'make all_wp85').
 #
 # Other goals supported by this Makefile are:
 #
@@ -281,15 +285,17 @@ FRAMEWORK_TARGETS = $(foreach target,$(TARGETS),framework_$(target))
 $(FRAMEWORK_TARGETS): tools package.properties
 	$(MAKE) -f Makefile.framework CC=$(TARGET_CC)
 
+## Tests
+
 # Rule building the C tests for a given target
 TESTS_C_TARGETS = $(foreach target,$(TARGETS),tests_c_$(target))
-.PHONY: TESTS_C_TARGETS
+.PHONY: $(TESTS_C_TARGETS)
 $(TESTS_C_TARGETS):tests_c_%: % framework_% build/%/Makefile
 	$(MAKE) -C build/$(TARGET) tests_c
 
 # Rule building the Java tests for a given target
 TESTS_JAVA_TARGETS = $(foreach target,$(TARGETS),tests_java_$(target))
-.PHONY: TESTS_JAVA_TARGETS
+.PHONY: $(TESTS_JAVA_TARGETS)
 $(TESTS_JAVA_TARGETS):tests_java_%: % framework_% build/%/Makefile
 	$(MAKE) -C build/$(TARGET) tests_java
 
@@ -297,8 +303,46 @@ $(TESTS_JAVA_TARGETS):tests_java_%: % framework_% build/%/Makefile
 TESTS_TARGETS = $(foreach target,$(TARGETS),tests_$(target))
 .PHONY: $(TESTS_TARGETS)
 $(TESTS_TARGETS):tests_%: % framework_% build/%/Makefile
-	$(MAKE) -C build/$(TARGET)
+	$(MAKE) -C build/$(TARGET) tests
 	$(MAKE) -C apps/test/framework/mk CC=$(TARGET_CC)
+
+## Samples
+
+# Rule building the C samples for a given target
+SAMPLES_C_TARGETS = $(foreach target,$(TARGETS),samples_c_$(target))
+.PHONY: $(SAMPLES_C_TARGETS)
+$(SAMPLES_C_TARGETS):samples_c_%: % framework_% build/%/Makefile
+	$(MAKE) -C build/$(TARGET) samples_c
+
+# Rule building the Java samples for a given target
+SAMPLES_JAVA_TARGETS = $(foreach target,$(TARGETS),samples_java_$(target))
+.PHONY: $(SAMPLES_JAVA_TARGETS)
+$(SAMPLES_JAVA_TARGETS):samples_java_%: % framework_% build/%/Makefile
+	$(MAKE) -C build/$(TARGET) samples_java
+
+# Rule building the samples for a given target -- build both C and Java samples
+SAMPLES_TARGETS = $(foreach target,$(TARGETS),samples_$(target))
+.PHONY: $(SAMPLES_TARGETS)
+$(SAMPLES_TARGETS):samples_%: % framework_% build/%/Makefile
+	$(MAKE) -C build/$(TARGET) samples
+
+## All
+
+# Rule building all C content for a given target
+ALL_C_TARGETS = $(foreach target,$(TARGETS),all_c_$(target))
+.PHONY: $(ALL_C_TARGETS)
+$(ALL_C_TARGETS):all_c_%: % framework_% tests_c_% samples_c_%
+
+# Rule building all Java content for a given target
+ALL_JAVA_TARGETS = $(foreach target,$(TARGETS),all_java_$(target))
+.PHONY: $(ALL_JAVA_TARGETS)
+$(ALL_JAVA_TARGETS):all_java_%: % framework_% tests_java_% samples_java_%
+
+# Rule building all content for a given target
+ALL_TARGETS = $(foreach target,$(TARGETS),all_$(target))
+.PHONY: $(ALL_TARGETS)
+$(ALL_TARGETS):all_%: % framework_% tests_% samples_%
+
 # Rule for invoking CMake to generate the Makefiles inside the build directory.
 # Depends on the build directory being there.
 # NOTE: CMake is only used to build tests and samples.

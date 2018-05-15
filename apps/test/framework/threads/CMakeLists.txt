@@ -16,6 +16,8 @@ add_legato_executable(${APP_TARGET} ${APP_SOURCES})
 
 add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
 
+add_dependencies(tests_c ${APP_TARGET})
+
 set(APP_TARGET testFwThreadLimit)
 set(APP_SOURCES
     limit.c

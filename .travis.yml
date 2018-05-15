@@ -42,6 +42,6 @@ script:
   - repo forall -c 'echo -n "$REPO_PATH " && git rev-parse HEAD 2>/dev/null'
   - export JDK_INCLUDE_DIR=/usr/lib/jvm/java-8-openjdk-amd64/include
   - make localhost
-  - if [[ "$CC" == "gcc" ]] && ! make tests_localhost > /tmp/legato-logs 2>&1 ; then
+  - if [[ "$CC" == "gcc" ]] && ! make all_localhost > /tmp/legato-logs 2>&1 ; then
         echo "Test build failed" && tail -1000 /tmp/legato-logs && exit 1 ;
     fi

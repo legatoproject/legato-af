@@ -33,6 +33,11 @@ mkexe(configTestExe
 mkexe(configDelete
       configDelete)
 
+# This is a C test
+add_dependencies(tests_c configDropReadExe
+                         configDropWriteExe
+                         configTestExe
+                         configDelete)
 
 add_test(configTest ${EXECUTABLE_OUTPUT_PATH}/configTest.sh)
 
