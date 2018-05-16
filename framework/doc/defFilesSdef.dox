@@ -497,11 +497,11 @@ ldflags:
 
 @section defFilesSdef_kernelModules kernelModules
 
-The optional @c kernelModules: section declares a list of pre-built kernel modules to be
-bundled and installed with Legato.
+The optional @c kernelModules: section declares a list of kernel modules to be bundled and
+installed with Legato.
 
-Each entry represents a path to the @ref defFilesMdef ".mdef" definition file that describes how the module is
-installed on the target.
+Each entry represents a path to the @ref defFilesMdef ".mdef" definition file that describes how
+the module is installed on the target.
 
 This code sample shows the @kernelModules section declaring the
 "/path/to/kernel/module/hello.mdef" be bundled with Legato:
@@ -512,6 +512,12 @@ kernelModules:
     /path/to/kernel/module/hello
 }
 @endcode
+
+The kernel modules listed in this section are loaded in alphabetical order and removed in reverse
+alphabetical order by the Legato system. If a module depends on one or more other modules, then the
+order in which the modules are installed and removed takes the dependencies into consideration.
+Dependencies are added by adding the modules to the @c requires: @c kernelModules: section of the
+@ref defFilesMdef ".mdef" for the kernel module that depends on them.
 
 @section defFilesSdef_commands commands
 

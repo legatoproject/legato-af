@@ -97,6 +97,7 @@ typedef struct
     ModuleLoadStatus_t moduleLoadStatus;                 // Load status of the module
     bool               isLoadManual;                     // is module load set to auto or manual
     le_sls_Link_t      link;                             // link object
+    le_dls_Link_t      dlsLink;                          // link object for doubly linked list
     uint32_t           useCount;                         // Counter of usage, safe to remove
                                                          // module when counter is 0
 }
@@ -114,6 +115,14 @@ static struct {
     le_mem_PoolRef_t    reqModStringPool;  // memory pool of strings (for argv)
     le_hashmap_Ref_t    moduleTable;       // table for kernel module objects
 } KModuleHandler = {NULL, NULL, NULL, NULL};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Doubly linked list that stores the modules in alphabetical order of module name.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_dls_List_t ModuleAlphaOrderList = LE_DLS_LIST_INIT;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -349,7 +358,6 @@ done_deps:
     module->moduleLoadStatus = STATUS_INIT;
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Insert a module to the table with a given module name
@@ -385,7 +393,10 @@ static void ModuleInsert(char *modName)
     ModuleGetParams(m);          /* Read module parameters from configTree */
     ModuleGetRequiredModules(m); /* Read required kernel modules from configTree */
 
-    //Insert in a hashMap
+    /* Insert modules in alphabetical order of module name in a doubly linked list */
+    le_dls_Queue(&ModuleAlphaOrderList, &(m->dlsLink));
+
+    /* Insert in a hashMap */
     le_hashmap_Put(KModuleHandler.moduleTable, m->name, m);
 }
 
@@ -498,7 +509,6 @@ void kernelModules_InsertListOfModules(le_sls_List_t reqModuleName)
     }
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Iterate through the module table and install kernel module
@@ -506,29 +516,29 @@ void kernelModules_InsertListOfModules(le_sls_List_t reqModuleName)
 //--------------------------------------------------------------------------------------------------
 static void installModules()
 {
-    KModuleObj_t *m;
-    le_hashmap_It_Ref_t iter;
+    KModuleObj_t *modPtr;
     le_result_t result;
+    le_dls_Link_t* linkPtr;
 
-    /* Iterate through the module table */
-    iter = le_hashmap_GetIterator(KModuleHandler.moduleTable);
-
-    while (le_hashmap_NextNode(iter) == LE_OK)
+    /* Traverse linked list in alphabetical order of module name and traverse dependencies. */
+    linkPtr = le_dls_Peek(&ModuleAlphaOrderList);
+    while (linkPtr != NULL)
     {
-        m = (KModuleObj_t*)le_hashmap_GetValue(iter);
-        LE_ASSERT(m && KMODULE_OBJECT_COOKIE == m->cookie);
+        modPtr = CONTAINER_OF(linkPtr, KModuleObj_t, dlsLink);
+        LE_ASSERT(modPtr != NULL);
 
-        if (m->isLoadManual)
+        if (modPtr->isLoadManual)
         {
             continue;
         }
 
-        result = InstallEachKernelModule(m);
+        result = InstallEachKernelModule(modPtr);
         if (result != LE_OK)
         {
-            LE_ERROR("Error in installing module %s", m->name);
+            LE_ERROR("Error in installing module %s", modPtr->name);
             break;
         }
+        linkPtr = le_dls_PeekNext(&ModuleAlphaOrderList, linkPtr);
     }
 }
 
@@ -729,27 +739,27 @@ void kernelModules_RemoveListOfModules(le_sls_List_t reqModuleName)
 //--------------------------------------------------------------------------------------------------
 void kernelModules_Remove(void)
 {
-    KModuleObj_t *m;
-    le_hashmap_It_Ref_t iter;
+    KModuleObj_t *modPtr;
     le_result_t result;
+    le_dls_Link_t* linkPtr;
 
-    iter = le_hashmap_GetIterator(KModuleHandler.moduleTable);
-
-    /* Iterate through the kernel module table */
-    while (le_hashmap_NextNode(iter) == LE_OK)
+    /* Traverse linked list in reverse alphabetical order of module name and traverse each module
+     * dependencies
+     */
+    while ((linkPtr = le_dls_PopTail(&ModuleAlphaOrderList)) != NULL)
     {
-        m = (KModuleObj_t*) le_hashmap_GetValue(iter);
-        LE_ASSERT(m && KMODULE_OBJECT_COOKIE == m->cookie);
+        modPtr = CONTAINER_OF(linkPtr, KModuleObj_t, dlsLink);
+        LE_ASSERT(modPtr != NULL);
 
-        if (m->isLoadManual)
+        if (modPtr->isLoadManual)
         {
             continue;
         }
 
-        result  = RemoveEachKernelModule(m);
+        result  = RemoveEachKernelModule(modPtr);
         if (result != LE_OK)
         {
-            LE_ERROR("Error in removing module %s", m->name);
+            LE_ERROR("Error in removing module %s", modPtr->name);
             break;
         }
     }
