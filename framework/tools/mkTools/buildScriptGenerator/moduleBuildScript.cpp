@@ -175,6 +175,10 @@ void ModuleBuildScriptGenerator_t::GenerateMakefile
         std::string cross = path::GetContainingDir(compilerPath) + "/"
                                 + compiler.substr(0, compiler.rfind('-') + 1);
         std::string arch = compiler.substr(0, compiler.find('-'));
+        if ((arch == "i586") || (arch == "i686"))
+        {
+            arch = "x86";
+        }
 
         makefile << "export CROSS_COMPILE := " << cross << "\n";
         makefile << "export ARCH := " << arch << "\n";
