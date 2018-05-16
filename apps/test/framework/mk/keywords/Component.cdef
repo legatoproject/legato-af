@@ -1,0 +1,12 @@
+requires:
+{
+    api:
+    {
+        testApi.api
+    }
+}
+
+sources:
+{
+    keywords.cpp
+}

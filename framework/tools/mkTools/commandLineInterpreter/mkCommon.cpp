@@ -323,7 +323,7 @@ void FindToolChain
     if (buildParams.beVerbose)
     {
         std::cout << "C compiler = " << buildParams.cCompilerPath << std::endl;
-        std::cout << "C++ compiler =" << buildParams.cxxCompilerPath << std::endl;
+        std::cout << "C++ compiler = " << buildParams.cxxCompilerPath << std::endl;
         std::cout << "Compiler sysroot = " << buildParams.sysrootPath << std::endl;
         std::cout << "Linker = " << buildParams.linkerPath << std::endl;
         std::cout << "Static lib archiver = " << buildParams.archiverPath << std::endl;

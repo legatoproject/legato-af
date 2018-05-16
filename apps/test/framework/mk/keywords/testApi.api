@@ -1,0 +1,4 @@
+FUNCTION Test
+(
+    uint8 namespace // Parameter with reserved C++ keyword
+);
