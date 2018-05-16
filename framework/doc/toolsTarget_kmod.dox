@@ -1,0 +1,27 @@
+/** @page toolsTarget_kmod kmod
+
+The @c kmod tool is used to load and unload kernel modules.  This command can only work with
+modules that have been built into the Legato Runtime Environment on your target.
+
+Kernel modules are able to be added through the Legato build system by bundling the kernel module
+with an @subpage defFilesMdef into a @subpage defFilesSdef "Legato System".
+
+<h1>Usage</h1>
+
+@code
+Load/Unload a Legato bundled kernel module.
+
+  Usage:
+
+  To load a module:
+
+      kmod load <moduleName>
+
+  To unload a module:
+
+      kmod unload <moduleName>
+@endcode
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

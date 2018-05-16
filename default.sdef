@@ -43,6 +43,7 @@ commands:
     pmtool = tools:/bin/pmtool
     gnss = tools:/bin/gnss
     uartMode = tools:/bin/uartMode
+    kmod = tools:/bin/kmod
 }
 
 bindings:

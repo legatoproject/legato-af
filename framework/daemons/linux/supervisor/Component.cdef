@@ -17,14 +17,15 @@ provides:
 {
     api:
     {
-        le_appCtrl.api      [async] [manual-start]
-        le_framework.api    [async] [manual-start]
-        wdog.api            [async] [manual-start]
-        le_appInfo.api              [manual-start]
-        le_appProc.api              [manual-start]
-        le_ima.api                  [manual-start]
-        le_sup_ctrl.api     [async] [manual-start]
-        supervisorWdog = watchdog/frameworkWdog.api  [manual-start]
+        le_appCtrl.api                              [async] [manual-start]
+        le_framework.api                            [async] [manual-start]
+        wdog.api                                    [async] [manual-start]
+        le_appInfo.api                                      [manual-start]
+        le_appProc.api                                      [manual-start]
+        le_ima.api                                          [manual-start]
+        le_sup_ctrl.api                             [async] [manual-start]
+        le_kernelModule.api                                 [manual-start]
+        supervisorWdog = watchdog/frameworkWdog.api         [manual-start]
     }
 }
 

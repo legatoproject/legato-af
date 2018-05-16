@@ -1062,3 +1062,88 @@ void kernelModules_Init(void)
                                              le_hashmap_HashString,
                                              le_hashmap_EqualsString);
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Load the specified kernel module that was bundled with a Legato system.
+ *
+ * @return
+ *   - LE_OK if the module has been successfully loaded into the kernel.
+ *   - LE_NOT_FOUND if the named module was not found in the system.
+ *   - LE_FAULT if errors were encountered when loading the module, or one of the module's
+ *     dependencies.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_kernelModule_Load
+(
+    const char* moduleName  ///< [IN] Name of the module to load.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    LE_INFO("Requested to load module '%s'.", moduleName);
+
+    KModuleObj_t* moduleInfoPtr = le_hashmap_Get(KModuleHandler.moduleTable, moduleName);
+
+    if (moduleInfoPtr == NULL)
+    {
+        LE_ERROR("Lookup for module '%s' failed.", moduleName);
+        return LE_NOT_FOUND;
+    }
+
+    le_result_t result = InstallEachKernelModule(moduleInfoPtr);
+
+    if (result == LE_OK)
+    {
+        LE_INFO("Load module, '%s', was successful.", moduleName);
+    }
+    else
+    {
+        LE_ERROR("Load module, '%s', failed.  (%s)", moduleName, LE_RESULT_TXT(result));
+    }
+
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unload the specified module.  The module to be unloaded must be one that was bundled with the
+ * system.
+ *
+ * @return
+ *   - LE_OK if the module has been successfully unloaded from the kernel.
+ *   - LE_NOT_FOUND if the named module was not found in the system.
+ *   - LE_FAULT if errors were encountered during the module, or one of the module's dependencies
+ *     unloading.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_kernelModule_Unload
+(
+    const char* moduleName  ///< [IN] Name of the module to unload.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    LE_INFO("Requested to unload module '%s'.", moduleName);
+
+    KModuleObj_t* moduleInfoPtr = le_hashmap_Get(KModuleHandler.moduleTable, moduleName);
+
+    if (moduleInfoPtr == NULL)
+    {
+        LE_ERROR("Lookup for module '%s' failed.", moduleName);
+        return LE_NOT_FOUND;
+    }
+
+    le_result_t result = RemoveEachKernelModule(moduleInfoPtr);
+
+    if (result == LE_OK)
+    {
+        LE_INFO("Unloading module, '%s', was successful.", moduleName);
+    }
+    else
+    {
+        LE_ERROR("Unloading module, '%s', failed.  (%s)", moduleName, LE_RESULT_TXT(result));
+    }
+
+    return result;
+}

@@ -14,6 +14,7 @@ executables:
     pmtool = (pmtool)
     gnss = (gnss)
     uartMode = (uartMode)
+    kmod = (moduleLoad)
 }
 
 bindings:
@@ -41,6 +42,8 @@ bindings:
     pmtool.pmtool.le_pm -> powerMgr.le_pm
     pmtool.pmtool.le_ulpm -> powerMgr.le_ulpm
     pmtool.pmtool.le_bootReason -> powerMgr.le_bootReason
+
+    kmod.moduleLoad.le_kernelModule -> <root>.le_kernelModule
 }
 
 bundles:

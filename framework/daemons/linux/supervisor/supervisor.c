@@ -448,6 +448,7 @@ static void StartFramework
     le_appInfo_AdvertiseService();
     le_appProc_AdvertiseService();
     le_ima_AdvertiseService();
+    le_kernelModule_AdvertiseService();
 
     // Initialize the apps sub system.
     apps_Init();
@@ -629,6 +630,7 @@ static void PrepareFullShutdown
     le_msg_HideService(le_appInfo_GetServiceRef());
     le_msg_HideService(le_appProc_GetServiceRef());
     le_msg_HideService(le_ima_GetServiceRef());
+    le_msg_HideService(le_kernelModule_GetServiceRef());
 }
 
 

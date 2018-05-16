@@ -1,0 +1,13 @@
+
+sources:
+{
+    moduleLoad.c
+}
+
+requires:
+{
+    api:
+    {
+        supervisor/le_kernelModule.api
+    }
+}

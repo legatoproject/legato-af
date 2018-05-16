@@ -7,9 +7,10 @@ These APIs are available:
 
 | Service                            | Description                                        | multi-app safe            |
 | ---------------------------------- | -------------------------------------------------- | :-----------------------: |
-| @subpage c_appCtrl                     | control Legato apps               |  x  |
-| @subpage c_appInfo                           |   Legato app info retrieval   |  x   |
-| @subpage c_framework  | control the Legato Framework           | x  |
+| @subpage c_appCtrl                 | control Legato apps                                | @image html green_dot.png |
+| @subpage c_appInfo                 | Legato app info retrieval                          | @image html green_dot.png |
+| @subpage c_framework               | control the Legato Framework                       | @image html green_dot.png |
+| @subpage c_kernelModule            | module load and unload                             | @image html green_dot.png |
 
 @warning Beware of the security risks associated with granting an app access to these services.
 Apps that can control the state of other apps can seriously interfere with system operation.

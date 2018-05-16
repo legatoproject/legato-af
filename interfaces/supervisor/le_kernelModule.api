@@ -1,0 +1,82 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_kernelModule Linux Kernel Module API
+ *
+ * @ref le_kernelModule_interface.h "API Reference"
+ *
+ * This API provides a way for applications to manually load and unload modules that were bundled
+ * with their system.
+ *
+ * Module dependencies and running module load scripts are handled automatically.  Only the name of
+ * the module in question is required.
+ *
+ * To load a module, call @c le_kernelModule_Load.  Unloading is similarly handled by
+ * @c le_kernelModule_Unload
+ *
+ * An example for loading a module:
+ *
+ * @code
+ * le_result_t result = le_kernelModule_Load(moduleName);
+ *
+ * LE_FATAL_IF(result != LE_OK, "Could not load the required module, %s.", moduleName);
+ *
+ * LE_INFO("Module, %s has been loaded.", moduleName);
+ * @endcode
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_kernelModule_interface.h
+ *
+ * Legato @ref c_kernelModule include file.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+/// Logical size of the module names accepted by this API.
+DEFINE NAME_LEN = 60;
+
+/// The size of the string including the trailing NULL.
+DEFINE NAME_LEN_BYTES = NAME_LEN + 1;
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Load the specified kernel module that was bundled with a Legato system.
+ *
+ * @return
+ *   - LE_OK if the module has been successfully loaded into the kernel.
+ *   - LE_NOT_FOUND if the named module was not found in the system.
+ *   - LE_FAULT if errors were encountered when loading the module, or one of the module's
+ *     dependencies.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Load
+(
+    string moduleName[NAME_LEN] IN  ///< Name of the module to load.
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unload the specified module.  The module to be unloaded must be one that was bundled with the
+ * system.
+ *
+ * @return
+ *   - LE_OK if the module has been successfully unloaded from the kernel.
+ *   - LE_NOT_FOUND if the named module was not found in the system.
+ *   - LE_FAULT if errors were encountered during the module, or one of the module's dependencies
+ *     unloading.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Unload
+(
+    string moduleName[NAME_LEN] IN  ///< Name of the module to unload.
+);
