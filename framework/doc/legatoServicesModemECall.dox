@@ -301,7 +301,7 @@ following events that indicates what is happening.
 | LE_ECALL_STATE_MSD_TX_STARTED            | MSD transmission is started.                                                                                                                                                  | Active                          |
 | LE_ECALL_STATE_LLNACK_RECEIVED           | LL-NACK received.                                                                                                                                                             | Active                          |
 | LE_ECALL_STATE_LLACK_RECEIVED            | LL-ACK received.                                                                                                                                                              | Active                          |
-| LE_ECALL_STATE_MSD_TX_COMPLETED          | MSD transmission is complete.                                                                                                                                                 | Active                          |
+| LE_ECALL_STATE_MSD_TX_COMPLETED          | Sent to application when at least two LL-ACK are detected.                                                                                                                    | Active                          |
 | LE_ECALL_STATE_MSD_TX_FAILED             | MSD transmission has failed.                                                                                                                                                  | Active                          |
 | LE_ECALL_STATE_ALACK_RECEIVED_POSITIVE   | AL-ACK received.                                                                                                                                                              | Active                          |
 | LE_ECALL_STATE_ALACK_RECEIVED_CLEAR_DOWN | AL-ACK clear-down received.                                                                                                                                                   | Active                          |
@@ -313,15 +313,15 @@ following events that indicates what is happening.
 | LE_ECALL_STATE_TIMEOUT_T2                | IVS Call ClearDown Fallback Timer (CCFT) If IVS does not receives the ALACK_CLEARDOWN from PSAP or PSAP does not hang up the call. Modem clears the call after T2expire.(1hr) | Active                          |
 | LE_ECALL_STATE_TIMEOUT_T3                | IVS INITIATION signal duration (2s)                                                                                                                                           | Active                          |
 | LE_ECALL_STATE_TIMEOUT_T5                | IVS wait for SEND MSD period ( 5s). Unmute the audio.                                                                                                                         | Active                          |
-| LE_ECALL_STATE_TIMEOUT_T6                | IVS wait for AL-ACK period (5s). Unmute the audio.                                                                                                                            | Active                          |
+| LE_ECALL_STATE_TIMEOUT_T6                | Started by IVS when LE_ECALL_STATE_MSD_TX_COMPLETED is received, and waits for AL-ACK period (5s). Stopped when LE_ECALL_STATE_COMPLETED is received. In this case or in the case of T6 expiry, the audio is unmuted. | Active                          |
 | LE_ECALL_STATE_TIMEOUT_T7                | IVS MSD maximum transmission time (20s). Unmute the audio.                                                                                                                    | Active                          |
 | LE_ECALL_STATE_TIMEOUT_T9                | IVS NAD minimum network registration period (3600s) Applies to eCall-Only mode.                                                                                               | Not Active                      |
 | LE_ECALL_STATE_TIMEOUT_T10               | IVS NAD network Deregistration Fallback Timer (DFT).                                                                                                                          | Not Active                      |
 
 @subsection eCall_leeCall_InBandTimer State InBand Modem Timer Values
 
-| Name   | Description                                                                                            | Default Value | Handled by LE_ECALL |
-| ------ | ------------------------------------------------------------------------------------------------------ |:-------------:|:-------------------:|
+| Name       | Description                                                                                        | Default Value | Handled by LE_ECALL |
+| ---------- | -------------------------------------------------------------------------------------------------- |:-------------:|:-------------------:|
 | T1         | Manually initiated eCall (MIeC) false triggering cancellation period.                              | -             | No                  |
 | T2         | IVS Call Cleardown Fallback Timer (CCFT)                                                           | 3600 s (1h)   | Yes                 |
 | T3         | IVS INITIATION signal duration                                                                     | 2 s           | Yes                 |
@@ -329,7 +329,7 @@ following events that indicates what is happening.
 | T6         | IVS wait for AL-ACK period                                                                         | 5 s           | Yes                 |
 | T7         | IVS MSD maximum transmission time                                                                  | 20s           | Yes                 |
 | T9         | IVS NAD minimum network registration period. See T10.                                              | 3600s         | Yes                 |
-| T10        | IVS NAD network "Deregistration Fallback Timer" (DFT). It is only applicable to eCall Only mode.   | 12h           |    Yes              |
+| T10        | IVS NAD network "Deregistration Fallback Timer" (DFT). It is only applicable to eCall Only mode.   | 12h           | Yes                 |
 
 @section eCall_ClientApp Client Application
 
