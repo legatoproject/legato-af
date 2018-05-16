@@ -121,6 +121,33 @@ executables:
 @endverbatim
 
 
+@section defFilesSdef_searchPathsModule moduleSearch
+
+The section @c moduleSearch is for adding to the module search path.
+This search path is used when specifing @b modules in your @c .sdef's @c kernelModules: section.
+Instead of having to specify a full path to your kernel modules, you can specify locations for where
+they should be found.
+
+For example:
+
+@verbatim
+
+moduleSearch:
+{
+    // My example modules are found in this directory.
+    $LEGATO_ROOT/drivers/example
+}
+
+// In the kernel modules section, you no longer need to give a full path to your mdef files.  The
+// mktools will search through all of your paths given in the moduleSearch section.
+kernelModules:
+{
+    // Include my sample module in the build.
+    example.mdef
+}
+@endverbatim
+
+
 @section defFilesSdef_apps apps
 
 An <c>apps:</c> section declares one or more apps to be deployed to

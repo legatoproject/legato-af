@@ -489,6 +489,10 @@ static parseTree::CompoundItem_t* ParseSection
     {
         return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
     }
+    else if (sectionName == "moduleSearch")
+    {
+        return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
+    }
     else if (sectionName == "kernelModules")
     {
         return ParseComplexSection(lexer, sectionNameTokenPtr, ParseModule);
