@@ -36,6 +36,11 @@ requires:
 #else
         [rw] /dev/spidev${SPI_PRIMARY_BUS}.0 /dev/
 #endif
+
+#if ${SPI_SECONDARY_BUS} = ""
+#else
+        [rw] /dev/spidev${SPI_SECONDARY_BUS}.0 /dev/
+#endif
     }
 }
 

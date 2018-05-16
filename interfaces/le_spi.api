@@ -123,7 +123,7 @@ REFERENCE DeviceHandle;
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Open
 (
-    string deviceName [128] IN,  ///< Handle for the SPI master to  open
+    string deviceName [128] IN,  ///< Handle for the SPI master to open
     DeviceHandle handle OUT      ///< Handle for passing to related functions in order to
                                  ///< access the SPI device
 );
