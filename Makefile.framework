@@ -235,7 +235,7 @@ start: liblegato $(BIN_DIR)
 		-DDISABLE_SMACK=$(DISABLE_SMACK) \
 		$(IMA_SMACK_FLAGS) \
 		-Wl,--enable-new-dtags,-rpath="\$$ORIGIN/../lib" \
-		-L$(LIB_DIR) -llegato -lssl -lcrypto
+		-L$(LIB_DIR) -llegato -lssl -lcrypto -ldl
 
 .PHONY: supervisor
 supervisor: liblegato $(BIN_DIR)

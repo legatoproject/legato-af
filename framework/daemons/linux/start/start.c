@@ -39,6 +39,7 @@
 #include "ima.h"
 #include <mntent.h>
 #include <linux/limits.h>
+#include <dlfcn.h>
 
 /// Default DAC permissions for directory creation.
 #define DEFAULT_PERMS (S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
@@ -56,6 +57,25 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Times before this mean time is unreliable.
+ *
+ * Time is chosen to be slightly after BIOS reset time of Jan 1 1980
+ */
+//--------------------------------------------------------------------------------------------------
+#define BIOS_RESET_TIME      315532900
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Any boots slower than 70s are not boot loops.
+ *
+ * Expected maximum time before boot loop is 30s to boot Legato + 30s runtime.
+ */
+//--------------------------------------------------------------------------------------------------
+#define BOOT_LOOP_TIME              70
+
+//--------------------------------------------------------------------------------------------------
+/**
  * return values for status test function
  */
 //--------------------------------------------------------------------------------------------------
@@ -66,6 +86,34 @@ typedef enum
     STATUS_TRYABLE,     ///< System has been tried fewer than MAX_TRIES times.
 }
 SystemStatus_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reset reasons.  Copied from le_info.api; must be kept in sync with those.
+ *
+ * Cannot use le_info.api directly here as we are at a lower layer.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    LE_INFO_RESET_UNKNOWN = 0,
+        ///< Unknown
+    LE_INFO_RESET_USER = 1,
+        ///< User request
+    LE_INFO_RESET_HARD = 2,
+        ///< Hardware switch
+    LE_INFO_RESET_UPDATE = 3,
+        ///< Software update
+    LE_INFO_RESET_CRASH = 4,
+        ///< Software crash
+    LE_INFO_POWER_DOWN = 5,
+        ///< Power Down
+    LE_INFO_VOLT_CRIT = 6,
+        ///< Power Down due to a critical voltage level
+    LE_INFO_TEMP_CRIT = 7
+        ///< Power Down due to a critical temperature level
+}
+le_info_Reset_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -84,6 +132,171 @@ static const char GoldenVersionFile[] = "/mnt/legato/system/version";
 static const char CurrentVersionFile[] = "/legato/systems/current/version";
 
 static const char NoRebootFile[] = "/tmp/legato/.DEBUG_NO_REBOOT";
+
+static const char GoldenAppsPath[] = "/mnt/legato/apps/";
+static const char GoldenModemService[] = "/mnt/legato/system/apps/modemService";
+static const char ModemPAPath[] = "/read-only/lib/libComponent_le_pa.so";
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Brownout voltage limit (in mV)
+ */
+//--------------------------------------------------------------------------------------------------
+static const uint32_t BrownoutVoltageLimit = 3525;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pointer to modem PA (assuming modem PA exists).
+ */
+//--------------------------------------------------------------------------------------------------
+static void* ModemPASoPtr;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Load the golden system modem PA
+ */
+//--------------------------------------------------------------------------------------------------
+static void LoadModemPA
+(
+    void
+)
+{
+    char ModemPA[PATH_MAX];
+
+    memset(ModemPA, 0, sizeof(ModemPA));
+
+    // Build up the path to the golden system's modem PA.  Use the golden system's PA to
+    // ensure it is compatible with this code.
+    ssize_t size = readlink(GoldenModemService, ModemPA, sizeof(ModemPA));
+
+    // Ensure size is reasonable.  Size should always be much less than max path length
+    // so we can afford to be conservative about how much space we need.
+    if ((size < 0) || (size + sizeof(GoldenAppsPath) + sizeof(ModemPAPath) > sizeof(ModemPA)))
+    {
+        goto done;
+    }
+
+    // NULL terminate (readlink does not NULL terminate)
+    ModemPA[size] = '\0';
+
+    // Find app hash -- link will be to current system, so may be broken if current is
+    // not the golden system.
+    char *appHash = strrchr(ModemPA, '/');
+    if (!appHash)
+    {
+        goto done;
+    }
+
+    appHash++;
+
+    // Assemble modem PA path in the golden system
+    // It's OK to not check buffer sizes at each step as we've already ensured
+    // there's enough space above.
+    memmove(ModemPA + sizeof(GoldenAppsPath) - 1, appHash, ModemPA + size + 1 - appHash);
+    memcpy(ModemPA, GoldenAppsPath, sizeof(GoldenAppsPath) - 1);
+    strcat(ModemPA, ModemPAPath);
+
+    LE_INFO("Trying to open modem PA %s", ModemPA);
+
+    ModemPASoPtr = dlopen(ModemPA, RTLD_LAZY);
+
+    if (ModemPASoPtr)
+    {
+        void (*ciPtr)(void) = dlsym(ModemPASoPtr, "_le_pa_COMPONENT_INIT");
+        if (ciPtr)
+        {
+            ciPtr();
+        }
+    }
+    else
+    {
+        LE_INFO("Could not open %s.", ModemPAPath);
+        LE_INFO("%s", dlerror());
+    }
+
+done:
+    if (!ModemPASoPtr)
+    {
+        LE_WARN("Cannot open modem PA; hardware state detection disabled");
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if system is in brownout
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsBrownout
+(
+    void
+)
+{
+    static int (*pa_ips_GetInputVoltage)(uint32_t*) = NULL;
+    uint32_t inputVoltage;
+
+    if (!ModemPASoPtr)
+    {
+        // No way to get voltage; assume not a brownout
+        return false;
+    }
+
+    pa_ips_GetInputVoltage = dlsym(ModemPASoPtr, "pa_ips_GetInputVoltage");
+    if (!pa_ips_GetInputVoltage)
+    {
+        // No way to get voltage; assume not a brownout
+        LE_WARN("Could not get function pa_ips_GetInputVoltage");
+        LE_INFO("%s", dlerror());
+        return false;
+    }
+
+    LE_INFO("Checking for brownout");
+    if (pa_ips_GetInputVoltage(&inputVoltage))
+    {
+        return false;
+    }
+
+    return inputVoltage < BrownoutVoltageLimit;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if system reboot is due to hardware reason (under voltage, over temperature)
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsHardwareFaultReset
+(
+    void
+)
+{
+    static int (*pa_info_GetResetInformation)(int*, char*, size_t) = NULL;
+    int resetCode;
+    char resetReason[64];
+
+    if (!ModemPASoPtr)
+    {
+        // No way to reset reason information -- assume not a hardware fault.
+        return false;
+    }
+
+    pa_info_GetResetInformation = dlsym(ModemPASoPtr, "pa_info_GetResetInformation");
+    if (!pa_info_GetResetInformation)
+    {
+        LE_WARN("Could not get function pa_info_GetResetInformation.");
+        LE_INFO("%s", dlerror());
+        return false;
+    }
+
+    LE_INFO("Checking reset reason");
+    if (pa_info_GetResetInformation(&resetCode, resetReason, sizeof(resetReason)))
+    {
+        return false;
+    }
+
+    return (resetCode == LE_INFO_VOLT_CRIT) || (resetCode == LE_INFO_TEMP_CRIT);
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1128,18 +1341,25 @@ static int ReadBootCount
     }
 
     int bootCount;
-    le_result_t result = le_utf8_ParseInt(&bootCount, bootCountBuf);
+    uint64_t bootTime;
+    int scanned;
+    scanned = sscanf(bootCountBuf, " %d %"SCNu64" ", &bootCount, &bootTime);
 
-    if (result == LE_OUT_OF_RANGE)
+    if (scanned < 1)
     {
-        LE_CRIT("Reboot count '%s' is out of range!", bootCountBuf);
+        LE_CRIT("Boot file contents '%s' malformed", bootCountBuf);
         return 0;
     }
 
-    if (result != LE_OK)
+    if (scanned == 2)
     {
-        LE_CRIT("Reboot count is malformed ('%s')", bootCountBuf);
-        return 0;
+        time_t now = time(NULL);
+
+        if ((now > (BIOS_RESET_TIME)) && (now > bootTime + BOOT_LOOP_TIME))
+        {
+            // Too long since last boot -- not a boot loop.
+            return 0;
+        }
     }
 
     return bootCount;
@@ -1157,7 +1377,7 @@ static void WriteBootCount
 {
     char bootCountBuf[64];
 
-    snprintf(bootCountBuf, sizeof(bootCountBuf), "%d", bootCount);
+    snprintf(bootCountBuf, sizeof(bootCountBuf), "%d %"PRIu64, bootCount, (uint64_t)time(NULL));
 
     if (WriteToFile(BOOT_COUNT_PATH, bootCountBuf, strlen(bootCountBuf)) < 0)
     {
@@ -1802,8 +2022,13 @@ static void CheckAndInstallCurrentSystem
         LE_INFO("The previous 'current' system has index %d.", currentIndex);
     }
 
+    // Hardware faults say nothing about whether we should rollback or not
+    if (IsHardwareFaultReset())
+    {
+        // Do nothing
+    }
     // Check if we should fall back to the "golden" system due to a boot loop
-    if ((newestIndex == currentIndex) &&
+    else if ((newestIndex == currentIndex) &&
         (GetStatus("current", NULL) == STATUS_GOOD) &&
         (ReadBootCount() >= MAX_TRIES))
     {
@@ -1926,6 +2151,14 @@ int main
     }
 
     daemon_Daemonize(5000); // 5 second timeout in case older supervisor is installed.
+
+    LoadModemPA();
+
+    // Wait until not in a brownout condition.
+    while (IsBrownout())
+    {
+        sleep(1);
+    }
 
     while(1)
     {
