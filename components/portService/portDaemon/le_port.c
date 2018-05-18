@@ -453,6 +453,11 @@ static void OpenLinksEventHandler
         {
             const char* memberName = le_json_GetString();
             memberName = strstr(memberName, "link");
+            if (instanceConfigPtr == NULL)
+            {
+                CleanJsonConfig();
+                break;
+            }
             if (NULL != memberName)
             {
                 LinkList_t* linkListPtr = (LinkList_t*)le_mem_ForceAlloc(LinkListPoolRef);

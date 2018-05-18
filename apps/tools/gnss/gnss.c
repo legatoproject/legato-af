@@ -1787,17 +1787,17 @@ static int GetSatelliteInfo
 {
     // Satellites information
     uint16_t satIdPtr[LE_GNSS_SV_INFO_MAX_LEN];
-    size_t satIdNumElements = sizeof(satIdPtr);
+    size_t satIdNumElements = NUM_ARRAY_MEMBERS(satIdPtr);
     le_gnss_Constellation_t satConstPtr[LE_GNSS_SV_INFO_MAX_LEN];
-    size_t satConstNumElements = sizeof(satConstPtr);
+    size_t satConstNumElements = NUM_ARRAY_MEMBERS(satConstPtr);
     bool satUsedPtr[LE_GNSS_SV_INFO_MAX_LEN];
-    size_t satUsedNumElements = sizeof(satUsedPtr);
+    size_t satUsedNumElements = NUM_ARRAY_MEMBERS(satUsedPtr);
     uint8_t satSnrPtr[LE_GNSS_SV_INFO_MAX_LEN];
-    size_t satSnrNumElements = sizeof(satSnrPtr);
+    size_t satSnrNumElements = NUM_ARRAY_MEMBERS(satSnrPtr);
     uint16_t satAzimPtr[LE_GNSS_SV_INFO_MAX_LEN];
-    size_t satAzimNumElements = sizeof(satAzimPtr);
+    size_t satAzimNumElements = NUM_ARRAY_MEMBERS(satAzimPtr);
     uint8_t satElevPtr[LE_GNSS_SV_INFO_MAX_LEN];
-    size_t satElevNumElements = sizeof(satElevPtr);
+    size_t satElevNumElements = NUM_ARRAY_MEMBERS(satElevPtr);
     int i;
 
     le_result_t result =  le_gnss_GetSatellitesInfo( positionSampleRef,
