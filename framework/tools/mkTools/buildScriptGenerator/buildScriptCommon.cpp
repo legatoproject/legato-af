@@ -12,7 +12,7 @@
 
 #include "mkTools.h"
 #include "buildScriptCommon.h"
-
+#include <dirent.h>
 
 namespace ninja
 {
@@ -413,5 +413,191 @@ void BuildScriptGenerator_t::GenerateNinjaScriptBuildStatement
     script << "\n\n";
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate a permission string for chmod based on the permissions we want to set on the target
+ * file.
+ **/
+//--------------------------------------------------------------------------------------------------
+std::string BuildScriptGenerator_t::PermissionsToModeFlags
+(
+    model::Permissions_t permissions  ///< The permission flags to set on the given file(s).
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string flags;
+    std::string executableFlag = (permissions.IsExecutable()?"+x":"-x");
+
+    flags = "u+rw" + executableFlag +
+            ",g+r" + executableFlag +
+            ",o" + executableFlag;
+
+    if (permissions.IsReadable())
+    {
+        flags += "+r";
+    }
+    else
+    {
+        flags += "-r";
+    }
+
+    if (permissions.IsWriteable())
+    {
+        flags += "+w";
+    }
+    else
+    {
+        flags += "-w";
+    }
+
+    return flags;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write to a given build script the build statement for bundling a single file into
+ * the staging area.
+ *
+ * Adds the absolute destination file path to the bundledFiles set.
+ **/
+//--------------------------------------------------------------------------------------------------
+void BuildScriptGenerator_t::GenerateFileBundleBuildStatement
+(
+    const model::FileSystemObject_t& fileObject,  ///< File object to generate
+    model::FileSystemObjectSet_t& bundledFiles    ///< Set to fill with bundled file paths.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string containingDir = path::GetContainingDir(fileObject.destPath);
+    auto bundledFileIter = bundledFiles.find(fileObject);
+
+    if (bundledFileIter == bundledFiles.end())
+    {
+        script << "build " << fileObject.destPath << " : BundleFile " << fileObject.srcPath << "\n"
+               << "  modeFlags = " << PermissionsToModeFlags(fileObject.permissions) << "\n";
+
+        bundledFiles.insert(fileObject);
+    }
+    else
+    {
+        if (fileObject.srcPath != bundledFileIter->srcPath)
+        {
+            fileObject.parseTreePtr->ThrowException(
+                mk::format(LE_I18N("error: Cannot bundle file '%s' with destination '%s' since it"
+                                   " conflicts with existing bundled file '%s'."),
+                           fileObject.srcPath, fileObject.destPath, bundledFileIter->srcPath)
+            );
+        }
+        else if (fileObject.permissions != bundledFileIter->permissions)
+        {
+            fileObject.parseTreePtr->ThrowException(
+                mk::format(LE_I18N("error: Cannot bundle file '%s'.  It is already bundled with"
+                                   " different permissions."),
+                           fileObject.srcPath)
+            );
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write to a given build script the build statements for bundling files from a directory into
+ * the staging area.
+ **/
+//--------------------------------------------------------------------------------------------------
+void BuildScriptGenerator_t::GenerateDirBundleBuildStatements
+(
+    const model::FileSystemObject_t& fileObject, ///< File system object to bundle
+    model::FileSystemObjectSet_t& bundledFiles   ///< Set to fill with bundled file paths.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Attempt to open the source as a directory stream.
+    DIR* dir = opendir(fileObject.srcPath.c_str());
+    if (dir == NULL)
+    {
+        // If failed for some reason other than this just not being a directory,
+        if (errno != ENOTDIR)
+        {
+            int err = errno;
+            fileObject.parseTreePtr->ThrowException(
+                mk::format(LE_I18N("Can't access file or directory '%s' (%s)"),
+                           fileObject.srcPath,
+                           strerror(err))
+            );
+        }
+        // If the source is not a directory,
+        else
+        {
+            fileObject.parseTreePtr->ThrowException(
+                mk::format(LE_I18N("Not a directory: '%s'."), fileObject.srcPath)
+            );
+        }
+    }
+
+    // Loop over list of directory contents.
+    for (;;)
+    {
+        // Setting errno so as to be able to detect errors from end of directory
+        // (as recommended in the documentation).
+        errno = 0;
+
+        // Read an entry from the directory.
+        struct dirent* entryPtr = readdir(dir);
+
+        if (entryPtr == NULL)
+        {
+            if (errno != 0)
+            {
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("Internal error: readdir() failed.  Errno = %s"),
+                               strerror(errno))
+                );
+            }
+            else
+            {
+                // Hit end of the directory.  Nothing more to do.
+                break;
+            }
+        }
+        // Skip "." and ".."
+        else if ((strcmp(entryPtr->d_name, ".") != 0) && (strcmp(entryPtr->d_name, "..") != 0))
+        {
+            auto entrySrcPath = path::Combine(fileObject.srcPath, entryPtr->d_name);
+            auto entryDestPath = path::Combine(fileObject.destPath, entryPtr->d_name);
+
+            // If this is a directory, then recursively descend into it.
+            if (file::DirectoryExists(entrySrcPath))
+            {
+                GenerateDirBundleBuildStatements(model::FileSystemObject_t(entrySrcPath,
+                                                                           entryDestPath,
+                                                                           fileObject.permissions,
+                                                                           &fileObject),
+                                                 bundledFiles);
+            }
+            // If this is a file, create a build statement for it.
+            else if (file::FileExists(entrySrcPath))
+            {
+                GenerateFileBundleBuildStatement(model::FileSystemObject_t(entrySrcPath,
+                                                                           entryDestPath,
+                                                                           fileObject.permissions,
+                                                                           &fileObject),
+                                                 bundledFiles);
+            }
+            // If this is anything else, we don't support it.
+            else
+            {
+                fileObject.parseTreePtr->ThrowException(
+                    mk::format(LE_I18N("File system object is not a directory or a file: '%s'."),
+                               entrySrcPath)
+                );
+            }
+        }
+    }
+
+    closedir(dir);
+}
 
 } // namespace ninja

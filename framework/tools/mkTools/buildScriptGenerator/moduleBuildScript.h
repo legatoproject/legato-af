@@ -36,6 +36,15 @@ class ModuleBuildScriptGenerator_t : protected RequireBaseGenerator_t
 
         virtual void GenerateBuildStatements(model::Module_t* modulePtr);
         virtual void Generate(model::Module_t* modulePtr);
+        virtual void GenerateModuleBundleBuildStatement(model::Module_t* modulePtr,
+                                                        const std::string& outputDir);
+        virtual void GenerateStagingBundleBuildStatements(model::Module_t* modulePtr);
+        virtual void GenerateFileBundleBuildStatement(model::FileSystemObjectSet_t& bundledFiles,
+                                                model::Module_t* appPtr,
+                                                const model::FileSystemObject_t* fileSystemObjPtr);
+        virtual void GenerateDirBundleBuildStatements(model::FileSystemObjectSet_t& bundledFiles,
+                                                model::Module_t* modulePtr,
+                                                const model::FileSystemObject_t* fileSystemObjPtr);
 
         virtual ~ModuleBuildScriptGenerator_t() {}
 };

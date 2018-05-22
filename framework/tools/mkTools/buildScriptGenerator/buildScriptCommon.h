@@ -70,8 +70,14 @@ class BuildScriptGenerator_t
         virtual void GenerateBuildRules(void);
 
         virtual void GenerateNinjaScriptBuildStatement(const std::set<std::string>& dependencies);
+        virtual void GenerateFileBundleBuildStatement(const model::FileSystemObject_t& fileObject,
+                                                      model::FileSystemObjectSet_t& bundledFiles);
+        virtual void GenerateDirBundleBuildStatements(const model::FileSystemObject_t& fileObject,
+                                                      model::FileSystemObjectSet_t& bundledFiles);
 
         std::string GetPathEnvVarDecl(void);
+        std::string PermissionsToModeFlags(model::Permissions_t permissions);
+
     public:
         BuildScriptGenerator_t(const std::string scriptPath,
                                const mk::BuildParams_t& buildParams);

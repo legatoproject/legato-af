@@ -261,6 +261,153 @@ static void AddRequiredItems
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Adds the items from a given "bundles:" section to a given Module_t object.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddBundledItems
+(
+    model::Module_t* modulePtr,
+    const parseTree::CompoundItem_t* sectionPtr   ///< Ptr to "bundles:" section in the parse tree.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Bundles section is comprised of subsections (either "file:" or "dir:") which all have
+    // the same basic structure (ComplexSection_t).
+    // "file:" sections contain BundledFile_t objects (with type BUNDLED_FILE).
+    // "dir:" sections contain BundledDir_t objects (with type BUNDLED_DIR).
+    for (auto memberPtr : parseTree::ToComplexSectionPtr(sectionPtr)->Contents())
+    {
+        auto subsectionPtr = parseTree::ToCompoundItemListPtr(memberPtr);
+
+        if (subsectionPtr->Name() == "file")
+        {
+            for (auto itemPtr : subsectionPtr->Contents())
+            {
+                auto bundledFileTokenListPtr = parseTree::ToTokenListPtr(itemPtr);
+
+                auto bundledFilePtr = GetBundledItem(bundledFileTokenListPtr);
+
+                // If the source path is not absolute, then it is relative to the directory
+                // containing the .adef file.
+                if (!path::IsAbsolute(bundledFilePtr->srcPath))
+                {
+                    bundledFilePtr->srcPath = path::Combine(modulePtr->dir, bundledFilePtr->srcPath);
+                }
+
+                // Make sure that the source path exists and is a file.
+                if (file::FileExists(bundledFilePtr->srcPath))
+                {
+                    modulePtr->bundledFiles.insert(
+                        std::shared_ptr<model::FileSystemObject_t>(bundledFilePtr));
+                }
+                else if (file::AnythingExists(bundledFilePtr->srcPath))
+                {
+                    bundledFileTokenListPtr->ThrowException(
+                        mk::format(LE_I18N("Not a regular file: '%s'."), bundledFilePtr->srcPath)
+                    );
+                }
+                else
+                {
+                    bundledFileTokenListPtr->ThrowException(
+                        mk::format(LE_I18N("File not found: '%s'."),  bundledFilePtr->srcPath)
+                    );
+                }
+            }
+        }
+        else if (subsectionPtr->Name() == "dir")
+        {
+            for (auto itemPtr : subsectionPtr->Contents())
+            {
+                auto bundledDirTokenListPtr = parseTree::ToTokenListPtr(itemPtr);
+
+                auto bundledDirPtr = GetBundledItem(bundledDirTokenListPtr);
+
+                // If the source path is not absolute, then it is relative to the directory
+                // containing the .adef file.
+                if (!path::IsAbsolute(bundledDirPtr->srcPath))
+                {
+                    bundledDirPtr->srcPath = path::Combine(modulePtr->dir, bundledDirPtr->srcPath);
+                }
+
+                // Make sure that the source path exists and is a directory.
+                if (file::DirectoryExists(bundledDirPtr->srcPath))
+                {
+                    modulePtr->bundledDirs.insert(
+                        std::shared_ptr<model::FileSystemObject_t>(bundledDirPtr));
+                }
+                else if (file::AnythingExists(bundledDirPtr->srcPath))
+                {
+                    bundledDirTokenListPtr->ThrowException(
+                        mk::format(LE_I18N("Not a directory: '%s'."), bundledDirPtr->srcPath)
+                    );
+                }
+                else
+                {
+                    bundledDirTokenListPtr->ThrowException(
+                        mk::format(LE_I18N("Directory not found: '%s'."), bundledDirPtr->srcPath)
+                    );
+                }
+            }
+        }
+        else
+        {
+            subsectionPtr->ThrowException(
+                mk::format(LE_I18N("Internal error: Unexpected content item: %s."),
+                           subsectionPtr->TypeName())
+            );
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Model a "scripts:" section.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddScripts
+(
+    model::Module_t* modulePtr,
+    const parseTree::Content_t* sectionPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto subsectionPtr : ToCompoundItemListPtr(sectionPtr)->Contents())
+    {
+        auto& subsectionName = subsectionPtr->firstTokenPtr->text;
+
+        auto simpleSectionPtr = ToSimpleSectionPtr(subsectionPtr);
+        auto scriptPath =
+            path::Unquote(DoSubstitution(simpleSectionPtr->Text(), simpleSectionPtr));
+
+        if (!file::FileExists(scriptPath))
+        {
+            // Throw exception: file doesn't exist
+            subsectionPtr->ThrowException(
+                mk::format(LE_I18N("Script file '%s' does not exist."),  scriptPath)
+            );
+        }
+
+        if ("install" == subsectionName)
+        {
+           modulePtr->installScript = scriptPath;
+        }
+        else if ("remove" == subsectionName)
+        {
+            modulePtr->removeScript = scriptPath;
+        }
+        else
+        {
+            subsectionPtr->ThrowException(
+                mk::format(LE_I18N("Internal error: Unrecognized sub-section '%s'."),
+                           subsectionName)
+            );
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get a conceptual model for a module whose .mdef file can be found at a given path.
  *
  * @return Pointer to the module object.
@@ -336,6 +483,14 @@ model::Module_t* GetModule
         else if (sectionName == "load")
         {
             SetLoad(modulePtr, ToSimpleSectionPtr(sectionPtr));
+        }
+        else if (sectionName == "bundles")
+        {
+            AddBundledItems(modulePtr, sectionPtr);
+        }
+        else if (sectionName == "scripts")
+        {
+            AddScripts(modulePtr, sectionPtr);
         }
         else
         {

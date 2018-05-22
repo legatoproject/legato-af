@@ -932,6 +932,71 @@ static void GenerateConfigEachModuleFile
     cfgStream << "      }\n";
     cfgStream << "    }\n";
 
+    // Create the "bundles" section.
+    cfgStream << "    \"bundles\"" << std::endl;
+    cfgStream << "    {" << std::endl;
+
+    // Create nodes under "files", where each node is named with an index, starting at 0.
+    cfgStream << "      \"file\"" << std::endl;
+    cfgStream << "      {" << std::endl;
+
+    size_t index = 0;
+
+    for (auto mappingPtr : modulePtr->bundledFiles)
+    {
+        GenerateBundledObjectMappingConfig(cfgStream, index++, mappingPtr.get());
+    }
+
+    cfgStream << "      }" << std::endl << std::endl;
+
+    // Create nodes under "dirs", where each node is named with an index, starting at 0.
+    cfgStream << "      \"dir\"" << std::endl;
+    cfgStream << "      {" << std::endl;
+
+    index = 0;
+
+    for (auto mappingPtr : modulePtr->bundledDirs)
+    {
+        GenerateBundledObjectMappingConfig(cfgStream, index++, mappingPtr.get());
+    }
+
+    cfgStream << "      }" << std::endl;
+
+    cfgStream << "    }" << std::endl << std::endl;
+
+
+    // Create "scripts" section:
+    cfgStream << "    \"scripts\"" << std::endl;
+    cfgStream << "    {" << std::endl;
+
+    std::string scriptFirstFilePath = "/legato/systems/current/modules/files/";
+    std::string scriptSecondFilePath = path::Combine(modulePtr->name, "/scripts/");
+    std::string scriptFilePath = path::Combine(scriptFirstFilePath, scriptSecondFilePath);
+
+    if (!modulePtr->installScript.empty())
+    {
+        std::string installScriptPath = path::Combine(scriptFilePath,
+                                                      path::GetLastNode(modulePtr->installScript));
+        cfgStream << "      \"install\" \"" << installScriptPath << "\"" << std::endl;
+    }
+    else
+    {
+        cfgStream << "      \"install\" \"" << modulePtr->installScript << "\"" << std::endl;
+    }
+
+    if (!modulePtr->removeScript.empty())
+    {
+        std::string removeScriptPath = path::Combine(scriptFilePath,
+                                                     path::GetLastNode(modulePtr->removeScript));
+        cfgStream << "      \"remove\" \"" << removeScriptPath << "\"" << std::endl;
+    }
+    else
+    {
+        cfgStream << "      \"remove\" \"" << modulePtr->removeScript << "\"" << std::endl;
+    }
+
+    cfgStream << "    }" << std::endl;
+
     cfgStream << "  }\n";
 }
 

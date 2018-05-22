@@ -94,6 +94,80 @@ to manual load), then alpha will be installed only when helloWorld is started us
 @c app @c start @c helloWorld and alpha will be removed when helloWorld is stopped using
 @c app @c stop @c helloWorld.
 
+@section defFilesMdef_bundles bundles
+
+Kernel modules might need additional files to work correctly. Examples of files that you would
+bundle with a kernel module may be binaries or firmware images. You can add files and directories
+in @c bundles: section that will be bundled with the kernel module and will be copied from the
+build host to the target such that they are available to the module at runtime. You can then
+configure the files using a script when loading and unloading the module.
+
+@code
+bundles:
+{
+    file:
+    {
+        $CURDIR/bin/a.bin /bin/a.bin
+        $CURDIR/firmware/b.img /firmware/b.img
+    }
+
+    dir:
+    {
+        $CURDIR/dir/  /dir
+    }
+}
+@code
+
+The build system path and target path needs to be specified for each of the files or directories.
+The build system path is on your @b dev @b machine where the file is located at build time. The
+target path is the file system path on the target where the file will appear at runtime. If the
+path ends with '/', it means the directory path where the source object (file or directory) will be
+copied. The destination object will have the same name as the source object. The default file path
+on the target is located at /legato/systems/current/modules/files/modulename/.
+
+@section defFilesMdef_scripts scripts
+
+Lists the installation and removal scripts for the kernel module. It is @b mandatory to add a
+@c scripts: section if you have additional files bundled. The scripts must include @c insmod and
+@c rmmod to handle installation and removal of the modules othewise the modules will not be loaded
+or unloaded.
+
+@code
+scripts:
+{
+    install:  $CURDIR/scripts/install.sh
+    remove:   $CURDIR/scripts/remove.sh
+}
+@code
+
+@c install: specifies the build system path of the module installation script where the script
+is located at build time.
+
+@c remove: specifies the build system path of the module removal script where the script is
+located at build time. The default script file path on the target is located at
+/legato/system/current/modules/files/modulename/scripts/.
+
+Example of install.sh:
+@code
+#!/bin/sh
+
+KO_PATH=$1
+
+insmod $KO_PATH id="first" port=0x330
+@code
+
+Example of remove.sh:
+@code
+#!/bin/sh
+
+KO_PATH=$1
+
+rmmod $KO_PATH
+@code
+
+@warning The installation script must handle the loading of the module using @c insmod and the
+removal script must handle the unloading of the module using @c rmmod.
+
 @section defFilesMdef_requires requires
 
 The @c requires: section specifies various requirements the module needs from its runtime

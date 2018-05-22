@@ -13,14 +13,14 @@ namespace target
 {
 
 /**
- * Target-specific info for apps building on systems with a filesystem.
+ * Target-specific info for nodes building on systems with a filesystem.
  */
-class FileSystemAppInfo_t : public model::TargetInfo_t
+class FileSystemInfo_t : public model::TargetInfo_t
 {
     public:
         model::FileSystemObjectSet_t allBundledFiles;
 
-        FileSystemAppInfo_t() {}
+        FileSystemInfo_t() {}
 };
 
 /**

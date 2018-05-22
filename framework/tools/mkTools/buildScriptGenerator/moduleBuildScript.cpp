@@ -88,6 +88,37 @@ void ModuleBuildScriptGenerator_t::GenerateBuildStatements
                               modulePtr->defFilePtr->path));
     }
     script << "\n";
+    // Generate build statament
+    GenerateModuleBundleBuildStatement(modulePtr, buildParams.outputDir);
+    script << "\n";
+
+    if ((!modulePtr->installScript.empty())
+         && (!(modulePtr->removeScript.empty())))
+    {
+        std::string stageInstallPath;
+        stageInstallPath +="staging/modules/files/";
+        stageInstallPath += modulePtr->name;
+        stageInstallPath += "/scripts/";
+        stageInstallPath += path::GetLastNode(modulePtr->installScript);
+
+        script << "build " << "$builddir/" << stageInstallPath << ": ";
+
+        // Build statement for bundling the module install script
+        script << "BundleFile " << modulePtr->installScript << "\n"
+               << "  modeFlags = u+rwx,g+rx-w,o+rx-w\n";
+
+        std::string stageRemovePath;
+        stageRemovePath +="staging/modules/files/";
+        stageRemovePath += modulePtr->name;
+        stageRemovePath += "/scripts/";
+        stageRemovePath += path::GetLastNode(modulePtr->removeScript);
+
+        script << "build " << "$builddir/" << stageRemovePath << ": ";
+
+        // Build statement for bundling the module remove file
+        script << "BundleFile " << modulePtr->removeScript << "\n"
+               << "  modeFlags = u+rwx,g+rx-w,o+rx-w\n";
+    }
 }
 
 
@@ -198,7 +229,115 @@ void ModuleBuildScriptGenerator_t::GenerateMakefile
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Generate a build script for a pre-built kernel module.
+ * Write to a given build script the build statement for bundling a single file into
+ * the staging area.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ModuleBuildScriptGenerator_t::GenerateFileBundleBuildStatement
+(
+    model::FileSystemObjectSet_t& bundledFiles, ///< Set to fill with bundled file paths.
+    model::Module_t* modulePtr, ///< Module to bundle the file into.
+    const model::FileSystemObject_t* fileSystemObjPtr  ///< File bundling info.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // The file will be added to the module's staging area.
+    path::Path_t destPath = "$builddir/staging/modules/files/";
+    destPath += modulePtr->name;
+    destPath += fileSystemObjPtr->destPath;
+
+    baseGeneratorPtr->GenerateFileBundleBuildStatement(model::FileSystemObject_t(
+                                                                fileSystemObjPtr->srcPath,
+                                                                destPath.str,
+                                                                fileSystemObjPtr->permissions,
+                                                                fileSystemObjPtr),
+                                                       bundledFiles);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write to a given build script the build statements for bundling files from a directory into
+ * the staging area.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ModuleBuildScriptGenerator_t::GenerateDirBundleBuildStatements
+(
+    model::FileSystemObjectSet_t& bundledFiles, ///< Set to fill with bundled file paths.
+    model::Module_t* modulePtr, ///< Module to bundle the directory into.
+    const model::FileSystemObject_t* fileSystemObjPtr  ///< Directory bundling info.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // The files will be added to the modules's staging area.
+    path::Path_t destPath = "$builddir/staging/modules/files/";
+    destPath += modulePtr->name;
+    destPath += fileSystemObjPtr->destPath;
+
+    baseGeneratorPtr->GenerateDirBundleBuildStatements(model::FileSystemObject_t(
+                                                                fileSystemObjPtr->srcPath,
+                                                                destPath.str,
+                                                                fileSystemObjPtr->permissions,
+                                                                fileSystemObjPtr),
+                                                       bundledFiles);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write to a given build script the build statements for bundling a given module's files into the
+ * module's staging area.
+ *
+ **/
+//--------------------------------------------------------------------------------------------------
+void ModuleBuildScriptGenerator_t::GenerateStagingBundleBuildStatements
+(
+    model::Module_t* modulePtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto& allBundledFiles = modulePtr->getTargetInfo<target::FileSystemInfo_t>()->allBundledFiles;
+
+    for (auto fileSystemObjPtr : modulePtr->bundledFiles)
+    {
+        GenerateFileBundleBuildStatement(allBundledFiles,
+                                         modulePtr,
+                                         fileSystemObjPtr.get());
+    }
+
+    for (auto fileSystemObjPtr : modulePtr->bundledDirs)
+    {
+        GenerateDirBundleBuildStatements(allBundledFiles,
+                                         modulePtr,
+                                         fileSystemObjPtr.get());
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write to a given script the build statements for packing up everything into a module bundle.
+ *
+ **/
+//--------------------------------------------------------------------------------------------------
+void ModuleBuildScriptGenerator_t::GenerateModuleBundleBuildStatement
+(
+    model::Module_t* modulePtr,
+    const std::string& outputDir  ///< Path to the directory into which built module will be added.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Give this a FS target info
+    modulePtr->setTargetInfo(new target::FileSystemInfo_t());
+
+    // Generate build statements for bundling files into the staging area.
+    GenerateStagingBundleBuildStatements(modulePtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate a build script for a kernel module.
  */
 //--------------------------------------------------------------------------------------------------
 void ModuleBuildScriptGenerator_t::Generate

@@ -46,6 +46,42 @@ static parseTree::CompoundItem_t* ParseRequiresSubsection
     }
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parse "scripts:" section and parse "installScript:" and "removeScript:" sub-sections.
+ *
+ * @return Pointer to the item.
+ */
+//--------------------------------------------------------------------------------------------------
+static parseTree::CompoundItem_t* ParseScriptsSubsection
+(
+    Lexer_t& lexer
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto subsectionNameTokenPtr = lexer.Pull(parseTree::Token_t::NAME);
+
+    const std::string& subsectionName = subsectionNameTokenPtr->text;
+
+    if (subsectionName == "install")
+    {
+        return ParseSimpleSection(lexer, subsectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
+    }
+    else if (subsectionName == "remove")
+    {
+        return ParseSimpleSection(lexer, subsectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
+    }
+    else
+    {
+        lexer.ThrowException(
+            mk::format(LE_I18N("Unexpected subsection name '%s' in 'scripts' section."),
+                       subsectionName));
+        return NULL;
+    }
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Parses a section in a .mdef file.
@@ -91,6 +127,14 @@ static parseTree::CompoundItem_t* ParseSection
     else if (sectionName == "load")
     {
         return ParseSimpleSection(lexer, sectionNameTokenPtr, parseTree::Token_t::NAME);
+    }
+    else if (sectionName == "bundles")
+    {
+        return ParseComplexSection(lexer, sectionNameTokenPtr, ParseBundlesSubsection);
+    }
+    else if (sectionName == "scripts")
+    {
+        return ParseComplexSection(lexer, sectionNameTokenPtr, ParseScriptsSubsection);
     }
     else
     {

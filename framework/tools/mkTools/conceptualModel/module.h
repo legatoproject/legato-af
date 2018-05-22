@@ -52,6 +52,12 @@ struct Module_t : public HasTargetInfo_t
 
     enum {AUTO, MANUAL} loadTrigger;  ///< Module is loaded either auto at startup or manually
 
+    FileObjectPtrSet_t bundledFiles; ///< List of files to be bundled in the module.
+    FileObjectPtrSet_t bundledDirs;  ///< List of directories to be bundled in the module.
+
+    std::string installScript;   ///< Install script file path
+    std::string removeScript;    ///< Remove script file path
+
     void SetBuildEnvironment(ModuleBuildType_t type, std::string path);  ///< Set build targets and
                                                                          ///< environment
 

@@ -335,6 +335,10 @@ void SystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
         {
             script << " $builddir/" << it.second->path;
         }
+        for (auto filePath : modulePtr->getTargetInfo<target::FileSystemInfo_t>()->allBundledFiles)
+        {
+            script << " " << filePath.destPath;
+        }
     }
 
     // This must also be done again if any of the Legato framework daemons or on-target

@@ -21,10 +21,6 @@ class AppBuildScriptGenerator_t : protected RequireExeGenerator_t
 
     protected:
         virtual void GenerateCommentHeader(model::App_t* appPtr);
-        virtual void GenerateFileBundleBuildStatement(const model::FileSystemObject_t& fileObject,
-                                                      model::FileSystemObjectSet_t& bundledFiles);
-        virtual void GenerateDirBundleBuildStatements(const model::FileSystemObject_t& fileObject,
-                                                      model::FileSystemObjectSet_t& bundledFiles);
         virtual void GenerateFileBundleBuildStatement(
             model::FileSystemObjectSet_t& bundledFiles,
             model::App_t* appPtr,
