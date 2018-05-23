@@ -29,7 +29,7 @@
 //--------------------------------------------------------------------------------------------------
 #define MS_WDOG_INTERVAL 8
 
-static struct gpioSysfs_Gpio SysfsGpioPin1 = {1,"gpio1",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin1 = {1,"gpio1",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin1 = &SysfsGpioPin1;
 
 void gpioPin1_InputMonitorHandlerFunc (int fd, short events)
@@ -163,7 +163,7 @@ le_result_t le_gpioPin1_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin2 = {2,"gpio2",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin2 = {2,"gpio2",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin2 = &SysfsGpioPin2;
 
 void gpioPin2_InputMonitorHandlerFunc (int fd, short events)
@@ -297,7 +297,7 @@ le_result_t le_gpioPin2_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin3 = {3,"gpio3",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin3 = {3,"gpio3",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin3 = &SysfsGpioPin3;
 
 void gpioPin3_InputMonitorHandlerFunc (int fd, short events)
@@ -431,7 +431,7 @@ le_result_t le_gpioPin3_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin4 = {4,"gpio4",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin4 = {4,"gpio4",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin4 = &SysfsGpioPin4;
 
 void gpioPin4_InputMonitorHandlerFunc (int fd, short events)
@@ -565,7 +565,7 @@ le_result_t le_gpioPin4_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin5 = {5,"gpio5",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin5 = {5,"gpio5",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin5 = &SysfsGpioPin5;
 
 void gpioPin5_InputMonitorHandlerFunc (int fd, short events)
@@ -699,7 +699,7 @@ le_result_t le_gpioPin5_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin6 = {6,"gpio6",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin6 = {6,"gpio6",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin6 = &SysfsGpioPin6;
 
 void gpioPin6_InputMonitorHandlerFunc (int fd, short events)
@@ -833,7 +833,7 @@ le_result_t le_gpioPin6_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin7 = {7,"gpio7",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin7 = {7,"gpio7",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin7 = &SysfsGpioPin7;
 
 void gpioPin7_InputMonitorHandlerFunc (int fd, short events)
@@ -967,7 +967,7 @@ le_result_t le_gpioPin7_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin8 = {8,"gpio8",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin8 = {8,"gpio8",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin8 = &SysfsGpioPin8;
 
 void gpioPin8_InputMonitorHandlerFunc (int fd, short events)
@@ -1101,7 +1101,7 @@ le_result_t le_gpioPin8_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin9 = {9,"gpio9",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin9 = {9,"gpio9",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin9 = &SysfsGpioPin9;
 
 void gpioPin9_InputMonitorHandlerFunc (int fd, short events)
@@ -1235,7 +1235,7 @@ le_result_t le_gpioPin9_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin10 = {10,"gpio10",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin10 = {10,"gpio10",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin10 = &SysfsGpioPin10;
 
 void gpioPin10_InputMonitorHandlerFunc (int fd, short events)
@@ -1369,7 +1369,7 @@ le_result_t le_gpioPin10_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin11 = {11,"gpio11",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin11 = {11,"gpio11",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin11 = &SysfsGpioPin11;
 
 void gpioPin11_InputMonitorHandlerFunc (int fd, short events)
@@ -1503,7 +1503,7 @@ le_result_t le_gpioPin11_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin12 = {12,"gpio12",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin12 = {12,"gpio12",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin12 = &SysfsGpioPin12;
 
 void gpioPin12_InputMonitorHandlerFunc (int fd, short events)
@@ -1637,7 +1637,7 @@ le_result_t le_gpioPin12_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin13 = {13,"gpio13",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin13 = {13,"gpio13",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin13 = &SysfsGpioPin13;
 
 void gpioPin13_InputMonitorHandlerFunc (int fd, short events)
@@ -1771,7 +1771,7 @@ le_result_t le_gpioPin13_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin14 = {14,"gpio14",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin14 = {14,"gpio14",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin14 = &SysfsGpioPin14;
 
 void gpioPin14_InputMonitorHandlerFunc (int fd, short events)
@@ -1905,7 +1905,7 @@ le_result_t le_gpioPin14_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin15 = {15,"gpio15",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin15 = {15,"gpio15",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin15 = &SysfsGpioPin15;
 
 void gpioPin15_InputMonitorHandlerFunc (int fd, short events)
@@ -2039,7 +2039,7 @@ le_result_t le_gpioPin15_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin16 = {16,"gpio16",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin16 = {16,"gpio16",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin16 = &SysfsGpioPin16;
 
 void gpioPin16_InputMonitorHandlerFunc (int fd, short events)
@@ -2173,7 +2173,7 @@ le_result_t le_gpioPin16_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin17 = {17,"gpio17",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin17 = {17,"gpio17",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin17 = &SysfsGpioPin17;
 
 void gpioPin17_InputMonitorHandlerFunc (int fd, short events)
@@ -2307,7 +2307,7 @@ le_result_t le_gpioPin17_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin18 = {18,"gpio18",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin18 = {18,"gpio18",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin18 = &SysfsGpioPin18;
 
 void gpioPin18_InputMonitorHandlerFunc (int fd, short events)
@@ -2441,7 +2441,7 @@ le_result_t le_gpioPin18_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin19 = {19,"gpio19",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin19 = {19,"gpio19",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin19 = &SysfsGpioPin19;
 
 void gpioPin19_InputMonitorHandlerFunc (int fd, short events)
@@ -2575,7 +2575,7 @@ le_result_t le_gpioPin19_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin20 = {20,"gpio20",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin20 = {20,"gpio20",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin20 = &SysfsGpioPin20;
 
 void gpioPin20_InputMonitorHandlerFunc (int fd, short events)
@@ -2709,7 +2709,7 @@ le_result_t le_gpioPin20_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin21 = {21,"gpio21",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin21 = {21,"gpio21",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin21 = &SysfsGpioPin21;
 
 void gpioPin21_InputMonitorHandlerFunc (int fd, short events)
@@ -2843,7 +2843,7 @@ le_result_t le_gpioPin21_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin22 = {22,"gpio22",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin22 = {22,"gpio22",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin22 = &SysfsGpioPin22;
 
 void gpioPin22_InputMonitorHandlerFunc (int fd, short events)
@@ -2977,7 +2977,7 @@ le_result_t le_gpioPin22_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin23 = {23,"gpio23",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin23 = {23,"gpio23",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin23 = &SysfsGpioPin23;
 
 void gpioPin23_InputMonitorHandlerFunc (int fd, short events)
@@ -3111,7 +3111,7 @@ le_result_t le_gpioPin23_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin24 = {24,"gpio24",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin24 = {24,"gpio24",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin24 = &SysfsGpioPin24;
 
 void gpioPin24_InputMonitorHandlerFunc (int fd, short events)
@@ -3245,7 +3245,7 @@ le_result_t le_gpioPin24_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin25 = {25,"gpio25",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin25 = {25,"gpio25",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin25 = &SysfsGpioPin25;
 
 void gpioPin25_InputMonitorHandlerFunc (int fd, short events)
@@ -3379,7 +3379,7 @@ le_result_t le_gpioPin25_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin26 = {26,"gpio26",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin26 = {26,"gpio26",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin26 = &SysfsGpioPin26;
 
 void gpioPin26_InputMonitorHandlerFunc (int fd, short events)
@@ -3513,7 +3513,7 @@ le_result_t le_gpioPin26_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin27 = {27,"gpio27",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin27 = {27,"gpio27",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin27 = &SysfsGpioPin27;
 
 void gpioPin27_InputMonitorHandlerFunc (int fd, short events)
@@ -3647,7 +3647,7 @@ le_result_t le_gpioPin27_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin28 = {28,"gpio28",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin28 = {28,"gpio28",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin28 = &SysfsGpioPin28;
 
 void gpioPin28_InputMonitorHandlerFunc (int fd, short events)
@@ -3781,7 +3781,7 @@ le_result_t le_gpioPin28_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin29 = {29,"gpio29",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin29 = {29,"gpio29",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin29 = &SysfsGpioPin29;
 
 void gpioPin29_InputMonitorHandlerFunc (int fd, short events)
@@ -3915,7 +3915,7 @@ le_result_t le_gpioPin29_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin30 = {30,"gpio30",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin30 = {30,"gpio30",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin30 = &SysfsGpioPin30;
 
 void gpioPin30_InputMonitorHandlerFunc (int fd, short events)
@@ -4049,7 +4049,7 @@ le_result_t le_gpioPin30_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin31 = {31,"gpio31",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin31 = {31,"gpio31",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin31 = &SysfsGpioPin31;
 
 void gpioPin31_InputMonitorHandlerFunc (int fd, short events)
@@ -4183,7 +4183,7 @@ le_result_t le_gpioPin31_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin32 = {32,"gpio32",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin32 = {32,"gpio32",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin32 = &SysfsGpioPin32;
 
 void gpioPin32_InputMonitorHandlerFunc (int fd, short events)
@@ -4317,7 +4317,7 @@ le_result_t le_gpioPin32_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin33 = {33,"gpio33",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin33 = {33,"gpio33",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin33 = &SysfsGpioPin33;
 
 void gpioPin33_InputMonitorHandlerFunc (int fd, short events)
@@ -4451,7 +4451,7 @@ le_result_t le_gpioPin33_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin34 = {34,"gpio34",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin34 = {34,"gpio34",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin34 = &SysfsGpioPin34;
 
 void gpioPin34_InputMonitorHandlerFunc (int fd, short events)
@@ -4585,7 +4585,7 @@ le_result_t le_gpioPin34_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin35 = {35,"gpio35",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin35 = {35,"gpio35",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin35 = &SysfsGpioPin35;
 
 void gpioPin35_InputMonitorHandlerFunc (int fd, short events)
@@ -4719,7 +4719,7 @@ le_result_t le_gpioPin35_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin36 = {36,"gpio36",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin36 = {36,"gpio36",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin36 = &SysfsGpioPin36;
 
 void gpioPin36_InputMonitorHandlerFunc (int fd, short events)
@@ -4853,7 +4853,7 @@ le_result_t le_gpioPin36_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin37 = {37,"gpio37",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin37 = {37,"gpio37",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin37 = &SysfsGpioPin37;
 
 void gpioPin37_InputMonitorHandlerFunc (int fd, short events)
@@ -4987,7 +4987,7 @@ le_result_t le_gpioPin37_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin38 = {38,"gpio38",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin38 = {38,"gpio38",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin38 = &SysfsGpioPin38;
 
 void gpioPin38_InputMonitorHandlerFunc (int fd, short events)
@@ -5121,7 +5121,7 @@ le_result_t le_gpioPin38_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin39 = {39,"gpio39",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin39 = {39,"gpio39",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin39 = &SysfsGpioPin39;
 
 void gpioPin39_InputMonitorHandlerFunc (int fd, short events)
@@ -5255,7 +5255,7 @@ le_result_t le_gpioPin39_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin40 = {40,"gpio40",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin40 = {40,"gpio40",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin40 = &SysfsGpioPin40;
 
 void gpioPin40_InputMonitorHandlerFunc (int fd, short events)
@@ -5389,7 +5389,7 @@ le_result_t le_gpioPin40_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin41 = {41,"gpio41",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin41 = {41,"gpio41",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin41 = &SysfsGpioPin41;
 
 void gpioPin41_InputMonitorHandlerFunc (int fd, short events)
@@ -5523,7 +5523,7 @@ le_result_t le_gpioPin41_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin42 = {42,"gpio42",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin42 = {42,"gpio42",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin42 = &SysfsGpioPin42;
 
 void gpioPin42_InputMonitorHandlerFunc (int fd, short events)
@@ -5657,7 +5657,7 @@ le_result_t le_gpioPin42_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin43 = {43,"gpio43",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin43 = {43,"gpio43",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin43 = &SysfsGpioPin43;
 
 void gpioPin43_InputMonitorHandlerFunc (int fd, short events)
@@ -5791,7 +5791,7 @@ le_result_t le_gpioPin43_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin44 = {44,"gpio44",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin44 = {44,"gpio44",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin44 = &SysfsGpioPin44;
 
 void gpioPin44_InputMonitorHandlerFunc (int fd, short events)
@@ -5925,7 +5925,7 @@ le_result_t le_gpioPin44_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin45 = {45,"gpio45",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin45 = {45,"gpio45",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin45 = &SysfsGpioPin45;
 
 void gpioPin45_InputMonitorHandlerFunc (int fd, short events)
@@ -6059,7 +6059,7 @@ le_result_t le_gpioPin45_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin46 = {46,"gpio46",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin46 = {46,"gpio46",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin46 = &SysfsGpioPin46;
 
 void gpioPin46_InputMonitorHandlerFunc (int fd, short events)
@@ -6193,7 +6193,7 @@ le_result_t le_gpioPin46_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin47 = {47,"gpio47",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin47 = {47,"gpio47",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin47 = &SysfsGpioPin47;
 
 void gpioPin47_InputMonitorHandlerFunc (int fd, short events)
@@ -6327,7 +6327,7 @@ le_result_t le_gpioPin47_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin48 = {48,"gpio48",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin48 = {48,"gpio48",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin48 = &SysfsGpioPin48;
 
 void gpioPin48_InputMonitorHandlerFunc (int fd, short events)
@@ -6461,7 +6461,7 @@ le_result_t le_gpioPin48_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin49 = {49,"gpio49",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin49 = {49,"gpio49",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin49 = &SysfsGpioPin49;
 
 void gpioPin49_InputMonitorHandlerFunc (int fd, short events)
@@ -6595,7 +6595,7 @@ le_result_t le_gpioPin49_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin50 = {50,"gpio50",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin50 = {50,"gpio50",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin50 = &SysfsGpioPin50;
 
 void gpioPin50_InputMonitorHandlerFunc (int fd, short events)
@@ -6729,7 +6729,7 @@ le_result_t le_gpioPin50_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin51 = {51,"gpio51",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin51 = {51,"gpio51",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin51 = &SysfsGpioPin51;
 
 void gpioPin51_InputMonitorHandlerFunc (int fd, short events)
@@ -6863,7 +6863,7 @@ le_result_t le_gpioPin51_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin52 = {52,"gpio52",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin52 = {52,"gpio52",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin52 = &SysfsGpioPin52;
 
 void gpioPin52_InputMonitorHandlerFunc (int fd, short events)
@@ -6997,7 +6997,7 @@ le_result_t le_gpioPin52_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin53 = {53,"gpio53",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin53 = {53,"gpio53",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin53 = &SysfsGpioPin53;
 
 void gpioPin53_InputMonitorHandlerFunc (int fd, short events)
@@ -7131,7 +7131,7 @@ le_result_t le_gpioPin53_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin54 = {54,"gpio54",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin54 = {54,"gpio54",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin54 = &SysfsGpioPin54;
 
 void gpioPin54_InputMonitorHandlerFunc (int fd, short events)
@@ -7265,7 +7265,7 @@ le_result_t le_gpioPin54_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin55 = {55,"gpio55",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin55 = {55,"gpio55",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin55 = &SysfsGpioPin55;
 
 void gpioPin55_InputMonitorHandlerFunc (int fd, short events)
@@ -7399,7 +7399,7 @@ le_result_t le_gpioPin55_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin56 = {56,"gpio56",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin56 = {56,"gpio56",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin56 = &SysfsGpioPin56;
 
 void gpioPin56_InputMonitorHandlerFunc (int fd, short events)
@@ -7533,7 +7533,7 @@ le_result_t le_gpioPin56_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin57 = {57,"gpio57",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin57 = {57,"gpio57",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin57 = &SysfsGpioPin57;
 
 void gpioPin57_InputMonitorHandlerFunc (int fd, short events)
@@ -7667,7 +7667,7 @@ le_result_t le_gpioPin57_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin58 = {58,"gpio58",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin58 = {58,"gpio58",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin58 = &SysfsGpioPin58;
 
 void gpioPin58_InputMonitorHandlerFunc (int fd, short events)
@@ -7801,7 +7801,7 @@ le_result_t le_gpioPin58_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin59 = {59,"gpio59",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin59 = {59,"gpio59",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin59 = &SysfsGpioPin59;
 
 void gpioPin59_InputMonitorHandlerFunc (int fd, short events)
@@ -7935,7 +7935,7 @@ le_result_t le_gpioPin59_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin60 = {60,"gpio60",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin60 = {60,"gpio60",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin60 = &SysfsGpioPin60;
 
 void gpioPin60_InputMonitorHandlerFunc (int fd, short events)
@@ -8069,7 +8069,7 @@ le_result_t le_gpioPin60_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin61 = {61,"gpio61",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin61 = {61,"gpio61",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin61 = &SysfsGpioPin61;
 
 void gpioPin61_InputMonitorHandlerFunc (int fd, short events)
@@ -8203,7 +8203,7 @@ le_result_t le_gpioPin61_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin62 = {62,"gpio62",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin62 = {62,"gpio62",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin62 = &SysfsGpioPin62;
 
 void gpioPin62_InputMonitorHandlerFunc (int fd, short events)
@@ -8337,7 +8337,7 @@ le_result_t le_gpioPin62_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin63 = {63,"gpio63",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin63 = {63,"gpio63",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin63 = &SysfsGpioPin63;
 
 void gpioPin63_InputMonitorHandlerFunc (int fd, short events)
@@ -8471,7 +8471,7 @@ le_result_t le_gpioPin63_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
-static struct gpioSysfs_Gpio SysfsGpioPin64 = {64,"gpio64",false,NULL,-1,NULL,NULL,NULL};
+static struct gpioSysfs_Gpio SysfsGpioPin64 = {64,"gpio64",false,NULL,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin64 = &SysfsGpioPin64;
 
 void gpioPin64_InputMonitorHandlerFunc (int fd, short events)
