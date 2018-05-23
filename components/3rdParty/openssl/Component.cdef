@@ -23,9 +23,15 @@ bundles:
         #elif file_exists(${LEGATO_SYSROOT}/lib/x86_64-linux-gnu/libssl.so.1.1)
             ${LEGATO_SYSROOT}/lib/x86_64-linux-gnu/libssl.so.1.1 /lib/
             ${LEGATO_SYSROOT}/lib/x86_64-linux-gnu/libcrypto.so.1.1 /lib/
+        #elif file_exists(${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libssl.so.1.0.2)
+            ${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libssl.so.1.0.2 /lib/
+            ${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.2 /lib/
         #elif file_exists(${LEGATO_SYSROOT}/lib/x86_64-linux-gnu/libssl.so.1.0.2)
             ${LEGATO_SYSROOT}/lib/x86_64-linux-gnu/libssl.so.1.0.2 /lib/
             ${LEGATO_SYSROOT}/lib/x86_64-linux-gnu/libcrypto.so.1.0.2 /lib/
+        #elif file_exists(${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libssl.so.1.0.0)
+            ${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libssl.so.1.0.0 /lib/
+            ${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0 /lib/
         #elif file_exists(${LEGATO_SYSROOT}/lib/x86_64-linux-gnu/libssl.so.1.0.0)
             ${LEGATO_SYSROOT}/lib/x86_64-linux-gnu/libssl.so.1.0.0 /lib/
             ${LEGATO_SYSROOT}/lib/x86_64-linux-gnu/libcrypto.so.1.0.0 /lib/
