@@ -2325,6 +2325,9 @@ int32_t le_mdc_GetPlatformSpecificDisconnectionCode
 /**
  * Called to get the platform specific connection failure reason.
  *
+ * Refer to @ref platformConstraintsSpecificErrorCodes for platform specific
+ * connection failure types and code descriptions.
+ *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
  */
