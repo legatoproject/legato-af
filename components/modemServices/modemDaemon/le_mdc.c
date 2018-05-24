@@ -337,11 +337,6 @@ static le_mdc_ProfileRef_t CreateModemProfile
     {
         char eventName[32] = {0};
 
-        if ( pa_mdc_InitializeProfile(index) != LE_OK )
-        {
-            return NULL;
-        }
-
         profilePtr = le_mem_ForceAlloc(DataProfilePool);
 
         if (profilePtr == NULL)
@@ -350,13 +345,6 @@ static le_mdc_ProfileRef_t CreateModemProfile
         }
 
         memset(profilePtr, 0, sizeof(le_mdc_Profile_t));
-
-        // Read the requested profile
-        if ( pa_mdc_ReadProfile(index, &profilePtr->modemData) != LE_OK )
-        {
-            le_mem_Release(profilePtr);
-            return NULL;
-        }
 
         profilePtr->profileIndex = index;
 
@@ -1906,6 +1894,8 @@ le_mdc_Pdp_t le_mdc_GetPDP
     le_mdc_ProfileRef_t profileRef  ///< [IN] Query this profile object
 )
 {
+    le_result_t status;
+
     le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
     if (profilePtr == NULL)
     {
@@ -1913,12 +1903,20 @@ le_mdc_Pdp_t le_mdc_GetPDP
         return LE_MDC_PDP_UNKNOWN;
     }
 
-    if ( pa_mdc_ReadProfile(profilePtr->profileIndex,&profilePtr->modemData) != LE_OK )
+    status = pa_mdc_ReadProfile(profilePtr->profileIndex,&profilePtr->modemData);
+    if (status != LE_OK)
     {
-        LE_ERROR("Could not read profile at index %d", profilePtr->profileIndex);
-        return LE_MDC_PDP_UNKNOWN;
+        if (status == LE_NOT_FOUND)
+        {
+            // Fill PDP type with default value
+            profilePtr->modemData.pdp = LE_MDC_PDP_IPV4V6;
+        }
+        else
+        {
+            LE_ERROR("Could not read profile at index %d", profilePtr->profileIndex);
+            return LE_MDC_PDP_UNKNOWN;
+        }
     }
-
     return profilePtr->modemData.pdp;
 }
 
@@ -2068,6 +2066,8 @@ le_result_t le_mdc_GetAPN
     size_t              apnSize     ///< [IN] apnPtr buffer size
 )
 {
+    le_result_t status;
+
     le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
     if (profilePtr == NULL)
     {
@@ -2080,10 +2080,19 @@ le_result_t le_mdc_GetAPN
         return LE_BAD_PARAMETER;
     }
 
-    if ( pa_mdc_ReadProfile(profilePtr->profileIndex,&profilePtr->modemData) != LE_OK )
+    status = pa_mdc_ReadProfile(profilePtr->profileIndex,&profilePtr->modemData);
+    if ( status != LE_OK)
     {
-        LE_ERROR("Could not read profile at index %d", profilePtr->profileIndex);
-        return LE_FAULT;
+        if (status == LE_NOT_FOUND)
+        {
+            // Fill APN with an empty string
+            memset(profilePtr->modemData.apn, 0, sizeof(profilePtr->modemData.apn));
+        }
+        else
+        {
+            LE_ERROR("Could not read profile at index %d", profilePtr->profileIndex);
+            return LE_FAULT;
+        }
     }
 
     return le_utf8_Copy(apnPtr,profilePtr->modemData.apn,apnSize,NULL);
