@@ -116,7 +116,7 @@ bundles:
         $CURDIR/dir/  /dir
     }
 }
-@code
+@endcode
 
 The build system path and target path needs to be specified for each of the files or directories.
 The build system path is on your @b dev @b machine where the file is located at build time. The
@@ -138,7 +138,7 @@ scripts:
     install:  $CURDIR/scripts/install.sh
     remove:   $CURDIR/scripts/remove.sh
 }
-@code
+@endcode
 
 @c install: specifies the build system path of the module installation script where the script
 is located at build time.
@@ -154,7 +154,7 @@ Example of install.sh:
 KO_PATH=$1
 
 insmod $KO_PATH id="first" port=0x330
-@code
+@endcode
 
 Example of remove.sh:
 @code
@@ -163,7 +163,7 @@ Example of remove.sh:
 KO_PATH=$1
 
 rmmod $KO_PATH
-@code
+@endcode
 
 @warning The installation script must handle the loading of the module using @c insmod and the
 removal script must handle the unloading of the module using @c rmmod.
