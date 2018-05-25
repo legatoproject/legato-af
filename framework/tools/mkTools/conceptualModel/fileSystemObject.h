@@ -40,10 +40,10 @@ struct FileSystemObject_t
         const Permissions_t& permissions,
         const FileSystemObject_t* baseObject = NULL
     )
-    :   srcPath(newSrcPath),
+    :   parseTreePtr(baseObject?(baseObject->parseTreePtr):NULL),
+        srcPath(newSrcPath),
         destPath(destPath),
-        permissions(permissions),
-        parseTreePtr(baseObject?(baseObject->parseTreePtr):NULL)
+        permissions(permissions)
     {
     }
 

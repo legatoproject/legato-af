@@ -63,7 +63,7 @@ cat > $NINJA_SCRIPT <<EOF
 
 builddir = $BUILD_DIR
 
-precompiledHeader = \$builddir/mkTools.h.gch
+precompiledHeader = \$builddir/precompiled/mkTools.h.gch
 
 rule Link
   description = Linking mk tools
@@ -72,16 +72,21 @@ rule Link
 rule Compile
   description = Compiling mk tools sources
   depfile = \$out.d
-  command = $COMPILER -MMD -MF \$out.d $TOOLS_ARCH_FLAGS -Wall -Werror \$
-                      -include $BUILD_DIR/mkTools.h \$
-                      -I$SOURCE_DIR -I$LEGATO_ROOT/framework/liblegato \$
+  command = $COMPILER -MMD -MF \$out.d $TOOLS_ARCH_FLAGS \$
+                      -Wall -Werror \$
+                      -I\$builddir/precompiled/ \$
+                      -I$SOURCE_DIR \$
+                      -I$LEGATO_ROOT/framework/liblegato \$
                       -c \$in \$
                       -o \$out
 
 rule PreCompile
   description = Generating pre-compiled header for mk tools.
   depfile = \$out.d
-  command = $COMPILER -MMD -MF \$out.d $TOOLS_ARCH_FLAGS -g -o \$out \$in
+  command = $COMPILER -MMD -MF \$out.d $TOOLS_ARCH_FLAGS \$
+                      -Wall -Werror -Wno-deprecated \$
+                      -g \$
+                      -o \$out \$in
 
 rule GetMessages
   description = Extracting messages

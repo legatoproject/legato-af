@@ -70,7 +70,7 @@ struct HasTargetInfo_t
     void setTargetInfo(T* targetInfoPtr)
     {
         targetInfo.insert(std::make_pair(std::type_index(typeid(T)),
-                                         move(std::shared_ptr<TargetInfo_t>(targetInfoPtr))));
+                                         std::shared_ptr<TargetInfo_t>(targetInfoPtr)));
     }
 };
 
