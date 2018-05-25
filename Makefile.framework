@@ -225,15 +225,17 @@ daemons: start supervisor serviceDirectory logCtrlDaemon configTree watchdog upd
 .PHONY: start
 start: liblegato $(BIN_DIR)
 	$(CCACHE) $(TARGET_CC) $(TARGET_CC_SYSROOT) -o $(BIN_DIR)/startSystem $(SRC_DIR)/start/start.c \
+	    $(SRC_DIR)/common/ima.c\
 		-Wall -Werror \
 		-I$(LEGATO_ROOT)/framework/include \
-                -I$(LEGATO_ROOT)/framework/liblegato \
-                -I$(LEGATO_ROOT)/framework/liblegato/linux \
+		-I$(LEGATO_ROOT)/framework/liblegato \
+		-I$(LEGATO_ROOT)/framework/liblegato/linux \
+		-I$(LEGATO_ROOT)/framework/daemons/linux/common \
 		-DVERSION=\"$(VERSION)\" \
 		-DDISABLE_SMACK=$(DISABLE_SMACK) \
 		$(IMA_SMACK_FLAGS) \
 		-Wl,--enable-new-dtags,-rpath="\$$ORIGIN/../lib" \
-		-L$(LIB_DIR) -llegato
+		-L$(LIB_DIR) -llegato -lssl -lcrypto
 
 .PHONY: supervisor
 supervisor: liblegato $(BIN_DIR)
@@ -243,11 +245,14 @@ supervisor: liblegato $(BIN_DIR)
 		-i $(LEGATO_ROOT)/framework/liblegato \
 		-i $(LEGATO_ROOT)/framework/liblegato/linux \
 		-i $(LEGATO_ROOT)/framework/daemons/linux/start \
+		-i $(LEGATO_ROOT)/framework/daemons/linux/common \
 		-s $(SRC_DIR)/supervisor \
 		--cflags=-DDISABLE_SMACK=$(DISABLE_SMACK) \
 		$(IMA_SMACK_CFLAGS) \
 		--cflags=-DNO_LOG_CONTROL \
-		--cflags=-DLEGATO_FRAMEWORK_NICE_LEVEL=$(LEGATO_FRAMEWORK_NICE_LEVEL)
+		--cflags=-DLEGATO_FRAMEWORK_NICE_LEVEL=$(LEGATO_FRAMEWORK_NICE_LEVEL) \
+		--ldflags=-lssl \
+		--ldflags=-lcrypto
 
 .PHONY: serviceDirectory
 serviceDirectory: liblegato $(BIN_DIR)
@@ -293,10 +298,13 @@ updateDaemon: liblegato $(BIN_DIR)
 		-i $(LEGATO_ROOT)/components/appCfg \
 		-i $(LEGATO_ROOT)/framework/liblegato \
 		-i $(LEGATO_ROOT)/framework/liblegato/linux \
+		-i $(LEGATO_ROOT)/framework/daemons/linux/common \
 		-s $(LEGATO_ROOT)/components \
 		-s $(SRC_DIR)/updateDaemon \
 		$(IMA_SMACK_CFLAGS) \
-		--ldflags=-L$(LIB_DIR)
+		--ldflags=-L$(LIB_DIR) \
+		--ldflags=-lssl \
+		--ldflags=-lcrypto
 
 # If the ninja script doesn't exist, we generate it using the ninja-generator script.
 $(NINJA_SCRIPT): $(BUILD_DIR)

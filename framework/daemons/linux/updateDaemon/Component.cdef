@@ -39,6 +39,7 @@ sources:
     updateCtrl.c
     supCtrl.c
     ../common/frameworkWdog.c
+    ../common/ima.c
 }
 
 cflags:

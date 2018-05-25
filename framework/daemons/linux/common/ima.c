@@ -16,6 +16,7 @@
 #include "sysPaths.h"
 #include "ima.h"
 #include "file.h"
+#include <openssl/x509.h>
 
 
 //--------------------------------------------------------------------------------------------------
@@ -33,6 +34,14 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define EVMCTL_PATH   "/usr/bin/evmctl"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Evmctl option to check certificate expiry
+ */
+//--------------------------------------------------------------------------------------------------
+#define CHECK_EXPIRY_OPTION   "--check_expiry"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -139,6 +148,7 @@ static le_result_t VerifyDir
     return LE_OK;
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Import IMA public certificate to linux keyring. Public certificate must be signed by system
@@ -151,16 +161,23 @@ static le_result_t VerifyDir
 //--------------------------------------------------------------------------------------------------
 static le_result_t ImportPublicCert
 (
-    const char * certPath
+    const char * certPath,
+    bool checkExpiry
 )
 {
 
     char cmd[MAX_CMD_BYTES] = "";
+    char checkExpiryOption[LIMIT_MAX_ARGS_STR_BYTES] = "";
+
+    if (checkExpiry)
+    {
+        strncpy(checkExpiryOption, CHECK_EXPIRY_OPTION, sizeof(checkExpiryOption)- 1);
+    }
 
     snprintf(cmd, sizeof(cmd), "SECFS=/sys/kernel/security && "
              "grep -q  $SECFS /proc/mounts || mount -n -t securityfs securityfs $SECFS && "
              "ima_id=\"`awk '/\\.ima/ { printf \"%%d\", \"0x\"$1; }' /proc/keys`\" && "
-             "%s import %s $ima_id", EVMCTL_PATH, certPath);
+             "%s %s import %s $ima_id", EVMCTL_PATH, checkExpiryOption, certPath);
 
     LE_DEBUG("cmd: %s", cmd);
 
@@ -179,6 +196,8 @@ static le_result_t ImportPublicCert
         return LE_FAULT;
     }
 }
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Verify a file IMA signature against provided public certificate path
@@ -196,6 +215,7 @@ le_result_t ima_VerifyFile
 {
     return VerifyFile(filePath, certPath);
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -255,5 +275,42 @@ le_result_t ima_ImportPublicCert
     const char * certPath
 )
 {
-    return ImportPublicCert(certPath);
+    if (LE_OK != ImportPublicCert(certPath, true))
+    {
+        // Importing certificate with check_expiry option failed. Now try to import certificate
+        // without check_expiry option.
+        FILE *fp;
+        X509 *crt = NULL;
+        int checkBefore = 0;
+        int checkAfter = 0;
+
+        fp = fopen(certPath, "r");
+        if (!fp) {
+            LE_ERROR("Failed to open certificate: %s\n", certPath);
+            return LE_FAULT;
+        }
+
+        crt = d2i_X509_fp(fp, NULL);
+        if (!crt) {
+            LE_ERROR("d2i_X509_fp() failed\n");
+            fclose(fp);
+            return LE_FAULT;
+        }
+
+        checkBefore = X509_cmp_current_time(X509_get_notBefore(crt));
+        checkAfter = X509_cmp_current_time(X509_get_notAfter(crt));
+        X509_free(crt);
+        fclose(fp);
+
+        if (checkBefore > 0 || checkAfter < 0)
+        {
+            LE_WARN("Certificate '%s' expired. Retrying without %s option",
+                     certPath, CHECK_EXPIRY_OPTION);
+            return ImportPublicCert(certPath, false);
+        }
+
+        return LE_FAULT;
+    }
+
+    return LE_OK;
 }

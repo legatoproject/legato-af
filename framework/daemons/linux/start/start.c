@@ -36,9 +36,9 @@
 #include "fileSystem.h"
 #include "sysPaths.h"
 #include "sysStatus.h"
+#include "ima.h"
 #include <mntent.h>
 #include <linux/limits.h>
-#include <ima.h>
 
 /// Default DAC permissions for directory creation.
 #define DEFAULT_PERMS (S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)

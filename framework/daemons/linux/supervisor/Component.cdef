@@ -11,6 +11,7 @@ sources:
     devSmack.c
     wait.c
     ../common/frameworkWdog.c
+    ../common/ima.c
 }
 
 provides:
