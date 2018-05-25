@@ -146,7 +146,7 @@ $(BUILD_DIR)/legatoJni.h: $(LIB_DIR)/legato.jar
 	javah -o $(BUILD_DIR)/legatoJni.h -jni -cp $(LIB_DIR)/legato.jar io.legato.LegatoJni
 
 $(BUILD_DIR)/legatoJni.o: $(BUILD_DIR)/legatoJni.h $(LEGATO_ROOT)/framework/java/legatoJni/legatoJni.c
-	$(TARGET_CC) $(TARGET_CC_SYSROOT) \
+	$(CCACHE) $(TARGET_CC) $(TARGET_CC_SYSROOT) \
 		-DLEGATO_DEBUG \
 		-DLEGATO_EMBEDDED \
 		-fPIC \
@@ -163,7 +163,7 @@ $(BUILD_DIR)/legatoJni.o: $(BUILD_DIR)/legatoJni.h $(LEGATO_ROOT)/framework/java
 		-c $(LEGATO_ROOT)/framework/java/legatoJni/legatoJni.c
 
 $(LIB_DIR)/liblegatoJni.so: $(LIB_DIR) $(BUILD_DIR)/legatoJni.o
-	$(TARGET_CC) $(TARGET_CC_SYSROOT) \
+	$(CCACHE) $(TARGET_CC) $(TARGET_CC_SYSROOT) \
 		-fPIC \
 		-shared \
 		-o $(LIB_DIR)/liblegatoJni.so \
@@ -186,7 +186,7 @@ $(LEGATO_PY_CEXT):
 
 $(LEGATO_PY_SO): liblegato $(LEGATO_PY_CEXT)
 	mkdir -p $(dir $@)
-	$(TARGET_CC) $(TARGET_CC_SYSROOT) -o $(LEGATO_PY_SO) $(LEGATO_PY_CEXT) \
+	$(CCACHE) $(TARGET_CC) $(TARGET_CC_SYSROOT) -o $(LEGATO_PY_SO) $(LEGATO_PY_CEXT) \
 		-Wall -Werror \
 		-D_FTS_H \
 		-fPIC \
@@ -208,7 +208,7 @@ daemons: start supervisor serviceDirectory logCtrlDaemon configTree watchdog upd
 
 .PHONY: start
 start: liblegato $(BIN_DIR)
-	$(TARGET_CC) $(TARGET_CC_SYSROOT) -o $(BIN_DIR)/startSystem $(SRC_DIR)/start/start.c \
+	$(CCACHE) $(TARGET_CC) $(TARGET_CC_SYSROOT) -o $(BIN_DIR)/startSystem $(SRC_DIR)/start/start.c \
 		-Wall -Werror \
 		-I$(LEGATO_ROOT)/framework/include \
                 -I$(LEGATO_ROOT)/framework/liblegato \

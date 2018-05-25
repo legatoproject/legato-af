@@ -66,7 +66,7 @@ export LE_SVCDIR_SERVER_SOCKET_NAME := $(LE_RUNTIME_DIR)serviceDirectoryServer
 export LE_SVCDIR_CLIENT_SOCKET_NAME := $(LE_RUNTIME_DIR)serviceDirectoryClient
 
 # Do not use clang by default.
-USE_CLANG ?= 0
+export USE_CLANG ?= 0
 
 # Default eCall build to be ON
 export INCLUDE_ECALL ?= 1
@@ -92,6 +92,25 @@ PLANTUML_PATH ?= $(LEGATO_ROOT)/3rdParty/plantuml
 
 # PlantUML file definition
 export PLANTUML_JAR_FILE := $(PLANTUML_PATH)/plantuml.jar
+
+# Use ccache by default if available
+ifeq ($(USE_CCACHE),)
+  ifneq ($(shell which ccache),)
+    export USE_CCACHE = 1
+  endif
+endif
+ifeq ($(USE_CCACHE),1)
+  ifeq ($(CCACHE),)
+    CCACHE := $(shell which ccache)
+  endif
+  ifeq ($(CCACHE),)
+    $(error "Unable to find ccache while it is enabled.")
+  endif
+  export CCACHE
+else
+  CCACHE :=
+  unexport CCACHE
+endif
 
 # ========== TARGET-SPECIFIC VARIABLES ============
 

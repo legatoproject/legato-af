@@ -59,6 +59,7 @@ struct BuildParams_t
     std::string             stripPath;          ///< Debug symbol stripper (needed for -d option)
     std::string             objcopyPath;        ///< Object file copier (needed for -d option)
     std::string             readelfPath;        ///< ELF file reader (needed for -d option)
+    std::string             compilerCachePath;  ///< Compiler cache (ccache, sccache, ...)
     std::list<std::string>  crossToolPaths;     ///< Tool chain executable paths
 
     /// Constructor

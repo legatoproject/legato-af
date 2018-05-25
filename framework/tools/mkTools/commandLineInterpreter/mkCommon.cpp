@@ -55,7 +55,8 @@ std::string GetToolChainDir
 std::string GetToolPath
 (
     const std::string& target,          ///< The target device type (e.g., wp85)
-    const std::string& toolEnvVarName   ///< Base name of tool path env var (e.g., "CC")
+    const std::string& toolEnvVarName,  ///< Base name of tool path env var (e.g., "CC")
+    bool provideDefault = true          ///< If the tool can't be found, should it provide a default?
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -106,13 +107,17 @@ std::string GetToolPath
     {
         path = path::Combine(toolChainDir, toolChainPrefix+"g++");
     }
-    else
+    else if (provideDefault)
     {
         // By default, convert the tool env var name to all lowercase and use that as the
         // tool executable name.
         auto toolName = toolEnvVarName;
         std::transform(toolName.begin(), toolName.end(), toolName.begin(), ::tolower);
         path = path::Combine(toolChainDir, toolChainPrefix+toolName);
+    }
+    else
+    {
+        path = "";
     }
 
     return path;
@@ -319,6 +324,7 @@ void FindToolChain
     buildParams.stripPath = GetToolPath(buildParams.target, "STRIP");
     buildParams.objcopyPath = GetToolPath(buildParams.target, "OBJCOPY");
     buildParams.readelfPath = GetToolPath(buildParams.target, "READELF");
+    buildParams.compilerCachePath = GetToolPath(buildParams.target, "CCACHE", false);
     buildParams.crossToolPaths = GetCrossToolPaths(buildParams.target);
 
     if (buildParams.beVerbose)
@@ -332,6 +338,7 @@ void FindToolChain
         std::cout << "Debug symbol stripper = " << buildParams.stripPath << std::endl;
         std::cout << "Object file copier/translator = " << buildParams.objcopyPath << std::endl;
         std::cout << "ELF file info extractor = " << buildParams.readelfPath << std::endl;
+        std::cout << "Compiler cache = " << buildParams.compilerCachePath << std::endl;
 
         std::cout << "Cross tool paths = ";
         for (const auto &crossToolPath : buildParams.crossToolPaths)

@@ -182,6 +182,7 @@ void BuildScriptGenerator_t::GenerateBuildRules
     const std::string& target = buildParams.target;
     const std::string& cCompilerPath = buildParams.cCompilerPath;
     const std::string& cxxCompilerPath = buildParams.cxxCompilerPath;
+    const std::string& compilerCachePath = buildParams.compilerCachePath;
     std::string sysrootOption;
     std::string crossToolPath;
 
@@ -205,7 +206,7 @@ void BuildScriptGenerator_t::GenerateBuildRules
     script << "rule CompileC\n"
               "  description = Compiling C source\n"
               "  depfile = $out.d\n" // Tell ninja where gcc will put the dependencies.
-              "  command = " << cCompilerPath << " " << sysrootOption <<
+              "  command = " << compilerCachePath << " " << cCompilerPath << " " << sysrootOption <<
               " -MMD -MF $out.d -c $in -o $out"
               " -DLE_FILENAME=`basename $in`" // Define the file name for the log macros.
               " -Wall" // Enable all warnings.
@@ -228,7 +229,7 @@ void BuildScriptGenerator_t::GenerateBuildRules
     script << "rule CompileCxx\n"
               "  description = Compiling C++ source\n"
               "  depfile = $out.d\n" // Tell ninja where gcc will put the dependencies.
-              "  command = " << cxxCompilerPath << " " << sysrootOption <<
+              "  command = " << compilerCachePath << " " << cxxCompilerPath << " " << sysrootOption <<
               " -MMD -MF $out.d -c $in -o $out"
               " -DLE_FILENAME=`basename $in`" // Define the file name for the log macros.
               " -Wall" // Enable all warnings.
@@ -251,7 +252,7 @@ void BuildScriptGenerator_t::GenerateBuildRules
     // Generate rules for linking C and C++ object code files into shared libraries.
     script << "rule LinkCLib\n"
               "  description = Linking C library\n"
-              "  command = " << cCompilerPath << " " << sysrootOption;
+              "  command = " << compilerCachePath << " " << cCompilerPath << " " << sysrootOption;
     if (!buildParams.debugDir.empty())
     {
         script << " -Wl,--build-id -g";
@@ -267,7 +268,7 @@ void BuildScriptGenerator_t::GenerateBuildRules
 
     script << "rule LinkCxxLib\n"
               "  description = Linking C++ library\n"
-              "  command = " << cxxCompilerPath << " " << sysrootOption;
+              "  command = " << compilerCachePath << " " << cxxCompilerPath << " " << sysrootOption;
     if (!buildParams.debugDir.empty())
     {
         script << " -Wl,--build-id -g";
@@ -283,7 +284,7 @@ void BuildScriptGenerator_t::GenerateBuildRules
 
     script << "rule LinkCExe\n"
               "  description = Linking C executable\n"
-              "  command = " << cCompilerPath << " " << sysrootOption;
+              "  command = " << compilerCachePath << " " << cCompilerPath << " " << sysrootOption;
     if (!buildParams.debugDir.empty())
     {
         script << " -Wl,--build-id -g";
@@ -305,7 +306,7 @@ void BuildScriptGenerator_t::GenerateBuildRules
 
     script << "rule LinkCxxExe\n"
               "  description = Linking C++ executable\n"
-              "  command = " << cxxCompilerPath << " " << sysrootOption;
+              "  command = " << compilerCachePath << " " << cxxCompilerPath << " " << sysrootOption;
     if (!buildParams.debugDir.empty())
     {
         script << " -Wl,--build-id -g";

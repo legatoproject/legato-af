@@ -43,9 +43,6 @@ Running make will:
 - build tools needed to build apps and configure your target.
 - set-up environment variables and other useful configuration to make using the Framework easier.
 
-@note If you are having problems successfully running make you may need to remove ccache from your
-host. @verbatim $ sudo apt-get remove ccache @endverbatim
-
 Once the make scripts have run you should now see the following directories @c /bin and @c /build.
 The @c bin directory contains tools and scripts for the framework and the @c build directory
 contains all the build files and install files to update your target.

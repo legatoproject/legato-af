@@ -100,9 +100,6 @@ ifeq ($(ENABLE_IMA),1)
   LOCAL_PROPRIETARY_APPS_FLAGS += -S
 endif
 
-# Do not use clang by default.
-USE_CLANG ?= 0
-
 # Add the framework's bin directory to the PATH environment variable.
 export PATH := $(PATH):$(LEGATO_ROOT)/bin
 

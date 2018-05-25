@@ -8,7 +8,7 @@ if [ "$LEGATO_TARGET" != "localhost" ]; then
     NINJA_CFLAGS="$NINJA_CFLAGS -DLEGATO_EMBEDDED"
 fi
 
-if [ ! -z "$TARGET_SYSROOT" ]
+if [ -n "$TARGET_SYSROOT" ]
 then
     CC="$CC --sysroot=$TARGET_SYSROOT"
 fi

@@ -97,3 +97,16 @@ else
     export READELF := $(TOOLCHAIN_PATH_PREFIX)readelf
 endif
 
+ifeq ($(USE_CCACHE),1)
+  ifeq ($(CCACHE),)
+    CCACHE := $(shell which ccache)
+  endif
+  $(info Using ccache: ${CCACHE})
+  ifeq ($(CCACHE),)
+    $(error Unable to find ccache while it is enabled.)
+  endif
+
+  export CCACHE
+else
+  unexport CCACHE
+endif

@@ -153,6 +153,11 @@ static void SetToolChainVars
     {
         std::cout << "*************************** readelfPath is empty\n";
     }
+
+    if (!buildParams.compilerCachePath.empty())
+    {
+        Set("CCACHE", buildParams.compilerCachePath.c_str());
+    }
 }
 
 

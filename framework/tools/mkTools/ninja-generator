@@ -35,6 +35,18 @@ else
     COMPILER="g++ -std=c++0x"
 fi
 
+# Use ccache.
+if [[ "$USE_CCACHE" == "1" ]]
+then
+    if [ -z "${CCACHE}" ]
+    then
+        echo "Unable to find ccache while it is enabled."
+        exit 1
+    fi
+
+    COMPILER="${CCACHE} ${COMPILER}"
+fi
+
 echo "Tools arch: $TOOLS_ARCH"
 
 TOOLS_ARCH_FLAGS=""

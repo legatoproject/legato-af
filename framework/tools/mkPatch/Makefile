@@ -12,6 +12,10 @@ else
   export CC := $(shell which gcc)
 endif
 
+ifeq (${USE_CCACHE},1)
+  export CC := ${CCACHE} ${CC}
+endif
+
 # Tell make that the targets are not actual files.
 .PHONY: mkPatch
 
