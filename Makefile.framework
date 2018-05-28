@@ -43,7 +43,9 @@ endif
 ifndef LE_SVCDIR_CLIENT_SOCKET_NAME
   $(error LE_SVCDIR_CLIENT_SOCKET_NAME is not set)
 endif
-
+ifndef JDK_INCLUDE_DIR
+  export JDK_INCLUDE_DIR := $(shell readlink -f $(shell which javac 2>/dev/null) | sed "s:/bin/javac::")/include
+endif
 export LEGATO_ROOT ?= $(CURDIR)
 export LEGATO_TARGET := $(TARGET)
 
