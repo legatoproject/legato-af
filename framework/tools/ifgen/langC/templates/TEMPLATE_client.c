@@ -616,6 +616,7 @@ static void _Handle_{{apiName}}_{{function.name}}
     // The registered handler has been called, so no longer need the client data.
     // Explicitly set handlerPtr to NULL, so that we can catch if this function gets
     // accidently called again.
+    le_ref_DeleteRef(_HandlerRefMap, _clientContextPtr);
     _clientDataPtr->handlerPtr = NULL;
     le_mem_Release(_clientDataPtr);
     {% endif %}
