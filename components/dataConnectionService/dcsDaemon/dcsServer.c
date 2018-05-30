@@ -244,13 +244,6 @@ static le_mdc_SessionStateHandlerRef_t MobileSessionStateHandlerRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Store the packet session state handler
- */
-//--------------------------------------------------------------------------------------------------
-static le_mrc_PacketSwitchedChangeHandlerRef_t PacketSwitchStateHandlerRef = NULL;
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Used access point when wifi technology is selected
  */
 //--------------------------------------------------------------------------------------------------
@@ -1505,10 +1498,22 @@ static void TryStartTechSession
                 le_result_t result = LoadSelectedTechProfile(LE_DATA_CELLULAR);
                 if (LE_OK == result)
                 {
-                    // Ensure that cellular network service is available.
-                    // Data connection will be started when cellular network registration
-                    // notification is received.
-                    le_cellnet_Request();
+                    // Check if the mobile data session should be started
+                    if ((LE_DATA_CELLULAR == CurrentTech) && (RequestCount > 0) && (!IsConnected))
+                    {
+                        // Check if the device is attached yet
+                        le_mrc_NetRegState_t serviceState;
+                        le_result_t res = le_mrc_GetPacketSwitchedState(&serviceState);
+
+                        if ((res == LE_OK) &&
+                            ((LE_MRC_REG_HOME == serviceState) || (LE_MRC_REG_ROAMING == serviceState)))
+                        {
+                            LE_INFO("Device is attached, ready to start a data session");
+
+                            // Start a connection
+                            TryStartDataSession();
+                        }
+                    }
                 }
                 else
                 {
@@ -1830,13 +1835,6 @@ static void ProcessCommand
         {
             // Try and disconnect the current technology
             TryStopTechSession(CurrentTech);
-
-            // Try and disconnect the current technology
-            if (NULL != PacketSwitchStateHandlerRef)
-            {
-                le_mrc_RemovePacketSwitchedChangeHandler(PacketSwitchStateHandlerRef);
-                PacketSwitchStateHandlerRef = NULL;
-            }
         }
     }
     else
@@ -1879,56 +1877,6 @@ static void PacketSwitchHandler
     }
 }
 
-//--------------------------------------------------------------------------------------------------
-/**
- *  Event callback for Cellular Network Service state changes
- */
-//--------------------------------------------------------------------------------------------------
-static void CellNetStateHandler
-(
-    le_cellnet_State_t state,       ///< [IN] Cellular network state
-    void*              contextPtr   ///< [IN] Associated context pointer
-)
-{
-    LE_DEBUG("Cellular Network Service is in state %d", state);
-
-    switch (state)
-    {
-        case LE_CELLNET_RADIO_OFF:
-        case LE_CELLNET_REG_EMERGENCY:
-        case LE_CELLNET_REG_UNKNOWN:
-        case LE_CELLNET_SIM_ABSENT:
-            break;
-        case LE_CELLNET_REG_HOME:
-        case LE_CELLNET_REG_ROAMING:
-            // Check if the mobile data session should be started
-            if ((LE_DATA_CELLULAR == CurrentTech) && (RequestCount > 0) && (!IsConnected))
-            {
-                // Register for packet switch state change
-                // This will be the only case where we will open a connection based on registration state,
-                // subsequent retries will be driven from ps state event.
-                if (NULL == PacketSwitchStateHandlerRef)
-                {
-                    LE_DEBUG("Registering for packet switch state change");
-                    PacketSwitchStateHandlerRef = le_mrc_AddPacketSwitchedChangeHandler(PacketSwitchHandler, NULL);
-                }
-
-                // Check if the device is attached yet
-                le_mrc_NetRegState_t serviceState;
-                le_result_t res = le_mrc_GetPacketSwitchedState(&serviceState);
-
-                if ((res == LE_OK) &&
-                    ((LE_MRC_REG_HOME == serviceState) || (LE_MRC_REG_ROAMING == serviceState)))
-                {
-                    LE_INFO("Device is attached, ready to start a data session");
-
-                    // Start a connection
-                    TryStartDataSession();
-                }
-            }
-            break;
-    }
-}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2835,9 +2783,6 @@ COMPONENT_INIT
     // Mobile services are always available
     TechAvailability[LE_DATA_CELLULAR] = true;
 
-    // Register for Cellular Network Service state changes
-    le_cellnet_AddStateEventHandler(CellNetStateHandler, NULL);
-
     // 2. Wifi service
     // Check wifi client availability
     if (LE_OK == le_wifiClient_TryConnectService())
@@ -2853,6 +2798,9 @@ COMPONENT_INIT
 
     // Initialize technologies list with default values
     InitDefaultTechList();
+
+    // Register for packet switch state event
+    le_mrc_AddPacketSwitchedChangeHandler(PacketSwitchHandler, NULL);
 
     // Register for command events
     le_event_AddHandler("ProcessCommand", CommandEvent, ProcessCommand);
