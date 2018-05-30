@@ -2207,6 +2207,9 @@ le_result_t le_sim_GetHomeNetworkOperator
  *      - LE_FAULT for unexpected error
  *      - LE_DUPLICATE for duplicate operation
  *
+ * @note Please ensure that the eUICC is selected using le_sim_SelectCard() and in a ready state
+ *       before attempting a profile swap.
+ *
  * @warning If you use a Morpho or Oberthur card, the SIM_REFRESH PRO-ACTIVE command must be
  *          accepted with le_sim_AcceptSimToolkitCommand() in order to complete the profile swap
  *          procedure.
@@ -2226,10 +2229,12 @@ le_result_t le_sim_LocalSwapToEmergencyCallSubscription
         return LE_BAD_PARAMETER;
     }
 
-    if (LE_OK != SelectSIMCard(simId))
+    if (simId != SelectedCard)
     {
-        return LE_FAULT;
+        LE_ERROR("Mismatch between provided simId (%d) and current SIM (%d)", simId, SelectedCard);
+        return LE_BAD_PARAMETER;
     }
+
     simPtr = &SimList[simId];
 
     if (ECS == simPtr->subscription)
@@ -2270,6 +2275,9 @@ le_result_t le_sim_LocalSwapToEmergencyCallSubscription
  *      - LE_FAULT for unexpected error
  *      - LE_DUPLICATE for duplicate operation
  *
+ * @note Please ensure that the eUICC is selected using le_sim_SelectCard() and in a ready state
+ *       before attempting a profile swap.
+ *
  * @warning If you use a Morpho or Oberthur card, the SIM_REFRESH PRO-ACTIVE command must be
  *          accepted with le_sim_AcceptSimToolkitCommand() in order to complete the profile swap
  *          procedure.
@@ -2289,10 +2297,12 @@ le_result_t le_sim_LocalSwapToCommercialSubscription
         return LE_BAD_PARAMETER;
     }
 
-    if (LE_OK != SelectSIMCard(simId))
+    if (simId != SelectedCard)
     {
-        return LE_FAULT;
+        LE_ERROR("Mismatch between provided simId (%d) and current SIM (%d)", simId, SelectedCard);
+        return LE_BAD_PARAMETER;
     }
+
     simPtr = &SimList[simId];
 
     if (COMMERCIAL == simPtr->subscription)
