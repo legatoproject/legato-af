@@ -28,6 +28,10 @@ ifeq ($(VERBOSE),1)
   NINJA_FLAGS += -v
 endif
 
+ifneq ($(LEGATO_JOBS),)
+  NINJA_FLAGS += -j $(LEGATO_JOBS)
+endif
+
 export HOST_ARCH := $(shell uname -m)
 TOOLS_ARCH ?= $(HOST_ARCH)
 

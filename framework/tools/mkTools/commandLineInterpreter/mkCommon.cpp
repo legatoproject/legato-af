@@ -431,29 +431,53 @@ void RunNinja
 
     if (file::FileExists(ninjaFilePath))
     {
+        std::string ninjaArgvJobCount;
+        const char* ninjaArgv[9] = {
+            "ninja",
+            "-f", ninjaFilePath.c_str(),
+            (char*)NULL,
+        };
+        int ninjaArgvPos = 3;
+
+        if (buildParams.jobCount > 0)
+        {
+            ninjaArgvJobCount = std::to_string(buildParams.jobCount);
+            ninjaArgv[ninjaArgvPos++] = "-j";
+            ninjaArgv[ninjaArgvPos++] = ninjaArgvJobCount.c_str();
+            ninjaArgv[ninjaArgvPos] = NULL;
+        }
+
         if (buildParams.beVerbose)
         {
+            ninjaArgv[ninjaArgvPos++] = "-v";
+            ninjaArgv[ninjaArgvPos++] = "-d";
+            ninjaArgv[ninjaArgvPos++] = "explain";
+            ninjaArgv[ninjaArgvPos] = NULL;
+
             std::cout << LE_I18N("Executing ninja build system...") << std::endl;
-            std::cout << mk::format(LE_I18N("$ ninja -v -d explain -f %s"), ninjaFilePath)
-                      << std::endl;
-
-            (void)execlp("ninja",
-                         "ninja",
-                         "-v",
-                         "-d", "explain",
-                         "-f", ninjaFilePath.c_str(),
-                         (char*)NULL);
-
-            // REMINDER: If you change the list of arguments passed to ninja, don't forget to
-            //           update the std::cout message above that to match your changes.
+            std::cout << "$";
+            for (int i = 0; ninjaArgv[i] != NULL; i++)
+            {
+                std::cout << " " << ninjaArgv[i];
+            }
+            std::cout << std::endl;
         }
-        else
-        {
-            (void)execlp("ninja",
-                         "ninja",
-                         "-f", ninjaFilePath.c_str(),
-                         (char*)NULL);
-        }
+
+        // According to the execvp prototype, it takes a char* const array.
+        //   int execvp(const char *file, char *const argv[]);
+        // Using a const_cast here since in practice, the array is not being
+        // modified even though the protoype says it could.
+        //
+        // From http://pubs.opengroup.org/onlinepubs/9699919799/functions/fexecve.html :
+        //   The statement about argv[] and envp[] being constants is included to make
+        //   explicit to future writers of language bindings that these objects are
+        //   completely constant. Due to a limitation of the ISO C standard, it is not
+        //   possible to state that idea in standard C. Specifying two levels of const-
+        //   qualification for the argv[] and  envp[] parameters for the exec functions
+        //   may seem to be the natural choice, given that these functions do not modify
+        //   either the array of pointers or the characters to which the function points,
+        //   but this would disallow existing correct code.
+        (void)execvp("ninja", const_cast<char **>(ninjaArgv));
 
         int errCode = errno;
 

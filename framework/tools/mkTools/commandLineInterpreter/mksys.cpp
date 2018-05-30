@@ -165,6 +165,12 @@ static void GetCommandLineArgs
                           "verbose",
                           LE_I18N("Set into verbose mode for extra diagnostic information."));
 
+    args::AddOptionalInt(&BuildParams.jobCount,
+                         0,
+                         'j',
+                         "jobs",
+                         LE_I18N("Run N jobs in parallel (default derived from CPUs available)"));
+
     args::AddMultipleString('C',
                             "cflags",
                             LE_I18N("Specify extra flags to be passed to the C compiler."),

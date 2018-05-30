@@ -29,6 +29,11 @@ set(LEGATO_TOOL_MKDOC       "${LEGATO_ROOT}/bin/mkdoc")
 set(LEGATO_INCLUDE_DIRS ${LEGATO_INCLUDE_DIRS} ${LEGATO_ROOT}/framework/include)
 set(LEGATO_LIBRARY_PATH ${LEGATO_ROOT}/build/${LEGATO_TARGET}/framework/lib/liblegato.so)
 
+set(JOBS_ARGS "")
+if (NOT $ENV{LEGATO_JOBS} STREQUAL "")
+    set(JOBS_ARGS -j $ENV{LEGATO_JOBS})
+endif()
+
 # Low-Level Interfaces
 # TODO: Get rid of this.
 set(LEGATO_INCLUDE_DIRS_PRIV ${LEGATO_INCLUDE_DIRS_PRIV}
@@ -101,6 +106,7 @@ function(mkexe EXE_NAME)
                           -i ${CMAKE_CURRENT_SOURCE_DIR}
                           -l ${LIBRARY_OUTPUT_PATH}
                           -t ${LEGATO_TARGET}
+                          ${JOBS_ARGS}
                           ${ARGN}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             COMMENT "mkexe '${EXE_NAME}': ${EXECUTABLE_OUTPUT_PATH}/${EXE_NAME}"
@@ -134,6 +140,7 @@ function(mkapp ADEF)
                         -i ${CMAKE_CURRENT_SOURCE_DIR}
                         -c ${CMAKE_CURRENT_SOURCE_DIR}
                         -o ${APP_OUTPUT_PATH}
+                        ${JOBS_ARGS}
                         ${ARGN}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             COMMENT "mkapp '${APP_NAME}': ${APP_PKG}"
@@ -168,6 +175,7 @@ function(mkcomp COMP_PATH)
                         -i ${CMAKE_CURRENT_SOURCE_DIR}
                         -c ${CMAKE_CURRENT_SOURCE_DIR}
                         -l ${LIBRARY_OUTPUT_PATH}
+                        ${JOBS_ARGS}
                         ${ARGN}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             COMMENT "mkcomp '${COMP_NAME}': ${COMPONENT_LIB}"

@@ -10,5 +10,10 @@ export BUILD_DIR
 
 VERBOSE := -v
 
+ifeq ($(LEGATO_JOBS),)
+  LEGATO_JOBS := $(shell nproc)
+endif
+export LEGATO_JOBS
+
 clean:
 	rm -rf $(BUILD_DIR)

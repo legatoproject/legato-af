@@ -95,18 +95,24 @@ export PLANTUML_JAR_FILE := $(PLANTUML_PATH)/plantuml.jar
 
 # Use ccache by default if available
 ifeq ($(USE_CCACHE),)
-  ifneq ($(shell which ccache),)
+  ifneq ($(shell which ccache 2>/dev/null),)
     export USE_CCACHE = 1
   endif
 endif
 ifeq ($(USE_CCACHE),1)
   ifeq ($(CCACHE),)
-    CCACHE := $(shell which ccache)
+    CCACHE := $(shell which ccache 2>/dev/null)
   endif
   ifeq ($(CCACHE),)
     $(error "Unable to find ccache while it is enabled.")
   endif
   export CCACHE
+  ifeq ($(LEGATO_JOBS),)
+    # If ccache is enabled, we can raise the number of concurrent
+    # jobs as it likely to get objects from cache, therefore not
+    # consumming much CPU.
+    LEGATO_JOBS := $(shell echo $$((4 * $$(nproc))))
+  endif
 else
   CCACHE :=
   unexport CCACHE
@@ -371,6 +377,7 @@ $(foreach target,$(TARGETS),build/$(target)/Makefile):
 		cmake ../.. \
 			-DLEGATO_ROOT=$(LEGATO_ROOT) \
 			-DLEGATO_TARGET=$(TARGET) \
+			-DLEGATO_JOBS=$(LEGATO_JOBS) \
 			-DPLANTUML_JAR_FILE=$(PLANTUML_JAR_FILE) \
 			-DPA_DIR=$(LEGATO_ROOT)/platformAdaptor \
 			-DTEST_COVERAGE=$(TEST_COVERAGE) \
@@ -491,6 +498,12 @@ ifeq ($(TEST_COVERAGE),1)
   ifneq ($(TEST_COVERAGE_DIR),)
     MKSYS_FLAGS += --cflags=-fprofile-dir=${TEST_COVERAGE_DIR}
   endif
+endif
+
+ifneq ($(LEGATO_JOBS),)
+  $(info Job Count: $(LEGATO_JOBS))
+  MKSYS_FLAGS += -j $(LEGATO_JOBS)
+  export LEGATO_JOBS
 endif
 
 # Define the default sdef file to use

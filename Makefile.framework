@@ -77,11 +77,15 @@ ifeq ($(VERBOSE),1)
   LOCAL_MKEXE_FLAGS += -v
 endif
 
+ifneq ($(LEGATO_JOBS),)
+  NINJA_FLAGS += -j $(LEGATO_JOBS)
+  LOCAL_MKEXE_FLAGS += -j $(LEGATO_JOBS)
+endif
 
 # If Java builds are to be enabled, make sure JDK_INCLUDE_DIR is set to your JDK include
 # directory, typically something like: /usr/lib/jvm/java-7-openjdk-amd64/include
 ifdef JDK_INCLUDE_DIR
-LEGATO_JAVA=$(LIB_DIR)/liblegatoJni.so
+  LEGATO_JAVA=$(LIB_DIR)/liblegatoJni.so
 endif
 
 # Generate and integrate liblegato.py in the Legato framework.

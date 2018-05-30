@@ -21,6 +21,7 @@ namespace mk
 struct BuildParams_t
 {
     bool                    beVerbose;          ///< true = output progress msgs to stdout.
+    int                     jobCount;           ///< Number of job counts (ninja default if 0)
     std::string             target;             ///< (e.g., "localhost" or "ar7")
     std::list<std::string>  interfaceDirs;      ///< Interface search directory paths.
     std::list<std::string>  moduleDirs;         ///< Kernel module search paths.
