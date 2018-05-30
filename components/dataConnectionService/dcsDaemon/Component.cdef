@@ -10,9 +10,9 @@ requires:
 {
     api:
     {
+        modemServices/le_mdmDefs.api [types-only]
         modemServices/le_mdc.api
         modemServices/le_mrc.api
-        le_cellnet.api
         le_cfg.api
         ${LEGATO_ROOT}/interfaces/wifi/le_wifiClient.api [optional]
     }

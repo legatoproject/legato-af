@@ -24,7 +24,6 @@ bindings:
 {
     dcsDaemon.dcsDaemon.le_mdc -> modemService.le_mdc
     dcsDaemon.dcsDaemon.le_mrc -> modemService.le_mrc
-    dcsDaemon.dcsDaemon.le_cellnet -> cellNetService.le_cellnet
     dcsDaemon.dcsDaemon.le_wifiClient -> <root>.le_wifiClient
     dcsDaemon.watchdogChain.le_wdog -> <root>.le_wdog
 }
