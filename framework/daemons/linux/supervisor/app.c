@@ -2713,6 +2713,8 @@ app_Ref_t app_Create
     appPtr->killTimer = NULL;
     appPtr->reqModuleName = LE_SLS_LIST_INIT;
 
+    LE_INFO("Creating app '%s'", appPtr->name);
+
     // Get a config iterator for this app.
     le_cfg_IteratorRef_t cfgIterator = le_cfg_CreateReadTxn(appPtr->cfgPathRoot);
 
@@ -2828,7 +2830,6 @@ app_Ref_t app_Create
         goto failed;
     }
 
-    GetKernelModules(appPtr);
     le_cfg_CancelTxn(cfgIterator);
     return appPtr;
 
@@ -2911,6 +2912,8 @@ le_result_t app_Start
     app_Ref_t appRef                    ///< [IN] Reference to the application to start.
 )
 {
+    LE_INFO("Starting app '%s'", appRef->name);
+
     if (appRef->state == APP_STATE_RUNNING)
     {
         LE_ERROR("Application '%s' is already running.", appRef->name);
@@ -2969,6 +2972,8 @@ le_result_t app_Start
         // Get the next process.
         procLinkPtr = le_dls_PeekNext(&(appRef->procs), procLinkPtr);
     }
+
+    GetKernelModules(appRef);
 
     return LE_OK;
 }
