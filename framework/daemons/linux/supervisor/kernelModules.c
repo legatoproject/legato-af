@@ -91,8 +91,8 @@ typedef struct
     uint32_t           cookie;                               // KModuleObj_t identifier
     char               *name;                                // Module name
     char               path[LIMIT_MAX_PATH_BYTES];           // Path to module's .ko file
-    int                argc;                                 // insmod/rmmod argc
-    char               *argv[KMODULE_MAX_ARGC];              // insmod/rmmod argv
+    int                argc;                                 // insmod argc
+    char               *argv[KMODULE_MAX_ARGC];              // insmod argv
     le_sls_List_t      reqModuleName;                        // List of required kernel modules
     ModuleLoadStatus_t moduleLoadStatus;                     // Load status of the module
     bool               isLoadManual;                         // is module load set to auto or manual
@@ -114,7 +114,7 @@ KModuleObj_t;
 static struct {
     le_mem_PoolRef_t    modulePool;        // memory pool of KModuleObj_t objects
     le_mem_PoolRef_t    stringPool;        // memory pool of strings (for argv)
-    le_mem_PoolRef_t    reqModStringPool;  // memory pool of strings (for argv)
+    le_mem_PoolRef_t    reqModStringPool;  // memory pool of required kernel modules strings
     le_hashmap_Ref_t    moduleTable;       // table for kernel module objects
 } KModuleHandler = {NULL};
 
@@ -760,6 +760,7 @@ static void installModules()
 
         if (modPtr->isLoadManual)
         {
+            linkPtr = le_dls_PeekNext(&ModuleAlphaOrderList, linkPtr);
             continue;
         }
 
@@ -894,6 +895,7 @@ static le_result_t RemoveEachKernelModule(KModuleObj_t *m)
     le_sls_List_t ModuleRemoveList = LE_SLS_LIST_INIT;
     ModuleLoadStatus_t loadStatusProcMod;
     char *scriptargv[3];
+    char *rmmodargv[3];
 
     TraverseDependencyRemove(&ModuleRemoveList, m);
 
@@ -941,13 +943,12 @@ static le_result_t RemoveEachKernelModule(KModuleObj_t *m)
             }
             else
             {
-                /* Populate argv for rmmod */
-                mod->argv[0] = RMMOD_COMMAND;
-                mod->argv[1] = mod->name;
+                /* Populate argv for rmmod. rmmod does not take any parameters. */
+                rmmodargv[0] = RMMOD_COMMAND;
+                rmmodargv[1] = mod->name;
+                rmmodargv[2] = NULL;
 
-                FreeArgvParams(mod);
-
-                result = ExecuteCommand(mod->argv);
+                result = ExecuteCommand(rmmodargv);
                 if (result != LE_OK)
                 {
                     return result;
