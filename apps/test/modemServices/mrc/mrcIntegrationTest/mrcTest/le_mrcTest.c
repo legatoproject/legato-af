@@ -22,6 +22,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum and default values for SAR backoff state
+ */
+//--------------------------------------------------------------------------------------------------
+#define SAR_BACKOFF_STATE_MAX       8
+#define SAR_BACKOFF_STATE_DEFAULT   0
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Value for sleep
  */
 //--------------------------------------------------------------------------------------------------
@@ -2074,12 +2082,42 @@ static void Testle_mrc_JammingDetection
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Test: SAR backoff setting
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_SarBackoff
+(
+    void
+)
+{
+    uint8_t state;
+    uint8_t i;
+
+    for (i = SAR_BACKOFF_STATE_DEFAULT; i <= SAR_BACKOFF_STATE_MAX; i++)
+    {
+        LE_ASSERT_OK(le_mrc_SetSarBackoffState(i));
+        LE_ASSERT_OK(le_mrc_GetSarBackoffState(&state));
+        LE_ASSERT(i == state);
+        LE_INFO("Backoff state: %d", state);
+    }
+
+    LE_ASSERT(LE_OUT_OF_RANGE == le_mrc_SetSarBackoffState(SAR_BACKOFF_STATE_MAX+1));
+    LE_ASSERT_OK(le_mrc_SetSarBackoffState(SAR_BACKOFF_STATE_DEFAULT));
+}
+//! [SAR backoff setting]
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Main
  */
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
     LE_INFO("======== Start MRC Modem Services implementation Test========");
+
+    LE_INFO("======== SAR backoff setting Test ========");
+    Testle_mrc_SarBackoff();
+    LE_INFO("======== SAR backoff setting Test PASSED ========");
 
     LE_INFO("======== Jamming detection Test ========");
     Testle_mrc_JammingDetection();

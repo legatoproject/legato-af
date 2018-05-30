@@ -993,6 +993,45 @@ le_result_t pa_mrc_GetJammingDetection
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the SAR backoff state
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed.
+ *  - LE_UNSUPPORTED    The feature is not supported.
+ *  - LE_OUT_OF_RANGE   The provided index is out of range.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_SetSarBackoffState
+(
+    uint8_t state      ///< [IN] New state to enable.
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the SAR backoff state
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed.
+ *  - LE_UNSUPPORTED    The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_GetSarBackoffState
+(
+    uint8_t* statePtr     ///< [OUT] Current state
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to register a handler to report jamming detection notification.
  *
  * @return A handler reference, which is only needed for later removal of the handler.

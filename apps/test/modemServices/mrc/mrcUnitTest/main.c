@@ -58,6 +58,14 @@ static le_clk_Time_t    TimeToWait = { 0, 1000000 };
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum and default values for SAR backoff state
+ */
+//--------------------------------------------------------------------------------------------------
+#define SAR_BACKOFF_STATE_MAX       8
+#define SAR_BACKOFF_STATE_DEFAULT   0
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Thread context
  */
 //--------------------------------------------------------------------------------------------------
@@ -882,6 +890,33 @@ void Testle_mrc_JammingTest
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Test: SAR backoff setting
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_SarBackoff
+(
+    void
+)
+{
+    uint8_t state;
+    uint8_t i;
+
+    LE_ASSERT_OK(le_mrc_GetSarBackoffState(&state));
+    LE_ASSERT(SAR_BACKOFF_STATE_DEFAULT == state);
+
+    for (i = SAR_BACKOFF_STATE_DEFAULT; i <= SAR_BACKOFF_STATE_MAX; i++)
+    {
+        LE_ASSERT_OK(le_mrc_SetSarBackoffState(i));
+        LE_ASSERT_OK(le_mrc_GetSarBackoffState(&state));
+        LE_INFO("Backoff state: %d", state);
+        LE_ASSERT(i == state);
+    }
+
+    LE_ASSERT(LE_OUT_OF_RANGE == le_mrc_SetSarBackoffState(SAR_BACKOFF_STATE_MAX+1));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Thread used to run SIM unit tests
  *
  */
@@ -893,6 +928,8 @@ static void* TestThread
 {
     LE_INFO("======== Start UnitTest of MRC API ========");
 
+    LE_INFO("======== MRC Power Test ========");
+    Testle_mrc_SarBackoff();
     LE_INFO("======== MRC Power Test ========");
     Testle_mrc_PowerTest();
     LE_INFO("======== MRC Register Test ========");

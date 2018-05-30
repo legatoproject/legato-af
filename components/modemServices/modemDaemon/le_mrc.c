@@ -4591,3 +4591,55 @@ void le_mrc_RemoveJammingDetectionEventHandler
 {
     le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the SAR backoff state
+ *
+ * @warning The SAR backoff feature might be unsupported by some platforms.
+ *          Please refer to the platform documentation @ref platformConstraintsMdc.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed.
+ *  - LE_UNSUPPORTED    The feature is not supported.
+ *  - LE_OUT_OF_RANGE   The provided index is out of range.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_SetSarBackoffState
+(
+    uint8_t state  ///< [IN] New state to enable. By default, SAR is disabled (state = 0). Refer to
+                   ///<      @ref platformConstraitsMdc for the number of maximum states.
+
+)
+{
+    return pa_mrc_SetSarBackoffState(state);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the SAR backoff state
+ *
+ * @warning The SAR backoff feature might be unsupported by some platforms.
+ *          Please refer to the platform documentation @ref platformConstraintsMdc.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed.
+ *  - LE_UNSUPPORTED    The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetSarBackoffState
+(
+    uint8_t* statePtr  ///< [OUT] Current state. By default, SAR is disabled (state = 0). Refer to
+                       ///<       @ref platformConstraitsMdc for the number of maximum states.
+)
+{
+    if (!statePtr)
+    {
+        LE_ERROR("Null pointer provided");
+        return LE_FAULT;
+    }
+
+    return pa_mrc_GetSarBackoffState(statePtr);
+}

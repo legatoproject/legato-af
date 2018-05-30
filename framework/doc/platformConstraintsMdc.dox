@@ -35,12 +35,21 @@ is supported)
 | MT-PDP context feature   |  X  |        |        |        |    X   |        |    X   |        |        |    X   |
 
 @section mrc_JammingDetection Jamming detection
-
 The jamming detection feature is supported on following platforms:<br>
 
 |                            | AR755x | AR758x | AR759x | AR8652 | WP750x | WP76xx | WP77xx | WP8548 |
 | -------------------------- | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
 | Jamming detection support  |        |        |        |        |        |   X    |        |        |
+
+
+@section mrc_SarBackoff SAR backoff
+The SAR backoff state is not supported by all platforms. Also, the maximum number of states may be
+different among platforms.<br>
+
+|                               | AR755x | AR758x | AR759x | AR8652 | WP750x | WP76xx | WP77xx | WP8548 |
+| ----------------------------- | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
+| SAR backoff state feature     |        |        |        |        |        |  X     |  X     |        |
+| SAR maximum number of states  |        |        |        |        |        |  8     |  8     |        |
 
 See @ref  c_mrc API<br>
 See @ref c_mdc API<br>

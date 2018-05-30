@@ -348,6 +348,15 @@
  * - le_mrc_AddJammingDetectionEventHandler() to register an event handler.
  * - le_mrc_RemoveJammingDetectionEventHandler() to remove an event handler.
  *
+ * @section le_mrc_sar SAR backoff
+ * SAR (Specific Absorption Rate) is a measure of RF energy absorption by the human body.
+ * Users can dynamically select a pre-configured SAR backoff state so they can adjust the SAR
+ * depending on their needs.  To manage SAR backoff, these API should be used:
+ * - le_mrc_SetSarBackoffState() to set a new SAR backoff state.
+ * - le_mrc_GetSarBackoffState() to get the current SAR backoff state.
+ * This feature may be unsupported by some targets. Also, the number of supported states may vary
+ * depending on the target. Please refer to @ref platformConstraintsMdc for further details.
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc.
@@ -650,7 +659,6 @@ ENUM NetRegState
     REG_UNKNOWN         ///< Unknown state.
 };
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Radio Access Technology enum
@@ -704,7 +712,6 @@ ENUM JammingStatus
                             ///< power level is detected on a large number of frequencies
 };
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Radio Bitmask Access Technology Bit Mask
@@ -720,7 +727,6 @@ BITMASK RatBitMask
     BITMASK_RAT_ALL,    ///< To Set all RAT preference Bit Mask
     BITMASK_RAT_MAX
 };
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2136,4 +2142,43 @@ FUNCTION le_result_t StartJammingDetection
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t StopJammingDetection
 (
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the SAR backoff state
+ *
+ * @warning The SAR backoff feature might be unsupported by some platforms.
+ *          Please refer to the platform documentation @ref platformConstraintsMdc.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed.
+ *  - LE_UNSUPPORTED    The feature is not supported.
+ *  - LE_OUT_OF_RANGE   The provided index is out of range.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetSarBackoffState
+(
+    uint8 state      IN  ///< New state to enable. By default, SAR is disabled (state = 0).
+                         ///< Refer to @ref platformConstraitsMdc for the number of maximum states.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the SAR backoff state
+ *
+ * @warning The SAR backoff feature might be unsupported by some platforms.
+ *          Please refer to the platform documentation @ref platformConstraintsMdc.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed.
+ *  - LE_UNSUPPORTED    The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSarBackoffState
+(
+    uint8 state     OUT ///< Current state. By default, SAR is disabled (state = 0).
+                        ///< Refer to @ref platformConstraitsMdc for the number of maximum states.
 );
