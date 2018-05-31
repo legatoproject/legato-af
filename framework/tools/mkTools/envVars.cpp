@@ -107,12 +107,26 @@ static void SetToolChainVars
 {
     if (!buildParams.cCompilerPath.empty())
     {
-        Set("CC", buildParams.cCompilerPath.c_str());
+        auto cCompilerPath = buildParams.cCompilerPath;
+        if (!buildParams.compilerCachePath.empty())
+        {
+            cCompilerPath = buildParams.compilerCachePath + " " +
+                            buildParams.cCompilerPath;
+        }
+
+        Set("CC", cCompilerPath.c_str());
     }
 
     if (!buildParams.cxxCompilerPath.empty())
     {
-        Set("CXX", buildParams.cxxCompilerPath.c_str());
+        auto cxxCompilerPath = buildParams.cxxCompilerPath;
+        if (!buildParams.compilerCachePath.empty())
+        {
+            cxxCompilerPath = buildParams.compilerCachePath + " " +
+                              buildParams.cxxCompilerPath;
+        }
+
+        Set("CXX", cxxCompilerPath.c_str());
     }
 
     if (!buildParams.sysrootPath.empty())

@@ -72,7 +72,7 @@ builddir = $BUILD_DIR
 rule Compile
   description = Compiling liblegato source file
   depfile = \$out.d
-  command = $CC -MMD -MF \$out.d -c \$in -o \$out -Wall -Werror \$flags \$
+  command = $CCACHE $CC -MMD -MF \$out.d -c \$in -o \$out -Wall -Werror \$flags \$
             -DLE_COMPONENT_NAME=framework \$
             -I$LEGATO_ROOT/framework/include \$
             -I$LEGATO_ROOT/framework/liblegato \$

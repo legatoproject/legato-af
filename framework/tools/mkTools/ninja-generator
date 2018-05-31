@@ -85,7 +85,7 @@ rule Compile
   description = Compiling mk tools sources
   depfile = \$out.d
   command = $COMPILER -MMD -MF \$out.d $TOOLS_ARCH_FLAGS \$
-                      -Wall -Werror \$
+                      -Wall -Werror -Wno-unused-command-line-argument \$
                       -I\$builddir/precompiled/ \$
                       -I$SOURCE_DIR \$
                       -I$LEGATO_ROOT/framework/liblegato \$
