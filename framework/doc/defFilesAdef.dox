@@ -1248,26 +1248,26 @@ To disable the watchdog for a given process set the @c watchdogTimeout to @c nev
 watchdogTimeout: never  // Disable watchdog for these processes.
 @endcode
 
-@section defFilesAdef_maxwatchdogTimeout maxwatchdogTimeout
+@section defFilesAdef_maxWatchdogTimeout maxWatchdogTimeout
 
-The @c maxwatchdogTimeout section should be set for critical services.  Setting the
-@c maxwatchdogTimeout will invoke a recovery procedure that will:
+The @c maxWatchdogTimeout section should be set for critical services.  Setting the
+@c maxWatchdogTimeout will invoke a recovery procedure that will:
 - first try to perform the watchdogAction to recover the hung process.
-- wait for the @c maxwatchdogTimeout value to elapse again.
+- wait for the @c maxWatchdogTimeout value to elapse again.
 - if the process is still not started then the target will be rebooted.
 
-The @c maxwatchdogTimeout starts counting on system boot.  The app can't be stopped longer than the
-timeout given in @c maxwatchdogTimeout.  If it is the system will try and "recover itself" and may
+The @c maxWatchdogTimeout starts counting on system boot.  The app can't be stopped longer than the
+timeout given in @c maxWatchdogTimeout.  If it is the system will try and "recover itself" and may
 reboot the target.
 
-The @c maxwatchdogTimeout value can not be set to @c never, if you wish to disable it, remove the
-@c maxwatchdogTimeout from the app's .adef and reinstall the app.
+The @c maxWatchdogTimeout value can not be set to @c never, if you wish to disable it, remove the
+@c maxWatchdogTimeout from the app's .adef and reinstall the app.
 
-If a @c maxwatchdogTimeout is set then le_wdog_Timeout() can not exceed the @c maxwatchdogTimeout
+If a @c maxWatchdogTimeout is set then le_wdog_Timeout() can not exceed the @c maxWatchdogTimeout
 value.
 
 @warning @c watchdogActions @b ignore, @b stop and @b stopApp should not be used when a
-@c maxwatchdogTimeout is configured.
+@c maxWatchdogTimeout is configured.
 
 Copyright (C) Sierra Wireless Inc.
 
