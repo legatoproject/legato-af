@@ -14,4 +14,10 @@ buildVars:
     LEGATO_QMI_RSIM_PA_SRC = ${LEGATO_MODEM_PA_RSIM_DEFAULT}
 }
 
+cflags:
+{
+    // Connection delay
+    -DLEGATO_DATA_CONNECTION_DELAY
+}
+
 #include mdm9xxx.sinc

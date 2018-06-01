@@ -212,7 +212,9 @@ static le_timer_Ref_t RetryTechTimer = NULL;
  * This is a workaround until the bug in QTI netmgr is addressed.
  */
 //--------------------------------------------------------------------------------------------------
+#ifdef LEGATO_DATA_CONNECTION_DELAY
 static le_timer_Ref_t DelayRequestTimer = NULL;
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -707,8 +709,10 @@ static void DataSessionStateHandler
         return;
     }
 
+    #ifdef LEGATO_DATA_CONNECTION_DELAY
     // Restart timer to delay connection request to modem
     le_timer_Restart(DelayRequestTimer);
+    #endif
 
     // Update connection status and send notification to registered applications
     IsConnected = (connectionStatus == LE_MDC_CONNECTED) ? true : false;
@@ -1361,12 +1365,14 @@ static void TryStartDataSession
     void
 )
 {
+    #ifdef LEGATO_DATA_CONNECTION_DELAY
     if (le_timer_IsRunning(DelayRequestTimer))
     {
         LE_INFO("Delaying data connection attempt.");
         ConnectionStatusHandler(LE_DATA_CELLULAR, false);
         return;
     }
+    #endif
 
     le_result_t result = le_mdc_StartSession(MobileProfileRef);
 
@@ -2762,8 +2768,10 @@ COMPONENT_INIT
         LE_ERROR("Could not configure the StopDcs timer!");
     }
 
+    #ifdef LEGATO_DATA_CONNECTION_DELAY
     // Set a timer to delay connection request to the modem
     DelayRequestTimer = le_timer_Create("DelayRequestTimer");
+
     le_clk_Time_t delayInterval = {60, 0};   // 60 seconds
     if (   (LE_OK != le_timer_SetRepeat(DelayRequestTimer, 1))       // One shot timer
         || (LE_OK != le_timer_SetInterval(DelayRequestTimer, delayInterval))
@@ -2771,6 +2779,7 @@ COMPONENT_INIT
     {
         LE_ERROR("Could not configure the DelayRequestTimer timer!");
     }
+    #endif
 
     // Add a handler to the close session service
     le_msg_AddServiceCloseHandler(le_data_GetServiceRef(),
