@@ -19,6 +19,22 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum size of extended attribute list. This is generally limited to size of flash page
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_XATTR_LIST_SIZE             4096
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum size of extended attribute value. This is generally limited to size of flash page
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_XATTR_VALUE_SIZE            4096
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Checks whether or not a file exists at a given file system path.
  *
  * @return true if the file exists and is a normal file.  false otherwise.
@@ -379,8 +395,6 @@ static le_result_t CopyXattrs
 )
 //--------------------------------------------------------------------------------------------------
 {
-#define MAX_XATTR_LIST_SIZE             1000
-#define MAX_XATTR_VALUE_SIZE            255
 
     // Get a list of extended attributes.
     char xattrList[MAX_XATTR_LIST_SIZE] = "";
