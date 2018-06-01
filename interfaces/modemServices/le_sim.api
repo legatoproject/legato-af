@@ -159,6 +159,7 @@
  * - LE_SIM_READY         : SIM card is inserted and unlocked.
  * - LE_SIM_BLOCKED       : SIM card is blocked.
  * - LE_SIM_BUSY          : SIM card is busy.
+ * - LE_SIM_POWER_DOWN    : SIM card is powered down.
  * - LE_SIM_STATE_UNKNOWN : Unknown SIM state.
  *
  * Using this API selects the requested SIM.
@@ -560,6 +561,7 @@ ENUM States
     READY,           ///< SIM card is inserted and unlocked.
     BLOCKED,         ///< SIM card is blocked.
     BUSY,            ///< SIM card is busy.
+    POWER_DOWN,      ///< SIM card is powered down.
     STATE_UNKNOWN    ///< Unknown SIM state.
 };
 
@@ -1460,10 +1462,13 @@ FUNCTION le_result_t SendApduOnChannel
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Power up or down the SIM.
+ * Power up or down the current SIM.
  *
  * @return LE_OK        Function succeeded.
  * @return LE_FAULT     Function failed.
+ *
+ * @note For SIM power cycle operation, it must wait until SIM state is LE_SIM_POWER_DOWN
+ *       before powering on the SIM, otherwise power up SIM will fail.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetPower

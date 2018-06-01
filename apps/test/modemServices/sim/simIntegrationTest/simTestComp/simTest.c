@@ -23,6 +23,11 @@
 //! [Define]
 #define SIM_RSP_LEN         100
 
+static le_sem_Ref_t    SimPowerCycleSemaphore;
+static le_thread_Ref_t  SimPowerCycleThreadRef = NULL;
+static le_sim_NewStateHandlerRef_t   SimPowerCycleHdlrRef = NULL;
+static bool SimPowerCycleStarted = false;
+
 //! [State handler]
 //--------------------------------------------------------------------------------------------------
 /**
@@ -47,12 +52,24 @@ static void TestSimStateHandler
             break;
         case LE_SIM_READY:
             LE_INFO("-TEST- New state LE_SIM_READY for SIM card.%d", simId);
+            if (SimPowerCycleStarted)
+            {
+                SimPowerCycleStarted = false;
+                le_sem_Post(SimPowerCycleSemaphore);
+            }
             break;
         case LE_SIM_BLOCKED:
             LE_INFO("-TEST- New state LE_SIM_BLOCKED for SIM card.%d", simId);
             break;
         case LE_SIM_BUSY:
             LE_INFO("-TEST- New state LE_SIM_BUSY for SIM card.%d", simId);
+            break;
+        case LE_SIM_POWER_DOWN:
+            LE_INFO("-TEST- New state LE_SIM_POWER_DOWN for SIM card.%d", simId);
+            if (SimPowerCycleStarted)
+            {
+                le_sem_Post(SimPowerCycleSemaphore);
+            }
             break;
         case LE_SIM_STATE_UNKNOWN:
             LE_INFO("-TEST- New state LE_SIM_STATE_UNKNOWN for SIM card.%d", simId);
@@ -97,6 +114,9 @@ static void DisplaySimState
             break;
         case LE_SIM_BUSY:
             sprintf(string, "\nSIM Card state LE_SIM_BUSY for SIM card.%d \n", simId);
+            break;
+        case LE_SIM_POWER_DOWN:
+            sprintf(string, "\nSIM Card state LE_SIM_POWER_DOWN for SIM card.%d \n", simId);
             break;
         case LE_SIM_STATE_UNKNOWN:
             sprintf(string, "\nSIM Card state LE_SIM_STATE_UNKNOWN for SIM card.%d \n", simId);
@@ -560,6 +580,35 @@ void simTest_SimGetEid
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Thread for test LE_SIM_POWER_DOWN  indication.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void* SimPowerCycleIndThread
+(
+    void* context   ///< Context
+)
+{
+    le_sim_ConnectService();
+
+    SimPowerCycleHdlrRef = le_sim_AddNewStateHandler(TestSimStateHandler, NULL);
+
+    LE_ASSERT(SimPowerCycleHdlrRef);
+
+    //First sem post and  the "simPowerCycleStarted" flag indicate this thread is running
+    le_sem_Post(SimPowerCycleSemaphore);
+    SimPowerCycleStarted = true;
+
+    LE_INFO("SimPowerCycleIndThread started ...");
+
+    le_event_RunLoop();
+
+    return NULL;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Test: Powers up or down the current SIM card.
  *
  */
@@ -569,18 +618,49 @@ void simTest_SimPowerUpDown
     void
 )
 {
-    le_sim_States_t             state;
-    // Get current SimId
-    le_sim_Id_t simId = le_sim_GetSelectedCard();
+    le_sim_States_t  state;
+    le_sim_Id_t simId;
+    le_result_t res;
+    le_clk_Time_t timeOut;
+
+    //set timeout seconds for waiting for asynchronous power down event.
+    timeOut.sec = 5;
+    timeOut.usec = 0;
+
+    SimPowerCycleSemaphore = le_sem_Create("HandlerSimPowerCycle", 0);
+
+    SimPowerCycleThreadRef= le_thread_Create("ThreadSimPowerCycle", SimPowerCycleIndThread, NULL);
+
+    le_thread_Start(SimPowerCycleThreadRef);
+
+    // get blocked here until our event handler is registered and powerCycle thread is running
+    res = le_sem_WaitWithTimeOut(SimPowerCycleSemaphore, timeOut);
+    LE_ASSERT_OK(res);
+
     // Power down cases
+    simId = le_sim_GetSelectedCard();
     state = le_sim_GetState(simId);
     LE_INFO("test: SIM state %d", state);
     LE_ASSERT(LE_SIM_READY == state);
     LE_ASSERT_OK(le_sim_SetPower(simId, LE_OFF));
+
+    // Wait for complete asynchronous event of powered down (LE_SIM_POWER_DOWN)
+    res = le_sem_WaitWithTimeOut(SimPowerCycleSemaphore, timeOut);
+    LE_ASSERT_OK(res);
     LE_INFO("Powers Down current SIM: success");
+
     // Power up cases
     LE_ASSERT_OK(le_sim_SetPower(simId, LE_ON));
+    // Wait for complete asynchronous event of powered up  (LE_SIM_READY)
+    res = le_sem_WaitWithTimeOut(SimPowerCycleSemaphore, timeOut);
+    LE_ASSERT_OK(res);
     LE_INFO("Powers On current SIM: success");
+
+    // Remove the handler
+    le_sim_RemoveNewStateHandler(SimPowerCycleHdlrRef);
+
+    // cancel the power cycle test thread
+    le_thread_Cancel(SimPowerCycleThreadRef);
 }
 
 //! [Apdu]

@@ -79,6 +79,9 @@ static void TestSimStateHandler
         case LE_SIM_BUSY:
             LE_INFO("-TEST- New state LE_SIM_BUSY for SIM card.%d", simId);
             break;
+        case LE_SIM_POWER_DOWN:
+            LE_INFO("-TEST- New state LE_SIM_POWER_DOWN for SIM card.%d", simId);
+            break;
         case LE_SIM_STATE_UNKNOWN:
             LE_INFO("-TEST- New state LE_SIM_STATE_UNKNOWN for SIM card.%d", simId);
             break;

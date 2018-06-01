@@ -136,6 +136,10 @@ static const char* GetSimStateString
             string = "busy";
             break;
 
+        case LE_SIM_POWER_DOWN:
+            string = "powered down";
+            break;
+
         case LE_SIM_STATE_UNKNOWN:
         default:
             string = "in an unknown state";

@@ -178,6 +178,9 @@ int cm_sim_GetSimStatus()
         case LE_SIM_BUSY:
             printf("SIM card is busy (LE_SIM_BUSY).\n");
             break;
+        case LE_SIM_POWER_DOWN:
+            printf("SIM card is powered down (LE_SIM_POWER_DOWN).\n");
+            break;
         default:
             printf("Unknown SIM state.\n");
             break;

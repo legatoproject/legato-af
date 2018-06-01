@@ -180,6 +180,9 @@ static void LoadSimFromSecStore
                 LE_WARN("Sim-%d is absent",simId);
                 attemptCounter = 1;
                 break;
+            case LE_SIM_POWER_DOWN:
+                LE_WARN("Sim-%d is powered down",simId);
+                break;
             case LE_SIM_STATE_UNKNOWN:
                 break;
         }
@@ -521,9 +524,10 @@ static void SimStateHandler
         LoadSimFromSecStore(simId);
         GetAndSendCellNetStateEvent();
     }
-    else if (LE_SIM_ABSENT == simState)
+
+    if ((LE_SIM_ABSENT == simState) || (LE_SIM_POWER_DOWN == simState))
     {
-        // SIM card removed: notify the applications
+        // SIM card removed or powered down: notify the applications
         GetAndSendCellNetStateEvent();
     }
 }

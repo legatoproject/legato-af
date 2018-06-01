@@ -816,6 +816,7 @@ static void GetSimCardInformation
             break;
 
         case LE_SIM_BUSY:
+        case LE_SIM_POWER_DOWN:
         case LE_SIM_STATE_UNKNOWN:
             simPtr->isReacheable = false;
             simPtr->isPresent = true;
@@ -1573,7 +1574,9 @@ bool le_sim_IsPresent
 
     if (pa_sim_GetState(&state) == LE_OK)
     {
-        if((state != LE_SIM_ABSENT) && (state != LE_SIM_STATE_UNKNOWN))
+        if ((state != LE_SIM_ABSENT) &&
+           (state != LE_SIM_STATE_UNKNOWN) &&
+           (state != LE_SIM_POWER_DOWN))
         {
             simPtr->isPresent = true;
             return true;
@@ -3209,6 +3212,9 @@ le_result_t le_sim_SendApduOnChannel
  *
  * @return LE_OK            Function succeeded.
  * @return LE_FAULT         Function failed.
+ *
+ * @note For SIM power cycle operation, it must wait until SIM state is LE_SIM_POWER_DOWN
+ *       before powering on the SIM, otherwise power up SIM will fail.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_SetPower

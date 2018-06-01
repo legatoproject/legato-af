@@ -543,6 +543,7 @@ static void CheckSimStates
             isReady = false;
         break;
         case LE_SIM_ABSENT:
+        case LE_SIM_POWER_DOWN:
         case LE_SIM_STATE_UNKNOWN:
         default:
             isPresent = false;
