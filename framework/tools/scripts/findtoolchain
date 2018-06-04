@@ -9,10 +9,11 @@ NAME
         $(basename $0) - search for an installed cross-build toolchain for a given type of target.
 
 SYNOPSIS
-        $(basename $0) TARGET [dir or prefix]
+        $(basename $0) TARGET [dir or prefix or sysroot]
 
 DESCRIPTION
-        Will output the toolchain directory directory (or prefix) to stdout and exit with code 0 on success.
+        Will output the toolchain directory directory (or prefix, or sysroot) to stdout and exit
+        with code 0 on success.
 
         Prints an error message to stderr and exits with a non-zero exit code on error.
 ENDHELP
@@ -22,28 +23,142 @@ HOST_ARCH=$(uname -m)
 TARGET=$1
 CMD=${2:-dir}
 
-TOOLCHAIN_DIRS=()
+TOOLCHAIN_INFO=()
+
+GetSysrootDef() {
+    local target=$1
+    local yocto_mode=${2:-false}
+
+    case "$target" in
+    ar7 | ar86 )
+        if [[ "$yocto_mode" == "true" ]]; then
+            echo "swi-mdm9x15"
+        else
+            echo "armv7a-vfp-neon-poky-linux-gnueabi"
+        fi
+        ;;
+
+    wp85 | wp750x)
+        if [[ "$yocto_mode" == "true" ]]; then
+            echo "swi-mdm9x15"
+        else
+            echo "armv7a-neon-poky-linux-gnueabi"
+        fi
+        ;;
+
+    wp76xx | wp77xx)
+        if [[ "$yocto_mode" == "true" ]]; then
+            echo "swi-mdm9x28"
+        else
+            echo "armv7a-neon-poky-linux-gnueabi"
+        fi
+        ;;
+
+    ar758x)
+        if [[ "$yocto_mode" == "true" ]]; then
+            echo "swi-mdm9x28-ar758x"
+        else
+            echo "armv7a-neon-poky-linux-gnueabi"
+        fi
+        ;;
+
+    ar759x)
+        if [[ "$yocto_mode" == "true" ]]; then
+            echo "swi-mdm9x40-ar759x"
+        else
+            echo "armv7a-neon-poky-linux-gnueabi"
+        fi
+        ;;
+
+    raspi | virt_arm)
+        if [[ "$yocto_mode" == "true" ]]; then
+            echo "swi-virt-arm"
+        else
+            echo "armv5e-poky-linux-gnueabi"
+        fi
+        ;;
+
+    virt_x86)
+        if [[ "$yocto_mode" == "true" ]]; then
+            echo "swi-virt-x86"
+        else
+            echo "i586-poky-linux"
+        fi
+        ;;
+
+    virt)
+        VIRT_TARGET_ARCH=${VIRT_TARGET_ARCH:-x86}
+        GetSysrootDef "virt_${VIRT_TARGET_ARCH}"
+        return $?
+        ;;
+
+    *)
+        return 1
+        ;;
+    esac
+
+    return 0
+}
+
+GetSysroot() {
+    local toolchain_dir="$1"
+    local sysroot_def="$2"
+
+    if [ -z "${sysroot_def}" ]; then
+        return 1
+    fi
+
+    local sysroot_dir="$(readlink -e "${toolchain_dir}/../../../../${sysroot_def}")"
+    if [ -z "${sysroot_dir}" ]; then
+        return 1
+    fi
+
+    echo "${sysroot_dir}"
+}
 
 # In the case of a Yocto build, enable the detection of the usage of the internal Yocto tools.
 AppendYoctoBuildToolchain() {
     local build_dir=$1
-    local gcc_prefix=$2
+    local sysroot_def="$2"
+    local gcc_prefix="${3:-"arm-poky-linux-gnueabi"}"
 
-    TOOLCHAIN_DIRS+=("${LEGATO_ROOT}/../${build_dir}/tmp/sysroots/${HOST_ARCH}-linux/usr/bin/${gcc_prefix}")
+    local toolchain_dir="$(readlink -e "${LEGATO_ROOT}/../${build_dir}/tmp/sysroots/${HOST_ARCH}-linux/usr/bin/${gcc_prefix}")"
+    local sysroot_dir="$(readlink -e "${LEGATO_ROOT}/../${build_dir}/tmp/sysroots/${sysroot_def}")"
+    if [ -z "${toolchain_dir}" ] || [ -z "${sysroot_dir}" ]; then
+        return 1
+    fi
+
+    local toolchain_prop="${toolchain_dir}"
+    toolchain_prop+="::"
+    toolchain_prop+="${sysroot_dir}"
+
+    TOOLCHAIN_INFO+=("${toolchain_prop}")
 }
 
 # To detect toolchains installed in /opt/swi
-AppendYoctoSwiToolchain() {
-    local swi_prefix=$1
-    local gcc_prefix=$2
+AppendYoctoToolchain() {
+    local yocto_version=$1
+    local sysroot_def="$2"
+    local gcc_prefix="${3:-"arm-poky-linux-gnueabi"}"
 
-    if ! [ -e "/opt/swi" ]; then
+    if [ ! -e "/opt/swi" ] && [ ! -e "/opt/poky" ]; then
         return 0
     fi
 
-    for entry_dir in $(find /opt/swi -maxdepth 1 -name "${swi_prefix}" | sort -r); do
-        TOOLCHAIN_DIRS+=("${entry_dir}/sysroots/${HOST_ARCH}-pokysdk-linux/usr/bin/${gcc_prefix}")
-    done
+    # In the case where the sysroot_def is not passed as parameter,
+    # use the global one.
+    if [ -z "${sysroot_def}" ]; then
+        sysroot_def="${SYSROOT_DEF}"
+    fi
+
+    while read -r entry_dir; do
+        local toolchain_dir="${entry_dir}/sysroots/${HOST_ARCH}-pokysdk-linux/usr/bin/${gcc_prefix}"
+        local toolchain_prop="${toolchain_dir}"
+        toolchain_prop+="::"
+        toolchain_prop+="$(GetSysroot "${toolchain_dir}" "${sysroot_def}")"
+
+        TOOLCHAIN_INFO+=("${toolchain_prop}")
+    done < <(find /opt/swi /opt/poky -maxdepth 1 -name "${yocto_version}" 2>/dev/null | sort -r)
 }
 
 # Select the appropriate list of toolchain directories to search, in order of preference
@@ -51,75 +166,86 @@ AppendYoctoSwiToolchain() {
 SelectToolchainDirs() {
     local target=$1
 
+    if [ -z "${target}" ]; then
+        exit 1
+    fi
+
+    local sysroot_def="$(GetSysrootDef "${target}" "false")"
+    local yocto_sysroot_def="$(GetSysrootDef "${target}" "true")"
+
     case "$target" in
     ar7 | ar86)
-        AppendYoctoBuildToolchain 'build_src' 'arm-poky-linux-gnueabi'
-        AppendYoctoBuildToolchain 'build_bin' 'arm-poky-linux-gnueabi'
-        AppendYoctoSwiToolchain "SWI9X15A_*"        'arm-poky-linux-gnueabi'
-        AppendYoctoSwiToolchain "y16-ext-${target}" 'arm-poky-linux-gnueabi'
-        AppendYoctoSwiToolchain "y16-ext"           'arm-poky-linux-gnueabi'
+        AppendYoctoBuildToolchain 'build_src' "${yocto_sysroot_def}"
+        AppendYoctoBuildToolchain 'build_bin' "${yocto_sysroot_def}"
+
+        AppendYoctoToolchain "SWI9X15A_*"
+        AppendYoctoToolchain "y16-ext-${target}"
+        AppendYoctoToolchain "y16-ext"
         ;;
     wp85 | wp750x | wp76xx | wp77xx | ar758x | ar759x)
-        AppendYoctoBuildToolchain 'build_src' 'arm-poky-linux-gnueabi'
-        AppendYoctoBuildToolchain 'build_bin' 'arm-poky-linux-gnueabi'
+        AppendYoctoBuildToolchain 'build_src' "${yocto_sysroot_def}"
+        AppendYoctoBuildToolchain 'build_bin' "${yocto_sysroot_def}"
 
         # LxSwi releases
         case "$target" in
         wp85 | wp750x)
             local lxswi_target=wp85xx
-            AppendYoctoSwiToolchain "LXSWI*+${lxswi_target}" 'arm-poky-linux-gnueabi'
+            AppendYoctoToolchain "LXSWI*+${lxswi_target}"
             ;;
         *)
-            AppendYoctoSwiToolchain "LXSWI*+${target}" 'arm-poky-linux-gnueabi'
+            AppendYoctoToolchain "LXSWI*+${target}"
             ;;
         esac
 
         # Firmware releases
         case "$target" in
         wp85 | wp750x)
-            AppendYoctoSwiToolchain "SWI9X15Y_*" 'arm-poky-linux-gnueabi'
+            AppendYoctoToolchain "SWI9X15Y_*"
             ;;
         wp76xx | wp77xx)
-            AppendYoctoSwiToolchain "SWI9X07Y_*" 'arm-poky-linux-gnueabi'
-            AppendYoctoSwiToolchain "SWI9X06Y_*" 'arm-poky-linux-gnueabi'
+            AppendYoctoToolchain "SWI9X07Y_*"
+            AppendYoctoToolchain "SWI9X06Y_*"
             ;;
         ar758x)
-            AppendYoctoSwiToolchain "SWI9X28*_*" 'arm-poky-linux-gnueabi'
+            AppendYoctoToolchain "SWI9X28*_*"
             ;;
         ar759x)
-            AppendYoctoSwiToolchain "SWI9X40*_*" 'arm-poky-linux-gnueabi'
+            AppendYoctoToolchain "SWI9X40*_*"
             ;;
         esac
 
         for v in y22 y17; do
-            AppendYoctoSwiToolchain "${v}-ext-${target}" 'arm-poky-linux-gnueabi'
-            AppendYoctoSwiToolchain "${v}-ext"           'arm-poky-linux-gnueabi'
+            AppendYoctoToolchain "${v}-ext-${target}"
+            AppendYoctoToolchain "${v}-ext"
         done
         ;;
     raspi)
-        TOOLCHAIN_DIRS+=(/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin)
-        AppendYoctoSwiToolchain "LXSWI*+${target}" 'arm-poky-linux-gnueabi'
-        # Use virt toolchain since there is no raspi system ref at the moment.
-        AppendYoctoSwiToolchain "LXSWI*+virt"      'arm-poky-linux-gnueabi'
+        TOOLCHAIN_INFO+=(/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin)
+        AppendYoctoToolchain "LXSWI*+${target}"
+        # Use virt-arm toolchain since there is no raspi system ref at the moment.
+        AppendYoctoToolchain "LXSWI*+virt"         "${sysroot_def}"
+
         for v in y22 y17; do
-            AppendYoctoSwiToolchain "${v}-${target}"     'arm-poky-linux-gnueabi'
-            AppendYoctoSwiToolchain "${v}"               'arm-poky-linux-gnueabi'
+            AppendYoctoToolchain "${v}-${target}"  "${sysroot_def}"
+            AppendYoctoToolchain "${v}"            "${sysroot_def}"
         done
         ;;
     virt_arm)
-        AppendYoctoBuildToolchain 'build_virt-arm' 'arm-poky-linux-gnueabi'
-        AppendYoctoSwiToolchain "LXSWI*+virt"      'arm-poky-linux-gnueabi'
+        AppendYoctoBuildToolchain 'build_virt-arm' "${yocto_sysroot_def}"
+        AppendYoctoToolchain "LXSWI*+virt"         "${sysroot_def}"
+
         for v in y22 y17; do
-            AppendYoctoSwiToolchain "${v}-${target}"     'arm-poky-linux-gnueabi'
-            AppendYoctoSwiToolchain "${v}"               'arm-poky-linux-gnueabi'
+            AppendYoctoToolchain "${v}-${target}"  "${sysroot_def}"
+            AppendYoctoToolchain "${v}"            "${sysroot_def}"
         done
         ;;
     virt_x86)
-        AppendYoctoBuildToolchain 'build_virt-x86' 'i586-poky-linux'
-        AppendYoctoSwiToolchain "LXSWI*+virt"      'i586-poky-linux'
+        AppendYoctoBuildToolchain 'build_virt-x86' "${yocto_sysroot_def}" 'i586-poky-linux'
+        AppendYoctoToolchain "LXSWI*+virt"         "${sysroot_def}"       'i586-poky-linux'
+
         for v in y22 y17; do
-            AppendYoctoSwiToolchain "${v}-${target}"     'i586-poky-linux'
-            AppendYoctoSwiToolchain "${v}"               'i586-poky-linux'
+            AppendYoctoToolchain "${v}-${target}"  "${sysroot_def}"       'i586-poky-linux'
+            AppendYoctoToolchain "${v}"            "${sysroot_def}"       'i586-poky-linux'
         done
         ;;
     virt)
@@ -129,11 +255,14 @@ SelectToolchainDirs() {
     *)
         local toolchain_dir_env="${target^^}_TOOLCHAIN_DIR"
         local toolchain_prefix_env="${target^^}_TOOLCHAIN_PREFIX"
+        local sysroot_env="${target^^}_SYSROOT"
         if [ -n "${!toolchain_prefix_env}" ]; then
+            SYSROOT="${!sysroot_env}"
+
             if [ -n "${!toolchain_dir_env}" ]; then
-                TOOLCHAIN_DIRS+=("${!toolchain_dir_env}/${!toolchain_prefix_env}")
+                TOOLCHAIN_INFO+=("${!toolchain_dir_env}/${!toolchain_prefix_env}::${SYSROOT}")
             else
-                TOOLCHAIN_DIRS+=("${!toolchain_prefix_env}")
+                TOOLCHAIN_INFO+=("${!toolchain_prefix_env}::${SYSROOT}")
             fi
         else
             echo "****ERROR: Unrecognized target type '$1'." >&2
@@ -146,6 +275,39 @@ SelectToolchainDirs() {
     return 0
 }
 
+GetToolchainInfo() {
+    local toolchain_info="$1"
+
+    local toolchain_dir="$(echo "${toolchain_info}" | sed 's/\(.*\)::\(.*\)/\1/')"
+    local sysroot_dir="$(echo "${toolchain_info}" | sed 's/\(.*\)::\(.*\)/\2/')"
+
+    local compiler_exec=gcc
+    if [[ "$USE_CLANG" == "1" ]]; then
+        compiler_exec=clang
+    fi
+
+    if [ ! -e "${toolchain_dir}" ]; then
+        return 1
+    fi
+
+    while read -r -u 10 entry; do
+        if [[ "$CMD" == "dir" ]]; then
+            echo "${toolchain_dir}"
+        elif [[ "$CMD" == "prefix" ]]; then
+            basename "$entry" | sed 's/'$compiler_exec'$//'
+        elif [[ "$CMD" == "sysroot" ]]; then
+            echo "${sysroot_dir}"
+        else
+            echo "Unknown option $CMD"
+            exit 1
+        fi
+
+        return 0
+    done 10< <(find "${toolchain_dir}" -name "*$compiler_exec" 2>/dev/null)
+
+    return 1
+}
+
 if [[ "$TARGET" == "help" ]] ||
    [[ "$TARGET" == "--help" ]] ||
    [[ "$TARGET" == "-h" ]]; then
@@ -153,37 +315,23 @@ if [[ "$TARGET" == "help" ]] ||
     exit 0
 fi
 
-SelectToolchainDirs $TARGET
-
-CheckToolchainDir() {
-    local toolchain_dir=$1
-
-    COMPILER_EXEC=gcc
-    if [[ "$USE_CLANG" == "1" ]]; then
-        COMPILER_EXEC=clang
-    fi
-
-    for entry in $(find "${toolchain_dir}" -name "*$COMPILER_EXEC" 2>/dev/null); do
-        if [[ "$CMD" == "dir" ]]; then
-            echo "$toolchain_dir"
-        elif [[ "$CMD" == "prefix" ]]; then
-            echo "$(basename "$entry" | sed 's/'$COMPILER_EXEC'$//')"
-        else
-            echo "Unknown option $CMD"
-            exit 1
-        fi
-
-        return 0
-    done
-
-    return 1
-}
+SYSROOT_DEF=$(GetSysrootDef "${TARGET}")
 
 TOOLCHAIN_DIR_ENV="${TARGET^^}_TOOLCHAIN_DIR"
 TOOLCHAIN_DIR="${!TOOLCHAIN_DIR_ENV}"
-if [ -n "$TOOLCHAIN_DIR" ]
-then
-    if ! CheckToolchainDir "$TOOLCHAIN_DIR"; then
+
+SYSROOT_ENV="${TARGET^^}_SYSROOT"
+SYSROOT="${!SYSROOT_ENV}"
+
+if [ -n "${TOOLCHAIN_DIR}" ]; then
+
+    if [[ "${CMD}" == "sysroot" ]] && [ -z "${SYSROOT}" ]; then
+        SYSROOT="$(GetSysroot "${TOOLCHAIN_DIR}" "${SYSROOT_DEF}")"
+    fi
+
+    TOOLCHAIN_INFO="${TOOLCHAIN_DIR}::${SYSROOT}"
+
+    if ! GetToolchainInfo "${TOOLCHAIN_INFO}"; then
         echo "Toolchain specified for target '$1' is invalid." >&2
         exit 1
     fi
@@ -191,10 +339,12 @@ then
     exit 0
 fi
 
+SelectToolchainDirs "${TARGET}"
+
 # Go down the list until we find one that exists.
-for dir in "${TOOLCHAIN_DIRS[@]}"
-do
-    if CheckToolchainDir "$dir"; then
+for info in "${TOOLCHAIN_INFO[@]}"; do
+
+    if GetToolchainInfo "$info"; then
         exit 0
     fi
 done

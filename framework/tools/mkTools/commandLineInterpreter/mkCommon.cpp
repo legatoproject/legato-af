@@ -189,10 +189,9 @@ std::string GetSysRootPath
         // Yocto >= 1.8 returns '/not/exist' as a sysroot path
         if (buffer == std::string("/not/exist"))
         {
-            std::cerr << mk::format(LE_I18N("** WARNING: Invalid sysroot returned from compiler"
-                                            " '%s' (returned '%s')."), commandLine, buffer)
-                      << std::endl;
-            buffer[0] = '\0';
+            throw mk::Exception_t(
+                mk::format(LE_I18N("** WARNING: Invalid sysroot returned from compiler"
+                                   " '%s' (returned '%s')."), commandLine, buffer));
         }
 
         // Close the connection and collect the exit code from the compiler.

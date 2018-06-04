@@ -10,5 +10,9 @@ export BUILD_DIR
 
 VERBOSE := -v
 
+ifdef LEGATO_SYSROOT
+  TARGET_CFLAGS=--sysroot=$(LEGATO_SYSROOT)
+endif
+
 clean:
 	rm -rf $(BUILD_DIR)

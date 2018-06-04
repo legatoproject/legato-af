@@ -36,4 +36,4 @@ fandm: $(BUILD_DIR)/libexternal/lib/libexternal.so
 
 $(BUILD_DIR)/libexternal/lib/libexternal.so:
 	mkdir -p $(dir $@)
-	$(TARGET_CC) -fPIC -shared -o $@ libexternal.c
+	$(TARGET_CC) $(TARGET_CFLAGS) -fPIC -shared -o $@ libexternal.c

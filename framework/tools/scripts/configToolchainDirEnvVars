@@ -6,10 +6,10 @@
 
 # Disable colors if stdout is not a tty
 if [ -t 1 ]; then
-    COLOR_TITLE="\033[1;94m"
-    COLOR_warn="\033[0;93m"
-    COLOR_pass="\033[0;32m"
-    COLOR_RESET="\033[0m"
+    COLOR_TITLE="\\033[1;94m"
+    COLOR_warn="\\033[0;93m"
+    COLOR_pass="\\033[0;32m"
+    COLOR_RESET="\\033[0m"
 fi
 
 set_toolchain_dir ()
@@ -18,22 +18,26 @@ set_toolchain_dir ()
 
     toolchain_dir_env_name="$(echo "$target" | tr '[:lower:]' '[:upper:]')_TOOLCHAIN_DIR"
     toolchain_prefix_env_name="$(echo "$target" | tr '[:lower:]' '[:upper:]')_TOOLCHAIN_PREFIX"
+    sysroot_env_name="$(echo "$target" | tr '[:lower:]' '[:upper:]')_SYSROOT"
 
     toolchain_dir=$(findtoolchain "$target" dir 2>/dev/null)
     if [ -z "$toolchain_dir" ] || ! [ -e "$toolchain_dir" ]; then
-        toolchain_err=$(findtoolchain "$target" dir 1>/dev/null 2>&1)
+        toolchain_err=$(findtoolchain "$target" dir 2>&1)
         if [ -n "$toolchain_err" ]; then
-            echo -e "${COLOR_TITLE}[${target}] ${COLOR_warn}${toolchain_error}${COLOR_RESET}"
+            echo -e "${COLOR_TITLE}[${target}] ${COLOR_warn}${toolchain_err}${COLOR_RESET}"
         fi
         return 1
     fi
 
     toolchain_prefix=$(findtoolchain "$target" prefix)
 
+    sysroot=$(findtoolchain "$target" sysroot)
+
     eval "export ${toolchain_dir_env_name}=$toolchain_dir"
     eval "export ${toolchain_prefix_env_name}=$toolchain_prefix"
+    eval "export ${sysroot_env_name}='$sysroot'"
 
-    echo -e "${COLOR_TITLE}[${target}] ${COLOR_pass}Toolchain dir[$toolchain_dir] prefix[$toolchain_prefix]${COLOR_RESET}"
+    echo -e "${COLOR_TITLE}[${target}] ${COLOR_pass}Toolchain dir[$toolchain_dir] prefix[$toolchain_prefix] sysroot[$sysroot]${COLOR_RESET}"
 
     return 0
 }

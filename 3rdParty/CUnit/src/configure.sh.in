@@ -1,4 +1,4 @@
 #!/bin/sh
-export CC="@CMAKE_C_COMPILER@"
-export CFLAGS="@CMAKE_C_COMPILER_ARG1@"
+export CC="@CMAKE_C_COMPILER_LAUNCHER@ @CMAKE_C_COMPILER@"
+export CFLAGS="@CMAKE_REQUIRED_FLAGS@ @CMAKE_C_COMPILER_ARG1@"
 ./configure --prefix="@CUNIT_INSTALL@" --disable-shared --with-pic @CUNIT_CONFIGURE_ARGS@

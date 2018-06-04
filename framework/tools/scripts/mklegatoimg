@@ -132,7 +132,9 @@ StripExeAndLibs() {
         return
     fi
 
-    PATH="${TOOLCHAIN_DIR}:${PATH}"
+    if [ -n "${TOOLCHAIN_DIR}" ]; then
+        PATH="${TOOLCHAIN_DIR}:${PATH}"
+    fi
 
     FindTool "${TOOLCHAIN_PREFIX}strip" STRIP
     CheckRet

@@ -233,6 +233,10 @@ FindToolchain() {
         TOOLCHAIN_PREFIX=$(findtoolchain $TARGET prefix)
     fi
 
+    if [ -z "$LEGATO_SYSROOT" ]; then
+        LEGATO_SYSROOT=$(findtoolchain $TARGET sysroot)
+    fi
+
     TOOLCHAIN_ROOT=$(readlink -f "$TOOLCHAIN_DIR/../../..")
 
     export PATH=$TOOLCHAIN_ROOT/usr/bin:$TOOLCHAIN_ROOT/usr/sbin:$TOOLCHAIN_ROOT/sbin:$PATH

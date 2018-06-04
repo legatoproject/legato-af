@@ -1,6 +1,5 @@
 externalBuild:
 {
     "mkdir -p $${LEGATO_BUILD}/3rdParty/tinydtls"
-    "cp -rf $${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/tinydtls/* . && autoreconf -i"
     ${CURDIR}/make.sh
 }
