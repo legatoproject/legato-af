@@ -133,14 +133,15 @@ static void EvalVar
 (
     std::string& processed,             ///< The string we will dump the var value into.
     const std::string& original,        ///< The original string we pulled the name from.
-    const std::string& varName,         ///< The name of the varable we extracted.
+    const std::string& varName,         ///< The name of the variable we extracted.
     std::set<std::string>* usedVarsPtr  ///< Record the found name in this set, if not null.
 )
 //--------------------------------------------------------------------------------------------------
 {
     if (varName.empty())
     {
-        throw mk::format(LE_I18N("Empty environment variable name in string '%s'"), original);
+        throw mk::Exception_t(mk::format(LE_I18N("Empty environment variable name in string '%s'"),
+                                         original));
     }
 
     if (usedVarsPtr != nullptr)
