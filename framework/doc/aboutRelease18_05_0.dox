@@ -37,6 +37,13 @@ reference count on an object.
 le_fwupdate_GetAppBootloaderVersion() has been added to the Firmware Update API and returns the
 bootloader version string.
 
+@subsection rn1805_Features_data Data Connection
+
+Previous versions of Legato contained a dependency between the @c cellNetService and the
+@c dataConnectionService.  That dependency has been removed from the @ref c_le_data API, and the
+@c le_data service does not turn on the radio or verify that the SIM is valid.  Those steps
+must now be done manually if needed.
+
 @section rn1805_BFeatures Beta Features
 
 The following features have been added to the 18.05 Release and are feature complete but are still

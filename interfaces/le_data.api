@@ -13,6 +13,10 @@
  *
  * @note This interface does not support yet data connection over a fixed link.
  *
+ * @warning Dependency between the @c cellNetService and @c dataConnectionService has been removed. A
+ * data connection request will no longer ensure that the radio is on, or verify that the SIM is
+ * valid and unlocked.
+ *
  * @section le_data_IPCbinding IPC interfaces binding
  *
  * All the functions of this API are provided by the @b dataConnectionService application service.
