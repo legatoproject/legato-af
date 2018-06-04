@@ -253,7 +253,7 @@ static void PrintEntry
     // Print entry.
     if (result == LE_OK)
     {
-        printf("%s", (char*)buf);
+        fwrite(buf, 1, bufSize, stdout);
     }
     else if (result == LE_NOT_FOUND)
     {
