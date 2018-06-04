@@ -15,5 +15,9 @@ ifeq ($(LEGATO_JOBS),)
 endif
 export LEGATO_JOBS
 
+ifdef LEGATO_SYSROOT
+  TARGET_CFLAGS=--sysroot=$(LEGATO_SYSROOT)
+endif
+
 clean:
 	rm -rf $(BUILD_DIR)

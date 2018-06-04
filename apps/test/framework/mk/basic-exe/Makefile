@@ -11,4 +11,4 @@ test1:  $(BUILD_DIR)/lib/libexternal.so
 
 $(BUILD_DIR)/lib/libexternal.so:
 	mkdir -p $(@D)
-	$(CC) $(CFLAGS) -fPIC -shared -o $@ libexternal.c
+	$(TARGET_CC) $(TARGET_CFLAGS) -fPIC -shared -o $@ libexternal.c
