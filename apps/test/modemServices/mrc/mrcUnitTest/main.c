@@ -917,6 +917,36 @@ static void Testle_mrc_SarBackoff
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Function used to get the default Mcc and Mnc (Mcc = 001, Mnc = 01)
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_MccMnc
+(
+    void
+)
+{
+    char mccHomeStr[LE_MRC_MCC_BYTES] = {0};
+    char mncHomeStr[LE_MRC_MNC_BYTES] = {0};
+
+    LE_INFO("Get the default mcc and mnc of home network");
+    LE_ASSERT_OK(le_sim_GetHomeNetworkMccMnc(LE_SIM_EXTERNAL_SLOT_1, mccHomeStr, LE_MRC_MCC_BYTES,
+                                             mncHomeStr, LE_MRC_MNC_BYTES));
+    LE_ASSERT(0 == strcmp(mccHomeStr,PA_SIMU_SIM_DEFAULT_MCC));
+    LE_ASSERT(0 == strcmp(mncHomeStr,PA_SIMU_SIM_DEFAULT_MNC));
+    LE_INFO("Home network mcc.%s mnc.%s", mccHomeStr, mncHomeStr);
+
+    LE_INFO("Set the  mcc and mnc 208 and 01");
+    pa_simSimu_SetHomeNetworkMccMnc(MCC, MNC);
+    LE_ASSERT_OK(le_sim_GetHomeNetworkMccMnc(LE_SIM_EXTERNAL_SLOT_1, mccHomeStr, LE_MRC_MCC_BYTES,
+                                             mncHomeStr, LE_MRC_MNC_BYTES));
+    LE_ASSERT(0 == strcmp(mccHomeStr,MCC));
+    LE_ASSERT(0 == strcmp(mncHomeStr,MNC));
+    LE_INFO("Home network mcc.%s mnc.%s", mccHomeStr, mncHomeStr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Thread used to run SIM unit tests
  *
  */
@@ -927,7 +957,8 @@ static void* TestThread
 )
 {
     LE_INFO("======== Start UnitTest of MRC API ========");
-
+    LE_INFO("======== Get Set MccMnc Test ========");
+    Testle_mrc_MccMnc();
     LE_INFO("======== MRC Power Test ========");
     Testle_mrc_SarBackoff();
     LE_INFO("======== MRC Power Test ========");
@@ -994,7 +1025,6 @@ COMPONENT_INIT
     pa_simSimu_SetPIN(PIN_CODE);
     pa_simSimu_SetIMSI(IMSI);
     pa_simSimu_SetCardIdentification(ICCID);
-    pa_simSimu_SetHomeNetworkMccMnc(MCC, MNC);
     pa_simSimu_SetHomeNetworkOperator(OPERATOR);
     pa_sim_EnterPIN(PA_SIM_PIN, PIN_CODE);
 
