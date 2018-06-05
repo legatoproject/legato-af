@@ -104,8 +104,8 @@ typedef void (*pa_ecall_EventHandlerFunc_t)
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_ecall_Init
 (
-    pa_ecall_SysStd_t sysStd ///< [IN] Choosen system (PA_ECALL_PAN_EUROPEAN or PA_ECALL_ERA_GLONASS)
-);
+    pa_ecall_SysStd_t sysStd ///< [IN] Choosen system (PA_ECALL_PAN_EUROPEAN or
+);                           ///<      PA_ECALL_ERA_GLONASS)
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -144,7 +144,7 @@ LE_SHARED le_result_t pa_ecall_GetOperationMode
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_event_HandlerRef_t pa_ecall_AddEventHandler
 (
-    pa_ecall_EventHandlerFunc_t   handlerFuncPtr ///< [IN] The event handler function.
+    pa_ecall_EventHandlerFunc_t   handlerFuncPtr ///< [IN] The event handler function
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -185,7 +185,7 @@ LE_SHARED le_result_t pa_ecall_SetPsapNumber
 LE_SHARED le_result_t pa_ecall_GetPsapNumber
 (
     char*    psapPtr, ///< [OUT] Public Safely Answering Point number
-    size_t   len      ///< [IN] The length of SMSC string.
+    size_t   len      ///< [IN] The length of SMSC string
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -266,7 +266,7 @@ LE_SHARED le_result_t pa_ecall_End
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_ecall_SetNadDeregistrationTime
 (
-    uint16_t    deregTime  ///< [IN] the 'NAD Deregistration Time' value in minutes.
+    uint16_t    deregTime  ///< [IN] the 'NAD Deregistration Time' value in minutes
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -280,7 +280,7 @@ LE_SHARED le_result_t pa_ecall_SetNadDeregistrationTime
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_ecall_GetNadDeregistrationTime
 (
-    uint16_t*    deregTimePtr  ///< [OUT] the 'NAD Deregistration Time' value in minutes.
+    uint16_t*    deregTimePtr  ///< [OUT] the 'NAD Deregistration Time' value in minutes
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -310,7 +310,7 @@ LE_SHARED le_result_t pa_ecall_SetEraGlonassFallbackTime
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_ecall_GetEraGlonassFallbackTime
 (
-    uint16_t*    durationPtr  ///< [OUT] the ECALL_CCFT time value (in minutes).
+    uint16_t*    durationPtr  ///< [OUT] the ECALL_CCFT time value (in minutes)
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -325,7 +325,7 @@ LE_SHARED le_result_t pa_ecall_GetEraGlonassFallbackTime
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_ecall_SetEraGlonassAutoAnswerTime
 (
-    uint16_t autoAnswerTime  ///< [IN] The ECALL_AUTO_ANSWER_TIME time value in minutes.
+    uint16_t autoAnswerTime  ///< [IN] The ECALL_AUTO_ANSWER_TIME time value in minutes
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -340,7 +340,7 @@ LE_SHARED le_result_t pa_ecall_SetEraGlonassAutoAnswerTime
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_ecall_GetEraGlonassAutoAnswerTime
 (
-    uint16_t* autoAnswerTimePtr  ///< [OUT] The ECALL_AUTO_ANSWER_TIME time value in minutes.
+    uint16_t* autoAnswerTimePtr  ///< [OUT] The ECALL_AUTO_ANSWER_TIME time value in minutes
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -371,6 +371,37 @@ LE_SHARED le_result_t pa_ecall_SetEraGlonassMSDMaxTransmissionTime
 LE_SHARED le_result_t pa_ecall_GetEraGlonassMSDMaxTransmissionTime
 (
     uint16_t* msdMaxTransTimePtr ///< [OUT] ECALL_MSD_MAX_TRANSMISSION_TIME time value (in seconds)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the 'ECALL_POST_TEST_REGISTRATION_TIME' time value in seconds.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_ecall_SetEraGlonassPostTestRegistrationTime
+(
+    uint16_t postTestRegTime  ///< [IN] ECALL_POST_TEST_REGISTRATION_TIME time value (in seconds)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the 'ECALL_POST_TEST_REGISTRATION_TIME' time value in seconds.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_ecall_GetEraGlonassPostTestRegistrationTime
+(
+    uint16_t* postTestRegTimePtr  ///< [OUT] ECALL_POST_TEST_REGISTRATION_TIME time value
+                                  ///< (in seconds)
 );
 
 //--------------------------------------------------------------------------------------------------

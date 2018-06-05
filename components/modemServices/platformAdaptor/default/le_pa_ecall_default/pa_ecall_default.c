@@ -380,6 +380,45 @@ le_result_t pa_ecall_GetEraGlonassMSDMaxTransmissionTime
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the 'ECALL_POST_TEST_REGISTRATION_TIME' time value in seconds.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_ecall_SetEraGlonassPostTestRegistrationTime
+(
+    uint16_t postTestRegTime  ///< [IN] ECALL_POST_TEST_REGISTRATION_TIME time value (in seconds).
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the 'ECALL_POST_TEST_REGISTRATION_TIME' time value in seconds.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_ecall_GetEraGlonassPostTestRegistrationTime
+(
+    uint16_t* postTestRegTimePtr  ///< [OUT] ECALL_POST_TEST_REGISTRATION_TIME time value
+                                  ///< (in seconds).
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to send the Minimum Set of Data for the eCall.
  *
  * @return LE_FAULT  The function failed.

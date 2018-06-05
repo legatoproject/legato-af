@@ -167,13 +167,14 @@ ECallSessionState_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    uint16_t        manualDialAttempts;     ///< Manual dial attempts
-    uint16_t        autoDialAttempts;       ///< Automatic dial attempts
-    uint16_t        dialDuration;           ///< Dial duration value
-    uint16_t        nadDeregistrationTime;  ///< NAD deregistration time
-    bool            pullModeSwitch;         ///< AL ack received positive has been reported or T7
-                                            ///< timer has expired, Pull mode must be selected on
-                                            ///< next redials
+    uint16_t        manualDialAttempts;        ///< Manual dial attempts
+    uint16_t        autoDialAttempts;          ///< Automatic dial attempts
+    uint16_t        dialDuration;              ///< Dial duration value
+    uint16_t        nadDeregistrationTime;     ///< NAD deregistration time
+    uint16_t        postTestRegistrationTime;  ///< Post test registration time
+    bool            pullModeSwitch;            ///< AL ack received positive has been reported or T7
+                                               ///< timer has expired, Pull mode must be selected on
+                                               ///< next redials
 }
 EraGlonassContext_t;
 
@@ -1132,22 +1133,15 @@ static le_result_t ParseAndSetVehicleType
 )
 {
     LE_FATAL_IF((vehStr == NULL), "vehStr is NULL !");
-    if (NULL != vehStr)
-    {
-        le_ecall_MsdVehicleType_t vehType;
-        le_result_t result = VehicleTypeStringToEnum( vehStr, &vehType);
-        if(result == LE_OK)
-        {
-            ECallObj.msd.msdMsg.msdStruct.control.vehType = VehicleTypeEnumToEnumAsn1(vehType);
-        }
-        return result;
-    }
-    else
-    {
-        return LE_FAULT;
-    }
-}
 
+    le_ecall_MsdVehicleType_t vehType;
+    le_result_t result = VehicleTypeStringToEnum( vehStr, &vehType);
+    if (LE_OK == result)
+    {
+        ECallObj.msd.msdMsg.msdStruct.control.vehType = VehicleTypeEnumToEnumAsn1(vehType);
+    }
+    return result;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1310,7 +1304,6 @@ static le_result_t LoadECallSettings
     ECall_t* eCallPtr
 )
 {
-    le_result_t res;
     char configPath[LE_CFG_STR_LEN_BYTES];
     snprintf(configPath, sizeof(configPath), "%s", CFG_MODEMSERVICE_ECALL_PATH);
 
@@ -1351,7 +1344,7 @@ static le_result_t LoadECallSettings
             else if (strlen(vehStr) > 0)
             {
                 LE_DEBUG("eCall settings, vehicle is %s", vehStr);
-                if ((res = ParseAndSetVehicleType(vehStr)) != LE_OK)
+                if (LE_OK != ParseAndSetVehicleType(vehStr))
                 {
                     LE_WARN("Bad vehicle type!");
                 }
@@ -3525,6 +3518,35 @@ le_result_t le_ecall_SetEraGlonassMSDMaxTransmissionTime
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the ERA-GLONASS ECALL_POST_TEST_REGISTRATION_TIME time.
+ *
+ * After completion of transmission of test diagnostics results in a test eCall session, the
+ * in-vehicle system remains registered on the network for the period of time defined by the
+ * ECALL_POST_TEST_REGISTRATION_TIME value.
+ *
+ * @note The ECALL_POST_TEST_REGISTRATION_TIME setting takes effect immediately and is persistent to
+ * reset.
+ *
+ * @note An ECALL_POST_TEST_REGISTRATION_TIME value of zero means the IVS doesn't remain registered
+ * after completion of transmission of test (diagnostics) results.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_SetEraGlonassPostTestRegistrationTime
+(
+    uint16_t postTestRegTime ///< [IN] ECALL_POST_TEST_REGISTRATION_TIME time value (in seconds).
+)
+{
+    ECallObj.eraGlonass.postTestRegistrationTime = postTestRegTime;
+    return pa_ecall_SetEraGlonassPostTestRegistrationTime(postTestRegTime);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the ECALL_MANUAL_DIAL_ATTEMPTS value.
  *
  * @return
@@ -3674,6 +3696,38 @@ le_result_t le_ecall_GetEraGlonassMSDMaxTransmissionTime
     }
 
     return pa_ecall_GetEraGlonassMSDMaxTransmissionTime(msdMaxTransTimePtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the ERA-GLONASS ECALL_POST_TEST_REGISTRATION_TIME time.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_GetEraGlonassPostTestRegistrationTime
+(
+    uint16_t* postTestRegTimePtr  ///< [OUT] ECALL_POST_TEST_REGISTRATION_TIME time value (in
+                                  ///< seconds).
+)
+{
+    if (NULL == postTestRegTimePtr)
+    {
+        LE_ERROR("postTestRegTimePtr is NULL!");
+        return LE_FAULT;
+    }
+
+    le_result_t result = pa_ecall_GetEraGlonassPostTestRegistrationTime(postTestRegTimePtr);
+    if (LE_OK == result)
+    {
+        // Update eCall Context value
+        ECallObj.eraGlonass.postTestRegistrationTime = *postTestRegTimePtr;
+    }
+
+    return result;
 }
 
 //--------------------------------------------------------------------------------------------------

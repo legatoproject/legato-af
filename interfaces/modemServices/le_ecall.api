@@ -171,7 +171,8 @@
  *   The default value is 10.
  *   Redial attempts stop once the call has been cleared down correctly, or if counter / timer
  *   reached their limits.
- *   Available for both manual and test modes.
+ *
+ *   Available for both manual and test modes:
  * - le_ecall_SetEraGlonassAutoDialAttempts(): set the ECALL_AUTO_DIAL_ATTEMPTS value. If a dial
  *   attempt under automatic emergency call initiation failed, it should be repeated maximally
  *   ECALL_AUTO_DIAL_ATTEMPTS-1 times within the maximal time limit of ECALL_DIAL_DURATION.
@@ -191,6 +192,12 @@
  * - le_ecall_SetEraGlonassMSDMaxTransmissionTime(): sets the ECALL_MSD_MAX_TRANSMISSION_TIME time,
  *   the maximum time for MSD transmission.
  *
+ *   Available for test mode only:
+ * - le_ecall_SetEraGlonassPostTestRegistrationTime(): sets the ECALL_POST_TEST_REGISTRATION_TIME,
+ *   the time interval wherein IVS remains registered in the network after the completion of
+ *   transmission of test results to System Operator. The ECALL_POST_TEST_REGISTRATION_TIME default
+ *   time value is 120 seconds.
+ *
  * The corresponding getter functions let you retrieve the configuration settings values:
  *
  * - le_ecall_GetEraGlonassManualDialAttempts(): get the ECALL_MANUAL_DIAL_ATTEMPTS value.
@@ -199,6 +206,8 @@
  * - le_ecall_GetEraGlonassFallbackTime(): get the ECALL_CCFT time.
  * - le_ecall_GetEraGlonassAutoAnswerTime(): get the ECALL_AUTO_ANSWER_TIME time.
  * - le_ecall_GetEraGlonassMSDMaxTransmissionTime(): get the ECALL_MSD_MAX_TRANSMISSION_TIME time.
+ * - le_ecall_GetEraGlonassPostTestRegistrationTime(): get the ECALL_POST_TEST_REGISTRATION_TIME
+ *   time.
  *
  * @section le_ecall_eraGlonassData ERA-GLONASS MSD additional data
  *
@@ -442,6 +451,14 @@
  *
  * @warning Be sure to check the possible values of NAD_DEREGISTRATION_TIME for your specific
  * platform.
+ *
+ * @subsection le_ecall_configuration_postTestRegistrationTime Post test registration time
+ *
+ * The ECALL_POST_TEST_REGISTRATION_TIME time value can be set with the
+ * le_ecall_SetEraGlonassPostTestRegistrationTime() function and retrieved by the
+ * le_ecall_GetEraGlonassPostTestRegistrationTime() function.
+ *
+ * @snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" PostTest
  *
  * @subsection le_ecall_configuration_redialInterval Redial interval
  *
@@ -1568,6 +1585,31 @@ FUNCTION le_result_t SetEraGlonassMSDMaxTransmissionTime
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the ERA-GLONASS ECALL_POST_TEST_REGISTRATION_TIME time.
+ *
+ * After completion of transmission of test diagnostics results in an eCall test session, the
+ * in-vehicle system remains registered on the network for the period of time defined by the
+ * ECALL_POST_TEST_REGISTRATION_TIME value.
+ *
+ * @note The ECALL_POST_TEST_REGISTRATION_TIME setting takes effect immediately and is persistent to
+ * reset.
+ *
+ * @note An ECALL_POST_TEST_REGISTRATION_TIME value of zero means the IVS doesn't remain registered
+ * after completion of transmission of test (diagnostics) results.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetEraGlonassPostTestRegistrationTime
+(
+    uint16 postTestRegTime IN  ///< The ECALL_POST_TEST_REGISTRATION_TIME time value (in seconds)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the ECALL_MANUAL_DIAL_ATTEMPTS value.
  *
  * @return
@@ -1649,6 +1691,23 @@ FUNCTION le_result_t GetEraGlonassAutoAnswerTime
 FUNCTION le_result_t GetEraGlonassMSDMaxTransmissionTime
 (
     uint16 msdMaxTransTime OUT ///< The ECALL_MSD_MAX_TRANSMISSION_TIME time value (in seconds)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the ERA-GLONASS ECALL_POST_TEST_REGISTRATION_TIME time.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetEraGlonassPostTestRegistrationTime
+(
+    uint16 postTestRegTime OUT  ///< The ECALL_POST_TEST_REGISTRATION_TIME time value (in
+                                ///< seconds).
+
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1786,7 +1845,6 @@ FUNCTION le_result_t ResetMsdEraGlonassCoordinateSystemType
 (
     Call        ecallRef        IN   ///< eCall reference
 );
-
 
 //--------------------------------------------------------------------------------------------------
 /**

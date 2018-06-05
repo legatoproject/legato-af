@@ -792,6 +792,14 @@ static void Testle_ecall_EraGlonassSettings
     LE_ASSERT_OK(le_ecall_GetEraGlonassDialDuration(&duration));
     LE_ASSERT(duration == 240);
 
+    LE_ASSERT_OK(le_ecall_SetEraGlonassPostTestRegistrationTime(0));
+    LE_ASSERT_OK(le_ecall_GetEraGlonassPostTestRegistrationTime(&duration));
+    LE_ASSERT(0 == duration);
+
+    LE_ASSERT_OK(le_ecall_SetEraGlonassPostTestRegistrationTime(500));
+    LE_ASSERT_OK(le_ecall_GetEraGlonassPostTestRegistrationTime(&duration));
+    LE_ASSERT(500 == duration);
+
     /* Crash Severity configuration */
     LE_ASSERT_OK(le_ecall_SetMsdEraGlonassCrashSeverity(testECallRef, 0));
     LE_ASSERT_OK(le_ecall_ResetMsdEraGlonassCrashSeverity(testECallRef));

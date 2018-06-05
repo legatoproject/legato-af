@@ -437,6 +437,7 @@ void Testle_ecall_EraGlonassSettings
     uint16_t             duration = 0;
     le_ecall_CallRef_t   testECallRef = 0x00;
     uint16_t             deregistrationTime = 0;
+    le_result_t          res;
 
     LE_INFO("Start Testle_ecall_EraGlonassSettings");
 
@@ -485,6 +486,29 @@ void Testle_ecall_EraGlonassSettings
     LE_INFO("Deregistration time: %d minutes", deregistrationTime);
     //! [NadTime]
     LE_ASSERT(deregistrationTime == 200);
+
+    res = le_ecall_SetEraGlonassPostTestRegistrationTime(0);
+    LE_ASSERT((LE_OK == res) || ((LE_UNSUPPORTED == res)));
+
+    res = le_ecall_GetEraGlonassPostTestRegistrationTime(&duration);
+    LE_ASSERT((LE_OK == res) || ((LE_UNSUPPORTED == res)));
+    if (LE_OK == res)
+    {
+        LE_ASSERT(0 == duration);
+    }
+
+    //! [PostTest]
+    res = le_ecall_SetEraGlonassPostTestRegistrationTime(500);
+    LE_ASSERT((LE_OK == res) || ((LE_UNSUPPORTED == res)));
+
+    res = le_ecall_GetEraGlonassPostTestRegistrationTime(&duration);
+    LE_ASSERT((LE_OK == res) || ((LE_UNSUPPORTED == res)));
+    LE_INFO("Post Test registration time: %d seconds", duration);
+    //! [PostTest]
+    if (LE_OK == res)
+    {
+        LE_ASSERT(500 == duration);
+    }
 
     //! [AutoAnswerTimer]
     /* Check that a valid value can be set */
