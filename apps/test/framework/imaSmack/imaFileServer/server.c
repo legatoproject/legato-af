@@ -89,11 +89,11 @@ void CheckFdWrite
 
         if (-1 == result)
         {
-           LE_INFO(" %s (%m) '%s'", successString, destPathString);
+           LE_INFO(" %s '%s' (%m)", successString, destPathString);
         }
         else
         {
-           LE_FATAL(" %s (%m) '%s'", errorString, destPathString);
+           LE_FATAL(" %s '%s' (%m)", errorString, destPathString);
         }
     }
 }
@@ -120,12 +120,12 @@ void CheckFdOpen
     fd = open(pathString, flags);
     if (-1 == fd)
     {
-       LE_INFO(" %s (%m) '%s'", successString, pathString);
+       LE_INFO(" %s '%s' (%m)", successString, pathString);
     }
     else
     {
        close (fd);
-       LE_FATAL(" %s (%m) '%s'", errorString, pathString);
+       LE_FATAL(" %s '%s' (%m)", errorString, pathString);
     }
 }
 
@@ -205,9 +205,10 @@ void filePasser_PassFd(int fileDescriptor)
     LE_INFO("Received the file descriptor from the client.");
     LE_INFO("Reading the file to see what it said.");
 
-    char buf[1000] = "";
+    char buf[1000] = "\0";
 
-    LE_ASSERT(read(fileDescriptor, buf, sizeof(buf)/2) > 0);
+    ssize_t readRet = read(fileDescriptor, buf, sizeof(buf)/2);
+    LE_FATAL_IF (readRet < 0, "Unable to read on file descriptor %d (%m)", fileDescriptor);
 
     LE_INFO("Text in file: '%s'", buf);
 
@@ -232,10 +233,10 @@ COMPONENT_INIT
     else
     {
         char buf[1024] = "";
-        int result = read(fd, buf, sizeof(buf));
+        ssize_t result = read(fd, buf, sizeof(buf));
         if (result < 0)
         {
-            LE_ERROR("Error in reading (%m), file: '%s' fd=%d", CLIENT_RO_SHELL_FILE, fd);
+            LE_ERROR("Error in reading file: '%s' fd=%d (%m)", CLIENT_RO_SHELL_FILE, fd);
         }
         else
         {
