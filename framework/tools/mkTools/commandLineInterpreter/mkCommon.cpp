@@ -23,25 +23,37 @@ namespace
  * @return  The path to the toolchain, or an empty string if not specified.
  */
 //----------------------------------------------------------------------------------------------
-std::string GetToolChainDir
+std::string GetTargetEnvInfo
 (
-    const std::string& target          ///< The target device type (e.g., wp85)
+    const std::string& target,         ///< The target device type (e.g., wp85)
+    const std::string& info            ///< The information to look for (TOOLCHAIN_DIR, ...)
 )
 //--------------------------------------------------------------------------------------------------
 {
+    // If the all-caps, target-specific tool path env var (e.g., "WP85_CC") is set, then use that.
     auto allCapsPrefix = target + "_";
     std::transform(allCapsPrefix.begin(), allCapsPrefix.end(), allCapsPrefix.begin(), ::toupper);
-    auto toolChainDir = envVars::Get(allCapsPrefix + "TOOLCHAIN_DIR");   // WP
-    if (toolChainDir.empty())
+    auto value = envVars::Get(allCapsPrefix + info);
+    if (!value.empty())
     {
-        toolChainDir = envVars::Get(target + "_" + "TOOLCHAIN_DIR");
-        if (toolChainDir.empty())
-        {
-            toolChainDir = envVars::Get("TOOLCHAIN_DIR");
-        }
+        return value;
     }
 
-    return toolChainDir;
+    // Else, if the target-specific tool path env var (e.g., "wp85_CC") is set, then use that.
+    value = envVars::Get(target + "_" + info);
+    if (!value.empty())
+    {
+        return value;
+    }
+
+    // Else, if the tool path env var (e.g., "CC") is set, use that.
+    value = envVars::Get(info);
+    if (!value.empty())
+    {
+        return value;
+    }
+
+    return "";
 }
 
 
@@ -60,25 +72,8 @@ std::string GetToolPath
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // If the all-caps, target-specific tool path env var (e.g., "WP85_CC") is set, then use that.
-    auto allCapsPrefix = target + "_";
-    std::transform(allCapsPrefix.begin(), allCapsPrefix.end(), allCapsPrefix.begin(), ::toupper);
-    auto path = envVars::Get(allCapsPrefix + toolEnvVarName);
-    if (! path.empty())
-    {
-        return path;
-    }
-
-    // Else, if the target-specific tool path env var (e.g., "wp85_CC") is set, then use that.
-    path = envVars::Get(target + "_" + toolEnvVarName);
-    if (! path.empty())
-    {
-        return path;
-    }
-
-    // Else, if the tool path env var (e.g., "CC") is set, use that.
-    path = envVars::Get(toolEnvVarName);
-    if (! path.empty())
+    auto path = GetTargetEnvInfo(target, toolEnvVarName);
+    if (!path.empty())
     {
         return path;
     }
@@ -86,17 +81,8 @@ std::string GetToolPath
     // Else look for XXXX_TOOLCHAIN_DIR and/or XXXX_TOOLCHAIN_PREFIX environment variables, and
     // if they're set, use those to generate the tool path, assuming the toolchain is the
     // GNU Compiler Collection.
-    auto toolChainDir = GetToolChainDir(target);
-
-    auto toolChainPrefix = envVars::Get(allCapsPrefix + "TOOLCHAIN_PREFIX");
-    if (toolChainPrefix.empty())
-    {
-        toolChainPrefix = envVars::Get(target + "_" + "TOOLCHAIN_PREFIX");
-        if (toolChainPrefix.empty())
-        {
-            toolChainPrefix = envVars::Get("TOOLCHAIN_PREFIX");
-        }
-    }
+    auto toolChainDir = GetTargetEnvInfo(target, "TOOLCHAIN_DIR");
+    auto toolChainPrefix = GetTargetEnvInfo(target, "TOOLCHAIN_PREFIX");
 
     // toolChainPrefix can be blank, but still valid
     if (toolEnvVarName == "CC")
@@ -148,9 +134,7 @@ std::string GetSysRootPath
     }
 
     // Else, if the target-specific XXXX_SYSROOT is set, then use that.
-    std::string targetPrefix = target + "_";
-    std::transform(targetPrefix.begin(), targetPrefix.end(), targetPrefix.begin(), ::toupper);
-    sysRoot = envVars::Get(targetPrefix + "SYSROOT");
+    sysRoot = GetTargetEnvInfo(target, "SYSROOT");
     if (! sysRoot.empty())
     {
         return sysRoot;
@@ -249,7 +233,7 @@ std::list<std::string> GetCrossToolPaths
 //--------------------------------------------------------------------------------------------------
 {
     std::list<std::string> crossToolPaths;
-    auto toolChainDir = GetToolChainDir(target);
+    auto toolChainDir = GetTargetEnvInfo(target, "TOOLCHAIN_DIR");
 
     if (toolChainDir.empty())
     {
@@ -311,7 +295,9 @@ void FindToolChain
 {
     buildParams.cCompilerPath = GetToolPath(buildParams.target, "CC");
     buildParams.cxxCompilerPath = GetToolPath(buildParams.target, "CXX");
-    buildParams.sysrootPath = GetSysRootPath(buildParams.target, buildParams.cCompilerPath);
+    buildParams.toolChainDir = GetTargetEnvInfo(buildParams.target, "TOOLCHAIN_DIR");
+    buildParams.toolChainPrefix = GetTargetEnvInfo(buildParams.target, "TOOLCHAIN_PREFIX");
+    buildParams.sysrootDir = GetSysRootPath(buildParams.target, buildParams.cCompilerPath);
     buildParams.linkerPath = GetToolPath(buildParams.target, "LD");
     buildParams.archiverPath = GetToolPath(buildParams.target, "AR");
     buildParams.assemblerPath = GetToolPath(buildParams.target, "AS");
@@ -325,7 +311,9 @@ void FindToolChain
     {
         std::cout << "C compiler = " << buildParams.cCompilerPath << std::endl;
         std::cout << "C++ compiler = " << buildParams.cxxCompilerPath << std::endl;
-        std::cout << "Compiler sysroot = " << buildParams.sysrootPath << std::endl;
+        std::cout << "Compiler directory = " << buildParams.toolChainDir << std::endl;
+        std::cout << "Compiler prefix = " << buildParams.toolChainPrefix << std::endl;
+        std::cout << "Compiler sysroot = " << buildParams.sysrootDir << std::endl;
         std::cout << "Linker = " << buildParams.linkerPath << std::endl;
         std::cout << "Static lib archiver = " << buildParams.archiverPath << std::endl;
         std::cout << "Assembler = " << buildParams.assemblerPath << std::endl;

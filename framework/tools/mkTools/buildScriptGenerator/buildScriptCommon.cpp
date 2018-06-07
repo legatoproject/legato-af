@@ -186,9 +186,9 @@ void BuildScriptGenerator_t::GenerateBuildRules
     std::string sysrootOption;
     std::string crossToolPath;
 
-    if (!buildParams.sysrootPath.empty())
+    if (!buildParams.sysrootDir.empty())
     {
-        sysrootOption = "--sysroot=" + buildParams.sysrootPath;
+        sysrootOption = "--sysroot=" + buildParams.sysrootDir;
     }
 
     if (!cCompilerPath.empty())
