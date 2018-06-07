@@ -25,6 +25,11 @@ CMD=${2:-dir}
 
 TOOLCHAIN_INFO=()
 
+if [ -z "${LEGATO_ROOT}" ]; then
+    SCRIPT_PATH=$(readlink -f "$( cd `dirname "$0"` && pwd )/`basename $0`")
+    LEGATO_ROOT=$(readlink -f "$(dirname "${SCRIPT_PATH}")/../../../")
+fi
+
 GetSysrootDef() {
     local target=$1
     local yocto_mode=${2:-false}
@@ -324,6 +329,11 @@ SYSROOT_ENV="${TARGET^^}_SYSROOT"
 SYSROOT="${!SYSROOT_ENV}"
 
 if [ -n "${TOOLCHAIN_DIR}" ]; then
+
+    if [[ "${TOOLCHAIN_DIR}" == *"/tmp/sysroots/"* ]]; then
+        # If it matches a Yocto toolchain, use a Yocto sysroot def.
+        SYSROOT_DEF=$(GetSysrootDef "${TARGET}" true)
+    fi
 
     if [[ "${CMD}" == "sysroot" ]] && [ -z "${SYSROOT}" ]; then
         SYSROOT="$(GetSysroot "${TOOLCHAIN_DIR}" "${SYSROOT_DEF}")"

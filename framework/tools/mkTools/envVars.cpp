@@ -115,9 +115,19 @@ static void SetToolChainVars
         Set("CXX", buildParams.cxxCompilerPath.c_str());
     }
 
-    if (!buildParams.sysrootPath.empty())
+    if (!buildParams.toolChainDir.empty())
     {
-        Set("LEGATO_SYSROOT", buildParams.sysrootPath.c_str());
+        Set("TOOLCHAIN_DIR", buildParams.toolChainDir.c_str());
+    }
+
+    if (!buildParams.toolChainPrefix.empty())
+    {
+        Set("TOOLCHAIN_PREFIX", buildParams.toolChainPrefix.c_str());
+    }
+
+    if (!buildParams.sysrootDir.empty())
+    {
+        Set("LEGATO_SYSROOT", buildParams.sysrootDir.c_str());
     }
 
     if (!buildParams.linkerPath.empty())

@@ -52,7 +52,9 @@ struct BuildParams_t
     // File system paths to tool chain executables
     std::string             cCompilerPath;      ///< C compiler
     std::string             cxxCompilerPath;    ///< C++ compiler
-    std::string             sysrootPath;        ///< Root directory of compiler's system files
+    std::string             toolChainDir;       ///< Toolchain directory
+    std::string             toolChainPrefix;    ///< Toolchain prefix
+    std::string             sysrootDir;         ///< Root directory of compiler's system files
     std::string             linkerPath;         ///< Linker
     std::string             archiverPath;       ///< Static library archiver
     std::string             assemblerPath;      ///< Assembler
