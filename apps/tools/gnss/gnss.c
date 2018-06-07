@@ -190,7 +190,7 @@ void PrintGnssHelp
          "\t\t\t\t  Bit mask should be set with hexadecimal values, e.g. 7FFF\n\n"
          "\t\t\t\t- Used to set nmea sentences. Allowed when device in 'ready' state. May require\n"
          "\t\t\t\t  platform reboot, please look platform documentation for details.\n"
-         "\t\t\t\t  nmeaMask can be as follows:\n"
+         "\t\t\t\t  nmeaMask can be as follows (the values are in hexadecimal):\n"
          "\t\t\t\t\t- 1 ------> GPGGA\n"
          "\t\t\t\t\t- 2 ------> GPGSA\n"
          "\t\t\t\t\t- 4 ------> GPGSV\n"

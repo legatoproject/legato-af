@@ -50,6 +50,8 @@ static void TestLeGnssDevice
     uint32_t acqRate;
     uint8_t  minElevation;
     le_result_t result;
+    int32_t altitudeOnWgs84=0;
+    int64_t altitudeOnPZ90;
 
     le_gnss_ConstellationBitMask_t constellationMask;
     le_gnss_NmeaBitMask_t nmeaMask = 0;
@@ -189,6 +191,36 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_SetAcquisitionRate(acqRate)) == LE_OK);
     LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_OK);
     LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_OK);
+
+    // test le_gnss_ConvertDataCoordinate error cases
+    LE_ASSERT(LE_FAULT == (le_gnss_ConvertDataCoordinateSystem(LE_GNSS_COORDINATE_SYSTEM_WGS84,
+                                                               LE_GNSS_COORDINATE_SYSTEM_PZ90,
+                                                               LE_GNSS_POS_LATITUDE,
+                                                               altitudeOnWgs84,
+                                                               NULL)));
+    LE_ASSERT(LE_BAD_PARAMETER == (le_gnss_ConvertDataCoordinateSystem(
+                                                         LE_GNSS_COORDINATE_SYSTEM_MAX,
+                                                         LE_GNSS_COORDINATE_SYSTEM_PZ90,
+                                                         LE_GNSS_POS_LATITUDE,
+                                                         altitudeOnWgs84,
+                                                         &altitudeOnPZ90)));
+    LE_ASSERT(LE_BAD_PARAMETER == (le_gnss_ConvertDataCoordinateSystem(
+                                                         LE_GNSS_COORDINATE_SYSTEM_PZ90,
+                                                         LE_GNSS_COORDINATE_SYSTEM_PZ90,
+                                                         LE_GNSS_POS_LATITUDE,
+                                                         altitudeOnWgs84,
+                                                         &altitudeOnPZ90)));
+    LE_ASSERT(LE_BAD_PARAMETER == (le_gnss_ConvertDataCoordinateSystem(
+                                                         LE_GNSS_COORDINATE_SYSTEM_WGS84,
+                                                         LE_GNSS_COORDINATE_SYSTEM_PZ90,
+                                                         LE_GNSS_POS_MAX,
+                                                         altitudeOnWgs84,
+                                                         &altitudeOnPZ90)));
+    LE_ASSERT(LE_FAULT == (le_gnss_ConvertDataCoordinateSystem(LE_GNSS_COORDINATE_SYSTEM_PZ90,
+                                                         LE_GNSS_COORDINATE_SYSTEM_WGS84,
+                                                         LE_GNSS_POS_ALTITUDE,
+                                                         altitudeOnWgs84,
+                                                         &altitudeOnPZ90)));
 }
 //! [GnssEnable]
 
@@ -225,8 +257,11 @@ static void PositionHandlerFunction
     // Location
     int32_t     latitude;
     int32_t     longitude;
+    int64_t     latitudeOnPZ90;
+    int64_t     longitudeOnPZ90;
     int32_t     altitude;
     int32_t     altitudeOnWgs84;
+    int64_t     altitudeOnPZ90;
     int32_t     hAccuracy;
     int32_t     vAccuracy;
     int32_t     magneticDeviation;
@@ -306,7 +341,6 @@ static void PositionHandlerFunction
                                  :(LE_GNSS_STATE_FIX_2D == state)?"2D Fix"
                                  :(LE_GNSS_STATE_FIX_3D == state)?"3D Fix"
                                  : "Unknown");
-
     // Get Location
     result = le_gnss_GetLocation(positionSampleRef, &latitude, &longitude, &hAccuracy);
     LE_ASSERT((LE_OK == result) || (LE_OUT_OF_RANGE == result));
@@ -317,6 +351,36 @@ static void PositionHandlerFunction
                 (float)latitude/1000000.0,
                 (float)longitude/1000000.0,
                 (float)hAccuracy/100.0);
+
+        // Latitude conversion
+        result = le_gnss_ConvertDataCoordinateSystem(LE_GNSS_COORDINATE_SYSTEM_WGS84,
+                                                     LE_GNSS_COORDINATE_SYSTEM_PZ90,
+                                                     LE_GNSS_POS_LATITUDE,
+                                                     latitude,
+                                                     &latitudeOnPZ90);
+        LE_ASSERT((LE_OK == result) || (LE_UNSUPPORTED == result));
+        if (LE_OK == result)
+        {
+            LE_INFO("Latitude: On WGS84 %d, On PZ90 %" PRId64 ", float %f",
+                    latitude,
+                    latitudeOnPZ90,
+                    (float)latitudeOnPZ90/1000000.0);
+        }
+
+        // Longitude conversion
+        result = le_gnss_ConvertDataCoordinateSystem(LE_GNSS_COORDINATE_SYSTEM_WGS84,
+                                                     LE_GNSS_COORDINATE_SYSTEM_PZ90,
+                                                     LE_GNSS_POS_LONGITUDE,
+                                                     longitude,
+                                                     &longitudeOnPZ90);
+        LE_ASSERT((LE_OK == result) || (LE_UNSUPPORTED == result));
+        if (LE_OK == result)
+        {
+            LE_INFO("Longitude: On WGS84 %d, On PZ90 %" PRId64 ", float %f",
+                    longitude,
+                    longitudeOnPZ90,
+                    (float)longitudeOnPZ90/1000000.0);
+        }
     }
     else
     {
@@ -370,7 +434,21 @@ static void PositionHandlerFunction
 
     if (LE_OK == result)
     {
-        LE_INFO("AltitudeOnWgs84.%d", altitudeOnWgs84/1000);
+        LE_INFO("AltitudeOnWgs84: %f", (float)altitudeOnWgs84/1000.0);
+
+        result = le_gnss_ConvertDataCoordinateSystem(LE_GNSS_COORDINATE_SYSTEM_WGS84,
+                                                     LE_GNSS_COORDINATE_SYSTEM_PZ90,
+                                                     LE_GNSS_POS_ALTITUDE,
+                                                     altitudeOnWgs84,
+                                                     &altitudeOnPZ90);
+        LE_ASSERT((LE_OK == result) || (LE_UNSUPPORTED == result));
+        if (LE_OK == result)
+        {
+            LE_INFO("Altitude: On WGS84: %d, On PZ90 %" PRId64 ", float %f",
+                    altitudeOnWgs84,
+                    altitudeOnPZ90,
+                    (float)altitudeOnPZ90/1000.0);
+        }
     }
     else
     {
@@ -675,7 +753,6 @@ static void TestLeGnssPositionHandler
     // test Cold Restart boosted by le_gnss_InjectUtcTime
     // EpochTime and timeAccuracy should be valid and saved by now
     sleep(2);
-
     LE_INFO("Ask for a Cold restart");
     LE_ASSERT_OK(le_gnss_ForceColdRestart());
 
@@ -684,7 +761,6 @@ static void TestLeGnssPositionHandler
     LE_INFO("TimeAccuracy %d EpochTime %llu",TimeAccuracy, (unsigned long long int)EpochTime);
 
     LE_ASSERT_OK(le_gnss_InjectUtcTime(EpochTime , TimeAccuracy));
-
     // Get TTFF,position fix should be still in progress for the FACTORY start
     result = le_gnss_GetTtff(&ttff);
     LE_ASSERT(LE_BUSY == result);
@@ -722,7 +798,6 @@ static void TestLeGnssPositionHandler
 
     // Display epoch time
     LE_INFO("epoch time: %llu:", (unsigned long long int) epochTime);
-
     LE_INFO("Stop GNSS");
     LE_ASSERT_OK(le_gnss_Stop());
     EpochTime=0;

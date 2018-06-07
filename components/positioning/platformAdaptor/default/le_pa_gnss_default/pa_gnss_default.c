@@ -614,3 +614,27 @@ le_result_t pa_gnss_GetConstellationArea
     LE_ERROR("Unsupported function called");
     return LE_UNSUPPORTED;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert a location data parameter from/to multi-coordinate system
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_BAD_PARAMETER if locationDataDstPtr is NULL
+ *  - LE_UNSUPPORTED request not supported
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_gnss_ConvertDataCoordinateSystem
+(
+    le_gnss_CoordinateSystem_t coordinateSrc,     ///< [IN] Coordinate system to convert from.
+    le_gnss_CoordinateSystem_t coordinateDst,     ///< [IN] Coordinate system to convert to.
+    le_gnss_LocationDataType_t locationDataType,  ///< [IN] Type of location data to convert.
+    int64_t locationDataSrc,                      ///< [IN] Data to convert.
+    int64_t* locationDataDstPtr                   ///< [OUT] Converted Data.
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}

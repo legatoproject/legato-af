@@ -288,6 +288,25 @@
  * @note If le_gnss_SetDataResolution() function is not called, the position data types are received
  * in their default accuracies.
  *
+ * le_gnss_ConvertDataCoordinateSystem() function can be called to convert a location data value
+ * from a coordinate system to another. Currently it is possible to convert the following data
+ * types:
+ * - Latitude
+ * - Longitude
+ * - Altitude
+ *
+ * System coordinates source and destination are currently:
+ * - Coordinate system WGS84
+ * - Coordinate system PZ90
+ *
+ * @note Only conversion from WGS84 coordinate system to PZ90 coordinate system is currently
+ * supported.
+ * @note The altitude in coordinate system WGS84 is obtained by le_gnss_GetAltitudeOnWgs84()
+ * function.
+ *
+ * A sample code using le_gnss_ConvertDataCoordinate() function can be seen in the following page:
+ * - @subpage c_gnssSampleCodePosition
+ *
  * le_gnss_GetDilutionOfPrecision() gets the DOP parameters (Dilution Of Precision) with a
  * resolution of 3 decimal places by default. This resolution can be modified by calling the
  * @c le_gnss_SetDopResolution() function first.
@@ -666,6 +685,7 @@ ENUM ConstellationArea
     WORLDWIDE_AREA,           ///< Worldwide area.
     OUTSIDE_US_AREA           ///< Outside US area.
 };
+
 //--------------------------------------------------------------------------------------------------
 /**
  * GNSS constellation Bit Mask (8 bits) indicating the GNSS constellation(s)
@@ -719,9 +739,34 @@ BITMASK NmeaBitMask
     NMEA_MASK_GPGRS,    ///< GPGRS type enabled: GPS Range residuals.
     NMEA_MASK_GPGLL,    ///< GPGLL type enabled: GPS Geographic position, latitude / longitude.
     NMEA_MASK_DEBUG,    ///< DEBUG type enabled: Debug NMEA indication.
-    NMEA_MASK_GPDTM,    ///< GPDTM type enabled: Local geodetic datum and datum offset from
-                        /// a reference.
+    NMEA_MASK_GPDTM,    ///< GPDTM type enabled: Local geodetic datum and datum offset from a
+                        ///  reference.
     NMEA_MASK_GAGNS     ///< GAGNS type enabled: Fix data for Galileo.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Coordinate system
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM CoordinateSystem
+{
+    COORDINATE_SYSTEM_WGS84,     ///< Coordinate system WGS84.
+    COORDINATE_SYSTEM_PZ90,      ///< Coordinate system PZ90.
+    COORDINATE_SYSTEM_MAX        ///< Maximum value.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+*  Location data types
+*/
+//--------------------------------------------------------------------------------------------------
+ENUM LocationDataType
+{
+   POS_LATITUDE,     ///< Latitude data position.
+   POS_LONGITUDE,    ///< Longitude data position.
+   POS_ALTITUDE,     ///< Altitude data position.
+   POS_MAX           ///< Maximum value.
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -1834,4 +1879,26 @@ FUNCTION le_result_t SetDataResolution
 (
     DataType dataType     IN,   ///< Data type.
     Resolution resolution IN    ///< Resolution.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function converts a location data parameter from/to multi-coordinate system
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_BAD_PARAMETER Invalid parameter provided.
+ *  - LE_UNSUPPORTED request not supported
+ *
+ * @note The resolution of location data parameter remains unchanged after the conversion.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ConvertDataCoordinateSystem
+(
+    CoordinateSystem coordinateSrc IN,      ///< Coordinate system to convert from.
+    CoordinateSystem coordinateDst IN,      ///< Coordinate system to convert to.
+    LocationDataType locationDataType IN,   ///< Type of location data to convert.
+    int64 locationDataSrc IN,               ///< Data to convert.
+    int64 locationDataDst OUT               ///< Converted Data.
 );

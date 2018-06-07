@@ -455,6 +455,7 @@ static void GnssPositionHandlerFunction
     int32_t latitude;
     int32_t longitude;
     int32_t altitudeOnWgs84;
+    int64_t altitudeOnPZ90;
     int32_t hAccuracy;
     int32_t magneticDeviation;
     // Horizontal speed
@@ -540,6 +541,30 @@ static void GnssPositionHandlerFunction
     // Pass invalid sample reference
     LE_ASSERT(LE_FAULT == (le_gnss_GetAltitudeOnWgs84(GnssPositionSampleRef, &altitudeOnWgs84)));
 
+    // test le_gnss_ConvertDataCoordinate error cases
+    LE_ASSERT(LE_FAULT == (le_gnss_ConvertDataCoordinateSystem(LE_GNSS_COORDINATE_SYSTEM_WGS84,
+                                                               LE_GNSS_COORDINATE_SYSTEM_PZ90,
+                                                               LE_GNSS_POS_LATITUDE,
+                                                               altitudeOnWgs84,
+                                                               NULL)));
+    LE_ASSERT(LE_BAD_PARAMETER == (le_gnss_ConvertDataCoordinateSystem(
+                                                               LE_GNSS_COORDINATE_SYSTEM_MAX,
+                                                               LE_GNSS_COORDINATE_SYSTEM_PZ90,
+                                                               LE_GNSS_POS_LATITUDE,
+                                                               altitudeOnWgs84,
+                                                               &altitudeOnPZ90)));
+    LE_ASSERT(LE_BAD_PARAMETER == (le_gnss_ConvertDataCoordinateSystem(
+                                                               LE_GNSS_COORDINATE_SYSTEM_PZ90,
+                                                               LE_GNSS_COORDINATE_SYSTEM_PZ90,
+                                                               LE_GNSS_POS_LATITUDE,
+                                                               altitudeOnWgs84,
+                                                               &altitudeOnPZ90)));
+    LE_ASSERT(LE_BAD_PARAMETER == (le_gnss_ConvertDataCoordinateSystem(
+                                                               LE_GNSS_COORDINATE_SYSTEM_WGS84,
+                                                               LE_GNSS_COORDINATE_SYSTEM_PZ90,
+                                                               LE_GNSS_POS_MAX,
+                                                               altitudeOnWgs84,
+                                                               &altitudeOnPZ90)));
     // Get horizontal speed
     result = le_gnss_GetHorizontalSpeed(positionSampleRef, &hSpeed, &hSpeedAccuracy);
     LE_ASSERT((LE_OK == result) || (LE_OUT_OF_RANGE == result));

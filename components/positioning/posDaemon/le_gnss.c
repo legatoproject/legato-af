@@ -4392,3 +4392,57 @@ le_result_t le_gnss_SetDataResolution
              clientRequestPtr, (int)dataType, (int)resolution);
     return LE_OK;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function converts a location data parameter from/to multi-coordinate system
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_BAD_PARAMETER Invalid parameter provided.
+ *  - LE_UNSUPPORTED request not supported
+ *
+ * @note The resolution of location data parameter remains unchanged after the conversion.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_ConvertDataCoordinateSystem
+(
+    le_gnss_CoordinateSystem_t coordinateSrc,    ///< [IN] Coordinate system to convert from.
+    le_gnss_CoordinateSystem_t coordinateDst,    ///< [IN] Coordinate system to convert to.
+    le_gnss_LocationDataType_t locationDataType, ///< [IN] Type of location data to convert.
+    int64_t locationDataSrc,                     ///< [IN] Data to convert.
+    int64_t* locationDataDstPtr                  ///< [OUT] Data after the conversion.
+)
+{
+    if (NULL == locationDataDstPtr)
+    {
+        LE_ERROR("locationDataDstPtr is NULL");
+        return LE_FAULT;
+    }
+
+    if (coordinateSrc == coordinateDst)
+    {
+        LE_ERROR("Same coordinate system !");
+        return LE_BAD_PARAMETER;
+    }
+
+    if ((coordinateSrc >= LE_GNSS_COORDINATE_SYSTEM_MAX) ||
+        (coordinateDst >= LE_GNSS_COORDINATE_SYSTEM_MAX))
+    {
+        LE_ERROR("Bad coordinate system !");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (locationDataType >= LE_GNSS_POS_MAX)
+    {
+        LE_ERROR("Bad location data type !");
+        return LE_BAD_PARAMETER;
+    }
+
+    return pa_gnss_ConvertDataCoordinateSystem(coordinateSrc,
+                                               coordinateDst,
+                                               locationDataType,
+                                               locationDataSrc,
+                                               locationDataDstPtr);
+}
