@@ -418,4 +418,18 @@ LE_SHARED le_result_t pa_ecall_SendMsd
     size_t    msdSize   ///< [IN] msd buffer size
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Update current system standard
+ *
+ * @return
+ *  - LE_OK    on success
+ *  - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_ecall_UpdateSystemStandard
+(
+    pa_ecall_SysStd_t sysStandard  ///< [IN] The system standard
+);
+
 #endif // LEGATO_PAECALL_INCLUDE_GUARD

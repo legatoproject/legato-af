@@ -434,3 +434,21 @@ le_result_t pa_ecall_SendMsd
     LE_ERROR("Unsupported function called");
     return LE_FAULT;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Update current system standard
+ *
+ * @return
+ *  - LE_OK    on success
+ *  - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_ecall_UpdateSystemStandard
+(
+    pa_ecall_SysStd_t sysStandard  ///< [IN] The system standard
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}

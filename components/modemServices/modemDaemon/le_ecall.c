@@ -1420,6 +1420,11 @@ static le_result_t LoadECallSettings
                 SystemStandard = PA_ECALL_PAN_EUROPEAN;
             }
             LE_INFO("Selected standard is %s (%d)", sysStr, SystemStandard);
+
+            if ( LE_OK != pa_ecall_UpdateSystemStandard(SystemStandard))
+            {
+               LE_INFO("Update PA system standard (%d) failed!", SystemStandard);
+            }
         }
     }
 
@@ -4276,6 +4281,7 @@ le_result_t le_ecall_SetSystemStandard
 {
     le_cfg_IteratorRef_t iteratorRef;
     const char *standard = "\0";
+    pa_ecall_SysStd_t system;
 
     if ( (LE_ECALL_PAN_EUROPEAN != systemStandard) && (LE_ECALL_ERA_GLONASS != systemStandard) )
     {
@@ -4287,11 +4293,18 @@ le_result_t le_ecall_SetSystemStandard
     {
         case LE_ECALL_PAN_EUROPEAN:
             standard = "PAN-EUROPEAN";
+            system = PA_ECALL_PAN_EUROPEAN;
             break;
         case LE_ECALL_ERA_GLONASS:
             standard = "ERA-GLONASS";
+            system = PA_ECALL_ERA_GLONASS;
             break;
         default: break;
+    }
+
+    if ( LE_OK != pa_ecall_UpdateSystemStandard(system))
+    {
+       LE_INFO("Update PA system standard (%d) failed!", system);
     }
 
     iteratorRef = le_cfg_CreateWriteTxn(CFG_MODEMSERVICE_ECALL_PATH);
