@@ -158,9 +158,14 @@ AppendYoctoToolchain() {
 
     while read -r entry_dir; do
         local toolchain_dir="${entry_dir}/sysroots/${HOST_ARCH}-pokysdk-linux/usr/bin/${gcc_prefix}"
+        local sysroot_dir="$(GetSysroot "${toolchain_dir}" "${sysroot_def}")"
+        if [ -z "${sysroot_dir}" ]; then
+            continue
+        fi
+
         local toolchain_prop="${toolchain_dir}"
         toolchain_prop+="::"
-        toolchain_prop+="$(GetSysroot "${toolchain_dir}" "${sysroot_def}")"
+        toolchain_prop+="${sysroot_dir}"
 
         TOOLCHAIN_INFO+=("${toolchain_prop}")
     done < <(find /opt/swi /opt/poky -maxdepth 1 -name "${yocto_version}" 2>/dev/null | sort -r)
@@ -223,6 +228,10 @@ SelectToolchainDirs() {
             AppendYoctoToolchain "${v}-ext-${target}"
             AppendYoctoToolchain "${v}-ext"
         done
+
+        # Also handle -vfp- case for Yocto 1.7
+        AppendYoctoToolchain "y17-ext-${target}"   "armv7a-vfp-neon-poky-linux-gnueabi"
+        AppendYoctoToolchain "y17-ext"             "armv7a-vfp-neon-poky-linux-gnueabi"
         ;;
     raspi)
         TOOLCHAIN_INFO+=(/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin)
@@ -291,7 +300,7 @@ GetToolchainInfo() {
         compiler_exec=clang
     fi
 
-    if [ ! -e "${toolchain_dir}" ]; then
+    if [ ! -e "${toolchain_dir}" ] && [ ! -e "${sysroot_dir}" ]; then
         return 1
     fi
 
