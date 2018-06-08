@@ -1937,9 +1937,10 @@ static void ECallStateHandler
 
     LE_DEBUG("Received new eCall state %d", eCallEventDataPtr->state);
 
-    // Disconnection of eCall notified, wait for the call
-    // termination reason notified by MCC
-    if (LE_ECALL_STATE_DISCONNECTED == *statePtr)
+    // When eCall notification DISCONNECTED or STOPPED is received, the termination reason
+    // should be retrieved in order to decide whether to perform or not a redial after T5 timer
+    // expiration.
+    if ((LE_ECALL_STATE_DISCONNECTED == *statePtr) || (LE_ECALL_STATE_STOPPED == *statePtr))
     {
         le_clk_Time_t timer = { .sec=LE_ECALL_SEM_TIMEOUT_SEC,
                                 .usec=LE_ECALL_SEM_TIMEOUT_USEC };
