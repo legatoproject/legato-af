@@ -168,7 +168,7 @@ AppendYoctoToolchain() {
         toolchain_prop+="${sysroot_dir}"
 
         TOOLCHAIN_INFO+=("${toolchain_prop}")
-    done < <(find /opt/swi /opt/poky -maxdepth 1 -name "${yocto_version}" 2>/dev/null | sort -r)
+    done < <(find -H /opt/swi /opt/poky -maxdepth 1 -name "${yocto_version}" 2>/dev/null | sort -r)
 }
 
 # Select the appropriate list of toolchain directories to search, in order of preference
@@ -317,7 +317,7 @@ GetToolchainInfo() {
         fi
 
         return 0
-    done 10< <(find "${toolchain_dir}" -name "*$compiler_exec" 2>/dev/null)
+    done 10< <(find -H "${toolchain_dir}" -name "*$compiler_exec" 2>/dev/null)
 
     return 1
 }
