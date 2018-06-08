@@ -19,20 +19,36 @@
  */
 //--------------------------------------------------------------------------------------------------
 // EGNOS SBAS category
-#define SBAS_EGNOS_SV_ID_33            33
+#define SBAS_EGNOS_SV_ID_33   33
+#define SBAS_EGNOS_SV_ID_36   36
+#define SBAS_EGNOS_SV_ID_37   37
+#define SBAS_EGNOS_SV_ID_39   39
+#define SBAS_EGNOS_SV_ID_44   44
+#define SBAS_EGNOS_SV_ID_49   49
+
 // WAAS SBAS category
-#define SBAS_WAAS_SV_ID_51             51
+#define SBAS_WAAS_SV_ID_35    35
+#define SBAS_WAAS_SV_ID_46    46
+#define SBAS_WAAS_SV_ID_47    47
+#define SBAS_WAAS_SV_ID_48    48
+#define SBAS_WAAS_SV_ID_51    51
+
 // GAGAN SBAS category
-#define SBAS_GAGAN_SV_ID_40            40
+#define SBAS_GAGAN_SV_ID_40   40
+#define SBAS_GAGAN_SV_ID_41   41
+
 // MSAS SBAS category
-#define SBAS_MSAS_SV_ID_50             50
+#define SBAS_MSAS_SV_ID_42    42
+#define SBAS_MSAS_SV_ID_50    50
+
 // SDCM SBAS category
-#define SBAS_SDCM_SV_ID_38             38
-#define SBAS_SDCM_SV_ID_53             53
-#define SBAS_SDCM_SV_ID_54             54
+#define SBAS_SDCM_SV_ID_38    38
+#define SBAS_SDCM_SV_ID_53    53
+#define SBAS_SDCM_SV_ID_54    54
 
 // Unknown category
-#define UNKNOWN                         0
+#define SBAS_SV_ID_UNKNOWN    0
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -823,13 +839,28 @@ static void Testle_gnss_GetSbasConstellationCategory
 )
 {
     LE_ASSERT(LE_GNSS_SBAS_EGNOS == (le_gnss_GetSbasConstellationCategory(SBAS_EGNOS_SV_ID_33)));
+    LE_ASSERT(LE_GNSS_SBAS_EGNOS == (le_gnss_GetSbasConstellationCategory(SBAS_EGNOS_SV_ID_36)));
+    LE_ASSERT(LE_GNSS_SBAS_EGNOS == (le_gnss_GetSbasConstellationCategory(SBAS_EGNOS_SV_ID_37)));
+    LE_ASSERT(LE_GNSS_SBAS_EGNOS == (le_gnss_GetSbasConstellationCategory(SBAS_EGNOS_SV_ID_39)));
+    LE_ASSERT(LE_GNSS_SBAS_EGNOS == (le_gnss_GetSbasConstellationCategory(SBAS_EGNOS_SV_ID_44)));
+    LE_ASSERT(LE_GNSS_SBAS_EGNOS == (le_gnss_GetSbasConstellationCategory(SBAS_EGNOS_SV_ID_49)));
+
+    LE_ASSERT(LE_GNSS_SBAS_WAAS == (le_gnss_GetSbasConstellationCategory(SBAS_WAAS_SV_ID_35)));
+    LE_ASSERT(LE_GNSS_SBAS_WAAS == (le_gnss_GetSbasConstellationCategory(SBAS_WAAS_SV_ID_46)));
+    LE_ASSERT(LE_GNSS_SBAS_WAAS == (le_gnss_GetSbasConstellationCategory(SBAS_WAAS_SV_ID_47)));
+    LE_ASSERT(LE_GNSS_SBAS_WAAS == (le_gnss_GetSbasConstellationCategory(SBAS_WAAS_SV_ID_48)));
     LE_ASSERT(LE_GNSS_SBAS_WAAS == (le_gnss_GetSbasConstellationCategory(SBAS_WAAS_SV_ID_51)));
+
     LE_ASSERT(LE_GNSS_SBAS_GAGAN == (le_gnss_GetSbasConstellationCategory(SBAS_GAGAN_SV_ID_40)));
+    LE_ASSERT(LE_GNSS_SBAS_GAGAN == (le_gnss_GetSbasConstellationCategory(SBAS_GAGAN_SV_ID_41)));
+
+    LE_ASSERT(LE_GNSS_SBAS_MSAS == (le_gnss_GetSbasConstellationCategory(SBAS_MSAS_SV_ID_42)));
     LE_ASSERT(LE_GNSS_SBAS_MSAS == (le_gnss_GetSbasConstellationCategory(SBAS_MSAS_SV_ID_50)));
+
     LE_ASSERT(LE_GNSS_SBAS_SDCM == (le_gnss_GetSbasConstellationCategory(SBAS_SDCM_SV_ID_38)));
     LE_ASSERT(LE_GNSS_SBAS_SDCM == (le_gnss_GetSbasConstellationCategory(SBAS_SDCM_SV_ID_53)));
     LE_ASSERT(LE_GNSS_SBAS_SDCM == (le_gnss_GetSbasConstellationCategory(SBAS_SDCM_SV_ID_54)));
-    LE_ASSERT(LE_GNSS_SBAS_UNKNOWN == (le_gnss_GetSbasConstellationCategory(UNKNOWN)));
+    LE_ASSERT(LE_GNSS_SBAS_UNKNOWN == (le_gnss_GetSbasConstellationCategory(SBAS_SV_ID_UNKNOWN)));
 }
 
 //--------------------------------------------------------------------------------------------------

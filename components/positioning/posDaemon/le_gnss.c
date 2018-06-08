@@ -41,9 +41,11 @@
 //--------------------------------------------------------------------------------------------------
 // EGNOS SBAS category
 #define SBAS_EGNOS_SV_ID_33   33
+#define SBAS_EGNOS_SV_ID_36   36
 #define SBAS_EGNOS_SV_ID_37   37
 #define SBAS_EGNOS_SV_ID_39   39
 #define SBAS_EGNOS_SV_ID_44   44
+#define SBAS_EGNOS_SV_ID_49   49
 
 // WAAS SBAS category
 #define SBAS_WAAS_SV_ID_35    35
@@ -2506,9 +2508,11 @@ le_gnss_SbasConstellationCategory_t le_gnss_GetSbasConstellationCategory
     switch (satId)
     {
         case SBAS_EGNOS_SV_ID_33:
+        case SBAS_EGNOS_SV_ID_36:
         case SBAS_EGNOS_SV_ID_37:
         case SBAS_EGNOS_SV_ID_39:
         case SBAS_EGNOS_SV_ID_44:
+        case SBAS_EGNOS_SV_ID_49:
             sbasCategory = LE_GNSS_SBAS_EGNOS;
             break;
         case SBAS_WAAS_SV_ID_35:
