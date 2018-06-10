@@ -109,7 +109,7 @@ provides further instructions to the target on how to load/unload the additional
 @c rmmod.
 
 To install the kernel module when using the @ref defFilesMdef_bundles "bundles:" section, you must
-@ref defFilesMdef_scripts "specify an installScript and a removeScript". The Framework will use
+@ref defFilesMdef_scripts "specify an install and a remove script". The Framework will use
 those scripts to load and unload the kernel module on your target. If no scripts are specified the
 kernel module will be loaded with @c insmod but the bundled files will not be handled at all.
 

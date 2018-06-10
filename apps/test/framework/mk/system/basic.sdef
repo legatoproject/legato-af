@@ -48,5 +48,6 @@ kernelModules:
     $CURDIR/kernelmodule/module/module1.mdef
     $CURDIR/kernelmodule/module/module2.mdef
     $CURDIR/kernelmodule/module/module3.mdef
+    $CURDIR/kernelmodule/module/module4.mdef
 }
 #endif

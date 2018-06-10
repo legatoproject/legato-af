@@ -102,6 +102,25 @@ parseTree::TokenList_t* ParseTokenListSection
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Parse a section which is a simple section or containing a list of tokens of the same type inside
+ * curly braces.
+ *
+ * This includes only "preBuilt:". Simple section support for "preBuilt:" will be deprecated
+ * and is supported now for backward compatibility.
+ *
+ * @return a pointer to the parse tree object created for this section.
+ */
+//--------------------------------------------------------------------------------------------------
+parseTree::TokenList_t* ParseSimpleOrTokenListSection
+(
+    Lexer_t& lexer,
+    parseTree::Token_t* sectionNameTokenPtr,///< The token containing the section name.
+    parseTree::Token_t::Type_t tokenType    ///< Type of content token to expect.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Parse a compound named item containing a list of tokens of the same type.
  *
  * This includes executables inside the "executables:" section.

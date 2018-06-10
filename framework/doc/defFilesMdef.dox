@@ -37,8 +37,9 @@ The module binary file specified must have an extension @c .ko.
 Building a kernel module binary file from @c /path/to/module/hello.ko:
 
 @code
+preBuilt:
 {
-    preBuilt: /path/to/kernel/module/hello.ko
+    /path/to/kernel/module/hello.ko
 }
 @endcode
 
@@ -132,13 +133,13 @@ Lists the installation and removal scripts for the kernel module. It is @b manda
 @c rmmod to handle installation and removal of the modules othewise the modules will not be loaded
 or unloaded.
 
-@code
+@verbatim
 scripts:
 {
     install:  $CURDIR/scripts/install.sh
     remove:   $CURDIR/scripts/remove.sh
 }
-@endcode
+@endverbatim
 
 @c install: specifies the build system path of the module installation script where the script
 is located at build time.
@@ -148,22 +149,22 @@ located at build time. The default script file path on the target is located at
 /legato/system/current/modules/files/modulename/scripts/.
 
 Example of install.sh:
-@code
+@verbatim
 #!/bin/sh
 
 KO_PATH=$1
 
 insmod $KO_PATH id="first" port=0x330
-@endcode
+@endverbatim
 
 Example of remove.sh:
-@code
+@verbatim
 #!/bin/sh
 
 KO_PATH=$1
 
 rmmod $KO_PATH
-@endcode
+@endverbatim
 
 @warning The installation script must handle the loading of the module using @c insmod and the
 removal script must handle the unloading of the module using @c rmmod.

@@ -146,20 +146,23 @@ static void AddSources
     modulePtr->SetBuildEnvironment(modulePtr->moduleBuildType, modulePtr->defFilePtr->path);
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
- * Adds the prebuilt files from a given "preBuilt:" section to a given Module_t object.
+ *  Adds prebuilt ko files from a given "preBuilt:" section to a given Module_t object.
  */
 //--------------------------------------------------------------------------------------------------
 static void AddPrebuilt
 (
     model::Module_t* modulePtr,
-    std::string prebuiltFile
+    parseTree::CompoundItem_t* sectionPtr ///< The parse tree object for the "preBuilt:" section.
 )
 {
+    auto tokenListPtr = static_cast<parseTree::TokenList_t*>(sectionPtr);
+
     if (modulePtr->moduleBuildType != model::Module_t::Sources)
     {
-        //Allow either Sources or PreBuilt section, not both
+        // Allow either Sources or Prebuilt section, not both
         modulePtr->moduleBuildType = model::Module_t::Prebuilt;
     }
     else
@@ -168,15 +171,35 @@ static void AddPrebuilt
                   LE_I18N("error: Use either 'sources' or 'preBuilt' section."));
     }
 
-    auto searchFile = modulePtr->koFiles.find(prebuiltFile);
-    if (searchFile != modulePtr->koFiles.end())
+    for (auto contentPtr: tokenListPtr->Contents())
     {
-        throw mk::Exception_t(
-                  mk::format(LE_I18N("error: Duplicate preBuilt file %s."), prebuiltFile));
-    }
+        auto modulePath = path::Unquote(DoSubstitution(contentPtr));
+        if (!path::HasSuffix(modulePath, ".ko"))
+        {
+            // Throw exception: not a kernel module
+            sectionPtr->ThrowException(
+                mk::format(LE_I18N("File '%s' is not a kernel module (*.ko)."), modulePath)
+            );
+        }
+        if (!file::FileExists(modulePath))
+        {
+            // Throw exception: file doesn't exist
+            sectionPtr->ThrowException(
+                mk::format(LE_I18N("Module file '%s' does not exist."),  modulePath)
+            );
+        }
 
-    modulePtr->SetBuildEnvironment(modulePtr->moduleBuildType, prebuiltFile);
+        auto searchFile = modulePtr->koFiles.find(modulePath);
+        if (searchFile != modulePtr->koFiles.end())
+        {
+            // Throw exception: duplicate file not allowed
+            throw mk::Exception_t(
+                      mk::format(LE_I18N("error: Duplicate preBuilt file %s."), modulePath));
+        }
+        modulePtr->SetBuildEnvironment(modulePtr->moduleBuildType, modulePath);
+    }
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -389,10 +412,29 @@ static void AddScripts
 
         if ("install" == subsectionName)
         {
+            if (!modulePtr->installScript.empty())
+            {
+                 subsectionPtr->ThrowException(
+                    mk::format(LE_I18N("Internal error: Multiple install scripts not allowed.\n"
+                                       "Install script '%s' found."),
+                               modulePtr->installScript)
+                );
+
+            }
+
            modulePtr->installScript = scriptPath;
         }
         else if ("remove" == subsectionName)
         {
+            if (!modulePtr->removeScript.empty())
+            {
+                 subsectionPtr->ThrowException(
+                    mk::format(LE_I18N("Internal error: Multiple remove scripts not allowed.\n"
+                                       "Remove script '%s' found."),
+                               modulePtr->removeScript)
+                );
+            }
+
             modulePtr->removeScript = scriptPath;
         }
         else
@@ -445,24 +487,7 @@ model::Module_t* GetModule
         }
         else if ("preBuilt" == sectionName)
         {
-            auto simpleSectionPtr = ToSimpleSectionPtr(sectionPtr);
-            auto modulePath =
-                path::Unquote(DoSubstitution(simpleSectionPtr->Text(), simpleSectionPtr));
-            if (!path::HasSuffix(modulePath, ".ko"))
-            {
-                // Throw exception: not a kernel module
-                sectionPtr->ThrowException(
-                    mk::format(LE_I18N("File '%s' is not a kernel module (*.ko)."), modulePath)
-                );
-            }
-            if (!file::FileExists(modulePath))
-            {
-                // Throw exception: file doesn't exist
-                sectionPtr->ThrowException(
-                    mk::format(LE_I18N("Module file '%s' does not exist."),  modulePath)
-                );
-            }
-            AddPrebuilt(modulePtr, modulePath);
+            AddPrebuilt(modulePtr, sectionPtr);
         }
         else if ("sources" == sectionName)
         {

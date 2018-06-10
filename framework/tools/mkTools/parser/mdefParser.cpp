@@ -49,7 +49,7 @@ static parseTree::CompoundItem_t* ParseRequiresSubsection
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Parse "scripts:" section and parse "installScript:" and "removeScript:" sub-sections.
+ * Parse "scripts:" section and parse "install:" and "remove:" sub-sections.
  *
  * @return Pointer to the item.
  */
@@ -103,7 +103,7 @@ static parseTree::CompoundItem_t* ParseSection
     // Branch based on the section name.
     if (sectionName == "preBuilt")
     {
-        return ParseSimpleSection(lexer, sectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
+        return ParseSimpleOrTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
     }
     else if (sectionName == "params")
     {

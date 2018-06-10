@@ -8,3 +8,24 @@ params:
     param1 = "module2"
     param2 = "loadable kernel module"
 }
+
+bundles:
+{
+    // bundling empty files for testing
+    file:
+    {
+        $CURDIR/files/module2/bin/a.bin /bin/a.bin
+        $CURDIR/files/module2/bin/b.bin /bin/b.bin
+    }
+
+    dir:
+    {
+        $CURDIR/files/module2/dir /dir
+    }
+}
+
+scripts:
+{
+    install: $CURDIR/files/module2/scripts/install.sh
+    remove: $CURDIR/files/module2/scripts/remove.sh
+}

@@ -1,0 +1,6 @@
+preBuilt:
+{
+    // empty ko files for testing build
+    $CURDIR/preBuilt/preBuiltTest1.ko
+    $CURDIR/preBuilt/preBuiltTest2.ko
+}

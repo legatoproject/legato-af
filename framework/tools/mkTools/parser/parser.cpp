@@ -118,6 +118,76 @@ parseTree::TokenList_t* ParseTokenListSection
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Parse a section which is a simple section or containing a list of tokens of the same type inside
+ * curly braces.
+ *
+ * This includes only "preBuilt:". Simple section support for "preBuilt:" will be deprecated
+ * and is supported now for backward compatibility.
+ *
+ * @return a pointer to the parse tree object created for this section.
+ */
+//--------------------------------------------------------------------------------------------------
+parseTree::TokenList_t* ParseSimpleOrTokenListSection
+(
+    Lexer_t& lexer,
+    parseTree::Token_t* sectionNameTokenPtr,///< The token containing the section name.
+    parseTree::Token_t::Type_t tokenType    ///< Type of content token to expect.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto sectionPtr = new parseTree::TokenListSection_t(sectionNameTokenPtr);
+
+    // Expect a ':' next.
+    (void)lexer.Pull(parseTree::Token_t::COLON);
+
+    // Check for '{' next.
+    if (!lexer.IsMatch(parseTree::Token_t::OPEN_CURLY))
+    {
+        // 'preBuilt:' must use '{}'. Support without '{}' will be deprecated in a future release.
+        // Add support now for backward comptability.
+        sectionNameTokenPtr->PrintWarning(
+            mk::format(LE_I18N("Use '{}' with '%s' section. Support without '{}' is deprecated."),
+                               sectionNameTokenPtr->text)
+        );
+
+        // Section is simple if there is no '{'
+        auto sectionPtr = new parseTree::SimpleSection_t(sectionNameTokenPtr);
+
+        // Expect the content token next.
+        sectionPtr->AddContent(lexer.Pull(tokenType));
+
+        return sectionPtr;
+    }
+
+    // Expect a '{' next.
+    (void)lexer.Pull(parseTree::Token_t::OPEN_CURLY);
+
+    // Until we find a closing '}', keep calling the provided content parser function to parse
+    // the next content item.
+    while (!lexer.IsMatch(parseTree::Token_t::CLOSE_CURLY))
+    {
+        if (lexer.IsMatch(parseTree::Token_t::END_OF_FILE))
+        {
+            lexer.ThrowException(
+                mk::format(LE_I18N("Unexpected end-of-file before end of %s section.\n"
+                                   "%s: note: Section starts here."),
+                                   sectionNameTokenPtr->text,
+                                   sectionNameTokenPtr->GetLocation())
+            );
+        }
+
+        sectionPtr->AddContent(lexer.Pull(tokenType));
+    }
+
+    // Pull out the '}' and make that the last token in the section.
+    sectionPtr->lastTokenPtr = lexer.Pull(parseTree::Token_t::CLOSE_CURLY);
+
+    return sectionPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Parse a compound named item containing a list of tokens of the same type.
  *
  * This includes executables inside the "executables:" section.
