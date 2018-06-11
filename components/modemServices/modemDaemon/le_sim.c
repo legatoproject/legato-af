@@ -384,10 +384,12 @@ end:
         status = pa_sim_CloseLogicalChannel(channel);
     }
 
-    // Gemalto and Valid SIMs don't trigger a refresh automatically when swapping. So, request it.
+    // Gemalto, G&D and Valid SIMs don't trigger a refresh automatically when swapping.
+    // So, request it.
     if (LE_OK == status)
     {
-        if ((LE_SIM_GEMALTO == manufacturer) || (LE_SIM_VALID == manufacturer))
+        if ((LE_SIM_GEMALTO == manufacturer) || (LE_SIM_VALID == manufacturer)
+            || (LE_SIM_G_AND_D == manufacturer))
         {
             status = pa_sim_Refresh();
         }
