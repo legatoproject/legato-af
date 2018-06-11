@@ -17,11 +17,7 @@ ifeq ($(TARGET),virt)
     VIRT_TARGET_ARCH ?= arm
     export VIRT_TARGET_ARCH
 
-    ifeq ($(VIRT_TARGET_ARCH),x86)
-        export VIRT_TOOLCHAIN_PREFIX ?= i586-poky-linux-
-    else
-        export VIRT_TOOLCHAIN_PREFIX ?= arm-poky-linux-gnueabi-
-    endif
+    export VIRT_TOOLCHAIN_PREFIX ?= $(shell $(FINDTOOLCHAIN) $(TARGET)_$(VIRT_TARGET_ARCH) prefix)
 
     export VIRT_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) $(TARGET)_$(VIRT_TARGET_ARCH) dir)
 endif
