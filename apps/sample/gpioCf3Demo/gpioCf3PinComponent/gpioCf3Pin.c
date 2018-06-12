@@ -59,7 +59,7 @@ static void Pin22GpioSignal()
 {
     bool value = false;
     le_gpioPin22_SetInput(LE_GPIOPIN22_ACTIVE_LOW);
-    value = le_gpioPin21_Read();
+    value = le_gpioPin22_Read();
     LE_INFO("Pin22 read active: %d", value);
 
     le_gpioPin22_ChangeEventHandlerRef_t ref = le_gpioPin22_AddChangeEventHandler(LE_GPIOPIN22_EDGE_FALLING, Pin22ChangeCallback, &Pin22, 0);
