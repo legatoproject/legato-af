@@ -384,7 +384,32 @@ static void PositionHandlerFunction
     }
     else
     {
-        LE_INFO("Position unknown [%d,%d,%d]", latitude, longitude, hAccuracy);
+        if (INT32_MAX != latitude)
+        {
+            LE_INFO("Latitude %f", (float)latitude/1000000.0);
+        }
+        else
+        {
+            LE_INFO("Latitude unknown %d", latitude);
+        }
+
+        if (INT32_MAX != longitude)
+        {
+            LE_INFO("Latitude %f", (float)longitude/1000000.0);
+        }
+        else
+        {
+            LE_INFO("Longitude unknown %d", longitude);
+        }
+
+        if (INT32_MAX != hAccuracy)
+        {
+            LE_INFO("Horizontal accuracy %f", (float)hAccuracy/100.0);
+        }
+        else
+        {
+            LE_INFO("Horizontal accuracy unknown %d", hAccuracy);
+        }
     }
 
     // Get altitude

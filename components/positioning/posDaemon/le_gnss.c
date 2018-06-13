@@ -1446,7 +1446,7 @@ le_result_t le_gnss_GetPositionState
  *
  * @return
  *  - LE_FAULT         Function failed to get the location's data
- *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ *  - LE_OUT_OF_RANGE  At least one of the retrieved parameters is invalid (set to INT32_MAX).
  *  - LE_OK            Function succeeded.
  *
  * @note latitudePtr, longitudePtr and hAccuracyPtr can be set to NULL if not needed.
@@ -1457,6 +1457,9 @@ le_result_t le_gnss_GetPositionState
  *       Latitude +48858300 = 48.858300 degrees North
  *       Longitude +2294400 = 2.294400 degrees East
  *       (The latitude and longitude values are given in degrees, minutes, seconds in NMEA frame)
+ *
+ * @note In case the function returns LE_OUT_OF_RANGE, some of the retrieved parameters may be
+ *       valid. Please compare them with INT32_MAX.
  *
  * @note If the caller is passing an invalid Position sample reference into this function,
  *       it is a fatal error, the function will not return.
@@ -1538,7 +1541,7 @@ le_result_t le_gnss_GetLocation
  *
  * @return
  *  - LE_FAULT         Function failed to get the altitude. Invalid Position reference provided.
- *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ *  - LE_OUT_OF_RANGE  At least one of the retrieved parameters is invalid (set to INT32_MAX).
  *  - LE_OK            Function succeeded.
  *
  * @note Altitude is in meters, above Mean Sea Level, with 3 decimal places (3047 = 3.047 meters).
@@ -1549,6 +1552,9 @@ le_result_t le_gnss_GetLocation
  *       meters). To change its accuracy, call the @c le_gnss_SetDataResolution() function. Vertical
  *       position accuracy is set as data type and accuracy from 0 to 3 decimal place is set as
  *       resolution.
+ *
+ * @note In case the function returns LE_OUT_OF_RANGE, some of the retrieved parameters may be
+ *       valid. Please compare them with INT32_MAX.
  *
  * @note If the caller is passing an invalid Position reference into this function,
  *       it is a fatal error, the function will not return.
@@ -2057,7 +2063,7 @@ le_result_t le_gnss_GetDate
  * Get the position sample's horizontal speed.
  *
  *  - LE_FAULT         Function failed to find the positionSample.
- *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to UINT32_MAX).
+ *  - LE_OUT_OF_RANGE  At least one of the retrieved parameters is invalid (set to UINT32_MAX).
  *  - LE_OK            Function succeeded.
  *
  * @note hSpeedPtr, hSpeedAccuracyPtr can be set to NULL if not needed.
@@ -2068,6 +2074,9 @@ le_result_t le_gnss_GetDate
  *       (304 = 30.4 meters/second). To change its accuracy, call the @c le_gnss_SetDataResolution()
  *       function. Horizontal speed accuracy estimate is set as data type and accuracy from 0 to 3
  *       decimal place is set as resolution.
+ *
+ * @note In case the function returns LE_OUT_OF_RANGE, some of the retrieved parameters may be
+ *       valid. Please compare them with UINT32_MAX.
  *
  * @note If the caller is passing an invalid Position sample reference into this function,
  *       it is a fatal error, the function will not return.
@@ -2132,7 +2141,7 @@ le_result_t le_gnss_GetHorizontalSpeed
  *
  * @return
  *  - LE_FAULT         The function failed to find the positionSample.
- *  - LE_OUT_OF_RANGE  One of the retrieved parameter is not valid (set to INT32_MAX).
+ *  - LE_OUT_OF_RANGE  At least one of the retrieved parameters is not valid (set to INT32_MAX).
  *  - LE_OK            The function succeeded.
  *
  * @note vSpeedPtr, vSpeedAccuracyPtr can be set to NULL if not needed.
@@ -2144,6 +2153,9 @@ le_result_t le_gnss_GetHorizontalSpeed
  *       (304 = 30.4 meters/second). To change its accuracy, call the @c le_gnss_SetDataResolution()
  *       function. Vertical speed accuracy estimate is set as data type and accuracy from 0 to 3
  *       decimal place is set as resolution.
+ *
+ * @note In case the function returns LE_OUT_OF_RANGE, some of the retrieved parameters may be
+ *       valid. Please compare them with INT32_MAX.
  *
  * @note If the caller is passing an invalid Position sample reference into this function,
  *       it is a fatal error, the function will not return.
@@ -2210,12 +2222,15 @@ le_result_t le_gnss_GetVerticalSpeed
  *
  * @return
  *  - LE_FAULT         Function failed to find the positionSample.
- *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to UINT32_MAX).
+ *  - LE_OUT_OF_RANGE  At least one of the retrieved parameters is invalid (set to UINT32_MAX).
  *  - LE_OK            Function succeeded.
  *
  * @note Direction and direction accuracy are given in degrees with 1 decimal place: 1755 = 175.5
  *       degrees.
  *       Direction ranges from 0 to 359.9 degrees, where 0 is True North.
+ *
+ * @note In case the function returns LE_OUT_OF_RANGE, some of the retrieved parameters may be
+ *       valid. Please compare them with UINT32_MAX.
  *
  * @note directionPtr, directionAccuracyPtr can be set to NULL if not needed.
  *
@@ -2285,7 +2300,7 @@ le_result_t le_gnss_GetDirection
  *
  * @return
  *  - LE_FAULT         Function failed to find the positionSample.
- *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid.
+ *  - LE_OUT_OF_RANGE  At least one of the retrieved parameters is invalid.
  *  - LE_OK            Function succeeded.
  *
  * @note satId[] can be set to 0 if that information list index is not configured, so
@@ -2294,6 +2309,9 @@ le_result_t le_gnss_GetDirection
  * @note For LE_OUT_OF_RANGE returned code, invalid value depends on field type:
  * UINT16_MAX for satId, LE_GNSS_SV_CONSTELLATION_UNDEFINED for satConst, false for satUsed,
  * UINT8_MAX for satSnr, UINT16_MAX for satAzim, UINT8_MAX for satElev.
+ *
+ * @note In case the function returns LE_OUT_OF_RANGE, some of the retrieved parameters may be
+ *       valid.
  *
  * @note If the caller is passing an invalid Position sample reference into this function,
  *       it is a fatal error, the function will not return.
@@ -2552,8 +2570,11 @@ le_gnss_SbasConstellationCategory_t le_gnss_GetSbasConstellationCategory
  *
  * @return
  *  - LE_FAULT         Function failed to find the positionSample.
- *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid.
+ *  - LE_OUT_OF_RANGE  At least one of the retrieved parameters is invalid (set to UINT8_MAX).
  *  - LE_OK            Function succeeded.
+ *
+ * @note In case the function returns LE_OUT_OF_RANGE, some of the retrieved parameters may be
+ *       valid. Please compare them with UINT8_MAX.
  *
  * @note If the caller is passing an invalid Position sample reference into this function,
  *       it is a fatal error, the function will not return.
@@ -2754,13 +2775,16 @@ le_result_t le_gnss_GetDilutionOfPrecision
  *
  * @return
  *  - LE_FAULT         Function failed to find the positionSample.
- *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to UINT16_MAX).
+ *  - LE_OUT_OF_RANGE  At least one of the retrieved parameters is invalid (set to UINT16_MAX).
  *  - LE_OK            Function succeeded.
  *
  * @deprecated This function is deprecated, le_gnss_GetDilutionOfPrecision() should be used for
  *             new code.
  *
  * @note The DOP values are given with 3 decimal places like: DOP value 2200 = 2.200
+ *
+ * @note In case the function returns LE_OUT_OF_RANGE, some of the retrieved parameters may be
+ *       valid. Please compare them with UINT16_MAX.
  *
  * @note If the caller is passing an invalid Position sample reference into this function,
  *       it is a fatal error, the function will not return.
@@ -2845,7 +2869,7 @@ le_result_t le_gnss_GetDop
  *
  * @return
  *  - LE_FAULT         Function failed to get the altitude.
- *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ *  - LE_OUT_OF_RANGE  The altitudeOnWgs84 is invalid (set to INT32_MAX).
  *  - LE_OK            Function succeeded.
  *
  * @note altitudeOnWgs84 is in meters, with respect to the WGS-84 ellipsoid with 3 decimal
@@ -2908,7 +2932,7 @@ le_result_t le_gnss_GetAltitudeOnWgs84
  *
  * @return
  *  - LE_FAULT         Function failed to find the positionSample.
- *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ *  - LE_OUT_OF_RANGE  The magneticDeviation is invalid (set to INT32_MAX).
  *  - LE_OK            Function succeeded.
  *
  * @note magneticDeviation is in degrees, with 1 decimal places (47 = 4.7 degree).
@@ -2941,12 +2965,12 @@ le_result_t le_gnss_GetMagneticDeviation
     {
         if (positionSampleRequestNodePtr->positionSampleNodePtr->magneticDeviationValid)
         {
-            *magneticDeviationPtr = positionSampleRequestNodePtr->positionSampleNodePtr->
-                                                                  magneticDeviation;
+            *magneticDeviationPtr =
+                positionSampleRequestNodePtr->positionSampleNodePtr->magneticDeviation;
         }
         else
         {
-            *magneticDeviationPtr = UINT32_MAX;
+            *magneticDeviationPtr = INT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }
