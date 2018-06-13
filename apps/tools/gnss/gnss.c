@@ -133,7 +133,7 @@ void PrintGnssHelp
          "\t\t\t\t\t- alt           --> Altitude (Altitude, Vertical accuracy)\n"
          "\t\t\t\t\t- altOnWgs84    --> Altitude with respect to the WGS-84 ellipsoid\n"
          "\t\t\t\t\t- loc3d         --> 3D location (latitude, longitude, altitude,\n"
-         "\t\t\t\t\t                    horizontal accuracy, vertical accuracy)\n"
+         "\t\t\t\t\t                horizontal accuracy, vertical accuracy)\n"
          "\t\t\t\t\t- gpsTime       --> Get last updated gps time\n"
          "\t\t\t\t\t- time          --> Time of the last updated location\n"
          "\t\t\t\t\t- epochTime     --> Epoch time of the last updated location\n"
@@ -148,7 +148,8 @@ void PrintGnssHelp
          "\t\t\t\t\t- direction     --> Direction indication\n"
          "\t\t\t\t\t- satInfo       --> Satellites Vehicle information\n"
          "\t\t\t\t\t- satStat       --> Satellites Vehicle status\n"
-         "\t\t\t\t\t- dop           --> Dilution of Precision for the fixed position\n"
+         "\t\t\t\t\t- dop           --> Dilution of Precision for the fixed position. Displayed\n"
+         "\t\t\t\t\t-               in all resolutions: (0 to 3 digits after the decimal point) \n"
          "\t\t\t\t\t- posInfo       --> Get all current position info of the device\n"
          "\t\t\t\t\t- status        --> Get gnss device's current status\n\n"
          "\t\t\tgnss set constellation <ConstellationType>\n"
@@ -1729,10 +1730,11 @@ static int GetDop
     le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
 )
 {
-    uint16_t dop;
+    uint16_t dop[LE_GNSS_RES_UNKNOWN];
     bool err = false;
     le_result_t result;
     le_gnss_DopType_t dopType = LE_GNSS_PDOP;
+    le_gnss_Resolution_t DopRes;
 
     static const char *tabDop[] =
     {
@@ -1745,23 +1747,37 @@ static int GetDop
 
     do
     {
-        // Get DOP parameter
-        result = le_gnss_GetDilutionOfPrecision(positionSampleRef,
-                                                dopType,
-                                                &dop);
+        // Get DOP parameter in all resolutions
+        for (DopRes=LE_GNSS_RES_ZERO_DECIMAL; DopRes<LE_GNSS_RES_UNKNOWN; DopRes++)
+        {
+            if (LE_OK != le_gnss_SetDopResolution(DopRes))
+            {
+                printf("Failed! See log for details!\n");
+                return EXIT_FAILURE;
+            }
+
+            result = le_gnss_GetDilutionOfPrecision(positionSampleRef,
+                                                    dopType,
+                                                    &dop[DopRes]);
+            if (LE_OUT_OF_RANGE == result)
+            {
+                printf("%s invalid %d\n", tabDop[dopType], dop[0]);
+                err = true;
+                break;
+            }
+            else if (LE_OK != result)
+            {
+                printf("Failed! See log for details!\n");
+                return EXIT_FAILURE;
+            }
+        }
         if (LE_OK == result)
         {
-            printf("%s %.3f\n", tabDop[dopType], (float)(dop)/1000);
-        }
-        else if (LE_OUT_OF_RANGE == result)
-        {
-            printf("%s invalid %d\n", tabDop[dopType], dop);
-            err = true;
-        }
-        else
-        {
-            printf("Failed! See log for details!\n");
-            return EXIT_FAILURE;
+            printf("%s [%.1f %.1f %.2f %.3f]\n", tabDop[dopType],
+                   (float)dop[LE_GNSS_RES_ZERO_DECIMAL],
+                   (float)dop[LE_GNSS_RES_ONE_DECIMAL]/10,
+                   (float)dop[LE_GNSS_RES_TWO_DECIMAL]/100,
+                   (float)dop[LE_GNSS_RES_THREE_DECIMAL]/1000);
         }
         dopType++;
     }

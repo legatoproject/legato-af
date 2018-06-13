@@ -473,7 +473,6 @@ static void PositionHandlerFunction
         if (LE_OK == result)
         {
             switch(DopRes)
-
             {
                 case LE_GNSS_RES_ZERO_DECIMAL:
                      LE_INFO("resolution: %d decimal place, %s %.1f\n",
