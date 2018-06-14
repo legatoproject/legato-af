@@ -45,10 +45,16 @@ ifndef LE_SVCDIR_CLIENT_SOCKET_NAME
 endif
 ifndef JDK_INCLUDE_DIR
   ifneq ("$(wildcard $(shell which javac 2>/dev/null))","")
-    export JDK_INCLUDE_DIR := $(shell readlink -f $(shell which javac 2>/dev/null) | sed "s:/bin/javac::")/include
+    # Make sure that the version is >= Java 8
+    JDK_VERSION=$(shell /bin/sh -c "javac -version 2>&1 | awk '{print \$$2}'")
+    MIN_JDK_VERSION=1.8.0
+    ifeq ($(shell /bin/sh -c "echo -e \"${MIN_JDK_VERSION}\n${JDK_VERSION}\" | sort -C && echo OK"),OK)
+      export JDK_INCLUDE_DIR := $(shell readlink -f $(shell which javac 2>/dev/null) | sed "s:/bin/javac::")/include
+    else
+      $(warning JDK version installed on the system is too old: ${JDK_VERSION}. ${MIN_JDK_VERSION} required.)
+    endif
   endif
 endif
-
 
 export LEGATO_ROOT ?= $(CURDIR)
 export LEGATO_TARGET := $(TARGET)
