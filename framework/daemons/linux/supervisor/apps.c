@@ -1461,7 +1461,7 @@ void apps_VerifyAppWriteableDeviceFiles
                 }
                 else
                 {
-                    installer_UpdateAppWriteableFiles("current", versionBuffer, appName);
+                    installer_RemoveAppWriteableDeviceFiles("current", versionBuffer, appName);
                 }
             }
         }
