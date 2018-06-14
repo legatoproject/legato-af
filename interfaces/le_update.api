@@ -49,7 +49,11 @@
  * {
  *     int fd = 0;  // Update data coming via STDIN
  *
- *     le_result_t result = le_update_Start(fd, UpdateProgressHandler, NULL);
+ *     // Register for progress notifications.
+ *     le_update_AddProgressHandler(UpdateProgressHandler, NULL);
+ *
+ *     // Start update process(asynchronous). Completion will be notified via callback function.
+ *     le_result_t result = le_update_Start(fd);
  *     if (result != LE_OK)
  *     {
  *          fprintf(stderr, "Update refused by server.  Try again later.\n");
