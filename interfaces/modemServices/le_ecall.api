@@ -148,14 +148,15 @@
  * The MSD can be updated before calling le_ecall_SendMsd(), using the e_ecall_ImportMsd() function
  * or the le_ecall_SetMsdXxx() functions.
  *
- * Date/time on MSD information is set automatically by fetching the time from linux system time.
+ * Date/time on MSD information is set automatically by fetching the time from linux system time
+ * (epoch time since 1970-01-01 00:00:00 +0000 (UTC)).
  *
- * @note If linux system time is not updated automatically, update system date/time with
- * le_clk_SetAbsoluteTime() function.
+ * @note If linux system time is not updated automatically, update system date/time with either
+ * Linux date command or by calling le_clk_SetAbsoluteTime() function.
  *
- * Time can be retrieved by using the following methods:
- * - le_data_GetTime()/le_data_GetDate(): retrieves the time from the network NTP server
- * - le_pos_GetTime()/le_pos_GetDate(): retrieves the time from global positioning
+ * The time given to le_clk_SetAbsoluteTime() function can be retrieved by:
+ * - le_data_GetTime()/le_data_GetDate(): the time from the network NTP.
+ * - le_gnss_GetEpochTime() the GPS epoch time.
  *
  * @section le_ecall_eraglonass ERA-GLONASS compliancy
  *
