@@ -35,7 +35,7 @@
  * Application must use le_voicecall_Delete() to release @ref le_voicecall_CallRef_t voice call
  *  reference object when it is no more used.
  *
- * If le_voicecall_End() failed a @ref LE_VOICECALL_EVENT_END_FAILED event will be sent.
+ * If le_voicecall_End() failed a @ref LE_VOICECALL_EVENT_CALL_END_FAILED event will be sent.
  *
  * If a voice call is already started when le_voicecall_Start() is called(), a
  * new voice call will not be established. Instead, @ref LE_VOICECALL_EVENT_RESOURCE_BUSY event
@@ -64,8 +64,8 @@
  * Application can answer the call by using le_voicecall_Answer() or reject the call by using
  *  le_voicecall_End() passing the call reference @ref le_voicecall_CallRef_t.
  *
- * If le_voicecall_End() failed a @ref LE_VOICECALL_EVENT_END_FAILED event will be sent. If
- *  le_voicecall_Answer() failed a @ref LE_VOICECALL_EVENT_ANSWER_FAILED event will be sent.
+ * If le_voicecall_End() failed a @ref LE_VOICECALL_EVENT_CALL_END_FAILED event will be sent. If
+ *  le_voicecall_Answer() failed a @ref LE_VOICECALL_EVENT_CALL_ANSWER_FAILED event will be sent.
  *
  * Application have to use le_voicecall_Delete() to release @ref le_voicecall_CallRef_t voice call
  *  reference object when it is no more used.
