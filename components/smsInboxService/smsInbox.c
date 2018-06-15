@@ -1421,16 +1421,24 @@ static MessageId_t GetMessageId
     char* fileNamePtr  ///<[IN] file name to be converted
 )
 {
-    char *savePtr=NULL;
-    char *str = strtok_r(fileNamePtr,".", &savePtr);
+    char *savePtr;
 
-    if (NULL == str)
+    if(NULL != fileNamePtr)
     {
-        LE_ERROR("Null file name ");
+        char *str = strtok_r(fileNamePtr,".", &savePtr);
+
+        if (NULL == str)
+        {
+            LE_ERROR("Unable to find . in the file name");
+            return -1;
+        }
+        return le_hex_HexaToInteger(str);
+    }
+    else
+    {
+        LE_ERROR("Provided file name pointer is NULL");
         return -1;
     }
-
-    return le_hex_HexaToInteger(str);
 }
 
 //--------------------------------------------------------------------------------------------------
