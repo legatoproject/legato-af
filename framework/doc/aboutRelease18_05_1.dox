@@ -1,0 +1,139 @@
+/** @page releaseNotes18051 18.05.1 Release Notes
+
+Release Date: Jun 20, 2018
+
+See @ref aboutLicenses to view Legato AF Licensing Information.
+
+The following provides a summary of changes that have been made in the 18.05 Legato AF Release.
+
+<b> Download the @ref aboutReleaseInfo "source code" and get started with @ref basicBuild
+"building Legato AF". </b>
+
+@section Patches 18.05.01 Fixes
+
+The following issues have been patched in 18.05.1:
+
+- A bug that was preventing kernel modules set to @c load: @c manual from starting when
+the dependant app starts is fixed.
+- A bug that caused files created in a sandbox to disappear after a reboot is fixed, files now
+persist after a reboot.
+
+@section _Features New Features
+
+The following are the list of new features that have been added into the 18.05 Release:
+
+@subsection rn1805_Features_https HTTPS
+
+Legato.io is now being served through https and a new url has been added [https://docs.legato.io]()https://legato.io.
+Please update your bookmarks, all old urls will be automatically redirected to
+https://docs.legato.io.
+
+@subsection rn1805_Features_sdef sdef Improvement
+
+New features have been added to the @ref defFilesSdef to be able to set
+@ref defFilesSdef_searchPaths "search paths" within the sdef for modules the same way that you could
+already do with interfaces. You now have the ability to include the search path from within the
+sdef instead of having to provide it to @c mksys via the
+@c -s flag on the command line.
+
+@subsection rn1805_Features_DynMemAll Dynamic Memory Allocation
+
+le_mem_GetRefCount() has been added to the Dynamic Memory Allocation API to check the current
+reference count on an object.
+
+@subsection rn1805_Features_fwupdate Firmware Update
+
+le_fwupdate_GetAppBootloaderVersion() has been added to the Firmware Update API and returns the
+bootloader version string.
+
+@section rn1805_BFeatures Beta Features
+
+The following features have been added to the 18.05 Release and are feature complete but are still
+in a testing phase. Please provide feedback for these features on our
+[forums](https://forum.legato.io/).
+
+@subsection rn1805_BFeatures_KernelModules Kernel Modules
+
+@ref conceptsKernelModule functionality has been added to support dependencies between kernel
+modules and dependencies between kernel modules and apps/components.  We have also included
+functionality into the kernel module feature to @ref defFilesMdef_bundles "bundle" other files with
+the kernel module sources and provide @ref defFilesMdef_scripts to load and unload the kernel
+module from your target.
+
+@note Before building kernel modules into your Legato System you may have to perform some extra
+@ref basicBuildLegato_ToolchainSWI_KO "toolchain setup steps".
+
+@section rn1805_AFeatures Alpha Features
+
+The following are the list of features that have been added into the 18.05 Release but are still
+being developed and should not be used on production targets. Please provide feedback for these
+features on our [forums](https://forum.legato.io/):
+
+@subsection rn1805_Features_SIM Multiple SIM Support
+
+The framework now contains support for @ref le_sim_profile_switch "multiple embedded SIM profiles"
+and the ability to switch between the multiple SIMs and be managed by a subscription management
+server such as AirVantage.
+
+@section rn1805_Fixes Fixed Issues
+
+All development work is tagged in GitHub as "18.05.0".  The list of changes and commit
+messages can be found on GitHub.
+
+- [Legato AF 18.05.0 Fixes](https://github.com/legatoproject/legato-af/commits/18.05.0)
+
+@note This is only the list of fixes for the Application Framework and Platform Services, for the
+list of changes in the Platform Adapters and AVC Service view the commits under the tag 18.05.0 in
+the individual repositories on GitHub.
+
+@section rn1805_KnownIssues Known Issues
+
+@subsection rn1805_Constraints Constraints and Limitations
+
+@subsubsection rn1805_ConstraintsLinuxSupport Dev Machine Linux Version
+
+To develop applications within the Legato Application Framework, a current supported
+[Long Term Support version of Ubuntu Linux](https://www.ubuntu.com/info/release-end-of-life) is
+required on your dev machine (or running in a virtual box on Windows).  Ubuntu 16.04 is the current
+@b recommended version to use on your dev machine.
+
+@subsubsection rn1805_ConstECMUSB ECM-USB modem manager issue
+
+Ubuntu 15.10 and newer has Modem Manager version @c 1.4.12-1ubuntu1  installed by default which
+conflicts with the ECM-USB driver when connecting a target.  Modem manager may cause the Ubuntu
+Network Manager to crash on your host and/or your target device to become unavailable over USB.
+
+@b Symptoms:
+- NetworkManager crashing when plugging into your device over USB, or
+- The target device becomes inaccessible after 30 seconds.
+
+@b Recommended  @b Work  @b Around:
+- Uninstall @c modemmanager from Ubuntu or
+- [Downgrade @c modemmanager to version 1.0.0-2ubuntu1](http://packages.ubuntu.com/trusty/modemmanager)
+
+@subsubsection rn1805_ConstraintsTC Sierra Wireless Toolchain Install
+
+There is currently an error with setting up the WP76XX and WP77XX toolchain and the toolchain only
+partially installs.  The part of the script to install and setup the kernel headers does not run and
+produces the following errors:
+
+@verbatim
+scripts/kconfig/Makefile:36: recipe for target 'silentoldconfig' failed
+make[2]: *** [silentoldconfig] Error 1
+Makefile:546: recipe for target 'silentoldconfig' failed
+make[1]: *** [silentoldconfig] Error 2
+make: *** No rule to make target 'include/config/auto.conf', needed by 'scripts'.  Stop.
+@endverbatim
+
+To resolve this remove the installed toolchain and reinstall with @c sudo privileges.
+
+Example of setting up the toolchain for a 64bit dev machine and a WP76 module with product release
+9:
+@verbatim
+$ rm -rf /opt/swi/y22-ext
+$ sudo poky-swi-ext-glibc-x86_64-meta-toolchain-swi-ext-armv7a-neon-toolchain-swi-ext-2.2.3.sh
+@endverbatim
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
