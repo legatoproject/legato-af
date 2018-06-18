@@ -11,13 +11,19 @@
 #include "mkTools.h"
 #include <string.h>
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the environment variable
+ */
+//--------------------------------------------------------------------------------------------------
+#define ENV_VAR_MAX_LEN     1024
+
 /// The standard C environment variable list.
 extern char**environ;
 
 
 namespace envVars
 {
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -32,14 +38,17 @@ std::string Get
 )
 //--------------------------------------------------------------------------------------------------
 {
+    char envVar[ENV_VAR_MAX_LEN] = {0};
     const char* value = getenv(name.c_str());
 
     if (value == nullptr)
     {
-        return "";
+        return std::string();
     }
+    // If variable is longer than MAX_LEN, it will be truncated
+    strncpy(envVar, value, sizeof(envVar) - 1);
 
-    return value;
+    return std::string(envVar);
 }
 
 
@@ -58,6 +67,7 @@ std::string GetRequired
 )
 //--------------------------------------------------------------------------------------------------
 {
+    char envVar[ENV_VAR_MAX_LEN] = {0};
     const char* value = getenv(name.c_str());
 
     if (value == nullptr)
@@ -66,8 +76,10 @@ std::string GetRequired
             mk::format(LE_I18N("The required environment variable %s has not been set."), name)
         );
     }
+    // If variable is longer than MAX_LEN, it will be truncated
+    strncpy(envVar, value, sizeof(envVar) - 1);
 
-    return value;
+    return std::string(envVar);
 }
 
 
