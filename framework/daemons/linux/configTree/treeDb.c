@@ -3624,8 +3624,8 @@ le_cfg_nodeType_t tdb_GetNodeType
     if (   (nodeRef->type != LE_CFG_TYPE_STEM)
         && (nodeRef->info.valueRef == NULL))
     {
-        if (   (IsShadow(nodeRef))
-            && (IsModified(nodeRef) == false))
+        // Return the shadow reference if available.
+        if (IsShadow(nodeRef))
         {
             return tdb_GetNodeType(nodeRef->shadowRef);
         }
