@@ -197,7 +197,7 @@ static le_result_t ExecuteCommand(char *argv[])
         /* Child, exec command. */
         execv(argv[0], argv);
         /* Should never be here. */
-        LE_FATAL("Failed to run '%s %s'. Reason: %m, (%d)", argv[0], argv[1], errno);
+        LE_FATAL("Failed to run '%s %s'. Reason: (%d), %m", argv[0], argv[1], errno);
     }
 
     /* Wait for command to complete; restart on EINTR. */
@@ -268,6 +268,7 @@ static ModuleLoadStatus_t CheckProcModules(char *modName)
     char scanModName[LE_CFG_STR_LEN_BYTES];
     ModuleLoadStatus_t loadStatus = STATUS_INIT;
     bool foundModule = false;
+    int rc = 0;
 
     fPtr = fopen("/proc/modules", "r");
     if (fPtr == NULL)
@@ -283,7 +284,19 @@ static ModuleLoadStatus_t CheckProcModules(char *modName)
      */
     while (fgets(line, sizeof(line), fPtr))
     {
-        sscanf(line,  "%s %d %d %s %s", scanModName, &size, &usedbyNo, usedbyName, modStatus);
+        if (line[0] == '\0')
+        {
+            break;
+        }
+
+        rc = sscanf(line, "%511s %d %d %199s %9s",
+                    scanModName, &size, &usedbyNo, usedbyName, modStatus);
+        if (rc == EOF)
+        {
+            LE_ERROR("Error in scanning /proc/modules '%s'", line);
+            break;
+        }
+
         if (strcmp(scanModName,stripExtModName) == 0)
         {
             foundModule = true;
@@ -322,8 +335,8 @@ static void ModuleGetLoad(KModuleObj_t *module)
     le_cfg_IteratorRef_t iter;
 
     cfgTreePath[0] = '\0';
-    le_path_Concat("/", cfgTreePath, LE_CFG_STR_LEN_BYTES,
-                   KMODULE_CONFIG_TREE_ROOT, module->name, (char*)NULL);
+    LE_ASSERT_OK(le_path_Concat("/", cfgTreePath, LE_CFG_STR_LEN_BYTES,
+                 KMODULE_CONFIG_TREE_ROOT, module->name, (char*)NULL));
     iter = le_cfg_CreateReadTxn(cfgTreePath);
 
 
@@ -346,8 +359,8 @@ static void ModuleGetParams(KModuleObj_t *module)
     le_cfg_IteratorRef_t iter;
 
     cfgTreePath[0] = '\0';
-    le_path_Concat("/", cfgTreePath, LE_CFG_STR_LEN_BYTES,
-                   KMODULE_CONFIG_TREE_ROOT, module->name, "params", NULL);
+    LE_ASSERT_OK(le_path_Concat("/", cfgTreePath, LE_CFG_STR_LEN_BYTES,
+                 KMODULE_CONFIG_TREE_ROOT, module->name, "params", NULL));
     iter = le_cfg_CreateReadTxn(cfgTreePath);
 
     if (LE_OK != le_cfg_GoToFirstChild(iter))
@@ -367,7 +380,7 @@ static void ModuleGetParams(KModuleObj_t *module)
 
         /* first get the parameter name, append a '=' and advance to end */
         LE_ASSERT_OK(le_cfg_GetNodeName(iter, "", p, LE_CFG_NAME_LEN_BYTES));
-        p[strlen(p)] = '=';
+        p[0] = '=';
         p += strlen(p);
 
         /* now get the parameter value, should be string */
@@ -378,12 +391,10 @@ static void ModuleGetParams(KModuleObj_t *module)
         {
             /* add space for quotes; likely ok to use sprintf, but anyway... */
             snprintf(p, LE_CFG_STR_LEN_BYTES + 2, "\"%s\"", tmp);
-            p += strlen(tmp) + 2;
         }
         else
         {
-            strcpy(p, tmp);
-            p += strlen(tmp);
+            LE_ASSERT_OK(le_utf8_Copy(p, tmp, LE_CFG_STR_LEN_BYTES, NULL));
         }
 
         /* increment parameter counter */
@@ -413,8 +424,8 @@ static void ModuleGetRequiredModules(KModuleObj_t *module)
     char cfgTreePath[LE_CFG_STR_LEN_BYTES];
 
     cfgTreePath[0] = '\0';
-    le_path_Concat("/", cfgTreePath, LE_CFG_STR_LEN_BYTES,
-                   KMODULE_CONFIG_TREE_ROOT, module->name, "requires/kernelModules", NULL);
+    LE_ASSERT_OK(le_path_Concat("/", cfgTreePath, LE_CFG_STR_LEN_BYTES,
+                 KMODULE_CONFIG_TREE_ROOT, module->name, "requires/kernelModules", NULL));
 
     le_cfg_IteratorRef_t iter = le_cfg_CreateReadTxn(cfgTreePath);
     if (le_cfg_GoToFirstChild(iter) != LE_OK)
@@ -464,8 +475,8 @@ static void ModuleGetInstallScript(KModuleObj_t *module)
     char *stripExtName;
 
     cfgTreePath[0] = '\0';
-    le_path_Concat("/", cfgTreePath, LE_CFG_STR_LEN_BYTES,
-                   KMODULE_CONFIG_TREE_ROOT, module->name, "scripts/install", NULL);
+    LE_ASSERT_OK(le_path_Concat("/", cfgTreePath, LE_CFG_STR_LEN_BYTES,
+                 KMODULE_CONFIG_TREE_ROOT, module->name, "scripts/install", NULL));
 
     le_cfg_IteratorRef_t iter = le_cfg_CreateReadTxn(cfgTreePath);
 
@@ -514,8 +525,8 @@ static void ModuleGetRemoveScript(KModuleObj_t *module)
     char *stripExtName;
 
     cfgTreePath[0] = '\0';
-    le_path_Concat("/", cfgTreePath, LE_CFG_STR_LEN_BYTES,
-                   KMODULE_CONFIG_TREE_ROOT, module->name, "scripts/remove", NULL);
+    LE_ASSERT_OK(le_path_Concat("/", cfgTreePath, LE_CFG_STR_LEN_BYTES,
+                 KMODULE_CONFIG_TREE_ROOT, module->name, "scripts/remove", NULL));
 
     le_cfg_IteratorRef_t iter = le_cfg_CreateReadTxn(cfgTreePath);
 
@@ -797,7 +808,15 @@ void kernelModules_Insert(void)
 
     le_cfg_IteratorRef_t iter = le_cfg_CreateReadTxn("system:");
     le_cfg_GoToNode(iter, "/modules");
-    le_cfg_GoToFirstChild(iter);
+
+    le_result_t result = le_cfg_GoToFirstChild(iter);
+    if (result != LE_OK)
+    {
+        LE_ERROR("Failed to read /modules config. Result = %d (%s).",
+                 result, LE_RESULT_TXT(result));
+        le_cfg_CancelTxn(iter);
+        return;
+    }
 
     do
     {
