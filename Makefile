@@ -100,6 +100,9 @@ ifeq ($(USE_CCACHE),)
   endif
 endif
 ifeq ($(USE_CCACHE),1)
+  # Unset CCACHE_PATH as to not interfere with host builds
+  unexport CCACHE_PATH
+
   ifeq ($(CCACHE),)
     CCACHE := $(shell which ccache 2>/dev/null)
   endif
