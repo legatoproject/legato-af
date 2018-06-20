@@ -3136,14 +3136,15 @@ void le_ecall_RemoveStateChangeHandler
  * @note That PSAP number is not applied to Manually or Automatically initiated eCall. For those
  *       modes, an emergency call is launched.
  *
- * @warning This function doesn't modified the U/SIM content.
+ * @warning This function doesn't modify the U/SIM content.
  *
  * @return
- *  - LE_OK on success
- *  - LE_FAULT for other failures
+ *  - LE_OK           On success
+ *  - LE_FAULT        For other failures
+ *  - LE_UNSUPPORTED  Not supported on this platform
  *
- * @note If PSAP number is too long (max LE_MDMDEFS_PHONE_NUM_MAX_LEN digits), it is a fatal error,
- *       the function will not return.
+ * @note If PSAP number is empty or too long (max LE_MDMDEFS_PHONE_NUM_MAX_LEN digits), it is a
+ *       fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_SetPsapNumber
@@ -3151,36 +3152,30 @@ le_result_t le_ecall_SetPsapNumber
     const char* psapPtr    ///< [IN] Public Safely Answering Point number
 )
 {
-    le_result_t res;
+    size_t length;
 
-    if(strlen(psapPtr) > LE_MDMDEFS_PHONE_NUM_MAX_LEN)
+    if (psapPtr == NULL)
     {
-        LE_KILL_CLIENT( "strlen(psapPtr) > %d", LE_MDMDEFS_PHONE_NUM_MAX_LEN);
+        LE_KILL_CLIENT("Null argument provided");
         return LE_FAULT;
     }
 
-    if(!strlen(psapPtr))
-    {
-        return LE_BAD_PARAMETER;
-    }
+    length = strlen(psapPtr);
 
-    if((res = le_utf8_Copy(ECallObj.psapNumber,
-                           psapPtr,
-                           sizeof(ECallObj.psapNumber),
-                           NULL)) != LE_OK)
+    if ((length == 0) || (length > LE_MDMDEFS_PHONE_NUM_MAX_LEN))
     {
-        return res;
-    }
-
-    if (pa_ecall_SetPsapNumber(ECallObj.psapNumber) != LE_OK)
-    {
-        LE_ERROR("Unable to set the desired PSAP number!");
+        LE_KILL_CLIENT( "PSAP number length (%zu) should not be empty or greater than %d",
+                         length,
+                         LE_MDMDEFS_PHONE_NUM_MAX_LEN);
         return LE_FAULT;
     }
-    else
+
+    if(le_utf8_Copy(ECallObj.psapNumber, psapPtr, sizeof(ECallObj.psapNumber), NULL) != LE_OK)
     {
-        return LE_OK;
+        return LE_FAULT;
     }
+
+    return (pa_ecall_SetPsapNumber(ECallObj.psapNumber));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3194,14 +3189,19 @@ le_result_t le_ecall_SetPsapNumber
  * @warning This function doesn't read the U/SIM content.
  *
  * @return
- *  - LE_OK on success
- *  - LE_FAULT on failures or if le_ecall_SetPsapNumber() has never been called before.
+ *  - LE_OK           On success
+ *  - LE_FAULT        On failures or if le_ecall_SetPsapNumber() has never been called before
+  * - LE_OVERFLOW     Retrieved PSAP number is too long for the out parameter
+ *  - LE_UNSUPPORTED  Not supported on this platform
+ *
+ * @note If the passed PSAP pointer is NULL, a fatal error is raised and the function will not
+ *       return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_GetPsapNumber
 (
     char   *psapPtr,           ///< [OUT] Public Safely Answering Point number
-    size_t  len  ///< [IN] maximum length of PSAP number.
+    size_t  len                ///< [IN] maximum length of PSAP number.
 )
 {
     if (psapPtr == NULL)

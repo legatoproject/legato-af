@@ -1362,14 +1362,15 @@ FUNCTION State GetState
  * @note That PSAP number is not applied to Manually or Automatically initiated eCall. For those
  *       modes, an emergency call is launched.
  *
- * @warning This function doesn't modified the U/SIM content.
+ * @warning This function doesn't modify the U/SIM content.
  *
  * @return
- *  - LE_OK on success
- *  - LE_FAULT for other failures
+ *  - LE_OK           On success
+ *  - LE_FAULT        For other failures
+ *  - LE_UNSUPPORTED  Not supported on this platform
  *
- * @note If PSAP number is too long (max LE_MDMDEFS_PHONE_NUM_MAX_LEN digits), it is a fatal error,
- *       the function will not return.
+ * @note If PSAP number is empty or too long (max LE_MDMDEFS_PHONE_NUM_MAX_LEN digits), it is a
+ *       fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
  FUNCTION le_result_t SetPsapNumber
@@ -1388,13 +1389,19 @@ FUNCTION State GetState
  * @warning This function doesn't read the U/SIM content.
  *
  * @return
- *  - LE_OK on success
- *  - LE_FAULT on failures or if le_ecall_SetPsapNumber() has never been called before.
+ *  - LE_OK           On success
+ *  - LE_FAULT        On failures or if le_ecall_SetPsapNumber() has never been called before
+  * - LE_OVERFLOW     Retrieved PSAP number is too long for the out parameter
+ *  - LE_UNSUPPORTED  Not supported on this platform
+ *
+ * @note If the passed PSAP pointer is NULL, a fatal error is raised and the function will not
+ *       return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetPsapNumber
 (
-    string psap[le_mdmDefs.PHONE_NUM_MAX_LEN] OUT ///< Public Safely Answering Point telephone number
+    string psap[le_mdmDefs.PHONE_NUM_MAX_LEN] OUT ///< Public Safely Answering Point telephone
+                                                  ///< number
 );
 
 //--------------------------------------------------------------------------------------------------

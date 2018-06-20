@@ -161,11 +161,13 @@ LE_SHARED void pa_ecall_RemoveEventHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to set the Public Safely Answering Point number.
+ * Set the Public Safely Answering Point telephone number.
  *
- * @return LE_FAULT  The function failed.
- * @return LE_OVERFLOW  psap number is too long.
- * @return LE_OK     The function succeed.
+ * @note Important! This function doesn't modify the U/SIM content.
+ *
+ * @return LE_OK           The function succeed.
+ * @return LE_FAULT        The function failed.
+ * @return LE_UNSUPPORTED  Not supported on this platform.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_ecall_SetPsapNumber
@@ -175,11 +177,14 @@ LE_SHARED le_result_t pa_ecall_SetPsapNumber
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to get the Public Safely Answering Point number.
+ * Get the Public Safely Answering Point telephone number.
  *
- * @return LE_FAULT     The function failed.
- * @return LE_OVERFLOW  Retrieved PSAP number is too long for the out parameter.
- * @return LE_OK        The function succeed.
+ * @return LE_OK           The function succeed.
+ * @return LE_FAULT        The function failed.
+ * @return LE_OVERFLOW     Retrieved PSAP number is too long for the out parameter.
+ * @return LE_UNSUPPORTED  Not supported on this platform.
+ *
+ * @note Important! This function doesn't read the U/SIM content.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_ecall_GetPsapNumber
