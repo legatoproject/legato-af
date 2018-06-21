@@ -86,28 +86,6 @@ static int CurrentReadResId = INVALID_RESOURCE_ID;
 //--------------------------------------------------------------------------------------------------
 static assetData_AssetDataRef_t CurrentReadAssetRef;
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Retry timer for disable the modem-based AVC
- */
-//--------------------------------------------------------------------------------------------------
-static le_timer_Ref_t RetryTimerRef = NULL;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Flag to indicate whether modem-based AVC is disabled or not
- */
-//--------------------------------------------------------------------------------------------------
-static bool IsAvcDisabled = false;
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Timer to retry disabling the modem-based AVC every 60 seconds.
- */
-// ------------------------------------------------------------------------------------------------
-#define DISABLE_RETRY_TIMER 150
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  Length of legato application prefix (le_)
@@ -116,77 +94,28 @@ static bool IsAvcDisabled = false;
 #define APP_PREFIX_LENGTH 3
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Flag to indicate whether read operation with unspecified object is received.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsReadEventReceived = false;
+
+//--------------------------------------------------------------------------------------------------
 // Local functions
 //--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Checks if modem-AVC is disabled.
+ * Checks if read operation notifications is received
  */
 //--------------------------------------------------------------------------------------------------
-bool lwm2m_IsAvcDisabled
+bool lwm2m_IsReadEventReceived
 (
     void
 )
 {
-    return IsAvcDisabled;
+    return IsReadEventReceived;
 }
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Expiry handler function that will retry disabling the modem-based AVC.
- */
-//--------------------------------------------------------------------------------------------------
-void RetryDisable
-(
-    le_timer_Ref_t timerRef
-)
-{
-    LE_INFO("Retry disabling modem-based AVC.");
-
-    // If successful, we can stop retrying
-    if (pa_avc_Disable() == LE_OK)
-    {
-        LE_INFO("Modem-based AVC disabled.");
-        IsAvcDisabled = true;
-        le_timer_Stop(RetryTimerRef);
-        le_appCtrl_Start(AVC_APP_NAME);
-        le_appCtrl_Start(AT_APP_NAME);
-        le_appCtrl_Start(QMI_APP_NAME);
-        ImportConfig();
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Initialize and start retry timer.
- */
-//--------------------------------------------------------------------------------------------------
-static void StartRetryTimer
-(
-    void
-)
-{
-    le_result_t res = LE_NOT_POSSIBLE;
-    le_clk_Time_t interval = { DISABLE_RETRY_TIMER, 0 };
-
-    RetryTimerRef = le_timer_Create("RetryDisableTimer");
-
-    res = le_timer_SetInterval(RetryTimerRef, interval);
-    LE_FATAL_IF(res != LE_OK, "Unable to set timer interval.");
-
-    res = le_timer_SetRepeat(RetryTimerRef, 0);
-    LE_FATAL_IF(res != LE_OK, "Unable to set repeat for timer.");
-
-    res = le_timer_SetHandler(RetryTimerRef, RetryDisable);
-    LE_FATAL_IF(res != LE_OK, "Unable to set timer handler.");
-
-    res = le_timer_Start(RetryTimerRef);
-    LE_FATAL_IF(res != LE_OK, "Unable to start timer.");
-}
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -336,8 +265,7 @@ static void OperationHandler
             pa_avc_OperationReportSuccess(opRef, ValueData, BytesWritten);
         }
 
-        // Disable modem avc
-        StartRetryTimer();
+        IsReadEventReceived = true;
 
         // TODO: Refactor so I don't need a return here.
         return;

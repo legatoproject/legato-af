@@ -33,16 +33,14 @@ le_result_t lwm2m_Init
     void
 );
 
-
 //--------------------------------------------------------------------------------------------------
 /**
- * Checks if modem-AVC is disabled.
+ * Checks if read operation notifications is received
  */
 //--------------------------------------------------------------------------------------------------
-bool lwm2m_IsAvcDisabled
+bool lwm2m_IsReadEventReceived
 (
     void
 );
-
 
 #endif // LEGATO_LWM2M_INCLUDE_GUARD
