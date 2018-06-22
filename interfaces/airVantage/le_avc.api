@@ -901,9 +901,6 @@ FUNCTION le_result_t DeferUninstall
 /**
  * Accept the currently pending reboot
  *
- * @note When this function is called, a 2-second timer is launched and the reboot function is
- * called when the timer expires.
- *
  * @return
  *      - LE_OK on success
  *      - LE_FAULT on failure
