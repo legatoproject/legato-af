@@ -280,6 +280,7 @@ create_conf()
 
 bringdown_ecm()
 {
+    ifconfig $ecm_iface 0.0.0.0
     ifconfig $ecm_iface down
 }
 
