@@ -241,6 +241,7 @@ static void SmsReceivedHandler
 )
 {
     char text[LE_SMS_TEXT_MAX_BYTES] = {0};
+    le_result_t res;
 
     if (le_sms_GetFormat(messagePtr) != LE_SMS_FORMAT_TEXT)
     {
@@ -248,7 +249,12 @@ static void SmsReceivedHandler
         return;
     }
 
-    le_sms_GetText(messagePtr, text, LE_SMS_TEXT_MAX_BYTES);
+    res = le_sms_GetText(messagePtr, text, LE_SMS_TEXT_MAX_BYTES);
+    if (res != LE_OK)
+    {
+        LE_ERROR("Failed to get the message text. Result: %s", LE_RESULT_TXT(res));
+        return;
+    }
 
     if (0 == strncmp(text, "LWM2MWAKEUP", sizeof(text)))
     {

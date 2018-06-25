@@ -913,9 +913,15 @@ static void SmsReceivedHandler
     char tel[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = { 0 };
     char text[LE_SMS_TEXT_MAX_BYTES] = { 0 };
 
-    le_sms_GetSenderTel(messagePtr, tel, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
-    result = le_sms_GetText(messagePtr, text, LE_SMS_TEXT_MAX_BYTES);
+    result = le_sms_GetSenderTel(messagePtr, tel, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
+    if(result != LE_OK)
+    {
+        LE_ERROR("le_sms_GetSenderTel has failed (res.%d)!", result);
+        le_sms_DeleteFromStorage(messagePtr);
+        return;
+    }
 
+    result = le_sms_GetText(messagePtr, text, LE_SMS_TEXT_MAX_BYTES);
     if (LE_OK == result)
     {
         LE_INFO("Message content: \"%s\"", text);
@@ -923,6 +929,8 @@ static void SmsReceivedHandler
     else
     {
         LE_ERROR("Failed to get the message text. Result: %s", LE_RESULT_TXT(result));
+        le_sms_DeleteFromStorage(messagePtr);
+        return;
     }
 
     // We are now reporting to this person
