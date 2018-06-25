@@ -9,7 +9,8 @@ def AddLangArgumentGroup(argParser):
     pass
 
 Filters = {
-            'ToUnderscores' : codeGenHelpers.CamelCaseToUnderscores,
+            'DecorateName':          langC.codeGenHelpers.DecorateName,
+            'ToUnderscores' :        codeGenHelpers.CamelCaseToUnderscores,
             'DEBUG_show_all_attrs' : codeGenHelpers.DEBUG_show_all_attrs,
             'PyFormatHeaderComment': codeGenHelpers.FormatHeaderComment,
             'DecoratorNameForEvent' : codeGenHelpers.DecoratorNameForEvent,

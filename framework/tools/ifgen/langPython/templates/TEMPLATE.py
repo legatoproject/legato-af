@@ -133,6 +133,10 @@ def {{function.name}}(
     result = {{function.returnType.name}}(result)
     {%- elif function.returnType is BasicType and function.returnType.name == 'bool' %}
     result = bool(result)
+    {%- elif function.returnType is BasicType
+             or function.returnType is ReferenceType
+             or function.returnType == None %}
+    # No convertion for returnType = {{function.returnType}}
     {%- else %}
     # Not sure how to convert returnType = {{function.returnType}}
     {%- endif %}

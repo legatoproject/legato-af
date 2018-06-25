@@ -39,6 +39,8 @@ def HandlerParamsForEvent(event):
     return handler.apiType.parameters
 
 def CDataToPython(var):
+    msg = var.name + " = "
+    cast = ""
     if isinstance(var.apiType, interfaceIR.BitmaskType):
         # Convert cdata to enum
         cast = "%s(%s[0])" % (var.apiType.name.replace("BitMask", ""), var.name)
@@ -56,9 +58,11 @@ def CDataToPython(var):
         cast = "Result(%s)" % var.name
     elif isinstance(var.apiType, interfaceIR.EnumType):
         cast = "%s(%s[0])" % (var.apiType.name, var.name)
+    elif isinstance(var.apiType, interfaceIR.ReferenceType):
+        msg = "# No conversion needed for reference"
     else:
         sys.stderr.write(
-            "Couldn't convert variable '%s' of type '%s' from C to Python." %
-            (var.name, var.apiType.name))
-        return "# No rule for converting %s (%s) to Python type."
-    return var.name + " = " + cast
+            "Couldn't convert variable '%s' of type '%s' named '%s' from C to Python.\n" %
+            (var.name, str(var.apiType), var.apiType.name))
+        msg = "# No rule for converting %s (%s) to Python type."
+    return msg + cast
