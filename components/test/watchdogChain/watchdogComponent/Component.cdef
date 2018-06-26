@@ -1,0 +1,17 @@
+requires:
+{
+    component:
+    {
+        watchdogChain
+    }
+}
+
+sources:
+{
+    watchdogChain.c
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}/components/watchdogChain
+}

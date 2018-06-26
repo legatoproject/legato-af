@@ -1,0 +1,24 @@
+/*
+ * Copyright (C) Sierra Wireless Inc.
+ */
+
+start: manual
+
+executables:
+{
+    client = ( OptionalClient )
+}
+
+processes:
+{
+    run:
+    {
+        ( client )
+    }
+}
+
+// Test binding to non-existant root API
+bindings:
+{
+    client.OptionalClient.ipcTest -> <root>.ipcTest
+}

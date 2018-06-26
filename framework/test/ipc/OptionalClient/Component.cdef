@@ -1,0 +1,16 @@
+/*
+ * Copyright (C) Sierra Wireless Inc.
+ */
+
+requires:
+{
+    api:
+    {
+        ipcTest.api    [optional]
+    }
+}
+
+sources:
+{
+    cclient.c
+}

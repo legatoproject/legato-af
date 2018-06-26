@@ -1,0 +1,12 @@
+sources:
+{
+    secStoreTest2.c
+}
+
+requires:
+{
+    api:
+    {
+        le_secStore.api
+    }
+}

@@ -1,0 +1,31 @@
+/*
+ * Framework test system -- contains all test apps needed to test framework functionality.
+ */
+
+#include "$LEGATO_ROOT/legatoTargetConfig.sinc"
+
+interfaceSearch:
+{
+    $CURDIR/ipc/interfaces
+}
+
+apps:
+{
+    /*
+     * Test applications
+     */
+    clock/test_Clock
+    thread/test_Thread
+    eventLoop/test_EventLoop
+    timer/test_Timer
+    semaphore/test_Semaphore
+    ipc/test_Optional1
+    ipc/test_Optional2
+    fs/test_Fs
+    crc/test_Crc
+
+    /*
+     * Helper applications assocated with python tests
+     */
+    log/logTester
+}

@@ -1,0 +1,19 @@
+start: manual
+
+executables:
+{
+    testMessaging2 = ( messagingUnixComponent2 )
+}
+
+processes:
+{
+    run:
+    {
+        ( testMessaging2 )
+    }
+}
+
+bindings:
+{
+     *.BoeufMort2 -> *.BoeufMort2
+}

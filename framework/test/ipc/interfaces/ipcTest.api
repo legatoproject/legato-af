@@ -1,0 +1,128 @@
+/**
+ * IPC test.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+
+ENUM SmallEnum {
+    SE_VALUE1,
+    SE_VALUE2,
+    SE_VALUE3,
+    SE_VALUE4,
+    SE_VALUE5
+};
+
+
+ENUM LargeEnum {
+    LE_VALUE1,
+    LE_VALUE2,
+    LE_LARGE_VALUE1 = 0x100000000,
+    LE_LARGE_VALUE2
+};
+
+BITMASK SmallBitMask {
+    SBM_VALUE1,
+    SBM_VALUE2,
+    SBM_VALUE3
+};
+
+BITMASK LargeBitMask {
+    LBM_VALUE1,
+    LBM_VALUE2,
+    LBM_VALUE3,
+    LBM_VALUE4,
+    LBM_VALUE5,
+    LBM_VALUE6,
+    LBM_VALUE7,
+    LBM_VALUE8,
+    LBM_VALUE9,
+    LBM_VALUE10,
+    LBM_VALUE11,
+    LBM_VALUE12,
+    LBM_VALUE13,
+    LBM_VALUE14,
+    LBM_VALUE15,
+    LBM_VALUE16,
+    LBM_VALUE17,
+    LBM_VALUE18,
+    LBM_VALUE19,
+    LBM_VALUE20,
+    LBM_VALUE21,
+    LBM_VALUE22,
+    LBM_VALUE23,
+    LBM_VALUE24,
+    LBM_VALUE25,
+    LBM_VALUE26,
+    LBM_VALUE27,
+    LBM_VALUE28,
+    LBM_VALUE29,
+    LBM_VALUE30,
+    LBM_VALUE31,
+    LBM_VALUE32,
+    LBM_VALUE33,
+    LBM_VALUE34,
+    LBM_VALUE35,
+    LBM_VALUE36,
+    LBM_VALUE37,
+    LBM_VALUE38,
+    LBM_VALUE39,
+    LBM_VALUE40,
+    LBM_VALUE41,
+    LBM_VALUE42,
+    LBM_VALUE43,
+    LBM_VALUE44,
+    LBM_VALUE45,
+    LBM_VALUE46,
+    LBM_VALUE47,
+    LBM_VALUE48,
+    LBM_VALUE49,
+    LBM_VALUE50,
+    LBM_VALUE51,
+    LBM_VALUE52,
+    LBM_VALUE53,
+    LBM_VALUE54,
+    LBM_VALUE55,
+    LBM_VALUE56,
+    LBM_VALUE57,
+    LBM_VALUE58,
+    LBM_VALUE59,
+    LBM_VALUE60,
+    LBM_VALUE61,
+    LBM_VALUE62,
+    LBM_VALUE63,
+    LBM_VALUE64
+};
+
+REFERENCE Simple;
+
+FUNCTION EchoSimple(int32 InValue IN,
+                    int32 OutValue OUT);
+
+FUNCTION EchoSmallEnum(SmallEnum InValue IN,
+                       SmallEnum OutValue OUT);
+
+FUNCTION EchoLargeEnum(LargeEnum InValue IN,
+                       LargeEnum OutValue OUT);
+
+FUNCTION EchoSmallBitMask(SmallBitMask InValue IN,
+                          SmallBitMask OutValue OUT);
+
+FUNCTION EchoLargeBitMask(LargeBitMask InValue IN,
+                          LargeBitMask OutValue OUT);
+
+FUNCTION EchoReference(Simple InRef IN,
+                       Simple OutRef OUT);
+
+FUNCTION EchoString(string InString[256] IN,
+                    string OutString[256] OUT);
+
+// FUNCTION EchoArray(int64 InArray[32] IN,
+//                    int64 OutArray[32] OUT);
+
+HANDLER EchoHandler(int32 cookie);
+
+EVENT EchoEvent(EchoHandler handler);
+
+FUNCTION EchoTriggerEvent(int32 cookie);
+
+FUNCTION ExitServer();

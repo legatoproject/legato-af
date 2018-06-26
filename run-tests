@@ -22,7 +22,7 @@ help_long_description=(
 "       Env. variable UT_FILTER can be used to select the tests being ran."
 "       Test cases that do not match this regular expression are excluded."
 "       e.g.:"
-"           UT_FILTER=".*SecStore.*" ./run-tests host-ut"
+"           UT_FILTER=\".*SecStore.*\" ./run-tests host-ut"
 "       would only run test cases that contains 'SecStore'."
 ""
 " - run-host-ut:"
@@ -320,8 +320,14 @@ function WaitSsh()
 
 function StartVirtualTarget()
 {
+    # Figure out most recent Legato release included in this source, and use virtual image
+    # based on this release.
+    LATEST_TAG=$(git describe --tags $(git merge-base HEAD remotes/gerrit/master) |cut -d- -f1)
+    VIRT_TARGET_TAG=${VIRT_TARGET_TAG:-${LATEST_TAG}}
+    # By default, use ARM target architecture
     VIRT_TARGET_ARCH=${VIRT_TARGET_ARCH:-arm}
-    VIRT_DOCKER_IMG=${VIRT_DOCKER_IMG:-"quay.io/legato/virt-$VIRT_TARGET_ARCH"}
+    # Build up docker image name from above.  Can also be overridden by setting VIRT_DOCKER_IMG
+    VIRT_DOCKER_IMG=${VIRT_DOCKER_IMG:-"quay.io/legato/virt-$VIRT_TARGET_ARCH:$VIRT_TARGET_TAG"}
 
     if ! which docker >/dev/null; then
         message $COLOR_ERROR "Unable to find 'docker', unable to executed virtual tests."
@@ -394,16 +400,16 @@ function CleanBuild()
 function TargetIdentify()
 {
     if [ -z "$TARGET_TYPE" ]; then
-        echo "Identifying target ..."
+        echo "Identifying target '$DEST_IP' ..."
         TARGET_MODEL=$(ssh -o ConnectTimeout=5 -p $TARGET_SSH_PORT root@$DEST_IP "bsinfo -l | grep \" - \$(bsinfo -s -t)\" | sed -e 's/BS//' -e 's/ - .*$//'" 2> /dev/null)
         if [ -z "$TARGET_MODEL" ]; then
             echo "Unable to determine remote target model"
             Exit 1
         fi
 
-        TARGET_TYPE=$($SOURCEDIR/bin/gettargettype $TARGET_MODEL)
+        TARGET_TYPE=$($SOURCEDIR/bin/gettargettype ${TARGET_MODEL})
         if [ -z "$TARGET_TYPE" ]; then
-            echo "Unable to determine remote target type"
+            echo "Unsupported remote model '$TARGET_TYPE'"
             Exit 1
         fi
     fi
@@ -413,10 +419,21 @@ function TargetIdentify()
 
 function TargetUpdateLegato()
 {
-    message $COLOR_INFO "Updating Legato"
+    if [ -n "$1" ]; then
+        test_system="$1"
+    else
+        test_system=build/$TARGET_TYPE/system.$TARGET_TYPE.update
+    fi
+
+    if [ ! -f "${test_system}" ]; then
+        message $COLOR_INFO "No tests found for ${test_system}, skipping"
+        return 0
+    fi
+
+    message $COLOR_INFO "Updating Legato with system '$test_system'"
 
     # if startup scripts are updated target will need to reboot.
-    instsys build/$TARGET_TYPE/system.$TARGET_TYPE.update $DEST_IP
+    instsys $test_system $DEST_IP
     CheckRet
 
     # Wait for target to bring up the new system.
@@ -525,7 +542,32 @@ function TargetUnitTest()
         return
     fi
 
+    # 1) perform Python-based framework tests
+    TargetUpdateLegato build/$TARGET_TYPE/testFramework.$TARGET_TYPE.update
+    CheckRet
+
+    py.test --target=$DEST_IP framework
+    CheckRet
+
+    # 2) perform Python-based component tests
+    TargetUpdateLegato build/$TARGET_TYPE/testComponents.$TARGET_TYPE.update
+    CheckRet
+
+    py.test --target=$DEST_IP components
+    CheckRet
+
+    # 3) perform Python-based application and framework daemon tests
+    TargetUpdateLegato build/$TARGET_TYPE/testApps.$TARGET_TYPE.update
+    CheckRet
+
+    py.test --target=$DEST_IP apps/test
+    CheckRet
+
+    # Then perform old bash-script tests.
+    # NOTE: As these tests are updated they should be converted to python-based tests,
+    #       Once all tests are converted, this should be removed
     TargetUpdateLegato
+    CheckRet
 
     cd $BUILDDIR_BASE/$TARGET_TYPE
     CheckRet
@@ -839,4 +881,3 @@ dev-trial)
 esac
 
 Exit 0
-

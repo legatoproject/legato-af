@@ -1,0 +1,20 @@
+/*
+ * Copyright (C) Sierra Wireless Inc.
+ */
+
+start: manual
+
+executables:
+{
+    client = ( OptionalClient )
+}
+
+processes:
+{
+    run:
+    {
+        ( client )
+    }
+}
+
+// Test no binding for optional API

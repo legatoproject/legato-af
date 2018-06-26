@@ -1,0 +1,21 @@
+start: manual
+
+executables:
+{
+    testWatchdog = ( watchdogComponent )
+}
+
+processes:
+{
+    run:
+    {
+        ( testWatchdog )
+    }
+
+    watchdogTimeout: 5000
+}
+
+bindings:
+{
+    testWatchdog.watchdogChain.le_wdog -> <root>.le_wdog
+}

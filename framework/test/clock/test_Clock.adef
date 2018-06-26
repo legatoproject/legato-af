@@ -1,0 +1,19 @@
+start: manual
+
+executables:
+{
+    testClock = ( clockComponent )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        ( testClock )
+    }
+}

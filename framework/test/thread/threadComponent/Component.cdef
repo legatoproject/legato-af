@@ -1,0 +1,14 @@
+cflags:
+{
+    -I.
+    -DHAVE_GETRLIMIT
+    -DHAVE_SETRLIMIT
+}
+
+sources:
+{
+    main.c
+    priority.c
+    forkJoinMutex.c
+    externalThreadApi.c
+}

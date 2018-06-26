@@ -73,9 +73,13 @@ void AssetCreateHandler
     LE_TEST( (instanceId==3) || (instanceId==4) );
 
     if ( action == ASSET_DATA_ACTION_CREATE )
+    {
         LE_INFO("Create happened on '%s', %i, %i", appName, assetId, instanceId);
+    }
     else
+    {
         LE_INFO("Delete happened on '%s', %i, %i", appName, assetId, instanceId);
+    }
 
     if ( instanceId == 3 )
     {
@@ -114,7 +118,7 @@ void FieldWriteIntHandler
     int assetId;
     LE_TEST ( assetData_GetAssetIdFromInstance(instanceRef, &assetId) == LE_OK );
 
-    int instanceId;
+    int instanceId = -1;
     LE_TEST ( assetData_GetInstanceId(instanceRef, &instanceId) == LE_OK );
 
     LE_INFO("Write happened on '%s', %i, %i, %i", appName, assetId, instanceId, fieldId);
@@ -123,11 +127,17 @@ void FieldWriteIntHandler
     LE_INFO("New value is %i", value);
 
     if ( instanceId == 0 )
-        LE_TEST( value == 399 )
+    {
+        LE_TEST( value == 399 );
+    }
     else if ( instanceId == 1 )
-        LE_TEST( value == 512 )
+    {
+        LE_TEST( value == 512 );
+    }
     else
+    {
         LE_TEST( ! "valid instance id" );
+    }
 
     if ( contextPtr == SemWriteOne )
     {
@@ -164,14 +174,14 @@ void FieldExecHandler
     int assetId;
     LE_TEST ( assetData_GetAssetIdFromInstance(instanceRef, &assetId) == LE_OK );
 
-    int instanceId;
+    int instanceId = -1;
     LE_TEST ( assetData_GetInstanceId(instanceRef, &instanceId) == LE_OK );
 
     LE_TEST( instanceId == 0 );
 
     LE_INFO("Execute happened on '%s', %i, %i, %i", appName, assetId, instanceId, fieldId);
 
-    LE_TEST ( contextPtr == SemExecOne )
+    LE_TEST ( contextPtr == SemExecOne );
     le_sem_Post(SemExecOne);
 }
 
@@ -358,7 +368,7 @@ void RunTest(void)
 
     banner("Write Object to TLV Testing");
     uint8_t tlvBuffer[256];
-    size_t bytesWritten;
+    size_t bytesWritten = 0;
 
     // Set the package names for each instance ...
     LE_TEST(LE_OK == assetData_client_SetString(lwm2mRefZero, 0, "instance zero"));
@@ -372,8 +382,8 @@ void RunTest(void)
     banner("Write To / Read From TLV Testing");
     uint8_t tlvBufferOne[256];
     uint8_t tlvBufferTwo[256];
-    size_t bytesWrittenOne;
-    size_t bytesWrittenTwo;
+    size_t bytesWrittenOne = 0;
+    size_t bytesWrittenTwo = 0;
 
     // Set some other resource values, such as "Update Result" which is 9.
     LE_TEST(LE_OK == assetData_client_SetInt(lwm2mRefZero, 9, 0x123456));

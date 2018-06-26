@@ -1,0 +1,18 @@
+/*
+ * RTOS app test systems -- includes all tests for RTOS-specific apps.
+ *
+ * NOTE: These tests also run on Linux, where they test the equivalent framework services.
+ * This ensures behaviour of these services is compatible on both platforms
+ */
+
+#include "$LEGATO_ROOT/legatoTargetConfig.sinc"
+
+apps:
+{
+    ${LEGATO_ROOT}/apps/platformServices/secStore
+    secStore/test_SecStore1a
+    secStore/test_SecStore1b
+    secStore/test_SecStore2
+    secStore/test_SecStoreGlobal
+    secStore/test_SecStore2Global
+}

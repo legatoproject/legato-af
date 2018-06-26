@@ -1,0 +1,4 @@
+/**
+ * Sleep for a certain length of time
+ */
+FUNCTION Sleep(int32 seconds);

@@ -1,0 +1,23 @@
+start: manual
+
+executables:
+{
+    testThread = ( threadComponent )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        ( testThread )
+    }
+
+    maxFileDescriptors: 1024
+}
+
+maxThreads: 450

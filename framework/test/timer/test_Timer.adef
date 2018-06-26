@@ -1,0 +1,19 @@
+start: manual
+
+executables:
+{
+    testTimer = ( timerComponent )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        ( testTimer )
+    }
+}

@@ -1,0 +1,26 @@
+start: manual
+
+executables:
+{
+    pingWatchdog  = ( pingComponent )
+    sleepWatchdog = ( sleepComponent )
+}
+
+processes:
+{
+    run:
+    {
+        ( pingWatchdog )
+        ( sleepWatchdog )
+    }
+
+    watchdogTimeout: 5000
+}
+
+bindings:
+{
+    pingWatchdog.watchdogChain.le_wdog -> <root>.le_wdog
+    sleepWatchdog.watchdogChain.le_wdog -> <root>.le_wdog
+
+    pingWatchdog.pingComponent.sleep -> sleepWatchdog.sleepComponent.sleep
+}

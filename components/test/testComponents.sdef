@@ -1,0 +1,17 @@
+/*
+ * Components test system -- contains all test apps needed to test functionality of individual
+ * components.
+ */
+
+#include "$LEGATO_ROOT/legatoTargetConfig.sinc"
+
+interfaceSearch:
+{
+    ${CURDIR}/watchdogChain/interfaces
+}
+
+apps:
+{
+    watchdogChain/test_Watchdog
+    watchdogChain/test_WatchdogMulti
+}

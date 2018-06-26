@@ -1,0 +1,25 @@
+provides:
+{
+    api:
+    {
+        sleep.api
+    }
+}
+
+requires:
+{
+    component:
+    {
+        watchdogChain
+    }
+}
+
+sources:
+{
+    sleepWatchdog.c
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}/components/watchdogChain
+}

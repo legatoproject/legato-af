@@ -1,0 +1,19 @@
+start: manual
+
+executables:
+{
+    testEventLoop = (eventLoopComponent)
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        (testEventLoop)
+    }
+}

@@ -1,0 +1,19 @@
+start: manual
+
+executables:
+{
+    testSem = ( semComponent )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        ( testSem )
+    }
+}

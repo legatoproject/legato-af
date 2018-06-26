@@ -1,0 +1,14 @@
+start: manual
+
+executables:
+{
+    testMessaging1 = ( messagingComponent1 )
+}
+
+processes:
+{
+    run:
+    {
+        ( testMessaging1 )
+    }
+}

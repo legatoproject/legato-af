@@ -1,0 +1,11 @@
+sources:
+{
+    ../messagingComponent2/messagingTest2.c
+    ../burgerServer.c
+}
+
+cflags:
+{
+    -DTEST_UNIX_SOCKET
+    -I..
+}
