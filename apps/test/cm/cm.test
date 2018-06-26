@@ -162,8 +162,8 @@ export PROFILE="2" APN="orange" PDP="IPV4" IPV="IPv4" CONNECTED="no" AUTH="PAP" 
     IPADDR="10.134.198.59" GW="10.134.198.60" DNS1="192.168.10.110" \
     DNS2="192.168.10.111" ROUTED=0
 
-LEGATO_ROOT=$(readlink -f $0 | \
-        cut -b -$(readlink -f $0 | grep -b -o "build" | sed 's/[^0-9]//g'))
+#LEGATO_ROOT=$(readlink -f $0 | \
+#        cut -b -$(readlink -f $0 | grep -b -o "build" | sed 's/[^0-9]//g'))
 
 cd $LEGATO_ROOT
 
@@ -195,30 +195,6 @@ handle_err "disconnect ..." $? 0
 # wrong number of args
 apps/tools/scripts/cm data connect 5 3
 handle_err "wrong number of arguments ..." $? 1
-
-# apn setting failure
-export CONNECTED="no" APN_EXIT_CODE=1
-apps/tools/scripts/cm data connect
-handle_err "apn setting failure ..." $? 1
-export APN_EXIT_CODE=0
-
-# pdp setting failure
-export PDP_EXIT_CODE=1
-apps/tools/scripts/cm data connect
-handle_err "pdp setting failure ..." $? 1
-export PDP_EXIT_CODE=0
-
-# authentication failure
-export AUTH_EXIT_CODE=1
-apps/tools/scripts/cm data connect
-handle_err "authentication failure ..." $? 1
-export AUTH_EXIT_CODE=0
-
-# connection failure
-export CONNECT_EXIT_CODE=1
-apps/tools/scripts/cm data connect
-handle_err "connection failure ..." $? 1
-export CONNECT_EXIT_CODE=0
 
 # device not found
 export IFCONFIG_EXIT_CODE=1

@@ -140,11 +140,7 @@ cm_data_connect () {
     local info=$(cm data info)
     local index=$(cm_data_get_param "$info" "Index")
     local apn=$(cm_data_get_param "$info" "APN")
-    local pdp=$(cm_data_get_param "$info" "PDP Type")
     local status=$(cm_data_get_param "$info" "Connected")
-    local auth_type=$(cm_data_get_param "$info" "Auth type")
-    local usr=$(cm_data_get_param "$info" "User name")
-    local passwd=$(cm_data_get_param "$info" "Password")
 
     if [ "$opt" = "-1" ]; then
         echo -n "Disconnecting ... "
@@ -162,22 +158,6 @@ cm_data_connect () {
             echo -n "No APN selected, cannot proceed."
             exit 1
         fi
-
-        echo -n "Setting access point name ... "
-        cm data apn "$apn" > $LOG 2>&1
-        handle_err $?
-
-        echo -n "Setting packet data protocol ... "
-        cm data pdp "$pdp" > $LOG 2>&1
-        handle_err $?
-
-        if [ -z "$auth_type" ]; then
-            auth_type="none"
-        fi
-
-        echo -n "Setting Authentication ... "
-        cm data auth "$auth_type" "$usr" "$passwd" > $LOG 2>&1
-        handle_err $?
 
         echo -n "Connecting ... "
         cm data connect $opt > $LOG 2>&1
