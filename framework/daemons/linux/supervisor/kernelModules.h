@@ -69,7 +69,7 @@ void kernelModules_Init
  * Insert the given list of kernel modules
  */
 //--------------------------------------------------------------------------------------------------
-void kernelModules_InsertListOfModules
+le_result_t kernelModules_InsertListOfModules
 (
     le_sls_List_t reqModuleName
 );
@@ -80,7 +80,7 @@ void kernelModules_InsertListOfModules
  * Remove the given list of kernel modules
  */
 //--------------------------------------------------------------------------------------------------
-void kernelModules_RemoveListOfModules
+le_result_t kernelModules_RemoveListOfModules
 (
     le_sls_List_t reqModuleName
 );

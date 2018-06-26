@@ -2413,7 +2413,7 @@ static le_result_t CheckPathConflict
  * Get kernel modules dependency from configTree and trigger installation of unloaded modules
  */
 //--------------------------------------------------------------------------------------------------
-static void GetKernelModules(app_Ref_t appRef)
+static le_result_t GetKernelModules(app_Ref_t appRef)
 {
     ModNameNode_t* modNameNodePtr;
     // Get a config iterator for this app.
@@ -2452,8 +2452,13 @@ static void GetKernelModules(app_Ref_t appRef)
 
     if (!le_sls_IsEmpty(&(appRef->reqModuleName)))
     {
-        kernelModules_InsertListOfModules(appRef->reqModuleName);
+        if (kernelModules_InsertListOfModules(appRef->reqModuleName) != LE_OK)
+        {
+            return LE_FAULT;
+        }
     }
+
+    return LE_OK;
 }
 
 
@@ -2836,14 +2841,6 @@ app_Ref_t app_Create
 
     file_WriteStr(notifyPath, "1", 0);
 
-    // Set SMACK rules for this app.
-    // Setup the runtime area in the file system.
-    if ( (SetSmackRules(appPtr) != LE_OK) ||
-         (SetupAppArea(appPtr) != LE_OK) )
-    {
-        goto failed;
-    }
-
     le_cfg_CancelTxn(cfgIterator);
     return appPtr;
 
@@ -2944,6 +2941,20 @@ le_result_t app_Start
 
     appRef->state = APP_STATE_RUNNING;
 
+    if (GetKernelModules(appRef) != LE_OK)
+    {
+        LE_CRIT("Error in installing dependent kernel modules for app '%s'", appRef->name);
+    }
+
+    // Set SMACK rules for this app.
+    // Setup the runtime area in the file system.
+    if ( (SetSmackRules(appRef) != LE_OK) ||
+         (SetupAppArea(appRef) != LE_OK) )
+    {
+        LE_ERROR("Failed to set Smack rules or set up app area.");
+        return LE_FAULT;
+    }
+
     // Create /tmp for sandboxed apps and link in /tmp files.
     if (appRef->sandboxed)
     {
@@ -2986,8 +2997,6 @@ le_result_t app_Start
         // Get the next process.
         procLinkPtr = le_dls_PeekNext(&(appRef->procs), procLinkPtr);
     }
-
-    GetKernelModules(appRef);
 
     return LE_OK;
 }

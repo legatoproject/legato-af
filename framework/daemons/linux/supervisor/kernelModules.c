@@ -710,7 +710,7 @@ static le_result_t InstallEachKernelModule(KModuleObj_t *m)
  * Traverse through the given list of kernel module names and install each module
  */
 //--------------------------------------------------------------------------------------------------
-void kernelModules_InsertListOfModules(le_sls_List_t reqModuleName)
+le_result_t kernelModules_InsertListOfModules(le_sls_List_t reqModuleName)
 {
     KModuleObj_t* m;
     le_result_t result;
@@ -732,12 +732,13 @@ void kernelModules_InsertListOfModules(le_sls_List_t reqModuleName)
             if (result != LE_OK)
             {
                 LE_ERROR("Error in installing module %s", m->name);
-                break;
+                return LE_FAULT;
             }
         }
 
         modNameLinkPtr = le_sls_PeekNext(&reqModuleName, modNameLinkPtr);
     }
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -967,7 +968,7 @@ static le_result_t RemoveEachKernelModule(KModuleObj_t *m)
  * Traverse through the given list of kernel module names and remove each module
  */
 //--------------------------------------------------------------------------------------------------
-void kernelModules_RemoveListOfModules(le_sls_List_t reqModuleName)
+le_result_t kernelModules_RemoveListOfModules(le_sls_List_t reqModuleName)
 {
     KModuleObj_t* m;
     le_result_t result;
@@ -986,12 +987,13 @@ void kernelModules_RemoveListOfModules(le_sls_List_t reqModuleName)
             if (result != LE_OK)
             {
                 LE_ERROR("Error in removing module %s", m->name);
-                break;
+                return LE_FAULT;
             }
         }
 
         modNameLinkPtr = le_sls_PeekNext(&reqModuleName, modNameLinkPtr);
     }
+    return LE_OK;
 }
 
 
