@@ -14,3 +14,11 @@ sources:
 {
     spisvc.c
 }
+
+load: manual
+
+scripts:
+{
+    install: $CURDIR/scripts/install.sh
+    remove: $CURDIR/scripts/remove.sh
+}

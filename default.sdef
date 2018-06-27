@@ -35,6 +35,13 @@ apps:
     $LEGATO_ROOT/apps/tools/tools
 }
 
+#if ${LEGATO_TARGET} = wp76xx
+kernelModules:
+{
+    $LEGATO_ROOT/drivers/spisvc/spisvc.mdef
+}
+#endif
+
 commands:
 {
     cm = tools:/scripts/cm

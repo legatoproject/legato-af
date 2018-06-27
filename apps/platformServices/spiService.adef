@@ -1,6 +1,6 @@
 version: 0.1.0
 sandboxed: true
-start: auto
+start: manual
 
 executables:
 {
@@ -29,6 +29,13 @@ processes:
 
 requires:
 {
+#if ${LEGATO_TARGET} = wp76xx
+    kernelModules:
+    {
+        $LEGATO_ROOT/drivers/spisvc/spisvc.mdef
+    }
+#endif
+
     device:
     {
 #if ${SPI_PRIMARY_BUS} = ""
