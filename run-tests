@@ -77,7 +77,7 @@ help_long_description=(
 SOURCEDIR=$PWD
 BUILDDIR_BASE=$PWD/build
 TEST_COVERAGE=${TEST_COVERAGE:-1}
-TEST_COVERAGE_DIR=${TEST_COVERAGE_DIR:-/data/coverage}
+TEST_COVERAGE_DIR=${TEST_COVERAGE_DIR:-/mnt/flash/coverage}
 WITH_COLORS=${WITH_COLORS:-true}
 TARGET_SSH_PORT=${TARGET_SSH_PORT:-22}
 
@@ -387,7 +387,7 @@ function StartVirtualTarget()
 function StopVirtualTarget()
 {
     if [ -n "$VIRT_CNT_NAME" ]; then
-        docker kill $VIRT_CNT_NAME
+        docker rm -f $VIRT_CNT_NAME
     fi
 }
 
@@ -416,6 +416,25 @@ function TargetIdentify()
     message $COLOR_INFO "Testing Legato on $DEST_IP (type = $TARGET_TYPE)"
 }
 
+function TargetUpdateMarkGood()
+{
+    message $COLOR_INFO "-> marking good"
+    for (( i=0; i<10; i++ )); do
+        echo "waiting ..."
+        if timeout 15 ssh -p $TARGET_SSH_PORT root@$DEST_IP "/legato/systems/current/bin/update --mark-good" > build/$TARGET_TYPE/target.log 2>&1; then
+            return 0
+        fi
+
+        if grep -q "The probation period has already ended" build/$TARGET_TYPE/target.log; then
+            return 0
+        fi
+
+        sleep 15
+    done
+
+    return 1
+}
+
 function TargetUpdateLegato()
 {
     if [ -n "$1" ]; then
@@ -431,7 +450,7 @@ function TargetUpdateLegato()
 
     message $COLOR_INFO "Updating Legato with system '$test_system'"
 
-    # if startup scripts are updated target will need to reboot.
+    # If startup scripts are updated target will need to reboot.
     instsys $test_system $DEST_IP
     CheckRet
 
@@ -439,19 +458,10 @@ function TargetUpdateLegato()
     sleep 30
 
     # Mark good
-    message $COLOR_INFO "-> marking good"
-    for (( i=0; i<10; i++ )); do
-        echo "waiting ..."
-        if timeout 15 ssh -p $TARGET_SSH_PORT root@$DEST_IP "/legato/systems/current/bin/update --mark-good" > build/$TARGET_TYPE/target.log 2>&1; then
-            break
-        fi
-
-        if grep -q "The probation period has already ended" build/$TARGET_TYPE/target.log; then
-            break
-        fi
-
-        sleep 15
-    done
+    TargetUpdateMarkGood
+    if [ $? -ne 0 ]; then
+        message $COLOR_WARN "Unable to mark system as good ..."
+    fi
 
     # Wait for system to be marked good
     message $COLOR_INFO "-> checking status"
@@ -493,7 +503,7 @@ function TargetRetrieveCoverage()
     ssh root@$target_ip "/legato/systems/current/bin/legato restart"
 
     # Transfer
-    if ! ssh root@$target_ip "cd $TEST_COVERAGE_DIR && tar c *" | tar x -C build/$target_type/coverage/raw/; then
+    if ! ssh -p $TARGET_SSH_PORT root@$target_ip "cd $TEST_COVERAGE_DIR && tar -cf - *" | tar x -C build/$target_type/coverage/raw/; then
         message $COLOR_WARN "Unable to transfer coverage files from $TEST_COVERAGE_DIR"
     fi
 
@@ -743,6 +753,7 @@ function Build()
     # NOTE: Even if the toolchain path is not set, the Makefile should be able to recover.
     if [[ "$target" != "localhost" ]]; then
         local toolchain_env="${target^^}_TOOLCHAIN_DIR"
+        toolchain_env=${toolchain_env/-/_}
         if [ -z "${!toolchain_env}" ]; then
             message $COLOR_WARN "$toolchain_env not set!"
         else
@@ -932,6 +943,11 @@ function Job_GenerateReport()
 
 CheckForHelp $1
 
+if [ -z "$1" ]; then
+    PrintAvailableUsage
+    exit 1
+fi
+
 message $COLOR_INFO "== Task: '$1' ==\n"
 
 if [ -e "$SOURCEDIR/bin/configlegatoenv" ]; then
@@ -970,7 +986,7 @@ dev-trial*)
     Manual_DeveloperPrePushTrial "$(GetVirtArch "${1}")"
     ;;
 *)
-    echo "Invalid argument: '$1'"
+    echo "Invalid argument: '$1'" >&2
     exit 1
     ;;
 esac

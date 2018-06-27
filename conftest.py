@@ -599,8 +599,10 @@ def target(request):
     if target_name == '':
         request.raiseerror("Target not set")
     app = connect_target(request.module.app_name, target_name, baudrate)
-    yield app
-    reset_target(app)
+    def teardown():
+        reset_target(app)
+    request.addfinalizer(teardown)
+    return app
 
 @pytest.fixture
 def testloop(request):

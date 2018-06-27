@@ -21,7 +21,7 @@ if [ "${LE_CONFIG_TEST_COVERAGE}" == "y" ]
 then
     CFLAGS="$CFLAGS --coverage"
     NINJA_LDFLAGS="$NINJA_LDFLAGS --coverage"
-    TEST_COVERAGE_DIR=${LE_CONFIG_TEST_COVERAGE_DIR:-"/data/coverage"}
+    TEST_COVERAGE_DIR="${LE_CONFIG_TEST_COVERAGE_DIR}"
 
     if [ -n "$TEST_COVERAGE_DIR" ]
     then

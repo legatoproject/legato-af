@@ -5,6 +5,8 @@ LoadTestLib
 targetAddr=$1
 targetType=${2:-ar7}
 
+SetTargetIP "${targetAddr}"
+
 tempFiles=""
 
 OnExit() {
@@ -81,12 +83,7 @@ ssh root@$targetAddr "$BIN_PATH/app stop \"*\""
 sleep 1
 
 echo "Clear the logs."
-ssh root@$targetAddr "killall syslogd"
-CheckRet
-
-ssh root@$targetAddr "/mnt/flash/startup/fg_02_RestartSyslogd"
-CheckRet
-
+ClearLogs
 
 inst badAppSB
 testApp badAppSB

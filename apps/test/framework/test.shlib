@@ -117,9 +117,9 @@ InstallApp () {
 IsAppRunning () {
     local appName=$1
 
-    numMatches=$(ssh root@$targetAddr "$BIN_PATH/app status $appName | grep -c \"running\"")
+    numMatches=$(SshToTarget "$BIN_PATH/app status $appName | grep -c \"running\"")
 
-    if [ $numMatches -eq 0 ]
+    if [ -z "${numMatches}" ] || [ $numMatches -eq 0 ]
     then
         # App is not running.
         return 1

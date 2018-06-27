@@ -5,31 +5,10 @@ LoadTestLib
 targetAddr=$1
 targetType=${2:-wp85}
 
+SetTargetIP "${targetAddr}"
+
 OnFail() {
     echo "Secure Storage Test Failed!"
-}
-
-# TODO: test.shlib might be a better place for this? TBD.
-ClearTargetLog()
-{
-    #Dynamically create script
-    local commands='#!/bin/sh\n
-                    killall syslogd\n
-                    oldlabel=$(cat /proc/self/attr/current)\n
-                    echo syslog > /proc/self/attr/current\n
-                    /sbin/syslogd -C2000 &\n
-                    echo $oldlabel > /proc/self/attr/current'
-
-    echo -e $commands | ssh root@$targetAddr "cat > /tmp/ClearTargetLog.sh"
-
-    #Run the script
-    ssh root@$targetAddr "chmod +x /tmp/ClearTargetLog.sh"
-    ssh root@$targetAddr "/tmp/ClearTargetLog.sh"
-
-    #Delete the script from target
-    ssh root@$targetAddr "rm /tmp/ClearTargetLog.sh"
-
-    return $?
 }
 
 SetUp()
@@ -66,8 +45,7 @@ RunSecStoreTest1()
     instapp secStoreTest1b.$targetType.update $targetAddr
 
     # Clear logs
-    echo "Clear the logs."
-    ClearTargetLog
+    ClearLogs
 
     # Run test apps
     echo "Starting secStoreTest1a."
@@ -103,8 +81,7 @@ RunSecStoreTest2()
     instapp secStoreTest2.$targetType.update $targetAddr
 
     # Clear logs
-    echo "Clear the logs."
-    ClearTargetLog
+    ClearLogs
 
     # Run test apps
     echo "Starting secStoreTest2."
@@ -135,8 +112,7 @@ RunSecStoreTestGlobal()
     instapp secStoreTestGlobal.$targetType.update $targetAddr
 
     # Clear logs
-    echo "Clear the logs."
-    ClearTargetLog
+    ClearLogs
 
     # Run test apps
     echo "Starting secStoreTestGlobal."
@@ -194,6 +170,11 @@ RunSecStoreTestGlobal()
 ##  Main Script Body  ############
 ##################################
 echo "******** Secure Storage Test Starting ***********"
+
+if [[ "$targetType" == "virt" ]]; then
+    echo "Skipping secure storage testing as PA is broken"
+    exit 0
+fi
 
 SetUp
 RunSecStoreTest1

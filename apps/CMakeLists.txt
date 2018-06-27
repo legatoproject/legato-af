@@ -2,8 +2,8 @@
 # Copyright (C) Sierra Wireless Inc.
 #************************************************************************************
 
-# Samples
-add_subdirectory(sample)
-
 # UTs
 add_subdirectory(test)
+
+# Samples
+add_subdirectory(sample)

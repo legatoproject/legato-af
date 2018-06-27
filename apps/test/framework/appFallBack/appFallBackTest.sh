@@ -2,8 +2,10 @@
 
 LoadTestLib
 
-targetAddr=$1
-targetType=${2:-ar7}
+targetAddr="$1"
+targetType="${2:-ar7}"
+
+SetTargetIP "$targetAddr"
 
 OnFail() {
     echo "App Fall Back Test Failed!"
@@ -13,7 +15,7 @@ function CheckAppIsInstalled
 {
     appName=$1
 
-    numMatches=$(ssh root@$targetAddr "$BIN_PATH/app status $appName | grep -c \"not installed\"")
+    numMatches=$(SshToTarget "$BIN_PATH/app status $appName | grep -c \"not installed\"")
 
     if [ $numMatches -ne 0 ]
     then
@@ -27,7 +29,7 @@ function CheckAppIsRunning
 {
     appName=$1
 
-    numMatches=$(ssh root@$targetAddr "$BIN_PATH/app status $appName | grep -c \"running\"")
+    numMatches=$(SshToTarget "$BIN_PATH/app status $appName | grep -c \"running\"")
 
     if [ $numMatches -eq 0 ]
     then
@@ -54,7 +56,7 @@ scriptDir=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 appDir="$LEGATO_ROOT/build/$targetType/samples"
 
 echo "Make sure Legato is running."
-ssh root@$targetAddr "$BIN_PATH/legato start"
+SshToTarget "$BIN_PATH/legato start"
 CheckRet
 
 echo "Install helloWorld app from sample apps."
@@ -75,9 +77,12 @@ fi
 echo "Check that the helloWorld app is still installed."
 CheckAppIsInstalled "helloWorld"
 
-echo "Check helloWorld app is still functional."
-ssh root@$targetAddr "$BIN_PATH/app start helloWorld"
+echo "Check that the app is still running."
 CheckAppIsRunning "helloWorld"
+
+echo "Check helloWorld app is still functional."
+SshToTarget "$BIN_PATH/app restart helloWorld"
+CheckRet
 
 echo "App Fall Back Test Passed!"
 exit 0
