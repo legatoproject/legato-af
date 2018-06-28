@@ -191,6 +191,12 @@
 
 USETYPES le_wifiDefs.api;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Value for no signal strength.
+ */
+//-------------------------------------------------------------------------------------------------
+DEFINE NO_SIGNAL_STRENGTH   = 0xFFFF;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -334,7 +340,7 @@ FUNCTION AccessPoint GetNextAccessPoint
  *
  * @return
  *      - signal strength in dBm. Example -30 = -30dBm
- *      - if no signal available it will return OxFFFF
+ *      - if no signal available it will return LE_WIFICLIENT_NO_SIGNAL_STRENGTH
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION int16 GetSignalStrength
@@ -409,7 +415,8 @@ FUNCTION le_result_t SetPassphrase
 FUNCTION le_result_t SetPreSharedKey
 (
     AccessPoint accessPointRef IN, ///< WiFi Access Point reference.
-    string PreSharedKey[le_wifiDefs.MAX_PSK_BYTES] IN ///< PSK. Note the difference between PSK and Pass Phrase.
+    string PreSharedKey[le_wifiDefs.MAX_PSK_BYTES] IN ///< PSK. Note the difference between PSK and
+                                                      ///< Pass Phrase.
 );
 
 //--------------------------------------------------------------------------------------------------
