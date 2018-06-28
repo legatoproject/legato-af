@@ -702,10 +702,11 @@ FUNCTION ReplyExecResult
  * Push asset data to the server.
  *
  * @return:
- *      - LE_OK on success.
- *      - LE_NOT_FOUND if path doesn't exist.
- *      - LE_BUSY if push is queued and will pushed later automatically
- *      - LE_NOT_POSSIBLE if push queue is full, try again later
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the provided path doesn't exist
+ *      - LE_BUSY if push service is busy. Data added to queue list for later push
+ *      - LE_OVERFLOW if data size exceeds the maximum allowed size
+ *      - LE_NO_MEMORY if push queue is full, try again later
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
@@ -721,8 +722,10 @@ FUNCTION le_result_t Push
  * Push data dump to a specified path on the server.
  *
  * @return:
- *      - LE_OK on success.
- *      - LE_NOT_POSSIBLE if the service is busy pushing other data, try again later
+ *      - LE_OK on success
+ *      - LE_BUSY if push service is busy. Data added to queue list for later push
+ *      - LE_OVERFLOW if data size exceeds the maximum allowed size
+ *      - LE_NO_MEMORY if push queue is full, try again later
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
@@ -854,9 +857,10 @@ FUNCTION le_result_t RecordString
  * Push record to the server
  *
 * @return:
- *      - LE_OK on success.
- *      - LE_BUSY if push is queued and will pushed later automatically
- *      - LE_NOT_POSSIBLE if push queue is full, try again later
+ *      - LE_OK on success
+ *      - LE_BUSY if push service is busy. Data added to queue list for later push
+ *      - LE_OVERFLOW if data size exceeds the maximum allowed size
+ *      - LE_NO_MEMORY if push queue is full, try again later
  *      - LE_FAULT on any other error
  *
  * * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
