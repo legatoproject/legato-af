@@ -596,6 +596,63 @@ function TargetUnitTest()
     return $test_ret
 }
 
+function ConvertCTestIntoJUnit()
+{
+    local tests_dir=${1:-$BUILDDIR_BASE/localhost/Testing}
+    local xml_output=${2:-$BUILDDIR_BASE/localhost/tests/unitTestResults.xml}
+
+    if ! [ -x "$(command -v xsltproc)" ]; then
+      message $COLOR_ERROR 'xsltproc is not installed. Please install it with:'
+      message $COLOR_WARN '\tsudo apt-get install xsltproc'
+      exit 1
+    fi
+
+    for file in ${tests_dir}/*/Test.xml; do
+
+        local file_dir=$(dirname ${file})
+
+        # Convert ctest result into junit xml
+        xsltproc --output ${file_dir}/updates.xml $SOURCEDIR/framework/tools/ressources/ctest-to-junit.xsl ${file}
+
+        if [ ! -e ${xml_output} ]; then
+            cp ${file_dir}/updates.xml ${xml_output}
+        else
+            # Fusion with previous updates.xml
+            cp ${xml_output} ${file_dir}/previous.xml
+            xsltproc --output ${file_dir}/fusion.xml \
+                        --stringparam updateFile ${file_dir}/updates.xml \
+                        $SOURCEDIR/framework/tools/ressources/fusion-junit.xsl \
+                        ${file_dir}/previous.xml
+            cp  ${file_dir}/fusion.xml ${xml_output}
+        fi
+
+    done
+}
+
+function CheckXmlResult()
+{
+    local xml_file=${1:-$BUILDDIR_BASE/localhost/tests/unitTestResults.xml}
+
+    if ! [ -x "$(command -v xmllint)" ]; then
+      message $COLOR_ERROR 'xmllint is not installed. Please install it with:'
+      message $COLOR_WARN '\tsudo apt-get install libxml2-utils'
+      exit 1
+    fi
+
+    if [[ $(xmllint --xpath 'string(//testsuites/testsuite[1]/@failures)' $xml_file) == '0' ]]; then
+        message $COLOR_PASS "Test passed first time"
+        return 0
+    fi
+
+    if [[ $(xmllint --xpath 'string(//testsuites/testsuite[last()]/@failures)' $xml_file) == '0' ]]; then
+        message $COLOR_WARN "Test initially failed, then passed on retry"
+        return 0
+    fi
+
+    message $COLOR_ERROR "Test always failed"
+    return 0
+}
+
 function HostUnitTest()
 {
     # Default timeout to 2 minutes
@@ -607,6 +664,12 @@ function HostUnitTest()
 
     # Default to run all test cases
     UT_FILTER=${UT_FILTER:-".*"}
+
+    # Define number of retry when a test is failling
+    UT_RETRY=${UT_RETRY:-1}
+
+    # Define if we run the all campaign or just tests that have failed
+    UT_RETRY_ALL=${UT_RETRY_ALL:-true}
 
     cd $BUILDDIR_BASE/localhost
     CheckRet
@@ -629,20 +692,35 @@ function HostUnitTest()
 
     CheckDaemons
 
-    # Test
-    ctest \
-        -D ExperimentalTest \
-        --no-compress-output \
-        --tests-regex "$UT_FILTER" \
-        --timeout $UT_TIMEOUT \
-        -VV
-    local test_ret=$?
+    local test_option="--tests-regex $UT_FILTER"
 
-    if [ $test_ret -ne 0 ]; then
-        message $COLOR_ERROR "Host tests failed"
-    else
-        message $COLOR_PASS "Host tests OK"
-    fi
+    for loop in $(seq 1 $UT_RETRY); do
+
+        message $COLOR_ERROR "Run ${loop}"
+
+        if [[ $loop != "1" && ${UT_RETRY_ALL} == "false" ]]; then
+            test_option="--rerun-failed"
+        fi
+
+        # Test
+        ctest \
+            -D ExperimentalTest \
+            --no-compress-output \
+            --timeout $UT_TIMEOUT \
+            ${test_option} \
+            -O $BUILDDIR_BASE/localhost/tests/testRun_${loop}.log \
+            -VV
+        test_ret=$?
+
+        ConvertCTestIntoJUnit
+
+        if [ $test_ret -eq 0 ]; then
+            break
+        fi
+
+    done
+
+    CheckXmlResult
 
     CheckDaemons
 

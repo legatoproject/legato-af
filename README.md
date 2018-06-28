@@ -25,7 +25,8 @@ $ sudo apt-get install -y build-essential \
 ```
 
 Optional packages: ```openjdk-8-jdk``` (for Java support, at least Java 8 is required),
-                   ```doxygen graphviz``` (for doc generation)
+                   ```doxygen graphviz``` (for doc generation),
+                   ```xsltproc``` (for running tests)
 
   - Cross-build toolchain(s)<br/>
     For Sierra Wireless platforms, toolchains are available at https://source.sierrawireless.com/resources/legato/downloads/
