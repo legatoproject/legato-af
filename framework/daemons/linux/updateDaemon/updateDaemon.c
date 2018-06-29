@@ -964,6 +964,32 @@ static void ApplyAppRemove
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Apply a firmware update.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void ApplyFwUpdate
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    le_result_t result = LE_OK;
+
+    LE_INFO("Applying Firmware update");
+    le_fwupdate_ConnectService();
+
+    // This function returns only if there was an error.
+    result = le_fwupdate_Install();
+    if (result != LE_OK)
+    {
+        LE_ERROR("Firmware update install failed: result %d", result);
+        UpdateFailed(LE_UPDATE_ERR_INTERNAL_ERROR);
+    }
+    le_fwupdate_DisconnectService();
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -995,6 +1021,7 @@ static void ApplyUpdate
         case TYPE_FIRMWARE_UPDATE:
             // The firmware update will trigger a reboot, report that update done.
             ReportUpdateDone();
+            ApplyFwUpdate();
             break;
 
         default:
