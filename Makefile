@@ -32,6 +32,9 @@
 #
 # To enable coverage testing, run make with "TEST_COVERAGE=1" on the command-line.
 #
+# To prevent excutables and libraries to be stripped, run make with "STRIP_STAGING_TREE=0" on the
+# command-line.
+#
 # To get more details from the build as it progresses, run make with "VERBOSE=1".
 #
 # Targets to be built for release can be selected with RELEASE_TARGETS.
