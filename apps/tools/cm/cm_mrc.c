@@ -217,12 +217,22 @@ static le_result_t GetCurrentRAT
 {
     le_result_t res;
     le_mrc_Rat_t rat;
+    le_mrc_NetRegState_t state;
+
+    res = le_mrc_GetNetRegState(&state);
+
+    if ((LE_OK != res) ||
+        ((LE_MRC_REG_HOME != state) && (LE_MRC_REG_ROAMING != state))
+       )
+    {
+        cm_cmn_FormatPrint("Current RAT", "Module not registered on network, RAT not available");
+        return LE_FAULT;
+    }
 
     res = le_mrc_GetRadioAccessTechInUse(&rat);
-
     if (res != LE_OK)
     {
-       cm_cmn_FormatPrint("Current RAT", "Not available");
+       cm_cmn_FormatPrint("Current RAT", "Unknown network (LE_MRC_RAT_UNKNOWN)");
        return res;
     }
 

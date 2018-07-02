@@ -1501,6 +1501,7 @@ static void Testle_mrc_SetSignalStrengthIndDelta
 {
     le_mrc_Rat_t rat;
     le_result_t res;
+    le_mrc_NetRegState_t  state;
     int32_t ss = 0;
     int32_t ecio, rscp, sinr, io;
     uint32_t ber, bler, er;
@@ -1543,9 +1544,12 @@ static void Testle_mrc_SetSignalStrengthIndDelta
     // set 20 dBm RSSI delta
     LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_TDSCDMA,196));
 
+    LE_ASSERT_OK(le_mrc_GetNetRegState(&state));
     LE_ASSERT_OK(le_mrc_GetRadioAccessTechInUse(&rat));
-    LE_ASSERT(LE_MRC_RAT_UNKNOWN != rat);
 
+    LE_ASSERT((LE_MRC_RAT_UNKNOWN != rat) &&
+              ((LE_MRC_REG_HOME == state) || (LE_MRC_REG_ROAMING == state))
+             )
     // Init the semaphore for asynchronous callback
     ThreadSemaphore = le_sem_Create("HandlerSignalStrength", 0);
 

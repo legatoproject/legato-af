@@ -2623,6 +2623,8 @@ le_result_t le_mrc_GetRadioPower
  *       function will not return.
  *
  * @note The API returns the RAT only if the device is registered on the network.
+ *       le_mrc_GetNetRegState() function can be called first to obtain the network registration
+ *       state.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_GetRadioAccessTechInUse
