@@ -74,7 +74,10 @@
  *
  * @section le_audio_interfaces Open/Close an Audio Interface
  *
- * The following functions let you select the desired interface attributes:
+ * The following functions let you select the desired interface attributes. Please check the
+ * platform constraints in @subpage platformConstraintsAudio page to ensure that the function is
+ * supported before calling it:
+ *
  * - le_audio_OpenMic(): returns an Audio Stream Reference of the analog audio signal coming from
  *                       the microphone input.
  * - le_audio_OpenSpeaker(): returns an Audio Stream Reference of the analog audio signal routed
