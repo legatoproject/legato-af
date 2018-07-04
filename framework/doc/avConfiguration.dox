@@ -164,24 +164,56 @@ PING bs.airvantage.net (52.24.215.63): 56 data bytes
 64 bytes from 52.24.215.63: seq=4 ttl=234 time=246.483 ms
 @endverbatim
 
-@section avConfigure_Connect Connect to the AirVantage Server
+@section avConfigure_UserAgreements Configure user agreements
 
-At this point the target is ready to be connected to the AirVantage Server. Use the api
-le_avc_StartSession() to start a session or use the @c at command to connect the device to
+Before starting a session with the AirVantage server, check the user agreements and configure them
+if needed using APIs le_avc_GetUserAgreement()/le_avc_SetUserAgreement() or using the @c AT command.
+
+By default, user agreements are disabled. This means that avcService automatically accepts requests
+from the server without asking for user approval: it initiates a connection to the server,
+download/install packages and reboots the target if needed.
+
+If you want to have control on these operations and be able to accept or defer them, you need to
+enable the corresponding user agreement for each operation (connect, download, install, uninstall,
+reset). Thus, avcService notifies registered apps each time a pending request is ongoing and waits
+for your approval.
+
+Example for WPX5XX/WP76XX/FX30 Customers:
+@verbatim
+AT+WDSC?
+
++WDSC: 0,0 # user agreement for connection to server disabled
++WDSC: 1,0 # user agreement for package download disabled
++WDSC: 2,0 # user agreeemnt for package install disabled
++WDSC: 3,0
++WDSC: 4,15,60,240,480,1440,2880,0,0
++WDSC: 5,0 # user agreement for reboot disabled
++WDSC: 6,0 # user agreeemnt for package uninstall disabled
+
+OK
+
+AT+WDSC=3,1 # activates user agreement for package download
+AT+WDSC=4,1 # activates user agreement for package install
+@endverbatim
+
+@section avConfigure_Connect Connect to the AirVantage server
+
+At this point the target is ready to be connected to the AirVantage server. Use the api
+le_avc_StartSession() to start a session or use the @c AT command to connect the device to
 AirVantage.
 
-Steps to connect to the AirVantage Server with AT commands:
+Steps to connect to the AirVantage server with AT commands:
  - @c ssh to device: @c ssh @c 192.168.2.2
  - open an AT connection: <c>microcom -E /dev/ttyAT</c>
- - enable all notification: @c at+wdsi=4479
- - connect to the AirVantage Server: @c at+wdss=1,1
+ - enable all notification: @c AT+WDSI=4479
+ - connect to the AirVantage server: @c AT+WDSS=1,1
 
 Example for WPX5XX/WP76XX/FX30 Customers:
 @verbatim
 # microcom -E /dev/ttyAT
-at+wdsi=4479  # activates all AirVantage Server notifications
+AT+WDSI=4479  # activates all AirVantage server notifications
 OK
-at+wdss=1,1   # starts a connection to the AirVantage Server
+AT+WDSS=1,1   # starts a connection to the AirVantage server
 OK
 +WDSI: 4      # displays the current state of authentication notification
 +WDSI: 6      # displays that the session has succeeded and has started
@@ -206,7 +238,7 @@ le_avc_SetPollingTimer(), or by using the following AT commands:
 Example of setting the polling timer to 1 minute.
 @verbatim
 # microcom /dev/ttyAT
-at+wdsc=3,1           # 3 specifies the polling timer, and 1 sets the number of minutes
+AT+WDSC=3,1           # 3 specifies the polling timer, and 1 sets the number of minutes
 OK
 @endverbatim
 
@@ -215,7 +247,7 @@ Retry timers are built into the AVC API to build resiliency into the system.
 Example Scenario: Let's say we set the polling timer to connect to the server every 24 hours. The
 mobile device may be in an area where there is a network loss that happens everyday and prevents
 the target from connecting.  The device will never be able to establish a connection to the
-AirVantage Server in this case because it's trying to connect to server only when there is no
+AirVantage server in this case because it's trying to connect to server only when there is no
 network.  To prevent this Retry timers should be set at a variety of times enabling a greater
 chance of strong network connections.
 
@@ -228,7 +260,7 @@ The retry timer can be set using le_avc_SetRetryTimers() or by using the followi
 Example of setting the retry timer:
 @verbatim
 # microcom /dev/ttyAT
-at+wdsc=4,15,60,240,480,1440,2880,0,0  # 4 specifies the retry timer
+AT+WDSC=4,15,60,240,480,1440,2880,0,0  # 4 specifies the retry timer
 OK
 @endverbatim
 
