@@ -47,9 +47,14 @@ else
         export $(TARGET_CAPS)_SYSROOT := $(shell $(FINDTOOLCHAIN) $(TARGET) sysroot)
     endif
 
+    ifeq ($($(TARGET_CAPS)_KERNELROOT),)
+        export $(TARGET_CAPS)_KERNELROOT := $(shell $(FINDTOOLCHAIN) $(TARGET) kernelroot)
+    endif
+
     export TOOLCHAIN_DIR := $($(TARGET_CAPS)_TOOLCHAIN_DIR)
     export TOOLCHAIN_PREFIX := $($(TARGET_CAPS)_TOOLCHAIN_PREFIX)
     export LEGATO_SYSROOT ?= $($(TARGET_CAPS)_SYSROOT)
+    export LEGATO_KERNELROOT ?= $($(TARGET_CAPS)_KERNELROOT)
 endif
 
 
