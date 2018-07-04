@@ -270,6 +270,8 @@ typedef struct
     bool                    ackOrT7Received;                            ///< LL-ACK, HL-ACK,
                                                                         ///< T7 timeout received
     bool                    t5Received;                                 ///< T5 timeout received
+    bool                    sendMsdSignalReceived;                      ///< Send MSD signal
+                                                                        ///< received
 }
 ECall_t;
 
@@ -1608,7 +1610,6 @@ static void ProcessECallState
 )
 {
     bool endOfRedialPeriod = false;
-    le_ecall_MsdTxMode_t msdTxMode = LE_ECALL_TX_MODE_PUSH;
     ECallEventData_t* eCallEventDataPtr = (ECallEventData_t*) param1Ptr;
 
     LE_DEBUG("Process new eCall state %d (sessionState %d)",
@@ -1626,24 +1627,23 @@ static void ProcessECallState
             ECallObj.specificTerm = 0;
             ECallObj.ackOrT7Received = false;
             ECallObj.t5Received = false;
+            ECallObj.sendMsdSignalReceived = false;
             break;
         }
 
         case LE_ECALL_STATE_DISCONNECTED: /* Emergency call is disconnected */
         {
-            if (LE_OK != le_ecall_GetMsdTxMode(&msdTxMode))
-            {
-                LE_ERROR("Unable to get MSD transfer mode of Operation");
-            }
-
-            LE_DEBUG("Termination %d, ackOrT7Received %d, t5Received %d, terminationReceived %d",
+            LE_DEBUG("Termination reason: %d, ackOrT7Received: %d, "
+                     "t5Received: %d, sendMsdSignalReceived: %d, "
+                     "terminationReceived: %d",
                      ECallObj.termination,
                      ECallObj.ackOrT7Received,
                      ECallObj.t5Received,
+                     ECallObj.sendMsdSignalReceived,
                      eCallEventDataPtr->terminationReceived);
 
-            LE_DEBUG("msdTxMode %d, isPush %d, SystemStandard %d, pullMode %d",
-                  msdTxMode, ECallObj.isPushed, SystemStandard, ECallObj.eraGlonass.pullModeSwitch);
+            LE_DEBUG("isPush %d, SystemStandard %d, pullMode %d",
+                  ECallObj.isPushed, SystemStandard, ECallObj.eraGlonass.pullModeSwitch);
 
             // Update eCall session state
             switch(ECallObj.sessionState)
@@ -1654,7 +1654,6 @@ static void ProcessECallState
                     if (   (true == eCallEventDataPtr->terminationReceived)
                         && ((ECallObj.ackOrT7Received) || (ECallObj.t5Received))
                         && (LE_MCC_TERM_REMOTE_ENDED == ECallObj.termination)
-                        && (PA_ECALL_PAN_EUROPEAN == SystemStandard)
                        )
                     {
                         // After the IVS has received an LL-ACK or AL-ACK
@@ -1667,8 +1666,8 @@ static void ProcessECallState
                         endOfRedialPeriod = true;
                     }
                     // End of Redial if call drop due to Normal Clear in Pull mode
-                    else if (    ((true == ECallObj.eraGlonass.pullModeSwitch)
-                              || (LE_ECALL_TX_MODE_PULL == msdTxMode))
+                    else if (    (false == ECallObj.sendMsdSignalReceived)
+                              && (false == ECallObj.isPushed)
                               && (true == eCallEventDataPtr->terminationReceived)
                               && (LE_MCC_TERM_REMOTE_ENDED == ECallObj.termination)
                             )
@@ -1678,7 +1677,7 @@ static void ProcessECallState
                     }
                     else
                     {
-                        // Start redial period if redial mechanism is not stopped
+                        // Start redial with abnormal hang up(cf N16062:2014 7.12.13)
                         RedialStart();
 
                         // eCall session attempt if redial mechanism is not stopped
@@ -1702,30 +1701,25 @@ static void ProcessECallState
 
                 case ECALL_SESSION_COMPLETED:
                 {
-                    if (   (PA_ECALL_ERA_GLONASS == SystemStandard)
-                        && (   (true != eCallEventDataPtr->terminationReceived)
-                            || (LE_MCC_TERM_REMOTE_ENDED != ECallObj.termination)
-                           )
+                    // Check redial condition (cf N16062:2014 7.9)
+                    if (   (true == eCallEventDataPtr->terminationReceived)
+                        && (LE_MCC_TERM_REMOTE_ENDED == ECallObj.termination)
                        )
                     {
-                        // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2:
-                        // Connection is dropped, IVS should redial
-
-                        // Start redial period
-                        RedialStart();
-
-                        // eCall session attempt
-                        DialAttempt();
-
-                        // Update eCall session state
-                        ECallObj.sessionState = ECALL_SESSION_NOT_CONNECTED;
+                        // End Of Redial Period
+                        endOfRedialPeriod = true;
                     }
                     else
                     {
-                        // Session completed: no redial
-                        // Update eCall session state
-                        ECallObj.sessionState = ECALL_SESSION_STOPPED;
+                        // Start redial with abnormal hang up(cf N16062:2014 7.12.13)
+                        RedialStart();
+
+                        // eCall session attempt if redial mechanism is not stopped
+                        DialAttempt();
                     }
+
+                    // Update eCall session state
+                    ECallObj.sessionState = ECALL_SESSION_NOT_CONNECTED;
                     break;
                 }
 
@@ -1759,21 +1753,11 @@ static void ProcessECallState
         {
             // Update eCall session state
             ECallObj.sessionState = ECALL_SESSION_COMPLETED;
-
-            // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2:
-            // IVS should be able to redial if connection is lost: MSD is still necessary.
-            // No redial is necessary for PAN EU.
-            if (PA_ECALL_ERA_GLONASS != SystemStandard)
-            {
-                // The Modem successfully completed the MSD transmission
-                // and received two AL-ACKs (positive)
-                // Clear the redial mechanism
-                RedialStop(ECALL_REDIAL_STOP_COMPLETE);
-            }
             break;
         }
 
         case LE_ECALL_STATE_ALACK_RECEIVED_POSITIVE: /* eCall session completed */
+        case LE_ECALL_STATE_TIMEOUT_T7: /* Timeout for T7 */
         {
             // Redial condition (cf N16062:2014 7.9)
             ECallObj.ackOrT7Received = true;
@@ -1784,11 +1768,6 @@ static void ProcessECallState
                 // After receiving AL-ACK, IVS should redial
                 // in pull mode if the connection is lost.
                 ECallObj.eraGlonass.pullModeSwitch = true;
-            }
-            else
-            {
-                // Stop redial
-                RedialStop(ECALL_REDIAL_STOP_ALACK_RECEIVED);
             }
             break;
         }
@@ -1822,13 +1801,13 @@ static void ProcessECallState
 
         case LE_ECALL_STATE_MSD_TX_STARTED: /* MSD transmission is started */
         case LE_ECALL_STATE_WAITING_PSAP_START_IND: /* Waiting for PSAP start indication */
-        case LE_ECALL_STATE_PSAP_START_IND_RECEIVED: /* PSAP start indication received */
         case LE_ECALL_STATE_LLNACK_RECEIVED: /* LL-NACK received */
         case LE_ECALL_STATE_MSD_TX_COMPLETED: /* MSD transmission is complete */
         case LE_ECALL_STATE_RESET: /* eCall session has lost synchronization and starts over */
         case LE_ECALL_STATE_MSD_TX_FAILED: /* MSD transmission has failed */
         case LE_ECALL_STATE_FAILED: /* Unsuccessful eCall session */
         case LE_ECALL_STATE_TIMEOUT_T3: /* Timeout for T3 */
+        case LE_ECALL_STATE_TIMEOUT_T6: /* Timeout for T6 */
         case LE_ECALL_STATE_TIMEOUT_T9: /* Timeout for T9 */
         case LE_ECALL_STATE_TIMEOUT_T10: /* Timeout for T10 */
         {
@@ -1838,7 +1817,7 @@ static void ProcessECallState
 
         case LE_ECALL_STATE_TIMEOUT_T5: /* Timeout for T5 */
         {
-            // Redial condition (cf N16062:2014 7.9)
+            // To check redial condition (cf N16062:2014 7.9)
             LE_DEBUG("STATE_TIMEOUT_T5");
             ECallObj.t5Received = true;
             break;
@@ -1855,42 +1834,13 @@ static void ProcessECallState
         {
             // To check redial condition (cf N16062:2014 7.9)
             ECallObj.ackOrT7Received = true;
-
-            // After LL-ACK reception, MSD is considered as received
-            // and eCall successful. No need to redial if the connection
-            // is lost when using Pan European standard.
-            if (PA_ECALL_PAN_EUROPEAN == SystemStandard)
-            {
-                // Stop redial
-                RedialStop(ECALL_REDIAL_STOP_LLACK_RECEIVED);
-            }
-        }
-        break;
-
-        case LE_ECALL_STATE_TIMEOUT_T7: /* Timeout for T7 */
-        {
-            // To check redial condition (cf N16062:2014 7.9)
-            ECallObj.ackOrT7Received = true;
-
-            // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2:
-            // After T7 timeout, IVS should redial in pull
-            // mode if the connection is lost.
-            if (PA_ECALL_ERA_GLONASS == SystemStandard)
-            {
-                ECallObj.eraGlonass.pullModeSwitch = true;
-            }
             break;
         }
 
-        case LE_ECALL_STATE_TIMEOUT_T6: /* Timeout for T6 */
+        case LE_ECALL_STATE_PSAP_START_IND_RECEIVED: /* PSAP start indication received */
         {
-            // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2:
-            // After T6 timeout, IVS should redial in pull
-            // mode if the connection is lost.
-            if (PA_ECALL_ERA_GLONASS == SystemStandard)
-            {
-                ECallObj.eraGlonass.pullModeSwitch = true;
-            }
+            LE_DEBUG("STATE_PSAP_START_IND_RECEIVED");
+            ECallObj.sendMsdSignalReceived = true;
             break;
         }
 
@@ -1937,10 +1887,8 @@ static void ECallStateHandler
 
     LE_DEBUG("Received new eCall state %d", eCallEventDataPtr->state);
 
-    // When eCall notification DISCONNECTED or STOPPED is received, the termination reason
-    // should be retrieved in order to decide whether to perform or not a redial after T5 timer
-    // expiration.
-    if ((LE_ECALL_STATE_DISCONNECTED == *statePtr) || (LE_ECALL_STATE_STOPPED == *statePtr))
+    // Disconnection of eCall notified, wait for the call termination reason notified by MCC.
+    if (LE_ECALL_STATE_DISCONNECTED == *statePtr)
     {
         le_clk_Time_t timer = { .sec=LE_ECALL_SEM_TIMEOUT_SEC,
                                 .usec=LE_ECALL_SEM_TIMEOUT_USEC };
@@ -1998,8 +1946,8 @@ static void CallEventHandler
     LE_DEBUG("session state %d, event %d", ECallObj.sessionState, event);
 
     // Check if an eCall session is active
-    if ( (eCallPtr->sessionState < ECALL_SESSION_NOT_CONNECTED) ||
-         (eCallPtr->sessionState == ECALL_SESSION_STOPPED) )
+    if ((eCallPtr->sessionState < ECALL_SESSION_NOT_CONNECTED) ||
+        (ECALL_SESSION_STOPPED == eCallPtr->sessionState))
     {
         // The call is not an eCall, no treatment necessary
         LE_DEBUG("No active eCall session, MCC event ignored");
@@ -2154,6 +2102,7 @@ le_result_t le_ecall_Init
     ECallObj.redial.dialDurationTimer = le_timer_Create("dialDurationTimer");
     ECallObj.ackOrT7Received = false;
     ECallObj.t5Received = false;
+    ECallObj.sendMsdSignalReceived = false;
 
     ECallObj.eraGlonass.manualDialAttempts = 10;
     ECallObj.eraGlonass.autoDialAttempts = 10;
