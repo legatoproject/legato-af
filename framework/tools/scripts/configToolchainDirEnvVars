@@ -19,6 +19,7 @@ set_toolchain_dir ()
     toolchain_dir_env_name="$(echo "$target" | tr '[:lower:]' '[:upper:]')_TOOLCHAIN_DIR"
     toolchain_prefix_env_name="$(echo "$target" | tr '[:lower:]' '[:upper:]')_TOOLCHAIN_PREFIX"
     sysroot_env_name="$(echo "$target" | tr '[:lower:]' '[:upper:]')_SYSROOT"
+    kernelroot_env_name="$(echo "$target" | tr '[:lower:]' '[:upper:]')_KERNELROOT"
 
     toolchain_dir=$(findtoolchain "$target" dir 2>/dev/null)
     if [ -z "$toolchain_dir" ] || ! [ -e "$toolchain_dir" ]; then
@@ -32,12 +33,20 @@ set_toolchain_dir ()
     toolchain_prefix=$(findtoolchain "$target" prefix)
 
     sysroot=$(findtoolchain "$target" sysroot)
+    kernelroot=$(findtoolchain "$target" kernelroot)
 
     eval "export ${toolchain_dir_env_name}=$toolchain_dir"
     eval "export ${toolchain_prefix_env_name}=$toolchain_prefix"
     eval "export ${sysroot_env_name}='$sysroot'"
+    eval "export ${kernelroot_env_name}='$kernelroot'"
 
-    echo -e "${COLOR_TITLE}[${target}] ${COLOR_pass}Toolchain dir[$toolchain_dir] prefix[$toolchain_prefix] sysroot[$sysroot]${COLOR_RESET}"
+    spacing_len=$((${#target}+12))
+    spacing=$(printf " %.0s" {1..${spacing_len}})
+
+    echo -e "${COLOR_TITLE}[${target}] ${COLOR_pass}Toolchain dir = $toolchain_dir\n" \
+                                                   "${spacing}prefix = $toolchain_prefix\n" \
+                                                   "${spacing}sysroot = $sysroot\n" \
+                                                   "${spacing}kernelroot = $kernelroot${COLOR_RESET}"
 
     return 0
 }
