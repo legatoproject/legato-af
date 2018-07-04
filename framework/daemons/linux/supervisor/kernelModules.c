@@ -96,8 +96,8 @@ typedef struct
     le_sls_List_t      reqModuleName;                        // List of required kernel modules
     ModuleLoadStatus_t moduleLoadStatus;                     // Load status of the module
     bool               isLoadManual;                         // is module load set to auto or manual
-    le_sls_Link_t      link;                                 // link object
-    le_dls_Link_t      dlsLink;                              // link object for doubly linked list
+    le_dls_Link_t      dependencyLink;                       // link object for dependency list
+    le_dls_Link_t      alphabeticalLink;                     // link object for alphabetical list
     uint32_t           useCount;                             // Counter of usage, safe to remove
                                                              // module when counter is 0
     char               installScript[LIMIT_MAX_PATH_BYTES];  // Path to module install script file
@@ -581,6 +581,8 @@ static void ModuleInsert(char *modName)
     m->reqModuleName = LE_SLS_LIST_INIT;
     m->useCount = 0;
     m->isLoadManual = false;
+    m->dependencyLink = LE_DLS_LINK_INIT;
+    m->alphabeticalLink = LE_DLS_LINK_INIT;
 
     ModuleGetLoad(m);
     ModuleGetParams(m);          /* Read module parameters from configTree */
@@ -589,7 +591,7 @@ static void ModuleInsert(char *modName)
     ModuleGetRemoveScript(m);
 
     /* Insert modules in alphabetical order of module name in a doubly linked list */
-    le_dls_Queue(&ModuleAlphaOrderList, &(m->dlsLink));
+    le_dls_Queue(&ModuleAlphaOrderList, &(m->alphabeticalLink));
 
     /* Insert in a hashMap */
     le_hashmap_Put(KModuleHandler.moduleTable, m->name, m);
@@ -601,7 +603,7 @@ static void ModuleInsert(char *modName)
  * For insertion, traverse through the module table and add modules with dependencies to Stack list
  */
 //--------------------------------------------------------------------------------------------------
-static void TraverseDependencyInsert(le_sls_List_t* ModuleInsertList, KModuleObj_t *m)
+static void TraverseDependencyInsert(le_dls_List_t* ModuleInsertList, KModuleObj_t *m)
 {
     LE_ASSERT(m != NULL);
 
@@ -609,7 +611,19 @@ static void TraverseDependencyInsert(le_sls_List_t* ModuleInsertList, KModuleObj
     le_sls_Link_t* modNameLinkPtr;
     ModNameNode_t* modNameNodePtr;
 
-    le_sls_Stack(ModuleInsertList, &(m->link));
+    /* Increment the usage count of the module */
+    m->useCount++;
+
+    /*
+     * We must not add duplicate objects to the linked list to avoid undesired loops.
+     * If the object is already in ModuleInsertList, remove it and add it to the top of the stack.
+     */
+    if (le_dls_IsInList(ModuleInsertList, &(m->dependencyLink)))
+    {
+       le_dls_Remove(ModuleInsertList, &(m->dependencyLink));
+    }
+
+    le_dls_Stack(ModuleInsertList, &(m->dependencyLink));
 
     if (m->moduleLoadStatus != STATUS_INSTALLED)
     {
@@ -638,21 +652,18 @@ static void TraverseDependencyInsert(le_sls_List_t* ModuleInsertList, KModuleObj
 static le_result_t InstallEachKernelModule(KModuleObj_t *m)
 {
     le_result_t result;
-    le_sls_Link_t *listLink;
+    le_dls_Link_t *listLink;
     /* The ordered list of required kernel modules to install */
-    le_sls_List_t ModuleInsertList = LE_SLS_LIST_INIT;
+    le_dls_List_t ModuleInsertList = LE_DLS_LIST_INIT;
+
     ModuleLoadStatus_t loadStatusProcMod;
     char *scriptargv[3];
 
     TraverseDependencyInsert(&ModuleInsertList, m);
 
-    for (listLink = le_sls_Pop(&ModuleInsertList);
-        listLink != NULL;
-        listLink = le_sls_Pop(&ModuleInsertList))
+    while ((listLink = le_dls_Pop(&ModuleInsertList)) != NULL)
     {
-        KModuleObj_t *mod = CONTAINER_OF(listLink, KModuleObj_t, link);
-
-        mod->useCount++;
+        KModuleObj_t *mod = CONTAINER_OF(listLink, KModuleObj_t, dependencyLink);
 
         if (mod->moduleLoadStatus != STATUS_INSTALLED)
         {
@@ -725,8 +736,7 @@ le_result_t kernelModules_InsertListOfModules(le_sls_List_t reqModuleName)
         m = le_hashmap_Get(KModuleHandler.moduleTable, modNameNodePtr->modName);
         LE_ASSERT(m && KMODULE_OBJECT_COOKIE == m->cookie);
 
-        if (m->isLoadManual ||
-            ((!m->isLoadManual) && (m->moduleLoadStatus != STATUS_INSTALLED)))
+        if (m->isLoadManual)
         {
             result = InstallEachKernelModule(m);
             if (result != LE_OK)
@@ -756,7 +766,7 @@ static void installModules()
     linkPtr = le_dls_Peek(&ModuleAlphaOrderList);
     while (linkPtr != NULL)
     {
-        modPtr = CONTAINER_OF(linkPtr, KModuleObj_t, dlsLink);
+        modPtr = CONTAINER_OF(linkPtr, KModuleObj_t, alphabeticalLink);
         LE_ASSERT(modPtr != NULL);
 
         if (modPtr->isLoadManual)
@@ -847,7 +857,7 @@ static void ReleaseModulesMemory(void)
  * For removal, traverse through the module table and add modules with dependencies to Queue list
  */
 //--------------------------------------------------------------------------------------------------
-static void TraverseDependencyRemove(le_sls_List_t* ModuleRemoveList, KModuleObj_t *m)
+static void TraverseDependencyRemove(le_dls_List_t* ModuleRemoveList, KModuleObj_t *m)
 {
     LE_ASSERT(m != NULL);
 
@@ -855,7 +865,22 @@ static void TraverseDependencyRemove(le_sls_List_t* ModuleRemoveList, KModuleObj
     le_sls_Link_t* modNameLinkPtr;
     ModNameNode_t* modNameNodePtr;
 
-    le_sls_Queue(ModuleRemoveList, &(m->link));
+    LE_ASSERT(m->useCount != 0);
+
+    /* Keep decrementing useCount. When useCount = 0, safe to remove module */
+    m->useCount--;
+
+    /*
+     * We must not add duplicate objects to the linked list to avoid undesired loops.
+     * If the object is already in the ModuleRemoveList, remove it and add to the end of the queue.
+     */
+    if (le_dls_IsInList(ModuleRemoveList, &(m->dependencyLink)))
+    {
+        le_dls_Remove(ModuleRemoveList, &(m->dependencyLink));
+    }
+
+    le_dls_Queue(ModuleRemoveList, &(m->dependencyLink));
+
 
     if (m->moduleLoadStatus != STATUS_REMOVED)
     {
@@ -890,26 +915,19 @@ static void TraverseDependencyRemove(le_sls_List_t* ModuleRemoveList, KModuleObj
 //--------------------------------------------------------------------------------------------------
 static le_result_t RemoveEachKernelModule(KModuleObj_t *m)
 {
-    le_sls_Link_t *listLink;
+    le_dls_Link_t *listLink;
     le_result_t result;
     /* The ordered list of required kernel modules to remove */
-    le_sls_List_t ModuleRemoveList = LE_SLS_LIST_INIT;
+    le_dls_List_t ModuleRemoveList = LE_DLS_LIST_INIT;
     ModuleLoadStatus_t loadStatusProcMod;
     char *scriptargv[3];
     char *rmmodargv[3];
 
     TraverseDependencyRemove(&ModuleRemoveList, m);
 
-    for (listLink = le_sls_Pop(&ModuleRemoveList);
-        listLink != NULL;
-        listLink = le_sls_Pop(&ModuleRemoveList))
+    while ((listLink = le_dls_Pop(&ModuleRemoveList)) != NULL)
     {
-        KModuleObj_t *mod = CONTAINER_OF(listLink, KModuleObj_t, link);
-        if (mod->useCount != 0)
-        {
-            /* Keep decrementing useCount. When useCount = 0, safe to remove module */
-            mod->useCount--;
-        }
+        KModuleObj_t *mod = CONTAINER_OF(listLink, KModuleObj_t, dependencyLink);
 
         if ((mod->useCount == 0)
              && (mod->moduleLoadStatus != STATUS_REMOVED))
@@ -1013,7 +1031,7 @@ void kernelModules_Remove(void)
      */
     while ((linkPtr = le_dls_PopTail(&ModuleAlphaOrderList)) != NULL)
     {
-        modPtr = CONTAINER_OF(linkPtr, KModuleObj_t, dlsLink);
+        modPtr = CONTAINER_OF(linkPtr, KModuleObj_t, alphabeticalLink);
         LE_ASSERT(modPtr != NULL);
 
         if (modPtr->isLoadManual)
