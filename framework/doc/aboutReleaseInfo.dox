@@ -2,7 +2,7 @@
 
 Legato Application Framework Release Information
 
-<b>Current Stable Release: 18.05.0</b>
+<b>Current Stable Release: 18.06.0</b>
 
 Legato AF release notes contain information on new features and resolved outstanding issues. To
 download the release either download and expand the tarball or clone the tagged repo from GitHub.
@@ -11,7 +11,8 @@ and then updating the target device.
 
 | Version      | Date          | Release Notes              | GitHub                                                                 | Tarball                                                                                            | User Docs                                                                    |
 |--------------|---------------|----------------------------|------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|
-| 18.05.1      | Jun 20, 2018  | @subpage releaseNotes18051 | [18.05.1 tag](https://github.com/legatoproject/legato-af/tree/18.05.1) | [legato-18.05.1.tar.bz2](https://downloads.sierrawireless.com/legato/1805/legato-18.05.1.tar.bz2)  | [latest legato.io](http://legato.io/legato-docs/latest/buildAppsMain.html)   |
+| 18.06.0      | Jul 11, 2018  | @subpage releaseNotes18060 | [18.06.0 tag](https://github.com/legatoproject/legato-af/tree/18.06.0) | [legato-18.06.0.tar.bz2](https://downloads.sierrawireless.com/legato/1806/legato-18.06.0.tar.bz2)  | [latest legato.io](http://legato.io/legato-docs/latest/buildAppsMain.html)   |
+| 18.05.1      | Jun 20, 2018  | @subpage releaseNotes18051 | [18.05.1 tag](https://github.com/legatoproject/legato-af/tree/18.05.1) | [legato-18.05.1.tar.bz2](https://downloads.sierrawireless.com/legato/1805/legato-18.05.1.tar.bz2)  | [18.05.1 legato.io](http://legato.io/legato-docs/latest/buildAppsMain.html)   |
 | 18.04.0      | May 8, 2018   | @subpage releaseNotes18040 | [18.04.0 tag](https://github.com/legatoproject/legato-af/tree/18.04.0) | [legato-18.04.0.tar.bz2](https://downloads.sierrawireless.com/legato/1804/legato-18.04.0.tar.bz2)  | [18.04.0 legato.io](http://legato.io/legato-docs/18_04/buildAppsMain.html)   |
 | 18.03.0      | Apr 11, 2018  | @subpage releaseNotes18030 | [18.03.0 tag](https://github.com/legatoproject/legato-af/tree/18.03.0) | [legato-18.03.0.tar.bz2](https://downloads.sierrawireless.com/legato/1803/legato-18.03.0.tar.bz2)  | [18.03.0 legato.io](http://legato.io/legato-docs/18_03/buildAppsMain.html)   |
 | 18.02.0      | Mar 5, 2018   | @subpage releaseNotes18020 | [18.02.0 tag](https://github.com/legatoproject/legato-af/tree/18.02.0) | [legato-18.02.0.tar.bz2](https://downloads.sierrawireless.com/legato/1802/legato-18.02.0.tar.bz2)  | [18.02.0 legato.io](http://legato.io/legato-docs/18_02/buildAppsMain.html)   |
@@ -21,7 +22,7 @@ and then updating the target device.
 | 17.09.0      | Oct 19, 2017  | @subpage releaseNotes17090 | [17.09.0 tag](https://github.com/legatoproject/legato-af/tree/17.09.0) | [legato-17.09.0.tar.bz2](https://downloads.sierrawireless.com/legato/1709/legato-17.09.0.tar.bz2)  | [17.09.0 legato.io](http://legato.io/legato-docs/17_09/buildAppsMain.html)   |
 | 17.08.1      | Sept 29, 2017 | @subpage releaseNotes17081 | [17.08.1 tag](https://github.com/legatoproject/legato-af/tree/17.08.1) | [legato-17.08.1.tar.bz2](https://downloads.sierrawireless.com/legato/1708/legato-17.08.1.tar.bz2)  | [17.08.1 legato.io](http://legato.io/legato-docs/17_08/buildAppsMain.html)   |
 | 17.07.2      | Sept 8, 2017  | @subpage releaseNotes17072 | [17.07.2 tag](https://github.com/legatoproject/legato-af/tree/17.07.2) | [legato-17.07.2.tar.bz2](https://downloads.sierrawireless.com/legato/1707/legato-17.07.2.tar.bz2)  | [17.07.2 legato.io](http://legato.io/legato-docs/17_07/buildAppsMain.html)   |
-| 17.06.0      | July 7, 2017  | @subpage releaseNotes17060 | [17.06.0 tag](https://github.com/legatoproject/legato-af/tree/17.06.0) | [legato-17.06.0.tar.bz2](https://downloads.sierrawireless.com/legato/1706/legato-17.06.0.tar.bz2)  | [17.06.0 legato.io](http://legato.io/legato-docs/17_06/buildAppsMain.html)   |
+| 17.06.0      | Jul 7, 2017   | @subpage releaseNotes17060 | [17.06.0 tag](https://github.com/legatoproject/legato-af/tree/17.06.0) | [legato-17.06.0.tar.bz2](https://downloads.sierrawireless.com/legato/1706/legato-17.06.0.tar.bz2)  | [17.06.0 legato.io](http://legato.io/legato-docs/17_06/buildAppsMain.html)   |
 | 17.05.0      | Jun 23, 2017  | @subpage releaseNotes17050 | [17.05.0 tag](https://github.com/legatoproject/legato-af/tree/17.05.0) | [legato-17.05.0.tar.bz2](https://downloads.sierrawireless.com/legato/1705/legato-17.05.0.tar.bz2)  | [17.05.0 legato.io](http://legato.io/legato-docs/17_05/buildAppsMain.html)   |
 | 16.10.4      | Oct 18, 2017  | @subpage releaseNotes16104 | [16.10.4 tag](https://github.com/legatoproject/legato-af/tree/16.10.4) | [legato-16.10.4.tar.bz2](https://downloads.sierrawireless.com/legato/16103/legato-16.10.4.tar.bz2) | [16.10.4 legato.io](http://legato.io/legato-docs/16_10_4/buildAppsMain.html) |
 | 16.10.3      | Apr 28, 2017  | @subpage releaseNotes16103 | [16.10.3 tag](https://github.com/legatoproject/legato-af/tree/16.10.3) | [legato-16.10.3.tar.bz2](https://downloads.sierrawireless.com/legato/16103/legato-16.10.3.tar.bz2) | [16.10.3 legato.io](http://legato.io/legato-docs/16_10_3/buildAppsMain.html) |
