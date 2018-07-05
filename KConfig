@@ -1,0 +1,200 @@
+choice
+  prompt "Target Operating System"
+  default LINUX
+  ---help---
+  Select the operating system Legato will be run on.
+
+config LINUX
+  bool "Linux"
+  select POSIX
+  ---help---
+  Run on Linux.
+
+config FREERTOS
+  bool "FreeRTOS"
+  ---help---
+  Run on the FreeRTOS/OpenRTOS real-time operating system.
+
+config OTHER_OS
+  bool "Other"
+  select CUSTOM_OS
+  ---help---
+  Run on another operating system, such as a proprietary OS distribution.  A
+  custom framework adaptor will be required in this case.
+
+endchoice # end "Target Operating System"
+
+config POSIX
+  bool
+  depends on LINUX
+  default y
+
+menu "Legato Framework"
+
+config CUSTOM_OS
+  bool "Customize adaptor"
+  default n
+  ---help---
+  Customize the Legato framework adaptor for the target platform.
+
+config CUSTOM_OS_ADAPTOR_PATH
+  string "Path to custom OS adaptor sources directory"
+  depends on CUSTOM_OS
+  ---help---
+  Path of custom OS adaptor source directory relative to the legato/ root
+  directory.
+
+  This source directory should contain liblegato/ and daemons/ directories
+  containing the source code needed to support the custom operating system.
+
+config THREAD_REALTIME_ONLY
+  bool "Use real-time priority for all threads"
+  default y if FREERTOS
+  default n
+  ---help---
+  Force Legato to use only real-time priorities for tasks.
+
+menu "Diagnostic Features"
+
+config ENABLE_BACKTRACE
+  bool "Enable backtraces"
+  default y
+  ---help---
+  Print backtraces when an assertion is triggered.
+
+config THREAD_SETNAME
+  bool "Set Legato thread names to non-default values"
+  default y
+  ---help---
+  Use Legato thread names as the names for underlying OS threads as well.
+  This has no effect if the OS does not allow setting thread names.
+
+config NAMES_ENABLED
+  bool "Enable names in Legato objects"
+  default y
+  ---help---
+  Add name fields to Legato objects (mutexes, threads, memory pools, etc) for
+  logging, debugging, and tracing purposes.  Turning this off will reduce RAM
+  usage at the expense of traceability.
+
+config FD_MONITOR_NAMES_ENABLED
+  bool "Enable names in file descriptor monitors"
+  depends on NAMES_ENABLED
+  default y if LINUX
+  default n
+  ---help---
+  Add a name field to Legato file descriptor monitors.
+
+config SEM_NAMES_ENABLED
+  bool "Enable names in semaphores"
+  depends on NAMES_ENABLED
+  default y if LINUX
+  default n
+  ---help---
+  Add a name field to Legato semaphores.
+
+config MUTEX_NAMES_ENABLED
+  bool "Enable names in mutexes"
+  depends on NAMES_ENABLED
+  default y if LINUX
+  default n
+  ---help---
+  Add a name field to Legato mutexes.
+
+config THREAD_NAMES_ENABLED
+  bool "Enable names in threads"
+  depends on NAMES_ENABLED
+  default y
+  ---help---
+  Add a name field to Legato threads.
+
+config MEM_POOL_NAMES_ENABLED
+  bool "Enable names in memory pools"
+  depends on NAMES_ENABLED
+  default y
+  ---help---
+  Add a name field to Legato memory pools.
+
+config TIMER_NAMES_ENABLED
+  bool "Enable names in timers"
+  depends on NAMES_ENABLED
+  default y if LINUX
+  default n
+  ---help---
+  Add a name field to Legato timers.
+
+config EVENT_NAMES_ENABLED
+  bool "Enable names in events"
+  depends on NAMES_ENABLED
+  default y if LINUX
+  default n
+  ---help---
+  Add a name field to Legato event IDs.
+
+config HASHMAP_NAMES_ENABLED
+  bool "Enable names in hashmaps"
+  depends on NAMES_ENABLED
+  default y if LINUX
+  default n
+  ---help---
+  Add a name field to Legato hashmaps.  Disabling this also disables hashmap
+  tracing.
+
+config SAFE_REF_NAMES_ENABLED
+  bool "Enable names in safe references"
+  depends on NAMES_ENABLED
+  default y if LINUX
+  default n
+  ---help---
+  Add a name field to Legato safe references.
+
+endmenu # end "Diagnostic Features"
+
+menu "Extra Features"
+
+config PYTHON
+  bool "Enable Python support"
+  depends on POSIX
+  default y
+  ---help---
+  Enable support for Python.  Python is not supported on non-POSIX systems.
+
+config BUILD_TARGET_TOOLS
+  bool "Build on-target command-line tools"
+  default n if OTHER_OS
+  default y
+  ---help---
+  Include Legato's command-line tools for the target.
+
+endmenu # end "Extra Features"
+
+endmenu # end "Framework"
+
+menu "Legato Services"
+
+menu "AirVantage Connector"
+  depends on POSIX
+
+config SOTA
+  bool "Enable software-over-the-air (SOTA) updates"
+  depends on POSIX
+  default y
+  ---help---
+  Select this to enable support for SOTA updates.  SOTA is not supported on
+  non-POSIX systems.
+
+endmenu # end "AirVantage Connector"
+
+menu "AT Server"
+
+config ATSERVER_USER_ERRORS
+  bool "Enable user-defined errors in AT Server"
+  default y if LINUX
+  default n
+  ---help---
+  Allow setting user-defined error strings in AT Server.  Enabling this
+  increases the memory consumption of the AT Server.
+
+endmenu # end "AT Server"
+
+endmenu # end "Services"

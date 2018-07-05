@@ -12,12 +12,14 @@
 
 export LEGATO_ROOT ?= $(CURDIR)
 
-BUILD_DIR := $(LEGATO_ROOT)/build/tools
+export BUILD_DIR := $(LEGATO_ROOT)/build/tools
+KCONFIG_BUILD_DIR := $(LEGATO_ROOT)/build/tools/kconfig-frontends
+export INSTALL_DIR := $(LEGATO_ROOT)/bin
 NINJA_SCRIPT := $(BUILD_DIR)/build.ninja
 NINJA_FLAGS =
 
 # Add the framework's bin directory to the PATH environment variable.
-export PATH := $(PATH):$(LEGATO_ROOT)/bin
+export PATH := $(PATH):$(INSTALL_DIR)
 
 # Do not use clang by default.
 USE_CLANG ?= 0
@@ -52,38 +54,53 @@ $(NINJA_SCRIPT): framework/tools/mkTools/ninja-generator $(BUILD_DIR)
 # ninja is called ninja-build on some distros (e.g., Fedora).  Make sure ninja appears in the
 # path as "ninja" by adding a symlink to the framework's bin directory if necessary.
 .PHONY: ninja
-ninja: bin
+ninja: $(INSTALL_DIR)
 	@echo -n "Using ninja installed at: " ;\
 	if ! which ninja ;\
 	then \
 		if which ninja-build ;\
 		then \
-			ln -s `which ninja-build` $(LEGATO_ROOT)/bin/ninja ;\
+			ln -s `which ninja-build` $(INSTALL_DIR)/ninja ;\
 		else \
 			echo "***ERROR: Ninja build tool not found." 1>&2 ;\
 			exit 1;\
 		fi;\
 	fi
 
-SCRIPTS := $(wildcard framework/tools/scripts/*)
+SCRIPTS := $(wildcard $(LEGATO_ROOT)/framework/tools/scripts/*)
 
-# Create a bunch of symlinks from the bin directory to the tools.
+# Create a bunch of symlinks from the install directory to the tools.
 .PHONY: symlinks
-symlinks: bin
-	ln -sf ../build/tools/mk bin/mk
-	ln -sf mk bin/mkcomp
-	ln -sf mk bin/mkexe
-	ln -sf mk bin/mkapp
-	ln -sf mk bin/mksys
-	ln -sf $(foreach script,$(SCRIPTS),../$(script)) bin/
-	ln -sf $(LEGATO_ROOT)/framework/tools/ifgen/ifgen bin/
-	ln -sf $(LEGATO_ROOT)/3rdParty/ima-support-tools/ima-sign.sh bin/
-	ln -sf $(LEGATO_ROOT)/3rdParty/ima-support-tools/ima-gen-keys.sh bin/
+symlinks: $(INSTALL_DIR)
+	ln -sf $(BUILD_DIR)/mk $(INSTALL_DIR)/mk
+	ln -sf mk $(INSTALL_DIR)/mkcomp
+	ln -sf mk $(INSTALL_DIR)/mkexe
+	ln -sf mk $(INSTALL_DIR)/mkapp
+	ln -sf mk $(INSTALL_DIR)/mksys
+	ln -sf $(foreach script,$(SCRIPTS),$(script)) $(INSTALL_DIR)/
+	ln -sf $(LEGATO_ROOT)/framework/tools/ifgen/ifgen $(INSTALL_DIR)/
+	ln -sf $(LEGATO_ROOT)/3rdParty/ima-support-tools/ima-sign.sh $(INSTALL_DIR)/
+	ln -sf $(LEGATO_ROOT)/3rdParty/ima-support-tools/ima-gen-keys.sh $(INSTALL_DIR)/
 
 # Rule for creating directories.
-$(BUILD_DIR) bin:
+$(BUILD_DIR) $(INSTALL_DIR):
 	mkdir -p $@
 
 .PHONY: mkPatch
-mkPatch:
-	$(MAKE) -C framework/tools/mkPatch mkPatch
+mkPatch: $(BUILD_DIR) $(INSTALL_DIR)
+	$(MAKE) -C framework/tools/mkPatch
+
+.PHONY: kconfig-frontends
+kconfig-frontends: $(INSTALL_DIR) $(KCONFIG_BUILD_DIR)/config.status
+	cd $(KCONFIG_BUILD_DIR) && \
+	make && make install
+	ln -sf $(BUILD_DIR)/bin/kconfig-conf $(INSTALL_DIR)/kconfig-conf
+	ln -sf $(BUILD_DIR)/bin/kconfig-mconf $(INSTALL_DIR)/kconfig-mconf
+
+$(KCONFIG_BUILD_DIR)/config.status: $(LEGATO_ROOT)/3rdParty/kconfig-frontends/configure
+	mkdir -p $(KCONFIG_BUILD_DIR) && cd $(KCONFIG_BUILD_DIR) && \
+	$(LEGATO_ROOT)/3rdParty/kconfig-frontends/configure \
+	    --prefix=$(BUILD_DIR) --enable-mconf --enable-conf; \
+
+$(LEGATO_ROOT)/3rdParty/kconfig-frontends/configure:
+	cd $(LEGATO_ROOT)/3rdParty/kconfig-frontends && autoreconf -fi

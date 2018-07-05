@@ -50,6 +50,8 @@ endif
 # List of target devices supported:
 TARGETS := localhost $(RELEASE_TARGETS) raspi virt
 
+export LEGATO_KCONFIG ?= $(LEGATO_ROOT)/.config
+
 # By default, build for the localhost and build the documentation.
 .PHONY: default
 default:
@@ -71,6 +73,14 @@ export LE_SVCDIR_CLIENT_SOCKET_NAME := $(LE_RUNTIME_DIR)serviceDirectoryClient
 # Do not use clang by default.
 export USE_CLANG ?= 0
 
+ifeq ($(USE_CLANG),1)
+  export HOST_CC ?= clang
+  export HOST_CXX ?= clang++
+else
+  export HOST_CC ?= gcc
+  export HOST_CXX ?= g++
+endif
+
 # Default eCall build to be ON
 export INCLUDE_ECALL ?= 1
 
@@ -82,6 +92,9 @@ export SECSTOREADMIN ?= 0
 
 # Do not enable IMA signing by default.
 export ENABLE_IMA ?= 0
+
+# Disable debug by default.
+export DEBUG ?= no
 
 # In case of release, override parameters
 ifeq ($(MAKECMDGOALS),release)
@@ -126,9 +139,10 @@ endif
 
 # ========== TARGET-SPECIFIC VARIABLES ============
 
-# If the user specified a goal other than "clean", ensure that all required target-specific vars
-# are defined.
-ifneq ($(MAKECMDGOALS),clean)
+# If the user specified a goal other than "clean" or "tools", ensure that all required
+# target-specific vars are defined.
+ifeq ($(TARGET),)
+ifeq ($(filter $(MAKECMDGOALS),clean tools kconfig-frontends),)
 
   export HOST_ARCH := $(shell uname -m)
   TOOLS_ARCH ?= $(HOST_ARCH)
@@ -151,6 +165,10 @@ ifneq ($(MAKECMDGOALS),clean)
   export $(TARGET)_CC = $(TARGET_CC)
   export $(TARGET)_CXX = $(TARGET_CXX)
 
+  ifneq ($(MAKECMDGOALS),clean)
+    include build/$(TARGET)/.config.mk
+  endif
+endif
 endif
 
 include $(wildcard modules/*/moduleDefs)
@@ -186,6 +204,7 @@ clean:
 	rm -rf build Documentation* bin doxygen.*.log doxygen.*.err
 	rm -f framework/doc/toolsHost.dox framework/doc/toolsHost_*.dox
 	rm -f sources.md5
+	rm -f .config.mk
 
 # Version related rules.
 ifndef LEGATO_VERSION
@@ -213,6 +232,26 @@ ifeq ($(ENABLE_IMA),1)
     export IMA_SMACK := $(strip $(IMA_SMACK))
   endif
 endif
+
+.PHONY: menuconfig
+menuconfig: kconfig-frontends
+	$(LEGATO_ROOT)/bin/kconfig-mconf KConfig
+
+build/$(TARGET)/.config.mk: $(LEGATO_KCONFIG)
+	mkdir -p build/$(TARGET)
+	sed -e 's/^CONFIG_/export &/g' -e 's/="/=/g' -e 's/"$$//g' -e 's/=/ := /g' $< > $@
+
+build/$(TARGET)/framework/include/le_config.h: build/$(TARGET)/.config.mk
+	mkdir -p build/$(TARGET)/framework/include
+	sed -e 's!^# !// !;s/Linux/Legato/;s/^export \(.*\) := y/#define \1 1/;t;d' $< > $@
+
+
+# Use default config if there's no existing configuration.
+#
+# Note: do not copy default.config over user's config if the user has given an alternate
+# KCONFIG_CONFIG
+$(LEGATO_ROOT)/.config: default.config
+	cp $< $@
 
 # Source code directories and files to include in the MD5 sum in the version and package.properties.
 FRAMEWORK_SOURCES = framework \
@@ -244,11 +283,23 @@ sources.md5: $(FRAMEWORK_SOURCES)
 	done | md5sum | awk '{ print $$1 }' > sources.md5
 
 .PHONY: version
-version:
+version: version.h
 	@if [ -n "$(LEGATO_VERSION)" ] ; then \
 		echo "$(LEGATO_VERSION)" > $@  ; \
 	elif ! [ -e version ] ; then \
 		echo "unknown" > $@ ; \
+	fi
+
+.PHONY: version.h
+version.h:
+	@if [ -n "$(LEGATO_VERSION)" ]; then                                    \
+		printf '#ifndef LEGATO_VERSION\n' > $@;                             \
+		printf '#define LEGATO_VERSION "%s"\n' "$(LEGATO_VERSION)" >> $@;   \
+		printf '#endif\n' >> $@;                                            \
+	elif ! [ -e version ]; then                                             \
+		printf '#ifndef LEGATO_VERSION\n' > $@;                             \
+		printf '#define LEGATO_VERSION "unknown"\n' >> $@;                  \
+		printf '#endif\n' >> $@;                                            \
 	fi
 
 package.properties: version sources.md5
@@ -297,8 +348,16 @@ coverage_report:
 
 # Rule for how to build the build tools.
 .PHONY: tools
+# Use HOST_CC and HOST_CXX when building the tools.
+tools: export CC := $(HOST_CC)
+tools: export CXX := $(HOST_CXX)
 tools: version
 	$(MAKE) -f Makefile.hostTools
+
+# Build kconfig-frontends separately as it is only required for some targets
+.PHONY: kconfig-frontends
+kconfig-frontends: tools
+	$(MAKE) -f Makefile.hostTools kconfig-frontends
 
 # Rule for how to extract the build tool messages
 .PHONY: tool-messages
@@ -313,8 +372,13 @@ sdk: tools
 # Rule building the framework for a given target.
 FRAMEWORK_TARGETS = $(foreach target,$(TARGETS),framework_$(target))
 .PHONY: $(FRAMEWORK_TARGETS)
-$(FRAMEWORK_TARGETS): tools package.properties
+$(FRAMEWORK_TARGETS): tools package.properties build/$(TARGET)/framework/include/le_config.h
 	$(MAKE) -f Makefile.framework CC=$(TARGET_CC)
+
+# Rule for building framework generally.  Uses CC (etc.) defined in the environment
+.PHONY: framework_all
+framework_all: tools package.properties build/$(TARGET)/framework/include/le_config.h
+	$(MAKE) -f Makefile.framework
 
 ## Tests
 
