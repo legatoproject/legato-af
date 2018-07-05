@@ -529,7 +529,7 @@ BITMASK BandBitMask
 
 //--------------------------------------------------------------------------------------------------
 /**
- * LTE Band Bit Mask (32bits)
+ * LTE Band Bit Mask (64 bits)
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -556,6 +556,8 @@ BITMASK LteBandBitMask
     BITMASK_LTE_BAND_E_UTRA_OP_BAND_21,
     BITMASK_LTE_BAND_E_UTRA_OP_BAND_24,
     BITMASK_LTE_BAND_E_UTRA_OP_BAND_25,
+    BITMASK_LTE_BAND_E_UTRA_OP_BAND_26,
+    BITMASK_LTE_BAND_E_UTRA_OP_BAND_28,
     BITMASK_LTE_BAND_E_UTRA_OP_BAND_33,
     BITMASK_LTE_BAND_E_UTRA_OP_BAND_34,
     BITMASK_LTE_BAND_E_UTRA_OP_BAND_35,

@@ -1021,7 +1021,7 @@ static void Testle_mrc_LteBandPreferences
     le_mrc_LteBandBitMask_t bandMask = 0;
     le_mrc_LteBandBitMask_t bandMaskOrigin = 0;
 
-#define  PRINT_BANDLTE(x)   LE_INFO("LTE Band MRC preferences 0x%016X", x);
+#define  PRINT_BANDLTE(x)   LE_INFO("LTE Band MRC preferences 0x%016"PRIX64, x);
 
     // Get the current rat preference.
     res = le_mrc_GetLteBandPreferences(&bandMaskOrigin);

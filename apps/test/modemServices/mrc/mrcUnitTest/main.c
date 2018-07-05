@@ -357,6 +357,8 @@ void Testle_mrc_BandPreferences
                     LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_21,
                     LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_24,
                     LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_25,
+                    LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_26,
+                    LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_28,
                     LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_33,
                     LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_34,
                     LE_MRC_BITMASK_LTE_BAND_E_UTRA_OP_BAND_35,
