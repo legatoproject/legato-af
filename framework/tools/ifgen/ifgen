@@ -200,6 +200,20 @@ def CalcHash(interface):
     return hashValue, hashText
 
 
+def _TailAllTypes(interface, typeSet, seenImports):
+    for typeName, typeItem in interface.types.iteritems():
+        typeSet.add(typeItem)
+    for importName, importItem in interface.imports.iteritems():
+        if importName in seenImports:
+            break
+        seenImports.add(importName)
+        _TailAllTypes(importItem, typeSet, seenImports)
+
+def AllTypes(interface):
+    typeSet = set()
+    _TailAllTypes(interface, typeSet, set())
+    return typeSet
+
 #
 # Main
 #
@@ -298,6 +312,8 @@ def Main():
     TemplateEnvironment.tests.update(langPkg.Tests)
     TemplateEnvironment.globals.update(langPkg.Globals)
 
+    allTypes = AllTypes(interface)
+
     # Generate requested files from templates
     for fileType, fileName in langPkg.GeneratedFiles.iteritems():
         if args.gen_all or getattr(args, 'gen_%s' % ( fileType.replace('-', '_') )):
@@ -316,6 +332,7 @@ def Main():
                             # At this point we just need names of imports, not the full parse
                             imports=interface.imports.keys(),
                             types=interface.types.values(),
+                            allTypes=allTypes,
                             definitions=interface.definitions.values(),
                             functions=interface.functions.values(),
                             events=interface.events.values(),

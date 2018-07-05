@@ -18,8 +18,8 @@
  */
 
 
-#include "{{apiName}}_messages.h"
 #include "{{apiName}}_interface.h"
+#include "{{apiName}}_messages.h"
 
 
 //--------------------------------------------------------------------------------------------------

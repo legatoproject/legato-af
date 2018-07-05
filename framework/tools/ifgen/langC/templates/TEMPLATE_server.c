@@ -18,8 +18,8 @@
  */
 
 
-#include "{{apiName}}_messages.h"
 #include "{{apiName}}_server.h"
+#include "{{apiName}}_messages.h"
 
 
 //--------------------------------------------------------------------------------------------------

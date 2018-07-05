@@ -7,6 +7,7 @@
  #
  #  Copyright (C) Sierra Wireless Inc.
  #}
+{%- import 'pack.templ' as pack -%}
 /*
  * ====================== WARNING ======================
  *
@@ -46,5 +47,11 @@ _Message_t;
 #define _MSGID_{{apiName}}_{{function.name}} {{loop.index0}}
 {%- endfor %}
 
+
+// Define type-safe pack/unpack functions for all enums, including included types
+{%- for type in allTypes if type is EnumType or type is BitMaskType %}
+{{ pack.DeclarePackUnpack(type) }}
+
+{%- endfor %}
 
 #endif // {{apiName|upper}}_MESSAGES_H_INCLUDE_GUARD

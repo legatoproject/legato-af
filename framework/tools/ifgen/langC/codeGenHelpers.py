@@ -273,12 +273,7 @@ def GetPackFunction(apiType):
         return "le_pack_PackReference"
     elif isinstance(apiType, interfaceIR.BitmaskType) or \
          isinstance(apiType, interfaceIR.EnumType):
-        if (apiType.size == 4):
-            return "le_pack_PackUint32"
-        elif (apiType.size == 8):
-            return "le_pack_PackUint64"
-        else:
-            raise KeyError(apiType.name)
+        return "{}_Pack{}".format(apiType.iface.name, apiType.name)
     else:
         return _PackFunctionMapping[apiType] % ("Pack", )
 
@@ -287,12 +282,7 @@ def GetUnpackFunction(apiType):
         return "le_pack_UnpackReference"
     elif isinstance(apiType, interfaceIR.BitmaskType) or \
          isinstance(apiType, interfaceIR.EnumType):
-        if (apiType.size == 4):
-            return "le_pack_UnpackUint32"
-        elif (apiType.size == 8):
-            return "le_pack_UnpackUint64"
-        else:
-            raise KeyError(apiType.name)
+        return "{}_Unpack{}".format(apiType.iface.name, apiType.name)
     else:
         return _PackFunctionMapping[apiType] % ("Unpack", )
 

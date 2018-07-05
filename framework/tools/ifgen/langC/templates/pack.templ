@@ -3,6 +3,48 @@
  #
  # Copyright (C) Sierra Wireless Inc.
 -#}
+{%- macro DeclarePackUnpack(type) %}
+static inline bool {{type.iface.name}}_Pack{{type.name}}
+(
+    uint8_t **bufferPtr,
+    size_t* sizePtr,
+    {{type|FormatType}} value
+)
+{
+    {%- if type.size == 4 %}
+    return le_pack_PackUint32(bufferPtr, sizePtr, value);
+    {%- elif type.size == 8 %}
+    return le_pack_PackUint64(bufferPtr, sizePtr, value);
+    {%- else %}
+    #error "Unexpected enum size"
+    {%- endif %}
+}
+
+static inline bool {{type.iface.name}}_Unpack{{type.name}}
+(
+    uint8_t **bufferPtr,
+    size_t* sizePtr,
+    {{type|FormatType}}* valuePtr
+)
+{
+    bool result;
+    {%- if type.size == 4 %}
+    uint32_t value;
+    result = le_pack_UnpackUint32(bufferPtr, sizePtr, &value);
+    {%- elif type.size == 8 %}
+    uint64_t value;
+    result = le_pack_UnpackUint64(bufferPtr, sizePtr, &value);
+    {%- else %}
+    #error "Unexpected enum size"
+    {%- endif %}
+    if (result)
+    {
+        *valuePtr = value;
+    }
+    return result;
+}
+{%- endmacro %}
+
 {%- macro PackInputs(parameterList) %}
     {%- for parameter in parameterList
         if parameter is InParameter
