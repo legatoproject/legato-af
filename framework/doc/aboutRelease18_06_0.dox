@@ -1,56 +1,56 @@
-/** @page releaseNotes18050 18.05.0 Release Notes
+/** @page releaseNotes18060 18.06.0 Release Notes
 
-Release Date: Jun 5, 2018
+Release Date: July 11, 2018
 
 See @ref aboutLicenses to view Legato AF Licensing Information.
 
-The following provides a summary of changes that have been made in the 18.05 Legato AF Release.
+The following provides a summary of changes that have been made in the 18.06 Legato AF Release.
 
 <b> Download the @ref aboutReleaseInfo "source code" and get started with @ref basicBuild
 "building Legato AF". </b>
 
-@section _Features New Features
+@section rn1806_Features New Features
 
-The following are the list of new features that have been added into the 18.05 Release:
+The following are the list of new features that have been added into the 18.06 Release:
 
-@subsection rn1805_Features_https HTTPS
+@subsection rn1806_Features_SAR Modem Radio Control API
 
-Legato.io is now being served through https and a new url has been added [https://docs.legato.io]()https://legato.io.
-Please update your bookmarks, all old urls will be automatically redirected to
-https://docs.legato.io.
+@ref le_mrc_sar "SAR (Specific Absorption Rate)" is a measure of RF energy absorption by the human
+body. Users can dynamically select a pre-configured SAR backoff state in the modem so they can
+adjust the SAR depending on their needs.
 
-@subsection rn1805_Features_sdef sdef Improvement
+The following functions have been added to the Modem Radio Control API:
+- le_mrc_SetSarBackoffState() to set a new SAR backoff state.
+- le_mrc_GetSarBackoffState() to get the current SAR backoff state.
 
-New features have been added to the @ref defFilesSdef to be able to set
-@ref defFilesSdef_searchPaths "search paths" within the sdef for modules the same way that you could
-already do with interfaces. You now have the ability to include the search path from within the
-sdef instead of having to provide it to @c mksys via the
-@c -s flag on the command line.
+@subsection rn1806_Features_eCall eCall API
 
-@subsection rn1805_Features_DynMemAll Dynamic Memory Allocation
+In test mode developers are able to retrieve and set the interval where the IVS remains registered
+in the network after the completion of the transmission of the test results to the System Operator.
+The default time value is set to 120 seconds.
+- le_ecall_GetEraGlonassPostTestRegistrationTime()
+- le_ecall_SetEraGlonassPostTestRegistrationTime()
 
-le_mem_GetRefCount() has been added to the Dynamic Memory Allocation API to check the current
-reference count on an object.
+The Psap Number functions now return values for LE_UNSUPPORTED and LE_OVERFLOW
+- le_ecall_GetPsapNumber() Add return values for LE_UNSUPPORTED and LE_OVERFLOW
+- le_ecall_SetPsapNumber() Add return value for LE_UNSUPPORTED
 
-@subsection rn1805_Features_fwupdate Firmware Update
+@subsection rn1806_Features_gnss GNSS API
 
-le_fwupdate_GetAppBootloaderVersion() has been added to the Firmware Update API and returns the
-bootloader version string.
+A new function le_gnss_ConvertDataCoordinateSystem() can be called to convert a location data value
+from a coordinate system to another. Currently it is possible to convert the following data
+types:
+- Latitude
+- Longitude
+- Altitude
 
-@subsection rn1805_Features_data Data Connection
+@section rn1806_BFeatures Beta Features
 
-Previous versions of Legato contained a dependency between the @c cellNetService and the
-@c dataConnectionService.  That dependency has been removed from the @ref c_le_data API, and the
-@c le_data service does not turn on the radio or verify that the SIM is valid.  Those steps
-must now be done manually if needed.
-
-@section rn1805_BFeatures Beta Features
-
-The following features have been added to the 18.05 Release and are feature complete but are still
+The following features have been added to the 18.06 Release and are feature complete but are still
 in a testing phase. Please provide feedback for these features on our
 [forums](https://forum.legato.io/).
 
-@subsection rn1805_BFeatures_KernelModules Kernel Modules
+@subsection rn1806_BFeatures_KernelModules Kernel Modules
 
 @ref conceptsKernelModule functionality has been added to support dependencies between kernel
 modules and dependencies between kernel modules and apps/components.  We have also included
@@ -61,41 +61,41 @@ module from your target.
 @note Before building kernel modules into your Legato System you may have to perform some extra
 @ref basicBuildLegato_ToolchainSWI_KO "toolchain setup steps".
 
-@section rn1805_AFeatures Alpha Features
+@section rn1806_AFeatures Alpha Features
 
-The following are the list of features that have been added into the 18.05 Release but are still
+The following are the list of features that have been added into the 18.06 Release but are still
 being developed and should not be used on production targets. Please provide feedback for these
 features on our [forums](https://forum.legato.io/):
 
-@subsection rn1805_Features_SIM Multiple SIM Support
+@subsection rn1806_Features_SIM Multiple SIM Support
 
 The framework now contains support for @ref le_sim_profile_switch "multiple embedded SIM profiles"
 and the ability to switch between the multiple SIMs and be managed by a subscription management
 server such as AirVantage.
 
-@section rn1805_Fixes Fixed Issues
+@section rn1806_Fixes Fixed Issues
 
-All development work is tagged in GitHub as "18.05.0".  The list of changes and commit
+All development work is tagged in GitHub as "18.06.0".  The list of changes and commit
 messages can be found on GitHub.
 
-- [Legato AF 18.05.0 Fixes](https://github.com/legatoproject/legato-af/commits/18.05.0)
+- [Legato AF 18.06.0 Fixes](https://github.com/legatoproject/legato-af/commits/18.06.0)
 
 @note This is only the list of fixes for the Application Framework and Platform Services, for the
-list of changes in the Platform Adapters and AVC Service view the commits under the tag 18.05.0 in
+list of changes in the Platform Adapters and AVC Service view the commits under the tag 18.06.0 in
 the individual repositories on GitHub.
 
-@section rn1805_KnownIssues Known Issues
+@section rn1806_KnownIssues Known Issues
 
-@subsection rn1805_Constraints Constraints and Limitations
+@subsection rn1806_Constraints Constraints and Limitations
 
-@subsubsection rn1805_ConstraintsLinuxSupport Dev Machine Linux Version
+@subsubsection rn1806_ConstraintsLinuxSupport Dev Machine Linux Version
 
 To develop applications within the Legato Application Framework, a current supported
 [Long Term Support version of Ubuntu Linux](https://www.ubuntu.com/info/release-end-of-life) is
 required on your dev machine (or running in a virtual box on Windows).  Ubuntu 16.04 is the current
 @b recommended version to use on your dev machine.
 
-@subsubsection rn1805_ConstECMUSB ECM-USB modem manager issue
+@subsubsection rn1806_ConstECMUSB ECM-USB modem manager issue
 
 Ubuntu 15.10 and newer has Modem Manager version @c 1.4.12-1ubuntu1  installed by default which
 conflicts with the ECM-USB driver when connecting a target.  Modem manager may cause the Ubuntu
@@ -109,7 +109,7 @@ Network Manager to crash on your host and/or your target device to become unavai
 - Uninstall @c modemmanager from Ubuntu or
 - [Downgrade @c modemmanager to version 1.0.0-2ubuntu1](http://packages.ubuntu.com/trusty/modemmanager)
 
-@subsubsection rn1805_ConstraintsTC Sierra Wireless Toolchain Install
+@subsubsection rn1806_ConstraintsTC Sierra Wireless Toolchain Install
 
 There is currently an error with setting up the WP76XX and WP77XX toolchain and the toolchain only
 partially installs.  The part of the script to install and setup the kernel headers does not run and
