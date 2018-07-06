@@ -35,7 +35,8 @@ apps:
     $LEGATO_ROOT/apps/tools/tools
 }
 
-#if ${LEGATO_TARGET} = wp76xx
+#if ${LEGATO_FEATURE_SPISVC} = ""
+#else
 kernelModules:
 {
     $LEGATO_ROOT/drivers/spisvc/spisvc.mdef
