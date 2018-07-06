@@ -29,7 +29,8 @@ processes:
 
 requires:
 {
-#if ${LEGATO_TARGET} = wp76xx
+#if ${LEGATO_FEATURE_SPISVC} = ""
+#else
     kernelModules:
     {
         $LEGATO_ROOT/drivers/spisvc/spisvc.mdef

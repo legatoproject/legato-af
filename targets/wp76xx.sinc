@@ -31,6 +31,7 @@ buildVars:
 
     LEGATO_FEATURE_AVMS_CONFIG = -DLEGATO_FEATURE_AVMS_CONFIG
     LEGATO_FEATURE_OBSERVE = -DLEGATO_FEATURE_OBSERVE
+    LEGATO_FEATURE_SPISVC = -DLEGATO_FEATURE_SPISVC
 
     // Comment following lines to disable time series. When time series is enabled,
     // Yocto image has to be updated on device through FOTA to include the libraries
