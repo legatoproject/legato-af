@@ -287,8 +287,33 @@ static void NewSessionStateHandler
     {
         if (profilePtr == NULL)
         {
-            LE_WARN("Reference not created for profile %d",
-                    sessionStatePtr->profileIndex);
+            if ((LE_MDC_DISCONNECTED == sessionStatePtr->newState)
+                && (UINT32_MAX == sessionStatePtr->profileIndex))
+            {
+                le_ref_IterRef_t iterRef = le_ref_GetIterator(DataProfileRefMap);
+                while (le_ref_NextNode(iterRef) == LE_OK)
+                {
+                    le_mdc_Profile_t* profilePtr = (le_mdc_Profile_t*) le_ref_GetValue(iterRef);
+                    // Must be non-NULL here as le_ref_NextNode will only return OK if iterRef is on
+                    // a valid reference.  But Klocwork complains if we don't check.
+                    LE_ASSERT(profilePtr);
+
+                    // Event report
+                    if (profilePtr->connectionStatus != sessionStatePtr->newState)
+                    {
+                        // Report the event for the given profile
+                        le_event_Report(profilePtr->sessionStateEvent,
+                                        &profilePtr, sizeof(profilePtr));
+                        // Update Connection Status
+                        profilePtr->connectionStatus = sessionStatePtr->newState;
+                    }
+                }
+            }
+            else
+            {
+                LE_WARN("Reference not created for profile %d",
+                        sessionStatePtr->profileIndex);
+            }
         }
         else
         {

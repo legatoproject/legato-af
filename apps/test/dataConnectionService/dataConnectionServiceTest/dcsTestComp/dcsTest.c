@@ -246,6 +246,10 @@ COMPONENT_INIT
     // Register handler for data connection state change
     le_data_AddConnectionStateHandler(DcsStateHandler, NULL);
 
+    int32_t indexTest= le_data_GetCellularProfileIndex();
+    LE_TEST_INFO("le_data_GetCellularProfileIndex %" PRIi32, indexTest);
+    LE_ASSERT(-1 != indexTest);
+
     // Set technologies to use
     SetTechnologies();
 
