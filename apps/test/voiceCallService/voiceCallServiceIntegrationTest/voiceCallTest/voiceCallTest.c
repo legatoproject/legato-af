@@ -351,8 +351,6 @@ static le_result_t Testle_voicecall_start
     le_result_t  res = LE_FAULT;
     le_voicecall_TerminationReason_t reason = LE_VOICECALL_TERM_UNDEFINED;
 
-    VoiceCallHandlerRef = le_voicecall_AddStateHandler(MyCallEventHandler, NULL);
-
     TestCallRef = le_voicecall_Start(DestinationNumber);
     if (!TestCallRef)
     {
@@ -373,24 +371,38 @@ static le_result_t Testle_voicecall_start
  * Check "logread -f | grep voice" log
  * Start app : app start voiceCallTest
  * Execute app : app runProc voiceCallTest --exe=voiceCallTest -- <Destination phone number>
+ *               <Initiate the call>
  * Follow INFO instruction in traces.
  */
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    int nbArgument = 0;
+    int nbArgument = le_arg_NumArgs();
+    bool initiateCall = true;
+    LE_INFO("Starting the application");
 
-    nbArgument = le_arg_NumArgs();
-
-    if (nbArgument == 1)
+    if (nbArgument >= 1)
     {
-        // This function gets the telephone number from the User.
+        // Get the telephone number from the User.
         const char* phoneNumber = le_arg_GetArg(0);
         if (NULL == phoneNumber)
         {
             LE_ERROR("phoneNumber is NULL");
             exit(EXIT_FAILURE);
         }
+
+        // Check whether to initiate a call or wait for an incoming call
+        if (nbArgument >= 2)
+        {
+            const char* initiateCallPtr = le_arg_GetArg(1);
+            if (NULL == initiateCallPtr)
+            {
+                LE_ERROR("Options missing");
+                exit(EXIT_FAILURE);
+            }
+            initiateCall = strtol(initiateCallPtr, NULL, 0);
+        }
+
         strncpy(DestinationNumber, phoneNumber, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
 
         LE_INFO("Phone number %s", DestinationNumber);
@@ -400,7 +412,11 @@ COMPONENT_INIT
         LE_ASSERT(le_timer_SetInterval(HangUpTimer, interval) == LE_OK);
         LE_ASSERT(le_timer_SetHandler(HangUpTimer, HangUpTimerHandler) == LE_OK);
 
-        LE_ASSERT(Testle_voicecall_start() == LE_OK);
+        VoiceCallHandlerRef = le_voicecall_AddStateHandler(MyCallEventHandler, NULL);
+        if (initiateCall)
+        {
+            LE_ASSERT(Testle_voicecall_start() == LE_OK);
+        }
     }
     else
     {

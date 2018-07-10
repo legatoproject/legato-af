@@ -78,12 +78,13 @@ typedef struct
 typedef struct
 {
         // Call object parameters
-        le_voicecall_CallRef_t                  callObjRef;      ///< Voice call object reference
-        char                                    destination[MAX_DESTINATION_LEN_BYTE];
-        le_audio_StreamRef_t                    rxStream;
-        le_audio_StreamRef_t                    txStream;
-        le_voicecall_Event_t                    lastEvent;
-        le_voicecall_TerminationReason_t        lastTerminationReason;
+        le_voicecall_CallRef_t            callObjRef;      ///< Voice call object reference
+        char                              destination[MAX_DESTINATION_LEN_BYTE];
+        le_audio_StreamRef_t              rxStream;
+        le_audio_StreamRef_t              txStream;
+        le_voicecall_Event_t              lastEvent;
+        le_voicecall_TerminationReason_t  lastTerminationReason;
+        le_msg_SessionRef_t               sessionRef;      ///< Client sessionRef
         union
         {
                 // Mcc call context parameters
@@ -542,6 +543,46 @@ static void VoiceCallPoolDestructor
     le_hashmap_Remove(VoiceCallCtxMap, ctxPtr->mcc.callRef);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function to free resources when a client application is terminated
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+ static void CloseSessionEventHandler
+(
+    le_msg_SessionRef_t sessionRef, ///< [IN] Message session reference.
+    void* contextPtr                ///< [IN] Context pointer.
+)
+{
+    if (!sessionRef)
+    {
+        LE_ERROR("ERROR sessionRef is NULL");
+        return;
+    }
+
+    LE_DEBUG("SessionRef (%p) has been closed", sessionRef);
+
+    le_ref_IterRef_t iter = le_ref_GetIterator(VoiceCallRefMap);
+    while (LE_OK == le_ref_NextNode(iter))
+    {
+        VoiceCallContext_t* ctxPtr = (VoiceCallContext_t* )le_ref_GetValue(iter);
+        if (ctxPtr)
+        {
+            if ((ctxPtr->sessionRef == sessionRef) || (MccCallEventHandlerRefCount == 0))
+            {
+                if (LE_OK != StopVoiceSession(ctxPtr))
+                {
+                    LE_WARN("Unable to stop an ongoing call");
+                }
+
+                LE_DEBUG("Release allocated resources");
+                le_mem_Release(ctxPtr);
+            }
+        }
+    }
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -623,6 +664,7 @@ le_voicecall_CallRef_t le_voicecall_Start
     if (msgCommand.callCtxPtr)
     {
         memset(msgCommand.callCtxPtr, 0, sizeof(VoiceCallContext_t));
+        msgCommand.callCtxPtr->sessionRef = le_voicecall_GetClientSessionRef();
         msgCommand.command = REQUEST_CALL_COMMAND;
         le_utf8_Copy(msgCommand.destination, DestinationID, MAX_DESTINATION_LEN_BYTE, NULL);
 
@@ -722,6 +764,7 @@ le_result_t le_voicecall_Answer
         CmdRequest_t msgCommand;
         msgCommand.command = ANSWER_CALL_COMMAND;
         msgCommand.callCtxPtr = ctxPtr;
+        msgCommand.callCtxPtr->sessionRef = le_voicecall_GetClientSessionRef();
 
         le_event_Report(CommandEvent, &msgCommand, sizeof(msgCommand));
         result = LE_OK;
@@ -909,7 +952,6 @@ le_audio_StreamRef_t le_voicecall_GetTxAudioStream
     return ctxPtr->txStream;
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  *  Server Init
@@ -941,6 +983,9 @@ COMPONENT_INIT
     // Create safe reference map for request references. The size of the map should be based on
     // the expected number of simultaneous voice call requests.
     VoiceCallRefMap = le_ref_CreateMap("voiceRequests", MAX_VOICECALL_PROFILE*2);
+
+    // Register close session handler.
+    le_msg_AddServiceCloseHandler(le_voicecall_GetServiceRef(), CloseSessionEventHandler, NULL);
 
     // Register for command events
     le_event_AddHandler("VoiceCallProcessCommand", CommandEvent, ProcessCommand);
