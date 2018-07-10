@@ -55,6 +55,7 @@ DEFINE NAME_LEN_BYTES = NAME_LEN + 1;
  *   - LE_NOT_FOUND if the named module was not found in the system.
  *   - LE_FAULT if errors were encountered when loading the module, or one of the module's
  *     dependencies.
+ *   - LE_DUPLICATE if the module has been already loaded into the kernel.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Load
@@ -74,6 +75,7 @@ FUNCTION le_result_t Load
  *   - LE_NOT_FOUND if the named module was not found in the system.
  *   - LE_FAULT if errors were encountered during the module, or one of the module's dependencies
  *     unloading.
+ *   - LE_DUPLICATE if the module has been already unloaded from the kernel.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Unload

@@ -1094,6 +1094,7 @@ void kernelModules_Init(void)
  *   - LE_NOT_FOUND if the named module was not found in the system.
  *   - LE_FAULT if errors were encountered when loading the module, or one of the module's
  *     dependencies.
+ *   - LE_DUPLICATE if the module has been already loaded into the kernel.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_kernelModule_Load
@@ -1110,6 +1111,12 @@ le_result_t le_kernelModule_Load
     {
         LE_ERROR("Lookup for module '%s' failed.", moduleName);
         return LE_NOT_FOUND;
+    }
+
+    if (moduleInfoPtr->moduleLoadStatus == STATUS_INSTALLED)
+    {
+        LE_INFO("Module '%s' is already installed.", moduleInfoPtr->name);
+        return LE_DUPLICATE;
     }
 
     le_result_t result = InstallEachKernelModule(moduleInfoPtr);
@@ -1137,6 +1144,7 @@ le_result_t le_kernelModule_Load
  *   - LE_NOT_FOUND if the named module was not found in the system.
  *   - LE_FAULT if errors were encountered during the module, or one of the module's dependencies
  *     unloading.
+ *   - LE_DUPLICATE if the module has been already unloaded from the kernel.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_kernelModule_Unload
@@ -1153,6 +1161,12 @@ le_result_t le_kernelModule_Unload
     {
         LE_ERROR("Lookup for module '%s' failed.", moduleName);
         return LE_NOT_FOUND;
+    }
+
+    if (moduleInfoPtr->moduleLoadStatus == STATUS_REMOVED)
+    {
+        LE_INFO("Module '%s' is already removed.", moduleInfoPtr->name);
+        return LE_DUPLICATE;
     }
 
     le_result_t result = RemoveEachKernelModule(moduleInfoPtr);
