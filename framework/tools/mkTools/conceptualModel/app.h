@@ -56,8 +56,8 @@ struct App_t : public HasTargetInfo_t
     FileObjectPtrSet_t requiredDevices;///< List of devices to be imported into the app.
 
     ///< Map of required modules.
-    ///< Key is the module name and value is the pair of module and it's bool 'optional' value.
-    std::map<std::string, std::pair<Module_t*, bool>> requiredModules;
+    ///< Key is module name and value is the pair of token pointer and it's bool 'optional' value.
+    std::map<std::string, std::pair<parseTree::Token_t*, bool>> requiredModules;
 
     std::list<ProcessEnv_t*> processEnvs;   ///< Process environments defined in the app.
 

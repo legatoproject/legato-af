@@ -231,7 +231,7 @@ model::ApiFile_t* GetApiFilePtr
 //--------------------------------------------------------------------------------------------------
 void AddRequiredKernelModules
 (
-    std::map<std::string, std::pair<model::Module_t*, bool>>& requiredModules,
+    std::map<std::string, std::pair<parseTree::Token_t*, bool>>& requiredModules,
     const std::list<const parseTree::CompoundItem_t*>& reqKernelModulesSections,
     const mk::BuildParams_t& buildParams
 );

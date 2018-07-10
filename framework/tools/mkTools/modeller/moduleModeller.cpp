@@ -79,6 +79,7 @@ void PrintSummary
     }
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Adds the source files from a given "sources:" section to a given Module_t object.
@@ -197,6 +198,9 @@ static void AddPrebuilt
                       mk::format(LE_I18N("error: Duplicate preBuilt file %s."), modulePath));
         }
         modulePtr->SetBuildEnvironment(modulePtr->moduleBuildType, modulePath);
+
+        modulePtr->koFilesToken.insert(
+            std::make_pair(path::GetLastNode(modulePath), sectionPtr->firstTokenPtr));
     }
 }
 

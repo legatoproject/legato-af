@@ -46,6 +46,9 @@ void Generate
 );
 
 
+/// Convenience typedef for constructing vector of pair of string and Token_t*.
+typedef std::vector<std::pair<std::string, parseTree::Token_t*>> VectorPairStringToken_t;
+
 } // namespace config
 
 #endif // LEGATO_MKTOOLS_CONFIG_GENERATOR_H_INCLUDE_GUARD

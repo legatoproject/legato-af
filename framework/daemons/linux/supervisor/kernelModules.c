@@ -100,11 +100,18 @@ typedef struct
     bool               isOptional;                           // is the module required or optional
     le_dls_Link_t      dependencyLink;                       // link object for dependency list
     le_dls_Link_t      alphabeticalLink;                     // link object for alphabetical list
+    le_sls_Link_t      cyclicDepLink;                        // link object for cyclic dep list
     uint32_t           useCount;                             // Counter of usage, safe to remove
                                                              // module when counter is 0
     char               installScript[LIMIT_MAX_PATH_BYTES];  // Path to module install script file
     char               removeScript[LIMIT_MAX_PATH_BYTES];   // Path to module remove script file
     bool               isRequiredModule;                     // is required module or not
+    bool               isCyclicDependency;                   // is the module involved in circular
+                                                             // dependency
+    bool               visited;                              // Track visited kernel modules while
+                                                             // traversing to detect cycle
+    bool               recurStack;                           // Track recursion stack while
+                                                             // traversing to detect cycle
 }
 KModuleObj_t;
 
@@ -128,6 +135,14 @@ static struct {
  */
 //--------------------------------------------------------------------------------------------------
 static le_dls_List_t ModuleAlphaOrderList = LE_DLS_LIST_INIT;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Singly linked list that stores the modules involved in a cyclic dependency.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_sls_List_t CyclicDependencyList = LE_SLS_LIST_INIT;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -324,6 +339,131 @@ static ModuleLoadStatus_t CheckProcModules(char *modName)
     fclose(fPtr);
 
     return loadStatus;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Helper utility function for detecting cycle in kernel module dependencies
+ *
+ * A cycle exists if a back edge (edge from a module to itself or one of its ancestor) is found in
+ * the graph during the depth first search traversal. Keep track of the visited modules and the
+ * recursion stack. If a module is reached that is already in the recursion stack then a cycle is
+ * found.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool hasCyclicDependencyUtil (char* modName)
+{
+    KModuleObj_t *modPtr;
+    KModuleObj_t *reqModPtr;
+    le_sls_Link_t* modNameLinkPtr;
+    ModNameNode_t* modNameNodePtr;
+
+    modPtr = le_hashmap_Get(KModuleHandler.moduleTable, modName);
+    if (modPtr == NULL)
+    {
+        LE_ERROR("Lookup for module '%s' failed.", modName);
+        return LE_NOT_FOUND;
+    }
+
+    if (modPtr->visited == false)
+    {
+        modPtr->visited = true;
+        modPtr->recurStack = true;
+
+        /* Traverse through the module dependencies of modName */
+        modNameLinkPtr = le_sls_Peek(&(modPtr->reqModuleName));
+        while (modNameLinkPtr != NULL)
+        {
+            modNameNodePtr = CONTAINER_OF(modNameLinkPtr, ModNameNode_t, link);
+
+            reqModPtr = le_hashmap_Get(KModuleHandler.moduleTable, modNameNodePtr->modName);
+            if (reqModPtr == NULL)
+            {
+                LE_ERROR("Lookup for module '%s' failed.", modNameNodePtr->modName);
+                return LE_NOT_FOUND;
+            }
+
+            /*
+             * If the module is not visited, keep traversing through the module dependencies
+             * If the module is in recursion stack, cycle is found
+             */
+            if (((!reqModPtr->visited) && hasCyclicDependencyUtil(reqModPtr->name))
+                 || (reqModPtr->recurStack))
+            {
+                /* Cyclic dependency found */
+                if (!le_sls_IsInList(&CyclicDependencyList, &(reqModPtr->cyclicDepLink)))
+                {
+                    le_sls_Queue(&CyclicDependencyList, &(reqModPtr->cyclicDepLink));
+                }
+
+                return true;
+            }
+            modNameLinkPtr = le_sls_PeekNext(&(modPtr->reqModuleName), modNameLinkPtr);
+        }
+    }
+
+    /* Remove from recursion stack */
+    modPtr->recurStack = false;
+
+    /* Cyclic dependency not found */
+    return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to detect cyclic kernel module dependencies.
+ *
+ * Use depth first traversal to iterate through the kernel modules and its dependencies. Call the
+ * helper utility function hasCyclicDependencyUtil(). If a cycle is found, print the error message
+ * with the list of modules involved in the cycle.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool hasCyclicDependency()
+{
+    le_dls_Link_t *linkPtr;
+    KModuleObj_t *modPtr;
+    le_sls_Link_t *depLinkPtr;
+    KModuleObj_t *depModPtr;
+    char *depMod;
+
+    /* Iterate modules list and perform depth first search traversal */
+    linkPtr = le_dls_Peek(&ModuleAlphaOrderList);
+    while (linkPtr != NULL)
+    {
+        modPtr = CONTAINER_OF(linkPtr, KModuleObj_t, alphabeticalLink);
+        LE_ASSERT(modPtr != NULL);
+
+        if (hasCyclicDependencyUtil(modPtr->name))
+        {
+            LE_ERROR("Circular dependency found in kernel modules:");
+            depLinkPtr = le_sls_Peek(&CyclicDependencyList);
+            if (depLinkPtr == NULL)
+            {
+                LE_ERROR("CyclicDependencyList is empty");
+                return true;
+            }
+
+            depModPtr = CONTAINER_OF(depLinkPtr, KModuleObj_t, cyclicDepLink);
+            depMod = depModPtr->name;
+
+            /* Print the list of modules involved in cycle */
+            while (depLinkPtr != NULL)
+            {
+                depModPtr = CONTAINER_OF(depLinkPtr, KModuleObj_t, cyclicDepLink);
+                depModPtr->isCyclicDependency = true;
+                LE_ERROR("%s ->", depModPtr->name);
+                depLinkPtr = le_sls_PeekNext(&CyclicDependencyList, depLinkPtr);
+            }
+            LE_ERROR("%s", depMod);
+            return true;
+        }
+
+        linkPtr = le_dls_PeekNext(&ModuleAlphaOrderList, linkPtr);
+    }
+
+    return false;
 }
 
 
@@ -609,6 +749,9 @@ static void ModuleInsert(char *modName)
     m->dependencyLink = LE_DLS_LINK_INIT;
     m->alphabeticalLink = LE_DLS_LINK_INIT;
     m->isRequiredModule = false;
+    m->isCyclicDependency = false;
+    m->visited = false;
+    m->recurStack = false;
 
     ModuleGetLoad(m);            /* Read load from configTree */
     ModuleGetIsOptional(m);      /* Read if the module is optional from configTree */
@@ -630,7 +773,7 @@ static void ModuleInsert(char *modName)
  * For insertion, traverse through the module table and add modules with dependencies to Stack list
  */
 //--------------------------------------------------------------------------------------------------
-static void TraverseDependencyInsert
+static le_result_t TraverseDependencyInsert
 (
     le_dls_List_t* ModuleInsertList,
     KModuleObj_t *m,
@@ -642,11 +785,19 @@ static void TraverseDependencyInsert
     KModuleObj_t* KModulePtr;
     le_sls_Link_t* modNameLinkPtr;
     ModNameNode_t* modNameNodePtr;
+    le_result_t result;
 
     if (enableUseCount)
     {
         /* Increment the usage count of the module */
         m->useCount++;
+    }
+
+    /* Return if the module is involved in cylic dependency */
+    if (m->isCyclicDependency)
+    {
+        LE_ERROR("Module '%s' involved in cyclic dependency", m->name);
+        return LE_FAULT;
     }
 
     /*
@@ -675,16 +826,22 @@ static void TraverseDependencyInsert
         if (KModulePtr == NULL)
         {
             LE_ERROR("Lookup for module '%s' failed.", modNameNodePtr->modName);
-            return;
+            return LE_FAULT;
         }
 
         /* Get the isOptional value of the module from the reqModuleName list instead */
         KModulePtr->isOptional = modNameNodePtr->isOptional;
 
-        TraverseDependencyInsert(ModuleInsertList, KModulePtr, enableUseCount);
+        result =  TraverseDependencyInsert(ModuleInsertList, KModulePtr, enableUseCount);
+        if (result != LE_OK)
+        {
+            return result;
+        }
 
         modNameLinkPtr = le_sls_PeekNext(&(m->reqModuleName), modNameLinkPtr);
     }
+
+    return LE_OK;
 }
 
 
@@ -703,7 +860,29 @@ static le_result_t InstallEachKernelModule(KModuleObj_t *m, bool enableUseCount)
     ModuleLoadStatus_t loadStatusProcMod;
     char *scriptargv[3];
 
-    TraverseDependencyInsert(&ModuleInsertList, m, enableUseCount);
+    /* If the module is a required module, it will be loaded with its parent module. */
+    if (m->isRequiredModule)
+    {
+        return LE_OK;
+    }
+
+    result = TraverseDependencyInsert(&ModuleInsertList, m, enableUseCount);
+    if (result != LE_OK)
+    {
+        /* If the module is marked optional, ignore fault, otherwise take fault action. */
+        if (m->isOptional)
+        {
+            LE_WARN("Traversing module '%s' dependencies failed, ignore as module is optional",
+                    m->name);
+            return LE_OK;
+        }
+        else
+        {
+            LE_ERROR("Traversing module '%s' dependencies failed, fault action will be taken",
+                     m->name);
+            return result;
+        }
+    }
 
     while ((listLink = le_dls_Pop(&ModuleInsertList)) != NULL)
     {
@@ -734,7 +913,7 @@ static le_result_t InstallEachKernelModule(KModuleObj_t *m, bool enableUseCount)
                 loadStatusProcMod =  CheckProcModules(mod->name);
                 if (loadStatusProcMod != STATUS_INSTALLED)
                 {
-                    LE_INFO("Module %s not in 'Live' state, wait for 10 seconds.", mod->name);
+                    LE_INFO("Module '%s' not in 'Live' state, wait for 10 seconds.", mod->name);
                     sleep(10);
 
                     /* If the module is not in live state, wait for 10 seconds to see if the
@@ -742,11 +921,16 @@ static le_result_t InstallEachKernelModule(KModuleObj_t *m, bool enableUseCount)
                      */
                     if (loadStatusProcMod != STATUS_INSTALLED)
                     {
-                        LE_CRIT("Module '%s' not in 'Live' state. Restart system ...", mod->name);
                         if (mod->isOptional)
                         {
+                            LE_INFO(
+                                "Module '%s' not in 'Live' state and is optional. "
+                                "Skip restarting system.",
+                                mod->name);
                             continue;
                         }
+
+                        LE_CRIT("Module '%s' not in 'Live' state. Restart system ...", mod->name);
                         return LE_FAULT;
                     }
                 }
@@ -799,7 +983,7 @@ le_result_t kernelModules_InsertListOfModules(le_sls_List_t reqModuleName)
         m->isOptional = modNameNodePtr->isOptional;
 
         /* Install only if the module is set to manual load and not a dependency module */
-        if (m->isLoadManual && !m->isRequiredModule)
+        if (m->isLoadManual)
         {
             result = InstallEachKernelModule(m, true);
             if (result != LE_OK)
@@ -881,7 +1065,7 @@ static void installModules()
          * If the module is load manual, it will be loaded when app starts.
          * If the module is a required module, it will be loaded with its parent module.
          */
-        if (modPtr->isLoadManual || modPtr->isRequiredModule)
+        if (modPtr->isLoadManual)
         {
             linkPtr = le_dls_PeekNext(&ModuleAlphaOrderList, linkPtr);
             continue;
@@ -941,6 +1125,12 @@ void kernelModules_Insert(void)
 
     le_cfg_CancelTxn(iter);
 
+    /* Check for any cyclic dependency before installing modules */
+    if (hasCyclicDependency())
+    {
+        LE_ERROR("Modules involved in circular dependency will not be installed.");
+    }
+
     setIsRequiredModule();
 
     installModules();
@@ -994,8 +1184,8 @@ static void TraverseDependencyRemove
     le_sls_Link_t* modNameLinkPtr;
     ModNameNode_t* modNameNodePtr;
 
-    /* If the module is already removed then return */
-    if (m->moduleLoadStatus == STATUS_REMOVED)
+    /* If the module is already removed or in initialization state then return */
+    if ((m->moduleLoadStatus == STATUS_REMOVED) || (m->moduleLoadStatus == STATUS_INIT))
     {
         return;
     }
@@ -1073,6 +1263,12 @@ static le_result_t RemoveEachKernelModule(KModuleObj_t *m, bool enableUseCount)
     char *scriptargv[3];
     char *rmmodargv[3];
 
+    /* If the module is a required module, it will be unloaded with its parent module. */
+    if (m->isRequiredModule)
+    {
+        return LE_OK;
+    }
+
     TraverseDependencyRemove(&ModuleRemoveList, m, enableUseCount);
 
     while ((listLink = le_dls_Pop(&ModuleRemoveList)) != NULL)
@@ -1149,8 +1345,8 @@ le_result_t kernelModules_RemoveListOfModules(le_sls_List_t reqModuleName)
         m = le_hashmap_Get(KModuleHandler.moduleTable, modNameNodePtr->modName);
         LE_ASSERT(m && KMODULE_OBJECT_COOKIE == m->cookie);
 
-        /* Remove only if the module is set to manual load and not a dependency module */
-        if (m->isLoadManual && !m->isRequiredModule)
+        /* Remove only if the module is set to manual load */
+        if (m->isLoadManual)
         {
             result = RemoveEachKernelModule(m, true);
             if (result != LE_OK)
@@ -1189,11 +1385,10 @@ void kernelModules_Remove(void)
         LE_ASSERT(modPtr != NULL);
 
         /*
-         * Skip if the modules are loaded manually via app or if it is a required module.
+         * Skip if the modules are loaded manually via app
          * If the module is load manual, it will be unloaded when app stops.
-         * If the module is a required module, it will be unloaded with its parent module.
          */
-        if (modPtr->isLoadManual || modPtr->isRequiredModule)
+        if (modPtr->isLoadManual)
         {
             continue;
         }
@@ -1281,6 +1476,14 @@ le_result_t le_kernelModule_Load
     {
         LE_INFO("Module '%s' is already installed.", moduleInfoPtr->name);
         return LE_DUPLICATE;
+    }
+
+    if (moduleInfoPtr->isCyclicDependency)
+    {
+        LE_INFO(
+            "Module '%s' is involved in circular dependency. Cannot install.",
+            moduleInfoPtr->name);
+        return LE_FAULT;
     }
 
     /* If a module is loaded manually via app, then no need to enable useCount for kmod API */

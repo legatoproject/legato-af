@@ -332,7 +332,9 @@ static void GenerateFileMappingConfig
         if (modulePtr == NULL)
         {
             throw mk::Exception_t(
-                mk::format(LE_I18N("INTERNAL ERROR: '%s' module name not found."), reqKMod.first)
+                mk::format(LE_I18N("INTERNAL ERROR: '%s' module name not found, %s."),
+                                   reqKMod.first,
+                                   reqKMod.second.first->GetLocation())
             );
         }
 
@@ -888,6 +890,114 @@ void Generate
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Helper utility function to detect cycle in kernel modules dependencies
+ *
+ * A cycle exists if a back edge (edge from a module to itself or one of its ancestor) is found in
+ * the graph during the depth first search traversal. Keep track of the visited modules and the
+ * recursion stack. If a module is reached that is already in the recursion stack then a cycle is
+ * found.
+ **/
+//--------------------------------------------------------------------------------------------------
+static bool hasCyclicDependencyUtil
+(
+    std::string moduleName,
+    std::map<std::string, VectorPairStringToken_t>checkCycleMap,
+    VectorPairStringToken_t &cycleDepVec,
+    std::map<std::string, bool> &visitedMap,
+    std::map<std::string, bool> &recurStackMap
+)
+{
+    auto foundModVisited = visitedMap.find(moduleName);
+    auto foundModRecStack = recurStackMap.find(moduleName);
+
+    if (foundModVisited->second == false)
+    {
+        foundModVisited->second = true;
+        foundModRecStack->second = true;
+
+        // Traverse through the module dependencies of moduleName and perform depth first search
+        VectorPairStringToken_t dependencyVec = checkCycleMap.find(moduleName)->second;
+
+        for (auto& it : dependencyVec)
+        {
+            // If the module is not visited, keep traversing through the module dependencies
+            // If the module is in recursion stack, cycle is found
+            if ((!(visitedMap.find(it.first)->second)
+                    && (hasCyclicDependencyUtil(
+                                it.first, checkCycleMap, cycleDepVec, visitedMap, recurStackMap)))
+                 || ((recurStackMap.find(it.first)->second)))
+            {
+                // Circular dependency found
+                // Insert module name and its token in a vector, which will be printed later
+                cycleDepVec.push_back(std::make_pair(it.first, it.second));
+                return true;
+            }
+        }
+    }
+
+    // Remove from recursion stack
+    foundModRecStack->second = false;
+
+    // Circular dependency not found
+    return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to detect cyclic dependencies in kernel modules
+ *
+ * Use depth first traversal to iterate through the kernel modules and its dependencies. Call the
+ * helper utility function hasCyclicDependencyUtil(). If a cycle is found, print the error message
+ * with the list of modules and their referenced line number in the definition file.
+ **/
+//--------------------------------------------------------------------------------------------------
+static bool hasCyclicDependency
+(
+    std::map<std::string, VectorPairStringToken_t>checkCycleMap,
+    std::map<std::string, bool> visitedMap,
+    std::map<std::string, bool> recurStackMap
+)
+{
+    // Vector of pair of module name and module token, which will be printed if cycle is found
+    VectorPairStringToken_t cycleDepVec;
+
+    // Iterate modules in the order of visitedMap and perform depth first search traversal
+    for (auto const &iter : visitedMap)
+    {
+        if (hasCyclicDependencyUtil(iter.first, checkCycleMap, cycleDepVec, visitedMap, recurStackMap))
+        {
+            std::string errorMsg = "Circular dependency found in kernel modules:\n";
+            for (auto& it : cycleDepVec)
+            {
+                if (!path::HasSuffix(it.first, "ko"))
+                {
+                    // Module is not prebuilt, hence append ".mdef"
+                    it.first.append(".mdef");
+                }
+                std::string tmpMsg =
+                mk::format(LE_I18N("'%s' referenced in %s\n"), it.first, it.second->GetLocation());
+
+                // Append message which will be printed as a single error message if cycle is found
+                errorMsg.append(tmpMsg);
+            }
+
+            throw mk::Exception_t(
+                mk::format(LE_I18N("%s"), errorMsg)
+            );
+
+            // Circular dependency found
+            return true;
+        }
+    }
+
+    // Circular dependency not found
+    return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Generate kernel module configuration for each module.
  */
 //--------------------------------------------------------------------------------------------------
@@ -895,6 +1005,8 @@ static void GenerateConfigEachModuleFile
 (
     model::System_t* systemPtr,
     model::Module_t* modulePtr,
+    std::string moduleName,
+    std::map<std::string, VectorPairStringToken_t> &checkCycleMap,
     std::ofstream& cfgStream
 )
 {
@@ -920,24 +1032,51 @@ static void GenerateConfigEachModuleFile
     cfgStream << "      \"kernelModules\"" << std::endl;
     cfgStream << "      {" << std::endl;
 
+    std::vector<std::pair<std::string, parseTree::Token_t*>> depModuleMap;
     // For each parameter in required kernel modules list
     for (auto setEntry : modulePtr->requiredModules)
     {
         auto mapEntry = systemPtr->modules.find(setEntry.first);
+
         if (mapEntry->second.first->moduleBuildType == model::Module_t::Prebuilt)
         {
             for (auto &mapEntrykoFiles : mapEntry->second.first->koFiles)
             {
+                std::string koFileName = path::GetLastNode(mapEntrykoFiles.first);
+
                 WriteModuleIsOptionalConfig(cfgStream,
-                                            path::GetLastNode(mapEntrykoFiles.first),
+                                            koFileName,
                                             setEntry.second.second);
+
+                std::map<std::string, parseTree::Token_t*>::iterator itToken;
+                itToken = modulePtr->koFilesToken.find(koFileName);
+
+                if (itToken != modulePtr->koFilesToken.end())
+                {
+                    depModuleMap.push_back(
+                        std::make_pair(koFileName,
+                                       modulePtr->koFilesToken.find(koFileName)->second));
+                }
+                else
+                {
+                    depModuleMap.push_back(
+                        std::make_pair(koFileName,
+                                       modulePtr->requiredModules.find(mapEntry->first)->second.first));
+                }
             }
         }
         else
         {
-            WriteModuleIsOptionalConfig(cfgStream, mapEntry->first + ".ko", setEntry.second.second);
+            WriteModuleIsOptionalConfig(cfgStream, setEntry.first + ".ko", setEntry.second.second);
+
+            depModuleMap.push_back(
+                std::make_pair(mapEntry->first,
+                               modulePtr->requiredModules.find(mapEntry->first)->second.first));
         }
     }
+
+    // Insert modules and its dependencies to a map for ease of traversing to detect a cycle
+    checkCycleMap.insert(std::make_pair(moduleName, depModuleMap));
 
     cfgStream << "      }\n";
     cfgStream << "    }\n";
@@ -1042,6 +1181,21 @@ static void GenerateModulesConfig
         );
     }
 
+    // Create a map to store the modules and its dependencies for detecting cycle.
+    std::map<std::string, VectorPairStringToken_t> checkCycleMap;
+
+    // Create a map to store the visited status of modules while traversing.
+    // 'true' means visited and 'false' means not visited.
+    std::map<std::string, bool> visitedMap;
+    std::map<std::string, bool>::iterator visitedMapIter = visitedMap.begin();
+
+    // In addition to visited modules, keep track of modules in recursion stack for depth first
+    // traversal. There is a cycle if a module is reached that is already in recursion stack.
+    // Create a map to store the recursion stack status of a module.
+    // 'true' means the module is in recursion stack and 'false' means it's not.
+    std::map<std::string, bool> recurStackMap;
+    std::map<std::string, bool>::iterator recurStackMapIter = recurStackMap.begin();
+
     cfgStream << "{\n";
 
     // For each module in the system's list of modules,
@@ -1060,7 +1214,15 @@ static void GenerateModulesConfig
                 {
                     cfgStream << "    \"isOptional\" !t" << std::endl;
                 }
-                GenerateConfigEachModuleFile(systemPtr, modulePtr, cfgStream);
+
+                auto moduleName = path::GetLastNode(mapEntrykoFiles.first);
+
+                visitedMap.insert(visitedMapIter, std::pair<std::string, bool>(moduleName, false));
+                recurStackMap.insert(
+                            recurStackMapIter, std::pair<std::string, bool>(moduleName, false));
+
+                GenerateConfigEachModuleFile(
+                            systemPtr, modulePtr, moduleName, checkCycleMap, cfgStream);
             }
         }
         else
@@ -1072,11 +1234,21 @@ static void GenerateModulesConfig
                 cfgStream << "    \"isOptional\" !t" << std::endl;
             }
 
-            GenerateConfigEachModuleFile(systemPtr, modulePtr, cfgStream);
+            auto moduleName = modulePtr->name;
+
+            visitedMap.insert(visitedMapIter, std::pair<std::string, bool>(moduleName, false));
+            recurStackMap.insert(
+                        recurStackMapIter, std::pair<std::string, bool>(moduleName, false));
+
+            GenerateConfigEachModuleFile(
+                        systemPtr, modulePtr, moduleName, checkCycleMap, cfgStream);
         }
     }
 
     cfgStream << "}\n";
+
+    // Check for cyclic dependencies in kernel modules
+    hasCyclicDependency(checkCycleMap, visitedMap, recurStackMap);
 }
 
 

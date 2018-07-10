@@ -374,7 +374,6 @@ static void ModelKernelModule
 )
 //--------------------------------------------------------------------------------------------------
 {
-
     std::string moduleName;
     std::string modulePath;
 
@@ -413,11 +412,11 @@ static void ModelKernelModule
     auto modulesIter = systemPtr->modules.find(moduleName);
     if (modulesIter != systemPtr->modules.end())
     {
-            sectionPtr->ThrowException(
-                mk::format(LE_I18N("Module '%s' added to the system more than once.\n"
-                                   "%s: note: Previously added here."),
-                           moduleName, modulesIter->second.first->parseTreePtr->firstTokenPtr->GetLocation())
-            );
+        sectionPtr->ThrowException(
+            mk::format(LE_I18N("Module '%s' added to the system more than once.\n"
+                               "%s: note: Previously added here."),
+                       moduleName, modulesIter->second.first->parseTreePtr->firstTokenPtr->GetLocation())
+        );
     }
 
     // Model this module.
@@ -431,6 +430,7 @@ static void ModelKernelModule
     {
         isOptional = true;
     }
+
     systemPtr->modules[moduleName] = std::make_pair(modulePtr, isOptional);
 
     if (buildParams.beVerbose)
