@@ -986,8 +986,17 @@ static le_result_t AddPreferredOperators
         {
             if (nodePtr->ratMask != ratMask)
             {
-                uint8_t bitMask = 0x00;
-                bitMask = (uint8_t)(nodePtr->ratMask | ratMask);
+                uint8_t bitMask = 0;
+                if ((LE_MRC_BITMASK_RAT_ALL == ratMask) ||
+                    (LE_MRC_BITMASK_RAT_ALL == nodePtr->ratMask))
+                {
+                    bitMask = ratMask;
+                }
+                else
+                {
+                    bitMask = (uint8_t)(nodePtr->ratMask | ratMask);
+                }
+
                 LE_DEBUG("Found [%s,%s] in the list, change ratMask from %d to %d",
                                 mccPtr, mncPtr, nodePtr->ratMask, bitMask);
                 nodePtr->ratMask = (le_mrc_RatBitMask_t)bitMask;
@@ -2366,7 +2375,7 @@ le_result_t le_mrc_GetPreferredOperatorDetails
 
     if (mccPtr == NULL)
     {
-        LE_KILL_CLIENT("mccPtr mccPtris NULL !");
+        LE_KILL_CLIENT("mccPtr is NULL !");
         return LE_FAULT;
     }
 
@@ -2877,6 +2886,7 @@ le_mrc_ScanInformationListRef_t le_mrc_PerformCellularNetworkScan
 
     if (result != LE_OK)
     {
+        LE_ERROR("Network scan error");
         le_mem_Release(newScanInformationListPtr);
         return NULL;
     }
@@ -4477,7 +4487,6 @@ le_result_t le_mrc_StartJammingDetection
     else
     {
         LE_DEBUG("Jamming activated by a new application");
-
         res = LE_OK;
 
         // Activation only if the list is empty
