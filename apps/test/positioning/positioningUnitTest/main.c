@@ -237,8 +237,8 @@ static void Testle_pos_GetDistanceResolution
 
     le_gnssSimu_SetLocation(gnssLocation);
 
-    gnssAltitude.altitude = 32000;  // altitude in millimeters (32 m)
-    gnssAltitude.accuracy = 10;     // vertical accuracy in decimeters
+    gnssAltitude.altitude = -32000;  // altitude in millimeters (-32 m)
+    gnssAltitude.accuracy = 10;      // vertical accuracy in decimeters
     gnssAltitude.result = LE_OK;
 
     le_gnssSimu_SetAltitude(gnssAltitude);
@@ -255,7 +255,7 @@ static void Testle_pos_GetDistanceResolution
         (48823091 == latitude) &&
         (2249324 == longitude) &&
         (20 == hAccuracy) &&
-        (320 == altitude) &&
+        (-320 == altitude) &&
         (10 == vAccuracy) &&
         (LE_OK == result)
         );
@@ -271,7 +271,7 @@ static void Testle_pos_GetDistanceResolution
         (48823091 == latitude) &&
         (2249324 == longitude) &&
         (200 == hAccuracy) &&
-        (3200 == altitude) &&
+        (-3200 == altitude) &&
         (100 == vAccuracy) &&
         (LE_OK == result)
         );
@@ -287,7 +287,7 @@ static void Testle_pos_GetDistanceResolution
         (48823091 == latitude) &&
         (2249324 == longitude) &&
         (2000 == hAccuracy) &&
-        (32000 == altitude) &&
+        (-32000 == altitude) &&
         (1000 == vAccuracy) &&
         (LE_OK == result)
         );
@@ -303,7 +303,7 @@ static void Testle_pos_GetDistanceResolution
         (48823091 == latitude) &&
         (2249324 == longitude) &&
         (2 == hAccuracy) &&
-        (32 == altitude) &&
+        (-32 == altitude) &&
         (1 == vAccuracy) &&
         (LE_OK == result)
         );

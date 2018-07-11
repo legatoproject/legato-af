@@ -554,13 +554,13 @@ static uint32_t ComputeCommonSmallestRate
  *
  */
 //--------------------------------------------------------------------------------------------------
-static uint32_t ConvertDistance
+static int32_t ConvertDistance
 (
-    uint32_t value,
+    int32_t value,
     le_pos_DistanceValueType_t type
 )
 {
-    uint32_t resValue = 0;
+    int32_t resValue = 0;
     switch(type)
     {
         case ALTITUDE:
