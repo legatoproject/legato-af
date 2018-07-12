@@ -9,6 +9,14 @@ The following provides a summary of changes that have been made in the 18.06 Leg
 <b> Download the @ref aboutReleaseInfo "source code" and get started with @ref basicBuild
 "building Legato AF". </b>
 
+@section rn1806_Patches 18.06.01 Fixes
+
+The following issues have been patched in 18.06.1:
+
+- A bug is fixed that caused a data corruption issue when performing a system update. If the
+update created a secure storage entry that was more then 4k in size the bug caused the last byte
+to be silently dropped.
+
 @section rn1806_Features New Features
 
 The following are the list of new features that have been added into the 18.06 Release:
