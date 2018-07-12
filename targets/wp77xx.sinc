@@ -5,3 +5,8 @@
 //--------------------------------------------------------------------------------------------------
 
 #include wp76xx.sinc
+
+buildVars:
+{
+    LEGATO_FWUPDATE_PA_SINGLESYS = ${PA_DIR}/fwupdate/mdm9x06/le_pa_fwupdate_singlesys
+}

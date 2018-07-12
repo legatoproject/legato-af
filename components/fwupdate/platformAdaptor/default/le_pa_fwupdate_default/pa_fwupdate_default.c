@@ -494,6 +494,45 @@ le_result_t pa_fwupdate_GetMtdPartitionTab
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Open SWIFOTA partition
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_UNSUPPORTED    the feature is not supported
+ *      - LE_DUPLICATE      parition is already opened
+ *      - LE_FAULT          on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_fwupdate_OpenSwifota
+(
+    void
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Close SWIFOTA partition
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_UNSUPPORTED    the feature is not supported
+ *      - LE_FAULT          on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_fwupdate_CloseSwifota
+(
+    void
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Init this component
  */
 //--------------------------------------------------------------------------------------------------
