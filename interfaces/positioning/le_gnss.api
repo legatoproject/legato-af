@@ -1487,7 +1487,7 @@ FUNCTION le_result_t GetSatellitesInfo
     bool          satUsed[SV_INFO_MAX_LEN] OUT,     ///< TRUE if satellite in View Used
                                                     ///< for Navigation.
     uint8         satSnr[SV_INFO_MAX_LEN] OUT,      ///< Satellites in View Signal To
-                                                    ///< Noise Ratio [dBHz].
+                                                    ///< Noise Ratio (C/No) [dBHz].
     uint16        satAzim[SV_INFO_MAX_LEN] OUT,     ///< Satellites in View Azimuth [degrees].
                                                     ///< Range: 0 to 360
                                                     ///< If Azimuth angle is currently unknown,
