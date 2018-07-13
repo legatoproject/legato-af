@@ -853,11 +853,29 @@ static void NewSimStateHandler
 
     LE_DEBUG("New SIM state.%d for sim identifier.%d (eventPtr %p)", eventPtr->state,
         eventPtr->simId, eventPtr);
-    simPtr = &SimList[eventPtr->simId];
-    GetSimCardInformation(simPtr, eventPtr->state);
 
-    // Check if ICCID value changed
-    MonitorICCIDChange(&SimList[eventPtr->simId]);
+    // Since the SIM state and ID are not able to be correctly synchronized between PA level and
+    // service level, here we will always check current SIM ID to set the correct value of variable
+    // "SelectedCard" which is used by SIM service code in each event handler call.
+    if ( LE_OK != pa_sim_GetSelectedCard(&SelectedCard))
+    {
+        LE_WARN("NewSimStateHandler: Failed to get current SIM ID.");
+        return;
+    }
+    else
+    {
+        LE_INFO("NewSimStateHandler: Current Selected SIM ID=%d", SelectedCard);
+    }
+
+    //Update the SIM information for current SIM
+    if ( eventPtr->simId == SelectedCard )
+    {
+        simPtr = &SimList[eventPtr->simId];
+        GetSimCardInformation(simPtr, eventPtr->state);
+
+        // Check if ICCID value changed
+        MonitorICCIDChange(&SimList[eventPtr->simId]);
+    }
 
     // Discard transitional states
     switch (eventPtr->state)
@@ -870,12 +888,6 @@ static void NewSimStateHandler
 
         default:
             break;
-    }
-
-    if ( eventPtr->simId != SelectedCard )
-    {
-        LE_DEBUG("New selected card");
-        SelectedCard = eventPtr->simId;
     }
 
     // Notify all the registered client handlers
@@ -1309,7 +1321,7 @@ le_result_t le_sim_Init
         return LE_FAULT;
     }
 
-    LE_DEBUG("SIM %u is selected.", SelectedCard);
+    LE_INFO("SIM %u is selected.", SelectedCard);
 
     if (LE_OK != pa_sim_GetState(&state))
     {
