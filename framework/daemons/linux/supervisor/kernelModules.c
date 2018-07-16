@@ -104,6 +104,7 @@ typedef struct
                                                              // module when counter is 0
     char               installScript[LIMIT_MAX_PATH_BYTES];  // Path to module install script file
     char               removeScript[LIMIT_MAX_PATH_BYTES];   // Path to module remove script file
+    bool               isRequiredModule;                     // is required module or not
 }
 KModuleObj_t;
 
@@ -604,6 +605,7 @@ static void ModuleInsert(char *modName)
     m->isOptional = false;
     m->dependencyLink = LE_DLS_LINK_INIT;
     m->alphabeticalLink = LE_DLS_LINK_INIT;
+    m->isRequiredModule = false;
 
     ModuleGetLoad(m);            /* Read load from configTree */
     ModuleGetIsOptional(m);      /* Read if the module is optional from configTree */
@@ -625,7 +627,12 @@ static void ModuleInsert(char *modName)
  * For insertion, traverse through the module table and add modules with dependencies to Stack list
  */
 //--------------------------------------------------------------------------------------------------
-static void TraverseDependencyInsert(le_dls_List_t* ModuleInsertList, KModuleObj_t *m)
+static void TraverseDependencyInsert
+(
+    le_dls_List_t* ModuleInsertList,
+    KModuleObj_t *m,
+    bool enableUseCount
+)
 {
     LE_ASSERT(m != NULL);
 
@@ -633,8 +640,11 @@ static void TraverseDependencyInsert(le_dls_List_t* ModuleInsertList, KModuleObj
     le_sls_Link_t* modNameLinkPtr;
     ModNameNode_t* modNameNodePtr;
 
-    /* Increment the usage count of the module */
-    m->useCount++;
+    if (enableUseCount)
+    {
+        /* Increment the usage count of the module */
+        m->useCount++;
+    }
 
     /*
      * We must not add duplicate objects to the linked list to avoid undesired loops.
@@ -668,7 +678,7 @@ static void TraverseDependencyInsert(le_dls_List_t* ModuleInsertList, KModuleObj
         /* Get the isOptional value of the module from the reqModuleName list instead */
         KModulePtr->isOptional = modNameNodePtr->isOptional;
 
-        TraverseDependencyInsert(ModuleInsertList, KModulePtr);
+        TraverseDependencyInsert(ModuleInsertList, KModulePtr, enableUseCount);
 
         modNameLinkPtr = le_sls_PeekNext(&(m->reqModuleName), modNameLinkPtr);
     }
@@ -680,7 +690,7 @@ static void TraverseDependencyInsert(le_dls_List_t* ModuleInsertList, KModuleObj
  * insmod the kernel module
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t InstallEachKernelModule(KModuleObj_t *m)
+static le_result_t InstallEachKernelModule(KModuleObj_t *m, bool enableUseCount)
 {
     le_result_t result;
     le_dls_Link_t *listLink;
@@ -690,7 +700,7 @@ static le_result_t InstallEachKernelModule(KModuleObj_t *m)
     ModuleLoadStatus_t loadStatusProcMod;
     char *scriptargv[3];
 
-    TraverseDependencyInsert(&ModuleInsertList, m);
+    TraverseDependencyInsert(&ModuleInsertList, m, enableUseCount);
 
     while ((listLink = le_dls_Pop(&ModuleInsertList)) != NULL)
     {
@@ -785,10 +795,10 @@ le_result_t kernelModules_InsertListOfModules(le_sls_List_t reqModuleName)
         /* Get the isOptional value of the module from reqModuleName list instead */
         m->isOptional = modNameNodePtr->isOptional;
 
-        /* Install only if the module is set to manual load */
-        if (m->isLoadManual)
+        /* Install only if the module is set to manual load and not a dependency module */
+        if (m->isLoadManual && !m->isRequiredModule)
         {
-            result = InstallEachKernelModule(m);
+            result = InstallEachKernelModule(m, true);
             if (result != LE_OK)
             {
                 LE_ERROR("Error in installing module '%s'.", m->name);
@@ -800,6 +810,50 @@ le_result_t kernelModules_InsertListOfModules(le_sls_List_t reqModuleName)
     }
     return LE_OK;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Traverse through the given list of kernel module and mark the ones which are required.
+ * If 'x.ko' depends on 'y.ko' then isRequiredModule is set true for 'y.ko'.
+ */
+//--------------------------------------------------------------------------------------------------
+static void setIsRequiredModule()
+{
+    le_dls_Link_t* linkPtr;
+    KModuleObj_t *modPtr;
+    le_sls_Link_t* modNameLinkPtr;
+    ModNameNode_t* modNameNodePtr;
+    KModuleObj_t *KModulePtr;
+
+    linkPtr = le_dls_Peek(&ModuleAlphaOrderList);
+    while (linkPtr != NULL)
+    {
+        modPtr = CONTAINER_OF(linkPtr, KModuleObj_t, alphabeticalLink);
+        LE_ASSERT(modPtr != NULL);
+
+        modNameLinkPtr = le_sls_Peek(&(modPtr->reqModuleName));
+
+        while (modNameLinkPtr != NULL)
+        {
+            modNameNodePtr = CONTAINER_OF(modNameLinkPtr, ModNameNode_t,link);
+            LE_ASSERT(modNameNodePtr != NULL);
+            KModulePtr = le_hashmap_Get(KModuleHandler.moduleTable, modNameNodePtr->modName);
+            if (KModulePtr == NULL)
+            {
+                LE_ERROR("Lookup for module '%s' failed.", modNameNodePtr->modName);
+                return;
+            }
+
+            KModulePtr->isRequiredModule = true;
+
+            modNameLinkPtr = le_sls_PeekNext(&(modPtr->reqModuleName), modNameLinkPtr);
+        }
+
+        linkPtr = le_dls_PeekNext(&ModuleAlphaOrderList, linkPtr);
+    }
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -819,19 +873,25 @@ static void installModules()
         modPtr = CONTAINER_OF(linkPtr, KModuleObj_t, alphabeticalLink);
         LE_ASSERT(modPtr != NULL);
 
-        if (modPtr->isLoadManual)
+        /*
+         * Skip if the modules are loaded manually via app or if it is a required module.
+         * If the module is load manual, it will be loaded when app starts.
+         * If the module is a required module, it will be loaded with its parent module.
+         */
+        if (modPtr->isLoadManual || modPtr->isRequiredModule)
         {
             linkPtr = le_dls_PeekNext(&ModuleAlphaOrderList, linkPtr);
             continue;
         }
 
-        result = InstallEachKernelModule(modPtr);
+        result = InstallEachKernelModule(modPtr, true);
         if (result != LE_OK)
         {
             LE_ERROR("Error in installing module %s. Restarting system ...", modPtr->name);
             framework_Reboot();
             break;
         }
+
         linkPtr = le_dls_PeekNext(&ModuleAlphaOrderList, linkPtr);
     }
 }
@@ -878,6 +938,8 @@ void kernelModules_Insert(void)
 
     le_cfg_CancelTxn(iter);
 
+    setIsRequiredModule();
+
     installModules();
 }
 
@@ -916,7 +978,12 @@ static void ReleaseModulesMemory(void)
  * For removal, traverse through the module table and add modules with dependencies to Queue list
  */
 //--------------------------------------------------------------------------------------------------
-static void TraverseDependencyRemove(le_dls_List_t* ModuleRemoveList, KModuleObj_t *m)
+static void TraverseDependencyRemove
+(
+    le_dls_List_t* ModuleRemoveList,
+    KModuleObj_t *m,
+    bool enableUseCount
+)
 {
     LE_ASSERT(m != NULL);
 
@@ -924,10 +991,19 @@ static void TraverseDependencyRemove(le_dls_List_t* ModuleRemoveList, KModuleObj
     le_sls_Link_t* modNameLinkPtr;
     ModNameNode_t* modNameNodePtr;
 
-    LE_ASSERT(m->useCount != 0);
+    /* If the module is already removed then return */
+    if (m->moduleLoadStatus == STATUS_REMOVED)
+    {
+        return;
+    }
 
-    /* Keep decrementing useCount. When useCount = 0, safe to remove module */
-    m->useCount--;
+    if (enableUseCount)
+    {
+        LE_ASSERT(m->useCount != 0);
+
+        /* Keep decrementing useCount. When useCount = 0, safe to remove module */
+        m->useCount--;
+    }
 
     /*
      * We must not add duplicate objects to the linked list to avoid undesired loops.
@@ -972,7 +1048,7 @@ static void TraverseDependencyRemove(le_dls_List_t* ModuleRemoveList, KModuleObj
             return;
         }
 
-        TraverseDependencyRemove(ModuleRemoveList, KModulePtr);
+        TraverseDependencyRemove(ModuleRemoveList, KModulePtr, enableUseCount);
 
         modNameLinkPtr = le_sls_PeekNext(&(m->reqModuleName), modNameLinkPtr);
     }
@@ -984,7 +1060,7 @@ static void TraverseDependencyRemove(le_dls_List_t* ModuleRemoveList, KModuleObj
  * rmmod the kernel module
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t RemoveEachKernelModule(KModuleObj_t *m)
+static le_result_t RemoveEachKernelModule(KModuleObj_t *m, bool enableUseCount)
 {
     le_dls_Link_t *listLink;
     le_result_t result;
@@ -994,7 +1070,7 @@ static le_result_t RemoveEachKernelModule(KModuleObj_t *m)
     char *scriptargv[3];
     char *rmmodargv[3];
 
-    TraverseDependencyRemove(&ModuleRemoveList, m);
+    TraverseDependencyRemove(&ModuleRemoveList, m, enableUseCount);
 
     while ((listLink = le_dls_Pop(&ModuleRemoveList)) != NULL)
     {
@@ -1070,10 +1146,10 @@ le_result_t kernelModules_RemoveListOfModules(le_sls_List_t reqModuleName)
         m = le_hashmap_Get(KModuleHandler.moduleTable, modNameNodePtr->modName);
         LE_ASSERT(m && KMODULE_OBJECT_COOKIE == m->cookie);
 
-        /* Remove only if the module is set to manual load */
-        if (m->isLoadManual)
+        /* Remove only if the module is set to manual load and not a dependency module */
+        if (m->isLoadManual && !m->isRequiredModule)
         {
-            result = RemoveEachKernelModule(m);
+            result = RemoveEachKernelModule(m, true);
             if (result != LE_OK)
             {
                 LE_ERROR("Error in removing module '%s'", m->name);
@@ -1109,12 +1185,17 @@ void kernelModules_Remove(void)
         modPtr = CONTAINER_OF(linkPtr, KModuleObj_t, alphabeticalLink);
         LE_ASSERT(modPtr != NULL);
 
-        if (modPtr->isLoadManual)
+        /*
+         * Skip if the modules are loaded manually via app or if it is a required module.
+         * If the module is load manual, it will be unloaded when app stops.
+         * If the module is a required module, it will be unloaded with its parent module.
+         */
+        if (modPtr->isLoadManual || modPtr->isRequiredModule)
         {
             continue;
         }
 
-        result  = RemoveEachKernelModule(modPtr);
+        result  = RemoveEachKernelModule(modPtr, true);
         if (result != LE_OK)
         {
             LE_ERROR("Error in removing module '%s'", modPtr->name);
@@ -1182,8 +1263,11 @@ le_result_t le_kernelModule_Load
 {
     LE_INFO("Requested to load module '%s'.", moduleName);
 
-    KModuleObj_t* moduleInfoPtr = le_hashmap_Get(KModuleHandler.moduleTable, moduleName);
+    KModuleObj_t* moduleInfoPtr;
+    le_result_t result;
+    bool enableUseCount;
 
+    moduleInfoPtr = le_hashmap_Get(KModuleHandler.moduleTable, moduleName);
     if (moduleInfoPtr == NULL)
     {
         LE_ERROR("Lookup for module '%s' failed.", moduleName);
@@ -1196,7 +1280,10 @@ le_result_t le_kernelModule_Load
         return LE_DUPLICATE;
     }
 
-    le_result_t result = InstallEachKernelModule(moduleInfoPtr);
+    /* If a module is loaded manually via app, then no need to enable useCount for kmod API */
+    enableUseCount = (moduleInfoPtr->isLoadManual) ? false : true;
+
+    result = InstallEachKernelModule(moduleInfoPtr, enableUseCount);
 
     if (result == LE_OK)
     {
@@ -1232,8 +1319,11 @@ le_result_t le_kernelModule_Unload
 {
     LE_INFO("Requested to unload module '%s'.", moduleName);
 
-    KModuleObj_t* moduleInfoPtr = le_hashmap_Get(KModuleHandler.moduleTable, moduleName);
+    KModuleObj_t* moduleInfoPtr;
+    bool enableUseCount;
+    le_result_t result;
 
+    moduleInfoPtr = le_hashmap_Get(KModuleHandler.moduleTable, moduleName);
     if (moduleInfoPtr == NULL)
     {
         LE_ERROR("Lookup for module '%s' failed.", moduleName);
@@ -1242,11 +1332,26 @@ le_result_t le_kernelModule_Unload
 
     if (moduleInfoPtr->moduleLoadStatus == STATUS_REMOVED)
     {
-        LE_INFO("Module '%s' is already removed.", moduleInfoPtr->name);
-        return LE_DUPLICATE;
+        LE_INFO("Module '%s' not found. Already removed.", moduleInfoPtr->name);
+        return LE_NOT_FOUND;
     }
 
-    le_result_t result = RemoveEachKernelModule(moduleInfoPtr);
+    if (moduleInfoPtr->isRequiredModule)
+    {
+        LE_INFO("Module '%s' is a dependency module for another module.", moduleInfoPtr->name);
+        return LE_BUSY;
+    }
+
+    if ((moduleInfoPtr->isLoadManual) && (moduleInfoPtr->useCount != 0))
+    {
+        LE_INFO("Module '%s' is a dependency module for an app.", moduleInfoPtr->name);
+        return LE_BUSY;
+    }
+
+    /* If a module is loaded manually via app then no need to enable useCount for kmod API */
+    enableUseCount = (moduleInfoPtr->isLoadManual) ? false : true;
+
+    result = RemoveEachKernelModule(moduleInfoPtr, enableUseCount);
 
     if (result == LE_OK)
     {
