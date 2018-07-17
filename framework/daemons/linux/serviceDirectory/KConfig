@@ -1,0 +1,21 @@
+#
+# Configuration for Legato Service Directory daemon.
+#
+# Copyright (C) Sierra Wireless Inc.
+#
+
+### Options ###
+
+config SVCDIR_SERVER_SOCKET_NAME
+  string "Server socket name"
+  default "serviceDirectoryServer"
+  ---help---
+  Name of the Service Directory's server UNIX domain socket.  The full
+  path will be this name appended to the runtime directory path.
+
+config SVCDIR_CLIENT_SOCKET_NAME
+  string "Client socket name"
+  default "serviceDirectoryClient"
+  ---help---
+  Name of the Service Directory's client UNIX domain socket.  The full
+  path will be this name appended to the runtime directory path.

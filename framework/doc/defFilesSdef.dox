@@ -482,7 +482,6 @@ buildVars:
 {
     PRODUCT_VERSION = "0.2.3 - beta"
     HARDWARE_REV = 4
-    DEBUG = 1
 }
 @endverbatim
 

@@ -1,0 +1,109 @@
+#
+# Configuration for Legato services.
+#
+# Copyright (C) Sierra Wireless Inc.
+#
+
+### Hidden Options ###
+
+config AVC_ENABLE_AV_MODEL
+  bool
+  depends on !TARGET_VIRT_X86 && !TARGET_VIRT_ARM
+  depends on !TARGET_LOCALHOST
+  depends on !TARGET_RASPI
+  default n if TARGET_CUSTOM
+  default y
+
+### Service Options ###
+
+menu "AirVantage Connector"
+
+choice
+  prompt "AirVantage Connector application"
+  default APP_AVC_LEGACY if TARGET_AR7 || TARGET_AR86
+  default APP_AVC_LWM2MCORE
+
+config APP_AVC_LEGACY
+  bool "legacy"
+  ---help---
+  Legacy AVC implementation.  Not for new devices.
+
+config APP_AVC_LWM2MCORE
+  bool "lwm2mcore"
+  ---help---
+  AVC implementation based on LWM2MCore.
+
+endchoice # end "AirVantage Connector application"
+
+config AVC_FEATURE_OBSERVE
+  bool "Enable LWM2M observe"
+  default y if TARGET_WP85
+  default y if TARGET_WP750X
+  default y if TARGET_WP76XX
+  default y if TARGET_WP77XX
+  default n
+  ---help---
+  Enable LWM2M observe.
+
+# TODO: better description
+
+config AVC_FEATURE_AVMS_CONFIG
+  bool "Enable AVMS configuration"
+  default y if TARGET_WP85
+  default y if TARGET_WP750X
+  default y if TARGET_WP76XX
+  default y if TARGET_WP77XX
+  default n
+  ---help---
+  Enable AVMS configuration.
+
+# TODO: better description
+
+endmenu # end "AirVantage Connector"
+
+config SERVICES_WATCHDOG
+  bool "Enable watchdog for Legato services"
+  default y
+  ---help---
+  The services watchdog ensures that Legato processes are restarted if they
+  deadlock.
+
+config ATSERVER_USER_ERRORS
+  bool "Enable user-defined errors in AT Server"
+  default y if LINUX
+  default n
+  ---help---
+  Allow setting user-defined error strings in AT Server.  Enabling this
+  increases the memory consumption of the AT Server.
+
+config ENABLE_SECSTORE_ADMIN
+  bool "Enable secure storage administration API"
+  default n
+  ---help---
+  Allow administrative control of the Legato secure storage system.  This
+  permits reading, writing, and deleting secure storage files and should be
+  used with caution.
+
+config ENABLE_ECALL
+  bool "Enable eCall support"
+  default y
+  ---help---
+  Enable PAN European eCall or Russian ERA GLONASS emergency calling support.
+
+config MDM_HAS_SMSC_INFORMATION
+  bool "Has SMSC information"
+  default y
+  ---help---
+  Support SMSC (Short Message Service Centre) information in modem services.
+  Some terminals do not include the SMSC information in the PDU format string
+  and in those cases, this value must be deselected.
+
+config FEATURE_SPISVC
+  bool "Enable SPI service"
+  default y if TARGET_WP85
+  default y if TARGET_WP750X
+  default y if TARGET_WP76XX
+  default y if TARGET_WP77XX
+  default n
+  ---help---
+  Enable the SPI service to allow devices to use SPI-attached peripherals.

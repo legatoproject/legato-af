@@ -1510,7 +1510,7 @@ COMPONENT_INIT
     // Init framework daemons.
     // No requirement so far for how often these need to kick the watchdog, so use
     // default timing for now.
-    #ifndef LEGATO_FRAMEWORK_WDOG_DISABLE
+    #if LE_CONFIG_WDOG_FRAMEWORK
         InitFrameworkWdog(TIMEOUT_DEFAULT);
     #endif
 

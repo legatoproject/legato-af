@@ -3,8 +3,8 @@ requires:
 {
     dir:
     {
-        "$EJDK_DIR/bin"  "/"
-        "$EJDK_DIR/lib"  "/"
+        "${LE_CONFIG_EJDK_DIR}/bin" "/"
+        "${LE_CONFIG_EJDK_DIR}/lib" "/"
     }
 
     component:

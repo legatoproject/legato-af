@@ -36,12 +36,6 @@ static le_log_TraceRef_t TraceRef;
 /* C.S0005-D v2.0 Table 2.7.1.3.2.4-4. Representation of DTMF Digits */
 static const char *DtmfChars = "D1234567890*#ABC";
 
-/**
- * Some terminal do not include the SMSC information in the PDU format string.
- * In that case, the following define must be removed
- */
-#define HAS_SMSC_INFORMATION
-
 //--------------------------------------------------------------------------------------------------
 /**
  * First Byte:
@@ -1507,9 +1501,9 @@ static le_result_t EncodeMessageGsm
         /* Init dest array */
         memset(pduPtr->data, 0x00, sizeof(pduPtr->data));
 
-#ifdef HAS_SMSC_INFORMATION
+#ifdef LE_CONFIG_MDM_HAS_SMSC_INFORMATION
         WriteByte(pduPtr->data, pos++, 0x00); // Use default SMSC information
-#endif //HAS_SMSC_INFORMATION
+#endif //LE_CONFIG_MDM_HAS_SMSC_INFORMATION
 
         /* First Byte */
         WriteByte(pduPtr->data, pos++, firstByte);
@@ -1653,7 +1647,7 @@ static le_result_t DecodeMessageGsm
 
     memset(smsPtr, 0, sizeof(pa_sms_Message_t));
 
-#ifdef HAS_SMSC_INFORMATION
+#ifdef LE_CONFIG_MDM_HAS_SMSC_INFORMATION
     if (smscInfo)
     {
         uint8_t smscInfoLen = ReadByte(dataPtr, pos++);

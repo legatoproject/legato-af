@@ -7,7 +7,7 @@
 buildVars:
 {
     // Proprietary AT AirVantage app
-    #if ${LEGATO_APP_AVC_CHOICE} = lwm2mcore
+    #if ${LE_CONFIG_APP_AVC_LWM2MCORE} = y
         #if dir_exists(${LEGATO_ROOT}/apps/proprietary/qmiAirVantage/src)
             LEGATO_QMI_AIRVANTAGE_APP = ${LEGATO_ROOT}/apps/proprietary/qmiAirVantage/src/qmiAirVantage
         #else
@@ -20,7 +20,7 @@ buildVars:
 
 apps:
 {
-    #if ${LEGATO_APP_AVC_CHOICE} = lwm2mcore
+    #if ${LE_CONFIG_APP_AVC_LWM2MCORE} = y
         #if ${LEGATO_TARGET} = wp76xx
             ${LEGATO_QMI_AIRVANTAGE_APP}
         #elif ${LEGATO_TARGET} = wp77xx

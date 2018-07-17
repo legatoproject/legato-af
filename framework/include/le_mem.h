@@ -252,11 +252,11 @@
  *
  * @section mem_diagnostics Diagnostics
  *
- * The memory system also supports two different forms of diagnostics.  Both are enabled by defining
- * special preprocessor macros when building the framework.
+ * The memory system also supports two different forms of diagnostics.  Both are enabled by setting
+ * the appropriate KConfig options when building the framework.
  *
- * The first of which is @c LE_MEM_TRACE.  When you define @c LE_MEM_TRACE every pool is given a
- * tracepoint with the name of the pool on creation.
+ * The first of these options is @ref MEM_TRACE.  When you enable @ref MEM_TRACE every pool is given
+ * a tracepoint with the name of the pool on creation.
  *
  * For instance, the configTree node pool is called, "configTree.nodePool".  So to enable a trace of
  * all config tree node creation and deletion one would use the log tool as follows:
@@ -265,8 +265,8 @@
  * $ log trace configTree.nodePool
  * @endcode
  *
- * The second diagnostic build flag is @c LE_MEM_VALGRIND.  When @c LE_MEM_VALGRIND is enabled, the
- * pools are disabled and instead malloc and free are directly used.  Thus enabling the use of tools
+ * The second diagnostic build flag is @ref MEM_POOLS.  When @ref MEM_POOLS is disabled, the pools
+ * are disabled and instead malloc and free are directly used.  Thus enabling the use of tools
  * like Valgrind.
  *
  * @section mem_threading Multi-Threading
@@ -451,7 +451,7 @@ typedef struct
 le_mem_PoolStats_t;
 
 
-#ifdef LE_MEM_TRACE
+#if LE_CONFIG_MEM_TRACE
     //----------------------------------------------------------------------------------------------
     /**
      * Internal function used to retrieve a pool handle for a given pool block.
@@ -556,7 +556,7 @@ le_mem_PoolRef_t le_mem_ExpandPool
 
 
 
-#ifndef LE_MEM_TRACE
+#if !LE_CONFIG_MEM_TRACE
     //----------------------------------------------------------------------------------------------
     /**
      * Attempts to allocate an object from a pool.
@@ -586,7 +586,7 @@ le_mem_PoolRef_t le_mem_ExpandPool
 #endif
 
 
-#ifndef LE_MEM_TRACE
+#if !LE_CONFIG_MEM_TRACE
     //----------------------------------------------------------------------------------------------
     /**
      * Allocates an object from a pool or logs a fatal error and terminates the process if the pool
@@ -617,7 +617,7 @@ le_mem_PoolRef_t le_mem_ExpandPool
 #endif
 
 
-#ifndef LE_MEM_TRACE
+#if !LE_CONFIG_MEM_TRACE
     //----------------------------------------------------------------------------------------------
     /**
      * Allocates an object from a pool or logs a warning and expands the pool if the pool
@@ -667,7 +667,7 @@ void le_mem_SetNumObjsToForce
 );
 
 
-#ifndef LE_MEM_TRACE
+#if !LE_CONFIG_MEM_TRACE
     //----------------------------------------------------------------------------------------------
     /**
      * Releases an object.  If the object's reference count has reached zero, it will be destructed
@@ -703,7 +703,7 @@ void le_mem_SetNumObjsToForce
 #endif
 
 
-#ifndef LE_MEM_TRACE
+#if !LE_CONFIG_MEM_TRACE
     //----------------------------------------------------------------------------------------------
     /**
      * Increments the reference count on an object by 1.

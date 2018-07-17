@@ -23,12 +23,12 @@
 #include "legato.h"
 #include "forkJoinMutex.h"
 
-#ifdef CONFIG_CUSTOM_OS
-#define FAN_OUT 3
-#define DEPTH 2     // Note: the process main thread at the top level is not counted.
+#ifdef LE_CONFIG_REDUCE_FOOTPRINT
+#   define FAN_OUT 3
+#   define DEPTH 2     // Note: the process main thread at the top level is not counted.
 #else
-#define FAN_OUT 7
-#define DEPTH 3     // Note: the process main thread at the top level is not counted.
+#   define FAN_OUT 7
+#   define DEPTH 3     // Note: the process main thread at the top level is not counted.
 #endif
 
 typedef struct ForkJoinTestResult

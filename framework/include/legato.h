@@ -10,7 +10,6 @@
  *
  * <HR>
  *
- * @subpage c_le_build_cfg <br>
  * @subpage c_basics <br>
  * @subpage c_args <br>
  * @subpage c_atomFile <br>
@@ -142,6 +141,8 @@
 #define __STDC_LIMIT_MACROS
 #endif
 
+#include "le_config.h"
+
 #include <stddef.h>
 #include <unistd.h>
 #include <time.h>
@@ -192,7 +193,6 @@
 extern "C" {
 #endif
 
-#include "le_build_config.h"
 #include "le_basics.h"
 #include "le_doublyLinkedList.h"
 #include "le_singlyLinkedList.h"

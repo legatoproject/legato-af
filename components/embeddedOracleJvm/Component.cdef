@@ -3,8 +3,8 @@ bundles:
 {
     dir:
     {
-        [x] "$EJDK_DIR/bin"                            "/"
-        [r] "$EJDK_DIR/lib"                            "/"
+        [x] "${LE_CONFIG_EJDK_DIR}/bin" "/"
+        [r] "${LE_CONFIG_EJDK_DIR}/lib" "/"
     }
 }
 

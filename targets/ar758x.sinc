@@ -20,7 +20,7 @@ buildVars:
     LEGATO_MODEM_PA_RSIM = ${LEGATO_QMI_RSIM_PA}
     LEGATO_DCS_PA = ${LEGATO_LINUX_DCS_PA}
 
-    #if ${INCLUDE_ECALL} = 1
+    #if ${LE_CONFIG_ENABLE_ECALL} = y
         LEGATO_MODEM_PA_ECALL = ${LEGATO_QMI_MODEM_PA_ECALL}
     #endif
 
@@ -44,8 +44,4 @@ cflags:
     // 16 profiles, 4 PDPs context in UMTS and 8 PDPs context in LTE network
     -DPDP_MAX_PROFILE=16
     -DPDP_MAX_MULTIPDP=8
-
-    #if ${DISABLE_SMACK} = 1
-        -DDISABLE_SMACK=1
-    #endif
 }

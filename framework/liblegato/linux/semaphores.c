@@ -33,10 +33,6 @@
 //  PRIVATE DATA
 // ==============================
 
-/// Number of objects in the Semaphore Pool to start with.
-/// TODO: Change this to be configurable per-process.
-#define DEFAULT_POOL_SIZE 4
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -169,7 +165,7 @@ void sem_Init
 //--------------------------------------------------------------------------------------------------
 {
     SemaphorePoolRef = le_mem_CreatePool("semaphore", sizeof(Semaphore_t));
-    le_mem_ExpandPool(SemaphorePoolRef, DEFAULT_POOL_SIZE);
+    le_mem_ExpandPool(SemaphorePoolRef, LE_CONFIG_MAX_SEM_POOL_SIZE);
 }
 
 

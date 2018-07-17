@@ -56,7 +56,6 @@ set(LEGATO_COMPONENTS_SECSTORE "default" CACHE STRING "Legato Secure Storage Con
 set(LEGATO_COMPONENTS_FWUPDATE "default" CACHE STRING "Legato FwUpdate Platform-Adapter to build")
 
 if(INCLUDE_ECALL EQUAL 1)
-    add_definitions(-DINCLUDE_ECALL)
     message("Including eCall for target ${LEGATO_TARGET}")
 else()
     message("Excluding eCall from target ${LEGATO_TARGET}")

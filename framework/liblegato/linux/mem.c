@@ -33,11 +33,11 @@
  * GUARD BANDS
  * ===========
  *
- * A debugging feature can be enabled at compile-time by defining the macro "USE_GUARD_BAND".
- * This inserts chunks of memory into each memory block both before and after the user object
- * part.  These chunks of memory, called "guard bands", are filled with a special pattern that
- * is unlikely to occur in normal data.  Whenever a block is allocated or released, the
- * guard bands are checked for corruption and any corruption is reported.
+ * A debugging feature can be enabled at build time by enabling the @ref USE_GUARD_BAND KConfig
+ * option.  This inserts chunks of memory into each memory block both before and after the user
+ * object part.  These chunks of memory, called "guard bands", are filled with a special pattern
+ * that is unlikely to occur in normal data.  Whenever a block is allocated or released, the guard
+ * bands are checked for corruption and any corruption is reported.
  *
  * Copyright (C) Sierra Wireless Inc.
  *
@@ -46,21 +46,13 @@
 #include "mem.h"
 #include "limit.h"
 
-#define USE_GUARD_BAND
-#define FILL_DELETED_AND_CHECK_ALLOCATED
-
-#define NUM_GUARD_BAND_WORDS 8
 #define GUARD_WORD ((uint32_t)0xDEADBEEF)
-#define GUARD_BAND_SIZE (sizeof(GUARD_WORD) * NUM_GUARD_BAND_WORDS)
+#define GUARD_BAND_SIZE (sizeof(GUARD_WORD) * LE_CONFIG_NUM_GUARD_BAND_WORDS)
 
 
 /// The maximum total pool name size, including the component prefix, which is a component
 /// name plus a '.' separator ("myComp.myPool") and the null terminator.
 #define MAX_POOL_NAME_BYTES (LIMIT_MAX_COMPONENT_NAME_LEN + 1 + LIMIT_MAX_MEM_POOL_NAME_BYTES)
-
-/// The default number of Sub Pool objects in the Sub Pools Pool.
-/// @todo Make this configurable.
-#define DEFAULT_SUB_POOLS_POOL_SIZE     8
 
 
 //--------------------------------------------------------------------------------------------------
@@ -71,7 +63,7 @@
 #define DEFAULT_NUM_BLOCKS_TO_FORCE     1
 
 
-#ifdef LE_MEM_TRACE
+#if LE_CONFIG_MEM_TRACE
     #undef le_mem_TryAlloc
     #undef le_mem_AssertAlloc
     #undef le_mem_ForceAlloc
@@ -93,7 +85,7 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    #ifndef LE_MEM_VALGRIND
+    #if LE_CONFIG_MEM_POOLS
         le_sls_Link_t link;         ///< This block's link in the memory pool.
                                     ///  NOTE: Only used while free.
     #endif
@@ -104,7 +96,7 @@ typedef struct
                                 ///     user object. (0 = free)
 
     uint8_t  data[];            ///< This block's data content (Has a guard band at the
-                                ///     start and end if USE_GUARD_BAND is defined).
+                                ///     start and end if @ref USE_GUARD_BAND is set).
 }
 MemBlock_t;
 
@@ -199,7 +191,7 @@ static inline void Unlock
 }
 
 
-#ifdef USE_GUARD_BAND
+#if LE_CONFIG_USE_GUARD_BAND
 
     //----------------------------------------------------------------------------------------------
     /**
@@ -215,7 +207,7 @@ static inline void Unlock
 
         // There's a guard band at the start of the data section.
         uint32_t* guardBandWordPtr = (uint32_t*)(blockHeaderPtr->data);
-        for (i = 0; i < NUM_GUARD_BAND_WORDS; i++, guardBandWordPtr++)
+        for (i = 0; i < LE_CONFIG_NUM_GUARD_BAND_WORDS; i++, guardBandWordPtr++)
         {
             *guardBandWordPtr = GUARD_WORD;
         }
@@ -224,7 +216,7 @@ static inline void Unlock
         guardBandWordPtr = (uint32_t*)(   ((uint8_t*)blockHeaderPtr)
                                         + blockHeaderPtr->poolPtr->blockSize
                                         - GUARD_BAND_SIZE );
-        for (i = 0; i < NUM_GUARD_BAND_WORDS; i++, guardBandWordPtr++)
+        for (i = 0; i < LE_CONFIG_NUM_GUARD_BAND_WORDS; i++, guardBandWordPtr++)
         {
             *guardBandWordPtr = GUARD_WORD;
         }
@@ -244,7 +236,7 @@ static inline void Unlock
 
         // There's a guard band at the start of the data section.
         uint32_t* guardBandWordPtr = (uint32_t*)(blockHeaderPtr->data);
-        for (i = 0; i < NUM_GUARD_BAND_WORDS; i++, guardBandWordPtr++)
+        for (i = 0; i < LE_CONFIG_NUM_GUARD_BAND_WORDS; i++, guardBandWordPtr++)
         {
             if (*guardBandWordPtr != GUARD_WORD)
             {
@@ -262,7 +254,7 @@ static inline void Unlock
         guardBandWordPtr = (uint32_t*)(   ((uint8_t*)blockHeaderPtr)
                                         + blockHeaderPtr->poolPtr->blockSize
                                         - GUARD_BAND_SIZE);
-        for (i = 0; i < NUM_GUARD_BAND_WORDS; i++, guardBandWordPtr++)
+        for (i = 0; i < LE_CONFIG_NUM_GUARD_BAND_WORDS; i++, guardBandWordPtr++)
         {
             if (*guardBandWordPtr != GUARD_WORD)
             {
@@ -306,7 +298,7 @@ static void InitPool
     // Compute the total block size.
     size_t blockSize = sizeof(MemBlock_t) + objSize;
 
-    #ifdef USE_GUARD_BAND
+    #if LE_CONFIG_USE_GUARD_BAND
     {
         // Add guard bands around the user data in every block.
         blockSize += (GUARD_BAND_SIZE * 2);
@@ -322,7 +314,7 @@ static void InitPool
 
     pool->poolLink = LE_DLS_LINK_INIT;
 
-    #ifndef LE_MEM_VALGRIND
+    #if LE_CONFIG_MEM_POOLS
         pool->freeList = LE_SLS_LIST_INIT;
     #endif
 
@@ -337,7 +329,7 @@ static void InitPool
     pool->maxNumBlocksUsed = 0;
     pool->numBlocksToForce = DEFAULT_NUM_BLOCKS_TO_FORCE;
 
-    #ifdef LE_MEM_TRACE
+    #if LE_CONFIG_MEM_TRACE
         pool->memTrace = NULL;
 
         if (LE_LOG_SESSION != NULL)
@@ -367,7 +359,7 @@ static void MoveBlocks
     size_t              numBlocks   ///< [IN] The maximum number of blocks to move.
 )
 {
-    #ifndef LE_MEM_VALGRIND
+    #if LE_CONFIG_MEM_POOLS
         // Get the first block to move.
         le_sls_Link_t* blockLinkPtr = le_sls_Pop(&(srcPool->freeList));
 
@@ -412,7 +404,7 @@ static void InitBlock
 )
 {
     // Initialize the block.
-    #ifndef LE_MEM_VALGRIND
+    #if LE_CONFIG_MEM_POOLS
         // Add the block to the pool's free list.
         newBlockPtr->link = LE_SLS_LINK_INIT;
         le_sls_Stack(&(pool->freeList), &(newBlockPtr->link));
@@ -421,13 +413,13 @@ static void InitBlock
     newBlockPtr->refCount = 0;
     newBlockPtr->poolPtr = pool;
 
-    #ifdef USE_GUARD_BAND
+    #if LE_CONFIG_USE_GUARD_BAND
         InitGuardBands(newBlockPtr);
     #endif
 }
 
 
-#ifndef LE_MEM_VALGRIND
+#if LE_CONFIG_MEM_POOLS
     //----------------------------------------------------------------------------------------------
     /**
      * Creates blocks and adds them to the pool.
@@ -515,11 +507,11 @@ void mem_Init
 
     // Create a memory for all sub-pools.
     SubPoolsPool = le_mem_CreatePool("SubPools", sizeof(MemPool_t));
-    le_mem_ExpandPool(SubPoolsPool, DEFAULT_SUB_POOLS_POOL_SIZE);
+    le_mem_ExpandPool(SubPoolsPool, LE_CONFIG_MAX_SUB_POOLS_POOL_SIZE);
 }
 
 
-#ifdef LE_MEM_TRACE
+#if LE_CONFIG_MEM_TRACE
     //----------------------------------------------------------------------------------------------
     /**
      * Internal function used to retrieve a pool handle for a given pool block.
@@ -533,7 +525,7 @@ void mem_Init
         MemBlock_t* blockPtr;
 
         // Get the block from the object pointer.
-        #ifdef USE_GUARD_BAND
+        #if LE_CONFIG_USE_GUARD_BAND
             uint8_t* dataPtr = objPtr;
             dataPtr -= GUARD_BAND_SIZE;
             blockPtr = CONTAINER_OF(dataPtr, MemBlock_t, data);
@@ -541,7 +533,7 @@ void mem_Init
             blockPtr = CONTAINER_OF(objPtr, MemBlock_t, data);
         #endif
 
-        #ifdef USE_GUARD_BAND
+        #if LE_CONFIG_USE_GUARD_BAND
             CheckGuardBands(blockPtr);
         #endif
 
@@ -669,7 +661,7 @@ le_mem_PoolRef_t le_mem_ExpandPool
     size_t              numObjects  ///< [IN] The number of objects to add to the pool.
 )
 {
-    #ifndef LE_MEM_VALGRIND
+    #if LE_CONFIG_MEM_POOLS
         LE_ASSERT(pool);
 
         Lock();
@@ -734,7 +726,7 @@ void* le_mem_TryAlloc
 
     Lock();
 
-    #ifndef LE_MEM_VALGRIND
+    #if LE_CONFIG_MEM_POOLS
         // Pop a link off the pool.
         le_sls_Link_t* blockLinkPtr = le_sls_Pop(&(pool->freeList));
 
@@ -766,7 +758,7 @@ void* le_mem_TryAlloc
         blockPtr->refCount = 1;
 
         // Return the user object in the block.
-        #ifdef USE_GUARD_BAND
+        #if LE_CONFIG_USE_GUARD_BAND
             CheckGuardBands(blockPtr);
             userPtr = blockPtr->data + GUARD_BAND_SIZE;
         #else
@@ -826,7 +818,7 @@ void* le_mem_ForceAlloc
 
     void* objPtr;
 
-    #ifndef LE_MEM_VALGRIND
+    #if LE_CONFIG_MEM_POOLS
         while ((objPtr = le_mem_TryAlloc(pool)) == NULL)
         {
             // Expand the pool.
@@ -899,7 +891,7 @@ void le_mem_Release
     MemBlock_t* blockPtr;
 
     // Get the block from the object pointer.
-    #ifdef USE_GUARD_BAND
+    #if LE_CONFIG_USE_GUARD_BAND
         uint8_t* dataPtr = objPtr;
         dataPtr -= GUARD_BAND_SIZE;
         blockPtr = CONTAINER_OF(dataPtr, MemBlock_t, data);
@@ -907,7 +899,7 @@ void le_mem_Release
         blockPtr = CONTAINER_OF(objPtr, MemBlock_t, data);
     #endif
 
-    #ifdef USE_GUARD_BAND
+    #if LE_CONFIG_USE_GUARD_BAND
         CheckGuardBands(blockPtr);
     #endif
 
@@ -937,7 +929,7 @@ void le_mem_Release
                 Lock();
             }
 
-            #ifndef LE_MEM_VALGRIND
+            #if LE_CONFIG_MEM_POOLS
                 // Release the memory back into the pool.
                 // Note that we don't do this before calling the destructor because the destructor
                 // still needs to access it, but after it goes back on the free list, it could get
@@ -982,12 +974,12 @@ void le_mem_AddRef
     void*   objPtr  ///< [IN] Pointer to the object.
 )
 {
-    #ifdef USE_GUARD_BAND
+    #if LE_CONFIG_USE_GUARD_BAND
         objPtr = (((uint8_t*)objPtr) - GUARD_BAND_SIZE);
     #endif
     MemBlock_t* memBlockPtr = CONTAINER_OF(objPtr, MemBlock_t, data);
 
-    #ifdef USE_GUARD_BAND
+    #if LE_CONFIG_USE_GUARD_BAND
         CheckGuardBands(memBlockPtr);
     #endif
 
@@ -1016,7 +1008,7 @@ size_t le_mem_GetRefCount
     void*   objPtr  ///< [IN] Pointer to the object.
 )
 {
-    #ifdef USE_GUARD_BAND
+    #if LE_CONFIG_USE_GUARD_BAND
         objPtr = (((uint8_t*)objPtr) - GUARD_BAND_SIZE);
     #endif
     MemBlock_t* memBlockPtr = CONTAINER_OF(objPtr, MemBlock_t, data);

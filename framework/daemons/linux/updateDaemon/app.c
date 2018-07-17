@@ -292,7 +292,7 @@ static le_result_t SetSmackPermReadOnlyDir
                     {
                         LE_DEBUG("Setting SMACK label:  for file: '%s'",
                                    entPtr->fts_accpath);
-                        result = smack_SetLabel(entPtr->fts_accpath, IMA_SMACK_LABEL);
+                        result = smack_SetLabel(entPtr->fts_accpath, LE_CONFIG_IMA_SMACK);
                     }
                 }
                 else

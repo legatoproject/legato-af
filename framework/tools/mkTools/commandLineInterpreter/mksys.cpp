@@ -193,9 +193,10 @@ static void GetCommandLineArgs
                             LE_I18N("Sign the package with IMA key. If this option specified, "
                                     "it will first look for IMA private key and public certificate"
                                     "in command line parameter. If nothing specified in command "
-                                    "line it will look for environment variable IMA_PRIVATE_KEY ("
-                                    "private key path) and IMA_PUBLIC_CERT (public certificate "
-                                    "signed by system private key)."));
+                                    "line it will look for environment variable "
+                                    "LE_CONFIG_IMA_PRIVATE_KEY (private key path) and "
+                                    "LE_CONFIG_IMA_PUBLIC_CERT (public certificate signed by "
+                                    "system private key)."));
 
     args::AddOptionalString(&BuildParams.privKey,
                             "",
@@ -244,6 +245,9 @@ static void GetCommandLineArgs
     args::SetLooseArgHandler(sdefFileNameSet);
 
     args::Scan(argc, argv);
+
+    // Tell build params configuration is finished.
+    BuildParams.FinishConfig();
 
     // Were we given an system definition?
     if (SdefFilePath == "")

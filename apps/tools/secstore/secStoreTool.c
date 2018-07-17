@@ -67,7 +67,7 @@ static void PrintHelp
         "    secstore - Used to perform administrative functions on secure storage.\n"
         "\n"
         "AVAILABILITY:\n"
-#if (SECSTOREADMIN == 1)
+#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
         "    secstore commands are fully available\n"
 #else
         "    secstore administrative commands are disabled. Only commands to retrieve non\n"
@@ -75,7 +75,7 @@ static void PrintHelp
 #endif
         "\n"
         "DESCRIPTION:\n"
-#if (SECSTOREADMIN == 1)
+#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
         "    secstore ls [OPTIONS] <path>\n"
         "       List all the secure storage entries under <path>.  <path> is assumed to be absolute.\n"
         "\n"

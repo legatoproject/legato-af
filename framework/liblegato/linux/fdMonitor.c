@@ -53,11 +53,6 @@
 /// Maximum number of bytes in a File Descriptor Monitor's name, including the null terminator.
 #define MAX_FD_MONITOR_NAME_BYTES  LIMIT_MAX_MEM_POOL_NAME_BYTES
 
-/// The number of objects in the process-wide FD Monitor Pool, from which all FD Monitor
-/// objects are allocated.
-/// @todo Make this configurable.
-#define DEFAULT_FD_MONITOR_POOL_SIZE 10
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -534,11 +529,11 @@ void fdMon_Init
     // Create the FD Monitor Pool from which FD Monitor objects are to be allocated.
     /// @todo Make this configurable.
     FdMonitorPool = le_mem_CreatePool("FdMonitor", sizeof(FdMonitor_t));
-    le_mem_ExpandPool(FdMonitorPool, DEFAULT_FD_MONITOR_POOL_SIZE);
+    le_mem_ExpandPool(FdMonitorPool, LE_CONFIG_MAX_FD_MONITOR_POOL_SIZE);
 
     // Create the Safe Reference Map.
     /// @todo Make this configurable.
-    FdMonitorRefMap = le_ref_CreateMap("FdMonitors", DEFAULT_FD_MONITOR_POOL_SIZE);
+    FdMonitorRefMap = le_ref_CreateMap("FdMonitors", LE_CONFIG_MAX_FD_MONITOR_POOL_SIZE);
 
     // Get a reference to the trace keyword that is used to control tracing in this module.
     TraceRef = le_log_GetTraceRef("fdMonitor");

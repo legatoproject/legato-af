@@ -1054,7 +1054,7 @@ static void* UnitTestInit
 COMPONENT_INIT
 {
     // To reactivate for all DEBUG logs
-#ifdef DEBUG
+#if LE_CONFIG_DEBUG
     LE_INFO("DEBUG MODE");
     le_log_SetFilterLevel(LE_LOG_DEBUG);
 #endif

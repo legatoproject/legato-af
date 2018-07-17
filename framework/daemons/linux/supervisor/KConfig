@@ -1,0 +1,23 @@
+#
+# Configuration for Legato full supervisor daemon.
+#
+# Copyright (C) Sierra Wireless Inc.
+#
+
+### Options ###
+
+config SUPERV_NICE_LEVEL
+  int "Nice level"
+  depends on POSIX
+  range -20 19
+  default -19
+  ---help---
+  The nice level of the Legato Supervisor, which forks other Legato
+  processes.
+
+config SUPERV_APP_TMPFS_SIZE
+  int "App tmpfs size"
+  depends on LINUX
+  default 90112
+  ---help---
+  The size in bytes of the tmpfs partition created for each sandboxed App.

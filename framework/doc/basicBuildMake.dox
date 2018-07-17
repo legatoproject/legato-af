@@ -12,6 +12,9 @@ specific for your target.
 All supported platforms use the @c make tool and have pre-configured makefiles included in the
 Framework.
 
+The framework build and configuration may be modified using @ref kconfigDescription "KConfig" to
+select configuration options.
+
 @warning You must have the matching @ref buildToolchain "toolchain installed" for your target.
 
 Run @c make @c <target> to build the framework for the target from your Legato Root Directory:

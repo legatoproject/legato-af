@@ -180,6 +180,18 @@ static void AddJavaPackage
 {
     auto tokenListPtr = static_cast<parseTree::TokenList_t*>(sectionPtr);
 
+    if (envVars::Get("LE_CONFIG_CONFIGURED") == "y" &&
+        envVars::Get("LE_CONFIG_ENABLE_JAVA") != "y")
+    {
+        // Warn the user if adding a Java package without the appropriate config environment
+        // variable set.  This is not an error because the user may be invoking the mk tools
+        // directly and may not have set this configuration in the environment.
+        sectionPtr->PrintWarning(
+            LE_I18N("Java package added, but LE_CONFIG_ENABLE_JAVA is not set.  Are the KConfig "
+                "values correctly configured?")
+        );
+    }
+
     for (auto contentPtr: tokenListPtr->Contents())
     {
         std::string packagePath = contentPtr->text;
@@ -209,6 +221,18 @@ static void AddPythonPackage
 //--------------------------------------------------------------------------------------------------
 {
     auto tokenListPtr = static_cast<parseTree::TokenList_t*>(sectionPtr);
+
+    if (envVars::Get("LE_CONFIG_CONFIGURED") == "y" &&
+        envVars::Get("LE_CONFIG_ENABLE_PYTHON") != "y")
+    {
+        // Warn the user if adding a Python package without the appropriate config environment
+        // variable set.  This is not an error because the user may be invoking the mk tools
+        // directly and may not have set this configuration in the environment.
+        sectionPtr->PrintWarning(
+            LE_I18N("Python package added, but LE_CONFIG_ENABLE_PYTHON is not set.  Are the KConfig "
+                "values correctly configured?")
+        );
+    }
 
     for (auto contentPtr: tokenListPtr->Contents())
     {

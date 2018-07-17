@@ -11,14 +11,6 @@
 // Symbol and Enum definitions
 //--------------------------------------------------------------------------------------------------
 
-#ifndef CONFIG_LINUX
-#define CONFIG_LINUX 0
-#endif
-
-#ifndef CONFIG_CUSTOM_OS
-#define CONFIG_CUSTOM_OS 0
-#endif
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  File path length

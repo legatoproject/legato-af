@@ -25,7 +25,7 @@ typedef struct le_mem_Pool
     le_dls_Link_t poolLink;             ///< This pool's link in the list of memory pools.
     struct le_mem_Pool* superPoolPtr;   ///< A pointer to our super pool if we are a sub-pool. NULL
                                         ///  if we are not a sub-pool.
-    #ifndef LE_MEM_VALGRIND
+    #if LE_CONFIG_MEM_POOLS
         le_sls_List_t freeList;         ///< List of free memory blocks.
     #endif
 
@@ -40,7 +40,7 @@ typedef struct le_mem_Pool
     size_t maxNumBlocksUsed;            ///< Maximum number of allocated blocks at any one time.
     size_t numBlocksToForce;            ///< Number of blocks that is added when Force Alloc
                                         ///  expands the pool.
-    #ifdef LE_MEM_TRACE
+    #if LE_CONFIG_MEM_TRACE
         le_log_TraceRef_t memTrace;     ///< If tracing is enabled, keeps track of a trace object
                                         ///  for this pool.
     #endif

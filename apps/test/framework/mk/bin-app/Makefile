@@ -25,7 +25,7 @@ $(TARGET): source.$(TARGET) binary.$(TARGET)
 	    echo "error: source and binary systems differ" >&2; \
 	    exit 1; \
 	fi
-	if [ $(ENABLE_IMA) -eq 1 ] ; then \
+	if [ $(LE_CONFIG_ENABLE_IMA) -eq y ] ; then \
 		if ! diff -q $(BUILD_DIR)/source/hello-system.$(TARGET).signed.update \
 		             $(BUILD_DIR)/binary/hello-system.$(TARGET).signed.update; then \
 		    src_system_dir=`mktemp -d`; \
@@ -61,7 +61,7 @@ binary.$(TARGET): app.$(TARGET)
 	        -w $(BUILD_DIR)/build -o $(BUILD_DIR)/binary
 	rm -rf $(BUILD_DIR)/build-binary && mv $(BUILD_DIR)/build $(BUILD_DIR)/build-binary
 	#Check if IMA build is enabled, if yes then try to build with signed binary app.
-	if [ $(ENABLE_IMA) -eq 1 ] ; then \
+	if [ $(LE_CONFIG_ENABLE_IMA) -eq y ] ; then \
 		rm -rf $(BUILD_DIR)/build; \
 		HELLO_APP=$(BUILD_DIR)/app/hello.$(TARGET).signed.app \
 			mksys hello-system.sdef -t $(TARGET) -i $(LEGATO_ROOT)/interfaces/modemServices \

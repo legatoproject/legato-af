@@ -17,12 +17,6 @@ sources:
     assetDataTest.c
 }
 
-cflags:
-{
-    $LEGATO_FEATURE_OBSERVE
-    $LEGATO_FEATURE_TIMESERIES
-}
-
 ldflags:
 {
     ${LDFLAG_LEGATO_TIMESERIES}

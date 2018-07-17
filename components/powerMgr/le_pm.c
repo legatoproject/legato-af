@@ -137,7 +137,7 @@ static inline WakeupSource_t *ToWakeupSource
         return NULL;
     }
 
-#ifdef DEBUG
+#if LE_CONFIG_DEBUG
     if (PM_WAKEUP_SOURCE_COOKIE != ws->cookie || ws->wsref != w)
     {
         LE_FATAL("Error: invalid wakeup source %p.", w);
@@ -153,7 +153,7 @@ static inline WakeupSource_t *ToWakeupSource
  *
  */
 //--------------------------------------------------------------------------------------------------
-#ifdef DEBUG
+#if LE_CONFIG_DEBUG
 static inline Client_t *to_Client_t
 (
     void *c

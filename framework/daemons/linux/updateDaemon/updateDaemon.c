@@ -55,11 +55,6 @@
 #include "file.h"
 #include "smack.h"
 
-// Default probation period.
-#ifndef PROBATION_PERIOD
-#define PROBATION_PERIOD  (30 * 60 * 1000)  // 30 minutes.
-#endif
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2340,7 +2335,7 @@ static size_t GetProbationPeriod
 
     if ((envStrPtr == NULL) || (le_utf8_ParseInt(&period, envStrPtr) != LE_OK) || (period <= 0))
     {
-        period = PROBATION_PERIOD;
+        period = LE_CONFIG_PROBATION_PERIOD * 1000;
     }
 
     LE_INFO("System probation period = %d ms (~ %d minutes)", period, period / 60000);

@@ -1,0 +1,37 @@
+#
+# Configuration for Legato watchdog daemon.
+#
+# Copyright (C) Sierra Wireless Inc.
+#
+
+### Options ###
+
+config WDOG_FRAMEWORK
+  bool "Enable Legato watchdog on framework services"
+  default y
+  ---help---
+  The watchdog observes the Legato framework daemons and, if one deadlocks,
+  restarts the system.
+
+config WDOG_ENABLE_EXTERNAL
+  bool "Enable external watchdog"
+  depends on LINUX
+  default y if TARGET_WP750X || TARGET_WP85
+  default n
+  ---help---
+  Kick an external hardware or software watchdog from the Legato watchdog
+  daemon.
+
+config WDOG_PA_MODULE
+  string "Kernel module for external watchdog"
+  depends on LINUX && WDOG_ENABLE_EXTERNAL
+  default "softdog"
+  ---help---
+  Name of the kernel module to load in order to enable the external watchdog.
+
+config WDOG_PA_DEVICE
+  string "External watchdog device"
+  depends on LINUX && WDOG_ENABLE_EXTERNAL
+  default "/dev/watchdog"
+  ---help---
+  Name of the device to use to kick the external watchdog.

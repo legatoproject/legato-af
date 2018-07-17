@@ -1,0 +1,11 @@
+#
+# Configuration for Legato core daemons.
+#
+# Copyright (C) Sierra Wireless Inc.
+#
+
+### Daemon Options ###
+
+source "framework/daemons/linux/supervisor/KConfig"
+source "framework/daemons/linux/serviceDirectory/KConfig"
+source "framework/daemons/linux/watchdog/KConfig"

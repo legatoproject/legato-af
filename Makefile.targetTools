@@ -15,6 +15,8 @@
 # Copyright (C) Sierra Wireless Inc.
 # --------------------------------------------------------------------------------------------------
 
+include utils.mk
+
 BUILD_PRODUCTS = 	config		\
 					log		\
 					sdir	\
@@ -44,9 +46,6 @@ ifneq ($(findstring $(TARGET), wp750x wp85 wp76xx wp77xx),)
 endif
 BUILD_PRODUCTS += ${PROPRIETARY_APPS}
 
-.PHONY: all $(BUILD_PRODUCTS)
-all: $(BUILD_PRODUCTS)
-
 # Make sure required variables are set.
 ifndef TARGET
   $(error TARGET is not set)
@@ -75,29 +74,19 @@ LIB_DIR := $(BUILD_DIR)/lib
 
 LOCAL_MKTOOLS_FLAGS = -t $(TARGET)
 
-ifneq ($(STRIP_STAGING_TREE),0)
+ifeq ($(LE_CONFIG_STRIP_STAGING_TREE),y)
   LOCAL_MKTOOLS_FLAGS += -d $(LEGATO_ROOT)/build/$(TARGET)/debug
 endif
 
-ifneq ($(DEBUG),yes)
+ifneq ($(LE_CONFIG_DEBUG),y)
   LOCAL_MKTOOLS_FLAGS += --cflags=" -O2 -fno-omit-frame-pointer"
-endif
-
-# Do not be verbose by default.
-VERBOSE ?= 0
-ifeq ($(VERBOSE),1)
-  LOCAL_MKTOOLS_FLAGS += -v
-endif
-
-ifneq ($(LEGATO_JOBS),)
-  LOCAL_MKTOOLS_FLAGS += -j $(LEGATO_JOBS)
 endif
 
 LOCAL_MKEXE_FLAGS = $(MKEXE_FLAGS) -l $(LIB_DIR) -w $(BUILD_DIR)/tools/$@ $(LOCAL_MKTOOLS_FLAGS)
 LOCAL_MKAPP_FLAGS = $(MKAPP_FLAGS) -o $(APP_DIR) -w $(BUILD_APP_DIR)/tools/$@ $(LOCAL_MKTOOLS_FLAGS)
 LOCAL_PROPRIETARY_APPS_FLAGS = $(LOCAL_MKTOOLS_FLAGS)
 
-ifeq ($(ENABLE_IMA),1)
+ifeq ($(LE_CONFIG_ENABLE_IMA),y)
   LOCAL_MKAPP_FLAGS += -S
   LOCAL_PROPRIETARY_APPS_FLAGS += -S
 endif
@@ -105,6 +94,7 @@ endif
 # Add the framework's bin directory to the PATH environment variable.
 export PATH := $(PATH):$(LEGATO_ROOT)/bin
 
+LIBJANSSON = $(LIB_DIR)/libjansson.so
 JANSSON_INC_DIR = $(LEGATO_ROOT)/build/$(TARGET)/framework/libjansson/include/
 TOOLS_SRC_DIR = $(LEGATO_ROOT)/framework/tools/target/linux
 APP_TOOLS_SRC_DIR = $(LEGATO_ROOT)/apps/tools
@@ -112,8 +102,33 @@ LIBLEGATO_SRC_DIR = $(LEGATO_ROOT)/framework/liblegato
 DAEMON_SRC_DIR = $(LEGATO_ROOT)/framework/daemons/linux
 LEGATO_INTERFACES_DIR = $(LEGATO_ROOT)/interfaces
 
-config:
-	mkexe -o $(BIN_DIR)/$@ $(TOOLS_SRC_DIR)/config \
+### Recipes ###
+
+.PHONY: all $(BUILD_PRODUCTS)
+all: $(BUILD_PRODUCTS)
+
+$(LIB_DIR):
+	$(Q)mkdir -p $@
+
+# Currently, the config tool depends on libjansson, which is built using CMake.
+$(LIBJANSSON): $(LIB_DIR)
+	$(Q)mkdir -p $(BUILD_DIR)/libjansson
+	$(L) CMAKE $@
+	$(Q)cd $(BUILD_DIR)/libjansson && \
+		cmake $(LEGATO_ROOT)/3rdParty/jansson \
+			-DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake \
+			-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=$(LIB_DIR) \
+			-DBUILD_SHARED_LIBS=ON \
+			-DJANSSON_WITHOUT_TESTS=ON \
+			-DJANSSON_EXAMPLES=OFF \
+			-DJANSSON_BUILD_DOCS=OFF $(VOUTPUT) 2>&1
+	$(L) MAKE $@
+	$(Q)make -C $(BUILD_DIR)/libjansson $(VOUTPUT)
+	$(Q)cp $(BUILD_DIR)/libjansson/lib/libjansson.so $@
+
+config: $(LIBJANSSON)
+	$(L) MKEXE $(BIN_DIR)/$@
+	$(Q)mkexe -o $(BIN_DIR)/$@ $(TOOLS_SRC_DIR)/config \
 			-i $(JANSSON_INC_DIR) \
 			-i $(LIBLEGATO_SRC_DIR) \
 			--ldflags=-L$(LIB_DIR) \
@@ -121,14 +136,16 @@ config:
 			$(LOCAL_MKEXE_FLAGS)
 
 log:
-	mkexe -o $(BIN_DIR)/$@ \
+	$(L) MKEXE $(BIN_DIR)/$@
+	$(Q)mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/logTool/logTool.c \
 			-i $(LIBLEGATO_SRC_DIR) \
 			-i $(DAEMON_SRC_DIR)/logDaemon \
 			$(LOCAL_MKEXE_FLAGS)
 
 sdir:
-	mkexe -o $(BIN_DIR)/$@ \
+	$(L) MKEXE $(BIN_DIR)/$@
+	$(Q)mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/sdirTool \
 			-i $(LIBLEGATO_SRC_DIR) \
 			-i $(LIBLEGATO_SRC_DIR)/linux \
@@ -136,36 +153,37 @@ sdir:
 			$(LOCAL_MKEXE_FLAGS)
 
 gdbCfg:
-	ln -sf debugCfg $(BIN_DIR)/gdbCfg
+	$(Q)ln -sf debugCfg $(BIN_DIR)/gdbCfg
 
 straceCfg:
-	ln -sf debugCfg $(BIN_DIR)/straceCfg
+	$(Q)ln -sf debugCfg $(BIN_DIR)/straceCfg
 
 inspect:
-	mkexe -o $(BIN_DIR)/$@ \
+	$(L) MKEXE $(BIN_DIR)/$@
+	$(Q)mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/inspect/inspect.c \
-			--cflags=-DLE_SVCDIR_SERVER_SOCKET_NAME="$(LE_SVCDIR_SERVER_SOCKET_NAME)" \
-			--cflags=-DLE_SVCDIR_CLIENT_SOCKET_NAME="$(LE_SVCDIR_CLIENT_SOCKET_NAME)" \
 			-i $(LIBLEGATO_SRC_DIR) \
 			-i $(LIBLEGATO_SRC_DIR)/linux \
 			-i $(DAEMON_SRC_DIR) \
 			$(LOCAL_MKEXE_FLAGS)
 
 xattr:
-	mkexe -o $(BIN_DIR)/$@ \
+	$(L) MKEXE $(BIN_DIR)/$@
+	$(Q)mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/xattr/xattr.c \
 			-i $(LIBLEGATO_SRC_DIR) \
 			$(LOCAL_MKEXE_FLAGS)
 
 appStopClient:
-	mkexe -o $(BIN_DIR)/_$@ \
+	$(L) MKEXE $(BIN_DIR)/$@
+	$(Q)mkexe -o $(BIN_DIR)/_$@ \
 			$(TOOLS_SRC_DIR)/appStopClient/appStopClient.c \
-			--cflags=-DLE_RUNTIME_DIR='"$(LE_RUNTIME_DIR)"' \
 			-i $(LIBLEGATO_SRC_DIR) \
 			$(LOCAL_MKEXE_FLAGS)
 
 app:
-	mkexe -o $(BIN_DIR)/$@ \
+	$(L) MKEXE $(BIN_DIR)/$@
+	$(Q)mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/appCtrl \
 			-i $(LEGATO_INTERFACES_DIR)/supervisor \
 			-i $(LIBLEGATO_SRC_DIR) \
@@ -173,28 +191,30 @@ app:
 			$(LOCAL_MKEXE_FLAGS)
 
 update:
-	mkexe -o $(BIN_DIR)/$@ \
+	$(L) MKEXE $(BIN_DIR)/$@
+	$(Q)mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/$@ \
 			$(LOCAL_MKEXE_FLAGS)
 
 sbtrace:
-	mkexe -o $(BIN_DIR)/$@ \
+	$(L) MKEXE $(BIN_DIR)/$@
+	$(Q)mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/$@ \
 			-i $(LIBLEGATO_SRC_DIR)/linux \
 			$(LOCAL_MKEXE_FLAGS)
 
 scripts:
-	cp -u -P --preserve=all $(wildcard framework/tools/target/linux/bin/*) $(BIN_DIR)
+	$(Q)cp -u -P --preserve=all $(wildcard framework/tools/target/linux/bin/*) $(BIN_DIR)
 
 devMode:
-	mkapp $(APP_TOOLS_SRC_DIR)/$@.adef \
-			-i $(LIBLEGATO_SRC_DIR) \
-			$(LOCAL_MKAPP_FLAGS)
+	$(L) MKAPP $@
+	$(Q)mkapp $(APP_TOOLS_SRC_DIR)/$@.adef -i $(LIBLEGATO_SRC_DIR) $(LOCAL_MKAPP_FLAGS)
 
 # Rule to bundle proprietary apps
 ${PROPRIETARY_APPS}: export LEGATO_PROPRIETARY_QCT_DIR=${LEGATO_ROOT}/proprietary/qct/${LEGATO_TARGET}
 ${PROPRIETARY_APPS}:
-	mkapp $(APPS_PROPRIETARY_SRC_DIR)/$@/src/$@.adef \
+	$(L) MKAPP $@
+	$(Q)mkapp $(APPS_PROPRIETARY_SRC_DIR)/$@/src/$@.adef \
 			-b \
 			-i $(LEGATO_ROOT)/interfaces/modemServices \
 			-i $(LEGATO_ROOT)/interfaces/atServices \

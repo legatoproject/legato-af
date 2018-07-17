@@ -24,9 +24,12 @@ set(LEGATO_TOOL_MKEXE       "${LEGATO_ROOT}/bin/mkexe")
 set(LEGATO_TOOL_MKCOMP      "${LEGATO_ROOT}/bin/mkcomp")
 set(LEGATO_TOOL_MKSYS       "${LEGATO_ROOT}/bin/mksys")
 set(LEGATO_TOOL_MKDOC       "${LEGATO_ROOT}/bin/mkdoc")
+set(LEGATO_TOOL_K2DOX       "${LEGATO_ROOT}/bin/kconfig2dox")
 
 # C Framework
-set(LEGATO_INCLUDE_DIRS ${LEGATO_INCLUDE_DIRS} ${LEGATO_ROOT}/framework/include)
+set(LEGATO_INCLUDE_DIRS ${LEGATO_INCLUDE_DIRS}
+                        ${LEGATO_ROOT}/framework/include
+                        ${LEGATO_ROOT}/build/${LEGATO_TARGET}/framework/include)
 set(LEGATO_LIBRARY_PATH ${LEGATO_ROOT}/build/${LEGATO_TARGET}/framework/lib/liblegato.so)
 
 set(JOBS_ARGS "")

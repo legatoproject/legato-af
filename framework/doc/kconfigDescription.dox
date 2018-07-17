@@ -1,0 +1,143 @@
+/** @page kconfigDescription Legato KConfig
+
+See @subpage kconfigOptions for the current list of configuration options.
+
+@section kconfigDescription_WhatIs What is KConfig?
+
+KConfig is a selection-based configuration system originally developed for the
+Linux kernel.  It is commonly used to select build-time options and to enable
+or disable features, and has now found use in other projects beyond the Linux
+kernel.
+
+Most users interact with KConfig via a curses or graphical menu interface,
+usually invoked by running `make menuconfig`.  In this interface, the user
+selects the options and features desired, and saves a configuration file,
+which is then used as an input to the build process.
+
+The menus and configuration options are defined by KConfig files sprinkled
+throughout the source tree.  The format of these files is described in detail
+at http://ymorin.is-a-geek.org/git/kconfig-frontends/tree/docs/kconfig-language.txt?id=v4.11.0.1
+
+@section kconfigDescription_Legato What is it used for in Legato?
+
+In Legato, KConfig provides a unified mechanism for configuring the framework
+and service builds.  This includes target selection, enabling security and
+diagnosic features, and many others.   The full list of options may be found
+at @ref kconfigOptions "KConfig Options".  KConfig replaces a mixture of
+environment variables and preprocessor defines which were previously used to
+set the parameters of the build.
+
+Legato uses <a href="http://ymorin.is-a-geek.org/projects/kconfig-frontends">
+kconfig-frontends</a> to manage KConfig files and configuration.  This is a
+version of the Linux kernel's KConfig system that has been extracted and
+tweaked for independent use.
+
+@section kconfigDescription_HowTo How to Configure Legato
+
+Legato will generate a default configuration if none is explicitly provided,
+and the default can be later customized.
+
+@subsection kconfigDescription_Defaults Defaults
+
+By default, when Legato is built using `make` or `make <target>`, a default
+configuration file for the target is generated with the name
+`.config.<target>`.  This file will be populated with appropriate default
+values for the target, and values taken from the environment if certain
+environment variables are set.  These environment variables are supported for
+backwards compatibility, and the preferred method of configuration is through
+the menuconfig mechanism.  The following table lists these environment
+variables and the configuration values that they map to.
+
+Environment Variable            | KConfig Option
+------------------------------- | ----------------------------------
+@c DEBUG                        | @ref DEBUG
+@c DISABLE_SMACK                | @ref ENABLE_SMACK (inverse value)
+@c DISABLE_SMACK_ONLYCAP        | @ref SMACK_ONLYCAP (inverse value)
+@c EJDK_DIR                     | @ref EJDK_DIR
+@c ENABLE_IMA                   | @ref ENABLE_IMA
+@c IMA_PRIVATE_KEY              | @ref IMA_PRIVATE_KEY
+@c IMA_PUBLIC_CERT              | @ref IMA_PUBLIC_CERT
+@c IMA_SMACK                    | @ref IMA_SMACK
+@c JDK_INCLUDE_DIR              | @ref JDK_INCLUDE_DIR
+@c LE_SVCDIR_CLIENT_SOCKET_NAME | @ref SVCDIR_CLIENT_SOCKET_NAME
+@c LE_SVCDIR_SERVER_SOCKET_NAME | @ref SVCDIR_SERVER_SOCKET_NAME
+@c LEGATO_FRAMEWORK_NICE_LEVEL  | @ref SUPERV_NICE_LEVEL
+@c SDEF_TO_USE                  | @ref SDEF
+@c SECSTOREADMIN                | @ref ENABLE_SECSTORE_ADMIN
+@c SMACK_ATTR_NAME              | @ref SMACK_ATTR_NAME
+@c SMACK_ATTR_VALUE             | @ref SMACK_ATTR_VALUE
+@c TEST_COVERAGE                | @ref TEST_COVERAGE
+@c TEST_COVERAGE_DIR            | @ref TEST_COVERAGE_DIR
+
+An alternate configuration file can be specified by setting the
+`LEGATO_KCONFIG` environment variable to point at the configuration file to
+use when running the make command.  If this is specified then the environment
+variables will be ignored and no default configuration will be generated.  The
+provided file will be used as the source of all parameters.
+
+@subsection kconfigDescription_Modifying Modifying Configuration
+
+The menu of configuration options may be accessed by running
+`make menuconfig_<target>` (note that `make menuconfig` is equivalent to
+`make menuconfig_localhost`).  This will open a curses-based menu system to
+allow configuration editing.  See the @ref kconfigOptions "KConfig Options"
+page for the complete list of available parameters and their meanings.
+
+@attention  Once the configuration file has been generated, changes to the
+            environment variables which were used to generate it will be
+            ignored.  To make further changes to the configuration, use the
+            menuconfig mechanism.
+
+As an example, the following command would open the menu for the WP76:
+
+@verbatim
+make menuconfig_wp76xx
+@endverbatim
+
+To completely remove all configuration files and build products, run this
+command:
+
+@verbatim
+make distclean
+@endverbatim
+
+After running this, further make commands will cause the configuration to be
+regenerated from the environment and defaults.
+
+@section kconfigDescription_Products What is Produced?
+
+Once a target configuration file has been produced, either as the default
+generated during the build, or through the menuconfig process, it will be
+processed by current and future builds for that target.  When building, the
+configuration will be translated into the following three output files:
+
+ - `${LEGATO_ROOT}/build/<target>/.config.mk`
+ - `${LEGATO_ROOT}/build/<target>/config.sh`
+ - `${LEGATO_ROOT}/build/<target>/framework/include/le_config.h`
+
+In each of these, the configuration selections are provided in the appropriate
+format, with parameter names prefixed with `LE_CONFIG_`.  For example, the
+@ref ENABLE_IMA option becomes `LE_CONFIG_ENABLE_IMA`.
+
+In general, one should not need to use these files directly.  Rather, their
+contents are made available in the build or compilation environment
+automatically.
+
+The `.config.mk` file is included in the main Legato Makefile, and exports all
+of the configured values for use in the build.
+
+The `config.sh` file exports the same values for use in shell scripts, and can
+be sourced to obtain all of the set values.
+
+Finally, the `le_config.h` file is included in `legato.h`, and sets all of the
+values as preprocessor defines to control compilation of the framework,
+services, and apps.  The `le_config.h` file also defines `LE_VERSION` to the
+current Legato version string, and `LE_TARGET` to the target name as a string.
+
+In all cases, string and integer values are simply provided as-is, while in
+the C header boolean values are changed to 0 or 1 (from `n` or `y`,
+respectively).
+
+Copyright (C) Sierra Wireless Inc.
+
+*/

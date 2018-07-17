@@ -1,0 +1,205 @@
+#!/usr/bin/env python
+#
+# Generate a Doxygen file from a KConfig specification.
+#
+# Copyright (C) Sierra Wireless Inc.
+#
+
+import argparse
+import os
+import re
+import sys
+import textwrap
+
+legato_root = os.getenv("LEGATO_ROOT")
+if legato_root:
+    sys.path.append(os.path.join(legato_root, "3rdParty", "Kconfiglib"))
+
+import kconfiglib
+
+INDENT = 2
+
+def write_header(dox, page, title):
+    dox.write("/** @page {0} {1}\n".format(page, title))
+    dox.write("Build-time configuration options.\n")
+
+def write_footer(dox, footer):
+    dox.write("\n{0}\n\n**/\n".format(footer))
+
+def write_dt(dox, content, level):
+    indent_str = ' ' * (level * INDENT)
+    wrapped = textwrap.fill(content, 100, initial_indent=indent_str + (' ' * INDENT),
+                    subsequent_indent=indent_str + (' ' * INDENT))
+    dox.write("{0}<dt>\n".format(indent_str))
+    dox.write("{0}\n".format(wrapped))
+    dox.write("{0}</dt>\n".format(indent_str))
+
+def write_dd_start(dox, level):
+    indent_str = ' ' * (level * INDENT)
+    dox.write("{0}<dd>\n".format(indent_str))
+
+def write_dd_end(dox, level):
+    indent_str = ' ' * (level * INDENT)
+    dox.write("{0}</dd>\n".format(indent_str))
+
+def write_content(dox, content, level):
+    if content:
+        indent_str = ' ' * (level * INDENT)
+        wrapped = textwrap.fill(content, 100, initial_indent=indent_str + (' ' * INDENT),
+                        subsequent_indent=indent_str + (' ' * INDENT))
+        dox.write("{0}\n".format(wrapped))
+
+def write_type(dox, type_, level):
+    write_content(dox, "@b Type: @c {0}<br>".format(kconfiglib.TYPE_TO_STR[type_]), level)
+
+def format_expression(expr, skip_y=True, prefix=" if "):
+    expr_str = kconfiglib.expr_str(expr)
+    if expr_str == '"y"' and skip_y:
+        return ""
+    return prefix + re.sub(r'\b([A-Z][A-Z0-9_]*)\b', r'@ref \1', expr_str)
+
+def write_ranges(dox, ranges, level):
+    if ranges:
+        write_content(dox, "@b Range{0}:<br>".format("s" if len(ranges) > 1 else ""), level)
+        write_content(dox, "<ul>", level)
+        for r in ranges:
+            condition = format_expression(r[2])
+            write_content(dox,
+                "<li><kbd>{0} - {1}{2}</kbd></li>".format(r[0].name, r[1].name, condition),
+                level + 1)
+        write_content(dox, "</ul>", level)
+
+def write_defaults(dox, defaults, level):
+    if defaults:
+        if len(defaults) == 1:
+            value = format_expression(defaults[0][0], skip_y=False, prefix="")
+            condition = format_expression(defaults[0][1])
+            write_content(dox, "@b Default: <kbd>{0}{1}</kbd><br>".format(value, condition), level)
+        else:
+            write_content(dox, "@b Defaults:", level)
+            write_content(dox, "<ul>", level)
+            for d in defaults:
+                value = format_expression(d[0], skip_y=False, prefix="")
+                condition = format_expression(d[1])
+                write_content(dox, "<li><kbd>{0}{1}</kbd></li>".format(value, condition), level + 1)
+            write_content(dox, "</ul>", level)
+
+def write_dependencies(dox, node, level):
+    has_deps = False
+    if isinstance(node.dep, tuple):
+        for d in node.dep:
+            if isinstance(d, kconfiglib.Symbol):
+                has_deps = True
+                break
+    if has_deps:
+        write_content(dox, "<b>Depends on:</b><br>", level)
+        write_content(dox, "<ul>", level)
+        for d in node.dep:
+            if isinstance(d, kconfiglib.Symbol):
+                write_content(dox, "<li><kbd>@ref {0}</kbd></li>".format(d.name), level + 1)
+        write_content(dox, "</ul>", level)
+
+def write_symbol_start(dox, node, level, state):
+    sym = node.item
+    if sym.type != 'UNKNOWN' and sym.nodes:
+        if sym.name in state:
+            content = "<kbd>@ref {0}:</kbd> {1}"
+        else:
+            content = "<kbd>@anchor {0} {0}:</kbd> {1}"
+
+        if node.prompt:
+            content = content.format(sym.name, node.prompt[0])
+            write_dt(dox, content, level)
+            state[sym.name] = {}
+        elif node.help:
+            content = content.format(sym.name, "<em>Hidden.  Only set by other selections.</em>")
+            write_dt(dox, content, level)
+            state[sym.name] = {}
+        else:
+            # Hide items with no help and no prompt text from output.  They are purely internal.
+            return False
+
+        write_dd_start(dox, level)
+        write_type(dox, sym.orig_type, level)
+        write_ranges(dox, sym.ranges, level)
+        write_defaults(dox, sym.defaults, level)
+        write_dependencies(dox, node, level)
+        write_content(dox, node.help, level)
+        return True
+    return False
+
+def write_choice_start(dox, node, level, state):
+    choice = node.item
+    write_dt(dox, "<kbd>{0}</kbd>".format(node.prompt[0]), level)
+    write_dd_start(dox, level)
+    write_defaults(dox, node.defaults, level)
+    write_content(dox, "<em>Choose one of:</em>", level)
+    return True
+
+def write_menu_start(dox, node, level, state):
+    name = node.prompt[0] or str(node.linenr)
+    write_dt(dox, "{0}".format(name), level)
+    write_dd_start(dox, level)
+    return True
+
+def write_dl_start(dox, level):
+    indent_str = ' ' * (level * INDENT)
+    dox.write("{0}<hr>\n{0}<dl>\n".format(indent_str))
+
+def write_dl_end(dox, level):
+    indent_str = ' ' * (level * INDENT)
+    dox.write("{0}</dl>\n".format(indent_str))
+
+def write_node(dox, node, level, state):
+    needs_closure = False
+    if isinstance(node.item, kconfiglib.Symbol):
+        needs_closure = write_symbol_start(dox, node, level, state)
+    elif isinstance(node.item, kconfiglib.Choice):
+        needs_closure = write_choice_start(dox, node, level, state)
+    elif node.item == kconfiglib.MENU:
+        needs_closure = write_menu_start(dox, node, level, state)
+    else:
+        return
+
+    if node.list:
+        write_dl_start(dox, level + 1)
+        entry = node.list
+        while (entry):
+            write_node(dox, entry, level + 2, state)
+            entry = entry.next
+        write_dl_end(dox, level + 1)
+
+    if needs_closure:
+        write_dd_end(dox, level)
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Generate a Doxygen file from a KConfig specification.')
+    parser.add_argument('-k', '--kconfig', default='KConfig', help='KConfig file to read')
+    parser.add_argument('-t', '--title', default=None, help='Page title')
+    parser.add_argument('-p', '--page', default=None, help='Page Doxygen identifier')
+    parser.add_argument('-f', '--footer', default='Copyright (C) Sierra Wireless Inc.',
+        help='Page footer text')
+    parser.add_argument('-d', '--dox', required=True, type=argparse.FileType('w'),
+        help='Doxygen file to generate')
+    args = parser.parse_args()
+
+    parts = os.path.split(args.kconfig)
+    oldwd = os.getcwd()
+    os.chdir(parts[0])
+    kconf = kconfiglib.Kconfig(parts[1])
+    os.chdir(oldwd)
+
+    title = args.title or kconf.mainmenu_text
+    page = args.page or os.path.splitext(os.path.basename(args.dox.name))[0]
+    state = {}
+
+    write_header(args.dox, page, title)
+
+    write_dl_start(args.dox, 0)
+    write_node(args.dox, kconf.top_node, 1, state)
+    write_dl_end(args.dox, 0)
+    write_footer(args.dox, args.footer)
+    args.dox.close()
+
+main()

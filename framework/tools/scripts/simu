@@ -102,7 +102,7 @@ function do_scp {
 function do_start {
     if [ -z "$VIRT_TARGET_ARCH" ] && [ -n "$LEGATO_ROOT" ]; then
         # Try to find out arch legato was built with, if available
-        CMAKE_LOG="$LEGATO_ROOT/build/virt/CMakeFiles/CMakeOutput.log"
+        CMAKE_LOG="$LEGATO_ROOT/build/virt-${VIRT_TARGET_ARCH}/CMakeFiles/CMakeOutput.log"
         if [ -e "$CMAKE_LOG" ]; then
             if grep "i586-poky-linux-gcc" $CMAKE_LOG > /dev/null; then
                export VIRT_TARGET_ARCH="x86"

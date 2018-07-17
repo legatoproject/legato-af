@@ -227,7 +227,7 @@
  * The file the Supervisor uses to ensure that only a single instance of the Supervisor is running.
  */
 //--------------------------------------------------------------------------------------------------
-#define SUPERVISOR_INSTANCE_FILE            STRINGIZE(LE_RUNTIME_DIR) "supervisorInst"
+#define SUPERVISOR_INSTANCE_FILE            LE_CONFIG_RUNTIME_DIR "/supervisorInst"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -906,13 +906,13 @@ static void SetupSmackOnlyCap
     smack_SetRule("qmuxd", "rwx", "_");
     smack_SetRule("_", "rwx", "qmuxd");
 
-#if DISABLE_SMACK_ONLYCAP != 0
-    LE_INFO("SMACK onlycap disabled");
-#else
+#if LE_CONFIG_SMACK_ONLYCAP
     // Set onlycap with 'admin' label
     smack_SetOnlyCap("admin");
     LE_INFO("SMACK onlycap enabled");
-#endif
+#else /* not LE_CONFIG_SMACK_ONLYCAP */
+    LE_INFO("SMACK onlycap disabled");
+#endif /* end not LE_CONFIG_SMACK_ONLYCAP */
 }
 
 
@@ -1110,7 +1110,7 @@ COMPONENT_INIT
 
     // Set our nice level.
     errno = 0;
-    LE_FATAL_IF( (nice(LEGATO_FRAMEWORK_NICE_LEVEL) == -1) && (errno != 0),
+    LE_FATAL_IF( (nice(LE_CONFIG_SUPERV_NICE_LEVEL) == -1) && (errno != 0),
                 "Could not set the nice level.  %m.");
 
     // Unless we have been asked not to, daemonize ourself.
@@ -1126,7 +1126,7 @@ COMPONENT_INIT
     }
 
     // Create the Legato runtime directory if it doesn't already exist.
-    LE_ASSERT(le_dir_Make(STRINGIZE(LE_RUNTIME_DIR), S_IRWXU | S_IXOTH) != LE_FAULT);
+    LE_ASSERT(le_dir_Make(LE_CONFIG_RUNTIME_DIR, S_IRWXU | S_IXOTH) != LE_FAULT);
 
     // Create and lock a dummy file used to ensure that only a single instance of the Supervisor
     // will run.  If we cannot lock the file than another instance of the Supervisor must be running
@@ -1266,7 +1266,7 @@ COMPONENT_INIT
     // Create or remove the SMACK_DISABLED file, which is used by the init scripts to determine to
     // set SMACK labels or not.
     // Ignore the EROFS in case of Legato is Read-Only
-#if DISABLE_SMACK != 1
+#if LE_CONFIG_ENABLE_SMACK
     // Remove SMACK_DISABLED.
     LE_FATAL_IF((unlink("/legato/SMACK_DISABLED") == -1) &&
                      ((errno != ENOENT) && (errno != EROFS)),

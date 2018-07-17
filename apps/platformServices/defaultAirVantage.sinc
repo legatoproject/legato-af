@@ -1,31 +1,15 @@
 //
 // Include this file in the apps: section to include the default airVantage component for this
-// platform.  The default can be overridden from the environment by setting LEGATO_APP_AVC.
+// platform.
 //
 // Copyright (C) Sierra Wireless Inc.
 //
 
-// Set LEGATO_APP_AVC_CHOICE to AVC app to use, allowing override from the environment.
-// Defaults to lwm2mcore if no selection
-// Eventually maybe implement default values so this can be cleaned up.
-buildVars:
-{
-    #if ${LEGATO_APP_AVC} = ""
-        #if ${LEGATO_APP_AVC_DEFAULT} = ""
-            LEGATO_APP_AVC_CHOICE = lwm2mcore
-        #else
-            LEGATO_APP_AVC_CHOICE = ${LEGATO_APP_AVC_DEFAULT}
-        #endif
-    #else
-        LEGATO_APP_AVC_CHOICE = ${LEGATO_APP_AVC}
-    #endif
-}
-
 apps:
 {
-    #if ${LEGATO_APP_AVC_CHOICE} = legacy
+    #if ${LE_CONFIG_APP_AVC_LEGACY} = y
         ${LEGATO_ROOT}/apps/platformServices/airVantage/avcService
-    #elif ${LEGATO_APP_AVC_CHOICE} = lwm2mcore
+    #elif ${LE_CONFIG_APP_AVC_LWM2MCORE} = y
         ${LEGATO_ROOT}/apps/platformServices/airVantageConnector/avcService
         #if ${LEGATO_TARGET} = wp750x
             ${LEGATO_ROOT}/apps/platformServices/airVantage/avcCompat

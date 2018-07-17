@@ -32,11 +32,25 @@ BuildParams_t::BuildParams_t
     argv(NULL)
 //--------------------------------------------------------------------------------------------------
 {
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Finish setting build params; add anything which may be dependent on other build parameters.
+ */
+void BuildParams_t::FinishConfig
+(
+    void
+)
+{
     std::string frameworkRootPath = envVars::Get("LEGATO_ROOT");
 
-    interfaceDirs.push_back(path::Combine(frameworkRootPath, "interfaces"));
+    interfaceDirs.push_front(path::Combine(frameworkRootPath,
+                                          "build/" + target + "/framework/include"));
+    interfaceDirs.push_front(path::Combine(frameworkRootPath, "framework/include"));
 
-    interfaceDirs.push_back(path::Combine(frameworkRootPath, "framework/include"));
+    interfaceDirs.push_front(path::Combine(frameworkRootPath, "interfaces"));
 }
 
 

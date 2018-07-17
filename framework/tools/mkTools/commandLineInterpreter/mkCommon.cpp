@@ -344,23 +344,30 @@ void CheckForIMASigning
     mk::BuildParams_t& buildParams
 )
 {
-    // No ima sign flag is provided in command line, so check environment variable ENABLE_IMA
+    // No ima sign flag is provided in command line, so check environment variable
+    // LE_CONFIG_ENABLE_IMA
     if (!buildParams.signPkg)
     {
-        std::string imaEnable = envVars::Get("ENABLE_IMA");
-        if (imaEnable.compare("1") == 0)
-        {
-            buildParams.signPkg = true;
-        }
+        std::string imaEnable = envVars::Get("LE_CONFIG_ENABLE_IMA");
+        buildParams.signPkg = (imaEnable.compare("1") == 0);
     }
 
     if (buildParams.signPkg)
     {
-        // Get key value from environment variable if no path is specified
+        // Get key values from environment variable if no path is specified
         if (buildParams.privKey.empty() && buildParams.pubCert.empty())
         {
-            buildParams.privKey = envVars::GetRequired("IMA_PRIVATE_KEY");
-            buildParams.pubCert = envVars::GetRequired("IMA_PUBLIC_CERT");
+            buildParams.privKey = envVars::Get("IMA_PRIVATE_KEY");
+            if (buildParams.privKey.empty())
+            {
+                buildParams.privKey = envVars::GetRequired("LE_CONFIG_IMA_PRIVATE_KEY");
+            }
+
+            buildParams.pubCert = envVars::Get("IMA_PUBLIC_CERT");
+            if (buildParams.pubCert.empty())
+            {
+                buildParams.pubCert = envVars::GetRequired("LE_CONFIG_IMA_PUBLIC_CERT");
+            }
         }
 
         // Now checks whether private key exists or not. No need to check empty value, if privKey
@@ -368,7 +375,8 @@ void CheckForIMASigning
         if (!file::FileExists(buildParams.privKey))
         {
             throw mk::Exception_t(mk::format(LE_I18N("Bad private key location '%s'. Provide path "
-                                             "via environment variable IMA_PRIVATE_KEY or -K flag"),
+                                             "via environment variable LE_CONFIG_IMA_PRIVATE_KEY "
+                                             "or -K flag"),
                                              buildParams.privKey));
         }
 
@@ -376,8 +384,8 @@ void CheckForIMASigning
         if (!file::FileExists(buildParams.pubCert))
         {
             throw mk::Exception_t(mk::format(LE_I18N("Bad public certificate location '%s'. Provide"
-                                             " path via environment variable IMA_PUBLIC_CERT or -P"
-                                             " flag"),
+                                             " path via environment variable "
+                                             "LE_CONFIG_IMA_PUBLIC_CERT or -P flag"),
                                              buildParams.pubCert));
         }
     }
@@ -385,8 +393,8 @@ void CheckForIMASigning
     {
         if ((false == buildParams.privKey.empty()) || (false == buildParams.pubCert.empty()))
         {
-            throw mk::Exception_t(LE_I18N("Wrong option. Sign(-S) option or environment variable "
-                                  "ENABLE_IMA must be set to sign the package."));
+            throw mk::Exception_t(LE_I18N("Wrong option. Sign (-S) option or environment variable "
+                                  "LE_CONFIG_ENABLE_IMA must be set to sign the package."));
         }
     }
 }

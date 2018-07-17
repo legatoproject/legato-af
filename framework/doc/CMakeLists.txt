@@ -12,17 +12,17 @@ if(DOXYGEN_FOUND)
     # End-user framework documentation
 
     # Check if an external project needs to be handled
-    if(EXISTS $ENV{EXTERNAL_DOXYGEN_ROOT})
-        set(CMAKE_EXTERNAL_DOXYGEN_ROOT  $ENV{EXTERNAL_DOXYGEN_ROOT})
+    if(EXISTS $ENV{LE_CONFIG_EXTERNAL_DOCS_ROOT})
+        set(CMAKE_EXTERNAL_DOXYGEN_ROOT  $ENV{LE_CONFIG_EXTERNAL_DOCS_ROOT})
 
         # CMake preprocesses the doxygen ".in" file and replaces variable with value
         set(EXTERNAL_DOXYGEN_DEFINE  "EXTERNAL_DOXYGEN_DEFINE")
         message(STATUS "Msg:External Project detected, adding to documents: " ${CMAKE_EXTERNAL_DOXYGEN_ROOT})
 
         # Provide hook to do other build steps within the external project
-        if(EXISTS "$ENV{EXTERNAL_DOXYGEN_ROOT}/CMakeLists.txt")
-            message(STATUS "Msg:External project detected, including : $ENV{EXTERNAL_DOXYGEN_ROOT}/CMakeLists.txt")
-            include("$ENV{EXTERNAL_DOXYGEN_ROOT}/CMakeLists.txt")
+        if(EXISTS "$ENV{LE_CONFIG_EXTERNAL_DOCS_ROOT}/CMakeLists.txt")
+            message(STATUS "Msg:External project detected, including : $ENV{LE_CONFIG_EXTERNAL_DOCS_ROOT}/CMakeLists.txt")
+            include("$ENV{LE_CONFIG_EXTERNAL_DOCS_ROOT}/CMakeLists.txt")
         endif()
     endif()
 
@@ -57,6 +57,13 @@ if(DOXYGEN_FOUND)
     add_custom_target(mkdoc_gen
         COMMAND ${LEGATO_TOOL_MKDOC} ${CMAKE_CURRENT_BINARY_DIR}/generated)
 
+    add_custom_target(kconfig_gen
+        COMMAND ${LEGATO_TOOL_K2DOX}
+            --title "Legato KConfig Options"
+            --page kconfigOptions
+            --kconfig ${LEGATO_ROOT}/KConfig
+            --dox ${CMAKE_CURRENT_BINARY_DIR}/generated/kconfigOptions.dox)
+
     function(generate_doc DOC_TARGET DOC_TITLE DOXYGEN_OUTPUT DOXYGEN_CFG)
 
         # HTML
@@ -81,7 +88,7 @@ if(DOXYGEN_FOUND)
             COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/static/search.css                             ${DOXYGEN_OUTPUT}/html/search
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
             COMMENT "Generating HTML for ${DOC_TITLE}" VERBATIM
-            DEPENDS api_headers mkdoc_gen
+            DEPENDS api_headers mkdoc_gen kconfig_gen
         )
 
         # PDF

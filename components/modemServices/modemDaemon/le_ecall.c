@@ -2029,7 +2029,7 @@ static void* ECallThread
 
     le_sem_Post(initSemaphore);
 
-#if INCLUDE_ECALL
+#if LE_CONFIG_ENABLE_ECALL
     // Watchdog eCall event loop.
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };

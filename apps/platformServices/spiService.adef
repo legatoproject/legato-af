@@ -20,17 +20,16 @@ processes:
     }
 
     faultAction: restart
-    #if ${LEGATO_SERVICES_WDOG_DISABLE} = 1
-        watchdogTimeout: never
+    #if ${LE_CONFIG_SERVICES_WATCHDOG} = y
+        maxWatchdogTimeout: 120000
     #else
-        watchdogTimeout: 120000
+        watchdogTimeout: never
     #endif
 }
 
 requires:
 {
-#if ${LEGATO_FEATURE_SPISVC} = ""
-#else
+#if ${LE_CONFIG_FEATURE_SPISVC} = y
     kernelModules:
     {
         $LEGATO_ROOT/drivers/spisvc/spisvc.mdef

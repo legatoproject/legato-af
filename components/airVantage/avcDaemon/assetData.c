@@ -25,9 +25,13 @@
 // For htonl
 #include <arpa/inet.h>
 
-#ifdef LEGATO_FEATURE_TIMESERIES
+#if FEATURE_TIMESERIES
+#   error "This time series implementation is obsolete"
+#endif
 
-#include "tinycbor/cbor.h"
+#if FEATURE_TIMESERIES
+
+#include "cbor.h"
 #include "zlib.h"
 
 #endif
@@ -71,7 +75,7 @@
  * Checks the return value from the tinyCBOR encoder and returns from function if an error is found.
  */
 //--------------------------------------------------------------------------------------------------
-#ifdef LEGATO_FEATURE_TIMESERIES
+#if FEATURE_TIMESERIES
 
 #define \
     RETURN_IF_CBOR_ERROR( err ) \
@@ -163,7 +167,7 @@ typedef struct
     uint8_t* bufferPtr;             ///< Buffer for accumulating history data.
     size_t bufferSize;              ///< Buffer size of history data.
 
-#ifdef LEGATO_FEATURE_TIMESERIES
+#if FEATURE_TIMESERIES
     double timeStampFactor;         ///< Factor of time stamp.
     uint64_t prevTimeStamp;         ///< Time stamp of last data capture, used for delta encoding.
 
@@ -1305,7 +1309,7 @@ static le_result_t StartTimeSeries
     double timeStampFactor                      ///< [IN] Multiplication factor used for delta encoding of time stamp
 )
 {
-#ifdef LEGATO_FEATURE_TIMESERIES
+#if FEATURE_TIMESERIES
 
     le_result_t result;
     FieldData_t* fieldDataPtr;
@@ -1433,7 +1437,7 @@ static le_result_t StopTimeSeries
     int fieldId                                 ///< [IN] Field to be time series'd
 )
 {
-#ifdef LEGATO_FEATURE_TIMESERIES
+#if FEATURE_TIMESERIES
 
     le_result_t result;
     FieldData_t* fieldDataPtr;
@@ -1484,7 +1488,7 @@ static le_result_t PushTimeSeries
 )
 {
 
-#ifdef LEGATO_FEATURE_TIMESERIES
+#if FEATURE_TIMESERIES
 
     le_result_t result;
     FieldData_t* fieldDataPtr;
@@ -1608,7 +1612,7 @@ le_result_t GetTimeSeriesStatus
     int* numDataPointsPtr                       ///< [OUT] Number of data points recorded so far
 )
 {
-#ifdef LEGATO_FEATURE_TIMESERIES
+#if FEATURE_TIMESERIES
 
     le_result_t result;
     FieldData_t* fieldDataPtr;
@@ -1660,7 +1664,7 @@ static le_result_t TimeSeriesAddEntry
 )
 {
 
-#ifdef LEGATO_FEATURE_TIMESERIES
+#if FEATURE_TIMESERIES
 
     CborError err;
     uint64_t timeStamp;

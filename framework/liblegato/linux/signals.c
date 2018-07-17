@@ -77,14 +77,14 @@ static le_mem_PoolRef_t HandlerObjPool;
 static pthread_key_t SigMonKey;
 
 
-#if (!defined LE_SEGV_HANDLER_DISABLE)
+#if LE_CONFIG_ENABLE_SEGV_HANDLER
 //--------------------------------------------------------------------------------------------------
 /**
  * Stack, signals mask and context environment for sigsetjmp() and siglongjmp()
  */
 //--------------------------------------------------------------------------------------------------
 static sigjmp_buf SigEnv;
-#endif //LE_SEGV_HANDLER_DISABLE
+#endif // LE_CONFIG_ENABLE_SEGV_HANDLER
 
 
 //--------------------------------------------------------------------------------------------------
@@ -204,7 +204,7 @@ static void OurSigHandler
     }
 }
 
-#if (!defined LE_SEGV_HANDLER_DISABLE)
+#if LE_CONFIG_ENABLE_SEGV_HANDLER
 //--------------------------------------------------------------------------------------------------
 /**
  * SEGV handler used to handle a SEGV while executing the ShowStackSignalHandler handler. This will
@@ -226,7 +226,7 @@ static __attribute__((unused)) void SigSegVHandler( int signum )
         siglongjmp(SigEnv, 1);
     }
 }
-#endif //LE_SEGV_HANDLER_DISABLE
+#endif // LE_CONFIG_ENABLE_SEGV_HANDLER
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -397,7 +397,7 @@ static void ShowStackSignalHandler
         int* base = (int*)__builtin_frame_address(0);
         int* frame = base;
 
-#if (!defined LE_SEGV_HANDLER_DISABLE)
+#if LE_CONFIG_ENABLE_SEGV_HANDLER
         struct sigaction sa, saveSaSegV;
         int ret;
 
@@ -412,7 +412,7 @@ static void ShowStackSignalHandler
         }
 
         if (0 == sigsetjmp(SigEnv, 1))
-#endif //LE_SEGV_HANDLER_DISABLE
+#endif // LE_CONFIG_ENABLE_SEGV_HANDLER
         {
             snprintf(sigString, sizeof(sigString), "PC at %08x\n",
                      (int)ctxPtr->arm_pc);
@@ -420,11 +420,11 @@ static void ShowStackSignalHandler
             snprintf(sigString, sizeof(sigString), "LR at %08x [%p]\n",
                      (int)ctxPtr->arm_lr , frame);
             WRITE(2, sigString, strlen(sigString));
-#if (!defined LE_SEGV_HANDLER_DISABLE)
+#if LE_CONFIG_ENABLE_SEGV_HANDLER
             if (frame)
 #else
             if ((frame) && (frame <= (base + 1024*1024)) && (frame >= base))
-#endif //LE_SEGV_HANDLER_DISABLE
+#endif // LE_CONFIG_ENABLE_SEGV_HANDLER
             {
                 frame = (int*)*(frame-1);
             }
@@ -448,7 +448,7 @@ static void ShowStackSignalHandler
                 frame = (int *)*(frame-1);
             }
         }
-#if (!defined LE_SEGV_HANDLER_DISABLE)
+#if LE_CONFIG_ENABLE_SEGV_HANDLER
         else
         {
             snprintf(sigString, sizeof(sigString), "Abort while dumping the backtrace\n");
@@ -463,7 +463,7 @@ static void ShowStackSignalHandler
         }
 
         if (0 == sigsetjmp(SigEnv, 1))
-#endif //LE_SEGV_HANDLER_DISABLE
+#endif // LE_CONFIG_ENABLE_SEGV_HANDLER
         {
             snprintf(sigString, sizeof(sigString),
                      "r0  %08lx r1  %08lx r2  %08lx r3  %08lx r4  %08lx  r5  %08lx\n",
@@ -484,11 +484,11 @@ static void ShowStackSignalHandler
                      "STACK %08lx, FRAME %08lx\n", ctxPtr->arm_sp, ctxPtr->arm_fp);
             WRITE(2, sigString, strlen(sigString));
             for (addr = 0, frame = (int*)ctxPtr->arm_sp-32;
-#if (!defined LE_SEGV_HANDLER_DISABLE)
+#if LE_CONFIG_ENABLE_SEGV_HANDLER
                  addr < 1024;
 #else
                  addr < 256;
-#endif //LE_SEGV_HANDLER_DISABLE
+#endif // LE_CONFIG_ENABLE_SEGV_HANDLER
                  addr += 8, frame += 8)
             {
                 snprintf(sigString, sizeof(sigString),
@@ -499,7 +499,7 @@ static void ShowStackSignalHandler
                 WRITE(2, sigString, strlen(sigString));
             }
         }
-#if (!defined LE_SEGV_HANDLER_DISABLE)
+#if LE_CONFIG_ENABLE_SEGV_HANDLER
         else
         {
             snprintf(sigString, sizeof(sigString), "Abort while dumping the stack\n");
@@ -507,7 +507,7 @@ static void ShowStackSignalHandler
         }
 
         (void)sigaction( SIGSEGV, &saveSaSegV, NULL );
-#endif //LE_SEGV_HANDLER_DISABLE
+#endif // LE_CONFIG_ENABLE_SEGV_HANDLER
     }
 #else
     {
@@ -590,11 +590,11 @@ void le_sig_InstallShowStackHandler
     }
     sa.sa_sigaction = (void (*)(int, siginfo_t *, void *))ShowStackSignalHandler;
     sigemptyset(&sa.sa_mask);
-#if (!defined LE_SEGV_HANDLER_DISABLE)
+#if LE_CONFIG_ENABLE_SEGV_HANDLER
     sa.sa_flags = SA_NOCLDSTOP | SA_SIGINFO | SA_RESETHAND | SA_NODEFER;
 #else
     sa.sa_flags = SA_NOCLDSTOP | SA_SIGINFO | SA_RESETHAND;
-#endif //LE_SEGV_HANDLER_DISABLE
+#endif // LE_CONFIG_ENABLE_SEGV_HANDLER
     ret = sigaction( SIGSEGV, &sa, NULL );
     if( ret )
     {

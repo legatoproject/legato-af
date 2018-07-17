@@ -24,8 +24,7 @@ before the app starts. To set up the dependency the following has to be added to
 @verbatim
 requires:
 {
-#if ${LEGATO_FEATURE_SPISVC} = ""
-#else
+#if ${LE_CONFIG_FEATURE_SPISVC} = y
     kernelModules:
     {
         $LEGATO_ROOT/drivers/spisvc/spisvc.mdef
@@ -116,8 +115,7 @@ apps:
     $LEGATO_ROOT/apps/platformServices/spiService
 }
 
-#if ${LEGATO_FEATURE_SPISVC} = ""
-#else
+#if ${LE_CONFIG_FEATURE_SPISVC} = y
 kernelModules:
 {
     $LEGATO_ROOT/drivers/spisvc/spisvc.mdef

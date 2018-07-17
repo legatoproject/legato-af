@@ -1,13 +1,10 @@
 /** @page platformConstraintsReadOnly Legato Read Only R/O
 
-The Legato can be built as read-only (R/O)
-This is done by setting the variable <b><c>READ_ONLY=1</c></b> as argument to
-<b><c>make</c></b>. In this case, both images RW and RO are generated.
+The Legato can be built as a read-only (R/O) image.
+This is done by setting the KConfig option @ref READ_ONLY. In this case, both
+RW and RO images are generated.
 
 @note This is the default for <b>ar759x</b> and <b>ar758x</b> platforms.
-
-It also possible to force the built as read-write (R/W) by setting the variable
-<b><c>READ_ONLY=0</c></b>.
 
 <b>What is Legato R/O</b><br>
 The Legato system tree is built and deployed into a squashfs or ubifs image.
@@ -80,14 +77,8 @@ be compiled and deployed into the whole legato system tree.
 <b>Setting SMACK labels:</b><br>
 Because the Legato directory tree is read-only, the SMACK labels need to be set during the
 build time.<br>
-This is done by fixing labels name and value to the variables <b><c>SMACK_ATTR_NAME</c></b> and
-<b><c>SMACK_ATTR_VALUE</c></b> located into the <b><c>targetDefs.<target></c></b>.<br>
-<br>
-For example, the variables set in the <b><c>targetDefs.ar759x</c></b> file:<br>
-<c># SMACK attribute name and value (optional)</c><br>
-<c># If set, SMACK attr will be set at build time</c><br>
-<c>export <b>SMACK_ATTR_NAME=security.SMACK64</b></c><br>
-<c>export <b>SMACK_ATTR_VALUE=*</b></c><br>
+This is done by setting the label's name and value using the KConfig options @ref SMACK_ATTR_NAME
+and @ref SMACK_ATTR_VALUE, respectively.
 
 Copyright (C) Sierra Wireless Inc.
 

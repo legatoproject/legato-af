@@ -231,8 +231,8 @@ static const FileLinkObj_t DefaultLinks[] =
 //--------------------------------------------------------------------------------------------------
 static const FileLinkObj_t DefaultTmpLinks[] =
 {
-    {.src = STRINGIZE(LE_SVCDIR_SERVER_SOCKET_NAME), .dest = "/tmp/legato/"},
-    {.src = STRINGIZE(LE_SVCDIR_CLIENT_SOCKET_NAME), .dest = "/tmp/legato/"}
+    {.src = LE_SVCDIR_SERVER_SOCKET_NAME, .dest = "/tmp/legato/"},
+    {.src = LE_SVCDIR_CLIENT_SOCKET_NAME, .dest = "/tmp/legato/"}
 };
 
 
@@ -890,7 +890,7 @@ static void SetDefaultSmackRules
 
     if (ima_IsEnabled())
     {
-        smack_SetRule(appLabelPtr, "rx", IMA_SMACK_LABEL);
+        smack_SetRule(appLabelPtr, "rx", LE_CONFIG_IMA_SMACK);
     }
     smack_SetRule(appLabelPtr, "rwx", "framework");
 
@@ -1650,9 +1650,6 @@ static le_result_t CreateTmpFs
     const char* appDirLabelPtr          ///< [IN] SMACK label to use for created directories.
 )
 {
-// TODO: make this configurable.
-#define APP_TMPFS_SIZE      90112       // Bytes.
-
     // Create /tmp folder in the sandbox.
     char tmpPath[LIMIT_MAX_PATH_BYTES] = "";
 
@@ -1673,11 +1670,11 @@ static le_result_t CreateTmpFs
     // Make the mount options.
     char opt[LIMIT_MAX_APP_NAME_BYTES*2 + 100];
     if (snprintf(opt, sizeof(opt), "size=%d,mode=%.4o,uid=%d,gid=%d"
-#if (DISABLE_SMACK != 1)
+#if LE_CONFIG_ENABLE_SMACK
                                    ",smackfsdef=%s,smackfsroot=%s"
 #endif
-                 , APP_TMPFS_SIZE, S_IRWXO, 0, 0
-#if (DISABLE_SMACK != 1)
+                 , LE_CONFIG_SUPERV_APP_TMPFS_SIZE, S_IRWXO, 0, 0
+#if LE_CONFIG_ENABLE_SMACK
                  , appDirLabelPtr, appDirLabelPtr
 #endif
                  ) >= sizeof(opt))

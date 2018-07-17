@@ -231,6 +231,9 @@ static void GetCommandLineArgs
     // Scan the arguments now.
     args::Scan(argc, argv);
 
+    // Tell build params configuration is finished.
+    BuildParams.FinishConfig();
+
     // Were we given a component?
     if (ComponentPath == "")
     {

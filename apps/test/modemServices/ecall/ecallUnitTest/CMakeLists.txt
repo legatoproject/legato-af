@@ -12,8 +12,6 @@ if(TEST_COVERAGE EQUAL 1)
     set(LFLAGS "--ldflags=\"--coverage\"")
 endif()
 
-set(CFLAGS "--cflags=-DINCLUDE_ECALL=1")
-
 mkexe(${TEST_EXEC}
     .
     -i ${LEGATO_MODEM_SERVICES}/modemDaemon

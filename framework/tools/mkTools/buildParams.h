@@ -67,6 +67,9 @@ struct BuildParams_t
 
     /// Constructor
     BuildParams_t();
+
+    /// Indicate finished parsing command-line arguments, set dependent items.
+    void FinishConfig(void);
 };
 
 

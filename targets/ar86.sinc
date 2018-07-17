@@ -15,7 +15,7 @@ buildVars:
      LEGATO_MODEM_PA = ${LEGATO_QMI_MODEM_PA}
      LEGATO_DCS_PA = ${LEGATO_LINUX_DCS_PA}
 
-     #if ${INCLUDE_ECALL} = 1
+     #if ${LE_CONFIG_ENABLE_ECALL} = y
          LEGATO_MODEM_PA_ECALL = ${LEGATO_QMI_MODEM_PA_ECALL}
      #endif
 
@@ -24,9 +24,6 @@ buildVars:
      LEGATO_SECSTORE_PA = ${LEGATO_QMI_SECSTORE_PA}
      LEGATO_FWUPDATE_PA = ${LEGATO_QMI_FWUPDATE_PA}
      LEGATO_UARTMODE_PA = ${LEGATO_QMI_UARTMODE_PA}
-
-     // Default AVC for ar7 is legacy AVC
-     LEGATO_APP_AVC_DEFAULT = legacy
 }
 
 cflags:

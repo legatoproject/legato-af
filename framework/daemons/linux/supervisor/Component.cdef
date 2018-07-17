@@ -42,17 +42,17 @@ requires:
 
 cflags:
 {
-    -DLE_SVCDIR_SERVER_SOCKET_NAME=${LE_SVCDIR_SERVER_SOCKET_NAME}
-    -DLE_SVCDIR_CLIENT_SOCKET_NAME=${LE_SVCDIR_CLIENT_SOCKET_NAME}
-    -DLE_RUNTIME_DIR=$LE_RUNTIME_DIR
-
-    #if ${TARGET_ARCH} = i686
+    #if ${LEGATO_TARGET_ARCH} = i686
         -DTARGET_IMPORTS_X86
-    #elif ${TARGET_ARCH} = x86_64
+    #elif ${LEGATO_TARGET_ARCH} = x86_64
         -DTARGET_IMPORTS_X86_64
-    #elif ${TARGET_ARCH} = armv6
+    #elif ${LEGATO_TARGET_ARCH} = armv6
         -DTARGET_IMPORTS_ARMV6
-    #elif ${TARGET_ARCH} = armv7
+    #elif ${LEGATO_TARGET_ARCH} = armv7
+        -DTARGET_IMPORTS_ARMV7
+    #elif ${LEGATO_TARGET} = virt_x86
+        -DTARGET_IMPORTS_X86
+    #elif ${LEGATO_TARGET} = virt_arm
         -DTARGET_IMPORTS_ARMV7
     #elif ${LEGATO_TARGET} = virt
         #if ${VIRT_TARGET_ARCH} = x86

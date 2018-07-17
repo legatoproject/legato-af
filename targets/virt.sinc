@@ -11,7 +11,7 @@ buildVars:
     LEGATO_MODEM_PA = ${PA_DIR}/simu/components/le_pa
     LEGATO_MODEM_PA_RSIM = ${PA_DIR}/simu/components/le_pa_remotesim
 
-    #if ${INCLUDE_ECALL} = 1
+    #if ${LE_CONFIG_ENABLE_ECALL} = y
         LEGATO_MODEM_PA_ECALL = ${PA_DIR}/simu/components/le_pa_ecall
     #endif
 

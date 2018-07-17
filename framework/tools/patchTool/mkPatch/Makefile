@@ -4,25 +4,14 @@
 # Copyright (C) Sierra Wireless Inc.
 # --------------------------------------------------------------------------------------------------
 
-# ========== GENERIC BUILD RULES ============
+include $(LEGATO_ROOT)/utils.mk
 
-ifeq ($(USE_CLANG),1)
-  export CC := $(shell which clang)
-else
-  export CC := $(shell which gcc)
-endif
-
-ifeq (${USE_CCACHE},1)
-  export CC := ${CCACHE} ${CC}
-endif
-
-# Tell make that the targets are not actual files.
-.PHONY: mkPatch
+TARGET ?= localhost
 
 MKPATCH_SRC = mkPatch.c $(LEGATO_ROOT)/framework/liblegato/crc.c
-
-mkPatch: $(MKPATCH_SRC)
-	$(CC) -Wall -Werror -o $(LEGATO_ROOT)/bin/$@ \
-	    $(MKPATCH_SRC) \
-	    -I$(LEGATO_ROOT)/framework/include \
-	    -I$(LEGATO_ROOT)/3rdParty/include
+$(LEGATO_ROOT)/bin/mkPatch: $(MKPATCH_SRC)
+	$(L) CCLD $@
+	$(Q)$(CCACHE) $(CC) -Wall -Werror -o $@ $(MKPATCH_SRC) \
+		-I$(LEGATO_ROOT)/framework/include \
+		-I$(LEGATO_ROOT)/3rdParty/include \
+		-I$(LEGATO_ROOT)/build/$(TARGET)/framework/include

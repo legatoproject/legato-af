@@ -13,10 +13,10 @@ processes:
     }
 
     faultAction: restart
-     #if ${LEGATO_SERVICES_WDOG_DISABLE} = 1
-        watchdogTimeout: never
-    #else
+    #if ${LE_CONFIG_SERVICES_WATCHDOG} = y
         maxWatchdogTimeout: 120000
+    #else
+        watchdogTimeout: never
     #endif
 }
 

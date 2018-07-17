@@ -110,26 +110,6 @@
 /// Maximum number of events that can be received from epoll_wait() at one time.
 #define MAX_EPOLL_EVENTS 32
 
-/// The default number of objects in the process-wide Queued Function Report Pool, from which
-/// Queued Function reports are allocated.
-/// @todo Make this configurable.
-#define DEFAULT_QUEUED_FUNCTION_POOL_SIZE 10
-
-/// The default number of objects in a per-Event-ID Report Pool.
-/// @todo Make this configurable.
-#define DEFAULT_REPORT_POOL_SIZE 1
-
-/// The default number of objects in the process-wide Handler Pool, from which all Handler objects
-/// are allocated.
-/// @todo Make this configurable.
-#define DEFAULT_HANDLER_POOL_SIZE 10
-
-/// The default number of objects in the process-wide Event Pool, from which the Event objects
-/// are allocated.
-/// @todo Make this configurable.
-#define DEFAULT_EVENT_POOL_SIZE 5
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Event object
@@ -444,7 +424,7 @@ static Event_t* CreateEvent
     }
     eventPtr->reportPoolRef = le_mem_CreatePool(poolNameStr,
                                               offsetof(PubSubEventReport_t, payload) + payloadSize);
-    le_mem_ExpandPool(eventPtr->reportPoolRef, DEFAULT_REPORT_POOL_SIZE);
+    le_mem_ExpandPool(eventPtr->reportPoolRef, LE_CONFIG_MAX_REPORT_POOL_SIZE);
 
     // Up until now, we have not accessed anything that is available to anyone else; except for
     // the EventPool, but that is thread-safe.  But, now we need to touch the Safe Reference Map
@@ -788,22 +768,22 @@ void event_Init
     // Create the Queued Function Pool from which all Queued Function objects are allocated.
     /// @todo Make this configurable.
     QueuedFunctionPool = le_mem_CreatePool("QueuedFunction", sizeof(QueuedFunctionReport_t));
-    le_mem_ExpandPool(QueuedFunctionPool, DEFAULT_QUEUED_FUNCTION_POOL_SIZE);
+    le_mem_ExpandPool(QueuedFunctionPool, LE_CONFIG_MAX_QUEUED_FUNCTION_POOL_SIZE);
 
     // Create the Handler Pool from which all Handler objects are to be allocated.
     /// @todo Make this configurable.
     HandlerPool = le_mem_CreatePool("EventHandler", sizeof(Handler_t));
-    le_mem_ExpandPool(HandlerPool, DEFAULT_HANDLER_POOL_SIZE);
+    le_mem_ExpandPool(HandlerPool, LE_CONFIG_MAX_HANDLER_POOL_SIZE);
 
     // Create the Event Pool from which Event objects are to be allocated.
     /// @todo Make this configurable.
     EventPool = le_mem_CreatePool("Events", sizeof(Event_t));
-    le_mem_ExpandPool(EventPool, DEFAULT_EVENT_POOL_SIZE);
+    le_mem_ExpandPool(EventPool, LE_CONFIG_MAX_EVENT_POOL_SIZE);
 
     // Create the Safe Reference Maps.
     /// @todo Make this configurable.
-    EventRefMap = le_ref_CreateMap("Events", DEFAULT_EVENT_POOL_SIZE);
-    HandlerRefMap = le_ref_CreateMap("EventHandlers", DEFAULT_HANDLER_POOL_SIZE);
+    EventRefMap = le_ref_CreateMap("Events", LE_CONFIG_MAX_EVENT_POOL_SIZE);
+    HandlerRefMap = le_ref_CreateMap("EventHandlers", LE_CONFIG_MAX_HANDLER_POOL_SIZE);
 
     // Get a reference to the trace keyword that is used to control tracing in this module.
     TraceRef = le_log_GetTraceRef("eventLoop");

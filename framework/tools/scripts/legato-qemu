@@ -384,9 +384,9 @@ function configure_virt_common {
     if [ -z "$LEGATO_IMG" ]; then
         LEGATO_IMG="$USER_DIR/img-$OPT_TARGET/legato.squashfs"
 
-        if [ -e "$LEGATO_ROOT/build/virt/legato.squashfs" ]; then
+        if [ -e "$LEGATO_ROOT/build/${OPT_TARGET}/legato.squashfs" ]; then
             # Use the local image if available
-            ln -sf $LEGATO_ROOT/build/virt/legato.squashfs $LEGATO_IMG
+            ln -sf $LEGATO_ROOT/build/${OPT_TARGET}/legato.squashfs $LEGATO_IMG
         else
             fetch_image $OPT_TARGET 'legato'
         fi

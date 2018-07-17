@@ -1,0 +1,442 @@
+#
+# Configuration for Legato core framework.
+#
+# Copyright (C) Sierra Wireless Inc.
+#
+
+### Core Options ###
+
+config CUSTOM_FA
+  bool "Customize adaptor"
+  default y if CUSTOM_OS
+  default n
+  ---help---
+  Customize the Legato framework adaptor for the target platform.
+
+config CUSTOM_FA_PATH
+  string "Path to custom OS adaptor sources directory"
+  depends on CUSTOM_FA
+  ---help---
+  Path of custom OS adaptor source directory relative to the legato/ root
+  directory.  This source directory should contain liblegato/ and daemons/
+  directories containing the source code needed to support the custom
+  operating system.
+
+config BUILD_TARGET_TOOLS
+  bool "Build on-target command-line tools"
+  default n if CUSTOM_OS
+  default y
+  ---help---
+  Include Legato's command-line tools (inspect, config, sdir, etc.) for the
+  target.
+
+config SDEF
+  string "Default system definition file"
+  default "modules/WiFi/wifi.sdef" if ENABLE_WIFI
+  default "modules/Dualsys/ar758x.sdef" if TARGET_AR758X
+  default "modules/Dualsys/ar759x.sdef" if TARGET_AR759X
+  default "modules/Raspi/raspi.sdef" if TARGET_RASPI
+  default "localhost.sdef" if TARGET_LOCALHOST
+  default "default_readonly.sdef" if READ_ONLY
+  default "default.sdef"
+  ---help---
+  Default Legato system definition (.sdef) file to use.  This system is built
+  along with the framework.  Users may also later create other systems later
+  using their own .sdef files.
+
+config MEM_POOLS
+  bool "Use memory pools"
+  default y
+  ---help---
+  Use memory pools for dynamic memory allocation.  Memory pools help prevent
+  memory fragmentation, but require that the pools be sized appropriately for
+  the application.
+  Disabling this switches to use malloc/free per-block.  This allows tools
+  like Valgrind to accurately track the allocations and de-allocations at the
+  cost of potential memory fragmentation.
+
+config RUNTIME_DIR
+  string "Runtime directory"
+  depends on POSIX
+  default "/tmp/legato"
+  ---help---
+  Directory to use for runtime state files, such as UNIX domain sockets.
+
+config SOTA
+  bool "Enable software-over-the-air (SOTA) updates"
+  depends on POSIX
+  default y
+  ---help---
+  Enable support for SOTA updates.  SOTA is not supported on non-POSIX
+  systems.
+
+config PROBATION_PERIOD
+  int "Update probation period"
+  depends on SOTA
+  range 10 4294967
+  default 1800
+  ---help---
+  Default software update probationary period in seconds.  After this period
+  of time has elapsed with no failures, it is marked as good.  This value can
+  be overridden at runtime by the LE_PROBATION_MS environment variable.
+
+config PYTHON
+  bool "Enable Python support"
+  depends on POSIX
+  default y
+  ---help---
+  Enable support for Python.  Python is not supported on non-POSIX
+  systems.
+
+config JAVA
+  bool "Enable Java support"
+  depends on POSIX
+  default y
+  ---help---
+  Enable support for Java.  Java is not supported on non-POSIX systems.
+
+config JDK_INCLUDE_DIR
+  string "JDK include directory"
+  depends on JAVA
+  ---help---
+  Java Development Kit include directory to use when building Java
+  support.
+
+config EJDK_DIR
+  string "Embedded Java Developer Kit directory"
+  depends on JAVA
+  ---help---
+  Path to Oracle's Embedded Java Developer Kit, needed if that JVM is to be
+  bundled with the system.
+
+config ENABLE_SEGV_HANDLER
+  bool "Enable SIGSEGV handler"
+  depends on LINUX
+  default y
+  ---help---
+  When a segmentation fault occurs, use signal derivation and
+  sigsetjmp()/siglongjmp() to try and survive the invalid memory access long
+  enough to generate a backtrace.  This handler relies on undefined behaviour
+  of sigsetjmp() and is therefore not guaranteed to work.
+
+config THREAD_REALTIME_ONLY
+  bool "Use real-time priority for all threads"
+  default n
+  ---help---
+  Force Legato to use only real-time priorities for tasks.
+
+menu "Security Features"
+
+config ENABLE_SMACK
+  bool "Enable SMACK for access controls"
+  depends on LINUX
+  depends on !TARGET_VIRT_X86 && !TARGET_VIRT_ARM && !TARGET_LOCALHOST
+  default y
+  ---help---
+  Enable the Simplified Mandatory Access Control Kernel (SMACK) security
+  module on Linux for access controls.
+
+config SMACK_ONLYCAP
+  bool "Enable SMACK onlycap"
+  depends on ENABLE_SMACK
+  default n
+  ---help---
+  Require a specific SMACK label for CAP_MAC_ADMIN and CAP_MAC_OVERRIDE to be
+  effective.  The label is typically set in /smack/onlycap.
+
+config SMACK_ATTR_NAME
+  string "SMACK attribute name"
+  depends on ENABLE_SMACK
+  default "security.SMACK64"
+  ---help---
+  Name of the Legato SMACK attribute.
+
+# TODO: better description
+
+config SMACK_ATTR_VALUE
+  string "SMACK attribute value"
+  depends on ENABLE_SMACK
+  default "_"
+  ---help---
+  Value of the Legato SMACK attribute.
+
+# TODO: better description
+
+config ENABLE_IMA
+  bool "Enable IMA for file integrity checking"
+  depends on LINUX && !TARGET_LOCALHOST
+  default n
+  ---help---
+  Enable the Integrity Measurement Architecture (IMA) on Linux to prevent
+  accidental or malicious file system changes.
+
+config IMA_PRIVATE_KEY
+  string "IMA private key location"
+  depends on ENABLE_IMA
+  ---help---
+  File to load the IMA private key from.
+
+config IMA_PUBLIC_CERT
+  string "IMA public certificate location"
+  depends on ENABLE_IMA
+  ---help---
+  File to load the IMA public certificate from.
+
+config IMA_SMACK
+  string "SMACK label for IMA"
+  depends on ENABLE_SMACK && ENABLE_IMA
+  default "imaLegato"
+  ---help---
+  SMACK label to use for IMA purposes.
+
+# TODO: better description
+
+endmenu # end "Security Features"
+
+menu "Diagnostic Features"
+
+choice
+  prompt "Static log level filter"
+  default STATIC_LOG_FILTER_INFO
+  ---help---
+  Select the static filter for log statements.  Log statements with a lower
+  priority than this level will be omitted from compiled code.
+
+config STATIC_LOG_FILTER_DEBUG
+  bool "Debug"
+  ---help---
+  Include all statements up to and including debug level.
+
+config STATIC_LOG_FILTER_INFO
+  bool "Info"
+  ---help---
+  Include all statements up to and including info level.
+
+config STATIC_LOG_FILTER_WARN
+  bool "Warning"
+  ---help---
+  Include all statements up to and including warning level.
+
+config STATIC_LOG_FILTER_ERR
+  bool "Error"
+  ---help---
+  Include all statements up to and including error level.
+
+config STATIC_LOG_FILTER_CRIT
+  bool "Critical"
+  ---help---
+  Include all statements up to and including critical level.
+
+config STATIC_LOG_FILTER_EMERG
+  bool "Emergency"
+  ---help---
+  Include only emergency-level log statements.
+
+endchoice # end "Static log level filter"
+
+config ENABLE_BACKTRACE
+  bool "Enable Legato assertion backtraces"
+  default y
+  ---help---
+  Print backtraces when a Legato assertion is triggered.  This can be helpful
+  in debugging errors.
+
+config USE_GUARD_BAND
+  bool "Enable memory guard bands"
+  default y
+  ---help---
+  Insert chunks of memory into each allocated memory block before and after
+  the user data portion.  These "guard bands" are filled with a special
+  pattern that is unlikely to occur in normal data.  Whenever a block is
+  allocated or released, the guard bands are checked for corruption and any
+  corruption is reported.
+
+config NUM_GUARD_BAND_WORDS
+  int "Number of guard band words"
+  depends on USE_GUARD_BAND
+  range 1 8
+  default 1 if REDUCE_FOOTPRINT
+  default 8
+  ---help---
+  The number of words in each guard band.  This number of words will be
+  inserted before and after every memory allocation, increasing the allocation
+  size by NUM_GUARD_BAND_WORDS * 8.
+
+config THREAD_SETNAME
+  bool "Set names of threads created from Legato"
+  default y
+  ---help---
+  Use Legato thread names as the names for underlying OS threads as well.
+  This has no effect if the OS does not allow setting thread names.  If Legato
+  thread names are disabled, this will just set the name to "<legato>."
+
+config NAMES_ENABLED
+  bool "Enable names in Legato objects"
+  default y
+  ---help---
+  Add name fields to Legato objects (mutexes, threads, memory pools, etc)
+  for logging, debugging, and tracing purposes.  Turning this off will
+  reduce RAM usage at the expense of traceability.
+
+config FD_MONITOR_NAMES_ENABLED
+  bool "Enable names in file descriptor monitors"
+  depends on NAMES_ENABLED
+  default n if REDUCE_FOOTPRINT
+  default y
+  ---help---
+  Add a name field to Legato file descriptor monitors.
+
+config SEM_NAMES_ENABLED
+  bool "Enable names in semaphores"
+  depends on NAMES_ENABLED
+  default n if REDUCE_FOOTPRINT
+  default y
+  ---help---
+  Add a name field to Legato semaphores.
+
+config MUTEX_NAMES_ENABLED
+  bool "Enable names in mutexes"
+  depends on NAMES_ENABLED
+  default n if REDUCE_FOOTPRINT
+  default y
+  ---help---
+  Add a name field to Legato mutexes.
+
+config THREAD_NAMES_ENABLED
+  bool "Enable names in threads"
+  depends on NAMES_ENABLED
+  default y
+  ---help---
+  Add a name field to Legato threads.
+
+config MEM_POOL_NAMES_ENABLED
+  bool "Enable names in memory pools"
+  depends on NAMES_ENABLED
+  default y
+  ---help---
+  Add a name field to Legato memory pools.
+
+config MEM_TRACE
+  bool "Enable memory pool tracing"
+  depends on MEM_POOL_NAMES_ENABLED
+  default n
+  ---help---
+  If enabled, the memory subsystem will create a trace point for every memory
+  pool created.  The name of the tracepoint will be the same of the pool, and
+  is of the form "component.poolName".
+
+config TIMER_NAMES_ENABLED
+  bool "Enable names in timers"
+  depends on NAMES_ENABLED
+  default n if REDUCE_FOOTPRINT
+  default y
+  ---help---
+  Add a name field to Legato timers.
+
+config EVENT_NAMES_ENABLED
+  bool "Enable names in events"
+  depends on NAMES_ENABLED
+  default n if REDUCE_FOOTPRINT
+  default y
+  ---help---
+  Add a name field to Legato event IDs.
+
+config HASHMAP_NAMES_ENABLED
+  bool "Enable names in hashmaps"
+  depends on NAMES_ENABLED
+  default n if REDUCE_FOOTPRINT
+  default y
+  ---help---
+  Add a name field to Legato hashmaps.  Disabling this also disables
+  hashmap tracing.
+
+config SAFE_REF_NAMES_ENABLED
+  bool "Enable names in safe references"
+  depends on NAMES_ENABLED
+  default n if REDUCE_FOOTPRINT
+  default y
+  ---help---
+  Add a name field to Legato safe references.
+
+endmenu # end "Diagnostic Features"
+
+menu "Memory Pool Sizes"
+
+config MAX_EVENT_POOL_SIZE
+  int "Maximum event pool size"
+  range 1 65535
+  default 5
+  ---help---
+  The maximum number of objects in the process-wide event pool, from which the
+  event objects are allocated.
+
+config MAX_HANDLER_POOL_SIZE
+  int "Maximum event handler pool size"
+  range 1 65535
+  default 10
+  ---help---
+  The maximum number of objects in the process-wide handler pool, from which
+  all handler objects are allocated.
+
+config MAX_QUEUED_FUNCTION_POOL_SIZE
+  int "Maximum queued event function pool size"
+  range 1 65535
+  default 10
+  ---help---
+  The maximum number of objects in the process-wide queued function report
+  pool, from which Queued Function reports are allocated.
+
+config MAX_REPORT_POOL_SIZE
+  int "Maximum event report pool size"
+  range 1 65535
+  default 1
+  ---help---
+  The maximum number of objects in a per event ID report pool.
+
+config MAX_FD_MONITOR_POOL_SIZE
+  int "Maximum file descriptor monitor pool size"
+  range 1 65535
+  default 10
+  ---help---
+  The maximum number of objects in the process-wide FD monitor pool, from
+  which all FD monitor objects are allocated.
+
+config MAX_SUB_POOLS_POOL_SIZE
+  int "Maximum memory pool sub-pools"
+  range 1 65535
+  default 8
+  ---help---
+  The maximum number of sub-pool objects in the memory sub-pools pool.  These
+  are control structures used for managing the subdivision of memory pools.
+
+config MAX_MUTEX_POOL_SIZE
+  int "Maximum mutex pool size"
+  range 1 65535
+  default 4
+  ---help---
+  The maximum number of mutex objects in the process-wide mutex pool, from
+  which all Legato mutexes are allocated.
+
+config MAX_SEM_POOL_SIZE
+  int "Maximum semaphore pool size"
+  range 1 65535
+  default 4
+  ---help---
+  The maximum number of semaphore objects in the process-wide semaphore pool,
+  from which all Legato semaphores are allocated.
+
+config MAX_THREAD_POOL_SIZE
+  int "Maximum thread pool size"
+  range 1 65535
+  default 4
+  ---help---
+  The maximum number of thread objects in the process-wide thread pool, from
+  which all Legato threads are allocated.
+
+endmenu # end "Default Values"
+
+### Daemon Options ###
+
+menu "Daemons"
+source "framework/daemons/KConfig"
+endmenu # end "Daemons"

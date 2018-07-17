@@ -28,7 +28,7 @@ function ObjectsFromSources()
 }
 
 # Select the C++ compiler to use.
-if [ "$USE_CLANG" == "1" ]
+if [[ "${LE_CONFIG_USE_CLANG}" == y ]]
 then
     COMPILER="clang++ -std=c++0x"
 else
@@ -36,7 +36,7 @@ else
 fi
 
 # Use ccache.
-if [[ "$USE_CCACHE" == "1" ]]
+if [[ "${LE_CONFIG_USE_CCACHE}" == y ]]
 then
     if [ -z "${CCACHE}" ]
     then

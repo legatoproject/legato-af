@@ -5,11 +5,6 @@ sources:
 
 cflags:
 {
-    #if ${SECSTOREADMIN} = ""
-        -DSECSTOREADMIN=0
-    #else
-        -DSECSTOREADMIN=${SECSTOREADMIN}
-    #endif
     -I$CURDIR/../platformAdaptor/inc
     -I$LEGATO_ROOT/components/appCfg
     -I$LEGATO_ROOT/framework/liblegato

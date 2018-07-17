@@ -38,14 +38,13 @@ help_long_description=(
 " - run-target-ut:"
 "       use an existing build to execute the 'running' part of 'target-ut'."
 ""
-" - virt-target-ut:"
-"       similar to target-ut, but instantiate and run tests on a QEmu-based virtual"
+" - virt-(x86|arm)-target-ut:"
+"       similar to target-ut, but instantiate and run tests on a Qemu-based virtual x86 or ARM"
 "       platform in a Docker environment."
 "       DEST_IP and TARGET_TYPE variables are not necessary."
-"       VIRT_TARGET_ARCH can be declared as to set the CPU architecture to emulate."
 ""
-" - run-virt-target-ut:"
-"       use an existing build to execute the 'running' part of 'virt-target-ut'."
+" - run-virt-(x86|arm)-target-ut:"
+"       use an existing build to execute the 'running' part of 'virt-(x86|arm)-target-ut'."
 ""
 " - target-clean-coverage:"
 "       removes code coverage data stored on a target."
@@ -68,8 +67,8 @@ help_long_description=(
 "       generates a report in build/wp76xx/coverage/html/ using"
 "       data stored in build/wp76xx/coverage/raw/."
 ""
-" - dev-trial:"
-"       build and run unit-tests for localhost' and 'virt' targets."
+" - dev-trial-(x86|arm):"
+"       build and run unit-tests for localhost' and 'virt-(x86|arm)' targets."
 ""
 " - quick-test:"
 "       quick check, at the moment an alias to 'host-ut'."
@@ -343,16 +342,16 @@ function StartVirtualTarget()
 
     # If available, use the partition built locally
     local volume_opt
-    if [ -e "$SOURCEDIR/build/virt/legato.squashfs" ]; then
-        volume_opt="--volume=$SOURCEDIR/build/virt/legato.squashfs:/legato/legato.squashfs"
+    if [ -e "$SOURCEDIR/build/virt-${VIRT_TARGET_ARCH}/legato.squashfs" ]; then
+        volume_opt="--volume=$SOURCEDIR/build/virt-${VIRT_TARGET_ARCH}/legato.squashfs:/legato/legato.squashfs"
     fi
 
     VIRT_CNT_NAME="virt-$(date +%Y%d%m-%H%M%S)"
 
     # If available, use the partition built locally
     local volume_opt
-    if [ -e "$SOURCEDIR/build/virt/legato.squashfs" ]; then
-        volume_opt="--volume=$SOURCEDIR/build/virt/legato.squashfs:/legato/legato.squashfs"
+    if [ -e "$SOURCEDIR/build/virt-${VIRT_TARGET_ARCH}/legato.squashfs" ]; then
+        volume_opt="--volume=$SOURCEDIR/build/virt-${VIRT_TARGET_ARCH}/legato.squashfs:/legato/legato.squashfs"
     fi
 
     message $COLOR_INFO "Starting virtual target ..."
@@ -828,17 +827,31 @@ function Job_TargetUnitTest()
     Exit $test_ret
 }
 
+function GetVirtArch()
+{
+    local arch=${VIRT_TARGET_ARCH:-arm}
+    case "${1}" in
+        *-x86*) arch=x86 ;;
+        *-arm*) arch=arm ;;
+        *virt-target-ut | dev-trial)
+            message $COLOR_WARN "WARNING: Specifying virtual target with VIRT_TARGET_ARCH is deprecated." 1>&2
+            ;;
+    esac
+    echo "${arch}"
+}
+
 function Job_VirtualTargetUnitTest()
 {
     local clean=${1:-true}
+    local arch=${2:-arm}
 
     if [ -n "$SKIP_TARGET_TESTING" ]; then
         echo "Skipping on-target unit tests."
         return
     fi
 
-    export TARGET_TYPE=virt
-    export VIRT_TARGET_ARCH=${VIRT_TARGET_ARCH:-arm}
+    export TARGET_TYPE=virt-${arch}
+    export VIRT_TARGET_ARCH=${arch}
 
     if $clean; then
         CleanBuild
@@ -855,6 +868,8 @@ function Job_VirtualTargetUnitTest()
 
 function Manual_DeveloperPrePushTrial()
 {
+    local virt_arch="${1:-arm}"
+
     message $COLOR_INFO "Cleaning ..."
     CleanBuild
 
@@ -862,13 +877,13 @@ function Manual_DeveloperPrePushTrial()
     Build "localhost"
 
     message $COLOR_INFO "Building for virtual target ..."
-    Build "virt"
+    Build "virt-${virt_arch}"
 
     message $COLOR_INFO "Testing host UTs ..."
     Job_HostUnitTest false
 
     message $COLOR_INFO "Testing virtual target UTs ..."
-    Job_VirtualTargetUnitTest false
+    Job_VirtualTargetUnitTest false "${virt_arch}"
 
     message $COLOR_PASS "Tests complete"
 }
@@ -936,11 +951,11 @@ target-ut)
 run-target-ut)
     Job_TargetUnitTest false
     ;;
-virt-target-ut)
-    Job_VirtualTargetUnitTest true
+virt*-target-ut)
+    Job_VirtualTargetUnitTest true "$(GetVirtArch "${1}")"
     ;;
-run-virt-target-ut)
-    Job_VirtualTargetUnitTest false
+run-virt*-target-ut)
+    Job_VirtualTargetUnitTest false "$(GetVirtArch "${1}")"
     ;;
 target-clean-coverage)
     Job_TargetCleanCoverage $@
@@ -951,8 +966,8 @@ target-get-coverage)
 report-coverage)
     Job_GenerateReport $@
     ;;
-dev-trial)
-    Manual_DeveloperPrePushTrial
+dev-trial*)
+    Manual_DeveloperPrePushTrial "$(GetVirtArch "${1}")"
     ;;
 *)
     echo "Invalid argument: '$1'"

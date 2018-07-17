@@ -219,6 +219,9 @@ static void GetCommandLineArgs
     // Scan the arguments now.
     args::Scan(argc, argv);
 
+    // Tell build params configuration is finished.
+    BuildParams.FinishConfig();
+
     // Add the current working directory to the list of source search directories and the
     // list of interface search directories.
     BuildParams.moduleDirs.push_back(".");

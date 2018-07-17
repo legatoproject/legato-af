@@ -113,7 +113,7 @@
  * The name of the socket for the AppStop Server and Client.
  */
 //--------------------------------------------------------------------------------------------------
-#define APPSTOP_SERVER_SOCKET_NAME       STRINGIZE(LE_RUNTIME_DIR) "AppStopServer"
+#define APPSTOP_SERVER_SOCKET_NAME       LE_CONFIG_RUNTIME_DIR "/AppStopServer"
 
 
 //--------------------------------------------------------------------------------------------------

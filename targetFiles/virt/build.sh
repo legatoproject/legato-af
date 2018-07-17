@@ -91,7 +91,7 @@ if [ -z "$USERFS_IMG" ] || [ ! -e "$USERFS_IMG" ]; then
 
     echo "userfs image ($USERFS_IMG) does not exist, creating one that contain sample apps."
 
-    TARGET="virt_${VIRT_TARGET_ARCH}"
+    TARGET="virt-${VIRT_TARGET_ARCH}"
     FindToolchain
 
     FindTool "qemu-img" QEMU_IMG
@@ -109,7 +109,7 @@ if [ -z "$USERFS_IMG" ] || [ ! -e "$USERFS_IMG" ]; then
     mkdir "$BUILD_DIR/userfs"
 
     # ... copy sample apps
-    if ! cp -R "$LEGATO_ROOT/build/virt/samples" "$BUILD_DIR/userfs/"; then
+    if ! cp -R "$LEGATO_ROOT/build/${TARGET}/samples" "$BUILD_DIR/userfs/"; then
         echo "Sample apps not available, did you run 'make tests_virt' to build sample and test code?"
         echo "Continuing without ..."
     fi

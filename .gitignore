@@ -4,9 +4,9 @@
 /bin
 
 # Configuration
-.config
-.config.mk
+.config*
 
+# Generated files
 /Documentation*
 /releases
 /version
@@ -54,6 +54,7 @@ wmnew.opt
 # Python
 *.pyc
 /Debug
+.pytest_cache
 
 # Target files backup
 targetFiles/*/backup_*
@@ -61,6 +62,7 @@ targetFiles/*/backup_*
 # Injected target defs
 targetDefs.extra
 modules/*
+!modules/KConfig
 docManagement
 
 # 3rd Party content

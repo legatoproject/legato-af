@@ -18,6 +18,8 @@ install:
                                             wget cpio bash ninja-build bc unzip libxml2-utils gcovr
                                             libcurl4-gnutls-dev zlib1g-dev libbz2-dev
                                             bsdiff libssl-dev autoconf automake iputils-ping
+                                            libtool flex bison gperf libncursesw5-dev
+                                            libncurses5-dev
   - sudo apt-get --yes --assume-yes install openjdk-8-jdk phablet-tools
   - git config --global color.ui false
   - git config --global user.name "Travis"

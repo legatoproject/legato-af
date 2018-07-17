@@ -1,0 +1,9 @@
+#
+# Configuration for Legato modules.
+#
+# Copyright (C) Sierra Wireless Inc.
+#
+
+### Sub-sections ###
+
+source "build/.KConfig/WiFi"

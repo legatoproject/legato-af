@@ -22,41 +22,21 @@
 #
 #    clean = delete all build output.
 #
+#    distclean = clean + remove build configuration files (.config.<target>).
+#
 #    docs = build the documentation.
 #
 #    tools = just build the host tools.
 #
-#    release = build and package a release.
-#
 #    sdk = build and package a "software development kit" containing the build tools.
 #
-# To enable coverage testing, run make with "TEST_COVERAGE=1" on the command-line.
-#
-# To prevent excutables and libraries to be stripped, run make with "STRIP_STAGING_TREE=0" on the
-# command-line.
-#
-# To get more details from the build as it progresses, run make with "VERBOSE=1".
-#
-# Targets to be built for release can be selected with RELEASE_TARGETS.
+# To get more details from the build as it progresses, run make with "V=1".
 #
 # Copyright (C) Sierra Wireless Inc.
 # --------------------------------------------------------------------------------------------------
 
-# List of target devices needed by the release process:
-ifndef RELEASE_TARGETS
-  RELEASE_TARGETS := ar7 ar758x ar759x ar86 wp85 wp750x wp76xx wp77xx
-endif
-
 # List of target devices supported:
-TARGETS := localhost $(RELEASE_TARGETS) raspi virt
-
-export LEGATO_KCONFIG ?= $(LEGATO_ROOT)/.config
-
-# By default, build for the localhost and build the documentation.
-.PHONY: default
-default:
-	$(MAKE) localhost
-	$(MAKE) docs
+TARGETS := localhost ar7 ar758x ar759x ar86 wp85 wp750x wp76xx wp77xx raspi virt virt-x86 virt-arm
 
 # Define the LEGATO_ROOT environment variable.
 export LEGATO_ROOT := $(CURDIR)
@@ -64,44 +44,257 @@ export LEGATO_ROOT := $(CURDIR)
 # Add the framework's bin directory to the PATH environment variable.
 export PATH := $(PATH):$(LEGATO_ROOT)/bin
 
-# Some framework on-target runtime parameters.
-export LEGATO_FRAMEWORK_NICE_LEVEL := -19
-export LE_RUNTIME_DIR := /tmp/legato/
-export LE_SVCDIR_SERVER_SOCKET_NAME := $(LE_RUNTIME_DIR)serviceDirectoryServer
-export LE_SVCDIR_CLIENT_SOCKET_NAME := $(LE_RUNTIME_DIR)serviceDirectoryClient
+# ========== TARGET DETERMINATION ============
 
-# Do not use clang by default.
-export USE_CLANG ?= 0
+THIS_FILE := $(lastword $(MAKEFILE_LIST))
+.DEFAULT_GOAL := default
+.PHONY: list
 
-ifeq ($(USE_CLANG),1)
-  export HOST_CC ?= clang
-  export HOST_CXX ?= clang++
+# Command to list recipies
+LISTCMD := $(MAKE) -qp -f $(THIS_FILE) list 2> /dev/null | \
+  awk -F: '/^[a-zA-Z0-9/][a-zA-Z0-9._/]*:([^=]|$$)/ {split($$1,A,/ /); for(i in A) print A[i]}'
+
+# List of "utility" recipies
+UTILITIES := list clean distclean kconfig-frontends
+
+# Determine the target platform
+TARGET :=
+ifeq ($(MAKECMDGOALS),)
+  TARGET := localhost
+  KNOWN_TARGET := 1
+endif
+ifeq ($(TARGET),)
+  ifeq ($(filter-out $(UTILITIES),$(MAKECMDGOALS)),)
+        TARGET := nothing
+  endif
+endif
+
+ifeq ($(TARGET),)
+  # Look for "<name>_<target>" style goals
+  COMPOUND_TARGET := $(filter $(TARGETS:%=\%_%),$(MAKECMDGOALS))
+  ifneq ($(COMPOUND_TARGET),)
+    PARTS := $(subst _, ,$(COMPOUND_TARGET))
+    TARGET := $(lastword $(PARTS))
+  endif # end have compound target
+
+  TARGET := $(filter $(TARGETS),$(MAKECMDGOALS) $(TARGET))
+  ifeq ($(TARGET),)
+    ALL_RULES := $(shell $(LISTCMD)) menuconfig_%
+    TARGET := $(filter-out $(ALL_RULES),$(MAKECMDGOALS))
+    ifeq ($(TARGET)$(filter-out menuconfig_%,$(MAKECMDGOALS)),)
+      TARGET := $(subst menuconfig_,,$(MAKECMDGOALS))
+    endif # end no target
+    ifeq ($(TARGET),)
+      TARGET := localhost
+      KNOWN_TARGET := 1
+    endif # end no target
+  else # have target
+    KNOWN_TARGET := 1
+  endif # end have target
+
+  VIRT_TARGET_ARCH ?= arm
+  ifeq ($(TARGET),virt)
+    TARGET := virt-$(VIRT_TARGET_ARCH)
+    export VIRT_TARGET_ARCH
+    $(warning DEPRECATED: The 'virt' target will be removed in a future release. Please use \
+      virt-<arch> instead.)
+  endif # end target is "virt"
+endif # end no target
+export TARGET
+TARGET_CAPS := $(shell echo $(TARGET) | tr a-z- A-Z_)
+ifneq ($(TARGET),nothing)
+  $(info Building Legato for target '$(TARGET)')
+endif
+
+# Build-specific menu entries
+BUILD_CONFIG := build/.KConfig
+
+# KConfig settings location.
+export LEGATO_KCONFIG ?= $(LEGATO_ROOT)/.config.$(TARGET)
+
+# Makefile include generated from KConfig values
+MAKE_CONFIG := build/$(TARGET)/.config.mk
+
+# Configuration header
+HEADER_CONFIG := build/$(TARGET)/framework/include/le_config.h
+
+# Configuration environment script
+SHELL_CONFIG := build/$(TARGET)/config.sh
+
+# Include target-specific configuration values
+ifneq ($(TARGET),nothing)
+  include $(MAKE_CONFIG)
+endif
+
+include utils.mk
+
+# Host architecture
+export HOST_ARCH := $(shell uname -m)
+export TOOLS_ARCH ?= $(HOST_ARCH)
+
+# Toolchain finding script
+FINDTOOLCHAIN := framework/tools/scripts/findtoolchain
+
+# Load module definitions
+include $(wildcard modules/*/moduleDefs)
+
+# Read-only setting
+STAGE_SYSTOIMG = stage_systoimg
+ifeq ($(LE_CONFIG_READ_ONLY),y)
+  override STAGE_SYSTOIMG := stage_systoimgro
+endif
+
+# If set, generate an image with stripped binaries
+ifeq ($(LE_CONFIG_STRIP_STAGING_TREE),y)
+  SYSTOIMG_FLAGS += -s
+  MKSYS_FLAGS += -d build/$(TARGET)/debug
+endif
+
+# Disable SMACK in image creation, if appropriate
+ifneq ($(LE_CONFIG_ENABLE_SMACK),y)
+  SYSTOIMG_FLAGS += --disable-smack
+endif
+
+# Build AV model for appropriate targets
+ifeq ($(LE_CONFIG_AVC_ENABLE_AV_MODEL),y)
+  STAGE_MKAVMODEL := stage_mkavmodel
+endif
+
+# Target architecture for tests
+ifeq ($(TARGET),localhost)
+  export LEGATO_TARGET_ARCH := $(shell uname -m)
+endif
+
+# ========== BUILD PARAMETER/TOOL SELECTION ============
+
+# Select Clang or GCC
+ifeq ($(filter 1,$(or $(call k2b,$(LE_CONFIG_USE_CLANG)),$(USE_CLANG))),)
+  CC_NAME = gcc
+  CXX_NAME = g++
 else
-  export HOST_CC ?= gcc
-  export HOST_CXX ?= g++
+  CC_NAME = clang
+  CXX_NAME = clang++
+endif
+export USE_CLANG := $(call k2b,$(LE_CONFIG_USE_CLANG))
+
+# Host compilers
+export HOST_CC ?= $(CC_NAME)
+export HOST_CXX ?= $(CXX_NAME)
+
+# Use ccache by default if available
+ifeq ($(LE_CONFIG_USE_CCACHE),y)
+  ifeq ($(shell which ccache 2>/dev/null),)
+    LE_CONFIG_USE_CCACHE :=
+    unexport LE_CONFIG_USE_CCACHE
+  endif
+endif
+ifeq ($(LE_CONFIG_USE_CCACHE),y)
+  # Unset CCACHE_PATH as to not interfere with host builds
+  unexport CCACHE_PATH
+
+  ifeq ($(LE_CONFIG_CCACHE),)
+    CCACHE := $(shell which ccache 2>/dev/null)
+  else
+    CCACHE := $(LE_CONFIG_CCACHE)
+  endif
+  ifeq ($(CCACHE),)
+    $(error "Unable to find ccache while it is enabled.")
+  endif
+  export CCACHE
+else
+  CCACHE :=
+  unexport CCACHE
 endif
 
-# Default eCall build to be ON
-export INCLUDE_ECALL ?= 1
+# Try to find a ccache for default configuration
+define getccache
+$(if $(CCACHE),$(CCACHE),$(if $(shell which sccache 2>/dev/null),sccache,$(if $(shell which ccache 2>/dev/null),ccache)))
+endef
 
-# Do not be verbose by default.
-export VERBOSE ?= 0
+ifeq ($(LE_CONFIG_CONFIGURED),y)
+  ifeq ($(TARGET),localhost)
+    export LEGATO_KERNELROOT    :=
+    export LEGATO_SYSROOT       :=
+    export TOOLCHAIN_DIR        := $(dir $(shell which $(CC_NAME)))
+    export TOOLCHAIN_PREFIX     :=
+  else # not localhost
+    export LEGATO_KERNELROOT    := $(shell $(FINDTOOLCHAIN) $(TARGET) kernelroot)
+    export LEGATO_SYSROOT       := $(shell $(FINDTOOLCHAIN) $(TARGET) sysroot)
+    export TOOLCHAIN_DIR        := $(shell $(FINDTOOLCHAIN) $(TARGET) dir)
+    export TOOLCHAIN_PREFIX     := $(shell $(FINDTOOLCHAIN) $(TARGET) prefix)
+  endif # end not localhost
 
-# secStoreAdmin APIs disabled by default.
-export SECSTOREADMIN ?= 0
+  # Target compiler variables
+  export TARGET_CC := $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)$(CC_NAME)
+  export TARGET_CXX := $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)$(CXX_NAME)
+  export $(TARGET_CAPS)_CC := $(TARGET_CC)
+  export $(TARGET_CAPS)_CXX := $(TARGET_CXX)
+  export $(TARGET_CAPS)_TOOLCHAIN_DIR := $(TOOLCHAIN_DIR)
+  export $(TARGET_CAPS)_TOOLCHAIN_PREFIX := $(TOOLCHAIN_PREFIX)
+  export $(TARGET_CAPS)_SYSROOT := $(LEGATO_SYSROOT)
+  export $(TARGET_CAPS)_KERNELROOT := $(LEGATO_KERNELROOT)
 
-# Do not enable IMA signing by default.
-export ENABLE_IMA ?= 0
+  # Set the LD, AR, AS, STRIP, OBJCOPY, and READELF variables for use by the Legato framework
+  # build
+  TOOLCHAIN_PATH_PREFIX := $(TOOLCHAIN_PREFIX)
+  ifneq ($(TOOLCHAIN_DIR),)
+    ifneq ($(TOOLCHAIN_PREFIX),)
+      TOOLCHAIN_PATH_PREFIX := $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)
+    else
+      TOOLCHAIN_PATH_PREFIX := $(TOOLCHAIN_DIR)/
+    endif
+  endif
+  prefixtool = $(if $(wildcard $(1)$(2)),$(1)$(2),$(2))
 
-# Disable debug by default.
-export DEBUG ?= no
+  export ADDR2LINE := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),addr2line)
+  export AR        := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),ar)
+  export AS        := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),as)
+  export DB        := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),gdb)
+  export ELFEDIT   := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),elfedit)
+  export GCOV      := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),gcov)
+  export GCOV_DUMP := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),gcov-dump)
+  export GCOV_TOOL := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),gcov-tool)
+  export GPROF     := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),gprof)
+  export LD        := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),ld)
+  export NM        := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),nm)
+  export OBJCOPY   := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),objcopy)
+  export OBJDUMP   := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),objdump)
+  export RANLIB    := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),ranlib)
+  export READELF   := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),readelf)
+  export SIZE      := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),size)
+  export STRINGS   := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),strings)
+  export STRIP     := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),strip)
+endif # end LE_CONFIG_CONFIGURED
 
-# In case of release, override parameters
-ifeq ($(MAKECMDGOALS),release)
-  # We never build for coverage testing when building a release.
-  override TEST_COVERAGE := 0
+# Enable Python support?
+ENABLE_PYTHON ?= $(if $(shell python2.7 -c "import cffi" > /dev/null 2>&1 && echo 1),1,0)
+
+# Enable Java support?
+ENABLE_JAVA ?= $(if $(JDK_INCLUDE_DIR),1,0)
+
+# KConfig executable
+KCONFIG := $(LEGATO_ROOT)/bin/kconfig
+
+# Set KConfig prefix
+export CONFIG_ := LE_CONFIG_
+
+# Set non-debug flags
+ifneq ($(LE_CONFIG_DEBUG),y)
+  # Optimize release builds
+  MKSYS_FLAGS += --cflags="-O2 -fno-omit-frame-pointer"
 endif
-export TEST_COVERAGE
+
+# Set flags for test coverage
+ifeq ($(LE_CONFIG_TEST_COVERAGE),y)
+  MKSYS_FLAGS += --cflags=--coverage --ldflags=--coverage
+
+  ifneq ($(LE_CONFIG_TEST_COVERAGE_DIR),)
+    MKSYS_FLAGS += --cflags=-fprofile-dir=$(LE_CONFIG_TEST_COVERAGE_DIR)
+  endif
+
+  export TEST_COVERAGE := 1
+  export TEST_COVERAGE_DIR := $(LE_CONFIG_TEST_COVERAGE_DIR)
+endif
 
 # PlantUML file path
 PLANTUML_PATH ?= $(LEGATO_ROOT)/3rdParty/plantuml
@@ -109,108 +302,11 @@ PLANTUML_PATH ?= $(LEGATO_ROOT)/3rdParty/plantuml
 # PlantUML file definition
 export PLANTUML_JAR_FILE := $(PLANTUML_PATH)/plantuml.jar
 
-# Use ccache by default if available
-ifeq ($(USE_CCACHE),)
-  ifneq ($(shell which ccache 2>/dev/null),)
-    export USE_CCACHE = 1
-  endif
-endif
-ifeq ($(USE_CCACHE),1)
-  # Unset CCACHE_PATH as to not interfere with host builds
-  unexport CCACHE_PATH
+# Directory containing the .sdef
+export LEGATO_SDEF_ROOT := $(dir $(abspath $(LE_CONFIG_SDEF)))
 
-  ifeq ($(CCACHE),)
-    CCACHE := $(shell which ccache 2>/dev/null)
-  endif
-  ifeq ($(CCACHE),)
-    $(error "Unable to find ccache while it is enabled.")
-  endif
-  export CCACHE
-  ifeq ($(LEGATO_JOBS),)
-    # If ccache is enabled, we can raise the number of concurrent
-    # jobs as it likely to get objects from cache, therefore not
-    # consumming much CPU.
-    LEGATO_JOBS := $(shell echo $$((4 * $$(nproc))))
-  endif
-else
-  CCACHE :=
-  unexport CCACHE
-endif
-
-# ========== TARGET-SPECIFIC VARIABLES ============
-
-# If the user specified a goal other than "clean" or "tools", ensure that all required
-# target-specific vars are defined.
-ifeq ($(TARGET),)
-ifeq ($(filter $(MAKECMDGOALS),clean tools kconfig-frontends),)
-
-  export HOST_ARCH := $(shell uname -m)
-  TOOLS_ARCH ?= $(HOST_ARCH)
-  FINDTOOLCHAIN := framework/tools/scripts/findtoolchain
-
-  ifeq ($(TARGET),localhost)
-    export TARGET_ARCH := $(shell uname -m)
-  endif
-
-  include targetDefs
-
-  ifeq ($(USE_CLANG),1)
-    export TARGET_CC = $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)clang
-    export TARGET_CXX = $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)clang++
-  else
-    export TARGET_CC = $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)gcc
-    export TARGET_CXX = $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)g++
-  endif
-
-  export $(TARGET)_CC = $(TARGET_CC)
-  export $(TARGET)_CXX = $(TARGET_CXX)
-
-  ifneq ($(MAKECMDGOALS),clean)
-    include build/$(TARGET)/.config.mk
-  endif
-endif
-endif
-
-include $(wildcard modules/*/moduleDefs)
-
-# Legato ReadOnly system tree
-READ_ONLY ?= 0
-
-# Disable SMACK
-ifneq (,$(filter $(TARGET),virt))
-  export DISABLE_SMACK ?= 1
-endif
-export DISABLE_SMACK ?= 0
-
-# Disable SMACK onlycap
-export DISABLE_SMACK_ONLYCAP ?= 1
-
-STAGE_SYSTOIMG = stage_systoimg
-ifeq ($(READ_ONLY),1)
-  override STAGE_SYSTOIMG := stage_systoimgro
-endif
-
-# ========== GENERIC BUILD RULES ============
-
-# Tell make that the targets are not actual files.
-.PHONY: $(TARGETS)
-
-# The rule to make each target is: build the system and stage for cwe image generation
-# in build/$TARGET/staging.
-# This will also cause the host tools, framework, and target tools to be built, since those things
-# depend on them.
-$(TARGETS): %: system_% stage_%
-
-# Cleaning rule.
-.PHONY: clean
-clean:
-	rm -rf build Documentation* bin doxygen.*.log doxygen.*.err
-	rm -f framework/doc/toolsHost.dox framework/doc/toolsHost_*.dox
-	rm -f sources.md5
-	rm -f .config.mk
-
-# Version related rules.
-ifndef LEGATO_VERSION
+# Version related rules
+ifeq ($(LEGATO_VERSION),)
   export LEGATO_VERSION := $(shell git describe --tags 2> /dev/null)
 
   ifeq ($(LEGATO_VERSION),)
@@ -224,143 +320,155 @@ ifndef LEGATO_VERSION
   endif
 endif
 
-ifeq ($(ENABLE_IMA),1)
-  # Export the variable so that sub command inherits the value. No need to check the variable value
-  # mksys and mkapp will take care of it.
-  export IMA_PRIVATE_KEY
-  export IMA_PUBLIC_CERT
-
-  # Check whether something specified in IMA_SMACK environment variable. If yes, export it.
-  ifneq ($(strip $(IMA_SMACK)),)
-    export IMA_SMACK := $(strip $(IMA_SMACK))
-  endif
+ifeq ($(LE_CONFIG_ENABLE_IMA),y)
+  MKSYS_FLAGS += -S
 endif
 
-.PHONY: menuconfig
-menuconfig: kconfig-frontends
-	$(LEGATO_ROOT)/bin/kconfig-mconf KConfig
-
-build/$(TARGET)/.config.mk: $(LEGATO_KCONFIG)
-	mkdir -p build/$(TARGET)
-	sed -e 's/^CONFIG_/export &/g' -e 's/="/=/g' -e 's/"$$//g' -e 's/=/ := /g' $< > $@
-
-build/$(TARGET)/framework/include/le_config.h: build/$(TARGET)/.config.mk
-	mkdir -p build/$(TARGET)/framework/include
-	sed -e 's!^# !// !;s/Linux/Legato/;s/^export \(.*\) := y/#define \1 1/;t;d' $< > $@
-
-
-# Use default config if there's no existing configuration.
-#
-# Note: do not copy default.config over user's config if the user has given an alternate
-# KCONFIG_CONFIG
-$(LEGATO_ROOT)/.config: default.config
-	cp $< $@
-
 # Source code directories and files to include in the MD5 sum in the version and package.properties.
-FRAMEWORK_SOURCES = framework \
-					components \
-					interfaces \
-					platformAdaptor \
-					modules \
-					apps/platformServices \
-					$(wildcard apps/proprietary) \
-					apps/tools \
-					targetFiles \
-					$(wildcard Makefile*) \
-					$(wildcard targetDefs*) \
-					CMakeLists.txt
+FRAMEWORK_SOURCES = framework/                    \
+                    components/                   \
+                    interfaces/                   \
+                    platformAdaptor/              \
+                    modules/                      \
+                    apps/platformServices/        \
+                    $(wildcard apps/proprietary/) \
+                    apps/tools/                   \
+                    targetFiles/                  \
+                    $(wildcard Makefile*)         \
+                    CMakeLists.txt
 
-# Error for missing platform adaptors
-platformAdaptor modules:
-	@echo -e "\033[1;31m'$@' directory is missing, which means these Legato sources have not been downloaded properly."
-	@echo -e "Please refer to https://github.com/legatoproject/legato-af#clone-from-github \033[0m"
-	@exit 1
+# Generator for making Legato systems
+define sysmk
+	$(L) MKSYS $(2)
+	$(Q)mksys -t $(TARGET) -w $(1) -o build/$(TARGET) $(2) $(3) $(MKSYS_FLAGS)
+endef
 
-.PHONY: sources.md5
-sources.md5: $(FRAMEWORK_SOURCES)
-	# Generate an MD5 hash of everything in the source directories.
-	find $(FRAMEWORK_SOURCES) -type f | grep -v ".git" | sort | while read filePath ; \
-	do \
-	  echo "$$filePath" && \
-	  cat "$$filePath" ; \
-	done | md5sum | awk '{ print $$1 }' > sources.md5
+# ========== CONFIGURATION RECIPES ============
 
-.PHONY: version
-version: version.h
-	@if [ -n "$(LEGATO_VERSION)" ] ; then \
-		echo "$(LEGATO_VERSION)" > $@  ; \
-	elif ! [ -e version ] ; then \
-		echo "unknown" > $@ ; \
-	fi
+# Generate build-specific hidden KConfig options.  This is to get around limitations in the current
+# kconfig-frontends version which make it difficult to conditionally source KConfig files.
+$(BUILD_CONFIG)/Documentation:
+	$(L) GEN $@
+	$(Q)mkdir -p $(BUILD_CONFIG)
+	$(Q)printf '# Automatically generated file.  Do not edit!\n\n' > $@
+	$(Q)printf '$(if $(wildcard docManagement/KConfig),source "docManagement/KConfig")\n' >> $@
 
-.PHONY: version.h
-version.h:
-	@if [ -n "$(LEGATO_VERSION)" ]; then                                    \
-		printf '#ifndef LEGATO_VERSION\n' > $@;                             \
-		printf '#define LEGATO_VERSION "%s"\n' "$(LEGATO_VERSION)" >> $@;   \
-		printf '#endif\n' >> $@;                                            \
-	elif ! [ -e version ]; then                                             \
-		printf '#ifndef LEGATO_VERSION\n' > $@;                             \
-		printf '#define LEGATO_VERSION "unknown"\n' >> $@;                  \
-		printf '#endif\n' >> $@;                                            \
-	fi
+# Generate build-specific hidden KConfig options.  This is to get around limitations in the current
+# kconfig-frontends version which make it difficult to conditionally source KConfig files.
+$(BUILD_CONFIG)/WiFi:
+	$(L) GEN $@
+	$(Q)mkdir -p $(BUILD_CONFIG)
+	$(Q)printf '# Automatically generated file.  Do not edit!\n\n' > $@
+	$(Q)printf '$(if $(wildcard modules/WiFi/KConfig),source "modules/WiFi/KConfig")\n' >> $@
 
-package.properties: version sources.md5
-	@echo "version=`cat version`" > $@
-	@echo "md5=`cat sources.md5`" >> $@
-	@cat $@
+# Generate an initial KConfig from the environment.  This rule translates the old configuration
+# method using environment variables into an initial KConfig set.
+$(LEGATO_ROOT)/.config.$(TARGET): $(KCONFIG) $(BUILD_CONFIG)/Documentation $(BUILD_CONFIG)/WiFi
+ifeq ($(KNOWN_TARGET),1)
+	$(L) KSET "$@ - TARGET_$(TARGET_CAPS)"
+	$(Q)TARGET=1 $(KCONFIG)-set-value "TARGET_$(TARGET_CAPS)" bool "TARGET" $@
+else
+	$(L) KSET "$@ - TARGET_CUSTOM"
+	$(Q)TARGET=1 $(KCONFIG)-set-value "TARGET_CUSTOM" bool "TARGET" $@
+endif
 
-# Goal for building all documentation.
-.PHONY: docs user_docs implementation_docs
-docs: $(PLANTUML_JAR_FILE) user_docs implementation_docs
+	$(L) KSET "$@ - DEBUG"
+	$(Q)$(KCONFIG)-set-value "DEBUG" bool "DEBUG" $@
+	$(L) KSET "$@ - USE_CCACHE"
+	$(Q)USE_CCACHE=$(if $(call getccache,),1,0) \
+		$(KCONFIG)-set-value "USE_CCACHE" bool "USE_CCACHE" $@
+	$(L) KSET "$@ - CCACHE"
+	$(Q)CCACHE_VALUE="$(call getccache,)" $(KCONFIG)-set-value "CCACHE" string "CCACHE_VALUE" $@
 
-# Docs for people who don't want to be distracted by the internal implementation details.
-user_docs: localhost $(PLANTUML_JAR_FILE) build/localhost/Makefile
-	$(MAKE) -C build/localhost user_docs
-	rm -f Documentation
-	@if [ -e "docManagement/Makefile" ] ; then \
-		$(MAKE) -C docManagement ; \
-	fi
-	@if [ -d "build/doc/user/html_converted/" ] ; then \
-		ln -sf build/doc/user/html_converted Documentation ; \
-	else \
-		ln -sf build/doc/user/html Documentation ; \
-	fi
+	$(L) KSET "$@ - ENABLE_IMA"
+	$(Q)$(KCONFIG)-set-value "ENABLE_IMA" bool "ENABLE_IMA" $@
+	$(L) KSET "$@ - IMA_PRIVATE_KEY"
+	$(Q)$(KCONFIG)-set-value "IMA_PRIVATE_KEY" string "IMA_PRIVATE_KEY" $@
+	$(L) KSET "$@ - IMA_PUBLIC_CERT"
+	$(Q)$(KCONFIG)-set-value "IMA_PUBLIC_CERT" string "IMA_PUBLIC_CERT" $@
+	$(L) KSET "$@ - IMA_SMACK"
+	$(Q)$(KCONFIG)-set-value "IMA_SMACK" string "IMA_SMACK" $@
+	$(L) KSET "$@ - ENABLE_SMACK"
+	$(Q)$(KCONFIG)-set-value "ENABLE_SMACK" invbool "DISABLE_SMACK" $@
+	$(L) KSET "$@ - SMACK_ONLYCAP"
+	$(Q)$(KCONFIG)-set-value "SMACK_ONLYCAP" invbool "DISABLE_SMACK_ONLYCAP" $@
+	$(L) KSET "$@ - SMACK_ATTR_NAME"
+	$(Q)$(KCONFIG)-set-value "SMACK_ATTR_NAME" string "SMACK_ATTR_NAME" $@
+	$(L) KSET "$@ - SMACK_ATTR_VALUE"
+	$(Q)$(KCONFIG)-set-value "SMACK_ATTR_VALUE" string "SMACK_ATTR_VALUE" $@
 
-user_pdf: localhost build/localhost/Makefile
-	$(MAKE) -C build/localhost user_pdf
-	ln -sf build/localhost/bin/doc/user/legato-user.pdf Documentation.pdf
+	$(L) KSET "$@ - SDEF"
+	$(Q)$(KCONFIG)-set-value "SDEF" string "SDEF_TO_USE" $@
+	$(L) KSET "$@ - SUPERV_NICE_LEVEL"
+	$(Q)$(KCONFIG)-set-value "SUPERV_NICE_LEVEL" string "LEGATO_FRAMEWORK_NICE_LEVEL" $@
+	$(L) KSET "$@ - SVCDIR_SERVER_SOCKET_NAME"
+	$(Q)$(KCONFIG)-set-value "SVCDIR_SERVER_SOCKET_NAME" string "LE_SVCDIR_SERVER_SOCKET_NAME" $@
+	$(L) KSET "$@ - SVCDIR_CLIENT_SOCKET_NAME"
+	$(Q)$(KCONFIG)-set-value "SVCDIR_CLIENT_SOCKET_NAME" string "LE_SVCDIR_CLIENT_SOCKET_NAME" $@
 
-plantuml_docs: $(PLANTUML_JAR_FILE)
-	for dir in components/doc platformAdaptor/qmi/src/components/doc; do \
-		files=`ls $(LEGATO_ROOT)/$$dir/*` ; \
-		java -Djava.awt.headless=true -jar $(PLANTUML_JAR_FILE) \
-		                              -o $(LEGATO_ROOT)/build/doc/implementation/html $$files ; \
-	done
+	$(L) KSET "$@ - PYTHON"
+	$(Q)ENABLE_PYTHON=$(ENABLE_PYTHON) $(KCONFIG)-set-value "PYTHON" bool "ENABLE_PYTHON" $@
+	$(L) KSET "$@ - JAVA"
+	$(Q)ENABLE_JAVA=$(ENABLE_JAVA) $(KCONFIG)-set-value "JAVA" bool "ENABLE_JAVA" $@
+	$(L) KSET "$@ - JDK_INCLUDE_DIR"
+	$(Q)$(KCONFIG)-set-value "JDK_INCLUDE_DIR" string "JDK_INCLUDE_DIR" $@
+	$(L) KSET "$@ - EJDK_DIR"
+	$(Q)$(KCONFIG)-set-value "EJDK_DIR" string "EJDK_DIR" $@
+	$(L) KSET "$@ - ENABLE_SECSTORE_ADMIN"
+	$(Q)$(KCONFIG)-set-value "ENABLE_SECSTORE_ADMIN" bool "SECSTOREADMIN" $@
 
-# Docs for people who want or need to know the internal implementation details.
-implementation_docs: localhost plantuml_docs build/localhost/Makefile
-	$(MAKE) -C build/localhost implementation_docs
+	$(Q)KCONFIG_CONFIG=$@ $(KCONFIG)-conf --olddefconfig KConfig $(VOUTPUT)
+	$(Q)rm -f $@.old
 
-implementation_pdf: localhost build/localhost/Makefile
-	$(MAKE) -C build/localhost implementation_pdf
+# Generate the Makefile include containing the KConfig values
+$(MAKE_CONFIG): $(LEGATO_KCONFIG) $(BUILD_CONFIG)/Documentation $(BUILD_CONFIG)/WiFi
+	$(Q)cat $< $(VOUTPUT)
+	$(L) GEN $@
+	$(Q)mkdir -p $(dir $@)
+	$(Q)sed -e 's/^LE_CONFIG_/export &/g' \
+		-e 's/="/=/g' \
+		-e 's/"$$//g' \
+		-e 's/=/ := /g' $< > $@
+ifneq ($(KNOWN_TARGET),1)
+	$(Q)printf '\n# Additional Definitions\nexport LE_CONFIG_TARGET_%s := y\n' "$(TARGET_CAPS)" \
+		>> $@
+endif
 
-# Rule building the unit test covergae report
-coverage_report:
-	$(MAKE) -C build/localhost coverage_report
+# Generate a shell include file containing the KConfig values
+$(SHELL_CONFIG): $(LEGATO_KCONFIG) $(BUILD_CONFIG)/Documentation $(BUILD_CONFIG)/WiFi
+	$(L) GEN $@
+	$(Q)mkdir -p $(dir $@)
+	$(Q)sed -e 's/^LE_CONFIG_/export &/g' $< > $@
+ifneq ($(KNOWN_TARGET),1)
+	$(Q)printf '\n# Additional Definitions\nexport LE_CONFIG_TARGET_%s=y\n' "$(TARGET_CAPS)" >> $@
+endif
+
+# Interactively select build options
+.PHONY: menuconfig
+menuconfig: $(LEGATO_KCONFIG) $(KCONFIG) $(BUILD_CONFIG)/Documentation $(BUILD_CONFIG)/WiFi
+	$(L) KCONFIG $(LEGATO_KCONFIG)
+	$(Q)KCONFIG_CONFIG=$(LEGATO_KCONFIG) $(LEGATO_ROOT)/bin/kconfig-nconf KConfig
+
+# Interactively select build options for a specific target
+.PHONY: menuconfig_$(TARGET)
+menuconfig_$(TARGET): menuconfig
+
+# ========== TOOLS RECIPES ============
+
+# Build kconfig-frontends for manipulating configuration
+kconfig-frontends: $(KCONFIG)
+$(KCONFIG):
+	$(L) MAKE $@
+	$(Q)$(MAKE) -f Makefile.hostTools kconfig-frontends
 
 # Rule for how to build the build tools.
 .PHONY: tools
 # Use HOST_CC and HOST_CXX when building the tools.
 tools: export CC := $(HOST_CC)
 tools: export CXX := $(HOST_CXX)
-tools: version
-	$(MAKE) -f Makefile.hostTools
-
-# Build kconfig-frontends separately as it is only required for some targets
-.PHONY: kconfig-frontends
-kconfig-frontends: tools
-	$(MAKE) -f Makefile.hostTools kconfig-frontends
+tools: version $(HEADER_CONFIG)
+	$(L) MAKE $@
+	$(Q)$(MAKE) -f Makefile.hostTools
 
 # Rule for how to extract the build tool messages
 .PHONY: tool-messages
@@ -372,243 +480,287 @@ tool-messages: version
 sdk: tools
 	createsdk
 
-# Rule building the framework for a given target.
-FRAMEWORK_TARGETS = $(foreach target,$(TARGETS),framework_$(target))
-.PHONY: $(FRAMEWORK_TARGETS)
-$(FRAMEWORK_TARGETS): tools package.properties build/$(TARGET)/framework/include/le_config.h
-	$(MAKE) -f Makefile.framework CC=$(TARGET_CC)
+# ========== MAIN RECIPES ============
 
-# Rule for building framework generally.  Uses CC (etc.) defined in the environment
-.PHONY: framework_all
-framework_all: tools package.properties build/$(TARGET)/framework/include/le_config.h
-	$(MAKE) -f Makefile.framework
+# By default, build for the localhost and build the documentation.
+.PHONY: default
+default:
+	$(Q)$(MAKE) -f $(THIS_FILE) docs
 
-## Tests
+# Cleaning rule
+.PHONY: clean
+clean:
+	@echo "Cleaning..."
+	$(L) CLEAN ""
+	$(Q)rm -Rf build Documentation* bin doxygen.*.log doxygen.*.err
+	$(Q)rm -f framework/doc/toolsHost.dox framework/doc/toolsHost_*.dox
+	$(Q)rm -f sources.md5
 
-# Rule building the C tests for a given target
-TESTS_C_TARGETS = $(foreach target,$(TARGETS),tests_c_$(target))
-.PHONY: $(TESTS_C_TARGETS)
-$(TESTS_C_TARGETS):tests_c_%: % framework_% build/%/Makefile
-	$(MAKE) -C build/$(TARGET) tests_c
-	$(MAKE) -C apps/test/framework/mk CC=$(TARGET_CC)
-	mksys -t $(TARGET) -w build/$(TARGET)/testFramework -o build/$(TARGET) \
-		-s $(LEGATO_ROOT)/components \
-		framework/test/testFramework.sdef $(MKSYS_FLAGS)
-	mksys -t $(TARGET) -w build/$(TARGET)/testComponents -o build/$(TARGET) \
-		-s $(LEGATO_ROOT)/components \
-		components/test/testComponents.sdef $(MKSYS_FLAGS)
-	mksys -t $(TARGET) -w build/$(TARGET)/testApps -o build/$(TARGET) \
-		-s $(LEGATO_ROOT)/components \
-		apps/test/testApps.sdef $(MKSYS_FLAGS)
+# Clean configuration too
+.PHONY: distclean
+distclean: clean
+	$(Q)rm -f .config*
 
-# Rule building the Java tests for a given target
-TESTS_JAVA_TARGETS = $(foreach target,$(TARGETS),tests_java_$(target))
-.PHONY: $(TESTS_JAVA_TARGETS)
-$(TESTS_JAVA_TARGETS):tests_java_%: % framework_% build/%/Makefile
-	$(MAKE) -C build/$(TARGET) tests_java
+# Error for missing platform adaptors
+platformAdaptor modules:
+	@echo -e "\033[1;31m'$@' directory is missing, which means these Legato sources have not been downloaded properly."
+	@echo -e "Please refer to https://github.com/legatoproject/legato-af#clone-from-github \033[0m"
+	@exit 1
 
-# Rule building the tests for a given target -- build both C and Java tests
-TESTS_TARGETS = $(foreach target,$(TARGETS),tests_$(target))
-.PHONY: $(TESTS_TARGETS)
-$(TESTS_TARGETS):tests_%: % framework_% build/%/Makefile
-	$(MAKE) -C build/$(TARGET) tests
-	$(MAKE) -C apps/test/framework/mk CC=$(TARGET_CC)
-	mksys -t $(TARGET) -w build/$(TARGET)/testFramework -o build/$(TARGET) \
-		-s $(LEGATO_ROOT)/components \
-		framework/test/testFramework.sdef $(MKSYS_FLAGS)
-	mksys -t $(TARGET) -w build/$(TARGET)/testComponents -o build/$(TARGET) \
-		-s $(LEGATO_ROOT)/components \
-		components/test/testComponents.sdef $(MKSYS_FLAGS)
-	mksys -t $(TARGET) -w build/$(TARGET)/testApps -o build/$(TARGET) \
-		-s $(LEGATO_ROOT)/components \
-		apps/test/testApps.sdef $(MKSYS_FLAGS)
+# Generate an MD5 hash of everything in the source directories.
+.PHONY: sources.md5
+sources.md5: $(FRAMEWORK_SOURCES)
+	$(L) GEN $@
+	$(Q)find $(FRAMEWORK_SOURCES) -type f | grep -v ".git" | sort | while read filePath ; \
+	do \
+	  echo "$$filePath" && \
+	  cat "$$filePath" ; \
+	done | md5sum | awk '{ print $$1 }' > sources.md5
 
-## Samples
+# Produce a file containing the Legato version
+.PHONY: version
+version:
+	$(L) GEN $@
+	$(Q)if [ -n "$(LEGATO_VERSION)" ] ; then \
+		echo "$(LEGATO_VERSION)" > $@  ; \
+	elif ! [ -e version ] ; then \
+		echo "unknown" > $@ ; \
+	fi
 
-# Rule building the C samples for a given target
-SAMPLES_C_TARGETS = $(foreach target,$(TARGETS),samples_c_$(target))
-.PHONY: $(SAMPLES_C_TARGETS)
-$(SAMPLES_C_TARGETS):samples_c_%: % framework_% build/%/Makefile
-	$(MAKE) -C build/$(TARGET) samples_c
+# Generate package properties
+package.properties: version sources.md5
+	$(L) GEN $@
+	$(Q)echo "version=`cat version`" > $@
+	$(Q)echo "md5=`cat sources.md5`" >> $@
 
-# Rule building the Java samples for a given target
-SAMPLES_JAVA_TARGETS = $(foreach target,$(TARGETS),samples_java_$(target))
-.PHONY: $(SAMPLES_JAVA_TARGETS)
-$(SAMPLES_JAVA_TARGETS):samples_java_%: % framework_% build/%/Makefile
-	$(MAKE) -C build/$(TARGET) samples_java
+# Header containing all of the KConfig parameters
+$(HEADER_CONFIG): $(LEGATO_KCONFIG) Makefile $(BUILD_CONFIG)/Documentation $(BUILD_CONFIG)/WiFi
+	$(L) GEN $@
+	$(Q)mkdir -p $(dir $@)
+	$(Q)printf '#ifndef LEGATO_CONFIG_INCLUDE_GUARD\n' > $@
+	$(Q)printf '#define LEGATO_CONFIG_INCLUDE_GUARD\n' >> $@
+	$(Q)sed -e 's:^#://:' \
+		-e 's/^LE_CONFIG_/#define &/' \
+		-e 's/=y$$/ 1/' \
+		-e 's/=n$$/ 0/' \
+		-e 's/=m$$/ LE_MODULE/' \
+		-e 's/=/ /' $< >> $@
+	$(Q)printf '\n//\n// Additional Definitions\n//\n' >> $@
+	$(Q)printf '#define LE_VERSION "%s"\n' "$(LEGATO_VERSION)" >> $@
+	$(Q)printf '#define LE_TARGET "%s"\n' "$(TARGET)" >> $@
+ifneq ($(KNOWN_TARGET),1)
+	$(Q)printf '#define LE_CONFIG_TARGET_%s 1\n' "$(TARGET_CAPS)" >> $@
+endif
+	$(Q)printf '#define LE_SVCDIR_SERVER_SOCKET_NAME \\\n' >> $@
+	$(Q)printf '    LE_CONFIG_RUNTIME_DIR "/" LE_CONFIG_SVCDIR_SERVER_SOCKET_NAME\n' >> $@
+	$(Q)printf '#define LE_SVCDIR_CLIENT_SOCKET_NAME \\\n' >> $@
+	$(Q)printf '    LE_CONFIG_RUNTIME_DIR "/" LE_CONFIG_SVCDIR_CLIENT_SOCKET_NAME\n' >> $@
+	$(Q)printf '\n#endif /* end LEGATO_CONFIG_INCLUDE_GUARD */\n' >> $@
 
-# Rule building the samples for a given target -- build both C and Java samples
-SAMPLES_TARGETS = $(foreach target,$(TARGETS),samples_$(target))
-.PHONY: $(SAMPLES_TARGETS)
-$(SAMPLES_TARGETS):samples_%: % framework_% build/%/Makefile
-	$(MAKE) -C build/$(TARGET) samples
+# Rule building the framework for a given target
+.PHONY: framework
+framework: tools package.properties $(HEADER_CONFIG) $(SHELL_CONFIG)
+	$(L) MAKE $@
+	$(Q)$(MAKE) -f Makefile.framework CC=$(TARGET_CC)
 
-## All
+.PHONY: system
+system: framework
+	$(call sysmk,build/$(TARGET)/system,$(LE_CONFIG_SDEF))
+	$(Q)mv build/$(TARGET)/$(notdir $(LE_CONFIG_SDEF:%.sdef=%)).$(TARGET).update \
+		build/$(TARGET)/system.$(TARGET).update
+	$(Q)if [ "$(LE_CONFIG_ENABLE_IMA)" = y ]; then \
+		mv build/$(TARGET)/$(notdir $(LE_CONFIG_SDEF:%.sdef=%)).$(TARGET).signed.update \
+			build/$(TARGET)/system.$(TARGET).signed.update ; \
+	fi
 
-# Rule building all C content for a given target
-ALL_C_TARGETS = $(foreach target,$(TARGETS),all_c_$(target))
-.PHONY: $(ALL_C_TARGETS)
-$(ALL_C_TARGETS):all_c_%: % framework_% tests_c_% samples_c_%
+# Trigger the build for a specific target
+ifneq ($(TARGET),nothing)
+.PHONY: $(TARGET)
+$(TARGET): system stage
 
-# Rule building all Java content for a given target
-ALL_JAVA_TARGETS = $(foreach target,$(TARGETS),all_java_$(target))
-.PHONY: $(ALL_JAVA_TARGETS)
-$(ALL_JAVA_TARGETS):all_java_%: % framework_% tests_java_% samples_java_%
+# NOTE: In the "virt" cases, the target will always be one of virt-arm or virt-x86.
+.PHONY: virt all_$(TARGET) all_virt all_c_$(TARGET)
+virt: all_virt
+all_$(TARGET): tests samples
+all_virt: all_$(TARGET)
+all_c_$(TARGET): tests_c samples_c
 
-# Rule building all content for a given target
-ALL_TARGETS = $(foreach target,$(TARGETS),all_$(target))
-.PHONY: $(ALL_TARGETS)
-$(ALL_TARGETS):all_%: % framework_% tests_% samples_%
+.PHONY: tests_$(TARGET) tests_virt tests_c_$(TARGET)
+tests_$(TARGET): tests
+tests_virt: tests_$(TARGET)
+tests_c_$(TARGET): tests_c
+
+.PHONY: samples_$(TARGET) samples_virt samples_c_$(TARGET)
+samples_$(TARGET): samples
+samples_virt: samples_$(TARGET)
+samples_c_$(TARGET): samples_c
+
+ifeq ($(LE_CONFIG_JAVA),y)
+.PHONY: all_java_$(TARGET) tests_java_$(TARGET) samples_java_$(TARGET)
+all_java_$(TARGET): tests_java samples_java
+tests_java_$(TARGET): tests_java
+samples_java_$(TARGET): samples_java
+endif # end LE_CONFIG_JAVA
+endif # end target not "nothing"
+
+# ========== STAGING/IMAGING RECIPES ============
+
+# Build a read/write system image
+.PHONY: stage_systoimg
+stage_systoimg:
+	$(L) IMAGE build/$(TARGET)/system.$(TARGET).update
+	$(Q)systoimg $(SYSTOIMG_FLAGS) $(TARGET) build/$(TARGET)/system.$(TARGET).update build/$(TARGET)
+	@# Check PA libraries.
+	$(Q)checkpa $(TARGET) || true
+	@# Link legato R/W images to default legato images
+	$(Q)(cd build/$(TARGET); \
+	    for f in legato.*; do \
+	        ln -sf $$f `echo $$f | sed 's/legato/legato_rw/'`; \
+	    done)
+
+# Build a read-only system image
+.PHONY: stage_systoimgro
+stage_systoimgro: stage_systoimg
+	$(L) ROIMAGE build/$(TARGET)/system.$(TARGET).update
+	$(Q)systoimg $(SYSTOIMG_FLAGS) -S _ro --read-only -a \
+	    $(TARGET) build/$(TARGET)/system.$(TARGET).update build/$(TARGET)
+
+# Generate AirVantage application model
+.PHONY: stage_mkavmodel
+stage_mkavmodel:
+	$(L) GEN build/$(TARGET)/model.app
+	$(Q)if [ -f "apps/platformServices/airVantageConnector/tools/scripts/mkavmodel" ] ; then \
+		cp "apps/platformServices/airVantageConnector/tools/scripts/mkavmodel" bin/ ; \
+		mkavmodel -t $(TARGET) -o build/$(TARGET) -v $(LEGATO_VERSION) ; \
+	fi
+
+.PHONY: stage
+stage: $(STAGE_SYSTOIMG) $(STAGE_MKAVMODEL)
+
+# ========== DOCUMENTATION RECIPES ============
+
+# Goal for building all documentation
+.PHONY: docs user_docs implementation_docs
+docs: $(PLANTUML_JAR_FILE) user_docs implementation_docs
+
+# Docs for people who don't want to be distracted by the internal implementation details.
+user_docs: localhost $(PLANTUML_JAR_FILE) build/localhost/Makefile
+	$(L) MAKE Documentation
+	$(Q)$(MAKE) -C build/localhost user_docs
+	$(Q)rm -f Documentation
+	$(Q)if [ -e "docManagement/Makefile" ] ; then \
+		$(MAKE) -C docManagement ; \
+	fi
+	$(Q)if [ -d "build/doc/user/html_converted/" ] ; then \
+		ln -sf build/doc/user/html_converted Documentation ; \
+	else \
+		ln -sf build/doc/user/html Documentation ; \
+	fi
+
+# Generate PDF of documentation
+user_pdf: localhost build/localhost/Makefile
+	$(L) MAKE Documentation.pdf
+	$(Q)$(MAKE) -C build/localhost user_pdf
+	$(Q)ln -sf build/localhost/bin/doc/user/legato-user.pdf Documentation.pdf
+
+# Generate UML diagrams for documentaton
+plantuml_docs: $(PLANTUML_JAR_FILE)
+	$(L) MAKE $@
+	$(Q)for dir in components/doc platformAdaptor/qmi/src/components/doc; do \
+		files=`ls $(LEGATO_ROOT)/$$dir/*` ; \
+		java -Djava.awt.headless=true -jar $(PLANTUML_JAR_FILE) \
+		                              -o $(LEGATO_ROOT)/build/doc/implementation/html $$files ; \
+	done
+
+# Docs for people who want or need to know the internal implementation details.
+implementation_docs: localhost plantuml_docs build/localhost/Makefile
+	$(L) MAKE $@
+	$(Q)$(MAKE) -C build/localhost $@
+
+# Generate PDF of implmentation docs
+implementation_pdf: localhost build/localhost/Makefile
+	$(L) MAKE $@
+	$(Q)$(MAKE) -C build/localhost $@
+
+# Rule building the unit test covergage report
+coverage_report:
+	$(L) MAKE $@
+	$(Q)$(MAKE) -C build/localhost $@
+
+# ========== TEST RECIPES ============
 
 # Rule for invoking CMake to generate the Makefiles inside the build directory.
 # Depends on the build directory being there.
 # NOTE: CMake is only used to build tests and samples.
-$(foreach target,$(TARGETS),build/$(target)/Makefile):
-	export PATH=$(TOOLCHAIN_DIR):$(PATH) && \
-		cd `dirname $@` && \
+build/$(TARGET)/Makefile:
+	export PATH=$(TOOLCHAIN_DIR):$(PATH) && cd `dirname $@` && \
 		cmake ../.. \
 			-DLEGATO_ROOT=$(LEGATO_ROOT) \
 			-DLEGATO_TARGET=$(TARGET) \
 			-DLEGATO_JOBS=$(LEGATO_JOBS) \
 			-DPLANTUML_JAR_FILE=$(PLANTUML_JAR_FILE) \
 			-DPA_DIR=$(LEGATO_ROOT)/platformAdaptor \
-			-DTEST_COVERAGE=$(TEST_COVERAGE) \
-			-DINCLUDE_ECALL=$(INCLUDE_ECALL) \
-			-DUSE_CLANG=$(USE_CLANG) \
-			-DSECSTOREADMIN=$(SECSTOREADMIN) \
-			-DDISABLE_SMACK=$(DISABLE_SMACK) \
+			-DTEST_COVERAGE=$(call k2b,$(LE_CONFIG_TEST_COVERAGE)) \
+			-DINCLUDE_ECALL=$(call k2b,$(LE_CONFIG_ENABLE_ECALL)) \
+			-DUSE_CLANG=$(call k2b,$(LE_CONFIG_USE_CLANG)) \
 			-DPLATFORM_SIMULATION=$(PLATFORM_SIMULATION) \
 			-DTOOLCHAIN_PREFIX=$(TOOLCHAIN_PREFIX) \
 			-DTOOLCHAIN_DIR=$(TOOLCHAIN_DIR) \
 			-DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake
 
-# If set, generate an image with stripped binaries
-ifneq ($(STRIP_STAGING_TREE),0)
-  SYSTOIMG_FLAGS += -s
-  MKSYS_FLAGS += -d build/$(TARGET)/debug
-endif
+# Rule building the C tests for a given target
+.PHONY: tests_c
+tests_c: $(TARGET) build/$(TARGET)/Makefile subsys_tests
+	$(L) MAKE $@
+	$(Q)$(MAKE) -C build/$(TARGET) $@
 
-ifeq ($(DISABLE_SMACK),1)
-  SYSTOIMG_FLAGS += --disable-smack
-endif
+# Subsystem and pytest-based unit tests
+.PHONY: subsys_tests
+subsys_tests: $(TARGET)
+	$(call sysmk,build/$(TARGET)/testFramework,framework/test/testFramework.sdef,\
+		-s $(LEGATO_ROOT)/components)
+	$(call sysmk,build/$(TARGET)/testComponents,components/test/testComponents.sdef,\
+		-s $(LEGATO_ROOT)/components)
+	$(call sysmk,build/$(TARGET)/testApps,apps/test/testApps.sdef,-s $(LEGATO_ROOT)/components)
 
-.PHONY: stage_systoimg
-stage_systoimg:
-	systoimg $(SYSTOIMG_FLAGS) $(TARGET) build/$(TARGET)/system.$(TARGET).update build/$(TARGET)
-	# Check PA libraries.
-	checkpa $(TARGET) || true
-	# Link legato R/W images to default legato images
-	(cd build/$(TARGET); \
-	    for f in legato.*; do \
-	        ln -sf $$f `echo $$f | sed 's/legato/legato_rw/'`; \
-	    done)
+ifeq ($(LE_CONFIG_JAVA),y)
+# Rule building the Java tests for a given target
+.PHONY: tests_java
+tests_java: $(TARGET) framework build/$(TARGET)/Makefile
+	$(L) MAKE $@
+	$(Q)$(MAKE) -C build/$(TARGET) $@
+endif # end LE_CONFIG_JAVA
 
-.PHONY: stage_systoimgro
-stage_systoimgro: stage_systoimg
-	systoimg $(SYSTOIMG_FLAGS) -S _ro --read-only -a \
-	    $(TARGET) build/$(TARGET)/system.$(TARGET).update build/$(TARGET)
+# Tests for mktools
+.PHONY: mktools_tests
+mktools_tests: $(TARGET)
+	$(L) MAKE $@
+	$(Q)$(MAKE) -C apps/test/framework/mk CC=$(TARGET_CC)
 
-.PHONY: stage_mkavmodel
-stage_mkavmodel:
-	@if [ -f "apps/platformServices/airVantageConnector/tools/scripts/mkavmodel" ] ; then \
-		cp "apps/platformServices/airVantageConnector/tools/scripts/mkavmodel" bin/ ; \
-		mkavmodel -t $(TARGET) -o build/$(TARGET) -v $(LEGATO_VERSION) ; \
-	fi
+# Rule building the tests for a given target -- build both C and Java tests
+.PHONY: tests
+tests: mktools_tests subsys_tests build/$(TARGET)/Makefile
+	$(L) MAKE $@
+	$(Q)$(MAKE) -C build/$(TARGET)
 
-# ==== localhost ====
+# ========== SAMPLE RECIPES ============
 
-.PHONY: stage_localhost
-stage_localhost: $(STAGE_SYSTOIMG)
+# Rule building the C samples for a given target
+.PHONY: samples_c
+samples_c: $(TARGET) build/$(TARGET)/Makefile
+	$(L) MAKE $@
+	$(Q)$(MAKE) -C build/$(TARGET) $@
 
-# ==== 9x15-based Sierra Wireless modules ====
+ifeq ($(LE_CONFIG_JAVA),y)
+# Rule building the Java samples for a given target
+.PHONY: samples_java
+samples_java: $(TARGET) build/$(TARGET)/Makefile
+	$(L) MAKE $@
+	$(Q)$(MAKE) -C build/$(TARGET) $@
+endif # end LE_CONFIG_JAVA
 
-.PHONY: stage_9x15
-stage_9x15:
-
-.PHONY: stage_ar7 stage_ar86 stage_wp85 stage_wp750x
-stage_ar7 stage_ar86 stage_wp85 stage_wp750x: stage_9x15 $(STAGE_SYSTOIMG) stage_mkavmodel
-
-# ==== AR758X (9x28-based Sierra Wireless modules) ====
-
-.PHONY: stage_9x28
-stage_9x28:
-
-.PHONY: stage_ar758x stage_wp76xx stage_wp77xx
-stage_ar758x stage_wp76xx stage_wp77xx: stage_9x28 $(STAGE_SYSTOIMG) stage_mkavmodel
-
-# ==== AR759X (9x40-based Sierra Wireless modules) ====
-
-.PHONY: stage_9x40
-stage_9x40:
-
-.PHONY: stage_ar759x
-stage_ar759x: stage_9x40 $(STAGE_SYSTOIMG) stage_mkavmodel
-
-# ==== Virtual ====
-
-.PHONY: stage_virt
-stage_virt: $(STAGE_SYSTOIMG)
-
-# ==== Raspberry Pi ====
-
-.PHONY: stage_raspi
-stage_raspi: $(STAGE_SYSTOIMG)
-
-# ========== RELEASE ============
-
-# Clean first, then build for localhost and selected embedded targets and generate the documentation
-# before packaging it all up into a compressed tarball.
-# Partition images for relevant devices are provided as well in the releases/ folder.
-.PHONY: release
-release: clean
-	for target in localhost $(RELEASE_TARGETS) docs; do set -e; make $$target; done
-	releaselegato -t "$(shell echo ${RELEASE_TARGETS} | tr ' ' ',')"
-
-# ========== PROTOTYPICAL SYSTEM ============
-
-ifeq ($(VERBOSE),1)
-  MKSYS_FLAGS += -v
-endif
-
-ifeq ($(ENABLE_IMA),1)
-  MKSYS_FLAGS += -S
-endif
-
-ifneq ($(DEBUG),yes)
-  # Optimize release builds
-  MKSYS_FLAGS += --cflags="-O2 -fno-omit-frame-pointer"
-endif
-
-ifeq ($(TEST_COVERAGE),1)
-  MKSYS_FLAGS += --cflags=--coverage --ldflags=--coverage
-
-  # Except on localhost, storage coverage data (gcda) in /data/coverage by default
-  ifneq ($(TARGET),localhost)
-    TEST_COVERAGE_DIR ?= "/data/coverage"
-  endif
-
-  ifneq ($(TEST_COVERAGE_DIR),)
-    MKSYS_FLAGS += --cflags=-fprofile-dir=${TEST_COVERAGE_DIR}
-  endif
-endif
-
-ifneq ($(LEGATO_JOBS),)
-  $(info Job Count: $(LEGATO_JOBS))
-  MKSYS_FLAGS += -j $(LEGATO_JOBS)
-  export LEGATO_JOBS
-endif
-
-# Define the default sdef file to use
-SDEF_TO_USE ?= default.sdef
-
-SYSTEM_TARGETS = $(foreach target,$(TARGETS),system_$(target))
-.PHONY: $(SYSTEM_TARGETS)
-$(SYSTEM_TARGETS):system_%: framework_%
-	mksys -t $(TARGET) -w build/$(TARGET)/system -o build/$(TARGET) $(SDEF_TO_USE) \
-			$(MKSYS_FLAGS)
-	mv build/$(TARGET)/$(notdir $(SDEF_TO_USE:%.sdef=%)).$(TARGET).update \
-	    build/$(TARGET)/system.$(TARGET).update
-	if [ $(ENABLE_IMA) -eq 1 ] ; then \
-		mv build/$(TARGET)/$(notdir $(SDEF_TO_USE:%.sdef=%)).$(TARGET).signed.update \
-			build/$(TARGET)/system.$(TARGET).signed.update ; \
-	fi
+# Rule building the samples for a given target -- build both C and Java samples
+.PHONY: samples
+samples: $(TARGET) build/$(TARGET)/Makefile
+	$(L) MAKE $@
+	$(Q)$(MAKE) -C build/$(TARGET) $@

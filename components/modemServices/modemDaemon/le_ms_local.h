@@ -18,15 +18,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * By default eCall is disabled
- */
-//--------------------------------------------------------------------------------------------------
-#ifndef INCLUDE_ECALL
-#define INCLUDE_ECALL 0
-#endif
-
-//--------------------------------------------------------------------------------------------------
-/**
  *  Thread name maintained by watchdog in modem service (Max length should not exceed
  *  MAX_THREAD_NAME_SIZE).
  */
@@ -47,7 +38,7 @@ typedef enum
     MS_WDOG_SMS_LOOP,
     MS_WDOG_MRC_LOOP,
     MS_WDOG_RIPIN_LOOP,
-#if INCLUDE_ECALL
+#if LE_CONFIG_ENABLE_ECALL
     MS_WDOG_ECALL_LOOP,
 #endif
     MS_WDOG_COUNT

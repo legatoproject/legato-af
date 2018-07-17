@@ -2584,15 +2584,15 @@ COMPONENT_INIT
     CreateHardCodedBindings();
 
     // Create the Legato runtime directory if it doesn't already exists.
-    LE_ASSERT(le_dir_Make(STRINGIZE(LE_RUNTIME_DIR), S_IRWXU | S_IXOTH) != LE_FAULT);
+    LE_ASSERT(le_dir_Make(LE_CONFIG_RUNTIME_DIR, S_IRWXU | S_IXOTH) != LE_FAULT);
 
     /// @todo Check permissions of directory containing client and server socket addresses.
     ///       Only the current user or root should be allowed write access.
     ///       Warn if it is found to be otherwise.
 
     // Open the sockets.
-    ClientSocketFd = OpenSocket(STRINGIZE(LE_SVCDIR_CLIENT_SOCKET_NAME));
-    ServerSocketFd = OpenSocket(STRINGIZE(LE_SVCDIR_SERVER_SOCKET_NAME));
+    ClientSocketFd = OpenSocket(LE_SVCDIR_CLIENT_SOCKET_NAME);
+    ServerSocketFd = OpenSocket(LE_SVCDIR_SERVER_SOCKET_NAME);
 
     // Start listening for connection attempts.
     ClientSocketMonitorRef = le_fdMonitor_Create("Client Socket",

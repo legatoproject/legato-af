@@ -11,10 +11,6 @@
 // Include macros for printing out values
 #include "le_print.h"
 
-#ifndef CONFIG_LINUX
-#   define CONFIG_LINUX 0
-#endif
-
 
 // Number is usec ticks for one msec
 #define ONE_MSEC 1000
@@ -381,7 +377,7 @@ static void TimerExpiryHandler
 
         if (isMain)
         {
-#if CONFIG_LINUX
+#if LE_CONFIG_LINUX
             // Child thread just exits so the main thread can join with it.
             le_thread_Cancel(ChildThread);
 
@@ -390,7 +386,7 @@ static void TimerExpiryHandler
             // Main thread joins with the child before continuing with additional tests.
             void* threadResult;
             le_thread_Join(ChildThread, &threadResult);
-#endif /* end CONFIG_LINUX */
+#endif /* end LE_CONFIG_LINUX */
 
             // Continue with additional tests
             AdditionalTests(timerRef);
@@ -448,7 +444,7 @@ static void TimerEventLoopTest(void)
 
 }
 
-#if CONFIG_LINUX
+#if LE_CONFIG_LINUX
 static void* ThreadMain(void* unused)
 {
     TimerEventLoopTest();
@@ -457,7 +453,7 @@ static void* ThreadMain(void* unused)
 
     return NULL;
 }
-#endif /* end CONFIG_LINUX */
+#endif /* end LE_CONFIG_LINUX */
 
 
 COMPONENT_INIT
@@ -478,7 +474,7 @@ COMPONENT_INIT
 
     MainThread = le_thread_GetCurrent();
 
-#if CONFIG_LINUX
+#if LE_CONFIG_LINUX
     ChildThread = le_thread_Create("Timer Test", ThreadMain, NULL);
 #else
     ChildThread = NULL;
@@ -491,8 +487,8 @@ COMPONENT_INIT
     LE_ASSERT(pthread_key_create(&StartTimeKey, NULL) == 0);
 
     // Skip child timer tests on RTOS as timer accuracy isn't good enough
-    LE_TEST_BEGIN_SKIP(!CONFIG_LINUX, Total);
-#if CONFIG_LINUX
+    LE_TEST_BEGIN_SKIP(!LE_CONFIG_LINUX, Total);
+#if LE_CONFIG_LINUX
     le_thread_SetJoinable(ChildThread);
     le_thread_Start(ChildThread);
 #endif

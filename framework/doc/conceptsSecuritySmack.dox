@@ -150,7 +150,7 @@ certain actions to be taken (i.e.; changing labels on files and processes or cha
 To modify labels and rules you must have the correct capabilities, by default in the Legato Linux
 system all process are run by the root user and automatically have this capability.
 
-A good place to read more about SMACK</a> and it's configuration is to check out it's
+A good place to read more about SMACK and its configuration is to check out its
 <a href="https://www.kernel.org/doc/Documentation/security/Smack.txt">official documentation</a>.
 
 @section conceptsSecuritySmack_onlycap SMACK onlycap
@@ -173,8 +173,11 @@ system image with the base support enabled.)
 To build Legato with onlycap support enabled for the @c wp76 run:
 
 @verbatim
-make wp76xx DISABLE_SMACK_ONLYCAP=0
+make menuconfig_wp76xx
 @endverbatim
+
+Then, in the displayed configuration menu, enable SMACK onlycap (Framework > Security Features >
+@ref ENABLE_SMACK_ONLYCAP "Enable SMACK onlycap").
 
 @section conceptsSecuritySmack_smackUsage How SMACK is configured in Legato
 

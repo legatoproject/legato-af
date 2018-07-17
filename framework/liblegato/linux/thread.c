@@ -35,11 +35,6 @@
 #include "thread.h"
 
 
-/// Expected number of threads in the process.
-/// @todo Make this configurable.
-#define THREAD_POOL_SIZE    4
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Nice level definitions for the different Legato priority levels.
@@ -550,11 +545,11 @@ void thread_Init
 {
     // Create the thread memory pool.
     ThreadPool = le_mem_CreatePool("Thread Pool", sizeof(thread_Obj_t));
-    le_mem_ExpandPool(ThreadPool, THREAD_POOL_SIZE);
+    le_mem_ExpandPool(ThreadPool, LE_CONFIG_MAX_THREAD_POOL_SIZE);
 
     // Create the Safe Reference Map for Thread References.
     Lock();
-    ThreadRefMap = le_ref_CreateMap("ThreadRef", THREAD_POOL_SIZE);
+    ThreadRefMap = le_ref_CreateMap("ThreadRef", LE_CONFIG_MAX_THREAD_POOL_SIZE);
     Unlock();
 
     // Create the destructor object pool.

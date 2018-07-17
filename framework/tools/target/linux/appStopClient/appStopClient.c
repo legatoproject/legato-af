@@ -9,7 +9,7 @@
 
 #include "legato.h"
 
-#define APPSTOP_SERVER_SOCKET_NAME       STRINGIZE(LE_RUNTIME_DIR) "AppStopServer"
+#define APPSTOP_SERVER_SOCKET_NAME       LE_CONFIG_RUNTIME_DIR "/AppStopServer"
 
 COMPONENT_INIT
 {
@@ -27,7 +27,7 @@ COMPONENT_INIT
     memset(&claddr, 0, sizeof(struct sockaddr_un));
     claddr.sun_family = AF_UNIX;
     snprintf(claddr.sun_path, sizeof(claddr.sun_path),
-             STRINGIZE(LE_RUNTIME_DIR) "AppStopClient__%ld__", (long)getpid());
+             LE_CONFIG_RUNTIME_DIR "/AppStopClient__%ld__", (long)getpid());
 
     LE_FATAL_IF(bind(fd, (struct sockaddr *) &claddr, sizeof(struct sockaddr_un)) == -1,
                 "Error binding AppStop client socket.");

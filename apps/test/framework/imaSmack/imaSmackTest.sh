@@ -17,10 +17,10 @@ appsList="imaFileClient imaFileServer"
 
 echo "******** IMA SMACK Test Starting (on $targetType @ $targetAddr) ***********"
 
-ENABLE_IMA=`printenv ENABLE_IMA`
+ENABLE_IMA=`printenv LE_CONFIG_ENABLE_IMA`
 
-if  [ -z $ENABLE_IMA ] || [ $ENABLE_IMA -ne 1 ]; then
-    echo "IMA build environment (ENABLE_IMA = 1) isn't set properly. IMA test won't run"
+if  [ -z $ENABLE_IMA ] || [ $ENABLE_IMA -ne y ]; then
+    echo "IMA build environment (LE_CONFIG_ENABLE_IMA = y) isn't set properly. IMA test won't run"
     exit 0
 fi
 

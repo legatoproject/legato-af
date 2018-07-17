@@ -41,10 +41,6 @@
 //  PRIVATE DATA
 // ==============================
 
-/// Number of objects in the Mutex Pool to start with.
-/// TODO: Change this to be configurable per-process.
-#define DEFAULT_POOL_SIZE 4
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -333,7 +329,7 @@ void mutex_Init
 //--------------------------------------------------------------------------------------------------
 {
     MutexPoolRef = le_mem_CreatePool("mutex", sizeof(Mutex_t));
-    le_mem_ExpandPool(MutexPoolRef, DEFAULT_POOL_SIZE);
+    le_mem_ExpandPool(MutexPoolRef, LE_CONFIG_MAX_MUTEX_POOL_SIZE);
 }
 
 

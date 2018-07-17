@@ -13,6 +13,7 @@ cflags:
     -I${LEGATO_ROOT}/components/airVantage/avcDaemon
     -I$LEGATO_ROOT/framework/liblegato
     -I${LEGATO_ROOT}/components/appCfg
+    -I${LEGATO_ROOT}/3rdParty/tinycbor/src
 }
 
 requires:

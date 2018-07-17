@@ -1,3 +1,110 @@
+#
+# Top level configuration for Legato.
+#
+# Copyright (C) Sierra Wireless Inc.
+#
+
+mainmenu "Legato Configuration"
+
+### "Hidden" Options ###
+# These are set automatically and not by user action.
+
+# Turn off module builds
+config MODULES
+  bool
+  default n
+  option modules
+
+# Indicate that we have a configuration
+config CONFIGURED
+  bool
+  default y
+
+# Name of the virtual target architecture
+config VIRT_TARGET_ARCH
+  string
+  depends on TARGET_VIRT_ARM || TARGET_VIRT_X86
+  default "arm" if TARGET_VIRT_ARM
+  default "x86" if TARGET_VIRT_X86
+  ---help---
+  Set the name of the virtual target platform, if applicable.  This value is
+  determined by the target platform selection.
+
+### Target Selection Options ###
+
+choice
+  prompt "Target Hardware Platform"
+  default TARGET_LOCALHOST
+  ---help---
+  Select the hardware Legato will be run on.
+
+config TARGET_LOCALHOST
+  bool "Localhost (localhost)"
+  ---help---
+  Run on local Linux host.
+
+config TARGET_VIRT_X86
+  bool "Virtual x86 (virt-x86)"
+  ---help---
+  Run on virtual x86 platform.
+
+config TARGET_VIRT_ARM
+  bool "Virtual ARM (virt-arm)"
+  ---help---
+  Run on virtual ARM platform.
+
+config TARGET_RASPI
+  bool "Raspberry Pi (raspi)"
+  ---help---
+  Run on a Raspberry Pi.
+
+config TARGET_AR7
+  bool "SWI AR755x (ar7)"
+  ---help---
+  Run on a Sierra Wireless AR755x.
+
+config TARGET_AR758X
+  bool "SWI AR758x (ar758x)"
+  ---help---
+  Run on a Sierra Wireless AR758x.
+
+config TARGET_AR759X
+  bool "SWI AR759x (ar759x)"
+  ---help---
+  Run on a Sierra Wireless AR759x.
+
+config TARGET_AR86
+  bool "SWI AR86xx (ar86)"
+  ---help---
+  Run on a Sierra Wireless AR86xx.
+
+config TARGET_WP85
+  bool "SWI WP85xx (wp85)"
+  ---help---
+  Run on a Sierra Wireless WP85xx.
+
+config TARGET_WP750X
+  bool "SWI WP750x (wp750x)"
+  ---help---
+  Run on a Sierra Wireless WP750x.
+
+config TARGET_WP76XX
+  bool "SWI WP76xx (wp76xx)"
+  ---help---
+  Run on a Sierra Wireless WP76xx.
+
+config TARGET_WP77XX
+  bool "SWI WP77xx (wp77xx)"
+  ---help---
+  Run on a Sierra Wireless WP77xx.
+
+config TARGET_CUSTOM
+  bool "Custom"
+  ---help---
+  Run on a custom hardware platform.
+
+endchoice # end "Target Hardware Platform"
+
 choice
   prompt "Target Operating System"
   default LINUX
@@ -10,191 +117,102 @@ config LINUX
   ---help---
   Run on Linux.
 
-config FREERTOS
-  bool "FreeRTOS"
-  ---help---
-  Run on the FreeRTOS/OpenRTOS real-time operating system.
-
-config OTHER_OS
-  bool "Other"
-  select CUSTOM_OS
+config CUSTOM_OS
+  bool "Custom"
+  select CUSTOM_FA
   ---help---
   Run on another operating system, such as a proprietary OS distribution.  A
-  custom framework adaptor will be required in this case.
+  custom framework adaptor is required in this case.
 
 endchoice # end "Target Operating System"
 
 config POSIX
-  bool
-  depends on LINUX
-  default y
-
-menu "Legato Framework"
-
-config CUSTOM_OS
-  bool "Customize adaptor"
-  default n
-  ---help---
-  Customize the Legato framework adaptor for the target platform.
-
-config CUSTOM_OS_ADAPTOR_PATH
-  string "Path to custom OS adaptor sources directory"
-  depends on CUSTOM_OS
-  ---help---
-  Path of custom OS adaptor source directory relative to the legato/ root
-  directory.
-
-  This source directory should contain liblegato/ and daemons/ directories
-  containing the source code needed to support the custom operating system.
-
-config THREAD_REALTIME_ONLY
-  bool "Use real-time priority for all threads"
-  default y if FREERTOS
-  default n
-  ---help---
-  Force Legato to use only real-time priorities for tasks.
-
-menu "Diagnostic Features"
-
-config ENABLE_BACKTRACE
-  bool "Enable backtraces"
-  default y
-  ---help---
-  Print backtraces when an assertion is triggered.
-
-config THREAD_SETNAME
-  bool "Set Legato thread names to non-default values"
-  default y
-  ---help---
-  Use Legato thread names as the names for underlying OS threads as well.
-  This has no effect if the OS does not allow setting thread names.
-
-config NAMES_ENABLED
-  bool "Enable names in Legato objects"
-  default y
-  ---help---
-  Add name fields to Legato objects (mutexes, threads, memory pools, etc) for
-  logging, debugging, and tracing purposes.  Turning this off will reduce RAM
-  usage at the expense of traceability.
-
-config FD_MONITOR_NAMES_ENABLED
-  bool "Enable names in file descriptor monitors"
-  depends on NAMES_ENABLED
+  bool "POSIX compliant operating system"
   default y if LINUX
   default n
   ---help---
-  Add a name field to Legato file descriptor monitors.
+  Indicate Legato is running on a POSIX platform.
 
-config SEM_NAMES_ENABLED
-  bool "Enable names in semaphores"
-  depends on NAMES_ENABLED
-  default y if LINUX
+config REDUCE_FOOTPRINT
+  bool "Reduce memory and storage use where possible"
   default n
   ---help---
-  Add a name field to Legato semaphores.
+  Try to reduce the memory and storage footprint of Legato.  This may use
+  alternate datastructures which are optimized for size and reduce the scale
+  of some tests.  Selecting this option may result in lower performance and
+  slower applications.
 
-config MUTEX_NAMES_ENABLED
-  bool "Enable names in mutexes"
-  depends on NAMES_ENABLED
-  default y if LINUX
+### Build and Toolchain Options ###
+
+config USE_CLANG
+  bool "Use Clang for compilation"
   default n
   ---help---
-  Add a name field to Legato mutexes.
+  Use Clang rather than GCC for compiling C and C++ sources.
 
-config THREAD_NAMES_ENABLED
-  bool "Enable names in threads"
-  depends on NAMES_ENABLED
+config USE_CCACHE
+  bool "Use CCache"
   default y
   ---help---
-  Add a name field to Legato threads.
+  Use CCache to speed up compilation times.
 
-config MEM_POOL_NAMES_ENABLED
-  bool "Enable names in memory pools"
-  depends on NAMES_ENABLED
-  default y
+config CCACHE
+  string "CCache command"
+  depends on USE_CCACHE
+  default "ccache"
   ---help---
-  Add a name field to Legato memory pools.
+  CCache executable to use when compiling.
 
-config TIMER_NAMES_ENABLED
-  bool "Enable names in timers"
-  depends on NAMES_ENABLED
-  default y if LINUX
+config READ_ONLY
+  bool "Read-only image"
+  default y if TARGET_AR758X || TARGET_AR759X
   default n
   ---help---
-  Add a name field to Legato timers.
+  Generate a read-only image for the target, in addition to the default
+  read-write image.
 
-config EVENT_NAMES_ENABLED
-  bool "Enable names in events"
-  depends on NAMES_ENABLED
-  default y if LINUX
+config STRIP_STAGING_TREE
+  bool "Strip staging tree"
+  default y if TARGET_AR758X || TARGET_AR759X
   default n
   ---help---
-  Add a name field to Legato event IDs.
+  Strip files staged for the target image.
 
-config HASHMAP_NAMES_ENABLED
-  bool "Enable names in hashmaps"
-  depends on NAMES_ENABLED
-  default y if LINUX
+config DEBUG
+  bool "Debug build"
   default n
   ---help---
-  Add a name field to Legato hashmaps.  Disabling this also disables hashmap
-  tracing.
+  Build with debug compiler flags turned on, and debugging code features
+  enabled.
 
-config SAFE_REF_NAMES_ENABLED
-  bool "Enable names in safe references"
-  depends on NAMES_ENABLED
-  default y if LINUX
+config TEST_COVERAGE
+  bool "Code coverage build"
   default n
   ---help---
-  Add a name field to Legato safe references.
+  Build with code coverage compiler flags turned on.
 
-endmenu # end "Diagnostic Features"
-
-menu "Extra Features"
-
-config PYTHON
-  bool "Enable Python support"
-  depends on POSIX
-  default y
+config TEST_COVERAGE_DIR
+  string "On-target code coverage directory"
+  depends on TEST_COVERAGE
+  default "" if TARGET_LOCALHOST
+  default "/data/coverage"
   ---help---
-  Enable support for Python.  Python is not supported on non-POSIX systems.
+  On-target directory to write runtime code coverage results to.
 
-config BUILD_TARGET_TOOLS
-  bool "Build on-target command-line tools"
-  default n if OTHER_OS
-  default y
-  ---help---
-  Include Legato's command-line tools for the target.
+### Sub-sections ###
 
-endmenu # end "Extra Features"
+menu "Documentation"
+source "build/.KConfig/Documentation"
+endmenu # end "Documentation"
 
+menu "Framework"
+source "framework/KConfig"
 endmenu # end "Framework"
 
-menu "Legato Services"
+menu "Modules"
+source "modules/KConfig"
+endmenu # end "Modules"
 
-menu "AirVantage Connector"
-  depends on POSIX
-
-config SOTA
-  bool "Enable software-over-the-air (SOTA) updates"
-  depends on POSIX
-  default y
-  ---help---
-  Select this to enable support for SOTA updates.  SOTA is not supported on
-  non-POSIX systems.
-
-endmenu # end "AirVantage Connector"
-
-menu "AT Server"
-
-config ATSERVER_USER_ERRORS
-  bool "Enable user-defined errors in AT Server"
-  default y if LINUX
-  default n
-  ---help---
-  Allow setting user-defined error strings in AT Server.  Enabling this
-  increases the memory consumption of the AT Server.
-
-endmenu # end "AT Server"
-
+menu "Services"
+source "apps/platformServices/KConfig"
 endmenu # end "Services"

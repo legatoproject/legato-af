@@ -16,14 +16,10 @@
 #include "externalThreadApi.h"
 
 /// Number of threads to test
-#ifdef CONFIG_CUSTOM_OS
-#define NB_THREADS 10
+#ifdef LE_CONFIG_REDUCE_FOOTPRINT
+#   define NB_THREADS 10
 #else
-#define NB_THREADS 100
-#endif
-
-#ifndef CONFIG_MEM_POOL_NAMES_ENABLED
-#define CONFIG_MEM_POOL_NAMES_ENABLED 0
+#   define NB_THREADS 100
 #endif
 
 /// Counter variable that the threads all increment and decrement.
@@ -112,11 +108,11 @@ void eta_Start
     le_mem_PoolRef_t pool = NULL;
     le_mem_PoolStats_t stats;
 
-    LE_TEST_BEGIN_SKIP(!CONFIG_MEM_POOL_NAMES_ENABLED, 1);
+    LE_TEST_BEGIN_SKIP(!LE_CONFIG_MEM_POOL_NAMES_ENABLED, 1);
     // Need to separately #ifdef this out as the internal function _le_mem_FindPool is not
-    // even defined if CONFIG_MEM_POOL_NAMES_ENABLED is not set
-#if CONFIG_MEM_POOL_NAMES_ENABLED
-    pool = _le_mem_FindPool("framework", "ThreadPool");
+    // even defined if LE_CONFIG_MEM_POOL_NAMES_ENABLED is not set
+#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
+    pool = _le_mem_FindPool("framework", "Thread Pool");
 #endif
     LE_TEST_ASSERT(pool != NULL, "thread pool created");
     le_mem_GetStats(pool, &stats);
@@ -152,7 +148,7 @@ void eta_Start
     // The Counter should be back to zero.
     LE_ASSERT(Counter == 0);
 
-    LE_TEST_BEGIN_SKIP(!CONFIG_MEM_POOL_NAMES_ENABLED, 1);
+    LE_TEST_BEGIN_SKIP(!LE_CONFIG_MEM_POOL_NAMES_ENABLED, 1);
     // Check final number of blocks in use
     le_mem_GetStats(pool, &stats);
     LE_TEST_INFO("numBlocksInUse=%u", (unsigned int)stats.numBlocksInUse);

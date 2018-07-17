@@ -29,14 +29,13 @@
  * Smack label used for protecting data files
  */
 //--------------------------------------------------------------------------------------------------
-#ifdef IMA_SMACK
-#define IMA_SMACK_LABEL  STRINGIZE(IMA_SMACK)
-#else
-#define IMA_SMACK_LABEL    "imaLegato"
+#ifndef LE_CONFIG_IMA_SMACK
+#   define LE_CONFIG_IMA_SMACK  "imaLegato"
 #endif
 
 //--------------------------------------------------------------------------------------------------
 /**
+
  * Check whether current linux kernel is IMA-enabled or not.
  *
  * @return
