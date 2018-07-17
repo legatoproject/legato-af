@@ -87,19 +87,19 @@ NMEA sentences for each platform.
 | LE_GNSS_NMEA_MASK_GLGSV  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
 | LE_GNSS_NMEA_MASK_GNGNS  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
 | LE_GNSS_NMEA_MASK_GNGSA  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
-| LE_GNSS_NMEA_MASK_GAGGA  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
-| LE_GNSS_NMEA_MASK_GAGSA  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
-| LE_GNSS_NMEA_MASK_GAGSV  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
-| LE_GNSS_NMEA_MASK_GARMC  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
-| LE_GNSS_NMEA_MASK_GAVTG  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
+| LE_GNSS_NMEA_MASK_GAGGA  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |       |
+| LE_GNSS_NMEA_MASK_GAGSA  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |       |
+| LE_GNSS_NMEA_MASK_GAGSV  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |       |
+| LE_GNSS_NMEA_MASK_GARMC  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |       |
+| LE_GNSS_NMEA_MASK_GAVTG  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |       |
 | LE_GNSS_NMEA_MASK_PSTIS  |   X   |        |        |    X    |    X   |   X    |   X    |   X   |
 | LE_GNSS_NMEA_MASK_PQXFI  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
 | LE_GNSS_NMEA_MASK_PTYPE  |   X   |   X    |   X    |    X    |    X   |   X    |   X    |   X   |
-| LE_GNSS_NMEA_MASK_GPGRS  |       |        |   X    |         |        |        |        |       |
-| LE_GNSS_NMEA_MASK_GPGLL  |       |        |   X    |         |        |        |        |       |
+| LE_GNSS_NMEA_MASK_GPGRS  |       |   X    |   X    |         |        |        |        |       |
+| LE_GNSS_NMEA_MASK_GPGLL  |       |   X    |   X    |         |        |        |        |       |
 | LE_GNSS_NMEA_MASK_DEBUG  |       |        |        |         |        |   X    |   X    |       |
-| LE_GNSS_NMEA_MASK_GPDTM  |       |        |   X    |         |        |        |        |       |
-| LE_GNSS_NMEA_MASK_GAGNS  |       |        |   X    |         |        |        |        |       |
+| LE_GNSS_NMEA_MASK_GPDTM  |       |   X    |   X    |         |        |        |        |       |
+| LE_GNSS_NMEA_MASK_GAGNS  |       |   X    |   X    |         |        |        |        |       |
 
 
 @deprecated LE_GNSS_NMEA_MASK_PQXFI is deprecated. LE_GNSS_NMEA_MASK_PTYPE supporting all
