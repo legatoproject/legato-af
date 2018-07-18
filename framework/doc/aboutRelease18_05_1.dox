@@ -9,9 +9,9 @@ The following provides a summary of changes that have been made in the 18.05 Leg
 <b> Download the @ref aboutReleaseInfo "source code" and get started with @ref basicBuild
 "building Legato AF". </b>
 
-@section Patches 18.05.01 Fixes
+@section Patches 18.05.1 Fixes
 
-The following issues have been patched in 18.05.1:
+The following issues have been fixed by the 18.05.1 patch:
 
 - A bug that was preventing kernel modules set to @c load: @c manual from starting when
 the dependant app starts is fixed.
