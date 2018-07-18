@@ -24,7 +24,6 @@ the following tutorials:
 | @subpage howToGNSS                 | Mange GNSS on a target device                               |
 | @subpage howToSetUserTimebase      | Set up user timebase                                        |
 | @subpage howToSoftwareUpdate       | Update Software                                             |
-| @subpage howToSPI                  | Set up a target to use SPI                                  |
 
 <h1> Development Articles </h1>
 

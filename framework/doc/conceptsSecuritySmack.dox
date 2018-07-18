@@ -130,12 +130,6 @@ current implementation of SMACK has the following limitations:
    for the created files are passed over IPC to another app. The other app can then pass that
    fd onto a third app and so on.
 
-- Yaffs2/UBIFS do not set any label for newly created files. This causes an issue with the
-   config daemon that has the label "framework", but its created files don't have any labels. To
-   work around this, the config daemon must run as root and the 'onlycap' SMACK file must
-   not be set. This means there is limited protection because all root processes have the
-   ability to change SMACK labels on files.
-
 - QMI sockets are currently set to "*" because some apps need to write to them.
    Ideally, the QMI socket file would be given a label such as "qmi" and a rule would be created
    to only allow access to the app that requires it.  However, there currently isn't a

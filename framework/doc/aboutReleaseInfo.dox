@@ -2,16 +2,22 @@
 
 Legato Application Framework Release Information
 
-<b>Current Stable Release: 18.06.1</b>
+<b>Current Stable Release: 18.07.0</b>
 
-Legato AF release notes contain information on new features and resolved outstanding issues. To
-download the release either download and expand the tarball or clone the tagged repo from GitHub.
-The @ref basicBuildLegato "build Legato" page walks through building a release for specific targets
-and then updating the target device.
+Legato Application Framework release notes contain information on new features and resolved
+issues. The release artifacts are provided as a tarball or you are able to clone the tagged repo
+from GitHub.
+
+The @ref basicBuildLegato "build Legato" page walks through installing the Legato Application
+Framework for your development environment, it also includes how to setup your development
+environment and build the Legato Application Framework for a target.
+
+Legato Application Framework Releases:
 
 | Version      | Date          | Release Notes              | GitHub                                                                 | Tarball                                                                                            | User Docs                                                                    |
 |--------------|---------------|----------------------------|------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|
-| 18.06.1      | Jul 13, 2018  | @subpage releaseNotes18061 | [18.06.1 tag](https://github.com/legatoproject/legato-af/tree/18.06.1) | [legato-18.06.1.tar.bz2](https://downloads.sierrawireless.com/legato/1806/legato-18.06.1.tar.bz2)  | [latest legato.io](http://legato.io/legato-docs/latest/buildAppsMain.html)   |
+| 18.07.0      | Aug 07, 2018  | @subpage releaseNotes18070 | [18.07.0 tag](https://github.com/legatoproject/legato-af/tree/18.07.0) | [legato-18.07.0.tar.bz2](https://downloads.sierrawireless.com/legato/1806/legato-18.07.0.tar.bz2)  | [latest legato.io](http://legato.io/legato-docs/latest/buildAppsMain.html)   |
+| 18.06.1      | Jul 13, 2018  | @subpage releaseNotes18061 | [18.06.1 tag](https://github.com/legatoproject/legato-af/tree/18.06.1) | [legato-18.06.1.tar.bz2](https://downloads.sierrawireless.com/legato/1806/legato-18.06.1.tar.bz2)  | [18.06.1 legato.io](http://legato.io/legato-docs/18_06/buildAppsMain.html)   |
 | 18.05.1      | Jun 20, 2018  | @subpage releaseNotes18051 | [18.05.1 tag](https://github.com/legatoproject/legato-af/tree/18.05.1) | [legato-18.05.1.tar.bz2](https://downloads.sierrawireless.com/legato/1805/legato-18.05.1.tar.bz2)  | [18.05.1 legato.io](http://legato.io/legato-docs/18_05/buildAppsMain.html)   |
 | 18.04.0      | May 8, 2018   | @subpage releaseNotes18040 | [18.04.0 tag](https://github.com/legatoproject/legato-af/tree/18.04.0) | [legato-18.04.0.tar.bz2](https://downloads.sierrawireless.com/legato/1804/legato-18.04.0.tar.bz2)  | [18.04.0 legato.io](http://legato.io/legato-docs/18_04/buildAppsMain.html)   |
 | 18.03.0      | Apr 11, 2018  | @subpage releaseNotes18030 | [18.03.0 tag](https://github.com/legatoproject/legato-af/tree/18.03.0) | [legato-18.03.0.tar.bz2](https://downloads.sierrawireless.com/legato/1803/legato-18.03.0.tar.bz2)  | [18.03.0 legato.io](http://legato.io/legato-docs/18_03/buildAppsMain.html)   |
@@ -39,11 +45,11 @@ The Legato team welcomes @ref aboutLegatoContributing "contributions" to the pro
 
 @section releaseInfo_LegatoAFReleases Legato Application Framework Release Process
 
-Legato AF releases are not tied to any specific processor product release.  Once we have released
-Legato AF, processor vendors (like Sierra Wireless) will take the Legato AF and integrate it into
-their own product release.
+Legato Application Framework releases are not tied to any specific target product release.  Once we
+have released the Legato Application Framework, target vendors (like Sierra Wireless) will take the
+Legato Application Framework and integrate it into their own product release.
 
-<b> Legato AF Release Schedule VS Processor Vendor Release Schedule </b>
+<b> Legato AF Release Schedule VS Target Vendor Release Schedule </b>
 
 @image html LegatoReleaseVSModuleVendorRelease.png
 
