@@ -27,6 +27,23 @@ namespace envVars
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Safely copy the environment variable.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SafeCopyEnvVar
+(
+    char*       dst,        ///< Destination pointer.
+    const char* src,        ///< Source pointer.
+    uint32_t    dstSize     ///< Destination buffer size.
+)
+{
+    // If variable is longer than MAX_LEN, it will be truncated. Zero at the end is guaranteed.
+    strncpy(dst, src, dstSize - 1);
+    dst[dstSize - 1] = '\0';
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Fetch the value of a given optional environment variable.
  *
  * @return  The value ("" if not found).
@@ -45,12 +62,10 @@ std::string Get
     {
         return std::string();
     }
-    // If variable is longer than MAX_LEN, it will be truncated
-    strncpy(envVar, value, sizeof(envVar) - 1);
+    SafeCopyEnvVar(envVar, value, sizeof(envVar));
 
     return std::string(envVar);
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -76,8 +91,7 @@ std::string GetRequired
             mk::format(LE_I18N("The required environment variable %s has not been set."), name)
         );
     }
-    // If variable is longer than MAX_LEN, it will be truncated
-    strncpy(envVar, value, sizeof(envVar) - 1);
+    SafeCopyEnvVar(envVar, value, sizeof(envVar));
 
     return std::string(envVar);
 }
@@ -126,7 +140,7 @@ static void SetToolChainVars
                             buildParams.cCompilerPath;
         }
 
-        Set("CC", cCompilerPath.c_str());
+        Set("CC", cCompilerPath);
     }
 
     if (!buildParams.cxxCompilerPath.empty())
@@ -138,52 +152,52 @@ static void SetToolChainVars
                               buildParams.cxxCompilerPath;
         }
 
-        Set("CXX", cxxCompilerPath.c_str());
+        Set("CXX", cxxCompilerPath);
     }
 
     if (!buildParams.toolChainDir.empty())
     {
-        Set("TOOLCHAIN_DIR", buildParams.toolChainDir.c_str());
+        Set("TOOLCHAIN_DIR", buildParams.toolChainDir);
     }
 
     if (!buildParams.toolChainPrefix.empty())
     {
-        Set("TOOLCHAIN_PREFIX", buildParams.toolChainPrefix.c_str());
+        Set("TOOLCHAIN_PREFIX", buildParams.toolChainPrefix);
     }
 
     if (!buildParams.sysrootDir.empty())
     {
-        Set("LEGATO_SYSROOT", buildParams.sysrootDir.c_str());
+        Set("LEGATO_SYSROOT", buildParams.sysrootDir);
     }
 
     if (!buildParams.linkerPath.empty())
     {
-        Set("LD", buildParams.linkerPath.c_str());
+        Set("LD", buildParams.linkerPath);
     }
 
     if (!buildParams.archiverPath.empty())
     {
-        Set("AR", buildParams.archiverPath.c_str());
+        Set("AR", buildParams.archiverPath);
     }
 
     if (!buildParams.assemblerPath.empty())
     {
-        Set("AS", buildParams.assemblerPath.c_str());
+        Set("AS", buildParams.assemblerPath);
     }
 
     if (!buildParams.stripPath.empty())
     {
-        Set("STRIP", buildParams.stripPath.c_str());
+        Set("STRIP", buildParams.stripPath);
     }
 
     if (!buildParams.objcopyPath.empty())
     {
-        Set("OBJCOPY", buildParams.objcopyPath.c_str());
+        Set("OBJCOPY", buildParams.objcopyPath);
     }
 
     if (!buildParams.readelfPath.empty())
     {
-        Set("READELF", buildParams.readelfPath.c_str());
+        Set("READELF", buildParams.readelfPath);
     }
     else
     {
@@ -192,7 +206,7 @@ static void SetToolChainVars
 
     if (!buildParams.compilerCachePath.empty())
     {
-        Set("CCACHE", buildParams.compilerCachePath.c_str());
+        Set("CCACHE", buildParams.compilerCachePath);
     }
 }
 
@@ -218,7 +232,7 @@ void SetTargetSpecific
     SetToolChainVars(buildParams);
 
     // Set LEGATO_TARGET.
-    Set("LEGATO_TARGET", buildParams.target.c_str());
+    Set("LEGATO_TARGET", buildParams.target);
 
     // Set LEGATO_BUILD based on the contents of LEGATO_ROOT, which must be already defined.
     std::string path = GetRequired("LEGATO_ROOT");
@@ -227,7 +241,7 @@ void SetTargetSpecific
         throw mk::Exception_t(LE_I18N("LEGATO_ROOT environment variable is empty."));
     }
     path = path::Combine(path, "build/" + buildParams.target);
-    Set("LEGATO_BUILD", path.c_str());
+    Set("LEGATO_BUILD", path);
 }
 
 
