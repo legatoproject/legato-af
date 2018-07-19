@@ -1320,6 +1320,10 @@ le_result_t le_gnss_GetDilutionOfPrecision
                                                 ///< the dopType. [resolution 1e-3].
 )
 {
+    if (NULL == dopPtr)
+    {
+        return LE_OUT_OF_RANGE;
+    }
     return LE_OK;
 }
 

@@ -1136,6 +1136,9 @@ static void CloseSessionEventHandler
  * @return
  *      LE_OK if successful.
  *      LE_FAULT if the pointer is NULL.
+ *
+ * @note If the caller is passing a null pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t ValidatePositionSamplePtr
@@ -1401,8 +1404,8 @@ void le_gnss_RemovePositionHandler
  *  - LE_OK on success
  *  - LE_FAULT on failure
  *
- * @note If the caller is passing an invalid Position sample reference into this function,
- *       it is a fatal error, the function will not return.
+ * @note If the caller is passing an invalid Position sample reference or a null pointer into this
+ *       function, it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_GetPositionState
@@ -1420,7 +1423,7 @@ le_result_t le_gnss_GetPositionState
     le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr =
                                                 le_ref_Lookup(PositionSampleMap,positionSampleRef);
 
-    // Check input pointers
+    // Check input pointer
     if (NULL == statePtr)
     {
         LE_KILL_CLIENT("Invalid pointer provided!");
@@ -1620,8 +1623,8 @@ le_result_t le_gnss_GetAltitude
  *  - LE_OUT_OF_RANGE  The retrieved time is invalid (all fields are set to 0).
  *  - LE_OK            Function succeeded.
  *
- * @note If the caller is passing an invalid Position sample reference into this function,
- *       it is a fatal error, the function will not return.
+ * @note If the caller is passing an invalid Position sample reference or null pointers into this
+ *       function, it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_GetTime
@@ -1657,7 +1660,7 @@ le_result_t le_gnss_GetTime
         || (NULL == secondsPtr)
         || (NULL == millisecondsPtr))
     {
-        LE_KILL_CLIENT("Invalid pointer provided!");
+        LE_KILL_CLIENT("Invalid pointers provided!");
         return LE_FAULT;
     }
 
@@ -1722,8 +1725,8 @@ le_result_t le_gnss_GetTime
  *  - LE_OUT_OF_RANGE  The retrieved time is invalid (all fields are set to 0).
  *  - LE_OK            Function succeeded.
  *
- * @note If the caller is passing an invalid Position sample reference into this function,
- *       it is a fatal error, the function will not return.
+ * @note If the caller is passing an invalid Position sample reference or null pointers into this
+ *       function, it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_GetGpsTime
@@ -1746,7 +1749,7 @@ le_result_t le_gnss_GetGpsTime
     if ((NULL == gpsWeekPtr)
         || (NULL == gpsTimeOfWeekPtr))
     {
-        LE_KILL_CLIENT("Invalid pointer provided!");
+        LE_KILL_CLIENT("Invalid pointers provided!");
         return LE_FAULT;
     }
 
@@ -1798,8 +1801,8 @@ le_result_t le_gnss_GetGpsTime
  * @note The epoch time is the number of seconds elapsed since January 1, 1970
  *       (midnight UTC/GMT), not counting leaps seconds.
  *
- * @note If the caller is passing an invalid position sample reference into this function,
- *       it is a fatal error, the function will not return.
+ * @note If the caller is passing an invalid position sample reference or a null pointer into this
+ *       function, it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_GetEpochTime
@@ -1815,7 +1818,7 @@ le_result_t le_gnss_GetEpochTime
     le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr
                                             = le_ref_Lookup(PositionSampleMap,positionSampleRef);
 
-    // Check input pointers
+    // Check input pointer
     if (NULL == millisecondsPtr)
     {
         LE_KILL_CLIENT("Invalid pointer provided!");
@@ -1855,8 +1858,8 @@ le_result_t le_gnss_GetEpochTime
  *  - LE_OUT_OF_RANGE  The retrieved time accuracy is invalid (set to UINT16_MAX).
  *  - LE_OK            Function succeeded.
  *
- * @note If the caller is passing an invalid Position sample reference into this function,
- *       it is a fatal error, the function will not return.
+ * @note If the caller is passing an invalid position sample reference or a null pointer into this
+ *       function, it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_GetTimeAccuracy
@@ -1872,7 +1875,7 @@ le_result_t le_gnss_GetTimeAccuracy
     le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr
                                             = le_ref_Lookup(PositionSampleMap,positionSampleRef);
 
-    // Check input pointers
+    // Check input pointer
     if (NULL == timeAccuracyPtr)
     {
         LE_KILL_CLIENT("Invalid pointer provided!");
@@ -1939,7 +1942,7 @@ le_result_t le_gnss_GetGpsLeapSeconds
     le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr
                                             = le_ref_Lookup(PositionSampleMap,positionSampleRef);
 
-    // Check input pointers
+    // Check input pointer
     if (NULL == leapSecondsPtr)
     {
         LE_KILL_CLIENT("Invalid pointer provided!");
@@ -1977,8 +1980,8 @@ le_result_t le_gnss_GetGpsLeapSeconds
  *  - LE_OUT_OF_RANGE  The retrieved date is invalid (all fields are set to 0).
  *  - LE_OK            Function succeeded.
  *
- * @note If the caller is passing an invalid Position sample reference into this function,
- *       it is a fatal error, the function will not return.
+ * @note If the caller is passing an invalid Position sample reference or null pointers into this
+ *       function, it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_GetDate
@@ -2010,7 +2013,7 @@ le_result_t le_gnss_GetDate
         || (NULL == monthPtr)
         || (NULL == dayPtr))
     {
-        LE_KILL_CLIENT("Invalid pointer provided!");
+        LE_KILL_CLIENT("Invalid pointers provided!");
         return LE_FAULT;
     }
 
@@ -2757,13 +2760,13 @@ le_result_t le_gnss_GetDilutionOfPrecision
             }
             break;
          };
-    }
 
-    // Test if the dop value exceeds a uint16_t after the conversion
-    if ((true == dopValid) && (!(dop >> 16)))
-    {
-        *dopPtr = (uint16_t)dop;
-        return LE_OK;
+         // Test if the dop value exceeds a uint16_t after the conversion
+         if ((true == dopValid) && (!(dop >> 16)))
+         {
+             *dopPtr = (uint16_t)dop;
+             return LE_OK;
+         }
     }
 
     return LE_OUT_OF_RANGE;
@@ -3110,6 +3113,9 @@ le_result_t le_gnss_SetConstellation
  * @return
  *  - LE_OK on success
  *  - LE_FAULT on failure
+ *
+ * @note If the caller is passing a null pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_GetConstellation
@@ -3216,6 +3222,9 @@ le_result_t le_gnss_SetConstellationArea
  *  - LE_FAULT         On failure
  *  - LE_UNSUPPORTED   Request not supported
  *  - LE_NOT_PERMITTED If the GNSS device is not initialized, disabled or active.
+ *
+ * @note If the caller is passing a null pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_GetConstellationArea
@@ -3330,6 +3339,8 @@ le_result_t le_gnss_LoadExtendedEphemerisFile
  *  - LE_FAULT         The function failed to get the validity
  *  - LE_OK            The function succeeded.
  *
+ * @note If the caller is passing null pointers into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_GetExtendedEphemerisValidity
@@ -3714,6 +3725,8 @@ le_result_t le_gnss_ForceFactoryRestart
  *  - LE_OK            Function succeeded.
  *  - LE_FAULT         If there are some other errors.
  *
+ * @note If the caller is passing a null pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_GetTtff
@@ -3947,7 +3960,10 @@ le_result_t le_gnss_SetAcquisitionRate
  *  - LE_OK on success
  *  - LE_FAULT on failure
  *  - LE_NOT_PERMITTED If the GNSS device is not in "ready" state.
- */
+ *
+ * @note If the caller is passing a null pointer into this function, it is a fatal error, the
+ *       function will not return.
+*/
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_GetAcquisitionRate
 (
@@ -4019,6 +4035,9 @@ le_result_t le_gnss_SetSuplAssistedMode
  * @return
  *  - LE_OK on success
  *  - LE_FAULT on failure
+ *
+ * @note If the caller is passing a null pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_GetSuplAssistedMode
@@ -4048,7 +4067,7 @@ le_result_t le_gnss_GetSuplAssistedMode
  *  - LE_TIMEOUT a time-out occurred
  *
  * @note If the SUPL server URL size is bigger than the maximum string length (including NULL
- * terminator) size, it is a fatal error, the function will not return.
+ *       terminator) size, it is a fatal error, the function will not return.
  *
  * @warning The settings are platform dependent. Please refer to
  *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
@@ -4074,7 +4093,7 @@ le_result_t le_gnss_SetSuplServerUrl
  *  - LE_TIMEOUT a time-out occurred
  *
  * @note If the SUPL certificate size is bigger than the Maximum SUPL certificate size,
- * it is a fatal error, the function will not return.
+ *       it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_InjectSuplCertificate
@@ -4198,8 +4217,8 @@ le_result_t le_gnss_SetNmeaSentences
  *  - LE_TIMEOUT        Timeout occurred
  *  - LE_NOT_PERMITTED  GNSS device is not in "ready" state
  *
- * @note If the caller is passing an null pointer to this function, it is a fatal error
- *       and the function will not return.
+ * @note If the caller is passing a null pointer to this function, it is a fatal error, the
+ *       function will not return.
  *
  * @note Some NMEA sentences are unsupported depending on the plateform. Please refer to
  *       @ref platformConstraintsGnss_nmeaMask section for full details. The bit mask for an unset
@@ -4305,8 +4324,8 @@ le_result_t le_gnss_SetMinElevation
  *  - LE_FAULT on failure
  *  - LE_UNSUPPORTED request not supported
  *
- * @note If the caller is passing an null pointer to this function, it is a fatal error
- *       and the function will not return.
+ * @note If the caller is passing a null pointer to this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_GetMinElevation

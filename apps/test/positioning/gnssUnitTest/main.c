@@ -160,6 +160,8 @@ static void Testle_gnss_SetGetDOPResolution
     // Pass invalid sample reference
     LE_ASSERT(LE_FAULT == (le_gnss_GetDilutionOfPrecision(GnssPositionSampleRef, dopType, &dop)));
     LE_ASSERT(LE_OUT_OF_RANGE == (le_gnss_GetDilutionOfPrecision(positionSampleRef,
+                                                                 LE_GNSS_DOP_LAST, NULL)));
+    LE_ASSERT(LE_OUT_OF_RANGE == (le_gnss_GetDilutionOfPrecision(positionSampleRef,
                                                                  LE_GNSS_DOP_LAST, &dop)));
 
     do
@@ -1206,5 +1208,6 @@ COMPONENT_INIT
     LE_INFO("======== GNSS Remove Position Handler========");
     Testle_gnss_RemoveHandlers();
 
+    LE_INFO("======== GNSS Test SUCCESS ========");
     exit(EXIT_SUCCESS);
 }

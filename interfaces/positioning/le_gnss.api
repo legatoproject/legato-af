@@ -798,6 +798,9 @@ FUNCTION le_result_t SetConstellation
  * @return
  *  - LE_OK on success
  *  - LE_FAULT on failure
+ *
+ * @note If the caller is passing a null pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetConstellation
@@ -835,6 +838,9 @@ FUNCTION le_result_t SetConstellationArea
  *  - LE_FAULT         On failure
  *  - LE_UNSUPPORTED   Request not supported
  *  - LE_NOT_PERMITTED If the GNSS device is not initialized, disabled or active.
+ *
+ * @note If the caller is passing a null pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetConstellationArea
@@ -900,6 +906,8 @@ FUNCTION le_result_t LoadExtendedEphemerisFile
  *  - LE_FAULT         The function failed to get the validity
  *  - LE_OK            The function succeeded.
  *
+ * @note If the caller is passing an invalid Position sample reference or null pointers into this
+ *       function, it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetExtendedEphemerisValidity
@@ -1031,6 +1039,8 @@ FUNCTION le_result_t ForceFactoryRestart
  *  - LE_OK            Function succeeded.
  *  - LE_FAULT         If there are some other errors.
  *
+ * @note If the caller is passing a null pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetTtff
@@ -1107,6 +1117,9 @@ FUNCTION le_result_t SetAcquisitionRate
  *  - LE_OK on success
  *  - LE_FAULT on failure
  *  - LE_NOT_PERMITTED If the GNSS device is not in "ready" state.
+ *
+ * @note If the caller is passing a null pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetAcquisitionRate
@@ -1146,8 +1159,8 @@ EVENT Position
  *  - LE_OK on success
  *  - LE_FAULT on failure
  *
- * @note If the caller is passing an invalid Position sample reference into this function,
- *       it is a fatal error, the function will not return.
+ * @note If the caller is passing an invalid Position sample reference or a null pointer into this
+ *       function, it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetPositionState
@@ -1232,8 +1245,9 @@ FUNCTION le_result_t GetAltitude
  *  - LE_OUT_OF_RANGE  The retrieved time is invalid (all fields are set to 0).
  *  - LE_OK            Function succeeded.
  *
- * @note If the caller is passing an invalid Position sample reference into this function,
- *       it is a fatal error, the function will not return.
+ * @note If the caller is passing an invalid Position sample reference or null pointers into this
+ *       function, it is a fatal error, the function will not return.
+
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetTime
@@ -1254,8 +1268,8 @@ FUNCTION le_result_t GetTime
  *  - LE_OUT_OF_RANGE  The retrieved time is invalid (all fields are set to 0).
  *  - LE_OK            Function succeeded.
  *
- * @note If the caller is passing an invalid Position sample reference into this function,
- *       it is a fatal error, the function will not return.
+ * @note If the caller is passing an invalid Position sample reference or null pointers into this
+ *       function, it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetGpsTime
@@ -1277,8 +1291,8 @@ FUNCTION le_result_t GetGpsTime
  * @note The epoch time is the number of seconds elapsed since January 1, 1970
  *       (midnight UTC/GMT), not counting leaps seconds.
  *
- * @note If the caller is passing an invalid position sample reference into this function,
- *       it is a fatal error, the function will not return.
+ * @note If the caller is passing an invalid position sample reference or a null pointer into this
+ *       function, it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetEpochTime
@@ -1296,8 +1310,8 @@ FUNCTION le_result_t GetEpochTime
  *  - LE_OUT_OF_RANGE  The retrieved time accuracy is invalid (set to UINT16_MAX).
  *  - LE_OK            Function succeeded.
  *
- * @note If the caller is passing an invalid Position sample reference into this function,
- *       it is a fatal error, the function will not return.
+ * @note If the caller is passing an invalid position sample reference or a null pointer into this
+ *       function, it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetTimeAccuracy
@@ -1340,8 +1354,8 @@ FUNCTION le_result_t  GetGpsLeapSeconds
  *  - LE_OUT_OF_RANGE  The retrieved date is invalid (all fields are set to 0).
  *  - LE_OK            Function succeeded.
  *
- * @note If the caller is passing an invalid Position sample reference into this function,
- *       it is a fatal error, the function will not return.
+ * @note If the caller is passing an invalid Position sample reference or null pointers into this
+ *       function, it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetDate
@@ -1603,8 +1617,8 @@ FUNCTION le_result_t GetDilutionOfPrecision
  * @note For a 2D position fix, the altitude with respect to the WGS-84 ellipsoid will be indicated
  *       as invalid and set to INT32_MAX.
  *
- * @note If the caller is passing an invalid Position reference into this function,
- *       it is a fatal error, the function will not return.
+ * @note If the caller is passing an invalid Position reference or a null pointer into this
+ *       function, it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetAltitudeOnWgs84
@@ -1691,6 +1705,9 @@ FUNCTION le_result_t SetSuplAssistedMode
  * @return
  *  - LE_OK on success
  *  - LE_FAULT on failure
+ *
+ * @note If the caller is passing a null pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetSuplAssistedMode
@@ -1807,8 +1824,8 @@ FUNCTION le_result_t SetNmeaSentences
  *  - LE_TIMEOUT        Timeout occurred
  *  - LE_NOT_PERMITTED  GNSS device is not in "ready" state
  *
- * @note If the caller is passing an null pointer to this function, it is a fatal error
- *       and the function will not return.
+ * @note If the caller is passing a null pointer to this function, it is a fatal error, the
+ *       function will not return.
  *
  * @note Some NMEA sentences are unsupported depending on the plateform. Please refer to
  *       @ref platformConstraintsGnss_nmeaMask section for full details. The bit mask for an unset
@@ -1858,8 +1875,8 @@ FUNCTION le_result_t SetMinElevation
  *  - LE_FAULT on failure
  *  - LE_UNSUPPORTED request not supported
  *
- * @note If the caller is passing an null pointer to this function, it is a fatal error
- *       and the function will not return.
+ * @note If the caller is passing n null pointer to this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetMinElevation
