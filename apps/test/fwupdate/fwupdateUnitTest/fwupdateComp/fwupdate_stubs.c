@@ -90,9 +90,16 @@ le_msg_SessionEventHandlerRef_t le_msg_AddServiceCloseHandler
 //--------------------------------------------------------------------------------------------------
 le_result_t le_dualsys_GetCurrentSystem
 (
-    le_dualsys_System_t* systemMask  ///< [OUT] Sub-system bitmask for "modem/lk/linux" partitions
+    le_dualsys_System_t* systemMaskPtr ///< [OUT] Sub-system bitmask for "modem/lk/linux" partitions
 )
 {
-    *systemMask = 0;
+    if (NULL == systemMaskPtr)
+    {
+        LE_ERROR("Null pointer provided!");
+        return LE_FAULT;
+    }
+
+    *systemMaskPtr = 0;
+
     return LE_OK;
 }

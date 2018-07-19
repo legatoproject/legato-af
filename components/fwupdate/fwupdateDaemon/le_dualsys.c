@@ -92,22 +92,27 @@ le_result_t le_dualsys_SetSystem
 //--------------------------------------------------------------------------------------------------
 le_result_t le_dualsys_GetCurrentSystem
 (
-    le_dualsys_System_t* systemMask  ///< [OUT] Sub-system bitmask for "modem/lk/linux" partitions
+    le_dualsys_System_t* systemMaskPtr ///< [OUT] Sub-system bitmask for "modem/lk/linux" partitions
 )
 {
     pa_fwupdate_System_t systemId[PA_FWUPDATE_SUBSYSID_MAX];
-    le_result_t res;
+    le_result_t res = pa_fwupdate_GetSystem(systemId);
 
-    res = pa_fwupdate_GetSystem(systemId);
-    if( LE_OK == res)
+    if (NULL == systemMaskPtr)
     {
-       *systemMask = (PA_FWUPDATE_SYSTEM_2 == systemId[PA_FWUPDATE_SUBSYSID_MODEM])
+        LE_ERROR("Null pointer provided!");
+        return LE_FAULT;
+    }
+
+    if (LE_OK == res)
+    {
+       *systemMaskPtr = (PA_FWUPDATE_SYSTEM_2 == systemId[PA_FWUPDATE_SUBSYSID_MODEM])
                          ? LE_DUALSYS_MODEM_GROUP : 0;
-       *systemMask |= (PA_FWUPDATE_SYSTEM_2 == systemId[PA_FWUPDATE_SUBSYSID_LK])
+       *systemMaskPtr |= (PA_FWUPDATE_SYSTEM_2 == systemId[PA_FWUPDATE_SUBSYSID_LK])
                           ? LE_DUALSYS_LK_GROUP : 0;
-       *systemMask |= (PA_FWUPDATE_SYSTEM_2 == systemId[PA_FWUPDATE_SUBSYSID_LINUX])
+       *systemMaskPtr |= (PA_FWUPDATE_SYSTEM_2 == systemId[PA_FWUPDATE_SUBSYSID_LINUX])
                           ? LE_DUALSYS_LINUX_GROUP : 0;
-    LE_DEBUG("systemMask = 0x%x", *systemMask);
+       LE_DEBUG("systemMask = 0x%x", *systemMaskPtr);
     }
     return res;
 }

@@ -437,9 +437,15 @@ void le_gnssSimu_SetPositionState
 //--------------------------------------------------------------------------------------------------
 static void InitializeValidGnssPosition
 (
-    pa_Gnss_Position_t* posDataPtr                   ///< [IN/OUT] Pointer to the position data.
+    pa_Gnss_Position_t* posDataPtr       ///< [IN/OUT] Pointer to the position data.
 )
 {
+    if (NULL == posDataPtr)
+    {
+        LE_ERROR("posDataPtr is NULL !");
+        return;
+    }
+
     posDataPtr->fixState = LE_GNSS_STATE_FIX_NO_POS;
 
     posDataPtr->latitudeValid = true;
@@ -536,6 +542,17 @@ static void GetPosSampleData
 )
 {
     uint8_t i;
+
+    if (NULL == posSampleDataPtr)
+    {
+        LE_ERROR("posSampleDataPtr is NULL !");
+        return;
+    }
+    if (NULL == paPosDataPtr)
+    {
+        LE_ERROR("paPosDataPtr is NULL !");
+        return;
+    }
 
     // Position information
     posSampleDataPtr->fixState = paPosDataPtr->fixState;
@@ -743,6 +760,12 @@ le_result_t le_gnss_GetPositionState
         ///< Position fix state.
 )
 {
+    // Check input pointers
+    if (NULL == statePtr)
+    {
+        LE_KILL_CLIENT("Invalid pointer provided!");
+        return LE_FAULT;
+    }
     *statePtr = GnssSimuPositionSate.state;
 
     return GnssSimuPositionSate.result;
@@ -790,9 +813,18 @@ le_result_t le_gnss_GetLocation
         ///< Horizontal position's accuracy in meters [resolution 1e-2].
 )
 {
-    *latitudePtr = GnssLocation.latitude;
-    *longitudePtr = GnssLocation.longitude;
-    *hAccuracyPtr = GnssLocation.accuracy;
+    if (latitudePtr)
+    {
+        *latitudePtr = GnssLocation.latitude;
+    }
+    if (longitudePtr)
+    {
+        *longitudePtr = GnssLocation.longitude;
+    }
+    if (hAccuracyPtr)
+    {
+        *hAccuracyPtr = GnssLocation.accuracy;
+    }
 
     return GnssLocation.result;
 }
@@ -831,8 +863,14 @@ le_result_t le_gnss_GetAltitude
         ///< Vertical position's accuracy in meters [resolution 1e-1].
 )
 {
-    *altitudePtr = GnssAltitude.altitude;
-    *vAccuracyPtr = GnssAltitude.accuracy;
+    if (altitudePtr)
+    {
+        *altitudePtr = GnssAltitude.altitude;
+    }
+    if (vAccuracyPtr)
+    {
+        *vAccuracyPtr = GnssAltitude.accuracy;
+    }
 
     return GnssAltitude.result;
 }
@@ -873,6 +911,16 @@ le_result_t le_gnss_GetTime
         ///< UTC Milliseconds into the second [range 0..999].
 )
 {
+    // Check input pointers
+    if ((NULL == hoursPtr)
+        || (NULL == minutesPtr)
+        || (NULL == secondsPtr)
+        || (NULL == millisecondsPtr))
+    {
+        LE_KILL_CLIENT("Invalid pointer provided!");
+        return LE_FAULT;
+    }
+
     *hoursPtr = GnssTime.hrs;
     *minutesPtr = GnssTime.min;
     *secondsPtr = GnssTime.sec;
@@ -906,6 +954,13 @@ le_result_t le_gnss_GetGpsTime
         ///< [OUT] Amount of time in milliseconds into the GPS week.
 )
 {
+    // Check input pointers
+    if ((NULL == gpsWeekPtr) || (NULL == gpsTimeOfWeekPtr))
+    {
+        LE_KILL_CLIENT("Invalid pointer provided!");
+        return LE_FAULT;
+    }
+
     return LE_OK;
 }
 
@@ -931,6 +986,12 @@ le_result_t le_gnss_GetTimeAccuracy
         ///< [OUT] Estimated time accuracy in nanoseconds
 )
 {
+    // Check input pointers
+    if (NULL == timeAccuracyPtr)
+    {
+        LE_KILL_CLIENT("Invalid pointer provided!");
+        return LE_FAULT;
+    }
     return LE_OK;
 }
 
@@ -962,7 +1023,13 @@ le_result_t le_gnss_GetGpsLeapSeconds
         ///< [OUT] UTC leap seconds in advance in seconds
 )
 {
-     return LE_OK;
+    // Check input pointers
+    if (NULL == leapSecondsPtr)
+    {
+        LE_KILL_CLIENT("Invalid pointer provided!");
+        return LE_FAULT;
+    }
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -997,6 +1064,13 @@ le_result_t le_gnss_GetDate
         ///< UTC Days into the month [range 1...31].
 )
 {
+    // Check input pointers
+    if ((NULL == yearPtr) || (NULL == monthPtr) || (NULL == dayPtr))
+    {
+        LE_KILL_CLIENT("Invalid pointer provided!");
+        return LE_FAULT;
+    }
+
     *yearPtr = GnssDate.year;
     *monthPtr = GnssDate.month;
     *dayPtr = GnssDate.day;
@@ -1035,8 +1109,15 @@ le_result_t le_gnss_GetHorizontalSpeed
         ///< in meters/second [resolution 1e-1].
 )
 {
-    *hspeedPtr = GnssHSpeed.speed;
-    *hspeedAccuracyPtr = GnssHSpeed.accuracy;
+    if (hspeedPtr)
+    {
+        *hspeedPtr = GnssHSpeed.speed;
+    }
+
+    if (hspeedAccuracyPtr)
+    {
+        *hspeedAccuracyPtr = GnssHSpeed.accuracy;
+    }
 
     return GnssHSpeed.result;
 }
@@ -1075,8 +1156,15 @@ le_result_t le_gnss_GetVerticalSpeed
         ///< in meters/second [resolution 1e-1].
 )
 {
-    *vspeedPtr = GnssVSpeed.speed;
-    *vspeedAccuracyPtr = GnssVSpeed.accuracy;
+    if (vspeedPtr)
+    {
+        *vspeedPtr = GnssVSpeed.speed;
+    }
+
+    if (vspeedAccuracyPtr)
+    {
+        *vspeedAccuracyPtr = GnssVSpeed.accuracy;
+    }
 
     return GnssVSpeed.result;
 }
@@ -1116,8 +1204,15 @@ le_result_t le_gnss_GetDirection
         ///< Direction's accuracy estimate in degrees [resolution 1e-1].
 )
 {
-    *directionPtr = GnssDirection.direction;
-    *directionAccuracyPtr = GnssDirection.accuracy;
+    if (directionPtr)
+    {
+        *directionPtr = GnssDirection.direction;
+    }
+
+    if (directionAccuracyPtr)
+    {
+        *directionAccuracyPtr = GnssDirection.accuracy;
+    }
 
     return GnssDirection.result;
 }
@@ -1356,6 +1451,11 @@ le_result_t le_gnss_GetAltitudeOnWgs84
         ///<       and mean sea level [resolution 1e-3].
 )
 {
+    if (NULL == altitudeOnWgs84Ptr)
+    {
+        LE_KILL_CLIENT("altitudeOnWgs84Ptr is NULL !");
+        return LE_FAULT;
+    }
     return LE_OK;
 }
 
@@ -1458,6 +1558,11 @@ le_result_t le_gnss_GetConstellation
                                                          ///< solution
 )
 {
+    if (NULL == constellationMaskPtr)
+    {
+        LE_KILL_CLIENT("constellationMaskPtr is NULL !");
+        return LE_FAULT;
+    }
     return LE_OK;
 }
 
@@ -1499,6 +1604,11 @@ le_result_t le_gnss_GetConstellationArea
     le_gnss_ConstellationArea_t* constellationAreaPtr ///< [OUT] GNSS constellation area.
 )
 {
+    if (NULL == constellationAreaPtr)
+    {
+        LE_KILL_CLIENT("constellationAreaPtr is NULL !");
+        return LE_FAULT;
+    }
     return LE_FAULT;
 }
 
@@ -1575,6 +1685,17 @@ le_result_t le_gnss_GetExtendedEphemerisValidity
     uint64_t *stopTimePtr      ///< [OUT] Stop time in seconds (since Jan. 1, 1970)
 )
 {
+    if (NULL == startTimePtr)
+    {
+        LE_KILL_CLIENT("startTimePtr is NULL !");
+        return LE_FAULT;
+    }
+    if (NULL == stopTimePtr)
+    {
+        LE_KILL_CLIENT("stopTimePtr is NULL !");
+        return LE_FAULT;
+    }
+
     *startTimePtr = 1480349409;
     *stopTimePtr = 1480349444;
 
@@ -1736,6 +1857,11 @@ le_result_t le_gnss_GetTtff
     uint32_t* ttffPtr     ///< [OUT] TTFF in milliseconds
 )
 {
+    if (NULL == ttffPtr)
+    {
+        LE_KILL_CLIENT("ttffPtr is NULL !");
+        return LE_FAULT;
+    }
     *ttffPtr = 1000;
 
     return LE_OK;
@@ -1819,6 +1945,11 @@ le_result_t le_gnss_GetAcquisitionRate
     uint32_t* ratePtr      ///< Acquisition rate in milliseconds.
 )
 {
+    if (NULL == ratePtr)
+    {
+        LE_KILL_CLIENT("ratePtr is NULL !");
+        return LE_FAULT;
+    }
     *ratePtr = 1000;
 
     return LE_OK;
@@ -1854,9 +1985,15 @@ le_result_t le_gnss_SetSuplAssistedMode
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_GetSuplAssistedMode
 (
-    le_gnss_AssistedMode_t * assistedModePtr      ///< [OUT] Assisted-GNSS mode.
+    le_gnss_AssistedMode_t* assistedModePtr      ///< [OUT] Assisted-GNSS mode.
 )
 {
+    if (NULL == assistedModePtr)
+    {
+        LE_KILL_CLIENT("assistedModePtr is NULL !");
+        return LE_FAULT;
+    }
+
     *assistedModePtr = LE_GNSS_STANDALONE_MODE;
     return LE_OK;
 }
@@ -1879,6 +2016,11 @@ le_result_t le_gnss_SetSuplServerUrl
     const char*  suplServerUrlPtr      ///< [IN] SUPL server URL.
 )
 {
+    if (NULL == suplServerUrlPtr)
+    {
+        LE_KILL_CLIENT("suplServerUrlPtr is NULL !");
+        return LE_FAULT;
+    }
     return LE_OK;
 }
 
@@ -1902,6 +2044,11 @@ le_result_t le_gnss_InjectSuplCertificate
     const char*  suplCertificatePtr  ///< [IN] SUPL certificate contents.
 )
 {
+    if (NULL == suplCertificatePtr)
+    {
+        LE_KILL_CLIENT("suplCertificatePtr is NULL !");
+        return LE_BAD_PARAMETER;
+    }
     return LE_OK;
 }
 
@@ -1976,6 +2123,12 @@ le_result_t le_gnss_GetNmeaSentences
     le_gnss_NmeaBitMask_t* nmeaMaskPtr ///< [OUT] Bit mask for enabled NMEA sentences.
 )
 {
+    if (NULL == nmeaMaskPtr)
+    {
+        LE_KILL_CLIENT("nmeaMaskPtr is NULL !");
+        return LE_FAULT;
+    }
+
     *nmeaMaskPtr = LE_GNSS_NMEA_MASK_GPGGA;
     return LE_OK;
 }
