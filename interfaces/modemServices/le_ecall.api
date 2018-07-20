@@ -148,15 +148,18 @@
  * The MSD can be updated before calling le_ecall_SendMsd(), using the e_ecall_ImportMsd() function
  * or the le_ecall_SetMsdXxx() functions.
  *
- * Date/time on MSD information is set automatically by fetching the time from linux system time
+ * The date/time on MSD information is internally set by fetching the time from linux system time
  * (epoch time since 1970-01-01 00:00:00 +0000 (UTC)).
  *
- * @note If linux system time is not updated automatically, update system date/time with either
- * Linux date command or by calling le_clk_SetAbsoluteTime() function.
- *
- * The time given to le_clk_SetAbsoluteTime() function can be retrieved by:
+ * This time is automatically updated if NITS is supported by the cellular network. Otherwise, it is
+ * up to the user to update the system date/time by calling le_clk_SetAbsoluteTime() function. The
+ * time provided to le_clk_SetAbsoluteTime() function can be retrieved by:
  * - le_data_GetTime()/le_data_GetDate(): the time from the network NTP.
  * - le_gnss_GetEpochTime() the GPS epoch time.
+ *
+ * @note Only unsandboxed application can set the date/time by le_clk_SetAbsoluteTime(). In case of
+ * sandboxed application, please contact Sierra Wireless support to update the system date/time in
+ * different ways.
  *
  * @section le_ecall_eraglonass ERA-GLONASS compliancy
  *
