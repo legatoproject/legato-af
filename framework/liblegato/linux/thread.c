@@ -258,6 +258,9 @@ static void CleanupThread
 
         DeleteThread(threadObjPtr);
     }
+
+    // Clear the Legato thread info to prevent double-free errors and further Legato thread calls.
+    pthread_setspecific(ThreadLocalDataKey, NULL);
 }
 
 

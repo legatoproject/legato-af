@@ -28,4 +28,5 @@ apps:
      * Helper applications assocated with python tests
      */
     log/logTester
+    issues/LE_2322
 }

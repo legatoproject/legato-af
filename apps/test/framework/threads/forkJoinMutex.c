@@ -68,10 +68,6 @@ static size_t Counter = 0;
 // -------------------------------------------------------------------------------------------------
 static size_t ExpectedCounterValue;
 
-// -------------------------------------------------------------------------------------------------
-// -------------------------------------------------------------------------------------------------
-LE_MUTEX_DECLARE_REF(MutexRef);
-
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -109,13 +105,8 @@ static le_mem_PoolRef_t ContextPoolRef;
 static void IncrementCounter(void)
 // -------------------------------------------------------------------------------------------------
 {
-    Lock();
-
-    Counter++;
-
-    LE_INFO("Thread '%s' incremented counter to %zu.", le_thread_GetMyName(), Counter);
-
-    Unlock();
+    LE_INFO("Thread '%s' incremented counter to %zu.", le_thread_GetMyName(),
+        __atomic_add_fetch(&Counter, 1, __ATOMIC_SEQ_CST));
 }
 
 
@@ -289,9 +280,6 @@ void fjm_Start
     // Compute the expected ending counter value.
     ExpectedCounterValue = GetExpectedCounterValue();
 
-    // Create the mutex.
-    MutexRef = le_mutex_CreateNonRecursive("fork-join-mutex-test");
-
     LE_INFO("completionObjPtr = %p.", completionObjPtr);
 
     // Create the Context Pool.
@@ -314,14 +302,11 @@ void fjm_CheckResults
 )
 // -------------------------------------------------------------------------------------------------
 {
-    Lock();
-
-    if (Counter != ExpectedCounterValue)
+    size_t value = __atomic_load_n(&Counter, __ATOMIC_SEQ_CST);
+    if (value != ExpectedCounterValue)
     {
         LE_FATAL("**** FAILED - Counter value %zu should have been %zu.",
-                 Counter,
+                 value,
                  ExpectedCounterValue);
     }
-
-    Unlock();
 }

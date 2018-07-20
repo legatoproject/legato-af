@@ -1,0 +1,5 @@
+// LE-2322: le_thread_CleanupLegatoThreadData doesn't seem to cleanup properly anymore
+sources:
+{
+    testLE_2322.c
+}
