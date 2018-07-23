@@ -6,8 +6,3 @@
 
 #include ar86.sinc
 
-cflags:
-{
-    // Embedded UICC
-    -DEUICC
-}
