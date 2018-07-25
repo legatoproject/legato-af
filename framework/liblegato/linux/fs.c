@@ -385,6 +385,13 @@ le_result_t le_fs_Write
 {
     File_t* filePtr;
     int rc;
+    filePtr = le_ref_Lookup(FsFileRefMap, fileRef);
+
+    if (NULL == filePtr)
+    {
+        LE_ERROR("fileRef is invalid");
+        return LE_BAD_PARAMETER;
+    }
 
     // Check if the pointer is set
     if (NULL == bufPtr)
@@ -400,11 +407,6 @@ le_result_t le_fs_Write
         return LE_OK;
     }
 
-    filePtr = le_ref_Lookup(FsFileRefMap, fileRef);
-    if (NULL == filePtr)
-    {
-        return LE_BAD_PARAMETER;
-    }
     do
     {
         rc = write(filePtr->fd, bufPtr, bufNumElements);
