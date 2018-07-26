@@ -92,6 +92,9 @@ std::string Content_t::TypeName
         case APP:
             return "app";
 
+        case REQUIRED_MODULE:
+            return "required module";
+
         default:
         {
             std::stringstream typeName;

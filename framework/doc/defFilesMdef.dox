@@ -207,10 +207,21 @@ requires:
 {
     kernelModules:
     {
-       $CURDIR/kernelmodule/alpha
+       $CURDIR/kernelmodule/alpha [optional]
     }
 }
 @endcode
+
+If a kernel module is marked as optional using '[optional]' tag, module load failure is ignored and
+no fault recovery action is taken. In the above example, module alpha is optional.
+
+If a module is dependent on an app and is not specified as optional in the adef then fault
+handler kicks in which triggers fault action of each process in the app.
+
+If a module is added at the system level in sdef and is not optional then the Legato framework
+restarts when module fails to load in order to attempt recovery. Please note that for the same
+module with module dependencies, optional tag for the modules must be the same specified in both
+sdef and mdef.
 
 @warning Cyclic dependency must be avoided when designing the kernel module hierarchy. For instance,
 if module 'a.mdef' is dependent on module 'x.mdef' at some point in the hierarchy then module

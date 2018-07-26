@@ -13,7 +13,7 @@ requires:
 {
     kernelModules:
     {
-       $CURDIR/module2.mdef
+       $CURDIR/module2.mdef [optional]
     }
 
 }

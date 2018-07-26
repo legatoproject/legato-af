@@ -74,8 +74,9 @@
 //--------------------------------------------------------------------------------------------------
 typedef enum {
     STATUS_INIT = 0,    ///< Module is in initialization state
-    STATUS_TRY,         ///< Try state before installation or removal
+    STATUS_TRY_INSTALL, ///< Try state before installing the module
     STATUS_INSTALLED,   ///< If insmod is executed on the module
+    STATUS_TRY_REMOVE,  ///< Try state before removing the module
     STATUS_REMOVED      ///< If rmmod is executed on the module
 } ModuleLoadStatus_t;
 
@@ -96,6 +97,7 @@ typedef struct
     le_sls_List_t      reqModuleName;                        // List of required kernel modules
     ModuleLoadStatus_t moduleLoadStatus;                     // Load status of the module
     bool               isLoadManual;                         // is module load set to auto or manual
+    bool               isOptional;                           // is the module required or optional
     le_dls_Link_t      dependencyLink;                       // link object for dependency list
     le_dls_Link_t      alphabeticalLink;                     // link object for alphabetical list
     uint32_t           useCount;                             // Counter of usage, safe to remove
@@ -306,7 +308,7 @@ static ModuleLoadStatus_t CheckProcModules(char *modName)
             }
             else
             {
-                loadStatus = STATUS_TRY;
+                loadStatus = STATUS_TRY_INSTALL;
             }
             break;
         }
@@ -331,18 +333,28 @@ static ModuleLoadStatus_t CheckProcModules(char *modName)
 //--------------------------------------------------------------------------------------------------
 static void ModuleGetLoad(KModuleObj_t *module)
 {
-    char cfgTreePath[LE_CFG_STR_LEN_BYTES];
-    le_cfg_IteratorRef_t iter;
+    char cfgTreePath[LE_CFG_STR_LEN_BYTES] = {0};
 
-    cfgTreePath[0] = '\0';
     LE_ASSERT_OK(le_path_Concat("/", cfgTreePath, LE_CFG_STR_LEN_BYTES,
-                 KMODULE_CONFIG_TREE_ROOT, module->name, (char*)NULL));
-    iter = le_cfg_CreateReadTxn(cfgTreePath);
+                 KMODULE_CONFIG_TREE_ROOT, module->name, "loadManual", (char*)NULL));
+
+    module->isLoadManual = le_cfg_QuickGetBool(cfgTreePath, false);
+}
 
 
-    module->isLoadManual = le_cfg_GetBool(iter, "loadManual", false);
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read the "[optional]" tag to determine if the module is required or optional
+ */
+//--------------------------------------------------------------------------------------------------
+static void ModuleGetIsOptional(KModuleObj_t *module)
+{
+    char cfgTreePath[LE_CFG_STR_LEN_BYTES] = {0};
 
-    le_cfg_CancelTxn(iter);
+    le_path_Concat("/", cfgTreePath, LE_CFG_STR_LEN_BYTES,
+                   KMODULE_CONFIG_TREE_ROOT, module->name, "isOptional", (char*)NULL);
+
+    module->isOptional = le_cfg_QuickGetBool(cfgTreePath, false);
 }
 
 
@@ -435,22 +447,19 @@ static void ModuleGetRequiredModules(KModuleObj_t *module)
 
     do
     {
-        if (le_cfg_GetNodeType(iter, ".") != LE_CFG_TYPE_STRING)
-        {
-            LE_WARN("Found non-string type kernel module dependency");
-            continue;
-        }
-
         modNameNodePtr = le_mem_ForceAlloc(KModuleHandler.reqModStringPool);
         modNameNodePtr->link = LE_SLS_LINK_INIT;
 
-        le_cfg_GetString(iter, "", modNameNodePtr->modName, sizeof(modNameNodePtr->modName), "");
+        le_cfg_GetNodeName(iter, "", modNameNodePtr->modName, sizeof(modNameNodePtr->modName));
+
         if (strncmp(modNameNodePtr->modName, "", sizeof(modNameNodePtr->modName)) == 0)
         {
-            LE_WARN("Found empty kernel module dependency");
+            LE_WARN("Found empty kernel module dependency for '%s'", module->name);
             le_mem_Release(modNameNodePtr);
             continue;
         }
+
+        modNameNodePtr->isOptional = le_cfg_GetBool(iter, "isOptional", false);
 
         le_sls_Queue(&(module->reqModuleName), &(modNameNodePtr->link));
     }
@@ -592,14 +601,16 @@ static void ModuleInsert(char *modName)
     m->reqModuleName = LE_SLS_LIST_INIT;
     m->useCount = 0;
     m->isLoadManual = false;
+    m->isOptional = false;
     m->dependencyLink = LE_DLS_LINK_INIT;
     m->alphabeticalLink = LE_DLS_LINK_INIT;
 
-    ModuleGetLoad(m);
+    ModuleGetLoad(m);            /* Read load from configTree */
+    ModuleGetIsOptional(m);      /* Read if the module is optional from configTree */
     ModuleGetParams(m);          /* Read module parameters from configTree */
     ModuleGetRequiredModules(m); /* Read required kernel modules from configTree */
-    ModuleGetInstallScript(m);
-    ModuleGetRemoveScript(m);
+    ModuleGetInstallScript(m);   /* Read the install script path from configTree */
+    ModuleGetRemoveScript(m);    /* Read the remove script path from configTree */
 
     /* Insert modules in alphabetical order of module name in a doubly linked list */
     le_dls_Queue(&ModuleAlphaOrderList, &(m->alphabeticalLink));
@@ -638,7 +649,7 @@ static void TraverseDependencyInsert(le_dls_List_t* ModuleInsertList, KModuleObj
 
     if (m->moduleLoadStatus != STATUS_INSTALLED)
     {
-       m->moduleLoadStatus = STATUS_TRY;
+       m->moduleLoadStatus = STATUS_TRY_INSTALL;
     }
 
     modNameLinkPtr = le_sls_Peek(&(m->reqModuleName));
@@ -646,7 +657,16 @@ static void TraverseDependencyInsert(le_dls_List_t* ModuleInsertList, KModuleObj
     while (modNameLinkPtr != NULL)
     {
         modNameNodePtr = CONTAINER_OF(modNameLinkPtr, ModNameNode_t,link);
+
         KModulePtr = le_hashmap_Get(KModuleHandler.moduleTable, modNameNodePtr->modName);
+        if (KModulePtr == NULL)
+        {
+            LE_ERROR("Lookup for module '%s' failed.", modNameNodePtr->modName);
+            return;
+        }
+
+        /* Get the isOptional value of the module from the reqModuleName list instead */
+        KModulePtr->isOptional = modNameNodePtr->isOptional;
 
         TraverseDependencyInsert(ModuleInsertList, KModulePtr);
 
@@ -688,7 +708,12 @@ static le_result_t InstallEachKernelModule(KModuleObj_t *m)
                 result = ExecuteCommand(scriptargv);
                 if (result != LE_OK)
                 {
-                    LE_CRIT("Install script %s execution failed", mod->installScript);
+                    LE_CRIT("Install script '%s' execution failed", mod->installScript);
+
+                    if (mod->isOptional)
+                    {
+                        continue;
+                    }
                     return result;
                 }
 
@@ -704,8 +729,12 @@ static le_result_t InstallEachKernelModule(KModuleObj_t *m)
                      */
                     if (loadStatusProcMod != STATUS_INSTALLED)
                     {
-                        LE_CRIT("Module not in 'Live' state. Restart system ... ");
-                        framework_Reboot();
+                        LE_CRIT("Module '%s' not in 'Live' state. Restart system ...", mod->name);
+                        if (mod->isOptional)
+                        {
+                            continue;
+                        }
+                        return LE_FAULT;
                     }
                 }
             }
@@ -715,12 +744,18 @@ static le_result_t InstallEachKernelModule(KModuleObj_t *m)
                 result = ExecuteCommand(mod->argv);
                 if (result != LE_OK)
                 {
+                    if (mod->isOptional)
+                    {
+                        LE_INFO("Ignoring failure. "
+                                 "Module '%s' failed to load and is an optional module.", mod->name);
+                        continue;
+                    }
                     return result;
                 }
             }
 
             mod->moduleLoadStatus = STATUS_INSTALLED;
-            LE_INFO("New kernel module %s", mod->name);
+            LE_INFO("New kernel module '%s'", mod->name);
         }
     }
     return LE_OK;
@@ -747,12 +782,16 @@ le_result_t kernelModules_InsertListOfModules(le_sls_List_t reqModuleName)
         m = le_hashmap_Get(KModuleHandler.moduleTable, modNameNodePtr->modName);
         LE_ASSERT(m && KMODULE_OBJECT_COOKIE == m->cookie);
 
+        /* Get the isOptional value of the module from reqModuleName list instead */
+        m->isOptional = modNameNodePtr->isOptional;
+
+        /* Install only if the module is set to manual load */
         if (m->isLoadManual)
         {
             result = InstallEachKernelModule(m);
             if (result != LE_OK)
             {
-                LE_ERROR("Error in installing module %s", m->name);
+                LE_ERROR("Error in installing module '%s'.", m->name);
                 return LE_FAULT;
             }
         }
@@ -789,7 +828,8 @@ static void installModules()
         result = InstallEachKernelModule(modPtr);
         if (result != LE_OK)
         {
-            LE_ERROR("Error in installing module %s", modPtr->name);
+            LE_ERROR("Error in installing module %s. Restarting system ...", modPtr->name);
+            framework_Reboot();
             break;
         }
         linkPtr = le_dls_PeekNext(&ModuleAlphaOrderList, linkPtr);
@@ -903,13 +943,19 @@ static void TraverseDependencyRemove(le_dls_List_t* ModuleRemoveList, KModuleObj
 
     if (m->moduleLoadStatus != STATUS_REMOVED)
     {
-        if ((m->useCount != 0) && (m->moduleLoadStatus == STATUS_INSTALLED))
+        if (m->useCount == 0)
         {
-            LE_DEBUG("Module %s is installed and not yet ready to be removed.", m->name);
-        }
-        else
-        {
-            m->moduleLoadStatus = STATUS_TRY;
+            switch (m->moduleLoadStatus)
+            {
+                case STATUS_TRY_INSTALL:
+                case STATUS_INIT:
+                    LE_DEBUG("Module '%s' not ready to be removed.", m->name);
+                    break;
+                default:
+                    m->moduleLoadStatus = STATUS_TRY_REMOVE;
+                    break;
+            }
+
         }
     }
 
@@ -918,7 +964,13 @@ static void TraverseDependencyRemove(le_dls_List_t* ModuleRemoveList, KModuleObj
     while (modNameLinkPtr != NULL)
     {
         modNameNodePtr = CONTAINER_OF(modNameLinkPtr, ModNameNode_t,link);
+
         KModulePtr = le_hashmap_Get(KModuleHandler.moduleTable, modNameNodePtr->modName);
+        if (KModulePtr == NULL)
+        {
+            LE_ERROR("Lookup for module '%s' failed.", modNameNodePtr->modName);
+            return;
+        }
 
         TraverseDependencyRemove(ModuleRemoveList, KModulePtr);
 
@@ -949,7 +1001,7 @@ static le_result_t RemoveEachKernelModule(KModuleObj_t *m)
         KModuleObj_t *mod = CONTAINER_OF(listLink, KModuleObj_t, dependencyLink);
 
         if ((mod->useCount == 0)
-             && (mod->moduleLoadStatus != STATUS_REMOVED))
+             && (mod->moduleLoadStatus == STATUS_TRY_REMOVE))
         {
             /* If remove script is provided then execute the script otherwise execute rmmod */
             if (strcmp(mod->removeScript, "") != 0 )
@@ -961,7 +1013,7 @@ static le_result_t RemoveEachKernelModule(KModuleObj_t *m)
                 result = ExecuteCommand(scriptargv);
                 if (result != LE_OK)
                 {
-                    LE_CRIT("Remove script %s execution failed.", mod->removeScript);
+                    LE_CRIT("Remove script '%s' execution failed.", mod->removeScript);
                     return result;
                 }
 
@@ -971,11 +1023,11 @@ static le_result_t RemoveEachKernelModule(KModuleObj_t *m)
                 loadStatusProcMod = CheckProcModules(mod->name);
                 if (loadStatusProcMod == STATUS_REMOVED)
                 {
-                    LE_DEBUG("Module %s not found in /proc/modules as expected", mod->name);
+                    LE_DEBUG("Module '%s' not found in /proc/modules as expected", mod->name);
                 }
                 else
                 {
-                    LE_CRIT("Module %s found in /proc/modules. Module not removed", mod->name);
+                    LE_CRIT("Module '%s' found in /proc/modules. Module not removed", mod->name);
                     return LE_FAULT;
                 }
             }
@@ -993,7 +1045,7 @@ static le_result_t RemoveEachKernelModule(KModuleObj_t *m)
                 }
             }
             mod->moduleLoadStatus = STATUS_REMOVED;
-            LE_INFO("Removed kernel module %s", mod->name);
+            LE_INFO("Removed kernel module '%s'", mod->name);
         }
     }
     return LE_OK;
@@ -1008,7 +1060,7 @@ static le_result_t RemoveEachKernelModule(KModuleObj_t *m)
 le_result_t kernelModules_RemoveListOfModules(le_sls_List_t reqModuleName)
 {
     KModuleObj_t* m;
-    le_result_t result;
+    le_result_t result = LE_OK;
     ModNameNode_t* modNameNodePtr;
     le_sls_Link_t* modNameLinkPtr = le_sls_Peek(&reqModuleName);
 
@@ -1018,19 +1070,23 @@ le_result_t kernelModules_RemoveListOfModules(le_sls_List_t reqModuleName)
         m = le_hashmap_Get(KModuleHandler.moduleTable, modNameNodePtr->modName);
         LE_ASSERT(m && KMODULE_OBJECT_COOKIE == m->cookie);
 
+        /* Remove only if the module is set to manual load */
         if (m->isLoadManual)
         {
             result = RemoveEachKernelModule(m);
             if (result != LE_OK)
             {
-                LE_ERROR("Error in removing module %s", m->name);
-                return LE_FAULT;
+                LE_ERROR("Error in removing module '%s'", m->name);
+                result = LE_FAULT;
+
+                /* If an error occurs removing a module, continue removing others in the list */
+                continue;
             }
         }
 
         modNameLinkPtr = le_sls_PeekNext(&reqModuleName, modNameLinkPtr);
     }
-    return LE_OK;
+    return result;
 }
 
 
@@ -1061,8 +1117,10 @@ void kernelModules_Remove(void)
         result  = RemoveEachKernelModule(modPtr);
         if (result != LE_OK)
         {
-            LE_ERROR("Error in removing module %s", modPtr->name);
-            break;
+            LE_ERROR("Error in removing module '%s'", modPtr->name);
+
+            /* If an error occurs removing a module, continue removing others in the list */
+            continue;
         }
     }
 

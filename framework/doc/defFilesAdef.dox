@@ -1151,10 +1151,21 @@ requires:
     kernelModules:
     {
        $CURDIR/kernelmodule/hello
-       $CURDIR/kernelmodule/world
+       $CURDIR/kernelmodule/world [optional]
     }
 }
 @endcode
+
+In case a module fails to load, the fault handler kicks in which triggers the fault action of each
+process in the app (see @ref defFilesAdef_processFaultAction) in order to attempt the recovery of
+the app. The faultAction values relevant for an app with kernel modules dependencies are:
+- restartApp - log a critical message and restart the entire app.
+- stopApp - log a critical message and terminate the entire app.
+- reboot - log an emergency message and reboot the system.
+
+If the fault action for each process must not be triggered when a module fails to load, the module
+must be marked as optional by using '[optional]' tag. In the above example, world is an optional
+module.
 
 @section defFilesAdef_sandboxed sandboxed
 

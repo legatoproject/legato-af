@@ -330,6 +330,16 @@ struct Module_t : CompoundItemList_t
     Module_t(Token_t* firstTokenPtr): CompoundItemList_t(MODULE, firstTokenPtr) {}
 };
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Represents a named entry for a given application in "kernelModules:" section of a .sdef file,
+ * "requires: kernelModules:" secion of a .adef/.mdef/.cdef file.
+ */
+//--------------------------------------------------------------------------------------------------
+struct RequiredModule_t : TokenList_t
+{
+    RequiredModule_t(Token_t* firstTokenPtr): TokenList_t(REQUIRED_MODULE, firstTokenPtr) {}
+};
 
 //--------------------------------------------------------------------------------------------------
 /**

@@ -50,6 +50,7 @@ struct Token_t: public Content_t
         STRING,             ///< String value quoted with a ' or a ".
         MD5_HASH,           ///< MD5 cryptographic hash/checksum.
         DIRECTIVE,          ///< Preprocessor directive
+        OPTIONAL_OPEN_SQUARE, ///< optional in square brackets (e.g., "[optional]").
     };
 
     Type_t type;        ///< The type of token.

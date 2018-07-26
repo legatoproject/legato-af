@@ -214,6 +214,25 @@ static void GenerateBundledObjectMappingConfig
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Write kernel module 'isOptional' bool value to app and module configuration.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void WriteModuleIsOptionalConfig
+(
+    std::ofstream& cfgStream,
+    const std::string& koName,
+    bool isOptional
+)
+{
+    cfgStream << "        \"" << koName << "\"\n";
+    cfgStream << "        {" << std::endl;
+    cfgStream << "          \"isOptional\" !" << (isOptional ? "t" : "f") << std::endl;
+    cfgStream << "        }" << std::endl;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Generate the configuration for all file mappings from outside the application sandbox to inside
  * the sandbox.
  **/
@@ -306,32 +325,29 @@ static void GenerateFileMappingConfig
     cfgStream << "    {" << std::endl;
 
     // For each parameter in required kernel modules list
-    int kmodnum = 1;
     for (auto reqKMod : appPtr->requiredModules)
     {
-        auto modulePtr = model::Module_t::GetModule(reqKMod);
+        auto modulePtr = model::Module_t::GetModule(reqKMod.first);
+
         if (modulePtr == NULL)
         {
             throw mk::Exception_t(
-                mk::format(LE_I18N("INTERNAL ERROR: '%s' module name not found."), reqKMod)
+                mk::format(LE_I18N("INTERNAL ERROR: '%s' module name not found."), reqKMod.first)
             );
         }
 
         if (modulePtr->moduleBuildType == model::Module_t::Prebuilt)
         {
-            int kmodprebuiltnum = 1;
             for (auto &mapEntrykoFiles : modulePtr->koFiles)
             {
-                cfgStream << "       \"" << "kernelModule" << kmodprebuiltnum << "\" \""
-                           << path::GetLastNode(mapEntrykoFiles.first) << "\"\n";
-                kmodprebuiltnum++;
+                WriteModuleIsOptionalConfig(cfgStream,
+                                            path::GetLastNode(mapEntrykoFiles.first),
+                                            reqKMod.second.second);
             }
         }
         else
         {
-            cfgStream << "       \"" << "kernelModule" << kmodnum << "\" \""
-                      << reqKMod << ".ko" << "\"\n";
-            kmodnum++;
+            WriteModuleIsOptionalConfig(cfgStream, reqKMod.first + ".ko", reqKMod.second.second);
         }
     }
 
@@ -882,8 +898,6 @@ static void GenerateConfigEachModuleFile
     std::ofstream& cfgStream
 )
 {
-    cfgStream << "  {\n";
-
     if (modulePtr->loadTrigger == model::Module_t::MANUAL)
     {
         cfgStream << "    \"loadManual\" !t" << std::endl;
@@ -907,25 +921,21 @@ static void GenerateConfigEachModuleFile
     cfgStream << "      {" << std::endl;
 
     // For each parameter in required kernel modules list
-    int kmodnum = 1;
     for (auto setEntry : modulePtr->requiredModules)
     {
-        auto mapEntry = systemPtr->modules.find(setEntry);
-        if (mapEntry->second->moduleBuildType == model::Module_t::Prebuilt)
+        auto mapEntry = systemPtr->modules.find(setEntry.first);
+        if (mapEntry->second.first->moduleBuildType == model::Module_t::Prebuilt)
         {
-            int kmodprebuiltnum = 1;
-            for (auto &mapEntrykoFiles : mapEntry->second->koFiles)
+            for (auto &mapEntrykoFiles : mapEntry->second.first->koFiles)
             {
-                 cfgStream << "         \"" << "kernelModule" << kmodprebuiltnum << "\" \""
-                           << path::GetLastNode(mapEntrykoFiles.first) << "\"\n";
-                kmodprebuiltnum++;
+                WriteModuleIsOptionalConfig(cfgStream,
+                                            path::GetLastNode(mapEntrykoFiles.first),
+                                            setEntry.second.second);
             }
         }
         else
         {
-            cfgStream << "         \"" << "kernelModule" << kmodnum << "\" \""
-                      << mapEntry->first << ".ko" << "\"\n";
-            kmodnum++;
+            WriteModuleIsOptionalConfig(cfgStream, mapEntry->first + ".ko", setEntry.second.second);
         }
     }
 
@@ -1037,19 +1047,31 @@ static void GenerateModulesConfig
     // For each module in the system's list of modules,
     for (auto& mapEntry : systemPtr->modules)
     {
-        auto modulePtr = mapEntry.second;
+        auto modulePtr = mapEntry.second.first;
+        bool isOptional = mapEntry.second.second;
 
         if (modulePtr->moduleBuildType == model::Module_t::Prebuilt)
         {
             for (auto &mapEntrykoFiles : modulePtr->koFiles)
             {
                 cfgStream << "  \"" << path::GetLastNode(mapEntrykoFiles.first) << "\"\n";
+                cfgStream << "  {\n";
+                if (isOptional)
+                {
+                    cfgStream << "    \"isOptional\" !t" << std::endl;
+                }
                 GenerateConfigEachModuleFile(systemPtr, modulePtr, cfgStream);
             }
         }
         else
         {
             cfgStream << "  \"" << modulePtr->name << ".ko" << "\"\n";
+            cfgStream << "  {\n";
+            if (isOptional)
+            {
+                cfgStream << "    \"isOptional\" !t" << std::endl;
+            }
+
             GenerateConfigEachModuleFile(systemPtr, modulePtr, cfgStream);
         }
     }

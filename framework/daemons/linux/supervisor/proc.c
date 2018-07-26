@@ -1836,6 +1836,21 @@ void proc_SetFaultAction
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get fault action for a given process.
+ */
+//--------------------------------------------------------------------------------------------------
+
+FaultAction_t proc_GetFaultAction
+(
+    proc_Ref_t procRef
+)
+{
+    return (procRef->defaultFaultAction);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Blocks the process on startup, after it is forked and initialized but before it has execed.  The
  * specified callback function will be called when the process has blocked.  Clearing the callback
  * function means the process should not block on startup.

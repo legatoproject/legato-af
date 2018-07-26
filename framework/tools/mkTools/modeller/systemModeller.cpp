@@ -369,17 +369,21 @@ static void ModelAppsSection
 static void ModelKernelModule
 (
     model::System_t* systemPtr,
-    const parseTree::Module_t* sectionPtr,
+    const parseTree::RequiredModule_t* sectionPtr,
     const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
+
     std::string moduleName;
     std::string modulePath;
+
+    const auto optionalSpec = sectionPtr->lastTokenPtr->text;
 
     // Tokens in the module subsection are paths to their .mdef file
     // Assume that modules are built outside of Legato
     const auto moduleSpec = path::Unquote(DoSubstitution(sectionPtr->firstTokenPtr));
+
     if (path::HasSuffix(moduleSpec, ".mdef"))
     {
         moduleName = path::RemoveSuffix(path::GetLastNode(moduleSpec), ".mdef");
@@ -412,7 +416,7 @@ static void ModelKernelModule
             sectionPtr->ThrowException(
                 mk::format(LE_I18N("Module '%s' added to the system more than once.\n"
                                    "%s: note: Previously added here."),
-                           moduleName, modulesIter->second->parseTreePtr->firstTokenPtr->GetLocation())
+                           moduleName, modulesIter->second.first->parseTreePtr->firstTokenPtr->GetLocation())
             );
     }
 
@@ -420,7 +424,14 @@ static void ModelKernelModule
     auto modulePtr = GetModule(modulePath, buildParams);
     modulePtr->parseTreePtr = sectionPtr;
 
-    systemPtr->modules[moduleName] = modulePtr;
+    bool isOptional = false;
+
+    // Check if the module is optional or not.
+    if (optionalSpec.compare("[optional]") == 0)
+    {
+        isOptional = true;
+    }
+    systemPtr->modules[moduleName] = std::make_pair(modulePtr, isOptional);
 
     if (buildParams.beVerbose)
     {
@@ -447,7 +458,7 @@ static void ModelKernelModulesSection
     for (auto itemPtr : moduleSectionPtr->Contents())
     {
         ModelKernelModule(systemPtr,
-                          dynamic_cast<const parseTree::Module_t*>(itemPtr),
+                          dynamic_cast<const parseTree::RequiredModule_t*>(itemPtr),
                           buildParams);
     }
 }
@@ -917,12 +928,12 @@ static void EnsureRequiredKernelModuleinSystem
 
         for (auto const& it : appPtr->requiredModules)
         {
-            auto searchModule = systemPtr->modules.find(it);
+            auto searchModule = systemPtr->modules.find(it.first);
             if (searchModule == systemPtr->modules.end())
             {
                 throw mk::Exception_t(
                     mk::format(
-                        LE_I18N("Kernel module %s.mdef must be listed in sdef file."), it)
+                        LE_I18N("Kernel module %s.mdef must be listed in sdef file."), it.first)
                 );
             }
         }
@@ -930,16 +941,16 @@ static void EnsureRequiredKernelModuleinSystem
 
     for (auto& moduleMapEntry : systemPtr->modules)
     {
-        auto modulePtr = moduleMapEntry.second;
+        auto modulePtr = moduleMapEntry.second.first;
 
         for (auto const& it : modulePtr->requiredModules)
         {
-            auto searchModule = systemPtr->modules.find(it);
+            auto searchModule = systemPtr->modules.find(it.first);
             if (searchModule == systemPtr->modules.end())
             {
                 throw mk::Exception_t(
                     mk::format(
-                        LE_I18N("Kernel module %s.mdef must be listed in sdef file."), it)
+                        LE_I18N("Kernel module %s.mdef must be listed in sdef file."), it.first)
                 );
             }
         }

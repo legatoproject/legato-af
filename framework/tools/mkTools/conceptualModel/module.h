@@ -43,12 +43,14 @@ struct Module_t : public HasTargetInfo_t
     std::map<std::string, ObjectFile_t*> koFiles; ///< Map of kernel object (.ko) file and pointer
                                                   ///< to .ko file in target directory
 
-    const parseTree::Module_t* parseTreePtr; ///< Ptr to this module's section in the .sdef file
+    const parseTree::RequiredModule_t* parseTreePtr; ///< Ptr to this module's section in the .sdef file
                                              ///< parse tree.
 
     std::map<std::string, std::string> params; ///< Module insmod parameters
 
-    std::set<std::string> requiredModules;  ///< Set of required kernel modules
+    ///< Map of required modules.
+    ///< Key is the module name and value is the pair of module and it's bool 'optional' value.
+    std::map<std::string, std::pair<Module_t*, bool>> requiredModules;
 
     enum {AUTO, MANUAL} loadTrigger;  ///< Module is loaded either auto at startup or manually
 

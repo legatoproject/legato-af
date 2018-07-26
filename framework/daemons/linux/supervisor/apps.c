@@ -391,7 +391,7 @@ static void RestartApp
     AppContainer_t* appContainerPtr           ///< [IN] App to restart.
 )
 {
-    // Always reset the stop handler to so that when a process dies in the app that does not require
+    // Always reset the stop handler so that when a process dies in the app that does not require
     // a restart it will be handled properly.
     appContainerPtr->stopHandler = DeactivateAppContainer;
 
@@ -668,7 +668,48 @@ static le_result_t StartApp
     appContainerPtr->isActive = true;
 
     // Start the app.
-    return app_Start(appContainerPtr->appRef);
+
+    le_result_t result = app_Start(appContainerPtr->appRef);
+
+    switch(result)
+    {
+        // Fault action is to restart the app.
+        case LE_TERMINATED:
+            appContainerPtr->stopHandler = RestartApp;
+            if (app_GetState(appContainerPtr->appRef) != APP_STATE_STOPPED)
+            {
+                // Stop the process. This is an asynchronous call that returns right away.
+                app_Stop(appContainerPtr->appRef);
+            }
+
+            // If the application has already stopped then call its stop handler here.
+            if (app_GetState(appContainerPtr->appRef) == APP_STATE_STOPPED)
+            {
+                appContainerPtr->stopHandler(appContainerPtr);
+            }
+            break;
+
+        // Fault action is to stop the app.
+        case LE_WOULD_BLOCK:
+            appContainerPtr->stopHandler = DeactivateAppContainer;
+            if (app_GetState(appContainerPtr->appRef) != APP_STATE_STOPPED)
+            {
+                // Stop the process. This is an asynchronous call that returns right away.
+                app_Stop(appContainerPtr->appRef);
+            }
+
+            // If the application has already stopped then call its stop handler here.
+            if (app_GetState(appContainerPtr->appRef) == APP_STATE_STOPPED)
+            {
+                appContainerPtr->stopHandler(appContainerPtr);
+            }
+            break;
+
+        default:
+            break;
+    }
+
+    return result;
 }
 
 

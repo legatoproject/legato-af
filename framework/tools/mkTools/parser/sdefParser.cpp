@@ -257,25 +257,6 @@ static parseTree::CompoundItemList_t* ParseApp
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Parses an entry in the "kernelModules:" section in a .sdef file.
- *
- * @return Pointer to the item.
- */
-//--------------------------------------------------------------------------------------------------
-static parseTree::CompoundItemList_t* ParseModule
-(
-    Lexer_t& lexer
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // kernelModules: subsection contains paths to pre-built module binaries
-    // Pull the module filename and create a new object for it.
-    return new parseTree::Module_t(lexer.Pull(parseTree::Token_t::FILE_PATH));
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Parse a binding.
  *
  * @return Pointer to the item.
@@ -495,7 +476,7 @@ static parseTree::CompoundItem_t* ParseSection
     }
     else if (sectionName == "kernelModules")
     {
-        return ParseComplexSection(lexer, sectionNameTokenPtr, ParseModule);
+        return ParseComplexSection(lexer, sectionNameTokenPtr, ParseRequiredModule);
     }
     else if (sectionName == "ldflags")
     {

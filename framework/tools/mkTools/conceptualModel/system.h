@@ -27,7 +27,9 @@ struct System_t : public HasTargetInfo_t
 
     std::map<std::string, App_t*> apps;  ///< Map of apps in this system (key is app name).
 
-    std::map<std::string, Module_t*> modules;  ///< Map of modules in this system (key is module name).
+    ///< Map of kernel module.
+    ///< Key is the module name and value is the pair of module and it's bool 'optional' value.
+    std::map<std::string, std::pair<Module_t*, bool>> modules;
 
     std::map<std::string, User_t*> users; ///< Map of non-app users (key is user name).
 

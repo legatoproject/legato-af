@@ -34,6 +34,7 @@ struct Content_t
         PROVIDED_API,   ///< .cdef (TokenList_t), "powerLed = gpioOut.api [async]"
         REQUIRED_API,   ///< .cdef (TokenList_t), "powerLed = gpioOut.api [types-only]"
         REQUIRED_CONFIG_TREE,   ///< .adef (TokenList_t), "[w] treeName" or just "treeName"
+        REQUIRED_MODULE,///< Required module (TokenList_t) "drivers/example.mdef [optional]"
         EXTERN_API_INTERFACE,   ///< .adef (TokenList_t), "externName = exe.comp.interface"
         BINDING,        ///< Binding (TokenList_t), "exe.component.api -> app.service"
         COMMAND,        ///< Command (TokenList_t), "cmd = app:/path/to/exe"

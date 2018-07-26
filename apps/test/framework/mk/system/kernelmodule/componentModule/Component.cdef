@@ -7,6 +7,6 @@ requires:
 {
     kernelModules:
     {
-        $CURDIR/../module/module3.mdef
+        $CURDIR/../module/module3.mdef [optional]
     }
 }

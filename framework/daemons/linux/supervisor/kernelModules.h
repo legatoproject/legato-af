@@ -26,6 +26,7 @@
 typedef struct
 {
     char modName[LE_CFG_STR_LEN_BYTES];    ///< Kernel module name
+    bool isOptional;                       ///< is the module optional or not
     le_sls_Link_t link;                    ///< Link in the node
 }
 ModNameNode_t;

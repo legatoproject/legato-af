@@ -828,15 +828,15 @@ model::ApiFile_t* GetApiFilePtr
 //--------------------------------------------------------------------------------------------------
 static void ReqKernelModule
 (
-    std::set<std::string>& requiredModules,
-    const parseTree::Module_t* sectionPtr,
+    std::map<std::string, std::pair<model::Module_t*, bool>>& requiredModules,
+    const parseTree::RequiredModule_t* sectionPtr,
     const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
     std::string moduleName;
     std::string modulePath;
-
+    const auto optionalSpec = sectionPtr->lastTokenPtr->text;
     // Tokens in the module subsection are paths to their .mdef file
     const auto moduleSpec = path::Unquote(DoSubstitution(sectionPtr->firstTokenPtr));
     if (path::HasSuffix(moduleSpec, ".mdef"))
@@ -874,7 +874,18 @@ static void ReqKernelModule
         );
     }
 
-    requiredModules.insert(moduleName);
+    // Model this module.
+    auto modulePtr = model::Module_t::GetModule(moduleName);
+
+    bool isOptional = false;
+
+    // Check if the module is optional or not.
+    if (optionalSpec.compare("[optional]") == 0)
+    {
+        isOptional = true;
+    }
+
+    requiredModules[moduleName] = std::make_pair(modulePtr, isOptional);
 }
 
 
@@ -885,7 +896,7 @@ static void ReqKernelModule
 //--------------------------------------------------------------------------------------------------
 static void ReqKernelModulesSection
 (
-    std::set<std::string>& requiredModules,
+    std::map<std::string, std::pair<model::Module_t*, bool>>& requiredModules,
     const parseTree::CompoundItem_t* sectionPtr,
     const mk::BuildParams_t& buildParams
 )
@@ -896,7 +907,7 @@ static void ReqKernelModulesSection
     for (auto itemPtr : moduleSectionPtr->Contents())
     {
         ReqKernelModule(requiredModules,
-                        dynamic_cast<const parseTree::Module_t*>(itemPtr),
+                        dynamic_cast<const parseTree::RequiredModule_t*>(itemPtr),
                         buildParams);
     }
 }
@@ -908,7 +919,7 @@ static void ReqKernelModulesSection
 //--------------------------------------------------------------------------------------------------
 void AddRequiredKernelModules
 (
-    std::set<std::string>& requiredModules,
+    std::map<std::string, std::pair<model::Module_t*, bool>>& requiredModules,
     const std::list<const parseTree::CompoundItem_t*>& reqKernelModulesSections,
     const mk::BuildParams_t& buildParams
 )

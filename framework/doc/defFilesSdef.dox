@@ -537,6 +537,7 @@ This code sample shows the @kernelModules section declaring the
 kernelModules:
 {
     /path/to/kernel/module/hello
+    /path/to/kernel/module/world [optional]
 }
 @endcode
 
@@ -545,6 +546,11 @@ alphabetical order by the Legato system. If a module depends on one or more othe
 order in which the modules are installed and removed takes the dependencies into consideration.
 Dependencies are added by adding the modules to the @c requires: @c kernelModules: section of the
 @ref defFilesMdef ".mdef" for the kernel module that depends on them.
+
+@note In case a module fails to load, the fault handler kicks in which restarts the Legato framework in
+order to attempt the recovery of the system. If the framework does not need to be restarted
+when a module fails to load, the module must be marked as optional by using '[optional]' tag.
+In the above example, world is an optional module.
 
 @section defFilesSdef_commands commands
 

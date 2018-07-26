@@ -119,6 +119,7 @@ class Lexer_t
         void PullEnvVar(parseTree::Token_t* tokenPtr);
         void PullMd5(parseTree::Token_t* tokenPtr);
         void PullDirective(parseTree::Token_t* tokenPtr);
+        void PullOptional(parseTree::Token_t* tokenPtr);
         void AdvanceOneCharacter(parseTree::Token_t* tokenPtr);
         void AdvanceOneCharacter(std::string& string);
         std::string UnexpectedCharErrorMsg(char unexpectedChar,

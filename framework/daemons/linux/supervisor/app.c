@@ -350,7 +350,7 @@ typedef struct app_Ref
     le_timer_Ref_t  killTimer;          // Timeout timer for killing processes.
     le_sls_List_t   additionalLinks;    // List of additional links that are temporarily added to
                                         // the app.
-    le_sls_List_t reqModuleName;        // List of required kernel module names
+    le_sls_List_t   reqModuleName;      // List of required kernel module names
 }
 App_t;
 
@@ -2415,6 +2415,8 @@ static le_result_t CheckPathConflict
 //--------------------------------------------------------------------------------------------------
 static le_result_t GetKernelModules(app_Ref_t appRef)
 {
+    appRef->reqModuleName = LE_SLS_LIST_INIT;
+
     ModNameNode_t* modNameNodePtr;
     // Get a config iterator for this app.
     le_cfg_IteratorRef_t iter = le_cfg_CreateReadTxn(appRef->cfgPathRoot);
@@ -2426,16 +2428,10 @@ static le_result_t GetKernelModules(app_Ref_t appRef)
     {
         do
         {
-            if (le_cfg_GetNodeType(iter, ".") != LE_CFG_TYPE_STRING)
-            {
-                LE_WARN("Found non-string type kernel module dependency");
-                continue;
-            }
-
             modNameNodePtr = le_mem_ForceAlloc(ReqModStringPool);
             modNameNodePtr->link = LE_SLS_LINK_INIT;
 
-            le_cfg_GetString(iter, "", modNameNodePtr->modName, sizeof(modNameNodePtr->modName), "");
+            le_cfg_GetNodeName(iter, "", modNameNodePtr->modName, sizeof(modNameNodePtr->modName));
 
             if (strncmp(modNameNodePtr->modName, "", sizeof(modNameNodePtr->modName)) == 0)
             {
@@ -2443,6 +2439,8 @@ static le_result_t GetKernelModules(app_Ref_t appRef)
                 le_mem_Release(modNameNodePtr);
                 continue;
             }
+
+            modNameNodePtr->isOptional = le_cfg_GetBool(iter, "isOptional", false);
             le_sls_Queue(&(appRef->reqModuleName), &(modNameNodePtr->link));
         }
         while (le_cfg_GoToNextSibling(iter) == LE_OK);
@@ -2730,7 +2728,6 @@ app_Ref_t app_Create
     appPtr->additionalLinks = LE_SLS_LIST_INIT;
     appPtr->state = APP_STATE_STOPPED;
     appPtr->killTimer = NULL;
-    appPtr->reqModuleName = LE_SLS_LIST_INIT;
 
     LE_INFO("Creating app '%s'", appPtr->name);
 
@@ -2879,6 +2876,26 @@ static void DeleteProcContainersList
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Deletes all required kernel module nodes from the specified list
+ */
+//--------------------------------------------------------------------------------------------------
+static void DeleteModuleNodeList
+(
+    le_sls_List_t moduleList
+)
+{
+    le_sls_Link_t* moduleLinkPtr;
+
+    while ((moduleLinkPtr = le_sls_Pop(&moduleList)) != NULL)
+    {
+        ModNameNode_t* moduleNodePtr = CONTAINER_OF(moduleLinkPtr, ModNameNode_t, link);
+        le_mem_Release(moduleNodePtr);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Deletes an application.  The application must be stopped before it is deleted.
  *
  * @note If this function fails it will kill the calling process.
@@ -2925,6 +2942,8 @@ le_result_t app_Start
 {
     LE_INFO("Starting app '%s'", appRef->name);
 
+    bool moduleLoadFailed = false;
+
     if (appRef->state == APP_STATE_RUNNING)
     {
         LE_ERROR("Application '%s' is already running.", appRef->name);
@@ -2939,12 +2958,14 @@ le_result_t app_Start
         return LE_FAULT;
     }
 
-    appRef->state = APP_STATE_RUNNING;
-
+    // Install the required kernel modules
     if (GetKernelModules(appRef) != LE_OK)
     {
-        LE_CRIT("Error in installing dependent kernel modules for app '%s'", appRef->name);
+        LE_ERROR("Error in installing dependent kernel modules for app '%s'", appRef->name);
+        moduleLoadFailed = true;
     }
+
+    appRef->state = APP_STATE_RUNNING;
 
     // Set SMACK rules for this app.
     // Setup the runtime area in the file system.
@@ -2982,6 +3003,36 @@ le_result_t app_Start
     {
         ProcContainer_t* procContainerPtr = CONTAINER_OF(procLinkPtr, ProcContainer_t, link);
 
+        if (moduleLoadFailed)
+        {
+            // If a module failed to load then trigger fault action of the process.
+            switch (proc_GetFaultAction(procContainerPtr->procRef))
+            {
+                case FAULT_ACTION_RESTART_APP:
+                    LE_CRIT("Fault action is to restart app '%s'.", appRef->name);
+                    return LE_TERMINATED;
+                    break;
+
+                case FAULT_ACTION_STOP_APP:
+                    LE_CRIT("Fault action is to stop app '%s'.", appRef->name);
+                    return LE_WOULD_BLOCK;
+                    break;
+
+                case FAULT_ACTION_REBOOT:
+                    LE_EMERG("Fault action is to reboot the system.");
+                    framework_Reboot();
+                    return LE_FAULT;
+                    break;
+
+                case FAULT_ACTION_RESTART_PROC:
+                case FAULT_ACTION_IGNORE:
+                case FAULT_ACTION_NONE:
+                default:
+                    LE_INFO("Proceed with starting processes.");
+                    break;
+            }
+        }
+
         le_result_t result = proc_Start(procContainerPtr->procRef);
 
         if (result != LE_OK)
@@ -3016,15 +3067,19 @@ void app_Stop
 {
     LE_INFO("Stopping app '%s'", appRef->name);
 
-    if (!le_sls_IsEmpty(&(appRef->reqModuleName)))
-    {
-        kernelModules_RemoveListOfModules(appRef->reqModuleName);
-    }
 
     if (appRef->state == APP_STATE_STOPPED)
     {
         LE_ERROR("Application '%s' is already stopped.", appRef->name);
         return;
+    }
+
+    if (!le_sls_IsEmpty(&(appRef->reqModuleName)))
+    {
+        if (kernelModules_RemoveListOfModules(appRef->reqModuleName) != LE_OK)
+        {
+            LE_ERROR("Error in removing the list of kernel modules");
+        }
     }
 
     // Soft kill all the processes in the app.
@@ -3054,6 +3109,8 @@ void app_Stop
 
         appRef->state = APP_STATE_STOPPED;
     }
+
+    DeleteModuleNodeList(appRef->reqModuleName);
 }
 
 
@@ -4148,7 +4205,7 @@ void app_StopComplete
         le_timer_Stop(appRef->killTimer);
     }
 
-    LE_DEBUG("app '%s' has stopped.", appRef->name);
+    LE_INFO("app '%s' has stopped.", appRef->name);
 
     appRef->state = APP_STATE_STOPPED;
 }
