@@ -101,6 +101,48 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Buffer size for the 'tzoneset' command
+ */
+//--------------------------------------------------------------------------------------------------
+#define TIME_ZONE_CMD_BUF_SIZE 128
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Path for the 'tzoneset' command
+ */
+//--------------------------------------------------------------------------------------------------
+#define TIME_ZONE_CMD_PATH "/usr/sbin/tzoneset"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Path for the 'tzoneset' lock file
+ */
+//--------------------------------------------------------------------------------------------------
+#define TIME_ZONE_LOCK_FILE "/var/lock/.tzoneset.lock"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Max number of retries to check the 'tzoneset' lock file
+ */
+//--------------------------------------------------------------------------------------------------
+#define TIME_ZONE_LOCK_MAX_RETRY 5
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sleep interval (nanoseconds) between 'tzoneset' lock file checks (0.5 sec)
+ */
+//--------------------------------------------------------------------------------------------------
+#define TIME_ZONE_LOCK_RETRY_SLEEP_NS 500000000L
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Max number of retries for the Network Time query
+ */
+//--------------------------------------------------------------------------------------------------
+#define NETWORK_TIME_MAX_RETRY 20
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Mutex to prevent race condition with asynchronous functions.
  */
 //--------------------------------------------------------------------------------------------------
@@ -525,6 +567,13 @@ static le_ref_MapRef_t MetricsRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Network Time retry interval.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_clk_Time_t NetworkTimeRetryInterval = {.sec = 1};
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Event IDs for Signal Strength notification.
  *
  */
@@ -555,6 +604,13 @@ static le_mem_PoolRef_t PreferredNetworkOperatorPool;
  */
 //--------------------------------------------------------------------------------------------------
 static le_dls_List_t  JammingSessionRefList;
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Retry Timer for the Network Time query.
+ */
+// ------------------------------------------------------------------------------------------------
+static le_timer_Ref_t NetworkTimeTimerRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1374,6 +1430,78 @@ static void JammingDetectionIndHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * The network time indication handler.
+ */
+//--------------------------------------------------------------------------------------------------
+static void NetworkTimeIndHandler
+(
+    pa_mrc_NetworkTimeIndication_t* networkTimeIndPtr ///< [IN] Network Time data structure
+)
+{
+    char cmdLine[TIME_ZONE_CMD_BUF_SIZE];
+
+    LE_INFO("Network time Handler called with time %"PRIu64", zone %d, dst %d",
+            networkTimeIndPtr->epochTime, networkTimeIndPtr->timeZone,
+            networkTimeIndPtr->dst);
+
+    // Converting 15-min intervals to seconds
+    int32_t timeZoneOffset = networkTimeIndPtr->timeZone * 15 * 60;
+
+    // syntax: tzoneset <epochTime in seconds> <TZ offset in seconds> <DST: 0 or 1 or 2 hours>
+    // Passing epoch time as 0 (means "don't modify") because system clock is already set
+    // to UTC time by Time Daemon, and we don't want to override it.
+    // Passing DST as 0 because it is already accounted for in the timeZoneOffset.
+    snprintf(cmdLine, sizeof(cmdLine), "%s 0 %d 0",
+             TIME_ZONE_CMD_PATH,
+             timeZoneOffset);
+
+    // Fork to avoid delaying the main process.
+    pid_t pid = fork();
+    LE_FATAL_IF(pid < 0, "Failed to fork child process.  %m.");
+
+    if (pid == 0) // child process
+    {
+        bool locked = true;
+        struct stat fileStatus;
+        int i;
+        struct timespec sleepInterval = {0, TIME_ZONE_LOCK_RETRY_SLEEP_NS};
+
+        // Verify the process is not locked; if lock file exists, retry few times.
+        for (i = 0; i < TIME_ZONE_LOCK_MAX_RETRY; i++)
+        {
+            if (0 != stat(TIME_ZONE_LOCK_FILE, &fileStatus))
+            {
+                // file doesn't exist - process has no lock.
+                locked = false;
+                break;
+            }
+            // sleep half second between retries
+            if (0 != nanosleep(&sleepInterval, NULL))
+            {
+                LE_ERROR("Error in nanosleep");
+            }
+        }
+        if (!locked)
+        {
+            LE_INFO("Executing [%s]", cmdLine);
+            // Use 'system()' to get back the exit code.
+            int rc = system(cmdLine);
+            if (0 != rc)
+            {
+                LE_ERROR("Error setting time zone: command [%s]: exit code %d(%#x)",
+                         cmdLine, rc, rc);
+            }
+        }
+        else
+        {
+            LE_ERROR("Can't set timezone, process is locked.");
+        }
+        exit(0);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Static function to stop the jamming detection.
  *
  * @return
@@ -1579,6 +1707,32 @@ static void FirstLayerJammingDetectionHandler
     le_mem_Release(reportPtr);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called when the Network Time retry timer expires
+ */
+//--------------------------------------------------------------------------------------------------
+static void RetrySyncNetworkTimeHandler
+(
+    le_timer_Ref_t timerRef    ///< Timer that expired
+)
+{
+    le_result_t result = pa_mrc_SyncNetworkTime();
+    if (LE_OK == result)
+    {
+        LE_INFO("Re-trying Sync Network time: success");
+        // No more retries needed
+        le_timer_Stop(NetworkTimeTimerRef);
+    }
+    else if (NETWORK_TIME_MAX_RETRY != le_timer_GetExpiryCount(timerRef))
+    {
+        LE_INFO("Re-try: Unable to get network time: result %d", result);
+    }
+    else
+    {
+        LE_ERROR("Unable to sync network time from the modem: result %d", result);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 // APIs.
@@ -1720,6 +1874,9 @@ void le_mrc_Init
     // Register a handler function for jamming detection indication
     pa_mrc_AddJammingDetectionIndHandler(JammingDetectionIndHandler, NULL);
 
+    // Register a handler function for network time indication
+    pa_mrc_AddNetworkTimeIndHandler(NetworkTimeIndHandler);
+
     MrcCommandEventId = le_event_CreateId("CommandEvent", sizeof(CmdRequest_t));
 
     // initSemaphore is used to wait for MrcCommandThread() execution. It ensures that the thread is
@@ -1741,6 +1898,28 @@ void le_mrc_Init
 
         LE_INFO("Enable the Network registration state notification");
         pa_mrc_ConfigureNetworkReg(PA_MRC_ENABLE_REG_NOTIFICATION);
+    }
+
+    NetworkTimeTimerRef = le_timer_Create("Network time sync retry timer");
+    le_timer_SetHandler(NetworkTimeTimerRef, RetrySyncNetworkTimeHandler);
+
+    // If 'tzoneset' executable is available, sync the network time and timezone
+    struct stat fileStatus;
+    if (0 == stat(TIME_ZONE_CMD_PATH, &fileStatus))
+    {
+        if (LE_OK != pa_mrc_SyncNetworkTime())
+        {
+            LE_INFO("Network time unavailable, starting the retry timer");
+
+            le_timer_SetInterval(NetworkTimeTimerRef, NetworkTimeRetryInterval);
+            le_timer_SetRepeat(NetworkTimeTimerRef, NETWORK_TIME_MAX_RETRY);
+            le_timer_Start(NetworkTimeTimerRef);
+        }
+    }
+    else
+    {
+        LE_INFO("%s does not exist - can't set the time zone on this platform.",
+                TIME_ZONE_CMD_PATH);
     }
 }
 

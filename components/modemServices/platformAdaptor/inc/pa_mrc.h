@@ -280,6 +280,20 @@ pa_mrc_JammingDetectionIndication_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Network time indication structure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    uint64_t epochTime;     ///< Epoch time, seconds
+    int16_t timeZone;       ///< Time Zone in 15-min increments
+    int16_t dst;            ///< DST, hours
+}
+pa_mrc_NetworkTimeIndication_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Prototype for handler functions used to report Signal Strength changes.
  *
  * @param ssIndPtr The Signal Strength change indication.
@@ -348,6 +362,18 @@ typedef void (*pa_mrc_NetworkRejectIndHdlrFunc_t)
 typedef void (*pa_mrc_JammingDetectionHandlerFunc_t)
 (
     pa_mrc_JammingDetectionIndication_t* jammingIndPtr
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Prototype for handler functions used to report Network Time notifications.
+ *
+ * @param servicePtr The service state.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*pa_mrc_NetworkTimeHandlerFunc_t)
+(
+    pa_mrc_NetworkTimeIndication_t* timeIndPtr
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1115,6 +1141,22 @@ LE_SHARED le_event_HandlerRef_t pa_mrc_AddJammingDetectionIndHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function must be called to register a handler to report a Network Time event.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_event_HandlerRef_t pa_mrc_AddNetworkTimeIndHandler
+(
+    pa_mrc_NetworkTimeHandlerFunc_t networkTimeIndHandler       ///< [IN] The handler function
+                                                                ///  to handle network
+                                                                ///  time indication.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function activates or deactivates jamming detection notification.
  *
  * * @return
@@ -1174,6 +1216,22 @@ LE_SHARED le_result_t pa_mrc_SetSarBackoffState
 LE_SHARED le_result_t pa_mrc_GetSarBackoffState
 (
     uint8_t* statePtr     ///< [OUT] Current state
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function retrieves the network time from the modem.
+ *
+ * @return
+ * - LE_FAULT         The function failed to get the value.
+ * - LE_UNAVAILABLE   No valid user time was returned.
+ * - LE_UNSUPPORTED   The feature is not supported.
+ * - LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mrc_SyncNetworkTime
+(
+    void
 );
 
 #endif // LEGATO_PARC_INCLUDE_GUARD
