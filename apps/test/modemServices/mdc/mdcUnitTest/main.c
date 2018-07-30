@@ -595,8 +595,23 @@ static void HandlerFunc
 
     if (ConnectionStatus == LE_MDC_DISCONNECTED)
     {
-        LE_ASSERT( le_mdc_GetDisconnectionReason(profileRef) == LE_MDC_DISC_REGULAR_DEACTIVATION );
-        LE_ASSERT( le_mdc_GetPlatformSpecificDisconnectionCode(profileRef) == 2 );
+        if (LE_MDC_PDP_IPV4V6 == le_mdc_GetPDP(profileRef))
+        {
+            LE_ASSERT( LE_MDC_DISC_REGULAR_DEACTIVATION ==
+                        le_mdc_GetDisconnectionReasonExt(profileRef, LE_MDC_PDP_IPV4));
+            LE_ASSERT( le_mdc_GetPlatformSpecificDisconnectionCodeExt(profileRef,
+                                                                      LE_MDC_PDP_IPV4) == 2 );
+            LE_ASSERT( LE_MDC_DISC_REGULAR_DEACTIVATION ==
+                        le_mdc_GetDisconnectionReasonExt(profileRef, LE_MDC_PDP_IPV6));
+            LE_ASSERT( le_mdc_GetPlatformSpecificDisconnectionCodeExt(profileRef,
+                                                                      LE_MDC_PDP_IPV6) == 2 );
+        }
+        else
+        {
+            LE_ASSERT( LE_MDC_DISC_REGULAR_DEACTIVATION ==
+                        le_mdc_GetDisconnectionReasonExt(profileRef, 0));
+            LE_ASSERT( le_mdc_GetPlatformSpecificDisconnectionCodeExt(profileRef, 0) == 2 );
+        }
     }
 
     le_sem_Post(ThreadSemaphore);
@@ -939,5 +954,3 @@ COMPONENT_INIT
     le_thread_Start(le_thread_Create("TestThread", TestThread,NULL));
 
 }
-
-

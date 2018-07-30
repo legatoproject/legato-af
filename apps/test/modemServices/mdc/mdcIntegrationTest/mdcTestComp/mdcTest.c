@@ -475,8 +475,20 @@ static void StateChangeHandler
     if (ConnectionStatus == LE_MDC_DISCONNECTED)
     {
         // Get disconnection reason
-        LE_PRINT_VALUE("%d", le_mdc_GetDisconnectionReason(profileRef));
-        LE_PRINT_VALUE("%d", le_mdc_GetPlatformSpecificDisconnectionCode(profileRef));
+        if (LE_MDC_PDP_IPV4V6 == le_mdc_GetPDP(profileRef))
+        {
+            LE_PRINT_VALUE("%d", le_mdc_GetDisconnectionReasonExt(profileRef, LE_MDC_PDP_IPV4));
+            LE_PRINT_VALUE("%d", le_mdc_GetPlatformSpecificDisconnectionCodeExt(profileRef,
+                                                                              LE_MDC_PDP_IPV4));
+            LE_PRINT_VALUE("%d", le_mdc_GetDisconnectionReasonExt(profileRef, LE_MDC_PDP_IPV6));
+            LE_PRINT_VALUE("%d", le_mdc_GetPlatformSpecificDisconnectionCodeExt(profileRef,
+                                                                              LE_MDC_PDP_IPV6));
+        }
+        else
+        {
+            LE_PRINT_VALUE("%d", le_mdc_GetDisconnectionReasonExt(profileRef, 0));
+            LE_PRINT_VALUE("%d", le_mdc_GetPlatformSpecificDisconnectionCodeExt(profileRef, 0));
+        }
     }
 
     LE_DEBUG("\n================================================");

@@ -67,12 +67,12 @@ CmdType_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    uint32_t profileIndex;                     ///< Index of the profile on the modem
-    le_event_Id_t sessionStateEvent;           ///< Event to report when session changes state
-    pa_mdc_ProfileData_t modemData;            ///< Profile data that is written to the modem
-    le_mdc_ProfileRef_t profileRef;            ///< Profile Safe Reference
-    le_mdc_ConState_t connectionStatus;        ///< Data session connection status
-    pa_mdc_ConnectionFailureCode_t conFailure; ///< connection or disconnection failure reason
+    uint32_t profileIndex;                         ///< Index of the profile on the modem
+    le_event_Id_t sessionStateEvent;               ///< Event to report when session changes state
+    pa_mdc_ProfileData_t modemData;                ///< Profile data that is written to the modem
+    le_mdc_ProfileRef_t profileRef;                ///< Profile Safe Reference
+    le_mdc_ConState_t connectionStatus;            ///< Data session connection status
+    pa_mdc_ConnectionFailureCode_t* conFailurePtr; ///< connection or disconnection failure reason
 }
 le_mdc_Profile_t;
 
@@ -249,13 +249,6 @@ static void NewSessionStateHandler
                 // Update Connection Status
                 profilePtr->connectionStatus = sessionStatePtr->newState;
             }
-
-            // Get disconnection reason
-            if (sessionStatePtr->newState == LE_MDC_DISCONNECTED)
-            {
-                profilePtr->conFailure.callEndFailure = sessionStatePtr->disc;
-                profilePtr->conFailure.callEndFailureCode = sessionStatePtr->discCode;
-            }
         }
     }
     else // MT-PDP incoming notification
@@ -354,8 +347,7 @@ static le_mdc_ProfileRef_t CreateModemProfile
 
         // Init the remaining fields
         profilePtr->connectionStatus = -1;
-        profilePtr->conFailure.callEndFailure = LE_MDC_DISC_UNDEFINED;
-        profilePtr->conFailure.callEndFailureCode = 0;
+        profilePtr->conFailurePtr = NULL;
 
         // Create a Safe Reference for this data profile object.
         profilePtr->profileRef = le_ref_CreateRef(DataProfileRefMap, profilePtr);
@@ -966,11 +958,6 @@ le_result_t le_mdc_StartSession
         return LE_BAD_PARAMETER;
     }
 
-    profilePtr->conFailure.callEndFailure = LE_MDC_DISC_UNDEFINED;
-    profilePtr->conFailure.callEndFailureCode = 0;
-    profilePtr->conFailure.callConnectionFailureType = 0;
-    profilePtr->conFailure.callConnectionFailureCode = 0;
-
     switch (profilePtr->modemData.pdp)
     {
         case LE_MDC_PDP_IPV4:
@@ -995,14 +982,51 @@ le_result_t le_mdc_StartSession
         }
     }
 
-    if (result != LE_OK)
+    if ((LE_OK != result) && (LE_MDC_PDP_UNKNOWN != profilePtr->modemData.pdp))
     {
-        pa_mdc_GetConnectionFailureReason(profilePtr->profileIndex, &profilePtr->conFailure);
-        LE_ERROR("Get Connection failure %d, %d, %d, %d",
-            profilePtr->conFailure.callEndFailure,
-            profilePtr->conFailure.callEndFailureCode,
-            profilePtr->conFailure.callConnectionFailureType,
-            profilePtr->conFailure.callConnectionFailureCode);
+        if (LE_MDC_PDP_IPV4V6 == profilePtr->modemData.pdp)
+        {
+            pa_mdc_GetConnectionFailureReasonExt(profilePtr->profileIndex,
+                                                LE_MDC_PDP_IPV4, &(profilePtr->conFailurePtr));
+            if (NULL == profilePtr->conFailurePtr)
+            {
+                LE_ERROR("conFailurePtr is NULL");
+                return LE_FAULT;
+            }
+            LE_ERROR("Get IPv4v6 Async Connection failureV4 %d, %d, %d, %d",
+                profilePtr->conFailurePtr->callEndFailure,
+                profilePtr->conFailurePtr->callEndFailureCode,
+                profilePtr->conFailurePtr->callConnectionFailureType,
+                profilePtr->conFailurePtr->callConnectionFailureCode);
+
+            pa_mdc_GetConnectionFailureReasonExt(profilePtr->profileIndex,
+                                                LE_MDC_PDP_IPV6, &(profilePtr->conFailurePtr));
+            if (NULL == profilePtr->conFailurePtr)
+            {
+                LE_ERROR("conFailurePtr is NULL");
+                return LE_FAULT;
+            }
+            LE_ERROR("Get IPv4v6 Async Connection failureV6 %d, %d, %d, %d",
+                profilePtr->conFailurePtr->callEndFailure,
+                profilePtr->conFailurePtr->callEndFailureCode,
+                profilePtr->conFailurePtr->callConnectionFailureType,
+                profilePtr->conFailurePtr->callConnectionFailureCode);
+        }
+        else
+        {
+            pa_mdc_GetConnectionFailureReason(profilePtr->profileIndex,
+                                              &(profilePtr->conFailurePtr));
+            if (NULL == profilePtr->conFailurePtr)
+            {
+                LE_ERROR("conFailurePtr is NULL");
+                return LE_FAULT;
+            }
+            LE_ERROR("Get Async Connection failure %d, %d, %d, %d",
+                profilePtr->conFailurePtr->callEndFailure,
+                profilePtr->conFailurePtr->callEndFailureCode,
+                profilePtr->conFailurePtr->callConnectionFailureType,
+                profilePtr->conFailurePtr->callConnectionFailureCode);
+        }
     }
 
     return result;
@@ -2270,6 +2294,9 @@ uint32_t le_mdc_NumProfiles
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
+ *
+ * @deprecated This function is deprecated, le_mdc_GetDisconnectionReasonExt should be used for the
+ *             new code.
  */
 //--------------------------------------------------------------------------------------------------
 le_mdc_DisconnectionReason_t le_mdc_GetDisconnectionReason
@@ -2287,7 +2314,7 @@ le_mdc_DisconnectionReason_t le_mdc_GetDisconnectionReason
         return LE_MDC_DISC_UNDEFINED;
     }
 
-    return (profilePtr->conFailure.callEndFailure);
+    return (profilePtr->conFailurePtr->callEndFailure);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2301,6 +2328,9 @@ le_mdc_DisconnectionReason_t le_mdc_GetDisconnectionReason
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
+ *
+ * @deprecated This function is deprecated, le_mdc_GetPlatformSpecificDisconnectionCodeExt should
+ *             be used for the new code.
  */
 //--------------------------------------------------------------------------------------------------
 int32_t le_mdc_GetPlatformSpecificDisconnectionCode
@@ -2318,7 +2348,7 @@ int32_t le_mdc_GetPlatformSpecificDisconnectionCode
         return LE_MDC_DISC_UNDEFINED;
     }
 
-    return (profilePtr->conFailure.callEndFailureCode);
+    return (profilePtr->conFailurePtr->callEndFailureCode);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2330,6 +2360,9 @@ int32_t le_mdc_GetPlatformSpecificDisconnectionCode
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
+ *
+ * @deprecated This function is deprecated, le_mdc_GetPlatformSpecificFailureConnectionReasonExt
+ *             should be used for new code.
  */
 //--------------------------------------------------------------------------------------------------
 void le_mdc_GetPlatformSpecificFailureConnectionReason
@@ -2349,7 +2382,7 @@ void le_mdc_GetPlatformSpecificFailureConnectionReason
 {
     le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
 
-    if (!failureTypePtr || !failureCodePtr)
+    if ((!failureTypePtr) || (!failureCodePtr))
     {
         LE_KILL_CLIENT("failureTypePtr or failureCodePtr is NULL !");
         return;
@@ -2361,8 +2394,179 @@ void le_mdc_GetPlatformSpecificFailureConnectionReason
         return;
     }
 
-    *failureCodePtr = profilePtr->conFailure.callConnectionFailureCode;
-    *failureTypePtr = profilePtr->conFailure.callConnectionFailureType;
+    *failureCodePtr = profilePtr->conFailurePtr->callConnectionFailureCode;
+    *failureTypePtr = profilePtr->conFailurePtr->callConnectionFailureType;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called to get the disconnection reason.
+ *
+ * @return The disconnection reason.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ * @note For IPv4v6 mode, pdpType specifies which session's disconnect reason to get(IPv4 or IPv6
+ *       session). For IPv4 and IPv6 mode, pdpType is ignored because there is only one session for
+ *       IPv4 and IPv6 mode.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mdc_DisconnectionReason_t le_mdc_GetDisconnectionReasonExt
+(
+    le_mdc_ProfileRef_t profileRef,
+        ///< [IN] profile reference
+    le_mdc_Pdp_t pdpType
+        ///< [IN] pdp type of session
+)
+{
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+
+    if (profilePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", profileRef);
+        return LE_MDC_DISC_UNDEFINED;
+    }
+
+    if (LE_MDC_PDP_UNKNOWN == profilePtr->modemData.pdp)
+    {
+        LE_ERROR("Session pdp type unknown!");
+        return LE_MDC_DISC_UNDEFINED;
+    }
+
+    if ((LE_MDC_PDP_IPV4V6 == profilePtr->modemData.pdp) &&
+        (LE_MDC_PDP_IPV4 != pdpType) && (LE_MDC_PDP_IPV6 != pdpType))
+    {
+        LE_ERROR("Unsupport pdp type %d", pdpType);
+        return LE_MDC_DISC_UNDEFINED;
+    }
+
+    pa_mdc_GetConnectionFailureReasonExt(profilePtr->profileIndex, pdpType,
+                                         &(profilePtr->conFailurePtr));
+
+    if (NULL == profilePtr->conFailurePtr){
+        LE_ERROR("Got null conFailurePtr");
+        return LE_MDC_DISC_UNDEFINED;
+    }
+
+    return (profilePtr->conFailurePtr->callEndFailure);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called to get the platform specific disconnection code.
+ *
+ * Refer to @ref platformConstraintsSpecificErrorCodes for platform specific
+ * disconnection code description.
+ *
+ * @return The platform specific disconnection code.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ * @note For IPv4v6 mode, pdpType specifies which session's disconnect reason to get(IPv4 or IPv6
+ *       session). For IPv4 and IPv6 mode, pdpType is ignored because there is only one session for
+ *       IPv4 and IPv6 mode.
+ */
+//--------------------------------------------------------------------------------------------------
+int32_t le_mdc_GetPlatformSpecificDisconnectionCodeExt
+(
+    le_mdc_ProfileRef_t profileRef,
+        ///< [IN] profile reference
+    le_mdc_Pdp_t pdpType
+        ///< [IN] pdp type of session
+)
+{
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+
+    if (profilePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", profileRef);
+        return LE_MDC_DISC_UNDEFINED;
+    }
+
+    if (LE_MDC_PDP_UNKNOWN == profilePtr->modemData.pdp)
+    {
+        LE_ERROR("Session pdp type unknown!");
+        return LE_MDC_DISC_UNDEFINED;
+    }
+
+    if ((LE_MDC_PDP_IPV4V6 == profilePtr->modemData.pdp) &&
+        (LE_MDC_PDP_IPV4 != pdpType) && (LE_MDC_PDP_IPV6 != pdpType))
+    {
+        LE_ERROR("Unsupport pdp type %d", pdpType);
+        return LE_MDC_DISC_UNDEFINED;
+    }
+
+    pa_mdc_GetConnectionFailureReasonExt(profilePtr->profileIndex, pdpType,
+                                         &(profilePtr->conFailurePtr));
+
+    if (NULL == profilePtr->conFailurePtr){
+        LE_ERROR("Got null conFailure ptr");
+        return LE_MDC_DISC_UNDEFINED;
+    }
+
+    return (profilePtr->conFailurePtr->callEndFailureCode);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called to get the platform specific connection failure reason.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ * @note For IPv4v6 mode, pdpType specifies which session's disconnect reason to get(IPv4 or IPv6
+ *       session). For IPv4 and IPv6 mode, pdpType is ignored because there is only one session for
+ *       IPv4 and IPv6 mode.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mdc_GetPlatformSpecificFailureConnectionReasonExt
+(
+    le_mdc_ProfileRef_t profileRef,
+        ///< [IN] profile reference
+    le_mdc_Pdp_t pdpType,
+        ///< [IN] pdp type of session
+    int32_t* failureTypePtr,
+        ///< [OUT] platform specific failure type
+    int32_t* failureCodePtr
+        ///< [OUT] platform specific failure code
+)
+{
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+
+    if ((!failureTypePtr) || (!failureCodePtr))
+    {
+        LE_KILL_CLIENT("failureTypePtr or failureCodePtr is NULL !");
+        return;
+    }
+
+    if (profilePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", profileRef);
+        return;
+    }
+
+    if (LE_MDC_PDP_UNKNOWN == profilePtr->modemData.pdp)
+    {
+        LE_ERROR("Session pdp type unknown!");
+        return;
+    }
+
+    if ((LE_MDC_PDP_IPV4V6 == profilePtr->modemData.pdp) &&
+        (LE_MDC_PDP_IPV4 != pdpType) && (LE_MDC_PDP_IPV6 != pdpType))
+    {
+        LE_ERROR("Unsupport pdp type %d", pdpType);
+        return;
+    }
+
+    pa_mdc_GetConnectionFailureReasonExt(profilePtr->profileIndex, pdpType,
+                                         &(profilePtr->conFailurePtr));
+
+    if (NULL == profilePtr->conFailurePtr){
+        LE_ERROR("Got null conFailure ptr");
+        return;
+    }
+
+    *failureCodePtr = profilePtr->conFailurePtr->callConnectionFailureCode;
+    *failureTypePtr = profilePtr->conFailurePtr->callConnectionFailureType;
 }
 
 //--------------------------------------------------------------------------------------------------

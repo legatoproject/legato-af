@@ -265,11 +265,26 @@ le_event_HandlerRef_t pa_mdc_AddSessionStateHandler
 void pa_mdc_GetConnectionFailureReason
 (
     uint32_t profileIndex,              ///< [IN] The profile to use
-    pa_mdc_ConnectionFailureCode_t* failureCodesPtr  ///< [OUT] The specific Failure Reason codes
+    pa_mdc_ConnectionFailureCode_t** failureCodesPtr  ///< [OUT] The specific Failure Reason codes
 )
 {
-    memset(failureCodesPtr, 0, sizeof(pa_mdc_ConnectionFailureCode_t));
-    failureCodesPtr->callEndFailure = LE_MDC_DISC_UNDEFINED;
+    *failureCodesPtr = NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the connection failure reason for IPv4v6 mode
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_mdc_GetConnectionFailureReasonExt
+(
+    uint32_t profileIndex,                           ///< [IN] The profile to use
+    le_mdc_Pdp_t pdp,                                ///< [IN] The failure reason pdp type
+    pa_mdc_ConnectionFailureCode_t** failureCodesPtr  ///< [OUT] The specific Failure Reason codes
+)
+{
+    *failureCodesPtr = NULL;
 }
 
 //--------------------------------------------------------------------------------------------------
