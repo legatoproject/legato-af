@@ -3,14 +3,17 @@
  * @page c_temp Temperature Monitoring
  *
  * @ref le_temp_interface.h "API Reference" <br>
- * @ref platformConstraintsTemperature Constraints
+ * @ref SwiPlatforms Sierra Wireless Platforms Constraints
  *
  * <HR>
  *
- * The Temperature API is used to retrieve temperature values and set warning and critical
- * thresholds.
+ * The temperature monitoring API allows an application to monitor the temperature by receiving
+ * temperature values from sensors and sets warnings and critical temperature thresholds.
  *
  * @warning When a Critical event occurs, some platform can automatically switch off.
+ *
+ * @warning Some of the functions in this API may not be supported by your target. Please refer to
+ * @subpage platformConstraintsTemperature platform constraints section for full details.
  *
  * @section le_temp_binding IPC interfaces binding
  *
@@ -26,9 +29,6 @@
  *
  *
  * @section le_temp_monitoring Monitoring
- *
- * This functionality allows to monitor the temperature by getting the temperature sensor and
- * by setting several temperature thresholds.
  *
  * @warning Ensure to check the names of supported sensors and thresholds for your specific
  * platform. Please refer to @subpage platformConstraintsTemperature platform constraints page.

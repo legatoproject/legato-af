@@ -1,11 +1,25 @@
-/** @page platformConstraintsTemperature Temperature Monitoring
+/** @page platformConstraintsTemperature Temperature Monitoring Constraints
 
 See @ref c_temp API
 
-Two main sensors are supported.
+AR758x, AR759x platform restrictions:
 
-The dedicated string to request a sensor with le_temp_Request() function are \b "POWER_CONTROLLER"
-and \b "POWER_AMPLIFIER".
+The temperature monitoring feature using Legato APIs is partially applicable for AR758X and AR759X
+platforms. Only the below functions are available:
+
+le_temp_Request()
+
+le_temp_GetSensorName()
+
+le_temp_GetTemperature()
+
+The other APIs managing the thresholds concept are not operational. Please contact Sierra Wireless
+support for a fully monitoring of the temperature another way.
+
+For other platforms the temperature monitoring feature is available.
+
+Two main sensors are supported. The dedicated string to request a sensor with le_temp_Request()
+function are \b "POWER_CONTROLLER" and \b "POWER_AMPLIFIER".
 
 <b>"POWER_AMPLIFIER" sensor</b>
 

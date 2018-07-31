@@ -34,12 +34,12 @@ void cm_temp_PrintTempHelp
     void
 )
 {
-    printf("Temperature usage (applicable for AR755x, AR8652, and WP8548 platforms only)\n"
+    printf("Temperature usage \n"
            "==========\n\n"
            "To print all known temperatures:\n"
            "\tcm temp\n"
            "\tcm temp all\n\n"
-           "To print all thresholds:\n"
+           "To print all thresholds:(applicable for AR755x, AR8652, and WP8548 platforms only)\n"
            "\tcm temp thresholds\n\n"
            "To print the Power Amplifier temperature:\n"
            "\tcm temp pa\n\n"
