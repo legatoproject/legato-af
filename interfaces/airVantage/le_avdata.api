@@ -148,9 +148,9 @@
  * space. All asset data API will use the last namespace set until the function is called again and
  * the namespace is set to something new.
  *
- * @note All asset data paths created by the application are deleted when it is stopped, even
- * the asset data created under global namespace. No asset data can therefore be persistent after
- * an application restart, regardless of the namespace used to create it.
+ * @note Asset data settings are persistent after an application restart or device reboot,
+ * regardless of the namespace used to create it. The asset data settings are restored lazily when
+ * the app or server reads the setting.
  *
  * Example:
  *
