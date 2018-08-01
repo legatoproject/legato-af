@@ -73,6 +73,23 @@
  * le_spi_Close(spiHandle);
  * @endcode
  *
+ * @section spi_kernel_dep Kernel module dependency
+ *
+ * SPI Service has a build time dependency on the spisvc.ko kernel module for the subset of
+ * targets on which the feature is currently supported (currently, WP76, WP77, WP75, WP85).
+ * That means, spiService.adef file and default.sdef file both include kernelModules section
+ * that lists spisvc.mdef as a dependency.
+ * @note If the users is building their own configuration, extra attention has to be paid to
+ * preserve this logic, i.e. retain the build-time dependency and avoid duplicated inclusion of
+ * the spisvc.mdef (which may cause build errors).
+ *
+ * @section spi_scripts Automatic installation/removal of the kernel modules
+ *
+ * SPI service is started manually, i.e. it is not running by default. When the user starts
+ * spiService, the install.sh scripts takes care of loading both "spidev" and "spisvc" kernel
+ * modules.
+ * Conversely, when spiService is stopped, the remove.sh script uloads both kernel modules.
+ *
  * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
