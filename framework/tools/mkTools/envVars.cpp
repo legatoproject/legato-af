@@ -40,6 +40,11 @@ static void SafeCopyEnvVar
     // If variable is longer than MAX_LEN, it will be truncated. Zero at the end is guaranteed.
     strncpy(dst, src, dstSize - 1);
     dst[dstSize - 1] = '\0';
+
+    // Tell Coverity this data can be trusted now.
+#ifdef __COVERITY__
+    __coverity_tainted_data_sanitize__(dst);
+#endif // __COVERITY__
 }
 
 //--------------------------------------------------------------------------------------------------
