@@ -233,8 +233,6 @@ ENUM SecurityProtocol
     SECURITY_WPA2_EAP_PEAP0_ENTERPRISE  ///< Using WPA2 Enterprise
 };
 
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler for WiFi Client changes
@@ -244,7 +242,6 @@ HANDLER NewEventHandler
 (
     Event event IN       ///< Handles the wifi events
 );
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -257,16 +254,14 @@ EVENT NewEvent
     NewEventHandler handler
 );
 
-
 //--------------------------------------------------------------------------------------------------
 /**
- * This function starts the WIFI device.
+ * Start the WIFI device.
  *
  * @return
- *      - LE_FAULT if the function failed.
- *      - LE_BUSY if the WIFI device is already started.
- *      - LE_OK if the function succeeded.
- *
+ *      - LE_OK     Function succeeded.
+ *      - LE_FAULT  Function failed.
+ *      - LE_BUSY   The WIFI device is already started.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Start
@@ -275,19 +270,17 @@ FUNCTION le_result_t Start
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function stops the WIFI device.
+ * Stop the WIFI device.
  *
  * @return
- *      - LE_FAULT if the function failed.
- *      - LE_DUPLICATE if the WIFI device is already stopped.
- *      - LE_OK if the function succeeded.
- *
+ *      - LE_OK        Function succeeded.
+ *      - LE_FAULT     Function failed.
+ *      - LE_DUPLICATE The WIFI device is already stopped.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Stop
 (
 );
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -295,23 +288,22 @@ FUNCTION le_result_t Stop
  * Will result in event LE_WIFICLIENT_EVENT_SCAN_DONE when the scan results are available.
  *
  * @return
- *      - LE_FAULT if the function failed.
- *      - LE_OK if the function succeeded.
+ *      - LE_OK     Function succeeded.
+ *      - LE_FAULT  Function failed.
+ *      - LE_BUSY   Scan already running.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Scan
 (
 );
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Get the first WiFi Access Point found.
- * Will return the Access Points in the order of found.
  *
  * @return
- *      - WiFi Access Point reference if ok.
- *      - NULL if no Access Point reference available.
+ *      - WiFi  Access Point reference if ok.
+ *      - NULL  If no Access Point reference available.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION AccessPoint GetFirstAccessPoint
@@ -325,8 +317,8 @@ FUNCTION AccessPoint GetFirstAccessPoint
  * This function must be called in the same context as the GetFirstAccessPoint
  *
  * @return
- *      - WiFi Access Point reference if ok.
- *      - NULL if no Access Point reference available.
+ *      - WiFi  Access Point reference if ok.
+ *      - NULL  If no Access Point reference available.
 */
 //--------------------------------------------------------------------------------------------------
 FUNCTION AccessPoint GetNextAccessPoint
@@ -339,8 +331,10 @@ FUNCTION AccessPoint GetNextAccessPoint
  * Get the signal strength of the AccessPoint
  *
  * @return
- *      - signal strength in dBm. Example -30 = -30dBm
- *      - if no signal available it will return LE_WIFICLIENT_NO_SIGNAL_STRENGTH
+ *      - Signal strength in dBm. Example -30 = -30dBm
+ *      - If no signal available it will return LE_WIFICLIENT_NO_SIGNAL_STRENGTH
+ *
+ * @note The function returns the latest signal strength.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION int16 GetSignalStrength
@@ -352,10 +346,11 @@ FUNCTION int16 GetSignalStrength
 /**
  * Get the Basic Service set identifier (BSSID) of the AccessPoint
  *
- * @return LE_FAULT         Function failed.
- * @return LE_BAD_PARAMETER Some parameter is invalid.
- * @return LE_OVERFLOW      bssid buffer is too small to contain the BSSID
- * @return LE_OK            Function succeeded.
+ * @return
+ *         LE_OK            Function succeeded.
+ *         LE_FAULT         Function failed.
+ *         LE_BAD_PARAMETER Invalid parameter.
+ *         LE_OVERFLOW      bssid buffer is too small to contain the BSSID.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetBssid
@@ -367,12 +362,14 @@ FUNCTION le_result_t GetBssid
 //--------------------------------------------------------------------------------------------------
 /**
  * Get the Service set identification (SSID) of the AccessPoint
- * @note that the SSID does not have to be human readable ASCII values, but often has.
  *
- * @return LE_FAULT         Function failed.
- * @return LE_BAD_PARAMETER Some parameter is invalid.
- * @return LE_OVERFLOW      ssid buffer is too small to contain the SSID
- * @return LE_OK            Function succeeded.
+ * @return
+ *        LE_OK            Function succeeded.
+ *        LE_FAULT         Function failed.
+ *        LE_BAD_PARAMETER Invalid parameter.
+ *        LE_OVERFLOW      ssid buffer is too small to contain the SSID.
+ *
+ * @note The SSID does not have to be human readable ASCII values, but often is.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetSsid
@@ -385,13 +382,12 @@ FUNCTION le_result_t GetSsid
 /**
  * Set the passphrase used to generate the PSK.
  *
- * @note the difference between le_wifiClient_SetPreSharedKey() and this function
- *
  * @return
- *      - LE_FAULT if the function failed.
- *      - LE_BAD_PARAMETER if parameter is invalid.
- *      - LE_OK if the function succeeded.
+ *      - LE_OK            Function succeeded.
+ *      - LE_FAULT         Function failed.
+ *      - LE_BAD_PARAMETER Invalid parameter.
  *
+ * @note The difference between le_wifiClient_SetPreSharedKey() and this function
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetPassphrase
@@ -403,13 +399,15 @@ FUNCTION le_result_t SetPassphrase
 //--------------------------------------------------------------------------------------------------
 /**
  * Set the Pre Shared Key, PSK.
- * @note the difference between le_wifiClient_SetPassphrase() and this function
  *
  * @return
- *      - LE_FAULT if the function failed.
- *      - LE_BAD_PARAMETER if parameter is invalid.
- *      - LE_OK if the function succeeded.
+ *      - LE_OK             Function succeeded.
+ *      - LE_FAULT          Function failed.
+ *      - LE_BAD_PARAMETER  Invalid parameter.
  *
+ * @note This is one way to authenticate against the access point. The other one is provided by the
+ * le_wifiClient_SetPassPhrase() function. Both ways are exclusive and are effective only when used
+ * with WPA-personal authentication.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetPreSharedKey
@@ -424,10 +422,9 @@ FUNCTION le_result_t SetPreSharedKey
  * Set the security protocol for connection
  *
  * @return
- *      - LE_FAULT if the function failed.
- *      - LE_BAD_PARAMETER if parameter is invalid.
- *      - LE_OK if the function succeeded.
- *
+ *      - LE_OK             Function succeeded.
+ *      - LE_FAULT          Function failed.
+ *      - LE_BAD_PARAMETER  Invalid parameter.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetSecurityProtocol
@@ -442,10 +439,9 @@ FUNCTION le_result_t SetSecurityProtocol
  * This function sets these parameters.
  *
  * @return
- *      - LE_FAULT if the function failed.
- *      - LE_BAD_PARAMETER if parameter is invalid.
- *      - LE_OK if the function succeeded.
- *
+ *      - LE_OK             Function succeeded.
+ *      - LE_FAULT          Function failed.
+ *      - LE_BAD_PARAMETER  Invalid parameter.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetUserCredentials
@@ -460,8 +456,8 @@ FUNCTION le_result_t SetUserCredentials
  * Set the WEP key (WEP)
  *
  * @return
- *      - LE_FAULT if the function failed.
- *      - LE_OK if the function succeeded.
+ *      - LE_OK     Function succeeded.
+ *      - LE_FAULT  Function failed.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetWepKey
@@ -475,14 +471,13 @@ FUNCTION le_result_t SetWepKey
  * This function specifies whether the target Access Point is hiding its presence from clients or
  * not. When an Access Point is hidden, it cannot be discovered by a scan process.
  *
+ * @return
+ *      - LE_OK             Function succeeded.
+ *      - LE_BAD_PARAMETER  Invalid parameter.
+ *
  * @note By default, this attribute is not set which means that the client is unable to connect to
  * a hidden access point. When enabled, the client will be able to connect to the access point
  * whether it is hidden or not.
- *
- * @return
- *      - LE_BAD_PARAMETER if parameter is invalid.
- *      - LE_OK if the function succeeded.
- *
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetHiddenNetworkAttribute
@@ -497,9 +492,10 @@ FUNCTION le_result_t SetHiddenNetworkAttribute
  * If an Access Point is hidden, it will not show up in the scan. So, its SSID must be known
  * in advance in order to create a reference.
  *
- * @note This function fails if called while scan is running.
+ * @return
+ *      - AccessPoint reference to the current Access Point.
  *
- * @return AccessPoint reference to the current
+ * @note This function fails if called while scan is running.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION AccessPoint Create
@@ -511,11 +507,12 @@ FUNCTION AccessPoint Create
 /**
  * Deletes an accessPointRef.
  *
- * @note The handle becomes invalid after it has been deleted.
  * @return
- *      - LE_BAD_PARAMETER if accessPointRef was not found.
- *      - LE_BUSY if the function was called during a scan.
- *      - LE_OK if the function succeeded.
+ *      - LE_OK             Function succeeded.
+ *      - LE_BAD_PARAMETER  Invalid parameter.
+ *      - LE_BUSY           Function called during scan.
+ *
+ * @note The handle becomes invalid after it has been deleted.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Delete
@@ -529,8 +526,8 @@ FUNCTION le_result_t Delete
  * All authentication must be set prior to calling this function.
  *
  * @return
- *      - LE_BAD_PARAMETER if parameter is invalid.
- *      - LE_OK if the function succeeded.
+ *      - LE_OK             Function succeeded.
+ *      - LE_BAD_PARAMETER  Invalid parameter.
  *
  * @note For PSK credentials see le_wifiClient_SetPassphrase() or le_wifiClient_SetPreSharedKey() .
  * @note For WPA-Enterprise credentials see le_wifiClient_SetUserCredentials()
@@ -546,8 +543,8 @@ FUNCTION le_result_t Connect
  * Disconnect from the current connected WiFi Access Point.
  *
  * @return
- *      - LE_FAULT if the function failed.
- *      - LE_OK if the function succeeded.
+ *      - LE_OK     Function succeeded.
+ *      - LE_FAULT  Function failed.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Disconnect
