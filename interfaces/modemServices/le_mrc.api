@@ -286,6 +286,79 @@
  * A sample code can be seen in the following page:
  * - @subpage c_mrcNetworkScan
  *
+ * @section le_mrc_PcinetworkScan PCI Network Scan
+ *
+ * Call le_mrc_PerformPciNetworkScan() to fill a list of all neighboring cells.
+ * The Pci scan is used to get the according MCC/MNC for each neightboring cells ID. Not that a cell
+ * may contain more than one MCC/MNC when sevral plmn sharing the same cell.
+ * You can go through all Scan Information by calling le_mrc_GetFirstPciScanInfo() and
+ * le_mrc_GetNextPciScanInfo(). Note that each cell info contains a list of mcc/mnc, you can go
+ * through all mcc/mnc Information for each cell by calling le_mrc_GetFirstPlmnInfo()
+ * and le_mrc_GetNextPlmnInfo(), this two APIs return a reference to PlmnInformation, then use
+ * le_mrc_GetPciScanMccMnc() by giving this reference as parameter to get the Mcc/Mnc of the Plmn.
+ * Call le_mrc_PerformPciNetworkScanAsync()to start a pci scan asynchronously. The
+ * function is not blocking. The scan list reference will be returned with the handler function
+ * response (@c le_mrc_PciNetworkScanHandlerFunc_t).
+ *
+ *
+ * For Pci Network Scan Information, you can call:
+ *
+ *  - le_mrc_GetPciScanCellId() to get the id of each cell.
+ *  - le_mrc_GetPciScanMccMnc() to get the Mcc/Mnc of each plmn on each cell.
+ *  - le_mrc_DeletePciNetworkScan() should be called when you do not need the list anymore.
+ *
+ * This code sample shows how to use the PCI scan API and display the apropriate values
+ * @code
+void DisplayPciScanInfo
+(
+    void
+)
+{
+    uint16_t celId = O;
+    char mcc[LE_MRC_MCC_BYTES] = {0};
+    char mnc[LE_MRC_MNC_BYTES] = {0};
+    le_mrc_PciScanInformationListRef_t scanInfoListRef = NULL;
+    le_mrc_PciScanInformationRef_t     scanInfoRef = NULL;
+    le_mrc_PlmnInformationRef_t        plmnInfoRef = NULL;
+
+    scanInfoListRef = le_mrc_PerformPciNetworkScan(LE_MRC_BITMASK_RAT_LTE);
+    LE_ASSERT(scanInfoListRef != NULL);
+
+    // Get the information (cell, Mcc,Mnc) of the first cell.
+    scanInfoRef = le_mrc_GetFirstCellularNetworkScan(scanInfoListRef);
+
+    celId = le_mrc_GetPciScanCellId (scanInfoRef);
+
+    // Get the first plmn information of the first cell.
+    PlmnInfoRef = le_mrc_GetFirstPlmnInfo(scanInfoRef);
+    le_mrc_GetPciScanMccMnc(PlmnInfoRef, mcc, LE_MRC_MCC_BYTES, mnc, LE_MRC_MCC_BYTES);
+    LE_INFO("Cell id is %"PRIu16", Mcc is %s, Mnc is %s !",celId, mcc, mnc");
+
+    // Get the next plmn information of the first cell.
+    while ((PlmnInfoRef = le_mrc_GetNextPlmnInfo(scanInfoRef)) != NULL)
+    {
+        le_mrc_GetPciScanMccMnc(PlmnInfoRef, mcc, LE_MRC_MCC_BYTES, mnc, LE_MRC_MCC_BYTES);
+         LE_INFO("Cell id is %"PRIu16", Mcc is %s, Mnc is %s !",celId, mcc, mnc");
+    }
+
+    // Get the information (cell, Mcc,Mnc) of the next cells.
+    while ((scanInfoRef = le_mrc_GetNextCellularNetworkScan(scanInfoListRef)) != NULL)
+    {
+        celId = le_mrc_GetPciScanCellId (scanInfoRef);
+
+        PlmnInfoRef = le_mrc_GetFirstPlmnInfo(scanInfoRef);
+        le_mrc_GetPciScanMccMnc(PlmnInfoRef, mcc, LE_MRC_MCC_BYTES, mnc, LE_MRC_MCC_BYTES);
+        LE_INFO("Cell id is %"PRIu16", Mcc is %s, Mnc is %s !",celId, mcc, mnc");
+        while ((PlmnInfoRef = le_mrc_GetNextPlmnInfo(scanInfoRef)) != NULL)
+        {
+            le_mrc_GetPciScanMccMnc(PlmnInfoRef, mcc, LE_MRC_MCC_BYTES, mnc, LE_MRC_MCC_BYTES);
+            LE_INFO("Cell id is %"PRIu16", Mcc is %s, Mnc is %s !",celId, mcc, mnc");
+        }
+    }
+    le_mrc_DeletePciNetworkScan(scanInfoListRef);
+}
+ * @endcode
+ *
  * @section le_mrc_ngbr Neighboring Cells Information
  *
  * @warning The following functions do not apply to CDMA network.
@@ -613,6 +686,27 @@ REFERENCE ScanInformationList;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Reference type for PCI Scan Information Listing.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE PciScanInformationList;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference type for PCI Scan Information .
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE PciScanInformation;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference type for PLMN Information .
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE PlmnInformation;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Reference type for referring to the Preferred Operator objects.
  */
 //--------------------------------------------------------------------------------------------------
@@ -876,6 +970,19 @@ FUNCTION le_result_t SetSignalStrengthIndDelta
 HANDLER CellularNetworkScanHandler
 (
     ScanInformationList listRef IN    ///< Reference to the List object. Null pointer if the
+                                      ///< scan failed.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for PCI asynchronous network scan Sending result.
+ *  Returns the reference to the List object. Null pointer if the scan failed.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER PciNetworkScanHandler
+(
+    PciScanInformationList listRef IN    ///< Reference to the List object. Null pointer if the
                                       ///< scan failed.
 );
 
@@ -1355,6 +1462,20 @@ FUNCTION ScanInformationList PerformCellularNetworkScan
     RatBitMask ratMask ///< Radio Access Technology mask
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to perform a PCI network scan.
+ *
+ * @return Reference to the List object. Null pointer if the scan failed.
+ *
+ * @note <b>multi-app safe</b>
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION PciScanInformationList PerformPciNetworkScan
+(
+    RatBitMask ratMask ///< Radio Access Technology mask
+);
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1369,6 +1490,22 @@ FUNCTION PerformCellularNetworkScanAsync
 (
     RatBitMask ratMask IN,               ///< Radio Access Technology mask
     CellularNetworkScanHandler handler   ///< handler for sending result.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to perform a cellular network scan asynchronously. This function
+ * is not blocking, the response will be returned with a handler function.
+ *
+ *@note <b>multi-app safe</b>
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION PerformPciNetworkScanAsync
+(
+    RatBitMask ratMask IN,               ///< Radio Access Technology mask
+    PciNetworkScanHandler handler        ///< handler for sending result.
 );
 
 
@@ -1411,6 +1548,116 @@ FUNCTION ScanInformation GetNextCellularNetworkScan
     ScanInformationList  scanInformationListRef ///< The list of scan information.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the first Pci Scan Information object reference in the list of
+ * scan Information retrieved with le_mrc_PerformPciNetworkScan().
+ *
+ * @return NULL                         No scan information found.
+ * @return The Scan Information object reference.
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION PciScanInformation GetFirstPciScanInfo
+(
+    PciScanInformationList  scanInformationListRef ///< The list of scan information.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the next Scan Information object reference in the list of
+ * scan Information retrieved with le_mrc_PerformPciNetworkScan().
+ *
+ * @return NULL                         No scan information found.
+ * @return The Scan Information object reference.
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION PciScanInformation GetNextPciScanInfo
+(
+    PciScanInformationList  scanInformationListRef ///< The list of scan information.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the first Plmn Information object reference in the list of
+ * Plmn on each cell.
+ *
+ * @return NULL                         No scan information found.
+ * @return le_mrc_PlmnInformationRef_t  The Plmn Information object reference.
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION PlmnInformation GetFirstPlmnInfo
+(
+    PciScanInformation    pciScanInformationRef ///< [IN] The reference to the cell information.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the next Plmn Information object reference in the list of
+ * Plmn on each cell.
+ *
+ * @return NULL                         No scan information found.
+ * @return le_mrc_PlmnInformationRef_t  The Plmn Information object reference.
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION PlmnInformation GetNextPlmnInfo
+(
+    PciScanInformation    plmnRef             ///< [IN] The reference to the cell information.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the cell id referenced by PciScanInformation which is
+ * returned by le_mrc_GetFirstPciScanInfo() and le_mrc_GetNextPciScanInfo().
+ *
+ * @return The Cell Identifier.
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint16 GetPciScanCellId
+(
+    PciScanInformation    pciScanInformationRef ///< [IN] The reference to the cell information.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Mcc/Mnc of each PLMN referenced in the list of
+ * Plmn Information retrieved with le_mrc_GetFirstPlmnInfo() and le_mrc_GetNextPlmnInfo().
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the MCC or MNC would not fit in buffer
+ *      - LE_FAULT for all other errors
+ *
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPciScanMccMnc
+(
+    PlmnInformation    plmnRef ,                ///< [IN] The reference to the cell information.
+    string    mccPtr[MCC_LEN] OUT,             ///< Mobile Country Code
+    string    mncPtr[MNC_LEN] OUT              ///< Mobile Network Code
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1427,6 +1674,22 @@ FUNCTION ScanInformation GetNextCellularNetworkScan
 FUNCTION DeleteCellularNetworkScan
 (
     ScanInformationList  scanInformationListRef ///< The list of scan information.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to delete the list of the Pci Scan Information retrieved with
+ * le_mrc_PerformPciNetworkScan().
+ *
+ * @note
+ *      On failure, the process exits, so you don't have to worry about checking the returned
+ *      reference for validity.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION DeletePciNetworkScan
+(
+    PciScanInformationList  scanInformationListRef ///< The list of scan information.
 );
 
 //--------------------------------------------------------------------------------------------------

@@ -310,6 +310,35 @@ void pa_mrc_DeleteScanInformation
 {
     LE_ERROR("Unsupported function called");}
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to delete the list of pci Scan Information
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_mrc_DeletePciScanInformation
+(
+    le_dls_List_t *scanInformationListPtr ///< [IN] list of pa_mrc_ScanInformation_t
+)
+{
+    LE_ERROR("Unsupported function called");}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to delete the list of Plmn Information
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_mrc_DeletePlmnScanInformation
+(
+    le_dls_List_t *scanInformationListPtr ///< [IN] list of pa_mrc_PlmnInformation_t
+)
+{
+    LE_ERROR("Unsupported function called");}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to perform a network scan.

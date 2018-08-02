@@ -85,6 +85,7 @@ typedef enum
 {
     PA_MRC_SCAN_PLMN = 0,       ///< Scan PLMN
     PA_MRC_SCAN_CSG,            ///< Scan closed subscriber group
+    PA_MRC_SCAN_PCI = 3         ///< Scan PCI
 }
 pa_mrc_ScanType_t;
 
@@ -133,6 +134,35 @@ typedef struct
     le_dls_Link_t       link;           ///< link for the list
 }
 pa_mrc_ScanInformation_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Plmn Information.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    pa_mrc_MobileCode_t  mobileCode;           ///< Mcc/Mnc
+    le_dls_Link_t       link;                 ///< link for the list
+}
+pa_mrc_PlmnInformation_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Network PciScan Information.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    uint16_t            cellId;                  ///< Id of the curent cell
+    le_dls_List_t       plmnList;                ///< list of pa_mrc_PlmnInformation_t
+    le_dls_Link_t*      currentLink;             ///< link for iterator
+    le_dls_List_t       safeRefPlmnInfoList;     ///< list of PlmnInfoSafeRef_t
+    le_dls_Link_t       link;                    ///< link for the list
+}
+pa_mrc_PciScanInformation_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -533,6 +563,28 @@ LE_SHARED le_result_t pa_mrc_GetCurrentNetwork
 LE_SHARED void pa_mrc_DeleteScanInformation
 (
     le_dls_List_t *scanInformationListPtr ///< [IN] list of pa_mrc_ScanInformation_t
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to delete the list of PCI Scan Information
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void pa_mrc_DeletePciScanInformation
+(
+    le_dls_List_t *scanInformationListPtr ///< [IN] list of pa_mrc_ScanInformation_t
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to delete the list of Plmn Information
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void pa_mrc_DeletePlmnScanInformation
+(
+    le_dls_List_t *scanInformationListPtr ///< [IN] list of pa_mrc_PlmnInformation_t
 );
 
 //--------------------------------------------------------------------------------------------------

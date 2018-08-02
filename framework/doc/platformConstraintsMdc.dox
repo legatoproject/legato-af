@@ -51,6 +51,19 @@ different among platforms.<br>
 | SAR backoff state feature     |        |        |        |        |        |  X     |  X     |        |
 | SAR maximum number of states  |        |        |        |        |        |  8     |  8     |        |
 
+
+@section mrc_PciScan Perform Pci Network Scan
+The PciScan is not supported by all platforms. Also, to be able to perform a Pci scan, the modem must
+be configured on LTE rat, the configuration can be donne using:
+- AT command at!selrat=06
+- CM tool cm radio rat LTE
+- Legato API le_mrc_SetRatPreferences().<br>
+
+|                         | AR755x | AR758x | AR759x | AR8652 | WP750x | WP76xx | WP77xx | WP8548 |
+| ----------------------- | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
+| PciScan feature         |        |   X    |    X   |        |        |    X   |        |        |
+
+
 See @ref  c_mrc API<br>
 See @ref c_mdc API<br>
 Copyright (C) Sierra Wireless Inc.
