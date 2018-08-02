@@ -393,8 +393,11 @@ static void ModuleGetParams(KModuleObj_t *module)
 
         /* first get the parameter name, append a '=' and advance to end */
         LE_ASSERT_OK(le_cfg_GetNodeName(iter, "", p, LE_CFG_NAME_LEN_BYTES));
-        p[0] = '=';
+
         p += strlen(p);
+        *p = '=';
+        p++;
+        *p = '\0';
 
         /* now get the parameter value, should be string */
         LE_ASSERT_OK(le_cfg_GetString(iter, "", tmp, LE_CFG_STR_LEN_BYTES, ""));
