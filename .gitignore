@@ -10,6 +10,7 @@
 /Documentation*
 /releases
 /version
+/version.h
 /sources.md5
 /delivery
 /platformAdaptor
