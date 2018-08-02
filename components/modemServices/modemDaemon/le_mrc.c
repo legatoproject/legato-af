@@ -80,6 +80,13 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum number of plmn Information List objects we expect to have at one cell.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MRC_MAX_PLMNLIST    5
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Maximum number of Scan Information objects we expect to have at one time.
  */
 //--------------------------------------------------------------------------------------------------
@@ -118,7 +125,8 @@ static pthread_mutex_t RegisteringNetworkMutex = PTHREAD_MUTEX_INITIALIZER;
 typedef enum
 {
     LE_MRC_CMD_TYPE_ASYNC_REGISTRATION = 0, ///< Pool and perform a network registration.
-    LE_MRC_CMD_TYPE_ASYNC_SCAN         = 1  ///< Pool and perform a cellular network scan.
+    LE_MRC_CMD_TYPE_ASYNC_SCAN         = 1, ///< Pool and perform a cellular network scan.
+    LE_MRC_CMD_TYPE_ASYNC_PCISCAN      = 2  ///< Pool and perform a pci network scan.
 }
 CmdType_t;
 
@@ -198,6 +206,30 @@ typedef struct
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * List Pci Scan Information structure safe Reference.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    void*         safeRef;
+    le_dls_Link_t link;
+} PciScanInfoSafeRef_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * List Pci Scan Information structure safe Reference.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    void*         safeRef;
+    le_dls_Link_t link;
+} PlmnInfoSafeRef_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * List Scan Information structure.
  *
  */
@@ -209,6 +241,20 @@ typedef struct
     le_dls_List_t       safeRefScanInfoList; // list of ScanInfoSafeRef_t
     le_dls_Link_t       *currentLink;        // link for iterator
 } ScanInfoList_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * List PCI Scan Information structure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_msg_SessionRef_t sessionRef;          // Message session reference
+    le_dls_List_t       paPciScanInfoList;      // list of pa_mrc_PciInformation_t
+    le_dls_List_t       safeRefPciScanInfoList; // list of PciInfoSafeRef_t
+    le_dls_Link_t       *currentLink;        // link for iterator
+} PciScanInfoList_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -244,6 +290,7 @@ typedef struct
         struct
         {
                    le_mrc_RatBitMask_t ratMask;      ///< ratMask.
+                   pa_mrc_ScanType_t type;           ///< Scan type
         } scan;
 
         struct
@@ -372,6 +419,49 @@ static le_ref_MapRef_t ScanInformationListRefMap;
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t ScanInformationRefMap;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Memory Pool for Listed PciScanInformation.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t  PciScanInformationListPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Memory Pool for Listed Information structure safe reference.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t  PciScanInformationSafeRefPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Memory Pool for Listed Information structure safe reference.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t  PlmnInformationSafeRefPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe Reference Map for Pci Scan Information List.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t PciScanInformationListRefMap;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe Reference Map for one Pci Scan Information.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t PciScanInformationRefMap;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe Reference Map for one Pci Scan Information.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t PlmnInformationRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -570,6 +660,49 @@ static void DeleteSafeRefList
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to destroy all Pci safeRef elements in the list.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void DeletePciSafeRefList
+(
+    le_dls_List_t* listPtr
+)
+{
+    PciScanInfoSafeRef_t* nodePtr;
+    le_dls_Link_t *linkPtr;
+
+    while ((linkPtr=le_dls_Pop(listPtr)) != NULL)
+    {
+        nodePtr = CONTAINER_OF(linkPtr, PciScanInfoSafeRef_t, link);
+        le_ref_DeleteRef(PciScanInformationRefMap, nodePtr->safeRef);
+        le_mem_Release(nodePtr);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to destroy all plmn safeRef elements in the list.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void DeletePlmnSafeRefList
+(
+    le_dls_List_t* listPtr
+)
+{
+    PlmnInfoSafeRef_t* nodePtr;
+    le_dls_Link_t *linkPtr;
+
+    while ((linkPtr=le_dls_Pop(listPtr)) != NULL)
+    {
+        nodePtr = CONTAINER_OF(linkPtr, PlmnInfoSafeRef_t, link);
+        le_ref_DeleteRef(PlmnInformationRefMap, nodePtr->safeRef);
+        le_mem_Release(nodePtr);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -834,8 +967,8 @@ static void ProcessMrcCommandEventHandler
         newScanInformationListPtr->currentLink = NULL;
 
         LOCK();
-        res = pa_mrc_PerformNetworkScan(ratMask, PA_MRC_SCAN_PLMN,
-            &(newScanInformationListPtr->paScanInfoList));
+        res = pa_mrc_PerformNetworkScan(ratMask, ((CmdRequest_t*) msgCommand)->scan.type,
+                                        &(newScanInformationListPtr->paScanInfoList));
         UNLOCK();
 
         if (LE_OK != res)
@@ -849,6 +982,48 @@ static void ProcessMrcCommandEventHandler
 
             scanInformationListRef =
                      le_ref_CreateRef(ScanInformationListRefMap, newScanInformationListPtr);
+        }
+
+        // Check if a handler function is available.
+        if (handlerFunc)
+        {
+            LE_DEBUG("Sending Scan information list ref (%p)", scanInformationListRef);
+            handlerFunc(scanInformationListRef, cmdRequest->contextPtr);
+        }
+        else
+        {
+            LE_WARN("No handler function, status %d!!", res);
+        }
+    }
+    else if (cmdRequest->command == LE_MRC_CMD_TYPE_ASYNC_PCISCAN)
+    {
+        le_mrc_PciNetworkScanHandlerFunc_t handlerFunc = cmdRequest->callBackPtr;
+        le_mrc_RatBitMask_t ratMask = cmdRequest->scan.ratMask;
+
+        PciScanInfoList_t* newScanInformationListPtr = NULL;
+        le_mrc_PciScanInformationListRef_t scanInformationListRef = NULL;
+
+        newScanInformationListPtr = le_mem_ForceAlloc(ScanInformationListPool);
+        newScanInformationListPtr->paPciScanInfoList = LE_DLS_LIST_INIT;
+        newScanInformationListPtr->safeRefPciScanInfoList = LE_DLS_LIST_INIT;
+        newScanInformationListPtr->currentLink = NULL;
+
+        LOCK();
+        res = pa_mrc_PerformNetworkScan(ratMask, ((CmdRequest_t*) msgCommand)->scan.type,
+                                        &(newScanInformationListPtr->paPciScanInfoList));
+        UNLOCK();
+
+        if (LE_OK != res)
+        {
+            le_mem_Release(newScanInformationListPtr);
+        }
+        else
+        {
+            // Store message session reference.
+            newScanInformationListPtr->sessionRef = cmdRequest->sessionRef;
+
+            scanInformationListRef =
+                     le_ref_CreateRef(PciScanInformationListRefMap, newScanInformationListPtr);
         }
 
         // Check if a handler function is available.
@@ -1425,6 +1600,24 @@ void le_mrc_Init
     // Create the Safe Reference Map to use for Scan Information List object Safe References.
     ScanInformationRefMap = le_ref_CreateMap("ScanInformationMap", MRC_MAX_SCAN);
 
+
+    PciScanInformationListPool = le_mem_CreatePool("PciScanInformationListPool",
+                                                sizeof(PciScanInfoList_t));
+
+    PciScanInformationSafeRefPool = le_mem_CreatePool("PciScanInformationSafeRefPool",
+                                                   sizeof(PciScanInfoSafeRef_t));
+
+    // Create the Safe Reference Map to use for Pci Scan Information List object Safe References.
+    PciScanInformationListRefMap = le_ref_CreateMap("PciScanInformationListMap", MRC_MAX_SCANLIST);
+
+    // Create the Safe Reference Map to use for Scan Information List object Safe References.
+    PciScanInformationRefMap = le_ref_CreateMap("PciScanInformationMap", MRC_MAX_SCANLIST);
+
+    // Create the Safe Reference Map to use for Scan Information List object Safe References.
+    PlmnInformationRefMap = le_ref_CreateMap("PlmnInformationMap", MRC_MAX_PLMNLIST);
+
+    PlmnInformationSafeRefPool = le_mem_CreatePool("PlmnInformationSafeRefPool",
+                                                   sizeof(PlmnInfoSafeRef_t));
     // Create the pool for cells information list.
     CellListPool = le_mem_CreatePool("CellListPool", sizeof(CellList_t));
 
@@ -2848,6 +3041,44 @@ le_result_t le_mrc_GetPacketSwitchedState
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function must be called to perform a pci network scan.
+ *
+ * @return
+ *      Reference to the List object. Null pointer if the scan failed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mrc_PciScanInformationListRef_t le_mrc_PerformPciNetworkScan
+(
+    le_mrc_RatBitMask_t ratMask ///< [IN] Radio Access Technology bitmask
+)
+{
+    le_result_t result;
+    PciScanInfoList_t* newScanInformationListPtr = NULL;
+
+    newScanInformationListPtr = le_mem_ForceAlloc(PciScanInformationListPool);
+    newScanInformationListPtr->paPciScanInfoList = LE_DLS_LIST_INIT;
+    newScanInformationListPtr->safeRefPciScanInfoList = LE_DLS_LIST_INIT;
+    newScanInformationListPtr->currentLink = NULL;
+    LOCK();
+    result = pa_mrc_PerformNetworkScan(ratMask,
+                                       PA_MRC_SCAN_PCI,
+                                       &(newScanInformationListPtr->paPciScanInfoList));
+    UNLOCK();
+    if (result != LE_OK)
+    {
+        LE_ERROR("Network scan error");
+        le_mem_Release(newScanInformationListPtr);
+        return NULL;
+    }
+
+    // Store message session reference.
+    newScanInformationListPtr->sessionRef = le_mrc_GetClientSessionRef();
+
+    return le_ref_CreateRef(PciScanInformationListRefMap, newScanInformationListPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to perform a cellular network scan.
  *
  * @return
@@ -2912,7 +3143,7 @@ void le_mrc_PerformCellularNetworkScanAsync
     cmd.callBackPtr = handlerPtr;
     cmd.command = LE_MRC_CMD_TYPE_ASYNC_SCAN;
     cmd.scan.ratMask = ratMask;
-
+    cmd.scan.type = PA_MRC_SCAN_PLMN;
     // Get client session reference.
     cmd.sessionRef = le_mrc_GetClientSessionRef();
 
@@ -2921,7 +3152,35 @@ void le_mrc_PerformCellularNetworkScanAsync
     le_event_Report(MrcCommandEventId, &cmd, sizeof(cmd));
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to perform a cellular network scan asynchronously. This function
+ * is not blocking, the response will be returned with a handler function.
+ *
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mrc_PerformPciNetworkScanAsync
+(
+    le_mrc_RatBitMask_t ratMask ,                      ///< Radio Access Technology mask
+    le_mrc_PciNetworkScanHandlerFunc_t handler,        ///< handler for sending result.
+    void* contextPtr
+)
+{
+    CmdRequest_t cmd;
 
+    cmd.contextPtr = contextPtr;
+    cmd.callBackPtr = handler;
+    cmd.command = LE_MRC_CMD_TYPE_ASYNC_PCISCAN;
+    cmd.scan.ratMask = ratMask;
+    cmd.scan.type = PA_MRC_SCAN_PCI;
+    // Get client session reference.
+    cmd.sessionRef = le_mrc_GetClientSessionRef();
+
+    // Sending Cellular Network scan command
+    LE_DEBUG("Send asynchronous Cellular Network scan command");
+    le_event_Report(MrcCommandEventId, &cmd, sizeof(cmd));
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -3057,7 +3316,6 @@ void le_mrc_DeleteCellularNetworkScan
 
     le_mem_Release(scanInformationListPtr);
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -4642,4 +4900,365 @@ le_result_t le_mrc_GetSarBackoffState
     }
 
     return pa_mrc_GetSarBackoffState(statePtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Mcc/Mnc of each plmn referenced in the list of
+ * Plmn Information retrieved with le_mrc_GetFirstPlmnInfo() and le_mrc_GetNextPlmnInfo().
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the MCC or MNC would not fit in buffer
+ *      - LE_FAULT for all other errors
+ *
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetPciScanMccMnc
+(    le_mrc_PlmnInformationRef_t plmnRef,
+        ///< [IN] [IN] The reference to the cell information.
+    char* mccPtr,
+        ///< [OUT] Mobile Country Code
+    size_t mccPtrSize,
+        ///< [IN]
+    char* mncPtr,
+        ///< [OUT] Mobile Network Code
+    size_t mncPtrSize
+        ///< [IN]
+)
+{
+     if (mccPtr == NULL)
+    {
+        LE_KILL_CLIENT("mccStr is NULL !");
+        return LE_FAULT;
+    }
+
+    if (mncPtr == NULL)
+    {
+        LE_KILL_CLIENT("mncStr is NULL !");
+        return LE_FAULT;
+    }
+
+    if(mccPtrSize < LE_MRC_MCC_BYTES)
+    {
+        LE_ERROR("mccStrNumElements is < %d",LE_MRC_MCC_BYTES);
+        return LE_OVERFLOW;
+    }
+
+    if(mncPtrSize < LE_MRC_MNC_BYTES)
+    {
+        LE_ERROR("mncStrNumElements is < %d",LE_MRC_MNC_BYTES);
+        return LE_OVERFLOW;
+    }
+
+    pa_mrc_PlmnInformation_t* PlmnInformationPtr = le_ref_Lookup(PlmnInformationRefMap,
+                                                                 plmnRef);
+
+    if (PlmnInformationPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", plmnRef);
+        return LE_FAULT;
+    }
+    memcpy(mccPtr, PlmnInformationPtr->mobileCode.mcc, LE_MRC_MCC_BYTES);
+    memcpy(mncPtr, PlmnInformationPtr->mobileCode.mnc, LE_MRC_MNC_BYTES);
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the cell id referenced by PciScanInformation which is
+ * returned by le_mrc_GetFirstPciScanInfo() and le_mrc_GetNextPciScanInfo().
+ *
+ * @return The Cell Identifier.
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ */
+//--------------------------------------------------------------------------------------------------
+uint16_t le_mrc_GetPciScanCellId
+(
+    le_mrc_PciScanInformationRef_t pciScanInformationRef
+        ///< [IN] [IN] The reference to the cell information.
+)
+{
+    pa_mrc_PciScanInformation_t* scanInformationPtr = le_ref_Lookup(PciScanInformationRefMap,
+                                                                 pciScanInformationRef);
+
+    if (scanInformationPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", pciScanInformationRef);
+        return LE_FAULT;
+    }
+
+    return scanInformationPtr->cellId;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to delete the list of the Scan Information retrieved with
+ * le_mrc_PerformCellularNetworkScan().
+ *
+ * @note
+ *      On failure, the process exits, so you don't have to worry about checking the returned
+ *      reference for validity.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mrc_DeletePciNetworkScan
+(
+    le_mrc_PciScanInformationListRef_t  scanInformationListRef ///< [IN] list of scan information
+)
+{
+    //Delet all the plminfo list in all PciScanInformation
+    le_mrc_PciScanInformationRef_t     scanInfoRef = NULL;
+
+    scanInfoRef = le_mrc_GetFirstPciScanInfo(scanInformationListRef);
+
+    pa_mrc_PciScanInformation_t* scanInformationPtr = le_ref_Lookup(PciScanInformationRefMap,
+                                                                 scanInfoRef);
+    if (scanInformationPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", scanInformationListRef);
+        return;
+    }
+    scanInformationPtr->currentLink = NULL;
+    pa_mrc_DeletePlmnScanInformation(&(scanInformationPtr->plmnList));
+    // Delete the safe Reference list.
+    DeletePlmnSafeRefList(&(scanInformationPtr->safeRefPlmnInfoList));
+    // Invalidate the Safe Reference.
+    le_ref_DeleteRef(PlmnInformationRefMap, scanInfoRef);
+    while ((scanInfoRef = le_mrc_GetNextPciScanInfo(scanInformationListRef)) != NULL)
+    {
+        pa_mrc_PciScanInformation_t* scanInformationPtr = le_ref_Lookup(PciScanInformationRefMap,
+                                                                 scanInfoRef);
+        if (scanInformationPtr == NULL)
+        {
+            LE_KILL_CLIENT("Invalid reference (%p) provided!", scanInformationListRef);
+            return;
+        }
+        scanInformationPtr->currentLink = NULL;
+        pa_mrc_DeletePlmnScanInformation(&(scanInformationPtr->plmnList));
+        // Delete the safe Reference list.
+        DeletePlmnSafeRefList(&(scanInformationPtr->safeRefPlmnInfoList));
+        // Invalidate the Safe Reference.
+        le_ref_DeleteRef(PlmnInformationRefMap, scanInfoRef);
+    }
+
+    // Delete PciScanInformation liste
+
+    PciScanInfoList_t* scanInformationListPtr = le_ref_Lookup(PciScanInformationListRefMap,
+                                                                         scanInformationListRef);
+    if (scanInformationListPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", scanInformationListRef);
+        return;
+    }
+    scanInformationListPtr->currentLink = NULL;
+    pa_mrc_DeletePciScanInformation(&(scanInformationListPtr->paPciScanInfoList));
+    // Delete the safe Reference list.
+    DeletePciSafeRefList(&(scanInformationListPtr->safeRefPciScanInfoList));
+    // Invalidate the Safe Reference.
+    le_ref_DeleteRef(PlmnInformationRefMap, scanInformationListRef);
+    le_mem_Release(scanInformationListPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the first Plmn Information object reference in the list of
+ * Plmn on each cell.
+ *
+ * @return NULL                         No scan information found.
+ * @return le_mrc_PlmnInformationRef_t  The Plmn Information object reference.
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_mrc_PlmnInformationRef_t le_mrc_GetFirstPlmnInfo
+(
+    le_mrc_PciScanInformationRef_t pciScanInformationRef
+        ///< [IN] [IN] The reference to the cell information.
+)
+{
+    pa_mrc_PlmnInformation_t* nodePtr;
+    le_dls_Link_t*          linkPtr;
+
+    pa_mrc_PciScanInformation_t* scanInformationPtr = le_ref_Lookup(PciScanInformationRefMap,
+                                                                 pciScanInformationRef);
+    if (scanInformationPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", pciScanInformationRef);
+        return NULL;
+    }
+    linkPtr = le_dls_Peek(&(scanInformationPtr->plmnList));
+    if (linkPtr != NULL)
+    {
+        nodePtr = CONTAINER_OF(linkPtr, pa_mrc_PlmnInformation_t, link);
+        scanInformationPtr->currentLink = linkPtr;
+
+        PlmnInfoSafeRef_t* newScanInformationPtr = le_mem_ForceAlloc(PlmnInformationSafeRefPool);
+        newScanInformationPtr->safeRef = le_ref_CreateRef(PlmnInformationRefMap,nodePtr);
+        newScanInformationPtr->link = LE_DLS_LINK_INIT;
+        le_dls_Queue(&(scanInformationPtr->safeRefPlmnInfoList),&(newScanInformationPtr->link));
+
+        return (le_mrc_PlmnInformationRef_t)newScanInformationPtr->safeRef;
+    }
+    else
+    {
+        return NULL;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the next Plmn Information object reference in the list of
+ * Plmn on each cell.
+ *
+ * @return NULL                         No scan information found.
+ * @return le_mrc_PlmnInformationRef_t  The Plmn Information object reference.
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_mrc_PlmnInformationRef_t le_mrc_GetNextPlmnInfo
+(
+    le_mrc_PciScanInformationRef_t pciScanInformationRef
+        ///< [IN] [IN] The reference to the cell information.
+)
+{
+     pa_mrc_PlmnInformation_t* nodePtr;
+    le_dls_Link_t*          linkPtr;
+
+    pa_mrc_PciScanInformation_t* scanInformationPtr = le_ref_Lookup(PciScanInformationRefMap,
+                                                                    pciScanInformationRef);
+    if (scanInformationPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", pciScanInformationRef);
+        return NULL;
+    }
+    linkPtr = le_dls_PeekNext(&(scanInformationPtr->plmnList), scanInformationPtr->currentLink);
+    if (linkPtr != NULL)
+    {
+        nodePtr = CONTAINER_OF(linkPtr, pa_mrc_PlmnInformation_t, link);
+        scanInformationPtr->currentLink = linkPtr;
+
+        PlmnInfoSafeRef_t* newScanInformationPtr = le_mem_ForceAlloc(PlmnInformationSafeRefPool);
+        newScanInformationPtr->safeRef = le_ref_CreateRef(PlmnInformationRefMap,nodePtr);
+        newScanInformationPtr->link = LE_DLS_LINK_INIT;
+        le_dls_Queue(&(scanInformationPtr->safeRefPlmnInfoList),&(newScanInformationPtr->link));
+
+        return (le_mrc_PlmnInformationRef_t)newScanInformationPtr->safeRef;
+    }
+    else
+    {
+        return NULL;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the first Pci Scan Information object reference in the list
+ * of scan Information retrieved with le_mrc_PerformPciNetworkScan().
+ *
+ * @return NULL                         No scan information found.
+ * @return le_mrc_PciscanInformationRef_t  The Scan Information object reference.
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
+ */
+//--------------------------------------------------------------------------------------------------
+le_mrc_PciScanInformationRef_t le_mrc_GetFirstPciScanInfo
+(
+    le_mrc_PciScanInformationListRef_t PciscanInformationListRef
+        ///< [IN] The list of scan information.
+)
+{
+    pa_mrc_PciScanInformation_t* nodePtr;
+    le_dls_Link_t*          linkPtr;
+
+    PciScanInfoList_t* scanInformationListPtr = le_ref_Lookup(PciScanInformationListRefMap,
+                                                                         PciscanInformationListRef);
+
+    if (scanInformationListPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", PciscanInformationListRef);
+        return NULL;
+    }
+
+    linkPtr = le_dls_Peek(&(scanInformationListPtr->paPciScanInfoList));
+    if (linkPtr != NULL)
+    {
+        nodePtr = CONTAINER_OF(linkPtr, pa_mrc_PciScanInformation_t, link);
+        scanInformationListPtr->currentLink = linkPtr;
+
+        PciScanInfoSafeRef_t* newScanInformationPtr = le_mem_ForceAlloc(
+                                                                    PciScanInformationSafeRefPool);
+        newScanInformationPtr->safeRef = le_ref_CreateRef(PciScanInformationRefMap,nodePtr);
+        newScanInformationPtr->link = LE_DLS_LINK_INIT;
+        le_dls_Queue(&(scanInformationListPtr->safeRefPciScanInfoList),
+                     &(newScanInformationPtr->link));
+        return (le_mrc_PciScanInformationRef_t)newScanInformationPtr->safeRef;
+    }
+    else
+    {
+        return NULL;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the next Pci Scan Information object reference in the list of
+ * scan Information retrieved with le_mrc_PerformPciNetworkScan().
+ *
+ * @return NULL                         No scan information found.
+ * @return le_mrc_PciscanInformationRef_t  The Scan Information object reference.
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_mrc_PciScanInformationRef_t le_mrc_GetNextPciScanInfo
+(
+    le_mrc_PciScanInformationListRef_t PciscanInformationListRef
+        ///< [IN] The list of scan information.
+)
+{
+    pa_mrc_PciScanInformation_t* nodePtr;
+    le_dls_Link_t*          linkPtr;
+
+    PciScanInfoList_t* scanInformationListPtr = le_ref_Lookup(PciScanInformationListRefMap,
+                                                                         PciscanInformationListRef);
+
+    if (scanInformationListPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", PciscanInformationListRef);
+        return NULL;
+    }
+    linkPtr = le_dls_PeekNext(&(scanInformationListPtr->paPciScanInfoList),
+                                scanInformationListPtr->currentLink);
+    if (linkPtr != NULL)
+    {
+        nodePtr = CONTAINER_OF(linkPtr, pa_mrc_PciScanInformation_t, link);
+        scanInformationListPtr->currentLink = linkPtr;
+
+        PciScanInfoSafeRef_t* newScanInformationPtr = le_mem_ForceAlloc(
+                                                                     PciScanInformationSafeRefPool);
+        newScanInformationPtr->safeRef = le_ref_CreateRef(PciScanInformationRefMap,nodePtr);
+        newScanInformationPtr->link = LE_DLS_LINK_INIT;
+        le_dls_Queue(&(scanInformationListPtr->safeRefPciScanInfoList),
+                     &(newScanInformationPtr->link));
+
+        return (le_mrc_PciScanInformationRef_t)newScanInformationPtr->safeRef;
+    }
+    else
+    {
+        return NULL;
+    }
 }
