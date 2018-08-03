@@ -1,0 +1,832 @@
+#!/bin/bash
+
+###############################################################################
+# This executable will create delta package between two spkg image.
+#
+#
+# Copyright (c) 2018 Sierra Wireless Inc.
+# Use of this work is subject to license.
+#
+# Example: Generate delta package
+# =====================================
+# mkdelta     --target WP76xx
+#             --srcimg $HOME/Images/WP76xx_Release9_RC1_Generic_test.spk \
+#             --tgtimg $HOME/Images/WP76xx_Release10_RC1_Generic_test.spk \
+#             --out    $HOME/Images/WP76xx_Release9To10_delta_test.spk \
+#             --window 40
+#
+###############################################################################
+
+UMASK=022
+umask $UMASK
+
+# Version of this executable.
+VERSION="0.1"
+
+# Global return types
+SWI_OK=0
+SWI_ERR=1
+
+# Some other global variables
+SWI_FALSE=0
+SWI_TRUE=1
+
+# We need swicwe tool to split the spkg images into individual cwe files.
+SWICWE=swicwe
+
+# We need hdrcnv tool to generate cwe headers
+HDRCNV=hdrcnv
+
+# We need to split the spkg image to level1 and level2 images.
+SPLIT_L1=splitlevel1
+SPLIT_L2=splitlevel2
+
+# File containing splited image list
+IMG_LIST="imglist"
+
+# File containing original cwe headers
+FILE_CWE_LIST="cwelist"
+
+
+# CWE header related options
+CWE_MISC_OPTS_OFFSET="17C"
+CWE_MISC_OPTS_DELTAPATCH=8
+CWE_HEADER_LEN=400
+CWE_HEADER_PT_OFFSET=272
+CWE_HEADER_PT_LEN=4
+CWE_APPL_PART="APPL"
+CWE_LEGATO_PART="USER"
+
+# Delta creation tool
+MKDIFF=mkdiff
+
+# Some temporary directory location for storing intermediate files
+TEMP_PATH="/tmp/mkdeltaTmp"
+SRC_SPLIT_DIR="$TEMP_PATH"/srcImgSplit
+TGT_SPLIT_DIR="$TEMP_PATH"/tgtImgSplit
+DELTA_OUT_DIR="$TEMP_PATH"/deltaOut
+SRC_COMP_DIR="$TEMP_PATH"/srcImgCmp
+TGT_COMP_DIR="$TEMP_PATH"/tgtImgCmp
+
+# Minimum image size for delta update (1 M)
+MIN_SIZE=1048576
+
+TEMP=$(getopt -o cvhVT:s:t:o:w:S:E: --long create,version,help,verbose,target:,srcimg:,tgtimg:,out:,window:,pagesize:,pebsize: -n 'mkdelta' -- "$@")
+if [ $? != 0 ] ; then exit $SWI_ERR ; fi
+
+eval set -- "$TEMP"
+
+# Some influential variables
+TARGET=""
+SRC_SPKG=""
+TGT_SPKG=""
+OUT_SPKG=""
+WINDOW_PARAM=""
+VERBOSE=""
+PAGE_SIZE="4K"
+ERASE_BLOCK_SIZE="256K"
+
+#
+# Useful methods.
+#
+
+function version()
+{
+    echo " $( basename "$0" ) version $VERSION"
+
+    return $SWI_OK
+}
+
+# How to use this tool.
+function usage()
+{
+
+# dump version
+    version
+    local binary_name
+    binary_name=$(basename "$0")
+    cat << EOF
+
+Usage:
+ $binary_name <parameters ...>
+
+ Parameters:
+    -v, --version          Dump version and exit.
+    -h, --help             Print this help page and exit.
+    -V, --verbose          Be verbose [optional]
+    -T, --target           Target platform (e.g. wp76xx, wp77xx etc)
+    -s, --srcimg           Source spkg image path
+    -t, --tgtimg           Target spkg image path
+    -o, --out              Output delta spkg image path
+    -w, --window           Window size to search for minimum delta (optional - If nothing or zero is
+                            specified, it will search the whole individual image)
+    -S, --pagesize         Page size of the target. Only 4K or 2K is allowed (optional - if nothing
+                           specified, it will take 4K as default)
+    -E, --pebsize          Flash physical erase block size. Only 256K or 128K is allowed (optional -
+                           if nothing specified, it will take 256K as default)
+
+EOF
+
+    return $SWI_OK
+}
+
+# Print error message and exit.
+function error()
+{
+    echo "$@"
+    return $SWI_ERR
+}
+
+#
+# Parse options passed to this executable.
+#
+function parse_options()
+{
+    while true; do
+
+        case "$1" in
+
+            # Target platform.
+            -T | --target )
+                TARGET=${2,,}
+                shift 2
+                ;;
+
+            # Source spkg image.
+            -s | --srcimg )
+                SRC_SPKG=$2
+                if ! [ -f "$SRC_SPKG" ] ; then
+                    echo "Can't access source-file: $SRC_SPKG"
+                    exit $SWI_ERR
+                fi
+                shift 2
+                ;;
+
+            # Target spkg image.
+            -t | --tgtimg )
+                TGT_SPKG=$2
+                if ! [ -f "$TGT_SPKG" ] ; then
+                    echo "Can't access target-file: $TGT_SPKG"
+                    exit $SWI_ERR
+                fi
+                shift 2
+                ;;
+
+            # Output spkg image.
+            -o | --out )
+                OUT_SPKG=$2
+                shift 2
+                ;;
+
+            # Compare window size.
+            -w | --window )
+                if [ "$2" -ne "$2" ]; then
+                    echo "Window size ($2) must be a number"
+                    exit $SWI_ERR
+                fi
+                WINDOW_PARAM=" -w $2"
+                shift 2
+                ;;
+
+            # Page size.
+            -S | --pagesize )
+                PAGE_SIZE=${2^^};
+                if [ "$PAGE_SIZE" != "4K" ] && [ "$PAGE_SIZE" != "2K" ]; then
+                    echo "Bad page-size: $PAGE_SIZE (only 4K or 2K is allowed)"
+                    exit $SWI_ERR
+                fi
+                shift 2
+                ;;
+
+            # Physical erase block size.
+            -E | --pebsize )
+                ERASE_BLOCK_SIZE=${2^^}
+                if [ "$ERASE_BLOCK_SIZE" != "256K" ] && [ "$ERASE_BLOCK_SIZE" != "128K" ]; then
+                    echo "Bad page-size: $ERASE_BLOCK_SIZE (only 256K or 128K is allowed)"
+                    exit $SWI_ERR
+                fi
+                shift 2
+                ;;
+
+            # Version information.
+            -v | --version )
+                version
+                exit $SWI_OK
+                ;;
+
+            # Be verbose.
+            -V | --verbose )
+                VERBOSE=-v
+                shift
+                ;;
+
+            # Help.
+            -h | --help )
+                usage
+                exit $SWI_OK
+                ;;
+
+            -- )
+                shift;
+                break;
+                ;;
+
+            * )
+                echo "Error, exiting."
+                exit $SWI_ERR
+                ;;
+        esac
+
+    done
+
+    return $SWI_OK
+}
+
+# Check whether the supplied image is an cwe image or not
+# Exits if image isn't a cwe image
+function exit_ifnot_cwe_image()
+{
+    # $1 = Image to be checked
+    local img_to_check
+    img_to_check=$1
+
+    local no_cwe_header
+    no_cwe_header=$("$SWICWE" -P "$img_to_check"| wc -l)
+    no_cwe_header=$((no_cwe_header - 1))
+
+    if [ "$no_cwe_header" -eq 0 ] ; then
+        echo "Bad cwe file: $img_to_check"
+        "$SWICWE" -P "$img_to_check"
+        exit $SWI_ERR
+    fi
+}
+
+# Check whether the supplied image is an spkg image or not
+#     return TRUE if it is an spkg image
+#     return FALSE otherwise
+function is_spkg_image()
+{
+    # $1 = Image to be checked
+    local img_to_check
+    img_to_check=$1
+
+    local spkg_image
+    spkg_image=$("$SWICWE" -P "$img_to_check" | grep -c '\*SPKG')
+
+    return "$spkg_image"
+}
+
+# Check whether the cwe file has contains multiple cwe files or not
+#     return TRUE if it has L2 images
+#     return FALSE otherwise
+function has_contain_L2_images()
+{
+    # $1 = Image to be checked
+    local img_to_check
+    img_to_check=$1
+
+    local no_cwe_hdr
+    no_cwe_hdr=$("$SWICWE" -P "$img_to_check" | wc -l)
+    no_cwe_hdr=$((no_cwe_hdr - 1))
+    if [ "$no_cwe_hdr" -eq 0 ] ; then
+        echo "Bad cwe file: $img_to_check"
+        exit $SWI_ERR
+    elif [ "$no_cwe_hdr" -eq 1 ] ; then
+        return $SWI_FALSE
+    else
+        local no_l2_hdr
+        no_l2_hdr=$("$SWICWE" -P "$img_to_check" | grep -c '\*')
+
+        if [ "$no_l2_hdr" -ge 1 ] ; then
+            return $SWI_TRUE
+        fi
+    fi
+
+    return $SWI_FALSE
+}
+
+# Split the image
+function split_image()
+{
+    # $1 = Image to be splited
+    # $2 = Output directory where splited components will be stored
+    # $3 = Split level
+    local img_to_split
+    local split_img_dir
+    local split_level
+
+    img_to_split="$1"
+    split_img_dir="$2"
+    split_level="$3"
+
+    mkdir -p "$split_img_dir"
+    if [ $? -ne $SWI_OK ] ; then
+        echo "Failed to create directory for image spliting: $split_img_dir"
+        exit $SWI_ERR
+    fi
+
+    $SWICWE --"$split_level" "$img_to_split" --output "$split_img_dir" | \
+        awk '/.cwe/{print $(NF-3), $NF}' > "$split_img_dir"/$IMG_LIST
+
+    if [ $? -ne $SWI_OK ] ; then
+        echo "Failed to split image: $img_to_split"
+        exit $SWI_ERR
+    fi
+
+    return $SWI_OK
+}
+
+# Mark the spkg as delta spkg tool
+function mark_as_delta_spkg()
+{
+    local cwe_file
+    cwe_file="$1"
+    # read 1 byte at MISC_OPTS_OFFSET
+    local misc_opt_hex
+    misc_opt_hex=$(xxd -seek $((16#$CWE_MISC_OPTS_OFFSET)) -l 1 -ps "$cwe_file" -)
+    # OR with MISC_OPTS_DELTAPATCH
+    local ored_opt
+    ored_opt=$(($((16#$misc_opt_hex)) | $((16#$CWE_MISC_OPTS_DELTAPATCH))))
+    # write 1 byte back at offset MISC_OPTS_OFFSET
+    printf "000$CWE_MISC_OPTS_OFFSET: %02x" $ored_opt | xxd -r - "$cwe_file"
+}
+
+# Generate delta for single cwe image.
+function create_delta_single_cwe()
+{
+    local src_cwe_img
+    local tgt_cwe_img
+    local delta_cwe_img
+    local src_split_dir
+    local tgt_split_dir
+
+    src_cwe_img="$1"
+    tgt_cwe_img="$2"
+    delta_cwe_img="$3"
+    src_split_dir=$src_cwe_img.splitdir
+    tgt_split_dir=$tgt_cwe_img.splitdir
+
+    split_image "$src_cwe_img" "$src_split_dir" "$SPLIT_L2"
+    split_image "$tgt_cwe_img" "$tgt_split_dir" "$SPLIT_L2"
+
+    # List of full images that should be taken as it is.
+    local tmp_delta_out_dir
+    local file_containing_cwe_hdr
+
+    tmp_delta_out_dir="$delta_cwe_img.deltadir"
+    file_containing_cwe_hdr="$tmp_delta_out_dir/$FILE_CWE_LIST"
+
+    mkdir -p "$tmp_delta_out_dir"
+
+    if [ $? -ne 0 ] ; then
+        echo "Failed to create temporary directory ($tmp_delta_out_dir) for delta update"
+        exit $SWI_ERR
+    fi
+
+    # Need to send the cwe headers as part of delta package.
+    head -c $CWE_HEADER_LEN "$tgt_cwe_img" > "$file_containing_cwe_hdr"
+
+    local img_to_merge=""
+
+    while read tgt_img_comp; do
+        local tgt_img_comp_name
+        local tgt_img_comp_type
+        local tgt_img_comp_path
+        local tgt_img_comp_size
+
+        tgt_img_comp_name=$(echo "$tgt_img_comp"|awk '{print $2}')
+        tgt_img_comp_type=$(echo "$tgt_img_comp"|awk '{print $1}')
+        tgt_img_comp_path="$tgt_split_dir/$tgt_img_comp_name"
+        tgt_img_comp_size=$(stat -c%s "$tgt_img_comp_path")
+
+        if [ "$tgt_img_comp_size" -gt "$MIN_SIZE" ] ; then
+
+            local src_img_comp
+            src_img_comp=$(grep "$tgt_img_comp_type" "$src_split_dir/$IMG_LIST")
+
+            if [ "x$src_img_comp" == "x" ] ; then
+                img_to_merge="$img_to_merge $tgt_img_comp_path"
+            else
+                local src_img_comp_name
+                local src_img_comp_path
+                local src_cwe_stripped
+                local tgt_cwe_stripped
+                local tmp_delta_cwe_img
+
+                src_img_comp_name=$(echo "$src_img_comp"|awk '{print $2}')
+                src_img_comp_path="$src_split_dir/$src_img_comp_name"
+                src_cwe_stripped="$src_img_comp_path.stripped"
+                src_cwe_stripped="$src_img_comp_path.stripped"
+                tgt_cwe_stripped="$tgt_img_comp_path.stripped"
+                tmp_delta_cwe_img="$tmp_delta_out_dir/$tgt_img_comp_name.delta"
+
+                tail -c +$((CWE_HEADER_LEN+1)) "$src_img_comp_path" > "$src_cwe_stripped"
+                tail -c +$((CWE_HEADER_LEN+1)) "$tgt_img_comp_path" > "$tgt_cwe_stripped"
+                head -c $CWE_HEADER_LEN "$tgt_img_comp_path" >> "$file_containing_cwe_hdr"
+
+                #shellcheck disable=SC2086
+                $MKDIFF -T "$TARGET"  -o "$tmp_delta_cwe_img" $VERBOSE $WINDOW_PARAM \
+                 -p "$tgt_img_comp_type" "$src_cwe_stripped" "$tgt_cwe_stripped"
+
+                if [ $? -ne 0 ]; then
+                    echo "Failed to create delta patch ($tgt_img_comp_path $src_img_comp_path)"
+                    exit $SWI_ERR
+                fi
+                img_to_merge="$img_to_merge $tmp_delta_cwe_img"
+            fi
+        else
+            img_to_merge="$img_to_merge $tgt_img_comp_path"
+        fi
+    done < "$tgt_split_dir/$IMG_LIST"
+
+    local cwe_product_type
+    cwe_product_type=$(dd if="$file_containing_cwe_hdr" ibs=1 skip=$CWE_HEADER_PT_OFFSET \
+                      count=$CWE_HEADER_PT_LEN)
+    $HDRCNV "$file_containing_cwe_hdr" -OH "$file_containing_cwe_hdr.hdr" -IT "META" \
+           -PT "$cwe_product_type" -V "1.0" -B "00000001"
+
+    if [ $? -ne 0 ]; then
+        echo "Failed to create generate cwe header for $file_containing_cwe_hdr"
+        exit $SWI_ERR
+    fi
+
+    cat  "$file_containing_cwe_hdr.hdr" "$file_containing_cwe_hdr" > "$file_containing_cwe_hdr.cwe"
+
+    #shellcheck disable=SC2086
+    $SWICWE --cat "$file_containing_cwe_hdr.cwe" $img_to_merge --out "$delta_cwe_img"
+
+    if [ $? -ne 0 ]; then
+        echo "$SWICWE fail"
+        exit $SWI_ERR
+    fi
+
+    mark_as_delta_spkg "$delta_cwe_img"
+}
+
+# Generate delta for spkg image.
+function create_delta_spkg_img()
+{
+    local src_spkg_img=$1
+    local tgt_spkg_img=$2
+    local delta_spkg_img=$3
+    local src_split_dir=$src_spkg_img.splitdir
+    local tgt_split_dir=$tgt_spkg_img.splitdir
+
+    split_image "$src_spkg_img" "$src_split_dir" "$SPLIT_L1"
+    split_image "$tgt_spkg_img" "$tgt_split_dir" "$SPLIT_L1"
+
+    # List of full images that should be taken as it is.
+    local delta_spkg_img_name
+    local tmp_delta_out_dir
+    local file_containing_cwe_hdr
+
+    delta_spkg_img_name=$(basename "$delta_spkg_img")
+    tmp_delta_out_dir=$delta_spkg_img.deltadir
+    file_containing_cwe_hdr="$tmp_delta_out_dir/$FILE_CWE_LIST"
+
+    mkdir -p "$tmp_delta_out_dir"
+
+    if [ $? -ne 0 ] ; then
+        echo "Failed to create temporary directory ($tmp_delta_out_dir) for delta update"
+        exit $SWI_ERR
+    fi
+
+    # Need to send the cwe headers as part of delta package.
+    head -c $CWE_HEADER_LEN "$tgt_spkg_img" > "$file_containing_cwe_hdr"
+
+    local img_to_merge=""
+
+    while read tgt_img_comp; do
+
+        local tgt_img_comp_name
+        local tgt_img_comp_type
+        local tgt_img_comp_path
+        local tgt_img_comp_size
+
+        tgt_img_comp_name=$(echo "$tgt_img_comp"|awk '{print $2}')
+        tgt_img_comp_type=$(echo "$tgt_img_comp"|awk '{print $1}')
+        tgt_img_comp_path="$tgt_split_dir/$tgt_img_comp_name"
+        tgt_img_comp_size=$(stat -c%s "$tgt_img_comp_path")
+
+        if [ "$tgt_img_comp_size" -gt "$MIN_SIZE" ] ; then
+            # Source may have multiple same image type example:APPL. So figure out the right one
+            local src_img_comp_list
+            local no_src_img_comp
+
+            local src_img_comp=""
+            src_img_comp_list=$(grep "$tgt_img_comp_type" "$src_split_dir/$IMG_LIST")
+            no_src_img_comp=$(echo "$src_img_comp_list" | wc -l)
+
+
+            if [ "$no_src_img_comp" -le 1 ] ; then
+                src_img_comp="$src_img_comp_list"
+            elif [ "$tgt_img_comp_type" == "$CWE_APPL_PART" ] ; then
+                local tgt_img_comp_parse
+                tgt_img_comp_parse=$("$SWICWE" -P "$tgt_img_comp_path"|awk '{print $1}' | \
+                                    grep "$CWE_LEGATO_PART")
+                while read -r img_cmp; do
+                    local tmp_src_img_name
+                    local tmp_src_img_path
+                    local tmp_src_img_parse
+
+                    tmp_src_img_name=$(echo "$img_cmp"|awk '{print $2}')
+                    tmp_src_img_path="$src_split_dir/$tmp_src_img_name"
+                    tmp_src_img_parse=$("$SWICWE" -P "$tmp_src_img_path"|awk '{print $1}' | \
+                                        grep "$CWE_LEGATO_PART")
+
+                    if [ "$tgt_img_comp_parse" == "$tmp_src_img_parse" ] ; then
+                        src_img_comp="$img_cmp"
+                        break
+                    fi
+                done <<< "$src_img_comp_list"
+            else
+                echo "Bad partition type $tgt_img_comp_type"
+                exit 1
+            fi
+
+            if [ "x$src_img_comp" == "x" ] ; then
+                img_to_merge="$img_to_merge $tgt_img_comp_path"
+            else
+                local src_img_comp_name
+                src_img_comp_name=$(echo "$src_img_comp"|awk '{print $2}')
+                local src_img_comp_path="$src_split_dir/$src_img_comp_name"
+                local tmp_delta_cwe_img="$tmp_delta_out_dir/$tgt_img_comp_name.delta"
+                head -c $CWE_HEADER_LEN "$tgt_img_comp_path" >> "$file_containing_cwe_hdr"
+                create_delta_single_cwe "$src_img_comp_path" "$tgt_img_comp_path" "$tmp_delta_cwe_img"
+
+                if [ $? -ne 0 ]; then
+                    echo "Failed to create delta patch ($tgt_img_comp_path $src_img_comp_path)"
+                    exit $SWI_ERR
+                fi
+                img_to_merge="$img_to_merge $tmp_delta_cwe_img"
+            fi
+        else
+            img_to_merge="$img_to_merge $tgt_img_comp_path"
+        fi
+    done < "$tgt_split_dir/$IMG_LIST"
+
+    local cwe_product_type
+    cwe_product_type=$(dd if="$file_containing_cwe_hdr" ibs=1 skip=$CWE_HEADER_PT_OFFSET \
+                       count=$CWE_HEADER_PT_LEN)
+
+    $HDRCNV "$file_containing_cwe_hdr" -OH "$file_containing_cwe_hdr.hdr" -IT "META" \
+           -PT "$cwe_product_type" -V "1.0" -B "00000001"
+
+    if [ $? -ne 0 ]; then
+        echo "Failed to create generate cwe header for $file_containing_cwe_hdr"
+        exit $SWI_ERR
+    fi
+
+    cat  "$file_containing_cwe_hdr.hdr" "$file_containing_cwe_hdr" > "$file_containing_cwe_hdr.cwe"
+
+    #shellcheck disable=SC2086
+    $SWICWE --cat "$file_containing_cwe_hdr.cwe" $img_to_merge --out "$delta_spkg_img"
+
+    if [ $? -ne 0 ]; then
+        echo "$SWICWE fail"
+        exit $SWI_ERR
+    fi
+
+    mark_as_delta_spkg "$delta_spkg_img"
+}
+
+# Split source and target package and generate delta.
+function create_delta_img()
+{
+    # Bit of error checking here. If parameters are missing, get out.
+    if [ "x$SRC_SPKG" == "x" -o \
+         "x$TGT_SPKG" == "x" -o \
+         "x$TARGET" == "x" -o \
+         "x$OUT_SPKG" == "x" ] ; then
+
+        echo "Missing parameters."
+        echo "Parameters dump:"
+        echo "    SRC_SPKG=[$SRC_SPKG]"
+        echo "    TGT_SPKG=[$TGT_SPKG]"
+        echo "    OUT_SPKG=[$OUT_SPKG]"
+        echo "    TARGET=[$TARGET]"
+
+        exit $SWI_ERR
+    fi
+
+    exit_ifnot_cwe_image "$SRC_SPKG"
+    exit_ifnot_cwe_image "$TGT_SPKG"
+
+    diff -q "$SRC_SPKG" "$TGT_SPKG" > /dev/null
+    if  [ $? -eq 0 ] ; then
+        echo "Source ($SRC_SPKG) and Target ($TGT_SPKG) is same. No delta generated"
+        exit 0
+    fi
+
+    local tgt_img_size
+    tgt_img_size=$(stat -c%s "$TGT_SPKG")
+
+    if [ "$tgt_img_size" -le "$MIN_SIZE" ] ; then
+        echo "Target image: $TGT_SPKG is smaller than $MIN_SIZE bytes. No delta will be generated"
+        cp -f "$SRC_SPKG" "$TGT_SPKG"
+        exit $SWI_OK
+    fi
+
+    is_spkg_image "$SRC_SPKG"
+    local is_src_spkg=$?
+
+    is_spkg_image "$TGT_SPKG"
+    local is_tgt_spkg=$?
+
+    if [ "$is_src_spkg" -ne "$is_tgt_spkg" ] ; then
+        echo "Source and target image structure doesn't match"
+        $SWICWE -P "$SRC_SPKG"
+        $SWICWE -P "$TGT_SPKG"
+        exit $SWI_ERR
+    fi
+
+    has_contain_L2_images "$SRC_SPKG"
+    local src_l2_flag=$?
+
+    has_contain_L2_images "$TGT_SPKG"
+    local tgt_l2_flag=$?
+
+    if [ "$src_l2_flag" -ne "$SWI_TRUE" ] || [ "$tgt_l2_flag" -ne "$SWI_TRUE" ]; then
+        echo "Both source and target should have level2 cwe image"
+        $SWICWE -P "$SRC_SPKG"
+        $SWICWE -P "$TGT_SPKG"
+        exit $SWI_ERR
+    fi
+
+    # Delete the old temporary directory
+    rm -rf "$TEMP_PATH"
+
+    mkdir -p "$SRC_SPLIT_DIR" "$TGT_SPLIT_DIR" "$DELTA_OUT_DIR" "$SRC_COMP_DIR" "$TGT_COMP_DIR"
+
+    if [ $? -ne $SWI_OK ] ; then
+        echo "Failed to create directory for spliting image"
+        exit $SWI_ERR
+    fi
+
+    local src_spkg_name
+    local tgt_spkg_name
+    local delta_spkg_img_name
+
+    src_spkg_name=$(basename "$SRC_SPKG")
+    tgt_spkg_name=$(basename "$TGT_SPKG")
+    delta_spkg_img_name=$(basename "$OUT_SPKG")
+
+    local is_img_deleted=0
+
+    if [ "$is_tgt_spkg" -ge 1 ] ; then
+
+        split_image "$SRC_SPKG" "$SRC_COMP_DIR/split" "$SPLIT_L1"
+        split_image "$TGT_SPKG" "$TGT_COMP_DIR/split" "$SPLIT_L1"
+
+        for tgt_cwe in "$TGT_COMP_DIR/split"/*.cwe ; do
+            tail -c +$((CWE_HEADER_LEN+1)) "$tgt_cwe" > "$tgt_cwe.stripped"
+            for src_cwe in "$SRC_COMP_DIR/split"/*.cwe ; do
+                tail -c +$((CWE_HEADER_LEN+1)) "$src_cwe" > "$src_cwe.stripped"
+                diff -q "$src_cwe.stripped" "$tgt_cwe.stripped" > /dev/null
+                if  [ $? -eq 0 ] ; then
+                    rm -f "$src_cwe" "$tgt_cwe" "$src_cwe.stripped"
+                    is_img_deleted=1
+                    break;
+                fi
+                rm -f "$src_cwe.stripped"
+            done
+            rm -f "$tgt_cwe.stripped"
+        done
+
+        if [ "$is_img_deleted" -eq 1 ] ; then
+
+            #shellcheck disable=SC2046
+            $SWICWE --cat $(ls "$SRC_COMP_DIR/split"/*.cwe) --out "$SRC_COMP_DIR/trim_$src_spkg_name"
+
+            if [ $? -ne $SWI_OK ] ; then
+                echo "$SWICWE cat failed"
+                exit $SWI_ERR
+            fi
+
+            #shellcheck disable=SC2046
+            $SWICWE --cat $(ls "$TGT_COMP_DIR/split"/*.cwe) --out "$TGT_COMP_DIR/trim_$tgt_spkg_name"
+
+            if [ $? -ne $SWI_OK ] ; then
+                echo "$SWICWE cat failed"
+                exit $SWI_ERR
+            fi
+            SRC_SPKG="$SRC_COMP_DIR/trim_$src_spkg_name"
+            TGT_SPKG="$TGT_COMP_DIR/trim_$tgt_spkg_name"
+            src_spkg_name=$(basename "$SRC_SPKG")
+            tgt_spkg_name=$(basename "$TGT_SPKG")
+        fi
+    fi
+
+    # Copy source and target spkg to temp directory and run delta operations
+    cp -f "$SRC_SPKG" "$SRC_SPLIT_DIR/"
+
+    if [ $? -ne $SWI_OK ] ; then
+        echo "Failed to copy $SRC_SPKG to temp($SRC_SPLIT_DIR) directory"
+        exit $SWI_ERR
+    fi
+
+    cp -f "$TGT_SPKG" "$TGT_SPLIT_DIR/"
+
+    if [ $? -ne $SWI_OK ] ; then
+        echo "Failed to copy $TGT_SPKG to temp ($TGT_SPLIT_DIR) directory"
+        exit $SWI_ERR
+    fi
+
+    # Single cwe image, not an spkg file
+    if [ "$is_tgt_spkg" -eq "$SWI_FALSE" ] ; then
+        create_delta_single_cwe "$SRC_SPLIT_DIR/$src_spkg_name" "$TGT_SPLIT_DIR/$tgt_spkg_name" \
+        "$DELTA_OUT_DIR/$delta_spkg_img_name"
+    else
+        create_delta_spkg_img "$SRC_SPLIT_DIR/$src_spkg_name" "$TGT_SPLIT_DIR/$tgt_spkg_name" \
+        "$DELTA_OUT_DIR/$delta_spkg_img_name"
+    fi
+
+    mv "$DELTA_OUT_DIR/$delta_spkg_img_name" "$OUT_SPKG"
+
+    if [ $? -ne 0 ] ; then
+        echo "Failed to create delta packge"
+        exit $SWI_ERR
+    fi
+
+    # Delete all the temporary files
+    rm -rf "$TEMP_PATH"
+    exit $SWI_OK
+}
+
+# Check the environment we run this executable in.
+function check_env()
+{
+
+    # We really need getopt
+    if [ "x$( which getopt )" == "x" ] ; then
+        echo "Please, install GNU getopt."
+        exit $SWI_ERR
+    fi
+
+    # We need awk util
+    if [ "x$( which awk )" == "x" ] ; then
+        echo "Please, install awk."
+        exit $SWI_ERR
+    fi
+
+    # we need swicwe
+    if [ "x$( which swicwe )" == "x" ] ; then
+        echo "Missing swicwe tool. Please, install latest toolchain."
+        exit $SWI_ERR
+    fi
+
+    # we need imgdiff
+    if [ "x$( which imgdiff )" == "x" ] ; then
+        echo "Missing imgdiff. Please, update your legato environment"
+        exit $SWI_ERR
+    fi
+
+    # we need bsdiff
+    if [ "x$( which bsdiff )" == "x" ] ; then
+        echo "Missing bsdiff. Please, install bsdiff"
+        exit $SWI_ERR
+    fi
+
+
+    # we need regular diff
+    if [ "x$( which diff )" == "x" ] ; then
+        echo "Missing diff. Please, install diff"
+        exit $SWI_ERR
+    fi
+
+    # we need mkdiff
+    if [ "x$( which $MKDIFF )" == "x" ] ; then
+        echo "Missing $MKDIFF. Please, update your legato environment"
+        exit $SWI_ERR
+    fi
+
+    # we need hdrcnv tool
+    if [ "x$( which $HDRCNV )" == "x" ] ; then
+        echo "Missing $HDRCNV. Please, update your legato environment"
+        exit $SWI_ERR
+    fi
+
+    # we need xxd tool
+    if [ "x$( which xxd )" == "x" ] ; then
+        echo "Missing xxd. Please, install xxd tool"
+        exit $SWI_ERR
+    fi
+}
+
+# main function
+function main()
+{
+
+    # Check the environment
+    check_env
+
+    # parse passed options
+    parse_options "$@"
+
+    create_delta_img
+
+    exit $SWI_OK
+}
+
+# This is where it all begins
+main "$@"

@@ -1077,7 +1077,14 @@ int main
             int ip;
 
             ++argvPtr;
-            for( ip = 0; partToSpkgPtr && (partToSpkgPtr[ip].partName); ip++ )
+
+            if (!partToSpkgPtr)
+            {
+                fprintf(stderr, "No Partition to spkg mapping available\n");
+                exit(1);
+            }
+
+            for( ip = 0; partToSpkgPtr[ip].partName; ip++ )
             {
                 if( 0 == strcmp( *argvPtr, partToSpkgPtr[ip].partName ) )
                 {
