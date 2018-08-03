@@ -1913,11 +1913,6 @@ static le_result_t ReadTextLiteral
             }
         }
 
-        *stringPtr = next;
-
-        ++stringPtr;
-        ++count;
-
         if (count >= (stringSize - 1))
         {
             *stringPtr = 0;
@@ -1929,6 +1924,11 @@ static le_result_t ReadTextLiteral
 
             return LE_FORMAT_ERROR;
         }
+
+        *stringPtr = next;
+
+        ++stringPtr;
+        ++count;
     }
 
     *stringPtr = 0;

@@ -18,6 +18,19 @@ static char TestRootDir[LE_CFG_STR_LEN_BYTES] = "";
 // 2 bytes + null ; small string
 #define TEST_PATTERN_SMALL_STRING   "12"
 
+// Long string - 511 bytes
+#define TEST_PATTERN_MAX_SIZE_STRING    "12345678901234567890123456789012345678901234567890"\
+                                        "12345678901234567890123456789012345678901234567890"\
+                                        "12345678901234567890123456789012345678901234567890"\
+                                        "12345678901234567890123456789012345678901234567890"\
+                                        "12345678901234567890123456789012345678901234567890"\
+                                        "12345678901234567890123456789012345678901234567890"\
+                                        "12345678901234567890123456789012345678901234567890"\
+                                        "12345678901234567890123456789012345678901234567890"\
+                                        "12345678901234567890123456789012345678901234567890"\
+                                        "12345678901234567890123456789012345678901234567890"\
+                                        "12345678901"
+
 // TestRootDir array size (512 bytes) + file name size (100 bytes)
 #define NAMETEMPLATESIZE            612
 
@@ -509,6 +522,41 @@ static void TestImportExport()
 
 
 
+static void TestImportLargeString()
+{
+    LE_INFO("---- Import Large String Test ---------------------------------------------------");
+
+    static const char testData[] =
+        {
+            "{ "
+                "\"aStringValue\" \"" TEST_PATTERN_MAX_SIZE_STRING "\""
+            "} "
+        };
+
+    static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
+    snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "/%s/importLargeString", TestRootDir);
+
+    // Size of nameTemplate should be 612, as it copies the contents of TestRootDir
+    // and the file name string.
+    char nameTemplate[NAMETEMPLATESIZE] = "";
+    sprintf(nameTemplate, "./%s_testLargeString.cfg", TestRootDir);
+
+    char filePath[PATH_MAX] = "";
+    realpath(nameTemplate, filePath);
+
+    WriteConfigData(filePath, testData);
+
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn("");
+
+    LE_INFO("Import: %s", filePath);
+    LE_TEST(le_cfgAdmin_ImportTree(iterRef, filePath, pathBuffer) == LE_OK);
+    unlink(filePath);
+
+    le_cfg_CommitTxn(iterRef);
+}
+
+
+
 
 static void MultiTreeTest()
 {
@@ -846,6 +894,7 @@ COMPONENT_INIT
     ClearTree();
 
     QuickFunctionTest();
+    TestImportLargeString();
     DeleteTest();
     StringSizeTest();
     TestImportExport();
