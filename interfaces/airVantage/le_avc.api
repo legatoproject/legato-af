@@ -1061,7 +1061,7 @@ FUNCTION uint16 GetHttpStatus
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetPollingTimer
 (
-    uint32  pollingTimer OUT    ///< Polling timer
+    uint32  pollingTimer OUT    ///< Polling timer interval, minutes
 );
 
 
@@ -1077,7 +1077,7 @@ FUNCTION le_result_t GetPollingTimer
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetRetryTimers
 (
-    uint16 timerValue[NUM_RETRY_TIMERS]   OUT ///< Array of the retry timers.
+    uint16 timerValue[NUM_RETRY_TIMERS]   OUT ///< Array of retry timer intervals, minutes.
 );
 
 
@@ -1127,7 +1127,7 @@ FUNCTION le_result_t SetApnConfig
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetPollingTimer
 (
-    uint32  pollingTimer IN    ///< Polling timer
+    uint32  pollingTimer IN    ///< Polling timer interval, minutes
 );
 
 
@@ -1143,7 +1143,7 @@ FUNCTION le_result_t SetPollingTimer
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetRetryTimers
 (
-    uint16 timerValue[NUM_RETRY_TIMERS]   IN  ///< Array of 8 retry timers.
+    uint16 timerValue[NUM_RETRY_TIMERS]   IN  ///< Array of retry timer intervals, minutes.
 );
 
 //--------------------------------------------------------------------------------------------------
