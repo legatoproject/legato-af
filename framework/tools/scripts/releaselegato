@@ -226,7 +226,7 @@ if [ -e "$LEGATO_ROOT/apps/proprietary/atAirVantage" ]; then
     StageProprietaryApp atAirVantage    wp85 wp76xx
 fi
 if [ -e "$LEGATO_ROOT/apps/proprietary/qmiAirVantage" ]; then
-    StageProprietaryApp qmiAirVantage   wp76xx
+    StageProprietaryApp qmiAirVantage   wp85 wp76xx
 fi
 
 cp version $STAGE_DIR
