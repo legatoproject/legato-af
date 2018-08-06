@@ -25,6 +25,10 @@ apps:
             ${LEGATO_QMI_AIRVANTAGE_APP}
         #elif ${LEGATO_TARGET} = wp77xx
             ${LEGATO_QMI_AIRVANTAGE_APP}
+        #elif ${LEGATO_TARGET} = wp85
+            ${LEGATO_QMI_AIRVANTAGE_APP}
+        #elif ${LEGATO_TARGET} = wp750x
+            ${LEGATO_QMI_AIRVANTAGE_APP}
         #endif
     #endif
 }

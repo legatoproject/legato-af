@@ -38,8 +38,6 @@ ifneq ($(findstring $(TARGET), wp750x wp85 wp76xx wp77xx),)
   ifneq ($(wildcard $(APPS_PROPRIETARY_SRC_DIR)/atQmiLinker/src/atQmiLinker.adef),)
     PROPRIETARY_APPS += atQmiLinker
   endif
-endif
-ifneq ($(findstring $(TARGET), wp76xx wp77xx),)
   ifneq ($(wildcard $(APPS_PROPRIETARY_SRC_DIR)/qmiAirVantage/src/qmiAirVantage.adef),)
     PROPRIETARY_APPS += qmiAirVantage
   endif
