@@ -248,6 +248,7 @@ supervisor: liblegato $(BIN_DIR)
 		-i $(LEGATO_ROOT)/framework/daemons/linux/common \
 		-s $(SRC_DIR)/supervisor \
 		--cflags=-DDISABLE_SMACK=$(DISABLE_SMACK) \
+		--cflags=-DDISABLE_SMACK_ONLYCAP=$(DISABLE_SMACK_ONLYCAP) \
 		$(IMA_SMACK_CFLAGS) \
 		--cflags=-DNO_LOG_CONTROL \
 		--cflags=-DLEGATO_FRAMEWORK_NICE_LEVEL=$(LEGATO_FRAMEWORK_NICE_LEVEL) \

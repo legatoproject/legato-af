@@ -53,6 +53,7 @@
 #include "fsSys.h"
 #include "ima.h"
 #include "file.h"
+#include "smack.h"
 
 // Default probation period.
 #ifndef PROBATION_PERIOD
@@ -534,6 +535,8 @@ static le_result_t InstallSystemApps
                                 appPath);
                         return LE_FAULT;
                     }
+
+                    smack_SetLabel(appPath, "framework");
 
                     // Now setup the smack permission.
                     if (app_SetSmackPermReadOnly(appMd5Hash, appName) != LE_OK)
@@ -1624,6 +1627,10 @@ static void FinishSystemUpdate
         // is a power cut immediately after deletion of these config trees.
         fsSys_FlagNewSys();
 
+        // Ensure that the newSystem in le_fs is using the "framework" label. Otherwise apps using
+        // le_fs will encounter issues.
+        smack_SetLabel("/data/le_fs/newSystem", "framework");
+
         // Delete users.cfg and apps.cfg.
         DeleteFile(usersFilePath);
         DeleteFile(appsFilePath);
@@ -1771,6 +1778,11 @@ static void UpdateUsersAndGroups
         LE_FATAL_IF(rename(newGroupFilePath, "/etc/group") != 0,
                     "Failed to rename '%s' to '/etc/group' (%m).",
                     newGroupFilePath);
+
+        // Leave these system files with '_' label; otherwise it will inherit the label of
+        // updateDaemon and cause other issues e.g. liblegato user API access etc...
+        smack_SetLabel("/etc/passwd", "_");
+        smack_SetLabel("/etc/group", "_");
     }
 
     // Walk the apps directory under the current system, and for each app in the directory,

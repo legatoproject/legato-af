@@ -305,4 +305,15 @@ void system_GetAppWriteableFilesDirPath
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize the labels of the unpacked system.
+ **/
+//--------------------------------------------------------------------------------------------------
+void system_InitSmackLabels
+(
+    void
+);
+
+
 #endif // LEGATO_UPDATE_DAEMON_SYSTEM_H_INCLUDE_GUARD

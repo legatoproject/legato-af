@@ -250,7 +250,16 @@ static void StartDaemon
         // Close all non-standard fds.
         fd_CloseAllNonStd();
 
-        smack_SetMyLabel("framework");
+        // Update daemon needs CAP_MAC_ADMIN during the update process
+        if (strcmp(daemonPtr->path, SYSTEM_BIN_PATH "/updateDaemon") == 0)
+        {
+            LE_INFO("Setting updateDaemon with admin label.");
+            smack_SetMyLabel("admin");
+        }
+        else
+        {
+            smack_SetMyLabel("framework");
+        }
 
         // Launch the child program.  This should not return unless there was an error.
         execl(daemonPtr->path, daemonNamePtr, (char*)NULL);

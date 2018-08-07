@@ -69,3 +69,4 @@ docManagement
 # Apps
 apps/platformServices/airVantageConnector/
 apps/leTP
+apps/sample/dataHub/

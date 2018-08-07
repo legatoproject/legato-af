@@ -182,6 +182,9 @@ ifneq (,$(filter $(TARGET),virt))
 endif
 export DISABLE_SMACK ?= 0
 
+# Disable SMACK onlycap
+export DISABLE_SMACK_ONLYCAP ?= 1
+
 STAGE_SYSTOIMG = stage_systoimg
 ifeq ($(READ_ONLY),1)
   override STAGE_SYSTOIMG := stage_systoimgro

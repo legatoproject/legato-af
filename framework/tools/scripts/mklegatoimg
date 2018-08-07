@@ -19,7 +19,7 @@ help_long_description=(
 " - -d [STAGING_DIR]: staging directory for that platform"
 " - -o [OUTPUT_DIR]: output directory where the image will be stored"
 " - -S [SUFFIX]: suffix to add to images generated in case of several images"
-" - -a: set SMACK attributes if defined in targetDefs files"
+" - -a: set SMACK attributes as defined externally through SMACK_ATTR_NAME & SMACK_ATTR_VALUE"
 " - -s: strip libraries and binaries but preserve kernel modules"
 ""
 "For ar7/ar86/wp85/wp750x/wp76xx/wp77xx targets:"
@@ -89,11 +89,11 @@ fi
 
 FindToolchain
 
-CheckFakerootVersion() {
-    FAKEROOT_BIN=$1
-    FAKEROOT_VERSION=$($FAKEROOT_BIN --version | awk '{print $3}')
-    REQUIRED_VERSION="1.20.2"
-    [ "$REQUIRED_VERSION" = "$(echo -e "$REQUIRED_VERSION\n$FAKEROOT_VERSION" | sort -V | head -1)" ]
+function CheckFakerootVersion() {
+    fakeroot_bin=$1
+    fakeroot_version=$($fakeroot_bin --version | awk '{print $3}')
+    required_version="1.20.2"
+    [ "$required_version" = "$(echo -e "$required_version\n$fakeroot_version" | sort -V | head -1)" ]
 }
 
 # Need to appear as root to prepare images
@@ -132,9 +132,7 @@ StripExeAndLibs() {
         return
     fi
 
-    if [ -n "${TOOLCHAIN_DIR}" ]; then
-        PATH="${TOOLCHAIN_DIR}:${PATH}"
-    fi
+    PATH="${TOOLCHAIN_DIR}:${PATH}"
 
     FindTool "${TOOLCHAIN_PREFIX}strip" STRIP
     CheckRet
@@ -210,15 +208,13 @@ GetRootHash() {
 }
 
 SetSmackAttr() {
-    if [ "$SET_SMACK_ATTR" != "true" ]; then
-        return
-    fi
-
     FindTool "setfattr" SETFATTR
     CheckRet
 
     # If SMACK attributes are defined in the targetDefs.<target>, set them
-    if [ -n "$SMACK_ATTR_NAME" -a -n "$SMACK_ATTR_VALUE" ]; then
+    if [[ "$SET_SMACK_ATTR" == "true" ]] && \
+       [ -n "$SMACK_ATTR_NAME" ] && \
+       [ -n "$SMACK_ATTR_VALUE" ]; then
         for file in `find "$STAGING_DIR"`; do
             if [ -d "$file" ]; then
                 $SETFATTR -h -n "$SMACK_ATTR_NAME" -v "$SMACK_ATTR_VALUE" "$file"
@@ -228,6 +224,17 @@ SetSmackAttr() {
                 $SETFATTR -h -n "$SMACK_ATTR_NAME" -v "$SMACK_ATTR_VALUE" "$file"
             fi
         done
+    else
+        # Default smack label for all files in the image
+        find "$STAGING_DIR" -exec $SETFATTR -h -n "security.SMACK64" -v "_" {} \;
+
+        # The following on-target executable should execute as 'admin'
+        $SETFATTR -h -n "security.SMACK64EXEC" -v "admin" "$STAGING_DIR/system/bin/start"
+        $SETFATTR -h -n "security.SMACK64EXEC" -v "admin" "$STAGING_DIR/system/bin/startSystem"
+        $SETFATTR -h -n "security.SMACK64EXEC" -v "admin" "$STAGING_DIR/system/bin/updateDaemon"
+        $SETFATTR -h -n "security.SMACK64EXEC" -v "admin" "$STAGING_DIR/system/bin/supervisor"
+        $SETFATTR -h -n "security.SMACK64EXEC" -v "admin" "$STAGING_DIR/system/bin/_appStopClient"
+        $SETFATTR -h -n "security.SMACK64EXEC" -v "admin" "$STAGING_DIR/system/bin/xattr"
     fi
 }
 
@@ -246,7 +253,9 @@ CreateImgFs() {
         exit 1
     fi
 
-    SetSmackAttr
+    if [[ "$img_type" != "yaffs2" ]]; then
+        SetSmackAttr
+    fi
 
     if [[ "$WITH_DM_VERITY" == "true" ]]; then
         local hash_img="$OUTPUT_DIR/hash${LEGATO_IMG_SUFFIX}.bin"
@@ -287,7 +296,10 @@ CreateImgFs() {
                 return 1
             fi
 
-            $MKSQUASHFS "$STAGING_DIR" "$legato_img" -noappend -all-root > squashfs${LEGATO_IMG_SUFFIX}.log
+            $MKSQUASHFS "$STAGING_DIR" "$legato_img" -noappend \
+                                                     -all-root \
+                                                     -xattrs \
+                                                     > squashfs${LEGATO_IMG_SUFFIX}.log
             CheckRet
 
             if [[ "$WITH_DM_VERITY" == "true" ]]; then
@@ -451,8 +463,13 @@ CreateImg_mdm9x28() {
         ar758x)
             WITH_DM_VERITY=true
             ;;
-        wp76xx | wp77xx)
+        wp76xx|wp77xx)
+            img_indexes+=(1)
+            page_size[1]=2048
             pid[0]='Y921'
+            pid[1]='Y922'
+            oob_size[1]=80
+            peb_size[1]=128KiB
             ;;
         *)
             echo "Unknown product '$TARGET'"

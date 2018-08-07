@@ -99,4 +99,5 @@ void apps_VerifyAppWriteableDeviceFiles
     void
 );
 
+
 #endif  // LEGATO_SRC_APPS_INCLUDE_GUARD

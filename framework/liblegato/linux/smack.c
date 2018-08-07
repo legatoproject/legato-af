@@ -74,6 +74,22 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * SMACK onlycap file location.
+ */
+//--------------------------------------------------------------------------------------------------
+#define SMACK_ONLYCAP_FILE                  SMACK_FS_DIR "/onlycap"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SMACK unconfined file location.
+ */
+//--------------------------------------------------------------------------------------------------
+#define SMACK_UNCONFINED_FILE                  SMACK_FS_DIR "/unconfined"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * A process's own attribute file that stores the SMACK label.
  */
 //--------------------------------------------------------------------------------------------------
@@ -492,6 +508,36 @@ le_result_t smack_SetLabel
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Sets the smack execute label of a file system object. The calling process must be a privileged
+ * process.
+ *
+ * @return
+ *      LE_OK if the label was set correctly.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t smack_SetLabelExec
+(
+    const char* objPathPtr,         ///< [IN] Path to the object.
+    const char* labelPtr            ///< [IN] Label to set the object to.
+)
+{
+    CheckLabel(labelPtr);
+
+    if (setxattr(objPathPtr, "security.SMACK64EXEC", labelPtr, strlen(labelPtr), 0) == -1)
+    {
+        LE_ERROR("Could not set SMACK EXEC label for '%s'.  %m.", objPathPtr);
+        return LE_FAULT;
+    }
+
+    LE_DEBUG("Set SMACK EXEC label to '%s' for %s.", labelPtr, objPathPtr);
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Sets an explicit smack rule.
  *
  * An explicit smack rule defines a subject's access to an object. The access mode can be any
@@ -767,6 +813,96 @@ le_result_t smack_GetDevLabel
     return LE_OK;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the smack label in unconfined. This contains the label processes whose access violations
+ * will be logged but not prohibited.
+ *
+ * @note If there's an error, this function will kill the calling process.
+ */
+//--------------------------------------------------------------------------------------------------
+void smack_SetUnconfined
+(
+    const char* labelPtr            ///< [IN] Label to set the calling process to.
+)
+{
+    CheckLabel(labelPtr);
+
+    // Open the SMACK onlycap file
+    int fd;
+
+    do
+    {
+        fd = open(SMACK_UNCONFINED_FILE, O_WRONLY);
+    }
+    while ( (fd == -1) && (errno == EINTR) );
+
+    LE_FATAL_IF(fd == -1, "Could not open %s.  %m.\n", SMACK_UNCONFINED_FILE);
+
+    // Write the label to the file.
+    size_t labelSize = strlen(labelPtr);
+
+    int result;
+
+    do
+    {
+        result = write(fd, labelPtr, labelSize);
+    }
+    while ( (result == -1) && (errno == EINTR) );
+
+    LE_FATAL_IF(result != labelSize,
+                "Could not write to %s.  %m.\n", PROC_SMACK_FILE);
+
+    fd_Close(fd);
+
+    LE_INFO("Set SMACK label '%s' unconfined.", labelPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the smack label in onlycap. This contains the label processes must have for CAP_MAC_ADMIN
+ * and CAP_MAC_OVERRIDE.
+ *
+ * @note If there's an error, this function will kill the calling process.
+ */
+//--------------------------------------------------------------------------------------------------
+void smack_SetOnlyCap
+(
+    const char* labelPtr            ///< [IN] Label to set the calling process to.
+)
+{
+    CheckLabel(labelPtr);
+
+    // Open the SMACK onlycap file
+    int fd;
+
+    do
+    {
+        fd = open(SMACK_ONLYCAP_FILE, O_WRONLY);
+    }
+    while ( (fd == -1) && (errno == EINTR) );
+
+    LE_FATAL_IF(fd == -1, "Could not open %s.  %m.\n", SMACK_ONLYCAP_FILE);
+
+    // Write the label to the file.
+    size_t labelSize = strlen(labelPtr);
+
+    int result;
+
+    do
+    {
+        result = write(fd, labelPtr, labelSize);
+    }
+    while ( (result == -1) && (errno == EINTR) );
+
+    LE_FATAL_IF(result != labelSize,
+                "Could not write to %s.  %m.\n", PROC_SMACK_FILE);
+
+    fd_Close(fd);
+
+    LE_INFO("Set SMACK label '%s' onlycap.", labelPtr);
+}
+
 
 //********  SMACK is disabled.  ******************************************************************//
 #else
@@ -1015,4 +1151,19 @@ le_result_t smack_GetDevLabel
     return LE_OK;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the smack label in onlycap. This contains the label processes must have for CAP_MAC_ADMIN
+ * and CAP_MAC_OVERRIDE.
+ *
+ * @note If there's an error, this function will kill the calling process.
+ */
+//--------------------------------------------------------------------------------------------------
+void smack_SetOnlyCap
+(
+    const char* labelPtr            ///< [IN] Label to set the calling process to.
+)
+{
+}
 #endif

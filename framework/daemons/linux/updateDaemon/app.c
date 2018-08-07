@@ -660,6 +660,8 @@ le_result_t app_SetUpAppWriteables
 )
 //--------------------------------------------------------------------------------------------------
 {
+    system_InitSmackLabels();
+
     // If an app with the same name is installed in the current system,
     if (system_HasApp(appNamePtr))
     {
@@ -732,6 +734,10 @@ le_result_t app_InstallIndividual
             sysStatus_MarkBad();
             LE_FATAL("Rolling-back to snapshot.");
         }
+
+        // Modify label of app path; otherwise it will become admin and we will lose permission
+        // to exec the process.
+        smack_SetLabel(path, "framework");
     }
 
     // If this app is already in the current system but its app hash is different,

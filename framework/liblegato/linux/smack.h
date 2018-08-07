@@ -158,6 +158,25 @@ le_result_t smack_SetLabel
 );
 
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the smack execute label of a file system object. The calling process must be a privileged
+ * process.
+ *
+ * @return
+ *      LE_OK if the label was set correctly.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t smack_SetLabelExec
+(
+    const char* objPathPtr,         ///< [IN] Path to the object.
+    const char* labelPtr            ///< [IN] Label to set the object to.
+);
+
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Sets an explicit SMACK rule.
@@ -276,6 +295,33 @@ le_result_t smack_GetDevLabel
     dev_t devId,            ///< [IN] Device ID.
     char* bufPtr,           ///< [OUT] Buffer to hold the SMACK label for the device.
     size_t bufSize          ///< [IN] Size of the buffer.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the smack label in unconfined. This contains the label processes whose access violations
+ * will be logged but not prohibited.
+ *
+ * @note If there's an error, this function will kill the calling process.
+ */
+//--------------------------------------------------------------------------------------------------
+void smack_SetUnconfined
+(
+    const char* labelPtr            ///< [IN] Label to set the calling process to.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the smack label in onlycap. This contains the label processes must have for CAP_MAC_ADMIN
+ * and CAP_MAC_OVERRIDE.
+ *
+ * @note If there's an error, this function will kill the calling process.
+ */
+//--------------------------------------------------------------------------------------------------
+void smack_SetOnlyCap
+(
+    const char* labelPtr            ///< [IN] Label to set the calling process to.
 );
 
 #endif // LEGATO_SRC_SMACK_INCLUDE_GUARD

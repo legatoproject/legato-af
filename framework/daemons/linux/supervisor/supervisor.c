@@ -219,6 +219,7 @@
 #include "sysPaths.h"
 #include "sysStatus.h"
 #include "ima.h"
+#include "fs.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -843,6 +844,80 @@ static void UpdateSmackLabelRecursive
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Setup all the smack rules before enabling smack onlycap
+ */
+//--------------------------------------------------------------------------------------------------
+static void SetupSmackOnlyCap
+(
+    void
+)
+{
+    // Set correct smack permissions for admin (Bug where onlycap label does not have CAP_MAC_OVERRIDE)
+    smack_SetRule("admin", "rwx", "_");
+
+    // Set correct smack permissions for app.tools and framework
+    smack_SetRule("admin", "rwx", "app.tools");
+    smack_SetRule("admin", "rwx", "framework");
+
+    // Set correct smack permissions for syslog
+    smack_SetRule("_", "rw", "syslog");
+    smack_SetRule("admin", "rw", "syslog");
+    smack_SetRule("framework", "rw", "syslog");
+
+    // Set correct smack label for /home directory
+    smack_SetLabel("/home", "_");
+
+    // Framework app needs read/execute access to admin.
+    // e.g. configTree needs access to *.cfg files and logDaemon needs read access to admin (fds)
+    smack_SetRule("framework", "rx", "admin");
+
+    // Framework needs write access to '_' label. e.g. configEcm needs write permission to /etc/legato
+    // framework needs wx access to tmpfs
+    smack_SetRule("framework", "rwx", "_");
+
+    // Set correct smack label for /data
+    smack_SetLabel("/data", "framework");
+
+    // ToDo: Workaround to get le_fs have "framework" label.
+    // Set correct smack label for /data
+    fs_Init();
+
+    // Set correct smack label for /data/le_fs
+    smack_SetLabel("/data/le_fs", "framework");
+
+    // Set admin label for the supervisor.
+    smack_SetMyLabel("admin");
+
+    // apps advertise before changing it's own label. When it advertises, app runs as '_' and tries
+    // to communicate with serviceDirectory
+    smack_SetRule("_", "rwx", "framework");
+
+    // _appStopClient needs write access to admin. Apparently kernel calls this and we can't change
+    // the extended attribute in the case it's from RW legato.
+    // dropbear needs access to resources in /etc/dropbear
+    smack_SetRule("_", "rwx", "admin");
+
+    // Set correct smack permissions for sdir tool. When command like 'sdir list' is invoked,
+    // the serviceDirectory needs rw to the /dev/pts/0 (terminal). The terminal can be running
+    // in either '_' (console) or 'admin' (ssh).
+    smack_SetRule("framework", "rwx", "admin");
+
+    // Set correct permissions for qmuxd
+    smack_SetRule("qmuxd", "rwx", "_");
+    smack_SetRule("_", "rwx", "qmuxd");
+
+#if DISABLE_SMACK_ONLYCAP != 0
+    LE_INFO("SMACK onlycap disabled");
+#else
+    // Set onlycap with 'admin' label
+    smack_SetOnlyCap("admin");
+    LE_INFO("SMACK onlycap enabled");
+#endif
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Stops the Legato framework.
  *
  * Async API function.  Calls le_framework_StopRespond() to report results.
@@ -1076,10 +1151,7 @@ COMPONENT_INIT
     kernelModules_Init();
     smack_Init();
 
-    // Set correct smack permissions for syslog
-    smack_SetRule("_", "rw", "syslog");
-    smack_SetRule("admin", "rw", "syslog");
-    smack_SetRule("framework", "rw", "syslog");
+    SetupSmackOnlyCap();
 
     cgrp_Init();
 

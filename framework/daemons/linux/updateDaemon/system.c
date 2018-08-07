@@ -92,6 +92,38 @@ static const char* UnpackConfigDirPath = UNPACK_BASE_PATH "/config";
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Absolute file system path to directory containing the current running system's app files.
+ */
+//--------------------------------------------------------------------------------------------------
+static const char* UnpackAppsDirPath = UNPACK_BASE_PATH "/apps";
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Absolute file system path to directory containing the current running system's lib files.
+ */
+//--------------------------------------------------------------------------------------------------
+static const char* UnpackLibDirPath = UNPACK_BASE_PATH "/lib";
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Absolute file system path to directory containing the current running system's bin files.
+ */
+//--------------------------------------------------------------------------------------------------
+static const char* UnpackBinDirPath = UNPACK_BASE_PATH "/bin";
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Absolute file system path to directory containing the current running system's module files.
+ */
+//--------------------------------------------------------------------------------------------------
+static const char* UnpackModuleDirPath = UNPACK_BASE_PATH "/modules";
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Absolute file system path to the directory that systems get unpacked into.
  */
 //--------------------------------------------------------------------------------------------------
@@ -245,12 +277,7 @@ static void SetSystemFilesPermissions
     // Get the smack labels to use.
     char* fileLabel = "_";
 
-    char systemLibPath[LIMIT_MAX_PATH_BYTES] = "";
-
-    int n = snprintf(systemLibPath, sizeof(systemLibPath), "%s/%s", newSystemPath, "lib");
-    LE_ASSERT(n < sizeof(systemLibPath));
-
-    char* pathArrayPtr[] = {(char *)systemLibPath, NULL};
+    char* pathArrayPtr[] = {(char *)newSystemPath, NULL};
 
     FTS* ftsPtr = fts_open(pathArrayPtr, FTS_LOGICAL | FTS_NOSTAT, NULL);
 
@@ -740,9 +767,13 @@ le_result_t system_FinishUpdate
         return LE_FAULT;
     }
 
+    // Change label of the config file so that it can be read by configTree
+    smack_SetLabel("/legato/systems/unpack/config/system.paper", "framework");
+
     // Set the smackfs permission of unpacked system. This has to be done before renaming unpack
-    // path to some index.
-    SetSystemFilesPermissions(system_UnpackPath);
+    // path to some index. Modify all files under lib and bin with "_" label.
+    SetSystemFilesPermissions("/legato/systems/unpack/lib");
+    SetSystemFilesPermissions("/legato/systems/unpack/bin");
 
     // Now, move the unpacked system into its index.
     char newSystemPath[100] = "";
@@ -1215,3 +1246,26 @@ void system_GetAppWriteableFilesDirPath
     }
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize the labels of the unpacked system.
+ **/
+//--------------------------------------------------------------------------------------------------
+void system_InitSmackLabels
+(
+    void
+)
+{
+    // Ensure that most of the system content is labeled with the framework label.
+    // The updateDaemon needs admin priveledges to set smack labels for now which causes all
+    // untar'ed content to have the admin label. This causes issues since most subjects cannot
+    // access admin e.g. app exec'ing a process and accessing library etc...
+    // TODO: Labels will be set at build time in the future.
+    smack_SetLabel(system_UnpackPath, "framework");
+    smack_SetLabel(UnpackConfigDirPath, "framework");
+    smack_SetLabel(UnpackAppsDirPath, "framework");
+    smack_SetLabel(UnpackLibDirPath, "framework");
+    smack_SetLabel(UnpackBinDirPath, "framework");
+    smack_SetLabel(UnpackModuleDirPath, "framework");
+}

@@ -819,8 +819,10 @@ static void SetSmackRulesForBindings
             smack_GetAppLabel(serverName, serverLabel, sizeof(serverLabel));
 
             // Set the SMACK label to/from the server.
-            smack_SetRule(appLabelPtr, "rw", serverLabel);
-            smack_SetRule(serverLabel, "rw", appLabelPtr);
+            // +x is needed as few servers (powerManager & watchdog) need to know the
+            // name of their clients and go in to /proc/{pid} of the client.
+            smack_SetRule(appLabelPtr, "rwx", serverLabel);
+            smack_SetRule(serverLabel, "rwx", appLabelPtr);
         }
     } while (le_cfg_GoToNextSibling(bindCfg) == LE_OK);
 
@@ -835,7 +837,7 @@ static void SetSmackRulesForBindings
 //--------------------------------------------------------------------------------------------------
 static void SetDefaultSmackRules
 (
-    const char* appNamePtr,             ///< [IN] App name.
+    app_Ref_t appRef,                   ///< [IN] App reference.
     const char* appLabelPtr             ///< [IN] Smack label for the app.
 )
 {
@@ -865,22 +867,80 @@ static void SetDefaultSmackRules
         }
 
         char dirLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-        smack_GetAppAccessLabel(appNamePtr, mode, dirLabel, sizeof(dirLabel));
+        smack_GetAppAccessLabel(appRef->name, mode, dirLabel, sizeof(dirLabel));
 
         smack_SetRule(appLabelPtr, permissionStr[i], dirLabel);
+
+        // framework and admin need to have that priviledge as well
+        smack_SetRule("framework", permissionStr[i], dirLabel);
+        smack_SetRule("admin", permissionStr[i], dirLabel);
     }
 
     // Set default permissions between the app and the framework.
-    smack_SetRule("framework", "w", appLabelPtr);
+    // Give watchdog acces to read the procName from applications
+    smack_SetRule("framework", "rwx", appLabelPtr);
+
     if (ima_IsEnabled())
     {
         smack_SetRule(appLabelPtr, "rx", IMA_SMACK_LABEL);
     }
-    smack_SetRule(appLabelPtr, "rw", "framework");
+    smack_SetRule(appLabelPtr, "rwx", "framework");
 
     // Set default permissions to allow the app to access the syslog.
     smack_SetRule(appLabelPtr, "w", "syslog");
     smack_SetRule("syslog", "w", appLabelPtr);
+
+    // admin gets access to app labels.
+    smack_SetRule("admin", "rwx", appLabelPtr);
+
+    // Give unsandboxed apps access to "_"
+    if (!appRef->sandboxed)
+    {
+        smack_SetRule(appLabelPtr, "rwx", "_");
+    }
+
+    static char* frameworkAppList[] =
+       {
+           "app.atAirVantage",
+           "app.atQmiLinker",
+           "app.atService",
+           "app.audioService",
+           "app.avcService",
+           "app.cellNetService",
+           "app.dataConnectionService",
+           "app.fwupdateService",
+           "app.gpioService",
+           "app.modemService",
+           "app.portService",
+           "app.positioningService",
+           "app.powerMgr",
+           "app.qmiAirVantage",
+           "app.secStore",
+           "app.smsInboxService",
+           "app.spiService",
+           "app.voiceCallService",
+           "app.wifi",
+           "app.wifiApTest",
+           "app.wifiClientTest",
+           "app.wifiService",
+           "app.wifiWebAp"
+       };
+
+    // Providing legato platform service access to qmuxd
+    for (i = 0; i < NUM_ARRAY_MEMBERS(frameworkAppList); i++)
+    {
+        if (0 == strcmp(frameworkAppList[i], appLabelPtr))
+        {
+            smack_SetRule(frameworkAppList[i], "rwx", "qmuxd");
+            smack_SetRule("qmuxd", "rwx", frameworkAppList[i]);
+
+            // Give app.fwupdateService r access to admin (pipe) in order to perform update
+            if (0 == strcmp(frameworkAppList[i], "app.fwupdateService"))
+            {
+                smack_SetRule(frameworkAppList[i], "r", "admin");
+            }
+        }
+    }
 }
 
 
@@ -916,15 +976,11 @@ static le_result_t SetSmackRules
     app_Ref_t appRef                    ///< [IN] Reference to the application.
 )
 {
-    // Clear out any residual SMACK rules from a previous incarnation of the Legato framework,
-    // in case it wasn't shut down cleanly.
-    CleanupAppSmackSettings(appRef);
-
     // Get the app label.
     char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
     smack_GetAppLabel(appRef->name, appLabel, sizeof(appLabel));
 
-    SetDefaultSmackRules(appRef->name, appLabel);
+    SetDefaultSmackRules(appRef, appLabel);
 
     SetSmackRulesForBindings(appRef, appLabel);
 
@@ -2583,6 +2639,11 @@ void app_Init
     {
         LE_ERROR("Could not make appsWriteable dir, applications may not start.");
     }
+
+    // Required for a system update. Otherwise when new system starts up, the app process
+    // will not have permission to change its working directory to the applications apps
+    // writeable directory. (Defaults as admin)
+    smack_SetLabel("/legato/systems/current/appsWriteable", "framework");
 }
 
 
@@ -3067,6 +3128,7 @@ void app_Stop
 {
     LE_INFO("Stopping app '%s'", appRef->name);
 
+    CleanupAppSmackSettings(appRef);
 
     if (appRef->state == APP_STATE_STOPPED)
     {

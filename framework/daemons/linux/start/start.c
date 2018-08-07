@@ -29,6 +29,7 @@
 #include "start.h"
 #include "limit.h"
 #include "file.h"
+#include "dir.h"
 #include "installer.h"
 #include "fileDescriptor.h"
 #include "smack.h"
@@ -684,7 +685,7 @@ static void MakeDir
     const char* dirPath
 )
 {
-    le_result_t result = le_dir_Make(dirPath, DEFAULT_PERMS);
+    le_result_t result = dir_MakeSmack(dirPath, DEFAULT_PERMS, "framework");
 
     if ((result != LE_OK) && (result != LE_DUPLICATE))
     {
