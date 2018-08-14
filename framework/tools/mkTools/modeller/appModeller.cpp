@@ -584,7 +584,7 @@ static void AddRequiredItems
                 auto fileSpecPtr = parseTree::ToTokenListPtr(itemPtr);
 
                 appPtr->requiredFiles.insert(
-                    std::shared_ptr<model::FileSystemObject_t>(GetRequiredFileOrDir(fileSpecPtr)));
+                    std::shared_ptr<model::FileSystemObject_t>(GetRequiredFile(fileSpecPtr)));
             }
         }
         else if (subsectionName == "dir")
@@ -594,7 +594,7 @@ static void AddRequiredItems
                 auto dirSpecPtr = parseTree::ToTokenListPtr(itemPtr);
 
                 appPtr->requiredDirs.insert(
-                    std::shared_ptr<model::FileSystemObject_t>(GetRequiredFileOrDir(dirSpecPtr)));
+                    std::shared_ptr<model::FileSystemObject_t>(GetRequiredDir(dirSpecPtr)));
             }
         }
         else if (subsectionName == "device")

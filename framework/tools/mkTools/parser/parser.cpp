@@ -533,31 +533,43 @@ parseTree::RequiredModule_t* ParseRequiredModule
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Parse a required file or directory item from inside a "requires:" section's "file" or "dir"
- * subsection.
+ * Parse a required file/directory or device item from inside a "requires:" section's "file", "dir"
+ * or "device" subsection.
  *
  * @return Pointer to the item.
  */
 //--------------------------------------------------------------------------------------------------
-static parseTree::TokenList_t* ParseRequiredFileOrDir
+static parseTree::TokenList_t* ParseRequiredItem
 (
     Lexer_t& lexer,
     parseTree::Content_t::Type_t type
 )
 //--------------------------------------------------------------------------------------------------
 {
+    // Accept an optional set of permissions.
+    parseTree::Token_t* permissionsPtr = NULL;
+    if (lexer.IsMatch(parseTree::Token_t::FILE_PERMISSIONS))
+    {
+        permissionsPtr = lexer.Pull(parseTree::Token_t::FILE_PERMISSIONS);
+    }
+
     // Expect a source file system path followed by a destination file system path.
     parseTree::Token_t* srcPathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
     parseTree::Token_t* destPathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
 
-    // Create a new item.
-    auto itemPtr = parseTree::CreateTokenList(type, srcPathPtr);
+    // Create a new required item.
+    parseTree::Token_t* firstPtr = (permissionsPtr != NULL ? permissionsPtr : srcPathPtr);
+    auto requiredItemPtr = parseTree::CreateTokenList(type, firstPtr);
 
     // Add its contents.
-    itemPtr->AddContent(srcPathPtr);
-    itemPtr->AddContent(destPathPtr);
+    if (permissionsPtr != NULL)
+    {
+        requiredItemPtr->AddContent(permissionsPtr);
+    }
+    requiredItemPtr->AddContent(srcPathPtr);
+    requiredItemPtr->AddContent(destPathPtr);
 
-    return itemPtr;
+    return requiredItemPtr;
 }
 
 
@@ -574,7 +586,7 @@ parseTree::TokenList_t* ParseRequiredFile
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return ParseRequiredFileOrDir(lexer, parseTree::Content_t::REQUIRED_FILE);
+    return ParseRequiredItem(lexer, parseTree::Content_t::REQUIRED_FILE);
 }
 
 
@@ -591,7 +603,7 @@ parseTree::TokenList_t* ParseRequiredDir
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return ParseRequiredFileOrDir(lexer, parseTree::Content_t::REQUIRED_DIR);
+    return ParseRequiredItem(lexer, parseTree::Content_t::REQUIRED_DIR);
 }
 
 
@@ -608,30 +620,7 @@ parseTree::TokenList_t* ParseRequiredDevice
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Accept an optional set of permissions.
-    parseTree::Token_t* permissionsPtr = NULL;
-    if (lexer.IsMatch(parseTree::Token_t::FILE_PERMISSIONS))
-    {
-        permissionsPtr = lexer.Pull(parseTree::Token_t::FILE_PERMISSIONS);
-    }
-
-    // Expect a source file system path followed by a destination file system path.
-    parseTree::Token_t* srcPathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
-    parseTree::Token_t* destPathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
-
-    // Create a new item.
-    parseTree::Token_t* firstPtr = (permissionsPtr != NULL ? permissionsPtr : srcPathPtr);
-    auto deviceItemPtr = parseTree::CreateTokenList(parseTree::Content_t::REQUIRED_DEVICE, firstPtr);
-
-    // Add its contents.
-    if (permissionsPtr != NULL)
-    {
-        deviceItemPtr->AddContent(permissionsPtr);
-    }
-    deviceItemPtr->AddContent(srcPathPtr);
-    deviceItemPtr->AddContent(destPathPtr);
-
-    return deviceItemPtr;
+    return ParseRequiredItem(lexer, parseTree::Content_t::REQUIRED_DEVICE);
 }
 
 

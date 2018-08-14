@@ -1,0 +1,30 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * Ensure that default requires section still works without access permission.
+ * However, the default behaviour of requires "dir" section has been changed to
+ * mounting the directory instead of mounting each file individually.
+ */
+//--------------------------------------------------------------------------------------------------
+
+requires:
+{
+    file:
+    {
+        // I need access to udhcpc
+        /sbin/udhcpc    /usr/sbin
+    }
+
+    dir:
+    {
+        // I need access to /proc for debugging.
+        /proc   /
+
+        // For now, I want access to all executables and libraries in /bin and /lib.
+        // Later I'll remove this and replace with just the files I really need in the field.
+        // Also, I don't want to hide the stuff that the tools automatically bundle into my app's
+        // /bin and /lib for me, so I'll make the root file system's /bin and /lib accessible as
+        // my app's /usr/bin and /usr/lib.
+        /bin    /usr/bin
+        /lib    /usr/lib
+    }
+}

@@ -898,13 +898,33 @@ Things listed here are expected to be found on the target at runtime.
 They are not copied into the app at build time; they are made accessible to the app inside of
 its sandbox at runtime.
 
-Each entry consists of two file system paths:
+Three things need to be specified for each directory:
+- access permissions
+- source path
+- destination path
 
- - The @b first path is the path to the directory @b outside of the app.
-   This must be an absolute path (beginning with "/") and can never end in a "/".
+<b>Access permissions</b> - any combination of one or more of the following letters, enclosed in
+square brackets:
+- r = readable
+- w = writeable
+- x = executable
 
- - The @b second path is the absolute path @b inside the app’s sandbox where the directory
-   will appear at runtime.
+If permissions values are not specified, then the directory will be mounted into the sandbox without
+modifying any permissions. Applications can mount any directories except for the legato directory
+(/mnt/flash/legato or /legato).
+
+Specifying the permission values on a directory will only modify the permission of the directory. Any
+subdirectory and files will remain the same.
+
+Also specifying the permission value on directories is only allowed in two locations:
+- Any directory under /home/root/
+- Any directory under /mnt/flash/ except /legato
+
+<b>Source path</b>is the path to the directory @b outside of the app. This must be an absolute path
+(beginning with "/") and can never end in a "/".
+
+<b>Destination path</b> is the absolute path @b inside the app’s sandbox where the directory will
+appear at runtime.
 
 Paths can be enclosed in quotation marks (either single ' or double "). This is required when
 it contains spaces or character sequences that would start comments.
@@ -928,16 +948,13 @@ requires:
         // my app's /usr/bin and /usr/lib.
         /bin    /usr/bin
         /lib    /usr/lib
+
+        // I need permissions to create a file in /home/root/myTestDir
+        // Execute is needed since we need to search a directory before creating the file.
+        [rwx] /home/root/myTestDir    /myTestDir
     }
 }
 @endcode
-
-@note   Even though the directory appears in the app's sandbox
-        doesn't mean the app can access it. The directory permissions settings
-        must also allow it.  File permissions (both DAC and MAC) and ownership
-        (group and user) on the original files in the target system remain in effect inside
-        the sandbox.  Within a sandbox files can only be read and writen to, new files can not be
-        created.
 
 @warning    Any time anything is made accessible from inside an app sandbox, the security
             risks must be considered carefully.  Ask yourself if access to the object can be
@@ -949,8 +966,7 @@ requires:
         app from outside of the sandbox.  If you @a require @c /bin to appear at
         @c /usr/bin, you can't then @a bundle a file into @c /usr/bin or @a require something to appear
         in @c /usr/bin; that would have an effect on the contents of the /bin directory outside
-        of the app.  This also means that you <b>can not create files</b> in a mapped directory from
-        within the sandbox.
+        of the app.
 
 @note   If an access to the directory /dev/shm is required, it should be listed in this
         subsection as below mentioned, because it is treated like a directory even if it
@@ -982,13 +998,19 @@ Things listed in @c requires are expected to be found on the target at runtime.
 They're not copied into the app at build time; they are made accessible to the app inside of
 its sandbox at runtime.
 
-Each entry consists of two file system paths:
+Each entry consists of:
+- access permissions
+- source path
+- destination path
 
- - path to the object in the file system outside of the app, which
-    must be an absolute path (beginning with ‘/’).
+<b>Access permissions</b> - any combination of one or more of the following letters, enclosed in
+square brackets:
+- r = readable
+- w = writeable
+- x = executable
 
- - absolute file system path inside the app’s sandbox where the object will
-   appear at runtime.
+If permission values are not specified, then the file will be mounted into the sandbox without
+modifying any permissions.
 
 A file path can be enclosed in quotation marks (either single ' or double "). This is required when
 it contains spaces or character sequences that would start comments.
@@ -1009,14 +1031,12 @@ requires:
         // I need to be able to play back audio files installed in /usr/local/share/audio.
         "/usr/local/share/audio/error message.wav" /usr/share/audio/
         '/usr/local/share/audio/success message.wav' /usr/share/audio/
+
+        // Need to write to log.txt. Read is required to open the file.
+        [rw] /home/root/myFiles/log.txt      /usr/myFiles/
     }
 }
 @endcode
-
-@note   Even though the file system object appears in the app's sandbox it still needs
-         permissions settings on the file.  File permissions (both DAC and MAC) and ownership
-        (group and user) on the original file in the target system remain in effect inside
-        the sandbox.
 
 It's also possible to give the object a different names inside and outside of the sandbox by
  adding a name to the end of the second path.

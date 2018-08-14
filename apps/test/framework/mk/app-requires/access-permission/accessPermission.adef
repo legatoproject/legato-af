@@ -1,0 +1,36 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * Ensure that access permissions for files is supported in the "requires" section
+ */
+//--------------------------------------------------------------------------------------------------
+
+requires:
+{
+    file:
+    {
+        [r]     /home/root/myFiles/rfile      /usr/myFiles/
+        [w]     /home/root/myFiles/wfile      /usr/myFiles/
+        [x]     /home/root/myFiles/xfile      /usr/myFiles/
+        [rw]    /home/root/myFiles/rwfile     /usr/myFiles/
+        [rx]    /home/root/myFiles/rxfile     /usr/myFiles/
+        [rwx]   /home/root/myFiles/rwxfile    /usr/myFiles/
+    }
+/*
+    dir:
+    {
+        [r]       /home/root/myDir1             /usr/myDir1
+        [w]       /home/root/myDir2             /usr/myDir2
+        [x]       /home/root/myDir3             /usr/myDir3
+        [rw]      /home/root/myDir4             /usr/myDir4
+        [rx]      /home/root/myDir5             /usr/myDir5
+        [rwx]     /home/root/myDir6             /usr/myDir6
+    }
+*/
+
+/*
+    dir:
+    {
+               /mnt/flash                    /flash
+    }
+*/
+}

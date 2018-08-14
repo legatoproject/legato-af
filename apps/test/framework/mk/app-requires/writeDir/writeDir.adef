@@ -1,0 +1,32 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * Include an existing file, set write access permission and try to write to file.
+ * Before running app, create file '/home/root/myFiles/writeFile'.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+requires:
+{
+    dir:
+    {
+        // Creating a file requires both read and write access on the containing dir.
+        // Execute is needed since we need to search a directory before creating the file.
+        [rwx] /home/root/myTestDir      /myTestDir
+
+        // Note: If we were creating the file in the root directory /, then exec is not needed
+    }
+}
+
+executables:
+{
+    wd = ( wd )
+}
+
+processes:
+{
+    run:
+    {
+        ( wd )
+    }
+}

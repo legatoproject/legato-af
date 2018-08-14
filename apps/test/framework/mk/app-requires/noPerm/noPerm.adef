@@ -1,0 +1,29 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * Include an existing file but do not set the permissions.
+ * Default label of files created will have '_' label which will give rx access to any subject.
+ * However we will try writing to it and it should fail.
+ * File permission should not change at all.
+ */
+//--------------------------------------------------------------------------------------------------
+
+requires:
+{
+    file:
+    {
+        /home/root/log.txt    /files/
+    }
+}
+
+executables:
+{
+    np = ( np )
+}
+
+processes:
+{
+    run:
+    {
+        ( np )
+    }
+}

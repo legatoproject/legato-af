@@ -265,13 +265,13 @@ void GetPermissions
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Creates a FileSystemObject_t instance for a given file or directory, that may optionally contain
- * permissions, in the parse tree.
+ * Creates a FileSystemObject_t instance for a given bundled file or directory, that may optionally
+ * contain permissions, in the parse tree.
  *
  * @return A pointer to the new object.
  */
 //--------------------------------------------------------------------------------------------------
-static model::FileSystemObject_t* GetPermissionItem
+static model::FileSystemObject_t* GetBundledPermissionItem
 (
     const parseTree::TokenList_t* itemPtr
 )
@@ -334,49 +334,118 @@ model::FileSystemObject_t* GetBundledItem
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return GetPermissionItem(itemPtr);
+    return GetBundledPermissionItem(itemPtr);
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Creates a FileSystemObject_t instance for a given required file or directory in the parse tree.
+ * Creates a FileSystemObject_t instance for a given required file, directory or device, that may
+ * optionally contain permissions, in the parse tree.
  *
  * @return A pointer to the new object.
  */
 //--------------------------------------------------------------------------------------------------
-model::FileSystemObject_t* GetRequiredFileOrDir
+static model::FileSystemObject_t* GetRequiredPermissionItem
+(
+    const parseTree::TokenList_t* itemPtr,
+    parseTree::Content_t::Type_t type
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto fileSystemObjectPtr = new model::FileSystemObject_t(itemPtr);
+
+    const parseTree::Token_t* srcPathPtr;
+    const parseTree::Token_t* destPathPtr;
+
+    bool hasPermissions = false;
+
+    // Optionally, there may be permissions.
+    auto firstTokenPtr = itemPtr->Contents()[0];
+
+    if (firstTokenPtr->type == parseTree::Token_t::FILE_PERMISSIONS)
+    {
+        srcPathPtr = itemPtr->Contents()[1];
+        destPathPtr = itemPtr->Contents()[2];
+        GetPermissions(fileSystemObjectPtr->permissions, firstTokenPtr);
+        hasPermissions = true;
+    }
+    // If no permissions, leave the permissions as is.
+    else
+    {
+        srcPathPtr = firstTokenPtr;
+        destPathPtr = itemPtr->Contents()[1];
+    }
+
+    fileSystemObjectPtr->srcPath = path::Unquote(DoSubstitution(srcPathPtr));
+    fileSystemObjectPtr->destPath = path::Unquote(DoSubstitution(destPathPtr));
+
+    // The source path must not end in a slash.
+    if (fileSystemObjectPtr->srcPath.back() == '/')
+    {
+        srcPathPtr->ThrowException(LE_I18N("Required item's path must not end in a '/'."));
+    }
+
+    // If the destination path ends in a slash, append the last path node from the source to it.
+    if (fileSystemObjectPtr->destPath.back() == '/')
+    {
+        fileSystemObjectPtr->destPath += path::GetLastNode(fileSystemObjectPtr->srcPath);
+    }
+
+    // The source directory path must not allow the mounting of /mnt/flash and the legato directory
+    if ((type == parseTree::Content_t::REQUIRED_DIR) &&
+        ((fileSystemObjectPtr->srcPath == "/mnt/flash") ||
+         (fileSystemObjectPtr->srcPath == "/mnt/flash/legato") ||
+         (fileSystemObjectPtr->srcPath == "/legato")))
+    {
+        srcPathPtr->ThrowException(LE_I18N("Required directory path is not allowed"));
+    }
+
+    // The source path access permission can only be modified in these specific location.
+    if (hasPermissions &&
+        type != parseTree::Content_t::REQUIRED_DEVICE &&
+        (fileSystemObjectPtr->srcPath.find("/home/root/") != 0 &&
+            fileSystemObjectPtr->srcPath.find("/mnt/flash/") != 0))
+    {
+        srcPathPtr->ThrowException(
+            mk::format(LE_I18N("Cannot set access permission of: %s"), fileSystemObjectPtr->srcPath));
+    }
+
+
+    return fileSystemObjectPtr;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a FileSystemObject_t instance for a given required file in the parse tree.
+ *
+ * @return A pointer to the new object.
+ */
+//--------------------------------------------------------------------------------------------------
+model::FileSystemObject_t* GetRequiredFile
 (
     const parseTree::TokenList_t* itemPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    auto srcPathTokenPtr = itemPtr->Contents()[0];
-    auto destPathTokenPtr = itemPtr->Contents()[1];
+    return GetRequiredPermissionItem(itemPtr, parseTree::Content_t::REQUIRED_FILE);
+}
 
-    std::string srcPath = path::Unquote(DoSubstitution(srcPathTokenPtr));
-    std::string destPath = path::Unquote(DoSubstitution(destPathTokenPtr));
 
-    // The source path must not end in a slash.
-    if (srcPath.back() == '/')
-    {
-        srcPathTokenPtr->ThrowException(LE_I18N("Required item's path must not end in a '/'."));
-    }
-
-    // If the destination path ends in a slash, append the last path node from the source to it.
-    if (destPath.back() == '/')
-    {
-        destPath += path::GetLastNode(srcPath);
-    }
-
-    auto fileSystemObjPtr = new model::FileSystemObject_t(itemPtr);
-    fileSystemObjPtr->srcPath = srcPath;
-    fileSystemObjPtr->destPath = destPath;
-
-    // Note: Items bind-mounted into the sandbox from outside have the permissions they
-    //       have inside the target filesystem.  This cannot be changed by the app.
-
-    return fileSystemObjPtr;
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a FileSystemObject_t instance for a given required directory in the parse tree.
+ *
+ * @return A pointer to the new object.
+ */
+//--------------------------------------------------------------------------------------------------
+model::FileSystemObject_t* GetRequiredDir
+(
+    const parseTree::TokenList_t* itemPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    return GetRequiredPermissionItem(itemPtr, parseTree::Content_t::REQUIRED_DIR);
 }
 
 
@@ -393,7 +462,7 @@ model::FileSystemObject_t* GetRequiredDevice
 )
 //--------------------------------------------------------------------------------------------------
 {
-    auto permPtr = GetPermissionItem(itemPtr);
+    auto permPtr = GetRequiredPermissionItem(itemPtr, parseTree::Content_t::REQUIRED_DEVICE);
 
     // Execute permissions are not allowed on devices.
     if (permPtr->permissions.IsExecutable())

@@ -1,0 +1,28 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * Include an existing file, set write access permission and try to write to file.
+ * Before running app, create file '/home/root/myFiles/writeFile'.
+ */
+//--------------------------------------------------------------------------------------------------
+
+requires:
+{
+    file:
+    {
+        // Need rw because open requires read
+        [rw] /home/root/myFiles/writeFile      /usr/myFiles/
+    }
+}
+
+executables:
+{
+    wf = ( wf )
+}
+
+processes:
+{
+    run:
+    {
+        ( wf )
+    }
+}

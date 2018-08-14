@@ -41,12 +41,25 @@ model::FileSystemObject_t* GetBundledItem
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Creates a FileSystemObject_t instance for a given required file or directory in the parse tree.
+ * Creates a FileSystemObject_t instance for a given file in the parse tree.
  *
  * @return A pointer to the new object.
  */
 //--------------------------------------------------------------------------------------------------
-model::FileSystemObject_t* GetRequiredFileOrDir
+model::FileSystemObject_t* GetRequiredFile
+(
+    const parseTree::TokenList_t* itemPtr
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a FileSystemObject_t instance for a given directory in the parse tree.
+ *
+ * @return A pointer to the new object.
+ */
+//--------------------------------------------------------------------------------------------------
+model::FileSystemObject_t* GetRequiredDir
 (
     const parseTree::TokenList_t* itemPtr
 );

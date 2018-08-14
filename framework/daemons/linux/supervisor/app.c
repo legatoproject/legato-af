@@ -102,14 +102,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The name of the node in the config tree that contains the list of required files and directories.
- */
-//--------------------------------------------------------------------------------------------------
-#define CFG_NODE_REQUIRES                               "requires"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * The name of the node in the config tree that contains the list of import directives for
  * devices that an application needs.
  */
@@ -159,6 +151,7 @@
 //--------------------------------------------------------------------------------------------------
 #define CFG_NODE_DEVICES                                "devices"
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * The name of the node in the config tree that contains the list of kernel modules that
@@ -166,6 +159,16 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define CFG_NODE_KERNELMODULES                           "kernelModules"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The name of the node in the config tree that contains the list of resources and access permission
+ * for application needs.
+ */
+//--------------------------------------------------------------------------------------------------
+#define CFG_NODE_RESOURCES                               "resources:/"
+
 
 
 //--------------------------------------------------------------------------------------------------
@@ -569,8 +572,8 @@ static le_result_t CreateUserAndGroups
 //--------------------------------------------------------------------------------------------------
 /**
  * Get the configured permissions for a device.  The permissions will be returned in the provided
- * buffer as a string (either "r", "w" or "rw").  The provided buffer must be greater than or equal
- * to MAX_DEVICE_PERM_STR_BYTES bytes long.
+ * buffer as a string.  The provided buffer must be greater than or equal to MAX_DEVICE_PERM_STR_BYTES
+ * bytes long.
  **/
 //--------------------------------------------------------------------------------------------------
 static void GetCfgPermissions
@@ -593,6 +596,11 @@ static void GetCfgPermissions
     if (le_cfg_GetBool(cfgIter, "isWritable", false))
     {
         bufPtr[i++] = 'w';
+    }
+
+    if (le_cfg_GetBool(cfgIter, "isExecutable", false))
+    {
+        bufPtr[i++] = 'x';
     }
 
     bufPtr[i] = '\0';
@@ -964,6 +972,374 @@ static void CleanupAppSmackSettings
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Cleans up the resource tree if an app is removed. Remove app from resources app list.
+ * If there are no more apps under a resource, then remove the resource.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void CleanupResourceCfg
+(
+    app_Ref_t appRef
+)
+{
+    // Get a config iterator for the resources.
+    le_cfg_IteratorRef_t resourceCfg = le_cfg_CreateWriteTxn(CFG_NODE_RESOURCES);
+    le_cfg_GoToNode(resourceCfg, CFG_NODE_DIRS);
+
+    if (le_cfg_GoToFirstChild(resourceCfg) == LE_OK)
+    {
+        do
+        {
+            char resource[LIMIT_MAX_PATH_BYTES];
+            le_cfg_GetString(resourceCfg, "src", resource, sizeof(resource), "");
+
+            le_cfg_GoToNode(resourceCfg, "app");
+            int count = 0;
+
+            if (le_cfg_GoToFirstChild(resourceCfg) == LE_OK)
+            {
+                do
+                {
+                    char appName[LIMIT_MAX_PATH_BYTES];
+                    le_cfg_GetString(resourceCfg, "name", appName, sizeof(appName), "");
+
+                    if (strcmp(appRef->name, appName) == 0)
+                    {
+                        LE_INFO("Deleting appName %s from resource %s", appName, resource);
+                        le_cfg_DeleteNode(resourceCfg, "");
+                        count--;
+                    }
+
+                    count++;
+                }
+                while (le_cfg_GoToNextSibling(resourceCfg) == LE_OK);
+            }
+
+            // move back up to the list of directory resources
+            le_cfg_GoToNode(resourceCfg, "../..");
+
+            // Delete the resource since we deleted the only app using this resource
+            if (count == 0)
+            {
+                LE_INFO("Deleting resource: %s", resource);
+                le_cfg_DeleteNode(resourceCfg, "");
+            }
+        }
+        while (le_cfg_GoToNextSibling(resourceCfg) == LE_OK);
+
+        le_cfg_GoToParent(resourceCfg);
+    }
+
+    // Manage files section
+    le_cfg_GoToNode(resourceCfg, "../" CFG_NODE_FILES);
+
+    if (le_cfg_GoToFirstChild(resourceCfg) == LE_OK)
+    {
+        do
+        {
+            char resource[LIMIT_MAX_PATH_BYTES];
+            le_cfg_GetString(resourceCfg, "src", resource, sizeof(resource), "");
+
+            le_cfg_GoToNode(resourceCfg, "app");
+            int count = 0;
+
+            if (le_cfg_GoToFirstChild(resourceCfg) == LE_OK)
+            {
+                do
+                {
+                    char appName[LIMIT_MAX_PATH_BYTES];
+                    le_cfg_GetString(resourceCfg, "name", appName, sizeof(appName), "");
+
+                    if (strcmp(appRef->name, appName) == 0)
+                    {
+                        LE_INFO("Deleting appName %s from resource %s", appName, resource);
+                        le_cfg_DeleteNode(resourceCfg, "");
+                        count--;
+                    }
+
+                    count++;
+                }
+                while (le_cfg_GoToNextSibling(resourceCfg) == LE_OK);
+            }
+
+            // move back up to the list of file resources
+            le_cfg_GoToNode(resourceCfg, "../..");
+
+            // Delete the resource since we deleted the only app using this resource
+            if (count == 0)
+            {
+                LE_INFO("Deleting resource: %s", resource);
+                le_cfg_DeleteNode(resourceCfg, "");
+            }
+        }
+        while (le_cfg_GoToNextSibling(resourceCfg) == LE_OK);
+
+        le_cfg_GoToParent(resourceCfg);
+    }
+    le_cfg_CommitTxn(resourceCfg);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add application to the list of apps that require this specific resource. When the list of apps
+ * for a resource is empty, we will remove the resource from the resource tree.
+ */
+//--------------------------------------------------------------------------------------------------
+void AddAppToSharedResource
+(
+    le_cfg_IteratorRef_t iterRef,
+    const char * appName
+)
+{
+    char indexStr[LIMIT_MD5_STR_BYTES];
+
+    le_cfg_GoToNode(iterRef, "app");
+
+    if (le_cfg_GoToFirstChild(iterRef) != LE_OK)
+    {
+        snprintf(indexStr, sizeof(indexStr), "%d", -1);
+    }
+    else
+    {
+        do
+        {
+            le_cfg_GetNodeName(iterRef, "", indexStr, sizeof(indexStr));
+
+            // if app already exist, do not proceed
+            char currentAppName[LIMIT_MAX_APP_NAME_BYTES];
+            le_cfg_GetString(iterRef, "name", currentAppName, sizeof(currentAppName), "");
+
+            if (strcmp(currentAppName, appName) == 0)
+            {
+                LE_DEBUG("App already exists.");
+                return;
+            }
+        }
+        while (le_cfg_GoToNextSibling(iterRef) == LE_OK);
+
+        le_cfg_GoToParent(iterRef);
+    }
+
+    LE_DEBUG("Adding app to resource: %s", appName);
+    int index = atoi(indexStr);
+    index++;
+    snprintf(indexStr, sizeof(indexStr), "%d", index);
+    le_cfg_GoToNode(iterRef, indexStr);
+    le_cfg_SetString(iterRef, "name", appName);
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set SMACK rule that will allow this resource to access the resource with specificed access
+ * permission from the required section.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SetSmackRuleForResource
+(
+    app_Ref_t appRef,
+    const char * srcPath,
+    const char * label,
+    const char * permission
+)
+{
+    char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+    smack_GetAppLabel(appRef->name, appLabel, sizeof(appLabel));
+    smack_SetRule(appLabel, permission, label);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set DAC permission of the resource once with rwx on others (rely on MAC for access control)
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetDACForResource
+(
+    const char * srcPath
+)
+{
+    struct stat srcStat;
+
+    if (stat(srcPath, &srcStat) < 0)
+    {
+        // TODO: Print error
+        return LE_FAULT;
+    }
+
+    if (chmod(srcPath, srcStat.st_mode | S_IROTH | S_IWOTH | S_IXOTH) != 0)
+    {
+        LE_ERROR("Unable to change permission bit on %s", srcPath);
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Search through our resource tree to find the SMACK label to use for sharing the resource.
+ * If none is found, then we will:
+ * - Generate a new entry that contains the new resource and the label used for it.
+ * - Set DAC permission of the resource once with rwx on others (rely on MAC for access control)
+ * - Set our resource with the new label.
+ * - Set SMACK rule that will allow this resource to access the resource with specificed access
+ *   permission from the requires section.
+ * - Add application to the app list of the resource (to manage when to remove the resource from
+     the resource tree).
+ * If the resource exist, we will just set the SMACK rule and add add app to the app list of the
+ * resource.
+ */
+//--------------------------------------------------------------------------------------------------
+void SetPermissionForResource
+(
+    app_Ref_t appRef,
+    const char * type,
+    const char * srcPath,
+    const char * permission
+)
+{
+    char indexStr[LIMIT_MD5_STR_BYTES];
+    char label[LIMIT_MAX_PATH_BYTES];
+
+    // Go to the resources section.
+    le_cfg_IteratorRef_t resourceCfg = le_cfg_CreateWriteTxn(CFG_NODE_RESOURCES);
+    le_cfg_GoToNode(resourceCfg, type);
+
+    if (le_cfg_GoToFirstChild(resourceCfg) != LE_OK)
+    {
+        snprintf(indexStr, sizeof(indexStr), "%d", -1);
+    }
+    else
+    {
+        do
+        {
+            le_cfg_GetNodeName(resourceCfg, "", indexStr, sizeof(indexStr));
+
+            char resource[LIMIT_MAX_PATH_BYTES];
+            le_cfg_GetString(resourceCfg, "src", resource, sizeof(resource), "");
+
+            if (strcmp(resource, srcPath) == 0)
+            {
+                LE_DEBUG("Resource already exists, loading rules.");
+                le_cfg_GetString(resourceCfg, "label", label, sizeof(label), "");
+                SetSmackRuleForResource(appRef, srcPath, label, permission);
+                AddAppToSharedResource(resourceCfg, appRef->name);
+                le_cfg_CommitTxn(resourceCfg);
+                return;
+            }
+        }
+        while (le_cfg_GoToNextSibling(resourceCfg) == LE_OK);
+
+        le_cfg_GoToParent(resourceCfg);
+    }
+
+    int index = atoi(indexStr);
+    index++;
+    snprintf(indexStr, sizeof(indexStr), "%d", index);
+    le_cfg_GoToNode(resourceCfg, indexStr);
+    LE_DEBUG("Adding new resource with index: %s", indexStr);
+
+    // set the resource
+    le_cfg_SetString(resourceCfg, "src", srcPath);
+
+    // label will be the requires [type][index] e.g. file0
+    snprintf(label, sizeof(label), "%s%s", type, indexStr);
+    le_cfg_SetString(resourceCfg, "label", label);
+
+    SetDACForResource(srcPath);
+    smack_SetLabel(srcPath, label);
+    SetSmackRuleForResource(appRef, srcPath, label, permission);
+    AddAppToSharedResource(resourceCfg, appRef->name);
+
+    le_cfg_CommitTxn(resourceCfg);
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets DAC and SMACK permissions for resources (files and dirs) defined in the access permission
+ * section of requires.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetPermissionForRequired
+(
+    app_Ref_t appRef                      ///< [IN] Reference to the application.
+)
+{
+    // Get a config iterator for this app.
+    le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(appRef->cfgPathRoot);
+
+    // Go to the required directory section.
+    le_cfg_GoToNode(appCfg, CFG_NODE_REQUIRES "/" CFG_NODE_DIRS);
+
+    if (le_cfg_GoToFirstChild(appCfg) == LE_OK)
+    {
+        do
+        {
+            char permStr[MAX_DEVICE_PERM_STR_BYTES];
+            GetCfgPermissions(appCfg, permStr, sizeof(permStr));
+
+            // Only add dirs that require access permission
+            if (strcmp(permStr, "") != 0)
+            {
+                char srcPath[LIMIT_MAX_PATH_BYTES];
+
+                if (le_cfg_GetString(appCfg, "src", srcPath, sizeof(srcPath), "") != LE_OK)
+                {
+                    LE_ERROR("Source path '%s...' for app '%s' is too long.", srcPath, appRef->name);
+                    return LE_FAULT;
+                }
+
+                SetPermissionForResource(appRef, CFG_NODE_DIRS, srcPath, permStr);
+            }
+        }
+        while (le_cfg_GoToNextSibling(appCfg) == LE_OK);
+
+        le_cfg_GoToParent(appCfg);
+    }
+
+    // Go to the required files section.
+    le_cfg_GoToParent(appCfg);
+    le_cfg_GoToNode(appCfg, CFG_NODE_FILES);
+
+    if (le_cfg_GoToFirstChild(appCfg) == LE_OK)
+    {
+        do
+        {
+            char permStr[MAX_DEVICE_PERM_STR_BYTES];
+            GetCfgPermissions(appCfg, permStr, sizeof(permStr));
+
+            // Only add files that require access permission
+            if (strcmp(permStr, "") != 0)
+            {
+                char srcPath[LIMIT_MAX_PATH_BYTES];
+
+                if (le_cfg_GetString(appCfg, "src", srcPath, sizeof(srcPath), "") != LE_OK)
+                {
+                    LE_ERROR("Source path '%s...' for app '%s' is too long.", srcPath, appRef->name);
+                    return LE_FAULT;
+                }
+
+                SetPermissionForResource(appRef, CFG_NODE_FILES, srcPath, permStr);
+            }
+        }
+        while (le_cfg_GoToNextSibling(appCfg) == LE_OK);
+
+        le_cfg_GoToParent(appCfg);
+    }
+
+    le_cfg_CancelTxn(appCfg);
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Sets SMACK rules for an application.
  *
  * @return
@@ -976,6 +1352,9 @@ static le_result_t SetSmackRules
     app_Ref_t appRef                    ///< [IN] Reference to the application.
 )
 {
+    // Clear resource
+    CleanupResourceCfg(appRef);
+
     // Get the app label.
     char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
     smack_GetAppLabel(appRef->name, appLabel, sizeof(appLabel));
@@ -983,6 +1362,13 @@ static le_result_t SetSmackRules
     SetDefaultSmackRules(appRef, appLabel);
 
     SetSmackRulesForBindings(appRef, appLabel);
+
+    le_result_t result = SetPermissionForRequired(appRef);
+
+    if (result != LE_OK)
+    {
+        return result;
+    }
 
     return SetCfgDevicePermissions(appRef);
 }
@@ -2252,23 +2638,9 @@ static le_result_t CreateRequiredLinks
                 return LE_FAULT;
             }
 
-            // Treat /proc and /sys differently.  These are kernel file systems that user space
-            // processes cannot write create files in.  So it is safe to create a link to the
-            // entire directory.
-            if ( le_path_IsEquivalent("/proc", srcPath, "/") ||
-                 le_path_IsEquivalent("/sys", srcPath, "/") ||
-                 le_path_IsSubpath("/proc", srcPath, "/") ||
-                 le_path_IsSubpath("/sys", srcPath, "/") )
-            {
-                if (CreateDirLink(appRef, appDirLabelPtr, srcPath, destPath) != LE_OK)
-                {
-                    le_cfg_CancelTxn(appCfg);
-                    return LE_FAULT;
-                }
-            }
             // Treat /dev/shm differently.  These are shared memory expected to be shared between
             // other apps but also other userland processes.  So export the entire directory.
-            else if (le_path_IsEquivalent("/dev/shm", srcPath, "/") ||
+            if (le_path_IsEquivalent("/dev/shm", srcPath, "/") ||
                      le_path_IsSubpath("/dev/shm", srcPath, "/"))
             {
                 if ((CreateDirLink(appRef, appDirLabelPtr, srcPath, destPath) != LE_OK) ||
@@ -2281,8 +2653,7 @@ static le_result_t CreateRequiredLinks
             }
             else
             {
-                // Create links for all files in the source directory.
-                if (RecursivelyCreateLinks(appRef, appDirLabelPtr, srcPath, destPath) != LE_OK)
+                if (CreateDirLink(appRef, appDirLabelPtr, srcPath, destPath) != LE_OK)
                 {
                     le_cfg_CancelTxn(appCfg);
                     return LE_FAULT;
@@ -2968,6 +3339,8 @@ void app_Delete
 )
 {
     CleanupAppSmackSettings(appRef);
+
+    CleanupResourceCfg(appRef);
 
     // Remove the resource limits.
     resLim_CleanupApp(appRef);
