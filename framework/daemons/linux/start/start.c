@@ -151,6 +151,53 @@ static const uint32_t BrownoutVoltageLimit = 3525;
 //--------------------------------------------------------------------------------------------------
 static void* ModemPASoPtr;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handle the event during PA initialization
+ */
+//--------------------------------------------------------------------------------------------------
+static void RunServiceLoop
+(
+    void
+)
+{
+    struct pollfd pollControl;
+    int pollResult;
+    le_result_t result;
+
+    // Get the Legato event loop "readyness" file descriptor and put it in a pollfd struct
+    // configured to detect "ready to read".
+    pollControl.fd = le_event_GetFd();
+    pollControl.events = POLLIN;
+
+    // Block until the file descriptor is "ready to read".
+    LE_INFO("Starting poll ...");
+    pollResult = poll(&pollControl, 1, -1);
+
+    LE_INFO("pollResult = %i", pollResult);
+
+    if (pollResult > 0)
+    {
+        while (1)
+        {
+            // The Legato event loop needs servicing.
+            // Keep servicing it until there is nothing left.
+            result = le_event_ServiceLoop();
+            LE_DEBUG("result = %i", result);
+
+            // No more work, so break out
+            if ( result != LE_OK )
+            {
+                LE_INFO("No more events");
+                break;
+            }
+        }
+    }
+    else
+    {
+        LE_FATAL("poll() failed with errno %m.");
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -195,7 +242,8 @@ static void LoadModemPA
     // there's enough space above.
     memmove(ModemPA + sizeof(GoldenAppsPath) - 1, appHash, ModemPA + size + 1 - appHash);
     memcpy(ModemPA, GoldenAppsPath, sizeof(GoldenAppsPath) - 1);
-    strcat(ModemPA, ModemPAPath);
+    strncat(ModemPA, ModemPAPath, strlen(ModemPAPath));
+    ModemPA[PATH_MAX-1] = '\0';
 
     LE_INFO("Trying to open modem PA %s", ModemPA);
 
@@ -203,11 +251,7 @@ static void LoadModemPA
 
     if (ModemPASoPtr)
     {
-        void (*ciPtr)(void) = dlsym(ModemPASoPtr, "_le_pa_COMPONENT_INIT");
-        if (ciPtr)
-        {
-            ciPtr();
-        }
+        RunServiceLoop();
     }
     else
     {
@@ -251,11 +295,11 @@ static bool IsBrownout
         return false;
     }
 
-    LE_INFO("Checking for brownout");
     if (pa_ips_GetInputVoltage(&inputVoltage))
     {
         return false;
     }
+    LE_INFO("Checking for brownout %d", inputVoltage);
 
     return inputVoltage < BrownoutVoltageLimit;
 }
@@ -288,11 +332,11 @@ static bool IsHardwareFaultReset
         return false;
     }
 
-    LE_INFO("Checking reset reason");
     if (pa_info_GetResetInformation(&resetCode, resetReason, sizeof(resetReason)))
     {
         return false;
     }
+    LE_INFO("Checking reset reason %d", resetCode);
 
     return (resetCode == LE_INFO_VOLT_CRIT) || (resetCode == LE_INFO_TEMP_CRIT);
 }
@@ -2109,7 +2153,6 @@ static void CheckAndInstallCurrentSystem
 
         // Make the newest system the current system.
         SetCurrent(newestIndex);
-        currentIndex = newestIndex;
     }
 
     // If we need to update the dynamic linker's cache, do that now.
