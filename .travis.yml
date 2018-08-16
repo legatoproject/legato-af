@@ -3,7 +3,6 @@ dist: trusty
 language: c
 
 compiler:
-  - clang
   - gcc
 
 sudo: required
@@ -25,7 +24,6 @@ install:
   - git config --global user.email "legato@travis-ci.org"
 
 script:
-  - if [ "$CC" == "clang" ]; then export USE_CLANG=1 CC=clang CXX=clang++ && which clang; fi
   - cd ..
   - mkdir workspace
   - cd workspace
