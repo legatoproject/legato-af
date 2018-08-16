@@ -1,0 +1,28 @@
+/** @page howToKMod How To Setup Kernel Modules
+
+A loadable kernel module is a way to add or remove code from the kernel at runtime. It is an ideal
+way to install device drivers and enable the kernel to interface with hardware on your target. The
+alternative to this is to add your device drivers into your kernel which can make the kernel very
+large (not good on an embedded system) also requiring you to create and maintain
+your own OS distribution.
+
+@b References:
+- @ref getStartedKO Tutorial to walk you through the step by step instructions of building an
+@c .mdef for your kernel module and update your system.
+- Find detailed specifications on adding a kernel module to your target in our @ref defFilesMdef
+reference.
+
+These tutorials will walk you through real world examples of kernel modules and demonstrate
+how to set up:
+- application dependencies
+- kernel module dependencies
+- install and remove scripts
+- bundle binary files with scripts
+
+| Section                            | Example of                                                             |
+| ---------------------------------- | -----------------------------------------------------------------------|
+| @subpage howToKModSPI              | dependency on an app, using scripts for install and removal of modules |
+| @subpage howToKModBMI160           | module with dependencies on multiple kernel modules                    |
+| @subpage howToKModTIwifi           | module with install and removal scripts and bundling binary files      |
+
+ **/

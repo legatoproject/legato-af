@@ -2,8 +2,8 @@
 
 A loadable kernel module is a way to add or remove code from the kernel at runtime. It is an ideal
 way to create device drivers and enable the kernel to interface with hardware on your target. The
-alternative to this is to add your hardware code into your kernel which can make the kernel very
-monolithic (not good on a small embedded system) and this also requires you to create and maintain
+alternative to this is to add your device drivers into your kernel which can make the kernel very
+large (not good on an embedded system), also requiring you to create and maintain
 your own OS distribution.
 
 In the Framework we have provided a method to add loadable kernel modules within a Legato System.
@@ -18,9 +18,13 @@ Building your system will build your kernel module and use the kernel headers th
 included with your toolchain. Once the system is built then you can @ref toolsHost_update your
 target with the new system and install the kernel module.
 
-See @ref getStartedKO Tutorial to walk you through the step by step instructions of building an
-@c .mdef for your kernel module and add and update your system. Find detailed specifications on
-adding a kernel module to your target in our @ref defFilesMdef reference.
+@b References:
+- @ref getStartedKO Tutorial to walk you through the step by step instructions of building an
+@c .mdef for your kernel module and add and update your system.
+- Find detailed specifications on adding a kernel module to your target in our @ref defFilesMdef
+reference.
+- For examples of different configuration and real world examples of setting up kernel modules
+see @ref howToKMod.
 
 @section conceptsKernelModule_version Kernel Versions
 

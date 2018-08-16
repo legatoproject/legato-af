@@ -1,0 +1,354 @@
+/** @page howToKModTIwifi TI WiFi Kernel Module Example
+
+@warning The TIWiFi module example is here for example purposes only, the driver is currently
+bundled with Linux on supported targets.  If you want to try this example you must first remove the
+TIWiFi driver from Linux and rebuild your Linux Distribution.
+
+The TI WiFi module provides an example of a complicated install and remove script for multiple
+modules as well as dependencies on multiple kernel modules.
+
+The TI WiFi driver is comprised of 3 kernel modules:
+- wlcore: needs install and remove scripts
+- wlcore_sdio
+- wp18xx: needs install and remove scripts
+
+The load sequence for the modules is (the unload sequence is done in reverse):
+
+@c 1. wlcore </br>
+@c 2. wlcore_sdio </br>
+@c 3. wl18xx </br>
+
+All three modules must be called in your systems @c .sdef file:
+@verbatim
+{
+    $LEGATO_ROOT/drivers/wl18xx/wl18xx.mdef
+    $LEGATO_ROOT/drivers/wlcore/wlcore.mdef
+    $LEGATO_ROOT/drivers/wlcore_sdio/wlcore_sdio.mdef
+}
+@endverbatim
+
+The wlcore kernel module contains multiple source files as well as 2 binary files.  These must be
+defined in the @c wlcore.mdef as follows:
+@verbatim
+//-------------------------------------------------------------------------------------------------
+// wlcore.mdef
+//
+// Copyright (C) Sierra Wireless Inc.
+//-------------------------------------------------------------------------------------------------
+
+sources:
+{
+    acx.c
+    ps.c
+    tx.c
+    cmd.c
+    debugfs.c
+    event.c
+    io.c
+    main.c
+    scan.c
+    boot.c
+    init.c
+    rx.c
+    sysfs.c
+    vendor_cmd.c
+}
+
+bundles:
+{
+    file:
+    {
+        $CURDIR/bin/wl18xx-conf.bin /bin/wl18xx-conf.bin
+        $CURDIR/bin/wl18xx-fw-4.bin /bin/wl18xx-fw-4.bin
+    }
+}
+
+scripts:
+{
+    install: $CURDIR/scripts_wlcore/install.sh
+    remove: $CURDIR/scripts_wlcore/remove.sh
+}
+@endverbatim
+
+To install the wlcore kernel module we need to use an install and remove script as we need to:
+- point the kernel to where the binaries will be available on the target
+- enable the GPIO pins
+- resolve the module dependencies
+- install modules already included in the Linux distribution (msm_sdcc, cfg80211, mac80211)
+- install wlcore
+
+Install Script:
+@verbatim
+#!/bin/sh
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+#
+# TI wireless wl18xx specific applications start or stop here
+# TI WIFI IoT board is managed by SDIO/MMC bus. Some signals need to be set
+# and managed before the SDIO/MMC module is inserted.
+# TI WIFI IoT conflicts with others devices using the SDIO/MMC bus
+
+export PATH=$PATH:/usr/bin:/bin:/usr/sbin:/sbin
+
+KO_PATH=$1
+
+echo -n /legato/systems/current/modules/files/wlcore/bin > /sys/module/firmware_class/parameters/path
+
+# Add mdev rule for crda
+grep crda /etc/mdev.conf > /dev/null
+if [ $? -ne 0 ]; then
+   (mount | grep -q " on /etc type ") || \
+       (cp /etc/mdev.conf /tmp; mount -o bind /tmp/mdev.conf /etc/mdev.conf)
+   echo "\$COUNTRY=.. root:root 0660 */sbin/crda" >> /etc/mdev.conf
+fi
+lsmod | grep wlcore >/dev/null
+if [ $? -ne 0 ]; then
+   # Check if MMC/SDIO module is inserted. Because WIFI use SDIO/MMC bus
+   # we need to remove the SDIO/MMC module
+   lsmod | grep msm_sdcc >/dev/null
+  if [ $? -eq 0 ]; then
+      grep -q mmcblk /proc/mounts
+      if [ $? -ne 0 ]; then
+         rmmod msm_sdcc
+      else
+         false
+      fi
+      if [ $? -ne 0 ]; then
+         # Unable to remove. May be others devices use SDIO/MMC bus
+         echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+         echo "Unable to remove the SDIO/MMC module... May be in use ?"
+         echo "Please, free all SDIO/MMC devices before using TI WIFI."
+         echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+         exit 127
+      fi
+   fi
+   # Enable all GPIOs on all EXPANDERs
+   gpioexp 1 1 enable >/dev/null || exit 127
+
+   ### mangOH green has 3 expanders
+   # Set IOTO_RESET, GPIO#4/EXPANDER#3 - IOT0 Reset signal is disabled
+   gpioexp 3 4 output normal high >/dev/null 2>&1
+   if [ $? -ne 0 ]; then
+       echo "mangOH red board"
+
+       # Set IOT0_GPIO2 = 1 (WP GPIO13)
+       [ -d /sys/class/gpio/gpio13 ] || echo 13 >/sys/class/gpio/export
+       echo out >/sys/class/gpio/gpio13/direction
+       echo 1 >/sys/class/gpio/gpio13/value
+
+       # Set IOT0_RESET = 1 (WP GPIO2)
+       [ -d /sys/class/gpio/gpio2 ] || echo 2 >/sys/class/gpio/export
+       echo out >/sys/class/gpio/gpio2/direction
+       echo 1 >/sys/class/gpio/gpio2/value
+
+       # Clear SDIO_SEL, GPIO#9/EXPANDER#1 - Select the SDIO
+       gpioexp 1 9 output normal low >/dev/null || exit 127
+   else
+       echo "mangOH green board"
+       # Set IOT0_GPIO2 = 1 (WP GPIO33)
+       [ -d /sys/class/gpio/gpio33 ] || echo 33 >/sys/class/gpio/export
+       echo out >/sys/class/gpio/gpio33/direction
+       echo 1 >/sys/class/gpio/gpio33/value
+
+       # Clear SDIO_SEL, GPIO#13/EXPANDER#1 - Select the SDIO
+       gpioexp 1 13 output normal low >/dev/null || exit 127
+   fi
+
+   # Set IOT0_GPIO4 = 1 (WP GPIO8)
+   [ -d /sys/class/gpio/gpio8 ] || echo 8 >/sys/class/gpio/export
+   echo out >/sys/class/gpio/gpio8/direction
+   echo 1 >/sys/class/gpio/gpio8/value
+
+   modprobe msm_sdcc || exit 127
+   modprobe cfg80211 || exit 127
+   modprobe mac80211 || exit 127
+
+   insmod $KO_PATH || exit 127
+
+fi
+@endverbatim
+
+The removal script must:
+- remove the dependencies on the modules in the Linux distribution (msm_sdcc, cfg80211, mac80211)
+- disable the GPIO pins
+- remove the wlcore module
+
+Remove Script:
+@verbatim
+#!/bin/sh
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+#
+# TI wireless wl18xx specific applications start or stop here
+# TI WIFI IoT board is managed by SDIO/MMC bus. Some signals need to be set
+# and managed before the SDIO/MMC module is inserted.
+# TI WIFI IoT conflicts with others devices using the SDIO/MMC bus
+
+export PATH=$PATH:/usr/bin:/bin:/usr/sbin:/sbin
+
+KO_PATH=$1
+
+lsmod | grep wlcore >/dev/null
+if [ $? -eq 0 ]; then
+   rmmod $KO_PATH || exit 127
+   rmmod mac80211 || exit 127
+   rmmod cfg80211 || exit 127
+   if `lsmod | grep '^compat '`; then
+       rmmod compat || exit 127
+   fi
+
+   rmmod msm-sdcc || exit 127
+
+   # Reset IOT0_GPIO4 = 0 (WP GPIO8)
+   echo 0 >/sys/class/gpio/gpio8/value
+   # Clear IOTO_RESET, GPIO#4/EXPANDER#3 - IOT0 Reset signal is enabled
+   gpioexp 3 4 output normal low >/dev/null 2>&1
+   if [ $? -ne 0 ]; then
+       echo "mangOH red board"
+       # Set IOT0_RESET = 1 (WP GPIO2)
+       echo 0 >/sys/class/gpio/gpio2/value
+
+       # Clear SDIO_SEL, GPIO#9/EXPANDER#1 - Deselect the SDIO
+       gpioexp 1 9 output normal high >/dev/null || exit 127
+
+       # Reset IOT0_GPIO2 = 0 (WP GPIO13)
+       echo 0 >/sys/class/gpio/gpio13/value
+   else
+       echo "mangOH green board"
+       # Set SDIO_SEL, GPIO#13/EXPANDER#1 - Deselect the SDIO
+       gpioexp 1 13 output normal high >/dev/null || exit 127
+
+       # Reset IOT0_GPIO2 = 0 (WP GPIO33)
+       echo 0 >/sys/class/gpio/gpio33/value
+   fi
+
+   # Insert MMC/SDIO module
+   modprobe msm_sdcc || exit 127
+fi
+@endverbatim
+
+The wlcore_sdio module has only one source file sdio.c and has dependency on wlcore. The module
+dependency is indicated in the mdef with @c requires: @c kernelModules: section.
+@verbatim
+sources:
+{
+    sdio.c
+}
+
+requires:
+{
+    kernelModules:
+    {
+        $LEGATO_ROOT/drivers/wlcore/wlcore.mdef
+    }
+}
+@endverbatim
+
+The wp18xx module is made up of multiple source files and also needs to use an install and removal
+script to correctly install the kernel module.
+
+wl18xx.mdef:
+@verbatim
+sources:
+{
+    acx.c
+    cmd.c
+    debugfs.c
+    event.c
+    io.c
+    main.c
+    scan.c
+    tx.c
+}
+
+requires:
+{
+    kernelModules:
+    {
+        $LEGATO_ROOT/drivers/wlcore_sdio/wlcore_sdio.mdef
+    }
+}
+
+scripts:
+{
+    install: $CURDIR/scripts_wl18xx/install.sh
+    remove:  $CURDIR/scripts_wl18xx/remove.sh
+}
+@endverbatim
+
+The install script for the wp18xx module needs to install the module and enable the wlan0 interface:
+@verbatim
+#!/bin/sh
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+#
+# TI wireless wl18xx specific applications start or stop here
+# TI WIFI IoT board is managed by SDIO/MMC bus. Some signals need to be set
+# and managed before the SDIO/MMC module is inserted.
+# TI WIFI IoT conflicts with others devices using the SDIO/MMC bus
+
+export PATH=$PATH:/usr/bin:/bin:/usr/sbin:/sbin
+
+KO_PATH=$1
+
+insmod $KO_PATH
+
+sleep 62
+
+ifconfig -a | grep wlan0 >/dev/null
+if [ $? -ne 0 ] ; then
+    echo "Failed to start TI wifi"; exit 126
+fi
+ifconfig wlan0 up >/dev/null
+if [ $? -ne 0 ] ; then
+    echo "Failed to start TI wifi"; exit 127
+fi
+@endverbatim
+
+And the removal script needs to disable the wlan0 interface and remove the module:
+@verbatim
+#!/bin/sh
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+#
+# TI wireless wl18xx specific applications start or stop here
+# TI WIFI IoT board is managed by SDIO/MMC bus. Some signals need to be set
+# and managed before the SDIO/MMC module is inserted.
+# TI WIFI IoT conflicts with others devices using the SDIO/MMC bus
+
+export PATH=$PATH:/usr/bin:/bin:/usr/sbin:/sbin
+
+KO_PATH=$1
+
+ifconfig | grep wlan0 >/dev/null
+if [ $? -eq 0 ]; then
+    ifconfig wlan0 down
+fi
+lsmod | grep wlcore >/dev/null
+if [ $? -eq 0 ]; then
+    rmmod $KO_PATH
+fi
+@endverbatim
+
+You should now be able to build your system including the kernel module and @ref toolsHost_update
+your target with the new system including the TI WiFi modules.
+
+Once the new system is installed on your target you should be able to find the TI WiFi files in the
+following location:
+
+@verbatim
+/legato/systems/current/modules
+    ├── files
+    │   ├── wl18xx
+    │   │   └── scripts
+    │   │       ├── install.sh
+    │   │       └── remove.sh
+    │   └── wlcore
+    │       ├── bin
+    │       │   ├── wl18xx-conf.bin
+    │       │   └── wl18xx-fw-4.bin
+    │       └── scripts
+    │           ├── install.sh
+    │           └── remove.sh
+    ├── wl18xx.ko
+    ├── wlcore.ko
+    └── wlcore_sdio.ko
+@endverbatim
+
+**/

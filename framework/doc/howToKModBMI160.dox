@@ -1,0 +1,114 @@
+/** @page howToKModBMI160 BMI160 Kernel Module Example
+
+The BMI160 accelerometer and gyroscope kernel module is included with the [mangOh source code]
+(https://github.com/mangOH/mangOH/tree/master/linux_kernel_modules/bmi160). It provides a good
+example of how to set up kernel modules with dependencies on multiple modules.
+
+BMI160 module dependency tree:
+@verbatim
+bmi160-i2c
+    |
+  bmi160
+    |
+iio-triggered-buffer
+    |
+iio-kfifo-buf
+    |
+   iio
+@endverbatim
+
+Because the modules are dependent on each other they must be loaded in a specific order:
+The order in which the drivers are loaded must be in the order:
+
+@c 1. bmi160-12c </br>
+@c 2. bmi160 </br>
+@c 3. iio-triggered-buffer </br>
+@c 4. iio-kfifo-buf </br>
+@c 5. iio </br>
+
+And they must be unloaded in the reverse order:
+
+@c 1. iio </br>
+@c 2. iio-kfifo-buf </br>
+@c 3. iio-triggered-buffer </br>
+@c 4. bmi160 </br>
+@c 5. bmi160-12c </br>
+
+To facilitate this the dependant tree must be specified in the dependant module's @c .mdef. The
+next steps walk you through how to add a series of dependencies.
+
+We start with the first module to start up, and add the dependency as follows:
+
+In the @c mangOH/linux_kernel_modules/bmi160/bmi160-i2c.mdef
+@verbatim
+requires:
+{
+    kernelModules:
+    {
+        $CURDIR/bmi160
+    }
+}
+@endverbatim
+
+Next we move to the next module, note we don't need to add that the bmi160 is depending on the
+@c bmi160-i2c module, we just need to define its dependencies.
+
+In the @c mangOH/linux_kernel_modules/bmi160/bmi160.mdef
+@verbatim
+requires:
+{
+    kernelModules:
+    {
+#if ${MANGOH_KERNEL_LACKS_IIO} = 1
+        $CURDIR/../iio/iio-triggered-buffer
+#endif // MANGOH_KERNEL_LACKS_IIO
+    }
+}
+@endverbatim
+
+And so on, until we get to the end of the dependency tree...
+
+In the @c mangOH/linux_kernel_modules/iio/iio-triggered-buffer.mdef
+@verbatim
+requires:
+{
+    kernelModules:
+    {
+        $CURDIR/iio-kfifo-buf
+    }
+}
+@endverbatim
+
+In the @c mangOH/linux_kernel_modules/iio/iio-kfifo-buf.mdef
+@verbatim
+requires:
+{
+    kernelModules:
+    {
+        $CURDIR/iio
+    }
+}
+@endverbatim
+
+The @c mangOH/linux_kernel_modules/iio/iio.mdef does not have any requirement as it's the last
+module in the dependency tree.
+
+The final step to set up the dependencies is to add all the modules to your systems @c .sdef file:
+@verbatim
+kernelModules:
+{
+    $CURDIR/linux_kernel_modules/bmi160/bmi160-i2c
+    $CURDIR/linux_kernel_modules/bmi160/bmi160
+#if ${MANGOH_KERNEL_LACKS_IIO} = 1
+    $CURDIR/linux_kernel_modules/iio/iio-triggered-buffer
+    $CURDIR/linux_kernel_modules/iio/iio-kfifo-buf
+    $CURDIR/linux_kernel_modules/iio/iio
+#endif // MANGOH_KERNEL_LACKS_IIO
+}
+@endverbatim
+
+This will take care of both loading and unloading the kernel modules in the specific order needed
+when the target starts and stops.
+
+**/
+

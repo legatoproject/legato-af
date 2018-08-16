@@ -1,0 +1,144 @@
+/** @page howToKModSPI SPIsvc Kernel Module Example
+
+Spisvc module is used by spiService application, and provides a good example of using dependencies
+on applications and modules, loading the module on demand from an application, and
+using scripts for installation and removal of the modules.
+
+@note This module is already installed on the WP76 and WP77 modules, if you wish to try adding it
+manually remove the entry from the @c default.sdef first.
+
+The install scripts, source code and mdef file have been provided:
+@verbatim
+legato/drivers/spisvc
+    ├── scripts
+    │   ├── install.sh
+    │   └── remove.sh
+    ├── spisvc.c
+    └── spisvc.mdef
+@endverbatim
+
+The spiService application is dependant on the @c spisvc kernel module being loaded into the system
+before the app starts. To set up the dependency the following has to be added to the
+@c requires: @c kernelModules: section of @c legato/apps/platformServices/spiService.adef.
+
+@verbatim
+requires:
+{
+#if ${LEGATO_FEATURE_SPISVC} = ""
+#else
+    kernelModules:
+    {
+        $LEGATO_ROOT/drivers/spisvc/spisvc.mdef
+    }
+#endif
+}
+@endverbatim
+
+The spisvc only needs to be loaded once the @c spiService is started and can be removed when the
+@c spiService is stopped.  To do this set @c load: type to @c manual in the
+@c spisvc.mdef
+
+@verbatim
+sources:
+{
+    spisvc.c
+}
+
+load: manual
+
+scripts:
+{
+    install: $CURDIR/scripts/install.sh
+    remove: $CURDIR/scripts/remove.sh
+}
+@endverbatim
+
+The source files are added to the @c sources: section of the @c .mdef:
+
+@verbatim
+sources:
+{
+    spisvc.c
+}
+@endverbatim
+
+Install and remove scripts must be used if you want to customize the load and unload behavior of
+a module. @c spisvc contains dependencies on another kernel module spidev that is already included
+in the Linux Distribution. To set the dependency it must be set in the install and removal script.
+
+Install Script:
+@verbatim
+#!/bin/sh
+KO_PATH=$1
+
+modprobe -q spidev
+insmod "$KO_PATH"
+
+# Make 10 attempts to check whether dev file exists
+# Sleep 1s in between
+
+for i in $(seq 1 10)
+do
+  if [ ! "$(find /dev/spidev* 2> /dev/null | wc -l)" -eq "0" ]
+  then
+    exit 0
+  fi
+    sleep 1
+done
+
+# return error if device file hasn't been created after timeout
+if [ "$i" -eq "10" ]
+then
+  exit 1
+fi
+
+exit 0
+@endverbatim
+
+Removal Script:
+@verbatim
+#!/bin/sh
+
+KO_PATH=$1
+
+rmmod $KO_PATH
+modprobe -rq spidev
+
+exit 0
+@endverbatim
+
+The last step is to add the @c spiService to the @c apps: section in your @c .sdef as well as add
+@c spisvc.mdef to the @c kernelModules: section of your @c .sdef.
+
+@verbatim
+apps:
+{
+    $LEGATO_ROOT/apps/platformServices/spiService
+}
+
+#if ${LEGATO_FEATURE_SPISVC} = ""
+#else
+kernelModules:
+{
+    $LEGATO_ROOT/drivers/spisvc/spisvc.mdef
+}
+#endif
+@endverbatim
+
+You should now be able to build your system including the kernel module and @ref toolsHost_update
+your target with the new system including the spisvc module.
+
+Once the new system is installed on your target you should be able to find the spisvc files in the
+following location:
+
+@verbatim
+/legato/systems/current/modules/
+    ├── files
+    │   └── spisvc
+    │       └── scripts
+    │           ├── install.sh
+    │           └── remove.sh
+    └── spisvc.ko
+@endverbatim
+
+**/
