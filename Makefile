@@ -387,6 +387,7 @@ TESTS_C_TARGETS = $(foreach target,$(TARGETS),tests_c_$(target))
 .PHONY: $(TESTS_C_TARGETS)
 $(TESTS_C_TARGETS):tests_c_%: % framework_% build/%/Makefile
 	$(MAKE) -C build/$(TARGET) tests_c
+	$(MAKE) -C apps/test/framework/mk CC=$(TARGET_CC)
 	mksys -t $(TARGET) -w build/$(TARGET)/testFramework -o build/$(TARGET) \
 		-s $(LEGATO_ROOT)/components \
 		framework/test/testFramework.sdef $(MKSYS_FLAGS)

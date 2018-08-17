@@ -7,8 +7,11 @@
 
 # Output
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/samples/bin)
-set(APP_OUTPUT_PATH ${CMAKE_BINARY_DIR}/samples)
+set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/samples/lib)
+set(APP_OUTPUT_PATH ${CMAKE_BINARY_DIR}/samples/apps)
 file(MAKE_DIRECTORY ${EXECUTABLE_OUTPUT_PATH})
+file(MAKE_DIRECTORY ${LIBRARY_OUTPUT_PATH})
+file(MAKE_DIRECTORY ${APP_OUTPUT_PATH})
 
 add_custom_target(samples_c
     COMMENT "Generated C & C++ samples in ${EXECUTABLE_OUTPUT_PATH}"
