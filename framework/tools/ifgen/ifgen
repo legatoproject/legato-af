@@ -12,7 +12,6 @@ import argparse
 import collections
 import hashlib
 import importlib
-from operator import attrgetter
 
 # Templating library
 import jinja2
@@ -201,19 +200,19 @@ def CalcHash(interface):
     return hashValue, hashText
 
 
-def _TailAllTypes(interface, typeSet, seenImports):
+def _TailAllTypes(interface, typeList, seenImports):
     for typeName, typeItem in interface.types.iteritems():
-        typeSet.add(typeItem)
+        typeList.append(typeItem)
     for importName, importItem in interface.imports.iteritems():
         if importName in seenImports:
             break
-        seenImports.add(importName)
-        _TailAllTypes(importItem, typeSet, seenImports)
+        seenImports.append(importName)
+        _TailAllTypes(importItem, typeList, seenImports)
 
 def AllTypes(interface):
-    typeSet = set()
-    _TailAllTypes(interface, typeSet, set())
-    return sorted(typeSet, key=attrgetter('name'))
+    typeList = []
+    _TailAllTypes(interface, typeList, [])
+    return typeList
 
 #
 # Main
@@ -296,6 +295,7 @@ def Main():
           'BitMaskType':   ifgenJinjaExtensions.IsBitMaskType,
           'HandlerType':   ifgenJinjaExtensions.IsHandlerType,
           'ReferenceType': ifgenJinjaExtensions.IsReferenceType,
+          'StructType':    ifgenJinjaExtensions.IsStructType,
           'HandlerReferenceType': ifgenJinjaExtensions.IsHandlerReferenceType,
           'EventFunction': ifgenJinjaExtensions.IsEventFunction,
           'HasCallbackFunction': ifgenJinjaExtensions.HasCallbackFunction,
@@ -303,6 +303,8 @@ def Main():
           'OutParameter':  ifgenJinjaExtensions.IsOutParameter,
           'ArrayParameter': ifgenJinjaExtensions.IsArrayParameter,
           'StringParameter': ifgenJinjaExtensions.IsStringParameter,
+          'ArrayMember':   ifgenJinjaExtensions.IsArrayMember,
+          'StringMember':  ifgenJinjaExtensions.IsStringMember,
           'AddHandlerFunction': ifgenJinjaExtensions.IsAddHandlerFunction,
           'RemoveHandlerFunction': ifgenJinjaExtensions.IsRemoveHandlerFunction })
 

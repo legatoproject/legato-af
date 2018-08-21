@@ -189,6 +189,7 @@ def DecorateName(name):
 def FormatParameterName(parameter, forceInput=False):
     if (isinstance(parameter, interfaceIR.ArrayParameter)
         or isinstance(parameter.apiType, interfaceIR.HandlerType)
+        or isinstance(parameter.apiType, interfaceIR.StructType)
         or (not forceInput
             and (parameter.direction & interfaceIR.DIR_OUT) == interfaceIR.DIR_OUT
             and not isinstance(parameter, interfaceIR.StringParameter))):
@@ -218,6 +219,13 @@ def FormatParameter(env, parameter, forceInput=False):
                 FormatType(parameter.apiType) + "* " + parameter.name + "Ptr")
     elif isinstance(parameter.apiType, interfaceIR.HandlerType):
         return FormatType(parameter.apiType) + " " + parameter.name + "Ptr"
+    elif isinstance(parameter.apiType, interfaceIR.StructType):
+        if forceInput or parameter.direction == interfaceIR.DIR_IN:
+            return u"const " + FormatType(parameter.apiType) + " * " + \
+                (u"LE_NONNULL " if not env.globals.get('dontGenerateAttrs') else "") + \
+                parameter.name + "Ptr"
+        else:
+            return FormatType(parameter.apiType) + " * " + parameter.name + "Ptr"
     elif forceInput or parameter.direction == interfaceIR.DIR_IN:
         return FormatType(parameter.apiType) + " " + DecorateName(parameter.name)
     else:
@@ -272,7 +280,8 @@ def GetPackFunction(apiType):
     if isinstance(apiType, interfaceIR.ReferenceType):
         return "le_pack_PackReference"
     elif isinstance(apiType, interfaceIR.BitmaskType) or \
-         isinstance(apiType, interfaceIR.EnumType):
+         isinstance(apiType, interfaceIR.EnumType) or \
+         isinstance(apiType, interfaceIR.StructType):
         return "{}_Pack{}".format(apiType.iface.name, apiType.name)
     else:
         return _PackFunctionMapping[apiType] % ("Pack", )
@@ -281,7 +290,8 @@ def GetUnpackFunction(apiType):
     if isinstance(apiType, interfaceIR.ReferenceType):
         return "le_pack_UnpackReference"
     elif isinstance(apiType, interfaceIR.BitmaskType) or \
-         isinstance(apiType, interfaceIR.EnumType):
+         isinstance(apiType, interfaceIR.EnumType) or \
+         isinstance(apiType, interfaceIR.StructType):
         return "{}_Unpack{}".format(apiType.iface.name, apiType.name)
     else:
         return _PackFunctionMapping[apiType] % ("Unpack", )

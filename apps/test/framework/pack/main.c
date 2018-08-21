@@ -69,7 +69,8 @@ static void CheckString
 
     ResetBuffer(bufferPtr, bufferSz);
 
-    printf("- [%zd] buffer[%zd] maxString[%d]:\n",
+    printf("'%s' - [%zd] buffer[%zd] maxString[%d]:\n",
+           stringPtr,
            stringLen,
            reportedBufferSz,
            maxStringCount);
@@ -117,10 +118,6 @@ static void TestString(void)
     CheckString("bufferexactlen", 512, 14, true);
     CheckString("buffertooshortby1", 512, 16, false);
     CheckString("", 512, 12, true); // Empty
-
-    char notNullTerm[5];
-    memset(notNullTerm, 'a', NUM_ARRAY_MEMBERS(notNullTerm));
-    CheckString(notNullTerm, 512, NUM_ARRAY_MEMBERS(notNullTerm), false);
 }
 
 COMPONENT_INIT

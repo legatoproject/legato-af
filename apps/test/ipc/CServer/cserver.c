@@ -95,6 +95,30 @@ void ipcTest_EchoString
     }
 }
 
+void ipcTest_EchoSimpleStruct
+(
+    const ipcTest_SimpleStruct_t* simpleStructInPtr,
+    ipcTest_SimpleStruct_t* simpleStructOutPtr
+)
+{
+    if (simpleStructOutPtr)
+    {
+        *simpleStructOutPtr = *simpleStructInPtr;
+    }
+}
+
+void ipcTest_EchoCompoundStruct
+(
+    const ipcTest_CompoundStruct_t* compoundStructInPtr,
+    ipcTest_CompoundStruct_t* compoundStructOutPtr
+)
+{
+    if (compoundStructOutPtr)
+    {
+        *compoundStructOutPtr = *compoundStructInPtr;
+    }
+}
+
 #if 0
 // Not currently supported on Java.
 void ipcTest_EchoArray

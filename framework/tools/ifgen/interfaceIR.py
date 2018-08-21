@@ -178,6 +178,76 @@ class OldHandlerType(Type):
     def __str__(self):
         return "OldHandler"
 
+class StructMember(object):
+    def __init__(self, apiType, name):
+        assert not isinstance(apiType, HandlerReferenceType)
+        assert not isinstance(apiType, HandlerType)
+        assert not isinstance(apiType, OldHandlerType)
+
+        self.apiType = apiType
+        self.name = name
+
+    def MaxSize(self):
+        return self.apiType.size
+
+    def __string__(self):
+        return "{} {}".format(apiType, name)
+
+class StructStringMember(StructMember):
+    def __init__(self, name, maxCount):
+        super(StructStringMember, self).__init__(STRING_TYPE, name)
+        self.maxCount = maxCount
+
+    def MaxSize(self):
+        return self.maxCount * self.apiType.size
+
+    def __str__(self):
+        return "{} {}[{}]".format(self.apiType, self.name, self.maxCount)
+
+class StructArrayMember(StructMember):
+    def __init__(self, apiType, name, maxCount):
+        super(StructArrayMember, self).__init__(apiType, name)
+        self.maxCount = maxCount
+
+    def MaxSize(self):
+        return self.maxCount * self.apiType.size
+
+    def __str__(self):
+        return "{} {}[{}]".format(self.apiType, self.name, self.maxCount)
+
+class StructType(Type):
+    """
+    Structure type.  Contains a list of other types and names (similar to C structures).
+    """
+    def __init__(self, name, members=[]):
+        size = 0
+        for member in members:
+            assert isinstance(member, StructMember)
+            size += member.MaxSize()
+
+        super(StructType, self).__init__(name, size)
+        self.members = list(members)
+
+    def __str__(self):
+        return "Struct {} { {} }".format(self.name,
+                                         ["{};".format(member)
+                                          for member in self.members].join(" "))
+
+def MakeStructMember(interface, typeObj, name, arraySize):
+    """Helper to make a parameter object"""
+    if isinstance(typeObj, BasicType) and typeObj.name == "string":
+        # Strings are special
+        if arraySize == None:
+            raise Exception("String needs a size limit")
+        return StructStringMember(name, arraySize)
+    elif arraySize != None:
+        # If a range is provided, it's an array
+        return StructArrayMember(typeObj, name, arraySize)
+    else:
+        # Simple structure member
+        return StructMember(typeObj, name)
+
+
 #---------------------------------------------------------------------------------------------------
 # Basic types
 #---------------------------------------------------------------------------------------------------

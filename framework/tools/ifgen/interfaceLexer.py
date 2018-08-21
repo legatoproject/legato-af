@@ -1,4 +1,4 @@
-# $ANTLR 3.5.2 interface.g 2017-06-08 15:26:03
+# $ANTLR 3.5.2 interface.g 2018-08-17 17:05:33
 
 import sys
 from antlr3 import *
@@ -11,7 +11,6 @@ HIDDEN = BaseRecognizer.HIDDEN
 
 # token types
 EOF=-1
-T__29=29
 T__30=30
 T__31=31
 T__32=32
@@ -24,6 +23,7 @@ T__38=38
 T__39=39
 T__40=40
 T__41=41
+T__42=42
 ALPHA=4
 ALPHANUM=5
 BITMASK=6
@@ -47,8 +47,9 @@ QUOTED_STRING=23
 REFERENCE=24
 SCOPED_IDENTIFIER=25
 SEMICOLON=26
-USETYPES=27
-WS=28
+STRUCT=27
+USETYPES=28
+WS=29
 
 
 class interfaceLexer(Lexer):
@@ -88,7 +89,7 @@ class interfaceLexer(Lexer):
 
 
 
-             
+
     def getErrorHeader(self, e):
         """
         What is the error header, normally line/character position information?
@@ -109,38 +110,16 @@ class interfaceLexer(Lexer):
 
 
 
-    # $ANTLR start "T__29"
-    def mT__29(self, ):
-        try:
-            _type = T__29
-            _channel = DEFAULT_CHANNEL
-
-            # interface.g:27:7: ( '(' )
-            # interface.g:27:9: '('
-            pass 
-            self.match(40)
-
-
-
-            self._state.type = _type
-            self._state.channel = _channel
-        finally:
-            pass
-
-    # $ANTLR end "T__29"
-
-
-
     # $ANTLR start "T__30"
     def mT__30(self, ):
         try:
             _type = T__30
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:28:7: ( ')' )
-            # interface.g:28:9: ')'
-            pass 
-            self.match(41)
+            # interface.g:27:7: ( '(' )
+            # interface.g:27:9: '('
+            pass
+            self.match(40)
 
 
 
@@ -159,10 +138,10 @@ class interfaceLexer(Lexer):
             _type = T__31
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:29:7: ( '*' )
-            # interface.g:29:9: '*'
-            pass 
-            self.match(42)
+            # interface.g:28:7: ( ')' )
+            # interface.g:28:9: ')'
+            pass
+            self.match(41)
 
 
 
@@ -181,10 +160,10 @@ class interfaceLexer(Lexer):
             _type = T__32
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:30:7: ( '+' )
-            # interface.g:30:9: '+'
-            pass 
-            self.match(43)
+            # interface.g:29:7: ( '*' )
+            # interface.g:29:9: '*'
+            pass
+            self.match(42)
 
 
 
@@ -203,10 +182,10 @@ class interfaceLexer(Lexer):
             _type = T__33
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:31:7: ( ',' )
-            # interface.g:31:9: ','
-            pass 
-            self.match(44)
+            # interface.g:30:7: ( '+' )
+            # interface.g:30:9: '+'
+            pass
+            self.match(43)
 
 
 
@@ -225,10 +204,10 @@ class interfaceLexer(Lexer):
             _type = T__34
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:32:7: ( '-' )
-            # interface.g:32:9: '-'
-            pass 
-            self.match(45)
+            # interface.g:31:7: ( ',' )
+            # interface.g:31:9: ','
+            pass
+            self.match(44)
 
 
 
@@ -247,11 +226,10 @@ class interfaceLexer(Lexer):
             _type = T__35
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:33:7: ( '..' )
-            # interface.g:33:9: '..'
-            pass 
-            self.match("..")
-
+            # interface.g:32:7: ( '-' )
+            # interface.g:32:9: '-'
+            pass
+            self.match(45)
 
 
 
@@ -270,10 +248,11 @@ class interfaceLexer(Lexer):
             _type = T__36
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:34:7: ( '/' )
-            # interface.g:34:9: '/'
-            pass 
-            self.match(47)
+            # interface.g:33:7: ( '..' )
+            # interface.g:33:9: '..'
+            pass
+            self.match("..")
+
 
 
 
@@ -292,10 +271,10 @@ class interfaceLexer(Lexer):
             _type = T__37
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:35:7: ( '=' )
-            # interface.g:35:9: '='
-            pass 
-            self.match(61)
+            # interface.g:34:7: ( '/' )
+            # interface.g:34:9: '/'
+            pass
+            self.match(47)
 
 
 
@@ -314,10 +293,10 @@ class interfaceLexer(Lexer):
             _type = T__38
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:36:7: ( '[' )
-            # interface.g:36:9: '['
-            pass 
-            self.match(91)
+            # interface.g:35:7: ( '=' )
+            # interface.g:35:9: '='
+            pass
+            self.match(61)
 
 
 
@@ -336,10 +315,10 @@ class interfaceLexer(Lexer):
             _type = T__39
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:37:7: ( ']' )
-            # interface.g:37:9: ']'
-            pass 
-            self.match(93)
+            # interface.g:36:7: ( '[' )
+            # interface.g:36:9: '['
+            pass
+            self.match(91)
 
 
 
@@ -358,10 +337,10 @@ class interfaceLexer(Lexer):
             _type = T__40
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:38:7: ( '{' )
-            # interface.g:38:9: '{'
-            pass 
-            self.match(123)
+            # interface.g:37:7: ( ']' )
+            # interface.g:37:9: ']'
+            pass
+            self.match(93)
 
 
 
@@ -380,10 +359,10 @@ class interfaceLexer(Lexer):
             _type = T__41
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:39:7: ( '}' )
-            # interface.g:39:9: '}'
-            pass 
-            self.match(125)
+            # interface.g:38:7: ( '{' )
+            # interface.g:38:9: '{'
+            pass
+            self.match(123)
 
 
 
@@ -396,12 +375,34 @@ class interfaceLexer(Lexer):
 
 
 
+    # $ANTLR start "T__42"
+    def mT__42(self, ):
+        try:
+            _type = T__42
+            _channel = DEFAULT_CHANNEL
+
+            # interface.g:39:7: ( '}' )
+            # interface.g:39:9: '}'
+            pass
+            self.match(125)
+
+
+
+            self._state.type = _type
+            self._state.channel = _channel
+        finally:
+            pass
+
+    # $ANTLR end "T__42"
+
+
+
     # $ANTLR start "ALPHA"
     def mALPHA(self, ):
         try:
             # interface.g:171:16: ( 'a' .. 'z' | 'A' .. 'Z' )
             # interface.g:
-            pass 
+            pass
             if (65 <= self.input.LA(1) <= 90) or (97 <= self.input.LA(1) <= 122):
                 self.input.consume()
             else:
@@ -426,7 +427,7 @@ class interfaceLexer(Lexer):
         try:
             # interface.g:172:14: ( '0' .. '9' )
             # interface.g:
-            pass 
+            pass
             if (48 <= self.input.LA(1) <= 57):
                 self.input.consume()
             else:
@@ -451,7 +452,7 @@ class interfaceLexer(Lexer):
         try:
             # interface.g:173:17: ( NUM | 'a' .. 'f' | 'A' .. 'F' )
             # interface.g:
-            pass 
+            pass
             if (48 <= self.input.LA(1) <= 57) or (65 <= self.input.LA(1) <= 70) or (97 <= self.input.LA(1) <= 102):
                 self.input.consume()
             else:
@@ -476,7 +477,7 @@ class interfaceLexer(Lexer):
         try:
             # interface.g:174:19: ( ALPHA | NUM )
             # interface.g:
-            pass 
+            pass
             if (48 <= self.input.LA(1) <= 57) or (65 <= self.input.LA(1) <= 90) or (97 <= self.input.LA(1) <= 122):
                 self.input.consume()
             else:
@@ -504,7 +505,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:180:11: ( ';' )
             # interface.g:180:13: ';'
-            pass 
+            pass
             self.match(59)
 
 
@@ -526,7 +527,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:183:4: ( 'IN' )
             # interface.g:183:6: 'IN'
-            pass 
+            pass
             self.match("IN")
 
 
@@ -549,7 +550,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:184:5: ( 'OUT' )
             # interface.g:184:7: 'OUT'
-            pass 
+            pass
             self.match("OUT")
 
 
@@ -572,7 +573,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:185:10: ( 'FUNCTION' )
             # interface.g:185:12: 'FUNCTION'
-            pass 
+            pass
             self.match("FUNCTION")
 
 
@@ -595,7 +596,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:186:9: ( 'HANDLER' )
             # interface.g:186:11: 'HANDLER'
-            pass 
+            pass
             self.match("HANDLER")
 
 
@@ -618,7 +619,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:187:7: ( 'EVENT' )
             # interface.g:187:9: 'EVENT'
-            pass 
+            pass
             self.match("EVENT")
 
 
@@ -641,7 +642,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:188:11: ( 'REFERENCE' )
             # interface.g:188:13: 'REFERENCE'
-            pass 
+            pass
             self.match("REFERENCE")
 
 
@@ -664,7 +665,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:189:8: ( 'DEFINE' )
             # interface.g:189:10: 'DEFINE'
-            pass 
+            pass
             self.match("DEFINE")
 
 
@@ -687,7 +688,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:190:6: ( 'ENUM' )
             # interface.g:190:8: 'ENUM'
-            pass 
+            pass
             self.match("ENUM")
 
 
@@ -710,7 +711,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:191:9: ( 'BITMASK' )
             # interface.g:191:11: 'BITMASK'
-            pass 
+            pass
             self.match("BITMASK")
 
 
@@ -725,15 +726,38 @@ class interfaceLexer(Lexer):
 
 
 
+    # $ANTLR start "STRUCT"
+    def mSTRUCT(self, ):
+        try:
+            _type = STRUCT
+            _channel = DEFAULT_CHANNEL
+
+            # interface.g:192:8: ( 'STRUCT' )
+            # interface.g:192:10: 'STRUCT'
+            pass
+            self.match("STRUCT")
+
+
+
+
+            self._state.type = _type
+            self._state.channel = _channel
+        finally:
+            pass
+
+    # $ANTLR end "STRUCT"
+
+
+
     # $ANTLR start "USETYPES"
     def mUSETYPES(self, ):
         try:
             _type = USETYPES
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:192:10: ( 'USETYPES' )
-            # interface.g:192:12: 'USETYPES'
-            pass 
+            # interface.g:193:10: ( 'USETYPES' )
+            # interface.g:193:12: 'USETYPES'
+            pass
             self.match("USETYPES")
 
 
@@ -754,13 +778,13 @@ class interfaceLexer(Lexer):
             _type = IDENTIFIER
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:196:12: ( ALPHA ( ALPHANUM | '_' )* )
-            # interface.g:196:14: ALPHA ( ALPHANUM | '_' )*
-            pass 
+            # interface.g:197:12: ( ALPHA ( ALPHANUM | '_' )* )
+            # interface.g:197:14: ALPHA ( ALPHANUM | '_' )*
+            pass
             self.mALPHA()
 
 
-            # interface.g:196:20: ( ALPHANUM | '_' )*
+            # interface.g:197:20: ( ALPHANUM | '_' )*
             while True: #loop1
                 alt1 = 2
                 LA1_0 = self.input.LA(1)
@@ -771,7 +795,7 @@ class interfaceLexer(Lexer):
 
                 if alt1 == 1:
                     # interface.g:
-                    pass 
+                    pass
                     if (48 <= self.input.LA(1) <= 57) or (65 <= self.input.LA(1) <= 90) or self.input.LA(1) == 95 or (97 <= self.input.LA(1) <= 122):
                         self.input.consume()
                     else:
@@ -803,9 +827,9 @@ class interfaceLexer(Lexer):
             _type = SCOPED_IDENTIFIER
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:199:19: ( IDENTIFIER '.' IDENTIFIER )
-            # interface.g:199:21: IDENTIFIER '.' IDENTIFIER
-            pass 
+            # interface.g:200:19: ( IDENTIFIER '.' IDENTIFIER )
+            # interface.g:200:21: IDENTIFIER '.' IDENTIFIER
+            pass
             self.mIDENTIFIER()
 
 
@@ -833,10 +857,10 @@ class interfaceLexer(Lexer):
 
             number = None
 
-            # interface.g:202:12: (number= ( '0' | '1' .. '9' ( NUM )* ) )
-            # interface.g:202:14: number= ( '0' | '1' .. '9' ( NUM )* )
-            pass 
-            # interface.g:202:21: ( '0' | '1' .. '9' ( NUM )* )
+            # interface.g:203:12: (number= ( '0' | '1' .. '9' ( NUM )* ) )
+            # interface.g:203:14: number= ( '0' | '1' .. '9' ( NUM )* )
+            pass
+            # interface.g:203:21: ( '0' | '1' .. '9' ( NUM )* )
             alt3 = 2
             LA3_0 = self.input.LA(1)
 
@@ -851,21 +875,21 @@ class interfaceLexer(Lexer):
 
 
             if alt3 == 1:
-                # interface.g:202:23: '0'
-                pass 
+                # interface.g:203:23: '0'
+                pass
                 number = self.input.LA(1)
 
                 self.match(48)
 
 
             elif alt3 == 2:
-                # interface.g:202:29: '1' .. '9' ( NUM )*
-                pass 
+                # interface.g:203:29: '1' .. '9' ( NUM )*
+                pass
                 number = self.input.LA(1)
 
                 self.matchRange(49, 57)
 
-                # interface.g:202:38: ( NUM )*
+                # interface.g:203:38: ( NUM )*
                 while True: #loop2
                     alt2 = 2
                     LA2_0 = self.input.LA(1)
@@ -876,7 +900,7 @@ class interfaceLexer(Lexer):
 
                     if alt2 == 1:
                         # interface.g:
-                        pass 
+                        pass
                         if (48 <= self.input.LA(1) <= 57):
                             self.input.consume()
                         else:
@@ -911,9 +935,9 @@ class interfaceLexer(Lexer):
             _type = HEX_NUMBER
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:202:12: ( '0' ( 'x' | 'X' ) ( HEXNUM )+ )
-            # interface.g:202:14: '0' ( 'x' | 'X' ) ( HEXNUM )+
-            pass 
+            # interface.g:203:12: ( '0' ( 'x' | 'X' ) ( HEXNUM )+ )
+            # interface.g:203:14: '0' ( 'x' | 'X' ) ( HEXNUM )+
+            pass
             self.match(48)
 
             if self.input.LA(1) == 88 or self.input.LA(1) == 120:
@@ -925,7 +949,7 @@ class interfaceLexer(Lexer):
 
 
 
-            # interface.g:202:31: ( HEXNUM )+
+            # interface.g:203:31: ( HEXNUM )+
             cnt4 = 0
             while True: #loop4
                 alt4 = 2
@@ -937,7 +961,7 @@ class interfaceLexer(Lexer):
 
                 if alt4 == 1:
                     # interface.g:
-                    pass 
+                    pass
                     if (48 <= self.input.LA(1) <= 57) or (65 <= self.input.LA(1) <= 70) or (97 <= self.input.LA(1) <= 102):
                         self.input.consume()
                     else:
@@ -975,7 +999,7 @@ class interfaceLexer(Lexer):
             _type = QUOTED_STRING
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:205:15: ( '\"' (~ ( '\\\"' | '\\\\' ) | '\\\\' . )* '\"' | '\\'' (~ ( '\\'' | '\\\\' ) | '\\\\' . )* '\\'' )
+            # interface.g:206:15: ( '\"' (~ ( '\\\"' | '\\\\' ) | '\\\\' . )* '\"' | '\\'' (~ ( '\\'' | '\\\\' ) | '\\\\' . )* '\\'' )
             alt7 = 2
             LA7_0 = self.input.LA(1)
 
@@ -990,11 +1014,11 @@ class interfaceLexer(Lexer):
 
 
             if alt7 == 1:
-                # interface.g:205:17: '\"' (~ ( '\\\"' | '\\\\' ) | '\\\\' . )* '\"'
-                pass 
+                # interface.g:206:17: '\"' (~ ( '\\\"' | '\\\\' ) | '\\\\' . )* '\"'
+                pass
                 self.match(34)
 
-                # interface.g:205:21: (~ ( '\\\"' | '\\\\' ) | '\\\\' . )*
+                # interface.g:206:21: (~ ( '\\\"' | '\\\\' ) | '\\\\' . )*
                 while True: #loop5
                     alt5 = 3
                     LA5_0 = self.input.LA(1)
@@ -1006,8 +1030,8 @@ class interfaceLexer(Lexer):
 
 
                     if alt5 == 1:
-                        # interface.g:205:23: ~ ( '\\\"' | '\\\\' )
-                        pass 
+                        # interface.g:206:23: ~ ( '\\\"' | '\\\\' )
+                        pass
                         if (0 <= self.input.LA(1) <= 33) or (35 <= self.input.LA(1) <= 91) or (93 <= self.input.LA(1) <= 65535):
                             self.input.consume()
                         else:
@@ -1019,8 +1043,8 @@ class interfaceLexer(Lexer):
 
 
                     elif alt5 == 2:
-                        # interface.g:205:40: '\\\\' .
-                        pass 
+                        # interface.g:206:40: '\\\\' .
+                        pass
                         self.match(92)
 
                         self.matchAny()
@@ -1034,11 +1058,11 @@ class interfaceLexer(Lexer):
 
 
             elif alt7 == 2:
-                # interface.g:206:7: '\\'' (~ ( '\\'' | '\\\\' ) | '\\\\' . )* '\\''
-                pass 
+                # interface.g:207:7: '\\'' (~ ( '\\'' | '\\\\' ) | '\\\\' . )* '\\''
+                pass
                 self.match(39)
 
-                # interface.g:206:12: (~ ( '\\'' | '\\\\' ) | '\\\\' . )*
+                # interface.g:207:12: (~ ( '\\'' | '\\\\' ) | '\\\\' . )*
                 while True: #loop6
                     alt6 = 3
                     LA6_0 = self.input.LA(1)
@@ -1050,8 +1074,8 @@ class interfaceLexer(Lexer):
 
 
                     if alt6 == 1:
-                        # interface.g:206:14: ~ ( '\\'' | '\\\\' )
-                        pass 
+                        # interface.g:207:14: ~ ( '\\'' | '\\\\' )
+                        pass
                         if (0 <= self.input.LA(1) <= 38) or (40 <= self.input.LA(1) <= 91) or (93 <= self.input.LA(1) <= 65535):
                             self.input.consume()
                         else:
@@ -1063,8 +1087,8 @@ class interfaceLexer(Lexer):
 
 
                     elif alt6 == 2:
-                        # interface.g:206:31: '\\\\' .
-                        pass 
+                        # interface.g:207:31: '\\\\' .
+                        pass
                         self.match(92)
 
                         self.matchAny()
@@ -1092,9 +1116,9 @@ class interfaceLexer(Lexer):
             _type = DOC_PRE_COMMENT
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:210:17: ( '/**' ~ '*' (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+ '*/' )
-            # interface.g:210:19: '/**' ~ '*' (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+ '*/'
-            pass 
+            # interface.g:211:17: ( '/**' ~ '*' (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+ '*/' )
+            # interface.g:211:19: '/**' ~ '*' (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+ '*/'
+            pass
             self.match("/**")
 
 
@@ -1107,7 +1131,7 @@ class interfaceLexer(Lexer):
 
 
 
-            # interface.g:210:30: (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+
+            # interface.g:211:30: (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+
             cnt9 = 0
             while True: #loop9
                 alt9 = 3
@@ -1125,8 +1149,8 @@ class interfaceLexer(Lexer):
 
 
                 if alt9 == 1:
-                    # interface.g:210:31: ~ '*'
-                    pass 
+                    # interface.g:211:31: ~ '*'
+                    pass
                     if (0 <= self.input.LA(1) <= 41) or (43 <= self.input.LA(1) <= 65535):
                         self.input.consume()
                     else:
@@ -1138,9 +1162,9 @@ class interfaceLexer(Lexer):
 
 
                 elif alt9 == 2:
-                    # interface.g:210:38: ( '*' )+ ~ ( '/' | '*' )
-                    pass 
-                    # interface.g:210:38: ( '*' )+
+                    # interface.g:211:38: ( '*' )+ ~ ( '/' | '*' )
+                    pass
+                    # interface.g:211:38: ( '*' )+
                     cnt8 = 0
                     while True: #loop8
                         alt8 = 2
@@ -1151,8 +1175,8 @@ class interfaceLexer(Lexer):
 
 
                         if alt8 == 1:
-                            # interface.g:210:38: '*'
-                            pass 
+                            # interface.g:211:38: '*'
+                            pass
                             self.match(42)
 
 
@@ -1206,13 +1230,13 @@ class interfaceLexer(Lexer):
             _type = DOC_POST_COMMENT
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:213:18: ( '///<' (~ '\\n' )* )
-            # interface.g:213:20: '///<' (~ '\\n' )*
-            pass 
+            # interface.g:214:18: ( '///<' (~ '\\n' )* )
+            # interface.g:214:20: '///<' (~ '\\n' )*
+            pass
             self.match("///<")
 
 
-            # interface.g:213:27: (~ '\\n' )*
+            # interface.g:214:27: (~ '\\n' )*
             while True: #loop10
                 alt10 = 2
                 LA10_0 = self.input.LA(1)
@@ -1223,7 +1247,7 @@ class interfaceLexer(Lexer):
 
                 if alt10 == 1:
                     # interface.g:
-                    pass 
+                    pass
                     if (0 <= self.input.LA(1) <= 9) or (11 <= self.input.LA(1) <= 65535):
                         self.input.consume()
                     else:
@@ -1255,10 +1279,10 @@ class interfaceLexer(Lexer):
             _type = WS
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:216:4: ( ( ' ' | '\\t' | '\\n' )+ )
-            # interface.g:216:6: ( ' ' | '\\t' | '\\n' )+
-            pass 
-            # interface.g:216:6: ( ' ' | '\\t' | '\\n' )+
+            # interface.g:217:4: ( ( ' ' | '\\t' | '\\n' )+ )
+            # interface.g:217:6: ( ' ' | '\\t' | '\\n' )+
+            pass
+            # interface.g:217:6: ( ' ' | '\\t' | '\\n' )+
             cnt11 = 0
             while True: #loop11
                 alt11 = 2
@@ -1270,7 +1294,7 @@ class interfaceLexer(Lexer):
 
                 if alt11 == 1:
                     # interface.g:
-                    pass 
+                    pass
                     if (9 <= self.input.LA(1) <= 10) or self.input.LA(1) == 32:
                         self.input.consume()
                     else:
@@ -1292,7 +1316,7 @@ class interfaceLexer(Lexer):
 
 
             #action start
-            self.skip() 
+            self.skip()
             #action end
 
 
@@ -1313,20 +1337,20 @@ class interfaceLexer(Lexer):
             _type = C_COMMENT
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:219:11: ( '/*' (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+ ( '*' )+ '/' )
-            # interface.g:219:13: '/*' (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+ ( '*' )+ '/'
-            pass 
+            # interface.g:220:11: ( '/*' (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+ ( '*' )+ '/' )
+            # interface.g:220:13: '/*' (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+ ( '*' )+ '/'
+            pass
             self.match("/*")
 
 
-            # interface.g:219:18: (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+
+            # interface.g:220:18: (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+
             cnt13 = 0
             while True: #loop13
                 alt13 = 3
                 alt13 = self.dfa13.predict(self.input)
                 if alt13 == 1:
-                    # interface.g:219:19: ~ '*'
-                    pass 
+                    # interface.g:220:19: ~ '*'
+                    pass
                     if (0 <= self.input.LA(1) <= 41) or (43 <= self.input.LA(1) <= 65535):
                         self.input.consume()
                     else:
@@ -1338,9 +1362,9 @@ class interfaceLexer(Lexer):
 
 
                 elif alt13 == 2:
-                    # interface.g:219:26: ( '*' )+ ~ ( '/' | '*' )
-                    pass 
-                    # interface.g:219:26: ( '*' )+
+                    # interface.g:220:26: ( '*' )+ ~ ( '/' | '*' )
+                    pass
+                    # interface.g:220:26: ( '*' )+
                     cnt12 = 0
                     while True: #loop12
                         alt12 = 2
@@ -1351,8 +1375,8 @@ class interfaceLexer(Lexer):
 
 
                         if alt12 == 1:
-                            # interface.g:219:26: '*'
-                            pass 
+                            # interface.g:220:26: '*'
+                            pass
                             self.match(42)
 
 
@@ -1386,7 +1410,7 @@ class interfaceLexer(Lexer):
                 cnt13 += 1
 
 
-            # interface.g:219:47: ( '*' )+
+            # interface.g:220:47: ( '*' )+
             cnt14 = 0
             while True: #loop14
                 alt14 = 2
@@ -1397,8 +1421,8 @@ class interfaceLexer(Lexer):
 
 
                 if alt14 == 1:
-                    # interface.g:219:47: '*'
-                    pass 
+                    # interface.g:220:47: '*'
+                    pass
                     self.match(42)
 
 
@@ -1415,7 +1439,7 @@ class interfaceLexer(Lexer):
             self.match(47)
 
             #action start
-            self.skip() 
+            self.skip()
             #action end
 
 
@@ -1436,13 +1460,13 @@ class interfaceLexer(Lexer):
             _type = CPP_COMMENT
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:222:13: ( '//' (~ '\\n' )* )
-            # interface.g:222:15: '//' (~ '\\n' )*
-            pass 
+            # interface.g:223:13: ( '//' (~ '\\n' )* )
+            # interface.g:223:15: '//' (~ '\\n' )*
+            pass
             self.match("//")
 
 
-            # interface.g:222:20: (~ '\\n' )*
+            # interface.g:223:20: (~ '\\n' )*
             while True: #loop15
                 alt15 = 2
                 LA15_0 = self.input.LA(1)
@@ -1453,7 +1477,7 @@ class interfaceLexer(Lexer):
 
                 if alt15 == 1:
                     # interface.g:
-                    pass 
+                    pass
                     if (0 <= self.input.LA(1) <= 9) or (11 <= self.input.LA(1) <= 65535):
                         self.input.consume()
                     else:
@@ -1469,7 +1493,7 @@ class interfaceLexer(Lexer):
 
 
             #action start
-            self.skip() 
+            self.skip()
             #action end
 
 
@@ -1485,243 +1509,250 @@ class interfaceLexer(Lexer):
 
 
     def mTokens(self):
-        # interface.g:1:8: ( T__29 | T__30 | T__31 | T__32 | T__33 | T__34 | T__35 | T__36 | T__37 | T__38 | T__39 | T__40 | T__41 | SEMICOLON | IN | OUT | FUNCTION | HANDLER | EVENT | REFERENCE | DEFINE | ENUM | BITMASK | USETYPES | IDENTIFIER | SCOPED_IDENTIFIER | DEC_NUMBER | HEX_NUMBER | QUOTED_STRING | DOC_PRE_COMMENT | DOC_POST_COMMENT | WS | C_COMMENT | CPP_COMMENT )
-        alt16 = 34
+        # interface.g:1:8: ( T__30 | T__31 | T__32 | T__33 | T__34 | T__35 | T__36 | T__37 | T__38 | T__39 | T__40 | T__41 | T__42 | SEMICOLON | IN | OUT | FUNCTION | HANDLER | EVENT | REFERENCE | DEFINE | ENUM | BITMASK | STRUCT | USETYPES | IDENTIFIER | SCOPED_IDENTIFIER | DEC_NUMBER | HEX_NUMBER | QUOTED_STRING | DOC_PRE_COMMENT | DOC_POST_COMMENT | WS | C_COMMENT | CPP_COMMENT )
+        alt16 = 35
         alt16 = self.dfa16.predict(self.input)
         if alt16 == 1:
-            # interface.g:1:10: T__29
-            pass 
-            self.mT__29()
-
-
-
-        elif alt16 == 2:
-            # interface.g:1:16: T__30
-            pass 
+            # interface.g:1:10: T__30
+            pass
             self.mT__30()
 
 
 
-        elif alt16 == 3:
-            # interface.g:1:22: T__31
-            pass 
+        elif alt16 == 2:
+            # interface.g:1:16: T__31
+            pass
             self.mT__31()
 
 
 
-        elif alt16 == 4:
-            # interface.g:1:28: T__32
-            pass 
+        elif alt16 == 3:
+            # interface.g:1:22: T__32
+            pass
             self.mT__32()
 
 
 
-        elif alt16 == 5:
-            # interface.g:1:34: T__33
-            pass 
+        elif alt16 == 4:
+            # interface.g:1:28: T__33
+            pass
             self.mT__33()
 
 
 
-        elif alt16 == 6:
-            # interface.g:1:40: T__34
-            pass 
+        elif alt16 == 5:
+            # interface.g:1:34: T__34
+            pass
             self.mT__34()
 
 
 
-        elif alt16 == 7:
-            # interface.g:1:46: T__35
-            pass 
+        elif alt16 == 6:
+            # interface.g:1:40: T__35
+            pass
             self.mT__35()
 
 
 
-        elif alt16 == 8:
-            # interface.g:1:52: T__36
-            pass 
+        elif alt16 == 7:
+            # interface.g:1:46: T__36
+            pass
             self.mT__36()
 
 
 
-        elif alt16 == 9:
-            # interface.g:1:58: T__37
-            pass 
+        elif alt16 == 8:
+            # interface.g:1:52: T__37
+            pass
             self.mT__37()
 
 
 
-        elif alt16 == 10:
-            # interface.g:1:64: T__38
-            pass 
+        elif alt16 == 9:
+            # interface.g:1:58: T__38
+            pass
             self.mT__38()
 
 
 
-        elif alt16 == 11:
-            # interface.g:1:70: T__39
-            pass 
+        elif alt16 == 10:
+            # interface.g:1:64: T__39
+            pass
             self.mT__39()
 
 
 
-        elif alt16 == 12:
-            # interface.g:1:76: T__40
-            pass 
+        elif alt16 == 11:
+            # interface.g:1:70: T__40
+            pass
             self.mT__40()
 
 
 
-        elif alt16 == 13:
-            # interface.g:1:82: T__41
-            pass 
+        elif alt16 == 12:
+            # interface.g:1:76: T__41
+            pass
             self.mT__41()
+
+
+
+        elif alt16 == 13:
+            # interface.g:1:82: T__42
+            pass
+            self.mT__42()
 
 
 
         elif alt16 == 14:
             # interface.g:1:88: SEMICOLON
-            pass 
+            pass
             self.mSEMICOLON()
 
 
 
         elif alt16 == 15:
             # interface.g:1:98: IN
-            pass 
+            pass
             self.mIN()
 
 
 
         elif alt16 == 16:
             # interface.g:1:101: OUT
-            pass 
+            pass
             self.mOUT()
 
 
 
         elif alt16 == 17:
             # interface.g:1:105: FUNCTION
-            pass 
+            pass
             self.mFUNCTION()
 
 
 
         elif alt16 == 18:
             # interface.g:1:114: HANDLER
-            pass 
+            pass
             self.mHANDLER()
 
 
 
         elif alt16 == 19:
             # interface.g:1:122: EVENT
-            pass 
+            pass
             self.mEVENT()
 
 
 
         elif alt16 == 20:
             # interface.g:1:128: REFERENCE
-            pass 
+            pass
             self.mREFERENCE()
 
 
 
         elif alt16 == 21:
             # interface.g:1:138: DEFINE
-            pass 
+            pass
             self.mDEFINE()
 
 
 
         elif alt16 == 22:
             # interface.g:1:145: ENUM
-            pass 
+            pass
             self.mENUM()
 
 
 
         elif alt16 == 23:
             # interface.g:1:150: BITMASK
-            pass 
+            pass
             self.mBITMASK()
 
 
 
         elif alt16 == 24:
-            # interface.g:1:158: USETYPES
-            pass 
-            self.mUSETYPES()
+            # interface.g:1:158: STRUCT
+            pass
+            self.mSTRUCT()
 
 
 
         elif alt16 == 25:
-            # interface.g:1:167: IDENTIFIER
-            pass 
-            self.mIDENTIFIER()
+            # interface.g:1:165: USETYPES
+            pass
+            self.mUSETYPES()
 
 
 
         elif alt16 == 26:
-            # interface.g:1:178: SCOPED_IDENTIFIER
-            pass 
-            self.mSCOPED_IDENTIFIER()
+            # interface.g:1:174: IDENTIFIER
+            pass
+            self.mIDENTIFIER()
 
 
 
         elif alt16 == 27:
-            # interface.g:1:196: DEC_NUMBER
-            pass 
-            self.mDEC_NUMBER()
+            # interface.g:1:185: SCOPED_IDENTIFIER
+            pass
+            self.mSCOPED_IDENTIFIER()
 
 
 
         elif alt16 == 28:
-            # interface.g:1:207: HEX_NUMBER
-            pass 
-            self.mHEX_NUMBER()
+            # interface.g:1:203: DEC_NUMBER
+            pass
+            self.mDEC_NUMBER()
 
 
 
         elif alt16 == 29:
-            # interface.g:1:218: QUOTED_STRING
-            pass 
-            self.mQUOTED_STRING()
+            # interface.g:1:214: HEX_NUMBER
+            pass
+            self.mHEX_NUMBER()
 
 
 
         elif alt16 == 30:
-            # interface.g:1:232: DOC_PRE_COMMENT
-            pass 
-            self.mDOC_PRE_COMMENT()
+            # interface.g:1:225: QUOTED_STRING
+            pass
+            self.mQUOTED_STRING()
 
 
 
         elif alt16 == 31:
-            # interface.g:1:248: DOC_POST_COMMENT
-            pass 
-            self.mDOC_POST_COMMENT()
+            # interface.g:1:239: DOC_PRE_COMMENT
+            pass
+            self.mDOC_PRE_COMMENT()
 
 
 
         elif alt16 == 32:
-            # interface.g:1:265: WS
-            pass 
-            self.mWS()
+            # interface.g:1:255: DOC_POST_COMMENT
+            pass
+            self.mDOC_POST_COMMENT()
 
 
 
         elif alt16 == 33:
-            # interface.g:1:268: C_COMMENT
-            pass 
-            self.mC_COMMENT()
+            # interface.g:1:272: WS
+            pass
+            self.mWS()
 
 
 
         elif alt16 == 34:
-            # interface.g:1:278: CPP_COMMENT
-            pass 
+            # interface.g:1:275: C_COMMENT
+            pass
+            self.mC_COMMENT()
+
+
+
+        elif alt16 == 35:
+            # interface.g:1:285: CPP_COMMENT
+            pass
             self.mCPP_COMMENT()
 
 
@@ -1754,7 +1785,7 @@ class interfaceLexer(Lexer):
         )
 
     DFA13_special = DFA.unpack(
-        u"\1\0\1\1\3\uffff"
+        u"\1\1\1\0\3\uffff"
         )
 
 
@@ -1782,19 +1813,7 @@ class interfaceLexer(Lexer):
 
             _s = s
 
-            if s == 0: 
-                LA13_0 = input.LA(1)
-
-                s = -1
-                if (LA13_0 == 42):
-                    s = 1
-
-                elif ((0 <= LA13_0 <= 41) or (43 <= LA13_0 <= 65535)):
-                    s = 2
-
-                if s >= 0:
-                    return s
-            elif s == 1: 
+            if s == 0:
                 LA13_1 = input.LA(1)
 
                 s = -1
@@ -1809,6 +1828,18 @@ class interfaceLexer(Lexer):
 
                 if s >= 0:
                     return s
+            elif s == 1:
+                LA13_0 = input.LA(1)
+
+                s = -1
+                if (LA13_0 == 42):
+                    s = 1
+
+                elif ((0 <= LA13_0 <= 41) or (43 <= LA13_0 <= 65535)):
+                    s = 2
+
+                if s >= 0:
+                    return s
 
             nvae = NoViableAltException(self_.getDescription(), 13, _s, input)
             self_.error(nvae)
@@ -1817,56 +1848,56 @@ class interfaceLexer(Lexer):
     # lookup tables for DFA #16
 
     DFA16_eot = DFA.unpack(
-        u"\10\uffff\1\37\6\uffff\12\41\1\32\4\uffff\1\61\1\uffff\1\62\1\uffff"
-        u"\1\41\1\uffff\11\41\3\uffff\1\61\2\uffff\1\77\10\41\2\uffff\1\113"
-        u"\1\uffff\3\41\1\117\4\41\2\uffff\1\113\1\uffff\2\41\1\130\1\uffff"
-        u"\4\41\2\uffff\2\41\1\uffff\1\41\1\141\2\41\1\uffff\1\41\1\145\1"
-        u"\41\1\uffff\1\147\1\41\1\151\1\uffff\1\41\1\uffff\1\153\1\uffff"
-        u"\1\154\2\uffff"
+        u"\10\uffff\1\40\6\uffff\13\42\1\33\4\uffff\1\63\1\uffff\1\64\1\uffff"
+        u"\1\42\1\uffff\12\42\3\uffff\1\63\2\uffff\1\102\11\42\2\uffff\1"
+        u"\117\1\uffff\3\42\1\123\5\42\2\uffff\1\117\1\uffff\2\42\1\135\1"
+        u"\uffff\5\42\2\uffff\2\42\1\uffff\1\42\1\147\1\42\1\151\1\42\1\uffff"
+        u"\1\42\1\154\1\42\1\uffff\1\156\1\uffff\1\42\1\160\1\uffff\1\42"
+        u"\1\uffff\1\162\1\uffff\1\163\2\uffff"
         )
 
     DFA16_eof = DFA.unpack(
-        u"\155\uffff"
+        u"\164\uffff"
         )
 
     DFA16_min = DFA.unpack(
-        u"\1\11\7\uffff\1\52\6\uffff\12\56\1\130\3\uffff\1\0\1\57\1\uffff"
-        u"\1\56\1\uffff\1\56\1\uffff\11\56\1\uffff\1\0\1\uffff\1\74\2\uffff"
-        u"\11\56\1\0\1\uffff\1\0\1\uffff\10\56\3\0\1\uffff\3\56\1\uffff\4"
-        u"\56\2\0\2\56\1\uffff\4\56\1\uffff\3\56\1\uffff\3\56\1\uffff\1\56"
-        u"\1\uffff\1\56\1\uffff\1\56\2\uffff"
+        u"\1\11\7\uffff\1\52\6\uffff\13\56\1\130\3\uffff\1\0\1\57\1\uffff"
+        u"\1\56\1\uffff\1\56\1\uffff\12\56\1\uffff\1\0\1\uffff\1\74\2\uffff"
+        u"\12\56\1\0\1\uffff\1\0\1\uffff\11\56\3\0\1\uffff\3\56\1\uffff\5"
+        u"\56\2\0\2\56\1\uffff\5\56\1\uffff\3\56\1\uffff\1\56\1\uffff\2\56"
+        u"\1\uffff\1\56\1\uffff\1\56\1\uffff\1\56\2\uffff"
         )
 
     DFA16_max = DFA.unpack(
-        u"\1\175\7\uffff\1\57\6\uffff\12\172\1\170\3\uffff\1\uffff\1\57\1"
-        u"\uffff\1\172\1\uffff\1\172\1\uffff\11\172\1\uffff\1\uffff\1\uffff"
-        u"\1\74\2\uffff\11\172\1\uffff\1\uffff\1\uffff\1\uffff\10\172\3\uffff"
-        u"\1\uffff\3\172\1\uffff\4\172\2\uffff\2\172\1\uffff\4\172\1\uffff"
-        u"\3\172\1\uffff\3\172\1\uffff\1\172\1\uffff\1\172\1\uffff\1\172"
-        u"\2\uffff"
+        u"\1\175\7\uffff\1\57\6\uffff\13\172\1\170\3\uffff\1\uffff\1\57\1"
+        u"\uffff\1\172\1\uffff\1\172\1\uffff\12\172\1\uffff\1\uffff\1\uffff"
+        u"\1\74\2\uffff\12\172\1\uffff\1\uffff\1\uffff\1\uffff\11\172\3\uffff"
+        u"\1\uffff\3\172\1\uffff\5\172\2\uffff\2\172\1\uffff\5\172\1\uffff"
+        u"\3\172\1\uffff\1\172\1\uffff\2\172\1\uffff\1\172\1\uffff\1\172"
+        u"\1\uffff\1\172\2\uffff"
         )
 
     DFA16_accept = DFA.unpack(
         u"\1\uffff\1\1\1\2\1\3\1\4\1\5\1\6\1\7\1\uffff\1\11\1\12\1\13\1\14"
-        u"\1\15\1\16\13\uffff\1\33\1\35\1\40\2\uffff\1\10\1\uffff\1\31\1"
-        u"\uffff\1\32\11\uffff\1\34\1\uffff\1\41\1\uffff\1\42\1\17\12\uffff"
-        u"\1\36\1\uffff\1\20\13\uffff\1\37\3\uffff\1\26\10\uffff\1\23\4\uffff"
-        u"\1\36\3\uffff\1\25\3\uffff\1\22\1\uffff\1\27\1\uffff\1\21\1\uffff"
-        u"\1\30\1\24"
+        u"\1\15\1\16\14\uffff\1\34\1\36\1\41\2\uffff\1\10\1\uffff\1\32\1"
+        u"\uffff\1\33\12\uffff\1\35\1\uffff\1\42\1\uffff\1\43\1\17\13\uffff"
+        u"\1\37\1\uffff\1\20\14\uffff\1\40\3\uffff\1\26\11\uffff\1\23\5\uffff"
+        u"\1\37\3\uffff\1\25\1\uffff\1\30\2\uffff\1\22\1\uffff\1\27\1\uffff"
+        u"\1\21\1\uffff\1\31\1\24"
         )
 
     DFA16_special = DFA.unpack(
-        u"\35\uffff\1\10\20\uffff\1\1\15\uffff\1\6\1\uffff\1\4\11\uffff\1"
-        u"\0\1\2\1\7\11\uffff\1\5\1\3\27\uffff"
+        u"\36\uffff\1\10\21\uffff\1\6\16\uffff\1\5\1\uffff\1\3\12\uffff\1"
+        u"\0\1\7\1\4\12\uffff\1\1\1\2\31\uffff"
         )
 
 
     DFA16_transition = [
-        DFA.unpack(u"\2\34\25\uffff\1\34\1\uffff\1\33\4\uffff\1\33\1\1\1"
-        u"\2\1\3\1\4\1\5\1\6\1\7\1\10\1\31\11\32\1\uffff\1\16\1\uffff\1\11"
-        u"\3\uffff\1\30\1\26\1\30\1\25\1\23\1\21\1\30\1\22\1\17\5\30\1\20"
-        u"\2\30\1\24\2\30\1\27\5\30\1\12\1\uffff\1\13\3\uffff\32\30\1\14"
-        u"\1\uffff\1\15"),
+        DFA.unpack(u"\2\35\25\uffff\1\35\1\uffff\1\34\4\uffff\1\34\1\1\1"
+        u"\2\1\3\1\4\1\5\1\6\1\7\1\10\1\32\11\33\1\uffff\1\16\1\uffff\1\11"
+        u"\3\uffff\1\31\1\26\1\31\1\25\1\23\1\21\1\31\1\22\1\17\5\31\1\20"
+        u"\2\31\1\24\1\27\1\31\1\30\5\31\1\12\1\uffff\1\13\3\uffff\32\31"
+        u"\1\14\1\uffff\1\15"),
         DFA.unpack(u""),
         DFA.unpack(u""),
         DFA.unpack(u""),
@@ -1874,165 +1905,178 @@ class interfaceLexer(Lexer):
         DFA.unpack(u""),
         DFA.unpack(u""),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\35\4\uffff\1\36"),
+        DFA.unpack(u"\1\36\4\uffff\1\37"),
         DFA.unpack(u""),
         DFA.unpack(u""),
         DFA.unpack(u""),
         DFA.unpack(u""),
         DFA.unpack(u""),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\15\42\1\40\14\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\24\42\1\44\5\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\24\42\1\45\5\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\1\46\31\42\4\uffff\1\42"
-        u"\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\15\42\1\50\7\42\1\47\4"
-        u"\42\4\uffff\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\4\42\1\51\25\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\4\42\1\52\25\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\10\42\1\53\21\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\22\42\1\54\7\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\32\42\4\uffff\1\42\1\uffff"
-        u"\32\42"),
-        DFA.unpack(u"\1\55\37\uffff\1\55"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\15\43\1\41\14\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\24\43\1\45\5\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\24\43\1\46\5\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\1\47\31\43\4\uffff\1\43"
+        u"\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\15\43\1\51\7\43\1\50\4"
+        u"\43\4\uffff\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\4\43\1\52\25\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\4\43\1\53\25\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\10\43\1\54\21\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\23\43\1\55\6\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\22\43\1\56\7\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\32\43\4\uffff\1\43\1\uffff"
+        u"\32\43"),
+        DFA.unpack(u"\1\57\37\uffff\1\57"),
         DFA.unpack(u""),
         DFA.unpack(u""),
         DFA.unpack(u""),
-        DFA.unpack(u"\52\57\1\56\uffd5\57"),
-        DFA.unpack(u"\1\60"),
+        DFA.unpack(u"\52\61\1\60\uffd5\61"),
+        DFA.unpack(u"\1\62"),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\32\42\4\uffff\1\42\1\uffff"
-        u"\32\42"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\32\43\4\uffff\1\43\1\uffff"
+        u"\32\43"),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\32\42\4\uffff\1\42\1\uffff"
-        u"\32\42"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\32\43\4\uffff\1\43\1\uffff"
+        u"\32\43"),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\23\42\1\63\6\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\15\42\1\64\14\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\15\42\1\65\14\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\4\42\1\66\25\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\24\42\1\67\5\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\5\42\1\70\24\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\5\42\1\71\24\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\23\42\1\72\6\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\4\42\1\73\25\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\23\43\1\65\6\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\15\43\1\66\14\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\15\43\1\67\14\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\4\43\1\70\25\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\24\43\1\71\5\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\5\43\1\72\24\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\5\43\1\73\24\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\23\43\1\74\6\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\21\43\1\75\10\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\4\43\1\76\25\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
         DFA.unpack(u""),
-        DFA.unpack(u"\52\74\1\57\4\74\1\75\uffd0\74"),
+        DFA.unpack(u"\52\77\1\61\4\77\1\100\uffd0\77"),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\76"),
+        DFA.unpack(u"\1\101"),
         DFA.unpack(u""),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\32\42\4\uffff\1\42\1\uffff"
-        u"\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\2\42\1\100\27\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\3\42\1\101\26\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\15\42\1\102\14\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\14\42\1\103\15\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\4\42\1\104\25\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\10\42\1\105\21\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\14\42\1\106\15\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\23\42\1\107\6\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\52\110\1\111\uffd5\110"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\32\43\4\uffff\1\43\1\uffff"
+        u"\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\2\43\1\103\27\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\3\43\1\104\26\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\15\43\1\105\14\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\14\43\1\106\15\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\4\43\1\107\25\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\10\43\1\110\21\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\14\43\1\111\15\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\24\43\1\112\5\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\23\43\1\113\6\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\52\114\1\115\uffd5\114"),
         DFA.unpack(u""),
-        DFA.unpack(u"\12\112\1\uffff\ufff5\112"),
+        DFA.unpack(u"\12\116\1\uffff\ufff5\116"),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\23\42\1\114\6\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\13\42\1\115\16\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\23\42\1\116\6\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\32\42\4\uffff\1\42\1\uffff"
-        u"\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\21\42\1\120\10\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\15\42\1\121\14\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\1\122\31\42\4\uffff\1\42"
-        u"\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\30\42\1\123\1\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\52\110\1\124\uffd5\110"),
-        DFA.unpack(u"\52\125\1\111\4\125\1\57\uffd0\125"),
-        DFA.unpack(u"\12\112\1\uffff\ufff5\112"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\23\43\1\120\6\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\13\43\1\121\16\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\23\43\1\122\6\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\32\43\4\uffff\1\43\1\uffff"
+        u"\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\21\43\1\124\10\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\15\43\1\125\14\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\1\126\31\43\4\uffff\1\43"
+        u"\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\2\43\1\127\27\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\30\43\1\130\1\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\52\114\1\131\uffd5\114"),
+        DFA.unpack(u"\52\132\1\115\4\132\1\61\uffd0\132"),
+        DFA.unpack(u"\12\116\1\uffff\ufff5\116"),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\10\42\1\126\21\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\4\42\1\127\25\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\32\42\4\uffff\1\42\1\uffff"
-        u"\32\42"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\10\43\1\133\21\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\4\43\1\134\25\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\32\43\4\uffff\1\43\1\uffff"
+        u"\32\43"),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\4\42\1\131\25\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\4\42\1\132\25\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\22\42\1\133\7\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\17\42\1\134\12\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\52\125\1\111\4\125\1\135\uffd0\125"),
-        DFA.unpack(u"\52\110\1\124\uffd5\110"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\16\42\1\136\13\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\21\42\1\137\10\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\4\43\1\136\25\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\4\43\1\137\25\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\22\43\1\140\7\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\23\43\1\141\6\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\17\43\1\142\12\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\52\132\1\115\4\132\1\143\uffd0\132"),
+        DFA.unpack(u"\52\114\1\131\uffd5\114"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\16\43\1\144\13\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\21\43\1\145\10\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\15\42\1\140\14\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\32\42\4\uffff\1\42\1\uffff"
-        u"\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\12\42\1\142\17\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\4\42\1\143\25\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\15\43\1\146\14\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\32\43\4\uffff\1\43\1\uffff"
+        u"\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\12\43\1\150\17\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\32\43\4\uffff\1\43\1\uffff"
+        u"\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\4\43\1\152\25\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\15\42\1\144\14\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\32\42\4\uffff\1\42\1\uffff"
-        u"\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\2\42\1\146\27\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\15\43\1\153\14\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\32\43\4\uffff\1\43\1\uffff"
+        u"\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\2\43\1\155\27\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\32\42\4\uffff\1\42\1\uffff"
-        u"\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\22\42\1\150\7\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\32\42\4\uffff\1\42\1\uffff"
-        u"\32\42"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\32\43\4\uffff\1\43\1\uffff"
+        u"\32\43"),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\4\42\1\152\25\42\4\uffff"
-        u"\1\42\1\uffff\32\42"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\22\43\1\157\7\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\32\43\4\uffff\1\43\1\uffff"
+        u"\32\43"),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\32\42\4\uffff\1\42\1\uffff"
-        u"\32\42"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\4\43\1\161\25\43\4\uffff"
+        u"\1\43\1\uffff\32\43"),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\43\1\uffff\12\42\7\uffff\32\42\4\uffff\1\42\1\uffff"
-        u"\32\42"),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\32\43\4\uffff\1\43\1\uffff"
+        u"\32\43"),
+        DFA.unpack(u""),
+        DFA.unpack(u"\1\44\1\uffff\12\43\7\uffff\32\43\4\uffff\1\43\1\uffff"
+        u"\32\43"),
         DFA.unpack(u""),
         DFA.unpack(u"")
     ]
@@ -2053,120 +2097,120 @@ class interfaceLexer(Lexer):
 
             _s = s
 
-            if s == 0: 
-                LA16_72 = input.LA(1)
+            if s == 0:
+                LA16_76 = input.LA(1)
 
                 s = -1
-                if (LA16_72 == 42):
-                    s = 84
+                if (LA16_76 == 42):
+                    s = 89
 
-                elif ((0 <= LA16_72 <= 41) or (43 <= LA16_72 <= 65535)):
-                    s = 72
+                elif ((0 <= LA16_76 <= 41) or (43 <= LA16_76 <= 65535)):
+                    s = 76
 
                 if s >= 0:
                     return s
-            elif s == 1: 
-                LA16_46 = input.LA(1)
+            elif s == 1:
+                LA16_89 = input.LA(1)
 
                 s = -1
-                if ((0 <= LA16_46 <= 41) or (43 <= LA16_46 <= 46) or (48 <= LA16_46 <= 65535)):
-                    s = 60
+                if (LA16_89 == 47):
+                    s = 99
 
-                elif (LA16_46 == 47):
-                    s = 61
+                elif ((0 <= LA16_89 <= 41) or (43 <= LA16_89 <= 46) or (48 <= LA16_89 <= 65535)):
+                    s = 90
 
-                elif (LA16_46 == 42):
-                    s = 47
+                elif (LA16_89 == 42):
+                    s = 77
 
                 if s >= 0:
                     return s
-            elif s == 2: 
-                LA16_73 = input.LA(1)
+            elif s == 2:
+                LA16_90 = input.LA(1)
 
                 s = -1
-                if ((0 <= LA16_73 <= 41) or (43 <= LA16_73 <= 46) or (48 <= LA16_73 <= 65535)):
-                    s = 85
+                if (LA16_90 == 42):
+                    s = 89
 
-                elif (LA16_73 == 42):
-                    s = 73
-
-                elif (LA16_73 == 47):
-                    s = 47
+                elif ((0 <= LA16_90 <= 41) or (43 <= LA16_90 <= 65535)):
+                    s = 76
 
                 if s >= 0:
                     return s
-            elif s == 3: 
-                LA16_85 = input.LA(1)
+            elif s == 3:
+                LA16_65 = input.LA(1)
 
                 s = -1
-                if (LA16_85 == 42):
-                    s = 84
-
-                elif ((0 <= LA16_85 <= 41) or (43 <= LA16_85 <= 65535)):
-                    s = 72
-
-                if s >= 0:
-                    return s
-            elif s == 4: 
-                LA16_62 = input.LA(1)
-
-                s = -1
-                if ((0 <= LA16_62 <= 9) or (11 <= LA16_62 <= 65535)):
-                    s = 74
+                if ((0 <= LA16_65 <= 9) or (11 <= LA16_65 <= 65535)):
+                    s = 78
 
                 else:
-                    s = 75
+                    s = 79
 
                 if s >= 0:
                     return s
-            elif s == 5: 
-                LA16_84 = input.LA(1)
+            elif s == 4:
+                LA16_78 = input.LA(1)
 
                 s = -1
-                if (LA16_84 == 47):
-                    s = 93
-
-                elif ((0 <= LA16_84 <= 41) or (43 <= LA16_84 <= 46) or (48 <= LA16_84 <= 65535)):
-                    s = 85
-
-                elif (LA16_84 == 42):
-                    s = 73
-
-                if s >= 0:
-                    return s
-            elif s == 6: 
-                LA16_60 = input.LA(1)
-
-                s = -1
-                if ((0 <= LA16_60 <= 41) or (43 <= LA16_60 <= 65535)):
-                    s = 72
-
-                elif (LA16_60 == 42):
-                    s = 73
-
-                if s >= 0:
-                    return s
-            elif s == 7: 
-                LA16_74 = input.LA(1)
-
-                s = -1
-                if ((0 <= LA16_74 <= 9) or (11 <= LA16_74 <= 65535)):
-                    s = 74
+                if ((0 <= LA16_78 <= 9) or (11 <= LA16_78 <= 65535)):
+                    s = 78
 
                 else:
-                    s = 75
+                    s = 79
 
                 if s >= 0:
                     return s
-            elif s == 8: 
-                LA16_29 = input.LA(1)
+            elif s == 5:
+                LA16_63 = input.LA(1)
 
                 s = -1
-                if (LA16_29 == 42):
-                    s = 46
+                if ((0 <= LA16_63 <= 41) or (43 <= LA16_63 <= 65535)):
+                    s = 76
 
-                elif ((0 <= LA16_29 <= 41) or (43 <= LA16_29 <= 65535)):
-                    s = 47
+                elif (LA16_63 == 42):
+                    s = 77
+
+                if s >= 0:
+                    return s
+            elif s == 6:
+                LA16_48 = input.LA(1)
+
+                s = -1
+                if ((0 <= LA16_48 <= 41) or (43 <= LA16_48 <= 46) or (48 <= LA16_48 <= 65535)):
+                    s = 63
+
+                elif (LA16_48 == 47):
+                    s = 64
+
+                elif (LA16_48 == 42):
+                    s = 49
+
+                if s >= 0:
+                    return s
+            elif s == 7:
+                LA16_77 = input.LA(1)
+
+                s = -1
+                if ((0 <= LA16_77 <= 41) or (43 <= LA16_77 <= 46) or (48 <= LA16_77 <= 65535)):
+                    s = 90
+
+                elif (LA16_77 == 42):
+                    s = 77
+
+                elif (LA16_77 == 47):
+                    s = 49
+
+                if s >= 0:
+                    return s
+            elif s == 8:
+                LA16_30 = input.LA(1)
+
+                s = -1
+                if (LA16_30 == 42):
+                    s = 48
+
+                elif ((0 <= LA16_30 <= 41) or (43 <= LA16_30 <= 65535)):
+                    s = 49
 
                 if s >= 0:
                     return s
@@ -2175,7 +2219,7 @@ class interfaceLexer(Lexer):
             self_.error(nvae)
             raise nvae
 
- 
+
 
 
 

@@ -67,6 +67,19 @@ typedef enum
     {%- endfor %}
 }
 {{type|FormatType}};
+{%- elif type is StructType %}
+typedef struct
+{
+    {%- for member in type.members %}
+    {%- if member is StringMember %}
+    char {{member.name|DecorateName}}[{{member.maxCount}}];
+    {%- else %}
+    {{member.apiType|FormatType}} {{member.name|DecorateName}}
+    {%- if member is ArrayMember %}[{{member.maxCount}}]{% endif %};
+    {%- endif %}
+    {%- endfor %}
+}
+{{type|FormatType}};
 {%- elif type is ReferenceType %}
 typedef struct {{apiName}}_{{type.name}}* {{type|FormatType}};
 {%- endif %}

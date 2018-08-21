@@ -448,7 +448,7 @@ static inline bool le_pack_PackArrayHeader
  * size.
  *
  * @note Always decrements available size according to the max possible size used, not actual size
- * used.  Will assert if provided string is larger than maximum allowable string.
+ * used.  Will assert if the resulted array exceeds the maximum size allowed.
  */
 //--------------------------------------------------------------------------------------------------
 #define LE_PACK_PACKARRAY(bufferPtr,                                    \
@@ -469,6 +469,40 @@ static inline bool le_pack_PackArrayHeader
             for (i = 0; i < (arrayCount); ++i)                          \
             {                                                           \
                 LE_ASSERT(packFunc((bufferPtr), (sizePtr), (arrayPtr)[i])); \
+            }                                                           \
+            LE_ASSERT(*(sizePtr) >= newSizePtr);                        \
+            *(sizePtr) = newSizePtr;                                    \
+            *(resultPtr) = true;                                        \
+        }                                                               \
+    } while (0)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack an array of struct into a buffer, incrementing the buffer pointer and decrementing the
+ * available size.
+ *
+ * @note Always decrements available size according to the max possible size used, not actual size
+ * used.  Will assert if the resulted array of struct exceeds the maximum size allowed.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_PACK_PACKSTRUCTARRAY(bufferPtr,                              \
+                                 sizePtr,                               \
+                                 arrayPtr,                              \
+                                 arrayCount,                            \
+                                 arrayMaxCount,                         \
+                                 packFunc,                              \
+                                 resultPtr)                             \
+    do {                                                                \
+        *(resultPtr) = le_pack_PackArrayHeader((bufferPtr), (sizePtr), \
+                                               (arrayPtr), sizeof((arrayPtr)[0]), \
+                                               (arrayCount), (arrayMaxCount)); \
+        if (*(resultPtr))                                               \
+        {                                                               \
+            uint32_t i;                                                 \
+            size_t newSizePtr = *(sizePtr) - sizeof((arrayPtr)[0])*(arrayMaxCount); \
+            for (i = 0; i < (arrayCount); ++i)                          \
+            {                                                           \
+                LE_ASSERT(packFunc((bufferPtr), (sizePtr), &((arrayPtr)[i]))); \
             }                                                           \
             LE_ASSERT(*(sizePtr) >= newSizePtr);                        \
             *(sizePtr) = newSizePtr;                                    \
@@ -924,7 +958,7 @@ static inline bool le_pack_UnpackArrayHeader
  * size.
  *
  * @note Always decrements available size according to the max possible size used, not actual size
- * used.  Will assert if provided string is larger than maximum allowable string.
+ * used.  Will assert if the resulted array exceeds the maximum size allowed.
  */
 //--------------------------------------------------------------------------------------------------
 #define LE_PACK_UNPACKARRAY(bufferPtr,                                  \
@@ -954,5 +988,22 @@ static inline bool le_pack_UnpackArrayHeader
             *(resultPtr) = true;                                        \
         }                                                               \
     } while (0)
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unpack an array of struct from buffer. Since its logic is the same as that for unpacking an
+ * array, here it calls LE_PACK_UNPACKSTRUCTARRAY() to do the work.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_PACK_UNPACKSTRUCTARRAY(bufferPtr,                            \
+                                  sizePtr,                              \
+                                  arrayPtr,                             \
+                                  arrayCountPtr,                        \
+                                  arrayMaxCount,                        \
+                                  unpackFunc,                           \
+                                  resultPtr)                            \
+    LE_PACK_UNPACKARRAY((bufferPtr), (sizePtr), (arrayPtr), (arrayCountPtr), \
+                        (arrayMaxCount), (unpackFunc), (resultPtr))
 
 #endif /* LE_PACK_H_INCLUDE_GUARD */

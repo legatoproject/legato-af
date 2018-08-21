@@ -53,6 +53,7 @@ The @ref le_result_t and @ref le_onoff_t types from legato.h can also be used in
  - BITMAP
  - REFERENCE
  - HANDLER
+ - STRUCT
 
 Type definitions can also be shared between API files with USETYPES.
 
@@ -109,6 +110,28 @@ REFERENCE <name>;
 
 The REFERENCE is used to define a reference to an object. The object reference is mapped to an
 opaque reference in C and an object instance or similar in other languages.
+
+@subsection apiFilesSyntax_typesStruct STRUCT
+
+A STRUCT is specified as:
+
+@verbatim
+STRUCT <name>
+{
+    <type> <name>;                ///< Simple structure member
+    string <name>[<maxSize>];     ///< String structure member
+    <type> <name>[<maxSize>];     ///< Array structure member
+    ...
+};
+@endverbatim
+
+A structure is used to define a collection of data, similar to a C struct.  A STRUCT can contain
+members of any type, including strings, arrays, and other STRUCTs.
+
+When structured data is passed over an API call, the entire structure is passed every time.
+For smaller structures this overhead can be minimal.  For larger objects it's better to return a
+reference to the object using the REFERENCE type and use accessor functions to get the properties
+of the object.
 
 @subsection apiFilesSyntax_typesHandler HANDLER
 

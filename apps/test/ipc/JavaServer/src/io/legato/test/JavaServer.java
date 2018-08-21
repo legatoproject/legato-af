@@ -62,6 +62,22 @@ public class JavaServer extends Component implements ipcTest {
 	}
 
 	@Override
+	public void EchoSimpleStruct(ipcTest.SimpleStruct InStruct,
+		                     Ref<ipcTest.SimpleStruct> OutStruct) {
+		if (OutStruct != null) {
+			OutStruct.setValue(InStruct);
+		}
+	}
+
+	@Override
+	public void EchoCompoundStruct(ipcTest.CompoundStruct InStruct,
+		                       Ref<ipcTest.CompoundStruct> OutStruct) {
+		if (OutStruct != null) {
+			OutStruct.setValue(InStruct);
+		}
+	}
+
+	@Override
 	public void ExitServer() {
 		System.exit(-1);
 	}

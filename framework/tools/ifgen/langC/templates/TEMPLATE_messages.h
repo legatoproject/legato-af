@@ -50,7 +50,13 @@ _Message_t;
 
 // Define type-safe pack/unpack functions for all enums, including included types
 {%- for type in allTypes if type is EnumType or type is BitMaskType %}
-{{ pack.DeclarePackUnpack(type) }}
+{{ pack.DeclareEnumPackUnpack(type) }}
+
+{%- endfor %}
+
+// Define pack/unpack functions for all structures, including included types
+{% for type in allTypes if type is StructType %}
+{{ pack.DeclareStructPackUnpack(type) }}
 
 {%- endfor %}
 

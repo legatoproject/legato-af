@@ -10,6 +10,7 @@
 {%- for comment in fileComments %}
 {{comment|FormatHeaderComment}}
 {%- endfor %}
+{%- import "pack.templ" as pack with context %}
 
 // Generated interface for API {{apiName}}.
 // This is a generated file, do not edit.
@@ -20,6 +21,7 @@ import io.legato.Ref;
 import io.legato.IntType;
 import io.legato.Result;
 import io.legato.OnOff;
+import io.legato.MessageBuffer;
 import java.util.Map;
 import java.util.HashMap;
 import java.io.FileDescriptor;
@@ -122,6 +124,54 @@ public interface {{apiName}} {
 			{%- endfor -%}
 			);
 	}
+        {%- elif type is StructType %}
+        public class {{type.name}} {
+                {%- for member in type.members %}
+                public {{member.apiType|FormatType}} {{member.name}};
+                {%- endfor %}
+
+                public static void Pack(MessageBuffer buffer, {{type.name}} value)
+                {
+                    {%- for member in type.members %}
+                    {%- if member is ArrayMember %}
+                    buffer.writeInt(value.{{member.name}}.length);
+                    for (int i = 0; i < value.{{member.name}}.length; ++i)
+                    {
+                        {{pack.PackValue(member.apiType, "value." + member.name)}}
+                    }
+                    {%- elif member is StringMember %}
+                    buffer.writeString(value.{{member.name}}, {{member.maxCount}});
+                    {%- else %}
+                    {{pack.PackValue(member.apiType, "value." + member.name)}}
+                    {%- endif %}
+                    {%- endfor %}
+                }
+
+                public static {{type.name}} Unpack(MessageBuffer buffer)
+                {
+                    {{type.name}} value = new {{type.name}}();
+
+                    {%- for member in type.members %}
+                    {%- if member is ArrayMember %}
+                    value.{{member.name}} = new {{member.apiType|FormatType}}[buffer.readInt()];
+                    if (value.{{member.name}}.length > {{member.maxCount}})
+                    {
+                        throw new IllegalStateException("Invalid size for structure member: {{member.name}}");
+                    }
+                    for (int i = 0; i < value.{{member.name}}.length; i++)
+                    {
+                        value.{{member.name}}[i] =
+                            {{pack.UnpackValue(member.apiType, "value." + member.name)}};
+                    }
+                    {%- else %}
+                    value.{{member.name}} =
+                        {{pack.UnpackValue(member.apiType, "value." + member.name)}};
+                    {%- endif %}
+                    {%- endfor %}
+
+                    return value;
+                }
+        }
 	{%- endif %}
 {% endfor %}
 {% for function in functions %}

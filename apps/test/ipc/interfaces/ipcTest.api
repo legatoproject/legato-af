@@ -95,6 +95,20 @@ BITMASK LargeBitMask {
 
 REFERENCE Simple;
 
+STRUCT SimpleStruct
+{
+    int32 Simple;
+    SmallEnum Enum;
+    SmallBitMask BitMask;
+    Simple Ref;
+    string String[256];
+};
+
+STRUCT CompoundStruct
+{
+    SimpleStruct Struct;
+};
+
 FUNCTION EchoSimple(int32 InValue IN,
                     int32 OutValue OUT);
 
@@ -112,6 +126,13 @@ FUNCTION EchoLargeBitMask(LargeBitMask InValue IN,
 
 FUNCTION EchoReference(Simple InRef IN,
                        Simple OutRef OUT);
+
+FUNCTION EchoSimpleStruct(SimpleStruct InStruct IN,
+                          SimpleStruct OutStruct OUT);
+
+
+FUNCTION EchoCompoundStruct(CompoundStruct InStruct IN,
+                            CompoundStruct OutStruct OUT);
 
 FUNCTION EchoString(string InString[256] IN,
                     string OutString[256] OUT);

@@ -22,6 +22,8 @@
 buffer.writeNumber({{value}}.getType(), {{value}}.getValue());
     {%- elif apiType is EnumType -%}
 buffer.writeNumber({{value}}.getType(), {{value}}.getValue());
+    {%- elif apiType is StructType -%}
+{{apiType|FormatType}}.Pack(buffer, {{value}});
     {%- elif apiType is HandlerReferenceType -%}
 buffer.writeLongRef({{value}});
     {%- elif apiType is ReferenceType -%}
@@ -50,6 +52,8 @@ buffer.writeString({{value}}, {{parameter.maxCount}});
         {{valueType|FormatType}}.fromValue(buffer.readNumber({{valueType|FormatType}}.getType()))
     {%- elif valueType is BitMaskType -%}
         {{valueType|FormatType}}.fromValue(buffer.readNumber({{valueType|FormatType}}.TYPE))
+    {%- elif valueType is StructType -%}
+        {{valueType|FormatType}}.Unpack(buffer)
     {%- elif valueType is HandlerReferenceType -%}
         buffer.readLongRef()
     {%- elif valueType is ReferenceType -%}

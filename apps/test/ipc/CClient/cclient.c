@@ -122,6 +122,76 @@ static void TestEchoStringNull(void)
     CU_PASS("No crash");
 }
 
+static void TestEchoSimpleStruct(void)
+{
+    static const ipcTest_SimpleStruct_t simpleStructIn =
+        {
+            .Simple = 5566,
+            .Enum = IPCTEST_SE_VALUE3,
+            .BitMask = IPCTEST_SBM_VALUE1,
+            .Ref = NULL,
+            .String = "a test string for testing"
+        };
+    ipcTest_SimpleStruct_t simpleStructOut = {};
+
+    ipcTest_EchoSimpleStruct(&simpleStructIn, &simpleStructOut);
+
+    CU_ASSERT(memcmp(&simpleStructIn, &simpleStructOut, sizeof(ipcTest_SimpleStruct_t)) == 0);
+}
+
+static void TestEchoCompoundStruct(void)
+{
+    static const ipcTest_CompoundStruct_t compoundStructIn =
+        {
+            .Struct = {
+                .Simple = 5566,
+                .Enum = IPCTEST_SE_VALUE3,
+                .BitMask = IPCTEST_SBM_VALUE1,
+                .Ref = NULL,
+                .String = "a test string for testing"
+            }
+        };
+    ipcTest_CompoundStruct_t compoundStructOut = {};
+
+    ipcTest_EchoCompoundStruct(&compoundStructIn, &compoundStructOut);
+
+    CU_PASS("No crash");
+}
+
+static void TestEchoSimpleStructNull(void)
+{
+    static const ipcTest_SimpleStruct_t simpleStructIn =
+        {
+            .Simple = 5566,
+            .Enum = IPCTEST_SE_VALUE3,
+            .BitMask = IPCTEST_SBM_VALUE1,
+            .Ref = NULL,
+            .String = "a test string for testing"
+        };
+
+    ipcTest_EchoSimpleStruct(&simpleStructIn, NULL);
+
+    CU_PASS("No crash");
+}
+
+static void TestEchoCompoundStructNull(void)
+{
+    static const ipcTest_CompoundStruct_t compoundStructIn =
+        {
+            .Struct = {
+                .Simple = 5566,
+                .Enum = IPCTEST_SE_VALUE3,
+                .BitMask = IPCTEST_SBM_VALUE1,
+                .Ref = NULL,
+                .String = "a test string for testing"
+            }
+        };
+
+    ipcTest_EchoCompoundStruct(&compoundStructIn, NULL);
+
+    CU_PASS("No crash");
+}
+
 #if 0
 // Not supported by Java
 static void TestEchoSmallArray(void)
@@ -220,6 +290,10 @@ static void* run_test(void* context)
               { "EchoString", TestEchoSmallString },
               { "EchoString with max size string", TestEchoMaxString },
               { "EchoString with NULL output", TestEchoStringNull },
+              { "EchoSimpleStruct", TestEchoSimpleStruct },
+              { "EchoSimpleStruct with NULL output", TestEchoSimpleStructNull },
+              { "EchoCompoundStruct", TestEchoCompoundStruct },
+              { "EchoCompoundStruct with NULL output", TestEchoCompoundStructNull },
 //              { "EchoArray", TestEchoSmallArray },
 //              { "EchoArray with max size array", TestEchoMaxArray },
 //              { "EchoArray with NULL output", TestEchoArrayNull },

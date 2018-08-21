@@ -26,6 +26,9 @@ def IsEnumType(typeObj):
 def IsBitMaskType(typeObj):
     return isinstance(typeObj, interfaceIR.BitmaskType)
 
+def IsStructType(typeObj):
+    return isinstance(typeObj, interfaceIR.StructType)
+
 def IsHandlerType(typeObj):
     return isinstance(typeObj, interfaceIR.HandlerType)
 
@@ -47,6 +50,13 @@ def IsStringParameter(paramObj):
 
 def IsArrayParameter(paramObj):
     return isinstance(paramObj, interfaceIR.ArrayParameter)
+
+### Structure member tests
+def IsStringMember(memberObj):
+    return isinstance(memberObj, interfaceIR.StructStringMember)
+
+def IsArrayMember(memberObj):
+    return isinstance(memberObj, interfaceIR.StructArrayMember)
 
 ### Function tests
 def HasCallbackFunction(typeObj):

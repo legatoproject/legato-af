@@ -189,6 +189,7 @@ REFERENCE : 'REFERENCE' ;
 DEFINE : 'DEFINE' ;
 ENUM : 'ENUM' ;
 BITMASK : 'BITMASK' ;
+STRUCT : 'STRUCT' ;
 USETYPES : 'USETYPES' ;
 
 /** Identifiers */
@@ -386,6 +387,40 @@ referenceDecl returns [ref]
         }
     ;
 
+compoundMember returns [member]
+    : typeIdentifier IDENTIFIER arrayExpression? ';' docPostComments
+        {
+            if $typeIdentifier.typeObj == interfaceIR.OLD_HANDLER_TYPE or \
+               isinstance($typeIdentifier.typeObj, interfaceIR.HandlerReferenceType) or \
+               isinstance($typeIdentifier.typeObj, interfaceIR.HandlerType):
+                self.compileErrors += 1
+                self.emitErrorMessage(self.getErrorHeaderForToken($typeIdentifier.typeObj) +
+                                      " Cannot include handlers in a structure")
+                $member = None
+            else:
+                $member = interfaceIR.MakeStructMember(self.iface,
+                                                       $typeIdentifier.typeObj,
+                                                       $IDENTIFIER.text,
+                                                       $arrayExpression.size)
+        }
+    ;
+
+compoundMemberList returns [members]
+    : compoundMember                    { $members = [ $compoundMember.member ] }
+    | compoundMember rest=compoundMemberList
+        {
+            $members = [ $compoundMember.member ]
+            $members.extend($rest.members)
+        }
+    ;
+
+structDecl returns [struct]
+    : STRUCT IDENTIFIER '{' compoundMemberList? '}' ';'
+        {
+            $struct = interfaceIR.StructType($IDENTIFIER.text, $compoundMemberList.members)
+        }
+    ;
+
 formalParameter returns [parameter]
     : typeIdentifier IDENTIFIER arrayExpression? direction? docPostComments
         {
@@ -458,6 +493,7 @@ declaration returns [declaration]
     : enumDecl        { $declaration = $enumDecl.enum }
     | bitmaskDecl     { $declaration = $bitmaskDecl.bitmask }
     | referenceDecl   { $declaration = $referenceDecl.ref }
+    | structDecl      { $declaration = $structDecl.struct }
     | functionDecl    { $declaration = $functionDecl.function }
     | handlerDecl     { $declaration = $handlerDecl.handler }
     | eventDecl       { $declaration = $eventDecl.event }
