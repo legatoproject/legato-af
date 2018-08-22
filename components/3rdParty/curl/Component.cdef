@@ -20,6 +20,10 @@ bundles:
         // To install the library for localhost.
         #elif file_exists(${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libcurl.so.4)
             ${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libcurl.so.4 /lib/
+        #elif file_exists(${LEGATO_SYSROOT}/usr/lib64/libcurl.so.4)
+            ${LEGATO_SYSROOT}/usr/lib64/libcurl.so.4 /lib/
+        #elif file_exists(${LEGATO_SYSROOT}/usr/lib/i386-linux-gnu/libcurl.so.4)
+            ${LEGATO_SYSROOT}/usr/lib/i386-linux-gnu/libcurl.so.4 /lib/
 
         #else
             /curl/not/found /lib/
