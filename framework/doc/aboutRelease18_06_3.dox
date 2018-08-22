@@ -1,6 +1,6 @@
-/** @page releaseNotes18060 18.06.0 Release Notes
+/** @page releaseNotes18063 18.06.3 Release Notes
 
-Release Date: July 11, 2018
+Release Date: Aug 24, 2018
 
 See @ref aboutLicenses to view Legato AF Licensing Information.
 
@@ -9,11 +9,35 @@ The following provides a summary of changes that have been made in the 18.06 Leg
 <b> Download the @ref aboutReleaseInfo "source code" and get started with @ref basicBuild
 "building Legato AF". </b>
 
-@section rn1806_Patches 18.06.01 Fixes
+@section rn18063_Patches 18.06.3 Patch
+
+The following issues have been fixed by the 18.06.3 patch:
+
+@b Modem @b Radio @b Control API:
+The following functions have been added to @ref le_mrc_PcinetworkScan "mrc API" to support PCI
+scanning. The PCI scan is used to get the MCC/MNC for each neighboring cell ID:
+- le_mrc_PerformPciNetworkScan()
+- le_mrc_PerformPciNetworkScanAsync()
+- le_mrc_GetFirstPciScanInfo()
+- le_mrc_GetNextPciScanInfo()
+- le_mrc_GetFirstPlmnInfo()
+- le_mrc_GetNextPlmnInfo()
+- le_mrc_GetPciScanCellId()
+- le_mrc_GetPciScanMccMnc()
+- le_mrc_DeletePciNetworkScan()
+
+@section rn18062_Patches 18.06.2 Patch
+
+The following issues have been fixed by the 18.06.2 patch:
+
+A patch has been added to allow more time for the modem to start up. Legato will now uses the
+watchdog timer and fault action to recover any services that fail to start.
+
+@section rn18061_Patches 18.06.1 Patch
 
 The following issues have been patched in 18.06.1:
 
-- A bug is fixed that caused a data corruption issue when performing a system update. If the
+A bug is fixed that caused a data corruption issue when performing a system update. If the
 update created a secure storage entry that was more then 4k in size the bug caused the last byte
 to be silently dropped.
 
