@@ -190,7 +190,7 @@ static void ModuleFreeParams(KModuleObj_t *module)
  * Build and execute the insmod/rmmod command
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t ExecuteCommand(char *argv[])
+static le_result_t ExecuteCommand(char *argv[], int argc)
 {
     pid_t pid, p;
     int result;
@@ -200,9 +200,12 @@ static le_result_t ExecuteCommand(char *argv[])
     LE_FATAL_IF(argv[1] == NULL,
                 "Internal error: execute command expects at least one parameter.");
 
-    /* TODO: Check whether the content of last index of argv is a NULL.
-     * execv() is valid only if the array of pointers is terminated by a NULL pointer.
-     */
+    /*  execv() is valid only if the array of pointers is terminated by a NULL pointer */
+    if (argv[argc] != NULL)
+    {
+        LE_ERROR("Internal error: command '%s %s' must be terminated by NULL", argv[0], argv[1]);
+        return LE_FAULT;
+    }
 
     /* First argument argv[0] is always the command */
     LE_INFO("Execute '%s %s'", argv[0], argv[1]);
@@ -897,7 +900,7 @@ static le_result_t InstallEachKernelModule(KModuleObj_t *m, bool enableUseCount)
                 scriptargv[1] =  mod->path;
                 scriptargv[2] =  NULL;
 
-                result = ExecuteCommand(scriptargv);
+                result = ExecuteCommand(scriptargv, 2);
                 if (result != LE_OK)
                 {
                     LE_CRIT("Install script '%s' execution failed", mod->installScript);
@@ -938,7 +941,7 @@ static le_result_t InstallEachKernelModule(KModuleObj_t *m, bool enableUseCount)
             else
             {
                 mod->argv[0] = INSMOD_COMMAND;
-                result = ExecuteCommand(mod->argv);
+                result = ExecuteCommand(mod->argv, mod->argc);
                 if (result != LE_OK)
                 {
                     if (mod->isOptional)
@@ -1285,7 +1288,7 @@ static le_result_t RemoveEachKernelModule(KModuleObj_t *m, bool enableUseCount)
                 scriptargv[1] =  mod->path;
                 scriptargv[2] =  NULL;
 
-                result = ExecuteCommand(scriptargv);
+                result = ExecuteCommand(scriptargv, 2);
                 if (result != LE_OK)
                 {
                     LE_CRIT("Remove script '%s' execution failed.", mod->removeScript);
@@ -1313,7 +1316,7 @@ static le_result_t RemoveEachKernelModule(KModuleObj_t *m, bool enableUseCount)
                 rmmodargv[1] = mod->name;
                 rmmodargv[2] = NULL;
 
-                result = ExecuteCommand(rmmodargv);
+                result = ExecuteCommand(rmmodargv, 2);
                 if (result != LE_OK)
                 {
                     return result;
@@ -1352,10 +1355,8 @@ le_result_t kernelModules_RemoveListOfModules(le_sls_List_t reqModuleName)
             if (result != LE_OK)
             {
                 LE_ERROR("Error in removing module '%s'", m->name);
-                result = LE_FAULT;
-
                 /* If an error occurs removing a module, continue removing others in the list */
-                continue;
+                result = LE_FAULT;
             }
         }
 
