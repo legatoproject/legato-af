@@ -45,8 +45,6 @@ def convert_to_c(obj):
         return obj
     if obj is None:
         return ffi.NULL
-    if isinstance(obj, basestring):
-        return ffi.new("char[]", obj)
     if obj is list or obj is tuple:
         return [ convert_to_c[x] for x in obj ]
     if isinstance(obj, Enum):
