@@ -41,7 +41,7 @@ Recorder = file recording and samples extraction
 | Function \ Stream | I2S Tx | I2S Rx | PCM Tx | PCM Rx | USB Tx | USB Rx | Spkr | Mic | MdmVoice Tx | MdmVoice Rx | Player | Recorder |
 |                   |:      :|:      :|:      :|:      :|:      :|:      :|:    :|:   :|:           :|:           :|:      :|:        :|
 | Gain (Set / Get)  |        |        |        |        |        |        |      |  X  |      X      |      X      |   X    |          |
-| Mute / Unmute     |        |        |        |        |        |        |  X   |  X  |      X      |             |   X    |          |
+| Mute / Unmute     |   X    |   X    |   X    |   X    |   X    |    X   |  X   |  X  |      X      |      X      |   X    |          |
 | NS                |        |        |        |        |        |        |      |     |      X      |             |        |          |
 | EC                |        |        |        |        |        |        |      |     |      X      |             |        |          |
 | IIR               |        |        |        |        |        |        |      |     |      X      |      X      |        |          |
