@@ -1927,6 +1927,8 @@ le_result_t le_gnss_GetTimeAccuracy
  *
  * @note If the caller is passing an invalid position sample reference or a null pointer into this
  *       function, it is a fatal error, the function will not return.
+ *
+ * @deprecated This function is deprecated, le_gnss_GetLeapSeconds should be used instead.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_GetGpsLeapSeconds
@@ -4079,6 +4081,49 @@ le_result_t le_gnss_SetSuplServerUrl
 )
 {
     return pa_gnss_SetSuplServerUrl(suplServerUrlPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets leap seconds information
+ *
+ * @return
+ *  - LE_OK            Function succeeded.
+ *  - LE_FAULT         Function failed to get the data.
+ *  - LE_TIMEOUT       Timeout occured.
+ *  - LE_UNSUPPORTED   Not supported on this platform.
+ *
+ * @note Insertion of each UTC leap second is usually decided about six months in advance by the
+ * International Earth Rotation and Reference Systems Service (IERS).
+ *
+ * @note If the caller is passing a null pointer into this function, it is considered a fatal
+ * error and the function will not return.
+ *
+ * @note If the return value of a parameter is INT32_MAX/UINT64_MAX, the parameter is not valid.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetLeapSeconds
+(
+    uint64_t* gpsTimePtr,              ///< [OUT] The number of milliseconds of GPS time since
+                                       ///<       Jan. 6, 1980
+    int32_t* currentLeapSecondsPtr,    ///< [OUT] Current UTC leap seconds value in milliseconds
+    uint64_t* changeEventTimePtr,      ///< [OUT] The number of milliseconds since Jan. 6, 1980
+                                       ///<       to the next leap seconds change event
+    int32_t* nextLeapSecondsPtr        ///< [OUT] UTC leap seconds value to be applied at the
+                                       ///<       change event time in milliseconds
+)
+{
+    if ((!gpsTimePtr) || (!currentLeapSecondsPtr) || (!changeEventTimePtr) || (!nextLeapSecondsPtr))
+    {
+        LE_ERROR("Null pointer provided: gpsTimePtr: %p, currentLeapSecondsPtr: %p, "
+                 "changeEventTimePtr: %p, nextLeapSecondsPtr: %p",
+                  gpsTimePtr, currentLeapSecondsPtr, changeEventTimePtr, nextLeapSecondsPtr);
+
+        return LE_FAULT;
+    }
+
+    return pa_gnss_GetLeapSeconds(gpsTimePtr, currentLeapSecondsPtr,
+                                  changeEventTimePtr, nextLeapSecondsPtr);
 }
 
 //--------------------------------------------------------------------------------------------------

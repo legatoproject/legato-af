@@ -1155,6 +1155,48 @@ static void Testle_gnss_DeviceReadyStateTest
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Test: GNSS leap seconds
+ * Tested API: le_gnss_GetLeapSeconds
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_gnss_GetLeapSeconds
+(
+    void
+)
+{
+    int32_t currentLeapSec = 0, nextLeapSec = 0;
+    uint64_t gpsTimeMs = 0, nextEventMs = 0;
+
+    LE_ASSERT(LE_FAULT == le_gnss_GetLeapSeconds(NULL,
+                                                 &currentLeapSec,
+                                                 &nextEventMs,
+                                                 &nextLeapSec));
+
+    LE_ASSERT(LE_FAULT == le_gnss_GetLeapSeconds(&gpsTimeMs,
+                                                 NULL,
+                                                 &nextEventMs,
+                                                 &nextLeapSec));
+
+    LE_ASSERT(LE_FAULT == le_gnss_GetLeapSeconds(&gpsTimeMs,
+                                                 &currentLeapSec,
+                                                 NULL,
+                                                 &nextLeapSec));
+
+    LE_ASSERT(LE_FAULT == le_gnss_GetLeapSeconds(&gpsTimeMs,
+                                                 &currentLeapSec,
+                                                 &nextEventMs,
+                                                 NULL));
+
+    LE_ASSERT_OK(le_gnss_GetLeapSeconds(&gpsTimeMs, &currentLeapSec, &nextEventMs, &nextLeapSec));
+
+    LE_ASSERT(gpsTimeMs == UINT64_MAX);
+    LE_ASSERT(currentLeapSec == INT32_MAX);
+    LE_ASSERT(nextEventMs == UINT64_MAX);
+    LE_ASSERT(nextLeapSec == INT32_MAX);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * main of the test
  *
  */
@@ -1163,19 +1205,19 @@ COMPONENT_INIT
 {
     LE_INFO("======== Start GNSS UnitTest ========");
 
-    LE_INFO("======== GNSS Uninitilize state test========");
+    LE_INFO("======== GNSS Uninitilize state test ========");
     Testset_gnss_UninitializedState();
 
-    LE_INFO("======== GNSS round position values Test========");
+    LE_INFO("======== GNSS round position values Test ========");
     Testle_gnss_RoundValue();
 
-    LE_INFO("======== GNSS Position Handler Test========");
+    LE_INFO("======== GNSS Position Handler Test ========");
     Testle_gnss_AddHandlers();
 
-    LE_INFO("======== GNSS Position Fill the position data========");
+    LE_INFO("======== GNSS Position Fill the position data ========");
     Testset_gnss_PositionData();
 
-    LE_INFO("======== GNSS Device State Test========");
+    LE_INFO("======== GNSS Device State Test ========");
     Testle_gnss_GetState();
 
     LE_INFO("======== GNSS Device Ready State Test ========");
@@ -1193,17 +1235,20 @@ COMPONENT_INIT
     LE_INFO("======== GNSS Device GetSbasConstellationCategory ========");
     Testle_gnss_GetSbasConstellationCategory();
 
-    LE_INFO("======== GNSS EnableExtendedEphemerisFile========");
+    LE_INFO("======== GNSS EnableExtendedEphemerisFile ========");
     Testle_gnss_EnableDisableLoadExtendedEphemerisFile();
 
-    LE_INFO("======== GNSS GetExtendedEphemerisValidity========");
+    LE_INFO("======== GNSS GetExtendedEphemerisValidity ========");
     Testle_gnss_GetExtendedEphemerisValidity();
 
-    LE_INFO("======== GNSS InjectUtcTime========");
+    LE_INFO("======== GNSS InjectUtcTime ========");
     Testle_gnss_InjectUtcTime();
 
-    LE_INFO("======== GNSS SetSuplAssistedMode========");
+    LE_INFO("======== GNSS SetSuplAssistedMode ========");
     Testle_gnss_SetSuplAssistedMode();
+
+    LE_INFO("======== GNSS LeapSeconds ========");
+    Testle_gnss_GetLeapSeconds();
 
     LE_INFO("======== GNSS Remove Position Handler========");
     Testle_gnss_RemoveHandlers();

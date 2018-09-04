@@ -138,7 +138,7 @@ void PrintGnssHelp
          "\t\t\t\t\t- time          --> Time of the last updated location\n"
          "\t\t\t\t\t- epochTime     --> Epoch time of the last updated location\n"
          "\t\t\t\t\t- timeAcc       --> Time accuracy in milliseconds\n"
-         "\t\t\t\t\t- LeapSeconds   --> Leap seconds in advance in seconds\n"
+         "\t\t\t\t\t- LeapSeconds   --> Current and next leap seconds\n"
          "\t\t\t\t\t- date          --> Date of the last updated location\n"
          "\t\t\t\t\t- hSpeed        --> Horizontal speed(Horizontal Speed, Horizontal\n"
          "\t\t\t\t\t                    Speed accuracy)\n"
@@ -1511,7 +1511,8 @@ static int GetTimeAccuracy
 
 //-------------------------------------------------------------------------------------------------
 /**
- * This function gets the UTC leap seconds in advance of last updated sample.
+ * This function gets current GPS time, leap seconds, next leap seconds event time and next leap
+ * seconds value.
  *
  * @return
  *     - EXIT_SUCCESS on success.
@@ -1520,19 +1521,62 @@ static int GetTimeAccuracy
 //-------------------------------------------------------------------------------------------------
 static int GetLeapSeconds
 (
-    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+    void
 )
 {
-    uint8_t leapSeconds;
-    le_result_t result = le_gnss_GetGpsLeapSeconds(positionSampleRef, &leapSeconds);
+    int32_t currentLeapSec, nextLeapSec;
+    uint64_t gpsTimeMs, nextEventMs;
+    le_result_t result;
 
-    if (result == LE_OK)
+    result = le_gnss_GetLeapSeconds(&gpsTimeMs, &currentLeapSec, &nextEventMs,&nextLeapSec);
+
+    if (LE_OK == result)
     {
-        printf("UTC leap seconds in advance %ds\n", leapSeconds);
+        printf("Leap seconds report:\n");
+
+        printf("\tCurrent GPS time: ");
+        if (gpsTimeMs != UINT64_MAX)
+        {
+            printf("%"PRIu64" ms\n", gpsTimeMs);
+        }
+        else
+        {
+            printf("\n");
+        }
+
+        printf("\tLeap seconds: ");
+        if (currentLeapSec != INT32_MAX)
+        {
+            printf("%"PRIi32" ms\n",currentLeapSec);
+        }
+        else
+        {
+            printf("\n");
+        }
+
+        printf("\tNext event in: ");
+        if (nextEventMs != UINT64_MAX)
+        {
+            printf("%"PRIu64" ms\n", nextEventMs);
+        }
+        else
+        {
+            printf("\n");
+        }
+
+        printf("\tNext leap seconds in: ");
+        if (nextLeapSec != INT32_MAX)
+        {
+            printf("%"PRIi32" ms\n",nextLeapSec);
+        }
+        else
+        {
+            printf("\n");
+        }
     }
-    else if (result == LE_OUT_OF_RANGE)
+    else if (LE_TIMEOUT == result)
     {
-        printf("Invalid UTC leap seconds in advance [%d]\n", leapSeconds);
+        printf("Timeout for getting next leap second event.\n");
     }
     else
     {
@@ -1541,7 +1585,6 @@ static int GetLeapSeconds
 
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
-
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -1927,7 +1970,6 @@ static int GetPosInfo
     status = (EXIT_FAILURE == GetTime(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetEpochTime(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetTimeAccuracy(positionSampleRef)) ? EXIT_FAILURE : status;
-    status = (EXIT_FAILURE == GetLeapSeconds(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetDate(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetDop(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetHorizontalSpeed(positionSampleRef)) ? EXIT_FAILURE : status;
@@ -2068,10 +2110,6 @@ static void PositionHandlerFunction
         else if (strcmp(ParamsName, "timeAcc") == 0)
         {
             status = GetTimeAccuracy(positionSampleRef);
-        }
-        else if (strcmp(ParamsName, "LeapSeconds") == 0)
-        {
-            status = GetLeapSeconds(positionSampleRef);
         }
         else if (strcmp(ParamsName, "date") == 0)
         {
@@ -2229,6 +2267,10 @@ static void GetGnssParams
     else if (0 == strcmp(params, "acqRate"))
     {
         exit(GetAcquisitionRate());
+    }
+    else if (0 == strcmp(params, "LeapSeconds"))
+    {
+        exit(GetLeapSeconds());
     }
     else if (0 == strcmp(params, "agpsMode"))
     {

@@ -231,6 +231,8 @@
  *
  * @ref le_gnss_GetInfo
  *
+ * @ref le_gnss_GetLeapSeconds
+ *
  * @subsection le_gnss_NMEA NMEA Flow
  * The National Marine Electronics Association (NMEA) standard defines an electrical interface
  * and data protocol for communications between marine instrumentation.
@@ -327,6 +329,14 @@
  *
  * A sample code can be seen in the following page:
  * - @subpage c_gnssSampleCodePosition
+ *
+ * @subsection le_gnss_GetLeapSeconds Get leap seconds event information
+ * The leap seconds event information is retrieved by calling le_gnss_GetLeapSeconds() API.
+ * The result includes current GPS time, current leap seconds, next leap second event time,
+ * and next leap seconds.
+ *
+ * Insertion of each UTC leap second is usually decided about six months in advance by the
+ * International Earth Rotation and Reference Systems Service (IERS).
  *
  * @section le_gnss_Assisted_GNSS Assisted GNSS
  *
@@ -1337,12 +1347,44 @@ FUNCTION le_result_t GetTimeAccuracy
  *
  * @note If the caller is passing an invalid position sample reference or a null pointer into this
  *       function, it is a fatal error, the function will not return.
+ *
+ * @deprecated This function is deprecated, le_gnss_GetLeapSeconds should be used instead.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t  GetGpsLeapSeconds
 (
     Sample positionSampleRef  IN,       ///< Position sample's reference.
     uint8  leapSeconds OUT              ///< UTC leap seconds in advance in seconds
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get leap seconds information.
+ *
+ * @return
+ *  - LE_OK            Function succeeded.
+ *  - LE_FAULT         Function failed to get the data.
+ *  - LE_TIMEOUT       Timeout occured.
+ *  - LE_UNSUPPORTED   Not supported on this platform.
+ *
+ * @note Insertion of each UTC leap second is usually decided about six months in advance by the
+ * International Earth Rotation and Reference Systems Service (IERS).
+ *
+ * @note If the caller is passing a null pointer into this function, it is considered a fatal
+ * error and the function will not return.
+ *
+ * @note If the return value of a parameter is INT32_MAX/UINT64_MAX, the parameter is not valid.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetLeapSeconds
+(
+    uint64 gpsTime OUT,              ///< The number of milliseconds of GPS time since midnight,
+                                     ///< Jan. 6, 1980.
+    int32 currentLeapSeconds OUT,    ///< Current UTC leap seconds value in milliseconds.
+    uint64 changeEventTime OUT,      ///< The number of milliseconds since midnight, Jan. 6, 1980
+                                     ///< to the next leap seconds change event.
+    int32  nextLeapSeconds OUT       ///< UTC leap seconds value to be applied at the change
+                                     ///< event time in milliseconds.
 );
 
 //--------------------------------------------------------------------------------------------------

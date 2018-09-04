@@ -1418,6 +1418,25 @@ static void TestSuplCertificate
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Test: Get leap seconds
+ */
+//--------------------------------------------------------------------------------------------------
+static void TestLeGnssLeapSeconds
+(
+    void
+)
+{
+    int32_t currentLeapSec, nextLeapSec;
+    uint64_t gpsTimeMs, nextEventMs;
+
+    LE_ASSERT_OK(le_gnss_GetLeapSeconds(&gpsTimeMs, &currentLeapSec, &nextEventMs, &nextLeapSec));
+
+    LE_INFO("Current GPS time %"PRIu64"ms, leap seconds %"PRIi32"ms", gpsTimeMs, currentLeapSec);
+    LE_INFO("Next event in %"PRIu64"ms, next leap seconds %"PRIi32"ms", nextEventMs, nextLeapSec);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * App init.
  *
  */
@@ -1438,6 +1457,8 @@ COMPONENT_INIT
      TestLeGnssConstellations();
      LE_INFO("======== GNSS NMEA sentences Test  ========");
      TestLeGnssNmeaSentences();
+     LE_INFO("======== GNSS leap seconds Test  ========");
+     TestLeGnssLeapSeconds();
      LE_INFO("======== Supl Certificate Test  ========");
      TestSuplCertificate();
      LE_INFO("======== GNSS Test SUCCESS ========");
