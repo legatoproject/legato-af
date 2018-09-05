@@ -2627,13 +2627,13 @@ le_result_t le_atServer_Suspend
     Device_t *devicePtr;
 
     devPtr = le_ref_Lookup(DevicesRefMap, devRef);
-    devicePtr = &devPtr->device;
-
     if (!devPtr)
     {
         LE_ERROR("Invalid device");
         return LE_BAD_PARAMETER;
     }
+
+    devicePtr = &devPtr->device;
 
     if (!devicePtr || !devicePtr->fdMonitor)
     {
@@ -3696,7 +3696,7 @@ le_atServer_ErrorCodeRef_t le_atServer_CreateErrorCode
         ///< [IN] Prefix of the final response string
 )
 {
-    int patternLength = 0;
+    int bufLength = 0;
 
     if ((errorCode < STD_ERROR_CODE_SIZE) || (NULL == patternPtr))
     {
@@ -3713,9 +3713,9 @@ le_atServer_ErrorCodeRef_t le_atServer_CreateErrorCode
     UserErrorCode_t* newErrorCode = le_mem_ForceAlloc(UserErrorPool);
     newErrorCode->errorCode = errorCode;
 
-    patternLength = strlen(patternPtr);
-    strncpy(newErrorCode->pattern, patternPtr, patternLength);
-    newErrorCode->pattern[patternLength] = '\0';
+    bufLength = sizeof(newErrorCode->pattern);
+    strncpy(newErrorCode->pattern, patternPtr, bufLength - 1);
+    newErrorCode->pattern[bufLength - 1] = '\0';
 
     newErrorCode->ref = le_ref_CreateRef(UserErrorRefMap, newErrorCode);
 
@@ -3767,7 +3767,7 @@ le_result_t le_atServer_SetVerboseErrorCode
         ///< [IN] Verbose string
 )
 {
-    int msgLength = 0;
+    int bufLength = 0;
 
     if (NULL == messagePtr)
     {
@@ -3782,9 +3782,9 @@ le_result_t le_atServer_SetVerboseErrorCode
         return LE_FAULT;
     }
 
-    msgLength = strlen(messagePtr);
-    strncpy(errorCodePtr->verboseMsg, messagePtr, msgLength);
-    errorCodePtr->verboseMsg[msgLength] = '\0';
+    bufLength = sizeof(errorCodePtr->verboseMsg);
+    strncpy(errorCodePtr->verboseMsg, messagePtr, bufLength - 1);
+    errorCodePtr->verboseMsg[bufLength - 1] = '\0';
 
     return LE_OK;
 }
