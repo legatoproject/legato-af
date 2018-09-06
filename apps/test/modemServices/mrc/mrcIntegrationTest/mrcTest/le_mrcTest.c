@@ -925,6 +925,67 @@ static void Testle_mrc_RatPreferences
 }
 //! [RAT Preferences]
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: PCI Network Scan.
+ *
+ * le_mrc_PerformPciNetworkScan() API test
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_PerformPciNetworkScan
+(
+    void
+)
+{
+//! [PCI Scan]
+    uint16_t cellId = 0;
+    char mcc[LE_MRC_MCC_BYTES] = {0};
+    char mnc[LE_MRC_MNC_BYTES] = {0};
+    le_mrc_PciScanInformationListRef_t scanInfoListRef = NULL;
+    le_mrc_PciScanInformationRef_t     scanInfoRef     = NULL;
+    le_mrc_PlmnInformationRef_t        plmnInfoRef     = NULL;
+
+    // Request an LTE PCI scan
+    scanInfoListRef = le_mrc_PerformPciNetworkScan(LE_MRC_BITMASK_RAT_LTE);
+    LE_ASSERT(scanInfoListRef != NULL);
+
+    // Get reference to first cell info
+    scanInfoRef = le_mrc_GetFirstPciScanInfo(scanInfoListRef);
+    LE_ASSERT(scanInfoRef != NULL);
+
+    do
+    {
+        cellId = le_mrc_GetPciScanCellId(scanInfoRef);
+
+        // Get reference to the first PLMN info
+        plmnInfoRef = le_mrc_GetFirstPlmnInfo(scanInfoRef);
+        LE_ASSERT(plmnInfoRef != NULL);
+
+        do
+        {
+            if (LE_OK == le_mrc_GetPciScanMccMnc(plmnInfoRef,
+                                                 mcc,
+                                                 LE_MRC_MCC_BYTES,
+                                                 mnc,
+                                                 LE_MRC_MCC_BYTES))
+            {
+                LE_INFO("Cell ID: %"PRIu16", MCC: %s, MNC: %s",cellId, mcc, mnc);
+            }
+
+            plmnInfoRef = le_mrc_GetNextPlmnInfo(scanInfoRef);
+
+        }
+        while (plmnInfoRef);
+
+        scanInfoRef = le_mrc_GetNextPciScanInfo(scanInfoListRef);
+
+    }
+    while (scanInfoRef);
+
+    le_mrc_DeletePciNetworkScan(scanInfoListRef);
+//! [PCI Scan]
+}
+
 
 //! [Network Scan]
 //--------------------------------------------------------------------------------------------------
@@ -1014,118 +1075,6 @@ static void Testle_mrc_PerformCellularNetworkScan
     res = le_mrc_SetRatPreferences(bitMaskOrigin);
     LE_ASSERT(LE_OK == res);
 }
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Test: PCI Network Scan.
- *
- * le_mrc_PerformPciNetworkScan() API test
- */
-//--------------------------------------------------------------------------------------------------
-static void Testle_mrc_PerformPciNetworkScan
-(
-    void
-)
-{
-    le_result_t res;
-    char mcc[LE_MRC_MCC_BYTES] = {0};
-    char mnc[LE_MRC_MNC_BYTES] = {0};
-    le_mrc_RatBitMask_t bitMaskOrigin = 0;
-    le_mrc_PciScanInformationListRef_t scanInfoListRef = NULL;
-    le_mrc_PciScanInformationRef_t     scanInfoRef = NULL;
-    le_mrc_PlmnInformationRef_t   PlmnInfoRef = NULL;
-    // Get the current rat preference.
-    LE_INFO("le_mrc_GetRatPreferences");
-    res = le_mrc_GetRatPreferences(&bitMaskOrigin);
-    LE_INFO("le_mrc_GetRatPreferences Passed");
-    LE_ASSERT(res == LE_OK);
-    LE_INFO("le_mrc_PerformPciNetworkScan");
-    scanInfoListRef = le_mrc_PerformPciNetworkScan(bitMaskOrigin);
-    LE_INFO("le_mrc_PerformPciNetworkScan Passed");
-    LE_ASSERT (scanInfoListRef != NULL);
-    LE_INFO("SCAN SUCCESS !");
-
-    scanInfoRef = le_mrc_GetFirstPciScanInfo(scanInfoListRef);
-    LE_ASSERT(scanInfoRef != NULL);
-    int cell_id = le_mrc_GetPciScanCellId(scanInfoRef);
-    LE_INFO("the first cell id is %"PRIu16" !",cell_id);
-    //Get first plmninfo reference
-    PlmnInfoRef = le_mrc_GetFirstPlmnInfo(scanInfoRef);
-    if(PlmnInfoRef == NULL)
-    {
-        LE_INFO("FAIL to get ref to plmn info");
-    }
-    else
-    {
-        LE_INFO(" SUCCESS to get ref to plmn info");
-
-        res = le_mrc_GetPciScanMccMnc(PlmnInfoRef,
-                                      mcc,
-                                      LE_MRC_MCC_BYTES,
-                                      mnc,
-                                      LE_MRC_MNC_BYTES);
-        if (res == LE_OK )
-        {
-            LE_INFO("the first value of mcc in the first cell is :%s",mcc);
-            LE_INFO("the first value of mnc in the first cell is :%s",mnc);
-        }
-    }
-    while ((PlmnInfoRef = le_mrc_GetNextPlmnInfo(scanInfoRef)) != NULL)
-    {
-        res = le_mrc_GetPciScanMccMnc(PlmnInfoRef,
-                                      mcc,
-                                      LE_MRC_MCC_BYTES,
-                                      mnc,
-                                      LE_MRC_MNC_BYTES);
-        if (res == LE_OK )
-        {
-            LE_INFO("The Next value of mcc in the first cell is :%s",mcc);
-            LE_INFO("The Next value of mnc in the first cell is :%s",mnc);
-        }
-    }
-
-    while ((scanInfoRef = le_mrc_GetNextPciScanInfo(scanInfoListRef)) != NULL)
-        {
-            cell_id = le_mrc_GetPciScanCellId(scanInfoRef);
-            LE_INFO("the Next cell id is %"PRIu16" !",cell_id);
-            PlmnInfoRef = le_mrc_GetFirstPlmnInfo(scanInfoRef);
-
-            if(PlmnInfoRef == NULL)
-            {
-                LE_INFO("FAIL to get ref to plmn info");
-            }
-            else
-            {
-                LE_INFO(" SUCCESS to get ref to plmn info");
-                res = le_mrc_GetPciScanMccMnc(PlmnInfoRef,
-                                              mcc,
-                                              LE_MRC_MCC_BYTES,
-                                              mnc,
-                                              LE_MRC_MNC_BYTES);
-                if (res == LE_OK )
-                {
-                LE_INFO("the first value of mcc in the next cell is :%s",mcc);
-                LE_INFO("the first value of mnc in the next cell is :%s",mnc);
-                }
-            }
-
-            while ((PlmnInfoRef = le_mrc_GetNextPlmnInfo(scanInfoRef)) != NULL)
-            {
-                res = le_mrc_GetPciScanMccMnc(PlmnInfoRef,
-                                              mcc,
-                                              LE_MRC_MCC_BYTES,
-                                              mnc,
-                                              LE_MRC_MNC_BYTES);
-                if (res == LE_OK )
-                {
-                    LE_INFO("The Next value of mcc in the Next cell is :%s",mcc);
-                    LE_INFO("The Next value of mnc in the Next cell is :%s",mnc);
-                }
-            }
-        }
-        le_mrc_DeletePciNetworkScan(scanInfoListRef);
-}
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2180,8 +2129,12 @@ static void Testle_mrc_PreferredPLMN
 
             if(beforeIndex < 3)
             {
-                strcpy(saveMccStr[beforeIndex], mccStr);
-                strcpy(saveMncStr[beforeIndex], mncStr);
+                strncpy(saveMccStr[beforeIndex], mccStr, LE_MRC_MCC_BYTES - 1);
+                strncpy(saveMncStr[beforeIndex], mncStr, LE_MRC_MNC_BYTES - 1);
+                saveMccStr[beforeIndex][LE_MRC_MCC_BYTES - 1] = '\0';
+                saveMncStr[beforeIndex][LE_MRC_MNC_BYTES - 1] = '\0';
+
+
                 saveRat[beforeIndex] = ratMask;
                 LE_INFO("Save (%d) mcc=%s mnc=%s rat=%d", beforeIndex,
                     saveMccStr[beforeIndex],

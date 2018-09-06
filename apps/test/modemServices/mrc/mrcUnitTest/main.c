@@ -37,10 +37,17 @@ static le_msg_SessionRef_t _ClientSessionRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Semaphore for thread synchronization (jamming detection test)
+ * Semaphore for thread synchronization (jamming detection test and PCI scan sync test)
  */
 //--------------------------------------------------------------------------------------------------
 static le_sem_Ref_t     ThreadSemaphore;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * PCI scan async thread reference.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_thread_Ref_t  PciThreadRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -949,6 +956,178 @@ static void Testle_mrc_MccMnc
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * MRC PCI scan feature
+ * APIs tested:
+ * - le_mrc_PerformPciNetworkScan()
+ * - le_mrc_PerformPciNetworkScanAsync()
+ * - le_mrc_GetFirstPciScanInfo()
+ * - le_mrc_GetNextPciScanInfo()
+ * - le_mrc_GetFirstPlmnInfo()
+ * - le_mrc_GetNextPlmnInfo()
+ * - le_mrc_GetPciScanCellId()
+ * - le_mrc_GetPciScanMccMnc()
+ * - le_mrc_DeletePciNetworkScan()
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_PciScan
+(
+    void
+)
+{
+    uint16_t plmnNbr = 0, expectedCellId = 0;
+    uint16_t cellId = 0;
+    char mcc[LE_MRC_MCC_BYTES] = {0};
+    char mnc[LE_MRC_MNC_BYTES] = {0};
+    le_mrc_PciScanInformationListRef_t scanInfoListRef = NULL;
+    le_mrc_PciScanInformationRef_t     scanInfoRef = NULL;
+    le_mrc_PlmnInformationRef_t        plmnInfoRef = NULL;
+
+    LE_ASSERT(NULL == le_mrc_PerformPciNetworkScan(LE_MRC_BITMASK_RAT_GSM));
+    LE_ASSERT(NULL == le_mrc_PerformPciNetworkScan(LE_MRC_BITMASK_RAT_UMTS));
+    scanInfoListRef = le_mrc_PerformPciNetworkScan(LE_MRC_BITMASK_RAT_LTE);
+    LE_ASSERT(scanInfoListRef != NULL);
+
+    LE_ASSERT(NULL == le_mrc_GetFirstPciScanInfo(NULL));
+    scanInfoRef = le_mrc_GetFirstPciScanInfo(scanInfoListRef);
+    LE_ASSERT(NULL != scanInfoRef);
+
+    do
+    {
+        LE_ASSERT(LE_FAULT == (int16_t)le_mrc_GetPciScanCellId(NULL));
+        cellId = le_mrc_GetPciScanCellId(scanInfoRef);
+
+        LE_ASSERT(NULL == le_mrc_GetFirstPlmnInfo(NULL));
+        plmnInfoRef = le_mrc_GetFirstPlmnInfo(scanInfoRef);
+        LE_ASSERT(NULL != plmnInfoRef);
+
+        plmnNbr = 0;
+
+        do
+        {
+
+
+            LE_ASSERT(LE_FAULT == le_mrc_GetPciScanMccMnc(NULL,
+                                                          mcc,
+                                                          LE_MRC_MCC_BYTES,
+                                                          mnc,
+                                                          LE_MRC_MCC_BYTES));
+
+            LE_ASSERT(LE_FAULT == le_mrc_GetPciScanMccMnc(plmnInfoRef,
+                                                          mcc,
+                                                          LE_MRC_MCC_BYTES,
+                                                          NULL,
+                                                          LE_MRC_MCC_BYTES));
+
+            LE_ASSERT(LE_OVERFLOW == le_mrc_GetPciScanMccMnc(plmnInfoRef,
+                                                             mcc,
+                                                             0,
+                                                             mnc,
+                                                             LE_MRC_MCC_BYTES));
+
+            LE_ASSERT(LE_OVERFLOW == le_mrc_GetPciScanMccMnc(plmnInfoRef,
+                                                             mcc,
+                                                             LE_MRC_MCC_BYTES,
+                                                             mnc,
+                                                             0));
+
+            LE_ASSERT(LE_OK == le_mrc_GetPciScanMccMnc(plmnInfoRef,
+                                                       mcc,
+                                                       LE_MRC_MCC_BYTES,
+                                                       mnc,
+                                                       LE_MRC_MCC_BYTES));
+
+            // Check returned MCC and MNC values for each cell
+            char expectedMcc[LE_MRC_MCC_BYTES] = {0};
+            char expectedMnc[LE_MRC_MNC_BYTES] = {0};
+            snprintf(expectedMnc, sizeof(expectedMnc), "%d", plmnNbr);
+            snprintf(expectedMcc, sizeof(expectedMcc), "2%d", plmnNbr);
+            LE_ASSERT(0 == strncmp(expectedMnc, mnc, sizeof(mnc)));
+            LE_ASSERT(0 == strncmp(expectedMcc, mcc, sizeof(mcc)));
+
+            plmnNbr++;
+            LE_ASSERT(NULL == le_mrc_GetNextPlmnInfo(NULL));
+            plmnInfoRef = le_mrc_GetNextPlmnInfo(scanInfoRef);
+        }
+        while (plmnInfoRef);
+
+        LE_ASSERT(NULL == le_mrc_GetNextPciScanInfo(NULL));
+        scanInfoRef = le_mrc_GetNextPciScanInfo(scanInfoListRef);
+
+        // Check returned CellID value
+        LE_ASSERT(expectedCellId == cellId);
+        LE_ASSERT(plmnNbr == cellId+1);
+        expectedCellId++;
+    }
+    while(scanInfoRef);
+
+    scanInfoRef = le_mrc_GetFirstPciScanInfo(scanInfoListRef);
+    LE_ASSERT(NULL != scanInfoRef);
+    le_mrc_DeletePciNetworkScan(scanInfoListRef);
+    scanInfoRef = le_mrc_GetFirstPciScanInfo(scanInfoListRef);
+    LE_ASSERT(NULL == scanInfoRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for PCI scan result
+ */
+//--------------------------------------------------------------------------------------------------
+static void PciScanResultHandler
+(
+    le_mrc_PciScanInformationListRef_t listRef,
+    void* contextPtr
+)
+{
+    LE_ASSERT(NULL != listRef);
+    LE_ASSERT(NULL != le_mrc_GetFirstPciScanInfo(listRef));
+    le_sem_Post(ThreadSemaphore);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Thread for asynchronous PCI scan test.
+ */
+//--------------------------------------------------------------------------------------------------
+static void* PciScanThread
+(
+    void* context
+)
+{
+    le_mrc_PerformPciNetworkScanAsync(LE_MRC_BITMASK_RAT_LTE, PciScanResultHandler, NULL);
+    le_event_RunLoop();
+
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * MRC PCI scan async feature
+ * APIs tested:
+ * - le_mrc_PerformPciNetworkScanAsync()
+ * - le_mrc_GetFirstPciScanInfo()
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_PciScanAsync
+(
+    void
+)
+{
+    le_clk_Time_t time = { .sec = 120000 };
+
+    ThreadSemaphore = le_sem_Create("ThreadSemaphore",0);
+    PciThreadRef = le_thread_Create("PciThread", PciScanThread, NULL);
+    le_thread_Start(PciThreadRef);
+
+    // Wait for PCI scan completion
+    LE_ASSERT_OK(le_sem_WaitWithTimeOut(ThreadSemaphore, time));
+
+    le_thread_Cancel(PciThreadRef);
+    le_sem_Delete(ThreadSemaphore);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Thread used to run SIM unit tests
  *
  */
@@ -959,7 +1138,8 @@ static void* TestThread
 )
 {
     LE_INFO("======== Start UnitTest of MRC API ========");
-    LE_INFO("======== Get Set MccMnc Test ========");
+
+    LE_INFO("======== MRC MccMnc Test ========");
     Testle_mrc_MccMnc();
     LE_INFO("======== MRC Power Test ========");
     Testle_mrc_SarBackoff();
@@ -977,26 +1157,20 @@ static void* TestThread
     Testle_mrc_GetBandCapabilities();
     LE_INFO("======== MRC Get TAC Test ========");
     Testle_mrc_GetTac();
-
-    LE_INFO("======== GetPSState Test ========");
+    LE_INFO("======== MRC PSState Test ========");
     Testle_mrc_GetPSState();
-    LE_INFO("======== GetPSState Test PASSED ========");
-
-    LE_INFO("======== PSHdlr Test ========");
+    LE_INFO("======== MRC PSHdlr Test ========");
     Testle_mrc_PSHdlr();
-    LE_INFO("======== PSHdlr Test PASSED ========");
-
-    LE_INFO("======== le_mrc_SetSignalStrengthIndThresholds Test ========");
+    LE_INFO("======== MRC Signal strength thresholds Test ========");
     Testle_mrc_SetSignalStrengthIndThresholds();
-    LE_INFO("======== le_mrc_SetSignalStrengthIndThresholds Test PASSED ========");
-
-    LE_INFO("======== le_mrc_SetSignalStrengthIndDelta Test ========");
+    LE_INFO("======== MRC Signal strength delta Test ========");
     Testle_mrc_SetSignalStrengthIndDelta();
-    LE_INFO("======== le_mrc_SetSignalStrengthIndDelta Test PASSED ========");
-
     LE_INFO("======== MRC Jamming detection Test ========");
     Testle_mrc_JammingTest();
-    LE_INFO("======== MRC Jamming detection Test PASSED ========");
+    LE_INFO("======== MRC PCI scan Test ========");
+    Testle_mrc_PciScan();
+    LE_INFO("======== MRC PCI scan async Test ========");
+    Testle_mrc_PciScanAsync();
 
     LE_INFO("======== UnitTest of MRC API ends with SUCCESS ========");
 

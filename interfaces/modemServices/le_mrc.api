@@ -291,11 +291,13 @@
  * Call le_mrc_PerformPciNetworkScan() to fill a list of all neighboring cells.
  * The Pci scan is used to get the according MCC/MNC for each neightboring cells ID. Not that a cell
  * may contain more than one MCC/MNC when sevral plmn sharing the same cell.
+ *
  * You can go through all Scan Information by calling le_mrc_GetFirstPciScanInfo() and
  * le_mrc_GetNextPciScanInfo(). Note that each cell info contains a list of mcc/mnc, you can go
  * through all mcc/mnc Information for each cell by calling le_mrc_GetFirstPlmnInfo()
  * and le_mrc_GetNextPlmnInfo(), this two APIs return a reference to PlmnInformation, then use
  * le_mrc_GetPciScanMccMnc() by giving this reference as parameter to get the Mcc/Mnc of the Plmn.
+ *
  * Call le_mrc_PerformPciNetworkScanAsync()to start a pci scan asynchronously. The
  * function is not blocking. The scan list reference will be returned with the handler function
  * response (@c le_mrc_PciNetworkScanHandlerFunc_t).
@@ -307,59 +309,8 @@
  *  - le_mrc_GetPciScanMccMnc() to get the Mcc/Mnc of each plmn on each cell.
  *  - le_mrc_DeletePciNetworkScan() should be called when you do not need the list anymore.
  *
- * This code sample shows how to use the PCI scan API and display the apropriate values
- * @code
-void DisplayPciScanInfo
-(
-    void
-)
-{
-    uint16_t celId = O;
-    char mcc[LE_MRC_MCC_BYTES] = {0};
-    char mnc[LE_MRC_MNC_BYTES] = {0};
-    le_mrc_PciScanInformationListRef_t scanInfoListRef = NULL;
-    le_mrc_PciScanInformationRef_t     scanInfoRef = NULL;
-    le_mrc_PlmnInformationRef_t        plmnInfoRef = NULL;
-
-    LE_ASSERT_OK(le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_LTE));
-
-    scanInfoListRef = le_mrc_PerformPciNetworkScan(LE_MRC_BITMASK_RAT_LTE);
-    LE_ASSERT(scanInfoListRef != NULL);
-
-    // Get the information (cell, Mcc,Mnc) of the first cell.
-    scanInfoRef = le_mrc_GetFirstCellularNetworkScan(scanInfoListRef);
-
-    celId = le_mrc_GetPciScanCellId (scanInfoRef);
-
-    // Get the first plmn information of the first cell.
-    PlmnInfoRef = le_mrc_GetFirstPlmnInfo(scanInfoRef);
-    le_mrc_GetPciScanMccMnc(PlmnInfoRef, mcc, LE_MRC_MCC_BYTES, mnc, LE_MRC_MCC_BYTES);
-    LE_INFO("Cell id is %"PRIu16", Mcc is %s, Mnc is %s !",celId, mcc, mnc");
-
-    // Get the next plmn information of the first cell.
-    while ((PlmnInfoRef = le_mrc_GetNextPlmnInfo(scanInfoRef)) != NULL)
-    {
-        le_mrc_GetPciScanMccMnc(PlmnInfoRef, mcc, LE_MRC_MCC_BYTES, mnc, LE_MRC_MCC_BYTES);
-         LE_INFO("Cell id is %"PRIu16", Mcc is %s, Mnc is %s !",celId, mcc, mnc");
-    }
-
-    // Get the information (cell, Mcc,Mnc) of the next cells.
-    while ((scanInfoRef = le_mrc_GetNextCellularNetworkScan(scanInfoListRef)) != NULL)
-    {
-        celId = le_mrc_GetPciScanCellId (scanInfoRef);
-
-        PlmnInfoRef = le_mrc_GetFirstPlmnInfo(scanInfoRef);
-        le_mrc_GetPciScanMccMnc(PlmnInfoRef, mcc, LE_MRC_MCC_BYTES, mnc, LE_MRC_MCC_BYTES);
-        LE_INFO("Cell id is %"PRIu16", Mcc is %s, Mnc is %s !",celId, mcc, mnc");
-        while ((PlmnInfoRef = le_mrc_GetNextPlmnInfo(scanInfoRef)) != NULL)
-        {
-            le_mrc_GetPciScanMccMnc(PlmnInfoRef, mcc, LE_MRC_MCC_BYTES, mnc, LE_MRC_MCC_BYTES);
-            LE_INFO("Cell id is %"PRIu16", Mcc is %s, Mnc is %s !",celId, mcc, mnc");
-        }
-    }
-    le_mrc_DeletePciNetworkScan(scanInfoListRef);
-}
- * @endcode
+ * A sample code can be seen in the following page:
+ * - @subpage c_mrcPciScan
  *
  * @section le_mrc_ngbr Neighboring Cells Information
  *
@@ -498,6 +449,13 @@ void DisplayPciScanInfo
  * @page c_mrcNetworkScan Sample code for Network Scan
  *
  * @snippet "apps/test/modemServices/mrc/mrcIntegrationTest/mrcTest/le_mrcTest.c" Network Scan
+ *
+ */
+
+ /**
+ * @page c_mrcPciScan Sample code for LTE PCI Scan
+ *
+ * @snippet "apps/test/modemServices/mrc/mrcIntegrationTest/mrcTest/le_mrcTest.c" PCI Scan
  *
  */
 
