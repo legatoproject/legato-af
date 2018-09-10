@@ -321,6 +321,8 @@ void DisplayPciScanInfo
     le_mrc_PciScanInformationRef_t     scanInfoRef = NULL;
     le_mrc_PlmnInformationRef_t        plmnInfoRef = NULL;
 
+    LE_ASSERT_OK(le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_LTE));
+
     scanInfoListRef = le_mrc_PerformPciNetworkScan(LE_MRC_BITMASK_RAT_LTE);
     LE_ASSERT(scanInfoListRef != NULL);
 
@@ -951,7 +953,7 @@ FUNCTION le_result_t SetSignalStrengthIndThresholds
  *       delta value must be set to 106.
  *
  * @warning The signal delta resolution is platform dependent. Please refer to
- *          @ref platformConstraintsModemRadiocontrol section for full details.
+ *          @ref platformConstraintsMdc section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetSignalStrengthIndDelta
@@ -1468,6 +1470,9 @@ FUNCTION ScanInformationList PerformCellularNetworkScan
  *
  * @return Reference to the List object. Null pointer if the scan failed.
  *
+ * @warning PCI scan is platform dependent. Please refer to @ref platformConstraintsMdc for further
+ *          details.
+ *
  * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
@@ -1495,8 +1500,11 @@ FUNCTION PerformCellularNetworkScanAsync
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to perform a cellular network scan asynchronously. This function
+ * This function must be called to perform a PCI network scan asynchronously. This function
  * is not blocking, the response will be returned with a handler function.
+ *
+ * @warning PCI scan is platform dependent. Please refer to @ref platformConstraintsMdc for further
+ *          details.
  *
  *@note <b>multi-app safe</b>
  *

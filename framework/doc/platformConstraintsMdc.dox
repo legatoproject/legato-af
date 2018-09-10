@@ -52,16 +52,19 @@ different among platforms.<br>
 | SAR maximum number of states  |        |        |        |        |        |  8     |  8     |        |
 
 
-@section mrc_PciScan Perform Pci Network Scan
-The PciScan is not supported by all platforms. Also, to be able to perform a Pci scan, the modem must
-be configured on LTE rat, the configuration can be donne using:
-- AT command at!selrat=06
-- CM tool cm radio rat LTE
-- Legato API le_mrc_SetRatPreferences().<br>
+@section mrc_PciScan PCI Network Scan
+The PCI scan is not supported by all platforms. The table below indicates on which platform the
+fature is available. Also, only LTE PCI scan is supported.
 
 |                         | AR755x | AR758x | AR759x | AR8652 | WP750x | WP76xx | WP77xx | WP8548 |
 | ----------------------- | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
-| PciScan feature         |        |   X    |    X   |        |        |    X   |        |        |
+| LTE PCI scan feature    |        |   X    |    X   |        |        |    X   |        |        |
+
+In order to perform an LTE PCI scan, ensure that only LE_MRC_BITMASK_RAT_LTE is enabled
+in the RAT preference settings before starting the scan. The configuration can be done using:
+- AT command:  AT!SELRAT=06
+- CM tool: cm radio rat LTE
+- Legato API: le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_LTE).<br>
 
 
 See @ref  c_mrc API<br>

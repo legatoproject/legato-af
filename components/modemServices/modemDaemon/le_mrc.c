@@ -3231,10 +3231,13 @@ le_result_t le_mrc_GetPacketSwitchedState
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to perform a pci network scan.
+ * This function must be called to perform a PCI network scan.
  *
  * @return
- *      Reference to the List object. Null pointer if the scan failed.
+ *      Reference to the list object. Null pointer if the scan failed.
+ *
+ * @warning PCI scan is platform dependent. Please refer to @ref platformConstraintsMdc for further
+ *          details.
  */
 //--------------------------------------------------------------------------------------------------
 le_mrc_PciScanInformationListRef_t le_mrc_PerformPciNetworkScan
@@ -3345,10 +3348,11 @@ void le_mrc_PerformCellularNetworkScanAsync
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to perform a cellular network scan asynchronously. This function
+ * This function must be called to perform a PCI network scan asynchronously. This function
  * is not blocking, the response will be returned with a handler function.
  *
- *
+ * @warning PCI scan is platform dependent. Please refer to @ref platformConstraintsMdc for further
+ *          details.
  */
 //--------------------------------------------------------------------------------------------------
 void le_mrc_PerformPciNetworkScanAsync
@@ -4534,7 +4538,7 @@ le_result_t le_mrc_SetSignalStrengthIndThresholds
  *       delta value must be set to 106.
  *
  * @warning The signal delta resolution is platform dependent. Please refer to
- *          @ref platformConstraintsModemRadiocontrol section for full details.
+ *          @ref platformConstraintsMdc section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_SetSignalStrengthIndDelta
