@@ -922,12 +922,14 @@ static le_result_t InitMediaThread
     uint32_t                    fd_out
 )
 {
-    le_audio_MediaThreadContext_t * mediaCtxPtr = NULL;
+    le_audio_MediaThreadContext_t* mediaCtxPtr;
 
-    if (streamPtr)
+    if (streamPtr == NULL)
     {
-        mediaCtxPtr = streamPtr->mediaThreadContextPtr;
+        return LE_FAULT;
     }
+
+    mediaCtxPtr = streamPtr->mediaThreadContextPtr;
 
     if (mediaCtxPtr == NULL)
     {
