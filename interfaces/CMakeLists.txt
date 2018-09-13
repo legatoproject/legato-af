@@ -9,6 +9,8 @@
 # $ find . -name "*.api" |sort | sed 's/\.\/\(.*\)/generate_header(\1)/g'
 generate_header(airVantage/le_avc.api)
 generate_header(airVantage/le_avdata.api)
+#coap api is internal only at this point
+#generate_header(airVantage/le_coap.api)
 generate_header(atServices/le_atDefs.api)
 generate_header(atServices/le_atClient.api)
 generate_header(atServices/le_atServer.api)

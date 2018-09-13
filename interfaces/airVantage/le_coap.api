@@ -1,0 +1,372 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_le_coap External CoAP handler
+ *
+ * The external CoAP event handler provides functions to receive incoming CoAP messages including
+ * streams (block transfers) and respond to these messages. Additionally it provides functions to
+ * send unsolicited push messages.
+ *
+ * @warning External CoAP handler APIs are in beta stage and for internal use only at this point.
+ * @warning External CoAP handler and avData cannot be used concurrently.
+ *
+ * @section le_coap_overview External CoAP handler Overview
+ *
+ * An app can register an external CoAP handler by calling le_coap_AddMessageEventHandler().The
+ * registered CoAP handler will receive all CoAP messages that target a non lwm2m URI. The app
+ * has to process the received payload and respond using the api le_coap_SendResponse().
+ * The function le_coap_SendResponse() will serialize a CoAP message based on the response code
+ * received and send it to the server. No error checking is performed on the responses received
+ * from external app. Apps can also send unsolited messages to the server using the
+ * le_coap_Push() api.
+ *
+ * @section le_coap_Stream Streaming
+ *
+ * If the response or unsolicited message (Push) is larger than 1KB, the app can initiate a
+ * streaming response by setting the stream status to LE_COAP_TX_STREAM_START. This will initiate
+ * a CoAP block transfer <a href="https://tools.ietf.org/html/rfc7959">RFC-7959</a> from the
+ * device to the server. On receiving an ack for the initiated block transfer, the app can
+ * continue streaming by setting the stream status to LE_COAP_TX_STREAM_IN_PROGRESS and end it
+ * with LE_COAP_TX_STREAM_END. If the stream status of the incoming message is
+ * LE_COAP_RX_STREAM_START, it indicates that the server is sending a payload larger than 1KB.
+ * The  server will continue streaming using LE_COAP_RX_STREAM_IN_PROGRESS and will end it
+ * by setting the status to LE_COAP_RX_STREAM_END unless an error condition is detected.
+ * LE_COAP_TX_STREAM_ERROR and LE_COAP_RX_STREAM_ERROR are error messages of the transmit
+ * stream and receive stream respectively.
+ *
+ * This code sample shows how to add an external CoAP Handler and receive an incoming
+ * CoAP stream.
+ *
+ * @code
+ * static uint32_t CoapRxStreamHandler
+ * (
+ *     le_coap_StreamStatus_t streamStatus,
+ *     const char* bufferPtr,
+ *     size_t length
+ * )
+ * {
+ *     // Copy stream data to buffer or file
+ *     // send ack for incoming stream or start processing payload if stream succeeded.
+ *     switch (streamStatus)
+ *     {
+ *         case LE_COAP_RX_STREAM_START:
+ *             LE_INFO("Stream start: Create file and write received data");
+ *             CopyToFile(RECEIVED_STREAM_FILE, bufferPtr, length, true);
+ *             return COAP_NO_ERROR;
+ *
+ *         case LE_COAP_RX_STREAM_IN_PROGRESS:
+ *             LE_INFO("Stream in progress: Copy received data to file");
+ *             CopyToFile(RECEIVED_STREAM_FILE, bufferPtr, length, false);
+ *             return COAP_NO_ERROR;
+ *
+ *         case LE_COAP_RX_STREAM_END:
+ *             LE_INFO("Stream completed: Start processing received data");
+ *             CopyToFile(RECEIVED_STREAM_FILE, bufferPtr, length, false);
+ *             return COAP_204_CHANGED;
+ *
+ *         case LE_COAP_RX_STREAM_ERROR:
+ *             LE_INFO("Stream cancelled");
+ *             return COAP_500_INTERNAL_SERVER_ERROR;
+ *
+ *         default:
+ *             LE_INFO("Unexpected stream status during PUT");
+ *             return COAP_500_INTERNAL_SERVER_ERROR;
+ *     }
+ * }
+ *
+ * static void ExternalCoapHandler
+ * (
+ *      le_coap_Code_t code,
+ *      le_coap_StreamStatus_t streamStatus,
+ *      uint16_t messageId,
+ *      uint16_t contentType,
+ *      const char* uri,
+ *      size_t uriLength,
+ *      const char* token,
+ *      uint8_t tokenLength,
+ *      const char* payload,
+ *      size_t payloadLength,
+ *      void* contextPtr
+ * )
+ * {
+ *     switch (code)
+ *     {
+ *        case LE_COAP_CODE_PUT:
+ *            if (streamStatus == LE_COAP_STREAM_NONE)
+ *            {
+ *                  // Process payload
+ *                  // Send response
+ *                  le_coap_SendResponse(messageId,
+ *                                       token,
+ *                                       tokenLength,
+ *                                       LWM2M_CONTENT_CBOR,
+ *                                       COAP_204_CHANGED,
+ *                                       LE_COAP_STREAM_NONE,
+ *                                       responsePayload,
+ *                                       responseLength);
+ *            }
+ *            else
+ *            {
+ *                  // Check if this is a stream from server to device
+ *                  // Process payload when stream ends
+ *                  coapResponseCode = CoapRxStreamHandler(streamStatus, payload, payloadLength);
+ *
+ *                  // Send actual CoAP response.
+ *                  le_coap_SendResponse(messageId,
+ *                                       token,
+ *                                       tokenLength,
+ *                                       LWM2M_CONTENT_CBOR,
+ *                                       coapResponseCode,
+ *                                       LE_COAP_STREAM_NONE,
+ *                                       responsePayload,
+ *                                       responseLength);
+ *            }
+ *            break;
+ *        case LE_COAP_CODE_GET:
+ *            break;
+ *        case LE_COAP_CODE_POST:
+ *            break;
+ *        case LE_COAP_CODE_DELETE:
+ *            break;
+ *        case LE_COAP_CODE_231_CONTINUE:
+ *            break;
+ *        default:
+ *            break;
+ *     }
+ *
+ * COMPONENT_INIT
+ * {
+ *     le_coap_AddMessageEventHandler(ExternalCoapHandler, NULL);
+ * }
+ * @endcode
+ *
+ * The CoAP Handler Test App provides examples of:
+ *   - Adding an external CoAP Handler
+ *   - Processing CoAP messages
+ *   - Responding to CoAP messages
+ *   - Handling transmit/receive stream
+ *
+ * Go to the
+ * <a href="https://github.com/legatoproject/legato-af/tree/master/apps/platformServices/
+ * airVantageConnector/apps/test/coapHandlerTest">CoAP Handler Test Code</a> for a full example of
+ * code on how to stream with an external CoAP handler.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of CoAP URI
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_URI_LENGTH = 256;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of CoAP Token
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_TOKEN_LENGTH = 8;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of CoAP Payload
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_PAYLOAD = 1024;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes of CoAP URI
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_URI_NUM_BYTES = MAX_URI_LENGTH + 1;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes of CoAP Token
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_TOKEN_NUM_BYTES = MAX_TOKEN_LENGTH + 1;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes of CoAP Payload
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_PAYLOAD_NUM_BYTES = MAX_PAYLOAD + 1;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * CoAP method and response codes as defined in RFC 7252
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Code
+{
+    CODE_EMPTY_MESSAGE = 0x00,
+    CODE_GET = 0x01,
+    CODE_POST = 0x02,
+    CODE_PUT = 0x03,
+    CODE_DELETE = 0x04,
+    CODE_201_CREATED = 0x41,
+    CODE_202_DELETED = 0x42,
+    CODE_203_VALID = 0x43,
+    CODE_204_CHANGED = 0x44,
+    CODE_205_CONTENT = 0x45,
+    CODE_231_CONTINUE = 0x5F,
+    CODE_400_BAD_REQUEST = 0x80,
+    CODE_401_UNAUTHORIZED = 0x81,
+    CODE_402_BAD_OPTION = 0x82,
+    CODE_403_FORBIDDEN = 0x83,
+    CODE_404_NOT_FOUND = 0x84,
+    CODE_405_METHOD_NOT_ALLOWED = 0x85,
+    CODE_406_NOT_ACCEPTABLE = 0x86,
+    CODE_408_REQUEST_ENTITY_INCOMPLETE = 0x88,
+    CODE_412_PRECONDITION_FAILED = 0x8C,
+    CODE_413_REQUEST_ENTITY_TOO_LARGE = 0x8D,
+    CODE_415_UNSUPPORTED_CONTENT_FORMAT = 0x8F,
+    CODE_500_INTERNAL_SERVER_ERROR = 0xA0,
+    CODE_501_NOT_IMPLEMENTED = 0xA1,
+    CODE_502_BAD_GATEWAY = 0xA2,
+    CODE_503_SERVICE_UNAVAILABLE = 0xA3,
+    CODE_504_GATEWAY_TIMEOUT = 0xA4,
+    CODE_505_PROXYING_NOT_SUPPORTED = 0xA5,
+    CODE_INVALID = 0xFF
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * CoAP stream status (write request block-2 & read response block-1).
+ *
+ * Note: This enum is used for receiving CoAP messages and also starting a transmit stream from
+ * the device. TX_STREAM_START/ TX_STREAM_END will never be received on incoming CoAP messages but
+ * can be used to indicate status of outgoing stream using le_coap_SendResponse() api.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM StreamStatus
+{
+    STREAM_NONE,                        ///< Payload is less than 1KB.
+    RX_STREAM_START,                    ///< Beginning of a new CoAP receive stream
+    RX_STREAM_IN_PROGRESS,              ///< Incoming CoAP Stream is in progress
+    RX_STREAM_END,                      ///< Incoming CoAP Stream completed successfully
+    RX_STREAM_ERROR,                    ///< Error in receiving incoming stream
+    TX_STREAM_START,                    ///< Starting a transmit Stream
+    TX_STREAM_IN_PROGRESS,              ///< Continue streaming
+    TX_STREAM_END,                      ///< All blocks sent out successfully
+    TX_STREAM_ERROR,                    ///< Error in sending stream
+    STREAM_INVALID                      ///< Invalid stream status
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Push status
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM PushStatus
+{
+    PUSH_IDLE,
+    PUSH_START,
+    PUSH_IN_PROGRESS,
+    PUSH_SUCCESS,
+    PUSH_FAILED,
+    PUSH_TERMINATE
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for receiving incoming CoAP messages
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER MessageHandler
+(
+    Code code                               IN,         ///< CoAP Code
+    StreamStatus stream                     IN,         ///< CoAP stream status
+    uint16 messageId                        IN,         ///< message id
+    uint16 contentType                      IN,         ///< content type
+    string uri[MAX_URI_NUM_BYTES]           IN,         ///< URI of resource
+    size uriLength                          IN,         ///< URI length
+    string token[MAX_TOKEN_NUM_BYTES]       IN,         ///< token
+    uint8 tokenLength                       IN,         ///< token length
+    string payload[MAX_PAYLOAD_NUM_BYTES]   IN,         ///< CoAP payload
+    size payloadLength                      IN          ///< CoAP payload length
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sends asynchronous CoAP response to server.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if failed.
+ *
+ * Note: This API will return success if it successful in sending the message down the stack.
+ * Retransmission will be handled at CoAP layer.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SendResponse
+(
+    uint16 messageId                        IN,         ///< message id
+    string token[MAX_TOKEN_NUM_BYTES]       IN,         ///< token
+    uint8 tokenLength                       IN,         ///< token length
+    uint16 contentType                      IN,         ///< content type
+    uint32 responseCode                     IN,         ///< result of CoAP operation
+    StreamStatus streamStatus               IN,         ///< Status of transmit stream
+    string payload[MAX_PAYLOAD_NUM_BYTES]   IN,         ///< payload
+    uint32 payloadLength                    IN          ///< payload Length
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event sends the incoming CoAP message that are not handled by LwM2M to application.
+ *
+ * Note: It the content-type of incoming message is not recognizable at CoAP layer, those messages
+ * are sent to application for processing.
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT MessageEvent
+(
+    MessageHandler handler
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for receiving response to push operation.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER PushHandler
+(
+    PushStatus status IN                                ///< push status
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function sends unsolicited CoAP push messages to the server. Responses to push will be
+ * received by message handler function.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Push
+(
+    string uri[MAX_URI_NUM_BYTES]           IN,         ///< URI where push should end
+    string token[MAX_TOKEN_NUM_BYTES]       IN,         ///< token
+    uint8 tokenLength                       IN,         ///< token length
+    uint16 contentType                      IN,         ///< content type
+    StreamStatus streamStatus               IN,         ///< Status of transmit stream
+    string payload[MAX_PAYLOAD_NUM_BYTES]   IN,         ///< payload
+    uint32 payloadLength                    IN,         ///< payload Length
+    PushHandler pushHandlerRef              IN          ///< Handler for receiving response
+                                                        ///  for the push operation
+);

@@ -224,5 +224,4 @@ le_timer_Start(timer);
 @endcode
 
 
-
 **/

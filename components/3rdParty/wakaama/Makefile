@@ -3,6 +3,8 @@ WAKAAMA_SOURCES=\
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/acl.c \
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/bootstrap.c \
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/block1.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/block1-stream.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/block2-stream.c \
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/data.c \
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/discover.c \
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/json.c \
