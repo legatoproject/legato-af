@@ -790,6 +790,22 @@ static le_result_t DialAttempt
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Invalidate the MSD stored in the eCall object
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void InvalidateMsd
+(
+    void
+)
+{
+    memset(ECallObj.builtMsd, 0, sizeof(ECallObj.builtMsd));
+    ECallObj.builtMsdSize = 0;
+    ECallObj.isMsdImported = false;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Dial Duration Timer handler.
  *
  */
@@ -801,8 +817,18 @@ static void DialDurationTimerHandler
 {
     LE_INFO("Dial duration expires! stop dialing...");
 
-    // Stop redial period
-    RedialStop(ECALL_REDIAL_DURATION_EXPIRED);
+    // Invalidate MSD
+    InvalidateMsd();
+
+    if (pa_ecall_End() == LE_OK)
+    {
+        // Update eCall session state
+        ECallObj.sessionState = ECALL_SESSION_STOPPED;
+
+        // Stop redial period
+        RedialStop(ECALL_REDIAL_DURATION_EXPIRED);
+    }
+
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1556,22 +1582,6 @@ static le_result_t EncodeMsd
     }
 
     return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Invalidate the MSD stored in the eCall object
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void InvalidateMsd
-(
-    void
-)
-{
-    memset(ECallObj.builtMsd, 0, sizeof(ECallObj.builtMsd));
-    ECallObj.builtMsdSize = 0;
-    ECallObj.isMsdImported = false;
 }
 
 //--------------------------------------------------------------------------------------------------
