@@ -123,11 +123,7 @@ typedef struct le_sms_Msg
     uint16_t          messageId;                           ///< SMS Cell Broadcast message Id.
     uint16_t          messageSerialNumber;                 ///< SMS Cell Broadcast message Serial
                                                            ///< Number.
-    /// SMS timer parameters
-    le_timer_Ref_t    timerRef;                            ///< Timer reference to send SMS.
-    bool              timeoutExpires;                      ///< Timeout expired to send SMS.
-    struct timespec   timeSendingLimit;                    ///< Time limit to send the SMS.
-    uint32_t          timeoutValue;                        ///< Timeout value to send the SMS.
+    /// SMS callback parameters
     void*             callBackPtr;                         ///< Callback response.
     void*             ctxPtr;                              ///< Context.
     le_msg_SessionRef_t sessionRef;                        ///< Client session reference.
@@ -2011,50 +2007,6 @@ static void SendSmsSendingStateEvent
     }
 }
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Timer handler for asynchronous SMS message sending function.
- */
-//--------------------------------------------------------------------------------------------------
-static void AsynSmsTimerHandler
-(
-    le_timer_Ref_t timerRef
-)
-{
-    le_sms_MsgRef_t msgRef = le_timer_GetContextPtr(timerRef);
-    LE_DEBUG("TimerRef %p, msgRef %p", timerRef, msgRef);
-
-    if (msgRef == NULL)
-    {
-        LE_ERROR("Invalid timer Reference (%p) provided!", timerRef);
-        return;
-    }
-
-    le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
-    if (msgPtr == NULL)
-    {
-        LE_DEBUG("No more message reference (%p) valid", msgRef);
-        return;
-    }
-
-    le_sem_Wait(SmsSem);
-
-    msgPtr->timeoutExpires = true;
-    le_timer_Delete(timerRef);
-    if(msgPtr->timerRef)
-    {
-        msgPtr->timerRef = NULL;
-        msgPtr->pdu.status = LE_SMS_SENDING_TIMEOUT;
-        le_sem_Post(SmsSem);
-        SendSmsSendingStateEvent(msgRef);
-    }
-    else
-    {
-        le_sem_Post(SmsSem);
-    }
-}
-
 //--------------------------------------------------------------------------------------------------
 /**
  * This function send a message in asynchrone mode.
@@ -2091,74 +2043,24 @@ static le_result_t SendAsyncSMS
     if (result == LE_OK)
     {
         CmdRequest_t msgCommand;
-        char timerName[20];
-
         // Save the client session "msgSession" associated with the request reference "reqRef".
         msgPtr->sessionRef = le_sms_GetClientSessionRef();
 
-        snprintf(timerName, sizeof(timerName), "SMS%p",msgRef);
-        le_timer_Ref_t timerRef = le_timer_Create(timerName);
+        msgPtr->pdu.status = LE_SMS_SENDING;
 
-        if(timerRef)
-        {
-            result =  le_timer_SetHandler(timerRef, AsynSmsTimerHandler);
-            LE_ERROR_IF(result != LE_OK, "error here");
-            if (LE_OK == result)
-            {
-                result = le_timer_SetContextPtr(timerRef, msgRef);
-                LE_ERROR_IF(result != LE_OK, "error here");
-            }
+        // Sending Message.
+        msgCommand.command = LE_SMS_CMD_TYPE_SEND;
+        msgCommand.msgRef = msgRef;
+        msgPtr->callBackPtr = callBack;
+        msgPtr->ctxPtr = context;
 
-            if (LE_OK == result)
-            {
-                le_clk_Time_t interval;
-                interval.usec = 0;
-                interval.sec = msgPtr->timeoutValue;
-                LE_DEBUG("Set timer for sms %p, %d sec", msgRef, msgPtr->timeoutValue);
-                result = le_timer_SetInterval(timerRef, interval);
-                LE_ERROR_IF((result != LE_OK), "Failed to set timeout!");
-            }
-
-            if (LE_OK == result)
-            {
-                if (clock_gettime(CLOCK_REALTIME, &msgPtr->timeSendingLimit) == -1)
-                {
-                    LE_WARN("Cannot get current time");
-                    return LE_FAULT;
-                }
-                msgPtr->timeSendingLimit.tv_sec += msgPtr->timeoutValue;
-                result = le_timer_Start(timerRef);
-                LE_ERROR_IF(result != LE_OK, "Failed to start Timer");
-            }
-
-            if (LE_OK == result)
-            {
-                LE_DEBUG("Try to POOL PDU Msg %p, pdu.%p, pduLen.%u with protocol %d",
-                                msgRef, msgPtr->pdu.data, msgPtr->pdu.dataLen, msgPtr->protocol);
-
-                msgPtr->timerRef = timerRef;
-                msgPtr->pdu.status = LE_SMS_SENDING;
-
-                // Sending Message.
-                msgCommand.command = LE_SMS_CMD_TYPE_SEND;
-                msgCommand.msgRef = msgRef;
-                msgPtr->callBackPtr = callBack;
-                msgPtr->ctxPtr = context;
-
-                LE_INFO("Send Send command for message (%p)", msgRef);
-                le_event_Report(SmsCommandEventId, &msgCommand, sizeof(msgCommand));
-            }
-
-            if (LE_OK != result)
-            {
-                result = LE_FAULT;
-            }
-        }
-        else
-        {
-            LE_ERROR("Cannot encode Message Object %p", msgPtr);
-            result = LE_FORMAT_ERROR;
-        }
+        LE_INFO("Send Send command for message (%p)", msgRef);
+        le_event_Report(SmsCommandEventId, &msgCommand, sizeof(msgCommand));
+    }
+    else
+    {
+        LE_ERROR("Cannot encode Message Object %p", msgPtr);
+        result = LE_FORMAT_ERROR;
     }
 
     return result;
@@ -2176,8 +2078,9 @@ static void ProcessSmsSendingCommandHandler
     void* msgCommand
 )
 {
-    uint32_t command = ((CmdRequest_t*) msgCommand)->command;
-    le_sms_MsgRef_t messageRef = ((CmdRequest_t*) msgCommand)->msgRef;
+    le_result_t res;
+    uint32_t command = ((CmdRequest_t*)msgCommand)->command;
+    le_sms_MsgRef_t messageRef = ((CmdRequest_t*)msgCommand)->msgRef;
 
     le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, messageRef);
 
@@ -2191,60 +2094,26 @@ static void ProcessSmsSendingCommandHandler
     {
         case LE_SMS_CMD_TYPE_SEND:
         {
-            LE_DEBUG("LE_SMS_CMD_TYPE_SEND message (%p) ", messageRef);
+            le_sem_Wait(SmsSem);
+            LE_INFO("LE_SMS_CMD_TYPE_SEND message (%p) ", messageRef);
 
-            if (!msgPtr->timeoutExpires)
+            res = pa_sms_SendPduMsg(msgPtr->protocol, msgPtr->pdu.dataLen, msgPtr->pdu.data,
+                                    &msgPtr->messageReference, PA_SMS_SENDING_TIMEOUT,
+                                    &msgPtr->pdu.errorCode);
+            if (LE_OK == res)
             {
-                int32_t remainingTime = PA_SMS_SENDING_TIMEOUT;
-                le_result_t res = LE_TIMEOUT;
-
-                le_sem_Wait(SmsSem);
-                LE_DEBUG("timer ref %p, ", msgPtr->timerRef);
-                if (msgPtr->timerRef)
-                {
-                    msgPtr->timerRef = NULL;
-                    struct timespec currentTime = { 0 };
-                    if (clock_gettime(CLOCK_REALTIME, &currentTime) == -1)
-                    {
-                        LE_ERROR("Cannot get current time");
-                        msgPtr->pdu.status = LE_SMS_SENDING_FAILED;
-                        le_sem_Post(SmsSem);
-                        SendSmsSendingStateEvent(messageRef);
-                        return;
-                    }
-                    remainingTime = msgPtr->timeSendingLimit.tv_sec - currentTime.tv_sec;
-                }
-
-                if(remainingTime <= 0)
-                {
-                    LE_ERROR("Bad remainingTime value %d", remainingTime);
-                    msgPtr->pdu.status = LE_SMS_SENDING_TIMEOUT;
-                }
-                else
-                {
-                    res = pa_sms_SendPduMsg(msgPtr->protocol, msgPtr->pdu.dataLen, msgPtr->pdu.data,
-                                            &msgPtr->messageReference, remainingTime,
-                                            &msgPtr->pdu.errorCode);
-                    if (LE_OK == res)
-                    {
-                        msgPtr->pdu.status = LE_SMS_SENT;
-                    }
-                    else if (LE_TIMEOUT == res)
-                    {
-                        msgPtr->pdu.status = LE_SMS_SENDING_TIMEOUT;
-                    }
-                    else
-                    {
-                        msgPtr->pdu.status = LE_SMS_SENDING_FAILED;
-                    }
-                }
-                le_sem_Post(SmsSem);
-                SendSmsSendingStateEvent(messageRef);
+                msgPtr->pdu.status = LE_SMS_SENT;
+            }
+            else if (LE_TIMEOUT == res)
+            {
+                msgPtr->pdu.status = LE_SMS_SENDING_TIMEOUT;
             }
             else
             {
-                LE_DEBUG("Message (%p) already Expired", messageRef);
+                msgPtr->pdu.status = LE_SMS_SENDING_FAILED;
             }
+            le_sem_Post(SmsSem);
+            SendSmsSendingStateEvent(messageRef);
         }
         break;
 
@@ -2493,10 +2362,6 @@ le_sms_MsgRef_t le_sms_Create
     msgPtr->type = LE_SMS_TYPE_TX;
     msgPtr->messageId = 0;
     msgPtr->messageSerialNumber = 0;
-    msgPtr->timeoutExpires = false;
-    msgPtr->timerRef = NULL;
-    msgPtr->timeSendingLimit.tv_sec = 0;
-    msgPtr->timeoutValue = PA_SMS_SENDING_TIMEOUT;
     msgPtr->callBackPtr = NULL;
     msgPtr->ctxPtr = NULL;
     msgPtr->format = LE_SMS_FORMAT_UNKNOWN;
@@ -2520,8 +2385,12 @@ le_sms_MsgRef_t le_sms_Create
  * @note
  *      On failure, the process exits, so you don't have to worry about checking the returned
  *      reference for validity.
+ *
+ * @deprecated
+ *      This API should not be used for new applications and will be removed in a future version
+ *      of Legato.
  */
-//--------------------------------------------------------------------------------------------------
+ //--------------------------------------------------------------------------------------------------
 le_result_t le_sms_SetTimeout
 (
     le_sms_MsgRef_t msgRef,
@@ -2559,11 +2428,9 @@ le_result_t le_sms_SetTimeout
         return LE_FAULT;
     }
 
-    msgPtr->timeoutValue = timeout;
-
+    LE_WARN("Deprecated API, should not be used anymore");
     return LE_OK;
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2619,13 +2486,6 @@ void le_sms_Delete
 
     if (0 == msgPtr->smsUserCount)
     {
-        if (msgPtr->timerRef)
-        {
-            le_timer_Stop(msgPtr->timerRef);
-            le_timer_Delete(msgPtr->timerRef);
-            msgPtr->timerRef = NULL;
-        }
-
         msgPtr->callBackPtr = NULL;
 
         // release the message object.
@@ -2805,7 +2665,7 @@ le_result_t le_sms_GetCellBroadcastSerialNumber
  * This function must be called to set the Telephone destination number.
  *
  * The Telephone number is defined in ITU-T recommendations E.164/E.163.
- * E.164 numbers can have a maximum of fifteen digits and are usually written with a ‘+’ prefix.
+ * E.164 numbers can have a maximum of fifteen digits and are usually written with a '+' prefix.
  *
  * @return LE_NOT_PERMITTED The message is Read-Only.
  * @return LE_BAD_PARAMETER The Telephone destination number length is equal to zero.

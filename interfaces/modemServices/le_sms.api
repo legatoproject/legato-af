@@ -55,13 +55,11 @@
  * - UCS2 content (16-bit format) with le_sms_SetUCS2(), total length is set with this API, maximum
  *  70 characters (140 bytes).
  *
- * - A specific timeout value can be used with le_sms_SetTimeout() API.
+ * When the Msg object is ready, call @c le_sms_Send() to transmit it.
  *
- * After the Msg object is ready, call @c le_sms_Send().
- *
- * @c le_sms_Send() is a blocking function, it will return once the Modem has given back a
- * positive or negative answer to the sending operation. The return of @c le_sms_Send() API
- * provides definitive status of the sending operation.
+ * @c le_sms_Send() is a blocking function with a maximum timeout set to 240 seconds, it will return
+   once the Modem has given back a positive or negative answer to the sending operation.
+   The return of @c le_sms_Send() API provides definitive status of the sending operation.
  * TP-Validity-Period(TP-VP) parameter value indicates the time period for which the short message
  * is valid, i.e. for how long the Service Center (SC) shall guarantee its existence in the SC
  * memory before delivery to the recipient has been carried out. The default validity period(TP-VP)
@@ -80,8 +78,14 @@
  *
  * @section le_sms_ops_async_sending Sending asynchronously a message
 
- * To send an asynchronous message, le_sms_SendAsync() API can be called instead of le_sms_Send()
- *  and a specific timeout value can be used with le_sms_SetTimeout() API.
+ * To send an asynchronous message, le_sms_SendAsync() API can be called instead of le_sms_Send().
+ * le_sms_SendAsync() is a non-blocking function, it queues the message to the SMS pool and returns
+ * immediatly. Then, Legato will internally attempt to send the SMS with a maximum timeout set
+ * to 240 seconds for each SMS in the pool.
+ * This function is usefull to stack a set of messages without blocking the user application.
+ * Moreover, a handler can be specified to le_sms_SendAsync() API in order to keep track of the
+ * transmission status.
+ *
  * The default validity period(TP-VP) is set to 7 days for MO SMS.
  *
  * A text message can be sent with one simple function: le_sms_SendText(). You only have to pass
@@ -782,8 +786,6 @@ EVENT FullStorageEvent
     FullStorageHandler handler
 );
 
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Create an SMS Message data structure.
@@ -799,7 +801,6 @@ FUNCTION Msg Create
 (
 );
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Set the timeout to send a SMS Message.
@@ -811,6 +812,10 @@ FUNCTION Msg Create
  * @note
  *      On failure, the process exits, so you don't have to worry about checking the returned
  *      reference for validity.
+ *
+ * @deprecated
+ *      This API should not be used for new applications and will be removed in a future version
+ *      of Legato.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetTimeout
@@ -818,7 +823,6 @@ FUNCTION le_result_t SetTimeout
     Msg     msgRef,      ///< Reference to the message object.
     uint32  timeout IN   ///< Timeout in seconds.
 );
-
 
 //--------------------------------------------------------------------------------------------------
 /**
