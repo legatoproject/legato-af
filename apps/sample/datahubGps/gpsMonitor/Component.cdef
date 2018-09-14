@@ -1,0 +1,13 @@
+requires:
+{
+    api:
+    {
+        $LEGATO_ROOT/apps/sample/dataHub/io.api
+        $LEGATO_ROOT/apps/sample/dataHub/admin.api
+    }
+}
+
+sources:
+{
+    gpsMonitor.c
+}

@@ -1,0 +1,20 @@
+//--------------------------------------------------------------------------------------------------
+// System definition for the DataHub sample application.
+// Includes base (default) Legato system, DataHub, and sample app (sensor and monitor modules).
+//
+// Copyright (C) Sierra Wireless Inc.
+//--------------------------------------------------------------------------------------------------
+
+#include "$LEGATO_ROOT/default.sdef"
+
+apps:
+{
+    $LEGATO_ROOT/apps/sample/dataHub/dataHub.adef
+    $LEGATO_ROOT/apps/sample/datahubGps/gpsSensor.adef
+    $LEGATO_ROOT/apps/sample/datahubGps/gpsMonitor.adef
+}
+
+interfaceSearch:
+{
+    $LEGATO_ROOT/apps/sample/dataHub
+}

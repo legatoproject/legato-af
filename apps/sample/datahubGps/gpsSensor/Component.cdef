@@ -1,0 +1,13 @@
+requires:
+{
+    api:
+    {
+        $LEGATO_ROOT/apps/sample/dataHub/io.api
+        positioning/le_pos.api
+    }
+}
+
+sources:
+{
+    gpsSensor.c
+}

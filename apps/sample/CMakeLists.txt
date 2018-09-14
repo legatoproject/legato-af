@@ -86,3 +86,6 @@ endif()
 if (NOT (LEGATO_TARGET STREQUAL "ar7" OR LEGATO_TARGET STREQUAL "ar86" OR LEGATO_TARGET STREQUAL "localhost"))
     add_subdirectory(httpServer)
 endif()
+
+# DataHub sample app
+add_subdirectory(datahubGps)

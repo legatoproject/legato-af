@@ -1,0 +1,18 @@
+executables:
+{
+    gpsMonitord = ( gpsMonitor )
+}
+
+processes:
+{
+    run:
+    {
+        ( gpsMonitord )
+    }
+}
+
+bindings:
+{
+    gpsMonitord.gpsMonitor.io -> dataHub.io
+    gpsMonitord.gpsMonitor.admin -> dataHub.admin
+}
