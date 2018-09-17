@@ -2421,7 +2421,7 @@ le_mdc_DisconnectionReason_t le_mdc_GetDisconnectionReasonExt
 {
     le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
 
-    if (profilePtr == NULL)
+    if (NULL == profilePtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", profileRef);
         return LE_MDC_DISC_UNDEFINED;
@@ -2429,22 +2429,23 @@ le_mdc_DisconnectionReason_t le_mdc_GetDisconnectionReasonExt
 
     if (LE_MDC_PDP_UNKNOWN == profilePtr->modemData.pdp)
     {
-        LE_ERROR("Session pdp type unknown!");
+        LE_ERROR("Session PDP type unknown!");
         return LE_MDC_DISC_UNDEFINED;
     }
 
     if ((LE_MDC_PDP_IPV4V6 == profilePtr->modemData.pdp) &&
         (LE_MDC_PDP_IPV4 != pdpType) && (LE_MDC_PDP_IPV6 != pdpType))
     {
-        LE_ERROR("Unsupport pdp type %d", pdpType);
+        LE_ERROR("Unsupported PDP type provided: %d", pdpType);
         return LE_MDC_DISC_UNDEFINED;
     }
 
     pa_mdc_GetConnectionFailureReasonExt(profilePtr->profileIndex, pdpType,
                                          &(profilePtr->conFailurePtr));
 
-    if (NULL == profilePtr->conFailurePtr){
-        LE_ERROR("Got null conFailurePtr");
+    if (NULL == profilePtr->conFailurePtr)
+    {
+        LE_ERROR("Unable to get the connection failure reason. Null conFailurePtr");
         return LE_MDC_DISC_UNDEFINED;
     }
 
@@ -2477,31 +2478,32 @@ int32_t le_mdc_GetPlatformSpecificDisconnectionCodeExt
 {
     le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
 
-    if (profilePtr == NULL)
+    if (NULL == profilePtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", profileRef);
-        return LE_MDC_DISC_UNDEFINED;
+        return INT32_MAX;
     }
 
     if (LE_MDC_PDP_UNKNOWN == profilePtr->modemData.pdp)
     {
-        LE_ERROR("Session pdp type unknown!");
-        return LE_MDC_DISC_UNDEFINED;
+        LE_ERROR("Session PDP type unknown!");
+        return INT32_MAX;
     }
 
     if ((LE_MDC_PDP_IPV4V6 == profilePtr->modemData.pdp) &&
         (LE_MDC_PDP_IPV4 != pdpType) && (LE_MDC_PDP_IPV6 != pdpType))
     {
-        LE_ERROR("Unsupport pdp type %d", pdpType);
-        return LE_MDC_DISC_UNDEFINED;
+        LE_ERROR("Unsupported PDP type provided: %d", pdpType);
+        return INT32_MAX;
     }
 
     pa_mdc_GetConnectionFailureReasonExt(profilePtr->profileIndex, pdpType,
                                          &(profilePtr->conFailurePtr));
 
-    if (NULL == profilePtr->conFailurePtr){
-        LE_ERROR("Got null conFailure ptr");
-        return LE_MDC_DISC_UNDEFINED;
+    if (NULL == profilePtr->conFailurePtr)
+    {
+        LE_ERROR("Unable to get the connection failure reason. Null conFailurePtr");
+        return INT32_MAX;
     }
 
     return (profilePtr->conFailurePtr->callEndFailureCode);
@@ -2530,15 +2532,17 @@ void le_mdc_GetPlatformSpecificFailureConnectionReasonExt
         ///< [OUT] platform specific failure code
 )
 {
-    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
-
     if ((!failureTypePtr) || (!failureCodePtr))
     {
         LE_KILL_CLIENT("failureTypePtr or failureCodePtr is NULL !");
         return;
     }
 
-    if (profilePtr == NULL)
+    *failureTypePtr = LE_MDC_DISC_UNDEFINED;
+    *failureCodePtr = INT32_MAX;
+
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+    if (NULL == profilePtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", profileRef);
         return;
@@ -2546,22 +2550,23 @@ void le_mdc_GetPlatformSpecificFailureConnectionReasonExt
 
     if (LE_MDC_PDP_UNKNOWN == profilePtr->modemData.pdp)
     {
-        LE_ERROR("Session pdp type unknown!");
+        LE_ERROR("Session PDP type unknown!");
         return;
     }
 
     if ((LE_MDC_PDP_IPV4V6 == profilePtr->modemData.pdp) &&
         (LE_MDC_PDP_IPV4 != pdpType) && (LE_MDC_PDP_IPV6 != pdpType))
     {
-        LE_ERROR("Unsupport pdp type %d", pdpType);
+        LE_ERROR("Unsupported PDP type provided: %d", pdpType);
         return;
     }
 
     pa_mdc_GetConnectionFailureReasonExt(profilePtr->profileIndex, pdpType,
                                          &(profilePtr->conFailurePtr));
 
-    if (NULL == profilePtr->conFailurePtr){
-        LE_ERROR("Got null conFailure ptr");
+    if (NULL == profilePtr->conFailurePtr)
+    {
+        LE_ERROR("Unable to get the connection failure reason. Null conFailurePtr");
         return;
     }
 

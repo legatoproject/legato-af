@@ -573,6 +573,93 @@ static void TestMdc_Connection ( void )
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test disconnection reason for a specific session
+ */
+//--------------------------------------------------------------------------------------------------
+static void CheckDisconnectionReason
+(
+    le_mdc_ProfileRef_t profileRef,
+    le_mdc_Pdp_t pdpType,
+    bool isDualPdpProfile
+)
+{
+    int32_t failureType, failureCode;
+
+    // Test le_mdc_GetDisconnectionReasonExt() API
+    LE_ASSERT(LE_MDC_DISC_UNDEFINED == le_mdc_GetDisconnectionReasonExt(NULL, pdpType));
+
+    if (isDualPdpProfile)
+    {
+        LE_ASSERT(LE_MDC_DISC_UNDEFINED ==
+                  le_mdc_GetDisconnectionReasonExt(profileRef, LE_MDC_PDP_UNKNOWN));
+    }
+    else
+    {
+        LE_ASSERT(LE_MDC_DISC_REGULAR_DEACTIVATION ==
+                  le_mdc_GetDisconnectionReasonExt(profileRef, LE_MDC_PDP_UNKNOWN));
+    }
+
+    LE_ASSERT(LE_MDC_DISC_REGULAR_DEACTIVATION ==
+              le_mdc_GetDisconnectionReasonExt(profileRef, pdpType));
+
+    // Test le_mdc_GetPlatformSpecificDisconnectionCodeExt() API
+    LE_ASSERT(INT32_MAX == le_mdc_GetPlatformSpecificDisconnectionCodeExt(NULL, pdpType));
+
+    if (isDualPdpProfile)
+    {
+        LE_ASSERT(INT32_MAX ==
+                  le_mdc_GetPlatformSpecificDisconnectionCodeExt(profileRef, LE_MDC_PDP_UNKNOWN));
+    }
+    else
+    {
+        LE_ASSERT(LE_MDC_END_FAILURE_CODE ==
+                  le_mdc_GetPlatformSpecificDisconnectionCodeExt(profileRef, LE_MDC_PDP_UNKNOWN));
+    }
+
+    LE_ASSERT(LE_MDC_END_FAILURE_CODE ==
+              le_mdc_GetPlatformSpecificDisconnectionCodeExt(profileRef, pdpType));
+
+
+    // Test le_mdc_GetPlatformSpecificFailureConnectionReasonExt() API
+    le_mdc_GetPlatformSpecificFailureConnectionReasonExt(NULL, pdpType, &failureType, &failureCode);
+    LE_ASSERT(LE_MDC_DISC_UNDEFINED == failureType);
+    LE_ASSERT(INT32_MAX == failureCode);
+
+    le_mdc_GetPlatformSpecificFailureConnectionReasonExt(profileRef, pdpType, NULL, &failureCode);
+    LE_ASSERT(INT32_MAX == failureCode);
+
+    le_mdc_GetPlatformSpecificFailureConnectionReasonExt(profileRef, pdpType, &failureType, NULL);
+    LE_ASSERT(LE_MDC_DISC_UNDEFINED == failureType);
+
+    if (isDualPdpProfile)
+    {
+        le_mdc_GetPlatformSpecificFailureConnectionReasonExt(profileRef,
+                                                             LE_MDC_PDP_UNKNOWN,
+                                                             &failureType,
+                                                             &failureCode);
+        LE_ASSERT(LE_MDC_DISC_UNDEFINED == failureType);
+        LE_ASSERT(INT32_MAX == failureCode);
+    }
+    else
+    {
+        le_mdc_GetPlatformSpecificFailureConnectionReasonExt(profileRef,
+                                                             LE_MDC_PDP_UNKNOWN,
+                                                             &failureType,
+                                                             &failureCode);
+        LE_ASSERT(LE_MDC_DISC_REGULAR_DEACTIVATION == failureType);
+        LE_ASSERT(LE_MDC_END_FAILURE_CODE == failureCode);
+    }
+
+    le_mdc_GetPlatformSpecificFailureConnectionReasonExt(profileRef,
+                                                         pdpType,
+                                                         &failureType,
+                                                         &failureCode);
+
+    LE_ASSERT(LE_MDC_DISC_REGULAR_DEACTIVATION == failureType);
+    LE_ASSERT(LE_MDC_END_FAILURE_CODE == failureCode);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -595,22 +682,24 @@ static void HandlerFunc
 
     if (ConnectionStatus == LE_MDC_DISCONNECTED)
     {
-        if (LE_MDC_PDP_IPV4V6 == le_mdc_GetPDP(profileRef))
+        switch (le_mdc_GetPDP(profileRef))
         {
-            LE_ASSERT( LE_MDC_DISC_REGULAR_DEACTIVATION ==
-                        le_mdc_GetDisconnectionReasonExt(profileRef, LE_MDC_PDP_IPV4));
-            LE_ASSERT( le_mdc_GetPlatformSpecificDisconnectionCodeExt(profileRef,
-                                                                      LE_MDC_PDP_IPV4) == 2 );
-            LE_ASSERT( LE_MDC_DISC_REGULAR_DEACTIVATION ==
-                        le_mdc_GetDisconnectionReasonExt(profileRef, LE_MDC_PDP_IPV6));
-            LE_ASSERT( le_mdc_GetPlatformSpecificDisconnectionCodeExt(profileRef,
-                                                                      LE_MDC_PDP_IPV6) == 2 );
-        }
-        else
-        {
-            LE_ASSERT( LE_MDC_DISC_REGULAR_DEACTIVATION ==
-                        le_mdc_GetDisconnectionReasonExt(profileRef, 0));
-            LE_ASSERT( le_mdc_GetPlatformSpecificDisconnectionCodeExt(profileRef, 0) == 2 );
+            case LE_MDC_PDP_IPV4V6:
+                CheckDisconnectionReason(profileRef, LE_MDC_PDP_IPV4, true);
+                CheckDisconnectionReason(profileRef, LE_MDC_PDP_IPV6, true);
+                break;
+
+            case LE_MDC_PDP_IPV4:
+                CheckDisconnectionReason(profileRef, LE_MDC_PDP_IPV4, false);
+                break;
+
+            case LE_MDC_PDP_IPV6:
+                CheckDisconnectionReason(profileRef, LE_MDC_PDP_IPV6, false);
+                break;
+
+            case LE_MDC_PDP_UNKNOWN:
+                exit(EXIT_FAILURE);
+                break;
         }
     }
 
