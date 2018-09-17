@@ -1,0 +1,255 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_mqtt MQTT Client API
+ *
+ * @ref mqtt_interface.h "API Reference"
+ *
+ * This API provides a thin wrapper around Paho MQTT client.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file mqtt_interface.h
+ *
+ * Legato @ref c_mqtt include file.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum MQTT broker name length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_BROKER_URI_LENGTH = 256;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum Client ID length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_CLIENT_ID_LENGTH = 23;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum topic length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_TOPIC_LENGTH = 1024;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum message length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_PAYLOAD_LENGTH = 1024;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum user name length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_USERNAME_LENGTH = 64;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum password length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_PASSWORD_LENGTH = 64;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Quality of Service level.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Qos
+{
+    QOS0_TRANSMIT_ONCE,         ///< Send message at most once
+    QOS1_RECEIVE_AT_LEAST_ONCE, ///< Message to be delivered at least once
+    QOS2_RECEIVE_EXACTLY_ONCE   ///< Message to be delivered exactly once
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference returned by CreateSession call.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Session;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for the lost connection.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER ConnectionLostHandler
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Lost connection event.
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT ConnectionLost
+(
+    Session session IN,                 ///< Session
+    ConnectionLostHandler handler IN    ///< Connection lost handler
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for the arrived message.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER MessageArrivedHandler
+(
+    string topic[MAX_TOPIC_LENGTH] IN,      ///< Topic
+    uint8 payload[MAX_PAYLOAD_LENGTH] IN    ///< Message
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Message arrived event.
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT MessageArrived
+(
+    Session session IN,                 ///< Session
+    MessageArrivedHandler handler IN    ///< Message Arrived handler
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates an MQTT session object.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t CreateSession
+(
+    string brokerURI[MAX_BROKER_URI_LENGTH] IN, ///< MQTT broker address
+    string clientId[MAX_CLIENT_ID_LENGTH] IN,   ///< Client ID
+    Session session OUT                         ///< Session
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Destroy the given session.
+ *
+ * @note
+ *      All MQTT sessions associated with the client session will be destroyed automatically when
+ *      the client disconnects from the MQTT service.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION DestroySession
+(
+    Session session IN ///< Session
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the connections options which will be used during subsequent calls to mqtt_Connect().
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetConnectOptions
+(
+    Session session IN,             ///< Session to set connection options in
+    uint16 keepAliveInterval IN,    ///< How often to send an MQTT PINGREQ packet if no other
+                                    ///  packets are received
+    bool cleanSession IN,           ///< When false, restore the previous state on a reconnect
+    string username[MAX_USERNAME_LENGTH] IN,    ///< Username to connect with.
+                                                /// NULL if username is not required
+    uint8 password[MAX_PASSWORD_LENGTH] IN,     ///< Password to connect with.
+                                                /// NULL if password is not required
+    uint16 connectTimeout IN,                   ///< Connect timeout in seconds
+    uint16 retryInterval IN                     ///< Retry interval in seconds
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Connect to the MQTT broker using the provided session.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if the connection options are bad
+ *      - LE_FAULT for general failures
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Connect
+(
+    Session session IN ///< Session
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disconnect a currently connected session
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Disconnect
+(
+    Session session IN ///< Session
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Publish the supplied payload to the MQTT broker on the given topic.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Publish
+(
+    Session session IN,                     ///< Session
+    string topic[MAX_TOPIC_LENGTH] IN,      ///< Topic
+    uint8 payload[MAX_PAYLOAD_LENGTH] IN,   ///< Message
+    Qos qos IN,                             ///< QoS mode
+    bool retain IN                          ///< Retain flag for the message
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Subscribe to the given topic pattern.  Topics look like UNIX filesystem paths.  Eg.
+ * "/bedroom/sensors/motion".  Patterns may include special wildcard characters "+" and "#" to match
+ * one or multiple levels of a topic.  For example. "/#/motion" will match topics
+ * "/bedroom/sensors/motion" and "/car/data/motion", but not "/bedroom/sensors/motion/enabled".
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Subscribe
+(
+    Session session IN,                         ///< Session
+    string topicPattern[MAX_TOPIC_LENGTH] IN,   ///< Topic pattern
+    Qos qos IN                                  ///< QoS mode
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unsubscribe from the given topic pattern.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Unsubscribe
+(
+    Session session IN,                         ///< Session
+    string topicPattern[MAX_TOPIC_LENGTH] IN    ///< Topic pattern
+);

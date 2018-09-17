@@ -1,0 +1,37 @@
+sources:
+{
+    // Implementation of mqtt.api
+    mqttClientService.c
+}
+
+requires:
+{
+    component:
+    {
+        ${LEGATO_ROOT}/components/3rdParty/paho.mqtt.c
+        ${LEGATO_ROOT}/components/3rdParty/openssl
+    }
+    lib:
+    {
+        libpaho-mqtt3cs.so
+    }
+}
+
+cflags:
+{
+    -std=c99
+    -I${LEGATO_ROOT}/3rdParty/paho.mqtt.c/src
+}
+
+ldflags:
+{
+    -L${LEGATO_BUILD}/3rdParty/paho.mqtt.c
+}
+
+provides:
+{
+    api:
+    {
+        ${LEGATO_ROOT}/apps/platformServices/mqttClient/mqtt.api
+    }
+}

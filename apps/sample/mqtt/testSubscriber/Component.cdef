@@ -1,0 +1,13 @@
+sources:
+{
+    testSubscriber.c
+}
+
+requires:
+{
+    api:
+    {
+        ${LEGATO_ROOT}/apps/platformServices/mqttClient/mqtt.api
+        modemServices/le_info.api
+    }
+}

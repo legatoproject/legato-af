@@ -1,0 +1,34 @@
+requires:
+{
+    dir:
+    {
+        /etc/ssl /etc/ssl
+    }
+
+    device:
+    {
+        [r] /dev/urandom /dev/urandom
+    }
+
+    file:
+    {
+        /usr/lib/ssl/openssl.cnf    /usr/lib/ssl/
+        /usr/lib/libssl.so.1.0.2    /usr/lib/
+        /usr/lib/libcrypto.so.1.0.2 /usr/lib/
+    }
+}
+
+bundles:
+{
+    file:
+    {
+        ${LEGATO_BUILD}/3rdParty/paho.mqtt.c/libpaho-mqtt3cs.so     /lib/
+        ${LEGATO_BUILD}/3rdParty/paho.mqtt.c/libpaho-mqtt3cs.so.1   /lib/
+        ${LEGATO_BUILD}/3rdParty/paho.mqtt.c/libpaho-mqtt3cs.so.1.0 /lib/
+    }
+}
+
+externalBuild:
+{
+    "mkdir -p ${LEGATO_BUILD}/3rdParty/paho.mqtt.c/build && make -C ${LEGATO_ROOT}/3rdParty/paho.mqtt.c blddir=${LEGATO_BUILD}/3rdParty/paho.mqtt.c blddir_work=${LEGATO_BUILD}/3rdParty/paho.mqtt.c/build"
+}

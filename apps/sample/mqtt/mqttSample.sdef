@@ -1,0 +1,16 @@
+//--------------------------------------------------------------------------------------------------
+// System definition for the MQTT sample application.
+// Includes base (default) Legato system, MQTT Client Service, and sample app
+// (publisher and subscriber modules).
+//
+// Copyright (C) Sierra Wireless Inc.
+//--------------------------------------------------------------------------------------------------
+
+#include "$LEGATO_ROOT/default.sdef"
+
+apps:
+{
+    $LEGATO_ROOT/apps/platformServices/mqttClient/mqttClient.adef
+    $LEGATO_ROOT/apps/sample/mqtt/mqttPublisher.adef
+    $LEGATO_ROOT/apps/sample/mqtt/mqttSubscriber.adef
+}

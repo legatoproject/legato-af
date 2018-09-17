@@ -1,0 +1,23 @@
+sandboxed: true
+start: manual
+
+executables:
+{
+    testSubscriber      = (testSubscriber)
+}
+
+processes:
+{
+    run:
+    {
+        (testSubscriber)
+    }
+
+    faultAction: restart
+}
+
+bindings:
+{
+    testSubscriber.testSubscriber.mqtt    -> mqttClient.mqtt
+    testSubscriber.testSubscriber.le_info -> modemService.le_info
+}

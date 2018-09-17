@@ -1,0 +1,32 @@
+sandboxed: true
+start: auto
+
+executables:
+{
+    mqttClientService   = (mqttClientService)
+}
+
+processes:
+{
+    run:
+    {
+        (mqttClientService)
+    }
+
+    envVars:
+    {
+        // Defining these environment variables results in paho.mqtt.c producing trace output.
+        // Least to most verbose: ERROR, PROTOCOL, MINIMUM, MEDIUM, MAXIMUM
+        // NOTE: Setting the level to MINIMUM or higher causes problems due to errno being set
+        // during the trace.
+        MQTT_C_CLIENT_TRACE = ON
+        MQTT_C_CLIENT_TRACE_LEVEL = ERROR
+    }
+
+    faultAction: restart
+}
+
+extern:
+{
+    mqttClientService.mqttClientService.mqtt
+}

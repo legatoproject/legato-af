@@ -89,3 +89,6 @@ endif()
 
 # DataHub sample app
 add_subdirectory(datahubGps)
+
+# MQTT sample app
+add_subdirectory(mqtt)
