@@ -863,12 +863,6 @@ static le_result_t InstallEachKernelModule(KModuleObj_t *m, bool enableUseCount)
     ModuleLoadStatus_t loadStatusProcMod;
     char *scriptargv[3];
 
-    /* If the module is a required module, it will be loaded with its parent module. */
-    if (m->isRequiredModule)
-    {
-        return LE_OK;
-    }
-
     result = TraverseDependencyInsert(&ModuleInsertList, m, enableUseCount);
     if (result != LE_OK)
     {
@@ -1266,12 +1260,6 @@ static le_result_t RemoveEachKernelModule(KModuleObj_t *m, bool enableUseCount)
     char *scriptargv[3];
     char *rmmodargv[3];
 
-    /* If the module is a required module, it will be unloaded with its parent module. */
-    if (m->isRequiredModule)
-    {
-        return LE_OK;
-    }
-
     TraverseDependencyRemove(&ModuleRemoveList, m, enableUseCount);
 
     while ((listLink = le_dls_Pop(&ModuleRemoveList)) != NULL)
@@ -1545,8 +1533,12 @@ le_result_t le_kernelModule_Unload
 
     if (moduleInfoPtr->isRequiredModule)
     {
-        LE_INFO("Module '%s' is a dependency module for another module.", moduleInfoPtr->name);
-        return LE_BUSY;
+        if ((moduleInfoPtr->isLoadManual)
+            || (!moduleInfoPtr->isLoadManual && (moduleInfoPtr->useCount > 1)))
+        {
+            LE_INFO("Module '%s' is a dependency module for another module.", moduleInfoPtr->name);
+            return LE_BUSY;
+        }
     }
 
     if ((moduleInfoPtr->isLoadManual) && (moduleInfoPtr->useCount != 0))
