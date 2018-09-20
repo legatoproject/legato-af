@@ -144,6 +144,16 @@
 #define MS_WDOG_INTERVAL 8
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Retry Tech Timer's backoff durations:
+ * Its initial value is 1 sec, and max 6 hrs, i.e. (60 * 60 * 6) secs.
+ * After each failure, the next backoff time is doubled until it's capped by the max.
+ */
+//--------------------------------------------------------------------------------------------------
+#define RETRY_TECH_BACKOFF_INIT 1                // init backoff: 1 sec
+#define RETRY_TECH_BACKOFF_MAX (60 * 60 * 6)     // max backoff: 6 hrs
+
+//--------------------------------------------------------------------------------------------------
 // Data structures
 //--------------------------------------------------------------------------------------------------
 
@@ -201,10 +211,12 @@ static le_timer_Ref_t SetDNSConfigTimer = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Retry Tech Timer reference
+ * Retry Tech Timer reference RetryTechTimer and the current backoff duration
+ * RetryTechBackoffCurrent
  */
 //--------------------------------------------------------------------------------------------------
 static le_timer_Ref_t RetryTechTimer = NULL;
+static uint16_t RetryTechBackoffCurrent;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1357,6 +1369,36 @@ static void SetDNSConfigTimerHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Reset the current backoff duration of the RetryTechTimer to its init value. Stop the timer 1st
+ * if it's running before adjusting its time interval.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ResetRetryTechBackoff
+(
+    void
+)
+{
+    if (le_timer_IsRunning(RetryTechTimer)) {
+        // make sure the timer is stopped before adjusting its time interval
+        le_timer_Stop(RetryTechTimer);
+    }
+
+    RetryTechBackoffCurrent = RETRY_TECH_BACKOFF_INIT;
+
+    le_clk_Time_t retryInterval = {RETRY_TECH_BACKOFF_INIT, 0};
+    if (LE_OK != le_timer_SetInterval(RetryTechTimer, retryInterval))
+    {
+        LE_ERROR("Failed to adjust RetryTechTimer timer to %d secs",
+                 RetryTechBackoffCurrent);
+    }
+    else
+    {
+        LE_DEBUG("RetryTechTimer stopped & backoff reset to %d secs", RetryTechBackoffCurrent);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Try to start the mobile data session
  */
 //--------------------------------------------------------------------------------------------------
@@ -1401,6 +1443,10 @@ static void TryStartDataSession
     {
         // Connection already established, don't do anything
         LE_DEBUG("Data connection is already established.");
+
+        // To stay safe, reset RetryTechBackoffCurrent here since there won't be a connection state
+        // notification since it's already established
+        ResetRetryTechBackoff();
         return;
     }
     else
@@ -1769,6 +1815,40 @@ static void StopDcsTimerHandler
     }
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Increase the current backoff duration of the RetryTechTimer. Each time it's doubled after a
+ * failed retry until it's capped by its max backoff value RETRY_TECH_BACKOFF_MAX
+ * No need to stop the timer before adjusting its time interval, since it's called from the timer's
+ * handler which guarantees its having been not running.
+ */
+//--------------------------------------------------------------------------------------------------
+static void IncreaseRetryTechBackoff
+(
+    void
+)
+{
+    uint16_t time2 = RetryTechBackoffCurrent * 2;
+
+    // cap it to the max backoff allowed
+    RetryTechBackoffCurrent = (time2 > RETRY_TECH_BACKOFF_MAX) ?
+        RETRY_TECH_BACKOFF_MAX : time2;
+
+    le_clk_Time_t retryInterval = {RetryTechBackoffCurrent, 0};
+    if (LE_OK != le_timer_SetInterval(RetryTechTimer, retryInterval))
+    {
+        LE_ERROR("Failed to adjust RetryTechTimer timer to %d secs",
+                 RetryTechBackoffCurrent);
+    }
+    else
+    {
+        LE_DEBUG("Adjusted RetryTechTimer timer to %d secs", RetryTechBackoffCurrent);
+    }
+
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Retry next tech Timer Handler
@@ -1781,10 +1861,12 @@ static void RetryTechTimerHandler
 )
 {
     le_data_Technology_t technology = (intptr_t)le_timer_GetContextPtr(timerRef);
-    LE_DEBUG("Retrying tech timer: %d", technology);
+    LE_DEBUG("RetryTechTimer expired for technology %d", technology);
 
     // Disconnect the current technology which is not available anymore
     TryStopTechSession(technology);
+
+    IncreaseRetryTechBackoff();
 
     // Connect the next technology to use
     TryStartTechSession(GetNextTech(technology));
@@ -1841,6 +1923,11 @@ static void ProcessCommand
         {
             // Try and disconnect the current technology
             TryStopTechSession(CurrentTech);
+        }
+        else
+        {
+            LE_DEBUG("Skip stopping technology %d as request count is %d", CurrentTech,
+                     RequestCount);
         }
     }
     else
@@ -1912,8 +1999,16 @@ static void ConnectionStatusHandler
                 {
                     LE_ERROR("Could not start the RetryTechTimer timer!");
                 }
+                else
+                {
+                    LE_DEBUG("RetryTechTimer started with duration %d", RetryTechBackoffCurrent);
+                }
             }
         }
+    }
+    else if (connected)
+    {
+        ResetRetryTechBackoff();
     }
 }
 
@@ -2745,7 +2840,8 @@ COMPONENT_INIT
 
     // Set a timer to retry the tech
     RetryTechTimer = le_timer_Create("RetryTechTimer");
-    le_clk_Time_t retryInterval = {5, 0};    // 5 seconds
+    RetryTechBackoffCurrent = RETRY_TECH_BACKOFF_INIT;
+    le_clk_Time_t retryInterval = {RETRY_TECH_BACKOFF_INIT, 0};
 
     if (   (LE_OK != le_timer_SetHandler(RetryTechTimer, RetryTechTimerHandler))
         || (LE_OK != le_timer_SetRepeat(RetryTechTimer, 1))       // One shot timer
