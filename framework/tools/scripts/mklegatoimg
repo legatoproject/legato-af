@@ -89,10 +89,11 @@ fi
 
 FindToolchain
 
-function CheckFakerootVersion() {
-    fakeroot_bin=$1
+CheckFakerootVersion() {
+    local fakeroot_bin=$1
+    local fakeroot_version
     fakeroot_version=$($fakeroot_bin --version | awk '{print $3}')
-    required_version="1.20.2"
+    local required_version="1.20.2"
     [ "$required_version" = "$(echo -e "$required_version\n$fakeroot_version" | sort -V | head -1)" ]
 }
 
@@ -463,13 +464,8 @@ CreateImg_mdm9x28() {
         ar758x)
             WITH_DM_VERITY=true
             ;;
-        wp76xx|wp77xx)
-            img_indexes+=(1)
-            page_size[1]=2048
+        wp76xx | wp77xx)
             pid[0]='Y921'
-            pid[1]='Y922'
-            oob_size[1]=80
-            peb_size[1]=128KiB
             ;;
         *)
             echo "Unknown product '$TARGET'"
