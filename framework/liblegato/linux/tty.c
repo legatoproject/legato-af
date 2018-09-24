@@ -93,14 +93,14 @@ static inline le_result_t SetParity
     case 'o':
         // Odd parity.
         portSettings->c_cflag |= (PARENB | PARODD);
-        portSettings->c_iflag |= (INPCK | ISTRIP);
+        portSettings->c_iflag |= INPCK;
         break;
 
     case 'E':
     case 'e':
         // Even parity.
         portSettings->c_cflag |= PARENB;
-        portSettings->c_iflag |= (INPCK | ISTRIP);
+        portSettings->c_iflag |= INPCK;
         break;
 
     default:
