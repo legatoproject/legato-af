@@ -213,19 +213,22 @@ SetSmackAttr() {
     CheckRet
 
     # If SMACK attributes are defined in the targetDefs.<target>, set them
-    if [[ "$SET_SMACK_ATTR" == "true" ]] && \
-       [ -n "$SMACK_ATTR_NAME" ] && \
-       [ -n "$SMACK_ATTR_VALUE" ]; then
-        for file in `find "$STAGING_DIR"`; do
-            if [ -d "$file" ]; then
-                $SETFATTR -h -n "$SMACK_ATTR_NAME" -v "$SMACK_ATTR_VALUE" "$file"
-            elif [ -f "$file" -a ! -h "$file" ]; then
-                $SETFATTR -n "$SMACK_ATTR_NAME" -v "$SMACK_ATTR_VALUE" "$file"
-            elif [ -f "$file" -a -h "$file" ]; then
-                $SETFATTR -h -n "$SMACK_ATTR_NAME" -v "$SMACK_ATTR_VALUE" "$file"
-            fi
-        done
-    else
+    if [[ "$SET_SMACK_ATTR" == "true" ]]; then
+        if [ -n "$SMACK_ATTR_NAME" ] && \
+           [ -n "$SMACK_ATTR_VALUE" ]; then
+            for file in `find "$STAGING_DIR"`; do
+                if [ -d "$file" ]; then
+                    $SETFATTR -h -n "$SMACK_ATTR_NAME" -v "$SMACK_ATTR_VALUE" "$file"
+                elif [ -f "$file" -a ! -h "$file" ]; then
+                    $SETFATTR -n "$SMACK_ATTR_NAME" -v "$SMACK_ATTR_VALUE" "$file"
+                elif [ -f "$file" -a -h "$file" ]; then
+                    $SETFATTR -h -n "$SMACK_ATTR_NAME" -v "$SMACK_ATTR_VALUE" "$file"
+                fi
+            done
+        else
+            echo "Expected SMACK attributes as env. variables SMACK_ATTR_NAME & SMACK_ATTR_VALUE."
+        fi
+    elif [ ! -e "$STAGING_DIR/SMACK_DISABLED" ]; then
         # Default smack label for all files in the image
         find "$STAGING_DIR" -exec $SETFATTR -h -n "security.SMACK64" -v "_" {} \;
 
