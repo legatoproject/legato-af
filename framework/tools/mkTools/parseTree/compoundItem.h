@@ -173,6 +173,17 @@ struct RequiredApi_t : TokenList_t
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Represents a single entry in a "component:" subsection of a "requires:" section of a .cdef file.
+ */
+//--------------------------------------------------------------------------------------------------
+struct RequiredComponent_t : TokenList_t
+{
+    RequiredComponent_t(Token_t* firstTokenPtr): TokenList_t(REQUIRED_COMPONENT, firstTokenPtr) {}
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Represents a single entry inside a "configTree:" subsection in a "requires:" section.
  */
 //--------------------------------------------------------------------------------------------------

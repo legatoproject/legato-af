@@ -1,0 +1,12 @@
+sources:
+{
+    firstComponent.c
+}
+
+provides:
+{
+    headerDir:
+    {
+        $CURDIR/include
+    }
+}

@@ -146,6 +146,9 @@ std::string Token_t::TypeName
         case OPTIONAL_OPEN_SQUARE:
             return "optional";
 
+        case PROVIDE_HEADER_OPTION:
+            return "provide-header";
+
         default:
         {
             std::stringstream typeName;

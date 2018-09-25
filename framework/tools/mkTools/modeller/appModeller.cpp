@@ -1688,20 +1688,19 @@ static void EnsurePathIsSet
 void GetRequiredKModules
 (
     model::App_t* appPtr,
-    std::list<model::Component_t*> compList
+    model::Component_t* compPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    for (auto const& it : compList)
-    {
-        model::Component_t *compPtr = it;
-        if (compPtr->subComponents.size() != 0)
+        for (auto subComponent : compPtr->subComponents)
         {
-            GetRequiredKModules(appPtr, compPtr->subComponents);
+            if (compPtr->subComponents.size() != 0)
+            {
+                GetRequiredKModules(appPtr, subComponent.componentPtr);
+            }
+            appPtr->requiredModules.insert(compPtr->requiredModules.begin(),
+                                           compPtr->requiredModules.end());
         }
-        appPtr->requiredModules.insert(compPtr->requiredModules.begin(),
-                                       compPtr->requiredModules.end());
-    }
 }
 
 
@@ -1723,9 +1722,13 @@ void GetKModuleFromExecs
         for (auto const& it : exec->componentInstances)
         {
             model::Component_t *compPtr = it->componentPtr;
-            GetRequiredKModules(appPtr, compPtr->subComponents);
-            appPtr->requiredModules.insert(compPtr->requiredModules.begin(),
+            for (auto subComponent : compPtr->subComponents)
+            {
+                GetRequiredKModules(appPtr, subComponent.componentPtr);
+
+                appPtr->requiredModules.insert(compPtr->requiredModules.begin(),
                                            compPtr->requiredModules.end());
+            }
         }
     }
 }
@@ -1889,14 +1892,10 @@ model::App_t* GetApp
     // Ensure that all processes have a PATH environment variable.
     EnsurePathIsSet(appPtr);
 
-    std::list<model::Component_t *> compList;
-
     for(auto it : appPtr->components)
     {
-        compList.push_back(it);
+        GetRequiredKModules(appPtr, it);
     }
-
-    GetRequiredKModules(appPtr, compList);
 
     GetKModuleFromExecs(appPtr);
 

@@ -73,7 +73,7 @@ static parseTree::ProvidedApi_t* ParseProvidedApi
  * @return Pointer to the subsection.
  */
 //--------------------------------------------------------------------------------------------------
-static parseTree::CompoundItemList_t* ParseProvidesSubsection
+static parseTree::CompoundItem_t* ParseProvidesSubsection
 (
     Lexer_t& lexer
 )
@@ -86,6 +86,14 @@ static parseTree::CompoundItemList_t* ParseProvidesSubsection
     if (subsectionName == "api")
     {
         return ParseComplexSection(lexer, subsectionNameTokenPtr, ParseProvidedApi);
+    }
+    else if (subsectionName == "headerDir")
+    {
+        return ParseTokenListSection(lexer, subsectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
+    }
+    else if (subsectionName == "lib")
+    {
+        return ParseTokenListSection(lexer, subsectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
     }
     else
     {
@@ -149,6 +157,35 @@ static parseTree::RequiredApi_t* ParseRequiredApi
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Parse a component item from "component:" subsection inside a "required:" section.
+ *
+ * @return Pointer to the item.
+ */
+//--------------------------------------------------------------------------------------------------
+static parseTree::RequiredComponent_t* ParseRequiredComponent
+(
+    Lexer_t& lexer
+)
+//--------------------------------------------------------------------------------------------------
+{
+    parseTree::Token_t* componentFilePathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
+
+    auto componentPtr = new parseTree::RequiredComponent_t(componentFilePathPtr);
+
+    componentPtr->AddContent(componentFilePathPtr);
+
+    // Accept provide-header option.
+    while (lexer.IsMatch(parseTree::Token_t::PROVIDE_HEADER_OPTION))
+    {
+        componentPtr->AddContent(lexer.Pull(parseTree::Token_t::PROVIDE_HEADER_OPTION));
+    }
+
+    return componentPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Parse a subsection inside a "requires:" section.
  *
  * @return Pointer to the subsection.
@@ -180,10 +217,13 @@ static parseTree::CompoundItem_t* ParseRequiresSubsection
     {
         return ParseComplexSection(lexer, sectionNameTokenPtr, ParseRequiredDevice);
     }
-    else if (   (subsectionName == "lib")
-             || (subsectionName == "component") )
+    else if (subsectionName == "lib")
     {
         return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
+    }
+    else if (subsectionName == "component")
+    {
+        return ParseComplexSection(lexer, sectionNameTokenPtr, ParseRequiredComponent);
     }
     else if (subsectionName == "kernelModules")
     {

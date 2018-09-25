@@ -1,0 +1,12 @@
+sources:
+{
+    fourthComponent.c
+}
+
+requires:
+{
+    component:
+    {
+        $LEGATO_ROOT/apps/test/framework/mk/system/testComponentHeader/firstComponent
+    }
+}

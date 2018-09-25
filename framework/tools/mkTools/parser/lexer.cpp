@@ -246,6 +246,7 @@ bool Lexer_t::IsMatch
         case parseTree::Token_t::SERVER_IPC_OPTION:
         case parseTree::Token_t::CLIENT_IPC_OPTION:
         case parseTree::Token_t::OPTIONAL_OPEN_SQUARE:
+        case parseTree::Token_t::PROVIDE_HEADER_OPTION:
             return (context.top().nextChars[0] == '[');
 
         case parseTree::Token_t::ARG:
@@ -548,6 +549,11 @@ parseTree::Token_t* Lexer_t::PullRaw
         case parseTree::Token_t::OPTIONAL_OPEN_SQUARE:
 
             PullOptional(tokenPtr);
+            break;
+
+        case parseTree::Token_t::PROVIDE_HEADER_OPTION:
+
+            PullProvideHeader(tokenPtr);
             break;
 
     }
@@ -2225,6 +2231,29 @@ void Lexer_t::PullOptional
 
     // Check that it's valid "optional".
     if (tokenPtr->text != "[optional]")
+    {
+        ThrowException(
+            mk::format(LE_I18N("Invalid option: '%s'"), tokenPtr->text)
+        );
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pull "provide-header" option (e.g., "[provide-header]") from the file and store it in the token.
+ */
+//--------------------------------------------------------------------------------------------------
+void Lexer_t::PullProvideHeader
+(
+    parseTree::Token_t* tokenPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    PullIpcOption(tokenPtr);
+
+    // Check that it's valid "provide-header".
+    if (tokenPtr->text != "[provide-header]")
     {
         ThrowException(
             mk::format(LE_I18N("Invalid option: '%s'"), tokenPtr->text)

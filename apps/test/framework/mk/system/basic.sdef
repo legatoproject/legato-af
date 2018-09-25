@@ -51,3 +51,8 @@ kernelModules:
     $CURDIR/kernelmodule/module/module4.mdef
 }
 #endif
+
+apps:
+{
+    $CURDIR/testComponentHeader/testComponentHeader.adef
+}

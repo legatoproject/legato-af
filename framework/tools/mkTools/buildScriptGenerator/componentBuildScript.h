@@ -71,6 +71,8 @@ class ComponentBuildScriptGenerator_t : protected RequireBaseGenerator_t
 
         virtual void GenerateCommentHeader(model::Component_t* componentPtr);
 
+        virtual void GenerateHeaderDir(const std::string& path);
+
         virtual void GenerateNinjaScriptBuildStatement(model::Component_t* componentPtr);
 
         virtual void AddNinjaDependencies(model::Component_t* componentPtr,

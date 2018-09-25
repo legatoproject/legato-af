@@ -95,6 +95,9 @@ std::string Content_t::TypeName
         case REQUIRED_MODULE:
             return "required module";
 
+        case REQUIRED_COMPONENT:
+            return "required component";
+
         default:
         {
             std::stringstream typeName;

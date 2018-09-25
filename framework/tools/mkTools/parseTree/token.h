@@ -51,6 +51,7 @@ struct Token_t: public Content_t
         MD5_HASH,           ///< MD5 cryptographic hash/checksum.
         DIRECTIVE,          ///< Preprocessor directive
         OPTIONAL_OPEN_SQUARE, ///< optional in square brackets (e.g., "[optional]").
+        PROVIDE_HEADER_OPTION, ///< export optional in square brackets (e.g. "[provide-header]").
     };
 
     Type_t type;        ///< The type of token.

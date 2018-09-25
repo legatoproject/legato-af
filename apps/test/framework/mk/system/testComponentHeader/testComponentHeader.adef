@@ -1,0 +1,17 @@
+executables:
+{
+    testComponentHeader = ( thirdComponent fourthComponent )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        ( testComponentHeader )
+    }
+}

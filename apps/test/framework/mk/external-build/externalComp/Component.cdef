@@ -10,3 +10,21 @@ externalBuild:
 {
     "mkdir -p ${LEGATO_BUILD}/external && cd ${LEGATO_BUILD}/external && touch foo '$${LEGATO_'"
 }
+
+
+// Test for localhost target only to avoid Jenkins build failure for other targets.
+#if ${TARGET} = localhost
+externalBuild:
+{
+    "${TOOLCHAIN_DIR}/${TOOLCHAIN_PREFIX}gcc -c -Wall -Werror -fpic $CURDIR/foo.c -o $CURDIR/foo.o"
+    "${TOOLCHAIN_DIR}/${TOOLCHAIN_PREFIX}gcc -shared -o $CURDIR/libfoo.so $CURDIR/foo.o"
+}
+
+provides:
+{
+    lib:
+    {
+        $CURDIR/libfoo.so
+    }
+}
+#endif

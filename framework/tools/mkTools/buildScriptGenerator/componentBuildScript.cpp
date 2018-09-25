@@ -38,6 +38,48 @@ void ComponentBuildScriptGenerator_t::GenerateCommentHeader
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Print to a given build script the directories to find header files.
+ */
+//--------------------------------------------------------------------------------------------------
+void ComponentBuildScriptGenerator_t::GenerateHeaderDir
+(
+    const std::string& path
+)
+{
+    auto componentPtr = model::Component_t::GetComponent(path);
+
+    for (auto subComponent : componentPtr->subComponents)
+    {
+        auto subComponentPtr =
+                model::Component_t::GetComponent(subComponent.componentPtr->dir);
+
+        for (auto subSubComponent : subComponentPtr->subComponents)
+        {
+            // If [provide-header] option is true.
+            // Include the directories only if provide-header option is indicated.
+            if (subSubComponent.isProvideHeader)
+            {
+                GenerateHeaderDir(subSubComponent.componentPtr->dir);
+            }
+        }
+
+        // Include the directories only if the component is a direct dependency or if the
+        // provide-header option is indicated.
+        for (auto const& dir : subComponent.componentPtr->headerDirs)
+        {
+            script << " -I" << dir;
+        }
+    }
+
+    for (auto const& dir : componentPtr->headerDirs)
+    {
+        script << " -I" << dir;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Print to a given build script the contents that are common to both cFlags and cxxFlags variable
  * definitions for a given Component.
  **/
@@ -80,12 +122,14 @@ void ComponentBuildScriptGenerator_t::GenerateCommonCAndCxxFlags
     // directly
     for (auto subComponentPtr : componentPtr->subComponents)
     {
-        if (subComponentPtr->HasExternalBuild())
+        if (subComponentPtr.componentPtr->HasExternalBuild())
         {
-            script << " -I" << subComponentPtr->dir
-                   << " -I$builddir/" << subComponentPtr->workingDir;
+            script << " -I" << subComponentPtr.componentPtr->dir
+                   << " -I$builddir/" << subComponentPtr.componentPtr->workingDir;
         }
     }
+
+    GenerateHeaderDir(componentPtr->dir);
 
     // For each server-side USETYPES statement, include the server code generation directory.
     // NOTE: It's very important that this comes after the serverApis, because the server
@@ -166,16 +210,16 @@ void ComponentBuildScriptGenerator_t::GetImplicitDependencies
     {
         // If the sub-component has itself been built into a library, the component depends
         // on that sub-component library.
-        if (subComponentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib != "")
+        if (subComponentPtr.componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib != "")
         {
-            script << " " << subComponentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib;
+            script << " " << subComponentPtr.componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib;
         }
 
         // If the sub-component has an external build step, this component depends on that
         // build step being run
-        if (subComponentPtr->HasExternalBuild())
+        if (subComponentPtr.componentPtr->HasExternalBuild())
         {
-            script << " " << subComponentPtr->name + "ExternalBuild";
+            script << " " << subComponentPtr.componentPtr->name + "ExternalBuild";
         }
 
         // Component also depends on whatever the sub-component depends on.
@@ -183,7 +227,7 @@ void ComponentBuildScriptGenerator_t::GetImplicitDependencies
         //       because the sub-component library will depend on those other things, so depending
         //       on the sub-component library is sufficient to imply an indirect dependency on
         //       those other things.
-        GetImplicitDependencies(subComponentPtr);
+        GetImplicitDependencies(subComponentPtr.componentPtr);
     }
 }
 
@@ -204,7 +248,7 @@ static bool HasExternalDependencies
     {
         // If the sub-component has an external build step, this component depends on that
         // build step being run
-        if (subComponentPtr->HasExternalBuild())
+        if (subComponentPtr.componentPtr->HasExternalBuild())
         {
             return true;
         }
@@ -232,9 +276,9 @@ void ComponentBuildScriptGenerator_t::GetExternalDependencies
     {
         // If the sub-component has an external build step, this component depends on that
         // build step being run
-        if (subComponentPtr->HasExternalBuild())
+        if (subComponentPtr.componentPtr->HasExternalBuild())
         {
-            script << " " << subComponentPtr->name + "ExternalBuild";
+            script << " " << subComponentPtr.componentPtr->name + "ExternalBuild";
         }
     }
 }
@@ -282,34 +326,34 @@ void ComponentBuildScriptGenerator_t::GetDependentLibLdFlags
     for (auto subComponentPtr : componentPtr->subComponents)
     {
         // If code is already generated for this component, skip it.
-        if (addedComponents.find(subComponentPtr) != addedComponents.end())
+        if (addedComponents.find(subComponentPtr.componentPtr) != addedComponents.end())
         {
             continue;
         }
 
         // Link with whatever this component depends on.
-        GetDependentLibLdFlags(subComponentPtr, addedComponents, ldFlags);
+        GetDependentLibLdFlags(subComponentPtr.componentPtr, addedComponents, ldFlags);
 
         // If the component has itself been built into a library, link with that.
-        if (subComponentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib != "")
+        if (subComponentPtr.componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib != "")
         {
             ldFlags = std::string(" \"-L")
                 + path::GetContainingDir(
-                    subComponentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib
+                    subComponentPtr.componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib
                 )
                 + "\""
                 + " -l"
                 + path::GetLibShortName(
-                    subComponentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib
+                    subComponentPtr.componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib
                 )
                 + ldFlags;
         }
 
         // If the component has an external build, add the external build's working directory.
-        if (subComponentPtr->HasExternalBuild())
+        if (subComponentPtr.componentPtr->HasExternalBuild())
         {
             ldFlags = " \"-L" + path::Combine(buildParams.workingDir,
-                                              subComponentPtr->workingDir) + "\"" + ldFlags;
+                                              subComponentPtr.componentPtr->workingDir) + "\"" + ldFlags;
         }
     }
 }
@@ -366,7 +410,6 @@ void ComponentBuildScriptGenerator_t::GetCInterfaceHeaders
 )
 //--------------------------------------------------------------------------------------------------
 {
-
     for (auto ifPtr : componentPtr->typesOnlyApis)
     {
         model::InterfaceCFiles_t cFiles;
@@ -1473,7 +1516,7 @@ void ComponentBuildScriptGenerator_t::GenerateIpcBuildStatements
     // Recurse to all sub-components
     for (auto subComponentPtr : componentPtr->subComponents)
     {
-        GenerateIpcBuildStatements(subComponentPtr);
+        GenerateIpcBuildStatements(subComponentPtr.componentPtr);
     }
 }
 
@@ -1503,7 +1546,7 @@ void ComponentBuildScriptGenerator_t::GenerateBuildStatementsRecursive
 
         for (auto subComponentPtr : componentPtr->subComponents)
         {
-            GenerateBuildStatementsRecursive(subComponentPtr);
+            GenerateBuildStatementsRecursive(subComponentPtr.componentPtr);
         }
     }
 }
@@ -1550,7 +1593,7 @@ void ComponentBuildScriptGenerator_t::AddNinjaDependencies
     // Recurse into sub-components.
     for (auto subComponentPtr : componentPtr->subComponents)
     {
-        AddNinjaDependencies(subComponentPtr, dependencies);
+        AddNinjaDependencies(subComponentPtr.componentPtr, dependencies);
     }
 }
 

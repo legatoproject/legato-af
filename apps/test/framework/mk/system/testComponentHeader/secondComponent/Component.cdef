@@ -1,0 +1,12 @@
+sources:
+{
+    secondComponent.c
+}
+
+requires:
+{
+    component:
+    {
+        $LEGATO_ROOT/apps/test/framework/mk/system/testComponentHeader/firstComponent [provide-header]
+    }
+}

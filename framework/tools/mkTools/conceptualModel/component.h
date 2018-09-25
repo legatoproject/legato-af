@@ -26,17 +26,25 @@ struct Component_t : public HasTargetInfo_t
 
     std::list<ObjectFile_t*> cObjectFiles;  ///< List of .o files to build from C source files.
     std::list<ObjectFile_t*> cxxObjectFiles;///< List of .o files to build from C++ source files.
+    std::list<std::string>  headerDirs; ///< List of directory to search for header files.
+
     std::list<JavaPackage_t*> javaPackages; ///< List of packages of Java code.
     std::list<PythonPackage_t*> pythonPackages; ///< List of packages of Python code.
     std::list<std::string> externalBuildCommands; ///< List of external build commands.
 
     std::set<std::string> staticLibs;   ///< Static library files required by this component.
+    std::set<std::string> providedLibs; ///< Library files provided by this component.
 
     std::list<std::string> ldFlags;     ///< List of linker options.
     std::list<std::string> cFlags;      ///< List of options to pass to the C compiler.
     std::list<std::string> cxxFlags;    ///< List of options to pass to the C++ compiler.
 
-    std::list<Component_t*> subComponents;  ///< List of components this component requires.
+    typedef struct {
+        Component_t* componentPtr;
+        bool isProvideHeader;
+    } ComponentProvideHeader_t; ///< Structure of component pointer and bool for [provide-header]
+
+    std::list<ComponentProvideHeader_t> subComponents; ///< List of subcomponents
 
     FileObjectPtrSet_t bundledFiles; ///< List of files to be bundled in the app.
     FileObjectPtrSet_t bundledDirs;  ///< List of directories to be bundled in the app.

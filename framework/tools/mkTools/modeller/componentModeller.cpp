@@ -16,7 +16,7 @@ namespace modeller
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Find a source code file for a component.
+ * Find a source code file or a header file for a component.
  *
  * @return the absolute path to the file, or an empty string if environment variable substitution
  *         resulted in an empty string.
@@ -24,7 +24,7 @@ namespace modeller
  * @throw Exception_t if a non-empty path was provided, but a file doesn't exist at that path.
  */
 //--------------------------------------------------------------------------------------------------
-static std::string FindSourceFile
+static std::string FindFile
 (
     model::Component_t* componentPtr,
     const parseTree::Token_t* tokenPtr, ///< Parse tree token containing the file path.
@@ -102,7 +102,7 @@ static void AddSources
     for (auto contentPtr: tokenListPtr->Contents())
     {
         // Find the file (returns an absolute path or "" if not found).
-        auto filePath = FindSourceFile(componentPtr, contentPtr, buildParams);
+        auto filePath = FindFile(componentPtr, contentPtr, buildParams);
 
         // If the environment variable substitution resulted in an empty string, then just
         // skip this file.
@@ -528,6 +528,95 @@ static void GetProvidedApi
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Processes an item from the "lib:" subsection of the "provided:" and "requires:" section.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddLib
+(
+    model::Component_t* providedToComponentPtr,
+    model::Component_t* providedFromComponentPtr,
+    const mk::BuildParams_t& buildParams,
+    std::string lib
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Skip if environment variable substitution resulted in an empty string.
+    if (!lib.empty())
+    {
+        // If the library specifier ends in a .a extension, it is a static library.
+        if (path::HasSuffix(lib, ".a"))
+        {
+            // Assume relative paths are build outputs, and should be searched in generated
+            // library search path
+            if (lib.find('/') == std::string::npos)
+            {
+                lib = "-l" + path::GetLibShortName(lib);
+            }
+            providedToComponentPtr->staticLibs.insert(lib);
+        }
+        // If it's not a .a file,
+        else
+        {
+            // If the library specifier contains a ".so" extension,
+            if (lib.find(".so") != std::string::npos)
+            {
+                // Try to find it relative to the component directory or the library output
+                // directory.
+                std::list<std::string> searchDirs =
+                        { providedFromComponentPtr->dir, buildParams.libOutputDir };
+
+                auto libPath = file::FindFile(lib, searchDirs);
+
+                // If found,
+                if (!libPath.empty())
+                {
+                    // Add the library to the list of the component's implicit dependencies.
+                    providedToComponentPtr->implicitDependencies.insert(libPath);
+
+                    // Add a -L ldflag for the directory that the library is in.
+                    providedToComponentPtr->ldFlags.push_back("-L" +
+                                                              path::GetContainingDir(libPath));
+                }
+
+                // Compute the short name for this library.
+                lib = path::GetLibShortName(lib);
+            }
+
+            // Add a -l option to the component's LDFLAGS.
+            providedToComponentPtr->ldFlags.push_back("-l" + lib);
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get header search directory paths from a "headerDir:" section and add them to searchPathList.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ReadSearchDirs
+(
+    std::list<std::string>& searchPathList,   ///< And add the new search paths to this list.
+    const parseTree::TokenListSection_t* sectionPtr  ///< From the search paths from this section.
+)
+//--------------------------------------------------------------------------------------------------
+{
+   for (const auto tokenPtr : sectionPtr->Contents())
+   {
+        auto dirPath = path::Unquote(DoSubstitution(tokenPtr));
+
+        // If the environment variable substitution resulted in an empty string, just ignore this.
+        if (!dirPath.empty())
+        {
+            searchPathList.push_back(dirPath);
+        }
+
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Adds the items from a given "provides:" section to a given Component_t object.
  */
 //--------------------------------------------------------------------------------------------------
@@ -539,7 +628,7 @@ static void AddProvidedItems
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // "provides:" section is comprised of subsections, but only "api:" is supported right now.
+    // "provides:" section is comprised of subsections.
     for (auto memberPtr : static_cast<const parseTree::ComplexSection_t*>(sectionPtr)->Contents())
     {
         auto subsectionName = memberPtr->firstTokenPtr->text;
@@ -552,6 +641,18 @@ static void AddProvidedItems
                 auto apiPtr = parseTree::ToTokenListPtr(itemPtr);
 
                 GetProvidedApi(componentPtr, apiPtr, buildParams);
+            }
+        }
+        else if (subsectionName == "headerDir")
+        {
+           ReadSearchDirs(componentPtr->headerDirs, parseTree::ToTokenListSectionPtr(memberPtr));
+        }
+        else if (subsectionName == "lib")
+        {
+            auto subsectionPtr = parseTree::ToTokenListPtr(memberPtr);
+            for (auto itemPtr : subsectionPtr->Contents())
+            {
+                componentPtr->providedLibs.insert(DoSubstitution(itemPtr));
             }
         }
         else
@@ -669,62 +770,52 @@ static void GetRequiredApi
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Processes an item from the "lib:" subsection of the "requires:" section.
+ * Processes an item from the "component:" subsection of the "requires:" section.
  */
 //--------------------------------------------------------------------------------------------------
-static void AddRequiredLib
+static void GetRequiredComponent
 (
     model::Component_t* componentPtr,
-    const parseTree::Token_t* tokenPtr,
+    const parseTree::TokenList_t* itemPtr,
     const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
-    auto lib = DoSubstitution(tokenPtr);
-    // Skip if environment variable substitution resulted in an empty string.
-    if (!lib.empty())
-    {
-        // If the library specifier ends in a .a extension,
-        // it is a static library, which may not be compiled with position-independent code,
-        // so this has to be linked with the executable at the last linking stage.
-        if (path::HasSuffix(lib, ".a"))
-        {
-            // Assume relative paths are build outputs, and should be searched in generated
-            // library search path
-            if (lib.find('/') == std::string::npos)
-            {
-                lib = "-l" + path::GetLibShortName(lib);
-            }
+    const auto& contentList = itemPtr->Contents();
 
-            componentPtr->staticLibs.insert(lib);
+    // Check for provide-header option, the only option available.
+    bool isProvideHeader = false;
+    model::Component_t* subcomponentPtr = NULL;
+    for (auto contentPtr : contentList)
+    {
+        if (contentPtr->type == parseTree::Token_t::PROVIDE_HEADER_OPTION)
+        {
+            if (contentPtr->text == "[provide-header]")
+            {
+                isProvideHeader = true;
+            }
         }
-        // If it's not a .a file,
         else
         {
-            // If the library specifier contains a ".so" extension,
-            if (lib.find(".so") != std::string::npos)
+            subcomponentPtr = GetComponent(contentPtr, buildParams, { componentPtr->dir });
+        }
+    }
+
+    if (subcomponentPtr != NULL)
+    {
+        model::Component_t::ComponentProvideHeader_t subComp;
+        subComp.componentPtr = subcomponentPtr;
+        subComp.isProvideHeader = isProvideHeader;
+
+        componentPtr->subComponents.push_back(subComp);
+
+        if (!subcomponentPtr->providedLibs.empty())
+        {
+            // If the subcomponent provides libraries then process them.
+            for (auto &lib : subcomponentPtr->providedLibs)
             {
-                // Try to find it relative to the component directory or the library output
-                // directory.
-                std::list<std::string> searchDirs = { componentPtr->dir, buildParams.libOutputDir };
-                auto libPath = file::FindFile(lib, searchDirs);
-
-                // If found,
-                if (!libPath.empty())
-                {
-                    // Add the library to the list of the component's implicit dependencies.
-                    componentPtr->implicitDependencies.insert(libPath);
-
-                    // Add a -L ldflag for the directory that the library is in.
-                    componentPtr->ldFlags.push_back("-L" + path::GetContainingDir(libPath));
-                }
-
-                // Compute the short name for this library.
-                lib = path::GetLibShortName(lib);
+                AddLib(componentPtr, subcomponentPtr, buildParams, lib);
             }
-
-            // Add a -l option to the component's LDFLAGS.
-            componentPtr->ldFlags.push_back("-l" + lib);
         }
     }
 }
@@ -796,18 +887,13 @@ static void AddRequiredItems
         }
         else if (subsectionName == "component")
         {
-            auto subsectionPtr = parseTree::ToTokenListPtr(memberPtr);
+            auto subsectionPtr = parseTree::ToCompoundItemListPtr(memberPtr);
             for (auto itemPtr : subsectionPtr->Contents())
             {
-                // Get a pointer to the component object for this sub-component.
-                // Note: may trigger parsing of the sub-component's .cdef.
-                auto subcomponentPtr = GetComponent(itemPtr, buildParams, { componentPtr->dir });
+                auto subitemPtr = parseTree::ToTokenListPtr(itemPtr);
 
-                // Skip if environment variable substitution resulted in an empty string.
-                if (subcomponentPtr != NULL)
-                {
-                    componentPtr->subComponents.push_back(subcomponentPtr);
-                }
+                GetRequiredComponent(componentPtr, subitemPtr, buildParams);
+
             }
         }
         else if (subsectionName == "lib")
@@ -815,7 +901,7 @@ static void AddRequiredItems
             auto subsectionPtr = parseTree::ToTokenListPtr(memberPtr);
             for (auto itemPtr : subsectionPtr->Contents())
             {
-                AddRequiredLib(componentPtr, itemPtr, buildParams);
+                AddLib(componentPtr, componentPtr, buildParams, DoSubstitution(itemPtr));
             }
         }
         else if (subsectionName == "kernelModules")
@@ -876,9 +962,38 @@ static void PrintSummary
 
         for (auto subComponentPtr : componentPtr->subComponents)
         {
-            std::cout << mk::format(LE_I18N("    '%s'"), subComponentPtr->name) << std::endl;
+            std::cout << mk::format(LE_I18N("    '%s'"), subComponentPtr.componentPtr->name)
+                      << std::endl;
+
+            if (subComponentPtr.isProvideHeader)
+            {
+                std::cout << LE_I18N("      provide headers from this component.")
+                          << std::endl;
+            }
         }
     }
+
+    if (!componentPtr->headerDirs.empty())
+    {
+        std::cout << LE_I18N("  Provides header directory:") << std::endl;
+
+        for (const auto &headerDirsPtr : componentPtr->headerDirs)
+        {
+            std::cout << mk::format(LE_I18N("    '%s'"), headerDirsPtr) << std::endl;
+        }
+    }
+
+
+    if (!componentPtr->providedLibs.empty())
+    {
+        std::cout << LE_I18N("  Provides libraries:") << std::endl;
+
+        for (const auto &providedLibPtr : componentPtr->providedLibs)
+        {
+            std::cout << mk::format(LE_I18N("    '%s'"), providedLibPtr) << std::endl;
+        }
+    }
+
 
     if (!componentPtr->bundledFiles.empty())
     {
@@ -1254,7 +1369,7 @@ void AddComponentInstance
     // initialization functions must be called.
     for (auto subComponentPtr : componentPtr->subComponents)
     {
-        AddComponentInstance(exePtr, subComponentPtr);
+        AddComponentInstance(exePtr, subComponentPtr.componentPtr);
     }
 
     // Add an instance of the component to the executable.
