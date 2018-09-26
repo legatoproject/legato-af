@@ -1956,7 +1956,7 @@ static void CallEventHandler
     LE_DEBUG("session state %d, event %d", ECallObj.sessionState, event);
 
     // Check if an eCall session is active
-    if ((eCallPtr->sessionState < ECALL_SESSION_NOT_CONNECTED) ||
+    if ((ECALL_SESSION_INIT == eCallPtr->sessionState) ||
         (ECALL_SESSION_STOPPED == eCallPtr->sessionState))
     {
         // The call is not an eCall, no treatment necessary
