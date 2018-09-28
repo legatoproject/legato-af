@@ -739,4 +739,37 @@ LE_SHARED le_result_t pa_sim_SetPower
     le_onoff_t power     ///< [IN] The power state.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enable or disable the automatic SIM selection
+ *
+ * @return
+ *      - LE_OK          Function succeeded.
+ *      - LE_FAULT       Function failed to execute.
+ *      - LE_UNSUPPORTED The platform does not support this operation.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sim_SetAutomaticSelection
+(
+    bool    enable    ///< [IN] True if the feature needs to be enabled. False otherwise.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the automatic SIM selection
+ *
+ * @return
+ *      - LE_OK             Function succeeded.
+ *      - LE_FAULT          Function failed to execute.
+ *      - LE_BAD_PARAMETER  Invalid parameter.
+ *      - LE_UNSUPPORTED    The platform does not support this operation.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sim_GetAutomaticSelection
+(
+    bool*    enablePtr    ///< [OUT] True if the feature is enabled. False otherwise.
+);
+
 #endif // LEGATO_PASIM_INCLUDE_GUARD

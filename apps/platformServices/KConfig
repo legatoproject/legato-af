@@ -107,3 +107,10 @@ config FEATURE_SPISVC
   default n
   ---help---
   Enable the SPI service to allow devices to use SPI-attached peripherals.
+
+config SIM_ENABLE_AUTOSWITCH
+  bool "Enable SIM auto switch support"
+  default y if TARGET_WP76XX
+  default n
+  ---help---
+  Enable SIM auto switch support.

@@ -412,6 +412,17 @@ static le_result_t SelectSIMCard
     le_sim_Id_t simId    ///< [IN] SIM identifier
 )
 {
+    if (simId >= LE_SIM_ID_MAX)
+    {
+        return LE_FAULT;
+    }
+
+    // If SIM is unspecified, then use the current SIM card
+    if (simId == LE_SIM_UNSPECIFIED)
+    {
+        return LE_OK;
+    }
+
     if(simId != SelectedCard)
     {
         // Select the SIM card
@@ -2797,6 +2808,55 @@ le_result_t le_sim_SendCommand
                                responsePtr,
                                responseNumElementsPtr
                              );
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enable or disable the automatic SIM selection
+ *
+ * @note Automatic SIM selection uses the following rule: If an external SIM is inserted in
+ *       slot 1 then select it. Otherwise, fall back to the internal SIM card.
+ *
+ * @return
+ *      - LE_OK            Function succeeded.
+ *      - LE_FAULT         Function failed to execute.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_SetAutomaticSelection
+(
+    bool    enable    ///< [IN] True if the feature needs to be enabled. False otherwise.
+)
+{
+    return pa_sim_SetAutomaticSelection(enable);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the automatic SIM selection
+ *
+ * @note When enabled, automatic SIM selection uses the following rule: If an external SIM is
+ *       inserted in slot 1 then select it. Otherwise, fall back to the internal SIM card.
+ *
+ * @return
+ *      - LE_OK             Function succeeded.
+ *      - LE_FAULT          Function failed to execute.
+ *      - LE_BAD_PARAMETER  Invalid parameter.
+ *      - LE_UNSUPPORTED    The platform does not support this operation.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_GetAutomaticSelection
+(
+    bool*    enablePtr    ///< [OUT] True if the automatic mode is enabled. False otherwise.
+)
+{
+    if (!enablePtr)
+    {
+        return LE_BAD_PARAMETER;
+    }
+
+    return pa_sim_GetAutomaticSelection(enablePtr);
 }
 
 //--------------------------------------------------------------------------------------------------

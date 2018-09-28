@@ -1577,6 +1577,34 @@ void TestSim_PowerUpDown
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Test automatic SIM selection
+ *
+ * API tested:
+ * - le_sim_SetAutomaticSelection
+ * - le_sim_GetAutomaticSelection
+ * Exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void TestSim_AutomaticSelection
+(
+    void
+)
+{
+    bool enabled;
+    LE_ASSERT(LE_BAD_PARAMETER == le_sim_GetAutomaticSelection(NULL));
+
+    LE_ASSERT_OK(le_sim_SetAutomaticSelection(true));
+    LE_ASSERT_OK(le_sim_GetAutomaticSelection(&enabled));
+    LE_ASSERT(true == enabled);
+
+    LE_ASSERT_OK(le_sim_SetAutomaticSelection(false));
+    LE_ASSERT_OK(le_sim_GetAutomaticSelection(&enabled));
+    LE_ASSERT(false == enabled);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Thread used to run SIM unit tests
  *
  */
@@ -1602,6 +1630,9 @@ static void* TestThread
 
     LE_INFO("======== Home network Test  ========");
     TestSim_HomeNetwork();
+
+    LE_INFO("======== Auto SIM selection Test  ========");
+    TestSim_AutomaticSelection();
 
     LE_INFO("======== SIM ICCID change Test ========");
     TestSim_ICCIDChange();

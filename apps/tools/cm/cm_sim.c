@@ -54,6 +54,8 @@ void cm_sim_PrintSimHelp
             "\tcm sim storepin <pin>\n\n"
             "To select SIM:\n"
             "\tcm sim select <EMBEDDED | EXTERNAL_SLOT_1 | EXTERNAL_SLOT_2 | REMOTE>\n\n"
+            "To use auto SIM selection:\n"
+            "\tcm sim mode <AUTO | MANUAL> \n\n"
             "Enter PIN: Enters the PIN code that is required before any Mobile equipment "
             "functionality can be used.\n"
             "Change PIN: Change the PIN code of the SIM card.\n"
@@ -670,6 +672,75 @@ int cm_sim_Select
     return EXIT_SUCCESS;
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function will change the SIM selection mode.
+ *
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
+int cm_sim_SetMode
+(
+    const char * modeStr  ///< [IN] SIM mode as a string
+)
+{
+    bool enable = false;
+
+    if (!modeStr)
+    {
+        LE_ERROR("modeStr is NULL");
+        return EXIT_FAILURE;
+    }
+
+    if (0 == strcmp(modeStr, "AUTO"))
+    {
+        enable = true;
+
+    }
+    else if (0 == strcmp(modeStr, "MANUAL"))
+    {
+        enable = false;
+    }
+    else
+    {
+        printf("Wrong <type> argument\n");
+        return EXIT_FAILURE;
+    }
+
+    if (le_sim_SetAutomaticSelection(enable) != LE_OK)
+    {
+        printf("Unable to set automatic selection mode to %d\n", enable);
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function will return the current SIM selection mode.
+ *
+ * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
+int cm_sim_GetMode
+(
+    void
+)
+{
+    bool enable = false;
+
+    if (le_sim_GetAutomaticSelection(&enable) != LE_OK)
+    {
+        printf("Unable to get automatic selection mode\n");
+        return EXIT_FAILURE;
+    }
+
+    printf("SIM selection mode: %s\n", enable ? "AUTO" : "MANUAL");
+
+    return EXIT_SUCCESS;
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Process commands for sim service.
@@ -779,6 +850,17 @@ void cm_sim_ProcessSimCommand
         if (cm_cmn_CheckEnoughParams(1, numArgs, "SIM type missing. e.g. cm sim select <type>"))
         {
             exit(cm_sim_Select(pinPtr));
+        }
+    }
+    else if (strcmp(command, "mode") == 0)
+    {
+        if (numArgs == 3)
+        {
+            exit(cm_sim_SetMode(pinPtr));
+        }
+        else
+        {
+            exit(cm_sim_GetMode());
         }
     }
     else

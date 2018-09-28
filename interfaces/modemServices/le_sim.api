@@ -30,7 +30,8 @@
  *
  * @section le_sim_SelectCard Select a card to use
  * le_sim_SelectCard() function is used to select the SIM identifier. By default, the SIM in slot 1
- * is used.
+ * is used unless the automatic SIM selection is enabled. See @ref le_sim_AutomaticSelection for
+ * further details.
  * Additionally, any Legato SIM API with a SIM card identifier passed in parameter, selects that
  * SIM identifier. le_sim_GetSelectedCard() returns the current selected card, not necessarily the
  * one set previously by le_sim_SelectCard().
@@ -40,9 +41,24 @@
  * @note It is recommended to wait for a SIM handler notification after a new SIM selection before
  * calling le_sim API functions.
  *
- *
  * A sample code can be seen in the following page:
  * - @subpage c_simTestSelect
+ *
+ * @section le_sim_AutomaticSelection Automatic SIM selection
+ * This feature is only relevant for modules with an internal SIM card. When enabled, the module
+ * automatically selects a SIM slot according to the rule: "If an external SIM is inserted in slot 1
+ * then select it. Otherwise, fall back to the internal SIM card".
+ *
+ * Use the following APIs to manage the feature:
+ * - le_sim_SetAutomaticSelection(): Enable/Disable the automatic SIM selection.
+ * - le_sim_GetAutomaticSelection(): Get the current automatic SIM selection state.
+ *
+ * @note Most of le_sim APIs require a SIM identifier in their arguments. If a client application
+ * uses a SIM identifier different from the one selected by automatic SIM selection, the feature
+ * will be immediately disabled.
+ * Thus, in order to use le_sim APIs in automatic SIM selection, client application must use
+ * LE_SIM_UNSPECIFIED as a SIM identifier (@ref le_sim_Id_t).
+ *
  *
  * @section le_sim_id SIM identification information
  * \b ICCID:
@@ -573,10 +589,12 @@ ENUM States
 //--------------------------------------------------------------------------------------------------
 ENUM Id
 {
-    EMBEDDED,           ///< Embedded SIM
-    EXTERNAL_SLOT_1,    ///< SIM inserted in external slot 1
-    EXTERNAL_SLOT_2,    ///< SIM inserted in external slot 2
-    REMOTE,             ///< Remote SIM
+    EMBEDDED,           ///< Embedded SIM.
+    EXTERNAL_SLOT_1,    ///< SIM inserted in external slot 1.
+    EXTERNAL_SLOT_2,    ///< SIM inserted in external slot 2.
+    REMOTE,             ///< Remote SIM.
+    UNSPECIFIED,        ///< le_sim APIs are executed on the currently selected SIM. Use this
+                        ///< identifier when automatic SIM selection is enabled.
     ID_MAX
 };
 
@@ -1283,6 +1301,44 @@ FUNCTION le_result_t SendCommand
     uint8          sw1 OUT,                                 ///< Status Word 1 received from the SIM
     uint8          sw2 OUT,                                 ///< Status Word 2 received from the SIM
     uint8          response[RESPONSE_MAX_BYTES] OUT           ///< SIM response.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enable or disable the automatic SIM selection
+ *
+ * @note Automatic SIM selection uses the following rule: If an external SIM is inserted in
+ *       slot 1 then select it. Otherwise, fall back to the internal SIM card.
+ *
+ * @return
+ *      - LE_OK            Function succeeded.
+ *      - LE_FAULT         Function failed to execute.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetAutomaticSelection
+(
+    bool    enable IN             ///< True if the feature needs to be enabled. False otherwise.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the automatic SIM selection
+ *
+ * @note When enabled, automatic SIM selection uses the following rule: If an external SIM is
+ *       inserted in slot 1 then select it. Otherwise, fall back to the internal SIM card.
+ *
+ * @return
+ *      - LE_OK             Function succeeded.
+ *      - LE_FAULT          Function failed to execute.
+ *      - LE_BAD_PARAMETER  Invalid parameter.
+ *      - LE_UNSUPPORTED    The platform does not support this operation.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetAutomaticSelection
+(
+    bool    enable OUT            ///< True if the feature is enabled. False otherwise.
 );
 
 //--------------------------------------------------------------------------------------------------

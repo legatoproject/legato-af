@@ -105,6 +105,7 @@ static void PrintUsage
      "SIM send apdu test: app runProc simTest --exe=simTest -- access <emb/ext1/ext2/rem>",
      "SIM allocation test: app runProc simTest --exe=simTest -- powerUpDown",
      "SIM events: app runProc simTest --exe=simTest -- events",
+     "SIM auto selection: app runProc simTest --exe=simTest -- auto <1/0>",
      "",
     };
 
@@ -252,6 +253,30 @@ COMPONENT_INIT
             LE_ERROR("testString is NULL");
             exit(EXIT_FAILURE);
         }
+    }
+
+    //Test: SIM automatic selection
+    if (strcmp(testString, "auto") == 0)
+    {
+        bool enable = true;
+        const char* arg;
+
+        LE_INFO("Enable/Disable automatic SIM selection");
+        if (le_arg_NumArgs() >= 2)
+        {
+            arg = le_arg_GetArg(1);
+            if (NULL == arg)
+            {
+                LE_ERROR("argument is NULL");
+                exit(EXIT_FAILURE);
+            }
+            enable = (*arg == '0') ? false : true;
+        }
+
+        LE_ASSERT_OK(le_sim_SetAutomaticSelection(enable));
+        LE_ASSERT_OK(le_sim_GetAutomaticSelection(&enable));
+        LE_INFO("Automatic SIM selection state: %d", enable);
+        exit(EXIT_SUCCESS);
     }
 
     if (le_arg_NumArgs() > 1)
