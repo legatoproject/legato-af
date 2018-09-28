@@ -2112,6 +2112,7 @@ static void ProcessSmsSendingCommandHandler
             {
                 msgPtr->pdu.status = LE_SMS_SENDING_FAILED;
             }
+            LE_INFO("Async send command status: %d", msgPtr->pdu.status);
             le_sem_Post(SmsSem);
             SendSmsSendingStateEvent(messageRef);
         }
@@ -2142,7 +2143,7 @@ static void* SmsSenderThread
     le_cfg_ConnectService();
 
     // Register for SMS command events.
-    le_event_AddHandler(WDOG_THREAD_NAME_SMS_COMMAND_SENDING, SmsCommandEventId,
+    le_event_AddHandler("ProcessCommandHandler", SmsCommandEventId,
         ProcessSmsSendingCommandHandler);
 
     le_sem_Post(SmsSem);
@@ -2295,7 +2296,7 @@ le_result_t le_sms_Init
 
     // Init the SMS command Event Id.
     SmsCommandEventId = le_event_CreateId("SmsSendCmd", sizeof(CmdRequest_t));
-    le_thread_Start(le_thread_Create("SmsSenderThread", SmsSenderThread, NULL));
+    le_thread_Start(le_thread_Create(WDOG_THREAD_NAME_SMS_COMMAND_SENDING, SmsSenderThread, NULL));
 
     le_sem_Wait(SmsSem);
 

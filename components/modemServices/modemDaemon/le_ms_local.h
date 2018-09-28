@@ -27,12 +27,13 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  Thread name maintained by watchdog in modem service.
+ *  Thread name maintained by watchdog in modem service (Max length should not exceed
+ *  MAX_THREAD_NAME_SIZE).
  */
 //--------------------------------------------------------------------------------------------------
-#define WDOG_THREAD_NAME_MDC_COMMAND_EVENT "CommandEventThread"
-#define WDOG_THREAD_NAME_MRC_COMMAND_PROCESS "ProcessMrcCommandHandler"
-#define WDOG_THREAD_NAME_SMS_COMMAND_SENDING "ProcessSmsSendingCommandHandler"
+#define WDOG_THREAD_NAME_MDC_COMMAND_EVENT   "MdcEventThread"
+#define WDOG_THREAD_NAME_MRC_COMMAND_PROCESS "MrcProcessThread"
+#define WDOG_THREAD_NAME_SMS_COMMAND_SENDING "SmsSendingThread"
 
 //--------------------------------------------------------------------------------------------------
 /**

@@ -1113,7 +1113,7 @@ static void* MrcCommandThread
     le_sem_Ref_t initSemaphore = (le_sem_Ref_t)contextPtr;
 
     // Register for MRC command events
-    le_event_AddHandler(WDOG_THREAD_NAME_MRC_COMMAND_PROCESS,
+    le_event_AddHandler("ProcessCommandHandler",
                         MrcCommandEventId,
                         ProcessMrcCommandEventHandler);
 
@@ -1882,7 +1882,7 @@ void le_mrc_Init
     // initSemaphore is used to wait for MrcCommandThread() execution. It ensures that the thread is
     // ready when we exit from le_mrc_Init().
     le_sem_Ref_t initSemaphore = le_sem_Create("InitSem", 0);
-    le_thread_Start(le_thread_Create("MrcManualSelectionThread",
+    le_thread_Start(le_thread_Create(WDOG_THREAD_NAME_MRC_COMMAND_PROCESS,
                                      MrcCommandThread,
                                      (void*)initSemaphore));
     le_sem_Wait(initSemaphore);
