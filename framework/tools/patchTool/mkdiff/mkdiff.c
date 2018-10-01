@@ -53,6 +53,8 @@ typedef struct
     char volumePath[PATH_MAX];
     size_t imageSize;
     uint32_t crc32;
+    uint8_t volType;
+    uint8_t volFlags;
 }
 ExtractInfo_t;
 
@@ -302,6 +304,8 @@ static ExtractInfo_t* SplitUbiImage
                                       volumeInfo[i].volumePath,
                                       FlashPEBSize,
                                       FlashPageSize,
+                                      &volumeInfo[i].volType,
+                                      &volumeInfo[i].volFlags,
                                       &volumeInfo[i].imageSize,
                                       &volumeInfo[i].crc32 );
        if (LE_OK != result)
@@ -337,7 +341,9 @@ static void PrependMetaData
             "\t\t\t\t DiffType: %s\n"
             "\t\t\t\t segsize %x\n"
             "\t\t\t\t numpat %x \n"
-            "\t\t\t\t ubiVolId %u \n"
+            "\t\t\t\t ubiVolId %hu \n"
+            "\t\t\t\t ubiVoltype %hhu \n"
+            "\t\t\t\t ubiVolFlags %hhx \n"
             "\t\t\t\t origSize %x\n"
             "\t\t\t\t origCrc %x\n"
             "\t\t\t\t destSize %x\n"
@@ -345,7 +351,9 @@ static void PrependMetaData
             patchHeader->diffType,
             be32toh(patchHeader->segmentSize),
             be32toh(patchHeader->numPatches),
-            be32toh(patchHeader->ubiVolId),
+            be16toh(patchHeader->ubiVolId),
+            patchHeader->ubiVolType,
+            patchHeader->ubiVolFlags,
             be32toh(patchHeader->origSize),
             be32toh(patchHeader->origCrc32),
             be32toh(patchHeader->destSize),
@@ -425,7 +433,9 @@ static void ComputeDeltaSqsh
     patchHeader.origCrc32 = htobe32(srcVolumeInfo[ubiIndex].crc32);
     patchHeader.destSize = htobe32(tgtVolumeInfo[ubiIndex].imageSize);
     patchHeader.destCrc32 = htobe32(tgtVolumeInfo[ubiIndex].crc32);
-    patchHeader.ubiVolId = htobe32(ubiIndex);
+    patchHeader.ubiVolId = htobe16(ubiIndex);
+    patchHeader.ubiVolType = tgtVolumeInfo[ubiIndex].volType;
+    patchHeader.ubiVolFlags = tgtVolumeInfo[ubiIndex].volFlags;
     patchHeader.numPatches = -1;     // Not used in imgdiff
     patchHeader.segmentSize = -1;    // Not used in imgdiff
     memcpy( patchHeader.diffType, "IMGDIFF2", 8 );
@@ -459,7 +469,9 @@ static void AppendSmallVolumes
     patchHeader.origCrc32 = UNKNOWN_VALUE;
     patchHeader.destSize = htobe32(tgtVolumeInfo[ubiIndex].imageSize);
     patchHeader.destCrc32 = htobe32(tgtVolumeInfo[ubiIndex].crc32);
-    patchHeader.ubiVolId = htobe32(ubiIndex);
+    patchHeader.ubiVolId = htobe16(ubiIndex);
+    patchHeader.ubiVolType = (uint8_t)-1;
+    patchHeader.ubiVolFlags = (uint8_t)-1;
     patchHeader.numPatches = UNKNOWN_VALUE;
     patchHeader.segmentSize = UNKNOWN_VALUE;
     memcpy( patchHeader.diffType, NODIFF, 8 );
@@ -729,7 +741,9 @@ static void ComputeDeltaRawFlash
     fstat( fdr, &st );
     patchMetaHeader.destSize = htobe32(st.st_size);
 
-    patchMetaHeader.ubiVolId = htobe32(((uint32_t)-1));
+    patchMetaHeader.ubiVolId = htobe16(((uint16_t)-1));
+    patchMetaHeader.ubiVolType = (uint8_t)-1;
+    patchMetaHeader.ubiVolFlags = (uint8_t)-1;
 
     crc32Dest = LE_CRC_START_CRC32;
 
@@ -799,10 +813,12 @@ static void ComputeDeltaRawFlash
     lseek64( fdp, 0, SEEK_SET );
     write( fdp, &patchMetaHeader, sizeof(patchMetaHeader) );
 
-    printf( "PATCH METAHEADER: segsize %x numpat %x ubiVolId %u "
+    printf( "PATCH METAHEADER: segsize %x numpat %x ubiVolId %hu "
+            "ubiVolType %hhu ubiVolFlags %hhX "
             "origsz %x origcrc %x destsz %x descrc %x\n",
             be32toh(patchMetaHeader.segmentSize), be32toh(patchMetaHeader.numPatches),
-            be32toh(patchMetaHeader.ubiVolId),
+            be16toh(patchMetaHeader.ubiVolId),
+            patchMetaHeader.ubiVolType, patchMetaHeader.ubiVolFlags,
             be32toh(patchMetaHeader.origSize), be32toh(patchMetaHeader.origCrc32),
             be32toh(patchMetaHeader.destSize), be32toh(patchMetaHeader.destCrc32));
     close( fdr );

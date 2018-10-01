@@ -67,7 +67,9 @@ typedef struct
     uint8_t  diffType[16];   ///< Magic marker to identify the meta patch hader
     uint32_t segmentSize;    ///< Size of a patch segment
     uint32_t numPatches;     ///< Total number of patch segments
-    uint32_t ubiVolId;       ///< UBI volume ID if patch concerns an UBI volume, -1 else
+    uint16_t ubiVolId;       ///< UBI volume ID if patch concerns an UBI volume, -1 else
+    uint8_t  ubiVolType;     ///< UBI volume type if patch concerns an UBI volume, -1 else
+    uint8_t  ubiVolFlags;    ///< UBI volume flags if patch concerns an UBI volume, -1 else
     uint32_t origSize;       ///< Size of the original image
     uint32_t origCrc32;      ///< CRC32 of the original image
     uint32_t destSize;       ///< Size of the destination image
@@ -126,6 +128,8 @@ le_result_t utils_ExtractUbiData
     char*     fileNamePtr,  ///< [IN] File name where to store the extracted image from UBI volume
     int32_t   pebSize,      ///< [IN] Flash physical erase block size
     int32_t   pageSize,     ///< [IN] Flash page size
+    uint8_t*  volTypePtr,   ///< [OUT] Returned volume type of the extracted image
+    uint8_t*  volFlagsPtr,  ///< [OUT] Returned volume flags of the extracted image
     size_t*   sizePtr,      ///< [OUT] Returned size of the extracted image
     uint32_t* crc32Ptr      ///< [OUT] Returned computed CRC32 of the extracted image
 );

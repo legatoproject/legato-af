@@ -491,6 +491,8 @@ le_result_t utils_ExtractUbiData
     char*     fileNamePtr,  ///< [IN] File name where to store the extracted image from UBI volume
     int32_t   pebSize,      ///< [IN] Flash physical erase block size
     int32_t   pageSize,     ///< [IN] Flash page size
+    uint8_t*  volTypePtr,   ///< [OUT] Returned volume type of the extracted image
+    uint8_t*  volFlagsPtr,  ///< [OUT] Returned volume flags of the extracted image
     size_t*   sizePtr,      ///< [OUT] Returned size of the extracted image
     uint32_t* crc32Ptr      ///< [OUT] Returned computed CRC32 of the extracted image
 )
@@ -568,6 +570,8 @@ le_result_t utils_ExtractUbiData
         fprintf(stderr, "File '%s', Size %zx CRC %x\n", fileNamePtr, imageSize, crc32);
     }
 
+    *volTypePtr = Vtbl[ubiVolId].vol_type;
+    *volFlagsPtr = Vtbl[ubiVolId].flags;
     res = LE_OK;
 
 clean_exit:
