@@ -2310,9 +2310,15 @@ le_mdc_DisconnectionReason_t le_mdc_GetDisconnectionReason
 {
     le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
 
-    if (profilePtr == NULL)
+    if (NULL == profilePtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", profileRef);
+        return LE_MDC_DISC_UNDEFINED;
+    }
+
+    if (NULL == profilePtr->conFailurePtr)
+    {
+        LE_ERROR("Unspecified disconnection reason");
         return LE_MDC_DISC_UNDEFINED;
     }
 
@@ -2344,10 +2350,16 @@ int32_t le_mdc_GetPlatformSpecificDisconnectionCode
 {
     le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
 
-    if (profilePtr == NULL)
+    if (NULL == profilePtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", profileRef);
         return LE_MDC_DISC_UNDEFINED;
+    }
+
+    if (NULL == profilePtr->conFailurePtr)
+    {
+        LE_ERROR("Unspecified disconnection code");
+        return INT32_MAX;
     }
 
     return (profilePtr->conFailurePtr->callEndFailureCode);
@@ -2390,9 +2402,18 @@ void le_mdc_GetPlatformSpecificFailureConnectionReason
         return;
     }
 
-    if (profilePtr == NULL)
+    *failureTypePtr = LE_MDC_DISC_UNDEFINED;
+    *failureCodePtr = INT32_MAX;
+
+    if (NULL == profilePtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", profileRef);
+        return;
+    }
+
+    if (NULL == profilePtr->conFailurePtr)
+    {
+        LE_ERROR("Unspecified disconnection code/reason");
         return;
     }
 
