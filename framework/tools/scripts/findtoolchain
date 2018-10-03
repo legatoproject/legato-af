@@ -41,68 +41,61 @@ GetSysrootDefs() {
     ar7 | ar86)
         if [[ "$yocto_mode" == "true" ]]; then
             SYSROOT_DEFS+=("swi-mdm9x15")
-        else
-            SYSROOT_DEFS+=("armv7a-vfp-neon-poky-linux-gnueabi")
         fi
+        SYSROOT_DEFS+=("armv7a-vfp-neon-poky-linux-gnueabi")
         ;;
 
     wp85 | wp750x)
         if [[ "$yocto_mode" == "true" ]]; then
             SYSROOT_DEFS+=("swi-mdm9x15")
-        else
-            SYSROOT_DEFS+=("armv7a-neon-poky-linux-gnueabi")
-            SYSROOT_DEFS+=("armv7ahf-neon-poky-linux-gnueabi")
-            SYSROOT_DEFS+=("armv7a-vfp-neon-poky-linux-gnueabi")
         fi
+        SYSROOT_DEFS+=("armv7a-neon-poky-linux-gnueabi")
+        SYSROOT_DEFS+=("armv7ahf-neon-poky-linux-gnueabi")
+        SYSROOT_DEFS+=("armv7a-vfp-neon-poky-linux-gnueabi")
         ;;
 
     wp76xx | wp77xx)
         if [[ "$yocto_mode" == "true" ]]; then
             SYSROOT_DEFS+=("swi-mdm9x28-wp")
             SYSROOT_DEFS+=("swi-mdm9x28")
-        else
-            SYSROOT_DEFS+=("armv7a-neon-poky-linux-gnueabi")
-            SYSROOT_DEFS+=("armv7ahf-neon-poky-linux-gnueabi")
         fi
+        SYSROOT_DEFS+=("armv7a-neon-poky-linux-gnueabi")
+        SYSROOT_DEFS+=("armv7ahf-neon-poky-linux-gnueabi")
         ;;
 
     ar758x)
         if [[ "$yocto_mode" == "true" ]]; then
             SYSROOT_DEFS+=("swi-mdm9x28-ar758x")
-        else
-            SYSROOT_DEFS+=("armv7a-neon-poky-linux-gnueabi")
-            SYSROOT_DEFS+=("armv7ahf-neon-poky-linux-gnueabi")
         fi
+        SYSROOT_DEFS+=("armv7a-neon-poky-linux-gnueabi")
+        SYSROOT_DEFS+=("armv7ahf-neon-poky-linux-gnueabi")
         ;;
 
     ar759x)
         if [[ "$yocto_mode" == "true" ]]; then
             SYSROOT_DEFS+=("swi-mdm9x40-ar759x")
-        else
-            SYSROOT_DEFS+=("armv7a-neon-poky-linux-gnueabi")
-            SYSROOT_DEFS+=("armv7ahf-neon-poky-linux-gnueabi")
         fi
+        SYSROOT_DEFS+=("armv7a-neon-poky-linux-gnueabi")
+        SYSROOT_DEFS+=("armv7ahf-neon-poky-linux-gnueabi")
         ;;
 
-    raspi | virt_arm)
+    raspi | virt_arm | virt-arm)
         if [[ "$yocto_mode" == "true" ]]; then
             SYSROOT_DEFS+=("swi-virt-arm")
-        else
-            SYSROOT_DEFS+=("armv5e-poky-linux-gnueabi")
         fi
+        SYSROOT_DEFS+=("armv5e-poky-linux-gnueabi")
         ;;
 
-    virt_x86)
+    virt_x86 | virt-x86)
         if [[ "$yocto_mode" == "true" ]]; then
             SYSROOT_DEFS+=("swi-virt-x86")
-        else
-            SYSROOT_DEFS+=("i586-poky-linux")
         fi
+        SYSROOT_DEFS+=("i586-poky-linux")
         ;;
 
     virt)
         VIRT_TARGET_ARCH=${VIRT_TARGET_ARCH:-x86}
-        GetSysrootDefs "virt_${VIRT_TARGET_ARCH}" "${yocto_mode}"
+        GetSysrootDefs "virt-${VIRT_TARGET_ARCH}" "${yocto_mode}"
         return $?
         ;;
 
@@ -135,10 +128,14 @@ AppendYoctoBuildToolchain() {
     local build_dir=$1
     local target="$2"
     local gcc_prefix="${3:-"arm-poky-linux-gnueabi"}"
+    local toolchain_dir work_dir sysroot_dir kernelroot_dir toolchain_prop
 
-    local toolchain_dir="$(readlink -e "${LEGATO_ROOT}/../${build_dir}/tmp/sysroots/${HOST_ARCH}-linux/usr/bin/${gcc_prefix}")"
-    if [ -z "${toolchain_dir}" ]; then
-        return 1
+    if [ ! -e "${LEGATO_ROOT}/../${build_dir}/tmp/sysroots-components/" ]; then
+        # Legacy, global sysroot
+        toolchain_dir="$(readlink -e "${LEGATO_ROOT}/../${build_dir}/tmp/sysroots/${HOST_ARCH}-linux/usr/bin/${gcc_prefix}")"
+        if [ -z "${toolchain_dir}" ]; then
+            return 1
+        fi
     fi
 
     GetSysrootDefs "${target}" true
@@ -148,15 +145,31 @@ AppendYoctoBuildToolchain() {
 
     for sysroot_def in "${SYSROOT_DEFS[@]}"; do
 
-        local sysroot_dir="$(readlink -e "${LEGATO_ROOT}/../${build_dir}/tmp/sysroots/${sysroot_def}")"
-        if [ -z "${sysroot_dir}" ]; then
-            continue
+        if [ -z "${toolchain_dir}" ]; then
+            # Per-package sysroot
+
+            work_dir="$(readlink -e "${LEGATO_ROOT}/../${build_dir}/tmp/work/${sysroot_def}/legato-af/git-r0/")"
+            if [ -z "${work_dir}" ]; then
+                continue
+            fi
+
+            toolchain_dir="${work_dir}/recipe-sysroot-native/usr/bin/${gcc_prefix}"
+
+            sysroot_dir="${work_dir}/recipe-sysroot"
+
+        else
+            # Legacy, global sysroot
+
+            sysroot_dir="$(readlink -e "${LEGATO_ROOT}/../${build_dir}/tmp/sysroots/${sysroot_def}")"
+            if [ -z "${sysroot_dir}" ]; then
+                continue
+            fi
         fi
 
-        local kernelroot_dir="$(readlink -e "${LEGATO_ROOT}/../${build_dir}/tmp/work-shared/${sysroot_def}/kernel-build-artifacts")"
+        kernelroot_dir="$(readlink -e "${LEGATO_ROOT}/../${build_dir}/tmp/work-shared/${sysroot_def}/kernel-build-artifacts")"
         # Allow kernelroot_dir to be empty
 
-        local toolchain_prop="${toolchain_dir}"
+        toolchain_prop="${toolchain_dir}"
         toolchain_prop+="::"
         toolchain_prop+="${sysroot_dir}"
         toolchain_prop+="::"
@@ -273,7 +286,7 @@ SelectToolchainDirs() {
             AppendYoctoToolchain "${v}"            "${target}"
         done
         ;;
-    virt_arm)
+    virt_arm | virt-arm)
         AppendYoctoBuildToolchain 'build_virt-arm' "${target}"
         AppendYoctoToolchain "LXSWI*+virt"         "${target}"
 
@@ -282,7 +295,7 @@ SelectToolchainDirs() {
             AppendYoctoToolchain "${v}"            "${target}"
         done
         ;;
-    virt_x86)
+    virt_x86 | virt-x86)
         AppendYoctoBuildToolchain 'build_virt-x86' "${target}"       'i586-poky-linux'
         AppendYoctoToolchain "LXSWI*+virt"         "${target}"       'i586-poky-linux'
 
@@ -293,7 +306,7 @@ SelectToolchainDirs() {
         ;;
     virt)
         VIRT_TARGET_ARCH=${VIRT_TARGET_ARCH:-x86}
-        SelectToolchainDirs "virt_${VIRT_TARGET_ARCH}"
+        SelectToolchainDirs "virt-${VIRT_TARGET_ARCH}"
         ;;
     *)
         local toolchain_dir_env="${target^^}_TOOLCHAIN_DIR"

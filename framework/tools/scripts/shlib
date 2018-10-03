@@ -220,21 +220,24 @@ SetTargetIP()
 
 # Function to be able to use the toolchain within a script
 FindToolchain() {
-    toolchain_dir_env_name=${TARGET^^}_TOOLCHAIN_DIR
-    toolchain_prefix_env_name=${TARGET^^}_TOOLCHAIN_PREFIX
+    target_sanitized="$(echo ${TARGET} | tr '[:lower:]' '[:upper:]' | tr '-' '_')"
+    toolchain_dir_env_name=${target_sanitized^^}_TOOLCHAIN_DIR
+    toolchain_prefix_env_name=${target_sanitized^^}_TOOLCHAIN_PREFIX
+
+    findtoolchain_path="$LEGATO_ROOT/framework/tools/scripts/findtoolchain"
 
     TOOLCHAIN_DIR=${!toolchain_dir_env_name}
     if [ -z "$TOOLCHAIN_DIR" ]; then
-        TOOLCHAIN_DIR=$(findtoolchain $TARGET dir)
+        TOOLCHAIN_DIR=$($findtoolchain_path $TARGET dir)
     fi
 
     TOOLCHAIN_PREFIX=${!toolchain_prefix_env_name}
     if [ -z "$TOOLCHAIN_PREFIX" ]; then
-        TOOLCHAIN_PREFIX=$(findtoolchain $TARGET prefix)
+        TOOLCHAIN_PREFIX=$($findtoolchain_path $TARGET prefix)
     fi
 
     if [ -z "$LEGATO_SYSROOT" ]; then
-        LEGATO_SYSROOT=$(findtoolchain $TARGET sysroot)
+        LEGATO_SYSROOT=$($findtoolchain_path $TARGET sysroot)
     fi
 
     TOOLCHAIN_ROOT=$(readlink -f "$TOOLCHAIN_DIR/../../..")
