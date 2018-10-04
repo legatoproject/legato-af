@@ -1565,6 +1565,11 @@ static void TryStartTechSession
                             // Start a connection
                             TryStartDataSession();
                         }
+                        else
+                        {
+                            LE_INFO("Cellular not available for starting a data session");
+                            ConnectionStatusHandler(LE_DATA_CELLULAR, false);
+                        }
                     }
                 }
                 else
