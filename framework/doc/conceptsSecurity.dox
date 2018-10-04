@@ -48,9 +48,9 @@ For more details on Sandbox Security:
 
 <h1> SMACK </h1>
 
-Simplified Mandatory Access Control Kernel (SMACK) provides a simple solution
-for mandatory access control (MAC). MAC provides the ability for a centralized entity to
-set access policy for system resources.
+Smack (full name: Simplified Mandatory Access Control Kernel) is a Linux kernel security module that
+protects data and process interaction from malicious manipulation using a set of custom mandatory
+access control (MAC) rules, with simplicity as its main design goal.
 
 The Linux default access control policy is governed by permission bits on system resources
 at the discretion of the resource owner: discretionary access control (DAC).
@@ -74,9 +74,8 @@ and the Legato Supervisor.
 
 |Section                              | Description                                                |
 |-------------------------------------|------------------------------------------------------------|
-| @subpage conceptsSecuritySmack      | Overview of SMACK security as implimented in the Framework |
+| @subpage conceptsSecuritySmack      | Overview of SMACK security as implemented in the Framework |
 
-@todo Add support for flash and network consumption limits on apps.
 
 Copyright (C) Sierra Wireless Inc.
 

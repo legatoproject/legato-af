@@ -1,139 +1,276 @@
-/** @page conceptsSecuritySmack Implementing SMACK
+/** @page conceptsSecuritySmack SMACK Security and Legato
 
-Simplified Mandatory Access Control Kernel (SMACK) provides a simple solution
-for mandatory access control (MAC). MAC provides the ability for a centralized entity to
-set access policy for system resources.
+@section conceptsSecuritySmack_Overview SMACK Overview
 
-Linux's default access control policy is governed by permission bits on system resources
-(files, directories, devices, etc.). Permission bits can be modified by the resource owner
-(process with the same user ID as the resource). The access control policy is at
-the discretion of the resource owner; this system is classified as DAC (discretionary
-access control).  With DAC, policies are set in a distributed manner as there
-are often many system users, each setting the access policy for its own resources.
+SMACK __Simplified Mandatory Access Control Kernel__ allows an administrator to define labels, 1-7
+characters in length, for files and kernel objects within a system. Labels on objects are compared
+with the labels of a task that tries to access them. By default, access is only allowed if the
+labels match. There are also a set of Smack-reserved labels that follow a different set of rules,
+which allows most system objects and processes to be unaffected by Smack restrictions.  Smack is
+designed to secure users and processes which is why it is enabled within the Legato system.
 
-In contrast, MAC policies are set for all system resources by a centralized entity.
+Within Linux files, devices, and other special objects within the filesystem are given permission
+bits that govern how processes may access these files.
 
-Linux's DAC has known weaknesses that can lead to security leaks. MAC is often used to
-overcome some of the short comings of DAC for systems that require a higher level of security.
+For example, listing the root directory of the current active Legato system:
+@verbatim
+$ /legato/systems/current $ ll
+drwxrwxr-x    2 root     root        1.9K Sep 27 01:07 apps
+dr-x---r-x   19 root     root        1.4K Sep 27 01:07 appsWriteable
+drwxrwxr-x    2 root     root        2.5K Sep 17 22:44 bin
+drwxrwxr-x    2 root     root        2.1K Sep 27 01:07 config
+-rw-r--r--    1 root     root           2 Sep 27 01:07 index
+-rw-rw-rw-    1 root     root          37 Sep 27 01:07 info.properties
+drwxrwxr-x    2 root     root        1.5K Sep 17 22:44 lib
+-rw-r--r--    1 root     root           0 Sep 27 01:07 modified
+drwxrwxr-x    3 root     root         296 Sep 17 22:44 modules
+-rw-r--r--    1 root     root           4 Sep 27 01:07 status
+-rw-r--r--    1 root     root          68 Sep 27 01:07 version
+@endverbatim
 
-SMACK isn't the only MAC solution available. Because it's a simple solution, it's not flexible enough
-to handle all use cases. For the majority of use cases, it will be easier to setup and maintain.
+The first column of the output shows the permission bits for each file.  See
+<a href="https://www.linux.com/learn/understanding-linux-file-permissions">this document</a> for
+more details on how the standard file permissions work in Linux.
 
-SMACK supplements Linux's DAC system. DAC permissions are checked first; if access is granted,
-SMACK permissions are then checked. Consequently, SMACK can only limit access,
-it can't grant access beyond DAC permissions.
+File permissions are not enough security for all different potential usages of a production Linux
+system and security requirements can vary between contexts; the Linux Kernel team implemented a
+system of plugable security modules, one of which is SMACK.
 
-SMACK uses 'labels' on resources (objects in SMACK terminology) and processes (subjects) to
-determine access.  Labels on resources can only be set by a privileged process.  A privileged
-process can only set it's own label but not labels of other processes.
+SMACK is layered on top of the existing security module.  When a file is opened for reading,
+writing, or execution the standard file permission bits are always checked
+first.  If that check passes, then the SMACK security module is queried for access.
+It is then up to that security module to provide a final allow/deny for that object.
 
-There are a number of single character labels ("_", "^", "*", "?", "@") that have special
-meanings. SMACK restricts read/write/execute access based on the subject label and the object
-label according to the following rules:
+SMACK works by allowing one to apply to files, processes, devices, and resources like sockets a
+label.  When a process tries to open a file, SMACK will read the label of the process requesting the
+access.  The label of the file or object being accessed is then also read.  SMACK will then compare
+those two labels.  If the labels match, access is granted.  If the labels are different then
+SMACK iterate over a list of rules.  If a rule is found that matches both labels and the access
+requested then the access is granted.  Otherwise the access is denied, and the error is passed back
+to the requesting process.
 
-1. Any access requested by a task labelled "*" is denied.
-2. A read or execute access requested by a task labelled "^" is permitted.
-3. A read or execute access requested on an object labelled "_" is permitted.
-4. Any access requested on an object labelled "*" is permitted.
-5. Any access requested by a task on an object with the same label is permitted.
-6. Any access requested that is explicitly defined in the loaded rule set is permitted.
-7. Any other access is denied.
+While SMACK itself runs entirely within the Linux kernel, there are associated user-space tools and
+devices that allow one to inspect and change labels as well as update the rules that bind these
+labels together.
 
-Rule 6 lets us use explicit rules through adding specific labels. Explicit rules
-define the access rights a subject label can have on an object label. Only privileged processes
-can set rules.
+@subsection conceptsSecuritySmack_Overview_Lables SMACK Labels
 
-@section conceptsSecuritySmack_privProcess Privileged Processess
+There are a number of labels built into SMACK, "_", "^", "*", "?", and "@".
 
-Privileged processes use the CAP_MAC_OVERRIDE capability. It's also possible to configure
-the system so the CAP_MAC_OVERRIDE is honoured only for processes with a specific label. This
-configuration allows the system to restrict root processes (have CAP_MAC_OVERRIDE) that don't
-have the proper SMACK label.
+Built in rules for these labels:
 
-@section conceptsSecuritySmack_assignLabels Assigning Labels
+@c 1. All accesses by processes labelled "*" are denied.
+@c 2. All read and execute requests, (no write,) for processes labelled, "^" are permitted.
+@c 3. All read and execute requests, (no write,) on objects labelled, "_" are permitted, no matter
+    what the process label.
+@c 4. Any access requests, (read, write and execute,) on objects labelled, "*" no matter the
+    process label are permitted.
+@c 5. Any accesses on an object that has the same label as the process label are permitted.
+@c 6. Any other accesses are denied, unless there is a user defined rule supplied at runtime.
 
-Use smack_SetMyLabel() to set the SMACK label for the calling process. The calling process must
-be a privileged process. Setting SMACK labels for other processes isn't possible.
+SMACK labels on File System objects are stored as
+<a href="https://en.wikipedia.org/wiki/Extended_file_attributes#Linux">extended attributes</a>,
+(xattr.)  These extended attributes are a generic way to store extra information to be associated
+with a file.  The labels known to SMACK are:
 
-To set the SMACK label for file system objects use smack_SetLabel(), again the calling process
-must be privileged.
+- @b security.SMACK64: The label for the file itself.  If a file is being accessed then the access
+check is performed against the label stored in this attribute.
+- @b security.SMACK64EXEC: When a process is started from a file, the label for the new process
+can be found in this attribute.
+- @b security.SMACK64IPIN: If the object is a socket this label is used control incoming to the
+socket.
+- @b security.SMACK64IPOUT: If the object is a socket this label is use to control access to the
+data being sent out from this device.
 
-@section conceptsSecuritySmack_setRules Set Rules
+@subsection conceptsSecuritySmack_getSetLabels Getting and Setting Labels
 
-Use smack_SetRule() to set an explicit SMACK rule that gives a specified subject access to a
-specified object.
+It is possible to read SMACK labels for filesystem (FS) objects.  If your process has permission,
+you can also change labels on FS objects.
 
-@section conceptsSecuritySmack_supervisor Supervisor
+For files and sockets and other objects that are directly represented in the file system you can use
+the Linux tool @c getfattr to read a filesystem objects, "extended attributes."
 
-SMACK policies are set by the Legato startup scripts, the Legato Installer, and the Legato
-Supervisor.
+For example I can run @c getfattr on my helloWorld app to see the following lables:
+@verbatim
+# getfattr -dm- helloWorld/
+file: helloWorld/
+security.SMACK64="framework"
+@endverbatim
 
-By default system files have the "_" SMACK label meaning everyone has read and execute
-access to them.  The Legato startup scripts are responsible for setting SMACK labels for system
-files that require special permission handling (e.g., @c /dev/null file is given the
-label "*" by the start up scripts so the file is fully accessible to everyone. The Legato startup
-scripts also ensure the Legato Supervisor and Installer have the 'admin' SMACK
-label.
+It is in these extended attributes that SMACK stores the label(s) for an object.  For regular files
+they can only have the one label attribute named "security.SMACK64".  If the object is a socket it
+can have three labels, @c security.SMACK64, @c security.SMACK64IPIN, and @c security.SMACK64IPOUT.
 
-The Legato Installer sets SMACK labels for all app bundled files.  The SMACK label for
-each app is unique to the app.
+In order to examine the labels of running processes you need to go to the process filesystem, under
+/proc.
 
-The Supervisor sets SMACK labels for framework daemons, processes for apps, sandbox
-directories and SMACK rules for IPC bindings.
+For example, in order to display the label of the shell you are currently running in you can issue
+the following command:
 
-Framework daemons are given the SMACK label "framework".
+@verbatim
+cat /proc/$$/attr/current ; echo
+@endverbatim
 
-All processes are given the same SMACK label as their app. All app labels are unique.
+Where the variable @c $ in the previous line is automatically set by the shell to the PID of the
+shell's process.  If you wish to examine the labels of other processes you need to know their PID.
+One trick is to use the Linux command @c pidof.  You supply @c pidof the name of a process.
+
+For example, to get the label of the configTree you would issue the command:
+
+@verbatim
+cat /proc/`pidof helloWorld`/attr/current ; echo
+@endverbatim
+
+@note If there are multiple processes of the same name, @c pidof will return a list of
+PIDs and you may need some other way to determine the PID of the process you want.
+
+If you're writing code to read the label of your own process you can use the @c self symlink without
+needing to know the PID for your process.  Simply open the file @c /proc/self/attr/current.
+
+You can also do this from the shell, but keep in mind, not all shell commands are built into the
+shell.  Results may differ depending on how you structure your commands.
+
+If for example you run:
+@verbatim
+cat /proc/self/attr/current ; echo
+@endverbatim
+
+Instead of the previous:
+@verbatim
+cat /proc/$$/attr/current ; echo
+@endverbatim
+
+You will end up with the label of the @c cat process and not the shell process.
+
+@section conceptsSecuritySmack_Capabilities SMACK Capabilities
+
+Processes can be given a set of @b capabilities and its the position of these capabilities that allow
+certain actions to be taken (i.e.; changing labels on files and processes or changing rules).
+
+To modify labels and rules you must have the correct capabilities, by default in the Legato Linux
+system all process are run by the root user and automatically have this capability.
+
+A good place to read more about SMACK</a> and it's configuration is to check out it's
+<a href="https://www.kernel.org/doc/Documentation/security/Smack.txt">official documentation</a>.
+
+@section conceptsSecuritySmack_onlycap SMACK onlycap
+
+In  standard operations, all processes run under the root user are given access to all SMACK labels
+and have all capabilities enabled.  That is any process under root can do pretty much anything it
+wants with no trouble.
+
+This can be a large security hole.  If a process can escalate to running something under the root
+user, then that potentially malicious code can do anything it wants to the device.
+
+To resolve this we've enabled SMACK onlycap.  SMACK onlycap allows the system administrator to
+designate a single label with heightened privilege.  Once this is in effect only the properly
+labeled processes may change labels and rules and all of the other SMACK rules are always in
+effect regardless of the user the process is running under.
+
+The Legato makefile includes the option of turning onlycap support on.  (Note that you need a Linux
+system image with the base support enabled.)
+
+To build Legato with onlycap support enabled for the @c wp76 run:
+
+@verbatim
+make wp76xx DISABLE_SMACK_ONLYCAP=0
+@endverbatim
+
+@section conceptsSecuritySmack_smackUsage How SMACK is configured in Legato
+
+The Legato Supervisor is given the label, "admin".  Onlycap is enabled on this label, thus only the
+supervisor will be able to adjust labels and rules.  The framework daemons (update, configTree etc.)
+are given the SMACK label "framework".
+
+All applications run under their own labels of the form "app.<app-name>".  All unsandboxed apps are
+given rules to give them access that give them read/write access to the system.
 
 SMACK rules are set so IPC bindings between apps work. Here's a code sample of rules to set if a
 client app needs to access a server app:
 
-@code
-'clientAppLabel' rw 'serverAppLabel'     // client has read-write access to server.
-'serverAppLabel' rw 'clientAppLabel'     // server has read-write access to client.
-@endcode
+On the target, set the rules in the @c /legato/smack/load2 file.
+@verbatim
+'clientAppLabel' rw 'serverAppLabel'
+'serverAppLabel' rw 'clientAppLabel'
+@endverbatim
 
-Sandboxed directories are given labels corresponding to the app's access rights to those
-directory. Generally, an app only has read and execute permission to its
-sandboxes /bin directory. Its properties look like this:
+Sandboxed directories are given labels corresponding to the app's access rights to those directory.
+Generally, an app only has read and execute permission to its sandboxes /bin directory.
 
+Example properties:
+@verbatim
 owner = root
 group = root
 DAC permissions = ------r-x
 SMACK label = 'AppLabelrx'
+@endverbatim
 
 The Supervisor also sets up the SMACK rule so the app has the proper access to the directory:
 
+On the target, set the rules in the @c /legato/smack/load2 file.
+@verbatim
 'AppLabel' rx 'AppLabelrx'
+@endverbatim
 
-App's directories are given different labels than the app itself so that if an IPC binding
-is present, the remote app has access to the local app but doesn't have direct
-access to the local app's files.
+App's directories are given different labels from the app itself so that if an IPC binding is
+present. The remote app has access to the local app but doesn't have direct access to the local
+app's files.
 
-All bundled files within an app's sandbox are given the app's SMACK label. This
-supports passing file descriptors from one app to another. However, the
-file descriptor can't be passed onto a third app.
+All bundled files within an app's sandbox are given the app's SMACK label.  This supports passing
+file descriptors from one app to another. However, the file descriptor can't be passed onto a third
+app.
 
+Legato also includes an assistance API to help with working with SMACK, see @ref smack.h for more
+details.
 
 @section conceptsSecuritySmack_limitations Limitations
 
-Extended attributes used to store the SMACK label are available on
-all file systems we currently use with one key feature is missing: when a new file is created, the
-file should inherit the SMACK label of the creator. Because this feature is missing, our
-current implementation of SMACK has the following limitations:
-
-- Mqueue file system will always set new files to "_" label.  This means we can't control
-   access between apps that use MQueues.
-
+Extended attributes used to store the SMACK label are available on all file systems we currently use
+with one key feature is missing: when a new file is created, the file should inherit the SMACK label
+of the creator. Because this feature is missing, our current implementation of SMACK has the
+following limitations:
+- Mqueue file system will always set new files to "_" label.  This means we can't control access
+between apps that use MQueues.
 - Tmpfs always sets new files to "*" label. This means we can't totally control access to files
-   created in sandboxes because sandboxes use tmpfs. It's only an issue when file descriptors
-   for the created files are passed over IPC to another app. The other app can then pass that
-   fd onto a third app and so on.
+created in sandboxes because sandboxes use tmpfs. It's only an issue when file descriptors for the
+created files are passed over IPC to another app. The other app can then pass that fd onto a third
+app and so on.
+- QMI sockets are currently set to "*" because some apps need to write to them.  Ideally, the QMI
+socket file would be given a label such as "qmi" and a rule would be created to only allow access
+to the app that requires it.  However, there currently isn't a way to specify this in the xdef
+file.
 
-- QMI sockets are currently set to "*" because some apps need to write to them.
-   Ideally, the QMI socket file would be given a label such as "qmi" and a rule would be created
-   to only allow access to the app that requires it.  However, there currently isn't a
-   way to specify this in the xdef file.
+@section conceptsSecuritySmack_troubleshooting Troubleshooting
+
+If you encounter problems with SMACK permissions while developing your apps you can enable @b SMACK
+@b auditing.  To do this you need to change Kernel build flags and rebuild your Linux image.
+
+In the Yocto wp76 source tree open the file:
+
+@verbatim
+kernel/arch/arm/configs/mdm9607_defconfig
+@endverbatim
+
+Make sure that the following flags are set:
+
+@verbatim
+CONFIG_SECURITY_SMACK_BRINGUP=y
+CONFIG_AUDIT=y
+CONFIG_AUDITSYSCALL=y
+@endverbatim
+
+Once done, save/rebuild/install the Linux image.
+
+To enable logging for an app or label of your choice, write the label that's having troubles to the
+special device file unconfined, for example if your app is named, "myTestApp".  You can run the
+command in your shell:
+
+echo "app.myTestApp" > /legato/smack/unconfined
+
+This will bypass all SMACK rules for any accesses for this label, but if the rule would fail in
+normal operation the SMACK subsystem will now log the access request and the reason for the failure.
+
+@note You can only install one label at a time.
 
 Copyright (C) Sierra Wireless Inc.
 
