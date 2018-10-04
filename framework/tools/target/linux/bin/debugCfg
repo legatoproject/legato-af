@@ -87,29 +87,72 @@ fi
 
 
 
-# Modify the sandbox
-if $reset
-then
-    # Check if the tool path is a valid mount point.
-    if ! mount | grep -q "${sandboxPath}/bin/$debugToolName"
+# Add debug tool into the application
+add_debugtool()
+{
+    # Check if the tool path already exists.
+    if [ -e "${sandboxPath}/bin/$debugToolName" ]
     then
-        echo "${sandboxPath}/bin/$debugToolName is not a mount point."
-        echo
-        exit 1
-    fi
+        echo "${sandboxPath}/bin/$debugToolName already exists."
 
-    # Unmount the debug tool.
+        # Check if the tool path is a valid mount point.
+        if ! mount | grep -q "${sandboxPath}/bin/$debugToolName"
+        then
+            echo "${sandboxPath}/bin/$debugToolName is not a mount point."
+            # Mount the debug tool into the sandbox.
+            mount -o bind "$debugToolPath" "${sandboxPath}/bin/$debugToolName"
+        fi
+    else
+        # Create a mount point,
+        touch "${sandboxPath}/bin/$debugToolName"
+
+        # Mount the debug tool into the sandbox.
+        mount -o bind "$debugToolPath" "${sandboxPath}/bin/$debugToolName"
+    fi
+}
+
+# Remove debug tool into the application
+remove_debugtool()
+{
+    # Force unmount the debug tool.
     umount "${sandboxPath}/bin/$debugToolName"
 
     # Remove the mount point.
     rm "${sandboxPath}/bin/$debugToolName"
+}
 
-    # Remove smack rule
-    if [ -d /legato/smack -a -n "$debugToolApp" ]
+
+# Add /proc for gdbserver
+add_proc()
+{
+    # Bind-mounting in /proc for gdbserver.
+    if [ "$externalToolName" == "gdbCfg" ]
     then
-        echo "app.$appName app.$debugToolApp -" > /legato/smack/load2
-    fi
+        # Check if proc directory already exists
+        if [ -d "${sandboxPath}/proc" ]
+        then
+            echo "${sandboxPath}/proc already exists."
 
+            # Check if valid mount point
+            if ! mount | grep -q "${sandboxPath}/proc"
+            then
+                # Mount /proc into the sandbox.
+                mount -o bind /proc "${sandboxPath}/proc"
+            fi
+        else
+            # Create a mount point.
+            mkdir "${sandboxPath}/proc"
+
+            # Mount /proc into the sandbox.
+            mount -o bind /proc "${sandboxPath}/proc"
+        fi
+    fi
+}
+
+
+# Remove /proc for gdbserver
+remove_proc()
+{
     # Unmount /proc for gdbserver.
     if [ "$externalToolName" == "gdbCfg" ]
     then
@@ -119,34 +162,34 @@ then
         # Remove the mount point.
         rmdir "${sandboxPath}/proc"
     fi
-else
-    # Check if the tool path already exists.
-    if [ -e "${sandboxPath}/bin/$debugToolName" ]
-    then
-        echo "${sandboxPath}/bin/$debugToolName already exists."
-        echo
-        exit 1
-    fi
+}
 
-    # Create a mount point,
-    touch "${sandboxPath}/bin/$debugToolName"
-
-    # Mount the debug tool into the sandbox.
-    mount -o bind "$debugToolPath" "${sandboxPath}/bin/$debugToolName"
-
-    # Allow access to debug tool
+# Add smack rule necessary for sandbox application to execute debug tool
+add_smack_rule()
+{
     if [ -d /legato/smack -a -n "$debugToolApp" ]
     then
         echo "app.$appName app.$debugToolApp rx" > /legato/smack/load2
     fi
+}
 
-    # Bind-mounting in /proc for gdbserver.
-    if [ "$externalToolName" == "gdbCfg" ]
+
+# Remove smack rule
+remove_smack_rule()
+{
+    if [ -d /legato/smack -a -n "$debugToolApp" ]
     then
-        # Create a mount point.
-        mkdir "${sandboxPath}/proc"
-
-        # Mount /proc into the sandbox.
-        mount -o bind /proc "${sandboxPath}/proc"
+        echo "app.$appName app.$debugToolApp -" > /legato/smack/load2
     fi
+}
+
+if $reset
+then
+    remove_debugtool
+    remove_smack_rule
+    remove_proc
+else
+    add_debugtool
+    add_smack_rule
+    add_proc
 fi
