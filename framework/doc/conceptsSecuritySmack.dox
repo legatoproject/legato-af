@@ -2,12 +2,12 @@
 
 @section conceptsSecuritySmack_Overview SMACK Overview
 
-SMACK __Simplified Mandatory Access Control Kernel__ allows an administrator to define labels, 1-7
-characters in length, for files and kernel objects within a system. Labels on objects are compared
-with the labels of a task that tries to access them. By default, access is only allowed if the
-labels match. There are also a set of Smack-reserved labels that follow a different set of rules,
-which allows most system objects and processes to be unaffected by Smack restrictions.  Smack is
-designed to secure users and processes which is why it is enabled within the Legato system.
+SMACK __Simplified Mandatory Access Control Kernel__ allows an administrator to define labels,
+for resources within a system. Labels on objects are compared with the labels of a task that tries
+to access them. By default, access is only allowed if the labels match. There are also a set of
+Smack-reserved labels that follow a different set of rules, which allows most system objects and
+processes to be unaffected by Smack restrictions.  SMACK is designed to secure users and processes
+which is why it is enabled within the Legato system.
 
 Within Linux files, devices, and other special objects within the filesystem are given permission
 bits that govern how processes may access these files.
@@ -178,9 +178,9 @@ make wp76xx DISABLE_SMACK_ONLYCAP=0
 
 @section conceptsSecuritySmack_smackUsage How SMACK is configured in Legato
 
-The Legato Supervisor is given the label, "admin".  Onlycap is enabled on this label, thus only the
-supervisor will be able to adjust labels and rules.  The framework daemons (update, configTree etc.)
-are given the SMACK label "framework".
+The Legato Supervisor and Update Daemon is given the label, "admin".  Onlycap is enabled on this label,
+thus only the supervisor and update daemon will be able to adjust labels and rules. Other framework daemons
+(serviceDirectory, configTree etc.) are given the SMACK label "framework".
 
 All applications run under their own labels of the form "app.<app-name>".  All unsandboxed apps are
 given rules to give them access that give them read/write access to the system.
