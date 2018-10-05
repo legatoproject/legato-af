@@ -334,7 +334,7 @@ FUNCTION AccessPoint GetNextAccessPoint
  *      - Signal strength in dBm. Example -30 = -30dBm
  *      - If no signal available it will return LE_WIFICLIENT_NO_SIGNAL_STRENGTH
  *
- * @note The function returns the latest signal strength.
+ * @note The function returns the signal strength as reported at the time of the scan.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION int16 GetSignalStrength
