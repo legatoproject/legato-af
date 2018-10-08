@@ -534,9 +534,14 @@ static void SendConnStateEvent
         case LE_DATA_CELLULAR:
             if (isConnected)
             {
-                le_mdc_GetInterfaceName(MobileProfileRef,
-                                        eventData.interfaceName,
-                                        sizeof(eventData.interfaceName));
+                le_result_t result = le_mdc_GetInterfaceName(MobileProfileRef,
+                                                             eventData.interfaceName,
+                                                             sizeof(eventData.interfaceName));
+                if (result == LE_FAULT)
+                {
+                    LE_ERROR("Cellular technology disconnected. Drop this event.");
+                    return;
+                }
             }
             break;
 
