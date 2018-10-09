@@ -27,10 +27,11 @@ script:
   - cd ..
   - mkdir workspace
   - cd workspace
+  - export MANIFEST_REPO=${MANIFEST_REPO:-https://github.com/legatoproject/manifest}
   - if [ -n "$TRAVIS_TAG" ]; then
-       repo init -q -u git://github.com/legatoproject/manifest -m legato/releases/$TRAVIS_TAG.xml ;
+       repo init -q -u $MANIFEST_REPO -m legato/releases/$TRAVIS_TAG.xml ;
     else
-       repo init -q -u git://github.com/legatoproject/manifest -m legato/branches/$TRAVIS_BRANCH.xml ;
+       repo init -q -u $MANIFEST_REPO -m legato/branches/$TRAVIS_BRANCH.xml ;
     fi
   - repo sync
   - cd legato
