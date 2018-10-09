@@ -293,6 +293,7 @@ void FindToolChain
 )
 //--------------------------------------------------------------------------------------------------
 {
+    buildParams.cPreProcessorPath = GetToolPath(buildParams.target, "CPP");
     buildParams.cCompilerPath = GetToolPath(buildParams.target, "CC");
     buildParams.cxxCompilerPath = GetToolPath(buildParams.target, "CXX");
     buildParams.toolChainDir = GetTargetEnvInfo(buildParams.target, "TOOLCHAIN_DIR");
@@ -309,6 +310,7 @@ void FindToolChain
 
     if (buildParams.beVerbose)
     {
+        std::cout << "C pre-processor = " << buildParams.cPreProcessorPath << std::endl;
         std::cout << "C compiler = " << buildParams.cCompilerPath << std::endl;
         std::cout << "C++ compiler = " << buildParams.cxxCompilerPath << std::endl;
         std::cout << "Compiler directory = " << buildParams.toolChainDir << std::endl;

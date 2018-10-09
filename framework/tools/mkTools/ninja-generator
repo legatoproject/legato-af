@@ -67,6 +67,8 @@ SOURCES=$(find $SOURCE_DIR -name '*.cpp' |tr '\n' ' ')
 # Compute a list of all the .o files.
 OBJECTS=$(ObjectsFromSources $SOURCES)
 
+HOST_CFLAGS="-Wall -Werror -Wno-unused-command-line-argument -Wno-deprecated"
+
 cat > $NINJA_SCRIPT <<EOF
 # Build script for the Legato mk tools.
 
@@ -85,7 +87,7 @@ rule Compile
   description = Compiling mk tools sources
   depfile = \$out.d
   command = $COMPILER -MMD -MF \$out.d $TOOLS_ARCH_FLAGS \$
-                      -Wall -Werror -Wno-unused-command-line-argument \$
+                      $HOST_CFLAGS \$
                       -I\$builddir/precompiled/ \$
                       -I$SOURCE_DIR \$
                       -I$LEGATO_ROOT/framework/liblegato \$
@@ -96,7 +98,7 @@ rule PreCompile
   description = Generating pre-compiled header for mk tools.
   depfile = \$out.d
   command = $COMPILER -MMD -MF \$out.d $TOOLS_ARCH_FLAGS \$
-                      -Wall -Werror -Wno-deprecated \$
+                      $HOST_CFLAGS \$
                       -g \$
                       -o \$out \$in
 

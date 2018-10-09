@@ -149,10 +149,10 @@ separate shell script, and that shell script called here.
 
 If @c externalBuild: section is used in a component, the @c sources: section cannot be used.
 
-@note @c CC, @c CXX, @c CFLAGS, @c CXXFLAGS, and @c LDFLAGS are set to the target compiler
-and compiler flags when running the external build commands.  The current directory for the command
-will be the component's object directory.  This makes it easy to build and configure
-packages based on GNU autotools.  See example below.
+@note @c CC, @c CXX, @c LD, @c CPP, @c CFLAGS, @c CXXFLAGS, @c LDFLAGS and @c CPPFLAGS are set
+to the target compiler and compiler flags when running the external build commands.
+The current directory for the command will be the component's object directory.  This makes it
+easy to build and configure packages based on GNU autotools.  See example below.
 
 @warning Any files which need to be copied into the App must be listed in a
 bundles: file: section.  To avoid compiling successfully even though expected files are

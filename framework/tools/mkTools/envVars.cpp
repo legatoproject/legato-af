@@ -156,6 +156,18 @@ static void SetToolChainVars
 )
 //--------------------------------------------------------------------------------------------------
 {
+    if (!buildParams.cPreProcessorPath.empty())
+    {
+        auto cPreProcessorPath = buildParams.cPreProcessorPath;
+        if (!buildParams.compilerCachePath.empty())
+        {
+            cPreProcessorPath = buildParams.compilerCachePath + " " +
+                                buildParams.cPreProcessorPath;
+        }
+
+        Set("CPP", cPreProcessorPath);
+    }
+
     if (!buildParams.cCompilerPath.empty())
     {
         auto cCompilerPath = buildParams.cCompilerPath;

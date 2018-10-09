@@ -353,6 +353,7 @@ void BuildScriptGenerator_t::GenerateBuildRules
               "            export CFLAGS=\"" << sysrootOption << " $cFlags\" $\n"
               "            CXXFLAGS=\"" << sysrootOption << " $cxxFlags\" $\n"
               "            LDFLAGS=\"" << sysrootOption << " $ldFlags\" $\n"
+              "            CPPFLAGS=\"" << sysrootOption << " $cppFlags\" $\n"
               "            " << GetPathEnvVarDecl() << " $\n"
               "            && $\n"
               "            $externalCommand\n"

@@ -51,6 +51,7 @@ struct BuildParams_t
     const char**            argv;               ///< Argument list (argv to main)
 
     // File system paths to tool chain executables
+    std::string             cPreProcessorPath;  ///< C pre-processor
     std::string             cCompilerPath;      ///< C compiler
     std::string             cxxCompilerPath;    ///< C++ compiler
     std::string             toolChainDir;       ///< Toolchain directory
