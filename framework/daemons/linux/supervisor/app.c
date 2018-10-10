@@ -916,6 +916,7 @@ static void SetDefaultSmackRules
            "app.avcService",
            "app.cellNetService",
            "app.dataConnectionService",
+           "app.devMode",
            "app.fwupdateService",
            "app.gpioService",
            "app.modemService",
@@ -946,6 +947,13 @@ static void SetDefaultSmackRules
             if (0 == strcmp(frameworkAppList[i], "app.fwupdateService"))
             {
                 smack_SetRule(frameworkAppList[i], "r", "admin");
+            }
+
+            // Give '_' x access to app.devMode since it performs some overlays on directories
+            // required by the '_' label.
+            if (0 == strcmp(frameworkAppList[i], "app.devMode"))
+            {
+                smack_SetRule("_", "x", frameworkAppList[i]);
             }
         }
     }
