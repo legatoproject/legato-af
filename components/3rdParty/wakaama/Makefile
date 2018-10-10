@@ -42,7 +42,8 @@ CFLAGS+=\
     -DSIERRA \
     -w \
     -std=gnu99 \
-    -DWITH_SHA256
+    -DWITH_SHA256 \
+    -DCOAP_BLOCK1_SIZE=4096
 
 ifeq ($(TEST_COVERAGE),1)
     CFLAGS +=--coverage
