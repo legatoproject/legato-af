@@ -887,6 +887,7 @@ function GenerateReport()
         # Build
         gcovr --xml \
               --root . \
+              --keep \
               --output $builddir/coverage.xml \
               --exclude ".*(test|build|codegen)\b.*"
         CheckRet
@@ -895,6 +896,7 @@ function GenerateReport()
         gcovr --html \
               --html-details \
               --root . \
+              --keep \
               --output $builddir/coverage/html/index.html \
               --exclude ".*(test|build|codegen)\b.*"
         CheckRet
