@@ -666,6 +666,8 @@ static void RedialStop
         case ECALL_REDIAL_DURATION_EXPIRED:
         {
             StopTimers();
+            // Update eCall session state
+            ECallObj.sessionState = ECALL_SESSION_STOPPED;
             // Send End of redial event
             ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
             break;
