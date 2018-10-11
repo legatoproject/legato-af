@@ -2,3 +2,16 @@ sources:
 {
     exe2.c stuff.c
 }
+
+bundles:
+{
+    dir:
+    {
+        $BUILDDIR/src/ /dev/
+    }
+
+    file:
+    {
+        $BUILDDIR/src/interfaces.h /dev/interfaces_test.h
+    }
+}

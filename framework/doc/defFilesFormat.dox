@@ -125,6 +125,7 @@ Furthermore, the mk tools will create some environment variables:
  - @c LEGATO_BUILD = shorthand for <c>$LEGATO_ROOT/build/$TARGET</c>
  - @c LEGATO_SYSROOT = path of the directory containing the target device's system files
  - @c CURDIR = path of the directory containing the definition file being parsed
+ - @c BUILDDIR = path of the generated files for system, app, component or module
  - @c CC = path to the C compiler
  - @c CXX = path to the C++ compiler
  - @c LD = path to the linker

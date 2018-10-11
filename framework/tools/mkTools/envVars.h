@@ -56,6 +56,17 @@ void Set
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unset the value of a given environment variable.
+ */
+//--------------------------------------------------------------------------------------------------
+void Unset
+(
+    const std::string& name  ///< The name of the environment variable.
+);
+
+
 //----------------------------------------------------------------------------------------------
 /**
  * Adds target-specific environment variables (e.g., LEGATO_TARGET) to the process's environment.

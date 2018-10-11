@@ -126,6 +126,26 @@ void Set
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Unset the value of a given environment variable.
+ */
+//--------------------------------------------------------------------------------------------------
+void Unset
+(
+    const std::string& name  ///< The name of the environment variable.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (unsetenv(name.c_str()) != 0)
+    {
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Failed to unset environment variable '%s'."), name)
+        );
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Set compiler, linker, etc. environment variables according to the target device type, if they're
  * not already set.
  */

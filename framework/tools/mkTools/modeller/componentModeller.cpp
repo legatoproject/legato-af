@@ -61,6 +61,30 @@ static std::string FindFile
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the BUILDDIR environment variable which points to the directory where the files are
+ * generated from the code generator for a given component.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SetComponentBuildDirEnvVar
+(
+    model::Component_t* componentPtr,
+    const mk::BuildParams_t& buildParams
+)
+{
+    std::string legatoRoot = envVars::Get("LEGATO_ROOT");
+    std::string componentBuildDir;
+
+    // BUILDDIR is a combination of buildParams.workingDir, component and pathMd5.
+    // /home/user/workspace/legato/build/wp76xx/system/component/5b3b157328326f66388f6a3296e4dcba/
+    componentBuildDir = path::Minimize(buildParams.workingDir + "/component/" +
+                                       componentPtr->defFilePtr->pathMd5);
+
+    envVars::Set("BUILDDIR", componentBuildDir);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Adds the commands from a given "externalBuild:" section to a given Component_t object.
  */
 //--------------------------------------------------------------------------------------------------
@@ -83,6 +107,7 @@ static void AddExternalBuild
         componentPtr->ThrowIncompatibleLanguageException(sectionPtr);
     }
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -336,7 +361,8 @@ static void AddLdFlags
 static void AddBundledItems
 (
     model::Component_t* componentPtr,
-    const parseTree::CompoundItem_t* sectionPtr   ///< Ptr to "bundles:" section in the parse tree.
+    const parseTree::CompoundItem_t* sectionPtr,   ///< Ptr to "bundles:" section in the parse tree.
+    const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -386,27 +412,10 @@ static void AddBundledItems
                                                            bundledDirPtr->srcPath);
                 }
 
-                // Make sure that the source path exists and is a directory.
-                if (file::DirectoryExists(bundledDirPtr->srcPath))
-                {
-                    componentPtr->bundledDirs.insert(
-                        std::shared_ptr<model::FileSystemObject_t>(bundledDirPtr));
-                }
-                else if (file::AnythingExists(bundledDirPtr->srcPath))
-                {
-                    bundledDirTokenListPtr->ThrowException(
-                        mk::format(LE_I18N("Not a directory: '%s'."), bundledDirPtr->srcPath)
-                    );
-                }
-                else
-                {
-                    bundledDirTokenListPtr->ThrowException(
-                        mk::format(LE_I18N("Directory not found: '%s'.\n"
-                                           "note: If bundling build output from externalBuild"
-                                           " command, use file: section instead"),
-                                   bundledDirPtr->srcPath)
-                    );
-                }
+                // Always add the directories.
+                // Directory existence is checked later when building the script.
+                componentPtr->bundledDirs.insert(
+                    std::shared_ptr<model::FileSystemObject_t>(bundledDirPtr));
             }
         }
         else
@@ -1191,6 +1200,8 @@ model::Component_t* GetComponent
     // build's root working directory.
     componentPtr = model::Component_t::CreateComponent(cdefFilePtr);
 
+    file::MakeDir(path::Combine(buildParams.workingDir, componentPtr->workingDir));
+
     if (buildParams.beVerbose)
     {
         std::cout << mk::format(LE_I18N("Modelling component: '%s'\n"
@@ -1198,6 +1209,9 @@ model::Component_t* GetComponent
                                   componentPtr->name, componentPtr->dir)
                   << std::endl;
     }
+
+    // Set BUILDDIR environment variable for this component
+    SetComponentBuildDirEnvVar(componentPtr, buildParams);
 
     // Iterate over the .cdef file's list of sections.
     for (auto sectionPtr : cdefFilePtr->sections)
@@ -1234,7 +1248,7 @@ model::Component_t* GetComponent
         }
         else if (sectionName == "bundles")
         {
-            AddBundledItems(componentPtr, sectionPtr);
+            AddBundledItems(componentPtr, sectionPtr, buildParams);
         }
         else if (sectionName == "provides")
         {
@@ -1292,6 +1306,9 @@ model::Component_t* GetComponent
     {
         PrintSummary(componentPtr);
     }
+
+    // Unset BUILDDIR environment variable for this component
+    envVars::Unset("BUILDDIR");
 
     return componentPtr;
 }

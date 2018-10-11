@@ -262,13 +262,18 @@ static void GetCommandLineArgs
     // different systems and for the same system built for different targets.
     if (BuildParams.workingDir == "")
     {
-        BuildParams.workingDir = "./_build_" + SystemName + "/" + BuildParams.target;
+        BuildParams.workingDir = path::MakeAbsolute("./_build_" + SystemName + "/" +
+                                                    BuildParams.target);
     }
     else if (BuildParams.workingDir.back() == '/')
     {
         // Strip the trailing slash from the workingDir so the generated system will be exactly the
         // same if the only difference is whether or not the working dir path has a trailing slash.
         BuildParams.workingDir.erase(--BuildParams.workingDir.end());
+    }
+    else if (!path::IsAbsolute(BuildParams.workingDir))
+    {
+        BuildParams.workingDir = path::MakeAbsolute(BuildParams.workingDir);
     }
 
     // Add the directory containing the .sdef file to the list of source search directories
