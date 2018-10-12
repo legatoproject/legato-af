@@ -84,4 +84,13 @@
 #define BOOT_COUNT_PATH            "/legato/bootCount"
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Constant to use as a symlink target (in place of MD5-based directory name), when the app is
+ * preloaded and its version may not match the latest version.
+ */
+//--------------------------------------------------------------------------------------------------
+#define PRELOADED_ANY_VERSION "PRELOADED_ANY_VERSION"
+
+
 #endif  // LEGATO_SYSPATHS_INCLUDE_GUARD

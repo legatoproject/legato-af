@@ -18,6 +18,14 @@
 #include "componentBuildScript.h"
 #include "systemBuildScript.h"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Constant to use as a symlink target (in place of MD5-based directory name), when the app is
+ * preloaded and its version may not match the latest version.
+ */
+//--------------------------------------------------------------------------------------------------
+#define PRELOADED_ANY_VERSION "PRELOADED_ANY_VERSION"
+
 namespace ninja
 {
 
@@ -97,12 +105,17 @@ void SystemBuildScriptGenerator_t::GenerateSystemBuildRules
         // If the app is "preloaded" on the target and its MD5 is specified in the .sdef file,
         // then "hard code" the specified MD5 into the build script.
         // Otherwise, extract the app's MD5 hash from the info.properties file.
-        if (appPtr->isPreloaded && !appPtr->preloadedMd5.empty())
+        if (appPtr->preloadedMode == model::App_t::SPECIFIC_MD5 && !appPtr->preloadedMd5.empty())
         {
             script <<
             "            md5=" << appPtr->preloadedMd5 << " && $\n";
         }
-        else
+        else if (appPtr->preloadedMode == model::App_t::ANY_VERSION)
+        {
+            script <<
+            "            md5=" << PRELOADED_ANY_VERSION << " && $\n";
+        }
+        else // NONE, BUILD_VERSION
         {
             script <<
             "            md5=`grep '^app.md5=' " << appInfoFile << " | sed 's/^app.md5=//'` && $\n";
@@ -211,12 +224,17 @@ void SystemBuildScriptGenerator_t::GenerateSystemBuildRules
             // If the app is "preloaded" on the target and its MD5 is specified in the .sdef file,
             // then "hard code" the specified MD5 into the build script.
             // Otherwise, extract the app's MD5 hash from the info.properties file.
-            if (appPtr->isPreloaded && !appPtr->preloadedMd5.empty())
+            if (appPtr->preloadedMode == model::App_t::SPECIFIC_MD5 && !appPtr->preloadedMd5.empty())
             {
                 script <<
                 "            md5=" << appPtr->preloadedMd5 << " && $\n";
             }
-            else
+            else if (appPtr->preloadedMode == model::App_t::ANY_VERSION)
+            {
+                script <<
+                "            md5=" << PRELOADED_ANY_VERSION << " && $\n";
+            }
+            else // NONE, BUILD_VERSION
             {
                 script <<
                 "            md5=`grep '^app.md5=' " << appInfoFile
@@ -300,7 +318,7 @@ void SystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
     {
         auto appPtr = mapEntry.second;
 
-        if (appPtr->isPreloaded == false)
+        if (appPtr->preloadedMode == model::App_t::NONE)
         {
             auto& appName = appPtr->name;
 
@@ -318,7 +336,7 @@ void SystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
     {
         auto appPtr = mapEntry.second;
 
-        if (appPtr->isPreloaded == true)
+        if (appPtr->preloadedMode == model::App_t::BUILD_VERSION)
         {
             auto& appName = appPtr->name;
 
@@ -368,7 +386,7 @@ void SystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
         {
             auto appPtr = mapEntry.second;
 
-            if (appPtr->isPreloaded == false)
+            if (appPtr->preloadedMode == model::App_t::NONE)
             {
                 auto& appName = appPtr->name;
 

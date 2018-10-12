@@ -107,16 +107,28 @@ static parseTree::CompoundItem_t* ParseAppPreloadedSection
     // Expect the content token next.
     if (lexer.IsMatch(parseTree::Token_t::BOOLEAN))
     {
+        // Boolean is accepted for backward compatibility, but must be deprecated
+        // in favor of more explicit keywords.
         sectionPtr->AddContent(lexer.Pull(parseTree::Token_t::BOOLEAN));
     }
     else if (lexer.IsMatch(parseTree::Token_t::MD5_HASH))
     {
         sectionPtr->AddContent(lexer.Pull(parseTree::Token_t::MD5_HASH));
     }
+    else if (lexer.IsMatch(parseTree::Token_t::NAME))
+    {
+        auto nameTokenPtr = lexer.Pull(parseTree::Token_t::NAME);
+
+        const std::string& actionName = nameTokenPtr->text;
+        if ((actionName == "buildVersion") || (actionName == "anyVersion"))
+        {
+            sectionPtr->AddContent(nameTokenPtr);
+        }
+    }
     else
     {
-        lexer.ThrowException(LE_I18N("'preloaded' section must contain 'true', 'false', "
-                                     "or an MD5 hash."));
+        lexer.ThrowException(LE_I18N("'preloaded' section must contain 'buildVersion', "
+                                     "'anyVersion', or an MD5 hash."));
     }
 
     return sectionPtr;

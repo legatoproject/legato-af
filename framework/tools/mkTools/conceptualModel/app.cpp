@@ -29,7 +29,7 @@ App_t::App_t
     workingDir("app/" + name),
     isSandboxed(true),
     startTrigger(AUTO),
-    isPreloaded(false),
+    preloadedMode(NONE),
     isPreBuilt(false),
     cpuShare(1024),
     maxFileSystemBytes(128 * 1024),   // 128 KB

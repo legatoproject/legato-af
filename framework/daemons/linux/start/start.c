@@ -996,14 +996,68 @@ static void SetUpApp
 
     installer_GetAppHashFromSymlink(pathBuff, hashBuff);
 
-    // Create a symlink to /legato/apps/<hash> from /legato/systems/unpack/apps/<appName>.
     char installedAppPath[PATH_MAX];
 
     LE_ASSERT(snprintf(pathBuff, sizeof(pathBuff), "/legato/systems/unpack/apps/%s", appName)
               < sizeof(pathBuff));
-    LE_ASSERT(snprintf(installedAppPath, sizeof(installedAppPath), "/legato/apps/%s", hashBuff)
-              < sizeof(pathBuff));
 
+    // If the app is in "Preloaded Any Version" mode, then the application directory
+    // must be inherited from the previous system.
+    if (0 == strncmp(hashBuff, PRELOADED_ANY_VERSION, sizeof(hashBuff)))
+    {
+        bool isFound = false;
+        char linkPathBuff[PATH_MAX];
+        char linkContentBuff[PATH_MAX];
+
+        if (previousSystemIndex < 0)
+        {
+            LE_CRIT("Preloaded app %s not found: no previous system!", appName);
+            // App not found, further actions aren't applicable
+            return;
+        }
+        LE_ASSERT(snprintf(linkPathBuff,
+                           sizeof(linkPathBuff),
+                           "/legato/systems/%d/apps/%s",
+                           previousSystemIndex,
+                           appName)
+                           < sizeof(linkPathBuff));
+
+        // Read the content of the symlink pointing to app directory
+        ssize_t bytesRead = readlink(linkPathBuff, linkContentBuff, sizeof(linkContentBuff) - 1);
+        if (bytesRead < 0)
+        {
+            LE_ERROR("Error resolving symlink %s", linkPathBuff);
+        }
+        else if (bytesRead >= sizeof(linkContentBuff))
+        {
+            LE_ERROR("Contents of symlink %s too long (> %zu).",
+                     linkPathBuff, sizeof(linkContentBuff) - 1);
+        }
+        else
+        {
+            // Null-terminate the string.
+            linkContentBuff[bytesRead] = '\0';
+            LE_INFO("Preloaded app %s: found link %s", appName, linkContentBuff);
+
+            // Update the app hash buffer
+            LE_ASSERT(le_utf8_Copy(hashBuff,
+                                   le_path_GetBasenamePtr(linkContentBuff, "/"),
+                                   sizeof(hashBuff),
+                                   NULL) == LE_OK);
+            isFound = true;
+        }
+        if (!isFound)
+        {
+            LE_CRIT("Preloaded app %s not found!", appName);
+            // App not found, further actions aren't applicable
+            return;
+        }
+    }
+
+    LE_ASSERT(snprintf(installedAppPath, sizeof(installedAppPath), "/legato/apps/%s", hashBuff)
+              < sizeof(installedAppPath));
+
+    // Create a symlink to /legato/apps/<hash> from /legato/systems/unpack/apps/<appName>.
     if (symlink(installedAppPath, pathBuff) != 0)
     {
         LE_CRIT("Failed to create symlink '%s' pointing to '%s': %m.", pathBuff, installedAppPath);

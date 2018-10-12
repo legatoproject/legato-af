@@ -17,6 +17,19 @@
 //--------------------------------------------------------------------------------------------------
 struct App_t : public HasTargetInfo_t
 {
+    /**
+     * All possible update options for the pre-loaded application.
+     */
+    enum PreloadedMode_t
+    {
+        NONE,           ///< App is not preloaded.
+        BUILD_VERSION,  ///< App is preloaded; MD5 hash must match the MD5 of this app
+                        ///< in the build environment.
+        SPECIFIC_MD5,   ///< App is preloaded; MD5 hash must match the MD5 that is explicitly
+                        ///< specified in .sdef file.
+        ANY_VERSION     ///< App is preloaded; no version check, MD5 hash can be any.
+    };
+
     App_t(parseTree::AdefFile_t* filePtr);
 
     const parseTree::AdefFile_t* defFilePtr;  ///< Pointer to root of parse tree for the .adef file.
@@ -37,7 +50,8 @@ struct App_t : public HasTargetInfo_t
 
     enum {AUTO, MANUAL} startTrigger;    ///< Start automatically or only when asked?
 
-    bool isPreloaded;   ///< true = exclude app update from system update (app pre-loaded on target)
+    PreloadedMode_t preloadedMode;  ///< Whether this app is preloaded, and in which mode.
+
     bool isPreBuilt;    ///< true = app is a pre-built app.  Affects how some error messages are
                         ///< displayed
 

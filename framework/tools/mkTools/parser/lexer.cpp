@@ -306,7 +306,9 @@ bool Lexer_t::IsMatch
             throw mk::Exception_t(LE_I18N("Internal error: STRING lookahead not implemented."));
 
         case parseTree::Token_t::MD5_HASH:
-            return isxdigit(context.top().nextChars[0]);
+            // expect to find at least two hexadecimal characters
+            return (isxdigit(context.top().nextChars[0])
+                    && isxdigit(context.top().nextChars[1]));
 
         case parseTree::Token_t::DIRECTIVE:
             return context.top().nextChars[0] == '#';

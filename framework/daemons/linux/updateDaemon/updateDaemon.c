@@ -573,7 +573,6 @@ static le_result_t InstallSystemApps
     return LE_OK;
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Setup writable files for all system applications.
@@ -623,6 +622,51 @@ static le_result_t SetupSystemAppsWritable
                 installer_GetAppHashFromSymlink(entPtr->fts_path, appMd5Buf);
 
                 LE_DEBUG("Path '%s' AppName '%s', MD5 '%s'", entPtr->fts_path, appName, appMd5Buf);
+
+                // If the app is in "Preloaded Any Version" mode, then the application directory
+                // must be inherited from the previous system.
+                if (0 == strncmp(appMd5Buf, PRELOADED_ANY_VERSION, sizeof(appMd5Buf)))
+                {
+                    bool isFound = false;
+                    char linkPath[PATH_MAX];
+                    char installedAppPath[PATH_MAX];
+
+                    LE_ASSERT(snprintf(linkPath,
+                                       sizeof(linkPath),
+                                       "/legato/systems/current/apps/%s",
+                                       appName)
+                                       < sizeof(linkPath));
+
+                    // Read the content of the symlink pointing to app directory
+                    ssize_t bytesRead = readlink(linkPath,
+                                                 installedAppPath,
+                                                 sizeof(installedAppPath) - 1);
+                    if (bytesRead < 0)
+                    {
+                        LE_ERROR("Error resolving symlink %s", linkPath);
+                    }
+                    else if (bytesRead >= sizeof(installedAppPath))
+                    {
+                        LE_ERROR("Contents of symlink %s too long (> %zu).",
+                                 linkPath, sizeof(installedAppPath) - 1);
+                    }
+                    else
+                    {
+                        // Null-terminate the string.
+                        installedAppPath[bytesRead] = '\0';
+                        LE_INFO("Preloaded app %s: found link %s", appName, installedAppPath);
+
+                        // Establish the symlink
+                        system_SymlinkApp("unpack",
+                                          le_path_GetBasenamePtr(installedAppPath, "/"),
+                                          appName);
+                        isFound = true;
+                    }
+                    if (!isFound)
+                    {
+                        LE_CRIT("Preloaded app %s not found!", appName);
+                    }
+                }
 
                 // Set up the app's writeable files in the new system (copying from install dir and/or
                 // current system).

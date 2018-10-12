@@ -137,9 +137,21 @@ static void ModelAppOverrides
         else if (subsectionName == "preloaded")
         {
             const auto& tokenText = ToSimpleSectionPtr(subsectionPtr)->Text();
-            appPtr->isPreloaded = (tokenText != "false");
-            if ((tokenText != "true") && (tokenText != "false"))
+            if ((tokenText == "buildVersion") || (tokenText == "true"))
             {
+                appPtr->preloadedMode = model::App_t::BUILD_VERSION;
+            }
+            else if (tokenText == "anyVersion")
+            {
+                appPtr->preloadedMode = model::App_t::ANY_VERSION;
+            }
+            else if (tokenText == "false")
+            {
+                appPtr->preloadedMode = model::App_t::NONE;
+            }
+            else
+            {
+                appPtr->preloadedMode = model::App_t::SPECIFIC_MD5;
                 appPtr->preloadedMd5 = tokenText;
             }
         }
