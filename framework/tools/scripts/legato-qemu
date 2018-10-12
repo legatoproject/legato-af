@@ -519,6 +519,9 @@ if [ -n "$OPT_PPPCMD" ]; then
     ARG_PPPCMD="-chardev serial,id=pppcmd,path=${OPT_PPPCMD} -device isa-serial,chardev=pppcmd"
 fi
 
+# Net
+NET_DRV=${NET_DRV:-"e1000"}
+
 # Net: vlan 0
 if [ "$OPT_NET" == "user" ]; then
     message $COLOR_MSG "Network in user mode"
@@ -537,7 +540,7 @@ if [ "$OPT_NET" == "user" ]; then
     NET_RESTRICT=",restrict=off"
 
     message $COLOR_INFO " => Access SSH through 'ssh -p $SSH_PORT root@localhost'"
-    ARG_NET="-net nic,vlan=0 -net user,vlan=0$NET_ADDR$NET_RESTRICT$NET_HOSTFWD"
+    ARG_NET="-net nic,vlan=0,model=$NET_DRV -net user,vlan=0$NET_ADDR$NET_RESTRICT$NET_HOSTFWD"
 elif [ "$OPT_NET" == "tap" ]; then
     message $COLOR_MSG "Network through tap interface"
 
@@ -547,7 +550,7 @@ elif [ "$OPT_NET" == "tap" ]; then
     fi
 
     message $COLOR_INFO " => Using interface $TAP_IF"
-    ARG_NET="-net nic,macaddr=b2:5b:96:c8:51:34 -net tap,ifname=$TAP_IF,script=no,downscript=no"
+    ARG_NET="-net nic,vlan=0,macaddr=b2:5b:96:c8:51:34,model=$NET_DRV -net tap,vlan=0,ifname=$TAP_IF,script=no,downscript=no"
 else
     ARG_NET=
 fi
@@ -555,7 +558,7 @@ fi
 # Net: vlan 1
 if [ "$OPT_NET2" == "simu" ]; then
     message $COLOR_MSG "Network interface for simulation"
-    ARG_NET2="-net nic,vlan=1,macaddr=b2:5b:96:c8:51:35 -net user,vlan=1,restrict=off"
+    ARG_NET2="-net nic,vlan=1,macaddr=b2:5b:96:c8:51:35,model=$NET_DRV -net user,vlan=1,restrict=off"
 else
     ARG_NET2=
 fi
