@@ -451,6 +451,14 @@ static void StartFramework
     le_ima_AdvertiseService();
     le_kernelModule_AdvertiseService();
 
+    // Close stdin (and reopen to /dev/null to be safe).
+    // This signals to the parent process that it is now safe to start using the framework.
+    // NOTE: Do this after advertising services in case anyone uses a "Try" version of an
+    //       IPC connection function to connect to one of these services (which would report
+    //       that the service is unavailable if it is not yet advertised).
+    LE_FATAL_IF(freopen("/dev/null", "r", stdin) == NULL,
+                "Failed to redirect stdin to /dev/null.  %m.");
+
     // Initialize the apps sub system.
     apps_Init();
     apps_VerifyAppWriteableDeviceFiles();
@@ -1248,20 +1256,7 @@ COMPONENT_INIT
         le_timer_SetMsInterval(RebootTimer, GetBootExpirePeriod());
         le_timer_SetWakeup(RebootTimer, false);
         le_timer_Start(RebootTimer);
-
     }
-
-    // Close stdin (and reopen to /dev/null to be safe).
-    // This signals to the parent process that all apps have been started.
-    // The parent process will then exit, allowing whatever launched it to continue if it is
-    // blocked.
-    // We do this after advertising services in case anyone uses a "Try" version of an
-    // IPC connection function to connect to one of these services (which would report
-    // that the service is unavailable if it is not yet advertised).
-    // We do it after app launch to improve start-up time by preventing other boot time activities
-    // from contending with us for resources like CPU and flash memory bandwidth.
-    LE_FATAL_IF(freopen("/dev/null", "r", stdin) == NULL,
-                "Failed to redirect stdin to /dev/null.  %m.");
 
     // Create or remove the SMACK_DISABLED file, which is used by the init scripts to determine to
     // set SMACK labels or not.
