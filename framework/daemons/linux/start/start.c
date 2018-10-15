@@ -140,13 +140,6 @@ static const char ModemPAPath[] = "/read-only/lib/libComponent_le_pa.so";
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Brownout voltage limit (in mV)
- */
-//--------------------------------------------------------------------------------------------------
-static const uint32_t BrownoutVoltageLimit = 3525;
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Pointer to modem PA (assuming modem PA exists).
  */
 //--------------------------------------------------------------------------------------------------
@@ -267,43 +260,6 @@ done:
     }
 }
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Check if system is in brownout
- */
-//--------------------------------------------------------------------------------------------------
-static bool IsBrownout
-(
-    void
-)
-{
-    static int (*pa_ips_GetInputVoltage)(uint32_t*) = NULL;
-    uint32_t inputVoltage;
-
-    if (!ModemPASoPtr)
-    {
-        // No way to get voltage; assume not a brownout
-        return false;
-    }
-
-    pa_ips_GetInputVoltage = dlsym(ModemPASoPtr, "pa_ips_GetInputVoltage");
-    if (!pa_ips_GetInputVoltage)
-    {
-        // No way to get voltage; assume not a brownout
-        LE_WARN("Could not get function pa_ips_GetInputVoltage");
-        LE_INFO("%s", dlerror());
-        return false;
-    }
-
-    if (pa_ips_GetInputVoltage(&inputVoltage))
-    {
-        return false;
-    }
-    LE_INFO("Checking for brownout %d", inputVoltage);
-
-    return inputVoltage < BrownoutVoltageLimit;
-}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2197,12 +2153,6 @@ int main
     daemon_Daemonize(5000); // 5 second timeout in case older supervisor is installed.
 
     LoadModemPA();
-
-    // Wait until not in a brownout condition.
-    while (IsBrownout())
-    {
-        sleep(1);
-    }
 
     while(1)
     {
