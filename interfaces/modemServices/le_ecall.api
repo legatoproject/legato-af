@@ -426,9 +426,9 @@
  *    - Deregister from the network after the expiration of T10, which duration is set to
  *      twelve hours by default.
  * 2. ERA-GLONASS standard (<em>ENG_GOST_R_54620</em>) defines the NAD_DEREGISTRATION_TIME
- *    with a minimal value of two hours and a maximum value of twelve hours. After an eCall
- *    clear-down, the IVS shall remain registered on the network and deregister from the network
- *    after the expiration of the NAD_DEREGISTRATION_TIME.
+ *    with a minimal value of 2 hours and a maximum value of 12 hours. After an eCall clear-down,
+ *    the IVS shall remain registered on the network and deregister from the network after the
+ *    expiration of the NAD_DEREGISTRATION_TIME.
  *
  * The le_ecall_SetNadDeregistrationTime() API is used to set the duration of a
  * <em>deregistration timer</em>: after an eCall clear-down, the IVS remains registered on the
@@ -452,7 +452,7 @@
  *    ERA-GLONASS standard.
  *  - The NAD_DEREGISTRATION_TIME default value is eight hours, as defined by
  *    <em>GOST_R 54620 Table A.1</em>. It can be changed with le_ecall_SetNadDeregistrationTime()
- *    and the value must be set between two and twelve hours.
+ *    and the value must be set between 2 and 12 hours.
  *  - The @ref LE_ECALL_STATE_TIMEOUT_T10 event will be reported when the NAD_DEREGISTRATION_TIME
  *    expires. In this case deregistration is automatically performed when the timer expires.
  *

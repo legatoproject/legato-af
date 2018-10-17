@@ -205,32 +205,37 @@ with the following APIs:
 
 @subsubsection eCall_leeCall_NADTimePE PAN-EUROPEAN
 
-Pan-Eurpean standard defines the T9 and T10 timers. After an eCall clear-down, an eCall only IVS
-shall remain registered on the network for at least the duration of T9, which is set to one hour by
-default. It should deregister from the network after the expiration of T10, which duration is set to
-twelve hours by default.
+Pan-European standard defines the T9 and T10 timers, and T9 and T10 timeout events are only reported
+for eCall only mode. After an eCall clear-down, an eCall only IVS shall remain registered on the
+network for at least the duration of T9, which is set to one hour by default. It should deregister
+from the network after the expiration of T10, which duration is set to 12 hours by default.
 
 As the T9 timer duration is fixed to one hour, the notified events depend on the deregistration
 timer duration. If its duration is set to one hour, the T9 Timeout event will be reported. In this
 case deregistration is automatically performed when the T9 timeout indication is received. If its
-duration is set to more than one hour and less than twelve hours then the T10 Timeout event will be
-reported when the deregistration timer expires.
-
-The T9 timeout will not be notified. In this case deregistration is automatically performed when the
-deregistration timer expires, provided that the application didn't already deregister from the
-network before.
+duration is set to more than one hour and up to 12 hours then only the T10 Timeout event will be
+reported when the deregistration timer expires, and the T9 timeout will not be notified. In this
+case deregistration is automatically performed when the deregistration timer expires, provided that
+the application didn't already deregister from the network before.
 
 @subsubsection eCall_leeCall_NADTimeEG ERA-GLONASS
 
 Era-Glonass standard defines only the T10 timer. The standard defines the NAD deregistration time
-with a minimal value of  two hours and a maximum value of twelve hours. After an eCall clear-down,
+with a minimal value of 2 hours and a maximum value of 12 hours. After an eCall clear-down,
 the IVS shall remain registered on the network and deregister from the network after the expiration
 of the NAD deregistration time.
 
-T9 Timeout event is not reported as it is not defined in the ERA-GLONASS standard. The NAD
-deregistration time default value is eight hours. It can be set between two and twelve hours.
+The NAD deregistration time default value is 8 hours. It can be set between 2 and 12 hours.
+If the eCall type is automatic or manual, T10 Timeout event will be reported when the NAD
+deregistration time expires.
 
-T10 Timeout event will be reported when the NAD deregistration time expires.
+T9 Timeout event is not defined in the ERA-GLONASS standard. Nevertheless Legato will notify it for
+test eCall session in ERA-Glonass. After completion of transmission of test diagnostics results, IVS
+remains registered on the network for the period of post test registration time. The time can be set
+by le_ecall_SetEraGlonassPostTestRegistrationTime(). If the eCall type is test, T9 timeout event
+will be reported when the post test registration time expires.
+
+Also, T9 and T10 timeout events are only reported for eCall only mode.
 
 @subsection eCall_leeCall_Redial Redail Mechanism
 
