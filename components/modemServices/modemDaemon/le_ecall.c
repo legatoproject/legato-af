@@ -273,9 +273,11 @@ typedef struct
     bool                    sendMsdSignalReceived;                      ///< Send MSD signal
                                                                         ///< received
     le_mcc_TerminationReason_t lastTermination;                         ///< Last call termination
-                                                                        /// reason
+                                                                        ///  reason
     int32_t                 lastSpecificTerm;                           ///< Last call specific
-                                                                        /// termination.
+                                                                        ///  termination.
+    bool                    isMtCall;                                   ///< Record call type(MT/MO)
+    int32_t                 mtCallId;                                   ///< Record MT call ID
 }
 ECall_t;
 
@@ -1612,6 +1614,79 @@ static void FirstLayerECallStateChangeHandler
     clientHandlerFunc(reportStatePtr->ref, reportStatePtr->state, le_event_GetContextPtr());
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Restore state machine as initialized.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t RestoreEcallStatus
+(
+   le_ecall_CallRef_t    ecallRef    ///< [IN] eCall reference
+)
+{
+    ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+
+    if (eCallPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
+        return LE_BAD_PARAMETER;
+    }
+
+
+    if (!eCallPtr->isMsdImported)
+    {
+        eCallPtr->msd.msdMsg.msdStruct.messageIdentifier = 0;
+        eCallPtr->msd.msdMsg.msdStruct.timestamp = (uint32_t)time(NULL);
+
+        if (PA_ECALL_START_AUTO == ECallObj.startType)
+        {
+            eCallPtr->msd.msdMsg.msdStruct.control.automaticActivation = true;
+            eCallPtr->msd.msdMsg.msdStruct.control.testCall = false;
+        }
+        else if (PA_ECALL_START_MANUAL == ECallObj.startType)
+        {
+            eCallPtr->msd.msdMsg.msdStruct.control.automaticActivation = false;
+            eCallPtr->msd.msdMsg.msdStruct.control.testCall = false;
+        }
+        else
+        {
+            eCallPtr->msd.msdMsg.msdStruct.control.automaticActivation = false;
+            eCallPtr->msd.msdMsg.msdStruct.control.testCall = true;
+        }
+
+        // Update MSD with msg ID, timestamp and control flags
+        if (EncodeMsd(eCallPtr) != LE_OK)
+        {
+            LE_ERROR("Encode MSD failure (msg ID, timestamp and control flags)");
+            return LE_FAULT;
+        }
+    }
+
+    // Initialize redial state machine
+    RedialInit();
+
+    if (!ECallObj.isPushed)
+    {
+        if (LE_OK != le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH))
+        {
+            LE_WARN("Unable to set the Push mode!");
+        }
+        else
+        {
+            ECallObj.isPushed = true;
+        }
+    }
+
+    // Update eCall context
+    ECallObj.redial.startTentativeTime = le_clk_GetRelativeTime();
+    ECallObj.termination = LE_MCC_TERM_UNDEFINED;
+    ECallObj.specificTerm = 0;
+    ECallObj.ackOrT7Received = false;
+    ECallObj.t5Received = false;
+
+    return LE_OK;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1666,8 +1741,14 @@ static void ProcessECallState
             {
                 case ECALL_SESSION_CONNECTED:
                 {
+                    // End Of Redial Period if incoming call is not an eCall
+                    if (!ECallObj.sendMsdSignalReceived && ECallObj.isMtCall)
+                    {
+                        LE_INFO("Not an eCall, stop redial mechanism");
+                        endOfRedialPeriod = true;
+                    }
                     // Check redial condition (cf N16062:2014 7.9)
-                    if (   (true == eCallEventDataPtr->terminationReceived)
+                    else if (   (true == eCallEventDataPtr->terminationReceived)
                         && ((ECallObj.ackOrT7Received) || (ECallObj.t5Received))
                         && (LE_MCC_TERM_REMOTE_ENDED == ECallObj.termination)
                        )
@@ -1857,6 +1938,17 @@ static void ProcessECallState
         {
             LE_DEBUG("STATE_PSAP_START_IND_RECEIVED");
             ECallObj.sendMsdSignalReceived = true;
+
+            // To check incoming eCall
+            if (ECallObj.isMtCall)
+            {
+                LE_DEBUG("Incoming call request MSD");
+                ECallObj.callId = ECallObj.mtCallId;
+                if (LE_OK != RestoreEcallStatus(ECallObj.ref))
+                {
+                    LE_INFO("Restore eCall status failed!");
+                }
+            }
             break;
         }
 
@@ -1871,7 +1963,7 @@ static void ProcessECallState
     // Report the eCall state
     ReportState(eCallEventDataPtr->state);
 
-    // Report the End of Redial Period event
+    // Report the End of Redial Period event if needed
     if (endOfRedialPeriod)
     {
         // Stop redial period
@@ -1959,6 +2051,26 @@ static void CallEventHandler
         return;
     }
 
+    le_result_t res = le_mcc_GetCallIdentifier(callRef, &callId);
+    if (res != LE_OK)
+    {
+        LE_ERROR("Error in GetCallIdentifier %d", res);
+        return;
+    }
+
+    if (LE_MCC_EVENT_INCOMING == event)
+    {
+        LE_DEBUG("Incoming call, record callId");
+        ECallObj.sendMsdSignalReceived= false;
+        ECallObj.isMtCall = true;
+        ECallObj.mtCallId = callId;
+    }
+    else if (LE_MCC_EVENT_ORIGINATING == event)
+    {
+        LE_DEBUG("Outgoing call");
+        ECallObj.isMtCall = false;
+    }
+
     LE_DEBUG("session state %d, event %d", ECallObj.sessionState, event);
 
     // Check if an eCall session is active
@@ -1967,13 +2079,6 @@ static void CallEventHandler
     {
         // The call is not an eCall, no treatment necessary
         LE_DEBUG("No active eCall session, MCC event ignored");
-        return;
-    }
-
-    le_result_t res = le_mcc_GetCallIdentifier(callRef, &callId);
-    if (res != LE_OK)
-    {
-        LE_ERROR("Error in GetCallIdentifier %d", res);
         return;
     }
 
@@ -2126,6 +2231,8 @@ le_result_t le_ecall_Init
     ECallObj.ackOrT7Received = false;
     ECallObj.t5Received = false;
     ECallObj.sendMsdSignalReceived = false;
+    ECallObj.isMtCall = false;
+    ECallObj.mtCallId = 0;
 
     ECallObj.eraGlonass.manualDialAttempts = 10;
     ECallObj.eraGlonass.autoDialAttempts = 10;
@@ -3007,24 +3114,39 @@ le_result_t le_ecall_End
         return LE_BAD_PARAMETER;
     }
 
-    // Automatic eCall session:
-    // don't end current eCall session unless ECALL_SESSION_STOPPED state is reached.
-    if ((PA_ECALL_START_AUTO == eCallPtr->startType) &&
-        (ECALL_SESSION_STOPPED != eCallPtr->sessionState))
+    // Incoming auto/manual ecall in progress
+    if (ECallObj.isMtCall)
     {
-        LE_ERROR("An automatic Ecall cannot be terminated");
-        return LE_FAULT;
+        if (ECallObj.sendMsdSignalReceived &&
+            (PA_ECALL_START_TEST != eCallPtr->startType) &&
+            ((ECALL_SESSION_CONNECTED == eCallPtr->sessionState) ||
+            (ECALL_SESSION_COMPLETED == eCallPtr->sessionState)))
+        {
+            LE_ERROR("Incoming Ecall cannot be terminated, Ecall in progress");
+            return LE_FAULT;
+        }
     }
-
-    // Manual eCall session:
-    // don't end current eCall session if eCall session state is ECALL_SESSION_CONNECTED or
-    // ECALL_SESSION_COMPLETED.
-    if ((PA_ECALL_START_MANUAL == eCallPtr->startType) &&
-        ((ECALL_SESSION_CONNECTED == eCallPtr->sessionState) ||
-         (ECALL_SESSION_COMPLETED == eCallPtr->sessionState)))
+    else
     {
-        LE_ERROR("Ecall transaction cannot be terminated, Ecall in progress");
-        return LE_FAULT;
+        // Automatic eCall session:
+        // don't end current eCall session unless ECALL_SESSION_STOPPED state is reached.
+        if ((PA_ECALL_START_AUTO == eCallPtr->startType) &&
+            (ECALL_SESSION_STOPPED != eCallPtr->sessionState))
+        {
+            LE_ERROR("An automatic Ecall cannot be terminated");
+            return LE_FAULT;
+        }
+
+        // Manual eCall session:
+        // don't end current eCall session if eCall session state is ECALL_SESSION_CONNECTED or
+        // ECALL_SESSION_COMPLETED.
+        if ((PA_ECALL_START_MANUAL == eCallPtr->startType) &&
+            ((ECALL_SESSION_CONNECTED == eCallPtr->sessionState) ||
+             (ECALL_SESSION_COMPLETED == eCallPtr->sessionState)))
+        {
+            LE_ERROR("Ecall transaction cannot be terminated, Ecall in progress");
+            return LE_FAULT;
+        }
     }
 
     // Invalidate MSD
