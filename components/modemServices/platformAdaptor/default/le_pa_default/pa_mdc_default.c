@@ -518,3 +518,22 @@ LE_SHARED le_result_t pa_mdc_MapProfileOnNetworkInterface
     LE_ERROR("Unsupported function called");
     return LE_FAULT;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the list of all profiles
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mdc_GetProfileList
+(
+    le_mdc_ProfileInfo_t* profileList, ///< [OUT] list of available profiles
+    size_t* listSize                   ///< [INOUT] list size
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}

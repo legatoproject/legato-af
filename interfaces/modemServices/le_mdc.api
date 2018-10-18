@@ -267,6 +267,14 @@ DEFINE SIMTOOLKIT_BIP_DEFAULT_PROFILE = -2;
  */
 DEFINE DISC_USER_AUTHENTIFICATION_FAILURE = 7;
 
+
+/**
+ * Define the max # of entries in a profile list.
+
+ */
+DEFINE PROFILE_LIST_ENTRY_MAX = 255;
+DEFINE PROFILE_LIST_ENTRY_NAMELEN_MAX = 50;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Reference to a modem data connection profile.
@@ -468,6 +476,18 @@ EVENT MtPdpSessionState
 (
     SessionStateHandler handler
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This is the structure with info about a given cellular data profile
+ */
+//--------------------------------------------------------------------------------------------------
+STRUCT ProfileInfo
+{
+    string name[PROFILE_LIST_ENTRY_NAMELEN_MAX];
+    uint8 index;
+    uint8 type;
+};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1186,4 +1206,18 @@ FUNCTION le_result_t MapProfileOnNetworkInterface
 (
     Profile profileRef                             IN,  ///< Profile reference
     string  interfaceName[INTERFACE_NAME_MAX_LEN]  IN   ///< Network interface name
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the list of available profiles
+ *
+ * @return
+ *      - list of available profiles
+ *      - LE_OK if the retrieval is successful; otherwise, some error code
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetProfileList
+(
+    ProfileInfo profileList[PROFILE_LIST_ENTRY_MAX]  OUT ///< list of available profiles
 );

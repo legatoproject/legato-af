@@ -1,0 +1,249 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_le_dcs Data Channel Service le_dcs APIs
+ *
+ * @ref le_dcs_interface.h "API Reference" <br>
+ * @ref le_dcs_sample <br>
+ *
+ * A data channel can be established over a mobile network, WiFi or a fixed link (e.g.,
+ * ethernet). The le_dcs APIs provide applications the ability to establish a selected packet
+ * switched data channel to communicate with other devices.
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_dcs_interface.h
+ *
+ * Legato @ref c_le_dcs include file.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+// Objects references.
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference returned by Request function and used by Release function
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE ReqObj;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference to a data channel
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Channel;
+
+
+//--------------------------------------------------------------------------------------------------
+// Symbol and Enum definitions.
+//--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Interface name string length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE INTERFACE_NAME_MAX_LEN = 100;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Channel name string length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE CHANNEL_NAME_MAX_LEN = 16;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * IP addr string's max length
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE IPADDR_MAX_LEN = 46;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Max # of entries on a data channel list
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE CHANNEL_LIST_ENTRY_MAX = 255;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Technologies.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Technology
+{
+    TECH_UNKNOWN = 0,
+    TECH_WIFI,       ///< Wi-Fi
+    TECH_CELLULAR,   ///< Cellular
+    TECH_MAX         ///< Unknown state.
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Channel states.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM State
+{
+    STATE_DOWN = 0,
+    STATE_UP
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Channel events.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Event
+{
+    EVENT_DOWN = 0,
+    EVENT_UP
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for channel state changes
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER EventHandler(
+    Channel channelRef                      IN, ///< The channel for which the event is
+    Event event                             IN, ///< Event up or down
+    int32 code                              IN  ///< Additional event code, like error code
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on channel events
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT Event
+(
+    Channel channelRef,                      ///< The channel for which the event is
+    EventHandler handler
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This is the structure with info about each available channel
+ */
+//--------------------------------------------------------------------------------------------------
+STRUCT ChannelInfo
+{
+    Channel ref;
+    string name[CHANNEL_NAME_MAX_LEN];
+    Technology technology;
+    State state;
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Query for a channel's technology type
+ *
+ * @return
+ *      - The given channel's technology type as an enumberator from @ref le_dcs_Technology_t
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Technology GetTechnology
+(
+    Channel channelRef                      IN  ///< channel which technology type is to be queried
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Query for a channel's state
+ *
+ * @return
+ *      - The given channel's state in the 2nd argument and associated network interface
+ *        in 'name'
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetState
+(
+    Channel channelRef                      IN,  ///< channel which status is to be queried
+    State state                             OUT, ///< channel state returned as output
+    string name[INTERFACE_NAME_MAX_LEN]     OUT  ///< channel's network interface name
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Request by an app to start a data channel
+ *
+ * @return
+ *      - Object reference to the request (to be used later for releasing the channel)
+ *      - NULL if it has failed to process the request
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION ReqObj Start
+(
+    Channel channelRef                      IN  ///< channel requested to be started
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop for an app its previously started data channel
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Stop
+(
+    Channel channelRef                      IN, ///< channel started earlier
+    ReqObj reqRef                           IN  ///< the start request's reference earlier returned
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the object reference of the channel given by the name and its technology type in the first
+ * and second arguments as input
+ *
+ * @return
+ *     - The retrieved channel reference is returned in the function's return value upon success.
+ *     - Upon failure, 0 is returned back
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Channel GetReference
+(
+    string name[CHANNEL_NAME_MAX_LEN] IN,  ///< name of channel which reference is to be retrieved
+    Technology technology             IN   ///< technology of the channel given by its name above
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Query for the list of all available data channels
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_FAULT          for all other errors
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetList
+(
+    ChannelInfo channelList[CHANNEL_LIST_ENTRY_MAX] OUT  ///< list of all available data channels
+);

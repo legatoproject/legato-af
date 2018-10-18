@@ -38,8 +38,11 @@
 #include "le_print.h"
 #include "pa_mdc.h"
 #include "pa_dcs.h"
-
+#include "dcsServer.h"
+#include "dcs.h"
+#include "dcsCellular.h"
 #include "watchdogChain.h"
+
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions
@@ -71,13 +74,6 @@
 #define DCS_TECH_LEN      16
 #define DCS_TECH_BYTES    (DCS_TECH_LEN+1)
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Definitions for sending request/release commands to data thread
- */
-//--------------------------------------------------------------------------------------------------
-#define REQUEST_COMMAND 1
-#define RELEASE_COMMAND 2
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -171,6 +167,7 @@ typedef struct
 }
 ConnStateData_t;
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Data associated with a technology record in the preference list
@@ -233,7 +230,7 @@ static le_timer_Ref_t DelayRequestTimer = NULL;
  * Event for sending command to Process command handler
  */
 //--------------------------------------------------------------------------------------------------
-static le_event_Id_t CommandEvent;
+le_event_Id_t CommandEvent;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -304,6 +301,7 @@ static bool IsConnected = false;
  */
 //--------------------------------------------------------------------------------------------------
 static int32_t MdcIndexProfile = LE_MDC_DEFAULT_PROFILE;
+static uint32_t ConnectedDataProfileIndex = 0;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -324,7 +322,7 @@ static uint32_t StopSessionRetries = 0;
  * Safe Reference Map for the request reference
  */
 //--------------------------------------------------------------------------------------------------
-static le_ref_MapRef_t RequestRefMap;
+le_ref_MapRef_t RequestRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -383,6 +381,34 @@ static le_data_Technology_t CurrentTech = LE_DATA_MAX;
  */
 //--------------------------------------------------------------------------------------------------
 static bool DefaultRouteStatus = true;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Local flag to indicate whether the active connection established over a cellular profile was
+ * in the first place established via le_dcs than le_data
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsDataProfileViaLeDcs = false;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * API for the le_dcs component to use to check if any app has used le_data to successfully
+ * bring up a data connection
+ *
+ * @return
+ *     - It returns the current request count back in its function argument as well as the
+ *       the data profile index, if connected, back in the function's return value
+ */
+//--------------------------------------------------------------------------------------------------
+int32_t le_data_ConnectedDataProfileIndex
+(
+    uint32_t *requestCount
+)
+{
+    *requestCount = RequestCount;
+    return ConnectedDataProfileIndex;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -687,7 +713,7 @@ static void WifiClientEventHandler
  *      True or False
  */
 // -------------------------------------------------------------------------------------------------
-static bool IsApnEmpty
+bool IsApnEmpty
 (
     le_mdc_ProfileRef_t profileRef  ///< [IN] Modem data connection profile reference
 )
@@ -733,50 +759,19 @@ static void DataSessionStateHandler
 
     // Update connection status and send notification to registered applications
     IsConnected = (connectionStatus == LE_MDC_CONNECTED) ? true : false;
+    if (IsConnected)
+    {
+        ConnectedDataProfileIndex = profileIndex;
+    }
+    else
+    {
+        ConnectedDataProfileIndex = 0;
+    }
+
     SendConnStateEvent(IsConnected);
 
     // Handle new connection status for this technology
     ConnectionStatusHandler(LE_DATA_CELLULAR, IsConnected);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  Get data profile index to use for cellular technology from config tree
- */
-//--------------------------------------------------------------------------------------------------
-static int32_t GetDataProfileIndex
-(
-    void
-)
-{
-    int32_t index = LE_MDC_DEFAULT_PROFILE;
-    le_mdc_ProfileRef_t profileRef;
-
-    char configPath[LE_CFG_STR_LEN_BYTES];
-    snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_CELLULAR);
-
-    le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
-
-    // Get Cid Profile
-    if (le_cfg_NodeExists(cfg, CFG_NODE_PROFILEINDEX))
-    {
-        index = le_cfg_GetInt(cfg, CFG_NODE_PROFILEINDEX, LE_MDC_DEFAULT_PROFILE);
-        LE_DEBUG("Use data profile index %d", index);
-    }
-    le_cfg_CancelTxn(cfg);
-
-    profileRef = le_mdc_GetProfile(index);
-    if (NULL == profileRef)
-    {
-        // If data profile could not be created/retrieved, we keep the index from config tree as is
-        LE_ERROR("Unable to retrieve data profile");
-    }
-    else
-    {
-        index = le_mdc_GetProfileIndex(profileRef);
-    }
-
-    return index;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -903,6 +898,55 @@ static void GetTimeServer
     LE_DEBUG("Use time server '%s'", serverPtr);
 }
 
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the cellular profile used indicated by the given index & update its saved profile reference
+ * when necessary
+ *
+ * @return
+ *     - LE_OK is returned in the function's return value after it has succeeded to set the profile;
+ *       otherwise, other le_result_t failure code
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetCellularProfile
+(
+    int32_t index
+)
+{
+    le_mdc_ProfileRef_t profileRef = le_mdc_GetProfile(index);
+
+    if (!profileRef)
+    {
+        LE_ERROR("Profile of index %d is not available", index);
+        return LE_FAULT;
+    }
+
+    // Updating profileRef
+    if (profileRef != MobileProfileRef)
+    {
+        if (MobileSessionStateHandlerRef)
+        {
+            le_mdc_RemoveSessionStateHandler(MobileSessionStateHandlerRef);
+            MobileSessionStateHandlerRef = NULL;
+        }
+
+        MobileProfileRef = profileRef;
+        LE_DEBUG("Working with profile %p at index %d", MobileProfileRef, index);
+    }
+
+    // Register for data session state changes
+    if (!MobileSessionStateHandlerRef)
+    {
+        MobileSessionStateHandlerRef = le_mdc_AddSessionStateHandler(MobileProfileRef,
+                                                                     DataSessionStateHandler,
+                                                                     NULL);
+    }
+    return LE_OK;
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Load the profile of the selected technology
@@ -925,31 +969,13 @@ static le_result_t LoadSelectedTechProfile
     {
         case LE_DATA_CELLULAR:
         {
-            le_mdc_ProfileRef_t profileRef;
-
             // Get profile Index to use for cellular data connection service
-            MdcIndexProfile = GetDataProfileIndex();
+            MdcIndexProfile = le_dcsCellular_GetProfileIndex(MdcIndexProfile);
 
-            profileRef = le_mdc_GetProfile(MdcIndexProfile);
-
-            if (!profileRef)
+            result = SetCellularProfile(MdcIndexProfile);
+            if (result != LE_OK)
             {
-                LE_ERROR("Profile of index %d is not available", MdcIndexProfile);
-                return LE_FAULT;
-            }
-
-            // Updating profileRef
-            if (profileRef != MobileProfileRef)
-            {
-                if (NULL != MobileSessionStateHandlerRef)
-                {
-                    le_mdc_RemoveSessionStateHandler(MobileSessionStateHandlerRef);
-                    MobileSessionStateHandlerRef = NULL;
-                }
-
-                MobileProfileRef = profileRef;
-
-                LE_DEBUG("Working with profile %p at index %d", MobileProfileRef, MdcIndexProfile);
+                return result;
             }
 
             // MobileProfileRef is now referencing the default profile to use for data connection
@@ -960,14 +986,6 @@ static le_result_t LoadSelectedTechProfile
                 {
                     LE_WARN("Could not set APN from file");
                 }
-            }
-
-            // Register for data session state changes
-            if (NULL == MobileSessionStateHandlerRef)
-            {
-                MobileSessionStateHandlerRef = le_mdc_AddSessionStateHandler(MobileProfileRef,
-                    DataSessionStateHandler,
-                    NULL);
             }
         }
         break;
@@ -1306,7 +1324,7 @@ static le_result_t SetDefaultRouteAndDns
     // Check if the default route should be set
     if (setDefaultRoute)
     {
-        pa_dcs_SaveDefaultGateway(&InterfaceDataBackup);
+        pa_dcs_GetDefaultGateway(&InterfaceDataBackup);
 
         if (LE_OK != SetRouteConfiguration(MobileProfileRef))
         {
@@ -1412,6 +1430,7 @@ static void TryStartDataSession
     void
 )
 {
+    char channelName[LE_DCS_CHANNEL_NAME_MAX_LEN];
     #ifdef LEGATO_DATA_CONNECTION_DELAY
     if (le_timer_IsRunning(DelayRequestTimer))
     {
@@ -1421,6 +1440,8 @@ static void TryStartDataSession
     }
     #endif
 
+    le_dcsCellular_GetNameFromIndex(le_dcsCellular_GetProfileIndex(MdcIndexProfile), channelName);
+    le_dcs_CreateChannelDb(LE_DCS_TECH_CELLULAR, channelName);
     le_result_t result = le_mdc_StartSession(MobileProfileRef);
 
     // Start data session
@@ -1534,6 +1555,8 @@ static void TryStartTechSession
     le_data_Technology_t technology     ///< [IN] Technology to use for the data session
 )
 {
+    char channelName[LE_DCS_CHANNEL_NAME_MAX_LEN];
+
     if (LE_DATA_MAX == technology)
     {
         LE_ERROR("Unknown technology used to start the data session!");
@@ -1542,7 +1565,7 @@ static void TryStartTechSession
     {
         char techStr[DCS_TECH_BYTES] = {0};
         GetTechnologyString(technology, techStr, sizeof(techStr));
-        LE_DEBUG("Technology used for the data connection: '%s'", techStr);
+        LE_DEBUG("Technology used for the le_data connection: '%s'", techStr);
 
         // Store the currently used technology
         CurrentTech = technology;
@@ -1551,6 +1574,27 @@ static void TryStartTechSession
         {
             case LE_DATA_CELLULAR:
             {
+                // Check if the device is attached yet
+                le_mrc_NetRegState_t serviceState;
+                le_result_t res = le_mrc_GetPacketSwitchedState(&serviceState);
+
+                // Check for any cellular connection already established via le_dcs APIs
+                MdcIndexProfile = le_dcsCellular_GetProfileIndex(MdcIndexProfile);
+                le_dcsCellular_GetNameFromIndex(MdcIndexProfile, channelName);
+
+                if (le_dcs_ChannelIsInUse(channelName, LE_DCS_TECH_CELLULAR)) {
+                    // reuse this profile & don't call TryStartDataSession() again below because
+                    // its start has been initiated via le_dcs API already
+                    LE_DEBUG("Reuse cellular connection with index %d", MdcIndexProfile);
+
+                    // inform le_dcs about le_data's start sharing this cellular connection
+                    IsDataProfileViaLeDcs = true;
+                    SetCellularProfile(MdcIndexProfile);
+                    le_dcs_MarkChannelSharingStatus(channelName, LE_DCS_TECH_CELLULAR, true);
+                    ConnectionStatusHandler(LE_DATA_CELLULAR, true);
+                    break;
+                }
+
                 // Load MobileProfileRef
                 le_result_t result = LoadSelectedTechProfile(LE_DATA_CELLULAR);
                 if (LE_OK == result)
@@ -1558,16 +1602,14 @@ static void TryStartTechSession
                     // Check if the mobile data session should be started
                     if ((LE_DATA_CELLULAR == CurrentTech) && (RequestCount > 0) && (!IsConnected))
                     {
-                        // Check if the device is attached yet
-                        le_mrc_NetRegState_t serviceState;
-                        le_result_t res = le_mrc_GetPacketSwitchedState(&serviceState);
-
                         if ((res == LE_OK) &&
                             ((LE_MRC_REG_HOME == serviceState) || (LE_MRC_REG_ROAMING == serviceState)))
                         {
                             LE_INFO("Device is attached, ready to start a data session");
 
                             // Start a connection
+                            le_dcs_MarkChannelSharingStatus(channelName, LE_DCS_TECH_CELLULAR,
+                                                            true);
                             TryStartDataSession();
                         }
                         else
@@ -1612,10 +1654,13 @@ static void TryStopDataSession
 {
     le_mdc_ConState_t sessionState;
     le_result_t result;
+    char channelName[LE_DCS_CHANNEL_NAME_MAX_LEN];
 
     // Check if the mobile data session is already disconnected
     result = le_mdc_GetSessionState(MobileProfileRef, &sessionState);
-    LE_DEBUG("Sessions state: %d, result: %d", sessionState, result);
+    le_dcsCellular_GetNameFromIndex(MdcIndexProfile, channelName);
+    LE_DEBUG("Sessions state: %d, result: %d, connection to be stopped: %s", sessionState, result,
+             channelName);
 
     if ((LE_OK == result) && (!sessionState))
     {
@@ -1624,18 +1669,32 @@ static void TryStopDataSession
         // Reset number of retries
         StopSessionRetries = 0;
 
-        // Restore backed up parameters
-        if (DefaultRouteStatus)
+        if (!IsDataProfileViaLeDcs)
         {
-            RestoreDefaultGateway();
+            // Restore backed up parameters
+            if (DefaultRouteStatus)
+            {
+                RestoreDefaultGateway();
+                pa_dcs_RestoreInitialDnsNameServers(&InterfaceDataBackup);
+            }
         }
-        pa_dcs_RestoreInitialDnsNameServers(&InterfaceDataBackup);
+        else
+        {
+            IsDataProfileViaLeDcs = false;
+        }
+        ConnectedDataProfileIndex = 0;
+        // inform le_dcs about le_data's stop sharing of this data channel
+        le_dcs_MarkChannelSharingStatus(channelName, LE_DCS_TECH_CELLULAR, false);
     }
     else
     {
         // Only tear down the session if no request has been made
         if (0 == RequestCount)
         {
+            if (le_dcs_ChannelIsInUse(channelName, LE_DCS_TECH_CELLULAR))
+            {
+                return;
+            }
             LE_INFO("Tearing down data session");
         }
         else
@@ -1677,9 +1736,20 @@ static void TryStopDataSession
             // Reset number of retries
             StopSessionRetries = 0;
 
-            // Restore backed up parameters
-            RestoreDefaultGateway();
-            pa_dcs_RestoreInitialDnsNameServers(&InterfaceDataBackup);
+            if (!IsDataProfileViaLeDcs)
+            {
+                // Restore backed up parameters
+                RestoreDefaultGateway();
+                pa_dcs_RestoreInitialDnsNameServers(&InterfaceDataBackup);
+            }
+            else
+            {
+                IsDataProfileViaLeDcs = false;
+            }
+
+            ConnectedDataProfileIndex = 0;
+            // inform le_dcs about le_data's stop sharing of this data channel
+            le_dcs_MarkChannelSharingStatus(channelName, LE_DCS_TECH_CELLULAR, false);
         }
     }
 }
@@ -1892,11 +1962,12 @@ static void ProcessCommand
     void* reportPtr     ///< [IN] Command to process
 )
 {
-    uint32_t command = *(uint32_t*)reportPtr;
+    CommandData_t cmdData = *(CommandData_t*)reportPtr;
 
-    LE_PRINT_VALUE("%i", command);
+    LE_PRINT_VALUE("%i", cmdData.command);
 
-    if (REQUEST_COMMAND == command)
+    switch (cmdData.command) {
+    case REQUEST_COMMAND:
     {
         RequestCount++;
         LE_DEBUG("RequestCount %d, IsConnected %d", RequestCount, IsConnected);
@@ -1921,7 +1992,8 @@ static void ProcessCommand
             SendConnStateEvent(true);
         }
     }
-    else if (RELEASE_COMMAND == command)
+    break;
+    case RELEASE_COMMAND:
     {
         // Don't decrement below zero, as it will wrap-around
         if (RequestCount > 0)
@@ -1940,9 +2012,17 @@ static void ProcessCommand
                      RequestCount);
         }
     }
-    else
+    break;
+    case START_COMMAND:
+        le_dcsTech_Start(cmdData.channelName, cmdData.technology);
+        break;
+    case STOP_COMMAND:
+        le_dcsTech_Stop(cmdData.channelName, cmdData.technology);
+        break;
+    default:
     {
-        LE_ERROR("Command %i is not valid", command);
+        LE_ERROR("Command %i is not valid", cmdData.command);
+    }
     }
 }
 
@@ -1968,7 +2048,8 @@ static void PacketSwitchHandler
         case LE_MRC_REG_HOME:
         case LE_MRC_REG_ROAMING:
             LE_DEBUG("New PS state ATTACHED");
-            if ((LE_DATA_CELLULAR == CurrentTech) && (RequestCount > 0) && (!IsConnected))
+            if ((LE_DATA_CELLULAR == CurrentTech) && (RequestCount > 0) && (!IsConnected) &&
+                !IsDataProfileViaLeDcs)
             {
                 // Start a connection
                 TryStartDataSession();
@@ -2151,9 +2232,7 @@ static le_result_t ChangeRoute
         return LE_FAULT;
     }
 
-    return pa_dcs_ChangeRoute(action,
-                              ipDestAddrStr,
-                              interfaceStr);
+    return pa_dcs_ChangeRoute(action, ipDestAddrStr, "", interfaceStr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2262,10 +2341,11 @@ le_data_RequestObjRef_t le_data_Request
     void
 )
 {
-    uint32_t command = REQUEST_COMMAND;
+    CommandData_t cmdData;
     le_msg_SessionRef_t sessionRef = le_data_GetClientSessionRef();
 
-    le_event_Report(CommandEvent, &command, sizeof(command));
+    cmdData.command = REQUEST_COMMAND;
+    le_event_Report(CommandEvent, &cmdData, sizeof(cmdData));
 
     // Need to return a unique reference that will be used by Release.  Don't actually have
     // any data for now, but have to use some value other than NULL for the data pointer.
@@ -2286,6 +2366,8 @@ void le_data_Release
     le_data_RequestObjRef_t requestRef  ///< [IN] Reference to a previously requested connection
 )
 {
+    CommandData_t cmdData;
+
     // Look up the reference.  If it is NULL, then the reference is not valid.
     // Otherwise, delete the reference and send the release command to the data thread.
     void* dataPtr = le_ref_Lookup(RequestRefMap, requestRef);
@@ -2298,8 +2380,8 @@ void le_data_Release
         LE_PRINT_VALUE("%p", requestRef);
         le_ref_DeleteRef(RequestRefMap, requestRef);
 
-        uint32_t command = RELEASE_COMMAND;
-        le_event_Report(CommandEvent, &command, sizeof(command));
+        cmdData.command = RELEASE_COMMAND;
+        le_event_Report(CommandEvent, &cmdData, sizeof(cmdData));
     }
 }
 
@@ -2597,7 +2679,7 @@ int32_t le_data_GetCellularProfileIndex
     void
 )
 {
-    return GetDataProfileIndex();
+    return le_dcsCellular_GetProfileIndex(MdcIndexProfile);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2822,7 +2904,7 @@ le_result_t le_data_GetTime
 COMPONENT_INIT
 {
     // Initialize the various events
-    CommandEvent = le_event_CreateId("Data Command", sizeof(uint32_t));
+    CommandEvent = le_event_CreateId("Data Command", sizeof(CommandData_t));
     ConnStateEvent = le_event_CreateId("Conn State", sizeof(ConnStateData_t));
 
     // Create memory pool and expand it
@@ -2922,6 +3004,7 @@ COMPONENT_INIT
 
     // Register main loop with watchdog chain
     // Try to kick a couple of times before each timeout.
+
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_Init(1);
     le_wdogChain_MonitorEventLoop(0, watchdogInterval);

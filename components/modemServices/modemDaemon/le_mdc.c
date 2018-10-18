@@ -2624,3 +2624,29 @@ le_result_t le_mdc_MapProfileOnNetworkInterface
 
     return pa_mdc_MapProfileOnNetworkInterface(profilePtr->profileIndex, interfaceNamePtr);
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the list of all profiles
+ *
+ * @return
+ *      - LE_OK upon success; otherwise, another le_result_t failure cause
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_GetProfileList
+(
+    le_mdc_ProfileInfo_t *profileList, ///< [OUT] list of available profiles
+    size_t *listSize                   ///< [INOUT] max list size
+)
+{
+    le_result_t ret;
+
+    LE_INFO("%s: profile list size given %d", __FUNCTION__, (int)*listSize);
+    ret = pa_mdc_GetProfileList(profileList, listSize);
+    if (ret != LE_OK)
+    {
+        LE_ERROR("Failed to get profile list");
+    }
+    return ret;
+}

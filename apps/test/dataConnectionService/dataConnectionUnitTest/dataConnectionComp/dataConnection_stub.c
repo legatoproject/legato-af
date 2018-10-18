@@ -1540,6 +1540,7 @@ le_result_t pa_dcs_ChangeRoute
 (
     pa_dcs_RouteAction_t  routeAction,
     const char*           ipDestAddrStr,
+    const char*           ipDestMaskStr,
     const char*           interfaceStr
 )
 {
@@ -1566,15 +1567,15 @@ le_result_t pa_dcs_SetDefaultGateway
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Save the default route
+ * Get the default route
  */
 //--------------------------------------------------------------------------------------------------
-void pa_dcs_SaveDefaultGateway
+le_result_t pa_dcs_GetDefaultGateway
 (
     pa_dcs_InterfaceDataBackup_t* interfaceDataBackupPtr
 )
 {
-    return;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1649,4 +1650,114 @@ void le_wdogChain_MonitorEventLoop
     le_clk_Time_t watchdogInterval ///< Interval at which to check event loop is functioning
 )
 {
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub function to get the default profile's index
+ */
+//--------------------------------------------------------------------------------------------------
+uint32_t le_dcsCellular_GetProfileIndex
+(
+    int32_t mdcIndex
+)
+{
+    return MdcProfileIndex;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub utility for use by the le_data component to the given channel's sharing status, which is a
+ * status about whether it's used by at least 1 app via the le_data APIs.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_dcs_MarkChannelSharingStatus
+(
+    const char *channelName,
+    le_dcs_Technology_t tech,
+    bool starting
+)
+{
+    return;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub function for creating a channelDb for the given channel in the argument
+ */
+//--------------------------------------------------------------------------------------------------
+le_dcs_ChannelRef_t le_dcs_CreateChannelDb
+(
+    le_dcs_Technology_t tech,
+    const char *channelName
+)
+{
+    return 0;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub function for requesting cellular to start the given data channel in the 1st argument
+ * after its technology type is retrieved
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_dcsTech_Start
+(
+    const char *channelName,
+    le_dcs_Technology_t tech
+)
+{
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub function for stopping the given data channel in the argument after its technology type
+ * is retrieved
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_dcsTech_Stop
+(
+    const char *channelName,
+    le_dcs_Technology_t tech
+)
+{
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub function to retrieve the name of the channel at the given profile index
+ */
+//--------------------------------------------------------------------------------------------------
+void le_dcsCellular_GetNameFromIndex
+(
+    uint32_t index,
+    char channelName[LE_DCS_CHANNEL_NAME_MAX_LEN]
+)
+{
+    channelName[0] = '\0';
+    return;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub utility for use by the le_data component to check if a given channel is in use via the
+ * le_dcs APIs or not.
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_dcs_ChannelIsInUse
+(
+    const char *channelName,
+    le_dcs_Technology_t tech
+)
+{
+    return false;
 }

@@ -1,0 +1,130 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_le_net Data Channel Service's le_net APIs
+ *
+ * @ref le_net_interface.h "API Reference" <br>
+ * @ref le_net_sample <br>
+ *
+ * A data channel can be established over a mobile network, WiFi or a fixed link (e.g.,
+ * ethernet). The le_net APIs of DCS provide applications the ability to manage networking state
+ * and config of a selected packet switched data channel to communicate with other devices.
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_net_interface.h
+ *
+ * Legato @ref c_le_net include file.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+USETYPES le_dcs;
+
+
+//--------------------------------------------------------------------------------------------------
+// Symbol and Enum definitions.
+//--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Interface name string length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE INTERFACE_NAME_MAX_LEN = 100;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * IP addr string's max length
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE IPADDR_MAX_LEN = 46;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add or remove a route on the given channel according to the input flag in the last argument for
+ * the given destination address its given netmask
+ *
+ * @return
+ *      - LE_OK upon success, otherwise another le_result_t failure code
+ *
+ * @note requirement:
+ *      - only IPv4 is supported
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ChangeRoute
+(
+    le_dcs.Channel channelRef         IN, ///< the channel onto which the route change is made
+    string destAddr[IPADDR_MAX_LEN]   IN, ///< Destination IP address for the route
+    string destMask[IPADDR_MAX_LEN]   IN, ///< The destination address' netmask
+    bool isAdd                        IN  ///< the change is to add (true) or delete (false)
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the default GW addr for the given data channel retrieved from its technology
+ *
+ * @return
+ *      - LE_OK upon success, otherwise other le_result_t failure code
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetDefaultGW
+(
+    le_dcs.Channel channelRef         IN  ///< the channel on which interface its default GW
+                                          ///< addr is to be set
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Backup default GW config of the system
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION BackupDefaultGW
+(
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Backup default GW config of the system
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RestoreDefaultGW
+(
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the DNS addresses for the given data channel retrieved from its technology
+ *
+ * @return
+ *      - LE_OK upon success, otherwise other le_result_t failure code
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetDNS
+(
+    le_dcs.Channel channelRef         IN ///< the channel from which the DNS addresses retrieved
+                                         ///< will be set into the system config
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove the last added DNS addrs via the le_dcs_SetDNS API
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION RestoreDNS
+(
+);

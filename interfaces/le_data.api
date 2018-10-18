@@ -210,7 +210,8 @@
  * @include "apps/test/dataConnectionService/dataConnectionServiceTest/dcsTestComp/dcsTest.c"
  */
 
-USETYPES le_mdc.api;
+USETYPES le_mdc;
+USETYPES le_dcs;
 
 //--------------------------------------------------------------------------------------------------
 // Objects references.

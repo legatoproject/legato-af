@@ -639,5 +639,23 @@ LE_SHARED le_result_t pa_mdc_MapProfileOnNetworkInterface
     const char*      interfaceNamePtr      ///< [IN] Network interface name
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the list of all profiles
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ *
+ * ToDo: The output argument will soon be replaced after code integration with the new struct type
+ *       support in .api
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mdc_GetProfileList
+(
+    le_mdc_ProfileInfo_t *profileList, ///< [OUT] list of available profiles
+    size_t *listSize                   ///< [INOUT] list size
+);
+
 #endif // LEGATO_PA_MDC_INCLUDE_GUARD
 

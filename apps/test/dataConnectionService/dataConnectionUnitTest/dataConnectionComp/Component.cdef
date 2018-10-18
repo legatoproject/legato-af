@@ -3,6 +3,8 @@ requires:
     api:
     {
         le_data.api                                         [types-only]
+        le_dcs.api                                          [types-only]
+        le_net.api                                          [types-only]
         le_cellnet.api                                      [types-only]
         le_cfg.api                                          [types-only]
         modemServices/le_mdc.api                            [types-only]
@@ -26,4 +28,6 @@ cflags:
 {
     -Dle_msg_AddServiceCloseHandler=MyAddServiceCloseHandler
     -Dsystem=MySystem
+    -I$LEGATO_ROOT/components/dataConnectionService/dcs
+    -I$LEGATO_ROOT/components/dataConnectionService/dcsCellular
 }

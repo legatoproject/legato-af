@@ -1,0 +1,17 @@
+requires:
+{
+    api:
+    {
+        $LEGATO_ROOT/interfaces/le_dcs.api [types-only]
+    }
+}
+
+sources:
+{
+    dcsWifi.c
+}
+
+cflags:
+{
+    -I $LEGATO_ROOT/components/dataConnectionService/dcs
+}

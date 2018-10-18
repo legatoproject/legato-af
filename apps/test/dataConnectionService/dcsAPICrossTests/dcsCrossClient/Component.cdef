@@ -1,0 +1,21 @@
+requires:
+{
+    api:
+    {
+        le_dcs = $LEGATO_ROOT/interfaces/le_dcs.api
+        le_data = $LEGATO_ROOT/interfaces/le_data.api
+        le_net = $LEGATO_ROOT/interfaces/le_net.api
+    }
+}
+
+sources:
+{
+    crossClient.c
+}
+
+cflags:
+{
+    -I $LEGATO_ROOT/components/dataConnectionService/dcs
+    -I $LEGATO_ROOT/components/dataConnectionService/dcsDaemon
+    -I $LEGATO_ROOT/components/dataConnectionService/dcsNet
+}

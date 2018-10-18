@@ -1,0 +1,18 @@
+provides:
+{
+    api:
+    {
+        le_net = $LEGATO_ROOT/interfaces/le_net.api
+    }
+}
+
+sources:
+{
+    dcsNet.c
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/dataConnectionService/platformAdaptor/inc
+    -I $LEGATO_ROOT/components/dataConnectionService/dcs
+}

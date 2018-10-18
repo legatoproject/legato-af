@@ -1,0 +1,23 @@
+requires:
+{
+    api:
+    {
+        modemServices/le_mdmDefs.api [types-only]
+        modemServices/le_mdc.api
+        modemServices/le_mrc.api
+        le_cfg.api
+        $LEGATO_ROOT/interfaces/le_dcs.api [types-only]
+    }
+}
+
+sources:
+{
+    dcsCellular.c
+}
+
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/dataConnectionService/dcs
+    -I$LEGATO_ROOT/components/dataConnectionService/dcsDaemon
+}

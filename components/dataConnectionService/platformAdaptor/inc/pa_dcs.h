@@ -34,6 +34,10 @@
 #include "legato.h"
 #include "interfaces.h"
 
+#define PA_DCS_INTERFACE_NAME_MAX_BYTES 20
+#define PA_DCS_IPV4_ADDR_MAX_BYTES      16
+#define PA_DCS_IPV6_ADDR_MAX_BYTES      46
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Enumeration for the routing actions
@@ -53,10 +57,10 @@ pa_dcs_RouteAction_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    char defaultGateway[LE_MDC_IPV6_ADDR_MAX_BYTES];
-    char defaultInterface[20];
-    char newDnsIPv4[2][LE_MDC_IPV4_ADDR_MAX_BYTES];
-    char newDnsIPv6[2][LE_MDC_IPV6_ADDR_MAX_BYTES];
+    char defaultGateway[PA_DCS_IPV6_ADDR_MAX_BYTES];
+    char defaultInterface[PA_DCS_INTERFACE_NAME_MAX_BYTES];
+    char newDnsIPv4[2][PA_DCS_IPV4_ADDR_MAX_BYTES];
+    char newDnsIPv6[2][PA_DCS_IPV6_ADDR_MAX_BYTES];
 }
 pa_dcs_InterfaceDataBackup_t;
 
@@ -102,6 +106,15 @@ LE_SHARED le_result_t pa_dcs_AskForIpAddress
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Delete the current default gateway config on the system
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_dcs_DeleteDefaultGateway
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Set the default gateway in the system
  *
  * @return
@@ -119,10 +132,10 @@ LE_SHARED le_result_t pa_dcs_SetDefaultGateway
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Save the default route
+ * Get the default route
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED void pa_dcs_SaveDefaultGateway
+LE_SHARED le_result_t pa_dcs_GetDefaultGateway
 (
     pa_dcs_InterfaceDataBackup_t*  interfaceDataBackupPtr
 );
@@ -141,6 +154,7 @@ LE_SHARED le_result_t pa_dcs_ChangeRoute
 (
     pa_dcs_RouteAction_t   routeAction,
     const char*            ipDestAddrStrPtr,
+    const char*            ipDestMaskStrPtr,
     const char*            interfaceStrPtr
 );
 
@@ -202,6 +216,24 @@ LE_SHARED le_result_t pa_dcs_GetTimeWithNetworkTimeProtocol
 (
     const char* serverStrPtr,       ///< [IN]  Time server
     pa_dcs_TimeStruct_t* timePtr    ///< [OUT] Time structure
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Query for a connection's network interface state
+ *
+ * @return
+ *      - LE_OK             Function successful
+ *      - LE_BAD_PARAMETER  A parameter is incorrect
+ *      - LE_FAULT          Function failed
+ *      - LE_UNSUPPORTED    Function not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_dcs_GetInterfaceState
+(
+    const char *interface,  ///< [IN] network interface name
+    bool *stateIsUp         ///< [OUT] interface state down/up as false/true
 );
 
 #endif

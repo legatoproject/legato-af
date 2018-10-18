@@ -1,0 +1,19 @@
+executables:
+{
+    dcsClient = ( dcsClient )
+}
+
+processes:
+{
+    run:
+    {
+        ( dcsClient )
+    }
+}
+
+bindings:
+{
+    dcsClient.dcsClient.le_dcs -> dataConnectionService.le_dcs
+    dcsClient.dcsClient.le_net -> dataConnectionService.le_net
+    dcsClient.dcsClient.le_data -> dataConnectionService.le_data
+}

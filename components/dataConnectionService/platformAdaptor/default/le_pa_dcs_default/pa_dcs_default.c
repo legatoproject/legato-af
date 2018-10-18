@@ -76,12 +76,13 @@ le_result_t pa_dcs_SetDefaultGateway
  * Save the default route
  */
 //--------------------------------------------------------------------------------------------------
-void pa_dcs_SaveDefaultGateway
+le_result_t pa_dcs_GetDefaultGateway
 (
     pa_dcs_InterfaceDataBackup_t*  interfaceDataBackupPtr
 )
 {
     LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -98,6 +99,7 @@ le_result_t pa_dcs_ChangeRoute
 (
     pa_dcs_RouteAction_t   routeAction,
     const char*            ipDestAddrStrPtr,
+    const char*            ipDestMaskStrPtr,
     const char*            interfaceStrPtr
 )
 {
