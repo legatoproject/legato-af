@@ -10,7 +10,6 @@
 /Documentation*
 /releases
 /version
-/version.h
 /sources.md5
 /delivery
 /platformAdaptor
@@ -75,6 +74,9 @@ apps/sample/dataHub/
 
 # Tools
 framework/tools/imgdiff/
+
+# Custom OSes
+/framework/*/custom_os
 
 # Tests
 .cache

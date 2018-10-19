@@ -1,0 +1,144 @@
+#!/usr/bin/env python
+#
+# Preprocess input objects to a relocatable object file (produced by partial linking, i.e. ld -r).
+# This script avoid multiple symbol definition errors by renaming symbols that conflict.
+#
+# Copyright (C) Sierra Wireless Inc.
+#
+import argparse
+import os
+import subprocess
+import sys
+import textwrap
+
+OBJCOPY = 'objcopy'
+READELF = 'readelf'
+
+#   Determine if symbol type should be considered.
+#
+#   @param fields           List of symbol table fields.
+#   @param rename_common    Rename common data symbols.
+#
+#   @return True if the type should be considered, False if not.
+def symbol_type_matches(fields, all_syms=False):
+    return fields[3] in ['FUNC', 'OBJECT'] and (all_syms or fields[5] == 'HIDDEN')
+
+#   Generate list of renaming candidate symbols from an object.
+#
+#   @param obj              Path to object file.
+#   @param verbose          Display verbose messages.
+#
+#   @return Set of candidate symbols.
+def read_symbols(obj, all_syms=False, verbose=False):
+    symbols = set()
+    if verbose:
+        print("Scanning {0}....".format(obj))
+
+    output = subprocess.check_output([READELF, '--symbols', '--wide', obj])
+
+    # Sample Line:
+    #  10988: 00000000  9496 FUNC    GLOBAL HIDDEN  4381 curl_easy_setopt
+    for line in output.splitlines():
+        fields = line.split()
+        if len(fields) >= 8:
+            if symbol_type_matches(fields, all_syms):
+                symbols.add(fields[7])
+
+    return symbols
+
+#   Generate the new name of a symbol.
+#
+#   @param obj              Path to object file.
+#   @param original_name    Initial symbol name.
+#   @param verbose          Display verbose messages.
+#
+#   @return New symbol name.
+def renamed_symbol(obj, original_name, verbose=False):
+    obj_root = os.path.splitext(os.path.basename(obj))[0]
+    while '.' in obj_root:
+        obj_root = os.path.splitext(obj_root)[0]
+    renamed = "@{0}@{1}".format(obj_root, original_name)
+
+    if verbose:
+        print("Rename in {0}:".format(obj))
+        print("    {0} -> {1}".format(original_name, renamed))
+    return renamed
+
+#   Rename symbols in an object file.
+#
+#   @param obj      Path to object file.
+#   @param renames  Dictionary of original -> new name mappings.
+#   @param verbose  Display verbose messages.
+def rename_symbols(obj, renames, verbose=False):
+    renames_file = "{0}.renames.txt".format(obj)
+    with open(renames_file, 'w') as f:
+        f.write('# Automatically generated file, do not edit.\n')
+        for symbol in renames:
+            f.write("{0} {1}\n".format(symbol, renamed_symbol(obj, symbol, verbose)))
+
+    output_file = obj # "{0}.renamed.o".format(os.path.splitext(obj)[0])
+    if verbose:
+        print("Writing {0}....".format(output_file))
+    subprocess.check_call([OBJCOPY, "--redefine-syms={0}".format(renames_file), obj])
+
+#   Process list of object files, renaming symbols to avoid naming conflicts.
+#
+#   @param objects          List of object files.
+#   @param externals        Path to file containing extra symbols to search for conflicts with.
+#   @param verbose          Display verbose messages.
+#
+#   @return Status, 0 for success, 1 for failure.
+def process(obj, entry=None, verbose=False):
+    symbols = {}
+
+    symbols = read_symbols(obj, verbose=verbose)
+
+    if entry:
+        renames = symbols.difference(set([entry]))
+    else:
+        renames = symbols
+
+    if verbose:
+        print("Found candidate symbols:")
+        print("    {0}:".format(obj))
+        for s in renames:
+            print("        {0}".format(s))
+
+    rename_symbols(obj, renames, verbose)
+
+    return 0
+
+def main():
+    global OBJCOPY
+    global READELF
+
+    parser = argparse.ArgumentParser(description='\n'.join(textwrap.wrap(
+                                          'Preprocess input objects to a relocatable object '
+                                        + 'file (produced by partial linking, i.e. ld -r).  This '
+                                        + 'script avoids multiple symbol definition errors by '
+                                        + 'renaming symbols that conflict.')),
+                                     epilog='environment variables:\n'
+                                        + '  OBJCOPY     objcopy executable to use\n'
+                                        + '  READELF     readelf executable to use',
+                                     formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='display information about operation')
+    parser.add_argument('-e', '--entry', nargs=1,
+                        help='the entry point.  All other symbols will be renamed')
+    parser.add_argument('-c', '--rename-common', action='store_true',
+                        help='also rename COMMON data symbols if they conflict')
+    parser.add_argument('object_file', metavar='obj', type=str, help='input object file')
+    parsed = parser.parse_args()
+
+    OBJCOPY = os.getenv('OBJCOPY', OBJCOPY)
+    READELF = os.getenv('READELF', READELF)
+
+    if parsed.verbose:
+        print("Using objcopy: {0}".format(OBJCOPY))
+        print("Using readelf: {0}".format(READELF))
+
+    entry = parsed.entry[0] if parsed.entry else None
+    return process(parsed.object_file, entry, parsed.verbose)
+
+if __name__ == '__main__':
+    sys.exit(main())

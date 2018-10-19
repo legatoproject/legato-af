@@ -1,0 +1,237 @@
+#!/usr/bin/env python
+#
+# Analyze a Legato crash dump and add symbol information from debug files.
+#
+
+from __future__ import print_function
+
+import os, fcntl, sys, glob, subprocess
+import argparse
+import re
+
+class MapEntry(object):
+    LegatoSystemRE = re.compile('/mnt/legato/system/')
+    BuildIdRE = re.compile('Build ID: ([0-9a-f][0-9a-f])([0-9a-f]+)')
+
+    def __init__(self, startAddr, endAddr, offset, name):
+        self.startAddr = startAddr
+        self.endAddr = endAddr
+        self.offset = offset
+        self.name = name
+        if name:
+            self.baseName = os.path.basename(name)
+            systemMatch = self.LegatoSystemRE.match(self.name)
+        else:
+            self.baseName = None
+            systemMatch = None
+
+        if not Options.stagingDir:
+            if self.name and os.path.isfile(self.name):
+                self.libraryName = self.name
+            else:
+                self.libraryName = None
+        elif systemMatch:
+            self.libraryName = os.path.join(Options.stagingDir, name[systemMatch.end():])
+        else:
+            self.libraryName = None
+
+        # Assume debug info is in the library itself
+        self.debugName = self.libraryName
+
+        # But if a separate debug directory is provided, search for a debug file there
+        if self.libraryName and Options.debugDir:
+            buildidProc = subprocess.Popen(['/usr/bin/env',
+                                            'readelf',
+                                            '-n',
+                                            self.libraryName],
+                                           stdin=subprocess.DEVNULL,
+                                           stdout=subprocess.PIPE,
+                                           encoding='utf8')
+            buildIdResult, errors = buildidProc.communicate()
+            for line in buildIdResult.splitlines():
+                buildIdMatch = self.BuildIdRE.search(line)
+                if buildIdMatch:
+                    debugName = os.path.join(Options.debugDir,
+                                             '.build-id',
+                                             buildIdMatch.group(1),
+                                             buildIdMatch.group(2) + '.debug')
+                    print("Checking for debug file {}".format(debugName))
+                    if os.path.isfile(debugName):
+                        self.debugName = debugName
+                    break
+
+        # If using the system directory, search for debug info under /usr/lib/debug
+        if self.libraryName and not Options.stagingDir:
+            debugName = os.path.join("/usr/lib/debug", self.libraryName.lstrip('/'))
+            if os.path.isfile(debugName):
+                self.debugName = debugName
+
+        print("Getting debug info for {} from {}".format(self.name, self.debugName))
+
+    def addr2line(self, addr):
+        if not (self.startAddr <= addr and addr < self.endAddr):
+            raise KeyError
+
+        if not self.debugName:
+            if self.baseName:
+                return '{}:???'.format(self.baseName)
+            else:
+                return None
+
+        addr2lineProc = subprocess.Popen(['/usr/bin/env',
+                                          'addr2line',
+                                          '-f',
+                                          '-p',
+                                          '-e',
+                                          self.debugName],
+                                         stdin=subprocess.PIPE,
+                                         stdout=subprocess.PIPE,
+                                         encoding='utf8')
+
+        output, errors = addr2lineProc.communicate('{:x}'.format(addr-self.startAddr+self.offset))
+
+        return '{}:{}'.format(self.baseName, output.strip())
+
+
+
+##
+## Parser states
+##
+class LookingForDump(object):
+    ProcessRE = re.compile('PROCESS: ')
+
+    def run(self, line):
+        lineMatch = self.ProcessRE.search(line)
+
+        if not lineMatch:
+            sys.stdout.write(line)
+            return self, None
+        else:
+            sys.stdout.write(line[:lineMatch.end()])
+            return FindProcessMap(), line[lineMatch.end():]
+
+class FindProcessMap(object):
+    ProcessMapRE = re.compile('PROCESS MAP')
+
+    def __init__(self):
+        self.deferredLines = []
+
+    def run(self, line):
+        self.deferredLines.append(line)
+        if self.ProcessMapRE.search(line):
+            return ReadProcessMap(self.deferredLines), None
+        else:
+            return self, None
+
+class ReadProcessMap(object):
+    # Each map entry is like:
+    #     b7423000-b7598000 r-xp 00000000 03:01 6721       /lib/libc-2.20.so
+    # where the final library name is optional
+    MapEntryRE = re.compile('([0-9a-f]+)-([0-9a-f]+)\s+\S+\s+([0-9a-f]+)\s+\S+\s+\S+(\s+(\S+))?')
+    BacktraceRE = re.compile('BACKTRACE')
+
+    def __init__(self, deferredLines):
+        self.deferredLines=deferredLines
+        self.processMap = []
+
+    def run(self, line):
+        self.deferredLines.append(line)
+        if self.BacktraceRE.search(line):
+            filterState = FilterAddresses(self.processMap)
+            # Run all deferred lines through the address filter
+            for line in self.deferredLines:
+                nextState, rest = filterState.run(line)
+                # Should not transition to another state in deferred lines
+                assert(nextState == filterState)
+                assert(not rest)
+            return filterState, None
+        else:
+            mapMatch = self.MapEntryRE.search(line)
+            # Should always match a map entry line
+            assert(mapMatch)
+            self.processMap.append(MapEntry(int(mapMatch.group(1), 16),
+                                            int(mapMatch.group(2), 16),
+                                            int(mapMatch.group(3), 16),
+                                            mapMatch.group(5)))
+
+            return self, None
+
+class FilterAddresses(object):
+    DoneRE = re.compile('DONE')
+    AddressRE = re.compile('0x[0-9a-f]+')
+
+    def __init__(self, processMap):
+        self.processMap = processMap
+
+    def findEntry(self, address):
+        for entry in self.processMap:
+            if entry.startAddr <= address < entry.endAddr:
+                return entry
+        return None
+
+    def run(self, line):
+        doneMatch = self.DoneRE.search(line)
+        if doneMatch:
+            sys.stdout.write(line[:doneMatch.end()])
+            return LookingForDump(), line[doneMatch.end():]
+
+        lastend=0
+
+        for addressMatch in self.AddressRE.finditer(line):
+            sys.stdout.write(line[lastend:addressMatch.end()])
+
+            address = int(addressMatch.group(), 16)
+            mapEntry = self.findEntry(address)
+            if mapEntry:
+                sys.stdout.write(' ({})'.format(mapEntry.addr2line(address)))
+
+            lastend = addressMatch.end()
+
+        sys.stdout.write(line[lastend:])
+
+        return self, None
+
+
+
+def process(dumpFile):
+    state = LookingForDump()
+
+    for line in dumpFile:
+        rest = line
+        while rest:
+            state, rest = state.run(rest)
+
+
+
+def main():
+    argParser = argparse.ArgumentParser(description=\
+                                        'Annotate symbol names into a Legato crash dump')
+
+    argParser.add_argument('--debug-file-directory', dest='debugDir', action='store',
+                         help='debug file directory for separate debug info')
+    argParser.add_argument('--staging-directory', dest='stagingDir', action='store',
+                         help='staging directory for system')
+    argParser.add_argument('file', nargs='*', type=argparse.FileType('r'),
+                         default=[sys.stdin], help='files to process')
+    global Options
+    Options = argParser.parse_args()
+
+    if Options.stagingDir:
+        Options.stagingDir = os.path.abspath(Options.stagingDir)
+
+    if Options.debugDir:
+        Options.debugDir = os.path.abspath(Options.debugDir)
+
+    if Options.stagingDir and not os.path.isdir(Options.stagingDir):
+        print("{} does not exist or is not a directory".format(Options.stagingDir), \
+              file=sys.stderr)
+        exit(1)
+
+    stdinOpts = fcntl.fcntl(sys.stdout.fileno(), fcntl.F_GETFL)
+    fcntl.fcntl(sys.stdout.fileno(), fcntl.F_SETFL, stdinOpts & ~os.O_NONBLOCK)
+
+    for dumpFile in Options.file:
+        process(dumpFile)
+
+if __name__ == "__main__":
+    main()
