@@ -260,7 +260,7 @@ static void CleanupThread
     }
 
     // Clear the Legato thread info to prevent double-free errors and further Legato thread calls.
-    pthread_setspecific(ThreadLocalDataKey, NULL);
+    LE_ASSERT(pthread_setspecific(ThreadLocalDataKey, NULL) == 0);
 }
 
 

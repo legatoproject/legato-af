@@ -105,8 +105,9 @@ static le_mem_PoolRef_t ContextPoolRef;
 static void IncrementCounter(void)
 // -------------------------------------------------------------------------------------------------
 {
+    size_t value = __atomic_add_fetch(&Counter, 1, __ATOMIC_SEQ_CST);
     LE_INFO("Thread '%s' incremented counter to %zu.", le_thread_GetMyName(),
-        __atomic_add_fetch(&Counter, 1, __ATOMIC_SEQ_CST));
+        value);
 }
 
 
