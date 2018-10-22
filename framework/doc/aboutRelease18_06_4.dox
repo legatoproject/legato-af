@@ -9,6 +9,14 @@ The following provides a summary of changes that have been made in the 18.06 Leg
 <b> Download the @ref aboutReleaseInfo "source code" and get started with @ref basicBuild
 "building Legato AF". </b>
 
+@section rn18064_Patches 18.06.4 Fixes
+
+The following issues have been patched in 18.06.4:
+
+- A bug has been fixed that prevented the SPI service from working on wp85 targets. The fix changes
+the SPI driver to load on demand. The SPI driver is now loaded when the SPI service app starts and
+not at Legato start.
+
 @section rn18063_Patches 18.06.3 Patch
 
 The following issues have been fixed by the 18.06.3 patch:
