@@ -2964,6 +2964,14 @@ le_result_t le_ecall_StartTest
 /**
  * End the current eCall session
  *
+ * @note
+ * - During an automatic eCall session, it is not possible to end the ongoing session until
+ *   LE_ECALL_STATE_STOPPED event is notified.
+ * - For manual session, it is possible to end the ongoing session if the eCall is not connected
+ *   (LE_ECALL_STATE_CONNECTED not yet received) and after LE_ECALL_STATE_STOPPED event is notified.
+ * - Using this API doesn't affect the NAD deregistration mechanism. However, it disables the call
+ *   auto answer function if already running.
+ *
  * @return
  *      - LE_OK on success
  *      - LE_BAD_PARAMETER bad eCall reference
