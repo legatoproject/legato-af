@@ -240,6 +240,7 @@ void TestClockInteractive(void)
     le_clk_Time_t timeVal;
     char buffer[100];
     size_t numChars;
+    le_result_t result;
 
     printf("\n\n");  // for better formatted test output
 
@@ -259,7 +260,8 @@ void TestClockInteractive(void)
     VerifyTest("Verify %c in UTC time is correct");
 
     StartTest();
-    le_clk_GetLocalDateTimeString(LE_CLK_STRING_FORMAT_DATE_TIME, buffer, sizeof(buffer), &numChars);
+    result = le_clk_GetLocalDateTimeString(LE_CLK_STRING_FORMAT_DATE_TIME, buffer, sizeof(buffer), &numChars);
+    CU_ASSERT_EQUAL(result, LE_OK);
     printf("buffer:>>>%s<<<\n", buffer);
     VerifyTest("Verify %c in local time is correct");
 

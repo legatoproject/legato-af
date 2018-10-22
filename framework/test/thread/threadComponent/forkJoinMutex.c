@@ -189,14 +189,14 @@ static void SpawnChildren
 
     if (depth == 2)
     {
-        sscanf(threadName, "%*[^-]-%d", &j);
+        LE_TEST_ASSERT(sscanf(threadName, "%*[^-]-%d", &j) == 1, "depth 2: parse thread name");
         // switch to zero-based
         j--;
         LE_TEST_INFO("depth 2: j=%d", j);
     }
     else if (depth == 3)
     {
-        sscanf(threadName, "%*[^-]-%d-%d", &k, &j);
+        LE_TEST_ASSERT(sscanf(threadName, "%*[^-]-%d-%d", &k, &j) == 1, "depth 3: parse thread name");
         // switch to zero based
         k--;
         j--;
@@ -447,6 +447,7 @@ void fjm_CheckResults
 // -------------------------------------------------------------------------------------------------
 {
     int i, j, k;
+    int depth = DEPTH;
 
     le_sem_Wait(CounterSemRef);
 
@@ -455,13 +456,13 @@ void fjm_CheckResults
     LE_TEST_OK(Counter == ExpectedCounterValue, "Counter value (%u) should be %u.",
                Counter,
                ExpectedCounterValue);
-    for (i = 0; DEPTH >= 1 && i < FAN_OUT; i++)
+    for (i = 0; depth >= 1 && i < FAN_OUT; i++)
     {
         fjm_CheckSingleResult(i, 0, 0);
-        for (j = 1; DEPTH >= 2 && j <= FAN_OUT; j++)
+        for (j = 1; depth >= 2 && j <= FAN_OUT; j++)
         {
             fjm_CheckSingleResult(i, j, 0);
-            for (k = 1; DEPTH >= 3 && k <= FAN_OUT; k++)
+            for (k = 1; depth >= 3 && k <= FAN_OUT; k++)
             {
                 fjm_CheckSingleResult(i, j, k);
             }
