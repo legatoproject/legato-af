@@ -272,6 +272,10 @@ typedef struct
     bool                    t5Received;                                 ///< T5 timeout received
     bool                    sendMsdSignalReceived;                      ///< Send MSD signal
                                                                         ///< received
+    le_mcc_TerminationReason_t lastTermination;                         ///< Last call termination
+                                                                        /// reason
+    int32_t                 lastSpecificTerm;                           ///< Last call specific
+                                                                        /// termination.
 }
 ECall_t;
 
@@ -1989,8 +1993,15 @@ static void CallEventHandler
         case LE_MCC_EVENT_TERMINATED:
             if (callId == eCallPtr->callId)
             {
+                // Get the termination reason of the current call. These values are used internally
+                // and may be cleared in case of a redial.
                 eCallPtr->termination = le_mcc_GetTerminationReason(callRef);
                 eCallPtr->specificTerm = le_mcc_GetPlatformSpecificTerminationCode(callRef);
+
+                // Save a copy of the termination reason in order to keep track of the disconnection
+                // reason of the last call
+                eCallPtr->lastTermination = eCallPtr->termination;
+                eCallPtr->lastSpecificTerm = eCallPtr->specificTerm;
                 eCallPtr->callId = -1;
 
                 LE_DEBUG("Call termination status available: termination %d, specificTerm %d",
@@ -2184,6 +2195,7 @@ le_result_t le_ecall_Init
 
     // Initialize call termination
     ECallObj.termination = LE_MCC_TERM_UNDEFINED;
+    ECallObj.lastTermination = LE_MCC_TERM_UNDEFINED;
 
     // Register handler on call events
     le_mcc_AddCallEventHandler(CallEventHandler, &ECallObj);
@@ -4202,7 +4214,7 @@ le_mcc_TerminationReason_t le_ecall_GetTerminationReason
         return LE_MCC_TERM_UNDEFINED;
     }
 
-    return eCallPtr->termination;
+    return eCallPtr->lastTermination;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -4230,7 +4242,7 @@ int32_t le_ecall_GetPlatformSpecificTerminationCode
         return LE_MCC_TERM_UNDEFINED;
     }
 
-    return eCallPtr->specificTerm;
+    return eCallPtr->lastSpecificTerm;
 }
 
 //--------------------------------------------------------------------------------------------------
