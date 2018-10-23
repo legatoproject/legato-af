@@ -209,7 +209,7 @@ static void LoadModemPA
 
     // Build up the path to the golden system's modem PA.  Use the golden system's PA to
     // ensure it is compatible with this code.
-    ssize_t size = readlink(GoldenModemService, ModemPA, sizeof(ModemPA));
+    ssize_t size = readlink(GoldenModemService, ModemPA, sizeof(ModemPA) - 1);
 
     // Ensure size is reasonable.  Size should always be much less than max path length
     // so we can afford to be conservative about how much space we need.
