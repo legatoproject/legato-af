@@ -16,6 +16,7 @@
 #include "sysPaths.h"
 #include "ima.h"
 #include "file.h"
+#include "smack.h"
 #include <openssl/x509.h>
 
 
@@ -181,20 +182,37 @@ static le_result_t ImportPublicCert
 
     LE_DEBUG("cmd: %s", cmd);
 
-    int exitCode = system(cmd);
+    int pid = fork();
 
-    if (WIFEXITED(exitCode) && (0 == WEXITSTATUS(exitCode)))
+    if (pid == 0)
     {
-        LE_DEBUG("Installed certificate: '%s' successfully", certPath);
-        return LE_OK;
+        // Import the keys as '_' label
+        smack_SetMyLabel("_");
+
+        int exitCode = system(cmd);
+
+        if (WIFEXITED(exitCode) && (0 == WEXITSTATUS(exitCode)))
+        {
+            LE_DEBUG("Installed certificate: '%s' successfully", certPath);
+            exit(EXIT_SUCCESS);
+        }
+        else
+        {
+            LE_ERROR("Failed to import certificate '%s', exitCode: %d",
+                     certPath,
+                     WEXITSTATUS(exitCode));
+            exit(EXIT_FAILURE);
+        }
     }
-    else
+
+    int status;
+    waitpid(pid, &status, 0);
+    if (WEXITSTATUS(status) == EXIT_FAILURE)
     {
-        LE_ERROR("Failed to import certificate '%s', exitCode: %d",
-                 certPath,
-                 WEXITSTATUS(exitCode));
         return LE_FAULT;
     }
+
+    return LE_OK;
 }
 
 

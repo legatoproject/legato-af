@@ -9,7 +9,7 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "appCfg.h"
-
+#include "smack.h"
 
 // Have I already connected the supervisor services?
 static bool ConnectedToAppsService = false;
@@ -158,6 +158,10 @@ le_result_t supCtrl_ImportImaCert
     }
 
     LE_INFO("Requesting to import certificate '%s'.", certPath);
+
+    // Change the label of the application certificate file so that the supervisor child process
+    // running as '_' can import the key.
+    smack_SetLabel(certPath, "_");
 
     return le_ima_ImportCert(certPath);
 }
