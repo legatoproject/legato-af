@@ -1,4 +1,4 @@
-//--------------------------------------------------------------------------------------------------
+L//--------------------------------------------------------------------------------------------------
 /** @file kernelModules.c
  *
  * API for managing Legato-bundled kernel modules.
@@ -495,8 +495,8 @@ static void ModuleGetIsOptional(KModuleObj_t *module)
 {
     char cfgTreePath[LE_CFG_STR_LEN_BYTES] = {0};
 
-    le_path_Concat("/", cfgTreePath, LE_CFG_STR_LEN_BYTES,
-                   KMODULE_CONFIG_TREE_ROOT, module->name, "isOptional", (char*)NULL);
+    LE_ASSERT_OK(le_path_Concat("/", cfgTreePath, LE_CFG_STR_LEN_BYTES,
+                 KMODULE_CONFIG_TREE_ROOT, module->name, "isOptional", (char*)NULL));
 
     module->isOptional = le_cfg_QuickGetBool(cfgTreePath, false);
 }
