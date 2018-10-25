@@ -70,3 +70,6 @@ docManagement
 apps/platformServices/airVantageConnector/
 apps/leTP
 apps/sample/dataHub/
+
+# Tools
+framework/tools/imgdiff/
