@@ -76,6 +76,7 @@ static void DumpTree(le_cfg_IteratorRef_t iterRef, size_t indent)
         return;
     }
 
+    le_result_t result;
     static char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
 
     do
@@ -94,8 +95,9 @@ static void DumpTree(le_cfg_IteratorRef_t iterRef, size_t indent)
         {
             case LE_CFG_TYPE_STEM:
                 printf("%s/\n", strBuffer);
-
-                le_cfg_GoToFirstChild(iterRef);
+                result = le_cfg_GoToFirstChild(iterRef);
+                LE_FATAL_IF(result != LE_OK,
+                            "Test: stem %s has no child.", strBuffer);
                 DumpTree(iterRef, indent + 2);
                 le_cfg_GoToParent(iterRef);
                 break;
