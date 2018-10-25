@@ -9,6 +9,9 @@
    $  app runProc eCallDemo --exe=trig -- <number of passengers>
    @endverbatim
  *
+ * @note: eCallDemo requires a set of parameters from the config tree in order to run correctly.
+ *        Check eCallDemo desciption for further details.
+ *
  * @note: On R/O platforms, this application should not be sandboxed
  *
  * Copyright (C) Sierra Wireless Inc.

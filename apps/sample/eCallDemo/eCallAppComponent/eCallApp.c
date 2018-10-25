@@ -1,7 +1,12 @@
 /**
  * @file eCallApp.c
  *
- * This module implements an eCallDemo application
+ * This module implements an eCallDemo application. The following parameters need to be saved
+ * in the config tree in order to run the application correctly:
+ *
+ * - config set eCallDemo:/settings/psap <number> string
+ * - config set eCallDemo:/settings/hMinAccuracy <value> int
+ * - config set eCallDemo:/settings/dirMinAccuracy <value> int
  *
  * Copyright (C) Sierra Wireless Inc.
  *
@@ -435,13 +440,8 @@ COMPONENT_INIT
     LE_ERROR_IF((NULL == le_ecall_AddStateChangeHandler(ECallStateHandler, NULL)),
                 " Unable to add an eCall state change handler!");
 
-
     LE_WARN_IF((LE_OK != le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH)),
                 "Unable to set the MSD Push mode! Use default settings.");
-
-
-    LE_ERROR_IF((LE_OK != le_ecall_SetSystemStandard(LE_ECALL_PAN_EUROPEAN)),
-        " Unable to set System Standard!");
 
     LE_ERROR_IF((LE_OK != le_ecall_SetMsdVersion(1)),
                 " Unable to set Msd Version!");
