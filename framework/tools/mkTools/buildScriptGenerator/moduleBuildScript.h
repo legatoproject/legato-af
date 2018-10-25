@@ -50,6 +50,37 @@ class ModuleBuildScriptGenerator_t : protected RequireBaseGenerator_t
 };
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Null module builder which throws an error on all module builds.
+ *
+ * Kernel modules are an optional feature not supported by all Legato systems.  For systems
+ * which don't support them, use this null build script generator to throw errors if attempting
+ * to create a module.
+ */
+//--------------------------------------------------------------------------------------------------
+class NullModuleBuildScriptGenerator_t : public ModuleBuildScriptGenerator_t
+{
+    public:
+        NullModuleBuildScriptGenerator_t(std::shared_ptr<BuildScriptGenerator_t> baseGeneratorPtr)
+        : ModuleBuildScriptGenerator_t(baseGeneratorPtr) {}
+
+        void GenerateBuildStatements(model::Module_t* modulePtr)
+        {
+            throw mk::Exception_t(
+                LE_I18N("INTERNAL ERROR: Kernel modules not supported on this system type."));
+        }
+
+        void Generate(model::Module_t* modulePtr)
+        {
+            throw mk::Exception_t(
+                LE_I18N("INTERNAL ERROR: Kernel modules not supported on this system type."));
+        }
+
+        virtual ~NullModuleBuildScriptGenerator_t() {}
+};
+
+
 /**
  * Derive from this class for generators which need access to a module generator
  */

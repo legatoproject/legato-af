@@ -17,6 +17,7 @@ struct Binding_t
         INTERNAL, ///< Interface on a component in an executable in the current app (exe.comp.if).
         EXTERNAL_APP,  ///< External interface of a given app "agent" (app.if).
         EXTERNAL_USER, ///< External interface of a given non-app (user) "agent" (user.if).
+        LOCAL,    ///< Interface within the same executable
     };
 
     EndPointType_t clientType;
@@ -27,9 +28,9 @@ struct Binding_t
     std::string serverAgentName;///< Name of the server agent. An app name or user name.
     std::string serverIfName;   ///< Server-side interface name to be passed to Service Directory.
 
-    const parseTree::Binding_t* parseTreePtr; ///< Ptr to parse tree object. NULL if auto-bound.
+    const parseTree::TokenList_t* parseTreePtr; ///< Ptr to parse tree object. NULL if auto-bound.
 
-    Binding_t(const parseTree::Binding_t* p): parseTreePtr(p) {}
+    Binding_t(const parseTree::TokenList_t* p): parseTreePtr(p) {}
 };
 
 

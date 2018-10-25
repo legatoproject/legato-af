@@ -162,6 +162,9 @@ void AppBuildScriptGenerator_t::GenerateAppBuildRules
                         "-t $workingDir/$name.$target.signed -p " << buildParams.privKey <<" && $\n"
             // Get the size of the tarball.
             "            tarballSize=`stat -c '%s' $workingDir/$name.$target.signed` && $\n"
+            // Get the app's MD5 hash from its info.properties file.
+            "            md5=`grep '^app.md5=' $workingDir/staging.signed/info.properties"
+                        " | sed 's/^app.md5=//'` && $\n"
             // Generate a JSON header and concatenate the tarball to it to create the update pack.
             "            ( printf '{\\n' && $\n"
             "              printf '\"command\":\"updateApp\",\\n' && $\n"
@@ -312,7 +315,7 @@ void AppBuildScriptGenerator_t::GenerateStagingBundleBuildStatements
 )
 //--------------------------------------------------------------------------------------------------
 {
-    auto& allBundledFiles = appPtr->getTargetInfo<target::FileSystemInfo_t>()->allBundledFiles;
+    auto& allBundledFiles = appPtr->GetTargetInfo<target::FileSystemInfo_t>()->allBundledFiles;
 
     // Start with the application's list of bundled items first, so they override any items
     // bundled by components.
@@ -336,8 +339,7 @@ void AppBuildScriptGenerator_t::GenerateStagingBundleBuildStatements
                                          fileSystemObjPtr.get());
     }
 
-    // Now do the same for each component in the app, and also generate statements for bundling
-    // the component libraries into the app.
+    // Now do the same for each component in the app.
     for (auto componentPtr : appPtr->components)
     {
         for (auto fileSystemObjPtr : componentPtr->bundledFiles)
@@ -352,55 +354,6 @@ void AppBuildScriptGenerator_t::GenerateStagingBundleBuildStatements
                                              appPtr,
                                              fileSystemObjPtr.get());
         }
-
-        // Generate a statement for bundling a component library into an application, if it has
-        // a component library (which will only be the case if the component has sources).
-        if ((componentPtr->HasCOrCppCode()) || (componentPtr->HasJavaCode()))
-        {
-            auto destPath = "$builddir/" + appPtr->workingDir
-                          + "/staging/read-only/lib/" +
-                path::GetLastNode(componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib);
-            auto lib = componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib;
-
-            // Copy the component library into the app's lib directory.
-            // Cannot use hard link as this will cause builds to fail occasionally (LE-7383)
-            script << "build " << destPath << " : BundleFile " << lib << "\n"
-                   << "  modeFlags = " << baseGeneratorPtr->PermissionsToModeFlags(
-                                                                 model::Permissions_t(true,
-                                                                                      false,
-                                                                                      true))
-                   << "\n\n";
-
-            // Add the component library to the set of bundled files.
-            allBundledFiles.insert(model::FileSystemObject_t(
-                                       lib,
-                                       destPath,
-                                       model::Permissions_t(true,
-                                                            false,
-                                                            componentPtr->HasCOrCppCode())));
-        }
-    }
-
-    // Finally bundle all executables into the app
-    for (auto& exeMapPtr : appPtr->executables)
-    {
-        auto exePtr = exeMapPtr.second;
-        auto destPath = "$builddir/" + appPtr->workingDir
-            + "/staging/read-only/bin/" + exePtr->name;
-        auto exePath = "$builddir/" + exePtr->path;
-        if (exePtr->hasJavaCode)
-        {
-            destPath += ".jar";
-        }
-
-        // Copy the component library into the app's lib directory.
-        // Cannot use hard link as this will cause builds to fail occasionally (LE-7383)
-        script << "build " << destPath << " : BundleFile " << exePath << "\n"
-               << "  modeFlags = " << baseGeneratorPtr->PermissionsToModeFlags(
-                                                            model::Permissions_t(true,
-                                                                                 false,
-                                                                                 true))
-               << "\n\n";
     }
 }
 
@@ -419,7 +372,7 @@ void AppBuildScriptGenerator_t::GenerateAppBundleBuildStatement
 //--------------------------------------------------------------------------------------------------
 {
     // Give this a FS target info
-    appPtr->setTargetInfo(new target::FileSystemInfo_t());
+    appPtr->SetTargetInfo(new target::FileSystemInfo_t());
 
     // Generate build statements for bundling files into the staging area.
     GenerateStagingBundleBuildStatements(appPtr);
@@ -434,7 +387,7 @@ void AppBuildScriptGenerator_t::GenerateAppBundleBuildStatement
     script << "build " << infoPropertiesPath << " : MakeAppInfoProperties |";
 
     // This depends on all the bundled files and executables in the app.
-    for (auto filePath : appPtr->getTargetInfo<target::FileSystemInfo_t>()->allBundledFiles)
+    for (auto filePath : appPtr->GetTargetInfo<target::FileSystemInfo_t>()->allBundledFiles)
     {
         script << " " << filePath.destPath;
     }
@@ -662,26 +615,6 @@ void AppBuildScriptGenerator_t::Generate
 
     // Add a build statement for the build.ninja file itself.
     GenerateNinjaScriptBuildStatement(appPtr);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Generate a build script for an application.
- **/
-//--------------------------------------------------------------------------------------------------
-void Generate
-(
-    model::App_t* appPtr,
-    const mk::BuildParams_t& buildParams
-)
-//--------------------------------------------------------------------------------------------------
-{
-    std::string filePath = path::Minimize(buildParams.workingDir + "/build.ninja");
-
-    AppBuildScriptGenerator_t appGenerator(filePath, buildParams);
-
-    appGenerator.Generate(appPtr);
 }
 
 

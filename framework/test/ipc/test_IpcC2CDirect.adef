@@ -1,0 +1,19 @@
+/*
+ * Copyright (C) Sierra Wireless Inc.
+ */
+
+start: manual
+
+executables:
+{
+    test = ( CClient CServer )
+}
+
+
+processes:
+{
+    run:
+    {
+        ( test --skip-exit )
+    }
+}

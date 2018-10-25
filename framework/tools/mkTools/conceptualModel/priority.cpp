@@ -16,24 +16,6 @@ namespace model
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Enumerations of selected priority levels.
- *
- * Real-time priorities are numbered from 1 to 32.
- */
-//--------------------------------------------------------------------------------------------------
-typedef enum
-{
-    PRIORITY_IDLE = -3,
-    PRIORITY_LOW = -2,
-    PRIORITY_MEDIUM = -1,
-    PRIORITY_HIGH = -0,
-}
-PriorityLevel_t;
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Number translation function.  Converts a string representation of a number into an actual number.
  *
  * @return  The number.
@@ -99,19 +81,19 @@ Priority_t& Priority_t::operator =
     }
     else if (strcmp(priority, "idle") == 0)
     {
-        numericalValue = PRIORITY_IDLE;
+        numericalValue = IDLE;
     }
     else if (strcmp(priority, "low") == 0)
     {
-        numericalValue = PRIORITY_LOW;
+        numericalValue = LOW;
     }
     else if (strcmp(priority, "medium") == 0)
     {
-        numericalValue = PRIORITY_MEDIUM;
+        numericalValue = MEDIUM;
     }
     else if (strcmp(priority, "high") == 0)
     {
-        numericalValue = PRIORITY_HIGH;
+        numericalValue = HIGH;
     }
     else
     {
@@ -151,6 +133,28 @@ const
     return value;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fetches the priority numerical value.
+ *
+ * @throw   mk::Exception_t if the limit is not set.
+ *
+ * @return  The value.
+ */
+//--------------------------------------------------------------------------------------------------
+int Priority_t::GetNumericalValue
+(
+    void
+) const
+{
+    if (!isSet)
+    {
+        throw mk::Exception_t(LE_I18N("Fetching priority value that has not been set."));
+    }
+
+    return numericalValue;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

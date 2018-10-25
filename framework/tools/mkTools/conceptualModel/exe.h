@@ -62,6 +62,11 @@ struct Exe_t : public HasTargetInfo_t
     }
 
     ObjectFile_t MainObjectFile() const;
+
+    static std::string NameFromPath(std::string path)
+    {
+        return path::GetIdentifierSafeName(path::GetLastNode(path));
+    }
 };
 
 

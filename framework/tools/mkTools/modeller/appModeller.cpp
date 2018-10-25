@@ -229,6 +229,185 @@ static void AddComponents
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get a list of all provided in-place APIs in a component, and add to a map.
+ */
+//--------------------------------------------------------------------------------------------------
+static void FindDirectServers
+(
+    const model::ComponentInstance_t *componentPtr,
+    std::map<std::string, model::ApiServerInterfaceInstance_t*> &directServers
+)
+{
+    for (const auto serverApiPtr : componentPtr->serverApis)
+    {
+        if (serverApiPtr->ifPtr->direct)
+        {
+            auto newServer =
+                directServers.insert(std::make_pair(serverApiPtr->ifPtr->apiFilePtr->defaultPrefix,
+                                                     serverApiPtr));
+            if (!newServer.second)
+            {
+                serverApiPtr->ifPtr->itemPtr->ThrowException(
+                    mk::format(LE_I18N("Direct API '%s' conflicts with previous definition at"
+                                       " %s"),
+                               serverApiPtr->ifPtr->internalName,
+                               newServer.first->second->ifPtr->itemPtr->Contents()[0]->GetLocation()
+                    )
+                );
+            }
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Search for clients of a direct server that are out of order.
+ *
+ *  @return True if there is an out of order dependency.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool ApiDependencyPrecedesServer
+(
+    model::Exe_t                 *exePtr,           ///< [IN]   Executable instance to examine.
+    const std::string            &apiName,          ///< [IN]   API prefix to search for
+                                                    ///         dependencies of.
+    model::ComponentInstance_t   *serverInstPtr,    ///< [IN]   Server component.
+    model::ComponentInstance_t  *&foundInstancePtr  ///< [OUT]  Out-of-order client component, if
+                                                    ///         found.
+)
+{
+    auto apiMatch = [&apiName](model::ApiClientInterfaceInstance_t *clientPtr)
+    {
+        return clientPtr->ifPtr->apiFilePtr->defaultPrefix == apiName;
+    };
+
+    for (auto it = exePtr->componentInstances.rbegin();
+        it != exePtr->componentInstances.rend() && *it != serverInstPtr;
+        ++it)
+    {
+        auto found = std::find_if((*it)->clientApis.begin(), (*it)->clientApis.end(), apiMatch);
+        if (found != (*it)->clientApis.end())
+        {
+            foundInstancePtr = *it;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create a local binding of client interface to server interface
+ */
+//--------------------------------------------------------------------------------------------------
+static void BindLocalInterface
+(
+    model::Exe_t* exePtr,
+    model::ApiClientInterfaceInstance_t* clientIfacePtr,
+    model::ApiServerInterfaceInstance_t* serverIfacePtr
+)
+{
+    // Done before bindings are set, so should have no bindings here.
+    if (clientIfacePtr->bindingPtr)
+    {
+        throw mk::Exception_t(LE_I18N("Internal Error: early binding definition"));
+    }
+
+    model::Binding_t* bindingPtr = new model::Binding_t(NULL);
+
+    bindingPtr->clientType = model::Binding_t::LOCAL;
+    if (exePtr->appPtr)
+    {
+        bindingPtr->clientAgentName = exePtr->appPtr->name;
+        bindingPtr->serverAgentName = exePtr->appPtr->name;
+    }
+
+    bindingPtr->clientIfName = clientIfacePtr->ifPtr->internalName;
+    bindingPtr->serverIfName = serverIfacePtr->ifPtr->internalName;
+
+    bindingPtr->parseTreePtr = serverIfacePtr->ifPtr->itemPtr;
+
+    clientIfacePtr->bindingPtr = bindingPtr;
+
+    // And mark client as dependent on server
+    clientIfacePtr->
+        componentInstancePtr->
+        requiredComponentInstances.insert(serverIfacePtr->componentInstancePtr);
+
+    // Check for dependency ordering issues.
+    model::ComponentInstance_t *foundInstancePtr;
+    if (ApiDependencyPrecedesServer(exePtr, serverIfacePtr->ifPtr->apiFilePtr->defaultPrefix,
+        serverIfacePtr->componentInstancePtr, foundInstancePtr))
+    {
+        exePtr->exeDefPtr->ThrowException(
+            mk::format(
+                LE_I18N("Client component '%s' of API '%s' found after direct server '%s'.  "
+                    "Please reorder the required components."),
+                foundInstancePtr->componentPtr->name,
+                serverIfacePtr->ifPtr->apiFilePtr->defaultPrefix,
+                serverIfacePtr->componentInstancePtr->componentPtr->name
+            ));
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  For direct API connections, automatically set up the bindings and component dependencies.
+ */
+//--------------------------------------------------------------------------------------------------
+static void BindLocalInterfaces
+(
+    model::Exe_t* exePtr,
+    model::ComponentInstance_t* componentInstPtr,
+    std::map<std::string, model::ApiServerInterfaceInstance_t*> directServers
+)
+{
+    for (auto clientIfacePtr : componentInstPtr->clientApis)
+    {
+        auto directServer = directServers.find(clientIfacePtr->ifPtr->apiFilePtr->defaultPrefix);
+        if (directServer != directServers.end())
+        {
+            printf("%s: Creating local binding in '%s' from '%s' to '%s'\n",
+                   exePtr->appPtr->defFilePtr->path.c_str(),
+                   exePtr->name.c_str(),
+                   clientIfacePtr->name.c_str(),
+                   directServer->second->name.c_str());
+            BindLocalInterface(exePtr, clientIfacePtr, directServer->second);
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Any direct servers in an executable will automatically bind to corresponding required APIs
+ * within the same executable.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddLocalBindings
+(
+    model::Exe_t* exePtr
+)
+{
+    std::map<std::string, model::ApiServerInterfaceInstance_t*> directServers;
+
+    for (const auto componentInstPtr : exePtr->componentInstances)
+    {
+        FindDirectServers(componentInstPtr, directServers);
+    }
+
+    for (auto componentInstPtr : exePtr->componentInstances)
+    {
+        BindLocalInterfaces(exePtr, componentInstPtr, directServers);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Adds an Exe_t object to an application's list of executables, and makes sure all components
  * used by that executable are in the application's list of components.
  */
@@ -266,6 +445,9 @@ static void AddExecutable
         exePtr->exeDefPtr->ThrowException(LE_I18N("Executable doesn't contain any components"
                                                   " that have source code files."));
     }
+
+    // Add all automatic local bindings within the executable
+    AddLocalBindings(exePtr);
 }
 
 
@@ -456,12 +638,12 @@ static void ModelPreBuiltInterfaces
                 for (auto itemPtr : subsectionPtr->Contents())
                 {
                     const auto contentPtr = dynamic_cast<parseTree::RequiredApi_t*>(itemPtr);
-
                     std::string interfaceName;
                     auto apiFilePtr = GetPreBuiltInterface(interfaceName, contentPtr, buildParams);
 
                     // Create ApiClientInterface_t and ApiClientInterfaceInstance_t objects.
-                    auto ifPtr = new model::ApiClientInterface_t(apiFilePtr,
+                    auto ifPtr = new model::ApiClientInterface_t(contentPtr,
+                                                                 apiFilePtr,
                                                                  NULL, // component is unknown
                                                                  interfaceName);
                     auto ifInstancePtr = new model::ApiClientInterfaceInstance_t(NULL, ifPtr);
@@ -482,7 +664,8 @@ static void ModelPreBuiltInterfaces
                     auto apiFilePtr = GetPreBuiltInterface(interfaceName, contentPtr, buildParams);
 
                     // Create ApiServerInterface_t and ApiServerInterfaceInstance_t objects.
-                    auto ifPtr = new model::ApiServerInterface_t(apiFilePtr,
+                    auto ifPtr = new model::ApiServerInterface_t(contentPtr,
+                                                                 apiFilePtr,
                                                                  NULL,  // component is unknown
                                                                  interfaceName,
                                                                  false); // Don't care if async
@@ -762,6 +945,10 @@ static void AddProcessesSection
         else if (subsectionName == "maxLockedMemoryBytes")
         {
             procEnvPtr->maxLockedMemoryBytes = GetNonNegativeInt(ToSimpleSectionPtr(subsectionPtr));
+        }
+        else if (subsectionName == "maxStackBytes")
+        {
+            procEnvPtr->maxStackBytes = GetPositiveInt(ToSimpleSectionPtr(subsectionPtr));
         }
         else if (subsectionName == "watchdogAction")
         {
@@ -1060,7 +1247,8 @@ static void AddBindings
 
                     // Add the interface instance object to the app's list of pre-built client-side
                     // interfaces.
-                    auto ifPtr = new model::ApiClientInterface_t(NULL,
+                    auto ifPtr = new model::ApiClientInterface_t(bindingSpecPtr,
+                                                                 NULL,
                                                                  NULL, // component is unknown
                                                                  bindingPtr->clientIfName);
                     auto ifInstancePtr = new model::ApiClientInterfaceInstance_t(NULL, ifPtr);
@@ -1097,7 +1285,12 @@ static void AddBindings
             // Check for multiple bindings of the same client-side interface.
             if (clientIfPtr->bindingPtr != NULL)
             {
-                tokens[0]->ThrowException(LE_I18N("Client interface bound more than once."));
+                tokens[0]->ThrowException(
+                    mk::format(LE_I18N("Client interface bound more than once.\n"
+                                       "%s: note: First binding here"),
+                               clientIfPtr->bindingPtr->parseTreePtr->Contents()[0]->GetLocation()
+                    )
+                );
             }
 
             // Record the binding in the client-side interface object.
@@ -1143,6 +1336,7 @@ static void PrintBindingSummary
     switch (bindingPtr->serverType)
     {
         case model::Binding_t::INTERNAL:
+        case model::Binding_t::LOCAL:
             std::cout << mk::format(LE_I18N("'%s' -> bound to service '%s'"
                                             " on another exe inside the same app."),
                                     clientIfName, bindingPtr->serverIfName);
@@ -1451,6 +1645,17 @@ void PrintSummary
                     std::cout << mk::format(LE_I18N("      Max. number of file descriptors: %d"),
                                             procEnvPtr->maxFileDescriptors.Get())
                               << std::endl;
+                    if (procEnvPtr->maxStackBytes.IsSet())
+                    {
+                        std::cout << mk::format(LE_I18N("      Stack size: %d bytes"),
+                                                procEnvPtr->maxStackBytes.Get())
+                                  << std::endl;
+                    }
+                    else
+                    {
+                        std::cout << LE_I18N("      Stack size: OS default")
+                                  << std::endl;
+                    }
                 }
             }
         }
@@ -1605,6 +1810,19 @@ void CheckForLimitsConflicts
                          mk::format(LE_I18N("maxLockedMemoryBytes (%d) will be limited by the "
                                             "maxMemoryBytes limit (%d)."),
                                     maxLockedMemoryBytes, maxMemoryBytes));
+        }
+
+        if (procEnvPtr->maxStackBytes.IsSet())
+        {
+            size_t maxStackBytes = procEnvPtr->maxStackBytes.Get();
+
+            if (maxStackBytes > maxMemoryBytes)
+            {
+                PrintWarning(appPtr,
+                             mk::format(LE_I18N("maxStackBytes (%d) is larger than the "
+                                                "maxMemoryBytes limit(d)."),
+                                        maxStackBytes, maxMemoryBytes));
+            }
         }
 
         size_t maxFileBytes = procEnvPtr->maxFileBytes.Get();

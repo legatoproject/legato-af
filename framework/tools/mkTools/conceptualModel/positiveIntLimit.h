@@ -14,7 +14,8 @@
 
 struct PositiveIntLimit_t : public NonNegativeIntLimit_t
 {
-    PositiveIntLimit_t(size_t defaultValue);
+    PositiveIntLimit_t(void) {}
+    explicit PositiveIntLimit_t(size_t defaultValue);
 
     virtual PositiveIntLimit_t& operator =(int value);
     virtual PositiveIntLimit_t& operator =(size_t value);

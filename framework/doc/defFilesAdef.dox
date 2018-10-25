@@ -637,6 +637,18 @@ maxLockedMemoryBytes: 100K
 @note   Also limits the maximum number of bytes of shared memory the app can lock into
         memory using @c shmctl().
 
+@subsection defFilesAdef_processMaxStackBytes maxStackBytes
+
+Specifies the maximum bytes of memory the process uses for its stack.
+
+This value must be less than @ref defFilesAdef_maxMemoryBytes.
+
+The default is determined by the OS.
+
+@code
+maxStackBytes: 800K
+@endcode
+
 @subsection defFilesAdef_processwatchdogAction watchdogAction
 
 Specifies the action the Supervisor should take when a @b process that is subscribed

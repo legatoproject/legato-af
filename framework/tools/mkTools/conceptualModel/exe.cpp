@@ -25,7 +25,7 @@ Exe_t::Exe_t
 )
 //--------------------------------------------------------------------------------------------------
 :   path(exePath),
-    name(path::GetIdentifierSafeName(path::GetLastNode(path))),
+    name(Exe_t::NameFromPath(path)),
     appPtr(appPointer),
     workingDir(mkWorkingDir),
     exeDefPtr(NULL),

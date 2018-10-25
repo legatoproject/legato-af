@@ -353,7 +353,7 @@ void ModuleBuildScriptGenerator_t::GenerateStagingBundleBuildStatements
 )
 //--------------------------------------------------------------------------------------------------
 {
-    auto& allBundledFiles = modulePtr->getTargetInfo<target::FileSystemInfo_t>()->allBundledFiles;
+    auto& allBundledFiles = modulePtr->GetTargetInfo<target::FileSystemInfo_t>()->allBundledFiles;
 
     for (auto fileSystemObjPtr : modulePtr->bundledFiles)
     {
@@ -385,7 +385,7 @@ void ModuleBuildScriptGenerator_t::GenerateModuleBundleBuildStatement
 //--------------------------------------------------------------------------------------------------
 {
     // Give this a FS target info
-    modulePtr->setTargetInfo(new target::FileSystemInfo_t());
+    modulePtr->SetTargetInfo(new target::FileSystemInfo_t());
 
     // Generate build statements for bundling files into the staging area.
     GenerateStagingBundleBuildStatements(modulePtr);
@@ -407,7 +407,10 @@ void ModuleBuildScriptGenerator_t::Generate
     GenerateCommentHeader(modulePtr);
     script << "builddir = " << path::MakeAbsolute(buildParams.workingDir) << "\n\n";
     script << "target = " << buildParams.target << "\n\n";
-    baseGeneratorPtr->GenerateIfgenFlagsDef();
+    script << "ifgenFlags = ";
+    baseGeneratorPtr->GenerateIfgenFlags();
+    script << "\n\n";
+
     baseGeneratorPtr->GenerateBuildRules();
 
     if (!buildParams.codeGenOnly)

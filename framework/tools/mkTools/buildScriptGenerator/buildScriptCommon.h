@@ -66,7 +66,8 @@ class BuildScriptGenerator_t
         const std::string scriptPath;
 
     public:
-        virtual void GenerateIfgenFlagsDef(void);
+        virtual void GenerateIfgenFlags(void);
+        virtual void GenerateCFlags(void);
         virtual void GenerateBuildRules(void);
 
         virtual void GenerateNinjaScriptBuildStatement(const std::set<std::string>& dependencies);

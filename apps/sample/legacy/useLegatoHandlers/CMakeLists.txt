@@ -10,6 +10,7 @@ generate_client(${LEGATO_ROOT}/interfaces/modemServices/le_mdmDefs.api)
 generate_client(${LEGATO_ROOT}/interfaces/modemServices/le_sms.api)
 add_executable(legacy-LegatoHandlers-bin main.c
   ${CMAKE_CURRENT_BINARY_DIR}/le_sms_client.c
+  ${CMAKE_CURRENT_BINARY_DIR}/le_sms_commonclient.c
   ${CMAKE_CURRENT_BINARY_DIR}/le_mdmDefs_interface.h)
 target_link_libraries(legacy-LegatoHandlers-bin ${LEGATO_LIBRARY_PATH} pthread rt)
 

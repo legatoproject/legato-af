@@ -144,10 +144,12 @@ options {
         tokens = CommonTokenStream(lexer)
         parser = interfaceParser(tokens)
         parser.searchPath=searchPath
+        baseName = os.path.splitext(os.path.basename(apiPath))[0]
         if ifaceName == None:
-            parser.iface.name = os.path.splitext(os.path.basename(apiPath))[0]
+            parser.iface.name = baseName
         else:
             parser.iface.name = ifaceName
+        parser.iface.baseName = baseName
         parser.iface.path = apiPath
 
         iface = parser.apiDocument()

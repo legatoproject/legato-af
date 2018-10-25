@@ -63,7 +63,7 @@ void RunNinja
  * Generate code for a given component.
  */
 //--------------------------------------------------------------------------------------------------
-void GenerateCode
+void GenerateLinuxCode
 (
     model::Component_t* componentPtr,
     const mk::BuildParams_t& buildParams
@@ -72,12 +72,12 @@ void GenerateCode
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Generate code for all the components in a given set.
+ * Generate code for a given component.
  */
 //--------------------------------------------------------------------------------------------------
-void GenerateCode
+void GenerateRtosCode
 (
-    const std::set<model::Component_t*>& components,  ///< Set of components to generate code for.
+    model::Component_t* componentPtr,
     const mk::BuildParams_t& buildParams
 );
 
@@ -87,7 +87,19 @@ void GenerateCode
  * Generate code for all the components in a given map.
  */
 //--------------------------------------------------------------------------------------------------
-void GenerateCode
+void GenerateLinuxCode
+(
+    const std::map<std::string, model::Component_t*>& components,
+    const mk::BuildParams_t& buildParams
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate code for all the components in a given map.
+ */
+//--------------------------------------------------------------------------------------------------
+void GenerateRtosCode
 (
     const std::map<std::string, model::Component_t*>& components,
     const mk::BuildParams_t& buildParams
@@ -99,7 +111,19 @@ void GenerateCode
  * Generate code specific to an individual app (excluding code for the components).
  */
 //--------------------------------------------------------------------------------------------------
-void GenerateCode
+void GenerateLinuxCode
+(
+    model::App_t* appPtr,
+    const mk::BuildParams_t& buildParams
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate code specific to an individual app (excluding code for the components).
+ */
+//--------------------------------------------------------------------------------------------------
+void GenerateRtosCode
 (
     model::App_t* appPtr,
     const mk::BuildParams_t& buildParams

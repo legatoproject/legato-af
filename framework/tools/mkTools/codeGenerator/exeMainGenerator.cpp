@@ -107,10 +107,19 @@ void GenerateCLangExeMain
     // If there are C/C++ source files other than the _main.c file,
     if ((!exePtr->cObjectFiles.empty()) || (!exePtr->cxxObjectFiles.empty()))
     {
-        outputFile << "// Declare default component's COMPONENT_INIT function.\n"
-                      "void " << initFuncName << "(void);\n"
-                      "\n"
-                      "\n";
+        outputFile <<
+            "// Declare default component's COMPONENT_INIT_ONCE function,\n"
+            "// and provide default empty implementation.\n"
+            "__attribute__((weak))\n"
+            "void " << initFuncName << "_ONCE(void)\n"
+            "{\n"
+            "}\n"
+            "\n"
+            "\n"
+            "// Declare default component's COMPONENT_INIT function.\n"
+            "void " << initFuncName << "(void);\n"
+            "\n"
+            "\n";
     }
 
     // Define function that loads a shared library using dlopen().
@@ -131,10 +140,10 @@ void GenerateCLangExeMain
                   "\n"
 
     // Define main().
-                  "int main(int argc, char* argv[])\n"
+                  "int main(int argc, const char* argv[])\n"
                   "{\n"
                   "    // Pass the args to the Command Line Arguments API.\n"
-                  "    le_arg_SetArgs((size_t)argc, (const char**)argv);\n"
+                  "    le_arg_SetArgs((size_t)argc, argv);\n"
 
     // Make stdout line buffered.
                   "    // Make stdout line buffered so printf shows up in logs without flushing.\n"
@@ -174,7 +183,7 @@ void GenerateCLangExeMain
             }
         }
 
-        std::string componentLib = componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib;
+        std::string componentLib = componentPtr->GetTargetInfo<target::LinuxComponentInfo_t>()->lib;
 
         if (!componentLib.empty())
         {
@@ -187,8 +196,12 @@ void GenerateCLangExeMain
     // If there are C/C++ source files other than the _main.c file,
     if ((!exePtr->cObjectFiles.empty()) || (!exePtr->cxxObjectFiles.empty()))
     {
-        outputFile << "// Queue the default component's COMPONENT_INIT to Event Loop.\n"
-                      "    event_QueueComponentInit(" << initFuncName << ");\n";
+        outputFile <<
+            "// Queue the default component's COMPONENT_INIT_ONCE to Event Loop.\n"
+            "    event_QueueComponentInit(" << initFuncName << "_ONCE);\n"
+            "\n"
+            "// Queue the default component's COMPONENT_INIT to Event Loop.\n"
+            "    event_QueueComponentInit(" << initFuncName << ");\n";
     }
 
     outputFile << "    // Set the Signal Fault handler\n"

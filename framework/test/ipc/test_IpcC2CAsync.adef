@@ -1,0 +1,34 @@
+/*
+ * Copyright (C) Sierra Wireless Inc.
+ */
+
+start: manual
+
+executables:
+{
+    server = ( CAsyncServer )
+    client = ( CClient )
+}
+
+processes:
+{
+    run:
+    {
+        ( server )
+    }
+
+    faultAction: restart
+}
+
+processes:
+{
+    run:
+    {
+        ( client )
+    }
+}
+
+bindings:
+{
+    client.CClient.ipcTest -> server.CAsyncServer.ipcTest
+}

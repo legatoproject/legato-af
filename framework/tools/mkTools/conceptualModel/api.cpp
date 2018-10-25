@@ -182,6 +182,27 @@ ApiFile_t::ApiFile_t
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get paths for all common interface .h files which must be generated whenever
+ * this API is used, but are not associated with a specific API binding.
+ *
+ * @note These paths are all relative to the root of the working directory tree.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ApiFile_t::GetCommonInterfaceFiles
+(
+    InterfaceCFiles_t& cFiles
+) const
+//--------------------------------------------------------------------------------------------------
+{
+    cFiles.interfaceFile = codeGenDir + "/"  + defaultPrefix + "_common.h";
+    cFiles.internalHFile = codeGenDir + "/" + defaultPrefix + "_messages.h";
+    cFiles.sourceFile    = codeGenDir + "/" + defaultPrefix + "_commonclient.c";
+    cFiles.objectFile    = cFiles.sourceFile + ".o";
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Add to a given set the paths for all the client-side interface .h files generated for all
  * .api files that a given .api file includes through USETYPES statements.
  *
@@ -191,7 +212,7 @@ ApiFile_t::ApiFile_t
 void ApiFile_t::GetClientUsetypesApiHeaders
 (
     std::set<std::string>& results  ///< [OUT] Set to add results to.
-)
+) const
 //--------------------------------------------------------------------------------------------------
 {
     for (const auto includedApiPtr : includes)
@@ -215,10 +236,10 @@ void ApiFile_t::GetClientUsetypesApiHeaders
 void ApiFile_t::GetServerUsetypesApiHeaders
 (
     std::set<std::string>& results  ///< [OUT] Set to add results to.
-)
+) const
 //--------------------------------------------------------------------------------------------------
 {
-    for (const auto includedApiPtr : includes)
+    for (const auto &includedApiPtr : includes)
     {
         results.insert(includedApiPtr->GetServerInterfaceFile(includedApiPtr->defaultPrefix) );
 
@@ -230,17 +251,46 @@ void ApiFile_t::GetServerUsetypesApiHeaders
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get paths for all common interface.h files generate for all
+ * .api files included by this one.  Results are added to the set provided.
+ *
+ * @note These paths are all relative to the root of the working directory tree.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ApiFile_t::GetCommonUsetypesApiHeaders
+(
+    std::set<std::string>& results  ///< [OUT] Set to add results to.
+) const
+//--------------------------------------------------------------------------------------------------
+{
+    for (const auto &includedApiPtr : includes)
+    {
+        InterfaceCFiles_t cFiles;
+
+        includedApiPtr->GetCommonInterfaceFiles(cFiles);
+        results.insert( cFiles.interfaceFile );
+
+        // Recurse.
+        includedApiPtr->GetCommonUsetypesApiHeaders(results);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Constructor for the .api reference objects' base class.
  */
 //--------------------------------------------------------------------------------------------------
 ApiRef_t::ApiRef_t
 (
+    const parseTree::TokenList_t* itemPtr, ///< Ptr to the reference in the parse tree.
     ApiFile_t* aPtr,            ///< Ptr to the .api file object.
     Component_t* cPtr,          ///< Ptr to the component.
     const std::string& iName    ///< The internal name used inside the component.
 )
 //--------------------------------------------------------------------------------------------------
-:   apiFilePtr(aPtr),
+:   itemPtr(itemPtr),
+    apiFilePtr(aPtr),
     componentPtr(cPtr),
     internalName(iName)
 //--------------------------------------------------------------------------------------------------
@@ -255,12 +305,13 @@ ApiRef_t::ApiRef_t
 //--------------------------------------------------------------------------------------------------
 ApiTypesOnlyInterface_t::ApiTypesOnlyInterface_t
 (
+    const parseTree::TokenList_t* itemPtr,  ///< Ptr to the reference in the parse tree.
     ApiFile_t* aPtr,            ///< Ptr to the .api file object.
     Component_t* cPtr,          ///< Ptr to the component.
     const std::string& iName    ///< The internal name used inside the component.
 )
 //--------------------------------------------------------------------------------------------------
-:   ApiRef_t(aPtr, cPtr, iName)
+:   ApiRef_t(itemPtr, aPtr, cPtr, iName)
 //--------------------------------------------------------------------------------------------------
 {
 }
@@ -332,12 +383,13 @@ const
 //--------------------------------------------------------------------------------------------------
 ApiClientInterface_t::ApiClientInterface_t
 (
+    const parseTree::TokenList_t* itemPtr, ///< Ptr to the reference in the parse tree.
     ApiFile_t* aPtr,            ///< Ptr to the .api file object.
     Component_t* cPtr,          ///< Ptr to the component.
     const std::string& iName    ///< The internal name used inside the component.
 )
 //--------------------------------------------------------------------------------------------------
-:   ApiRef_t(aPtr, cPtr, iName),
+:   ApiRef_t(itemPtr, aPtr, cPtr, iName),
     manualStart(false),
     optional(false)
 //--------------------------------------------------------------------------------------------------
@@ -360,7 +412,7 @@ const
     std::string codeGenDir = path::Combine(apiFilePtr->codeGenDir, "client/");
 
     cFiles.interfaceFile = codeGenDir + internalName + "_interface.h";
-    cFiles.internalHFile = codeGenDir + internalName + "_messages.h";
+    cFiles.internalHFile = codeGenDir + internalName + "_service.h";
     cFiles.sourceFile = codeGenDir + internalName + "_client.c";
     cFiles.objectFile = codeGenDir + internalName + "_client.c.o";
 }
@@ -414,13 +466,14 @@ const
 //--------------------------------------------------------------------------------------------------
 ApiServerInterface_t::ApiServerInterface_t
 (
+    const parseTree::TokenList_t* itemPtr, ///< Ptr to the reference in the parse tree.
     ApiFile_t* aPtr,            ///< Ptr to the .api file object.
     Component_t* cPtr,          ///< Ptr to the component.
     const std::string& iName,   ///< The internal name used inside the component.
     bool isAsync                ///< true if async server-side interface code should be generated.
 )
 //--------------------------------------------------------------------------------------------------
-:   ApiRef_t(aPtr, cPtr, iName),
+:   ApiRef_t(itemPtr, aPtr, cPtr, iName),
     async(isAsync),
     manualStart(false)
 //--------------------------------------------------------------------------------------------------
@@ -452,7 +505,7 @@ const
     }
 
     cFiles.interfaceFile = codeGenDir + internalName + "_server.h";
-    cFiles.internalHFile = codeGenDir + internalName + "_messages.h";
+    cFiles.internalHFile = codeGenDir + internalName + "_service.h";
     cFiles.sourceFile = codeGenDir + internalName + "_server.c";
     cFiles.objectFile = codeGenDir + internalName + "_server.o";
 }

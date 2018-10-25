@@ -50,5 +50,21 @@ DefFile_t::DefFile_t
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Raise an exception about a def file as a whole.
+ */
+//--------------------------------------------------------------------------------------------------
+void DefFile_t::ThrowException
+(
+    const std::string& message
+)
+const
+{
+    throw mk::Exception_t(
+        mk::format(LE_I18N("%s: error: %s"), path, message)
+    );
+}
+
 
 } // namespace parseTree

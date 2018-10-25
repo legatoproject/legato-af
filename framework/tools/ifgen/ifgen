@@ -141,6 +141,8 @@ def ParseArguments(parser, argList):
     # Get the base file name, without any extensions.
     apiFileName = os.path.splitext( os.path.basename(args.interfaceFile) )[0]
 
+    args.apiFileName = apiFileName
+
     # Use the default service instance name, if none is given.
     if not args.serviceName:
         args.serviceName = apiFileName
@@ -330,17 +332,20 @@ def Main():
                             # with easier to use names.
                             serviceName=args.serviceName,
                             apiName=args.namePrefix,
+                            apiBaseName=args.apiFileName,
                             idString=hashValue,
                             messageSize=interface.getMessageSize(),
-                            # At this point we just need names of imports, not the full parse
+                            # Break-out various aspects of the interface for convenience
                             imports=interface.imports.keys(),
                             types=interface.types.values(),
                             allTypes=allTypes,
                             definitions=interface.definitions.values(),
                             functions=interface.functions.values(),
                             events=interface.events.values(),
-                            fileComments=interface.comments)\
-                    .dump(destPath, encoding='utf-8')
+                            fileComments=interface.comments,
+                            # But also provide the interface itself, in case it's needed
+                            interface=interface
+            ).dump(destPath, encoding='utf-8')
 
 #
 # Init

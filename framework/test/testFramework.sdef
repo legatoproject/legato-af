@@ -26,6 +26,12 @@ apps:
     semaphore/test_Semaphore
     fdMonitor/test_FdMonitorSocket
     fdMonitor/test_FdMonitorFifo
+    ipc/test_IpcC2C
+    #if ${CONFIG_LINUX} = y
+        ipc/test_IpcC2CDirect
+    #endif
+    ipc/test_IpcC2CAsync
+    ipc/test_IpcCRelay
     ipc/test_Optional1
     ipc/test_Optional2
     fs/test_Fs

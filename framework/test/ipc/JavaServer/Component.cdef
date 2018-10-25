@@ -1,0 +1,18 @@
+javaPackage:
+{
+    io.legato.test
+}
+
+provides:
+{
+    api:
+    {
+        ipcTest.api
+    }
+}
+
+requires: {
+    component: {
+        embeddedOracleJvm
+    }
+}

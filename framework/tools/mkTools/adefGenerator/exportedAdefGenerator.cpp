@@ -476,6 +476,7 @@ static void GenerateProcessesSection
         w |= GenerateValue(defStream, "maxCoreDumpFileBytes", procEnv->maxCoreDumpFileBytes, ind);
         w |= GenerateValue(defStream, "maxLockedMemoryBytes", procEnv->maxLockedMemoryBytes, ind);
         w |= GenerateValue(defStream, "maxFileDescriptors", procEnv->maxFileDescriptors, ind);
+        w |= GenerateValue(defStream, "maxStackBytes", procEnv->maxStackBytes, ind);
         w |= GenerateValue(defStream, "watchdogAction", procEnv->watchdogAction, ind);
         w |= GenerateValue(defStream, "watchdogTimeout", procEnv->watchdogTimeout, ind);
         w |= GenerateValue(defStream, "maxWatchdogTimeout", procEnv->maxWatchdogTimeout, ind);
@@ -863,13 +864,16 @@ static void GatherBinaries
                      bundled);
     }
 
-    stagingPath = path::Combine(buildParams.workingDir, "staging") + "/";
     for (auto componentPtr : appPtr->components)
     {
-        auto libPath = componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib;
+        auto libPath = componentPtr->GetTargetInfo<target::LinuxComponentInfo_t>()->lib;
         if (!libPath.empty())
         {
-            GatherBinary(libPath,
+            auto libStagedPath = "$builddir/" + appPtr->workingDir + "/staging/read-only/lib/" +
+                path::GetLastNode(componentPtr->
+                                  GetTargetInfo<target::LinuxComponentInfo_t>()->
+                                  lib);
+            GatherBinary(libStagedPath,
                          stagingPath,
                          bundled);
         }

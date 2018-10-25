@@ -53,6 +53,6 @@
 #include "configGenerator/configGenerator.h"
 #include "adefGenerator/exportedAdefGenerator.h"
 #include "generators.h"
-#include "targetInfo/linux.h"
+#include "targetInfo/targetInfo.h"
 
 #endif  // LEGATO_MKTOOLS_H_INCLUDE_GUARD

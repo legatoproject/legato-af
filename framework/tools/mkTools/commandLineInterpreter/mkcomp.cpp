@@ -34,12 +34,19 @@ std::string BuildOutputPath = "";
 // a new build.ninja.
 static bool DontRunNinja = false;
 
+/// Steps required to build a component for Linux
 static generator::ComponentGenerator_t LinuxSteps[] =
 {
     code::GenerateInterfacesHeader,
-    code::GenerateComponentMainFile,
-    ninja::Generate,
+    code::GenerateLinuxComponentMainFile,
+    ninja::GenerateLinux,
     NULL
+};
+
+/// All supported OS types, and the steps needed to build them.
+static const std::map<std::string, generator::ComponentGenerator_t*> OSTypeSteps
+{
+    std::pair<std::string, generator::ComponentGenerator_t*> { "linux", LinuxSteps },
 };
 
 
@@ -317,16 +324,28 @@ void MakeComponent
     // Generate the conceptual object model.
     model::Component_t* componentPtr = modeller::GetComponent(ComponentPath, BuildParams);
 
-    // Add Linux info -- for now always compiling for Linux.
-    componentPtr->setTargetInfo(new target::LinuxComponentInfo_t(componentPtr, BuildParams));
-
+    // Set build output depending on build type
     if (!BuildOutputPath.empty())
     {
-        componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib = BuildOutputPath;
+        if (BuildParams.osType == "linux")
+        {
+            // Add Linux info
+            componentPtr->SetTargetInfo(
+                new target::LinuxComponentInfo_t(componentPtr, BuildParams));
+
+            componentPtr->GetTargetInfo<target::LinuxComponentInfo_t>()->lib = BuildOutputPath;
+        }
+        else if (BuildParams.osType == "rtos")
+        {
+            // Add RTOS info
+            componentPtr->SetTargetInfo(new target::RtosComponentInfo_t(componentPtr, BuildParams));
+
+            componentPtr->GetTargetInfo<target::RtosComponentInfo_t>()->staticlib = BuildOutputPath;
+        }
     }
 
-    // Run all steps to generate a Linux component
-    generator::RunAllGenerators(LinuxSteps, componentPtr, BuildParams);
+    // Run all steps to generate a component
+    generator::RunAllGenerators(OSTypeSteps, componentPtr, BuildParams);
 
     // If we haven't been asked not to, run ninja.
     if (!DontRunNinja)

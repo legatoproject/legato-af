@@ -7,7 +7,7 @@
  #
  #  Copyright (C) Sierra Wireless Inc.
  #}
-{%- import 'pack.templ' as pack -%}
+{%- import 'pack.templ' as pack with context -%}
 /*
  * ====================== WARNING ======================
  *
@@ -18,23 +18,22 @@
  */
 
 
-#ifndef {{apiName|upper}}_MESSAGES_H_INCLUDE_GUARD
-#define {{apiName|upper}}_MESSAGES_H_INCLUDE_GUARD
+#ifndef {{apiBaseName|upper}}_MESSAGES_H_INCLUDE_GUARD
+#define {{apiBaseName|upper}}_MESSAGES_H_INCLUDE_GUARD
 
 
-#include "legato.h"
-
-#define PROTOCOL_ID_STR "{{idString}}"
-
-#ifdef MK_TOOLS_BUILD
-    extern const char** {{apiName}}_ServiceInstanceNamePtr;
-    #define SERVICE_INSTANCE_NAME (*{{apiName}}_ServiceInstanceNamePtr)
+#include "{{apiBaseName}}_common.h"
+{% if args.localService %}
+#if UINT32_MAX == UINTPTR_MAX
+#  define _MAX_MSG_SIZE {{interface|LocalMessageSize(4)}}
+#elif UINT64_MAX == UINTPTR_MAX
+#  define _MAX_MSG_SIZE {{interface|LocalMessageSize(8)}}
 #else
-    #define SERVICE_INSTANCE_NAME "{{serviceName}}"
+#  error "Unsupported pointer size -- only 32- and 64-bit are supported for local services."
 #endif
-
-
+{%- else %}
 #define _MAX_MSG_SIZE {{messageSize}}
+{%- endif %}
 
 // Define the message type for communicating between client and server
 typedef struct __attribute__((packed))
@@ -44,7 +43,7 @@ typedef struct __attribute__((packed))
 }
 _Message_t;
 {% for function in functions %}
-#define _MSGID_{{apiName}}_{{function.name}} {{loop.index0}}
+#define _MSGID_{{apiBaseName}}_{{function.name}} {{loop.index0}}
 {%- endfor %}
 
 
@@ -60,4 +59,4 @@ _Message_t;
 
 {%- endfor %}
 
-#endif // {{apiName|upper}}_MESSAGES_H_INCLUDE_GUARD
+#endif // {{apiBaseName|upper}}_MESSAGES_H_INCLUDE_GUARD

@@ -235,6 +235,10 @@ static parseTree::CompoundItem_t* ParseProcessesSubsection
     {
         return ParseSimpleSection(lexer, subsectionNameTokenPtr, parseTree::Token_t::INTEGER);
     }
+    else if (subsectionName == "maxStackBytes")
+    {
+        return ParseSimpleSection(lexer, subsectionNameTokenPtr, parseTree::Token_t::INTEGER);
+    }
     else if (subsectionName == "watchdogAction")
     {
         return ParseWatchdogAction(lexer, subsectionNameTokenPtr);

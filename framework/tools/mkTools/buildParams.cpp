@@ -25,6 +25,7 @@ BuildParams_t::BuildParams_t
 :   beVerbose(false),
     jobCount(0),
     target("localhost"),
+    osType("linux"),
     codeGenOnly(false),
     isStandAloneComp(false),
     noPie(false),

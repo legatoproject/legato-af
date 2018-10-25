@@ -24,6 +24,8 @@ struct Component_t : public HasTargetInfo_t
 
     std::string workingDir; ///< Working dir path for this component, relative to working dir root.
 
+    std::string initFuncName;   ///< Real name of the COMPONENT_INIT function ("" if no lib).
+
     std::list<ObjectFile_t*> cObjectFiles;  ///< List of .o files to build from C source files.
     std::list<ObjectFile_t*> cxxObjectFiles;///< List of .o files to build from C++ source files.
     std::list<std::string>  headerDirs; ///< List of directory to search for header files.
@@ -151,7 +153,7 @@ struct Exe_t;
  * Represents an instatiation of a component within an executable.
  **/
 //--------------------------------------------------------------------------------------------------
-struct ComponentInstance_t
+struct ComponentInstance_t : public HasTargetInfo_t
 {
     Exe_t* exePtr;
 
@@ -160,6 +162,9 @@ struct ComponentInstance_t
     std::list<ApiServerInterfaceInstance_t*> serverApis; ///< Server-side interface instances.
 
     std::list<ApiClientInterfaceInstance_t*> clientApis; ///< Client-side interface instances.
+
+    /// Component instances required by this one (e.g. locally bound components).
+    std::set<ComponentInstance_t*> requiredComponentInstances;
 
     ComponentInstance_t(Exe_t* ePtr, Component_t* cPtr);
 

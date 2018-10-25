@@ -11,6 +11,8 @@
 #ifndef LEGATO_MKTOOLS_NINJA_APP_BUILD_SCRIPT_H_INCLUDE_GUARD
 #define LEGATO_MKTOOLS_NINJA_APP_BUILD_SCRIPT_H_INCLUDE_GUARD
 
+#include "exeBuildScript.h"
+
 namespace ninja
 {
 
@@ -41,16 +43,6 @@ class AppBuildScriptGenerator_t : protected RequireExeGenerator_t
           RequireExeGenerator_t(exeGeneratorPtr) {}
 
     public:
-        explicit AppBuildScriptGenerator_t(std::shared_ptr<BuildScriptGenerator_t>
-                                           baseGeneratorPtr)
-        : RequireBaseGenerator_t(baseGeneratorPtr),
-          RequireExeGenerator_t(std::make_shared<ExeBuildScriptGenerator_t>(baseGeneratorPtr)) {}
-
-        AppBuildScriptGenerator_t(const std::string scriptPath,
-                                  const mk::BuildParams_t& buildParams)
-        : RequireBaseGenerator_t(std::make_shared<BuildScriptGenerator_t>(scriptPath, buildParams)),
-          RequireExeGenerator_t(std::make_shared<ExeBuildScriptGenerator_t>(baseGeneratorPtr)) {}
-
         virtual void GenerateBuildRules(void);
         virtual void GenerateExeBuildStatements(model::App_t* appPtr);
         virtual void GenerateAppBundleBuildStatement(model::App_t* appPtr,

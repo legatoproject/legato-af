@@ -11,7 +11,7 @@
 #
 
 import interfaceIR
-from jinja2 import environmentfilter
+from jinja2 import contextfilter, environmentfilter
 
 #---------------------------------------------------------------------------------------------------
 # Global objects used by the C API
@@ -148,7 +148,7 @@ def FormatDirection(direction):
     else:
         return "INOUT"
 
-def FormatType(apiType):
+def FormatType(apiType, useBaseName=False):
     """Produce a C type from an API type"""
     BasicTypeMapping = {
         interfaceIR.UINT8_TYPE:  "uint8_t",
@@ -169,16 +169,23 @@ def FormatType(apiType):
         interfaceIR.ONOFF_TYPE:  "le_onoff_t",
         _CONTEXT_TYPE: "void*"
     }
+
     if apiType == None:
         return "void"
     elif isinstance(apiType, interfaceIR.BasicType):
         return BasicTypeMapping[apiType]
-    elif isinstance(apiType, interfaceIR.ReferenceType):
-        return "%s_%sRef_t" % (apiType.iface.name, apiType.name)
-    elif isinstance(apiType, interfaceIR.HandlerType):
-        return "%s_%sFunc_t" % (apiType.iface.name, apiType.name)
+
+    if useBaseName:
+        apiName = apiType.iface.baseName
     else:
-        return "%s_%s_t" % (apiType.iface.name, apiType.name)
+        apiName = apiType.iface.name
+
+    if isinstance(apiType, interfaceIR.ReferenceType):
+        return "%s_%sRef_t" % (apiName, apiType.name)
+    elif isinstance(apiType, interfaceIR.HandlerType):
+        return "%s_%sFunc_t" % (apiName, apiType.name)
+    else:
+        return "%s_%s_t" % (apiName, apiType.name)
 
 def FormatTypeInitializer(apiType,useBaseName=False):
     """Produce a C initializer from an API type"""
@@ -204,7 +211,7 @@ def FormatTypeInitializer(apiType,useBaseName=False):
     if isinstance(apiType, interfaceIR.BasicType):
         return BasicTypeMapping[apiType]
     elif isinstance(apiType, interfaceIR.EnumType) or isinstance(apiType, interfaceIR.BitmaskType):
-        return "({0}) 0".format(FormatType(apiType))
+        return "({0}) 0".format(FormatType(apiType,useBaseName))
     elif isinstance(apiType, interfaceIR.StructType):
         return "{ }"
     else:
@@ -237,29 +244,29 @@ def FormatParameterPtr(parameter):
         return "&" + FormatParameterName(parameter)
 
 @environmentfilter
-def FormatParameter(env, parameter, forceInput=False):
+def FormatParameter(env, parameter, forceInput=False, useBaseName=False):
     if isinstance(parameter, interfaceIR.StringParameter):
         return ((u"const " if forceInput or parameter.direction == interfaceIR.DIR_IN else u"") +
-                FormatType(parameter.apiType) +
+                FormatType(parameter.apiType,useBaseName) +
                 (u" LE_NONNULL " if not env.globals.get('dontGenerateAttrs') and
                  parameter.direction == interfaceIR.DIR_IN else u" ") +
                 parameter.name)
     elif isinstance(parameter, interfaceIR.ArrayParameter):
         return ((u"const " if forceInput or parameter.direction == interfaceIR.DIR_IN else u"") +
-                FormatType(parameter.apiType) + "* " + parameter.name + "Ptr")
+                FormatType(parameter.apiType,useBaseName) + "* " + parameter.name + "Ptr")
     elif isinstance(parameter.apiType, interfaceIR.HandlerType):
-        return FormatType(parameter.apiType) + " " + parameter.name + "Ptr"
+        return FormatType(parameter.apiType,useBaseName) + " " + parameter.name + "Ptr"
     elif isinstance(parameter.apiType, interfaceIR.StructType):
         if forceInput or parameter.direction == interfaceIR.DIR_IN:
-            return u"const " + FormatType(parameter.apiType) + " * " + \
+            return u"const " + FormatType(parameter.apiType,useBaseName) + " * " + \
                 (u"LE_NONNULL " if not env.globals.get('dontGenerateAttrs') else "") + \
                 parameter.name + "Ptr"
         else:
-            return FormatType(parameter.apiType) + " * " + parameter.name + "Ptr"
+            return FormatType(parameter.apiType,useBaseName) + " * " + parameter.name + "Ptr"
     elif forceInput or parameter.direction == interfaceIR.DIR_IN:
-        return FormatType(parameter.apiType) + " " + DecorateName(parameter.name)
+        return FormatType(parameter.apiType,useBaseName) + " " + DecorateName(parameter.name)
     else:
-        return FormatType(parameter.apiType) + "* " + parameter.name + "Ptr"
+        return FormatType(parameter.apiType,useBaseName) + "* " + parameter.name + "Ptr"
 
 def GetParameterCount(param):
     """
@@ -306,28 +313,65 @@ _PackFunctionMapping = {
     interfaceIR.ONOFF_TYPE:  "le_pack_%sOnOff",
 }
 
-def GetPackFunction(apiType):
+@contextfilter
+def GetPackFunction(context, apiType):
     if isinstance(apiType, interfaceIR.ReferenceType):
         return "le_pack_PackReference"
     elif isinstance(apiType, interfaceIR.BitmaskType) or \
          isinstance(apiType, interfaceIR.EnumType) or \
          isinstance(apiType, interfaceIR.StructType):
-        return "{}_Pack{}".format(apiType.iface.name, apiType.name)
+        return "{}_Pack{}".format(apiType.iface.baseName, apiType.name)
     else:
         return _PackFunctionMapping[apiType] % ("Pack", )
 
-def GetUnpackFunction(apiType):
+@contextfilter
+def GetUnpackFunction(context, apiType):
     if isinstance(apiType, interfaceIR.ReferenceType):
         return "le_pack_UnpackReference"
     elif isinstance(apiType, interfaceIR.BitmaskType) or \
          isinstance(apiType, interfaceIR.EnumType) or \
          isinstance(apiType, interfaceIR.StructType):
-        return "{}_Unpack{}".format(apiType.iface.name, apiType.name)
+        return "{}_Unpack{}".format(apiType.iface.baseName, apiType.name)
     else:
         return _PackFunctionMapping[apiType] % ("Unpack", )
 
 def EscapeString(string):
     return string.encode('string_escape').replace('"', '\\"')
+
+def GetLocalParameterMsgSize(parameter, pointerSize, direction):
+    if isinstance(parameter, interfaceIR.StringParameter) or \
+       isinstance(parameter, interfaceIR.ArrayParameter):
+        return interfaceIR.UINT32_TYPE.size + pointerSize
+    else:
+        return parameter.GetMaxSize(direction)
+
+def GetLocalFunctionMsgSize(function, pointerSize):
+    return max(sum([GetLocalParameterMsgSize(parameter, pointerSize, interfaceIR.DIR_IN)
+                    for parameter in function.parameters]),
+               sum([function.returnType.size if function.returnType else 0] +
+                   [GetLocalParameterMsgSize(parameter, pointerSize, interfaceIR.DIR_OUT)
+                    for parameter in function.parameters]))
+
+
+def GetLocalMessageSize(interface, pointerSize):
+    return 8 + max([1] +
+                   [GetLocalFunctionMsgSize(function, pointerSize)
+                    for function in interface.functions.values()] +
+                   [handler.GetMessageSize()
+                    for handler in interface.types.values()
+                    if isinstance(handler, interfaceIR.HandlerType)])
+
+def GetCOutputBufferCount(function):
+    outputCount = 0
+    for parameter in function.parameters:
+        if parameter.direction & interfaceIR.DIR_OUT != 0:
+            if isinstance(parameter, interfaceIR.ArrayParameter) or \
+               isinstance(parameter, interfaceIR.StringParameter):
+                outputCount += 1
+    return outputCount
+
+def GetMaxCOutputBuffers(interface):
+    return max([GetCOutputBufferCount(function) for function in interface.functions.values()])
 
 #---------------------------------------------------------------------------------------------------
 # Test functions

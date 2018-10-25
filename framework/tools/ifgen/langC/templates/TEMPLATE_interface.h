@@ -11,6 +11,7 @@
 #include "{{import}}_interface.h"
 {%- endfor %}
 {%- endif %}
+
 {%- endblock %}
 {% block HeaderComments %}
 {% for comment in fileComments -%}
@@ -76,7 +77,7 @@ le_result_t {{apiName}}_TryConnectService
  * to continue without exiting, it should call longjmp() from inside the handler.
  */
 //--------------------------------------------------------------------------------------------------
-void {{apiName}}_SetServerDisconnectHandler
+LE_FULL_API void {{apiName}}_SetServerDisconnectHandler
 (
     {{apiName}}_DisconnectHandler_t disconnectHandler,
     void *contextPtr

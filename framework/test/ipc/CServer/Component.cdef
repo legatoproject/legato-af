@@ -1,0 +1,21 @@
+/*
+ * Copyright (C) Sierra Wireless Inc.
+ */
+
+provides:
+{
+    api:
+    {
+        // Only define as in-place on Linux, as direct interferes with other tests on RTOS.
+#if ${CONFIG_LINUX} = y
+        ipcTest.api      [direct]
+#else
+        ipcTest.api
+#endif
+    }
+}
+
+sources:
+{
+    cserver.c
+}

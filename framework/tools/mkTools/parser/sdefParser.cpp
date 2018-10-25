@@ -165,6 +165,7 @@ static parseTree::CompoundItem_t* ParseAppOverride
            || (sectionName == "maxMemoryBytes")
            || (sectionName == "maxMQueueBytes")
            || (sectionName == "maxQueuedSignals")
+           || (sectionName == "maxStackBytes")
            || (sectionName == "watchdogTimeout")
            || (sectionName == "maxWatchdogTimeout")
            || (sectionName == "maxThreads")

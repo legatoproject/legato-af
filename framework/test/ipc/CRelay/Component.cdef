@@ -1,0 +1,24 @@
+/*
+ * Copyright (C) Sierra Wireless Inc.
+ */
+
+provides:
+{
+    api:
+    {
+        ipcServer = ipcTest.api
+    }
+}
+
+requires:
+{
+    api:
+    {
+        ipcClient = ipcTest.api
+    }
+}
+
+sources:
+{
+    crelay.c
+}

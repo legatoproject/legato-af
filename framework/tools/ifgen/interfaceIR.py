@@ -167,6 +167,9 @@ class HandlerType(Type):
             % (self.name,
                ", ".join([str(param) for param in self.parameters]))
 
+    def GetMessageSize(self):
+        return sum([parameter.GetMaxSize(DIR_IN) for parameter in self.parameters])
+
 class OldHandlerType(Type):
     """
     Magic type for old-style handlers.  When used as a parameter, will be converted to a handler
@@ -282,8 +285,11 @@ class Parameter(object):
         self.direction = direction
         self.comments = []
 
-    def GetMaxSize(self):
-        return self.apiType.size
+    def GetMaxSize(self, direction):
+        if direction & self.direction != 0:
+            return self.apiType.size
+        else:
+            return 0
 
     def __str__(self):
         result = "%s %s " % (self.apiType.name, self.name)
@@ -302,8 +308,17 @@ class ArrayParameter(Parameter):
         super(ArrayParameter, self).__init__(apiType, name, direction)
         self.maxCount = maxCount
 
-    def GetMaxSize(self):
-        return UINT32_TYPE.size + self.apiType.size * self.maxCount
+    def GetMaxSize(self, direction):
+        if direction == DIR_IN:
+            if self.direction & DIR_IN != 0:
+                return UINT32_TYPE.size + self.apiType.size * self.maxCount
+            else:
+                return UINT32_TYPE.size
+        elif direction == DIR_OUT:
+            if self.direction & DIR_OUT:
+                return UINT32_TYPE.size + self.apiType.size * self.maxCount
+            else:
+                return 0
 
     def __str__(self):
         result = "%s %s[%d] " % (self.apiType.name, self.name, self.maxCount)
@@ -321,9 +336,18 @@ class StringParameter(Parameter):
         super(StringParameter, self).__init__(STRING_TYPE, name, direction)
         self.maxCount = maxCount
 
-    def GetMaxSize(self):
+    def GetMaxSize(self, direction):
         # Size of a string element is always 1.
-        return UINT32_TYPE.size + self.maxCount
+        if direction == DIR_IN:
+            if self.direction & DIR_IN:
+                return UINT32_TYPE.size + self.maxCount
+            else:
+                return UINT32_TYPE.size
+        elif direction == DIR_OUT:
+            if self.direction & DIR_OUT:
+                return UINT32_TYPE.size + self.maxCount
+            else:
+                return 0
 
     def __str__(self):
         result = "%s %s[%d] " % (self.apiType.name, self.name, self.maxCount)
@@ -407,6 +431,11 @@ class Function(object):
                                              self.name,
                                              ",".join([repr(param) for param in self.parameters]))
 
+    def GetMessageSize(self):
+        return max(sum([parameter.GetMaxSize(DIR_IN) for parameter in self.parameters]),
+                   sum([self.returnType.size if self.returnType else 0] +
+                       [parameter.GetMaxSize(DIR_OUT) for parameter in self.parameters]))
+
 class Event(object):
     def __init__(self, name, parameters):
         self.name = name
@@ -465,6 +494,7 @@ class Interface(object):
         # Use ordered dictionaries here so these get emitted in the generated files in the
         # order they were declared.
         self.name = None
+        self.baseName = None
         self.path = None
         self.imports = collections.OrderedDict()
         self.types = collections.OrderedDict()
@@ -599,10 +629,8 @@ class Interface(object):
         the return value (if the function has one), and all input and output parameters.
         """
         return 8 + max([1] +
-                       [sum([function.returnType.size if function.returnType else 0] +
-                            [parameter.GetMaxSize() for parameter in function.parameters])
-                        for function in self.functions.values()] +
-                       [sum([parameter.GetMaxSize() for parameter in handler.parameters])
+                       [function.GetMessageSize() for function in self.functions.values()] +
+                       [handler.GetMessageSize()
                         for handler in self.types.values() if isinstance(handler, HandlerType)])
 
     def __str__(self):

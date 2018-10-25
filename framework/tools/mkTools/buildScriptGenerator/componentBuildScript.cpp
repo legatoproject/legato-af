@@ -93,29 +93,13 @@ void ComponentBuildScriptGenerator_t::GenerateCommonCAndCxxFlags
     // Include the component's generated sources directory (where interfaces.h is put).
     script << " -I$builddir/" << componentPtr->workingDir << "/src";
 
-    // For each server-side interface, include the appropriate (async or sync) server
-    // code generation directory.
-    for (auto ifPtr : componentPtr->serverApis)
-    {
-        model::InterfaceCFiles_t cFiles;
-        ifPtr->GetInterfaceFiles(cFiles);
-        script << " -I$builddir/" << path::GetContainingDir(cFiles.interfaceFile);
-    }
+    std::list<std::string> headers;
 
-    // For each client-side interface, include the client code generation directory.
-    for (auto ifPtr : componentPtr->clientApis)
-    {
-        model::InterfaceCFiles_t cFiles;
-        ifPtr->GetInterfaceFiles(cFiles);
-        script << " -I$builddir/" << path::GetContainingDir(cFiles.interfaceFile);
-    }
+    GetCInterfaceHeaders(headers, componentPtr);
 
-    // For each "types-only" required API, include the client code generation directory.
-    for (auto ifPtr : componentPtr->typesOnlyApis)
+    for (auto const &header : headers)
     {
-        model::InterfaceCFiles_t cFiles;
-        ifPtr->GetInterfaceFiles(cFiles);
-        script << " -I$builddir/" << path::GetContainingDir(cFiles.interfaceFile);
+        script << " -I" << path::GetContainingDir(header);
     }
 
     // Subcomponents with external builds do not interface via interfaces, so add these components
@@ -146,14 +130,14 @@ void ComponentBuildScriptGenerator_t::GenerateCommonCAndCxxFlags
         script << " -I$builddir/" << apiFilePtr->codeGenDir << "/client";
     }
 
-    // Define the component name, log session variable, and log filter variable.
+    // Define the component name
     script << " -DLE_COMPONENT_NAME=" << componentPtr->name;
-    script << " -DLE_LOG_SESSION=" << componentPtr->name << "_LogSession ";
-    script << " -DLE_LOG_LEVEL_FILTER_PTR=" << componentPtr->name << "_LogLevelFilterPtr ";
 
-    // Define the COMPONENT_INIT.
+    // Define the COMPONENT_INIT and COMPONENT_INIT_ONCE.
     script << " \"-DCOMPONENT_INIT=LE_CI_LINKAGE LE_SHARED void "
-           << componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->initFuncName << "()\"";
+           << componentPtr->initFuncName << "()\""
+           << " \"-DCOMPONENT_INIT_ONCE=LE_CI_LINKAGE LE_SHARED void "
+           << componentPtr->initFuncName << "_ONCE()\"";
 }
 
 
@@ -208,13 +192,6 @@ void ComponentBuildScriptGenerator_t::GetImplicitDependencies
     // For each sub-component,
     for (auto subComponentPtr : componentPtr->subComponents)
     {
-        // If the sub-component has itself been built into a library, the component depends
-        // on that sub-component library.
-        if (subComponentPtr.componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib != "")
-        {
-            script << " " << subComponentPtr.componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib;
-        }
-
         // If the sub-component has an external build step, this component depends on that
         // build step being run
         if (subComponentPtr.componentPtr->HasExternalBuild())
@@ -285,117 +262,67 @@ void ComponentBuildScriptGenerator_t::GetExternalDependencies
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Print to a given build script the ldFlags variable contents needed to tell the linker to link
- * with libraries that a given Component depends on.
- *
- * @note This is recursive if the component depends on any other components.
- **/
+ * Write list of object files which go into building this component.
+ */
 //--------------------------------------------------------------------------------------------------
-void ComponentBuildScriptGenerator_t::GetDependentLibLdFlags
+void ComponentBuildScriptGenerator_t::GetObjectFiles
 (
     model::Component_t* componentPtr
 )
-//--------------------------------------------------------------------------------------------------
 {
-    // List of already handled components so we don't add flags for the same component twice
-    std::set<model::Component_t*> addedComponents;
-    std::string ldFlags;
+    // Includes object files compiled from the component's C/C++ source files.
+    for (auto objFilePtr : componentPtr->cObjectFiles)
+    {
+        script << " $builddir/" << objFilePtr->path;
+    }
+    for (auto objFilePtr : componentPtr->cxxObjectFiles)
+    {
+        script << " $builddir/" << objFilePtr->path;
+    }
 
-    GetDependentLibLdFlags(componentPtr, addedComponents, ldFlags);
+    // Also includes all the object files for the auto-generated IPC API client and server
+    // code for the component's required and provided APIs.
+    for (auto apiPtr : componentPtr->clientApis)
+    {
+        model::InterfaceCFiles_t cFiles;
+        apiPtr->GetInterfaceFiles(cFiles);
 
-    script << ldFlags;
+        script << " $builddir/" << cFiles.objectFile;
+    }
+    for (auto apiPtr : componentPtr->serverApis)
+    {
+        model::InterfaceCFiles_t cFiles;
+        apiPtr->GetInterfaceFiles(cFiles);
+
+        script << " $builddir/" << cFiles.objectFile;
+    }
+
+    // And the object file for the component-specific generated code in _componentMain.c.
+    script << " $builddir/" << componentPtr->workingDir << "/obj/_componentMain.c.o";
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Print to a given build script the ldFlags variable contents needed to tell the linker to link
- * with libraries that a given Component depends on.
- *
- * @note This is recursive if the component depends on any other components.
- **/
+ * Get the common API files for a component.  These files can be shared across multiple instances
+ * of the component
+ */
 //--------------------------------------------------------------------------------------------------
-void ComponentBuildScriptGenerator_t::GetDependentLibLdFlags
+void ComponentBuildScriptGenerator_t::GetCommonApiFiles
 (
-    model::Component_t* componentPtr,
-    std::set<model::Component_t*>& addedComponents,
-    std::string& ldFlags
+    model::Component_t* componentPtr,        ///< [IN]  Component to get common API files from
+    std::set<std::string> &commonApiObjects        ///< [OUT] Add common API files to this set
 )
-//--------------------------------------------------------------------------------------------------
 {
-    for (auto subComponentPtr : componentPtr->subComponents)
+    for (auto const clientApiPtr : componentPtr->clientApis)
     {
-        // If code is already generated for this component, skip it.
-        if (addedComponents.find(subComponentPtr.componentPtr) != addedComponents.end())
-        {
-            continue;
-        }
+        model::InterfaceCFiles_t cFiles;
 
-        // Link with whatever this component depends on.
-        GetDependentLibLdFlags(subComponentPtr.componentPtr, addedComponents, ldFlags);
+        clientApiPtr->apiFilePtr->GetCommonInterfaceFiles(cFiles);
 
-        // If the component has itself been built into a library, link with that.
-        if (subComponentPtr.componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib != "")
-        {
-            ldFlags = std::string(" \"-L")
-                + path::GetContainingDir(
-                    subComponentPtr.componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib
-                )
-                + "\""
-                + " -l"
-                + path::GetLibShortName(
-                    subComponentPtr.componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib
-                )
-                + ldFlags;
-        }
-
-        // If the component has an external build, add the external build's working directory.
-        if (subComponentPtr.componentPtr->HasExternalBuild())
-        {
-            ldFlags = " \"-L" + path::Combine(buildParams.workingDir,
-                                              subComponentPtr.componentPtr->workingDir) + "\"" + ldFlags;
-        }
+        commonApiObjects.insert(cFiles.objectFile);
     }
 }
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Print to a given build script the ldFlags variable definition for a given Component.
- **/
-//--------------------------------------------------------------------------------------------------
-void ComponentBuildScriptGenerator_t::GenerateLdFlagsDef
-(
-    model::Component_t* componentPtr
-)
-//--------------------------------------------------------------------------------------------------
-{
-    script << "  ldFlags = ";
-    script << buildParams.ldFlags;
-
-    // Add the ldflags from the Component.cdef file.
-    for (auto& arg : componentPtr->ldFlags)
-    {
-        script << " " << arg;
-    }
-
-    // Add the library output directory to the list of places to search for libraries to link with.
-    if (!buildParams.libOutputDir.empty())
-    {
-        script << " -L" << buildParams.libOutputDir;
-    }
-
-    // Set the DT_RUNPATH variable inside the executable's ELF headers to include the expected
-    // on-target runtime locations of the libraries needed.
-    GenerateRunPathLdFlags();
-
-    // Includes a list of -l directives for all the libraries the component needs.
-    GetDependentLibLdFlags(componentPtr);
-
-    // Link with the standard runtime libs.
-    script << " \"-L$$LEGATO_BUILD/framework/lib\" -llegato -lpthread -lrt -lm\n";
-}
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -412,6 +339,11 @@ void ComponentBuildScriptGenerator_t::GetCInterfaceHeaders
 {
     for (auto ifPtr : componentPtr->typesOnlyApis)
     {
+        model::InterfaceCFiles_t commonFiles;
+        ifPtr->apiFilePtr->GetCommonInterfaceFiles(commonFiles);
+
+        result.push_back("$builddir/" + commonFiles.interfaceFile);
+
         model::InterfaceCFiles_t cFiles;
         ifPtr->GetInterfaceFiles(cFiles);
 
@@ -420,6 +352,12 @@ void ComponentBuildScriptGenerator_t::GetCInterfaceHeaders
 
     for (auto ifPtr : componentPtr->serverApis)
     {
+        model::InterfaceCFiles_t commonFiles;
+        ifPtr->apiFilePtr->GetCommonInterfaceFiles(commonFiles);
+
+        result.push_back("$builddir/" + commonFiles.interfaceFile);
+        result.push_back("$builddir/" + commonFiles.internalHFile);
+
         model::InterfaceCFiles_t cFiles;
         ifPtr->GetInterfaceFiles(cFiles);
 
@@ -429,6 +367,12 @@ void ComponentBuildScriptGenerator_t::GetCInterfaceHeaders
 
     for (auto ifPtr : componentPtr->clientApis)
     {
+        model::InterfaceCFiles_t commonFiles;
+        ifPtr->apiFilePtr->GetCommonInterfaceFiles(commonFiles);
+
+        result.push_back("$builddir/" + commonFiles.interfaceFile);
+        result.push_back("$builddir/" + commonFiles.internalHFile);
+
         model::InterfaceCFiles_t cFiles;
         ifPtr->GetInterfaceFiles(cFiles);
 
@@ -438,12 +382,20 @@ void ComponentBuildScriptGenerator_t::GetCInterfaceHeaders
 
     for (auto apiFilePtr : componentPtr->clientUsetypesApis)
     {
+        model::InterfaceCFiles_t commonFiles;
+        apiFilePtr->GetCommonInterfaceFiles(commonFiles);
+
+        result.push_back("$builddir/" + commonFiles.interfaceFile);
         result.push_back("$builddir/" +
                          apiFilePtr->GetClientInterfaceFile(apiFilePtr->defaultPrefix));
     }
 
     for (auto apiFilePtr : componentPtr->serverUsetypesApis)
     {
+        model::InterfaceCFiles_t commonFiles;
+        apiFilePtr->GetCommonInterfaceFiles(commonFiles);
+
+        result.push_back("$builddir/" + commonFiles.interfaceFile);
         result.push_back("$builddir/" +
                          apiFilePtr->GetServerInterfaceFile(apiFilePtr->defaultPrefix));
     }
@@ -501,79 +453,6 @@ void ComponentBuildScriptGenerator_t::GetJavaInterfaceFiles
                          apiFilePtr->GetJavaInterfaceFile(apiFilePtr->defaultPrefix));
     }
 }
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Print to a given build script a build statement for building a given component's library.
- **/
-//--------------------------------------------------------------------------------------------------
-void ComponentBuildScriptGenerator_t::GenerateComponentLinkStatement
-(
-    model::Component_t* componentPtr
-)
-//--------------------------------------------------------------------------------------------------
-{
-    std::string rule;
-
-    // Determine which rules should be used for building the component.
-    if (!componentPtr->cxxObjectFiles.empty())
-    {
-        rule = "LinkCxxLib";
-    }
-    else if (!componentPtr->cObjectFiles.empty())
-    {
-        rule = "LinkCLib";
-    }
-    else
-    {
-        // No source files.  No library to build.
-        return;
-    }
-    // Create the build statement.
-    script << "build " << componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib
-           << ": " << rule;
-
-    // Includes object files compiled from the component's C/C++ source files.
-    for (auto objFilePtr : componentPtr->cObjectFiles)
-    {
-        script << " $builddir/" << objFilePtr->path;
-    }
-    for (auto objFilePtr : componentPtr->cxxObjectFiles)
-    {
-        script << " $builddir/" << objFilePtr->path;
-    }
-
-    // Also includes all the object files for the auto-generated IPC API client and server
-    // code for the component's required and provided APIs.
-    for (auto apiPtr : componentPtr->clientApis)
-    {
-        model::InterfaceCFiles_t cFiles;
-        apiPtr->GetInterfaceFiles(cFiles);
-
-        script << " $builddir/" << cFiles.objectFile;
-    }
-    for (auto apiPtr : componentPtr->serverApis)
-    {
-        model::InterfaceCFiles_t cFiles;
-        apiPtr->GetInterfaceFiles(cFiles);
-
-        script << " $builddir/" << cFiles.objectFile;
-    }
-
-    // And the object file for the component-specific generated code in _componentMain.c.
-    script << " $builddir/" << componentPtr->workingDir << "/obj/_componentMain.c.o";
-
-    // Add implicit dependencies.
-    script << " |";
-    GetImplicitDependencies(componentPtr);
-    script << "\n";
-
-    // Define the ldFlags variable.
-    GenerateLdFlagsDef(componentPtr);
-
-    script << "\n";
-}
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -810,7 +689,7 @@ void ComponentBuildScriptGenerator_t::GenerateBuildStatements
         std::list<std::string> classPath = { legatoJarPath };
         componentPtr->GetBundledFilesOfType(model::BundleAccess_t::Source, ".jar", classPath);
 
-        GenerateJavaBuildCommand(componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib,
+        GenerateJavaBuildCommand(componentPtr->GetTargetInfo<target::LinuxComponentInfo_t>()->lib,
                                  classDestPath,
                                  sourceList,
                                  classPath);
@@ -952,6 +831,37 @@ void ComponentBuildScriptGenerator_t::GenerateJavaTypesOnlyBuildStatement
 /**
  * Print to a given script a build statement for building the interface header file for a given
  * .api file that has been referred to by a USETYPES statement in another .api file used by
+ * a common interface.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ComponentBuildScriptGenerator_t::GenerateCommonUsetypesBuildStatement
+(
+    const model::ApiFile_t* apiFilePtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    model::InterfaceCFiles_t cFiles;
+    apiFilePtr->GetCommonInterfaceFiles(cFiles);
+
+    if (generatedIPC.find(cFiles.interfaceFile) == generatedIPC.end())
+    {
+        generatedIPC.insert(cFiles.interfaceFile);
+
+        script << "build $builddir/" << cFiles.interfaceFile <<
+                  ": GenInterfaceCode " << apiFilePtr->path << " |";
+        GetIncludedApis(apiFilePtr);
+        script << "\n"
+                  "  outputDir = $builddir/" << path::GetContainingDir(cFiles.interfaceFile) << "\n"
+                  "  ifgenFlags = --gen-common-interface $ifgenFlags\n"
+                  "\n";
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print to a given script a build statement for building the interface header file for a given
+ * .api file that has been referred to by a USETYPES statement in another .api file used by
  * a client-side interface.
  **/
 //--------------------------------------------------------------------------------------------------
@@ -1010,6 +920,99 @@ void ComponentBuildScriptGenerator_t::GenerateServerUsetypesBuildStatement
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Print to a given script a build statement for building the common files required by an API
+ **/
+//--------------------------------------------------------------------------------------------------
+void ComponentBuildScriptGenerator_t::GenerateCCommonBuildStatement
+(
+    const model::ApiFile_t* apiFilePtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    model::InterfaceCFiles_t commonFiles;
+
+    // Get common header and source files
+    apiFilePtr->GetCommonInterfaceFiles(commonFiles);
+
+    if (   (!buildParams.codeGenOnly)
+        && (generatedIPC.find(commonFiles.objectFile) == generatedIPC.end())  )
+    {
+        generatedIPC.insert(commonFiles.objectFile);
+
+        // .o file
+        script << "build $builddir/" << commonFiles.objectFile << ":"
+                  " CompileC $builddir/" << commonFiles.sourceFile;
+
+        // Add order-only dependencies on the generated .h files for this interface so we make sure
+        // those get built first.
+        script << " | $builddir/" << commonFiles.internalHFile << " $builddir/"
+               << commonFiles.interfaceFile;
+
+        // Build a set containing all the .h files that will be included (via USETYPES statements)
+        // by the .h file generated for this .api file.
+        std::set<std::string> apiHeaders;
+        apiFilePtr->GetCommonUsetypesApiHeaders(apiHeaders);
+
+        // If there are some, add them as order-only dependencies.
+        for (auto hFilePath : apiHeaders)
+        {
+            script << " $builddir/" << hFilePath;
+        }
+
+        // Define a cFlags variable that tells the compiler where to look for the interface
+        // headers needed due to USETYPES statements.
+        script << "\n"
+                  "  cFlags = $cFlags";
+        std::set<std::string> includeDirs;
+        for (auto hFilePath : apiHeaders)
+        {
+            auto dirPath = path::GetContainingDir(hFilePath);
+            if (includeDirs.find(dirPath) == includeDirs.end())
+            {
+                includeDirs.insert(dirPath);
+                script << " -I$builddir/" << dirPath;
+            }
+        }
+        script << "\n\n";
+    }
+
+    // .c file and .h files
+    std::string generatedFiles;
+    std::string ifgenFlags;
+    if (generatedIPC.find(commonFiles.sourceFile) == generatedIPC.end())
+    {
+        generatedIPC.insert(commonFiles.sourceFile);
+        generatedFiles += " $builddir/" + commonFiles.sourceFile;
+        ifgenFlags += " --gen-common-client";
+    }
+    if (generatedIPC.find(commonFiles.interfaceFile) == generatedIPC.end())
+    {
+        generatedIPC.insert(commonFiles.interfaceFile);
+        generatedFiles += " $builddir/" + commonFiles.interfaceFile;
+        ifgenFlags += " --gen-common-interface";
+    }
+    if (generatedIPC.find(commonFiles.internalHFile) == generatedIPC.end())
+    {
+        generatedIPC.insert(commonFiles.internalHFile);
+        generatedFiles += " $builddir/" + commonFiles.internalHFile;
+        ifgenFlags += " --gen-messages";
+    }
+    if (!generatedFiles.empty())
+    {
+        script << "build" << generatedFiles << ":"
+                  " GenInterfaceCode " << apiFilePtr->path << " |";
+        GetIncludedApis(apiFilePtr);
+        script << "\n"
+                  "  ifgenFlags =" << ifgenFlags << " $ifgenFlags\n"
+                  "  outputDir = $builddir/" << path::GetContainingDir(commonFiles.sourceFile) <<
+                  "\n"
+                  "\n";
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Print to a given script a build statement for building the java interface file for a given
  * .api file that has been referred to by a USETYPES statement in another .api file used by
  * a client/server-side interface.
@@ -1052,6 +1055,9 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
     model::InterfaceCFiles_t cFiles;
     ifPtr->GetInterfaceFiles(cFiles);
 
+    // Generate common interface files (if needed)
+    GenerateCCommonBuildStatement(ifPtr->apiFilePtr);
+
     if (   (!buildParams.codeGenOnly)
         && (generatedIPC.find(cFiles.objectFile) == generatedIPC.end())  )
     {
@@ -1068,6 +1074,12 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
         // Build a set containing all the .h files that will be included by the .h file generated
         // for this .api file.
         std::set<std::string> apiHeaders;
+        model::InterfaceCFiles_t commonFiles;
+        ifPtr->apiFilePtr->GetCommonInterfaceFiles(commonFiles);
+        apiHeaders.insert(commonFiles.interfaceFile);
+        apiHeaders.insert(commonFiles.internalHFile);
+
+        ifPtr->apiFilePtr->GetCommonUsetypesApiHeaders(apiHeaders);
         ifPtr->apiFilePtr->GetClientUsetypesApiHeaders(apiHeaders);
 
         // If there are some, add them as order-only dependencies.
@@ -1326,6 +1338,9 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
     model::InterfaceCFiles_t cFiles;
     ifPtr->GetInterfaceFiles(cFiles);
 
+    // Generate common interface files (if needed)
+    GenerateCCommonBuildStatement(ifPtr->apiFilePtr);
+
     if (   (!buildParams.codeGenOnly)
         && (generatedIPC.find(cFiles.objectFile) == generatedIPC.end())  )
     {
@@ -1342,6 +1357,12 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
         // Build a set containing all the .h files that will be included (via USETYPES statements)
         // by the .h file generated for this .api file.
         std::set<std::string> apiHeaders;
+        model::InterfaceCFiles_t commonFiles;
+        ifPtr->apiFilePtr->GetCommonInterfaceFiles(commonFiles);
+        apiHeaders.insert(commonFiles.interfaceFile);
+        apiHeaders.insert(commonFiles.internalHFile);
+
+        ifPtr->apiFilePtr->GetCommonUsetypesApiHeaders(apiHeaders);
         ifPtr->apiFilePtr->GetServerUsetypesApiHeaders(apiHeaders);
 
         // If there are some, add them as order-only dependencies.
@@ -1393,6 +1414,10 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
         if (ifPtr->async)
         {
             ifgenFlags += " --async-server";
+        }
+        if (ifPtr->direct)
+        {
+            ifgenFlags += " --allow-direct";
         }
         ifgenFlags += " --name-prefix " + ifPtr->internalName;
         script << "build" << generatedFiles << ":"
@@ -1452,6 +1477,7 @@ void ComponentBuildScriptGenerator_t::GenerateIpcBuildStatements
         }
         else
         {
+            GenerateCommonUsetypesBuildStatement(typesOnlyApi->apiFilePtr);
             GenerateTypesOnlyBuildStatement(typesOnlyApi);
         }
     }
@@ -1464,6 +1490,7 @@ void ComponentBuildScriptGenerator_t::GenerateIpcBuildStatements
         }
         else
         {
+            GenerateCommonUsetypesBuildStatement(apiFilePtr);
             GenerateClientUsetypesBuildStatement(apiFilePtr);
         }
     }
@@ -1476,6 +1503,7 @@ void ComponentBuildScriptGenerator_t::GenerateIpcBuildStatements
         }
         else
         {
+            GenerateCommonUsetypesBuildStatement(apiFilePtr);
             GenerateServerUsetypesBuildStatement(apiFilePtr);
         }
     }
@@ -1628,7 +1656,10 @@ void ComponentBuildScriptGenerator_t::GenerateBuildRules
     void
 )
 {
-    baseGeneratorPtr->GenerateIfgenFlagsDef();
+    script << "ifgenFlags = ";
+    baseGeneratorPtr->GenerateIfgenFlags();
+    script << "\n\n";
+
     baseGeneratorPtr->GenerateBuildRules();
 }
 
@@ -1670,26 +1701,6 @@ void ComponentBuildScriptGenerator_t::Generate
 
     // Add a build statement for the build.ninja file itself.
     GenerateNinjaScriptBuildStatement(componentPtr);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Generate a build script for building a single component.
- **/
-//--------------------------------------------------------------------------------------------------
-void Generate
-(
-    model::Component_t* componentPtr,
-    const mk::BuildParams_t& buildParams
-)
-//--------------------------------------------------------------------------------------------------
-{
-    std::string filePath = path::Combine(buildParams.workingDir, "build.ninja");
-
-    ComponentBuildScriptGenerator_t componentGenerator(filePath, buildParams);
-
-    componentGenerator.Generate(componentPtr);
 }
 
 

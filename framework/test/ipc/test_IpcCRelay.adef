@@ -1,0 +1,37 @@
+/*
+ * Copyright (C) Sierra Wireless Inc.
+ */
+
+start: manual
+
+executables:
+{
+    server = ( CServer )
+    relay = ( CRelay )
+    client = ( CClient )
+}
+
+processes:
+{
+    run:
+    {
+        ( server )
+        ( relay )
+    }
+
+    faultAction: restart
+}
+
+processes:
+{
+    run:
+    {
+        ( client )
+    }
+}
+
+bindings:
+{
+    client.CClient.ipcTest -> relay.CRelay.ipcServer
+    relay.CRelay.ipcClient-> server.CServer.ipcTest
+}

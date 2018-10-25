@@ -11,6 +11,7 @@
 #ifndef LEGATO_NINJA_COMPONENT_BUILD_SCRIPT_H_INCLUDE_GUARD
 #define LEGATO_NINJA_COMPONENT_BUILD_SCRIPT_H_INCLUDE_GUARD
 
+#include "buildScriptCommon.h"
 
 namespace ninja
 {
@@ -26,6 +27,7 @@ class ComponentBuildScriptGenerator_t : protected RequireBaseGenerator_t
     protected:
         virtual void GetImplicitDependencies(model::Component_t* componentPtr);
         virtual void GetExternalDependencies(model::Component_t* componentPtr);
+        virtual void GetObjectFiles(model::Component_t* componentPtr);
 
         virtual void GetCInterfaceHeaders(std::list<std::string>& result,
                                           model::Component_t* componentPtr);
@@ -38,7 +40,9 @@ class ComponentBuildScriptGenerator_t : protected RequireBaseGenerator_t
         virtual void GenerateJavaTypesOnlyBuildStatement(const model::ApiTypesOnlyInterface_t* ifPtr);
         virtual void GenerateClientUsetypesBuildStatement(const model::ApiFile_t* apiFilePtr);
         virtual void GenerateServerUsetypesBuildStatement(const model::ApiFile_t* apiFilePtr);
+        virtual void GenerateCommonUsetypesBuildStatement(const model::ApiFile_t* apiFilePtr);
         virtual void GenerateJavaUsetypesBuildStatement(const model::ApiFile_t* apiFilePtr);
+        virtual void GenerateCCommonBuildStatement(const model::ApiFile_t* apiFilePtr);
         virtual void GenerateCBuildStatement(const model::ApiClientInterface_t* ifPtr);
         virtual void GenerateCBuildStatement(const model::ApiServerInterface_t* ifPtr);
 
@@ -62,12 +66,7 @@ class ComponentBuildScriptGenerator_t : protected RequireBaseGenerator_t
 
         virtual void GenerateCommonCAndCxxFlags(model::Component_t* componentPtr);
 
-        virtual void GenerateLdFlagsDef(model::Component_t* componentPtr);
-        virtual void GetDependentLibLdFlags(model::Component_t* componentPtr);
-        virtual void GetDependentLibLdFlags(model::Component_t* componentPtr,
-                                            std::set<model::Component_t*>& addedComponents,
-                                            std::string& ldFlags);
-        virtual void GenerateComponentLinkStatement(model::Component_t* componentPtr);
+        virtual void GenerateComponentLinkStatement(model::Component_t* componentPtr) = 0;
 
         virtual void GenerateCommentHeader(model::Component_t* componentPtr);
 
@@ -104,11 +103,14 @@ class ComponentBuildScriptGenerator_t : protected RequireBaseGenerator_t
         virtual void Generate(model::Component_t* componentPtr);
         virtual void GenerateBuildRules(void);
 
+        virtual void GetCommonApiFiles(model::Component_t* componentPtr,
+                                       std::set<std::string> &commonApiObjects);
+
         virtual void GenerateBuildStatements(model::Component_t* componentPtr);
         virtual void GenerateBuildStatementsRecursive(model::Component_t* componentPtr);
         virtual void GenerateIpcBuildStatements(model::Component_t* componentPtr);
 
-        virtual ~ComponentBuildScriptGenerator_t() {}
+        virtual ~ComponentBuildScriptGenerator_t() {};
 };
 
 

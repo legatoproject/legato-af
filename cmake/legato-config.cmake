@@ -259,10 +259,15 @@ function(generate_client API_FILE)
     set(API_PATH    "${API_FILE}")
     set(HEADER_PATH "${CMAKE_CURRENT_BINARY_DIR}/${API_NAME}_interface.h")
     set(CLIENT_PATH "${CMAKE_CURRENT_BINARY_DIR}/${API_NAME}_client.c")
-    set(LOCAL_PATH  "${CMAKE_CURRENT_BINARY_DIR}/${API_NAME}_messages.h")
+    set(LOCAL_PATH  "${CMAKE_CURRENT_BINARY_DIR}/${API_NAME}_service.h")
+    set(COMMON_LOCAL_PATH  "${CMAKE_CURRENT_BINARY_DIR}/${API_NAME}_messages.h")
+    set(COMMON_HEADER_PATH "${CMAKE_CURRENT_BINARY_DIR}/${API_NAME}_common.h")
+    set(COMMON_CLIENT_PATH "${CMAKE_CURRENT_BINARY_DIR}/${API_NAME}_commonclient.c")
 
     add_custom_command( OUTPUT ${HEADER_PATH} ${CLIENT_PATH} ${LOCAL_PATH}
+                               ${COMMON_LOCAL_PATH} ${COMMON_HEADER_PATH} ${COMMON_CLIENT_PATH}
                         COMMAND ${LEGATO_TOOL_IFGEN} --gen-client --gen-interface --gen-local
+                                --gen-messages --gen-common-interface --gen-common-client
                         ${API_PATH}
                         --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/audio
                         --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/modemServices

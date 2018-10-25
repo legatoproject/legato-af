@@ -23,6 +23,7 @@ struct BuildParams_t
     bool                    beVerbose;          ///< true = output progress msgs to stdout.
     int                     jobCount;           ///< Number of job counts (ninja default if 0)
     std::string             target;             ///< (e.g., "localhost" or "ar7")
+    std::string             osType;             ///< (e.g., "linux" or "rtos")
     std::list<std::string>  interfaceDirs;      ///< Interface search directory paths.
     std::list<std::string>  moduleDirs;         ///< Kernel module search paths.
     std::list<std::string>  appDirs;            ///< Application search paths.

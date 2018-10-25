@@ -7,7 +7,7 @@
  #
  #  Copyright (C) Sierra Wireless Inc.
  #}
-{% import 'pack.templ' as pack -%}
+{% import 'pack.templ' as pack with context -%}
 /*
  * ====================== WARNING ======================
  *
@@ -19,12 +19,47 @@
 
 
 #include "{{apiName}}_server.h"
-#include "{{apiName}}_messages.h"
+#include "{{apiBaseName}}_messages.h"
+#include "{{apiName}}_service.h"
 
 
 //--------------------------------------------------------------------------------------------------
 // Generic Server Types, Variables and Functions
 //--------------------------------------------------------------------------------------------------
+{%- if args.localService %}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Expected number of clients of this server API.
+ *
+ * Default to one client per server.
+ */
+//--------------------------------------------------------------------------------------------------
+#ifndef HIGH_CLIENT_COUNT
+#define HIGH_CLIENT_COUNT (LE_CDATA_COMPONENT_COUNT)
+#endif
+
+/// Expected number of client messages.  Expect at most one event to each client and one
+/// call from each client.
+#define HIGH_CLIENT_MESSAGES  (HIGH_CLIENT_COUNT*2)
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static pool for client messages
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL({{apiName}}Messages, HIGH_CLIENT_COUNT,
+                          LE_CDATA_COMPONENT_COUNT*(LE_MSG_LOCAL_HEADER_SIZE +_MAX_MSG_SIZE));
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference to message pool.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t {{apiName}}MessagesRef;
+{%- endif %}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -49,6 +84,22 @@ typedef struct
     RemoveHandlerFunc_t   removeHandlerFunc;    ///< Function to remove the registered handler
 }
 _ServerData_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Expected number of simultaneous server data objects.
+ */
+//--------------------------------------------------------------------------------------------------
+#define HIGH_SERVER_DATA_COUNT            3
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static pool for server data objects
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL({{apiName}}_ServerData, HIGH_SERVER_DATA_COUNT, sizeof(_ServerData_t));
 {%- if args.async %}
 
 //--------------------------------------------------------------------------------------------------
@@ -63,7 +114,29 @@ typedef struct {{apiName}}_ServerCmd
     le_msg_MessageRef_t msgRef;           ///< Reference to the message
     le_dls_Link_t cmdLink;                ///< Link to server cmd objects
     uint32_t requiredOutputs;           ///< Outputs which must be sent (if any)
+    {%- if interface|MaxCOutputBuffers > 0 %}
+    void* outputBuffers[{{interface|MaxCOutputBuffers}}];
+    size_t bufferSize[{{interface|MaxCOutputBuffers}}];
+    {%- endif %}
 } {{apiName}}_ServerCmd_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Expected number of simultaneous async server commands.
+ */
+//--------------------------------------------------------------------------------------------------
+#define HIGH_SERVER_CMD_COUNT            5
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static pool for server commands
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL({{apiName}}_ServerCmd,
+                          HIGH_SERVER_CMD_COUNT,
+                          sizeof({{apiName}}_ServerCmd_t));
+
 {%- endif %}
 
 //--------------------------------------------------------------------------------------------------
@@ -72,6 +145,14 @@ typedef struct {{apiName}}_ServerCmd
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t _ServerDataPool;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Static safe reference map for use with Add/Remove handler references
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP({{apiName}}_ServerHandlers, HIGH_SERVER_DATA_COUNT);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -123,28 +204,15 @@ static void ServerMsgRecvHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Server Service Reference
+ * Per-server data:
+ *  - Server service reference
+ *  - Server thread reference
+ *  - Client session reference
  */
 //--------------------------------------------------------------------------------------------------
-static le_msg_ServiceRef_t _ServerServiceRef;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Server Thread Reference
- *
- * Reference to the thread that is registered to provide this service.
- */
-//--------------------------------------------------------------------------------------------------
-static le_thread_Ref_t _ServerThreadRef;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Client Session Reference for the current message received from a client
- */
-//--------------------------------------------------------------------------------------------------
-static le_msg_SessionRef_t _ClientSessionRef;
+LE_CDATA_DECLARE({le_msg_ServiceRef_t _ServerServiceRef;
+        le_thread_Ref_t _ServerThreadRef;
+        le_msg_SessionRef_t _ClientSessionRef;});
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -168,13 +236,12 @@ static le_log_TraceRef_t TraceRef;
 #define IS_TRACE_ENABLED 0
 
 #endif
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Cleanup client data if the client is no longer connected
  */
 //--------------------------------------------------------------------------------------------------
-static void CleanupClientData
+__attribute__((unused)) static void CleanupClientData
 (
     le_msg_SessionRef_t sessionRef,
     void *contextPtr
@@ -188,7 +255,7 @@ static void CleanupClientData
 
     // Store the client session ref so it can be retrieved by the server using the
     // GetClientSessionRef() function, if it's needed inside handler removal functions.
-    _ClientSessionRef = sessionRef;
+    LE_CDATA_THIS->_ClientSessionRef = sessionRef;
 
     le_ref_IterRef_t iterRef = le_ref_GetIterator(_HandlerRefMap);
     le_result_t result = le_ref_NextNode(iterRef);
@@ -226,7 +293,7 @@ static void CleanupClientData
     }
 
     // Clear the client session ref, since the event has now been processed.
-    _ClientSessionRef = 0;
+    LE_CDATA_THIS->_ClientSessionRef = 0;
 
     _UNLOCK
 }
@@ -265,9 +332,9 @@ __attribute__((unused)) static void SendMsgToClient
      * thread.  This is necessary to allow async response/handler functions to be called from any
      * thread, whereas messages to the client can only be sent from the server thread.
      */
-    if ( le_thread_GetCurrent() != _ServerThreadRef )
+    if ( le_thread_GetCurrent() != LE_CDATA_THIS->_ServerThreadRef )
     {
-        le_event_QueueFunctionToThread(_ServerThreadRef,
+        le_event_QueueFunctionToThread(LE_CDATA_THIS->_ServerThreadRef,
                                        SendMsgToClientQueued,
                                        msgRef,
                                        NULL);
@@ -277,7 +344,31 @@ __attribute__((unused)) static void SendMsgToClient
         le_msg_Send(msgRef);
     }
 }
+{%- if args.localService %}
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize the local service
+ */
+//--------------------------------------------------------------------------------------------------
+void {{apiName}}_InitService
+(
+    le_msg_LocalService_t* servicePtr
+)
+{
+    if (!{{apiName}}MessagesRef)
+    {
+        {{apiName}}MessagesRef = le_mem_InitStaticPool({{apiName}}Messages,
+                                                       HIGH_CLIENT_COUNT,
+                                                       LE_MSG_LOCAL_HEADER_SIZE +
+                                                       _MAX_MSG_SIZE);
+    }
+
+    le_msg_InitLocalService(servicePtr,
+                            SERVICE_INSTANCE_NAME,
+                            {{apiName}}MessagesRef);
+}
+{%- endif %}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -289,9 +380,23 @@ le_msg_ServiceRef_t {{apiName}}_GetServiceRef
     void
 )
 {
-    return _ServerServiceRef;
+    return LE_CDATA_THIS->_ServerServiceRef;
 }
+{%- if args.localService %}
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the server service reference (for local services).
+ */
+//--------------------------------------------------------------------------------------------------
+void {{apiName}}_SetServiceRef
+(
+    le_msg_LocalService_t* servicePtr      ///< [IN] Service reference
+)
+{
+    LE_CDATA_THIS->_ServerServiceRef = &servicePtr->service;
+}
+{%- endif %}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -303,7 +408,7 @@ le_msg_SessionRef_t {{apiName}}_GetClientSessionRef
     void
 )
 {
-    return _ClientSessionRef;
+    return LE_CDATA_THIS->_ClientSessionRef;
 }
 
 
@@ -323,33 +428,121 @@ void {{apiName}}_AdvertiseService
 #if defined(MK_TOOLS_BUILD) && !defined(NO_LOG_SESSION)
     TraceRef = le_log_GetTraceRef("ipc");
 #endif
-    le_msg_ProtocolRef_t protocolRef;
 
     // Create the server data pool
-    _ServerDataPool = le_mem_CreatePool("{{apiName}}_ServerData", sizeof(_ServerData_t));
+    _ServerDataPool = le_mem_InitStaticPool({{apiName}}_ServerData,
+                                            HIGH_SERVER_DATA_COUNT,
+                                            sizeof(_ServerData_t));
     {%- if args.async %}
 
     // Create the server command pool
-    _ServerCmdPool = le_mem_CreatePool("{{apiName}}_ServerCmd", sizeof({{apiName}}_ServerCmd_t));
+    _ServerCmdPool = le_mem_InitStaticPool({{apiName}}_ServerCmd,
+                                           HIGH_SERVER_CMD_COUNT,
+                                           sizeof({{apiName}}_ServerCmd_t));
     {%- endif %}
 
     // Create safe reference map for handler references.
     // The size of the map should be based on the number of handlers defined for the server.
     // Don't expect that to be more than 2-3, so use 3 as a reasonable guess.
-    _HandlerRefMap = le_ref_CreateMap("{{apiName}}_ServerHandlers", 3);
+    _HandlerRefMap = le_ref_InitStaticMap({{apiName}}_ServerHandlers, HIGH_SERVER_DATA_COUNT);
 
     // Start the server side of the service
+    {%- if not args.localService %}
+    le_msg_ProtocolRef_t protocolRef;
+
     protocolRef = le_msg_GetProtocolRef(PROTOCOL_ID_STR, sizeof(_Message_t));
-    _ServerServiceRef = le_msg_CreateService(protocolRef, SERVICE_INSTANCE_NAME);
-    le_msg_SetServiceRecvHandler(_ServerServiceRef, ServerMsgRecvHandler, NULL);
-    le_msg_AdvertiseService(_ServerServiceRef);
+    LE_CDATA_THIS->_ServerServiceRef = le_msg_CreateService(protocolRef, SERVICE_INSTANCE_NAME);
+    {%- endif %}
+    le_msg_SetServiceRecvHandler(LE_CDATA_THIS->_ServerServiceRef, ServerMsgRecvHandler, NULL);
+    le_msg_AdvertiseService(LE_CDATA_THIS->_ServerServiceRef);
+    {%- if not args.localService %}
 
     // Register for client sessions being closed
-    le_msg_AddServiceCloseHandler(_ServerServiceRef, CleanupClientData, NULL);
+    le_msg_AddServiceCloseHandler(LE_CDATA_THIS->_ServerServiceRef, CleanupClientData, NULL);
+    {%- endif %}
 
     // Need to keep track of the thread that is registered to provide this service.
-    _ServerThreadRef = le_thread_GetCurrent();
+    LE_CDATA_THIS->_ServerThreadRef = le_thread_GetCurrent();
 }
+{%- if args.direct %}
+
+
+//--------------------------------------------------------------------------------------------------
+// Client Stubs if this code is called in-place
+//--------------------------------------------------------------------------------------------------
+{%- if args.localService %}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get if this client bound locally.
+ *
+ * If using this version of the function, it's a local binding.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED bool ifgen_{{apiBaseName}}_HasLocalBinding
+(
+    void
+)
+{
+    return true;
+}
+{%- endif %}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Init data that is common across all threads
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void ifgen_{{apiBaseName}}_InitCommonData
+(
+    void
+)
+{
+    // Empty stub
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Perform common initialization and open a session
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t ifgen_{{apiBaseName}}_OpenSession
+(
+    le_msg_SessionRef_t _ifgen_sessionRef,
+    bool isBlocking
+)
+{
+    // Empty stub
+    return LE_OK;
+}
+{%- for function in functions %}
+
+
+//--------------------------------------------------------------------------------------------------
+{{function.comment|FormatHeaderComment}}
+//--------------------------------------------------------------------------------------------------
+LE_SHARED {{function.returnType|FormatType(useBaseName=True)}} ifgen_{{apiBaseName}}_{{function.name}}
+(
+    le_msg_SessionRef_t _ifgen_sessionRef
+    {%- for parameter in function|CAPIParameters %}
+    {%- if loop.first %},{% endif %}
+    {{parameter|FormatParameter(useBaseName=True)}}{% if not loop.last %},{% endif %}
+        ///< [{{parameter.direction|FormatDirection}}]
+             {{-parameter.comments|join("\n///<")|indent(8)}}
+    {%-endfor%}
+)
+{
+    {% if function.returnType %}return{% endif %} {{apiName}}_{{function.name}}(
+        {%- for parameter in function|CAPIParameters %}
+        {{parameter|FormatParameterName}}{% if not loop.last %},{% endif %}
+        {%- endfor %}
+    );
+}
+{%- endfor %}
+{%- endif %}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -387,7 +580,7 @@ static void AsyncResponse_{{apiName}}_{{function.name}}
     // Create a new message object and get the message buffer
     _msgRef = le_msg_CreateMsg(serverDataPtr->clientSessionRef);
     _msgPtr = le_msg_GetPayloadPtr(_msgRef);
-    _msgPtr->id = _MSGID_{{apiName}}_{{function.name}};
+    _msgPtr->id = _MSGID_{{apiBaseName}}_{{function.name}};
     _msgBufPtr = _msgPtr->buffer;
 
     // Always pack the client context pointer first
@@ -439,7 +632,7 @@ void {{apiName}}_{{function.name}}Respond
     __attribute__((unused)) uint8_t* _msgBufPtr = _msgPtr->buffer;
 
     // Ensure the passed in msgRef is for the correct message
-    LE_ASSERT(_msgPtr->id == _MSGID_{{apiName}}_{{function.name}});
+    LE_ASSERT(_msgPtr->id == _MSGID_{{apiBaseName}}_{{function.name}});
 
     // Ensure that this Respond function has not already been called
     LE_FATAL_IF( !le_msg_NeedsResponse(_msgRef), "Response has already been sent");
@@ -467,7 +660,31 @@ void {{apiName}}_{{function.name}}Respond
     {%- endfor %}
 
     // Pack any "out" parameters
-    {{- pack.PackOutputs(function.parameters) }}
+    {{- pack.PackOutputs(function.parameters,initiatorWaits=True) }}
+    {%- if args.localService %}
+
+    // And copy any output parameter buffers
+    {%- for parameter in function.parameters
+                          if parameter is OutParameter and
+                             (parameter is ArrayParameter or parameter is StringParameter) %}
+    if (_cmdRef->outputBuffers[{{loop.index0}}])
+    {
+        {%- if parameter is StringParameter %}
+        LE_ASSERT(_cmdRef->bufferSize[{{loop.index0}}] >=
+                  strlen(_cmdRef->outputBuffers[{{loop.index0}}]));
+        strncpy(_cmdRef->outputBuffers[{{loop.index0}}],
+                {{parameter|FormatParameterName}},
+                _cmdRef->bufferSize[{{loop.index0}}]);
+        ((char*)_cmdRef->outputBuffers[{{loop.index0}}])[_cmdRef->bufferSize[{{loop.index0}}]]
+            = '\0';
+        {%- else %}
+        memcpy(_cmdRef->outputBuffers[{{loop.index0}}],
+               {{parameter|FormatParameterName}},
+               {{parameter|GetParameterCount}}*sizeof(parameter.apiType));
+        {%- endif %}
+    }
+    {%- endfor %}
+    {%- endif %}
 
     // Return the response
     TRACE("Sending response to client session %p", le_msg_GetSession(_msgRef));
@@ -503,9 +720,19 @@ static void Handle_{{apiName}}_{{function.name}}
     {%- endif %}
 
     // Unpack the input parameters from the message
-    {%- call pack.UnpackInputs(function.parameters) %}
+    {%- call pack.UnpackInputs(function.parameters,initiatorWaits=True) %}
         goto {{error_unpack_label}};
     {%- endcall %}
+    {%- if args.localService %}
+
+    // And save any destination buffers
+    {%- for parameter in function.parameters
+                          if parameter is OutParameter and
+                             (parameter is ArrayParameter or parameter is StringParameter) %}
+    _serverCmdPtr->outputBuffers[{{loop.index0}}] = {{parameter|FormatParameterName}};
+    _serverCmdPtr->bufferSize[{{loop.index0}}] = {{parameter|GetParameterCount}};
+    {%- endfor %}
+    {%- endif %}
 
     // Call the function
     {{apiName}}_{{function.name}} ( _serverCmdPtr
@@ -557,7 +784,8 @@ static void Handle_{{apiName}}_{{function.name}}
     {#- Remove handlers only have one parameter which is treated specially,
      # so do separate handling
      #}
-    {{function.parameters[0].apiType|FormatType}} {{function.parameters[0]|FormatParameterName}};
+    {{function.parameters[0].apiType|FormatType}} {{function.parameters[0]|FormatParameterName}}
+        {#- #} = {{function.parameters[0].apiType|FormatTypeInitializer}};
     if (!le_pack_UnpackReference( &_msgBufPtr,
                                   &{{function.parameters[0]|FormatParameterName}} ))
     {
@@ -580,7 +808,7 @@ static void Handle_{{apiName}}_{{function.name}}
     handlerRef = ({{function.parameters[0].apiType|FormatType}})serverDataPtr->handlerRef;
     le_mem_Release(serverDataPtr);
     {%- else %}
-    {%- call pack.UnpackInputs(function.parameters) %}
+    {%- call pack.UnpackInputs(function.parameters,initiatorWaits=True) %}
         goto {{error_unpack_label}};
     {%- endcall %}
     {%- endif %}
@@ -598,17 +826,20 @@ static void Handle_{{apiName}}_{{function.name}}
 
     // Define storage for output parameters
     {%- for parameter in function.parameters if parameter is OutParameter %}
-    {%- if parameter is StringParameter %}
-    char {{parameter.name}}Buffer[{{parameter.maxCount + 1}}];
+    {%- if args.localService and parameter is StringParameter %}
+    /* No storage needed for {{parameter.name}} */
+    {%- elif args.localService and parameter is ArrayParameter %}
+    size_t *{{parameter.name}}SizePtr = &{{parameter.name}}Size;
+    {%- elif parameter is StringParameter %}
+    char {{parameter.name}}Buffer[{{parameter.maxCount + 1}}] = { 0 };
     char *{{parameter|FormatParameterName}} = {{parameter.name}}Buffer;
-    {{parameter|FormatParameterName}}[0] = 0;
     {%- elif parameter is ArrayParameter %}
     {{parameter.apiType|FormatType}} {{parameter.name}}Buffer
-        {#- #}[{{parameter.maxCount}}];
+        {#- #}[{{parameter.maxCount}}] = { {{parameter.apiType|FormatTypeInitializer}} };
     {{parameter.apiType|FormatType}} *{{parameter|FormatParameterName}} = {{parameter.name}}Buffer;
     size_t *{{parameter.name}}SizePtr = &{{parameter.name}}Size;
     {%- else %}
-    {{parameter.apiType|FormatType}} {{parameter.name}}Buffer;
+    {{parameter.apiType|FormatType}} {{parameter.name}}Buffer = {{parameter.apiType|FormatTypeInitializer}};
     {{parameter.apiType|FormatType}} *{{parameter|FormatParameterName}} = &{{parameter.name}}Buffer;
     {%- endif %}
     if (!(_requiredOutputs & (1u << {{loop.index0}})))
@@ -669,7 +900,7 @@ static void Handle_{{apiName}}_{{function.name}}
     {%- endif %}
 
     // Pack any "out" parameters
-    {{- pack.PackOutputs(function.parameters) }}
+    {{- pack.PackOutputs(function.parameters,initiatorWaits=True) }}
 
     // Return the response
     TRACE("Sending response to client session %p : %ti bytes sent",
@@ -703,20 +934,21 @@ static void ServerMsgRecvHandler
     // Get the client session ref for the current message.  This ref is used by the server to
     // get info about the client process, such as user id.  If there are multiple clients, then
     // the session ref may be different for each message, hence it has to be queried each time.
-    _ClientSessionRef = le_msg_GetSession(msgRef);
+    LE_CDATA_THIS->_ClientSessionRef = le_msg_GetSession(msgRef);
 
     // Dispatch to appropriate message handler and get response
     switch (msgPtr->id)
     {
         {%- for function in functions %}
-        case _MSGID_{{apiName}}_{{function.name}} : Handle_{{apiName}}_{{function.name}}(msgRef);
-            {#- #} break;
+        case _MSGID_{{apiBaseName}}_{{function.name}} :
+            Handle_{{apiName}}_{{function.name}}(msgRef);
+            break;
         {%- endfor %}
 
-        default: LE_ERROR("Unknowm msg id = %i", msgPtr->id);
+        default: LE_ERROR("Unknowm msg id = %" PRIu32 , msgPtr->id);
     }
 
     // Clear the client session ref associated with the current message, since the message
     // has now been processed.
-    _ClientSessionRef = 0;
+    LE_CDATA_THIS->_ClientSessionRef = 0;
 }

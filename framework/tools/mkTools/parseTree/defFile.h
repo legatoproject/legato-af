@@ -56,6 +56,8 @@ struct DefFile_t: public DefFileFragment_t
 
     std::list<CompoundItem_t*> sections; ///< List of top-level sections in the file.
 
+    void ThrowException(const std::string& message) const __attribute__ ((noreturn));
+
 protected:
 
     /// Constructor

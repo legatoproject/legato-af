@@ -38,14 +38,20 @@ static bool DontRunNinja = false;
 
 
 /// Steps to run to generate a Linux executable
-static const generator::ExeGenerator_t LinuxSteps[] =
+static generator::ExeGenerator_t LinuxSteps[] =
 {
-    generator::ForAllComponents<GenerateCode>,
-    code::GenerateExeMain,
-    ninja::Generate,
+    generator::ForAllComponents<GenerateLinuxCode>,
+    code::GenerateLinuxExeMain,
+    ninja::GenerateLinux,
     NULL
 };
 
+
+/// List of steps for each OS type
+static const std::map<std::string, generator::ExeGenerator_t*> OSTypeSteps
+{
+    std::pair<std::string, generator::ExeGenerator_t*> { "linux", LinuxSteps }
+};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -497,7 +503,7 @@ void MakeExecutable
     ConstructObjectModel();
 
     // Run appropriate generator
-    generator::RunAllGenerators(LinuxSteps, ExePtr, BuildParams);
+    generator::RunAllGenerators(OSTypeSteps, ExePtr, BuildParams);
 
     // If we haven't been asked not to, run ninja.
     if (!DontRunNinja)

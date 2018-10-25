@@ -11,7 +11,9 @@
 #ifndef LEGATO_NINJA_SYSTEM_BUILD_SCRIPT_H_INCLUDE_GUARD
 #define LEGATO_NINJA_SYSTEM_BUILD_SCRIPT_H_INCLUDE_GUARD
 
+#include "buildScriptCommon.h"
 #include "appBuildScript.h"
+#include "moduleBuildScript.h"
 
 namespace ninja
 {
@@ -22,8 +24,8 @@ class SystemBuildScriptGenerator_t : protected RequireAppGenerator_t,
     protected:
         virtual void GenerateCommentHeader(model::System_t* systemPtr);
         virtual void GenerateBuildRules(model::System_t* systemPtr);
-        virtual void GenerateSystemBuildRules(model::System_t* systemPtr);
-        virtual void GenerateSystemPackBuildStatement(model::System_t* systemPtr);
+        virtual void GenerateSystemBuildRules(model::System_t* systemPtr) = 0;
+        virtual void GenerateSystemPackBuildStatement(model::System_t* systemPtr) = 0;
         virtual void GenerateNinjaScriptBuildStatement(model::System_t* systemPtr);
 
     protected:
@@ -35,13 +37,6 @@ class SystemBuildScriptGenerator_t : protected RequireAppGenerator_t,
           RequireModuleGenerator_t(moduleGeneratorPtr) {}
 
     public:
-        SystemBuildScriptGenerator_t(const std::string scriptPath,
-                                     const mk::BuildParams_t& buildParams)
-        : RequireBaseGenerator_t(std::make_shared<BuildScriptGenerator_t>(scriptPath, buildParams)),
-          RequireAppGenerator_t(std::make_shared<AppBuildScriptGenerator_t>(baseGeneratorPtr)),
-          RequireModuleGenerator_t(std::make_shared<ModuleBuildScriptGenerator_t>(
-                                       baseGeneratorPtr)) {}
-
         virtual void Generate(model::System_t* systemPtr);
 
         virtual ~SystemBuildScriptGenerator_t() {}

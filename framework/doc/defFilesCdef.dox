@@ -367,6 +367,27 @@ as parameters to the @c Respond function.
 See @ref apiFiles for more information, or try it and have a look at the generated
 header files.
 
+@subsubsection cdefFilesCdef_providesApiDirect [direct]
+
+Although API calls through Inter-process communication provide maximum flexibility and safety,
+the process of marshalling parameters and return codes and sending them over the IPC system
+can be slow, and uses extra memory.  Legato provides a method to mark an API as
+directly callable, without going through the IPC system.
+
+A component can mark a provided API as being directly callable by using the @c [direct] keyword.
+In this case other components in the same executable which @c require: this API will call
+it directly, using native function calls.
+
+There are limitations on when an API can be marked as @c [direct]:
+
+ - The API should be multi-thread safe.
+ - The API cannot be marked @c [async]
+ - If the API is marked @c [manual-start] this only applies to remote callers of the API.  Local
+   callers will be able to call the API before it has been advertised.
+ - Only one instance of the API can be provided across all components in the executable.
+ - All components in the executable which require this API will automatically be bound
+   to this API.
+
 @section defFilesCdef_requires requires
 
 The @c requires: section specifies things the component needs from its runtime

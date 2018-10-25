@@ -118,6 +118,13 @@ static void ModelAppOverrides
         {
             appPtr->isSandboxed = (ToSimpleSectionPtr(subsectionPtr)->Text() != "false");
         }
+        else if (subsectionName == "maxStackBytes")
+        {
+            for (auto procEnvPtr : appPtr->processEnvs)
+            {
+                procEnvPtr->maxStackBytes = GetPositiveInt(ToSimpleSectionPtr(subsectionPtr));
+            }
+        }
         else if (subsectionName == "start")
         {
             SetStart(appPtr, ToSimpleSectionPtr(subsectionPtr));

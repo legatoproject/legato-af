@@ -44,14 +44,35 @@ static const generator::SystemGenerator_t LinuxSteps[] =
 {
     [](model::System_t* systemPtr, const mk::BuildParams_t& buildParams)
     {
-        GenerateCode(model::Component_t::GetComponentMap(), buildParams);
+        GenerateLinuxCode(model::Component_t::GetComponentMap(), buildParams);
     },
-    generator::ForAllApps<GenerateCode>,
+    generator::ForAllApps<GenerateLinuxCode>,
     config::Generate,
-    ninja::Generate,
+    ninja::GenerateLinux,
     NULL
 };
 
+/// Steps to run to generate an RTOS system
+static const generator::SystemGenerator_t RTOSSteps[] =
+{
+    [](model::System_t* systemPtr, const mk::BuildParams_t& buildParams)
+    {
+        GenerateRtosCode(model::Component_t::GetComponentMap(), buildParams);
+    },
+    code::CountSystemComponentUsage,
+    generator::ForAllApps<GenerateRtosCode>,
+    code::GenerateRtosSystemTasks,
+    code::GenerateLinkerScript,
+    ninja::GenerateRtos,
+    NULL
+};
+
+/// All supported OS types, and the steps required to build them.
+static const std::map<std::string, const generator::SystemGenerator_t*> OSTypeSteps
+{
+    std::pair<std::string, const generator::SystemGenerator_t*> { "linux", LinuxSteps },
+    std::pair<std::string, const generator::SystemGenerator_t*> { "rtos", RTOSSteps },
+};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -159,6 +180,13 @@ static void GetCommandLineArgs
                             't',
                             "target",
                             LE_I18N("Set the compile target (e.g., localhost or ar7)."));
+
+    args::AddOptionalString(&BuildParams.osType,
+                            "linux",
+                            'T',
+                            "os-type",
+                            LE_I18N("Specify the OS type to build for."
+                                    "  Options are: linux (default) or rtos."));
 
     args::AddOptionalFlag(&BuildParams.beVerbose,
                           'v',
@@ -361,7 +389,7 @@ void MakeSystem
     // Create the working directory and the staging directory, if they don't already exist.
     file::MakeDir(stagingDir);
 
-    generator::RunAllGenerators(LinuxSteps, systemPtr, BuildParams);
+    generator::RunAllGenerators(OSTypeSteps, systemPtr, BuildParams);
 
     // Now delete the appPtr
     delete systemPtr;

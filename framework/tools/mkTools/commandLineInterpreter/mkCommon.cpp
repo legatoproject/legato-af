@@ -482,10 +482,10 @@ void RunNinja
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Generate code for a given component.
+ * Generate Linux code for a given component.
  */
 //--------------------------------------------------------------------------------------------------
-void GenerateCode
+void GenerateLinuxCode
 (
     model::Component_t* componentPtr,
     const mk::BuildParams_t& buildParams
@@ -499,25 +499,48 @@ void GenerateCode
     code::GenerateInterfacesHeader(componentPtr, buildParams);
 
     // Generate a custom "_componentMain.c" file for this component.
-    code::GenerateComponentMainFile(componentPtr, buildParams);
+    code::GenerateLinuxComponentMainFile(componentPtr, buildParams);
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Generate code for all the components in a given set.
+ * Generate RTOS code for a given component.
  */
 //--------------------------------------------------------------------------------------------------
-void GenerateCode
+void GenerateRtosCode
 (
-    const std::set<model::Component_t*>& components,  ///< Set of components to generate code for.
+    model::Component_t* componentPtr,
     const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
-    for (auto componentPtr : components)
+    // Create a working directory to build the component in.
+    file::MakeDir(path::Combine(buildParams.workingDir, componentPtr->workingDir));
+
+    // Generate a custom "interfaces.h" file for this component.
+    code::GenerateInterfacesHeader(componentPtr, buildParams);
+
+    // Generate a custom "_componentMain.c" file for this component.
+    code::GenerateRtosComponentMainFile(componentPtr, buildParams);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate code for all the components in a given map.
+ */
+//--------------------------------------------------------------------------------------------------
+void GenerateLinuxCode
+(
+    const std::map<std::string, model::Component_t*>& components,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto& mapEntry : components)
     {
-        GenerateCode(componentPtr, buildParams);
+        GenerateLinuxCode(mapEntry.second, buildParams);
     }
 }
 
@@ -527,7 +550,7 @@ void GenerateCode
  * Generate code for all the components in a given map.
  */
 //--------------------------------------------------------------------------------------------------
-void GenerateCode
+void GenerateRtosCode
 (
     const std::map<std::string, model::Component_t*>& components,
     const mk::BuildParams_t& buildParams
@@ -536,7 +559,7 @@ void GenerateCode
 {
     for (auto& mapEntry : components)
     {
-        GenerateCode(mapEntry.second, buildParams);
+        GenerateRtosCode(mapEntry.second, buildParams);
     }
 }
 
@@ -546,7 +569,7 @@ void GenerateCode
  * Generate code specific to an individual app (excluding code for the components).
  */
 //--------------------------------------------------------------------------------------------------
-void GenerateCode
+void GenerateLinuxCode
 (
     model::App_t* appPtr,
     const mk::BuildParams_t& buildParams
@@ -563,10 +586,36 @@ void GenerateCode
     for (auto exePtr : appPtr->executables)
     {
         // Generate _main.c.
-        code::GenerateExeMain(exePtr.second, buildParams);
+        code::GenerateLinuxExeMain(exePtr.second, buildParams);
     }
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate code specific to an individual app (excluding code for the components).
+ */
+//--------------------------------------------------------------------------------------------------
+void GenerateRtosCode
+(
+    model::App_t* appPtr,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Create the working directory, if it doesn't already exist.
+    file::MakeDir(path::Combine(buildParams.workingDir, appPtr->workingDir));
+
+    // No configuration data file on RTOS -- everything which would be generated here is embedded
+    // into the task.
+
+    // For each executable in the application,
+    for (auto exePtr : appPtr->executables)
+    {
+        // Generate _main.c.
+        code::GenerateRtosExeMain(exePtr.second, buildParams);
+    }
+}
 
 
 } // namespace cli

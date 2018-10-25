@@ -13,59 +13,6 @@
 struct Component_t;
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Represents a component's reference to an API file.
- */
-//--------------------------------------------------------------------------------------------------
-struct ApiFile_t
-{
-    std::string path;   ///< Absolute path to the .api file.
-
-    std::string defaultPrefix; ///< Default prefix for generated code identifiers and files.
-
-    std::list<ApiFile_t*> includes; ///< List of other .api files that this one uses types from.
-
-    bool isIncluded;    ///< true if this .api file is included by other .api files (via USETYPES).
-
-    std::string codeGenDir; ///< Path to code generation dir relative to working directory.
-
-    // Functions to fetch relative paths to files (relative to root of working dir tree).
-    std::string GetClientInterfaceFile (const std::string& internalName) const;
-    std::string GetServerInterfaceFile(const std::string& internalName) const;
-    std::string GetAsyncServerInterfaceFile(const std::string& internalName) const;
-    std::string GetJavaInterfaceFile(const std::string& internalName) const;
-
-    /// Get a pre-existing API file object for the .api file at a given path.
-    /// @return Pointer to the object or NULL if not found.
-    static ApiFile_t* GetApiFile(const std::string& path);
-
-    /// Create a new API file object for the .api file at a given path.
-    /// @return Pointer to the object.
-    /// @throw model::Exception_t if already exists.
-    static ApiFile_t* CreateApiFile(const std::string& path);
-
-    // Get a reference to the master map containing all the API files that have been referenced.
-    static const std::map<std::string, ApiFile_t*>& GetApiFileMap() { return ApiFileMap; }
-
-    // Get paths for all client-side interface .h files generated for all
-    // .api files included by this one.  Results are added to the set provided.
-    void GetClientUsetypesApiHeaders(std::set<std::string>& results);
-
-    // Get paths for all server-side interface .h files generated for all
-    // .api files included by this one.  Results are added to the set provided.
-    void GetServerUsetypesApiHeaders(std::set<std::string>& results);
-
-protected:
-
-    ApiFile_t(const std::string& p);
-
-    /// Map of file paths to pointers to API File objects.
-    /// This is used to keep a single, unique API File object for each unique .api file.
-    /// The key is the cannonical path to the .api file.  The value is a pointer to an object.
-    static std::map<std::string, ApiFile_t*> ApiFileMap;
-
-};
 
 
 //--------------------------------------------------------------------------------------------------
@@ -114,8 +61,71 @@ struct InterfaceJavaFiles_t
  * Represents a component's reference to an API file.
  */
 //--------------------------------------------------------------------------------------------------
+struct ApiFile_t
+{
+    std::string path;   ///< Absolute path to the .api file.
+
+    std::string defaultPrefix; ///< Default prefix for generated code identifiers and files.
+
+    std::list<ApiFile_t*> includes; ///< List of other .api files that this one uses types from.
+
+    bool isIncluded;    ///< true if this .api file is included by other .api files (via USETYPES).
+
+    std::string codeGenDir; ///< Path to code generation dir relative to working directory.
+
+    // Functions to fetch relative paths to files (relative to root of working dir tree).
+    std::string GetClientInterfaceFile (const std::string& internalName) const;
+    std::string GetServerInterfaceFile(const std::string& internalName) const;
+    std::string GetAsyncServerInterfaceFile(const std::string& internalName) const;
+    std::string GetJavaInterfaceFile(const std::string& internalName) const;
+
+    void GetCommonInterfaceFiles(InterfaceCFiles_t& cFiles) const;
+
+    /// Get a pre-existing API file object for the .api file at a given path.
+    /// @return Pointer to the object or NULL if not found.
+    static ApiFile_t* GetApiFile(const std::string& path);
+
+    /// Create a new API file object for the .api file at a given path.
+    /// @return Pointer to the object.
+    /// @throw model::Exception_t if already exists.
+    static ApiFile_t* CreateApiFile(const std::string& path);
+
+    // Get a reference to the master map containing all the API files that have been referenced.
+    static const std::map<std::string, ApiFile_t*>& GetApiFileMap() { return ApiFileMap; }
+
+    // Get paths for all client-side interface .h files generated for all
+    // .api files included by this one.  Results are added to the set provided.
+    void GetClientUsetypesApiHeaders(std::set<std::string>& results) const;
+
+    // Get paths for all server-side interface .h files generated for all
+    // .api files included by this one.  Results are added to the set provided.
+    void GetServerUsetypesApiHeaders(std::set<std::string>& results) const;
+
+    // Get paths for all common interface.h files generate for all
+    // .api files included by this one.  Results are added to the set provided.
+    void GetCommonUsetypesApiHeaders(std::set<std::string>& results) const;
+
+protected:
+
+    ApiFile_t(const std::string& p);
+
+    /// Map of file paths to pointers to API File objects.
+    /// This is used to keep a single, unique API File object for each unique .api file.
+    /// The key is the cannonical path to the .api file.  The value is a pointer to an object.
+    static std::map<std::string, ApiFile_t*> ApiFileMap;
+
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Represents a component's reference to an API file.
+ */
+//--------------------------------------------------------------------------------------------------
 struct ApiRef_t
 {
+    const parseTree::TokenList_t* itemPtr;   ///< Pointer to the reference in the parse tree.
+
     ApiFile_t* apiFilePtr;    ///< Pointer to the API file object.
 
     Component_t* componentPtr;  ///< Pointer to the component (NULL if unknown).
@@ -124,7 +134,8 @@ struct ApiRef_t
 
 protected:
 
-    ApiRef_t(ApiFile_t* aPtr, Component_t* cPtr, const std::string& iName);
+    ApiRef_t(const parseTree::TokenList_t* itemPtr,
+             ApiFile_t* aPtr, Component_t* cPtr, const std::string& iName);
 
 public:
 
@@ -141,7 +152,8 @@ public:
 //--------------------------------------------------------------------------------------------------
 struct ApiTypesOnlyInterface_t : public ApiRef_t
 {
-    ApiTypesOnlyInterface_t(ApiFile_t* aPtr, Component_t* cPtr, const std::string& iName);
+    ApiTypesOnlyInterface_t(const parseTree::TokenList_t* itemPtr,
+                            ApiFile_t* aPtr, Component_t* cPtr, const std::string& iName);
 
     virtual void GetInterfaceFiles(InterfaceCFiles_t& cFiles) const;
     virtual void GetInterfaceFiles(InterfaceJavaFiles_t& javaFiles) const;
@@ -159,7 +171,8 @@ struct ApiClientInterface_t : public ApiRef_t
     bool manualStart;   ///< true = generated main() should not call the ConnectService() function.
     bool optional;      ///< true = okay to not be bound.
 
-    ApiClientInterface_t(ApiFile_t* aPtr, Component_t* cPtr, const std::string& iName);
+    ApiClientInterface_t(const parseTree::TokenList_t* itemPtr,
+                         ApiFile_t* aPtr, Component_t* cPtr, const std::string& iName);
 
     virtual void GetInterfaceFiles(InterfaceCFiles_t& cFiles) const;
     virtual void GetInterfaceFiles(InterfaceJavaFiles_t& javaFiles) const;
@@ -176,8 +189,11 @@ struct ApiServerInterface_t : public ApiRef_t
 {
     const bool async;         ///< true = component wants to use asynchronous mode of operation.
     bool manualStart;   ///< true = generated main() should not call AdvertiseService() function.
+    bool direct;       ///< true = API can be called directly from other components within
+                       ///<        the same process.
 
-    ApiServerInterface_t(ApiFile_t* aPtr, Component_t* cPtr, const std::string& iName, bool async);
+    ApiServerInterface_t(const parseTree::TokenList_t* itemPtr,
+                         ApiFile_t* aPtr, Component_t* cPtr, const std::string& iName, bool async);
 
     virtual void GetInterfaceFiles(InterfaceCFiles_t& cFiles) const;
     virtual void GetInterfaceFiles(InterfaceJavaFiles_t& javaFiles) const;

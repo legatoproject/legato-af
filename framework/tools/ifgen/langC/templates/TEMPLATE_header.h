@@ -31,72 +31,39 @@
 {%- endif %}
 {%- endblock %}
 
-
+// Internal includes for this interface
+#include "{{apiBaseName}}_common.h"
 {% block GenericFunctions %}{% endblock %}
 {% for define in definitions %}
+{%- if apiBaseName != apiName %}
 
 //--------------------------------------------------------------------------------------------------
 {{define.comment|FormatHeaderComment}}
 //--------------------------------------------------------------------------------------------------
-{%- if define.value is string %}
-#define {{apiName|upper}}_{{define.name}} "{{define.value|EscapeString}}"
-{%- else %}
-#define {{apiName|upper}}_{{define.name}} {{define.value}}
+#define {{apiName|upper}}_{{define.name}} {{apiBaseName|upper}}_{{define.name}}
 {%- endif %}
 {%- endfor %}
-{%- for type in types if type is not HandlerType %}
+{%- for type in types %}
 
 //--------------------------------------------------------------------------------------------------
 {{type.comment|FormatHeaderComment}}
 //--------------------------------------------------------------------------------------------------
-{%- if type is EnumType %}
-typedef enum
-{
+{%- if apiBaseName != apiName %}
+{%- if type is ReferenceType %}
+typedef {{apiBaseName}}_{{type.name}}Ref_t {{type|FormatType}};
+{%- elif type is HandlerType %}
+typedef {{apiBaseName}}_{{type.name}}Func_t {{type|FormatType}};
+{%- else %}
+typedef {{apiBaseName}}_{{type.name}}_t {{type|FormatType}};
+{%- endif %}
+{%- if type is EnumType or type is BitMaskType %}
     {%- for element in type.elements %}
-    {{apiName|upper}}_{{element.name}} = {{element.value}}{%if not loop.last%},{%endif%}
-        ///<{{element.comments|join("\n///<")|indent(8)}}
-    {%- endfor %}
-}
-{{type|FormatType}};
-{%- elif type is BitMaskType %}
-typedef enum
-{
-    {%- for element in type.elements %}
-    {{apiName|upper}}_{{element.name}} = {{"0x%x" % element.value}}{%if not loop.last%},{%endif%}
+#define {{apiName|upper}}_{{element.name}}   {{apiBaseName|upper}}_{{element.name}}
     {%- if element.comments %}        ///<{{element.comments|join("\n///<")|indent(8)}}{%endif%}
     {%- endfor %}
-}
-{{type|FormatType}};
-{%- elif type is StructType %}
-typedef struct
-{
-    {%- for member in type.members %}
-    {%- if member is StringMember %}
-    char {{member.name|DecorateName}}[{{member.maxCount}} + 1];
-    {%- else %}
-    {{member.apiType|FormatType}} {{member.name|DecorateName}}
-    {%- if member is ArrayMember %}[{{member.maxCount}}]{% endif %};
-    {%- endif %}
-    {%- endfor %}
-}
-{{type|FormatType}};
-{%- elif type is ReferenceType %}
-typedef struct {{apiName}}_{{type.name}}* {{type|FormatType}};
+{%- endif %}
 {%- endif %}
 {% endfor %}
-{%- for handler in types if handler is HandlerType %}{% block HandlerDeclaration scoped %}
-
-//--------------------------------------------------------------------------------------------------
-{{handler.comment|FormatHeaderComment}}
-//--------------------------------------------------------------------------------------------------
-typedef void (*{{handler|FormatType}})
-(
-    {%- for parameter in handler|CAPIParameters %}
-    {{parameter|FormatParameter}}{% if not loop.last %},{% endif %}
-        ///<{{parameter.comments|join("\n///<")|indent(8)}}
-    {%-endfor%}
-);
-{%- endblock %}{%- endfor %}
 {%- for function in functions %}{% block FunctionDeclaration scoped %}
 
 //--------------------------------------------------------------------------------------------------

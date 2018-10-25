@@ -492,7 +492,7 @@ static std::string GenerateClassPath
             }
 
             classPath += ":lib/" +
-                path::GetLastNode(componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib);
+                path::GetLastNode(componentPtr->GetTargetInfo<target::LinuxComponentInfo_t>()->lib);
         }
     }
 
@@ -594,6 +594,13 @@ static void GenerateProcessConfig
                       << procEnvPtr->maxFileDescriptors.Get() << "]"
                       << std::endl;
 
+            if (procEnvPtr->maxStackBytes.IsSet())
+            {
+                cfgStream << "      \"maxStackBytes\" ["
+                          << procEnvPtr->maxStackBytes.Get() << "]"
+                          << std::endl;
+            }
+
             if (procEnvPtr->watchdogTimeout.IsSet())
             {
                 cfgStream << "      \"watchdogTimeout\" [" << procEnvPtr->watchdogTimeout.Get()
@@ -694,6 +701,10 @@ static void GenerateBindingConfig
                                             bindingPtr->clientIfName,
                                             bindingPtr->serverAgentName,
                                             bindingPtr->serverIfName );
+            break;
+
+        case model::Binding_t::LOCAL:
+            // Local binding within an exe.  Nothing needs to be done here.
             break;
     }
 }

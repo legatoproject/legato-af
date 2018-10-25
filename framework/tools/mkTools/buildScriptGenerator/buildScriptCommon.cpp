@@ -129,22 +129,57 @@ BuildScriptGenerator_t::~BuildScriptGenerator_t
  * Print to a given build script the ifgenFlags variable definition.
  **/
 //--------------------------------------------------------------------------------------------------
-void BuildScriptGenerator_t::GenerateIfgenFlagsDef
+void BuildScriptGenerator_t::GenerateIfgenFlags
 (
     void
 )
 //--------------------------------------------------------------------------------------------------
 {
-    script << "ifgenFlags = ";
-
     // Add the interface search directories to ifgen's command-line.
     for (const auto& dir : buildParams.interfaceDirs)
     {
         script << " --import-dir " << dir;
     }
-
-    script << "\n\n";
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate C flags.
+ *
+ * Generates flags for the C compiler.  These flags are also used for the C++ compiler.
+ */
+//--------------------------------------------------------------------------------------------------
+void BuildScriptGenerator_t::GenerateCFlags
+(
+    void
+)
+{
+    const std::string& target = buildParams.target;
+    std::string sysrootOption;
+
+    if (!buildParams.sysrootDir.empty())
+    {
+        sysrootOption = "--sysroot=" + buildParams.sysrootDir;
+    }
+
+    script << " " << sysrootOption <<
+              " -MMD -MF $out.d -c $in -o $out"
+              " -DLE_FILENAME=`basename $in`" // Define the file name for the log macros.
+              " -Wall" // Enable all warnings.
+              " -Werror" // Treat all warnings as errors.
+              " -fvisibility=hidden" // Prevent exporting of symbols by default.
+              " -DMK_TOOLS_BUILD"; // Indicate build is being done by the mk tools.
+    if (target != "localhost")
+    {
+        script << "  -DLEGATO_EMBEDDED";    // Indicate target is an embedded device (not a PC).
+    }
+    if (!buildParams.debugDir.empty())
+    {
+        script << " -g";
+    }
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -176,10 +211,10 @@ std::string BuildScriptGenerator_t::GetPathEnvVarDecl
 //--------------------------------------------------------------------------------------------------
 void BuildScriptGenerator_t::GenerateBuildRules
 (
+    void
 )
 //--------------------------------------------------------------------------------------------------
 {
-    const std::string& target = buildParams.target;
     const std::string& cCompilerPath = buildParams.cCompilerPath;
     const std::string& cxxCompilerPath = buildParams.cxxCompilerPath;
     const std::string& compilerCachePath = buildParams.compilerCachePath;
@@ -206,22 +241,8 @@ void BuildScriptGenerator_t::GenerateBuildRules
     script << "rule CompileC\n"
               "  description = Compiling C source\n"
               "  depfile = $out.d\n" // Tell ninja where gcc will put the dependencies.
-              "  command = " << compilerCachePath << " " << cCompilerPath << " " << sysrootOption <<
-              " -MMD -MF $out.d -c $in -o $out"
-              " -DLE_FILENAME=`basename $in`" // Define the file name for the log macros.
-              " -Wall" // Enable all warnings.
-              " -fPIC" // Compile to position-independent code for linking into a shared library.
-              " -Werror" // Treat all warnings as errors.
-              " -fvisibility=hidden" // Prevent exporting of symbols by default.
-              " -DMK_TOOLS_BUILD"; // Indicate build is being done by the mk tools.
-    if (target != "localhost")
-    {
-        script << "  -DLEGATO_EMBEDDED";    // Indicate target is an embedded device (not a PC).
-    }
-    if (!buildParams.debugDir.empty())
-    {
-        script << " -g";
-    }
+              "  command = " << compilerCachePath << " " << cCompilerPath;
+    GenerateCFlags();
     script << " $cFlags" // Include user-provided CFLAGS last so other settings can be overridden.
               "\n\n";
 
@@ -229,122 +250,11 @@ void BuildScriptGenerator_t::GenerateBuildRules
     script << "rule CompileCxx\n"
               "  description = Compiling C++ source\n"
               "  depfile = $out.d\n" // Tell ninja where gcc will put the dependencies.
-              "  command = " << compilerCachePath << " " << cxxCompilerPath << " " << sysrootOption <<
-              " -MMD -MF $out.d -c $in -o $out"
-              " -DLE_FILENAME=`basename $in`" // Define the file name for the log macros.
-              " -Wall" // Enable all warnings.
-              " -fPIC" // Compile to position-independent code for linking into a shared library.
-              " -Werror" // Treat all warnings as errors.
-              " -fvisibility=hidden " // Prevent exporting of symbols by default.
-              " -DMK_TOOLS_BUILD"; // Indicate build is being done by the mk tools.
-    if (target != "localhost")
-    {
-        script << "  -DLEGATO_EMBEDDED";    // Indicate target is an embedded device (not a PC).
-    }
-    if (!buildParams.debugDir.empty())
-    {
-        script << " -g";
-    }
+              "  command = " << compilerCachePath << " " << cxxCompilerPath;
+    GenerateCFlags();
     script << " $cxxFlags" // Include user-provided CXXFLAGS last so
                            // other settings can be overridden
               "\n\n";
-
-    // Generate rules for linking C and C++ object code files into shared libraries.
-    script << "rule LinkCLib\n"
-              "  description = Linking C library\n"
-              "  command = " << compilerCachePath << " " << cCompilerPath << " " << sysrootOption;
-    if (!buildParams.debugDir.empty())
-    {
-        script << " -Wl,--build-id -g";
-    }
-    script << " -shared -o $out $in $ldFlags";
-    if (!buildParams.debugDir.empty())
-    {
-        script << " $\n"
-                  "      && splitdebug -d " << buildParams.debugDir <<
-                  " $out";
-    }
-    script << "\n\n";
-
-    script << "rule LinkCxxLib\n"
-              "  description = Linking C++ library\n"
-              "  command = " << compilerCachePath << " " << cxxCompilerPath << " " << sysrootOption;
-    if (!buildParams.debugDir.empty())
-    {
-        script << " -Wl,--build-id -g";
-    }
-    script << " -shared -o $out $in $ldFlags";
-    if (!buildParams.debugDir.empty())
-    {
-        script << " $\n"
-                  "      && splitdebug -d " << buildParams.debugDir <<
-                  " $out";
-    }
-    script << "\n\n";
-
-    script << "rule LinkCExe\n"
-              "  description = Linking C executable\n"
-              "  command = " << compilerCachePath << " " << cCompilerPath << " " << sysrootOption;
-    if (!buildParams.debugDir.empty())
-    {
-        script << " -Wl,--build-id -g";
-    }
-
-    if (!buildParams.noPie)
-    {
-      script << " -fPIE -pie";
-    }
-
-    script << " -o $out $in $ldFlags";
-    if (!buildParams.debugDir.empty())
-    {
-        script << " -g $\n"
-                  "      && splitdebug -d " << buildParams.debugDir <<
-                  " $out";
-    }
-    script << "\n\n";
-
-    script << "rule LinkCxxExe\n"
-              "  description = Linking C++ executable\n"
-              "  command = " << compilerCachePath << " " << cxxCompilerPath << " " << sysrootOption;
-    if (!buildParams.debugDir.empty())
-    {
-        script << " -Wl,--build-id -g";
-    }
-
-    if (!buildParams.noPie)
-    {
-      script << " -fPIE -pie";
-    }
-
-    script << " -o $out $in $ldFlags";
-    if (!buildParams.debugDir.empty())
-    {
-        script << " -g $\n"
-                  "      && splitdebug -d " << buildParams.debugDir <<
-                  " $out";
-    }
-    script << "\n\n";
-
-    // Generate rules for compiling Java code.
-    script << "rule CompileJava\n"
-              "  description = Compiling Java source\n"
-              "  command = javac -cp $classPath -d `dirname $out` $in && touch $out\n"
-              "\n";
-
-    script << "rule MakeJar\n"
-              "  description = Making JAR file\n"
-              "  command = INDIR=`dirname $in`; find $$INDIR -name '*.class' "
-                             "-printf \"-C $$INDIR\\n%P\\n\""
-                             "|xargs jar -cf $out\n"
-              "\n";
-
-    // Generate rules for building drivers.
-    script << "rule MakeKernelModule\n"
-              "  description = Build kernel driver module\n"
-              "  depfile = $out.d\n" // Tell ninja where gcc will put the dependencies.
-              "  command = make -C $in\n"
-              "\n";
 
     // Generate rules for running external tools
     script << "rule BuildExternal\n"

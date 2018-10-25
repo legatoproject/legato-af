@@ -69,9 +69,6 @@ void GenerateCLangComponentMainFile
 {
     auto& compName = componentPtr->name;
 
-    // Compute the COMPONENT_INIT function name for the executable's default component.
-    std::string componentInitFuncName = "_" + compName + "_COMPONENT_INIT";
-
     // Compute the path to the output file.
     std::string outputDir = path::Minimize(buildParams.workingDir
                                         + '/'
@@ -139,8 +136,14 @@ void GenerateCLangComponentMainFile
                   "\n"
 
     // Generate forward declaration of the COMPONENT_INIT function.
+                  "// Declare component's COMPONENT_INIT_ONCE function,\n"
+                  "// and provide default empty implementation.\n"
+                  "__attribute__((weak))\n"
+                  "void " << componentPtr->initFuncName << "_ONCE(void)\n"
+                  "{\n"
+                  "}\n"
                   "// Component initialization function (COMPONENT_INIT).\n"
-                  "void " << componentInitFuncName << "(void);\n"
+                  "void " << componentPtr->initFuncName << "(void);\n"
                   "\n"
 
     // Define the library initialization function to be run by the dynamic linker/loader.
@@ -204,8 +207,11 @@ void GenerateCLangComponentMainFile
 
     // Queue the initialization function to the event loop.
                   "\n"
+                  "// Queue the default component's COMPONENT_INIT_ONCE to Event Loop.\n"
+                  "    event_QueueComponentInit(" << componentPtr->initFuncName << "_ONCE);\n"
+                  "\n"
                   "    //Queue the COMPONENT_INIT function to be called by the event loop\n"
-                  "    event_QueueComponentInit(" << componentInitFuncName << ");\n"
+                  "    event_QueueComponentInit(" << componentPtr->initFuncName << ");\n"
 
     // Put the finishing touches on the file.
                   "}\n"

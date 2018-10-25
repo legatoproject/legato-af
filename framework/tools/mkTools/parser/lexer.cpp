@@ -1588,7 +1588,8 @@ void Lexer_t::PullServerIpcOption
 
     // Check that it's one of the valid server-side options.
     if (   (tokenPtr->text != "[manual-start]")
-           && (tokenPtr->text != "[async]") )
+           && (tokenPtr->text != "[async]")
+           && (tokenPtr->text != "[direct]"))
     {
         ThrowException(
             mk::format(LE_I18N("Invalid server-side IPC option: '%s'"), tokenPtr->text)

@@ -23,10 +23,8 @@ class ExeBuildScriptGenerator_t : protected RequireComponentGenerator_t
 
     protected:
         virtual void GenerateCommentHeader(model::Exe_t* exePtr);
-        virtual std::string GetLinkRule(model::Exe_t* exePtr);
 
-        virtual void GetDependentLibLdFlags(model::Exe_t* exePtr);
-        virtual void GenerateBuildStatement(model::Exe_t* exePtr);
+        virtual void GenerateBuildStatement(model::Exe_t* exePtr) = 0;
         virtual void GenerateIpcBuildStatements(model::Exe_t* exePtr);
 
         virtual void GenerateCandCxxFlags(model::Exe_t* exePtr);
@@ -39,18 +37,6 @@ class ExeBuildScriptGenerator_t : protected RequireComponentGenerator_t
           RequireComponentGenerator_t(componentGeneratorPtr) {}
 
     public:
-        explicit ExeBuildScriptGenerator_t(
-            std::shared_ptr<BuildScriptGenerator_t> baseGeneratorPtr)
-        : RequireBaseGenerator_t(baseGeneratorPtr),
-          RequireComponentGenerator_t(std::make_shared<ComponentBuildScriptGenerator_t>(
-                                          baseGeneratorPtr)) {}
-
-        ExeBuildScriptGenerator_t(const std::string scriptPath,
-                                  const mk::BuildParams_t& buildParams)
-        : RequireBaseGenerator_t(std::make_shared<BuildScriptGenerator_t>(scriptPath, buildParams)),
-          RequireComponentGenerator_t(std::make_shared<ComponentBuildScriptGenerator_t>(
-                                          baseGeneratorPtr)) {}
-
         virtual void GenerateBuildRules(void);
         virtual void GenerateBuildStatements(model::Exe_t* exePtr);
         virtual void Generate(model::Exe_t* exePtr);

@@ -87,6 +87,12 @@ static pthread_mutex_t MutexListMutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 static pthread_mutex_t MutexListMutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * All ifgen initialization shares a single mutex.  Define that mutex here.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mutex_Ref_t le_ifgen_InitMutexRef = NULL;
 
 // ==============================
 //  PRIVATE FUNCTIONS
@@ -389,6 +395,8 @@ void mutex_Init
 //--------------------------------------------------------------------------------------------------
 {
     MutexPoolRef = le_mem_InitStaticPool(MutexPool, LE_CONFIG_MAX_MUTEX_POOL_SIZE, sizeof(Mutex_t));
+
+    le_ifgen_InitMutexRef = le_mutex_CreateNonRecursive("ifgenMutex");
 }
 
 

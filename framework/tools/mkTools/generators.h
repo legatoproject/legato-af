@@ -43,16 +43,30 @@ typedef void (*SystemGenerator_t)(model::System_t* systemPtr,
 /**
  * Run all generators in a collection on a model
  */
-template<class Model, class GeneratorIter>
-void RunAllGenerators(GeneratorIter generatorPtr,
+template<class Model, class Generator>
+void RunAllGenerators(std::map<std::string, Generator> generatorMap,
                       Model* modelPtr,
                       const mk::BuildParams_t& buildParams)
 {
-    for (GeneratorIter generatorIter = generatorPtr;
-         (*generatorIter);
-         ++generatorIter)
+
+    auto generatorIter = generatorMap.find(buildParams.osType);
+
+    if (generatorMap.end() == generatorIter)
     {
-        (*generatorIter)(modelPtr, buildParams);
+        std::string errorMsg =
+            mk::format(LE_I18N("Unknown OS type '%s'.  Options are:"), buildParams.osType);
+        for (auto &osType : generatorMap)
+        {
+            errorMsg += "\n    " + osType.first;
+        }
+        throw mk::Exception_t(errorMsg);
+    }
+
+    for (auto generatorFuncIter = generatorIter->second;
+         (*generatorFuncIter);
+         ++generatorFuncIter)
+    {
+        (*generatorFuncIter)(modelPtr, buildParams);
     }
 }
 

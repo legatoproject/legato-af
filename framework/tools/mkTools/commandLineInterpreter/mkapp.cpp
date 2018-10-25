@@ -45,9 +45,9 @@ static bool DontRunNinja = false;
 /// Steps to run to generate a Linux app
 static const generator::AppGenerator_t LinuxSteps[] =
 {
-    generator::ForAllComponents<GenerateCode>,
-    GenerateCode,
-    ninja::Generate,
+    generator::ForAllComponents<GenerateLinuxCode>,
+    GenerateLinuxCode,
+    ninja::GenerateLinux,
     [](model::App_t* appPtr, const mk::BuildParams_t& buildParams)
     {
         if (buildParams.binPack)
@@ -56,6 +56,12 @@ static const generator::AppGenerator_t LinuxSteps[] =
         }
     },
     NULL
+};
+
+/// All supported OS types, and the steps required to build them.
+static const std::map<std::string, const generator::AppGenerator_t*> OSTypeSteps
+{
+    std::pair<std::string, const generator::AppGenerator_t*> { "linux", LinuxSteps }
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -325,9 +331,6 @@ static void GetCommandLineArgs
         BuildParams.workingDir = path::MakeAbsolute(BuildParams.workingDir);
     }
 
-    // Generated libraries should be put under '/read-only/lib' under the staging directory.
-    BuildParams.libOutputDir = path::Combine(BuildParams.workingDir, "staging/read-only/lib");
-
     // Add the directory containing the .adef file to the list of source search directories
     // and the list of interface search directories.
     std::string aDefFileDir = path::GetContainingDir(AdefFilePath);
@@ -423,7 +426,7 @@ void MakeApp
     }
 
     // Run appropriate generator
-    generator::RunAllGenerators(LinuxSteps, appPtr, BuildParams);
+    generator::RunAllGenerators(OSTypeSteps, appPtr, BuildParams);
 
     // Now delete the appPtr
     delete appPtr;

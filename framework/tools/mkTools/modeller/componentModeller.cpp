@@ -520,6 +520,7 @@ static void GetProvidedApi
     // Check for options.
     bool async = false;
     bool manualStart = false;
+    bool direct = false;
     for (auto contentPtr : contentList)
     {
         if (contentPtr->type == parseTree::Token_t::SERVER_IPC_OPTION)
@@ -532,7 +533,17 @@ static void GetProvidedApi
             {
                 manualStart = true;
             }
+            else if (contentPtr->text == "[direct]")
+            {
+                direct = true;
+            }
         }
+    }
+
+    if (direct && async)
+    {
+        itemPtr->ThrowException(LE_I18N("Can't use [direct] with [async]"
+                                  " for the same interface."));
     }
 
     // Get a pointer to the .api file object.
@@ -545,11 +556,13 @@ static void GetProvidedApi
     }
 
     // Create the new interface object and add it to the appropriate list.
-    auto ifPtr = new model::ApiServerInterface_t(apiFilePtr,
+    auto ifPtr = new model::ApiServerInterface_t(itemPtr,
+                                                 apiFilePtr,
                                                  componentPtr,
                                                  internalName,
                                                  async);
     ifPtr->manualStart = manualStart;
+    ifPtr->direct = direct;
 
     componentPtr->serverApis.push_back(ifPtr);
 
@@ -781,13 +794,15 @@ static void GetRequiredApi
     // If we are only importing data types from this .api file.
     if (typesOnly)
     {
-        auto ifPtr = new model::ApiTypesOnlyInterface_t(apiFilePtr, componentPtr, internalName);
+        auto ifPtr = new model::ApiTypesOnlyInterface_t(itemPtr,
+                                                        apiFilePtr, componentPtr, internalName);
 
         componentPtr->typesOnlyApis.push_back(ifPtr);
     }
     else
     {
-        auto ifPtr = new model::ApiClientInterface_t(apiFilePtr, componentPtr, internalName);
+        auto ifPtr = new model::ApiClientInterface_t(itemPtr,
+                                                     apiFilePtr, componentPtr, internalName);
 
         ifPtr->manualStart = manualStart;
         ifPtr->optional = optional;
@@ -1301,16 +1316,18 @@ model::Component_t* GetComponent
     // dependency for code components.
     auto baseLibPath = path::Combine(envVars::Get("LEGATO_ROOT"),
                                                  "build/" + buildParams.target + "/framework/lib/");
-    auto liblegatoPath = path::Combine(baseLibPath, "liblegato.so");
 
     // If there are C sources or C++ sources, a library will be built for this component.
     if (componentPtr->HasCOrCppCode())
     {
-        // Changes to liblegato should trigger re-linking of the component library.
-        componentPtr->implicitDependencies.insert(liblegatoPath);
+        // It will have an init function that will need to be executed (unless it is built
+        // "stand-alone").
+        componentPtr->initFuncName = "_" + componentPtr->name + "_COMPONENT_INIT";
     }
     else if (componentPtr->HasJavaCode())
     {
+        auto liblegatoPath = path::Combine(baseLibPath, "liblegato.so");
+
         // Changes to liblegato should trigger re-linking of the component library.
         auto legatoJarPath = path::Combine(baseLibPath, "legato.jar");
         auto liblegatoJniPath = path::Combine(baseLibPath, "liblegatoJni.so");

@@ -32,6 +32,7 @@ struct ProcessEnv_t
     NonNegativeIntLimit_t maxCoreDumpFileBytes; ///< Maximum core dump file size in bytes.
     NonNegativeIntLimit_t maxLockedMemoryBytes; ///< Maximum bytes that can be locked in RAM.
     PositiveIntLimit_t    maxFileDescriptors;   ///< Maximum number of open file descriptors.
+    NonNegativeIntLimit_t maxStackBytes;        ///< Maximum number of bytes allowed for the stack
 
     // Watchdog
     WatchdogAction_t  watchdogAction;

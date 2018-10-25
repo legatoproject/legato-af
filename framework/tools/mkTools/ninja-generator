@@ -11,9 +11,28 @@ then
     echo "**ERROR: LEGATO_ROOT is not set." 1>&2
     exit 1
 fi
+if [ -z "$BUILD_DIR" ]
+then
+    echo "**ERROR: BUILD_DIR is not set." 1>&2
+    exit 1
+fi
+if [ -z "$CXX" ]
+then
+    echo "**ERROR: CXX not set" >&2
+    exit 1
+fi
+if [ -z "$TOOLS_ARCH" ]
+then
+    echo "**ERROR: TOOLS_ARCH not set." >&2
+    exit 1
+fi
+if [ -z "$HOST_ARCH" ]
+then
+    echo "**ERROR: HOST_ARCH not set." >&2
+    exit 1
+fi
 
 SOURCE_DIR=$LEGATO_ROOT/framework/tools/mkTools
-BUILD_DIR=$LEGATO_ROOT/build/tools
 NINJA_SCRIPT=$BUILD_DIR/build.ninja
 NINJA_SCRIPT_GENERATOR=$PWD/$0
 
@@ -27,16 +46,11 @@ function ObjectsFromSources()
     done
 }
 
-# Select the C++ compiler to use.
-if [[ "${LE_CONFIG_USE_CLANG}" == y ]]
-then
-    COMPILER="clang++ -std=c++0x"
-else
-    COMPILER="g++ -std=c++0x"
-fi
+# Select the C++ standard option for the compiler.
+COMPILER="$CXX -std=c++0x"
 
 # Use ccache.
-if [[ "${LE_CONFIG_USE_CCACHE}" == y ]]
+if [[ "$LE_CONFIG_USE_CCACHE" == "y" ]]
 then
     if [ -z "${CCACHE}" ]
     then
@@ -47,18 +61,18 @@ then
     COMPILER="${CCACHE} ${COMPILER}"
 fi
 
+# Support a 64-bit host cross-building tools for a 32-bit x86.
 echo "Tools arch: $TOOLS_ARCH"
-
 TOOLS_ARCH_FLAGS=""
 if [[ "$TOOLS_ARCH" != "$HOST_ARCH" ]]
 then
-  if [[ "$TOOLS_ARCH" == "i686" ]]
-  then
-    TOOLS_ARCH_FLAGS="-m32"
-  else
-    echo "Unable to build tools for ${TOOLS_ARCH} from host ${HOST_ARCH}"
-    exit 1
-  fi
+    if [[ "$TOOLS_ARCH" == "i686" ]]
+    then
+        TOOLS_ARCH_FLAGS="-m32"
+    else
+        echo "Unable to build tools for ${TOOLS_ARCH} from host ${HOST_ARCH}"
+        exit 1
+    fi
 fi
 
 # Get a list of all the .cpp files.
@@ -81,12 +95,13 @@ precompiledHeader = \$builddir/precompiled/mkTools.h.gch
 
 rule Link
   description = Linking mk tools
-  command = $COMPILER $TOOLS_ARCH_FLAGS -o \$out \$in
+  command = $COMPILER $TOOLS_ARCH_FLAGS -g -o \$out \$in
 
 rule Compile
   description = Compiling mk tools sources
   depfile = \$out.d
   command = $COMPILER -MMD -MF \$out.d $TOOLS_ARCH_FLAGS \$
+                      -g \$
                       $HOST_CFLAGS \$
                       -I\$builddir/precompiled/ \$
                       -I$SOURCE_DIR \$

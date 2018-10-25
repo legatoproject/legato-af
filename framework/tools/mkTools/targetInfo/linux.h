@@ -31,7 +31,6 @@ class LinuxComponentInfo_t : public model::TargetInfo_t
 {
     public:
         std::string lib;
-        std::string initFuncName;
 
         LinuxComponentInfo_t(const model::Component_t* componentPtr,
                              const mk::BuildParams_t& buildParams)
@@ -56,7 +55,6 @@ class LinuxComponentInfo_t : public model::TargetInfo_t
             {
                 lib = path::Combine(baseComponentPath,
                                     "libComponent_" + componentPtr->name + ".so");
-                initFuncName = "_"+ componentPtr->name + "_COMPONENT_INIT";
             }
             else if (componentPtr->HasJavaCode())
             {
@@ -68,4 +66,4 @@ class LinuxComponentInfo_t : public model::TargetInfo_t
 
 }
 
-#endif /* LEGATO_MKTOOLS_TARGET_INFO_H_INCLUDE_GUARD */
+#endif /* LEGATO_MKTOOLS_LINUX_TARGET_INFO_H_INCLUDE_GUARD */

@@ -34,7 +34,7 @@ struct HasTargetInfo_t
 
     // Type-safe getter for some target information
     template<class T>
-    const T* getTargetInfo(void) const
+    const T* GetTargetInfo(void) const
     {
         try
         {
@@ -50,7 +50,7 @@ struct HasTargetInfo_t
     }
 
     template<class T>
-    T* getTargetInfo(void)
+    T* GetTargetInfo(void)
     {
         try
         {
@@ -67,7 +67,7 @@ struct HasTargetInfo_t
 
     /// Give this app some target info
     template<class T>
-    void setTargetInfo(T* targetInfoPtr)
+    void SetTargetInfo(T* targetInfoPtr)
     {
         targetInfo.insert(std::make_pair(std::type_index(typeid(T)),
                                          std::shared_ptr<TargetInfo_t>(targetInfoPtr)));
