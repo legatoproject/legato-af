@@ -763,12 +763,18 @@ le_result_t le_flash_RequestAccess
     if (NULL == requestPtr)
     {
         requestPtr = le_mem_ForceAlloc(RequestPool);
+
+        if (NULL == requestPtr)
+        {
+            LE_ERROR("Failed to allocate memory");
+            return LE_FAULT;
+        }
         requestPtr->client = clientSession;
         requestPtr->isRequested = false;
         le_hashmap_Put(RequestHashMap, clientSession, requestPtr);
     }
 
-    if ((requestPtr) && (requestPtr->client == clientSession))
+    if (requestPtr->client == clientSession)
     {
         if (requestPtr->isRequested)
         {
