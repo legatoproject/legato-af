@@ -1,0 +1,5 @@
+commands:
+{
+    strace = tools:/bin/devModeStub
+    gdbserver = tools:/bin/devModeStub
+}

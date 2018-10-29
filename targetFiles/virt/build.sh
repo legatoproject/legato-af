@@ -108,9 +108,12 @@ if [ -z "$USERFS_IMG" ] || [ ! -e "$USERFS_IMG" ]; then
     rm -rf "$BUILD_DIR/userfs"
     mkdir "$BUILD_DIR/userfs"
 
+    # ... copy tools apps
+    cp -R "$LEGATO_ROOT/build/${TARGET}/tools" "$BUILD_DIR/userfs/"
+
     # ... copy sample apps
     if ! cp -R "$LEGATO_ROOT/build/${TARGET}/samples" "$BUILD_DIR/userfs/"; then
-        echo "Sample apps not available, did you run 'make tests_virt' to build sample and test code?"
+        echo "Sample apps not available, did you run 'make samples_virt' to build sample apps?"
         echo "Continuing without ..."
     fi
 

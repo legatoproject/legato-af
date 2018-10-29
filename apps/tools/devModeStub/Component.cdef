@@ -1,0 +1,7 @@
+bundles:
+{
+    file:
+    {
+        [x] devModeStub /bin/
+    }
+}

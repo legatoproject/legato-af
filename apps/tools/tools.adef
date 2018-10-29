@@ -17,6 +17,11 @@ executables:
     kmod = (moduleLoad)
 }
 
+components:
+{
+    devModeStub
+}
+
 bindings:
 {
     cm.cm.le_mrc -> modemService.le_mrc
