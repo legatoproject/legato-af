@@ -263,7 +263,11 @@ static ExtractInfo_t* SplitUbiImage
        exit(1);
     }
 
-    fstat( fd, &st );
+    if (fstat( fd, &st ) < 0)
+    {
+        fprintf(stderr, "Failed to obtain info of file: %s\n", filePath);
+        exit(1);
+    }
 
     result = utils_ScanUbi(fd,
                            st.st_size,
@@ -336,6 +340,7 @@ static void PrependMetaData
 {
     char patchMeta[NAME_MAX] = "patch-Meta-XXXXXX";
     char patchTemp[NAME_MAX] = "patch-Temp-XXXXXX";
+    mode_t currentUmask;
 
     printf( "PATCH METAHEADER:\n"
             "\t\t\t\t DiffType: %s\n"
@@ -359,7 +364,9 @@ static void PrependMetaData
             be32toh(patchHeader->destSize),
             be32toh(patchHeader->destCrc32));
 
+    currentUmask = umask(S_IRWXO | S_IRWXG);
     int fd = mkstemp(patchMeta);
+    umask(currentUmask);
 
     if (fd < 0)
     {
@@ -368,10 +375,12 @@ static void PrependMetaData
     }
     lseek( fd, 0, SEEK_SET );
     write( fd, patchHeader, sizeof(DeltaPatchMetaHeader_t) );
-
     close(fd);
 
+    currentUmask = umask(S_IRWXO | S_IRWXG);
     fd = mkstemp(patchTemp);
+    umask(currentUmask);
+
     if (fd < 0)
     {
         fprintf(stderr, "Failed to create temporary file for appending metadata: %s\n", patchTemp);
@@ -514,6 +523,8 @@ static bool CanApplyImgdiff
         exit( 1 );
     }
 
+    str[strlen(SQUASH_MAGIC)] = '\0';
+
     if (IsVerbose)
     {
         printf("Squashfs magic read: %s, sizeof(magic) = %zd\n", str, strlen(SQUASH_MAGIC));
@@ -553,7 +564,11 @@ static void MarkPatchAsDelta
         exit(6);
     }
 
-    read( fd, chunk, 1 );
+    if (0 > read( fd, chunk, 1 ))
+    {
+        fprintf(stderr, "failed to read patch header file %s: %m\n", patchHdrPathPtr );
+        exit(1);
+    }
     chunk[0] |= MISC_OPTS_DELTAPATCH;
 
     if (0 > lseek64( fd, MISC_OPTS_OFFSET, SEEK_SET ))
@@ -628,14 +643,14 @@ static void ComputeDeltaUBI
 
     if( noVolSrc != nbVolTgt )
     {
-       char yn;
+       int yn;
 
        fprintf(stderr,
                "Number of volumes differs between source (%u) and target (%u)\n",
                noVolSrc, nbVolTgt);
        fprintf(stderr, "Build patch anyway [y/N] ? ");
        yn = getchar();
-       if( toupper(yn) != 'Y' )
+       if( toupper(yn) != (int)'Y' )
        {
            exit(0);
        }
@@ -720,9 +735,12 @@ static void ComputeDeltaRawFlash
         fprintf(stderr, "Unable to open origin file %s: %m\n", srcPathPtr);
         exit(1);
     }
-    fstat( fdr, &st );
+    if (fstat( fdr, &st ) < 0)
+    {
+        fprintf(stderr, "Failed to obtain info of origin file: %s\n", srcPathPtr);
+        exit(1);
+    }
     patchMetaHeader.origSize = htobe32(st.st_size);
-
     crc32Orig = LE_CRC_START_CRC32;
 
     while( 0 < (len = read( fdr, Chunk, chunkLen )) )
@@ -738,9 +756,12 @@ static void ComputeDeltaRawFlash
         fprintf(stderr, "Unable to open destination file %s: %m\n", tgtPathPtr);
         exit(1);
     }
-    fstat( fdr, &st );
+    if (fstat( fdr, &st ) < 0)
+    {
+        fprintf(stderr, "Failed to obtain info of destination file: %s\n", tgtPathPtr);
+        exit(1);
+    }
     patchMetaHeader.destSize = htobe32(st.st_size);
-
     patchMetaHeader.ubiVolId = htobe16(((uint16_t)-1));
     patchMetaHeader.ubiVolType = (uint8_t)-1;
     patchMetaHeader.ubiVolFlags = (uint8_t)-1;
@@ -781,7 +802,11 @@ static void ComputeDeltaRawFlash
             fprintf(stderr, "Unable to open destination file %s: %m\n", tmpName);
             exit(1);
         }
-        fstat( fdw, &st );
+        if (fstat( fdw, &st ))
+        {
+            fprintf(stderr, "Failed to obtain info of file %s: %m\n", tmpName);
+            exit(1);
+        }
         patchHeader.offset = htobe32(patchNum * chunkLen);
         patchNum++;
         patchHeader.number = htobe32(patchNum);
@@ -810,7 +835,12 @@ static void ComputeDeltaRawFlash
     patchMetaHeader.segmentSize = htobe32(chunkLen);
     memcpy( patchMetaHeader.diffType, "BSDIFF40", 8 );
 
-    lseek64( fdp, 0, SEEK_SET );
+    if (0 > lseek64( fdp, 0, SEEK_SET ))
+    {
+        fprintf(stderr, "%s %d; lseek64() fails: %m\n", __func__, __LINE__);
+        close(fdp);
+        exit(6);
+    }
     write( fdp, &patchMetaHeader, sizeof(patchMetaHeader) );
 
     printf( "PATCH METAHEADER: segsize %x numpat %x ubiVolId %hu "
@@ -936,6 +966,9 @@ int main
             if( toolchainEnvPtr )
             {
                 snprintf( env, sizeof(env), "PATH=%s:%s/..", envPtr, toolchainEnvPtr );
+#ifdef __COVERITY__
+                __coverity_tainted_data_sanitize__(env);
+#endif // __COVERITY__
                 putenv( env );
             }
             else
@@ -1164,7 +1197,9 @@ int main
         snprintf( CmdBuf, sizeof(CmdBuf), "mv %s "PATCH_FILE_PREFIX"%s.cwe",
                   tmpPatchPath, productPtr);
     }
-
+#ifdef __COVERITY__
+    __coverity_tainted_data_sanitize__(CmdBuf);
+#endif // __COVERITY__
     utils_ExecSystem( CmdBuf );
 
     snprintf( CmdBuf, sizeof(CmdBuf), "rm -rf /tmp/patchdir.%u", pid );

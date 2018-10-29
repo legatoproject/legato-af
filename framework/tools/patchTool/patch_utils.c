@@ -392,7 +392,7 @@ le_result_t utils_ScanUbi
 
     for( peb = 0; peb < (imageLength / pebSize); peb++ )
     {
-        pebOffset = peb * pebSize;
+        pebOffset = peb * (off64_t)pebSize;
         res = ReadEcHeader( fd, pebOffset, &ecHeader );
         if (LE_FORMAT_ERROR == res )
         {
@@ -633,7 +633,7 @@ void utils_CheckForTool
         exit(1);
     }
     toolPathPtr = fgets( toolPath, sizeof(toolPath), fdPtr );
-    fclose( fdPtr );
+    pclose( fdPtr );
     if( !toolPathPtr )
     {
         fprintf(stderr,
