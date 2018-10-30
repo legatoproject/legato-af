@@ -86,15 +86,6 @@ static bool IsCurrSysPathValid = false;
 //--------------------------------------------------------------------------------------------------
 static le_sls_List_t SecStoreSystems = LE_SLS_LIST_INIT;
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * List of framework system indices.
- */
-//--------------------------------------------------------------------------------------------------
-static le_sls_List_t FrameworkSystems = LE_SLS_LIST_INIT;
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Pool of system indices.
@@ -102,6 +93,12 @@ static le_sls_List_t FrameworkSystems = LE_SLS_LIST_INIT;
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t SystemIndexPool = NULL;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Index of last good legato system.
+ */
+//--------------------------------------------------------------------------------------------------
+static int LastGoodSystemIndex = -1;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -201,25 +198,6 @@ static bool IsSystemInList
     return false;
 }
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Checks if the list is empty.
- *
- * @return
- *      true if the list is empty.
- *      false otherwise.
- */
-//--------------------------------------------------------------------------------------------------
-static bool IsEmpty
-(
-    le_sls_List_t* listPtr          ///< [IN] List to check.
-)
-{
-    return (le_sls_Peek(listPtr) == NULL);
-}
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Adds a system index into the list of secure storage system indices.
@@ -283,7 +261,7 @@ static void ClearSystemList
 //--------------------------------------------------------------------------------------------------
 /**
  * Find the specified system index's ancestor.  This is the largest index value that is smaller than
- * the specified index.
+ * or equal to the specified index.
  *
  * @return
  *      Index of the ancestor.
@@ -381,6 +359,9 @@ static le_result_t SetCurrSystem
             }
         }
 
+        LE_WARN("Hash values of '%s' mismatch, deleting its content.", secSysHashPath);
+        LE_WARN("Current hash is '%s', secStore hash is '%s'", currHash, secSysHash);
+
         // This system is invalid and needs to be deleted.
         result = pa_secStore_Delete(CurrSysPath);
         if ((!isReadOnly) && (LE_NOT_FOUND == result))
@@ -407,7 +388,7 @@ static le_result_t SetCurrSystem
                     "Secure storage path '%s...' is too long.",
                     ancestorPath);
 
-        if (IsEmpty(&FrameworkSystems))
+        if (-1 == LastGoodSystemIndex)
         {
             // If there is only one system then we can just do a move instead of a copy.
             LE_INFO("Creating current system from system index %d.", ancestorIndex);
@@ -428,6 +409,15 @@ static le_result_t SetCurrSystem
     // Store the hash value for this system.
     pa_secStore_Write(secSysHashPath, (uint8_t*)currHash, strlen(currHash) + 1);
 
+    // Current index path is created, so add it to the link if it was not there.
+    if (!IsSystemInList(currIndex, &SecStoreSystems))
+    {
+        SystemsIndex_t* sysIndexPtr = le_mem_ForceAlloc(SystemIndexPool);
+        sysIndexPtr->index = currIndex;
+        sysIndexPtr->link = LE_SLS_LINK_INIT;
+        le_sls_Queue(&SecStoreSystems, &(sysIndexPtr->link));
+    }
+
     return result;
 }
 
@@ -444,11 +434,11 @@ static void RemoveOldSystems
 {
     int ancestorIndex = -1;
 
-    if (!IsEmpty(&FrameworkSystems))
+    if (-1 != LastGoodSystemIndex)
     {
-        // We need to keep the ancestor system otherwise a rollback may leave us with nothing to go
-        // back to.
-        ancestorIndex = FindAncestorSys(currIndex, &SecStoreSystems);
+        //We need to keep the ancestor of last good system ,otherwise a rollback may leave us
+        //with nothing to go back to.
+        ancestorIndex = FindAncestorSys(LastGoodSystemIndex, &SecStoreSystems);
         LE_INFO("Retaining system index %d for later use.", ancestorIndex);
     }
 
@@ -459,9 +449,8 @@ static void RemoveOldSystems
     {
         SystemsIndex_t* secIndexPtr = CONTAINER_OF(secLinkPtr, SystemsIndex_t, link);
 
-        if ( (secIndexPtr->index != currIndex) &&
-             (secIndexPtr->index != ancestorIndex) &&
-             (!IsSystemInList(secIndexPtr->index, &FrameworkSystems)) )
+        if ((secIndexPtr->index != currIndex) &&
+             (secIndexPtr->index != ancestorIndex))
         {
             // Delete this system from sec store.
             char path[LIMIT_MAX_PATH_BYTES];
@@ -501,18 +490,10 @@ static le_result_t InitSystems
     // Get the current system index.
     int currIndex = le_update_GetCurrentSysIndex();
 
-    // Get a list of system indices.
-    int index = currIndex;
+    // Get last good system index.
+    LastGoodSystemIndex = le_update_GetPreviousSystemIndex(currIndex);
 
-    while ((index = le_update_GetPreviousSystemIndex(index)) != -1)
-    {
-        SystemsIndex_t* indexPtr = le_mem_ForceAlloc(SystemIndexPool);
-
-        indexPtr->index = index;
-        indexPtr->link = LE_SLS_LINK_INIT;
-
-        le_sls_Queue(&FrameworkSystems, &(indexPtr->link));
-    }
+    LE_INFO("current system index=%d,  last good system index=%d", currIndex, LastGoodSystemIndex);
 
     // Get a list of all the systems in secure storage right now.
     le_result_t result = pa_secStore_GetEntries(SYS_PATH, AddSystemToList, &SecStoreSystems);
@@ -535,7 +516,6 @@ static le_result_t InitSystems
 
     // Delete the list of systems.
     ClearSystemList(&SecStoreSystems);
-    ClearSystemList(&FrameworkSystems);
 
     IsCurrSysPathValid = true;
 
