@@ -74,7 +74,7 @@
  *         LE_INFO("WiFi Client started.");
  *         WiFiEventHandlerRef = le_wifiClient_AddNewEventHandler( EventHandler, NULL );
  *     }
- *     else if ( LE_BUSY == result )
+ *     else if ( LE_DUPLICATE == result )
  *     {
  *         LE_INFO("ERROR: WiFi Client already started.");
  *     }
@@ -259,9 +259,9 @@ EVENT NewEvent
  * Start the WIFI device.
  *
  * @return
- *      - LE_OK     Function succeeded.
- *      - LE_FAULT  Function failed.
- *      - LE_BUSY   The WIFI device is already started.
+ *      - LE_OK          Function succeeded.
+ *      - LE_FAULT       Function failed.
+ *      - LE_DUPLICATE   The WIFI device is already started.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Start
