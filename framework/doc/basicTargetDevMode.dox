@@ -11,6 +11,7 @@ deployed into production.
 - sets the probation period of apps to 10 seconds, to prevent aggressive roll-back.
 - holds a wake lock, so the target won't go to sleep when disconnected from USB.
 - removes the boot count file on startup to disable the boot loop detection feature of Legato.
+- installs other debug/development tools such as tcpdump, lsusb, lsof and iperf3.
 
 @c devMode also provides specific tools for Developer Studio support:
 - tcf-agent, making the target is able to be auto-discoverable by Developer Studio.

@@ -4,21 +4,36 @@ bundles:
 {
     file:
     {
-        // Only package gdbserver if it is provided by the toolchain.
+        // Only package these debug tools if they are provided by the toolchain.
         #if file_exists($LEGATO_SYSROOT/usr/bin/gdbserver)
-            [rx] $LEGATO_SYSROOT/usr/bin/gdbserver        /bin/gdbserver
+            [rx] $LEGATO_SYSROOT/usr/bin/gdbserver          /bin/gdbserver
         #endif
-        // Only package strace if it is provided by the toolchain.
         #if file_exists($LEGATO_SYSROOT/usr/bin/strace)
-            [rx] $LEGATO_SYSROOT/usr/bin/strace        /bin/strace
+            [rx] $LEGATO_SYSROOT/usr/bin/strace             /bin/strace
         #endif
-        // Only package tcf-agent if it is provided by the toolchain.
         #if file_exists($LEGATO_SYSROOT/usr/sbin/tcf-agent)
-            [rx] $LEGATO_SYSROOT/usr/sbin/tcf-agent        /sbin/tcf-agent
+            [rx] $LEGATO_SYSROOT/usr/sbin/tcf-agent         /sbin/tcf-agent
         #endif
-        // Only package sftp-server if it is provided by the toolchain.
         #if file_exists($LEGATO_SYSROOT/usr/libexec/sftp-server)
-            [rx] $LEGATO_SYSROOT/usr/libexec/sftp-server        /bin/sftp-server
+            [rx] $LEGATO_SYSROOT/usr/libexec/sftp-server    /bin/sftp-server
+        #endif
+        #if file_exists($LEGATO_SYSROOT/usr/sbin/tcpdump)
+            [rx] $LEGATO_SYSROOT/usr/sbin/tcpdump           /sbin/tcpdump
+        #endif
+        #if file_exists($LEGATO_SYSROOT/usr/bin/iperf3)
+            [rx] $LEGATO_SYSROOT/usr/bin/iperf3             /bin/iperf3
+        #endif
+        #if file_exists($LEGATO_SYSROOT/usr/lib/libiperf.so.0)
+            [rx] $LEGATO_SYSROOT/usr/lib/libiperf.so.0      /lib/libiperf.so.0
+        #endif
+        #if file_exists($LEGATO_SYSROOT/usr/bin/usb-devices)
+            [rx] $LEGATO_SYSROOT/usr/bin/usb-devices        /bin/usb-devices
+        #endif
+        #if file_exists($LEGATO_SYSROOT/usr/bin/lsusb)
+            [rx] $LEGATO_SYSROOT/usr/bin/lsusb              /bin/lsusb
+        #endif
+        #if file_exists($LEGATO_SYSROOT/usr/sbin/lsof)
+            [rx] $LEGATO_SYSROOT/usr/sbin/lsof              /sbin/lsof
         #endif
     }
 }
