@@ -155,8 +155,7 @@ cm_data_connect () {
         echo "Setting up profile $index"
 
         if [ -z "$apn" ]; then
-            echo -n "No APN selected, cannot proceed."
-            exit 1
+            echo -n "No APN selected."
         fi
 
         echo -n "Connecting ... "
