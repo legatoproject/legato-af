@@ -1188,21 +1188,44 @@ static le_result_t SetDACForResource
     const char * srcPath
 )
 {
+    int fd = -1;
     struct stat srcStat;
+    le_result_t result = LE_OK;
 
-    if (stat(srcPath, &srcStat) < 0)
+    LE_ASSERT(NULL != srcPath);
+
+    if ((fd = open(srcPath, O_RDONLY)) < 0)
     {
-        // TODO: Print error
-        return LE_FAULT;
+        LE_ERROR("Unable to open %s", srcPath);
+        result = LE_FAULT;
+        goto cleanExit;
     }
 
-    if (chmod(srcPath, srcStat.st_mode | S_IROTH | S_IWOTH | S_IXOTH) != 0)
+    if (fstat(fd, &srcStat) != 0)
+    {
+        LE_ERROR("Unable to obtain status of %s", srcPath);
+        result = LE_FAULT;
+        goto cleanExit;
+    }
+
+    if (fchmod(fd, srcStat.st_mode | S_IROTH | S_IWOTH | S_IXOTH) != 0)
     {
         LE_ERROR("Unable to change permission bit on %s", srcPath);
-        return LE_FAULT;
+        result = LE_FAULT;
     }
 
-    return LE_OK;
+    cleanExit:
+    if(fd >= 0)
+    {
+        if(close(fd) != 0)
+        {
+            LE_ERROR("Unable to close %s", srcPath);
+            result = LE_FAULT;
+        }
+    }
+
+    return result;
+
 }
 
 
