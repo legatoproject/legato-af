@@ -135,8 +135,6 @@ parseTree::TokenList_t* ParseSimpleOrTokenListSection
 )
 //--------------------------------------------------------------------------------------------------
 {
-    auto sectionPtr = new parseTree::TokenListSection_t(sectionNameTokenPtr);
-
     // Expect a ':' next.
     (void)lexer.Pull(parseTree::Token_t::COLON);
 
@@ -158,6 +156,8 @@ parseTree::TokenList_t* ParseSimpleOrTokenListSection
 
         return sectionPtr;
     }
+
+    auto sectionPtr = new parseTree::TokenListSection_t(sectionNameTokenPtr);
 
     // Expect a '{' next.
     (void)lexer.Pull(parseTree::Token_t::OPEN_CURLY);
