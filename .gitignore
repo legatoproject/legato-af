@@ -75,3 +75,6 @@ apps/sample/dataHub/
 
 # Tools
 framework/tools/imgdiff/
+
+# Tests
+.cache

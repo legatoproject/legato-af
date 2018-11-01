@@ -820,7 +820,7 @@ static void SetSmackRulesForBindings
         char serverName[LIMIT_MAX_APP_NAME_BYTES];
 
         if ( (le_cfg_GetString(bindCfg, "app", serverName, sizeof(serverName), "") == LE_OK) &&
-             (strcmp(serverName, "") != 0) )
+             (serverName[0] != '\0') )
         {
             // Get the server's SMACK label.
             char serverLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
@@ -951,9 +951,29 @@ static void SetDefaultSmackRules
 
             // Give '_' x access to app.devMode since it performs some overlays on directories
             // required by the '_' label.
-            if (0 == strcmp(frameworkAppList[i], "app.devMode"))
+            else if (0 == strcmp(frameworkAppList[i], "app.devMode"))
             {
                 smack_SetRule("_", "x", frameworkAppList[i]);
+            }
+
+            // Workaround for apps that needs access to services exposed by the supervisor.
+            // Services such as 'le_framework', 'le_appInfo' or 'le_appCtrl' need the client
+            // to have 'w' access to 'admin'.
+            else if (0 == strcmp(frameworkAppList[i], "app.powerMgr"))
+            {
+                smack_SetRule(frameworkAppList[i], "w", "admin");
+            }
+            else if (0 == strcmp(frameworkAppList[i], "app.avcService"))
+            {
+                smack_SetRule(frameworkAppList[i], "w", "admin");
+            }
+            else if (0 == strcmp(frameworkAppList[i], "app.secStore"))
+            {
+                smack_SetRule(frameworkAppList[i], "w", "admin");
+            }
+            else if (0 == strcmp(frameworkAppList[i], "app.dataConnectionService"))
+            {
+                smack_SetRule(frameworkAppList[i], "w", "admin");
             }
         }
     }

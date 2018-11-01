@@ -334,7 +334,7 @@ function StartVirtualTarget()
         Exit 1
     fi
 
-    if [ -z "$VIRT_SKIP_PULL" ]; then
+    if [ -z "$VIRT_SKIP_PULL" ] && [[ "$VIRT_DOCKER_IMG" != sha256* ]]; then
         message $COLOR_INFO "Downloading virtual target image ..."
         docker pull $VIRT_DOCKER_IMG
         CheckRet

@@ -50,16 +50,10 @@ cflags:
         -DTARGET_IMPORTS_ARMV6
     #elif ${LEGATO_TARGET_ARCH} = armv7
         -DTARGET_IMPORTS_ARMV7
-    #elif ${LEGATO_TARGET} = virt_x86
+    #elif ${LEGATO_TARGET} = virt-x86
         -DTARGET_IMPORTS_X86
-    #elif ${LEGATO_TARGET} = virt_arm
+    #elif ${LEGATO_TARGET} = virt-arm
         -DTARGET_IMPORTS_ARMV7
-    #elif ${LEGATO_TARGET} = virt
-        #if ${VIRT_TARGET_ARCH} = x86
-            -DTARGET_IMPORTS_X86
-        #else
-            -DTARGET_IMPORTS_ARMV7
-        #endif
     #elif ${LEGATO_TARGET} = raspi
         #if ${RASPI_TOOLCHAIN_PREFIX} = arm-poky-linux-gnueabi-
             -DTARGET_IMPORTS_ARMV6
