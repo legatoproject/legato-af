@@ -459,7 +459,8 @@ static void StopTimers
 {
     if(ECallObj.redial.intervalTimer)
     {
-        LE_DEBUG("Stop the Interval timer");
+        LE_DEBUG("Stop the Interval timer, reference is %p.",
+                  ECallObj.redial.intervalTimer);
         if (le_timer_IsRunning(ECallObj.redial.intervalTimer))
         {
             le_timer_Stop(ECallObj.redial.intervalTimer);
@@ -468,7 +469,8 @@ static void StopTimers
 
     if(ECallObj.redial.dialDurationTimer)
     {
-        LE_DEBUG("Stop the dial duration timer");
+        LE_DEBUG("Stop the dial duration timer, reference is %p.",
+                  ECallObj.redial.dialDurationTimer);
         if (le_timer_IsRunning(ECallObj.redial.dialDurationTimer))
         {
             le_timer_Stop(ECallObj.redial.dialDurationTimer);
@@ -558,7 +560,8 @@ static void RedialStart
 
     if (!le_timer_IsRunning(ECallObj.redial.dialDurationTimer))
     {
-        LE_DEBUG("Start Dial Duration timer ");
+        LE_DEBUG("Start Dial Duration timer, reference is %p, duration is %d seconds!",
+                  ECallObj.redial.dialDurationTimer, (int)interval.sec);
         LE_ERROR_IF( ((le_timer_SetInterval(
                     ECallObj.redial.dialDurationTimer, interval)
                     != LE_OK) ||
@@ -823,20 +826,24 @@ static void DialDurationTimerHandler
     le_timer_Ref_t timerRef
 )
 {
+    if( timerRef != ECallObj.redial.dialDurationTimer )
+    {
+        LE_WARN("Dial duration handler received an unexpected timer %p.", timerRef);
+    }
+
     LE_INFO("Dial duration expires! stop dialing...");
 
     // Invalidate MSD
     InvalidateMsd();
 
-    if (pa_ecall_End() == LE_OK)
-    {
-        // Update eCall session state
-        ECallObj.sessionState = ECALL_SESSION_STOPPED;
+    // Hangup all call and stop eCall redial anyway
+    le_mcc_HangUpAll();
 
-        // Stop redial period
-        RedialStop(ECALL_REDIAL_DURATION_EXPIRED);
-    }
+    // Update eCall session state
+    ECallObj.sessionState = ECALL_SESSION_STOPPED;
 
+    // Stop redial period
+    RedialStop(ECALL_REDIAL_DURATION_EXPIRED);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -850,6 +857,11 @@ static void IntervalTimerHandler
     le_timer_Ref_t timerRef
 )
 {
+    if( timerRef != ECallObj.redial.intervalTimer)
+    {
+        LE_WARN("Interval timer handler received an unexpected timer %p.", timerRef);
+    }
+
     // Dial attempt
     DialAttempt();
 }
@@ -881,7 +893,8 @@ static void DialAttemptInterval
                     (time.sec-ECallObj.redial.startTentativeTime.sec);
     }
 
-    LE_INFO("Redial in %d seconds", (int)interval.sec);
+    LE_INFO("Interval timer reference is %p, redial in %d seconds",
+             ECallObj.redial.intervalTimer, (int)interval.sec);
 
     LE_ERROR_IF( ((le_timer_SetInterval(ECallObj.redial.intervalTimer, interval)
                     != LE_OK) ||
@@ -3539,6 +3552,9 @@ le_result_t le_ecall_SetEraGlonassDialDuration
     interval.usec = 0;
 
     ECallObj.eraGlonass.dialDuration = duration;
+    LE_DEBUG("Set ERA-GLONASS dial duration timer %p to %d seconds",
+              ECallObj.redial.dialDurationTimer, (int)duration);
+
     if (le_timer_SetInterval(ECallObj.redial.dialDurationTimer, interval) != LE_OK)
     {
         LE_ERROR("Cannot start the DialDuration timer!");
