@@ -467,9 +467,9 @@ void BuildScriptGenerator_t::GenerateFileBundleBuildStatement
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::string containingDir = path::GetContainingDir(fileObject.destPath);
     auto bundledFileIter = bundledFiles.find(fileObject);
 
+    // If the same file is already in the list, don't insert it again.
     if (bundledFileIter == bundledFiles.end())
     {
         script << "build " << fileObject.destPath << " : BundleFile " << fileObject.srcPath << "\n"
@@ -477,25 +477,8 @@ void BuildScriptGenerator_t::GenerateFileBundleBuildStatement
 
         bundledFiles.insert(fileObject);
     }
-    else
-    {
-        if (fileObject.srcPath != bundledFileIter->srcPath)
-        {
-            fileObject.parseTreePtr->ThrowException(
-                mk::format(LE_I18N("error: Cannot bundle file '%s' with destination '%s' since it"
-                                   " conflicts with existing bundled file '%s'."),
-                           fileObject.srcPath, fileObject.destPath, bundledFileIter->srcPath)
-            );
-        }
-        else if (fileObject.permissions != bundledFileIter->permissions)
-        {
-            fileObject.parseTreePtr->ThrowException(
-                mk::format(LE_I18N("error: Cannot bundle file '%s'.  It is already bundled with"
-                                   " different permissions."),
-                           fileObject.srcPath)
-            );
-        }
-    }
+    // We assume that files bundled from ADEF are added first:
+    // as required by documentation, they take precedence over files bundled from SDEF.
 }
 
 
