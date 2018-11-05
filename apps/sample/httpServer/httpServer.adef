@@ -20,6 +20,7 @@ requires:
         /etc/passwd /etc/passwd    // needed by python to lookup user
         /legato/systems/current/version /legato/systems/current/version
         /legato/systems/current/status /legato/systems/current/status
+        /legato/systems/current/apps/httpServer/read-only/bin/lighttpd /app/bin/lighttpd
     }
 
     dir:
@@ -76,7 +77,7 @@ processes:
 
     run:
     {
-        ( lighttpd -m /modlibs/ -D -f /cfg/lighttpd.conf )
+        ( /app/bin/lighttpd -m /modlibs/ -D -f /cfg/lighttpd.conf )
     }
 }
 
