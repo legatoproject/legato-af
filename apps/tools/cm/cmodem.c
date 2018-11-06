@@ -20,6 +20,7 @@
 #include "cm_adc.h"
 #include "cm_ips.h"
 #include "cm_rtc.h"
+#include "cm_mdmCfg.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -95,6 +96,13 @@ const cm_Service_t Services[] = {
         .defaultCommandPtr = "read",
         .helpHandler = cm_rtc_PrintRtcHelp,
         .commandHandler = cm_rtc_ProcessRtcCommand
+    },
+    /* mdmCfg */
+    {
+        .serviceNamePtr = "mdmCfg",
+        .defaultCommandPtr = "help",
+        .helpHandler = cm_mdmCfg_PrintHelp,
+        .commandHandler = cm_mdmCfg_ProcessCommand
     },
 };
 

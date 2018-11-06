@@ -204,6 +204,38 @@ LE_SHARED le_result_t pa_secStore_Move
     return LE_UNAVAILABLE;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Re-initialize the secure storage if is already initialized.
+ *
+ * @note
+ *      This should be called each time the restore done indication is received in service level,
+ *      so that the meta hash can be rebuilt.
+ *
+ * @return
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void pa_secStore_ReInitSecStorage
+(
+    void
+)
+{
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register a handler for restore event in PA level to notify
+ * service level.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_event_HandlerRef_t pa_secStore_SetRestoreHandler
+(
+    pa_secStore_RestoreHdlrFunc_t handlerFuncPtr ///< [IN] The handler function.
+)
+{
+    return NULL;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

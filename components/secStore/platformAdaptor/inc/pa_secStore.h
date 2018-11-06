@@ -14,6 +14,30 @@
 
 #include "legato.h"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Type of secure storage restore status
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    PA_RESTORE_SUCCESS = 0,  ///< Restore success
+    PA_RESTORE_FAILURE       ///< Restore failure
+}
+pa_restore_status_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Prototype for handler functions used to report the secure storage restore status
+ *
+ * @param statusPtr
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*pa_secStore_RestoreHdlrFunc_t)
+(
+    pa_restore_status_t* statusPtr
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -194,5 +218,31 @@ LE_SHARED le_result_t pa_secStore_Move
     const char* srcPathPtr                  ///< [IN] Source path.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Re-initialize the secure storage if is already initialized.
+ *
+ * @note
+ *      This should be called each time the NV restore done indication is received in service level,
+ *      so that the meta hash can be rebuilt.
+ *
+ * @return
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void pa_secStore_ReInitSecStorage
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register a handler for restore event in PA level to notify
+ * service level.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_event_HandlerRef_t pa_secStore_SetRestoreHandler
+(
+    pa_secStore_RestoreHdlrFunc_t handlerFuncPtr ///< [IN] The handler function.
+);
 
 #endif // LEGATO_PA_SECURE_STORAGE_INCLUDE_GUARD

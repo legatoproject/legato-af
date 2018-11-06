@@ -1793,6 +1793,38 @@ le_result_t secStoreAdmin_GetTotalSpace
     return result;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Restore event handler
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void RestoreHandler
+(
+    pa_restore_status_t* statusPtr
+)
+{
+    if (*statusPtr == PA_RESTORE_SUCCESS)
+    {
+        LE_INFO("Secure storage restore succeeded, rebuild legato secure storage ...");
+
+        //First rebuild meta hash in PA level.
+        pa_secStore_ReInitSecStorage();
+
+        //Then re-initialize legato index based SFS files.
+        if (IsCurrSysPathValid)
+        {
+            IsCurrSysPathValid = 0;
+        }
+    }
+    else
+    {
+        LE_WARN("Secure storage restore failed.");
+    }
+
+    // The reportPtr is a reference counted object, so need to release it
+    le_mem_Release(statusPtr);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1812,6 +1844,8 @@ COMPONENT_INIT
     le_msg_AddServiceCloseHandler(secStoreAdmin_GetServiceRef(),
                                   CleanupClientIterators,
                                   NULL);
+    // Register a handler function for secure storage restore indication.
+    pa_secStore_SetRestoreHandler(RestoreHandler);
 
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
