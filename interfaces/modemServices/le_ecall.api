@@ -660,8 +660,8 @@ ENUM State
     STATE_MSD_TX_FAILED,              ///< MSD transmission has failed.
     STATE_ALACK_RECEIVED_POSITIVE,    ///< AL-ACK received.
     STATE_ALACK_RECEIVED_CLEAR_DOWN,  ///< AL-ACK clear-down received.
-    STATE_STOPPED,                    ///< eCall session has been stopped by PSAP
-                                      ///< or IVS le_ecall_End().
+    STATE_STOPPED,                    ///< Auto answer timer has expired after eCall session
+                                      ///< stopped by PSAP, or le_ecall_End() has been called by IVS.
     STATE_RESET,                      ///< eCall session has lost synchronization and starts over.
     STATE_COMPLETED,                  ///< eCall session completed. The modem successfully completed
                                       ///< the MSD transmission and received two AL-ACKs (positive).
