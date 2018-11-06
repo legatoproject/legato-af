@@ -5,3 +5,19 @@ externalBuild:
     "cp ${LEGATO_ROOT}/3rdParty/jerryscript/build/lib/*.a ${LEGATO_BUILD}/3rdParty/jerryscript/lib"
     "rm -rf ${LEGATO_ROOT}/3rdParty/jerryscript/build"
 }
+
+ldflags:
+{
+    -L${LEGATO_BUILD}/3rdParty/jerryscript/lib
+}
+
+requires:
+{
+    lib:
+    {
+        libjerry-core.a
+        libjerry-libm.a
+        libjerry-port-default.a
+        libjerry-ext.a
+    }
+}
