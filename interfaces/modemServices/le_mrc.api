@@ -305,7 +305,8 @@
  *
  * For Pci Network Scan Information, you can call:
  *
- *  - le_mrc_GetPciScanCellId() to get the id of each cell.
+ *  - le_mrc_GetPciScanCellId() to get the physical id of each cell.
+ *  - le_mrc_GetPciScanGlobalCellId() to get the global id of each cell.
  *  - le_mrc_GetPciScanMccMnc() to get the Mcc/Mnc of each plmn on each cell.
  *  - le_mrc_DeletePciNetworkScan() should be called when you do not need the list anymore.
  *
@@ -1591,16 +1592,32 @@ FUNCTION PlmnInformation GetNextPlmnInfo
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to get the cell id referenced by PciScanInformation which is
- * returned by le_mrc_GetFirstPciScanInfo() and le_mrc_GetNextPciScanInfo().
+ * This function must be called to get the physical cell id referenced by PciScanInformation which
+ * is returned by le_mrc_GetFirstPciScanInfo() and le_mrc_GetNextPciScanInfo().
  *
- * @return The Cell Identifier.
+ * @return The Physical Cell Identifier.
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION uint16 GetPciScanCellId
+(
+    PciScanInformation    pciScanInformationRef ///< [IN] The reference to the cell information.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the global cell id referenced by PciScanInformation which is
+ * returned by le_mrc_GetFirstPciScanInfo() and le_mrc_GetNextPciScanInfo().
+ *
+ * @return The Global Cell Identifier.
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint32 GetPciScanGlobalCellId
 (
     PciScanInformation    pciScanInformationRef ///< [IN] The reference to the cell information.
 );
@@ -1920,9 +1937,9 @@ FUNCTION CellInfo GetNextNeighborCellInfo
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to get the Cell Identifier.
+ * This function must be called to get the Physical Cell Identifier.
  *
- * @return The Cell Identifier. UINT32_MAX value is returned if the Cell Identifier is not
+ * @return The Physical Cell Identifier. UINT32_MAX value is returned if the Cell Identifier is not
  * available.
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the

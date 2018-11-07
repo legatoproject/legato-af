@@ -156,7 +156,8 @@ pa_mrc_PlmnInformation_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    uint16_t            cellId;                  ///< Id of the curent cell
+    uint16_t            physicalCellId;          ///< physical Id of the curent cell
+    uint32_t            globalCellId;            ///< global Id of the curent cell
     le_dls_List_t       plmnList;                ///< list of pa_mrc_PlmnInformation_t
     le_dls_Link_t*      currentLink;             ///< link for iterator
     le_dls_List_t       safeRefPlmnInfoList;     ///< list of PlmnInfoSafeRef_t

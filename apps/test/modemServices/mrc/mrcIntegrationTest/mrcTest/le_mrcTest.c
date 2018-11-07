@@ -938,7 +938,8 @@ static void Testle_mrc_PerformPciNetworkScan
 )
 {
 //! [PCI Scan]
-    uint16_t cellId = 0;
+    uint16_t physicalCellId = 0;
+    uint32_t globalCellId = 0;
     char mcc[LE_MRC_MCC_BYTES] = {0};
     char mnc[LE_MRC_MNC_BYTES] = {0};
     le_mrc_PciScanInformationListRef_t scanInfoListRef = NULL;
@@ -955,7 +956,8 @@ static void Testle_mrc_PerformPciNetworkScan
 
     do
     {
-        cellId = le_mrc_GetPciScanCellId(scanInfoRef);
+        physicalCellId = le_mrc_GetPciScanCellId(scanInfoRef);
+        globalCellId = le_mrc_GetPciScanGlobalCellId(scanInfoRef);
 
         // Get reference to the first PLMN info
         plmnInfoRef = le_mrc_GetFirstPlmnInfo(scanInfoRef);
@@ -969,7 +971,8 @@ static void Testle_mrc_PerformPciNetworkScan
                                                  mnc,
                                                  LE_MRC_MCC_BYTES))
             {
-                LE_INFO("Cell ID: %"PRIu16", MCC: %s, MNC: %s",cellId, mcc, mnc);
+                LE_INFO("Cell ID: physical %"PRIu16" global %"PRIu32", MCC: %s, MNC: %s",
+                        physicalCellId, globalCellId, mcc, mnc);
             }
 
             plmnInfoRef = le_mrc_GetNextPlmnInfo(scanInfoRef);
@@ -1098,8 +1101,9 @@ static void MyNetworkPciScanHandler
     {
         scanInfoRef = le_mrc_GetFirstPciScanInfo(listRef);
         LE_ASSERT(scanInfoRef != NULL);
-        int cell_id = le_mrc_GetPciScanCellId(scanInfoRef);
-        LE_INFO("the first cell id is %"PRIu16" !",cell_id);
+        uint16_t physicalCellId = le_mrc_GetPciScanCellId(scanInfoRef);
+        uint32_t globalCellId = le_mrc_GetPciScanGlobalCellId(scanInfoRef);
+        LE_INFO("First cell ID: physical %"PRIu16" global %"PRIu32"", physicalCellId, globalCellId);
         //Get first plmninfo reference
         PlmnInfoRef = le_mrc_GetFirstPlmnInfo(scanInfoRef);
         if(PlmnInfoRef == NULL)
@@ -1136,8 +1140,10 @@ static void MyNetworkPciScanHandler
 
         while ((scanInfoRef = le_mrc_GetNextPciScanInfo(listRef)) != NULL)
             {
-                cell_id = le_mrc_GetPciScanCellId(scanInfoRef);
-                LE_INFO("the Next cell id is %"PRIu16" !",cell_id);
+                physicalCellId = le_mrc_GetPciScanCellId(scanInfoRef);
+                globalCellId = le_mrc_GetPciScanGlobalCellId(scanInfoRef);
+                LE_INFO("Next cell ID: physical %"PRIu16" global %"PRIu32"", physicalCellId,
+                        globalCellId);
                 PlmnInfoRef = le_mrc_GetFirstPlmnInfo(scanInfoRef);
 
                 if(PlmnInfoRef == NULL)

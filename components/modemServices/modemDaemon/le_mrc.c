@@ -3916,9 +3916,9 @@ le_mrc_CellInfoRef_t le_mrc_GetNextNeighborCellInfo
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to get the Cell Identifier.
+ * This function must be called to get the Physical Cell Identifier.
  *
- * @return The Cell Identifier. UINT32_MAX value is returned if the Cell Identifier is not
+ * @return The Physical Cell Identifier. UINT32_MAX value is returned if the Cell Identifier is not
  * available.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
@@ -5162,10 +5162,10 @@ le_result_t le_mrc_GetPciScanMccMnc
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to get the cell id referenced by PciScanInformation which is
- * returned by le_mrc_GetFirstPciScanInfo() and le_mrc_GetNextPciScanInfo().
+ * This function must be called to get the physical cell id referenced by PciScanInformation which
+ * is returned by le_mrc_GetFirstPciScanInfo() and le_mrc_GetNextPciScanInfo().
  *
- * @return The Cell Identifier.
+ * @return The Physical Cell Identifier.
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
@@ -5186,7 +5186,36 @@ uint16_t le_mrc_GetPciScanCellId
         return LE_FAULT;
     }
 
-    return scanInformationPtr->cellId;
+    return scanInformationPtr->physicalCellId;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the global cell id referenced by PciScanInformation which is
+ * returned by le_mrc_GetFirstPciScanInfo() and le_mrc_GetNextPciScanInfo().
+ *
+ * @return The Global Cell Identifier.
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ */
+//--------------------------------------------------------------------------------------------------
+uint32_t le_mrc_GetPciScanGlobalCellId
+(
+    le_mrc_PciScanInformationRef_t pciScanInformationRef
+        ///< [IN] [IN] The reference to the cell information.
+)
+{
+    pa_mrc_PciScanInformation_t* scanInformationPtr = le_ref_Lookup(PciScanInformationRefMap,
+                                                                 pciScanInformationRef);
+
+    if (scanInformationPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", pciScanInformationRef);
+        return LE_FAULT;
+    }
+
+    return scanInformationPtr->globalCellId;
 }
 
 //--------------------------------------------------------------------------------------------------
