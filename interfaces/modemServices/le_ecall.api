@@ -435,6 +435,10 @@
  * network for the duration of this timer and then automatically deregisters from the network upon
  * its expiration.
  *
+ * Moreover, when IVS NAD is in <b>eCall only</b> mode, and the eCall has been normally ended by
+ * PSAP or by le_ecall_End(), then the user can terminate registration state before T9/T10 or
+ * NAD_DEREGISTRATION_TIME expired by le_ecall_TerminateRegistration().
+ *
  * @subsubsection le_ecall_configuration_nad_panEU PAN-EUROPEAN standard
  * As the T9 timer duration is fixed to one hour, the notified events depend on the
  * <em>deregistration timer</em> duration:
@@ -1908,4 +1912,20 @@ FUNCTION le_mcc.TerminationReason GetTerminationReason
 FUNCTION int32 GetPlatformSpecificTerminationCode
 (
     Call        ecallRef        IN   ///< eCall reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Terminate NAD registered on the network. After termination of an emergency call the in-vehicle
+ * system remains registered on the network for a period of time, this API will deregister device
+ * from network in this period.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t TerminateRegistration
+(
 );
