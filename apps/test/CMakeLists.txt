@@ -150,12 +150,6 @@ if(EXISTS ${LEGATO_ROOT}/platformAdaptor/fwupdate/apps/test)
                      ${CMAKE_BINARY_DIR}/apps/test/fwupdate/platformAdaptor/fwupdate)
 endif()
 
-# UTs for WiFi
-if(EXISTS ${LEGATO_ROOT}/modules/WiFi/apps/test)
-    add_subdirectory(${LEGATO_ROOT}/modules/WiFi/apps/test
-                     ${CMAKE_BINARY_DIR}/apps/test/WiFi/)
-endif()
-
 # Power Manager
 add_subdirectory(powerMgr/powerMgrTest)
 

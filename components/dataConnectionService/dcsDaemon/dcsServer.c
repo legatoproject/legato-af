@@ -1507,7 +1507,7 @@ static void TryStartWifiSession
     // Start Wifi client
     result = le_wifiClient_Start();
 
-    if ((LE_OK != result) && (LE_DUPLICATE != result))
+    if (LE_OK != result)
     {
         LE_ERROR("Wifi client not started, result %d (%s)", result, LE_RESULT_TXT(result));
 
