@@ -39,7 +39,7 @@ TOOLS_ARCH ?= $(HOST_ARCH)
 
 # NOTE: Ninja is used to build the mk tools.
 .PHONY: tools
-tools: ninja $(NINJA_SCRIPT) symlinks mkPatch mkdiff
+tools: ninja $(NINJA_SCRIPT) symlinks mkPatch
 	ninja $(NINJA_FLAGS) -f $(NINJA_SCRIPT)
 
 .PHONY: tool-messages
@@ -88,11 +88,7 @@ $(BUILD_DIR) $(INSTALL_DIR):
 
 .PHONY: mkPatch
 mkPatch: $(BUILD_DIR) $(INSTALL_DIR)
-	$(MAKE) -C framework/tools/patchTool/mkPatch
-
-.PHONY: mkdiff
-mkdiff: $(BUILD_DIR) $(INSTALL_DIR)
-	$(MAKE) -C framework/tools/patchTool/mkdiff
+	$(MAKE) -C framework/tools/mkPatch
 
 .PHONY: kconfig-frontends
 kconfig-frontends: $(INSTALL_DIR) $(KCONFIG_BUILD_DIR)/config.status
