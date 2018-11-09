@@ -1,73 +1,114 @@
-/** @page aboutReleaseInfo Releases
+/** @page aboutReleaseNotes Release Notes
 
-Legato Application Framework Release Information
+Version: <b>Legato 18.10.0</b><br>
+Date: <b>Nov 14, 2018</b><br>
+@ref aboutLicenses "Legato Application Framework Licensing Information"
 
-<b>Current Stable Release: 18.09.0</b>
+Visit the <a href="https://legato.io/releases">release page</a> to @b download the tarball,
+@b clone the repositories from GitHub, or view <b>previous released versions</b>.
 
-Legato Application Framework release notes contain information on new features and resolved
-issues. The release artifacts are provided as a tarball or you are able to clone the tagged repo
-from GitHub.
+Get started with @ref basicBuild "building the Legato Application Framework". </b>
 
-The @ref basicBuildLegato "build Legato" page walks through installing the Legato Application
-Framework for your development environment, it also includes how to setup your development
-environment and build the Legato Application Framework for a target.
+@section rn1810_Features New Features
 
-Legato Application Framework Releases:
+List of new Features in the 18.10 Release:
 
-| Version      | Date          | Release Notes              | GitHub                                                                 | Tarball                                                                                            | User Docs                                                                    |
-|--------------|---------------|----------------------------|------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|
-| 18.09.0      | Oct 12, 2018  | @subpage releaseNotes18090 | [18.09.0 tag](https://github.com/legatoproject/legato-af/tree/18.09.0) | [legato-18.09.0.tar.bz2](https://downloads.sierrawireless.com/legato/1808/legato-18.09.0.tar.bz2)  | [latest legato.io](http://legato.io/legato-docs/latest/buildAppsMain.html)   |
-| 18.08.0      | Sep 14, 2018  | @subpage releaseNotes18080 | [18.08.0 tag](https://github.com/legatoproject/legato-af/tree/18.08.0) | [legato-18.08.0.tar.bz2](https://downloads.sierrawireless.com/legato/1808/legato-18.08.0.tar.bz2)  | [18.08.0 legato.io](http://legato.io/legato-docs/18_08/buildAppsMain.html)   |
-| 18.07.0      | Aug 07, 2018  | @subpage releaseNotes18070 | [18.07.0 tag](https://github.com/legatoproject/legato-af/tree/18.07.0) | [legato-18.07.0.tar.bz2](https://downloads.sierrawireless.com/legato/1807/legato-18.07.0.tar.bz2)  | [18.07.0 legato.io](http://legato.io/legato-docs/18_07/buildAppsMain.html)   |
-| 18.06.3      | Aug 24, 2018  | @subpage releaseNotes18063 | [18.06.3 tag](https://github.com/legatoproject/legato-af/tree/18.06.3) | [legato-18.06.3.tar.bz2](https://downloads.sierrawireless.com/legato/1806/legato-18.06.3.tar.bz2)  | [18.06.3 legato.io](http://legato.io/legato-docs/18_06/buildAppsMain.html)   |
-| 18.05.1      | Jun 20, 2018  | @subpage releaseNotes18051 | [18.05.1 tag](https://github.com/legatoproject/legato-af/tree/18.05.1) | [legato-18.05.1.tar.bz2](https://downloads.sierrawireless.com/legato/1805/legato-18.05.1.tar.bz2)  | [18.05.1 legato.io](http://legato.io/legato-docs/18_05/buildAppsMain.html)   |
-| 18.04.0      | May 8, 2018   | @subpage releaseNotes18040 | [18.04.0 tag](https://github.com/legatoproject/legato-af/tree/18.04.0) | [legato-18.04.0.tar.bz2](https://downloads.sierrawireless.com/legato/1804/legato-18.04.0.tar.bz2)  | [18.04.0 legato.io](http://legato.io/legato-docs/18_04/buildAppsMain.html)   |
-| 18.03.0      | Apr 11, 2018  | @subpage releaseNotes18030 | [18.03.0 tag](https://github.com/legatoproject/legato-af/tree/18.03.0) | [legato-18.03.0.tar.bz2](https://downloads.sierrawireless.com/legato/1803/legato-18.03.0.tar.bz2)  | [18.03.0 legato.io](http://legato.io/legato-docs/18_03/buildAppsMain.html)   |
-| 18.02.0      | Mar 5, 2018   | @subpage releaseNotes18020 | [18.02.0 tag](https://github.com/legatoproject/legato-af/tree/18.02.0) | [legato-18.02.0.tar.bz2](https://downloads.sierrawireless.com/legato/1802/legato-18.02.0.tar.bz2)  | [18.02.0 legato.io](http://legato.io/legato-docs/18_02/buildAppsMain.html)   |
-| 18.01.0      | Feb 6, 2018   | @subpage releaseNotes18010 | [18.01.0 tag](https://github.com/legatoproject/legato-af/tree/18.01.0) | [legato-18.01.0.tar.bz2](https://downloads.sierrawireless.com/legato/1801/legato-18.01.0.tar.bz2)  | [18.01.0 legato.io](http://legato.io/legato-docs/18_01/buildAppsMain.html)   |
-| 17.11.0      | Dec 14, 2017  | @subpage releaseNotes17110 | [17.11.0 tag](https://github.com/legatoproject/legato-af/tree/17.11.0) | [legato-17.11.0.tar.bz2](https://downloads.sierrawireless.com/legato/1711/legato-17.11.0.tar.bz2)  | [17.11.0 legato.io](http://legato.io/legato-docs/17_11/buildAppsMain.html)   |
-| 17.10.0      | Nov 13, 2017  | @subpage releaseNotes17100 | [17.10.0 tag](https://github.com/legatoproject/legato-af/tree/17.10.0) | [legato-17.10.0.tar.bz2](https://downloads.sierrawireless.com/legato/1710/legato-17.10.0.tar.bz2)  | [17.10.0 legato.io](http://legato.io/legato-docs/17_10/buildAppsMain.html)   |
-| 17.09.0      | Oct 19, 2017  | @subpage releaseNotes17090 | [17.09.0 tag](https://github.com/legatoproject/legato-af/tree/17.09.0) | [legato-17.09.0.tar.bz2](https://downloads.sierrawireless.com/legato/1709/legato-17.09.0.tar.bz2)  | [17.09.0 legato.io](http://legato.io/legato-docs/17_09/buildAppsMain.html)   |
-| 17.08.1      | Sept 29, 2017 | @subpage releaseNotes17081 | [17.08.1 tag](https://github.com/legatoproject/legato-af/tree/17.08.1) | [legato-17.08.1.tar.bz2](https://downloads.sierrawireless.com/legato/1708/legato-17.08.1.tar.bz2)  | [17.08.1 legato.io](http://legato.io/legato-docs/17_08/buildAppsMain.html)   |
-| 17.07.2      | Sept 8, 2017  | @subpage releaseNotes17072 | [17.07.2 tag](https://github.com/legatoproject/legato-af/tree/17.07.2) | [legato-17.07.2.tar.bz2](https://downloads.sierrawireless.com/legato/1707/legato-17.07.2.tar.bz2)  | [17.07.2 legato.io](http://legato.io/legato-docs/17_07/buildAppsMain.html)   |
-| 17.06.0      | Jul 7, 2017   | @subpage releaseNotes17060 | [17.06.0 tag](https://github.com/legatoproject/legato-af/tree/17.06.0) | [legato-17.06.0.tar.bz2](https://downloads.sierrawireless.com/legato/1706/legato-17.06.0.tar.bz2)  | [17.06.0 legato.io](http://legato.io/legato-docs/17_06/buildAppsMain.html)   |
-| 17.05.0      | Jun 23, 2017  | @subpage releaseNotes17050 | [17.05.0 tag](https://github.com/legatoproject/legato-af/tree/17.05.0) | [legato-17.05.0.tar.bz2](https://downloads.sierrawireless.com/legato/1705/legato-17.05.0.tar.bz2)  | [17.05.0 legato.io](http://legato.io/legato-docs/17_05/buildAppsMain.html)   |
-| 16.10.4      | Oct 18, 2017  | @subpage releaseNotes16104 | [16.10.4 tag](https://github.com/legatoproject/legato-af/tree/16.10.4) | [legato-16.10.4.tar.bz2](https://downloads.sierrawireless.com/legato/16103/legato-16.10.4.tar.bz2) | [16.10.4 legato.io](http://legato.io/legato-docs/16_10_4/buildAppsMain.html) |
-| 16.10.3      | Apr 28, 2017  | @subpage releaseNotes16103 | [16.10.3 tag](https://github.com/legatoproject/legato-af/tree/16.10.3) | [legato-16.10.3.tar.bz2](https://downloads.sierrawireless.com/legato/16103/legato-16.10.3.tar.bz2) | [16.10.3 legato.io](http://legato.io/legato-docs/16_10_3/buildAppsMain.html) |
-| 16.10.1      | Dec 23, 2016  | [16.10.1 Release Notes](http://legato.io/legato-docs/16_10/Legato_16_10_1_ReleaseNotes.pdf) | [16.10.1 tag](https://github.com/legatoproject/legato-af/tree/16.10.1) | [legato-16.10.1.tar.bz2](https://downloads.sierrawireless.com/legato/16101/legato-16.10.1.tar.bz2) | [16.10.1 legato.io](http://legato.io/legato-docs/16_10/buildAppsMain.html) |
-| 16.07.0      | Aug 18, 2016  | [16.07.0 Release Notes](http://legato.io/legato-docs/16_07/Legato_16_07_ReleaseNotes.pdf)   | [16.07.0 tag](https://github.com/legatoproject/legato-af/tree/16.07.0) | [legato-16.07.0.tar.bz2](https://downloads.sierrawireless.com/legato/1607/legato-16.07.0.tar.bz2) | [16.07.0 legato.io](http://legato.io/legato-docs/16_07/buildAppsMain.html)  |
-| 16.04.0      | Jun 9, 2016   | [16.04.0 Release Notes](http://legato.io/legato-docs/16_04/Legato_16_04_ReleaseNotes.pdf)   | [16.04.0 tag](https://github.com/legatoproject/legato-af/tree/16.04.1) | [legato-16.04.0.tar.bz2](https://downloads.sierrawireless.com/legato/1604/legato-16.04.0.tar.bz2) | [16.04.0 legato.io](http://legato.io/legato-docs/16_04/buildAppsMain.html)  |
+@subsection rn1810_Features_var New Build Variable
 
-For the @b latest (in progress) version of the Legato Application Framework clone it directly from
-[GitHub.](https://github.com/legatoproject/legato-af#welcome-to-legato)
+A new build variable has been added to the definition files:
+- @c BUILDDIR = path of the generated files for system, app, component or modules.
 
-The Legato Application Framework is licensed under the @ref aboutLicenses "MPLv2".
+@subsection rn1810_Features_preloaded .sdef Preloaded Flags
 
-The Legato team welcomes @ref aboutLegatoContributing "contributions" to the project.
+The @c .sdef's @ref defFilesSdef_appsPreloaded section now includes the ability for apps to be
+reused after a system updated by setting one of the following @c preloaded: options.
+- @ref defFilesSdef_appsPreloadedBuildVersion
+- @ref defFilesSdef_appsPreloadedMd5
+- @ref defFilesSdef_appsPreloadedAnyVersion
 
-@section releaseInfo_LegatoAFReleases Legato Application Framework Release Process
+@subsection rn1810_Features_cdefProvide .cdef Provides Headers and Libs
 
-Legato Application Framework releases are not tied to any specific target product release.  Once we
-have released the Legato Application Framework, target vendors (like Sierra Wireless) will take the
-Legato Application Framework and integrate it into their own product release.
+Support has been added for adding @ref defFilesCdef_providesheaderDir and
+@ref defFilesCdef_externalBuild "libs" to allow adding C/C++ style components with their own APIs
+for integration with Legato Components allowing developers to add APIs directly into components
+without the added overhead.
 
-<b> Legato AF Release Schedule VS Target Vendor Release Schedule </b>
+@subsection rn1810_Features_SIM Multiple SIM Support
 
-@image html LegatoReleaseVSModuleVendorRelease.png
+The framework now provides support for @ref le_sim_profile_switch "multiple embedded SIM profiles"
+and administration by a subscription management server such as AirVantage.
 
-Example:
- - Legato AF Team posts release 17.07
- - Processor Vendor takes release 17.07 and builds an associated Linux Distro to create a "Legato
-   Platform"
- - Processor Vendor tests and releases a "Legato Platform" with their Modem Firmware as "Product
-   Release Y"
- - Legato AF Team posts release 17.08, 17.09 and 17.10 without the Processor Vendor packaging it
-   into a Product Release.  Releases are able to installed with the vendor's Product Release Y,
-   but <b> may not be officially supported by the Processor Vendor. </b>
- - Processor Vendor takes release 17.11 and creates a "Legato Platform" and "Product Release Z",
-   and so on..
+@subsection rn1810_Features_SAR Modem Radio Control API
 
-<b>For any questions about the Product Releases please contact your Processor Vendor directly.</b>
+@ref le_mrc_networkScan "The network scan" can now obtain the Network global Celular identifier when
+performing a network scan by using the function le_mrc_GetCellularNetworkGlobalCellId().
+
+@section rn1810_BFeatures Beta Features
+
+The following features have been added to the 18.10 Release and are feature complete but are still
+in a testing phase. Please provide feedback for these features on our
+[forums](https://forum.legato.io/).
+
+@subsection rn1810_BFeatures_AutomaticSelection Automatic SIM Selection
+
+ @ref le_sim_AutomaticSelection "The Automatic Sim selection feature" is relevant for modules that
+ use an internal SIM card. When enabled, the module automatically selects a SIM slot according to
+ the following rule:
+ - If an external SIM is inserted in slot 1 then select it. Otherwise, fall back to the internal
+   SIM card.
+
+@section rn1810_AFeatures Alpha Features
+
+The following are the list of features that have been added into the 18.10 Release but are still
+being developed and should not be used on production targets. Please provide feedback for these
+features on our [forums](https://forum.legato.io/):
+
+@subsection rn1810_AFeatures_CoAP AirVantage CoAP
+
+The AirVantage constrained application protocol is under development. @c le_coap.api is included in
+the @c interfaces directory but is only in a prototype state and should not be used on production
+targets at this time.
+
+@subsection rn1810_AFeatures_DCS New Data Connection Service
+
+A new Data Connection Service is under development. @c le_dcs.api is included in the @c interfaces
+directory but is only in a prototype state and should not be used on production targets at this time.
+
+@section rn1810_Fixes Fixed Issues
+
+All changes are tagged in GitHub as "18.10.0".  The full list of changes and commit
+messages can be found on GitHub.
+
+- [Legato AF 18.10.0 Fixes](https://github.com/legatoproject/legato-af/commits/18.10.0)
+
+@note This is only the list of fixes for the Application Framework and Platform Services, for the
+list of changes in the Platform Adapters and AVC Service view the commits under the tag 18.10.0 in
+individual repositories on GitHub.
+
+@section rn1810_KnownIssues Known Issues
+
+@subsection rn1810_Constraints Constraints and Limitations
+
+@subsubsection rn1810_ConstraintsLinuxSupport Dev Machine Linux Version
+
+To develop applications within the Legato Application Framework, a current supported
+[Long Term Support version of Ubuntu Linux](https://www.ubuntu.com/info/release-end-of-life) is
+required on your dev machine (or running in a virtual box on Windows).  Ubuntu 16.04 is the current
+@b recommended version to use on your dev machine.
+
+@subsubsection rn1810_ConstECMUSB ECM-USB modem manager issue
+
+Ubuntu 15.10 and newer has Modem Manager version @c 1.4.12-1ubuntu1  installed by default which
+conflicts with the ECM-USB driver when connecting a target.  Modem manager may cause the Ubuntu
+Network Manager to crash on your host and/or your target device to become unavailable over USB.
+
+@b Symptoms:
+- NetworkManager crashing when plugging into your device over USB, or
+- The target device becomes inaccessible after 30 seconds.
+
+@b Recommended  @b Work  @b Around:
+- Uninstall @c modemmanager from Ubuntu or
+- [Downgrade @c modemmanager to version 1.0.0-2ubuntu1](http://packages.ubuntu.com/trusty/modemmanager)
 
 Copyright (C) Sierra Wireless Inc.
 
