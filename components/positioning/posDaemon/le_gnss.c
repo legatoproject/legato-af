@@ -1761,7 +1761,7 @@ le_result_t le_gnss_GetGpsTime
     }
 
     // Get the position sample's GPS time
-    if (positionSampleRequestNodePtr->positionSampleNodePtr->timeValid)
+    if (positionSampleRequestNodePtr->positionSampleNodePtr->gpsTimeValid)
     {
         result = LE_OK;
         if (gpsWeekPtr)
