@@ -36,7 +36,7 @@ SCRIPTS := $(wildcard $(LEGATO_ROOT)/framework/tools/scripts/*)
 # Use HOST_CC and HOST_CXX when building the tools.
 tools: export CC := $(HOST_CC)
 tools: export CXX := $(HOST_CXX)
-tools: ninja $(NINJA_SCRIPT) symlinks mkPatch mkdiff
+tools: ninja $(NINJA_SCRIPT) symlinks mkPatch
 	$(L) NINJA $(NINJA_SCRIPT)
 	$(Q)ninja $(NINJA_FLAGS) -f $(NINJA_SCRIPT)
 
@@ -86,12 +86,7 @@ $(BUILD_DIR) $(INSTALL_DIR):
 .PHONY: mkPatch
 mkPatch: $(BUILD_DIR) $(INSTALL_DIR)
 	$(L) MAKE $@
-	$(Q)$(MAKE) -C framework/tools/patchTool/mkPatch
-
-.PHONY: mkdiff
-mkdiff: $(BUILD_DIR) $(INSTALL_DIR)
-	$(L) MAKE $@
-	$(Q)$(MAKE) -C framework/tools/patchTool/mkdiff
+	$(Q)$(MAKE) -C framework/tools/mkPatch
 
 .PHONY: kconfig-frontends
 # Use HOST_CC and HOST_CXX when building the kconfig-frontends.
