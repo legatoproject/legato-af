@@ -3,7 +3,7 @@
 | Section                            | Description                                               |
 | ---------------------------------- | --------------------------------------------------------- |
 | @subpage aboutLegato               | About Legato                                              |
-| @subpage aboutReleaseInfo          | Release Information for the Legato Application Framework  |
+| @subpage aboutReleaseNotes         | Release Notes for the Legato Application Framework        |
 | @subpage aboutLicenses             | Legato and Open Source Licenses                           |
 | @subpage aboutLegatoContributing   | how to contribute to Legato open source project           |
 
