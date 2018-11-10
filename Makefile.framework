@@ -145,6 +145,9 @@ NINJA_SCRIPT := $(BUILD_DIR)/build.ninja
 LOCAL_MKEXE_FLAGS = $(MKEXE_FLAGS)
 LOCAL_MKEXE_FLAGS += -o $@ -t $(TARGET) -w $(BUILD_DIR)/$(notdir $@) -l $(LIB_DIR)
 LOCAL_MKEXE_FLAGS += -d $(LEGATO_ROOT)/build/$(TARGET)/debug
+LOCAL_MKEXE_FLAGS += -i $(BUILD_DIR)/include
+LOCAL_MKEXE_FLAGS += -i $(LEGATO_ROOT)/framework/liblegato
+LOCAL_MKEXE_FLAGS += -i $(LEGATO_ROOT)/framework/liblegato/linux
 
 # Common CFlags
 CFLAGS += -Wall -Werror \
@@ -255,16 +258,13 @@ $(LEGATO_PY_SO): liblegato $(LEGATO_PY_CEXT)
 	$(Q)mkdir -p $(dir $@)
 	$(L) CCLD $@
 	$(Q)$(CCACHE) $(TARGET_CC) $(TARGET_CC_SYSROOT) -o $@ $(LEGATO_PY_CEXT) \
-		-Wall -Werror \
 		-D_FTS_H \
 		-fPIC \
 		-shared \
 		-pthread \
 		-I=/usr/include/$(PYTHON)/ \
 		-IC \
-		-I$(LEGATO_ROOT)/framework/include \
-		-I$(LEGATO_ROOT)/framework/liblegato \
-		-I$(LEGATO_ROOT)/framework/liblegato/linux \
+		$(CFLAGS) \
 		-Wl,--enable-new-dtags,-rpath="\$$ORIGIN/../lib" \
 		-L$(LIB_DIR) -llegato -l$(PYTHON)
 
@@ -294,8 +294,6 @@ $(BIN_DIR)/supervisor: liblegato $(BIN_DIR)
 	$(Q)mkexe $(LOCAL_MKEXE_FLAGS) \
 		$(LINUX_SRC_DIR)/supervisor \
 		-i $(LEGATO_ROOT)/interfaces/supervisor \
-		-i $(LEGATO_ROOT)/framework/liblegato \
-		-i $(LEGATO_ROOT)/framework/liblegato/linux \
 		-i $(LEGATO_ROOT)/framework/daemons/linux/start \
 		-i $(LEGATO_ROOT)/framework/daemons/linux/common \
 		$(IMA_MKEXE_FLAGS) \
@@ -305,8 +303,6 @@ $(BIN_DIR)/serviceDirectory: liblegato $(BIN_DIR)
 	$(L) MKEXE $@
 	$(Q)mkexe $(LOCAL_MKEXE_FLAGS) \
 		$(LINUX_SRC_DIR)/serviceDirectory \
-		--cflags=-I$(LEGATO_ROOT)/framework/liblegato \
-		--cflags=-I$(LEGATO_ROOT)/framework/liblegato/linux \
 		--cflags=-DNO_LOG_CONTROL
 
 $(BIN_DIR)/logCtrlDaemon: liblegato $(BIN_DIR)
@@ -314,23 +310,17 @@ $(BIN_DIR)/logCtrlDaemon: liblegato $(BIN_DIR)
 	$(Q)mkexe $(LOCAL_MKEXE_FLAGS) \
 		$(LINUX_SRC_DIR)/logDaemon \
 		--cflags=-DNO_LOG_CONTROL \
-		-i $(LEGATO_ROOT)/framework/liblegato \
-		-i $(LEGATO_ROOT)/framework/liblegato/linux \
 		-i $(LEGATO_ROOT)/interfaces/supervisor
 
 $(BIN_DIR)/configTree: liblegato $(BIN_DIR)
 	$(L) MKEXE $@
 	$(Q)mkexe $(LOCAL_MKEXE_FLAGS) \
 		$(LINUX_SRC_DIR)/configTree \
-		-i $(LEGATO_ROOT)/framework/liblegato \
-		-i $(LEGATO_ROOT)/framework/liblegato/linux \
 		--cflags=-std=c99
 
 $(BIN_DIR)/watchdog: liblegato $(BIN_DIR)
 	$(L) MKEXE $@
 	$(Q)mkexe $(LOCAL_MKEXE_FLAGS) \
-		-i $(LEGATO_ROOT)/framework/liblegato \
-		-i $(LEGATO_ROOT)/framework/liblegato/linux \
 		$(LINUX_SRC_DIR)/watchdog/watchdogDaemon
 
 $(BIN_DIR)/updateDaemon: liblegato $(BIN_DIR)
@@ -339,8 +329,6 @@ $(BIN_DIR)/updateDaemon: liblegato $(BIN_DIR)
 		$(LINUX_SRC_DIR)/updateDaemon \
 		-i $(LEGATO_ROOT)/interfaces/updateDaemon \
 		-i $(LEGATO_ROOT)/components/appCfg \
-		-i $(LEGATO_ROOT)/framework/liblegato \
-		-i $(LEGATO_ROOT)/framework/liblegato/linux \
 		-i $(LEGATO_ROOT)/framework/daemons/linux/common \
 		-s $(LEGATO_ROOT)/components \
 		-s $(LINUX_SRC_DIR)/updateDaemon \
