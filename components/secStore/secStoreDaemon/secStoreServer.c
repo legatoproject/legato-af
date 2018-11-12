@@ -1773,9 +1773,31 @@ le_result_t secStoreAdmin_GetTotalSpace
     return result;
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
- * Restore event handler
+ * Update secure storage
+ * This must be called once NV restore is done or app installation/un-installation is done.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SecStoreUpdate
+(
+    void
+)
+{
+    // First rebuild meta hash in PA level.
+    pa_secStore_ReInitSecStorage();
+
+    // Then re-initialize index based current secStore APP path.
+    if (IsCurrSysPathValid)
+    {
+        IsCurrSysPathValid = 0;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * QMI event handler for NV restoration done.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -1788,14 +1810,7 @@ static void RestoreHandler
     {
         LE_INFO("Secure storage restore succeeded, rebuild legato secure storage ...");
 
-        //First rebuild meta hash in PA level.
-        pa_secStore_ReInitSecStorage();
-
-        //Then re-initialize legato index based SFS files.
-        if (IsCurrSysPathValid)
-        {
-            IsCurrSysPathValid = 0;
-        }
+        SecStoreUpdate();
     }
     else
     {
@@ -1804,6 +1819,41 @@ static void RestoreHandler
 
     // The reportPtr is a reference counted object, so need to release it
     le_mem_Release(statusPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Legato Event handler for app installation done
+ */
+//--------------------------------------------------------------------------------------------------
+static void AppInstallHandler
+(
+    const char * installAppNamePtr,
+    void * contextPtr
+)
+{
+    LE_INFO("legato system is updated because APP '%s' installation is done !", installAppNamePtr);
+    LE_INFO("rebuild legato secure storage ...");
+
+    SecStoreUpdate();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Event handler for app uninstallation done
+ */
+//--------------------------------------------------------------------------------------------------
+static void AppUninstallHandler
+(
+    const char * uninstallAppNamePtr,
+    void * contextPtr
+)
+{
+    LE_INFO("legato system is updated because APP '%s' un-installation is done !",
+            uninstallAppNamePtr);
+    LE_INFO("rebuild legato secure storage ...");
+
+    SecStoreUpdate();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1826,6 +1876,10 @@ COMPONENT_INIT
                                   NULL);
     // Register a handler function for secure storage restore indication.
     pa_secStore_SetRestoreHandler(RestoreHandler);
+
+    // Register handlers for app installation/un-installiation events to update secure storage PATH.
+    le_instStat_AddAppInstallEventHandler(AppInstallHandler, NULL);
+    le_instStat_AddAppUninstallEventHandler(AppUninstallHandler, NULL);
 
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };

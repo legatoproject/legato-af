@@ -2,6 +2,7 @@
 #include "le_secStore_interface.h"
 #include "le_appInfo_interface.h"
 #include "le_update_interface.h"
+#include "le_instStat_interface.h"
 
 #define LE_APPINFO_DEFAULT_APPNAME "secStoreUnitTest"
 

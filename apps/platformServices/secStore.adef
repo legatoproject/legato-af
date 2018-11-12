@@ -33,5 +33,6 @@ bindings:
     secStore.secStoreDaemon.le_appInfo -> <root>.le_appInfo
     secStore.secStoreDaemon.le_update -> <root>.le_update
     secStore.watchdogChain.le_wdog -> <root>.le_wdog
+    secStore.secStoreDaemon.le_instStat-> <root>.le_instStat
 }
 

@@ -27,6 +27,7 @@ requires:
     {
         le_appInfo.api
         le_update.api
+        le_instStat.api
     }
 }
 
