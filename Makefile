@@ -343,6 +343,13 @@ define sysmk
 	$(Q)mksys -t $(TARGET) -w $(1) -o build/$(TARGET) $(2) $(3) $(MKSYS_FLAGS)
 endef
 
+# Test and sample selection
+ALL_TESTS_y   = mktools_tests subsys_tests tests_c
+ALL_SAMPLES_y = samples_c
+
+ALL_TESTS_$(LE_CONFIG_JAVA)   += tests_java
+ALL_SAMPLES_$(LE_CONFIG_JAVA) += samples_java
+
 # ========== CONFIGURATION RECIPES ============
 
 # Generate build-specific hidden KConfig options.  This is to get around limitations in the current
@@ -739,9 +746,7 @@ mktools_tests: $(TARGET)
 
 # Rule building the tests for a given target -- build both C and Java tests
 .PHONY: tests
-tests: mktools_tests subsys_tests build/$(TARGET)/Makefile
-	$(L) MAKE $@
-	$(Q)$(MAKE) -C build/$(TARGET)
+tests: $(ALL_TESTS_y)
 
 # ========== SAMPLE RECIPES ============
 
@@ -761,6 +766,4 @@ endif # end LE_CONFIG_JAVA
 
 # Rule building the samples for a given target -- build both C and Java samples
 .PHONY: samples
-samples: $(TARGET) build/$(TARGET)/Makefile
-	$(L) MAKE $@
-	$(Q)$(MAKE) -C build/$(TARGET) $@
+samples: $(TARGET) $(ALL_SAMPLES_y)
