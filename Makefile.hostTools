@@ -31,6 +31,9 @@ SCRIPTS := $(wildcard $(LEGATO_ROOT)/framework/tools/scripts/*)
 
 # NOTE: Ninja is used to build the mk tools.
 .PHONY: tools
+# Use HOST_CC and HOST_CXX when building the tools.
+tools: export CC := $(HOST_CC)
+tools: export CXX := $(HOST_CXX)
 tools: ninja $(NINJA_SCRIPT) symlinks mkPatch mkdiff
 	$(L) NINJA $(NINJA_SCRIPT)
 	$(Q)ninja $(NINJA_FLAGS) -f $(NINJA_SCRIPT)
@@ -89,6 +92,9 @@ mkdiff: $(BUILD_DIR) $(INSTALL_DIR)
 	$(Q)$(MAKE) -C framework/tools/patchTool/mkdiff
 
 .PHONY: kconfig-frontends
+# Use HOST_CC and HOST_CXX when building the kconfig-frontends.
+kconfig-frontends: export CC := $(HOST_CC)
+kconfig-frontends: export CXX := $(HOST_CXX)
 kconfig-frontends: $(INSTALL_DIR) $(KCONFIG_BUILD_DIR)/config.status
 	$(L) MAKE $@
 	$(Q)cd $(KCONFIG_BUILD_DIR) && make
@@ -106,10 +112,10 @@ $(KCONFIG_BUILD_DIR)/config.status: $(LEGATO_ROOT)/3rdParty/kconfig-frontends/co
 	$(L) CONFIG kconfig-frontends
 	$(Q)mkdir -p $(KCONFIG_BUILD_DIR)
 	$(Q)cd $(KCONFIG_BUILD_DIR) && $(LEGATO_ROOT)/3rdParty/kconfig-frontends/configure \
-	    --prefix=$(BUILD_DIR) \
-	    --enable-mconf \
-	    --enable-conf \
-	    --enable-nconf \
+	    --prefix=$(BUILD_DIR)                                                          \
+	    --enable-mconf                                                                 \
+	    --enable-conf                                                                  \
+	    --enable-nconf                                                                 \
 	    --enable-utils $(VOUTPUT)
 
 $(LEGATO_ROOT)/3rdParty/kconfig-frontends/configure:
