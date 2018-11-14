@@ -26,6 +26,8 @@ export PATH := $(PATH):$(INSTALL_DIR)
 export HOST_ARCH ?= $(shell uname -m)
 export TOOLS_ARCH ?= $(HOST_ARCH)
 
+export HOST_SYS ?= ${HOST_ARCH}-linux
+
 # Scripts that are used during the Legato build process
 SCRIPTS := $(wildcard $(LEGATO_ROOT)/framework/tools/scripts/*)
 
@@ -95,6 +97,14 @@ mkdiff: $(BUILD_DIR) $(INSTALL_DIR)
 # Use HOST_CC and HOST_CXX when building the kconfig-frontends.
 kconfig-frontends: export CC := $(HOST_CC)
 kconfig-frontends: export CXX := $(HOST_CXX)
+kconfig-frontends: export AS :=
+kconfig-frontends: export LD :=
+kconfig-frontends: export STRIP :=
+kconfig-frontends: export RANLIB :=
+kconfig-frontends: export OBJCOPY :=
+kconfig-frontends: export OBJDUMP :=
+kconfig-frontends: export AR :=
+kconfig-frontends: export NM :=
 kconfig-frontends: $(INSTALL_DIR) $(KCONFIG_BUILD_DIR)/config.status
 	$(L) MAKE $@
 	$(Q)cd $(KCONFIG_BUILD_DIR) && make
@@ -114,10 +124,11 @@ $(KCONFIG_BUILD_DIR)/config.status: $(KCONFIG_BUILD_DIR)/configure
 	$(L) CONFIG kconfig-frontends
 	$(Q)mkdir -p $(KCONFIG_BUILD_DIR)
 	$(Q)cd $(KCONFIG_BUILD_DIR) && $(LEGATO_ROOT)/3rdParty/kconfig-frontends/configure \
-	    --prefix=$(BUILD_DIR)                                                          \
-	    --enable-mconf                                                                 \
-	    --enable-conf                                                                  \
-	    --enable-nconf                                                                 \
+	    --host=${HOST_SYS} \
+	    --prefix=$(BUILD_DIR) \
+	    --enable-mconf \
+	    --enable-conf \
+	    --enable-nconf \
 	    --enable-utils $(VOUTPUT)
 
 $(KCONFIG_BUILD_DIR)/configure.ac:
