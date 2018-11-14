@@ -211,7 +211,7 @@ define getccache
 $(if $(CCACHE),$(CCACHE),$(if $(shell which sccache 2>/dev/null),sccache,$(if $(shell which ccache 2>/dev/null),ccache)))
 endef
 
-ifeq ($(LE_CONFIG_CONFIGURED),y)
+ifneq ($(TARGET),nothing)
   ifeq ($(TARGET),localhost)
     export LEGATO_KERNELROOT    :=
     export LEGATO_SYSROOT       :=
@@ -225,14 +225,14 @@ ifeq ($(LE_CONFIG_CONFIGURED),y)
   endif # end not localhost
 
   # Target compiler variables
-  export TARGET_CC := $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)$(CC_NAME)
-  export TARGET_CXX := $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)$(CXX_NAME)
-  export $(TARGET_CAPS)_CC := $(TARGET_CC)
-  export $(TARGET_CAPS)_CXX := $(TARGET_CXX)
-  export $(TARGET_CAPS)_TOOLCHAIN_DIR := $(TOOLCHAIN_DIR)
+  export TARGET_CC                       := $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)$(CC_NAME)
+  export TARGET_CXX                      := $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)$(CXX_NAME)
+  export $(TARGET_CAPS)_CC               := $(TARGET_CC)
+  export $(TARGET_CAPS)_CXX              := $(TARGET_CXX)
+  export $(TARGET_CAPS)_TOOLCHAIN_DIR    := $(TOOLCHAIN_DIR)
   export $(TARGET_CAPS)_TOOLCHAIN_PREFIX := $(TOOLCHAIN_PREFIX)
-  export $(TARGET_CAPS)_SYSROOT := $(LEGATO_SYSROOT)
-  export $(TARGET_CAPS)_KERNELROOT := $(LEGATO_KERNELROOT)
+  export $(TARGET_CAPS)_SYSROOT          := $(LEGATO_SYSROOT)
+  export $(TARGET_CAPS)_KERNELROOT       := $(LEGATO_KERNELROOT)
 
   ifeq ($(TARGET_CC),/$(CC_NAME))
     $(error Unable to find toolchain for target '$(TARGET)')
@@ -250,28 +250,38 @@ ifeq ($(LE_CONFIG_CONFIGURED),y)
   endif
   prefixtool = $(if $(wildcard $(1)$(2)),$(1)$(2),$(2))
 
-  export ADDR2LINE := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),addr2line)
-  export AR        := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),ar)
-  export AS        := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),as)
-  export DB        := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),gdb)
-  export ELFEDIT   := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),elfedit)
-  export GCOV      := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),gcov)
-  export GCOV_DUMP := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),gcov-dump)
-  export GCOV_TOOL := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),gcov-tool)
-  export GPROF     := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),gprof)
-  export LD        := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),ld)
-  export NM        := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),nm)
-  export OBJCOPY   := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),objcopy)
-  export OBJDUMP   := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),objdump)
-  export RANLIB    := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),ranlib)
-  export READELF   := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),readelf)
-  export SIZE      := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),size)
-  export STRINGS   := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),strings)
-  export STRIP     := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),strip)
-endif # end LE_CONFIG_CONFIGURED
+  ifeq ($(LE_CONFIG_CONFIGURED),y)
+    export ADDR2LINE := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),addr2line)
+    export AR        := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),ar)
+    export AS        := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),as)
+    export DB        := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),gdb)
+    export ELFEDIT   := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),elfedit)
+    export GCOV      := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),gcov)
+    export GCOV_DUMP := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),gcov-dump)
+    export GCOV_TOOL := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),gcov-tool)
+    export GPROF     := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),gprof)
+    export LD        := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),ld)
+    export NM        := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),nm)
+    export OBJCOPY   := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),objcopy)
+    export OBJDUMP   := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),objdump)
+    export RANLIB    := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),ranlib)
+    export READELF   := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),readelf)
+    export SIZE      := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),size)
+    export STRINGS   := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),strings)
+    export STRIP     := $(call prefixtool,$(TOOLCHAIN_PATH_PREFIX),strip)
+  endif # end LE_CONFIG_CONFIGURED
+endif # end not "nothing" target
 
 # Enable Python support?
-ENABLE_PYTHON ?= $(if $(shell python2.7 -c "import cffi" > /dev/null 2>&1 && echo 1),1,0)
+ENABLE_PYTHON := 0
+PYTHON_EXECUTABLE ?= python2.7
+ifeq ($(shell $(PYTHON_EXECUTABLE) -c "import cffi" > /dev/null 2>&1 && echo 1),1)
+  PYVERSION := python$(shell $(PYTHON_EXECUTABLE) -c \
+      'import sys; print("{0}.{1}".format(*sys.version_info))')
+  ifneq ($(wildcard $(LEGATO_SYSROOT)/usr/include/$(PYVERSION)/pyconfig.h),)
+    ENABLE_PYTHON := 1
+  endif
+endif
 
 # Enable Java support?
 ENABLE_JAVA ?= $(if $(JDK_INCLUDE_DIR),1,0)
@@ -402,6 +412,7 @@ endif
 	$(Q)$(KCONFIG_SET_VALUE) "IMA_PUBLIC_CERT" string "IMA_PUBLIC_CERT" $@
 	$(L) KSET "$@ - IMA_SMACK"
 	$(Q)$(KCONFIG_SET_VALUE) "IMA_SMACK" string "IMA_SMACK" $@
+
 	$(L) KSET "$@ - ENABLE_SMACK"
 	$(Q)$(KCONFIG_SET_VALUE) "ENABLE_SMACK" invbool "DISABLE_SMACK" $@
 	$(L) KSET "$@ - SMACK_ONLYCAP"
@@ -422,12 +433,16 @@ endif
 
 	$(L) KSET "$@ - PYTHON"
 	$(Q)ENABLE_PYTHON=$(ENABLE_PYTHON) $(KCONFIG_SET_VALUE) "PYTHON" bool "ENABLE_PYTHON" $@
+	$(L) KSET "$@ - PYTHON_EXECUTABLE"
+	$(Q)$(KCONFIG_SET_VALUE) "PYTHON_EXECUTABLE" string "PYTHON_EXECUTABLE" $@
+
 	$(L) KSET "$@ - JAVA"
 	$(Q)ENABLE_JAVA=$(ENABLE_JAVA) $(KCONFIG_SET_VALUE) "JAVA" bool "ENABLE_JAVA" $@
 	$(L) KSET "$@ - JDK_INCLUDE_DIR"
 	$(Q)$(KCONFIG_SET_VALUE) "JDK_INCLUDE_DIR" string "JDK_INCLUDE_DIR" $@
 	$(L) KSET "$@ - EJDK_DIR"
 	$(Q)$(KCONFIG_SET_VALUE) "EJDK_DIR" string "EJDK_DIR" $@
+
 	$(L) KSET "$@ - ENABLE_SECSTORE_ADMIN"
 	$(Q)$(KCONFIG_SET_VALUE) "ENABLE_SECSTORE_ADMIN" bool "SECSTOREADMIN" $@
 

@@ -92,16 +92,17 @@ endif # end LE_CONFIG_JAVA
 # Determine if Python is enabled
 ifeq ($(LE_CONFIG_PYTHON),y)
   # Version of Python used on target and on host for cffi.
-  PYTHON := python2.7
+  PYTHON := $(LE_CONFIG_PYTHON_EXECUTABLE)
 
-  # Check at least that Python 2.7 and the CFFI package are installed to build Python liblegato
+  # Check at least that Python and the CFFI package are installed to build Python liblegato
   # bindings.
   ifeq ($(shell $(PYTHON) -c "import cffi" > /dev/null 2>&1 || echo 0),0)
     $(error LE_CONFIG_PYTHON is set, but $(PYTHON) or cffi not available)
   endif
 
-  LEGATO_PY := $(LIB_DIR)/$(PYTHON)/site-packages/liblegato.py
-  LEGATO_PY_SO := $(LIB_DIR)/$(PYTHON)/site-packages/_liblegato_py.so
+  PYVERSION := python$(shell $(PYTHON) -c 'import sys; print("{0}.{1}".format(*sys.version_info))')
+  LEGATO_PY := $(LIB_DIR)/$(PYVERSION)/site-packages/liblegato.py
+  LEGATO_PY_SO := $(LIB_DIR)/$(PYVERSION)/site-packages/_liblegato_py.so
   LEGATO_PY_CEXT := $(BUILD_DIR)/_liblegato_py.c
   PYTHON_FRAMEWORK_DIR := $(LEGATO_ROOT)/framework/python
 endif
@@ -258,15 +259,15 @@ $(LEGATO_PY_SO): liblegato $(LEGATO_PY_CEXT)
 	$(Q)mkdir -p $(dir $@)
 	$(L) CCLD $@
 	$(Q)$(CCACHE) $(TARGET_CC) $(TARGET_CC_SYSROOT) -o $@ $(LEGATO_PY_CEXT) \
-		-D_FTS_H \
-		-fPIC \
-		-shared \
-		-pthread \
-		-I=/usr/include/$(PYTHON)/ \
-		-IC \
-		$(CFLAGS) \
-		-Wl,--enable-new-dtags,-rpath="\$$ORIGIN/../lib" \
-		-L$(LIB_DIR) -llegato -l$(PYTHON)
+		-D_FTS_H                                                            \
+		-fPIC                                                               \
+		-shared                                                             \
+		-pthread                                                            \
+		-I$(LEGATO_SYSROOT)/usr/include/$(PYVERSION)                        \
+		-IC                                                                 \
+		$(CFLAGS)                                                           \
+		-Wl,--enable-new-dtags,-rpath="\$$ORIGIN/../lib"                    \
+		-L$(LIB_DIR) -llegato -l$(PYVERSION)
 
 $(LEGATO_PY): $(LEGATO_ROOT)/framework/python/liblegato.py $(LEGATO_PY_SO)
 	$(Q)cp $< $@

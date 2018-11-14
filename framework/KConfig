@@ -88,6 +88,14 @@ config PYTHON
   Enable support for Python.  Python is not supported on non-POSIX
   systems.
 
+config PYTHON_EXECUTABLE
+  string "Python executable"
+  depends on PYTHON
+  default "python2.7"
+  ---help---
+  Python executable to use for building Python support.  This may be set to an
+  absolute path.
+
 config JAVA
   bool "Enable Java support"
   depends on POSIX
