@@ -277,7 +277,10 @@ ENABLE_PYTHON ?= $(if $(shell python2.7 -c "import cffi" > /dev/null 2>&1 && ech
 ENABLE_JAVA ?= $(if $(JDK_INCLUDE_DIR),1,0)
 
 # KConfig executable
-KCONFIG := $(LEGATO_ROOT)/bin/kconfig
+KCONFIG ?= $(LEGATO_ROOT)/bin/kconfig
+
+# kconfig-set-value executable
+KCONFIG_SET_VALUE := $(LEGATO_ROOT)/bin/kconfig-set-value
 
 # Set KConfig prefix
 export CONFIG_ := LE_CONFIG_
@@ -374,59 +377,59 @@ $(BUILD_CONFIG)/WiFi:
 
 # Generate an initial KConfig from the environment.  This rule translates the old configuration
 # method using environment variables into an initial KConfig set.
-$(LEGATO_ROOT)/.config.$(TARGET): $(KCONFIG) $(BUILD_CONFIG)/Documentation $(BUILD_CONFIG)/WiFi
+$(LEGATO_ROOT)/.config.$(TARGET): $(KCONFIG) $(KCONFIG_SET_VALUE) $(BUILD_CONFIG)/Documentation $(BUILD_CONFIG)/WiFi
 ifeq ($(KNOWN_TARGET),1)
 	$(L) KSET "$@ - TARGET_$(TARGET_CAPS)"
-	$(Q)TARGET=1 $(KCONFIG)-set-value "TARGET_$(TARGET_CAPS)" bool "TARGET" $@
+	$(Q)TARGET=1 $(KCONFIG_SET_VALUE) "TARGET_$(TARGET_CAPS)" bool "TARGET" $@
 else
 	$(L) KSET "$@ - TARGET_CUSTOM"
-	$(Q)TARGET=1 $(KCONFIG)-set-value "TARGET_CUSTOM" bool "TARGET" $@
+	$(Q)TARGET=1 $(KCONFIG_SET_VALUE) "TARGET_CUSTOM" bool "TARGET" $@
 endif
 
 	$(L) KSET "$@ - DEBUG"
-	$(Q)$(KCONFIG)-set-value "DEBUG" bool "DEBUG" $@
+	$(Q)$(KCONFIG_SET_VALUE) "DEBUG" bool "DEBUG" $@
 	$(L) KSET "$@ - USE_CCACHE"
 	$(Q)USE_CCACHE=$(if $(call getccache,),1,0) \
-		$(KCONFIG)-set-value "USE_CCACHE" bool "USE_CCACHE" $@
+		$(KCONFIG_SET_VALUE) "USE_CCACHE" bool "USE_CCACHE" $@
 	$(L) KSET "$@ - CCACHE"
-	$(Q)CCACHE_VALUE="$(call getccache,)" $(KCONFIG)-set-value "CCACHE" string "CCACHE_VALUE" $@
+	$(Q)CCACHE_VALUE="$(call getccache,)" $(KCONFIG_SET_VALUE) "CCACHE" string "CCACHE_VALUE" $@
 
 	$(L) KSET "$@ - ENABLE_IMA"
-	$(Q)$(KCONFIG)-set-value "ENABLE_IMA" bool "ENABLE_IMA" $@
+	$(Q)$(KCONFIG_SET_VALUE) "ENABLE_IMA" bool "ENABLE_IMA" $@
 	$(L) KSET "$@ - IMA_PRIVATE_KEY"
-	$(Q)$(KCONFIG)-set-value "IMA_PRIVATE_KEY" string "IMA_PRIVATE_KEY" $@
+	$(Q)$(KCONFIG_SET_VALUE) "IMA_PRIVATE_KEY" string "IMA_PRIVATE_KEY" $@
 	$(L) KSET "$@ - IMA_PUBLIC_CERT"
-	$(Q)$(KCONFIG)-set-value "IMA_PUBLIC_CERT" string "IMA_PUBLIC_CERT" $@
+	$(Q)$(KCONFIG_SET_VALUE) "IMA_PUBLIC_CERT" string "IMA_PUBLIC_CERT" $@
 	$(L) KSET "$@ - IMA_SMACK"
-	$(Q)$(KCONFIG)-set-value "IMA_SMACK" string "IMA_SMACK" $@
+	$(Q)$(KCONFIG_SET_VALUE) "IMA_SMACK" string "IMA_SMACK" $@
 	$(L) KSET "$@ - ENABLE_SMACK"
-	$(Q)$(KCONFIG)-set-value "ENABLE_SMACK" invbool "DISABLE_SMACK" $@
+	$(Q)$(KCONFIG_SET_VALUE) "ENABLE_SMACK" invbool "DISABLE_SMACK" $@
 	$(L) KSET "$@ - SMACK_ONLYCAP"
-	$(Q)$(KCONFIG)-set-value "SMACK_ONLYCAP" invbool "DISABLE_SMACK_ONLYCAP" $@
+	$(Q)$(KCONFIG_SET_VALUE) "SMACK_ONLYCAP" invbool "DISABLE_SMACK_ONLYCAP" $@
 	$(L) KSET "$@ - SMACK_ATTR_NAME"
-	$(Q)$(KCONFIG)-set-value "SMACK_ATTR_NAME" string "SMACK_ATTR_NAME" $@
+	$(Q)$(KCONFIG_SET_VALUE) "SMACK_ATTR_NAME" string "SMACK_ATTR_NAME" $@
 	$(L) KSET "$@ - SMACK_ATTR_VALUE"
-	$(Q)$(KCONFIG)-set-value "SMACK_ATTR_VALUE" string "SMACK_ATTR_VALUE" $@
+	$(Q)$(KCONFIG_SET_VALUE) "SMACK_ATTR_VALUE" string "SMACK_ATTR_VALUE" $@
 
 	$(L) KSET "$@ - SDEF"
-	$(Q)$(KCONFIG)-set-value "SDEF" string "SDEF_TO_USE" $@
+	$(Q)$(KCONFIG_SET_VALUE) "SDEF" string "SDEF_TO_USE" $@
 	$(L) KSET "$@ - SUPERV_NICE_LEVEL"
-	$(Q)$(KCONFIG)-set-value "SUPERV_NICE_LEVEL" string "LEGATO_FRAMEWORK_NICE_LEVEL" $@
+	$(Q)$(KCONFIG_SET_VALUE) "SUPERV_NICE_LEVEL" string "LEGATO_FRAMEWORK_NICE_LEVEL" $@
 	$(L) KSET "$@ - SVCDIR_SERVER_SOCKET_NAME"
-	$(Q)$(KCONFIG)-set-value "SVCDIR_SERVER_SOCKET_NAME" string "LE_SVCDIR_SERVER_SOCKET_NAME" $@
+	$(Q)$(KCONFIG_SET_VALUE) "SVCDIR_SERVER_SOCKET_NAME" string "LE_SVCDIR_SERVER_SOCKET_NAME" $@
 	$(L) KSET "$@ - SVCDIR_CLIENT_SOCKET_NAME"
-	$(Q)$(KCONFIG)-set-value "SVCDIR_CLIENT_SOCKET_NAME" string "LE_SVCDIR_CLIENT_SOCKET_NAME" $@
+	$(Q)$(KCONFIG_SET_VALUE) "SVCDIR_CLIENT_SOCKET_NAME" string "LE_SVCDIR_CLIENT_SOCKET_NAME" $@
 
 	$(L) KSET "$@ - PYTHON"
-	$(Q)ENABLE_PYTHON=$(ENABLE_PYTHON) $(KCONFIG)-set-value "PYTHON" bool "ENABLE_PYTHON" $@
+	$(Q)ENABLE_PYTHON=$(ENABLE_PYTHON) $(KCONFIG_SET_VALUE) "PYTHON" bool "ENABLE_PYTHON" $@
 	$(L) KSET "$@ - JAVA"
-	$(Q)ENABLE_JAVA=$(ENABLE_JAVA) $(KCONFIG)-set-value "JAVA" bool "ENABLE_JAVA" $@
+	$(Q)ENABLE_JAVA=$(ENABLE_JAVA) $(KCONFIG_SET_VALUE) "JAVA" bool "ENABLE_JAVA" $@
 	$(L) KSET "$@ - JDK_INCLUDE_DIR"
-	$(Q)$(KCONFIG)-set-value "JDK_INCLUDE_DIR" string "JDK_INCLUDE_DIR" $@
+	$(Q)$(KCONFIG_SET_VALUE) "JDK_INCLUDE_DIR" string "JDK_INCLUDE_DIR" $@
 	$(L) KSET "$@ - EJDK_DIR"
-	$(Q)$(KCONFIG)-set-value "EJDK_DIR" string "EJDK_DIR" $@
+	$(Q)$(KCONFIG_SET_VALUE) "EJDK_DIR" string "EJDK_DIR" $@
 	$(L) KSET "$@ - ENABLE_SECSTORE_ADMIN"
-	$(Q)$(KCONFIG)-set-value "ENABLE_SECSTORE_ADMIN" bool "SECSTOREADMIN" $@
+	$(Q)$(KCONFIG_SET_VALUE) "ENABLE_SECSTORE_ADMIN" bool "SECSTOREADMIN" $@
 
 	$(Q)KCONFIG_CONFIG=$@ $(KCONFIG)-conf --olddefconfig KConfig $(VOUTPUT)
 	$(Q)rm -f $@.old
@@ -471,6 +474,10 @@ kconfig-frontends: $(KCONFIG)
 $(KCONFIG):
 	$(L) MAKE $@
 	$(Q)$(MAKE) -f Makefile.hostTools kconfig-frontends
+
+$(KCONFIG_SET_VALUE):
+	$(L) MAKE $@
+	$(Q)$(MAKE) -f Makefile.hostTools kconfig-set-value
 
 # Rule for how to build the build tools.
 .PHONY: tools

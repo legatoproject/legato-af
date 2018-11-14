@@ -105,10 +105,12 @@ kconfig-frontends: $(INSTALL_DIR) $(KCONFIG_BUILD_DIR)/config.status
 	$(Q)ln -sf $(BUILD_DIR)/bin/kconfig-nconf $(INSTALL_DIR)/kconfig-nconf
 	$(Q)ln -sf $(BUILD_DIR)/bin/kconfig-tweak $(INSTALL_DIR)/kconfig-tweak
 	$(Q)ln -sf $(BUILD_DIR)/bin/kconfig $(INSTALL_DIR)/kconfig
+
+kconfig-set-value: $(INSTALL_DIR) $(LEGATO_ROOT)/framework/tools/scripts/kconfig-set-value
 	$(Q)ln -sf $(LEGATO_ROOT)/framework/tools/scripts/kconfig-set-value \
 		$(INSTALL_DIR)/kconfig-set-value
 
-$(KCONFIG_BUILD_DIR)/config.status: $(LEGATO_ROOT)/3rdParty/kconfig-frontends/configure
+$(KCONFIG_BUILD_DIR)/config.status: $(KCONFIG_BUILD_DIR)/configure
 	$(L) CONFIG kconfig-frontends
 	$(Q)mkdir -p $(KCONFIG_BUILD_DIR)
 	$(Q)cd $(KCONFIG_BUILD_DIR) && $(LEGATO_ROOT)/3rdParty/kconfig-frontends/configure \
@@ -118,6 +120,12 @@ $(KCONFIG_BUILD_DIR)/config.status: $(LEGATO_ROOT)/3rdParty/kconfig-frontends/co
 	    --enable-nconf                                                                 \
 	    --enable-utils $(VOUTPUT)
 
-$(LEGATO_ROOT)/3rdParty/kconfig-frontends/configure:
+$(KCONFIG_BUILD_DIR)/configure.ac:
+	$(L) COPY kconfig-frontends
+	$(Q)rm -rf $(KCONFIG_BUILD_DIR)
+	$(Q)mkdir -p $(KCONFIG_BUILD_DIR)
+	$(Q)cp -R $(LEGATO_ROOT)/3rdParty/kconfig-frontends $(KCONFIG_BUILD_DIR)
+
+$(KCONFIG_BUILD_DIR)/configure: $(KCONFIG_BUILD_DIR)/configure.ac
 	$(L) RECONF kconfig-frontends
 	$(Q)cd $(LEGATO_ROOT)/3rdParty/kconfig-frontends && autoreconf -fi $(VOUTPUT)
