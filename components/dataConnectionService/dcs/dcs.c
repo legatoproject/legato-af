@@ -445,7 +445,7 @@ le_dcs_EventHandlerRef_t le_dcs_AddEventHandler
     le_dls_Queue(&channelDb->evtHdlrs, &(channelEvtHdlr->hdlrLink));
     le_event_SetContextPtr(handlerRef, contextPtr);
 
-    LE_INFO("HandlerRef %p added for event handler with ID %p", handlerRef,
+    LE_INFO("Event handler with reference %p and event ID %p added", handlerRef,
             channelEvtHdlr->channelEventId);
 
     return channelEvtHdlr->hdlrRef;
@@ -462,7 +462,7 @@ void le_dcs_RemoveEventHandler
     le_dcs_EventHandlerRef_t channelHandlerRef   ///< [IN] Channel event handler reference
 )
 {
-    le_dcs_channelDb_t *channelDb = dcsDelChannelEvtHdlr(channelHandlerRef);
+    le_dcs_channelDb_t *channelDb = DcsDelChannelEvtHdlr(channelHandlerRef);
     if (channelDb)
     {
         LE_INFO("Channel event handler for channel %s of technology %s removed",

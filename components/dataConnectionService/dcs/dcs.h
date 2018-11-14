@@ -121,7 +121,7 @@ LE_SHARED void le_dcs_MarkChannelSharingStatus(const char *channelName, le_dcs_T
                                                bool starting);
 LE_SHARED bool le_dcs_ChannelIsInUse(const char *channelName, le_dcs_Technology_t tech);
 LE_SHARED le_dcs_channelDb_t *le_dcs_GetChannelDbFromRef(le_dcs_ChannelRef_t channelRef);
-extern le_dcs_channelDb_t *dcsDelChannelEvtHdlr(le_dcs_EventHandlerRef_t hdlrRef);
+extern le_dcs_channelDb_t *DcsDelChannelEvtHdlr(le_dcs_EventHandlerRef_t hdlrRef);
 extern le_dcs_channelDbEventHdlr_t *dcsChannelDbEvtHdlrInit(void);
 extern le_dcs_channelDb_t *dcsGetChannelDbFromName(const char *channelName,
                                                    le_dcs_Technology_t tech);

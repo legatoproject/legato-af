@@ -43,6 +43,7 @@ static void DcsChannelDbEventHandlersDestructor
 )
 {
     le_dcs_channelDbEventHdlr_t *channelAppEvt = (le_dcs_channelDbEventHdlr_t *)objPtr;
+    LE_DEBUG("Releasing event handler with reference %p", channelAppEvt->hdlrRef);
     le_event_RemoveHandler((le_event_HandlerRef_t)channelAppEvt->hdlrRef);
     channelAppEvt->hdlrRef = NULL;
 }
@@ -286,7 +287,7 @@ void le_dcs_ChannelEventNotifier
  *     - If not found, NULL is returned
  */
 //--------------------------------------------------------------------------------------------------
-le_dcs_channelDb_t *dcsDelChannelEvtHdlr
+le_dcs_channelDb_t *DcsDelChannelEvtHdlr
 (
     le_dcs_EventHandlerRef_t hdlrRef
 )
@@ -305,14 +306,17 @@ le_dcs_channelDb_t *dcsDelChannelEvtHdlr
             channelAppEvt = CONTAINER_OF(evtHdlrPtr, le_dcs_channelDbEventHdlr_t, hdlrLink);
             if (channelAppEvt && (channelAppEvt->hdlrRef == hdlrRef))
             {
+                LE_DEBUG("Removing event handler with reference %p with event ID %p", hdlrRef,
+                         channelAppEvt->channelEventId);
                 le_dls_Remove(&channelDb->evtHdlrs, &channelAppEvt->hdlrLink);
-                le_event_RemoveHandler((le_event_HandlerRef_t)hdlrRef);
                 le_mem_Release(channelAppEvt);
                 return channelDb;
             }
             evtHdlrPtr = le_dls_PeekNext(&channelDb->evtHdlrs, evtHdlrPtr);
         }
     }
+
+    LE_DEBUG("Failed to find event handler with reference %p to delete", hdlrRef);
     return NULL;
 }
 
