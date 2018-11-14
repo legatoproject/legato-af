@@ -328,7 +328,7 @@ CreateImgFs() {
             fi
 
             # Set a fixed sequence number for UBI image
-            $UBINIZE -Q 0x12345678 -o $legato_img -m $page_size -p $peb_size -s $page_size \
+            $UBINIZE -o $legato_img -m $page_size -p $peb_size -s $page_size \
                 ${temp_dir}/ubinize.cfg > ubinize${LEGATO_IMG_SUFFIX}.log
             CheckRet
             ;;
