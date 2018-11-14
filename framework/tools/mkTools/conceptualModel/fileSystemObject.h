@@ -68,10 +68,10 @@ struct FileSystemObject_t
         throw mk::Exception_t(LE_I18N("Unknown bundled file access type."));
     }
 
-    /// Two file system objects refer to the same file if the destination paths are the same.
+    /// Two file system objects refer to the same file if the source and destination paths are the same.
     bool operator==(const FileSystemObject_t& a) const
     {
-        return destPath == a.destPath;
+        return (srcPath == a.srcPath) && (destPath == a.destPath);
     }
 
     bool operator!=(const FileSystemObject_t& a) const
@@ -79,9 +79,15 @@ struct FileSystemObject_t
         return !(*this == a);
     }
 
+    // Order set by destination path first followed by source path.
     bool operator<(const FileSystemObject_t& a) const
     {
-        return destPath < a.destPath;
+        if (destPath == a.destPath)
+        {
+            return (srcPath < a.srcPath);
+        }
+
+        return (destPath < a.destPath);
     }
 
     bool operator<=(const FileSystemObject_t& a) const
@@ -91,7 +97,12 @@ struct FileSystemObject_t
 
     bool operator>(const FileSystemObject_t& a) const
     {
-        return destPath > a.destPath;
+        if (destPath == a.destPath)
+        {
+            return (srcPath > a.srcPath);
+        }
+
+        return (destPath > a.destPath);
     }
 
     bool operator>=(const FileSystemObject_t& a) const
@@ -104,10 +115,10 @@ struct FileSystemObject_t
         typedef model::FileSystemObject_t argument_type;
         typedef std::size_t result_type;
 
-        // Hash a FileSystemObject.  Destination path should be unique.
+        // Hash a FileSystemObject.
         result_type operator()(const argument_type& s) const
         {
-            return std::hash<std::string>()(s.destPath);
+            return std::hash<std::string>()(s.srcPath + s.destPath);
         }
     };
 };
