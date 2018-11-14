@@ -636,9 +636,37 @@ int32_t msd_EncodeMsdMessage
         if (msdDataPtr->version == 2)
         {
             /* MSD structure size for MSD V2 coding */
+            if (msdMsgLen < 2)
+            {
+                LE_ERROR("Message length should be at least 2 bytes long");
+                return LE_FAULT;
+            }
+
             uint8_t msdV2StructLen = msdMsgLen-2;
             LE_DEBUG("MSD version 2: offset %d, MSD struct length %d", offsetV2, msdV2StructLen );
-            offset = PutBits(offsetV2, 8, &msdV2StructLen, outDataV2Ptr);
+
+            if(msdV2StructLen < 128)
+            {
+                offset = PutBits(offsetV2, 8, &msdV2StructLen, outDataV2Ptr);
+            }
+            else
+            {
+                uint8_t tmpOutDataV2[140]={0};
+
+                /* Check the offset value, if > 1112 ((140-1) * 8 */
+                if(msdMsgLen > sizeof(tmpOutDataV2) - 1)
+                {
+                    LE_ERROR("Bad offset value %d bits for MSD version 2 long form", offset);
+                    return LE_FAULT;
+                }
+
+                tmpOutDataV2[0]=0x02;
+                tmpOutDataV2[1]=0x80; /* ITU-T X.690 chapter 8.1.3, short form and long form */
+                tmpOutDataV2[2]=msdV2StructLen;
+                memcpy(&tmpOutDataV2[3], &outDataV2Ptr[2], msdMsgLen - 2);
+                memcpy(&outDataV2Ptr[0], &tmpOutDataV2[0], msdMsgLen + 1);
+                msdMsgLen = msdMsgLen + 1;
+            }
         }
 
         return msdMsgLen;
