@@ -1,7 +1,7 @@
 /** @page aboutReleaseNotes Release Notes
 
 Version: <b>Legato 18.10.0</b><br>
-Date: <b>Nov 14, 2018</b><br>
+Date: <b>Nov 19, 2018</b><br>
 @ref aboutLicenses "Legato Application Framework Licensing Information"
 
 Visit the <a href="https://legato.io/releases">release page</a> to @b download the tarball,
@@ -26,22 +26,10 @@ reused after a system updated by setting one of the following @c preloaded: opti
 - @ref defFilesSdef_appsPreloadedMd5
 - @ref defFilesSdef_appsPreloadedAnyVersion
 
-@subsection rn1810_Features_cdefProvide .cdef Provides Headers and Libs
-
-Support has been added for adding @ref defFilesCdef_providesheaderDir and
-@ref defFilesCdef_externalBuild "libs" to allow adding C/C++ style components with their own APIs
-for integration with Legato Components allowing developers to add APIs directly into components
-without the added overhead.
-
 @subsection rn1810_Features_SIM Multiple SIM Support
 
 The framework now provides support for @ref le_sim_profile_switch "multiple embedded SIM profiles"
 and administration by a subscription management server such as AirVantage.
-
-@subsection rn1810_Features_SAR Modem Radio Control API
-
-@ref le_mrc_networkScan "The network scan" can now obtain the Network global Celular identifier when
-performing a network scan by using the function le_mrc_GetCellularNetworkGlobalCellId().
 
 @section rn1810_BFeatures Beta Features
 
@@ -49,13 +37,12 @@ The following features have been added to the 18.10 Release and are feature comp
 in a testing phase. Please provide feedback for these features on our
 [forums](https://forum.legato.io/).
 
-@subsection rn1810_BFeatures_AutomaticSelection Automatic SIM Selection
+@subsection rn1810_BFeatures_cdefProvide .cdef Provides Headers and Libs
 
- @ref le_sim_AutomaticSelection "The Automatic Sim selection feature" is relevant for modules that
- use an internal SIM card. When enabled, the module automatically selects a SIM slot according to
- the following rule:
- - If an external SIM is inserted in slot 1 then select it. Otherwise, fall back to the internal
-   SIM card.
+Support has been added for adding @ref defFilesCdef_providesheaderDir and
+@ref defFilesCdef_externalBuild "libs" to allow adding C/C++ style components with their own APIs
+for integration with Legato Components allowing developers to add APIs directly into components
+without the added overhead.
 
 @section rn1810_AFeatures Alpha Features
 
