@@ -11,23 +11,11 @@
  *
  * The data connection service provides a basic API for requesting and releasing a data connection.
  *
- * @note This interface does not support yet data connection over a fixed link.
+ * @note This interface does not support a data connection over a fixed link.
  *
- * @warning Dependency between the @c cellNetService and @c dataConnectionService has been removed. A
- * data connection request will no longer ensure that the radio is on, or verify that the SIM is
- * valid and unlocked.
- *
- * @section le_data_IPCbinding IPC interfaces binding
- *
- * All the functions of this API are provided by the @b dataConnectionService application service.
- *
- * Here's a code sample binding to Data Connection services:
- * @verbatim
-   bindings:
-   {
-      clientExe.clientComponent.le_data -> dataConnectionService.le_data
-   }
-   @endverbatim
+ * @warning The dependency between the @c cellNetService and @c dataConnectionService has been
+ * removed. A data connection request will no longer ensure that the radio is on, or verify that the
+ * SIM is valid and unlocked.
  *
  * @section c_le_data_default Default Data Connection
  *
@@ -72,9 +60,9 @@
  * A sample code that implements the establishment of a data connection service can be found in
  * \b dcsTest.c file (please refer to @ref c_dataConnectionServiceSample page).
  *
- * @section c_le_data_routing Data connection routing
+ * @section c_le_data_routing Data Connection Routing
  *
- * @subsection c_le_data_defaultRoute Default route
+ * @subsection c_le_data_defaultRoute Default Route
  *
  * By default, the default route is automatically configured by the data connection service using
  * the modem parameters when the cellular technology is connected. If an application wishes to

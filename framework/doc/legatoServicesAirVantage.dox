@@ -1,12 +1,23 @@
-/** @page legatoServicesAirVantage AirVantage Connector
+/** @page legatoServicesAirVantage AirVantage Service
 
-Use the AirVantage Connect Platform Service for remote administration of Legato AF.
+Use the AirVantage Platform Service for remote administration of Legato Application Framework.
 
-Legato release 17.05 enables AirVantage Connector Version 2 (AVC 2.0).
+Current Version: 2.0
 
 See the @ref avMigration Guide to compare differences between AVC 1.0 and AVC 2.0.
 
-@section legatoServicesAirVantage_docs Documentation
+@section legatoServicesAirVantage_GS Getting Started
+
+This service is automatically included in the Legato Framework by including @c default.sdef in your
+system and the service loads automatically on startup.
+
+The following line in the @c default.sdef is responsible for adding the Air Vantage Service to your
+system:
+@verbatim
+#include "$LEGATO_ROOT/apps/platformServices/defaultAirVantage.sinc"
+@endverbatim
+
+@section legatoServicesAirVantage_Concepts Concepts
 
 <b>AVC 2.0 New Features:</b>
 - Asset data can be dynamically created with in the application and there is no need to define the
@@ -22,9 +33,8 @@ See the @ref avMigration Guide to compare differences between AVC 1.0 and AVC 2.
 | @subpage avMigration         | AVC 1.0 vs AVC 2.0 differences                               |
 | @subpage avRegister          | Register a target with AirVantage                            |
 | @subpage avInstallUpload     | Build an App Bundle and deploy using AirVantage              |
-| @subpage avData              | How to use AssetData with AirVantage 2.0                     |
-| @subpage avExchangeData      | Tutorial on sending/receiving sensor data to/from AirVantage |
-| @subpage avConfigure         | Troubleshooting and Configuration settings for AirVantage    |
+
+
 
 @section legatoServicesAirVantage_API APIs
 
@@ -35,8 +45,6 @@ Server and setting up any Asset Data with the AirVantage Service.
 | ---------------------|--------------------------------|------------------| ---------------------------------------------------|
 | @subpage c_le_avc    | @subpage le_avc_interface.h    | @c le_avc.api    | Control and configure upgrade and network settings |
 | @subpage c_le_avdata | @subpage le_avdata_interface.h | @c le_avdata.api | Send and receive data from the AirVantage Server   |
-
-@section legatoServicesAirVantage_PS App Implementation
 
 The AirVantage Connector is implemented by the @b avcService.
 
@@ -55,7 +63,13 @@ bindings:
 }
 @endcode
 
-@section legatoServicesAirVantage_Sample Sample Apps
+@section legatoServicesAirVantage_HowTo How Tos & Samples
+
+| Section                      | Description                                                  |
+| ---------------------------- | -------------------------------------------------------------|
+| @subpage avData              | How to use AssetData with AirVantage 2.0                     |
+| @subpage avExchangeData      | Tutorial on sending/receiving sensor data to/from AirVantage |
+| @subpage avConfigure         | Troubleshooting and Configuration settings for AirVantage    |
 
 The @ref sampleApps_AV App provides examples of:
  - Automatic download/install of OTA packages

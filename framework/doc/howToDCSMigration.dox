@@ -1,0 +1,55 @@
+/** @page howToDCSMigration DCS Migration
+
+For those who have used the @c le_data interface, the following brief comparisons provides
+additional clarity for @c le_dcs and eliminate confusion.
+
+@section howToDCSMigration_le_dcs le_dcs Migration Tips
+
+Unlike the @c le_data interface that supports only one active data connection at a time and
+allows no definite choice over which one to pick and use, the @c le_dcs interface supports
+multiple at any moment and the choice over which to choose. While applications' choices
+and control on a device are increased, they have greater responsibilities over connectivity
+selection and management.
+
+Unlike @c le_data, @c le_dcs does not perform any of the following network operations automatically:
+- Rank-walk over different technologies upon connection failures to pick the next channel
+to try reconnecting back.
+- Automatically add a channel's assigned gateway addresses as the device's default, when the
+channel comes up.
+- Automatically add a channel's assigned DNS server addresses into the device's global name
+server table when the channel comes up.
+
+With multiple applications on a device using @c le_dcs over multiple channels, they need to
+collectively know and decide on which default gateway addresses and DNS server addresses to
+install and when. For performing these tasks the le_net interface is offered. Please
+refer to @ref le_net_interface.h for its corresponding API details.
+
+@warning Any client application that continues to use the @c le_data interface needs to beware of
+the new reality that multiple data channels could have been active if some others have started
+them via the @c le_dcs interface. The one that it has started might not have the device's default
+gateway and DNS server addresses set on its network interface, because although these network
+configurations would be automatically inserted by the @c le_data interface, some other data channel
+that got established later via @c le_dcs and @c le_net could have set these configurations onto
+another network interface instead. Thus, the network admin of any Legato device on which both
+@c le_data and @c le_dcs plus @c le_net would be used together has to understand the network
+topology and manage its routing configurations properly at any time.
+
+@section howToDCSMigration_le_net le_net Migration Tips
+
+The @c le_data interface automatically adds default gateway and DNS server addresses for the single
+data channel that it manages. While the @c le_dcs interface introduces the capabilities to manage
+multiple channels, this @c le_net interface is developed and separated out from @c le_data for
+enhanced flexibility and capabilities to manage a device's network and route configurations in the
+presence of multiple applications using multiple active channels.
+
+@warning Avoid having some applications use @c le_dcs together with @c le_net and some use
+@c le_data simultaneously. Both models manage network and routing configurations differently and
+conflicts could arise. The more reliable way is to have all the applications on a device use
+either @c le_dcs with @c le_net or @c le_data. Applications using @c le_net with @c le_dcs would
+experience the sudden appearance of a new default gateway address and route when another
+application has brought up another channel via le_data_Request(). This would generate traffic
+issues over those channels established and managed via the @c le_net and @c le_dcs interfaces.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

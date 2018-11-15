@@ -32,23 +32,23 @@ control services and Apps:
 
 Platform Services provide full-featured interface access to system and modem resources:
 
-| Service                               | Description                             | multi-app safe            |
-| ------------------------------------- | ----------------------------------------| :------------------------:|
-| @subpage legatoServicesAirVantage     | Configure AirVantage Connect Service    | @image html green_dot.png |
-| @subpage c_audio                      | Control audio features                  |                           |
-| @subpage c_le_cellnet                 | Register and manage modems              | @image html green_dot.png |
-| @subpage c_le_data                    | Request data connection                 | @image html green_dot.png |
-| @subpage c_gpio                       | Configure general purpose input/output  |                           |
-| @subpage legatoServicesModem          | Modem services                          |                           |
-| @subpage legatoServicesPositioning    | Positioning services                    |                           |
-| @subpage legatoServicesPowerMain      | Device power management                 |                           |
-| @subpage legatoServicesSecStoreMain   | Secure storage for sensitive data       | @image html green_dot.png |
-| @subpage legatoServicesSMS            | SMS and SMS Inbox                       | @image html green_dot.png |
-| @subpage c_spi                        | Configure SPI interface                 |                           |
-| @subpage c_le_voicecall               | Voice communications                    | @image html green_dot.png |
-| @subpage legatoServicesWiFi           | WiFi                                    |                           |
-| @subpage legatoAtServices             | AT commands services                    | @image html green_dot.png |
-| @subpage c_port                       | Port service                            |                           |
+| Service                               | Description                                 | multi-app safe            |
+| ------------------------------------- | ------------------------------------------- | :------------------------:|
+| @subpage legatoServicesAirVantage     | Configure AirVantage Connect Service        | @image html green_dot.png |
+| @subpage c_audio                      | Control audio features                      |                           |
+| @subpage c_le_cellnet                 | Register and manage modems                  | @image html green_dot.png |
+| @subpage c_le_data                    | Configure, open, and close data connections | @image html green_dot.png |
+| @subpage c_gpio                       | Configure general purpose input/output      |                           |
+| @subpage legatoServicesModem          | Modem services                              |                           |
+| @subpage legatoServicesPositioning    | Positioning services                        |                           |
+| @subpage legatoServicesPowerMain      | Device power management                     |                           |
+| @subpage legatoServicesSecStoreMain   | Secure storage for sensitive data           | @image html green_dot.png |
+| @subpage legatoServicesSMS            | SMS and SMS Inbox                           | @image html green_dot.png |
+| @subpage c_spi                        | Configure SPI interface                     |                           |
+| @subpage c_le_voicecall               | Voice communications                        | @image html green_dot.png |
+| @subpage legatoServicesWiFi           | WiFi                                        |                           |
+| @subpage legatoAtServices             | AT commands services                        | @image html green_dot.png |
+| @subpage c_port                       | Port service                                |                           |
 
 @warning Some Services shouldn't be used together in the same app (e.g, if you use a multi-app safe
 service like Data Connection, you can't also use the Modem Data Control Service).

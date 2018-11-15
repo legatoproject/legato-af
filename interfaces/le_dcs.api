@@ -1,14 +1,352 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * @page c_le_dcs Data Channel Service le_dcs APIs
+ * @page c_le_dcs le_dcs Interface
  *
  * @ref le_dcs_interface.h "API Reference" <br>
- * @ref le_dcs_sample <br>
  *
- * A data channel can be established over a mobile network, WiFi or a fixed link (e.g.,
- * ethernet). The le_dcs APIs provide applications the ability to establish a selected packet
- * switched data channel to communicate with other devices.
- * <HR>
+ * When applications need to exchange data with other devices on the packet switched data network,
+ * a data channel needs to be first established. After such channel is successfully established,
+ * then applications can open up IP sockets on this data channel as necessary as a data pipe for
+ * sending and receiving data.
+ *
+ * @section le_dcs_ChannelOps Channel Operations
+ *
+ * The Data Channel Service (DCS) provides an API interface for a client application to learn
+ * about all the data channels available on a device, and administratively start or stop a selected
+ * channel. Data channels that are managed by DCS can be shared by multiple applications.
+ *
+ * @note In the context of this documentation the acronym DCS refers to the @c le_dcs
+ * interface, unless specified otherwise.
+ *
+ * When one application asks DCS to start a specified channel, DCS associates it with this channel;
+ * similarly when it asks DCS to stop this channel, DCS disassociates it from its use. Therefore,
+ * in this way what a client application sees and gets as a channel's state is its administrative
+ * state, not its operational state. A channel is operationally brought up when its
+ * administratively state goes up to indicate that it is needed by at least one application.
+ * Similarly, it is operationally brought down when its administrative state goes down to indicate
+ * that it is needed by no application anymore. Thus, it is possible for a chanel to be
+ * administratively up, meaning that it is associated with some applications, but operationally
+ * down due to certain reasons, including network errors, weak signal, temporary downtime, etc.
+ *
+ * @section le_dcs_ChannelReferenceUniqueID Channel Reference
+ *
+ * Since DCS provides channel choices, a channel's object reference is used in most of its APIs
+ * as the input identifier to uniquely identify the channel of choice. This channel reference is
+ * unique across the device over all supported technologies, and is managed and provided by DCS.
+ *
+ * Before a channel can be specified as an input argument of choice, an application needs to
+ * call le_dcs_GetChannels() to get the list of all channels and from those results learn about
+ * each one's channel reference for use in any other @c le_dcs and le_net API calls.
+ *
+ * @section le_dcs_RelateToLeNet le_net Interface
+ *
+ * Associated with the @c le_dcs interface, the @c le_net interface provides network services to
+ * DCS-managed channels. @c le_net provides APIs for setting the device's default gateway
+ * addresses, DNS server addresses, adding routes, etc.
+ *
+ * @section le_dcs_TechConfigs Technical Configurations
+ *
+ * With the use of le_data, there used to be technology-specific configurations saved in Legato's
+ * configuration tree under DCS's paths. @c le_dcs expanded DCS's capabilities to
+ * modularize technology-specific implementations and support multiple active channels over
+ * different technologies simultaneously, @c le_dcs no longer keeps technology-specific
+ * configurations under its tree paths.
+ *
+ * For WiFi-specific configurations, the @c le_dcs interface no longer saves them on its common
+ * path dataConnectionService:/wifi/SSID. Per-SSID configurations are saved now on the wifiService
+ * path under the SSID name itself, e.g. wifiService:/wifi/channel/MY-MOBILE/setProtocol
+ * and wifiService:/wifi/channel/MY-WLAN/hidden where MY-MOBILE and MY-WLAN are both SSIDs.
+ * Moreover, confidential user credentials, like passphrase, PSK, user name with password, are now
+ * kept in secure storage. In the case of WiFi, these are kept and managed there by the
+ * wifiClient, only through which reading and writing of such info can be done. Note that the WiFi
+ * security protocol used for each SSID remains on the config tree mentioned above for easy
+ * reference and debugging. In this way, @c le_dcs keeps technology-specific configurations on the
+ * path of the technology itself.
+ *
+ * Example of WiFi Config:
+ * @verbatim
+    wifiService:/
+      wifi/
+        channel/
+          MY-MOBILE/
+            secProtocol<string> == 3
+          MY-WLAN/
+            secProtocol<string> == 3
+            hidden<bool> == true
+   @endverbatim
+ *
+ * The above illustration shows that under this new path structure multiple configurations for
+ * multiple channels can be stored and easily expanded for future needs.
+ * For more details about WiFi configurations, please refer to @ref le_wifiClient_interface.h.
+ *
+ * For cellular-specific configurations, each time a cellular channel needs to be
+ * specified as an input argument in calling a @c le_dcs API.@c le_dcs does
+ * not use nor refer to the default cellular profile index saved under the path
+ * dataConnectionService:/cellular/profileIndex.
+ *
+ * @section le_dcs_APIOverview API Overview
+ *
+ * The @c le_dcs APIs provide applications the interfaces to:
+ *
+ *
+ * | Function                       | Description                                                                              |
+ * | -------------------------------| -----------------------------------------------------------------------------------------|
+ * | le_dcs_GetChannels()           | Retrieves the list of all available channels across all supported technologies           |
+ * | le_dcs_GetTechnology()         | Queries for a channel reference's technology type                                        |
+ * | le_dcs_GetReference()          | Queries for a channel's reference by its name and technology                             |
+ * | le_dcs_GetState()              | Queries for a channel's administrative state and network interface name by its reference |
+ * | le_dcs_AddEventHandler()       | Adds a channel event notification handler for a specific channel                         |
+ * | le_dcs_RemoveEventHandler()    | Removes a channel event notification handler for a specific channel                      |
+ * | le_dcs_Start()                 | Starts a channel                                                                         |
+ * | le_dcs_Stop()                  | Stops a channel                                                                          |
+ *
+ *
+ * @subsection le_dcs_APIDetails_GetChannels Get Channel
+ *
+ * For an application that seeks to use the @c le_dcs APIs, the first step is to call
+ * le_dcs_GetChannels() to obtain an up-to-date list of all channels available over all supported
+ * technologies on which are the channel reference and technology type of each available channel.
+ * The channel that the app wishes to communicate with can then be chosen from this list.
+ *
+ * @note To call le_dcs_GetChannels() the application needs to provide a handler function
+ * to handle the results to be returned, and wait until such results come back before calling
+ * subsequent @c le_dcs APIs. le_dcs_GetChannels() is asynchronous, due to need of some technologies
+ * to actively re-scan for their latest lists of available channels, i.e., WiFi.
+ *
+ * Example of le_dcs_GetChannels():
+ * @code
+    // This is the callback function for handling the results of a channel list query
+    static void ClientChannelQueryHandler
+    (
+        le_result_t result,                       ///< [IN] Result of the query
+        const le_dcs_ChannelInfo_t *channelList,  ///< [IN] Channel list returned
+        size_t channelListSize,                   ///< [IN] Channel list's size
+        void *contextPtr                          ///< [IN] Associated user context pointer
+    )
+    {
+        uint16_t i;
+
+        LE_INFO("Received channel query result %d, channel list size %d", result, channelListSize);
+
+        if (channelListSize == 0)
+        {
+            return;
+        }
+
+        for (i = 0; i < channelListSize; i++)
+        {
+            LE_INFO("Available channel #%d: name %s from technology %d, state %d, reference %p",
+                    i + 1, channelList[i].name, channelList[i].technology, channelList[i].state,
+                    channelList[i].ref);
+        }
+    }
+
+    // This is the function initiating a channel list query
+    void ClientGetChannels
+    (
+        void
+    )
+    {
+        le_dcs_GetChannels(ClientChannelQueryHandler, NULL);
+    }
+   @endcode
+ *
+ * @subsection le_dcs_APIDetails_GetReference Get Channel Reference
+ *
+ * If an application wants to user @c le_dcs over a channel that is already known and won't come
+ * and go frequently, i.e., a cellular channel, then the app can learn
+ * about its channel reference via either le_dcs_GetChannels() or le_dcs_GetReference().
+ * le_dcs_GetChannels() provides better reliability, le_dcs_GetReference() is a synchronous
+ * transaction that provides the technology and channel type faster but without the reliability of
+ * le_dcs_GetChannels().
+ *
+ * Example of le_dcs_GetChannels() used to retrieve a specific channel's channel reference:
+ * @code
+    void ClientGetReference
+    (
+        char channelName[LE_DCS_CHANNEL_NAME_MAX_LEN],
+        le_dcs_Technology_t channelTech
+    )
+    {
+        le_dcs_ChannelRef_t ref = le_dcs_GetReference(channelName, channelTech);
+        if (ref == 0)
+        {
+            LE_ERROR("Failed to retrieve channel reference for channel %s of tech %d",
+                     channelName, channelTech);
+            return;
+        }
+        LE_INFO("Retrieved channel reference %p for channel %s of tech %d", channelName,
+                channelTech, ref);
+    }
+   @endcode
+ *
+ * @subsection le_dcs_APIDetails_GetTechnology Channel Technology
+ *
+ * DCS provides le_dcs_GetTechnology() to applications for querying for the technology type of
+ * a known channel reference. This should be used when those applications are seeking to
+ * remember all channel references returned via le_dcs_GetChannels() but not all the details about
+ * each channel.
+ *
+ * Example over how to use le_dcs_GetTechnology():
+ * @code
+    void ClientGetTechnology
+    (
+        le_dcs_ChannelRef_t channelRef
+    )
+    {
+        le_dcs_Technology_t channelTech = le_dcs_GetTechnology(channelRef);
+        LE_INFO("Retrieved tech type %d for channel reference %p ", channelTech, channelRef);
+    }
+   @endcode
+ *
+ * @subsection le_dcs_APIDetails_GetState Channel State
+ *
+ * As a channel's administrative state might change over time, le_dcs_GetState() queries for
+ * a given channel's up-to-date state.
+ *
+ * Example of checking for State:
+ * @code
+    void ClientGetAdminState
+    (
+        le_dcs_ChannelRef_t channelRef
+    )
+    {
+        le_dcs_State_t state;
+        char interfaceName[LE_DCS_INTERFACE_NAME_MAX_LEN+1];
+        le_result_t ret;
+
+        ret = le_dcs_GetState(channelRef, &state, interfaceName, LE_DCS_INTERFACE_NAME_MAX_LEN);
+        if (LE_OK != ret)
+        {
+            LE_ERROR("Failed to get admin state of channel reference %p; return code %d",
+                     channelRef, ret);
+            return;
+        }
+        LE_INFO("Retrieved for channel reference %s network interface %s, admin state %s",
+                channelRef, interfaceName, (state==LE_DCS_STATE_UP) ? "up" : "down");
+    }
+   @endcode
+ *
+ * @subsection le_dcsAPIDetails_EventHandler Channel Event Handler
+ *
+ * Applications that want to be kept posted about any state changes of the channel can fulfill this
+ * need by providing DCS a channel event handler via le_dcs_AddEventHandler() per channel.
+ * For each channel managed by le_dcs, there could be a chain of event handlers provided by multiple
+ * applications interested in it. After an application is disassociated from a channel or
+ * uninterested in it, it can call le_dcs_RemoveEventHandler() to remove its event handler.
+ *
+ * Example of checking for state within an event handler:
+ * @code
+    static void clientEventHandler
+    (
+        le_dcs_ChannelRef_t channelRef, ///< [IN] The channel for which the event is
+        le_dcs_Event_t event,           ///< [IN] Event up or down
+        int32_t code,                   ///< [IN] Additional event code, like error code
+        void *contextPtr                ///< [IN] Associated user context pointer
+    )
+    {
+        LE_INFO("Received for channel reference %p event %s", channelRef,
+                (event == LE_DCS_EVENT_UP) ? "Up" : "Down");
+    }
+
+    void ClientAddEventHandler
+    (
+        le_dcs_ChannelRef_t channelRef,
+        le_dcs_EventHandlerRef_t *eventHandlerRef
+    )
+    {
+        if ((channelRef == 0) || !eventHandlerRef)
+        {
+            LE_ERROR("Invalid inputs for adding event handler for channel reference %p",
+                     channelRef);
+            return;
+        }
+        *eventHandlerRef = le_dcs_AddEventHandler(channelRef, clientEventHandler, NULL);
+        LE_INFO("Added event handler for channel reference %p; event handler reference %p",
+                channelRef, *eventHandlerRef);
+    }
+
+    void ClientRemoveEventHandler
+    (
+        le_dcs_EventHandlerRef_t eventHandlerRef
+    )
+    {
+        if (!eventHandlerRef)
+        {
+            LE_ERROR("Got null channel event handler to remove");
+            return;
+        }
+        le_dcs_RemoveEventHandler(eventHandlerRef);
+    }
+   @endcode
+ *
+ * @subsubsection le_dcsAPIDetails_StartStop Starting and Stopping Channel
+ *
+ * The function for an application to start a selected data channel and associate itself with it is
+ * le_dcs_Start(), while the opposite to stop and disassociate with it is le_dcs_Stop().
+ *
+ * Example of starting and stoping a channel:
+ * @code
+    void ClientStartChannel
+    (
+        le_dcs_ChannelRef_t channelRef,
+        le_dcs_ReqObjRef_t *reqObj
+    )
+    {
+	if ((channelRef == 0) || !reqObj)
+        {
+            LE_ERROR("Invalid inputs for starting channel with reference %p", channelRef);
+            return;
+        }
+        *reqObj = le_dcs_Start(channelRef);
+        LE_INFO("Started channel with reference %p and request reference %p", channelRef, *reqObj);
+    }
+
+    void ClientStopChannel
+    (
+        le_dcs_ReqObjRef_t reqObj
+    )
+    {
+        le_result_t ret;
+        if (!reqObj)
+        {
+            LE_ERROR("Invalid input for stopping channel with request reference %p", reqObj);
+            return;
+        }
+
+        ret = le_dcs_Stop(reqObj);
+        LE_INFO("Stopped channel with request reference %p, release status %d", reqObj, ret);
+    }
+   @endcode
+ *
+ * @section le_dcs_ConnectionFailure Handling of Connection Failures
+ *
+ * With the @c le_dcs interface, connection failures over a channel are handled within the channel
+ * itself. Connection retries over another channel of the same or different technology will not be
+ * internally attempted like with the @c le_data interface.
+ *
+ * If the channel fails the default behavior is for DCS to try to reconnect over the same
+ * channel. If a different channel is wanted to be tried as a backup that logic and direction needs
+ * to be added to the application logic. If there is an issue with a channel, the application
+ * associated with the channel needs to disassociate from it and re-associate with another channel.
+ *
+ * Technology-specific conditions and custom-made handlings in @c le_dcs are now implemented and
+ * attempted within the technology itself, i.e. the default behavior for cellular channels will
+ * have a different behavior than WiFi's.
+ *
+ * Best practices are to retry a reconnect over a certain limited duration with a back-off duration.
+ * After all allowed attempts have exhausted with no success, then DCS will send a channel down
+ * event notification to the interested applications and stop the retries. In situations
+ * involving a system-wide blackout, one example is in the cellular packet switched state's becoming
+ * false, a retry won't be attempted until its recovery, i.e. in the example the cellular packet
+ * switched state's going back to true, where DCS will resume retrying to reconnect back all the
+ * channels of the corresponding technology that are administratively up.
+ *
+ * It is very necessary to note that for some technologies after a channel has failed and then
+ * reconnected back, the network interface and IP address assigned to its use might have changed
+ * (depending on settings like DHCP). The default gateway and DNS addresses for this channel might
+ * have changed as well and applications must take this into account and might need to re-adjust
+ * the routes and/or gateway address settings after a channel state flapped.
  *
  * Copyright (C) Sierra Wireless Inc.
  */
@@ -79,7 +417,7 @@ DEFINE IPADDR_MAX_LEN = 46;
 /**
  * Max # of entries on a data channel list
  * The current define value is one > the # of cellular profiles supported. When more technologies
- * are supported by DCS, e.g. Wifi, this value will be increased accordingly
+ * are supported by DCS, e.g. WiFi, this value will be increased accordingly
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE CHANNEL_LIST_QUERY_MAX = 32;

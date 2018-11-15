@@ -1,14 +1,189 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * @page c_le_net Data Channel Service's le_net APIs
+ * @page c_le_net le_net Interface
  *
  * @ref le_net_interface.h "API Reference" <br>
- * @ref le_net_sample <br>
  *
- * A data channel can be established over a mobile network, WiFi or a fixed link (e.g.,
- * ethernet). The le_net APIs of DCS provide applications the ability to manage networking state
- * and config of a selected packet switched data channel to communicate with other devices.
- * <HR>
+ * When applications need to exchange data with other devices on the packet switched data network,
+ * a data channel needs to be first established over a connectivity technology like cellular or
+ * WiFi.  After such channel is successfully established, then applications can open up IP
+ * sockets on this data channel as necessary as a data pipe for sending and receiving data.
+ *
+ * This @c le_net interface provides network services to Data Channel Service (DCS) client
+ * applications to install, uninstall and manage network configurations, while the @c le_dcs
+ * interface provides APIs for starting (associating with), stopping (disassociating from) selected
+ * channels.
+ *
+ * @warning Since these @c le_net APIs generate network and route changes that affect all services
+ * and applications on the device, users must use them with due diligence and full understanding
+ * of their global effects.
+ *
+  * @section le_net_UniqueID Unique Identifier
+ *
+ * Like the @c le_dcs interface, many of the @c le_net APIs take channel reference, which is
+ * assigned and managed by @c le_dcs, as the input identifier to uniquely identify the channel
+ * which assigned network configurations are taken for use.
+ *
+ * @section le_net_APIOverview API Overview
+ *
+ * The @c le_net interface provides. More details for these APIs can be found in later subsections.
+ *
+ * @note These following APIs have full support for cellular data channels, but only
+ * le_net_ChangeRoute() supports WiFi channels in the moment.
+ *
+ * | Function                       | Description                                                                                        |
+ * | -------------------------------| ---------------------------------------------------------------------------------------------------|
+ * | le_net_ChangeRoute()           | Add or remove host or network route onto the network interface of a given data channel             |
+ * | le_net_SetDefaultGW()          | Set a device's default gateway addresses to those assigned for a given channel use                 |
+ * | le_net_BackupDefaultGW()       | Back up a device's current default gateway addresses                                               |
+ * | le_net_RestoreDefaultGW()      | Restore the default gateway addresses of a device previously backed up by le_net_BackupDefaultGW() |
+ * | le_net_SetDNS()                | Set the DNS server addresses into the device's name server address table                           |
+ * | le_net_RestoreDNS()            | Remove the DNS server addresses previously added to the device's name server address table         |
+ *
+ *
+ * @subsection le_net_APIDetails_ChangeRoute Change Route
+ *
+ * An application can use the le_net_ChangeRoute() function to add or remove a host or network route
+ * onto the network interface of a given channel. The channel reference as an API input identifies
+ * the network interface which a route is to be added onto or removed from. Whether the operation
+ * is an add or a remove depends on the isAdd boolean value of the last API input argument.
+ *
+ * The IP address and mask input arguments specify the destination address and mask for the route.
+ * The formats used for them are the same as used in the Linux command "route add -net <ipAddr>
+ * netmask <ipMask> dev <netInterface>". If the route is a host route, the ipMask input argument
+ * can be given as "" (i.e. null string) or "255.255.255.255". If it is a network route, it
+ * should then be specified in the quad-dotted octet format, like 255.255.0.0.
+ *
+ * The following is some sample code over how to use le_net_ChangeRoute():
+ * @code
+    static le_dcs_ChannelRef_t myChannelRef;
+
+    void ClientChannelChangeRoute
+    (
+        le_dcs_ChannelRef_t channelRef,
+        char *ipAddr,
+        char *ipAddrMask,
+        bool isAdd
+    )
+    {
+        if (LE_OK != le_net_ChangeRoute(channelRef, ipAddr, ipAddrMask, isAdd))
+        {
+            LE_ERROR("Failed to %s route to destination address %s mask %s",
+                     isAdd ? "add" : "remove", ipAddr, ipAddrMask);
+        }
+    }
+
+    void AddMyHostRoute
+    (
+        void
+    )
+    {
+        ClientChannelChangeRoute(myChannelRef, "1.1.1.1", "", true);
+    }
+
+    void ChangeMySubnetRoute
+    (
+        bool isAdd
+    )
+    {
+        ClientChannelChangeRoute(myChannelRef, "1.1.0.0", "255.255.0.0", isAdd);
+    }
+   @endcode
+ *
+ * @subsection le_net_APIDetails_DefaultGW Default Gateway Address
+ *
+ * The @c le_net interface provides three APIs for changing the default gateway address on a
+ * device. To back up the original setting before changing it, le_net_BackupDefaultGW() can be
+ * used. This will save both the default gateway address and the network interface on which it is
+ * installed. Later, when this original setting is to be restored, le_net_RestoreDefaultGW() can
+ * be used.
+ *
+ * To install a different default GW address on a device, le_net_SetDefaultGW() can be called
+ * with the channel reference of the channel provided, which assigned default gateway address will
+ * be used as the device's. Its assigned network interface will be the interface used for this
+ * configuration.
+ *
+ * @note This set of APIs for default gateway configuration management currently only supports
+ * cellular channels but not WiFi.
+ *
+ * The following is some sample code over how to use le_net_RestoreDefaultGW() and
+ * le_net_BackupDefaultGW():
+ * @code
+    static le_dcs_ChannelRef_t myChannelRef;
+    static bool IsDefaultGWAdded = false;
+
+    void ClientConfigNetwork
+    (
+        char *ipAddr,
+        char *ipAddrMask,
+        bool isAdd
+    )
+    {
+        if (isAdd)
+        {
+            LE_INFO("Adding network configs for channel reference %p", myChannelRef);
+            le_net_BackupDefaultGW();
+            IsDefaultGWAdded = (le_net_SetDefaultGW(myChannelRef) == LE_OK);
+        }
+        else if (IsDefaultGWAdded)
+        {
+            LE_INFO("Restoring network configs for channel reference %p", myChannelRef);
+            if (LE_OK != le_net_RestoreDefaultGW())
+            {
+                LE_ERROR("Failed to restore default gateway addresses");
+            }
+            IsDefaultGWAdded = false;
+        }
+
+        if (LE_OK != le_net_ChangeRoute(myChannelRef, ipAddr, ipAddrMask, isAdd))
+        {
+            LE_ERROR("Failed to %s route to destination %s mask %s on channel with "
+                     "reference %p", isAdd ? "add : "remove", ipAddr, ipAddrMask,
+                     myChannelRef);
+        }
+    }
+   @endcode
+ *
+ * @subsection le_net_APIDetails_DNS DNS Server Addresses
+ *
+ * There are two functions provided for setting a device's DNS server addresses and restoring
+ * them. When an application calls le_net_SetDNS() to provide a channel reference, @c le_net
+ * would query for the DNS server addresses assigned for this channel's use and add them into
+ * the device's global name server address table, which on a typical Linux-based device is at
+ * /etc/resolv.conf. The @c le_net interface would remember this lastly added set of DNS server
+ * address.
+ *
+ * When the application is done with the channel, it needs to remove these previously added DNS
+ * server addresses from the device's global name server address table, which can be done via
+ * le_net_RestoreDNS(). With that called, @c le_net would retrive from its last archived
+ * set of DNS server addresses and seek to delete them from the global table.
+ *
+ * Note that for each data channel there could be zero to two DNS server addresses assigned. The
+ * @c le_net interface currently supports both IPv4 and IPv6, but cellular channels only.
+ *
+ * The following is some sample code over how to use le_net_SetDNS() and le_net_RestoreDNS():
+ * @code
+    static bool isDnsAdded = false;
+
+    void ClientConfigDNS
+    (
+        le_dcs_ChannelRef_t myChannelRef,
+        bool isAdd
+    )
+    {
+        if (isAdd)
+        {
+            LE_INFO("Adding DNS configs for channel reference %p", myChannelRef);
+            IsDnsAdded = (le_net_SetDNS(myChannelRef) == LE_OK);
+        }
+        else if (isDnsAdded)
+        {
+            LE_INFO("Restoring DNS configs for channel reference %p", myChannelRef);
+            le_net_RestoreDNS();
+            isDnsAdded = false;
+        }
+    }
+   @endcode
  *
  * Copyright (C) Sierra Wireless Inc.
  */
@@ -54,6 +229,16 @@ DEFINE IPADDR_MAX_LEN = 46;
  * Add or remove a route on the given channel according to the input flag in the last argument for
  * the given destination address its given subnet, which is a subnet mask for IPv4 and subnet mask's
  * prefix length for IPv6
+ *
+ * The channel reference in the first input argument identifies the network interface which a route
+ * is to be added onto or removed from. Whether the operation is an add or a remove depends on the
+ * isAdd boolean value of the last API input argument.
+ *
+ * The IP address and subnet input arguments specify the destination address and subnet for the
+ * route. If it is a network route, the formats used for them are the same as used in the Linux
+ * command "route -A inet add -net <ipAddr> netmask <ipSubnet> dev <netInterface>" for IPv4, and
+ * "route -A inet6 add -net <ipAddr/prefixLength> dev <netInterface>" for IPv6. If the route is a
+ * host route, the subnet input argument should be given as "" (i.e. a null string).
  *
  * @return
  *      - LE_OK upon success, otherwise another le_result_t failure code

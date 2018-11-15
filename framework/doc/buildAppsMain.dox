@@ -8,12 +8,12 @@ built-in security</b> enabling you to focus on developing your applications.
 
 <h1> What is the Legato Application Framework? </h1>
 
-The Legato Application Framework is a set of tools and design paterns that enable developers to
+The Legato Application Framework is a set of tools and design patterns that enable developers to
 focus on building applications. The Legato Application Framework simplifies the complexity of
-interfacing with the underlaying Operating System and hardware, and introduces
+interfacing with the underlying Operating System and hardware, and introduces
 <b>layers of security</b> that ensure that applications only have the permissions and access to the
 resources that they need. Applications run in an isolated environment and their permissions can be
-explicity configured.
+explicitly configured.
 
 Example of the Legato Application Framework running on a target:
 @image html buildAppsMain-LegatoOverview.png
@@ -31,7 +31,7 @@ Example of the Legato Application Framework running on a target:
 - The ability to plug in applications/services provided by your target provider or other
   developers that you can then take and connect to your own applications.
 - The ability to bundle OS drivers within your applications to allow connection to hardware without
-  modifying the underlaying platform.
+  modifying the underlying platform.
 
 <h1> Why Choose the Legato Application Framework? </h1>
 
@@ -42,7 +42,7 @@ Example of the Legato Application Framework running on a target:
   administration of devices.
 - Ability to run your applications in @ref conceptsSecuritySandbox "secure containers" with resource
   management and monitoring, while still allowing cross application communication.
-- @ref toolsBuild "Developer tools" that help you troubleshoot interprocess communications, package
+- @ref toolsBuild "Developer tools" that help you troubleshoot inter-process communications, package
   up applications, components, and kernel drivers into a customized system and then deploy the
   system to your target.
 
@@ -50,15 +50,16 @@ Example of the Legato Application Framework running on a target:
 
 Dig further and discover our development concepts, API Guides for our core daemons and platform
 services, or our tool box that contains tools to help you configure and run
-the Legato Runtime Environment and the underlaying platform.
+the Legato Runtime Environment and the underlying platform.
 
 | Section                          | Description                                                                   |
 | -------------------------------- | ----------------------------------------------------------------------------- |
 | @subpage getStarted              | Install and start developing for Framework                                    |
-| @subpage concepts                | Concepts and underlaying design paterns for the Framework                     |
+| @subpage concepts                | Concepts and underlying design patterns for the Framework                     |
 | @subpage apiGuidesMain           | Catalog of all exposed APIs from the Framework                                |
 | @subpage tools                   | Target, Host, and Build tools' Help information                               |
 | @subpage howToMain               | How To articles for some of the most commonly used features of the Framework  |
+| @subpage experimentalMain        | Check out our new experimental features                                       |
 
 Copyright (C) Sierra Wireless Inc.
 

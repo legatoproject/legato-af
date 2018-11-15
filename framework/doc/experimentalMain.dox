@@ -1,0 +1,32 @@
+/** @page experimentalMain Experimental Features
+
+Major new features in the Legato Application Framework are introduced as experimental features at
+first.  This allows you to play around with them and test them out in a developmental capacity
+without having it affect production targets.  Once the feature is "broken in" and fully tested we
+will release it as a production read feature.
+
+Each new feature will have it's own set of documentation that will walk you through:
+- @b Getting @b Started - how to install/enable the new feature in Legato
+- @b Concepts - Overview and Architecture information about the feature
+- @b API @b Guides - Links and information on using the APIs exposed with the new feature
+- @b Tools - Links and documentation on any tools included with the new feature.
+- @b HowTo - Documentation and sample apps demonstrating the new feature.
+
+The following are our current list of new experimental features in Legato
+
+| Feature                          | Description                                                   | Maturity     | First Release Version |
+| -------------------------------- | --------------------------------------------------------------| ------------ | ----------------------|
+| @subpage legatoServicesDCS       | New data channel service to replace the current data service  | Alpha        | Legato 18.10.0        |
+
+Maturity Descriptions:
+- @b Alpha - the feature is still under development and should not be used on production targets as
+the underlying functionality as well as the APIs may change in future releases.
+- @b Beta - the feature is complete and being testted. Final bugs and issues are being resolved.
+Functionality and APIs are stable and will not change at this point.
+
+Any feedback on these features is welcomed, please post on the
+[Legato forum.](https://forum.legato.io)
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
