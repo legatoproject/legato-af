@@ -9,14 +9,14 @@ bundles:
 externalBuild:
 {
     "mkdir -p ${LEGATO_BUILD}/external && cd ${LEGATO_BUILD}/external && touch foo '$${LEGATO_'"
-    "${CC} $${CFLAGS} -c -Wall -Werror -fpic $CURDIR/foo.c -o $CURDIR/foo.o"
-    "${LD} $${LDFLAGS} -shared -o $CURDIR/libfoo.so $CURDIR/foo.o"
+    "${CC} $${CFLAGS} -c -Wall -Werror -fpic $CURDIR/foo.c -o $BUILDDIR/foo.o"
+    "${LD} $${LDFLAGS} -shared -o $BUILDDIR/libfoo.so $BUILDDIR/foo.o"
 }
 
 provides:
 {
     lib:
     {
-        $CURDIR/libfoo.so
+        $BUILDDIR/libfoo.so
     }
 }
