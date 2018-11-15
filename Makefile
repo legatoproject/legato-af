@@ -234,6 +234,10 @@ ifeq ($(LE_CONFIG_CONFIGURED),y)
   export $(TARGET_CAPS)_SYSROOT := $(LEGATO_SYSROOT)
   export $(TARGET_CAPS)_KERNELROOT := $(LEGATO_KERNELROOT)
 
+  ifeq ($(TARGET_CC),/$(CC_NAME))
+    $(error Unable to find toolchain for target '$(TARGET)')
+  endif
+
   # Set the LD, AR, AS, STRIP, OBJCOPY, and READELF variables for use by the Legato framework
   # build
   TOOLCHAIN_PATH_PREFIX := $(TOOLCHAIN_PREFIX)

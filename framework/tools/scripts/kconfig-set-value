@@ -12,13 +12,14 @@ FILE="${4}"
 VALUE=${!VAR}
 
 msg() {
-    if [ "${V}" = 1 ]; then
+    if [ "${V}" = 1 -o "${1}" = 1 ]; then
+        shift
         echo "${@}"
     fi
 }
 
 tweak() {
-    msg "    Setting ${1} ${CONFIG} to ${2}"
+    msg 1 "    Setting ${1} ${CONFIG} to '${2}'"
     if [ "${V}" = 1 ]; then
         ${LEGATO_ROOT}/bin/kconfig-tweak --file "${FILE}" --set-${1} "${CONFIG}" "${2}"
     else
@@ -36,16 +37,16 @@ if [ "${1}" = "--help" ]; then
 fi
 
 if [ ! -x ${LEGATO_ROOT}/bin/kconfig-tweak ]; then
-    msg "Cannot use ${LEGATO_ROOT}/bin/kconfig-tweak!  Is LEGATO_ROOT set?"
+    msg 0 "Cannot use ${LEGATO_ROOT}/bin/kconfig-tweak!  Is LEGATO_ROOT set?"
     exit 1
 fi
 
-msg "Checking ${VAR}"
+msg 0 "Checking ${VAR}"
 if [ -z "${VALUE}" ]; then
     exit 0
 fi
 
-msg "    Found ${TYPE} with value ${VALUE}"
+msg 0 "    Found ${TYPE} with value ${VALUE}"
 if [ "${TYPE}" = "bool" ]; then
     if [ "${VALUE}" = 1 ]; then
         tweak val y
