@@ -20,7 +20,7 @@ ENDHELP
 }
 
 HOST_ARCH=$(uname -m)
-TARGET=$1
+TARGET="${1/-/_}"
 CMD=${2:-dir}
 
 TOOLCHAIN_INFO=()
@@ -79,14 +79,14 @@ GetSysrootDefs() {
         SYSROOT_DEFS+=("armv7ahf-neon-poky-linux-gnueabi")
         ;;
 
-    raspi | virt_arm | virt-arm)
+    raspi | virt_arm)
         if [[ "$yocto_mode" == "true" ]]; then
             SYSROOT_DEFS+=("swi-virt-arm")
         fi
         SYSROOT_DEFS+=("armv5e-poky-linux-gnueabi")
         ;;
 
-    virt_x86 | virt-x86)
+    virt_x86)
         if [[ "$yocto_mode" == "true" ]]; then
             SYSROOT_DEFS+=("swi-virt-x86")
         fi
@@ -143,7 +143,13 @@ AppendYoctoBuildToolchain() {
         return 1
     fi
 
+    kernelroot_dir=""
     for sysroot_def in "${SYSROOT_DEFS[@]}"; do
+
+        if [ -z "${kernelroot_dir}" ]; then
+            kernelroot_dir="$(readlink -e "${LEGATO_ROOT}/../${build_dir}/tmp/work-shared/${sysroot_def}/kernel-build-artifacts")"
+            # Allow kernelroot_dir to be empty
+        fi
 
         if [ -z "${toolchain_dir}" ]; then
             # Per-package sysroot
@@ -165,9 +171,6 @@ AppendYoctoBuildToolchain() {
                 continue
             fi
         fi
-
-        kernelroot_dir="$(readlink -e "${LEGATO_ROOT}/../${build_dir}/tmp/work-shared/${sysroot_def}/kernel-build-artifacts")"
-        # Allow kernelroot_dir to be empty
 
         toolchain_prop="${toolchain_dir}"
         toolchain_prop+="::"
