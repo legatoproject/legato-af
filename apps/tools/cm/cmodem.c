@@ -161,7 +161,7 @@ static void ExecuteCommand
         }
     }
 
-    fprintf(stderr, "This service does not exist.\n");
+    fprintf(stderr, "Service '%s' does not exist.\n", serviceNamePtr);
     exit(EXIT_FAILURE);
 }
 

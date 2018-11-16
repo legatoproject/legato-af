@@ -1372,7 +1372,7 @@ static const char* GetCmdLineProcName
  *
  * @return
  *      The number of process arguments.
- *      -1 if the '--' option is not provided.
+ *      -1 if the '--' option is not provided or if no arguments was provided after --.
  */
 //--------------------------------------------------------------------------------------------------
 static int GetProcessArgs
@@ -1418,13 +1418,19 @@ static int GetProcessArgs
         i++;
     }
 
+    *incrementalArgsUsedPtr += j + 1; // Include the '--'.
+
+    if (j == 0)
+    {
+        // No args passed after --
+        return -1;
+    }
+
     if (j >= LIMIT_MAX_NUM_CMD_LINE_ARGS)
     {
         fprintf(stderr, "Too many process arguments.");
         exit(EXIT_FAILURE);
     }
-
-    *incrementalArgsUsedPtr += j + 1; // Include the '--'.
 
     return j;
 }

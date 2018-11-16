@@ -126,17 +126,25 @@ void SystemBuildScriptGenerator_t::GenerateSystemBuildRules
         "            ln -sf /legato/apps/$$md5 " << symLink << " && $\n";
     }
 
-    // Create symlinks to all the shell commands specified in the .sdef file's "commands:" section.
+    // Create a wrapper that is going to execute shell commands specified in the .sdef file's "commands:"
+    // section through 'app runProc'.
     for (const auto& mapEntry : systemPtr->commands)
     {
         const auto commandPtr = mapEntry.second;
 
-        std::string symLink = "../apps/"
-                            + commandPtr->appPtr->name
-                            + "/read-only"
-                            + commandPtr->exePath;
+        std::string exePath = commandPtr->exePath;
+        if (exePath[0] == '/')
+        {
+            exePath.erase(0, 1);
+        }
+
         script <<
-        "            ln -sf " << symLink << " $stagingDir/bin/" << commandPtr->name << " && $\n";
+        "            echo -e '#!/bin/sh\\n"
+                             "exec app runProc " << commandPtr->appPtr->name
+                                                 << " --exe=" << exePath
+                                                 << " -- \"$$@\"' > $stagingDir/bin/" << commandPtr->name << " && $\n";
+        script <<
+        "            chmod +x $stagingDir/bin/" << commandPtr->name << " && $\n";
     }
 
     script <<
