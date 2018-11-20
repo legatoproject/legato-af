@@ -147,60 +147,26 @@ static void* ModemPASoPtr;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Handle the event during PA initialization
+ * Whether loading modem PA resulted in timeout
  */
 //--------------------------------------------------------------------------------------------------
-static void RunServiceLoop
-(
-    void
-)
-{
-    struct pollfd pollControl;
-    int pollResult;
-    le_result_t result;
+static bool IsModemPATimedOut = false;
 
-    // Get the Legato event loop "readyness" file descriptor and put it in a pollfd struct
-    // configured to detect "ready to read".
-    pollControl.fd = le_event_GetFd();
-    pollControl.events = POLLIN;
-
-    // Block until the file descriptor is "ready to read".
-    LE_INFO("Starting poll ...");
-    pollResult = poll(&pollControl, 1, -1);
-
-    LE_INFO("pollResult = %i", pollResult);
-
-    if (pollResult > 0)
-    {
-        while (1)
-        {
-            // The Legato event loop needs servicing.
-            // Keep servicing it until there is nothing left.
-            result = le_event_ServiceLoop();
-            LE_DEBUG("result = %i", result);
-
-            // No more work, so break out
-            if ( result != LE_OK )
-            {
-                LE_INFO("No more events");
-                break;
-            }
-        }
-    }
-    else
-    {
-        LE_FATAL("poll() failed with errno %m.");
-    }
-}
+//--------------------------------------------------------------------------------------------------
+/**
+ * Semaphore to synchronize with Modem PA loading thread.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_sem_Ref_t ModemPASemRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Load the golden system modem PA
  */
 //--------------------------------------------------------------------------------------------------
-static void LoadModemPA
+static void* LoadModemPA
 (
-    void
+    void* contextPtr
 )
 {
     char ModemPA[PATH_MAX];
@@ -243,11 +209,7 @@ static void LoadModemPA
 
     ModemPASoPtr = dlopen(ModemPA, RTLD_LAZY);
 
-    if (ModemPASoPtr)
-    {
-        RunServiceLoop();
-    }
-    else
+    if (NULL == ModemPASoPtr)
     {
         LE_INFO("Could not open %s.", ModemPAPath);
         LE_INFO("%s", dlerror());
@@ -258,6 +220,14 @@ done:
     {
         LE_WARN("Cannot open modem PA; hardware state detection disabled");
     }
+
+    LE_INFO("Modem PA is loaded - signaling to the main thread.");
+    le_sem_Post(ModemPASemRef);
+
+    // Starting the event receiving loop
+    le_event_RunLoop();
+
+    return NULL;
 }
 
 
@@ -275,7 +245,7 @@ static bool IsHardwareFaultReset
     int resetCode;
     char resetReason[64];
 
-    if (!ModemPASoPtr)
+    if (IsModemPATimedOut || !ModemPASoPtr)
     {
         // No way to reset reason information -- assume not a hardware fault.
         return false;
@@ -2192,6 +2162,8 @@ int main
 )
 {
     bool isReadOnly = sysStatus_IsReadOnly();
+    le_thread_Ref_t modemPAThread;
+    le_clk_Time_t timeToWait = {10, 0}; // 10s timeout waiting for Modem PA loading thread
 
     if (!isReadOnly)
     {
@@ -2206,8 +2178,20 @@ int main
 
     daemon_Daemonize(5000); // 5 second timeout in case older supervisor is installed.
 
-    LoadModemPA();
+    ModemPASemRef = le_sem_Create("ModemPA", 0);
+    LE_INFO("Starting Modem PA loading thread.");
 
+    modemPAThread = le_thread_Create("ModemPAThread", LoadModemPA, NULL);
+    le_thread_Start(modemPAThread);
+
+    // Waiting till Modem PA is loaded
+    if (LE_OK != le_sem_WaitWithTimeOut(ModemPASemRef, timeToWait))
+    {
+        LE_ERROR("Time Out waiting for the Modem PA loader thread.");
+        IsModemPATimedOut = true;
+    }
+
+    LE_INFO("Installing/launching the system.");
     while(1)
     {
         if (!isReadOnly)
