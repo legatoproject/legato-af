@@ -976,8 +976,8 @@ static void ReqKernelModulesSection
         if (itemPtr != NULL)
         {
             ReqKernelModule(requiredModules,
-                        dynamic_cast<const parseTree::RequiredModule_t*>(itemPtr),
-                        buildParams);
+                            dynamic_cast<const parseTree::RequiredModule_t*>(itemPtr),
+                            buildParams);
         }
     }
 }
