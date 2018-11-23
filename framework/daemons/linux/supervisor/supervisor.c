@@ -1136,6 +1136,10 @@ COMPONENT_INIT
     // Create the Legato runtime directory if it doesn't already exist.
     LE_ASSERT(le_dir_Make(LE_CONFIG_RUNTIME_DIR, S_IRWXU | S_IXOTH) != LE_FAULT);
 
+    // Properly label objects in tmpfs that are required by apps
+    smack_SetLabel(LE_CONFIG_RUNTIME_DIR, "framework");
+    smack_SetLabel("/tmp/ld.so.cache", "framework");
+
     // Create and lock a dummy file used to ensure that only a single instance of the Supervisor
     // will run.  If we cannot lock the file than another instance of the Supervisor must be running
     // so exit.
