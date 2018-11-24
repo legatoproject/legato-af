@@ -139,10 +139,11 @@ void SystemBuildScriptGenerator_t::GenerateSystemBuildRules
         }
 
         script <<
-        "            echo -e '#!/bin/sh\\n"
-                             "exec app runProc " << commandPtr->appPtr->name
-                                                 << " --exe=" << exePath
-                                                 << " -- \"$$@\"' > $stagingDir/bin/" << commandPtr->name << " && $\n";
+        "            ( echo '#!/bin/sh' && $\n"
+        "              echo 'exec /legato/systems/current/bin/app runProc "
+                                            << commandPtr->appPtr->name
+                                            << " --exe=" << exePath
+                                            << " -- \"$$@\"' ) > $stagingDir/bin/" << commandPtr->name << " && $\n";
         script <<
         "            chmod +x $stagingDir/bin/" << commandPtr->name << " && $\n";
     }
