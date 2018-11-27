@@ -12,7 +12,7 @@
 
 #define LE_DCS_TECHNOLOGY_MAX_COUNT 3  // max # of technologies supported
 #define LE_DCS_TECH_MAX_NAME_LEN 16    // max length of the name of a technology
-#define LE_DCS_CHANNELDBS_MAX 20       // max # of channels supported
+#define LE_DCS_CHANNELDBS_MAX 24       // max # of channels supported
 #define LE_DCS_CHANNELDB_EVTHDLRS_MAX 20 // max # of channel monitoring event handlers
 #define LE_DCS_APPNAME_MAX_LEN 16      // max length of an app's name
 
