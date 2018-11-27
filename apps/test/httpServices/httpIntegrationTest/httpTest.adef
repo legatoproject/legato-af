@@ -1,0 +1,20 @@
+sandboxed: false
+start: manual
+
+executables:
+{
+    httpTest = ( httpTestComponent )
+}
+
+processes:
+{
+    run:
+    {
+        ( httpTest )
+    }
+
+#if ${CONFIG_LINUX} = y
+#else
+    maxStackBytes: 8192
+#endif
+}

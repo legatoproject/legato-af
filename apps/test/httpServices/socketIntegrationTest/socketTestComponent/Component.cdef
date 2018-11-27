@@ -1,0 +1,19 @@
+sources:
+{
+    socketTest.c
+    defaultDerKey.c
+}
+
+requires:
+{
+    component:
+    {
+        $LEGATO_ROOT/components/socketLibrary
+    }
+}
+
+cflags:
+{
+    -std=c99
+    -I$LEGATO_ROOT/components/socketLibrary
+}

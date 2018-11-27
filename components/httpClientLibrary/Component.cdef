@@ -1,0 +1,24 @@
+sources:
+{
+    le_httpClientLib.c
+
+    // tinyhttp
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/tinyhttp/chunk.c
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/tinyhttp/header.c
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/tinyhttp/http.c
+}
+
+cflags:
+{
+    -std=c99
+    -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/tinyhttp/
+    -I${LEGATO_ROOT}/components/socketLibrary
+}
+
+requires:
+{
+    component:
+    {
+        $LEGATO_ROOT/components/socketLibrary
+    }
+}

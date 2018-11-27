@@ -100,7 +100,7 @@ le_result_t le_base64_Encode
 (
     const uint8_t *dataPtr,     ///< [IN] Data to be encoded
     size_t dataLength,          ///< [IN] Data length
-    char *result,               ///< [OUT] Base64-encoded string buffer
+    char *resultPtr,            ///< [OUT] Base64-encoded string buffer
     size_t *resultSizePtr       ///< [INOUT] Length of the base64-encoded string buffer
 );
 

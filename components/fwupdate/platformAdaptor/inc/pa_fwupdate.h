@@ -385,6 +385,7 @@ LE_SHARED le_result_t pa_fwupdate_NvupApply
  *      - LE_OK             on success
  *      - LE_UNSUPPORTED    the feature is not supported
  *      - LE_FAULT          on failure
+ *      - LE_NO_MEMORY      on memory allocation failure
  *      - LE_IO_ERROR       if SYNC fails due to unrecoverable ECC errors. In this case, the update
  *                          without sync is forced, but the whole system must be updated to ensure
  *                          that the new dual will be workable

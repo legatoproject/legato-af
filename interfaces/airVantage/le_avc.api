@@ -646,9 +646,18 @@ ENUM UpdateType
 ENUM ErrorCode
 {
     ERR_NONE,                       ///< No error.
-    ERR_BAD_PACKAGE,                ///< Encountered a bad package.
-    ERR_INTERNAL,                   ///< Something failed while doing install/download.
-    ERR_SECURITY_FAILURE            ///< Security check failure while installing the package.
+    ERR_BAD_PACKAGE,                ///< Encountered a bad package, package download can not be
+                                    ///< resumed.
+    ERR_INTERNAL,                   ///< Something failed while doing install/download, package
+                                    ///< download can not be resumed.
+    ERR_SECURITY_FAILURE,           ///< Security check failure while installing the package,
+                                    ///< package download can not be resumed.
+    ERR_RAM,                        ///< RAM issue during package download, package download can be
+                                    ///< resumed but a platform reboot is requires.
+    ERR_NETWORK,                    ///< Network issue during package download (IP issues), package
+                                    ///< download can be resumed.
+    ERR_FLASH                       ///< Flash issue during package download, package download can
+                                    ///< not be resumed.
 };
 
 

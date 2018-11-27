@@ -1,0 +1,28 @@
+sources:
+{
+    le_socketLib.c
+    netSocket.c
+#if ${LE_CONFIG_SOCKET_LIB_USE_OPENSSL} = y
+    secSocket_openssl.c
+#elif ${LE_CONFIG_SOCKET_LIB_USE_MBEDTLS} = y
+    secSocket_mbedtls.c
+#else
+    secSocket_default.c
+#endif
+}
+
+cflags:
+{
+    -std=gnu99
+}
+
+requires:
+{
+#if ${LE_CONFIG_SOCKET_LIB_USE_OPENSSL} = y
+    lib:
+    {
+        ssl
+        crypto
+    }
+#endif
+}

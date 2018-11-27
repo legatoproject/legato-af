@@ -1,0 +1,20 @@
+sandboxed: false
+start: manual
+
+executables:
+{
+    socketTest = ( socketTestComponent )
+}
+
+processes:
+{
+    run:
+    {
+        ( socketTest )
+    }
+
+#if ${CONFIG_LINUX} = y
+#else
+    maxStackBytes: 8192
+#endif
+}
