@@ -600,9 +600,9 @@ le_result_t le_dcsCellular_GetChannelList
     uint16_t i;
     le_mdc_ConState_t mdcState;
     le_mdc_ProfileRef_t profileRef;
-    size_t listLen = LE_DCS_CHANNEL_LIST_ENTRY_MAX;
     char apn[LE_MDC_APN_NAME_MAX_LEN];
-    le_mdc_ProfileInfo_t profileList[10];
+    le_mdc_ProfileInfo_t profileList[LE_DCS_CHANNEL_LIST_ENTRY_MAX];
+    size_t listLen = LE_DCS_CHANNEL_LIST_ENTRY_MAX;
     le_result_t ret = le_mdc_GetProfileList(profileList, &listLen);
     if (ret != LE_OK)
     {

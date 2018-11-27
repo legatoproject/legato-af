@@ -78,9 +78,11 @@ DEFINE IPADDR_MAX_LEN = 46;
 //--------------------------------------------------------------------------------------------------
 /**
  * Max # of entries on a data channel list
+ * The current define value is one > the # of cellular profiles supported. When more technologies
+ * are supported by DCS, e.g. Wifi, this value will be increased accordingly
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE CHANNEL_LIST_ENTRY_MAX = 255;
+DEFINE CHANNEL_LIST_ENTRY_MAX = 24;
 
 
 //--------------------------------------------------------------------------------------------------
