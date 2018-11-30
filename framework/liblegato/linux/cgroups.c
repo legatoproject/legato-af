@@ -627,6 +627,73 @@ ssize_t cgrp_GetProcessesList
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Gets the process state of this pid
+ *
+ * @return
+ *      LE_OK of the process state is found.
+ *      LE_NOT_FOUND if the process state could not be found.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t GetProcessState
+(
+    pid_t pid,          ///< [IN] Process ID.
+    char* pStatePtr     ///< [OUT]
+)
+{
+#define STATE_STR            "State:"
+
+    // Get the proc file name.
+    char procFile[LIMIT_MAX_PATH_BYTES];
+    LE_FATAL_IF(snprintf(procFile, sizeof(procFile), "/proc/%d/status", pid) >= sizeof(procFile),
+                "File name '%s...' size is too long.", procFile);
+
+    // Open the proc file.
+    int fd;
+
+    do
+    {
+        fd = open(procFile, O_RDONLY);
+    }
+    while ( (fd == -1) && (errno == EINTR) );
+
+    if ( (fd == -1) && (errno == ENOENT ) )
+    {
+        return LE_NOT_FOUND;
+    }
+
+    LE_FATAL_IF(fd == -1, "Could not read file %s.  %m.", procFile);
+
+    // Read the process state from the file.
+    while (1)
+    {
+        char str[200];
+        le_result_t result = fd_ReadLine(fd, str, sizeof(str));
+
+        LE_FATAL_IF(result == LE_OVERFLOW, "Buffer to read PID is too small.");
+
+        if (result == LE_OK)
+        {
+            if (strstr(str, STATE_STR) == str)
+            {
+                char* procStateStrPtr = &(str[sizeof(STATE_STR)-1]);
+                pStatePtr[0] = procStateStrPtr[1];
+                pStatePtr[1] = '\0';
+                fd_Close(fd);
+                return LE_OK;
+            }
+        }
+        else
+        {
+            LE_ERROR("Error reading the %s", procFile);
+        }
+    }
+
+    fd_Close(fd);
+    return LE_NOT_FOUND;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Sends the specified signal to all the processes in the specified cgroup.
  *
  * @return
@@ -658,8 +725,21 @@ ssize_t cgrp_SendSig
 
         if (pid >= 0)
         {
-            numPids++;
+            char pState[2];
+            LE_FATAL_IF(GetProcessState(pid, pState) != LE_OK, "Unable to get proc %d state", pid);
 
+            // If the process is in an uninterruptible sleep, fail immediately.
+            // Since supervisor manages killing all the application processes, this failure will force
+            // supervisor to reboot.
+            if (strcmp(pState, "D") == 0)
+            {
+                LE_FATAL("Process %d is in '%s' state (uninterruptible sleep). Restarting device.",
+                         pid, pState);
+            }
+
+            LE_INFO("Killing app ('%s') process %d ('%s' process state)", cgroupNamePtr, pid, pState);
+
+            numPids++;
             kill_SendSig(pid, sig);
         }
         else if (pid == LE_OUT_OF_RANGE)
