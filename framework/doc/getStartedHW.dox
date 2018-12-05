@@ -238,8 +238,9 @@ helloWorld/
 └── helloWorld.adef
 @endverbatim
 
-Before you run @c mkapp make sure that you have @ref basicBuildMake "configured the Framework" for
-a specific target and have run @c bin/legs or sourced @c bin/configlegatoenv.
+@note If you didn't install your development environment with @ref toolsLeaf, before you run
+@c mkapp make sure that you have @ref basicBuildMake "configured the Framework" for a specific
+target and have run @c bin/legs or sourced @c bin/configlegatoenv.
 
 @c mkapp is the tool that is used to build the app into a binary package that can then be installed
 on your target.  It is important to specify the target that you are building for as @c mkapp will

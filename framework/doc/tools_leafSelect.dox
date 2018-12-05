@@ -1,0 +1,29 @@
+/** @page toolsLeafSelect Leaf Select
+
+@c leaf @c select - change and synchronize current profile
+
+@verbatim
+leaf select PROFILE
+@endverbatim
+
+@c leaf @c select changes the current profile in the workspace to a new profile, it also triggers
+profile synchronization (checks and downloads any missing packages)
+
+@section toolsLeafSelect_Behavior Behavior
+
+leaf select is equivalent to manually performing the following commands:
+@verbatim
+leaf profile switch PROFILE
+@endverbatim
+
+The profile named with PROFILE name is selected as the new current profile.
+@verbatim
+leaf profile sync
+@endverbatim
+
+Triggers the download and installation of any required packages (if necessary) and refreshes the
+leaf-data structure.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

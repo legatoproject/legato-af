@@ -7,7 +7,8 @@ Date: <b>Jan 7, 2019</b><br>
 Visit the <a href="https://legato.io/releases">release page</a> to @b download the tarball,
 @b clone the repositories from GitHub, or view <b>previous released versions</b>.
 
-Get started with @ref basicBuild "building the Legato Application Framework". </b>
+Install @ref toolsLeaf to @ref getStarted "get started" building the Legato Application Framework
+for your target.
 
 @section rn1810_Patch 18.10.2 Patch
 

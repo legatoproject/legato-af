@@ -1,10 +1,10 @@
-/** @page basicBuild Install/Build Legato
+/** @page basicBuild Manually Install Dev Environment
 
 How to manually build, install and remove the Legato Application Framework:
 
 To install and get started with the Legato Application Framework you need to install and configure:
 - The Legato Application Framework on a development PC(host) running an LTS version of Ubuntu
-- A toolchain that corisponds to the Linux Distro installed on your target.
+- A toolchain that corresponds to the Linux Distro installed on your target.
 - Configure the Legato Application Framework for your target.
 
 | Section                            | Description                                                         |
@@ -14,12 +14,15 @@ To install and get started with the Legato Application Framework you need to ins
 | @subpage basicBuildMake            | Configure your environment and update your target                   |
 | @subpage kconfigDescription        | Modify the framework configuration                                  |
 
-If you wish to upgrade to a new version of the Framework or to uninstall exisiting versions:
+If you wish to upgrade to a new version of the Framework or to uninstall existing versions:
 
 | Section                            | Description                                                         |
 | ---------------------------------- | ------------------------------------------------------------------- |
 | @subpage basicBuildUpdate          | Update the Application Framework to a new version                   |
 | @subpage basicBuildUninstall       | Uninstall the Application Framework from a development machine      |
+
+@note Installing Legato through @ref toolsLeaf takes care of all the above steps and configuration,
+and provides an upgrade path for installing new versions of the Legato Application Framework.
 
 @section basicBuild_CheckVersion Verify Target
 

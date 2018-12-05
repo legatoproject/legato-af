@@ -1,0 +1,161 @@
+/** @page toolsLeafSearch Leaf Search
+
+@c leaf @c search - search for available Legato Software Development Kits
+
+@section toolsleafSearchOverview Overview
+
+@verbatim
+leaf search [-a] [-t TAG ...] [KEYWORD ...]
+@endverbatim
+
+
+Search for available leaf packages. Keywords are can be used to filter the number of packages
+returned.
+
+Example Keyword Filters (filters are defined at the time of SDK creation):
+- Targets (wp75, wp76, wp77, wp85, etc)
+- SDK version numbers (i.e., 1.0.0, 1.0.2, etc)
+
+Output:
+- [blank]: displays a table with PACKAGE identifier, description and tags, for each found package
+- @c -v: as above, plus the release date, the source remote ALIAS (see leaf remote), and the
+size (if no dependencies) or the list of package dependencies
+- @c -q: displays only PACKAGE identifiers list
+- @c package: displays wildcard matching of the package name (i.e.; wp will return all packages with
+a wp in the name)
+
+@note The displayed PACKAGE identifiers are the values that can be used with -p option in
+leaf setup or leaf update commands.
+
+Depending on the current terminal size, if the output is too large to fit, it will be automatically
+displayed through a pager. $PAGER environment variable will be used to select the pager; if not
+set, the less pager will be used.
+
+@subsection tools_leafSearch_all Master vs All
+
+By default in leaf only the @b master packages are displayed. These are packages that have been
+marked by the system as master. For example the @c swi-wp76_1.0.0 package is designated as the
+master package and when installed it also installs all of it's dependencies. To list the dependant
+packages of a master, search for the package and use a @c -v flag. The Included Packages lists all
+of the master packages' dependant packages.
+
+Example:
+@verbatim
+$ leaf search -v swi-wp76_2.0.0
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│               1 package - Filter: only master and "swi-wp76_2.0.0"               │
+├────────────────┬─────────────────────────────────────────────────────────────────┤
+│   Identifier   │                            Properties                           │
+╞════════════════╪═════════════════════════════════════════════════════════════════╡
+│ swi-wp76_2.0.0 │       Description: SDK for WP76 (Release 10.1 + Legato 18.06.3) │
+│                │              Tags: wp76xx,stable                                │
+│                │      Release date: Thu Aug 23 00:47:16 UTC 2018                 │
+│                │            Source: legato-stable                                │
+│                │ Included Packages: wp76-legato_18.06.3-201808230047             │
+│                │                    wp76-legato-src_18.06.3                      │
+│                │                    wp76-toolchain_SWI9X07Y_02.18.06.00-linux32  │
+│                │                    wp76-toolchain_SWI9X07Y_02.18.06.00-linux64  │
+│                │                    wp76-image_2.0.0                             │
+│                │                    wp76-modem-image_10.1                        │
+│                │                    wp76-legato-image_18.06.3-201810052350       │
+│                │                    wp76-linux-image_SWI9X07Y_02.18.06.00        │
+└────────────────┴─────────────────────────────────────────────────────────────────┘
+@endverbatim
+
+If you wish to list all available packages you can also search with the @c -a flag:
+@verbatim
+-a|--all
+@endverbatim
+
+All packages will be displayed (not only the master ones). Master packages are top-level
+packages (i.e.; package manifests) that contain a dependency matrix of other sub-packages.
+
+The default behavior is to only display the master packages.
+
+@subsection tools_leafSearch_tag Tags
+
+@verbatim
+-t|--tag TAG
+@endverbatim
+
+Restrict the search output to only display packages with at least a tag that is exactly matching
+the given TAG.
+
+If TAG is a comma separated list, packages with at least a tag matching one of the specified
+values will be displayed. (OR filtering)
+
+The @c -t option can be specified several times. Only packages with tags that are matching all
+specified TAG values will be displayed. (AND filtering)
+
+In addition to the tags defined by the packages themselves, dynamic tags are automatically set by
+the leaf search command:
+- latest: for a given package name, the latest tag will be set on the highest version of all
+  enabled remotes
+- installed: if a package is already installed on the system, the installed tag will be
+  displayed
+
+@note These dynamic tags can be searched with the -t option like other tags.
+
+@subsection tools_leafSearch_key Keywords
+
+Restrict the search output to only display packages matching with the given KEYWORD. A given
+package is considered to be matching with a KEYWORD if either its PACKAGE identifier or its
+description contains the KEYWORD.
+
+If KEYWORD is a comma separated list, packages that are matching with at least one of the
+specified values will be displayed. (OR filtering)
+
+Several KEYWORD values can be specified. Only packages that are matching with all of the
+specified values will be displayed. (AND filtering)
+
+
+@subsection tools_leafSearch_Examples Examples
+
+Search for all master packages:
+@verbatim
+leaf search
+@endverbatim
+
+Search for all packages (no filter):
+@verbatim
+leaf search -a
+@endverbatim
+
+Search for packages matching with latest tag:
+@verbatim
+leaf search -t latest
+@endverbatim
+
+Search for packages matching with either latest OR installed tag:
+@verbatim
+leaf search -t latest,installed
+@endverbatim
+
+Search for packages matching with both latest AND custom tags:
+@verbatim
+leaf search -t latest -t custom
+@endverbatim
+
+Search for packages matching with V1 keyword:
+@verbatim
+leaf search V1
+@endverbatim
+
+Search for packages matching with V1 keyword AND latest tag:
+@verbatim
+leaf search V1 -t latest
+@endverbatim
+
+Search for packages matching with either V1 OR V2 keyword:
+@verbatim
+leaf search V1,V2
+@endverbatim
+
+Search for packages matching with both V1 AND lib keywords:
+@verbatim
+leaf search V1 lib
+@endverbatim
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

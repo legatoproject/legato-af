@@ -1,0 +1,152 @@
+/** @page toolsLeafProfile Leaf Profile
+
+@c leaf @c profile - manage profiles in a leaf workspace
+
+@verbatim
+leaf profile [list] [PROFILE...]
+
+leaf profile create PROFILE
+
+leaf profile rename NEWNAME
+
+leaf profile delete [PROFILE...]
+
+leaf profile switch PROFILE
+
+leaf profile sync [PROFILE]
+
+leaf profile config [PROFILE] [-p PACKAGE ...] [-rm-package PACKAGE ...]
+@endverbatim
+
+@c leaf @c profile manages profiles in a leaf workspace. The workspace must exist before the
+leaf profile command can be used (see @ref tools_leafSetup "leaf setup").
+
+@section toolsLeafProfile_subC Sub-Commands
+
+@b @c list <br>
+
+Lists the profiles in the workspace. (default option)
+
+Only the requested PROFILE item(s) will be listed. If nothing specified, all profiles will be listed.
+
+Depending on the @c -q|-v options, the output information is:
+- @c [blank]: displays a table for all PROFILE (with a [current] tag next to the current profile),
+  plus all the configured packages
+- @c -v: as above, plus the package dependencies and environment variables (see leaf env)
+- @c -q: displays only PROFILE list
+
+@note The list command must be specified if one of the @c -q|-v option is specified.
+
+@c @b create <br>
+
+Creates a new empty profile named PROFILE.
+
+The command will fail if @c PROFILE profile name is already used by another profile.
+
+@c @b rename <br>
+
+Renames current profile to NEWNAME.
+
+The command will fail if NEWNAME profile name is already used by another profile.
+
+@c @b delete <br>
+
+Deletes the profile(s) named PROFILE from the workspace (or the current profile if PROFILE is not
+ specified).
+
+@note If the current profile is deleted, the first profile (in the leaf-workspace.json file
+order) is switched as current.
+
+@c @b switch <br>
+
+Switches the profile named @c PROFILE as the current one.
+
+The leaf-data/current symbolic link is updated to point to the PROFILE folder.
+
+@c @b sync <br>
+
+Triggers the profile synchronization operation, for profile named PROFILE or current profile
+(if PROFILE is not specified)
+
+Profile synchronization is composed of the following steps:
+- for each package configured in the profile, leaf makes sure the package is installed
+- if not, each missing package is installed (see leaf package install)
+- once all packages are installed, the PROFILE folder in leaf-data is refreshed with symbolic
+  links to installed packages
+- if packages are defining synchronization hooks, the hooks are executed
+
+@b @c config
+
+Allows to modification of the profile named @c PROFILE (or current profile if @c PROFILE is not
+specified) by adding or removing packages (see options below)
+
+@section toolsLeafProfile_Options
+
+@c PROFILE,NEWNAME
+
+The profile name, must be unique in a workspace.
+@verbatim
+-p|--add-package PACKAGE
+@endverbatim
+
+Package identifier for the package that you wish to install.
+The package identifier will be accepted in two formats:
+@c NAME: the latest available version with the package NAME will be added to the profile
+@c NAMEVERSION: the specified version will be added to the profile
+
+@note The leaf search command can be used to display the available packages.
+
+@note A given package NAME can exist only one time in a given profile. If the -p option is used
+to add a package NAME which is already configured in the profile, the new VERSION will replace
+the existing one.
+
+@verbatim
+--rm-package PACKAGE
+@endverbatim
+Package ID to be removed from the profile.
+
+@section toolsLeafProfile_Examples Examples
+
+List profiles:
+@verbatim
+leaf profile
+@endverbatim
+
+List profiles with more details:
+@verbatim
+leaf profile list -v
+@endverbatim
+
+Create profiles:
+@verbatim
+leaf profile create MYPROFILE && leaf profile create aProfile
+@endverbatim
+
+Rename profile:
+@verbatim
+leaf profile rename theProfile
+@endverbatim
+
+Delete profile:
+@verbatim
+leaf profile delete theProfile
+@endverbatim
+
+Switch profile:
+@verbatim
+leaf profile switch MYPROFILE
+@endverbatim
+
+Configure profile:
+@verbatim
+leaf profile config -p myPackage -p myOtherPackage1.2 && leaf profile config --rm-package myOtherPackage
+@endverbatim
+
+Synchronize profile:
+@verbatim
+leaf profile sync
+@endverbatim
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

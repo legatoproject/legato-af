@@ -1,0 +1,33 @@
+/** @page toolsLeafStatus Leaf Status
+
+@c leaf @c status - display current profile and workspace status
+
+@verbatim
+leaf status
+@endverbatim
+
+@c leaf @c status displays the current profile and workspace status. A workspace must exist before
+the leaf status command can be used (see leaf setup or leaf init).
+
+Depending on the @c -q|-v options, the output information is:
+- [blank]: displays a table with current profile name, plus all the configured packages
+- @c -v: as above, plus the package dependencies and environment variables
+  (see @ref toolsLeafEnv "leaf env")
+- @c -q: displays only the workspace location
+
+@section toolsLeafStatus_examples Examples
+
+View the status of the current profile, including the package name and version
+@verbatim
+leaf status
+@endverbatim
+
+View the detailed status of the current profile, including all dependancies
+@verbatim
+leaf status -v
+@endverbatim
+
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

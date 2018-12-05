@@ -1,0 +1,171 @@
+/** @page toolsLeafEnv Leaf Env
+
+@c leaf @c env - manages leaf environment variables
+
+@verbatim
+leaf env [print] [PROFILE] [--activate-script FILE] [--deactivate-script FILE]
+
+leaf env builtin
+
+leaf env user [--set KEY=VALUE ...] [--unset KEY ...]
+
+leaf env workspace [--set KEY=VALUE ...] [--unset KEY ...]
+
+leaf env profile [PROFILE] [--set KEY[=VALUE] ...] [--unset KEY ...]
+
+leaf env package PACKAGE
+@endverbatim
+
+leaf env command sets and gets environment variables for:
+- user configuration
+- workspace configuration
+- profile configuration
+
+leaf env can be further customized with SUB-COMMANDS.
+
+@section toolsLeafEnv_SubC Sub-Commands
+
+@c @b Print <br>
+
+Prints the full environment (within the current context) and is the default command for leaf env
+This full environment is a concatenation of the following scopes:
+- builtin variables
+- user scope variables
+- workspace scope variables
+- profile scope variables
+- package scope variables, for each package contained in the specified/current profile
+
+The command output is a shell script that can be directly evaluated to configure the environment.
+
+The order listed explains the overriding workflow between different scopes.
+i.e.; A variable set in the profile scope will override the value set in the workspace scope.
+
+Alternatively the --activate-script and/or --deactivate-script options can be used to generate
+script files, ready to be sourced in the current terminal to set/unset the environment for the
+current context (this is what is implicitly done by the leaf shell command).
+
+The output shell script includes comments highlighting from which scope is coming every environment
+variable.
+These comments can be disabled by using the @c -q option.
+
+@c @b Builtin <br>
+
+Displays the built-in @c LEAFXX variables:
+- @c LEAFVERSION: current leaf tool version
+- @c LEAFPLATFORMSYSTEM: current platform operating system (i.e.; Linux)
+- @c LEAFPLATFORMMACHINE: current platform machine architecture (i.e.; x8664 / i386)
+- @c LEAFPLATFORMRELEASE: current platform kernel version
+
+@c @b User <br>
+
+Displays and configures variables in the global user scope.
+Variables in this scope are common to all workspaces. The variables configuration is stored in the
+main leaf configuration file (see leaf config).
+
+The @c --set and @c --unset options can be used to configure the variables in this scope.
+
+@c @b workspace <br>
+
+Displays and configures variables in the current workspace scope.
+Variables in this scope are specific to the current workspace and common to all profiles.
+The variables configuration is stored in the leaf-workspace.json workspace file (see leaf init).
+
+In addition to the user defined variables, leaf will automatically set the @c LEAFWORKSPACE variable
+to the current workspace location.
+
+The @c --set and @c --unset options can be used to configure the variables in this scope.
+
+@c @b profile <br>
+
+Displays and configures variables in the current profile scope.
+Variables in this scope are specific to the specified/current profile.
+The variables configuration are stored in leaf-workspace.json (see leaf init).
+
+In addition to the user defined variables, leaf will automatically set the @c LEAFPROFILE variable
+to the current profile name.
+
+The @c --set and @c --unset options can be used to configure the variables in this scope.
+
+@c @b package <br>
+
+This command displays the environment provided by the package with PACKAGE identifier
+(see leaf help manifest).
+
+@section toolsLeafEnv_Options Options
+
+@b @c PROFILE <br>
+
+Profile name to work with, instead of working with current profile
+
+@b @c PACKAGE <br>
+
+Installed package identifier from which to display the environment. See leaf help package for more details on package identifiers syntax.
+
+@c @b --activate-script FILE <br>
+
+Generate a FILE shell script containing instructions to set the environment for the selected
+scope.
+
+@c @b --deactivate-script FILE <br>
+
+Generate a FILE shell script containing instructions to unset the environment for the selected
+scope.
+
+@c @b --set KEY[=VALUE] <br>
+
+Set the KEY variable to the specified VALUE in the selected scope.
+
+@c @b --unset KEY <br>
+
+Unset the KEY variable in the selected scope.
+
+@section toolsLeafEnv_Examples Examples
+
+Dump environment for current context:
+@verbatim
+leaf env
+@endverbatim
+
+Load environment in current context:
+@verbatim
+eval $(leaf env print -q)
+@endverbatim
+
+Display built-in environment:
+@verbatim
+leaf env builtin
+@endverbatim
+
+Display user environment:
+@verbatim
+leaf env user
+@endverbatim
+
+Add variable to user environment:
+@verbatim
+leaf env user --set MYVAR=1
+@endverbatim
+
+Remove variable from user environment:
+@verbatim
+leaf env user --unset MYVAR
+@endverbatim
+
+Display workspace environment:
+@verbatim
+leaf env workspace
+@endverbatim
+
+Display profile environment:
+@verbatim
+leaf env profile
+@endverbatim
+
+Display package environment:
+@verbatim
+leaf env package MYPACKAGE1.0
+@endverbatim
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

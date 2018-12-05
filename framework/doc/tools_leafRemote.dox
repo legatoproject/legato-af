@@ -1,0 +1,146 @@
+/** @page toolsLeafRemote Leaf Remote
+
+@c leaf @c remote - configure remote package repository locations
+
+@verbatim
+leaf remote [list]
+
+leaf remote add ALIAS URL --insecure|--gpg GPGKEY
+
+leaf remote remove ALIAS...
+
+leaf remote enable ALIAS...
+
+leaf remote disable ALIAS...
+
+leaf remote fetch
+@endverbatim
+
+@c leaf @c remote command allows to manage remote url repositories of packages. (i.e. a location
+from which leaf is downloading and installing packages.)
+
+Remotes are stored/configured in the leaf configuration file (see leaf config).
+
+@section toolsLeafRemote_SC Sub-Commands
+
+@b @c list
+
+Lists the configured remotes. (default command)
+- [blank]: displays a table with ALIAS, URL and the enable/disable state for each remote.
+- @c -v: as above, plus the fetched state (has this remote being fetched yet) and the last time
+  the packages were cached from the remote.
+- @Qc -q: displays only ALIAS list
+
+@note The list command must be specified if one of the @c -q|-v option is specified.
+
+@b @c add <br>
+
+Adds a remote to the user configuration (you also must specify):
+- the remote ALIAS: a user defined name used to identify the remote within the leaf environment
+- the remote URL: the URL to the remote index file
+- the security option: either --insecure or --gpg; see below
+
+@b @c  remove <br>
+
+Removes the ALIAS remote(s) from the user configuration.
+
+@b @c enable <br>
+
+Enables the ALIAS remote(s) in the user configuration; Enabled remotes will be queried in all
+fetch operations.
+
+@b @c disable <br>
+
+Disables the ALIAS remote(s) in the user configuration; Disabled remotes will NOT be queried in any
+fetch operation.
+
+@b @c fetch <br>
+
+Triggers the remote fetch operation: package information is retrieved from all enabled remotes in
+the configuration.  fetch also refreshes the local cached index of packages in leaf search.
+
+@section toolsLeafRemote_Options Options
+
+@b ALIAS <br>
+
+A user defined name to identify the remote in all other leaf commands; must be unique.
+
+@b @c URL <br>
+
+URL to the remote index file. https:, http: and file: protocols are supported.
+
+If the "remote" index is a local file, absolute path to this file can be specified, without the
+file: prefix.
+
+@b @c --insecure <br>
+
+When adding a remote, specifies that no index signature verification is needed.
+
+@b @c --gpg GPGKEY <br>
+
+When adding a remote, specifies that an index needs to be verified and signed with the key identified
+in the GPGKEY fingerprint.
+
+@section toolsLeafRemote_Examples Examples
+
+List remotes:
+@verbatim
+leaf remote or leaf remote list
+@endverbatim
+
+List remotes with more details:
+@verbatim
+leaf remote list -v
+@endverbatim
+
+Add remote:
+@verbatim
+leaf remote add myremote http://myserver.org/path/to/index.json --gpg <key>
+@endverbatim
+
+Add remote (insecure):
+@verbatim
+leaf remote add myremote-insecure http://myserver.org/path/to/index.json --insecure
+@endverbatim
+
+Remove remote:
+@verbatim
+leaf remote remove myremote
+@endverbatim
+
+Enable remote:
+@verbatim
+leaf remote enable myremote
+@endverbatim
+
+Disable remote:
+@verbatim
+leaf remote disable myremote
+@endverbatim
+
+Fetch remote information:
+@verbatim
+leaf remote fetch
+@endverbatim
+
+@section toolsLeafRemote_Behavior Behavior
+
+The package information read from enabled remotes is stored in the leaf cache
+(@ref toolsLeafConfig "leaf config").
+
+As the package information fetch is an important part of the leaf workflows, the
+leaf remote fetch is implicit and automatically triggered by commands that are related to remote
+available packages (e.g. <code>leaf search, leaf setup, leaf package install</code>, etc). This
+smart remote fetch is triggered only if the cache is considered as invalid.
+
+The remote cache is considered as invalid if:
+- remotes were never fetched
+- the remotes configuration has changed since the last fetch (something added, removed, enabled or
+  disabled)
+- the current cache information is more than 24 hours old
+
+@note The leaf remote fetch operation forces a remote fetch operation immediately.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

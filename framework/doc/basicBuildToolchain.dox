@@ -33,9 +33,9 @@ install the toolchain for your target.
 
 | Module         | Download Site                                                                                                                         |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| WPX5XX         | [WPX5XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wpx5xx/wpx5xx-firmware-latest-release/) |
-| WP76XX         | [WP76XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wp76xx/wp76xx-firmware-latest-release/) |
-| WP77XX         | [WP77XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wp77xx/wp77xx-firmware-latest-release/) |
+| WPX5XX         | [WPX5XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wpx5xx/wpx5xx-firmware-latest-release-components/) |
+| WP76XX         | [WP76XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wp76xx/wp76xx-firmware-latest-release-components/) |
+| WP77XX         | [WP77XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wp77xx/wp77xx-firmware-latest-release-components/) |
 | AR Modules     | See your FAE to download and install the toolchain for your module                                                                    |
 
 After downloading the toolchain installer copy it into your workspace for safe keeping:
@@ -56,49 +56,33 @@ Enter: @verbatim /opt/swi/y17-ext-<legato version> @endverbatim
 When prompted, answer "Y" to proceed with the install.
 
 @verbatim
-$ ./poky-swi-ext-glibc-x86_64-meta-toolchain-swi-ext-armv7a-vfp-neon-toolchain-swi-ext-1.7.3.sh
-Enter target directory for SDK (default: /opt/swi/y17-ext): /opt/swi/y17-ext-1610
-You are about to install the SDK to "/opt/swi/y17-ext-1610". Proceed[Y/n]?Y
+$ ./poky-swi-ext-glibc-x86_64-meta-toolchain-swi-armv7a-neon-toolchain-swi-SWI9X07Y_02.18.06.00.sh
+Poky (Yocto Project Reference Distro) SDK installer version 2.2.3
+=================================================================
+Enter target directory for SDK (default: /opt/swi/SWI9X07Y_02.18.06.00):
 Extracting SDK...done
 Setting it up...done
 SDK has been successfully set up and is ready to be used.
+Each time you wish to use the SDK in a new shell session, you need to source the environment setup script e.g.
+ $ . /opt/swi/SWI9X07Y_02.18.06.00/environment-setup-armv7a-neon-poky-linux-gnueabi
 @endverbatim
 
-Create a soft link from the versioned folder to /y17-ext (delete the existing soft link if needed)
-
-@verbatim
-$ cd /opt/swi
-$ rm y-17-ext
-$ ln -s y17-ext-1610 y17-ext
-@endverbatim
-
-@note Each version of Legato requires its own toolchain. To support multiple versions on one host:
--  create a folder for each version
--  update the softlink "/opt/swi/y17-ext" to point to the legato version that are currently working
-   with.
-To change versions update the soft link to point to the new Legato version you are working with.
+@warning If you need to move the location of the toolchain once it's installed you must uninstall
+and reinstall the toolchain. Moving the files after installation will break the toolchain.
 
 @subsection basicBuildLegato_ToolchainSWI_KO Run Kernel Build Scripts
 
-If you wish to include kernel objects within your Legato System (e.g.; the sensor you have
-connected to your target has it's own driver) you must run the kernel build scripts first.
-
-
-Add the following directory to your PATH, if you have changed the default location of your toolchain
-you must add the path specific to your toolchain.
+Installing the toolchain als runs the kernel build scripts, but because this creates a hard link to
+the header files if you need to change/update the toolchain or switch to a different module you
+must manually run the kernel build setup script again.
 
 Default path:
-WPX5XX: @c /opt/swi/y17-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
-WP76XX and WP77XX: @c /opt/swi/y22-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
+WPX5XX: @c /opt/swi/<toolchainVersion>/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
+WP76XX and WP77XX: @c /opt/swi/<toolchainVersion>/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
 
-Example for the WPX5XX:
+Example for the WP76XX, WP77XX (Release 10):
 @verbatim
-$ export PATH=/opt/swi/y17-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi:$PATH
-@endverbatim
-
-Example for the WP76XX, WP77XX:
-@verbatim
-$ export PATH=/opt/swi/y22-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi:$PATH
+$ export PATH=/opt/swi/SWI9X07Y_02.18.06.00/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi:$PATH
 @endverbatim
 
 
@@ -106,14 +90,9 @@ Change directory to: @c <toolchain path>/sysroots/armv7a-vfp-neon-poky-linux-gnu
 The module path for the WPX5XX is @c /opt/swi/y17-ext and the default module path for the
 WP76XX/WP77XX is @c /opt/swi/y22-ext.
 
-Example for WPX5XX:
-@verbatim
-$ cd /opt/swi/y17-ext/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/src/kernel
-@endverbatim
-
 Example for WP76XX, WP77XX:
 @verbatim
-$ cd /opt/swi/y22-ext/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/src/kernel
+$ cd /opt/swi/SWI9X07Y_02.18.06.00/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/src/kernel
 @endverbatim
 
 
@@ -121,7 +100,7 @@ Take ownership of the files in the directory and run make scripts, when done ret
 root user.
 
 @note The root user does not know the path to the Legato compiler so file ownership must be
-temporarily transfered to yourself so that the scripts build properly and then given back when the
+temporarily transferred to yourself so that the scripts build properly and then given back when the
 script is completed.
 
 @verbatim

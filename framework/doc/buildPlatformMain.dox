@@ -13,8 +13,8 @@ Developers install the <b> Legato Application Framework (source code, build tool
 the target device's build specific toolchain on a development machine to start developing and
 building user apps.
 
-Your target device comes preloaded with a default Legato Runtime Environment, OS and Firmware
-preloaded.  Check with your target device vendor for updates.
+Your target device comes pre-loaded with a default Legato Runtime Environment, OS and Firmware
+pre-loaded.  Check with your target device vendor for updates.
 
 <h1> Firmware </h1>
 
@@ -40,17 +40,16 @@ Distribution.
 
 Toolchains include all the tools and libraries needed to build the runtime environment for a target
 device.  The toolchain is specific to the Linux Distribution and the Module so each module that you
-are building for must have its own toolchain installed.  Toolchains can be downloaded from your
-vendor.
+are building for must have its own toolchain installed.  @ref basicBuildToolchain Toolchains can be
+downloaded from your vendor, or are automatically installed and configured with @ref confLeaf.
 
-| Module         | Download Site                                                                                                                         |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| WPX5XX         | [WPX5XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wpx5xx/wpx5xx-firmware-latest-release/) |
-| WP76XX         | [WP76XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wp76xx/wp76xx-firmware-latest-release/) |
-| WP77XX         | [WP76XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wp77xx/wp77xx-firmware-latest-release/) |
-| Raspberry Pi   | Clone from github: (git clone)[https://github.com/raspberrypi/tools](https://github.com/raspberrypi/tools)                            |
-| All AR Modules | See your FAE to download and install the toolchain for your module                                                                    |
-
+| Module         | Download Site                                                                                                                                    |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| WPX5XX         | [WPX5XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wpx5xx/wpx5xx-firmware-latest-release-components/) |
+| WP76XX         | [WP76XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wp76xx/wp76xx-firmware-latest-release-components/) |
+| WP77XX         | [WP76XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wp77xx/wp77xx-firmware-latest-release-components/) |
+| Raspberry Pi   | Clone from github: (git clone)[https://github.com/raspberrypi/tools](https://github.com/raspberrypi/tools)                                       |
+| All AR Modules | See your FAE to download and install the toolchain for your module                                                                               |
 
 <h1> Platform Services and Platform Adapters </h1>
 
@@ -90,9 +89,10 @@ supported by your target.
 
 For further information and help on setting up and configuring specific modules:
 
-| Section                            | Description                                        |
-| ---------------------------------- | -------------------------------------------------- |
-| @subpage basicTarget               | Configure Sierra Wireless Targets                  |
-| @subpage raspbianMain              | Configure Raspbian for Legato AF                   |
+| Section                            | Description                                                              |
+| ---------------------------------- | ------------------------------------------------------------------------ |
+| @subpage confLeaf                  | Use Leaf to download, install and configure your development environment |
+| @subpage basicTarget               | Configure Sierra Wireless Targets                                        |
+| @subpage raspbianMain              | Configure Raspbian for the Legato Application Framework                  |
 
 **/
