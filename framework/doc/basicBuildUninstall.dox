@@ -11,7 +11,7 @@ Remove the @c /opt/swi directory and all of it contents.
 
 @verbatim
 $ cd /opt
-$ rm -rf swi/
+$ sudo rm -rf swi/
 @endverbatim
 
 Revert any changes you may have made to your .bashrc, .profile that were used to set up

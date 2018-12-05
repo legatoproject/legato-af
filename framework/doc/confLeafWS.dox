@@ -1,0 +1,96 @@
+/** @page confLeafWS Leaf Workflows
+
+Leaf supports working with different remotes or streams of packages.
+
+Not all versions of Legato are used by Products to produce an officially supported version of a
+Legato Platform. To help determine what version of a package you should be using when we use the
+concept of streams.
+
+@section confLeafWS_Releases Release Workflows
+
+@subsection confLeafWS_ReleasesStable Stable Releases
+
+A module will produce an officially supported release, which contain:
+- A version of Legato as both the pre-built and a System Image
+- Linux distribution system image
+- Modem Firmware Images
+- A toolchain to enable further development by customers
+- Recovery and Image creation tools
+
+These are packaged together as a Leaf package tagged as a stable release and are supported by the
+module vendors.
+
+@subsection confLeafWS_ReleasesDev Development Releases
+
+The Legato team will push out new releases and updates to existing Legato code. While these may not
+be officially supported by the target vendors the Legato Team tests the releases thoroughly before
+they are posted.
+
+The Legato Team produces dev releases, which contain:
+- A newer version of Legato
+- Linux distribution from the last stable release
+- Modem Firmware from the last stable release
+- Tool chain from the last stable release
+- Recovery and Image creation tools
+
+Each module's version of stable or dev releases may contain different versions of Legato and the
+Linux Distribution. i.e.; A wp76 module may use Legato version xx.xx and it's associated firmware
+and Linux distribution for it's stable release, where as the wp85 may use Legato version yy.yy and
+it's associated firmware and Linux distribution for the wp85 stable release.
+
+If you want to know exactly what what in each leaf package, use @c -v with @c leaf @c search and a
+package identifier. @c leaf @c search @c -v @c <package identifier>.
+
+@section confLeafWS_Versioning Versioning
+
+Leaf packages follow the Semantic Versioning Scheme of MAJOR.MINOR.PATCH:
+- The @b MAJOR version increments when the target vendor releases a new stable release
+- The @b MINOR version increments when the Legato Team publishes a new dev release
+- If either the target vendor or the Legato Team publishes a patch the @b PATCH version increments.
+
+Additional labels such as RCs are also available as extensions but generally are not published to
+the general public.
+
+@section confLeafWS_Remotes Remotes
+
+Legato Leaf remotes will either point to all streams (both dev and stable) or you can choose
+a remote that only lists the stable releases. This means that you will only get the option of
+downloading and installing stable releases onto your development machine.
+
+You may also add multiple remotes and enable and disable them as needed.
+@verbatim
+leaf remote enable <remote alias>
+leaf remote disable <remote alias>
+@endverbatim
+
+@section confLeafWS_Hierarchy Hierarchy
+
+The Leaf workflow design includes a hierarchy and is setup with the first install of a leaf
+package:
+- @c USER            (universal config for all workspace and profiles)
+- @c WORKSPACE       (the working directory for your code and your customization)
+- @c PROFILE         (target/version specific configuration and settings)
+
+The USER config is where things like your Source Code Repo user ID is stored
+(see leaf help getsrc), as well as the list of remotes that you are connected to and any
+environment variables (see leaf help env) that you wish to be available to any leaf workspace on
+your machine.
+
+The user config file is default located in ~/.config/leaf directory and is called config.json. It
+is not recommended that you hand edit this file instead use the leaf env, leaf config or
+leaf remote commands to change any configuration values in this file.
+
+The WORKSPACE config stores configuration values that are local to the workspace directory and
+the profiles contained in the workspace. Each directory on your system that you turn into a leaf
+workspace will maintain it's own configuration. The configuration file for the workspace is called
+leaf-workspace.json and is stored in the workspace directory.
+
+The PROFILE is where the leaf package gets installed to, you can have multiple profiles per
+workspace and this allows you to switch between different versions of Legato or use Legato with
+multiple targets. Installing and organizing the environment into profiles manages the toolchain and
+other versioned specific tools and eases the management burden on you. All configuration for the
+profiles is stored within the leaf-workspace.json file.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

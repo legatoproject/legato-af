@@ -1,0 +1,139 @@
+/** @page confLeafSrc Legato Source Code
+
+The initial package that you download contains a pre-built version of the Legato Application
+Framework, meaning that it contains all the source code that you need and make has already been
+run for the target that you downloaded the package for.  (i.e.; if you download a wp76 package, then
+make will already be run for the wp76).  This means that the build tools and other Legato tools are
+available for you to use as soon as the package gets installed and you use leaf shell.
+
+If you need want to contribute back to the legato project or need a tracked version of the source
+code you can switch from using the pre-built version to the source code.
+
+Before downloading the source code you must set up an account on Legato's Gerrit instance and
+setup ssh keys on your development machine.
+
+@section confLeafSrc_Gerrit Legato's Gerrit
+
+These steps only need to be done the first time you are connecting your development machine to
+Legato Gerrit.
+
+Visit https://gerrit.legato.io
+
+If you don't have an account click Sign Up or (https://eu.airvantage.net/accounts/signup?type=Mangoh)
+and walk through creating an account that gives you access to the source code on Gerrit and access
+to the AirVantage portal.
+
+Once you have an account click on @b Sign @b In and enter in your user name and password.
+
+After you have successfully signed in click your user id in the right hand corner and choose
+Settings
+
+Under the Profile settings enter in a user name (it must be unique for the site). This will be the
+user name you use to connect to Gerrit through leaf.
+
+Next, if you have not created RSA keys for your linux development machine before follow these steps:
+- From the Terminal or Git Bash, run @c ssh-keygen
+- Confirm the default path @c .ssh/idrsa
+- Enter a passphrase (recommended) or leave it blank. Remember this passphrase, as you will need it
+  to unlock the key whenever you use it.
+- Open @c ~/.ssh/idrsa.pub and copy & paste the contents into the box labeled New SSH Key, then
+  click on <b>Add New SSH Key</b>.
+
+@note @c idrsa.pub is your public key and can be shared, while the key contained in idrsa is your
+private key and should be kept secret.
+
+If you already have a @c ~/.ssh/idrsa.pub created, open it and copy & paste the contents into the
+box labeled <b>New SSH Key</b>, then click on <b>Add New SSH Key</b>.
+
+Your account is now set up for ssh authentication to Legato's Gerrit server and you are ready to
+download the tracked source code.
+
+@section confLeafSrc_Switch Switch to the Source Code
+
+@subsection confLeafSrc_SwitchLegato Legato Sources
+
+To switch from the pre-built Legato Application Framework to the tracked Legato Source code make
+sure you are in your leaf workspace directory and enter the following command:
+@verbatim
+leaf getsrc legato
+@endverbatim
+
+@note If you wish to use the legato source code for all leaf profiles add the @c --workspace option
+to the end of your command. i.e., @c leaf @c getsrc @c legato --@c workspace
+
+You will then be prompted to add your gerrit user account (that was created in the first step) and
+choose a directory to sync the source code to.
+
+If at any reason the sync stops or times out you can run @c leaf @c getsrc @c legato again to
+re-sync from Gerrit (it picks up where it left off).
+
+To switch back and to use the pre-build version of Legato, disable the source in leaf. This does not
+delete the source directory, it re-configures leaf to use the original pre-build version of
+Legato that was downloaded with your SDK.
+@verbatim
+leaf getsrc legato --disable
+@endverbatim
+
+@subsection confLeafSrc_SwitchLinux Linux Sources
+
+The Legato SDK comes with a pre-built image of the Linux OS for your target, if you wish to add
+drivers or reconfigure Linux you must download the source code for the Linux image, make your
+changes and then rebuild the image and the toolchain. Leaf provides a tool to automate the download
+of the Linux source repositories.
+@verbatim
+leaf getsrc swi-linux
+@endverbatim
+
+Once the source code for Linux is downloaded leaf removes the links to the pre-built toolchain and
+linux images. You must rebuild those from
+[source code.](https://source.sierrawireless.com/resources/legato/linuxoverview/)
+
+To disable leaf from using the Linux source code and switch back to using the pre-built toolchain
+and Linux image disable the @c getsrc function.
+@verbatim
+leaf getsrc swi-linux --disable
+@endverbatim
+
+@section confLeafSrc_Env Leaf Environment
+
+Switching to use the source code is only currently supported for one profile per workspace. If you
+need to work with multiple version of the source code that we suggest creating different
+workspaces (folders) for each instance.
+
+The legato source code is not pre-built for a target, to be able to use the Legato build and target
+management tools you must make Legato for your target from within the Legato root directory.
+See @ref basicBuildMake for details on configuring the Legato Application Framework.
+
+Once make is run the legato shell will pick up all the build and target management tools and you
+are able to use the Legato Application Framework Source Code to build your Systems and Apps in the
+same way that you used the pre-built Framework.
+
+@section confLeafSrc_Update Update Source Code to a New Version
+
+leaf update supports updating the source code as well, if you wish to update to a new version of
+the Framework (including the source code), from your workspace directory run
+leaf update -p <new package identifier>. As part of the set-up process leaf will run a repo
+command to update your source code to the version that matches the update.
+
+@note You will either need to commit or stash any changes before leaf update can be run when using
+the source code.
+
+@section confLeafSrc_Disable Disabling the Source Code
+
+If for any reason that you want to switch back and use the pre-built version of the Legato
+Application Framework you can do that by using the following command:
+@verbatim
+leaf getsrc legato --disable
+@endverbatim
+
+@verbatim
+leaf getsrc swi-linux --disable
+@endverbatim
+
+This will download and install any missing packages for the version and will update the environment
+to use the pre-built version of Legato or Linux. <b>It will not remove the source code
+directory.</b>
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

@@ -1,0 +1,147 @@
+/** @page toolsLeafColors Leaf Colors
+
+@c leaf @c colors - customize and update the leaf color themes
+
+This page explains how to customize the output of the leaf commands to better
+display the colors that work with your terminal.
+
+The colors configuration reads the colors from the themes.ini configuration file. themes.ini is
+located in the leaf configuration folder (see leaf config documentation).
+
+@section toolsLeafGetsrc_themes Themes
+
+Colors are grouped by "themes". The purpose of a theme is to set a collection of colors, and then
+switch from a colors collection to another by simply changing the active theme by selecting the
+active one in the @c themes.ini configuration file.
+
+In the configuration file, themes are identified by its header ([NAME]) and a list of
+@c property @c = @c values. It is possible to have multiple values defined for one property.
+
+There is a special theme called [DEFAULT] which configures the default theme behavior.
+This section must always be present in the themes.ini file. The coloring behavior will be that if
+a given property key is not defined in the selected theme, it will fallback to its value in the
+[DEFAULT] section.
+
+@section toolsLeafGetsrc_properties Properties
+
+Supported values for property, in a given theme definition.
+Except the selected key, all others are a color/style definition.
+
+@c @b selected <br>
+
+Only used in the [DEFAULT] theme. This property identifies the active theme
+(identifying the theme section [NAME])
+
+@c @b error <br>
+
+Defines the color for all the leaf error messages
+
+@c @b hints <br>
+
+Defines the color for hint messages
+
+@c @b hintscommands <br>
+
+Defines the color for commands in hints
+
+@c @b label <br>
+
+Defines the color for the text labels in tables (everything that is not a property value)
+
+@c @b tableseparator <br>
+
+Defines the color for the border in a table
+
+@c @b tag.XXX <br>
+
+Defines the color for a keyword for XXX tag (used in leaf search and leaf package list)
+i.e.; tag.current = FGREEN will color all the current tag's green in leaf search
+
+@c @b remotedisabled <br>
+
+Defines the color for a disabled remote (see leaf remote)
+
+@c @b profilecurrent <br>
+
+Defines the color for profiles (see leaf status and leaf profile)
+
+@section toolsLeafGetsrc_colors Colors and styles
+
+Values for the above property keys can be a combination of:
+- foreground color
+- background color
+- style
+
+@b Foreground @b Colors
+
+Available supported foreground colors:
+- FBLACK
+- FRED
+- FGREEN
+- FYELLOW
+- FBLUE
+- FMAGENTA
+- FCYAN
+- FWHITE
+
+Other foreground colors (may not be available on all terminals):
+- FLIGHTBLACK
+- FLIGHTRED
+- FLIGHTGREEN
+- FLIGHTYELLOW
+- FLIGHTBLUE
+- FLIGHTMAGENTA
+- FLIGHTCYAN
+- FLIGHTWHITE
+
+@b Background @b Colors
+
+Available supported background colors:
+- BBLACK
+- BRED
+- BGREEN
+- BYELLOW
+- BBLUE
+- BMAGENTA
+- BCYAN
+- BWHITE
+
+Other background colors (may not be available on all terminals):
+- BLIGHTBLACK
+- BLIGHTRED
+- BLIGHTGREEN
+- BLIGHTYELLOW
+- BLIGHTBLUE
+- BLIGHTMAGENTA
+- BLIGHTCYAN
+- BLIGHTWHITE
+
+@b Styles
+
+Available style values are:
+- NORMAL - Default font rendering
+- BRIGHT - Highlighted (bold) font
+- DIM - Lowlighted (thin) font
+
+@section toolsLeafGetsrc_Examples Examples
+
+Example of a [DEFAULT] section content:
+@verbatim
+  [DEFAULT]
+  selected = DEFAULT
+  error = BRIGHT + FRED
+  hints = FGREEN
+  hintscommands = BRIGHT + FGREEN
+  label = BRIGHT
+  tableseparator = FLIGHTBLACK
+  tag.current = FGREEN
+  tag.installed = FGREEN
+  tag.latest = FCYAN
+  remotedisabled = FLIGHTBLACK
+  profilecurrent = FGREEN
+@endverbatim
+See themes.ini for other examples of setting themes.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

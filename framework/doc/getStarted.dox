@@ -9,46 +9,72 @@ prepare you to start developing for your target.
 Our tools and design patterns have been developed to make it easy to <b>set up your development
 environment; develop, customize and/or update a system and/or apps; build the Legato runtime for
 your target; and install the updates on the target.</b>
+
 @image html getStarted-Overview.png
 
 <h1> Setup Development Environment </h1>
 
-The first thing to do to get started is to install the Source Code, Tools and do an initial Build
-of the Application Framework for your target.
+The first thing to do to get started is to install the Source Code, Tools and configure your
+environment to build the Legato Application Framework for your target.
 
-<b>@ref basicBuild "Install and Build" </b> the Legato Application Framework from GitHub.
+@ref confLeaf "Leaf is a workspace manager" that will take care of setting up your environment for
+you. It lists, downloads, installs and configures the software needed to start developing Legato
+Systems.
 
-| Module                  | Description                                                            |
-| ----------------------- | ---------------------------------------------------------------------- |
-| @subpage basicBuild     | Install the source code and build the framework for a target           |
-| @ref basicTarget        | Configure a Sierra Wireless Target                                     |
-| @ref raspbianMain       | Configure the Legato Application Framework for a Raspberry Pi          |
+Alternatively, you can @ref basicBuild "set up your development environment manually" or use the
+[Sierra Wireless' IDE](https://source.sierrawireless.com/resources/legato/developerstudio/) for
+Legato.
 
-<h1> Customize, Develop and Update </h1>
+| Installation                                                                            | Description                                                               |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| @subpage confLeaf                                                                       | Download, install, and setup, the Legato Application Framework using Leaf |
+| @subpage basicBuild                                                                     | Manually install software and tools for the Legato Application Framework  |
+| [Developer Studio](https://source.sierrawireless.com/resources/legato/developerstudio/) | Install and configure the Sierra Wireless IDE for Legato                  |
+| @ref basicTarget                                                                        | Configure a Sierra Wireless Target                                        |
+| @ref raspbianMain                                                                       | Configure the Legato Application Framework for a Raspberry Pi             |
 
-There are two options for development environments:
-- the Legato Application Framework which contains tools to build systems for your target and
-  configure your target through the command line on Linux.
-- [Developer Studio](https://source.sierrawireless.com/resources/legato/developerstudio/) -
-Sierra Wireless has developed and IDE to use with officially support releases of the WP Smart
-Modules and runs on both Linux and Windows environments.
+<h1> Leaf Quick Start </h1>
 
-<h2> Command Line Install </h2>
+@ref confLeaf "Detailed Install and Usage Instructions"
 
-The Legato Application Framework tools are automatically installed and configured when you go
-through the  setup process and @ref basicBuildMake "make" your first build for a target.
+To install leaf download and setup our debian package from the Sierra Wireless tools repository:
+@verbatim
+$ wget https://downloads.sierrawireless.com/tools/leaf/leaf_latest.deb -O /tmp/leaf_latest.deb && sudo apt install /tmp/leaf_latest.deb
+$ mkdir ~/myWorkspace; cd ~/myWorkspace
+@endverbatim
 
-To use the tools that are provided with the Framework you need to
-@ref toolsConfigShell "source the tools into your environment".
-by either adding @ref configlegatoenv to your bash profile or running @ref toolsBinlegs, which
-spawns a new shell.
+Search and install a package for your target (downloads and automatically installs Legato, the
+toolchain and tools):
+@verbatim
+$ leaf search <target>                             # search for all available SDKs for your target
+$ leaf setup -p <packageIdentifier> <profileName>  # download, install and sets up your environment
+@endverbatim
 
-<h2> Developer Studio Install </h2>
+List of supported targets (with default remote configuration):
+- @c wp75 - All wp75 family of modules
+- @c wp76 - All wp76 family of modules
+- @c wp77 - All wp77 family of modules
+- @c wp85 - All wp85 family of modules
+
+Start developing using the Leaf Shell to configure your environment:
+@verbatim
+$ leaf shell
+@endverbatim
+
+@note
+Use your myWorkspace directory to create your System, Apps and Components. The Legato Application
+Framework comes pre-built for your target so there is no need to run @c make unless you make changes
+to the framework itself. The LEGATO_ROOT environment variable comes pre-configured into the
+environment and is @b profile @b aware, so you are able to reference or include Legato Systems,
+Platform Services and Apps in the Legato Application Framework by adding them to your own @c .sdef
+file using $LEGATO_ROOT in your path.
+
+<h1> Developer Studio Install </h1>
 
 To install Developer Studio follow the instructions on the
 [Sierra Wireless Source](https://source.sierrawireless.com/resources/legato/developerstudio/).
 
-<h2> Developer Mode App </h2>
+<h1> Developer Mode App </h1>
 
 When your target gets shipped to you it may be set up for production use. A number of libraries and
 settings will be removed from the Framework and the underlying OS because of licensing or security
@@ -67,7 +93,7 @@ specific for development:
 
 To install devMode on your target follow these @ref howToDevMode_installDev "install instructions".
 
-<h2> Tutorials </h2>
+<h1> Tutorials </h1>
 
 Now you are ready to start developing apps and installing them on your target. We first recommend
 starting with our <b> @subpage getStartedApps</b>; they walk you through

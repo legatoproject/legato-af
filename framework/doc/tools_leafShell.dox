@@ -1,0 +1,102 @@
+ /** @page toolsLeafShell Leaf Shell
+
+@c leaf @c shell - Run a shell within the Leaf profile environment.
+
+@verbatim
+leaf shell [-n SHELLNAME] [-c COMMANDARGS]
+@endverbatim
+
+@c leaf @c shell allows users to easily use a leaf configured environment and run command line tools
+within that environment that are aware of the specific configuration for each profile in the
+environment.
+
+Leaf packages can provide environment variables that support the build process.  I.e.; packages can
+provide an updated path to their bundled command line tools.  They can also
+provide variables that fine tune the building process, define target information, and anything else
+that enables the tooling to build software for your target.
+
+Any variables that you have defined at the @c leaf @c user|workspace|profile level are available to
+you in the leaf shell.
+
+See @ref tools_leafEnv "leaf help env" for more details.
+
+For greater visibility the leaf shell will append a status text onto the prompt.  The rest of the
+prompt will continue to function as normal.  If the shell's working directory is currently within a
+workspace with an active profile, the status text will the current profile.
+
+For example, if the user's default prompt is: user@computer: \~ $ and they start their Leaf shell
+within a workspace, ~/myWorkspace Then the prompt would be:
+
+@verbatim
+(lsh:my-profile) user@computer: ~/myWorkspace $
+@endverbatim
+
+If the shell isn't in a workspace then the prompt would simply include the Leaf Shell prefix:
+
+@verbatim
+(lsh) user@computer: ~ $
+@endverbatim
+
+@section toolsLeafShell_options Options
+
+@verbatim
+-n SHELLNAME::
+@endverbatim
+
+Specify the name of the shell to run.  Currently supported shells are Bash and Zsh.  If -n is
+not specified, leaf shell will run the user's default shell.  (Found in the environment variable
+$SHELL.)  If the requested shell is not found, then leaf shell will fallback to Bash support.
+
+@verbatim
+-c COMMANDARGS::
+@endverbatim
+
+If given, the requested shell will be launched within the Leaf environment and the command(s) given
+will be executed and the shell will terminate.  This is useful to run a quick command within a
+leaf environment without having to run an interactive shell.  This can also be used to run commands
+within a leaf environment from an external script.
+
+@section toolsLeafShell_envVar Environment Variables
+
+@verbatim
+LEAF_SHELL_PROMPT_PREFIX::
+@endverbatim
+
+Prefix to append to the Leaf status.  The default value is lsh.
+
+@verbatim
+LEAF_SHELLZSH_PROMPT_SIDE::
+@endverbatim
+
+For Zsh shells: Allows the user to choose which prompt to append the Leaf status to.
+If set to the value: right the Leaf status will appear on the right hand side.  If unset, or
+set to anything other than right the prompt will appear on the left.  The default value is unset.
+
+@section toolsLeafShell_examples Examples
+
+Start up the user default shell::
+@verbatim
+leaf shell
+@endverbatim
+
+Start up a shell with zsh (if not the default shell)::
+@verbatim
+leaf shell -n zsh
+@endverbatim
+
+Run a build and terminate the sub-shell::
+@verbatim
+leaf shell -c make
+@endverbatim
+
+Run multiple commands within a sub-shell and then exit it::
+@verbatim
+leaf shell -c "cd subDir && make && make install"
+@endverbatim
+
+@note Quotes need to be added around the set of commands. This prevents the host shell
+from trying to interpret the && operator and allow it to be passed down to the sub-shell.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

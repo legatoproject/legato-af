@@ -4,8 +4,9 @@ This topic describes how to get a POSIX/Linux legacy app written in C running on
 and using Legato APIs to access services like SMS, SIM, voice calling, and data connections.
 
 @note The examples in this topic use the command-line tools. You will need to have your shell
-configured correctly by running @ref toolsBinlegs in the directory where
-your framework is installed.
+configured correctly, either by installing your dev environment with @ref toolsLeaf (the
+environment will already be configured) or running
+@c bin/legs in the directory where your framework is installed.
 @code
 $ path/to/LegatoFramework/bin/legs
 @endcode

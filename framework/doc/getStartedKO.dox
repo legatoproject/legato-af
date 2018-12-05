@@ -17,9 +17,9 @@ toolchains for the WP Series Targets and has been tested on both the WPX5XX and 
 @section getStartedKO_PreReq Pre-Requisites
 
 This tutorial requires you to have:
-- Legato AF version 16.10.3 or newer installed on your dev machine and target device.
-- The @ref basicBuildToolchain "toolchain" associated with your Module and Linux Distribution
-  installed on your dev machine.
+- Legato Application Framework version 18.06.0 or newer installed on your dev machine and target
+  device.
+- Legato Application Framework dev environment is installed with @ref toolsLeaf workspace manager.
 - The source driver files for the IoT expansion card (.c files) or the pre-built kernel module
   (.ko file)
 
@@ -31,7 +31,7 @@ device.
 
 @section getStartedKO_SetUp Toolchain Setup
 
-If you have manually installed the toolchain (not installed through Developer
+If you have manually installed the toolchain (not installed through @ref toolsLeaf or Developer
 Studio) and are using a WP module then you will have to run through an extra set-up script
 before you can build your kernel module against the toolchain. See
 @ref basicBuildLegato_ToolchainSWI_KO.

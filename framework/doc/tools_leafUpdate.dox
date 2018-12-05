@@ -1,0 +1,80 @@
+/** @page toolsLeafUpdate Leaf Update
+
+@c leaf @c update - updates packages within a leaf profile
+
+@verbatim
+leaf update [-p PACKAGE ...]
+@endverbatim
+
+@c leaf  @c update update the packages in a leaf profile to another package (i.e.; a different
+version).
+
+@verbatim
+-p|--add-package PACKAGE
+@endverbatim
+
+Package identifier to be added/updated to the current profile.
+The package identifier will be accepted in two formats:
+- @c NAME: the latest available version with the package NAME will be added to the profile
+- @c NAMEVERSION: the specified version will be added to the profile
+
+@note The -p option can be used multiple times.
+
+If no @c -p option is specified, leaf update will try to update the package configured in the
+current profile to the latest available version (marked as latest in leaf search).
+
+@section toolsLeafUpdate_examples Examples
+
+Update all packages to the latest version
+
+Assuming that you're already working with a current profile:
+
+@verbatim
+leaf update
+@endverbatim
+
+Update the profile to a new package (works even for downgrade)
+
+Assuming that current profile uses mysdk package in version 2:
+
+@verbatim
+leaf update -p mysdkv1
+@endverbatim
+
+Add another package to profile
+
+Assuming that current profile uses mysdk package:
+
+@verbatim
+leaf update -p anotherPackage
+@endverbatim
+
+@section toolsLeafUpdate_Behaviors Behaviors
+
+@c leaf  @c update can be used either to update your profile to the latest version, downgrade to an
+older version, or add a new package to the profile. As an high level command, using leaf update
+is equivalent to chaining the following steps:
+
+@verbatim
+leaf search
+@endverbatim
+
+An implicit search is performed to look at the available packages, matching with the profile content.
+
+@verbatim
+leaf profile config -p PACKAGE
+@endverbatim
+
+For each specified -p option, or if it is not specified for each new version of the profile
+packages, configuration is updated to point to the new version.
+
+@verbatim
+leaf profile sync
+@endverbatim
+
+The profile provisioning will be triggered to install the required packages (if necessary)
+and refresh the leaf-data structure.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

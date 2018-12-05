@@ -1,0 +1,77 @@
+/** @page toolsLeaf Leaf
+
+leaf - development workspace manager designed to download, install and configure your development
+environment for Legato.
+
+@section toolsLeaf_install Install Leaf
+
+To install leaf download and setup our debian package from the Sierra Wireless Tools Repository:
+@verbatim
+$ wget https://downloads.sierrawireless.com/tools/leaf/leaf_latest.deb -O /tmp/leaf_latest.deb && sudo apt install /tmp/leaf_latest.deb
+$ mkdir ~/myWorkspace; cd ~/myWorkspace
+@endverbatim
+
+To list all available leaf help pages: @c leaf @c help @c --list
+
+@section toolsLeaf_commands Leaf Commands
+
+<b>Informational Leaf Commands </b> <br>
+@c @b help - Displays this page and other help commands. (i.e.; leaf help <command> ) <br>
+@c @b version - Displays the version of Leaf <br>
+
+<b>Initialize a workspace/profile and download a package for your target
+(see also: @ref confLeaf "leaf help legato-start") <b>
+| Command                           | Description                                                                       |
+|-----------------------------------|-----------------------------------------------------------------------------------|
+| @subpage toolsLeafSearch "search" | Search for a package for your target                                              |
+| @subpage toolsLeafSetup "setup"   | Setup a workspace (if not created), create/setup a profile and download packages  |
+| @subpage toolsLeafShell "shell"   | Enter into a shell configured for your profile and environment                    |
+
+<b>Manage your Profile </b>
+| Command                             | Description                                                                     |
+|-------------------------------------|---------------------------------------------------------------------------------|
+| @subpage toolsLeafStatus "status"   | List your current profiles and their status                                     |
+| @subpage toolsLeafSelect "select"   | Switch between multiple profiles                                                |
+| @subpage toolsLeafUpdate "update"   | Update(upgrade/downgrade) a profile to another version of a package             |
+| @subpage toolsLeafProfile "profile" | Manage your profiles: rename, delete, sync                                      |
+
+
+<b>Configure a profile to use the source or binary version of a package
+(see also: @ref confLeafSrc "leaf help legato-source") </b>
+| Command                             | Description                                                                     |
+|-------------------------------------|---------------------------------------------------------------------------------|
+| @subpage toolsLeafGetsrc "getsrc"   | Switch to the source version of a package (if available)                        |
+
+
+<b>Manage your Leaf Environment </b>
+| Command                             | Description                                                                     |
+|-------------------------------------|---------------------------------------------------------------------------------|
+| @subpage toolsLeafColors "colors"   | Change to a different color theme                                               |
+| @subpage toolsLeafEnv "env"         | Create, set, and remove environment variables                                   |
+| @subpage toolsLeafConfig "config"   | Manage the configuration of leaf                                                |
+
+
+<b> Manage the repositories for your packages. (see also: @ref confLeafWS "leaf help legato-workflow") </b>
+| Command                             | Description                                                                     |
+|-------------------------------------|---------------------------------------------------------------------------------|
+| @subpage toolsLeafRemote "remote"   | Add, remove and manage the list of remote repositories                          |
+
+
+@subsection toolsLeaf_opt Options
+@verbatim
+leaf [--non-interactive] [-w <workspace>] <command> [-v|-q] [options...]
+leaf -V|--version             Displays version
+leaf [<command>] -h|--help    Display help
+@endverbatim
+
+@subsection toolsLeaf_optArg Optional Arguments
+@verbatim
+-v, --verbose                 Increase the level of logging for the command
+-q, --quiet                   Remove all command output except meaningful information
+--non-interactive             Answer the default choice to every question asked
+-w, --workspace <workspace>   Use the specified workspace path
+@endverbatim
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

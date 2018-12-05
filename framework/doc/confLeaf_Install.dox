@@ -1,0 +1,89 @@
+/** @page confLeaf_Install Leaf Installation
+
+Alternative install and troubleshooting instructions for Leaf.
+
+@section confLeaf_InstallU1404 Install Leaf on Ubuntu 14.04
+
+On Ubuntu 14.04, the apt version is too old to support direct .deb install; dpkg install must be
+used to install Leaf.
+
+First, download leaf_latest.deb and install with dpkg:
+@verbatim
+$ wget https://downloads.sierrawireless.com/tools/leaf/leaf_latest.deb -O /tmp/leaf_latest.deb
+$ sudo dpkg -i /tmp/leaf_latest.deb
+$ sudo apt-get install -f
+@endverbatim
+
+On Ubuntu 14.04 LTS, some library dependencies are not available at the correct version in the
+system install and will crash leaf. As an alternative, these libraries can be installed through pip:
+
+Update python libraries with pip:
+@verbatim
+$ sudo apt-get install python3-pip --no-install-recommends
+$ pip3 install setuptools --user --upgrade
+@endverbatim
+
+@section confLeaf_InstallNoAPT Install Leaf without apt
+
+To install Leaf without apt, download and extract the latest archive package
+@verbatim
+$ wget https://downloads.sierrawireless.com/tools/leaf/leaf.tar.gz -O /tmp/leaf.tar.gz
+$ mkdir /tmp/leaf-src && cd /tmp/leaf-src && tar xvzf /tmp/leaf.tar.gz
+@endverbatim
+
+Install the prerequisites:
+@verbatim
+$ sudo apt-get install python3 python3-requests python3-argcomplete python3-all python3-setuptools
+@endverbatim
+(Note: on Ubuntu 14.04, the python3-argcomplete package doesn't exist. Cf workaround above)
+
+Install:
+@verbatim
+$ cd /tmp/leaf-src/
+$ ./setup.py install --user
+$ ./setup.py install_data -d $HOME/.local
+$ export PATH=$HOME/.local/bin:$PATH
+@endverbatim
+
+Update your leaf install:
+@verbatim
+$ sudo apt update
+$ sudo apt install leaf
+$ # Or...
+$ sudo apt upgrade
+@endverbatim
+Close all your opened terminals and reopen, to get the environment (completion, etc...) correctly
+configured.
+
+@section confLeaf_InstallDisable Disable apt installs
+
+If your package install fails during apt verification it is possible to disable the apt
+verification. You will be responsible for installing all the @ref basicBuild_prep "dependencies"
+yourself.
+
+Set the LEAF_IGNORE_APT variable to disable the apt check for Leaf packages:
+@verbatim
+$ export LEAF_IGNORE_APT=1                          # Temporary setting for the current terminal
+$ # Or...
+$ leaf env user --set LEAF_IGNORE_APT=1             # Persistent setting
+@endverbatim
+
+@section confLegato_InstallClone Reuse Legato Source
+
+If you already have a Legato Clone you are able to use it within your leaf environment:
+
+For example, if you current clone is located in @c ~/myLegatoClone, and your leaf workspace is in
+@c ~/leaf-workspace:
+@verbatim
+$ ls ~/myLegatoClone -a
+.repo
+legato
+$ cd ~/leaf-workspace
+$ ln -s ~/myLegatoClone legato-clone           # Or any other directory name
+$ leaf env workspace --set LEGATO_CLONE=$PWD/legato-clone
+$ leaf getsrc legato                           # Will reuse your clone instead of creating a new one
+@endverbatim
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

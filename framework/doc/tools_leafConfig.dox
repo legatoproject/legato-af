@@ -1,0 +1,99 @@
+/** @page toolsLeafConfig Leaf Config
+
+@c leaf @c config - configure and customize leaf options
+
+@verbatim
+leaf config [--root PACKAGESROOT]
+@endverbatim
+
+@c leaf @c config allows users to configure the leaf tool behavior.
+
+If used without specifying any option, the command will simply outputs the location of the current
+configuration file (cf @c LEAF_CONFIG variable description below).
+
+If used with @c --root option, the command will set the packages install location.
+
+Beyond this command, the leaf tool is also configured through a set of environment variables,
+described in this page as well.
+
+@section toolsLeafCfg_Opt Options
+
+@verbatim
+--root PACKAGESROOT
+@endverbatim
+
+Sets the location where packages are installed. A package named myPackage1.0 will be extracted
+and installed in the PACKAGESROOT/myPackage1.0 folder. Default value for this parameter is
+$HOME/.leaf
+
+@section toolsLeafCfg_Variables Variables
+
+The following environment variables can be used to configure the leaf tool behavior.
+
+@b @c LEAF_CONFIG <br>
+
+Location for the leaf configuration folder. Default value is @c $HOME/.config/leaf
+
+@c LEAF_CONFIG stores the following files/folders:
+
+@c @b config.json <br>
+
+The main leaf configuration file which stores:
+- the packages root install folder  (cf --root option above)
+- the configured remotes list (see leaf remote)
+- the user's global environment (see leaf env)
+
+Global configuration for leaf behavior is a combination of the default configuration
+file with the @c config.json file present in the user configuration folder (if any).
+
+Leaf will search for config.json in the following order:
+@c /etc/leaf/, @c /usr/share/leaf/ and then @c $HOME/.local/share/leaf/
+
+Modifying the default configuration (e.g. disabling a remote present in the
+default configuration) will be stored in the user @c config.json file and
+override any default values.
+
+@note In order to reset to the default configuration,
+delete the @c config.json file from the user configuration folder.
+
+@b @c themes.ini <br>
+
+Contains the colors themes definition.
+
+If the @c themes.ini file is not found in the user configuration folder,
+leaf will search for themes.ini in the following folders:
+@c /etc/leaf/, @c /usr/share/leaf/ and then @c $HOME/.local/share/leaf/
+
+@note In order to reset to the default color theme configuration, delete the @c themes.ini file
+from the user configuration folder.
+
+@b @c gpg <br>
+
+The gpg keyring folder that contains the keyrings used by leaf for remotes gpg signing.
+
+@b @c LEAF_CACHE <br>
+
+Location of cached information. Default value: @c $HOME/.cache/leaf
+
+It may contain:
+- info from remote indexes
+- package artifacts before install
+
+The content of this folder can be deleted at any time to save disk space.
+A warning message will be regularly displayed as soon as this cache size exceeds 5 GB.
+
+@b @c LEAF_TIMEOUT <br>
+
+Duration (in seconds) of the download timeout. Default value is @b 10
+
+Timeout that leaf waits to download data when the remote falls into an inactive state.
+
+@b @c LEAF_DEBUG <br>
+
+When set, will print a stack trace to the screen when an error occurs
+
+Copyright (C) Sierra Wireless Inc.
+
+
+
+**/
