@@ -13,7 +13,6 @@
 #                                                                              #
 ################################################################################
 
-PATH=${PATH}:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
 CM=${CM:="/legato/systems/current/apps/tools/read-only/bin/cm"}
 IP=${IP:="/sbin/ip"}
 IFCONFIG=${IFCONFIG:="/sbin/ifconfig"}

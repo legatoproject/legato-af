@@ -773,9 +773,10 @@ static le_result_t GetEnvironmentVariables
             const char* appName = app_GetName(procRef->appRef);
 
             if (snprintf(envVars[0].value, size,
-                         "/legato/systems/current/appsWriteable/%s/bin:\
-                          /legato/systems/current/appsWriteable/%s/usr/bin:\
-                          /legato/systems/current/appsWriteable/%s/usr/local/bin",
+                         "/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:"
+                         "/legato/systems/current/appsWriteable/%s/bin:"
+                         "/legato/systems/current/appsWriteable/%s/usr/bin:"
+                         "/legato/systems/current/appsWriteable/%s/usr/local/bin",
                          appName, appName, appName) >= size)
             {
                 goto errorReading;
