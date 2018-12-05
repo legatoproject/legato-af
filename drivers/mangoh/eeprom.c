@@ -13,7 +13,7 @@
 /*
  * EEPROMs on IoT cards contain information about the device(s) on the
  * cards and busses it uses. For a detailed description of EEPROM
- * format, please refer to the IoT card specification on MangOH web
+ * format, please refer to the IoT card specification on mangOH web
  * site www.mangoh.io.
  *
  * Each IoT card EEPROM contains a master header that (among other

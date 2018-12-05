@@ -11,7 +11,7 @@
  *
  */
 /*
- * MangOH green platform has a pca9548 I2C switch with three sx150 GPIO
+ * mangOH green platform has a pca9548 I2C switch with three sx150 GPIO
  * expanders. GPIOs 11, 13 and 12 on the second GPIO expander are card
  * detect signals for slots 1, 2 and 3, respectively. We need to probe
  * those GPIO signals to determine which cards are present. GPIOs
@@ -209,7 +209,7 @@ static struct green_platform_data {
 #define adcdev		busdev[mangoh_bus_adc]
 
 
-/* Helper functions for accessing MangOH green slots */
+/* Helper functions for accessing mangOH green slots */
 static inline int green_num_slots(struct platform_device *pdev)
 {
 	struct green_platform_data *pdata = dev_get_platdata(&pdev->dev);
@@ -645,7 +645,7 @@ static void green_release_slots(struct platform_device *pdev)
 	devm_gpio_free(&pdev->dev, pdata->uart1_sw_gpio);
 }
 
-/* Map the MangOH green IoT slots. */
+/* Map the mangOH green IoT slots. */
 static int mangoh_green_map(struct platform_device *pdev)
 {
 	int i;
@@ -705,7 +705,7 @@ static int mangoh_green_map(struct platform_device *pdev)
 	return green_probe_slots(pdev);
 }
 
-/* Unmap MangOH green IoT slots. */
+/* Unmap mangOH green IoT slots. */
 static int mangoh_green_unmap(struct platform_device *pdev)
 {
 	int i;

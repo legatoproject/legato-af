@@ -3,7 +3,7 @@ Legato-AirVantage : Asset Data Tutorial
 
 This sample Legato application demonstrates data exchange feature between an embedded Legato application and AirVantage server, over the LWM2M protocol. This latter feature requires Legato 17.06. Simulated room temperatures are pushed to AirVantage every 10 seconds.
 
-This application has been tested on Sierra Wireless AirPrime WP8548 module hosted on MangOH board.
+This application has been tested on Sierra Wireless AirPrime WP8548 module hosted on mangOH board.
 
 Asset Data
 ----------
@@ -31,7 +31,7 @@ To build executable for WP8548:
 make wp85
 ~~~
 
-Install the app on target (MangOH/WP8548)
+Install the app on target (mangOH/WP8548)
 -----------------------------------------
 ~~~
 instapp assetData.wp85.update <IP address of target>
@@ -46,7 +46,7 @@ av-pack -u assetData.wp85.update -b _build_assetData/wp85/ -t <TypeName>, where 
 ~~~
 
 
-Start the app on target (MangOH/WP8548)
+Start the app on target (mangOH/WP8548)
 -----------------------------------------
 ssh to target then launch the app as follow:
 ~~~

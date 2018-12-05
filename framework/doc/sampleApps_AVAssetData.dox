@@ -5,7 +5,7 @@ This sample Legato application demonstrates data exchange feature between an emb
 App and AirVantage server, over the LWM2M protocol. This latter feature requires Legato 17.06.
 Simulated room temperatures are pushed to AirVantage every 10 seconds.
 
-This application has been tested on Sierra Wireless AirPrime WP8548 module hosted on MangOH board.
+This application has been tested on Sierra Wireless AirPrime WP8548 module hosted on mangOH board.
 
 Asset Data
 ----------

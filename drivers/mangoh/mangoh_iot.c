@@ -11,8 +11,8 @@
  *
  */
 /*
- * IoT expansion platform driver for Sierra Wireless MangOH board(s).
- * Currently supporting only MangOH green platform.
+ * IoT expansion platform driver for Sierra Wireless mangOH board(s).
+ * Currently supporting only mangOH green platform.
  */
 
 #include <linux/init.h>
@@ -25,7 +25,7 @@
 
 static char *model = "green";
 module_param(model, charp, S_IRUGO);
-MODULE_PARM_DESC(model, "MangOH board model.");
+MODULE_PARM_DESC(model, "mangOH board model.");
 
 static const struct platform_device_id mangoh_iot_ids[] = {
 	{"mangoh-green", (kernel_ulong_t)&mangoh_green_desc},
@@ -105,5 +105,5 @@ module_exit(mangoh_iot_exit);
 MODULE_ALIAS("platform:mangoh-iot");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Sierra Wireless");
-MODULE_DESCRIPTION("Linux driver for MangOH IoT expander");
+MODULE_DESCRIPTION("Linux driver for mangOH IoT expander");
 MODULE_VERSION("0.2");

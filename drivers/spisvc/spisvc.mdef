@@ -5,7 +5,7 @@
 // Removing this module removes the device. The device uses CS0 so any other SPI driver attempting
 // to use the same chip-select would report a conflict.
 //
-// For use with a MangOH reference design, SPI device has to be plugged into IoT slot 0.
+// For use with a mangOH reference design, SPI device has to be plugged into IoT slot 0.
 //
 // Copyright (C) Sierra Wireless Inc.
 //-------------------------------------------------------------------------------------------------

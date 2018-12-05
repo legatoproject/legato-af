@@ -13,7 +13,7 @@ Go to the
 This table lists where pins exposed by the GPIO service are connected
 (for CF3 modules like the WP85).
 
-| Service | CF3 Pin | IOT on MangOH |
+| Service | CF3 Pin | IOT on mangOH |
 |-----------------|------------------|----------------|
 | le_gpioPin7 | 7 | IoT1 - GPIO 2 (pin 25) |
 | le_gpioPin8 | 8 | IoT0 - GPIO 4 (pin 27) |
