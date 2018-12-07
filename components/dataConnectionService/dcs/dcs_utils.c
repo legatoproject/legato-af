@@ -14,7 +14,6 @@
 #include "dcs.h"
 
 static const char *DcsTechnologyNames[LE_DCS_TECH_MAX] = {"", "wifi", "cellular"};
-static bool LeDataInitialCall = true;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -100,11 +99,34 @@ le_result_t dcsGetAdminState
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Utility for checking if the given channel wasn't initiated & managed via le_data APIs
+ *
+ * @return
+ *     - true if the given channel wasn't initiated & managed via le_data APIs; false otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_dcs_ChannelManagedbyLeData
+(
+    le_dcs_ChannelRef_t channelRef
+)
+{
+    le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
+    if (!channelDb)
+    {
+        LE_ERROR("Failed to find channel with reference %p to get le_data info", channelRef);
+        return false;
+    }
+
+    return channelDb->managed_by_le_data;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Utility for use by the le_data component to the given channel's sharing status, which is a
  * status about whether it's used by at least 1 app via the le_data APIs.  The first argument is
- * the name of the channel, while the second indicates whether this situation is having the 1st
- * app to start using this channel via le_data or it is having the last app to stop using it via
- * le_data
+ * the name of the channel, the second its technology type, while the third indicates whether this
+ * moment is during a start or a stop.
  */
 //--------------------------------------------------------------------------------------------------
 void le_dcs_MarkChannelSharingStatus
@@ -114,7 +136,7 @@ void le_dcs_MarkChannelSharingStatus
     bool starting
 )
 {
-    le_dcs_channelDb_t *channelDb = dcsGetChannelDbFromName(channelName, tech);
+    le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromName(channelName, tech);
     if (!channelDb)
     {
         LE_ERROR("Failed to find channelDb for channel %s to update", channelName);
@@ -157,23 +179,7 @@ bool le_dcs_ChannelIsInUse
     le_dcs_Technology_t tech
 )
 {
-    le_dcs_channelDb_t *channelDb;
-    le_dcs_ChannelInfo_t channelList[LE_DCS_CHANNELDBS_MAX];
-    size_t listSize = LE_DCS_CHANNELDBS_MAX;
-
-    if (LeDataInitialCall)
-    {
-        // 1st time le_data API calling into le_dcs; get the channel list 1st to have it
-        // initialized
-        LE_DEBUG("query & init the list of all supported & available channels");
-        if (le_dcs_InitChannelList(channelList, &listSize) != LE_OK)
-        {
-            LE_ERROR("failed to initialize the list of all supported & available channels");
-        }
-        LeDataInitialCall = false;
-    }
-
-    channelDb = dcsGetChannelDbFromName(channelName, tech);
+    le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromName(channelName, tech);
     if (!channelDb)
     {
         LE_ERROR("Failed to find channelDb for channel %s to get in use status",

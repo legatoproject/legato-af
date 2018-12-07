@@ -158,7 +158,7 @@ le_result_t le_net_SetDefaultGW
     {
         LE_ERROR("Failed to get GW addr for channel %s of technology %s to set default GW",
                  channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
-        return LE_FAULT;
+        return ret;
     }
 
     if (LE_OK != pa_dcs_GetDefaultGateway(&currentGwCfg))
@@ -349,7 +349,7 @@ le_result_t le_net_SetDNS
     {
         LE_ERROR("Failed to get DNS addrs for channel %s of technology %s to set DNS config",
                  channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
-        return LE_FAULT;
+        return ret;
     }
 
     ret = DcsNetSetDNS(isIpv6, dns1Addr, sizeof(dns1Addr), dns2Addr, sizeof(dns2Addr));
@@ -410,7 +410,8 @@ le_result_t le_net_ChangeRoute
     }
     channelName = channelDb->channelName;
 
-    if (channelDb->technology != LE_DCS_TECH_CELLULAR)
+    if ((channelDb->technology != LE_DCS_TECH_CELLULAR) &&
+        (channelDb->technology != LE_DCS_TECH_WIFI))
     {
         LE_ERROR("Channel's technology %s not supported",
                  le_dcs_ConvertTechEnumToName(channelDb->technology));
@@ -422,7 +423,7 @@ le_result_t le_net_ChangeRoute
     {
         LE_ERROR("Failed to get net interface of channel %s of technology %s to change route",
                  channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
-        return LE_FAULT;
+        return ret;
     }
 
     ret = DcsNetChangeRoute(destAddr, destMask, intfName, isAdd);

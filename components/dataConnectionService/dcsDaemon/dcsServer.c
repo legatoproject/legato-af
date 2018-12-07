@@ -53,7 +53,6 @@
  * The config tree path and node definitions.
  */
 //--------------------------------------------------------------------------------------------------
-#define DCS_CONFIG_TREE_ROOT_DIR    "dataConnectionService:"
 #define CFG_PATH_ROUTING            "routing"
 #define CFG_NODE_DEFAULTROUTE       "useDefaultRoute"
 #define CFG_PATH_WIFI               "wifi"
@@ -392,6 +391,80 @@ static bool IsDataProfileViaLeDcs = false;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Boolean to indicated whether le_data has called to start wifiClient already or not
+ */
+//--------------------------------------------------------------------------------------------------
+static bool WifiHasStarted = false;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function checks if le_data has already started wifiClient.  If not, call wifiClient to
+ * start it.
+ *
+ * @return
+ *     - LE_OK upon success in starting wifiClient anew
+ *     - LE_DUPLICATE if DCS has it started already
+ *     - LE_BUSY if wifiClient has already been started by its other client
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t WifiClientStart
+(
+    void
+)
+{
+    le_result_t ret;
+
+    if (WifiHasStarted)
+    {
+        LE_DEBUG("DCS already got wifiClient started");
+        return LE_DUPLICATE;
+    }
+
+    LE_INFO("Starting Wifi client");
+    ret = le_wifiClient_Start();
+    if ((LE_OK == ret) || (LE_BUSY == ret))
+    {
+        LE_DEBUG("DCS got wifiClient started; return code %d", ret);
+        WifiHasStarted = true;
+    }
+    return ret;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function seeks to stop wifiClient if not yet by le_data.
+ */
+//--------------------------------------------------------------------------------------------------
+static void WifiClientStop
+(
+    void
+)
+{
+    le_result_t ret;
+
+    if (!WifiHasStarted)
+    {
+        LE_DEBUG("DCS hasn't started wifiClient and thus won't seek to stop it");
+        return;
+    }
+
+    LE_INFO("Stopping Wifi client");
+    ret = le_wifiClient_Stop();
+    if ((ret != LE_OK) && (ret != LE_DUPLICATE))
+    {
+        LE_ERROR("DCS failed to stop wifiClient");
+    }
+    else
+    {
+        LE_INFO("DCS succeeded to stop wifiClient");
+        WifiHasStarted = false;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * API for the le_dcs component to use to check if any app has used le_data to successfully
  * bring up a data connection
  *
@@ -652,11 +725,17 @@ static void WifiClientEventHandler
     void* contextPtr                ///< [IN] Associated context pointer
 )
 {
-    LE_DEBUG("Wifi event received");
+    LE_DEBUG("Wifi event received: %d", event);
 
     switch (event)
     {
         case LE_WIFICLIENT_EVENT_CONNECTED:
+            if (strlen(Ssid) == 0)
+            {
+                // Wifi connection managed not via le_data but le_dcs or else
+                break;
+            }
+
             LE_INFO("Wifi client connected");
 
             // Request an IP address through DHCP if DCS initiated the connection
@@ -685,14 +764,21 @@ static void WifiClientEventHandler
             break;
 
         case LE_WIFICLIENT_EVENT_DISCONNECTED:
+            if (strlen(Ssid) == 0)
+            {
+                // Wifi connection managed not via le_data but le_dcs or else
+                break;
+            }
             LE_INFO("Wifi client disconnected");
 
             // Update connection status and send notification to registered applications
             IsConnected = false;
+            memset(Ssid, '\0', sizeof(Ssid));
             SendConnStateEvent(IsConnected);
 
             // Handle new connection status for this technology
             ConnectionStatusHandler(LE_DATA_WIFI, IsConnected);
+            WifiClientStop();
             break;
 
         case LE_WIFICLIENT_EVENT_SCAN_DONE:
@@ -1003,24 +1089,6 @@ static le_result_t LoadSelectedTechProfile
 
             le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
 
-            // SSID
-            if (le_cfg_NodeExists(cfg, CFG_NODE_SSID))
-            {
-                if (LE_OK != le_cfg_GetString(cfg, CFG_NODE_SSID, Ssid, sizeof(Ssid), "testSsid"))
-                {
-                    LE_WARN("String value for '%s' too large", CFG_NODE_SSID);
-                    le_cfg_CancelTxn(cfg);
-                    return LE_OVERFLOW;
-                }
-                LE_DEBUG("AP configuration, SSID: '%s'", Ssid);
-            }
-            else
-            {
-                LE_WARN("No value set for '%s'!", CFG_NODE_SSID);
-                le_cfg_CancelTxn(cfg);
-                return LE_NOT_FOUND;
-            }
-
             // Security protocol
             if (le_cfg_NodeExists(cfg, CFG_NODE_SECPROTOCOL))
             {
@@ -1037,8 +1105,7 @@ static le_result_t LoadSelectedTechProfile
 
             // Passphrase
             // TODO: passphrase should not be stored without ciphering in the config tree
-            if ((LE_WIFICLIENT_SECURITY_WPA_PSK_PERSONAL == SecProtocol) ||
-                (LE_WIFICLIENT_SECURITY_WPA2_PSK_PERSONAL == SecProtocol))
+            if (LE_WIFICLIENT_SECURITY_NONE != SecProtocol)
             {
                 if (le_cfg_NodeExists(cfg, CFG_NODE_PASSPHRASE))
                 {
@@ -1089,7 +1156,6 @@ static le_result_t LoadSelectedTechProfile
             }
 
             // Delete sensitive information
-            memset(Ssid, '\0', sizeof(Ssid));
             memset(Passphrase, '\0', sizeof(Passphrase));
         }
         break;
@@ -1441,7 +1507,14 @@ static void TryStartDataSession
     #endif
 
     le_dcsCellular_GetNameFromIndex(le_dcsCellular_GetProfileIndex(MdcIndexProfile), channelName);
-    le_dcs_CreateChannelDb(LE_DCS_TECH_CELLULAR, channelName);
+    if (!le_dcs_CreateChannelDb(LE_DCS_TECH_CELLULAR, channelName))
+    {
+        // Shouldn't happen; let it go for backward compatibility concerns
+        LE_DEBUG("Failed to create a channelDb for le_dcs");
+        ConnectionStatusHandler(LE_DATA_CELLULAR, false);
+        return;
+    }
+
     le_result_t result = le_mdc_StartSession(MobileProfileRef);
 
     // Start data session
@@ -1500,20 +1573,27 @@ static void TryStartWifiSession
 
         // Impossible to use this technology, try the next one
         ConnectionStatusHandler(LE_DATA_WIFI, false);
+        le_dcs_MarkChannelSharingStatus(Ssid, LE_DCS_TECH_WIFI, false);
+        return;
+    }
 
+    if (!le_dcs_CreateChannelDb(LE_DCS_TECH_WIFI, Ssid))
+    {
+        // Shouldn't happen; let it go for backward compatibility concerns
+        LE_DEBUG("Failed to create a channelDb for le_dcs");
+        ConnectionStatusHandler(LE_DATA_WIFI, false);
         return;
     }
 
     // Start Wifi client
-    result = le_wifiClient_Start();
-
-    if ((LE_OK != result) && (LE_BUSY != result))
+    result = WifiClientStart();
+    if ((LE_OK != result) && (LE_BUSY != result) && (LE_DUPLICATE != result))
     {
         LE_ERROR("Wifi client not started, result %d (%s)", result, LE_RESULT_TXT(result));
 
         // Impossible to use this technology, try the next one
         ConnectionStatusHandler(LE_DATA_WIFI, false);
-
+        le_dcs_MarkChannelSharingStatus(Ssid, LE_DCS_TECH_WIFI, false);
         return;
     }
 
@@ -1526,7 +1606,8 @@ static void TryStartWifiSession
 
         // Impossible to use this technology, try the next one
         ConnectionStatusHandler(LE_DATA_WIFI, false);
-
+        le_dcs_MarkChannelSharingStatus(Ssid, LE_DCS_TECH_WIFI, false);
+        WifiClientStop();
         return;
     }
 
@@ -1538,11 +1619,58 @@ static void TryStartWifiSession
 
         // Impossible to use this technology, try the next one
         ConnectionStatusHandler(LE_DATA_WIFI, false);
-
+        le_dcs_MarkChannelSharingStatus(Ssid, LE_DCS_TECH_WIFI, false);
+        WifiClientStop();
         return;
     }
 
     LE_INFO("Connecting to AP");
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Try to retrieve the configured SSID from the config tree and set it into the global variable
+ * Ssid if found.
+ *
+ * @return
+ *     - true upon success; false otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+static bool RetrieveWifiCfgSsid
+(
+    char *ssid
+)
+{
+    char configPath[LE_CFG_STR_LEN_BYTES];
+
+    if (!ssid)
+    {
+        return false;
+    }
+
+    snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_WIFI);
+    le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
+    if (!le_cfg_NodeExists(cfg, CFG_NODE_SSID))
+    {
+        LE_WARN("No value set for '%s'!", CFG_NODE_SSID);
+        le_cfg_CancelTxn(cfg);
+        ConnectionStatusHandler(LE_DATA_WIFI, false);
+        return false;
+    }
+
+    if (LE_OK != le_cfg_GetString(cfg, CFG_NODE_SSID, ssid, LE_WIFIDEFS_MAX_SSID_LENGTH,
+                                  "testSsid"))
+    {
+        LE_WARN("String value for '%s' too large", CFG_NODE_SSID);
+        le_cfg_CancelTxn(cfg);
+        ConnectionStatusHandler(LE_DATA_WIFI, false);
+        return false;
+    }
+
+    // SSID successfully retrieved
+    LE_DEBUG("AP configuration, SSID: '%s'", ssid);
+    le_cfg_CancelTxn(cfg);
+    return true;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1631,9 +1759,55 @@ static void TryStartTechSession
             break;
 
             case LE_DATA_WIFI:
+            {
+                char ssid[LE_WIFIDEFS_MAX_SSID_BYTES];
+                if (!RetrieveWifiCfgSsid(ssid) || (strlen(ssid) == 0))
+                {
+                    LE_ERROR("Failed to retrieve wifi config SSID");
+                    return;
+                }
+
+                // Check for any wifi connection already established via le_dcs APIs
+                le_result_t ret = le_dcsTech_AllowChannelStart(LE_DCS_TECH_WIFI, ssid);
+                switch (ret)
+                {
+                    case LE_DUPLICATE:
+                        // This wifi connection is already established via le_dcs
+                        LE_INFO("Reuse Wifi connection %s that is already connected", ssid);
+                        strncpy(Ssid, ssid, LE_WIFIDEFS_MAX_SSID_LENGTH);
+                        IsDataProfileViaLeDcs = true;
+                        le_dcs_MarkChannelSharingStatus(Ssid, LE_DCS_TECH_WIFI, true);
+                        if (!WifiEventHandlerRef)
+                        {
+                            WifiEventHandlerRef = le_wifiClient_AddNewEventHandler
+                                (WifiClientEventHandler, NULL);
+                        }
+                        ConnectionStatusHandler(LE_DATA_WIFI, true);
+                        SendConnStateEvent(true);
+                        return;
+                    case LE_NOT_PERMITTED:
+                        LE_ERROR("Failed to start wifi connection as it's already up over a "
+                                 "different SSID");
+                        ConnectionStatusHandler(LE_DATA_WIFI, false);
+                        SendConnStateEvent(false);
+                        return;
+                    case LE_OK:
+                        if (!WifiEventHandlerRef)
+                        {
+                            WifiEventHandlerRef = le_wifiClient_AddNewEventHandler
+                                (WifiClientEventHandler, NULL);
+                        }
+                        break;
+                    default:
+                        LE_DEBUG("Failure code %d while checking status with le_dcs", ret);
+                        break;
+                }
                 // Try to establish the wifi connection
+                strncpy(Ssid, ssid, LE_WIFIDEFS_MAX_SSID_LENGTH);
+                le_dcs_MarkChannelSharingStatus(Ssid, LE_DCS_TECH_WIFI, true);
                 TryStartWifiSession();
-                break;
+            }
+            break;
 
             default:
                 LE_ERROR("Unknown technology %d to start", technology);
@@ -1693,6 +1867,12 @@ static void TryStopDataSession
         {
             if (le_dcs_ChannelIsInUse(channelName, LE_DCS_TECH_CELLULAR))
             {
+                LE_INFO("Skip trying to stop cellular connection %s still in use via le_dcs",
+                        channelName);
+                le_dcs_MarkChannelSharingStatus(channelName, LE_DCS_TECH_CELLULAR, false);
+                IsConnected = false;
+                SendConnStateEvent(false);
+                ConnectionStatusHandler(LE_DATA_CELLULAR, false);
                 return;
             }
             LE_INFO("Tearing down data session");
@@ -1764,6 +1944,21 @@ static void TryStopWifiSession
     le_timer_Ref_t timerRef     ///< [IN] Timer used to ensure the end of the session
 )
 {
+    if (RequestCount > 0)
+    {
+        return;
+    }
+    if ((strlen(Ssid) > 0) && le_dcs_ChannelIsInUse(Ssid, LE_DCS_TECH_WIFI))
+    {
+        LE_INFO("Skip trying to stop Wifi connection still in use via le_dcs");
+        le_dcs_MarkChannelSharingStatus(Ssid, LE_DCS_TECH_WIFI, false);
+        IsConnected = false;
+        memset(Ssid, '\0', sizeof(Ssid));
+        SendConnStateEvent(false);
+        ConnectionStatusHandler(LE_DATA_WIFI, false);
+        return;
+    }
+
     if (LE_OK != le_wifiClient_Disconnect())
     {
         LE_ERROR("Impossible to disconnect wifi client");
@@ -1777,12 +1972,14 @@ static void TryStopWifiSession
             if (LE_OK != le_timer_SetContextPtr(timerRef, (void*)((intptr_t)LE_DATA_WIFI)))
             {
                 LE_ERROR("Could not set context pointer for the StopDcs timer!");
+                WifiClientStop();
             }
             else
             {
                 if (LE_OK != le_timer_Start(timerRef))
                 {
                     LE_ERROR("Could not start the StopDcs timer!");
+                    WifiClientStop();
                 }
             }
         }
@@ -1790,6 +1987,7 @@ static void TryStopWifiSession
     else
     {
         IsConnected = false;
+        le_dcs_MarkChannelSharingStatus(Ssid, LE_DCS_TECH_WIFI, false);
     }
 }
 
@@ -1875,7 +2073,10 @@ static void StopDcsTimerHandler
                 // Try again if necessary
                 if (StopSessionRetries < MAX_STOP_SESSION_RETRIES)
                 {
-                    TryStopWifiSession(timerRef);
+                    if ((strlen(Ssid) != 0) && !le_dcs_ChannelIsInUse(Ssid, LE_DCS_TECH_WIFI))
+                    {
+                        TryStopWifiSession(timerRef);
+                    }
                 }
                 else
                 {
@@ -2913,7 +3114,7 @@ COMPONENT_INIT
 
     // Create safe reference map for request references. The size of the map should be based on
     // the expected number of simultaneous data requests, so take a reasonable guess.
-    RequestRefMap = le_ref_CreateMap("Requests", 5);
+    RequestRefMap = le_ref_CreateMap("Requests", REFERENCE_MAP_SIZE);
 
     // Set a one-shot timer for requesting the DNS configuration.
     SetDNSConfigTimer = le_timer_Create("SetDNSConfigTimer");

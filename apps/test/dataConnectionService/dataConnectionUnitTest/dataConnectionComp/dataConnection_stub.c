@@ -13,6 +13,7 @@
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions
 //--------------------------------------------------------------------------------------------------
+#define DCS_DUMMY_CHANNEL_REF 0xffff0000
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -421,6 +422,24 @@ le_result_t le_wifiClient_TryConnectService
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_wifiClient_Start
+(
+    void
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function stops the WiFi device.
+ *
+ * @return LE_OK            The function succeeded.
+ * @return LE_FAULT         The function failed.
+ * @return LE_DUPLICATE     The WIFI device is already stopped.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_wifiClient_Stop
 (
     void
 )
@@ -1695,7 +1714,7 @@ le_dcs_ChannelRef_t le_dcs_CreateChannelDb
     const char *channelName
 )
 {
-    return 0;
+    return (le_dcs_ChannelRef_t)DCS_DUMMY_CHANNEL_REF;
 }
 
 
@@ -1760,4 +1779,20 @@ bool le_dcs_ChannelIsInUse
 )
 {
     return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub utility for use by the le_data component to check if a given channel is allowed to be
+ * started
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_dcsTech_AllowChannelStart
+(
+    le_dcs_Technology_t tech,
+    const char *channelName
+)
+{
+    return true;
 }

@@ -5,6 +5,7 @@ requires:
         le_dcs = $LEGATO_ROOT/interfaces/le_dcs.api
         le_data = $LEGATO_ROOT/interfaces/le_data.api
         le_net = $LEGATO_ROOT/interfaces/le_net.api
+        le_wifiClient = $LEGATO_ROOT/interfaces/wifi/le_wifiClient.api
     }
 }
 

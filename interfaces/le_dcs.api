@@ -64,7 +64,7 @@ DEFINE INTERFACE_NAME_MAX_LEN = 100;
  * Channel name string length.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE CHANNEL_NAME_MAX_LEN = 16;
+DEFINE CHANNEL_NAME_MAX_LEN = 32;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -82,7 +82,8 @@ DEFINE IPADDR_MAX_LEN = 46;
  * are supported by DCS, e.g. Wifi, this value will be increased accordingly
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE CHANNEL_LIST_ENTRY_MAX = 24;
+DEFINE CHANNEL_LIST_QUERY_MAX = 32;
+DEFINE CHANNEL_LIST_ENTRY_MAX = (CHANNEL_LIST_QUERY_MAX * 2);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -188,7 +189,7 @@ FUNCTION le_result_t GetState
 (
     Channel channelRef                      IN,  ///< channel which status is to be queried
     State state                             OUT, ///< channel state returned as output
-    string name[INTERFACE_NAME_MAX_LEN]     OUT  ///< channel's network interface name
+    string interfaceName[INTERFACE_NAME_MAX_LEN] OUT  ///< channel's network interface name
 );
 
 
@@ -214,7 +215,6 @@ FUNCTION ReqObj Start
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Stop
 (
-    Channel channelRef                      IN, ///< channel started earlier
     ReqObj reqRef                           IN  ///< the start request's reference earlier returned
 );
 
@@ -238,14 +238,23 @@ FUNCTION Channel GetReference
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Query for the list of all available data channels
- *
- * @return
- *      - LE_OK             on success
- *      - LE_FAULT          for all other errors
+ * Handler for the receiving the results of a channel list query
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t GetList
+HANDLER GetChannelsHandler
 (
-    ChannelInfo channelList[CHANNEL_LIST_ENTRY_MAX] OUT  ///< list of all available data channels
+    le_result_t result                               IN,  ///< Result of the channel list query
+    ChannelInfo channelList[CHANNEL_LIST_ENTRY_MAX]  IN   ///< List of channels returned
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Trigger a query for the list of all available data channels that will be returned asynchronously
+ * via the ChannelQueryHandler callback notification
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION GetChannels
+(
+    GetChannelsHandler handler    ///< requester's handler for receiving results
 );

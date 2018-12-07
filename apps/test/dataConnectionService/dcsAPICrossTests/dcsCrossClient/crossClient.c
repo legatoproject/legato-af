@@ -16,12 +16,14 @@
 #include "legato.h"
 #include "interfaces.h"
 
-static le_dcs_EventHandlerRef_t eventHandlerRef = NULL;
-static le_dcs_ChannelRef_t myChannel;
-static char channelName[LE_DCS_CHANNEL_NAME_MAX_LEN];
-static le_dcs_ReqObjRef_t reqObj;
-static le_data_RequestObjRef_t myReqRef;
-static le_data_ConnectionStateHandlerRef_t connStateHandlerRef = NULL;
+static le_thread_Ref_t TestThreadRef;
+static le_dcs_EventHandlerRef_t EventHandlerRef = NULL;
+static le_dcs_ChannelRef_t MyChannel = 0;
+static char channelName[LE_DCS_CHANNEL_NAME_MAX_LEN] = "MY-MOBILE";
+static le_dcs_Technology_t MyTech = LE_DCS_TECH_WIFI;
+static le_dcs_ReqObjRef_t ReqObj;
+static le_data_RequestObjRef_t MyReqRef;
+static le_data_ConnectionStateHandlerRef_t ConnStateHandlerRef = NULL;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -30,7 +32,7 @@ static le_data_ConnectionStateHandlerRef_t connStateHandlerRef = NULL;
  *  le_dcs_AddEventHandler() for a channel
  */
 //--------------------------------------------------------------------------------------------------
-void clientEventHandler
+void ClientEventHandler
 (
     le_dcs_ChannelRef_t channelRef, ///< [IN] The channel for which the event is
     le_dcs_Event_t event,           ///< [IN] Event up or down
@@ -49,15 +51,16 @@ void clientEventHandler
  *  the given channel
  */
 //--------------------------------------------------------------------------------------------------
-void dcs_test_api_GetReference
+void Dcs_test_api_GetReference
 (
     void *param1,
     void *param2
 )
 {
     le_dcs_ChannelRef_t ret_ref;
-    LE_INFO("DCS-client: asking for channel reference for channel %s", channelName);
-    ret_ref = le_dcs_GetReference(channelName, LE_DCS_TECH_CELLULAR);
+    LE_INFO("DCS-client: asking for channel reference for channel %s of tech %d", channelName,
+            MyTech);
+    ret_ref = le_dcs_GetReference(channelName, MyTech);
     LE_INFO("DCS-client: returned channel reference: %p", ret_ref);
 }
 
@@ -68,7 +71,7 @@ void dcs_test_api_GetReference
  *  the given channel
  */
 //--------------------------------------------------------------------------------------------------
-void dcs_test_api_GetTechnology
+void Dcs_test_api_GetTechnology
 (
     void *param1,
     void *param2
@@ -77,7 +80,7 @@ void dcs_test_api_GetTechnology
     le_dcs_Technology_t retTech = -1;
 
     LE_INFO("DCS-client: asking for tech type");
-    retTech = le_dcs_GetTechnology(myChannel);
+    retTech = le_dcs_GetTechnology(MyChannel);
     LE_INFO("DCS-client: returned tech type: %d", (int)retTech);
 }
 
@@ -88,7 +91,7 @@ void dcs_test_api_GetTechnology
  *  the given channel
  */
 //--------------------------------------------------------------------------------------------------
-void dcs_test_api_GetState
+void Dcs_test_api_GetState
 (
     void *param1,
     void *param2
@@ -99,7 +102,7 @@ void dcs_test_api_GetState
     le_result_t ret;
 
     LE_INFO("DCS-client: asking for channel status");
-    ret = le_dcs_GetState(myChannel, &state, name, LE_DCS_INTERFACE_NAME_MAX_LEN);
+    ret = le_dcs_GetState(MyChannel, &state, name, LE_DCS_INTERFACE_NAME_MAX_LEN);
     LE_INFO("DCS-client: returned for channel %s netIntf %s status %d (rc %d)", channelName,
             name, state, (int)ret);
 
@@ -111,15 +114,18 @@ void dcs_test_api_GetState
  *  This function tests DCS's NB APIs le_dcs_Start() for starting the given data channel
  */
 //--------------------------------------------------------------------------------------------------
-void dcs_test_api_Start
+void Dcs_test_api_Start
 (
     void *param1,
     void *param2
 )
 {
     LE_INFO("DCS-client: asking to start channel %s", channelName);
-    reqObj = le_dcs_Start(myChannel);
-    LE_INFO("DCS-client: returned RequestObj %p", reqObj);
+    if (MyChannel)
+    {
+        ReqObj = le_dcs_Start(MyChannel);
+        LE_INFO("DCS-client: returned RequestObj %p", ReqObj);
+    }
 }
 
 
@@ -128,7 +134,7 @@ void dcs_test_api_Start
  *  This function tests DCS's NB API le_dcs_Stop() for stopping the given data channel
  */
 //--------------------------------------------------------------------------------------------------
-void dcs_test_api_Stop
+void Dcs_test_api_Stop
 (
     void *param1,
     void *param2
@@ -138,13 +144,12 @@ void dcs_test_api_Stop
 
     LE_INFO("DCS-client: asking to stop channel %s", channelName);
 
-    if (!reqObj)
+    if (!ReqObj || !MyChannel)
     {
-        LE_ERROR("DCS-client: error in stopping channel %s with a null object", channelName);
         return;
     }
 
-    ret = le_dcs_Stop(myChannel, reqObj);
+    ret = le_dcs_Stop(ReqObj);
     LE_INFO("DCS-client: got for channel %s release status %d", channelName, ret);
 }
 
@@ -155,15 +160,15 @@ void dcs_test_api_Stop
  *  for the given channel
  */
 //--------------------------------------------------------------------------------------------------
-void dcs_test_api_AddEventHandler
+void Dcs_test_api_AddEventHandler
 (
     void *param1,
     void *param2
 )
 {
     LE_INFO("DCS-client: asking to add event handler for channel %s", channelName);
-    eventHandlerRef = le_dcs_AddEventHandler(myChannel, clientEventHandler, NULL);
-    LE_INFO("DCS-client: channel event handler added %p for channel %s", eventHandlerRef,
+    EventHandlerRef = le_dcs_AddEventHandler(MyChannel, ClientEventHandler, NULL);
+    LE_INFO("DCS-client: channel event handler added %p for channel %s", EventHandlerRef,
             channelName);
 }
 
@@ -174,60 +179,79 @@ void dcs_test_api_AddEventHandler
  *  handler for the given channel
  */
 //--------------------------------------------------------------------------------------------------
-void dcs_test_api_RmEventHandler
+void Dcs_test_api_RmEventHandler
 (
     void *param1,
     void *param2
 )
 {
     LE_INFO("DCS-client: asking to remove event handler for channel %s", channelName);
-    if (!eventHandlerRef)
+    if (!EventHandlerRef)
     {
         LE_INFO("DCS-client: no channel event handler to remove");
         return;
     }
 
-    le_dcs_RemoveEventHandler(eventHandlerRef);
-    eventHandlerRef = NULL;
+    le_dcs_RemoveEventHandler(EventHandlerRef);
+    EventHandlerRef = NULL;
     LE_INFO("DCS-client: Done removing event handler");
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  This function tests DCS's NB API le_dcs_GetList() for querying the entire list of all
- *  channels available on the device
+ *  This is the event handler used & to be added in the test of DCS's NB API
+ *  le_dcs_AddEventHandler() for a channel query
  */
 //--------------------------------------------------------------------------------------------------
-void dcs_test_api_GetList
+static void ClientChannelQueryHandler
+(
+    le_result_t result,                       ///< [IN] Result of the query
+    const le_dcs_ChannelInfo_t *channelList,  ///< [IN] Channel list returned
+    size_t channelListSize,                   ///< [IN] Channel list's size
+    void *contextPtr                          ///< [IN] Associated user context pointer
+)
+{
+    uint16_t i;
+
+    LE_INFO("DCS-client: result received for channel query %d, channel list size %d",
+            result, channelListSize);
+
+    if (channelListSize == 0)
+    {
+        channelName[0] = '\0';
+        MyChannel = 0;
+        return;
+    }
+
+    for (i = 0; i < channelListSize; i++)
+    {
+        LE_INFO("DCS-client: available channel #%d from technology %d with name %s, state %d, "
+                "ref %p", i + 1, channelList[i].technology, channelList[i].name,
+                channelList[i].state, channelList[i].ref);
+        if (strcmp(channelList[i].name, channelName) == 0)
+        {
+            strncpy(channelName, channelList[i].name, LE_DCS_CHANNEL_NAME_MAX_LEN);
+            MyChannel = channelList[i].ref;
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  This function tests DCS's NB API le_dcs_GetChannels() for adding a channel
+ *  query handler for the given channel
+ */
+//--------------------------------------------------------------------------------------------------
+void Dcs_test_api_GetChannels
 (
     void *param1,
     void *param2
 )
 {
-    uint16_t i;
-    le_result_t ret;
-    le_dcs_ChannelInfo_t channelList[LE_DCS_CHANNEL_LIST_ENTRY_MAX];
-    size_t listLen = 10;
-
-    LE_INFO("DCS-client: asking to return a complete channel list");
-    ret = le_dcs_GetList(channelList, &listLen);
-    LE_INFO("DCS-client: got channel list of size %d (rc %d)", listLen, (int)ret);
-    for (i = 0; i < listLen; i++)
-    {
-        LE_INFO("DCS-client: available channel #%d with name %s, technology %d, state %d",
-                i + 1, channelList[i].name, channelList[i].technology, channelList[i].state);
-    }
-    if (listLen)
-    {
-        strncpy(channelName, channelList[listLen - 1].name, LE_DCS_CHANNEL_NAME_MAX_LEN);
-        myChannel = channelList[listLen - 1].ref;
-    }
-    else
-    {
-        channelName[0] = '\0';
-        myChannel = 0;
-    }
+    LE_INFO("DCS-client: asking to query channel list");
+    le_dcs_GetChannels(ClientChannelQueryHandler, NULL);
 }
 
 
@@ -236,7 +260,7 @@ void dcs_test_api_GetList
  *  This function tests DCS's API le_data_Request() for requesting a data connection
  */
 //--------------------------------------------------------------------------------------------------
-void dcs_test_data_api_Request
+void Dcs_test_data_api_Request
 (
     void *param1,
     void *param2
@@ -244,14 +268,14 @@ void dcs_test_data_api_Request
 {
     LE_INFO("DCS-client: request for a connection via le_data API");
 
-    myReqRef = le_data_Request();
-    if (myReqRef == 0)
+    MyReqRef = le_data_Request();
+    if (MyReqRef == 0)
     {
         LE_ERROR("DCS-client: failed to get a connection");
         return;
     }
 
-    LE_INFO("DCS-client: succeeded to init a connection via le_data with myReqRef %p", myReqRef);
+    LE_INFO("DCS-client: succeeded to init a connection via le_data with MyReqRef %p", MyReqRef);
 }
 
 
@@ -261,18 +285,18 @@ void dcs_test_data_api_Request
  *  connection
  */
 //--------------------------------------------------------------------------------------------------
-void dcs_test_data_api_Release
+void Dcs_test_data_api_Release
 (
     void *param1,
     void *param2
 )
 {
-    if (myReqRef == 0)
+    if (MyReqRef == 0)
     {
         return;
     }
     LE_INFO("DCS-client: asking to release a connection via le_data API");
-    le_data_Release(myReqRef);
+    le_data_Release(MyReqRef);
 }
 
 
@@ -282,7 +306,7 @@ void dcs_test_data_api_Release
  *  le_data_AddConnectionStateHandler()
  */
 //--------------------------------------------------------------------------------------------------
-void dataConnectionStateHandler
+void DataConnectionStateHandler
 (
     const char* intfName,
     bool isConnected,
@@ -290,8 +314,8 @@ void dataConnectionStateHandler
 )
 {
     le_data_Technology_t currentTech = le_data_GetTechnology();
-    LE_INFO("DCS-client: received connection status %d for interface %s of technology %d",
-            isConnected, intfName, currentTech);
+    LE_INFO("DCS-client: received for interface %s of technology %d connection status %d",
+            intfName, currentTech, isConnected);
 }
 
 
@@ -301,15 +325,15 @@ void dataConnectionStateHandler
  *  handler
  */
 //--------------------------------------------------------------------------------------------------
-void dcs_test_data_api_AddConnStateHandler
+void Dcs_test_data_api_AddConnStateHandler
 (
     void *param1,
     void *param2
 )
 {
     LE_INFO("DCS-client: asking to add an event handler");
-    connStateHandlerRef = le_data_AddConnectionStateHandler(dataConnectionStateHandler, NULL);
-    LE_INFO("DCS-client: le_data connection state handler added %p", connStateHandlerRef);
+    ConnStateHandlerRef = le_data_AddConnectionStateHandler(DataConnectionStateHandler, NULL);
+    LE_INFO("DCS-client: le_data connection state handler added %p", ConnStateHandlerRef);
 }
 
 
@@ -318,7 +342,7 @@ void dcs_test_data_api_AddConnStateHandler
  *  This is the thread that runs an event loop to take test functions to run
  */
 //--------------------------------------------------------------------------------------------------
-static void *testThread
+static void *TestThread
 (
     void *context
 )
@@ -326,6 +350,7 @@ static void *testThread
     le_dcs_ConnectService();
     le_net_ConnectService();
     le_data_ConnectService();
+    le_wifiClient_ConnectService();
 
     le_event_RunLoop();
 }
@@ -338,31 +363,62 @@ static void *testThread
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    le_thread_Ref_t testThreadRef = le_thread_Create("client test thread", testThread, NULL);
-    le_thread_SetPriority(testThreadRef, LE_THREAD_PRIORITY_MEDIUM);
-    le_thread_Start(testThreadRef);
+#define CHOSEN_PROFILE 16
+#define INIT_SLEEP 12
+#define END_SLEEP 10
+#define WAIT_FOR_CHANNELS_LOOP_SLEEP 2
+#define LOOP_SLEEP24 24
+#define LOOP_SLEEP16 16
+#define LOOP_SLEEP20 20
+#define LOOP_SLEEP30 30
+#define WAIT_FOR_CHANNELS_LOOP 10
+#define TEST_LOOP 3
 
-    sleep(10);
+    uint16_t i, j;
+
+    TestThreadRef = le_thread_Create("client test thread", TestThread, NULL);
+    le_thread_SetPriority(TestThreadRef, LE_THREAD_PRIORITY_MEDIUM);
+    le_thread_Start(TestThreadRef);
+
+    sleep(INIT_SLEEP);
 
 #if 1
+    for (j=0; j<TEST_LOOP && !MyChannel; j++)
+    {
+        le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_GetChannels, NULL, NULL);
+        for (i=0; i<WAIT_FOR_CHANNELS_LOOP; i++)
+        {
+            sleep(WAIT_FOR_CHANNELS_LOOP_SLEEP);
+            if (MyChannel)
+            {
+                break;
+            }
+        }
+    }
 
-    le_event_QueueFunctionToThread(testThreadRef, dcs_test_api_GetList, NULL, NULL);
+    le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_AddEventHandler, NULL, NULL);
 
-    le_event_QueueFunctionToThread(testThreadRef, dcs_test_api_GetReference, NULL, NULL);
+    for (i=0; i<TEST_LOOP; i++)
+    {
+        le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_Start, NULL, NULL);
+        sleep(LOOP_SLEEP24);
+        le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_Stop, NULL, NULL);
+        sleep(LOOP_SLEEP16);
+        le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_GetChannels, NULL, NULL);
+        sleep(LOOP_SLEEP20);
+    }
 
-    le_event_QueueFunctionToThread(testThreadRef, dcs_test_api_AddEventHandler, NULL, NULL);
-
-    le_event_QueueFunctionToThread(testThreadRef, dcs_test_api_Start, NULL, NULL);
-
-    le_event_QueueFunctionToThread(testThreadRef, dcs_test_api_GetTechnology, NULL, NULL);
-
-    sleep(60);
-
-    le_event_QueueFunctionToThread(testThreadRef, dcs_test_api_Stop, NULL, NULL);
+    le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_RmEventHandler, NULL, NULL);
 
 #else
 
-    int32_t profileIndex = 5;
+    le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_GetTechnology, NULL, NULL);
+
+    sleep(10);
+
+    le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_Stop, NULL, NULL);
+
+    int32_t profileIndex = CHOSEN_PROFILE;
 
     if (LE_OK != le_data_SetTechnologyRank(1, LE_DATA_WIFI) ||
         LE_OK != le_data_SetCellularProfileIndex(profileIndex))
@@ -370,14 +426,23 @@ COMPONENT_INIT
         LE_ERROR("DCS-client: failed to set 1st rank to cellular, profile %d", profileIndex);
     }
 
-    le_event_QueueFunctionToThread(testThreadRef, dcs_test_data_api_AddConnStateHandler,
+    le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_data_api_AddConnStateHandler,
                                    NULL, NULL);
 
-    le_event_QueueFunctionToThread(testThreadRef, dcs_test_data_api_Request, NULL, NULL);
+    for (i=0; i<TEST_LOOP; i++)
+    {
+        le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_data_api_Request, NULL, NULL);
 
-    sleep(30);
+        sleep(LOOP_SLEEP30);
 
-    le_event_QueueFunctionToThread(testThreadRef, dcs_test_data_api_Release, NULL, NULL);
+        le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_data_api_Release, NULL, NULL);
+
+        sleep(LOOP_SLEEP30);
+    }
 
 #endif
+
+    sleep(END_SLEEP);
+
+    LE_INFO("DCS-client: Done testing");
 }

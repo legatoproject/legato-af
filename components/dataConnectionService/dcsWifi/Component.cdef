@@ -3,6 +3,14 @@ requires:
     api:
     {
         $LEGATO_ROOT/interfaces/le_dcs.api [types-only]
+        ${LEGATO_ROOT}/interfaces/wifi/le_wifiClient.api
+    }
+
+    component:
+    {
+        $LEGATO_DCS_PA_DEFAULT
+        $LEGATO_DCS_PA
+        ${LEGATO_ROOT}/components/watchdogChain
     }
 }
 
@@ -14,4 +22,7 @@ sources:
 cflags:
 {
     -I $LEGATO_ROOT/components/dataConnectionService/dcs
+    -I$LEGATO_ROOT/components/dataConnectionService/platformAdaptor/inc
+    -I$LEGATO_ROOT/components/dataConnectionService/dcs
+    -I$LEGATO_ROOT/components/dataConnectionService/dcsNet
 }

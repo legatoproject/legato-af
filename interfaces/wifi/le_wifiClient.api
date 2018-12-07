@@ -173,6 +173,93 @@
  *
  * @endcode
  *
+ * @section le_wifiClient_config_ssid Configure Wifi client with an SSID
+ *
+ * While the prior section lists out the le_wifiClient APIs that can be used together to configure
+ * the Wifi client to connect to an Access Point over a given SSID, the le_wifiClient_LoadSsid()
+ * API seeks to simplify these multiple steps, getting:
+ * - the necessary Access Point reference created for the given SSID which is considered
+ * selected for establishing a Wifi connection,
+ * - the necessary Wifi configurations loaded which include the security protocol (i.e. via
+ * le_wifiClient_SecurityProtocol()), passphrase (i.e. via le_wifiClient_SetPassphrase()),
+ * and the hidden attribute when necessary (i.e. via le_wifiClient_SetHiddenNetworkAttribute()),
+ * - the created reference returned to the API caller in its output argument.
+ *
+ * In just this one API call, all these steps would be done for the client application. If any
+ * failure has occurred, subsequent steps in the sequence would be skipped and the failing cause
+ * will be returned back to the API caller as the API's return value.
+ *
+ * This API also achieves the need to keep Wifi configurations back within wifiService instead of
+ * elsewhere, like "dataConnectionService:/wifi/".
+ *
+ * With the use of this API, Wifi configurations need to be stored in the Legato config tree on the
+ * path "wifiService:/wifi/channel/", under which configurations of multiple SSIDs can be stored at
+ * the same time. This is done by having an SSID name string as a sub-path under this path and
+ * then its Wifi configurations go under this sub-path. This is the path for any given SSID from
+ * which this API will access to retrieve corresponding Wifi configurations and install into the
+ * wifiClient. Here is an example with 2 SSIDs configured:
+ *
+ * root@swi-mdm9x28:~# config get wifiService:/wifi/
+ *  wifi/
+ *    channel/
+ *      MY-MOBILE/
+ *        secProtocol<string> == 3
+ *        passphrase<string> == @a1b2c3d4
+ *      MY-WLAN/
+ *        secProtocol<string> == 3
+ *        passphrase<string> == @a1b2c3d4
+ *        hidden<bool> == true
+ *
+ * The following is a sample code to illustrate how this API can be used:
+ *
+ * @code
+ *
+ *    le_result_t ret = le_wifiClient_LoadSsid(ssid, 0, &apRef);
+ *    if (ret == LE_OK)
+ *    {
+ *        LE_DEBUG("Wifi configs installed to connect over SSID %s with AP reference %p",
+ *                 ssid, apRef);
+ *    }
+ *    else
+ *    {
+ *        LE_ERROR("Failed to install wifi configs to connect over SSID %s", ssid);
+ *    }
+ *
+ * @endcode
+ *
+ * @section le_wifiClient_get_current_connect Get the currently selected connection
+ *
+ * A selected SSID via its AP reference is set for use in Wifi connection establishment since
+ * the API call to le_wifiClient_Connect(). Note that while the input argument is actually an
+ * Access Point reference, this reference specifically refers to a given SSID on the device.
+ * This is considered the selected connection for use until le_wifiClient_Disconnect() is called
+ * to deselect it.
+ *
+ * During the time when this AP reference is set for use, there comes the need to be able to query
+ * le_wifiClient for it back. This is what this le_wifiClient_GetCurrentConnection() API seeks to
+ * return. The following is a sample code to illustrate how it can be used. The retrieved AP
+ * reference is returned in the output argument.
+ *
+ * @code
+ *
+ *    le_wifiClient_GetCurrentConnection(&apRef);
+ *    if (!apRef)
+ *    {
+ *        return;
+ *    }
+ *    ret = le_wifiClient_GetSsid(apRef, &ssid[0], &ssidSize);
+ *    if (LE_OK != ret)
+ *    {
+ *        LE_ERROR("Failed to find SSID of AP reference %p", apRef);
+ *        return;
+ *    }
+ *    ssid[ssidSize] = '\0';
+ *    LE_DEBUG("Found currently selected Wifi connection to get established: %s, reference %p",
+ *             ssid, apRef);
+ *
+ * @endcode
+ *
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc.
@@ -380,6 +467,20 @@ FUNCTION le_result_t GetSsid
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the currently selected connection to be established
+ *
+ * @return
+ *      - LE_OK upon successful retrieval of the selected SSID to be connected
+ *      - LE_FAULT upon failure to retrieve it
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION GetCurrentConnection
+(
+    AccessPoint apRef OUT  ///< currently selected connection's AP reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Set the passphrase used to generate the PSK.
  *
  * @return
@@ -549,4 +650,21 @@ FUNCTION le_result_t Connect
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Disconnect
 (
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Load the given SSID's configurations as it is selected as the connection to be established,
+ * after creating for it an AP reference
+ *
+ * @return
+ *      - LE_OK     Function succeeded.
+ *      - LE_FAULT  Function failed.
+ *      - LE_BAD_PARAMETER  Invalid parameter.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t LoadSsid
+(
+    string ssid[le_wifiDefs.MAX_SSID_BYTES]     IN,  ///< SSID which configs are to be installed
+    AccessPoint apRef                           OUT  ///< reference to be created
 );

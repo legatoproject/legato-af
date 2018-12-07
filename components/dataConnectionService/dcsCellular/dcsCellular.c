@@ -18,10 +18,9 @@
 #include "dcsServer.h"
 #include "dcsCellular.h"
 
-#define DCS_CONFIG_TREE_ROOT_DIR "dataConnectionService:"
 #define CFG_PATH_CELLULAR        "cellular"
 #define CFG_NODE_PROFILEINDEX    "profileIndex"
-#define LE_DCS_CELLCONNDBS_MAX 20      // max # of cellular conns supported
+#define CELL_CONNDBS_MAX LE_DCS_CHANNEL_LIST_QUERY_MAX  // max # of cellular conns allowed
 
 
 //--------------------------------------------------------------------------------------------------
@@ -44,7 +43,7 @@ static le_mrc_PacketSwitchedChangeHandlerRef_t CellPacketSwitchStateHdlrRef;
  * Safe Reference Map for cellular connection database objects
  */
 //--------------------------------------------------------------------------------------------------
-le_ref_MapRef_t CellularConnectionRefMap;
+static le_ref_MapRef_t CellularConnectionRefMap;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -235,7 +234,7 @@ static void DcsCellularConnEventStateHandler
         LE_ERROR("No db found for connection %s for event notification", connName);
         return;
     }
-    channelRef = le_dcs_GetChannelRefFromTechRef(cellConnDb->connRef);
+    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_CELLULAR, cellConnDb->connRef);
 
     LE_DEBUG("Updating profile %d of cellular connection %s", profileIndex, connName);
 
@@ -288,7 +287,8 @@ static void DcsCellularConnEventStateHandler
     else
     {
         // new state is down
-        if (le_dcs_GetChannelRefCountFromTechRef(cellConnDb->connRef, &refcount) != LE_OK)
+        if (le_dcs_GetChannelRefCountFromTechRef(LE_DCS_TECH_CELLULAR, cellConnDb->connRef,
+                                                 &refcount) != LE_OK)
         {
             LE_ERROR("Failed to get reference count of connection %s to handle state change",
                      connName);
@@ -431,7 +431,8 @@ static void DcsCellularRetryConnTimerHandler
     }
 
     le_dcsCellular_GetNameFromIndex(cellConnDb->index, cellConnName);
-    if (le_dcs_GetChannelRefCountFromTechRef(cellConnDb->connRef, &refcount) != LE_OK)
+    if (le_dcs_GetChannelRefCountFromTechRef(LE_DCS_TECH_CELLULAR, cellConnDb->connRef,
+                                             &refcount) != LE_OK)
     {
         LE_ERROR("Failed to get reference count of connection %s to retry connecting",
                  cellConnName);
@@ -585,34 +586,34 @@ static cellular_connDb_t *DcsCellularCreateConnDb
  * Function to call MDC to get the list of all available profiles
  *
  * @return
- *     - The 1st argument is to be filled out with the retrieved list where the 2nd argument
- *       specifies how long this given list's size is for filling out
  *     - The function returns LE_OK upon a successful retrieval; otherwise, some other
  *       le_result_t failure cause
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_dcsCellular_GetChannelList
 (
-    le_dcs_ChannelInfo_t *channelList,
-    int16_t *listSize
+    void
 )
 {
+    le_dcs_ChannelInfo_t channelList[LE_DCS_CHANNEL_LIST_QUERY_MAX];
+    le_mdc_ProfileInfo_t profileList[LE_DCS_CHANNEL_LIST_QUERY_MAX];
+    size_t listLen = LE_DCS_CHANNEL_LIST_QUERY_MAX;
     uint16_t i;
     le_mdc_ConState_t mdcState;
     le_mdc_ProfileRef_t profileRef;
     char apn[LE_MDC_APN_NAME_MAX_LEN];
-    le_mdc_ProfileInfo_t profileList[LE_DCS_CHANNEL_LIST_ENTRY_MAX];
-    size_t listLen = LE_DCS_CHANNEL_LIST_ENTRY_MAX;
+
+    memset(channelList, 0, sizeof(channelList));
+
     le_result_t ret = le_mdc_GetProfileList(profileList, &listLen);
-    if (ret != LE_OK)
+    if ((ret != LE_OK) || (listLen == 0))
     {
         LE_ERROR("Failed to get cellular's profile list; error: %d", ret);
-        *listSize = 0;
+        le_dcsTech_CollectChannelQueryResults(LE_DCS_TECH_CELLULAR, LE_FAULT, channelList, 0);
         return LE_FAULT;
     }
 
-    *listSize = (listLen < *listSize) ? listLen : *listSize;
-    for (i = 0; i < *listSize; i++)
+    for (i = 0; i < listLen; i++)
     {
         LE_DEBUG("Cellular profile retrieved index %i, type %i, name %s",
                  profileList[i].index, profileList[i].type, profileList[i].name);
@@ -649,6 +650,7 @@ le_result_t le_dcsCellular_GetChannelList
                  channelList[i].name, profileList[i].name, channelList[i].state, apn);
     }
 
+    le_dcsTech_CollectChannelQueryResults(LE_DCS_TECH_CELLULAR, LE_OK, channelList, listLen);
     return LE_OK;
 }
 
@@ -1028,6 +1030,11 @@ le_result_t le_dcsCellular_Stop
         return LE_FAULT;
     }
 
+    if (le_timer_IsRunning(cellConnDb->retryTimer))
+    {
+        le_timer_Stop(cellConnDb->retryTimer);
+    }
+
     le_dcsCellular_GetNameFromIndex(cellConnDb->index, connName);
     profileRef = le_mdc_GetProfile(cellConnDb->index);
     if (!profileRef)
@@ -1098,10 +1105,29 @@ bool le_dcsCellular_GetOpState
     cellConnDb = DcsCellularGetDbFromRef(cellConnRef);
     if (!cellConnDb)
     {
-        return 0;
+        return false;
     }
 
     return DcsCellularMdcStateIsUp(cellConnDb->opState);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to check upfront if the Cellular technology allows channel start on the given
+ * connection. Cellular in the present has no technology-specific restriction to impose, unlike
+ * Wifi which can allow one active connection only. Thus, this function always returns LE_OK back.
+ *
+ * @return
+ *     - LE_OK always
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_dcsCellular_AllowChannelStart
+(
+    void *techRef
+)
+{
+    return LE_OK;
 }
 
 
@@ -1132,7 +1158,7 @@ le_result_t le_dcsCellular_RetryConn
         return LE_FAULT;
     }
 
-    channelRef = le_dcs_GetChannelRefFromTechRef(cellConnRef);
+    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_CELLULAR, cellConnRef);
     le_clk_Time_t retryInterval = {cellConnDb->backoff, 0};
     le_dcsCellular_GetNameFromIndex(cellConnDb->index, cellConnName);
 
@@ -1228,12 +1254,12 @@ COMPONENT_INIT
 {
     // Allocate the connection DB app event pool, and set the max number of objects
     CellularConnDbPool = le_mem_CreatePool("CellularConnDbPool", sizeof(cellular_connDb_t));
-    le_mem_ExpandPool(CellularConnDbPool, LE_DCS_CELLCONNDBS_MAX);
+    le_mem_ExpandPool(CellularConnDbPool, CELL_CONNDBS_MAX);
     le_mem_SetDestructor(CellularConnDbPool, DcsCellularConnDbDestructor);
 
     // Create a safe reference map for cellular connection objects
     CellularConnectionRefMap = le_ref_CreateMap("Cellular Connection Reference Map",
-                                                LE_DCS_CELLCONNDBS_MAX);
+                                                CELL_CONNDBS_MAX);
 
     (void)le_mrc_GetPacketSwitchedState(&CellPacketSwitchState);
     CellPacketSwitchStateHdlrRef =
@@ -1243,5 +1269,5 @@ COMPONENT_INIT
         LE_WARN("Failed to add cellular packet switch state handler");
     }
 
-    LE_INFO("Data Channel Service's Cellular Handlers component is ready");
+    LE_INFO("Data Channel Service's Cellular component is ready");
 }

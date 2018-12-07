@@ -38,8 +38,7 @@ typedef struct
  * The following are LE_SHARED functions
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t le_dcsCellular_GetChannelList(le_dcs_ChannelInfo_t *channelList,
-                                                    int16_t *listSize);
+LE_SHARED le_result_t le_dcsCellular_GetChannelList(void);
 LE_SHARED le_result_t le_dcsCellular_GetNetInterface(void *techRef, char *intfName, int nameSize);
 LE_SHARED le_result_t le_dcsCellular_Start(void *techRef);
 LE_SHARED le_result_t le_dcsCellular_Stop(void *techRef);
@@ -54,5 +53,6 @@ LE_SHARED le_result_t le_dcsCellular_GetDefaultGWAddress(void *techRef, bool *is
 LE_SHARED le_result_t le_dcsCellular_GetDNSAddrs(void *techRef, bool *isIpv6, char *dns1Addr,
                                                  size_t *addr1Size, char *dns2Addr, size_t *addr2Size);
 LE_SHARED uint32_t le_dcsCellular_GetProfileIndex(int32_t mdcIndex);
+LE_SHARED le_result_t le_dcsCellular_AllowChannelStart(void *techRef);
 
 #endif

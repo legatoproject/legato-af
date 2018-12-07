@@ -10,12 +10,15 @@
 #ifndef LEGATO_DCS_H_INCLUDE_GUARD
 #define LEGATO_DCS_H_INCLUDE_GUARD
 
+#define DCS_CONFIG_TREE_ROOT_DIR    "dataConnectionService:"
+
 #define LE_DCS_TECHNOLOGY_MAX_COUNT 3  // max # of technologies supported
 #define LE_DCS_TECH_MAX_NAME_LEN 16    // max length of the name of a technology
-#define LE_DCS_CHANNELDBS_MAX 24       // max # of channels supported
+#define LE_DCS_CHANNELDBS_MAX LE_DCS_CHANNEL_LIST_ENTRY_MAX // max # of channels supported
 #define LE_DCS_CHANNELDB_EVTHDLRS_MAX 20 // max # of channel monitoring event handlers
 #define LE_DCS_APPNAME_MAX_LEN 16      // max length of an app's name
-
+#define LE_DCS_CHANNEL_QUERY_HDLRS_MAX 20 // max # of channel query requester handlers
+#define LE_DCF_START_REQ_REF_MAP_SIZE  20 // reference map size for Start Requests
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -73,6 +76,7 @@ typedef struct
     void *techRef;                                 ///< technology specific db's reference
     uint16_t refCount;                             ///< refcount: # of apps using this channel
     le_dls_List_t evtHdlrs;                        ///< evtHdlrs list storing event ID, handler, etc
+    le_dls_List_t startRequestRefList;             ///< list of Start Request references
     bool managed_by_le_data;                       ///< this channel is to be managed by le_data
     bool shared_with_le_data;                      ///< this channel is shared with le_data
 } le_dcs_channelDb_t;
@@ -93,42 +97,84 @@ typedef struct
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * The following is DCS's data structure for posting the results of a technology's channel list
+ * queried by an app to be used with le_event_report()
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_result_t result;                          ///< result to be posted to corresponding handler
+    le_dcs_ChannelInfo_t *channelList;           ///< list of channels returned
+    size_t listSize;                             ///< # of entries returned on the list of channels
+} le_dcs_channelQueryReport_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The following is a data structure to record the object reference of each Start Request on a
+ * given channel.  It is an element to be added onto a double link list on its channelDb.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_dcs_ReqObjRef_t ref;
+    le_dls_Link_t refLink;
+} le_dcs_startRequestRefDb_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The following are externs for various files
  */
 //--------------------------------------------------------------------------------------------------
 
-//extern from dcs.c
-extern DcsInfo_t DcsInfo;
-extern le_result_t le_dcs_InitChannelList(le_dcs_ChannelInfo_t *channelList, size_t *listSize);
+// from dcs.c
+void le_dcs_InitChannelList(void);
+uint16_t le_dcs_GetChannelCount(le_dcs_Technology_t tech);
+uint16_t le_dcs_IncrementChannelCount(le_dcs_Technology_t tech);
+le_result_t le_dcs_DecrementChannelCount(le_dcs_Technology_t tech, uint16_t *newCount);
 
-// extern from dcs_utils.c
+// from dcs_utils.c
 LE_SHARED const char *le_dcs_ConvertTechEnumToName(le_dcs_Technology_t tech);
-extern le_result_t dcsGetTechnology(le_dcs_ChannelRef_t channelRef,
-                                    le_dcs_Technology_t *technology);
-extern le_result_t dcsGetAdminState(le_dcs_ChannelRef_t channelRef, le_dcs_State_t *state);
+LE_SHARED bool le_dcs_ChannelManagedbyLeData(le_dcs_ChannelRef_t channelRef);
+le_result_t dcsGetTechnology(le_dcs_ChannelRef_t channelRef, le_dcs_Technology_t *technology);
+le_result_t dcsGetAdminState(le_dcs_ChannelRef_t channelRef, le_dcs_State_t *state);
 
-// extern from dcs_db.c
-extern void dcsCreateDbPool(void);
+// from dcs_db.c
+void dcsCreateDbPool(void);
 LE_SHARED le_dcs_ChannelRef_t le_dcs_CreateChannelDb(le_dcs_Technology_t tech,
                                                      const char *channelName);
+LE_SHARED bool le_dcs_DeleteChannelDb(le_dcs_Technology_t tech, void *techRef);
 LE_SHARED void le_dcs_ChannelEventNotifier(le_dcs_ChannelRef_t channelRef, le_dcs_Event_t evt);
-LE_SHARED le_dcs_ChannelRef_t le_dcs_GetChannelRefFromTechRef(void *techRef);
-LE_SHARED le_result_t le_dcs_GetChannelRefCountFromTechRef(void *techRef, uint16_t *refCount);
-LE_SHARED le_dcs_channelDbEventHdlr_t *le_dcs_GetChannelAppEvtHdlr(
-    le_dcs_channelDb_t *channelDb, le_msg_SessionRef_t appSessionRef);
+LE_SHARED le_dcs_ChannelRef_t le_dcs_GetChannelRefFromTechRef(le_dcs_Technology_t tech,
+                                                              void *techRef);
+LE_SHARED le_result_t le_dcs_GetChannelRefCountFromTechRef(le_dcs_Technology_t tech, void *techRef,
+                                                           uint16_t *refCount);
 LE_SHARED void le_dcs_EventNotifierTechStateTransition(le_dcs_Technology_t tech, bool tech_state);
 LE_SHARED void le_dcs_MarkChannelSharingStatus(const char *channelName, le_dcs_Technology_t tech,
                                                bool starting);
 LE_SHARED bool le_dcs_ChannelIsInUse(const char *channelName, le_dcs_Technology_t tech);
 LE_SHARED le_dcs_channelDb_t *le_dcs_GetChannelDbFromRef(le_dcs_ChannelRef_t channelRef);
-extern le_dcs_channelDb_t *DcsDelChannelEvtHdlr(le_dcs_EventHandlerRef_t hdlrRef);
-extern le_dcs_channelDbEventHdlr_t *dcsChannelDbEvtHdlrInit(void);
-extern le_dcs_channelDb_t *dcsGetChannelDbFromName(const char *channelName,
-                                                   le_dcs_Technology_t tech);
-extern void dcsChannelEvtHdlrSendNotice(le_dcs_channelDb_t *channelDb,
-                                        le_msg_SessionRef_t appSessionRef, le_dcs_Event_t evt);
+LE_SHARED le_dcs_channelDb_t *le_dcs_GetChannelDbFromName(const char *channelName,
+                                                          le_dcs_Technology_t tech);
+le_dcs_channelDb_t *DcsDelChannelEvtHdlr(le_dcs_EventHandlerRef_t hdlrRef);
+le_dcs_channelDbEventHdlr_t *dcsChannelDbEvtHdlrInit(void);
+void dcsChannelEvtHdlrSendNotice(le_dcs_channelDb_t *channelDb, le_msg_SessionRef_t appSessionRef,
+                                 le_dcs_Event_t evt);
+le_dcs_channelDbEventHdlr_t *le_dcs_GetChannelAppEvtHdlr(le_dcs_channelDb_t *channelDb,
+                                                         le_msg_SessionRef_t appSessionRef);
+bool le_dcs_ChannelQueryIsRunning(void);
+void le_dcs_ChannelQueryNotifier(le_result_t result, le_dcs_ChannelInfo_t *channelList,
+                                 size_t listSize);
+void le_dcs_AddChannelQueryHandlerDb(le_dcs_GetChannelsHandlerFunc_t channelQueryHandlerFunc,
+                                     void *context);
+bool le_dcs_AddStartRequestRef(le_dcs_ReqObjRef_t reqRef, le_dcs_channelDb_t *channelDb);
+bool le_dcs_DeleteStartRequestRef(le_dcs_startRequestRefDb_t *refDb,
+                                  le_dcs_channelDb_t *channelDb);
+le_dcs_channelDb_t *le_dcs_GetChannelDbFromStartRequestRef(le_dcs_ReqObjRef_t reqRef,
+                                                           le_dcs_startRequestRefDb_t **reqRefDb);
 
-// extern from dcsTech.c
+// from dcsTech.c
 LE_SHARED le_result_t le_dcsTech_Start(const char *channelName, le_dcs_Technology_t tech);
 LE_SHARED le_result_t le_dcsTech_Stop(const char *channelName, le_dcs_Technology_t tech);
 LE_SHARED le_result_t le_dcsTech_GetDefaultGWAddress(le_dcs_Technology_t tech, void *techRef,
@@ -139,12 +185,17 @@ LE_SHARED le_result_t le_dcsTech_GetDNSAddresses(le_dcs_Technology_t tech, void 
 LE_SHARED le_result_t le_dcsTech_GetNetInterface(le_dcs_Technology_t tech,
                                                  le_dcs_ChannelRef_t channelRef, char *intfName,
                                                  int nameSize);
-extern le_result_t le_dcsTech_GetChannelList(le_dcs_Technology_t tech,
-                                             le_dcs_ChannelInfo_t *channelList, size_t *listSize);
-extern void *le_dcsTech_CreateTechRef(le_dcs_Technology_t tech, const char *channelName);
-extern void le_dcsTech_ReleaseTechRef(le_dcs_Technology_t tech, void *techRef);
-extern int16_t le_dcsTech_GetListIndx(le_dcs_Technology_t technology);
-extern bool le_dcsTech_GetOpState(le_dcs_channelDb_t *channelDb);
-extern void le_dcsTech_RetryChannel(le_dcs_channelDb_t *channelDb);
+LE_SHARED void le_dcsTech_CollectChannelQueryResults(le_dcs_Technology_t technology,
+                                                     le_result_t result,
+                                                     le_dcs_ChannelInfo_t *channelList,
+                                                     size_t listSize);
+LE_SHARED le_result_t le_dcsTech_AllowChannelStart(le_dcs_Technology_t tech,
+                                                   const char *channelName);
+le_result_t le_dcsTech_GetChannelList(le_dcs_Technology_t tech);
+void *le_dcsTech_CreateTechRef(le_dcs_Technology_t tech, const char *channelName);
+void le_dcsTech_ReleaseTechRef(le_dcs_Technology_t tech, void *techRef);
+bool le_dcsTech_GetOpState(le_dcs_channelDb_t *channelDb);
+void le_dcsTech_RetryChannel(le_dcs_channelDb_t *channelDb);
+bool le_dcsTech_ChannelQueryIsPending(le_dcs_Technology_t tech);
 
 #endif

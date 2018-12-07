@@ -16,4 +16,5 @@ bindings:
     dcsCrossClient.dcsCrossClient.le_dcs -> dataConnectionService.le_dcs
     dcsCrossClient.dcsCrossClient.le_net -> dataConnectionService.le_net
     dcsCrossClient.dcsCrossClient.le_data -> dataConnectionService.le_data
+    dcsCrossClient.dcsCrossClient.le_wifiClient -> <root>.le_wifiClient
 }
