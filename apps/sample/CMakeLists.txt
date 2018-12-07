@@ -62,8 +62,9 @@ add_subdirectory(assetData)
 add_subdirectory(avcControl)
 
 # Simple GPIO Cf3 application using GPIO Service
-if((LEGATO_TARGET STREQUAL "wp85") OR (LEGATO_TARGET STREQUAL "wp750x"))
+if((LEGATO_TARGET STREQUAL "wp76xx") OR (LEGATO_TARGET STREQUAL "wp85") OR (LEGATO_TARGET STREQUAL "wp750x"))
     add_subdirectory(gpioCf3Demo)
+    add_subdirectory(gpioCf3SSDemo)
 endif()
 
 # Application showing ultra low power mode entry/exit

@@ -11,6 +11,7 @@ to follow to create your own Apps.
 | @subpage sampleApps_commandLine              | App demonstrates an example of a sandboxing an App               |
 | @subpage sampleApps_eCall                    | App demonstrates testing an eCall session                        |
 | @subpage sampleApps_gpioCf3                  | App demonstrates using the GPIO service                          |
+| @subpage sampleApps_gpioCf3SS                | App demonstrates using gpio to wakeup from selective suspend     |
 | @subpage sampleApps_helloIpc                 | App demonstrates host and target communications                  |
 | @subpage sampleApps_helloWorld               | App demonstrates starting Legato AF concepts                     |
 | @subpage sampleApps_httpGet                  | App demonstrates opening an data connection                      |

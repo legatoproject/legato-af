@@ -1,0 +1,18 @@
+executables:
+{
+    gpioCf3SSDemo = ( gpioCf3SSPinComponent )
+}
+
+bindings:
+{
+    gpioCf3SSDemo.gpioCf3SSPinComponent.le_gpioPin42 -> gpioService.le_gpioPin42
+    gpioCf3SSDemo.gpioCf3SSPinComponent.le_pm -> powerMgr.le_pm
+}
+
+processes:
+{
+    run:
+    {
+        ( gpioCf3SSDemo )
+    }
+}

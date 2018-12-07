@@ -1,0 +1,19 @@
+
+requires:
+{
+    api:
+    {
+        le_gpioPin42 = le_gpio.api
+        le_pm.api
+    }
+}
+
+cflags:
+{
+    "-std=c99"
+}
+
+sources:
+{
+    gpioCf3SSPin.c
+}

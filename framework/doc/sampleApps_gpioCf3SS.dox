@@ -1,0 +1,50 @@
+/** @page sampleApps_gpioCf3SS GPIO for CF3 Selective Suspend
+
+This prototype sample demonstrates a CF3 GPIO Selective Suspend app using the @ref c_gpio Service.
+This app shows how the GPIO can be used to wake the device from the selective suspend state.
+It uses @c adef executables, bindings, and processes sections, and @c cdef requires, cflag, and
+sources sections.
+
+
+Go to the
+<a href="https://github.com/legatoproject/legato-af/tree/master/apps/sample/gpioCf3SSDemo">sample app code</a>.
+
+@section pinMapping CF3 Pin Mapping
+
+This table lists where pins exposed by the GPIO service are connected for mangOH Green for WP76xx.
+
+For mangOH Red, please go to
+<a href="https://mangoh.io/mangoh-red-resources-hardware">mangOH Red Schematics</a>.
+
+| Service      | CF3 Pin | IOT on mangOH          |
+|--------------|---------|------------------------|
+| le_gpioPin7  | 7       | IoT1 - GPIO 2 (pin 25) |
+| le_gpioPin8  | 8       | IoT0 - GPIO 4 (pin 27) |
+| le_gpioPin13 | 13      | IoT0 - GPIO 3 (pin 26) |
+| le_gpioPin21 | 21      | IoT1 - GPIO 4 (pin 27) |
+| le_gpioPin22 | 22      | IoT2 - GPIO 1 (pin 24) |
+| le_gpioPin23 | 23      | IoT2 - GPIO 2 (pin 25) |
+| le_gpioPin24 | 24      | IoT2 - GPIO 3 (pin 26) |
+| le_gpioPin25 | 25      | IoT1 - GPIO 1 (pin 24) |
+| le_gpioPin32 | 32      | IoT1 - GPIO 3 (pin 26) |
+| le_gpioPin33 | 33      | IoT0 - GPIO 2 (pin 25) |
+| le_gpioPin42 | 42      | IoT0 - GPIO 1 (pin 24) |
+
+@note IoT2 GPIO4 is not available for use.
+
+Run this to install the sample app:
+
+@verbatim
+$ cd apps/sample/gpioCf3SSDemo
+$ make wp76xx
+$ update gpioCf3SSDemo.wp76xx.update <ip address>
+@endverbatim
+
+@ref sampleApps_startApp
+
+See <br>
+@ref basicAppsCreate
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
