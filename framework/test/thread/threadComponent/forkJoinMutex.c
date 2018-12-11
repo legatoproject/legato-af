@@ -196,7 +196,7 @@ static void SpawnChildren
     }
     else if (depth == 3)
     {
-        LE_TEST_ASSERT(sscanf(threadName, "%*[^-]-%d-%d", &k, &j) == 1, "depth 3: parse thread name");
+        LE_TEST_ASSERT(sscanf(threadName, "%*[^-]-%d-%d", &k, &j) == 2, "depth 3: parse thread name");
         // switch to zero based
         k--;
         j--;
