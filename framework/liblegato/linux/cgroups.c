@@ -718,6 +718,7 @@ ssize_t cgrp_SendSig
 
     // Iterate over the pids in the procs file.
     size_t numPids = 0;
+    pid_t prevPid = -1;
 
     while (1)
     {
@@ -728,19 +729,25 @@ ssize_t cgrp_SendSig
             char pState[2];
             LE_FATAL_IF(GetProcessState(pid, pState) != LE_OK, "Unable to get proc %d state", pid);
 
-            // If the process is in an uninterruptible sleep, fail immediately.
-            // Since supervisor manages killing all the application processes, this failure will force
-            // supervisor to reboot.
-            if (strcmp(pState, "D") == 0)
+            // If we are attempting to kill the same process, the process might be in a uninterruptible
+            // state and we need to take further action.
+            if (pid == prevPid)
             {
-                LE_FATAL("Process %d is in '%s' state (uninterruptible sleep). Restarting device.",
-                         pid, pState);
+                // If the process is in an uninterruptible sleep, fail immediately.
+                // Since supervisor manages killing all the application processes, this failure will force
+                // supervisor to reboot.
+                if (strcmp(pState, "D") == 0)
+                {
+                    LE_FATAL("Process %d is in '%s' state (uninterruptible sleep). Restarting device.",
+                             pid, pState);
+                }
             }
 
-            LE_INFO("Killing app ('%s') process %d ('%s' process state)", cgroupNamePtr, pid, pState);
+            LE_DEBUG("Killing app ('%s') process %d ('%s' process state)", cgroupNamePtr, pid, pState);
 
             numPids++;
             kill_SendSig(pid, sig);
+            prevPid = pid;
         }
         else if (pid == LE_OUT_OF_RANGE)
         {
