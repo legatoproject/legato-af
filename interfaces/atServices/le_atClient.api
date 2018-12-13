@@ -27,10 +27,15 @@
  *
  * @section atClient_binding Device Binding
  *
- * le_atClient_Start() must be called to bind a specific device with the ATClient.
+ * le_atClient_Start() must be called to bind a specific device with the ATClient, the user app must
+ * also pass in an open file descriptor to le_atClient_Start() The file descriptor will
+ * automatically close when le_atClient_Stop() is called.
+ *
  * Multiple devices can be bound. The app has to configured the device before using it with
  * the ATClient.
- * A device can be unbound using le_atClient_Stop().
+ *
+ * A device can be unbound using le_atClient_Stop(), which will also automatically close the file
+ * descriptor.
  *
  * @section atClient_statement Statement
  *
