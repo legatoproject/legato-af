@@ -905,6 +905,10 @@ le_result_t system_Snapshot
 
     file_Rename(system_UnpackPath, newSystemPath);
 
+    // Ensure that snapshotted system retains the framework label. Otherwise a rollback will
+    // not work since it does not have permission to access it.
+    smack_SetLabel(newSystemPath, "framework");
+
     // Increment the index of the current system.
     SetIndex("current", currentIndex + 1);
 
