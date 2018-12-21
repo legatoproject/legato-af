@@ -116,27 +116,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Is character '&' ?
- */
-//--------------------------------------------------------------------------------------------------
-#define IS_AND(X)               (X == '&')
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Is character '\' ?
- */
-//--------------------------------------------------------------------------------------------------
-#define IS_SLASH(X)            (X == '\\')
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Is basic syntax command ?
- */
-//--------------------------------------------------------------------------------------------------
-#define IS_BASIC(X)           (IS_CHAR(X) || IS_AND(X) || IS_SLASH(X))
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Is character expected as a parameter ?
  */
 //--------------------------------------------------------------------------------------------------
@@ -565,6 +544,7 @@ typedef enum
     PARSE_CMDNAME,
     PARSE_EQUAL,
     PARSE_QUESTIONMARK,
+    PARSE_READ_PARAM,
     PARSE_COMMA,
     PARSE_SEMICOLON,
     PARSE_BASIC,
@@ -626,6 +606,7 @@ typedef struct
     void*                   modemCmdDescRefPtr;                     ///< modem desc reference
     le_msg_SessionRef_t     sessionRef;                             ///< session reference
     bool                    isDialCommand;                          ///< specific dial command
+    bool                    isBasicCommand;                         ///< is a basic format command
     le_atServer_CommandHandlerFunc_t handlerFunc;                   ///< Handler associated with the
                                                                     ///< AT command
     void*                   handlerContextPtr;                      ///< client handler context
@@ -733,7 +714,7 @@ static le_result_t ParseContinue(CmdParser_t* cmdParserPtr);
 static le_result_t ParseParam(CmdParser_t* cmdParserPtr);
 static le_result_t ParseEqual(CmdParser_t* cmdParserPtr);
 static le_result_t ParseTypeRead(CmdParser_t* cmdParserPtr);
-static le_result_t ParseParam(CmdParser_t* cmdParserPtr);
+static le_result_t ParseReadParam(CmdParser_t* cmdParserPtr);
 static le_result_t ParseSemicolon(CmdParser_t* cmdParserPtr);
 static le_result_t ParseLastChar(CmdParser_t* cmdParserPtr);
 static le_result_t ParseBasic(CmdParser_t* cmdParserPtr);
@@ -747,6 +728,7 @@ CmdParserFunc_t CmdParserTab[PARSE_MAX][PARSE_MAX] =
 /*PARSE_CMDNAME*/        {   ParseContinue,                   /*PARSE_CMDNAME*/
                              ParseEqual,                      /*PARSE_EQUAL*/
                              ParseTypeRead,                   /*PARSE_QUESTIONMARK*/
+                             ParseError,                      /*PARSE_READ_PARAM*/
                              ParseError,                      /*PARSE_COMMA*/
                              ParseSemicolon,                  /*PARSE_SEMICOLON*/
                              ParseBasic,                      /*PARSE_BASIC*/
@@ -757,6 +739,7 @@ CmdParserFunc_t CmdParserTab[PARSE_MAX][PARSE_MAX] =
 /*PARSE_EQUAL*/          {   ParseError,                      /*PARSE_CMDNAME*/
                              ParseError,                      /*PARSE_EQUAL*/
                              ParseTypeTest,                   /*PARSE_QUESTIONMARK*/
+                             ParseError,                      /*PARSE_READ_PARAM*/
                              ParseParam,                      /*PARSE_COMMA*/
                              ParseError,                      /*PARSE_SEMICOLON*/
                              ParseError,                      /*PARSE_BASIC*/
@@ -764,19 +747,32 @@ CmdParserFunc_t CmdParserTab[PARSE_MAX][PARSE_MAX] =
                              ParseError,                      /*PARSE_BASIC_END*/
                              ParseNone                        /*PARSE_LAST*/
                          },
-/*PARSE_QUESTIONMARK*/   {   ParseBasicEnd,                   /*PARSE_CMDNAME*/
+/*PARSE_QUESTIONMARK*/   {   ParseError,                      /*PARSE_CMDNAME*/
                              ParseError,                      /*PARSE_EQUAL*/
                              ParseError,                      /*PARSE_QUESTIONMARK*/
+                             ParseReadParam,                  /*PARSE_READ_PARAM*/
                              ParseError,                      /*PARSE_COMMA*/
                              ParseSemicolon,                  /*PARSE_SEMICOLON*/
                              ParseError,                      /*PARSE_BASIC*/
                              ParseError,                      /*PARSE_BASIC_PARAM*/
                              ParseError,                      /*PARSE_BASIC_END*/
-                             ParseNone                        /*PARSE_LAST*/
+                             ParseError                       /*PARSE_LAST*/
+                         },
+/*PARSE_READ_PARAM*/     {   ParseError,                      /*PARSE_CMDNAME*/
+                             ParseError,                      /*PARSE_EQUAL*/
+                             ParseError,                      /*PARSE_QUESTIONMARK*/
+                             ParseError,                      /*PARSE_READ_PARAM*/
+                             ParseError,                      /*PARSE_COMMA*/
+                             ParseSemicolon,                  /*PARSE_SEMICOLON*/
+                             ParseError,                      /*PARSE_BASIC*/
+                             ParseError,                      /*PARSE_BASIC_PARAM*/
+                             ParseError,                      /*PARSE_BASIC_END*/
+                             ParseError                       /*PARSE_LAST*/
                          },
 /*PARSE_COMMA*/          {   ParseError,                      /*PARSE_CMDNAME*/
                              ParseError,                      /*PARSE_EQUAL*/
                              ParseError,                      /*PARSE_QUESTIONMARK*/
+                             ParseError,                      /*PARSE_READ_PARAM*/
                              ParseParam,                      /*PARSE_COMMA*/
                              ParseSemicolon,                  /*PARSE_SEMICOLON*/
                              ParseError,                      /*PARSE_BASIC*/
@@ -787,6 +783,7 @@ CmdParserFunc_t CmdParserTab[PARSE_MAX][PARSE_MAX] =
 /*PARSE_SEMICOLON*/      {   ParseContinue,                   /*PARSE_CMDNAME*/
                              ParseSemicolon,                  /*PARSE_EQUAL*/
                              ParseError,                      /*PARSE_QUESTIONMARK*/
+                             ParseError,                      /*PARSE_READ_PARAM*/
                              ParseError,                      /*PARSE_COMMA*/
                              ParseError,                      /*PARSE_SEMICOLON*/
                              ParseError,                      /*PARSE_BASIC*/
@@ -797,6 +794,7 @@ CmdParserFunc_t CmdParserTab[PARSE_MAX][PARSE_MAX] =
 /* PARSE_BASIC */        {   ParseContinue,                   /*PARSE_CMDNAME*/
                              ParseError,                      /*PARSE_EQUAL*/
                              ParseTypeRead,                   /*PARSE_QUESTIONMARK*/
+                             ParseError,                      /*PARSE_READ_PARAM*/
                              ParseError,                      /*PARSE_COMMA*/
                              ParseSemicolon,                  /*PARSE_SEMICOLON*/
                              ParseError,                      /*PARSE_BASIC*/
@@ -807,6 +805,7 @@ CmdParserFunc_t CmdParserTab[PARSE_MAX][PARSE_MAX] =
 /* PARSE_BASIC_PARAM */  {   ParseError,                      /*PARSE_CMDNAME*/
                              ParseError,                      /*PARSE_EQUAL*/
                              ParseTypeRead,                   /*PARSE_QUESTIONMARK*/
+                             ParseError,                      /*PARSE_READ_PARAM*/
                              ParseError,                      /*PARSE_COMMA*/
                              ParseSemicolon,                  /*PARSE_SEMICOLON*/
                              ParseError,                      /*PARSE_BASIC*/
@@ -817,6 +816,7 @@ CmdParserFunc_t CmdParserTab[PARSE_MAX][PARSE_MAX] =
 /* PARSE_BASIC_END */    {   ParseError,                      /*PARSE_CMDNAME*/
                              ParseError,                      /*PARSE_EQUAL*/
                              ParseError,                      /*PARSE_QUESTIONMARK*/
+                             ParseError,                      /*PARSE_READ_PARAM*/
                              ParseError,                      /*PARSE_COMMA*/
                              ParseError,                      /*PARSE_SEMICOLON*/
                              ParseError,                      /*PARSE_BASIC*/
@@ -827,6 +827,7 @@ CmdParserFunc_t CmdParserTab[PARSE_MAX][PARSE_MAX] =
 /* PARSE_LAST  */        {   ParseContinue,                   /*PARSE_CMDNAME*/
                              ParseError,                      /*PARSE_EQUAL*/
                              ParseError,                      /*PARSE_QUESTIONMARK*/
+                             ParseError,                      /*PARSE_READ_PARAM*/
                              ParseError,                      /*PARSE_COMMA*/
                              ParseError,                      /*PARSE_SEMICOLON*/
                              ParseError,                      /*PARSE_BASIC*/
@@ -1338,6 +1339,16 @@ static le_result_t ParseTypeRead
     if (res == LE_OK)
     {
         cmdParserPtr->currentCmdPtr->type = LE_ATSERVER_TYPE_READ;
+
+        cmdParserPtr->currentCharPtr++;
+        if ((cmdParserPtr->currentCmdPtr->isBasicCommand) &&
+            (cmdParserPtr->currentCharPtr <=  cmdParserPtr->lastCharPtr) &&
+            (*cmdParserPtr->currentCharPtr != AT_TOKEN_SEMICOLON))
+        {
+            ParseBasicEnd(cmdParserPtr);
+            return res;
+        }
+        cmdParserPtr->currentCharPtr--;
     }
 
     return res;
@@ -1420,14 +1431,28 @@ static le_result_t ParseBasicCmdParam
             // If "bridge command", keep the quote
             if ((cmdParserPtr->currentCmdPtr)->bridgeCmd)
             {
-                paramPtr->param[index++] = *cmdParserPtr->currentCharPtr;
+                if (index < sizeof(paramPtr->param) -1)
+                {
+                    paramPtr->param[index++] = *cmdParserPtr->currentCharPtr;
+                }
+                else
+                {
+                    return LE_OVERFLOW;
+                }
             }
         }
         else
         {
             if ((tokenQuote) || ( IS_NUMBER(*cmdParserPtr->currentCharPtr) ))
             {
-                paramPtr->param[index++] = *cmdParserPtr->currentCharPtr;
+                if (index < sizeof(paramPtr->param) -1)
+                {
+                    paramPtr->param[index++] = *cmdParserPtr->currentCharPtr;
+                }
+                else
+                {
+                    return LE_OVERFLOW;
+                }
             }
             else if (*cmdParserPtr->currentCharPtr == AT_TOKEN_EQUAL)
             {
@@ -1493,24 +1518,52 @@ static le_result_t ParseBasicDCmdParam
                     tokenQuote = true;
                 }
 
-                paramPtr->param[index++] = *cmdParserPtr->currentCharPtr;
+                if (index < sizeof(paramPtr->param) -1)
+                {
+                    paramPtr->param[index++] = *cmdParserPtr->currentCharPtr;
+                }
+                else
+                {
+                    return LE_OVERFLOW;
+                }
             }
             else
             {
                 if (tokenQuote)
                 {
-                    paramPtr->param[index++] = *cmdParserPtr->currentCharPtr;
+                    if (index < sizeof(paramPtr->param) -1)
+                    {
+                        paramPtr->param[index++] = *cmdParserPtr->currentCharPtr;
+                    }
+                    else
+                    {
+                        return LE_OVERFLOW;
+                    }
                 }
                 else
                 {
                     if ( (*cmdParserPtr->currentCharPtr == 'i') ||
                          ( *cmdParserPtr->currentCharPtr == 'g') )
                     {
-                        paramPtr->param[index++] = *cmdParserPtr->currentCharPtr;
+                        if (index < sizeof(paramPtr->param) -1)
+                        {
+                            paramPtr->param[index++] = *cmdParserPtr->currentCharPtr;
+                        }
+                        else
+                        {
+                            return LE_OVERFLOW;
+                        }
                     }
                     else
                     {
-                        paramPtr->param[index++] = toupper(*cmdParserPtr->currentCharPtr);
+                        if (index < sizeof(paramPtr->param) -1)
+                        {
+                            paramPtr->param[index++] = toupper(*cmdParserPtr->currentCharPtr);
+                        }
+                        else
+                        {
+                            return LE_OVERFLOW;
+                        }
                     }
                 }
             }
@@ -1531,7 +1584,14 @@ static le_result_t ParseBasicDCmdParam
                 {
                     if (*testCharPtr == *charTabPtr[i])
                     {
-                        paramPtr->param[index++] = *testCharPtr;
+                        if (index < sizeof(paramPtr->param) -1)
+                        {
+                            paramPtr->param[index++] = *testCharPtr;
+                        }
+                        else
+                        {
+                            return LE_OVERFLOW;
+                        }
                         charFound = true;
                         break;
                     }
@@ -1643,6 +1703,7 @@ static void BasicCmdFound
     cmdParserPtr->currentCmdPtr->deviceRef = devPtr->ref;
     cmdParserPtr->currentCmdPtr->type = LE_ATSERVER_TYPE_ACT;
     cmdParserPtr->currentCmdPtr->processing = true;
+    cmdParserPtr->currentCmdPtr->isBasicCommand = true;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1742,7 +1803,7 @@ static le_result_t ParseEqual
 
 //--------------------------------------------------------------------------------------------------
 /**
- * AT parser transition (treat a parameter for extended format commands)
+ * AT parser transition (treat a parameter for extended format parameter commands)
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -1787,7 +1848,14 @@ static le_result_t ParseParam
             // If "bridge command", keep the quote
             if ((cmdParserPtr->currentCmdPtr)->bridgeCmd)
             {
-                paramPtr->param[index++] = *cmdParserPtr->currentCharPtr;
+                if (index < sizeof(paramPtr->param) -1)
+                {
+                    paramPtr->param[index++] = *cmdParserPtr->currentCharPtr;
+                }
+                else
+                {
+                    return LE_OVERFLOW;
+                }
             }
         }
         else
@@ -1800,7 +1868,14 @@ static le_result_t ParseParam
 
             if ((tokenQuote) || ( IS_PARAM_CHAR(*cmdParserPtr->currentCharPtr) ))
             {
-                paramPtr->param[index++] = *cmdParserPtr->currentCharPtr;
+                if (index < sizeof(paramPtr->param) -1)
+                {
+                    paramPtr->param[index++] = *cmdParserPtr->currentCharPtr;
+                }
+                else
+                {
+                    return LE_OVERFLOW;
+                }
             }
             else
             {
@@ -1828,6 +1903,53 @@ static le_result_t ParseParam
     le_dls_Queue(&(cmdParserPtr->currentCmdPtr->paramList),&(paramPtr->link));
 
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * AT parser transition (treat a parameter for extended format read command)
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t ParseReadParam
+(
+    CmdParser_t* cmdParserPtr
+)
+{
+    if (cmdParserPtr->currentCmdPtr != NULL)
+    {
+        // For AT extended format read command like "AT+<command>?[<value>]", we put <value>
+        // into the parameter 0 if exists.
+        uint32_t index = 0;
+        bool loop = true;
+        ParamString_t* paramPtr = le_mem_ForceAlloc(ParamStringPool);
+        memset(paramPtr, 0, sizeof(ParamString_t));
+
+        // Go through paramater buffers until ";" or last char.
+        while (loop)
+        {
+            if (index < sizeof(paramPtr->param) -1)
+            {
+                paramPtr->param[index++] = *cmdParserPtr->currentCharPtr;
+            }
+            else
+            {
+                return LE_OVERFLOW;
+            }
+
+            cmdParserPtr->currentCharPtr++;
+
+            if (( cmdParserPtr->currentCharPtr > cmdParserPtr->lastCharPtr ) ||
+            ( *cmdParserPtr->currentCharPtr == AT_TOKEN_SEMICOLON ))
+            {
+                loop = false;
+                cmdParserPtr->currentCharPtr--;
+            }
+        }
+        le_dls_Queue(&(cmdParserPtr->currentCmdPtr->paramList),&(paramPtr->link));
+        return LE_OK;
+    }
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1983,7 +2105,14 @@ static void ParseAtCmd
                     // 3rd char of the command is into [A-Z] => basic command
                     cmdParserPtr->cmdParser = PARSE_BASIC;
                 }
-
+                else if ((cmdParserPtr->currentCmdPtr) &&
+                    (cmdParserPtr->currentCmdPtr->type == LE_ATSERVER_TYPE_READ))
+                {
+                    // For AT extended read command, we need check its parameter.
+                    // Here we didn't follow state PARSE_COMMA because the parameter
+                    // format is incompatible.
+                    cmdParserPtr->cmdParser = PARSE_READ_PARAM;
+                }
                 else if ((cmdParserPtr->currentCmdPtr) &&
                     (cmdParserPtr->currentCmdPtr->type == LE_ATSERVER_TYPE_PARA))
                 {
@@ -2156,22 +2285,35 @@ static void ParseBuffer
                                      LE_ATDEFS_COMMAND_MAX_LEN,
                                      NULL);
 
-                        ssize_t offset = strnlen(devPtr->cmdParser.foundCmd, sizeof(devPtr->cmdParser.foundCmd)) - 1;
-                        LE_ASSERT((offset >= 0) && (offset < sizeof(devPtr->cmdParser.foundCmd)));
-                        devPtr->cmdParser.lastCharPtr = devPtr->cmdParser.foundCmd + offset;
+                        ssize_t offset = strnlen(devPtr->cmdParser.foundCmd,
+                                                 sizeof(devPtr->cmdParser.foundCmd)) - 1;
+                        if((offset >= 0) && (offset < sizeof(devPtr->cmdParser.foundCmd)))
+                        {
+                            devPtr->cmdParser.lastCharPtr = devPtr->cmdParser.foundCmd + offset;
 
-                        devPtr->cmdParser.currentCharPtr = devPtr->cmdParser.foundCmd;
-                        devPtr->cmdParser.currentAtCmdPtr = devPtr->cmdParser.foundCmd;
+                            devPtr->cmdParser.currentCharPtr = devPtr->cmdParser.foundCmd;
+                            devPtr->cmdParser.currentAtCmdPtr = devPtr->cmdParser.foundCmd;
 
-                        ParseAtCmd(devPtr);
+                            ParseAtCmd(devPtr);
+                        }
+                        // It's possible that non-ASCII char is detected because of line error
+                        // which casues string length to zero. In this case we assume it's an
+                        // illegal command.
+                        else
+                        {
+                            LE_WARN("Illegal command detected!");
+                            SendRspString(devPtr, "ERROR");
+                            devPtr->processing = false;
+                        }
                     }
                     else
                     {
-                        LE_ERROR("Command in progress");
+                        LE_WARN("Command in progress");
                         SendRspString(devPtr, "ERROR");
                     }
 
                     devPtr->parseIndex=0;
+                    devPtr->cmdParser.rxState = PARSER_SEARCH_A;
                 }
                 // backspace character
                 else if ( input == 0x7F )

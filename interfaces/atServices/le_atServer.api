@@ -59,10 +59,11 @@
  *        Values must be separated by a coma. Some values may be optional: in that case, optional
  *        value can be omitted in the AT command (e.g. AT+ABCD=,1).<br>
  *        A value is a string composed of one or several of the following characters: 0 to 9,
- *        A to F, H, z*, #, +, -. To set a value with other characters, the value has to be set
+ *        A to F, H, h, *, #, +, -. To set a value with other characters, the value has to be set
  * between quote.
  *      - test command (determine the supported values): AT+<name>=?
- *      - read command (determine the current values, or stored values): AT+<name>?
+ *      - read command (determine the current values, or stored values): AT+<name>?[\<value\>]<br>
+ * An optional parameter is supported.
  *
  * @note '+' AT command starting character shall be replaced by other symbol, not included into
  * a to z, A to Z, & and \\.
@@ -114,10 +115,9 @@
  * It can also call le_atServer_GetParameter() to retrieve parameters of the AT command. This
  * function gets the string sending through the AT command. If the parameter was sent between
  * quotes, the quotes are removed. This API can be used for both formats:
- * - In case of a basic format command, if exists, the parameter can be retrieved at the index 0.
- *
- * For S command specific format (ATS<parameter_number>=\<value>), the <parameter_number> is
- * retrieved at the index 0, the \<value> parameter at the index 1.
+ * - In case of a basic format command (AT<command>[<number>]), if exists, the <number> can be
+ * retrieved at the index 0. For S command specific format (ATS<parameter_number>=\<value>),
+ * the <parameter_number> is retrieved at the index 0, the \<value> parameter at the index 1.
  *
  * - In case of an extended format command, parameters are retrieved thanks to their indexes,
  * starting from 0. If the parameter is missed (e.g. "AT+CMD=,1"), the getting value is an empty

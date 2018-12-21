@@ -192,7 +192,7 @@ static void* AtHost
                 "\r\nOK\r\n"));
 
     LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd,
-                "ATE0S3?;+ABCD?;S0?S0=2E1;V0S0=\"3\"+ABCD",
+                "ATE0S3?;+ABCD?;S0?S0=2E1;V0S0=\"3\"+ABCD;+ABCD?5",
                 "\r\nE TYPE: PARA\r\n"
                 "E PARAM 0: 0\r\n"
                 "\r\nS TYPE: READ\r\n"
@@ -211,6 +211,8 @@ static void* AtHost
                 "S PARAM 0: 0\r\n"
                 "S PARAM 1: 3\r\n"
                 "\r\n+ABCD TYPE: ACT\r\n"
+                "\r\n+ABCD TYPE: READ\r\n"
+                "+ABCD PARAM 0: 5\r\n"
                 "\r\nOK\r\n"));
 
     LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd,"AT&FE0V1&C1&D2S95=47S0=0",
