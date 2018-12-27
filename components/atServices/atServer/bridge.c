@@ -54,13 +54,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  Reference type for a Modem AT commands.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct ModemCmd* ModemCmdRef_t;
-
-//--------------------------------------------------------------------------------------------------
-/**
  *  Bridge context structure.
  */
 //--------------------------------------------------------------------------------------------------
@@ -87,7 +80,6 @@ BridgeCtx_t;
 typedef struct
 {
     le_atServer_CommandHandlerRef_t  commandHandlerRef;             /// AT server command handler
-    ModemCmdRef_t                    modemCmdRef;                   /// modem AT command reference
     le_atServer_CmdRef_t             atServerCmdRef;                ///< AT server command reference
     le_atClient_CmdRef_t             atClientCmdRef;                ///< AT client command reference
     char                             cmd[LE_ATDEFS_COMMAND_MAX_BYTES];  ///< cmd to be sent to AT
@@ -413,6 +405,17 @@ static void TreatResponse
             }
         }
 
+        // Need free the atClientCmdRef before processing next concatenated AT bridge command
+        // otherwise atClientCmdRef of next command will be cleared and cause atServer crash.
+        if (LE_OK != le_atClient_Delete(modemCmdDescPtr->atClientCmdRef))
+        {
+            LE_ERROR("Error in deleting atClient reference");
+        }
+        else
+        {
+            modemCmdDescPtr->atClientCmdRef = 0;
+        }
+
         LE_DEBUG("finalRsp = %s", (finalRsp == LE_ATSERVER_OK) ? "ok": "error");
 
         if (LE_OK != le_atServer_SendFinalResponse(atServerCmdRef,
@@ -423,15 +426,6 @@ static void TreatResponse
             LE_ERROR("Failed to send final response");
             TreatCommandError(modemCmdDescRef, NULL);
             return;
-        }
-
-        if (LE_OK != le_atClient_Delete(modemCmdDescPtr->atClientCmdRef))
-        {
-            LE_ERROR("Error in deleting atClient reference");
-        }
-        else
-        {
-            modemCmdDescPtr->atClientCmdRef = 0;
         }
 
         // "ERROR" final response could mean that the AT command doesn't exist => delete it in this
