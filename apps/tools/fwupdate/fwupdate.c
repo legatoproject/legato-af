@@ -80,6 +80,13 @@ DESCRIPTION:\n\
         After a successful download, the modem will reset\n\
 ";
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * State for the connection to the fwupdate service.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool FwupdateConnectionState = false;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -129,16 +136,23 @@ static void* TimeoutThread
 static void TryConnect
 (
     ConnectServiceFunc_t connectFuncPtr,    ///< Function to call to connect to service
-    char* serviceNamePtr                    ///< String containing name of the service
+    char* serviceNamePtr,                   ///< String containing name of the service
+    bool* connectionStatePtr                ///< Connection state, as to avoid duplicate calls
 )
 {
+    if(*connectionStatePtr)
+    {
+        // Connection was already established previously, no need to go any further.
+        return;
+    }
+
     // Print out message before trying to connect to service to give user some kind of feedback
     printf("Connecting to service ...\n");
     fflush(stdout);
 
     // Use a separate thread for recovery.  It will be stopped once connected to the service.
     // Make the thread joinable, so we can be sure the thread is stopped before continuing.
-    le_thread_Ref_t threadRef = le_thread_Create("timout thread", TimeoutThread, serviceNamePtr);
+    le_thread_Ref_t threadRef = le_thread_Create("timeout thread", TimeoutThread, serviceNamePtr);
     le_thread_SetJoinable(threadRef);
     le_thread_Start(threadRef);
 
@@ -148,6 +162,8 @@ static void TryConnect
     // Connected to the service, so stop the timeout thread
     le_thread_Cancel(threadRef);
     le_thread_Join(threadRef, NULL);
+
+    *connectionStatePtr = true;
 }
 
 
@@ -181,12 +197,12 @@ static le_result_t DownloadFirmware
         if ( fd == -1 )
         {
             // Inform the user of the error; it's also useful to log this info
-            printf("Can't open file '%s' : %m\n", fileNamePtr);
+            fprintf(stderr, "Can't open file '%s' : %m\n", fileNamePtr);
             return LE_FAULT;
         }
     }
 
-    TryConnect(le_fwupdate_ConnectService, "fwupdateService");
+    TryConnect(le_fwupdate_ConnectService, "fwupdateService", &FwupdateConnectionState);
 
     // Connected to service so continue
     printf("Download started ...\n");
@@ -202,7 +218,7 @@ static le_result_t DownloadFirmware
     }
     else
     {
-        printf("Error in download\n");
+        fprintf(stderr, "Error in download\n");
         return LE_FAULT;
     }
 
@@ -226,7 +242,7 @@ static le_result_t QueryVersion
 {
     le_result_t result = LE_OK;
 
-    TryConnect(le_fwupdate_ConnectService, "fwupdateService");
+    TryConnect(le_fwupdate_ConnectService, "fwupdateService", &FwupdateConnectionState);
 
     // Connected to service so continue
     char version[MAX_VERS_BYTES];
@@ -276,7 +292,7 @@ static le_result_t InstallFirmware
     void
 )
 {
-    TryConnect(le_fwupdate_ConnectService, "fwupdateService");
+    TryConnect(le_fwupdate_ConnectService, "fwupdateService", &FwupdateConnectionState);
 
     printf("Install the firmware, the system will reboot ...\n");
     return le_fwupdate_Install();
@@ -299,17 +315,17 @@ static le_result_t CheckStatus
     le_fwupdate_UpdateStatus_t status;
     char statusStr[LE_FWUPDATE_STATUS_LABEL_LENGTH_MAX];
 
-    TryConnect(le_fwupdate_ConnectService, "fwupdateService");
+    TryConnect(le_fwupdate_ConnectService, "fwupdateService", &FwupdateConnectionState);
 
     if (le_fwupdate_GetUpdateStatus(&status, statusStr, sizeof(statusStr)) != LE_OK)
     {
-        printf("Error reading update status\n");
+        fprintf(stderr, "Error reading update status\n");
         return LE_FAULT;
     }
 
     if (status != LE_FWUPDATE_UPDATE_STATUS_OK)
     {
-        printf("Bad status (%s), install not possible.\n", statusStr);
+        fprintf(stderr, "Bad status (%s), install not possible.\n", statusStr);
         return LE_FAULT;
     }
 
@@ -335,7 +351,7 @@ static le_result_t MarkGoodFirmware
     bool isSystemGood;
     le_result_t result;
 
-    TryConnect(le_fwupdate_ConnectService, "fwupdateService");
+    TryConnect(le_fwupdate_ConnectService, "fwupdateService", &FwupdateConnectionState);
 
     result = le_fwupdate_IsSystemMarkedGood(&isSystemGood);
     if ((result == LE_OK) && isSystemGood)
@@ -362,7 +378,7 @@ static le_result_t FullInstallFirmware
 {
     le_result_t result;
 
-    TryConnect(le_fwupdate_ConnectService, "fwupdateService");
+    TryConnect(le_fwupdate_ConnectService, "fwupdateService", &FwupdateConnectionState);
 
     result = DownloadFirmware(fileNamePtr);
     if (result != LE_OK)
@@ -370,7 +386,14 @@ static le_result_t FullInstallFirmware
         return result;
     }
 
-    return le_fwupdate_InstallAndMarkGood();
+    printf("Installing & Reboot ...\n");
+    result = le_fwupdate_InstallAndMarkGood();
+    if (result != LE_OK)
+    {
+        fprintf(stderr, "Error during installation: %s\n", LE_RESULT_TXT(result));
+    }
+
+    return result;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -410,7 +433,7 @@ COMPONENT_INIT
             }
             else
             {
-                printf("Missing FILE\n\n");
+                fprintf(stderr, "Missing FILE\n\n");
             }
         }
 
@@ -468,13 +491,13 @@ COMPONENT_INIT
             }
             else
             {
-                printf("Missing FILE\n\n");
+                fprintf(stderr, "Missing FILE\n\n");
             }
         }
 
         else
         {
-            printf("Invalid command '%s'\n\n", command);
+            fprintf(stderr, "Invalid command '%s'\n\n", command);
         }
     }
 

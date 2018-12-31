@@ -70,8 +70,25 @@ then
 
     SetTargetIP $3
 
-    cat "$FILE" | SshToTarget "$BIN_PATH/fwupdate $COMMAND -"
-    exit $?
+    CMD_LOG=$(mktemp "/tmp/tmp.fwupdate-XXXXX")
+
+    cat "$FILE" | SshToTarget "$BIN_PATH/fwupdate $COMMAND -" | tee ${CMD_LOG}
+    CMD_RET=${PIPESTATUS[1]}
+
+    if [ $CMD_RET -ne 0 ] && [ "$COMMAND" = "download" ]; then
+        # Command failed, but it might be caused by the SSH connection
+        # being interrupted by the reboot.
+        if grep -q "Installing & Reboot" ${CMD_LOG} \
+            && ! grep -q "Error during installation:" ${CMD_LOG}; then
+            echo "Connection interrupted, target is likely rebooting."
+            # Overriding the return code since we are confident that this is a normal use
+            # case.
+            CMD_RET=0
+        fi
+    fi
+
+    rm -f "$CMD_LOG"
+    exit $CMD_RET
 fi
 
 ExitWithError "Command '$COMMAND' unknown."
