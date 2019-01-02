@@ -1,13 +1,25 @@
 /** @page aboutReleaseNotes Release Notes
 
-Version: <b>Legato 18.10.1</b><br>
-Date: <b>Dec 19, 2018</b><br>
+Version: <b>Legato 18.10.2</b><br>
+Date: <b>Jan 7, 2019</b><br>
 @ref aboutLicenses "Legato Application Framework Licensing Information"
 
 Visit the <a href="https://legato.io/releases">release page</a> to @b download the tarball,
 @b clone the repositories from GitHub, or view <b>previous released versions</b>.
 
 Get started with @ref basicBuild "building the Legato Application Framework". </b>
+
+@section rn1810_Patch 18.10.2 Patch
+
+The following issues have been fixed by the 18.10.2 patch:
+
+<b>MRC API</b>
+- Added the le_mrc_GetPciScanGlobalCellId() function to return a Global Cell ID and improve the
+functionality of PCI Scanning.
+
+<b>fwupdate</b>
+- Added an image type to support keystores.
+- Fixed a bug that produced a wrong checksum computation for a small and non composite CWE image.
 
 @section rn1810_Patch 18.10.1 Patch
 
