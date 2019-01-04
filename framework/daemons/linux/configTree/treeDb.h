@@ -349,6 +349,17 @@ le_result_t tdb_GetNodeName
 );
 
 
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Get the name hash of a given node.
+ *
+ *  @return name hash
+ */
+// -------------------------------------------------------------------------------------------------
+size_t tdb_GetNodeNameHash
+(
+    tdb_NodeRef_t nodeRef   ///< [IN]  The node to read.
+);
 
 
 // -------------------------------------------------------------------------------------------------
@@ -356,9 +367,11 @@ le_result_t tdb_GetNodeName
  *  Set the name of a given node.  But also validate the name as there are certain names that nodes
  *  shouldn't have.
  *
+ *  @note It is caller's responsitility to ensure there is no other sibling with this name.
+ *
  *  @return LE_OK if the set is successful.  LE_FORMAT_ERROR if the name contains illegal
  *          characters, or otherwise would not work as a node name.  LE_OVERFLOW if the name is too
- *          long.  LE_DUPLICATE, if there is another node with the new name in the same collection.
+ *          long.
  */
 // -------------------------------------------------------------------------------------------------
 le_result_t tdb_SetNodeName

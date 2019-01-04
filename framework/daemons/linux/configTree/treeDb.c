@@ -260,6 +260,8 @@ typedef struct Node
 
     dstr_Ref_t nameRef;              ///< The name of this node.
 
+    size_t nameHash;                 ///< The hash of the name of this node.
+
     le_dls_Link_t siblingList;       ///< The linked list of node siblings.  All of the nodes
                                      ///<   in this list have the same parent node.
 
@@ -563,6 +565,7 @@ static tdb_NodeRef_t NewNode
     ClearFlags(newNodeRef);
     newNodeRef->shadowRef = NULL;
     newNodeRef->nameRef = NULL;
+    newNodeRef->nameHash = 0;
     newNodeRef->siblingList = LE_DLS_LINK_INIT;
     memset(&newNodeRef->info, 0, sizeof(newNodeRef->info));
 
@@ -845,14 +848,23 @@ static tdb_NodeRef_t GetNamedChild
     // Search the child list for a node with the given name.
     tdb_NodeRef_t currentRef = tdb_GetFirstChildNode(nodeRef);
     char currentNameRef[LE_CFG_NAME_LEN_BYTES] = "";
+    size_t stringHash = le_hashmap_HashString(nameRef);
+    size_t nodeHash;
 
     while (currentRef != NULL)
     {
-        tdb_GetNodeName(currentRef, currentNameRef, sizeof(currentNameRef));
+        nodeHash = tdb_GetNodeNameHash(currentRef);
 
-        if (strncmp(currentNameRef, nameRef, sizeof(currentNameRef)) == 0)
+        // if the hash doesn't match, the name is different. If the hash matches, there is
+        // a small possibility of collision, and the string comparison is required.
+        if (stringHash == nodeHash)
         {
-            return currentRef;
+            tdb_GetNodeName(currentRef, currentNameRef, sizeof(currentNameRef));
+
+            if (strncmp(currentNameRef, nameRef, sizeof(currentNameRef)) == 0)
+            {
+                return currentRef;
+            }
         }
 
         currentRef = tdb_GetNextSiblingNode(currentRef);
@@ -908,43 +920,6 @@ static tdb_NodeRef_t CreateNamedChild
 
     return childRef;
 }
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Check to see if a given node exists within a node's child collection.
- *
- *  @return True if the given node exists within the parent node's collection.  False if not.
- */
-// -------------------------------------------------------------------------------------------------
-static bool NodeExists
-(
-    tdb_NodeRef_t parentRef,  ///< [IN] The parent node to search.
-    const char* namePtr       ///< [IN] The name to search for.
-)
-// -------------------------------------------------------------------------------------------------
-{
-    tdb_NodeRef_t currentRef = tdb_GetFirstChildNode(parentRef);
-    char currentName[LE_CFG_NAME_LEN_BYTES] = "";
-
-    while (currentRef != NULL)
-    {
-        tdb_GetNodeName(currentRef, currentName, sizeof(currentName));
-
-        if (strncmp(currentName, namePtr, sizeof(currentName)) == 0)
-        {
-            return true;
-        }
-
-        currentRef = tdb_GetNextSiblingNode(currentRef);
-    }
-
-    return false;
-}
-
-
 
 
 // -------------------------------------------------------------------------------------------------
@@ -1082,6 +1057,7 @@ static void MergeNode
         {
             originalRef->nameRef = dstr_NewFromDstr(nodeRef->nameRef);
         }
+        originalRef->nameHash = nodeRef->nameHash;
     }
 
     // Check the types of the original and the shadow nodes.  If the new node has been cleared,
@@ -2258,6 +2234,7 @@ static le_result_t InternalReadNode
                     if (childRef == NULL)
                     {
                         childRef = NewChildNode(nodeRef);
+
                         if (tdb_SetNodeName(childRef, stringBuffer) != LE_OK)
                         {
                             LE_ERROR("Bad node name, '%s'.", stringBuffer);
@@ -3506,6 +3483,32 @@ le_result_t tdb_GetNodeName
 }
 
 
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Get the name hash of a given node.
+ *
+ *  @return name hash
+ */
+// -------------------------------------------------------------------------------------------------
+size_t tdb_GetNodeNameHash
+(
+    tdb_NodeRef_t nodeRef   ///< [IN]  The node to read.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    LE_ASSERT(nodeRef != NULL);
+
+    if (   (IsShadow(nodeRef))
+        && (nodeRef->nameRef == NULL)
+        && (nodeRef->shadowRef != NULL))
+    {
+        return nodeRef->shadowRef->nameHash;
+    }
+    else
+    {
+        return nodeRef->nameHash;
+    }
+}
 
 
 // -------------------------------------------------------------------------------------------------
@@ -3513,9 +3516,11 @@ le_result_t tdb_GetNodeName
  *  Set the name of a given node.  But also validate the name as there are certain names that nodes
  *  shouldn't have.
  *
+ *  @note It is caller's responsitility to ensure there is no other sibling with this name.
+ *
  *  @return LE_OK if the set is successful.  LE_FORMAT_ERROR if the name contains illegial
  *          characters, or otherwise would not work as a node name.  LE_OVERFLOW if the name is too
- *          long.  LE_DUPLICATE, if there is another node with the new name in the same collection.
+ *          long.
  */
 // -------------------------------------------------------------------------------------------------
 le_result_t tdb_SetNodeName
@@ -3548,13 +3553,6 @@ le_result_t tdb_SetNodeName
         return LE_OVERFLOW;
     }
 
-    // Check for a duplicate name in this collection.
-    if (   (nodeRef->parentRef != NULL)
-        && (NodeExists(nodeRef->parentRef, stringPtr) == true))
-    {
-        return LE_DUPLICATE;
-    }
-
     // Copy over the new name.  Note that we don't care if this node is a shadow node.  Coping over
     // the name is taken care of as part of the merge process.
     if (nodeRef->nameRef == NULL)
@@ -3565,6 +3563,7 @@ le_result_t tdb_SetNodeName
     {
         dstr_CopyFromCstr(nodeRef->nameRef, stringPtr);
     }
+    nodeRef->nameHash = le_hashmap_HashString(stringPtr);
 
     // If this is a shadow node and this is the change that modified it, then try to get it's
     // children now.  This is done so that later when this node is merged the merge code doesn't end
