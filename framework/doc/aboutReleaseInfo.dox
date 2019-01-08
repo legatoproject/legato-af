@@ -21,6 +21,10 @@ functionality of PCI Scanning.
 - Added an image type to support keystores.
 - Fixed a bug that produced a wrong checksum computation for a small and non composite CWE image.
 
+<b>Secure Storage</b>
+- Secure storage entries of more than 4K bytes are not copied over correctly after a
+  system update. A fix has been included to address this issue.
+
 @section rn1810_Patch 18.10.1 Patch
 
 The following issues have been fixed by the 18.10.1 patch:
