@@ -953,6 +953,7 @@ le_result_t le_mdc_StartSession
 {
     le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
     le_result_t result;
+    le_mdc_Pdp_t pdpType;
 
     if (profilePtr == NULL)
     {
@@ -960,7 +961,8 @@ le_result_t le_mdc_StartSession
         return LE_BAD_PARAMETER;
     }
 
-    switch (profilePtr->modemData.pdp)
+    pdpType = le_mdc_GetPDP(profileRef);
+    switch (pdpType)
     {
         case LE_MDC_PDP_IPV4:
         {
@@ -969,24 +971,24 @@ le_result_t le_mdc_StartSession
         break;
         case LE_MDC_PDP_IPV6:
         {
-            result =  pa_mdc_StartSessionIPV6(profilePtr->profileIndex);
+            result = pa_mdc_StartSessionIPV6(profilePtr->profileIndex);
         }
         break;
         case LE_MDC_PDP_IPV4V6:
         {
-            result =  pa_mdc_StartSessionIPV4V6(profilePtr->profileIndex);
+            result = pa_mdc_StartSessionIPV4V6(profilePtr->profileIndex);
         }
         break;
         default:
         {
-            LE_DEBUG("Unknown PDP type %d", profilePtr->modemData.pdp);
+            LE_DEBUG("Unknown PDP type %d", pdpType);
             return LE_FAULT;
         }
     }
 
-    if ((LE_OK != result) && (LE_MDC_PDP_UNKNOWN != profilePtr->modemData.pdp))
+    if ((LE_OK != result) && (LE_MDC_PDP_UNKNOWN != pdpType))
     {
-        if (LE_MDC_PDP_IPV4V6 == profilePtr->modemData.pdp)
+        if (LE_MDC_PDP_IPV4V6 == pdpType)
         {
             pa_mdc_GetConnectionFailureReasonExt(profilePtr->profileIndex,
                                                 LE_MDC_PDP_IPV4, &(profilePtr->conFailurePtr));
