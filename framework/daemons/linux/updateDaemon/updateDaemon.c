@@ -1020,7 +1020,13 @@ static void ApplyFwUpdate
     le_result_t result = LE_OK;
 
     LE_INFO("Applying Firmware update");
-    le_fwupdate_ConnectService();
+
+    if (le_fwupdate_TryConnectService() != LE_OK)
+    {
+        LE_ERROR("Unable to connect to fwupdate service.");
+        UpdateFailed(LE_UPDATE_ERR_INTERNAL_ERROR);
+        return;
+    }
 
     // This function returns only if there was an error.
     result = le_fwupdate_Install();

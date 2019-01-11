@@ -775,9 +775,14 @@ static void StartFirmwareUpdate
 {
     PayloadBytesCopied = 0;
 
-    le_fwupdate_ConnectService();   // TODO: Change to a TryConnectService() when available.
-
     LE_INFO("Starting firmware update.");
+
+    if (le_fwupdate_TryConnectService() != LE_OK)
+    {
+        LE_ERROR("Unable to connect to fwupdate service.");
+        HandleInternalError();
+        return;
+    }
 
     le_result_t result = le_fwupdate_Download(InputFd);
     // le_fwupdate_Download would close InputFd, so it shouldn't be closed again.
