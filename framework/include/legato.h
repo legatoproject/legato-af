@@ -224,6 +224,7 @@ extern "C" {
 #include "le_crc.h"
 #include "le_fs.h"
 #include "le_rand.h"
+#include "le_base64.h"
 
 #ifdef __cplusplus
 }

@@ -169,6 +169,40 @@ static void QuickFunctionTest()
     }
 
     {
+        LE_INFO("---- Quick Binary Test -----------------------------------------------------------");
+        snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/quickFunctions/binVal", TestRootDir);
+
+        uint8_t writeBuf[LE_CFG_BINARY_LEN] = {0};
+        uint8_t readBuf[LE_CFG_BINARY_LEN] = {0};
+        int i;
+
+        // Fill 8k buffer with 0123456789abcdef01...
+        for (i = 0; i < sizeof(writeBuf); i++)
+        {
+            writeBuf[i] = (char) i;
+        }
+
+        size_t len = sizeof(readBuf);
+        result = le_cfg_QuickGetBinary(pathBuffer, readBuf, &len, (uint8_t *)"no_good", 7);
+        LE_FATAL_IF(result != LE_OK,
+                    "Test: %s - Test failure, result == %s.",
+                    TestRootDir,
+                    LE_RESULT_TXT(result));
+
+        le_cfg_QuickSetBinary(pathBuffer, writeBuf, sizeof(writeBuf));
+
+        len = sizeof(readBuf);
+        result = le_cfg_QuickGetBinary(pathBuffer, readBuf, &len, (uint8_t *)"no_good", 7);
+        LE_FATAL_IF(result != LE_OK,
+                    "Test: %s - Test failure, result == %s.",
+                    TestRootDir,
+                    LE_RESULT_TXT(result));
+        LE_TEST(len == sizeof(writeBuf));
+        LE_TEST((memcmp(writeBuf, readBuf, len) == 0));
+
+    }
+
+    {
         snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/quickFunctions/intVal", TestRootDir);
 
         int value = le_cfg_QuickGetInt(pathBuffer, 0);
@@ -712,6 +746,59 @@ static void SetSimpleValue(const char* treePtr)
 }
 
 
+static void BinaryTest
+(
+    void
+)
+{
+    uint8_t writeBuf[LE_CFG_BINARY_LEN];
+    uint8_t defaultVal = 0;
+    uint8_t readBuf[LE_CFG_BINARY_LEN];
+    le_result_t result = LE_OK;
+    int i;
+
+    // Fill 8k buffer with 0123456789abcdef01...
+    for (i = 0; i < sizeof(writeBuf); i++)
+    {
+        writeBuf[i] = (char) i;
+    }
+
+    static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
+
+    snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/test_binary", TestRootDir);
+
+    LE_INFO("pathBuffer = %s\n", pathBuffer);
+
+    // write a binary data of maximum size
+    le_cfg_IteratorRef_t iterRefWrite = le_cfg_CreateWriteTxn(pathBuffer);
+    size_t len = sizeof(writeBuf);
+    le_cfg_SetBinary(iterRefWrite, pathBuffer, writeBuf, len);
+    le_cfg_CommitTxn(iterRefWrite);
+
+    // read the binary data
+    len = sizeof(readBuf);
+    memset(readBuf, 0, sizeof(readBuf));
+    le_cfg_IteratorRef_t iterRefRead = le_cfg_CreateReadTxn(pathBuffer);
+    defaultVal = 0;
+    result = le_cfg_GetBinary(iterRefRead, pathBuffer, readBuf, &len,
+                              &defaultVal, sizeof(defaultVal));
+    le_cfg_CancelTxn(iterRefRead);
+
+    LE_TEST(result == LE_OK);
+    LE_TEST(len == sizeof(writeBuf));
+    LE_TEST((memcmp(writeBuf, readBuf, len) == 0));
+
+    // attempt to read the binary data with insufficient buffer size
+    memset(readBuf, 0, sizeof(readBuf));
+    len = sizeof(readBuf) - 1;
+    iterRefRead = le_cfg_CreateReadTxn(pathBuffer);
+    defaultVal = 0;
+    result = le_cfg_GetBinary(iterRefRead, pathBuffer, readBuf, &len,
+                              &defaultVal, sizeof(defaultVal));
+    le_cfg_CancelTxn(iterRefRead);
+    LE_TEST(result == LE_OVERFLOW);
+}
+
 
 static void ListTreeTest()
 {
@@ -904,6 +991,7 @@ COMPONENT_INIT
     ExistAndEmptyTest();
     ListTreeTest();
     CallbackTest();
+    BinaryTest();
 
     // overwrite a large string with a small string and vice-versa
     TestStringOverwrite();

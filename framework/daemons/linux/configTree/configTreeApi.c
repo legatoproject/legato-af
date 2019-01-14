@@ -178,6 +178,30 @@ static size_t MaxStr
 }
 
 
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Check the size of a requested binary data buffer.  If it's larger than what we can handle
+ *  internally, truncate it to what we can handle.
+ */
+// -------------------------------------------------------------------------------------------------
+static size_t MaxBinary
+(
+    size_t requestedMax  ///< [IN] Requested maximum string size.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    if (requestedMax > LE_CFG_BINARY_LEN)
+    {
+        LE_DEBUG("Truncating output binary buffer from %zd to %d.",
+                 requestedMax,
+                 LE_CFG_BINARY_LEN);
+
+        return LE_CFG_BINARY_LEN;
+    }
+
+    return requestedMax;
+}
+
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -964,6 +988,133 @@ void le_cfg_SetString
 }
 
 
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Read a binary data from the configuration tree.  If the the node has a wrong type, is
+ *  empty or doesn't exist, the default value will be returned.
+ *
+ *  Valid for both read and write transactions.
+ *
+ *  If the path is empty, the iterator's current node will be read.
+ *
+ *  \b Responds \b With:
+ *
+ *  This function will respond with one of the following values:
+ *
+ *          - LE_OK             - Read was completed successfully.
+ *          - LE_FORMAT_ERROR   - if data can't be decoded.
+ *          - LE_OVERFLOW       - Supplied buffer was not large enough to hold the value.
+ */
+// -------------------------------------------------------------------------------------------------
+void le_cfg_GetBinary
+(
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator to use as a basis for the transaction.
+    const char* pathPtr,               ///< [IN] Absolute or relative path to read from.
+    size_t maxBinary,                  ///< [IN] Maximum size of the result binary data.
+    const uint8_t* defaultValue,       ///< [IN] Default value to use if the original can't be.
+    size_t defaultValueSize            ///< [IN] Default value size.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    LE_DEBUG("** Reading the binary value of the iterator's <%p> current node.", externalRef);
+    LE_DEBUG_IF((pathPtr != NULL) && (strlen(pathPtr) != 0), "** Offset by \"%s\"", pathPtr);
+
+    ni_IteratorRef_t iteratorRef = GetIteratorFromRef(externalRef);
+    le_result_t result = LE_OK;
+    uint8_t* binaryBuf = le_mem_ForceAlloc(tdb_GetBinaryDataMemoryPool());
+    size_t binaryLen = MaxBinary(maxBinary);
+
+    char* stringBuf = le_mem_ForceAlloc(tdb_GetEncodedStringMemoryPool());
+    stringBuf[0] = 0;
+    size_t stringBufSize = TDB_MAX_ENCODED_SIZE;
+
+    if ((NULL != pathPtr) && (NULL != iteratorRef)
+        && (false == CheckPathForSpecifier(pathPtr)))
+    {
+        result = ni_GetNodeValueString(iteratorRef,
+                                       pathPtr,
+                                       stringBuf,
+                                       stringBufSize,
+                                       "");
+    }
+    if (0 == stringBuf[0])
+    {
+        // Node not found, or data is empty: sending back the default value
+        le_cfg_GetBinaryRespond(commandRef, result, defaultValue, defaultValueSize);
+    }
+    else
+    {
+        // Decode the string into binary data.
+        result = le_base64_Decode(stringBuf,
+                                  strlen(stringBuf),
+                                  binaryBuf,
+                                  &binaryLen);
+
+        le_cfg_GetBinaryRespond(commandRef, result, binaryBuf, binaryLen);
+    }
+    le_mem_Release(binaryBuf);
+    le_mem_Release(stringBuf);
+}
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Write a binary data to the configuration tree.  Only valid during a write
+ *  transaction.
+ *
+ *  If the path is empty, the iterator's current node will be set.
+ *
+ *  @note Binary data cannot be written to the 'system' tree.
+ */
+// -------------------------------------------------------------------------------------------------
+void le_cfg_SetBinary
+(
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    le_cfg_IteratorRef_t externalRef,  ///< [IN] Iterator to use as a basis for the transaction.
+    const char* pathPtr,               ///< [IN] Full or relative path to the value to write.
+    const uint8_t* valuePtr,           ///< [IN] Binary data.
+    const size_t size                  ///< [IN] Size of the binary data.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    LE_DEBUG("Writing the binary data of the iterator's <%p> current node, size %zd",
+             externalRef, size);
+
+    LE_DEBUG_IF((pathPtr != NULL) && (strlen(pathPtr) != 0), "** Offset by \"%s\"", pathPtr);
+
+    char* stringBuf = le_mem_ForceAlloc(tdb_GetEncodedStringMemoryPool());
+    size_t encodedSize = TDB_MAX_ENCODED_SIZE;
+
+    ni_IteratorRef_t iteratorRef = GetWriteIteratorFromRef(externalRef);
+
+    if ((NULL != pathPtr) && (NULL != iteratorRef)
+        && (false == CheckPathForSpecifier(pathPtr)))
+    {
+        // check whether this is not a system tree
+        const char* treeNamePtr = tdb_GetTreeName(ni_GetTree(iteratorRef));
+        if (0 == strcmp(treeNamePtr, "system"))
+        {
+            LE_ERROR("Binary data is not supported for the system tree");
+            goto cleanup;
+        }
+
+        // encode the data and write it to the node
+        le_result_t result = le_base64_Encode(valuePtr, size, stringBuf, &encodedSize);
+        if (LE_OK != result)
+        {
+            LE_ERROR("ERROR encoding binary data: %s", LE_RESULT_TXT(result));
+            goto cleanup;
+        }
+        ni_SetNodeValueString(iteratorRef, pathPtr, stringBuf);
+    }
+
+cleanup:
+    le_cfg_SetBinaryRespond(commandRef);
+    le_mem_Release(stringBuf);
+}
 
 
 // -------------------------------------------------------------------------------------------------
@@ -1312,7 +1463,6 @@ void le_cfg_QuickGetString
 
 
 
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  Write a string value to the configuration tree.
@@ -1334,16 +1484,108 @@ void le_cfg_QuickSetString
 
     if (treeRef != NULL)
     {
-        rq_HandleQuickSetString(le_cfg_GetClientSessionRef(),
-                                commandRef,
-                                userRef,
-                                treeRef,
-                                tp_GetPathOnly(pathPtr),
-                                valuePtr);
+        rq_HandleQuickSetData(le_cfg_GetClientSessionRef(),
+                              commandRef,
+                              userRef,
+                              treeRef,
+                              tp_GetPathOnly(pathPtr),
+                              valuePtr,
+                              RQ_SET_STRING);
     }
 }
 
 
+// -------------------------------------------------------------------------------------------------
+/**
+ * Writes a binary data to the config tree.
+ */
+// -------------------------------------------------------------------------------------------------
+void le_cfg_QuickGetBinary
+(
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    const char* pathPtr,               ///< [IN] Absolute or relative path to read from.
+    size_t maxBinary,                  ///< [IN] Maximum size of the result binary data.
+    const uint8_t* defaultValuePtr,    ///< [IN] Default value to use if the original can't be.
+    size_t defaultValueSize            ///< [IN] Default value size.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    LE_DEBUG("** Quick get node binary value at \"%p\".", pathPtr);
+
+    tu_UserRef_t userRef = tu_GetCurrentConfigUserInfo();
+    tdb_TreeRef_t treeRef = QuickGetTree(userRef, TU_TREE_READ, pathPtr);
+
+    if (treeRef != NULL)
+    {
+        rq_HandleQuickGetBinary(le_cfg_GetClientSessionRef(),
+                                commandRef,
+                                userRef,
+                                treeRef,
+                                tp_GetPathOnly(pathPtr),
+                                MaxBinary(maxBinary),
+                                defaultValuePtr,
+                                defaultValueSize);
+    }
+}
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Write a binary value to the configuration tree.
+ *
+ *  @note Binary data cannot be written to the 'system' tree.
+ */
+// -------------------------------------------------------------------------------------------------
+void le_cfg_QuickSetBinary
+(
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] Reference used to generate a reply for this
+                                       ///<      request.
+    const char* pathPtr,               ///< [IN] Full or relative path to the value to write.
+    const uint8_t* valuePtr,           ///< [IN] Binary data.
+    const size_t size                  ///< [IN] Size of the binary data.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    LE_DEBUG("** Quick set node binary value at \"%p\".", pathPtr);
+
+    tu_UserRef_t userRef = tu_GetCurrentConfigUserInfo();
+    tdb_TreeRef_t treeRef = QuickGetTree(userRef, TU_TREE_WRITE, pathPtr);
+
+    if (treeRef != NULL)
+    {
+        // check whether this is not a system tree
+        const char* treeNamePtr = tdb_GetTreeName(treeRef);
+        if (0 == strcmp(treeNamePtr, "system"))
+        {
+            LE_ERROR("Binary data is not supported for the system tree");
+            le_cfg_QuickSetBinaryRespond(commandRef);
+            return;
+        }
+
+        // encode the data and write it to the node
+        char* stringBuf = le_mem_ForceAlloc(tdb_GetEncodedStringMemoryPool());
+        stringBuf[0] = 0;
+        size_t encodedSize = TDB_MAX_ENCODED_SIZE;
+
+        le_result_t result = le_base64_Encode(valuePtr, size, stringBuf, &encodedSize);
+        if (LE_OK != result)
+        {
+            LE_ERROR("ERROR encoding binary data: %s", LE_RESULT_TXT(result));
+        }
+        else
+        {
+            rq_HandleQuickSetData(le_cfg_GetClientSessionRef(),
+                                  commandRef,
+                                  userRef,
+                                  treeRef,
+                                  tp_GetPathOnly(pathPtr),
+                                  stringBuf,
+                                  RQ_SET_BINARY);
+        }
+        le_mem_Release(stringBuf);
+    }
+}
 
 
 // -------------------------------------------------------------------------------------------------

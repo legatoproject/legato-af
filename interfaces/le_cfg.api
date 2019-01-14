@@ -65,6 +65,7 @@
  * The Config Tree supports storing the following types of data and each has their own get/set
  * function as well as a quick set/get function (see @ref cfg_quick):
  * -  string
+ * -  binary (array of bytes)
  * -  signed integer
  * -  boolean
  * -  64bit floating point
@@ -149,6 +150,7 @@
  * | Function                | Action                                   |
  * | ------------------------| -----------------------------------------|
  * | @c le_cfg_GetString()   | Reads the string's value                 |
+ * | @c le_cfg_GetBinary()   | Reads the array of bytes                 |
  * | @c le_cfg_GetInt()      | Reads the integer's value                |
  * | @c le_cfg_GetFloat()    | Reads the floating point value           |
  * | @c le_cfg_GetBool()     | Reads the boolean value                  |
@@ -227,6 +229,7 @@
  * | Function                | Action                                   |
  * | ------------------------| -----------------------------------------|
  * | @c le_cfg_SetString()   | Writes the string's value                |
+ * | @c le_cfg_SetBinary()   | Writes the array of bytes                |
  * | @c le_cfg_SetInt()      | Writes the integer's value               |
  * | @c le_cfg_SetFloat()    | Writes the floating point value          |
  * | @c le_cfg_SetBool()     | Writes the boolean value                 |
@@ -237,6 +240,7 @@
  * Sample write transaction (with error checking):
  *
  * @code
+ * // Store IPv4 address/mask in a string representation
  * void SetIp4Static
  * (
  *     const char* interfaceNamePtr,
@@ -255,6 +259,30 @@
  *
  *     le_cfg_SetString(iteratorRef, "addr", ipAddrPtr);
  *     le_cfg_SetString(iteratorRef, "mask", netMaskPtr);
+ *
+ *     // Commit the transaction to make sure these new settings get written to the tree.
+ *     le_cfg_CommitTxn(iteratorRef);
+ * }
+ *
+ * // Store IPv4 address/mask in a binary representation (array of 4 bytes)
+ * void SetIp4StaticAsBinary
+ * (
+ *     const char* interfaceNamePtr,
+ *     const uint8_t* ipAddrPtr,
+ *     const uint8_t* netMaskPtr
+ * )
+ * {
+ *     // Change current tree position to the base ip4 node.
+ *     char nameBuffer[LE_CFG_STR_LEN_BYTES] = { 0 };
+ *
+ *     int r = snprintf(nameBuffer, sizeof(nameBuffer), "/system/%s/ip4", interfaceNamePtr);
+ *     LE_ASSERT((r >= 0) && (r < sizeof(nameBuffer));
+ *
+ *     // Create a write transaction so that we can update the tree.
+ *     le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateWriteTxn(nameBuffer);
+ *
+ *     le_cfg_SetBinary(iteratorRef, "addr", ipAddrPtr, 4);
+ *     le_cfg_SetBinary(iteratorRef, "mask", netMaskPtr, 4);
  *
  *     // Commit the transaction to make sure these new settings get written to the tree.
  *     le_cfg_CommitTxn(iteratorRef);
@@ -288,6 +316,42 @@
  * Because quick read/write functions don't get created within a transaction, there is no option to
  * traverse to a specific node.
  * All values that are read or written must be referenced from the root of the tree.
+ *
+ * Example of a quick read of the binary data:
+ *
+ * @code
+ * #define IPV4_ADDR_LEN 4
+ * le_result_t QuickReadIpAddressAsBinary
+ * (
+ *     const char* interfaceNamePtr,
+ *     const uint8_t* ipAddrPtr,
+ *     const uint8_t* netMaskPtr
+ * )
+ * {
+ *     char pathBuffer[MAX_CFG_STRING] = { 0 };
+ *     uint8_t defaultAddr[IPV4_ADDR_LEN] = { 0 };
+ *     le_result_t result = LE_OK;
+ *     size_t len = IPV4_ADDR_LEN;
+ *
+ *     // read the address
+ *     snprintf(pathBuffer, sizeof(pathBuffer), "/system/%s/ip4/addr", interfaceNamePtr);
+ *     result = le_cfg_QuickGetBinary(pathBuffer, ipAddrPtr, &len, defaultAddr, IPV4_ADDR_LEN);
+ *     if (LE_OK != result)
+ *     {
+ *         return result;
+ *     }
+ *
+ *     // read the mask
+ *     snprintf(pathBuffer, sizeof(pathBuffer), "/system/%s/ip4/mask", interfaceNamePtr);
+ *     len = IPV4_ADDR_LEN;
+ *     result = le_cfg_QuickGetBinary(pathBuffer, netMaskPtr, &len, defaultAddr, IPV4_ADDR_LEN);
+ *     if (LE_OK != result)
+ *     {
+ *         return result;
+ *     }
+ * }
+ * @endcode
+ *
  *
  * A quick delete example:
  *
@@ -359,6 +423,13 @@ DEFINE STR_LEN = 511;
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE STR_LEN_BYTES = STR_LEN + 1;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Length of the binary data used by this API.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE BINARY_LEN = 8 * 1024;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -762,6 +833,55 @@ FUNCTION SetString
 
 // -------------------------------------------------------------------------------------------------
 /**
+ *  Read a binary data from the config tree.  If the the node has a wrong type, is
+ *  empty or doesn't exist, the default value will be returned.
+ *
+ *  Valid for both read and write transactions.
+ *
+ *  If the path is empty, the iterator's current node will be read.
+ *
+ *  \b Responds \b With:
+ *
+ *  This function will respond with one of the following values:
+ *
+ *          - LE_OK             - Read was completed successfully.
+ *          - LE_FORMAT_ERROR   - if data can't be decoded.
+ *          - LE_OVERFLOW       - Supplied buffer was not large enough to hold the value.
+ */
+// -------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetBinary
+(
+    Iterator iteratorRef            IN,   ///< Iterator to use as a basis for the transaction.
+    string path[STR_LEN]            IN,   ///< Path to the target node. Can be an absolute path,
+                                          ///< or a path relative from the iterator's current
+                                          ///< position.
+    uint8 value[BINARY_LEN]         OUT,  ///< Buffer to write the value into.
+    uint8 defaultValue[BINARY_LEN]  IN    ///< Default value to use if the original can't be
+                                          ///<   read.
+);
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Write a binary data to the config tree.  Only valid during a write
+ *  transaction.
+ *
+ *  If the path is empty, the iterator's current node will be set.
+ *
+ *  @note Binary data cannot be written to the 'system' tree.
+ */
+// -------------------------------------------------------------------------------------------------
+FUNCTION SetBinary
+(
+    Iterator iteratorRef    IN,  ///< Iterator to use as a basis for the transaction.
+    string path[STR_LEN]    IN,  ///< Path to the target node. Can be an absolute path, or
+                                 ///< a path relative from the iterator's current position.
+    uint8 value[BINARY_LEN] IN   ///< Value to write.
+);
+
+
+// -------------------------------------------------------------------------------------------------
+/**
  * Reads a signed integer value from the config tree.
  *
  * If the underlying value is not an integer, the default value will be returned instead. The
@@ -941,6 +1061,34 @@ FUNCTION QuickSetString
     string value[STR_LEN] IN   ///< Value to write.
 );
 
+// -------------------------------------------------------------------------------------------------
+/**
+ * Reads a binary data from the config tree. If the node type is different, or if the node is
+ * empty or doesn't exist, the default value will be returned.
+ *
+ * @return - LE_OK              - Commit was completed successfully.
+ *         - LE_FORMAT_ERROR    - if data can't be decoded.
+ *         - LE_OVERFLOW        - Supplied buffer was not large enough to hold the value.
+ */
+// -------------------------------------------------------------------------------------------------
+FUNCTION le_result_t QuickGetBinary
+(
+    string path[STR_LEN]            IN,   ///< Path to the target node.
+    uint8 value[BINARY_LEN]         OUT,  ///< Buffer to write the value into.
+    uint8 defaultValue[BINARY_LEN]  IN    ///< Default value to use if the original can't be
+                                          ///<   read.
+);
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Writes a binary data to the config tree.
+ */
+// -------------------------------------------------------------------------------------------------
+FUNCTION QuickSetBinary
+(
+    string path[STR_LEN]    IN,  ///< Path to the target node.
+    uint8 value[BINARY_LEN] IN   ///< Value to write.
+);
 
 // -------------------------------------------------------------------------------------------------
 /**

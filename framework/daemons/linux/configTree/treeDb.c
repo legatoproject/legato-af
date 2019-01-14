@@ -388,7 +388,17 @@ static le_mem_PoolRef_t RegistrationPool = NULL;
 /// Name of the registration pool.
 #define CFG_REGISTRATION_POOL_NAME "RegistrationPool"
 
+/// Name of the binary data pool.
+#define CFG_BINARY_DATA_POOL_NAME "BinaryDataPool"
 
+/// Pool for the binary data buffers.
+le_mem_PoolRef_t BinaryDataPool = NULL;
+
+/// Name of the encoded string pool.
+#define CFG_ENCODED_STRING_POOL_NAME "EncodedStringPool"
+
+/// Pool for the encoded string buffers.
+le_mem_PoolRef_t EncodedStringPool = NULL;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -1812,6 +1822,32 @@ static le_result_t SkipWhiteSpace
 }
 
 
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Skip to the next occurence of the given character.
+ *
+ *  @return LE_OK if the character is found.
+ *          LE_OUT_OF_RANGE if the end of the file is hit.
+ */
+// -------------------------------------------------------------------------------------------------
+static le_result_t SkipToNextChar
+(
+    FILE* filePtr,          ///< [IN] The file stream to seek through.
+    signed char nextChar    ///< [IN]  The character we're searching for.
+)
+{
+    signed char next;
+
+    while ((next = fgetc(filePtr)) != nextChar)
+    {
+        if (next == EOF)
+        {
+            return LE_OUT_OF_RANGE;
+        }
+    }
+
+    return LE_OK;
+}
 
 
 // -------------------------------------------------------------------------------------------------
@@ -1854,6 +1890,7 @@ static bool ReadBoolToken
  *
  *  @return LE_OK if the string is read from the file.
  *          LE_FORMAT_ERROR if the text fails to be read from the file.
+ *          LE_OVERFLOW if the text doesn't fit in provided buffer (truncated).
  */
 // -------------------------------------------------------------------------------------------------
 static le_result_t ReadTextLiteral
@@ -1891,14 +1928,21 @@ static le_result_t ReadTextLiteral
 
         if (count >= (stringSize - 1))
         {
+            // truncate the string to the buffer size
             *stringPtr = 0;
 
-            LE_ERROR("String literal, '%s', too large.  (%zd/%zd)",
-                     oldPtr,
+            LE_ERROR("String literal is too large, truncated (%zd/%zd)",
                      strlen(oldPtr),
                      stringSize);
-
-            return LE_FORMAT_ERROR;
+            // move the file pointer to the terminal character (e.g. closing quote)
+            if (LE_OK == SkipToNextChar(filePtr, terminal))
+            {
+                return LE_OVERFLOW;
+            }
+            else
+            {
+                return LE_FORMAT_ERROR;
+            }
         }
 
         *stringPtr = next;
@@ -1921,6 +1965,7 @@ static le_result_t ReadTextLiteral
  *
  *  @return LE_OK if the string is read from the file.
  *          LE_FORMAT_ERROR if the text fails to be read from the file.
+ *          LE_OVERFLOW if the text doesn't fit in provided buffer (truncated).
  */
 // -------------------------------------------------------------------------------------------------
 static le_result_t ReadIntToken
@@ -1947,6 +1992,7 @@ static le_result_t ReadIntToken
  *
  *  @return LE_OK if the string is read from the file.
  *          LE_FORMAT_ERROR if the text fails to be read from the file.
+ *          LE_OVERFLOW if the text doesn't fit in provided buffer (truncated).
  */
 // -------------------------------------------------------------------------------------------------
 static le_result_t ReadFloatToken
@@ -1973,6 +2019,7 @@ static le_result_t ReadFloatToken
  *
  *  @return LE_OK if the string is read from the file.
  *          LE_FORMAT_ERROR if the text fails to be read from the file.
+ *          LE_OVERFLOW if the text doesn't fit in provided buffer (truncated).
  */
 // -------------------------------------------------------------------------------------------------
 static le_result_t ReadStringToken
@@ -2165,16 +2212,23 @@ static le_result_t InternalReadNode
 )
 // -------------------------------------------------------------------------------------------------
 {
-    static char stringBuffer[LE_CFG_STR_LEN_BYTES] = "";
+    char* stringBuffer = le_mem_ForceAlloc(EncodedStringPool);
+    size_t stringBufferSize = TDB_MAX_ENCODED_SIZE;
+    le_result_t result = LE_OK;
 
     TokenType_t tokenType;
 
     // Try to read this node's value.
-    if (ReadToken(filePtr, stringBuffer, sizeof(stringBuffer), &tokenType) != LE_OK)
+    result = ReadToken(filePtr, stringBuffer, stringBufferSize, &tokenType);
+    if ((result != LE_OK) && (result != LE_OVERFLOW))
     {
         LE_ERROR("Unexpected EOF or bad token in file.");
-        return LE_FORMAT_ERROR;
+        result = LE_FORMAT_ERROR;
+        goto cleanup;
     }
+    // if result is OVERFLOW (i.e. string is truncated), we still should be able
+    // to proceed with parsing the rest of the file.
+    result = LE_OK;
 
     tdb_SetEmpty(nodeRef);
 
@@ -2208,10 +2262,11 @@ static le_result_t InternalReadNode
         case TT_OPEN_GROUP:
             while (tokenType != TT_CLOSE_GROUP)
             {
-                if (ReadToken(filePtr, stringBuffer, sizeof(stringBuffer), &tokenType) != LE_OK)
+                if (ReadToken(filePtr, stringBuffer, stringBufferSize, &tokenType) != LE_OK)
                 {
                     LE_ERROR("Unexpected EOF or bad token in file while looking for '}'.");
-                    return LE_FORMAT_ERROR;
+                    result = LE_FORMAT_ERROR;
+                    goto cleanup;
                 }
 
                 if (tokenType == TT_STRING_VALUE)
@@ -2226,7 +2281,8 @@ static le_result_t InternalReadNode
                                  strLen,
                                  (size_t)LE_CFG_STR_LEN);
 
-                        return LE_FORMAT_ERROR;
+                        result = LE_FORMAT_ERROR;
+                        goto cleanup;
                     }
 
                     tdb_NodeRef_t childRef = GetNamedChild(nodeRef, stringBuffer);
@@ -2238,7 +2294,8 @@ static le_result_t InternalReadNode
                         if (tdb_SetNodeName(childRef, stringBuffer) != LE_OK)
                         {
                             LE_ERROR("Bad node name, '%s'.", stringBuffer);
-                            return LE_FORMAT_ERROR;
+                            result = LE_FORMAT_ERROR;
+                            goto cleanup;
                         }
 
                         LE_DEBUG("New node, %s", stringBuffer);
@@ -2246,11 +2303,11 @@ static le_result_t InternalReadNode
 
                     tdb_EnsureExists(childRef);
 
-                    le_result_t result = InternalReadNode(childRef, filePtr, newPathLen);
+                    result = InternalReadNode(childRef, filePtr, newPathLen);
 
                     if (result != LE_OK)
                     {
-                        return result;
+                        goto cleanup;
                     }
                 }
                 else if (tokenType == TT_CLOSE_GROUP)
@@ -2260,7 +2317,8 @@ static le_result_t InternalReadNode
                 else
                 {
                     LE_ERROR("Unexpected token in found while looking for '}'.");
-                    return LE_FORMAT_ERROR;
+                    result = LE_FORMAT_ERROR;
+                    goto cleanup;
                 }
             }
             break;
@@ -2268,7 +2326,8 @@ static le_result_t InternalReadNode
         case TT_CLOSE_GROUP:
         default:
             LE_ERROR("Unexpected token found.");
-            return LE_FORMAT_ERROR;
+            result = LE_FORMAT_ERROR;
+            goto cleanup;
     }
 
     if (IsShadow(nodeRef) == false)
@@ -2282,7 +2341,9 @@ static le_result_t InternalReadNode
 
     tdb_EnsureExists(nodeRef);
 
-    return LE_OK;
+cleanup:
+    le_mem_Release(stringBuffer);
+    return result;
 }
 
 
@@ -2311,10 +2372,11 @@ static le_result_t InternalWriteNode
     }
 
     // Get the node's value as a string.
-    static char stringBuffer[LE_CFG_STR_LEN_BYTES] = "";
+    char* stringBuffer = le_mem_ForceAlloc(EncodedStringPool);
+    size_t stringBufferSize = TDB_MAX_ENCODED_SIZE;
     le_result_t result = LE_OK;
 
-    tdb_GetValueAsString(nodeRef, stringBuffer, sizeof(stringBuffer), "");
+    tdb_GetValueAsString(nodeRef, stringBuffer, stringBufferSize, "");
 
     // Now, depending on the type of node, write out any required format information.
     switch (nodeRef->type)
@@ -2352,7 +2414,7 @@ static le_result_t InternalWriteNode
                 while (   (childRef != NULL)
                        && (result == LE_OK))
                 {
-                    tdb_GetNodeName(childRef, stringBuffer, sizeof(stringBuffer));
+                    tdb_GetNodeName(childRef, stringBuffer, stringBufferSize);
                     result = WriteStringValue(filePtr, '\"', '\"', stringBuffer);
 
                     if (result == LE_OK)
@@ -2371,6 +2433,7 @@ static le_result_t InternalWriteNode
             break;
     }
 
+    le_mem_Release(stringBuffer);
     return result;
 }
 
@@ -2756,6 +2819,9 @@ void tdb_Init
 
     HandlerPool = le_mem_CreatePool(CFG_HANDLER_POOL_NAME, sizeof(Handler_t));
     RegistrationPool = le_mem_CreatePool(CFG_REGISTRATION_POOL_NAME, sizeof(Registration_t));
+
+    BinaryDataPool = le_mem_CreatePool(CFG_BINARY_DATA_POOL_NAME, LE_CFG_BINARY_LEN);
+    EncodedStringPool = le_mem_CreatePool(CFG_ENCODED_STRING_POOL_NAME, TDB_MAX_ENCODED_SIZE);
 
     // Preload the system tree.
     tdb_GetTree("system");
@@ -3516,7 +3582,7 @@ size_t tdb_GetNodeNameHash
  *  Set the name of a given node.  But also validate the name as there are certain names that nodes
  *  shouldn't have.
  *
- *  @note It is caller's responsitility to ensure there is no other sibling with this name.
+ *  @note It is caller's responsibility to ensure there is no other sibling with this name.
  *
  *  @return LE_OK if the set is successful.  LE_FORMAT_ERROR if the name contains illegial
  *          characters, or otherwise would not work as a node name.  LE_OVERFLOW if the name is too
@@ -4387,4 +4453,38 @@ void tdb_CleanUpHandlers
         le_hashmap_Remove(HandlerRegistrationMap, registrationPtr->registrationPath);
         le_mem_Release(registrationPtr);
     }
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Getter function for the binary data memory pool
+ *
+ *  @return Reference to the binary data pool
+ */
+//--------------------------------------------------------------------------------------------------
+le_mem_PoolRef_t tdb_GetBinaryDataMemoryPool
+(
+    void
+)
+{
+    return BinaryDataPool;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Getter function for the encoded string memory pool
+ *
+ *  @return Reference to the encoded string pool
+ */
+//--------------------------------------------------------------------------------------------------
+le_mem_PoolRef_t tdb_GetEncodedStringMemoryPool
+(
+    void
+)
+{
+    return EncodedStringPool;
 }

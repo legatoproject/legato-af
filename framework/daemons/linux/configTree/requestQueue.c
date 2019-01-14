@@ -30,35 +30,6 @@ static le_mem_PoolRef_t RequestPool = NULL;
 
 #define CFG_REQUEST_POOL "configTree.requestPool"
 
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  These are the types of queueable actions that can be queued against the tree.
- */
-// -------------------------------------------------------------------------------------------------
-typedef enum
-{
-    RQ_INVALID,
-
-    RQ_CREATE_WRITE_TXN,
-    RQ_COMMIT_WRITE_TXN,
-    RQ_CREATE_READ_TXN,
-    RQ_DELETE_TXN,
-
-    RQ_DELETE_NODE,
-    RQ_SET_EMPTY,
-    RQ_SET_STRING,
-    RQ_SET_INT,
-    RQ_SET_FLOAT,
-    RQ_SET_BOOL
-}
-RequestType_t;
-
-
-
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  Request structure, if the user's request on the DB can't be handled right away it is stored in
@@ -102,7 +73,7 @@ typedef struct UpdateRequest
 
             union
             {
-                char AsStringPtr[LE_CFG_STR_LEN_BYTES];
+                char AsStringPtr[TDB_MAX_ENCODED_SIZE];
                 int AsInt;
                 float AsFloat;
                 bool AsBool;
@@ -390,17 +361,19 @@ static void ProcessRequestQueue
                     break;
 
                 case RQ_SET_STRING:
-                    LE_DEBUG("Processing deferred quick 'set string' for user %u (%s) on tree '%s'.",
+                case RQ_SET_BINARY:
+                    LE_DEBUG("Processing deferred quick 'set string/binary' for user %u (%s) on tree '%s'.",
                              tu_GetUserId(requestPtr->userRef),
                              tu_GetUserName(requestPtr->userRef),
                              tdb_GetTreeName(requestPtr->treeRef));
 
-                    rq_HandleQuickSetString(requestPtr->sessionRef,
-                                            requestPtr->commandRef,
-                                            requestPtr->userRef,
-                                            requestPtr->treeRef,
-                                            requestPtr->data.writeReq.pathPtr,
-                                            requestPtr->data.writeReq.value.AsStringPtr);
+                    rq_HandleQuickSetData(requestPtr->sessionRef,
+                                          requestPtr->commandRef,
+                                          requestPtr->userRef,
+                                          requestPtr->treeRef,
+                                          requestPtr->data.writeReq.pathPtr,
+                                          requestPtr->data.writeReq.value.AsStringPtr,
+                                          requestPtr->type);
                     break;
 
                 case RQ_SET_INT:
@@ -830,13 +803,12 @@ void rq_HandleQuickGetString
 
 
 
-
 // -------------------------------------------------------------------------------------------------
 /**
- *  Write a string value to a node in the tree.
+ *  Write a string or binary value to a node in the tree.
  */
 // -------------------------------------------------------------------------------------------------
-void rq_HandleQuickSetString
+void rq_HandleQuickSetData
 (
     le_msg_SessionRef_t sessionRef,    ///< [IN] The session this request occured on.
     le_cfg_ServerCmdRef_t commandRef,  ///< [IN] This handle is used to generate the reply for this
@@ -844,17 +816,20 @@ void rq_HandleQuickSetString
     tu_UserRef_t userRef,              ///< [IN] The user that's requesting the action.
     tdb_TreeRef_t treeRef,             ///< [IN] The tree that we're peforming the action on.
     const char* pathPtr,               ///< [IN] The path to the node to access.
-    const char* valuePtr               ///< [IN] The value to set.
+    const char* valuePtr,              ///< [IN] The value to set.
+    RequestType_t reqType              ///< [IN] Request type: whether this a string or
+                                       ///<      an encoded binary data.
 )
 //--------------------------------------------------------------------------------------------------
 {
     if (CanQuickSet(treeRef) == false)
     {
-        UpdateRequest_t* requestPtr = NewRequestBlock(RQ_SET_STRING,
-                                                      userRef,
-                                                      treeRef,
-                                                      sessionRef,
-                                                      commandRef);
+        UpdateRequest_t* requestPtr = NewRequestBlock(
+                                        reqType,
+                                        userRef,
+                                        treeRef,
+                                        sessionRef,
+                                        commandRef);
 
         LE_ASSERT(le_utf8_Copy(requestPtr->data.writeReq.pathPtr,
                                pathPtr,
@@ -880,12 +855,82 @@ void rq_HandleQuickSetString
         ni_SetNodeValueString(iteratorRef, NULL, valuePtr);
         ni_Commit(iteratorRef);
         ni_Release(iteratorRef);
-
-        le_cfg_QuickSetStringRespond(commandRef);
+        if (RQ_SET_BINARY == reqType)
+        {
+            le_cfg_QuickSetBinaryRespond(commandRef);
+        }
+        else if (RQ_SET_STRING == reqType)
+        {
+            le_cfg_QuickSetStringRespond(commandRef);
+        }
+        else
+        {
+            LE_ERROR("Unexpected request type: %d", reqType);
+        }
     }
 }
 
 
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Read a binary data from the node.
+ */
+// -------------------------------------------------------------------------------------------------
+void rq_HandleQuickGetBinary
+(
+    le_msg_SessionRef_t sessionRef,    ///< [IN] The session this request occured on.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] This handle is used to generate the reply for this
+                                       ///<      message.
+    tu_UserRef_t userRef,              ///< [IN] The user that's requesting the action.
+    tdb_TreeRef_t treeRef,             ///< [IN] The tree that we're peforming the action on.
+    const char* pathPtr,               ///< [IN] The path to the node to access.
+    size_t maxBinary,                  ///< [IN] Maximum data the caller can handle.
+    const uint8_t* defaultValuePtr,    ///< [IN] If the value doesn't exist use this value instead.
+    size_t defaultValueSize            ///< [IN] Default value size
+)
+//--------------------------------------------------------------------------------------------------
+{
+    ni_IteratorRef_t iteratorRef = ni_CreateIterator(sessionRef,
+                                                     userRef,
+                                                     treeRef,
+                                                     NI_READ,
+                                                     pathPtr);
+
+    char* stringBuf = le_mem_ForceAlloc(tdb_GetEncodedStringMemoryPool());
+    stringBuf[0] = 0;
+
+    uint8_t* binaryBuf = le_mem_ForceAlloc(tdb_GetBinaryDataMemoryPool());
+    size_t binaryLen = maxBinary;
+    if (maxBinary > LE_CFG_BINARY_LEN)
+    {
+        binaryLen = LE_CFG_BINARY_LEN;
+    }
+
+    le_result_t result = ni_GetNodeValueString(iteratorRef,
+                                               pathPtr,
+                                               stringBuf,
+                                               TDB_MAX_ENCODED_SIZE,
+                                               "");
+    if (0 == stringBuf[0])
+    {
+        // Node not found, or data is empty: sending back the default value
+        le_cfg_QuickGetBinaryRespond(commandRef, result, defaultValuePtr, defaultValueSize);
+    }
+    else
+    {
+        // Decode the string into binary data.
+        result = le_base64_Decode(stringBuf,
+                                  strlen(stringBuf),
+                                  binaryBuf,
+                                  &binaryLen);
+
+        le_cfg_QuickGetBinaryRespond(commandRef, result, binaryBuf, binaryLen);
+    }
+
+    ni_Release(iteratorRef);
+    le_mem_Release(stringBuf);
+    le_mem_Release(binaryBuf);
+}
 
 
 // -------------------------------------------------------------------------------------------------

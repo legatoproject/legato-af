@@ -16,6 +16,29 @@
 #define CFG_REQUEST_QUEUE_INCLUDE_GUARD
 
 
+// -------------------------------------------------------------------------------------------------
+/**
+ *  These are the types of queueable actions that can be queued against the tree.
+ */
+// -------------------------------------------------------------------------------------------------
+typedef enum
+{
+    RQ_INVALID,
+
+    RQ_CREATE_WRITE_TXN,
+    RQ_COMMIT_WRITE_TXN,
+    RQ_CREATE_READ_TXN,
+    RQ_DELETE_TXN,
+
+    RQ_DELETE_NODE,
+    RQ_SET_EMPTY,
+    RQ_SET_STRING,
+    RQ_SET_BINARY,
+    RQ_SET_INT,
+    RQ_SET_FLOAT,
+    RQ_SET_BOOL
+}
+RequestType_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -150,10 +173,10 @@ void rq_HandleQuickGetString
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Write a string value to a node in the tree.
+ *  Write a string or binary value to a node in the tree.
  */
 // -------------------------------------------------------------------------------------------------
-void rq_HandleQuickSetString
+void rq_HandleQuickSetData
 (
     le_msg_SessionRef_t sessionRef,    ///< [IN] The session this request occured on.
     le_cfg_ServerCmdRef_t commandRef,  ///< [IN] This handle is used to generate the reply for this
@@ -161,9 +184,30 @@ void rq_HandleQuickSetString
     tu_UserRef_t userRef,              ///< [IN] The user that's requesting the action.
     tdb_TreeRef_t treeRef,             ///< [IN] The tree that we're peforming the action on.
     const char* pathPtr,               ///< [IN] The path to the node to access.
-    const char* valuePtr               ///< [IN] The value to set.
+    const char* valuePtr,              ///< [IN] The value to set.
+    RequestType_t reqType              ///< [IN] Request type: whether this a string or
+                                       ///<      an encoded binary data.
 );
 
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Read a binary data from the node.
+ */
+// -------------------------------------------------------------------------------------------------
+void rq_HandleQuickGetBinary
+(
+    le_msg_SessionRef_t sessionRef,    ///< [IN] The session this request occured on.
+    le_cfg_ServerCmdRef_t commandRef,  ///< [IN] This handle is used to generate the reply for this
+                                       ///<      message.
+    tu_UserRef_t userRef,              ///< [IN] The user that's requesting the action.
+    tdb_TreeRef_t treeRef,             ///< [IN] The tree that we're peforming the action on.
+    const char* pathPtr,               ///< [IN] The path to the node to access.
+    size_t maxBinary,                  ///< [IN] Maximum data the caller can handle.
+    const uint8_t* defaultValuePtr,    ///< [IN] If the value doesn't exist use this value instead.
+    size_t defaultValueSize            ///< [IN] Default value size
+);
 
 
 

@@ -30,6 +30,12 @@
 #ifndef CFG_TREE_DB_INCLUDE_GUARD
 #define CFG_TREE_DB_INCLUDE_GUARD
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum size of the binary data encoded into string (including terminating zero).
+ */
+//--------------------------------------------------------------------------------------------------
+#define TDB_MAX_ENCODED_SIZE    (LE_BASE64_ENCODED_SIZE(LE_CFG_BINARY_LEN) + 1)
 
 /// Reference to a configuration tree.
 typedef struct Tree* tdb_TreeRef_t;
@@ -367,7 +373,7 @@ size_t tdb_GetNodeNameHash
  *  Set the name of a given node.  But also validate the name as there are certain names that nodes
  *  shouldn't have.
  *
- *  @note It is caller's responsitility to ensure there is no other sibling with this name.
+ *  @note It is caller's responsibility to ensure there is no other sibling with this name.
  *
  *  @return LE_OK if the set is successful.  LE_FORMAT_ERROR if the name contains illegal
  *          characters, or otherwise would not work as a node name.  LE_OVERFLOW if the name is too
@@ -693,6 +699,33 @@ void tdb_CleanUpHandlers
     le_msg_SessionRef_t sessionRef  ///< [IN] The session that's been closed.
 );
 
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Getter function for the binary data memory pool
+ *
+ *  @return Reference to the binary data pool
+ */
+//--------------------------------------------------------------------------------------------------
+le_mem_PoolRef_t tdb_GetBinaryDataMemoryPool
+(
+    void
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Getter function for the encoded string memory pool
+ *
+ *  @return Reference to the encoded string pool
+ */
+//--------------------------------------------------------------------------------------------------
+le_mem_PoolRef_t tdb_GetEncodedStringMemoryPool
+(
+    void
+);
 
 
 
