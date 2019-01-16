@@ -55,7 +55,6 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define INSMOD_COMMAND "/sbin/insmod"
-#define INSMOD_COMMAND_FORMAT INSMOD_COMMAND" %s %s"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -64,21 +63,31 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define RMMOD_COMMAND "/sbin/rmmod"
-#define RMMOD_COMMAND_FORMAT RMMOD_COMMAND" %s"
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Enum for load status of modules: init, try, installed or removed
+ * Modprobe command and format.
+ * Argument is module name for adding module and "-r" module name for removing module.
  */
 //--------------------------------------------------------------------------------------------------
-typedef enum {
-    STATUS_INIT = 0,    ///< Module is in initialization state
-    STATUS_TRY_INSTALL, ///< Try state before installing the module
-    STATUS_INSTALLED,   ///< If insmod is executed on the module
-    STATUS_TRY_REMOVE,  ///< Try state before removing the module
-    STATUS_REMOVED      ///< If rmmod is executed on the module
-} ModuleLoadStatus_t;
+#define MODPROBE_COMMAND "/sbin/modprobe"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum buffer length to store the output of modinfo.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MODINFO_MAX_BUFFER_LEN 4096
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Macro to get the length of an array.
+ */
+//--------------------------------------------------------------------------------------------------
+#define ARRAY_LENGTH(array) (sizeof(array)/sizeof(array[0]))
 
 
 //--------------------------------------------------------------------------------------------------
@@ -95,6 +104,7 @@ typedef struct
     int                argc;                                 // insmod argc
     char               *argv[KMODULE_MAX_ARGC];              // insmod argv
     le_sls_List_t      reqModuleName;                        // List of required kernel modules
+    le_sls_List_t      dependsModuleName;                    // List of system dependency modules
     ModuleLoadStatus_t moduleLoadStatus;                     // Load status of the module
     bool               isLoadManual;                         // is module load set to auto or manual
     bool               isOptional;                           // is the module required or optional
@@ -125,7 +135,9 @@ static struct {
     le_mem_PoolRef_t    modulePool;        // memory pool of KModuleObj_t objects
     le_mem_PoolRef_t    stringPool;        // memory pool of strings (for argv)
     le_mem_PoolRef_t    reqModStringPool;  // memory pool of required kernel modules strings
+    le_mem_PoolRef_t    depModStringPool;  // memory pool of depend system kernel modules strings
     le_hashmap_Ref_t    moduleTable;       // table for kernel module objects
+    le_hashmap_Ref_t    dependModuleTable; // table for depends system kernel modules
 } KModuleHandler = {NULL};
 
 
@@ -187,14 +199,17 @@ static void ModuleFreeParams(KModuleObj_t *module)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Build and execute the insmod/rmmod command
+ * Build and execute the command passed.
+ * filedes is not NULL if output of the command (e.g. modinfo) needs to be captured.
+ * filedes is NULL if output of the command (e.g. insmod, rmmod, modprobe) need not be captured.
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t ExecuteCommand(char *argv[], int argc)
+static le_result_t ExecuteCommand(char *argv[], int argc, int *filedes)
 {
     pid_t pid, p;
     int result;
 
+    /* First argument argv[0] is always the command */
     LE_FATAL_IF(argv[0] == NULL,
                 "Internal error: command name must be supplied to execute command.");
     LE_FATAL_IF(argv[1] == NULL,
@@ -207,14 +222,52 @@ static le_result_t ExecuteCommand(char *argv[], int argc)
         return LE_FAULT;
     }
 
-    /* First argument argv[0] is always the command */
-    LE_INFO("Execute '%s %s'", argv[0], argv[1]);
+    /* Concatenate all arguments into one string for logging purpose. */
+    char logStr[LE_CFG_STR_LEN_BYTES] = "";
+    const char dots[] = "...";
+    int logStrLen = LE_CFG_STR_LEN_BYTES - strlen(dots);
+    int count;
+
+    for (count = 0; count < argc; count++)
+    {
+        logStrLen -= strlen(argv[count]) + strlen(" ") + 1;
+
+        if (logStrLen >= 0)
+        {
+            /* Concatenate the argument string */
+            strncat(logStr, argv[count], strlen(argv[count]));
+            /* Concatenate " " between each agrument for readability */
+            strncat(logStr, " ", strlen(" "));
+        }
+        else
+        {
+            /* Append "..." in case the log string reaches close to the maximum length allowed. */
+            strncat(logStr, dots, strlen(dots));
+            break;
+        }
+    }
+
+    LE_INFO("Execute '%s'", logStr);
 
     pid = fork();
     LE_FATAL_IF(-1 == pid, "fork() failed. (%m)");
 
     if (0 == pid)
     {
+        /* If file descriptor is provided, output of child process needs to be captured. */
+        if (filedes != NULL)
+        {
+            int ret = dup2(filedes[1], STDOUT_FILENO);
+            if (ret == -1)
+            {
+                LE_ERROR("Internal error: cannot duplicate a file descriptor (%m)");
+                return LE_FAULT;
+            }
+
+            fd_Close(filedes[1]);
+            fd_Close(filedes[0]);
+        }
+
         /* Child, exec command. */
         execv(argv[0], argv);
         /* Should never be here. */
@@ -240,14 +293,15 @@ static le_result_t ExecuteCommand(char *argv[], int argc)
     /* Check exit status and errors */
     if (WIFSIGNALED(result))
     {
-        LE_CRIT("%s was killed by a signal %d.", argv[0], WTERMSIG(result));
+        LE_CRIT("%s was killed by a signal %d.", logStr, WTERMSIG(result));
         return LE_FAULT;
     }
     else if (WIFEXITED(result) && WEXITSTATUS(result) != EXIT_SUCCESS)
     {
-        LE_CRIT("%s exited with error code %d.", argv[0], WEXITSTATUS(result));
+        LE_CRIT("%s exited with error code %d.", logStr, WEXITSTATUS(result));
         return LE_FAULT;
     }
+
     return LE_OK;
 }
 
@@ -278,29 +332,32 @@ static char *StripExtensionName(char *name)
  * Check proc/modules for a given module
  */
 //--------------------------------------------------------------------------------------------------
-static ModuleLoadStatus_t CheckProcModules(char *modName)
+static ProcModules_t CheckProcModules(char *modName)
 {
     FILE* fPtr;
     char line[500];
-    int size, usedbyNo;
+    int size;
     char usedbyName[200];
     char modStatus[10];
     char *stripExtModName;
     char scanModName[LE_CFG_STR_LEN_BYTES];
-    ModuleLoadStatus_t loadStatus = STATUS_INIT;
     bool foundModule = false;
     int rc = 0;
+
+    ProcModules_t  procModules;
+    procModules.usedbyNumMod = 0;
+    procModules.loadStatus = STATUS_INIT;
 
     fPtr = fopen("/proc/modules", "r");
     if (fPtr == NULL)
     {
         LE_CRIT("Error in opening file /proc/modules");
-        return loadStatus;
+        return procModules;
     }
 
     stripExtModName = StripExtensionName(modName);
 
-    /* Scan each line of /proc/modules for matching module name and its load status
+    /* Scan each line of /proc/modules for matching module name, its load status and module usage.
      * There are 3 possible module load status: Live, Loading, Unloading.
      */
     while (fgets(line, sizeof(line), fPtr))
@@ -311,7 +368,7 @@ static ModuleLoadStatus_t CheckProcModules(char *modName)
         }
 
         rc = sscanf(line, "%511s %d %d %199s %9s",
-                    scanModName, &size, &usedbyNo, usedbyName, modStatus);
+                    scanModName, &size, &procModules.usedbyNumMod, usedbyName, modStatus);
         if (rc == EOF)
         {
             LE_ERROR("Error in scanning /proc/modules '%s'", line);
@@ -323,11 +380,11 @@ static ModuleLoadStatus_t CheckProcModules(char *modName)
             foundModule = true;
             if (strcmp(modStatus, "Live") == 0)
             {
-                loadStatus = STATUS_INSTALLED;
+                procModules.loadStatus = STATUS_INSTALLED;
             }
             else
             {
-                loadStatus = STATUS_TRY_INSTALL;
+                procModules.loadStatus = STATUS_TRY_INSTALL;
             }
             break;
         }
@@ -335,13 +392,13 @@ static ModuleLoadStatus_t CheckProcModules(char *modName)
 
     if (foundModule == false)
     {
-        loadStatus = STATUS_REMOVED;
+        procModules.loadStatus = STATUS_REMOVED;
     }
 
     le_mem_Release(stripExtModName);
     fclose(fPtr);
 
-    return loadStatus;
+    return procModules;
 }
 
 
@@ -720,6 +777,120 @@ static void ModuleGetRemoveScript(KModuleObj_t *module)
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get system dependency modules for a given kernel module. This is done by parsing the 'depends'
+ * field from the output of modinfo.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t ModuleGetDependsInfo(KModuleObj_t *mod)
+{
+    /* File descriptor for entrance to the pipe is written to filedes[1] and exit to filedes [0]. */
+    int filedes[2];
+
+    if (pipe(filedes) == -1)
+    {
+        LE_FATAL("Internal error: pipe() failed! (%m)");
+        return LE_FAULT;
+    }
+
+    char *depargv[] = {"/sbin/modinfo",  "-F", "depends", mod->path, NULL};
+
+    /* Execute command "/sbin/modinfo -F depends <mod->path>" to get system dependency modules. */
+    ExecuteCommand(depargv, ARRAY_LENGTH(depargv)-1, filedes);
+
+    /* Close the entrance to the pipe within the parent process */
+    fd_Close(filedes[1]);
+
+    /* Buffer to store the output of modinfo */
+    char modinfoOutput[MODINFO_MAX_BUFFER_LEN] = "";
+    while (1)
+    {
+        /* Read the output of the child process from file descriptor filedes[0] */
+        ssize_t count = read(filedes[0], modinfoOutput, sizeof(modinfoOutput));
+        if (count >= (MODINFO_MAX_BUFFER_LEN-1))
+        {
+            LE_FATAL("Internal error: Overflow! (%m)");
+        }
+
+        if (count == -1)
+        {
+            if (errno == EINTR)
+            {
+                continue;
+            }
+            else
+            {
+                LE_FATAL("Internal error: read() failed! (%m)");
+                return LE_FAULT;
+            }
+        }
+        else if (count == 0)
+        {
+            break;
+        }
+    }
+
+    fd_Close(filedes[0]);
+
+    /* System modules are separated by ',' or '\n' in the output of modinfo. */
+    char* modinfoOutputPtr = modinfoOutput;
+    char* token;
+    int count = 0;
+    DepModNameNode_t* depModNameNodePtr;
+
+    while ((token = strtok_r(modinfoOutputPtr, ",\n", &modinfoOutputPtr)))
+    {
+        count++;
+        depModNameNodePtr = le_mem_ForceAlloc(KModuleHandler.depModStringPool);
+        depModNameNodePtr->link = LE_SLS_LINK_INIT;
+        depModNameNodePtr->useCount = 0;
+
+        char koExt[4] = ".ko";
+
+        size_t sizeToken = strlen(token);
+        if (sizeToken > (LE_CFG_STR_LEN_BYTES - strlen(koExt) - 1))
+        {
+            LE_ERROR("Internal error: size of token is greater than module name string buffer.");
+            return LE_OVERFLOW;
+        }
+
+        strncpy(depModNameNodePtr->modName, token, LE_CFG_STR_LEN_BYTES - strlen(koExt) - 1);
+
+        /* If the bytes of token being copied does not have a terminating null byte then
+         * strncpy() produces an unterminated string in depModNameNodePtr->modName.
+         * We need to handle this by forcing null termination.
+         */
+        if (sizeToken > 0)
+        {
+            depModNameNodePtr->modName[sizeToken] = '\0';
+        }
+
+        /* Concatenate ".ko" to the end of the module name as the legato modules stored in the hash
+         * map are suffixed by ".ko". The module name is used to search through the hash map.
+         */
+        strncat(depModNameNodePtr->modName, koExt, strlen(koExt));
+
+        /* Depend modules might also include legato externel kernel modules. These modules cannot
+         * cannot be installed using modprobe and is handled separtely using insmod/rmmod. Skip
+         * these modules from adding to dependsModuleName list.
+         */
+        if (!le_sls_IsInList(&(mod->dependsModuleName), &(depModNameNodePtr->link)) &&
+            !le_hashmap_ContainsKey(KModuleHandler.moduleTable, depModNameNodePtr->modName))
+        {
+            /* Add to the queue of dependency modules for this Legato kernel module. */
+            le_sls_Queue(&(mod->dependsModuleName), &(depModNameNodePtr->link));
+
+            /* Add to the hashmap to keep track of the usage of a particular system module. */
+            le_hashmap_Put(KModuleHandler.dependModuleTable, depModNameNodePtr->modName,
+                           depModNameNodePtr);
+        }
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Insert a module to the table with a given module name
  */
 //--------------------------------------------------------------------------------------------------
@@ -746,6 +917,7 @@ static void ModuleInsert(char *modName)
     m->argv[1] = m->path;   /* Second: file/module path */
     m->argc = 2;
     m->reqModuleName = LE_SLS_LIST_INIT;
+    m->dependsModuleName = LE_SLS_LIST_INIT;
     m->useCount = 0;
     m->isLoadManual = false;
     m->isOptional = false;
@@ -762,6 +934,7 @@ static void ModuleInsert(char *modName)
     ModuleGetRequiredModules(m); /* Read required kernel modules from configTree */
     ModuleGetInstallScript(m);   /* Read the install script path from configTree */
     ModuleGetRemoveScript(m);    /* Read the remove script path from configTree */
+    ModuleGetDependsInfo(m);     /* Read the depends system kernel module from modinfo */
 
     /* Insert modules in alphabetical order of module name in a doubly linked list */
     le_dls_Queue(&ModuleAlphaOrderList, &(m->alphabeticalLink));
@@ -850,7 +1023,8 @@ static le_result_t TraverseDependencyInsert
 
 //--------------------------------------------------------------------------------------------------
 /**
- * insmod the kernel module
+ * Install each kernel module.
+ * modprobe the system dependency module and insmod the Legato kernel module.
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t InstallEachKernelModule(KModuleObj_t *m, bool enableUseCount)
@@ -859,9 +1033,7 @@ static le_result_t InstallEachKernelModule(KModuleObj_t *m, bool enableUseCount)
     le_dls_Link_t *listLink;
     /* The ordered list of required kernel modules to install */
     le_dls_List_t ModuleInsertList = LE_DLS_LIST_INIT;
-
-    ModuleLoadStatus_t loadStatusProcMod;
-    char *scriptargv[3];
+    ProcModules_t procModules;
 
     result = TraverseDependencyInsert(&ModuleInsertList, m, enableUseCount);
     if (result != LE_OK)
@@ -887,14 +1059,40 @@ static le_result_t InstallEachKernelModule(KModuleObj_t *m, bool enableUseCount)
 
         if (mod->moduleLoadStatus != STATUS_INSTALLED)
         {
+            le_sls_Link_t *depModNameLinkPtr = le_sls_Peek(&(mod->dependsModuleName));
+
+            while (depModNameLinkPtr != NULL)
+            {
+                /* Install dependency system modules if any before installing the Legato module */
+                DepModNameNode_t* depModNameNodePtr = CONTAINER_OF(depModNameLinkPtr,
+                                                                   DepModNameNode_t, link);
+                char *depargv[] = {MODPROBE_COMMAND, depModNameNodePtr->modName, NULL};
+
+                result = ExecuteCommand(depargv, ARRAY_LENGTH(depargv)-1, NULL);
+                if (result != LE_OK)
+                {
+                    LE_CRIT("Command '%s' '%s' execution failed.", depargv[0], depargv[1]);
+                    return result;
+                }
+
+                DepModNameNode_t *depModPtr = le_hashmap_Get(KModuleHandler.dependModuleTable,
+                                                             depModNameNodePtr->modName);
+                if (depModPtr == NULL)
+                {
+                    LE_ERROR("Lookup for module '%s' failed.", depModNameNodePtr->modName);
+                    return LE_NOT_FOUND;
+                }
+
+                depModPtr->useCount++;
+                depModNameLinkPtr = le_sls_PeekNext(&(mod->dependsModuleName), depModNameLinkPtr);
+            }
+
             /* If install script is provided, execute the script otherwise execute insmod */
             if (strcmp(mod->installScript, "") != 0)
             {
-                scriptargv[0] =  mod->installScript;
-                scriptargv[1] =  mod->path;
-                scriptargv[2] =  NULL;
+                char *scriptargv[] = {mod->installScript, mod->path, NULL};
 
-                result = ExecuteCommand(scriptargv, 2);
+                result = ExecuteCommand(scriptargv, ARRAY_LENGTH(scriptargv)-1, NULL);
                 if (result != LE_OK)
                 {
                     LE_CRIT("Install script '%s' execution failed", mod->installScript);
@@ -907,8 +1105,9 @@ static le_result_t InstallEachKernelModule(KModuleObj_t *m, bool enableUseCount)
                 }
 
                 /* Read module load status from /proc/modules */
-                loadStatusProcMod =  CheckProcModules(mod->name);
-                if (loadStatusProcMod != STATUS_INSTALLED)
+                procModules =  CheckProcModules(mod->name);
+
+                if (procModules.loadStatus != STATUS_INSTALLED)
                 {
                     LE_INFO("Module '%s' not in 'Live' state, wait for 10 seconds.", mod->name);
                     sleep(10);
@@ -916,7 +1115,7 @@ static le_result_t InstallEachKernelModule(KModuleObj_t *m, bool enableUseCount)
                     /* If the module is not in live state, wait for 10 seconds to see if the
                      * module recovers to live state, otherwise restart the system.
                      */
-                    if (loadStatusProcMod != STATUS_INSTALLED)
+                    if (procModules.loadStatus != STATUS_INSTALLED)
                     {
                         if (mod->isOptional)
                         {
@@ -935,7 +1134,8 @@ static le_result_t InstallEachKernelModule(KModuleObj_t *m, bool enableUseCount)
             else
             {
                 mod->argv[0] = INSMOD_COMMAND;
-                result = ExecuteCommand(mod->argv, mod->argc);
+
+                result = ExecuteCommand(mod->argv, mod->argc, NULL);
                 if (result != LE_OK)
                 {
                     if (mod->isOptional)
@@ -1141,24 +1341,39 @@ void kernelModules_Insert(void)
 //--------------------------------------------------------------------------------------------------
 static void ReleaseModulesMemory(void)
 {
-    KModuleObj_t *m;
-    le_hashmap_It_Ref_t iter;
+    KModuleObj_t *modPtr;
+    DepModNameNode_t *depModPtr;
+    le_hashmap_It_Ref_t modIter;
+    le_hashmap_It_Ref_t depModIter;
 
     LE_INFO("Releasing kernel modules memory");
 
-    iter = le_hashmap_GetIterator(KModuleHandler.moduleTable);
+    modIter = le_hashmap_GetIterator(KModuleHandler.moduleTable);
 
     /* Iterate through the kernel module table */
-    while(le_hashmap_NextNode(iter) == LE_OK)
+    while (le_hashmap_NextNode(modIter) == LE_OK)
     {
-        m = (KModuleObj_t*) le_hashmap_GetValue(iter);
-        LE_ASSERT(m && KMODULE_OBJECT_COOKIE == m->cookie);
+        modPtr = (KModuleObj_t*) le_hashmap_GetValue(modIter);
+        LE_ASSERT(modPtr && KMODULE_OBJECT_COOKIE == modPtr->cookie);
 
         /* Reset exec arguments */
-        ModuleFreeParams(m);
-        LE_ASSERT(m == le_hashmap_Remove(KModuleHandler.moduleTable, m->name));
-        le_mem_Release(m);
-        LE_INFO("Released memory of module '%s'", m->name);
+        ModuleFreeParams(modPtr);
+        LE_ASSERT(modPtr == le_hashmap_Remove(KModuleHandler.moduleTable, modPtr->name));
+        le_mem_Release(modPtr);
+        LE_INFO("Released memory of module '%s'", modPtr->name);
+    }
+
+    depModIter = le_hashmap_GetIterator(KModuleHandler.dependModuleTable);
+
+    /* Iterate through the kernel module table */
+    while (le_hashmap_NextNode(depModIter) == LE_OK)
+    {
+        depModPtr = (DepModNameNode_t*) le_hashmap_GetValue(depModIter);
+        LE_ASSERT(depModPtr != NULL);
+
+        LE_ASSERT(depModPtr == le_hashmap_Remove(KModuleHandler.dependModuleTable, depModPtr->modName));
+        le_mem_Release(depModPtr);
+        LE_INFO("Released memory of module '%s'", depModPtr->modName);
     }
 }
 
@@ -1256,9 +1471,7 @@ static le_result_t RemoveEachKernelModule(KModuleObj_t *m, bool enableUseCount)
     le_result_t result;
     /* The ordered list of required kernel modules to remove */
     le_dls_List_t ModuleRemoveList = LE_DLS_LIST_INIT;
-    ModuleLoadStatus_t loadStatusProcMod;
-    char *scriptargv[3];
-    char *rmmodargv[3];
+    ProcModules_t procModules;
 
     TraverseDependencyRemove(&ModuleRemoveList, m, enableUseCount);
 
@@ -1272,11 +1485,9 @@ static le_result_t RemoveEachKernelModule(KModuleObj_t *m, bool enableUseCount)
             /* If remove script is provided then execute the script otherwise execute rmmod */
             if (strcmp(mod->removeScript, "") != 0 )
             {
-                scriptargv[0] =  mod->removeScript;
-                scriptargv[1] =  mod->path;
-                scriptargv[2] =  NULL;
+                char *scriptargv[] = {mod->removeScript, mod->path, NULL};
 
-                result = ExecuteCommand(scriptargv, 2);
+                result = ExecuteCommand(scriptargv, ARRAY_LENGTH(scriptargv)-1, NULL);
                 if (result != LE_OK)
                 {
                     LE_CRIT("Remove script '%s' execution failed.", mod->removeScript);
@@ -1286,8 +1497,9 @@ static le_result_t RemoveEachKernelModule(KModuleObj_t *m, bool enableUseCount)
                 /* Check if the module is found in /proc/modules. If a module was successfully
                  * removed then it won't show up in /proc/modules.
                  */
-                loadStatusProcMod = CheckProcModules(mod->name);
-                if (loadStatusProcMod == STATUS_REMOVED)
+                procModules = CheckProcModules(mod->name);
+
+                if (procModules.loadStatus == STATUS_REMOVED)
                 {
                     LE_DEBUG("Module '%s' not found in /proc/modules as expected", mod->name);
                 }
@@ -1300,11 +1512,9 @@ static le_result_t RemoveEachKernelModule(KModuleObj_t *m, bool enableUseCount)
             else
             {
                 /* Populate argv for rmmod. rmmod does not take any parameters. */
-                rmmodargv[0] = RMMOD_COMMAND;
-                rmmodargv[1] = mod->name;
-                rmmodargv[2] = NULL;
+                char *rmmodargv[] = {RMMOD_COMMAND, mod->name, NULL};
 
-                result = ExecuteCommand(rmmodargv, 2);
+                result = ExecuteCommand(rmmodargv, ARRAY_LENGTH(rmmodargv)-1, NULL);
                 if (result != LE_OK)
                 {
                     return result;
@@ -1312,6 +1522,52 @@ static le_result_t RemoveEachKernelModule(KModuleObj_t *m, bool enableUseCount)
             }
             mod->moduleLoadStatus = STATUS_REMOVED;
             LE_INFO("Removed kernel module '%s'", mod->name);
+
+            /* Traverse system dependency modules and remove them if any. */
+            le_sls_Link_t *depModNameLinkPtr = le_sls_Peek(&(mod->dependsModuleName));
+            while (depModNameLinkPtr != NULL)
+            {
+                DepModNameNode_t* depModNameNodePtr = CONTAINER_OF(depModNameLinkPtr,
+                                                                   DepModNameNode_t, link);
+
+                DepModNameNode_t *depModPtr = le_hashmap_Get(KModuleHandler.dependModuleTable,
+                                                             depModNameNodePtr->modName);
+                if (depModPtr == NULL)
+                {
+                    LE_ERROR("Lookup for module '%s' failed.", depModNameNodePtr->modName);
+                    return LE_NOT_FOUND;
+                }
+
+                if (depModPtr->useCount > 0)
+                {
+                    depModPtr->useCount--;
+                }
+
+                /* After the use count of a system module is 0, need to check if other modules
+                 * outside Legato is using the system module or not. This is checked by reading the
+                 * output of /prod/modules and checking the module usage. It is safe to remove the
+                 * system module only if no other modules are using the system module.
+                 */
+                if (depModPtr->useCount == 0)
+                {
+                    ProcModules_t procModules = CheckProcModules(depModNameNodePtr->modName);
+
+                    if (procModules.usedbyNumMod == 0)
+                    {
+                        char* depargv[] = {MODPROBE_COMMAND, "-r", depModNameNodePtr->modName,
+                                           NULL};
+
+                        result = ExecuteCommand(depargv, ARRAY_LENGTH(depargv)-1, NULL);
+                        if (result != LE_OK)
+                        {
+                            LE_CRIT("Command '%s' '%s' '%s' execution failed.",
+                                    depargv[0], depargv[1], depargv[2]);
+                            return result;
+                        }
+                    }
+                }
+                depModNameLinkPtr = le_sls_PeekNext(&(mod->dependsModuleName), depModNameLinkPtr);
+            }
         }
     }
     return LE_OK;
@@ -1418,12 +1674,23 @@ void kernelModules_Init(void)
                                                         sizeof(ModNameNode_t));
     le_mem_ExpandPool(KModuleHandler.reqModStringPool, STRINGS_DEFAULT_POOL_SIZE);
 
+    // Create memory pool of strings for depends system module names
+    KModuleHandler.depModStringPool = le_mem_CreatePool("Depends Module Mem Pool",
+                                                        sizeof(DepModNameNode_t));
+    le_mem_ExpandPool(KModuleHandler.depModStringPool, STRINGS_DEFAULT_POOL_SIZE);
+
     // Note that modules.dep file cannot be used for the time being as it requires kernel changes.
     // This option will be investigated in the future. Also, to support backward compatibility of
     // existing targets, module dependency support without kernel changes is a must.
 
     // Create table of kernel module objects
     KModuleHandler.moduleTable = le_hashmap_Create("KModule Objects",
+                                             31,
+                                             le_hashmap_HashString,
+                                             le_hashmap_EqualsString);
+
+    // Create table of depends kernel module (system kernel module dependency) objects
+    KModuleHandler.dependModuleTable = le_hashmap_Create("DepKModule Objects",
                                              31,
                                              le_hashmap_HashString,
                                              le_hashmap_EqualsString);
