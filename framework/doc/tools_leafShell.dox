@@ -40,7 +40,7 @@ If the shell isn't in a workspace then the prompt would simply include the Leaf 
 @section toolsLeafShell_options Options
 
 @verbatim
--n SHELLNAME::
+-n SHELLNAME
 @endverbatim
 
 Specify the name of the shell to run.  Currently supported shells are Bash and Zsh.  If -n is
@@ -48,7 +48,7 @@ not specified, leaf shell will run the user's default shell.  (Found in the envi
 $SHELL.)  If the requested shell is not found, then leaf shell will fallback to Bash support.
 
 @verbatim
--c COMMANDARGS::
+-c COMMANDARGS
 @endverbatim
 
 If given, the requested shell will be launched within the Leaf environment and the command(s) given
@@ -59,13 +59,13 @@ within a leaf environment from an external script.
 @section toolsLeafShell_envVar Environment Variables
 
 @verbatim
-LEAF_SHELL_PROMPT_PREFIX::
+LEAF_SHELL_PROMPT_PREFIX
 @endverbatim
 
 Prefix to append to the Leaf status.  The default value is lsh.
 
 @verbatim
-LEAF_SHELLZSH_PROMPT_SIDE::
+LEAF_SHELLZSH_PROMPT_SIDE
 @endverbatim
 
 For Zsh shells: Allows the user to choose which prompt to append the Leaf status to.
@@ -74,22 +74,22 @@ set to anything other than right the prompt will appear on the left.  The defaul
 
 @section toolsLeafShell_examples Examples
 
-Start up the user default shell::
+Start up the user default shell
 @verbatim
 leaf shell
 @endverbatim
 
-Start up a shell with zsh (if not the default shell)::
+Start up a shell with zsh (if not the default shell)
 @verbatim
 leaf shell -n zsh
 @endverbatim
 
-Run a build and terminate the sub-shell::
+Run a build and terminate the sub-shell
 @verbatim
 leaf shell -c make
 @endverbatim
 
-Run multiple commands within a sub-shell and then exit it::
+Run multiple commands within a sub-shell and then exit it
 @verbatim
 leaf shell -c "cd subDir && make && make install"
 @endverbatim

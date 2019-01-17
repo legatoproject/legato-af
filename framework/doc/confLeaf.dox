@@ -53,7 +53,7 @@ list that will be specific for your environment.
 
 @subsection confLeafsearchTarget Search for a target
 @verbatim
-leaf search -t <target>    (i.e.; leaf search -t wp76 will bring back all packages for the wp76 target)
+$ leaf search -t <target>    (i.e.; leaf search -t wp76 will bring back all packages for the wp76 target)
 @endverbatim
 
 The search results will return a package identifier (the package name of the package to install), a
@@ -100,10 +100,10 @@ resources needed for development and the leaf tools know how to find the resourc
 You will now be able to use leaf commands to view your environment and use the resources that you
 just downloaded and installed.
 @verbatim
-leaf status - displays the profile list and information about the profiles
-leaf select - lets you select different profiles (if you have more then one installed)
-leaf profile delete <profile name>
-leaf profile rename <old name> <new name> - renames your profile
+$ leaf status - displays the profile list and information about the profiles
+$ leaf select - lets you select different profiles (if you have more then one installed)
+$ leaf profile delete <profile name>
+$ leaf profile rename <old name> <new name> - renames your profile
 @endverbatim
 
 @section confLeafSetup2nd Setup a Second Profile
@@ -118,7 +118,7 @@ $ leaf setup wp76dev -p swi-wp76_1.3.0
 
 To see the two profiles set up use leaf status and to switch profiles use
 @verbatim
-leaf select <profile name>.
+$ leaf select <profile name>.
 @endverbatim
 
 @section confLeafShell Leaf Shell
@@ -212,7 +212,7 @@ To build your system you no longer need to re make the build. Run mksys and poin
 file. Even though leaf is profile aware we still need to catch up the mktools. To build a Legato
 System using your custom sdef run:
 @verbatim
-mksys -t $LEGATO_TARGET <sdef>   (i.e.; mksys -t wp76xx mySystem.sdef from your leaf workspace directory)
+$ mksys -t $LEGATO_TARGET <sdef>   (i.e.; mksys -t wp76xx mySystem.sdef from your leaf workspace directory)
 @endverbatim
 
 @subsection confLeafDevelopmentWorkspace Workspace Layout

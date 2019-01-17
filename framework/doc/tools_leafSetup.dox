@@ -3,7 +3,7 @@
 @c leaf @c setup - downloads, installs and configures your Legato development environment.
 
 @verbatim
-leaf setup [PROFILE] -p PACKAGE ... [--set KEY[=VALUE] ...]
+$ leaf setup [PROFILE] -p PACKAGE ... [--set KEY[=VALUE] ...]
 @endverbatim
 
 
@@ -46,14 +46,14 @@ Create a new workspace and profile, using the latest version
 
 Assuming that you're in a new empty directory:
 @verbatim
-leaf setup MYSDK1 -p mysdkversion1
+$ leaf setup MYSDK1 -p mysdkversion1
 @endverbatim
 
 Add a profile to an existing workspace, with another version
 
 Assuming that you're in a directory that already contains a workspace:
 @verbatim
-leaf setup MYSDK2 -p mysdkversion2
+$ leaf setup MYSDK2 -p mysdkversion2
 @endverbatim
 
 @section toolsLeafSetup_Behaviors Behaviors
@@ -63,27 +63,27 @@ existing workspace. As an high level command, using @c leaf @c setup is equivale
 following steps:
 
 @verbatim
-leaf init
+$ leaf init
 @endverbatim
 
 If the current directory is not already into a workspace tree (i.e. the workspace root itself or a
 sub-directory), the workspace will be created here (after confirmation).
 
 @verbatim
-leaf profile create PROFILE
+$ leaf profile create PROFILE
 @endverbatim
 
 A new profile will then be created in the current workspace, using PROFILE as a name (user
 provided or generated). The new profile is then selected to be the current profile.
 
 @verbatim
-leaf profile config -p PACKAGE
+$ leaf profile config -p PACKAGE
 @endverbatim
 
 For each specified -p option, the required package will be added to the current profile.
 
 @verbatim
-leaf profile sync
+$ leaf profile sync
 @endverbatim
 
 Finally, the profile provisioning will be triggered to install the required packages (if necessary)

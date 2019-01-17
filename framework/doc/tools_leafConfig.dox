@@ -3,7 +3,7 @@
 @c leaf @c config - configure and customize leaf options
 
 @verbatim
-leaf config [--root PACKAGESROOT]
+$ leaf config [--root PACKAGESROOT]
 @endverbatim
 
 @c leaf @c config allows users to configure the leaf tool behavior.
@@ -93,7 +93,5 @@ Timeout that leaf waits to download data when the remote falls into an inactive 
 When set, will print a stack trace to the screen when an error occurs
 
 Copyright (C) Sierra Wireless Inc.
-
-
 
 **/

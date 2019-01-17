@@ -55,7 +55,7 @@ download the tracked source code.
 To switch from the pre-built Legato Application Framework to the tracked Legato Source code make
 sure you are in your leaf workspace directory and enter the following command:
 @verbatim
-leaf getsrc legato
+$ leaf getsrc legato
 @endverbatim
 
 @note If you wish to use the legato source code for all leaf profiles add the @c --workspace option
@@ -71,7 +71,7 @@ To switch back and to use the pre-build version of Legato, disable the source in
 delete the source directory, it re-configures leaf to use the original pre-build version of
 Legato that was downloaded with your SDK.
 @verbatim
-leaf getsrc legato --disable
+$ leaf getsrc legato --disable
 @endverbatim
 
 @subsection confLeafSrc_SwitchLinux Linux Sources
@@ -81,7 +81,7 @@ drivers or reconfigure Linux you must download the source code for the Linux ima
 changes and then rebuild the image and the toolchain. Leaf provides a tool to automate the download
 of the Linux source repositories.
 @verbatim
-leaf getsrc swi-linux
+$ leaf getsrc swi-linux
 @endverbatim
 
 Once the source code for Linux is downloaded leaf removes the links to the pre-built toolchain and
@@ -91,7 +91,7 @@ linux images. You must rebuild those from
 To disable leaf from using the Linux source code and switch back to using the pre-built toolchain
 and Linux image disable the @c getsrc function.
 @verbatim
-leaf getsrc swi-linux --disable
+$ leaf getsrc swi-linux --disable
 @endverbatim
 
 @section confLeafSrc_Env Leaf Environment
@@ -123,11 +123,11 @@ the source code.
 If for any reason that you want to switch back and use the pre-built version of the Legato
 Application Framework you can do that by using the following command:
 @verbatim
-leaf getsrc legato --disable
+$ leaf getsrc legato --disable
 @endverbatim
 
 @verbatim
-leaf getsrc swi-linux --disable
+$ leaf getsrc swi-linux --disable
 @endverbatim
 
 This will download and install any missing packages for the version and will update the environment

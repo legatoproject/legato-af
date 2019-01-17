@@ -3,7 +3,7 @@
 @c leaf @c update - updates packages within a leaf profile
 
 @verbatim
-leaf update [-p PACKAGE ...]
+$ leaf update [-p PACKAGE ...]
 @endverbatim
 
 @c leaf  @c update update the packages in a leaf profile to another package (i.e.; a different
@@ -30,7 +30,7 @@ Update all packages to the latest version
 Assuming that you're already working with a current profile:
 
 @verbatim
-leaf update
+$ leaf update
 @endverbatim
 
 Update the profile to a new package (works even for downgrade)
@@ -38,7 +38,7 @@ Update the profile to a new package (works even for downgrade)
 Assuming that current profile uses mysdk package in version 2:
 
 @verbatim
-leaf update -p mysdkv1
+$ leaf update -p mysdkv1
 @endverbatim
 
 Add another package to profile
@@ -46,7 +46,7 @@ Add another package to profile
 Assuming that current profile uses mysdk package:
 
 @verbatim
-leaf update -p anotherPackage
+$ leaf update -p anotherPackage
 @endverbatim
 
 @section toolsLeafUpdate_Behaviors Behaviors
@@ -56,20 +56,20 @@ older version, or add a new package to the profile. As an high level command, us
 is equivalent to chaining the following steps:
 
 @verbatim
-leaf search
+$ leaf search
 @endverbatim
 
 An implicit search is performed to look at the available packages, matching with the profile content.
 
 @verbatim
-leaf profile config -p PACKAGE
+$ leaf profile config -p PACKAGE
 @endverbatim
 
 For each specified -p option, or if it is not specified for each new version of the profile
 packages, configuration is updated to point to the new version.
 
 @verbatim
-leaf profile sync
+$ leaf profile sync
 @endverbatim
 
 The profile provisioning will be triggered to install the required packages (if necessary)
