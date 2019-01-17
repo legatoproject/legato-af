@@ -544,65 +544,91 @@ function Job_TargetRetrieveCoverage()
     TargetRetrieveCoverage $target_type $target_ip
 }
 
+function ExecTargetPyTest()
+{
+    local update_file="$1"
+    local pytest_name="$2"
+
+    TargetUpdateLegato "${update_file}"
+    if [ $? -ne 0 ]; then
+        message $COLOR_ERROR "Unable to update with '${update_file}'"
+        return 1
+    fi
+
+    py.test --junitxml="build/$TARGET_TYPE/tests/results/$(echo ${pytest_name} | tr '/' '_').xml" \
+            --target=$DEST_IP \
+            "${pytest_name}"
+    if [ $? -ne 0 ]; then
+        message $COLOR_ERROR "'${pytest_name}' tests failed"
+        return 1
+    fi
+}
+
+
 function TargetUnitTest()
 {
+    local tests_ret=0
+
     if [ -z "$DEST_IP" ]; then
         echo "Target IP address (DEST_IP) is not available. Unit testing on target will be skipped."
         return
     fi
 
-    # 1) perform Python-based framework tests
-    TargetUpdateLegato build/$TARGET_TYPE/testFramework.$TARGET_TYPE.update
-    CheckRet
+    if [[ "$TEST_COVERAGE" == "1" ]]; then
+        TargetCleanCoverage $DEST_IP
+    fi
 
-    py.test --target=$DEST_IP framework
-    CheckRet
+    # 1) perform Python-based framework tests
+    ExecTargetPyTest "build/$TARGET_TYPE/testFramework.$TARGET_TYPE.update" "framework"
+    if [ $? -ne 0 ]; then
+        tests_ret=1
+    fi
 
     # 2) perform Python-based component tests
-    TargetUpdateLegato build/$TARGET_TYPE/testComponents.$TARGET_TYPE.update
-    CheckRet
-
-    py.test --target=$DEST_IP components
-    CheckRet
+    ExecTargetPyTest "build/$TARGET_TYPE/testComponents.$TARGET_TYPE.update" "components"
+    if [ $? -ne 0 ]; then
+        tests_ret=1
+    fi
 
     # 3) perform Python-based application and framework daemon tests
-    TargetUpdateLegato build/$TARGET_TYPE/testApps.$TARGET_TYPE.update
-    CheckRet
-
-    py.test --target=$DEST_IP apps/test
-    CheckRet
+    ExecTargetPyTest "build/$TARGET_TYPE/testApps.$TARGET_TYPE.update" "apps/test"
+    if [ $? -ne 0 ]; then
+        tests_ret=1
+    fi
 
     # Then perform old bash-script tests.
     # NOTE: As these tests are updated they should be converted to python-based tests,
     #       Once all tests are converted, this should be removed
     TargetUpdateLegato
-    CheckRet
-
-    cd $BUILDDIR_BASE/$TARGET_TYPE
-    CheckRet
-
-    if [[ "$TEST_COVERAGE" == "1" ]]; then
-        TargetCleanCoverage $DEST_IP
-    fi
-
-    # Test
-    $SOURCEDIR/apps/test/targetUnitTests $DEST_IP $TARGET_TYPE
-    local test_ret=$?
-
-    if [ $test_ret -ne 0 ]; then
-        message $COLOR_ERROR "Target tests failed"
+    if [ $? -ne 0 ]; then
+        message $COLOR_ERROR "Unable to update"
+        tests_ret=1
     else
-        message $COLOR_PASS "Target tests OK"
+        cd $BUILDDIR_BASE/$TARGET_TYPE
+        CheckRet
+
+        # Test
+        $SOURCEDIR/apps/test/targetUnitTests $DEST_IP $TARGET_TYPE
+        if [ $? -ne 0 ]; then
+            message $COLOR_ERROR "targetUnitTests failed"
+            tests_ret=1
+        fi
     fi
 
     if [[ "$TEST_COVERAGE" == "1" ]]; then
         TargetRetrieveCoverage "$TARGET_TYPE" "$DEST_IP"
     fi
 
+    if [ $tests_ret -ne 0 ]; then
+        message $COLOR_ERROR "Target tests failed"
+    else
+        message $COLOR_PASS "Target tests OK"
+    fi
+
     cd $SOURCEDIR
     CheckRet
 
-    return $test_ret
+    return $tests_ret
 }
 
 function ConvertCTestIntoJUnit()
