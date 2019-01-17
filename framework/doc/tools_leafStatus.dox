@@ -3,7 +3,7 @@
 @c leaf @c status - display current profile and workspace status
 
 @verbatim
-leaf status
+$ leaf status
 @endverbatim
 
 @c leaf @c status displays the current profile and workspace status. A workspace must exist before
@@ -19,12 +19,12 @@ Depending on the @c -q|-v options, the output information is:
 
 View the status of the current profile, including the package name and version
 @verbatim
-leaf status
+$ leaf status
 @endverbatim
 
 View the detailed status of the current profile, including all dependancies
 @verbatim
-leaf status -v
+$ leaf status -v
 @endverbatim
 
 

@@ -91,7 +91,7 @@ For further information and help on setting up and configuring specific modules:
 
 | Section                            | Description                                                              |
 | ---------------------------------- | ------------------------------------------------------------------------ |
-| @subpage confLeaf                  | Use Leaf to download, install and configure your development environment |
+| @ref confLeaf                      | Use Leaf to download, install and configure your development environment |
 | @subpage basicTarget               | Configure Sierra Wireless Targets                                        |
 | @subpage raspbianMain              | Configure Raspbian for the Legato Application Framework                  |
 

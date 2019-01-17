@@ -59,8 +59,8 @@ downloading and installing stable releases onto your development machine.
 
 You may also add multiple remotes and enable and disable them as needed.
 @verbatim
-leaf remote enable <remote alias>
-leaf remote disable <remote alias>
+$ leaf remote enable <remote alias>
+$ leaf remote disable <remote alias>
 @endverbatim
 
 @section confLeafWS_Hierarchy Hierarchy

@@ -3,19 +3,19 @@
 @c leaf @c profile - manage profiles in a leaf workspace
 
 @verbatim
-leaf profile [list] [PROFILE...]
+$ leaf profile [list] [PROFILE...]
 
-leaf profile create PROFILE
+$ leaf profile create PROFILE
 
-leaf profile rename NEWNAME
+$ leaf profile rename NEWNAME
 
-leaf profile delete [PROFILE...]
+$ leaf profile delete [PROFILE...]
 
-leaf profile switch PROFILE
+$ leaf profile switch PROFILE
 
-leaf profile sync [PROFILE]
+$ leaf profile sync [PROFILE]
 
-leaf profile config [PROFILE] [-p PACKAGE ...] [-rm-package PACKAGE ...]
+$ leaf profile config [PROFILE] [-p PACKAGE ...] [-rm-package PACKAGE ...]
 @endverbatim
 
 @c leaf @c profile manages profiles in a leaf workspace. The workspace must exist before the
@@ -109,42 +109,42 @@ Package ID to be removed from the profile.
 
 List profiles:
 @verbatim
-leaf profile
+$ leaf profile
 @endverbatim
 
 List profiles with more details:
 @verbatim
-leaf profile list -v
+$ leaf profile list -v
 @endverbatim
 
 Create profiles:
 @verbatim
-leaf profile create MYPROFILE && leaf profile create aProfile
+$ leaf profile create MYPROFILE && leaf profile create aProfile
 @endverbatim
 
 Rename profile:
 @verbatim
-leaf profile rename theProfile
+$ leaf profile rename theProfile
 @endverbatim
 
 Delete profile:
 @verbatim
-leaf profile delete theProfile
+$ leaf profile delete theProfile
 @endverbatim
 
 Switch profile:
 @verbatim
-leaf profile switch MYPROFILE
+$ leaf profile switch MYPROFILE
 @endverbatim
 
 Configure profile:
 @verbatim
-leaf profile config -p myPackage -p myOtherPackage1.2 && leaf profile config --rm-package myOtherPackage
+$ leaf profile config -p myPackage -p myOtherPackage1.2 && leaf profile config --rm-package myOtherPackage
 @endverbatim
 
 Synchronize profile:
 @verbatim
-leaf profile sync
+$ leaf profile sync
 @endverbatim
 
 Copyright (C) Sierra Wireless Inc.
