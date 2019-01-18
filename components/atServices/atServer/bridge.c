@@ -92,6 +92,7 @@ typedef struct
     le_atClient_CmdRef_t             atClientCmdRef;                ///< AT client command reference
     char                             cmd[LE_ATDEFS_COMMAND_MAX_BYTES];  ///< cmd to be sent to AT
                                                                     ///< client
+    void*                            refPtr;                        ///< self reference
 }
 ModemCmdDesc_t;
 
@@ -138,6 +139,22 @@ static le_mem_PoolRef_t    DeviceLinkPool;
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t    ModemCmdPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe Reference Map for modem AT commands description
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t ModemCmdRefMap;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Bridge mutex
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mutex_Ref_t BridgeMutexRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -193,31 +210,26 @@ static void ModemCmdPoolDestructor
         return;
     }
 
-    LE_DEBUG("atServerCmdRef %p", modemCmdDescPtr->atServerCmdRef);
-
     // Clean AT server contexts
     if (modemCmdDescPtr->atServerCmdRef)
     {
-        if (LE_OK == le_atServer_Delete(modemCmdDescPtr->atServerCmdRef))
-        {
-            le_atServer_RemoveCommandHandler(modemCmdDescPtr->commandHandlerRef);
-        }
-        else
+        if (LE_OK != le_atServer_Delete(modemCmdDescPtr->atServerCmdRef))
         {
             LE_ERROR("Error in le_atServer_Delete");
         }
     }
-
-    LE_DEBUG("atClientCmdRef %p", modemCmdDescPtr->atClientCmdRef);
 
     // Clean AT client contexts
     if (modemCmdDescPtr->atClientCmdRef)
     {
         if (LE_OK != le_atClient_Delete(modemCmdDescPtr->atClientCmdRef))
         {
-            LE_ERROR("Error in le_atServer_Delete");
+            LE_ERROR("Error in le_atClient_Delete");
         }
     }
+
+    // Clean self reference
+    le_ref_DeleteRef(ModemCmdRefMap, modemCmdDescPtr->refPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -280,6 +292,22 @@ static void BridgePoolDestructor
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Bridge Thread Destructor
+ * This function is called in bridge thread when the thread gets cancelled.
+ */
+//--------------------------------------------------------------------------------------------------
+static void BridgeThreadDestructor
+(
+    void* paramPtr
+ )
+{
+    // Set thread destructor to disconnect the service to avoid memory leak
+    // when the thread gets cancelled.
+    le_atClient_DisconnectService();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Treat error
  * This function is called in the main thread
  *
@@ -291,11 +319,12 @@ static void TreatCommandError
     void* param2Ptr
 )
 {
-    ModemCmdDesc_t* modemCmdDescPtr = param1Ptr;
+    void* modemCmdDescRef = param1Ptr;
 
+    ModemCmdDesc_t* modemCmdDescPtr = le_ref_Lookup(ModemCmdRefMap, modemCmdDescRef);
     if (NULL == modemCmdDescPtr)
     {
-        LE_ERROR("Bad parameter");
+        LE_ERROR("modem command is not found");
         return;
     }
 
@@ -331,11 +360,12 @@ static void TreatResponse
     void* param2Ptr
 )
 {
-    ModemCmdDesc_t* modemCmdDescPtr = param1Ptr;
+    void* modemCmdDescRef = param1Ptr;
 
-    if(NULL == modemCmdDescPtr)
+    ModemCmdDesc_t* modemCmdDescPtr = le_ref_Lookup(ModemCmdRefMap, modemCmdDescRef);
+    if (NULL == modemCmdDescPtr)
     {
-        LE_ERROR("Bad param");
+        LE_ERROR("modem command is not found");
         return;
     }
 
@@ -354,7 +384,7 @@ static void TreatResponse
             if (LE_OK != le_atServer_SendIntermediateResponse(atServerCmdRef, rsp))
             {
                 LE_ERROR("Failed to send intermediate response");
-                TreatCommandError(modemCmdDescPtr, NULL);
+                TreatCommandError(modemCmdDescRef, NULL);
                 return;
             }
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
@@ -391,7 +421,7 @@ static void TreatResponse
                                                    rsp))
         {
             LE_ERROR("Failed to send final response");
-            TreatCommandError(modemCmdDescPtr, NULL);
+            TreatCommandError(modemCmdDescRef, NULL);
             return;
         }
 
@@ -415,7 +445,7 @@ static void TreatResponse
     else
     {
         LE_ERROR("Failed to get final response");
-        TreatCommandError(modemCmdDescPtr, NULL);
+        TreatCommandError(modemCmdDescRef, NULL);
     }
 }
 
@@ -433,39 +463,257 @@ static void SendAtCommand
     void* param2Ptr
 )
 {
-    ModemCmdDesc_t* modemCmdDescPtr = param1Ptr;
-    BridgeCtx_t* bridgePtr = param2Ptr;
+    void* modemCmdDescRef = param1Ptr;
+    BridgeCtx_t* bridgeRef = param2Ptr;
 
-    if ((NULL == modemCmdDescPtr) || (NULL == bridgePtr))
+    le_mutex_Lock(BridgeMutexRef);
+
+    ModemCmdDesc_t* modemCmdDescPtr = le_ref_Lookup(ModemCmdRefMap, modemCmdDescRef);
+    BridgeCtx_t* bridgePtr = le_ref_Lookup(BridgesRefMap, bridgeRef);
+    if (( NULL == modemCmdDescPtr ) || ( NULL == bridgePtr ))
     {
-        LE_ERROR("Bad parameter");
+        LE_ERROR("bridge resources are not found");
+        le_mutex_Unlock(BridgeMutexRef);
         return;
     }
 
     LE_DEBUG("AT command to be sent to the modem: %s", modemCmdDescPtr->cmd);
 
-    // Send AT command to  the modem
-    if (LE_OK != le_atClient_SetCommandAndSend(&modemCmdDescPtr->atClientCmdRef,
-                                               bridgePtr->atClientRef,
-                                               modemCmdDescPtr->cmd,
-                                               "",
-                                               AtClientFinalResponse,
-                                               AT_CLIENT_TIMEOUT))
+    // At this point, modemCmdDescPtr and bridgePtr are available , make a local copy for
+    // some parameters passed to le_atClient_SetCommandAndSend().
+    le_atClient_CmdRef_t atClientCmdRef = NULL;
+    le_atClient_DeviceRef_t atClientDevicetRef = bridgePtr->atClientRef;
+    le_thread_Ref_t mainThreadRef = bridgePtr->mainThreadRef;
+    char   atClientCmd[LE_ATDEFS_COMMAND_MAX_BYTES] = {0};
+    snprintf(atClientCmd, LE_ATDEFS_COMMAND_MAX_BYTES, "%s", modemCmdDescPtr->cmd);
+    le_mutex_Unlock(BridgeMutexRef);
+
+    // Send AT command to the modem
+    le_result_t result = le_atClient_SetCommandAndSend(&atClientCmdRef,
+                                                       atClientDevicetRef,
+                                                       atClientCmd,
+                                                       "",
+                                                       AtClientFinalResponse,
+                                                       AT_CLIENT_TIMEOUT);
+
+    // Since le_atClient_SetCommandAndSend() is a blocking API which is executed in
+    // bridge thread, it's possible the brige device is already released in main thread
+    // after the API is returned, thus we need check again if bridge pointers are
+    // still available before using them.
+    le_mutex_Lock(BridgeMutexRef);
+
+    modemCmdDescPtr = le_ref_Lookup(ModemCmdRefMap, modemCmdDescRef);
+    bridgePtr = le_ref_Lookup(BridgesRefMap, bridgeRef);
+    if (( NULL == modemCmdDescPtr ) || ( NULL == bridgePtr ))
     {
-        LE_ERROR("Error in sending AT command");
-        // Treat the error in the main thread
-        le_event_QueueFunctionToThread(bridgePtr->mainThreadRef,
-                                       TreatCommandError,
-                                       modemCmdDescPtr,
-                                       NULL);
+        LE_ERROR("bridge resources are not found");
+        le_mutex_Unlock(BridgeMutexRef);
         return;
     }
 
-    // Treat the send of responses in the main thread
-    le_event_QueueFunctionToThread(bridgePtr->mainThreadRef,
+    if (result != LE_OK)
+    {
+        LE_ERROR("Error in sending AT command");
+        // Treat the error in the main thread
+        le_event_QueueFunctionToThread(mainThreadRef,
+                                       TreatCommandError,
+                                       modemCmdDescRef,
+                                       NULL);
+
+        le_mutex_Unlock(BridgeMutexRef);
+        return;
+    }
+
+    // Copy back atClientCmdRef which will be used in response.
+    modemCmdDescPtr->atClientCmdRef = atClientCmdRef;
+
+    // Treat the send of responses in the main thread.
+    le_event_QueueFunctionToThread(mainThreadRef,
                                    TreatResponse,
-                                   modemCmdDescPtr,
+                                   modemCmdDescRef,
                                    NULL);
+
+    le_mutex_Unlock(BridgeMutexRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Build the final AT command to the modem.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t BuildAtCommand
+(
+    ModemCmdDesc_t* CmdDescPtr,
+    le_atServer_Type_t type,
+    uint32_t parametersNumber
+)
+{
+    if ( CmdDescPtr == NULL )
+    {
+        LE_ERROR("CmdDescPtr is NULL");
+        return LE_BAD_PARAMETER;
+    }
+
+    char* fullCmdPtr = CmdDescPtr->cmd;
+    char cmdName[LE_ATDEFS_COMMAND_MAX_BYTES];
+    char para0[LE_ATDEFS_PARAMETER_MAX_BYTES];
+    char para1[LE_ATDEFS_PARAMETER_MAX_BYTES];
+    bool isBasicCmd = false;
+
+    memset(fullCmdPtr, 0, LE_ATDEFS_COMMAND_MAX_BYTES);
+    memset(cmdName, 0, LE_ATDEFS_COMMAND_MAX_BYTES);
+    memset(para0, 0, LE_ATDEFS_PARAMETER_MAX_BYTES);
+    memset(para1, 0, LE_ATDEFS_PARAMETER_MAX_BYTES);
+
+    if (LE_OK != le_atServer_GetCommandName(CmdDescPtr->atServerCmdRef, cmdName,
+                                            LE_ATDEFS_COMMAND_MAX_BYTES))
+    {
+        LE_ERROR("Impossible to get the command name");
+        return LE_FAULT;
+    }
+
+    // Check if the command handler is for a basic command.
+    if (IS_BASIC(cmdName[2]))
+    {
+        isBasicCmd = true;
+    }
+
+    // Get parameter 0.
+    if (parametersNumber > 0)
+    {
+        if (LE_OK != le_atServer_GetParameter(CmdDescPtr->atServerCmdRef,
+                                              0,
+                                              para0,
+                                              LE_ATDEFS_PARAMETER_MAX_BYTES))
+        {
+            LE_ERROR("Error in get parameter 0");
+            return LE_FAULT;
+        }
+    }
+
+    // Get parameter 1.
+    if (parametersNumber > 1)
+    {
+        if (LE_OK != le_atServer_GetParameter(CmdDescPtr->atServerCmdRef,
+                                              1,
+                                              para1,
+                                              LE_ATDEFS_PARAMETER_MAX_BYTES))
+        {
+            LE_ERROR("Error in get parameter 1");
+            return LE_FAULT;
+        }
+    }
+
+    LE_DEBUG("AT command: %s, nb param = %d, type = %d", cmdName, parametersNumber, type);
+
+    switch(type)
+    {
+        // type 0
+        case LE_ATSERVER_TYPE_ACT:
+            snprintf(fullCmdPtr, LE_ATDEFS_COMMAND_MAX_BYTES, "%s", cmdName);
+        break;
+
+        // type 1
+        case LE_ATSERVER_TYPE_PARA:
+            if (isBasicCmd)
+            {
+                // For AT basic command, we need consider two scenarios:
+                // 1:  "AT<command>[<number>]", here the <number> is in parameter 0.
+                // 2:  "ATS<number>=<value>", here the <number> is in parameter 0,
+                // <value> is in parameter 1 .
+                snprintf(fullCmdPtr, LE_ATDEFS_COMMAND_MAX_BYTES, "%s", cmdName);
+                if (parametersNumber > 0)
+                {
+                    snprintf(fullCmdPtr+strlen(fullCmdPtr),
+                             LE_ATDEFS_COMMAND_MAX_BYTES-strlen(fullCmdPtr),
+                             "%s",
+                             para0);
+                }
+                if (parametersNumber > 1)
+                {
+                    snprintf(fullCmdPtr+strlen(fullCmdPtr),
+                             LE_ATDEFS_COMMAND_MAX_BYTES-strlen(fullCmdPtr),
+                             "=%s",
+                             para1);
+                }
+            }
+            else
+            {
+                // For AT extended command  AT+<name>=<value1>[,<value2>[,<value3>[...]]] ,
+                // <value1> is in parameter 0, <value2> is in parameter 1, <value3> is in
+                // parameter 2 ...
+                snprintf(fullCmdPtr, LE_ATDEFS_COMMAND_MAX_BYTES, "%s=", cmdName);
+
+                uint32_t i = 0;
+                char para[LE_ATDEFS_PARAMETER_MAX_BYTES];
+                for (i = 0; i < parametersNumber; i++)
+                {
+                    memset(para, 0, LE_ATDEFS_PARAMETER_MAX_BYTES);
+                    if (LE_OK != le_atServer_GetParameter(CmdDescPtr->atServerCmdRef,
+                                                          i,
+                                                          para,
+                                                          LE_ATDEFS_PARAMETER_MAX_BYTES))
+                    {
+                        LE_ERROR("Error in get parameter %d", i);
+                        return LE_FAULT;
+                    }
+
+                    if (i < (parametersNumber-1))
+                    {
+                        snprintf(fullCmdPtr+strlen(fullCmdPtr),
+                                 LE_ATDEFS_COMMAND_MAX_BYTES-strlen(fullCmdPtr),
+                                 "%s,",
+                                 para);
+                    }
+                    else
+                    {
+                        snprintf(fullCmdPtr+strlen(fullCmdPtr),
+                                 LE_ATDEFS_COMMAND_MAX_BYTES-strlen(fullCmdPtr),
+                                 "%s",
+                                 para);
+                    }
+                }
+            }
+        break;
+
+        // type 2
+        case LE_ATSERVER_TYPE_TEST:
+            snprintf(fullCmdPtr, LE_ATDEFS_COMMAND_MAX_BYTES, "%s=?", cmdName);
+        break;
+
+        // type 3
+        case LE_ATSERVER_TYPE_READ:
+            if (parametersNumber > 0)
+            {
+                if (isBasicCmd)
+                {
+                    // For AT basic command format ATS<parameter_number>?
+                    // The <parameter_number> is in parameter 0.
+                    snprintf(fullCmdPtr, LE_ATDEFS_COMMAND_MAX_BYTES, "%s", cmdName);
+                    snprintf(fullCmdPtr+strlen(fullCmdPtr),
+                             LE_ATDEFS_COMMAND_MAX_BYTES-strlen(fullCmdPtr),
+                             "%s?",
+                             para0);
+                }
+                else
+                {
+                    // For AT extended command format AT+<name>?[<value>]
+                    // If exists, the <value> is in parameter 0.
+                    snprintf(fullCmdPtr, LE_ATDEFS_COMMAND_MAX_BYTES, "%s?", cmdName);
+                    snprintf(fullCmdPtr+strlen(fullCmdPtr),
+                             LE_ATDEFS_COMMAND_MAX_BYTES-strlen(fullCmdPtr),
+                             "%s",
+                             para0);
+                }
+            }
+            else
+            {
+                 snprintf(fullCmdPtr, LE_ATDEFS_COMMAND_MAX_BYTES, "%s?", cmdName);
+            }
+        break;
+    }
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -482,8 +730,9 @@ static void AtCmdHandler
     void* contextPtr
 )
 {
-    ModemCmdDesc_t* modemCmdDescPtr = contextPtr;
+    void* modemCmdDescRef = contextPtr;
 
+    ModemCmdDesc_t* modemCmdDescPtr = le_ref_Lookup(ModemCmdRefMap, modemCmdDescRef);
     if (NULL == modemCmdDescPtr)
     {
         LE_ERROR("Bad context");
@@ -501,19 +750,13 @@ static void AtCmdHandler
     }
 
     le_atServer_BridgeRef_t bridgeRef = NULL;
-    char* fullCmdPtr = modemCmdDescPtr->cmd;
-    char cmdName[LE_ATDEFS_COMMAND_MAX_BYTES];
-
-    memset(fullCmdPtr, 0, LE_ATDEFS_COMMAND_MAX_BYTES);
-    memset(cmdName, 0, LE_ATDEFS_COMMAND_MAX_BYTES);
-
     modemCmdDescPtr->atServerCmdRef = commandRef;
 
     // Get the bridge reference of the on going at command
     if (LE_OK != le_atServer_GetBridgeRef(commandRef, &bridgeRef))
     {
         LE_ERROR("Impossible to get the bridge reference");
-        TreatCommandError(modemCmdDescPtr, NULL);
+        TreatCommandError(modemCmdDescRef, NULL);
         return;
     }
 
@@ -521,86 +764,24 @@ static void AtCmdHandler
 
     if (NULL == bridgePtr)
     {
-        LE_ERROR("Bad reference");
-        TreatCommandError(modemCmdDescPtr, NULL);
+        LE_ERROR("No bridge device is found");
+        TreatCommandError(modemCmdDescRef, NULL);
         return;
     }
 
-    if (LE_OK != le_atServer_GetCommandName(commandRef, cmdName, LE_ATDEFS_COMMAND_MAX_BYTES))
+    // Build the final bridge command to modem.
+    if (LE_OK != BuildAtCommand(modemCmdDescPtr, type, parametersNumber))
     {
-        LE_ERROR("Impossible to get the command name");
-        TreatCommandError(modemCmdDescPtr, NULL);
+        LE_ERROR("Error in building AT bridge command");
+        TreatCommandError(modemCmdDescRef, NULL);
         return;
-    }
-
-    LE_DEBUG("AT command: %s, nb param = %d", cmdName, parametersNumber);
-
-    switch(type)
-    {
-        case LE_ATSERVER_TYPE_ACT:
-            snprintf(fullCmdPtr, LE_ATDEFS_COMMAND_MAX_BYTES, "%s", cmdName);
-        break;
-
-        case LE_ATSERVER_TYPE_PARA:
-        {
-            uint32_t i = 0;
-            char para[LE_ATDEFS_PARAMETER_MAX_BYTES];
-
-            if (IS_CHAR(cmdName[2]))
-            {
-                snprintf(fullCmdPtr, LE_ATDEFS_COMMAND_MAX_BYTES, "%s", cmdName);
-            }
-            else
-            {
-                snprintf(fullCmdPtr, LE_ATDEFS_COMMAND_MAX_BYTES, "%s=", cmdName);
-            }
-
-            for (i = 0; i < parametersNumber; i++)
-            {
-                memset(para, 0, LE_ATDEFS_PARAMETER_MAX_BYTES);
-
-                if (LE_OK != le_atServer_GetParameter(commandRef,
-                                                      i,
-                                                      para,
-                                                      LE_ATDEFS_PARAMETER_MAX_BYTES))
-                {
-                    LE_ERROR("Error in get parameter %d", i);
-                    TreatCommandError(modemCmdDescPtr, NULL);
-                    return;
-                }
-
-                if (i < (parametersNumber-1))
-                {
-                    snprintf(fullCmdPtr+strlen(fullCmdPtr),
-                             LE_ATDEFS_COMMAND_MAX_BYTES,
-                             "%s,",
-                             para);
-                }
-                else
-                {
-                    snprintf(fullCmdPtr+strlen(fullCmdPtr),
-                             LE_ATDEFS_COMMAND_MAX_BYTES,
-                             "%s",
-                             para);
-                }
-            }
-        }
-        break;
-
-        case LE_ATSERVER_TYPE_TEST:
-            snprintf(fullCmdPtr, LE_ATDEFS_COMMAND_MAX_BYTES, "%s=?", cmdName);
-        break;
-
-        case LE_ATSERVER_TYPE_READ:
-            snprintf(fullCmdPtr, LE_ATDEFS_COMMAND_MAX_BYTES, "%s?", cmdName);
-        break;
     }
 
     // Treat the AT commands in the Bridge thread in order to not lock the main thread
     le_event_QueueFunctionToThread(bridgePtr->threadRef,
                                    SendAtCommand,
-                                   modemCmdDescPtr,
-                                   bridgePtr);
+                                   modemCmdDescRef,
+                                   bridgeRef);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -658,6 +839,8 @@ static void *BridgeThread
 {
     le_atClient_ConnectService();
 
+    le_thread_AddDestructor(BridgeThreadDestructor, (void *)NULL);
+
     BridgeCtx_t* bridgeCtxPtr = context;
 
     le_sem_Post(bridgeCtxPtr->semRef);
@@ -672,7 +855,7 @@ static void *BridgeThread
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Create a modem AT command
+ * Create a modem AT command and return the reference of the command description pointer
  *
  * @return
  *      - LE_OK            The function succeeded.
@@ -682,12 +865,22 @@ static void *BridgeThread
 //--------------------------------------------------------------------------------------------------
 le_result_t bridge_Create
 (
-    char* atCmdPtr
+    char*  atCmdPtr,
+    void** descRefPtr
 )
 {
+    if ((NULL == atCmdPtr) || (NULL == descRefPtr))
+    {
+        LE_ERROR("Bad parameter");
+        return LE_FAULT;
+    }
+
     LE_DEBUG("Create bridge for %s", atCmdPtr);
 
     ModemCmdDesc_t* modemCmdDescPtr = le_mem_ForceAlloc(ModemCmdPool);
+    memset(modemCmdDescPtr, 0, sizeof(ModemCmdDesc_t));
+
+    modemCmdDescPtr->refPtr = le_ref_CreateRef(ModemCmdRefMap, modemCmdDescPtr);
 
      // Add the AT command in the parser
     modemCmdDescPtr->atServerCmdRef = le_atServer_Create(atCmdPtr);
@@ -695,6 +888,7 @@ le_result_t bridge_Create
     if (NULL == modemCmdDescPtr->atServerCmdRef)
     {
         LE_ERROR("Error in AT command creation");
+        le_mem_Release(modemCmdDescPtr);
         return LE_FAULT;
     }
     else
@@ -703,15 +897,15 @@ le_result_t bridge_Create
         if (NULL == (modemCmdDescPtr->commandHandlerRef = le_atServer_AddCommandHandler(
                                             modemCmdDescPtr->atServerCmdRef,
                                             AtCmdHandler,
-                                            modemCmdDescPtr)))
+                                            modemCmdDescPtr->refPtr)))
         {
             LE_ERROR("Impossible to add the handler");
-            le_atServer_Delete(modemCmdDescPtr->atServerCmdRef);
             le_mem_Release(modemCmdDescPtr);
             return LE_FAULT;
         }
     }
 
+    *descRefPtr = modemCmdDescPtr->refPtr;
     return LE_OK;
 }
 
@@ -740,7 +934,11 @@ void bridge_Init
     // modem AT commands pool
     ModemCmdPool =  le_mem_CreatePool("BridgeModemCmdPool", sizeof(ModemCmdDesc_t));
     le_mem_ExpandPool(ModemCmdPool, CMD_POOL_SIZE);
+    ModemCmdRefMap = le_ref_CreateMap("BridgeModemCmdRefMap", CMD_POOL_SIZE);
     le_mem_SetDestructor(ModemCmdPool, ModemCmdPoolDestructor);
+
+    // Create bridge mutex
+    BridgeMutexRef =  le_mutex_CreateRecursive("BridgeMutex");
 
     // Build string for AT client final response
     int i = 0;
@@ -1005,8 +1203,9 @@ void bridge_CleanContext
                 if (LE_OK != le_atServer_UnlinkDeviceFromBridge(devLinkPtr->deviceRef,
                                                                 bridgePtr->bridgeRef))
                 {
-                    LE_ERROR("Unable to unlink device %p from bridge %p", devLinkPtr->deviceRef,
-                                                                          bridgePtr->bridgeRef);
+                    LE_ERROR("Unable to unlink deviceRef %p from bridgeRef %p",
+                             devLinkPtr->deviceRef,
+                             bridgePtr->bridgeRef);
                 }
 
                 le_mem_Release(devLinkPtr);
@@ -1015,7 +1214,64 @@ void bridge_CleanContext
             }
 
             LE_DEBUG("deleting bridgeRef %p", bridgePtr->bridgeRef);
+
+            le_mutex_Lock(BridgeMutexRef);
             le_mem_Release(bridgePtr);
+            le_mutex_Unlock(BridgeMutexRef);
         }
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the session reference of the bridge device
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t bridge_GetSessionRef
+(
+    le_atServer_BridgeRef_t  bridgeRef,
+    le_msg_SessionRef_t* sessionRefPtr
+)
+{
+    if (NULL == sessionRefPtr)
+    {
+        LE_ERROR("Bad parameter");
+        return LE_FAULT;
+    }
+
+    BridgeCtx_t* bridgePtr = le_ref_Lookup(BridgesRefMap, bridgeRef);
+
+    if (NULL == bridgePtr)
+    {
+        LE_ERROR("No bridge device is found");
+        return LE_FAULT;
+    }
+
+    *sessionRefPtr = bridgePtr->sessionRef;
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Release bridge command description for a give command reference
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t bridge_ReleaseModemCmd
+(
+    void* descRefPtr
+)
+{
+    ModemCmdDesc_t* cmdDescPtr = le_ref_Lookup(ModemCmdRefMap, descRefPtr);
+    if ( NULL == cmdDescPtr)
+    {
+        LE_ERROR("No cmdDescPtr is found");
+        return LE_FAULT;
+    }
+
+    le_mutex_Lock(BridgeMutexRef);
+    le_mem_Release(cmdDescPtr);
+    le_mutex_Unlock(BridgeMutexRef);
+    return LE_OK;
 }

@@ -623,6 +623,7 @@ typedef struct
     le_atServer_DeviceRef_t deviceRef;                              ///< device refrence
     bool                    bridgeCmd;                              ///< is command created by the
                                                                     ///< AT bridge
+    void*                   modemCmdDescRefPtr;                     ///< modem desc reference
     le_msg_SessionRef_t     sessionRef;                             ///< session reference
     bool                    isDialCommand;                          ///< specific dial command
     le_atServer_CommandHandlerFunc_t handlerFunc;                   ///< Handler associated with the
@@ -849,7 +850,7 @@ static void AtCmdPoolDestructor
     ATCmdSubscribed_t* cmdPtr = commandPtr;
     le_dls_Link_t* linkPtr;
 
-    LE_DEBUG("AT command pool destructor");
+    LE_DEBUG("AT command destructor for '%s'", cmdPtr->cmdName);
 
     // cleanup the hashmap
     le_hashmap_Remove(CmdHashMap, cmdPtr->cmdName);
@@ -1207,10 +1208,13 @@ static void SendUnsolRsp
 static le_result_t CreateModemCommand
 (
     CmdParser_t* cmdParserPtr,
-    char*        atCmdPtr
+    char*        atCmdPtr,
+    le_atServer_BridgeRef_t bridgeRef
 )
 {
-    if ( bridge_Create(atCmdPtr) != LE_OK )
+    void* cmdDescRef = NULL;
+
+    if ((bridge_Create(atCmdPtr, &cmdDescRef) != LE_OK )||(NULL == cmdDescRef))
     {
         LE_ERROR("Error in AT command creation");
         return LE_FAULT;
@@ -1222,10 +1226,26 @@ static le_result_t CreateModemCommand
     if ( cmdParserPtr->currentCmdPtr == NULL )
     {
         LE_ERROR("At command still not exists");
+        bridge_ReleaseModemCmd(cmdDescRef);
+        return LE_FAULT;
+    }
+
+    // AT command is created by bridge device, save the session reference
+    // for command removal tracking.
+    le_msg_SessionRef_t  sessionRef = NULL;
+    if (bridge_GetSessionRef(bridgeRef, &sessionRef) == LE_OK)
+    {
+        (cmdParserPtr->currentCmdPtr)->sessionRef = sessionRef;
+    }
+    else
+    {
+        LE_ERROR("Failed to get the session reference of the bridge device");
+        bridge_ReleaseModemCmd(cmdDescRef);
         return LE_FAULT;
     }
 
     (cmdParserPtr->currentCmdPtr)->bridgeCmd = true;
+    (cmdParserPtr->currentCmdPtr)->modemCmdDescRefPtr = cmdDescRef;
 
     return LE_OK;
 }
@@ -1253,7 +1273,9 @@ static le_result_t GetAtCmdContext
             LE_DEBUG("AT command not found");
             if ( devPtr->bridgeRef )
             {
-                if (( CreateModemCommand(cmdParserPtr, cmdParserPtr->currentAtCmdPtr) != LE_OK ) ||
+                if (( CreateModemCommand(cmdParserPtr,
+                                         cmdParserPtr->currentAtCmdPtr,
+                                         devPtr->bridgeRef) != LE_OK ) ||
                     ( cmdParserPtr->currentCmdPtr == NULL ))
                 {
                     LE_ERROR("At command still not exists");
@@ -1636,7 +1658,8 @@ static le_result_t ParseBasic
 {
     while ( ( cmdParserPtr->currentCharPtr <= cmdParserPtr->lastCharPtr ) &&
             ( !IS_NUMBER(*cmdParserPtr->currentCharPtr) ) &&
-            ( !IS_QUOTE(*cmdParserPtr->currentCharPtr) ) )
+            ( !IS_QUOTE(*cmdParserPtr->currentCharPtr) ) &&
+            (*cmdParserPtr->currentCharPtr != AT_TOKEN_SEMICOLON))
     {
         *cmdParserPtr->currentCharPtr = toupper(*cmdParserPtr->currentCharPtr);
         cmdParserPtr->currentCharPtr++;
@@ -1676,7 +1699,9 @@ static le_result_t ParseBasic
 
         strncpy(atCmd, cmdParserPtr->currentAtCmdPtr, len-1);
 
-        if (( CreateModemCommand(cmdParserPtr, atCmd) != LE_OK ) ||
+        if (( CreateModemCommand(cmdParserPtr,
+                                 atCmd,
+                                 devPtr->bridgeRef) != LE_OK ) ||
             ( cmdParserPtr->currentCmdPtr == NULL ))
         {
             LE_ERROR("At command still not exists");
@@ -2580,8 +2605,16 @@ static void CloseSessionEventHandler
         {
             if (sessionRef == cmdPtr->sessionRef)
             {
-                LE_DEBUG("deleting %s", cmdPtr->cmdName);
-                le_mem_Release(cmdPtr);
+                if (cmdPtr->bridgeCmd)
+                {
+                    LE_DEBUG("deleting '%s' (created by bridge device)", cmdPtr->cmdName);
+                    bridge_ReleaseModemCmd(cmdPtr->modemCmdDescRefPtr);
+                }
+                else
+                {
+                    LE_DEBUG("deleting '%s' (created by app)", cmdPtr->cmdName);
+                    le_mem_Release(cmdPtr);
+                }
             }
         }
     }
@@ -2597,7 +2630,7 @@ static void CloseSessionEventHandler
         {
             if (sessionRef == devPtr->sessionRef)
             {
-                LE_DEBUG("deleting fd %d", devPtr->device.fd);
+                LE_DEBUG("deleting device fd %d", devPtr->device.fd);
                 CloseServer(devPtr->ref);
             }
         }
@@ -2917,6 +2950,10 @@ le_atServer_CmdRef_t le_atServer_Create
 
     cmdPtr->availableDevice = LE_ATSERVER_ALL_DEVICES;
     cmdPtr->paramList = LE_DLS_LIST_INIT;
+
+    // NOTE: The 'sessionRef' is NULL if the command is created by bridge device because
+    // we are not in IPC command environment. In this case, "sessionRef" is set when the
+    // bridge command is created in CreateModemCommand().
     cmdPtr->sessionRef = le_atServer_GetClientSessionRef();
 
     // Check for specific DIAL command

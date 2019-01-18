@@ -127,6 +127,12 @@ static le_result_t GetDeviceInformation
         passwd = getpwuid(fdStats.st_uid);
         group = getgrgid(fdStats.st_gid);
 
+        if ((NULL == passwd) || (NULL == group))
+        {
+            LE_ERROR("Get passwd and group failed %s", StrError(errno));
+            return LE_FAULT;
+        }
+
         DevInfo.major = major(fdStats.st_rdev);
         DevInfo.minor = minor(fdStats.st_rdev);
         snprintf(DevInfo.uName, sizeof(DevInfo.uName), "%s", passwd->pw_name);

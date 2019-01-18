@@ -148,6 +148,19 @@ void le_atClient_ConnectService
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *
+ * Disconnect the service from current client thread providing this API.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_atClient_DisconnectService
+(
+    void
+)
+{
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to automatically set and send an AT Command.
  *
  * @return

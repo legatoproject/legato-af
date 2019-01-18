@@ -14,7 +14,7 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Create a modem AT command
+ * Create a modem AT command and return the reference of command description pointer
  *
  * @return
  *      - LE_OK            The function succeeded.
@@ -24,7 +24,8 @@
 //--------------------------------------------------------------------------------------------------
 le_result_t bridge_Create
 (
-    char* atCmdPtr
+    char*  atCmdPtr,
+    void** descRefPtr   ///<OUT
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -109,6 +110,29 @@ le_result_t bridge_RemoveDevice
 void bridge_CleanContext
 (
     le_msg_SessionRef_t sessionRef
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the session reference of the bridge device
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t bridge_GetSessionRef
+(
+    le_atServer_BridgeRef_t  bridgeRef,
+    le_msg_SessionRef_t* sessionRefPtr
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Release AT modem bridge command
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t bridge_ReleaseModemCmd
+(
+    void* descRefPtr
 );
 
 #endif //LEGATO_LE_BRIDGE_INCLUDE_GUARD
