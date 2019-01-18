@@ -719,11 +719,6 @@ static le_result_t SetDevicePermissions
         return LE_FAULT;
     }
 
-    if (smack_SetLabel(devPathPtr, devLabel) != LE_OK)
-    {
-        return LE_FAULT;
-    }
-
     // Set the SMACK rule to allow the app to access the device.
     smack_SetRule(appSmackLabelPtr, permPtr, devLabel);
 
