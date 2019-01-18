@@ -150,6 +150,7 @@ sdir:
 			-i $(LIBLEGATO_SRC_DIR) \
 			-i $(LIBLEGATO_SRC_DIR)/linux \
 			-i $(DAEMON_SRC_DIR)/serviceDirectory \
+			--ldflags=-Wl,--enable-new-dtags,-rpath="/legato/systems/current/lib" \
 			$(LOCAL_MKEXE_FLAGS)
 
 gdbCfg:

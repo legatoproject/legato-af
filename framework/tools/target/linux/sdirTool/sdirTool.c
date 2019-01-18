@@ -52,6 +52,14 @@ static const char* ServerIfPtr = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Temporary file, created in our local tmpfs, used to help with printing sdir list.
+ */
+//--------------------------------------------------------------------------------------------------
+#define TEMP_FILE                   "/tmp/sdOutput"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Prints help to stdout and exits with EXIT_SUCCESS.
  */
 //--------------------------------------------------------------------------------------------------
@@ -203,6 +211,29 @@ static void ExitWithErrorMsg
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Print 'list' command.
+ */
+//--------------------------------------------------------------------------------------------------
+static void PrintList
+(
+    void
+)
+{
+    int c;
+    FILE *file;
+    file = fopen(TEMP_FILE, "r");
+    if (file) {
+        while ((c = getc(file)) != EOF)
+        {
+            putchar(c);
+        }
+        fclose(file);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Execute a 'list' command.
  */
 //--------------------------------------------------------------------------------------------------
@@ -214,7 +245,14 @@ static void List
 {
     le_msg_MessageRef_t msgRef = le_msg_CreateMsg(SessionRef);
 
-    le_msg_SetFd(msgRef, 1);
+    int fd = open(TEMP_FILE, O_WRONLY | O_TRUNC | O_CREAT, S_IWUSR | S_IRUSR);
+
+    if (fd < 0)
+    {
+        ExitWithErrorMsg("Setup with Service Directory failed.");
+    }
+
+    le_msg_SetFd(msgRef, fd);
 
     le_sdtp_Msg_t* msgPtr = le_msg_GetPayloadPtr(msgRef);
 
@@ -232,10 +270,15 @@ static void List
 
     if (msgRef == NULL)
     {
+        close(fd);
         ExitWithErrorMsg("Communication with Service Directory failed.");
     }
 
+    close(fd);
     le_msg_ReleaseMsg(msgRef);
+
+    // Print list output
+    PrintList();
 
     exit(EXIT_SUCCESS);
 }
