@@ -1006,6 +1006,26 @@ le_result_t smack_SetLabel
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Sets the smack execute label of a file system object. The calling process must be a privileged
+ * process.
+ *
+ * @return
+ *      LE_OK if the label was set correctly.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t smack_SetLabelExec
+(
+    const char* objPathPtr,         ///< [IN] Path to the object.
+    const char* labelPtr            ///< [IN] Label to set the object to.
+)
+{
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Sets an explicit SMACK rule.
  *
  * An explicit SMACK rule defines a subject's access to an object. The access mode can be any

@@ -1607,12 +1607,21 @@ static void FinishSystemUpdate
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Path to the config tree directory in the linux filesystem.
+    // Set correct smack label for certain tools
+    smack_SetLabelExec("/legato/systems/current/bin/_appStopClient", "admin");
+    smack_SetLabelExec("/legato/systems/current/bin/sdir", "framework");
 
+    // Path to the config tree directory in the linux filesystem.
     const char* usersFilePath = "/legato/systems/current/config/users.cfg";
     const char* appsFilePath = "/legato/systems/current/config/apps.cfg";
     const char* modulesFilePath = "/legato/systems/current/config/modules.cfg";
     const char* frameworkFilePath = "/legato/systems/current/config/framework.cfg";
+
+    // Ensure that the cfg files are set with the correct smack labels
+    smack_SetLabel(usersFilePath, "framework");
+    smack_SetLabel(appsFilePath, "framework");
+    smack_SetLabel(modulesFilePath, "framework");
+    smack_SetLabel(frameworkFilePath, "framework");
 
     // If users.cfg, apps.cfg or modules.cfg exist in the directory containing the configuration data files,
     // import them into the system config tree to finish a previous update operation.

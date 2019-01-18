@@ -867,16 +867,12 @@ static void SetupSmackOnlyCap
     // Set correct smack label for /home directory
     smack_SetLabel("/home", "_");
 
-    // Framework app needs read/execute access to admin.
-    // e.g. configTree needs access to *.cfg files and logDaemon needs read access to admin (fds)
-    smack_SetRule("framework", "rx", "admin");
-
     // Framework needs write access to '_' label. e.g. configEcm needs write permission to /etc/legato
     // framework needs wx access to tmpfs
     smack_SetRule("framework", "rwx", "_");
 
     // Set correct smack label for /data
-    smack_SetLabel("/data", "framework");
+    smack_SetLabel("/data", "_");
 
     // ToDo: Workaround to get le_fs have "framework" label.
     // Set correct smack label for /data
@@ -885,26 +881,19 @@ static void SetupSmackOnlyCap
     // Set correct smack label for /data/le_fs
     smack_SetLabel("/data/le_fs", "framework");
 
-    // Set admin label for the supervisor.
-    smack_SetMyLabel("admin");
+    // Remove previously set rule if cached from an update
+    smack_SetRule("_", "-", "admin");
+    smack_SetRule("_", "-", "framework");
 
-    // apps advertise before changing it's own label. When it advertises, app runs as '_' and tries
-    // to communicate with serviceDirectory
-    smack_SetRule("_", "rwx", "framework");
-
-    // _appStopClient needs write access to admin. Apparently kernel calls this and we can't change
-    // the extended attribute in the case it's from RW legato.
-    // dropbear needs access to resources in /etc/dropbear
-    smack_SetRule("_", "rwx", "admin");
-
-    // Set correct smack permissions for sdir tool. When command like 'sdir list' is invoked,
-    // the serviceDirectory needs rw to the /dev/pts/0 (terminal). The terminal can be running
-    // in either '_' (console) or 'admin' (ssh).
-    smack_SetRule("framework", "rwx", "admin");
+    // logDaemon needs read access to admin (fds)
+    smack_SetRule("framework", "r", "admin");
 
     // Set correct permissions for qmuxd
     smack_SetRule("qmuxd", "rwx", "_");
     smack_SetRule("_", "rwx", "qmuxd");
+
+    // Set admin label for the supervisor.
+    smack_SetMyLabel("admin");
 
 #if DISABLE_SMACK_ONLYCAP != 0
     LE_INFO("SMACK onlycap disabled");
@@ -1130,7 +1119,8 @@ COMPONENT_INIT
 
     // Properly label objects in tmpfs that are required by apps
     smack_SetLabel(STRINGIZE(LE_RUNTIME_DIR), "framework");
-    smack_SetLabel("/tmp/ld.so.cache", "framework");
+    smack_SetLabel("/tmp/ld.so.cache", "_");
+
 
     // Create and lock a dummy file used to ensure that only a single instance of the Supervisor
     // will run.  If we cannot lock the file than another instance of the Supervisor must be running
