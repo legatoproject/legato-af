@@ -184,7 +184,7 @@ have a non-zero active_since field. Also dump contents of
 @a Command
 
 @verbatim
- cat /sys/kernel/debug/wakeup_sources |sed -e s/"^       "/"unnamed"/ | awk '{print $6 "\t" $1}' | grep -v "^0" |sort –n
+ cat /sys/kernel/debug/wakeup_sources |sed -e s/"^       "/"unnamed"/ | awk '{print $6 "\t" $1}' | grep -v "^0" |sort -n
  cat /sys/power/wake_lock
 @endverbatim
 
