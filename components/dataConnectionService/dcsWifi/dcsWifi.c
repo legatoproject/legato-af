@@ -1094,34 +1094,31 @@ static void DcsWifiClientDisconnected
     le_result_t ret;
     char *ssid;
     le_dcs_ChannelRef_t channelRef;
-    wifi_connDb_t *selectedConnDb = DcsWifiGetSelectedDb();
-    if (!DcsWifi.disconnectingConn)
+    wifi_connDb_t *selectedConnDb = NULL;
+
+    if (DcsWifi.disconnectingConn)
     {
-        LE_DEBUG("Handle passive wifi Disconnected event");
-
-        // It's safe to anyway set DcsWifi.selectedConnDb to NULL because a Disconnect has
-        // completed, and it's possible that le_dcs has given up this connection to le_data
-        // and let it perform the actual disconnect, in which case when this Disconnected event
-        // arrives here, DcsWifi.disconnectingConn isn't true, but DcsWifi.selectedConnDb has
-        // to be reset
-        DcsWifi.selectedConnDb = NULL;
-        DcsWifi.apRef = NULL;
-        DcsWifiClientStop();
-        return;
+        selectedConnDb = DcsWifi.disconnectingConn;
+        DcsWifi.disconnectingConn = NULL;
     }
-
-    selectedConnDb = DcsWifi.disconnectingConn;
-    DcsWifi.disconnectingConn = NULL;
+    else
+    {
+        selectedConnDb = DcsWifiGetSelectedDb();
+    }
 
     if (!DcsWifi.selectedConnDb)
     {
         // This wifi connection was started via le_data. Thus, do no more than sending a
-        // notification
-        LE_INFO("Wifi client disconnected on SSID %s", selectedConnDb->ssid);
-        channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef);
-        if (channelRef)
+        // notification if possible
+        if (selectedConnDb)
         {
-            le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+            LE_INFO("Wifi client disconnected on SSID %s", selectedConnDb->ssid);
+            channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI,
+                                                         selectedConnDb->connRef);
+            if (channelRef)
+            {
+                le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+            }
         }
         return;
     }

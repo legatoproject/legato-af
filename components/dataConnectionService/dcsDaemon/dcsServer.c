@@ -1692,6 +1692,14 @@ static void TryStartTechSession
     else
     {
         char techStr[DCS_TECH_BYTES] = {0};
+
+        if ((RequestCount == 0) || IsConnected)
+        {
+            LE_INFO("No need to try starting data session: reqCount %d, connected %d",
+                    RequestCount, IsConnected);
+            return;
+        }
+
         GetTechnologyString(technology, techStr, sizeof(techStr));
         LE_DEBUG("Technology used for the le_data connection: '%s'", techStr);
 
@@ -1727,24 +1735,19 @@ static void TryStartTechSession
                 le_result_t result = LoadSelectedTechProfile(LE_DATA_CELLULAR);
                 if (LE_OK == result)
                 {
-                    // Check if the mobile data session should be started
-                    if ((LE_DATA_CELLULAR == CurrentTech) && (RequestCount > 0) && (!IsConnected))
+                    if ((res == LE_OK) &&
+                        ((LE_MRC_REG_HOME == serviceState) || (LE_MRC_REG_ROAMING == serviceState)))
                     {
-                        if ((res == LE_OK) &&
-                            ((LE_MRC_REG_HOME == serviceState) || (LE_MRC_REG_ROAMING == serviceState)))
-                        {
-                            LE_INFO("Device is attached, ready to start a data session");
+                        LE_INFO("Device is attached, ready to start a data session");
 
-                            // Start a connection
-                            le_dcs_MarkChannelSharingStatus(channelName, LE_DCS_TECH_CELLULAR,
-                                                            true);
-                            TryStartDataSession();
-                        }
-                        else
-                        {
-                            LE_INFO("Cellular not available for starting a data session");
-                            ConnectionStatusHandler(LE_DATA_CELLULAR, false);
-                        }
+                        // Start a connection
+                        le_dcs_MarkChannelSharingStatus(channelName, LE_DCS_TECH_CELLULAR, true);
+                        TryStartDataSession();
+                    }
+                    else
+                    {
+                        LE_INFO("Cellular not available for starting a data session");
+                        ConnectionStatusHandler(LE_DATA_CELLULAR, false);
                     }
                 }
                 else
