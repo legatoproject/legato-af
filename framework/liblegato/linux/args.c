@@ -761,7 +761,7 @@ le_result_t le_arg_GetIntOption
         return LE_FORMAT_ERROR;
     }
 
-    return le_utf8_ParseInt(varPtr, Argv[index + 1]);
+    return le_utf8_ParseInt(varPtr, valuePtr);
 }
 
 

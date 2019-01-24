@@ -1,0 +1,5 @@
+// LE-11195: Bug in liblegato/linux/args.c : le_arg_GetIntOption()
+sources:
+{
+    testLE_11195.c
+}

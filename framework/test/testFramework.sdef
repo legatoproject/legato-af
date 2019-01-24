@@ -23,6 +23,7 @@ apps:
     ipc/test_Optional2
     fs/test_Fs
     crc/test_Crc
+    issues/test_LE_11195
 
     /*
      * Helper applications assocated with python tests

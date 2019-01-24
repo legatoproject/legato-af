@@ -1,0 +1,20 @@
+// LE-11195: Bug in liblegato/linux/args.c : le_arg_GetIntOption()
+start: manual
+
+executables:
+{
+    testLE_11195 = ( LE-11195 )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        ( testLE_11195 )
+    }
+}
