@@ -37,7 +37,7 @@
  * CoAP stream.
  *
  * @code
- * static uint32_t CoapRxStreamHandler
+ * static le_coap_Code_t CoapRxStreamHandler
  * (
  *     le_coap_StreamStatus_t streamStatus,
  *     const char* bufferPtr,
@@ -51,25 +51,25 @@
  *         case LE_COAP_RX_STREAM_START:
  *             LE_INFO("Stream start: Create file and write received data");
  *             CopyToFile(RECEIVED_STREAM_FILE, bufferPtr, length, true);
- *             return COAP_NO_ERROR;
+ *             return LE_COAP_CODE_NO_RESPONSE;
  *
  *         case LE_COAP_RX_STREAM_IN_PROGRESS:
  *             LE_INFO("Stream in progress: Copy received data to file");
  *             CopyToFile(RECEIVED_STREAM_FILE, bufferPtr, length, false);
- *             return COAP_NO_ERROR;
+ *             return LE_COAP_CODE_NO_RESPONSE;
  *
  *         case LE_COAP_RX_STREAM_END:
  *             LE_INFO("Stream completed: Start processing received data");
  *             CopyToFile(RECEIVED_STREAM_FILE, bufferPtr, length, false);
- *             return COAP_204_CHANGED;
+ *             return LE_COAP_CODE_204_CHANGED;
  *
  *         case LE_COAP_RX_STREAM_ERROR:
  *             LE_INFO("Stream cancelled");
- *             return COAP_500_INTERNAL_SERVER_ERROR;
+ *             return LE_COAP_CODE_500_INTERNAL_SERVER_ERROR;
  *
  *         default:
  *             LE_INFO("Unexpected stream status during PUT");
- *             return COAP_500_INTERNAL_SERVER_ERROR;
+ *             return LE_COAP_CODE_500_INTERNAL_SERVER_ERROR;
  *     }
  * }
  *
@@ -80,7 +80,6 @@
  *      uint16_t messageId,
  *      uint16_t contentType,
  *      const char* uri,
- *      size_t uriLength,
  *      const char* token,
  *      uint8_t tokenLength,
  *      const char* payload,
@@ -238,7 +237,7 @@ ENUM Code
     CODE_503_SERVICE_UNAVAILABLE = 0xA3,
     CODE_504_GATEWAY_TIMEOUT = 0xA4,
     CODE_505_PROXYING_NOT_SUPPORTED = 0xA5,
-    CODE_INVALID = 0xFF
+    CODE_NO_RESPONSE = 0xFF
 };
 
 
@@ -285,20 +284,27 @@ ENUM PushStatus
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler for receiving incoming CoAP messages
+ *
+ * @note
+ *     Refer to CoAP Message Format https://tools.ietf.org/html/rfc7252#section-2.1 to know how to
+ *     use Message ID and Token in a CoAP message.
+ *
+ *     Content type of payload is dependent on the server implementation. CoAP content formats
+ *     Registry https://tools.ietf.org/html/rfc7252#section-12.3 describes how a content format is
+ *     assigned. The CoAP Content Formats sub-registry is at
+ *     https://www.iana.org/assignments/core-parameters/core-parameters.xhtml#content-formats.
+ *     A server might support a different format other than the ones described in the sub registry.
  */
 //--------------------------------------------------------------------------------------------------
 HANDLER MessageHandler
 (
     Code code                               IN,         ///< CoAP Code
     StreamStatus stream                     IN,         ///< CoAP stream status
-    uint16 messageId                        IN,         ///< message id
-    uint16 contentType                      IN,         ///< content type
+    uint16 messageId                        IN,         ///< Message id in CoAP message header
+    uint16 contentType                      IN,         ///< Content type of the payload
     string uri[MAX_URI_NUM_BYTES]           IN,         ///< URI of resource
-    size uriLength                          IN,         ///< URI length
-    string token[MAX_TOKEN_NUM_BYTES]       IN,         ///< token
-    uint8 tokenLength                       IN,         ///< token length
-    string payload[MAX_PAYLOAD_NUM_BYTES]   IN,         ///< CoAP payload
-    size payloadLength                      IN          ///< CoAP payload length
+    uint8 token[MAX_TOKEN_NUM_BYTES]        IN,         ///< Token in CoAP message header
+    uint8 payload[MAX_PAYLOAD_NUM_BYTES]    IN          ///< CoAP payload
 );
 
 
@@ -316,14 +322,12 @@ HANDLER MessageHandler
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SendResponse
 (
-    uint16 messageId                        IN,         ///< message id
-    string token[MAX_TOKEN_NUM_BYTES]       IN,         ///< token
-    uint8 tokenLength                       IN,         ///< token length
-    uint16 contentType                      IN,         ///< content type
-    uint32 responseCode                     IN,         ///< result of CoAP operation
+    uint16 messageId                        IN,         ///< Message id in CoAP message header
+    uint8 token[MAX_TOKEN_NUM_BYTES]        IN,         ///< Token in CoAP message header
+    uint16 contentType                      IN,         ///< Content type of the payload
+    Code responseCode                       IN,         ///< Result of CoAP operation
     StreamStatus streamStatus               IN,         ///< Status of transmit stream
-    string payload[MAX_PAYLOAD_NUM_BYTES]   IN,         ///< payload
-    uint32 payloadLength                    IN          ///< payload Length
+    uint8 payload[MAX_PAYLOAD_NUM_BYTES]    IN          ///< CoAP payload
 );
 
 
@@ -361,12 +365,10 @@ HANDLER PushHandler
 FUNCTION le_result_t Push
 (
     string uri[MAX_URI_NUM_BYTES]           IN,         ///< URI where push should end
-    string token[MAX_TOKEN_NUM_BYTES]       IN,         ///< token
-    uint8 tokenLength                       IN,         ///< token length
-    uint16 contentType                      IN,         ///< content type
+    uint8 token[MAX_TOKEN_NUM_BYTES]        IN,         ///< Token in CoAP message header
+    uint16 contentType                      IN,         ///< Content type of the payload
     StreamStatus streamStatus               IN,         ///< Status of transmit stream
-    string payload[MAX_PAYLOAD_NUM_BYTES]   IN,         ///< payload
-    uint32 payloadLength                    IN,         ///< payload Length
+    uint8 payload[MAX_PAYLOAD_NUM_BYTES]    IN,         ///< CoAP Payload
     PushHandler pushHandlerRef              IN          ///< Handler for receiving response
                                                         ///  for the push operation
 );
