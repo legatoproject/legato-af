@@ -1,0 +1,12 @@
+requires:
+{
+    api:
+    {
+        ctrlVC.api
+    }
+}
+
+sources:
+{
+    controller.c
+}

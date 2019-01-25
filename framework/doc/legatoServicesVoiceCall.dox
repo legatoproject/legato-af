@@ -1,0 +1,43 @@
+/** @page legatoServicesVoiceCall Voice Call
+
+The Voice Call Service can be used to establish voice communication with a remote party. The voice call can be over a mobile network, or over VoIP.
+
+@section legatoServicesVoiceCall_GS Getting Started
+
+This service is automatically included in the Legato Framework by including @c default.sdef in your
+system and loads automatically on startup.
+
+@verbatim
+apps:
+{
+    // Platform services.
+    $LEGATO_ROOT/apps/platformServices/voiceCallService
+}
+@endverbatim
+
+@section legatoServicesVoiceCall_API API Guide
+
+The Positioning Service exposes two APIs that will manage connecting to Global Navigation Satellite Systems.
+
+| API Guide       | API Reference                | File Name      | Description                       |
+| ----------------|------------------------------|----------------|-----------------------------------|
+| @subpage c_le_voicecall | @subpage le_voicecall_interface.h | @c le_voicecall.api | Voice communication control               |
+
+To bind to this API customize the following bindings for your App's .adef:
+
+@code
+bindings:
+{
+    <myExecutable>.<myComponentClient>.le_voicecall -> voiceCallService.le_voicecall
+}
+@endcode
+
+@section legatoServicesVoiceCall_Sample Sample App
+
+The @ref sampleApps_voiceCallApp App provides examples of:
+ - Establishing a voice call to a remote party as well as answering receiving calls
+ - Placing calls on hold, redialing, etc
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

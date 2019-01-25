@@ -45,7 +45,7 @@ Platform Services provide full-featured interface access to system and modem res
 | @subpage legatoServicesSecStoreMain   | Secure storage for sensitive data           | @image html green_dot.png |
 | @subpage legatoServicesSMS            | SMS and SMS Inbox                           | @image html green_dot.png |
 | @subpage c_spi                        | Configure SPI interface                     |                           |
-| @subpage c_le_voicecall               | Voice communications                        | @image html green_dot.png |
+| @subpage legatoServicesVoiceCall      | Voice communications                        | @image html green_dot.png |
 | @subpage legatoServicesWiFi           | WiFi                                        |                           |
 | @subpage legatoAtServices             | AT commands services                        | @image html green_dot.png |
 | @subpage c_port                       | Port service                                |                           |

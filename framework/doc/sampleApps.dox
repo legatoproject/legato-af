@@ -22,6 +22,7 @@ to follow to create your own Apps.
 | @subpage sampleApps_modemDemo                | App demonstrates how to interact with the Modem Service          |
 | @subpage sampleApps_shellPiping              | App demonstrates using tools within a sandbox                    |
 | @subpage sampleApps_sms                      | App demonstrates using the SMS service                           |
+| @subpage sampleApps_voiceCallApp             | App demonstrates using the voiceCallService                |
 | @subpage sampleApps_fwupdateDownloader       | App demonstrates using the fwupdate service                      |
 | @subpage sampleApps_fwupdateDownloaderResume | App demonstrates using the fwupdate resume serivce               |
 | @subpage sampleApps_streamMedia              | App demonstrates audio streaming over IP interface               |

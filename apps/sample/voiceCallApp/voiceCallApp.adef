@@ -1,0 +1,41 @@
+requires:
+{
+    configTree:
+    {
+        [w] voiceCallApp       // Write access to config data.
+    }
+}
+
+executables:
+{
+    voiceCallApp = ( voiceCallComponent)
+    voice = ( ctrlComponent )
+}
+
+processes:
+{
+    run:
+    {
+        ( voiceCallApp )
+    }
+}
+
+bundles:
+{
+    file:
+    {
+        [r]     audio/piano.wav     /
+        [r]     audio/male.wav     /
+    }
+}
+
+
+start: auto
+sandboxed: false
+
+bindings:
+{
+    voiceCallApp.voiceCallComponent.le_voicecall -> voiceCallService.le_voicecall
+    voiceCallApp.voiceCallComponent.le_audio -> audioService.le_audio
+    voice.ctrlComponent.ctrlVC -> voiceCallApp.voiceCallComponent.ctrlVC
+}

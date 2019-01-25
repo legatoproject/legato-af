@@ -26,12 +26,21 @@
  * A voice call can be started using le_voicecall_Start() with the destination identifier passed as
  *  a parameter.
  *
+ * @snippet "apps/sample/voiceCallApp/voiceCallComponent/voiceCallApp.c" Starting a voicecall
+ *
  * @note Available interfaces depend on used platform.
  *
  * Before the voice call is started, an application registers a state handler using
  * le_voicecall_AddStateHandler(). Once the voice call is established, the handler will be called
  *  indicating it's now connected. If the state of the voice call changes, then the handler will be
- *  called with the new state. To release a voice call, an application can use le_voicecall_End().
+ *  called with the new state.
+ *
+ * @snippet "apps/sample/voiceCallApp/voiceCallComponent/voiceCallApp.c" AddStateHandler
+ *
+ * To release a voice call, an application can use le_voicecall_End().
+ *
+ * @snippet "apps/sample/voiceCallApp/voiceCallComponent/voiceCallApp.c" Ending a voicecall
+ *
  * Application must use le_voicecall_Delete() to release @ref le_voicecall_CallRef_t voice call
  *  reference object when it is no more used.
  *
@@ -49,7 +58,10 @@
  * Once the @ref LE_VOICECALL_EVENT_CONNECTED voice call event is received by the application, it
  *  must get the Rx and Tx audio streams with le_voicecall_GetRxAudioStream() and
  *  le_voicecall_GetTxAudioStream() functions in order to set up the audio path. The audio path
- *  can be set up thanks to the audio API (cf. @ref c_audio).
+ *  can be set up thanks to the audio API (cf. @ref c_audio). An example of how to set up the audio path:
+ *
+ * @snippet "apps/sample/voiceCallApp/voiceCallComponent/voiceCallApp.c" setup audio path
+ *
  *
  * If a @ref LE_VOICECALL_EVENT_TERMINATED event is received, application can get the termination
  *  reason by using le_voicecall_GetTerminationReason().
@@ -63,6 +75,8 @@
  *
  * Application can answer the call by using le_voicecall_Answer() or reject the call by using
  *  le_voicecall_End() passing the call reference @ref le_voicecall_CallRef_t.
+ *
+ * @snippet "apps/sample/voiceCallApp/voiceCallComponent/voiceCallApp.c" answer
  *
  * If le_voicecall_End() failed a @ref LE_VOICECALL_EVENT_CALL_END_FAILED event will be sent. If
  *  le_voicecall_Answer() failed a @ref LE_VOICECALL_EVENT_CALL_ANSWER_FAILED event will be sent.

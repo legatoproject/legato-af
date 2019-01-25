@@ -1,0 +1,66 @@
+/**  @page sampleApps_voiceCallApp Voice Call
+
+@section voiceCallApp_App The Voice Call Sample App
+
+This sample app demonstrates the usage of the voicecall service along with a few other services and APIs to establish voice communication using an activated SIM card. It also allows for some of the basic functionalities that are expected from such an application, namely the ability to redial, place calls on hold as well as un-hold, hangup and so on. It uses:
+- @ref c_le_voicecall service with @c .adef bindings and related @c .cdef requires, provides, and sources sections.
+- @ref c_audio service with @c .adef bindings and related @c .cdef requires, provides, and sources sections.
+
+The voiceCallApp is a sample application designed to demonstrate the functions provided by the @ref c_voicecall.
+This sample app provides two executables, one for the service and another one for the controller. You can find:
+- An .adef file:
+    - voiceCallApp.adef to define the executables, processes, requires, bindings, and externals.
+- An .sdef file:
+    - voiceCallApp.sdef to define the commands, and the system structure
+- Two .cdef files:
+    - Component.cdef for the service component
+    - Component.cdef for the controller
+
+@note The app is built along with a complete system using the .sdef in order to use the command line tools to control the application.
+
+Go to the
+<a href="https://gerrit.legato/c/Legato/+/41813">sample code</a>.
+
+Install the sample app:
+
+@verbatim
+$ cd apps/sample/voiceCallApp
+$ mksys -t wp76xx voiceCallApp.sdef
+$ app install voiceCallApp.wp76xx.update <ip address>
+@endverbatim
+
+where <i>ip address</i> is the address of your target device.
+
+If you're not using a Sierra Wireless WP76xx module, replace @c wp76xx with the appropriate
+identifier for your target.
+
+@note The voiceCallApp has only been tested on WP76xx.
+
+@subsection Usage
+@note Since the voiceCallApp depends on the voiceCallService, the voiceCallService must be manually started before using the app. To start the voiceCallService, use the following command:
+@code
+    app start voiceCallService
+@endcode
+
+To use the app to initiate a voice call, replace <i>Phone Number</i> with the desired number you wish to call and run the following command:
+@code
+    voice call <Phone Number>
+@endcode
+
+To use the app to answer an incomming call, run the following command:
+@code
+    voice answer
+@endcode
+
+End a call by doing:
+@code
+    voice hangup
+@endcode
+
+@note For more information on specific commands, read the following section taken from the app's help.
+
+@snippet "apps/sample/voiceCallApp/ctrlComponent/controller.c" help
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

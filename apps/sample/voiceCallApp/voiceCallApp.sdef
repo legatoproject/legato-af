@@ -1,0 +1,11 @@
+#include "$LEGATO_ROOT/default.sdef"
+
+apps:
+{
+	voiceCallApp
+}
+
+commands:
+{
+	voice = voiceCallApp:/bin/voice
+}
