@@ -61,7 +61,33 @@ void ModuleBuildScriptGenerator_t::GenerateBuildStatements
             // No pre-built module: generate and invoke a Makefile
             GenerateMakefile(modulePtr);
             script << "MakeKernelModule " << "$builddir/"
-                   << path::GetContainingDir(it->second->path) << "\n";
+                   << path::GetContainingDir(it->second->path);
+
+            if (!modulePtr->requiredModules.empty())
+            {
+                // Include order-only build dependencies to make sure the dependency module is
+                // built first than the module that depends on it. Expressed with sytax
+                // "|| dep1 dep2" on the end of a build line.
+                script << " || ";
+
+                for (auto const& reqMod : modulePtr->requiredModules)
+                {
+                    model::Module_t* reqModPtr = model::Module_t::GetModule(reqMod.first);
+                    if (reqModPtr == NULL)
+                    {
+                        throw mk::Exception_t(
+                                  mk::format(
+                                      LE_I18N("Internal Error: Module object not found for '%s'."),
+                                      reqMod.first));
+                    }
+
+                    for (auto const& reqMod : reqModPtr->koFiles)
+                    {
+                        script << "$builddir/" << reqMod.second->path << " ";
+                    }
+                }
+            }
+            script << "\n";
         }
         else
         {
@@ -198,6 +224,27 @@ void ModuleBuildScriptGenerator_t::GenerateMakefile
 
     makefile << "KBUILD := " << modulePtr->kernelDir << "\n";
 
+    // Iterate through all the required modules and concatenate the modules's Module.symvers file
+    // path for later passing it to KBUILD_EXTRA_SYMBOLS variable during make.
+    std::string buildPathModuleSymvers;
+    for (auto const &reqMod :  modulePtr->requiredModules)
+    {
+        model::Module_t* reqModPtr = model::Module_t::GetModule(reqMod.first);
+        if (reqModPtr == NULL)
+        {
+            throw mk::Exception_t(
+                      mk::format(LE_I18N("Internal Error: Module object not found for '%s'."),
+                                 reqMod.first));
+        }
+
+        if (reqModPtr->moduleBuildType == model::Module_t::Sources)
+        {
+            std::string reqModuleSymvers = path::MakeAbsolute(buildParams.workingDir
+                                           + "/modules/" + reqMod.first + "/Module.symvers");
+            buildPathModuleSymvers = buildPathModuleSymvers + reqModuleSymvers + " ";
+        }
+    }
+
     if (buildParams.target != "localhost")
     {
         // Specify the CROSS_COMPILE and ARCH environment variables
@@ -218,7 +265,17 @@ void ModuleBuildScriptGenerator_t::GenerateMakefile
 
     // Specify build rules
     makefile << "all:\n";
-    makefile << "\tmake -C $(KBUILD) M=" + buildPath + " modules\n";
+
+    makefile << "\tmake -C $(KBUILD) M=" + buildPath;
+
+    // Pass KBUILD_EXTRA_SYMBOLS to resolve module build dependencies.
+    if (!buildPathModuleSymvers.empty())
+    {
+        makefile << " 'KBUILD_EXTRA_SYMBOLS=" + buildPathModuleSymvers + "'";
+    }
+
+    makefile << " modules\n";
+
     makefile << "\n";
     makefile << "clean:\n";
     makefile << "\t make -C $(KBUILD) M=" + buildPath + " clean\n";
