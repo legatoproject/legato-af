@@ -109,7 +109,7 @@ applications in that system are packed as an app update command followed by the 
 When applying app updates, either alone or as part of a system update, each application is
 extracted to the temporary app unpack directory: @c /legato/apps/unpack
 
-When a system update is installed, old systems are deleted. (Outside of the read-only base legato 
+When a system update is installed, old systems are deleted. (Outside of the read-only base legato
 layer, it only makes sense to keep around 1 system that has been marked good.)
 
 After old systems are purged, the app cache is scanned and any orphaned applications are also

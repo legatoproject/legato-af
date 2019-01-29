@@ -1,4 +1,5 @@
-/** @file rand.c
+/**
+ * @file rand.c
  *
  * This Random Number API is a wrapper around a cryptographic pseudo-random number generator (CPRNG)
  * that is properly seeded with entropy.
@@ -8,20 +9,68 @@
  *          this module care must be taken to ensure that the underlying CPRNG and entropy pools are
  *          configured properly.
  *
- * @note If glibc is >= 2.15, this module relies on getrandom, which takes care of the checks
+ * @note If build-time glibc is >= 2.25, this module tries to use getrandom, which takes care of the checks
  *       regarding the configuration and initialization.
+ *       However, we check for the presence of the symbol at runtime if case we are running on an older
+ *       version of glibc.
+ *
  *
  * Copyright (C) Sierra Wireless Inc.
  */
 
 #include "legato.h"
 #include "fileDescriptor.h"
+#include "rand.h"
 
-#if (__GLIBC__ <= 2 ) && (__GLIBC_MINOR__ < 25)
-#define NO_SYS_RANDOM
-#else
+#if ( (__GLIBC__ == 2 ) && (__GLIBC_MINOR__ >= 25) ) \
+    || (__GLIBC__ > 2 )
+
+#define USE_SYS_RANDOM
+
 #include <sys/random.h>
+#include <dlfcn.h>
+#include <gnu/lib-names.h>
+
 #endif
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Prototype for the getrandom() function, only available on glibc >= 2.25.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef ssize_t (*GetRandom_t)(void *buffer, size_t length, int flags);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pointer to getrandom function, if available.
+ */
+//--------------------------------------------------------------------------------------------------
+static GetRandom_t GetRandom = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initializes the Random Number API service.
+ *
+ * If built with glibc >= 2.25, this function will look for the getrandom
+ * symbol in glibc dynamically.
+ */
+//--------------------------------------------------------------------------------------------------
+void rand_Init
+(
+    void
+)
+{
+#if defined(USE_SYS_RANDOM)
+    void* handle = dlopen(LIBC_SO, RTLD_LAZY);
+    if (handle)
+    {
+        GetRandom = (GetRandom_t)dlsym(handle, "getrandom");
+        dlclose(handle);
+    }
+
+    LE_DEBUG("getrandom function: %p", GetRandom);
+#endif
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -45,18 +94,19 @@ uint32_t le_rand_GetNumBetween
     // Versions of glibc before 2.25 do not have support for the getrandom() functions in which case
     // we need to read directly from /dev/urandom.
 
-#ifdef NO_SYS_RANDOM
-    // Open /dev/urandom for reading.
-    int fd;
+    int fd = -1;
 
-    do
+    if (!GetRandom)
     {
-        fd = open("/dev/urandom", O_RDONLY);
-    }
-    while ((fd == -1) && (errno == EINTR));
+        // Open /dev/urandom for reading.
+        do
+        {
+            fd = open("/dev/urandom", O_RDONLY);
+        }
+        while ((fd == -1) && (errno == EINTR));
 
-    LE_FATAL_IF(fd == -1, "Failed to open /dev/urandom. %m.");
-#endif
+        LE_FATAL_IF(fd == -1, "Failed to open /dev/urandom. %m.");
+    }
 
     // Determine range of numbers to reject.
     uint32_t interval = max - min + 1;
@@ -73,11 +123,14 @@ uint32_t le_rand_GetNumBetween
 
         do
         {
-#ifdef NO_SYS_RANDOM
-            c = read(fd, &randNum, sizeof(randNum));
-#else
-            c = getrandom(&randNum, sizeof(randNum), 0);
-#endif
+            if (!GetRandom)
+            {
+                c = read(fd, &randNum, sizeof(randNum));
+            }
+            else
+            {
+                c = GetRandom(&randNum, sizeof(randNum), 0);
+            }
         }
         while ( ((c == -1) && (errno == EINTR)) || (c < sizeof(randNum)) );
 
@@ -92,9 +145,10 @@ uint32_t le_rand_GetNumBetween
         }
     }
 
-#ifdef NO_SYS_RANDOM
-    fd_Close(fd);
-#endif
+    if (!GetRandom)
+    {
+        fd_Close(fd);
+    }
 
     return (randNum % interval) + min;
 }
@@ -116,18 +170,19 @@ void le_rand_GetBuffer
     // Versions of glibc before 2.25 do not have support for the getrandom() functions in which case
     // we need to read directly from /dev/urandom.
 
-#ifdef NO_SYS_RANDOM
-    // Open /dev/urandom for reading.
-    int fd;
+    int fd = -1;
 
-    do
+    if (!GetRandom)
     {
-        fd = open("/dev/urandom", O_RDONLY);
-    }
-    while ((fd == -1) && (errno == EINTR));
+        // Open /dev/urandom for reading.
+        do
+        {
+            fd = open("/dev/urandom", O_RDONLY);
+        }
+        while ((fd == -1) && (errno == EINTR));
 
-    LE_FATAL_IF(fd == -1, "Failed to open /dev/urandom. %m.");
-#endif
+        LE_FATAL_IF(fd == -1, "Failed to open /dev/urandom. %m.");
+    }
 
     // Get random numbers.
     size_t readCount = 0;
@@ -138,11 +193,14 @@ void le_rand_GetBuffer
 
         do
         {
-#ifdef NO_SYS_RANDOM
-            c = read(fd, &(bufPtr[readCount]), (bufSize-readCount));
-#else
-            c = getrandom(&(bufPtr[readCount]), (bufSize-readCount), 0);
-#endif
+            if (!GetRandom)
+            {
+                c = read(fd, &(bufPtr[readCount]), (bufSize-readCount));
+            }
+            else
+            {
+                c = GetRandom(&(bufPtr[readCount]), (bufSize-readCount), 0);
+            }
         }
         while ( (c == -1) && (errno == EINTR) );
 
@@ -151,7 +209,8 @@ void le_rand_GetBuffer
         readCount += c;
     }
 
-#ifdef NO_SYS_RANDOM
-    fd_Close(fd);
-#endif
+    if (!GetRandom)
+    {
+        fd_Close(fd);
+    }
 }

@@ -23,6 +23,7 @@
 #include "pipeline.h"
 #include "atomFile.h"
 #include "fs.h"
+#include "rand.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -67,6 +68,7 @@ __attribute__((constructor)) void _legato_InitFramework
     pipeline_Init();   // Uses memory pools and FD Monitors.
     atomFile_Init();   // Uses memory pools.
     fs_Init();         // Uses memory pools and safe references.
+    rand_Init();       // Do not use anything other resource.
 
     // This must be called last, because it calls several subsystems to perform the
     // thread-specific initialization for the main thread.
