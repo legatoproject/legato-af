@@ -1,7 +1,7 @@
 //--------------------------------------------------------------------------------------------------
-/** @file fs.h
+/** @file rand.h
  *
- * Legato file system service module's inter-module include file.
+ * Legato Random Number API service module's inter-module include file.
  *
  * This file exposes interfaces that are for use by other modules inside the framework
  * implementation, but must not be used outside of the framework implementation.
@@ -9,21 +9,21 @@
  * Copyright (C) Sierra Wireless Inc.
  *
  */
-#ifndef FS_INCLUDE_GUARD
-#define FS_INCLUDE_GUARD
+#ifndef RAND_INCLUDE_GUARD
+#define RAND_INCLUDE_GUARD
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Initializes the file system service.
+ * Initializes the Random Number API service.
  *
  * @note
  *      On failure, the process exits.
  */
 //--------------------------------------------------------------------------------------------------
-void fs_Init
+void rand_Init
 (
     void
 );
 
 
-#endif  // FS_INCLUDE_GUARD
+#endif  // RAND_INCLUDE_GUARD
