@@ -1,0 +1,12 @@
+requires:
+{
+    api:
+    {
+        ctrlSMS.api
+    }
+}
+
+sources:
+{
+    controller.c
+}

@@ -1,0 +1,128 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ *
+ * This API is used by the controller to control the flow of the application. Certain arguments are
+ *  passed from the command line to the application using the controller and the functions
+ *  provided by this API.
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------------------------------
+/**
+* Get the phone number specified on the command line followed by a text message and send it.
+* By default the message is sent synchronously. If sendAsync is specified message will be sent
+* asynchronously.
+*
+* @return
+*      - LE_OK              If message is successfully sent to the destination number.
+*      - LE_FAULT           If message cannot be sent to the destination number.
+*/
+//-------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SendMessage
+(
+   string numPtr [20] IN,
+   string txtPtr [8192] IN,
+   bool sendAsync IN,
+   bool sendAt IN
+);
+
+//-------------------------------------------------------------------------------------------------
+/**
+* Creates a message list containing all the messages stored on the device and displays the first
+* message in the list.
+*
+* @return
+*      - LE_OK              If message list is successfully created and first message is displayed.
+*      - LE_FAULT           If message list is not created or first message cannot be displayed.
+*/
+//-------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetInbox
+(
+);
+
+//-------------------------------------------------------------------------------------------------
+/**
+* Displays the next message in the list after message list has already been created using Inbox.
+* If end of the list is reached, it will go back to the beginning of the list.
+*
+* @return
+*      - LE_OK              If next message is successfully displayed.
+*      - LE_FAULT           If next message cannot be displayed.
+*      - LE_NOT_FOUND       If GetNext is called before GetInbox.
+*/
+//-------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetNext
+(
+);
+
+//-------------------------------------------------------------------------------------------------
+/**
+* Deletes from storage the last message which was displayed using either Inbox or Next.
+*
+* @return
+*      - LE_OK              If message is successfully deleted.
+*      - LE_NO_MEMORY       If the message is not present in storage area.
+*      - LE_FAULT           If message cannot be deleted or message list hasn't been created yet.
+*/
+//-------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DeleteMessage
+(
+);
+
+//-------------------------------------------------------------------------------------------------
+/**
+* Displays the status of the last message which was displayed using either Inbox or Next.
+*
+* @return
+*      - LE_OK              If message status is successfully displayed.
+*      - LE_FAULT           If message status cannot be displayed.
+*      - LE_NOT_FOUND       If DeleteMessage is called before GetInbox.
+*/
+//-------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetStatus
+(
+);
+
+//-------------------------------------------------------------------------------------------------
+/**
+* Marks as unread, the last message which was displayed using either Inbox or Next.
+*
+* @return
+*      - LE_OK              If message is successfully marked as unread.
+*      - LE_FAULT           If message cannot be marked as unread.
+*      - LE_NOT_FOUND       If MarkUnread is called before GetInbox.
+*/
+//-------------------------------------------------------------------------------------------------
+FUNCTION le_result_t MarkUnread
+(
+);
+
+//-------------------------------------------------------------------------------------------------
+/**
+* Counts the total number of received messages since the last reset count.
+*
+* @return
+*      - LE_OK              If the count is successfully displayed.
+*      - LE_FAULT           If message count cannot be displayed.
+*/
+//-------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetCount
+(
+);
+
+//-------------------------------------------------------------------------------------------------
+/**
+* Resets the received message counter.
+*
+* @return
+*      - LE_OK              If the counter was successfully reset.
+*      - LE_FAULT           If message counter cannot be reset.
+*      - LE_NOT_FOUND       If ResetCount is called before GetInbox.
+*/
+//-------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ResetCount
+(
+);

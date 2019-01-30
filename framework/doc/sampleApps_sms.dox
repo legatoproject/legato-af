@@ -1,27 +1,63 @@
 /** @page sampleApps_sms SMS
 
-This sample app demonstrates SMS messaging. It uses @c .adef bindings and related
-@ .cdef requires and sources sections.
+@section sms_App The SMS Sample App
 
-Before you install this sample app, register your SIM network. See @ref toolsTarget_cm_sim.
+This sample app demonstrates the usage of the sms service along with a few other services and APIs in order to perform SMS messaging operations. It requires an activated SIM card to send and receive messages. It also allows for some of the basic functionalities that are expected from such an application, namely the ability to view the messages in the inbox, delete, mark as read/unread. This app can also be used as an automatic SMS reply service in order to acquire various information about the device remotely. More information on this service is provided by typing sms --help.
+
+- @ref c_sms service with @c .adef bindings and related @c .cdef requires, provides, and sources sections.
+- @ref c_info service with @c .adef bindings and related @c .cdef requires, provides, and sources sections.
+- @ref c_atClient service with @c .adef bindings and related @c .cdef requires, provides, and sources sections.
+
+The smsApp is a sample application designed to demonstrate the functions provided by the @ref c_sms.
+This sample app provides two executables, one for the service and another one for the controller. You can find:
+- An .adef file:
+    - smsApp.adef to define the executables, processes, requires, bindings, and externals.
+- An .sdef file:
+    - smsApp.sdef to define the commands, and the system structure
+- Two .cdef files:
+    - Component.cdef for the service component
+    - Component.cdef for the controller
+
+@note The app is built along with a complete system using the .sdef in order to use the command line tools to control the application.
 
 Go to the
-<a href="https://github.com/legatoproject/legato-af/tree/master/apps/sample/sms">sample app code</a>.
+<a href="https://gerrit.legato/c/Legato/+/42043">sample code</a>.
 
-Run this to install the sample app:
+Install the sample app:
+
 @verbatim
-$ cd apps/sample/sms
-$ make wp85
-$ update sms.wp85.update <ip address>
+$ cd apps/sample/smsApp
+$ mksys -t wp76xx smsApp.sdef
+$ app install smsApp.wp76xx.update <ip address>
 @endverbatim
 
-If you're not using a Sierra Wireless WP85xx module, replace @c wp85 with the appropriate
+where <i>ip address</i> is the address of your target device.
+
+If you're not using a Sierra Wireless WP76xx module, replace @c wp76xx with the appropriate
 identifier for your target.
 
-@ref sampleApps_startApp
+@note The smsApp has only been tested on WP76xx.
 
-See <br>
-@ref c_sms
+@subsection Usage
+
+To use the app to send an SMS message, use the following command. Replace <i>Phone Number</i> with the phone number you wish to send a message to and replace <i>Message</i> with the message you wish to send.
+@code
+    sms send <Phone Number> <Message>
+@endcode
+
+To use the app to open the inbox, use the following command:
+@code
+    sms inbox
+@endcode
+
+Scroll through the messages by typing:
+@code
+    sms next
+@endcode
+
+@note For more information on specific commands, read the following section taken from the app's help.
+
+@snippet "apps/sample/smsApp/ctrlComponent/controller.c" help
 
 Copyright (C) Sierra Wireless Inc.
 

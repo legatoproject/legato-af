@@ -1,0 +1,23 @@
+requires:
+{
+    api:
+    {
+        modemServices/le_sms.api
+        modemServices/le_info.api
+        atServices/le_atClient.api
+    }
+}
+
+sources:
+{
+    main.c
+    sms.c
+}
+
+provides:
+{
+    api:
+    {
+        ctrlSMS.api
+    }
+}

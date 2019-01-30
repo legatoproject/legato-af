@@ -1,0 +1,11 @@
+#include "$LEGATO_ROOT/default.sdef"
+
+apps:
+{
+    smsApp
+}
+
+commands:
+{
+    sms = smsApp:/bin/sms
+}

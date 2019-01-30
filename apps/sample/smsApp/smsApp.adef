@@ -1,0 +1,38 @@
+requires:
+{
+    configTree:
+    {
+        [w] smsApp       // I need write access to my configuration data.
+    }
+    device:
+    {
+        [rw]    /dev/ttyAT    /dev/ttyAT
+    }
+
+}
+
+executables:
+{
+    smsApp = ( smsClient )
+    sms = ( ctrlComponent )
+}
+
+processes:
+{
+    run:
+    {
+        ( smsApp )
+    }
+}
+
+start: auto
+
+sandboxed: false
+
+bindings:
+{
+    smsApp.smsClient.le_sms -> modemService.le_sms
+    sms.ctrlComponent.ctrlSMS -> smsApp.smsClient.ctrlSMS
+    smsApp.smsClient.le_info -> modemService.le_info
+    smsApp.smsClient.le_atClient -> atService.le_atClient
+}

@@ -1,13 +1,45 @@
 /** @page legatoServicesSMS SMS Messaging
 
-| Service                            | Description                                        | multi-app safe            |
-| ---------------------------------- | -------------------------------------------------- | :-----------------------: |
-| @subpage c_sms                     | SMS messaging                                      |                           |
-| @subpage c_smsInbox                | SMS Inbox Service                                  |   x    |
+The SMS service can be used to send and receive SMS messages.
 
- <br>
+@section legatoServicesVoiceCall_GS Getting Started
 
-<HR>
+This service is automatically included in the Legato Framework by including @c default.sdef in your
+system and loads automatically on startup.
+
+@verbatim
+apps:
+{
+    // Platform services.
+    $LEGATO_ROOT/apps/platformServices/smsInboxService
+}
+@endverbatim
+
+@section legatoServicesSMS_API API Guide
+
+The SMS service exposes two APIs that will manage sending/receiving SMS messages. It also provides an inbox service for accessing SMS messages.
+
+| API Guide       | API Reference                | File Name      | Description                       |
+| ----------------|------------------------------|----------------|-----------------------------------|
+| @subpage c_sms | @subpage le_sms_interface.h | @c le_sms.api | SMS messaging               |
+| @subpage c_smsInbox | @subpage le_smsInbox1_interface.h | @c le_smsInbox1.api | SMS Inbox Service               |
+
+To bind to this API customize the following bindings for your App's .adef:
+
+@code
+bindings:
+{
+    <myExecutable>.<myComponentClient>.le_sms -> modemService.le_sms
+    <myExecutable>.<myComponentClient>.le_smsInbox1 -> smsInboxService.le_smsInbox1
+}
+@endcode
+
+@section legatoServicesSMS_API_Sample Sample App
+
+The @ref sampleApps_smsApp App provides examples of:
+ - Sending and receiving SMS messages
+ - Managing received messages such as displaying, deleting, and marking as read/unread.
+ - Implementing a simple SMS automatic reply service in order to handle commands in the form of SMS messages.
 
 Copyright (C) Sierra Wireless Inc.
 
