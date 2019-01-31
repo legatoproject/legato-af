@@ -48,7 +48,7 @@ COMPONENT_INIT
 
     LE_TEST_INFO("Starting FS test");
 
-    LE_TEST_PLAN(70);
+    LE_TEST_PLAN(89);
 
     le_fs_FileRef_t fileRef = NULL;
 
@@ -184,6 +184,36 @@ COMPONENT_INIT
     LE_TEST_OK(LE_OK == le_fs_Close(fileRef), "file '%s' closed", filePath);
     fileRef = NULL;
 
+    // Open the file in read only
+    LE_TEST_INFO("Open file '%s'", filePath);
+    res = le_fs_Open(filePath, LE_FS_RDONLY, &fileRef);
+    LE_DEBUG("res = %d", res);
+    LE_TEST_OK(LE_OK == res, "file '%s' opened in read only", filePath);
+    LE_TEST_INFO("File handler: %p", fileRef);
+    LE_TEST_ASSERT(NULL != fileRef, "Check fileRef");
+
+    // Set current position to the beginning of the file
+    offset = 0;
+    LE_TEST_INFO("Seek offset %"PRIi32" from the beginning", offset);
+    LE_TEST_OK(LE_OK == le_fs_Seek(fileRef, offset, LE_FS_SEEK_SET, &currentOffset), "Seek");
+    LE_TEST_INFO("New position in file: %"PRIi32"", currentOffset);
+    LE_TEST_OK(offset == currentOffset, "Check new position");
+
+    // Read 3 bytes from the current position
+    memset(readData, '\0', sizeof(readData));
+    readLength = 3;
+    expectedReadLength = readLength;
+    LE_TEST_OK(LE_OK == le_fs_Read(fileRef, readData, &readLength),
+               "Read file '%s' from the current position", filePath);
+    LE_TEST_INFO("Read %d bytes: '%s'", (int)readLength, readData);
+    LE_TEST_OK(expectedReadLength == readLength, "Check read length");
+    LE_TEST_OK(0 == strncmp("Hel", (char*)readData, readLength), "Check read data");
+
+    // Close the opened file
+    LE_TEST_INFO("Closing file handler: %p", fileRef);
+    LE_TEST_OK(LE_OK == le_fs_Close(fileRef), "file '%s' closed", filePath);
+    fileRef = NULL;
+
     // Move the file
     static const char newFilePath[PATH_LENGTH] = "/foo/bar/test2.txt";
     LE_TEST_INFO("Moving file from '%s' to '%s'", filePath, newFilePath);
@@ -246,6 +276,13 @@ COMPONENT_INIT
     LE_TEST_INFO("Closing file handler: %p", fileRef);
     LE_TEST_OK(LE_OK == le_fs_Close(fileRef), "close file '%s'", deleteFilePath);
     fileRef = NULL;
+
+    // move a file to an existing file
+    LE_TEST_INFO("Moving file from '%s' to '%s'", newFilePath, deleteFilePath);
+    LE_TEST_OK(LE_OK == le_fs_Move(newFilePath, deleteFilePath), "move file");
+    // Check that old file cannot be opened
+    LE_TEST_ASSERT(LE_OK != le_fs_Open(newFilePath, LE_FS_RDWR | LE_FS_APPEND, &fileRef),
+                   "open the old file");
 
     // Delete the new file
     LE_TEST_INFO("Deleting file '%s'",deleteFilePath);
@@ -358,6 +395,14 @@ facilisis erat, a imperdiet risus eleifend nec.";
     LE_TEST_OK(LE_OK == le_fs_Close(fileRef), "Close file '%s'", loremFilePath);
     fileRef = NULL;
 
+    // Remove all created files and directories
+    LE_TEST_INFO("Remove all created files and directories");
+    LE_TEST_OK(LE_OK == le_fs_RemoveDirRecursive("/foo"), "Remove directory '/foo'");
+    LE_TEST_ASSERT(false == le_fs_Exists("/foo"), "Check if the directory '/foo' is deleted");
+    LE_TEST_OK(LE_OK == le_fs_RemoveDirRecursive("/bar"), "Remove directory '/bar'");
+    LE_TEST_ASSERT(false == le_fs_Exists("/bar"), "Check if the directory '/bar' is deleted");
+
+
     // Error cases with wrong file handler
     LE_TEST_INFO("Test error cases with file handler %p", fileRef);
     LE_TEST_OK(LE_BAD_PARAMETER == le_fs_Close(fileRef), "Test le_fs_Close with bad ref");
@@ -365,6 +410,19 @@ facilisis erat, a imperdiet risus eleifend nec.";
                "Test le_fs_Read with bad ref");
     LE_TEST_OK(LE_BAD_PARAMETER == le_fs_Write(fileRef, loremIpsum, strlen((char*)loremIpsum)),
                "Test le_fs_Write with bad ref");
+    LE_TEST_OK(LE_BAD_PARAMETER == le_fs_Seek(fileRef, 5, LE_FS_SEEK_SET, &currentOffset),
+               "Test le_fs_Seek with bad ref");
+
+    fileRef = (void*)-1;
+
+    LE_TEST_INFO("Test error cases with file handler %p", fileRef);
+    LE_TEST_OK(LE_BAD_PARAMETER == le_fs_Close(fileRef), "Test le_fs_Close with bad ref");
+    LE_TEST_OK(LE_BAD_PARAMETER == le_fs_Read(fileRef, readLoremIpsum, &readLength),
+               "Test le_fs_Read with bad ref");
+    LE_TEST_OK(LE_BAD_PARAMETER == le_fs_Write(fileRef, loremIpsum, strlen((char*)loremIpsum)),
+               "Test le_fs_Write with bad ref");
+    LE_TEST_OK(LE_BAD_PARAMETER == le_fs_Write(fileRef, loremIpsum, 0),
+               "Test le_fs_Write with bad ref and a length to zero");
     LE_TEST_OK(LE_BAD_PARAMETER == le_fs_Seek(fileRef, 5, LE_FS_SEEK_SET, &currentOffset),
                "Test le_fs_Seek with bad ref");
 

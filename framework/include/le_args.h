@@ -567,6 +567,35 @@ void le_arg_SetErrorHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *  Control whether an argument scanning error should cause the process to exit.
+ *
+ *  The default behaviour is to exit.  If this is set to false then le_arg_GetScanResult() should be
+ *  called after le_arg_Scan() to determine if an error occured.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_arg_SetExitOnError
+(
+    bool exitOnError    ///< [IN] Exit on scan error.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Determine if argument scanning failed.
+ *
+ *  If process termination is disabled via le_arg_SetExitOnError(), then this function may be used
+ *  to get the result of argument scanning (le_arg_Scan()).
+ *
+ *  @return The result of the last argument scan.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_arg_GetScanResult
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Scans the argument list, setting variables and calling callbacks registered using the
  * le_arg_SetXxxVar(), le_arg_SetXxxCallback(), and le_arg_AddPositionalParameters() functions.
  **/
@@ -588,7 +617,7 @@ void le_arg_Scan
 void le_arg_SetArgs
 (
     const size_t    argc,   ///< [IN] argc from main().
-    char**          argv    ///< [IN] argv from main().
+    const char**    argv    ///< [IN] argv from main().
 );
 
 

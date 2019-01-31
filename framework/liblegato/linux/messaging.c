@@ -94,10 +94,12 @@
 
 #include "legato.h"
 #include "serviceDirectory/serviceDirectoryProtocol.h"
+#include "messagingCommon.h"
 #include "messagingMessage.h"
 #include "messagingProtocol.h"
 #include "messagingSession.h"
 #include "messagingInterface.h"
+#include "messagingLocal.h"
 
 // =======================================
 //  PROTECTED (INTER-MODULE) FUNCTIONS
@@ -115,6 +117,8 @@ void msg_Init
 )
 //--------------------------------------------------------------------------------------------------
 {
+    msgCommon_Init();
+    msgLocal_Init();
     msgProto_Init();
     msgMessage_Init();
     msgInterface_Init();

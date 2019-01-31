@@ -77,6 +77,7 @@ help_long_description=(
 SOURCEDIR=$PWD
 BUILDDIR_BASE=$PWD/build
 TEST_COVERAGE=${TEST_COVERAGE:-1}
+KEEP_COVERAGE=${KEEP_COVERAGE:-0}
 TEST_COVERAGE_DIR=${TEST_COVERAGE_DIR:-/mnt/flash/coverage}
 WITH_COLORS=${WITH_COLORS:-true}
 TARGET_SSH_PORT=${TARGET_SSH_PORT:-22}
@@ -934,12 +935,17 @@ function GenerateReport()
     if [[ "$TEST_COVERAGE" == "1" ]]; then
         message $COLOR_INFO "Generating report for $target ..."
 
+        local keep=
+        if [[ "$KEEP_COVERAGE" == "1" ]]; then
+            local keep=--keep
+        fi
+
         cd $SOURCEDIR
 
         # Build
         gcovr --xml \
               --root . \
-              --keep \
+              $keep \
               --output $builddir/coverage.xml \
               --exclude ".*(test|build|codegen)\b.*"
         CheckRet
@@ -948,7 +954,7 @@ function GenerateReport()
         gcovr --html \
               --html-details \
               --root . \
-              --keep \
+              $keep \
               --output $builddir/coverage/html/index.html \
               --exclude ".*(test|build|codegen)\b.*"
         CheckRet

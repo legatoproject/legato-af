@@ -119,12 +119,13 @@ $(LIBJANSSON): $(LIB_DIR)
 			-DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake \
 			-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=$(LIB_DIR) \
 			-DBUILD_SHARED_LIBS=ON \
+			-DJANSSON_BUILD_SHARED_LIBS=ON \
 			-DJANSSON_WITHOUT_TESTS=ON \
 			-DJANSSON_EXAMPLES=OFF \
 			-DJANSSON_BUILD_DOCS=OFF $(VOUTPUT) 2>&1
 	$(L) MAKE $@
 	$(Q)make -C $(BUILD_DIR)/libjansson $(VOUTPUT)
-	$(Q)cp $(BUILD_DIR)/libjansson/lib/libjansson.so $@
+	$(Q)cp -d $(BUILD_DIR)/libjansson/lib/libjansson.so* $(LIB_DIR)
 
 config: $(LIBJANSSON)
 	$(L) MKEXE $(BIN_DIR)/$@

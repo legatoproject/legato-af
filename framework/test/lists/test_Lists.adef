@@ -1,0 +1,23 @@
+start: manual
+
+executables:
+{
+    testList = (listComponent)
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        (testList)
+    }
+
+#if ${LE_CONFIG_RTOS} = y
+    maxStackBytes = 8096
+#endif
+}

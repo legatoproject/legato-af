@@ -134,7 +134,7 @@ void GenerateCLangExeMain
                   "int main(int argc, char* argv[])\n"
                   "{\n"
                   "    // Pass the args to the Command Line Arguments API.\n"
-                  "    le_arg_SetArgs((size_t)argc, (char**)argv);\n"
+                  "    le_arg_SetArgs((size_t)argc, (const char**)argv);\n"
 
     // Make stdout line buffered.
                   "    // Make stdout line buffered so printf shows up in logs without flushing.\n"

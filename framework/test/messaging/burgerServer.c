@@ -16,10 +16,6 @@
 static const char ContextStr[] = "This is the server.";
 static const char* ServiceOpenContextPtr = ContextStr;
 
-#ifndef CONFIG_LINUX
-#define CONFIG_LINUX 0
-#endif
-
 #if defined(TEST_LOCAL)
 //--------------------------------------------------------------------------------------------------
 /**
@@ -161,7 +157,7 @@ __attribute__((unused)) static void NewSessionHandler
 
     // Because the unit tests are run always as a single, non-root user, we expect the user ID
     // of the client to be the same user ID that we are running as.
-    LE_TEST_BEGIN_SKIP(!CONFIG_LINUX, 1)
+    LE_TEST_BEGIN_SKIP(!LE_CONFIG_IS_ENABLED(LE_CONFIG_LINUX), 1)
     uid_t clientUserId;
     uid_t myUserId = getuid();
     le_result_t result = le_msg_GetClientUserId(sessionRef, &clientUserId);

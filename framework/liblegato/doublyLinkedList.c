@@ -6,6 +6,18 @@
 #include "legato.h"
 
 
+//--------------------------------------------------------------------------------------------------
+// Create definitions for inlineable functions
+//
+// See le_doublyLinkedList.h for bodies & documentation
+//--------------------------------------------------------------------------------------------------
+LE_DEFINE_INLINE bool le_dls_IsEmpty(const le_dls_List_t* listPtr);
+LE_DEFINE_INLINE bool le_dls_IsHead(const le_dls_List_t* listPtr,
+                                    const le_dls_Link_t* linkPtr);
+LE_DEFINE_INLINE bool le_dls_IsTail(const le_dls_List_t* listPtr,
+                                    const le_dls_Link_t* linkPtr);
+
+
 //------------------------------------------------------------------------------------------------------------
 /**
  * Adds a link at the head of the list.
@@ -17,6 +29,11 @@ void le_dls_Stack
     le_dls_Link_t* newLinkPtr          ///< [IN] The new link to add.
 )
 {
+    // Ensure link isn't already on a list
+    LE_ASSERT(newLinkPtr &&
+              !newLinkPtr->nextPtr &&
+              !newLinkPtr->prevPtr);
+
     if (listPtr->headLinkPtr == NULL)
     {
         // Add to an empty list.
@@ -43,6 +60,11 @@ void le_dls_Queue
     le_dls_Link_t* newLinkPtr          ///< [IN] The new link to add.
 )
 {
+    // Ensure link isn't already on a list
+    LE_ASSERT(newLinkPtr &&
+              !newLinkPtr->nextPtr &&
+              !newLinkPtr->prevPtr);
+
     if (listPtr->headLinkPtr == NULL)
     {
         // Add to an empty list.
@@ -71,6 +93,11 @@ void le_dls_AddAfter
     le_dls_Link_t* newLinkPtr          ///< [IN] The new link to add.
 )
 {
+    // Ensure link isn't already on a list
+    LE_ASSERT(newLinkPtr &&
+              !newLinkPtr->nextPtr &&
+              !newLinkPtr->prevPtr);
+
     (void)listPtr;  // Cast to void to avoid compiler warning.  Remove if listPtr is used.
 
     newLinkPtr->nextPtr = currentLinkPtr->nextPtr;
@@ -94,6 +121,11 @@ void le_dls_AddBefore
     le_dls_Link_t* newLinkPtr          ///< [IN] The new link to add.
 )
 {
+    // Ensure link isn't already on a list
+    LE_ASSERT(newLinkPtr &&
+              !newLinkPtr->nextPtr &&
+              !newLinkPtr->prevPtr);
+
     newLinkPtr->nextPtr = currentLinkPtr;
     newLinkPtr->prevPtr = currentLinkPtr->prevPtr;
 
@@ -177,6 +209,8 @@ void le_dls_Remove
     le_dls_Link_t* linkToRemovePtr      ///< [IN] The link to remove.
 )
 {
+    LE_ASSERT(linkToRemovePtr && linkToRemovePtr->nextPtr && linkToRemovePtr->prevPtr);
+
     if (linkToRemovePtr->nextPtr == linkToRemovePtr)
     {
         // There is only one link so empty out the list.
@@ -187,15 +221,8 @@ void le_dls_Remove
         le_dls_Link_t* nextLinkPtr = linkToRemovePtr->nextPtr;
         le_dls_Link_t* prevLinkPtr = linkToRemovePtr->prevPtr;
 
-        if (NULL != nextLinkPtr)
-        {
-            nextLinkPtr->prevPtr = prevLinkPtr;
-        }
-
-        if (NULL != prevLinkPtr)
-        {
-            prevLinkPtr->nextPtr = nextLinkPtr;
-        }
+        nextLinkPtr->prevPtr = prevLinkPtr;
+        prevLinkPtr->nextPtr = nextLinkPtr;
 
         // Update the head pointer if necessary.
         if (linkToRemovePtr == listPtr->headLinkPtr)
@@ -387,6 +414,91 @@ void le_dls_Swap
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sort a list in ascending order.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_dls_Sort
+(
+    le_dls_List_t* listPtr,                 ///< [IN] List to sort
+    le_dls_LessThanFunc_t comparatorPtr     ///< [IN] Comparator function for sorting
+)
+{
+    size_t sublistSize = 1;
+
+    if (le_dls_IsEmpty(listPtr))
+    {
+        // Empty lists are sorted by definition
+        return;
+    }
+
+    while (1)
+    {
+        // Start a new run through the list, sorting lists of size sublistSizse
+        le_dls_Link_t* listAHead, *listBHead;
+        listAHead = le_dls_Peek(listPtr);
+
+        // Merge each pair of sublists, bottom up.
+        while (listAHead)
+        {
+            le_dls_Link_t* initialAHead = listAHead;
+
+            // By first searching for the second sublist.
+            size_t nodeCount;
+            listBHead = listAHead;
+            for (nodeCount = 0; (nodeCount < sublistSize) && listBHead; ++nodeCount)
+            {
+                listBHead = le_dls_PeekNext(listPtr, listBHead);
+            }
+
+            // Then merge the first sublist with the second sublist.
+            nodeCount = 0;
+            while (listBHead && (nodeCount < sublistSize))
+            {
+                if (listAHead == listBHead)
+                {
+                    // Finished looping through list A, so just add the rest of list B
+                    // to the end of list A.
+                    listAHead = listBHead = le_dls_PeekNext(listPtr, listBHead);
+                    ++nodeCount;
+                }
+                else if (comparatorPtr(listAHead, listBHead))
+                {
+                    // A belongs before B, so just move to the next node
+                    // in A
+                    listAHead = le_dls_PeekNext(listPtr, listAHead);
+
+                }
+                else
+                {
+                    // B goes before A.  Move it there
+                    le_dls_Link_t *nextB = le_dls_PeekNext(listPtr, listBHead);
+                    le_dls_Remove(listPtr, listBHead);
+                    le_dls_AddBefore(listPtr, listAHead, listBHead);
+                    listBHead = nextB;
+                    ++nodeCount;
+                }
+            }
+
+            // If B hit the end of the list before processing all elements of list A, just add
+            // rest of list A to the sorted list
+            listAHead = listBHead;
+
+            // Done merging A & B lists -- check if this pass caught the whole list
+            if (!listBHead && initialAHead == le_dls_Peek(listPtr))
+            {
+                return;
+            }
+
+            // Otherwise we're already in position for the next
+            // pair of lists, so merge them.
+        }
+
+        // Now repeat on sub lists which are twice the size
+        sublistSize *= 2;
+    }
+}
 
 //------------------------------------------------------------------------------------------------------------
 /**
@@ -515,5 +627,3 @@ bool le_dls_IsListCorrupted
 
     return false;
 }
-
-

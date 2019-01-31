@@ -159,19 +159,35 @@ typedef void (*le_timer_ExpiryHandler_t)
     le_timer_Ref_t timerRef
 );
 
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_timer_Create().
+ */
+//--------------------------------------------------------------------------------------------------
+le_timer_Ref_t _le_timer_Create
+(
+#if LE_CONFIG_TIMER_NAMES_ENABLED
+    const char *nameStr
+#endif
+);
+/// @endcond
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Create the timer object.
  *
- * @return
+ *  @param[in]  nameStr Name of the timer.
+ *
+ *  @return
  *      A reference to the timer object.
  */
 //--------------------------------------------------------------------------------------------------
-le_timer_Ref_t le_timer_Create
-(
-    const char* nameStr                 ///< [IN]  Name of the timer.
-);
+#if LE_CONFIG_TIMER_NAMES_ENABLED
+#   define le_timer_Create(nameStr) _le_timer_Create(nameStr)
+#else /* if not LE_CONFIG_TIMER_NAMES_ENABLED */
+#   define le_timer_Create(nameStr) ((void)(nameStr), _le_timer_Create())
+#endif /* end LE_CONFIG_TIMER_NAMES_ENABLED */
 
 
 //--------------------------------------------------------------------------------------------------

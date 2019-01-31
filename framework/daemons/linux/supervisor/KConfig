@@ -6,6 +6,8 @@
 
 ### Options ###
 
+menu "Supervisor"
+
 config SUPERV_NICE_LEVEL
   int "Nice level"
   depends on POSIX
@@ -21,3 +23,5 @@ config SUPERV_APP_TMPFS_SIZE
   default 90112
   ---help---
   The size in bytes of the tmpfs partition created for each sandboxed App.
+
+endmenu # end "Supervisor"

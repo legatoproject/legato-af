@@ -50,7 +50,7 @@
 #include "updateCtrl.h"
 #include "installer.h"
 #include "properties.h"
-#include "fsSys.h"
+#include "updateInfo.h"
 #include "ima.h"
 #include "file.h"
 #include "smack.h"
@@ -1679,7 +1679,7 @@ static void FinishSystemUpdate
         // Flag that new system is installed. This function should be called before deleting the
         // 'user', 'app' and 'module' config trees. Otherwise, race condition may arise if there
         // is a power cut immediately after deletion of these config trees.
-        fsSys_FlagNewSys();
+        updateInfo_FlagNewSys();
 
         // Ensure that the newSystem in le_fs is using the "framework" label. Otherwise apps using
         // le_fs will encounter issues.

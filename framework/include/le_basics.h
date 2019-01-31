@@ -239,6 +239,56 @@ le_onoff_t;
 //--------------------------------------------------------------------------------------------------
 #define LE_SHARED __attribute__((visibility ("default")))
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * @macro LE_DECLARE_INLINE
+ *
+ * Declare an inline function in a header.
+ *
+ * GNU by default uses a non-standard method of declaring inline functions with the
+ * exact *opposite* meaning of the C99 standard.
+ *
+ * So use LE_DECLARE_INLINE with the function body in a header.  Then use LE_DEFINE_INLINE with
+ * just the function prototype in a .c file to tell the compiler to emit the function definition
+ * for cases where the function is not inlined.
+ *
+ * This is preferred over using "static inline" since if a static inline function is not inlined
+ * by gcc, there may be multiple copies of the function included in the output.
+ */
+/**
+ * @macro LE_DEFINE_INLINE
+ *
+ * Cause a function definition to be emitted for an inline function, in case the compiler
+ * decides not to use the inline definition.
+ *
+ * @see @c LE_DECLARE_INLINE
+ */
+//--------------------------------------------------------------------------------------------------
+#ifdef __GNUC_GNU_INLINE__
+// Using gcc inline semantics
+#  define LE_DECLARE_INLINE extern inline
+#  define LE_DEFINE_INLINE inline
+#else
+// Use C99 inline semantics
+#  define LE_DECLARE_INLINE inline
+#  define LE_DEFINE_INLINE extern inline
+#endif
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Macro used to declare that a symbol is part of the "full" Legato API.
+ *
+ * There are two APIs for Legato: "full" and "limited".  Linux uses the "full" API and all
+ * functions are available.  On other platforms only the "limited" API is supported, and
+ * any attempt to use a "full" api function will lead to a compile error.
+ */
+//--------------------------------------------------------------------------------------------------
+#ifdef LE_CONFIG_LINUX
+#  define LE_FULL_API
+#else
+#  define LE_FULL_API __attribute__((error ("Function not available on this platform")))
+#endif
+
 // CLang feature check macros -- define to return sensible defaults if macro is not available.
 #ifndef __is_identifier
 #  define __is_identifier(x) 1
@@ -272,5 +322,42 @@ le_onoff_t;
 #  define LE_NONNULL
 #  define LE_NULLABLE
 #endif
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Format specifiers for size_t
+ */
+//--------------------------------------------------------------------------------------------------
+#if (__STDC_VERSION__ >= 199901L) || LE_CONFIG_LINUX
+#   define __PRIS_PREFIX "z"
+#elif defined(__LP64__) || defined(_LP64)
+#   define __PRIS_PREFIX "ll"
+#else
+#   define __PRIS_PREFIX "l"
+#endif
+
+#define PRIdS __PRIS_PREFIX "d"
+#define PRIxS __PRIS_PREFIX "x"
+#define PRIuS __PRIS_PREFIX "u"
+#define PRIXS __PRIS_PREFIX "X"
+#define PRIoS __PRIS_PREFIX "o"
+
+
+#if !defined(static_assert) && !defined(__cplusplus)
+//--------------------------------------------------------------------------------------------------
+/**
+ * Provide static_assert if not available.
+ */
+//--------------------------------------------------------------------------------------------------
+#   define static_assert(cond, msg) _Static_assert((cond), #cond ": " msg)
+#endif
+#define inline_static_assert(cond, msg) ({ static_assert(cond, msg); })
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test if a KConfig feature is enabled.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_CONFIG_IS_ENABLED(option)    (("" #option)[0] == '1')
 
 #endif // LEGATO_BASICS_INCLUDE_GUARD

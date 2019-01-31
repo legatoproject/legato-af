@@ -72,7 +72,7 @@ typedef struct
 {
     {%- for member in type.members %}
     {%- if member is StringMember %}
-    char {{member.name|DecorateName}}[{{member.maxCount}}];
+    char {{member.name|DecorateName}}[{{member.maxCount}} + 1];
     {%- else %}
     {{member.apiType|FormatType}} {{member.name|DecorateName}}
     {%- if member is ArrayMember %}[{{member.maxCount}}]{% endif %};

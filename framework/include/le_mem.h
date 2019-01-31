@@ -372,17 +372,76 @@
  * wasted looking at clients A through E to rule them out.
  *
  * To create a sub-pool, call @c le_mem_CreateSubPool(). It takes a reference to the super-pool
- * and the objects specified to the sub-pool, and it returns a reference to the new sub-pool.
+ * and the number of objects to move to the sub-pool, and it returns a reference to the new sub-pool.
  *
  * To delete a sub-pool, call @c le_mem_DeleteSubPool().  Do not try to use it to delete a pool that
  * was created using le_mem_CreatePool().  It's only for sub-pools created using le_mem_CreateSubPool().
- * Also, it's @b not okay to delete a sub-pool while there are still blocks allocated from it.
- * You'll see errors in your logs if you do that.
+ * Also, it's @b not okay to delete a sub-pool while there are still blocks allocated from it, or
+ * if it has any sub-pools.  You'll see errors in your logs if you do that.
  *
  * Sub-Pools automatically inherit their parent's destructor function.
  *
- * @note You can't create sub-pools of sub-pools (i.e., sub-pools that get their blocks from another
- * sub-pool).
+ * @section mem_reduced_pools Reduced-size pools
+ *
+ * One problem that occurs with memory pools is where objects of different sizes need to be
+ * stored.  A classic example is strings -- the longest string an application needs to be able
+ * to handle may be much longer than the typical string size.  In this case a lot of memory
+ * will be wasted with standard memory pools, since all objects allocated from the pool will
+ * be the size of the longest possible object.
+ *
+ * The solution is to use reduced-size pools.  These are a kind of sub-pool where the size
+ * of the object in the sub-pool is different from the size of the object in the super-pool.
+ * This way multiple blocks from the sub-pool can be stored in a single block of the super-pool.
+ *
+ * Reduced-size pools have some limitations:
+ *
+ *  - Each block in the super-pool is divided up to create blocks in the subpool.  So subpool
+ *    blocks sizes must be less than half the size of the super-pool block size.  An attempt to
+ *    create a pool with a larger block size will just return a reference to the super-pool.
+ *  - Due overhead, each block actually requires 8-80 bytes more space than requested.
+ *    There is little point in subdividing pools < 4x overhead, or ~300 bytes in the default
+ *    configuration.  Note the exact amount of overhead depends on the size of the guard bands
+ *    and the size of pointer on your target.
+ *  - Blocks used by the reduced pool are permanently moved from the super-pool to the reduced
+ *    pool.  This must be taken into account when sizing the super-pool.
+ *
+ * Example 1:
+ *
+ * A network service needs to allocate space for packets received over a network.  It should
+ * Typical packet length is up to 200 bytes, but occasional packets may be up to 1500 bytes.  The
+ * service needs to be able to queue at least 32 packets, up to 5 of which can be 1500 bytes.
+ * Two pools are used: A pool of 12 objects 1500 bytes in size, and a reduced-size pool of 32
+ * objects 200 bytes in size (280 bytes with overhead).  Seven objects from the superpool are
+ * used to store reduced-size objects.  This represents a memory savings of 60% compared with
+ * a pool of 32 1500 byte objects.
+ *
+ * Example 2:
+ *
+ * An application builds file paths which can be from 16-70 bytes.  Only three such paths can be
+ * created at a time, but they can be any size.  In this case it is better to just create
+ * a single pool of three 70-byte objects.  Most of the potential space gains would be consumed
+ * by overhead.  Even if this was not the case, the super pool still needs three free objects
+ * in addition to the objects required by the subpool, so there is no space savings.
+ *
+ * To create a reduced-size pool, use @c le_mem_CreateReducedPool().  It takes a reference to the
+ * super-pool, the initial number of objects in the sub-pool, and size of an object in the sub-pool
+ * compared with the parent pool, and it returns a reference to the new sub-pool.
+ *
+ * Reduced-size pools are deleted using @c le_mem_DeleteSubPool() like other sub-pools.
+ *
+ * To help the programmer pick the right pool to allocate from, reduced-size pools provide
+ * @c le_mem_TryVarAlloc(), @c le_mem_AssertVarAlloc() and @c le_mem_ForceVarAlloc() functions.
+ * In addition to the pool these take the object size to allocate.  If this size is larger than
+ * the pool's object size and the pool is a reduced-size pool, and there is a parent pool
+ * large enough for this object, it will allocate the object from the parent pool instead.
+ * If no parent pool is large enough, the program will exit.
+ *
+ * You can call @c le_mem_GetBlockSize() to get the actual size of the object returned by
+ * one of these functions.
+ *
+ * As with other sub-pools, they cannot be deleted while any blocks are allocated from the pool,
+ * or it has any sub-pools.  Reduced-size pools also automatically inherit their parent's
+ * destructor function.
  *
  * <HR>
  *
@@ -403,18 +462,8 @@
 #define LEGATO_MEM_INCLUDE_GUARD
 
 #ifndef LE_COMPONENT_NAME
-#define LE_COMPONENT_NAME
+#   define LE_COMPONENT_NAME
 #endif
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Objects of this type are used to refer to a memory pool created using either
- * le_mem_CreatePool() or le_mem_CreateSubPool().
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct le_mem_Pool* le_mem_PoolRef_t;
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -433,6 +482,62 @@ typedef void (*le_mem_Destructor_t)
 (
     void* objPtr    ///< see parameter documentation in comment above.
 );
+
+// Max memory pool name bytes -- must match definition in limit.h
+#define LE_MEM_LIMIT_MAX_MEM_POOL_NAME_BYTES 32
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Definition of a memory pool.
+ *
+ * @note This should not be used directly.  To create a memory pool use either le_mem_CreatePool()
+ *       or LE_MEM_DEFINE_STATIC_POOL()/le_mem_InitStaticPool().
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_mem_Pool
+{
+    le_dls_Link_t poolLink;             ///< This pool's link in the list of memory pools.
+    struct le_mem_Pool* superPoolPtr;   ///< A pointer to our super pool if we are a sub-pool. NULL
+                                        ///  if we are not a sub-pool.
+#if LE_CONFIG_MEM_POOL_STATS
+    // These members go before LE_CONFIG_MEM_POOLS so numAllocations will always be aligned, even on
+    // 32-bit architectures, even when LE_CONFIG_MEM_POOLS is not declared
+    size_t numOverflows;                ///< Number of times le_mem_ForceAlloc() had to expand pool.
+    uint64_t numAllocations;            ///< Total number of times an object has been allocated
+                                        ///  from this pool.
+    size_t maxNumBlocksUsed;            ///< Maximum number of allocated blocks at any one time.
+#endif
+#if LE_CONFIG_MEM_POOLS
+    le_sls_List_t freeList;             ///< List of free memory blocks.
+#endif
+
+    size_t userDataSize;                ///< Size of the object requested by the client in bytes.
+    size_t blockSize;                   ///< Number of bytes in a block, including all overhead.
+    size_t totalBlocks;                 ///< Total number of blocks in this pool including free
+                                        ///  and allocated blocks.
+    size_t numBlocksInUse;              ///< Number of currently allocated blocks.
+    size_t numBlocksToForce;            ///< Number of blocks that is added when Force Alloc
+                                        ///  expands the pool.
+#if LE_CONFIG_MEM_TRACE
+    le_log_TraceRef_t memTrace;         ///< If tracing is enabled, keeps track of a trace object
+                                        ///< for this pool.
+#endif
+
+    le_mem_Destructor_t destructor;     ///< The destructor for objects in this pool.
+#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
+    char name[LE_MEM_LIMIT_MAX_MEM_POOL_NAME_BYTES]; ///< Name of the pool.
+#endif
+}
+le_mem_Pool_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Objects of this type are used to refer to a memory pool created using either
+ * le_mem_CreatePool() or le_mem_CreateSubPool().
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_mem_Pool* le_mem_PoolRef_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -482,6 +587,23 @@ le_mem_PoolStats_t;
 
     //----------------------------------------------------------------------------------------------
     /**
+     * Internal function used to call a variable memory allocation function and trace its call site.
+     */
+    //----------------------------------------------------------------------------------------------
+    void* _le_mem_VarAllocTracer
+    (
+        le_mem_PoolRef_t     pool,             ///< [IN] The pool activity we're tracing.
+        size_t               size,             ///< [IN] The size of block to allocate
+        _le_mem_AllocFunc_t  funcPtr,          ///< [IN] Pointer to the mem function in question.
+        const char*          poolFunction,     ///< [IN] The pool function being called.
+        const char*          file,             ///< [IN] The file the call came from.
+        const char*          callingfunction,  ///< [IN] The function calling into the pool.
+        size_t               line              ///< [IN] The line in the function where the call
+                                               ///       occurred.
+    );
+
+    //----------------------------------------------------------------------------------------------
+    /**
      * Internal function used to trace memory pool activity.
      */
     //----------------------------------------------------------------------------------------------
@@ -498,19 +620,38 @@ le_mem_PoolStats_t;
 #endif
 
 
+/// @cond HIDDEN_IN_USER_DOCS
 //--------------------------------------------------------------------------------------------------
-/** @cond HIDDEN_IN_USER_DOCS
- *
+/**
  * Internal function used to implement le_mem_CreatePool() with automatic component scoping
  * of pool names.
  */
 //--------------------------------------------------------------------------------------------------
 le_mem_PoolRef_t _le_mem_CreatePool
 (
+#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
     const char* componentName,  ///< [IN] Name of the component.
     const char* name,           ///< [IN] Name of the pool inside the component.
+#endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
     size_t      objSize ///< [IN] Size of the individual objects to be allocated from this pool
                         /// (in bytes), e.g., sizeof(MyObject_t).
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_mem_InitStaticPool() with automatic component scoping
+ * of pool names.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mem_PoolRef_t _le_mem_InitStaticPool
+(
+    const char* componentName,  ///< [IN] Name of the component.
+    const char* name,           ///< [IN] Name of the pool inside the component.
+    size_t      numBlocks,      ///< [IN] Number of members in the pool by default
+    size_t      objSize, ///< [IN] Size of the individual objects to be allocated from this pool
+                        /// (in bytes), e.g., sizeof(MyObject_t).
+    le_mem_Pool_t* poolPtr, ///< [IN] Pointer to pre-allocated pool header.
+    void* poolDataPtr       ///< [IN] Pointer to pre-allocated pool data.
 );
 /// @endcond
 
@@ -527,16 +668,72 @@ le_mem_PoolRef_t _le_mem_CreatePool
  *      reference for validity.
  */
 //--------------------------------------------------------------------------------------------------
-static inline le_mem_PoolRef_t le_mem_CreatePool
-(
-    const char* name,   ///< [IN] Name of the pool (will be copied into the Pool).
-    size_t      objSize ///< [IN] Size of the individual objects to be allocated from this pool
-                        /// (in bytes), e.g., sizeof(MyObject_t).
-)
-{
-    return _le_mem_CreatePool(STRINGIZE(LE_COMPONENT_NAME), name, objSize);
-}
+#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
+#   define le_mem_CreatePool(name, objSize)                                \
+        _le_mem_CreatePool(STRINGIZE(LE_COMPONENT_NAME), (name), (objSize))
+#else /* if not LE_CONFIG_MEM_POOL_NAMES_ENABLED */
+#   define le_mem_CreatePool(name, objSize) ((void)(name), _le_mem_CreatePool(objSize))
+#endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Number of words in a memory pool, given number of blocks and object size.
+ *
+ * @note Only used internally
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_MEM_POOL_WORDS(numBlocks, objSize)                           \
+    ((numBlocks)*(((sizeof(le_mem_Pool_t*) + sizeof(size_t)) /* sizeof(MemBlock_t) */ + \
+                   (((objSize)<sizeof(le_sls_Link_t))?sizeof(le_sls_Link_t):(objSize))+ \
+                   sizeof(uint32_t)*LE_CONFIG_NUM_GUARD_BAND_WORDS*2+      \
+                   sizeof(size_t) - 1) / sizeof(size_t)))
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Declare variables for a static memory pool.
+ *
+ * In a static memory pool initial pool memory is statically allocated at compile time, ensuring
+ * pool can be created with at least some elements.  This is especially valuable on embedded
+ * systems.
+ */
+/*
+ * Internal Note: size_t is used instead of uint8_t to ensure alignment on platforms where
+ * alignment matters.
+ */
+//--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_MEM_POOLS
+#  define LE_MEM_DEFINE_STATIC_POOL(name, numBlocks, objSize)             \
+    static le_mem_Pool_t _mem_##name##Pool;                             \
+    static size_t _mem_##name##Data[LE_MEM_POOL_WORDS(numBlocks, objSize)]
+#else
+#  define LE_MEM_DEFINE_STATIC_POOL(name, numBlocks, objSize)             \
+    static le_mem_Pool_t _mem_##name##Pool
+#endif
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize an empty static memory pool.
+ *
+ * @return
+ *      Reference to the memory pool object.
+ *
+ * @note
+ *      This function cannot fail.
+ */
+//--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_MEM_POOLS
+#  define le_mem_InitStaticPool(name, numBlocks, objSize)                                   \
+    (inline_static_assert(                                                                  \
+        sizeof(_mem_##name##Data) == sizeof(size_t[LE_MEM_POOL_WORDS(numBlocks, objSize)]), \
+        "initial pool size does not match definition"),                                     \
+    _le_mem_InitStaticPool(STRINGIZE(LE_COMPONENT_NAME), #name, (numBlocks), (objSize),     \
+                           &_mem_##name##Pool, _mem_##name##Data))
+#else
+#  define le_mem_InitStaticPool(name, numBlocks, objSize)                               \
+    _le_mem_InitStaticPool(STRINGIZE(LE_COMPONENT_NAME), #name, (numBlocks), (objSize), \
+                           &_mem_##name##Pool, NULL)
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -575,7 +772,7 @@ le_mem_PoolRef_t le_mem_ExpandPool
     void* _le_mem_TryAlloc(le_mem_PoolRef_t pool);
     /// @endcond
 
-    #define le_mem_TryAlloc(pool)                                                                   \
+#   define le_mem_TryAlloc(pool)                                                                    \
         _le_mem_AllocTracer(pool,                                                                   \
                             _le_mem_TryAlloc,                                                       \
                             "le_mem_TryAlloc",                                                      \
@@ -607,7 +804,7 @@ le_mem_PoolRef_t le_mem_ExpandPool
     void* _le_mem_AssertAlloc(le_mem_PoolRef_t pool);
     /// @endcond
 
-    #define le_mem_AssertAlloc(pool)                                                                \
+#   define le_mem_AssertAlloc(pool)                                                                 \
         _le_mem_AllocTracer(pool,                                                                   \
                             _le_mem_AssertAlloc,                                                    \
                             "le_mem_AssertAlloc",                                                   \
@@ -638,13 +835,111 @@ le_mem_PoolRef_t le_mem_ExpandPool
     void* _le_mem_ForceAlloc(le_mem_PoolRef_t pool);
     /// @endcond
 
-    #define le_mem_ForceAlloc(pool)                                                                 \
+#   define le_mem_ForceAlloc(pool)                                                                  \
         _le_mem_AllocTracer(pool,                                                                   \
                             _le_mem_ForceAlloc,                                                     \
                             "le_mem_ForceAlloc",                                                    \
                             STRINGIZE(LE_FILENAME),                                                 \
                             __FUNCTION__,                                                           \
                             __LINE__)
+#endif
+
+
+#if !LE_CONFIG_MEM_TRACE
+    //----------------------------------------------------------------------------------------------
+    /**
+     * Attempts to allocate an object from a pool.
+     *
+     * @return
+     *      Pointer to the allocated object, or NULL if the pool doesn't have any free objects
+     *      to allocate.
+     */
+    //----------------------------------------------------------------------------------------------
+    void* le_mem_TryVarAlloc
+    (
+        le_mem_PoolRef_t    pool,         ///< [IN] Pool from which the object is to be allocated.
+        size_t              size          ///< [IN] The size of block to allocate
+    );
+#else
+    /// @cond HIDDEN_IN_USER_DOCS
+    void* _le_mem_TryVarAlloc(le_mem_PoolRef_t pool, size_t size);
+    /// @endcond
+
+#   define le_mem_TryVarAlloc(pool, size)                               \
+         _le_mem_VarAllocTracer(pool,                                   \
+                                size,                                   \
+                                _le_mem_TryVarAlloc,                    \
+                                "le_mem_TryVarAlloc",                   \
+                                STRINGIZE(LE_FILENAME),                 \
+                                __FUNCTION__,                           \
+                                __LINE__)
+
+#endif
+
+
+#if !LE_CONFIG_MEM_TRACE
+    //----------------------------------------------------------------------------------------------
+    /**
+     * Allocates an object from a pool or logs a fatal error and terminates the process if the pool
+     * doesn't have any free objects to allocate.
+     *
+     * @return Pointer to the allocated object.
+     *
+     * @note    On failure, the process exits, so you don't have to worry about checking the
+     *          returned pointer for validity.
+     */
+    //----------------------------------------------------------------------------------------------
+    void* le_mem_AssertVarAlloc
+    (
+        le_mem_PoolRef_t    pool,        ///< [IN] Pool from which the object is to be allocated.
+        size_t              size         ///< [IN] The size of block to allocate
+    );
+#else
+    /// @cond HIDDEN_IN_USER_DOCS
+    void* _le_mem_AssertVarAlloc(le_mem_PoolRef_t pool, size_t size);
+    /// @endcond
+
+#   define le_mem_AssertVarAlloc(pool, size)                            \
+        _le_mem_VarAllocTracer(pool,                                    \
+                               size,                                    \
+                               _le_mem_AssertVarAlloc,                  \
+                               "le_mem_AssertVarAlloc",                 \
+                               STRINGIZE(LE_FILENAME),                  \
+                               __FUNCTION__,                            \
+                               __LINE__)
+#endif
+
+
+#if !LE_CONFIG_MEM_TRACE
+    //----------------------------------------------------------------------------------------------
+    /**
+     * Allocates an object from a pool or logs a warning and expands the pool if the pool
+     * doesn't have any free objects to allocate.
+     *
+     * @return  Pointer to the allocated object.
+     *
+     * @note    On failure, the process exits, so you don't have to worry about checking the
+     *          returned pointer for validity.
+     */
+    //----------------------------------------------------------------------------------------------
+    void* le_mem_ForceVarAlloc
+    (
+        le_mem_PoolRef_t    pool,        ///< [IN] Pool from which the object is to be allocated.
+        size_t              size         ///< [IN] The size of block to allocate
+    );
+#else
+    /// @cond HIDDEN_IN_USER_DOCS
+    void* _le_mem_ForceVarAlloc(le_mem_PoolRef_t pool, size_t size);
+    /// @endcond
+
+#   define le_mem_ForceVarAlloc(pool, size)                             \
+        _le_mem_VarAllocTracer(pool,                                    \
+                               size,                                    \
+                               _le_mem_ForceVarAlloc,                   \
+                               "le_mem_ForceVarAlloc",                  \
+                               STRINGIZE(LE_FILENAME),                  \
+                               __FUNCTION__,                            \
+                               __LINE__)
 #endif
 
 
@@ -692,7 +987,7 @@ void le_mem_SetNumObjsToForce
     void _le_mem_Release(void* objPtr);
     /// @endcond
 
-    #define le_mem_Release(objPtr)                                                                  \
+#   define le_mem_Release(objPtr)                                                                   \
             _le_mem_Trace(_le_mem_GetBlockPool(objPtr),                                             \
                           STRINGIZE(LE_FILENAME),                                                   \
                           __FUNCTION__,                                                             \
@@ -709,6 +1004,9 @@ void le_mem_SetNumObjsToForce
      * Increments the reference count on an object by 1.
      *
      * See @ref mem_ref_counting for more information.
+     *
+     * @return
+     *      Nothing.
      */
     //----------------------------------------------------------------------------------------------
     void le_mem_AddRef
@@ -720,7 +1018,7 @@ void le_mem_SetNumObjsToForce
     void _le_mem_AddRef(void* objPtr);
     /// @endcond
 
-    #define le_mem_AddRef(objPtr)                                                                   \
+#   define le_mem_AddRef(objPtr)                                                                    \
         _le_mem_Trace(_le_mem_GetBlockPool(objPtr),                                                 \
                       STRINGIZE(LE_FILENAME),                                                       \
                       __FUNCTION__,                                                                 \
@@ -730,6 +1028,18 @@ void le_mem_SetNumObjsToForce
         _le_mem_AddRef(objPtr);
 #endif
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fetches the size of a block (in bytes).
+ *
+ * @return
+ *      Object size, in bytes.
+ */
+//--------------------------------------------------------------------------------------------------
+size_t le_mem_GetBlockSize
+(
+    void* objPtr                 ///< [IN] Pointer to the object to get size of.
+);
 
 //----------------------------------------------------------------------------------------------
 /**
@@ -875,9 +1185,10 @@ size_t le_mem_GetObjectFullSize
 );
 
 
+#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
+/// @cond HIDDEN_IN_USER_DOCS
 //--------------------------------------------------------------------------------------------------
-/** @cond HIDDEN_IN_USER_DOCS
- *
+/**
  * Internal function used to implement le_mem_FindPool() with automatic component scoping
  * of pool names.
  */
@@ -888,6 +1199,7 @@ le_mem_PoolRef_t _le_mem_FindPool
     const char* name            ///< [IN] Name of the pool inside the component.
 );
 /// @endcond
+#endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
 
 
 //--------------------------------------------------------------------------------------------------
@@ -898,37 +1210,58 @@ le_mem_PoolRef_t _le_mem_FindPool
  *      Reference to the pool, or NULL if the pool doesn't exist.
  */
 //--------------------------------------------------------------------------------------------------
-static inline le_mem_PoolRef_t le_mem_FindPool
-(
-    const char* name    ///< [IN] Name of the pool.
-)
-{
-    return _le_mem_FindPool(STRINGIZE(LE_COMPONENT_NAME), name);
-}
+#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
+#   define le_mem_FindPool(name)    _le_mem_FindPool(STRINGIZE(LE_COMPONENT_NAME), (name))
+#else /* if not LE_CONFIG_MEM_POOL_NAMES_ENABLED */
+#   define le_mem_FindPool(name)    ((void)(name), NULL)
+#endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
 
 
+/// @cond HIDDEN_IN_USER_DOCS
 //--------------------------------------------------------------------------------------------------
-/** @cond HIDDEN_IN_USER_DOCS
- *
+/**
  * Internal function used to implement le_mem_CreateSubPool() with automatic component scoping
  * of pool names.
  */
 //--------------------------------------------------------------------------------------------------
 le_mem_PoolRef_t _le_mem_CreateSubPool
 (
-    le_mem_PoolRef_t    superPool,  ///< [IN] Super-pool.
-    const char*     componentName,  ///< [IN] Name of the component.
-    const char*         name,       ///< [IN] Name of the sub-pool (will be copied into the
-                                    ///   sub-pool).
-    size_t              numObjects  ///< [IN] Number of objects to take from the super-pool.
+    le_mem_PoolRef_t    superPool,      ///< [IN] Super-pool.
+#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
+    const char*         componentName,  ///< [IN] Name of the component.
+    const char*         name,           ///< [IN] Name of the sub-pool (will be copied into the
+                                        ///   sub-pool).
+#endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
+    size_t              numObjects      ///< [IN] Number of objects to take from the super-pool.
+);
+/// @endcond
+
+
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_mem_CreateReducedPool() with automatic component scoping
+ * of pool names.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mem_PoolRef_t _le_mem_CreateReducedPool
+(
+    le_mem_PoolRef_t    superPool,      ///< [IN] Super-pool.
+#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
+    const char*         componentName,  ///< [IN] Name of the component.
+    const char*         name,           ///< [IN] Name of the sub-pool (will be copied into the
+                                        ///   sub-pool).
+#endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
+    size_t              numObjects,     ///< [IN] Minimum number of objects in the subpool
+                                        ///< by default.
+    size_t              objSize         ///< [IN] Minimum size of objects in the subpool.
 );
 /// @endcond
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Creates a sub-pool.  You can't create sub-pools of sub-pools so do not attempt to pass a
- * sub-pool in the superPool parameter.
+ * Creates a sub-pool.
  *
  * See @ref mem_sub_pools for more information.
  *
@@ -936,16 +1269,31 @@ le_mem_PoolRef_t _le_mem_CreateSubPool
  *      Reference to the sub-pool.
  */
 //--------------------------------------------------------------------------------------------------
-static inline le_mem_PoolRef_t le_mem_CreateSubPool
-(
-    le_mem_PoolRef_t    superPool,  ///< [IN] Super-pool.
-    const char*         name,       ///< [IN] Name of the sub-pool (will be copied into the
-                                    ///   sub-pool).
-    size_t              numObjects  ///< [IN] Number of objects to take from the super-pool.
-)
-{
-    return _le_mem_CreateSubPool(superPool, STRINGIZE(LE_COMPONENT_NAME), name, numObjects);
-}
+#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
+#   define le_mem_CreateSubPool(superPool, name, numObjects)    \
+        _le_mem_CreateSubPool((superPool), STRINGIZE(LE_COMPONENT_NAME), (name), (numObjects))
+#else /* if not LE_CONFIG_MEM_POOL_NAMES_ENABLED */
+#   define le_mem_CreateSubPool(superPool, name, numObjects)    \
+        ((void)(name), _le_mem_CreateSubPool((superPool), (numObjects)))
+#endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a sub-pool of smaller objects.
+ *
+ * See @ref mem_reduced_pools for more information.
+ *
+ * @return
+ *      Reference to the sub-pool.
+ */
+//--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
+#   define le_mem_CreateReducedPool(superPool, name, numObjects, divider) \
+    _le_mem_CreateReducedPool((superPool), STRINGIZE(LE_COMPONENT_NAME), (name), (numObjects), (divider))
+#else /* if not LE_CONFIG_MEM_POOL_NAMES_ENABLED */
+#   define le_mem_CreateReducedPool(superPool, name, numObjects, divider) \
+    ((void)(name), _le_mem_CreateReducedPool((superPool), (numObjects), (divider)))
+#endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
 
 
 //--------------------------------------------------------------------------------------------------
@@ -962,6 +1310,41 @@ void le_mem_DeleteSubPool
 (
     le_mem_PoolRef_t    subPool     ///< [IN] Sub-pool to be deleted.
 );
+
+#if LE_CONFIG_RTOS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Compress memory pools ready for hibernate-to-RAM
+ *
+ * This compresses the memory pools ready for hibernation.  All Legato tasks must remain
+ * suspended until after le_mem_Resume() is called.
+ *
+ * @return Nothing
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mem_Hibernate
+(
+    void **freeStartPtr,     ///< [OUT] Beginning of unused memory which does not need to be
+                             ///<       preserved in hibernation
+    void **freeEndPtr        ///< [OUT] End of unused memory
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decompress memory pools after waking from hibernate-to-RAM
+ *
+ * This decompresses memory pools after hibernation.  After this function returns, Legato tasks
+ * may be resumed.
+ *
+ * @return Nothing
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mem_Resume
+(
+    void
+);
+
+#endif /* end LE_CONFIG_RTOS */
 
 
 #endif // LEGATO_MEM_INCLUDE_GUARD

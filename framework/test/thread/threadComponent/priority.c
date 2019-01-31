@@ -35,7 +35,7 @@ static void* ThreadMainFunction
 
     if (schedPolicy == -1)
     {
-        LE_FATAL("Failed to fetch scheduling policy (%m).");
+        LE_FATAL("Failed to fetch scheduling policy (error %d).", errno);
     }
 
     if (expectedPolicy != (void*)(size_t)schedPolicy)
@@ -68,34 +68,34 @@ void prio_Start
     // Note, we actually don't need to increment and decrement the memory block reference count
     // because we don't return until the test is complete.
 
-#ifdef CONFIG_LINUX
+#if LE_CONFIG_LINUX
     le_thread_Ref_t idleThread = le_thread_Create("idle", ThreadMainFunction, (void*)SCHED_IDLE);
 #endif
-#ifdef CONFIG_THREAD_REALTIME_ONLY
+#if LE_CONFIG_THREAD_REALTIME_ONLY
     const ssize_t expectedSched = SCHED_RR;
 #else
     const ssize_t expectedSched = SCHED_OTHER;
 #endif
     le_thread_Ref_t normalThread = le_thread_Create("norm", ThreadMainFunction, (void*)expectedSched);
 
-#ifdef CONFIG_LINUX
+#if LE_CONFIG_LINUX
     le_thread_SetJoinable(idleThread);
 #endif
     le_thread_SetJoinable(normalThread);
 
-#ifdef CONFIG_LINUX
+#if LE_CONFIG_LINUX
     LE_ASSERT(LE_OK == le_thread_SetPriority(idleThread, LE_THREAD_PRIORITY_IDLE));
 #endif
     LE_ASSERT(LE_OK == le_thread_SetPriority(normalThread, LE_THREAD_PRIORITY_NORMAL));
 
-#ifdef CONFIG_LINUX
+#if LE_CONFIG_LINUX
     le_thread_Start(idleThread);
 #endif
     le_thread_Start(normalThread);
 
     void* unused;
     LE_ASSERT(LE_OK == le_thread_Join(normalThread, &unused));
-#ifdef CONFIG_LINUX
+#if LE_CONFIG_LINUX
     LE_ASSERT(LE_OK == le_thread_Join(idleThread, &unused));
 #endif
 }

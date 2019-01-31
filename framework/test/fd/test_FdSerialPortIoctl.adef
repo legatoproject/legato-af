@@ -1,0 +1,24 @@
+start: manual
+
+executables:
+{
+    testFdSerialPortIoctl = (serialPortComponent)
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        (testFdSerialPortIoctl)
+    }
+}
+
+bindings:
+{
+    testFdSerialPortIoctl.serialPortComponent.le_port -> portService.le_port
+}

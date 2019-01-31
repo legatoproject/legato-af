@@ -207,6 +207,16 @@ le_sls_List_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This is a comparator function for sorting a list.
+ *
+ * This must return true if @c a goes before @c b in the list.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef bool (*le_sls_LessThanFunc_t)(le_sls_Link_t* a, le_sls_Link_t* b);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * When a list is created, it must be initialized by assigning this macro to the list before the list
  * can be used.
  */
@@ -249,8 +259,9 @@ void le_sls_Queue
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Adds a link after currentLinkPtr.  Ensure that currentLinkPtr is in the list
- * otherwise the behaviour of this function is undefined.
+ * Adds a link after currentLinkPtr, or to the beginning of the list if currentLinkPtr is NULL.
+ * Ensure that currentLinkPtr is in the list (or NULL) otherwise the behaviour of this function is
+ * undefined.
  */
 //--------------------------------------------------------------------------------------------------
 void le_sls_AddAfter
@@ -351,7 +362,7 @@ le_sls_Link_t* le_sls_PeekNext
  *      true if empty, false if not empty.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_sls_IsEmpty
+LE_DECLARE_INLINE bool le_sls_IsEmpty
 (
     const le_sls_List_t* listPtr            ///< [IN] The list.
 )
@@ -360,6 +371,17 @@ static inline bool le_sls_IsEmpty
     return (le_sls_Peek(listPtr) == NULL);
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sort a list in ascending order.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sls_Sort
+(
+    le_sls_List_t* listPtr,                 ///< [IN] List to sort
+    le_sls_LessThanFunc_t comparatorPtr     ///< [IN] Comparator function for sorting
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -386,7 +408,7 @@ bool le_sls_IsInList
  *    - false if not.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_sls_IsHead
+LE_DECLARE_INLINE bool le_sls_IsHead
 (
     const le_sls_List_t* listPtr,    ///< [IN] List to check.
     const le_sls_Link_t* linkPtr     ///< [IN] Check if this link is at the head of the list.
@@ -405,7 +427,7 @@ static inline bool le_sls_IsHead
  *    - false if not.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_sls_IsTail
+LE_DECLARE_INLINE bool le_sls_IsTail
 (
     const le_sls_List_t* listPtr,    ///< [IN] List to check.
     const le_sls_Link_t* linkPtr     ///< [IN] Check if this link is at the tail of the list.
@@ -442,6 +464,18 @@ bool le_sls_IsListCorrupted
 (
     const le_sls_List_t* listPtr    ///< [IN] List to check.
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Simple iteration through a singly linked list
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_SLS_FOREACH(listPtr, iteratorPtr, type, member)              \
+    for ((iteratorPtr) = CONTAINER_OF(le_sls_Peek(listPtr), type, member); \
+         &((iteratorPtr)->member);                                      \
+         (iteratorPtr) = CONTAINER_OF(le_sls_PeekNext((listPtr),&((iteratorPtr)->member)), \
+                                      type, member))
+
 
 
 #endif  // LEGATO_SINGLY_LINKED_LIST_INCLUDE_GUARD

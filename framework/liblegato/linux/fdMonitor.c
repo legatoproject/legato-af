@@ -43,6 +43,7 @@
 
 #include "legato.h"
 #include "eventLoop.h"
+#include "linux/fa_eventLoop.h"
 #include "thread.h"
 #include "fdMonitor.h"
 #include "limit.h"
@@ -53,6 +54,32 @@
 /// Maximum number of bytes in a File Descriptor Monitor's name, including the null terminator.
 #define MAX_FD_MONITOR_NAME_BYTES  LIMIT_MAX_MEM_POOL_NAME_BYTES
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Insert a string name variable if configured or a placeholder string if not.
+ *
+ *  @param  nameVar Name variable to insert.
+ *
+ *  @return Name variable or a placeholder string depending on configuration.
+ **/
+//--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_FD_MONITOR_NAMES_ENABLED
+#   define  FDMON_NAME(var) (var)
+#else
+#   define  FDMON_NAME(var) "<omitted>"
+#endif
+
+
+//--------------------------------------------------------------------------------------------------
+/** Fallback definition of EPOLLWAKEUP
+ *
+ * Definition of EPOLLWAKEUP for kernel versions that do not support it.
+ */
+//--------------------------------------------------------------------------------------------------
+#ifndef EPOLLWAKEUP
+#pragma message "EPOLLWAKEUP unsupported. Power management features may fail."
+#define EPOLLWAKEUP 0x0
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -86,7 +113,9 @@ typedef struct FdMonitor
     le_fdMonitor_HandlerFunc_t  handlerFunc;    ///< Handler function.
     void*                       contextPtr;     ///< The context pointer for this handler.
 
+#if LE_CONFIG_FD_MONITOR_NAMES_ENABLED
     char        name[MAX_FD_MONITOR_NAME_BYTES];            ///< UTF-8 name of this object.
+#endif
 }
 FdMonitor_t;
 
@@ -306,6 +335,11 @@ static void StopMonitoringFd
 )
 //--------------------------------------------------------------------------------------------------
 {
+    event_LinuxPerThreadRec_t* threadRecPtr =
+        CONTAINER_OF(fdMonitorPtr->threadRecPtr,
+                     event_LinuxPerThreadRec_t,
+                     portablePerThreadRec);
+
     if (fdMonitorPtr->isAlwaysReady)
     {
         return;
@@ -313,30 +347,30 @@ static void StopMonitoringFd
 
     TRACE("Deleting fd %d (%s) from thread's epoll set.",
           fdMonitorPtr->fd,
-          fdMonitorPtr->name);
+          FDMON_NAME(fdMonitorPtr->name));
 
-    if (epoll_ctl(fdMonitorPtr->threadRecPtr->epollFd, EPOLL_CTL_DEL, fdMonitorPtr->fd, NULL) == -1)
+    if (epoll_ctl(threadRecPtr->epollFd, EPOLL_CTL_DEL, fdMonitorPtr->fd, NULL) == -1)
     {
         if (errno == EBADF)
         {
             LE_CRIT("epoll_ctl(DEL) resulted in EBADF.  Probably because fd %d was closed"
                         " before deleting FD Monitor '%s'.",
                     fdMonitorPtr->fd,
-                    fdMonitorPtr->name);
+                    FDMON_NAME(fdMonitorPtr->name));
         }
         else if (errno == ENOENT)
         {
             LE_CRIT("epoll_ctl(DEL) resulted in ENOENT.  Probably because fd %d was closed"
                         " before deleting FD Monitor '%s'.",
                     fdMonitorPtr->fd,
-                    fdMonitorPtr->name);
+                    FDMON_NAME(fdMonitorPtr->name));
         }
         else
         {
             LE_FATAL("epoll_ctl(DEL) failed for fd %d. errno = %d (%m). FD Monitor '%s'.",
                      fdMonitorPtr->fd,
                      errno,
-                     fdMonitorPtr->name);
+                     FDMON_NAME(fdMonitorPtr->name));
         }
     }
 }
@@ -428,7 +462,7 @@ static void DispatchToHandler
         char eventsTextBuff[128];
 
         TRACE("Calling event handler for FD Monitor %s (fd %d, events %s).",
-              fdMonitorPtr->name,
+              FDMON_NAME(fdMonitorPtr->name),
               fdMonitorPtr->fd,
               GetPollEventsText(eventsTextBuff, sizeof(eventsTextBuff), pollEvents));
     }
@@ -484,7 +518,11 @@ static void UpdateEpollFd
     ev.events = monitorPtr->epollEvents;
     ev.data.ptr = monitorPtr->safeRef;
 
-    int epollFd = monitorPtr->threadRecPtr->epollFd;
+    event_LinuxPerThreadRec_t* threadRecPtr =
+        CONTAINER_OF(monitorPtr->threadRecPtr,
+                     event_LinuxPerThreadRec_t,
+                     portablePerThreadRec);
+    int epollFd = threadRecPtr->epollFd;
 
     if (epoll_ctl(epollFd, EPOLL_CTL_MOD, monitorPtr->fd, &ev) == -1)
     {
@@ -493,14 +531,14 @@ static void UpdateEpollFd
             LE_FATAL("epoll_ctl(MOD) resulted in EBADF.  Probably because fd %d was closed"
                      " before deleting FD Monitor '%s'.",
                   monitorPtr->fd,
-                  monitorPtr->name);
+                  FDMON_NAME(monitorPtr->name));
         }
         else
         {
             LE_FATAL("epoll_ctl(MOD) failed for fd %d and events %x on monitor '%s'. Errno %d (%m)",
                     monitorPtr->fd,
                     monitorPtr->epollEvents,
-                    monitorPtr->name,
+                    FDMON_NAME(monitorPtr->name),
                     errno);
         }
     }
@@ -637,9 +675,11 @@ void fdMon_DestructThread
  * @note Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_fdMonitor_Ref_t le_fdMonitor_Create
+le_fdMonitor_Ref_t _le_fdMonitor_Create
 (
+#if LE_CONFIG_FD_MONITOR_NAMES_ENABLED
     const char*             name,       ///< [in] Name of the object (for diagnostics).
+#endif
     int                     fd,         ///< [in] File descriptor to be monitored for events.
     le_fdMonitor_HandlerFunc_t handlerFunc, ///< [in] Handler function.
     short                   events      ///< [in] Initial set of events to be monitored.
@@ -647,7 +687,10 @@ le_fdMonitor_Ref_t le_fdMonitor_Create
 //--------------------------------------------------------------------------------------------------
 {
     // Get a pointer to the thread-specific event loop data record.
-    event_PerThreadRec_t* perThreadRecPtr = thread_GetEventRecPtr();
+    event_LinuxPerThreadRec_t* perThreadRecPtr =
+        CONTAINER_OF(thread_GetEventRecPtr(),
+                     event_LinuxPerThreadRec_t,
+                     portablePerThreadRec);
 
     // Allocate the object.
     FdMonitor_t* fdMonitorPtr = le_mem_ForceAlloc(FdMonitorPool);
@@ -657,15 +700,17 @@ le_fdMonitor_Ref_t le_fdMonitor_Create
     fdMonitorPtr->fd = fd;
     fdMonitorPtr->epollEvents = PollToEPoll(events) | EPOLLWAKEUP;  // Non-deferrable by default.
     fdMonitorPtr->isAlwaysReady = false;
-    fdMonitorPtr->threadRecPtr = perThreadRecPtr;
+    fdMonitorPtr->threadRecPtr = &perThreadRecPtr->portablePerThreadRec;
     fdMonitorPtr->handlerFunc = handlerFunc;
     fdMonitorPtr->contextPtr = NULL;
 
+#if LE_CONFIG_FD_MONITOR_NAMES_ENABLED
     // Copy the name into it.
     if (le_utf8_Copy(fdMonitorPtr->name, name, sizeof(fdMonitorPtr->name), NULL) == LE_OVERFLOW)
     {
         LE_WARN("FD Monitor object name '%s' truncated to '%s'.", name, fdMonitorPtr->name);
     }
+#endif /* end LE_CONFIG_FD_MONITOR_NAMES_ENABLED */
 
     LOCK
 
@@ -673,7 +718,7 @@ le_fdMonitor_Ref_t le_fdMonitor_Create
     fdMonitorPtr->safeRef = le_ref_CreateRef(FdMonitorRefMap, fdMonitorPtr);
 
     // Add it to the thread's FD Monitor list.
-    le_dls_Queue(&perThreadRecPtr->fdMonitorList, &fdMonitorPtr->link);
+    le_dls_Queue(&perThreadRecPtr->portablePerThreadRec.fdMonitorList, &fdMonitorPtr->link);
 
     // Tell epoll(7) to start monitoring this fd.
     struct epoll_event ev;
@@ -738,7 +783,7 @@ void le_fdMonitor_Enable
     LE_FATAL_IF(monitorPtr == NULL, "File Descriptor Monitor %p doesn't exist!", monitorRef);
     LE_FATAL_IF(thread_GetEventRecPtr() != monitorPtr->threadRecPtr,
                 "FD Monitor '%s' (fd %d) is owned by another thread.",
-                monitorPtr->name,
+                FDMON_NAME(monitorPtr->name),
                 monitorPtr->fd);
 
     short filteredEvents = events & (POLLIN | POLLOUT | POLLPRI);
@@ -813,14 +858,14 @@ void le_fdMonitor_Disable
     LE_FATAL_IF(monitorPtr == NULL, "File Descriptor Monitor %p doesn't exist!", monitorRef);
     LE_FATAL_IF(thread_GetEventRecPtr() != monitorPtr->threadRecPtr,
                 "FD Monitor '%s' (fd %d) is owned by another thread.",
-                monitorPtr->name,
+                FDMON_NAME(monitorPtr->name),
                 monitorPtr->fd);
 
     short filteredEvents = events & (POLLIN | POLLOUT | POLLPRI);
 
     LE_WARN_IF(filteredEvents != events,
                "Only POLLIN, POLLOUT, and POLLPRI events can be disabled. (fd monitor '%s')",
-               monitorPtr->name);
+               FDMON_NAME(monitorPtr->name));
 
     // Convert the events from POLLxx events to EPOLLxx events.
     uint32_t epollEvents = PollToEPoll(filteredEvents);
@@ -864,7 +909,7 @@ void le_fdMonitor_SetDeferrable
     LE_FATAL_IF(monitorPtr == NULL, "File Descriptor Monitor %p doesn't exist!", monitorRef);
     LE_FATAL_IF(thread_GetEventRecPtr() != monitorPtr->threadRecPtr,
                 "FD Monitor '%s' (fd %d) is owned by another thread.",
-                monitorPtr->name,
+                FDMON_NAME(monitorPtr->name),
                 monitorPtr->fd);
 
     // Set/clear the EPOLLWAKEUP flag in the FD Monitor's epoll(7) flags set.
@@ -906,7 +951,7 @@ void le_fdMonitor_SetContextPtr
     LE_FATAL_IF(monitorPtr == NULL, "File Descriptor Monitor %p doesn't exist!", monitorRef);
     LE_FATAL_IF(thread_GetEventRecPtr() != monitorPtr->threadRecPtr,
                 "FD Monitor '%s' (fd %d) is owned by another thread.",
-                monitorPtr->name,
+                FDMON_NAME(monitorPtr->name),
                 monitorPtr->fd);
 
     monitorPtr->contextPtr = contextPtr;
@@ -1004,7 +1049,7 @@ void le_fdMonitor_Delete
 
     LE_FATAL_IF(monitorPtr->threadRecPtr != thread_GetEventRecPtr(),
                 "FD Monitor '%s' (%d) is owned by another thread.",
-                monitorPtr->name,
+                FDMON_NAME(monitorPtr->name),
                 monitorPtr->fd);
 
     DeleteFdMonitor(monitorPtr);

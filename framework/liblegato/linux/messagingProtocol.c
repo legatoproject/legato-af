@@ -155,7 +155,7 @@ void msgProto_Init
  * @return A pointer to the (uninitialized) Message object memory.
  */
 //--------------------------------------------------------------------------------------------------
-le_msg_MessageRef_t msgProto_AllocMessage
+UnixMessage_t *msgProto_AllocMessage
 (
     le_msg_ProtocolRef_t protocolRef
 )

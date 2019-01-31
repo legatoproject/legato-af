@@ -133,8 +133,11 @@
  *
  * - @c le_dls_Swap() - Swaps the position of two links in a list.
  *
- * The le_dls_Swap() function can be used to sort a list.
+ * @section dls_sort Sorting Lists
  *
+ * To sort a list use:
+ *
+ * @c le_dls_Sort() - Sorts a list
  *
  * @section dls_query Querying List Status
  *
@@ -215,6 +218,16 @@ typedef struct
     le_dls_Link_t* headLinkPtr;        ///< Link to list head.
 }
 le_dls_List_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This is a comparator function for sorting a list.
+ *
+ * This must return true if @c a goes before @c b in the list.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef bool (*le_dls_LessThanFunc_t)(le_dls_Link_t* a, le_dls_Link_t* b);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -368,7 +381,7 @@ le_dls_Link_t* le_dls_PeekTail
  *      true if empty, false if not empty.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_dls_IsEmpty
+LE_DECLARE_INLINE bool le_dls_IsEmpty
 (
     const le_dls_List_t* listPtr            ///< [IN] The list.
 )
@@ -431,6 +444,18 @@ void le_dls_Swap
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Sort a list in ascending order.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_dls_Sort
+(
+    le_dls_List_t* listPtr,                 ///< [IN] List to sort
+    le_dls_LessThanFunc_t comparatorPtr     ///< [IN] Comparator function for sorting
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Checks if a link is in the list.
  *
  * @return
@@ -454,7 +479,7 @@ bool le_dls_IsInList
  *    - false if not.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_dls_IsHead
+LE_DECLARE_INLINE bool le_dls_IsHead
 (
     const le_dls_List_t* listPtr,    ///< [IN] List to check.
     const le_dls_Link_t* linkPtr     ///< [IN] Check if this link is at the head of the list.
@@ -473,7 +498,7 @@ static inline bool le_dls_IsHead
  *    - false if not.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_dls_IsTail
+LE_DECLARE_INLINE bool le_dls_IsTail
 (
     const le_dls_List_t* listPtr,    ///< [IN] List to check.
     const le_dls_Link_t* linkPtr     ///< [IN] Check if this link is at the tail of the list.

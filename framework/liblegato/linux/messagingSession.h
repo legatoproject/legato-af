@@ -10,6 +10,7 @@
 #ifndef LE_MESSAGING_SESSION_H_INCLUDE_GUARD
 #define LE_MESSAGING_SESSION_H_INCLUDE_GUARD
 
+#include "messagingCommon.h"
 #include "messagingInterface.h"
 
 
@@ -37,8 +38,9 @@ msgSession_SessionState_t;
  * This same object is used to track the session on both the server side and the client side.
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct le_msg_Session
+typedef struct msg_UnixSession
 {
+    struct le_msg_Session           session;        ///< Generic session object.
     le_dls_Link_t                   link;           ///< Used to link into the Session List.
     msgSession_SessionState_t       state;          ///< The state that the session is in.
     int                             socketFd;       ///< File descriptor for the connected socket.
@@ -62,7 +64,7 @@ typedef struct le_msg_Session
     le_msg_SessionEventHandler_t    closeHandler;   ///< Close handler function.
     void*                           closeContextPtr;///< Close handler's context pointer.
 }
-msgSession_Session_t;
+msgSession_UnixSession_t;
 
 
 //--------------------------------------------------------------------------------------------------

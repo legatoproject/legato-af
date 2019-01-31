@@ -7,14 +7,13 @@
 static inline bool {{type.iface.name}}_Pack{{type.name}}
 (
     uint8_t **bufferPtr,
-    size_t* sizePtr,
     {{type|FormatType}} value
 )
 {
     {%- if type.size == 4 %}
-    return le_pack_PackUint32(bufferPtr, sizePtr, value);
+    return le_pack_PackUint32(bufferPtr, value);
     {%- elif type.size == 8 %}
-    return le_pack_PackUint64(bufferPtr, sizePtr, value);
+    return le_pack_PackUint64(bufferPtr, value);
     {%- else %}
     #error "Unexpected enum size"
     {%- endif %}
@@ -23,17 +22,16 @@ static inline bool {{type.iface.name}}_Pack{{type.name}}
 static inline bool {{type.iface.name}}_Unpack{{type.name}}
 (
     uint8_t **bufferPtr,
-    size_t* sizePtr,
     {{type|FormatType}}* valuePtr
 )
 {
     bool result;
     {%- if type.size == 4 %}
     uint32_t value;
-    result = le_pack_UnpackUint32(bufferPtr, sizePtr, &value);
+    result = le_pack_UnpackUint32(bufferPtr, &value);
     {%- elif type.size == 8 %}
     uint64_t value;
-    result = le_pack_UnpackUint64(bufferPtr, sizePtr, &value);
+    result = le_pack_UnpackUint64(bufferPtr, &value);
     {%- else %}
     #error "Unexpected enum size"
     {%- endif %}
@@ -49,7 +47,6 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
 static inline bool {{type.iface.name}}_Pack{{type.name}}
 (
     uint8_t **bufferPtr,
-    size_t* sizePtr,
     const {{type|FormatType}} *valuePtr
 )
 {
@@ -60,18 +57,18 @@ static inline bool {{type.iface.name}}_Pack{{type.name}}
 
     {%- for member in type.members %}
     {%- if member is StringMember %}
-    subResult = le_pack_PackString( bufferPtr, sizePtr,
+    subResult = le_pack_PackString( bufferPtr,
                                     valuePtr->{{member.name|DecorateName}}, {{member.maxCount}});
     {%- elif member is ArrayMember %}
-    LE_PACK_PACKARRAY( bufferPtr, sizePtr,
+    LE_PACK_PACKARRAY( bufferPtr,
                        valuePtr->{{member.name|DecorateName}}, valuePtr->{{member.name}}Count,
                        {{member.maxCount}}, {{member.apiType|PackFunction}},
                        &subResult );
     {%- elif member.apiType is StructType %}
-    subResult = {{member.apiType|PackFunction}}( bufferPtr, sizePtr,
+    subResult = {{member.apiType|PackFunction}}( bufferPtr,
                                                  &valuePtr->{{member.name|DecorateName }} );
     {%- else %}
-    subResult = {{member.apiType|PackFunction}}( bufferPtr, sizePtr,
+    subResult = {{member.apiType|PackFunction}}( bufferPtr,
                                                  valuePtr->{{member.name|DecorateName}} );
     {%- endif %}
     result = result && subResult;
@@ -83,7 +80,6 @@ static inline bool {{type.iface.name}}_Pack{{type.name}}
 static inline bool {{type.iface.name}}_Unpack{{type.name}}
 (
     uint8_t **bufferPtr,
-    size_t* sizePtr,
     {{type|FormatType}} *valuePtr
 )
 {
@@ -92,7 +88,7 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {%- if member is StringMember %}
     if (result)
     {
-        result = le_pack_UnpackString(bufferPtr, sizePtr,
+        result = le_pack_UnpackString(bufferPtr,
                                       valuePtr->{{member.name|DecorateName}},
                                       sizeof(valuePtr->{{member.name|DecorateName}}),
                                       {{member.maxCount}});
@@ -100,7 +96,7 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {%- elif member is ArrayMember %}
     if (result)
     {
-        LE_PACK_UNPACKARRAY( bufferPtr, sizePtr,
+        LE_PACK_UNPACKARRAY( bufferPtr,
                              &valuePtr->{{member.name|DecorateName}},
                              &valuePtr->{{member.name}}Count,
                              {{member.maxCount}}, {{member.apiType|UnpackFunction}},
@@ -109,7 +105,7 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {%- else %}
     if (result)
     {
-        result = {{member.apiType|UnpackFunction}}(bufferPtr, sizePtr,
+        result = {{member.apiType|UnpackFunction}}(bufferPtr,
                                                    &valuePtr->{{member.name|DecorateName}} );
     }
     {%- endif %}
@@ -126,20 +122,20 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {%- if parameter is not InParameter %}
     if ({{parameter|FormatParameterName}})
     {
-        LE_ASSERT(le_pack_PackSize( &_msgBufPtr, &_msgBufSize, {{parameter|GetParameterCount}} ));
+        LE_ASSERT(le_pack_PackSize( &_msgBufPtr, {{parameter|GetParameterCount}} ));
     }
     {%- elif parameter is StringParameter %}
-    LE_ASSERT(le_pack_PackString( &_msgBufPtr, &_msgBufSize,
+    LE_ASSERT(le_pack_PackString( &_msgBufPtr,
                                   {{parameter|FormatParameterName}}, {{parameter.maxCount}} ));
     {%- elif parameter is ArrayParameter %}
     bool {{parameter.name}}Result;
         {%- if parameter.apiType is StructType %}
-            LE_PACK_PACKSTRUCTARRAY( &_msgBufPtr, &_msgBufSize,
+            LE_PACK_PACKSTRUCTARRAY( &_msgBufPtr,
                        {{parameter|FormatParameterName}}, {{parameter|GetParameterCount}},
                        {{parameter.maxCount}}, {{parameter.apiType|PackFunction}},
                        &{{parameter.name}}Result );
         {%- else %}
-            LE_PACK_PACKARRAY( &_msgBufPtr, &_msgBufSize,
+            LE_PACK_PACKARRAY( &_msgBufPtr,
                        {{parameter|FormatParameterName}}, {{parameter|GetParameterCount}},
                        {{parameter.maxCount}}, {{parameter.apiType|PackFunction}},
                        &{{parameter.name}}Result );
@@ -158,11 +154,11 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     _LOCK
     contextPtr = le_ref_CreateRef(_HandlerRefMap, _clientDataPtr);
     _UNLOCK
-    LE_ASSERT(le_pack_PackReference( &_msgBufPtr, &_msgBufSize, contextPtr ));
+    LE_ASSERT(le_pack_PackReference( &_msgBufPtr, contextPtr ));
     {%- elif parameter.apiType is BasicType and parameter.apiType.name == 'file' %}
     le_msg_SetFd(_msgRef, {{parameter|FormatParameterName}});
     {%- else %}
-    LE_ASSERT({{parameter.apiType|PackFunction}}( &_msgBufPtr, &_msgBufSize,
+    LE_ASSERT({{parameter.apiType|PackFunction}}( &_msgBufPtr,
                                                   {{parameter|FormatParameterName}} ));
     {%- endif %}
     {%- endfor %}
@@ -175,7 +171,7 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
            or parameter is ArrayParameter %}
     {%- if parameter is not InParameter %}
     size_t {{parameter.name}}Size;
-    if (!le_pack_UnpackSize( &_msgBufPtr, &_msgBufSize,
+    if (!le_pack_UnpackSize( &_msgBufPtr,
                                &{{parameter.name}}Size ))
     {
         {{- caller() }}
@@ -199,7 +195,7 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {%- endif %}
     {%- elif parameter is StringParameter %}
     char {{parameter|FormatParameterName}}[{{parameter.maxCount + 1}}];
-    if (!le_pack_UnpackString( &_msgBufPtr, &_msgBufSize,
+    if (!le_pack_UnpackString( &_msgBufPtr,
                                {{parameter|FormatParameterName}},
                                sizeof({{parameter|FormatParameterName}}),
                                {{parameter.maxCount}} ))
@@ -211,13 +207,13 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {{parameter.apiType|FormatType}} {{parameter|FormatParameterName}}[{{parameter.maxCount}}];
     bool {{parameter.name}}Result;
         {%- if parameter.apiType is StructType %}
-            LE_PACK_UNPACKSTRUCTARRAY( &_msgBufPtr, &_msgBufSize,
+            LE_PACK_UNPACKSTRUCTARRAY( &_msgBufPtr,
                          {{parameter|FormatParameterName}}, &{{parameter.name}}Size,
                          {{parameter.maxCount}},
                          {{parameter.apiType|UnpackFunction}},
                          &{{parameter.name}}Result );
         {%- else %}
-            LE_PACK_UNPACKARRAY( &_msgBufPtr, &_msgBufSize,
+            LE_PACK_UNPACKARRAY( &_msgBufPtr,
                          {{parameter|FormatParameterName}}, &{{parameter.name}}Size,
                          {{parameter.maxCount}},
                          {{parameter.apiType|UnpackFunction}},
@@ -229,7 +225,7 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     }
     {%- elif parameter.apiType is HandlerType %}
     void *contextPtr;
-    if (!le_pack_UnpackReference( &_msgBufPtr, &_msgBufSize, &contextPtr ))
+    if (!le_pack_UnpackReference( &_msgBufPtr, &contextPtr ))
     {
         {{- caller() }}
     }
@@ -238,7 +234,7 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {{parameter.name|DecorateName}} = le_msg_GetFd(_msgRef);
     {%- else %}
     {{parameter.apiType|FormatType}} {{parameter.name|DecorateName}};
-    if (!{{parameter.apiType|UnpackFunction}}( &_msgBufPtr, &_msgBufSize,
+    if (!{{parameter.apiType|UnpackFunction}}( &_msgBufPtr,
                                                &{{parameter.name|DecorateName}} ))
     {
         {{- caller() }}
@@ -256,7 +252,7 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {%- if parameter is StringParameter %}
     if ({{parameter|FormatParameterName}})
     {
-        LE_ASSERT(le_pack_PackString( &_msgBufPtr, &_msgBufSize,
+        LE_ASSERT(le_pack_PackString( &_msgBufPtr,
                                       {{parameter|FormatParameterName}}, {{parameter.maxCount}} ));
     }
     {%- elif parameter is ArrayParameter %}
@@ -264,12 +260,12 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {
         bool {{parameter.name}}Result;
         {%- if parameter.apiType is StructType %}
-            LE_PACK_PACKSTRUCTARRAY( &_msgBufPtr, &_msgBufSize,
+            LE_PACK_PACKSTRUCTARRAY( &_msgBufPtr,
                            {{parameter|FormatParameterName}}, {{parameter|GetParameterCount}},
                            {{parameter.maxCount}}, {{parameter.apiType|PackFunction}},
                            &{{parameter.name}}Result );
         {%- else %}
-            LE_PACK_PACKARRAY( &_msgBufPtr, &_msgBufSize,
+            LE_PACK_PACKARRAY( &_msgBufPtr,
                            {{parameter|FormatParameterName}}, {{parameter|GetParameterCount}},
                            {{parameter.maxCount}}, {{parameter.apiType|PackFunction}},
                            &{{parameter.name}}Result );
@@ -284,13 +280,13 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {%- elif parameter.apiType is StructType %}
     if ({{parameter|FormatParameterName}})
     {
-        LE_ASSERT({{parameter.apiType|PackFunction}}( &_msgBufPtr, &_msgBufSize,
+        LE_ASSERT({{parameter.apiType|PackFunction}}( &_msgBufPtr,
                                                       {{parameter|FormatParameterName}} ));
     }
     {%- else %}
     if ({{parameter|FormatParameterName}})
     {
-        LE_ASSERT({{parameter.apiType|PackFunction}}( &_msgBufPtr, &_msgBufSize,
+        LE_ASSERT({{parameter.apiType|PackFunction}}( &_msgBufPtr,
                                                       *{{parameter|FormatParameterName}} ));
     }
     {%- endif %}
@@ -301,7 +297,7 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {%- for parameter in parameterList if parameter is OutParameter %}
     {%- if parameter is StringParameter %}
     if ({{parameter|FormatParameterName}} &&
-        (!le_pack_UnpackString( &_msgBufPtr, &_msgBufSize,
+        (!le_pack_UnpackString( &_msgBufPtr,
                                {{parameter|FormatParameterName}},
                                {{parameter.name}}Size,
                                {{parameter.maxCount}} )))
@@ -313,12 +309,12 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     if ({{parameter|FormatParameterName}})
     {
         {%- if parameter.apiType is StructType %}
-            LE_PACK_UNPACKSTRUCTARRAY( &_msgBufPtr, &_msgBufSize,
+            LE_PACK_UNPACKSTRUCTARRAY( &_msgBufPtr,
                              {{parameter|FormatParameterName}}, {{parameter|GetParameterCountPtr}},
                              {{parameter.maxCount}}, {{parameter.apiType|UnpackFunction}},
                              &{{parameter.name}}Result );
         {%- else %}
-            LE_PACK_UNPACKARRAY( &_msgBufPtr, &_msgBufSize,
+            LE_PACK_UNPACKARRAY( &_msgBufPtr,
                              {{parameter|FormatParameterName}}, {{parameter|GetParameterCountPtr}},
                              {{parameter.maxCount}}, {{parameter.apiType|UnpackFunction}},
                              &{{parameter.name}}Result );
@@ -335,7 +331,7 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     }
     {%- else %}
     if ({{parameter|FormatParameterName}} &&
-        (!{{parameter.apiType|UnpackFunction}}( &_msgBufPtr, &_msgBufSize,
+        (!{{parameter.apiType|UnpackFunction}}( &_msgBufPtr,
                                                {{parameter|FormatParameterPtr}} )))
     {
         {{- caller() }}

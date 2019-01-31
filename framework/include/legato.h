@@ -10,14 +10,16 @@
  *
  * <HR>
  *
- * @subpage c_basics <br>
  * @subpage c_args <br>
  * @subpage c_atomFile <br>
+ * @subpage c_basics <br>
+ * @subpage c_cdata <br>
+ * @subpage c_clock <br>
  * @subpage c_crc <br>
  * @subpage c_dir <br>
  * @subpage c_doublyLinkedList <br>
- * @subpage c_memory <br>
  * @subpage c_eventLoop <br>
+ * @subpage c_fd <br>
  * @subpage c_fdMonitor <br>
  * @subpage c_flock <br>
  * @subpage c_fs <br>
@@ -25,24 +27,24 @@
  * @subpage c_hex <br>
  * @subpage c_json <br>
  * @subpage c_logging <br>
+ * @subpage c_memory <br>
  * @subpage c_messaging <br>
  * @subpage c_mutex <br>
  * @subpage c_pack <br>
  * @subpage c_path <br>
  * @subpage c_pathIter <br>
  * @subpage c_print <br>
+ * @subpage c_process <br>
  * @subpage c_rand <br>
  * @subpage c_safeRef <br>
  * @subpage c_semaphore <br>
  * @subpage c_signals <br>
  * @subpage c_singlyLinkedList <br>
- * @subpage c_clock <br>
+ * @subpage c_test <br>
  * @subpage c_threading <br>
  * @subpage c_timer <br>
- * @subpage c_test <br>
- * @subpage c_utf8 <br>
  * @subpage c_tty <br>
- * @subpage c_process <br>
+ * @subpage c_utf8 <br>
  *
  * @section cApiOverview Overview
  * Here is some background info on Legato's C Language APIs.
@@ -133,10 +135,6 @@
 #ifndef LEGATO_H_INCLUDE_GUARD
 #define LEGATO_H_INCLUDE_GUARD
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-
 #if defined(__cplusplus) && !defined(__STDC_LIMIT_MACROS)
 // stdint.h from before C++11 only defines MAX and MIN macros if __STDC_LIMIT_MACROS is defined
 #define __STDC_LIMIT_MACROS
@@ -144,70 +142,51 @@
 
 #include "le_config.h"
 
+#if LE_CONFIG_LINUX
+#   include "linux/legato.h"
+#elif LE_CONFIG_CUSTOM_OS
+#   include "custom_os/legato.h"
+#else
+#   error "Unsupported OS type"
+#endif
+
+#include <assert.h>
+#include <ctype.h>
+#include <errno.h>
+#include <inttypes.h>
+#include <limits.h>
+#include <math.h>
+#include <signal.h>
+#include <stdarg.h>
+#include <stdbool.h>
 #include <stddef.h>
-#include <unistd.h>
-#include <time.h>
-#include <string.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
+#include <string.h>
 #include <time.h>
-#include <sys/time.h>
-#include <stdarg.h>
-#include <syslog.h>
-#include <pthread.h>
-#include <limits.h>
-#include <errno.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <fcntl.h>
-#include <sys/sysmacros.h>
-#include <sys/types.h>
-#include <sys/syscall.h>
-#include <signal.h>
-#include <sys/signalfd.h>
-#include <sys/wait.h>
-#include <sys/stat.h>
-#include <stdbool.h>
-#include <ctype.h>
-#include <inttypes.h>
-#include <dirent.h>
-#include <sys/reboot.h>
-#include <sys/timeb.h>
-#include <sys/mount.h>
-#include <sys/sysinfo.h>
-#include <sys/resource.h>
-#include <mntent.h>
-#include <grp.h>
-#include <sys/xattr.h>
-#include <fts.h>
-#include <poll.h>
-#include <sys/epoll.h>
-#include <sys/prctl.h>
-#include <sched.h>
-#include <semaphore.h>
-#include <math.h>
-#include <libgen.h>
-
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include "le_basics.h"
+
 #include "le_doublyLinkedList.h"
 #include "le_singlyLinkedList.h"
 #include "le_utf8.h"
+#include "le_backtrace.h"
 #include "le_log.h"
 #include "le_mem.h"
 #include "le_mutex.h"
 #include "le_clock.h"
+#include "le_cdata.h"
 #include "le_semaphore.h"
+#include "le_hashmap.h"
 #include "le_safeRef.h"
 #include "le_thread.h"
 #include "le_eventLoop.h"
 #include "le_fdMonitor.h"
-#include "le_hashmap.h"
 #include "le_signals.h"
 #include "le_args.h"
 #include "le_timer.h"
@@ -225,6 +204,7 @@ extern "C" {
 #include "le_crc.h"
 #include "le_fs.h"
 #include "le_rand.h"
+#include "le_fd.h"
 #include "le_base64.h"
 #include "le_process.h"
 

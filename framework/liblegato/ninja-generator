@@ -91,6 +91,7 @@ rule Compile
   depfile = \$out.d
   command = $CCACHE $CC -MMD -MF \$out.d -c \$in -o \$out -Wall -Werror \$flags \$
             -DLE_COMPONENT_NAME=framework \$
+            -DLE_FILENAME=\`basename \$in\` \$
             -I$LEGATO_ROOT/framework/include \$
             -I$LEGATO_ROOT/framework/liblegato
 

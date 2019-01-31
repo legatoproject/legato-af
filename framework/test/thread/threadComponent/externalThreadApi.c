@@ -23,7 +23,7 @@
 #endif
 
 /// Counter variable that the threads all increment and decrement.
-static uint64_t Counter = 0;
+static uint64_t Counter;
 
 // Define MutexRef and Lock() and Unlock() functions to use to protect the Counter from races.
 LE_MUTEX_DECLARE_REF(MutexRef);
@@ -105,6 +105,8 @@ void eta_Start
     // save the current number of blocks in use
     size_t initialNbOfBlocks;
 
+    Counter = 0;
+
     le_mem_PoolRef_t pool = NULL;
     le_mem_PoolStats_t stats;
 
@@ -112,7 +114,7 @@ void eta_Start
     // Need to separately #ifdef this out as the internal function _le_mem_FindPool is not
     // even defined if LE_CONFIG_MEM_POOL_NAMES_ENABLED is not set
 #if LE_CONFIG_MEM_POOL_NAMES_ENABLED
-    pool = _le_mem_FindPool("framework", "Thread Pool");
+    pool = _le_mem_FindPool("framework", "ThreadPool");
 #endif
     LE_TEST_ASSERT(pool != NULL, "thread pool created");
     le_mem_GetStats(pool, &stats);
@@ -164,5 +166,6 @@ void eta_Start
 // -------------------------------------------------------------------------------------------------
 void eta_CheckResults(void)
 {
-    // Result checking done in main test; nothing to do here.
+    // Just clean up the mutex.
+    le_mutex_Delete(MutexRef);
 }

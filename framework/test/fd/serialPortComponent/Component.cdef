@@ -1,0 +1,12 @@
+requires:
+{
+    api:
+    {
+        portService/le_port.api
+    }
+}
+
+sources:
+{
+    testSerialPortIoctl.c
+}

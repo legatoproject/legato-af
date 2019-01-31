@@ -27,33 +27,20 @@
 
 // Packing a simple value is basically the same regardless of type.  But don't use this macro
 // directly to get better verification that we're only packing the types we expect
-#define LE_PACK_PACK_SIMPLE_VALUE(value)               \
-    if (*sizePtr < sizeof(value))                      \
-    {                                                  \
-        return false;                                  \
-    }                                                  \
-                                                       \
-    memcpy(*bufferPtr, &(value), sizeof(value));                \
-                                                                \
-    *bufferPtr = *bufferPtr + sizeof(value);                    \
-    *sizePtr -= sizeof(value);                                  \
-                                                                \
+#define LE_PACK_PACK_SIMPLE_VALUE(value)         \
+    memcpy(*bufferPtr, &(value), sizeof(value)); \
+    *bufferPtr = *bufferPtr + sizeof(value);     \
     return true
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pack a uint8_t into a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Pack a uint8_t into a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_PackUint8
+LE_DECLARE_INLINE bool le_pack_PackUint8
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     uint8_t value
 )
 {
@@ -62,17 +49,12 @@ static inline bool le_pack_PackUint8
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pack a uint16_t into a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Pack a uint16_t into a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_PackUint16
+LE_DECLARE_INLINE bool le_pack_PackUint16
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     uint16_t value
 )
 {
@@ -81,17 +63,12 @@ static inline bool le_pack_PackUint16
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pack a uint32_t into a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Pack a uint32_t into a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_PackUint32
+LE_DECLARE_INLINE bool le_pack_PackUint32
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     uint32_t value
 )
 {
@@ -100,17 +77,12 @@ static inline bool le_pack_PackUint32
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pack a uint64_t into a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Pack a uint64_t into a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_PackUint64
+LE_DECLARE_INLINE bool le_pack_PackUint64
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     uint64_t value
 )
 {
@@ -119,17 +91,12 @@ static inline bool le_pack_PackUint64
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pack a int8_t into a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Pack a int8_t into a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_PackInt8
+LE_DECLARE_INLINE bool le_pack_PackInt8
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     int8_t value
 )
 {
@@ -138,17 +105,12 @@ static inline bool le_pack_PackInt8
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pack a int16_t into a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Pack a int16_t into a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_PackInt16
+LE_DECLARE_INLINE bool le_pack_PackInt16
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     int16_t value
 )
 {
@@ -157,17 +119,12 @@ static inline bool le_pack_PackInt16
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pack a int32_t into a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Pack a int32_t into a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_PackInt32
+LE_DECLARE_INLINE bool le_pack_PackInt32
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     int32_t value
 )
 {
@@ -176,17 +133,12 @@ static inline bool le_pack_PackInt32
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pack a int64_t into a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Pack a int64_t into a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_PackInt64
+LE_DECLARE_INLINE bool le_pack_PackInt64
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     int64_t value
 )
 {
@@ -195,16 +147,14 @@ static inline bool le_pack_PackInt64
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pack a size_t into a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
+ * Pack a size_t into a buffer, incrementing the buffer pointer as appropriate.
  *
  * @note Packed sizes are limited to 2^32-1, regardless of platform
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_PackSize
+LE_DECLARE_INLINE bool le_pack_PackSize
 (
     uint8_t **bufferPtr,
-    size_t *sizePtr,
     size_t value
 )
 {
@@ -213,22 +163,17 @@ static inline bool le_pack_PackSize
         return false;
     }
 
-    return le_pack_PackUint32(bufferPtr, sizePtr, value);
+    return le_pack_PackUint32(bufferPtr, value);
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pack a bool into a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Pack a bool into a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_PackBool
+LE_DECLARE_INLINE bool le_pack_PackBool
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     bool value
 )
 {
@@ -240,17 +185,12 @@ static inline bool le_pack_PackBool
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pack a char into a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Pack a char into a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_PackChar
+LE_DECLARE_INLINE bool le_pack_PackChar
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     char value
 )
 {
@@ -259,17 +199,12 @@ static inline bool le_pack_PackChar
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pack a double into a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Pack a double into a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_PackDouble
+LE_DECLARE_INLINE bool le_pack_PackDouble
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     double value
 )
 {
@@ -278,17 +213,12 @@ static inline bool le_pack_PackDouble
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pack a le_result_t into a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Pack a le_result_t into a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_PackResult
+LE_DECLARE_INLINE bool le_pack_PackResult
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     le_result_t value
 )
 {
@@ -297,17 +227,12 @@ static inline bool le_pack_PackResult
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pack le_onoff_t into a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Pack le_onoff_t into a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_PackOnOff
+LE_DECLARE_INLINE bool le_pack_PackOnOff
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     le_onoff_t value
 )
 {
@@ -318,14 +243,12 @@ static inline bool le_pack_PackOnOff
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pack a reference into a buffer, incrementing the buffer pointer and decrementing the available
- * size.
+ * Pack a reference into a buffer, incrementing the buffer pointer.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_PackReference
+LE_DECLARE_INLINE bool le_pack_PackReference
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     const void* ref
 )
 {
@@ -338,7 +261,7 @@ static inline bool le_pack_PackReference
         ((refAsInt & 0x01) ||
          !refAsInt))
     {
-        return le_pack_PackUint32(bufferPtr, sizePtr, (uint32_t)refAsInt);
+        return le_pack_PackUint32(bufferPtr, (uint32_t)refAsInt);
     }
     else
     {
@@ -348,27 +271,19 @@ static inline bool le_pack_PackReference
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pack a string into a buffer, incrementing the buffer pointer and decrementing the available
- * size.
+ * Pack a string into a buffer, incrementing the buffer pointer.
  *
- * @note Always decrements available size according to the max possible size used, not actual size
- * used.  Will assert if provided string is larger than maximum allowable string.
+ * @note Will assert if provided string is larger than maximum allowable string.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_PackString
+LE_DECLARE_INLINE bool le_pack_PackString
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     const char *stringPtr,
     uint32_t maxStringCount
 )
 {
     size_t bytesCopied;
-
-    if (*sizePtr < (maxStringCount + sizeof(uint32_t)))
-    {
-        return false;
-    }
 
     if (!stringPtr)
     {
@@ -400,112 +315,96 @@ static inline bool le_pack_PackString
 
     // Then go back and copy string size.  No loss of precision packing into a uint32
     // because maxStringCount is a uint32 or less.
-    bool packResult = le_pack_PackUint32(bufferPtr, sizePtr, bytesCopied);
+    bool packResult = le_pack_PackUint32(bufferPtr, bytesCopied);
     LE_ASSERT(packResult); // Should not fail -- have checked there's enough space above.
 
     // Now increment buffer by size of string actually copied, and decrement available
     // space by max which could have been copied.  This ensures out of space errors will
     // be caught as soon as possible.
     *bufferPtr = *bufferPtr + bytesCopied;
-    *sizePtr -= maxStringCount;
 
     return true;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pack the size information for an array into a buffer, incrementing the buffer pointer and
- * decrementing the available size.
+ * Pack the size information for an array into a buffer, incrementing the buffer pointer.
  *
  * @note Users of this API should generally use LE_PACK_PACKARRAY macro instead which also
  * packs the array data.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_PackArrayHeader
+LE_DECLARE_INLINE bool le_pack_PackArrayHeader
 (
     uint8_t **bufferPtr,
-    size_t *sizePtr,
     const void *arrayPtr,
     size_t elementSize,
     size_t arrayCount,
     size_t arrayMaxCount
 )
 {
-    if ((*sizePtr < arrayMaxCount*elementSize + sizeof(uint32_t)) ||
-        (arrayCount > arrayMaxCount))
+    if (arrayCount > arrayMaxCount)
     {
         return false;
     }
 
-    LE_ASSERT(le_pack_PackSize(bufferPtr, sizePtr, arrayCount));
+    LE_ASSERT(le_pack_PackSize(bufferPtr, arrayCount));
 
     return true;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pack an array into a buffer, incrementing the buffer pointer and decrementing the available
- * size.
+ * Pack an array into a buffer, incrementing the buffer pointer.
  *
- * @note Always decrements available size according to the max possible size used, not actual size
- * used.  Will assert if the resulted array exceeds the maximum size allowed.
+ * @note Will assert if the resulted array exceeds the maximum size allowed.
  */
 //--------------------------------------------------------------------------------------------------
 #define LE_PACK_PACKARRAY(bufferPtr,                                    \
-                          sizePtr,                                      \
                           arrayPtr,                                     \
                           arrayCount,                                   \
                           arrayMaxCount,                                \
                           packFunc,                                     \
                           resultPtr)                                    \
     do {                                                                \
-        *(resultPtr) = le_pack_PackArrayHeader((bufferPtr), (sizePtr), \
+        *(resultPtr) = le_pack_PackArrayHeader((bufferPtr),             \
                                                (arrayPtr), sizeof((arrayPtr)[0]), \
                                                (arrayCount), (arrayMaxCount)); \
         if (*(resultPtr))                                               \
         {                                                               \
             uint32_t i;                                                 \
-            size_t newSizePtr = *(sizePtr) - sizeof((arrayPtr)[0])*(arrayMaxCount); \
             for (i = 0; i < (arrayCount); ++i)                          \
             {                                                           \
-                LE_ASSERT(packFunc((bufferPtr), (sizePtr), (arrayPtr)[i])); \
+                LE_ASSERT(packFunc((bufferPtr), (arrayPtr)[i]));        \
             }                                                           \
-            LE_ASSERT(*(sizePtr) >= newSizePtr);                        \
-            *(sizePtr) = newSizePtr;                                    \
             *(resultPtr) = true;                                        \
         }                                                               \
     } while (0)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pack an array of struct into a buffer, incrementing the buffer pointer and decrementing the
- * available size.
+ * Pack an array of struct into a buffer, incrementing the buffer pointer.
  *
- * @note Always decrements available size according to the max possible size used, not actual size
- * used.  Will assert if the resulted array of struct exceeds the maximum size allowed.
+ * @note Will assert if the resulted array of struct exceeds the maximum size allowed.
  */
 //--------------------------------------------------------------------------------------------------
 #define LE_PACK_PACKSTRUCTARRAY(bufferPtr,                              \
-                                 sizePtr,                               \
                                  arrayPtr,                              \
                                  arrayCount,                            \
                                  arrayMaxCount,                         \
                                  packFunc,                              \
                                  resultPtr)                             \
     do {                                                                \
-        *(resultPtr) = le_pack_PackArrayHeader((bufferPtr), (sizePtr), \
+        *(resultPtr) = le_pack_PackArrayHeader((bufferPtr),             \
                                                (arrayPtr), sizeof((arrayPtr)[0]), \
                                                (arrayCount), (arrayMaxCount)); \
         if (*(resultPtr))                                               \
         {                                                               \
             uint32_t i;                                                 \
-            size_t newSizePtr = *(sizePtr) - sizeof((arrayPtr)[0])*(arrayMaxCount); \
             for (i = 0; i < (arrayCount); ++i)                          \
             {                                                           \
-                LE_ASSERT(packFunc((bufferPtr), (sizePtr), &((arrayPtr)[i]))); \
+                LE_ASSERT(packFunc((bufferPtr), &((arrayPtr)[i])));     \
             }                                                           \
-            LE_ASSERT(*(sizePtr) >= newSizePtr);                        \
-            *(sizePtr) = newSizePtr;                                    \
             *(resultPtr) = true;                                        \
         }                                                               \
     } while (0)
@@ -514,32 +413,19 @@ static inline bool le_pack_PackArrayHeader
 // Unpack functions
 //--------------------------------------------------------------------------------------------------
 
-#define LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr)                   \
-    if (*sizePtr < sizeof(*(valuePtr)))                         \
-    {                                                           \
-        return false;                                           \
-    }                                                           \
-                                                                \
-    memcpy((valuePtr), *bufferPtr, sizeof(*(valuePtr)));        \
-                                                                \
-    *bufferPtr = (*bufferPtr) + sizeof(*(valuePtr));            \
-    *sizePtr -= sizeof(*(valuePtr));                            \
-                                                                \
+#define LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr)            \
+    memcpy((valuePtr), *bufferPtr, sizeof(*(valuePtr))); \
+    *bufferPtr = (*bufferPtr) + sizeof(*(valuePtr));     \
     return true
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Unpack a uint8_t from a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Unpack a uint8_t from a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_UnpackUint8
+LE_DECLARE_INLINE bool le_pack_UnpackUint8
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     uint8_t* valuePtr
 )
 {
@@ -548,17 +434,12 @@ static inline bool le_pack_UnpackUint8
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Unpack a uint16_t from a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Unpack a uint16_t from a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_UnpackUint16
+LE_DECLARE_INLINE bool le_pack_UnpackUint16
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     uint16_t* valuePtr
 )
 {
@@ -567,17 +448,12 @@ static inline bool le_pack_UnpackUint16
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Unpack a uint32_t from a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Unpack a uint32_t from a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_UnpackUint32
+LE_DECLARE_INLINE bool le_pack_UnpackUint32
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     uint32_t* valuePtr
 )
 {
@@ -586,17 +462,12 @@ static inline bool le_pack_UnpackUint32
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Unpack a uint64_t from a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Unpack a uint64_t from a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_UnpackUint64
+LE_DECLARE_INLINE bool le_pack_UnpackUint64
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     uint64_t* valuePtr
 )
 {
@@ -605,17 +476,12 @@ static inline bool le_pack_UnpackUint64
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Unpack a int8_t from a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Unpack a int8_t from a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_UnpackInt8
+LE_DECLARE_INLINE bool le_pack_UnpackInt8
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     int8_t* valuePtr
 )
 {
@@ -624,17 +490,12 @@ static inline bool le_pack_UnpackInt8
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Unpack a int16_t from a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Unpack a int16_t from a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_UnpackInt16
+LE_DECLARE_INLINE bool le_pack_UnpackInt16
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     int16_t* valuePtr
 )
 {
@@ -643,17 +504,12 @@ static inline bool le_pack_UnpackInt16
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Unpack a int32_t from a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Unpack a int32_t from a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_UnpackInt32
+LE_DECLARE_INLINE bool le_pack_UnpackInt32
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     int32_t* valuePtr
 )
 {
@@ -662,17 +518,12 @@ static inline bool le_pack_UnpackInt32
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Unpack a int64_t from a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Unpack a int64_t from a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_UnpackInt64
+LE_DECLARE_INLINE bool le_pack_UnpackInt64
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     int64_t* valuePtr
 )
 {
@@ -680,22 +531,20 @@ static inline bool le_pack_UnpackInt64
 }
 
 /**
- * Pack a size_t into a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
+ * Pack a size_t into a buffer, incrementing the buffer pointer as appropriate.
  *
  * @note Packed sizes are limited to 2^32-1, regardless of platform
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_UnpackSize
+LE_DECLARE_INLINE bool le_pack_UnpackSize
 (
     uint8_t **bufferPtr,
-    size_t *sizePtr,
     size_t *valuePtr
 )
 {
     uint32_t rawValue;
 
-    if (!le_pack_UnpackUint32(bufferPtr, sizePtr, &rawValue))
+    if (!le_pack_UnpackUint32(bufferPtr, &rawValue))
     {
         return false;
     }
@@ -707,32 +556,22 @@ static inline bool le_pack_UnpackSize
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Unpack a bool from a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Unpack a bool from a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_UnpackBool
+LE_DECLARE_INLINE bool le_pack_UnpackBool
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     bool* valuePtr
 )
 {
-    // Treat boolean as uint8_t for packing, regarldess of underlying OS type.
+    // Treat boolean as uint8_t for packing, regardless of underlying OS type.
     // Underlying type has been int on some platforms in the past.
     uint8_t simpleValue;
-    if (*sizePtr < sizeof(simpleValue))
-    {
-        return false;
-    }
 
     memcpy(&simpleValue, *bufferPtr, sizeof(simpleValue));
 
     *bufferPtr = ((uint8_t* )*bufferPtr) + sizeof(simpleValue);
-    *sizePtr -= sizeof(simpleValue);
 
     // force to true or false
     *valuePtr = !!simpleValue;
@@ -742,17 +581,12 @@ static inline bool le_pack_UnpackBool
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Unpack a char from a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Unpack a char from a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_UnpackChar
+LE_DECLARE_INLINE bool le_pack_UnpackChar
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     char* valuePtr
 )
 {
@@ -761,17 +595,12 @@ static inline bool le_pack_UnpackChar
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Unpack a double from a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Unpack a double from a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_UnpackDouble
+LE_DECLARE_INLINE bool le_pack_UnpackDouble
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     double* valuePtr
 )
 {
@@ -780,17 +609,12 @@ static inline bool le_pack_UnpackDouble
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Unpack a le_result_t from a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Unpack a le_result_t from a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_UnpackResult
+LE_DECLARE_INLINE bool le_pack_UnpackResult
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     le_result_t* valuePtr
 )
 {
@@ -799,17 +623,12 @@ static inline bool le_pack_UnpackResult
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pack le_onoff_t into a buffer, incrementing the buffer pointer and decrementing the
- * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
+ * Pack le_onoff_t into a buffer, incrementing the buffer pointer as appropriate.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_UnpackOnOff
+LE_DECLARE_INLINE bool le_pack_UnpackOnOff
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     le_onoff_t* valuePtr
 )
 {
@@ -820,21 +639,19 @@ static inline bool le_pack_UnpackOnOff
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Unpack a reference from a buffer, incrementing the buffer pointer and decrementing the available
- * size.
+ * Unpack a reference from a buffer, incrementing the buffer pointer.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_UnpackReference
+LE_DECLARE_INLINE bool le_pack_UnpackReference
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     void* refPtr                ///< Pointer to the reference.  Declared as void * to allow implicit
                                 ///< conversion from pointer to reference types.
 )
 {
     uint32_t refAsInt;
 
-    if (!le_pack_UnpackUint32(bufferPtr, sizePtr, &refAsInt))
+    if (!le_pack_UnpackUint32(bufferPtr, &refAsInt))
     {
         return false;
     }
@@ -856,17 +673,12 @@ static inline bool le_pack_UnpackReference
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Unpack a string from a buffer, incrementing the buffer pointer and decrementing the available
- * size.
- *
- * @note Always decrements available size according to the max possible size used, not actual size
- * used.  Will assert if provided string is larger than maximum allowable string.
+ * Unpack a string from a buffer, incrementing the buffer pointer.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_UnpackString
+LE_DECLARE_INLINE bool le_pack_UnpackString
 (
     uint8_t** bufferPtr,
-    size_t* sizePtr,
     char *stringPtr,
     uint32_t bufferSize,
     uint32_t maxStringCount
@@ -874,13 +686,8 @@ static inline bool le_pack_UnpackString
 {
     uint32_t stringSize;
 
-    if (*sizePtr < (maxStringCount + sizeof(uint32_t)))
-    {
-        return false;
-    }
-
     // First get string size
-    if (!le_pack_UnpackUint32(bufferPtr, sizePtr, &stringSize))
+    if (!le_pack_UnpackUint32(bufferPtr, &stringSize))
     {
         return false;
     }
@@ -909,36 +716,28 @@ static inline bool le_pack_UnpackString
     stringPtr[stringSize] = '\0';
 
     *bufferPtr = *bufferPtr + stringSize;
-    *sizePtr -= maxStringCount;
 
     return true;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pack the size information for an array into a buffer, incrementing the buffer pointer and
- * decrementing the available size.
+ * Pack the size information for an array into a buffer, incrementing the buffer pointer.
  *
  * @note Users of this API should generally use LE_PACK_PACKARRAY macro instead which also
  * packs the array data.
  */
 //--------------------------------------------------------------------------------------------------
-static inline bool le_pack_UnpackArrayHeader
+LE_DECLARE_INLINE bool le_pack_UnpackArrayHeader
 (
     uint8_t **bufferPtr,
-    size_t *sizePtr,
     const void *arrayPtr,
     size_t elementSize,
     size_t *arrayCountPtr,
     size_t arrayMaxCount
 )
 {
-    if (*sizePtr < (arrayMaxCount*elementSize + sizeof(uint32_t)))
-    {
-        return false;
-    }
-
-    LE_ASSERT(le_pack_UnpackSize(bufferPtr, sizePtr, arrayCountPtr));
+    LE_ASSERT(le_pack_UnpackSize(bufferPtr, arrayCountPtr));
     if (*arrayCountPtr > arrayMaxCount)
     {
         return false;
@@ -962,14 +761,13 @@ static inline bool le_pack_UnpackArrayHeader
  */
 //--------------------------------------------------------------------------------------------------
 #define LE_PACK_UNPACKARRAY(bufferPtr,                                  \
-                            sizePtr,                                    \
                             arrayPtr,                                   \
                             arrayCountPtr,                              \
                             arrayMaxCount,                              \
                             unpackFunc,                                 \
                             resultPtr)                                  \
     do {                                                                \
-        if (!le_pack_UnpackArrayHeader((bufferPtr), (sizePtr),           \
+        if (!le_pack_UnpackArrayHeader((bufferPtr),                     \
                                        (arrayPtr), sizeof((arrayPtr)[0]), \
                                        (arrayCountPtr), (arrayMaxCount))) \
         {                                                               \
@@ -978,13 +776,10 @@ static inline bool le_pack_UnpackArrayHeader
         else                                                            \
         {                                                               \
             uint32_t i;                                                 \
-            size_t newSizePtr = *(sizePtr) - sizeof((arrayPtr)[0])*(arrayMaxCount); \
             for (i = 0; i < *(arrayCountPtr); ++i)                      \
             {                                                           \
-                LE_ASSERT(unpackFunc((bufferPtr), (sizePtr), &(arrayPtr)[i])); \
+                LE_ASSERT(unpackFunc((bufferPtr), &(arrayPtr)[i]));     \
             }                                                           \
-            LE_ASSERT(*(sizePtr) >= newSizePtr);                        \
-            *(sizePtr) = newSizePtr;                                    \
             *(resultPtr) = true;                                        \
         }                                                               \
     } while (0)
@@ -997,13 +792,12 @@ static inline bool le_pack_UnpackArrayHeader
  */
 //--------------------------------------------------------------------------------------------------
 #define LE_PACK_UNPACKSTRUCTARRAY(bufferPtr,                            \
-                                  sizePtr,                              \
                                   arrayPtr,                             \
                                   arrayCountPtr,                        \
                                   arrayMaxCount,                        \
                                   unpackFunc,                           \
                                   resultPtr)                            \
-    LE_PACK_UNPACKARRAY((bufferPtr), (sizePtr), (arrayPtr), (arrayCountPtr), \
+    LE_PACK_UNPACKARRAY((bufferPtr), (arrayPtr), (arrayCountPtr),       \
                         (arrayMaxCount), (unpackFunc), (resultPtr))
 
 #endif /* LE_PACK_H_INCLUDE_GUARD */

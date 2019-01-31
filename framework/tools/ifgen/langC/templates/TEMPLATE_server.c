@@ -383,17 +383,15 @@ static void AsyncResponse_{{apiName}}_{{function.name}}
 
     // Will not be used if no data is sent back to client
     __attribute__((unused)) uint8_t* _msgBufPtr;
-    __attribute__((unused)) size_t _msgBufSize;
 
     // Create a new message object and get the message buffer
     _msgRef = le_msg_CreateMsg(serverDataPtr->clientSessionRef);
     _msgPtr = le_msg_GetPayloadPtr(_msgRef);
     _msgPtr->id = _MSGID_{{apiName}}_{{function.name}};
     _msgBufPtr = _msgPtr->buffer;
-    _msgBufSize = _MAX_MSG_SIZE;
 
     // Always pack the client context pointer first
-    LE_ASSERT(le_pack_PackReference( &_msgBufPtr, &_msgBufSize, serverDataPtr->contextPtr ))
+    LE_ASSERT(le_pack_PackReference( &_msgBufPtr, serverDataPtr->contextPtr ))
 
     // Pack the input parameters
     {{ pack.PackInputs(handler.apiType.parameters) }}
@@ -439,7 +437,6 @@ void {{apiName}}_{{function.name}}Respond
     le_msg_MessageRef_t _msgRef = _cmdRef->msgRef;
     _Message_t* _msgPtr = le_msg_GetPayloadPtr(_msgRef);
     __attribute__((unused)) uint8_t* _msgBufPtr = _msgPtr->buffer;
-    __attribute__((unused)) size_t _msgBufSize = _MAX_MSG_SIZE;
 
     // Ensure the passed in msgRef is for the correct message
     LE_ASSERT(_msgPtr->id == _MSGID_{{apiName}}_{{function.name}});
@@ -449,7 +446,7 @@ void {{apiName}}_{{function.name}}Respond
     {%- if function.returnType %}
 
     // Pack the result first
-    LE_ASSERT({{function.returnType|PackFunction}}( &_msgBufPtr, &_msgBufSize,
+    LE_ASSERT({{function.returnType|PackFunction}}( &_msgBufPtr,
                                                     _result ));
     {%- endif %}
 
@@ -495,12 +492,11 @@ static void Handle_{{apiName}}_{{function.name}}
     // Get the message buffer pointer
     __attribute__((unused)) uint8_t* _msgBufPtr =
         ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
-    __attribute__((unused)) size_t _msgBufSize = _MAX_MSG_SIZE;
 
     // Unpack which outputs are needed.
     _serverCmdPtr->requiredOutputs = 0;
     {%- if any(function.parameters, "OutParameter") %}
-    if (!le_pack_UnpackUint32(&_msgBufPtr, &_msgBufSize, &_serverCmdPtr->requiredOutputs))
+    if (!le_pack_UnpackUint32(&_msgBufPtr, &_serverCmdPtr->requiredOutputs))
     {
         goto {{error_unpack_label}};
     }
@@ -543,7 +539,6 @@ static void Handle_{{apiName}}_{{function.name}}
     // Get the message buffer pointer
     __attribute__((unused)) uint8_t* _msgBufPtr =
         ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
-    __attribute__((unused)) size_t _msgBufSize = _MAX_MSG_SIZE;
 
     // Needed if we are returning a result or output values
     uint8_t* _msgBufStartPtr = _msgBufPtr;
@@ -551,7 +546,7 @@ static void Handle_{{apiName}}_{{function.name}}
     // Unpack which outputs are needed
     {%- if any(function.parameters, "OutParameter") %}
     uint32_t _requiredOutputs = 0;
-    if (!le_pack_UnpackUint32(&_msgBufPtr, &_msgBufSize, &_requiredOutputs))
+    if (!le_pack_UnpackUint32(&_msgBufPtr, &_requiredOutputs))
     {
         goto {{error_unpack_label}};
     }
@@ -563,7 +558,7 @@ static void Handle_{{apiName}}_{{function.name}}
      # so do separate handling
      #}
     {{function.parameters[0].apiType|FormatType}} {{function.parameters[0]|FormatParameterName}};
-    if (!le_pack_UnpackReference( &_msgBufPtr, &_msgBufSize,
+    if (!le_pack_UnpackReference( &_msgBufPtr,
                                   &{{function.parameters[0]|FormatParameterName}} ))
     {
         goto {{error_unpack_label}};
@@ -667,11 +662,10 @@ static void Handle_{{apiName}}_{{function.name}}
 
     // Re-use the message buffer for the response
     _msgBufPtr = _msgBufStartPtr;
-    _msgBufSize = _MAX_MSG_SIZE;
     {%- if function.returnType %}
 
     // Pack the result first
-    LE_ASSERT({{function.returnType|PackFunction}}( &_msgBufPtr, &_msgBufSize, _result ));
+    LE_ASSERT({{function.returnType|PackFunction}}( &_msgBufPtr, _result ));
     {%- endif %}
 
     // Pack any "out" parameters

@@ -12,8 +12,10 @@
 #include "legato.h"
 #include "unixSocket.h"
 #include "serviceDirectory/serviceDirectoryProtocol.h"
+#include "messagingCommon.h"
 #include "messagingInterface.h"
 #include "messagingSession.h"
+#include "messagingLocal.h"
 #include "fileDescriptor.h"
 
 
@@ -103,16 +105,6 @@ static pthread_mutex_t Mutex = PTHREAD_MUTEX_INITIALIZER;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Key used to identify thread-local data record containing the Message object reference for the
- * message currently being processed by a Service's message receive handler; or NULL if the thread
- * is not currently running a Service's message receive handler.
- **/
-//--------------------------------------------------------------------------------------------------
-static pthread_key_t ThreadLocalRxMsgKey;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * session event handler object
  */
 //--------------------------------------------------------------------------------------------------
@@ -129,6 +121,16 @@ typedef struct le_msg_SessionEventHandler
 // =======================================
 //  PRIVATE FUNCTIONS
 // =======================================
+
+//--------------------------------------------------------------------------------------------------
+// Emit definition for inline functions
+//
+// See messagingInterface.h for body and documentation
+//--------------------------------------------------------------------------------------------------
+LE_DEFINE_INLINE le_msg_ProtocolRef_t msgInterface_GetProtocolRef(
+    le_msg_InterfaceRef_t interfaceRef
+);
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -212,18 +214,19 @@ static void InitInterface
  * @warning Assumes that the Mutex is locked.
  */
 //--------------------------------------------------------------------------------------------------
-static msgInterface_Service_t* CreateService
+static msgInterface_UnixService_t* CreateService
 (
     le_msg_ProtocolRef_t    protocolRef,
     const char*             interfaceName
 )
 //--------------------------------------------------------------------------------------------------
 {
-    msgInterface_Service_t* servicePtr = le_mem_ForceAlloc(ServicePoolRef);
+    msgInterface_UnixService_t* servicePtr = le_mem_ForceAlloc(ServicePoolRef);
 
     InitInterface(protocolRef, interfaceName, LE_MSG_INTERFACE_SERVER,
-                  (msgInterface_Interface_t*)servicePtr);
+                  &servicePtr->interface);
 
+    servicePtr->service.type = LE_MSG_SERVICE_UNIX_SOCKET;
     servicePtr->state = LE_MSG_INTERFACE_SERVICE_HIDDEN;
 
     servicePtr->directorySocketFd = -1;
@@ -267,7 +270,7 @@ static msgInterface_ClientInterface_t* CreateClientInterface
     InitInterface(protocolRef,
                   interfaceName,
                   LE_MSG_INTERFACE_CLIENT,
-                  (msgInterface_Interface_t*)clientPtr);
+                  &clientPtr->interface);
 
     ClientInterfaceMapChangeCount++;
     le_hashmap_Put(ClientInterfaceMapRef, &clientPtr->interface.id, clientPtr);
@@ -288,7 +291,7 @@ static msgInterface_ClientInterface_t* CreateClientInterface
  * @warning Assumes that the Mutex is locked.
  */
 //--------------------------------------------------------------------------------------------------
-static msgInterface_Service_t* GetService
+static msgInterface_UnixService_t* GetService
 (
     le_msg_ProtocolRef_t    protocolRef,
     const char*             interfaceName
@@ -303,7 +306,7 @@ static msgInterface_Service_t* GetService
                 interfaceName,
                 sizeof(id.name));
 
-    msgInterface_Service_t* servicePtr = le_hashmap_Get(ServiceMapRef, &id);
+    msgInterface_UnixService_t* servicePtr = le_hashmap_Get(ServiceMapRef, &id);
     if (servicePtr == NULL)
     {
         servicePtr = CreateService(protocolRef, interfaceName);
@@ -377,7 +380,7 @@ static void ServiceDestructor
 )
 //--------------------------------------------------------------------------------------------------
 {
-    msgInterface_Service_t* servicePtr = objPtr;
+    msgInterface_UnixService_t* servicePtr = objPtr;
 
     ServiceObjMapChangeCount++;
     le_hashmap_Remove(ServiceMapRef, &servicePtr->interface.id);
@@ -436,13 +439,13 @@ static void ClientInterfaceDestructor
 //--------------------------------------------------------------------------------------------------
 static void CallOpenHandler
 (
-    le_msg_ServiceRef_t serviceRef,
+    msgInterface_UnixService_t* servicePtr,
     le_msg_SessionRef_t sessionRef
 )
 //--------------------------------------------------------------------------------------------------
- {
+{
     // If there is a Close Handler registered, call it now.
-    le_dls_Link_t* openLinkPtr = le_dls_Peek(&serviceRef->openListPtr);
+    le_dls_Link_t* openLinkPtr = le_dls_Peek(&servicePtr->openListPtr);
 
     while (openLinkPtr)
     {
@@ -453,7 +456,7 @@ static void CallOpenHandler
             openEventPtr->handler(sessionRef, openEventPtr->contextPtr);
         }
 
-        openLinkPtr = le_dls_PeekNext(&serviceRef->openListPtr, openLinkPtr);
+        openLinkPtr = le_dls_PeekNext(&servicePtr->openListPtr, openLinkPtr);
     }
 }
 
@@ -469,7 +472,7 @@ static void CallOpenHandler
 //--------------------------------------------------------------------------------------------------
 static void DirectorySocketWriteable
 (
-    msgInterface_Service_t* servicePtr
+    msgInterface_UnixService_t* servicePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -531,7 +534,7 @@ static void DirectorySocketWriteable
 //--------------------------------------------------------------------------------------------------
 static void DirectorySocketReadable
 (
-    msgInterface_Service_t* servicePtr
+    msgInterface_UnixService_t* servicePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -571,7 +574,7 @@ static void DirectorySocketReadable
     else
     {
         // Create a server-side Session object for that connection to this Service.
-        le_msg_SessionRef_t sessionRef = msgSession_CreateServerSideSession(servicePtr,
+        le_msg_SessionRef_t sessionRef = msgSession_CreateServerSideSession(&servicePtr->service,
                                                                             clientSocketFd);
 
         // If successful, call the registered "open" handler, if there is one.
@@ -595,7 +598,7 @@ static void DirectorySocketReadable
 //--------------------------------------------------------------------------------------------------
 static void DirectorySocketClosed
 (
-    msgInterface_Service_t* servicePtr
+    msgInterface_UnixService_t* servicePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -614,7 +617,7 @@ static void DirectorySocketClosed
 //--------------------------------------------------------------------------------------------------
 static void DirectorySocketError
 (
-    msgInterface_Service_t* servicePtr
+    msgInterface_UnixService_t* servicePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -637,7 +640,7 @@ static void DirectorySocketEventHandler
 )
 //--------------------------------------------------------------------------------------------------
 {
-    msgInterface_Service_t* servicePtr = le_fdMonitor_GetContextPtr();
+    msgInterface_UnixService_t* servicePtr = le_fdMonitor_GetContextPtr();
 
     LE_ASSERT(fd == servicePtr->directorySocketFd);
 
@@ -671,7 +674,7 @@ static void DirectorySocketEventHandler
 //--------------------------------------------------------------------------------------------------
 static void StartMonitoringDirectorySocket
 (
-    msgInterface_Service_t*  servicePtr
+    msgInterface_UnixService_t*  servicePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -705,7 +708,7 @@ static void StartMonitoringDirectorySocket
 //--------------------------------------------------------------------------------------------------
 static void CloseAllSessions
 (
-    msgInterface_Service_t* servicePtr
+    msgInterface_UnixService_t* servicePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -802,7 +805,7 @@ void msgInterface_Init
 //--------------------------------------------------------------------------------------------------
 {
     // Create and initialize the pool of Service objects.
-    ServicePoolRef = le_mem_CreatePool("MessagingServices", sizeof(msgInterface_Service_t));
+    ServicePoolRef = le_mem_CreatePool("MessagingServices", sizeof(msgInterface_UnixService_t));
     le_mem_ExpandPool(ServicePoolRef, MAX_EXPECTED_SERVICES);
     le_mem_SetDestructor(ServicePoolRef, ServiceDestructor);
 
@@ -830,14 +833,6 @@ void msgInterface_Init
                                               MAX_EXPECTED_CLIENT_INTERFACES,
                                               ComputeInterfaceIdHash,
                                               AreInterfaceIdsTheSame);
-
-    // Create the key to be used to identify thread-local data records containing the Message
-    // Reference when running a Service's message receive handler.
-    int result = pthread_key_create(&ThreadLocalRxMsgKey, NULL);
-    if (result != 0)
-    {
-        LE_FATAL("Failed to create thread local key: result = %d (%s).", result, strerror(result));
-    }
 }
 
 
@@ -912,7 +907,18 @@ void msgInterface_Release
 
     LOCK
 
-    le_mem_Release(interfaceRef);
+    if (interfaceRef->interfaceType == LE_MSG_INTERFACE_SERVER)
+    {
+        le_mem_Release(CONTAINER_OF(interfaceRef, msgInterface_UnixService_t, interface));
+    }
+    else if (interfaceRef->interfaceType == LE_MSG_INTERFACE_CLIENT)
+    {
+        le_mem_Release(CONTAINER_OF(interfaceRef, msgInterface_ClientInterface_t, interface));
+    }
+    else
+    {
+        LE_FATAL("Unknown interface type %d", interfaceRef->interfaceType);
+    }
 
     UNLOCK
 }
@@ -967,13 +973,13 @@ void msgInterface_RemoveSession
 //--------------------------------------------------------------------------------------------------
 void msgInterface_CallCloseHandler
 (
-    le_msg_ServiceRef_t serviceRef,
+    msgInterface_UnixService_t* servicePtr,
     le_msg_SessionRef_t sessionRef
 )
 //--------------------------------------------------------------------------------------------------
 {
     // If there is a Close Handler registered, call it now.
-    le_dls_Link_t* closeLinkPtr = le_dls_Peek(&serviceRef->closeListPtr);
+    le_dls_Link_t* closeLinkPtr = le_dls_Peek(&servicePtr->closeListPtr);
 
     while (closeLinkPtr)
     {
@@ -984,7 +990,7 @@ void msgInterface_CallCloseHandler
             closeEventPtr->handler(sessionRef, closeEventPtr->contextPtr);
         }
 
-        closeLinkPtr = le_dls_PeekNext(&serviceRef->closeListPtr, closeLinkPtr);
+        closeLinkPtr = le_dls_PeekNext(&servicePtr->closeListPtr, closeLinkPtr);
     }
 }
 
@@ -996,29 +1002,22 @@ void msgInterface_CallCloseHandler
 //--------------------------------------------------------------------------------------------------
 void msgInterface_ProcessMessageFromClient
 (
-    le_msg_ServiceRef_t serviceRef, ///< [IN] Reference to the Service object.
+    msgInterface_UnixService_t* servicePtr, ///< [IN] Reference to the Service object.
     le_msg_MessageRef_t msgRef      ///< [IN] Message reference for the received message.
 )
 //--------------------------------------------------------------------------------------------------
 {
     // Pass the message to the server's registered receive handler, if there is one.
-    if (serviceRef->recvHandler != NULL)
+    if (servicePtr->recvHandler != NULL)
     {
-        // Set the thread-local received message reference so it can be retrieved by the handler.
-        pthread_setspecific(ThreadLocalRxMsgKey, msgRef);
-
-        // Call the handler function.
-        serviceRef->recvHandler(msgRef, serviceRef->recvContextPtr);
-
-        // Clear the thread-local reference.
-        pthread_setspecific(ThreadLocalRxMsgKey, NULL);
+        msgCommon_CallRecvHandler(servicePtr->recvHandler, msgRef, servicePtr->recvContextPtr);
     }
     // Discard the message if no handler is registered.
     else
     {
         LE_WARN("No service receive handler (%s:%s). Discarding message. Closing session.",
-                serviceRef->interface.id.name,
-                le_msg_GetProtocolIdStr(serviceRef->interface.id.protocolRef));
+                servicePtr->interface.id.name,
+                le_msg_GetProtocolIdStr(servicePtr->interface.id.protocolRef));
         le_msg_DeleteSession(le_msg_GetSession(msgRef));
         le_msg_ReleaseMsg(msgRef);
     }
@@ -1052,7 +1051,7 @@ le_msg_ServiceRef_t le_msg_CreateService
     LOCK
 
     // Get a Service object.
-    msgInterface_Service_t* servicePtr = GetService(protocolRef, interfaceName);
+    msgInterface_UnixService_t* servicePtr = GetService(protocolRef, interfaceName);
 
     // If the Service object already has a server thread, then it means that this service
     // is already being offered by someone else in this very process.
@@ -1065,7 +1064,7 @@ le_msg_ServiceRef_t le_msg_CreateService
 
     UNLOCK
 
-    return servicePtr;
+    return &servicePtr->service;
 }
 
 
@@ -1082,16 +1081,20 @@ void le_msg_DeleteService
 )
 //--------------------------------------------------------------------------------------------------
 {
-    LE_FATAL_IF(serviceRef->serverThread != le_thread_GetCurrent(),
+    LE_FATAL_IF(serviceRef->type != LE_MSG_SERVICE_UNIX_SOCKET,
+                "Local services cannot be deleted");
+    msgInterface_UnixService_t* servicePtr =
+        CONTAINER_OF(serviceRef, msgInterface_UnixService_t, service);
+    LE_FATAL_IF(servicePtr->serverThread != le_thread_GetCurrent(),
                 "Attempted to delete service (%s:%s) not owned by thread.",
-                serviceRef->interface.id.name,
-                le_msg_GetProtocolIdStr(serviceRef->interface.id.protocolRef));
+                servicePtr->interface.id.name,
+                le_msg_GetProtocolIdStr(servicePtr->interface.id.protocolRef));
 
     // If the service is still advertised, hide it.
-    le_msg_HideService(serviceRef);
+    le_msg_HideService(&servicePtr->service);
 
     // Close any remaining open sessions.
-    CloseAllSessions(serviceRef);
+    CloseAllSessions(servicePtr);
 
     // NOTE: Lock the mutex here to prevent a race between this thread dropping ownership
     // of the service and another thread trying to offer the same service.  This is very
@@ -1100,10 +1103,10 @@ void le_msg_DeleteService
     LOCK
 
     // Clear out the server thread reference.
-    serviceRef->serverThread = NULL;
+    servicePtr->serverThread = NULL;
 
     // Release the server's hold on the object.
-    le_mem_Release(serviceRef);
+    le_mem_Release(servicePtr);
 
     UNLOCK
 }
@@ -1124,12 +1127,24 @@ le_msg_SessionEventHandlerRef_t le_msg_AddServiceOpenHandler
 )
 //--------------------------------------------------------------------------------------------------
 {
-    LE_FATAL_IF(serviceRef == NULL,
+    LE_ASSERT(serviceRef != NULL);
+    if (serviceRef->type == LE_MSG_SERVICE_LOCAL)
+    {
+        LE_WARN("Local services cannot detect service open.");
+        return NULL;
+    }
+
+    LE_FATAL_IF(serviceRef->type != LE_MSG_SERVICE_UNIX_SOCKET,
+                "Corrupted service type: %d", serviceRef->type);
+
+    msgInterface_UnixService_t* servicePtr =
+        CONTAINER_OF(serviceRef, msgInterface_UnixService_t, service);
+    LE_FATAL_IF(servicePtr == NULL,
                 "Service doesn't exist. Make sure service is started before setting handlers");
-    LE_FATAL_IF(serviceRef->serverThread != le_thread_GetCurrent(),
+    LE_FATAL_IF(servicePtr->serverThread != le_thread_GetCurrent(),
                 "Service (%s:%s) not owned by calling thread.",
-                serviceRef->interface.id.name,
-                le_msg_GetProtocolIdStr(serviceRef->interface.id.protocolRef));
+                servicePtr->interface.id.name,
+                le_msg_GetProtocolIdStr(servicePtr->interface.id.protocolRef));
 
     // Create the node.
     SessionEventHandler_t* openEventPtr = le_mem_ForceAlloc(HandlerEventPoolRef);
@@ -1138,16 +1153,15 @@ le_msg_SessionEventHandlerRef_t le_msg_AddServiceOpenHandler
     openEventPtr->handler = handlerFunc;
     openEventPtr->contextPtr = contextPtr;
     openEventPtr->link = LE_DLS_LINK_INIT;
-    openEventPtr->listPtr = &serviceRef->openListPtr;
+    openEventPtr->listPtr = &servicePtr->openListPtr;
 
     // Add the node to the head of the list by passing in the node's link.
-    le_dls_Stack(&serviceRef->openListPtr, &openEventPtr->link);
+    le_dls_Stack(&servicePtr->openListPtr, &openEventPtr->link);
 
     // Need to return a unique reference that will be used by the remove function.
     openEventPtr->ref = le_ref_CreateRef(HandlersRefMap, &openEventPtr->link);
 
     return openEventPtr->ref;
-
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1168,10 +1182,22 @@ le_msg_SessionEventHandlerRef_t le_msg_AddServiceCloseHandler
 {
     LE_FATAL_IF(serviceRef == NULL,
                 "Service doesn't exist. Make sure service is started before setting handlers");
-    LE_FATAL_IF(serviceRef->serverThread != le_thread_GetCurrent(),
+    if (serviceRef->type == LE_MSG_SERVICE_LOCAL)
+    {
+        LE_WARN("Service close handler not supported for local services.");
+        return NULL;
+    }
+
+    LE_FATAL_IF(serviceRef->type != LE_MSG_SERVICE_UNIX_SOCKET,
+                "Corrupted service type: %d", serviceRef->type);
+    msgInterface_UnixService_t* servicePtr =
+        CONTAINER_OF(serviceRef, msgInterface_UnixService_t, service);
+    LE_FATAL_IF(servicePtr == NULL,
+                "Service doesn't exist. Make sure service is started before setting handlers");
+    LE_FATAL_IF(servicePtr->serverThread != le_thread_GetCurrent(),
                 "Service (%s:%s) not owned by calling thread.",
-                serviceRef->interface.id.name,
-                le_msg_GetProtocolIdStr(serviceRef->interface.id.protocolRef));
+                servicePtr->interface.id.name,
+                le_msg_GetProtocolIdStr(servicePtr->interface.id.protocolRef));
 
     // Create the node.
     SessionEventHandler_t* closeEventPtr = le_mem_ForceAlloc(HandlerEventPoolRef);
@@ -1180,10 +1206,10 @@ le_msg_SessionEventHandlerRef_t le_msg_AddServiceCloseHandler
     closeEventPtr->handler = handlerFunc;
     closeEventPtr->contextPtr = contextPtr;
     closeEventPtr->link = LE_DLS_LINK_INIT;
-    closeEventPtr->listPtr = &serviceRef->closeListPtr;
+    closeEventPtr->listPtr = &servicePtr->closeListPtr;
 
     // Add the node to the head of the list by passing in the node's link.
-    le_dls_Stack(&serviceRef->closeListPtr, &closeEventPtr->link);
+    le_dls_Stack(&servicePtr->closeListPtr, &closeEventPtr->link);
 
     // Need to return a unique reference that will be used by the remove function.
     closeEventPtr->ref = le_ref_CreateRef(HandlersRefMap, &closeEventPtr->link);
@@ -1243,13 +1269,31 @@ void le_msg_SetServiceRecvHandler
 )
 //--------------------------------------------------------------------------------------------------
 {
-    LE_FATAL_IF(serviceRef->serverThread != le_thread_GetCurrent(),
-                "Service (%s:%s) not owned by calling thread.",
-                serviceRef->interface.id.name,
-                le_msg_GetProtocolIdStr(serviceRef->interface.id.protocolRef));
+    switch(serviceRef->type)
+    {
+        case LE_MSG_SERVICE_LOCAL:
+            msgLocal_SetServiceRecvHandler(CONTAINER_OF(serviceRef,
+                                                        le_msg_LocalService_t,
+                                                        service),
+                                           handlerFunc, contextPtr);
+            break;
+        case LE_MSG_SERVICE_UNIX_SOCKET:
+        {
+            msgInterface_UnixService_t* servicePtr =
+                CONTAINER_OF(serviceRef, msgInterface_UnixService_t, service);
+            LE_FATAL_IF(servicePtr->serverThread != le_thread_GetCurrent(),
+                        "Service (%s:%s) not owned by calling thread.",
+                        servicePtr->interface.id.name,
+                        le_msg_GetProtocolIdStr(servicePtr->interface.id.protocolRef));
 
-    serviceRef->recvHandler = handlerFunc;
-    serviceRef->recvContextPtr = contextPtr;
+            servicePtr->recvHandler = handlerFunc;
+            servicePtr->recvContextPtr = contextPtr;
+            break;
+        }
+        default:
+            LE_FATAL("Corrupted service type: %d", serviceRef->type);
+            break;
+    }
 }
 
 
@@ -1270,7 +1314,21 @@ void le_msg_SetServiceContextPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    serviceRef->contextPtr = contextPtr;
+    switch (serviceRef->type)
+    {
+        case LE_MSG_SERVICE_LOCAL:
+            LE_FATAL("Cannot set service context pointer for a local service");
+            break;
+        case LE_MSG_SERVICE_UNIX_SOCKET:
+        {
+            msgInterface_UnixService_t* servicePtr =
+                CONTAINER_OF(serviceRef, msgInterface_UnixService_t, service);
+            servicePtr->contextPtr = contextPtr;
+            break;
+        }
+        default:
+            LE_FATAL("Corrupted service type: %d", serviceRef->type);
+    }
 }
 
 
@@ -1291,7 +1349,20 @@ void* le_msg_GetServiceContextPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return serviceRef->contextPtr;
+    switch (serviceRef->type)
+    {
+        case LE_MSG_SERVICE_LOCAL:
+            LE_FATAL("Cannot get service context pointer for a local service");
+            break;
+        case LE_MSG_SERVICE_UNIX_SOCKET:
+        {
+            msgInterface_UnixService_t* servicePtr =
+                CONTAINER_OF(serviceRef, msgInterface_UnixService_t, service);
+            return servicePtr->contextPtr;
+        }
+        default:
+            LE_FATAL("Corrupted service type: %d", serviceRef->type);
+    }
 }
 
 
@@ -1308,16 +1379,29 @@ void le_msg_AdvertiseService
 )
 //--------------------------------------------------------------------------------------------------
 {
-    LE_FATAL_IF(serviceRef->state != LE_MSG_INTERFACE_SERVICE_HIDDEN,
-                "Re-advertising before hiding service '%s:%s'.",
-                serviceRef->interface.id.name,
-                le_msg_GetProtocolIdStr(serviceRef->interface.id.protocolRef));
+    // Divert local services to msgLocal handler
+    if (serviceRef->type == LE_MSG_SERVICE_LOCAL)
+    {
+        msgLocal_AdvertiseService(CONTAINER_OF(serviceRef, le_msg_LocalService_t, service));
+        return;
+    }
+    else if (serviceRef->type != LE_MSG_SERVICE_UNIX_SOCKET)
+    {
+        LE_FATAL("Unsupported service type: %d", serviceRef->type);
+    }
 
-    serviceRef->state = LE_MSG_INTERFACE_SERVICE_CONNECTING;
+    msgInterface_UnixService_t* servicePtr =
+        CONTAINER_OF(serviceRef, msgInterface_UnixService_t, service);
+    LE_FATAL_IF(servicePtr->state != LE_MSG_INTERFACE_SERVICE_HIDDEN,
+                "Re-advertising before hiding service '%s:%s'.",
+                servicePtr->interface.id.name,
+                le_msg_GetProtocolIdStr(servicePtr->interface.id.protocolRef));
+
+    servicePtr->state = LE_MSG_INTERFACE_SERVICE_CONNECTING;
 
     // Open a socket.
     int fd = unixSocket_CreateSeqPacketUnnamed();
-    serviceRef->directorySocketFd = fd;
+    servicePtr->directorySocketFd = fd;
 
     // Check for failure.
     LE_FATAL_IF(fd == LE_NOT_PERMITTED, "Permission to open socket denied.");
@@ -1350,7 +1434,7 @@ void le_msg_AdvertiseService
     fd_SetNonBlocking(fd);
 
     // Start monitoring the socket for events.
-    StartMonitoringDirectorySocket(serviceRef);
+    StartMonitoringDirectorySocket(servicePtr);
 
     // Connect the socket to the Service Directory.
     le_result_t result = unixSocket_Connect(fd, LE_SVCDIR_SERVER_SOCKET_NAME);
@@ -1378,15 +1462,28 @@ void le_msg_HideService
 )
 //--------------------------------------------------------------------------------------------------
 {
+    if (serviceRef->type == LE_MSG_SERVICE_LOCAL)
+    {
+        LE_WARN("Local services cannot be hidden");
+        return;
+    }
+    else if (serviceRef->type != LE_MSG_SERVICE_UNIX_SOCKET)
+    {
+        LE_FATAL("Unsupported service type %d", serviceRef->type);
+    }
+
+    msgInterface_UnixService_t* servicePtr =
+        CONTAINER_OF(serviceRef, msgInterface_UnixService_t, service);
+
     // Stop monitoring the directory socket.
-    le_fdMonitor_Delete(serviceRef->fdMonitorRef);
-    serviceRef->fdMonitorRef = NULL;
+    le_fdMonitor_Delete(servicePtr->fdMonitorRef);
+    servicePtr->fdMonitorRef = NULL;
 
     // Close the connection with the Service Directory.
-    fd_Close(serviceRef->directorySocketFd);
-    serviceRef->directorySocketFd = -1;
+    fd_Close(servicePtr->directorySocketFd);
+    servicePtr->directorySocketFd = -1;
 
-    serviceRef->state = LE_MSG_INTERFACE_SERVICE_HIDDEN;
+    servicePtr->state = LE_MSG_INTERFACE_SERVICE_HIDDEN;
 }
 
 
@@ -1405,6 +1502,7 @@ const char* le_msg_GetInterfaceName
 )
 //--------------------------------------------------------------------------------------------------
 {
+    LE_ASSERT(interfaceRef);
     return interfaceRef->id.name;
 }
 
@@ -1422,24 +1520,6 @@ le_msg_ProtocolRef_t le_msg_GetInterfaceProtocol
 )
 //--------------------------------------------------------------------------------------------------
 {
+    LE_ASSERT(interfaceRef);
     return interfaceRef->id.protocolRef;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Check whether or not the calling thread is currently running a Service's message receive handler,
- * and if so, return a reference to the message object being handled.
- *
- * @return  A reference to the message being handled, or NULL if no Service message receive handler
- *          is currently running.
- **/
-//--------------------------------------------------------------------------------------------------
-le_msg_MessageRef_t le_msg_GetServiceRxMsg
-(
-    void
-)
-//--------------------------------------------------------------------------------------------------
-{
-    return pthread_getspecific(ThreadLocalRxMsgKey);
 }

@@ -51,6 +51,14 @@ typedef struct PathIterator_t
 }
 PathIterator_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static pool for path iterators
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(PathIterator, LE_CONFIG_MAX_PATH_ITERATOR_POOL_SIZE,
+    sizeof(PathIterator_t));
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -59,6 +67,13 @@ PathIterator_t;
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t PathIteratorPool = NULL;
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static map of object refs to help validate external accesses to this API.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(PathIteratorMap, LE_CONFIG_MAX_PATH_ITERATOR_POOL_SIZE);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -529,8 +544,10 @@ void pathIter_Init
     void
 )
 {
-    PathIteratorPool = le_mem_CreatePool("PathIteratorPool", sizeof(PathIterator_t));
-    PathIteratorMap = le_ref_CreateMap("PathIteratorMap", 10);
+    PathIteratorPool = le_mem_InitStaticPool(PathIterator,
+                                             LE_CONFIG_MAX_PATH_ITERATOR_POOL_SIZE,
+                                             sizeof(PathIterator_t));
+    PathIteratorMap = le_ref_InitStaticMap(PathIteratorMap, LE_CONFIG_MAX_PATH_ITERATOR_POOL_SIZE);
 }
 
 

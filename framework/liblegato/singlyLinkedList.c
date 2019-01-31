@@ -6,6 +6,18 @@
 #include "legato.h"
 
 
+//--------------------------------------------------------------------------------------------------
+// Create definitions for inlineable functions
+//
+// See le_singlyLinkedList.h for bodies & documentation
+//--------------------------------------------------------------------------------------------------
+LE_DEFINE_INLINE bool le_sls_IsEmpty(const le_sls_List_t* listPtr);
+LE_DEFINE_INLINE bool le_sls_IsHead(const le_sls_List_t* listPtr,
+                                    const le_sls_Link_t* linkPtr);
+LE_DEFINE_INLINE bool le_sls_IsTail(const le_sls_List_t* listPtr,
+                                    const le_sls_Link_t* linkPtr);
+
+
 //------------------------------------------------------------------------------------------------------------
 /**
  * Adds a link at the head of the list.
@@ -17,6 +29,9 @@ void le_sls_Stack
     le_sls_Link_t* newLinkPtr          ///< [IN] The new link to add.
 )
 {
+    // Ensure link isn't already on a list
+    LE_ASSERT(newLinkPtr && !newLinkPtr->nextPtr);
+
     if (listPtr->tailLinkPtr == NULL)
     {
         // Add to an empty list.
@@ -46,6 +61,9 @@ void le_sls_Queue
     le_sls_Link_t* newLinkPtr          ///< [IN] The new link to add.
 )
 {
+    // Ensure link isn't already on a list
+    LE_ASSERT(newLinkPtr && !newLinkPtr->nextPtr);
+
     if (listPtr->tailLinkPtr == NULL)
     {
         // Add to an empty list.
@@ -73,6 +91,15 @@ void le_sls_AddAfter
     le_sls_Link_t* newLinkPtr          ///< [IN] The new link to add.
 )
 {
+    // Ensure link isn't already on a list
+    LE_ASSERT(newLinkPtr && !newLinkPtr->nextPtr);
+
+    if (!currentLinkPtr)
+    {
+        le_sls_Stack(listPtr, newLinkPtr);
+        return;
+    }
+
     newLinkPtr->nextPtr = currentLinkPtr->nextPtr;
     currentLinkPtr->nextPtr = newLinkPtr;
 
@@ -86,8 +113,9 @@ void le_sls_AddAfter
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Removes the link found after currentLinkPtr.  The user must ensure that currentLinkPtr is in the
- * list otherwise the behaviour of this function is undefined.
+ * Removes the link found after currentLinkPtr.  If currentLinkPtr is NULL it will remove the
+ * first item of the list.  The user must ensure that currentLinkPtr is in the
+ * list or NULL otherwise the behaviour of this function is undefined.
  *
  * @return
  *      Pointer to the removed link.
@@ -101,6 +129,11 @@ le_sls_Link_t* le_sls_RemoveAfter
                                        ///<      list.
 )
 {
+    if (!currentLinkPtr)
+    {
+        return le_sls_Pop(listPtr);
+    }
+
     // Are there any items in the list after the current one?
     le_sls_Link_t* nextPtr = currentLinkPtr->nextPtr;
 
@@ -153,6 +186,7 @@ le_sls_Link_t* le_sls_Pop
         le_sls_Link_t* linkToPopPtr = listPtr->tailLinkPtr;
 
         listPtr->tailLinkPtr = NULL;
+        linkToPopPtr->nextPtr = NULL;
 
         return linkToPopPtr;
     }
@@ -161,6 +195,7 @@ le_sls_Link_t* le_sls_Pop
         le_sls_Link_t* linkToPopPtr = listPtr->tailLinkPtr->nextPtr;
 
         listPtr->tailLinkPtr->nextPtr = linkToPopPtr->nextPtr;
+        linkToPopPtr->nextPtr = NULL;
 
         return linkToPopPtr;
     }
@@ -234,6 +269,100 @@ le_sls_Link_t* le_sls_PeekNext
     return currentLinkPtr->nextPtr;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sort a list in ascending order.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sls_Sort
+(
+    le_sls_List_t* listPtr,                 ///< [IN] List to sort
+    le_sls_LessThanFunc_t comparatorPtr     ///< [IN] Comparator function for sorting
+)
+{
+    size_t sublistSize = 1;
+
+    if (le_sls_IsEmpty(listPtr))
+    {
+        // Empty lists are sorted by definition
+        return;
+    }
+
+    while (1)
+    {
+        // Start a new run through the list, sorting lists of size sublistSizse
+        le_sls_Link_t *listAHead, *listBHead, *prevAHead = NULL, *prevBHead = NULL;
+        listAHead = le_sls_Peek(listPtr);
+
+        // Merge each pair of sublists, bottom up.
+        while (listAHead)
+        {
+            le_sls_Link_t* initialAHead = listAHead;
+
+            // By first searching for the second sublist.
+            size_t nodeCount;
+            listBHead = listAHead;
+            for (nodeCount = 0; (nodeCount < sublistSize) && listBHead; ++nodeCount)
+            {
+                prevBHead = listBHead;
+                listBHead = le_sls_PeekNext(listPtr, listBHead);
+            }
+
+            // Then merge the first sublist with the second sublist.
+            nodeCount = 0;
+            while (listBHead && (nodeCount < sublistSize))
+            {
+                if (listAHead == listBHead)
+                {
+                    // Finished looping through list A, so just add the rest of list B
+                    // to the end of list A.
+                    prevAHead = prevBHead = listBHead;
+                    listAHead = listBHead = le_sls_PeekNext(listPtr, listBHead);
+                    ++nodeCount;
+                }
+                else if (comparatorPtr(listAHead, listBHead))
+                {
+                    // A belongs before B, so just move to the next node
+                    // in A
+                    prevAHead = listAHead;
+                    listAHead = le_sls_PeekNext(listPtr, listAHead);
+                }
+                else
+                {
+                    // B goes before A.  Move it there
+                    le_sls_Link_t *nextB = le_sls_PeekNext(listPtr, listBHead);
+                    le_sls_RemoveAfter(listPtr, prevBHead);
+                    le_sls_AddAfter(listPtr, prevAHead, listBHead);
+
+                    // Node before A head is now the moved node
+                    prevAHead = listBHead;
+                    // Update to the next node in B list.  Previous node in B list stays
+                    // the same.
+                    listBHead = nextB;
+                    ++nodeCount;
+                }
+            }
+
+            // If B hit the end of the list before processing all elements of list A, just add
+            // rest of list A to the sorted list
+            listAHead = listBHead;
+            prevAHead = prevBHead;
+
+            // Done merging A & B lists -- check if this pass caught the whole list
+            if (!listBHead && initialAHead == le_sls_Peek(listPtr))
+            {
+                return;
+            }
+
+            // Otherwise we're already in position for the next
+            // pair of lists, so merge them.
+        }
+
+        // Now repeat on sub lists which are twice the size
+        sublistSize *= 2;
+    }
+}
 
 //------------------------------------------------------------------------------------------------------------
 /**
@@ -346,4 +475,3 @@ bool le_sls_IsListCorrupted
 
     return false;
 }
-

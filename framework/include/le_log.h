@@ -93,13 +93,13 @@
  * @code
  * if (result == -1)
  * {
- *     LE_WARN("Failed to send message to server.  Errno = %m.");
+ *     LE_WARN("Failed to send message to server.  Errno = %d.", errno);
  * }
  * @endcode
  *
  * you could write this:
  * @code
- * LE_WARN_IF(result == -1, "Failed to send message to server.  Errno = %m.");
+ * LE_WARN_IF(result == -1, "Failed to send message to server.  Errno = %d.", errno);
  * @endcode
  *
  * @subsection c_log_loging_fatals Fatal Errors
@@ -384,6 +384,27 @@ typedef enum
 }
 le_log_Level_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Compile-time filtering level.
+ *
+ * @note Logs below this filter level will be removed at compile-time and cannot be enabled
+ *       at runtime.
+ */
+//--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_LOG_STATIC_FILTER_EMERG
+#   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_EMERG
+#elif LE_CONFIG_LOG_STATIC_FILTER_CRIT
+#   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_CRIT
+#elif LE_CONFIG_LOG_STATIC_FILTER_ERR
+#   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_ERR
+#elif LE_CONFIG_LOG_STATIC_FILTER_WARN
+#   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_WARN
+#elif LE_CONFIG_LOG_STATIC_FILTER_INFO
+#   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_INFO
+#else /* default to LE_DEBUG */
+#   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_DEBUG
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /// @cond HIDDEN_IN_USER_DOCS
@@ -392,6 +413,14 @@ typedef struct le_log_Session* le_log_SessionRef_t;
 
 typedef struct le_log_Trace* le_log_TraceRef_t;
 
+#if !defined(LE_DEBUG) && \
+    !defined(LE_DUMP) && \
+    !defined(LE_LOG_DUMP) && \
+    !defined(LE_INFO) && \
+    !defined(LE_WARN) && \
+    !defined(LE_ERROR) && \
+    !defined(LE_CRIT) && \
+    !defined(LE_EMERG)
 void _le_log_Send
 (
     const le_log_Level_t level,
@@ -418,6 +447,7 @@ void _le_log_SetFilterLevel
 
 void _le_LogData
 (
+    const le_log_Level_t level,         // log level
     const uint8_t* dataPtr,             // The buffer address to be dumped
     int dataLength,                     // The data length of buffer
     const char* filenamePtr,            // The name of the source file that logged the message.
@@ -434,10 +464,7 @@ void _le_LogData
  *       variable for each component.
  */
 //--------------------------------------------------------------------------------------------------
-#ifdef __cplusplus
-extern
-#endif
-LE_SHARED le_log_SessionRef_t LE_LOG_SESSION;
+extern LE_SHARED le_log_SessionRef_t LE_LOG_SESSION;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -447,11 +474,18 @@ LE_SHARED le_log_SessionRef_t LE_LOG_SESSION;
  *       variable for each component.
  */
 //--------------------------------------------------------------------------------------------------
-#ifdef __cplusplus
-extern
-#endif
-LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
+extern LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal macro to set whether the function name is displayed with log messages.
+ */
+//--------------------------------------------------------------------------------------------------
+#ifndef LE_LOG_EXCLUDE_FUNCTION_NAME
+#   define _LE_LOG_FUNCTION_NAME __func__
+#else
+#   define _LE_LOG_FUNCTION_NAME NULL
+#endif
 
 /// @endcond
 //--------------------------------------------------------------------------------------------------
@@ -463,8 +497,9 @@ LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 //--------------------------------------------------------------------------------------------------
 #define _LE_LOG_MSG(level, formatString, ...) \
     do { \
-        if ((LE_LOG_LEVEL_FILTER_PTR == NULL) || (level >= *LE_LOG_LEVEL_FILTER_PTR)) \
-            _le_log_Send(level, NULL, LE_LOG_SESSION, STRINGIZE(LE_FILENAME), __func__, __LINE__, \
+        if ((level >= LE_LOG_LEVEL_STATIC_FILTER) &&                        \
+            ((LE_LOG_LEVEL_FILTER_PTR == NULL) || (level >= *LE_LOG_LEVEL_FILTER_PTR))) \
+            _le_log_Send(level, NULL, LE_LOG_SESSION, __FILE__, _LE_LOG_FUNCTION_NAME, __LINE__, \
                     formatString, ##__VA_ARGS__); \
     } while(0)
 
@@ -480,8 +515,30 @@ LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 
 /** @copydoc LE_LOG_DEBUG */
 #define LE_DEBUG(formatString, ...)     _LE_LOG_MSG(LE_LOG_DEBUG, formatString, ##__VA_ARGS__)
-/** @copydoc LE_LOG_DATA */
-#define LE_DUMP(dataPtr, dataLength)    _le_LogData(dataPtr, dataLength, STRINGIZE(LE_FILENAME), __func__, __LINE__)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Dump a buffer of data as hexadecimal to the log at debug level.
+ *
+ *  @param  dataPtr     Binary data to dump.
+ *  @param  dataLength  Length og the buffer.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_DUMP(dataPtr, dataLength)                                                              \
+    _le_LogData(LE_LOG_DEBUG, dataPtr, dataLength, STRINGIZE(LE_FILENAME), _LE_LOG_FUNCTION_NAME, \
+        __LINE__)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Dump a buffer of data as hexadecimal to the log at the specified level.
+ *
+ *  @param  level       Log level.
+ *  @param  dataPtr     Binary data to dump.
+ *  @param  dataLength  Length of the buffer.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_LOG_DUMP(level, dataPtr, dataLength) \
+    _le_LogData(level, dataPtr, dataLength, STRINGIZE(LE_FILENAME), _LE_LOG_FUNCTION_NAME, __LINE__)
 /** @copydoc LE_LOG_INFO */
 #define LE_INFO(formatString, ...)      _LE_LOG_MSG(LE_LOG_INFO, formatString, ##__VA_ARGS__)
 /** @copydoc LE_LOG_WARN */
@@ -493,6 +550,267 @@ LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 /** @copydoc LE_LOG_EMERG */
 #define LE_EMERG(formatString, ...)     _LE_LOG_MSG(LE_LOG_EMERG, formatString, ##__VA_ARGS__)
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Queries whether or not a trace keyword is enabled.
+ *
+ * @return
+ *      true if the keyword is enabled.
+ *      false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_IS_TRACE_ENABLED(traceRef)  (le_log_IsTraceEnabled(traceRef))
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Logs the string if the keyword has been enabled by a runtime tool or configuration setting.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_TRACE(traceRef, string, ...)         \
+        if (le_log_IsTraceEnabled(traceRef))    \
+        {                                       \
+            _le_log_Send((le_log_Level_t)-1,    \
+                    traceRef,                   \
+                    LE_LOG_SESSION,             \
+                    STRINGIZE(LE_FILENAME),     \
+                    _LE_LOG_FUNCTION_NAME,      \
+                    __LINE__,                   \
+                    string,                     \
+                    ##__VA_ARGS__);             \
+        }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets a reference to a trace keyword's settings.
+ *
+ * @param keywordPtr   [IN] Pointer to the keyword string.
+ *
+ * @return  Trace reference.
+ **/
+//--------------------------------------------------------------------------------------------------
+#define le_log_GetTraceRef(keywordPtr)                  \
+    _le_log_GetTraceRef(LE_LOG_SESSION, (keywordPtr))
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Determines if a trace is currently enabled.
+ *
+ * @param traceRef    [IN] Trace reference obtained from le_log_GetTraceRef()
+ *
+ * @return  true if enabled, false if not.
+ **/
+//--------------------------------------------------------------------------------------------------
+#define le_log_IsTraceEnabled(traceRef)         \
+    (*((bool*)(traceRef)))
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the log filter level for the calling component.
+ *
+ * @note    Normally not necessary as the log filter level can be controlled at
+ *          runtime using the log control tool, and can be persistently configured.
+ *          See @ref c_log_controlling.
+ *
+ * @param level   [IN] Log filter level to apply to the current log session.
+ **/
+//--------------------------------------------------------------------------------------------------
+#define le_log_SetFilterLevel(level)                    \
+    _le_log_SetFilterLevel(LE_LOG_SESSION, (level))
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the log filter level for the calling component.
+ **/
+//--------------------------------------------------------------------------------------------------
+#define le_log_GetFilterLevel()                 \
+    ((LE_LOG_LEVEL_FILTER_PTR != NULL)?(*LE_LOG_LEVEL_FILTER_PTR):(LE_LOG_INFO))
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enables a trace.
+ *
+ * @note    Normally, this is not necessary, since traces can be enabled at runtime using the
+ *          log control tool and can be persistently configured.  See @ref c_log_controlling.
+ *
+ * @param traceRef    [IN] Trace reference obtained from le_log_GetTraceRef()
+ *
+ **/
+//--------------------------------------------------------------------------------------------------
+#define le_log_EnableTrace(traceRef)            \
+    ((void)(*((bool*)(traceRef)) = true))
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disables a trace.
+ *
+ * @note    Normally, this is not necessary, since traces can be enabled at runtime using the
+ *          log control tool and can be persistently configured.  See @ref c_log_controlling.
+ *
+ * @param traceRef    [IN] Trace reference obtained from le_log_GetTraceRef()
+ *
+ **/
+//--------------------------------------------------------------------------------------------------
+#define le_log_DisableTrace(traceRef)           \
+    ((void)(*((bool*)(traceRef)) = false))
+
+#else
+
+// If any logging macro is overridden, all logging macros must be overridden.
+#if !defined(LE_DEBUG)
+#  error "Logging are overridden, but LE_DEBUG not defined.  Define LE_DEBUG."
+#endif
+
+#if !defined(LE_DUMP)
+#  error "Logging are overridden, but LE_DUMP not defined.  Define LE_DUMP."
+#endif
+
+#if !defined(LE_LOG_DUMP)
+#  error "Logging are overridden, but LE_LOG_DUMP not defined.  Define LE_LOG_DUMP."
+#endif
+
+#if !defined(LE_INFO)
+#  error "Logging are overridden, but LE_INFO not defined.  Define LE_INFO."
+#endif
+
+#if !defined(LE_WARN)
+#  error "Logging are overridden, but LE_WARN not defined.  Define LE_WARN."
+#endif
+
+#if !defined(LE_ERROR)
+#  error "Logging are overridden, but LE_ERROR not defined.  Define LE_ERROR."
+#endif
+
+#if !defined(LE_CRIT)
+#  error "Logging are overridden, but LE_CRIT not defined.  Define LE_CRIT."
+#endif
+
+#if !defined(LE_EMERG)
+#  error "Logging are overridden, but LE_EMERG not defined.  Define LE_EMERG."
+#endif
+
+// If SetFilterLevel is not defined when logging is overridden,
+// assume it cannot be set programatically
+#ifndef le_log_SetFilterLevel
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the log filter level for the calling component.
+ *
+ * @note    Normally not necessary as the log filter level can be controlled at
+ *          runtime using the log control tool, and can be persistently configured.
+ *          See @ref c_log_controlling.
+ *
+ * @param level   [IN] Log filter level to apply to the current log session.
+ **/
+//--------------------------------------------------------------------------------------------------
+#define le_log_SetFilterLevel(level) ((void)(level))
+#endif
+
+
+// If le_log_GetFilterLevel is not defined when logging is overridden, assume it
+// cannot be obtained programatically.  In this case code should assume filter level
+// is equal to static filter level
+#ifndef le_log_GetFilterLevel
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the log filter level for the calling component.
+ **/
+//--------------------------------------------------------------------------------------------------
+#define le_log_GetFilterLevel()  (LE_LOG_LEVEL_STATIC_FILTER)
+#endif
+
+//--------------------------------------------------------------------------------------------------
+/*
+ * If logging is overridden, disable Legato tracing mechanism.  Tracing is noisy and should
+ * not be put into general logs.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Queries whether or not a trace keyword is enabled.
+ *
+ * @return
+ *      true if the keyword is enabled.
+ *      false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_IS_TRACE_ENABLED(traceRef)  (false)
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Logs the string if the keyword has been enabled by a runtime tool or configuration setting.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_TRACE(traceRef, string, ...) ((void)0)
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets a reference to a trace keyword's settings.
+ *
+ * @param keywordPtr   [IN] Pointer to the keyword string.
+ *
+ * @return  Trace reference.
+ **/
+//--------------------------------------------------------------------------------------------------
+#define le_log_GetTraceRef(keywordPtr) ((le_log_TraceRef_t)NULL)
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Determines if a trace is currently enabled.
+ *
+ * @param traceRef    [IN] Trace reference obtained from le_log_GetTraceRef()
+ *
+ * @return  true if enabled, false if not.
+ **/
+//--------------------------------------------------------------------------------------------------
+#define le_log_IsTraceEnabled(traceRef) (false)
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enables a trace.
+ *
+ * @note    Normally, this is not necessary, since traces can be enabled at runtime using the
+ *          log control tool and can be persistently configured.  See @ref c_log_controlling.
+ *
+ * @param traceRef    [IN] Trace reference obtained from le_log_GetTraceRef()
+ *
+ **/
+//--------------------------------------------------------------------------------------------------
+#define le_log_EnableTrace(traceRef) ((void)(0))
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disables a trace.
+ *
+ * @note    Normally, this is not necessary, since traces can be enabled at runtime using the
+ *          log control tool and can be persistently configured.  See @ref c_log_controlling.
+ *
+ * @param traceRef    [IN] Trace reference obtained from le_log_GetTraceRef()
+ *
+ **/
+//--------------------------------------------------------------------------------------------------
+#define le_log_DisableTrace(traceRef) ((void)(0))
+
+#endif /* Logging macro override */
+
+/// Function that does the real work of translating result codes.  See @ref LE_RESULT_TXT.
+const char* _le_log_GetResultCodeString
+(
+    le_result_t resultCode  ///< [in] Result code value to be translated.
+);
 
 //--------------------------------------------------------------------------------------------------
 /** @internal
@@ -507,22 +825,22 @@ LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 
 /** @ref LE_DEBUG if condition is met. */
 #define LE_DEBUG_IF(condition, formatString, ...) \
-        if (condition) { _LE_LOG_MSG(LE_LOG_DEBUG, formatString, ##__VA_ARGS__); }
+        if (condition) { LE_DEBUG(formatString, ##__VA_ARGS__); }
 /** @ref LE_INFO if condition is met. */
 #define LE_INFO_IF(condition, formatString, ...) \
-        if (condition) { _LE_LOG_MSG(LE_LOG_INFO, formatString, ##__VA_ARGS__); }
+        if (condition) { LE_INFO(formatString, ##__VA_ARGS__); }
 /** @ref LE_WARN if condition is met. */
 #define LE_WARN_IF(condition, formatString, ...) \
-        if (condition) { _LE_LOG_MSG(LE_LOG_WARN, formatString, ##__VA_ARGS__); }
+        if (condition) { LE_WARN(formatString, ##__VA_ARGS__); }
 /** @ref LE_ERROR if condition is met. */
 #define LE_ERROR_IF(condition, formatString, ...) \
-        if (condition) { _LE_LOG_MSG(LE_LOG_ERR, formatString, ##__VA_ARGS__); }
+        if (condition) { LE_ERROR(formatString, ##__VA_ARGS__); }
 /** @ref LE_CRIT if condition is met. */
 #define LE_CRIT_IF(condition, formatString, ...) \
-        if (condition) { _LE_LOG_MSG(LE_LOG_CRIT, formatString, ##__VA_ARGS__); }
+        if (condition) { LE_CRIT(formatString, ##__VA_ARGS__); }
 /** @ref LE_EMERG if condition is met. */
 #define LE_EMERG_IF(condition, formatString, ...) \
-        if (condition) { _LE_LOG_MSG(LE_LOG_EMERG, formatString, ##__VA_ARGS__); }
+        if (condition) { LE_EMERG(formatString, ##__VA_ARGS__); }
 
 
 //--------------------------------------------------------------------------------------------------
@@ -557,8 +875,13 @@ LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
  * a message at EMERGENCY level and then kills the calling process.
  */
 //--------------------------------------------------------------------------------------------------
-#define LE_ASSERT(condition) \
-        if (!(condition)) { LE_FATAL("Assert Failed: '%s'", #condition) }
+#define LE_ASSERT(condition)                            \
+    if (!(condition))                                   \
+    {                                                   \
+        LE_EMERG("Assert Failed: '%s'", #condition);    \
+        LE_BACKTRACE("Assertion Call Stack");           \
+        exit(EXIT_FAILURE);                             \
+    }
 
 
 //--------------------------------------------------------------------------------------------------
@@ -567,8 +890,13 @@ LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
  * not evaluate to LE_OK (0) in a message at EMERGENCY level and then kills the calling process.
  */
 //--------------------------------------------------------------------------------------------------
-#define LE_ASSERT_OK(condition) \
-        if ((condition) != LE_OK) { LE_FATAL("Assert Failed: '%s' is not LE_OK (0)", #condition) }
+#define LE_ASSERT_OK(condition)                                         \
+    if ((condition) != LE_OK)                                           \
+    {                                                                   \
+        LE_EMERG("Assert Failed: '%s' is not LE_OK (0)", #condition);   \
+        LE_BACKTRACE("Assertion Call Stack");                           \
+        exit(EXIT_FAILURE);                                             \
+    }
 
 
 //--------------------------------------------------------------------------------------------------
@@ -584,149 +912,6 @@ LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
  */
 //--------------------------------------------------------------------------------------------------
 #define LE_RESULT_TXT(v) _le_log_GetResultCodeString(v)
-
-/// Function that does the real work of translating result codes.  See @ref LE_RESULT_TXT.
-const char* _le_log_GetResultCodeString
-(
-    le_result_t resultCode  ///< [in] Result code value to be translated.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Queries whether or not a trace keyword is enabled.
- *
- * @return
- *      true if the keyword is enabled.
- *      false otherwise.
- */
-//--------------------------------------------------------------------------------------------------
-#define LE_IS_TRACE_ENABLED(traceRef)  (le_log_IsTraceEnabled(traceRef))
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Logs the string if the keyword has been enabled by a runtime tool or configuration setting.
- */
-//--------------------------------------------------------------------------------------------------
-#define LE_TRACE(traceRef, string, ...)         \
-        if (le_log_IsTraceEnabled(traceRef))    \
-        {                                       \
-            _le_log_Send((le_log_Level_t)-1,    \
-                    traceRef,                   \
-                    LE_LOG_SESSION,             \
-                    STRINGIZE(LE_FILENAME),     \
-                    __func__,                   \
-                    __LINE__,                   \
-                    string,                     \
-                    ##__VA_ARGS__);             \
-        }
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets a reference to a trace keyword's settings.
- *
- * @return  Trace reference.
- **/
-//--------------------------------------------------------------------------------------------------
-static inline le_log_TraceRef_t le_log_GetTraceRef
-(
-    const char* keywordPtr      ///< [IN] Pointer to the keyword string.
-)
-{
-    return _le_log_GetTraceRef(LE_LOG_SESSION, keywordPtr);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Determines if a trace is currently enabled.
- *
- * @return  true if enabled, false if not.
- **/
-//--------------------------------------------------------------------------------------------------
-static inline bool le_log_IsTraceEnabled
-(
-    const le_log_TraceRef_t traceRef    ///< [IN] Trace reference obtained from le_log_GetTraceRef().
-)
-{
-    return *((bool*)traceRef);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Sets the log filter level for the calling component.
- *
- * @note    Normally not necessary as the log filter level can be controlled at
- *          runtime using the log control tool, and can be persistently configured.
- *          See @ref c_log_controlling.
- **/
-//--------------------------------------------------------------------------------------------------
-static inline void le_log_SetFilterLevel
-(
-    le_log_Level_t level    ///< [IN] Log filter level to apply to the current log session.
-)
-{
-    _le_log_SetFilterLevel(LE_LOG_SESSION, level);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the log filter level for the calling component.
- **/
-//--------------------------------------------------------------------------------------------------
-static inline le_log_Level_t le_log_GetFilterLevel
-(
-    void
-)
-{
-    if (LE_LOG_LEVEL_FILTER_PTR != NULL)
-    {
-        return *LE_LOG_LEVEL_FILTER_PTR;
-    }
-    else
-    {
-        return LE_LOG_INFO; // Default.
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Enables a trace.
- *
- * @note    Normally, this is not necessary, since traces can be enabled at runtime using the
- *          log control tool and can be persistently configured.  See @ref c_log_controlling.
- **/
-//--------------------------------------------------------------------------------------------------
-static inline void le_log_EnableTrace
-(
-    const le_log_TraceRef_t traceRef    ///< [IN] Trace reference obtained from le_log_GetTraceRef().
-)
-{
-    *((bool*)traceRef) = true;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Disables a trace.
- *
- * @note    Normally, this is not necessary, since traces can be enabled at runtime using the
- *          log control tool and can be persistently configured.  See @ref c_log_controlling.
- **/
-//--------------------------------------------------------------------------------------------------
-static inline void le_log_DisableTrace
-(
-    const le_log_TraceRef_t traceRef    ///< [IN] Trace reference obtained from le_log_GetTraceRef()
-)
-{
-    *((bool*)traceRef) = false;
-}
-
 
 
 #endif // LEGATO_LOG_INCLUDE_GUARD

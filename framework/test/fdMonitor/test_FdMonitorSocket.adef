@@ -1,0 +1,21 @@
+start: manual
+
+executables:
+{
+    testFdMonitorSrv = (fdMonitorServerComponent)
+    testFdMonitorClnt = (fdMonitorClientComponent)
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        (testFdMonitorSrv)
+        (testFdMonitorClnt)
+    }
+}

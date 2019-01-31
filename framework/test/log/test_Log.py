@@ -3,12 +3,12 @@
 #
 
 app_name = 'logTester'
-logStrings = [ '(DBUG \| [^|]* \| [^|]* \| frame 0 msg)',
-               '(INFO \| [^|]* \| [^|]* \| frame 1 msg)',
-               '(-WRN- \| [^|]* \| [^|]* \| frame 2 msg)',
-               '(=ERR= \| [^|]* \| [^|]* \| frame 3 msg)',
-               '(\*CRT\* \| [^|]* \| [^|]* \| frame 4 msg)',
-               '(\*EMR\* \| [^|]* \| [^|]* \| frame 5 msg)' ]
+logStrings = [ '[^|]* \| [^|]* \| frame 0 msg',
+               '[^|]* \| [^|]* \| frame 1 msg',
+               '[^|]* \| [^|]* \| frame 2 msg',
+               '[^|]* \| [^|]* \| frame 3 msg',
+               '[^|]* \| [^|]* \| frame 4 msg',
+               '[^|]* \| [^|]* \| frame 5 msg' ]
 
 def testLogFilter(target):
     for filterLevel in range(len(logStrings)):

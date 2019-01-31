@@ -10,13 +10,17 @@
  * It's designed to support higher layers of the messaging system.  But it's also
  * intended to be easy to hand-code low-level messaging in C, when necessary.
  *
+ * Two messaging types are supported, Local and Socket.  "Local" allows logically distinct apps to
+ * be combined in one executable, and essentially mediates the direct function calls between them.
+ * "Socket" uses UNIX domain sockets to communicate between distinct processes.
+ *
  * This low-level messaging API supports:
- *  - remote party identification (addressing)
- *  - very late (runtime) discovery and binding of parties
- *  - in-process and inter-process message delivery
+ *  - (Socket only) remote party identification (addressing)
+ *  - (Socket only) very late (runtime) discovery and binding of parties
+ *  - (Socket only) in-process and inter-process message delivery
  *  - location transparency
  *  - sessions
- *  - access control
+ *  - (Socket only) access control
  *  - request/reply transactions
  *  - message buffer memory management
  *  - support for single-threaded and multi-threaded programs
@@ -926,6 +930,95 @@ typedef void (* le_msg_ResponseCallback_t)
 );
 
 
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generic service object.  Used internally as part of low-level messaging implementation.
+ */
+//--------------------------------------------------------------------------------------------------
+struct le_msg_Service
+{
+    enum
+    {
+        LE_MSG_SERVICE_UNIX_SOCKET,
+        LE_MSG_SERVICE_LOCAL
+    } type;
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generic message object.  Holds a pointer to the session the message is associated with.
+ */
+//--------------------------------------------------------------------------------------------------
+struct le_msg_Message
+{
+    le_msg_SessionRef_t sessionRef;   ///< Session for this message
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Message handler receiver for local messages
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_thread_Ref_t thread;           ///< Thread on which receive should be processes.
+    le_msg_ReceiveHandler_t handler;  ///< Handler function which should be called on thread
+    void* contextPtr;                 ///< Context pointer to pass to the handler
+} le_msg_LocalReceiver_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Local service object.
+ *
+ * Create an instance of this object for each local service used by your program.
+ *
+ * @note  This structure should never be accessed directly; instead access through le_msg_...()
+ *        functions.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    struct le_msg_Service service;          ///< Service
+#if LE_CONFIG_CUSTOM_OS && defined(LE_MSG_SERVICE_READY_FLAG)
+    LE_MSG_SERVICE_READY_FLAG;       ///< Indicate if service is ready in an OS-specific manner
+#else
+    bool serviceReady;               ///< Indicate if service is ready
+#endif
+    le_msg_LocalReceiver_t receiver; ///< Server destination
+    le_mem_PoolRef_t messagePool;    ///< Pool for messages on this service
+} le_msg_LocalService_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Message that's sent over a queue transport.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_msg_LocalMessage
+{
+    struct le_msg_Message message;          ///< Pointer to base message
+    int fd;                                 ///< File descriptor sent with message (via Get/SetFd)
+    le_sem_Ref_t responseReady;             ///< Semaphore which will be set when response is ready
+    bool needsResponse;                     ///< True if message needs a response
+    uint8_t data[] __attribute__((aligned(__BIGGEST_ALIGNMENT__)));   ///< Start of message data
+                                                                      // Align so any type of
+                                                                      // data can be stored inside.
+} le_msg_LocalMessage_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Size of local message header (needs to be added to size of message in local message pools).
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_MSG_LOCAL_HEADER_SIZE      sizeof(le_msg_LocalMessage_t)
+
+
 // =======================================
 //  PROTOCOL FUNCTIONS
 // =======================================
@@ -937,7 +1030,7 @@ typedef void (* le_msg_ResponseCallback_t)
  * @return  Protocol reference.
  */
 //--------------------------------------------------------------------------------------------------
-le_msg_ProtocolRef_t le_msg_GetProtocolRef
+LE_FULL_API le_msg_ProtocolRef_t le_msg_GetProtocolRef
 (
     const char* protocolId,     ///< [in] String uniquely identifying the the protocol and version.
     size_t largestMsgSize       ///< [in] Size (in bytes) of the largest message in the protocol.
@@ -951,7 +1044,7 @@ le_msg_ProtocolRef_t le_msg_GetProtocolRef
  * @return  Pointer to the protocol identifier (null-terminated, UTF-8 string).
  */
 //--------------------------------------------------------------------------------------------------
-const char* le_msg_GetProtocolIdStr
+LE_FULL_API const char* le_msg_GetProtocolIdStr
 (
     le_msg_ProtocolRef_t protocolRef    ///< [in] Reference to the protocol.
 );
@@ -964,7 +1057,7 @@ const char* le_msg_GetProtocolIdStr
  * @return  The size, in bytes.
  */
 //--------------------------------------------------------------------------------------------------
-size_t le_msg_GetProtocolMaxMsgSize
+LE_FULL_API size_t le_msg_GetProtocolMaxMsgSize
 (
     le_msg_ProtocolRef_t protocolRef    ///< [in] Reference to the protocol.
 );
@@ -986,10 +1079,24 @@ size_t le_msg_GetProtocolMaxMsgSize
  * @return  Session reference.
  */
 //--------------------------------------------------------------------------------------------------
-le_msg_SessionRef_t le_msg_CreateSession
+LE_FULL_API le_msg_SessionRef_t le_msg_CreateSession
 (
     le_msg_ProtocolRef_t    protocolRef,    ///< [in] Reference to the protocol to be used.
     const char*             interfaceName   ///< [in] Name of the client-side interface.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create a session that will always use message boxes to talk to a service in the same process
+ * space.
+ *
+ * @return   Session reference.
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_SessionRef_t le_msg_CreateLocalSession
+(
+    le_msg_LocalService_t*             servicePtr  ///< [in] Reference to the service.
 );
 
 
@@ -999,7 +1106,7 @@ le_msg_SessionRef_t le_msg_CreateSession
  * le_msg_GetSessionContextPtr().
  */
 //--------------------------------------------------------------------------------------------------
-void le_msg_SetSessionContextPtr
+LE_FULL_API void le_msg_SetSessionContextPtr
 (
     le_msg_SessionRef_t sessionRef, ///< [in] Reference to the session.
 
@@ -1016,7 +1123,7 @@ void le_msg_SetSessionContextPtr
  *          le_msg_SetSessionContextPtr() has not been called for this session yet.
  */
 //--------------------------------------------------------------------------------------------------
-void* le_msg_GetSessionContextPtr
+LE_FULL_API void* le_msg_GetSessionContextPtr
 (
     le_msg_SessionRef_t sessionRef  ///< [in] Reference to the session.
 );
@@ -1074,7 +1181,7 @@ void le_msg_SetSessionRecvHandler
  *   instead.
  */
 //--------------------------------------------------------------------------------------------------
-void le_msg_SetSessionCloseHandler
+LE_FULL_API void le_msg_SetSessionCloseHandler
 (
     le_msg_SessionRef_t             sessionRef, ///< [in] Reference to the session.
     le_msg_SessionEventHandler_t    handlerFunc,///< [in] Handler function.
@@ -1084,8 +1191,25 @@ void le_msg_SetSessionCloseHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Gets the handler callback function to be called when the session is closed from the other
+ * end.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_msg_GetSessionCloseHandler
+(
+    le_msg_SessionRef_t             sessionRef, ///< [in] Reference to the session.
+    le_msg_SessionEventHandler_t*   handlerFunc,///< [out] Handler function.
+    void**                          contextPtr  ///< [out] Opaque pointer value to pass to
+                                                ///<       the handler.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Opens a session with a service, providing a function to be called-back when the session is
  * open.
+ *
+ * Asynchronous sessions are not supported by mailbox sessions.
  *
  * @note    Only clients open sessions.  Servers must patiently wait for clients to open sessions
  *          with them.
@@ -1172,7 +1296,7 @@ void le_msg_CloseSession
  * @return Reference to the protocol.
  */
 //--------------------------------------------------------------------------------------------------
-le_msg_ProtocolRef_t le_msg_GetSessionProtocol
+LE_FULL_API le_msg_ProtocolRef_t le_msg_GetSessionProtocol
 (
     le_msg_SessionRef_t sessionRef  ///< [in] Reference to the session.
 );
@@ -1185,7 +1309,7 @@ le_msg_ProtocolRef_t le_msg_GetSessionProtocol
  * @return Reference to the interface.
  */
 //--------------------------------------------------------------------------------------------------
-le_msg_InterfaceRef_t le_msg_GetSessionInterface
+LE_FULL_API le_msg_InterfaceRef_t le_msg_GetSessionInterface
 (
     le_msg_SessionRef_t sessionRef  ///< [in] Reference to the session.
 );
@@ -1255,6 +1379,8 @@ le_result_t le_msg_GetClientUserCreds
  * - Function never returns on failure, there's no need to check the return code.
  * - If you see warnings on message pools expanding, then you may be forgetting to
  *   release the messages you have received.
+ * - In full API this can be called by either client or server, otherwise it can only
+ *   be called by the client.
  */
 //--------------------------------------------------------------------------------------------------
 le_msg_MessageRef_t le_msg_CreateMsg
@@ -1373,7 +1499,6 @@ void le_msg_Send
     le_msg_MessageRef_t msgRef      ///< [in] Reference to the message.
 );
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Gets a reference to the session to which a given message belongs.
@@ -1394,6 +1519,8 @@ le_msg_SessionRef_t le_msg_GetSession
  * terminates without a response (due to the session terminating or the server deleting the
  * request without responding).
  *
+ * Async response not supported with mailbox API
+ *
  * @note
  *     - The thread attached to the session (i.e., thread created by the session)
  *       will trigger the callback from its main event loop.  This means if
@@ -1401,7 +1528,7 @@ le_msg_SessionRef_t le_msg_GetSession
  *     - Function can only be used on the client side of a session.
  */
 //--------------------------------------------------------------------------------------------------
-void le_msg_RequestResponse
+LE_FULL_API void le_msg_RequestResponse
 (
     le_msg_MessageRef_t         msgRef,     ///< [in] Reference to the request message.
     le_msg_ResponseCallback_t   handlerFunc,///< [in] Function to be called when transaction done.
@@ -1470,13 +1597,31 @@ void le_msg_Respond
 /**
  * Creates a service that is accessible using a protocol.
  *
+ * Mailbox services should be created statically.
+ *
  * @return  Service reference.
  */
 //--------------------------------------------------------------------------------------------------
-le_msg_ServiceRef_t le_msg_CreateService
+LE_FULL_API le_msg_ServiceRef_t le_msg_CreateService
 (
     le_msg_ProtocolRef_t    protocolRef,    ///< [in] Reference to the protocol to be used.
     const char*             interfaceName   ///< [in] Server-side interface name.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize a mailbox service.
+ *
+ * This must be called before any client can connect to the service, for example in COMPONENT_INIT
+ * before any other threads are created.
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_ServiceRef_t le_msg_InitLocalService
+(
+    le_msg_LocalService_t* servicePtr,
+    const char* serviceNameStr,
+    le_mem_PoolRef_t messagingPoolRef
 );
 
 
@@ -1487,7 +1632,7 @@ le_msg_ServiceRef_t le_msg_CreateService
  * @note    Server-only function.
  */
 //--------------------------------------------------------------------------------------------------
-void le_msg_DeleteService
+LE_FULL_API void le_msg_DeleteService
 (
     le_msg_ServiceRef_t             serviceRef  ///< [in] Reference to the service.
 );
@@ -1499,7 +1644,7 @@ void le_msg_DeleteService
  * @note    Server-only function.
  */
 //--------------------------------------------------------------------------------------------------
-le_msg_SessionEventHandlerRef_t le_msg_AddServiceOpenHandler
+LE_FULL_API le_msg_SessionEventHandlerRef_t le_msg_AddServiceOpenHandler
 (
     le_msg_ServiceRef_t             serviceRef, ///< [in] Reference to the service.
     le_msg_SessionEventHandler_t    handlerFunc,///< [in] Handler function.
@@ -1529,7 +1674,7 @@ le_msg_SessionEventHandlerRef_t le_msg_AddServiceCloseHandler
  * @note    This is a server-only function.
  */
 //--------------------------------------------------------------------------------------------------
-void le_msg_RemoveServiceHandler
+LE_FULL_API void le_msg_RemoveServiceHandler
 (
     le_msg_SessionEventHandlerRef_t handlerRef   ///< [in] Reference to a previously call of
                                                  ///       le_msg_AddServiceCloseHandler()
@@ -1559,7 +1704,7 @@ void le_msg_SetServiceRecvHandler
  * @note    Server-only function.
  */
 //--------------------------------------------------------------------------------------------------
-void le_msg_SetServiceContextPtr
+LE_FULL_API void le_msg_SetServiceContextPtr
 (
     le_msg_ServiceRef_t serviceRef, ///< [in] Reference to the service.
 
@@ -1579,7 +1724,7 @@ void le_msg_SetServiceContextPtr
  * @note    Server-only function.
  */
 //--------------------------------------------------------------------------------------------------
-void* le_msg_GetServiceContextPtr
+LE_FULL_API void* le_msg_GetServiceContextPtr
 (
     le_msg_ServiceRef_t serviceRef  ///< [in] Reference to the service.
 );
@@ -1606,7 +1751,7 @@ void le_msg_AdvertiseService
  * @note    Server-only function.
  */
 //--------------------------------------------------------------------------------------------------
-void le_msg_HideService
+LE_FULL_API void le_msg_HideService
 (
     le_msg_ServiceRef_t serviceRef  ///< [in] Reference to the service.
 );
@@ -1621,7 +1766,7 @@ void le_msg_HideService
  * @warning Pointer returned will remain valid only until the interface is deleted.
  */
 //--------------------------------------------------------------------------------------------------
-const char* le_msg_GetInterfaceName
+LE_FULL_API const char* le_msg_GetInterfaceName
 (
     le_msg_InterfaceRef_t interfaceRef  ///< [in] Reference to the interface.
 );
@@ -1634,7 +1779,7 @@ const char* le_msg_GetInterfaceName
  * @return  Protocol reference.
  */
 //--------------------------------------------------------------------------------------------------
-le_msg_ProtocolRef_t le_msg_GetInterfaceProtocol
+LE_FULL_API le_msg_ProtocolRef_t le_msg_GetInterfaceProtocol
 (
     le_msg_InterfaceRef_t interfaceRef  ///< [in] Reference to the interface.
 );

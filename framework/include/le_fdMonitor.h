@@ -129,7 +129,7 @@ COMPONENT_INIT
 {
     // Open the serial port.
     int fd = open("/dev/ttyS0", O_RDWR|O_NONBLOCK);
-    LE_FATAL_IF(fd == -1, "open failed with errno %d (%m)", errno);
+    LE_FATAL_IF(fd == -1, "open failed with errno %d", errno);
 
     // Create a File Descriptor Monitor object for the serial port's file descriptor.
     // Monitor for data available to read.
@@ -229,7 +229,7 @@ static void ConnectionEventHandler(int fd, int event)
  * {
  *     // Open the serial port.
  *     int fd = open(port, O_RDWR|O_NONBLOCK);
- *     LE_FATAL_IF(fd == -1, "open failed with errno %d (%m)", errno);
+ *     LE_FATAL_IF(fd == -1, "open failed with errno %d", errno);
  *
  *     // Create a File Descriptor Monitor object for the serial port's file descriptor.
  *     // Monitor for write buffer space availability.
@@ -343,6 +343,22 @@ typedef void (*le_fdMonitor_HandlerFunc_t)
     short events
 );
 
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_fdMonitor_Create().
+ */
+//--------------------------------------------------------------------------------------------------
+le_fdMonitor_Ref_t _le_fdMonitor_Create
+(
+#if LE_CONFIG_FD_MONITOR_NAMES_ENABLED
+    const char                  *name,
+#endif
+    int                          fd,
+    le_fdMonitor_HandlerFunc_t   handlerFunc,
+    short                        events
+);
+/// @endcond
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -368,19 +384,24 @@ typedef void (*le_fdMonitor_HandlerFunc_t)
  * - @c POLLERR = Error occurred.
  * - @c POLLHUP = Hang up.
  *
+ *  @param[in]  name        Name of the object (for diagnostics).
+ *  @param[in]  fd          File descriptor to be monitored for events.
+ *  @param[in]  handlerFunc Handler function.
+ *  @param[in]  events      Initial set of events to be monitored.
+ *
  * @return
  *      Reference to the object, which is needed for later deletion.
  *
  * @note Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_fdMonitor_Ref_t le_fdMonitor_Create
-(
-    const char*             name,       ///< [in] Name of the object (for diagnostics).
-    int                     fd,         ///< [in] File descriptor to be monitored for events.
-    le_fdMonitor_HandlerFunc_t handlerFunc, ///< [in] Handler function.
-    short                   events      ///< [in] Initial set of events to be monitored.
-);
+#if LE_CONFIG_FD_MONITOR_NAMES_ENABLED
+#   define le_fdMonitor_Create(name, fd, handlerFunc, events)   \
+        _le_fdMonitor_Create((name), (fd), (handlerFunc), (events))
+#else /* if not LE_CONFIG_FD_MONITOR_NAMES_ENABLED */
+#   define le_fdMonitor_Create(name, fd, handlerFunc, events)   \
+        ((void)(name), _le_fdMonitor_Create((fd), (handlerFunc), (events)))
+#endif /* end LE_CONFIG_FD_MONITOR_NAMES_ENABLED */
 
 
 //--------------------------------------------------------------------------------------------------

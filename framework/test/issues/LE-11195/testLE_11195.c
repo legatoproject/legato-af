@@ -10,7 +10,7 @@
 #define ARG_LONG    "foo"
 #define ARG_VALUE   27
 #define ARG_COUNT   3
-static char *TestArgs[ARG_COUNT + 1] =
+static const char *TestArgs[ARG_COUNT + 1] =
 {
     "testLE_11195",                         // Program name.
     "--" ARG_LONG "=" STRINGIZE(ARG_VALUE), // Long argument.

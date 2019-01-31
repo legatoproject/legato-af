@@ -8,13 +8,6 @@
 #define GLOBAL_SEM_TIMEOUT 5
 #define NB_THREADS         2
 
-/*
- * Set a default value for SEM_NAMES_ENABLED so we can test it in an if() statement
- */
-#ifndef CONFIG_SEM_NAMES_ENABLED
-#  define CONFIG_SEM_NAMES_ENABLED  0
-#endif
-
 le_sem_Ref_t PingSemPtr = NULL;
 le_sem_Ref_t PongSemPtr = NULL;
 
@@ -78,7 +71,7 @@ static void testWait
 
 void testFindSemaphore(void)
 {
-    LE_TEST_BEGIN_SKIP(!CONFIG_SEM_NAMES_ENABLED, 10);
+    LE_TEST_BEGIN_SKIP(!LE_CONFIG_IS_ENABLED(LE_CONFIG_SEM_NAMES_ENABLED), 10);
     le_sem_Ref_t semPtr=NULL,semPtr2=NULL,FindPtr=NULL;
     //Not Found semaphore should return NULL
     semPtr = le_sem_FindSemaphore("SEMAPHORE-1");

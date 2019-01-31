@@ -40,6 +40,12 @@ static void TestArgs(void)
     LE_ASSERT(NULL == (arg = le_arg_GetArg(4)));
 }
 
+static void TestScanResult(void)
+{
+    le_result_t result = le_arg_GetScanResult();
+    LE_DEBUG("Argument scan result: %u", (unsigned int) result);
+    LE_ASSERT(result == LE_OK);
+}
 
 COMPONENT_INIT
 {
@@ -48,6 +54,7 @@ COMPONENT_INIT
     TestProgramName();
     TestNumberOfArgs();
     TestArgs();
+    TestScanResult();
 
     LE_INFO("======== Completed Command Line Arguments Test (Passed) ========");
     exit(EXIT_SUCCESS);

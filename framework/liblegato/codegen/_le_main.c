@@ -22,9 +22,9 @@ le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 
 void _le_event_InitializeComponent(void);
 
-int main(int argc, char* argv[])
+int main(int argc, const char* argv[])
 {
-    le_arg_SetArgs((size_t)argc, (char**)argv);
+    le_arg_SetArgs((size_t)argc, argv);
 
     LE_DEBUG("== Starting Executable '%s' ==", STRINGIZE(LE_EXECUTABLE_NAME));
 

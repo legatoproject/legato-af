@@ -152,6 +152,15 @@ static pthread_mutex_t Mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Default log session and log filter level, for when outside a component.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_log_SessionRef_t LE_LOG_SESSION = NULL;
+LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Lock the mutex.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1105,9 +1114,18 @@ void _le_log_Send
     // If running on an embedded target, write the message out to the log.
 #ifdef LEGATO_EMBEDDED
 
-    syslog(ConvertToSyslogLevel(level), "%s | %s[%d]/%s T=%s | %s %s() %d | %s\n",
+    if (functionNamePtr == NULL)
+    {
+        syslog(ConvertToSyslogLevel(level), "%s | %s[%d]/%s T=%s | %s %d | %s\n",
+           levelPtr, procNamePtr, getpid(), compNamePtr, threadNamePtr, baseFileNamePtr,
+           lineNumber, msg);
+    }
+    else
+    {
+        syslog(ConvertToSyslogLevel(level), "%s | %s[%d]/%s T=%s | %s %s() %d | %s\n",
            levelPtr, procNamePtr, getpid(), compNamePtr, threadNamePtr, baseFileNamePtr,
            functionNamePtr, lineNumber, msg);
+    }
 
     // If running on a PC, write the message to standard error with a timestamp added.
 #else
@@ -1124,9 +1142,18 @@ void _le_log_Send
         timeStamp[19] = '\0';  // Exclude the year.
     }
 
-    fprintf(stderr, "%s : %s | %s[%d]/%s T=%s | %s %s() %d | %s\n",
+    if (functionNamePtr == NULL)
+    {
+        fprintf(stderr, "%s : %s | %s[%d]/%s T=%s | %s %d | %s\n",
+                timeStampPtr, levelPtr, procNamePtr, getpid(), compNamePtr,
+                threadNamePtr, baseFileNamePtr, lineNumber, msg);
+    }
+    else
+    {
+        fprintf(stderr, "%s : %s | %s[%d]/%s T=%s | %s %s() %d | %s\n",
             timeStampPtr, levelPtr, procNamePtr, getpid(), compNamePtr, threadNamePtr,
             baseFileNamePtr, functionNamePtr, lineNumber, msg);
+    }
 
 #endif
 }
@@ -1262,6 +1289,7 @@ void _le_log_SetFilterLevel
 //--------------------------------------------------------------------------------------------------
 void _le_LogData
 (
+    le_log_Level_t level,               // log level
     const uint8_t* dataPtr,             // The buffer address to be dumped
     int dataLength,                     // The data length of buffer
     const char* filenamePtr,            // The name of the source file that logged the message.
@@ -1303,38 +1331,13 @@ void _le_LogData
 
         do
         {
-            if ((LE_LOG_LEVEL_FILTER_PTR == NULL) || (LE_LOG_DEBUG >= *LE_LOG_LEVEL_FILTER_PTR))
+            if ((LE_LOG_LEVEL_FILTER_PTR == NULL) || (level >= *LE_LOG_LEVEL_FILTER_PTR))
             {
-                _le_log_Send(LE_LOG_DEBUG, NULL, LE_LOG_SESSION, filenamePtr, functionNamePtr,
+                _le_log_Send(level, NULL, LE_LOG_SESSION, filenamePtr, functionNamePtr,
                              lineNumber, "%s", buffer);
             }
         } while(0);
     }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Log messages from the framework.  Used for testing only.
- */
-//--------------------------------------------------------------------------------------------------
-void log_TestFrameworkMsgs
-(
-    void
-)
-{
-    LE_DEBUG("frame %d msg", LE_LOG_DEBUG);
-    LE_INFO("frame %d msg", LE_LOG_INFO);
-    LE_WARN("frame %d msg", LE_LOG_WARN);
-    LE_ERROR("frame %d msg", LE_LOG_ERR);
-    LE_CRIT("frame %d msg", LE_LOG_CRIT);
-    LE_EMERG("frame %d msg", LE_LOG_EMERG);
-
-    le_log_TraceRef_t trace1 = le_log_GetTraceRef("key 1");
-    le_log_TraceRef_t trace2 = le_log_GetTraceRef("key 2");
-
-    LE_TRACE(trace1, "Trace msg in %s", STRINGIZE(LE_COMPONENT_NAME));
-    LE_TRACE(trace2, "Trace msg in %s", STRINGIZE(LE_COMPONENT_NAME));
 }
 
 

@@ -76,7 +76,7 @@ static size_t GetExpectedCounterValue
 
 // -------------------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------------------
-static unsigned int Counter = 0;
+static unsigned int Counter;
 
 // -------------------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------------------
@@ -111,7 +111,7 @@ Context_t;
 /** Memory pool used to hold thread context blocks.
  */
 // -------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t ContextPoolRef;
+static le_mem_PoolRef_t ContextPoolRef = NULL;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -189,14 +189,14 @@ static void SpawnChildren
 
     if (depth == 2)
     {
-        LE_TEST_ASSERT(sscanf(threadName, "%*[^-]-%d", &j) == 1, "depth 2: parse thread name");
+        LE_ASSERT(sscanf(threadName, "%*[^-]-%d", &j) == 1);
         // switch to zero-based
         j--;
         LE_TEST_INFO("depth 2: j=%d", j);
     }
     else if (depth == 3)
     {
-        LE_TEST_ASSERT(sscanf(threadName, "%*[^-]-%d-%d", &k, &j) == 2, "depth 3: parse thread name");
+        LE_ASSERT(sscanf(threadName, "%*[^-]-%d-%d", &k, &j) == 2);
         // switch to zero based
         k--;
         j--;
@@ -368,6 +368,9 @@ void fjm_Start
 {
     LE_TEST_INFO("FJM TESTS START");
 
+    memset(TestResults, 0, sizeof(TestResults));
+    Counter = 0;
+
     // Compute the expected ending counter value.
     ExpectedCounterValue = GetExpectedCounterValue();
 
@@ -378,8 +381,12 @@ void fjm_Start
     MutexRef = le_mutex_CreateNonRecursive("fork-join-mutex-test");
 
     // Create the Context Pool.
-    ContextPoolRef = le_mem_CreatePool("FJM-ContextPool", sizeof(Context_t));
-    le_mem_ExpandPool(ContextPoolRef, ExpectedCounterValue);
+    if (ContextPoolRef == NULL)
+    {
+        LE_TEST_INFO("Initializing FJM-ContextPool");
+        ContextPoolRef = le_mem_CreatePool("FJM-ContextPool", sizeof(Context_t));
+        le_mem_ExpandPool(ContextPoolRef, ExpectedCounterValue);
+    }
 
     // Spawn the first child thread.
     SpawnChildren(1);
@@ -470,4 +477,7 @@ void fjm_CheckResults
     }
 
     Unlock();
+
+    le_mutex_Delete(MutexRef);
+    le_sem_Delete(CounterSemRef);
 }

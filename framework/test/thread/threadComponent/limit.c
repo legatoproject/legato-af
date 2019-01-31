@@ -46,10 +46,12 @@ COMPONENT_INIT
     struct rlimit lim = {10, 10};
 
     LE_FATAL_IF(setrlimit(RLIMIT_NPROC, &lim) != 0,
-                "Could not set resource limit %s (%d).  %m.", "RLIMIT_NPROC", RLIMIT_NPROC);
+                "Could not set resource limit %s (%d): error %d.", "RLIMIT_NPROC", RLIMIT_NPROC,
+                errno);
 
     LE_FATAL_IF(getrlimit(RLIMIT_NPROC, &lim) != 0,
-                "Could not get resource limit %s (%d).  %m.", "RLIMIT_NPROC", RLIMIT_NPROC);
+                "Could not get resource limit %s (%d): error %d.", "RLIMIT_NPROC", RLIMIT_NPROC,
+                errno);
 
     for(i=0;;i++)
     {

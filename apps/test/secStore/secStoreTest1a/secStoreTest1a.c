@@ -6,11 +6,6 @@
 #include "legato.h"
 #include "interfaces.h"
 
-// Ensure CONFIG_LINUX is always defined, so can be used as a condition in the tests.
-#ifndef CONFIG_LINUX
-#define CONFIG_LINUX 0
-#endif
-
 #define SECRET_ITEM             "secret"
 #define SECRET_STRING           "My secret data"
 
@@ -72,7 +67,7 @@ COMPONENT_INIT
                    "Write %s.  %s.", loopItemName, LE_RESULT_TXT(result));
     }
 
-    LE_TEST_BEGIN_SKIP(!CONFIG_LINUX, 1);
+    LE_TEST_BEGIN_SKIP(!LE_CONFIG_IS_ENABLED(LE_CONFIG_LINUX), 1);
     // Write one more loop item.  This should fail.
     result = le_secStore_Write("lastLoopItem", (uint8_t*)loopString, sizeof(loopString));
     LE_TEST_OK(result == LE_NO_MEMORY,

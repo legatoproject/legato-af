@@ -54,6 +54,7 @@ wmnew.opt
 *.pyc
 /Debug
 .pytest_cache
+__pycache__
 
 # Target files backup
 targetFiles/*/backup_*

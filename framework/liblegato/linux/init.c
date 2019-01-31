@@ -8,7 +8,6 @@
 #include "legato.h"
 
 #include "mem.h"
-#include "hashmap.h"
 #include "safeRef.h"
 #include "messaging.h"
 #include "log.h"
@@ -58,9 +57,9 @@ __attribute__((constructor)) void _legato_InitFramework
     pathIter_Init();   // Uses memory pools and safe references.
     mutex_Init();      // Uses memory pools.
     sem_Init();        // Uses memory pools.
-    thread_Init();     // Uses memory pools and safe references.
-    event_Init();      // Uses thread API.
+    event_Init();      // Uses memory pools.
     timer_Init();      // Uses event loop.
+    thread_Init();     // Uses event loop, memory pools and safe references.
     msg_Init();        // Uses event loop.
     kill_Init();       // Uses memory pools and timers.
     properties_Init(); // Uses memory pools and safe references.

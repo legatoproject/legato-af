@@ -3,6 +3,7 @@
 #***************************************************************************************************
 
 mkapp(  fileAtomTest.adef
+            -i ${LEGATO_ROOT}/framework/liblegato
             -i ${LEGATO_ROOT}/framework/liblegato/linux
         )
 

@@ -221,6 +221,20 @@ le_json_ParsingSessionRef_t le_json_Parse
     void* opaquePtr   ///< Opaque pointer to be fetched by handlers using le_json_GetOpaquePtr().
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parse a JSON document received via C string.
+ *
+ * @return Reference to the JSON parsing session started by this function call.
+ */
+//--------------------------------------------------------------------------------------------------
+le_json_ParsingSessionRef_t le_json_ParseString
+(
+    const char *jsonString, ///< JSON string to parse.
+    le_json_EventHandler_t  eventHandler,   ///< Function to call when normal parsing events happen.
+    le_json_ErrorHandler_t  errorHandler,   ///< Function to call when errors happen.
+    void* opaquePtr   ///< Opaque pointer to be fetched by handlers using le_json_GetOpaquePtr().
+);
 
 //--------------------------------------------------------------------------------------------------
 /**

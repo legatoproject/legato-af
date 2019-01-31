@@ -4,6 +4,14 @@
 # Copyright (C) Sierra Wireless Inc.
 #
 
+### Hidden Options ###
+
+config LINUX_TARGET_TOOLS
+  bool
+  depends on LINUX && BUILD_TARGET_TOOLS
+  default y
+  select MEM_POOL_STATS
+
 ### Core Options ###
 
 config CUSTOM_FA
@@ -29,6 +37,35 @@ config BUILD_TARGET_TOOLS
   ---help---
   Include Legato's command-line tools (inspect, config, sdir, etc.) for the
   target.
+
+config RTOS_TARGET_TOOL_INSPECT
+  bool "Include the inspect tool"
+  depends on RTOS && BUILD_TARGET_TOOLS
+  default y
+  select MEM_POOL_STATS
+  ---help---
+  Select this if you want to build and install the "inspect" tool.  This
+  tool provides details of the state and resource usage of many Legato
+  objects.
+
+config RTOS_TARGET_TOOL_DLSUM
+  bool "Include the dlsum tool"
+  depends on RTOS && BUILD_TARGET_TOOLS
+  default n
+  ---help---
+  Select this if you want to build and install the "dlsum" tool.  This tool
+  makes HTTP requests and calculates a hash of the returned resource.  Note
+  that enabling this tool will significantly increase binary size due to a
+  dependency on libcurl.
+
+config RTOS_TARGET_TOOL_HTTPD
+  bool "Include the httpd tool"
+  depends on RTOS && BUILD_TARGET_TOOLS
+  default n
+  ---help---
+  Select this if you want to build and install the "httpd" tool.  This is a
+  simple web server which can be used for testing purposes.  It serves a
+  small set of static, pre-compiled pages on port 80.
 
 config RUNTIME_DIR
   string "Runtime directory"
@@ -172,37 +209,37 @@ menu "Diagnostic Features"
 
 choice
   prompt "Static log level filter"
-  default STATIC_LOG_FILTER_INFO
+  default LOG_STATIC_FILTER_INFO
   ---help---
   Select the static filter for log statements.  Log statements with a lower
   priority than this level will be omitted from compiled code.
 
-config STATIC_LOG_FILTER_DEBUG
+config LOG_STATIC_FILTER_DEBUG
   bool "Debug"
   ---help---
   Include all statements up to and including debug level.
 
-config STATIC_LOG_FILTER_INFO
+config LOG_STATIC_FILTER_INFO
   bool "Info"
   ---help---
   Include all statements up to and including info level.
 
-config STATIC_LOG_FILTER_WARN
+config LOG_STATIC_FILTER_WARN
   bool "Warning"
   ---help---
   Include all statements up to and including warning level.
 
-config STATIC_LOG_FILTER_ERR
+config LOG_STATIC_FILTER_ERR
   bool "Error"
   ---help---
   Include all statements up to and including error level.
 
-config STATIC_LOG_FILTER_CRIT
+config LOG_STATIC_FILTER_CRIT
   bool "Critical"
   ---help---
   Include all statements up to and including critical level.
 
-config STATIC_LOG_FILTER_EMERG
+config LOG_STATIC_FILTER_EMERG
   bool "Emergency"
   ---help---
   Include only emergency-level log statements.
@@ -245,7 +282,18 @@ config NUM_GUARD_BAND_WORDS
   ---help---
   The number of words in each guard band.  This number of words will be
   inserted before and after every memory allocation, increasing the allocation
-  size by NUM_GUARD_BAND_WORDS * 8.
+  size in words by NUM_GUARD_BAND_WORDS * 2.
+
+config MEM_POOL_STATS
+  bool "Track memory pool statistics"
+  default n if REDUCE_FOOTPRINT
+  default y
+  ---help---
+  Track memory pool statistics which are not needed during runtime.  These
+  are:
+   - Number of overflows
+   - Number of allocations
+   - Maximum blocks used
 
 config THREAD_SETNAME
   bool "Set names of threads created from Legato"
@@ -363,15 +411,17 @@ config MEM_POOLS
   Use memory pools for dynamic memory allocation.  Memory pools help prevent
   memory fragmentation, but require that the pools be sized appropriately for
   the application.
-  Disabling this switches to use malloc/free per-block.  This allows tools
-  like Valgrind to accurately track the allocations and de-allocations at the
-  cost of potential memory fragmentation.
+  Disabling this option will still allocate memory using the memory pool
+  interface (le_mem), but switches the internal behaviour to use malloc and
+  free on a per-block basis.  This allows tools like Valgrind to accurately
+  track the allocations and de-allocations at the cost of potential memory
+  fragmentation.
 
 config MAX_EVENT_POOL_SIZE
   int "Maximum event pool size"
   depends on MEM_POOLS
   range 1 65535
-  default 5
+  default 30
   ---help---
   The maximum number of objects in the process-wide event pool, from which the
   event objects are allocated.
@@ -380,7 +430,7 @@ config MAX_HANDLER_POOL_SIZE
   int "Maximum event handler pool size"
   depends on MEM_POOLS
   range 1 65535
-  default 10
+  default 15
   ---help---
   The maximum number of objects in the process-wide handler pool, from which
   all handler objects are allocated.
@@ -389,7 +439,7 @@ config MAX_QUEUED_FUNCTION_POOL_SIZE
   int "Maximum queued event function pool size"
   depends on MEM_POOLS
   range 1 65535
-  default 10
+  default 15
   ---help---
   The maximum number of objects in the process-wide queued function report
   pool, from which Queued Function reports are allocated.
@@ -424,7 +474,7 @@ config MAX_MUTEX_POOL_SIZE
   int "Maximum mutex pool size"
   depends on MEM_POOLS
   range 1 65535
-  default 4
+  default 20
   ---help---
   The maximum number of mutex objects in the process-wide mutex pool, from
   which all Legato mutexes are allocated.
@@ -433,7 +483,7 @@ config MAX_SEM_POOL_SIZE
   int "Maximum semaphore pool size"
   depends on MEM_POOLS
   range 1 65535
-  default 4
+  default 64
   ---help---
   The maximum number of semaphore objects in the process-wide semaphore pool,
   from which all Legato semaphores are allocated.
@@ -442,12 +492,40 @@ config MAX_THREAD_POOL_SIZE
   int "Maximum thread pool size"
   depends on MEM_POOLS
   range 1 65535
-  default 4
+  default 20
   ---help---
   The maximum number of thread objects in the process-wide thread pool, from
   which all Legato threads are allocated.
 
-endmenu # end "Default Values"
+config MAX_TIMER_POOL_SIZE
+  int "Maximum timer pool size"
+  depends on MEM_POOLS
+  range 1 65535
+  default 40
+  ---help---
+  The maximum number of timer objects in the process-wide timer pool, from
+  which all Legato timers are allocated.
+
+config MAX_PATH_ITERATOR_POOL_SIZE
+  int "Maximum path iterator count"
+  depends on MEM_POOLS
+  range 1 65535
+  default 10
+  ---help---
+  The maximum number of path iterator in the process-wide iterator pools, from
+  which all Legato path iterators are allocated.
+
+config MAX_MSG_LOCAL_CLIENT_SESSION_POOL_SIZE
+  int "Maximum local client messaging sessions"
+  depends on MEM_POOLS
+  range 0 65535
+  default 50 if RTOS
+  default 0
+  ---help---
+  The maximum number of simultaneous messaging sessions supported with local
+  clients.
+
+endmenu # end "Performance Tuning"
 
 ### Daemon Options ###
 

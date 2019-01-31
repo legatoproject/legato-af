@@ -7,5 +7,5 @@
 import os
 
 def pytest_ignore_collect(path, config):
-    if os.environ.get('CONFIG_LINUX') != "y" and path.basename == "testUnixMessaging.adef":
+    if os.environ.get('LE_CONFIG_LINUX') != "y" and path.basename == "testUnixMessaging.adef":
         return True

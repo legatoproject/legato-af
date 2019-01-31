@@ -12,12 +12,47 @@
 #include "messagingProtocol.h"
 #include "messagingSession.h"
 #include "messagingInterface.h"
+#include "messagingLocal.h"
 #include "fileDescriptor.h"
 #include "unixSocket.h"
 
 // =======================================
 //  PRIVATE FUNCTIONS
 // =======================================
+
+//--------------------------------------------------------------------------------------------------
+// Emit definition for inline functions
+//
+// See messagingMessage.h for body and documentation
+//--------------------------------------------------------------------------------------------------
+LE_DEFINE_INLINE le_dls_Link_t* msgMessage_GetQueueLinkPtr(le_msg_MessageRef_t msgRef);
+LE_DEFINE_INLINE le_msg_MessageRef_t msgMessage_GetMessageContainingLink(le_dls_Link_t* linkPtr);
+
+
+static UnixMessage_t *msgMessage_GetUnixMessagePtr(le_msg_MessageRef_t msgRef)
+{
+    if (!msgRef)
+    {
+        return NULL;
+    }
+
+    LE_FATAL_IF(!msgRef->sessionRef ||
+                msgRef->sessionRef->type != LE_MSG_SESSION_UNIX_SOCKET,
+                "Not a Unix socket message");
+
+    return CONTAINER_OF(msgRef, UnixMessage_t, message);
+}
+
+static le_msg_MessageRef_t msgMessage_GetMessageRef(UnixMessage_t* msgPtr)
+{
+    if (!msgPtr)
+    {
+        return NULL;
+    }
+
+    return &msgPtr->message;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -30,29 +65,33 @@ static void MessageDestructor
 )
 //--------------------------------------------------------------------------------------------------
 {
-    Message_t* msgPtr = objPtr;
+    UnixMessage_t* msgPtr = objPtr;
 
     // If the session is still open and we are releasing a message that the client expects a
     // response to, the client could get stuck waiting for the response forever.  So, we close
     // the session to wake up the client (and probably kill it).
-    if (msgSession_IsOpen(msgPtr->sessionRef) && le_msg_NeedsResponse(msgPtr))
+    if (msgSession_IsOpen(msgPtr->message.sessionRef) && le_msg_NeedsResponse(&msgPtr->message))
     {
         LE_ERROR("Released a message without sending response expected by client.");
 
-        le_msg_CloseSession(msgPtr->sessionRef);
+        le_msg_CloseSession(msgPtr->message.sessionRef);
         // NOTE: Because the message object holds a reference to the session object, even though
         // we have closed the session and it has been "deleted", it actually still exists until
         // we release it (later in this function).
 
         // Because the session is closing without the server asking for it to be closed,
         // notify the server of the closure (if the server has a close handler registered).
-        msgInterface_CallCloseHandler(
-            (le_msg_ServiceRef_t)msgSession_GetInterfaceRef(msgPtr->sessionRef),
-            msgPtr->sessionRef);
+        msgInterface_Interface_t* interfacePtr =
+            msgSession_GetInterfaceRef(msgPtr->message.sessionRef);
+        LE_ASSERT(interfacePtr->interfaceType == LE_MSG_INTERFACE_SERVER);
+        msgInterface_CallCloseHandler(CONTAINER_OF(interfacePtr,
+                                                   msgInterface_UnixService_t,
+                                                   interface),
+                                      msgPtr->message.sessionRef);
     }
 
     // Release any open fds in the message.
-    if ((msgSession_GetInterfaceType(msgPtr->sessionRef) == LE_MSG_INTERFACE_SERVER)
+    if ((msgSession_GetInterfaceType(msgPtr->message.sessionRef) == LE_MSG_INTERFACE_SERVER)
         && (msgPtr->clientServer.server.responseFd >= 0))
     {
         fd_Close(msgPtr->clientServer.server.responseFd);
@@ -63,7 +102,7 @@ static void MessageDestructor
     }
 
     // Release the Message object's hold on the Session object.
-    le_mem_Release(msgPtr->sessionRef);
+    le_mem_Release(msgPtr->message.sessionRef);
 }
 
 
@@ -112,7 +151,7 @@ le_mem_PoolRef_t msgMessage_CreatePool
         LE_DEBUG("Pool name truncated to '%s' for protocol '%s'.", poolName, name);
     }
 
-    le_mem_PoolRef_t poolRef = le_mem_CreatePool(poolName, sizeof(Message_t) + largestMsgSize);
+    le_mem_PoolRef_t poolRef = le_mem_CreatePool(poolName, sizeof(UnixMessage_t) + largestMsgSize);
 
     le_mem_SetDestructor(poolRef, MessageDestructor);
 
@@ -137,13 +176,15 @@ le_mem_PoolRef_t msgMessage_CreatePool
 //--------------------------------------------------------------------------------------------------
 le_result_t msgMessage_Send
 (
-    int         socketFd,   ///< [IN] Connected socket's file descriptor.
-    Message_t*  msgPtr      ///< The Message to be sent.
+    int         socketFd,       ///< [IN] Connected socket's file descriptor.
+    le_msg_MessageRef_t msgRef  ///< The Message to be sent.
 )
 //--------------------------------------------------------------------------------------------------
 {
+    UnixMessage_t* msgPtr = msgMessage_GetUnixMessagePtr(msgRef);
+
     // If this is a response message,
-    if (le_msg_NeedsResponse(msgPtr))
+    if (le_msg_NeedsResponse(msgRef))
     {
         // If there was an fd that was received from the client but not fetched from the message
         // generate a warning and close that fd.
@@ -162,7 +203,8 @@ le_result_t msgMessage_Send
     // from our Message object's payload section, which comes right after the transaction ID.
     return unixSocket_SendMsg(  socketFd,
                                 &msgPtr->txnId,
-                                sizeof(msgPtr->txnId) + le_msg_GetMaxPayloadSize(msgPtr),
+                                sizeof(msgPtr->txnId) +
+                                le_msg_GetMaxPayloadSize(msgMessage_GetMessageRef(msgPtr)),
                                 msgPtr->fd,
                                 false   ); // Don't send process credentials.
 }
@@ -188,18 +230,57 @@ le_result_t msgMessage_Receive
 {
     // Receive the first bytes into our transaction ID and the rest (if any)
     // into our Message object's payload section.
-    size_t byteCount = sizeof(msgRef->txnId) + le_msg_GetMaxPayloadSize(msgRef);
+    UnixMessage_t* msgPtr = msgMessage_GetUnixMessagePtr(msgRef);
+
+    size_t byteCount = sizeof(msgPtr->txnId) + le_msg_GetMaxPayloadSize(msgRef);
     le_result_t result = unixSocket_ReceiveMsg( socketFd,
-                                                &msgRef->txnId,
+                                                &msgPtr->txnId,
                                                 &byteCount,
-                                                &msgRef->fd,
+                                                &msgPtr->fd,
                                                 NULL    );  // Don't receive credentials.
     if (msgSession_GetInterfaceType(msgRef->sessionRef) == LE_MSG_INTERFACE_SERVER)
     {
-        msgRef->clientServer.server.responseFd = -1;
+        msgPtr->clientServer.server.responseFd = -1;
     }
 
     return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets a Message object's transaction ID.
+ */
+//--------------------------------------------------------------------------------------------------
+void msgMessage_SetTxnId
+(
+    le_msg_MessageRef_t msgRef,
+    void*               txnId
+)
+//--------------------------------------------------------------------------------------------------
+{
+    UnixMessage_t* localMsgPtr = msgMessage_GetUnixMessagePtr(msgRef);
+
+    localMsgPtr->txnId = txnId;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets a Message object's transaction ID.
+ *
+ * @return The ID.  (Zero = the message is not part of a request-response transaction.)
+ */
+//--------------------------------------------------------------------------------------------------
+void* msgMessage_GetTxnId
+(
+    le_msg_MessageRef_t msgRef
+)
+//--------------------------------------------------------------------------------------------------
+{
+    UnixMessage_t* localMsgPtr = msgMessage_GetUnixMessagePtr(msgRef);
+
+    return localMsgPtr->txnId;
 }
 
 
@@ -215,10 +296,12 @@ void msgMessage_CallCompletionCallback
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (requestMsgRef->clientServer.client.completionCallback != NULL)
+    UnixMessage_t* requestMsgPtr = msgMessage_GetUnixMessagePtr(requestMsgRef);
+
+    if (requestMsgPtr->clientServer.client.completionCallback != NULL)
     {
-        requestMsgRef->clientServer.client.completionCallback(responseMsgRef,
-                                                     requestMsgRef->clientServer.client.contextPtr);
+        requestMsgPtr->clientServer.client.completionCallback(responseMsgRef,
+                                                     requestMsgPtr->clientServer.client.contextPtr);
     }
 }
 
@@ -245,14 +328,24 @@ le_msg_MessageRef_t le_msg_CreateMsg
 )
 //--------------------------------------------------------------------------------------------------
 {
+    LE_ASSERT(sessionRef);
+    // If this is a local session, create a local message
+    if (sessionRef->type == LE_MSG_SESSION_LOCAL)
+    {
+        return msgLocal_CreateMsg(sessionRef);
+    }
+
+    LE_FATAL_IF(sessionRef->type != LE_MSG_SESSION_UNIX_SOCKET,
+                "Corrupted session type: %d", sessionRef->type);
+
     // Get a reference to the Session's Protocol and ask the Protocol to allocate a Message
     // object from its Message Pool.
     le_msg_ProtocolRef_t protocolRef = le_msg_GetSessionProtocol(sessionRef);
-    Message_t* msgPtr = msgProto_AllocMessage(protocolRef);
+    UnixMessage_t* msgPtr = msgProto_AllocMessage(protocolRef);
 
     // Initialize the Message object's data members.
     msgPtr->link = LE_DLS_LINK_INIT;
-    msgPtr->sessionRef = sessionRef;
+    msgPtr->message.sessionRef = sessionRef;
     le_mem_AddRef(sessionRef);  // Message object holds a reference to the Session object.
 
     msgInterface_Type_t interfaceType = msgSession_GetInterfaceType(sessionRef);
@@ -275,7 +368,7 @@ le_msg_MessageRef_t le_msg_CreateMsg
     msgPtr->txnId = 0;
     memset(msgPtr->payload, 0, le_msg_GetProtocolMaxMsgSize(protocolRef));
 
-    return msgPtr;
+    return msgMessage_GetMessageRef(msgPtr);
 }
 
 
@@ -290,7 +383,18 @@ void le_msg_AddRef
 )
 //--------------------------------------------------------------------------------------------------
 {
-    le_mem_AddRef(msgRef);
+    LE_ASSERT(msgRef);
+    switch (msgRef->sessionRef->type)
+    {
+        case LE_MSG_SESSION_LOCAL:
+            msgLocal_AddRef(msgRef);
+            break;
+        case LE_MSG_SESSION_UNIX_SOCKET:
+            le_mem_AddRef(msgMessage_GetUnixMessagePtr(msgRef));
+            break;
+        default:
+            LE_FATAL("Corrupted session type: %d", msgRef->sessionRef->type);
+    }
 }
 
 
@@ -307,7 +411,19 @@ void le_msg_ReleaseMsg
 )
 //--------------------------------------------------------------------------------------------------
 {
-    le_mem_Release(msgRef);
+    LE_ASSERT(msgRef);
+    // Local and unix socket messages are both from a pool, so release works the same for both.
+    switch (msgRef->sessionRef->type)
+    {
+        case LE_MSG_SESSION_LOCAL:
+            msgLocal_ReleaseMsg(msgRef);
+            break;
+        case LE_MSG_SESSION_UNIX_SOCKET:
+            le_mem_Release(msgMessage_GetUnixMessagePtr(msgRef));
+            break;
+        default:
+            LE_FATAL("Corrupted session type: %d", msgRef->sessionRef->type);
+    }
 }
 
 
@@ -330,8 +446,20 @@ bool le_msg_NeedsResponse
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return ((msgRef->txnId != 0) && (msgSession_GetInterfaceType(msgRef->sessionRef)
-                                     == LE_MSG_INTERFACE_SERVER));
+    LE_ASSERT(msgRef);
+    switch (msgRef->sessionRef->type)
+    {
+        case LE_MSG_SESSION_LOCAL:
+            return msgLocal_NeedsResponse(msgRef);
+        case LE_MSG_SESSION_UNIX_SOCKET:
+        {
+            UnixMessage_t* msgPtr = msgMessage_GetUnixMessagePtr(msgRef);
+            return ((msgPtr->txnId != 0) && (msgSession_GetInterfaceType(msgRef->sessionRef)
+                                             == LE_MSG_INTERFACE_SERVER));
+        }
+        default:
+            LE_FATAL("Corrupted session type: %d", msgRef->sessionRef->type);
+    }
 }
 
 
@@ -351,7 +479,16 @@ void* le_msg_GetPayloadPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return msgRef->payload;
+    LE_ASSERT(msgRef);
+    switch (msgRef->sessionRef->type)
+    {
+        case LE_MSG_SESSION_LOCAL:
+            return msgLocal_GetPayloadPtr(msgRef);
+        case LE_MSG_SESSION_UNIX_SOCKET:
+            return msgMessage_GetUnixMessagePtr(msgRef)->payload;
+        default:
+            LE_FATAL("Corrupted session type: %d", msgRef->sessionRef->type);
+    }
 }
 
 
@@ -368,7 +505,16 @@ size_t le_msg_GetMaxPayloadSize
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return le_msg_GetProtocolMaxMsgSize(le_msg_GetSessionProtocol(msgRef->sessionRef));
+    LE_ASSERT(msgRef);
+    switch (msgRef->sessionRef->type)
+    {
+        case LE_MSG_SESSION_LOCAL:
+            return msgLocal_GetMaxPayloadSize(msgRef);
+        case LE_MSG_SESSION_UNIX_SOCKET:
+            return le_msg_GetProtocolMaxMsgSize(le_msg_GetSessionProtocol(msgRef->sessionRef));
+        default:
+            LE_FATAL("Corrupted session type: %d", msgRef->sessionRef->type);
+    }
 }
 
 
@@ -389,25 +535,37 @@ void le_msg_SetFd
 )
 //--------------------------------------------------------------------------------------------------
 {
+    LE_ASSERT(msgRef);
+    // Local messages -> call local message handler
+    if (msgRef->sessionRef->type == LE_MSG_SESSION_LOCAL)
+    {
+        msgLocal_SetFd(msgRef, fd);
+        return;
+    }
+
+    LE_FATAL_IF(msgRef->sessionRef->type != LE_MSG_SESSION_UNIX_SOCKET,
+                "Corrupted session type: %d", msgRef->sessionRef->type);
+    UnixMessage_t* msgPtr = msgMessage_GetUnixMessagePtr(msgRef);
+
     // If this is a message that is to be responded to, then store the fd in the "response fd"
     // field so that the fd field is still available to be read.
     if (le_msg_NeedsResponse(msgRef))
     {
-        if (msgRef->clientServer.server.responseFd >= 0)
+        if (msgPtr->clientServer.server.responseFd >= 0)
         {
             LE_FATAL("Attempt to set more than one file descriptor on the same message.");
         }
-        msgRef->clientServer.server.responseFd = fd;
+        msgPtr->clientServer.server.responseFd = fd;
     }
     // Otherwise, store the fd in the normal fd-to-be-sent field.
     else
     {
-        if (msgRef->fd >= 0)
+        if (msgPtr->fd >= 0)
         {
             LE_FATAL("Attempt to set more than one file descriptor on the same message.");
         }
 
-        msgRef->fd = fd;
+        msgPtr->fd = fd;
     }
 }
 
@@ -426,10 +584,22 @@ int le_msg_GetFd
 )
 //--------------------------------------------------------------------------------------------------
 {
-    int fd = msgRef->fd;
-    msgRef->fd = -1;
+    LE_ASSERT(msgRef);
+    switch (msgRef->sessionRef->type)
+    {
+        case LE_MSG_SESSION_LOCAL:
+            return msgLocal_GetFd(msgRef);
+        case LE_MSG_SESSION_UNIX_SOCKET:
+        {
+            UnixMessage_t* msgPtr = msgMessage_GetUnixMessagePtr(msgRef);
+            int fd = msgPtr->fd;
+            msgPtr->fd = -1;
 
-    return fd;
+            return fd;
+        }
+        default:
+            LE_FATAL("Corrupted session type: %d", msgRef->sessionRef->type);
+    }
 }
 
 
@@ -445,8 +615,19 @@ void le_msg_Send
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Tell the Session to send the message.
-    msgSession_SendMessage(msgRef->sessionRef, msgRef);
+    LE_ASSERT(msgRef);
+    switch (msgRef->sessionRef->type)
+    {
+        case LE_MSG_SESSION_LOCAL:
+            msgLocal_Send(msgRef);
+            break;
+        case LE_MSG_SESSION_UNIX_SOCKET:
+            // Tell the Session to send the message.
+            msgSession_SendMessage(msgRef->sessionRef, msgRef);
+            break;
+        default:
+            LE_FATAL("Corrupted session type: %d", msgRef->sessionRef->type);
+    }
 }
 
 
@@ -464,6 +645,9 @@ le_msg_SessionRef_t le_msg_GetSession
 )
 //--------------------------------------------------------------------------------------------------
 {
+    LE_ASSERT(msgRef);
+    // Session is part of common message structure, so can just return without figuring out
+    // what kind of message it is.
     return msgRef->sessionRef;
 }
 
@@ -491,12 +675,27 @@ void le_msg_RequestResponse
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Save the completion callback function.
-    msgRef->clientServer.client.completionCallback = handlerFunc;
-    msgRef->clientServer.client.contextPtr = contextPtr;
+    LE_ASSERT(msgRef);
+    switch (msgRef->sessionRef->type)
+    {
+        case LE_MSG_SESSION_LOCAL:
+            LE_FATAL("Local messaging does not support asynchronous responses");
+            break;
+        case LE_MSG_SESSION_UNIX_SOCKET:
+        {
+            UnixMessage_t* msgPtr = msgMessage_GetUnixMessagePtr(msgRef);
 
-    // Tell the Session to do an asynchronous request-response transaction.
-    msgSession_RequestResponse(msgRef->sessionRef, msgRef);
+            // Save the completion callback function.
+            msgPtr->clientServer.client.completionCallback = handlerFunc;
+            msgPtr->clientServer.client.contextPtr = contextPtr;
+
+            // Tell the Session to do an asynchronous request-response transaction.
+            msgSession_RequestResponse(msgRef->sessionRef, msgRef);
+            break;
+        }
+        default:
+            LE_FATAL("Corrupted session type: %d", msgRef->sessionRef->type);
+    }
 }
 
 
@@ -535,8 +734,17 @@ le_msg_MessageRef_t le_msg_RequestSyncResponse
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Tell the Session to do a synchronous request-response transaction.
-    return msgSession_DoSyncRequestResponse(msgRef->sessionRef, msgRef);
+    LE_ASSERT(msgRef);
+    switch (msgRef->sessionRef->type)
+    {
+        case LE_MSG_SESSION_LOCAL:
+            return msgLocal_RequestSyncResponse(msgRef);
+        case LE_MSG_SESSION_UNIX_SOCKET:
+            // Tell the Session to do a synchronous request-response transaction.
+            return msgSession_DoSyncRequestResponse(msgRef->sessionRef, msgRef);
+        default:
+            LE_FATAL("Corrupted session type: %d", msgRef->sessionRef->type);
+    }
 }
 
 
@@ -559,9 +767,20 @@ void le_msg_Respond
 )
 //--------------------------------------------------------------------------------------------------
 {
+    LE_ASSERT(msgRef);
     LE_FATAL_IF(!le_msg_NeedsResponse(msgRef),
                 "Attempt to respond to a message that doesn't need a response.");
 
-    // Send the response message.
-    msgSession_SendMessage(msgRef->sessionRef, msgRef);
+    switch (msgRef->sessionRef->type)
+    {
+        case LE_MSG_SESSION_LOCAL:
+            msgLocal_Respond(msgRef);
+            break;
+        case LE_MSG_SESSION_UNIX_SOCKET:
+            // Send the response message.
+            msgSession_SendMessage(msgRef->sessionRef, msgRef);
+            break;
+        default:
+            LE_FATAL("Corrupted session type: %d", msgRef->sessionRef->type);
+    }
 }

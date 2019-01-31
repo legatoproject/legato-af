@@ -62,12 +62,12 @@ msgInterface_Interface_t;
  * Service object.  Represents a single, unique service instance offered by a server.
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct le_msg_Service
+typedef struct msgInterface_UnixService
 {
     msgInterface_Interface_t interface; ///< The interface part of a service object.
-
+                                        ///< Must be the first member in this structure.
+    struct le_msg_Service service;      ///< Service member (includes type of service)
     // Stuff used only on the Server side:
-
     void*           contextPtr;         ///< Opaque value set using le_msg_SetServiceContextPtr().
 
     enum
@@ -95,7 +95,7 @@ typedef struct le_msg_Service
     le_dls_List_t                   closeListPtr; ///< open List: list of close session handlers
                                                   ///  called when a session is opened
 }
-msgInterface_Service_t;
+msgInterface_UnixService_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -253,7 +253,7 @@ void msgInterface_RemoveSession
 //--------------------------------------------------------------------------------------------------
 void msgInterface_CallCloseHandler
 (
-    le_msg_ServiceRef_t serviceRef,
+    msgInterface_UnixService_t* serviceRef,
     le_msg_SessionRef_t sessionRef
 );
 
@@ -265,7 +265,7 @@ void msgInterface_CallCloseHandler
 //--------------------------------------------------------------------------------------------------
 void msgInterface_ProcessMessageFromClient
 (
-    le_msg_ServiceRef_t serviceRef, ///< [IN] Reference to the Service object.
+    msgInterface_UnixService_t* servicePtr, ///< [IN] Reference to the Service object.
     le_msg_MessageRef_t msgRef      ///< [IN] Message reference for the received message.
 );
 

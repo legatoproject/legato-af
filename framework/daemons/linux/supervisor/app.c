@@ -145,15 +145,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The name of the node in the config tree that contains the list of import directives for
- * devices that an application needs.
- */
-//--------------------------------------------------------------------------------------------------
-#define CFG_NODE_DEVICES                                "devices"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * The name of the node in the config tree that contains the list of kernel modules that
  * an application needs.
  */
@@ -191,6 +182,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum number of bytes (including NUL terminator) in a single SMACK permission field.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_SMACK_PERM_BYTES                            7
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * File link object.  Used to hold links that should be created for applications.
  */
 //--------------------------------------------------------------------------------------------------
@@ -200,6 +199,7 @@ typedef struct
     char dest[LIMIT_MAX_PATH_BYTES];    ///< Dest path relative to the application's runtime area.
                                         ///  If this ends in a separator then it is a directory else
                                         ///  it is a file.
+    char perm[MAX_SMACK_PERM_BYTES];    ///< Default SMACK permissions for the file.
 }
 FileLinkObj_t;
 
@@ -217,10 +217,11 @@ FileLinkObj_t;
 //--------------------------------------------------------------------------------------------------
 static const FileLinkObj_t DefaultLinks[] =
 {
-    {.src = "/dev/log", .dest = "/dev/"},
-    {.src = "/dev/null", .dest = "/dev/"},
-    {.src = "/dev/zero", .dest = "/dev/"},
-    {.src = CURRENT_SYSTEM_PATH"/lib/liblegato.so", .dest = "/lib/"}
+    {.src = "/dev/log",                             .dest = "/dev/", .perm = "rwa"},
+    {.src = "/dev/null",                            .dest = "/dev/", .perm = "rwa"},
+    {.src = "/dev/zero",                            .dest = "/dev/", .perm = "r"},
+    {.src = "/dev/urandom",                         .dest = "/dev/", .perm = "r"},
+    {.src = CURRENT_SYSTEM_PATH"/lib/liblegato.so", .dest = "/lib/", .perm = "r"}
 };
 
 
@@ -783,6 +784,49 @@ static le_result_t SetCfgDevicePermissions
     }
 
     le_cfg_CancelTxn(appCfg);
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets DAC and SMACK permissions for device files that are provided to every app.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetDefaultDevicePermissions
+(
+    app_Ref_t appRef                ///< [IN] The application.
+)
+{
+    char        appLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+    size_t      i;
+    struct stat srcStat;
+
+    // Get the app's SMACK label.
+    smack_GetAppLabel(app_GetName(appRef), appLabel, sizeof(appLabel));
+
+    for (i = 0; i < NUM_ARRAY_MEMBERS(DefaultLinks); ++i)
+    {
+        if (stat(DefaultLinks[i].src, &srcStat) == -1 ||
+            (!S_ISCHR(srcStat.st_mode) && !S_ISBLK(srcStat.st_mode)))
+        {
+            continue;
+        }
+
+        if (SetDevicePermissions(appLabel, DefaultLinks[i].src, DefaultLinks[i].perm) != LE_OK)
+        {
+            LE_ERROR("Failed to set permissions (%s) for app '%s' on device '%s'.",
+                     DefaultLinks[i].perm,
+                     appRef->name,
+                     DefaultLinks[i].src);
+            return LE_FAULT;
+        }
+    }
 
     return LE_OK;
 }
@@ -1409,8 +1453,13 @@ static le_result_t SetSmackRules
 
     SetSmackRulesForBindings(appRef, appLabel);
 
-    le_result_t result = SetPermissionForRequired(appRef);
+    le_result_t result = SetDefaultDevicePermissions(appRef);
+    if (result != LE_OK)
+    {
+        return result;
+    }
 
+    result = SetPermissionForRequired(appRef);
     if (result != LE_OK)
     {
         return result;

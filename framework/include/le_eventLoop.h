@@ -615,40 +615,87 @@ typedef void (*le_event_DeferredFunc_t)
 //--------------------------------------------------------------------------------------------------
 typedef struct le_event_Handler* le_event_HandlerRef_t;
 
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_event_CreateId().
+ */
+//--------------------------------------------------------------------------------------------------
+le_event_Id_t _le_event_CreateId
+(
+#if LE_CONFIG_EVENT_NAMES_ENABLED
+    const char *name,
+#endif
+    size_t      payloadSize
+);
+/// @endcond
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Create a new event ID.
  *
- * @return
- *      Event ID.
+ *  @param[in]  name        Name of the event ID.  (Named for diagnostic purposes.)
+ *  @param[in]  payloadSize Data payload size (in bytes) of the event reports (can be 0).
  *
- * @note Doesn't return on failure, there's no need to check the return value for errors.
+ *  @return Event ID.
+ *
+ *  @note Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_event_Id_t le_event_CreateId
-(
-    const char* name,       ///< [in] Name of the event ID.  (Named for diagnostic purposes.)
-    size_t      payloadSize ///< [in] Data payload size (in bytes) of the event reports (can be 0).
-);
+#if LE_CONFIG_EVENT_NAMES_ENABLED
+#   define le_event_CreateId(name, payloadSize) _le_event_CreateId((name), (payloadSize))
+#else /* if not LE_CONFIG_EVENT_NAMES_ENABLED */
+#   define le_event_CreateId(name, payloadSize) ((void)(name), _le_event_CreateId(payloadSize))
+#endif /* end LE_CONFIG_EVENT_NAMES_ENABLED */
 
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_event_CreateIdWithRefCounting().
+ */
+//--------------------------------------------------------------------------------------------------
+le_event_Id_t _le_event_CreateIdWithRefCounting
+(
+#if LE_CONFIG_EVENT_NAMES_ENABLED
+    const char *name
+#endif
+);
+/// @endcond
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Create a new event ID to report events where the payload is a pointer to
  * a reference-counted memory pool object allocated using the @ref c_memory.
  *
- * @return
- *      Event ID.
+ *  @param[in]  name    Name of the event ID.  (Named for diagnostic purposes.)
  *
- * @note Doesn't return on failure, there's no need to check the return value for errors.
+ *  @return Event ID.
+ *
+ *  @note Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_event_Id_t le_event_CreateIdWithRefCounting
-(
-    const char* name        ///< [in] Name of the event ID.  (Named for diagnostic purposes.)
-);
+#if LE_CONFIG_EVENT_NAMES_ENABLED
+#   define le_event_CreateIdWithRefCounting(name) _le_event_CreateIdWithRefCounting(name)
+#else /* if not LE_CONFIG_EVENT_NAMES_ENABLED */
+#   define le_event_CreateIdWithRefCounting(name) \
+        ((void)(name), _le_event_CreateIdWithRefCounting())
+#endif /* end LE_CONFIG_EVENT_NAMES_ENABLED */
 
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_event_AddHandler().
+ */
+//--------------------------------------------------------------------------------------------------
+le_event_HandlerRef_t _le_event_AddHandler
+(
+#if LE_CONFIG_EVENT_NAMES_ENABLED
+    const char              *name,
+#endif
+    le_event_Id_t            eventId,
+    le_event_HandlerFunc_t   handlerFunc
+);
+/// @endcond
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -657,20 +704,41 @@ le_event_Id_t le_event_CreateIdWithRefCounting
  * Tells the calling thread event loop to call a specified handler function when a defined event
  * reaches the front of the event queue.
  *
- * @return
+ *  @param[in]  name        Handler name.
+ *  @param[in]  eventId     Event ID.
+ *  @param[in]  handlerFunc Handler function.
+ *
+ *  @return
  *      Handler reference, only needed to remove the handler (using
  *      le_event_RemoveHandler() ).  Can be ignored if the handler will never be removed.
  *
- * @note Doesn't return on failure, there's no need to check the return value for errors.
+ *  @note Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_event_HandlerRef_t le_event_AddHandler
-(
-    const char*             name,           ///< [in] Handler name.
-    le_event_Id_t           eventId,        ///< [in] Event ID.
-    le_event_HandlerFunc_t  handlerFunc     ///< [in] Handler function.
-);
+#if LE_CONFIG_EVENT_NAMES_ENABLED
+#   define le_event_AddHandler(name, eventId, handlerFunc)  \
+        _le_event_AddHandler((name), (eventId), (handlerFunc))
+#else /* if not LE_CONFIG_EVENT_NAMES_ENABLED */
+#   define le_event_AddHandler(name, eventId, handlerFunc)  \
+        ((void)(name), _le_event_AddHandler((eventId), (handlerFunc)))
+#endif /* end LE_CONFIG_EVENT_NAMES_ENABLED */
 
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_event_AddLayeredHandler().
+ */
+//--------------------------------------------------------------------------------------------------
+le_event_HandlerRef_t _le_event_AddLayeredHandler
+(
+#if LE_CONFIG_EVENT_NAMES_ENABLED
+    const char                      *name,
+#endif
+    le_event_Id_t                    eventId,
+    le_event_LayeredHandlerFunc_t    firstLayerFunc,
+    void*                            secondLayerFunc
+);
+/// @endcond
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -681,20 +749,25 @@ le_event_HandlerRef_t le_event_AddHandler
  *
  * This is intended for use in implementing @ref c_event_layeredPublishSubscribe.
  *
- * @return
+ *  @param[in]  name    Handler name.
+ *  @param[in]  name    Event ID.
+ *  @param[in]  name    Pointer to first-layer handler func.
+ *  @param[in]  name    Pointer to second-layer handler func.
+ *
+ *  @return
  *      Handler reference, only needed for later removal of the handler (using
  *      le_event_RemoveHandler() ).  Can be ignored if the handler will never be removed.
  *
- * @note Doesn't return on failure, there's no need to check the return value for errors.
+ *  @note Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_event_HandlerRef_t le_event_AddLayeredHandler
-(
-    const char*                     name,           ///< [in] Handler name.
-    le_event_Id_t                   eventId,        ///< [in] Event ID.
-    le_event_LayeredHandlerFunc_t   firstLayerFunc, ///< [in] Pointer to first-layer handler func.
-    void*                           secondLayerFunc ///< [in] Pointer to second-layer handler func.
-);
+#if LE_CONFIG_EVENT_NAMES_ENABLED
+#   define le_event_AddLayeredHandler(name, eventId, firstLayerFunc, secondLayerFunc)   \
+        _le_event_AddLayeredHandler((name), (eventId), (firstLayerFunc), (secondLayerFunc))
+#else /* if not LE_CONFIG_EVENT_NAMES_ENABLED */
+#   define le_event_AddLayeredHandler(name, eventId, firstLayerFunc, secondLayerFunc)   \
+        ((void)(name), _le_event_AddLayeredHandler((eventId), (firstLayerFunc), (secondLayerFunc)))
+#endif /* end LE_CONFIG_EVENT_NAMES_ENABLED */
 
 
 //--------------------------------------------------------------------------------------------------

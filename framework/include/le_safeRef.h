@@ -42,19 +42,19 @@
  *  - "Delete" function invalidates the Safe Reference @c le_ref_DeleteRef()
  *  - "Delete" function deletes the object.
  *
- * At this point, if the Client calls an API function and passes that same (now invalid) Safe Reference
- * (or if the client accidentally passes in some garbage value, like a pointer or zero), the
- * API function will try to translate that into an object pointer. But it'll be told that it's
+ * At this point, if the Client calls an API function and passes that same (now invalid) Safe
+ * Reference (or if the client accidentally passes in some garbage value, like a pointer or zero),
+ * the API function will try to translate that into an object pointer. But it'll be told that it's
  * an invalid Safe Reference. The API function can then handle it gracefully, rather
  * than just acting as if it were a valid reference and clobbering the object's deallocated
  * memory or some other object that's reusing the old object's memory.
  *
- * @section c_safeRef_map Create Referece Map
+ * @section c_safeRef_map Create Reference Map
  *
  * A <b> Reference Map </b> object can be used to create Safe References and keep track of the
- * mappings from Safe References to pointers.  At start-up, a Reference Map is
- * created by calling @c le_ref_CreateMap().  It takes a single argument, the maximum number
- * of mappings expected to track of at any time.
+ * mappings from Safe References to pointers.  At start-up, a Reference Map can be created
+ * dynamically by calling @c le_ref_CreateMap(), or can be allocated statically at compile time
+ * via @c LE_REF_DEFINE_STATIC_MAP() and initialized via @c le_ref_InitStaticMap().
  *
  * @section c_safeRef_multithreading Multithreading
  *
@@ -185,10 +185,19 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum string length and byte storage size of safe reference map names.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LIMIT_MAX_SAFE_REF_NAME_LEN     31
+#define LIMIT_MAX_SAFE_REF_NAME_BYTES   (LIMIT_MAX_SAFE_REF_NAME_LEN + 1)
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Reference to a "Reference Map" object, which stores mappings from Safe References to pointers.
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct le_ref_Map* le_ref_MapRef_t;
+typedef struct le_ref_Map *le_ref_MapRef_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -196,23 +205,125 @@ typedef struct le_ref_Map* le_ref_MapRef_t;
  * Reference to an "iterator" object, used to manage iterating a collection of safe refs.
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct le_ref_Iter* le_ref_IterRef_t;
+typedef struct le_ref_Iter *le_ref_IterRef_t;
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal block type.
+ */
+//--------------------------------------------------------------------------------------------------
+struct le_ref_Block;
+
+
+// Internal block sizing
+#define LE_REF_BLOCK_SIZE(numRefs)  (1 + (numRefs))
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Reference Map object, which stores mappings from Safe References to pointers.
+ *
+ *  @note This should not be used directly.
+ */
+//--------------------------------------------------------------------------------------------------
+struct le_ref_Map
+{
+    le_dls_Link_t        entry;     ///< Map list entry, for inspection tools.
+
+#if LE_CONFIG_SAFE_REF_NAMES_ENABLED
+    char                 name[LIMIT_MAX_SAFE_REF_NAME_BYTES];   ///< Descriptive name for debugging.
+    le_log_TraceRef_t    traceRef;  ///< Trace reference for debugging.
+#endif
+
+    size_t               index;     ///< Iterator.
+    bool                 advance;   ///< Iterator advance flag.
+    size_t               size;      ///< Total allocated entries.
+    size_t               maxRefs;   ///< Nominal maximum number of safe references.
+    uint32_t             mapBase;   ///< Randomized "base" for references in this map.
+
+    struct le_ref_Block *blocksPtr; ///< Block list head.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Declare variables for a static safe reference map.
+ *
+ *  In a static safe reference map the space for the maximum number of references is allocated at
+ *  compile time.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_REF_DEFINE_STATIC_MAP(name, maxRefs)                                 \
+    static struct le_ref_Map     _ref_##name##Map;                              \
+    static void                 *_ref_##name##Data[LE_REF_BLOCK_SIZE(maxRefs)]
+
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_ref_InitStaticMap().
+ */
+//--------------------------------------------------------------------------------------------------
+le_ref_MapRef_t _le_ref_InitStaticMap
+(
+#if LE_CONFIG_SAFE_REF_NAMES_ENABLED
+    const char      *name,
+#endif
+    size_t           maxRefs,
+    le_ref_MapRef_t  mapPtr,
+    void            *data
+);
+/// @endcond
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize an already allocated Reference Map that can hold mappings from Safe References to
+ * pointers.
+ *
+ *  @param[in]  name    Name of the map as specified in LE_REF_DEFINE_STATIC_MAP().
+ *  @param[in]  maxRefs Maximum number of Safe References expected to be kept in this Reference Map
+ *                      at any one time.
+ *
+ *  @return The initialized reference map.
+ */
+//--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_SAFE_REF_NAMES_ENABLED
+#   define le_ref_InitStaticMap(name, maxRefs) \
+        _le_ref_InitStaticMap(#name, (maxRefs), &_ref_##name##Map, _ref_##name##Data)
+#else /* if not LE_CONFIG_SAFE_REF_NAMES_ENABLED */
+#   define le_ref_InitStaticMap(name, maxRefs) \
+    _le_ref_InitStaticMap((maxRefs), &_ref_##name##Map, _ref_##name##Data)
+#endif /* end LE_CONFIG_SAFE_REF_NAMES_ENABLED */
+
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_ref_CreateMap().
+ */
+//--------------------------------------------------------------------------------------------------
+le_ref_MapRef_t _le_ref_CreateMap
+(
+#if LE_CONFIG_SAFE_REF_NAMES_ENABLED
+    const char *name,
+#endif
+    size_t      maxRefs
+);
+/// @endcond
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Create a Reference Map that can hold mappings from Safe References to pointers.
  *
- * @return A reference to the Reference Map object.
+ *  @param[in]  name    Name of the map (for diagnostics).
+ *  @param[in]  maxRefs Maximum number of Safe References expected to be kept in this Reference Map
+ *                      at any one time.
+ *
+ *  @return A reference to the Reference Map object.
  */
 //--------------------------------------------------------------------------------------------------
-le_ref_MapRef_t le_ref_CreateMap
-(
-    const char* name,   ///< [in] Name of the map (for diagnostics).
-
-    size_t      maxRefs ///< [in] Maximum number of Safe References expected to be kept in
-                        ///       this Reference Map at any one time.
-);
+#if LE_CONFIG_SAFE_REF_NAMES_ENABLED
+#   define le_ref_CreateMap(name, maxRefs)  _le_ref_CreateMap((name), (maxRefs))
+#else /* if not LE_CONFIG_SAFE_REF_NAMES_ENABLED */
+#   define le_ref_CreateMap(name, maxRefs)  ((void)(name), _le_ref_CreateMap(maxRefs))
+#endif /* end LE_CONFIG_SAFE_REF_NAMES_ENABLED */
 
 
 //--------------------------------------------------------------------------------------------------
@@ -296,7 +407,8 @@ le_result_t le_ref_NextNode
  * been initialized and le_hashmap_NextNode() has not been called, or if the iterator has been
  * invalidated then this will return NULL.
  *
- * @return  A pointer to the current key, or NULL if the iterator has been invalidated or is not ready.
+ * @return  A pointer to the current key, or NULL if the iterator has been invalidated or is not
+ *          ready.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -321,5 +433,15 @@ void* le_ref_GetValue
     le_ref_IterRef_t iteratorRef ///< [IN] Reference to the iterator.
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Immediately enables tracing on a particular safe reference map object.
+ **/
+//--------------------------------------------------------------------------------------------------
+void le_ref_EnableTrace
+(
+    le_ref_MapRef_t mapRef ///< [in] Reference to the map
+);
 
 #endif // LEGATO_SAFEREF_INCLUDE_GUARD

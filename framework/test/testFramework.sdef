@@ -7,6 +7,8 @@
 interfaceSearch:
 {
     $CURDIR/ipc/interfaces
+    $LEGATO_ROOT/interfaces/atServices
+    $LEGATO_ROOT/interfaces
 }
 
 apps:
@@ -14,20 +16,57 @@ apps:
     /*
      * Test applications
      */
+    memPool/test_MemPool
+    hashMap/test_HashMap
+    lists/test_Lists
     clock/test_Clock
     thread/test_Thread
     eventLoop/test_EventLoop
     timer/test_Timer
     semaphore/test_Semaphore
+    fdMonitor/test_FdMonitorSocket
+    fdMonitor/test_FdMonitorFifo
     ipc/test_Optional1
     ipc/test_Optional2
     fs/test_Fs
     crc/test_Crc
+    fd/test_Fd
     issues/test_LE_11195
+    json/test_Json
 
     /*
      * Helper applications assocated with python tests
      */
+    multi-app/helloWorld
     log/logTester
+    #if ${LE_CONFIG_CUSTOM_OS} = y
+        platform/exitTest
+        platform/rebootTest
+    #endif
     issues/LE_2322
+    // Framework Tools.
+#if ${DISABLE_FRAMEWORK_TOOLS} = 1
+#else
+#if ${LE_CONFIG_LINUX} = y
+#else
+    $LEGATO_ROOT/framework/tools/target/rtos/targetTools.adef
+#endif
+#endif
+}
+
+commands:
+{
+#if ${LE_CONFIG_LINUX} = y
+#else
+    legato = targetTools:/legato
+#endif
+#if ${LE_CONFIG_RTOS_TARGET_TOOL_INSPECT} = y
+    inspect = targetTools:/inspect
+#endif
+#if ${LE_CONFIG_RTOS_TARGET_TOOL_DLSUM} = y
+    dlsum = targetTools:/dlsum
+#endif
+#if ${LE_CONFIG_RTOS_TARGET_TOOL_HTTPD} = y
+    httpd = targetTools:/httpd
+#endif
 }

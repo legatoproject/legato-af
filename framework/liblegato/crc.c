@@ -9,7 +9,13 @@
  *
  */
 
-#include "legato.h"
+// This file is used standalone by mkPatch, so cannot include legato.h
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#include "le_basics.h"
+#include "le_crc.h"
 
 //--------------------------------------------------------------------------------------------------
 /**

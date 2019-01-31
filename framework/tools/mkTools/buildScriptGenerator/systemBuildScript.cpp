@@ -82,7 +82,7 @@ void SystemBuildScriptGenerator_t::GenerateSystemBuildRules
     // full path relative to LEGATO_ROOT, while we want it relative to lib/
     "            (cd $$LEGATO_ROOT/build/$target/framework/lib/ ; "
     "             find . -path './*/site-packages/*'"
-    "             -exec cp -P --parents -t $$LEGATO_ROOT/$stagingDir/lib/ {} \\; ; ) && $\n"
+    "             -exec cp -P --parents -t $stagingDir/lib/ {} \\; ; ) && $\n"
 
     // Create modules directory and copy kernel modules into it
     "            mkdir -p $stagingDir/modules && $\n"
@@ -519,7 +519,8 @@ void SystemBuildScriptGenerator_t::Generate
         includes += " -I" + dir;
     }
     script << "builddir = " << path::MakeAbsolute(buildParams.workingDir) << "\n\n";
-    script << "stagingDir = " << path::Combine(buildParams.workingDir, "staging") << "\n\n";
+    script << "stagingDir = "
+        << path::Combine(path::MakeAbsolute(buildParams.workingDir), "staging") << "\n\n";
     script << "cFlags = " << buildParams.cFlags << includes << "\n\n";
     script << "cxxFlags = " << buildParams.cxxFlags << includes << "\n\n";
     script << "ldFlags = " << buildParams.ldFlags << "\n\n";

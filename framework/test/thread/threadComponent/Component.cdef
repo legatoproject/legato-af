@@ -11,4 +11,5 @@ sources:
     priority.c
     forkJoinMutex.c
     externalThreadApi.c
+    staticThread.c
 }

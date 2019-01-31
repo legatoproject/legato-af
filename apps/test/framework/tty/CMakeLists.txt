@@ -6,6 +6,7 @@ set(APP_TARGET testTty)
 
 mkexe(  ${APP_TARGET}
             ttyTest.c
+            -i ${PROJECT_SOURCE_DIR}/framework/liblegato
             -i ${PROJECT_SOURCE_DIR}/framework/liblegato/linux
         )
 

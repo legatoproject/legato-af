@@ -6,12 +6,7 @@
 
 ### Options ###
 
-config WDOG_FRAMEWORK
-  bool "Enable Legato watchdog on framework services"
-  default y
-  ---help---
-  The watchdog observes the Legato framework daemons and, if one deadlocks,
-  restarts the system.
+menu "Watchdog Daemon"
 
 config WDOG_ENABLE_EXTERNAL
   bool "Enable external watchdog"
@@ -35,3 +30,5 @@ config WDOG_PA_DEVICE
   default "/dev/watchdog"
   ---help---
   Name of the device to use to kick the external watchdog.
+
+endmenu # end "Watchdog Daemon"

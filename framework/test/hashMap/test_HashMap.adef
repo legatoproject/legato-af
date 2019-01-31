@@ -1,0 +1,26 @@
+start: manual
+
+executables:
+{
+    testHashMap = (hashMapComponent)
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        (testHashMap)
+    }
+
+#if ${LE_CONFIG_LINUX} = y
+    // TODO: uncomment once support is imported from uLegato
+    // maxStackBytes: 81920
+#else
+    maxStackBytes: 20480
+#endif
+}

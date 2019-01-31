@@ -1,0 +1,19 @@
+start: manual
+
+executables:
+{
+    testMemPool = (memComponent)
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        (testMemPool)
+    }
+}

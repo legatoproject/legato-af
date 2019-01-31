@@ -11,7 +11,6 @@
 // Include macros for printing out values
 #include "le_print.h"
 
-
 // Number is usec ticks for one msec
 #define ONE_MSEC 1000
 
@@ -38,49 +37,56 @@ typedef struct
 {
     le_clk_Time_t interval;                  ///< Interval
     uint32_t repeatCount;                    ///< Number of times the timer will repeat
-    le_clk_Time_t offset;                    ///< Clock offset from base time
+    le_clk_Time_t offset[2];                 ///< Clock offset from base time
+    bool testPassed[2][8];                   ///< Did the test pass?
 }
 TimerTestData;
 
 
 static TimerTestData TimerTestDataArray[] =
 {
-    { {  5,            0 },  1 },
-    { { 10,            0 },  2 },
-    { { 15,            0 },  1 },
+    { {  5,            0 },  1 },       // Timer 0
+    { { 10,            0 },  2 },       // Timer 1
+    { { 15,            0 },  1 },       // Timer 2
 
-    { {  5, 100*ONE_MSEC },  1 },
-    { { 10, 100*ONE_MSEC },  1 },
-    { { 15, 100*ONE_MSEC },  1 },
+    { {  5, 100*ONE_MSEC },  1 },       // Timer 3
+    { { 10, 100*ONE_MSEC },  1 },       // Timer 4
+    { { 15, 100*ONE_MSEC },  1 },       // Timer 5
 
-    { {  4, 500*ONE_MSEC },  1 },
-    { {  9, 500*ONE_MSEC },  1 },
-    { { 14, 500*ONE_MSEC },  1 },
+    { {  4, 500*ONE_MSEC },  1 },       // Timer 6
+    { {  9, 500*ONE_MSEC },  1 },       // Timer 7
+    { { 14, 500*ONE_MSEC },  1 },       // Timer 8
 
     // Start three timers all with the same time.  They will hopefully all expire on a
     // single timerFD expiry
-    { { 12,            0 },  1 },
-    { { 12,            0 },  1 },
-    { { 12,            0 },  1 },
+    { { 12,            0 },  1 },       // Timer 9
+    { { 12,            0 },  1 },       // Timer 10
+    { { 12,            0 },  1 },       // Timer 11
 
-    { {  3,            0 },  8 },
+    { {  3,            0 },  8 },       // Timer 12
 
-    { { 25,            0 },  1 },
-    { { 25,            0 },  1 },
-    { { 25,            0 },  1 },
-    { { 25,            0 },  1 },
-    { { 25,            0 },  1 },
-    { { 25,            0 },  3 },
-    { { 25,            0 },  1 },
-    { { 25,            0 },  1 },
+    { { 25,            0 },  1 },       // Timer 13
+    { { 25,            0 },  1 },       // Timer 14
+    { { 25,            0 },  1 },       // Timer 15
+    { { 25,            0 },  1 },       // Timer 16
+    { { 25,            0 },  1 },       // Timer 17
+    { { 25,            0 },  3 },       // Timer 18
+    { { 25,            0 },  1 },       // Timer 19
+    { { 25,            0 },  1 },       // Timer 20
 };
 
 #define NUM_TEST_TIMERS NUM_ARRAY_MEMBERS(TimerTestDataArray)
 
 // Test counts
+#if LE_CONFIG_LINUX
+static __thread int Expired;
+static int Total;
+static __thread int Passed;
+#else
 static int Expired;
 static int Total;
 static int Passed;
+#endif
 
 // Thread-local data key for the start time.
 static pthread_key_t StartTimeKey;
@@ -326,7 +332,10 @@ static void TimerExpiryHandler
     static le_clk_Time_t prevExecTime;
 
     LE_TEST_INFO("\n ======================================");
-    LE_TEST_INFO("%s timer %d expired", (isMain ? "Main" : "Child"), (int) testDataIndex);
+    LE_TEST_INFO("%s timer %d (%p) expired",
+                 (isMain ? "Main" : "Child"),
+                 (int) testDataIndex,
+                 timerRef);
     LE_TEST_INFO("Expiry Count = %" PRIu32, expiryCount);
 
     // Note that diffTime will always be greater than the timer interval, since StartTime is
@@ -334,7 +343,7 @@ static void TimerExpiryHandler
     // always return a positive time.
     le_clk_Time_t* startTimePtr = pthread_getspecific(StartTimeKey);
     LE_ASSERT(startTimePtr != NULL);
-    diffTime = le_clk_Sub( relativeTime, le_clk_Add(*startTimePtr, testDataPtr->offset));
+    diffTime = le_clk_Sub( relativeTime, le_clk_Add(*startTimePtr, testDataPtr->offset[isMain]));
     expectedInterval = le_clk_Multiply(testDataPtr->interval, expiryCount);
 
     // increase the tolerance when there are several timers which expire at the same time
@@ -350,8 +359,8 @@ static void TimerExpiryHandler
     bool testFailed = le_clk_GreaterThan(subTime, tolerance);
 
     LOCK();
-    LE_TEST_OK(!testFailed, "%s %d timer accuracy within tolerance",
-        (isMain ? "Main" : "Child"), (int) testDataIndex);
+    LE_ASSERT(expiryCount >= 1);
+    testDataPtr->testPassed[isMain][expiryCount-1] = !testFailed;
     if ( testFailed )
     {
         LOG_TIME_MSG("testDataPtr", testDataPtr->interval);
@@ -362,14 +371,16 @@ static void TimerExpiryHandler
     }
     else
     {
-        __atomic_add_fetch(&Passed, 1, __ATOMIC_RELAXED);
+        Passed++;
     }
     UNLOCK();
 
     // If the last timer expired the required number of times, then the expiry tests are finished
-    if (__atomic_add_fetch(&Expired, 1, __ATOMIC_RELAXED) == Total)
+    if (++Expired == Total)
     {
-        LE_TEST_INFO("EXPIRY TEST COMPLETE: %i of %i tests passed", Passed, Total);
+        LE_TEST_INFO("%s EXPIRY TEST COMPLETE: %i of %i tests passed",
+                     (isMain ? "MAIN" : "CHILD"),
+                     Passed, Total);
         if (Passed != Total)
         {
             LE_TEST_INFO("%i TESTS FAILED", Total - Passed);
@@ -378,15 +389,30 @@ static void TimerExpiryHandler
         if (isMain)
         {
 #if LE_CONFIG_LINUX
-            // Child thread just exits so the main thread can join with it.
-            le_thread_Cancel(ChildThread);
-
+            // Child thread will exit when its tests are done, just wait for it.
             LE_TEST_INFO("Waiting for child thread to join...");
 
             // Main thread joins with the child before continuing with additional tests.
             void* threadResult;
             le_thread_Join(ChildThread, &threadResult);
 #endif /* end LE_CONFIG_LINUX */
+
+            int i;
+            for (i = 0;
+                 i < sizeof(TimerTestDataArray)/sizeof(TimerTestDataArray[0]);
+                 ++i)
+            {
+                int j;
+                for (j = 0; j < TimerTestDataArray[i].repeatCount; ++j)
+                {
+                    LE_TEST_OK(TimerTestDataArray[i].testPassed[1][j],
+                               "Main timer %d expiry %d accuracy within tolerance", i, j);
+#if LE_CONFIG_LINUX
+                    LE_TEST_OK(TimerTestDataArray[i].testPassed[0][j],
+                               "Child timer %d expiry %d accuracy within tolerance", i, j);
+#endif /* end LE_CONFIG_LINUX */
+                }
+         }
 
             // Continue with additional tests
             AdditionalTests(timerRef);
@@ -412,6 +438,7 @@ static void TimerExpiryHandler
 
 static void TimerEventLoopTest(void)
 {
+    int            isMain = (le_thread_GetCurrent() == MainThread);
     le_timer_Ref_t newTimer;
     int i;
 
@@ -419,18 +446,14 @@ static void TimerEventLoopTest(void)
     LE_ASSERT(startTimePtr != NULL);
     LE_ASSERT(pthread_setspecific(StartTimeKey, startTimePtr) == 0);
 
-    for (i = 0; i < NUM_TEST_TIMERS; ++i)
-    {
-        LE_TEST_INFO("Starting %s %ld.%03ld s timer %d (%" PRIu32 " repeats)",
-            (le_thread_GetCurrent() == MainThread ? "main" : "child"),
-            TimerTestDataArray[i].interval.sec, TimerTestDataArray[i].interval.usec / ONE_MSEC, i,
-            TimerTestDataArray[i].repeatCount - 1);
-    }
-
     *startTimePtr = le_clk_GetRelativeTime();
     for (i=0; i<NUM_TEST_TIMERS; i++)
     {
-        newTimer = le_timer_Create("new timer");
+        char timerName[32] = { 0 };
+
+        snprintf(timerName, sizeof(timerName), "%sTimer%d", (isMain?"main":"child"), i);
+
+        newTimer = le_timer_Create(timerName);
 
         le_timer_SetInterval(newTimer, TimerTestDataArray[i].interval);
         le_timer_SetRepeat(newTimer, TimerTestDataArray[i].repeatCount);
@@ -439,7 +462,13 @@ static void TimerEventLoopTest(void)
 
         le_clk_Time_t thisStartTime = le_clk_GetRelativeTime();
         le_timer_Start(newTimer);
-        TimerTestDataArray[i].offset = le_clk_Sub(thisStartTime, *startTimePtr);
+        TimerTestDataArray[i].offset[isMain] = le_clk_Sub(thisStartTime, *startTimePtr);
+
+        LE_TEST_INFO("Starting %s %ld.%03ld s timer %d (%p) (%" PRIu32 " repeats)",
+            (le_thread_GetCurrent() == MainThread ? "main" : "child"),
+            TimerTestDataArray[i].interval.sec, TimerTestDataArray[i].interval.usec / ONE_MSEC,
+                     i, newTimer,
+            TimerTestDataArray[i].repeatCount - 1);
     }
 
 }
@@ -487,7 +516,7 @@ COMPONENT_INIT
     LE_ASSERT(pthread_key_create(&StartTimeKey, NULL) == 0);
 
     // Skip child timer tests on RTOS as timer accuracy isn't good enough
-    LE_TEST_BEGIN_SKIP(!LE_CONFIG_LINUX, Total);
+    LE_TEST_BEGIN_SKIP(!LE_CONFIG_IS_ENABLED(LE_CONFIG_LINUX), Total);
 #if LE_CONFIG_LINUX
     le_thread_SetJoinable(ChildThread);
     le_thread_Start(ChildThread);

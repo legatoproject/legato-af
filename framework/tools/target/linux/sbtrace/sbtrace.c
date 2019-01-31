@@ -192,7 +192,7 @@ static le_appCtrl_AppRef_t AppRef = NULL;
  * Maximum path bytes.
  */
 //--------------------------------------------------------------------------------------------------
-#define MAX_PATH_BYTES          (LE_LIMIT_MAX_PATH_LEN+1)
+#define MAX_PATH_BYTES          (PATH_MAX + 1)
 
 
 //--------------------------------------------------------------------------------------------------

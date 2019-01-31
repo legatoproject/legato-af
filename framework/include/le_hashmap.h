@@ -9,7 +9,9 @@
  *
  * @section c_hashmap_create Creating a HashMap
  *
- * Use @c le_hashmap_Create() to create a hashmap. It's the responsibility of
+ * There are two methods to create a hashmap.  Either use @c le_hashmap_Create() to create
+ * a hashmap on the heap, or use LE_HASHMAP_DEFINE_STATIC to define space for a hashmap,
+ * then use @c le_hashmap_InitStatic() to initialize the hashmap. It's the responsibility of
  * the caller to maintain type integrity using this function's parameters.
  * It's important to supply hash and equality functions that operate on the
  * type of key that you intend to store. It's unwise to mix types in a single table because
@@ -172,6 +174,14 @@
 #ifndef LEGATO_HASHMAP_INCLUDE_GUARD
 #define LEGATO_HASHMAP_INCLUDE_GUARD
 
+#if LE_CONFIG_REDUCE_FOOTPRINT
+typedef le_sls_List_t le_hashmap_Bucket_t;
+typedef le_sls_Link_t le_hashmap_Link_t;
+#else /* if not LE_CONFIG_REDUCE_FOOTPRINT */
+typedef le_dls_List_t le_hashmap_Bucket_t;
+typedef le_dls_Link_t le_hashmap_Link_t;
+#endif /* end LE_CONFIG_REDUCE_FOOTPRINT */
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Reference to a HashMap.
@@ -236,6 +246,73 @@ typedef bool (*le_hashmap_ForEachHandler_t)
     void* contextPtr
 );
 
+
+/**
+ * A struct to hold the data in the table
+ *
+ * @note This is an internal structure which should not be instantiated directly
+ */
+typedef struct le_hashmap_Entry
+{
+    le_hashmap_Link_t    entryListLink; ///< Next entry in bucket.
+    const void          *keyPtr;        ///< Pointer to key data.
+    const void          *valuePtr;      ///< Pointer to value data.
+}
+le_hashmap_Entry_t;
+
+/**
+ * A hashmap iterator
+ *
+ * @note This is an internal structure which should not be instantiated directly
+ */
+typedef struct le_hashmap_It
+{
+    size_t               currentIndex;      ///< Current bucket index.
+    le_hashmap_Link_t   *currentLinkPtr;    ///< Current bucket list item pointer.
+}
+le_hashmap_HashmapIt_t;
+
+/**
+ *  The hashmap itself
+ *
+ * @note This is an internal structure which should not be instantiated directly
+ */
+typedef struct le_hashmap
+{
+    le_hashmap_HashmapIt_t   iterator;      ///< Iterator instance.
+
+    le_hashmap_EqualsFunc_t  equalsFuncPtr; ///< Equality operator.
+    le_hashmap_HashFunc_t    hashFuncPtr;   ///< Hash operator.
+
+    le_hashmap_Bucket_t     *bucketsPtr;    ///< Pointer to the array of hash map buckets.
+    le_mem_PoolRef_t         entryPoolRef;  ///< Memory pool to expand into for expanding buckets.
+    size_t                   bucketCount;   ///< Number of buckets.
+    size_t                   size;          ///< Number of inserted entries.
+
+#if LE_CONFIG_HASHMAP_NAMES_ENABLED
+    const char               *nameStr;        ///< Name of the hashmap for diagnostic purposes.
+    le_log_TraceRef_t         traceRef;       ///< Log trace reference for debugging the hashmap.
+#endif /* end LE_CONFIG_HASHMAP_NAMES_ENABLED */
+}
+le_hashmap_Hashmap_t;
+
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_hashmap_Create().
+ */
+//--------------------------------------------------------------------------------------------------
+le_hashmap_Ref_t _le_hashmap_Create
+(
+#if LE_CONFIG_HASHMAP_NAMES_ENABLED
+    const char                *nameStr,
+#endif
+    size_t                     capacity,
+    le_hashmap_HashFunc_t      hashFunc,
+    le_hashmap_EqualsFunc_t    equalsFunc
+);
+/// @endcond
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Create a HashMap.
@@ -243,18 +320,138 @@ typedef bool (*le_hashmap_ForEachHandler_t)
  * If you create a hashmap with a smaller capacity than you actually use, then
  * the map will continue to work, but performance will degrade the more you put in the map.
  *
- * @return  Returns a reference to the map.
+ *  @param[in]  nameStr     Name of the HashMap.  This must be a static string as it is not copied.
+ *  @param[in]  capacity    Size of the hashmap
+ *  @param[in]  hashFunc    Hash function
+ *  @param[in]  equalsFunc  Equality function
  *
- * @note Terminates the process on failure, so no need to check the return value for errors.
+ *  @return  Returns a reference to the map.
+ *
+ *  @note Terminates the process on failure, so no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_hashmap_Ref_t le_hashmap_Create
+#if LE_CONFIG_HASHMAP_NAMES_ENABLED
+#   define le_hashmap_Create(nameStr, capacity, hashFunc, equalsFunc) \
+        _le_hashmap_Create((nameStr), (capacity), (hashFunc), (equalsFunc))
+#else /* if not LE_CONFIG_HASHMAP_NAMES_ENABLED */
+#   define le_hashmap_Create(nameStr, capacity, hashFunc, equalsFunc) \
+        ((void)(nameStr), _le_hashmap_Create((capacity), (hashFunc), (equalsFunc)))
+#endif /* end LE_CONFIG_HASHMAP_NAMES_ENABLED */
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Calculate number of buckets for a hashmap of a given size
+ *
+ * 0.75 load factor. We have more buckets than expected keys as we want
+ * to reduce the chance of collisions. 1-1 would assume a perfect hashing
+ * function which is rather unlikely. Also, ensure that the capacity is
+ * at least 3 which avoids strange issues in the hashing algorithm
+ *
+ * @note Used internally to calculate static hashmap sizes.  Should not be used by users
+ * of liblegato.  Caps out at 65536 entries
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_HASHMAP_BUCKET_COUNT(capacity)                               \
+    ((capacity)*4/3<=0x4?0x4:                                           \
+     ((capacity)*4/3<=0x8?0x8:                                          \
+      ((capacity)*4/3<=0x10?0x10:                                       \
+       ((capacity)*4/3<=0x20?0x20:                                      \
+        ((capacity)*4/3<=0x40?0x40:                                     \
+         ((capacity)*4/3<=0x80?0x80:                                    \
+          ((capacity)*4/3<=0x100?0x100:                                 \
+           ((capacity)*4/3<=0x200?0x200:                                \
+            ((capacity)*4/3<=0x400?0x400:                               \
+             ((capacity)*4/3<=0x800?0x800:                              \
+              ((capacity)*4/3<=0x1000?0x1000:                           \
+               ((capacity)*4/3<0x2000?0x2000:                           \
+                ((capacity)*4/3<0x4000?0x4000:                          \
+                 ((capacity)*4/3<0x8000?0x8000:                         \
+                  0x10000))))))))))))))
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Statically define a hash-map.
+ *
+ * This allocates all the space required for a hash-map at file scope so no dynamic memory
+ * is needed for the hash map.  This allows a better estimate of memory usage of an app
+ * to be obtained by examining the linker map, and ensures initializing the static map
+ * will not fail at run-time.
+ *
+ * @note Dynamic hash maps set initial pool to bucket count/2, static hash maps set
+ * pool size to capacity to avoid overflowing the pool.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_HASHMAP_DEFINE_STATIC(name, capacity)                                          \
+    static le_hashmap_Hashmap_t _hashmap_##name##Hashmap;                                 \
+    LE_MEM_DEFINE_STATIC_POOL(_hashmap_##name, (capacity), sizeof(le_hashmap_Entry_t));   \
+    static le_hashmap_Bucket_t _hashmap_##name##Buckets[LE_HASHMAP_BUCKET_COUNT(capacity)]
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize a statically-defined hashmap
+ *
+ * If you create a hashmap with a smaller capacity than you actually use, then
+ * the map will continue to work, but performance will degrade the more you put in the map.
+ *
+ *  @param  name        Name used when defining the static hashmap.
+ *  @param  capacity    Capacity specified when defining the static hashmap.
+ *  @param  hashFunc    Callback to invoke to hash an entry's key.
+ *  @param  equalsFunc  Callback to invoke to test key equality.
+ *
+ *  @return  Returns a reference to the map.
+ */
+//--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_HASHMAP_NAMES_ENABLED
+#   define le_hashmap_InitStatic(name, capacity, hashFunc, equalsFunc)              \
+        (inline_static_assert(                                                      \
+            sizeof(_hashmap_##name##Buckets) ==                                     \
+                sizeof(le_hashmap_Entry_t *[LE_HASHMAP_BUCKET_COUNT(capacity)]),    \
+            "hashmap init capacity does not match definition"),                     \
+        _le_hashmap_InitStatic(#name, (capacity), (hashFunc), (equalsFunc),         \
+                               &_hashmap_##name##Hashmap,                           \
+                               le_mem_InitStaticPool(_hashmap_##name,               \
+                                                    (capacity),                     \
+                                                    sizeof(le_hashmap_Entry_t)),    \
+                               _hashmap_##name##Buckets))
+#else
+#   define le_hashmap_InitStatic(name, capacity, hashFunc, equalsFunc)              \
+        (inline_static_assert(                                                      \
+            sizeof(_hashmap_##name##Buckets) ==                                     \
+                sizeof(le_hashmap_Entry_t *[LE_HASHMAP_BUCKET_COUNT(capacity)]),    \
+            "hashmap init capacity does not match definition"),                     \
+        _le_hashmap_InitStatic((capacity), (hashFunc), (equalsFunc),                \
+                               &_hashmap_##name##Hashmap,                           \
+                               le_mem_InitStaticPool(_hashmap_##name,               \
+                                                    (capacity),                     \
+                                                    sizeof(le_hashmap_Entry_t)),    \
+                               _hashmap_##name##Buckets))
+#endif
+
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function to initialize a statically-defined hashmap
+ *
+ * @note use le_hashmap_InitStatic() macro instead
+ */
+//--------------------------------------------------------------------------------------------------
+le_hashmap_Ref_t _le_hashmap_InitStatic
 (
-    const char*                nameStr,          ///< [in] Name of the HashMap
-    size_t                     capacity,         ///< [in] Size of the hashmap
-    le_hashmap_HashFunc_t      hashFunc,         ///< [in] Hash function
-    le_hashmap_EqualsFunc_t    equalsFunc        ///< [in] Equality function
+#if LE_CONFIG_HASHMAP_NAMES_ENABLED
+    const char              *nameStr,       ///< [in] Name of the HashMap
+#endif
+    size_t                   capacity,      ///< [in] Expected capacity of the map
+    le_hashmap_HashFunc_t    hashFunc,      ///< [in] The hash function
+    le_hashmap_EqualsFunc_t  equalsFunc,    ///< [in] The equality function
+    le_hashmap_Hashmap_t    *mapPtr,        ///< [in] The static hash map to initialize
+    le_mem_PoolRef_t         entryPoolRef,  ///< [in] The memory pool for map entries
+    le_hashmap_Bucket_t     *bucketsPtr     ///< [in] The buckets
 );
+/// @endcond
+
 
 //--------------------------------------------------------------------------------------------------
 /**

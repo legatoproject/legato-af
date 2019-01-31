@@ -267,21 +267,41 @@ typedef void* (* le_thread_MainFunc_t)
     void* context   ///< See parameter documentation above.
 );
 
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_thread_Create().
+ */
+//--------------------------------------------------------------------------------------------------
+le_thread_Ref_t _le_thread_Create
+(
+#if LE_CONFIG_THREAD_NAMES_ENABLED
+    const char*             name,
+#endif
+    le_thread_MainFunc_t    mainFunc,
+    void*                   context
+);
+/// @endcond
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Creates a new Legato thread of execution.  After creating the thread, you have the opportunity
  * to set attributes before it starts.  It won't start until le_thread_Start() is called.
  *
- * @return A reference to the thread (doesn't return if fails).
+ *  @param[in]  name        Thread name (will be copied, so can be temporary).
+ *  @param[in]  mainFunc    Thread's main function.
+ *  @param[in]  context     Value to pass to mainFunc when it is called.
+ *
+ *  @return A reference to the thread (doesn't return if fails).
  */
 //--------------------------------------------------------------------------------------------------
-le_thread_Ref_t le_thread_Create
-(
-    const char*             name,       ///< [IN] Thread name (will be copied, so can be temporary).
-    le_thread_MainFunc_t    mainFunc,   ///< [IN] Thread's main function.
-    void*                   context     ///< [IN] Value to pass to mainFunc when it is called.
-);
+#if LE_CONFIG_THREAD_NAMES_ENABLED
+#   define le_thread_Create(name, mainFunc, context)    \
+        _le_thread_Create((name), (mainFunc), (context))
+#else /* if not LE_CONFIG_THREAD_NAMES_ENABLED */
+#   define le_thread_Create(name, mainFunc, context)    \
+        ((void)(name), _le_thread_Create((mainFunc), (context)))
+#endif /* end LE_CONFIG_THREAD_NAMES_ENABLED */
 
 
 //--------------------------------------------------------------------------------------------------
@@ -323,6 +343,68 @@ le_result_t le_thread_SetStackSize
     le_thread_Ref_t     thread,     ///< [IN]
     size_t              size        ///< [IN] Stack size, in bytes.  May be rounded up to the
                                     ///       nearest virtual memory page size.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Define a static thread stack region.
+ *
+ *  @param  name    Stack variable name.
+ *  @param  bytes   Number of bytes in the stack.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_THREAD_DEFINE_STATIC_STACK(name, bytes)                                  \
+    static uint8_t _thread_stack_##name[FA_THREAD_STACK_EXTRA_SIZE +                \
+        ((bytes) < FA_THREAD_STACK_MIN_SIZE ? FA_THREAD_STACK_MIN_SIZE : (bytes))]  \
+        __attribute__((aligned(FA_THREAD_STACK_ALIGNMENT)))
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Set a static stack for a thread.
+ *
+ *  @see le_thread_SetStack() for details.
+ *
+ *  @param  thread  Thread to set the stack for.
+ *  @param  name    Stack variable name that was previously passed to
+ *                  LE_THREAD_DEFINE_STATIC_STACK().
+ *
+ *  @return Return value of le_thread_SetStack().
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_THREAD_SET_STATIC_STACK(thread, name) \
+    le_thread_SetStack((thread), &_thread_stack_##name, sizeof(_thread_stack_##name))
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Sets the stack of a thread.
+ *
+ *  Setting the stack explicitly allows the caller to control the memory allocation of the thread's
+ *  stack and, in some cases, control data.  This can be useful for allocating the space out of
+ *  static memory, for example.
+ *
+ *  The macro LE_THREAD_DEFINE_STATIC_STACK() may be used to create a statically allocated stack for
+ *  use with this function, and LE_THREAD_SET_STATIC_STACK() may be used to call it properly.
+ *
+ *  @attention  In general, this function is only useful on embedded, RTOS based systems in order to
+ *              perform up-front allocation of thread resources.  On more capable systems it is
+ *              safer to allow the operating system to set up the stack (which may optionally be
+ *              sized using le_thread_SetStackSize()).
+ *
+ *  @return
+ *      - LE_OK if successful.
+ *      - LE_BAD_PARAMETER if the size or stack is invalid (NULL or improperly aligned).
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_thread_SetStack
+(
+    le_thread_Ref_t  thread,    ///< [IN] Thread instance.
+    void            *stack,     ///< [IN] Address of the lowest byte of the stack.  This must be
+                                ///       appropriately aligned (LE_THREAD_DEFINE_STATIC_STACK()
+                                ///       will do this).
+    size_t           size       ///< [IN] Stack size, in bytes.
 );
 
 
@@ -401,12 +483,15 @@ void le_thread_Exit
  * Tells another thread to terminate.  Returns immediately, but the termination of the
  * thread happens asynchronously and is not guaranteed to occur when this function returns.
  *
+ * @note This function is not available on RTOS.
+
+ *
  * @return
  *      - LE_OK if successful.
  *      - LE_NOT_FOUND if the thread doesn't exist.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_thread_Cancel
+LE_FULL_API le_result_t le_thread_Cancel
 (
     le_thread_Ref_t threadToCancel  ///< [IN] Thread to cancel.
 );
@@ -533,6 +618,19 @@ void le_thread_RemoveDestructor
     le_thread_DestructorRef_t  destructor ///< [in] Reference to the destructor to remove.
 );
 
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_thread_InitLegatoThreadData().
+ */
+//--------------------------------------------------------------------------------------------------
+void _le_thread_InitLegatoThreadData
+(
+#if LE_CONFIG_THREAD_NAMES_ENABLED
+    const char* name
+#endif
+);
+/// @endcond
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -541,13 +639,16 @@ void le_thread_RemoveDestructor
  * This is used to turn a non-Legato thread (a thread that was created using a non-Legato API,
  * such as pthread_create() ) into a Legato thread.
  *
- * @note This is not needed if the thread was started using le_thread_Start().
+ *  @param[in]  name    A name for the thread (will be copied, so can be temporary).
+ *
+ *  @note This is not needed if the thread was started using le_thread_Start().
  **/
 //--------------------------------------------------------------------------------------------------
-void le_thread_InitLegatoThreadData
-(
-    const char* name    ///< [IN] A name for the thread (will be copied, so can be temporary).
-);
+#if LE_CONFIG_THREAD_NAMES_ENABLED
+#   define le_thread_InitLegatoThreadData(name) _le_thread_InitLegatoThreadData(name)
+#else /* if not LE_CONFIG_THREAD_NAMES_ENABLED */
+#   define le_thread_InitLegatoThreadData(name) ((void)(name), _le_thread_InitLegatoThreadData())
+#endif /* end LE_CONFIG_THREAD_NAMES_ENABLED */
 
 
 //--------------------------------------------------------------------------------------------------

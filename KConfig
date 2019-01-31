@@ -150,12 +150,26 @@ config CUSTOM_OS
 
 endchoice # end "Target Operating System"
 
+config RTOS
+  bool "RTOS"
+  depends on CUSTOM_OS
+  default y
+  ---help---
+  Selected operating system is a real-time operating system (RTOS).
+
 config POSIX
   bool "POSIX compliant operating system"
   default y if LINUX
   default n
   ---help---
   Indicate Legato is running on a POSIX platform.
+
+config LWIP
+  bool "Using lwIP network stack"
+  default y if RTOS
+  default n
+  ---help---
+  Target platform is using the Lightweight IP (lwIP) network stack.
 
 config SDEF
   string "Default system definition file"

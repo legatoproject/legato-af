@@ -15,10 +15,10 @@
  * This same object type is used to represent messages on both the client side and the server side.
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct le_msg_Message
+typedef struct le_msg_UnixMessage
 {
     le_dls_Link_t               link;       ///< Used to link onto message queues.
-    le_msg_SessionRef_t         sessionRef; ///< The session to which this message belongs.
+    struct le_msg_Message       message;    ///< Base message
 
     union
     {
@@ -44,7 +44,7 @@ typedef struct le_msg_Message
     void*                       txnId;      ///< Safe reference value used as a transaction ID.
     void*                       payload[0]; ///< Variable-length payload buffer appears at the end.
 }
-Message_t;
+UnixMessage_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -86,7 +86,7 @@ le_mem_PoolRef_t msgMessage_CreatePool
 le_result_t msgMessage_Send
 (
     int         socketFd,   ///< [IN] Connected socket's file descriptor.
-    Message_t*  msgPtr      ///< The Message to be sent.
+    le_msg_MessageRef_t  msgRef  ///< The Message to be sent.
 );
 
 
@@ -115,13 +115,19 @@ le_result_t msgMessage_Receive
  * @return The pointer.
  */
 //--------------------------------------------------------------------------------------------------
-static inline le_dls_Link_t* msgMessage_GetQueueLinkPtr
+LE_DECLARE_INLINE le_dls_Link_t* msgMessage_GetQueueLinkPtr
 (
     le_msg_MessageRef_t msgRef
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return &(msgRef->link);
+    // If there's no message, return NULL for link as well
+    if (!msgRef)
+    {
+        return NULL;
+    }
+
+    return &(CONTAINER_OF(msgRef, UnixMessage_t, message)->link);
 }
 
 
@@ -132,13 +138,20 @@ static inline le_dls_Link_t* msgMessage_GetQueueLinkPtr
  * @return The reference.
  */
 //--------------------------------------------------------------------------------------------------
-static inline le_msg_MessageRef_t msgMessage_GetMessageContainingLink
+LE_DECLARE_INLINE le_msg_MessageRef_t msgMessage_GetMessageContainingLink
 (
     le_dls_Link_t* linkPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return CONTAINER_OF(linkPtr, Message_t, link);
+    if (!linkPtr)
+    {
+        return NULL;
+    }
+
+    UnixMessage_t* msgPtr = CONTAINER_OF(linkPtr, UnixMessage_t, link);
+
+    return &msgPtr->message;
 }
 
 
@@ -147,15 +160,11 @@ static inline le_msg_MessageRef_t msgMessage_GetMessageContainingLink
  * Sets a Message object's transaction ID.
  */
 //--------------------------------------------------------------------------------------------------
-static inline void msgMessage_SetTxnId
+void msgMessage_SetTxnId
 (
     le_msg_MessageRef_t msgRef,
     void*               txnId
-)
-//--------------------------------------------------------------------------------------------------
-{
-    msgRef->txnId = txnId;
-}
+);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -165,14 +174,10 @@ static inline void msgMessage_SetTxnId
  * @return The ID.  (Zero = the message is not part of a request-response transaction.)
  */
 //--------------------------------------------------------------------------------------------------
-static inline void* msgMessage_GetTxnId
+void* msgMessage_GetTxnId
 (
     le_msg_MessageRef_t msgRef
-)
-//--------------------------------------------------------------------------------------------------
-{
-    return msgRef->txnId;
-}
+);
 
 
 //--------------------------------------------------------------------------------------------------

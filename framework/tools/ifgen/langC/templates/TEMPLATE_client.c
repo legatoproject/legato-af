@@ -573,13 +573,12 @@ static void _Handle_{{apiName}}_{{function.name}}
     le_msg_MessageRef_t _msgRef = _reportPtr;
     _Message_t* _msgPtr = le_msg_GetPayloadPtr(_msgRef);
     uint8_t* _msgBufPtr = _msgPtr->buffer;
-    size_t _msgBufSize = _MAX_MSG_SIZE;
 
     // The clientContextPtr always exists and is always first. It is a safe reference to the client
     // data object, but we already get the pointer to the client data object through the _dataPtr
     // parameter, so we don't need to do anything with clientContextPtr, other than unpacking it.
     void* _clientContextPtr;
-    if (!le_pack_UnpackReference( &_msgBufPtr, &_msgBufSize,
+    if (!le_pack_UnpackReference( &_msgBufPtr,
                                   &_clientContextPtr ))
     {
         goto {{error_unpack_label}};
@@ -660,7 +659,6 @@ error_unpack:
 
     // Will not be used if no data is sent/received from server.
     __attribute__((unused)) uint8_t* _msgBufPtr;
-    __attribute__((unused)) size_t _msgBufSize;
     {%- if function.returnType %}
 
     {{function.returnType|FormatType}} _result;
@@ -693,7 +691,6 @@ error_unpack:
     _msgPtr = le_msg_GetPayloadPtr(_msgRef);
     _msgPtr->id = _MSGID_{{apiName}}_{{function.name}};
     _msgBufPtr = _msgPtr->buffer;
-    _msgBufSize = _MAX_MSG_SIZE;
 
     // Pack a list of outputs requested by the client.
     {%- if any(function.parameters, "OutParameter") %}
@@ -701,7 +698,7 @@ error_unpack:
     {%- for output in function.parameters if output is OutParameter %}
     _requiredOutputs |= ((!!({{output|FormatParameterName}})) << {{loop.index0}});
     {%- endfor %}
-    LE_ASSERT(le_pack_PackUint32(&_msgBufPtr, &_msgBufSize, _requiredOutputs));
+    LE_ASSERT(le_pack_PackUint32(&_msgBufPtr, _requiredOutputs));
     {%- endif %}
 
     // Pack the input parameters
@@ -718,7 +715,7 @@ error_unpack:
     _UNLOCK
     handlerRef = ({{function.parameters[0].apiType|FormatType}})clientDataPtr->handlerRef;
     le_mem_Release(clientDataPtr);
-    LE_ASSERT(le_pack_PackReference( &_msgBufPtr, &_msgBufSize,
+    LE_ASSERT(le_pack_PackReference( &_msgBufPtr,
                                      {{function.parameters[0]|FormatParameterName}} ));
     {%- else %}
     {{- pack.PackInputs(function.parameters) }}
@@ -739,11 +736,10 @@ error_unpack:
     // Process the result and/or output parameters, if there are any.
     _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
     _msgBufPtr = _msgPtr->buffer;
-    _msgBufSize = _MAX_MSG_SIZE;
     {%- if function.returnType %}
 
     // Unpack the result first
-    if (!{{function.returnType|UnpackFunction}}( &_msgBufPtr, &_msgBufSize, &_result ))
+    if (!{{function.returnType|UnpackFunction}}( &_msgBufPtr, &_result ))
     {
         goto {{error_unpack_label}};
     }
@@ -800,12 +796,11 @@ static void ClientIndicationRecvHandler
     // Get the message payload
     _Message_t* msgPtr = le_msg_GetPayloadPtr(msgRef);
     uint8_t* _msgBufPtr = msgPtr->buffer;
-    size_t _msgBufSize = _MAX_MSG_SIZE;
 
     // Have to partially unpack the received message in order to know which thread
     // the queued function should actually go to.
     void* clientContextPtr;
-    if (!le_pack_UnpackReference( &_msgBufPtr, &_msgBufSize, &clientContextPtr ))
+    if (!le_pack_UnpackReference( &_msgBufPtr, &clientContextPtr ))
     {
         LE_FATAL("Failed to unpack message from server.");
         return;

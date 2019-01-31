@@ -85,6 +85,23 @@ int32_t le_hex_BinaryToString
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Function that takes binary data and creates 'hex dump' that is
+ * stored into user provided ASCII buffer and is null terminated
+ * Total length of one line will be 74 characters:
+ * 9 + (16 * 3) + 17
+ * 0x000000: 2e 2f 68 65 78 64 75 6d 0 00 53 53 48 5f 41 47 ./hexdump.SSH_AG
+ */
+//--------------------------------------------------------------------------------------------------
+void le_hex_Dump
+(
+    char     *asciiBufferPtr,
+    size_t    asciiBufferSize,
+    char     *binaryDataPtr,
+    size_t    binaryDataLen
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Convert a NULL terminated string of valid hexadecimal characters [0-9a-fA-F] into an integer.
  *
  * @return

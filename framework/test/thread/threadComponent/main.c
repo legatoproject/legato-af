@@ -15,6 +15,7 @@
 #include "forkJoinMutex.h"
 #include "externalThreadApi.h"
 #include "priority.h"
+#include "staticThread.h"
 
 const char TestNameStr[] = "Thread Test";
 
@@ -36,6 +37,7 @@ static void FinishTest
     fjm_CheckResults();
     eta_CheckResults();
     prio_CheckResults();
+    static_CheckResults();
 
     LE_TEST_EXIT;
 }
@@ -52,6 +54,7 @@ COMPONENT_INIT
     eta_Start();
     fjm_Start();
     prio_Start();
+    static_Start();
 
     FinishTest();
 }

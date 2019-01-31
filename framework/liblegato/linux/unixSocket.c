@@ -178,7 +178,7 @@ int unixSocket_CreateSeqPacketNamed
     fd = unixSocket_CreateSeqPacketUnnamed();
     if (fd < 0)
     {
-        return fd;
+        return LE_FAULT;
     }
 
     // Bind the socket to the file system path given.
@@ -656,18 +656,23 @@ le_result_t unixSocket_ReceiveMsg
     {
         ExtractAncillaryData(&msgHeader, fdPtr, credPtr);
     }
-    // If we didn't receive any ancillary data, and recvmsg() still returned zero,
-    // then the socket must have closed.
-    else if (bytesReceived == 0)
-    {
-        return LE_CLOSED;
-    }
 
     // Check if ancillary data was discarded.
     if ((msgHeader.msg_flags & MSG_CTRUNC) != 0)
     {
         LE_WARN("Ancillary data was discarded because it couldn't fit in our buffer.");
+        if (bytesReceived == 0)
+        {
+            return LE_FAULT;
+        }
     }
+    // If we didn't receive any ancillary data, and recvmsg() still returned zero,
+    // then the socket must have closed.
+    else if (msgHeader.msg_controllen == 0 && bytesReceived == 0)
+    {
+        return LE_CLOSED;
+    }
+
 
     // If we tried to receive data,
     if (dataBuffPtr != NULL)
@@ -750,4 +755,3 @@ int unixSocket_GetErrorState
 
     return errCode;
 }
-

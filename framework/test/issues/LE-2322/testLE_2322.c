@@ -40,4 +40,8 @@ COMPONENT_INIT
 
     res = pthread_create(&thread, NULL, &testThread, NULL);
     LE_TEST_ASSERT(res == 0, "Create thread: %d", res);
+#if !LE_CONFIG_LINUX
+    pthread_join(thread, NULL);
+    LE_TEST_EXIT;
+#endif /* end not LE_CONFIG_LINUX */
 }

@@ -14,7 +14,6 @@
 #include "legato.h"
 #include "mem.h"
 #include "thread.h"
-#include "hashmap.h"
 #include "messagingInterface.h"
 #include "messagingProtocol.h"
 #include "messagingSession.h"
@@ -22,6 +21,39 @@
 #include "addr.h"
 #include "fileDescriptor.h"
 #include "timer.h"
+
+#include <sys/ptrace.h>
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Insert a string name variable if configured or a placeholder string if not.
+ *
+ *  @param  nameVar Name variable to insert.
+ *
+ *  @return Name variable or a placeholder string depending on configuration.
+ **/
+//--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_THREAD_NAMES_ENABLED
+#   define  THREAD_NAME(var)    (var)
+#else
+#   define  THREAD_NAME(var)    "<omitted>"
+#endif
+#if LE_CONFIG_TIMER_NAMES_ENABLED
+#   define  TIMER_NAME(var) (var)
+#else
+#   define  TIMER_NAME(var) "<omitted>"
+#endif
+#if LE_CONFIG_MUTEX_NAMES_ENABLED
+#   define  MUTEX_NAME(var) (var)
+#else
+#   define  MUTEX_NAME(var) "<omitted>"
+#endif
+#if LE_CONFIG_SEM_NAMES_ENABLED
+#   define  SEM_NAME(var)   (var)
+#else
+#   define  SEM_NAME(var)   "<omitted>"
+#endif
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -64,7 +96,7 @@ InspType_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Object containing items necessary for accessing a list in the remote process.
+ * Object containing items necessary for accessing a doubly-linked list in the remote process.
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
@@ -73,7 +105,33 @@ typedef struct
     size_t* ListChgCntRef;      ///< Change counter for the remote list.
     le_dls_Link_t* headLinkPtr; ///< Pointer to the first link.
 }
-RemoteListAccess_t;
+RemoteDlsListAccess_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Object containing items necessary for accessing a singly-linked list in the remote process.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_sls_List_t List;         ///< The list in the remote process.
+    size_t* ListChgCntRef;      ///< Change counter for the remote list.
+    le_sls_Link_t* headLinkPtr; ///< Pointer to the first link.
+}
+RemoteSlsListAccess_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Type of remote list access to use for hashmap lists
+ */
+//--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_REDUCE_FOOTPRINT
+typedef RemoteSlsListAccess_t RemoteHashmapListAccess_t;
+#else
+typedef RemoteDlsListAccess_t RemoteHashmapListAccess_t;
+#endif
 
 
 //--------------------------------------------------------------------------------------------------
@@ -83,7 +141,7 @@ RemoteListAccess_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_dls_List_t* bucketsPtr;  ///< Array of buckets in the hashmap in the remote process.
+    le_hashmap_Bucket_t* bucketsPtr;  ///< Array of buckets in the hashmap in the remote process.
     size_t bucketCount;         ///< Size of the array of buckets.
     size_t* mapChgCntRef;       ///< Change counter for the remote map.
 }
@@ -98,22 +156,22 @@ RemoteHashmapAccess_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct MemPoolIter
 {
-    RemoteListAccess_t memPoolList; ///< Memory pool list in the remote process.
-    MemPool_t currMemPool;          ///< Current memory pool from the list.
+    RemoteDlsListAccess_t memPoolList; ///< Memory pool list in the remote process.
+    le_mem_Pool_t currMemPool;          ///< Current memory pool from the list.
 }
 MemPoolIter_t;
 
 typedef struct ThreadObjIter
 {
-    RemoteListAccess_t threadObjList; ///< Thread object list in the remote process.
+    RemoteDlsListAccess_t threadObjList; ///< Thread object list in the remote process.
     thread_Obj_t currThreadObj;        ///< Current thread object from the list.
 }
 ThreadObjIter_t;
 
 typedef struct TimerIter
 {
-    RemoteListAccess_t threadObjList;
-    RemoteListAccess_t timerList;     ///< Timer list for the current thread in the remote process.
+    RemoteDlsListAccess_t threadObjList;
+    RemoteDlsListAccess_t timerList;     ///< Timer list for the current thread in the remote process.
     thread_Obj_t currThreadObj;
     Timer_t currTimer;                ///< Current timer from the list.
 }
@@ -121,8 +179,8 @@ TimerIter_t;
 
 typedef struct MutexIter
 {
-    RemoteListAccess_t threadObjList;
-    RemoteListAccess_t mutexList;     ///< Mutexe list for the current thread in the remote process.
+    RemoteDlsListAccess_t threadObjList;
+    RemoteDlsListAccess_t mutexList;     ///< Mutexe list for the current thread in the remote process.
     thread_Obj_t currThreadObj;
     Mutex_t currMutex;                ///< Current mutex from the list.
 }
@@ -130,8 +188,8 @@ MutexIter_t;
 
 typedef struct SemaphoreIter
 {
-    RemoteListAccess_t threadObjList;
-    RemoteListAccess_t semaphoreList; ///< This is a dummy, since there's no semaphore list.
+    RemoteDlsListAccess_t threadObjList;
+    RemoteDlsListAccess_t semaphoreList; ///< This is a dummy, since there's no semaphore list.
     thread_Obj_t currThreadObj;
     Semaphore_t currSemaphore;        ///< Current semaphore from the list.
 }
@@ -141,8 +199,8 @@ SemaphoreIter_t;
 // semaphore.
 typedef struct ThreadMemberObjIter
 {
-    RemoteListAccess_t threadObjList;
-    RemoteListAccess_t threadMemberObjList;
+    RemoteDlsListAccess_t threadObjList;
+    RemoteDlsListAccess_t threadMemberObjList;
     thread_Obj_t currThreadObj;
 }
 ThreadMemberObjIter_t;
@@ -151,12 +209,13 @@ typedef struct ServiceObjIter
 {
     RemoteHashmapAccess_t serviceObjMap; ///< Service object map in the remote process.
     size_t currIndex;                    ///< Current index in the bucket array.
-    RemoteListAccess_t serviceObjList;   ///< Service object list (technically a list of hashmap
+    RemoteHashmapListAccess_t serviceObjList;
+                                         ///< Service object list (technically a list of hashmap
                                          ///< entries containing pointers to service objects) of the
                                          ///< current bucket of the service object map in the remote
                                          ///< process.
-    Entry_t currEntry;                   ///< Current entry containing the service obj.
-    msgInterface_Service_t currServiceObj; ///< Current service object from the list.
+    le_hashmap_Entry_t currEntry;                   ///< Current entry containing the service obj.
+    msgInterface_UnixService_t currServiceObj; ///< Current service object from the list.
 }
 ServiceObjIter_t;
 
@@ -164,11 +223,12 @@ typedef struct ClientObjIter
 {
     RemoteHashmapAccess_t clientObjMap;  ///< Client object map in the remote process.
     size_t currIndex;
-    RemoteListAccess_t clientObjList;    ///< Client object list (technically a list of hashmap
+    RemoteHashmapListAccess_t clientObjList;
+                                         ///< Client object list (technically a list of hashmap
                                          ///< entries containing pointers to client objects) of the
                                          ///< current bucket of the client object map in the remote
                                          ///< process.
-    Entry_t currEntry;                   ///< Current entry containing the client obj.
+    le_hashmap_Entry_t currEntry;                   ///< Current entry containing the client obj.
     msgInterface_ClientInterface_t currClientObj; ///< Current client object from the list.
 }
 ClientObjIter_t;
@@ -177,13 +237,14 @@ typedef struct SessionObjIter
 {
     RemoteHashmapAccess_t interfaceObjMap; ///< Interface object map in the remote process.
     size_t currIndex;
-    RemoteListAccess_t interfaceObjList; ///< Interface object list (technically a list of hashmap
+    RemoteHashmapListAccess_t interfaceObjList;
+                                         ///< Interface object list (technically a list of hashmap
                                          ///< entries containing pointers to interface objects)
                                          ///< of the current bucket of the interface object map
                                          ///< in the remote process.
-    Entry_t currEntry;                   ///< Current entry containing the interface obj.
-    RemoteListAccess_t sessionList;      ///< Session list of the current interface obj.
-    msgSession_Session_t currSessionObj; ///< Current session object.
+    le_hashmap_Entry_t currEntry;                   ///< Current entry containing the interface obj.
+    RemoteDlsListAccess_t sessionList;      ///< Session list of the current interface obj.
+    msgSession_UnixSession_t currSessionObj; ///< Current session object.
 }
 SessionObjIter_t;
 
@@ -193,8 +254,8 @@ typedef struct InterfaceObjIter
 {
     RemoteHashmapAccess_t interfaceObjMap;
     size_t currIndex;
-    RemoteListAccess_t interfaceObjList;
-    Entry_t currEntry;
+    RemoteHashmapListAccess_t interfaceObjList;
+    le_hashmap_Entry_t currEntry;
 }
 InterfaceObjIter_t;
 
@@ -257,14 +318,6 @@ static pid_t PidToInspect = -1;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * File descriptor of the /proc/<PID>/mem file of the process under inspection.
- */
-//--------------------------------------------------------------------------------------------------
-static int FdProcMem = -1;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Indicating if the Inspect results are output as the JSON format or not. Currently false implies
  * a human-readable format.
  */
@@ -296,6 +349,35 @@ static bool IsFollowing = false;
 //--------------------------------------------------------------------------------------------------
 static bool IsVerbose = false;
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * true = child process stopped
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsChildStopped = false;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Local mapped address of liblegato.so
+ */
+//--------------------------------------------------------------------------------------------------
+uintptr_t LocalLibLegatoBaseAddr = 0;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Child mapped address of liblegato.so
+ */
+//--------------------------------------------------------------------------------------------------
+uintptr_t ChildLibLegatoBaseAddr = 0;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Signal to deliver when process is restarted
+ */
+//--------------------------------------------------------------------------------------------------
+int PendingChildSignal = 0;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -348,87 +430,243 @@ InspectEndStatus_t;
  *      Remote address that is the counterpart of the local address.
  */
 //--------------------------------------------------------------------------------------------------
-static off_t GetRemoteAddress
+static uintptr_t GetRemoteAddress
 (
     pid_t pid,              ///< [IN] Remote process to to get the address for.
     void* localAddrPtr      ///< [IN] Local address to get the offset with.
 )
 {
-    // Get the address of our framework library.
-    off_t libAddr;
-    if (addr_GetLibDataSection(0, "liblegato.so", &libAddr) != LE_OK)
+    if (!LocalLibLegatoBaseAddr)
     {
-        INTERNAL_ERR("Can't find our framework library address.");
+        off_t localLibLegatoBaseAddrOff = 0;
+        // Get the address of our framework library.
+        if (addr_GetLibDataSection(0, "liblegato.so", &localLibLegatoBaseAddrOff) != LE_OK)
+        {
+            INTERNAL_ERR("Can't find our framework library address.");
+        }
+
+        LocalLibLegatoBaseAddr = localLibLegatoBaseAddrOff;
     }
 
     // Calculate the offset address of the local address by subtracting it by the start of our
     // own framwork library address.
-    off_t offset = (off_t)(localAddrPtr) - libAddr;
+    uintptr_t offset = (uintptr_t)(localAddrPtr) - LocalLibLegatoBaseAddr;
 
-    // Get the address of the framework library in the remote process.
-    if (addr_GetLibDataSection(pid, "liblegato.so", &libAddr) != LE_OK)
+    if (!ChildLibLegatoBaseAddr)
     {
-        INTERNAL_ERR("Can't find address of the framework library in the remote process.");
+        off_t childLibLegatoBaseAddrOff = 0;
+
+        // Get the address of the framework library in the remote process.
+        if (addr_GetLibDataSection(pid, "liblegato.so", &childLibLegatoBaseAddrOff) != LE_OK)
+        {
+            INTERNAL_ERR("Can't find address of the framework library in the remote process.");
+        }
+
+        ChildLibLegatoBaseAddr = childLibLegatoBaseAddrOff;
     }
 
     // Calculate the process-under-inspection's counterpart address to the local address  by adding
     // the offset to the start of their framework library address.
-    return (libAddr + offset);
+    return (ChildLibLegatoBaseAddr + offset);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Attach to the target process in order to gain control of its execution and access its memory
+ * space.
+ */
+//--------------------------------------------------------------------------------------------------
+static void TargetAttach
+(
+    pid_t pid              ///< [IN] Remote process to attach to
+)
+{
+    if (ptrace(PTRACE_SEIZE, pid, NULL, (void*)0) == -1)
+    {
+        fprintf(stderr, "Failed to attach to pid %d: error %d\n", pid, errno);
+        LE_FATAL("Failed to attach to pid %d: error %d\n", pid, errno);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Detach from a process that we had previously attached to.
+ */
+//--------------------------------------------------------------------------------------------------
+static void TargetDetach
+(
+    pid_t pid              ///< [IN] Remote process to detach from
+)
+{
+    if (ptrace(PTRACE_DETACH, pid, 0, 0) == -1)
+    {
+        fprintf(stderr, "Failed to detach from pid %d: error %d\n", pid, errno);
+        LE_FATAL("Failed to detach from pid %d: error %d\n", pid, errno);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pause execution of a running process which we had previously attached to.
+ */
+//--------------------------------------------------------------------------------------------------
+static void TargetStop
+(
+    pid_t pid              ///< [IN] Remote process to stop.
+)
+{
+    int waitStatus;
+
+    if (ptrace(PTRACE_INTERRUPT, pid, 0, 0) == -1)
+    {
+        fprintf(stderr, "Failed to stop pid %d: error %d\n", pid, errno);
+        LE_FATAL("Failed to stop pid %d: error %d\n", pid, errno);
+    }
+
+    if (waitpid(pid, &waitStatus, 0) != pid)
+    {
+        fprintf(stderr, "Failed to wait for stopping pid %d: error %d\n", pid, errno);
+        LE_FATAL("Failed to wait for stopping pid %d: error %d\n", pid, errno);
+    }
+
+    if (WIFEXITED(waitStatus))
+    {
+        fprintf(stderr, "Inspected process %d exited\n", pid);
+        LE_FATAL("Inspected process %d exited\n", pid);
+    }
+    else if (WIFSTOPPED(waitStatus))
+    {
+        if (WSTOPSIG(waitStatus) != SIGTRAP && !PendingChildSignal)
+        {
+            // Stopped for a reason other than PTRACE interrupt (above) and no pending child
+            // signal.  So store signal to be delivered later.
+            PendingChildSignal = WSTOPSIG(waitStatus);
+        }
+    }
+    else if (WIFSIGNALED(waitStatus))
+    {
+        // Store signal to pass along to the child when we restart
+        if (!PendingChildSignal)
+        {
+            PendingChildSignal = WTERMSIG(PendingChildSignal);
+        }
+    }
+
+    IsChildStopped = true;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Resume execution of a previously paused process.
+ */
+//--------------------------------------------------------------------------------------------------
+static void TargetStart
+(
+    pid_t pid              ///< [IN] Remote process to restart
+)
+{
+    IsChildStopped = false;
+
+    if (ptrace(PTRACE_CONT, pid, 0, (void *) (intptr_t) PendingChildSignal) == -1)
+    {
+        fprintf(stderr, "Failed to start pid %d: error %d\n", pid, errno);
+        LE_FATAL("Failed to stop pid %d: error %d\n", pid, errno);
+    }
+
+    // Clear pending signal
+    PendingChildSignal = 0;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read from the memory of an attached target process.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool TargetReadAddress
+(
+    pid_t pid,              ///< [IN] Remote process to read address
+    uintptr_t remoteAddr,   ///< [IN] Remote address to read from target
+    void* buffer,           ///< [OUT] Destination to read into
+    size_t size             ///< [IN] Number of bytes to read
+)
+{
+    LE_ASSERT(IsChildStopped);
+
+    uintptr_t readWord;
+    for (readWord = remoteAddr & ~(sizeof(long) - 1);
+         size > 0;
+         readWord += sizeof(long))
+    {
+        errno = 0;
+        long peekWord = ptrace(PTRACE_PEEKDATA, pid, readWord, 0);
+
+        // Check if ptrace was able to get memory
+        if (errno != 0)
+        {
+            return LE_FAULT;
+        }
+
+        uintptr_t startOffset = (remoteAddr - readWord);
+        size_t readSize = sizeof(long) - startOffset;
+        LE_ASSERT(startOffset < sizeof(long));
+        memcpy(buffer, ((char*)&peekWord) + startOffset, readSize);
+        size -= readSize;
+        remoteAddr += readSize;
+        buffer = (char*)buffer + readSize;
+    }
+
+    return LE_OK;
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Opens the /proc/<PID>/mem file for the specified pid and returns its fd.
- *
- * @return
- *      The fd of the "mem" file opened.
+ * Initialize a RemoteDlsListAccess_t data struct.
  */
 //--------------------------------------------------------------------------------------------------
-static int OpenProcMemFile
+static void InitRemoteDlsListAccessObj
 (
-    pid_t pid ///< [IN] The pid to open the "mem" file for.
+    RemoteDlsListAccess_t* remoteList
 )
 {
-    // Build the path to the mem file for the process to inspect.
-    char memFilePath[LIMIT_MAX_PATH_BYTES];
-    int snprintSize = snprintf(memFilePath, sizeof(memFilePath), "/proc/%d/mem", pid);
-
-    if (snprintSize >= sizeof(memFilePath))
-    {
-        INTERNAL_ERR("Path is too long '%s'.", memFilePath);
-    }
-    else if (snprintSize < 0)
-    {
-        INTERNAL_ERR("snprintf encoding error.");
-    }
-
-    // Open the mem file for the specified process.
-    int fd = open(memFilePath, O_RDONLY);
-
-    if (fd == -1)
-    {
-        fprintf(stderr, "Could not open %s.  %m.\n", memFilePath);
-        exit(EXIT_FAILURE);
-    }
-
-    return fd;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Initialize a RemoteListAccess_t data struct.
- */
-//--------------------------------------------------------------------------------------------------
-static void InitRemoteListAccessObj
-(
-    RemoteListAccess_t* remoteList
-)
-{
-    remoteList->List.headLinkPtr = NULL;
+    remoteList->List = LE_DLS_LIST_INIT;
     remoteList->ListChgCntRef = NULL;
     remoteList->headLinkPtr = NULL;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize a RemoteSlsListAccess_t data struct.
+ */
+//--------------------------------------------------------------------------------------------------
+__attribute__((unused))
+static void InitRemoteSlsListAccessObj
+(
+    RemoteSlsListAccess_t* remoteList
+)
+{
+    remoteList->List = LE_SLS_LIST_INIT;
+    remoteList->ListChgCntRef = NULL;
+    remoteList->headLinkPtr = NULL;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize a RemoteHashmapListAccess_t data struct.
+ */
+//--------------------------------------------------------------------------------------------------
+static void InitRemoteHashmapListAccessObj
+(
+    RemoteHashmapListAccess_t* remoteList
+)
+{
+#if LE_CONFIG_REDUCE_FOOTPRINT
+        InitRemoteSlsListAccessObj(remoteList);
+#else
+        InitRemoteDlsListAccessObj(remoteList);
+#endif
 }
 
 
@@ -451,24 +689,24 @@ static MemPoolIter_Ref_t CreateMemPoolIter
 )
 {
     // Get the address offset of the memory pool list for the process to inspect.
-    off_t listAddrOffset = GetRemoteAddress(PidToInspect, mem_GetPoolList());
+    uintptr_t listAddrOffset = GetRemoteAddress(PidToInspect, mem_GetPoolList());
 
     // Get the address offset of the memory pool list change counter for the process to inspect.
-    off_t listChgCntAddrOffset = GetRemoteAddress(PidToInspect, mem_GetPoolListChgCntRef());
+    uintptr_t listChgCntAddrOffset = GetRemoteAddress(PidToInspect, mem_GetPoolListChgCntRef());
 
     // Create the iterator.
     MemPoolIter_t* iteratorPtr = le_mem_ForceAlloc(IteratorPool);
-    InitRemoteListAccessObj(&iteratorPtr->memPoolList);
+    InitRemoteDlsListAccessObj(&iteratorPtr->memPoolList);
 
     // Get the List for the process-under-inspection.
-    if (fd_ReadFromOffset(FdProcMem, listAddrOffset, &(iteratorPtr->memPoolList.List),
+    if (TargetReadAddress(PidToInspect, listAddrOffset, &(iteratorPtr->memPoolList.List),
                              sizeof(iteratorPtr->memPoolList.List)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("mempool list"));
     }
 
     // Get the ListChgCntRef for the process-under-inspection.
-    if (fd_ReadFromOffset(FdProcMem, listChgCntAddrOffset,
+    if (TargetReadAddress(PidToInspect, listChgCntAddrOffset,
                           &(iteratorPtr->memPoolList.ListChgCntRef),
                           sizeof(iteratorPtr->memPoolList.ListChgCntRef)) != LE_OK)
     {
@@ -494,24 +732,24 @@ static ThreadObjIter_Ref_t CreateThreadObjIter
 )
 {
     // Get the address offset of the thread obj list for the process to inspect.
-    off_t listAddrOffset = GetRemoteAddress(PidToInspect, thread_GetThreadObjList());
+    uintptr_t listAddrOffset = GetRemoteAddress(PidToInspect, thread_GetThreadObjList());
 
     // Get the address offset of the list of thread objs change counter for the process to inspect.
-    off_t listChgCntAddrOffset = GetRemoteAddress(PidToInspect, thread_GetThreadObjListChgCntRef());
+    uintptr_t listChgCntAddrOffset = GetRemoteAddress(PidToInspect, thread_GetThreadObjListChgCntRef());
 
     // Create the iterator.
     ThreadObjIter_t* iteratorPtr = le_mem_ForceAlloc(IteratorPool);
-    InitRemoteListAccessObj(&iteratorPtr->threadObjList);
+    InitRemoteDlsListAccessObj(&iteratorPtr->threadObjList);
 
     // Get the List for the process-under-inspection.
-    if (fd_ReadFromOffset(FdProcMem, listAddrOffset, &(iteratorPtr->threadObjList.List),
-                             sizeof(iteratorPtr->threadObjList.List)) != LE_OK)
+    if (TargetReadAddress(PidToInspect, listAddrOffset, &(iteratorPtr->threadObjList.List),
+                          sizeof(iteratorPtr->threadObjList.List)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("thread obj list"));
     }
 
     // Get the ListChgCntRef for the process-under-inspection.
-    if (fd_ReadFromOffset(FdProcMem, listChgCntAddrOffset,
+    if (TargetReadAddress(PidToInspect, listChgCntAddrOffset,
                           &(iteratorPtr->threadObjList.ListChgCntRef),
                           sizeof(iteratorPtr->threadObjList.ListChgCntRef)) != LE_OK)
     {
@@ -559,32 +797,32 @@ static void* CreateThreadMemberObjIter
     }
 
     // Get the address offset of the list of thread objs for the process to inspect.
-    off_t threadObjListAddrOffset = GetRemoteAddress(PidToInspect, thread_GetThreadObjList());
+    uintptr_t threadObjListAddrOffset = GetRemoteAddress(PidToInspect, thread_GetThreadObjList());
 
     // Get the addr offset of the change counter of the list of thread objs for the process to
     // inspect.
-    off_t threadObjListChgCntAddrOffset = GetRemoteAddress(PidToInspect,
+    uintptr_t threadObjListChgCntAddrOffset = GetRemoteAddress(PidToInspect,
                                                            thread_GetThreadObjListChgCntRef());
 
     // Get the address offset of the change counter of the list of thread member objs for the
     // process to inspect.
-    off_t threadMemberObjListChgCntAddrOffset = GetRemoteAddress(PidToInspect,
+    uintptr_t threadMemberObjListChgCntAddrOffset = GetRemoteAddress(PidToInspect,
                                                                  getListChgCntRefFunc());
 
     // Create the iterator.
     ThreadMemberObjIter_t* iteratorPtr = le_mem_ForceAlloc(IteratorPool);
-    InitRemoteListAccessObj(&iteratorPtr->threadObjList);
-    InitRemoteListAccessObj(&iteratorPtr->threadMemberObjList);
+    InitRemoteDlsListAccessObj(&iteratorPtr->threadObjList);
+    InitRemoteDlsListAccessObj(&iteratorPtr->threadMemberObjList);
 
     // Get the list of thread objs for the process-under-inspection.
-    if (fd_ReadFromOffset(FdProcMem, threadObjListAddrOffset, &(iteratorPtr->threadObjList.List),
+    if (TargetReadAddress(PidToInspect, threadObjListAddrOffset, &(iteratorPtr->threadObjList.List),
                              sizeof(iteratorPtr->threadObjList.List)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("thread obj list"));
     }
 
     // Get the thread obj ListChgCntRef for the process-under-inspection.
-    if (fd_ReadFromOffset(FdProcMem, threadObjListChgCntAddrOffset,
+    if (TargetReadAddress(PidToInspect, threadObjListChgCntAddrOffset,
                           &(iteratorPtr->threadObjList.ListChgCntRef),
                           sizeof(iteratorPtr->threadObjList.ListChgCntRef)) != LE_OK)
     {
@@ -592,7 +830,7 @@ static void* CreateThreadMemberObjIter
     }
 
     // Get the thread member obj ListChgCntRef for the process-under-inspection.
-    if (fd_ReadFromOffset(FdProcMem, threadMemberObjListChgCntAddrOffset,
+    if (TargetReadAddress(PidToInspect, threadMemberObjListChgCntAddrOffset,
                           &(iteratorPtr->threadMemberObjList.ListChgCntRef),
                           sizeof(iteratorPtr->threadMemberObjList.ListChgCntRef)) != LE_OK)
     {
@@ -685,25 +923,25 @@ static InterfaceObjIter_Ref_t CreateInterfaceObjIter
 
 
     // Get the address offset of the map of interface objs for the process to inspect.
-    off_t mapAddrOffset = GetRemoteAddress(PidToInspect, getMapFunc());
+    uintptr_t mapAddrOffset = GetRemoteAddress(PidToInspect, getMapFunc());
 
     // Get the address offset of the map of interface objs change counter for the proc to inspect.
-    off_t mapChgCntAddrOffset = GetRemoteAddress(PidToInspect, getMapChgCntRefFunc());
+    uintptr_t mapChgCntAddrOffset = GetRemoteAddress(PidToInspect, getMapChgCntRefFunc());
 
     // Create the iterator.
     InterfaceObjIter_t* iteratorPtr = le_mem_ForceAlloc(IteratorPool);
 
     le_hashmap_Ref_t mapRef;
-    Hashmap_t map;
+    le_hashmap_Hashmap_t map;
 
     // Get the mapRef for the process-under-inspection.
-    if (fd_ReadFromOffset(FdProcMem, mapAddrOffset, &(mapRef), sizeof(mapRef)) != LE_OK)
+    if (TargetReadAddress(PidToInspect, mapAddrOffset, &(mapRef), sizeof(mapRef)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("interface obj map ref"));
     }
 
     // Get the map for the process-under-inspection.
-    if (fd_ReadFromOffset(FdProcMem, (ssize_t)mapRef, &(map), sizeof(map)) != LE_OK)
+    if (TargetReadAddress(PidToInspect, (uintptr_t)mapRef, &(map), sizeof(map)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("interface obj map"));
     }
@@ -712,7 +950,7 @@ static InterfaceObjIter_Ref_t CreateInterfaceObjIter
     iteratorPtr->interfaceObjMap.bucketCount = map.bucketCount;
 
     // Get the mapChgCntRef for the process-under-inspection.
-    if (fd_ReadFromOffset(FdProcMem, mapChgCntAddrOffset,
+    if (TargetReadAddress(PidToInspect, mapChgCntAddrOffset,
                           &(iteratorPtr->interfaceObjMap.mapChgCntRef),
                           sizeof(iteratorPtr->interfaceObjMap.mapChgCntRef)) != LE_OK)
     {
@@ -722,15 +960,15 @@ static InterfaceObjIter_Ref_t CreateInterfaceObjIter
     // Initialization.
     iteratorPtr->currIndex = 0;
 
+    InitRemoteHashmapListAccessObj(&iteratorPtr->interfaceObjList);
+
     // Get the list of interface objects.
-    if (fd_ReadFromOffset(FdProcMem, (ssize_t)iteratorPtr->interfaceObjMap.bucketsPtr,
+    if (TargetReadAddress(PidToInspect, (uintptr_t)iteratorPtr->interfaceObjMap.bucketsPtr,
                           &(iteratorPtr->interfaceObjList.List),
                           sizeof(iteratorPtr->interfaceObjList.List)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("interface obj list of bucket 0 in the interface obj map"));
     }
-
-    InitRemoteListAccessObj(&iteratorPtr->interfaceObjList);
 
     return iteratorPtr;
 }
@@ -795,14 +1033,14 @@ static SessionObjIter_Ref_t CreateSessionObjIter
     }
 
     // Get the address offset of the list of session objs change counter for the proc to inspect.
-    off_t listChgCntAddrOffset = GetRemoteAddress(PidToInspect,
+    uintptr_t listChgCntAddrOffset = GetRemoteAddress(PidToInspect,
                                                   msgSession_GetSessionObjListChgCntRef());
 
     // Initialize the list.
-    InitRemoteListAccessObj(&iteratorPtr->sessionList);
+    InitRemoteDlsListAccessObj(&iteratorPtr->sessionList);
 
     // Get the listChgCntRef for the process-under-inspection.
-    if (fd_ReadFromOffset(FdProcMem, listChgCntAddrOffset,
+    if (TargetReadAddress(PidToInspect, listChgCntAddrOffset,
                           &(iteratorPtr->sessionList.ListChgCntRef),
                           sizeof(iteratorPtr->sessionList.ListChgCntRef)) != LE_OK)
     {
@@ -827,7 +1065,7 @@ static size_t GetMemPoolListChgCnt
 )
 {
     size_t memPoolListChgCnt;
-    if (fd_ReadFromOffset(FdProcMem, (ssize_t)(iterator->memPoolList.ListChgCntRef),
+    if (TargetReadAddress(PidToInspect, (uintptr_t)(iterator->memPoolList.ListChgCntRef),
                           &memPoolListChgCnt, sizeof(memPoolListChgCnt)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("mempool list change counter"));
@@ -851,7 +1089,7 @@ static size_t GetThreadObjListChgCnt
 )
 {
     size_t threadObjListChgCnt;
-    if (fd_ReadFromOffset(FdProcMem, (ssize_t)(iterator->threadObjList.ListChgCntRef),
+    if (TargetReadAddress(PidToInspect, (uintptr_t)(iterator->threadObjList.ListChgCntRef),
                           &threadObjListChgCnt, sizeof(threadObjListChgCnt)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("thread obj list change counter"));
@@ -879,13 +1117,13 @@ static size_t GetThreadMemberObjListChgCnt
 )
 {
     size_t threadObjListChgCnt, threadMemberObjListChgCnt;
-    if (fd_ReadFromOffset(FdProcMem, (ssize_t)(iterator->threadObjList.ListChgCntRef),
+    if (TargetReadAddress(PidToInspect, (uintptr_t)(iterator->threadObjList.ListChgCntRef),
                           &threadObjListChgCnt, sizeof(threadObjListChgCnt)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("thread obj list change counter"));
     }
 
-    if (fd_ReadFromOffset(FdProcMem, (ssize_t)(iterator->threadMemberObjList.ListChgCntRef),
+    if (TargetReadAddress(PidToInspect, (uintptr_t)(iterator->threadMemberObjList.ListChgCntRef),
                           &threadMemberObjListChgCnt, sizeof(threadMemberObjListChgCnt)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("thread member obj list change counter"));
@@ -909,7 +1147,7 @@ static size_t GetInterfaceObjMapChgCnt
 )
 {
     size_t interfaceObjMapChgCnt;
-    if (fd_ReadFromOffset(FdProcMem, (ssize_t)(iterator->interfaceObjMap.mapChgCntRef),
+    if (TargetReadAddress(PidToInspect, (uintptr_t)(iterator->interfaceObjMap.mapChgCntRef),
                           &interfaceObjMapChgCnt, sizeof(interfaceObjMapChgCnt)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("interface obj map change counter"));
@@ -934,7 +1172,7 @@ static size_t GetSessionListChgCnt
 )
 {
     size_t sessionListChgCnt;
-    if (fd_ReadFromOffset(FdProcMem, (ssize_t)(iterator->sessionList.ListChgCntRef),
+    if (TargetReadAddress(PidToInspect, (uintptr_t)(iterator->sessionList.ListChgCntRef),
                           &sessionListChgCnt, sizeof(sessionListChgCnt)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("session list change counter"));
@@ -948,22 +1186,22 @@ static size_t GetSessionListChgCnt
 /**
  * Gets the next link of the provided link. This is for accessing a list in a remote process,
  * otherwise the doubly linked list API can simply be used. Note that "linkRef" is a ref to a
- * locally existing link obj, which is a link for a remote node. Therefore GetNextLink cannot be
+ * locally existing link obj, which is a link for a remote node. Therefore GetNextDlsLink cannot be
  * called back-to-back.
  *
- * Also, if GetNextLink is called the first time for a given listInfoRef, linkRef is not used.
+ * Also, if GetNextDlsLink is called the first time for a given listInfoRef, linkRef is not used.
  *
- * After calling GetNextLink, the returned link ptr must be used to read the associated remote node
- * into the local memory space. One would then retrieve the link object from the node, and then
- * GetNextLink can be called on the ref of that link object.
+ * After calling GetNextDlsLink, the returned link ptr must be used to read the associated remote
+ * node into the local memory space. One would then retrieve the link object from the node, and then
+ * GetNextDlsLink can be called on the ref of that link object.
  *
  * @return
  *      Pointer to a link of a node in the remote process
  */
 //--------------------------------------------------------------------------------------------------
-static le_dls_Link_t* GetNextLink
+static le_dls_Link_t* GetNextDlsLink
 (
-    RemoteListAccess_t* listInfoRef,    ///< [IN] Object for accessing a list in the remote process.
+    RemoteDlsListAccess_t* listInfoRef,    ///< [IN] Object for accessing a list in the remote process.
     le_dls_Link_t* linkRef              ///< [IN] Link of a node in the remote process. This is a
                                         ///<      ref to a locally existing link obj.
 )
@@ -1014,6 +1252,107 @@ static le_dls_Link_t* GetNextLink
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Gets the next link of the provided link. This is for accessing a list in a remote process,
+ * otherwise the doubly linked list API can simply be used. Note that "linkRef" is a ref to a
+ * locally existing link obj, which is a link for a remote node. Therefore GetNextSlsLink cannot be
+ * called back-to-back.
+ *
+ * Also, if GetNextSlsLink is called the first time for a given listInfoRef, linkRef is not used.
+ *
+ * After calling GetNextSlsLink, the returned link ptr must be used to read the associated remote
+ * node into the local memory space. One would then retrieve the link object from the node, and then
+ * GetNextSlsLink can be called on the ref of that link object.
+ *
+ * @return
+ *      Pointer to a link of a node in the remote process
+ */
+//--------------------------------------------------------------------------------------------------
+__attribute__((unused))
+static le_sls_Link_t* GetNextSlsLink
+(
+    RemoteSlsListAccess_t* listInfoRef,    ///< [IN] Object for accessing a list in the remote process.
+    le_sls_Link_t* linkRef              ///< [IN] Link of a node in the remote process. This is a
+                                        ///<      ref to a locally existing link obj.
+)
+{
+    INTERNAL_ERR_IF(listInfoRef == NULL,
+                    "obj ref for accessing a list in the remote process is NULL.");
+
+    // Create a fake list of nodes that has a single element.  Use this when iterating over the
+    // links in the list because the links read from the mems file is in the address space of the
+    // process under test.  Using a fake list guarantees that the linked list operation does not
+    // accidentally reference memory in our own memory space.  This means that we have to check
+    // for the end of the list manually.
+    le_sls_List_t fakeList = LE_SLS_LIST_INIT;
+    le_sls_Link_t fakeLink = LE_SLS_LINK_INIT;
+    le_sls_Stack(&fakeList, &fakeLink);
+
+    // Get the next link in the list.
+    le_sls_Link_t* LinkPtr;
+
+    if (listInfoRef->headLinkPtr == NULL)
+    {
+        // Get the address of the first node's link.
+        LinkPtr = le_sls_Peek(&(listInfoRef->List));
+
+        // The list is empty
+        if (LinkPtr == NULL)
+        {
+            return NULL;
+        }
+
+        listInfoRef->headLinkPtr = LinkPtr;
+    }
+    else
+    {
+        // Get the address of the next node.
+        LinkPtr = le_sls_PeekNext(&fakeList, linkRef);
+
+        if (LinkPtr == listInfoRef->headLinkPtr)
+        {
+            // Looped back to the first node so there are no more nodes.
+            return NULL;
+        }
+    }
+
+    return LinkPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the next link of the provided link. This is for accessing a list in a remote process,
+ * otherwise the doubly linked list API can simply be used. Note that "linkRef" is a ref to a
+ * locally existing link obj, which is a link for a remote node. Therefore GetNextHashmapLink cannot be
+ * called back-to-back.
+ *
+ * Also, if GetNextHashmapLink is called the first time for a given listInfoRef, linkRef is not used.
+ *
+ * After calling GetNextHashmapLink, the returned link ptr must be used to read the associated remote
+ * node into the local memory space. One would then retrieve the link object from the node, and then
+ * GetNextHashmapLink can be called on the ref of that link object.
+ *
+ * @return
+ *      Pointer to a link of a node in the remote process
+ */
+//--------------------------------------------------------------------------------------------------
+static le_hashmap_Link_t* GetNextHashmapLink
+(
+    RemoteHashmapListAccess_t* listInfoRef,    ///< [IN] Object for accessing a list in the remote process.
+    le_hashmap_Link_t* linkRef      ///< [IN] Link of a node in the remote process. This is a
+                                    ///<      ref to a locally existing link obj.
+)
+{
+#if LE_CONFIG_REDUCE_FOOTPRINT
+    return GetNextSlsLink(listInfoRef, linkRef);
+#else
+    return GetNextDlsLink(listInfoRef, linkRef);
+#endif
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Gets the next memory pool from the specified iterator.  The first time this function is called
  * after CreateMemPoolIter() is called, the first memory pool in the list is returned.  The second
  * time this function is called the second memory pool is returned and so on.
@@ -1027,12 +1366,12 @@ static le_dls_Link_t* GetNextLink
  *      A memory pool from the iterator's list of memory pools.
  */
 //--------------------------------------------------------------------------------------------------
-static MemPool_t* GetNextMemPool
+static le_mem_Pool_t* GetNextMemPool
 (
     MemPoolIter_Ref_t memPoolIterRef ///< [IN] The iterator to get the next mem pool from.
 )
 {
-    le_dls_Link_t* linkPtr = GetNextLink(&(memPoolIterRef->memPoolList),
+    le_dls_Link_t* linkPtr = GetNextDlsLink(&(memPoolIterRef->memPoolList),
                                          &(memPoolIterRef->currMemPool.poolLink));
 
     if (linkPtr == NULL)
@@ -1041,10 +1380,10 @@ static MemPool_t* GetNextMemPool
     }
 
     // Get the address of pool.
-    MemPool_t* poolPtr = CONTAINER_OF(linkPtr, MemPool_t, poolLink);
+    le_mem_Pool_t* poolPtr = CONTAINER_OF(linkPtr, le_mem_Pool_t, poolLink);
 
     // Read the pool into our own memory.
-    if (fd_ReadFromOffset(FdProcMem, (ssize_t)poolPtr, &(memPoolIterRef->currMemPool),
+    if (TargetReadAddress(PidToInspect, (uintptr_t)poolPtr, &(memPoolIterRef->currMemPool),
                           sizeof(memPoolIterRef->currMemPool)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("mempool object"));
@@ -1067,7 +1406,7 @@ static thread_Obj_t* GetNextThreadObj
     ThreadObjIter_Ref_t threadObjIterRef ///< [IN] The iterator to get the next thread obj from.
 )
 {
-    le_dls_Link_t* linkPtr = GetNextLink(&(threadObjIterRef->threadObjList),
+    le_dls_Link_t* linkPtr = GetNextDlsLink(&(threadObjIterRef->threadObjList),
                                          &(threadObjIterRef->currThreadObj.link));
 
     if (linkPtr == NULL)
@@ -1079,7 +1418,7 @@ static thread_Obj_t* GetNextThreadObj
     thread_Obj_t* threadObjPtr = CONTAINER_OF(linkPtr, thread_Obj_t, link);
 
     // Read the thread obj into our own memory.
-    if (fd_ReadFromOffset(FdProcMem, (ssize_t)threadObjPtr, &(threadObjIterRef->currThreadObj),
+    if (TargetReadAddress(PidToInspect, (uintptr_t)threadObjPtr, &(threadObjIterRef->currThreadObj),
                           sizeof(threadObjIterRef->currThreadObj)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("thread object"));
@@ -1106,7 +1445,7 @@ static le_dls_Link_t* GetThreadMemberObjList
     switch (memberObjType)
     {
         case INSPECT_INSP_TYPE_TIMER:
-            return threadObjRef->timerRec[TIMER_NON_WAKEUP].activeTimerList.headLinkPtr;
+            return threadObjRef->timerRecPtr[TIMER_NON_WAKEUP]->activeTimerList.headLinkPtr;
             break;
 
         case INSPECT_INSP_TYPE_MUTEX:
@@ -1116,6 +1455,7 @@ static le_dls_Link_t* GetThreadMemberObjList
         default:
             INTERNAL_ERR("unexpected thread member object type %d.", memberObjType);
     }
+    return NULL;
 }
 
 
@@ -1163,11 +1503,11 @@ static le_dls_Link_t* GetNextThreadMemberObjLinkPtr
     le_dls_Link_t* remThreadMemberObjNextLinkPtr;
 
     // Get the next thread member obj
-    remThreadMemberObjNextLinkPtr = GetNextLink(&(threadMemberObjItrRef->threadMemberObjList),
+    remThreadMemberObjNextLinkPtr = GetNextDlsLink(&(threadMemberObjItrRef->threadMemberObjList),
                                                 currThreadMemberObjLinkPtr);
     while (remThreadMemberObjNextLinkPtr == NULL)
     {
-        remThreadObjNextLinkPtr = GetNextLink(&(threadMemberObjItrRef->threadObjList),
+        remThreadObjNextLinkPtr = GetNextDlsLink(&(threadMemberObjItrRef->threadObjList),
                                               &(threadMemberObjItrRef->currThreadObj.link));
 
         // There are no more thread objects on the list (or list is empty)
@@ -1180,7 +1520,7 @@ static le_dls_Link_t* GetNextThreadMemberObjLinkPtr
         thread_Obj_t* remThreadObjPtr = CONTAINER_OF(remThreadObjNextLinkPtr, thread_Obj_t, link);
 
         // Read the thread obj into our own memory, and update the local reference
-        if (fd_ReadFromOffset(FdProcMem, (ssize_t)remThreadObjPtr,
+        if (TargetReadAddress(PidToInspect, (uintptr_t)remThreadObjPtr,
                               &(threadMemberObjItrRef->currThreadObj),
                               sizeof(threadMemberObjItrRef->currThreadObj)) != LE_OK)
         {
@@ -1195,7 +1535,7 @@ static le_dls_Link_t* GetNextThreadMemberObjLinkPtr
         threadMemberObjItrRef->threadMemberObjList.headLinkPtr = NULL;
 
         // Get the next thread member obj.
-        remThreadMemberObjNextLinkPtr = GetNextLink(&(threadMemberObjItrRef->threadMemberObjList),
+        remThreadMemberObjNextLinkPtr = GetNextDlsLink(&(threadMemberObjItrRef->threadMemberObjList),
                                                     NULL);
     }
 
@@ -1231,7 +1571,7 @@ static Timer_t* GetNextTimer
     Timer_t* remTimerPtr = CONTAINER_OF(remThreadMemberObjNextLinkPtr, Timer_t, link);
 
     // Read the timer into our own memory.
-    if (fd_ReadFromOffset(FdProcMem, (ssize_t)remTimerPtr, &(timerIterRef->currTimer),
+    if (TargetReadAddress(PidToInspect, (uintptr_t)remTimerPtr, &(timerIterRef->currTimer),
                           sizeof(timerIterRef->currTimer)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("timer object"));
@@ -1267,7 +1607,7 @@ static Mutex_t* GetNextMutex
     Mutex_t* remMutexPtr = CONTAINER_OF(remThreadMemberObjNextLinkPtr, Mutex_t, lockedByThreadLink);
 
     // Read the mutex into our own memory.
-    if (fd_ReadFromOffset(FdProcMem, (ssize_t)remMutexPtr, &(mutexIterRef->currMutex),
+    if (TargetReadAddress(PidToInspect, (uintptr_t)remMutexPtr, &(mutexIterRef->currMutex),
                           sizeof(mutexIterRef->currMutex)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("mutex object"));
@@ -1329,7 +1669,7 @@ static Semaphore_t* GetNextSemaphore
     while (remSemaphorePtr == NULL);
 
     // Read the semaphore into our own memory.
-    if (fd_ReadFromOffset(FdProcMem, (ssize_t)remSemaphorePtr, &(semaIterRef->currSemaphore),
+    if (TargetReadAddress(PidToInspect, (uintptr_t)remSemaphorePtr, &(semaIterRef->currSemaphore),
                           sizeof(semaIterRef->currSemaphore)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("semaphore object"));
@@ -1353,14 +1693,14 @@ static void* GetNextInterfaceObjPtr
 )
 {
     // with iterator->currIndex and iterator->interfaceObjList initialized in the createIterator
-    // fcn, GetNextLink on interfaceObjList.  If the returned link is null, then upadte currIndex
+    // fcn, GetNextDlsLink on interfaceObjList.  If the returned link is null, then upadte currIndex
     // and interfaceObjList.
 
-    le_dls_Link_t* remEntryNextLinkPtr;
+    le_hashmap_Link_t* remEntryNextLinkPtr;
 
     // Get the link of the next item on the interface object list.
-    remEntryNextLinkPtr = GetNextLink(&(iterator->interfaceObjList),
-                                      &(iterator->currEntry.entryListLink));
+    remEntryNextLinkPtr = GetNextHashmapLink(&(iterator->interfaceObjList),
+                                             &(iterator->currEntry.entryListLink));
 
     // If the link is null, then update our list by accessing the next bucket, and attempt to
     // Get the link from the updated list.
@@ -1377,8 +1717,8 @@ static void* GetNextInterfaceObjPtr
         }
 
         // So we haven't run out of buckets yet. Then update our interface object list.
-        if (fd_ReadFromOffset(FdProcMem,
-                              (ssize_t)(iterator->interfaceObjMap.bucketsPtr + iterator->currIndex),
+        if (TargetReadAddress(PidToInspect,
+                              (uintptr_t)(iterator->interfaceObjMap.bucketsPtr + iterator->currIndex),
                               &(iterator->interfaceObjList.List),
                               sizeof(iterator->interfaceObjList.List)) != LE_OK)
         {
@@ -1390,15 +1730,15 @@ static void* GetNextInterfaceObjPtr
         iterator->interfaceObjList.headLinkPtr = NULL;
 
         // With the updated interface object list, get the link of the next item.
-        remEntryNextLinkPtr = GetNextLink(&(iterator->interfaceObjList), NULL);
+        remEntryNextLinkPtr = GetNextHashmapLink(&(iterator->interfaceObjList), NULL);
     }
 
-    // The node that the link belongs to is technically Entry_t which contains a ptr to an
+    // The node that the link belongs to is technically le_hashmap_Entry_t which contains a ptr to an
     // interface instace obj (server, client, etc.)
-    Entry_t* remEntryPtr = CONTAINER_OF(remEntryNextLinkPtr, Entry_t, entryListLink);
+    le_hashmap_Entry_t* remEntryPtr = CONTAINER_OF(remEntryNextLinkPtr, le_hashmap_Entry_t, entryListLink);
 
     // Read the entry object into our own memory.
-    if (fd_ReadFromOffset(FdProcMem, (ssize_t)remEntryPtr,
+    if (TargetReadAddress(PidToInspect, (uintptr_t)remEntryPtr,
                           &(iterator->currEntry), sizeof(iterator->currEntry)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("entry object"));
@@ -1416,13 +1756,13 @@ static void* GetNextInterfaceObjPtr
  *      A service object from the iterator's list of service objects.
  */
 //--------------------------------------------------------------------------------------------------
-static msgInterface_Service_t* GetNextServiceObj
+static msgInterface_UnixService_t* GetNextServiceObj
 (
     ServiceObjIter_Ref_t serviceObjIterRef ///< [IN] The iterator to get the next service obj from.
 )
 {
     // Gets the pointer of the next service object.
-    msgInterface_Service_t* serviceObjPtr
+    msgInterface_UnixService_t* serviceObjPtr
         = GetNextInterfaceObjPtr((InterfaceObjIter_Ref_t)serviceObjIterRef);
 
     if (serviceObjPtr == NULL)
@@ -1431,7 +1771,7 @@ static msgInterface_Service_t* GetNextServiceObj
     }
 
     // Read the service object into our own memory.
-    if (fd_ReadFromOffset(FdProcMem, (ssize_t)serviceObjPtr, &(serviceObjIterRef->currServiceObj),
+    if (TargetReadAddress(PidToInspect, (uintptr_t)serviceObjPtr, &(serviceObjIterRef->currServiceObj),
                           sizeof(serviceObjIterRef->currServiceObj)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("service object"));
@@ -1466,7 +1806,7 @@ static msgInterface_ClientInterface_t* GetNextClientObj
     }
 
     // Read the client interface object into our own memory.
-    if (fd_ReadFromOffset(FdProcMem, (ssize_t)clientObjPtr, &(clientObjIterRef->currClientObj),
+    if (TargetReadAddress(PidToInspect, (uintptr_t)clientObjPtr, &(clientObjIterRef->currClientObj),
                           sizeof(clientObjIterRef->currClientObj)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("client interface object"));
@@ -1484,7 +1824,7 @@ static msgInterface_ClientInterface_t* GetNextClientObj
  *      A session object from the iterator's list of session objects.
  */
 //--------------------------------------------------------------------------------------------------
-static msgSession_Session_t* GetNextSessionObj
+static msgSession_UnixSession_t* GetNextSessionObj
 (
     SessionObjIter_Ref_t sessionObjIterRef ///< [IN] The iterator to get the next session obj from.
 )
@@ -1494,7 +1834,7 @@ static msgSession_Session_t* GetNextSessionObj
     msgInterface_Interface_t currInterfaceObj;
 
     // Get the link of the next item on the session list.
-    remSessionNextLinkPtr = GetNextLink(&(sessionObjIterRef->sessionList),
+    remSessionNextLinkPtr = GetNextDlsLink(&(sessionObjIterRef->sessionList),
                                         &(sessionObjIterRef->currSessionObj.link));
 
     while (remSessionNextLinkPtr == NULL)
@@ -1508,7 +1848,7 @@ static msgSession_Session_t* GetNextSessionObj
         }
 
         // Read the interface object into our own memory.
-        if (fd_ReadFromOffset(FdProcMem, (ssize_t)interfaceObjPtr,
+        if (TargetReadAddress(PidToInspect, (uintptr_t)interfaceObjPtr,
                               &(currInterfaceObj), sizeof(currInterfaceObj)) != LE_OK)
         {
             INTERNAL_ERR(REMOTE_READ_ERR("interface object"));
@@ -1519,15 +1859,15 @@ static msgSession_Session_t* GetNextSessionObj
         sessionObjIterRef->sessionList.headLinkPtr = NULL;
 
         // Get the link of the next item on the session list.
-        remSessionNextLinkPtr = GetNextLink(&(sessionObjIterRef->sessionList), NULL);
+        remSessionNextLinkPtr = GetNextDlsLink(&(sessionObjIterRef->sessionList), NULL);
     }
 
     // Get the remote address of the session object.
-    msgSession_Session_t* remSessionObjPtr = CONTAINER_OF(remSessionNextLinkPtr,
-                                                          msgSession_Session_t, link);
+    msgSession_UnixSession_t* remSessionObjPtr = CONTAINER_OF(remSessionNextLinkPtr,
+                                                              msgSession_UnixSession_t, link);
 
     // Read the session object into our own memory.
-    if (fd_ReadFromOffset(FdProcMem, (ssize_t)remSessionObjPtr,
+    if (TargetReadAddress(PidToInspect, (uintptr_t)remSessionObjPtr,
                           &(sessionObjIterRef->currSessionObj),
                           sizeof(sessionObjIterRef->currSessionObj)) != LE_OK)
     {
@@ -2877,7 +3217,7 @@ static int PrintThreadObjInfo
 
     if (!IsOutputJson)
     {
-        FillStrColField   (threadObjRef->name,                      ThreadObjTableInfo,
+        FillStrColField   (THREAD_NAME(threadObjRef->name),         ThreadObjTableInfo,
                                                                     ThreadObjTableInfoSize, &index);
         FillBoolColField  (threadObjRef->isJoinable,                ThreadObjTableInfo,
                                                                     ThreadObjTableInfoSize, &index);
@@ -2919,7 +3259,7 @@ static int PrintThreadObjInfo
 
         printf("[");
 
-        ExportStrToJson   (threadObjRef->name,            ThreadObjTableInfo,
+        ExportStrToJson   (THREAD_NAME(threadObjRef->name), ThreadObjTableInfo,
                                                           ThreadObjTableInfoSize, &index, &printed);
         ExportBoolToJson  (threadObjRef->isJoinable,      ThreadObjTableInfo,
                                                           ThreadObjTableInfoSize, &index, &printed);
@@ -2969,7 +3309,7 @@ static int PrintTimerInfo
 
     if (!IsOutputJson)
     {
-        FillStrColField   (timerRef->name,        TimerTableInfo, TimerTableInfoSize, &index);
+        FillStrColField   (TIMER_NAME(timerRef->name), TimerTableInfo, TimerTableInfoSize, &index);
         FillDoubleColField(interval,              TimerTableInfo, TimerTableInfoSize, &index);
         FillUint32ColField(timerRef->repeatCount, TimerTableInfo, TimerTableInfoSize, &index);
         FillBoolColField  (timerRef->isActive,    TimerTableInfo, TimerTableInfoSize, &index);
@@ -2995,7 +3335,7 @@ static int PrintTimerInfo
 
         printf("[");
 
-        ExportStrToJson   (timerRef->name,        TimerTableInfo,
+        ExportStrToJson   (TIMER_NAME(timerRef->name), TimerTableInfo,
                                                   TimerTableInfoSize, &index, &printed);
         ExportDoubleToJson(interval,              TimerTableInfo,
                                                   TimerTableInfoSize, &index, &printed);
@@ -3127,8 +3467,8 @@ static void GetWaitingListThreadNames
                          inspectType);
     }
 
-    RemoteListAccess_t waitingList = {remoteWaitingList, NULL, NULL};
-    le_dls_Link_t* currNodeLinkPtr = GetNextLink(&waitingList, NULL);
+    RemoteDlsListAccess_t waitingList = {remoteWaitingList, NULL, NULL};
+    le_dls_Link_t* currNodeLinkPtr = GetNextDlsLink(&waitingList, NULL);
 
     void* currNodePtr;
     thread_Obj_t* currThreadPtr;
@@ -3136,8 +3476,10 @@ static void GetWaitingListThreadNames
     ThreadRec_t localThreadRecCopy;
     thread_Obj_t localThreadObjCopy;
 
+#if LE_CONFIG_THREAD_NAMES_ENABLED
     // Clear the thread name.
     memset(localThreadObjCopy.name, 0, sizeof(localThreadObjCopy.name));
+#endif
 
     int i = 0;
     while (currNodeLinkPtr != NULL)
@@ -3147,7 +3489,7 @@ static void GetWaitingListThreadNames
         currThreadPtr = getThreadPtrFromLinkFunc(currNodePtr);
 
         // Read the thread obj into the local memory.
-        if (fd_ReadFromOffset(FdProcMem, (ssize_t)currThreadPtr, &localThreadObjCopy,
+        if (TargetReadAddress(PidToInspect, (uintptr_t)currThreadPtr, &localThreadObjCopy,
                               sizeof(localThreadObjCopy)) != LE_OK)
         {
             INTERNAL_ERR(REMOTE_READ_ERR("thread object"));
@@ -3160,12 +3502,16 @@ static void GetWaitingListThreadNames
             INTERNAL_ERR("Array too small to contain all thread names on the waiting list.");
         }
         // Add the thread name to the array of waiting thread names.
+#if LE_CONFIG_THREAD_NAMES_ENABLED
         waitingThreadNames[i] = strndup(localThreadObjCopy.name, sizeof(localThreadObjCopy.name));
+#else
+        waitingThreadNames[i] = strdup("<omitted>");
+#endif
         i++;
 
         // Get the ptr to the the next node link on the waiting list, by reading the thread record
-        // to the local memory first. GetNextLink must operate on a ref to a locally existing link.
-        if (fd_ReadFromOffset(FdProcMem, (ssize_t)currNodePtr,
+        // to the local memory first. GetNextDlsLink must operate on a ref to a locally existing link.
+        if (TargetReadAddress(PidToInspect, (uintptr_t)currNodePtr,
                               &localThreadRecCopy, threadRecSize) != LE_OK)
         {
             INTERNAL_ERR(REMOTE_READ_ERR("thread record with waiting list"));
@@ -3173,7 +3519,7 @@ static void GetWaitingListThreadNames
 
         le_dls_Link_t waitingListLink = GetWaitingListLink(inspectType, &localThreadRecCopy);
 
-        currNodeLinkPtr = GetNextLink(&waitingList, &waitingListLink);
+        currNodeLinkPtr = GetNextDlsLink(&waitingList, &waitingListLink);
     }
 
     *threadNameNumPtr = i;
@@ -3271,7 +3617,7 @@ static int PrintMutexInfo
 
     if (!IsOutputJson)
     {
-        FillStrColField (mutexRef->name,        MutexTableInfo, MutexTableInfoSize, &index);
+        FillStrColField (MUTEX_NAME(mutexRef->name), MutexTableInfo, MutexTableInfoSize, &index);
         FillIntColField (mutexRef->lockCount,   MutexTableInfo, MutexTableInfoSize, &index);
         FillBoolColField(mutexRef->isRecursive, MutexTableInfo, MutexTableInfoSize, &index);
         FillStrColField (waitingThreadNames[0], MutexTableInfo, MutexTableInfoSize, &index);
@@ -3308,7 +3654,7 @@ static int PrintMutexInfo
 
         printf("[");
 
-        ExportStrToJson  (mutexRef->name,         MutexTableInfo,
+        ExportStrToJson  (MUTEX_NAME(mutexRef->name), MutexTableInfo,
                                                   MutexTableInfoSize, &index, &printed);
         ExportIntToJson  (mutexRef->lockCount,    MutexTableInfo,
                                                   MutexTableInfoSize, &index, &printed);
@@ -3347,7 +3693,8 @@ static int PrintSemaphoreInfo
 
     if (!IsOutputJson)
     {
-        FillStrColField(semaphoreRef->nameStr, SemaphoreTableInfo, SemaphoreTableInfoSize, &index);
+        FillStrColField(SEM_NAME(semaphoreRef->nameStr), SemaphoreTableInfo,
+            SemaphoreTableInfoSize, &index);
         FillStrColField(waitingThreadNames[0], SemaphoreTableInfo, SemaphoreTableInfoSize, &index);
 
         PrintInfo(SemaphoreTableInfo, SemaphoreTableInfoSize);
@@ -3382,7 +3729,7 @@ static int PrintSemaphoreInfo
 
         printf("[");
 
-        ExportStrToJson  (semaphoreRef->nameStr,  SemaphoreTableInfo,
+        ExportStrToJson  (SEM_NAME(semaphoreRef->nameStr), SemaphoreTableInfo,
                                                   SemaphoreTableInfoSize, &index, &printed);
         ExportArrayToJson(waitingThreadJsonArray, SemaphoreTableInfo,
                                                   SemaphoreTableInfoSize, &index, &printed);
@@ -3417,9 +3764,10 @@ static void LookupThreadName
         {
             if (threadObjSafeRefAddr == (size_t)threadObjRef->safeRef)
             {
-               // copy thread name to the out buffer
-               strncpy(threadObjNameBuffer, threadObjRef->name, threadObjNameBufferSize);
-               return;
+                // copy thread name to the out buffer
+                strncpy(threadObjNameBuffer, THREAD_NAME(threadObjRef->name),
+                    threadObjNameBufferSize);
+                return;
             }
         }
     }
@@ -3440,7 +3788,7 @@ static void LookupThreadName
 //--------------------------------------------------------------------------------------------------
 static int PrintServiceObjInfo
 (
-    msgInterface_Service_t* serviceObjRef   ///< [IN] ref to service obj to be printed.
+    msgInterface_UnixService_t* serviceObjRef   ///< [IN] ref to service obj to be printed.
 )
 {
     int lineCount = 0;
@@ -3449,7 +3797,7 @@ static int PrintServiceObjInfo
     msgProtocol_Protocol_t protocol;
 
     // Read the protocol object into our own memory.
-    if (fd_ReadFromOffset(FdProcMem, (ssize_t)serviceObjRef->interface.id.protocolRef, &protocol,
+    if (TargetReadAddress(PidToInspect, (uintptr_t)serviceObjRef->interface.id.protocolRef, &protocol,
                           sizeof(protocol)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("protocol object"));
@@ -3533,7 +3881,7 @@ static int PrintClientObjInfo
 
     // Retrieve the protocol object. Read the protocol object into our own memory.
     msgProtocol_Protocol_t protocol;
-    if (fd_ReadFromOffset(FdProcMem, (ssize_t)clientObjRef->interface.id.protocolRef, &protocol,
+    if (TargetReadAddress(PidToInspect, (uintptr_t)clientObjRef->interface.id.protocolRef, &protocol,
                           sizeof(protocol)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("protocol object"));
@@ -3591,7 +3939,7 @@ static int PrintClientObjInfo
 //--------------------------------------------------------------------------------------------------
 static int PrintSessionObjInfo
 (
-    msgSession_Session_t* sessionObjRef ///< [IN] ref to session obj to be printed.
+    msgSession_UnixSession_t* sessionObjRef ///< [IN] ref to session obj to be printed.
 )
 {
     int lineCount = 0;
@@ -3601,7 +3949,7 @@ static int PrintSessionObjInfo
 
     // Retrieve the interface object. Read the interface object into our own memory.
     msgInterface_Interface_t interface;
-    if (fd_ReadFromOffset(FdProcMem, (ssize_t)sessionObjRef->interfaceRef, &interface,
+    if (TargetReadAddress(PidToInspect, (uintptr_t)sessionObjRef->interfaceRef, &interface,
                           sizeof(interface)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("interface object"));
@@ -3911,8 +4259,29 @@ static void RefreshTimerHandler
     le_timer_Ref_t timerRef
 )
 {
+    TargetStop(PidToInspect);
+
     // Perform the inspection.
     InspectFunc(InspectType);
+
+    TargetStart(PidToInspect);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function called when a signal is received to stop tracing
+ */
+//--------------------------------------------------------------------------------------------------
+static void ExitEventHandler
+(
+    int sigNum
+)
+{
+    TargetStop(PidToInspect);
+    TargetDetach(PidToInspect);
+
+    exit(0);
 }
 
 
@@ -3932,7 +4301,6 @@ static void PidArgHandler
     if ((result == LE_OK) && (pid > 0))
     {
         PidToInspect = pid;
-        FdProcMem = OpenProcMemFile(PidToInspect);
     }
     else
     {
@@ -4188,13 +4556,29 @@ COMPONENT_INIT
     // Create a memory pool for iterators.
     InitIteratorPool(InspectType);
 
+    TargetAttach(PidToInspect);
+
     InitDisplay(InspectType);
+
+    TargetStop(PidToInspect);
 
     // Start the inspection.
     InspectFunc(InspectType);
 
     if (!IsFollowing)
     {
+        TargetDetach(PidToInspect);
         exit(EXIT_SUCCESS);
+    }
+    else
+    {
+        TargetStart(PidToInspect);
+
+        // Register for SIGTERM so we can detach from process
+        le_sig_Block(SIGTERM);
+        le_sig_Block(SIGHUP);
+
+        le_sig_SetEventHandler(SIGTERM, ExitEventHandler);
+        le_sig_SetEventHandler(SIGHUP, ExitEventHandler);
     }
 }

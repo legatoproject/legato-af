@@ -168,7 +168,7 @@ typedef struct le_pathIter_t* le_pathIter_Ref_t;
  * @return A new path object setup with the given parameters.
  */
 //--------------------------------------------------------------------------------------------------
-le_pathIter_Ref_t le_pathIter_Create
+LE_FULL_API le_pathIter_Ref_t le_pathIter_Create
 (
     const char* pathPtr,        ///< [IN] Optional.  Pointer to the inital path to use.
     const char* separatorPtr,   ///< [IN] Required.  Path separator to use.  The separator can not
@@ -195,7 +195,7 @@ le_pathIter_Ref_t le_pathIter_Create
  * @return A new path iterator object that's ready for iterating on Unix style paths.
  */
 //--------------------------------------------------------------------------------------------------
-le_pathIter_Ref_t le_pathIter_CreateForUnix
+LE_FULL_API le_pathIter_Ref_t le_pathIter_CreateForUnix
 (
     const char* pathPtr  ///<  [IN] Optional.  Create an iterator for this path, or start with an
                          ///<       empty path.
@@ -209,7 +209,7 @@ le_pathIter_Ref_t le_pathIter_CreateForUnix
  * @return A new path iterator object that is a duplicate of the original one.
  */
 //--------------------------------------------------------------------------------------------------
-le_pathIter_Ref_t le_pathIter_Clone
+LE_FULL_API le_pathIter_Ref_t le_pathIter_Clone
 (
     le_pathIter_Ref_t originalRef  ///< [IN] The path object to duplicate.
 );
@@ -220,7 +220,7 @@ le_pathIter_Ref_t le_pathIter_Clone
  * Delete an iterator object and free it's memory.
  */
 //--------------------------------------------------------------------------------------------------
-void le_pathIter_Delete
+LE_FULL_API void le_pathIter_Delete
 (
     le_pathIter_Ref_t iterRef  ///< [IN] The iterator object to destroy.
 );
@@ -231,7 +231,7 @@ void le_pathIter_Delete
  * Read the string that is being used to represent path separators in this iterator object.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_pathIter_GetSeparator
+LE_FULL_API le_result_t le_pathIter_GetSeparator
 (
     le_pathIter_Ref_t iterRef,  ///< [IN] The iterator object to read.
     char* bufferPtr,            ///< [OUT] The string buffer to write to.
@@ -246,7 +246,7 @@ le_result_t le_pathIter_GetSeparator
  * normalizing paths.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_pathIter_GetParentSpecifier
+LE_FULL_API le_result_t le_pathIter_GetParentSpecifier
 (
     le_pathIter_Ref_t iterRef,  ///< [IN] The iterator object to read.
     char* bufferPtr,            ///< [OUT] The string buffer to write to.
@@ -261,7 +261,7 @@ le_result_t le_pathIter_GetParentSpecifier
  * paths.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_pathIter_GetCurrentSpecifier
+LE_FULL_API le_result_t le_pathIter_GetCurrentSpecifier
 (
     le_pathIter_Ref_t iterRef,  ///< [IN] The iterator object to read.
     char* bufferPtr,            ///< [OUT] The string buffer to write to.
@@ -277,7 +277,7 @@ le_result_t le_pathIter_GetCurrentSpecifier
  *         LE_OVERFLOW if the buffer isn't big enough for the path string.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_pathIter_GetPath
+LE_FULL_API le_result_t le_pathIter_GetPath
 (
     le_pathIter_Ref_t iterRef,  ///< [IN] The iterator object to read.
     char* bufferPtr,            ///< [OUT] The string buffer to write to.
@@ -293,7 +293,7 @@ le_result_t le_pathIter_GetPath
  *         LE_NOT_FOUND if the path is empty, or only contains a separator.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_pathIter_GoToStart
+LE_FULL_API le_result_t le_pathIter_GoToStart
 (
     le_pathIter_Ref_t iterRef  ///< [IN] The iterator object to update.
 );
@@ -307,7 +307,7 @@ le_result_t le_pathIter_GoToStart
  *         LE_NOT_FOUND if the path is empty, or only contains a separator.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_pathIter_GoToEnd
+LE_FULL_API le_result_t le_pathIter_GoToEnd
 (
     le_pathIter_Ref_t iterRef  ///< [IN] The iterator object to update.
 );
@@ -321,7 +321,7 @@ le_result_t le_pathIter_GoToEnd
  *         returned if there are no more nodes to move to in the path.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_pathIter_GoToNext
+LE_FULL_API le_result_t le_pathIter_GoToNext
 (
     le_pathIter_Ref_t iterRef  ///< [IN] The iterator object to update.
 );
@@ -335,7 +335,7 @@ le_result_t le_pathIter_GoToNext
  *         move to.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_pathIter_GoToPrev
+LE_FULL_API le_result_t le_pathIter_GoToPrev
 (
     le_pathIter_Ref_t iterRef  ///< [IN] The iterator object to update.
 );
@@ -352,7 +352,7 @@ le_result_t le_pathIter_GoToPrev
  *      consists of a separator.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_pathIter_GetCurrentNode
+LE_FULL_API le_result_t le_pathIter_GetCurrentNode
 (
     le_pathIter_Ref_t iterRef,  ///< [IN] The iterator object to read.
     char* bufferPtr,            ///< [OUT] The utf-8 formatted text buffer to write to.
@@ -369,7 +369,7 @@ le_result_t le_pathIter_GetCurrentNode
  * Once done, then the iterator will be pointing at the new end of the path.
  */
 //--------------------------------------------------------------------------------------------------
-void le_pathIter_Truncate
+LE_FULL_API void le_pathIter_Truncate
 (
     le_pathIter_Ref_t iterRef  ///< [IN] The iterator to update.
 );
@@ -399,7 +399,7 @@ void le_pathIter_Truncate
  *        relative, "a/b", then the resulting string will be "../x" and a return code of LE_OK.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_pathIter_Append
+LE_FULL_API le_result_t le_pathIter_Append
 (
     le_pathIter_Ref_t iterRef,  ///< [IN] The path object to write to.
     const char* pathStr         ///< [IN] The new path segment to append.
@@ -414,7 +414,7 @@ le_result_t le_pathIter_Append
  *         is considered relative.
  */
 //--------------------------------------------------------------------------------------------------
-bool le_pathIter_IsAbsolute
+LE_FULL_API bool le_pathIter_IsAbsolute
 (
     le_pathIter_Ref_t iterRef  ///< [IN] The iterator object to read.
 );
@@ -427,7 +427,7 @@ bool le_pathIter_IsAbsolute
  * @return True if the path is empty, false if not.
  */
 //--------------------------------------------------------------------------------------------------
-bool le_pathIter_IsEmpty
+LE_FULL_API bool le_pathIter_IsEmpty
 (
     le_pathIter_Ref_t iterRef  ///< The path object to read.
 );

@@ -16,6 +16,7 @@
 #include "messagingSession.h"
 #include "messagingProtocol.h"
 #include "messagingMessage.h"
+#include "messagingLocal.h"
 #include "fileDescriptor.h"
 
 
@@ -86,7 +87,10 @@ static size_t* SessionObjListChangeCountRef = &SessionObjListChangeCount;
 //  PRIVATE FUNCTIONS
 // =======================================
 
-static void AttemptOpen(msgSession_Session_t* sessionPtr);
+static msgSession_UnixSession_t *msgSession_GetUnixSessionPtr(le_msg_SessionRef_t sessionRef);
+static le_msg_SessionRef_t msgSession_GetSessionRef(msgSession_UnixSession_t *unixSessionPtr);
+
+static void AttemptOpen(msgSession_UnixSession_t* sessionPtr);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -98,7 +102,7 @@ static void AttemptOpen(msgSession_Session_t* sessionPtr);
 //--------------------------------------------------------------------------------------------------
 static void PushTransmitQueue
 (
-    msgSession_Session_t*   sessionPtr,
+    msgSession_UnixSession_t* sessionPtr,
     le_msg_MessageRef_t     msgRef
 )
 //--------------------------------------------------------------------------------------------------
@@ -123,7 +127,7 @@ static void PushTransmitQueue
 //--------------------------------------------------------------------------------------------------
 static le_msg_MessageRef_t PopTransmitQueue
 (
-    msgSession_Session_t* sessionPtr
+    msgSession_UnixSession_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -151,7 +155,7 @@ static le_msg_MessageRef_t PopTransmitQueue
 //--------------------------------------------------------------------------------------------------
 static void UnPopTransmitQueue
 (
-    msgSession_Session_t* sessionPtr,
+    msgSession_UnixSession_t* sessionPtr,
     le_msg_MessageRef_t msgRef
 )
 //--------------------------------------------------------------------------------------------------
@@ -171,7 +175,7 @@ static void UnPopTransmitQueue
 //--------------------------------------------------------------------------------------------------
 static inline void PushReceiveQueue
 (
-    msgSession_Session_t*   sessionPtr,
+    msgSession_UnixSession_t*   sessionPtr,
     le_msg_MessageRef_t     msgRef
 )
 //--------------------------------------------------------------------------------------------------
@@ -190,7 +194,7 @@ static inline void PushReceiveQueue
 //--------------------------------------------------------------------------------------------------
 static le_msg_MessageRef_t PopReceiveQueue
 (
-    msgSession_Session_t* sessionPtr
+    msgSession_UnixSession_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -281,7 +285,7 @@ static void DeleteTxnId
 //--------------------------------------------------------------------------------------------------
 static void AddToTxnList
 (
-    msgSession_Session_t* sessionPtr,
+    msgSession_UnixSession_t* sessionPtr,
     le_msg_MessageRef_t msgRef
 )
 //--------------------------------------------------------------------------------------------------
@@ -301,7 +305,7 @@ static void AddToTxnList
 //--------------------------------------------------------------------------------------------------
 static void RemoveFromTxnList
 (
-    msgSession_Session_t* sessionPtr,
+    msgSession_UnixSession_t* sessionPtr,
     le_msg_MessageRef_t msgRef
 )
 //--------------------------------------------------------------------------------------------------
@@ -324,7 +328,7 @@ static void RemoveFromTxnList
 //--------------------------------------------------------------------------------------------------
 static void PurgeTxnList
 (
-    msgSession_Session_t* sessionPtr
+    msgSession_UnixSession_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -363,7 +367,7 @@ static void PurgeTxnList
 //--------------------------------------------------------------------------------------------------
 static void PurgeTransmitQueue
 (
-    msgSession_Session_t* sessionPtr
+    msgSession_UnixSession_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -400,7 +404,7 @@ static void PurgeTransmitQueue
 //--------------------------------------------------------------------------------------------------
 static void PurgeReceiveQueue
 (
-    msgSession_Session_t* sessionPtr
+    msgSession_UnixSession_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -422,14 +426,15 @@ static void PurgeReceiveQueue
  * @note    This is used on both the client side and the server side.
  */
 //--------------------------------------------------------------------------------------------------
-static msgSession_Session_t* CreateSession
+static msgSession_UnixSession_t* CreateSession
 (
     le_msg_InterfaceRef_t       interfaceRef ///< [in] Reference to the session's interface.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    msgSession_Session_t* sessionPtr = le_mem_ForceAlloc(SessionPoolRef);
+    msgSession_UnixSession_t* sessionPtr = le_mem_ForceAlloc(SessionPoolRef);
 
+    sessionPtr->session.type = LE_MSG_SESSION_UNIX_SOCKET;
     sessionPtr->link = LE_DLS_LINK_INIT;
     sessionPtr->state = LE_MSG_SESSION_STATE_CLOSED;
     sessionPtr->threadRef = le_thread_GetCurrent();
@@ -451,7 +456,7 @@ static msgSession_Session_t* CreateSession
     sessionPtr->interfaceRef = interfaceRef;
 
     SessionObjListChangeCount++;
-    msgInterface_AddSession(interfaceRef, sessionPtr);
+    msgInterface_AddSession(interfaceRef, msgSession_GetSessionRef(sessionPtr));
 
     return sessionPtr;
 }
@@ -466,7 +471,7 @@ static msgSession_Session_t* CreateSession
 //--------------------------------------------------------------------------------------------------
 static void CloseSession
 (
-    msgSession_Session_t* sessionPtr
+    msgSession_UnixSession_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -477,7 +482,10 @@ static void CloseSession
     {
         // Note: This needs to be done before the FD is closed, in case someone wants to check the
         //       credentials in their callback.
-        msgInterface_CallCloseHandler((le_msg_ServiceRef_t)sessionPtr->interfaceRef, sessionPtr);
+        msgInterface_CallCloseHandler(CONTAINER_OF(sessionPtr->interfaceRef,
+                                                   msgInterface_UnixService_t,
+                                                   interface),
+                                      msgSession_GetSessionRef(sessionPtr));
     }
 
     // Delete the socket and the FD Monitor.
@@ -509,7 +517,7 @@ static void CloseSession
 //--------------------------------------------------------------------------------------------------
 static void DeleteSession
 (
-    msgSession_Session_t* sessionPtr
+    msgSession_UnixSession_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -521,7 +529,8 @@ static void DeleteSession
 
     // Remove the Session from the Interface's Session List.
     SessionObjListChangeCount++;
-    msgInterface_RemoveSession(sessionPtr->interfaceRef, sessionPtr);
+    msgInterface_RemoveSession(sessionPtr->interfaceRef,
+                               msgSession_GetSessionRef(sessionPtr));
 
     // Release the Session object itself.
     le_mem_Release(sessionPtr);
@@ -589,7 +598,7 @@ static le_result_t ConnectToServiceDirectory
 //--------------------------------------------------------------------------------------------------
 static void EnableWriteabilityNotification
 (
-    msgSession_Session_t*  sessionPtr
+    msgSession_UnixSession_t*  sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -605,7 +614,7 @@ static void EnableWriteabilityNotification
 //--------------------------------------------------------------------------------------------------
 static inline void DisableWriteabilityNotification
 (
-    msgSession_Session_t*  sessionPtr
+    msgSession_UnixSession_t*  sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -622,13 +631,14 @@ static inline void DisableWriteabilityNotification
 //--------------------------------------------------------------------------------------------------
 static void RetryOpen
 (
-    msgSession_Session_t* sessionPtr
+    msgSession_UnixSession_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
     CloseSession(sessionPtr);
 
-    le_msg_InterfaceRef_t interfaceRef = le_msg_GetSessionInterface(sessionPtr);
+    le_msg_InterfaceRef_t interfaceRef =
+        le_msg_GetSessionInterface(msgSession_GetSessionRef(sessionPtr));
     LE_ERROR("Retrying connection on interface (%s:%s)...",
              le_msg_GetInterfaceName(interfaceRef),
              le_msg_GetProtocolIdStr(le_msg_GetInterfaceProtocol(interfaceRef)));
@@ -652,7 +662,7 @@ static void RetryOpen
 //--------------------------------------------------------------------------------------------------
 static le_result_t ReceiveSessionOpenResponse
 (
-    msgSession_Session_t* sessionPtr
+    msgSession_UnixSession_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -668,10 +678,13 @@ static le_result_t ReceiveSessionOpenResponse
     {
         if (serverResponse == LE_OK)
         {
-            le_msg_InterfaceRef_t interfaceRef = le_msg_GetSessionInterface(sessionPtr);
+            le_msg_InterfaceRef_t interfaceRef =
+                le_msg_GetSessionInterface(msgSession_GetSessionRef(sessionPtr));
             TRACE("Session opened on interface (%s:%s)",
                   le_msg_GetInterfaceName(interfaceRef),
-                  le_msg_GetProtocolIdStr(le_msg_GetSessionProtocol(sessionPtr)));
+                  le_msg_GetProtocolIdStr(
+                      le_msg_GetSessionProtocol(
+                          msgSession_GetSessionRef(sessionPtr))));
         }
         else if ((serverResponse == LE_UNAVAILABLE) || (serverResponse == LE_NOT_PERMITTED))
         {
@@ -740,7 +753,7 @@ static le_result_t SendSessionOpenResponse
 //--------------------------------------------------------------------------------------------------
 static void ProcessMessageFromServer
 (
-    msgSession_Session_t*          sessionPtr,
+    msgSession_UnixSession_t*          sessionPtr,
     le_msg_MessageRef_t msgRef
 )
 //--------------------------------------------------------------------------------------------------
@@ -789,7 +802,7 @@ static void ProcessMessageFromServer
 //--------------------------------------------------------------------------------------------------
 static void ProcessReceivedMessages
 (
-    msgSession_Session_t*  sessionPtr
+    msgSession_UnixSession_t*  sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -805,7 +818,9 @@ static void ProcessReceivedMessages
         }
         else if (sessionPtr->interfaceRef->interfaceType == LE_MSG_INTERFACE_SERVER)
         {
-            msgInterface_ProcessMessageFromClient((le_msg_ServiceRef_t)sessionPtr->interfaceRef,
+            msgInterface_ProcessMessageFromClient(CONTAINER_OF(sessionPtr->interfaceRef,
+                                                               msgInterface_UnixService_t,
+                                                               interface),
                                                   msgRef);
         }
     }
@@ -819,7 +834,7 @@ static void ProcessReceivedMessages
 //--------------------------------------------------------------------------------------------------
 static void ClientSocketHangUp
 (
-    msgSession_Session_t* sessionPtr
+    msgSession_UnixSession_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -831,6 +846,9 @@ static void ClientSocketHangUp
     {
         case LE_MSG_SESSION_STATE_OPENING:
             // If the socket closes during the session opening process, just try again.
+            LE_WARN("Session closed while connecting, retrying (%s:%s)",
+                    le_msg_GetInterfaceName(sessionPtr->interfaceRef),
+                    le_msg_GetProtocolIdStr(le_msg_GetInterfaceProtocol(sessionPtr->interfaceRef)));
             RetryOpen(sessionPtr);
             break;
 
@@ -840,7 +858,8 @@ static void ClientSocketHangUp
             if (sessionPtr->closeHandler != NULL)
             {
                 CloseSession(sessionPtr);
-                sessionPtr->closeHandler(sessionPtr, sessionPtr->closeContextPtr);
+                sessionPtr->closeHandler(msgSession_GetSessionRef(sessionPtr),
+                                         sessionPtr->closeContextPtr);
             }
             // Otherwise, it's a fatal error, because the client is not designed to
             // recover from the session closing down on it.
@@ -869,13 +888,15 @@ static void ClientSocketHangUp
 //--------------------------------------------------------------------------------------------------
 static void ClientSocketError
 (
-    msgSession_Session_t* sessionPtr
+    msgSession_UnixSession_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
     LE_ERROR("Error detected on socket for session with service (%s:%s).",
              le_msg_GetInterfaceName(sessionPtr->interfaceRef),
-             le_msg_GetProtocolIdStr(le_msg_GetSessionProtocol(sessionPtr)));
+             le_msg_GetProtocolIdStr(
+                 le_msg_GetSessionProtocol(
+                     msgSession_GetSessionRef(sessionPtr))));
 
     switch (sessionPtr->state)
     {
@@ -907,14 +928,14 @@ static void ClientSocketError
 //--------------------------------------------------------------------------------------------------
 static void ReceiveMessages
 (
-    msgSession_Session_t* sessionPtr
+    msgSession_UnixSession_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
     for (;;)
     {
         // Create a Message object.
-        le_msg_MessageRef_t msgRef = le_msg_CreateMsg(sessionPtr);
+        le_msg_MessageRef_t msgRef = le_msg_CreateMsg(msgSession_GetSessionRef(sessionPtr));
 
         // Receive from the socket into the Message object.
         le_result_t result = msgMessage_Receive(sessionPtr->socketFd, msgRef);
@@ -941,7 +962,7 @@ static void ReceiveMessages
 //--------------------------------------------------------------------------------------------------
 static void ServerSocketHangUp
 (
-    msgSession_Session_t* sessionPtr
+    msgSession_UnixSession_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -964,7 +985,7 @@ static void ServerSocketHangUp
 //--------------------------------------------------------------------------------------------------
 static void ServerSocketError
 (
-    msgSession_Session_t* sessionPtr
+    msgSession_UnixSession_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -974,7 +995,7 @@ static void ServerSocketError
 
     LE_ERROR("Error detected on socket for session with service (%s:%s).",
              le_msg_GetInterfaceName(sessionPtr->interfaceRef),
-             le_msg_GetProtocolIdStr(le_msg_GetSessionProtocol(sessionPtr)));
+             le_msg_GetProtocolIdStr(le_msg_GetSessionProtocol(msgSession_GetSessionRef(sessionPtr))));
 
     DeleteSession(sessionPtr);
 }
@@ -988,7 +1009,7 @@ static void ServerSocketError
 //--------------------------------------------------------------------------------------------------
 static void SendFromTransmitQueue
 (
-    msgSession_Session_t* sessionPtr
+    msgSession_UnixSession_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1077,10 +1098,12 @@ static void SendFromTransmitQueue
 //--------------------------------------------------------------------------------------------------
 static void ClientSocketReadable
 (
-    msgSession_Session_t* sessionPtr
+    msgSession_UnixSession_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
+    le_result_t result = LE_OK;
+
     switch (sessionPtr->state)
     {
         case LE_MSG_SESSION_STATE_CLOSED:
@@ -1091,8 +1114,12 @@ static void ClientSocketReadable
         case LE_MSG_SESSION_STATE_OPENING:
             // The Session is waiting for notification from the server that the session
             // has been opened.
-            if (ReceiveSessionOpenResponse(sessionPtr) != LE_OK)
+            if ((result = ReceiveSessionOpenResponse(sessionPtr)) != LE_OK)
             {
+                LE_WARN("Received error %d opening session (%s:%s)",
+                        result,
+                        le_msg_GetInterfaceName(sessionPtr->interfaceRef),
+                        le_msg_GetProtocolIdStr(le_msg_GetSessionProtocol(msgSession_GetSessionRef(sessionPtr))));
                 RetryOpen(sessionPtr);
             }
             else
@@ -1100,7 +1127,7 @@ static void ClientSocketReadable
                 sessionPtr->state = LE_MSG_SESSION_STATE_OPEN;
 
                 // Call the client's completion callback.
-                sessionPtr->openHandler(sessionPtr, sessionPtr->openContextPtr);
+                sessionPtr->openHandler(msgSession_GetSessionRef(sessionPtr), sessionPtr->openContextPtr);
             }
             break;
 
@@ -1127,7 +1154,7 @@ static void ClientSocketReadable
 //--------------------------------------------------------------------------------------------------
 static void ClientSocketWriteable
 (
-    msgSession_Session_t* sessionPtr
+    msgSession_UnixSession_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1163,7 +1190,7 @@ static void ClientSocketEventHandler
 //--------------------------------------------------------------------------------------------------
 {
     // Get the Session object.
-    msgSession_Session_t* sessionPtr = le_fdMonitor_GetContextPtr();
+    msgSession_UnixSession_t* sessionPtr = le_fdMonitor_GetContextPtr();
 
     if (events & POLLIN)
     {
@@ -1193,7 +1220,7 @@ static void ClientSocketEventHandler
 //--------------------------------------------------------------------------------------------------
 static void ServerSocketReadable
 (
-    msgSession_Session_t* sessionPtr
+    msgSession_UnixSession_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1216,7 +1243,7 @@ static void ServerSocketReadable
 //--------------------------------------------------------------------------------------------------
 static void ServerSocketWriteable
 (
-    msgSession_Session_t* sessionPtr
+    msgSession_UnixSession_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1241,7 +1268,7 @@ static void ServerSocketEventHandler
 //--------------------------------------------------------------------------------------------------
 {
     // Get the Session object.
-    msgSession_Session_t* sessionPtr = le_fdMonitor_GetContextPtr();
+    msgSession_UnixSession_t* sessionPtr = le_fdMonitor_GetContextPtr();
 
     if (events & POLLIN)
     {
@@ -1272,7 +1299,7 @@ static void ServerSocketEventHandler
 //--------------------------------------------------------------------------------------------------
 static void StartSocketMonitoring
 (
-    msgSession_Session_t*                  sessionPtr,
+    msgSession_UnixSession_t*                  sessionPtr,
     le_fdMonitor_HandlerFunc_t  handlerFunc
 )
 //--------------------------------------------------------------------------------------------------
@@ -1305,7 +1332,7 @@ static void StartSocketMonitoring
 //--------------------------------------------------------------------------------------------------
 static le_result_t StartSessionOpenAttempt
 (
-    msgSession_Session_t* sessionPtr,
+    msgSession_UnixSession_t* sessionPtr,
 
     bool shouldWait         ///< true = ask the Service Directory to hold onto the request until
                             ///         the binding or advertisement happens if the client
@@ -1366,7 +1393,7 @@ static le_result_t StartSessionOpenAttempt
 //--------------------------------------------------------------------------------------------------
 static void AttemptOpen
 (
-    msgSession_Session_t* sessionPtr
+    msgSession_UnixSession_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1404,7 +1431,7 @@ static void AttemptOpen
 //--------------------------------------------------------------------------------------------------
 static le_result_t AttemptOpenSync
 (
-    msgSession_Session_t* sessionPtr,
+    msgSession_UnixSession_t* sessionPtr,
     bool shouldWait         ///< true = if the client interface is not bound or the server is
                             ///         not advertising the service at this time, then wait
                             ///         until the binding or advertisement happens.
@@ -1473,7 +1500,7 @@ static void ProcessDeferredMessages
 )
 //--------------------------------------------------------------------------------------------------
 {
-    msgSession_Session_t* sessionPtr = param1Ptr;
+    msgSession_UnixSession_t* sessionPtr = param1Ptr;
 
     ProcessReceivedMessages(sessionPtr);
 
@@ -1490,7 +1517,7 @@ static void ProcessDeferredMessages
 //--------------------------------------------------------------------------------------------------
 static void TriggerDeferredProcessing
 (
-    msgSession_Session_t*  sessionPtr
+    msgSession_UnixSession_t*  sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1531,7 +1558,7 @@ void msgSession_Init
 )
 //--------------------------------------------------------------------------------------------------
 {
-    SessionPoolRef = le_mem_CreatePool("Session", sizeof(msgSession_Session_t));
+    SessionPoolRef = le_mem_CreatePool("Session", sizeof(msgSession_UnixSession_t));
     le_mem_ExpandPool(SessionPoolRef, 10); /// @todo Make this configurable.
 
     TxnMapRef = le_ref_CreateMap("MsgTxnIDs", MAX_EXPECTED_TXNS);
@@ -1554,7 +1581,8 @@ msgInterface_Type_t msgSession_GetInterfaceType
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return sessionRef->interfaceRef->interfaceType;
+    msgSession_UnixSession_t* unixSessionPtr = msgSession_GetUnixSessionPtr(sessionRef);
+    return unixSessionPtr->interfaceRef->interfaceType;
 }
 
 
@@ -1571,7 +1599,8 @@ bool msgSession_IsOpen
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return (sessionRef->state == LE_MSG_SESSION_STATE_OPEN);
+    msgSession_UnixSession_t* unixSessionPtr = msgSession_GetUnixSessionPtr(sessionRef);
+    return (unixSessionPtr->state == LE_MSG_SESSION_STATE_OPEN);
 }
 
 
@@ -1587,14 +1616,15 @@ void msgSession_SendMessage
 )
 //--------------------------------------------------------------------------------------------------
 {
+    msgSession_UnixSession_t* unixSessionPtr = msgSession_GetUnixSessionPtr(sessionRef);
     // Only the thread that is handling events on this socket is allowed to send messages through
     // this socket.  This prevents multi-threaded races.
     /// @todo Allow other threads to send?
-    LE_FATAL_IF(le_thread_GetCurrent() != sessionRef->threadRef,
+    LE_FATAL_IF(le_thread_GetCurrent() != unixSessionPtr->threadRef,
                 "Attempt to send by thread that doesn't own session '%s'.",
                 le_msg_GetInterfaceName(le_msg_GetSessionInterface(sessionRef)));
 
-    if (sessionRef->state != LE_MSG_SESSION_STATE_OPEN)
+    if (unixSessionPtr->state != LE_MSG_SESSION_STATE_OPEN)
     {
         LE_DEBUG("Discarding message sent in session that is not open.");
 
@@ -1603,10 +1633,10 @@ void msgSession_SendMessage
     else
     {
         // Put the message on the Transmit Queue.
-        PushTransmitQueue(sessionRef, messageRef);
+        PushTransmitQueue(unixSessionPtr, messageRef);
 
         // Try to send something from the Transmit Queue.
-        SendFromTransmitQueue(sessionRef);
+        SendFromTransmitQueue(unixSessionPtr);
     }
 }
 
@@ -1623,24 +1653,26 @@ void msgSession_RequestResponse
 )
 //--------------------------------------------------------------------------------------------------
 {
+    msgSession_UnixSession_t* unixSessionPtr = msgSession_GetUnixSessionPtr(sessionRef);
+
     // Only the thread that is handling events on this socket is allowed to do asynchronous
     // transactions on it.
-    LE_FATAL_IF(le_thread_GetCurrent() != sessionRef->threadRef,
+    LE_FATAL_IF(le_thread_GetCurrent() != unixSessionPtr->threadRef,
                 "Calling thread doesn't own the session '%s'.",
                 le_msg_GetInterfaceName(le_msg_GetSessionInterface(sessionRef)));
     /// @todo Allow other threads to send?
 
-    LE_FATAL_IF(sessionRef->state != LE_MSG_SESSION_STATE_OPEN,
+    LE_FATAL_IF(unixSessionPtr->state != LE_MSG_SESSION_STATE_OPEN,
                 "Attempt to send message on session that is not open.");
 
     // Create an ID for this transaction.
     CreateTxnId(msgRef);
 
     // Put the message on the Transmit Queue.
-    PushTransmitQueue(sessionRef, msgRef);
+    PushTransmitQueue(unixSessionPtr, msgRef);
 
     // Try to send something from the Transmit Queue.
-    SendFromTransmitQueue(sessionRef);
+    SendFromTransmitQueue(unixSessionPtr);
 }
 
 
@@ -1657,10 +1689,11 @@ le_msg_MessageRef_t msgSession_DoSyncRequestResponse
 //--------------------------------------------------------------------------------------------------
 {
     le_msg_MessageRef_t rxMsgRef;
+    msgSession_UnixSession_t* unixSessionPtr = msgSession_GetUnixSessionPtr(sessionRef);
 
     // Only the thread that is handling events on this socket is allowed to do synchronous
     // transactions on it.
-    LE_FATAL_IF(le_thread_GetCurrent() != sessionRef->threadRef,
+    LE_FATAL_IF(le_thread_GetCurrent() != unixSessionPtr->threadRef,
                 "Attempted synchronous operation by thread that doesn't own session '%s'.",
                 le_msg_GetInterfaceName(le_msg_GetSessionInterface(sessionRef)));
 
@@ -1668,10 +1701,10 @@ le_msg_MessageRef_t msgSession_DoSyncRequestResponse
     CreateTxnId(msgRef);
 
     // Put the socket into blocking mode.
-    fd_SetBlocking(sessionRef->socketFd);
+    fd_SetBlocking(unixSessionPtr->socketFd);
 
     // Send the Request Message.
-    msgMessage_Send(sessionRef->socketFd, msgRef);
+    msgMessage_Send(unixSessionPtr->socketFd, msgRef);
 
     // While we have not yet received the response we are waiting for, keep
     // receiving messages.  Any that we receive that don't match the transaction ID
@@ -1681,7 +1714,7 @@ le_msg_MessageRef_t msgSession_DoSyncRequestResponse
     {
         rxMsgRef = le_msg_CreateMsg(sessionRef);
 
-        le_result_t result = msgMessage_Receive(sessionRef->socketFd, rxMsgRef);
+        le_result_t result = msgMessage_Receive(unixSessionPtr->socketFd, rxMsgRef);
 
         if (result != LE_OK)
         {
@@ -1703,13 +1736,13 @@ le_msg_MessageRef_t msgSession_DoSyncRequestResponse
         // If the Receive Queue is empty, queue up a function call on the Event Queue so that
         // the Event Loop will kick start processing of the Receive Queue later.
         // (If there's already something on the Receive Queue, then we've already done that.)
-        if (le_dls_IsEmpty(&sessionRef->receiveQueue))
+        if (le_dls_IsEmpty(&unixSessionPtr->receiveQueue))
         {
-            TriggerDeferredProcessing(sessionRef);
+            TriggerDeferredProcessing(unixSessionPtr);
         }
 
         // Queue the received message to the Receive Queue for later processing.
-        PushReceiveQueue(sessionRef, rxMsgRef);
+        PushReceiveQueue(unixSessionPtr, rxMsgRef);
     }
 
     // Invalidate the ID for this transaction.
@@ -1719,7 +1752,7 @@ le_msg_MessageRef_t msgSession_DoSyncRequestResponse
     le_msg_ReleaseMsg(msgRef);
 
     // Put the socket back into non-blocking mode.
-    fd_SetNonBlocking(sessionRef->socketFd);
+    fd_SetNonBlocking(unixSessionPtr->socketFd);
 
     return rxMsgRef;
 }
@@ -1738,7 +1771,8 @@ le_msg_InterfaceRef_t msgSession_GetInterfaceRef
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return sessionRef->interfaceRef;
+    msgSession_UnixSession_t* unixSessionPtr = msgSession_GetUnixSessionPtr(sessionRef);
+    return unixSessionPtr->interfaceRef;
 }
 
 
@@ -1756,7 +1790,15 @@ le_dls_Link_t* msgSession_GetListLink
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return &sessionRef->link;
+    // Make NULL map to NULL (regardless of position of link member) so we can
+    // check either session ref or link pointer against NULL.
+    if (!sessionRef)
+    {
+        return NULL;
+    }
+
+    msgSession_UnixSession_t* unixSessionPtr = msgSession_GetUnixSessionPtr(sessionRef);
+    return &unixSessionPtr->link;
 }
 
 
@@ -1773,7 +1815,61 @@ le_msg_SessionRef_t msgSession_GetSessionContainingLink
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return CONTAINER_OF(linkPtr, msgSession_Session_t, link);
+    // Make NULL map to NULL (regardless of position of link member) so we can
+    // check either session ref or link pointer against NULL.
+    if (!linkPtr)
+    {
+        return NULL;
+    }
+
+    return msgSession_GetSessionRef(CONTAINER_OF(linkPtr, msgSession_UnixSession_t, link));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get Unix session pointer from a session reference.
+ */
+//--------------------------------------------------------------------------------------------------
+static msgSession_UnixSession_t *msgSession_GetUnixSessionPtr
+(
+    le_msg_SessionRef_t sessionRef
+)
+{
+    // Make NULL map to NULL (regardless of position of session member) so we can
+    // check either session ref or unix session pointer against NULL.
+    if (!sessionRef)
+    {
+        return NULL;
+    }
+
+    LE_FATAL_IF(sessionRef->type != LE_MSG_SESSION_UNIX_SOCKET,
+                "Internal error: wrong session type");
+    msgSession_UnixSession_t* unixSessionPtr = CONTAINER_OF(sessionRef,
+                                                            msgSession_UnixSession_t,
+                                                            session);
+    return unixSessionPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get session reference from unix session pointer
+ */
+//--------------------------------------------------------------------------------------------------
+static le_msg_SessionRef_t msgSession_GetSessionRef
+(
+    msgSession_UnixSession_t *unixSessionPtr
+)
+{
+    // Make NULL map to NULL (regardless of position of session member) so we can
+    // check either session ref or unix session pointer against NULL.
+    if (!unixSessionPtr)
+    {
+        return NULL;
+    }
+
+    return &unixSessionPtr->session;
 }
 
 
@@ -1793,6 +1889,9 @@ le_msg_SessionRef_t msgSession_CreateServerSideSession
 )
 //--------------------------------------------------------------------------------------------------
 {
+    msgInterface_UnixService_t* servicePtr = CONTAINER_OF(serviceRef,
+                                                          msgInterface_UnixService_t,
+                                                          service);
     // Send a Hello message (LE_OK) to the client.
     if (SendSessionOpenResponse(fd) != LE_OK)
     {
@@ -1806,7 +1905,7 @@ le_msg_SessionRef_t msgSession_CreateServerSideSession
     fd_SetNonBlocking(fd);
 
     // Create the Session object (adding it to the Service's list of sessions)
-    msgSession_Session_t* sessionPtr = CreateSession((le_msg_InterfaceRef_t)serviceRef);
+    msgSession_UnixSession_t* sessionPtr = CreateSession(&servicePtr->interface);
 
     // Record the client connection file descriptor.
     sessionPtr->socketFd = fd;
@@ -1817,7 +1916,7 @@ le_msg_SessionRef_t msgSession_CreateServerSideSession
     // The session is officially open.
     sessionPtr->state = LE_MSG_SESSION_STATE_OPEN;
 
-    return sessionPtr;
+    return msgSession_GetSessionRef(sessionPtr);
 }
 
 
@@ -1846,11 +1945,11 @@ le_msg_SessionRef_t le_msg_CreateSession
 {
     le_msg_ClientInterfaceRef_t clientRef = msgInterface_GetClient(protocolRef, interfaceName);
 
-    msgSession_Session_t* sessionPtr = CreateSession((le_msg_InterfaceRef_t)clientRef);
+    msgSession_UnixSession_t* sessionPtr = CreateSession(&clientRef->interface);
 
-    msgInterface_Release((le_msg_InterfaceRef_t)clientRef);
+    msgInterface_Release(&clientRef->interface);
 
-    return sessionPtr;
+    return msgSession_GetSessionRef(sessionPtr);
 }
 
 
@@ -1869,7 +1968,18 @@ void le_msg_SetSessionContextPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    sessionRef->contextPtr = contextPtr;
+    LE_ASSERT(sessionRef);
+    switch (sessionRef->type)
+    {
+        case LE_MSG_SESSION_LOCAL:
+            LE_FATAL("SetSessionContextPointer not implemented for local sessions");
+            break;
+        case LE_MSG_SESSION_UNIX_SOCKET:
+            msgSession_GetUnixSessionPtr(sessionRef)->contextPtr = contextPtr;
+            break;
+        default:
+            LE_FATAL("Corrupted session type: %d", sessionRef->type);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1887,7 +1997,17 @@ void* le_msg_GetSessionContextPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return sessionRef->contextPtr;
+    LE_ASSERT(sessionRef);
+    switch (sessionRef->type)
+    {
+        case LE_MSG_SESSION_LOCAL:
+            LE_FATAL("SetSessionContextPointer not implemented for local sessions");
+            break;
+        case LE_MSG_SESSION_UNIX_SOCKET:
+            return msgSession_GetUnixSessionPtr(sessionRef)->contextPtr;
+        default:
+            LE_FATAL("Corrupted session type: %d", sessionRef->type);
+    }
 }
 
 
@@ -1904,10 +2024,23 @@ void le_msg_DeleteSession
 )
 //--------------------------------------------------------------------------------------------------
 {
-    LE_FATAL_IF((sessionRef->interfaceRef->interfaceType == LE_MSG_INTERFACE_SERVER),
-                "Server attempted to delete a session.");
-
-    DeleteSession(sessionRef);
+    LE_ASSERT(sessionRef);
+    switch (sessionRef->type)
+    {
+        case LE_MSG_SESSION_LOCAL:
+            msgLocal_DeleteSession(sessionRef);
+            break;
+        case LE_MSG_SESSION_UNIX_SOCKET:
+        {
+            msgSession_UnixSession_t* unixSessionPtr = msgSession_GetUnixSessionPtr(sessionRef);
+            LE_FATAL_IF((unixSessionPtr->interfaceRef->interfaceType == LE_MSG_INTERFACE_SERVER),
+                        "Server attempted to delete a session.");
+            DeleteSession(unixSessionPtr);
+            break;
+        }
+        default:
+            LE_FATAL("Corrupted session type: %d", sessionRef->type);
+    }
 }
 
 
@@ -1931,8 +2064,25 @@ void le_msg_SetSessionRecvHandler
 )
 //--------------------------------------------------------------------------------------------------
 {
-    sessionRef->rxHandler = handlerFunc;
-    sessionRef->rxContextPtr = contextPtr;
+    LE_ASSERT(sessionRef);
+    switch (sessionRef->type)
+    {
+        case LE_MSG_SESSION_LOCAL:
+            LE_INFO("SetSessionRecv: Local session");
+            msgLocal_SetSessionRecvHandler(sessionRef, handlerFunc, contextPtr);
+            break;
+        case LE_MSG_SESSION_UNIX_SOCKET:
+        {
+            LE_INFO("SetSessionRecv: Unix socket session");
+            msgSession_UnixSession_t* unixSessionPtr = msgSession_GetUnixSessionPtr(sessionRef);
+            unixSessionPtr->rxHandler = handlerFunc;
+            unixSessionPtr->rxContextPtr = contextPtr;
+            break;
+        }
+        default:
+            LE_FATAL("Corrupted session type: %d", sessionRef->type);
+            break;
+    }
 }
 
 
@@ -1960,8 +2110,55 @@ void le_msg_SetSessionCloseHandler
 )
 //--------------------------------------------------------------------------------------------------
 {
-    sessionRef->closeHandler = handlerFunc;
-    sessionRef->closeContextPtr = contextPtr;
+    LE_ASSERT(sessionRef);
+    switch (sessionRef->type)
+    {
+        case LE_MSG_SESSION_LOCAL:
+            // Local sessions are within the same process, so cannot be closed.
+            break;
+        case LE_MSG_SESSION_UNIX_SOCKET:
+        {
+            msgSession_UnixSession_t* unixSessionPtr = msgSession_GetUnixSessionPtr(sessionRef);
+            unixSessionPtr->closeHandler = handlerFunc;
+            unixSessionPtr->closeContextPtr = contextPtr;
+            break;
+        }
+        default:
+            LE_FATAL("Corrupted session type: %d", sessionRef->type);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the handler callback function to be called when the session is closed from the other
+ * end.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_msg_GetSessionCloseHandler
+(
+    le_msg_SessionRef_t             sessionRef, ///< [in] Reference to the session.
+    le_msg_SessionEventHandler_t*   handlerFuncPtr,///< [out] Handler function.
+    void**                          contextPtrPtr  ///< [out] Opaque pointer value to pass
+                                                   ///<       to the handler.
+)
+{
+    LE_ASSERT(sessionRef);
+    switch (sessionRef->type)
+    {
+        case LE_MSG_SESSION_LOCAL:
+            messagingLocal_GetSessionCloseHandler(sessionRef, handlerFuncPtr, contextPtrPtr);
+            break;
+        case LE_MSG_SESSION_UNIX_SOCKET:
+        {
+            msgSession_UnixSession_t* unixSessionPtr = msgSession_GetUnixSessionPtr(sessionRef);
+            *handlerFuncPtr = unixSessionPtr->closeHandler;
+            *contextPtrPtr = unixSessionPtr->closeContextPtr;
+            break;
+        }
+        default:
+            LE_FATAL("Corrupted session type: %d", sessionRef->type);
+    }
 }
 
 
@@ -1987,10 +2184,30 @@ void le_msg_OpenSession
 )
 //--------------------------------------------------------------------------------------------------
 {
-    sessionRef->openHandler = callbackFunc;
-    sessionRef->openContextPtr = contextPtr;
+    LE_ASSERT(sessionRef);
+    switch (sessionRef->type)
+    {
+        case LE_MSG_SESSION_LOCAL:
+            // There's no async open for msgLocal, so open synchronously and immediately call
+            // session open calback.
+            msgLocal_OpenSessionSync(sessionRef);
+            if (callbackFunc)
+            {
+                callbackFunc(sessionRef, contextPtr);
+            }
+            break;
+        case LE_MSG_SESSION_UNIX_SOCKET:
+        {
+            msgSession_UnixSession_t* unixSessionPtr = msgSession_GetUnixSessionPtr(sessionRef);
+            unixSessionPtr->openHandler = callbackFunc;
+            unixSessionPtr->openContextPtr = contextPtr;
 
-    AttemptOpen(sessionRef);
+            AttemptOpen(unixSessionPtr);
+            break;
+        }
+        default:
+            LE_FATAL("Corrupted session type: %d", sessionRef->type);
+    }
 }
 
 
@@ -2015,29 +2232,44 @@ void le_msg_OpenSessionSync
 )
 //--------------------------------------------------------------------------------------------------
 {
-    le_result_t result;
-
-    do
+    LE_ASSERT(sessionRef);
+    switch (sessionRef->type)
     {
-        result = AttemptOpenSync(sessionRef, true /* wait if necessary */ );
-
-        if (result != LE_OK)
+        case LE_MSG_SESSION_LOCAL:
+            msgLocal_OpenSessionSync(sessionRef);
+            break;
+        case LE_MSG_SESSION_UNIX_SOCKET:
         {
-            // Failure to connect to the Service Directory is a fatal error.
-            if (result == LE_COMM_ERROR)
+            le_result_t result;
+            msgSession_UnixSession_t* unixSessionPtr = msgSession_GetUnixSessionPtr(sessionRef);
+
+            do
             {
-                LE_FATAL("Failed to connect to the Service Directory.");
-            }
+                result = AttemptOpenSync(unixSessionPtr, true /* wait if necessary */ );
 
-            // For any other error, report an error and retry.
-            le_msg_InterfaceRef_t interfaceRef = le_msg_GetSessionInterface(sessionRef);
-            LE_ERROR("Session failed (%s). Retrying... (%s:%s)",
-                     LE_RESULT_TXT(result),
-                     le_msg_GetInterfaceName(interfaceRef),
-                     le_msg_GetProtocolIdStr(le_msg_GetInterfaceProtocol(interfaceRef)));
+                if (result != LE_OK)
+                {
+                    // Failure to connect to the Service Directory is a fatal error.
+                    if (result == LE_COMM_ERROR)
+                    {
+                        LE_FATAL("Failed to connect to the Service Directory.");
+                    }
+
+                    // For any other error, report an error and retry.
+                    le_msg_InterfaceRef_t interfaceRef = le_msg_GetSessionInterface(sessionRef);
+                    LE_ERROR("Session failed (%s). Retrying... (%s:%s)",
+                             LE_RESULT_TXT(result),
+                             le_msg_GetInterfaceName(interfaceRef),
+                             le_msg_GetProtocolIdStr(le_msg_GetInterfaceProtocol(interfaceRef)));
+                }
+
+            } while (result != LE_OK);
+            break;
         }
-
-    } while (result != LE_OK);
+        default:
+            LE_FATAL("Corrupted session type: %d", sessionRef->type);
+            break;
+    }
 }
 
 
@@ -2074,8 +2306,21 @@ le_result_t le_msg_TryOpenSessionSync
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Attempt a synchronous "Open" for the session.
-    return AttemptOpenSync(sessionRef, false /* don't wait for binding or advertisement */ );
+    LE_ASSERT(sessionRef);
+    switch (sessionRef->type)
+    {
+        case LE_MSG_SESSION_LOCAL:
+            return msgLocal_TryOpenSessionSync(sessionRef);
+        case LE_MSG_SESSION_UNIX_SOCKET:
+        {
+            // Attempt a synchronous "Open" for the session.
+            msgSession_UnixSession_t* unixSessionPtr = msgSession_GetUnixSessionPtr(sessionRef);
+            return AttemptOpenSync(unixSessionPtr,
+                                   false /* don't wait for binding or advertisement */ );
+        }
+        default:
+            LE_FATAL("Corrupted session type: %d", sessionRef->type);
+    }
 }
 
 
@@ -2090,14 +2335,29 @@ void le_msg_CloseSession
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // On the server side, sessions are automatically deleted when they close.
-    if (sessionRef->interfaceRef->interfaceType == LE_MSG_INTERFACE_SERVER)
+    LE_ASSERT(sessionRef);
+    switch (sessionRef->type)
     {
-        DeleteSession(sessionRef);
-    }
-    else if (sessionRef->state != LE_MSG_SESSION_STATE_CLOSED)
-    {
-        CloseSession(sessionRef);
+        case LE_MSG_SESSION_LOCAL:
+            msgLocal_CloseSession(sessionRef);
+            break;
+        case LE_MSG_SESSION_UNIX_SOCKET:
+        {
+            msgSession_UnixSession_t* unixSessionPtr = msgSession_GetUnixSessionPtr(sessionRef);
+
+            // On the server side, sessions are automatically deleted when they close.
+            if (unixSessionPtr->interfaceRef->interfaceType == LE_MSG_INTERFACE_SERVER)
+            {
+                DeleteSession(unixSessionPtr);
+            }
+            else if (unixSessionPtr->state != LE_MSG_SESSION_STATE_CLOSED)
+            {
+                CloseSession(unixSessionPtr);
+            }
+            break;
+        }
+        default:
+            LE_FATAL("Corrupted session type: %d", sessionRef->type);
     }
 }
 
@@ -2115,7 +2375,20 @@ le_msg_ProtocolRef_t le_msg_GetSessionProtocol
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return msgInterface_GetProtocolRef(sessionRef->interfaceRef);
+    LE_ASSERT(sessionRef);
+    switch (sessionRef->type)
+    {
+        case LE_MSG_SESSION_LOCAL:
+            // Local sessions don't define a protocol reference
+            return NULL;
+        case LE_MSG_SESSION_UNIX_SOCKET:
+        {
+            msgSession_UnixSession_t* unixSessionPtr = msgSession_GetUnixSessionPtr(sessionRef);
+            return msgInterface_GetProtocolRef(unixSessionPtr->interfaceRef);
+        }
+        default:
+            LE_FATAL("Corrupted session type: %d", sessionRef->type);
+    }
 }
 
 
@@ -2132,7 +2405,19 @@ le_msg_InterfaceRef_t le_msg_GetSessionInterface
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return sessionRef->interfaceRef;
+    LE_ASSERT(sessionRef);
+    switch (sessionRef->type)
+    {
+        case LE_MSG_SESSION_LOCAL:
+            return NULL;
+        case LE_MSG_SESSION_UNIX_SOCKET:
+        {
+            msgSession_UnixSession_t* unixSessionPtr = msgSession_GetUnixSessionPtr(sessionRef);
+            return unixSessionPtr->interfaceRef;
+        }
+        default:
+            LE_FATAL("Corrupted session type: %d", sessionRef->type);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2191,38 +2476,62 @@ le_result_t le_msg_GetClientUserCreds
 )
 //--------------------------------------------------------------------------------------------------
 {
-    struct ucred credentials;
-    socklen_t credSize = sizeof(credentials);
-
-    if (sessionRef->interfaceRef->interfaceType == LE_MSG_INTERFACE_CLIENT)
+    LE_ASSERT(sessionRef);
+    switch (sessionRef->type)
     {
-        LE_FATAL("Server-side function called by client.");
-    }
+        case LE_MSG_SESSION_LOCAL:
+            // Local session is current user and process
+            if (userIdPtr)
+            {
+                *userIdPtr = geteuid();
+            }
 
-    int result = getsockopt(sessionRef->socketFd, SOL_SOCKET, SO_PEERCRED, &credentials, &credSize);
-
-    if (result == -1)
-    {
-        if (errno == EBADF)
+            if (processIdPtr)
+            {
+                *processIdPtr = getpid();
+            }
+            return LE_OK;
+        case LE_MSG_SESSION_UNIX_SOCKET:
         {
-            LE_DEBUG("getsockopt() reported EBADF.");
-            return LE_CLOSED;
+            struct ucred credentials;
+            socklen_t credSize = sizeof(credentials);
+            msgSession_UnixSession_t* unixSessionPtr = msgSession_GetUnixSessionPtr(sessionRef);
+
+            if (unixSessionPtr->interfaceRef->interfaceType == LE_MSG_INTERFACE_CLIENT)
+            {
+                LE_FATAL("Server-side function called by client.");
+            }
+
+            int result = getsockopt(unixSessionPtr->socketFd, SOL_SOCKET, SO_PEERCRED,
+                                    &credentials, &credSize);
+
+            if (result == -1)
+            {
+                if (errno == EBADF)
+                {
+                    LE_DEBUG("getsockopt() reported EBADF.");
+                    return LE_CLOSED;
+                }
+                else
+                {
+                    LE_FATAL("getsockopt failed with errno %m for fd %d.",
+                             unixSessionPtr->socketFd);
+                }
+            }
+
+            if (userIdPtr)
+            {
+                *userIdPtr = credentials.uid;
+            }
+
+            if (processIdPtr)
+            {
+                *processIdPtr = credentials.pid;
+            }
+
+            return LE_OK;
         }
-        else
-        {
-            LE_FATAL("getsockopt failed with errno %m for fd %d.", sessionRef->socketFd);
-        }
+        default:
+            LE_FATAL("Corrupted session type: %d", sessionRef->type);
     }
-
-    if (userIdPtr)
-    {
-        *userIdPtr = credentials.uid;
-    }
-
-    if (processIdPtr)
-    {
-        *processIdPtr = credentials.pid;
-    }
-
-    return LE_OK;
 }

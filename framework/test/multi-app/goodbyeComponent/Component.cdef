@@ -1,0 +1,18 @@
+requires:
+{
+    component:
+    {
+        ${CURDIR}/../greetComponent
+    }
+}
+
+sources:
+{
+    goodbyeWorld.c
+    greet.c
+}
+
+cflags:
+{
+    -I${CURDIR}/../greetComponent
+}

@@ -6,6 +6,13 @@
 
 ### Daemon Options ###
 
+config WDOG_FRAMEWORK
+  bool "Enable Legato watchdog on framework services"
+  default y
+  ---help---
+  The watchdog observes the Legato framework daemons and, if one deadlocks,
+  restarts the system.
+
 source "framework/daemons/linux/supervisor/KConfig"
 source "framework/daemons/linux/serviceDirectory/KConfig"
 source "framework/daemons/linux/watchdog/KConfig"

@@ -6,6 +6,8 @@
 
 ### Options ###
 
+menu "Service Directory"
+
 config SVCDIR_SERVER_SOCKET_NAME
   string "Service directory server socket name"
   default "serviceDirectoryServer"
@@ -19,3 +21,5 @@ config SVCDIR_CLIENT_SOCKET_NAME
   ---help---
   Name of the Service Directory's client UNIX domain socket.  The full
   path will be this name appended to the runtime directory path.
+
+endmenu # end "Service Directory"

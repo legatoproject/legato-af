@@ -95,33 +95,68 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct le_mutex* le_mutex_Ref_t;
 
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_mutex_CreateRecursive().
+ */
+//--------------------------------------------------------------------------------------------------
+le_mutex_Ref_t _le_mutex_CreateRecursive
+(
+#if LE_CONFIG_MUTEX_NAMES_ENABLED
+    const char *nameStr
+#endif
+);
+/// @endcond
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Create a Recursive mutex.
  *
- * @return  Returns a reference to the mutex.
+ *  @param[in]  nameStr Name of the mutex
  *
- * @note Terminates the process on failure, no need to check the return value for errors.
+ *  @return  Returns a reference to the mutex.
+ *
+ *  @note Terminates the process on failure, no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_mutex_Ref_t le_mutex_CreateRecursive
+#if LE_CONFIG_MUTEX_NAMES_ENABLED
+#   define le_mutex_CreateRecursive(nameStr)    _le_mutex_CreateRecursive(nameStr)
+#else /* if not LE_CONFIG_MUTEX_NAMES_ENABLED */
+#   define le_mutex_CreateRecursive(nameStr)    ((void)(nameStr), _le_mutex_CreateRecursive())
+#endif /* end LE_CONFIG_MUTEX_NAMES_ENABLED */
+
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_mutex_CreateNonRecursive().
+ */
+//--------------------------------------------------------------------------------------------------
+le_mutex_Ref_t _le_mutex_CreateNonRecursive
 (
-    const char* nameStr     ///< [in] Name of the mutex
+#if LE_CONFIG_MUTEX_NAMES_ENABLED
+    const char *nameStr
+#endif
 );
+/// @endcond
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Create a Non-Recursive mutex.
  *
- * @return  Returns a reference to the mutex.
+ *  @param[in]  nameStr Name of the mutex
  *
- * @note Terminates the process on failure, no need to check the return value for errors.
+ *  @return  Returns a reference to the mutex.
+ *
+ *  @note Terminates the process on failure, no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_mutex_Ref_t le_mutex_CreateNonRecursive
-(
-    const char* nameStr     ///< [in] Name of the mutex
-);
+#if LE_CONFIG_MUTEX_NAMES_ENABLED
+#   define le_mutex_CreateNonRecursive(nameStr) _le_mutex_CreateNonRecursive(nameStr)
+#else /* if not LE_CONFIG_MUTEX_NAMES_ENABLED */
+#   define le_mutex_CreateNonRecursive(nameStr) ((void)(nameStr), _le_mutex_CreateNonRecursive())
+#endif /* end LE_CONFIG_MUTEX_NAMES_ENABLED */
+
 
 //--------------------------------------------------------------------------------------------------
 /**

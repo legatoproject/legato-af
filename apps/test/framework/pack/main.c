@@ -25,21 +25,18 @@ static void CheckUint8(uint8_t value)
 {
     uint8_t buffer[BUFFER_SZ];
     uint8_t* bufferPtr = buffer;
-    size_t bufferSz = sizeof(buffer);
 
-    ResetBuffer(bufferPtr, bufferSz);
+    ResetBuffer(bufferPtr, sizeof(buffer));
 
     // Pack
-    LE_TEST(le_pack_PackUint8(&bufferPtr, &bufferSz, value));
+    LE_TEST(le_pack_PackUint8(&bufferPtr, value));
     LE_TEST(bufferPtr != buffer);
-    LE_TEST(bufferSz < sizeof(buffer));
     LE_TEST(bufferPtr[0] == CHECK_CHAR);
 
     // Unpack
     uint8_t valueOut = 0x00;
     bufferPtr = buffer;
-    bufferSz = sizeof(buffer);
-    LE_TEST(le_pack_UnpackUint8(&bufferPtr, &bufferSz, &valueOut));
+    LE_TEST(le_pack_UnpackUint8(&bufferPtr, &valueOut));
 
     LE_TEST(valueOut == value);
 }
@@ -64,10 +61,9 @@ static void CheckString
 {
     uint8_t buffer[BUFFER_SZ];
     uint8_t* bufferPtr = buffer;
-    size_t bufferSz = sizeof(buffer);
     size_t stringLen = strnlen(stringPtr, BUFFER_SZ);
 
-    ResetBuffer(bufferPtr, bufferSz);
+    ResetBuffer(bufferPtr, sizeof(buffer));
 
     printf("'%s' - [%zd] buffer[%zd] maxString[%d]:\n",
            stringPtr,
@@ -77,7 +73,6 @@ static void CheckString
 
     // Pack
     LE_TEST(expectedRes == le_pack_PackString(&bufferPtr,
-                                              &bufferSz,
                                               stringPtr,
                                               maxStringCount));
     if(!expectedRes)
@@ -88,15 +83,12 @@ static void CheckString
 
     // Check buffer
     LE_TEST(bufferPtr != buffer);
-    LE_TEST(bufferSz < sizeof(buffer));
     LE_TEST(bufferPtr[0] == CHECK_CHAR);
 
     // Unpack
     char valueOut[BUFFER_SZ];
     bufferPtr = buffer;
-    bufferSz = sizeof(buffer);
     LE_TEST(le_pack_UnpackString(&bufferPtr,
-                                 &bufferSz,
                                  valueOut,
                                  reportedBufferSz,
                                  maxStringCount));

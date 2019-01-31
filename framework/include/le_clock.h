@@ -376,7 +376,7 @@ le_result_t le_clk_SetAbsoluteTime
  *      - LE_FAULT if an error occurred
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_clk_ConvertToTime
+LE_FULL_API le_result_t le_clk_ConvertToTime
 (
     const char*    formatSpecStrPtr,    ///< [IN]  Format specifier string, using conversion
                                         ///        specifiers defined for strptime().
@@ -398,7 +398,7 @@ le_result_t le_clk_ConvertToTime
  *      - LE_FAULT if an error occurred
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_clk_SetUTCDateTimeString
+LE_FULL_API le_result_t le_clk_SetUTCDateTimeString
 (
     const char* formatSpecStrPtr,   ///< [IN] Format specifier string, using conversion
                                     ///       specifiers defined for strptime().
