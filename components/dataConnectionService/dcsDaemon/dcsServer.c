@@ -2262,6 +2262,33 @@ static void PacketSwitchHandler
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function to report network registration reject indication.
+ * When network did a local implicit detach, a data session retry
+ * is needed.
+ */
+//--------------------------------------------------------------------------------------------------
+static void DcsNetRejectHandler
+(
+    const le_mrc_NetRegRejectInd_t*  networkRejectIndPtr,
+    void*           contextPtr
+)
+{
+    LE_DEBUG("Network Reject Ind with reject cause.%d, domain.%d, RAT.%d, mcc.%s and mnc.%s",
+             networkRejectIndPtr->cause, networkRejectIndPtr->rejDomain, networkRejectIndPtr->rat,
+             networkRejectIndPtr->mcc, networkRejectIndPtr->mnc);
+
+    if ( networkRejectIndPtr->cause == LE_MRC_NETWORK_IMPLICIT_DETACH )
+    {
+        if ((LE_DATA_CELLULAR == CurrentTech) && (RequestCount > 0) &&
+            !IsDataProfileViaLeDcs)
+        {
+            TryStartDataSession();
+        }
+    }
+
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -3199,6 +3226,9 @@ COMPONENT_INIT
 
     // Register for packet switch state event
     le_mrc_AddPacketSwitchedChangeHandler(PacketSwitchHandler, NULL);
+
+    // Register for network registration reject event
+    le_mrc_AddNetRegRejectHandler(DcsNetRejectHandler, NULL);
 
     // Register for command events
     le_event_AddHandler("ProcessCommand", CommandEvent, ProcessCommand);

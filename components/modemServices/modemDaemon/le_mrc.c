@@ -523,11 +523,19 @@ static le_event_Id_t PSChangeId;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Event ID for Signal Strength notification.
- *
+ * Event ID for Network Reject notification.
+ * It is used in le_mrc_AddNetworkRejectHandler
  */
 //--------------------------------------------------------------------------------------------------
-static le_event_Id_t NetworkRejectIndId;
+static le_event_Id_t NetRegRejectIndId;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Event ID for Network Reject notification.
+ * It is used in le_mrc_AddNetRegRejectHandler
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t NetRegRejectId;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1363,6 +1371,10 @@ static le_result_t GetPreferredOperatorsList
 /**
  * The first-layer network reject indication handler.
  *
+ * @deprecated le_mrc_NetworkRejectHandler() should not be used anymore and will be removed soon.
+ *
+ * It has been replaced by le_mrc_AddNetRegRejectHandler().
+ *
  */
 //--------------------------------------------------------------------------------------------------
 static void FirstLayerNetworkRejectHandler
@@ -1397,19 +1409,56 @@ static void FirstLayerNetworkRejectHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The network reject indication handler.
+ * The first-layer network registration reject indication handler.
+ * It will replace FirstLayerNetworkRejectHandler in near future.
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void NetworkRejectIndHandler
+static void FirstLayerNetRegRejectHandler
 (
-    pa_mrc_NetworkRejectIndication_t* networkRejectIndPtr
+    void* reportPtr,
+    void* secondLayerHandlerFunc
 )
 {
-    LE_INFO("Network Reject Ind Handler called with RAT.%d, mcc.%s and mnc.%s",
-             networkRejectIndPtr->rat, networkRejectIndPtr->mcc, networkRejectIndPtr->mnc);
+    if (NULL == reportPtr)
+    {
+        LE_ERROR("reportPtr is NULL");
+        return;
+    }
 
-    le_event_ReportWithRefCounting(NetworkRejectIndId, networkRejectIndPtr);
+    if (NULL == secondLayerHandlerFunc)
+    {
+        LE_ERROR("secondLayerHandlerFunc is NULL");
+        return;
+    }
+
+    le_mrc_NetRegRejectInd_t* networkRejectIndPtr =
+                                      (le_mrc_NetRegRejectInd_t*)reportPtr;
+
+    le_mrc_NetRegRejectHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+
+    clientHandlerFunc(networkRejectIndPtr, le_event_GetContextPtr());
+
+    // The reportPtr is a reference counted object, so need to release it
+    le_mem_Release(reportPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The network registration reject indication handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void NetRegRejectHandler
+(
+    le_mrc_NetRegRejectInd_t* networkRejectIndPtr
+)
+{
+    LE_INFO("Network Reject Ind with reject cause.%d, domain.%d, RAT.%d, mcc.%s and mnc.%s",
+             networkRejectIndPtr->cause, networkRejectIndPtr->rejDomain, networkRejectIndPtr->rat,
+             networkRejectIndPtr->mcc, networkRejectIndPtr->mnc);
+
+    le_event_ReportWithRefCounting(NetRegRejectId, networkRejectIndPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1845,10 +1894,10 @@ void le_mrc_Init
     CdmaSsChangeId = le_event_CreateIdWithRefCounting("CdmaSsChange");
 
     // Create an event Id for network reject indication
-    NetworkRejectIndId = le_event_CreateIdWithRefCounting("NetworkRejectInd");
+    NetRegRejectId = le_event_CreateIdWithRefCounting("NetRegReject");
 
     // Register a handler function for network reject indication
-    pa_mrc_AddNetworkRejectIndHandler(NetworkRejectIndHandler, NULL);
+    pa_mrc_AddNetworkRejectIndHandler(NetRegRejectHandler, NULL);
 
     // Register a handler function for new Registration State indication
     pa_mrc_AddNetworkRegHandler(NewRegStateHandler);
@@ -4835,6 +4884,10 @@ le_result_t le_mrc_GetTdScdmaBandCapabilities
 /**
  * This function must be called to register a handler for network reject indication.
  *
+ * @deprecated le_mrc_NetworkRejectHandler() should not be used anymore and will be removed soon.
+ *
+ * It has been replaced by le_mrc_AddNetRegRejectHandler().
+ *
  * @return A handler reference, which is only needed for later removal of the handler.
  *
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
@@ -4855,7 +4908,7 @@ le_mrc_NetworkRejectHandlerRef_t le_mrc_AddNetworkRejectHandler
     }
 
     handlerRef = le_event_AddLayeredHandler("NetworkRejectHandler",
-                                             NetworkRejectIndId,
+                                             NetRegRejectIndId,
                                              FirstLayerNetworkRejectHandler,
                                              (le_event_HandlerFunc_t)handlerFuncPtr);
 
@@ -4866,12 +4919,64 @@ le_mrc_NetworkRejectHandlerRef_t le_mrc_AddNetworkRejectHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function must be called to register a handler for network registration reject indication.
+ * It will replace le_mrc_AddNetworkRejectHandler in near future.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mrc_NetRegRejectHandlerRef_t le_mrc_AddNetRegRejectHandler
+(
+    le_mrc_NetRegRejectHandlerFunc_t handlerFuncPtr,      ///< [IN] The handler function
+    void*                             contextPtr           ///< [IN] The handler's context
+)
+{
+    le_event_HandlerRef_t handlerRef;
+
+    if (NULL == handlerFuncPtr)
+    {
+        LE_KILL_CLIENT("Handler function is NULL !");
+        return NULL;
+    }
+
+    handlerRef = le_event_AddLayeredHandler("NetRegRejectHandler",
+                                             NetRegRejectId,
+                                             FirstLayerNetRegRejectHandler,
+                                             (le_event_HandlerFunc_t)handlerFuncPtr);
+
+    le_event_SetContextPtr(handlerRef, contextPtr);
+
+    return (le_mrc_NetRegRejectHandlerRef_t)(handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Remove handler function for EVENT 'le_mrc_NetworkReject'
+ *
+ * @deprecated le_mrc_NetworkRejectHandler() should not be used anymore and will be removed soon.
+ *
+ * It has been replaced by le_mrc_AddNetRegRejectHandler().
  */
 //--------------------------------------------------------------------------------------------------
 void le_mrc_RemoveNetworkRejectHandler
 (
     le_mrc_NetworkRejectHandlerRef_t handlerRef ///< [IN] The handler reference
+)
+{
+    le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove handler function for EVENT 'le_mrc_NetRegReject'.
+ * It will replace EVENT 'le_mrc_NetworkReject' in near future.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mrc_RemoveNetRegRejectHandler
+(
+    le_mrc_NetRegRejectHandlerRef_t handlerRef ///< [IN] The handler reference
 )
 {
     le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);

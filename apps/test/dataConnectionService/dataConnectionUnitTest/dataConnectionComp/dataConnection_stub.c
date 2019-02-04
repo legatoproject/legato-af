@@ -79,6 +79,14 @@ static le_event_Id_t PSChangeId = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Event ID for Network Reject notification.
+ * It is used in le_mrc_AddNetRegRejectHandler
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t NetRegRejectId = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Data Control Profile structure
  */
 //--------------------------------------------------------------------------------------------------
@@ -1483,6 +1491,95 @@ le_mrc_PacketSwitchedChangeHandlerRef_t le_mrc_AddPacketSwitchedChangeHandler
 void le_mrc_RemovePacketSwitchedChangeHandler
 (
     le_mrc_PacketSwitchedChangeHandlerRef_t handlerRef ///< [IN]
+)
+{
+    le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The first-layer network registration reject indication handler.
+ * It will replace FirstLayerNetworkRejectHandler in near future.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void FirstLayerNetRegRejectHandler
+(
+    void* reportPtr,
+    void* secondLayerHandlerFunc
+)
+{
+    if (NULL == reportPtr)
+    {
+        LE_ERROR("reportPtr is NULL");
+        return;
+    }
+
+    if (NULL == secondLayerHandlerFunc)
+    {
+        LE_ERROR("secondLayerHandlerFunc is NULL");
+        return;
+    }
+
+    le_mrc_NetRegRejectInd_t* networkRejectIndPtr =
+                                      (le_mrc_NetRegRejectInd_t*)reportPtr;
+
+    le_mrc_NetRegRejectHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+
+    clientHandlerFunc(networkRejectIndPtr, le_event_GetContextPtr());
+
+    // The reportPtr is a reference counted object, so need to release it
+    le_mem_Release(reportPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register a handler for network registration reject indication.
+ * It will replace le_mrc_AddNetworkRejectHandler in near future.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mrc_NetRegRejectHandlerRef_t le_mrc_AddNetRegRejectHandler
+(
+    le_mrc_NetRegRejectHandlerFunc_t handlerFuncPtr,      ///< [IN] The handler function
+    void*                             contextPtr           ///< [IN] The handler's context
+)
+{
+    if (!NetRegRejectId)
+    {
+        NetRegRejectId = le_event_CreateIdWithRefCounting("NetRegReject");
+    }
+
+    le_event_HandlerRef_t handlerRef;
+
+    if (NULL == handlerFuncPtr)
+    {
+        LE_KILL_CLIENT("Handler function is NULL !");
+        return NULL;
+    }
+
+    handlerRef = le_event_AddLayeredHandler("NetRegRejectHandler",
+                                             NetRegRejectId,
+                                             FirstLayerNetRegRejectHandler,
+                                             (le_event_HandlerFunc_t)handlerFuncPtr);
+
+    le_event_SetContextPtr(handlerRef, contextPtr);
+
+    return (le_mrc_NetRegRejectHandlerRef_t)(handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove handler function for EVENT 'le_mrc_NetRegReject'.
+ * It will replace EVENT 'le_mrc_NetworkReject' in near future.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mrc_RemoveNetRegRejectHandler
+(
+    le_mrc_NetRegRejectHandlerRef_t handlerRef ///< [IN] The handler reference
 )
 {
     le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);

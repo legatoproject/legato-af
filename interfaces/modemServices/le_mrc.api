@@ -106,7 +106,18 @@
  * A sample code can be seen in the following page:
  * - @subpage c_mrcRadioConfigurationPreferences
  *
- * @section le_mrc_NetworkRejectHandler Report Network Reject Indication
+ * @section le_mrc_AddNetRegRejectHandler Report Network Registration Reject Indication
+ *
+ * The application can register a handler function to report network reject with reject cause,
+ * reject service domain, MNC/MCC code and the Radio Access Technology using
+ * le_mrc_AddNetRegRejectHandler() API (le_mrc_AddNetworkRejectHandler() will be deprecated).
+ *
+ * le_mrc_RemoveNetRegRejectHandler() API uninstalls the handler function.
+ *
+ * @deprecated le_mrc_NetworkRejectHandler() will be removed in near future.
+ * It will be replaced by le_mrc_AddNetRegRejectHandler().
+ *
+ * le_mrc_NetworkRejectHandler Report Network Reject Indication
  *
  * The application can register a handler function to report network reject with MNC/MCC code and
  * the Radio Access Technology using le_mrc_AddNetworkRejectHandler() API.
@@ -787,8 +798,75 @@ BITMASK RatBitMask
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Network Registration reject cause type enum.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM NetRejCause
+{
+    IMSI_UNKNOWN,                ///< IMSI unknown in HLR.
+    ILLEGAL_MS,                  ///< Illegal MS.
+    IMEI_NOT_ACCEPTED,           ///< IMEI not accepted.
+    ILLEGAL_ME,                  ///< Illegal ME.
+    GPRS_NOT_ALLOWED,            ///< GPRS services not allowed.
+    GPRS_NON_GPRS_NOT_ALLOWED,   ///< GPRS services and non-GPRS services not allowed.
+    MS_IDENTITY_UNKNOWN,         ///< Network cannot derive the MS’s identity.
+    NETWORK_IMPLICIT_DETACH,     ///< Implicitly detached.
+    PLMN_NOT_ALLOWED,            ///< PLMN not allowed.
+    LOCATION_NOT_ALLOWED,        ///< Location Area not allowed.
+    ROAMING_NOT_ALLOWED,         ///< Roaming not allowed in this location area.
+    GPRS_NOT_ALLOWED_PLMN,       ///< GPRS services not allowed in this PLMN.
+    NO_SUITABLE_CELL,            ///< No Suitable Cells In Location Area.
+    MSC_NOT_REACHABLE,           ///< MSC temporarily not reachable.
+    NETWORK_FAILURE,             ///< Network failure.
+    MAC_FAILURE,                 ///< MAC failure.
+    SYNCH_FAILURE,               ///< Synch failure.
+    CONGESTION,                  ///< Congestion.
+    GSM_AUTH_FAILURE,            ///< GSM authentication unacceptable.
+    CSG_NOT_AUTHORIZED,          ///< Not authorized for this CSG.
+    SMS_VIA_GPRS,                ///< SMS provided via GPRS in this routing area.
+    No_PDP_ACTIVATED,            ///< No PDP context activated.
+    RETRY_NEW_CELL,              ///< Retry upon entry into a new cell.
+    SEMANTICAL_INCORRECT,        ///< Semantically incorrect message.
+    INVALID_INFORMATION,         ///< Invalid mandatory information.
+    MESSAGE_TYPE_WRONG,          ///< Message type non-existent or not implemented.
+    MESSAGE_TYPE_NOT_COMPATIBLE, ///< Message type not compatible with the protocol state.
+    WRONG_IE,                    ///< Information element non-existent or not implemented.
+    IE_ERROR,                    ///< Conditional IE error.
+    MESSAGE_NOT_COMPATIBLE,      ///< Message not compatible with the protocol state.
+    PROTOCOL_ERROR               ///< Protocol error, unspecified.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Network Registration service domain type enum.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM NetRegDomain
+{
+    NO_SERVICE,      ///< Scan is ongoing, the module cannot see any networks.
+    CS,              ///< Circuit-switched only.
+    PS,              ///< Packet-switched only.
+    CS_PS,           ///< Circuit-switched and packet-switched.
+    LIMITED_SERVICE, ///< No network register after scan.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Network registration reject indication structure.
+ */
+//--------------------------------------------------------------------------------------------------
+STRUCT NetRegRejectInd
+{
+    Rat           rat;                   ///< RAT: Radio Access Technology
+    string        mcc[MCC_BYTES];        ///< MCC: Mobile Country Code
+    string        mnc[MNC_BYTES];        ///< MNC: Mobile Network Code
+    NetRejCause   cause;                 ///< Network registration reject cause
+    NetRegDomain  rejDomain;             ///< Network registration reject service domain
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Handler for Network registration state changes.
- *
  */
 //--------------------------------------------------------------------------------------------------
 HANDLER NetRegStateHandler
@@ -2321,6 +2399,9 @@ FUNCTION le_result_t GetTdScdmaBandCapabilities
 /**
  * Handler to report network reject indication.
  *
+ * @deprecated le_mrc_NetworkRejectHandler() will be removed in near future.
+ * It will be replaced by le_mrc_AddNetRegRejectHandler().
+ *
  */
 //--------------------------------------------------------------------------------------------------
 HANDLER NetworkRejectHandler
@@ -2339,6 +2420,28 @@ HANDLER NetworkRejectHandler
 EVENT NetworkReject
 (
     NetworkRejectHandler handler
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler to report network registration reject indication.
+ * NetworkRejectHandler is deprecated.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER NetRegRejectHandler
+(
+    NetRegRejectInd  networkRejectInd IN    ///< NetRegRejectInd Reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Event to report network registration reject indication.
+ * NetworkReject will be deprecated.
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT NetRegReject
+(
+    NetRegRejectHandler handler
 );
 
 //--------------------------------------------------------------------------------------------------

@@ -350,7 +350,7 @@ typedef void (*pa_mrc_ServiceChangeHdlrFunc_t)
 //--------------------------------------------------------------------------------------------------
 typedef void (*pa_mrc_NetworkRejectIndHdlrFunc_t)
 (
-    pa_mrc_NetworkRejectIndication_t* networkRejectIndPtr
+    le_mrc_NetRegRejectInd_t* networkRejectIndPtr
 );
 
 //--------------------------------------------------------------------------------------------------

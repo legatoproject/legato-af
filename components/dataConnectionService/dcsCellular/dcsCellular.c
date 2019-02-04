@@ -36,7 +36,7 @@
 static le_mem_PoolRef_t CellularConnDbPool;
 static le_mrc_NetRegState_t CellPacketSwitchState = LE_MRC_REG_NONE;
 static le_mrc_PacketSwitchedChangeHandlerRef_t CellPacketSwitchStateHdlrRef;
-
+static le_mrc_NetRegRejectHandlerRef_t         DcsNetRegRejectHdlrRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -680,6 +680,29 @@ static void DcsCellularPacketSwitchHandler
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function to report network registration reject indication.
+ * When network did a local implicit detach, a data session retry
+ * is needed.
+ */
+//--------------------------------------------------------------------------------------------------
+static void DcsNetRegRejectHandler
+(
+    const le_mrc_NetRegRejectInd_t*  networkRejectIndPtr,
+    void*           contextPtr
+)
+{
+    LE_INFO("Network Reject Ind with reject cause.%d, domain.%d, RAT.%d, mcc.%s and mnc.%s",
+             networkRejectIndPtr->cause, networkRejectIndPtr->rejDomain, networkRejectIndPtr->rat,
+             networkRejectIndPtr->mcc, networkRejectIndPtr->mnc);
+
+    if ( networkRejectIndPtr->cause == LE_MRC_NETWORK_IMPLICIT_DETACH )
+    {
+        le_dcs_EventNotifierTechStateTransition(LE_DCS_TECH_CELLULAR, true);
+    }
+
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1270,4 +1293,13 @@ COMPONENT_INIT
     }
 
     LE_INFO("Data Channel Service's Cellular component is ready");
+
+    DcsNetRegRejectHdlrRef =
+        le_mrc_AddNetRegRejectHandler(DcsNetRegRejectHandler, NULL);
+    if (!DcsNetRegRejectHdlrRef)
+    {
+        LE_WARN("Failed to add network reject indication handler");
+    }
+
+    LE_INFO("Data Channel Service's Cellular Handlers component is ready");
 }
