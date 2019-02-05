@@ -192,7 +192,7 @@ session.
 @section platformConstraintsGnss_ColdRestart GNSS COLD restart
 
 "COLD" restart le_gnss_ForceColdRestart() API stops the current GNSS session then starts it again.
-In this case, the Ephemeris, time, almnac, and position data are being cleared.
+In this case, the Ephemeris, time and position data are being cleared.
 
 @note On modules AR758x & AR759x when performed "COLD" restart there is a possibility for
 longitude/latitude values to get retrieved from camped live cell network before getting the fix.
