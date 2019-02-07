@@ -1,13 +1,21 @@
 /** @page aboutReleaseNotes Release Notes
 
-Version: <b>Legato 18.10.2</b><br>
-Date: <b>Jan 7, 2019</b><br>
+Version: <b>Legato 18.10.3</b><br>
+Date: <b>Feb 12, 2019</b><br>
 @ref aboutLicenses "Legato Application Framework Licensing Information"
 
 Visit the <a href="https://legato.io/releases">release page</a> to @b download the tarball,
 @b clone the repositories from GitHub, or view <b>previous released versions</b>.
 
 Get started with @ref basicBuild "building the Legato Application Framework". </b>
+
+@section rn1810_Patch 18.10.3 Patch
+
+The following issues have been fixed by the 18.10.3 patch:
+
+<b>fwupdate</b>
+- Fixed an issue where fwupdate would get into an infinite loop while trying to write to the flash.
+- Fixed an issue to resolve the handling of bad blocks within a firmware over the air update.
 
 @section rn1810_Patch 18.10.2 Patch
 
