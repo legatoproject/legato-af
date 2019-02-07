@@ -180,6 +180,36 @@ def FormatType(apiType):
     else:
         return "%s_%s_t" % (apiType.iface.name, apiType.name)
 
+def FormatTypeInitializer(apiType,useBaseName=False):
+    """Produce a C initializer from an API type"""
+    BasicTypeMapping = {
+        interfaceIR.UINT8_TYPE:  "0",
+        interfaceIR.UINT16_TYPE: "0",
+        interfaceIR.UINT32_TYPE: "0",
+        interfaceIR.UINT64_TYPE: "0",
+        interfaceIR.INT8_TYPE:   "0",
+        interfaceIR.INT16_TYPE:  "0",
+        interfaceIR.INT32_TYPE:  "0",
+        interfaceIR.INT64_TYPE:  "0",
+        interfaceIR.BOOL_TYPE:   "false",
+        interfaceIR.CHAR_TYPE:   "0",
+        interfaceIR.DOUBLE_TYPE: "0",
+        interfaceIR.SIZE_TYPE:   "0",
+        interfaceIR.STRING_TYPE: "NULL",
+        interfaceIR.FILE_TYPE:   "0",
+        interfaceIR.RESULT_TYPE: "LE_OK",
+        interfaceIR.ONOFF_TYPE:  "LE_OFF",
+        _CONTEXT_TYPE:           "NULL"
+    }
+    if isinstance(apiType, interfaceIR.BasicType):
+        return BasicTypeMapping[apiType]
+    elif isinstance(apiType, interfaceIR.EnumType) or isinstance(apiType, interfaceIR.BitmaskType):
+        return "({0}) 0".format(FormatType(apiType))
+    elif isinstance(apiType, interfaceIR.StructType):
+        return "{ }"
+    else:
+        return "NULL"
+
 def DecorateName(name):
     if name in _KEYWORDS:
         return '_' + name
