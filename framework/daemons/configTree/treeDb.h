@@ -271,7 +271,7 @@ void tdb_ReleaseTree
 bool tdb_ReadTreeNode
 (
     tdb_NodeRef_t nodeRef,  ///< [IN] The node to write the new data to.
-    int descriptor          ///< [IN] The file to read from.
+    FILE* filePtr           ///< [IN] The file to read from.
 );
 
 
@@ -287,7 +287,7 @@ bool tdb_ReadTreeNode
 le_result_t tdb_WriteTreeNode
 (
     tdb_NodeRef_t nodeRef,  ///< [IN] Write the contents of this node to a file descriptor.
-    int descriptor          ///< [IN] The file descriptor to write to.
+    FILE* filePtr           ///< [IN] The file descriptor to write to.
 );
 
 
@@ -373,11 +373,9 @@ size_t tdb_GetNodeNameHash
  *  Set the name of a given node.  But also validate the name as there are certain names that nodes
  *  shouldn't have.
  *
- *  @note It is caller's responsibility to ensure there is no other sibling with this name.
- *
  *  @return LE_OK if the set is successful.  LE_FORMAT_ERROR if the name contains illegal
  *          characters, or otherwise would not work as a node name.  LE_OVERFLOW if the name is too
- *          long.
+ *          long.  LE_DUPLICATE, if there is another node with the new name in the same collection.
  */
 // -------------------------------------------------------------------------------------------------
 le_result_t tdb_SetNodeName

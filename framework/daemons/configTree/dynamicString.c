@@ -100,9 +100,9 @@ static le_mem_PoolRef_t DynamicStringPoolRef = NULL;
 
 
 /// Name of the dynamic string memory pool.
-#define CFG_DSTR_POOL_NAME "dynamicStringPool"
-
-
+LE_MEM_DEFINE_STATIC_POOL(dynamicStringPool,
+                          LE_CONFIG_CFGTREE_MAX_DSTRING_POOL_SIZE,
+                          sizeof(Dstr_t));
 
 
 //--------------------------------------------------------------------------------------------------
@@ -292,18 +292,10 @@ void dstr_Init
 {
     LE_DEBUG("** Initialize Dynamic String subsystem.");
 
-    DynamicStringPoolRef = le_mem_CreatePool(CFG_DSTR_POOL_NAME, sizeof(Dstr_t));
+    DynamicStringPoolRef = le_mem_InitStaticPool(dynamicStringPool,
+                                                 LE_CONFIG_CFGTREE_MAX_DSTRING_POOL_SIZE,
+                                                 sizeof(Dstr_t));
     le_mem_SetNumObjsToForce(DynamicStringPoolRef, 100);    // Grow in chunks of 100 blocks.
-
-    // For now (until pool config is added to the framework), set a minimum size.
-    if (le_mem_GetObjectCount(DynamicStringPoolRef) != 0)
-    {
-        LE_WARN("TODO: Remove this code.");
-    }
-    else
-    {
-        le_mem_ExpandPool(DynamicStringPoolRef, 3000);
-    }
 }
 
 

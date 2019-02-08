@@ -4,7 +4,9 @@ provides:
     {
         le_cfg.api [async]
         le_cfgAdmin.api [async]
+#if ${LE_CONFIG_LINUX} = y
         configTreeWdog = watchdog/frameworkWdog.api
+#endif
     }
 }
 
@@ -18,13 +20,20 @@ sources:
     nodeIterator.c
     treeIterator.c
     treePath.c
-    treeUser.c
+#if ${LE_CONFIG_LINUX} = y
+    linux/treeUser.c
+    ../linux/common/frameworkWdog.c
+#endif
     internalConfig.c
     treeDb.c
-    ../common/frameworkWdog.c
 }
 
 cflags:
 {
     -DFRAMEWORK_WDOG_NAME=configTreeWdog
+    -I${LEGATO_ROOT}/framework/liblegato
+#if ${LE_CONFIG_LINUX} = y
+    -I${LEGATO_ROOT}/framework/liblegato/linux
+#endif
+    -I${LEGATO_ROOT}/framework/daemons/configTree
 }

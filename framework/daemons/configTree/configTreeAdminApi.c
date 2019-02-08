@@ -9,7 +9,6 @@
 // -------------------------------------------------------------------------------------------------
 
 #include "legato.h"
-#include "limit.h"
 #include "interfaces.h"
 #include "treePath.h"
 #include "treeDb.h"
@@ -105,15 +104,11 @@ void le_cfgAdmin_ImportTree
         // Open the requested file.
         LE_DEBUG("Opening file '%s'.", filePathPtr);
 
-        int fid = -1;
+        FILE* filePtr = NULL;
 
-        do
-        {
-            fid = open(filePathPtr, O_RDONLY);
-        }
-        while ((fid == -1) && (errno == EINTR));
+        filePtr = fopen(filePathPtr, "r");
 
-        if (fid == -1)
+        if (!filePtr)
         {
             LE_ERROR("File '%s' could not be opened.", filePathPtr);
             le_cfgAdmin_ImportTreeRespond(commandRef, LE_FAULT);
@@ -126,7 +121,7 @@ void le_cfgAdmin_ImportTree
 
         le_result_t result;
 
-        if (tdb_ReadTreeNode(nodeRef, fid))
+        if (tdb_ReadTreeNode(nodeRef, filePtr))
         {
             result = LE_OK;
         }
@@ -139,7 +134,7 @@ void le_cfgAdmin_ImportTree
         le_cfgAdmin_ImportTreeRespond(commandRef, result);
 
         // Close up the file and we're done.
-        close(fid);
+        fclose(filePtr);
     }
 }
 
@@ -187,15 +182,11 @@ void le_cfgAdmin_ExportTree
 
     LE_DEBUG("Opening file '%s'.", filePathPtr);
 
-    int fid = -1;
+    FILE* filePtr = NULL;
 
-    do
-    {
-        fid = open(filePathPtr, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
-    }
-    while ((fid == -1) && (errno == EINTR));
+    filePtr = fopen(filePathPtr, "w+");
 
-    if (fid == -1)
+    if (!filePtr)
     {
         LE_ERROR("File '%s' could not be opened.", filePathPtr);
         le_cfgAdmin_ExportTreeRespond(commandRef, LE_IO_ERROR);
@@ -208,12 +199,12 @@ void le_cfgAdmin_ExportTree
 
     le_result_t result = LE_OK;
 
-    if (tdb_WriteTreeNode(ni_GetNode(iteratorRef, nodePathPtr), fid) != LE_OK)
+    if (tdb_WriteTreeNode(ni_GetNode(iteratorRef, nodePathPtr), filePtr) != LE_OK)
     {
         result = LE_FAULT;
     }
 
-    close(fid);
+    fclose(filePtr);
 
     le_cfgAdmin_ExportTreeRespond(commandRef, result);
 }

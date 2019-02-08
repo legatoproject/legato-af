@@ -23,14 +23,8 @@
 /// Pool for allocating iterator objects.
 static le_mem_PoolRef_t IteratorPoolRef = NULL;
 
-
-/// Name of the node iterator memory pool.
-#define ITERATOR_POOL_NAME "iteratorPool"
-
-
-/// Expected initial count of iterators.
-#define INITIAL_MAX_ITERATORS 20
-
+/// The static pool for handling interator safe references
+LE_REF_DEFINE_STATIC_MAP(IteratorMap, LE_CONFIG_CFGTREE_MAX_ITERATOR_POOL_SIZE);
 
 /// The pool for handing iterator safe references.
 static le_ref_MapRef_t IteratorRefMap = NULL;
@@ -76,6 +70,9 @@ typedef struct Iterator
 Iterator_t;
 
 
+/// Define static pool for node iterators
+LE_MEM_DEFINE_STATIC_POOL(iteratorPool, LE_CONFIG_CFGTREE_MAX_ITERATOR_POOL_SIZE,
+    sizeof(Iterator_t));
 
 
 //--------------------------------------------------------------------------------------------------
@@ -226,10 +223,11 @@ void ni_Init
 {
     LE_DEBUG("** Initialize Node Iterator subsystem.");
 
-    IteratorPoolRef = le_mem_CreatePool(ITERATOR_POOL_NAME, sizeof(Iterator_t));
-    le_mem_ExpandPool(IteratorPoolRef, INITIAL_MAX_ITERATORS);
+    IteratorPoolRef = le_mem_InitStaticPool(iteratorPool,
+                                            LE_CONFIG_CFGTREE_MAX_ITERATOR_POOL_SIZE,
+                                            sizeof(Iterator_t));
 
-    IteratorRefMap = le_ref_CreateMap(ITERATOR_REF_MAP_NAME, INITIAL_MAX_ITERATORS*5);
+    IteratorRefMap = le_ref_InitStaticMap(IteratorMap, LE_CONFIG_CFGTREE_MAX_ITERATOR_POOL_SIZE);
 }
 
 
@@ -424,7 +422,7 @@ void ni_Release
     }
 
     // Release the rest of the iterator's resources.
-    LE_DEBUG("Releasing iterator, <%p> with a lifetime of %d seconds.",
+    LE_DEBUG("Releasing iterator, <%p> with a lifetime of %" PRId32 " seconds.",
              iteratorRef,
              (uint32_t)(le_clk_GetRelativeTime().sec - iteratorRef->creationTime.sec));
 

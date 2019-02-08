@@ -7,7 +7,7 @@
  *  takes a snapshot of the trees in the system.
  *
  *  This is done to isolate the user of the iterator from the fact that trees can appear and
- *  dissapear from the system at any time.  However, because the iteration will happen over several
+ *  disappear from the system at any time.  However, because the iteration will happen over several
  *  context switches between client and server the window for things changing during an iteration
  *  only increses.  So, to save some sanity, this infomration is snapshotted and served up from a
  *  cache.
@@ -43,14 +43,11 @@
 // -------------------------------------------------------------------------------------------------
 
 #include "legato.h"
-#include "limit.h"
 #include "interfaces.h"
 #include "treePath.h"
 #include "treeDb.h"
 #include "treeIterator.h"
 #include "sysPaths.h"
-
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -87,31 +84,26 @@ typedef struct TreeIterator
 TreeIterator_t;
 
 
-
+/// Static pool for iterators
+LE_MEM_DEFINE_STATIC_POOL(TreeIteratorPool, LE_CONFIG_CFGTREE_MAX_TREE_ITERATOR_POOL_SIZE,
+    sizeof(TreeIterator_t));
 
 /// Pool for allocating tree iterator objects.
 static le_mem_PoolRef_t TreeIteratorPoolRef = NULL;
 
-
-/// Name of the tree iterator memory pool.
-#define ITERATOR_POOL_NAME "TreeIteratorPool"
-
-
-/// Pool for allocating tree names for iterating.
-static le_mem_PoolRef_t TreeItemPoolRef = NULL;
-
-
-/// Name of the tree item memory pool.
-#define ITEM_POOL_NAME "TreeItemPool"
-
+/// The static pool for handling tree iterator safe references.
+LE_REF_DEFINE_STATIC_MAP(TreeIteratorMap, LE_CONFIG_CFGTREE_MAX_TREE_ITERATOR_POOL_SIZE);
 
 /// The pool for handing tree iterator safe references.
 static le_ref_MapRef_t IteratorRefMap = NULL;
 
 
-/// Name of the safe ref map that's backing the tree iterator references.
-#define ITERATOR_REF_MAP_NAME "TreeIterator"
+/// Static pool for tree items
+LE_MEM_DEFINE_STATIC_POOL(TreeItemPool, LE_CONFIG_CFGTREE_MAX_TREE_POOL_SIZE + 1,
+    sizeof(TreeItem_t));
 
+/// Pool for allocating tree names for iterating.
+static le_mem_PoolRef_t TreeItemPoolRef = NULL;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -226,6 +218,7 @@ static bool IsRegularFile
     {
         return true;
     }
+#ifdef DT_UNKNOWN
     else if (dirEntryPtr->d_type == DT_UNKNOWN)
     {
         // As per man page (http://man7.org/linux/man-pages/man3/readdir.3.html), DT_UNKNOWN
@@ -240,6 +233,7 @@ static bool IsRegularFile
 
         return S_ISREG(stbuf.st_mode);
     }
+#endif
 
     return false;
 }
@@ -329,12 +323,15 @@ void ti_Init
 {
     LE_DEBUG("** Initialize Tree Iterator subsystem.");
 
-    TreeIteratorPoolRef = le_mem_CreatePool(ITERATOR_POOL_NAME, sizeof(TreeIterator_t));
-    TreeItemPoolRef = le_mem_CreatePool(ITEM_POOL_NAME, sizeof(TreeItem_t));
-    IteratorRefMap = le_ref_CreateMap(ITERATOR_REF_MAP_NAME, 11);
+    TreeIteratorPoolRef = le_mem_InitStaticPool(TreeIteratorPool,
+                                                LE_CONFIG_CFGTREE_MAX_TREE_ITERATOR_POOL_SIZE,
+                                                sizeof(TreeIterator_t));
+    TreeItemPoolRef = le_mem_InitStaticPool(TreeItemPool,
+                                            LE_CONFIG_CFGTREE_MAX_TREE_POOL_SIZE + 1,
+                                            sizeof(TreeItem_t));
+    IteratorRefMap = le_ref_InitStaticMap(TreeIteratorMap,
+                                          LE_CONFIG_CFGTREE_MAX_TREE_ITERATOR_POOL_SIZE);
 }
-
-
 
 
 //--------------------------------------------------------------------------------------------------

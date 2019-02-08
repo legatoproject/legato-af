@@ -320,8 +320,8 @@ $(BIN_DIR)/logCtrlDaemon: liblegato $(BIN_DIR)
 
 $(BIN_DIR)/configTree: liblegato $(BIN_DIR)
 	$(L) MKEXE $@
-	$(Q)mkexe $(LOCAL_MKEXE_FLAGS) \
-		$(LINUX_SRC_DIR)/configTree \
+	$(Q)mkexe $(LOCAL_MKEXE_FLAGS)   \
+		$(COMMON_SRC_DIR)/configTree \
 		--cflags=-std=c99
 
 $(BIN_DIR)/watchdog: liblegato $(BIN_DIR)

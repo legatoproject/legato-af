@@ -21,6 +21,7 @@
 #include "requestQueue.h"
 #include "internalConfig.h"
 
+#if LE_CONFIG_LINUX
 // -------------------------------------------------------------------------------------------------
 /**
  *  Called when a config API, or a configAdmin session is opened.  This function will call into the
@@ -59,8 +60,6 @@ static void OnConfigSessionClosed
 }
 
 
-
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  When clients from the admin API disconnect from the service this function is called.  This will
@@ -77,7 +76,7 @@ static void OnConfigAdminSessionClosed
     ti_CleanUpForSession(sessionRef);
     tu_SessionDisconnected(sessionRef);
 }
-
+#endif /* end LE_CONFIG_LINUX */
 
 
 
@@ -101,6 +100,7 @@ COMPONENT_INIT
 
     // Register our service handlers on those services so that we can properly free up resources if
     // clients unexpectedly disconnect.
+#if LE_CONFIG_LINUX
     LE_DEBUG("** Setting up service event handlers.");
 
     le_msg_AddServiceOpenHandler(le_cfg_GetServiceRef(), OnConfigSessionOpened, NULL);
@@ -108,7 +108,6 @@ COMPONENT_INIT
 
     le_msg_AddServiceCloseHandler(le_cfg_GetServiceRef(), OnConfigSessionClosed, NULL);
     le_msg_AddServiceCloseHandler(le_cfgAdmin_GetServiceRef(), OnConfigAdminSessionClosed, NULL);
-
 
     // Because this is a system process, we need to close our standard in.  This way the supervisor
     // is properly informed we have completed our startup sequence.  Standard in is reopened on
@@ -124,6 +123,7 @@ COMPONENT_INIT
     while ((filePtr == NULL) && (errno == EINTR));
 
     LE_FATAL_IF(filePtr == NULL, "Failed to redirect standard in to /dev/null.  %m.");
+#endif /* end LE_CONFIG_LINUX */
 
     LE_DEBUG("The configTree service has been started.");
 }

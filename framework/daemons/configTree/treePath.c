@@ -13,7 +13,6 @@
 // -------------------------------------------------------------------------------------------------
 
 #include "legato.h"
-#include "limit.h"
 #include "treePath.h"
 
 
@@ -70,7 +69,7 @@ void tp_GetTreeName
                                                 &numBytes);
 
     LE_WARN_IF(result != LE_OK,
-               "Tree name from path, '%s', truncated to %zu bytes, '%s'",
+               "Tree name from path, '%s', truncated to %" PRIuS " bytes, '%s'",
                pathPtr,
                numBytes,
                treeNamePtr);

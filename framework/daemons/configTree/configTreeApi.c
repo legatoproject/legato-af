@@ -167,7 +167,7 @@ static size_t MaxStr
 {
     if (requestedMax > LE_CFG_STR_LEN_BYTES)
     {
-        LE_DEBUG("Truncating output string buffer from %zd to %d.",
+        LE_DEBUG("Truncating output string buffer from %" PRIdS " to %d.",
                  requestedMax,
                  LE_CFG_STR_LEN_BYTES);
 
@@ -1104,7 +1104,7 @@ void le_cfg_SetBinary
 )
 // -------------------------------------------------------------------------------------------------
 {
-    LE_DEBUG("Writing the binary data of the iterator's <%p> current node, size %zd",
+    LE_DEBUG("Writing the binary data of the iterator's <%p> current node, size %" PRIuS,
              externalRef, size);
 
     LE_DEBUG_IF((pathPtr != NULL) && (strlen(pathPtr) != 0), "** Offset by \"%s\"", pathPtr);
@@ -1201,7 +1201,7 @@ void le_cfg_SetInt
 )
 // -------------------------------------------------------------------------------------------------
 {
-    LE_DEBUG("** Setting an integer value of the iterator's <%p> current node to %d.",
+    LE_DEBUG("** Setting an integer value of the iterator's <%p> current node to %" PRId32 ".",
              externalRef,
              value);
     LE_DEBUG_IF((pathPtr != NULL) && (strlen(pathPtr) != 0), "** Offset by \"%s\"", pathPtr);

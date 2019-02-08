@@ -1,0 +1,83 @@
+#
+# Configuration for Legato configTree daemon.
+#
+# Copyright (C) Sierra Wireless Inc.
+#
+
+### Options ###
+
+config CFGTREE_MAX_USER_POOL_SIZE
+  int "Maximum user pool size"
+  depends on LINUX
+  range 1 65535
+  default 31
+  ---help---
+  The maximum number of user objects in the configTree user pool.
+
+config CFGTREE_MAX_DSTRING_POOL_SIZE
+  int "Maximum dynamic string pool size"
+  range 1 65535
+  default 3000
+  default 30 if RTOS
+  ---help---
+  The maximum number of dynamic string objects in the configTree string pool.
+
+config CFGTREE_MAX_ITERATOR_POOL_SIZE
+  int "Maximum config iterator pool size"
+  range 1 65535
+  default 20
+  ---help---
+  The maximum number of iterator objects in the configTree iterator pool.
+
+config CFGTREE_MAX_UPDATE_POOL_SIZE
+  int "Maximum update pool size"
+  range 1 65535
+  default 3
+  ---help---
+  The maximum number of iterator objects in the configTree iterator pool.
+  This determines the maximum number of concurrent configTree updates.
+
+config CFGTREE_MAX_NODE_POOL_SIZE
+  int "Maximum config node pool size"
+  range 1 65535
+  default 100
+  ---help---
+  The maximum number of node objects in the configTree node pool.
+
+config CFGTREE_MAX_TREE_POOL_SIZE
+  int "Maximum config tree pool size"
+  range 1 65535
+  default 31
+  ---help---
+  The maximum number of tree objects in the configTree tree pool.
+
+config CFGTREE_MAX_HANDLER_POOL_SIZE
+  int "Maximum node event handler pool size"
+  range 1 65535
+  default 31
+  ---help---
+  The maximum number of node event handler objects in the configTree handler
+  pool.
+
+config CFGTREE_MAX_BINARY_DATA_POOL_SIZE
+  int "Maximum binary data buffer pool size"
+  range 1 65535
+  default 31
+  ---help---
+  The maximum number of binary data buffers in the configTree binary data
+  buffer pool.
+
+config CFGTREE_MAX_ENCODED_STRING_POOL_SIZE
+  int "Maximum encoded string buffer pool size"
+  range 1 65535
+  default 31
+  ---help---
+  The maximum number of encoded string buffers in the configTree encoded
+  string buffer pool.
+
+config CFGTREE_MAX_TREE_ITERATOR_POOL_SIZE
+  int "Maximum tree iterator pool size"
+  range 1 65535
+  default 11
+  ---help---
+  The maximum number of tree iterators in the configTree tree iterator pool.

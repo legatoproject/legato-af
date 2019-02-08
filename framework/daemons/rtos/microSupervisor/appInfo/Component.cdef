@@ -1,0 +1,21 @@
+//
+// Application info component for the microSupervisor.
+//
+
+provides:
+{
+    api:
+    {
+        le_appInfo.api
+    }
+}
+
+sources:
+{
+    appInfo.c
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/framework/liblegato
+}

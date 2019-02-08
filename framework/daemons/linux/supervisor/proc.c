@@ -1279,6 +1279,10 @@ le_result_t proc_Start
         return LE_FAULT;
     }
 
+    // Get the resource limits from the config tree for this process.
+    resLim_ProcLimits_t procLimits;
+    resLim_GetProcLimits(procRef, &procLimits);
+
     // Create pipes for the process's standard error and standard out streams.
     int logStdOutPipe[2];
     int logStdErrPipe[2];
@@ -1357,6 +1361,10 @@ le_result_t proc_Start
         // Close all non-standard file descriptors.
         fd_CloseAllNonStd();
 
+        // Set resource limits.  This needs to be done as late as possible to avoid failures
+        // when opening files before closing supervisor file descriptors
+        resLim_SetProcLimits(&procLimits);
+
         execvp(argsPtr[0], &(argsPtr[1]));
 
         // Store the errno returned by exec().
@@ -1379,13 +1387,8 @@ le_result_t proc_Start
     SendStdPipeToLogDaemon(procRef, logStdErrPipe, STDERR_FILENO);
     SendStdPipeToLogDaemon(procRef, logStdOutPipe, STDOUT_FILENO);
 
-    // Set the resource limits for the child process while the child process is blocked.
-    if (resLim_SetProcLimits(procRef) != LE_OK)
-    {
-        LE_ERROR("Could not set the resource limits.  %m.");
-
-        kill_Hard(procRef->pid);
-    }
+    // Set the cgroups for the child process while the child process is blocked.
+    resLim_SetCGroups(procRef);
 
     LE_INFO("Starting process '%s' with pid %d", procRef->namePtr, procRef->pid);
 

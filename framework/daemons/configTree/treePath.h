@@ -18,12 +18,16 @@
 
 
 /// The max size of a config tree name.
-#define MAX_TREE_NAME_LEN   LIMIT_MAX_USER_NAME_LEN
+///
+/// Equal to the maximum user name length -- but not all systems have a concept of user name
+#define MAX_TREE_NAME_LEN   57
 
 
 
-// Same as before, but this time in bytes.
-#define MAX_TREE_NAME_BYTES LIMIT_MAX_USER_NAME_BYTES
+/// Max bytes of a config tree name.
+///
+/// Equal to the maximum user name bytes -- but not all systems have a concept of user name
+#define MAX_TREE_NAME_BYTES 58
 
 
 

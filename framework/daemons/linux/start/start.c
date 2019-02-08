@@ -1720,9 +1720,13 @@ static int RunCurrentSystem
 
             // Dump the last 100 lines from logread excluding Legato: { INFO, DBUG,-WRN-} to
             // prevent pollution by DEBUG, INFO or WRN messages.
-            system("logread | "
-                   "egrep -v 'Legato: [ -][IDW][NBR][FUN][OG-]' | "
-                   "tail -n 100 > /dev/console");
+            retCode = system("logread | "
+                             "egrep -v 'Legato: [ -][IDW][NBR][FUN][OG-]' | "
+                             "tail -n 100 > /dev/console");
+            if (WIFEXITED(retCode) && (0 == WEXITSTATUS(retCode)))
+            {
+                LE_DEBUG("Failed to dump logs");
+            }
 
             // Sync again file systems before rebooting.
             sync();

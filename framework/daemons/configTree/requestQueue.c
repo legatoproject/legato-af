@@ -23,13 +23,6 @@
 #include "requestQueue.h"
 
 
-
-
-// Pool that handles config update requests.
-static le_mem_PoolRef_t RequestPool = NULL;
-
-#define CFG_REQUEST_POOL "configTree.requestPool"
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  Request structure, if the user's request on the DB can't be handled right away it is stored in
@@ -89,8 +82,6 @@ typedef struct UpdateRequest
 UpdateRequest_t;
 
 
-
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  When client sessions are closed, this structure is used as part of the clean up process.
@@ -104,6 +95,13 @@ typedef struct SessionCloseInfo
 SessionCloseInfo_t;
 
 
+/// Define static pool for config update requests
+LE_MEM_DEFINE_STATIC_POOL(requestPool, LE_CONFIG_CFGTREE_MAX_UPDATE_POOL_SIZE,
+    sizeof(UpdateRequest_t));
+
+
+/// Pool that handles config update requests.
+static le_mem_PoolRef_t RequestPool = NULL;
 
 
 // -------------------------------------------------------------------------------------------------
@@ -498,7 +496,8 @@ void rq_Init
 {
     LE_DEBUG("** Initialize Request Queue subsystem.");
 
-    RequestPool = le_mem_CreatePool(CFG_REQUEST_POOL, sizeof(UpdateRequest_t));
+    RequestPool = le_mem_InitStaticPool(requestPool, LE_CONFIG_CFGTREE_MAX_UPDATE_POOL_SIZE,
+                                        sizeof(UpdateRequest_t));
 }
 
 
@@ -641,7 +640,10 @@ void rq_HandleCancelTxnRequest
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Kill the iterator but do not try to comit it.
+    // Get request queue
+    le_sls_List_t* requestQueue = tdb_GetRequestQueue(ni_GetTree(iteratorRef));
+
+    // Kill the iterator but do not try to commit it.
     ni_Release(iteratorRef);
 
     // If there is a context for this handler, then respond to a waiting client.
@@ -653,7 +655,7 @@ void rq_HandleCancelTxnRequest
     }
 
     // Try to handle the tree's request backlog.  (If any.)
-    ProcessRequestQueue(tdb_GetRequestQueue(ni_GetTree(iteratorRef)), NULL);
+    ProcessRequestQueue(requestQueue, NULL);
 }
 
 

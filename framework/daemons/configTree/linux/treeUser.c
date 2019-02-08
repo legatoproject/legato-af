@@ -36,24 +36,20 @@ typedef struct User
 }
 User_t;
 
-
-
-
 /// The collection of configuration trees managed by the system.
 le_hashmap_Ref_t UserCollectionRef = NULL;
 
 
+
+/// The static hash for users
+LE_HASHMAP_DEFINE_STATIC(UserCollection, LE_CONFIG_CFGTREE_MAX_USER_POOL_SIZE);
+
+/// Create static user pool
+LE_MEM_DEFINE_STATIC_POOL(UserPool, LE_CONFIG_CFGTREE_MAX_USER_POOL_SIZE, sizeof(User_t));
+
+
 // Pool of user objects.
 le_mem_PoolRef_t UserPoolRef = NULL;
-
-
-/// Name of the user collection object.
-#define CFG_USER_COLLECTION_NAME "userCollection"
-
-
-/// Name of the memory pool backing the user objects.
-#define CFG_USER_POOL_NAME "userPool"
-
 
 
 
@@ -268,11 +264,12 @@ void tu_Init
     user_Init();
 
     // Create our memory pools and allocate the info for the root user.
-    UserPoolRef = le_mem_CreatePool(CFG_USER_POOL_NAME, sizeof(User_t));
-    UserCollectionRef = le_hashmap_Create(CFG_USER_COLLECTION_NAME,
-                                          31,
-                                          le_hashmap_HashUInt32,
-                                          le_hashmap_EqualsUInt32);
+    UserPoolRef = le_mem_InitStaticPool(UserPool, LE_CONFIG_CFGTREE_MAX_USER_POOL_SIZE,
+                                        sizeof(User_t));
+    UserCollectionRef = le_hashmap_InitStatic(UserCollection,
+                                              LE_CONFIG_CFGTREE_MAX_USER_POOL_SIZE,
+                                              le_hashmap_HashUInt32,
+                                              le_hashmap_EqualsUInt32);
 
     le_mem_SetDestructor(UserPoolRef, UserDestructor);
 
@@ -467,7 +464,8 @@ tdb_TreeRef_t tu_GetRequestedTree
     else if (permission == TU_TREE_WRITE)
     {
         LE_DEBUG("** Attempting write access on the default tree, '%s'.", userRef->treeName);
-        strcpy(treeName, userRef->treeName);
+        strncpy(treeName, userRef->treeName, sizeof(treeName));
+        treeName[MAX_TREE_NAME_BYTES - 1] = '\0';
     }
     else
     {

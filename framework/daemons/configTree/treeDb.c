@@ -126,7 +126,6 @@
 // -------------------------------------------------------------------------------------------------
 
 #include "legato.h"
-#include "limit.h"
 #include "interfaces.h"
 #include "dynamicString.h"
 #include "treePath.h"
@@ -134,7 +133,6 @@
 #include "treeUser.h"
 #include "nodeIterator.h"
 #include "sysPaths.h"
-
 
 
 
@@ -333,69 +331,64 @@ typedef enum
 TokenType_t;
 
 
-
+/// Define static pool for nodes
+LE_MEM_DEFINE_STATIC_POOL(nodePool, LE_CONFIG_CFGTREE_MAX_NODE_POOL_SIZE, sizeof(Node_t));
 
 /// The memory pool responsible for tree nodes.
 static le_mem_PoolRef_t NodePoolRef = NULL;
 
-/// The name of the memory pool that handles tree nodes.
-#define CFG_NODE_POOL_NAME "nodePool"
 
-
+/// Define static memory for collection of configuration trees managed by the system
+LE_HASHMAP_DEFINE_STATIC(TreeCollection, LE_CONFIG_CFGTREE_MAX_TREE_POOL_SIZE);
 
 /// The collection of configuration trees managed by the system.
 static le_hashmap_Ref_t TreeCollectionRef = NULL;
 
-/// Name of the tree collection object.
-#define CFG_TREE_COLLECTION_NAME "treeCollection"
-
-
+/// Define static pool for trees
+LE_MEM_DEFINE_STATIC_POOL(treePool, LE_CONFIG_CFGTREE_MAX_TREE_POOL_SIZE, sizeof(Tree_t));
 
 /// Pool from which Tree objects are allocated.
 static le_mem_PoolRef_t TreePoolRef = NULL;
 
-/// Name of the tree object memory pool.
-#define CFG_TREE_POOL_NAME "treePool"
 
-
-
-/// Hash map to keep track of event registrations based on the registered node path.
-static le_hashmap_Ref_t HandlerRegistrationMap = NULL;
-
-/// Name of the registration hash map.
-#define CFG_HANDLER_REG_NAME "handlerLookupMap"
-
-
+/// Define static pool for handlers
+LE_MEM_DEFINE_STATIC_POOL(HandlerPool, LE_CONFIG_CFGTREE_MAX_HANDLER_POOL_SIZE,
+    sizeof(Handler_t));
 
 /// Pool for registered change handlers.
 static le_mem_PoolRef_t HandlerPool = NULL;
 
-/// Name of the handler pool.
-#define CFG_HANDLER_POOL_NAME "HandlerPool"
-
+/// Static safe ref map for the change handler objects.
+LE_REF_DEFINE_STATIC_MAP(HandlerSafeRefMap, LE_CONFIG_CFGTREE_MAX_HANDLER_POOL_SIZE);
 
 /// Safe ref map for the change handler objects.
 static le_ref_MapRef_t HandlerSafeRefMap = NULL;
 
-/// Name of the safe ref map.
-#define CFG_HANDLER_REF_MAP "HandlerSafeRefMap"
+/// Define static memory for handler hashmap
+LE_HASHMAP_DEFINE_STATIC(HandlerLookupMap, LE_CONFIG_CFGTREE_MAX_HANDLER_POOL_SIZE);
 
+/// Hash map to keep track of event registrations based on the registered node path.
+static le_hashmap_Ref_t HandlerRegistrationMap = NULL;
 
+/// Define static pool for node handler registrations
+LE_MEM_DEFINE_STATIC_POOL(RegistrationPool, LE_CONFIG_CFGTREE_MAX_HANDLER_POOL_SIZE,
+    sizeof(Registration_t));
 
-/// Pool to handle the registration objects.
+/// Pool to handle the node handler registration objects.
 static le_mem_PoolRef_t RegistrationPool = NULL;
 
-/// Name of the registration pool.
-#define CFG_REGISTRATION_POOL_NAME "RegistrationPool"
 
-/// Name of the binary data pool.
-#define CFG_BINARY_DATA_POOL_NAME "BinaryDataPool"
+/// Define static pool for binary data buffers
+LE_MEM_DEFINE_STATIC_POOL(BinaryData, LE_CONFIG_CFGTREE_MAX_BINARY_DATA_POOL_SIZE,
+    LE_CFG_BINARY_LEN);
 
 /// Pool for the binary data buffers.
 le_mem_PoolRef_t BinaryDataPool = NULL;
 
-/// Name of the encoded string pool.
-#define CFG_ENCODED_STRING_POOL_NAME "EncodedStringPool"
+
+/// Define static pool for encoded string buffers
+LE_MEM_DEFINE_STATIC_POOL(EncodedString, LE_CONFIG_CFGTREE_MAX_ENCODED_STRING_POOL_SIZE,
+    TDB_MAX_ENCODED_SIZE);
 
 /// Pool for the encoded string buffers.
 le_mem_PoolRef_t EncodedStringPool = NULL;
@@ -929,6 +922,39 @@ static tdb_NodeRef_t CreateNamedChild
     }
 
     return childRef;
+}
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Check to see if a given node exists within a node's child collection.
+ *
+ *  @return True if the given node exists within the parent node's collection.  False if not.
+ */
+// -------------------------------------------------------------------------------------------------
+static bool NodeExists
+(
+    tdb_NodeRef_t parentRef,  ///< [IN] The parent node to search.
+    const char* namePtr       ///< [IN] The name to search for.
+)
+// -------------------------------------------------------------------------------------------------
+{
+    tdb_NodeRef_t currentRef = tdb_GetFirstChildNode(parentRef);
+    char currentName[LE_CFG_NAME_LEN_BYTES] = "";
+
+    while (currentRef != NULL)
+    {
+        tdb_GetNodeName(currentRef, currentName, sizeof(currentName));
+
+        if (strncmp(currentName, namePtr, sizeof(currentName)) == 0)
+        {
+            return true;
+        }
+
+        currentRef = tdb_GetNextSiblingNode(currentRef);
+    }
+
+    return false;
 }
 
 
@@ -1931,7 +1957,7 @@ static le_result_t ReadTextLiteral
             // truncate the string to the buffer size
             *stringPtr = 0;
 
-            LE_ERROR("String literal is too large, truncated (%zd/%zd)",
+            LE_ERROR("String literal is too large.  (%" PRIdS "/%" PRIdS ")",
                      strlen(oldPtr),
                      stringSize);
             // move the file pointer to the terminal character (e.g. closing quote)
@@ -2276,7 +2302,8 @@ static le_result_t InternalReadNode
 
                     if (newPathLen > LE_CFG_STR_LEN)
                     {
-                        LE_ERROR("New path length for node '%s' is too long.  %zu of %zu bytes.",
+                        LE_ERROR("New path length for node '%s' is too long.  %" PRIuS
+                                 " of %" PRIuS " bytes.",
                                  stringBuffer,
                                  strLen,
                                  (size_t)LE_CFG_STR_LEN);
@@ -2290,7 +2317,6 @@ static le_result_t InternalReadNode
                     if (childRef == NULL)
                     {
                         childRef = NewChildNode(nodeRef);
-
                         if (tdb_SetNodeName(childRef, stringBuffer) != LE_OK)
                         {
                             LE_ERROR("Bad node name, '%s'.", stringBuffer);
@@ -2528,17 +2554,13 @@ static void LoadTree
 
         LE_DEBUG("** Loading configuration tree from '%s'.", pathPtr);
 
-        int fileRef = -1;
+        FILE* fileRef;
 
-        do
-        {
-            fileRef = open(pathPtr, O_RDONLY);
-        }
-        while ((fileRef == -1) && (errno == EINTR));
+        fileRef = fopen(pathPtr, "r");
 
         tdb_EnsureExists(treeRef->rootNodeRef);
 
-        if (fileRef == -1)
+        if (!fileRef)
         {
             LE_ERROR("Could not open configuration tree file: %s, reason: %s",
                      pathPtr,
@@ -2553,7 +2575,7 @@ static void LoadTree
                 treeRef->rootNodeRef = NewNode();
             }
 
-            close(fileRef);
+            fclose(fileRef);
         }
     }
 }
@@ -2699,81 +2721,6 @@ static tdb_NodeRef_t GetPathBaseNodeRef
 }
 
 
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Create a new C style file pointer from the POSIX file descriptor.
- *
- *  @return A file pointer that may be read or written if successful.  A null pointer otherwise.
- */
-// -------------------------------------------------------------------------------------------------
-static FILE* OpenFilePtr
-(
-    int descriptor,   ///< [IN] The POSIX file descriptor to create a file pointer from.
-    const char* mode  ///< [IN] The mode to open the file pointer in.
-)
-// -------------------------------------------------------------------------------------------------
-{
-    // Duplicate the file descriptor, this is because we later use a C library file pointer for the
-    // parsing routines.  When the file pointer is closed it also closes the underlying descriptor,
-    // which may not be what the caller wants or expects.
-    int newDescriptor = -1;
-
-    do
-    {
-        newDescriptor = dup(descriptor);
-    }
-    while (   (newDescriptor == -1)
-           && (errno == EINTR));
-
-    if (newDescriptor == -1)
-    {
-        LE_ERROR("Could not duplicate file descriptor, reason: %s", strerror(errno));
-        return NULL;
-    }
-
-    // Attempt to open the file pointer from the descriptor.
-    FILE* filePtr = fdopen(newDescriptor, mode);
-
-    if (filePtr == NULL)
-    {
-        // The open failed, so clean up the dangling descriptor.
-        int oldErrno = errno;
-
-        close(newDescriptor);
-
-        LE_ERROR("Could not access the input stream for tree import, reason: %s",
-                 strerror(oldErrno));
-    }
-
-    // Return the file pointer we have now.  Note, it may be NULL at this point.
-    return filePtr;
-}
-
-
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Close the file pointer and flush any data left unwritten.
- */
-// -------------------------------------------------------------------------------------------------
-static void CloseFilePtr
-(
-    FILE* filePtr  ///< The file pointer to close.
-)
-// -------------------------------------------------------------------------------------------------
-{
-    if (fclose(filePtr) == EOF)
-    {
-        LE_ERROR("Could not properly close file, reason: %s", strerror(errno));
-    }
-}
-
-
-
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  Initialize the tree DB subsystem, and automaticly load the system tree from the filesystem.
@@ -2788,40 +2735,40 @@ void tdb_Init
     LE_DEBUG("** Initialize Tree DB subsystem.");
 
     // Initialize the memory pools.
-    NodePoolRef = le_mem_CreatePool(CFG_NODE_POOL_NAME, sizeof(Node_t));
+    NodePoolRef = le_mem_InitStaticPool(nodePool, LE_CONFIG_CFGTREE_MAX_NODE_POOL_SIZE,
+                                        sizeof(Node_t));
     le_mem_SetDestructor(NodePoolRef, NodeDestructor);
     le_mem_SetNumObjsToForce(NodePoolRef, 50);    // Grow in chunks of 50 blocks.
 
-    // For now (until pool config is added to the framework), set a minimum size.
-    if (le_mem_GetObjectCount(NodePoolRef) != 0)
-    {
-        LE_WARN("TODO: Remove this code.");
-    }
-    else
-    {
-        le_mem_ExpandPool(NodePoolRef, 1000);
-    }
-
-
-    TreePoolRef = le_mem_CreatePool(CFG_TREE_POOL_NAME, sizeof(Tree_t));
+    TreePoolRef = le_mem_InitStaticPool(treePool, LE_CONFIG_CFGTREE_MAX_TREE_POOL_SIZE,
+                                        sizeof(Tree_t));
     le_mem_SetDestructor(TreePoolRef, TreeDestructor);
-    TreeCollectionRef = le_hashmap_Create(CFG_TREE_COLLECTION_NAME,
-                                          31,
-                                          le_hashmap_HashString,
-                                          le_hashmap_EqualsString);
 
-    HandlerRegistrationMap = le_hashmap_Create(CFG_HANDLER_REG_NAME,
-                                               31,
-                                               le_hashmap_HashString,
-                                               le_hashmap_EqualsString);
+    TreeCollectionRef = le_hashmap_InitStatic(TreeCollection,
+                                              LE_CONFIG_CFGTREE_MAX_TREE_POOL_SIZE,
+                                              le_hashmap_HashString,
+                                              le_hashmap_EqualsString);
 
-    HandlerSafeRefMap = le_ref_CreateMap(CFG_HANDLER_REF_MAP, 5);
+    HandlerRegistrationMap = le_hashmap_InitStatic(HandlerLookupMap,
+                                                   LE_CONFIG_CFGTREE_MAX_HANDLER_POOL_SIZE,
+                                                   le_hashmap_HashString,
+                                                   le_hashmap_EqualsString);
 
-    HandlerPool = le_mem_CreatePool(CFG_HANDLER_POOL_NAME, sizeof(Handler_t));
-    RegistrationPool = le_mem_CreatePool(CFG_REGISTRATION_POOL_NAME, sizeof(Registration_t));
+    HandlerSafeRefMap = le_ref_InitStaticMap(HandlerSafeRefMap,
+                                             LE_CONFIG_CFGTREE_MAX_HANDLER_POOL_SIZE);
 
-    BinaryDataPool = le_mem_CreatePool(CFG_BINARY_DATA_POOL_NAME, LE_CFG_BINARY_LEN);
-    EncodedStringPool = le_mem_CreatePool(CFG_ENCODED_STRING_POOL_NAME, TDB_MAX_ENCODED_SIZE);
+    HandlerPool = le_mem_InitStaticPool(HandlerPool, LE_CONFIG_CFGTREE_MAX_HANDLER_POOL_SIZE, sizeof(Handler_t));
+
+    RegistrationPool = le_mem_InitStaticPool(RegistrationPool,
+                                             LE_CONFIG_CFGTREE_MAX_HANDLER_POOL_SIZE,
+                                             sizeof(Registration_t));
+
+    BinaryDataPool = le_mem_InitStaticPool(BinaryData,
+                                           LE_CONFIG_CFGTREE_MAX_BINARY_DATA_POOL_SIZE,
+                                           LE_CFG_BINARY_LEN);
+    EncodedStringPool = le_mem_InitStaticPool(EncodedString,
+                                              LE_CONFIG_CFGTREE_MAX_ENCODED_STRING_POOL_SIZE,
+                                              TDB_MAX_ENCODED_SIZE);
 
     // Preload the system tree.
     tdb_GetTree("system");
@@ -2882,11 +2829,13 @@ void tdb_DeleteTree
         && (tdb_HasActiveReaders(treeRef) == 0)
         && (le_sls_IsEmpty(&treeRef->requestList)))
     {
+        int id;
+
         // Looks like there's no one on the tree, so delete any tree files that may exist.  Then
         // kill the tree itself.
         LE_DEBUG("** Deleting configuration tree, '%s'.", treeRef->name);
 
-        for (int id = 1; id <= 3; id++)
+        for (id = 1; id <= 3; id++)
         {
             if (TreeFileExists(treeRef->name, id))
             {
@@ -3189,22 +3138,17 @@ void tdb_MergeTree
 
     LE_DEBUG("Changes merged, now attempting to serialize the tree to '%s'.", filePath);
 
-    int fileRef = -1;
+    FILE* filePtr = NULL;
 
-    do
-    {
-        fileRef = open(filePath, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
-    }
-    while (   (fileRef == -1)
-           && (errno == EINTR));
+    filePtr = fopen(filePath, "w+");
 
-    if ((-1 == fileRef) && (EROFS == errno))
+    if (!filePtr && (EROFS == errno))
     {
         // In case we are R/O for the config tree, we discard the update to flash
         return;
     }
 
-    if (fileRef == -1)
+    if (!filePtr)
     {
         LE_EMERG("Failed to open config file '%s' (%m).", filePath);
         LE_EMERG("Changes have been merged in memory, however they could not be committed to the "
@@ -3213,12 +3157,11 @@ void tdb_MergeTree
     }
 
     // We have a tree file to write to, so stream the new tree to it then close the output file.
-    le_result_t writeResult = tdb_WriteTreeNode(originalTreeRef->rootNodeRef, fileRef);
-    int retVal = -1;
+    le_result_t writeResult = tdb_WriteTreeNode(originalTreeRef->rootNodeRef, filePtr);
 
-    retVal = close(fileRef);
-
-    LE_EMERG_IF(retVal == -1, "An error occurred while closing the tree file: %s", strerror(errno));
+    int retVal = fclose(filePtr);
+    LE_EMERG_IF(retVal == EOF,
+                "An error occurred while closing the tree file: %s", strerror(errno));
 
     // Finally remove the old version of the tree file, if there is one.
     if (writeResult == LE_OK)
@@ -3279,24 +3222,16 @@ void tdb_ReleaseTree
 bool tdb_ReadTreeNode
 (
     tdb_NodeRef_t nodeRef,  ///< [IN] The node to write the new data to.
-    int descriptor          ///< [IN] The file to read from.
+    FILE* filePtr           ///< [IN] The file to read from.
 )
 // -------------------------------------------------------------------------------------------------
 {
     LE_ASSERT(nodeRef != NULL);
-    LE_ASSERT(descriptor != -1);
+    LE_ASSERT(filePtr != NULL);
 
     // Clear out any contents that the node may have, and make sure that it isn't marked as deleted.
     tdb_SetEmpty(nodeRef);
     tdb_EnsureExists(nodeRef);
-
-    // Convert to a C style file pointer.
-    FILE* filePtr = OpenFilePtr(descriptor, "r");
-
-    if (filePtr == NULL)
-    {
-        return false;
-    }
 
     // Ok read the specified node from the file object.  If the read fails, report it and clear out
     // the node.  We shouldn't be leaving the node in a half initialized state.
@@ -3326,9 +3261,6 @@ bool tdb_ReadTreeNode
         }
     }
 
-    // Finally close our file object and return the result.
-    CloseFilePtr(filePtr);
-
     return result;
 }
 
@@ -3345,23 +3277,12 @@ bool tdb_ReadTreeNode
 le_result_t tdb_WriteTreeNode
 (
     tdb_NodeRef_t nodeRef,  ///< [IN] Write the contents of this node to a file descriptor.
-    int descriptor          ///< [IN] The file descriptor to write to.
+    FILE* filePtr           ///< [IN] The file descriptor to write to.
 )
 // -------------------------------------------------------------------------------------------------
 {
-    // Go from a file descriptor to a C style file pointer.
-    FILE* filePtr = OpenFilePtr(descriptor, "w");
-
-    if (filePtr == NULL)
-    {
-        return LE_IO_ERROR;
-    }
-
     // Write the data, then close up the file.
-    le_result_t result = InternalWriteNode(nodeRef, filePtr);
-    CloseFilePtr(filePtr);
-
-    return result;
+    return InternalWriteNode(nodeRef, filePtr);
 }
 
 
@@ -3582,11 +3503,9 @@ size_t tdb_GetNodeNameHash
  *  Set the name of a given node.  But also validate the name as there are certain names that nodes
  *  shouldn't have.
  *
- *  @note It is caller's responsibility to ensure there is no other sibling with this name.
- *
  *  @return LE_OK if the set is successful.  LE_FORMAT_ERROR if the name contains illegial
  *          characters, or otherwise would not work as a node name.  LE_OVERFLOW if the name is too
- *          long.
+ *          long.  LE_DUPLICATE, if there is another node with the new name in the same collection.
  */
 // -------------------------------------------------------------------------------------------------
 le_result_t tdb_SetNodeName
@@ -3617,6 +3536,13 @@ le_result_t tdb_SetNodeName
     if (strlen(stringPtr) > LE_CFG_NAME_LEN)
     {
         return LE_OVERFLOW;
+    }
+
+    // Check for a duplicate name in this collection.
+    if (   (nodeRef->parentRef != NULL)
+        && (NodeExists(nodeRef->parentRef, stringPtr) == true))
+    {
+        return LE_DUPLICATE;
     }
 
     // Copy over the new name.  Note that we don't care if this node is a shadow node.  Coping over

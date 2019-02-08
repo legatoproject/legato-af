@@ -16,6 +16,23 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Process limits controlled by Legato
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    int maxCoreDumpFileBytes;
+    int maxFileBytes;
+    int maxLockedMemoryBytes;
+    int maxFileDescriptors;
+    int maxStackBytes;
+    int maxMQueueBytes;
+    int maxThreads;
+    int maxQueuedSignals;
+} resLim_ProcLimits_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Gets the sandboxed application's tmpfs file system limit.
  *
  * @return
@@ -45,6 +62,22 @@ le_result_t resLim_SetAppLimits
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Read the resource limits from the config tree.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+void resLim_GetProcLimits
+(
+    proc_Ref_t procRef,             ///< [IN] The process to get resource limits for.
+    resLim_ProcLimits_t* limitPtr   ///< [OUT] The limits for the process
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Sets the resource limits for the specified process.
  *
  * @return
@@ -52,9 +85,20 @@ le_result_t resLim_SetAppLimits
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t resLim_SetProcLimits
+void resLim_SetProcLimits
 (
-    proc_Ref_t procRef              ///< [IN] The process to set resource limits for.
+    resLim_ProcLimits_t* limitPtr ///< [IN] The limits for the process
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a process to the app's cgroups.
+ */
+//--------------------------------------------------------------------------------------------------
+void resLim_SetCGroups
+(
+    proc_Ref_t procRef
 );
 
 
