@@ -890,6 +890,8 @@ void rq_HandleQuickGetBinary
 )
 //--------------------------------------------------------------------------------------------------
 {
+    le_result_t result = LE_OK;
+
     ni_IteratorRef_t iteratorRef = ni_CreateIterator(sessionRef,
                                                      userRef,
                                                      treeRef,
@@ -906,14 +908,33 @@ void rq_HandleQuickGetBinary
         binaryLen = LE_CFG_BINARY_LEN;
     }
 
-    le_result_t result = ni_GetNodeValueString(iteratorRef,
-                                               pathPtr,
-                                               stringBuf,
-                                               TDB_MAX_ENCODED_SIZE,
-                                               "");
-    if (0 == stringBuf[0])
+    // Encode the default valaue
+    char* defaultStringBuf = le_mem_ForceAlloc(tdb_GetEncodedStringMemoryPool());
+    defaultStringBuf[0] = 0;
+    size_t defaultEncodedSize = TDB_MAX_ENCODED_SIZE;
+    result = le_base64_Encode(defaultValuePtr,
+                              defaultValueSize,
+                              defaultStringBuf,
+                              &defaultEncodedSize);
+    if (LE_OK != result)
     {
-        // Node not found, or data is empty: sending back the default value
+        LE_ERROR("ERROR encoding default value: %s", LE_RESULT_TXT(result));
+        // Encode error - sending back the default value
+        le_cfg_QuickGetBinaryRespond(commandRef,
+                                     LE_FORMAT_ERROR,
+                                     defaultValuePtr,
+                                     defaultValueSize);
+    }
+
+    // Get the encoded string
+    result = ni_GetNodeValueString(iteratorRef,
+                                   pathPtr,
+                                   stringBuf,
+                                   TDB_MAX_ENCODED_SIZE,
+                                   defaultStringBuf);
+    if (LE_OK != result)
+    {
+        // Node not found or has empty type: sending back the default value
         le_cfg_QuickGetBinaryRespond(commandRef, result, defaultValuePtr, defaultValueSize);
     }
     else
@@ -923,13 +944,19 @@ void rq_HandleQuickGetBinary
                                   strlen(stringBuf),
                                   binaryBuf,
                                   &binaryLen);
+        if (LE_OK != result)
+        {
+            LE_ERROR("ERROR decoding default value: %s", LE_RESULT_TXT(result));
+        }
 
+        // Send back the decoded value
         le_cfg_QuickGetBinaryRespond(commandRef, result, binaryBuf, binaryLen);
     }
 
     ni_Release(iteratorRef);
     le_mem_Release(stringBuf);
     le_mem_Release(binaryBuf);
+    le_mem_Release(defaultStringBuf);
 }
 
 

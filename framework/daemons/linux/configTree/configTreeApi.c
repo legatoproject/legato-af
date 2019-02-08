@@ -1030,6 +1030,23 @@ void le_cfg_GetBinary
     stringBuf[0] = 0;
     size_t stringBufSize = TDB_MAX_ENCODED_SIZE;
 
+    // Encode the default valaue
+    char* defaultStringBuf = le_mem_ForceAlloc(tdb_GetEncodedStringMemoryPool());
+    defaultStringBuf[0] = 0;
+    size_t defaultEncodedSize = TDB_MAX_ENCODED_SIZE;
+    result = le_base64_Encode(defaultValue,
+                              defaultValueSize,
+                              defaultStringBuf,
+                              &defaultEncodedSize);
+    if (LE_OK != result)
+    {
+        LE_ERROR("ERROR encoding default value: %s", LE_RESULT_TXT(result));
+        // Encode error - sending back the default value
+        le_cfg_GetBinaryRespond(commandRef, LE_FORMAT_ERROR, defaultValue, defaultValueSize);
+    }
+
+    // Get the encoded string
+    result = LE_OK;
     if ((NULL != pathPtr) && (NULL != iteratorRef)
         && (false == CheckPathForSpecifier(pathPtr)))
     {
@@ -1037,11 +1054,11 @@ void le_cfg_GetBinary
                                        pathPtr,
                                        stringBuf,
                                        stringBufSize,
-                                       "");
+                                       defaultStringBuf);
     }
-    if (0 == stringBuf[0])
+    if (LE_OK != result)
     {
-        // Node not found, or data is empty: sending back the default value
+        // Node not found or has empty type: sending back the default value
         le_cfg_GetBinaryRespond(commandRef, result, defaultValue, defaultValueSize);
     }
     else
@@ -1051,11 +1068,18 @@ void le_cfg_GetBinary
                                   strlen(stringBuf),
                                   binaryBuf,
                                   &binaryLen);
+        if (LE_OK != result)
+        {
+            LE_ERROR("ERROR decoding binary data: %s", LE_RESULT_TXT(result));
+        }
 
+        // Send back the decoded value
         le_cfg_GetBinaryRespond(commandRef, result, binaryBuf, binaryLen);
     }
+
     le_mem_Release(binaryBuf);
     le_mem_Release(stringBuf);
+    le_mem_Release(defaultStringBuf);
 }
 
 
