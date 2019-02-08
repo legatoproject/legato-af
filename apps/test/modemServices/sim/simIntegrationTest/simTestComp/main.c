@@ -38,6 +38,7 @@ static const SimIdStringAssoc_t SimIdStringAssocs[] =
     { LE_SIM_EXTERNAL_SLOT_1,   "ext1" },
     { LE_SIM_EXTERNAL_SLOT_2,   "ext2" },
     { LE_SIM_REMOTE,            "rem"  },
+    { LE_SIM_UNSPECIFIED,       "unsp" }
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -93,16 +94,16 @@ static void PrintUsage
     const char * usagePtr[] =
     {
      "Usage of the 'simTest' application is:",
-     "SIM allocation test: app runProc simTest --exe=simTest -- create <ext/emb> <pin>",
-     "SIM state test: app runProc simTest --exe=simTest -- state <ext1/ext2/emb> <pin>",
+     "SIM allocation test: app runProc simTest --exe=simTest -- create <ext/emb/unsp> <pin>",
+     "SIM state test: app runProc simTest --exe=simTest -- state <ext1/ext2/emb/unsp> <pin>",
      "SIM authentication test: app runProc simTest"
-     " --exe=simTest -- auth <ext/emb> <pin> <puk>",
-     "No SIM test: app runProc simTest --exe=simTest -- nosim <ext/emb>",
+     " --exe=simTest -- auth <ext/emb/unsp> <pin> <puk>",
+     "No SIM test: app runProc simTest --exe=simTest -- nosim <ext/emb/unsp>",
      "SIM select: app runProc simTest --exe=simTest -- select",
-     "SIM lock test: app runProc simTest --exe=simTest -- lock <emb/ext1/ext2/rem> <pin>",
-     "SIM GetICCID test: app runProc simTest --exe=simTest -- iccid <emb/ext1/ext2/rem>",
-     "SIM GetEID test: app runProc simTest --exe=simTest -- eid <emb/ext1/ext2/rem>",
-     "SIM send apdu test: app runProc simTest --exe=simTest -- access <emb/ext1/ext2/rem>",
+     "SIM lock test: app runProc simTest --exe=simTest -- lock <emb/ext1/ext2/rem/unsp> <pin>",
+     "SIM GetICCID test: app runProc simTest --exe=simTest -- iccid <emb/ext1/ext2/rem/unsp>",
+     "SIM GetEID test: app runProc simTest --exe=simTest -- eid <emb/ext1/ext2/rem/unsp>",
+     "SIM send apdu test: app runProc simTest --exe=simTest -- access <emb/ext1/ext2/rem/unsp>",
      "SIM allocation test: app runProc simTest --exe=simTest -- powerUpDown",
      "SIM events: app runProc simTest --exe=simTest -- events",
      "SIM auto selection: app runProc simTest --exe=simTest -- auto <1/0>",

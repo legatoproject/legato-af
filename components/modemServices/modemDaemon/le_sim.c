@@ -980,6 +980,24 @@ static void SimToolkitHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function returns the specified SIM context.
+ * @note If LE_SIM_UNSPECIFIED is requested, then return the context of the current SIM card.
+ *
+ * @return SIM context structure.
+ */
+//--------------------------------------------------------------------------------------------------
+static Sim_t* GetSimContext
+(
+    le_sim_Id_t simId   ///< [IN] The SIM identifier
+)
+{
+    simId = (LE_SIM_UNSPECIFIED == simId) ? SelectedCard : simId;
+
+    return &SimList[simId];
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function tests the SIM validity
  *
  * @return LE_OK            On success.
@@ -1005,7 +1023,7 @@ static le_result_t CheckSimValidity
         return LE_NOT_FOUND;
     }
 
-    simPtr = &SimList[simId];
+    simPtr = GetSimContext(simId);
 
     if (!simPtr->isPresent)
     {
@@ -1391,7 +1409,7 @@ le_result_t le_sim_GetICCID
         return LE_OVERFLOW;
     }
 
-    simPtr = &SimList[simId];
+    simPtr = GetSimContext(simId);
 
     if (LE_OK != GetICCID(simPtr))
     {
@@ -1446,7 +1464,7 @@ le_result_t  le_sim_GetEID
         return LE_OVERFLOW;
     }
 
-    simPtr = &SimList[simId];
+    simPtr = GetSimContext(simId);
 
     if (LE_OK != GetEID(simPtr))
     {
@@ -1495,7 +1513,7 @@ le_result_t le_sim_GetIMSI
         return LE_OVERFLOW;
     }
 
-    simPtr = &SimList[simId];
+    simPtr = GetSimContext(simId);
 
     if (LE_OK != GetIMSI(simPtr))
     {
@@ -1545,7 +1563,7 @@ le_result_t le_sim_GetSubscriberPhoneNumber
         return LE_OVERFLOW;
     }
 
-    simPtr = &SimList[simId];
+    simPtr = GetSimContext(simId);
 
     if (LE_OK != GetPhoneNumber(simPtr))
     {
@@ -1578,7 +1596,8 @@ bool le_sim_IsPresent
         LE_ERROR("Invalid simId (%d) provided!", simId);
         return false;
     }
-    simPtr = &SimList[simId];
+
+    simPtr = GetSimContext(simId);
 
     if (SelectSIMCard(simId) != LE_OK)
     {
@@ -1675,7 +1694,8 @@ le_result_t le_sim_EnterPIN
         LE_ERROR("Invalid simId (%d) provided!", simId);
         return LE_BAD_PARAMETER;
     }
-    simPtr = &SimList[simId];
+
+    simPtr = GetSimContext(simId);
 
     if (strlen(pinPtr) > LE_SIM_PIN_MAX_LEN )
     {
@@ -1702,7 +1722,7 @@ le_result_t le_sim_EnterPIN
     le_utf8_Copy(pinloc, pinPtr, sizeof(pinloc), NULL);
     if(pa_sim_EnterPIN(PA_SIM_PIN,pinloc) != LE_OK)
     {
-        LE_ERROR("Failed to enter PIN.%s sim identifier.%d", pinPtr, simId);
+        LE_ERROR("Failed to enter PIN.%s sim identifier.%d", pinPtr, simPtr->simId);
         return LE_FAULT;
     }
 
@@ -1739,7 +1759,8 @@ le_result_t le_sim_ChangePIN
         LE_ERROR("Invalid simId (%d) provided!", simId);
         return LE_BAD_PARAMETER;
     }
-    simPtr = &SimList[simId];
+
+    simPtr = GetSimContext(simId);
 
     if(strlen(oldpinPtr) > LE_SIM_PIN_MAX_LEN)
     {
@@ -1773,7 +1794,7 @@ le_result_t le_sim_ChangePIN
     le_utf8_Copy(newpinloc, newpinPtr, sizeof(newpinloc), NULL);
     if(pa_sim_ChangePIN(PA_SIM_PIN, oldpinloc, newpinloc) != LE_OK)
     {
-        LE_ERROR("Failed to set new PIN.%s of sim identifier.%d", newpinPtr, simId);
+        LE_ERROR("Failed to set new PIN.%s of sim identifier.%d", newpinPtr, simPtr->simId);
         return LE_FAULT;
     }
 
@@ -1883,7 +1904,8 @@ le_result_t le_sim_Unlock
         LE_ERROR("Invalid simId (%d) provided!", simId);
         return LE_BAD_PARAMETER;
     }
-    simPtr = &SimList[simId];
+
+    simPtr = GetSimContext(simId);
 
     if(strlen(pinPtr) > LE_SIM_PIN_MAX_LEN)
     {
@@ -1910,7 +1932,7 @@ le_result_t le_sim_Unlock
     le_utf8_Copy(pinloc, pinPtr, sizeof(pinloc), NULL);
     if(pa_sim_DisablePIN(PA_SIM_PIN, pinloc) != LE_OK)
     {
-        LE_ERROR("Failed to unlock sim identifier.%d", simId);
+        LE_ERROR("Failed to unlock sim identifier.%d", simPtr->simId);
         return LE_FAULT;
     }
 
@@ -1945,7 +1967,8 @@ le_result_t le_sim_Lock
         LE_ERROR("Invalid simId (%d) provided!", simId);
         return LE_BAD_PARAMETER;
     }
-    simPtr = &SimList[simId];
+
+    simPtr = GetSimContext(simId);
 
     if(strlen(pinPtr) > LE_SIM_PIN_MAX_LEN)
     {
@@ -1972,7 +1995,7 @@ le_result_t le_sim_Lock
     le_utf8_Copy(pinloc, pinPtr, sizeof(pinloc), NULL);
     if(pa_sim_EnablePIN(PA_SIM_PIN, pinloc) != LE_OK)
     {
-        LE_ERROR("Failed to Lock sim identifier.%d", simId);
+        LE_ERROR("Failed to Lock sim identifier.%d", simPtr->simId);
         return LE_FAULT;
     }
 
@@ -2013,7 +2036,8 @@ le_result_t le_sim_Unblock
         LE_ERROR("Invalid simId (%d) provided!", simId);
         return LE_BAD_PARAMETER;
     }
-    simPtr = &SimList[simId];
+
+    simPtr = GetSimContext(simId);
 
     if(strlen(pukPtr) != LE_SIM_PUK_MAX_LEN)
     {
@@ -2046,7 +2070,7 @@ le_result_t le_sim_Unblock
     le_utf8_Copy(newpinloc, newpinPtr, sizeof(newpinloc), NULL);
     if(pa_sim_EnterPUK(PA_SIM_PUK,pukloc, newpinloc) != LE_OK)
     {
-        LE_ERROR("Failed to unblock sim identifier.%d", simId);
+        LE_ERROR("Failed to unblock sim identifier.%d", simPtr->simId);
         return LE_FAULT;
     }
 
@@ -2248,7 +2272,7 @@ le_result_t le_sim_LocalSwapToEmergencyCallSubscription
         return LE_BAD_PARAMETER;
     }
 
-    simPtr = &SimList[simId];
+    simPtr = GetSimContext(simId);
 
     if (ECS == simPtr->subscription)
     {
@@ -2316,7 +2340,7 @@ le_result_t le_sim_LocalSwapToCommercialSubscription
         return LE_BAD_PARAMETER;
     }
 
-    simPtr = &SimList[simId];
+    simPtr = GetSimContext(simId);
 
     if (COMMERCIAL == simPtr->subscription)
     {
@@ -2383,7 +2407,8 @@ le_result_t le_sim_IsEmergencyCallSubscriptionSelected
     {
         return LE_FAULT;
     }
-    simPtr = &SimList[simId];
+
+    simPtr = GetSimContext(simId);
 
     switch (simPtr->subscription)
     {
