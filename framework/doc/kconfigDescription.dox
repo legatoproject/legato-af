@@ -138,6 +138,24 @@ In all cases, string and integer values are simply provided as-is, while in
 the C header boolean values are changed to 0 or 1 (from `n` or `y`,
 respectively).
 
+@section kconfigDescription_Experimental Experimental Features
+
+Some Legato features are not yet considered ready for deployment in a
+production environment.  These features may be under active development and
+subject to change, or not sufficiently tested ("alpha quality") for widespread
+use.  In order to make such features available for feedback from and
+experimentation by the community, they are included in the configuration but
+classified as "experimental."
+
+In the KConfig settings, all experimental features are dependent on the
+@ref EXPERIMENTAL option, found under the "General Setup" menu.  Enabling this
+will enable access to the extra experimental features, which may then be
+turned on and off individually using the appropriate menu items.  Experimental
+KConfig options are denoted with "(EXPERIMENTAL)" in their descriptions.
+
+@attention  The use of experimental features in a production environment is
+            strongly discouraged.
+
 Copyright (C) Sierra Wireless Inc.
 
 */

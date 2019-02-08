@@ -38,6 +38,16 @@ menu "General Setup"
 
 ### Target Selection Options ###
 
+config EXPERIMENTAL
+  bool "Prompt for experimental (alpha-quality) features"
+  default n
+  ---help---
+  Experimental features are usually new features that are being introduced for
+  testing and feedback from a wider audience.  They can be enabled to get a
+  preview of new functionality.  Be aware that experimental features are
+  subject to change before being released as a regular feature.  The use of
+  experimental features in a production environment is strongly discouraged.
+
 choice
   prompt "Target Hardware Platform"
   default TARGET_LOCALHOST

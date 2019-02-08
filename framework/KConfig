@@ -30,7 +30,6 @@ config BUILD_TARGET_TOOLS
   Include Legato's command-line tools (inspect, config, sdir, etc.) for the
   target.
 
-
 config RUNTIME_DIR
   string "Runtime directory"
   depends on POSIX
@@ -57,8 +56,9 @@ config PROBATION_PERIOD
   be overridden at runtime by the LE_PROBATION_MS environment variable.
 
 config PYTHON
-  bool "Enable Python support"
+  bool "Enable Python support (EXPERIMENTAL)"
   depends on POSIX
+  depends on EXPERIMENTAL
   default y
   ---help---
   Enable support for Python.  Python is not supported on non-POSIX
@@ -73,8 +73,9 @@ config PYTHON_EXECUTABLE
   absolute path.
 
 config JAVA
-  bool "Enable Java support"
+  bool "Enable Java support (EXPERIMENTAL)"
   depends on POSIX
+  depends on EXPERIMENTAL
   default y
   ---help---
   Enable support for Java.  Java is not supported on non-POSIX systems.
