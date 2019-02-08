@@ -17,6 +17,9 @@
 #include "ima.h"
 #include "file.h"
 #include "smack.h"
+
+#if LE_CONFIG_ENABLE_IMA
+
 #include <openssl/x509.h>
 
 
@@ -332,3 +335,80 @@ le_result_t ima_ImportPublicCert
 
     return LE_OK;
 }
+
+#else /* !LE_CONFIG_ENABLE_IMA */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Verify a file IMA signature against provided public certificate path
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t ima_VerifyFile
+(
+    const char * filePath,
+    const char * certPath
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Recursively traverse the directory and verify each file IMA signature against provided public
+ * certificate path
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t ima_VerifyDir
+(
+    const char * dirPath,
+    const char * certPath
+)
+{
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check whether current linux kernel is IMA-enabled or not.
+ *
+ * @return
+ *      - true if IMA is enabled.
+ *      - false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+bool ima_IsEnabled
+(
+    void
+)
+{
+    return false;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Import IMA public certificate to linux keyring. Public certificate must be signed by system
+ * private key to import it properly. Only privileged process with right permission and smack
+ * label will be able to do that.
+ *
+ * @return
+ *      - LE_OK if imports properly
+ *      - LE_FAULT if fails to import
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t ima_ImportPublicCert
+(
+    const char * certPath
+)
+{
+    return LE_FAULT;
+}
+
+#endif /* LE_CONFIG_ENABLE_IMA */

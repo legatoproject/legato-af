@@ -156,8 +156,13 @@ CFLAGS += -Wall -Werror \
 	-I${LEGATO_ROOT}/build/${TARGET}/framework/include \
 	-I$(LEGATO_ROOT)/framework/liblegato
 
-IMA_LIBS = -lssl -lcrypto
-IMA_MKEXE_FLAGS += $(foreach lib,$(IMA_LIBS),--ldflags=$(lib))
+ifeq ($(LE_CONFIG_ENABLE_IMA),y)
+  IMA_LIBS = -lssl -lcrypto
+  IMA_MKEXE_FLAGS += $(foreach lib,$(IMA_LIBS),--ldflags=$(lib))
+else
+  IMA_LIBS =
+  IMA_MKEXE_FLAGS =
+endif
 
 # ========== MAIN RECIPES ============
 
