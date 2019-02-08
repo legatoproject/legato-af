@@ -236,8 +236,8 @@ function fetch_image {
 
     img_url_for_target $target $img_type
 
-    if ( [[ "$img_type" == "yocto" ]] && [ -e "$img_dest/rootfs.qcow2" ] ) ||
-       ( [[ "$img_type" == "legato" ]] && [ -e "$img_dest/legato.squashfs" ] ); then
+    if ( [ "$img_type" == "yocto" ] && [ -e "$img_dest/rootfs.qcow2" ] ) ||
+       ( [ "$img_type" == "legato" ] && [ -e "$img_dest/legato.squashfs" ] ); then
 
         check_new_image $target $img_type
 
@@ -364,7 +364,7 @@ if [ -e "$USER_DIR/options.$HOSTNAME" ]; then
 fi
 
 # Target
-if [[ "$OPT_TARGET" == "virt" ]]; then
+if [ "$OPT_TARGET" == "virt" ]; then
     OPT_TARGET="virt-$VIRT_TARGET_ARCH"
 fi
 
@@ -521,6 +521,9 @@ fi
 
 # Net
 NET_DRV=${NET_DRV:-"e1000"}
+if [ "$NET_DRV" == "virtio" ]; then
+    NET_DRV="virtio-net-pci"
+fi
 
 # Net: vlan 0
 if [ "$OPT_NET" == "user" ]; then
@@ -540,7 +543,7 @@ if [ "$OPT_NET" == "user" ]; then
     NET_RESTRICT=",restrict=off"
 
     message $COLOR_INFO " => Access SSH through 'ssh -p $SSH_PORT root@localhost'"
-    ARG_NET="-net nic,vlan=0,model=$NET_DRV -net user,vlan=0$NET_ADDR$NET_RESTRICT$NET_HOSTFWD"
+    ARG_NET="-device $NET_DRV,netdev=vlan0 -netdev user,id=vlan0$NET_ADDR$NET_RESTRICT$NET_HOSTFWD"
 elif [ "$OPT_NET" == "tap" ]; then
     message $COLOR_MSG "Network through tap interface"
 
@@ -550,7 +553,7 @@ elif [ "$OPT_NET" == "tap" ]; then
     fi
 
     message $COLOR_INFO " => Using interface $TAP_IF"
-    ARG_NET="-net nic,vlan=0,macaddr=b2:5b:96:c8:51:34,model=$NET_DRV -net tap,vlan=0,ifname=$TAP_IF,script=no,downscript=no"
+    ARG_NET="-device $NET_DRV,netdev=vlan0,macaddr=b2:5b:96:c8:51:34 -netdev tap,id=vlan0,ifname=$TAP_IF,script=no,downscript=no"
 else
     ARG_NET=
 fi
@@ -558,7 +561,7 @@ fi
 # Net: vlan 1
 if [ "$OPT_NET2" == "simu" ]; then
     message $COLOR_MSG "Network interface for simulation"
-    ARG_NET2="-net nic,vlan=1,macaddr=b2:5b:96:c8:51:35,model=$NET_DRV -net user,vlan=1,restrict=off"
+    ARG_NET2="-device $NET_DRV,netdev=vlan1 -netdev user,id=vlan1,restrict=off"
 else
     ARG_NET2=
 fi
