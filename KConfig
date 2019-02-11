@@ -30,6 +30,12 @@ config VIRT_TARGET_ARCH
   Set the name of the virtual target platform, if applicable.  This value is
   determined by the target platform selection.
 
+config QMI
+  bool
+  default n
+
+menu "General Setup"
+
 ### Target Selection Options ###
 
 choice
@@ -60,41 +66,49 @@ config TARGET_RASPI
 
 config TARGET_AR7
   bool "SWI AR755x (ar7)"
+  select QMI
   ---help---
   Run on a Sierra Wireless AR755x.
 
 config TARGET_AR758X
   bool "SWI AR758x (ar758x)"
+  select QMI
   ---help---
   Run on a Sierra Wireless AR758x.
 
 config TARGET_AR759X
   bool "SWI AR759x (ar759x)"
+  select QMI
   ---help---
   Run on a Sierra Wireless AR759x.
 
 config TARGET_AR86
   bool "SWI AR86xx (ar86)"
+  select QMI
   ---help---
   Run on a Sierra Wireless AR86xx.
 
 config TARGET_WP85
   bool "SWI WP85xx (wp85)"
+  select QMI
   ---help---
   Run on a Sierra Wireless WP85xx.
 
 config TARGET_WP750X
   bool "SWI WP750x (wp750x)"
+  select QMI
   ---help---
   Run on a Sierra Wireless WP750x.
 
 config TARGET_WP76XX
   bool "SWI WP76xx (wp76xx)"
+  select QMI
   ---help---
   Run on a Sierra Wireless WP76xx.
 
 config TARGET_WP77XX
   bool "SWI WP77xx (wp77xx)"
+  select QMI
   ---help---
   Run on a Sierra Wireless WP77xx.
 
@@ -133,14 +147,19 @@ config POSIX
   ---help---
   Indicate Legato is running on a POSIX platform.
 
-config REDUCE_FOOTPRINT
-  bool "Reduce memory and storage use where possible"
-  default n
+config SDEF
+  string "Default system definition file"
+  default "modules/WiFi/wifi.sdef" if ENABLE_WIFI
+  default "modules/Dualsys/ar758x.sdef" if TARGET_AR758X
+  default "modules/Dualsys/ar759x.sdef" if TARGET_AR759X
+  default "modules/Raspi/raspi.sdef" if TARGET_RASPI
+  default "localhost.sdef" if TARGET_LOCALHOST
+  default "default_readonly.sdef" if READ_ONLY
+  default "default.sdef"
   ---help---
-  Try to reduce the memory and storage footprint of Legato.  This may use
-  alternate datastructures which are optimized for size and reduce the scale
-  of some tests.  Selecting this option may result in lower performance and
-  slower applications.
+  Default Legato system definition (.sdef) file to use.  This system is built
+  along with the framework.  Users may also later create other systems later
+  using their own .sdef files.
 
 ### Build and Toolchain Options ###
 
@@ -199,20 +218,22 @@ config TEST_COVERAGE_DIR
   ---help---
   On-target directory to write runtime code coverage results to.
 
-### Sub-sections ###
+endmenu # end "General Setup"
 
-menu "Documentation"
-source "build/.KConfig/Documentation"
-endmenu # end "Documentation"
+### Sub-sections ###
 
 menu "Framework"
 source "framework/KConfig"
 endmenu # end "Framework"
 
+menu "Services"
+source "apps/platformServices/KConfig"
+endmenu # end "Services"
+
 menu "Modules"
 source "modules/KConfig"
 endmenu # end "Modules"
 
-menu "Services"
-source "apps/platformServices/KConfig"
-endmenu # end "Services"
+menu "Documentation"
+source "build/.KConfig/Documentation"
+endmenu # end "Documentation"

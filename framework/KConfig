@@ -7,7 +7,7 @@
 ### Core Options ###
 
 config CUSTOM_FA
-  bool "Customize adaptor"
+  bool "Use custom framework adaptor"
   default y if CUSTOM_OS
   default n
   ---help---
@@ -30,30 +30,6 @@ config BUILD_TARGET_TOOLS
   Include Legato's command-line tools (inspect, config, sdir, etc.) for the
   target.
 
-config SDEF
-  string "Default system definition file"
-  default "modules/WiFi/wifi.sdef" if ENABLE_WIFI
-  default "modules/Dualsys/ar758x.sdef" if TARGET_AR758X
-  default "modules/Dualsys/ar759x.sdef" if TARGET_AR759X
-  default "modules/Raspi/raspi.sdef" if TARGET_RASPI
-  default "localhost.sdef" if TARGET_LOCALHOST
-  default "default_readonly.sdef" if READ_ONLY
-  default "default.sdef"
-  ---help---
-  Default Legato system definition (.sdef) file to use.  This system is built
-  along with the framework.  Users may also later create other systems later
-  using their own .sdef files.
-
-config MEM_POOLS
-  bool "Use memory pools"
-  default y
-  ---help---
-  Use memory pools for dynamic memory allocation.  Memory pools help prevent
-  memory fragmentation, but require that the pools be sized appropriately for
-  the application.
-  Disabling this switches to use malloc/free per-block.  This allows tools
-  like Valgrind to accurately track the allocations and de-allocations at the
-  cost of potential memory fragmentation.
 
 config RUNTIME_DIR
   string "Runtime directory"
@@ -116,16 +92,6 @@ config EJDK_DIR
   ---help---
   Path to Oracle's Embedded Java Developer Kit, needed if that JVM is to be
   bundled with the system.
-
-config ENABLE_SEGV_HANDLER
-  bool "Enable SIGSEGV handler"
-  depends on LINUX
-  default y
-  ---help---
-  When a segmentation fault occurs, use signal derivation and
-  sigsetjmp()/siglongjmp() to try and survive the invalid memory access long
-  enough to generate a backtrace.  This handler relies on undefined behaviour
-  of sigsetjmp() and is therefore not guaranteed to work.
 
 config THREAD_REALTIME_ONLY
   bool "Use real-time priority for all threads"
@@ -241,6 +207,16 @@ config STATIC_LOG_FILTER_EMERG
   Include only emergency-level log statements.
 
 endchoice # end "Static log level filter"
+
+config ENABLE_SEGV_HANDLER
+  bool "Enable SIGSEGV handler"
+  depends on LINUX
+  default y
+  ---help---
+  When a segmentation fault occurs, use signal derivation and
+  sigsetjmp()/siglongjmp() to try and survive the invalid memory access long
+  enough to generate a backtrace.  This handler relies on undefined behaviour
+  of sigsetjmp() and is therefore not guaranteed to work.
 
 config ENABLE_BACKTRACE
   bool "Enable Legato assertion backtraces"
@@ -368,10 +344,31 @@ config SAFE_REF_NAMES_ENABLED
 
 endmenu # end "Diagnostic Features"
 
-menu "Memory Pool Sizes"
+menu "Performance Tuning"
+
+config REDUCE_FOOTPRINT
+  bool "Reduce memory and storage use where possible"
+  default n
+  ---help---
+  Try to reduce the memory and storage footprint of Legato.  This may use
+  alternate data structures which are optimized for size and reduce the scale
+  of some tests.  Selecting this option may result in lower performance and
+  slower applications.
+
+config MEM_POOLS
+  bool "Use memory pools"
+  default y
+  ---help---
+  Use memory pools for dynamic memory allocation.  Memory pools help prevent
+  memory fragmentation, but require that the pools be sized appropriately for
+  the application.
+  Disabling this switches to use malloc/free per-block.  This allows tools
+  like Valgrind to accurately track the allocations and de-allocations at the
+  cost of potential memory fragmentation.
 
 config MAX_EVENT_POOL_SIZE
   int "Maximum event pool size"
+  depends on MEM_POOLS
   range 1 65535
   default 5
   ---help---
@@ -380,6 +377,7 @@ config MAX_EVENT_POOL_SIZE
 
 config MAX_HANDLER_POOL_SIZE
   int "Maximum event handler pool size"
+  depends on MEM_POOLS
   range 1 65535
   default 10
   ---help---
@@ -388,6 +386,7 @@ config MAX_HANDLER_POOL_SIZE
 
 config MAX_QUEUED_FUNCTION_POOL_SIZE
   int "Maximum queued event function pool size"
+  depends on MEM_POOLS
   range 1 65535
   default 10
   ---help---
@@ -396,6 +395,7 @@ config MAX_QUEUED_FUNCTION_POOL_SIZE
 
 config MAX_REPORT_POOL_SIZE
   int "Maximum event report pool size"
+  depends on MEM_POOLS
   range 1 65535
   default 1
   ---help---
@@ -403,6 +403,7 @@ config MAX_REPORT_POOL_SIZE
 
 config MAX_FD_MONITOR_POOL_SIZE
   int "Maximum file descriptor monitor pool size"
+  depends on MEM_POOLS
   range 1 65535
   default 10
   ---help---
@@ -411,6 +412,7 @@ config MAX_FD_MONITOR_POOL_SIZE
 
 config MAX_SUB_POOLS_POOL_SIZE
   int "Maximum memory pool sub-pools"
+  depends on MEM_POOLS
   range 1 65535
   default 8
   ---help---
@@ -419,6 +421,7 @@ config MAX_SUB_POOLS_POOL_SIZE
 
 config MAX_MUTEX_POOL_SIZE
   int "Maximum mutex pool size"
+  depends on MEM_POOLS
   range 1 65535
   default 4
   ---help---
@@ -427,6 +430,7 @@ config MAX_MUTEX_POOL_SIZE
 
 config MAX_SEM_POOL_SIZE
   int "Maximum semaphore pool size"
+  depends on MEM_POOLS
   range 1 65535
   default 4
   ---help---
@@ -435,6 +439,7 @@ config MAX_SEM_POOL_SIZE
 
 config MAX_THREAD_POOL_SIZE
   int "Maximum thread pool size"
+  depends on MEM_POOLS
   range 1 65535
   default 4
   ---help---
@@ -445,6 +450,6 @@ endmenu # end "Default Values"
 
 ### Daemon Options ###
 
-menu "Daemons"
+menu "Daemon Setup"
 source "framework/daemons/KConfig"
 endmenu # end "Daemons"

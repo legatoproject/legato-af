@@ -14,6 +14,15 @@ config AVC_ENABLE_AV_MODEL
   default n if TARGET_CUSTOM
   default y
 
+### General Options (applies to all services) ###
+
+config SERVICES_WATCHDOG
+  bool "Enable watchdog for Legato services"
+  default y
+  ---help---
+  The services watchdog ensures that Legato processes are restarted if they
+  deadlock.
+
 ### Service Options ###
 
 menu "AirVantage Connector"
@@ -61,12 +70,7 @@ config AVC_FEATURE_AVMS_CONFIG
 
 endmenu # end "AirVantage Connector"
 
-config SERVICES_WATCHDOG
-  bool "Enable watchdog for Legato services"
-  default y
-  ---help---
-  The services watchdog ensures that Legato processes are restarted if they
-  deadlock.
+menu "AT Service"
 
 config ATSERVER_USER_ERRORS
   bool "Enable user-defined errors in AT Server"
@@ -76,13 +80,10 @@ config ATSERVER_USER_ERRORS
   Allow setting user-defined error strings in AT Server.  Enabling this
   increases the memory consumption of the AT Server.
 
-config ENABLE_SECSTORE_ADMIN
-  bool "Enable secure storage administration API"
-  default n
-  ---help---
-  Allow administrative control of the Legato secure storage system.  This
-  permits reading, writing, and deleting secure storage files and should be
-  used with caution.
+endmenu
+
+
+menu "Modem Service"
 
 config ENABLE_ECALL
   bool "Enable eCall support"
@@ -98,6 +99,28 @@ config MDM_HAS_SMSC_INFORMATION
   Some terminals do not include the SMSC information in the PDU format string
   and in those cases, this value must be deselected.
 
+config SIM_ENABLE_AUTOSWITCH
+  bool "Enable SIM auto switch support"
+  depends on QMI
+  default y if TARGET_WP76XX
+  default n
+  ---help---
+  Enable SIM auto switch support.
+
+endmenu
+
+menu "Secure Storage"
+
+config ENABLE_SECSTORE_ADMIN
+  bool "Enable secure storage administration API"
+  default n
+  ---help---
+  Allow administrative control of the Legato secure storage system.  This
+  permits reading, writing, and deleting secure storage files and should be
+  used with caution.
+
+endmenu
+
 config FEATURE_SPISVC
   bool "Enable SPI service"
   default y if TARGET_WP85
@@ -107,10 +130,3 @@ config FEATURE_SPISVC
   default n
   ---help---
   Enable the SPI service to allow devices to use SPI-attached peripherals.
-
-config SIM_ENABLE_AUTOSWITCH
-  bool "Enable SIM auto switch support"
-  default y if TARGET_WP76XX
-  default n
-  ---help---
-  Enable SIM auto switch support.
