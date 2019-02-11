@@ -8662,6 +8662,78 @@ le_result_t le_gpioCfg_GetSupportedGpioList
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+    gpioSysfs_Design_t gpioDesign = SYSFS_GPIO_DESIGN_V1;
+
+    gpioSysfs_Initialize(&gpioDesign);
+
+    if (SYSFS_GPIO_DESIGN_V2 == gpioDesign)
+    {
+        SysfsGpioPin1.gpioName = "1";
+        SysfsGpioPin2.gpioName = "2";
+        SysfsGpioPin3.gpioName = "3";
+        SysfsGpioPin4.gpioName = "4";
+        SysfsGpioPin5.gpioName = "5";
+        SysfsGpioPin6.gpioName = "6";
+        SysfsGpioPin7.gpioName = "7";
+        SysfsGpioPin8.gpioName = "8";
+        SysfsGpioPin9.gpioName = "9";
+        SysfsGpioPin10.gpioName = "10";
+        SysfsGpioPin11.gpioName = "11";
+        SysfsGpioPin12.gpioName = "12";
+        SysfsGpioPin13.gpioName = "13";
+        SysfsGpioPin14.gpioName = "14";
+        SysfsGpioPin15.gpioName = "15";
+        SysfsGpioPin16.gpioName = "16";
+        SysfsGpioPin17.gpioName = "17";
+        SysfsGpioPin18.gpioName = "18";
+        SysfsGpioPin19.gpioName = "19";
+        SysfsGpioPin20.gpioName = "20";
+        SysfsGpioPin21.gpioName = "21";
+        SysfsGpioPin22.gpioName = "22";
+        SysfsGpioPin23.gpioName = "23";
+        SysfsGpioPin24.gpioName = "24";
+        SysfsGpioPin25.gpioName = "25";
+        SysfsGpioPin26.gpioName = "26";
+        SysfsGpioPin27.gpioName = "27";
+        SysfsGpioPin28.gpioName = "28";
+        SysfsGpioPin29.gpioName = "29";
+        SysfsGpioPin30.gpioName = "30";
+        SysfsGpioPin31.gpioName = "31";
+        SysfsGpioPin32.gpioName = "32";
+        SysfsGpioPin33.gpioName = "33";
+        SysfsGpioPin34.gpioName = "34";
+        SysfsGpioPin35.gpioName = "35";
+        SysfsGpioPin36.gpioName = "36";
+        SysfsGpioPin37.gpioName = "37";
+        SysfsGpioPin38.gpioName = "38";
+        SysfsGpioPin39.gpioName = "39";
+        SysfsGpioPin40.gpioName = "40";
+        SysfsGpioPin41.gpioName = "41";
+        SysfsGpioPin42.gpioName = "42";
+        SysfsGpioPin43.gpioName = "43";
+        SysfsGpioPin44.gpioName = "44";
+        SysfsGpioPin45.gpioName = "45";
+        SysfsGpioPin46.gpioName = "46";
+        SysfsGpioPin47.gpioName = "47";
+        SysfsGpioPin48.gpioName = "48";
+        SysfsGpioPin49.gpioName = "49";
+        SysfsGpioPin50.gpioName = "50";
+        SysfsGpioPin51.gpioName = "51";
+        SysfsGpioPin52.gpioName = "52";
+        SysfsGpioPin53.gpioName = "53";
+        SysfsGpioPin54.gpioName = "54";
+        SysfsGpioPin55.gpioName = "55";
+        SysfsGpioPin56.gpioName = "56";
+        SysfsGpioPin57.gpioName = "57";
+        SysfsGpioPin58.gpioName = "58";
+        SysfsGpioPin59.gpioName = "59";
+        SysfsGpioPin60.gpioName = "60";
+        SysfsGpioPin61.gpioName = "61";
+        SysfsGpioPin62.gpioName = "62";
+        SysfsGpioPin63.gpioName = "63";
+        SysfsGpioPin64.gpioName = "64";
+    }
+
     // Create my service: gpio pin1.
     if (gpioSysfs_IsPinAvailable(1) && !le_cfg_QuickGetBool("gpioService:/pins/disabled/1", false))
     {

@@ -15,10 +15,13 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * GPIO signals have paths like /sys/class/gpio/gpio42/ (for GPIO #42)
+ * GPIO signals have paths like /sys/class/gpio/gpio42/ (for GPIO #42) in Legacy GPIO design
+ * and paths like /sys/class/gpio/v2/alias_exported/42/ (for GPIO #42) in GPIO design v2
  */
 //--------------------------------------------------------------------------------------------------
-#define SYSFS_GPIO_PATH    "/sys/class/gpio"
+#define SYSFS_GPIO_PATH           "/sys/class/gpio"
+#define SYSFS_GPIO_ALIAS_PREFIX   "/v2/alias_"
+#define SYSFS_GPIO_ALIASES_PATH   "/v2/aliases_exported/"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -27,6 +30,21 @@
 //--------------------------------------------------------------------------------------------------
 #define MAX_PIN_NUMBER 64
 #define MIN_PIN_NUMBER 1
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static absolute path to export, unexport and GPIO pin entries
+ */
+//--------------------------------------------------------------------------------------------------
+static char GpioAliasPrefix[sizeof(SYSFS_GPIO_ALIAS_PREFIX) + 1];
+static char GpioAliasesPath[sizeof(SYSFS_GPIO_ALIASES_PATH) + 1];
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check for new GPIO design or legacy
+ */
+//--------------------------------------------------------------------------------------------------
+static gpioSysfs_Design_t GpioDesign = SYSFS_GPIO_DESIGN_V1;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -103,14 +121,14 @@ static le_result_t ExportGpio
     FILE *fp = NULL;
 
     // First check if the GPIO has already been exported
-    snprintf(path, sizeof(path), "%s/%s", SYSFS_GPIO_PATH, gpioRef->gpioName);
+    snprintf(path, sizeof(path), "%s/%s%s", SYSFS_GPIO_PATH, GpioAliasesPath, gpioRef->gpioName);
     if (CheckGpioPathExist(path))
     {
         return LE_OK;
     }
 
     // Write the GPIO number to the export file
-    snprintf(export, sizeof(export), "%s/%s", SYSFS_GPIO_PATH, "export");
+    snprintf(export, sizeof(export), "%s/%s%s", SYSFS_GPIO_PATH, GpioAliasPrefix, "export");
     snprintf(gpioStr, sizeof(gpioStr), "%d", gpioRef->pinNum);
     do
     {
@@ -296,7 +314,8 @@ static le_result_t WriteOutputValue
         return LE_BAD_PARAMETER;
     }
 
-    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRef->gpioName, "value");
+    snprintf(path, sizeof(path), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+                          gpioRef->gpioName, "value");
     snprintf(attr, sizeof(attr), "%d", level);
     LE_DEBUG("path:%s, attr:%s", path, attr);
 
@@ -332,7 +351,8 @@ static le_result_t SetEdgeSense
         return LE_BAD_PARAMETER;
     }
 
-    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRef->gpioName, "edge");
+    snprintf(path, sizeof(path), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+             gpioRef->gpioName, "edge");
 
     switch(edge)
     {
@@ -381,7 +401,8 @@ static le_result_t SetDirection
         return LE_BAD_PARAMETER;
     }
 
-    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRef->gpioName, "direction");
+    snprintf(path, sizeof(path), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+            gpioRef->gpioName, "direction");
     attr = (mode == SYSFS_PIN_MODE_OUTPUT) ? "out": "in";
     LE_DEBUG("path:%s, attribute:%s", path, attr);
 
@@ -416,7 +437,8 @@ le_result_t gpioSysfs_SetPullUpDown
         return LE_NOT_IMPLEMENTED;
     }
 
-    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRef->gpioName, "pull");
+    snprintf(path, sizeof(path), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+             gpioRef->gpioName, "pull");
     attr = (pud == SYSFS_PULLUPDOWN_TYPE_DOWN) ? "down": "up";
     LE_DEBUG("path:%s, attr:%s", path, attr);
 
@@ -556,7 +578,8 @@ le_result_t gpioSysfs_SetPolarity
         return LE_BAD_PARAMETER;
     }
 
-    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRef->gpioName, "active_low");
+    snprintf(path, sizeof(path), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+             gpioRef->gpioName, "active_low");
     snprintf(attr, sizeof(attr), "%d", level);
     LE_DEBUG("path:%s, attr:%s", path, attr);
 
@@ -617,7 +640,8 @@ void* gpioSysfs_SetChangeCallback
     gpioRef->callbackContextPtr = contextPtr;
 
     // Start monitoring the fd for the correct GPIO
-    snprintf(monFile, sizeof(monFile), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRef->gpioName, "value");
+    snprintf(monFile, sizeof(monFile), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+             gpioRef->gpioName, "value");
 
     do
     {
@@ -720,7 +744,8 @@ gpioSysfs_Value_t gpioSysfs_ReadValue
         return -1;
     }
 
-    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRef->gpioName, "value");
+    snprintf(path, sizeof(path), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+             gpioRef->gpioName, "value");
     leResult = ReadSysGpioSignalAttr(path, sizeof(result), result);
     if (leResult != LE_OK)
     {
@@ -831,7 +856,8 @@ bool gpioSysfs_IsInput
         return false;
     }
 
-    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRef->gpioName, "direction");
+    snprintf(path, sizeof(path), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+             gpioRef->gpioName, "direction");
     leResult = ReadSysGpioSignalAttr(path, sizeof(result), result);
     if (leResult != LE_OK)
     {
@@ -880,7 +906,8 @@ gpioSysfs_PullUpDownType_t gpioSysfs_GetPullUpDown
         return -1;
     }
 
-    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRef->gpioName, "pull");
+    snprintf(path, sizeof(path), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+             gpioRef->gpioName, "pull");
     leResult = ReadSysGpioSignalAttr(path, sizeof(result), result);
     if (leResult != LE_OK)
     {
@@ -928,7 +955,8 @@ gpioSysfs_ActiveType_t gpioSysfs_GetPolarity
         return -1;
     }
 
-    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRef->gpioName, "active_low");
+    snprintf(path, sizeof(path), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+             gpioRef->gpioName, "active_low");
     leResult = ReadSysGpioSignalAttr(path, sizeof(result), result);
     if (leResult != LE_OK)
     {
@@ -976,7 +1004,8 @@ gpioSysfs_EdgeSensivityMode_t gpioSysfs_GetEdgeSense
         return SYSFS_EDGE_SENSE_NONE;
     }
 
-    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRef->gpioName, "edge");
+    snprintf(path, sizeof(path), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+             gpioRef->gpioName, "edge");
     leResult = ReadSysGpioSignalAttr(path, sizeof(result), result);
     if (leResult != LE_OK)
     {
@@ -1203,6 +1232,9 @@ bool gpioSysfs_IsPinAvailable
     char path[64];
     char result[33];
     le_result_t leResult;
+    uint8_t check;
+    uint32_t index;
+    uint32_t bitInMask;
 
     if ((pinNum < MIN_PIN_NUMBER) || (pinNum > MAX_PIN_NUMBER))
     {
@@ -1210,7 +1242,8 @@ bool gpioSysfs_IsPinAvailable
         return false;
     }
 
-    snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, "gpiochip1", "mask");
+    snprintf(path, sizeof(path), "%s/gpiochip1/mask%s",
+             SYSFS_GPIO_PATH, (GpioDesign == SYSFS_GPIO_DESIGN_V2 ? "_v2" : ""));
     leResult = ReadSysGpioSignalAttr(path, sizeof(result), result);
     if (leResult != LE_OK)
     {
@@ -1219,36 +1252,53 @@ bool gpioSysfs_IsPinAvailable
 
     LE_DEBUG("Mask read as: %s", result);
 
-    // The mask is 64 bits long
-    // The format of the string is 0xnnnnnnnnnnnnnnnn. Each "n" represents 4 pins, starting
-    // with pin 1-4 on the far right. So we can calculate where to look based on the pin number
-    // e.g. 1-4 = index 17, 5-8 = index 16 etc.
-    int index = 17 - (pinNum / 4);
-    int bitInMask = (pinNum) % 4;
-
-    // Multiples of 4 have no remainder, and end up at the wrong index with that calculation
-    // Need to move them back one bit, which is one character to the right, and 4 bits left
-    if (bitInMask == 0)
+    if (GpioDesign == SYSFS_GPIO_DESIGN_V2)
     {
-        bitInMask = 4;
-        index ++;
+        bitInMask = (pinNum - 1) % 8;
+        index = ((pinNum - 1) / 8) * 3 + (bitInMask < 4);
+        bitInMask %= 4;
+    }
+    else
+    {
+        // The mask is 64 bits long
+        // The format of the string is 0xnnnnnnnnnnnnnnnn. Each "n" represents 4 pins, starting
+        // with pin 1-4 on the far right. So we can calculate where to look based on the pin number
+        // e.g. 1-4 = index 17, 5-8 = index 16 etc.
+        index = 17 - (pinNum - 1) / 4;
+        bitInMask = (pinNum - 1) % 4;
     }
 
     // Convert the mask to a number from a hex string
     LE_DEBUG("Mask calculated for %d as bit %d at index %d", pinNum, bitInMask, index);
 
     // Convert the entry in the mask from a hex character to a number
-    int check = 0;
-    if (isdigit(result[index]))
-    {
-        check = result[index] - '0';
-    }
-    else
-    {
-        check = toupper(result[index]) - 'A' + 10;
-    }
+    check = toupper(result[index]) - (isdigit(result[index]) ? '0' : 'A' - 10);
 
-    LE_DEBUG("About to compare %d and %d", check, (1 << (bitInMask -1)));
-    return (check & (1 << (bitInMask -1)));
+    LE_DEBUG("About to compare %x and %x", check, (1 << bitInMask));
+    return (check & (1 << bitInMask));
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize the GPIO sys fs and return the GPIO design found:
+ *   - SYSFS_GPIO_DESIGN_V2 if /sys/class/gpio/v2/alias_export exists and is writable,
+ *   - SYSFS_GPIO_DESIGN_V1 else.
+ */
+//--------------------------------------------------------------------------------------------------
+void gpioSysfs_Initialize
+(
+    gpioSysfs_Design_t* gpioDesignPtr    ///< [OUT] Current GPIO design for sysfs
+)
+{
+    char path[128];
+
+    *gpioDesignPtr = GpioDesign;
+    snprintf(path, sizeof(path), "%s/%s%s", SYSFS_GPIO_PATH, SYSFS_GPIO_ALIAS_PREFIX, "export");
+    if (access(path, W_OK) == 0)
+    {
+        LE_INFO("GPIO design V2");
+        snprintf(GpioAliasPrefix, sizeof(GpioAliasPrefix), "%s", SYSFS_GPIO_ALIAS_PREFIX);
+        snprintf(GpioAliasesPath, sizeof(GpioAliasesPath), "%s", SYSFS_GPIO_ALIASES_PATH);
+        *gpioDesignPtr = GpioDesign = SYSFS_GPIO_DESIGN_V2;
+    }
+}

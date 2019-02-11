@@ -122,6 +122,19 @@ typedef enum
 }
 gpioSysfs_OpenDrainOperation_t;
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The GPIO design currently found on the platform
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    SYSFS_GPIO_DESIGN_V1,  ///< Legacy V1 GPIO design in sysfs
+    SYSFS_GPIO_DESIGN_V2,  ///< GPIO design V2 in sysfs (/sys/class/gpio/v2)
+}
+gpioSysfs_Design_t;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Setup GPIO pullup/pulldown.
@@ -433,6 +446,18 @@ void gpioSysfs_SessionCloseHandlerFunc
 bool gpioSysfs_IsPinAvailable
 (
     int pinNum         ///< [IN] GPIO pin number (starting at 1)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize the GPIO sys fs and return the GPIO design found:
+ *   - SYSFS_GPIO_DESIGN_V2 if /sys/class/gpio/v2/alias_export exists and is writable,
+ *   - SYSFS_GPIO_DESIGN_V1 else.
+ */
+//--------------------------------------------------------------------------------------------------
+void gpioSysfs_Initialize
+(
+    gpioSysfs_Design_t* gpioDesignPtr    ///< [OUT] Current GPIO design for sysfs
 );
 
 //--------------------------------------------------------------------------------------------------
