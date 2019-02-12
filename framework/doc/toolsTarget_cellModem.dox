@@ -123,19 +123,26 @@ The only ways to change the PIN code are through @c changepin and @c unblock.
 
 @verbatim cm sim
 cm sim status @endverbatim
-> Get sim status
+> Get SIM status
 
 @verbatim cm sim info @endverbatim
-> Get sim information.
+> Get SIM information.
 
 @verbatim cm sim imsi @endverbatim
-> Get the sim imsi.
+> Get the SIM imsi.
 
 @verbatim cm sim iccid @endverbatim
-> Get the sim iccid.
+> Get the SIM iccid.
 
 @verbatim cm sim number @endverbatim
 > Get the sim phone number. Often M2M SIM cards don't know their number (will return nothing).
+
+@verbatim cm sim mode <MANUAL | AUTO> @endverbatim
+> Set the SIM mode. Check @ref le_sim_AutomaticSelection for further details about automatic SIM
+> selection.
+
+@verbatim cm sim mode @endverbatim
+> Get the SIM current mode.
 
 @verbatim cm sim enterpin <pin> @endverbatim
 > Enter pin code that's required before any mobile equipment functionality can be used.
