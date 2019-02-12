@@ -593,12 +593,14 @@ endif
 	$(Q)printf '\n#endif /* end LEGATO_CONFIG_INCLUDE_GUARD */\n' >> $@
 
 # Rule building the framework for a given target
-.PHONY: framework
+.PHONY: framework framework_$(TARGET)
+framework_$(TARGET): framework
 framework: tools package.properties $(HEADER_CONFIG) $(SHELL_CONFIG)
 	$(L) MAKE $@
 	$(Q)$(MAKE) -f Makefile.framework CC=$(TARGET_CC)
 
-.PHONY: system
+.PHONY: system system_$(TARGET)
+system_$(TARGET): system
 system: framework
 	$(call sysmk,build/$(TARGET)/system,$(LE_CONFIG_SDEF))
 	$(Q)mv build/$(TARGET)/$(notdir $(LE_CONFIG_SDEF:%.sdef=%)).$(TARGET).update \
