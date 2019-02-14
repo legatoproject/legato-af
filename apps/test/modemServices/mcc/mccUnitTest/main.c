@@ -317,6 +317,11 @@ static void MyCallEventHandler
             LE_INFO("Check MyECallEventHandler passed, state is LE_MCC_EVENT_ON_HOLD.");
             break;
         }
+        case LE_MCC_EVENT_WAITING:
+        {
+            LE_INFO("Check MyECallEventHandler passed, state is LE_MCC_EVENT_WAITING.");
+            break;
+        }
         default:
         {
             LE_ERROR("Check MyCallEventHandler failed, unknowm event %d.", callEvent);

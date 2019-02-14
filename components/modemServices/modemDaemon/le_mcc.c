@@ -229,7 +229,7 @@ static void CallDestructor
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get a call object.
+ * Get an active call object by callid, if fails get a client call object by phone number.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -272,10 +272,11 @@ static le_mcc_Call_t* GetCallObject
 
         linkPtr = le_dls_PeekNext(&CallList, linkPtr);
 
-        // check phone number
-        if ( strncmp(destinationPtr, callPtr->telNumber, sizeof(callPtr->telNumber)) == 0 )
+        // Check phone number and only return the client call object.
+        if (( strncmp(destinationPtr, callPtr->telNumber, sizeof(callPtr->telNumber)) == 0 ) &&
+             (le_dls_NumLinks(&(callPtr->creatorList)) != 0))
         {
-            LE_DEBUG("telNumber found in callPtr %p", callPtr);
+            LE_DEBUG("telNumber found in client callPtr %p", callPtr);
             return callPtr;
         }
     }
@@ -766,30 +767,32 @@ static void NewCallEventHandler
     if (callPtr == NULL)
     {
         // Call not in progress
-        // check if a callPtr exists with the same number
+        // Check if a client call object exists with the same number
         callPtr = GetCallObject(dataPtr->phoneNumber, -1);
 
-        if (callPtr == NULL)
+        if (callPtr == NULL || callPtr->inProgress)
         {
+            // Below cases will lead to new call object creation with a given phone number.
+            // 1: No client call object is found.
+            // 2: Client call object is found but it's busy.
+
+            // NOTE: If the client call is busy, a new call with the same phone number is
+            // coming, then the reference for the new call object is created as a non-client
+            // call refence and expect be deleted by application in its TERMINATED handler.
+            // In fact application shall delete whatever call reference in its TERMINATED handler
+            // if the call reference is not created by itself.
             callPtr = CreateCallObject (dataPtr->phoneNumber,
                                         dataPtr->callId,
                                         dataPtr->event,
                                         dataPtr->terminationEvent,
                                         dataPtr->terminationCode);
-
             newCall = true;
         }
-        else if (-1 == callPtr->callId)
-        {
-            // Call with no call id in MCC, update it with the value from PA
-            callPtr->callId = dataPtr->callId;
-        }
 
+        callPtr->callId = dataPtr->callId;
         callPtr->inProgress = true;
         callPtr->lastEvent = callPtr->event;
         callPtr->event = dataPtr->event;
-        callPtr->termination = dataPtr->terminationEvent;
-        callPtr->terminationCode = dataPtr->terminationCode;
     }
     else
     {
@@ -810,8 +813,6 @@ static void NewCallEventHandler
         }
         callPtr->lastEvent = callPtr->event;
         callPtr->event = dataPtr->event;
-        callPtr->termination = dataPtr->terminationEvent;
-        callPtr->terminationCode = dataPtr->terminationCode;
     }
 
     // Handle call state transition
@@ -824,6 +825,11 @@ static void NewCallEventHandler
                 le_pm_Relax(WakeupSource);
             }
             callPtr->inProgress = false;
+
+            // Only update the termination reason when LE_MCC_EVENT_TERMINATED
+            // event is received to always save the last call termination reason.
+            callPtr->termination = dataPtr->terminationEvent;
+            callPtr->terminationCode = dataPtr->terminationCode;
         break;
         default:
         break;
@@ -1002,7 +1008,7 @@ le_mcc_CallRef_t le_mcc_Create
         return NULL;
     }
 
-    // Get the Call object.
+    // Get the client call object by phone number.
     le_mcc_Call_t* mccCallPtr = GetCallObject(phoneNumPtr, -1);
     SessionCtxNode_t* sessionCtxPtr = GetSessionCtx(le_mcc_GetClientSessionRef());
 
