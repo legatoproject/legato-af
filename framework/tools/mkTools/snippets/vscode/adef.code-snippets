@@ -1,0 +1,54 @@
+{
+    "exec.section": {
+        "scope": "adef",
+        "prefix": "executables",
+        "body": [
+            "executables:",
+            "{",
+            "    ${1:${TM_FILENAME_BASE}Exe} = ( ${2:${TM_FILENAME_BASE}Component} )",
+            "}"
+        ],
+        "description": "executables section\n\nLists executables to be constructed and moved to the bin directory inside the app."
+    },
+    "exec.entry": {
+        "scope": "adef",
+        "prefix": "executable",
+        "body": [
+            "${1:${TM_FILENAME_BASE}Exe} = ( ${2:${TM_FILENAME_BASE}Component1} ${3:${TM_FILENAME_BASE}Component2} )"
+        ],
+        "description": "executable entry\n\nAdds another entry in the executables section"
+    },
+    "proc.section": {
+        "scope": "adef",
+        "prefix": "processes",
+        "body": [
+            "processes:",
+            "{",
+            "    run:",
+            "    {",
+            "        ( ${1:${TM_FILENAME_BASE}Exe} )",
+            "    }",
+            "}"
+        ],
+        "description": "processes section\n\nSpecifies processes to run when the app is started including environment variables, command-line arguments, limits, and fault handling actions."
+    },
+    "bind.section": {
+        "scope": "adef",
+        "prefix": "bindings",
+        "description": "bindings section\n\nBindings allow client-side IPC API interfaces to be bound to server-side interfaces",
+        "body": [
+            "bindings:",
+            "{",
+            "    ${TM_FILENAME_BASE}Exe.${1:${TM_FILENAME_BASE}Component}.${2:le_api} -> ${3:someService}.${2:le_api}",
+            "}",
+        ]
+    },
+    "bind.entry": {
+        "scope": "adef",
+        "prefix": "binding",
+        "description": "binding entry\n\nAdds another entry in the bindings section",
+        "body": [
+            "${TM_FILENAME_BASE}Exe.${1:${TM_FILENAME_BASE}Component}.${2:le_api} -> ${3:someService}.${2:le_api}"
+        ]
+    }
+}

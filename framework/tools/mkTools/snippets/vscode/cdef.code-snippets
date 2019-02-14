@@ -1,0 +1,63 @@
+{
+    "req.section": {
+        "scope": "cdef",
+        "prefix": "requires",
+        "body": [
+            "requires:",
+            "{",
+            "    ${0}",
+            "}"
+        ],
+        "description": "requires section\n\nSpecifies things the component needs from its runtime environment."
+    },
+    "req.api.section": {
+        "scope": "cdef",
+        "prefix": "requires.api",
+        "body": [
+            "requires:",
+            "{",
+            "    api:",
+            "    {",
+            "        ${0:le_xxx}.api",
+            "    }",
+            "}"
+        ],
+        "description": "requires api section\n\nLists IPC APIs used by this component."
+    },
+    "prov.section": {
+        "scope": "cdef",
+        "prefix": "provides",
+        "body": [
+            "provides:",
+            "{",
+            "    ${0}",
+            "}"
+        ],
+        "description": "provides section\n\nLists things this component provides (exports) to other software either inside or outside of the App."
+    },
+    "prov.api.section": {
+        "scope": "cdef",
+        "prefix": "provides.api",
+        "body": [
+            "provides:",
+            "{",
+            "    api:",
+            "    {",
+            "        ${0:le_xxx}.api",
+            "    }",
+            "}"
+        ],
+        "description": "provides api section\n\nLists IPC services provided by this component to other components."
+    },
+    "api.section": {
+        "scope": "cdef",
+        "prefix": "api",
+        "body": [
+            "api:",
+            "{",
+            "    ${0:le_xxx}.api",
+            "}"
+        ],
+        "description": "api section\n\nLists IPC APIs used or provided by this component."
+    },
+}

@@ -1,0 +1,32 @@
+{
+    "le.timer.handler": {
+        "scope": "c",
+        "prefix": "le.timer.handler",
+        "body": [
+            "static void ${1:MyTimerHandler} (le_timer_Ref_t handle)",
+            "{",
+            "    LE_INFO(\"Entering ${1} timer handler; expired %d times\", le_timer_GetExpiryCount(handle));",
+            "    ${0}",
+            "}"
+        ],
+        "description": "Handler for Legato Timer API"
+    },
+    "le.timer.create": {
+        "scope": "c",
+        "prefix": "le.timer.create",
+        "body": [
+            "// Create and start a ${1:1}s timer, repeating ${2:10} times (use 0 to repeat endlessly)",
+            "le_timer_Ref_t ${3:myTimerHandle} = le_timer_Create(\"${4:my.timer.name}\");",
+            "le_clk_Time_t ${5:myTimerInterval} = {${1}, 0};",
+            "le_result_t ${6:result} = le_timer_SetInterval(${3}, ${5});",
+            "LE_ASSERT_OK(${6});",
+            "${6} = le_timer_SetRepeat(${3}, ${2});",
+            "LE_ASSERT_OK(${6});",
+            "${6} = le_timer_SetHandler(${3}, ${7:MyTimerHandler});",
+            "LE_ASSERT_OK(${6});",
+            "${6} = le_timer_Start(${3});",
+            "LE_ASSERT_OK(${6});"
+        ],
+        "description": "Create a timer with Legato API"
+    }
+}
