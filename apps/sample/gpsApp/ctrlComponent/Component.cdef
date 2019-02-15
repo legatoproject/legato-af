@@ -1,0 +1,12 @@
+requires:
+{
+  	api:
+  	{
+    	ctrlGPS.api
+  	}
+}
+
+sources:
+{
+  	controller.c
+}

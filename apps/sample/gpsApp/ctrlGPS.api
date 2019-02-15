@@ -1,0 +1,97 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ *
+ * This API is used by the controller to control the flow of the application. Certain arguments are
+ *  passed from the command line to the application using the controller. The controller waits for
+ *  the right event and gets passed a struct which is filled with results by the application and
+ *  prints the results to the console.
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+//-------------------------------------------------------------------------------------------------
+/**
+* Used for finding points of intereset. Returns before JSON response is parsed. So, return
+*  value does not guarantee success of entire program.
+*
+* @return
+*      - LE_OK             Upon success is finding the current location
+*      - LE_FAULT          If current location cannot be found
+*
+*/
+//-------------------------------------------------------------------------------------------------
+FUNCTION le_result_t FindPoi
+(
+    string argPtr[128] IN,   ///< Command argument
+    double km IN,			 ///< The boundary to search inside in KM (optional parameter)
+    double accuracy IN 		 ///< The accuracy of locating (optional parameter)
+);
+
+//-------------------------------------------------------------------------------------------------
+/**
+* Used for finding current address. Returns before JSON response is parsed. So, return
+*  value does not guarantee success of entire program.
+*
+* @return
+*      - LE_OK             Upon success is finding the current location
+*      - LE_FAULT          If current location cannot be found
+*
+*/
+//-------------------------------------------------------------------------------------------------
+FUNCTION le_result_t LocateMe
+(
+    double accuracy IN    	///< The accuracy of locating (optional parameter)
+);
+
+//-------------------------------------------------------------------------------------------------
+/**
+* Release data connection, cleanup JSON parser, delete JSON file and exit.
+*
+*      - EXIT_SUCCESS      if parsing was complete
+*      - EXIT_FAILURE      if parsing was not complete
+*
+*/
+//-------------------------------------------------------------------------------------------------
+FUNCTION le_result_t CleanUp
+(
+    bool searchDone IN 		///< Indicates whether search was completed
+);
+
+//-------------------------------------------------------------------------------------------------
+/**
+* Data structure for storing search result information.
+*
+*/
+//-------------------------------------------------------------------------------------------------
+STRUCT ResultInfo
+{
+    bool searchDone;
+    bool error;
+    string result[128];
+    double distance;
+};
+
+//-------------------------------------------------------------------------------------------------
+/**
+* Handler function for updated search results.
+*
+*/
+//-------------------------------------------------------------------------------------------------
+HANDLER UpdatedValueHandler
+(
+    ResultInfo results IN  		///< Struct containing result information
+);
+
+//-------------------------------------------------------------------------------------------------
+/**
+* Event for updated results.
+*
+*/
+//-------------------------------------------------------------------------------------------------
+EVENT UpdatedValue
+(
+    UpdatedValueHandler handler             ///< Handler function for updated results
+);

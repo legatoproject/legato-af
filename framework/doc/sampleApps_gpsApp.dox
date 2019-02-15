@@ -1,0 +1,77 @@
+/**  @page sampleApps_gpsApp GPS
+
+@section gpsApp_App The GPS sample App
+
+This sample app demonstrates the usage of the GNSS service along with a few other services and APIs to find nearby points of interest using reverse-geocoding, along with their distances. It also allows for finding the current location in the form of a physical address.
+
+It uses the following internal services and APIs:
+- @ref c_gnss service with @c .adef bindings and related @c .cdef requires, provides, and sources sections.
+- @ref c_le_dcs and c_le_net services with @c .adef bindings and related @c .cdef requires, provides, and sources sections.
+- @ref c_json, a Legato JSON parser to interpret the response from MapBox.
+- @ref c_memory, a Legato memory management API.
+- @ref c_eventLoop, an API for event-driven programming in Legato.
+- @ref c_threading, a Legato thread control API.
+
+As well as the following external libraries and APIs:
+- cURL, a library for transferring data with URLs.
+- <a href="https://www.mapbox.com/">MapBox</a>, a 3rd-party API that performs geocoding on coordinates.
+
+The gpsApp is a sample application exposing the above services and APIs and demonstrating their usage as well as how they can work together to solve a real world problem.
+This sample app provides two executables, one for the service and another one for the controller. You can find:
+- An .adef file:
+    - gpsApp.adef to define the executables, processes, requires, bindings, and externals.
+- An .sdef file:
+    - gpsApp.sdef to define the commands, and the system structure
+- Two .cdef files:
+    - Component.cdef for the service component
+    - Component.cdef for the controller
+
+@note The app is built along with a complete system using the .sdef in order to use the command line tools to control the application.
+
+Go to the
+<a href="https://gerrit-legato/c/Legato/+/42745">sample code</a>.
+
+Install the sample app:
+
+@verbatim
+$ cd apps/sample/gpsApp
+$ make wp76xx
+$ app install gpsApp.wp76xx.update <ip address>
+@endverbatim
+
+where <i>ip address</i> is the address of your target device.
+
+If you're not using a Sierra Wireless WP76xx module, replace @c wp76xx with the appropriate
+identifier for your target.
+
+@note The gpsApp has only been tested on WP76xx.
+
+@subsection Usage
+
+To use the app to find your current location, use the following command :
+@code
+    map locate
+@endcode
+
+@note An optional accuracy option can be set to fine-tune the level of accuracy to which an address is generated. For example, the following command only tries to locate to within 30 meters of accuracy.
+@code
+    map -a 30 locate
+@endcode
+
+To use the app to find points of interest, use the following command :
+@code
+    map find <Name of POI>
+@endcode
+
+@note Accuracy can be set using the same method as above. A boundary box can also be set to only search within a box. For example, the following command can be used to find a cafe to within a distance of 5 KMs. Accuracy will also be set to 5 meters.
+@code
+    map -a 5 -w 5 find cafe
+@endcode
+
+@note For more information on specific commands, read the following section taken from the app's help.
+
+@snippet "apps/sample/gpsApp/ctrlComponent/controller.c" help
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

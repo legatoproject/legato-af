@@ -1,15 +1,46 @@
 /** @page legatoServicesPositioning Positioning
 
-| Service                            | Description                                        | multi-app safe            |
-| ---------------------------------- | -------------------------------------------------- | :-----------------------: |
-| @subpage c_gnss                    | GNSS device control                                |                           |
-| @subpage c_pos                     | Device physical position/movement                  | @image html green_dot.png |
+The Positioning Service can be used to obtain geolocation and time information from satellite navigation systems.
 
- <br>
+@section legatoServicesPositioning_GS Getting Started
 
-<HR>
+This service is automatically included in the Legato Framework by including @c default.sdef in your
+system and loads automatically on startup.
+
+@verbatim
+apps:
+{
+    // Platform services.
+    $LEGATO_ROOT/apps/platformServices/positioningService
+}
+@endverbatim
+
+@section legatoServicesPositioning_API API Guide
+
+The Positioning Service exposes two APIs that will manage connecting to Global Navigation Satellite Systems.
+
+| API Guide       | API Reference                | File Name      | Description                       |
+| ----------------|------------------------------|----------------|-----------------------------------|
+| @subpage c_gnss | @subpage le_gnss_interface.h | @c le_gnss.api | GNSS device control               |
+| @subpage c_pos  | @subpage le_pos_interface.h  | @c le_pos.api  | Device physical position/movement |
+
+To bind to these APIs customize the following bindings for your App's .adef:
+
+@code
+bindings:
+{
+    <myExecutable>.<myComponentClient>.le_gnss -> positioningService.le_gnss
+    <myExecutable>.<myComponentClient>.le_pos -> positioningService.le_pos
+}
+@endcode
+
+@section legatoServicesPositioning_Sample Sample App
+
+The @ref sampleApps_gpsApp App provides examples of:
+ - Obtaining current latitude and longitude
+ - Converting coordinates to physical addresses using reverse geocoding
+ - Finding nearby points of intereset in the form of addresses
 
 Copyright (C) Sierra Wireless Inc.
 
 **/
-

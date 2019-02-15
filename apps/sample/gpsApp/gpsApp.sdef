@@ -1,0 +1,11 @@
+#include "$LEGATO_ROOT/default.sdef"
+
+apps:
+{
+    gpsApp
+}
+
+commands:
+{
+    map = gpsApp:/bin/map
+}

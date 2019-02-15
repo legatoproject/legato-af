@@ -1,0 +1,34 @@
+sources:
+{
+    gpsApp.c
+    gnss.c
+    geocoding.c
+}
+
+requires:
+{
+    api:
+    {
+        le_dcs = $LEGATO_ROOT/interfaces/le_dcs.api
+        le_net = $LEGATO_ROOT/interfaces/le_net.api
+        le_gnss.api
+    }
+
+    component:
+    {
+        ${LEGATO_ROOT}/components/3rdParty/curl
+    }
+
+    lib:
+    {
+        curl
+    }
+}
+
+provides:
+{
+    api:
+    {
+        ctrlGPS.api
+    }
+}

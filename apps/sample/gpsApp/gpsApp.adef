@@ -1,0 +1,58 @@
+executables:
+{
+    gpsApp = ( gpsComponent )
+    map = ( ctrlComponent )
+}
+
+processes:
+{
+    run:
+    {
+        ( gpsApp )
+    }
+}
+
+requires:
+{
+    file:
+    {
+        // needed for curl itself:
+        /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+        /usr/bin/curl /usr/bin/curl
+
+        // needed for networking:
+        /lib/libnss_compat.so.2 /lib/
+        /lib/libnss_files.so.2 /lib/
+        /lib/libnss_dns.so.2 /lib/
+        /lib/libresolv.so.2 /lib/
+        /etc/nsswitch.conf /etc/
+        /etc/hosts /etc/
+        /etc/resolv.conf /etc/
+
+        /bin/sh /bin/sh
+        /bin/date /bin/date
+    }
+
+    device:
+    {
+        [rw] /dev/null /dev/null
+        [r] /dev/urandom /dev/urandom
+        [r] /dev/random /dev/random
+    }
+}
+
+bindings:
+{
+    gpsApp.gpsComponent.le_dcs -> dataConnectionService.le_dcs
+    gpsApp.gpsComponent.le_net -> dataConnectionService.le_net
+    map.ctrlComponent.ctrlGPS -> gpsApp.gpsComponent.ctrlGPS
+    gpsApp.gpsComponent.le_gnss -> positioningService.le_gnss
+}
+
+extern:
+{
+    gpsApp.gpsComponent.ctrlGPS
+}
+
+sandboxed: false
+start: manual
