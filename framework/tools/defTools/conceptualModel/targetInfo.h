@@ -40,7 +40,7 @@ struct HasTargetInfo_t
         {
             return dynamic_cast<const T*>(targetInfo.at(typeid(T)).get());
         }
-        catch (std::out_of_range e)
+        catch (std::out_of_range& e)
         {
             throw mk::Exception_t(
                 mk::format(LE_I18N("INTERNAL ERROR: Trying to get target info '%s', which is"
@@ -56,7 +56,7 @@ struct HasTargetInfo_t
         {
             return dynamic_cast<T*>(targetInfo.at(typeid(T)).get());
         }
-        catch (std::out_of_range e)
+        catch (std::out_of_range& e)
         {
             throw mk::Exception_t(
                 mk::format(LE_I18N("INTERNAL ERROR: Trying to get target info '%s', which is"

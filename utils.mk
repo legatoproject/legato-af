@@ -54,3 +54,6 @@ endif
 define k2b
 $(if $(filter y,$(1)),1,$(if $(filter m,$(1)),1,0))
 endef
+
+# Get host GCC version
+GCC_VERSION := $(shell gcc -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$$/&00/')
