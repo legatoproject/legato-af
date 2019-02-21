@@ -46,9 +46,9 @@ tool-messages: ninja $(NINJA_SCRIPT)
 	$(Q)ninja $(NINJA_FLAGS) -f $(NINJA_SCRIPT) messages
 
 # Generate the ninja build script.
-$(NINJA_SCRIPT): framework/tools/mkTools/ninja-generator $(BUILD_DIR)
+$(NINJA_SCRIPT): framework/tools/ninja-generator $(BUILD_DIR)
 	$(L) GEN $@
-	$(Q)framework/tools/mkTools/ninja-generator
+	$(Q)framework/tools/ninja-generator
 
 # ninja is called ninja-build on some distros (e.g., Fedora).  Make sure ninja appears in the
 # path as "ninja" by adding a symlink to the framework's bin directory if necessary.
