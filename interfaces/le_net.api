@@ -75,7 +75,7 @@ FUNCTION le_result_t ChangeRoute
  * Set the default GW addr for the given data channel retrieved from its technology
  *
  * @return
- *      - LE_OK upon success, otherwise other le_result_t failure code
+ *      - LE_OK upon success, otherwise LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetDefaultGW
@@ -110,7 +110,7 @@ FUNCTION le_result_t RestoreDefaultGW
  * Set the DNS addresses for the given data channel retrieved from its technology
  *
  * @return
- *      - LE_OK upon success, otherwise other le_result_t failure code
+ *      - LE_OK upon success, otherwise LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetDNS
@@ -122,7 +122,7 @@ FUNCTION le_result_t SetDNS
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Remove the last added DNS addrs via the le_dcs_SetDNS API
+ * Remove the last added DNS addresses via the le_dcs_SetDNS API
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION RestoreDNS

@@ -755,30 +755,32 @@ le_result_t le_dcsCellular_GetNetInterface
  * argument
  *
  * @return
- *     - The retrieved default GW address will be returned in the 3rd argument which allowed
- *       buffer length is specified in the 4th argument that is to be observed strictly
- *     - The function returns LE_OK upon a successful retrieval; otherwise, some other le_result_t
- *       failure cause
+ *     - The retrieved IPv4 default GW address will be returned in the 2nd argument which allowed
+ *       buffer length is specified in the 3rd argument. Similarly the 4th & 5th arguments for
+ *       the retrieved IPv6 default GW address
+ *     - The function returns LE_OK upon a successful retrieval; otherwise, LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_dcsCellular_GetDefaultGWAddress
 (
     void *techRef,
-    bool *isIpv6,
-    char *gwAddr,
-    size_t *gwAddrSize
+    char *v4GwAddrPtr,
+    size_t v4GwAddrSize,
+    char *v6GwAddrPtr,
+    size_t v6GwAddrSize
 )
 {
     le_mdc_ProfileRef_t profileRef;
     cellular_connDb_t *cellConnDb;
     char connName[LE_DCS_CHANNEL_NAME_MAX_LEN];
+    le_result_t v4Ret = LE_OK, v6Ret = LE_OK;
 
-    gwAddr[0] = '\0';
+    v4GwAddrPtr[0] = v6GwAddrPtr[0] = '\0';
+
     cellConnDb = DcsCellularGetDbFromRef((le_dcs_CellularConnectionRef_t)techRef);
     if (!cellConnDb)
     {
         LE_ERROR("Failed to find cellular connection db with reference %p", techRef);
-        *gwAddrSize = 0;
         return LE_FAULT;
     }
 
@@ -788,77 +790,80 @@ le_result_t le_dcsCellular_GetDefaultGWAddress
     {
         LE_ERROR("Failed to get mobile profile reference for cellular connection %s",
                  connName);
-        *gwAddrSize = 0;
         return LE_FAULT;
     }
 
-    if (!(*isIpv6 = le_mdc_IsIPv6(profileRef)) && !le_mdc_IsIPv4(profileRef))
+    if (le_mdc_IsIPv6(profileRef))
     {
-        LE_ERROR("Found mobile profile is of neither IPv4 nor IPv6");
-        *gwAddrSize = 0;
-        return LE_FAULT;
-    }
-
-    if (*isIpv6)
-    {
-        if (*gwAddrSize < LE_MDC_IPV6_ADDR_MAX_BYTES)
+        v6Ret = le_mdc_GetIPv6GatewayAddress(profileRef, v6GwAddrPtr, v6GwAddrSize);
+        if (v6Ret != LE_OK)
         {
-            LE_ERROR("Input address string array too short for output for connection %s",
+            LE_ERROR("Failed to get IPv6 default GW address for cellular connection %p",
                      connName);
-            *gwAddrSize = 0;
-            return LE_FAULT;
         }
-
-        *gwAddrSize = LE_MDC_IPV6_ADDR_MAX_BYTES;
-        return le_mdc_GetIPv6GatewayAddress(profileRef, gwAddr, *gwAddrSize);
+        else
+        {
+            LE_DEBUG("Succeeded to get IPv6 default GW address for cellular connection %p",
+                     connName);
+        }
     }
 
-    if (*gwAddrSize < LE_MDC_IPV4_ADDR_MAX_BYTES)
+    if (le_mdc_IsIPv4(profileRef))
     {
-        LE_ERROR("Input address string array too short for output for connection %s",
-                 connName);
-        *gwAddrSize = 0;
-        return LE_FAULT;
+        v4Ret = le_mdc_GetIPv4GatewayAddress(profileRef, v4GwAddrPtr, v4GwAddrSize);
+        if (v4Ret != LE_OK)
+        {
+            LE_ERROR("Failed to get IPv4 default GW address for cellular connection %p",
+                     connName);
+        }
+        else
+        {
+            LE_DEBUG("Succeeded to get IPv4 default GW address for cellular connection %p",
+                     connName);
+        }
     }
 
-    *gwAddrSize = LE_MDC_IPV4_ADDR_MAX_BYTES;
-    return le_mdc_GetIPv4GatewayAddress(profileRef, gwAddr, *gwAddrSize);
+    if ((v6Ret == LE_OK) || (v4Ret == LE_OK))
+    {
+        return LE_OK;
+    }
+    return LE_FAULT;
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Function for querying the DNS addresses of the given connection specified in the 1st
- * argument
+ * argument. For each of the IP version type, up to 2 DNS addresses can be returned. Thus, each of
+ * the 2 input arrays v4DnsAddrsPtr & v6DnsAddrsPtr consists of 2 address elements of the same
+ * max length specified by v4DnsAddrSize or v6DnsAddrSize, i.e. v4DnsAddrsPtr & v6DnsAddrsPtr are
+ * char [2][DnsAddrSize].
  *
  * @return
- *     - The retrieved 2 DNS addresses will be returned in the 3rd & 5th arguments which allowed
- *       buffer lengths are specified in the 4th & 6th arguments correspondingly
- *     - The function returns LE_OK upon a successful retrieval; otherwise, some other le_result_t
- *       failure cause
+ *     - The retrieved IPv4 DNS address(es) will be returned in the 2nd & the IPv6 ones in 4th
+ *       arguments which allowed buffer lengths are specified in the 3rd & 5th arguments
+ *       respectively. It's up to 2 addresses to be returned per IP type.
+ *     - The function returns LE_OK upon a successful retrieval; otherwise, LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_dcsCellular_GetDNSAddrs
 (
-    void *techRef,                   ///< [IN] object reference of the cellular connection
-    bool *isIpv6,                    ///< [OUT] IP addr version: IPv6 (true) or IPv4 (false)
-    char *dns1Addr,                  ///< [OUT] 1st DNS IP addr to be installed
-    size_t *addr1Size,               ///< [INOUT] array length of the 1st DNS IP addr to be installed
-    char *dns2Addr,                  ///< [OUT] 2nd DNS IP addr to be installed
-    size_t *addr2Size                ///< [INOUT] array length of the 2nd DNS IP addr to be installed
+    void *techRef,               ///< [IN] object reference of the cellular connection
+    char *v4DnsAddrsPtr,         ///< [OUT] 2 IPv4 DNS addresses to be installed
+    size_t v4DnsAddrSize,        ///< [IN] size of each of the 2 IPv4 DNS addresses to be installed
+    char *v6DnsAddrsPtr,         ///< [OUT] 2 IPv6 DNS addresses to be installed
+    size_t v6DnsAddrSize         ///< [IN] size of each of the 2 IPv6 DNS addresses to be installed
 )
 {
     le_mdc_ProfileRef_t profileRef;
     cellular_connDb_t *cellConnDb;
-    char connName[LE_DCS_CHANNEL_NAME_MAX_LEN];
-    le_result_t ret;
+    char connName[LE_DCS_CHANNEL_NAME_MAX_LEN], *dns1Addr, *dns2Addr;
+    le_result_t v4Ret = LE_OK, v6Ret = LE_OK;
 
-    dns1Addr[0] = dns2Addr[0] = '\0';
     cellConnDb = DcsCellularGetDbFromRef((le_dcs_CellularConnectionRef_t)techRef);
     if (!cellConnDb)
     {
         LE_ERROR("Failed to find cellular connection db with reference %p", techRef);
-        *addr1Size = *addr2Size = 0;
         return LE_FAULT;
     }
 
@@ -867,58 +872,50 @@ le_result_t le_dcsCellular_GetDNSAddrs
     if (!profileRef)
     {
         LE_ERROR("Failed to get mobile profile reference for cellular connection %s", connName);
-        *addr1Size = *addr2Size = 0;
         return LE_FAULT;
     }
 
-    if (!(*isIpv6 = le_mdc_IsIPv6(profileRef)) && !le_mdc_IsIPv4(profileRef))
+    // Seek to get IPv6 DNS server addresses
+    if (le_mdc_IsIPv6(profileRef))
     {
-        LE_ERROR("Found mobile profile is of neither IPv4 nor IPv6");
-        *addr1Size = *addr2Size = 0;
-        return LE_FAULT;
-    }
-
-    if (*isIpv6)
-    {
-        if ((*addr1Size < LE_MDC_IPV6_ADDR_MAX_BYTES) || (*addr1Size < LE_MDC_IPV6_ADDR_MAX_BYTES))
+        dns1Addr = v6DnsAddrsPtr;
+        dns2Addr = v6DnsAddrsPtr + v6DnsAddrSize;
+        dns1Addr[0] = dns2Addr[0] = '\0';
+        v6Ret = le_mdc_GetIPv6DNSAddresses(profileRef, dns1Addr, v6DnsAddrSize, dns2Addr,
+                                           v6DnsAddrSize);
+        if (LE_OK != v6Ret)
         {
-            LE_ERROR("Input address string array too short for output for connection %s",
-                     connName);
-            *addr1Size = *addr2Size = 0;
-            return LE_FAULT;
-        }
-
-        *addr1Size = *addr2Size = LE_MDC_IPV6_ADDR_MAX_BYTES;
-        ret = le_mdc_GetIPv6DNSAddresses(profileRef, dns1Addr, *addr1Size, dns2Addr, *addr2Size);
-        if (LE_OK != ret)
-        {
-            LE_ERROR("Failed to retrieve DNS addrs for connection %s", connName);
+            LE_ERROR("Failed to retrieve IPv6 DNS addresses for connection %s", connName);
         }
         else
         {
-            LE_DEBUG("Succeeded to retrieve DNS IPv6 addrs %s and %s", dns1Addr, dns2Addr);
+            LE_DEBUG("Succeeded to retrieve DNS IPv6 addresses %s and %s", dns1Addr, dns2Addr);
         }
-        return ret;
     }
 
-    if ((*addr1Size < LE_MDC_IPV4_ADDR_MAX_BYTES) || (*addr1Size < LE_MDC_IPV4_ADDR_MAX_BYTES))
+    // Seek to get IPv4 DNS server addresses
+    if (le_mdc_IsIPv4(profileRef))
     {
-        LE_ERROR("Input address string array too short for output for connection %s", connName);
-        *addr1Size = *addr2Size = 0;
-        return LE_FAULT;
+        dns1Addr = v4DnsAddrsPtr;
+        dns2Addr = v4DnsAddrsPtr + v4DnsAddrSize;
+        dns1Addr[0] = dns2Addr[0] = '\0';
+        v4Ret = le_mdc_GetIPv4DNSAddresses(profileRef, dns1Addr, v4DnsAddrSize, dns2Addr,
+                                           v4DnsAddrSize);
+        if (LE_OK != v4Ret)
+        {
+            LE_ERROR("Failed to retrieve DNS addresses for connection %s", connName);
+        }
+        else
+        {
+            LE_DEBUG("Succeeded to retrieve DNS IPv4 addresses %s and %s", dns1Addr, dns2Addr);
+        }
     }
 
-    *addr1Size = *addr2Size = LE_MDC_IPV4_ADDR_MAX_BYTES;
-    ret = le_mdc_GetIPv4DNSAddresses(profileRef, dns1Addr, *addr1Size, dns2Addr, *addr2Size);
-    if (LE_OK != ret)
+    if ((v6Ret == LE_OK) || (v4Ret == LE_OK))
     {
-        LE_ERROR("Failed to retrieve DNS addrs for connection %s", connName);
+        return LE_OK;
     }
-    else
-    {
-        LE_DEBUG("Succeeded to retrieve DNS IPv4 addrs %s and %s", dns1Addr, dns2Addr);
-    }
-    return ret;
+    return LE_FAULT;
 }
 
 

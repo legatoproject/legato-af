@@ -432,25 +432,27 @@ void le_dcsTech_RetryChannel
  * argument of the technology given in the 1st
  *
  * @return
- *     - The retrieved default GW address will be returned in the 3rd argument which allowed
- *       buffer length is specified in the 4th argument that is to be observed strictly
- *     - The function returns LE_OK upon a successful retrieval; otherwise, some other le_result_t
- *       failure cause
+ *     - The retrieved IPv4 default GW address will be returned in the 3rd argument which allowed
+ *       buffer length is specified in the 4th argument. Similarly the 5th & 6th arguments for
+ *       the retrieved IPv6 default GW address
+ *     - The function returns LE_OK upon a successful retrieval; otherwise, LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_dcsTech_GetDefaultGWAddress
 (
     le_dcs_Technology_t tech,
     void *techRef,
-    bool *isIpv6,
-    char *gwAddr,
-    size_t *gwAddrSize
+    char *v4GwAddrPtr,
+    size_t v4GwAddrSize,
+    char *v6GwAddrPtr,
+    size_t v6GwAddrSize
 )
 {
     switch (tech)
     {
         case LE_DCS_TECH_CELLULAR:
-            return le_dcsCellular_GetDefaultGWAddress(techRef, isIpv6, gwAddr, gwAddrSize);
+            return le_dcsCellular_GetDefaultGWAddress(techRef, v4GwAddrPtr, v4GwAddrSize,
+                                                      v6GwAddrPtr, v6GwAddrSize);
             break;
         case LE_DCS_TECH_WIFI:
         default:
@@ -463,31 +465,33 @@ le_result_t le_dcsTech_GetDefaultGWAddress
 //--------------------------------------------------------------------------------------------------
 /**
  * Function for querying the DNS addresses of the given connection specified in the 2nd
- * argument of the technology given in the 1st
+ * argument of the technology given in the 1st. For each of the IP version type, up to 2 DNS
+ * addresses can be returned. Thus, each of the 2 input arrays v4DnsAddrsPtr & v6DnsAddrsPtr
+ * consists of 2 address elements of the same max length specified by v4DnsAddrSize or v6DnsAddrSize,
+ * i.e. v4DnsAddrsPtr & v6DnsAddrsPtr are char [2][DnsAddrSize].
  *
  * @return
- *     - The retrieved 2 DNS addresses will be returned in the 3rd & 5th arguments which allowed
- *       buffer lengths are specified in the 4th & 6th arguments correspondingly
- *     - The function returns LE_OK upon a successful retrieval; otherwise, some other le_result_t
- *       failure cause
+ *     - The retrieved IPv4 DNS address(es) will be returned in the 3rd & the IPv6 ones in 5th
+ *       arguments which allowed buffer lengths are specified in the 4th & 6th arguments
+ *       respectively. It's up to 2 addresses to be returned per IP type.
+ *     - The function returns LE_OK upon a successful retrieval; otherwise, LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_dcsTech_GetDNSAddresses
 (
-    le_dcs_Technology_t tech,        ///< [IN] technology type of the connection
-    void *techRef,                   ///< [IN] object reference of the connection
-    bool *isIpv6,                    ///< [OUT] IP addr version: IPv6 (true) or IPv4 (false)
-    char *dns1Addr,                  ///< [OUT] 1st DNS IP addr to be installed
-    size_t *addr1Size,               ///< [INOUT] array length of the 1st DNS IP addr to be installed
-    char *dns2Addr,                  ///< [OUT] 2nd DNS IP addr to be installed
-    size_t *addr2Size                ///< [INOUT] array length of the 2nd DNS IP addr to be installed
+    le_dcs_Technology_t tech,    ///< [IN] technology type of the connection
+    void *techRef,               ///< [IN] object reference of the connection
+    char *v4DnsAddrs,            ///< [OUT] 2 IPv4 DNS addresses to be installed
+    size_t v4DnsAddrSize,        ///< [IN] size of each of the 2 IPv4 DNS addresses to be installed
+    char *v6DnsAddrs,            ///< [OUT] 2 IPv6 DNS addresses to be installed
+    size_t v6DnsAddrSize         ///< [IN] size of each of the 2 IPv6 DNS addresses to be installed
 )
 {
     switch (tech)
     {
         case LE_DCS_TECH_CELLULAR:
-            return le_dcsCellular_GetDNSAddrs(techRef, isIpv6, dns1Addr, addr1Size,
-                                              dns2Addr, addr2Size);
+            return le_dcsCellular_GetDNSAddrs(techRef, v4DnsAddrs, v4DnsAddrSize,
+                                              v6DnsAddrs, v6DnsAddrSize);
             break;
         case LE_DCS_TECH_WIFI:
         default:

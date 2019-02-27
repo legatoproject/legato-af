@@ -48,10 +48,12 @@ LE_SHARED bool le_dcsCellular_GetOpState(void *techRef);
 LE_SHARED le_result_t le_dcsCellular_RetryConn(void *techRef);
 LE_SHARED void le_dcsCellular_GetNameFromIndex(uint32_t index,
                                                char channelName[LE_DCS_CHANNEL_NAME_MAX_LEN]);
-LE_SHARED le_result_t le_dcsCellular_GetDefaultGWAddress(void *techRef, bool *isIpv6,
-                                                         char *gwAddr, size_t *gwAddrSize);
-LE_SHARED le_result_t le_dcsCellular_GetDNSAddrs(void *techRef, bool *isIpv6, char *dns1Addr,
-                                                 size_t *addr1Size, char *dns2Addr, size_t *addr2Size);
+LE_SHARED le_result_t le_dcsCellular_GetDefaultGWAddress(void *techRef,
+                                                         char *v4GwAddrPtr, size_t v4GwAddrSize,
+                                                         char *v6GwAddrPtr, size_t v6GwAddrSize);
+LE_SHARED le_result_t le_dcsCellular_GetDNSAddrs(void *techRef, char *v4DnsAddrs,
+                                                 size_t v4DnsAddrSize, char *v6DnsAddr,
+                                                 size_t v6DnsAddrSize);
 LE_SHARED uint32_t le_dcsCellular_GetProfileIndex(int32_t mdcIndex);
 LE_SHARED le_result_t le_dcsCellular_AllowChannelStart(void *techRef);
 

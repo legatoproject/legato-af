@@ -178,10 +178,11 @@ le_dcs_channelDb_t *le_dcs_GetChannelDbFromStartRequestRef(le_dcs_ReqObjRef_t re
 LE_SHARED le_result_t le_dcsTech_Start(const char *channelName, le_dcs_Technology_t tech);
 LE_SHARED le_result_t le_dcsTech_Stop(const char *channelName, le_dcs_Technology_t tech);
 LE_SHARED le_result_t le_dcsTech_GetDefaultGWAddress(le_dcs_Technology_t tech, void *techRef,
-                                                     bool *isIpv6, char *gwAddr, size_t *gwAddrSize);
+                                                     char *v4GwAddrPtr, size_t v4GwAddrSize,
+                                                     char *v6GwAddrPtr, size_t v6GwAddrSize);
 LE_SHARED le_result_t le_dcsTech_GetDNSAddresses(le_dcs_Technology_t tech, void *techRef,
-                                                 bool *isIpv6, char *dns1Addr, size_t *addr1Size,
-                                                 char *dns2Addr, size_t *addr2Size);
+                                                 char *v4DnsAddrs, size_t v4DnsAddrSize,
+                                                 char *v6DnsAddrs, size_t v6DnsAddrSize);
 LE_SHARED le_result_t le_dcsTech_GetNetInterface(le_dcs_Technology_t tech,
                                                  le_dcs_ChannelRef_t channelRef, char *intfName,
                                                  int nameSize);

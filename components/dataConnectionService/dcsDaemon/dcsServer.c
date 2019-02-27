@@ -1224,6 +1224,12 @@ static le_result_t SetRouteConfiguration
         return LE_FAULT;
     }
 
+    if (LE_OK != le_mdc_GetInterfaceName(profileRef, interface, sizeof(interface)))
+    {
+        LE_ERROR("le_mdc_GetInterfaceName failed");
+        return LE_FAULT;
+    }
+
     if (le_mdc_IsIPv6(profileRef))
     {
         if (LE_OK != le_mdc_GetIPv6GatewayAddress(profileRef,
@@ -1231,12 +1237,6 @@ static le_result_t SetRouteConfiguration
                                                   sizeof(ipv6GatewayAddr)))
         {
             LE_ERROR("le_mdc_GetIPv6GatewayAddress failed");
-            return LE_FAULT;
-        }
-
-        if (LE_OK != le_mdc_GetInterfaceName(profileRef, interface, sizeof(interface)))
-        {
-            LE_ERROR("le_mdc_GetInterfaceName failed");
             return LE_FAULT;
         }
 
@@ -1256,12 +1256,6 @@ static le_result_t SetRouteConfiguration
                                                   sizeof(ipv4GatewayAddr)))
         {
             LE_ERROR("le_mdc_GetIPv4GatewayAddress failed");
-            return LE_FAULT;
-        }
-
-        if (LE_OK != le_mdc_GetInterfaceName(profileRef, interface, sizeof(interface)))
-        {
-            LE_ERROR("le_mdc_GetInterfaceName failed");
             return LE_FAULT;
         }
 

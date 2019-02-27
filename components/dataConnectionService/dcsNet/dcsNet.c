@@ -24,7 +24,7 @@
  * Structure used to back up the system's default network interface configs
  */
 //--------------------------------------------------------------------------------------------------
-pa_dcs_InterfaceDataBackup_t NetConfigBackup;
+static pa_dcs_InterfaceDataBackup_t NetConfigBackup;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -91,6 +91,17 @@ le_result_t le_net_RestoreDefaultGW
     le_result_t result;
 
     pa_dcs_DeleteDefaultGateway();
+    if ((strlen(NetConfigBackup.defaultInterface) == 0) ||
+        (strlen(NetConfigBackup.defaultGateway) == 0))
+    {
+        // Need both to set a default GW config; thus, bail out when not both are available
+        LE_DEBUG("No backed up default GW address to restore");
+        // memset in case either one isn't empty
+        memset(NetConfigBackup.defaultInterface, '\0', sizeof(NetConfigBackup.defaultInterface));
+        memset(NetConfigBackup.defaultGateway, '\0', sizeof(NetConfigBackup.defaultGateway));
+        return LE_OK;
+    }
+
     result = pa_dcs_SetDefaultGateway(NetConfigBackup.defaultInterface,
                                       NetConfigBackup.defaultGateway, false);
     if (result == LE_OK)
@@ -112,8 +123,7 @@ le_result_t le_net_RestoreDefaultGW
  * technology
  *
  * @return
- *     - The function returns LE_OK upon a successful addr setting; otherwise, some other
- *       le_result_t failure cause
+ *     - The function returns LE_OK upon a successful addr setting; otherwise, LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_net_SetDefaultGW
@@ -122,12 +132,12 @@ le_result_t le_net_SetDefaultGW
                                     ///< addr is to be set
 )
 {
-    le_result_t ret;
-    bool isIpv6;
+    le_result_t ret, v4Ret = LE_OK, v6Ret = LE_OK;
     char intf[LE_DCS_INTERFACE_NAME_MAX_LEN] = {0};
     int intfSize = LE_DCS_INTERFACE_NAME_MAX_LEN;
-    size_t gwAddrSize = LE_DCS_INTERFACE_NAME_MAX_LEN;
-    char *channelName, gwAddr[LE_DCS_INTERFACE_NAME_MAX_LEN];
+    size_t v4GwAddrSize = PA_DCS_IPV4_ADDR_MAX_BYTES;
+    size_t v6GwAddrSize = PA_DCS_IPV6_ADDR_MAX_BYTES;
+    char *channelName, v4GwAddr[PA_DCS_IPV4_ADDR_MAX_BYTES], v6GwAddr[PA_DCS_IPV6_ADDR_MAX_BYTES];
     pa_dcs_InterfaceDataBackup_t currentGwCfg;
     le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
@@ -144,6 +154,7 @@ le_result_t le_net_SetDefaultGW
         return LE_UNSUPPORTED;
     }
 
+    // Get network interface for setting default GW config
     ret = le_dcsTech_GetNetInterface(channelDb->technology, channelRef, intf, intfSize);
     if (ret != LE_OK)
     {
@@ -152,8 +163,9 @@ le_result_t le_net_SetDefaultGW
         return LE_FAULT;
     }
 
+    // Query technology for IPv4 and IPv6 default GW address assignments
     ret = le_dcsTech_GetDefaultGWAddress(channelDb->technology, channelDb->techRef,
-                                         &isIpv6, gwAddr, &gwAddrSize);
+                                         v4GwAddr, v4GwAddrSize, v6GwAddr, v6GwAddrSize);
     if (ret != LE_OK)
     {
         LE_ERROR("Failed to get GW addr for channel %s of technology %s to set default GW",
@@ -161,29 +173,49 @@ le_result_t le_net_SetDefaultGW
         return ret;
     }
 
+    if ((strlen(v6GwAddr) == 0) && (strlen(v4GwAddr) == 0))
+    {
+        LE_INFO("Given channel %s of technology %s got no default GW address assigned",
+                channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
+        return LE_FAULT;
+    }
+
+    // Get current default GW setting for reference
     if (LE_OK != pa_dcs_GetDefaultGateway(&currentGwCfg))
     {
-        LE_DEBUG("No default GW currently set or retrievable");
+        LE_DEBUG("No default GW currently set or retrievable on device");
     }
     else
     {
         LE_DEBUG("Default GW set at address %s on interface %s before change",
-                 currentGwCfg.defaultInterface, currentGwCfg.defaultGateway);
+                 currentGwCfg.defaultGateway, currentGwCfg.defaultInterface);
     }
 
-    ret = pa_dcs_SetDefaultGateway(intf, gwAddr, isIpv6);
-    if (ret != LE_OK)
+    // Seek to set IPv6 default GW address
+    if ((strlen(v6GwAddr) > 0) &&
+        (pa_dcs_SetDefaultGateway(intf, v6GwAddr, true) != LE_OK))
     {
-        LE_ERROR("Failed to set default GW for channel %s of technology %s", channelName,
+        LE_ERROR("Failed to set IPv6 default GW for channel %s of technology %s", channelName,
                  le_dcs_ConvertTechEnumToName(channelDb->technology));
-        return LE_FAULT;
+        v6Ret = LE_FAULT;
     }
 
-    LE_INFO("Succeeded to set default GW addr to %s on interface %s for channel %s of "
-            "technology %s", gwAddr, intf, channelName,
-            le_dcs_ConvertTechEnumToName(channelDb->technology));
+    // Seek to set IPv4 default GW address
+    if ((strlen(v4GwAddr) > 0) &&
+        (pa_dcs_SetDefaultGateway(intf, v4GwAddr, false) != LE_OK))
+    {
+        LE_ERROR("Failed to set IPv4 default GW for channel %s of technology %s", channelName,
+                 le_dcs_ConvertTechEnumToName(channelDb->technology));
+        v4Ret = LE_FAULT;
+    }
 
-    return ret;
+    if ((v4Ret == LE_OK) || (v6Ret == LE_OK))
+    {
+        LE_INFO("Succeeded to set default GW addr on interface %s for channel %s of technology %s",
+                intf, channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
+        return LE_OK;
+    }
+    return LE_FAULT;
 }
 
 
@@ -199,34 +231,29 @@ static le_result_t DcsNetSetDNS
 (
     bool isIpv6,                     ///< [IN] it's of type IPv6 (true) or IPv4 (false)
     char *dns1Addr,                  ///< [IN] 1st DNS IP addr to be installed
-    int addr1Size,                   ///< [IN] array length of the 1st DNS IP addr to be installed
     char *dns2Addr,                  ///< [IN] 2nd DNS IP addr to be installed
-    int addr2Size                    ///< [IN] array length of the 2nd DNS IP addr to be installed
+    int dnsAddrSize                  ///< [IN] array length of the DNS IP addresses to be installed
 )
 {
     le_result_t ret = pa_dcs_SetDnsNameServers(dns1Addr, dns2Addr);
     if (ret != LE_OK)
     {
-        LE_ERROR("Failed to set DNS addrs %s and %s", dns1Addr, dns2Addr);
+        LE_ERROR("Failed to set DNS addresses %s and %s", dns1Addr, dns2Addr);
         return ret;
     }
 
-    LE_INFO("Succeeded to set DNS addrs %s and %s", dns1Addr, dns2Addr);
-
     if (isIpv6)
     {
-        le_utf8_Copy(NetConfigBackup.newDnsIPv6[0], dns1Addr, addr1Size, NULL);
-        le_utf8_Copy(NetConfigBackup.newDnsIPv6[1], dns2Addr, addr2Size, NULL);
-        NetConfigBackup.newDnsIPv4[0][0] = '\0';
-        NetConfigBackup.newDnsIPv4[1][0] = '\0';
+        le_utf8_Copy(NetConfigBackup.newDnsIPv6[0], dns1Addr, dnsAddrSize, NULL);
+        le_utf8_Copy(NetConfigBackup.newDnsIPv6[1], dns2Addr, dnsAddrSize, NULL);
     }
     else
     {
-        le_utf8_Copy(NetConfigBackup.newDnsIPv4[0], dns1Addr, addr1Size, NULL);
-        le_utf8_Copy(NetConfigBackup.newDnsIPv4[1], dns2Addr, addr2Size, NULL);
-        NetConfigBackup.newDnsIPv6[0][0] = '\0';
-        NetConfigBackup.newDnsIPv6[1][0] = '\0';
+        le_utf8_Copy(NetConfigBackup.newDnsIPv4[0], dns1Addr, dnsAddrSize, NULL);
+        le_utf8_Copy(NetConfigBackup.newDnsIPv4[1], dns2Addr, dnsAddrSize, NULL);
     }
+
+    LE_INFO("Succeeded to set DNS addresses %s and %s", dns1Addr, dns2Addr);
     return ret;
 }
 
@@ -307,12 +334,11 @@ static le_result_t DcsNetChangeRoute
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the system DNS addrs to those given to the given channel specified in the input argument.
- * These DNS addrs are retrieved from this channel's technology
+ * Set the system DNS addresses to those given to the given channel specified in the input argument.
+ * These DNS addresses are retrieved from this channel's technology
  *
  * @return
- *     - The function returns LE_OK upon a successful addr setting; otherwise, some other
-
+ *     - The function returns LE_OK upon a successful addr setting; otherwise, LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_net_SetDNS
@@ -321,13 +347,10 @@ le_result_t le_net_SetDNS
                                     ///< will be set into the system config
 )
 {
-    le_result_t ret;
-    bool isIpv6;
+    le_result_t ret, v4Ret = LE_OK, v6Ret = LE_OK;
     char *channelName;
-    char dns1Addr[PA_DCS_IPV6_ADDR_MAX_BYTES] = {0};
-    char dns2Addr[PA_DCS_IPV6_ADDR_MAX_BYTES] = {0};
-    size_t addr1Size = sizeof(dns1Addr);
-    size_t addr2Size = sizeof(dns2Addr);
+    char v4DnsAddrs[2][PA_DCS_IPV4_ADDR_MAX_BYTES] = {{0}, {0}};
+    char v6DnsAddrs[2][PA_DCS_IPV6_ADDR_MAX_BYTES] = {{0}, {0}};
     le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
     {
@@ -343,33 +366,60 @@ le_result_t le_net_SetDNS
         return LE_UNSUPPORTED;
     }
 
-    ret = le_dcsTech_GetDNSAddresses(channelDb->technology, channelDb->techRef, &isIpv6, dns1Addr,
-                                     &addr1Size, dns2Addr, &addr2Size);
+    // Query technology for IPv4 and IPv6 DNS server address assignments
+    ret = le_dcsTech_GetDNSAddresses(channelDb->technology, channelDb->techRef,
+                                     (char *)v4DnsAddrs, PA_DCS_IPV4_ADDR_MAX_BYTES,
+                                     (char *)v6DnsAddrs, PA_DCS_IPV6_ADDR_MAX_BYTES);
     if (ret != LE_OK)
     {
-        LE_ERROR("Failed to get DNS addrs for channel %s of technology %s to set DNS config",
+        LE_ERROR("Failed to get DNS addresses for channel %s of technology %s to set DNS config",
                  channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
         return ret;
     }
 
-    ret = DcsNetSetDNS(isIpv6, dns1Addr, sizeof(dns1Addr), dns2Addr, sizeof(dns2Addr));
-    if (ret != LE_OK)
+    if ((strlen(v4DnsAddrs[0]) == 0) && (strlen(v4DnsAddrs[1]) == 0) &&
+        (strlen(v6DnsAddrs[0]) == 0) && (strlen(v6DnsAddrs[1]) == 0))
     {
-        LE_ERROR("Failed to set DNS addrs for channel %s of technology %s", channelName,
-                 le_dcs_ConvertTechEnumToName(channelDb->technology));
+        LE_INFO("Given channel %s of technology %s got no DNS server address assigned",
+                channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
         return LE_FAULT;
     }
 
-    LE_INFO("Succeeded to set DNS addrs %s and %s for channel %s of technology %s", dns1Addr,
-            dns2Addr, channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
+    // Set IPv6 DNS server addresses
+    if ((strlen(v6DnsAddrs[0]) > 0) || (strlen(v6DnsAddrs[1]) > 0))
+    {
+        v4Ret = DcsNetSetDNS(true, v6DnsAddrs[0], v6DnsAddrs[1], PA_DCS_IPV6_ADDR_MAX_BYTES);
+        if (v6Ret != LE_OK)
+        {
+            LE_ERROR("Failed to set DNS addresses for channel %s of technology %s", channelName,
+                     le_dcs_ConvertTechEnumToName(channelDb->technology));
+        }
+    }
 
-    return ret;
+    // Set IPv4 DNS server addresses
+    if ((strlen(v4DnsAddrs[0]) > 0) || (strlen(v4DnsAddrs[1]) > 0))
+    {
+        v4Ret = DcsNetSetDNS(false, v4DnsAddrs[0], v4DnsAddrs[1], PA_DCS_IPV4_ADDR_MAX_BYTES);
+        if (v4Ret != LE_OK)
+        {
+            LE_ERROR("Failed to set DNS addresses for channel %s of technology %s", channelName,
+                     le_dcs_ConvertTechEnumToName(channelDb->technology));
+        }
+    }
+
+    if ((v4Ret == LE_OK) || (v6Ret == LE_OK))
+    {
+        LE_INFO("Succeeded to set onto device DNS addresses of channel %s of technology %s",
+                channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
+        return LE_OK;
+    }
+    return LE_FAULT;
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Remove the last added DNS addrs via the le_dcs_SetDNS API
+ * Remove the last added DNS addresses via the le_dcs_SetDNS API
  */
 //--------------------------------------------------------------------------------------------------
 void le_net_RestoreDNS
@@ -377,8 +427,10 @@ void le_net_RestoreDNS
     void
 )
 {
+    LE_DEBUG("Removing lastly added DNS addresses: IPv4: %s %s; IPv6: %s %s",
+             NetConfigBackup.newDnsIPv4[0], NetConfigBackup.newDnsIPv4[1],
+             NetConfigBackup.newDnsIPv6[0], NetConfigBackup.newDnsIPv6[1]);
     pa_dcs_RestoreInitialDnsNameServers(&NetConfigBackup);
-    LE_INFO("Last added DNS addresses removed");
 }
 
 
