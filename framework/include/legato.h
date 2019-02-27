@@ -41,7 +41,8 @@
  * @subpage c_timer <br>
  * @subpage c_test <br>
  * @subpage c_utf8 <br>
- * @subpage c_tty
+ * @subpage c_tty <br>
+ * @subpage c_process <br>
  *
  * @section cApiOverview Overview
  * Here is some background info on Legato's C Language APIs.
@@ -225,6 +226,7 @@ extern "C" {
 #include "le_fs.h"
 #include "le_rand.h"
 #include "le_base64.h"
+#include "le_process.h"
 
 #ifdef __cplusplus
 }

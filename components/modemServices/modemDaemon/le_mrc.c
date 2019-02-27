@@ -101,13 +101,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Buffer size for the 'tzoneset' command
- */
-//--------------------------------------------------------------------------------------------------
-#define TIME_ZONE_CMD_BUF_SIZE 128
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Path for the 'tzoneset' command
  */
 //--------------------------------------------------------------------------------------------------
@@ -125,14 +118,14 @@
  * Max number of retries to check the 'tzoneset' lock file
  */
 //--------------------------------------------------------------------------------------------------
-#define TIME_ZONE_LOCK_MAX_RETRY 5
+#define TIME_ZONE_LOCK_MAX_RETRY 3
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Sleep interval (nanoseconds) between 'tzoneset' lock file checks (0.5 sec)
+ * Sleep interval (seconds) between 'tzoneset' lock file checks
  */
 //--------------------------------------------------------------------------------------------------
-#define TIME_ZONE_LOCK_RETRY_SLEEP_NS 500000000L
+#define TIME_ZONE_LOCK_RETRY_SLEEP 1
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1477,6 +1470,36 @@ static void JammingDetectionIndHandler
     le_event_ReportWithRefCounting(JammingDetectionIndId, jammingDetectionIndPtr);
 }
 
+#if LE_CONFIG_LINUX
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Wait a bit for the tzoneset lock to be released if it is locked.
+ */
+//--------------------------------------------------------------------------------------------------
+static void WaitForTzLock
+(
+    const le_proc_Parameters_t *paramPtr ///< Execution parameters.
+)
+{
+    int         i;
+    struct stat fileStatus;
+
+    // NOTE: We can only use async-signal-safe functions until an execve() variant is called.  Here
+    //       we use sleep() and stat() which are safe according to the POSIX.1-2001 standard.
+
+    // Give the current tzoneset process (if any) a chance to finish.
+    for (i = 0; i < TIME_ZONE_LOCK_MAX_RETRY; ++i)
+    {
+        if (stat(TIME_ZONE_LOCK_FILE, &fileStatus) != 0)
+        {
+            // File doesn't exist - currently no lock, so let's proceed to try to run the command.
+            break;
+        }
+        sleep(TIME_ZONE_LOCK_RETRY_SLEEP);
+    }
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * The network time indication handler.
@@ -1487,67 +1510,43 @@ static void NetworkTimeIndHandler
     pa_mrc_NetworkTimeIndication_t* networkTimeIndPtr ///< [IN] Network Time data structure
 )
 {
-    char cmdLine[TIME_ZONE_CMD_BUF_SIZE];
+    char                     tzOffsetStr[12];
+    char                    *argumentsPtr[5];
+    int32_t                  timeZoneOffset;
+    le_proc_Parameters_t     proc =
+    {
+        .executableStr   = TIME_ZONE_CMD_PATH,
+        .argumentsPtr    = argumentsPtr,
+        .environmentPtr  = NULL,
+        .detach          = true,
+        .closeFds        = STDERR_FILENO + 1,
+        .init            = &WaitForTzLock,
+        .userPtr         = NULL
+    };
 
     LE_INFO("Network time Handler called with time %"PRIu64", zone %d, dst %d",
             networkTimeIndPtr->epochTime, networkTimeIndPtr->timeZone,
             networkTimeIndPtr->dst);
 
     // Converting 15-min intervals to seconds
-    int32_t timeZoneOffset = networkTimeIndPtr->timeZone * 15 * 60;
+    timeZoneOffset = networkTimeIndPtr->timeZone * 15 * 60;
+    snprintf(tzOffsetStr, sizeof(tzOffsetStr), "%" PRId32, timeZoneOffset);
 
     // syntax: tzoneset <epochTime in seconds> <TZ offset in seconds> <DST: 0 or 1 or 2 hours>
     // Passing epoch time as 0 (means "don't modify") because system clock is already set
     // to UTC time by Time Daemon, and we don't want to override it.
-    // Passing DST as 0 because it is already accounted for in the timeZoneOffset.
-    snprintf(cmdLine, sizeof(cmdLine), "%s 0 %d 0",
-             TIME_ZONE_CMD_PATH,
-             timeZoneOffset);
+    // Passing DST as 0 because it is already accounted for in the tzOffsetStr.
+    argumentsPtr[0] = TIME_ZONE_CMD_PATH;
+    argumentsPtr[1] = "0";
+    argumentsPtr[2] = tzOffsetStr;
+    argumentsPtr[3] = "0";
+    argumentsPtr[4] = NULL;
 
     // Fork to avoid delaying the main process.
-    pid_t pid = fork();
-    LE_FATAL_IF(pid < 0, "Failed to fork child process.  %m.");
-
-    if (pid == 0) // child process
-    {
-        bool locked = true;
-        struct stat fileStatus;
-        int i;
-        struct timespec sleepInterval = {0, TIME_ZONE_LOCK_RETRY_SLEEP_NS};
-
-        // Verify the process is not locked; if lock file exists, retry few times.
-        for (i = 0; i < TIME_ZONE_LOCK_MAX_RETRY; i++)
-        {
-            if (0 != stat(TIME_ZONE_LOCK_FILE, &fileStatus))
-            {
-                // file doesn't exist - process has no lock.
-                locked = false;
-                break;
-            }
-            // sleep half second between retries
-            if (0 != nanosleep(&sleepInterval, NULL))
-            {
-                LE_ERROR("Error in nanosleep");
-            }
-        }
-        if (!locked)
-        {
-            LE_INFO("Executing [%s]", cmdLine);
-            // Use 'system()' to get back the exit code.
-            int rc = system(cmdLine);
-            if (0 != rc)
-            {
-                LE_ERROR("Error setting time zone: command [%s]: exit code %d(%#x)",
-                         cmdLine, rc, rc);
-            }
-        }
-        else
-        {
-            LE_ERROR("Can't set timezone, process is locked.");
-        }
-        exit(0);
-    }
+    le_proc_Execute(&proc);
 }
+
+#endif /* end LE_CONFIG_LINUX */
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1923,8 +1922,10 @@ void le_mrc_Init
     // Register a handler function for jamming detection indication
     pa_mrc_AddJammingDetectionIndHandler(JammingDetectionIndHandler, NULL);
 
+#if LE_CONFIG_LINUX
     // Register a handler function for network time indication
     pa_mrc_AddNetworkTimeIndHandler(NetworkTimeIndHandler);
+#endif /* end LE_CONFIG_LINUX */
 
     MrcCommandEventId = le_event_CreateId("CommandEvent", sizeof(CmdRequest_t));
 

@@ -10,7 +10,9 @@ import argparse
 import re
 
 class MapEntry(object):
-    LegatoSystemRE = re.compile('/mnt/legato/system/')
+    LegatoSystemRE = re.compile(r'/legato/')
+    LegatoCurrentSystemRE = re.compile(r'/legato/systems/current/')
+    RootSystemRE = re.compile(r'/(?:lib|usr/lib)/')
     BuildIdRE = re.compile('Build ID: ([0-9a-f][0-9a-f])([0-9a-f]+)')
 
     def __init__(self, startAddr, endAddr, offset, name):
@@ -18,12 +20,20 @@ class MapEntry(object):
         self.endAddr = endAddr
         self.offset = offset
         self.name = name
+        self.baseName = None
+
+        isCurrentSysMatch = False
+        rootMatch = None
+        systemMatch = None
+
         if name:
             self.baseName = os.path.basename(name)
-            systemMatch = self.LegatoSystemRE.match(self.name)
-        else:
-            self.baseName = None
-            systemMatch = None
+            systemMatch = self.LegatoCurrentSystemRE.match(self.name)
+            isCurrentSysMatch = systemMatch is not None
+            if not isCurrentSysMatch:
+                systemMatch = self.LegatoSystemRE.match(self.name)
+            if not systemMatch:
+                rootMatch = self.RootSystemRE.match(self.name)
 
         if not Options.stagingDir:
             if self.name and os.path.isfile(self.name):
@@ -31,7 +41,13 @@ class MapEntry(object):
             else:
                 self.libraryName = None
         elif systemMatch:
-            self.libraryName = os.path.join(Options.stagingDir, name[systemMatch.end():])
+            if isCurrentSysMatch:
+                self.libraryName = os.path.join(Options.stagingDir, 'system',
+                    name[systemMatch.end():])
+            else:
+                self.libraryName = os.path.join(Options.stagingDir, name[systemMatch.end():])
+        elif rootMatch:
+            self.libraryName = os.path.join(Options.sysroot, name.lstrip('/'))
         else:
             self.libraryName = None
 
@@ -40,13 +56,10 @@ class MapEntry(object):
 
         # But if a separate debug directory is provided, search for a debug file there
         if self.libraryName and Options.debugDir:
-            buildidProc = subprocess.Popen(['/usr/bin/env',
-                                            'readelf',
+            buildidProc = subprocess.Popen([Options.toolchain + 'readelf',
                                             '-n',
                                             self.libraryName],
-                                           stdin=subprocess.DEVNULL,
-                                           stdout=subprocess.PIPE,
-                                           encoding='utf8')
+                                           stdout=subprocess.PIPE)
             buildIdResult, errors = buildidProc.communicate()
             for line in buildIdResult.splitlines():
                 buildIdMatch = self.BuildIdRE.search(line)
@@ -78,15 +91,13 @@ class MapEntry(object):
             else:
                 return None
 
-        addr2lineProc = subprocess.Popen(['/usr/bin/env',
-                                          'addr2line',
+        addr2lineProc = subprocess.Popen([Options.toolchain + 'addr2line',
                                           '-f',
                                           '-p',
                                           '-e',
                                           self.debugName],
                                          stdin=subprocess.PIPE,
-                                         stdout=subprocess.PIPE,
-                                         encoding='utf8')
+                                         stdout=subprocess.PIPE)
 
         output, errors = addr2lineProc.communicate('{:x}'.format(addr-self.startAddr+self.offset))
 
@@ -211,6 +222,10 @@ def main():
                          help='debug file directory for separate debug info')
     argParser.add_argument('--staging-directory', dest='stagingDir', action='store',
                          help='staging directory for system')
+    argParser.add_argument('--toolchain', dest='toolchain', action='store', default='',
+                         help='toolchain executable path and prefix')
+    argParser.add_argument('--sysroot', dest='sysroot', action='store', default='/',
+                         help='sysroot for the system')
     argParser.add_argument('file', nargs='*', type=argparse.FileType('r'),
                          default=[sys.stdin], help='files to process')
     global Options
