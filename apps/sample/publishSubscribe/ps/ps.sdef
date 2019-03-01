@@ -1,0 +1,12 @@
+#include "$LEGATO_ROOT/default.sdef"
+
+apps:
+{
+    psServer
+    psClient
+}
+
+commands:
+{
+    psClient = psClient:/bin/psClient
+}

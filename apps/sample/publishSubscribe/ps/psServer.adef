@@ -1,0 +1,35 @@
+executables:
+{
+    psServer = ( psServerComponent )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        ( psServer )
+    }
+
+    maxCoreDumpFileBytes: 512K
+    maxFileBytes: 512K
+}
+
+extern:
+{
+    psServer.psServerComponent.temperature
+}
+
+bindings:
+{
+    psServer.psServerComponent.le_temp -> modemService.le_temp
+}
+
+start: auto
+
+version: 1.0.0
+maxFileSystemBytes: 512K

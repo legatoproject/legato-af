@@ -1,0 +1,43 @@
+//-------------------------------------------------------------------------------------------------
+/**
+ * Handler function for displaying the updated temperature in Fahrenheit on the client side
+ *
+ */
+//-------------------------------------------------------------------------------------------------
+HANDLER UpdatedValueHandler
+(
+    int32 value IN                          ///< temperature in F
+);
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Updated Value Event for UpdatedValueHandler
+ *
+ */
+//-------------------------------------------------------------------------------------------------
+EVENT UpdatedValue
+(
+    UpdatedValueHandler handler             ///< Handler function for updated temp value
+);
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Monitor Power Controller Temperature
+ *
+ */
+//-------------------------------------------------------------------------------------------------
+FUNCTION MonitorCtrlTemp
+(
+    int32 monitorTime IN                     ///< Monitor time in seconds
+);
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Monitor Power Amplifier Temperature
+ *
+ */
+//-------------------------------------------------------------------------------------------------
+FUNCTION MonitorAmpTemp
+(
+    int32 monitorTime IN                      ///< Monitor time in seconds
+);

@@ -1,0 +1,18 @@
+sources:
+{
+    psServer.c
+}
+provides:
+{
+    api:
+    {
+        temperature.api
+    }
+}
+requires:
+{
+    api:
+    {
+        modemServices/le_temp.api
+    }
+}

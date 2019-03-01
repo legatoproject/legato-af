@@ -1,0 +1,11 @@
+sources:
+{
+    psClient.c
+}
+requires:
+{
+    api:
+    {
+        temperature.api
+    }
+}
