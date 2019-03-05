@@ -1985,6 +1985,21 @@ static void TryStopWifiSession
     {
         IsConnected = false;
         le_dcs_MarkChannelSharingStatus(Ssid, LE_DCS_TECH_WIFI, false);
+
+        le_result_t result = le_wifiClient_Stop();
+        if (LE_OK == result)
+        {
+            LE_INFO("WIFI client is stopped successfully");
+            WifiHasStarted = false;
+        }
+        else if (LE_DUPLICATE == result)
+        {
+            LE_INFO("WIFI client is stopped already");
+        }
+        else
+        {
+            LE_ERROR("Unable to stop WIFI client successfully");
+        }
     }
 }
 
@@ -2079,9 +2094,10 @@ static void StopDcsTimerHandler
                 {
                     // Reset number of retries
                     StopSessionRetries = 0;
-
                     LE_WARN("Impossible to disconnect wifi client after %d retries, stop trying",
                              MAX_STOP_SESSION_RETRIES);
+                    WifiClientStop();
+
                 }
             }
             break;
