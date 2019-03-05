@@ -173,48 +173,176 @@
  *
  * @endcode
  *
- * @section le_wifiClient_config_ssid Configure Wifi client with an SSID
+ * @section le_wifiClient_config_ssid_security Configure security protocol
  *
- * While the prior section lists out the le_wifiClient APIs that can be used together to configure
- * the Wifi client to connect to an Access Point over a given SSID, the le_wifiClient_LoadSsid()
- * API seeks to simplify these multiple steps, getting:
- * - the necessary Access Point reference created for the given SSID which is considered
- * selected for establishing a Wifi connection,
- * - the necessary Wifi configurations loaded which include the security protocol (i.e. via
- * le_wifiClient_SecurityProtocol()), passphrase (i.e. via le_wifiClient_SetPassphrase()),
- * and the hidden attribute when necessary (i.e. via le_wifiClient_SetHiddenNetworkAttribute()),
- * - the created reference returned to the API caller in its output argument.
+ * The Wifi security configurations are SSID-based so that different SSIDs or Wifi networks can
+ * employ different security protocols independently. The following subsections explain the
+ * wifiClient APIs that can be used to configure the supported security protocols onto an SSID.
+ * The currently supported Wifi security protocols are:
+ * - No or open security.
+ * - WEP,
+ * - WPA PSK and WPA2 PSK,
+ * - WPA EAP PEAP and WPA2 EAP PEAP.
  *
- * In just this one API call, all these steps would be done for the client application. If any
- * failure has occurred, subsequent steps in the sequence would be skipped and the failing cause
- * will be returned back to the API caller as the API's return value.
- *
- * This API also achieves the need to keep Wifi configurations back within wifiService instead of
- * elsewhere, like "dataConnectionService:/wifi/".
- *
- * With the use of this API, Wifi configurations need to be stored in the Legato config tree on the
- * path "wifiService:/wifi/channel/", under which configurations of multiple SSIDs can be stored at
- * the same time. This is done by having an SSID name string as a sub-path under this path and
- * then its Wifi configurations go under this sub-path. This is the path for any given SSID from
- * which this API will access to retrieve corresponding Wifi configurations and install into the
- * wifiClient. Here is an example with 2 SSIDs configured:
+ * To ensure high confidentiality, all configured credentials including any keys, usernames,
+ * passwords, phrases, secrets, etc., are stored in Legato's secured storage. There they are
+ * encrypted and can only be accessed by the wifiClient component. But to allow easy cross-checking
+ * and debugging of non-confidential Wifi configurations, an SSID's configured security protocol is
+ * still saved on the config tree under the same path as for other Wifi configurations, i.e.
+ * "dataConnectionService:/wifi/channel/<ssid>/secProtocol" as in the following example. Note that
+ * an application doesn't need to explicitly set this onto the config tree itself, but can use the
+ * APIs to be explained in the upcoming subsections for configuring security to complete this step.
  *
  * root@swi-mdm9x28:~# config get wifiService:/wifi/
  *  wifi/
  *    channel/
  *      MY-MOBILE/
- *        secProtocol<string> == 3
- *        passphrase<string> == @a1b2c3d4
+ *        secProtocol<string> == 2
+ *        hidden<bool> == false
  *      MY-WLAN/
  *        secProtocol<string> == 3
- *        passphrase<string> == @a1b2c3d4
  *        hidden<bool> == true
+ *
+ * @subsection le_wifiClient_config_ssid_nosecurity Clear security
+ *
+ * The le_wifiClient_RemoveSsidSecurityConfigs() function can be used for the following purposes:
+ * - Reset the security protocol type to use no security, i.e. LE_WIFICLIENT_SECURITY_NONE,
+ * - Remove any previously installed Wifi security configurations including security protocol
+ * type and any user credentials.
+ *
+ * The following is an example of how to use this API:
+ *
+ * @code
+    le_result_t ret = le_wifiClient_RemoveSsidSecurityConfigs(ssid, sizeof(ssid));
+    if ((ret != LE_OK) && (ret != LE_NOT_FOUND))
+    {
+        LE_ERROR("Failed to clear Wifi security configs; retcode %d", ret);
+    }
+    else
+    {
+        LE_INFO("Succeeded clearing Wifi security configs");
+    }
+ * @endcode
+ *
+ * @subsection le_wifiClient_config_ssid_wep Configure an SSID with WEP
+ *
+ * The API for configuring a given SSID to use WEP is le_wifiClient_ConfigureWep(). It will set
+ * WEP as the security protocol used for this SSID and saved the provided WEP key into secured
+ * storage for its later use via le_wifiClient_LoadSsid().
+ *
+ * The following is an example of how to use this API. The wepKey input has to be non-null.
+ *
+ * @code
+    le_wifiClient_AccessPointRef_t ref;
+    ret = le_wifiClient_ConfigureWep(ssid, sizeof(ssid), wepKey, sizeof(wepKey));
+    if (ret != LE_OK)
+    {
+        LE_ERROR("Failed to configure WEP into secStore; retcode %d", ret);
+    }
+    else
+    {
+        ret = le_wifiClient_LoadSsid(ssid, sizeof(ssid), &ref);
+        if (ret != LE_OK)
+        {
+            LE_ERROR("LoadSsid failed over WEP; retcode %d", ret);
+        }
+        else
+        {
+            le_wifiClient_Delete(ref);
+            ref = NULL;
+        }
+    }
+ * @endcode
+ *
+ * @subsection le_wifiClient_config_ssid_psk Configure an SSID with PSK
+ *
+ * The API for configuring a given SSID to use WPA or WPA2 PSK is le_wifiClient_ConfigurePsk().
+ * It will set this security protocoly type as the one used for this SSID and saved the provided
+ * credentials into secured storage for its later use via le_wifiClient_LoadSsid().
+ *
+ * With this protocol type, either a pass phrase or a pre-shared key has to be provided. If both
+ * are provided, pass-phrase has precedence and will be used. But it fails to authenticate during
+ * a connect attempt, wifiClient will not do a second attempt using an available pre-shared key.
+ *
+ * The following is an example of how to use this API. The passphrase input has to be non-null.
+ *
+ * @code
+    le_wifiClient_AccessPointRef_t ref;
+    ret = le_wifiClient_ConfigurePsk(ssid, sizeof(ssid), LE_WIFICLIENT_SECURITY_WPA_PSK_PERSONAL,
+                                     passphrase, sizeof(passphrase), NULL, 0);
+    if (ret != LE_OK)
+    {
+        LE_ERROR("Failed to configure WPA passphrase into secStore; retcode %d", ret);
+    }
+    else
+    {
+        ret = le_wifiClient_LoadSsid(ssid, sizeof(ssid), &ref);
+        if (ret != LE_OK)
+        {
+            LE_ERROR("LoadSsid failed over WPA passphrase; retcode %d", ret);
+        }
+        else
+        {
+            le_wifiClient_Delete(ref);
+            ref = NULL;
+        }
+    }
+ * @endcode
+ *
+ * @subsection le_wifiClient_config_ssid_eap Configure an SSID with EAP
+ *
+ * The API for configuring a given SSID to use WPA or WPA2 EAP is le_wifiClient_ConfigureEap().
+ * It will set this security protocoly type as the one used for this SSID and saved the provided
+ * user name and password into secured storage for its later use via le_wifiClient_LoadSsid().
+ *
+ * The following is an example of how to use this API. Both the user name and password inputs have
+ * to be non-null.
+ *
+ * @code
+    le_wifiClient_AccessPointRef_t ref;
+    ret = le_wifiClient_ConfigureEap(ssid, sizeof(ssid),
+                                     LE_WIFICLIENT_SECURITY_WPA2_EAP_PEAP0_ENTERPRISE,
+                                     username, sizeof(username), password, sizeof(password));
+    if (ret != LE_OK)
+    {
+        LE_ERROR("Failed to configure WPA2 EAP into secStore; retcode %d", ret);
+    }
+    else
+    {
+        ret = le_wifiClient_LoadSsid(ssid, sizeof(ssid), &ref);
+        if (ret != LE_OK)
+        {
+            LE_ERROR("LoadSsid failed over WPA2 EAP; retcode %d", ret);
+        }
+        else
+        {
+            le_wifiClient_Delete(ref);
+            ref = NULL;
+        }
+    }
+ * @endcode
+ *
+ * @section le_wifiClient_config_ssid Configure Wifi client with an SSID
+ *
+ * Before a Wifi connection can be established over an SSID via le_wifiClient_Connect(), a few
+ * preparations have to be first done. The following are the ones that can be done via the
+ * le_wifiClient_LoadSsid() function in this component:
+ * - Have the SSID selected: The SSID provided in this function's input argument is considered
+ * the one selected for establishing the Wifi connection.
+ * - Load the pre-configured Wifi security configurations into wifiClient: These include the
+ * security protocol type and its involved user credentials, e.g. WEP key for WEP, pass phrase or
+ * pre-shared key for PSK, user name and password for EAP.
+ * - Load other pre-configured Wifi configuration: So far there is only the Wifi hidden attribute
+ * pre-configured via le_wifiClient_SetHiddenNetworkAttribute().
+ * - Create an AP object reference: This reference is created for this given and configured SSID.
+ * And it is to be returned to the API caller in its output argument so that it can be used as
+ * the reference for subsequent connection operations including connecting, disconnecting, etc.
  *
  * The following is a sample code to illustrate how this API can be used:
  *
  * @code
  *
- *    le_result_t ret = le_wifiClient_LoadSsid(ssid, 0, &apRef);
+ *    le_result_t ret = le_wifiClient_LoadSsid(ssid, strlen(ssid), &apRef);
  *    if (ret == LE_OK)
  *    {
  *        LE_DEBUG("Wifi configs installed to connect over SSID %s with AP reference %p",
@@ -665,6 +793,91 @@ FUNCTION le_result_t Disconnect
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t LoadSsid
 (
-    string ssid[le_wifiDefs.MAX_SSID_BYTES]     IN,  ///< SSID which configs are to be installed
+    uint8 ssid[le_wifiDefs.MAX_SSID_BYTES]      IN,  ///< SSID which configs are to be installed
     AccessPoint apRef                           OUT  ///< reference to be created
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure the given SSID to use WEP and the given WEP key in the respective input argument.
+ * The WEP key is a mandatory input to be provided.
+ *
+ * @return
+ *      - LE_OK     Succeeded to configure the givwn WEP key for the given SSID.
+ *      - LE_FAULT  Failed to configure.
+ *      - LE_BAD_PARAMETER  Invalid parameter.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ConfigureWep
+(
+    uint8 ssid[le_wifiDefs.MAX_SSID_BYTES]      IN,  ///< SSID which configs are to be installed
+    uint8 wepKey[le_wifiDefs.MAX_WEPKEY_BYTES]  IN   ///< WEP key used for this SSID
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure the given SSID to use PSK and the given pass-phrase or pre-shared key in the
+ * respective input arguments. The protocol input is mandatory and has to be set to either
+ * LE_WIFICLIENT_SECURITY_WPA_PSK_PERSONAL or LE_WIFICLIENT_SECURITY_WPA2_PSK_PERSONAL.
+ * Besides, it's mandatory to have at least one of the pass-phrase and pre-shared key supplied. If
+ * both are provided as input, the pass-phrase has precedence and will be used. But it fails to
+ * authenticate, a second attempt using the provided pre-shared key will not be done.
+ *
+ * @return
+ *      - LE_OK     Succeeded to configure the given pass-phrase or pre-shared key for the given
+ *                  SSID.
+ *      - LE_FAULT  Failed to configure.
+ *      - LE_BAD_PARAMETER  Invalid parameter.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ConfigurePsk
+(
+    uint8 ssid[le_wifiDefs.MAX_SSID_BYTES]      IN,   ///< SSID which configs are to be installed
+    SecurityProtocol protocol                   IN,   ///< security protocol WPA-PSK or WPA2-PSK
+    uint8 passPhrase[le_wifiDefs.MAX_PASSPHRASE_BYTES] IN,  ///< pass-phrase used for this SSID
+    uint8 psk[le_wifiDefs.MAX_PSK_BYTES]        IN    ///< pre-shared key used for this SSID
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure the given SSID to use EAP and the given EAP username and password in the respective
+ * input arguments. The protocol input is mandatory and has to be set to either
+ * LE_WIFICLIENT_SECURITY_WPA_EAP_PEAP0_ENTERPRISE or
+ * LE_WIFICLIENT_SECURITY_WPA2_EAP_PEAP0_ENTERPRISE. Besides, both the username and password inputs
+ * are mandatory.
+ *
+ * @return
+ *      - LE_OK     Succeeded to configure the given EAP username and password for the given
+ *                  SSID.
+ *      - LE_FAULT  Failed to configure.
+ *      - LE_BAD_PARAMETER  Invalid parameter.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ConfigureEap
+(
+    uint8 ssid[le_wifiDefs.MAX_SSID_BYTES]          IN,  ///< SSID which configs are to be installed
+    SecurityProtocol protocol                       IN,  ///< security protocol WPA-EAP or WPA2-EAP
+    uint8 username[le_wifiDefs.MAX_USERNAME_BYTES]  IN,  ///< EAP username used for this SSID
+    uint8 password[le_wifiDefs.MAX_PASSWORD_BYTES]  IN   ///< EAP password used for this SSID
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove and clear Wifi's security configurations to use with the given SSID from the config tree
+ * and secured store. This includes the security protocol and all the username, password,
+ * passphrase, pre-shared key, key, etc., previously configured via le_wifiClient_Configure APIs for
+ * WEP, PSK and EAP.
+ *
+ * @return
+ *      - LE_OK upon success to deconfigure the given SSID's configured user credentials;
+ *        LE_FAULT otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RemoveSsidSecurityConfigs
+(
+    uint8 ssid[le_wifiDefs.MAX_SSID_BYTES]  IN  ///<  SSID which user credentials to be deconfigured
 );

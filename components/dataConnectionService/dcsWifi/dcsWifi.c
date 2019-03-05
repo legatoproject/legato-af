@@ -1462,7 +1462,7 @@ static le_result_t LoadWifiCfg
 )
 {
     le_wifiClient_AccessPointRef_t apRef;
-    le_result_t ret = le_wifiClient_LoadSsid(ssid, &apRef);
+    le_result_t ret = le_wifiClient_LoadSsid((uint8_t *)ssid, strlen(ssid), &apRef);
     if (ret == LE_OK)
     {
         LE_DEBUG("Wifi configs installed to connect with AP reference %p over SSID %s",
@@ -1471,7 +1471,7 @@ static le_result_t LoadWifiCfg
     }
     else
     {
-        LE_ERROR("Failed to install wifi configs to connect over SSID %s", ssid);
+        LE_ERROR("Failed to install wifi configs to connect over SSID %s; retcode %d", ssid, ret);
     }
     return ret;
 }

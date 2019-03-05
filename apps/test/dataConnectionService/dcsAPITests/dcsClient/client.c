@@ -19,6 +19,9 @@
 static le_thread_Ref_t TestThreadRef;
 static le_dcs_EventHandlerRef_t EventHandlerRef = NULL;
 static le_dcs_ChannelRef_t MyChannel = 0;
+static le_wifiClient_SecurityProtocol_t secProtocol = LE_WIFICLIENT_SECURITY_WPA_PSK_PERSONAL;
+static const uint8_t secret[] = "mySecret";
+static const uint8_t ssid[] = "MY-MOBILE";
 static char channelName[LE_DCS_CHANNEL_NAME_MAX_LEN] = "MY-MOBILE";
 static le_dcs_Technology_t MyTech = LE_DCS_TECH_WIFI;
 static le_dcs_ReqObjRef_t ReqObj;
@@ -371,6 +374,56 @@ void Dcs_test_data_api_AddConnStateHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *  This function tests le_wifiClient's API le_wifiClient_RemoveSsidSecurityConfigs() for removing
+ *  previously configured user credentials for a given SSID and resetting the security protocol to
+ *  none.
+ */
+//--------------------------------------------------------------------------------------------------
+static void Dcs_test_api_wifiSecurityCleanup
+(
+    void *param1,
+    void *param2
+)
+{
+    le_result_t ret = le_wifiClient_RemoveSsidSecurityConfigs(ssid, sizeof(ssid));
+    if ((ret != LE_OK) && (ret != LE_NOT_FOUND))
+    {
+        LE_ERROR("DCS-client: Failed to clean Wifi security configs; retcode %d", ret);
+    }
+    else
+    {
+        LE_INFO("Succeeded cleaning Wifi security configs");
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  This function tests le_wifiClient's API le_wifiClient_ConfigPsk() for configuring WPA PSK
+ *  user credentials for a given SSID.
+ */
+//--------------------------------------------------------------------------------------------------
+static void Dcs_test_api_wifiSecurityConfig
+(
+    void *param1,
+    void *param2
+)
+{
+    le_result_t ret = le_wifiClient_ConfigurePsk(ssid, sizeof(ssid), secProtocol, secret,
+                                                 sizeof(secret), secret, sizeof(secret));
+    if (ret != LE_OK)
+    {
+        LE_ERROR("DCS-client: Failed to configure Wifi PSK; retcode %d", ret);
+    }
+    else
+    {
+        LE_INFO("Succeeded installing Wifi PSK configs");
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  *  This is the thread that runs an event loop to take test functions to run
  */
 //--------------------------------------------------------------------------------------------------
@@ -428,6 +481,10 @@ COMPONENT_INIT
         }
     }
 
+    le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_wifiSecurityCleanup, NULL, NULL);
+
+    le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_wifiSecurityConfig, NULL, NULL);
+
     le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_AddEventHandler, NULL, NULL);
 
     for (i=0; i<TEST_LOOP; i++)
@@ -441,6 +498,8 @@ COMPONENT_INIT
     }
 
     le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_RmEventHandler, NULL, NULL);
+
+    le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_wifiSecurityCleanup, NULL, NULL);
 
 #else
 
