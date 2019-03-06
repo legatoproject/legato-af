@@ -146,6 +146,14 @@ static le_sls_List_t ProcNameList = LE_SLS_LIST_INIT;  // Process name list.
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Debug name list.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_sls_List_t DebugNameList = LE_SLS_LIST_INIT;  // Process name list.
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Pool of process objects
  */
 //--------------------------------------------------------------------------------------------------
@@ -218,6 +226,9 @@ static void PrintHelp
         "       --norun=<procName1>[,<procName2>,...]\n"
         "           Do not start the specified configured processes. Names are separated by commas\n"
         "           without spaces.\n"
+        "       --debug=<procName1>[,<procName2>,...]\n"
+        "           Start the specified process stopped, ready to attach a debugger.\n"
+        "\n"
         "\n"
         "    app stop <appName>\n"
         "       Stops the specified application.\n"
@@ -304,7 +315,9 @@ static void __attribute__((noreturn)) StartApp
     // If the --norun= option has been used to suppress the starting of a process,
     // use le_appCtrl_SetRun() to tell the Supervisor not to start those processes when
     // le_appCtrl_Start() is called later.
-    if (!le_sls_IsEmpty(&ProcNameList)) // for the "norun" option
+    // If the --debug= option has been set, use le_appCtrl_SetDebug() to tell the supervisor
+    // to start those processes stopped.
+    if (!le_sls_IsEmpty(&ProcNameList) || !le_sls_IsEmpty(&DebugNameList))
     {
         // Get the app ref by the app name.
         // This will return NULL if the app is not found or the app's sandbox cannot be created.
@@ -328,6 +341,18 @@ static void __attribute__((noreturn)) StartApp
             le_appCtrl_SetRun(appRef, procNamePtr->procName, false);
 
             procNameLinkPtr = le_sls_PeekNext(&ProcNameList, procNameLinkPtr);
+        }
+
+        // Set the overrides.
+        procNameLinkPtr = le_sls_Peek(&DebugNameList);
+
+        while (procNameLinkPtr != NULL)
+        {
+            ProcName_t* procNamePtr = CONTAINER_OF(procNameLinkPtr, ProcName_t, link);
+
+            le_appCtrl_SetDebug(appRef, procNamePtr->procName, true);
+
+            procNameLinkPtr = le_sls_PeekNext(&DebugNameList, procNameLinkPtr);
         }
     }
 
@@ -1770,7 +1795,7 @@ static void AppNameArgHandler
  * process names are placed in a linked list.
  **/
 //--------------------------------------------------------------------------------------------------
-static void NoRunProcNameArgHanlder
+static void NoRunProcNameArgHandler
 (
     const char* noRunProcNamesPtr   ///< [IN] string containing proc names
 )
@@ -1791,6 +1816,40 @@ static void NoRunProcNameArgHanlder
         procNamePtr->link = LE_SLS_LINK_INIT;
 
         le_sls_Queue(&ProcNameList, &(procNamePtr->link));
+
+        token = strtok(NULL, delim);
+    }
+
+    free(procNames);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler to get the process names specified by the "--debug" option of the startMod command. The
+ * process names are placed in a linked list.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void DebugProcNameArgHandler
+(
+    const char* debugProcNamesPtr   ///< [IN] string containing proc names
+)
+{
+    char* procNames = strdup(debugProcNamesPtr);
+    LE_ASSERT(procNames != NULL);
+
+    char delim[2] = ",";
+    char* token;
+
+    token = strtok(procNames, delim);
+
+    while (token != NULL)
+    {
+        ProcName_t* procNamePtr = le_mem_ForceAlloc(ProcNamePool);
+
+        procNamePtr->procName = strdup(token);
+        procNamePtr->link = LE_SLS_LINK_INIT;
+
+        le_sls_Queue(&DebugNameList, &(procNamePtr->link));
 
         token = strtok(NULL, delim);
     }
@@ -1820,7 +1879,8 @@ static void CommandArgHandler
         CommandFunc = StartApp;
 
         le_arg_AddPositionalCallback(AppNameArgHandler);
-        le_arg_SetStringCallback(NoRunProcNameArgHanlder, NULL, "norun");
+        le_arg_SetStringCallback(NoRunProcNameArgHandler, NULL, "norun");
+        le_arg_SetStringCallback(DebugProcNameArgHandler, NULL, "debug");
     }
     else if (strcmp(command, "stop") == 0)
     {

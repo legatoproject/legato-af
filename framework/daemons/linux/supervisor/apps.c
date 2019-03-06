@@ -1629,6 +1629,47 @@ static void appCtrl_SetRun
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Sets the debug flag for a process in an application.
+ *
+ * If there is an error this function will kill the calling client.
+ */
+//--------------------------------------------------------------------------------------------------
+static void appCtrl_SetDebug
+(
+    le_appCtrl_AppRef_t appRef,         ///< [IN] Ref to the app.
+    const char* procName,               ///< [IN] Process name to set the run flag for.
+    bool debug                          ///< [IN] Flag to debug the process or not.
+)
+{
+    if (!IsProcNameValid(procName))
+    {
+        LE_KILL_CLIENT("Invalid process name.");
+        return;
+    }
+
+    AppContainer_t* appContainerPtr = le_ref_Lookup(AppMap, appRef);
+
+    if (appContainerPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid application reference.");
+        return;
+    }
+
+    // Look up the proc ref by name.
+    app_Proc_Ref_t procContainerPtr = app_GetProcContainer(appContainerPtr->appRef, procName);
+
+    if (procContainerPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid process name '%s'.", procName);
+        return;
+    }
+
+    app_SetDebug(procContainerPtr, debug);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Starts an app.  This function is called by the event loop when a separate process requests to
  * start an app.
  *
@@ -1773,6 +1814,27 @@ void le_appCtrl_SetRun
 {
     appCtrl_SetRun(appRef, procName, run);
     le_appCtrl_SetRunRespond(cmdRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the debug flag for a process in an application.
+ *
+ * If there is an error this function will kill the calling client.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_appCtrl_SetDebug
+(
+    le_appCtrl_ServerCmdRef_t cmdRef,   ///< [IN] Command reference that must be passed to this
+                                        ///       command's response function.
+    le_appCtrl_AppRef_t appRef,         ///< [IN] Ref to the app.
+    const char* procName,               ///< [IN] Process name to set the debug flag for.
+    bool debug                          ///< [IN] Flag to debug the process or not.
+)
+{
+    appCtrl_SetDebug(appRef, procName, debug);
+    le_appCtrl_SetDebugRespond(cmdRef);
 }
 
 
@@ -2928,6 +2990,29 @@ void le_appProc_ClearFaultAction
     }
 
     app_SetFaultAction(appProcContainerPtr->procRef, FAULT_ACTION_NONE);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the debug flag for a process.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_appProc_SetDebug
+(
+    le_appProc_RefRef_t appProcRef,   ///< [IN] Application process to debug
+    bool debug                        ///< [IN] Debug flag
+)
+{
+    AppProcContainer_t* appProcContainerPtr = le_ref_Lookup(AppProcMap, appProcRef);
+
+    if (appProcContainerPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid application process reference.");
+        return;
+    }
+
+    app_SetDebug(appProcContainerPtr->procRef, debug);
 }
 
 

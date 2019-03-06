@@ -566,6 +566,18 @@ void app_SetRunForAllProcs
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Sets the debug flag of a process.
+ */
+//--------------------------------------------------------------------------------------------------
+void app_SetDebug
+(
+    app_Proc_Ref_t appProcRef,  ///< [IN] Process reference.
+    bool debug                  ///< [IN] Debug flag.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Starts an application process.  This function assumes that the app has already started.
  *
  * @return

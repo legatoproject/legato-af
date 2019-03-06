@@ -68,6 +68,10 @@
  *   This can be used to start an app without one or more processes that are to be started later
  *   using strace or gdbserver, for example.
  *
+ * - le_appCtrl_SetDebug() can be used to set or clear the "debug" flag for a given process in the
+ *   app.  Setting the "debug" flag will result in the process being started in the stopped state.
+ *   A debugger can then be attached to the process.
+ *
  * - le_appCtrl_Import() can be used to import (into an app's container) something from the
  *   file system outside of the app's container.  This is used by the @ref toolsHost_sbhelper
  *   and @ref toolsTarget_sbtrace interactive sandbox configuration helper tools.
@@ -249,6 +253,21 @@ FUNCTION SetRun
     App appRef IN,                              ///< Ref to the app.
     string procName[le_limit.PROC_NAME_LEN] IN, ///< Process name to set the run flag for.
     bool run IN                                 ///< Flag to run the process or not.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the debug flag for a process in an app.
+ *
+ * If there is an error this function will kill the calling client.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetDebug
+(
+    App appRef IN,                              ///< Ref to the app.
+    string procName[le_limit.PROC_NAME_LEN] IN, ///< Process name to set the run flag for.
+    bool debug IN                               ///< Flag to debug the process or not.
 );
 
 

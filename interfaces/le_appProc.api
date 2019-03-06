@@ -260,6 +260,17 @@ FUNCTION ClearFaultAction
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Sets the debug flag for the application process.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetDebug
+(
+    Ref appProcRef IN,            ///< Application process to set debug flag
+    bool debug IN                 ///< Flag to debug the process or not.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Starts the application process.  If the application was not running this function will start it
  * first.
  *

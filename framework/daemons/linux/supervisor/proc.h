@@ -366,6 +366,18 @@ void proc_SetRun
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the debug flag.
+ */
+//--------------------------------------------------------------------------------------------------
+void proc_SetDebug
+(
+    proc_Ref_t procRef, ///< [IN] The process reference.
+    bool debug          ///< [IN] Debug flag.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Blocks the process on startup, after it is forked and initialized but before it has execed.  The
  * specified callback function will be called when the process has blocked.  Clearing the callback
  * function means the process should not block on startup.

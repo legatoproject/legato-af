@@ -159,6 +159,7 @@ typedef struct proc_Ref
     FaultAction_t defaultFaultAction;///< Default fault action from config tree.
     wdog_action_WatchdogAction_t watchdogAction;///< Watchdog action.
     bool    run;                    ///< run override.
+    bool    debug;                  ///< Should be started in debugger
     int     blockPipe;              ///< Write end of a pipe to the actual child process.  Used to
                                     ///  control blocking of the child process.
     proc_BlockCallback_t  blockCallback;  ///< Callback function to indicate when the process is
@@ -463,6 +464,7 @@ proc_Ref_t proc_Create
     procPtr->argsListValid = false;
     procPtr->argsList = LE_SLS_LIST_INIT;
     procPtr->run = true;
+    procPtr->debug = false;
     procPtr->blockPipe = -1;
     procPtr->blockCallback = NULL;
     procPtr->blockContextPtr = NULL;
@@ -1365,6 +1367,12 @@ le_result_t proc_Start
         // when opening files before closing supervisor file descriptors
         resLim_SetProcLimits(&procLimits);
 
+        // If starting under debugger, wait for debugger to attach.
+        if (procRef->debug)
+        {
+            raise(SIGSTOP);
+        }
+
         execvp(argsPtr[0], &(argsPtr[1]));
 
         // Store the errno returned by exec().
@@ -1908,6 +1916,21 @@ void proc_SetRun
 )
 {
     procRef->run = run;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the debug flag.
+ */
+//--------------------------------------------------------------------------------------------------
+void proc_SetDebug
+(
+    proc_Ref_t procRef, ///< [IN] The process reference.
+    bool debug          ///< [IN] Debug flag.
+)
+{
+    procRef->debug = debug;
 }
 
 

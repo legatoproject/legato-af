@@ -4400,6 +4400,21 @@ void app_SetRunForAllProcs
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Sets the debug flag of a process.
+ */
+//--------------------------------------------------------------------------------------------------
+void app_SetDebug
+(
+    app_Proc_Ref_t appProcRef,  ///< [IN] Process reference.
+    bool debug                  ///< [IN] Run flag.
+)
+{
+    proc_SetDebug(appProcRef->procRef, debug);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Starts an application process.  This function assumes that the app has already started.
  *
  * @return
@@ -4454,6 +4469,7 @@ void app_DeleteProc
         proc_ClearArgs(appProcRef->procRef);
         proc_SetFaultAction(appProcRef->procRef, FAULT_ACTION_NONE);
         proc_SetRun(appProcRef->procRef, true);
+        proc_SetDebug(appProcRef->procRef, false);
 
         appProcRef->externStopHandler = NULL;
         appProcRef->externContextPtr = NULL;
