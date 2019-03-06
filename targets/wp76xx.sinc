@@ -26,7 +26,6 @@ buildVars:
     LEGATO_GNSS_PA = ${LEGATO_QMI_GNSS_PA}
     //LEGATO_AVC_PA = ${LEGATO_QMI_AVC_PA}
     LEGATO_SECSTORE_PA = ${LEGATO_QMI_SECSTORE_PA}
-    LEGATO_SECSTORE_PA_TZ = ${PA_DIR}/trustZone/swi/components/le_pa_secStoreTz
     LEGATO_FWUPDATE_PA = ${LEGATO_QMI_FWUPDATE_PA}
     LEGATO_FWUPDATE_PA_SINGLESYS = ${PA_DIR}/fwupdate/mdm9x07/le_pa_fwupdate_singlesys
 
