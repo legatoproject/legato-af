@@ -52,20 +52,19 @@ DEFINE IPADDR_MAX_LEN = 46;
 //--------------------------------------------------------------------------------------------------
 /**
  * Add or remove a route on the given channel according to the input flag in the last argument for
- * the given destination address its given netmask
+ * the given destination address its given subnet, which is a subnet mask for IPv4 and subnet mask's
+ * prefix length for IPv6
  *
  * @return
  *      - LE_OK upon success, otherwise another le_result_t failure code
- *
- * @note requirement:
- *      - only IPv4 is supported
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ChangeRoute
 (
     le_dcs.Channel channelRef         IN, ///< the channel onto which the route change is made
     string destAddr[IPADDR_MAX_LEN]   IN, ///< Destination IP address for the route
-    string destMask[IPADDR_MAX_LEN]   IN, ///< The destination address' netmask
+    string destSubnet[IPADDR_MAX_LEN] IN, ///< Destination's subnet: IPv4 netmask or IPv6 prefix
+                                          ///< length
     bool isAdd                        IN  ///< the change is to add (true) or delete (false)
 );
 

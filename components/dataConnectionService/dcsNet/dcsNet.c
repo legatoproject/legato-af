@@ -21,6 +21,25 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This define gives the max value of an IPv6 subnet prefix length, i.e. 128
+ */
+//--------------------------------------------------------------------------------------------------
+#define IPV6_PREFIX_LENGTH_MAX (8 * 8 * 2)
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The following 2 defines specify the length of the char array in which the numeric value of an
+ * IPv6 subnet prefix length is. IPV6_PREFIX_LEN_STR_BYTES specifies the total byte length while
+ * IPV6_PREFIX_LEN_STR_LENGTH the number of decimal digits taken by this value.
+ */
+//--------------------------------------------------------------------------------------------------
+#define IPV6_PREFIX_LEN_STR_BYTES  4
+#define IPV6_PREFIX_LEN_STR_LENGTH 3
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Structure used to back up the system's default network interface configs
  */
 //--------------------------------------------------------------------------------------------------
@@ -260,7 +279,7 @@ static le_result_t DcsNetSetDNS
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Validate IP address
+ * Validate IPv4/v6 address format
  *
  * @return
  *      - LE_OK     on success
@@ -273,9 +292,9 @@ static le_result_t DcsNetValidateIpAddress
     const char* addStr  ///< IP address to check
 )
 {
-    struct sockaddr_in sa;
+    struct sockaddr_in6 sa;
 
-    if (inet_pton(af, addStr, &(sa.sin_addr)))
+    if (inet_pton(af, addStr, &(sa.sin6_addr)))
     {
         return LE_OK;
     }
@@ -286,7 +305,7 @@ static le_result_t DcsNetValidateIpAddress
 //--------------------------------------------------------------------------------------------------
 /**
  * Add or remove a route according to the input flag in the last argument for the given destination
- * address and netmask onto the given network interface
+ * address and subnet (IPv4 netmask or IPv6 prefix length) onto the given network interface
  *
  * @return
  *      - LE_OK upon success, otherwise another le_result_t failure code
@@ -295,7 +314,7 @@ static le_result_t DcsNetValidateIpAddress
 static le_result_t DcsNetChangeRoute
 (
     const char *destAddr,       ///< Destination address
-    const char *destMask,       ///< Address' netmask
+    const char *destSubnet,     ///< Destination's subnet: IPv4 netmask or IPv6 prefix length
     const char *interface,      ///< Network interface onto which to add the route
     bool isAdd                  ///< Add or remove the route
 )
@@ -304,29 +323,23 @@ static le_result_t DcsNetChangeRoute
     pa_dcs_RouteAction_t action;
     char *actionStr;
 
-    if (LE_OK != DcsNetValidateIpAddress(AF_INET, destAddr))
-    {
-        LE_ERROR("Given IP address %s invalid", destAddr);
-        return LE_BAD_PARAMETER;
-    }
-    if ((strlen(destMask) > 0) && LE_OK != DcsNetValidateIpAddress(AF_INET, destMask))
-    {
-        LE_ERROR("Given IP netmask %s invalid", destMask);
-        return LE_BAD_PARAMETER;
-    }
-
     action = isAdd ? PA_DCS_ROUTE_ADD : PA_DCS_ROUTE_DELETE;
     actionStr = isAdd ? "add" : "delete";
-    ret = pa_dcs_ChangeRoute(action, destAddr, destMask, interface);
+    if (!destSubnet)
+    {
+        // Set it to a null string for convenience in debug printing
+        destSubnet = "";
+    }
+    ret = pa_dcs_ChangeRoute(action, destAddr, destSubnet, interface);
     if (ret != LE_OK)
     {
-        LE_ERROR("Failed to %s route on interface %s for destionation %s/%s", actionStr,
-                 interface, destAddr, destMask);
+        LE_ERROR("Failed to %s route on interface %s for destionation %s subnet %s", actionStr,
+                 interface, destAddr, strlen(destSubnet) ? destSubnet : "none");
     }
     else
     {
-        LE_INFO("Succeeded to %s route on interface %s for destination %s/%s", actionStr,
-                 interface, destAddr, destMask);
+        LE_INFO("Succeeded to %s route on interface %s for destination %s subnet %s", actionStr,
+                interface, destAddr, strlen(destSubnet) ? destSubnet : "none");
     }
     return ret;
 }
@@ -436,8 +449,40 @@ void le_net_RestoreDNS
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Utility for converting the numeric value in a char string less than 4 digits long (i.e.
+ * IPV6_PREFIX_LEN_STR_BYTES) into an int16 value
+ */
+//--------------------------------------------------------------------------------------------------
+static int16_t DcsConvertPrefixLengthString
+(
+    const char *input
+)
+{
+    char *tmp_ptr = NULL;
+    uint16_t inputLen;
+    if (!input)
+    {
+        return 0;
+    }
+    inputLen = strlen(input);
+    if (inputLen == 0)
+    {
+        return 0;
+    }
+    if (inputLen > IPV6_PREFIX_LEN_STR_LENGTH)
+    {
+        LE_ERROR("Invalid prefix length %d", inputLen);
+        return -1;
+    }
+    return (int16_t)strtol(input, &tmp_ptr, 10);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Add or remove a route on the given channel according to the input flag in the last argument for
- * the given destination address its given netmask
+ * the given destination address its given subnet, which is a subnet mask for IPv4 and subnet mask's
+ * prefix length for IPv6
  *
  * @return
  *      - LE_OK upon success, otherwise another le_result_t failure code
@@ -446,12 +491,13 @@ void le_net_RestoreDNS
 le_result_t le_net_ChangeRoute
 (
     le_dcs_ChannelRef_t channelRef,  ///< [IN] the channel onto which the route change is made
-    const char *destAddr,            ///< [IN] Destination IP address for the route
-    const char *destMask,            ///< [IN] The destination address' netmask
-    bool isAdd                       ///< [IN] the change is to add (true) or delete (false)
+    const char *destAddr,     ///< [IN] Destination IP address for the route
+    const char *destSubnet,   ///< [IN] Destination's subnet: IPv4 netmask or IPv6 prefix length
+    bool isAdd                ///< [IN] the change is to add (true) or delete (false)
 )
 {
     le_result_t ret;
+    uint16_t i, stringLen;
     char *channelName, intfName[LE_DCS_INTERFACE_NAME_MAX_LEN] = {0};
     int intfNameSize = LE_DCS_INTERFACE_NAME_MAX_LEN;
     le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
@@ -462,6 +508,7 @@ le_result_t le_net_ChangeRoute
     }
     channelName = channelDb->channelName;
 
+    // Validate inputs
     if ((channelDb->technology != LE_DCS_TECH_CELLULAR) &&
         (channelDb->technology != LE_DCS_TECH_WIFI))
     {
@@ -470,6 +517,63 @@ le_result_t le_net_ChangeRoute
         return LE_UNSUPPORTED;
     }
 
+    // Strip leading whitespaces
+    if (destAddr)
+    {
+        stringLen = strlen(destAddr);
+        for (i=0; (i<stringLen) && isspace(*destAddr); i++)
+        {
+            destAddr++;
+        }
+    }
+    else
+    {
+        LE_ERROR("Invalid input destination address of null");
+        return LE_BAD_PARAMETER;
+    }
+    if (destSubnet)
+    {
+        stringLen = strlen(destSubnet);
+        for (i=0; (i<stringLen) && isspace(*destSubnet); i++)
+        {
+            destSubnet++;
+        }
+    }
+
+    if (LE_OK == DcsNetValidateIpAddress(AF_INET, destAddr))
+    {
+        if (destSubnet && (strlen(destSubnet) > 0) &&
+            (LE_OK != DcsNetValidateIpAddress(AF_INET, destSubnet)))
+        {
+            LE_ERROR("Input IPv4 subnet mask %s invalid in format", destSubnet);
+            return LE_BAD_PARAMETER;
+        }
+    }
+    else if (LE_OK == DcsNetValidateIpAddress(AF_INET6, destAddr))
+    {
+        int16_t prefixLen;
+        if (destSubnet)
+        {
+            prefixLen = DcsConvertPrefixLengthString(destSubnet);
+            if ((prefixLen < 0) || (prefixLen > IPV6_PREFIX_LENGTH_MAX))
+            {
+                LE_ERROR("Input IPv6 subnet mask prefix length %s invalid", destSubnet);
+                return LE_BAD_PARAMETER;
+            }
+            else if (prefixLen == 0)
+            {
+                // Case: destSubnet is a non-null string with all spaces; pass on a null string
+                destSubnet = "";
+            }
+        }
+    }
+    else
+    {
+        LE_ERROR("Input IP address %s invalid in format", destAddr);
+        return LE_BAD_PARAMETER;
+    }
+
+    // Get network interface
     ret = le_dcsTech_GetNetInterface(channelDb->technology, channelRef, intfName, intfNameSize);
     if (ret != LE_OK)
     {
@@ -478,7 +582,8 @@ le_result_t le_net_ChangeRoute
         return ret;
     }
 
-    ret = DcsNetChangeRoute(destAddr, destMask, intfName, isAdd);
+    // Initiate route change
+    ret = DcsNetChangeRoute(destAddr, destSubnet, intfName, isAdd);
     if (ret != LE_OK)
     {
         LE_ERROR("Failed to %s route for channel %s of technology %s on interface %s",
