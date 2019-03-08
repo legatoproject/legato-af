@@ -953,7 +953,7 @@ le_result_t le_dcsWifi_GetChannelList
     ret = DcsWifiClientStart();
     if ((LE_OK != ret) && (LE_BUSY != ret) && (LE_DUPLICATE != ret))
     {
-        LE_ERROR("Failed to start wifiClient up for scanning");
+        LE_WARN("Unable to start wifiClient for scanning");
         le_dcsTech_CollectChannelQueryResults(LE_DCS_TECH_WIFI, LE_FAULT, NULL, 0);
         DcsWifiClientStop();
         return ret;
