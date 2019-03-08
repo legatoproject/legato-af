@@ -1795,6 +1795,11 @@ static void TryStartTechSession
                                 (WifiClientEventHandler, NULL);
                         }
                         break;
+                    case LE_UNSUPPORTED:
+                        LE_ERROR("Failed to start wifi connection as it's unsupported");
+                        ConnectionStatusHandler(LE_DATA_WIFI, false);
+                        SendConnStateEvent(false);
+                        return;
                     default:
                         LE_DEBUG("Failure code %d while checking status with le_dcs", ret);
                         break;

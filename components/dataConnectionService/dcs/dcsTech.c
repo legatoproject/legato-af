@@ -202,6 +202,7 @@ le_result_t le_dcsTech_GetChannelList
     {
         LE_WARN("Failed to trigger channel list collection for technology %d; error: %d",
                 tech, ret);
+        QueryChannel.techPending[tech] = 0;
     }
     return ret;
 }
@@ -508,8 +509,9 @@ le_result_t le_dcsTech_GetDNSAddresses
  *
  * @return
  *     - LE_OK if it's allowed
- *     - LE_UNSUPPORTED if the given technology isn't supported by DCS yet
- *     - other le_result_t failure code if otherwise
+ *     - LE_UNSUPPORTED if the given technology isn't supported or available yet
+ *     - LE_DUPLICATE if the given channel is already connected
+ *     - LE_NOT_PERMITTED if the technology doesn't allow this channel to be connected
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_dcsTech_AllowChannelStart

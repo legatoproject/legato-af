@@ -24,6 +24,15 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Boolean flag to indicate if Wifi is present & ready for use or not. This is set according to the
+ * result of le_wifiClient_TryConnectService() which is called during this component's
+ * initialization.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool DcsWifiReady = false;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The following are the defines for retry timers and their backoff parameters, including the init
  * duration & the max # of retries. After each failure to connect, the next backoff duration will
  * be doubled until the max # of retries is reached.
@@ -74,7 +83,7 @@ typedef struct
 } DcsWifi_t;
 static DcsWifi_t DcsWifi;
 
-static le_mem_PoolRef_t WifiConnDbPool;
+static le_mem_PoolRef_t WifiConnDbPool = NULL;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -82,7 +91,7 @@ static le_mem_PoolRef_t WifiConnDbPool;
  * Safe Reference Map for wifi connection database objects
  */
 //--------------------------------------------------------------------------------------------------
-static le_ref_MapRef_t WifiConnectionRefMap;
+static le_ref_MapRef_t WifiConnectionRefMap = NULL;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -125,6 +134,11 @@ static wifi_connDb_t *DcsWifiGetSelectedDb
     le_wifiClient_AccessPointRef_t apRef = NULL;
     le_dcs_channelDb_t *channelDb;
 
+    if (!DcsWifiReady)
+    {
+        return NULL;
+    }
+
     if (DcsWifi.selectedConnDb)
     {
         return DcsWifi.selectedConnDb;
@@ -166,6 +180,7 @@ static wifi_connDb_t *DcsWifiGetSelectedDb
  *     - LE_OK if there's no active wifi connection yet
  *     - LE_DUPLICATE if there's already an active connection which is the given one in the input
  *     - LE_NOT_PERMITTED if there's already an active connection which is not the given one
+ *     - LE_UNSUPPORTED if the technology is unsupported
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_dcsWifi_AllowChannelStart
@@ -175,6 +190,14 @@ le_result_t le_dcsWifi_AllowChannelStart
 {
     le_dcs_WifiConnectionRef_t wifiConnRef = (le_dcs_WifiConnectionRef_t)techRef;
     wifi_connDb_t *selectedConnDb = DcsWifiGetSelectedDb();
+
+    if (!DcsWifiReady)
+    {
+        // This check here is for safety. Earlier check on db reference should have stopped
+        // further Wifi operations.
+        return LE_UNSUPPORTED;
+    }
+
     if (!selectedConnDb)
     {
         return LE_OK;
@@ -561,6 +584,15 @@ static wifi_connDb_t *DcsWifiCreateConnDb
 {
     wifi_connDb_t *wifiConnDb;
 
+    if (!DcsWifiReady)
+    {
+        // If Wifi isn't available, this block will block any wifiConnDb creation, on which
+        // present most other dcsWifi code relies. And, there, the check for a valid wifiConnDb
+        // will fail and stop further Wifi code execution.
+        LE_WARN("Wifi not available");
+        return NULL;
+    }
+
     if (!ssid || (strlen(ssid) == 0))
     {
         LE_ERROR("Cannot create wifi connection db with null SSID");
@@ -905,6 +937,12 @@ le_result_t le_dcsWifi_GetChannelList
 )
 {
     le_result_t ret;
+
+    if (!DcsWifiReady)
+    {
+        LE_WARN("Wifi not available");
+        return LE_UNSUPPORTED;
+    }
 
     if (DcsWifiScan.isActive)
     {
@@ -1614,6 +1652,21 @@ COMPONENT_INIT
     memset(&DcsWifi, 0, sizeof(DcsWifi));
     DcsWifi.dbList = LE_DLS_LIST_INIT;
 
+    if (LE_OK != le_wifiClient_TryConnectService())
+    {
+        LE_INFO("Wifi service not present");
+        DcsWifiReady = false;
+        return;
+    }
+
+    DcsWifi.eventHandlerRef = le_wifiClient_AddNewEventHandler(WifiClientEventHandler, NULL);
+    if (!DcsWifi.eventHandlerRef)
+    {
+        LE_ERROR("Failed to add Wifi event handler");
+        DcsWifiReady = false;
+        return;
+    }
+
     // Allocate the connection DB app event pool, and set the max number of objects
     WifiConnDbPool = le_mem_CreatePool("WifiConnDbPool", sizeof(wifi_connDb_t));
     le_mem_ExpandPool(WifiConnDbPool, WIFI_CONNDBS_MAX);
@@ -1621,12 +1674,6 @@ COMPONENT_INIT
 
     // Create a safe reference map for wifi connection objects
     WifiConnectionRefMap = le_ref_CreateMap("Wifi Connection Reference Map", WIFI_CONNDBS_MAX);
-
-    DcsWifi.eventHandlerRef = le_wifiClient_AddNewEventHandler(WifiClientEventHandler, NULL);
-    if (!DcsWifi.eventHandlerRef)
-    {
-        LE_ERROR("Failed to add Wifi event handler");
-    }
 
     // Init disconnect retry timer
     DcsWifi.discRetryTimer = le_timer_Create("WifiDiscRetryTimer");
@@ -1645,4 +1692,5 @@ COMPONENT_INIT
     }
 
     LE_INFO("Data Channel Service's Wifi component is ready");
+    DcsWifiReady = true;
 }

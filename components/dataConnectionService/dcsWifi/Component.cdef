@@ -3,7 +3,7 @@ requires:
     api:
     {
         $LEGATO_ROOT/interfaces/le_dcs.api [types-only]
-        ${LEGATO_ROOT}/interfaces/wifi/le_wifiClient.api
+        ${LEGATO_ROOT}/interfaces/wifi/le_wifiClient.api [optional]
     }
 
     component:

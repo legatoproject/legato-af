@@ -681,8 +681,8 @@ void le_dcs_GetChannelList
         ret = le_dcsTech_GetChannelList(i);
         if (ret != LE_OK)
         {
-            LE_ERROR("Failed to trigger a query for available channels of technology %d, "
-                     "error: %d", i, ret);
+            LE_WARN("Failed to trigger a query for available channels of technology %d, "
+                    "error: %d", i, ret);
         }
     }
 }
