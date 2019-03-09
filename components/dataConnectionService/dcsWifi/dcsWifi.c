@@ -972,6 +972,24 @@ le_result_t le_dcsWifi_GetChannelList
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function resets the retry counters and backoff times, which is typically done at the start
+ * of a new connect attempt or arrival of the connected event.
+ */
+//--------------------------------------------------------------------------------------------------
+static void DcsWifiResetRetries
+(
+    void
+)
+{
+    DcsWifi.discRetries = 0;
+    DcsWifi.discRetryBackoff = WIFI_DISC_RETRY_BACKOFF_INIT;
+    DcsWifi.connRetries = 0;
+    DcsWifi.connRetryBackoff = WIFI_CONN_RETRY_BACKOFF_INIT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function processes the Connected event from wifiClient
  */
 //--------------------------------------------------------------------------------------------------
@@ -1047,6 +1065,8 @@ static void DcsWifiClientConnected
 
     LE_INFO("Wifi connection over SSID %s on net interface %s got IP up",
             DcsWifi.selectedConnDb->ssid, netInterface);
+
+    DcsWifiResetRetries();
 
     // Send connection up event to apps
     le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_UP);
@@ -1534,10 +1554,7 @@ le_result_t le_dcsWifi_Start
         le_timer_Stop(DcsWifi.discRetryTimer);
     }
 
-    DcsWifi.discRetries = 0;
-    DcsWifi.discRetryBackoff = WIFI_DISC_RETRY_BACKOFF_INIT;
-    DcsWifi.connRetries = 0;
-    DcsWifi.connRetryBackoff = WIFI_CONN_RETRY_BACKOFF_INIT;
+    DcsWifiResetRetries();
 
     // Connect to the Access Point
     DcsWifi.selectedConnDb = wifiConnDb;
