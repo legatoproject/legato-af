@@ -92,7 +92,7 @@ ifeq ($(TARGET),)
     KNOWN_TARGET := 1
   endif # end have target
 
-  VIRT_TARGET_ARCH ?= arm
+  VIRT_TARGET_ARCH ?= x86
   ifeq ($(TARGET),virt)
     TARGET := virt-$(VIRT_TARGET_ARCH)
     export VIRT_TARGET_ARCH

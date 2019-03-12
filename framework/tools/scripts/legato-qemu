@@ -20,7 +20,7 @@ USERFS_SIZE=${USERFS_SIZE:-2G}
 HOST_ARCH=$(uname -m)
 
 if [ -z "$VIRT_TARGET_ARCH" ]; then
-    VIRT_TARGET_ARCH=arm
+    VIRT_TARGET_ARCH=x86
 fi
 
 ## Help

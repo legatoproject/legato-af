@@ -324,7 +324,7 @@ function StartVirtualTarget()
     LATEST_TAG=$(git describe --tags $(git merge-base HEAD remotes/gerrit/master) |cut -d- -f1)
     VIRT_TARGET_TAG=${VIRT_TARGET_TAG:-${LATEST_TAG}}
     # By default, use ARM target architecture
-    VIRT_TARGET_ARCH=${VIRT_TARGET_ARCH:-arm}
+    VIRT_TARGET_ARCH=${VIRT_TARGET_ARCH:-x86}
     # Build up docker image name from above.  Can also be overridden by setting VIRT_DOCKER_IMG
     VIRT_DOCKER_IMG=${VIRT_DOCKER_IMG:-"quay.io/legato/virt-$VIRT_TARGET_ARCH:$VIRT_TARGET_TAG"}
 
@@ -866,7 +866,7 @@ function Job_TargetUnitTest()
 
 function GetVirtArch()
 {
-    local arch=${VIRT_TARGET_ARCH:-arm}
+    local arch=${VIRT_TARGET_ARCH:-x86}
     case "${1}" in
         *-x86*) arch=x86 ;;
         *-arm*) arch=arm ;;
@@ -880,7 +880,7 @@ function GetVirtArch()
 function Job_VirtualTargetUnitTest()
 {
     local clean=${1:-true}
-    local arch=${2:-arm}
+    local arch=${2:-x86}
 
     if [ -n "$SKIP_TARGET_TESTING" ]; then
         echo "Skipping on-target unit tests."
