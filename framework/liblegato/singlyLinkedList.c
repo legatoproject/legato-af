@@ -30,6 +30,8 @@ void le_sls_Stack
 )
 {
     // Ensure link isn't already on a list
+    // If this assert fails on a newly created link, ensure the link has been initialized
+    // with LE_SLS_LINK_INIT
     LE_ASSERT(newLinkPtr && !newLinkPtr->nextPtr);
 
     if (listPtr->tailLinkPtr == NULL)
@@ -62,6 +64,8 @@ void le_sls_Queue
 )
 {
     // Ensure link isn't already on a list
+    // If this assert fails on a newly created link, ensure the link has been initialized
+    // with LE_SLS_LINK_INIT
     LE_ASSERT(newLinkPtr && !newLinkPtr->nextPtr);
 
     if (listPtr->tailLinkPtr == NULL)
@@ -92,6 +96,8 @@ void le_sls_AddAfter
 )
 {
     // Ensure link isn't already on a list
+    // If this assert fails on a newly created link, ensure the link has been initialized
+    // with LE_SLS_LINK_INIT
     LE_ASSERT(newLinkPtr && !newLinkPtr->nextPtr);
 
     if (!currentLinkPtr)

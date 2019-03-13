@@ -30,6 +30,8 @@ void le_dls_Stack
 )
 {
     // Ensure link isn't already on a list
+    // If this assert fails on a newly created link, ensure the link has been initialized
+    // with LE_DLS_LINK_INIT
     LE_ASSERT(newLinkPtr &&
               !newLinkPtr->nextPtr &&
               !newLinkPtr->prevPtr);
@@ -61,6 +63,8 @@ void le_dls_Queue
 )
 {
     // Ensure link isn't already on a list
+    // If this assert fails on a newly created link, ensure the link has been initialized
+    // with LE_DLS_LINK_INIT
     LE_ASSERT(newLinkPtr &&
               !newLinkPtr->nextPtr &&
               !newLinkPtr->prevPtr);
@@ -94,6 +98,8 @@ void le_dls_AddAfter
 )
 {
     // Ensure link isn't already on a list
+    // If this assert fails on a newly created link, ensure the link has been initialized
+    // with LE_DLS_LINK_INIT
     LE_ASSERT(newLinkPtr &&
               !newLinkPtr->nextPtr &&
               !newLinkPtr->prevPtr);
@@ -122,6 +128,8 @@ void le_dls_AddBefore
 )
 {
     // Ensure link isn't already on a list
+    // If this assert fails on a newly created link, ensure the link has been initialized
+    // with LE_DLS_LINK_INIT
     LE_ASSERT(newLinkPtr &&
               !newLinkPtr->nextPtr &&
               !newLinkPtr->prevPtr);
@@ -209,6 +217,7 @@ void le_dls_Remove
     le_dls_Link_t* linkToRemovePtr      ///< [IN] The link to remove.
 )
 {
+    // Ensure this link is on a list
     LE_ASSERT(linkToRemovePtr && linkToRemovePtr->nextPtr && linkToRemovePtr->prevPtr);
 
     if (linkToRemovePtr->nextPtr == linkToRemovePtr)
