@@ -940,6 +940,7 @@ uint32_t le_mdc_GetProfileIndex
  *      - LE_OK on success
  *      - LE_BAD_PARAMETER if input parameter is incorrect
  *      - LE_DUPLICATE if the data session is already connected for the given profile
+ *      - LE_TIMEOUT for session start timeout
  *      - LE_FAULT for other failures
  *
  * @note
