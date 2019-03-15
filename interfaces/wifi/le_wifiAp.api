@@ -48,6 +48,14 @@
  * Sets which channel to use.
  * - le_wifiAp_SetChannel()
  *
+ * Sets what country code to use.
+ * - le_wifiAp_SetCountryCode()
+ *
+ * Sets which IEEE standard to use.
+ * - le_wifiAp_SetIeeeStandard()
+ *
+ * Gets which IEEE standard was set.
+ * - le_wifiAp_GetIeeeStandard()
  *
  * @snippet "apps/sample/wifiApTest/wifiApTestComponent/wifiApTest.c" SetCred
  *
@@ -102,6 +110,24 @@ ENUM SecurityProtocol
     SECURITY_WPA2    ///< WiFi Access Point has WPA2 activated.
 };
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * IEEE 802.11 standards Bit Mask
+ */
+//--------------------------------------------------------------------------------------------------
+BITMASK IeeeStdBitMask
+{
+    BITMASK_IEEE_STD_A,    ///< IEEE 802.11a (5 GHz) Bit Mask.
+    BITMASK_IEEE_STD_B,    ///< IEEE 802.11b (2.4 GHz) Bit Mask.
+    BITMASK_IEEE_STD_G,    ///< IEEE 802.11g (2.4 GHz) Bit Mask.
+    BITMASK_IEEE_STD_AD,   ///< IEEE 802.11ad (60 GHz) Bit Mask.
+    BITMASK_IEEE_STD_D,    ///< IEEE 802.11d Bit Mask. This advertises the country code.
+    BITMASK_IEEE_STD_H,    ///< IEEE 802.11h Bit Mask. This enables radar detection.
+    BITMASK_IEEE_STD_N,    ///< IEEE 802.11n (HT) Bit Mask.
+    BITMASK_IEEE_STD_AC,   ///< IEEE 802.11ac (VHT) Bit Mask.
+    BITMASK_IEEE_STD_AX,   ///< IEEE 802.11ax (HE) Bit Mask.
+    BITMASK_IEEE_STD_W     ///< IEEE 802.11w Bit Mask.
+};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -123,7 +149,6 @@ EVENT NewEvent
 (
     EventHandler handler
 );
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -187,9 +212,6 @@ FUNCTION le_result_t SetSecurityProtocol
     SecurityProtocol securityProtocol IN ///< The security protocol to use.
 );
 
-
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Set the passphrase used to generate the PSK.
@@ -224,7 +246,6 @@ FUNCTION le_result_t SetPreSharedKey
     string preSharedKey[le_wifiDefs.MAX_PSK_BYTES] IN ///< PSK. Note the difference between PSK and Pass Phrase.
 );
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Set if the Access Point should announce its presence.
@@ -242,10 +263,44 @@ FUNCTION le_result_t SetDiscoverable
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set which WiFi Channel to use.
- * Default value is 1.
- * Some legal restrictions for values 12 - 14 might apply for your region.
+ * Set which IEEE standard to use.
+ * Default hardware mode is IEEE 802.11g.
  *
+ * @return
+ *      - LE_BAD_PARAMETER if invalid IEEE standard is set.
+ *      - LE_OK if the function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetIeeeStandard
+(
+    IeeeStdBitMask stdMask IN  ///< Bit mask for the IEEE standard.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get which IEEE standard was set.
+ * Default hardware mode is IEEE 802.11g.
+ *
+ * @return
+ *      - LE_FAULT if the function failed.
+ *      - LE_OK if the function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetIeeeStandard
+(
+    IeeeStdBitMask stdMaskPtr OUT  ///< Bit mask for the IEEE standard.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set which WiFi Channel to use.
+ * Default value is 7.
+ * Some legal restrictions might apply for your region.
+ * The channel number must be between 1 and 14 for IEEE 802.11b/g.
+ * The channel number must be between 7 and 196 for IEEE 802.11a.
+ * The channel number must be between 1 and 6 for IEEE 802.11ad.
  * @return
  *      - LE_OUT_OF_RANGE if requested channel number is out of range.
  *      - LE_OK if the function succeeded.
@@ -254,7 +309,23 @@ FUNCTION le_result_t SetDiscoverable
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetChannel
 (
-    int8 channelNumber IN ///< the channel number must be between 1 and 14.
+    int8 channelNumber IN ///< the channel number.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set what country code to use for regulatory domain.
+ * ISO/IEC 3166-1 Alpha-2 code is used.
+ * Default country code is US.
+ * @return
+ *      - LE_FAULT if the function failed.
+ *      - LE_OK if the function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetCountryCode
+(
+    string countryCode[le_wifiDefs.MAX_COUNTRYCODE_BYTES] IN ///< the country code.
 );
 
 //--------------------------------------------------------------------------------------------------
