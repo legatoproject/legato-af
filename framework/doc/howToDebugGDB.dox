@@ -29,6 +29,16 @@ On your dev machine:
 
 See @ref basicTargetConfigIP if you need to setup your host/target communications.
 
+For ease of debugging you may want to disable watchdog.  To do this turn off the watchdog option
+within KConfig and rebuild and update the framework.
+@verbatim
+Services  --->
+    [ ] Enable watchdog for Legato services
+@endverbatim
+
+@note It's also advisable to use absolute paths on both your dev machine and target. i.e.;
+/legato/systems/current/appsWriteable/devMode/bin/gdbserver to reference gdbserver.
+
 @section howToDebugGDB_sampleCode Sample Code
 The following simple app sample code is used in examples.
 
