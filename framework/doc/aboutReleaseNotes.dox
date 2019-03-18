@@ -1,0 +1,124 @@
+/** @page aboutReleaseNotes Release Notes
+
+Version: <b>Legato 19.02.0</b><br>
+Date: <b>March 22nd, 2019</b><br>
+@ref aboutLicenses "Legato Application Framework Licensing Information"
+
+Visit the <a href="https://legato.io/releases">release page</a> to @b download the tarball,
+@b clone the repositories from GitHub, or view <b>previous released versions</b>.
+
+Get started with the latest version of Legato by installing the SDK through @ref confLeaf "Leaf".
+
+Search for the latest version for your target (using wp76xx as an example):
+@verbatim
+$ leaf search -t wp76xx -t latest
+@endverbatim
+
+Update your profile to the latest version:
+@verbatim
+$ leaf update
+@endverbatim
+
+@section rn1902_Features New Features
+
+List of new features in the 19.02 Release:
+
+@subsection rn1902_Features_kConfig KConfig
+
+The Legato Application Framework now includes a KConfig menu system for configuring the Framework
+including:
+- General build parameters
+- Framework flags and options
+- Module specific flags and options
+- New Experimental Features
+
+@ref kconfigDescription KConfig provides a unified mechanism for configuring the framework and
+service builds. This includes target selection, enabling security and diagnostic features, and many
+others. The full list of options may be found at KConfig Options. KConfig replaces a mixture of
+environment variables and preprocessor defines which were previously used to set the parameters of
+the build.
+
+Legato uses kconfig-frontends to manage KConfig files and configuration. This is a version of the
+Linux kernel's KConfig system that has been extracted and tweaked for independent use.
+
+@subsection rn1902_Features_cfgBinary Binary Support within ConfigTree
+
+The config tree API (@ref c_le_cfg le_cfg.api) now includes support for Binary objects within the
+Config Tree.  New functions have been added to get, set and quick set of binary objects.
+
+@subsection rn1902_Features_devMode devMode Enhancements
+
+The following Linux utilities have been added to the @c devMode app and are only available after you
+install @ref basicTargetDevMode "devMode" on your target device:
+- tcpdump - a traffic monitoring tool
+- iperf3/libiperf.so.0 - a network speed test tool
+- lsusb/usb-devices - lists all usb devices on a target
+- lsof - lists open files on a target
+
+@subsection rn1902_Features_AirVantage AirVantage
+
+The AirVantage Platform Service now supports secured SMS wake-up requests from the AirVantage
+Service.
+
+@section rn1902_BFeatures Beta Features
+
+The following features have been added to the 19.02 Release and are feature complete but are still
+in a testing phase. Please provide feedback for these features on our
+[forums](https://forum.legato.io/).
+
+@section rn1902_AFeatures Alpha Features
+
+The following are the list of features that have been added into the 19.02 Release but are still
+being developed and should not be used on production targets. Please provide feedback for these
+features on our [forums](https://forum.legato.io/):
+
+@subsection rn1902_AFeatures_CoAP AirVantage CoAP
+
+The AirVantage constrained application protocol is under development. @c le_coap.api is included in
+the @c interfaces directory but is only in a prototype state and should not be used on production
+targets at this time.
+
+@subsection rn1902_AFeatures_DCS New Data Connection Service
+
+A new Data Connection Service is under development. @c le_dcs.api is included in the @c interfaces
+directory but is only in a prototype state and should not be used on production targets at this time.
+
+@section rn1902_Fixes Fixed Issues
+
+All changes are tagged in GitHub as "19.02.0".  The full list of changes and commit
+messages can be found on GitHub.
+
+- [Legato AF 19.02.0 Fixes](https://github.com/legatoproject/legato-af/commits/19.02.0)
+
+@note This is only the list of fixes for the Application Framework and Platform Services, for the
+list of changes in the Platform Adapters and AVC Service view the commits under the tag 19.02.0 in
+individual repositories on GitHub.
+
+@section rn1902_KnownIssues Known Issues
+
+@subsection rn1902_Constraints Constraints and Limitations
+
+@subsubsection rn1902_ConstraintsLinuxSupport Dev Machine Linux Version
+
+To develop applications within the Legato Application Framework, a current supported
+[Long Term Support version of Ubuntu Linux](https://www.ubuntu.com/info/release-end-of-life) is
+required on your dev machine (or running in a virtual box on Windows).  Ubuntu 18.04 is the current
+@b recommended version to use on your dev machine.
+
+@subsubsection rn1902_ConstECMUSB ECM-USB modem manager issue
+
+Ubuntu 15.10 and newer has Modem Manager version @c 1.4.12-1ubuntu1  installed by default which
+conflicts with the ECM-USB driver when connecting a target.  Modem manager may cause the Ubuntu
+Network Manager to crash on your host and/or your target device to become unavailable over USB.
+
+@b Symptoms:
+- NetworkManager crashing when plugging into your device over USB, or
+- The target device becomes inaccessible after 30 seconds.
+
+@b Recommended  @b Work  @b Around:
+- Uninstall @c modemmanager from Ubuntu or
+- [Downgrade @c modemmanager to version 1.0.0-2ubuntu1](http://packages.ubuntu.com/trusty/modemmanager)
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
