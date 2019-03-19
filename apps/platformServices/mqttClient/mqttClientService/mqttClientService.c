@@ -17,6 +17,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This define specifies the max # of MQTT sessions to be created in memory pools & reference maps
+ * like the reference map for message arrived handlers
+ */
+//--------------------------------------------------------------------------------------------------
+#define MQTT_SESSION_MAX 16
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Path to the SSL certificates file
  */
 //--------------------------------------------------------------------------------------------------
@@ -33,11 +41,14 @@ typedef struct mqtt_Session
     MQTTClient_connectOptions connectOptions;
     MQTTClient_SSLOptions sslOptions;
     mqtt_MessageArrivedHandlerFunc_t messageArrivedHandler;
+    mqtt_MessageArrivedHandlerRef_t messageArrivedHandlerRef;
     void* messageArrivedHandlerContextPtr;
     mqtt_ConnectionLostHandlerFunc_t connectionLostHandler;
+    mqtt_ConnectionLostHandlerRef_t connectionLostHandlerRef;
     void* connectionLostHandlerContextPtr;
     // The legato client session that owns this MQTT session
     le_msg_SessionRef_t clientSession;
+    mqtt_SessionRef_t sessionRef;
 } mqtt_Session;
 
 static int QosEnumToValue(mqtt_Qos_t qos);
@@ -46,7 +57,6 @@ static void ConnectionLostEventHandler(void* reportPtr);
 static int MessageArrivedHandler(
     void* contextPtr, char* topicNamePtr, int topicLen, MQTTClient_message* messagePtr);
 static void MessageReceivedEventHandler(void* reportPtr);
-static void DestroySessionInternal(mqtt_Session* sessionPtr);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -54,6 +64,13 @@ static void DestroySessionInternal(mqtt_Session* sessionPtr);
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t SessionRefMap;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe ref map for MQTT message handlers.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t MessageHandlerRefMap = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -174,8 +191,7 @@ le_result_t mqtt_CreateSession
 
     le_msg_SessionRef_t clientSession = mqtt_GetClientSessionRef();
     s->clientSession = clientSession;
-
-    *sessionRefPtr = le_ref_CreateRef(SessionRefMap, s);
+    s->sessionRef = *sessionRefPtr = le_ref_CreateRef(SessionRefMap, s);
 
     LE_ASSERT(MQTTClient_setCallbacks(
             s->client,
@@ -186,7 +202,6 @@ le_result_t mqtt_CreateSession
 
     return LE_OK;
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -214,8 +229,7 @@ void mqtt_DestroySession
         return;
     }
 
-    DestroySessionInternal(s);
-    le_ref_DeleteRef(SessionRefMap, sessionRef);
+    le_mem_Release(s);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -233,7 +247,37 @@ static void DestroySessionInternal
     // associated with the username and password.
     le_mem_Release((char*)sessionPtr->connectOptions.username);
     le_mem_Release((char*)sessionPtr->connectOptions.password);
-    le_mem_Release(sessionPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This is the internal session destructor for mqtt_Session allocated from MQTTSessionPoolRef that
+ * will run to clean it up upon an le_mem_Release() of it.
+ */
+//--------------------------------------------------------------------------------------------------
+static void mqttSessionDestructor
+(
+    void* objPtr
+)
+{
+    mqtt_Session* s = (mqtt_Session *)objPtr;
+    if (!s)
+    {
+        LE_KILL_CLIENT("Session doesn't exist");
+        return;
+    }
+    if (s->messageArrivedHandlerRef)
+    {
+        le_ref_DeleteRef(MessageHandlerRefMap, s->messageArrivedHandlerRef);
+        s->messageArrivedHandlerRef = NULL;
+    }
+    if (s->connectionLostHandlerRef)
+    {
+        le_ref_DeleteRef(MessageHandlerRefMap, s->connectionLostHandlerRef);
+        s->connectionLostHandlerRef = NULL;
+    }
+    DestroySessionInternal(s);
+    le_ref_DeleteRef(SessionRefMap, s->sessionRef);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -588,19 +632,16 @@ mqtt_ConnectionLostHandlerRef_t mqtt_AddConnectionLostHandler
         LE_KILL_CLIENT("Session doesn't belong to this client");
         return NULL;
     }
-
     if (s->connectionLostHandler != NULL)
     {
-        LE_KILL_CLIENT("You may only register one connection lost handler");
+        LE_KILL_CLIENT("A registered connection lost handler is present; only 1 allowed");
         return NULL;
     }
-    else
-    {
-        s->connectionLostHandler = handler;
-        s->connectionLostHandlerContextPtr = contextPtr;
-    }
 
-    return (mqtt_ConnectionLostHandlerRef_t)s;
+    s->connectionLostHandler = handler;
+    s->connectionLostHandlerContextPtr = contextPtr;
+    s->connectionLostHandlerRef = le_ref_CreateRef(MessageHandlerRefMap, s);
+    return s->connectionLostHandlerRef;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -613,7 +654,7 @@ void mqtt_RemoveConnectionLostHandler
     mqtt_ConnectionLostHandlerRef_t handlerRef ///< [IN] Connection lost handler
 )
 {
-    mqtt_Session* s = le_ref_Lookup(SessionRefMap, handlerRef);
+    mqtt_Session* s = le_ref_Lookup(MessageHandlerRefMap, handlerRef);
     if (s == NULL)
     {
         LE_KILL_CLIENT("Session doesn't exist");
@@ -627,6 +668,8 @@ void mqtt_RemoveConnectionLostHandler
 
     s->connectionLostHandler = NULL;
     s->connectionLostHandlerContextPtr = NULL;
+    le_ref_DeleteRef(MessageHandlerRefMap, handlerRef);
+    s->connectionLostHandlerRef = NULL;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -658,19 +701,16 @@ mqtt_MessageArrivedHandlerRef_t mqtt_AddMessageArrivedHandler
         LE_KILL_CLIENT("Session doesn't belong to this client");
         return NULL;
     }
-
     if (s->messageArrivedHandler != NULL)
     {
-        LE_KILL_CLIENT("You may only register one message arrived handler per session");
+        LE_KILL_CLIENT("A registered message arrived handler is present; only 1 allowed");
         return NULL;
     }
-    else
-    {
-        s->messageArrivedHandler = handler;
-        s->messageArrivedHandlerContextPtr = contextPtr;
-    }
 
-    return (mqtt_MessageArrivedHandlerRef_t)s;
+    s->messageArrivedHandler = handler;
+    s->messageArrivedHandlerContextPtr = contextPtr;
+    s->messageArrivedHandlerRef = le_ref_CreateRef(MessageHandlerRefMap, s);
+    return s->messageArrivedHandlerRef;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -683,7 +723,7 @@ void mqtt_RemoveMessageArrivedHandler
     mqtt_MessageArrivedHandlerRef_t handlerRef ///< [IN] Message arrived handler
 )
 {
-    mqtt_Session* s = le_ref_Lookup(SessionRefMap, handlerRef);
+    mqtt_Session* s = le_ref_Lookup(MessageHandlerRefMap, handlerRef);
     if (s == NULL)
     {
         LE_KILL_CLIENT("Session doesn't exist");
@@ -697,6 +737,8 @@ void mqtt_RemoveMessageArrivedHandler
 
     s->messageArrivedHandler = NULL;
     s->messageArrivedHandlerContextPtr = NULL;
+    le_ref_DeleteRef(MessageHandlerRefMap, handlerRef);
+    s->messageArrivedHandlerRef = NULL;
 }
 
 
@@ -888,7 +930,7 @@ static void MessageReceivedEventHandler
 //--------------------------------------------------------------------------------------------------
 static void DestroyAllOwnedSessions
 (
-    le_msg_SessionRef_t sessionRef,
+    le_msg_SessionRef_t clientSessionRef,
     void* contextPtr
 )
 {
@@ -898,14 +940,12 @@ static void DestroyAllOwnedSessions
     {
         mqtt_Session* s = le_ref_GetValue(it);
         LE_ASSERT(s != NULL);
-        mqtt_SessionRef_t sRef = (mqtt_SessionRef_t)(le_ref_GetSafeRef(it));
-        LE_ASSERT(sRef != NULL);
+        LE_ASSERT(s->sessionRef != NULL);
         // Advance the interator before deletion to prevent invalidation
         iterRes = le_ref_NextNode(it);
-        if (s->clientSession == sessionRef)
+        if (s->clientSession == clientSessionRef)
         {
-            DestroySessionInternal(s);
-            le_ref_DeleteRef(SessionRefMap, sRef);
+            le_mem_Release(s);
         }
     }
 }
@@ -919,13 +959,19 @@ COMPONENT_INIT
 {
     // Create memory pools
     MQTTSessionPoolRef = le_mem_CreatePool("MQTT session pool", sizeof(mqtt_Session));
+    le_mem_ExpandPool(MQTTSessionPoolRef, MQTT_SESSION_MAX);
+    le_mem_SetDestructor(MQTTSessionPoolRef, mqttSessionDestructor);
+
     UsernamePoolRef = le_mem_CreatePool("MQTT username pool", MQTT_MAX_USERNAME_LENGTH);
     PasswordPoolRef = le_mem_CreatePool("MQTT password pool", MQTT_MAX_PASSWORD_LENGTH);
     MessagePoolRef = le_mem_CreatePool("MQTT message pool", sizeof(mqtt_Message));
     TopicPoolRef = le_mem_CreatePool("MQTT topic pool", MQTT_MAX_TOPIC_LENGTH);
     PayloadPoolRef = le_mem_CreatePool("MQTT payload pool", MQTT_MAX_PAYLOAD_LENGTH);
 
-    SessionRefMap = le_ref_CreateMap("MQTT sessions", 16);
+    // MessageHandlerRefMap is created with size (MQTT_SESSION_MAX * 2) since each MQTT session
+    // may have 2 handlers, i.e. 1 message arrived handler and 1 connection lost handler
+    SessionRefMap = le_ref_CreateMap("MQTT sessions", MQTT_SESSION_MAX);
+    MessageHandlerRefMap = le_ref_CreateMap("MQTT message handlers", MQTT_SESSION_MAX * 2);
 
     ReceiveThreadEventId = le_event_CreateId(
         "MqttClient receive notification", sizeof(mqtt_Message*));
