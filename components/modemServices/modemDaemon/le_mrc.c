@@ -37,7 +37,7 @@
 #include "mdmCfgEntries.h"
 #include "le_ms_local.h"
 #include "watchdogChain.h"
-
+#include "le_process.h"
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions.

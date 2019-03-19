@@ -20,6 +20,7 @@ sources:
     mrcStub.c
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_mrc.c
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_sim.c
+    ${LEGATO_ROOT}/components/modemServices/modemDaemon/process.c
     simu/components/le_pa/pa_mrc_simu.c
     simu/components/le_pa/pa_sim_simu.c
 }

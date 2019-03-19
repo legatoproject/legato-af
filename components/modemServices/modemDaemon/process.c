@@ -6,6 +6,9 @@
  */
 
 #include "legato.h"
+#include "le_process.h"
+
+#if LE_CONFIG_LINUX
 
 /**
  * Write to stderr in an async-thread-safe manner.
@@ -158,3 +161,5 @@ pid_t le_proc_Execute
     WRITE_ERR("le_proc_Execute(): execve() returned success?!\n");
     _exit(EXIT_FAILURE);
 }
+
+#endif /* end LE_CONFIG_LINUX */
