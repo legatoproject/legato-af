@@ -1,9 +1,0 @@
-commands:
-{
-    strace = tools:/bin/devModeStub
-    gdbserver = tools:/bin/devModeStub
-    lsusb = tools:/bin/devModeStub
-    lsof = tools:/bin/devModeStub
-    tcpdump = tools:/bin/devModeStub
-    iperf3 = tools:/bin/devModeStub
-}

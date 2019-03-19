@@ -20,60 +20,11 @@ fi
 . "$LEGATO_ROOT/framework/tools/scripts/shlib"
 
 VIRT_TARGET_ARCH=${VIRT_TARGET_ARCH:-x86}
-TARGET="virt-${VIRT_TARGET_ARCH}"
-
-# Use Yocto & Legato from Yocto build if available
-YOCTO_DIR=${YOCTO_DIR:-"$LEGATO_ROOT/../build_virt-${VIRT_TARGET_ARCH}"}
-if [ -e "$YOCTO_DIR" ]; then
-    echo "Yocto build detected"
-
-    # Deploy dir
-    YOCTO_DEPLOY_DIR="${YOCTO_DEPLOY_DIR:-"${YOCTO_DIR}/tmp/deploy/images/swi-virt-${VIRT_TARGET_ARCH}"}"
-
-    # Legato build dir
-    if [[ "$VIRT_TARGET_ARCH" == "x86" ]] \
-       && [ -e "${YOCTO_DIR}/tmp/work/i586-poky-linux/legato-af/git-r0/legato-af/build/${PLATFORM}" ]; then
-        LEGATO_BUILD_DIR="${YOCTO_DIR}/tmp/work/i586-poky-linux/legato-af/git-r0/legato-af/build/${PLATFORM}"
-    elif [[ "$VIRT_TARGET_ARCH" == "arm" ]] \
-       && [ -e "${YOCTO_DIR}/tmp/work/armv5e-poky-linux-gnueabi/legato-af/git-r0/legato-af" ]; then
-        LEGATO_BUILD_DIR="${YOCTO_DIR}/tmp/work/armv5e-poky-linux-gnueabi/legato-af/git-r0/legato-af/build/${PLATFORM}"
-    else
-        # Search as a fallback
-        RECIPE_ROOT="$(find "${YOCTO_DIR}/tmp/work/" -maxdepth 2 -name "legato-af" | head -1)"
-        if [ -n "$RECIPE_ROOT" ]; then
-            LEGATO_BUILD_DIR="${RECIPE_ROOT}/git-r0/legato-af/build/${PLATFORM}"
-            if [ ! -e "$LEGATO_BUILD_DIR" ]; then
-                unset LEGATO_BUILD_DIR
-            fi
-        fi
-    fi
-
-    LINUX_TARBALL_PATH="${YOCTO_DEPLOY_DIR}/img-virt-${VIRT_TARGET_ARCH}.tar.bz2"
-    if [ ! -e "$LINUX_TARBALL_PATH" ]; then
-        echo "Yocto not built, $LINUX_TARBALL_PATH does not exist."
-        exit 1
-    fi
-
-    export LEGATO_IMG="${YOCTO_DEPLOY_DIR}/legato-image.virt-${VIRT_TARGET_ARCH}.squashfs"
-    if [ ! -e "$LEGATO_IMG" ]; then
-        echo "Unable to find Legato image as built from Yocto"
-        exit 1
-    fi
-fi
-
-if [ -n "$LEGATO_BUILD_DIR" ]; then
-    if [ ! -e "$LEGATO_BUILD_DIR" ]; then
-        echo "Build directory does not exist at ${LEGATO_BUILD_DIR}"
-        exit 1
-    fi
-else
-    LEGATO_BUILD_DIR="$LEGATO_ROOT/build/${TARGET}"
-fi
 
 ## Create build directory
 
 if [ -z "$BUILD_DIR" ]; then
-    BUILD_DIR="${LEGATO_BUILD_DIR}/docker"
+    BUILD_DIR="$LEGATO_ROOT/build/virt-${VIRT_TARGET_ARCH}/docker"
 fi
 
 mkdir -p $BUILD_DIR
@@ -87,12 +38,27 @@ if [ -z "$USER_DIR" ]; then
     export USER_DIR="$BUILD_DIR"
 fi
 
-# Use local linux tarball if available
-if [ -n "$LINUX_TARBALL_PATH" ]; then
+# Use Yocto & Legato from Yocto build if available
+YOCTO_DIR="$LEGATO_ROOT/../build_virt-${VIRT_TARGET_ARCH}/tmp/deploy/images/swi-virt-${VIRT_TARGET_ARCH}/"
+if [ -e "$YOCTO_DIR" ]; then
+    echo "Yocto build detected"
+
+    TARBALL_PATH="${YOCTO_DIR}/img-virt-${VIRT_TARGET_ARCH}.tar.bz2"
+    if [ ! -e "$TARBALL_PATH" ]; then
+        echo "Yocto not built, $TARBALL_PATH does not exist."
+        exit 1
+    fi
+
+    export LEGATO_IMG="${YOCTO_DIR}/legato-image.virt-${VIRT_TARGET_ARCH}.squashfs"
+    if [ ! -e "$LEGATO_IMG" ]; then
+        echo "Unable to find Legato image as built from Yocto"
+        exit 1
+    fi
+
     rm -rf "$BUILD_DIR/img-virt-${VIRT_TARGET_ARCH}"
     mkdir -p "$BUILD_DIR/img-virt-${VIRT_TARGET_ARCH}"
 
-    tar jxvf $LINUX_TARBALL_PATH -C "$BUILD_DIR/img-virt-${VIRT_TARGET_ARCH}"
+    tar jxvf $TARBALL_PATH -C "$BUILD_DIR/img-virt-${VIRT_TARGET_ARCH}"
 
     SKIP_DOWNLOAD=1
 fi
@@ -125,6 +91,7 @@ if [ -z "$USERFS_IMG" ] || [ ! -e "$USERFS_IMG" ]; then
 
     echo "userfs image ($USERFS_IMG) does not exist, creating one that contain sample apps."
 
+    TARGET="virt-${VIRT_TARGET_ARCH}"
     FindToolchain
 
     FindTool "qemu-img" QEMU_IMG
@@ -142,14 +109,11 @@ if [ -z "$USERFS_IMG" ] || [ ! -e "$USERFS_IMG" ]; then
     mkdir "$BUILD_DIR/userfs"
 
     # ... copy tools apps
-    if ! cp -R "${LEGATO_BUILD_DIR}/tools" "$BUILD_DIR/userfs/"; then
-        echo "Target tools not available, did you run 'make virt-${VIRT_TARGET_ARCH}' to build the legato framework?"
-        echo "Continuing without ..."
-    fi
+    cp -R "$LEGATO_ROOT/build/${TARGET}/tools" "$BUILD_DIR/userfs/"
 
     # ... copy sample apps
-    if ! cp -R "${LEGATO_BUILD_DIR}/samples" "$BUILD_DIR/userfs/"; then
-        echo "Sample apps not available, did you run 'make samples_virt-${VIRT_TARGET_ARCH}' to build sample apps?"
+    if ! cp -R "$LEGATO_ROOT/build/${TARGET}/samples" "$BUILD_DIR/userfs/"; then
+        echo "Sample apps not available, did you run 'make samples_virt' to build sample apps?"
         echo "Continuing without ..."
     fi
 
@@ -191,25 +155,25 @@ cp "$(dirname ${SCRIPT_PATH})/Dockerfile.${VIRT_TARGET_ARCH}" "${BUILD_DIR}/stag
 
 cd $BUILD_DIR/staging/
 
-docker build . | tee -a "$BUILD_DIR/docker-build.log"
+docker build . | tee -a ../docker-build.log
 if [ ${PIPESTATUS[0]} -ne 0 ]; then
     echo "Image build failed"
     exit 1
 fi
 
-BUILD_ID=$(tail -1 "$BUILD_DIR/docker-build.log" | awk '{print $3}')
+BUILD_ID=$(tail -1 ../docker-build.log | awk '{print $3}')
 if [ -z "${BUILD_ID}" ] || [ "${#BUILD_ID}" -gt 12 ]; then
     echo "Invalid image ID"
     exit 1
 fi
 
-LONG_BUILD_ID=$(docker inspect --type=image --format='{{.Id}}' "$BUILD_ID")
+LONG_BUILD_ID=$(docker inspect --type=image "$BUILD_ID" | jq -r .[0].Id)
 if [ -z "$LONG_BUILD_ID" ]; then
     echo "Unable to get long ID for image $BUILD_ID"
     exit 1
 fi
 
-echo "$LONG_BUILD_ID" > "$BUILD_DIR/image.id"
+echo "$LONG_BUILD_ID" > ../image.id
 
-docker save -o "$BUILD_DIR/virt.img" "$LONG_BUILD_ID"
+docker save -o ../virt.img "$LONG_BUILD_ID"
 
