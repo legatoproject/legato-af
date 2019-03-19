@@ -53,9 +53,6 @@ commands:
     kmod = tools:/bin/kmod
 }
 
-// Add command wrappers related to devMode
-#include "$LEGATO_ROOT/apps/tools/devModeStubs.sinc"
-
 bindings:
 {
     <root>.le_fwupdate -> fwupdateService.le_fwupdate

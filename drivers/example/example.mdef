@@ -16,7 +16,7 @@
 // using the preBuilt: section in this file, point Legato to the kernel module binary built in this directory, e.g.:
 //    preBuilt: $LEGATO_ROOT/drivers/example/example.ko
 //
-// When using preBuilt: keyword, make sure the module is built, i.e. that example.ko exists before Legato is
+// When using preBuilt: keyword, make sure the module is built, i.e. that example.ko exists before Legato is 
 // built and packaged. See this module's Makefile for details on how to build the module.
 //--------------------------------------------------------------------------------------------------
 sources:
