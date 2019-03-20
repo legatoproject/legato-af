@@ -1,0 +1,36 @@
+//--------------------------------------------------------------------------------------------------
+// System (Bob) definition for the helloRpc sample applications.
+// Includes base (default) Legato system, RPC Proxy, and sample apps
+// (printClient, printServer, printClientExtended, and printServerExtended).
+//
+// Copyright (C) Sierra Wireless Inc.
+//--------------------------------------------------------------------------------------------------
+
+#include "$LEGATO_ROOT/default.sdef"
+
+extern:
+{
+    bobClient = printClient.printer
+    aliceServer = printServerExtended.printerExtended
+}
+
+appSearch:
+{
+    $LEGATO_ROOT/apps/sample/helloRpc
+}
+
+apps:
+{
+    printClient
+    printServerExtended
+}
+
+componentSearch:
+{
+    $LEGATO_ROOT/components
+}
+
+links:
+{
+    LinkToAlice = (networkSocket)
+}

@@ -1,14 +1,3 @@
-/** @page sampleApps_helloRpc Hello RPC
-
-@warning EXPERIMENTAL
-
-The Hello RPC sample app directory contains sample applications for demonstrating remote-procedure calls between two Legato systems, using RPC bindings.  As with IPC bindings, RPC bindings are defined using Legato @ref apiFiles.
-
-Go to the
-<a href="https://github.com/legatoproject/legato-af/tree/master/apps/sample/helloRpc">sample app code</a>.
-
-Instructions:
-@verbatim
 Overview
 ========
 RPC is an EXPERIMENTAL Alpha-quality feature that is actively under development,
@@ -172,11 +161,3 @@ use the following command:
 
 NOTE:  Will require the rpcProxy application to be restart in order for it
        take effect.
-@endverbatim
-
-See <br>
-@ref getStartedRPC
-
-Copyright (C) Sierra Wireless Inc.
-
-**/

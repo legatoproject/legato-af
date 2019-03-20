@@ -1,0 +1,19 @@
+executables:
+{
+    clientExtended = (printClientExtended)
+}
+
+processes:
+{
+    run:
+    {
+        (clientExtended)
+    }
+    faultAction: restart
+}
+
+extern:
+{
+    printerExtended = clientExtended.printClientExtended.printerExtended
+}
+

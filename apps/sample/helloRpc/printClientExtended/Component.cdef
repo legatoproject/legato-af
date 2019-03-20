@@ -1,0 +1,12 @@
+sources:
+{
+    client.c
+}
+
+requires:
+{
+    api:
+    {
+        printerExtended = $LEGATO_ROOT/apps/sample/helloRpc/printerExtended.api
+    }
+}

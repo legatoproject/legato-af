@@ -1,0 +1,17 @@
+executables:
+{
+    serverExtended = (printServerExtended)
+}
+
+processes:
+{
+    run:
+    {
+        (serverExtended)
+    }
+}
+
+extern:
+{
+    printerExtended = serverExtended.printServerExtended.printerExtended
+}

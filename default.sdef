@@ -33,6 +33,10 @@ apps:
 
     // Command-line tools.
     $LEGATO_ROOT/apps/tools/tools
+
+#if ${LE_CONFIG_RPC} = y
+    $LEGATO_ROOT/framework/daemons/rpcProxy/rpcProxy
+#endif
 }
 
 #if ${LE_CONFIG_FEATURE_SPISVC} = y

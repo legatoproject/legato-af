@@ -1,0 +1,7 @@
+FUNCTION Print
+(
+    uint64 numBytes IN,
+    string message[100] IN, ///< message to be printed into the log.
+    uint32 temparature IN,
+    uint32 id OUT
+);

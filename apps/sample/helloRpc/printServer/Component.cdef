@@ -1,0 +1,12 @@
+sources:
+{
+    server.c
+}
+
+provides:
+{
+    api:
+    {
+        printer = $LEGATO_ROOT/apps/sample/helloRpc/printer.api
+    }
+}

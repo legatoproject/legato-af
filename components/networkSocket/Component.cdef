@@ -19,5 +19,4 @@ cflags:
 
     -I$LEGATO_ROOT/framework/liblegato/linux
     -I$LEGATO_ROOT/framework/daemons/linux
-    -DSOCKET_SERVER
 }
