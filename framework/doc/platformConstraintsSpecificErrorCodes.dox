@@ -348,8 +348,9 @@ le_mcc_GetPlatformSpecificTerminationCode() platform specific error codes:
    | CALL_END_CAUSE_REINVITE_COLLISION     |  NA    |   X    |   NA   |   NA   |   NA   |   X    |
 
 <b>@subpage c_mdc :</b>
- - le_mdc_GetPlatformSpecificDisconnectionCode() returns the call end failure code
-   which is retrieved from modem. The call end failure return values are described below
+ - le_mdc_GetPlatformSpecificDisconnectionCode() / le_mdc_GetPlatformSpecificDisconnectionCodeExt()
+   returns the call end failure code which is retrieved from modem. The call end failure return
+   values are described below
 
    CER_UNSPECIFIED = 0x001,<br>
    CER_CLIENT_END = 0x002,<br>
@@ -424,9 +425,13 @@ le_mcc_GetPlatformSpecificTerminationCode() platform specific error codes:
    CER_HDR_CS_TIMEOUT = 0x5E2,<br>
    CER_HDR_RELEASED_BY_CM = 0x5E3,<br>
 
- - le_mdc_GetPlatformSpecificFailureConnectionReason() output the call connection
-   failure type and code which are retrieved from modem. The call connection failure
-   output values are described below
+ - le_mdc_GetPlatformSpecificFailureConnectionReason() /
+   le_mdc_GetPlatformSpecificFailureConnectionReasonExt() gets the call connection failure
+   type and code which are retrieved from modem. The call connection failure output values
+   are described below
+
+   -Unknown call end reasons (Type = 0x0):<br>
+   VCER_UNKNOWN_ERROR = 0X0,<br>
 
    -Internal call end reasons (Type = 0x02):<br>
    VCER_INTERNAL_INTERNAL_ERROR = 0xC9,<br>
@@ -481,6 +486,12 @@ le_mcc_GetPlatformSpecificTerminationCode() platform specific error codes:
    VCER_INTERNAL_PROFILES_NOT_COMPATIBLE = 0xFB,<br>
    VCER_INTERNAL_NULL_RESOLVED_APN_NO_MATCH = 0xFC,<br>
    VCER_INTERNAL_INVALID_APN_NAME = 0xFD,<br>
+   VCER_INTERNAL_DDS_SWITCH_IN_PROGRESS_V01 = 0xFE,<br>
+   VCER_INTERNAL_CALL_DISALLOWED_IN_ROAMING_V01 = 0xFF,<br>
+   VCER_INTERNAL_MO_EXCEPTIONAL_NOT_SUPPORTED_V01 = 0x100,<br>
+   VCER_INTERNAL_NON_IP_NOT_SUPPORTED_V01 = 0x101,<br>
+   VCER_INTERNAL_ERR_PDN_NON_IP_CALL_THROTTLED_V01 = 0x102,<br>
+   VCER_INTERNAL_ERR_PDN_NON_IP_CALL_DISALLOWED_V01 = 0x103,<br>
 
    -Call Manager defined call end reasons (Type = 0x03):<br>
    VCER_CM_CDMA_LOCK = 0x1F4,<br>
@@ -675,6 +686,10 @@ le_mcc_GetPlatformSpecificTerminationCode() platform specific error codes:
    VCER_CM_INVALID_SIM_STATE = 0x9C8,<br>
    VCER_CM_NO_COLLOC_HDR = 0x9C9,<br>
    VCER_CM_CALL_CONTROL_REJECTED = 0x9CA,<br>
+   VCER_CM_EMM_DETACHED_PSM_V01 = 0x9CB,<br>
+   VCER_CM_DUAL_SWITCH_V01 = 0x9CC,<br>
+   VCER_CM_CALL_MANAGER_V01 = 0x9CD,<br>
+   VCER_CM_INVALID_CLASS3_APN_V01 = 0x9CE,<br>
 
    -3GPP specification defined call end reasons (Type = 0x06):<br>
    VCER_3GPP_OPERATOR_DETERMINED_BARRING = 0x08,<br>
@@ -701,12 +716,19 @@ le_mcc_GetPlatformSpecificTerminationCode() platform specific error codes:
    VCER_3GPP_FILTER_SEMANTIC_ERROR = 0x2C,<br>
    VCER_3GPP_FILTER_SYTAX_ERROR = 0x2D,<br>
    VCER_3GPP_PDP_WITHOUT_ACTIVE_TFT = 0x2E,<br>
+   VCER_3GPP_PTI_MISMATCH_V01 = 0x2F,<br>
+   VCER_3GPP_ACTIVATION_REJECTED_BCM_VIOLATION_V01 = 0x30,<br>
    VCER_3GPP_IP_V4_ONLY_ALLOWED = 0x32,<br>
    VCER_3GPP_IP_V6_ONLY_ALLOWED = 0x33,<br>
    VCER_3GPP_SINGLE_ADDR_BEARER_ONLY = 0x34,<br>
    VCER_3GPP_ESM_INFO_NOT_RECEIVED = 0x35,<br>
    VCER_3GPP_PDN_CONN_DOES_NOT_EXIST = 0x36,<br>
    VCER_3GPP_MULTI_CONN_TO_SAME_PDN_NOT_ALLOWED = 0x37,<br>
+   VCER_3GPP_COLLISION_WITH_NW_INIT_REQ_V01 = 0x38,<br>
+   VCER_3GPP_IP_V4V6_ONLY_ALLOWED_V01 = 0x39,<br>
+   VCER_3GPP_NON_IP_ONLY_ALLOWED_V01 = 0x3A,<br>
+   VCER_3GPP_UNSUPPORTED_QCI_VALUE_V01 = 0x3B,<br>
+   VCER_3GPP_BEARER_HANDLING_NOT_SUPPORTED_V01 = 0x3C,<br>
    VCER_3GPP_MAX_ACTIVE_PDP_CONTEXT_REACHED = 0x41,<br>
    VCER_3GPP_UNSUPPORTED_APN_IN_CURRENT_PLMN = 0x42,<br>
    VCER_3GPP_INVALID_TRANSACTION_ID = 0x51,<br>

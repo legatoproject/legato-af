@@ -2430,6 +2430,9 @@ void le_mdc_GetPlatformSpecificFailureConnectionReason
  *
  * @return The disconnection reason.
  *
+ * @warning The return value le_mdc_DisconnectionReason_t might be limited by the platform.
+ *          Please refer to the platform documentation @ref platformConstraintsMdc.
+ *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
  * @note For IPv4v6 mode, pdpType specifies which session's disconnect reason to get(IPv4 or IPv6
@@ -2538,6 +2541,9 @@ int32_t le_mdc_GetPlatformSpecificDisconnectionCodeExt
 //--------------------------------------------------------------------------------------------------
 /**
  * Called to get the platform specific connection failure reason.
+ *
+ * Refer to @ref platformConstraintsSpecificErrorCodes for platform specific connection failure
+ * types and code descriptions.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.

@@ -25,6 +25,24 @@ The maximum APN length is limited by the platform.<br>
 | Maxmium APN length              |        | 62     | 62     |        |        |        |        | 100    |
 
 
+@section Disconnect_Reason Disconnect Reason
+To get the disconnection reason, le_mdc_GetDisconnectionReasonExt() API is used.
+
+The following le_mdc_DisconnectionReason_t return values are unsupported by AR758x/9x platforms:<br>
+
+LE_MDC_DISC_INSUFFICIENT_MBMS_CAPABILITIES<br>
+LE_MDC_DISC_UNKNOWN_PDP_ADDR_OR_TYPE<br>
+LE_MDC_DISC_MULTICAST_TIME_OUT<br>
+LE_MDC_DISC_BEARER_CONTROL_MODE_VIOLATION<br>
+LE_MDC_DISC_IPV4_ONLY_ALLOWED<br>
+LE_MDC_DISC_IPV6_ONLY_ALLOWED<br>
+LE_MDC_DISC_SINGLE_ADDR_ONLY_ALLOWED<br>
+LE_MDC_DISC_COLLISION_WITH_NETWORK_INITIATED_REQ<br>
+LE_MDC_DISC_BEARER_HANDLING_UNSUPPORTED<br>
+LE_MDC_DISC_MAX_PDP_CONTEXTS<br>
+LE_MDC_DISC_APN_UNSUPPORTED_FOR_RAT_AND_PLMN<br>
+
+
 @section MT-PDP_context Mobile Terminated PDP context
 The Mobile Terminated Packet Data Protocol (PDP) context feature is not supported on all platforms.
 The table below indicates on which platform the feature is supported. (<b>'X'</b> means the feature
