@@ -209,7 +209,8 @@ menu "Diagnostic Features"
 
 choice
   prompt "Static log level filter"
-  default LOG_STATIC_FILTER_INFO
+  default LOG_STATIC_FILTER_INFO if REDUCE_FOOTPRINT
+  default LOG_STATIC_FILTER_DEBUG
   ---help---
   Select the static filter for log statements.  Log statements with a lower
   priority than this level will be omitted from compiled code.

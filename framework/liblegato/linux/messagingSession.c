@@ -2068,12 +2068,12 @@ void le_msg_SetSessionRecvHandler
     switch (sessionRef->type)
     {
         case LE_MSG_SESSION_LOCAL:
-            LE_INFO("SetSessionRecv: Local session");
+            LE_DEBUG("SetSessionRecv: Local session");
             msgLocal_SetSessionRecvHandler(sessionRef, handlerFunc, contextPtr);
             break;
         case LE_MSG_SESSION_UNIX_SOCKET:
         {
-            LE_INFO("SetSessionRecv: Unix socket session");
+            LE_DEBUG("SetSessionRecv: Unix socket session");
             msgSession_UnixSession_t* unixSessionPtr = msgSession_GetUnixSessionPtr(sessionRef);
             unixSessionPtr->rxHandler = handlerFunc;
             unixSessionPtr->rxContextPtr = contextPtr;
