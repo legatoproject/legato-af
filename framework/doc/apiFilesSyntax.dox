@@ -28,6 +28,8 @@ double
 
 string
 
+bool
+
 file
 
 handler (deprecated; use the name of the handler instead)
@@ -41,6 +43,8 @@ The @c uint and @c int types are basic data integer types.
 The @c double type is an 8 byte floating-point data type.
 
 The @c string type is a data type used to store text.
+
+The @c bool type is a data type used to store boolean values (true, false).
 
 The @c file type is used to pass an open file descriptor as a parameter between a client and server.
 
