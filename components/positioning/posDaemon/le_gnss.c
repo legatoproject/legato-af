@@ -1001,6 +1001,7 @@ static void PaPositionHandler
                      sizeof(le_gnss_PositionSample_t));
 
         // Add the node to the queue of the list by passing in the node's link.
+        positionSampleRequestNodePtr->positionSampleNodePtr->link = LE_DLS_LINK_INIT;
         le_dls_Queue(&PositionSampleList, &(positionSampleRequestNodePtr->
                                                 positionSampleNodePtr->link));
 
@@ -1320,6 +1321,7 @@ le_gnss_PositionHandlerRef_t le_gnss_AddPositionHandler
 
     // Create the position sample handler node.
     positionHandlerPtr = (le_gnss_PositionHandler_t*)le_mem_ForceAlloc(PositionHandlerPoolRef);
+    positionHandlerPtr->link = LE_DLS_LINK_INIT;
     positionHandlerPtr->handlerFuncPtr = handlerPtr;
     positionHandlerPtr->handlerContextPtr = contextPtr;
     positionHandlerPtr->sessionRef = le_gnss_GetClientSessionRef();
@@ -3012,6 +3014,7 @@ le_gnss_SampleRef_t le_gnss_GetLastSampleRef
            sizeof(le_gnss_PositionSample_t));
 
     // Add the node to the queue of the list by passing in the node's link.
+    positionSampleRequestNodePtr->positionSampleNodePtr->link = LE_DLS_LINK_INIT;
     le_dls_Queue(&PositionSampleList, &(positionSampleRequestNodePtr->positionSampleNodePtr->link));
 
     LE_DEBUG("Get sample %p", positionSampleRequestNodePtr->positionSampleNodePtr);

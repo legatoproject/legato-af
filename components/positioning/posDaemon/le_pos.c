@@ -1333,6 +1333,7 @@ le_pos_MovementHandlerRef_t le_pos_AddMovementHandler
 
     // Create the position sample handler node.
     posSampleHandlerNodePtr = (le_pos_SampleHandler_t*)le_mem_ForceAlloc(PosSampleHandlerPoolRef);
+    posSampleHandlerNodePtr->link = LE_DLS_LINK_INIT;
     posSampleHandlerNodePtr->handlerFuncPtr = handlerPtr;
     posSampleHandlerNodePtr->handlerContextPtr = contextPtr;
     posSampleHandlerNodePtr->acquisitionRate =

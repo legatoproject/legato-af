@@ -149,6 +149,7 @@ static le_result_t BuildMtdList
             partInfoPtr = le_mem_ForceAlloc(PartPool);
             partInfoPtr->info = info;
             partInfoPtr->index = partIndex;
+            partInfoPtr->node = LE_DLS_LINK_INIT;
             le_dls_Queue(mtdListPtr, &partInfoPtr->node);
             LE_INFO("Added %s partition to the list...", &partInfoPtr->info.name[0]);
         }

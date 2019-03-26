@@ -375,6 +375,8 @@ static void InitPool
     pool->blockSize = blockSize;
     pool->numBlocksToForce = DEFAULT_NUM_BLOCKS_TO_FORCE;
 
+    pool->poolLink = LE_DLS_LINK_INIT;
+
 #if LE_CONFIG_MEM_TRACE
     pool->memTrace = NULL;
 

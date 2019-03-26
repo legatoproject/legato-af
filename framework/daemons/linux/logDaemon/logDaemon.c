@@ -724,6 +724,7 @@ static RunningProcess_t* CreateRunningProcess
     RunningProcess_t* objPtr = le_mem_ForceAlloc(RunningProcessPoolRef);
 
     objPtr->logSessionList = LE_DLS_LIST_INIT;
+    objPtr->link = LE_DLS_LINK_INIT;
 
     le_dls_Queue(&procNameObjPtr->runningProcessesList, &objPtr->link);
     objPtr->procNameObjPtr = procNameObjPtr;

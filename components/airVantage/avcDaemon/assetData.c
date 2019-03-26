@@ -702,6 +702,7 @@ static le_result_t CreateInstanceFromModel
     {
         // Allocate field data; will be released if errors are found
         fieldDataPtr = le_mem_ForceAlloc(FieldDataPoolRef);
+        fieldDataPtr->link = LE_DLS_LINK_INIT;
 
         le_cfg_GetNodeName(assetCfg, "", strBuf, sizeof(strBuf));
         fieldDataPtr->fieldId = atoi(strBuf);
@@ -792,6 +793,7 @@ static void AddFieldFromData
 )
 {
     FieldData_t* fieldDataPtr = le_mem_ForceAlloc(FieldDataPoolRef);
+    fieldDataPtr->link = LE_DLS_LINK_INIT;
 
     fieldDataPtr->fieldId = fieldId;
     LE_ASSERT( le_utf8_Copy(fieldDataPtr->name, namePtr, sizeof(fieldDataPtr->name), NULL) == LE_OK );
@@ -3016,6 +3018,7 @@ le_result_t assetData_CreateInstanceById
         // Allocate instance data and populate most of the instance from the model definition
         // No need to check assetId, since we already know it is valid
         assetInstPtr = le_mem_ForceAlloc(InstanceDataPoolRef);
+        assetInstPtr->link = LE_DLS_LINK_INIT;
         CreateInstanceForObjectNine(assetInstPtr);
     }
     else
@@ -3030,6 +3033,7 @@ le_result_t assetData_CreateInstanceById
 
         // Allocate instance data; will be released if errors are found
         assetInstPtr = le_mem_ForceAlloc(InstanceDataPoolRef);
+        assetInstPtr->link = LE_DLS_LINK_INIT;
 
         // Populate most of the instance from the model definition
         result = CreateInstanceFromModel(assetCfg, assetInstPtr);
