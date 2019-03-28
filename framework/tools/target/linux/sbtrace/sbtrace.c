@@ -93,6 +93,7 @@ FileAccessSysCall_t;
 static const FileAccessSysCall_t FileAccessSysCalls[] =
 {
     {__NR_open,             0,      "open"},
+    {__NR_openat,           1,      "openat"},
     {__NR_creat,            0,      "creat"},
     {__NR_link,             0,      "link"},
     {__NR_unlink,           0,      "unlink"},
@@ -847,7 +848,8 @@ static le_result_t DoesPathConflict
  * @return
  *      true if the file can be added to the app's working directory.
  *      false if the file cannot be added to the app's working directory because the file either
- *            does not exist or conflicts with something already in the app's working directory.
+ *            does not exist, or is a directory, or conflicts with something already in the app's
+ *            working directory.
  */
 //--------------------------------------------------------------------------------------------------
 static bool CanAddFile
@@ -873,6 +875,13 @@ static bool CanAddFile
         }
 
         INTERNAL_ERR("Could not stat %s.  %m", pathPtr);
+    }
+
+    // Can't add a directory
+    if (S_ISDIR(statBuf.st_mode))
+    {
+        LE_INFO("'%s' is a directory", pathPtr);
+        return false;
     }
 
     return true;
