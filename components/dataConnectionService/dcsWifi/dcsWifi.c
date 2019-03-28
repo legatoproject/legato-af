@@ -19,8 +19,6 @@
 #include "dcsNet.h"
 
 #define WIFI_CONNDBS_MAX        LE_DCS_CHANNEL_LIST_QUERY_MAX  // max # of wifi conns allowed
-#define WIFI_NET_INTERFACE      "wlan0"              // ToDo: as in le_data; avoid hardcoding it
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -67,7 +65,7 @@ static DcsWifiScan_t DcsWifiScan;
 
 typedef struct
 {
-    le_wifiClient_NewEventHandlerRef_t eventHandlerRef;
+    le_wifiClient_ConnectionEventHandlerRef_t eventHandlerRef;
     le_dls_List_t dbList;                            ///< list of active wifiConnDbs
     wifi_connDb_t *selectedConnDb;                   ///< connDb of the selected connection
     le_wifiClient_AccessPointRef_t apRef;            ///< AP reference of the selected connection
@@ -93,6 +91,12 @@ static le_mem_PoolRef_t WifiConnDbPool = NULL;
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t WifiConnectionRefMap = NULL;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Wifi interface name
+ */
+//--------------------------------------------------------------------------------------------------
+static char   WifiNetInterface[LE_WIFIDEFS_MAX_IFNAME_BYTES] = {0};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -435,7 +439,7 @@ static char *DcsWifiGetNetInterface
         return "";
     }
 
-    return ((wifiConnDb == selectedConnDb) ? WIFI_NET_INTERFACE : "");
+    return ((wifiConnDb == selectedConnDb) ? WifiNetInterface : "");
 }
 
 
@@ -1238,19 +1242,26 @@ static void DcsWifiClientDisconnected
 //--------------------------------------------------------------------------------------------------
 static void WifiClientEventHandler
 (
-    le_wifiClient_Event_t event,    ///< [IN] Wifi event
+    const le_wifiClient_EventInd_t* wifiEventPtr,  ///< [IN] Wifi event
     void* contextPtr                ///< [IN] Associated context pointer
 )
 {
-    LE_DEBUG("Wifi event received %d", event);
+    LE_DEBUG("Wifi event: %d, interface: %s, bssid: %s",
+             wifiEventPtr->event,
+             wifiEventPtr->ifName,
+             wifiEventPtr->apBssid);
 
-    switch (event)
+    switch (wifiEventPtr->event)
     {
         case LE_WIFICLIENT_EVENT_CONNECTED:
+            strncpy(WifiNetInterface, wifiEventPtr->ifName, LE_WIFIDEFS_MAX_IFNAME_LENGTH);
+            WifiNetInterface[LE_WIFIDEFS_MAX_IFNAME_LENGTH] = '\0';
             DcsWifiClientConnected();
             break;
 
         case LE_WIFICLIENT_EVENT_DISCONNECTED:
+            LE_DEBUG("Wifi event: disconnectCause: %d", wifiEventPtr->disconnectionCause);
+            memset(WifiNetInterface, '\0', LE_WIFIDEFS_MAX_IFNAME_BYTES);
             DcsWifiClientDisconnected();
             break;
 
@@ -1676,7 +1687,9 @@ COMPONENT_INIT
         return;
     }
 
-    DcsWifi.eventHandlerRef = le_wifiClient_AddNewEventHandler(WifiClientEventHandler, NULL);
+    DcsWifi.eventHandlerRef = le_wifiClient_AddConnectionEventHandler
+                              (WifiClientEventHandler, NULL);
+
     if (!DcsWifi.eventHandlerRef)
     {
         LE_ERROR("Failed to add Wifi event handler");

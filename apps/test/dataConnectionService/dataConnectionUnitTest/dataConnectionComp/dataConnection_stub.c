@@ -87,6 +87,13 @@ static le_event_Id_t NetRegRejectId = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Pool for network reject indication reporting.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t NetRegRejectIndPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Data Control Profile structure
  */
 //--------------------------------------------------------------------------------------------------
@@ -124,6 +131,20 @@ static le_event_Id_t MdcSessionStateEvent = NULL;
 //--------------------------------------------------------------------------------------------------
 static le_event_Id_t NewWifiEventId = NULL;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Event ID for WiFi Event indication notification.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t WifiEventId = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool for WifiClient state events reporting.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t WifiEventPool;
 
 //--------------------------------------------------------------------------------------------------
 // Unit test specific functions
@@ -183,6 +204,26 @@ void le_wifiClientTest_SimulateEvent
     {
         // Notify all the registered client handlers
         le_event_Report(NewWifiEventId, (void *)&event, sizeof(le_wifiClient_Event_t));
+    }
+
+    if (WifiEventId)
+    {
+        le_wifiClient_EventInd_t* wifiEventPtr = le_mem_ForceAlloc(WifiEventPool);
+        wifiEventPtr->event = event;
+        wifiEventPtr->disconnectionCause = LE_WIFICLIENT_UNKNOWN_CAUSE;
+        wifiEventPtr->apBssid[0] = '\0';
+
+        if (LE_WIFICLIENT_EVENT_CONNECTED == event)
+        {
+            memset(wifiEventPtr->ifName, '\0', sizeof(wifiEventPtr->ifName));
+            snprintf(wifiEventPtr->ifName, sizeof(wifiEventPtr->ifName), WIFI_INTERFACE_NAME);
+        }
+        else
+        {
+            wifiEventPtr->ifName[0] = '\0';
+        }
+
+        le_event_ReportWithRefCounting(WifiEventId, wifiEventPtr);
     }
 }
 
@@ -574,6 +615,82 @@ le_wifiClient_NewEventHandlerRef_t le_wifiClient_AddNewEventHandler
     le_event_SetContextPtr(handlerRef, contextPtr);
 
     return (le_wifiClient_NewEventHandlerRef_t)(handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The first-layer WiFi Client Connection Event Handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void FirstLayerWifiClientConnectionEventHandler
+(
+    void *reportPtr,
+    void *secondLayerHandlerFunc
+)
+{
+    le_wifiClient_EventInd_t*  wifiEventPtr = reportPtr;
+    le_wifiClient_ConnectionEventHandlerFunc_t  clientHandlerFunc = secondLayerHandlerFunc;
+
+
+    if (NULL != wifiEventPtr)
+    {
+        clientHandlerFunc(wifiEventPtr, le_event_GetContextPtr());
+    }
+    else
+    {
+        LE_WARN("wifiEventPtr is NULL");
+    }
+    // The reportPtr is a reference counted object, so need to release it
+    le_mem_Release(reportPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register an handler for WiFi connection state change.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+le_wifiClient_ConnectionEventHandlerRef_t le_wifiClient_AddConnectionEventHandler
+(
+    le_wifiClient_ConnectionEventHandlerFunc_t handlerFuncPtr,
+        ///< [IN]
+        ///< Event handling function
+
+    void *contextPtr
+        ///< [IN]
+        ///< Associated event context
+)
+{
+    le_event_HandlerRef_t handlerRef;
+
+    // Note: THIS ONE REGISTERS THE CB function..
+    LE_DEBUG("Add wifi connection event handler");
+
+    if (handlerFuncPtr == NULL)
+    {
+        LE_KILL_CLIENT("handlerFuncPtr is NULL !");
+        return NULL;
+    }
+
+    // Create an event Id for Wifi state notification if not already done
+    if (!WifiEventId)
+    {
+        WifiEventId = le_event_CreateIdWithRefCounting("WifiConnectState");
+        WifiEventPool = le_mem_CreatePool("WifiEventPool", sizeof(le_wifiClient_EventInd_t));
+    }
+
+    handlerRef = le_event_AddLayeredHandler("WiFiClientMsgHandler",
+                                            WifiEventId,
+                                            FirstLayerWifiClientConnectionEventHandler,
+                                            (le_event_HandlerFunc_t)handlerFuncPtr);
+
+    le_event_SetContextPtr(handlerRef, contextPtr);
+
+    return (le_wifiClient_ConnectionEventHandlerRef_t)(handlerRef);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1551,6 +1668,8 @@ le_mrc_NetRegRejectHandlerRef_t le_mrc_AddNetRegRejectHandler
     if (!NetRegRejectId)
     {
         NetRegRejectId = le_event_CreateIdWithRefCounting("NetRegReject");
+        NetRegRejectIndPool = le_mem_CreatePool("NetRegRejectIndPool",
+                                              sizeof(le_mrc_NetRegRejectInd_t));
     }
 
     le_event_HandlerRef_t handlerRef;

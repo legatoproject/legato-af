@@ -593,7 +593,7 @@ static void* DcsUnitTestThread
 COMPONENT_INIT
 {
     // To reactivate for all DEBUG logs
-//    le_log_SetFilterLevel(LE_LOG_DEBUG);
+    // le_log_SetFilterLevel(LE_LOG_DEBUG);
 
     LE_INFO("======== Start UnitTest of Data Connection service ========");
 

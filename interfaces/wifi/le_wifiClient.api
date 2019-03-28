@@ -28,8 +28,78 @@
  *   If WiFi Access Point is active, this will fail.
  *
  *
+ * To subscribe to wifi events le_wifiClient_AddConnectionEventHandler() is to be called. The event
+ * indication contains the event type, interface name, AP bssid, and disconnection cause.
+ * - le_wifiClient_AddConnectionEventHandler(): returns the handler reference if the call went ok.
+ *
+ * @code
+ *
+ * static void EventHandler
+ * (
+ *     const le_wifiClient_EventInd_t* wifiEventPtr,
+ *     void *contextPtr
+ * )
+ * {
+ *     switch( wifiEventPtr->event )
+ *     {
+ *          case LE_WIFICLIENT_EVENT_CONNECTED:
+ *          {
+ *              LE_INFO("WiFi Client Connected.");
+ *              LE_INFO("Interface: %s, bssid: %s",
+ *                      &wifiEventPtr->ifName[0],
+ *                      &wifiEventPtr->apBssid[0]);
+ *          }
+ *          break;
+ *          case LE_WIFICLIENT_EVENT_DISCONNECTED:
+ *          {
+ *              LE_INFO("WiFi Client Disconnected.");
+ *              LE_INFO("Interface: %s, disconnectCause: %d",
+ *                      &wifiEventPtr->ifName[0],
+ *                      wifiEventPtr->cause);
+ *          }
+ *          break;
+ *          case LE_WIFICLIENT_EVENT_SCAN_DONE:
+ *          {
+ *              LE_INFO("WiFi Client Scan is done.");
+ *              MyHandleScanResult();
+ *          }
+ *          break;
+ *     }
+ * }
+ *
+ * le_wifiClient_ConnectionEventHandlerRef_t WifiEventHandlerRef = NULL;
+ *
+ * static void MyInit
+ * (
+ *     void
+ * )
+ * {
+ *     le_result_t result = le_wifiClient_start();
+ *
+ *     if ( LE_OK == result )
+ *     {
+ *         LE_INFO("WiFi Client started.");
+ *         WiFiEventHandlerRef = le_wifiClient_AddConnectionEventHandler( EventHandler, NULL );
+ *     }
+ *     else if ( LE_BUSY == result )
+ *     {
+ *         LE_INFO("ERROR: WiFi Client already started.");
+ *     }
+ *     else
+ *     {
+ *         LE_INFO("ERROR: WiFi Client not started.");
+ *     }
+ *
+ * }
+ *
+ * @endcode
+ *
+ *
  * To subscribe to wifi events le_wifiClient_AddNewEventHandler() is to be called.
  * - le_wifiClient_AddNewEventHandler(): returns the handler reference if the call went ok.
+ *
+ * @deprecated le_wifiClient_AddNewEventHandler() will be removed in near future.
+ * It will be replaced by le_wifiClient_AddConnectionEventHandler().
  *
  * @code
  *
@@ -435,6 +505,21 @@ ENUM Event
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * WiFi Client disconnect cause type enum.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM DisconnectionCause
+{
+    UNKNOWN_CAUSE,       ///< Default value, could be connected
+    CLIENT_REQUEST,      ///< WiFi Client request to disconnect
+    HARDWARE_DETACHED,   ///< WiFi card is detached
+    HARDWARE_STOP,       ///< WiFi driver has been removed
+    BEACON_LOSS,         ///< Beacon loss due to poor SINR
+    BY_AP                ///< Disconnected by AP
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
  * WiFi Client Security Protocol for connection
  */
 //--------------------------------------------------------------------------------------------------
@@ -451,6 +536,8 @@ ENUM SecurityProtocol
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler for WiFi Client changes
+ * @deprecated le_wifiClient_AddNewEventHandler() will be removed in near future.
+ * It is replaced by le_wifiClient_AddConnectionEventHandler().
  */
 //--------------------------------------------------------------------------------------------------
 HANDLER NewEventHandler
@@ -461,12 +548,47 @@ HANDLER NewEventHandler
 //--------------------------------------------------------------------------------------------------
 /**
  * This event provide information on WiFi Client event changes.
+ * NewEvent will be deprecated.
  *
  */
 //--------------------------------------------------------------------------------------------------
 EVENT NewEvent
 (
     NewEventHandler handler
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * WiFi event indication structure. The disconnectionCause only applies to event EVENT_DISCONNECTED.
+ */
+//--------------------------------------------------------------------------------------------------
+STRUCT EventInd
+{
+    Event               event;                                 ///< WiFi Client Events
+    DisconnectionCause  disconnectionCause;                    ///< Disconnection Cause
+    string              ifName[le_wifiDefs.MAX_IFNAME_BYTES];  ///< Interface Name
+    string              apBssid[le_wifiDefs.MAX_BSSID_BYTES];  ///< AP Bssid
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for WiFi Client connection changes
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER ConnectionEventHandler
+(
+    EventInd  wifiEventInd IN    ///< EventInd Reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provide information on WiFi Client connection event changes.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT ConnectionEvent
+(
+    ConnectionEventHandler handler
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -539,7 +661,6 @@ FUNCTION AccessPoint GetFirstAccessPoint
 FUNCTION AccessPoint GetNextAccessPoint
 (
 );
-
 
 //--------------------------------------------------------------------------------------------------
 /**

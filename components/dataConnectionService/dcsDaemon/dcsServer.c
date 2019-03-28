@@ -83,14 +83,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Wifi interface name
- * TODO: Should be retrieved from Wi-Fi client. To modify when API is available.
- */
-//--------------------------------------------------------------------------------------------------
-#define WIFI_INTF "wlan0"
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Maximal number of retries to stop the data session
  */
 //--------------------------------------------------------------------------------------------------
@@ -240,6 +232,13 @@ static le_event_Id_t ConnStateEvent;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Wifi interface name
+ */
+//--------------------------------------------------------------------------------------------------
+static char   WifiIfName[LE_WIFIDEFS_MAX_IFNAME_BYTES] = {0};
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Used profile when Mobile technology is selected
  */
 //--------------------------------------------------------------------------------------------------
@@ -264,7 +263,7 @@ static le_wifiClient_AccessPointRef_t AccessPointRef = NULL;
  * Store the wifi event handler reference
  */
 //--------------------------------------------------------------------------------------------------
-static le_wifiClient_NewEventHandlerRef_t WifiEventHandlerRef = NULL;
+static le_wifiClient_ConnectionEventHandlerRef_t WifiEventHandlerRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -647,7 +646,8 @@ static void SendConnStateEvent
         case LE_DATA_WIFI:
             if (isConnected)
             {
-                snprintf(eventData.interfaceName, sizeof(eventData.interfaceName), WIFI_INTF);
+                strncpy(eventData.interfaceName, WifiIfName, LE_WIFIDEFS_MAX_IFNAME_LENGTH);
+                eventData.interfaceName[LE_WIFIDEFS_MAX_IFNAME_LENGTH] = '\0';
             }
             break;
 
@@ -721,13 +721,16 @@ static le_data_Technology_t GetNextTech
 //--------------------------------------------------------------------------------------------------
 static void WifiClientEventHandler
 (
-    le_wifiClient_Event_t event,    ///< [IN] Wifi event
+    const le_wifiClient_EventInd_t* wifiEventPtr,  ///< [IN] Wifi event
     void* contextPtr                ///< [IN] Associated context pointer
 )
 {
-    LE_DEBUG("Wifi event received: %d", event);
+    LE_DEBUG("Wifi event: %d, interface: %s, bssid: %s",
+             wifiEventPtr->event,
+             wifiEventPtr->ifName,
+             wifiEventPtr->apBssid);
 
-    switch (event)
+    switch (wifiEventPtr->event)
     {
         case LE_WIFICLIENT_EVENT_CONNECTED:
             if (strlen(Ssid) == 0)
@@ -737,12 +740,14 @@ static void WifiClientEventHandler
             }
 
             LE_INFO("Wifi client connected");
+            strncpy(WifiIfName, wifiEventPtr->ifName, LE_WIFIDEFS_MAX_IFNAME_LENGTH);
+            WifiIfName[LE_WIFIDEFS_MAX_IFNAME_LENGTH] = '\0';
 
             // Request an IP address through DHCP if DCS initiated the connection
             // and update connection status
             if ((LE_DATA_WIFI == CurrentTech) && (RequestCount > 0))
             {
-                if (LE_OK == pa_dcs_AskForIpAddress(WIFI_INTF))
+                if (LE_OK == pa_dcs_AskForIpAddress(WifiIfName))
                 {
                     IsConnected = true;
                 }
@@ -770,10 +775,12 @@ static void WifiClientEventHandler
                 break;
             }
             LE_INFO("Wifi client disconnected");
-
+            LE_DEBUG("Wifi event: disconnectCause: %d",
+                    wifiEventPtr->disconnectionCause);
             // Update connection status and send notification to registered applications
             IsConnected = false;
             memset(Ssid, '\0', sizeof(Ssid));
+            memset(WifiIfName, '\0', LE_WIFIDEFS_MAX_IFNAME_BYTES);
             SendConnStateEvent(IsConnected);
 
             // Handle new connection status for this technology
@@ -786,7 +793,7 @@ static void WifiClientEventHandler
             break;
 
         default:
-            LE_ERROR("Unknown wifi client event %d", event);
+            LE_ERROR("Unknown wifi client event %d", wifiEventPtr->event);
             break;
     }
 }
@@ -1145,8 +1152,8 @@ static le_result_t LoadSelectedTechProfile
                 // Register for Wifi Client state changes if not already done
                 if (NULL == WifiEventHandlerRef)
                 {
-                    WifiEventHandlerRef = le_wifiClient_AddNewEventHandler(WifiClientEventHandler,
-                                                                           NULL);
+                    WifiEventHandlerRef = le_wifiClient_AddConnectionEventHandler
+                                          (WifiClientEventHandler,NULL);
                 }
             }
             else
@@ -1776,8 +1783,9 @@ static void TryStartTechSession
                         le_dcs_MarkChannelSharingStatus(Ssid, LE_DCS_TECH_WIFI, true);
                         if (!WifiEventHandlerRef)
                         {
-                            WifiEventHandlerRef = le_wifiClient_AddNewEventHandler
-                                (WifiClientEventHandler, NULL);
+                            WifiEventHandlerRef = le_wifiClient_AddConnectionEventHandler
+                                                  (WifiClientEventHandler,NULL);
+
                         }
                         ConnectionStatusHandler(LE_DATA_WIFI, true);
                         SendConnStateEvent(true);
@@ -1791,8 +1799,8 @@ static void TryStartTechSession
                     case LE_OK:
                         if (!WifiEventHandlerRef)
                         {
-                            WifiEventHandlerRef = le_wifiClient_AddNewEventHandler
-                                (WifiClientEventHandler, NULL);
+                             WifiEventHandlerRef = le_wifiClient_AddConnectionEventHandler
+                                                  (WifiClientEventHandler,NULL);
                         }
                         break;
                     case LE_UNSUPPORTED:
