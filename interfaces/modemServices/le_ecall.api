@@ -1229,6 +1229,41 @@ FUNCTION le_result_t SetMsdPassengersCount
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the ECALL_DIAL_DURATION time. It's the maximum time the IVS have to connect the emergency
+ * call to the PSAP, including all redial attempts.
+ * If the call is not connected within this time (or ManualDialAttempts/AutoDialAttempts dial
+ * attempts), it will stop.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *
+ * @note This ECALL_DIAL_DURATION time is only applicable to initial call (call never established
+ *       with PSAP). After first call establishment, in case of dropped call, redial duration is
+ *       fixed by PAN-European eCall standard to 2 minutes.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetPanInitialDialDuration
+(
+    uint16    duration  IN  ///< the ECALL_DIAL_DURATION time value (in seconds)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the ECALL_DIAL_DURATION time.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPanInitialDialDuration
+(
+    uint16    duration  OUT  ///< the ECALL_DIAL_DURATION time value (in seconds)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Import an already prepared MSD.
  *
  * MSD is transmitted only after an emergency call has been established.

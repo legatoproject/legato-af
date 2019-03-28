@@ -278,6 +278,7 @@ typedef struct
                                                                         ///  termination.
     bool                    isMtCall;                                   ///< Record call type(MT/MO)
     int32_t                 mtCallId;                                   ///< Record MT call ID
+    uint16_t                dialDuration;                               ///< Dial duration value
 }
 ECall_t;
 
@@ -567,7 +568,17 @@ static void RedialStart
     le_clk_Time_t interval;
     if (SystemStandard == PA_ECALL_PAN_EUROPEAN)
     {
-        interval.sec = 120;
+        // Dropped eCall redial duration is fixed to 2 minutes,
+        // initial eCall redial duration is configurable
+        if (ECallObj.sessionState == ECALL_SESSION_CONNECTED ||
+            ECallObj.sessionState == ECALL_SESSION_COMPLETED)
+        {
+            interval.sec = 120;
+        }
+        else
+        {
+            interval.sec = ECallObj.dialDuration;
+        }
         interval.usec = 0;
     }
     else // PA_ECALL_ERA_GLONASS
@@ -2267,6 +2278,7 @@ le_result_t le_ecall_Init
     ECallObj.sendMsdSignalReceived = false;
     ECallObj.isMtCall = false;
     ECallObj.mtCallId = 0;
+    ECallObj.dialDuration = 0xFFFF;
 
     ECallObj.eraGlonass.manualDialAttempts = 10;
     ECallObj.eraGlonass.autoDialAttempts = 10;
@@ -2722,6 +2734,72 @@ le_result_t le_ecall_SetMsdPassengersCount
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the ECALL_DIAL_DURATION time. It's the maximum time the IVS have to connect the emergency
+ * call to the PSAP, including all redial attempts.
+ * If the call is not connected within this time (or ManualDialAttempts/AutoDialAttempts dial
+ * attempts), it will stop.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *
+ * @note This ECALL_DIAL_DURATION time is only applicable to initial call (call never established
+ *       with PSAP). After first call establishment, in case of dropped call, redial duration is
+ *       fixed by PAN-European eCall standard to 2 minutes.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_SetPanInitialDialDuration
+(
+    uint16_t    duration   ///< [IN] ECALL_DIAL_DURATION time value (in seconds)
+)
+{
+    le_clk_Time_t interval;
+    interval.sec = duration;
+    interval.usec = 0;
+
+    ECallObj.dialDuration = duration;
+    LE_DEBUG("Set PAN-European dial duration timer %p to %hu seconds",
+              ECallObj.redial.dialDurationTimer, duration);
+
+    if (le_timer_SetInterval(ECallObj.redial.dialDurationTimer, interval) != LE_OK)
+    {
+        LE_ERROR("Cannot start the DialDuration timer!");
+        return LE_FAULT;
+    }
+    else
+    {
+        return LE_OK;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the ECALL_DIAL_DURATION time.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_GetPanInitialDialDuration
+(
+    uint16_t*    durationPtr  ///< [OUT] ECALL_DIAL_DURATION time value (in seconds)
+)
+{
+    if (durationPtr == NULL)
+    {
+        LE_KILL_CLIENT("durationPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    LE_FATAL_IF(ECallObj.ref == NULL, "eCall object was not initialized properly.");
+
+    *durationPtr = ECallObj.dialDuration;
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Import an already prepared MSD.
  *
  * MSD is transmitted only after an emergency call has been established.
@@ -2924,14 +3002,12 @@ le_result_t le_ecall_StartAutomatic
 
     // Initialize redial state machine
     RedialInit();
-    // Start redial period for ERA GLONASS system standard
-    if (SystemStandard == PA_ECALL_ERA_GLONASS)
-    {
-        // Clear redial
-        RedialClear();
-        // Start redial
-        RedialStart();
-    }
+
+    // Clear redial
+    RedialClear();
+
+    // Start redial period
+    RedialStart();
 
     if (!ECallObj.isPushed)
     {
@@ -3012,14 +3088,12 @@ le_result_t le_ecall_StartManual
 
     // Initialize redial state machine
     RedialInit();
-    // Start redial period for ERA GLONASS system standard
-    if (SystemStandard == PA_ECALL_ERA_GLONASS)
-    {
-        // Clear redial
-        RedialClear();
-        // Start redial
-        RedialStart();
-    }
+
+    // Clear redial
+    RedialClear();
+
+    // Start redial period
+    RedialStart();
 
     if (!ECallObj.isPushed)
     {
@@ -3100,14 +3174,12 @@ le_result_t le_ecall_StartTest
 
     // Initialize redial state machine
     RedialInit();
-    // Start redial period for ERA GLONASS system standard
-    if (SystemStandard == PA_ECALL_ERA_GLONASS)
-    {
-        // Clear redial
-        RedialClear();
-        // Start redial
-        RedialStart();
-    }
+
+    // Clear redial
+    RedialClear();
+
+    // Start redial period
+    RedialStart();
 
     if (!ECallObj.isPushed)
     {

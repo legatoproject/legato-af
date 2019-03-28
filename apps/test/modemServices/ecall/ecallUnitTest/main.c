@@ -680,6 +680,7 @@ static void Testle_ecall_ConfigSettings
     le_ecall_SystemStandard_t systemStandard;
     le_ecall_MsdVehicleType_t vehicleType    = LE_ECALL_MSD_VEHICLE_BUS_M2;
     uint32_t             msdVersion = 1;
+    uint16_t             dialduration = 0;
 
     LE_ASSERT(le_ecall_UseUSimNumbers() == LE_OK);
 
@@ -704,6 +705,10 @@ static void Testle_ecall_ConfigSettings
     LE_ASSERT_OK(le_ecall_SetNadDeregistrationTime(200));
     LE_ASSERT_OK(le_ecall_GetNadDeregistrationTime(&deregTime));
     LE_ASSERT(deregTime == 200);
+
+    LE_ASSERT_OK(le_ecall_SetPanInitialDialDuration(500));
+    LE_ASSERT_OK(le_ecall_GetPanInitialDialDuration(&dialduration));
+    LE_ASSERT(500 == dialduration);
 
     LE_ASSERT((LE_OK == le_ecall_SetMsdVersion(msdVersion)));
     msdVersion = 42;
