@@ -953,7 +953,7 @@ le_dcs_ChannelRef_t le_dcs_CreateChannelDb
     }
     memset(channelDb, 0, sizeof(le_dcs_channelDb_t));
     channelDb->technology = tech;
-    strncpy(channelDb->channelName, channelName, LE_DCS_CHANNEL_NAME_MAX_LEN);
+    le_utf8_Copy(channelDb->channelName, channelName, sizeof(channelDb->channelName), NULL);
     // Create a safe reference for this data profile object.
     channelDb->channelRef = le_ref_CreateRef(ChannelRefMap, channelDb);
 

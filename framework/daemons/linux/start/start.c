@@ -170,40 +170,35 @@ static void* LoadModemPA
 )
 {
     char ModemPA[PATH_MAX];
-
-    memset(ModemPA, 0, sizeof(ModemPA));
+    char GoldenSymlink[PATH_MAX] = "";
 
     // Build up the path to the golden system's modem PA.  Use the golden system's PA to
     // ensure it is compatible with this code.
-    ssize_t size = readlink(GoldenModemService, ModemPA, sizeof(ModemPA) - 1);
+    ssize_t size = readlink(GoldenModemService, GoldenSymlink, sizeof(GoldenSymlink) - 1);
 
-    // Ensure size is reasonable.  Size should always be much less than max path length
-    // so we can afford to be conservative about how much space we need.
-    if ((size < 0) || (size + sizeof(GoldenAppsPath) + sizeof(ModemPAPath) > sizeof(ModemPA)))
-    {
+    if (size < 0) {
+        LE_INFO("Unable to read %s symlink", GoldenModemService);
         goto done;
     }
 
-    // NULL terminate (readlink does not NULL terminate)
-    ModemPA[size] = '\0';
-
     // Find app hash -- link will be to current system, so may be broken if current is
     // not the golden system.
-    char *appHash = strrchr(ModemPA, '/');
-    if (!appHash)
-    {
+    const char *appHash = strrchr(GoldenSymlink, '/');
+
+    if (!appHash) {
+        LE_INFO("%s -> %s symlink doesn't contain slash", GoldenModemService, GoldenSymlink);
         goto done;
     }
 
     appHash++;
 
-    // Assemble modem PA path in the golden system
-    // It's OK to not check buffer sizes at each step as we've already ensured
-    // there's enough space above.
-    memmove(ModemPA + sizeof(GoldenAppsPath) - 1, appHash, ModemPA + size + 1 - appHash);
-    memcpy(ModemPA, GoldenAppsPath, sizeof(GoldenAppsPath) - 1);
-    strncat(ModemPA, ModemPAPath, strlen(ModemPAPath));
-    ModemPA[PATH_MAX-1] = '\0';
+    // Assemble modem PA path in the golden system.
+    if (snprintf(ModemPA, sizeof(ModemPA), "%s%s%s", GoldenAppsPath, appHash, ModemPAPath)
+        >= sizeof(ModemPA))
+    {
+        LE_INFO("Path %s%s%s exceeds PATH_MAX", GoldenAppsPath, appHash, ModemPAPath);
+        goto done;
+    }
 
     LE_INFO("Trying to open modem PA %s", ModemPA);
 
@@ -881,7 +876,7 @@ static void UpdateLdSoCache
         // added at the end of the file to preserve the current paths set.
         rc = system("/bin/grep -q '^/legato/systems/current/lib$' /etc/ld.so.conf 2>/dev/null || "
                     "/bin/echo /legato/systems/current/lib >>/etc/ld.so.conf");
-        if (0 != WEXITSTATUS(rc))
+        if (!WIFEXITED(rc) || !WEXITSTATUS(rc))
         {
             LE_ERROR("Add of path /legato/systems/current/lib to /etc/ld.so.conf fails: %d",
                      WEXITSTATUS(rc));
@@ -891,7 +886,7 @@ static void UpdateLdSoCache
     }
 
     // If this fails, the system probably won't work, but not much we can do but try.
-    if (0 == WEXITSTATUS(rc))
+    if (!WIFEXITED(rc) || !WEXITSTATUS(rc))
     {
         unlink(LdconfigNotDoneMarkerFile);
     }

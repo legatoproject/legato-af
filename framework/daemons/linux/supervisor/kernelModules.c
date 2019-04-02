@@ -223,28 +223,22 @@ static le_result_t ExecuteCommand(char *argv[], int argc, int *filedes)
     }
 
     /* Concatenate all arguments into one string for logging purpose. */
-    char logStr[LE_CFG_STR_LEN_BYTES] = "";
+    char logStr[LE_CFG_STR_LEN_BYTES] = "", *pLog = logStr;
     const char dots[] = "...";
-    int logStrLen = LE_CFG_STR_LEN_BYTES - strlen(dots);
+    size_t logSpaceLeft = pLog - logStr - (sizeof(dots) - 1);
     int count;
 
     for (count = 0; count < argc; count++)
     {
-        logStrLen -= strlen(argv[count]) + strlen(" ") + 1;
+        size_t printSize = snprintf(pLog, logSpaceLeft, "%s ", argv[count]);
 
-        if (logStrLen >= 0)
-        {
-            /* Concatenate the argument string */
-            strncat(logStr, argv[count], strlen(argv[count]));
-            /* Concatenate " " between each agrument for readability */
-            strncat(logStr, " ", strlen(" "));
-        }
-        else
-        {
-            /* Append "..." in case the log string reaches close to the maximum length allowed. */
-            strncat(logStr, dots, strlen(dots));
+        if (printSize >= logSpaceLeft) {
+            snprintf(pLog, logSpaceLeft, "%s", dots);
             break;
         }
+
+        pLog += printSize;
+        logSpaceLeft -= printSize;
     }
 
     LE_INFO("Execute '%s'", logStr);

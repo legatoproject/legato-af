@@ -555,18 +555,17 @@ static le_result_t BuildAtCommand
     }
 
     char* fullCmdPtr = CmdDescPtr->cmd;
-    char cmdName[LE_ATDEFS_COMMAND_MAX_BYTES];
+    char cmdName[LE_ATDEFS_COMMAND_MAX_BYTES] = "";
     char para0[LE_ATDEFS_PARAMETER_MAX_BYTES];
     char para1[LE_ATDEFS_PARAMETER_MAX_BYTES];
     bool isBasicCmd = false;
 
     memset(fullCmdPtr, 0, LE_ATDEFS_COMMAND_MAX_BYTES);
-    memset(cmdName, 0, LE_ATDEFS_COMMAND_MAX_BYTES);
     memset(para0, 0, LE_ATDEFS_PARAMETER_MAX_BYTES);
     memset(para1, 0, LE_ATDEFS_PARAMETER_MAX_BYTES);
 
     if (LE_OK != le_atServer_GetCommandName(CmdDescPtr->atServerCmdRef, cmdName,
-                                            LE_ATDEFS_COMMAND_MAX_BYTES))
+                                            sizeof(cmdName)))
     {
         LE_ERROR("Impossible to get the command name");
         return LE_FAULT;
@@ -606,11 +605,16 @@ static le_result_t BuildAtCommand
 
     LE_DEBUG("AT command: %s, nb param = %d, type = %d", cmdName, parametersNumber, type);
 
+    le_result_t res = LE_OK;
     switch(type)
     {
         // type 0
         case LE_ATSERVER_TYPE_ACT:
-            snprintf(fullCmdPtr, LE_ATDEFS_COMMAND_MAX_BYTES, "%s", cmdName);
+            res = le_utf8_Copy(fullCmdPtr, cmdName, LE_ATDEFS_COMMAND_MAX_BYTES, NULL);
+            if (res != LE_OK)
+            {
+                return res;
+            }
         break;
 
         // type 1
@@ -621,20 +625,31 @@ static le_result_t BuildAtCommand
                 // 1:  "AT<command>[<number>]", here the <number> is in parameter 0.
                 // 2:  "ATS<number>=<value>", here the <number> is in parameter 0,
                 // <value> is in parameter 1 .
-                snprintf(fullCmdPtr, LE_ATDEFS_COMMAND_MAX_BYTES, "%s", cmdName);
+                res = le_utf8_Copy(fullCmdPtr, cmdName, LE_ATDEFS_COMMAND_MAX_BYTES, NULL);
+                if (res != LE_OK)
+                {
+                    return res;
+                }
                 if (parametersNumber > 0)
                 {
-                    snprintf(fullCmdPtr+strlen(fullCmdPtr),
-                             LE_ATDEFS_COMMAND_MAX_BYTES-strlen(fullCmdPtr),
-                             "%s",
-                             para0);
+                    res = le_utf8_Append(fullCmdPtr, para0, LE_ATDEFS_COMMAND_MAX_BYTES, NULL);
+                    if (res != LE_OK)
+                    {
+                        return res;
+                    }
                 }
                 if (parametersNumber > 1)
                 {
-                    snprintf(fullCmdPtr+strlen(fullCmdPtr),
-                             LE_ATDEFS_COMMAND_MAX_BYTES-strlen(fullCmdPtr),
-                             "=%s",
-                             para1);
+                    res = le_utf8_Append(fullCmdPtr, "=", LE_ATDEFS_COMMAND_MAX_BYTES, NULL);
+                    if (res != LE_OK)
+                    {
+                        return res;
+                    }
+                    res = le_utf8_Append(fullCmdPtr, para1, LE_ATDEFS_COMMAND_MAX_BYTES, NULL);
+                    if (res != LE_OK)
+                    {
+                        return res;
+                    }
                 }
             }
             else
@@ -642,7 +657,16 @@ static le_result_t BuildAtCommand
                 // For AT extended command  AT+<name>=<value1>[,<value2>[,<value3>[...]]] ,
                 // <value1> is in parameter 0, <value2> is in parameter 1, <value3> is in
                 // parameter 2 ...
-                snprintf(fullCmdPtr, LE_ATDEFS_COMMAND_MAX_BYTES, "%s=", cmdName);
+                res = le_utf8_Copy(fullCmdPtr, cmdName, LE_ATDEFS_COMMAND_MAX_BYTES, NULL);
+                if (res != LE_OK)
+                {
+                    return res;
+                }
+                res = le_utf8_Append(fullCmdPtr, "=", LE_ATDEFS_COMMAND_MAX_BYTES, NULL);
+                if (res != LE_OK)
+                {
+                    return res;
+                }
 
                 uint32_t i = 0;
                 char para[LE_ATDEFS_PARAMETER_MAX_BYTES];
@@ -658,19 +682,18 @@ static le_result_t BuildAtCommand
                         return LE_FAULT;
                     }
 
+                    res = le_utf8_Append(fullCmdPtr, para, LE_ATDEFS_COMMAND_MAX_BYTES, NULL);
+                    if (res != LE_OK)
+                    {
+                        return res;
+                    }
                     if (i < (parametersNumber-1))
                     {
-                        snprintf(fullCmdPtr+strlen(fullCmdPtr),
-                                 LE_ATDEFS_COMMAND_MAX_BYTES-strlen(fullCmdPtr),
-                                 "%s,",
-                                 para);
-                    }
-                    else
-                    {
-                        snprintf(fullCmdPtr+strlen(fullCmdPtr),
-                                 LE_ATDEFS_COMMAND_MAX_BYTES-strlen(fullCmdPtr),
-                                 "%s",
-                                 para);
+                        res = le_utf8_Append(fullCmdPtr, ",", LE_ATDEFS_COMMAND_MAX_BYTES, NULL);
+                        if (res != LE_OK)
+                        {
+                            return res;
+                        }
                     }
                 }
             }
@@ -678,7 +701,16 @@ static le_result_t BuildAtCommand
 
         // type 2
         case LE_ATSERVER_TYPE_TEST:
-            snprintf(fullCmdPtr, LE_ATDEFS_COMMAND_MAX_BYTES, "%s=?", cmdName);
+            res = le_utf8_Copy(fullCmdPtr, cmdName, LE_ATDEFS_COMMAND_MAX_BYTES, NULL);
+            if (res != LE_OK)
+            {
+                return res;
+            }
+            res = le_utf8_Append(fullCmdPtr, "=?", LE_ATDEFS_COMMAND_MAX_BYTES, NULL);
+            if (res != LE_OK)
+            {
+                return res;
+            }
         break;
 
         // type 3
@@ -689,26 +721,55 @@ static le_result_t BuildAtCommand
                 {
                     // For AT basic command format ATS<parameter_number>?
                     // The <parameter_number> is in parameter 0.
-                    snprintf(fullCmdPtr, LE_ATDEFS_COMMAND_MAX_BYTES, "%s", cmdName);
-                    snprintf(fullCmdPtr+strlen(fullCmdPtr),
-                             LE_ATDEFS_COMMAND_MAX_BYTES-strlen(fullCmdPtr),
-                             "%s?",
-                             para0);
+                    res = le_utf8_Copy(fullCmdPtr, cmdName, LE_ATDEFS_COMMAND_MAX_BYTES, NULL);
+                    if (res != LE_OK)
+                    {
+                        return res;
+                    }
+                    res = le_utf8_Append(fullCmdPtr, para0, LE_ATDEFS_COMMAND_MAX_BYTES, NULL);
+                    if (res != LE_OK)
+                    {
+                        return res;
+                    }
+                    res = le_utf8_Append(fullCmdPtr, "?", LE_ATDEFS_COMMAND_MAX_BYTES, NULL);
+                    if (res != LE_OK)
+                    {
+                        return res;
+                    }
                 }
                 else
                 {
                     // For AT extended command format AT+<name>?[<value>]
                     // If exists, the <value> is in parameter 0.
-                    snprintf(fullCmdPtr, LE_ATDEFS_COMMAND_MAX_BYTES, "%s?", cmdName);
-                    snprintf(fullCmdPtr+strlen(fullCmdPtr),
-                             LE_ATDEFS_COMMAND_MAX_BYTES-strlen(fullCmdPtr),
-                             "%s",
-                             para0);
+                    res = le_utf8_Copy(fullCmdPtr, cmdName, LE_ATDEFS_COMMAND_MAX_BYTES, NULL);
+                    if (res != LE_OK)
+                    {
+                        return res;
+                    }
+                    res = le_utf8_Append(fullCmdPtr, "?", LE_ATDEFS_COMMAND_MAX_BYTES, NULL);
+                    if (res != LE_OK)
+                    {
+                        return res;
+                    }
+                    res = le_utf8_Append(fullCmdPtr, para0, LE_ATDEFS_COMMAND_MAX_BYTES, NULL);
+                    if (res != LE_OK)
+                    {
+                        return res;
+                    }
                 }
             }
             else
             {
-                 snprintf(fullCmdPtr, LE_ATDEFS_COMMAND_MAX_BYTES, "%s?", cmdName);
+                res = le_utf8_Copy(fullCmdPtr, cmdName, LE_ATDEFS_COMMAND_MAX_BYTES, NULL);
+                if (res != LE_OK)
+                {
+                    return res;
+                }
+                res = le_utf8_Append(fullCmdPtr, "?", LE_ATDEFS_COMMAND_MAX_BYTES, NULL);
+                if (res != LE_OK)
+                {
+                    return res;
+                }
             }
         break;
     }

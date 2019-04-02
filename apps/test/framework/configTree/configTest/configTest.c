@@ -144,10 +144,12 @@ static void QuickFunctionTest()
 
     char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
 
-    LE_INFO("---- Quick Function Test -----------------------------------------------------------");
+    LE_INFO("---- Quick Function Test ------------------------------------------------------");
 
     {
-        snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/quickFunctions/strVal", TestRootDir);
+        LE_ASSERT(snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/quickFunctions/strVal",
+                                                             TestRootDir)
+                  <= LE_CFG_STR_LEN_BYTES);
 
         char strBuffer[513] = "";
 
@@ -169,8 +171,10 @@ static void QuickFunctionTest()
     }
 
     {
-        LE_INFO("---- Quick Binary Test -----------------------------------------------------------");
-        snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/quickFunctions/binVal", TestRootDir);
+        LE_INFO("---- Quick Binary Test --------------------------------------------------------");
+        LE_ASSERT(snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/quickFunctions/binVal",
+                                                             TestRootDir)
+                  <= LE_CFG_STR_LEN_BYTES);
 
         uint8_t writeBuf[LE_CFG_BINARY_LEN] = {0};
         uint8_t readBuf[LE_CFG_BINARY_LEN] = {0};
@@ -199,11 +203,12 @@ static void QuickFunctionTest()
                     LE_RESULT_TXT(result));
         LE_TEST(len == sizeof(writeBuf));
         LE_TEST((memcmp(writeBuf, readBuf, len) == 0));
-
     }
 
     {
-        snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/quickFunctions/intVal", TestRootDir);
+        LE_ASSERT(snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/quickFunctions/intVal",
+                                                             TestRootDir)
+                  <= LE_CFG_STR_LEN_BYTES);
 
         int value = le_cfg_QuickGetInt(pathBuffer, 0);
         LE_DEBUG("<<< Get INT <%d>", value);
@@ -215,7 +220,9 @@ static void QuickFunctionTest()
     }
 
     {
-        snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/quickFunctions/floatVal", TestRootDir);
+        LE_ASSERT(snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/quickFunctions/floatVal",
+                                                             TestRootDir)
+                  <= LE_CFG_STR_LEN_BYTES);
 
         double value = le_cfg_QuickGetFloat(pathBuffer, 0.0);
         LE_DEBUG("<<< Get FLOAT <%f>", value);
@@ -231,7 +238,9 @@ static void QuickFunctionTest()
     }
 
     {
-        snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/quickFunctions/boolVal", TestRootDir);
+        LE_ASSERT(snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/quickFunctions/boolVal",
+                                                             TestRootDir)
+                  <= LE_CFG_STR_LEN_BYTES);
 
         bool value = le_cfg_QuickGetBool(pathBuffer, false);
         LE_DEBUG("<<< Get BOOL <%d>", value);
@@ -274,7 +283,8 @@ static void DeleteTest()
 {
     static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
 
-    snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/deleteTest/", TestRootDir);
+    LE_ASSERT(snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/deleteTest/", TestRootDir)
+              <= LE_CFG_STR_LEN_BYTES);
 
     le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(pathBuffer);
 
@@ -326,8 +336,10 @@ static void StringSizeTest()
     static char smallPathBuffer[SMALL_STR_SIZE + 1] = "";
     static char smallParentPathBuffer[SMALL_STR_SIZE + 1] = "";
 
-    snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/stringSizeTest/strVal", TestRootDir);
-    snprintf(parentPathBuffer, LE_CFG_STR_LEN_BYTES, "%s/stringSizeTest/", TestRootDir);
+    LE_ASSERT(snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/stringSizeTest/strVal", TestRootDir)
+              <= LE_CFG_STR_LEN_BYTES);
+    LE_ASSERT(snprintf(parentPathBuffer, LE_CFG_STR_LEN_BYTES, "%s/stringSizeTest/", TestRootDir)
+              <= LE_CFG_STR_LEN_BYTES);
 
     strncpy(smallPathBuffer, pathBuffer, SMALL_STR_SIZE);
     strncpy(smallParentPathBuffer, parentPathBuffer, SMALL_STR_SIZE);
@@ -514,7 +526,8 @@ static void TestImportExport()
         };
 
     static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
-    snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "/%s/importExport", TestRootDir);
+    LE_ASSERT(snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "/%s/importExport", TestRootDir)
+              <= LE_CFG_STR_LEN_BYTES);
 
     // Size of nameTemplate should be 612, as it copies the contents of TestRootDir
     // and the file name string.
@@ -570,7 +583,8 @@ static void TestImportLargeString()
         };
 
     static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
-    snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "/%s/importLargeString", TestRootDir);
+    LE_ASSERT(snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "/%s/importLargeString", TestRootDir)
+              <= LE_CFG_STR_LEN_BYTES);
 
     // Size of nameTemplate should be 612, as it copies the contents of TestRootDir
     // and the file name string.
@@ -599,11 +613,11 @@ static void MultiTreeTest()
     char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
 
     static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
-    snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "foo:/%s/quickMultiTreeTest/value", TestRootDir);
-
+    LE_ASSERT(snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "foo:/%s/quickMultiTreeTest/value",
+                                                         TestRootDir)
+              <= LE_CFG_STR_LEN_BYTES);
 
     le_cfg_QuickSetString(pathBuffer, "hello world");
-
 
     le_result_t result = le_cfg_QuickGetString(pathBuffer, strBuffer, LE_CFG_STR_LEN_BYTES, "");
     LE_FATAL_IF(result != LE_OK,
@@ -621,7 +635,8 @@ static void MultiTreeTest()
 static void ExistAndEmptyTest()
 {
     static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
-    snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/existAndEmptyTest/", TestRootDir);
+    LE_ASSERT(snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/existAndEmptyTest/", TestRootDir)
+              <= LE_CFG_STR_LEN_BYTES);
 
     {
         le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(pathBuffer);
@@ -736,11 +751,11 @@ static void ExistAndEmptyTest()
 
 static void SetSimpleValue(const char* treePtr)
 {
-    char buffer[60] = "";
+    static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
+    LE_ASSERT(snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/helloWorld", treePtr)
+              <= LE_CFG_STR_LEN_BYTES);
 
-    sprintf(buffer, "%s:/helloWorld", treePtr);
-
-    le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(buffer);
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(pathBuffer);
     le_cfg_SetString(iterRef, "", "Greetings!");
     le_cfg_CommitTxn(iterRef);
 }
@@ -765,7 +780,8 @@ static void BinaryTest
 
     static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
 
-    snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/test_binary", TestRootDir);
+    LE_ASSERT(snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/test_binary", TestRootDir)
+              < LE_CFG_STR_LEN_BYTES);
 
     LE_INFO("pathBuffer = %s\n", pathBuffer);
 
@@ -861,7 +877,8 @@ static void RootConfigCallbackFunction
 static void CallbackTest()
 {
     static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
-    snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "/%s/callbacks/", TestRootDir);
+    LE_ASSERT(snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "/%s/callbacks/", TestRootDir)
+              <= LE_CFG_STR_LEN_BYTES);
 
     LE_INFO("------- Callback Test --------------------------------------");
 
@@ -899,7 +916,8 @@ static void TestStringOverwrite
     static char strBuffer[LE_CFG_STR_LEN_BYTES];
     le_result_t result = LE_OK;
 
-    snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/test_string", TestRootDir);
+    LE_ASSERT(snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/test_string", TestRootDir)
+              <= LE_CFG_STR_LEN_BYTES);
 
     LE_INFO("pathBuffer = %s\n", pathBuffer);
 

@@ -1771,7 +1771,7 @@ static void TryStartTechSession
                     case LE_DUPLICATE:
                         // This wifi connection is already established via le_dcs
                         LE_INFO("Reuse Wifi connection %s that is already connected", ssid);
-                        strncpy(Ssid, ssid, LE_WIFIDEFS_MAX_SSID_LENGTH);
+                        le_utf8_Copy(Ssid, ssid, sizeof(Ssid), NULL);
                         IsDataProfileViaLeDcs = true;
                         le_dcs_MarkChannelSharingStatus(Ssid, LE_DCS_TECH_WIFI, true);
                         if (!WifiEventHandlerRef)
@@ -1805,7 +1805,7 @@ static void TryStartTechSession
                         break;
                 }
                 // Try to establish the wifi connection
-                strncpy(Ssid, ssid, LE_WIFIDEFS_MAX_SSID_LENGTH);
+                le_utf8_Copy(Ssid, ssid, sizeof(Ssid), NULL);
                 le_dcs_MarkChannelSharingStatus(Ssid, LE_DCS_TECH_WIFI, true);
                 TryStartWifiSession();
             }

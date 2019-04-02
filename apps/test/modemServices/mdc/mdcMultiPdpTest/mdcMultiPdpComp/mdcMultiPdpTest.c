@@ -90,7 +90,7 @@ static bool TestIpv4Connectivity
     char ipAddr[100];
     char dns1Addr[100];
     char dns2Addr[100];
-    char system_cmd[200];
+    char systemCmd[200];
 
     if ( !le_mdc_IsIPv4(ProfileRef) )
     {
@@ -129,15 +129,17 @@ static bool TestIpv4Connectivity
     sleep(5);
 
     LOCK
-    snprintf(system_cmd, sizeof(system_cmd), "route add default gateway %s dev %s",
-                                                                        gatewayAddr, interfaceName);
-    if ( system(system_cmd) != 0 )
+    LE_ASSERT(snprintf(systemCmd, sizeof(systemCmd), "route add default gateway %s dev %s",
+                                                     gatewayAddr, interfaceName)
+              <= sizeof(systemCmd));
+
+    if ( system(systemCmd) != 0 )
     {
-        LE_INFO("system '%s' failed", system_cmd);
+        LE_INFO("system '%s' failed", systemCmd);
         UNLOCK
         return false;
     }
-    LE_INFO("system '%s' called", system_cmd);
+    LE_INFO("system '%s' called", systemCmd);
 
 
     if ( le_mdc_GetIPv4DNSAddresses(ProfileRef,
@@ -168,11 +170,11 @@ static bool TestIpv4Connectivity
     }
     LE_INFO("system ping called");
 
-    snprintf(system_cmd, sizeof(system_cmd), "route del default gw");
+    snprintf(systemCmd, sizeof(systemCmd), "route del default gw");
 
-    if ( system(system_cmd) != 0 )
+    if ( system(systemCmd) != 0 )
     {
-        LE_INFO("system '%s' failed", system_cmd);
+        LE_INFO("system '%s' failed", systemCmd);
         UNLOCK
         return false;
     }
@@ -192,7 +194,7 @@ static bool TestIpv6Connectivity
     char ipAddr[100];
     char dns1Addr[100];
     char dns2Addr[100];
-    char system_cmd[200];
+    char systemCmd[200];
 
     if ( !le_mdc_IsIPv6(ProfileRef) )
     {
@@ -232,14 +234,14 @@ static bool TestIpv6Connectivity
     sleep(5);
 
     LOCK
-    snprintf(system_cmd, sizeof(system_cmd), "route -A inet6 add default gw %s", gatewayAddr);
-    if ( system(system_cmd) != 0 )
+    snprintf(systemCmd, sizeof(systemCmd), "route -A inet6 add default gw %s", gatewayAddr);
+    if ( system(systemCmd) != 0 )
     {
-        LE_INFO("system '%s' failed", system_cmd);
+        LE_INFO("system '%s' failed", systemCmd);
         UNLOCK
         return false;
     }
-    LE_INFO("system '%s' called", system_cmd);
+    LE_INFO("system '%s' called", systemCmd);
 
     if ( le_mdc_GetIPv6DNSAddresses(ProfileRef,
                                     dns1Addr, sizeof(dns1Addr),
@@ -268,11 +270,11 @@ static bool TestIpv6Connectivity
     }
     LE_INFO("system ping called");
 
-    snprintf(system_cmd, sizeof(system_cmd), "route -A inet6 del default gw %s", gatewayAddr);
+    snprintf(systemCmd, sizeof(systemCmd), "route -A inet6 del default gw %s", gatewayAddr);
 
-    if ( system(system_cmd) != 0 )
+    if ( system(systemCmd) != 0 )
     {
-        LE_INFO("system '%s' failed", system_cmd);
+        LE_INFO("system '%s' failed", systemCmd);
         UNLOCK
         return false;
     }

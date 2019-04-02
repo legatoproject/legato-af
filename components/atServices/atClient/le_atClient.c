@@ -1522,8 +1522,7 @@ le_result_t le_atClient_SetIntermediateResponse
     {
         size_t len = strlen(intermediatePtr) + 1;
         char tmpIntermediate[len];
-        memset(tmpIntermediate, 0, len);
-        strncpy(tmpIntermediate, intermediatePtr, len);
+        memcpy(tmpIntermediate, intermediatePtr, len);
         char *savePtr = (char*) tmpIntermediate;
         char *interPtr = strtok_r((char*) tmpIntermediate, "|", &savePtr);
 
@@ -1594,8 +1593,7 @@ le_result_t le_atClient_SetFinalResponse
     {
         size_t len = strlen(responsePtr) + 1;
         char tmpResponse[len];
-        memset(tmpResponse, 0, len);
-        strncpy(tmpResponse, responsePtr, len);
+        memcpy(tmpResponse, responsePtr, len);
         char *savePtr = (char*) tmpResponse;
         char *respPtr = strtok_r((char*) tmpResponse, "|", &savePtr);
 

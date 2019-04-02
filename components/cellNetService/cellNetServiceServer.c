@@ -831,7 +831,7 @@ le_result_t le_cellnet_GetSimPinCode
         }
         else
         {
-            //void entry is taken into account
+            // void entry is taken into account
             if (   (0 != strncmp(simPin, "", LE_SIM_PIN_MAX_LEN))
                 && (strlen(simPin) < LE_SIM_PIN_MIN_LEN))
             {
@@ -840,9 +840,16 @@ le_result_t le_cellnet_GetSimPinCode
             }
             else
             {
-                //copy pincode
-                strncpy ( pinCodePtr, simPin, sizeof(simPin) );
-                LE_DEBUG("SIM PIN code retrieved OK");
+                // Copy pincode
+                result = le_utf8_Copy( pinCodePtr, simPin, LE_SIM_PIN_MAX_BYTES, NULL);
+                if (result == LE_OK)
+                {
+                    LE_DEBUG("SIM PIN code retrieved OK");
+                }
+                else
+                {
+                    LE_DEBUG("SIM PIN code not retrieved: too long for buffer");
+                }
             }
         }
     }

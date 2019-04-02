@@ -613,7 +613,7 @@ static wifi_connDb_t *DcsWifiCreateConnDb
     }
 
     memset(wifiConnDb, 0, sizeof(wifi_connDb_t));
-    strncpy(wifiConnDb->ssid, ssid, strlen(ssid));
+    le_utf8_Copy(wifiConnDb->ssid, ssid, sizeof(wifiConnDb->ssid), NULL);
     wifiConnDb->connRef = le_ref_CreateRef(WifiConnectionRefMap, wifiConnDb);
     wifiConnDb->dbLink = LE_DLS_LINK_INIT;
     le_dls_Queue(&DcsWifi.dbList, &(wifiConnDb->dbLink));
