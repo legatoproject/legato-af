@@ -28,6 +28,17 @@
 {%- endfor %}
 {%- endif %}
 
+#define IFGEN_{{apiBaseName|upper}}_PROTOCOL_ID "{{idString}}"
+#define IFGEN_{{apiBaseName|upper}}_MSG_SIZE {{messageSize}}
+{%- if args.localService %}
+#if UINT32_MAX == UINTPTR_MAX
+#  define IFGEN_{{apiBaseName|upper}}_LOCAL_MSG_SIZE {{interface|LocalMessageSize(4)}}
+#elif UINT64_MAX == UINTPTR_MAX
+#  define IFGEN_{{apiBaseName|upper}}_LOCAL_MSG_SIZE {{interface|LocalMessageSize(8)}}
+#else
+#  error "Unsupported pointer size -- only 32- and 64-bit are supported for local services."
+#endif
+{%- endif %}
 
 {% for define in definitions %}
 

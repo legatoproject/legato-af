@@ -165,7 +165,8 @@ Component_t::Component_t
 :   defFilePtr(filePtr),
     dir(path::GetContainingDir(defFilePtr->path)),
     name(path::GetIdentifierSafeName(path::GetLastNode(dir))),
-    workingDir("component/" + defFilePtr->pathMd5)
+    workingDir("component/" + defFilePtr->pathMd5),
+    isStandAloneComp(false)
 //--------------------------------------------------------------------------------------------------
 {
 }

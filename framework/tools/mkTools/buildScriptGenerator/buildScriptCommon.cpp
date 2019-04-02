@@ -145,6 +145,28 @@ void BuildScriptGenerator_t::GenerateIfgenFlags
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Write out to a given script file a space-separated list of paths to all the .api files needed
+ * by a given .api file (specified through USETYPES statements in the .api files).
+ **/
+//--------------------------------------------------------------------------------------------------
+void BuildScriptGenerator_t::GenerateIncludedApis
+(
+    const model::ApiFile_t* apiFilePtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto includedApiPtr : apiFilePtr->includes)
+    {
+        script << " " << includedApiPtr->path;
+
+        // Recurse.
+        GenerateIncludedApis(includedApiPtr);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Generate C flags.
  *
  * Generates flags for the C compiler.  These flags are also used for the C++ compiler.
@@ -218,6 +240,7 @@ void BuildScriptGenerator_t::GenerateBuildRules
     const std::string& cCompilerPath = buildParams.cCompilerPath;
     const std::string& cxxCompilerPath = buildParams.cxxCompilerPath;
     const std::string& compilerCachePath = buildParams.compilerCachePath;
+    const std::string& preProcessorPath = buildParams.cppPath;
     std::string sysrootOption;
     std::string crossToolPath;
 
@@ -255,6 +278,12 @@ void BuildScriptGenerator_t::GenerateBuildRules
     script << " $cxxFlags" // Include user-provided CXXFLAGS last so
                            // other settings can be overridden
               "\n\n";
+
+    script << "rule ProcessConfig\n"
+        << "  description = Merging config file\n"
+        "  depfile = $in.d\n" // Tell ninja where gcc will put the dependencies.
+        "  command = " << preProcessorPath << " -MMD -MF $in.d -MQ $out"
+                     " -P -I $builddir -E $in -o $out\n\n";
 
     // Generate rules for running external tools
     script << "rule BuildExternal\n"

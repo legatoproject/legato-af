@@ -100,6 +100,7 @@ void RtosSystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
     auto outputFile = path::MakeAbsolute(path::Combine(buildParams.outputDir,
                                                        "$target.o"));
     auto tasksOutputFile = "$builddir/obj/tasks.c.o";
+    auto rpcServicesOutputFile = "$builddir/obj/rpcServices.c.o";
 
     // Build task list file
     script << "build " << tasksOutputFile << ":"
@@ -107,13 +108,46 @@ void RtosSystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
               "    cFlags = $cFlags -I$$LEGATO_ROOT/framework/daemons/rtos/microSupervisor\n"
               "\n";
 
+    // Build rpc services file
+    script << "build " << rpcServicesOutputFile << ":"
+              "  CompileC " << path::Combine(buildParams.workingDir, "src/rpcServices.c") << "\n"
+              "    cFlags = $cFlags -I$$LEGATO_ROOT/framework/daemons/rpcProxy/rpcDaemon"
+              " -I$$LEGATO_ROOT/framework/liblegato";
+    std::set<const model::ApiFile_t*> useTypesApis;
+    for (auto &serverEntry : systemPtr->externServerInterfaces)
+    {
+        auto apiFilePtr = serverEntry.second->ifPtr->apiFilePtr;
+
+        script << " -I$builddir/" << apiFilePtr->codeGenDir;
+
+        apiFilePtr->GetUsetypesApis(useTypesApis);
+    }
+    for (auto &clientEntry : systemPtr->externClientInterfaces)
+    {
+        auto apiFilePtr = clientEntry.second->ifPtr->apiFilePtr;
+
+        script << " -I$builddir/" << apiFilePtr->codeGenDir;
+
+        apiFilePtr->GetUsetypesApis(useTypesApis);
+    }
+    for (auto apiFilePtr : useTypesApis)
+    {
+        script << " -I$builddir/" << apiFilePtr->codeGenDir;
+    }
+
+    script << "\n"
+        "\n";
+
     // And link everything together into a system file.  This system file exports only one
     // symbol -- the entry point of the microSupervisor
     script << "build " << outputFile << ": PartialLink "
            << path::Combine(envVars::Get("LEGATO_ROOT"),
                             "build/$target/framework/lib/microSupervisor.o")
            << " "
-           << tasksOutputFile;
+           << tasksOutputFile
+           << " "
+           << rpcServicesOutputFile;
+
 
     // For each app built by the mk tools for this system,
     for (auto& appEntry : systemPtr->apps)

@@ -533,3 +533,24 @@ endmenu # end "Performance Tuning"
 menu "Daemon Setup"
 source "framework/daemons/KConfig"
 endmenu # end "Daemons"
+
+menu "RPC"
+  depends on EXPERIMENTAL
+
+config RPC
+  bool "Enable RPC Proxy infrastructure (EXPERIMENTAL)"
+  default n
+  ---help---
+    Select this to enable the RPC Proxy infrastructure (EXPERIMENTAL).
+    WARNING:  Enabling this feature will break backwards compatibility
+              with existing IPC bindings and applications.
+
+config RPC_PROXY_LIBRARY
+  bool "Enable RPC Proxy as a library component"
+  depends on RPC && POSIX
+  default n
+  ---help---
+    Select this to build the RPC Proxy as a library component
+    that can be linked into an application or executable file.
+
+endmenu

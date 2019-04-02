@@ -430,6 +430,85 @@ static parseTree::Command_t* ParseCommand
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Parse an item from inside an "extern:" section.
+ *
+ * @return Pointer to the item.
+ */
+//--------------------------------------------------------------------------------------------------
+static parseTree::CompoundItem_t* ParseExternItem
+(
+    Lexer_t& lexer
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Must be of the form "alias = application.interface"
+
+    // Pull the alias
+    auto aliasNameTokenPtr = lexer.Pull(parseTree::Token_t::NAME);
+    auto itemPtr = parseTree::CreateTokenList(parseTree::CompoundItem_t::EXTERN_API_INTERFACE,
+                                              aliasNameTokenPtr);
+    itemPtr->AddContent(aliasNameTokenPtr);
+
+    if (lexer.IsMatch(parseTree::Token_t::EQUALS) || lexer.IsMatch(parseTree::Token_t::WHITESPACE))
+    {
+        // The first token is an alias.  Pull out the '=' and any whitespace and get the exe name.
+        // Pull the equals token
+        (void)lexer.Pull(parseTree::Token_t::EQUALS);
+        itemPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
+    }
+
+    // Rest is ".interface".
+    lexer.Pull(parseTree::Token_t::DOT);
+    itemPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
+
+    return itemPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parse an item from inside an "links:" section.
+ *
+ * @return Pointer to the item.
+ */
+//--------------------------------------------------------------------------------------------------
+static parseTree::CompoundItem_t* ParseLinksItem
+(
+    Lexer_t& lexer
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Must be "linkName = ( componentName arg1 etc )"
+
+    // Pull the "linkName"
+    auto linkNameTokenPtr = lexer.Pull(parseTree::Token_t::NAME);
+    auto itemPtr = parseTree::CreateTokenList(parseTree::CompoundItem_t::TOKEN_LIST_SECTION,
+                                              linkNameTokenPtr);
+    itemPtr->AddContent(linkNameTokenPtr);
+
+    // Pull the tokens: = (
+    lexer.Pull(parseTree::Token_t::EQUALS);
+    lexer.Pull(parseTree::Token_t::OPEN_PARENTHESIS);
+
+    // Pull the componentName token and add it to the token list content
+    auto componentNameTokenPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
+    itemPtr->AddContent(componentNameTokenPtr);
+
+    // Until we find a closing ')', keep parsing overrides.
+    while (!lexer.IsMatch(parseTree::Token_t::CLOSE_PARENTHESIS))
+    {
+        auto argPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
+        itemPtr->AddContent(argPtr);
+    }
+
+    lexer.Pull(parseTree::Token_t::CLOSE_PARENTHESIS);
+
+    return itemPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Parses a section in a .sdef file.
  *
  * @return Pointer to the item.
@@ -498,6 +577,14 @@ static parseTree::CompoundItem_t* ParseSection
     else if (sectionName == "externalWatchdogKick")
     {
         return ParseSimpleSection(lexer, sectionNameTokenPtr, parseTree::Token_t::INTEGER);
+    }
+    else if (sectionName == "extern")
+    {
+        return ParseComplexSection(lexer, sectionNameTokenPtr, internal::ParseExternItem);
+    }
+    else if (sectionName == "links")
+    {
+        return ParseComplexSection(lexer, sectionNameTokenPtr, internal::ParseLinksItem);
     }
     else
     {

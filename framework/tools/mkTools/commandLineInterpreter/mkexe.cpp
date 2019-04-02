@@ -46,11 +46,20 @@ static generator::ExeGenerator_t LinuxSteps[] =
     NULL
 };
 
+/// Steps to run to generate a RTOS "executable"
+static generator::ExeGenerator_t RtosSteps[] =
+{
+    generator::ForAllComponents<GenerateRtosCode>,
+    code::GenerateRtosExeMain,
+    ninja::GenerateRtos,
+    NULL
+};
 
 /// List of steps for each OS type
 static const std::map<std::string, generator::ExeGenerator_t*> OSTypeSteps
 {
-    std::pair<std::string, generator::ExeGenerator_t*> { "linux", LinuxSteps }
+    std::pair<std::string, generator::ExeGenerator_t*> { "linux", LinuxSteps },
+    std::pair<std::string, generator::ExeGenerator_t*> { "rtos", RtosSteps }
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -149,6 +158,13 @@ static void GetCommandLineArgs
                             't',
                             "target",
                             LE_I18N("Specify the target device to build for (localhost | ar7)."));
+
+    args::AddOptionalString(&BuildParams.osType,
+                            "linux",
+                            'T',
+                            "os-type",
+                            LE_I18N("Specify the OS type to build for."
+                                    "  Options are: linux (default) or rtos."));
 
     args::AddMultipleString('i',
                             "interface-search",

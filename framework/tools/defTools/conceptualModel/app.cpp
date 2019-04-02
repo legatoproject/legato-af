@@ -215,9 +215,7 @@ ApiClientInterfaceInstance_t* App_t::FindClientInterface
 /**
  * Find the client interface instance object associated with a given external interface name.
  *
- * @return Pointer to the object.
- *
- * @throw mk::Exception_t if not found.
+ * @return Pointer to the object, or NULL if no matching interface is found.
  */
 //--------------------------------------------------------------------------------------------------
 ApiClientInterfaceInstance_t* App_t::FindClientInterface
@@ -236,10 +234,38 @@ ApiClientInterfaceInstance_t* App_t::FindClientInterface
 
         if (i == preBuiltClientInterfaces.end())
         {
-            interfaceTokenPtr->ThrowException(
-                    mk::format(LE_I18N("App '%s' has no external client-side interface named '%s'"),
-                               name,
-                               interfaceName));
+            return NULL;
+        }
+    }
+
+    return i->second;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Find the server interface instance object associated with a given external interface name.
+ *
+ * @return Pointer to the object, or NULL if no matching interface is found.
+ */
+//--------------------------------------------------------------------------------------------------
+ApiServerInterfaceInstance_t* App_t::FindServerInterface
+(
+    const parseTree::Token_t* interfaceTokenPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    const std::string& interfaceName = interfaceTokenPtr->text;
+
+    auto i = externServerInterfaces.find(interfaceName);
+
+    if (i == externServerInterfaces.end())
+    {
+        i = preBuiltServerInterfaces.find(interfaceName);
+
+        if (i == preBuiltServerInterfaces.end())
+        {
+            return NULL;
         }
     }
 

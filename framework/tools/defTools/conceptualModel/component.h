@@ -80,6 +80,8 @@ struct Component_t : public HasTargetInfo_t
     void GetBundledFilesOfType(BundleAccess_t access, const std::string& fileType,
                                std::list<std::string>& fileList);
 
+    bool isStandAloneComp; ///< true = generate stand-alone component
+
     // Does the component have C code?
     bool HasCCode() const
     {

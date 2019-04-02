@@ -8,6 +8,7 @@
 
 #include "defTools.h"
 #include "modellerCommon.h"
+#include "componentModeller.h"
 
 
 namespace modeller
@@ -544,8 +545,13 @@ static void GetBindingServerSide
         bindingPtr->serverAgentName = agentName;
 
         // Make sure that the server interface actually exists on an app in the system.
-        // (This will throw an exception if it doesn't. We don't need the results returned.)
-        systemPtr->FindServerInterface(agentTokenPtr, interfaceTokenPtr);
+        if (!systemPtr->FindServerInterface(agentTokenPtr, interfaceTokenPtr))
+        {
+            interfaceTokenPtr->ThrowException(
+                    mk::format(LE_I18N("App '%s' has no external client-side interface named '%s'"),
+                               agentTokenPtr->text,
+                               interfaceTokenPtr->text));
+        }
     }
 }
 
@@ -691,7 +697,17 @@ static void ModelBindingsSection
             {
                 // 0         1    2         3
                 // IPC_AGENT NAME IPC_AGENT NAME
-                auto clientIfPtr = appPtr->FindClientInterface(tokens[1]);
+                auto interfaceTokenPtr = tokens[1];
+                auto clientIfPtr = appPtr->FindClientInterface(interfaceTokenPtr);
+                if (clientIfPtr == NULL)
+                {
+                    interfaceTokenPtr->ThrowException(
+                        mk::format(LE_I18N("App '%s' has no external client-side "
+                                   "interface named '%s'"),
+                                   appPtr->name,
+                                   interfaceTokenPtr->text));
+                }
+
                 bindingPtr->clientType = model::Binding_t::EXTERNAL_APP;
                 bindingPtr->clientAgentName = appPtr->name;
                 bindingPtr->clientIfName = clientIfPtr->name;
@@ -736,6 +752,68 @@ static void ModelBindingsSection
                 clientIfPtr->bindingPtr = bindingPtr;
             }
         }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add all the RPC bindings.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ModelRpcBindings
+(
+    model::System_t* systemPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Traverse all external client apis and generate a RPC binding
+    for (auto clientIfaceMapEntry : systemPtr->externClientInterfaces)
+    {
+        auto clientIfaceInstancePtr = clientIfaceMapEntry.second;
+
+        // Create a Client-side binding
+        model::Binding_t* bindingPtr = new model::Binding_t(NULL);
+
+        bindingPtr->clientType = model::Binding_t::EXTERNAL_APP;
+        bindingPtr->clientAgentName =
+            clientIfaceInstancePtr->componentInstancePtr->exePtr->appPtr->name; // Client app name
+        bindingPtr->clientIfName = clientIfaceInstancePtr->ifPtr->internalName;
+
+        bindingPtr->serverType = model::Binding_t::EXTERNAL_USER;
+        bindingPtr->serverAgentName = "root";
+        bindingPtr->serverIfName = clientIfaceInstancePtr->ifPtr->internalName;
+
+        std::cout << "RPC binding client interface: " << bindingPtr->clientIfName << std::endl;
+
+        bindingPtr->parseTreePtr = NULL;
+
+        clientIfaceInstancePtr->bindingPtr = bindingPtr;
+    }
+
+    // Traverse all external server apis and generate a RPC binding
+    for (auto clientIfaceMapEntry : systemPtr->externServerInterfaces)
+    {
+        auto clientIfaceInstancePtr = clientIfaceMapEntry.second;
+
+        // Create a Client-side binding
+        model::Binding_t* bindingPtr = new model::Binding_t(NULL);
+
+        bindingPtr->serverType = model::Binding_t::EXTERNAL_APP;
+        bindingPtr->serverAgentName =
+            clientIfaceInstancePtr->componentInstancePtr->exePtr->appPtr->name; // Client app name
+        bindingPtr->serverIfName = clientIfaceInstancePtr->ifPtr->internalName;
+
+        bindingPtr->clientType = model::Binding_t::EXTERNAL_USER;
+        bindingPtr->clientAgentName = "root";
+        bindingPtr->clientIfName = clientIfaceInstancePtr->ifPtr->internalName;
+
+        std::cout << "RPC binding server interface: " << bindingPtr->serverIfName << std::endl;
+
+        bindingPtr->parseTreePtr = NULL;
+
+        // Record the binding in the user's list of bindings.
+        AddNonAppUserBinding(systemPtr, bindingPtr);
     }
 }
 
@@ -1008,6 +1086,205 @@ static void EnsureRequiredKernelModuleinSystem
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mark an interface instance as externally visible for binding at the network level.
+ */
+//--------------------------------------------------------------------------------------------------
+static void MarkInterfaceExternal
+(
+    model::System_t* systemPtr,
+    model::ApiInterfaceInstance_t* ifInstancePtr, ///< Ptr to the interface instance object.
+    const parseTree::Token_t* nameTokenPtr    ///< Ptr to token containing name to use outside app.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Set the system extern flag
+    ifInstancePtr->systemExtern = true;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mark a single API interface instance as externally visible to other systems.
+ */
+//--------------------------------------------------------------------------------------------------
+static void MakeInterfaceExternal
+(
+    model::System_t* systemPtr,
+    const parseTree::Token_t* nameTokenPtr,
+    const parseTree::Token_t* applicationTokenPtr,
+    const parseTree::Token_t* interfaceTokenPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    const auto& appName = applicationTokenPtr->text;
+    const auto& interfaceName = interfaceTokenPtr->text;
+
+    // Check that there are no other external interfaces using the same name already.
+    const auto& name = nameTokenPtr->text;
+    if ((systemPtr->externServerInterfaces.find(name) != systemPtr->externServerInterfaces.end()) ||
+        (systemPtr->externClientInterfaces.find(name) != systemPtr->externClientInterfaces.end()))
+    {
+        nameTokenPtr->ThrowException(
+            mk::format(LE_I18N("Duplicate external interface name: '%s'."), name)
+        );
+    }
+
+    // Find the App instance.
+    auto appPtr = systemPtr->FindApp(applicationTokenPtr);
+
+    // Retrieve the interface (look in both the client and server interface lists)
+    auto componentServerIfPtr = appPtr->FindServerInterface(interfaceTokenPtr);
+    auto componentClientIfPtr = appPtr->FindClientInterface(interfaceTokenPtr);
+
+    // Mark the interface "external", and add it to the appropriate list of external interfaces.
+    if (componentServerIfPtr && componentClientIfPtr)
+    {
+        interfaceTokenPtr->ThrowException(
+            mk::format(LE_I18N("Internal error: Interface '%s' exported as"
+                               " both client and server interface from app '%s'."),
+                       interfaceName, appName));
+    }
+    else if (componentClientIfPtr != NULL)
+    {
+        MarkInterfaceExternal(systemPtr, componentClientIfPtr, nameTokenPtr);
+
+        systemPtr->externClientInterfaces[name] = componentClientIfPtr;
+    }
+    else if (componentServerIfPtr != NULL)
+    {
+        MarkInterfaceExternal(systemPtr, componentServerIfPtr, nameTokenPtr);
+
+        systemPtr->externServerInterfaces[name] = componentServerIfPtr;
+    }
+    else
+    {
+        interfaceTokenPtr->ThrowException(
+            mk::format(LE_I18N("No such interface '%s' on app '%s'."),
+                       interfaceName, appName));
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mark API interface instances as externally visible to other systems.
+ */
+//--------------------------------------------------------------------------------------------------
+static void MakeInterfacesExternal
+(
+    model::System_t* systemPtr,
+    const std::list<const parseTree::ExternApiInterface_t*>& interfaces
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto ifPtr : interfaces)
+    {
+        // Each interface spec is a token list.
+        auto tokens = dynamic_cast<const parseTree::TokenList_t*>(ifPtr)->Contents();
+
+        // If there are 3 content tokens, the first token is the external name
+        // to be used to identify the interface, and the remaining two tokens are the
+        // appName and interface names of the interface instance.
+        if (tokens.size() == 3)
+        {
+            MakeInterfaceExternal(systemPtr, tokens[0], tokens[1], tokens[2]);
+        }
+        // Otherwise, there are 2 content tokens and the interface is exported using the
+        // internal name of the interface on the component.
+        else
+        {
+            MakeInterfaceExternal(systemPtr, tokens[1], tokens[0], tokens[1]);
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Walk the parse tree for an "extern:" section looking for extern API interfaces. Adds a
+ * pointer to each found items to the list provided.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddExternApiInterfaces
+(
+    std::list<const parseTree::ExternApiInterface_t*>& interfaces, ///< [OUT] List of extern items.
+    const parseTree::ComplexSection_t* sectionPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Each item in the section is either an ExternApiInterface_t or a ComplexSection_t.
+    // We are looking for the ExternApiInterface_t items.
+    for (auto itemPtr : sectionPtr->Contents())
+    {
+        if (itemPtr->type == parseTree::Content_t::EXTERN_API_INTERFACE)
+        {
+            // Add to the list of extern API interfaces to be processed later.
+            interfaces.push_back(dynamic_cast<parseTree::ExternApiInterface_t*>(itemPtr));
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add system links to the system
+ */
+//--------------------------------------------------------------------------------------------------
+static void ModelLinks
+(
+    model::System_t* systemPtr,
+    const std::list<const parseTree::TokenList_t*>& links,
+    const mk::BuildParams_t &buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto linkPtr : links)
+    {
+        // Each link spec is a token list.
+        auto tokens = dynamic_cast<const parseTree::TokenList_t*>(linkPtr)->Contents();
+
+        model::Link_t *linkModelPtr =
+            new model::Link_t { .name = tokens[0]->text,
+                                .componentPtr = GetComponent(tokens[1],
+                                                             buildParams,
+                                                             std::list<std::string>(),
+                                                             true) };
+
+        // Build the Command Line Arguments
+        for (size_t i = 2; i < tokens.size(); ++i)
+        {
+            linkModelPtr->args.push_back(tokens[i]->text);
+        }
+
+        systemPtr->links.insert({linkModelPtr->name, linkModelPtr});
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Walk the parse tree for an "links:" section looking for links.  Adds a pointer to each found
+ * items to the list provided.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddLinks
+(
+    std::list<const parseTree::TokenList_t*>& links, ///< [OUT] List of link items.
+    const parseTree::ComplexSection_t* sectionPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Each item in the section is a ComplexSection_t.
+    for (auto itemPtr : sectionPtr->Contents())
+    {
+        if (itemPtr->type == parseTree::Content_t::TOKEN_LIST_SECTION)
+        {
+            // Add to the list of links to be processed later.
+            links.push_back(dynamic_cast<parseTree::TokenList_t*>(itemPtr));
+        }
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1042,6 +1319,8 @@ model::System_t* GetSystem
     std::list<const parseTree::CompoundItem_t*> bindingsSections;
     std::list<const parseTree::CompoundItem_t*> commandsSections;
     std::list<const parseTree::CompoundItem_t*> kernelModulesSections;
+    std::list<const parseTree::ExternApiInterface_t*> externApiInterfaces;
+    std::list<const parseTree::TokenList_t*> linkSections;
 
     // Iterate over the .sdef file's list of sections, processing content items.
     for (auto sectionPtr : sdefFilePtr->sections)
@@ -1105,6 +1384,16 @@ model::System_t* GetSystem
         {
             GetExternalWdogKick(systemPtr, ToTokenListPtr(sectionPtr));
         }
+        else if (sectionName == "extern")
+        {
+            auto complexSectionPtr = dynamic_cast<parseTree::ComplexSection_t*>(sectionPtr);
+            AddExternApiInterfaces(externApiInterfaces, complexSectionPtr);
+        }
+        else if (sectionName == "links")
+        {
+            auto complexSectionPtr = dynamic_cast<parseTree::ComplexSection_t*>(sectionPtr);
+            AddLinks(linkSections, complexSectionPtr);
+        }
         else
         {
             sectionPtr->ThrowException(
@@ -1117,9 +1406,16 @@ model::System_t* GetSystem
     // have been parsed.
     ModelApps(systemPtr, appsSections, buildParams);
 
+    // Process RPC API externs on executables built by the mk tools.
+    // This must be done after all components and executables have been modelled.
+    MakeInterfacesExternal(systemPtr, externApiInterfaces);
+
     // Process bindings.  This must be done after all the components and executables have been
     // modelled and all the external API interfaces have been processed.
     ModelBindings(systemPtr, bindingsSections, buildParams.beVerbose);
+
+    // Add all RPC bindings
+    ModelRpcBindings(systemPtr);
 
     // Ensure that all client-side interfaces have been bound to something.
     EnsureClientInterfacesBound(systemPtr);
@@ -1133,6 +1429,9 @@ model::System_t* GetSystem
 
     // Ensure that all required kernel modules are listed in the kernelModule(s): section of sdef
     EnsureRequiredKernelModuleinSystem(systemPtr);
+
+    // Model system-links
+    ModelLinks(systemPtr, linkSections, buildParams);
 
     return systemPtr;
 }

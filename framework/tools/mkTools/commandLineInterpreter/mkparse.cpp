@@ -288,12 +288,12 @@ static CommandArgs_t GetCommandLineArgs
  * Load the requested model object and model it in JSON.
  */
 //--------------------------------------------------------------------------------------------------
-template <typename getterType_t>
+template <typename modelTypePtr, typename buildParamType>
 void GenerateJsonModel
 (
     std::ostream& out,
     CommandArgs_t& processedArgs,
-    getterType_t getter
+    modelTypePtr (*getter)(const std::string&, buildParamType&)
 )
 //--------------------------------------------------------------------------------------------------
 {

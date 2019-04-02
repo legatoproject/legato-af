@@ -466,12 +466,7 @@ static void GetUsetypesApis
 )
 //--------------------------------------------------------------------------------------------------
 {
-    for (auto usetypesApiFilePtr : apiFilePtr->includes)
-    {
-        set.insert(usetypesApiFilePtr);
-
-        GetUsetypesApis(set, usetypesApiFilePtr); // Recurse.
-    }
+    apiFilePtr->GetUsetypesApis(set);
 }
 
 
@@ -1223,12 +1218,37 @@ model::Component_t* GetComponent
     const std::string& componentDir,    ///< Directory the component is found in.
     const mk::BuildParams_t& buildParams
 )
+{
+    return GetComponent(componentDir, buildParams, buildParams.isStandAloneComp);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a conceptual model for a single component residing in a given directory.
+ *
+ * @return Pointer to the component object.
+ */
+//--------------------------------------------------------------------------------------------------
+model::Component_t* GetComponent
+(
+    const std::string& componentDir,    ///< Directory the component is found in.
+    const mk::BuildParams_t& buildParams,
+    bool isStandAloneComp
+)
 //--------------------------------------------------------------------------------------------------
 {
     // If component has already been modelled, return a pointer to the previously created object.
     auto componentPtr = model::Component_t::GetComponent(componentDir);
     if (componentPtr != NULL)
     {
+        // Verify Component Stand-alone state
+        if (componentPtr->isStandAloneComp != isStandAloneComp)
+        {
+            componentPtr->defFilePtr->ThrowException(
+                mk::format(LE_I18N("Internal error: Mismatching stand-alone component state"),
+                           componentPtr->isStandAloneComp)
+            );
+        }
         return componentPtr;
     }
 
@@ -1249,6 +1269,12 @@ model::Component_t* GetComponent
                                   "  found at: '%s'"),
                                   componentPtr->name, componentPtr->dir)
                   << std::endl;
+    }
+
+    if (isStandAloneComp)
+    {
+        // Flag this component as a stand-alone component
+        componentPtr->isStandAloneComp = true;
     }
 
     // Set BUILDDIR environment variable for this component
@@ -1374,6 +1400,29 @@ model::Component_t* GetComponent
     const mk::BuildParams_t& buildParams,
     const std::list<std::string>& preSearchDirs ///< Dirs to search before buildParams source dirs
 )
+{
+    return GetComponent(tokenPtr, buildParams, preSearchDirs, buildParams.isStandAloneComp);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a conceptual model for a single component residing in a directory specified by a given
+ * FILE_PATH token.
+ *
+ * @return Pointer to the component object, or NULL if the token specifies an empty environment
+ *         variable.
+ *
+ * @throw mkTools::Exception_t on error.
+ */
+//--------------------------------------------------------------------------------------------------
+model::Component_t* GetComponent
+(
+    const parseTree::Token_t* tokenPtr,
+    const mk::BuildParams_t& buildParams,
+    const std::list<std::string>& preSearchDirs, ///< Dirs to search before buildParams source dirs
+    bool isStandAloneComp
+)
 //--------------------------------------------------------------------------------------------------
 {
     // Resolve the path to the component.
@@ -1398,7 +1447,7 @@ model::Component_t* GetComponent
     }
 
     // Get the component object.
-    return GetComponent(path::MakeAbsolute(resolvedPath), buildParams);
+    return GetComponent(path::MakeAbsolute(resolvedPath), buildParams, isStandAloneComp);
 }
 
 

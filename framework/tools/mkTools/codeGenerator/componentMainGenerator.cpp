@@ -114,7 +114,7 @@ void GenerateCLangComponentMainFile
     // For each of the component's client-side interfaces,
     for (auto interfacePtr : componentPtr->clientApis)
     {
-        DefineServiceNameVars(fileStream, interfacePtr, buildParams.isStandAloneComp);
+        DefineServiceNameVars(fileStream, interfacePtr, componentPtr->isStandAloneComp);
 
         // Declare the client-side interface initialization function.
         fileStream << "void " << interfacePtr->internalName << "_ConnectService(void);\n";
@@ -123,7 +123,7 @@ void GenerateCLangComponentMainFile
     // For each of the component's server-side interfaces,
     for (auto interfacePtr : componentPtr->serverApis)
     {
-        DefineServiceNameVars(fileStream, interfacePtr, buildParams.isStandAloneComp);
+        DefineServiceNameVars(fileStream, interfacePtr, componentPtr->isStandAloneComp);
 
         // Declare the server-side interface initialization function.
         fileStream << "void " << interfacePtr->internalName << "_AdvertiseService(void);\n";

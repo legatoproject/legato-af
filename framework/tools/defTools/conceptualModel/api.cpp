@@ -97,6 +97,19 @@ const
     return path::Combine(codeGenDir, "async_server/") + internalName + "_server.h";
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the path to generated file for RPC exported reference in config tree.
+ */
+//--------------------------------------------------------------------------------------------------
+std::string ApiFile_t::GetRpcReferenceFile
+(
+    const std::string& internalName
+) const
+{
+    return path::Combine(codeGenDir, internalName + "_ref.cfg");
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -275,6 +288,26 @@ void ApiFile_t::GetCommonUsetypesApiHeaders
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * If a given .api has any USETYPES statements in it, add those to a given set of
+ * USETYPES included .api files.
+ */
+//--------------------------------------------------------------------------------------------------
+void ApiFile_t::GetUsetypesApis
+(
+    std::set<const model::ApiFile_t*>& results ///< Set to add the USETYPES-included .api files to.
+) const
+{
+    for (auto usetypesApiFilePtr : this->includes)
+    {
+        results.insert(usetypesApiFilePtr);
+
+        usetypesApiFilePtr->GetUsetypesApis(results); // Recurse.
+    }
+}
+
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -295,6 +328,20 @@ ApiRef_t::ApiRef_t
     internalName(iName)
 //--------------------------------------------------------------------------------------------------
 {
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the path to generated file for RPC exported reference in config tree.
+ */
+//--------------------------------------------------------------------------------------------------
+std::string ApiRef_t::GetRpcReferenceFile
+(
+    void
+) const
+{
+    return apiFilePtr->GetRpcReferenceFile(internalName);
 }
 
 
@@ -562,7 +609,8 @@ ApiInterfaceInstance_t::ApiInterfaceInstance_t
 )
 //--------------------------------------------------------------------------------------------------
 :   componentInstancePtr(cInstPtr),
-    externMarkPtr(NULL)
+    externMarkPtr(NULL),
+    systemExtern(false)
 //--------------------------------------------------------------------------------------------------
 {
     if (componentInstancePtr == NULL)

@@ -412,7 +412,7 @@ static void AddLocalBindings
  * used by that executable are in the application's list of components.
  */
 //--------------------------------------------------------------------------------------------------
-static void AddExecutable
+void AddExecutable
 (
     model::App_t* appPtr,
     model::Exe_t* exePtr

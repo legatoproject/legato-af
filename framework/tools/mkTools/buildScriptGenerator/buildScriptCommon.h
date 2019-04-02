@@ -66,6 +66,8 @@ class BuildScriptGenerator_t
         const std::string scriptPath;
 
     public:
+        virtual void GenerateIncludedApis(const model::ApiFile_t* apiFilePtr);
+
         virtual void GenerateIfgenFlags(void);
         virtual void GenerateCFlags(void);
         virtual void GenerateBuildRules(void);

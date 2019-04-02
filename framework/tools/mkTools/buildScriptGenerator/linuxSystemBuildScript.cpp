@@ -69,6 +69,15 @@ void LinuxSystemBuildScriptGenerator_t::GenerateSystemBuildRules
     // Create an apps directory for the symlinks to the apps.
     "            mkdir -p $stagingDir/apps && $\n";
 
+    // Copy the link libComponents into the staging directory
+    for (auto &linkEntry : systemPtr->links)
+    {
+        const auto componentPtr = linkEntry.second->componentPtr;
+        script << "            "
+               << "find . -name libComponent_" << componentPtr->name << ".so -print | "
+                  "xargs cp -P -t $stagingDir/lib ; $\n";
+    }
+
     // Create symlinks inside the system's "apps" directory that point to the apps actual
     // install location on target (under /legato/apps/).
     for (auto& mapEntry : systemPtr->apps)
@@ -280,6 +289,42 @@ void LinuxSystemBuildScriptGenerator_t::GenerateSystemBuildRules
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Generate config tree references for exported RPC services
+ */
+//--------------------------------------------------------------------------------------------------
+template<class T>
+void LinuxSystemBuildScriptGenerator_t::GenerateRpcCfgReferences
+(
+    const std::map<std::string, T> &externInterfaces,
+    std::set<std::string> &rpcCfgRefs
+)
+{
+    for (auto &apiRef : externInterfaces)
+    {
+        std::string apiRefFile = apiRef.second->ifPtr->GetRpcReferenceFile();
+
+        // If a build rule has already been generated for this file; skip it.
+        if (rpcCfgRefs.find(apiRefFile) != rpcCfgRefs.end())
+        {
+            continue;
+        }
+
+        script << "build  $builddir/" << apiRefFile << ": GenInterfaceCode "
+               << apiRef.second->ifPtr->apiFilePtr->path << " |";
+        baseGeneratorPtr->GenerateIncludedApis(apiRef.second->ifPtr->apiFilePtr);
+        script <<
+            "\n"
+            "  outputDir = $builddir/" << path::GetContainingDir(apiRefFile) << "\n"
+            "  ifgenFlags = --lang Cfg --service-name " << apiRef.second->ifPtr->internalName <<
+            " --gen-rpc-reference\n"
+            "\n";
+
+        rpcCfgRefs.insert(apiRefFile);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Write to a given script the build statements for packing up everything into a system udpate pack.
  **/
 //--------------------------------------------------------------------------------------------------
@@ -289,6 +334,25 @@ void LinuxSystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
 )
 //--------------------------------------------------------------------------------------------------
 {
+    // On Linux, first construct framework.cfg from framework.cfg.in and the references for
+    // the individual RPC references
+
+    std::set<std::string> rpcCfgRefs;
+
+    GenerateRpcCfgReferences(systemPtr->externServerInterfaces, rpcCfgRefs);
+    GenerateRpcCfgReferences(systemPtr->externClientInterfaces, rpcCfgRefs);
+
+    script <<
+        "build $stagingDir/config/framework.cfg :"
+        " ProcessConfig $builddir/config/framework.cfg.in |";
+
+    for (auto rpcCfgRef : rpcCfgRefs)
+    {
+        script << " $builddir/" << rpcCfgRef;
+    }
+
+    script << "\n\n";
+
     // Generate build statement for zipping up the staging area into a system bundle.
     // Build the system staging area by adding framework binaries, app symlink and generate
     // system info.properties file which is the last thing to be added to the system staging dir.
@@ -316,8 +380,12 @@ void LinuxSystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
 
     script << sysAppsUpdates;
 
-    // This also must be run if the users.cfg has changed.
-    script << " $builddir/staging/config/users.cfg";
+    // This also must be run if any system config tree has changed.
+    script <<
+        " $builddir/staging/config/users.cfg"
+        " $builddir/staging/config/apps.cfg"
+        " $builddir/staging/config/modules.cfg"
+        " $builddir/staging/config/framework.cfg";
 
     // It must also be run again if any preloaded apps have changed.
     for (auto& mapEntry : systemPtr->apps)

@@ -23,7 +23,7 @@
 
 #include "legato.h"
 
-#define PROTOCOL_ID_STR "{{idString}}"
+#define PROTOCOL_ID_STR IFGEN_{{apiBaseName|upper}}_PROTOCOL_ID
 
 {%- if args.localService %}
 #define SERVICE_INSTANCE_NAME "{{serviceName}}"

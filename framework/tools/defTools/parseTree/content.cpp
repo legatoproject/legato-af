@@ -65,6 +65,9 @@ std::string Content_t::TypeName
         case REQUIRED_CONFIG_TREE:
             return "required configuration tree";
 
+        case REQUIRED_MODULE:
+            return "required module";
+
         case EXTERN_API_INTERFACE:
             return "external API interface";
 
@@ -92,8 +95,11 @@ std::string Content_t::TypeName
         case APP:
             return "app";
 
-        case REQUIRED_MODULE:
-            return "required module";
+        case MODULE:
+            return "module";
+
+        case NET_LINK:
+            return "net link";
 
         case REQUIRED_COMPONENT:
             return "required component";

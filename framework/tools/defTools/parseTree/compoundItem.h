@@ -195,7 +195,7 @@ struct RequiredConfigTree_t : TokenList_t
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Represents a single entry in an "extern:" section of a .adef file.
+ * Represents a single entry in an "extern:" section of a .adef or .sdef file.
  */
 //--------------------------------------------------------------------------------------------------
 struct ExternApiInterface_t : TokenList_t
@@ -351,6 +351,18 @@ struct RequiredModule_t : TokenList_t
 {
     RequiredModule_t(Token_t* firstTokenPtr): TokenList_t(REQUIRED_MODULE, firstTokenPtr) {}
 };
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Represents a named entry for a given network link in a "networks:" section of a .ndef file.
+ */
+//--------------------------------------------------------------------------------------------------
+struct NetLink_t : TokenList_t
+{
+    NetLink_t(Token_t* firstTokenPtr): TokenList_t(NET_LINK, firstTokenPtr) {}
+};
+
 
 //--------------------------------------------------------------------------------------------------
 /**

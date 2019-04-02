@@ -46,7 +46,8 @@ struct Content_t
         POOL,           ///< Pool (TokenList_t), "poolName = 123"
         APP,            ///< Named item in .sdef 'apps:' section (CompoundItemList_t),
                         ///  "appPath", "appPath { }" or "appPath { overrides }".
-        MODULE          ///< Named item in .sdef 'kernelModules:' section (CompoundItemList_t),
+        MODULE,         ///< Named item in .sdef 'kernelModules:' section (CompoundItemList_t)
+        NET_LINK        ///< Named item in .ndef 'links:' section.
     };
 
     Type_t type;        ///< The type of content item.

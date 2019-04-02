@@ -192,6 +192,8 @@ static void SetToolChainVars
         Set("CXX", cxxCompilerPath);
     }
 
+    // Don't set CPP with preprocessor -- it seems to interfere with config of some 3rd parties.
+
     if (!buildParams.toolChainDir.empty())
     {
         Set("TOOLCHAIN_DIR", buildParams.toolChainDir);

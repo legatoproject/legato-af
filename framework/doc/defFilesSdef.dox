@@ -599,8 +599,8 @@ order in which the modules are installed and removed takes the dependencies into
 Dependencies are added by adding the modules to the @c requires: @c kernelModules: section of the
 @ref defFilesMdef ".mdef" for the kernel module that depends on them.
 
-@note In case a module fails to load, the fault handler kicks in which restarts the Legato framework in
-order to attempt the recovery of the system. If the framework does not need to be restarted
+@note In case a module fails to load, the fault handler kicks in which restarts the Legato framework
+in order to attempt the recovery of the system. If the framework does not need to be restarted
 when a module fails to load, the module must be marked as optional by using '[optional]' tag.
 In the above example, world is an optional module.
 
@@ -660,6 +660,105 @@ Example:
 @code
 externalWatchdogKick: 120000 // Configure external watchdog kick to 2mins
 @endcode
+
+
+@section defFilesSdef_extern extern
+
+Externs indicate which of your system's RPC API interfaces should be made available for binding to
+the RPC API interfaces of other systems.
+
+For example,
+
+@code
+extern:
+{
+    aliasName = appName.interfaceName
+}
+@endcode
+
+This creates an alias for each interface that doesn't include any internal implementation
+details of your system.
+
+Inside your system, its network-interfaces are identified using the names of the executables and
+components that implement them.  Exposing these details outside your system can create
+maintainability problems later (see https://en.wikipedia.org/wiki/Information_hiding).
+
+Externally, the network-interface will be identified using the system name and the external alias
+(@c systemName.aliasName), thereby hiding from other systems the details of which executable and
+component implements the interface.  Encapsulating the system's implementation details allows them
+to be changed later without affecting other systems that communicate with this system.  Only if a
+system's external interface changes would any other system be affected.
+
+Use period characters  ('.') to seperate components of a network-interface.
+(E.g., applications and interface names.)
+External aliases must not contain any period characters ('.').
+
+When the external alias has the same name that the component uses as the interface name, it's
+possible to save time by omitting the <c>aliasName =</c> part.  For example,
+
+@code
+extern:
+{
+    appName.interfaceName
+}
+@endcode
+
+This is equivalent to
+
+@code
+extern:
+{
+    interfaceName = appName.interfaceName
+}
+@endcode
+
+To use this extern feature, @ref RPC must be enabled when building the Legato framework.
+
+@section defFilesSdef_links links
+
+The @c links: section declares a list of network communication links to be bundled
+and installed with Legato, as a part of supporting Legato APIs @ref apiFiles across
+multiple remote-host systems that are networked together (i.e. inter-system (RPC) communication).
+
+Each entry identifies a component definition and an optional list of command-line arguments, used
+to declare run-time parameters for creating/opening a communication channel to a specific
+remote-host system, such as IP address, listening port number, baud rate, etc..
+
+Format:
+
+@verbatim
+linkName = (<componentName>, "arg1", "arg2", ...)
+@endverbatim
+
+
+The component definition file provides the @ref le_comm.h implementation of the RPC communication
+channel for a system, and is required in order for remote system communication to be established
+during system run-time.  The Legato RPC communication API, @ref le_comm.h, provides a standard
+interface for facilitating all system-to-system network-layer communication.
+
+For example,
+
+@code
+links:
+{
+    LINK1 = (networkSocket "10.0.0.5" "54323")
+}
+@endcode
+
+This looks for a component definition file @ref Component.cdef (@ref defFilesOverview_cdef)
+in a components directory called @c networkSocket and includes it in the system.
+
+Alternatively you can include the full path on the declaration and bypass the system componentDirs
+search paths.
+
+@code
+links:
+{
+    LINK1 = (/full/path/to/my/network/networkSocket "10.0.0.5" "54323")
+}
+@endcode
+
+To use the links feature, @ref RPC must be enabled when building the Legato framework.
 
 Copyright (C) Sierra Wireless Inc.
 

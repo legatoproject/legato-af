@@ -103,6 +103,18 @@ void GenerateRtosSystemTasks
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Generate a rpcServices.c for rpc services and links in a given system.
+ */
+//--------------------------------------------------------------------------------------------------
+void GenerateRtosRpcServices
+(
+    model::System_t* systemPtr,
+    const mk::BuildParams_t& buildParams
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Generate linker script for RTOS system.
  *
  * This linker script will create weak definitions for all APIs, so optional APIs will

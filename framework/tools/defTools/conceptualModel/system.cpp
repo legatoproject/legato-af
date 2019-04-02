@@ -65,9 +65,7 @@ App_t* System_t::FindApp
 /**
  * Find a server-side interface on an app in the system.
  *
- * @return A pointer to the interface instance object.
- *
- * @throw  mk::Exception_t if interface not found.
+ * @return A pointer to the interface instance object, or NULL if no matching interface is found.
  */
 //--------------------------------------------------------------------------------------------------
 ApiServerInterfaceInstance_t* System_t::FindServerInterface
@@ -77,7 +75,6 @@ ApiServerInterfaceInstance_t* System_t::FindServerInterface
 )
 //--------------------------------------------------------------------------------------------------
 {
-    const auto& appName = appTokenPtr->text;
     const auto& interfaceName = interfaceTokenPtr->text;
 
     auto appPtr = FindApp(appTokenPtr);
@@ -91,16 +88,11 @@ ApiServerInterfaceInstance_t* System_t::FindServerInterface
 
         if (interfaceIter == appPtr->preBuiltServerInterfaces.end())
         {
-            interfaceTokenPtr->ThrowException(
-                    mk::format(LE_I18N("No such external server-side interface '%s' on app '%s'."),
-                        interfaceName, appName)
-            );
+            return NULL;
         }
     }
 
     return interfaceIter->second;
 }
-
-
 
 } // namespace modeller

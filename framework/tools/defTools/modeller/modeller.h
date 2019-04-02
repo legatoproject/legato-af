@@ -22,7 +22,7 @@ namespace modeller
 //--------------------------------------------------------------------------------------------------
 model::System_t* GetSystem
 (
-    const std::string& sdefPath,    ///< Path to the application's .sdef file.
+    const std::string& sdefPath,    ///< Path to the system's .sdef file.
     mk::BuildParams_t& buildParams  ///< [in,out]
 );
 
@@ -51,7 +51,7 @@ model::App_t* GetApp
 //--------------------------------------------------------------------------------------------------
 model::Module_t* GetModule
 (
-    const std::string& mdefPath,    ///< Path to the model's .mdef file.
+    const std::string& mdefPath,    ///< Path to the module's .mdef file.
     const mk::BuildParams_t& buildParams
 );
 
@@ -67,6 +67,21 @@ model::Component_t* GetComponent
 (
     const std::string& componentDir,    ///< Directory the component is found in.
     const mk::BuildParams_t& buildParams
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a conceptual model for a single component residing in a given directory.
+ *
+ * @return Pointer to the component object.
+ */
+//--------------------------------------------------------------------------------------------------
+model::Component_t* GetComponent
+(
+    const std::string& componentDir,    ///< Directory the component is found in.
+    const mk::BuildParams_t& buildParams,
+    bool isStandAloneComp
 );
 
 
@@ -92,7 +107,7 @@ void AddComponentInstance
 //--------------------------------------------------------------------------------------------------
 void EnsureClientInterfacesBound
 (
-    model::System_t* systemPtr
+    model::System_t* systemPtr ///< Pointer to the system object
 );
 
 

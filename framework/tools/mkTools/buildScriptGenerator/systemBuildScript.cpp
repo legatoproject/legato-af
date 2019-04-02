@@ -149,9 +149,11 @@ void SystemBuildScriptGenerator_t::Generate
     {
         includes += " -I" + dir;
     }
-    script << "builddir = " << path::MakeAbsolute(buildParams.workingDir) << "\n\n";
-    script << "stagingDir = "
-        << path::Combine(path::MakeAbsolute(buildParams.workingDir), "staging") << "\n\n";
+
+    auto buildDir = path::MakeAbsolute(buildParams.workingDir);
+
+    script << "builddir = " << buildDir << "\n\n";
+    script << "stagingDir = " << path::Combine(buildDir, "staging") << "\n\n";
     script << "cFlags = " << buildParams.cFlags << includes << "\n\n";
     script << "cxxFlags = " << buildParams.cxxFlags << includes << "\n\n";
     script << "ldFlags = " << buildParams.ldFlags << "\n\n";

@@ -34,8 +34,6 @@ class ComponentBuildScriptGenerator_t : protected RequireBaseGenerator_t
         virtual void GetJavaInterfaceFiles(std::list<std::string>& result,
                                            model::Component_t* componentPtr);
 
-        virtual void GetIncludedApis(const model::ApiFile_t* apiFilePtr);
-
         virtual void GenerateTypesOnlyBuildStatement(const model::ApiTypesOnlyInterface_t* ifPtr);
         virtual void GenerateJavaTypesOnlyBuildStatement(const model::ApiTypesOnlyInterface_t* ifPtr);
         virtual void GenerateClientUsetypesBuildStatement(const model::ApiFile_t* apiFilePtr);

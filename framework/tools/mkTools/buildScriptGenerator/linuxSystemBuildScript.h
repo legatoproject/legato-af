@@ -22,6 +22,10 @@ namespace ninja
 class LinuxSystemBuildScriptGenerator_t : public SystemBuildScriptGenerator_t
 {
     protected:
+        template<class T>
+        void GenerateRpcCfgReferences(const std::map<std::string, T> &externInterfaces,
+                                      std::set<std::string> &rpcCfgRefs);
+
         void GenerateSystemBuildRules(model::System_t* systemPtr) override;
         void GenerateSystemPackBuildStatement(model::System_t* systemPtr) override;
     public:

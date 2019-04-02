@@ -1603,6 +1603,70 @@ static void GenerateExternalWatchdogKickConfig
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Generate the rpcProxy system link configuration settings
+ */
+//--------------------------------------------------------------------------------------------------
+static void GenerateSystemLinkConfig
+(
+    std::ostream &cfgStream,
+    const std::map<std::string, model::Link_t*> &links
+)
+{
+    if (links.empty())
+    {
+        return;
+    }
+
+    cfgStream <<
+        "    \"systemLinks\"\n"
+        "    {\n";
+    for (auto &linkEntry : links)
+    {
+        cfgStream << "        \"" << linkEntry.first << "\"\n"
+            "        {\n"
+            "            \"libraryName\" \"" <<
+            path::GetLastNode(linkEntry.second->componentPtr->
+                              GetTargetInfo<target::LinuxComponentInfo_t>()->lib) << "\"\n"
+            "            \"args\" {\n";
+        int i = 0;
+        for (auto &arg : linkEntry.second->args)
+        {
+            cfgStream << "                 \"" << i++ << "\" \"" << arg << "\"\n";
+        }
+        cfgStream << "            }\n";
+        cfgStream << "        }\n";
+    }
+    cfgStream <<
+        "    }\n";
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate list of external references
+ */
+//--------------------------------------------------------------------------------------------------
+template<class T>
+static void GenerateReferencesConfig
+(
+    std::ostream &cfgStream,
+    const std::map<std::string, T> &apiRefs
+)
+{
+    for (auto &apiRef : apiRefs)
+    {
+        cfgStream <<
+            "        \"" << apiRef.first << "\"" << std::endl <<
+            "            #include \"" <<
+            path::Combine(apiRef.second->ifPtr->apiFilePtr->codeGenDir,
+                          apiRef.second->ifPtr->apiFilePtr->defaultPrefix) <<
+                          "_ref.cfg\"" << std::endl;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Generate the framework watchdog configuration settings file "framework.cfg" in the "config"
  * directory of the system's staging directory.
  */
@@ -1614,7 +1678,7 @@ static void GenerateFrameworkConfig
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::string filePath = path::Combine(buildParams.workingDir, "staging/config/framework.cfg");
+    std::string filePath = path::Combine(buildParams.workingDir, "config/framework.cfg.in");
 
     if (buildParams.beVerbose)
     {
@@ -1636,6 +1700,23 @@ static void GenerateFrameworkConfig
     cfgStream << "{" << std::endl;
 
     GenerateExternalWatchdogKickConfig(cfgStream, systemPtr);
+    GenerateSystemLinkConfig(cfgStream, systemPtr->links);
+
+    // Client references for the system are server references for rpcServer
+    if (!systemPtr->externClientInterfaces.empty())
+    {
+        cfgStream << "    \"serverReferences\" {" << std::endl;
+        GenerateReferencesConfig(cfgStream, systemPtr->externClientInterfaces);
+        cfgStream << "    }" << std::endl;
+    }
+
+    // and server references for the system are client references for rpcServer
+    if (!systemPtr->externServerInterfaces.empty())
+    {
+        cfgStream << "    \"clientReferences\" {" << std::endl;
+        GenerateReferencesConfig(cfgStream, systemPtr->externServerInterfaces);
+        cfgStream << "    }" << std::endl;
+    }
 
     cfgStream << "}" << std::endl;
 }
@@ -1659,6 +1740,7 @@ void Generate
 )
 //--------------------------------------------------------------------------------------------------
 {
+    file::MakeDir(path::Combine(buildParams.workingDir, "config"));
     file::MakeDir(path::Combine(buildParams.workingDir, "staging/config"));
 
     GenerateModulesConfig(systemPtr, buildParams);

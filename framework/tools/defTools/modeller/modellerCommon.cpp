@@ -91,6 +91,84 @@ void CheckBindingTarget
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Verifies that all client-side interfaces of all components in a system have been bound
+ * to something.
+ *
+ * @throw mk::Exception_t if any client-side interface is unbound
+ */
+//--------------------------------------------------------------------------------------------------
+
+void EnsureClientInterfacesBound
+(
+    model::System_t* systemPtr,
+    model::ComponentInstance_t* componentInstancePtr
+)
+{
+    // This is only called in a system context, so exe & app will always exist for this component.
+    auto exePtr = componentInstancePtr->exePtr;
+    auto appPtr = exePtr->appPtr;
+
+    for (auto ifInstancePtr : componentInstancePtr->clientApis)
+    {
+        // If the client-side interface is bound
+        if (ifInstancePtr->bindingPtr)
+        {
+            // It has a binding, but is it a good binding?
+            CheckBindingTarget(systemPtr, ifInstancePtr->bindingPtr);
+            continue;
+        }
+
+        // Ignore unbound interfaces if they have been
+        // marked as extern by the .sdef.
+        if (ifInstancePtr->systemExtern)
+        {
+            continue;
+        }
+
+        // If the binding of this interface is optional, don't care if it's unbound
+        if ( ifInstancePtr->ifPtr->optional )
+        {
+            continue;
+        }
+
+        // If le_cfg API, then bind it to the one served by the root user.
+        if (ifInstancePtr->ifPtr->internalName == "le_cfg")
+        {
+            BindToRootService(appPtr, ifInstancePtr, "le_cfg");
+        }
+        // If le_wdog API, then bind it to the one served by the root user.
+        else if (ifInstancePtr->ifPtr->internalName == "le_wdog")
+        {
+            BindToRootService(appPtr, ifInstancePtr, "le_wdog");
+        }
+        // At this point, we know it's an error, just need to figure out which
+        // type of error message to report (depending on whether the interface
+        // has been marked "extern" or not).
+        else if (ifInstancePtr->externMarkPtr != NULL)
+        {
+            throw mk::Exception_t(
+                mk::format(LE_I18N("Client interface '%s.%s'"
+                                   " (aka '%s.%s.%s.%s')"
+                                   " is not bound to anything."),
+                           appPtr->name, ifInstancePtr->name,
+                           appPtr->name, exePtr->name,
+                           componentInstancePtr->componentPtr->name,
+                           ifInstancePtr->ifPtr->internalName)
+            );
+        }
+        else
+        {
+            throw mk::Exception_t(
+                mk::format(LE_I18N("Client interface '%s.%s' "
+                                   "is not bound to anything."),
+                           appPtr->name, ifInstancePtr->name)
+            );
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Verifies that all client-side interfaces of all applications in a system have been bound
  * to something.  Will auto-bind any unbound le_cfg or le_wdog interfaces it finds.
  *
@@ -113,55 +191,8 @@ void EnsureClientInterfacesBound
 
             for (auto componentInstancePtr : exePtr->componentInstances)
             {
-                for (auto ifInstancePtr : componentInstancePtr->clientApis)
-                {
-                    // If the client-side interface is unbound,
-                    if (ifInstancePtr->bindingPtr == NULL)
-                    {
-                        // If the binding of this interface is not optional,
-                        if ( ! (ifInstancePtr->ifPtr->optional))
-                        {
-                            // If le_cfg API, then bind it to the one served by the root user.
-                            if (ifInstancePtr->ifPtr->internalName == "le_cfg")
-                            {
-                                BindToRootService(appPtr, ifInstancePtr, "le_cfg");
-                            }
-                            // If le_wdog API, then bind it to the one served by the root user.
-                            else if (ifInstancePtr->ifPtr->internalName == "le_wdog")
-                            {
-                                BindToRootService(appPtr, ifInstancePtr, "le_wdog");
-                            }
-                            // At this point, we know it's an error, just need to figure out which
-                            // type of error message to report (depending on whether the interface
-                            // has been marked "extern" or not).
-                            else if (ifInstancePtr->externMarkPtr != NULL)
-                            {
-                                throw mk::Exception_t(
-                                    mk::format(LE_I18N("Client interface '%s.%s'"
-                                                       " (aka '%s.%s.%s.%s')"
-                                                       " is not bound to anything."),
-                                               appPtr->name, ifInstancePtr->name,
-                                               appPtr->name, exePtr->name,
-                                               componentInstancePtr->componentPtr->name,
-                                               ifInstancePtr->ifPtr->internalName)
-                                );
-                            }
-                            else
-                            {
-                                throw mk::Exception_t(
-                                    mk::format(LE_I18N("Client interface '%s.%s' "
-                                                       "is not bound to anything."),
-                                               appPtr->name, ifInstancePtr->name)
-                                );
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // It has a binding, but is it a good binding?
-                        CheckBindingTarget(systemPtr, ifInstancePtr->bindingPtr);
-                    }
-                }
+                EnsureClientInterfacesBound(systemPtr,
+                                            componentInstancePtr);
             }
         }
     }

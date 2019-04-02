@@ -742,28 +742,6 @@ void ComponentBuildScriptGenerator_t::GenerateBuildStatements
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Write out to a given script file a space-separated list of paths to all the .api files needed
- * by a given .api file (specified through USETYPES statements in the .api files).
- **/
-//--------------------------------------------------------------------------------------------------
-void ComponentBuildScriptGenerator_t::GetIncludedApis
-(
-    const model::ApiFile_t* apiFilePtr
-)
-//--------------------------------------------------------------------------------------------------
-{
-    for (auto includedApiPtr : apiFilePtr->includes)
-    {
-        script << " " << includedApiPtr->path;
-
-        // Recurse.
-        GetIncludedApis(includedApiPtr);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Print to a given script a build statement for building the header file for a given types-only
  * included API interface.
  **/
@@ -783,7 +761,7 @@ void ComponentBuildScriptGenerator_t::GenerateTypesOnlyBuildStatement
 
         script << "build $builddir/" << cFiles.interfaceFile << ":"
                   " GenInterfaceCode " << ifPtr->apiFilePtr->path << " |";
-        GetIncludedApis(ifPtr->apiFilePtr);
+        baseGeneratorPtr->GenerateIncludedApis(ifPtr->apiFilePtr);
         script << "\n"
                   "  ifgenFlags = --gen-interface"
                   " --name-prefix " << ifPtr->internalName <<
@@ -816,7 +794,7 @@ void ComponentBuildScriptGenerator_t::GenerateJavaTypesOnlyBuildStatement
         script << "build " <<
                   path::Combine(buildParams.workingDir, javaFiles.interfaceSourceFile) << ":"
                   " GenInterfaceCode " << ifPtr->apiFilePtr->path << " |";
-        GetIncludedApis(ifPtr->apiFilePtr);
+        baseGeneratorPtr->GenerateIncludedApis(ifPtr->apiFilePtr);
         script << "\n"
                   "  ifgenFlags = --gen-interface --lang Java"
                   " --name-prefix " << ifPtr->internalName << " $ifgenFlags\n"
@@ -849,7 +827,7 @@ void ComponentBuildScriptGenerator_t::GenerateCommonUsetypesBuildStatement
 
         script << "build $builddir/" << cFiles.interfaceFile <<
                   ": GenInterfaceCode " << apiFilePtr->path << " |";
-        GetIncludedApis(apiFilePtr);
+        baseGeneratorPtr->GenerateIncludedApis(apiFilePtr);
         script << "\n"
                   "  outputDir = $builddir/" << path::GetContainingDir(cFiles.interfaceFile) << "\n"
                   "  ifgenFlags = --gen-common-interface $ifgenFlags\n"
@@ -879,7 +857,7 @@ void ComponentBuildScriptGenerator_t::GenerateClientUsetypesBuildStatement
 
         script << "build $builddir/" << headerFile <<
                   ": GenInterfaceCode " << apiFilePtr->path << " |";
-        GetIncludedApis(apiFilePtr);
+        baseGeneratorPtr->GenerateIncludedApis(apiFilePtr);
         script << "\n"
                   "  outputDir = $builddir/" << path::GetContainingDir(headerFile) << "\n"
                   "  ifgenFlags = --gen-interface $ifgenFlags\n"
@@ -909,7 +887,7 @@ void ComponentBuildScriptGenerator_t::GenerateServerUsetypesBuildStatement
 
         script << "build $builddir/" << headerFile <<
                   ": GenInterfaceCode " << apiFilePtr->path << " |";
-        GetIncludedApis(apiFilePtr);
+        baseGeneratorPtr->GenerateIncludedApis(apiFilePtr);
         script << "\n"
                   "  outputDir = $builddir/" << path::GetContainingDir(headerFile) << "\n"
                   "  ifgenFlags = --gen-server-interface $ifgenFlags\n"
@@ -1001,7 +979,7 @@ void ComponentBuildScriptGenerator_t::GenerateCCommonBuildStatement
     {
         script << "build" << generatedFiles << ":"
                   " GenInterfaceCode " << apiFilePtr->path << " |";
-        GetIncludedApis(apiFilePtr);
+        baseGeneratorPtr->GenerateIncludedApis(apiFilePtr);
         script << "\n"
                   "  ifgenFlags =" << ifgenFlags << " $ifgenFlags\n"
                   "  outputDir = $builddir/" << path::GetContainingDir(commonFiles.sourceFile) <<
@@ -1031,7 +1009,7 @@ void ComponentBuildScriptGenerator_t::GenerateJavaUsetypesBuildStatement
         generatedIPC.insert(interfaceFile);
         script << "build " << path::Combine(buildParams.workingDir, interfaceFile) <<
                   ": GenInterfaceCode " << apiFilePtr->path << " |";
-        GetIncludedApis(apiFilePtr);
+        baseGeneratorPtr->GenerateIncludedApis(apiFilePtr);
         script << "\n"
                   "  outputDir = $builddir/" <<
                   path::Combine(apiFilePtr->codeGenDir, "src") << "\n"
@@ -1131,7 +1109,7 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
         ifgenFlags += " --name-prefix " + ifPtr->internalName;
         script << "build" << generatedFiles <<
                   ": GenInterfaceCode " << ifPtr->apiFilePtr->path << " |";
-        GetIncludedApis(ifPtr->apiFilePtr);
+        baseGeneratorPtr->GenerateIncludedApis(ifPtr->apiFilePtr);
         script << "\n"
                   "  ifgenFlags =" << ifgenFlags << " $ifgenFlags\n"
                   "  outputDir = $builddir/" << path::GetContainingDir(cFiles.sourceFile) << "\n\n";
@@ -1180,7 +1158,7 @@ void ComponentBuildScriptGenerator_t::GenerateJavaBuildStatement
     script << "build " << generatedFiles << ": $\n"
               "      GenInterfaceCode " << apiFilePtr->path << " | ";
 
-    GetIncludedApis(apiFilePtr);
+    baseGeneratorPtr->GenerateIncludedApis(apiFilePtr);
 
     script << "\n"
               "  ifgenFlags = --lang Java" << requiredFlags << " --name-prefix "
@@ -1235,7 +1213,7 @@ void ComponentBuildScriptGenerator_t::GeneratePythonBuildStatement
               "      " << path::Combine(outputDir, pythonFiles.wrapperSourceFile) << " : $\n"
               "      GenInterfaceCode " << apiFilePtr->path << " | ";
 
-    GetIncludedApis(apiFilePtr);
+    baseGeneratorPtr->GenerateIncludedApis(apiFilePtr);
     script << "\n"
               "  ifgenFlags = --lang Python " << apiFlag << " --name-prefix "
            << internalName << " $ifgenFlags\n"
@@ -1256,7 +1234,7 @@ void ComponentBuildScriptGenerator_t::GeneratePythonBuildStatement
         script << "build " << pyCdefSourceFilePath << " : $\n"
                   "      GenInterfaceCode " << includedApiPtr->path << " | ";
 
-        GetIncludedApis(includedApiPtr);
+        baseGeneratorPtr->GenerateIncludedApis(includedApiPtr);
         // cffi cdef.h files generated in folder includedApi
         script << "\n"
                   "  ifgenFlags = --lang Python " << apiFlag << " --name-prefix "
@@ -1422,7 +1400,7 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
         ifgenFlags += " --name-prefix " + ifPtr->internalName;
         script << "build" << generatedFiles << ":"
                   " GenInterfaceCode " << ifPtr->apiFilePtr->path << " |";
-        GetIncludedApis(ifPtr->apiFilePtr);
+        baseGeneratorPtr->GenerateIncludedApis(ifPtr->apiFilePtr);
         script << "\n"
                   "  ifgenFlags =" << ifgenFlags << " $ifgenFlags\n"
                   "  outputDir = $builddir/" << path::GetContainingDir(cFiles.sourceFile) << "\n"
@@ -1683,7 +1661,7 @@ void ComponentBuildScriptGenerator_t::Generate
     {
         includes += " -I" + dir;
     }
-    script << "builddir =" << buildParams.workingDir << "\n\n";
+    script << "builddir =" << path::MakeAbsolute(buildParams.workingDir) << "\n\n";
     script << "cFlags =" << buildParams.cFlags << includes << "\n\n";
     script << "cxxFlags =" << buildParams.cxxFlags << includes << "\n\n";
     script << "ldFlags =" << buildParams.ldFlags << "\n\n";

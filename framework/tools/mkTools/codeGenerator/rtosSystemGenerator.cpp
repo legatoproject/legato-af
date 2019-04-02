@@ -103,9 +103,13 @@ void CountSystemComponentUsage
         {
             for (auto processPtr : processEnvPtr->processes)
             {
-                auto exePtr = appPtr->executables[model::Exe_t::NameFromPath(processPtr->exePath)];
+                auto exeIter = appPtr->executables.find(model::Exe_t::NameFromPath(processPtr->exePath));
+                if (exeIter != appPtr->executables.end())
+                {
+                    auto exePtr = exeIter->second;
 
-                CountExeComponentUsage(exePtr);
+                    CountExeComponentUsage(exePtr);
+                }
             }
         }
     }
@@ -327,5 +331,256 @@ void GenerateRtosSystemTasks
     outputFile <<
         "}\n";
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate a rpcServices.c for rpc services and links in a given system.
+ */
+//--------------------------------------------------------------------------------------------------
+void GenerateRtosRpcServices
+(
+    model::System_t* systemPtr,
+    const mk::BuildParams_t& buildParams
+)
+{
+    auto sourceFile = path::Combine(buildParams.workingDir, "src/rpcServices.c");
+
+    // Open the file as an output stream.
+    file::MakeDir(path::GetContainingDir(sourceFile));
+    std::ofstream outputFile(sourceFile);
+    if (outputFile.is_open() == false)
+    {
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Could not open '%s' for writing."), sourceFile)
+        );
+    }
+
+    std::set<std::string> includedHeaders;
+
+    // Generate the file header comment and #include directives.
+    outputFile << "\n"
+                  "// RPC data for system '" << systemPtr->name << "'.\n"
+                  "// This is a generated file, do not edit.\n"
+                  "\n"
+                  "#include \"legato.h\"\n"
+                  "#include \"le_rpcProxy.h\"\n"
+                  "\n";
+    for (auto &serverApiEntry : systemPtr->externServerInterfaces)
+    {
+        std::string headerName = serverApiEntry.second->ifPtr->apiFilePtr->defaultPrefix + "_common.h";
+        if (includedHeaders.find(headerName) == includedHeaders.end())
+        {
+            outputFile << "#include \"" << headerName << "\"\n";
+            includedHeaders.insert(headerName);
+        }
+    }
+    for (auto &clientApiEntry : systemPtr->externClientInterfaces)
+    {
+        std::string headerName = clientApiEntry.second->ifPtr->apiFilePtr->defaultPrefix + "_common.h";
+        if (includedHeaders.find(headerName) == includedHeaders.end())
+        {
+            outputFile << "#include \"" << headerName << "\"\n";
+            includedHeaders.insert(headerName);
+        }
+    }
+    outputFile << "\n";
+
+    // Declaration of all services provided by RPC.
+    // Note: if the system is a client of the service, the RPC proxy will be a server
+    // for the system, and visa versa.
+    for (auto &clientApiEntry : systemPtr->externClientInterfaces)
+    {
+        outputFile << "le_msg_LocalService_t "
+                   << ConvertInterfaceNameToSymbol(clientApiEntry.second->name)
+                   << ";\n";
+    }
+    // Forward-declaration of all services required by RPC
+    for (auto &serverApiEntry : systemPtr->externServerInterfaces)
+    {
+        outputFile << "extern le_msg_LocalService_t "
+                   << ConvertInterfaceNameToSymbol(serverApiEntry.second->name)
+                   << ";\n";
+    }
+
+    outputFile << "\n"
+        "//--------------------------------------------------------------------------------------\n"
+        "/**\n"
+        " * Argument lists for communication links.\n"
+        " */\n"
+        "//--------------------------------------------------------------------------------------\n"
+        ;
+    for (auto &linkEntry : systemPtr->links)
+    {
+        outputFile <<
+            "static const char *" << linkEntry.first << "ArgV[] =\n"
+            "{\n";
+        for (auto &arg : linkEntry.second->args)
+        {
+            outputFile << "    \"" << arg << "\",\n";
+        }
+        outputFile <<
+            "    NULL\n"
+            "};\n";
+    }
+
+
+    outputFile << "\n"
+        "//--------------------------------------------------------------------------------------\n"
+        "/**\n"
+        " * All communication links available to this system.\n"
+        " */\n"
+        "//--------------------------------------------------------------------------------------\n"
+        "const rpcProxy_SystemLinkElement_t rpcProxy_SystemLinkArray[] =\n"
+        "{\n";
+    for (auto &linkEntry : systemPtr->links)
+    {
+        outputFile <<
+            "    {\n"
+            "        .systemName = \"" << linkEntry.first << "\",\n"
+            "        .argc = " << linkEntry.second->args.size() << ",\n"
+            "        .argv = " << linkEntry.first << "ArgV\n"
+            "    },\n";
+    }
+    outputFile <<
+        "    { .systemName = NULL }\n"
+        "};\n"
+        "\n"
+        "//--------------------------------------------------------------------------------------\n"
+        "/**\n"
+        " * Each local service required by this system, including message pools\n"
+        " */\n"
+        "//--------------------------------------------------------------------------------------\n";
+    for (auto &externClientEntry : systemPtr->externClientInterfaces)
+    {
+        std::string defaultCapsPrefix;
+        std::transform(externClientEntry.second->ifPtr->apiFilePtr->defaultPrefix.begin(),
+                       externClientEntry.second->ifPtr->apiFilePtr->defaultPrefix.end(),
+                       std::back_inserter(defaultCapsPrefix),
+                       ::toupper);
+
+        outputFile <<
+            "//----------------------------------------------------------------------------------\n"
+            "/**\n"
+            " * Prototype for " << externClientEntry.first << " RPC services.\n"
+            " */\n"
+            "//----------------------------------------------------------------------------------\n"
+            "static le_msg_ServiceRef_t rpcProxy_Init" << externClientEntry.first << "Service\n"
+            "(\n"
+            "    void\n"
+            ");\n"
+            "\n"
+            "/**\n"
+            " * Local service reference for " << externClientEntry.first << "\n"
+            " */\n"
+            "static const rpcProxy_ExternLocalServer_t"
+            " rpcProxy_" << externClientEntry.first << "Server = \n"
+            "{\n"
+            "    .common = {\n"
+            "        .serviceName = \"" << externClientEntry.first << "\",\n"
+            "        .protocolIdStr = IFGEN_" << defaultCapsPrefix << "_PROTOCOL_ID,\n"
+            "        .messageSize = IFGEN_" << defaultCapsPrefix << "_MSG_SIZE\n"
+            "    },\n"
+            "    .initLocalServicePtr = &rpcProxy_Init" << externClientEntry.first << "Service\n"
+            "};\n"
+            "\n"
+            "LE_MEM_DEFINE_STATIC_POOL(" << externClientEntry.first << "Messages, 1,"
+            " IFGEN_" << defaultCapsPrefix << "_LOCAL_MSG_SIZE);\n"
+            "\n";
+    }
+    outputFile <<
+        "//--------------------------------------------------------------------------------------\n"
+        "/**\n"
+        " * All services which should be exposed over RPC by this system.\n"
+        " */\n"
+        "//--------------------------------------------------------------------------------------\n"
+        "const rpcProxy_ExternServer_t *rpcProxy_ServerReferenceArray[] =\n"
+        "{\n";
+    for (auto &externClientEntry : systemPtr->externClientInterfaces)
+    {
+        outputFile <<
+            "    &rpcProxy_" << externClientEntry.first << "Server.common,\n";
+    }
+
+    outputFile <<
+        "    NULL\n"
+        "};\n"
+        "\n"
+        "//--------------------------------------------------------------------------------------\n"
+        "/**\n"
+        " * Each local service required by this system.\n"
+        " */\n"
+        "//--------------------------------------------------------------------------------------\n";
+    for (auto &externServerEntry : systemPtr->externServerInterfaces)
+    {
+        std::string defaultCapsPrefix;
+        std::transform(externServerEntry.second->ifPtr->apiFilePtr->defaultPrefix.begin(),
+                       externServerEntry.second->ifPtr->apiFilePtr->defaultPrefix.end(),
+                       std::back_inserter(defaultCapsPrefix),
+                       ::toupper);
+
+        outputFile <<
+            "static const rpcProxy_ExternLocalClient_t"
+            " rpcProxy_" << externServerEntry.first << "Client =\n"
+            "{\n"
+            "     .common = {\n"
+            "         .serviceName = \"" << externServerEntry.first << "\",\n"
+            "         .protocolIdStr = IFGEN_" << defaultCapsPrefix << "_PROTOCOL_ID,\n"
+            "        .messageSize = IFGEN_" << defaultCapsPrefix << "_MSG_SIZE\n"
+            "     },\n"
+            "     .localServicePtr = &"
+                   << ConvertInterfaceNameToSymbol(externServerEntry.second->name) << "\n"
+            "};\n"
+            "\n";
+    }
+    outputFile <<
+        "//--------------------------------------------------------------------------------------\n"
+        "/**\n"
+        " * All clients which are required over RPC by this system.\n"
+        " */\n"
+        "//--------------------------------------------------------------------------------------\n"
+        "const rpcProxy_ExternClient_t *rpcProxy_ClientReferenceArray[] =\n"
+        "{\n";
+    for (auto &externServerEntry : systemPtr->externServerInterfaces)
+    {
+        outputFile <<
+            "    &rpcProxy_" << externServerEntry.first << "Client.common,\n";
+    }
+    outputFile <<
+        "    NULL\n"
+        "};\n"
+        "\n";
+    for (auto &externClientEntry : systemPtr->externClientInterfaces)
+    {
+        outputFile <<
+            "//----------------------------------------------------------------------------------\n"
+            "/**\n"
+            " * Initialize service for " << externClientEntry.first << " RPC services.\n"
+            " */\n"
+            "//----------------------------------------------------------------------------------\n"
+            "static le_msg_ServiceRef_t rpcProxy_Init" << externClientEntry.first << "Service\n"
+            "(\n"
+            "    void\n"
+            ")\n"
+            "{\n";
+
+        std::string defaultCapsPrefix;
+        std::transform(externClientEntry.second->ifPtr->apiFilePtr->defaultPrefix.begin(),
+                       externClientEntry.second->ifPtr->apiFilePtr->defaultPrefix.end(),
+                       std::back_inserter(defaultCapsPrefix),
+                       ::toupper);
+
+        outputFile <<
+            "    le_mem_PoolRef_t serverMsgPoolRef = \n"
+            "        le_mem_InitStaticPool(" << externClientEntry.first << "Messages, 1, IFGEN_"
+                   << defaultCapsPrefix << "_LOCAL_MSG_SIZE);\n"
+            "\n"
+            "    return le_msg_InitLocalService(&"
+                   << ConvertInterfaceNameToSymbol(externClientEntry.second->name)
+                   << ", \"" << externClientEntry.first << "\""
+                   << ", serverMsgPoolRef);\n"
+        "}\n";
+    }
+}
+
 
 }

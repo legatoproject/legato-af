@@ -70,7 +70,7 @@ void RtosBuildScriptGenerator_t::GenerateBuildRules
               "  command = " << cCompilerPath;
     if (!buildParams.debugDir.empty())
     {
-        script << " -Wl,--build-id -g";
+        script << " -g";
     }
     script << " -Wl,-r -nostdlib -Wl,--entry=$entry -o $out $in $ldFlags && $\n"
               "            rename-hidden-symbols $pplFlags $out\n"

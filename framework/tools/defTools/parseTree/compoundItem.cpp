@@ -190,6 +190,9 @@ TokenList_t* CreateTokenList
         case Content_t::MODULE:
             throw mk::Exception_t(LE_I18N("Internal error: MODULE is not a TokenList_t type."));
 
+        case Content_t::NET_LINK:
+            return new NetLink_t(firstTokenPtr);
+
     }
 
     throw mk::Exception_t(
@@ -336,6 +339,7 @@ const TokenList_t* ToTokenListPtr
         case Content_t::ENV_VAR:
         case Content_t::MODULE_PARAM:
         case Content_t::POOL:
+        case Content_t::NET_LINK:
             return static_cast<const TokenList_t*>(contentItemPtr);
 
         case Content_t::TOKEN:
@@ -407,6 +411,7 @@ const CompoundItemList_t* ToCompoundItemListPtr
         case Content_t::ENV_VAR:
         case Content_t::MODULE_PARAM:
         case Content_t::POOL:
+        case Content_t::NET_LINK:
         {
             auto tokenListPtr = static_cast<const TokenList_t*>(contentItemPtr);
             tokenListPtr->ThrowException(

@@ -55,6 +55,7 @@ struct BuildParams_t
     std::string             cPreProcessorPath;  ///< C pre-processor
     std::string             cCompilerPath;      ///< C compiler
     std::string             cxxCompilerPath;    ///< C++ compiler
+    std::string             cppPath;            ///< C pre-processor
     std::string             toolChainDir;       ///< Toolchain directory
     std::string             toolChainPrefix;    ///< Toolchain prefix
     std::string             sysrootDir;         ///< Root directory of compiler's system files

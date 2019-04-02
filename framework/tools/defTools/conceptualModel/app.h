@@ -121,6 +121,7 @@ struct App_t : public HasTargetInfo_t
                                                       const parseTree::Token_t* componentTokenPtr,
                                                       const parseTree::Token_t* interfaceTokenPtr);
     ApiClientInterfaceInstance_t* FindClientInterface(const parseTree::Token_t* interfaceTokenPtr);
+    ApiServerInterfaceInstance_t* FindServerInterface(const parseTree::Token_t* interfaceTokenPtr);
     ApiInterfaceInstance_t* FindInterface(const parseTree::Token_t* exeTokenPtr,
                                           const parseTree::Token_t* componentTokenPtr,
                                           const parseTree::Token_t* interfaceTokenPtr);

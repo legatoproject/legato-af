@@ -24,15 +24,9 @@
 
 #include "{{apiBaseName}}_common.h"
 {% if args.localService %}
-#if UINT32_MAX == UINTPTR_MAX
-#  define _MAX_MSG_SIZE {{interface|LocalMessageSize(4)}}
-#elif UINT64_MAX == UINTPTR_MAX
-#  define _MAX_MSG_SIZE {{interface|LocalMessageSize(8)}}
-#else
-#  error "Unsupported pointer size -- only 32- and 64-bit are supported for local services."
-#endif
+#define _MAX_MSG_SIZE IFGEN_{{apiBaseName|upper}}_LOCAL_MSG_SIZE
 {%- else %}
-#define _MAX_MSG_SIZE {{messageSize}}
+#define _MAX_MSG_SIZE IFGEN_{{apiBaseName|upper}}_MSG_SIZE
 {%- endif %}
 
 // Define the message type for communicating between client and server

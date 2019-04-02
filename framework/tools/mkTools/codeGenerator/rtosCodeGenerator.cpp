@@ -307,10 +307,19 @@ void GenerateRtosExeMain
     exePtr->SetTargetInfo<target::RtosExeInfo_t>(new target::RtosExeInfo_t);
 
     // Compute the name of the init function.
+    std::string exeFullName;
+    if (exePtr->appPtr)
+    {
+        exeFullName = "_" + exePtr->appPtr->name + "_" + exePtr->name;
+    }
+    else
+    {
+        exeFullName = "_" + exePtr->name;
+    }
     std::string initFuncName = "_" + exePtr->name + "_COMPONENT_INIT";
-    std::string mainFuncName = "_" + exePtr->appPtr->name + "_" + exePtr->name + "_Main";
+    std::string mainFuncName = exeFullName + "_Main";
     std::string serviceInitFuncName =
-        "_" + exePtr->appPtr->name + "_" + exePtr->name + "InitEarly";
+        exeFullName + "InitEarly";
 
     exePtr->GetTargetInfo<target::RtosExeInfo_t>()->entryPoint = mainFuncName;
     exePtr->GetTargetInfo<target::RtosExeInfo_t>()->initFunc = serviceInitFuncName;
@@ -351,9 +360,17 @@ void GenerateRtosExeMain
     {
         for (auto clientApiInstancePtr : componentInstancePtr->clientApis)
         {
-            // If service is bound, declare extern for bound service.
-            if (clientApiInstancePtr->bindingPtr)
+            if (clientApiInstancePtr->systemExtern)
             {
+                // If service is exported, declare extern for exported service.
+                outputFile << "extern le_msg_LocalService_t "
+                           << ConvertInterfaceNameToSymbol(clientApiInstancePtr->
+                                                           name)
+                           << ";\n";
+            }
+            else if (clientApiInstancePtr->bindingPtr)
+            {
+                // If service is bound, declare extern for bound service.
                 outputFile << "extern le_msg_LocalService_t "
                            << ConvertInterfaceNameToSymbol(clientApiInstancePtr->
                                                            bindingPtr->
@@ -512,7 +529,13 @@ void GenerateRtosExeMain
                 outputFile << ", ";
             }
 
-            if (clientApiInstancePtr->bindingPtr)
+            if (clientApiInstancePtr->systemExtern)
+            {
+                // Binding is exported externally -- bind to rpcProxy
+                outputFile << "&"
+                           << ConvertInterfaceNameToSymbol(clientApiInstancePtr->name);
+            }
+            else if (clientApiInstancePtr->bindingPtr)
             {
                 // A binding exists for this client API -- pass to component init
                 outputFile << "&"

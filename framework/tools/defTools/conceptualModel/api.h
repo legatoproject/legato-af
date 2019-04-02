@@ -78,6 +78,7 @@ struct ApiFile_t
     std::string GetServerInterfaceFile(const std::string& internalName) const;
     std::string GetAsyncServerInterfaceFile(const std::string& internalName) const;
     std::string GetJavaInterfaceFile(const std::string& internalName) const;
+    std::string GetRpcReferenceFile(const std::string& internalName) const;
 
     void GetCommonInterfaceFiles(InterfaceCFiles_t& cFiles) const;
 
@@ -104,6 +105,9 @@ struct ApiFile_t
     // Get paths for all common interface.h files generate for all
     // .api files included by this one.  Results are added to the set provided.
     void GetCommonUsetypesApiHeaders(std::set<std::string>& results) const;
+
+    // Get all .api files included by this one.  Results are added to the set provided.
+    void GetUsetypesApis(std::set<const model::ApiFile_t*>& results) const;
 
 protected:
 
@@ -142,6 +146,8 @@ public:
     virtual void GetInterfaceFiles(InterfaceCFiles_t& cFiles) const = 0;
     virtual void GetInterfaceFiles(InterfaceJavaFiles_t& javaFiles) const = 0;
     virtual void GetInterfaceFiles(InterfacePythonFiles_t& pythonFiles) const = 0;
+
+    virtual std::string GetRpcReferenceFile(void) const;
 };
 
 
@@ -217,9 +223,9 @@ struct ApiInterfaceInstance_t
     ComponentInstance_t* componentInstancePtr;
 
     std::string name;   ///< Name used to identify this interface to the service directory.
-
     const parseTree::Token_t* externMarkPtr; ///< Ptr to the name token in the parse tree where
                                              /// this was marked "extern".  NULL if not extern.
+    bool systemExtern;  ///< true = Marked as extern by .sdef
 
 protected:
 
