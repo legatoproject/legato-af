@@ -1,0 +1,35 @@
+kernelModule:
+{
+    name: module5A
+    sources:
+    {
+        module5A.c
+    }
+}
+
+
+kernelModule:
+{
+    name: module5B
+    sources:
+    {
+        module5B.c
+    }
+
+    requires:
+    {
+        kernelModules:
+        {
+            module5A   // module5B depends on kernel module defined above
+            module4    // module5B depends on another Legato kernel module
+        }
+    }
+}
+
+requires:
+{
+    kernelModule:
+    {
+        module2 // module5A and module5B both depend on module2
+    }
+}

@@ -39,6 +39,36 @@ void ModuleBuildScriptGenerator_t::GenerateCommentHeader
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the path to the ko file in module's build directory.
+ */
+//--------------------------------------------------------------------------------------------------
+static std::string FindKoPathOfSubKernelModule
+(
+    model::Module_t* modulePtr,
+    std::string moduleName
+)
+{
+    std::string modulePath;
+    auto itMod = modulePtr->subKernelModules.find(moduleName);
+    if (itMod != modulePtr->subKernelModules.end())
+    {
+        // Get the ko build file path
+        for (auto const& itKoFiles : modulePtr->koFiles)
+        {
+            auto koName = path::RemoveSuffix(path::GetLastNode(itKoFiles.second->path), ".ko");
+            if (koName.compare(moduleName) == 0)
+            {
+               modulePath = itKoFiles.second->path;
+            }
+        }
+    }
+
+    return modulePath;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Print to a given build script the build statements related to a given module.
  * If it's a pre-built module, just copy it. Otherwise generate a module Makefile and build it.
  **/
@@ -51,49 +81,67 @@ void ModuleBuildScriptGenerator_t::GenerateBuildStatements
 {
     if (modulePtr->moduleBuildType == model::Module_t::Sources)
     {
-        // In case of Sources, koFiles map will consist of only one element.
-        // Hence, use the first element in koFiles for generating build statement.
-        auto const it = modulePtr->koFiles.begin();
-        if (it != modulePtr->koFiles.end())
+        for (auto const& it : modulePtr->koFiles)
         {
-            script << "build " << "$builddir/" << it->second->path << ": ";
+            script << "build " << "$builddir/" << it.second->path << ": ";
 
             // No pre-built module: generate and invoke a Makefile
             GenerateMakefile(modulePtr);
             script << "MakeKernelModule " << "$builddir/"
-                   << path::GetContainingDir(it->second->path);
+                   << path::GetContainingDir(it.second->path);
 
+            // Specify dependencies with "||'.
+            // Include order-only build dependencies to make sure the dependency module is
+            // built first than the module that depends on it. Expressed with sytax
+            // "|| dep1 dep2" on the end of a build line.
+            // This also allows the ninja build to detect any circular dependencies found in the
+            // kernel modules.
             if (!modulePtr->requiredModules.empty())
             {
-                // Include order-only build dependencies to make sure the dependency module is
-                // built first than the module that depends on it. Expressed with sytax
-                // "|| dep1 dep2" on the end of a build line.
                 script << " || ";
-
-                for (auto const& reqMod : modulePtr->requiredModules)
+            }
+            else
+            {
+                if (!modulePtr->requiredSubModules.empty())
                 {
-                    model::Module_t* reqModPtr = model::Module_t::GetModule(reqMod.first);
-                    if (reqModPtr == NULL)
-                    {
-                        throw mk::Exception_t(
-                                  mk::format(
-                                      LE_I18N("Internal Error: Module object not found for '%s'."),
-                                      reqMod.first));
-                    }
+                    script << " || ";
+                }
+            }
 
-                    for (auto const& reqMod : reqModPtr->koFiles)
+            for (auto const& reqMod : modulePtr->requiredModules)
+            {
+                model::Module_t* reqModPtr = model::Module_t::GetModule(reqMod.first);
+                if (reqModPtr == NULL)
+                {
+                    throw mk::Exception_t(
+                              mk::format(
+                                  LE_I18N("Internal Error: Module object not found for '%s'."),
+                                  reqMod.first));
+                }
+
+                for (auto const& reqMod : reqModPtr->koFiles)
+                {
+                    script << "$builddir/" << reqMod.second->path << " ";
+                }
+            }
+
+            // For each sub kernel module, iterate through its list of required modules and print
+            // the path to its .ko file in the build directory
+            std::string koName = path::RemoveSuffix(path::GetLastNode(it.second->path), ".ko");
+
+            for (auto const& reqMod : modulePtr->requiredSubModules)
+            {
+                if (koName.compare(reqMod.first) == 0)
+                {
+                    for (auto const& itSubModMap : reqMod.second)
                     {
-                        script << "$builddir/" << reqMod.second->path << " ";
+                        script << " $builddir/"
+                               << FindKoPathOfSubKernelModule(modulePtr, itSubModMap.first) << " ";
                     }
                 }
             }
+
             script << "\n";
-        }
-        else
-        {
-            throw mk::Exception_t(
-                      mk::format(LE_I18N("error: %s container of kernel object file is empty."),
-                                 modulePtr->defFilePtr->path));
         }
     }
     else if (modulePtr->moduleBuildType == model::Module_t::Prebuilt)
@@ -195,17 +243,61 @@ void ModuleBuildScriptGenerator_t::GenerateMakefile
     OpenFile(makefile, buildPath + "/Makefile", buildParams.beVerbose);
 
     // Specify kernel module name and list all object files to link
-    makefile << "obj-m += " << modulePtr->name << ".o\n";
+    makefile << "obj-m += ";
+
+    if (modulePtr->cObjectFiles.size() > 0)
+    {
+        makefile << modulePtr->name <<  ".o";
+    }
+
+    // Specify sub kernel modules
+    for (auto const& obj : modulePtr->subKernelModules)
+    {
+        makefile << " " << obj.first << ".o" <<" ";
+    }
+    makefile << "\n";
 
     // Don't list object files in case of a single source file with module name
-    if (modulePtr->cObjectFiles.size() > 1 ||
-        modulePtr->cObjectFiles.front()->path != modulePtr->name + ".o")
+    if (!modulePtr->cObjectFiles.empty()
+        && (modulePtr->cObjectFiles.size() > 1 ||
+            modulePtr->cObjectFiles.front()->path != modulePtr->name + ".o"))
     {
-        for (auto obj : modulePtr->cObjectFiles)
+        for (auto const& obj : modulePtr->cObjectFiles)
         {
             makefile << modulePtr->name << "-objs += " << obj->path << "\n";
         }
     }
+
+    // List the sub kernel module object files
+    for (auto const& obj : modulePtr->subKernelModules)
+    {
+        // If sub kernel module has only one source file that matches the name of the sub
+        // module name, then do not print the object file in Makefile.
+        auto skipMod = false;
+
+        if (obj.second.size() == 1)
+        {
+            std::string cObjectName = path::RemoveSuffix(
+                                            path::GetLastNode(obj.second.front()->path), ".o");
+            if (obj.first.compare(cObjectName) == 0)
+            {
+                skipMod = true;
+            }
+        }
+
+        if (!skipMod)
+        {
+            // Print in the format <sub module name>-objs += source1.o source2.o
+            makefile << obj.first << "-objs += ";
+
+            for (auto const& it : obj.second)
+            {
+                makefile << it->path << " ";
+            }
+            makefile << "\n";
+        }
+    }
+
     makefile << "\n";
 
     // Specify directory where the sources are located

@@ -225,7 +225,7 @@ static parseTree::CompoundItem_t* ParseRequiresSubsection
     {
         return ParseComplexSection(lexer, sectionNameTokenPtr, ParseRequiredComponent);
     }
-    else if (subsectionName == "kernelModules")
+    else if (IsNameSingularPlural(subsectionName, "kernelModule"))
     {
         return ParseComplexSection(lexer, sectionNameTokenPtr, ParseRequiredModule);
     }

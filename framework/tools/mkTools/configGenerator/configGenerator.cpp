@@ -334,22 +334,63 @@ static void GenerateFileMappingConfig
             throw mk::Exception_t(
                 mk::format(LE_I18N("INTERNAL ERROR: '%s' module name not found, %s."),
                                    reqKMod.first,
-                                   reqKMod.second.first->GetLocation())
+                                   reqKMod.second.tokenPtr->GetLocation())
             );
         }
 
         if (modulePtr->moduleBuildType == model::Module_t::Prebuilt)
         {
-            for (auto &mapEntrykoFiles : modulePtr->koFiles)
+            for (auto const& mapEntrykoFiles : modulePtr->koFiles)
             {
                 WriteModuleIsOptionalConfig(cfgStream,
                                             path::GetLastNode(mapEntrykoFiles.first),
-                                            reqKMod.second.second);
+                                            reqKMod.second.isOptional);
             }
         }
         else
         {
-            WriteModuleIsOptionalConfig(cfgStream, reqKMod.first + ".ko", reqKMod.second.second);
+            for (auto const& mapEntrykoFiles : modulePtr->koFiles)
+            {
+                WriteModuleIsOptionalConfig(cfgStream,
+                                            path::GetLastNode(mapEntrykoFiles.second->path),
+                                            reqKMod.second.isOptional);
+            }
+        }
+    }
+
+    for (auto componentPtr : appPtr->components)
+    {
+        for (auto const& reqKMod : componentPtr->requiredModules)
+        {
+            auto modulePtr = model::Module_t::GetModule(reqKMod.first);
+
+            if (modulePtr == NULL)
+            {
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("INTERNAL ERROR: '%s' module name not found, %s."),
+                                       reqKMod.first,
+                                       reqKMod.second.tokenPtr->GetLocation())
+                );
+            }
+
+            if (modulePtr->moduleBuildType == model::Module_t::Prebuilt)
+            {
+                for (auto const& mapEntrykoFiles : modulePtr->koFiles)
+                {
+                    WriteModuleIsOptionalConfig(cfgStream,
+                                                path::GetLastNode(mapEntrykoFiles.first),
+                                                reqKMod.second.isOptional);
+                }
+            }
+            else
+            {
+                for (auto const& mapEntrykoFiles : modulePtr->koFiles)
+                {
+                    WriteModuleIsOptionalConfig(cfgStream,
+                                                path::GetLastNode(mapEntrykoFiles.second->path),
+                                                reqKMod.second.isOptional);
+                }
+            }
         }
     }
 
@@ -1045,19 +1086,20 @@ static void GenerateConfigEachModuleFile
 
     std::vector<std::pair<std::string, parseTree::Token_t*>> depModuleMap;
     // For each parameter in required kernel modules list
-    for (auto setEntry : modulePtr->requiredModules)
+    for (auto const& setEntry : modulePtr->requiredModules)
     {
         auto mapEntry = systemPtr->modules.find(setEntry.first);
 
-        if (mapEntry->second.first->moduleBuildType == model::Module_t::Prebuilt)
+        if (mapEntry->second.modPtr->moduleBuildType == model::Module_t::Prebuilt)
         {
-            for (auto &mapEntrykoFiles : mapEntry->second.first->koFiles)
+            // For modules of prebuilt built type
+            for (auto const& mapEntrykoFiles : mapEntry->second.modPtr->koFiles)
             {
                 std::string koFileName = path::GetLastNode(mapEntrykoFiles.first);
 
                 WriteModuleIsOptionalConfig(cfgStream,
                                             koFileName,
-                                            setEntry.second.second);
+                                            setEntry.second.isOptional);
 
                 std::map<std::string, parseTree::Token_t*>::iterator itToken;
                 itToken = modulePtr->koFilesToken.find(koFileName);
@@ -1071,18 +1113,33 @@ static void GenerateConfigEachModuleFile
                 else
                 {
                     depModuleMap.push_back(
-                        std::make_pair(koFileName,
-                                       modulePtr->requiredModules.find(mapEntry->first)->second.first));
+                      std::make_pair(koFileName,
+                                modulePtr->requiredModules.find(mapEntry->first)->second.tokenPtr));
                 }
             }
         }
         else
         {
-            WriteModuleIsOptionalConfig(cfgStream, setEntry.first + ".ko", setEntry.second.second);
+            // For modules of source built type.
+            for (auto const& mapEntrykoFiles : mapEntry->second.modPtr->koFiles)
+            {
+                std::string koFileName = path::GetLastNode(mapEntrykoFiles.second->path);
 
-            depModuleMap.push_back(
-                std::make_pair(mapEntry->first,
-                               modulePtr->requiredModules.find(mapEntry->first)->second.first));
+                WriteModuleIsOptionalConfig(cfgStream,
+                                            koFileName,
+                                            setEntry.second.isOptional);
+
+                auto itSubMod = mapEntry->second.modPtr->subKernelModules.find(
+                                                            path::RemoveSuffix(koFileName, ".ko"));
+                if (itSubMod ==  mapEntry->second.modPtr->subKernelModules.end())
+                {
+                    // Add to depModuleMap only if the module is not a sub module.
+                    depModuleMap.push_back(
+                        std::make_pair(mapEntry->first,
+                                       modulePtr->requiredModules.find(
+                                                                mapEntry->first)->second.tokenPtr));
+                }
+            }
         }
     }
 
@@ -1163,6 +1220,107 @@ static void GenerateConfigEachModuleFile
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Write config for modules required by sub modules
+ */
+//--------------------------------------------------------------------------------------------------
+static void WriteReqSubModule
+(
+    model::System_t* systemPtr,
+    std::map<std::string, model::Module_t::ModuleInfoOptional_t> reqSubMod,
+    std::ofstream& cfgStream
+)
+{
+    for (auto const& itmap : reqSubMod)
+    {
+        auto itMod = systemPtr->modules.find(itmap.first);
+
+        if (itMod != systemPtr->modules.end())
+        {
+            // Get the list of ko files from the module
+            for (auto const& itKoFiles : itMod->second.modPtr->koFiles)
+            {
+                WriteModuleIsOptionalConfig(cfgStream,
+                            path::GetLastNode(itKoFiles.second->path), itMod->second.isOptional);
+            }
+        }
+        else
+        {
+            // If the module is not listed in the system's list of modules, module is not a
+            // mdef module and it is another sub kernel module
+            WriteModuleIsOptionalConfig(cfgStream, itmap.first + ".ko", itmap.second.isOptional);
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate kernel module configuration for each sub-module.
+ */
+//--------------------------------------------------------------------------------------------------
+static void GenerateConfigEachSubModuleFile
+(
+    model::System_t* systemPtr,
+    model::Module_t* modulePtr,
+    std::string koName,
+    std::ofstream& cfgStream
+)
+{
+    if (modulePtr->loadTrigger == model::Module_t::MANUAL)
+    {
+        cfgStream << "    \"loadManual\" !t" << std::endl;
+    }
+
+    cfgStream << "    \"requires\"" << std::endl;
+    cfgStream << "    {" << std::endl;
+    cfgStream << "      \"kernelModules\"" << std::endl;
+    cfgStream << "      {" << std::endl;
+
+    // For each parameter in required kernel modules list
+    for (auto const& setEntry : modulePtr->requiredModules)
+    {
+        auto mapEntry = systemPtr->modules.find(setEntry.first);
+
+        if (mapEntry->second.modPtr->moduleBuildType == model::Module_t::Prebuilt)
+        {
+            // Write config for prebuilt modules
+            for (auto &mapEntrykoFiles : mapEntry->second.modPtr->koFiles)
+            {
+                std::string koFileName = path::GetLastNode(mapEntrykoFiles.first);
+
+                WriteModuleIsOptionalConfig(cfgStream,
+                                            koFileName,
+                                            setEntry.second.isOptional);
+            }
+        }
+        else
+        {
+            // Write config for modules with source files
+            for (auto const& it : mapEntry->second.modPtr->koFiles)
+            {
+                WriteModuleIsOptionalConfig(cfgStream, path::GetLastNode(it.second->path), false);
+            }
+        }
+    }
+
+    // Write config for modules required by sub modules
+    for (auto const& reqSubMod : modulePtr->requiredSubModules)
+    {
+        if (reqSubMod.first.compare(koName) == 0)
+        {
+            WriteReqSubModule(systemPtr, reqSubMod.second, cfgStream);
+        }
+    }
+
+    cfgStream << "      }\n";
+    cfgStream << "    }\n";
+
+    cfgStream << "  }\n";
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Generate kernel module configuration in a file called config/modules.cfg under
  * the system's staging directory.
  */
@@ -1212,8 +1370,8 @@ static void GenerateModulesConfig
     // For each module in the system's list of modules,
     for (auto& mapEntry : systemPtr->modules)
     {
-        auto modulePtr = mapEntry.second.first;
-        bool isOptional = mapEntry.second.second;
+        auto modulePtr = mapEntry.second.modPtr;
+        bool isOptional = mapEntry.second.isOptional;
 
         if (modulePtr->moduleBuildType == model::Module_t::Prebuilt)
         {
@@ -1238,21 +1396,44 @@ static void GenerateModulesConfig
         }
         else
         {
-            cfgStream << "  \"" << modulePtr->name << ".ko" << "\"\n";
-            cfgStream << "  {\n";
-            if (isOptional)
+            for (auto &mapEntrykoFiles : modulePtr->koFiles)
             {
-                cfgStream << "    \"isOptional\" !t" << std::endl;
+                cfgStream << "  \"" << path::GetLastNode(mapEntrykoFiles.second->path) << "\"\n";
+                cfgStream << "  {\n";
+
+                if (isOptional)
+                {
+                    cfgStream << "    \"isOptional\" !t" << std::endl;
+                }
+
+                auto koName = path::RemoveSuffix(path::GetLastNode(mapEntrykoFiles.second->path),
+                                                    ".ko");
+
+                auto itSubMod = modulePtr->subKernelModules.find(koName);
+                if (itSubMod == modulePtr->subKernelModules.end())
+                {
+                    // If the module name matches the name of the ko file.
+                    auto moduleName = modulePtr->name;
+
+                    visitedMap.insert(visitedMapIter,
+                                      std::pair<std::string, bool>(moduleName, false));
+                    recurStackMap.insert(
+                                recurStackMapIter, std::pair<std::string, bool>(moduleName, false));
+
+                    GenerateConfigEachModuleFile(
+                                systemPtr, modulePtr, moduleName, checkCycleMap, cfgStream);
+
+                }
+                else
+                {
+                    // If the module name does not match the ko file name, which means it is a
+                    // sub kernel module.
+                    GenerateConfigEachSubModuleFile(
+                                systemPtr, modulePtr,
+                                koName,
+                                cfgStream);
+                }
             }
-
-            auto moduleName = modulePtr->name;
-
-            visitedMap.insert(visitedMapIter, std::pair<std::string, bool>(moduleName, false));
-            recurStackMap.insert(
-                        recurStackMapIter, std::pair<std::string, bool>(moduleName, false));
-
-            GenerateConfigEachModuleFile(
-                        systemPtr, modulePtr, moduleName, checkCycleMap, cfgStream);
         }
     }
 

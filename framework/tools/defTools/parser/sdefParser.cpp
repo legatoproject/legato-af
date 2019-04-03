@@ -487,7 +487,7 @@ static parseTree::CompoundItem_t* ParseSection
     {
         return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
     }
-    else if (sectionName == "kernelModules")
+    else if (IsNameSingularPlural(sectionName, "kernelModule"))
     {
         return ParseComplexSection(lexer, sectionNameTokenPtr, ParseRequiredModule);
     }

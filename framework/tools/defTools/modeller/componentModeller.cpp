@@ -952,7 +952,7 @@ static void AddRequiredItems
                 AddLib(componentPtr, componentPtr, buildParams, DoSubstitution(itemPtr));
             }
         }
-        else if (subsectionName == "kernelModules")
+        else if (parser::IsNameSingularPlural(subsectionName, "kernelModule"))
         {
             reqKernelModulesSections.push_back(memberPtr);
         }
@@ -964,7 +964,9 @@ static void AddRequiredItems
         }
     }
 
-    AddRequiredKernelModules(componentPtr->requiredModules, reqKernelModulesSections, buildParams);
+    AddRequiredKernelModules(componentPtr->requiredModules, nullptr, reqKernelModulesSections,
+                             buildParams);
+
 }
 
 

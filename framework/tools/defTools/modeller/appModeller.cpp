@@ -800,7 +800,7 @@ static void AddRequiredItems
                             static_cast<const parseTree::RequiredConfigTree_t*>(configTreeSpecPtr));
             }
         }
-        else if (subsectionName == "kernelModules")
+        else if (parser::IsNameSingularPlural(subsectionName, "kernelModule"))
         {
             reqKernelModulesSections.push_back(subsectionPtr);
         }
@@ -812,7 +812,9 @@ static void AddRequiredItems
             );
         }
     }
-    AddRequiredKernelModules(appPtr->requiredModules, reqKernelModulesSections, buildParams);
+
+    AddRequiredKernelModules(appPtr->requiredModules, nullptr, reqKernelModulesSections,
+                             buildParams);
 }
 
 

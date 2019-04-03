@@ -33,7 +33,7 @@ static parseTree::CompoundItem_t* ParseRequiresSubsection
 
     const std::string& subsectionName = subsectionNameTokenPtr->text;
 
-    if (subsectionName == "kernelModules")
+    if (IsNameSingularPlural(subsectionName, "kernelModule"))
     {
         return ParseComplexSection(lexer, subsectionNameTokenPtr, ParseRequiredModule);
     }
@@ -84,6 +84,45 @@ static parseTree::CompoundItem_t* ParseScriptsSubsection
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Parse "kernelModule:" section and parse "name:", "sources:" and "requires:" sub-sections.
+ *
+ * @return Pointer to the item.
+ */
+//--------------------------------------------------------------------------------------------------
+static parseTree::CompoundItem_t* ParseKernelModuleSubsection
+(
+    Lexer_t& lexer
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto subsectionNameTokenPtr = lexer.Pull(parseTree::Token_t::NAME);
+
+    const std::string& subsectionName = subsectionNameTokenPtr->text;
+
+    if (subsectionName == "name")
+    {
+        return ParseSimpleSection(lexer, subsectionNameTokenPtr, parseTree::Token_t::NAME);
+    }
+    else if (subsectionName == "sources")
+    {
+        return ParseTokenListSection(lexer, subsectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
+    }
+    else if (subsectionName == "requires")
+    {
+        return ParseComplexSection(lexer, subsectionNameTokenPtr, internal::ParseRequiresSubsection);
+    }
+    else
+    {
+        lexer.ThrowException(
+            mk::format(LE_I18N("Unexpected subsection name '%s' in 'kernelModule' section."),
+                       subsectionName));
+        return NULL;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Parses a section in a .mdef file.
  *
  * @return Pointer to the item.
@@ -103,7 +142,8 @@ static parseTree::CompoundItem_t* ParseSection
     // Branch based on the section name.
     if (sectionName == "preBuilt")
     {
-        return ParseSimpleOrTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
+        return ParseSimpleOrTokenListSection(lexer, sectionNameTokenPtr,
+                                             parseTree::Token_t::FILE_PATH);
     }
     else if (sectionName == "params")
     {
@@ -135,6 +175,10 @@ static parseTree::CompoundItem_t* ParseSection
     else if (sectionName == "scripts")
     {
         return ParseComplexSection(lexer, sectionNameTokenPtr, ParseScriptsSubsection);
+    }
+    else if (sectionName == "kernelModule")
+    {
+       return ParseComplexSection(lexer, sectionNameTokenPtr, ParseKernelModuleSubsection);
     }
     else
     {

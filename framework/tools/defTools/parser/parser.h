@@ -332,6 +332,20 @@ parseTree::TokenList_t* ParseWatchdogTimeout
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check the section name passed in its singular form.
+ *
+ * @return true if the section name matches either its singular or plural form ending with a 's'.
+ */
+//--------------------------------------------------------------------------------------------------
+bool IsNameSingularPlural
+(
+    std::string sectionName,
+    std::string singularName
+);
+
+
 } // namespace parser
 
 #endif // LEGATO_DEFTOOLS_PARSER_H_INCLUDE_GUARD

@@ -77,8 +77,26 @@ void Module_t::SetBuildEnvironment(ModuleBuildType_t type, std::string path)
         name = path::RemoveSuffix(path::GetLastNode(path), ".mdef");
     }
 
+    // Now setup build environment:
     workingDir = "modules/" + name;
     auto koFilePath = workingDir + "/" + name + ".ko";
+    auto koFileObj = new model::ObjectFile_t(koFilePath, path);
+    koFiles.insert(std::make_pair(path, koFileObj));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set build environment and artifacts related to this sub module.
+ **/
+//--------------------------------------------------------------------------------------------------
+void Module_t::SetBuildEnvironmentSubModule(std::string path)
+{
+    name = path::RemoveSuffix(path::GetLastNode(path), ".mdef");
+
+    // Setup build environment:
+    workingDir = "modules/" + name;
+    auto koFilePath = workingDir + "/" + subModuleName + ".ko";
     auto koFileObj = new model::ObjectFile_t(koFilePath, path);
     koFiles.insert(std::make_pair(path, koFileObj));
 }

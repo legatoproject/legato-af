@@ -565,10 +565,10 @@ static data::Value_t ModelComponent
 
             {
                 "modules",
-                JsonArray<std::pair<parseTree::Token_t*, bool>>(componentPtr->requiredModules,
-                    [](std::pair<parseTree::Token_t*, bool> moduleRef)
+                JsonArray<model::Module_t::ModuleInfoOptional_t>(componentPtr->requiredModules,
+                    [](model::Module_t::ModuleInfoOptional_t moduleRef)
                     {
-                        return moduleRef.first->text;
+                        return moduleRef.tokenPtr->text;
                     })
             },
 
@@ -707,13 +707,13 @@ static data::Value_t ModelApp
 
             {
                 "modules",
-                JsonArray<std::pair<parseTree::Token_t*, bool>>(appPtr->requiredModules,
-                    [](std::pair<parseTree::Token_t*, bool> moduleInfo)
+                JsonArray<model::Module_t::ModuleInfoOptional_t>(appPtr->requiredModules,
+                    [](model::Module_t::ModuleInfoOptional_t moduleInfo)
                     {
                         return data::Object_t
                             {
-                                { "optional", moduleInfo.second },
-                                { "name", moduleInfo.first->text }
+                                { "optional", moduleInfo.isOptional },
+                                { "name", moduleInfo.tokenPtr->text }
                             };
                     })
             },
@@ -818,13 +818,13 @@ static data::Value_t ModelSystem
 
             {
                 "modules",
-                JsonArray<std::pair<model::Module_t*, bool>>(systemPtr->modules,
-                    [](std::pair<model::Module_t*, bool> moduleInfo)
+                JsonArray< model::Module_t::ModuleInfoOptional_t>(systemPtr->modules,
+                    []( model::Module_t::ModuleInfoOptional_t moduleInfo)
                     {
                         return data::Object_t
                             {
-                                { "optional", moduleInfo.second },
-                                { "info", ModelModule(moduleInfo.first) }
+                                { "optional", moduleInfo.isOptional },
+                                { "info", ModelModule(moduleInfo.modPtr) }
                             };
                     })
             },

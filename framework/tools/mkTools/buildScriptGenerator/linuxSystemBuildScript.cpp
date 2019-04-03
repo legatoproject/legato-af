@@ -335,7 +335,7 @@ void LinuxSystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
     // Also recompute info.properties if any module binaries changed.
     for (auto& mapEntry : systemPtr->modules)
     {
-        auto modulePtr = mapEntry.second.first;
+        auto modulePtr = mapEntry.second.modPtr;
 
         for (auto const& it: modulePtr->koFiles)
         {

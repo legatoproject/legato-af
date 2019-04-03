@@ -573,7 +573,7 @@ static parseTree::CompoundItem_t* ParseRequiresSubsection
     {
         return ParseComplexSection(lexer, subsectionNameTokenPtr, ParseRequiredDevice);
     }
-    else if (subsectionName == "kernelModules")
+    else if (IsNameSingularPlural(subsectionName, "kernelModule"))
     {
         return ParseComplexSection(lexer, subsectionNameTokenPtr, ParseRequiredModule);
     }

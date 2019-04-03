@@ -501,7 +501,7 @@ parseTree::CompoundItemList_t* ParseBundlesSubsection
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Parses an entry in the required "kernelModules:" section in a definition file.
+ * Parses an entry in the required "kernelModule(s):" section in a definition file.
  *
  * @return Pointer to the item.
  */
@@ -814,6 +814,30 @@ parseTree::TokenList_t* ParseWatchdogTimeout
     return sectionPtr;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check the section name passed in its singular form.
+ *
+ * @return true if the section name matches either its singular or plural form ending with a 's'.
+ */
+//--------------------------------------------------------------------------------------------------
+bool IsNameSingularPlural
+(
+    std::string sectionName,
+    std::string singularName
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string pluralName = singularName + 's';
+
+    if (sectionName == singularName || sectionName == pluralName)
+    {
+        return true;
+    }
+
+    return false;
+}
 
 
 } // namespace parser

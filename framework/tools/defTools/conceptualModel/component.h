@@ -56,8 +56,8 @@ struct Component_t : public HasTargetInfo_t
     FileObjectPtrSet_t requiredDevices;///< List of devices to be imported into the app.
 
     ///< Map of required modules.
-    ///< Key is module name and value is the pair of token pointer and it's bool 'optional' value.
-    std::map<std::string, std::pair<parseTree::Token_t*, bool>> requiredModules;
+    ///< Key is module name and value is the struct of token pointer and its bool 'optional' value.
+    std::map<std::string, model::Module_t::ModuleInfoOptional_t> requiredModules;
 
     std::list<ApiTypesOnlyInterface_t*> typesOnlyApis;///< List of API files to import types from.
     std::list<ApiServerInterface_t*> serverApis;  ///< List of server-side interfaces implemented.

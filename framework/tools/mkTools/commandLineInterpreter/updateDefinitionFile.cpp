@@ -545,7 +545,7 @@ static void ParseSdefUpdateApp
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Parse the system definition file to update the kernelModules: section.
+ * Parse the system definition file to update the kernelModule(s): section.
  **/
 //--------------------------------------------------------------------------------------------------
 static void ParseSdefUpdateKernelModules
@@ -559,14 +559,14 @@ static void ParseSdefUpdateKernelModules
     bool foundSection = false;
     bool foundItem = false;
 
-    // Parse the sdef file and look for the kernelModules: section to update
+    // Parse the sdef file and look for the kernelModule(s): section to update
     const auto sdefFilePtr = parser::sdef::Parse(sdefPath, false);
 
     for (auto sectionPtr : sdefFilePtr->sections)
     {
         auto& sectionName = sectionPtr->firstTokenPtr->text;
 
-        if (sectionName == "kernelModules")
+        if (parser::IsNameSingularPlural(sectionName, "kernelModule"))
         {
             // There can be multiple files with kernelModules: section included with active sdef.
             // Need to make sure only the active sdef is looked into for updating apps.
@@ -637,8 +637,8 @@ static void ParseSdefUpdateKernelModules
                 {
                     // If the app to be renamed or removed is not found on the list, print error.
                     throw mk::Exception_t(
-                           mk::format(LE_I18N("Module '%s' not listed in kernelModules: section."),
-                                      moduleList)
+                          mk::format(LE_I18N("Module '%s' not listed in kernelModule(s): section."),
+                                     moduleList)
                     );
                 }
                 else if (!moduleNotList.empty())

@@ -69,7 +69,7 @@ void SystemBuildScriptGenerator_t::GenerateNinjaScriptBuildStatement
     for (auto& mapEntry: systemPtr->modules)
     {
         // Add the .mdef file to dependencies.
-        dependencies.insert(mapEntry.second.first->defFilePtr->path);
+        dependencies.insert(mapEntry.second.modPtr->defFilePtr->path);
     }
 
     // For each app in the system,
@@ -164,7 +164,7 @@ void SystemBuildScriptGenerator_t::Generate
         // For each module in .sdef file
         for (auto& mapEntry : systemPtr->modules)
         {
-            auto modulePtr = mapEntry.second.first;
+            auto modulePtr = mapEntry.second.modPtr;
 
             moduleGeneratorPtr->GenerateBuildStatements(modulePtr);
         }

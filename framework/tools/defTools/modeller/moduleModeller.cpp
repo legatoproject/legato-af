@@ -89,7 +89,8 @@ static void AddSources
 (
     model::Module_t* modulePtr,
     parseTree::CompoundItem_t* sectionPtr, ///< The parse tree object for the "sources:" section.
-    const mk::BuildParams_t& buildParams
+    const mk::BuildParams_t& buildParams,
+    bool isSubModule
 )
 {
     auto tokenListPtr = static_cast<parseTree::TokenList_t*>(sectionPtr);
@@ -125,7 +126,17 @@ static void AddSources
             {
                 auto objFilePath = path::RemoveSuffix(filePath, ".c") + ".o";
                 auto objFilePtr = new model::ObjectFile_t(objFilePath, fullFilePath);
-                modulePtr->cObjectFiles.push_back(objFilePtr);
+                if (!isSubModule)
+                {
+                    // Not a sub kernel module
+                    modulePtr->cObjectFiles.push_back(objFilePtr);
+                }
+                else
+                {
+                    // A sub kernel module, hence add to the list of object file pointer for sub
+                    // kernel module.
+                    modulePtr->subCObjectFiles.push_back(objFilePtr);
+                }
             }
             else
             {
@@ -144,7 +155,11 @@ static void AddSources
         }
     }
 
-    modulePtr->SetBuildEnvironment(modulePtr->moduleBuildType, modulePtr->defFilePtr->path);
+    if (!isSubModule)
+    {
+        // Setup build environment for non sub kernel modules
+        modulePtr->SetBuildEnvironment(modulePtr->moduleBuildType, modulePtr->defFilePtr->path);
+    }
 }
 
 
@@ -257,6 +272,7 @@ static void AddLdFlags
 static void AddRequiredItems
 (
     model::Module_t* modulePtr,
+    bool isSubModule,
     const parseTree::Content_t* sectionPtr,
     const mk::BuildParams_t& buildParams
 )
@@ -268,7 +284,7 @@ static void AddRequiredItems
     {
         auto& subsectionName = subsectionPtr->firstTokenPtr->text;
 
-        if ("kernelModules" == subsectionName)
+        if (parser::IsNameSingularPlural(subsectionName, "kernelModule"))
         {
            reqKernelModulesSections.push_back(subsectionPtr);
         }
@@ -282,7 +298,16 @@ static void AddRequiredItems
     }
 
     // Add the required kernel modules.
-    AddRequiredKernelModules(modulePtr->requiredModules, reqKernelModulesSections, buildParams);
+    if (isSubModule)
+    {
+        AddRequiredKernelModules(modulePtr->requiredModulesOfSubMod, modulePtr,
+                                 reqKernelModulesSections, buildParams);
+    }
+    else
+    {
+        AddRequiredKernelModules(modulePtr->requiredModules, modulePtr, reqKernelModulesSections,
+                                 buildParams);
+    }
 }
 
 
@@ -454,6 +479,48 @@ static void AddScripts
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Model sub kernel module section 'kernelModule:'
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddSubKernelModule
+(
+    model::Module_t* modulePtr,
+    const parseTree::Content_t* sectionPtr,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto subsectionPtr : ToCompoundItemListPtr(sectionPtr)->Contents())
+    {
+        auto& subsectionName = subsectionPtr->firstTokenPtr->text;
+
+        if (subsectionName == "name")
+        {
+            auto simpleSectionPtr = ToSimpleSectionPtr(subsectionPtr);
+            modulePtr->subModuleName = path::Unquote(DoSubstitution(simpleSectionPtr->Text(),
+                                                                    simpleSectionPtr));
+        }
+        else if (subsectionName == "sources")
+        {
+            AddSources(modulePtr, subsectionPtr, buildParams, true);
+        }
+        else if (subsectionName == "requires")
+        {
+            AddRequiredItems(modulePtr, true, subsectionPtr, buildParams);
+        }
+        else
+        {
+            subsectionPtr->ThrowException(
+                mk::format(LE_I18N("Internal error: Unrecognized sub-section '%s'."),
+                           subsectionName)
+            );
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get a conceptual model for a module whose .mdef file can be found at a given path.
  *
  * @return Pointer to the module object.
@@ -495,7 +562,7 @@ model::Module_t* GetModule
         }
         else if ("sources" == sectionName)
         {
-            AddSources(modulePtr, sectionPtr, buildParams);
+            AddSources(modulePtr, sectionPtr, buildParams, false);
         }
         else if ("cflags" == sectionName)
         {
@@ -507,7 +574,7 @@ model::Module_t* GetModule
         }
         else if ("requires" == sectionName)
         {
-            AddRequiredItems(modulePtr, sectionPtr, buildParams);
+            AddRequiredItems(modulePtr, false, sectionPtr, buildParams);
         }
         else if (sectionName == "load")
         {
@@ -520,6 +587,34 @@ model::Module_t* GetModule
         else if (sectionName == "scripts")
         {
             AddScripts(modulePtr, sectionPtr);
+        }
+        else if (sectionName == "kernelModule")
+        {
+            // First clear variables related to sub modules
+            modulePtr->subModuleName.clear();
+            modulePtr->subCObjectFiles.clear();
+            modulePtr->requiredModulesOfSubMod.clear();
+
+            AddSubKernelModule(modulePtr, sectionPtr, buildParams);
+
+            // If the sub module name is not provided, then generate the name by appending number
+            // at the end of the module name. E.g. if the module name is 'myMod', then the sub
+            // module names are myMod1, myMod2 and so on.
+            if (modulePtr->subModuleName.empty())
+            {
+                static int subModuleCount = 1;
+                modulePtr->name =
+                       path::RemoveSuffix(path::GetLastNode(modulePtr->defFilePtr->path), ".mdef");
+                modulePtr->subModuleName += modulePtr->name + std::to_string(subModuleCount);
+                subModuleCount++;
+            }
+
+            // Add to the map of sub kernel module.
+            modulePtr->subKernelModules[modulePtr->subModuleName] = modulePtr->subCObjectFiles;
+            modulePtr->requiredSubModules[modulePtr->subModuleName] =
+                                                            modulePtr->requiredModulesOfSubMod;
+            // Setup the build environment as both module name and sub module name is now available.
+            modulePtr->SetBuildEnvironmentSubModule(modulePtr->defFilePtr->path);
         }
         else
         {

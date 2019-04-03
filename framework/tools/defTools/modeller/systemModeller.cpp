@@ -386,7 +386,7 @@ static void ModelAppsSection
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Creates a Module_t object for a given kernel module within "kernelModules:" section.
+ * Creates a Module_t object for a given kernel module within "kernelModule(s):" section.
  */
 //--------------------------------------------------------------------------------------------------
 static void ModelKernelModule
@@ -438,7 +438,8 @@ static void ModelKernelModule
         sectionPtr->ThrowException(
             mk::format(LE_I18N("Module '%s' added to the system more than once.\n"
                                "%s: note: Previously added here."),
-                       moduleName, modulesIter->second.first->parseTreePtr->firstTokenPtr->GetLocation())
+                               moduleName,
+                            modulesIter->second.modPtr->parseTreePtr->firstTokenPtr->GetLocation())
         );
     }
 
@@ -454,7 +455,11 @@ static void ModelKernelModule
         isOptional = true;
     }
 
-    systemPtr->modules[moduleName] = std::make_pair(modulePtr, isOptional);
+    model::Module_t::ModuleInfoOptional_t modPtrOptional;
+    modPtrOptional.modPtr = modulePtr;
+    modPtrOptional.isOptional = isOptional;
+
+    systemPtr->modules[moduleName] = modPtrOptional;
 
     if (buildParams.beVerbose)
     {
@@ -465,7 +470,7 @@ static void ModelKernelModule
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Creates a Module_t object for each kernel module listed in "kernelModules:" section.
+ * Creates a Module_t object for each kernel module listed in "kernelModule(s):" section.
  */
 //--------------------------------------------------------------------------------------------------
 static void ModelKernelModulesSection
@@ -489,7 +494,7 @@ static void ModelKernelModulesSection
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Model all the kernel modules from all the "kernelModules:" sections and add them to a system.
+ * Model all the kernel modules from all the "kernelModule(s):" sections and add them to a system.
  */
 //--------------------------------------------------------------------------------------------------
 static void ModelKernelModules
@@ -956,7 +961,7 @@ static void EnsureRequiredKernelModuleinSystem
             {
                 throw mk::Exception_t(
                     mk::format(
-                        LE_I18N("Kernel module %s.mdef must be listed in sdef file."), it.first)
+                        LE_I18N("Kernel module '%s.mdef' must be listed in sdef file."), it.first)
                 );
             }
         }
@@ -964,7 +969,7 @@ static void EnsureRequiredKernelModuleinSystem
 
     for (auto& moduleMapEntry : systemPtr->modules)
     {
-        auto modulePtr = moduleMapEntry.second.first;
+        auto modulePtr = moduleMapEntry.second.modPtr;
 
         for (auto const& it : modulePtr->requiredModules)
         {
@@ -973,8 +978,31 @@ static void EnsureRequiredKernelModuleinSystem
             {
                 throw mk::Exception_t(
                     mk::format(
-                        LE_I18N("Kernel module %s.mdef must be listed in sdef file."), it.first)
+                        LE_I18N("Kernel module '%s.mdef' must be listed in sdef file."), it.first)
                 );
+            }
+        }
+
+        for (auto const& itMod : modulePtr->requiredSubModules)
+        {
+            for (auto const& itSubModMap : itMod.second)
+            {
+                // If a module is required by sub kernel module, check if it is a sub kernel module
+                // or not. If it is not a sub kernel module, it should be a mdef file. The mdef file
+                // must be listed in the sdef file.
+                auto searchSubModule = modulePtr->subKernelModules.find(itSubModMap.first);
+                if (searchSubModule == modulePtr->subKernelModules.end())
+                {
+                    auto searchModule = systemPtr->modules.find(itSubModMap.first);
+                    if (searchModule == systemPtr->modules.end())
+                    {
+                        throw mk::Exception_t(
+                            mk::format(
+                                LE_I18N("Required module '%s.mdef' must be listed in sdef file."),
+                                itSubModMap.first)
+                        );
+                    }
+                }
             }
         }
     }
@@ -1049,7 +1077,7 @@ model::System_t* GetSystem
         {
             GetToolFlags(&buildParams.cxxFlags, ToTokenListPtr(sectionPtr));
         }
-        else if (sectionName == "kernelModules")
+        else if (parser::IsNameSingularPlural(sectionName, "kernelModule"))
         {
             kernelModulesSections.push_back(sectionPtr);
         }
@@ -1103,7 +1131,7 @@ model::System_t* GetSystem
     // have been parsed.
     ModelKernelModules(systemPtr, kernelModulesSections, buildParams);
 
-    // Ensure that all required kernel modules are listed in the kernelModules: section of sdef
+    // Ensure that all required kernel modules are listed in the kernelModule(s): section of sdef
     EnsureRequiredKernelModuleinSystem(systemPtr);
 
     return systemPtr;

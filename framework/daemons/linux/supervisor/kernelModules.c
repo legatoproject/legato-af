@@ -687,6 +687,13 @@ static void ModuleGetInstallScript(KModuleObj_t *module)
 
     le_cfg_IteratorRef_t iter = le_cfg_CreateReadTxn(cfgTreePath);
 
+    if (le_cfg_GetNodeType(iter, ".") != LE_CFG_TYPE_EMPTY)
+    {
+        LE_DEBUG("Found empty intall script node");
+        le_cfg_CancelTxn(iter);
+        return;
+    }
+
     if (le_cfg_GetNodeType(iter, ".") != LE_CFG_TYPE_STRING)
     {
         LE_WARN("Found non-string type scripts");
@@ -736,6 +743,13 @@ static void ModuleGetRemoveScript(KModuleObj_t *module)
                  KMODULE_CONFIG_TREE_ROOT, module->name, "scripts/remove", NULL));
 
     le_cfg_IteratorRef_t iter = le_cfg_CreateReadTxn(cfgTreePath);
+
+    if (le_cfg_GetNodeType(iter, ".") != LE_CFG_TYPE_EMPTY)
+    {
+        LE_DEBUG("Found empty remove script node");
+        le_cfg_CancelTxn(iter);
+        return;
+    }
 
     if (le_cfg_GetNodeType(iter, ".") != LE_CFG_TYPE_STRING)
     {

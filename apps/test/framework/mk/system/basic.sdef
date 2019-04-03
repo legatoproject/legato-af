@@ -43,12 +43,18 @@ apps:
     kernelmodule/appmodule.adef
 }
 
+moduleSearch:
+{
+    $CURDIR/kernelmodule/module
+}
+
 kernelModules:
 {
-    $CURDIR/kernelmodule/module/module1.mdef
-    $CURDIR/kernelmodule/module/module2.mdef [optional]
-    $CURDIR/kernelmodule/module/module3.mdef [optional]
-    $CURDIR/kernelmodule/module/module4.mdef
+    module1.mdef
+    module2.mdef [optional]
+    module3.mdef [optional]
+    module4.mdef
+    module5.mdef
 }
 #endif
 

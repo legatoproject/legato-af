@@ -892,12 +892,42 @@ model::ApiFile_t* GetApiFilePtr
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add each kernel module name within "requires: kernelModules:" section to the dependency list.
+ * Get path where the ko file is generated in the module's build directory.
+ */
+//--------------------------------------------------------------------------------------------------
+static std::string FindKoPathOfSubKernelModule
+(
+    model::Module_t* modulePtr,
+    std::string moduleName
+)
+{
+    std::string modulePath;
+    auto itMod = modulePtr->subKernelModules.find(moduleName);
+    if (itMod != modulePtr->subKernelModules.end())
+    {
+        // Get the ko build file path
+        for (auto const& itKoFiles : modulePtr->koFiles)
+        {
+            auto koName = path::RemoveSuffix(path::GetLastNode(itKoFiles.second->path), ".ko");
+            if (koName.compare(moduleName) == 0)
+            {
+               modulePath = itKoFiles.second->path;
+            }
+        }
+    }
+    return modulePath;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add each kernel module name within "requires: kernelModule(s):" section to the dependency list.
  */
 //--------------------------------------------------------------------------------------------------
 static void ReqKernelModule
 (
-    std::map<std::string, std::pair<parseTree::Token_t*, bool>>& requiredModules,
+    std::map<std::string, model::Module_t::ModuleInfoOptional_t>& requiredModules,
+    model::Module_t* modulePtr,
     const parseTree::RequiredModule_t* sectionPtr,
     const mk::BuildParams_t& buildParams
 )
@@ -916,15 +946,25 @@ static void ReqKernelModule
     }
     else
     {
-        // Append ".mdef" to path
+        // The dependency module is a sub kernel module
         moduleName = path::GetLastNode(moduleSpec);
-        modulePath = file::FindFile(moduleSpec + ".mdef", buildParams.moduleDirs);
+
+        if (modulePtr != nullptr)
+        {
+            modulePath = FindKoPathOfSubKernelModule(modulePtr, moduleName);
+        }
+    }
+
+    if (modulePath.empty())
+    {
+       // Append ".mdef" to path
+       modulePath = file::FindFile(moduleSpec + ".mdef", buildParams.moduleDirs);
     }
 
     if (modulePath.empty())
     {
         std::string formattedMsg =
-            mk::format(LE_I18N("Can't find definition file (.mdef) "
+            mk::format(LE_I18N("Can't find definition file (.mdef) or kernel object (.ko) file "
                                "for module specification '%s'.\n"
                                "note: Looked in the following places:\n"), moduleSpec);
         for (auto& dir : buildParams.moduleDirs)
@@ -932,16 +972,6 @@ static void ReqKernelModule
             formattedMsg += "    '" + dir + "'\n";
         }
         sectionPtr->ThrowException(formattedMsg);
-    }
-
-    // Check for duplicates.
-    auto modulesIter = requiredModules.find(moduleName);
-    if (modulesIter != requiredModules.end())
-    {
-        sectionPtr->ThrowException(
-            mk::format(LE_I18N("Module '%s' added to the app more than once.\n"),
-                       moduleName)
-        );
     }
 
     bool isOptional = false;
@@ -952,18 +982,33 @@ static void ReqKernelModule
         isOptional = true;
     }
 
-    requiredModules[moduleName] = std::make_pair(sectionPtr->firstTokenPtr, isOptional);
+    // Check for duplicates.
+    auto modulesIter = requiredModules.find(moduleName);
+    if (modulesIter != requiredModules.end())
+    {
+        sectionPtr->ThrowException(
+            mk::format(LE_I18N("Module '%s' added more than once.\n"),
+                       moduleName)
+        );
+    }
+
+    model::Module_t::ModuleInfoOptional_t modTokenOptional;
+    modTokenOptional.tokenPtr = sectionPtr->firstTokenPtr;
+    modTokenOptional.isOptional = isOptional;
+
+    requiredModules[moduleName] = modTokenOptional;
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Iterate through each kernel module listed in "requires: kernelModules:" section.
+ * Iterate through each kernel module listed in "requires: kernelModule(s):" section.
  */
 //--------------------------------------------------------------------------------------------------
 static void ReqKernelModulesSection
 (
-    std::map<std::string, std::pair<parseTree::Token_t*, bool>>& requiredModules,
+    std::map<std::string, model::Module_t::ModuleInfoOptional_t>& requiredModules,
+    model::Module_t* modulePtr,
     const parseTree::CompoundItem_t* sectionPtr,
     const mk::BuildParams_t& buildParams
 )
@@ -976,6 +1021,7 @@ static void ReqKernelModulesSection
         if (itemPtr != NULL)
         {
             ReqKernelModule(requiredModules,
+                            modulePtr,
                             dynamic_cast<const parseTree::RequiredModule_t*>(itemPtr),
                             buildParams);
         }
@@ -984,12 +1030,13 @@ static void ReqKernelModulesSection
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add required kernel module section from "requires:" "kernelModules:" section to a given object.
+ * Add required kernel module section from "requires:" "kernelModule(s):" section to a given object.
  */
 //--------------------------------------------------------------------------------------------------
 void AddRequiredKernelModules
 (
-    std::map<std::string, std::pair<parseTree::Token_t*, bool>>& requiredModules,
+    std::map<std::string, model::Module_t::ModuleInfoOptional_t>& requiredModules,
+    model::Module_t* modulePtr,
     const std::list<const parseTree::CompoundItem_t*>& reqKernelModulesSections,
     const mk::BuildParams_t& buildParams
 )
@@ -997,10 +1044,9 @@ void AddRequiredKernelModules
 {
     for (auto sectionPtr : reqKernelModulesSections)
     {
-        ReqKernelModulesSection(requiredModules, sectionPtr, buildParams);
+        ReqKernelModulesSection(requiredModules, modulePtr, sectionPtr, buildParams);
     }
 }
-
 
 
 } // namespace modeller

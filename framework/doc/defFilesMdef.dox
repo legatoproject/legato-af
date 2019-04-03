@@ -227,6 +227,76 @@ sdef and mdef.
 if module 'a.mdef' is dependent on module 'x.mdef' at some point in the hierarchy then module
 'x.mdef' must never be dependent on module 'a.mdef' at any point.
 
+@section defFilesMdef_kernelModule kernelModule
+
+A module definition file can contain multiple source files which can be build into multiple kernel
+module objects instead of just building one kernel module object. Instead of creating multiple mdef
+files and generating module objects separately, in many cases it might be convenient to list the
+module objects in a single mdef and specify common module depencencies if applicable. This reduces
+the number of mdef files to maintain and provide an efficient way to generate multiple module
+objects using single mdef.
+
+@c kernelModule: section defines a kernel module with the name of the kernel module in @c name:
+sub-section and the list of corresponding source files in @c sources: section. The list of
+dependency modules are listed using @c requires: kernelModules: section.
+
+@code
+myModule.mdef
+
+kernelModule:
+{
+    name: myModuleA
+    sources:
+    {
+        myModuleA1.c
+        myModuleA2.c
+    }
+}
+
+
+kernelModule:
+{
+    name: myModuleB
+    sources:
+    {
+        myModuleB.c
+    }
+
+    requires:
+    {
+        kernelModules:
+        {
+            myModuleA  // myModuleB depends on kernel module defined above
+            alpha      // myModuleB depends on another Legato kernel module
+        }
+    }
+}
+
+requires:
+{
+    kernelModules:
+    {
+        beta   // myModuleA and myModuleB both have dependency on beta
+        gamma  // myModuleA and myModuleB both have dependency on gamma
+    }
+}
+@endcode
+
+myModule.mdef generates two kernel module object files: 'myModuleA.ko' and 'myModuleB.ko'. Both the
+modules have dependency on beta and gamma modules. myModuleB depends on myModuleA and alpha modules.
+
+Please note that if the names of kernel modules are not explicity provided using @c name: section
+then default names are generated using the mdef filename and incrementing number appended to the
+end of the filename. In @c myModule.mdef file, if names 'myModuleA' and 'myModuleB' are not
+explicitly provided then ko files with default names 'myModule1.ko' and 'myModule2.ko' are
+generated. This is also true when one of the sub module is named and the other is not. For example,
+if myModuleB name is not specified then ko files 'myModuleA.ko' and 'myModule1.ko' are generated.
+
+If a kernel module is a dependency to another module, provide a name for the kernel module so
+that it can always be referred by the specified name. In @c myModule.mdef file, provide a name for
+the first module i.e. myModuleA as the second module depends on myModuleA. Whereas, naming myModuleB
+might be optional as no other module is dependent on it.
+
 Copyright (C) Sierra Wireless Inc.
 
 **/
