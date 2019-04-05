@@ -23,6 +23,12 @@ endif()
 
 set(TARGET_CXX "$ENV{TARGET_CXX}")
 
+if(NOT DEFINED ENV{TARGET_CPP})
+    message(FATAL_ERROR "TARGET_CPP not set")
+endif()
+
+set(TARGET_CPP "$ENV{TARGET_CPP}")
+
 if(NOT DEFINED USE_CLANG)
     set(USE_CLANG $ENV{USE_CLANG})
 endif()
@@ -47,6 +53,7 @@ message("Target sysroot: ${LEGATO_SYSROOT}")
 
 set(CMAKE_C_COMPILER "${TARGET_CC}")
 set(CMAKE_CXX_COMPILER "${TARGET_CXX}")
+set(CMAKE_CPP_COMPILER "${TARGET_CPP}")
 
 if (DEFINED ENV{CCACHE})
     set(CMAKE_C_COMPILER_LAUNCHER "$ENV{CCACHE}")

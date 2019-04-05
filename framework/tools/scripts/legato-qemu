@@ -313,7 +313,7 @@ function find_qemu_bin {
     fi
 
     # In toolchains dir
-    for toolchain_dir in $(env |grep '_TOOLCHAIN_DIR' | sed 's/[A-Z0-9]*_TOOLCHAIN_DIR=//g'); do
+    for toolchain_dir in $(env | grep '_TOOLCHAIN_DIR' | sed 's/[A-Z0-9]*_TOOLCHAIN_DIR=//g'); do
         qemu_bin="$toolchain_dir/../$qemu_bin_name"
         if [ -e "$qemu_bin" ]; then
             get_qemu_version $qemu_bin
@@ -324,6 +324,19 @@ function find_qemu_bin {
             fi
         fi
     done
+
+    if command -v findtoolchain >/dev/null; then
+        toolchain_dir=$(findtoolchain $OPT_TARGET)
+        qemu_bin="$toolchain_dir/../$qemu_bin_name"
+        if [ -e "$qemu_bin" ]; then
+            get_qemu_version $qemu_bin
+            verlt $best_version $qemu_version
+            if [ $? -eq 0 ]; then
+                best_version=$qemu_version
+                best_bin=$qemu_bin
+            fi
+        fi
+    fi
 
     if [ -z "$best_bin" ]; then
         message $COLOR_ERROR "Unable to find qemu candidate for '$qemu_bin_name', please install qemu"

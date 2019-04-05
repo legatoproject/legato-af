@@ -171,9 +171,11 @@ endif
 ifeq ($(filter 1,$(or $(call k2b,$(LE_CONFIG_USE_CLANG)),$(USE_CLANG))),)
   CC_NAME = gcc
   CXX_NAME = g++
+  CPP_NAME = cpp
 else
   CC_NAME = clang
   CXX_NAME = clang++
+  CPP_NAME = cpp
 endif
 export USE_CLANG := $(call k2b,$(LE_CONFIG_USE_CLANG))
 
@@ -227,8 +229,10 @@ ifneq ($(TARGET),nothing)
   # Target compiler variables
   export TARGET_CC                       := $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)$(CC_NAME)
   export TARGET_CXX                      := $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)$(CXX_NAME)
+  export TARGET_CPP                      := $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)$(CPP_NAME)
   export $(TARGET_CAPS)_CC               := $(TARGET_CC)
   export $(TARGET_CAPS)_CXX              := $(TARGET_CXX)
+  export $(TARGET_CAPS)_CPP              := $(TARGET_CPP)
   export $(TARGET_CAPS)_TOOLCHAIN_DIR    := $(TOOLCHAIN_DIR)
   export $(TARGET_CAPS)_TOOLCHAIN_PREFIX := $(TOOLCHAIN_PREFIX)
   export $(TARGET_CAPS)_SYSROOT          := $(LEGATO_SYSROOT)
