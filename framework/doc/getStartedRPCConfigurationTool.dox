@@ -1,0 +1,65 @@
+/** @page getStartedRPCConfigurationTool Legato RPC Configuration Tool
+
+@warning EXPERIMENTAL
+
+To configure the @ref getStartedRPC_bindings and @ref getStartedRPC_systems, the Legato RPC provides a RPC Configration tool.
+
+@section getStatredRPC_rpcTool Command Syntax
+
+@verbatim
+NAME:
+    rpctool - RPC Configuration command-line tool.
+
+SYNOPSIS:
+    rpctool set binding <serviceName> <systemName> <remoteServiceName>
+    rpctool get binding <serviceName>
+    rpctool reset binding <serviceName>
+    rpctool list bindings
+    rpctool set link <systemName> <linkName> <nodeName> <nodeValue>
+    rpctool get link
+    rpctool reset link <systemName> <linkName>
+    rpctool list links
+    rpctool help
+    rpctool -h
+    rpctool --help
+
+DESCRIPTION:
+    rpctool set binding <serviceName> <systemName> <remoteServiceName>
+            Sets the RPC binding for the specified service-name with the
+            system-name and remote service-name.
+
+    rpctool get binding <serviceName>
+            Retrieves the system-name and service-name for the specified
+            service-name.
+
+    rpctool reset binding <serviceName>
+            Resets the RPC binding for a given service-name.
+
+    rpctool list bindings
+            Lists all RPC bindings configured in the system.
+
+    rpctool set link <systemName> <linkName> <nodeName> <nodeValue>
+            Sets the RPC link for the specified system-name and link-name
+            with the node-name and node-value.
+
+    rpctool get link <systemName> <linkName> <nodeName>
+            Retrieves the node-value for the specified system-name,
+            link-name, and node-name.
+
+    rpctool reset link <systemName> <linkName>
+            Resets the RPC link for the specifed system-name and link-name.
+
+    rpctool list links
+            Lists all RPC links configured in the system.
+
+    rpctool help
+    rpctool -h
+    rpctool --help
+           Print this help text and exit.
+
+    All output is always sent to stdout and error messages to stderr.
+
+@endverbatim
+
+Copyright (C) Sierra Wireless Inc.
+**/

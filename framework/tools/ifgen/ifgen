@@ -193,7 +193,10 @@ def CalcHash(interface):
 
     # Add a interface version on to hash text to ensure when pack/unpack method changes all
     # interfaces are considered changed.
-    hashText = "v3," + repr(interface)
+    if (os.environ.get('LE_CONFIG_RPC') == "y"):
+        hashText = "v4," + repr(interface)
+    else:
+        hashText = "v3," + repr(interface)
 
     h = hashlib.md5()
     h.update( hashText )

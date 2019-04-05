@@ -1224,6 +1224,8 @@ const char* _le_log_GetResultCodeString
             return "LE_UNAVAILABLE";
         case LE_TERMINATED:
             return "LE_TERMINATED";
+        case LE_IN_PROGRESS:
+            return "LE_IN_PROGRESS";
     }
     LE_ERROR("Result code %d out of range.", resultCode);
     return "(unknown)";

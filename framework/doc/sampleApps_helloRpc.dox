@@ -1,0 +1,227 @@
+/** @page sampleApps_helloRpc Hello RPC
+
+@warning EXPERIMENTAL
+
+The Hello RPC sample app directory contains sample applications for demonstrating remote-procedure calls between two Legato systems, using RPC bindings.  As with IPC bindings, RPC bindings are defined using Legato @ref apiFiles.
+
+Go to the
+<a href="https://github.com/legatoproject/legato-af/tree/master/apps/sample/helloRpc">sample app code</a>.
+
+Instructions:
+@verbatim
+Overview
+========
+RPC is an EXPERIMENTAL Alpha-quality feature that is actively under development,
+and may be subject to future changes, which may not be backwards compatible.
+
+As an Alpha-quality feature, the RPC framework may be unstable or incomplete,
+and may contain bugs or other related issues.
+
+Please use at your own discretion.
+
+Feedback can be provided through our Legato Forum, forum.legato.io.
+
+
+
+HelloRpc Sample Applications
+============================
+
+Contains sample applications for demonstrating Legato RPC bindings.
+Consists of:
+(1) two Client applications (printClient and printClient2),
+(2) two Server applications (printServer and printServer2), and
+(3) two corrsponding definition API files (printer.api and printer2.api).
+
+The sample applications allow two RPC bindings to be created,
+one using a combination of printClient/printServer/printer.api,
+and the other using a combination of printClient2/printServer2/printer2.api.
+
+
+Network Topology
+----------------
+To create RPC bindings, you will require:
+
+(1) Two Legato systems that are networked together using TCP/IP.
+(2) The two systems must be reachable by one another.
+(3) TCP Port # 54323 (or equivalent) to be open and accessible.
+    NOTE: This is configurable (see Configuration section).
+
+
+Definition Files
+----------------
+RPC bindings are built from extensions available in the the System Definition
+(.sdef) file.  Two new sections, "extern:" and "links:" are provided to define
+the RPC configuration.
+
+On System # 1, modify the .sdef file as follows:
+
+(1) Add client applications (printClient and/or printClient2) to the
+    System Definition file's "apps:" section.
+(2) Add the "rpcProxy" application to the System Definition file's "apps:" section.
+    Must either include the full path ($LEGATO_ROOT/framework/daemons/rpcProxy) here, or
+    add it to your "appSearch:" section.
+(3) Add a new section, called "extern:", to export the interface from the system.
+    This enables an interface to take partake in a RPC binding.
+
+    For example,
+
+    extern:
+    {
+        aaa = printClient.printer1
+        //bbb = printServer.printer1
+        ccc = printClient2.printer2
+        //ddd = printServer2.printer2
+    }
+
+(4) Add a new section, called "links:", to provide an implementation of RPC
+    Communication API (commonly referred to as le_comm).   The le_comm API plugin
+    provides a specific networking implementation.  A default implementation, called
+    Network Socket ($LEGATO_ROOT/components/networkSocket) has been provided for you
+    convenience.
+
+    For example,
+
+    componentSearch:
+    {
+        $LEGATO_ROOT/components
+    }
+
+    links:
+    {
+        LINK1 = (networkSocket)
+    }
+
+
+(5) Assuming you are using the default le_comm implementation, Network Socket,
+    you will need to specify one of your systems as a socket server, the other as a
+    client.
+
+    To build System # 1 as a socket server (listening for a remote connecting client),
+    include the compile flag SOCKET_SERVER in the "cflags:" section of the
+    $LEGATO_ROOT/components/networkScoket/Component.cdef,
+    as follows:
+
+    cflags:
+    {
+        -I$LEGATO_ROOT/components/rpcProxy
+        -I$LEGATO_ROOT/components/rpcProxy/rpcDaemon
+        -I$LEGATO_ROOT/framework/liblegato
+
+        -I$LEGATO_ROOT/framework/liblegato/linux
+        -I$LEGATO_ROOT/framework/daemons/linux
+        -DSOCKET_SERVER
+    }
+
+
+On System # 2, modify the .sdef file as follows:
+
+(1) Add server applications (printServer and/or printServer2) to the
+    System Definition file's "apps:" section.
+(2) Add the "rpcProxy" application to the System Definition file's "apps:" section.
+(3) Add a new section, called "extern:", to export the interface from the system.
+    For example,
+
+    extern:
+    {
+        //aaa = printClient.printer1
+        bbb = printServer.printer1
+        //ccc = printClient2.printer2
+        ddd = printServer2.printer2
+    }
+
+(4) Add a new section, called "links:", to provide an implementation of RPC
+    Communication API (commonly referred to as le_comm).
+    For example,
+
+    componentSearch:
+    {
+        $LEGATO_ROOT/components
+    }
+
+    links:
+    {
+        LINK1 = (networkSocket)
+    }
+
+(5) To build System # 2 as a socket client (connecting to a remote listening server),
+    remove the compile flag SOCKET_SERVER from the "cflags:" section of the
+    $LEGATO_ROOT/components/networkScoket/Component.cdef,
+    as follows:
+
+    cflags:
+    {
+        -I$LEGATO_ROOT/components/rpcProxy
+        -I$LEGATO_ROOT/components/rpcProxy/rpcDaemon
+        -I$LEGATO_ROOT/framework/liblegato
+
+        -I$LEGATO_ROOT/framework/liblegato/linux
+        -I$LEGATO_ROOT/framework/daemons/linux
+        //-DSOCKET_SERVER
+    }
+
+
+
+KConfig
+-------
+The RPC feature is currently an EXPERIMENTAL Alpha-quality feature.
+To enable RPC, please enable the EXPERIMENTAL KConfig flag,
+as well as, the RPC feature KConfig flags located under the
+Framework configuration menu.
+
+            [*] Enable RPC Proxy infrastructure (EXPERIMENTAL)
+            [ ]   Enable RPC Proxy as a library component
+
+
+Please note:
+(1) Library component support is currently not supported (WIP).
+
+
+Build
+-----
+The system (that would include default Legato system, plus RPC Proxy, plus sample apps)
+can be built/installed using the following commands:
+
+    cd legato
+    make <target>
+    app update system.<target>.update
+
+
+Configure
+---------
+To activate a RPC binding, it must be defined in the system configTree.
+At present, this must be done manually using the following commands:
+
+On System # 1,
+
+    config set rpcProxy/bindings/aaa/systemName S2
+    config set rpcProxy/bindings/aaa/remoteService bbb
+    config set rpcProxy/bindings/ccc/systemName S2
+    config set rpcProxy/bindings/ccc/remoteService ddd
+
+    // Assuming System # 2 has an IP address of 192.168.3.2
+    config set rpcProxy/systems/S2/LINK1/address 192.168.3.2
+    config set rpcProxy/systems/S2/LINK1/port 54323
+
+
+On System # 2 (assuming an IP Address of 192.168.3.2),
+
+    config set rpcProxy/bindings/bbb/systemName S1
+    config set rpcProxy/bindings/bbb/remoteService aaa
+    config set rpcProxy/bindings/ddd/systemName S1
+    config set rpcProxy/bindings/ddd/remoteService ccc
+
+    // Assuming System # 1 has an IP address of 192.168.2.2
+    config set rpcProxy/systems/S1/LINK1/address 192.168.2.2
+    config set rpcProxy/systems/S1/LINK1/port 54323
+
+
+NOTE:  Will require the rpcProxy application to be restart in order for it
+       take effect.
+@endverbatim
+
+See <br>
+@ref getStartedRPC
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

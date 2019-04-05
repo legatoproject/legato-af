@@ -1,0 +1,21 @@
+sources:
+{
+    le_rpcProxy.c
+    le_rpcProxyNetwork.c
+    le_rpcProxyConfig.c
+}
+
+requires:
+{
+    api:
+    {
+        le_cfg.api
+    }
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/framework/daemons/rpcProxy
+    -I$LEGATO_ROOT/framework/rpcProxy/rpcDaemon
+    -I$LEGATO_ROOT/framework/liblegato
+}

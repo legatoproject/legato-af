@@ -1,0 +1,25 @@
+start: manual
+
+executables:
+{
+    rpcProxyTest = ( rpcProxyTest )
+}
+
+bindings:
+{
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        ( rpcProxyTest )
+    }
+
+    maxStackBytes: 10240
+}

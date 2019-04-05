@@ -679,8 +679,10 @@ void le_msg_RequestResponse
     switch (msgRef->sessionRef->type)
     {
         case LE_MSG_SESSION_LOCAL:
-            LE_FATAL("Local messaging does not support asynchronous responses");
+        {
+            msgLocal_RequestResponse(msgRef, handlerFunc, contextPtr);
             break;
+        }
         case LE_MSG_SESSION_UNIX_SOCKET:
         {
             UnixMessage_t* msgPtr = msgMessage_GetUnixMessagePtr(msgRef);

@@ -1214,6 +1214,18 @@ static void AddExternApiInterfaces
 )
 //--------------------------------------------------------------------------------------------------
 {
+    if (envVars::Get("LE_CONFIG_CONFIGURED") == "y" &&
+        envVars::Get("LE_CONFIG_RPC") != "y")
+    {
+        // Warn the user if adding RPC interfaces without the appropriate config environment
+        // variable set.  This is not an error because the user may be invoking the mk tools
+        // directly and may not have set this configuration in the environment.
+        sectionPtr->PrintWarning(
+            LE_I18N("Declaring RPC interfaces, but LE_CONFIG_RPC is not set.  Are the KConfig "
+                "values correctly configured?")
+        );
+    }
+
     // Each item in the section is either an ExternApiInterface_t or a ComplexSection_t.
     // We are looking for the ExternApiInterface_t items.
     for (auto itemPtr : sectionPtr->Contents())
@@ -1275,6 +1287,18 @@ static void AddLinks
 )
 //--------------------------------------------------------------------------------------------------
 {
+    if (envVars::Get("LE_CONFIG_CONFIGURED") == "y" &&
+        envVars::Get("LE_CONFIG_RPC") != "y")
+    {
+        // Warn the user if adding RPC interfaces without the appropriate config environment
+        // variable set.  This is not an error because the user may be invoking the mk tools
+        // directly and may not have set this configuration in the environment.
+        sectionPtr->PrintWarning(
+            LE_I18N("Adding RPC links, but LE_CONFIG_RPC is not set.  Are the KConfig "
+                "values correctly configured?")
+        );
+    }
+
     // Each item in the section is a ComplexSection_t.
     for (auto itemPtr : sectionPtr->Contents())
     {

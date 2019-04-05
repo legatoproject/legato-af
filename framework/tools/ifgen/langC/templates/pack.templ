@@ -10,9 +10,9 @@ static inline bool {{type.iface.name}}_Pack{{type.name}}
     {{type|FormatType}} value
 )
 {
-    {%- if type.size == 4 %}
+    {%- if type.size == interface.findType('uint32').size %}
     return le_pack_PackUint32(bufferPtr, value);
-    {%- elif type.size == 8 %}
+    {%- elif type.size == interface.findType('uint64').size %}
     return le_pack_PackUint64(bufferPtr, value);
     {%- else %}
     #error "Unexpected enum size"
@@ -26,11 +26,11 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
 )
 {
     bool result;
-    {%- if type.size == 4 %}
-    uint32_t value;
+    {%- if type.size == interface.findType('uint32').size %}
+    uint32_t value = 0;
     result = le_pack_UnpackUint32(bufferPtr, &value);
-    {%- elif type.size == 8 %}
-    uint64_t value;
+    {%- elif type.size == interface.findType('uint64').size %}
+    uint64_t value = 0;
     result = le_pack_UnpackUint64(bufferPtr, &value);
     {%- else %}
     #error "Unexpected enum size"
@@ -122,12 +122,73 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
            or parameter is ArrayParameter %}
     {%- if initiatorWaits and args.localService and (parameter is StringParameter or
                                                   parameter is ArrayParameter) %}
-        LE_ASSERT(le_pack_PackSize( &_msgBufPtr, {{parameter|GetParameterCount}} ));
+#ifdef LE_CONFIG_RPC
+    // Pack TagID to allow external identification of the
+    // StringParameter or ArrayParameter tuple
+    {%- if parameter is InParameter %}
+    // "In" Parameters
+    {%- if parameter is StringParameter %}
 #if UINTPTR_MAX == UINT32_MAX
-        LE_ASSERT(le_pack_PackUint32( &_msgBufPtr, (uint32_t){{parameter|FormatParameterName}} ));
+    LE_ASSERT(le_pack_PackTaggedUint32Tuple( &_msgBufPtr,
+                                             {{parameter|GetParameterCount}},
+                                             (uint32_t){{parameter|FormatParameterName}},
+                                             LE_PACK_IN_STRING_POINTER ));
 #elif UINTPTR_MAX == UINT64_MAX
-        LE_ASSERT(le_pack_PackUint64( &_msgBufPtr, (uint64_t){{parameter|FormatParameterName}} ));
+    LE_ASSERT(le_pack_PackTaggedUint64Tuple( &_msgBufPtr,
+                                             {{parameter|GetParameterCount}},
+                                             (uint64_t){{parameter|FormatParameterName}},
+                                             LE_PACK_IN_STRING_POINTER ));
 #endif
+    {%- else %}
+#if UINTPTR_MAX == UINT32_MAX
+    LE_ASSERT(le_pack_PackTaggedUint32Tuple( &_msgBufPtr,
+                                             {{parameter|GetParameterCount}},
+                                             (uint32_t){{parameter|FormatParameterName}},
+                                             LE_PACK_IN_ARRAY_POINTER ));
+#elif UINTPTR_MAX == UINT64_MAX
+    LE_ASSERT(le_pack_PackTaggedUint64Tuple( &_msgBufPtr,
+                                             {{parameter|GetParameterCount}},
+                                             (uint64_t){{parameter|FormatParameterName}},
+                                             LE_PACK_IN_ARRAY_POINTER ));
+#endif
+    {%- endif %}
+    {%- else %}
+    // "Out" Parameters
+    {%- if parameter is StringParameter %}
+#if UINTPTR_MAX == UINT32_MAX
+    LE_ASSERT(le_pack_PackTaggedUint32Tuple( &_msgBufPtr,
+                                             {{parameter|GetParameterCount}},
+                                             (uint32_t){{parameter|FormatParameterName}},
+                                             LE_PACK_OUT_STRING_POINTER ));
+#elif UINTPTR_MAX == UINT64_MAX
+    LE_ASSERT(le_pack_PackTaggedUint64Tuple( &_msgBufPtr,
+                                             {{parameter|GetParameterCount}},
+                                             (uint64_t){{parameter|FormatParameterName}},
+                                             LE_PACK_OUT_STRING_POINTER ));
+#endif
+    {%- else %}
+#if UINTPTR_MAX == UINT32_MAX
+    LE_ASSERT(le_pack_PackTaggedUint32Tuple( &_msgBufPtr,
+                                             {{parameter|GetParameterCount}},
+                                             (uint32_t){{parameter|FormatParameterName}},
+                                             LE_PACK_OUT_ARRAY_POINTER ));
+#elif UINTPTR_MAX == UINT64_MAX
+    LE_ASSERT(le_pack_PackTaggedUint64Tuple( &_msgBufPtr,
+                                             {{parameter|GetParameterCount}},
+                                             (uint64_t){{parameter|FormatParameterName}},
+                                             LE_PACK_OUT_ARRAY_POINTER ));
+#endif
+    {%- endif %}
+    {%- endif %}
+#else
+    LE_ASSERT(le_pack_PackSize( &_msgBufPtr, {{parameter|GetParameterCount}} ));
+
+#if UINTPTR_MAX == UINT32_MAX
+    LE_ASSERT(le_pack_PackUint32( &_msgBufPtr, (uint32_t){{parameter|FormatParameterName}} ));
+#elif UINTPTR_MAX == UINT64_MAX
+    LE_ASSERT(le_pack_PackUint64( &_msgBufPtr, (uint64_t){{parameter|FormatParameterName}} ));
+#endif
+#endif // LE_CONFIG_RPC
     {%- elif parameter is not InParameter %}
     if ({{parameter|FormatParameterName}})
     {
@@ -190,6 +251,33 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     void
     {%- endif %}
         *{{parameter|FormatParameterName}};
+#ifdef LE_CONFIG_RPC
+#if UINTPTR_MAX == UINT32_MAX
+    if (!le_pack_UnpackUint32Tuple( &_msgBufPtr,
+                                    &{{parameter.name}}Size,
+                                    (uint32_t*)&{{parameter|FormatParameterName}} ))
+    {
+        {{- caller() }}
+    }
+#elif UINTPTR_MAX == UINT64_MAX
+    if (!le_pack_UnpackUint64Tuple( &_msgBufPtr,
+                                    &{{parameter.name}}Size,
+                                    (uint64_t*)&{{parameter|FormatParameterName}} ))
+    {
+        {{- caller() }}
+    }
+#endif
+    {%- if parameter is StringParameter %}
+    if ({{parameter.name}}Size >= UINT32_MAX)
+    {
+        {{parameter.name}}Size = UINT32_MAX;
+    }
+    else
+    {
+        {{parameter.name}}Size++;
+    }
+    {%- endif %}
+#else
     if (!le_pack_UnpackSize( &_msgBufPtr,
                              &{{parameter.name}}Size ))
     {
@@ -211,13 +299,14 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {
         {{- caller() }}
     }
-#elif UINTPTR_MAX == UINT64_MAx
+#elif UINTPTR_MAX == UINT64_MAX
     if (!le_pack_UnpackUint64( &_msgBufPtr,
                                (uint64_t*)&{{parameter|FormatParameterName}} ))
     {
          {{- caller() }}
     }
 #endif
+#endif // LE_CONFIG_RPC
     {%- elif parameter is not InParameter %}
     size_t {{parameter.name}}Size = 0;
     if (!le_pack_UnpackSize( &_msgBufPtr,

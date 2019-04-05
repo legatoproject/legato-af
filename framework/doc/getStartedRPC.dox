@@ -1,0 +1,112 @@
+/** @page getStartedRPC Legato RPC
+
+@warning EXPERIMENTAL
+
+Legato RPC provides a framework to support remote-procedural calls (commonly referred to as "RPC") between two Legato systems.
+Using RPC bindings, a Legato service is provisioned across two remote systems resulting in the client application,
+deployed on one system, being bound to the server application, deployed on a second system.
+
+From the perspective of the client and server applications, there is no difference between a locally provided service (IPC) and a remotely provided service (RPC). They are unaware that the service is provisioned across two remote systems.
+
+
+@image html getStartedRPC-Overview.png
+
+Defining a Legato service to be a RPC service requires,
+- Declaring which applications and interfaces can be exported from a system. See @ref defFilesSdef_extern for further information.
+- Declaring how communication to a remote system is implemented. See @ref defFilesSdef_links for further information.
+
+
+@section getStartedRPC_DyanmicConfiguration Run-time Configuration
+
+The Legato RPC framework depends on some of its configuration (@ref getStartedRPC_bindings and @ref getStartedRPC_systems) to be defined at run-time.  In particular, the run-time configuration provides specific details about the RPC bindings and the remote system network connection configuration.  The run-time configuration can be thought of as the 'routing' configuration for Legato RPC Services.  It may change or vary over time and, therefore, cannot be defined statically at build time.
+
+
+@subsection getStartedRPC_bindings RPC Bindings
+
+To specify the remote system on which a Legato RPC service is provisioned/bound, the Legato RPC framework requires a RPC binding to be defined.  RPC bindings are run-time or set-up specific configuration, and must therefore be manually defined during the system set-up.
+
+Location and format are, as follows:
+
+@verbatim
+rpcProxy/
+  bindings/
+    <interfaceName>/
+      systemName<string> == <systemName>
+      remoteService<string> == <remote interfaceName>
+@endverbatim
+
+where,
+
+- <b>interfaceName</b> is the network interface-Name.  Must match the interface alias-name specified, at built time, in the "extern:" section of the .sdef file.
+- <b>systemName</b> is the alias-name of the remote system.  Must match the system alias-name specified in the @ref getStartedRPC_systems.
+- <b>remote interfaceName</b> is the network interface-name that has been exported by a remote system (i.e. specified in the remote system's "extern:" sections of the .sdef file). It must match exactly in order for the RPC framework to connect the RPC service.
+
+
+@subsection getStartedRPC_systems RPC Systems
+
+The RPC Systems contains the network configuration details to enable connecting to a remote system.  As with RPC bindings, RPC systems are run-time or set-up specific configuration, and must therefore be manually defined during the system set-up.  Because the implementation of the network communication plug-in will vary depending on the nature of the underlying communication technology, the RPC Systems configuration will also vary and depend on the specific technology.
+
+Location and format are, as follows:
+
+@verbatim
+rpcProxy/
+  systems/
+    <systemName>/
+      <linkName>/
+        <arg0> == <arg0 string>
+        <arg1> == <arg1 string>
+        ....
+@endverbatim
+
+where,
+
+- <b>systemName</b> is the alias-name of the remote system.  Must match system alias-name specified in the @ref getStartedRPC_bindings.
+- <b>linkName</b> is the link-name alias defining the network communication to a remote system.  Must match the link alias-name specified, at build time, in the @ref defFilesSdef_links.
+- <b>argX</b> is a command-line argument vector for specify configuration data specific for a communication technology.
+
+
+@subsection getStartedRPC_rpctool RPC Configuration Tool
+
+To specify the RPC Bindings and Systems, a @ref getStartedRPCConfigurationTool has been provided.
+
+
+
+@section getStartedRPC_status Status
+
+RPC is an EXPERIMENTAL Alpha-quality feature that is actively under development,
+and may be subject to future changes, which may not be backwards compatible.
+
+As an Alpha-quality feature, the RPC framework may be unstable or incomplete,
+and may contain bugs or other related issues.
+
+Please use at your own discretion.
+
+Feedback can be provided through our Legato Forum, forum.legato.io.
+
+
+@subsection getStartRPC_restrictionStatus Restrictions and Limitations
+
+- Legato RPC is currently restricted to a two (2) system network.
+- A brand new Legato target system will NOT contain any RPC run-time configuration.
+- RPC run-time configuration must be set-up/changed, using the @ref getStartedRPCConfigurationTool, before a RPC services can start.
+- Changes to the RPC run-time configuration will only take effect after (1) a system restart or (2) a RPC Proxy application restart.
+- Currently, only a single implementation of the @ref le_comm.h is available for use, <b>networkSocket</b>.
+- The <b>networkSocket</b> le_comm implementation currently supports TCP/IPv4 sockets only.
+- IP Address assignment and network reachability must be established outside of the RPC framework (i.e. the <b>networkSocket</b> expects the remote system to be reachable at the Network layer).
+
+
+@subsection getStartRPC_testStatus Test Status
+
+Legato RPC has been tested for the following use-cases:
+
+- Linux <---> Linux
+
+
+
+@section getStartedRPC_sampleApplication Sample Application
+
+To help demonstate the concepts of RPC, a sample application has been provided.
+@ref sampleApps_helloRpc
+
+Copyright (C) Sierra Wireless Inc.
+**/

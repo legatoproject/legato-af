@@ -15,4 +15,9 @@ apps:
     secStore/test_SecStore2
     secStore/test_SecStoreGlobal
     secStore/test_SecStore2Global
+#if ${LE_CONFIG_RPC} = y
+  #if ${LE_CONFIG_RPC_PROXY_LIBRARY} = y
+    rpcProxy/test_rpcProxy
+  #endif
+#endif
 }

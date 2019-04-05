@@ -1,0 +1,35 @@
+requires:
+{
+    api:
+    {
+    }
+
+    component:
+    {
+        $LEGATO_ROOT/components/rpcProxy/myLocal
+    }
+}
+
+provides:
+{
+    api:
+    {
+    }
+}
+
+sources:
+{
+    $LEGATO_ROOT/components/rpcProxy/rpcDaemon/le_rpcProxy.c
+    rpcProxyTest.c
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/rpcProxy
+    -I$LEGATO_ROOT/components/rpcProxy/rpcDaemon
+    -I$LEGATO_ROOT/framework/liblegato
+    -I$LEGATO_ROOT/framework/liblegato/linux
+    -I$LEGATO_ROOT/framework/daemons/linux
+
+    -DRPC_PROXY_UNIT_TEST
+}

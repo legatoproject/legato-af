@@ -57,6 +57,7 @@ typedef enum
     LE_NOT_IMPLEMENTED = -20,   ///< Unimplemented functionality.
     LE_UNAVAILABLE = -21,       ///< A transient or temporary loss of a service or resource.
     LE_TERMINATED = -22,        ///< The process, operation, data stream, session, etc. has stopped.
+    LE_IN_PROGRESS = -23,       ///< The operation is in progress.
 }
 le_result_t;
 

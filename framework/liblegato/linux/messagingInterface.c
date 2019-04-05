@@ -713,22 +713,25 @@ static void CloseAllSessions
 //--------------------------------------------------------------------------------------------------
 {
     LOCK
-
-    for (;;)
-    {
-        le_dls_Link_t* linkPtr = le_dls_Peek(&servicePtr->interface.sessionList);
-
-        if (linkPtr != NULL)
-        {
-            le_msg_DeleteSession(msgSession_GetSessionContainingLink(linkPtr));
-        }
-        else
-        {
-            break;
-        }
-    }
-
+    // Retrieve the first link in the sessionList
+    le_dls_Link_t* linkPtr = le_dls_Peek(&servicePtr->interface.sessionList);
     UNLOCK
+
+    // Verify link pointer
+    while (linkPtr != NULL)
+    {
+        LOCK
+        // Retrieve the next link in the sessionList
+        le_dls_Link_t* nextLinkPtr =
+            le_dls_PeekNext(&servicePtr->interface.sessionList, linkPtr);
+        UNLOCK
+
+        // Close the session pointed to by the link pointer
+        le_msg_CloseSession(msgSession_GetSessionContainingLink(linkPtr));
+
+        // Set the link pointer to the next link
+        linkPtr = nextLinkPtr;
+    }
 }
 
 

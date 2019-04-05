@@ -1,0 +1,52 @@
+/** @page conceptsRPC Remote-procedure Call
+
+@warning EXPERIMENTAL
+
+Remote-procedure calls (RPC) allow communication between different systems.
+Each system operates as an independent, autonomous device unable to share
+access to internal processes directly or natively.
+
+As with @ref conceptsIPC in that different processes have different address spaces
+that cannot be easily shared, processes running inside different systems cannot access
+each other; they need RPC to communicate.
+
+Legato's @ref c_messaging and @ref apiFiles provide RPC services without
+all the coding, packing/unpacking, and network communication handling that come
+with using other methods directly.
+
+Legato has built-in RPC features.  The language-independent,
+function-call-oriented RPC approach is automatically handled with
+the @ref buildToolsifgen tool and the @ref buildTools.
+
+By default, each system runs as an independent, autonomous device.
+When an system is constructed, all the RPC services it needs are declared.
+At runtime, the Supervisor and the Service Directory enforce that only those
+approved RPC services are accessed by remote systems.
+
+Client-side network-interfaces are "bound" to server-side network-interfaces through
+a combination of system definition files and set-up configuration data.
+This allows reconfiguration of systems into new systems just by re-routing bindings, without having
+to modify the client or server software.  Bindings make code more reusable.  For example, if
+an app controls an LED, but the LED is connected to a different GPIO pin on different target
+devices, that same app can be used on both devices, with its LED control interface bound to
+different GPIO pin control services in each device.
+
+Using language-independent RPC makes applications inherently more reusable,
+creates opportunities for function isolation in different systems,
+and automatically creates potential debugging trace points.
+
+@subpage getStartedRPC - Getting Start with RPC <br>
+@subpage sampleApps_helloRpc - Sample RPC Application <br>
+
+
+
+Related information
+
+@ref conceptsInterfaces <br>
+@ref apiFiles <br>
+@ref defFiles <br>
+@ref legatoServices
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

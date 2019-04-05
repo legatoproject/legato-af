@@ -294,6 +294,18 @@ le_msg_SessionRef_t msgLocal_GetSession
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Start an asynchronous request-response transaction.
+ */
+//--------------------------------------------------------------------------------------------------
+void msgLocal_RequestResponse
+(
+    le_msg_MessageRef_t         msgRef,     ///< [in] Reference to the request message.
+    le_msg_ResponseCallback_t   handlerFunc,///< [in] Function to be called when transaction done.
+    void*                       contextPtr  ///< [in] Opaque value to be passed to handler function.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Requests a response from a server by sending it a request.  Blocks until the response arrives
  * or until the transaction terminates without a response (i.e., if the session terminates or
  * the server deletes the request without responding).

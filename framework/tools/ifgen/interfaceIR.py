@@ -6,6 +6,7 @@
 
 import collections
 import copy
+import os
 
 #---------------------------------------------------------------------------------------------------
 # Constants
@@ -33,7 +34,11 @@ class Type(object):
     def __init__(self, name, size):
         self.iface = None
         self.name = name
-        self.size = size
+        if (os.environ.get('LE_CONFIG_RPC') == "y"):
+            # Include a 1-byte TagID
+            self.size = size + 1
+        else:
+            self.size = size
         self.comment = ""
 
     def __str__(self):
@@ -625,13 +630,19 @@ class Interface(object):
         Get size of largest possible message to a function or handler.
 
         A message is 4-bytes for message ID, optional 4
-        bytes for required output parameters, and a variable number of bytes to pack
+        bytes for required output parameters, optional 1 byte for TagID,
+        and a variable number of bytes to pack
         the return value (if the function has one), and all input and output parameters.
         """
-        return 8 + max([1] +
+        padding = 8
+        if (os.environ.get('LE_CONFIG_RPC') == "y"):
+            # Include a 1-byte TagID
+            padding = padding + 1
+        return padding + max([1] +
                        [function.GetMessageSize() for function in self.functions.values()] +
                        [handler.GetMessageSize()
                         for handler in self.types.values() if isinstance(handler, HandlerType)])
+
 
     def __str__(self):
         resultStr  = "=== Interface ===\n"

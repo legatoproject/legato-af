@@ -1,0 +1,35 @@
+//
+// rpcProxy.adef
+//
+// Application definition for rpcProxy on RTOS.
+//
+// Copyright (C) Sierra Wireless Inc.
+//
+
+sandboxed: false
+
+executables:
+{
+    rpcDaemon = ( $LEGATO_ROOT/framework/daemons/rpcProxy/rpcDaemon )
+}
+
+processes:
+{
+    run:
+    {
+        (rpcDaemon)
+    }
+
+    faultAction: restart
+}
+
+requires:
+{
+    configTree:
+    {
+        [w] .
+    }
+}
+
+// rpcProxy does not have an extern or bindings section as these are automatically
+// generated

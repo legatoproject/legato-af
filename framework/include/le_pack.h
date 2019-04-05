@@ -22,20 +22,93 @@
 #define LE_PACK_H_INCLUDE_GUARD
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Pack Definitions and Types
+ */
+//--------------------------------------------------------------------------------------------------
+#ifdef LE_CONFIG_RPC
+typedef uint8_t TagID_t;
+
+#define LE_PACK_UINT8                 1
+#define LE_PACK_UINT16                2
+#define LE_PACK_UINT32                3
+#define LE_PACK_UINT64                4
+#define LE_PACK_INT8                  5
+#define LE_PACK_INT16                 6
+#define LE_PACK_INT32                 7
+#define LE_PACK_INT64                 8
+#define LE_PACK_SIZE                  9
+#define LE_PACK_BOOL                  10
+#define LE_PACK_CHAR                  11
+#define LE_PACK_DOUBLE                12
+#define LE_PACK_RESULT                13
+#define LE_PACK_ONOFF                 14
+#define LE_PACK_REFERENCE             15
+#define LE_PACK_STRING                16
+#define LE_PACK_ARRAYHEADER           17
+#define LE_PACK_IN_STRING_POINTER     18
+#define LE_PACK_OUT_STRING_POINTER    19
+#define LE_PACK_IN_ARRAY_POINTER      20
+#define LE_PACK_OUT_ARRAY_POINTER     21
+
+#define LE_PACK_SIZEOF_TAG_ID         sizeof(TagID_t)
+#define LE_PACK_SIZEOF_BOOL           sizeof(bool)
+#define LE_PACK_SIZEOF_CHAR           sizeof(char)
+#define LE_PACK_SIZEOF_UINT8          sizeof(uint8_t)
+#define LE_PACK_SIZEOF_UINT16         sizeof(uint16_t)
+#define LE_PACK_SIZEOF_UINT32         sizeof(uint32_t)
+#define LE_PACK_SIZEOF_UINT64         sizeof(uint64_t)
+#define LE_PACK_SIZEOF_INT8           sizeof(int8_t)
+#define LE_PACK_SIZEOF_INT16          sizeof(int16_t)
+#define LE_PACK_SIZEOF_INT32          sizeof(int32_t)
+#define LE_PACK_SIZEOF_INT64          sizeof(int64_t)
+#define LE_PACK_SIZEOF_DOUBLE         sizeof(double)
+#define LE_PACK_SIZEOF_RESULT         LE_PACK_SIZEOF_UINT32
+#define LE_PACK_SIZEOF_ONOFF          LE_PACK_SIZEOF_UINT32
+#define LE_PACK_SIZEOF_SIZE           LE_PACK_SIZEOF_UINT32
+#define LE_PACK_SIZEOF_REFERENCE      LE_PACK_SIZEOF_UINT32
+#endif
+
+//--------------------------------------------------------------------------------------------------
 // Pack functions
 //--------------------------------------------------------------------------------------------------
 
 // Packing a simple value is basically the same regardless of type.  But don't use this macro
 // directly to get better verification that we're only packing the types we expect
-#define LE_PACK_PACK_SIMPLE_VALUE(value)         \
-    memcpy(*bufferPtr, &(value), sizeof(value)); \
-    *bufferPtr = *bufferPtr + sizeof(value);     \
-    return true
+#define LE_PACK_PACK_SIMPLE_VALUE(value)             \
+    do {                                             \
+        memcpy(*bufferPtr, &(value), sizeof(value)); \
+        *bufferPtr = *bufferPtr + sizeof(value);     \
+    } while (0)
 
+
+#ifdef LE_CONFIG_RPC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack a TagID into a buffer, incrementing the buffer pointer and decrementing the
+ * available size, as appropriate.
+ *
+ * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * size is known at compile time.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_PackTagID
+(
+    uint8_t** bufferPtr,
+    TagID_t value
+)
+{
+    LE_PACK_PACK_SIMPLE_VALUE(value);
+    return true;
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Pack a uint8_t into a buffer, incrementing the buffer pointer as appropriate.
+ *
+ * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * size is known at compile time.
  */
 //--------------------------------------------------------------------------------------------------
 LE_DECLARE_INLINE bool le_pack_PackUint8
@@ -44,8 +117,35 @@ LE_DECLARE_INLINE bool le_pack_PackUint8
     uint8_t value
 )
 {
+#ifdef LE_CONFIG_RPC
+    le_pack_PackTagID(bufferPtr, LE_PACK_UINT8);
+#endif
     LE_PACK_PACK_SIMPLE_VALUE(value);
+    return true;
 }
+
+#ifdef LE_CONFIG_RPC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack a uint8_t into a buffer using the specified TagID, incrementing the buffer pointer
+ * and decrementing the available size, as appropriate.
+ *
+ * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * size is known at compile time.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_PackTaggedUint8
+(
+    uint8_t** bufferPtr,
+    uint8_t value,
+    TagID_t tagId
+)
+{
+    le_pack_PackTagID(bufferPtr, tagId);
+    LE_PACK_PACK_SIMPLE_VALUE(value);
+    return true;
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -58,8 +158,40 @@ LE_DECLARE_INLINE bool le_pack_PackUint16
     uint16_t value
 )
 {
+#ifdef LE_CONFIG_RPC
+    uint16_t newValue = htobe16(value);
+    le_pack_PackTagID(bufferPtr, LE_PACK_UINT16);
+    LE_PACK_PACK_SIMPLE_VALUE(newValue);
+#else
     LE_PACK_PACK_SIMPLE_VALUE(value);
+#endif
+    return true;
 }
+
+
+#ifdef LE_CONFIG_RPC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack a uint16_t into a buffer using the specified TagID, incrementing the buffer pointer
+ * and decrementing the available size, as appropriate.
+ *
+ * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * size is known at compile time.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_PackTaggedUint16
+(
+    uint8_t** bufferPtr,
+    uint16_t value,
+    TagID_t tagId
+)
+{
+    uint16_t newValue = htobe16(value);
+    le_pack_PackTagID(bufferPtr, tagId);
+    LE_PACK_PACK_SIMPLE_VALUE(newValue);
+    return true;
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -72,8 +204,40 @@ LE_DECLARE_INLINE bool le_pack_PackUint32
     uint32_t value
 )
 {
+#ifdef LE_CONFIG_RPC
+    uint32_t newValue = htobe32(value);
+    le_pack_PackTagID(bufferPtr, LE_PACK_UINT32);
+    LE_PACK_PACK_SIMPLE_VALUE(newValue);
+#else
     LE_PACK_PACK_SIMPLE_VALUE(value);
+#endif
+    return true;
 }
+
+
+#ifdef LE_CONFIG_RPC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack a uint32_t into a buffer using the specified TagID, incrementing the buffer pointer
+ * and decrementing the available size, as appropriate.
+ *
+ * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * size is known at compile time.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_PackTaggedUint32
+(
+    uint8_t** bufferPtr,
+    uint32_t value,
+    TagID_t tagId
+)
+{
+    uint32_t newValue = htobe32(value);
+    le_pack_PackTagID(bufferPtr, tagId);
+    LE_PACK_PACK_SIMPLE_VALUE(newValue);
+    return true;
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -86,8 +250,39 @@ LE_DECLARE_INLINE bool le_pack_PackUint64
     uint64_t value
 )
 {
+#ifdef LE_CONFIG_RPC
+    uint64_t newValue = htobe64(value);
+    le_pack_PackTagID(bufferPtr, LE_PACK_UINT64);
+    LE_PACK_PACK_SIMPLE_VALUE(newValue);
+#else
     LE_PACK_PACK_SIMPLE_VALUE(value);
+#endif
+    return true;
 }
+
+#ifdef LE_CONFIG_RPC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack a uint64_t into a buffer using the specified TagID, incrementing the buffer pointer
+ * and decrementing the available size, as appropriate.
+ *
+ * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * size is known at compile time.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_PackTaggedUint64
+(
+    uint8_t** bufferPtr,
+    uint64_t value,
+    TagID_t tagId
+)
+{
+    uint64_t newValue = htobe64(value);
+    le_pack_PackTagID(bufferPtr, tagId);
+    LE_PACK_PACK_SIMPLE_VALUE(newValue);
+    return true;
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -100,8 +295,35 @@ LE_DECLARE_INLINE bool le_pack_PackInt8
     int8_t value
 )
 {
+#ifdef LE_CONFIG_RPC
+    le_pack_PackTagID(bufferPtr, LE_PACK_INT8);
+#endif
     LE_PACK_PACK_SIMPLE_VALUE(value);
+    return true;
 }
+
+#ifdef LE_CONFIG_RPC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack a int8_t into a buffer using the specified TagID, incrementing the buffer pointer
+ * and decrementing the available size, as appropriate.
+ *
+ * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * size is known at compile time.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_PackTaggedInt8
+(
+    uint8_t** bufferPtr,
+    int8_t value,
+    TagID_t tagId
+)
+{
+    le_pack_PackTagID(bufferPtr, tagId);
+    LE_PACK_PACK_SIMPLE_VALUE(value);
+    return true;
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -114,8 +336,39 @@ LE_DECLARE_INLINE bool le_pack_PackInt16
     int16_t value
 )
 {
+#ifdef LE_CONFIG_RPC
+    int16_t newValue = htobe16(value);
+    le_pack_PackTagID(bufferPtr, LE_PACK_INT16);
+    LE_PACK_PACK_SIMPLE_VALUE(newValue);
+#else
     LE_PACK_PACK_SIMPLE_VALUE(value);
+#endif
+    return true;
 }
+
+#ifdef LE_CONFIG_RPC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack a int16_t into a buffer using the specified TagID, incrementing the buffer pointer
+ * and decrementing the available size, as appropriate.
+ *
+ * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * size is known at compile time.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_PackTaggedInt16
+(
+    uint8_t** bufferPtr,
+    int16_t value,
+    TagID_t tagId
+)
+{
+    int16_t newValue = htobe16(value);
+    le_pack_PackTagID(bufferPtr, tagId);
+    LE_PACK_PACK_SIMPLE_VALUE(newValue);
+    return true;
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -128,8 +381,39 @@ LE_DECLARE_INLINE bool le_pack_PackInt32
     int32_t value
 )
 {
+#ifdef LE_CONFIG_RPC
+    int32_t newValue = htobe32(value);
+    le_pack_PackTagID(bufferPtr, LE_PACK_INT32);
+    LE_PACK_PACK_SIMPLE_VALUE(newValue);
+#else
     LE_PACK_PACK_SIMPLE_VALUE(value);
+#endif
+    return true;
 }
+
+#ifdef LE_CONFIG_RPC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack a int32_t into a buffer using the specified TagID, incrementing the buffer pointer
+ * and decrementing the available size, as appropriate.
+ *
+ * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * size is known at compile time.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_PackTaggedInt32
+(
+    uint8_t** bufferPtr,
+    int32_t value,
+    TagID_t tagId
+)
+{
+    int32_t newValue = htobe32(value);
+    le_pack_PackTagID(bufferPtr, tagId);
+    LE_PACK_PACK_SIMPLE_VALUE(newValue);
+    return true;
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -142,8 +426,104 @@ LE_DECLARE_INLINE bool le_pack_PackInt64
     int64_t value
 )
 {
+#ifdef LE_CONFIG_RPC
+    int64_t newValue = htobe64(value);
+    le_pack_PackTagID(bufferPtr, LE_PACK_INT64);
+    LE_PACK_PACK_SIMPLE_VALUE(newValue);
+#else
     LE_PACK_PACK_SIMPLE_VALUE(value);
+#endif
+    return true;
 }
+
+#ifdef LE_CONFIG_RPC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack a int64_t into a buffer using the specified TagID, incrementing the buffer pointer
+ * and decrementing the available size, as appropriate.
+ *
+ * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * size is known at compile time.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_PackTaggedInt64
+(
+    uint8_t** bufferPtr,
+    int64_t value,
+    TagID_t tagId
+)
+{
+    int64_t newValue = htobe64(value);
+    le_pack_PackTagID(bufferPtr, tagId);
+    LE_PACK_PACK_SIMPLE_VALUE(newValue);
+    return true;
+}
+#endif
+
+#ifdef LE_CONFIG_RPC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack size_t and 32-bit integer tuple into a buffer using the specified TagID,
+ * incrementing the buffer pointer
+ * and decrementing the available size, as appropriate.
+ *
+ * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * size is known at compile time.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_PackTaggedUint32Tuple
+(
+    uint8_t** bufferPtr,
+    size_t size,
+    uint32_t value,
+    TagID_t tagId
+)
+{
+    le_pack_PackTagID(bufferPtr, tagId);
+    if (size > UINT32_MAX)
+    {
+        return false;
+    }
+    uint32_t newSize = htobe32(size);
+    LE_PACK_PACK_SIMPLE_VALUE(newSize);
+
+    uint32_t newValue = htobe32(value);
+    LE_PACK_PACK_SIMPLE_VALUE(newValue);
+    return true;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack size_t and 64-bit integer tuple into a buffer using the specified TagID,
+ * incrementing the buffer pointer
+ * and decrementing the available size, as appropriate.
+ *
+ * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * size is known at compile time.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_PackTaggedUint64Tuple
+(
+    uint8_t** bufferPtr,
+    size_t size,
+    uint64_t value,
+    TagID_t tagId
+)
+{
+    le_pack_PackTagID(bufferPtr, tagId);
+    if (size > UINT32_MAX)
+    {
+        return false;
+    }
+    uint32_t newSize = htobe32(size);
+    LE_PACK_PACK_SIMPLE_VALUE(newSize);
+
+    uint64_t newValue = htobe64(value);
+    LE_PACK_PACK_SIMPLE_VALUE(newValue);
+    return true;
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -163,8 +543,37 @@ LE_DECLARE_INLINE bool le_pack_PackSize
         return false;
     }
 
+#ifdef LE_CONFIG_RPC
+    return le_pack_PackTaggedUint32(bufferPtr, value, LE_PACK_SIZE);
+#else
     return le_pack_PackUint32(bufferPtr, value);
+#endif
 }
+
+#ifdef LE_CONFIG_RPC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack a size_t into a buffer using the specified TagID, incrementing the buffer pointer
+ * and decrementing the available size, as appropriate.
+ *
+ * @note Packed sizes are limited to 2^32-1, regardless of platform
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_PackTaggedSize
+(
+    uint8_t **bufferPtr,
+    size_t value,
+    TagID_t tagId
+)
+{
+    if (value > UINT32_MAX)
+    {
+        return false;
+    }
+
+    return le_pack_PackTaggedUint32(bufferPtr, value, tagId);
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -177,11 +586,43 @@ LE_DECLARE_INLINE bool le_pack_PackBool
     bool value
 )
 {
+#ifdef LE_CONFIG_RPC
+    le_pack_PackTagID(bufferPtr, LE_PACK_BOOL);
+#endif
+
     // Force boolean to uint8_t 0 or 1 for packing, regarldess of underlying OS type.
     // Underlying type has been int on some platforms in the past.
     uint8_t simpleValue = ((value)?1:0);
     LE_PACK_PACK_SIMPLE_VALUE(simpleValue);
+    return true;
 }
+
+#ifdef LE_CONFIG_RPC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack a bool into a buffer using the specified TagID, incrementing the buffer pointer
+ * and decrementing the available size, as appropriate.
+ *
+ * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * size is known at compile time.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_PackTaggedBool
+(
+    uint8_t** bufferPtr,
+    bool value,
+    TagID_t tagId
+)
+{
+    le_pack_PackTagID(bufferPtr, tagId);
+
+    // Force boolean to uint8_t 0 or 1 for packing, regarldess of underlying OS type.
+    // Underlying type has been int on some platforms in the past.
+    uint8_t simpleValue = ((value)?1:0);
+    LE_PACK_PACK_SIMPLE_VALUE(simpleValue);
+    return true;
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -194,8 +635,35 @@ LE_DECLARE_INLINE bool le_pack_PackChar
     char value
 )
 {
+#ifdef LE_CONFIG_RPC
+    le_pack_PackTagID(bufferPtr, LE_PACK_CHAR);
+#endif
     LE_PACK_PACK_SIMPLE_VALUE(value);
+    return true;
 }
+
+#ifdef LE_CONFIG_RPC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack a char into a buffer using the specified TagID, incrementing the buffer pointer
+ * and decrementing the available size, as appropriate.
+ *
+ * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * size is known at compile time.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_PackTaggedChar
+(
+    uint8_t** bufferPtr,
+    char value,
+    TagID_t tagId
+)
+{
+    le_pack_PackTagID(bufferPtr, tagId);
+    LE_PACK_PACK_SIMPLE_VALUE(value);
+    return true;
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -208,8 +676,39 @@ LE_DECLARE_INLINE bool le_pack_PackDouble
     double value
 )
 {
+#ifdef LE_CONFIG_RPC
+    double newValue = htobe64(value);
+    le_pack_PackTagID(bufferPtr, LE_PACK_DOUBLE);
+    LE_PACK_PACK_SIMPLE_VALUE(newValue);
+#else
     LE_PACK_PACK_SIMPLE_VALUE(value);
+#endif
+    return true;
 }
+
+#ifdef LE_CONFIG_RPC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack a double into a buffer using the specified TagID, incrementing the buffer pointer
+ * and decrementing the available size, as appropriate.
+ *
+ * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * size is known at compile time.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_PackTaggedDouble
+(
+    uint8_t** bufferPtr,
+    double value,
+    TagID_t tagId
+)
+{
+    double newValue = htobe64(value);
+    le_pack_PackTagID(bufferPtr, tagId);
+    LE_PACK_PACK_SIMPLE_VALUE(newValue);
+    return true;
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -222,8 +721,39 @@ LE_DECLARE_INLINE bool le_pack_PackResult
     le_result_t value
 )
 {
+#ifdef LE_CONFIG_RPC
+    int32_t newValue = htobe32((int32_t) value);
+    le_pack_PackTagID(bufferPtr, LE_PACK_RESULT);
+    LE_PACK_PACK_SIMPLE_VALUE(newValue);
+#else
     LE_PACK_PACK_SIMPLE_VALUE(value);
+#endif
+    return true;
 }
+
+#ifdef LE_CONFIG_RPC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack a le_result_t into a buffer using the specified TagID, incrementing the buffer pointer
+ * and decrementing the available size, as appropriate.
+ *
+ * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * size is known at compile time.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_PackTaggedResult
+(
+    uint8_t** bufferPtr,
+    le_result_t value,
+    TagID_t tagId
+)
+{
+    int32_t newValue = htobe32((int32_t) value);
+    le_pack_PackTagID(bufferPtr, tagId);
+    LE_PACK_PACK_SIMPLE_VALUE(newValue);
+    return true;
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -236,8 +766,39 @@ LE_DECLARE_INLINE bool le_pack_PackOnOff
     le_onoff_t value
 )
 {
+#ifdef LE_CONFIG_RPC
+    int32_t newValue = htobe32((int32_t) value);
+    le_pack_PackTagID(bufferPtr, LE_PACK_ONOFF);
+    LE_PACK_PACK_SIMPLE_VALUE(newValue);
+#else
     LE_PACK_PACK_SIMPLE_VALUE(value);
+#endif
+    return true;
 }
+
+#ifdef LE_CONFIG_RPC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack le_onoff_t into a buffer using the specified TagID, incrementing the buffer pointer
+ * and decrementing the available size, as appropriate.
+ *
+ * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * size is known at compile time.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_PackTaggedOnOff
+(
+    uint8_t** bufferPtr,
+    le_onoff_t value,
+    TagID_t tagId
+)
+{
+    int32_t newValue = htobe32((int32_t) value);
+    le_pack_PackTagID(bufferPtr, tagId);
+    LE_PACK_PACK_SIMPLE_VALUE(newValue);
+    return true;
+}
+#endif
 
 #undef LE_PACK_PACK_SIMPLE_VALUE
 
@@ -261,13 +822,49 @@ LE_DECLARE_INLINE bool le_pack_PackReference
         ((refAsInt & 0x01) ||
          !refAsInt))
     {
+#ifdef LE_CONFIG_RPC
+        return le_pack_PackTaggedUint32(bufferPtr, (uint32_t)refAsInt, LE_PACK_REFERENCE);
+#else
         return le_pack_PackUint32(bufferPtr, (uint32_t)refAsInt);
+#endif
     }
     else
     {
         return false;
     }
 }
+
+#ifdef LE_CONFIG_RPC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack a reference into a buffer using the specified TagID, incrementing the buffer pointer
+ * and decrementing the available size.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_PackTaggedReference
+(
+    uint8_t** bufferPtr,
+    const void* ref,
+    TagID_t tagId
+)
+{
+    size_t refAsInt = (size_t)ref;
+
+    //  All references passed through an API must be safe references (or NULL), so
+    // 0-bit will be set and reference will be <= UINT32_MAX.  Size check
+    // is performed in pack function.
+    if ((refAsInt <= UINT32_MAX) &&
+        ((refAsInt & 0x01) ||
+         !refAsInt))
+    {
+        return le_pack_PackTaggedUint32(bufferPtr, (uint32_t)refAsInt, tagId);
+    }
+    else
+    {
+        return false;
+    }
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -299,12 +896,16 @@ LE_DECLARE_INLINE bool le_pack_PackString
 #endif
 
     // First copy in the string -- up to maxStringCount bytes, allowing enough
-    // space at the begining for a uint32.
+    // space at the begining for a uint32 + TagID_t.
     for (bytesCopied = 0;
          (bytesCopied < maxStringCount) && (stringPtr[bytesCopied] != '\0');
          ++bytesCopied)
     {
+#ifdef LE_CONFIG_RPC
+        (*bufferPtr)[bytesCopied + sizeof(uint32_t) + sizeof(TagID_t)] = stringPtr[bytesCopied];
+#else
         (*bufferPtr)[bytesCopied + sizeof(uint32_t)] = stringPtr[bytesCopied];
+#endif
     }
 
     // String was too long to fit in the buffer -- return false.
@@ -315,7 +916,11 @@ LE_DECLARE_INLINE bool le_pack_PackString
 
     // Then go back and copy string size.  No loss of precision packing into a uint32
     // because maxStringCount is a uint32 or less.
+#ifdef LE_CONFIG_RPC
+    bool packResult = le_pack_PackTaggedUint32(bufferPtr, bytesCopied, LE_PACK_STRING);
+#else
     bool packResult = le_pack_PackUint32(bufferPtr, bytesCopied);
+#endif
     LE_ASSERT(packResult); // Should not fail -- have checked there's enough space above.
 
     // Now increment buffer by size of string actually copied, and decrement available
@@ -325,6 +930,68 @@ LE_DECLARE_INLINE bool le_pack_PackString
 
     return true;
 }
+
+#ifdef LE_CONFIG_RPC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack a string into a buffer using the specified TagID, incrementing the buffer pointer
+ * and decrementing the available size.
+ *
+ * @note Always decrements available size according to the max possible size used, not actual size
+ * used.  Will assert if provided string is larger than maximum allowable string.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_PackTaggedString
+(
+    uint8_t** bufferPtr,
+    const char *stringPtr,
+    uint32_t maxStringCount,
+    TagID_t tagId
+)
+{
+    size_t bytesCopied;
+
+    if (!stringPtr)
+    {
+        return false;
+    }
+
+#if defined(__KLOCWORK__)
+    // Just like strncpy & strnlen, this function doesn't know the size of the source string,
+    // which can potentially result in a read overflow on the input buffer.
+    // Static code analyzer can report this issue, which is deliberatly ignored since this
+    // function expects NULL-terminated strings.
+    maxStringCount = strnlen(stringPtr, maxStringCount);
+#endif
+
+    // First copy in the string -- up to maxStringCount bytes, allowing enough
+    // space at the begining for a uint32 + TagID_t.
+    for (bytesCopied = 0;
+         (bytesCopied < maxStringCount) && (stringPtr[bytesCopied] != '\0');
+         ++bytesCopied)
+    {
+        (*bufferPtr)[bytesCopied + sizeof(uint32_t) + sizeof(TagID_t)] = stringPtr[bytesCopied];
+    }
+
+    // String was too long to fit in the buffer -- return false.
+    if (stringPtr[bytesCopied] != '\0')
+    {
+        return false;
+    }
+
+    // Then go back and copy string size.  No loss of precision packing into a uint32
+    // because maxStringCount is a uint32 or less.
+    bool packResult = le_pack_PackTaggedUint32(bufferPtr, bytesCopied, tagId);
+    LE_ASSERT(packResult); // Should not fail -- have checked there's enough space above.
+
+    // Now increment buffer by size of string actually copied, and decrement available
+    // space by max which could have been copied.  This ensures out of space errors will
+    // be caught as soon as possible.
+    *bufferPtr = *bufferPtr + bytesCopied;
+
+    return true;
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -348,10 +1015,43 @@ LE_DECLARE_INLINE bool le_pack_PackArrayHeader
         return false;
     }
 
+#ifdef LE_CONFIG_RPC
+    LE_ASSERT(le_pack_PackTaggedSize(bufferPtr, arrayCount, LE_PACK_ARRAYHEADER));
+#else
     LE_ASSERT(le_pack_PackSize(bufferPtr, arrayCount));
-
+#endif
     return true;
 }
+
+#ifdef LE_CONFIG_RPC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack the size information for an array into a buffer using the specified TagID,
+ * incrementing the buffer pointer and decrementing the available size.
+ *
+ * @note Users of this API should generally use LE_PACK_PACKARRAY macro instead which also
+ * packs the array data.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_PackTaggedArrayHeader
+(
+    uint8_t **bufferPtr,
+    const void *arrayPtr,
+    size_t elementSize,
+    size_t arrayCount,
+    size_t arrayMaxCount,
+    TagID_t tagId
+)
+{
+    if (arrayCount > arrayMaxCount)
+    {
+        return false;
+    }
+
+    LE_ASSERT(le_pack_PackTaggedSize(bufferPtr, arrayCount, tagId));
+    return true;
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -413,10 +1113,34 @@ LE_DECLARE_INLINE bool le_pack_PackArrayHeader
 // Unpack functions
 //--------------------------------------------------------------------------------------------------
 
-#define LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr)            \
-    memcpy((valuePtr), *bufferPtr, sizeof(*(valuePtr))); \
-    *bufferPtr = (*bufferPtr) + sizeof(*(valuePtr));     \
-    return true
+#define LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr)                \
+    do {                                                     \
+        memcpy((valuePtr), *bufferPtr, sizeof(*(valuePtr))); \
+        *bufferPtr = (*bufferPtr) + sizeof(*(valuePtr));     \
+    } while (0)
+
+
+
+#ifdef LE_CONFIG_RPC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unpack a TagID from a buffer, incrementing the buffer pointer and decrementing the
+ * available size, as appropriate.
+ *
+ * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * size is known at compile time.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_UnpackTagID
+(
+    uint8_t** bufferPtr,
+    TagID_t* tagIdPtr
+)
+{
+    LE_PACK_UNPACK_SIMPLE_VALUE(tagIdPtr);
+    return true;
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -429,7 +1153,12 @@ LE_DECLARE_INLINE bool le_pack_UnpackUint8
     uint8_t* valuePtr
 )
 {
+#ifdef LE_CONFIG_RPC
+    TagID_t tag;
+    le_pack_UnpackTagID(bufferPtr, &tag);
+#endif
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+    return true;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -443,7 +1172,15 @@ LE_DECLARE_INLINE bool le_pack_UnpackUint16
     uint16_t* valuePtr
 )
 {
+#ifdef LE_CONFIG_RPC
+    TagID_t tag;
+    le_pack_UnpackTagID(bufferPtr, &tag);
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+    *valuePtr = be16toh(*valuePtr);
+#else
+    LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+#endif
+    return true;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -457,7 +1194,15 @@ LE_DECLARE_INLINE bool le_pack_UnpackUint32
     uint32_t* valuePtr
 )
 {
+#ifdef LE_CONFIG_RPC
+    TagID_t tag;
+    le_pack_UnpackTagID(bufferPtr, &tag);
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+    *valuePtr = be32toh(*valuePtr);
+#else
+    LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+#endif
+    return true;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -471,7 +1216,15 @@ LE_DECLARE_INLINE bool le_pack_UnpackUint64
     uint64_t* valuePtr
 )
 {
+#ifdef LE_CONFIG_RPC
+    TagID_t tag;
+    le_pack_UnpackTagID(bufferPtr, &tag);
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+    *valuePtr = be64toh(*valuePtr);
+#else
+    LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+#endif
+    return true;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -485,7 +1238,12 @@ LE_DECLARE_INLINE bool le_pack_UnpackInt8
     int8_t* valuePtr
 )
 {
+#ifdef LE_CONFIG_RPC
+    TagID_t tag;
+    le_pack_UnpackTagID(bufferPtr, &tag);
+#endif
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+    return true;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -499,7 +1257,15 @@ LE_DECLARE_INLINE bool le_pack_UnpackInt16
     int16_t* valuePtr
 )
 {
+#ifdef LE_CONFIG_RPC
+    TagID_t tag;
+    le_pack_UnpackTagID(bufferPtr, &tag);
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+    *valuePtr = be16toh(*valuePtr);
+#else
+    LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+#endif
+    return true;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -513,7 +1279,15 @@ LE_DECLARE_INLINE bool le_pack_UnpackInt32
     int32_t* valuePtr
 )
 {
+#ifdef LE_CONFIG_RPC
+    TagID_t tag;
+    le_pack_UnpackTagID(bufferPtr, &tag);
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+    *valuePtr = be32toh(*valuePtr);
+#else
+    LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+#endif
+    return true;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -527,9 +1301,72 @@ LE_DECLARE_INLINE bool le_pack_UnpackInt64
     int64_t* valuePtr
 )
 {
+#ifdef LE_CONFIG_RPC
+    TagID_t tag;
+    le_pack_UnpackTagID(bufferPtr, &tag);
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+    *valuePtr = be64toh(*valuePtr);
+#else
+    LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+#endif
+    return true;
 }
 
+#ifdef LE_CONFIG_RPC
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unpack a size_t and 32-bit integer tuple from the buffer,
+ * incrementing the buffer pointer as appropriate.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_UnpackUint32Tuple
+(
+    uint8_t** bufferPtr,
+    size_t* sizePtr,
+    uint32_t* valuePtr
+)
+{
+    uint32_t rawSize;
+    TagID_t tag;
+
+    le_pack_UnpackTagID(bufferPtr, &tag);
+    LE_PACK_UNPACK_SIMPLE_VALUE(&rawSize);
+    *sizePtr = be32toh(rawSize);
+
+    LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+    *valuePtr = be32toh(*valuePtr);
+    return true;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unpack a size_t and 64-bit integer tuple from the buffer,
+ * incrementing the buffer pointer as appropriate.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_UnpackUint64Tuple
+(
+    uint8_t** bufferPtr,
+    size_t* sizePtr,
+    uint64_t* valuePtr
+)
+{
+    uint32_t rawSize;
+    TagID_t tag;
+
+    le_pack_UnpackTagID(bufferPtr, &tag);
+    LE_PACK_UNPACK_SIMPLE_VALUE(&rawSize);
+    *sizePtr = be32toh(rawSize);
+
+    LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+    *valuePtr = be64toh(*valuePtr);
+    return true;
+}
+#endif
+
+
+//--------------------------------------------------------------------------------------------------
 /**
  * Pack a size_t into a buffer, incrementing the buffer pointer as appropriate.
  *
@@ -569,6 +1406,10 @@ LE_DECLARE_INLINE bool le_pack_UnpackBool
     // Underlying type has been int on some platforms in the past.
     uint8_t simpleValue;
 
+#ifdef LE_CONFIG_RPC
+    TagID_t tag;
+    le_pack_UnpackTagID(bufferPtr, &tag);
+#endif
     memcpy(&simpleValue, *bufferPtr, sizeof(simpleValue));
 
     *bufferPtr = ((uint8_t* )*bufferPtr) + sizeof(simpleValue);
@@ -590,7 +1431,12 @@ LE_DECLARE_INLINE bool le_pack_UnpackChar
     char* valuePtr
 )
 {
+#ifdef LE_CONFIG_RPC
+    TagID_t tag;
+    le_pack_UnpackTagID(bufferPtr, &tag);
+#endif
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+    return true;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -604,7 +1450,15 @@ LE_DECLARE_INLINE bool le_pack_UnpackDouble
     double* valuePtr
 )
 {
+#ifdef LE_CONFIG_RPC
+    TagID_t tag;
+    le_pack_UnpackTagID(bufferPtr, &tag);
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+    *valuePtr = be64toh(*valuePtr);
+#else
+    LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+#endif
+    return true;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -618,7 +1472,16 @@ LE_DECLARE_INLINE bool le_pack_UnpackResult
     le_result_t* valuePtr
 )
 {
+#ifdef LE_CONFIG_RPC
+    int32_t value;
+    TagID_t tag;
+    le_pack_UnpackTagID(bufferPtr, &tag);
+    LE_PACK_UNPACK_SIMPLE_VALUE(&value);
+    *valuePtr = (le_result_t) be32toh(value);
+#else
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+#endif
+    return true;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -632,7 +1495,16 @@ LE_DECLARE_INLINE bool le_pack_UnpackOnOff
     le_onoff_t* valuePtr
 )
 {
+#ifdef LE_CONFIG_RPC
+    int32_t value;
+    TagID_t tag;
+    le_pack_UnpackTagID(bufferPtr, &tag);
+    LE_PACK_UNPACK_SIMPLE_VALUE(&value);
+    *valuePtr = (le_onoff_t) be32toh(value);
+#else
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+#endif
+    return true;
 }
 
 #undef LE_PACK_UNPACK_SIMPLE_VALUE

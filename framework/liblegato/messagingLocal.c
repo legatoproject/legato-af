@@ -451,6 +451,8 @@ le_msg_MessageRef_t msgLocal_CreateMsg
     msgPtr->message.sessionRef = &sessionRef->session;
     msgPtr->responseReady = le_sem_Create("msgResponseReady", 0);
     msgPtr->fd = -1;
+    msgPtr->completionCallback = NULL;
+    msgPtr->contextPtr = NULL;
 
     return &msgPtr->message;
 }
@@ -596,6 +598,33 @@ int msgLocal_GetFd
     return fd;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Call the completion callback function for a given message, if it has one.
+ */
+//--------------------------------------------------------------------------------------------------
+static void msgLocal_CallCompletionCallback
+(
+    void* msgVoidPtr,              ///< [in] message
+    void* receiverVoidPtr          ///< [in] message receiver (client or server)
+)
+//--------------------------------------------------------------------------------------------------
+{
+    le_msg_MessageRef_t msgRef = msgVoidPtr;
+
+    le_msg_LocalMessage_t* localMsgPtr = CONTAINER_OF(msgRef, le_msg_LocalMessage_t, message);
+    if (localMsgPtr->completionCallback != NULL)
+    {
+        if (localMsgPtr->needsResponse != true)
+        {
+            LE_FATAL("Message is invalid");
+        }
+
+        // Call the completion handler callback
+        localMsgPtr->completionCallback(msgRef, receiverVoidPtr);
+    }
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -616,6 +645,7 @@ static void msgLocal_Recv
     // Pass the message to the server's registered receive handler, if there is one.
     if (receiverPtr->handler)
     {
+        // Call the receive handler
         msgCommon_CallRecvHandler(receiverPtr->handler, msgRef, receiverPtr->contextPtr);
     }
     else
@@ -649,10 +679,12 @@ static void msgLocal_SendRaw
 
     if (clientThread == currentThread)
     {
+        // Set the receivePtr to the Server's receiver
         receiverPtr = &servicePtr->receiver;
     }
     else if (serverThread == currentThread)
     {
+        // Set the receivePtr to the Client's receiver
         receiverPtr = &localSessionPtr->receiver;
     }
     else
@@ -660,6 +692,7 @@ static void msgLocal_SendRaw
         LE_FATAL("Message sent by invalid thread");
     }
 
+    // Enqueue the message for sending
     le_event_QueueFunctionToThread(receiverPtr->thread, msgLocal_Recv,
                                    &localMessagePtr->message, receiverPtr);
 }
@@ -698,6 +731,27 @@ le_msg_SessionRef_t msgLocal_GetSession
     return msgRef->sessionRef;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start an asynchronous request-response transaction.
+ */
+//--------------------------------------------------------------------------------------------------
+void msgLocal_RequestResponse
+(
+    le_msg_MessageRef_t         msgRef,     ///< [in] Reference to the request message.
+    le_msg_ResponseCallback_t   handlerFunc,///< [in] Function to be called when transaction done.
+    void*                       contextPtr  ///< [in] Opaque value to be passed to handler function.
+)
+{
+    LE_FATAL_IF(!msgRef, "No such message");
+    le_msg_LocalMessage_t* localMsgPtr = CONTAINER_OF(msgRef, le_msg_LocalMessage_t, message);
+
+    localMsgPtr->completionCallback = handlerFunc;
+    localMsgPtr->contextPtr = contextPtr;
+    localMsgPtr->needsResponse = true;
+
+    msgLocal_SendRaw(localMsgPtr);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -767,7 +821,21 @@ void msgLocal_Respond
     LE_FATAL_IF(!msgRef, "No such message");
     le_msg_LocalMessage_t* localMsgPtr = CONTAINER_OF(msgRef, le_msg_LocalMessage_t, message);
 
-    le_sem_Post(localMsgPtr->responseReady);
+    if (localMsgPtr->completionCallback != NULL)
+    {
+        msg_LocalSession_t* localSessionPtr =
+            CONTAINER_OF(msgRef->sessionRef, msg_LocalSession_t, session);
+
+        // Enqueue the message back to the Client's Completion Callback handler
+        le_event_QueueFunctionToThread(localSessionPtr->receiver.thread,
+                                       msgLocal_CallCompletionCallback,
+                                       msgRef,
+                                       localMsgPtr->contextPtr);
+    }
+    else
+    {
+        le_sem_Post(localMsgPtr->responseReady);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------

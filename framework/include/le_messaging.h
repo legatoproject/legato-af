@@ -1005,6 +1005,8 @@ typedef struct le_msg_LocalMessage
     int fd;                                 ///< File descriptor sent with message (via Get/SetFd)
     le_sem_Ref_t responseReady;             ///< Semaphore which will be set when response is ready
     bool needsResponse;                     ///< True if message needs a response
+    le_msg_ResponseCallback_t completionCallback; ///< Function to be called when transaction done.
+    void* contextPtr;                       ///< Opaque value to be passed to handler function.
     uint8_t data[] __attribute__((aligned(__BIGGEST_ALIGNMENT__)));   ///< Start of message data
                                                                       // Align so any type of
                                                                       // data can be stored inside.
@@ -1528,7 +1530,7 @@ le_msg_SessionRef_t le_msg_GetSession
  *     - Function can only be used on the client side of a session.
  */
 //--------------------------------------------------------------------------------------------------
-LE_FULL_API void le_msg_RequestResponse
+void le_msg_RequestResponse
 (
     le_msg_MessageRef_t         msgRef,     ///< [in] Reference to the request message.
     le_msg_ResponseCallback_t   handlerFunc,///< [in] Function to be called when transaction done.
