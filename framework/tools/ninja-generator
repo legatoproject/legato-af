@@ -123,11 +123,11 @@ rule GetMessages
                      --force-po --copyright-holder="Sierra Wireless Inc." \$
                      --package-name="mkTools" -o \$out \$in
 
-build \$builddir/mk : Link $MKTOOLS_OBJECTS | \$builddir/libdefTools.so
-  ldflags = -L\$builddir -Wl,-rpath=\$builddir
+build \$builddir/bin/mk : Link $MKTOOLS_OBJECTS | \$builddir/lib/libdefTools.so
+  ldflags = -L\$builddir/lib -Wl,-rpath='\$\$ORIGIN/../lib' -Wl,--enable-new-dtags
   libs = -ldefTools
 
-build \$builddir/libdefTools.so : Link $DEFTOOLS_OBJECTS
+build \$builddir/lib/libdefTools.so : Link $DEFTOOLS_OBJECTS
   ldflags = -shared
 
 build \$builddir/precompiled/mkTools.h.gch : PreCompile $SOURCE_DIR/mkTools/mkTools.h
@@ -146,7 +146,7 @@ build \$builddir/mkTools.po : GetMessages $MKTOOLS_SOURCES $DEFTOOLS_SOURCES
 
 build messages : phony \$builddir/mkTools.po
 
-default \$builddir/mk
+default \$builddir/bin/mk
 
 EOF
 

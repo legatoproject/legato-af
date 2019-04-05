@@ -37,6 +37,7 @@ rm -rf ${STAGING_DIR}
 
 echo "Staging ..."
 install -d ${STAGING_DIR}/bin/
+install -d ${STAGING_DIR}/lib/
 
 # mk tools
 install ./bin/mk* ${STAGING_DIR}/bin/
@@ -44,6 +45,7 @@ ln -sf mk ${STAGING_DIR}/bin/mkcomp
 ln -sf mk ${STAGING_DIR}/bin/mkexe
 ln -sf mk ${STAGING_DIR}/bin/mkapp
 ln -sf mk ${STAGING_DIR}/bin/mksys
+install build/tools/lib/libdefTools.so ${STAGING_DIR}/lib/
 
 # scripts
 for script in $(ls -1 framework/tools/scripts); do

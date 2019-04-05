@@ -69,7 +69,7 @@ ninja: $(INSTALL_DIR)
 # Create a bunch of symlinks from the install directory to the tools.
 .PHONY: symlinks
 symlinks: $(INSTALL_DIR)
-	$(Q)ln -sf $(BUILD_DIR)/mk $(INSTALL_DIR)/mk
+	$(Q)ln -sf $(BUILD_DIR)/bin/mk $(INSTALL_DIR)/mk
 	$(Q)ln -sf mk $(INSTALL_DIR)/mkcomp
 	$(Q)ln -sf mk $(INSTALL_DIR)/mkexe
 	$(Q)ln -sf mk $(INSTALL_DIR)/mkapp

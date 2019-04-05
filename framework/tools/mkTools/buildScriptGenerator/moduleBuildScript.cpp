@@ -170,7 +170,7 @@ void ModuleBuildScriptGenerator_t::GenerateNinjaScriptBuildStatement
 
     dependencies.insert(modulePtr->defFilePtr->path);
     // It also depends on changes to the mk tools.
-    dependencies.insert(path::Combine(envVars::Get("LEGATO_ROOT"), "build/tools/mk"));
+    dependencies.insert(path::Combine(envVars::Get("LEGATO_ROOT"), "build/tools/bin/mk"));
 
     baseGeneratorPtr->GenerateNinjaScriptBuildStatement(dependencies);
 }
