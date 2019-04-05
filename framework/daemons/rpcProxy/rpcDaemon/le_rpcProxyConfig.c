@@ -35,6 +35,22 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Ptr to the RPC Proxy Bindings Configuration Tree Node.
+ */
+//--------------------------------------------------------------------------------------------------
+static const char* BindingsConfigTreeNode = "rpcProxy/bindings";
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Ptr to the RPC Proxy Systems Configuration Tree Node.
+ */
+//--------------------------------------------------------------------------------------------------
+static const char* SystemsConfigTreeNode = "rpcProxy/systems";
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Extern Declarations
  */
 //--------------------------------------------------------------------------------------------------
@@ -753,11 +769,11 @@ static le_result_t LoadLinkNameFromConfigTree
     le_result_t result;
 
     // Open up a read transaction on the Config Tree
-    le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateReadTxn("rpcProxy/systems");
+    le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateReadTxn(SystemsConfigTreeNode);
 
     if (le_cfg_NodeExists(iteratorRef, "") == false)
     {
-        LE_WARN("RPC Proxy 'rpcProxy/systems' configuration not found.");
+        LE_WARN("RPC Proxy '%s' configuration not found.", SystemsConfigTreeNode);
 
         // Close the transaction and return the failure
         le_cfg_CancelTxn(iteratorRef);
@@ -845,11 +861,11 @@ le_result_t rpcProxyConfig_LoadBindings
     le_result_t result;
 
     // Open up a read transaction on the Config Tree
-    le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateReadTxn("rpcProxy/bindings");
+    le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateReadTxn(BindingsConfigTreeNode);
 
     if (le_cfg_NodeExists(iteratorRef, "") == false)
     {
-        LE_WARN("RPC Proxy 'rpcProxy/bindings' configuration not found.");
+        LE_WARN("RPC Proxy '%s' configuration not found.", BindingsConfigTreeNode);
 
         // Close the transaction and return the failure
         le_cfg_CancelTxn(iteratorRef);
@@ -1088,6 +1104,695 @@ const char* rpcProxyConfig_GetSystemNameByLinkName
 
     LE_WARN("Unable to find matching link-name [%s]", linkName);
     return "N/A";
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * RPC Configuration Service API to set a binding.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_rpc_SetBinding
+(
+    const char* LE_NONNULL serviceName,
+        ///< [IN] External Interface-Name
+    const char* LE_NONNULL systemName,
+        ///< [IN] Remote System-Name
+    const char* LE_NONNULL remoteServiceName
+        ///< [IN] Remote Interface-Name
+)
+{
+    char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
+
+    sprintf(strBuffer, "%s/%s/systemName", BindingsConfigTreeNode, serviceName);
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(strBuffer);
+    le_cfg_SetString(iterRef, "", systemName);
+    le_cfg_CommitTxn(iterRef);
+
+    sprintf(strBuffer, "%s/%s/remoteService", BindingsConfigTreeNode, serviceName);
+    iterRef = le_cfg_CreateWriteTxn(strBuffer);
+    le_cfg_SetString(iterRef, "", remoteServiceName);
+    le_cfg_CommitTxn(iterRef);
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * RPC Configuration Service API to get a binding.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_rpc_GetBinding
+(
+    const char* LE_NONNULL serviceName,
+        ///< [IN] External RPC Interface-Name
+    char* systemName,
+        ///< [OUT] Remote System-Name
+    size_t systemNameSize,
+        ///< [IN]
+    char* remoteServiceName,
+        ///< [OUT] Remote RPC Interface-Name
+    size_t remoteServiceNameSize
+        ///< [IN]
+)
+{
+    char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
+
+    // Verify the pointers are valid
+    if ((systemName == NULL) ||
+        (remoteServiceName == NULL))
+    {
+        LE_KILL_CLIENT("Invalid pointer");
+        return LE_FAULT;
+    }
+
+    sprintf(strBuffer, "%s/%s/systemName", BindingsConfigTreeNode, serviceName);
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateReadTxn(strBuffer);
+    le_cfg_GetString(iterRef, "", systemName, systemNameSize, "<EMPTY>");
+    le_cfg_CommitTxn(iterRef);
+
+    if (strcmp(systemName, "<EMPTY>") == 0)
+    {
+        return LE_NOT_FOUND;
+    }
+
+    sprintf(strBuffer, "%s/%s/remoteService", BindingsConfigTreeNode, serviceName);
+    iterRef = le_cfg_CreateReadTxn(strBuffer);
+    le_cfg_GetString(iterRef, "", remoteServiceName, remoteServiceNameSize, "<EMPTY>");
+    le_cfg_CommitTxn(iterRef);
+
+    if (strcmp(systemName, "<EMPTY>") == 0)
+    {
+        return LE_NOT_FOUND;
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Service-Name of the first binding in the RPC Configuration tree.
+ *
+ * @return
+ *  - LE_OK if successful
+ *  - LE_OVERFLOW if the buffer provided is too small to hold the child's path.
+ *  - LE_NOT_FOUND if the resource doesn't have any children.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_rpc_GetFirstBinding
+(
+    char* serviceName,
+        ///< [OUT] External RPC Interface-Name
+    size_t serviceNameSize
+        ///< [IN]
+)
+{
+    char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
+    le_result_t result;
+
+    // Verify the pointers are valid
+    if (serviceName == NULL)
+    {
+        LE_KILL_CLIENT("Invalid pointer");
+        return LE_FAULT;
+    }
+
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateReadTxn(BindingsConfigTreeNode);
+    if (le_cfg_NodeExists(iterRef, "") == false)
+    {
+        LE_WARN("RPC Proxy '%s' configuration not found.", BindingsConfigTreeNode);
+
+        // Close the transaction and return the failure
+        le_cfg_CancelTxn(iterRef);
+        return LE_NOT_FOUND;
+    }
+
+    result = le_cfg_GoToFirstChild(iterRef);
+    if (result != LE_OK)
+    {
+        LE_WARN("No configuration found.");
+
+        // Close the transaction and return the failure
+        le_cfg_CancelTxn(iterRef);
+        return result;
+    }
+
+    // Get the Service-Name
+    result = le_cfg_GetNodeName(iterRef, "", strBuffer, sizeof(strBuffer));
+    if (result != LE_OK)
+    {
+        LE_WARN("Service-Name configuration not found.");
+
+        // Close the transaction and return the failure
+        le_cfg_CancelTxn(iterRef);
+        return result;
+    }
+
+    // Copy the Service-Name
+    strncpy(serviceName, strBuffer, serviceNameSize);
+    le_cfg_CommitTxn(iterRef);
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Service-Name of the next binding in the RPC Configuration tree.
+ *
+ * @return
+ *  - LE_OK if successful
+ *  - LE_OVERFLOW if the buffer provided is too small to hold the next sibling's path.
+ *  - LE_NOT_FOUND if the resource is the last child in its parent's list of children.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_rpc_GetNextBinding
+(
+    const char* LE_NONNULL currentServiceName,
+        ///< [IN] External RPC Interface-Name of previous binding.
+    char* nextServiceName,
+        ///< [OUT] External RPC Interface-Name of next binding.
+    size_t nextServiceNameSize
+        ///< [IN]
+)
+{
+    char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
+    le_result_t result;
+
+    // Verify the pointers are valid
+    if (nextServiceName == NULL)
+    {
+        LE_KILL_CLIENT("Invalid pointer");
+        return LE_FAULT;
+    }
+
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateReadTxn(BindingsConfigTreeNode);
+    le_cfg_GoToNode(iterRef, currentServiceName);
+    if (le_cfg_IsEmpty(iterRef, ""))
+    {
+        LE_ERROR("Binding %s configuration not found", currentServiceName);
+
+        // Close the transaction and return the failure
+        le_cfg_CancelTxn(iterRef);
+        return LE_NOT_FOUND;
+    }
+
+    result = le_cfg_GoToNextSibling(iterRef);
+    if (result != LE_OK)
+    {
+        LE_WARN("No configuration found.");
+
+        // Close the transaction and return the failure
+        le_cfg_CancelTxn(iterRef);
+        return LE_NOT_FOUND;
+    }
+
+    // Get the Service-Name
+    result = le_cfg_GetNodeName(iterRef, "", strBuffer, sizeof(strBuffer));
+    if (result != LE_OK)
+    {
+        LE_WARN("Service-Name configuration not found.");
+
+        // Close the transaction and return the failure
+        le_cfg_CancelTxn(iterRef);
+        return result;
+    }
+
+    // Copy the Next Service-Name
+    strncpy(nextServiceName, strBuffer, nextServiceNameSize);
+    le_cfg_CommitTxn(iterRef);
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * RPC Configuration Service API to reset a binding.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_rpc_ResetBinding
+(
+    const char* LE_NONNULL serviceName
+        ///< [IN] External RPC Interface-Name
+)
+{
+    char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
+
+    sprintf(strBuffer, "%s", serviceName);
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(BindingsConfigTreeNode);
+    le_cfg_DeleteNode(iterRef, strBuffer);
+    le_cfg_CommitTxn(iterRef);
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * RPC Configuration Service API to set a system-link.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_rpc_SetSystemLink
+(
+    const char* LE_NONNULL systemName,
+        ///< [IN] Remote System-Name
+    const char* LE_NONNULL linkName,
+        ///< [IN] System Link-Name
+    const char* LE_NONNULL nodeName,
+        ///< [IN] Configuration Node-Name
+    const char* LE_NONNULL nodeValue
+        ///< [IN] Configuration Node-Value
+)
+{
+    char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
+
+    sprintf(strBuffer, "%s/%s/%s/%s", SystemsConfigTreeNode, systemName, linkName, nodeName);
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(strBuffer);
+    le_cfg_SetString(iterRef, "", nodeValue);
+    le_cfg_CommitTxn(iterRef);
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * RPC Configuration Service API to get a system-link.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_rpc_GetSystemLink
+(
+    const char* LE_NONNULL systemName,
+        ///< [IN] Remote System-Name
+    const char* LE_NONNULL linkName,
+        ///< [IN] System Link-Name
+    const char* LE_NONNULL nodeName,
+        ///< [IN] Configuration Node-Name
+    char* nodeValue,
+        ///< [OUT] Configuration Node-Value
+    size_t nodeValueSize
+        ///< [IN]
+)
+{
+    char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
+
+    // Verify the pointers are valid
+    if (nodeValue == NULL)
+    {
+        LE_KILL_CLIENT("Invalid pointer");
+        return LE_FAULT;
+    }
+
+    sprintf(strBuffer, "%s/%s/%s/%s", SystemsConfigTreeNode, systemName, linkName, nodeName);
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateReadTxn(strBuffer);
+    le_cfg_GetString(iterRef, "", nodeValue, nodeValueSize, "<EMPTY>");
+    le_cfg_CommitTxn(iterRef);
+
+    if (strcmp(nodeValue, "<EMPTY>") == 0)
+    {
+        return LE_NOT_FOUND;
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * RPC Configuration Service API to reset a system-link.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_rpc_ResetSystemLink
+(
+    const char* LE_NONNULL systemName,
+        ///< [IN] Remote System-Name
+    const char* LE_NONNULL linkName
+        ///< [IN] System Link-Name
+)
+{
+    char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
+
+    sprintf(strBuffer, "%s/%s", systemName, linkName);
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(SystemsConfigTreeNode);
+    le_cfg_DeleteNode(iterRef, strBuffer);
+    le_cfg_CommitTxn(iterRef);
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Link tree using the given configTree iterator.
+ *
+ * @return
+ *  - LE_OK if successful
+ *  - LE_OVERFLOW if the buffer provided is too small to hold the child's path.
+ *  - LE_NOT_FOUND if the resource doesn't have any children.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetLinkTree
+(
+    le_cfg_IteratorRef_t iterRef,
+    char*                linkName,
+    size_t               linkNameSize,
+    char*                nodeName,
+    size_t               nodeNameSize
+)
+{
+    char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
+    le_result_t result;
+
+    // Get the Link-Name
+    result = le_cfg_GetNodeName(iterRef, "", strBuffer, sizeof(strBuffer));
+    if (result != LE_OK)
+    {
+        LE_WARN("Link-Name configuration not found.");
+        return result;
+    }
+
+    // Copy the Link-Name
+    strncpy(linkName, strBuffer, linkNameSize);
+
+    result = le_cfg_GoToFirstChild(iterRef);
+    if (result != LE_OK)
+    {
+        LE_WARN("No configuration found.");
+        return result;
+    }
+
+    // Get the Node-Name
+    result = le_cfg_GetNodeName(iterRef, "", strBuffer, sizeof(strBuffer));
+    if (result != LE_OK)
+    {
+        LE_WARN("Node-Name configuration not found.");
+        return result;
+    }
+
+    // Copy the Node-Name
+    strncpy(nodeName, strBuffer, nodeNameSize);
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the System tree using the given configTree iterator.
+ *
+ * @return
+ *  - LE_OK if successful
+ *  - LE_OVERFLOW if the buffer provided is too small to hold the child's path.
+ *  - LE_NOT_FOUND if the resource doesn't have any children.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetSystemTree
+(
+    le_cfg_IteratorRef_t iterRef,
+    char*                systemName,
+    size_t               systemNameSize,
+    char*                linkName,
+    size_t               linkNameSize,
+    char*                nodeName,
+    size_t               nodeNameSize
+)
+{
+    char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
+    le_result_t result;
+
+    // Get the System-Name
+    result = le_cfg_GetNodeName(iterRef, "", strBuffer, sizeof(strBuffer));
+    if (result != LE_OK)
+    {
+        LE_WARN("System-Name configuration not found.");
+        return result;
+    }
+
+    // Copy the system-name
+    strncpy(systemName, strBuffer, systemNameSize);
+
+    result = le_cfg_GoToFirstChild(iterRef);
+    if (result != LE_OK)
+    {
+        LE_WARN("No configuration found.");
+        return result;
+    }
+
+    // Get the Link tree for the given iterator
+    result = GetLinkTree(iterRef,
+                         linkName,
+                         linkNameSize,
+                         nodeName,
+                         nodeNameSize);
+    if (result != LE_OK)
+    {
+        LE_WARN("Link-Name configuration not found.");
+        return result;
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Node-Name of the first system-link in the RPC Configuration tree.
+ *
+ * @return
+ *  - LE_OK if successful
+ *  - LE_OVERFLOW if the buffer provided is too small to hold the child's path.
+ *  - LE_NOT_FOUND if the resource doesn't have any children.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_rpc_GetFirstSystemLink
+(
+    char* systemName,
+        ///< [OUT] System-Name
+    size_t systemNameSize,
+        ///< [IN]
+    char* linkName,
+        ///< [OUT] System Link-Name
+    size_t linkNameSize,
+        ///< [IN]
+    char* nodeName,
+        ///< [OUT] Configuration Node-Name
+    size_t nodeNameSize
+        ///< [IN]
+)
+{
+    le_result_t result;
+
+    // Verify the pointers are valid
+    if ((systemName == NULL) ||
+        (linkName == NULL) ||
+        (nodeName == NULL))
+    {
+        LE_KILL_CLIENT("Invalid pointer");
+        return LE_FAULT;
+    }
+
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateReadTxn(SystemsConfigTreeNode);
+    if (le_cfg_NodeExists(iterRef, "") == false)
+    {
+        LE_WARN("RPC Proxy '%s' configuration not found.", SystemsConfigTreeNode);
+
+        // Close the transaction and return the failure
+        le_cfg_CancelTxn(iterRef);
+        return LE_NOT_FOUND;
+    }
+
+    result = le_cfg_GoToFirstChild(iterRef);
+    if (result != LE_OK)
+    {
+        LE_WARN("No configuration found.");
+
+        // Close the transaction and return the failure
+        le_cfg_CancelTxn(iterRef);
+        return result;
+    }
+
+    // Get the First System Link-Name for the given iterator
+    result = GetSystemTree(iterRef,
+                           systemName,
+                           systemNameSize,
+                           linkName,
+                           linkNameSize,
+                           nodeName,
+                           nodeNameSize);
+
+    if (result != LE_OK)
+    {
+        LE_WARN("System tree configuration not found.");
+
+        // Close the transaction and return the failure
+        le_cfg_CancelTxn(iterRef);
+        return result;
+    }
+
+    le_cfg_CommitTxn(iterRef);
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Node-Name of the next system-link in the RPC Configuration tree.
+ *
+ * @return
+ *  - LE_OK if successful
+ *  - LE_OVERFLOW if the buffer provided is too small to hold the next sibling's path.
+ *  - LE_NOT_FOUND if the resource is the last child in its parent's list of children.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_rpc_GetNextSystemLink
+(
+    const char* LE_NONNULL currentSystemName,
+        ///< [IN] Current System-Name
+    const char* LE_NONNULL currentLinkName,
+        ///< [IN] Current System Link-Name
+    const char* LE_NONNULL currentNodeName,
+        ///< [IN] Current configuration Node-Name
+    char* nextSystemName,
+        ///< [OUT] Next System-Name
+    size_t nextSystemNameSize,
+        ///< [IN]
+    char* nextLinkName,
+        ///< [OUT] Next Link-Name
+    size_t nextLinkNameSize,
+        ///< [IN]
+    char* nextNodeName,
+        ///< [OUT] Next configuration Node-Name
+    size_t nextNodeNameSize
+        ///< [IN]
+)
+{
+    char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
+    le_result_t result;
+
+    // Verify the pointers are valid
+    if ((nextSystemName == NULL) ||
+        (nextLinkName == NULL) ||
+        (nextNodeName == NULL))
+    {
+        LE_KILL_CLIENT("Invalid pointer");
+        return LE_FAULT;
+    }
+
+    // Open up a read transaction on the Config Tree
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateReadTxn(SystemsConfigTreeNode);
+
+    if (le_cfg_NodeExists(iterRef, "") == false)
+    {
+        LE_WARN("RPC Proxy '%s' configuration not found.", SystemsConfigTreeNode);
+
+        // Close the transaction and return the failure
+        le_cfg_CancelTxn(iterRef);
+        return LE_NOT_FOUND;
+    }
+
+    sprintf(strBuffer,"%s/%s/%s", currentSystemName, currentLinkName, currentNodeName);
+
+    // Go to the current node
+    le_cfg_GoToNode(iterRef, strBuffer);
+    if (le_cfg_IsEmpty(iterRef, ""))
+    {
+        LE_ERROR("Node-Name %s configuration not found", currentNodeName);
+
+        // Close the transaction and return the failure
+        le_cfg_CancelTxn(iterRef);
+        return LE_NOT_FOUND;
+    }
+
+    // Go to the next sibling node, if one exists
+    result = le_cfg_GoToNextSibling(iterRef);
+    if (result != LE_OK)
+    {
+        // Go To the Link-Name
+        result = le_cfg_GoToParent(iterRef);
+        if (result != LE_OK)
+        {
+            // Close the transaction and return the failure
+            le_cfg_CancelTxn(iterRef);
+            return result;
+        }
+
+        // Got to the next Link-Name sibling, if one exists
+        result = le_cfg_GoToNextSibling(iterRef);
+        if (result != LE_OK)
+        {
+            // Go To the System-Name
+            result = le_cfg_GoToParent(iterRef);
+            if (result != LE_OK)
+            {
+                // Close the transaction and return the failure
+                le_cfg_CancelTxn(iterRef);
+                return result;
+            }
+
+            // Got the the next System-Name sibling, if one exists
+            result = le_cfg_GoToNextSibling(iterRef);
+            if (result != LE_OK)
+            {
+                // Close the transaction and return the failure
+                le_cfg_CancelTxn(iterRef);
+                return result;
+            }
+
+            // Get the System tree
+            result = GetSystemTree(iterRef,
+                                   nextSystemName,
+                                   nextSystemNameSize,
+                                   nextLinkName,
+                                   nextLinkNameSize,
+                                   nextNodeName,
+                                   nextNodeNameSize);
+            if (result != LE_OK)
+            {
+                LE_WARN("System tree configuration not found.");
+
+                // Close the transaction and return the failure
+                le_cfg_CancelTxn(iterRef);
+                return result;
+            }
+        }
+        else
+        {
+            // Get the Link tree
+            result = GetLinkTree(iterRef,
+                                 nextLinkName,
+                                 nextLinkNameSize,
+                                 nextNodeName,
+                                 nextNodeNameSize);
+            if (result != LE_OK)
+            {
+                LE_WARN("Link tree configuration not found.");
+
+                // Close the transaction and return the failure
+                le_cfg_CancelTxn(iterRef);
+                return result;
+            }
+        }
+    }
+    else
+    {
+        // Get the Node-Name for the sibling
+        result = le_cfg_GetNodeName(iterRef, "", strBuffer, sizeof(strBuffer));
+        if (result != LE_OK)
+        {
+            LE_WARN("Node-Name configuration not found.");
+
+            // Close the transaction and return the failure
+            le_cfg_CancelTxn(iterRef);
+            return result;
+        }
+
+        // Copy the System-Name, Link-Name, and Node-Name
+        strncpy(nextSystemName, currentSystemName, nextSystemNameSize);
+        strncpy(nextLinkName, currentLinkName, nextLinkNameSize);
+        strncpy(nextNodeName, strBuffer, nextNodeNameSize);
+    }
+
+    le_cfg_CommitTxn(iterRef);
+    return LE_OK;
 }
 
 

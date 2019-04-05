@@ -1,0 +1,205 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_rpc RPC Configuration API
+ *
+ * @ref le_rpc_interface.h "API Reference"
+ *
+ * API for configuring the RPC framework daemon. This API should only be made available to
+ * privileged users.  It provides functions to set, get, and reset the run-time configuration
+ * settings for RPC bindings and system-links.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_rpc_interface.h
+ *
+ * Legato @ref c_rpc include file.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+// Symbol and Enum definitions.
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Interface name string length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  LIMIT_MAX_IPC_INTERFACE_NAME_BYTES = 128;
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets a RPC binding, using the External Service-Name, System-Name, and Remote Service-Name.
+ *
+ * @return
+ *      LE_OK if successful, error otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetBinding
+(
+    string serviceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,  ///< External Interface-Name
+    string systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,   ///< Remote System-Name
+    string remoteServiceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN ///< Remote Interface-Name
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets a RPC binding.
+ *
+ * @return
+ *      LE_OK if successful.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetBinding
+(
+    string serviceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,   ///< External RPC Interface-Name
+    string systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT,   ///< Remote System-Name
+    string remoteServiceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT ///< Remote RPC Interface-Name
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Resets a RPC binding.
+ *
+ * @return
+ *      LE_OK if successful, error otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ResetBinding
+(
+    string serviceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN  ///< External RPC Interface-Name
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Service-Name of the first binding in the RPC Configuration tree.
+ *
+ * @return
+ *  - LE_OK if successful
+ *  - LE_OVERFLOW if the buffer provided is too small to hold the child's path.
+ *  - LE_NOT_FOUND if the resource doesn't have any children.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetFirstBinding
+(
+    string serviceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT  ///< External RPC Interface-Name
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Service-Name of the next binding in the RPC Configuration tree.
+ *
+ * @return
+ *  - LE_OK if successful
+ *  - LE_OVERFLOW if the buffer provided is too small to hold the next sibling's path.
+ *  - LE_NOT_FOUND if the resource is the last child in its parent's list of children.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetNextBinding
+(
+    string currentServiceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,
+        ///< External RPC Interface-Name of current binding.
+    string nextServiceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT
+        ///< External RPC Interface-Name of next binding.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets a RPC system link, using the Remote System-Name, System Link-Name, Node-Name,
+ * and Node-Value.
+ *
+ * @return
+ *      LE_OK if successful, error otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetSystemLink
+(
+    string systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN, ///< Remote System-Name
+    string linkName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,   ///< System Link-Name
+    string nodeName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,   ///< Configuration Node-Name
+    string nodeValue[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN   ///< Configuration Node-Value
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets a RPC system link.
+ *
+ * @return
+ *      LE_OK if successful, error otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSystemLink
+(
+    string systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN, ///< Remote System-Name
+    string linkName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,   ///< System Link-Name
+    string nodeName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,   ///< Configuration Node-Name
+    string nodeValue[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT  ///< Configuration Node-Value
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Resets a RPC system link.
+ *
+ * @return
+ *      LE_OK if successful, error otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ResetSystemLink
+(
+    string systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN, ///< Remote System-Name
+    string linkName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN    ///< System Link-Name
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Node-Name of the first system-link in the RPC Configuration tree.
+ *
+ * @return
+ *  - LE_OK if successful
+ *  - LE_OVERFLOW if the buffer provided is too small to hold the child's path.
+ *  - LE_NOT_FOUND if the resource doesn't have any children.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetFirstSystemLink
+(
+    string systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT,  ///< System-Name
+    string linkName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT,    ///< System Link-Name
+    string nodeName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT     ///< Configuration Node-Name
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Node-Name of the next system-link in the RPC Configuration tree.
+ *
+ * @return
+ *  - LE_OK if successful
+ *  - LE_OVERFLOW if the buffer provided is too small to hold the next sibling's path.
+ *  - LE_NOT_FOUND if the resource is the last child in its parent's list of children.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetNextSystemLink
+(
+    string currentSystemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,  ///< Current System-Name
+    string currentLinkName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,    ///< Current System Link-Name
+    string currnetNodeName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,
+        ///< Current configuration Node-Name
+    string nextSystemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT,    ///< Next System-Name
+    string nextLinkName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT,      ///< Next Link-Name
+    string nextNodeName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT
+        ///< Next configuration Node-Name
+);

@@ -55,6 +55,9 @@ commands:
     gnss = tools:/bin/gnss
     uartMode = tools:/bin/uartMode
     kmod = tools:/bin/kmod
+#if ${LE_CONFIG_RPC} = y
+    rpctool = tools:/bin/rpcTool
+#endif
 }
 
 bindings:

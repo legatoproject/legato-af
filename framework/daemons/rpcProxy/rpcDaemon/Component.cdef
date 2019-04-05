@@ -13,6 +13,14 @@ requires:
     }
 }
 
+provides:
+{
+    api:
+    {
+        le_rpc.api
+    }
+}
+
 cflags:
 {
     -I$LEGATO_ROOT/framework/daemons/rpcProxy

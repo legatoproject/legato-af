@@ -32,5 +32,10 @@ requires:
     }
 }
 
+extern:
+{
+    le_rpc = rpcDaemon.rpcDaemon.le_rpc
+}
+
 // rpcProxy does not have an extern or bindings section as these are automatically
 // generated

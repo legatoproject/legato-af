@@ -15,6 +15,9 @@ executables:
     gnss = (gnss)
     uartMode = (uartMode)
     kmod = (moduleLoad)
+#if ${LE_CONFIG_RPC} = y
+    rpcTool = (rpcTool)
+#endif
 }
 
 bindings:
@@ -45,6 +48,10 @@ bindings:
     pmtool.pmtool.le_bootReason -> powerMgr.le_bootReason
 
     kmod.moduleLoad.le_kernelModule -> <root>.le_kernelModule
+
+#if ${LE_CONFIG_RPC} = y
+    rpcTool.rpcTool.le_rpc -> rpcProxy.le_rpc
+#endif
 }
 
 bundles:
