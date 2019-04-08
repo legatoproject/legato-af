@@ -80,6 +80,7 @@ le_result_t le_fwupdate_Download
  *                      ECC stands for Error-Correction-Code: some errors may be corrected. If this
  *                      correction fails, a unrecoverable error is registered and the data become
  *                      corrupted.
+ *      - LE_NO_MEMORY  On memory allocation failure
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_fwupdate_InitDownload
@@ -416,6 +417,8 @@ le_result_t le_fwupdate_InstallAndMarkGood
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+    LE_INFO("FW update is ready");
+
     // Monitor main loop with the watchdog
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };

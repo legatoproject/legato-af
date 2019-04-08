@@ -155,6 +155,7 @@ FUNCTION le_result_t Download
  *                      ECC stands for Error-Correction-Code: some errors may be corrected. If this
  *                      correction fails, a unrecoverable error is registered and the data become
  *                      corrupted.
+ *      - LE_NO_MEMORY  On memory allocation failure
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t InitDownload

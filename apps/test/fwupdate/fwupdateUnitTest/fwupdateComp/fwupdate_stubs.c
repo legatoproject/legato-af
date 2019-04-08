@@ -103,3 +103,18 @@ le_result_t le_dualsys_GetCurrentSystem
 
     return LE_OK;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop a watchdog.
+ *
+ * This can also cause the chain to be completely kicked, so check it.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_wdogChain_Stop
+(
+    uint32_t watchdog
+)
+{
+    // do nothing
+}
