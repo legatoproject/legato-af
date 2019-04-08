@@ -24,6 +24,15 @@
 //--------------------------------------------------------------------------------------------------
 #define MAX_NUM_OF_SENSOR   10
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Expected maximum number of threshold reports.
+ */
+//--------------------------------------------------------------------------------------------------
+#define HIGH_THRESHOLD_REPORT_COUNT      1
+
+
 //--------------------------------------------------------------------------------------------------
 // Data structures.
 //--------------------------------------------------------------------------------------------------
@@ -72,6 +81,15 @@ SessionRefNode_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static memory pool for sensors.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(SensorPool,
+                          MAX_NUM_OF_SENSOR,
+                          sizeof(SensorCtx_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Memory Pool for Sensors.
  *
  */
@@ -84,6 +102,13 @@ static le_mem_PoolRef_t   SensorPool;
  */
 //--------------------------------------------------------------------------------------------------
 static le_dls_List_t  SessionRefList;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static safe Reference Map for the antenna reference
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(SensorRefMap, MAX_NUM_OF_SENSOR);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -102,10 +127,29 @@ static le_event_Id_t TemperatureThresholdEventId;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static pool for Temperature threshold Event reporting.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(ThresholdReportPool,
+                          HIGH_THRESHOLD_REPORT_COUNT,
+                          sizeof(ThresholdReport_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Pool for Temperature threshold Event reporting.
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t ThresholdReportPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The static memory pool for the client's sessionRef objects
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(SessionRef,
+                          MAX_NUM_OF_SENSOR,
+                          sizeof(SessionRefNode_t));
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -302,21 +346,24 @@ void le_temp_Init
     // Create an event Id for temperature change notification
     TemperatureThresholdEventId = le_event_CreateIdWithRefCounting("TempThresholdEvent");
 
-    ThresholdReportPool = le_mem_CreatePool("ThresholdReportPool",
-                                            sizeof(ThresholdReport_t));
+    ThresholdReportPool = le_mem_InitStaticPool(ThresholdReportPool,
+                                                HIGH_THRESHOLD_REPORT_COUNT,
+                                                sizeof(ThresholdReport_t));
 
-    SensorPool = le_mem_CreatePool("SensorPool",
-                                   sizeof(SensorCtx_t));
+    SensorPool = le_mem_InitStaticPool(SensorPool,
+                                       MAX_NUM_OF_SENSOR,
+                                       sizeof(SensorCtx_t));
 
     // Create destructor to reset PA handle reference
     // when memory reference count of sensor context reaches 0.
     le_mem_SetDestructor(SensorPool, TempSensorDestructor);
 
-    SensorRefMap = le_ref_CreateMap("SensorRefMap", MAX_NUM_OF_SENSOR);
+    SensorRefMap = le_ref_InitStaticMap(SensorRefMap, MAX_NUM_OF_SENSOR);
 
     // Memory pool to store session reference associated to the temperature sensor.
-    SessionRefPool = le_mem_CreatePool("SessionRefPool", sizeof(SessionRefNode_t));
-    le_mem_ExpandPool(SessionRefPool, MAX_NUM_OF_SENSOR);
+    SessionRefPool = le_mem_InitStaticPool(SessionRef,
+                                           MAX_NUM_OF_SENSOR,
+                                           sizeof(SessionRefNode_t));
 
     // Session reference list.
     SessionRefList = LE_DLS_LIST_INIT;
