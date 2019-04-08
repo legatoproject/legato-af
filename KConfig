@@ -251,37 +251,6 @@ endmenu # end "Framework"
 
 menu "Services"
 source "apps/platformServices/KConfig"
-
-menu "Socket Library"
-
-config SOCKET_LIB_SESSION_MAX
-  int "Maximum number of simultaneous sockets"
-  range 1 1024
-  default 4
-  ---help---
-  Maximum number of simultaneous sockets. This value is used for sizing
-  memory pools.
-
-menu "SSL encryption library"
-
-config SOCKET_LIB_USE_OPENSSL
-  bool "Use OpenSSL library for encryption"
-  default y if LINUX
-  default n
-  ---help---
-  Use OpenSSL library for SSL encryption in socket library
-
-config SOCKET_LIB_USE_MBEDTLS
-  bool "Use mbed TLS library for encryption"
-  default y if RTOS
-  default n
-  ---help---
-  Use mbed TLS library for SSL encryption in socket library
-
-endmenu #end "SSL encryption library"
-
-endmenu # end "Socket Library"
-
 endmenu # end "Services"
 
 menu "Modules"

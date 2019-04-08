@@ -45,9 +45,11 @@
  * - LE_AVC_REBOOT_PENDING
  * - LE_AVC_UNINSTALL_PENDING
  *
- * An app can respond to these user agreement notification by opening a connection if the
+ * An app can respond to these user agreement notifications by opening a connection if the
  * notification is connection pending or by accepting or deferring the operation if the notification
  * is one of download, install, uninstall or reboot pending.
+ * If the user agreement is not accepted or deferred, a new notification is returned 30 minutes
+ * later.
  *
  * Whether avcService should forward these notifications to an app or act on these notifications by
  * itself is determined by the individual configuration flags that enables or disables user
@@ -72,9 +74,11 @@
  * Any App can start a session with an AirVantage server to determine if there
  * is a pending update. This is done with le_avc_StartSession().
  *
- * The current session can be stopped using le_avc_StopSession(). This cancels any query for pending
- * update, or suspends a download in progress; however, it <b>won't stop</b> an install in progress.
- *
+ * The current session can be stopped using le_avc_StopSession(). This suspends a download in
+ * progress if the user agreement for download is activated and change its state to download
+ * pending. Otherwise if the user agreement for download is not activated, a new connection is
+ * immediatly initiated by AVC in order to resume the download. However, it <b>won't stop</b>
+ * an install in progress.
  * The status of a pending update is sent to all Apps registered for receiving a notification.
  * An App can use le_avc_AddStatusEventHandler() to register a handler function to
  * receive this notification. The notification will be received after a session is started.
@@ -85,7 +89,7 @@
     LE_INFO("AirVantage Connection Controller started.");
     le_avc_AddStatusEventHandler(avcStatusHandler, NULL);    //register a AVC handler
 
-    //Start AVC session. Note: AVC handler must be registered prior starting a session
+    // Start AVC session. Note: AVC handler must be registered prior starting a session
     le_result_t result = le_avc_StartSession();
     if (LE_FAULT == result)
     {
@@ -180,6 +184,20 @@
  * time has elapsed, the pending install notification will be re-sent to allow Apps to make a new
  * decision, or again defer.
  *
+ * @subsubsection c_le_avc_updateControl_download_end Download and install processes
+ *
+ * When a package is fully downloaded from the AirVantage server, the device sends a specific
+ * message to the server to follow the update process.
+ * When the AirVantage server receives this message, it checks the download state and in case of
+ * success, it sends the install request to the device.
+ * If the user agreement for package install is activated, the @c LE_AVC_INSTALL_PENDING
+ * notification is sent. The user needs to accept it in order to launch the install process on
+ * device side.
+ * If the user agreement for package install is deactivated, the install process on device side
+ * is automatically launched.
+ * After accepting the install or when the install is automatic, the install process is launched 2
+ * seconds later by disconnecting the device from the AirVantage server if it's still connected and
+ * by launching the install process (device reboot).
  *
  * @subsubsection c_le_avc_updateControl_accepting Accepting Installs/Uninstalls
  *
@@ -220,17 +238,13 @@
  * A firmware/application update can be interrupted or suspended by different events:
  * - a device reboot
  * - a network loss
- * - a manual suspend through a session stop.
+ * - a manual suspend through a session stopped by calling le_avc_StopSession() function
+ * - RAM issue
  *
  * After the update suspension, when the @c avcService is ready to resume the update process:
  * - If the user agreements are disabled, the update process is automatically restarted.
  * - If the user agreements are enabled, the previous @c PENDING notification is sent to the App,
  * as indicated in the table below.
- *
- * @note The @c avcService might take a while to suspend the update process (typically a few
- * minutes), e.g. in some cases of firmware update. The @c PENDING notification will therefore be
- * sent only when the suspension is over. Trying to resume the update process while the suspension
- * is not over and the notification is not received has no effect.
  *
  * | Last received event            | Event sent to resume                                        | Expected action from App |
  * |--------------------------------|-------------------------------------------------------------|--------------------------|
@@ -242,10 +256,83 @@
  * | @c LE_AVC_UNINSTALL_PENDING    | @c LE_AVC_UNINSTALL_PENDING                                 | Accept uninstall         |
  * | @c LE_AVC_CONNECTION_PENDING   | @c LE_AVC_CONNECTION_PENDING                                | Start session            |
  *
- * @note If firmware is updated (via fwupdate tool) or new legato is installed (via instlegato),
+ * @note
+ * - The @c avcService may not suspend the update process instantly (it typically takes a a few
+ * minutes). The @c PENDING notification will only be sent when the suspention is finished. Trying
+ * to resume the update process while a suspention is in progress will have no effect.
+ * - If firmware is updated (via fwupdate tool) or new legato is installed (via instlegato),
  * all suspend/resume information stored by avcService is erased. So if developer updates firmware
  * or legato (via ethernet or ecm etc.) in the middle of any update initiated by avcService, this
  * need to be cancelled and restarted again from airVantage server.
+ *
+ * @subsubsection c_le_avc_suspend_resume_agreement Suspend/resume with activated user agreement
+ *
+ * When a user agreement for package download is activated and a download is suspended
+ * (@c LE_AVC_DOWNLOAD_PENDING notification is sent to registered apps), an app can get the download
+ * suspend reason by calling le_avc_GetErrorCode() and le_avc_GetHttpStatus() functions.
+ * If the download was suspended because of an app request or if the @c LE_AVC_DOWNLOAD_PENDING
+ * notification for the 1st time, the returned value by le_avc_GetErrorCode() function is
+ * @c LE_AVC_ERR_NONE.
+ *
+ * If the user agreement for package download is not activated
+ * - when a download is suspended by an app, the platform will automatically resume the download.
+ * - when a download is suspended because of network loss, the platform will automatically resume
+ * the download at next network registration.
+ *
+ * @subsection c_le_avc_update_failure Update failures
+ *
+ * A firmware/application update can fail if:
+ * - package URL is not valid
+ * - flash write issue
+ * - in case of delta package, the downloaded package could not be compliant with the current
+ * FW/App version
+ * - package is not certified sent by a trusted server
+ * - integrity check error
+ * - install/uninstall error
+ *
+ * The package URL is considered as invalid when folowing HTTP error codes are received when the
+ * package tries to be retrieved:
+ * - 404: Not found
+ * - 500: Internal Server Error
+ * - 501: Not Implemented
+ * - 505: HTTP version not supported
+ *
+ * | Failure reason        | Related event              | Function to be called to get more info |
+ * |-----------------------|----------------------------|----------------------------------------|
+ * | Invalid package URL   | @c LE_AVC_DOWNLOAD_FAILED  | le_avc_GetHttpStatus()                 |
+ * | Flash write error     | @c LE_AVC_DOWNLOAD_FAILED  | le_avc_GetErrorCode()                  |
+ * | Invalid delta package | @c LE_AVC_INSTALL_FAILED   | |
+ * | integrity check error | @c LE_AVC_DOWNLOAD_FAILED  | |
+ * | package not certified | @c LE_AVC_CERTIFICATION_KO | |
+ * | install error         | @c LE_AVC_INSTALL_FAILED   | |
+ * | uninstall error       | @c LE_AVC_UNINSTALL_FAILED | |
+ *
+ * Example on checking the download failure reason:
+ * @code
+        // In AVC event handler
+        if (LE_AVC_DOWNLOAD_FAILED == updateStatus)
+        {
+            int avcError;
+            int httpStatus;
+
+            LE_INFO("Download failed");
+
+            // Get the error cause
+            avcError = le_avc_GetErrorCode();
+            if (LE_AVC_ERR_NONE != avcError)
+            {
+                LE_WARN("Download failure %d", avcError);
+            }
+
+            // Get the HTTP status code
+            httpStatus = le_avc_GetHttpStatus();
+            if ((200 != httpStatus) && (206 != httpStatus))
+            {
+                LE_WARN("HTTP status code %d", httpStatus);
+            }
+        }
+ * @endcode
+ *
  *
  * @section c_le_avc_Timers Timers
  *
@@ -329,8 +416,11 @@
  *
  * The AirVantage agent can request a connection to the AirVantage server, especially when a
  * firmware package is installed (after a platform reboot) or device reboots in the middle of
- * software update (after finishing software update on reboot). In this case a notification is sent
- * to the control App, which can start the connection with le_avc_StartSession().
+ * software update (after finishing software update on reboot). In this case a notification is
+ * sent to the control App, which can start the connection with le_avc_StartSession(). If
+ * the user agreement is enabled for the connection, and the user enabled the connection,
+ * the connection will not  be automatically disconnected without explicit call to
+ * le_avc_StopSession()
  *
  * @section c_le_avc_routing Data routing
  *
@@ -656,8 +746,9 @@ ENUM ErrorCode
                                     ///< resumed but a platform reboot is requires.
     ERR_NETWORK,                    ///< Network issue during package download (IP issues), package
                                     ///< download can be resumed.
-    ERR_FLASH                       ///< Flash issue during package download, package download can
+    ERR_FLASH,                      ///< Flash issue during package download, package download can
                                     ///< not be resumed.
+    ERR_PKG_TOO_BIG                 ///< Not enough space in flash to store the package
 };
 
 
@@ -784,7 +875,9 @@ FUNCTION le_result_t StartSession
 /**
  * Stop a session with the AirVantage server
  *
- * If a download is in progress, then this suspends the download.
+ * If a download is in progress and the user agreement is enabled, this suspends the download,
+ * otherwise if the user agreement is disabled, a new connection is automatically initiated in order
+ * to resume the download.
  *
  * @return
  *      - LE_OK on success

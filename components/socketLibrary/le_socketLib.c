@@ -206,7 +206,10 @@ static void SocketEventsHandler
         // In le_fdMonitor component, POLLOUT event is raised continuously when writing to the FD
         // is possible. The event is repeated indefinitely. Here, when POLLOUT event is received,
         // we disable it right after. This way, the notification is sent only once.
-        le_fdMonitor_Disable(contextPtr->monitorRef, POLLOUT);
+        if (contextPtr->monitorRef)
+        {
+            le_fdMonitor_Disable(contextPtr->monitorRef, POLLOUT);
+        }
     }
 
     if (events & POLLRDHUP)
@@ -231,7 +234,10 @@ static void SocketEventsHandler
 
                 // Disable POLLIN monitoring to prevent race condition between FD event and queued
                 // function. POLLIN is renabled when the runloop calls ReadMoreAsyncData()
-                le_fdMonitor_Disable(contextPtr->monitorRef, POLLIN);
+                if (contextPtr->monitorRef)
+                {
+                    le_fdMonitor_Disable(contextPtr->monitorRef, POLLIN);
+                }
             }
         }
     }
@@ -575,6 +581,7 @@ le_result_t le_socket_Send
  *  - LE_BAD_PARAMETER Invalid parameter
  *  - LE_TIMEOUT       Timeout during execution
  *  - LE_FAULT         Internal error
+ *  - LE_WOULD_BLOCK   Would have blocked if non-blocking behaviour was not requested
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_socket_Read
@@ -613,7 +620,7 @@ le_result_t le_socket_Read
         status = netSocket_Read(contextPtr->fd, dataPtr, dataLenPtr, contextPtr->timeout);
     }
 
-    if (status != LE_OK)
+    if ((status != LE_OK) && (status != LE_WOULD_BLOCK))
     {
         LE_ERROR("Read failed. Status: %d", status);
     }

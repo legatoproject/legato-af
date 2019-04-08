@@ -725,6 +725,12 @@ static le_result_t HandleHttpResponse
     status = le_socket_Read(contextPtr->socketRef, buffer, &length);
     if (status != LE_OK)
     {
+        if (status == LE_WOULD_BLOCK)
+        {
+            LE_INFO("Socket would block");
+            return LE_OK;
+        }
+
         LE_ERROR("Error receiving data");
         goto end;
     }
@@ -798,14 +804,18 @@ static void HttpClientStateMachine
     {
         LE_INFO("Connection closed by remote server");
 
-        le_httpClient_Stop(contextPtr->reference);
+        le_socket_Disconnect(socketRef);
 
         if (contextPtr->eventCb)
         {
             contextPtr->eventCb(contextPtr->reference, LE_HTTP_CLIENT_EVENT_CLOSED);
         }
 
-        return;
+        if (contextPtr->state != STATE_IDLE)
+        {
+            contextPtr->result = LE_FAULT;
+            contextPtr->state = STATE_END;
+        }
     }
 
     // Transitions are normally based on socket events but in some cases, a transition

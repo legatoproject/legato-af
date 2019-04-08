@@ -277,6 +277,7 @@ LE_SHARED le_result_t le_socket_Send
  *  - LE_BAD_PARAMETER Invalid parameter
  *  - LE_TIMEOUT       Timeout during execution
  *  - LE_FAULT         Internal error
+ *  - LE_WOULD_BLOCK   Would have blocked if non-blocking behaviour was not requested
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t le_socket_Read

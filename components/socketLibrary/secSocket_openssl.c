@@ -344,6 +344,7 @@ le_result_t secSocket_Connect
 
     // Get the FD linked to the BIO
     BIO_get_fd(bioPtr, fdPtr);
+    BIO_socket_nbio(*fdPtr, 1);
 
     contextPtr->bioPtr = bioPtr;
     return LE_OK;
@@ -514,6 +515,7 @@ le_result_t secSocket_Write
  *  - LE_BAD_PARAMETER Invalid parameter
  *  - LE_FAULT         Internal error
  *  - LE_TIMEOUT       Timeout during execution
+ *  - LE_WOULD_BLOCK   Would have blocked if non-blocking behaviour was not requested
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t secSocket_Read
@@ -579,11 +581,17 @@ le_result_t secSocket_Read
 
     // At this point, there is something available for reading from BIO
     rv = BIO_read(contextPtr->bioPtr, dataPtr, *dataLenPtr);
-
-    if (rv < 0)
+    if (rv <= 0)
     {
-        LE_ERROR("Read failed. Error code: %d", rv);
-        return LE_FAULT;
+        if (BIO_should_retry(contextPtr->bioPtr))
+        {
+             return LE_WOULD_BLOCK;
+        }
+        else
+        {
+            LE_ERROR("Read failed. Error code: %d", rv);
+            return LE_FAULT;
+        }
     }
 
     *dataLenPtr = rv;

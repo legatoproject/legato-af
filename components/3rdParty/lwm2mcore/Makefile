@@ -8,6 +8,7 @@ LWM2MCORE_SRC=\
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/objectManager/handlers.c \
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/objectManager/utils.c \
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/packageDownloader/lwm2mcorePackageDownloader.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/packageDownloader/update.c \
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/packageDownloader/workspace.c \
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/objectManager/lwm2mcoreCoapHandlers.c \
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/security/lwm2mcoreSecurity.c
@@ -35,7 +36,14 @@ CFLAGS+=\
     -DWITH_LOGS \
     -DSIERRA \
     -std=gnu99 \
-    -DWITH_SHA256
+    -DWITH_SHA256 \
+    -DLEGACY_FW_STATUS \
+    -DLWM2M_DEREGISTER \
+    -DAV_SYSTEM_CONFIGURATION
+
+ifeq ($(DEBUG),yes)
+    CFLAGS += -g
+endif
 
 ifeq ($(TEST_COVERAGE),1)
     CFLAGS +=--coverage

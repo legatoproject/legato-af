@@ -63,4 +63,8 @@ cflags:
 
     // Embedded UICC
     -DEUICC
+
+    // LwM2MCore flags
+    -DLWM2M_OBJECT_3_BATTERY
+    -DLWM2M_OBJECT_9
 }

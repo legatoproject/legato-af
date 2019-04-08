@@ -44,4 +44,8 @@ cflags:
     // 16 profiles, 4 PDPs context in UMTS and 8 PDPs context in LTE network
     -DPDP_MAX_PROFILE=16
     -DPDP_MAX_MULTIPDP=8
+
+    // LwM2MCore flags
+    -DLWM2M_OBJECT_3_BATTERY
+    -DLWM2M_OBJECT_9
 }

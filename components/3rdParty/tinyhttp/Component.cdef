@@ -1,0 +1,15 @@
+externalBuild:
+{
+    "LEGATO_ROOT=$${LEGATO_ROOT} LEGATO_BUILD=$${LEGATO_BUILD} TEST_COVERAGE=$${TEST_COVERAGE} make -f ${LEGATO_ROOT}/components/3rdParty/tinyhttp/Makefile"
+    "mkdir -p ${LEGATO_BUILD}/3rdParty/lib"
+    "cp *.so ${LEGATO_BUILD}/3rdParty/lib/"
+    "cp *.a ${LEGATO_BUILD}/3rdParty/lib/"
+}
+
+bundles:
+{
+    file:
+    {
+        ${LEGATO_BUILD}/3rdParty/lib/libtinyhttp.so /lib/libtinyhttp.so
+    }
+}

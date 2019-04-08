@@ -1,0 +1,91 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_le_tpf third party download API
+ *
+ * @ref le_tpf_interface.h "API Reference" <br>
+ *
+ *
+ * The Third Party FOTA (TPF) service provides a set of APIs to communicate with a third party
+ * server in order to download a package from this server and install it.
+ *
+ * @section c_le_tpf_update Firmware/Application Updates
+ * This FOTA API can be used to download from a third party server an update package. When this
+ * package is successfully downloaded, it can be installed.
+ *
+ * @subsection c_le_tpf_update_control Update Control
+ * le_tpf_Start() can be used to establish a HTTP or HTTPS connection and trigger a download of
+ * package whose address was set by le_tpf_SetPackageUri(). Then the update procedure is executued
+ * (depending on user agreement, see @ref c_le_avc).
+ */
+//--------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum package URI length without NULL terminator.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE URI_PACKAGE_MAX_LEN = 255;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum URI length, one extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE URI_PACKAGE_MAX_SIZE = (URI_PACKAGE_MAX_LEN + 1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to set the package URI for download from 3rd party server using HTTP(S) protocol.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if failed to configure the package URI.
+ *      - LE_BAD_PARAMETER if the given URI or port number are not in the right format.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetPackageUri
+(
+    string packageUri[URI_PACKAGE_MAX_LEN] IN               ///< Package address
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to get the package URI for download from 3rd party server.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if failed to configure the package URI.
+ *      - LE_BAD_PARAMETER if the given URI or port number are not in the right format.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPackageUri
+(
+    string packageUri[URI_PACKAGE_MAX_LEN] OUT               ///< Package address
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start a package download from a 3rd party server
+ *
+ * This will cause a query to be sent to the server, for pending updates.
+ *
+ * @return
+ *      - LE_OK if connection request has been sent.
+ *      - LE_FAULT on failure.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Start
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the current state of TPF service.
+ *
+ * @return
+ *      - true if TPF service is enabled.
+ *      - false if TPF service is disabled.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION bool IsTpfStarted
+(
+);

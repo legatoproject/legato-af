@@ -36,6 +36,7 @@
  *      - LE_NOT_POSSIBLE    The systems are not synced
  *      - LE_UNAVAILABLE     The flash access is not granted for SW update
  *      - LE_CLOSED          File descriptor has been closed before all data have been received
+ *      - LE_OUT_OF_RANGE    Storage is too small
  *      - LE_FAULT           On failure
  *
  * @note

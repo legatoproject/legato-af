@@ -68,6 +68,22 @@ config AVC_FEATURE_AVMS_CONFIG
 
 # TODO: better description
 
+config ENABLE_AV_DATA
+  bool "Enable AV Data"
+  default n if RTOS
+  default y
+  ---help---
+  Select this to enable support for AV Data features.
+
+config SOTA
+  bool "Enable software-over-the-air (SOTA) updates"
+  depends on POSIX
+  depends on ENABLE_AV_DATA
+  default y
+  ---help---
+  Select this to enable support for SOTA updates.  SOTA is not supported on
+  non-POSIX systems.
+
 endmenu # end "AirVantage Connector"
 
 menu "AT Service"
@@ -137,6 +153,46 @@ config ENABLE_SECSTORE_ADMIN
   used with caution.
 
 endmenu
+
+menu "Socket Library"
+
+config SOCKET_LIB_SESSION_MAX
+  int "Maximum number of simultaneous sockets"
+  range 1 1024
+  default 4
+  ---help---
+  Maximum number of simultaneous sockets. This value is used for sizing
+  memory pools.
+
+menu "SSL encryption library"
+
+config SOCKET_LIB_USE_OPENSSL
+  bool "Use OpenSSL library for encryption"
+  default y if LINUX
+  default n
+  ---help---
+  Use OpenSSL library for SSL encryption in socket library
+
+config SOCKET_LIB_USE_MBEDTLS
+  bool "Use mbed TLS library for encryption"
+  default y if RTOS
+  default n
+  ---help---
+  Use mbed TLS library for SSL encryption in socket library
+
+endmenu #end "SSL encryption library"
+
+endmenu # end "Socket Library"
+
+menu "Config Tree"
+
+config ENABLE_CONFIG_TREE
+  bool "Enable Config Tree"
+  default y
+  ---help---
+  Enable the Config Tree for storing settings.
+
+endmenu # end "Config Tree"
 
 config FEATURE_SPISVC
   bool "Enable SPI service"

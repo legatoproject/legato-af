@@ -131,6 +131,16 @@ static void Testle_fwupdate_Download
     // Check required values
     LE_ASSERT (result == LE_CLOSED);
 
+    // The file is to big compare to the storage space: API needs to return LE_NO_MEMORY
+    // Set returned error code for PA function: LE_NO_MEMORY
+    pa_fwupdateSimu_SetReturnCode (LE_NO_MEMORY);
+    // Set the synchronization state to true
+    pa_fwupdateSimu_SetSyncState (true);
+    // Call the function to be tested
+    result = le_fwupdate_Download (fd);
+    // Check required values
+    LE_ASSERT (result == LE_NO_MEMORY);
+
     // Valid treatment: API needs to return LE_OK
     // Set returned error code for PA function: LE_OK
     pa_fwupdateSimu_SetReturnCode (LE_OK);
@@ -563,14 +573,14 @@ static void Testle_fwupdate_InitDownload
     LE_ASSERT (result == LE_FAULT);
     LE_ASSERT (isInitDownloadRequested == false);
 
-    // Simulate error: API needs to return LE_NO_MEMORY
-    // Set returned error code for PA function: LE_NO_MEMORY
-    pa_fwupdateSimu_SetReturnCode (LE_NO_MEMORY);
+    // Simulate error: API needs to return LE_OUT_OF_RANGE
+    // Set returned error code for PA function: LE_OUT_OF_RANGE
+    pa_fwupdateSimu_SetReturnCode (LE_OUT_OF_RANGE);
     // Call the function to be tested
     result = le_fwupdate_InitDownload ();
     // Check required values
     pa_fwupdateSimu_GetInitDownloadState(&isInitDownloadRequested);
-    LE_ASSERT (result == LE_NO_MEMORY);
+    LE_ASSERT (result == LE_OUT_OF_RANGE);
     LE_ASSERT (isInitDownloadRequested == false);
 
     // Simulate SYNC OK: API needs to return LE_OK

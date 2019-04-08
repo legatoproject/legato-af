@@ -45,7 +45,9 @@ CFLAGS+=\
     -w \
     -std=gnu99 \
     -DWITH_SHA256 \
-    -DCOAP_BLOCK1_SIZE=4096
+    -DCOAP_BLOCK1_SIZE=4096 \
+    -DLWM2M_DEREGISTER \
+    -DAV_SYSTEM_CONFIGURATION
 
 ifeq ($(TEST_COVERAGE),1)
     CFLAGS +=--coverage
