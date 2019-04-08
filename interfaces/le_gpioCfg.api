@@ -1,0 +1,79 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_gpioCfg GPIO configuration services
+ *
+ * @ref le_gpioCfg_interface.h "GPIO configuration API Reference" <br>
+ *
+ * <HR>
+ *
+ * This API is used by apps to provide user info on general-purpose digital input/output pins.
+ * The following functions are used to get the informatin on GPIO configuration:
+ * - GetTotalPinNumber() - Returns total available number of GPIO pins inti he system
+ * - IsAvailable() - Is the GPIO available
+ * - GetSupportedGpioList() - Returns the list of available GPIO pins
+ *
+ * @section bindings Using Bindings
+ *
+ * To create a binding from your app to pin 22 of the GPIO service,
+ * add something like this to your @c .adef binding section:
+ *
+ * @verbatim
+bindings:
+{
+    gpioServiceTest.gpioServiceTestComponent.le_gpioCfg -> gpioService.le_gpioCfg
+}
+@endverbatim
+ *
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * @file le_gpioCfg_interface.h
+ *
+ * Legato @ref c_gpioCfg include file.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//-------------------------------------------------------------------------------------------------
+
+DEFINE MAX_GPIO_LIST_SIZE  = 64;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the current number of GPIO pins in the system
+ *
+ * @return The current configured value
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint32 GetTotalPinNumber();
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the current number of GPIO pins in the system
+ *
+ * @return The current configured value
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION bool IsAvailable
+(
+    uint32 gpioId IN ///< GPIO ID being examined
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get list of supported GPIOs. If GPIO01, GPIO03 and GPIO05 are supported,
+ * the returned list will look like {1, 5, 7}
+ *
+ * @return
+ *    - LE_OK on success
+ *    - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSupportedGpioList
+(
+    uint32 retList[MAX_GPIO_LIST_SIZE]  OUT   ///< User allocated buffer where results will be stored
+);

@@ -8598,6 +8598,62 @@ le_result_t le_gpioPin64_DisableEdgeSense (void)
  */
 //--------------------------------------------------------------------------------------------------
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * "Global" functions - that apply to whole GPIO functionality, not just
+ * one particular GPIO
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Returns total number of GPIO pins in the system
+ *
+ * @return
+ *       number of GPIO pins in the system
+ */
+//--------------------------------------------------------------------------------------------------
+uint32_t le_gpioCfg_GetTotalPinNumber(void)
+{
+    LE_ERROR("Unsupported function called");
+    return 0;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if specified GPIO is available. For example, GPIO01, user would
+ * invoke le_gpioCfg_IsAvailable(1);
+ *
+ * @return
+ *       true (available)/false (not)
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_gpioCfg_IsAvailable(uint32_t gpioId)
+{
+    LE_ERROR("Unsupported function called");
+    return false;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get list of supported GPIOs. If GPIO01, GPIO03 and GPIO05 are supported,
+ * the returned list will look like {1, 5, 7}
+ *
+ * @return
+ *    - LE_OK on success
+ *    - LE_FAULT on failure
+ *    - LE_OVERFLOW when given buffer is to small to store the whole list but it not an error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gpioCfg_GetSupportedGpioList
+(
+    uint32_t*         retListPtr,   ///< [OUT] User allocated buffer where free GPIO will be stored
+    size_t*           retNumPtr     ///< [IN/OUT] Number of elements on the buffer.
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
