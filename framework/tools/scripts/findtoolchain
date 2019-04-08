@@ -219,6 +219,20 @@ AppendYoctoToolchain() {
     done < <(find -H /opt/swi /opt/poky -maxdepth 1 -name "${yocto_version}" 2>/dev/null | sort -r)
 }
 
+ListToolchainPrefix() {
+    local target="$1"
+    local suffix="$2"
+
+    for prefix in $(ls -1 /opt/swi | grep -e '^y' | sort -r); do
+        if [[ "$prefix" == *"${suffix}-${target}" ]]; then
+            echo "$prefix"
+        fi
+        if [[ "$prefix" == *"${suffix}" ]]; then
+            echo "$prefix"
+        fi
+    done
+}
+
 # Select the appropriate list of toolchain directories to search, in order of preference
 # (most preferred first) based on the target name given.
 SelectToolchainDirs() {
@@ -269,9 +283,8 @@ SelectToolchainDirs() {
             ;;
         esac
 
-        for v in y22 y17; do
-            AppendYoctoToolchain "${v}-ext-${target}" "${target}"
-            AppendYoctoToolchain "${v}-ext"           "${target}"
+        for prefix in $(ListToolchainPrefix "$target" "-ext"); do
+            AppendYoctoToolchain "${prefix}" "${target}"
         done
 
         # Also handle -vfp- case for Yocto 1.7
@@ -284,27 +297,24 @@ SelectToolchainDirs() {
         # Use virt-arm toolchain since there is no raspi system ref at the moment.
         AppendYoctoToolchain "LXSWI*+virt"       "virt-arm"
 
-        for v in y22 y17; do
-            AppendYoctoToolchain "${v}-${target}"  "${target}"
-            AppendYoctoToolchain "${v}"            "${target}"
+        for prefix in $(ListToolchainPrefix "$target"); do
+            AppendYoctoToolchain "${prefix}" "${target}"
         done
         ;;
     virt_arm | virt-arm)
         AppendYoctoBuildToolchain 'build_virt-arm' "${target}"
         AppendYoctoToolchain "LXSWI*+virt"         "${target}"
 
-        for v in y22 y17; do
-            AppendYoctoToolchain "${v}-${target}"  "${target}"
-            AppendYoctoToolchain "${v}"            "${target}"
+        for prefix in $(ListToolchainPrefix "$target"); do
+            AppendYoctoToolchain "${prefix}" "${target}"
         done
         ;;
     virt_x86 | virt-x86)
         AppendYoctoBuildToolchain 'build_virt-x86' "${target}"       'i586-poky-linux'
         AppendYoctoToolchain "LXSWI*+virt"         "${target}"       'i586-poky-linux'
 
-        for v in y22 y17; do
-            AppendYoctoToolchain "${v}-${target}"  "${target}"       'i586-poky-linux'
-            AppendYoctoToolchain "${v}"            "${target}"       'i586-poky-linux'
+        for prefix in $(ListToolchainPrefix "$target"); do
+            AppendYoctoToolchain "${prefix}" "${target}"
         done
         ;;
     virt)
