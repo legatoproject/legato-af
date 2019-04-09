@@ -130,6 +130,13 @@ uint32_t le_rand_GetNumBetween
             else
             {
                 c = GetRandom(&randNum, sizeof(randNum), 0);
+
+                // Function not implemented, fallback to urandom.
+                if ((c == -1) && (errno == ENOSYS))
+                {
+                    GetRandom = NULL;
+                    return le_rand_GetNumBetween(min, max);
+                }
             }
         }
         while ( ((c == -1) && (errno == EINTR)) || (c < sizeof(randNum)) );
@@ -200,6 +207,13 @@ void le_rand_GetBuffer
             else
             {
                 c = GetRandom(&(bufPtr[readCount]), (bufSize-readCount), 0);
+
+                // Function not implemented, fallback to urandom.
+                if ((c == -1) && (errno == ENOSYS))
+                {
+                    GetRandom = NULL;
+                    return le_rand_GetBuffer(bufPtr, bufSize);
+                }
             }
         }
         while ( (c == -1) && (errno == EINTR) );
