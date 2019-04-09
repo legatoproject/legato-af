@@ -23,6 +23,7 @@ buildVars:
     LEGATO_SECSTORE_PA = ''
     LEGATO_FWUPDATE_PA = ''
     LEGATO_UARTMODE_PA = ''
+    LEGATO_POWER_MGR_PA = ''
 
     LEGATO_AUDIO_PA_DEFAULT =
         ${LEGATO_ROOT}/components/audio/platformAdaptor/default/le_pa_audio_default
@@ -48,4 +49,6 @@ buildVars:
         ${LEGATO_ROOT}/components/uartMode/platformAdaptor/default/le_pa_uartMode_default
     LEGATO_MODEM_PA_RSIM_DEFAULT =
         ${LEGATO_ROOT}/components/modemServices/platformAdaptor/default/le_pa_remotesim_default
+    LEGATO_POWER_MGR_PA_DEFAULT =
+        ${LEGATO_ROOT}/components/powerMgr/platformAdaptor/default
 }

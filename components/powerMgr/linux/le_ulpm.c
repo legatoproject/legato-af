@@ -111,26 +111,6 @@ static le_result_t WriteToSysfs
         return LE_FAULT;
     }
 
-    if (fd == -1)
-    {
-        LE_ERROR(
-            "Unable to open file %s for writing (%m). Wrong Boot-source or Firmware", filePath);
-        switch (errno)
-        {
-            case EACCES:
-                return LE_NOT_PERMITTED;
-                break;
-
-            case ENOENT:
-                return LE_NOT_FOUND;
-                break;
-
-            default:
-                return LE_FAULT;
-                break;
-        }
-    }
-
     ssize_t result;
 
     do

@@ -1,0 +1,17 @@
+sources:
+{
+    pa_shutdown_default.c
+}
+
+requires:
+{
+    api:
+    {
+        le_shutdown.api    [types-only]
+    }
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/powerMgr/platformAdaptor/inc
+}

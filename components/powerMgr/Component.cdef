@@ -5,6 +5,7 @@ provides:
         le_pm.api
         le_ulpm.api
         le_bootReason.api
+        le_shutdown.api
     }
 }
 
@@ -13,6 +14,8 @@ requires:
     component:
     {
         $LEGATO_ROOT/components/watchdogChain
+        $LEGATO_POWER_MGR_PA_DEFAULT
+        $LEGATO_POWER_MGR_PA
     }
 
     api:
@@ -24,11 +27,13 @@ requires:
 cflags:
 {
     -I$LEGATO_ROOT/components/watchdogChain
+    -I$LEGATO_ROOT/components/powerMgr/platformAdaptor/inc
 }
 
 sources:
 {
-    le_pm.c
-    le_ulpm.c
-    le_bootReason.c
+    linux/le_pm.c
+    linux/le_ulpm.c
+    linux/le_bootReason.c
+    le_shutdown.c
 }

@@ -66,7 +66,9 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define CLIENT_DEFAULT_POOL_SIZE 8
+#define CLIENT_DEFAULT_HASH_SIZE 31
 #define WAKEUP_SOURCE_DEFAULT_POOL_SIZE 64
+#define PM_REFERENCE_DEFAULT_POOL_SIZE   31
 ///@}
 
 //--------------------------------------------------------------------------------------------------
@@ -121,6 +123,48 @@ PowerManager = {-1, -1, NULL, NULL, NULL, NULL, NULL, false};
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Define static reference map
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(PMReferences, PM_REFERENCE_DEFAULT_POOL_SIZE);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define static pool for wakeup sources.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(PMSource,
+                          WAKEUP_SOURCE_DEFAULT_POOL_SIZE,
+                          sizeof(WakeupSource_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define static hashmap for wakeup sources
+ */
+//--------------------------------------------------------------------------------------------------
+LE_HASHMAP_DEFINE_STATIC(PMWakeupSources,
+                         WAKEUP_SOURCE_DEFAULT_POOL_SIZE);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define static pool for client records.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(PMClient,
+                          CLIENT_DEFAULT_POOL_SIZE,
+                          sizeof(Client_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define static hash map for client records.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_HASHMAP_DEFINE_STATIC(PMClient,
+                         CLIENT_DEFAULT_HASH_SIZE);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Type-cast from le_pm_WakeupSourceRef_t to WakeupSource_t
  *
  */
@@ -137,7 +181,7 @@ static inline WakeupSource_t *ToWakeupSource
         return NULL;
     }
 
-#if LE_CONFIG_DEBUG
+#ifdef DEBUG
     if (PM_WAKEUP_SOURCE_COOKIE != ws->cookie || ws->wsref != w)
     {
         LE_FATAL("Error: invalid wakeup source %p.", w);
@@ -153,7 +197,8 @@ static inline WakeupSource_t *ToWakeupSource
  *
  */
 //--------------------------------------------------------------------------------------------------
-#if LE_CONFIG_DEBUG
+#define DEBUG
+#ifdef DEBUG
 static inline Client_t *to_Client_t
 (
     void *c
@@ -170,6 +215,7 @@ static inline Client_t *to_Client_t
 #else
 #define to_Client_t(c) ((Client_t*)c)
 #endif
+#undef DEBUG
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -316,20 +362,20 @@ COMPONENT_INIT
     }
 
     // Create table of safe references
-    PowerManager.refs = le_ref_CreateMap("PM References", 31);
+    PowerManager.refs = le_ref_InitStaticMap(PMReferences, PM_REFERENCE_DEFAULT_POOL_SIZE);
     if (NULL == PowerManager.refs)
     {
         LE_FATAL("Failed to create safe reference table");
     }
 
     // Create memory pool for wakeup source records - exits on error
-    PowerManager.lpool = le_mem_CreatePool("PM Wakeup Source Mem Pool",
+    PowerManager.lpool = le_mem_InitStaticPool(PMSource,
+                                               WAKEUP_SOURCE_DEFAULT_POOL_SIZE,
                                            sizeof(WakeupSource_t));
-    le_mem_ExpandPool(PowerManager.lpool, WAKEUP_SOURCE_DEFAULT_POOL_SIZE);
 
     // Create table of wakeup sources
-    PowerManager.locks = le_hashmap_Create("PM Wakeup Sources",
-                                           31,
+    PowerManager.locks = le_hashmap_InitStatic(PMWakeupSources,
+                                               WAKEUP_SOURCE_DEFAULT_POOL_SIZE,
                                            le_hashmap_HashString,
                                            le_hashmap_EqualsString);
     if (NULL == PowerManager.locks)
@@ -338,13 +384,13 @@ COMPONENT_INIT
     }
 
     // Create memory pool for client records - exits on error
-    PowerManager.cpool = le_mem_CreatePool("PM Client Mem Pool",
+    PowerManager.cpool = le_mem_InitStaticPool(PMClient,
+                                               CLIENT_DEFAULT_POOL_SIZE,
                                            sizeof(Client_t));
-    le_mem_ExpandPool(PowerManager.cpool, CLIENT_DEFAULT_POOL_SIZE);
 
     // Create table of clients
-    PowerManager.clients = le_hashmap_Create("PM Clients",
-                                             31,
+    PowerManager.clients = le_hashmap_InitStatic(PMClient,
+                                                 CLIENT_DEFAULT_HASH_SIZE,
                                              le_hashmap_HashVoidPointer,
                                              le_hashmap_EqualsVoidPointer);
     if (NULL == PowerManager.clients)
