@@ -20,6 +20,13 @@
 #define MAX_NUM_FPLMN_LISTS 1
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of expected FPLMN operators
+ */
+//--------------------------------------------------------------------------------------------------
+#define HIGH_FPLMN_OPERATOR_COUNT 5
+
+//--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions.
 //--------------------------------------------------------------------------------------------------
 
@@ -164,12 +171,14 @@ static le_event_Id_t NewSimStateEventId;
 //--------------------------------------------------------------------------------------------------
 static le_event_Id_t SimToolkitEventId;
 
+#if LE_CONFIG_ENABLE_CONFIG_TREE
 //--------------------------------------------------------------------------------------------------
 /**
  * Event ID for ICCID change notification.
  */
 //--------------------------------------------------------------------------------------------------
 static le_event_Id_t IccidChangeEventId;
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -192,6 +201,7 @@ static uint32_t SimProfileHandlerCount = 0;
 //--------------------------------------------------------------------------------------------------
 static bool ForwardLastIccidChange = true;
 
+#if LE_CONFIG_ENABLE_CONFIG_TREE
 //--------------------------------------------------------------------------------------------------
 /**
  * Last ICCID change event.
@@ -202,6 +212,7 @@ static Sim_IccidChangeEvent_t LastIccidChange =
     .simId = LE_SIM_ID_MAX,
     .ICCID = {0}
 };
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -246,7 +257,23 @@ static ApduMsg_t CommercialSwapApduReq[LE_SIM_MANUFACTURER_MAX] =
  * Safe Reference Map for FPLMN list.
  */
 //--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(FPLMNListRefMap, MAX_NUM_FPLMN_LISTS);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe Reference Map for FPLMN list.
+ */
+//--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t FPLMNListRefMap;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static pool for FPLMN list.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(FPLMNList,
+                          MAX_NUM_FPLMN_LISTS,
+                          sizeof(le_sim_FPLMNList_t));
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -254,6 +281,15 @@ static le_ref_MapRef_t FPLMNListRefMap;
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t FPLMNListPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static pool for FPLMN network Operator.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(FPLMNOperator,
+                          HIGH_FPLMN_OPERATOR_COUNT,
+                          sizeof(pa_sim_FPLMNOperator_t));
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -487,6 +523,7 @@ static void FirstLayerNewSimStateHandler
     clientHandlerFunc(simEventPtr->simId, simEventPtr->state, le_event_GetContextPtr());
 }
 
+#if LE_CONFIG_ENABLE_CONFIG_TREE
 //--------------------------------------------------------------------------------------------------
 /**
  * First- layer: ICCID change notification handler.
@@ -511,6 +548,7 @@ static void FirstLayerIccidChangeHandler
 
     clientHandlerFunc(eventDataPtr->simId, eventDataPtr->ICCID, le_event_GetContextPtr());
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -680,6 +718,7 @@ static le_result_t GetPhoneNumber
     return le_utf8_Copy(simPtr->phoneNumber, phoneNumber, sizeof(simPtr->phoneNumber), NULL);
 }
 
+#if LE_CONFIG_ENABLE_CONFIG_TREE
 //--------------------------------------------------------------------------------------------------
 /**
  * Compare the current ICCID value with the ICCID stored in config tree
@@ -780,6 +819,22 @@ static void MonitorICCIDChange
         SaveICCID(simPtr);
     }
 }
+#else
+//--------------------------------------------------------------------------------------------------
+/**
+ * Report an event in case the current ICCID value is different than the value stored in config tree
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void MonitorICCIDChange
+(
+    Sim_t* simPtr   ///< [IN,OUT] The SIM structure
+)
+{
+    // Cannot monitor ICCID change with config tree disabled, so do nothing.
+    return;
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1272,13 +1327,17 @@ le_result_t le_sim_Init
     }
 
     // Create FPLMN list pool
-    FPLMNListPool = le_mem_CreatePool("FPLMNListPool", sizeof(le_sim_FPLMNList_t));
+    FPLMNListPool = le_mem_InitStaticPool(FPLMNList,
+                                          MAX_NUM_FPLMN_LISTS,
+                                          sizeof(le_sim_FPLMNList_t));
 
     // Create the Safe Reference Map to use for FPLMN Operator list
-    FPLMNListRefMap = le_ref_CreateMap("FPLMNListRefMap", MAX_NUM_FPLMN_LISTS);
+    FPLMNListRefMap = le_ref_InitStaticMap(FPLMNListRefMap, MAX_NUM_FPLMN_LISTS);
 
     // Create the FPLMN operator memory pool
-    FPLMNOperatorPool = le_mem_CreatePool("FPLMNOperatorPool", sizeof(pa_sim_FPLMNOperator_t));
+    FPLMNOperatorPool = le_mem_InitStaticPool(FPLMNOperator,
+                                              HIGH_FPLMN_OPERATOR_COUNT,
+                                              sizeof(pa_sim_FPLMNOperator_t));
 
     // Add a handler to the close session service.
     le_msg_AddServiceCloseHandler(le_sim_GetServiceRef(), CloseSessionEventHandler, NULL);
@@ -1286,8 +1345,10 @@ le_result_t le_sim_Init
     // Create an event Id for new SIM state notifications
     NewSimStateEventId = le_event_CreateId("NewSimStateEventId", sizeof(Sim_Event_t));
 
+#if LE_CONFIG_ENABLE_CONFIG_TREE
     // Create an event Id for ICCID change notifications
     IccidChangeEventId = le_event_CreateId("IccidChangeEventId", sizeof(Sim_IccidChangeEvent_t));
+#endif
 
     // Create an event Id for SIM Toolkit notifications
     SimToolkitEventId = le_event_CreateId("SimToolkitEventId", sizeof(pa_sim_StkEvent_t));
@@ -1321,11 +1382,11 @@ le_result_t le_sim_Init
         return LE_FAULT;
     }
 
-    LE_INFO("SIM %u is selected.", SelectedCard);
+    LE_DEBUG("SIM %u is selected.", SelectedCard);
 
     if (LE_OK != pa_sim_GetState(&state))
     {
-        LE_CRIT("Uable to get the initial card state");
+        LE_CRIT("Unable to get the initial card state");
         return LE_FAULT;
     }
 
@@ -1627,12 +1688,14 @@ bool le_sim_IsPresent
         }
         else
         {
+            simPtr->isReacheable = false;
             simPtr->isPresent = false;
             return false;
         }
     }
     else
     {
+        simPtr->isReacheable = false;
         simPtr->isPresent = false;
         return false;
     }
@@ -2463,6 +2526,7 @@ le_sim_IccidChangeHandlerRef_t le_sim_AddIccidChangeHandler
     void* contextPtr                                ///< [IN] Handler's context
 )
 {
+#if LE_CONFIG_ENABLE_CONFIG_TREE
     le_event_HandlerRef_t handlerRef;
 
     if (NULL == handlerPtr)
@@ -2486,6 +2550,10 @@ le_sim_IccidChangeHandlerRef_t le_sim_AddIccidChangeHandler
     }
 
     return (le_sim_IccidChangeHandlerRef_t)handlerRef;
+#else
+    LE_ERROR("Monitoring for ICCID change is not supported if config tree is disabled");
+    return NULL;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------

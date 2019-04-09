@@ -642,7 +642,7 @@ le_result_t pa_sim_GetLastStkStatus
  *
  * @return
  *      - LE_OK          On success
- *      - LE_FAULT       Function failed to execute.
+ *      - LE_FAULT       For unexpected error
  *      - LE_UNSUPPORTED The platform does not support this operation.
  */
 //--------------------------------------------------------------------------------------------------
