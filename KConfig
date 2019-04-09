@@ -216,8 +216,7 @@ config READ_ONLY
 
 config STRIP_STAGING_TREE
   bool "Strip staging tree"
-  default y if TARGET_AR758X || TARGET_AR759X
-  default n
+  default y
   ---help---
   Strip files staged for the target image.
 

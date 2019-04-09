@@ -251,6 +251,11 @@ FindTool() {
     TOOL_NAME=$1
     TOOL_VAR_DEST=$2
 
+    # If tool path is already set in the environment, use that path
+    if [ -n "${!TOOL_VAR_DEST}" ]; then
+        return 0
+    fi
+
     TOOL_PATH=$(which $TOOL_NAME 2> /dev/null)
     if [ -z "$TOOL_PATH" ]; then
         echo "Warning: Unable to find $TOOL_NAME within toolchain, please update your toolchain."
