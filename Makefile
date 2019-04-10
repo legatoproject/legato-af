@@ -144,10 +144,15 @@ ifeq ($(LE_CONFIG_READ_ONLY),y)
   override STAGE_SYSTOIMG := stage_systoimgro
 endif
 
+export MKTOOLS_FLAGS
+export MKSYS_FLAGS=$(MKTOOLS_FLAGS)
+export MKAPP_FLAGS=$(MKTOOLS_FLAGS)
+export MKEXE_FLAGS=$(MKTOOLS_FLAGS)
+
 # If set, generate an image with stripped binaries
 ifeq ($(LE_CONFIG_STRIP_STAGING_TREE),y)
   SYSTOIMG_FLAGS += -s
-  MKSYS_FLAGS += -d build/$(TARGET)/debug
+  MKTOOLS_FLAGS += -d $(LEGATO_ROOT)/build/$(TARGET)/debug
 endif
 
 # Disable SMACK in image creation, if appropriate
@@ -300,9 +305,16 @@ KCONFIG_SET_VALUE := $(LEGATO_ROOT)/bin/kconfig-set-value
 export CONFIG_ := LE_CONFIG_
 
 # Set non-debug flags
-ifneq ($(LE_CONFIG_DEBUG),y)
+ifeq ($(LE_CONFIG_DEBUG),y)
+  # If not stripping the staging tree, add debug for the debug build.
+  # If stripping the staging tree this isn't needed as debug is always generated
+  # as a separate file on the host.
+  ifneq ($(LE_CONFIG_STRIP_STAGING_TREE),y)
+      MKTOOLS_FLAGS += --cflags="-g"
+  endif
+else
   # Optimize release builds
-  MKSYS_FLAGS += --cflags="-O2 -fno-omit-frame-pointer"
+  MKTOOLS_FLAGS += --cflags="-O2 -fno-omit-frame-pointer"
 endif
 
 # Set flags for test coverage

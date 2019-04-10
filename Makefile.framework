@@ -145,7 +145,6 @@ NINJA_SCRIPT := $(BUILD_DIR)/build.ninja
 # The daemons are built using mkexe.
 LOCAL_MKEXE_FLAGS = $(MKEXE_FLAGS)
 LOCAL_MKEXE_FLAGS += -o $@ -t $(TARGET) -w $(BUILD_DIR)/$(notdir $@) -l $(LIB_DIR)
-LOCAL_MKEXE_FLAGS += -d $(LEGATO_ROOT)/build/$(TARGET)/debug
 LOCAL_MKEXE_FLAGS += -i $(BUILD_DIR)/include
 LOCAL_MKEXE_FLAGS += -i $(LEGATO_ROOT)/framework/liblegato
 LOCAL_MKEXE_FLAGS += -i $(LEGATO_ROOT)/framework/liblegato/linux

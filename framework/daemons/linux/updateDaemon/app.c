@@ -781,7 +781,11 @@ le_result_t app_InstallIndividual
 
 
     // Reload the bindings configuration
-    system("/legato/systems/current/bin/sdir load");
+    int retCode;
+    if ((retCode = system("/legato/systems/current/bin/sdir load")) != 0)
+    {
+        LE_WARN("Failed to load application bindings.  sdir load returned %d", retCode);
+    }
 
     ExecPostinstallHook(appMd5Ptr);
 
@@ -856,7 +860,11 @@ le_result_t app_RemoveIndividual
     system_UnlinkApp("current", delAppName);
 
     // Reload the bindings configuration
-    system("/legato/systems/current/bin/sdir load");
+    int retCode;
+    if ((retCode = system("/legato/systems/current/bin/sdir load")) != 0)
+    {
+        LE_WARN("Failed to load application bindings.  sdir load returned %d", retCode);
+    }
 
     sysStatus_MarkTried();
 

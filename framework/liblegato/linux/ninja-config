@@ -29,19 +29,26 @@ then
     fi
 fi
 
-if [ "${LE_CONFIG_STRIP_STAGING_TREE}" != y ]; then
+if [ "${LE_CONFIG_STRIP_STAGING_TREE}" = y ]; then
     CFLAGS="$CFLAGS -g"
     NINJA_LDFLAGS="$NINJA_LDFLAGS -g"
 fi
 
-# Enable optimization flags
-if [ "${LE_CONFIG_DEBUG}" != y ]; then
+if [ "${LE_CONFIG_DEBUG}" = y ]; then
+    # If not stripping the staging tree, add debug for the debug build.
+    # If stripping the staging tree this isn't needed as debug is always generated
+    # as a separate file on the host.
+    if [ $(LE_CONFIG_STRIP_STAGING_TREE) != y ]; then
+        CFLAGS="$CFLAGS -g"
+    fi
+else
+    # Enable optimization flags
     CFLAGS="$CFLAGS -O2 -fno-omit-frame-pointer"
 fi
 
 LIBLEGATO=$LIB_DIR/liblegato.so
 
-if [ "${LE_CONFIG_STRIP_STAGING_TREE}" != y ]; then
+if [ "${LE_CONFIG_STRIP_STAGING_TREE}" = y ]; then
 
     cat >>$NINJA_SCRIPT <<EOF
 rule Link

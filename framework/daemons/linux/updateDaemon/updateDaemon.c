@@ -2074,13 +2074,6 @@ le_result_t le_update_Start
     // Reject updates unless IDLE.
     switch (State)
     {
-        case STATE_UNPACKING:
-        case STATE_APPLYING:
-        case STATE_SECURITY_CHECKING:
-            LE_WARN("Update denied. Another update is already in progress.");
-            result = LE_BUSY;
-            break;
-
         case STATE_IDLE:
             if (updateCtrl_HasDefers())
             {
@@ -2093,6 +2086,12 @@ le_result_t le_update_Start
                 result = LE_OK;
             }
             break;
+
+        default:
+            LE_WARN("Update denied. Another update is already in progress.");
+            result = LE_BUSY;
+            break;
+
     }
     if (result != LE_OK)
     {
