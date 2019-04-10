@@ -42,6 +42,10 @@ int main(int argc, const char** argv)
         {
             cli::MakeSystem(argc, argv);
         }
+        else if (fileName == "mkparse")
+        {
+            cli::MakeParsedModel(argc, argv);
+        }
         else
         {
             std::cerr << mk::format(LE_I18N("** ERROR: unknown command name '%s'."), fileName)

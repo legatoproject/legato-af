@@ -81,3 +81,6 @@ framework/tools/imgdiff/
 
 # Tests
 .cache
+
+# nodejs ignores:
+node_modules

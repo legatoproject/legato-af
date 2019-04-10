@@ -66,7 +66,8 @@ struct BuildParams_t
     std::string             readelfPath;        ///< ELF file reader (needed for -d option)
     std::string             compilerCachePath;  ///< Compiler cache (ccache, sccache, ...)
     std::list<std::string>  crossToolPaths;     ///< Tool chain executable paths
-
+    bool                    readOnly;           ///< true = only read. Required by tools such as
+                                                ///< mkedit, mkparse
     /// Constructor
     BuildParams_t();
 

@@ -36,7 +36,7 @@ SCRIPTS := $(wildcard $(LEGATO_ROOT)/framework/tools/scripts/*)
 # Use HOST_CC and HOST_CXX when building the tools.
 tools: export CC := $(HOST_CC)
 tools: export CXX := $(HOST_CXX)
-tools: ninja $(NINJA_SCRIPT) symlinks mkPatch
+tools: ninja $(NINJA_SCRIPT) symlinks languageServer mkPatch
 	$(L) NINJA $(NINJA_SCRIPT)
 	$(Q)ninja $(NINJA_FLAGS) -f $(NINJA_SCRIPT)
 
@@ -74,10 +74,36 @@ symlinks: $(INSTALL_DIR)
 	$(Q)ln -sf mk $(INSTALL_DIR)/mkexe
 	$(Q)ln -sf mk $(INSTALL_DIR)/mkapp
 	$(Q)ln -sf mk $(INSTALL_DIR)/mksys
+	$(Q)ln -sf mk $(INSTALL_DIR)/mkparse
 	$(Q)ln -sf $(foreach script,$(SCRIPTS),$(script)) $(INSTALL_DIR)/
 	$(Q)ln -sf $(LEGATO_ROOT)/framework/tools/ifgen/ifgen $(INSTALL_DIR)/
 	$(Q)ln -sf $(LEGATO_ROOT)/3rdParty/ima-support-tools/ima-sign.sh $(INSTALL_DIR)/
 	$(Q)ln -sf $(LEGATO_ROOT)/3rdParty/ima-support-tools/ima-gen-keys.sh $(INSTALL_DIR)/
+
+# Get the paths of the node.js runtime and the TypeScript compiler.
+NPM_PATH := $(shell which npm)
+TSC_PATH := $(shell which tsc)
+
+LANG_SERV_PATH = "$(LEGATO_ROOT)/framework/tools/mkTools/legatoLangServ"
+
+.PHONY: languageServer
+languageServer: $(INSTALL_DIR)
+	# Check to see if node.js is installed, and if so, fetch the language server's dependencies.
+	if [ ! -z "$(NPM_PATH)" ] ; \
+	then \
+		cd "$(LANG_SERV_PATH)" ; \
+		if [ -d "./node_modules" ] ; \
+		then \
+			npm update ; \
+		else \
+			npm install ; \
+		fi ; \
+		$(LANG_SERV_PATH)/node_modules/.bin/tsc -p "$(LANG_SERV_PATH)/tsconfig.json" \
+		    --outDir "$(INSTALL_DIR)/languageServer" && \
+		cp -f "$(LEGATO_ROOT)/framework/tools/mkTools/legatoLangServ/package.json" "$(INSTALL_DIR)/languageServer/package.json" && \
+		cp -TR "$(LEGATO_ROOT)/framework/tools/mkTools/legatoLangServ/node_modules" "$(INSTALL_DIR)/languageServer/node_modules" ; \
+	fi
+
 
 # Rule for creating directories.
 $(BUILD_DIR) $(INSTALL_DIR):

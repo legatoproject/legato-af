@@ -143,6 +143,9 @@ std::string Token_t::TypeName
         case MD5_HASH:
             return "MD5 hash";
 
+        case DIRECTIVE:
+            return "directive";
+
         case OPTIONAL_OPEN_SQUARE:
             return "optional";
 

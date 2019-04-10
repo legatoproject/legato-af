@@ -1,0 +1,32 @@
+{
+    "name": "legato-lang-server",
+    "description": "Legato Definition language server.",
+    "author": "Sierra Wireless",
+    "version": "0.0.1",
+    "license": "MPL-2.0",
+    "main": "languageServer",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/legatoproject/legato-af.git"
+    },
+    "engines": {
+        "node": "*"
+    },
+    "dependencies": {
+        "@types/node": "^10.14.3",
+        "chokidar": "^2.1.5",
+        "mode-to-permissions": "^0.0.2",
+        "npm": "^6.9.0",
+        "vscode": "^1.1.32",
+        "vscode-languageserver": "^5.2.1",
+        "vscode-uri": "^1.0.6"
+    },
+    "devDependencies": {
+        "tslint": "^5.14.0",
+        "typescript": "3.3.3333"
+    },
+    "scripts": {
+        "compile": "tsc -p ./",
+        "watch-lsp": "tsc -watch -p ./"
+    }
+}

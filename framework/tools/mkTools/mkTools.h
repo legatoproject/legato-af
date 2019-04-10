@@ -20,6 +20,7 @@
 #include "codeGenerator/codeGenerator.h"
 #include "configGenerator/configGenerator.h"
 #include "adefGenerator/exportedAdefGenerator.h"
+#include "jsonGenerator/jsonGenerator.h"
 #include "generators.h"
 #include "targetInfo/targetInfo.h"
 

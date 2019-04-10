@@ -26,11 +26,14 @@ BuildParams_t::BuildParams_t
     jobCount(0),
     target("localhost"),
     osType("linux"),
+    signPkg(false),
     codeGenOnly(false),
     isStandAloneComp(false),
+    binPack(false),
     noPie(false),
     argc(0),
-    argv(NULL)
+    argv(NULL),
+    readOnly(false)
 //--------------------------------------------------------------------------------------------------
 {
 }

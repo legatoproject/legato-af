@@ -17,6 +17,7 @@ namespace cli
 #include "mkexe.h"
 #include "mkapp.h"
 #include "mksys.h"
+#include "mkparse.h"
 #include "mkCommon.h"
 
 
