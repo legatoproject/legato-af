@@ -1,0 +1,20 @@
+bundles:
+{
+    file:
+    {
+        #if file_exists(${LEGATO_SYSROOT}/usr/lib/libbz2.so.1)
+            ${LEGATO_SYSROOT}/usr/lib/libbz2.so.1 /lib/
+
+        // To install the library for localhost.
+        #elif file_exists(${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libbz2.so.1)
+            ${LEGATO_SYSROOT}/usr/lib/x86_64-linux-gnu/libbz2.so.1 /lib/
+        #elif file_exists(${LEGATO_SYSROOT}/usr/lib64/libbz2.so.1)
+            ${LEGATO_SYSROOT}/usr/lib64/libbz2.so.1 /lib/
+        #elif file_exists(${LEGATO_SYSROOT}/usr/lib/i386-linux-gnu/libbz2.so)
+            ${LEGATO_SYSROOT}/usr/lib/i386-linux-gnu/libbz2.so /lib/
+
+        #else
+            /libbz2/not/found /lib/
+        #endif
+    }
+}
