@@ -931,9 +931,11 @@ static void AddRequiredItems
         else if (subsectionName == "component")
         {
             auto subsectionPtr = parseTree::ToCompoundItemListPtr(memberPtr);
-            for (auto itemPtr : subsectionPtr->Contents())
+            for (auto it = subsectionPtr->Contents().rbegin();
+                it != subsectionPtr->Contents().rend();
+                ++it)
             {
-                auto subitemPtr = parseTree::ToTokenListPtr(itemPtr);
+                auto subitemPtr = parseTree::ToTokenListPtr(*it);
 
                 GetRequiredComponent(componentPtr, subitemPtr, buildParams);
 

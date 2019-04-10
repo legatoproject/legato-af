@@ -267,7 +267,7 @@ static void FindDirectServers
  *  @return True if there is an out of order dependency.
  */
 //--------------------------------------------------------------------------------------------------
-static bool ApiDependencyPrecedesServer
+static bool ApiDependencyOutOfOrder
 (
     model::Exe_t                 *exePtr,           ///< [IN]   Executable instance to examine.
     const std::string            &apiName,          ///< [IN]   API prefix to search for
@@ -282,12 +282,12 @@ static bool ApiDependencyPrecedesServer
         return clientPtr->ifPtr->apiFilePtr->defaultPrefix == apiName;
     };
 
-    for (auto it = exePtr->componentInstances.rbegin();
-        it != exePtr->componentInstances.rend() && *it != serverInstPtr;
+    for (auto it = exePtr->componentInstances.begin();
+        it != exePtr->componentInstances.end() && *it != serverInstPtr;
         ++it)
     {
-        auto found = std::find_if((*it)->clientApis.begin(), (*it)->clientApis.end(), apiMatch);
-        if (found != (*it)->clientApis.end())
+        auto found = std::find_if((*it)->clientApis.rbegin(), (*it)->clientApis.rend(), apiMatch);
+        if (found != (*it)->clientApis.rend())
         {
             foundInstancePtr = *it;
             return true;
@@ -338,7 +338,7 @@ static void BindLocalInterface
 
     // Check for dependency ordering issues.
     model::ComponentInstance_t *foundInstancePtr;
-    if (ApiDependencyPrecedesServer(exePtr, serverIfacePtr->ifPtr->apiFilePtr->defaultPrefix,
+    if (ApiDependencyOutOfOrder(exePtr, serverIfacePtr->ifPtr->apiFilePtr->defaultPrefix,
         serverIfacePtr->componentInstancePtr, foundInstancePtr))
     {
         exePtr->exeDefPtr->ThrowException(
@@ -485,8 +485,10 @@ static void AddExecutables
 
             // Iterate over the list of contents of the executable specification in the parse
             // tree and add each item as a component.
-            for (auto tokenPtr : itemPtr->Contents())
+            for (auto it = itemPtr->Contents().rbegin(); it != itemPtr->Contents().rend(); ++it)
             {
+                auto tokenPtr = *it;
+
                 // Get the component object.
                 auto componentPtr = GetComponent(tokenPtr, buildParams, { appPtr->dir });
 

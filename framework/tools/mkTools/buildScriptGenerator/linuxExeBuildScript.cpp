@@ -74,9 +74,9 @@ void LinuxExeBuildScriptGenerator_t::GetDependentLibLdFlags
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Traverse the component instance list in reverse order.
+    // Traverse the component instance list.
     auto& list = exePtr->componentInstances;
-    for (auto i = list.rbegin(); i != list.rend(); i++)
+    for (auto i = list.begin(); i != list.end(); i++)
     {
         auto componentPtr = (*i)->componentPtr;
         auto& lib = componentPtr->GetTargetInfo<target::LinuxComponentInfo_t>()->lib;
