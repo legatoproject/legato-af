@@ -1263,22 +1263,24 @@ export function parseSystem(jsonDoc: jdoc.Document, sysDefPath: string): model.S
     let result = systemDefinition.pull(buffer);
     let system = result.data.value as model.System;
 
-    /*for (let appSections of system.appSections)
+    for (let appSections of system.appSections)
     {
         for (let appRef of appSections.apps)
         {
             let appDefPath = findFile(jsonDoc, path.basename(appRef.name));
-            if (appDefPath !== undefined)
-            {
-                let app = parseApp(jsonDoc, appDefPath);
+            appRef.target = new model.Application(appDefPath);
 
-                if (app !== undefined)
-                {
-                    appRef.target = app;
-                }
-            }
+            //            if (appDefPath !== undefined)
+//            {
+//                let app = parseApp(jsonDoc, appDefPath);
+//
+//                if (app !== undefined)
+//                {
+//                    appRef.target = app;
+//                }
+//            }
         }
-    }*/
+    }
 
     return system;
 }

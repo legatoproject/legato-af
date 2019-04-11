@@ -213,14 +213,12 @@ function AppsAsSymbols(flags: ConversionFlags,
 
         for (let appRef of appSection.apps)
         {
+            let start = new loader.Location(appRef.target.path, 0, 0);
             let sym = new DefinitionObject(ext.le_DefinitionObjectType.ApplicationRef,
                                            path.basename(appRef.name, path.extname(appRef.name)),
                                            appRef.target.path,
-                                           appRef.location,
-                                           new loader.Location(appRef.name,
-                                                               appRef.location.line,
-                                                               appRef.location.column +
-                                                                   appRef.name.length));
+                                           start,
+                                           start);
 
             // Disabled for initial commit, will be re-enabled once the model loading stablity is
             // fixed.
