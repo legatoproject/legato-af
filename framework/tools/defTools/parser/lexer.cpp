@@ -75,6 +75,12 @@ void Lexer_t::LexerContext_t::Buffer
 }
 
 
+void Lexer_t::LexerContext_t::setCurPos()
+{
+    curPos = inputStream.tellg();
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Constructor
@@ -339,7 +345,8 @@ void Lexer_t::SkipToNextDirective
     parseTree::Token_t* phonyTokenPtr = new parseTree::Token_t(parseTree::Token_t::COMMENT,
                                                                context.top().filePtr,
                                                                context.top().line,
-                                                               context.top().column);
+                                                               context.top().column,
+                                                               context.top().curPos);
 
     while (true)
     {
@@ -393,7 +400,8 @@ parseTree::Token_t* Lexer_t::PullRaw
 //--------------------------------------------------------------------------------------------------
 {
     parseTree::Token_t* tokenPtr = new parseTree::Token_t(type, context.top().filePtr,
-                                                          context.top().line, context.top().column);
+                                                          context.top().line, context.top().column,
+                                                          context.top().curPos);
 
     switch (type)
     {
@@ -2497,6 +2505,8 @@ void Lexer_t::AdvanceOneCharacter
     {
         context.top().column++;
     }
+
+    context.top().setCurPos();
 
     context.top().nextChars.pop_front();
     context.top().Buffer(2);

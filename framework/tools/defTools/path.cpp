@@ -565,7 +565,7 @@ std::string GetFileNameExtension
         std::string suffix = path.substr(pos);
 
         // Make sure the last '.' isn't before the last '/'.
-        if (suffix.find('/') != std::string::npos)
+        if (suffix.find('/') == std::string::npos)
         {
             return suffix;
         }

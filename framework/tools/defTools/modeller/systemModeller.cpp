@@ -337,7 +337,11 @@ static void ModelApp
                       << "to '" << dirPath << "'." << std::endl;
         }
 
-        UntarBinApp(filePath, dirPath, sectionPtr, buildParams.beVerbose);
+        if (!buildParams.readOnly)
+        {
+            UntarBinApp(filePath, dirPath, sectionPtr, buildParams.beVerbose);
+        }
+
         filePath = FindBinAppAdef(sectionPtr, path::MakeAbsolute(dirPath) + "/");
         //filePath = newAdefPath;
     }

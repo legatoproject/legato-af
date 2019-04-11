@@ -24,4 +24,10 @@
 #include "generators.h"
 #include "targetInfo/targetInfo.h"
 
+#define ADEF_EXT ".adef"
+#define CDEF_EXT ".cdef"
+#define MDEF_EXT ".mdef"
+#define SDEF_EXT ".sdef"
+#define COMP_CDEF "Component.cdef"
+
 #endif  // LEGATO_MKTOOLS_H_INCLUDE_GUARD

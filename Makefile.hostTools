@@ -75,6 +75,7 @@ symlinks: $(INSTALL_DIR)
 	$(Q)ln -sf mk $(INSTALL_DIR)/mkapp
 	$(Q)ln -sf mk $(INSTALL_DIR)/mksys
 	$(Q)ln -sf mk $(INSTALL_DIR)/mkparse
+	$(Q)ln -sf mk $(INSTALL_DIR)/mkedit
 	$(Q)ln -sf $(foreach script,$(SCRIPTS),$(script)) $(INSTALL_DIR)/
 	$(Q)ln -sf $(LEGATO_ROOT)/framework/tools/ifgen/ifgen $(INSTALL_DIR)/
 	$(Q)ln -sf $(LEGATO_ROOT)/3rdParty/ima-support-tools/ima-sign.sh $(INSTALL_DIR)/

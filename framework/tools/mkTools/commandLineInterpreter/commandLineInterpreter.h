@@ -19,7 +19,9 @@ namespace cli
 #include "mksys.h"
 #include "mkparse.h"
 #include "mkCommon.h"
-
+#include "mkedit.h"
+#include "generateDefTemplate.h"
+#include "updateDefinitionFile.h"
 
 } // namespace cli
 

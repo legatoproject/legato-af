@@ -65,9 +65,12 @@ class Lexer_t
             size_t column;                  ///< Char index on line (treat tab & return same as space).
             size_t ifNestDepth;             ///< Current number of nested #if directives.
 
+            int curPos;                     ///< Position of current character in the stream.
+
             LexerContext_t(parseTree::DefFileFragment_t *filePtr);
 
             void Buffer(size_t n);
+            void setCurPos();
         };
 
         std::stack<LexerContext_t> context;

@@ -535,8 +535,6 @@ parseTree::SdefFile_t* Parse
     return filePtr;
 }
 
-
-
 } // namespace adef
 
 } // namespace parser

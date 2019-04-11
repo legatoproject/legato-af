@@ -59,12 +59,15 @@ struct Token_t: public Content_t
     size_t line;        ///< The line number it was found in (1 = first line).
     size_t column;      ///< The column number it was found in (0 = first column).
 
+    int curPos;         ///< The position the current token was found in the stream
+
     std::string text;   ///< The text of the token copied verbatim from the file.
 
     Token_t* nextPtr;   ///< Ptr to the next token, closer to the end of the file.
     Token_t* prevPtr;   ///< Ptr to the previous token, closer to the beginning of the file.
 
-    Token_t(Type_t tokenType, DefFileFragment_t* fileObjPtr, size_t lineNum, size_t columnNum);
+    Token_t(Type_t tokenType, DefFileFragment_t* fileObjPtr, size_t lineNum, size_t columnNum,
+            int curPos);
 
     // Get a human-readable string describing the type.
     static std::string TypeName(Type_t type);

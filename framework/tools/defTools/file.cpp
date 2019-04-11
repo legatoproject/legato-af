@@ -437,4 +437,50 @@ void DeleteFile
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Rename a given old file to a new file name.
+ **/
+//--------------------------------------------------------------------------------------------------
+void RenameFile
+(
+    std::string oldFileName,
+    std::string newFileName
+)
+{
+    int result;
+    result = rename(oldFileName.c_str(), newFileName.c_str());
+
+    if (result != 0)
+    {
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Error in renaming file '%s' to '%s' ('%s')"),
+                                       oldFileName, newFileName, strerror(errno))
+        );
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove/delete a given file.
+ **/
+//--------------------------------------------------------------------------------------------------
+void RemoveFile
+(
+    std::string fileName
+)
+{
+    int result;
+    result = remove(fileName.c_str());
+
+    if (result != 0)
+    {
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Error in removing file '%s' ('%s')."),
+                                       fileName, strerror(errno))
+        );
+    }
+}
+
 } // namespace file

@@ -42,7 +42,11 @@ int main(int argc, const char** argv)
         {
             cli::MakeSystem(argc, argv);
         }
-        else if (fileName == "mkparse")
+        else if (fileName == "mkedit")
+        {
+            cli::MakeEdit(argc, argv);
+        }
+	else if (fileName == "mkparse")
         {
             cli::MakeParsedModel(argc, argv);
         }

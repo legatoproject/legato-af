@@ -173,6 +173,31 @@ void DeleteFile
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Rename a file.
+ * @throw legato::Exception if something goes wrong.
+ **/
+//--------------------------------------------------------------------------------------------------
+void RenameFile
+(
+    std::string oldFileName,
+    std::string newFileName
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove a file.
+ * @throw legato::Exception if something goes wrong.
+ **/
+//--------------------------------------------------------------------------------------------------
+void RemoveFile
+(
+    std::string fileName
+);
+
+
 } // namespace file
 
 #endif // LEGATO_DEFTOOLS_FILE_H_INCLUDE_GUARD

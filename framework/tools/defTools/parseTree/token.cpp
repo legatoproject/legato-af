@@ -25,13 +25,15 @@ Token_t::Token_t
     Type_t tokenType,
     DefFileFragment_t* fileObjPtr,
     size_t lineNum,
-    size_t columnNum
+    size_t columnNum,
+    int curPosition
 )
 //--------------------------------------------------------------------------------------------------
 :   Content_t(Content_t::TOKEN, fileObjPtr),
     type(tokenType),
     line(lineNum),
     column(columnNum),
+    curPos(curPosition),
     nextPtr(NULL),
     prevPtr(fileObjPtr->lastTokenPtr)
 //--------------------------------------------------------------------------------------------------
