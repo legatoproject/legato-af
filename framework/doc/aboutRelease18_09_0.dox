@@ -9,6 +9,12 @@ The following provides a summary of changes that have been made in the 18.09 Leg
 <b> Download the @ref aboutReleaseInfo "source code" and get started with @ref basicBuild
 "building Legato AF". </b>
 
+@section rn1809_18091 18.09.1 Patch
+
+The 18.09.1 patch introduces a fix to improve the @c fwupdate process during poor network 
+conditions. The curl low speedlimit timeout and retry timers have been tweaked to allow 
+more time for fwupdate to complete before retrying.
+
 @section rn1809_Features New Features
 
 The following are the list of new features that have been added into the 18.09 Release:
