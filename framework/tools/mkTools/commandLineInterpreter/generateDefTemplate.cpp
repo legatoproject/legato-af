@@ -412,12 +412,13 @@ void GenerateCdefTemplate
     std::ofstream sourceDefStream(sourceFilePath, std::ofstream::trunc);
 
     sourceDefStream << "/* " << sourceFileName  << " */\n\n"
-                 "#include \"legato.h\"\n"
-                 "#include \"interfaces.h\"\n\n"
-                 "COMPONENT_INIT\n"
-                 "{\n"
-                 "    LE_INFO(\"Component " << path::RemoveSuffix(sourceFileName, ".c") << " started.\")\n"
-                 "}";
+                       "#include \"legato.h\"\n"
+                       "#include \"interfaces.h\"\n\n"
+                       "COMPONENT_INIT\n"
+                       "{\n"
+                       "    LE_INFO(\"Component " << path::RemoveSuffix(sourceFileName, ".c")
+                                                  << " started.\");\n"
+                       "}";
 
     file::MakeDir(path::GetContainingDir(compFilePath));
 
