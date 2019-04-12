@@ -11,7 +11,6 @@ requires:
     api:
     {
         modemServices/le_mdmDefs.api [types-only]
-        modemServices/le_mdc.api
         modemServices/le_mrc.api
         le_cfg.api
         ${LEGATO_ROOT}/interfaces/wifi/le_wifiClient.api [optional]
@@ -28,6 +27,7 @@ requires:
 sources:
 {
     dcsServer.c
+    dcsTechRank.c
 }
 
 cflags:
@@ -36,6 +36,7 @@ cflags:
     -I$LEGATO_ROOT/components/modemServices/platformAdaptor/inc
     -I$LEGATO_ROOT/components/dataConnectionService/platformAdaptor/inc
     -I$LEGATO_ROOT/components/dataConnectionService/dcs
+    -I$LEGATO_ROOT/components/dataConnectionService/dcsNet
     -I$LEGATO_ROOT/components/dataConnectionService/dcsCellular
     -I${LEGATO_ROOT}/components/watchdogChain
 }

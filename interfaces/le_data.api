@@ -340,13 +340,12 @@ FUNCTION Technology GetNextUsedTechnology
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the technology currently used for the default data connection
+ * Get the technology of the currently connected data connection. In the absence of an actively
+ * connected data connection, @ref LE_DATA_MAX is returned.
  *
  * @return
  *      - One of the technologies from @ref le_data_Technology_t enumerator
- *      - @ref LE_DATA_MAX if the current technology is not set
- *
- * @note The supported technologies are @ref LE_DATA_WIFI and @ref LE_DATA_CELLULAR
+ *      - @ref LE_DATA_MAX if not connected
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION Technology GetTechnology

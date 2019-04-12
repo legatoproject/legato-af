@@ -21,6 +21,7 @@ cflags:
 sources:
 {
     ${LEGATO_ROOT}/components/dataConnectionService/dcsDaemon/dcsServer.c
+    ${LEGATO_ROOT}/components/dataConnectionService/dcsDaemon/dcsTechRank.c
     dataConnection_stub.c
 }
 
@@ -29,5 +30,6 @@ cflags:
     -Dle_msg_AddServiceCloseHandler=MyAddServiceCloseHandler
     -Dsystem=MySystem
     -I$LEGATO_ROOT/components/dataConnectionService/dcs
+    -I$LEGATO_ROOT/components/dataConnectionService/dcsNet
     -I$LEGATO_ROOT/components/dataConnectionService/dcsCellular
 }

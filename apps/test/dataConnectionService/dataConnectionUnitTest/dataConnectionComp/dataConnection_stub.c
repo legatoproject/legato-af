@@ -8,12 +8,17 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "pa_dcs.h"
+#include "dcs.h"
 
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions
 //--------------------------------------------------------------------------------------------------
 #define DCS_DUMMY_CHANNEL_REF 0xffff0000
+#define DCS_DUMMY_CHANNEL_REQ_REF 0xffff2222
+#define DCS_DUMMY_DNS_SERVER_ADDR_IPV4 "11.22.33.44"
+#define DCS_DUMMY_DNS_SERVER_ADDR_IPV6 "fe80::c84:bfff:fea6:afea"
+#define DCS_DUMMY_CLIENT_SESSION_REF ((le_msg_SessionRef_t)0x1001)
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -36,7 +41,6 @@ static bool UseDefaultRoute = true;
 //--------------------------------------------------------------------------------------------------
 #define WIFI_SECPROTOCOL_INIT   0xFF
 static char WifiSsid[LE_WIFIDEFS_MAX_SSID_BYTES] = {0};
-static char WifiPassphrase[LE_WIFIDEFS_MAX_PASSPHRASE_BYTES] = {0};
 static int  WifiSecProtocol = WIFI_SECPROTOCOL_INIT;
 
 //--------------------------------------------------------------------------------------------------
@@ -71,26 +75,11 @@ static le_event_Id_t CellNetStateEvent = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Event ID for New Packet Switched change notification.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static le_event_Id_t PSChangeId = NULL;
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Event ID for Network Reject notification.
  * It is used in le_mrc_AddNetRegRejectHandler
  */
 //--------------------------------------------------------------------------------------------------
 static le_event_Id_t NetRegRejectId = NULL;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Pool for network reject indication reporting.
- */
-//--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t NetRegRejectIndPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -122,7 +111,9 @@ static le_mdc_Profile_t MdcProfile =
  * Event for sending MDC session state to applications
  */
 //--------------------------------------------------------------------------------------------------
-static le_event_Id_t MdcSessionStateEvent = NULL;
+static le_dcs_channelDb_t DcsChannelDb;
+static le_dcs_channelDbEventHdlr_t DcsChannelEvtHdlr;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -165,27 +156,6 @@ void le_cellnetTest_SimulateState
     {
         // Notify all the registered client handlers
         le_event_Report(CellNetStateEvent, &state, sizeof(state));
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Simulate a new MDC session state
- */
-//--------------------------------------------------------------------------------------------------
-void le_mdcTest_SimulateState
-(
-    le_mdc_ConState_t state
-)
-{
-    // Check if event is created before using it
-    if (MdcSessionStateEvent)
-    {
-        le_mdc_Profile_t* profilePtr = &MdcProfile;
-        MdcProfile.connectionStatus = state;
-
-        // Notify all the registered client handlers
-        le_event_Report(MdcSessionStateEvent, &profilePtr, sizeof(profilePtr));
     }
 }
 
@@ -256,45 +226,10 @@ void le_cfgTest_SetStringNodeValue
         memset(WifiSsid, 0, sizeof(WifiSsid));
         strncpy(WifiSsid, value, sizeof(WifiSsid));
     }
-    else if (0 == strncmp(path, CFG_NODE_PASSPHRASE, strlen(CFG_NODE_PASSPHRASE)))
-    {
-        memset(WifiPassphrase, 0, sizeof(WifiPassphrase));
-        strncpy(WifiPassphrase, value, sizeof(WifiPassphrase));
-    }
     else if (0 == strncmp(path, CFG_NODE_SERVER, strlen(CFG_NODE_SERVER)))
     {
         memset(TimeServer, 0, sizeof(TimeServer));
         strncpy(TimeServer, value, sizeof(TimeServer));
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Set a simulated int value for a specific node.
- */
-//--------------------------------------------------------------------------------------------------
-void le_cfgTest_SetIntNodeValue
-(
-    le_cfg_IteratorRef_t iteratorRef,
-        ///< [IN]
-        ///< Iterator to use as a basis for the transaction.
-
-    const char* path,
-        ///< [IN]
-        ///< Path to the target node. Can be an absolute path,
-        ///< or a path relative from the iterator's current
-        ///< position.
-
-    int32_t value
-        ///< [IN]
-        ///< Value to set in node.
-)
-{
-    IteratorRefSimu = iteratorRef;
-
-    if (0 == strncmp(path, CFG_NODE_SECPROTOCOL, strlen(CFG_NODE_SECPROTOCOL)))
-    {
-        WifiSecProtocol = value;
     }
 }
 
@@ -326,7 +261,7 @@ le_msg_SessionRef_t le_data_GetClientSessionRef
     void
 )
 {
-    return (le_msg_SessionRef_t) 0x1001;
+    return DCS_DUMMY_CLIENT_SESSION_REF;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -461,314 +396,6 @@ le_result_t le_wifiClient_TryConnectService
 }
 
 //--------------------------------------------------------------------------------------------------
-/**
- * This function starts the WiFi device.
- *
- * @return LE_FAULT         The function failed.
- * @return LE_BUSY          If the WiFi device is already started.
- * @return LE_OK            The function succeeded.
- *
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_wifiClient_Start
-(
-    void
-)
-{
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function stops the WiFi device.
- *
- * @return LE_OK            The function succeeded.
- * @return LE_FAULT         The function failed.
- * @return LE_DUPLICATE     The WIFI device is already stopped.
- *
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_wifiClient_Stop
-(
-    void
-)
-{
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Connect to the WiFi Access Point.
- * All authentication must be set prior to calling this function.
- *
- * @return LE_FAULT         Function failed.
- * @return LE_BAD_PARAMETER Parameter is invalid.
- * @return LE_OK            Function succeeded.
- *
- * @note For PSK credentials see le_wifiClient_SetPassphrase() or le_wifiClient_SetPreSharedKey() .
- * @note For WPA-Enterprise credentials see le_wifiClient_SetUserCredentials()
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_wifiClient_Connect
-(
-    le_wifiClient_AccessPointRef_t apRef
-        ///< [IN]
-        ///< WiFi access point reference.
-)
-{
-    // Wait to simulate a real scan
-    sleep(2);
-
-    // Simulation of a scan complete event for UT purpose
-    le_wifiClientTest_SimulateEvent(LE_WIFICLIENT_EVENT_SCAN_DONE);
-
-    // Wait to simulate a real connection
-    sleep(2);
-
-    // Connection requested, simulate a connected event
-    le_wifiClientTest_SimulateEvent(LE_WIFICLIENT_EVENT_CONNECTED);
-
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Disconnect from the WiFi Access Point.
- *
- * @return LE_FAULT         Function failed.
- * @return LE_OK            Function succeeded.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_wifiClient_Disconnect
-(
-)
-{
-    // Disconnection requested, simulate a disconnected event
-    le_wifiClientTest_SimulateEvent(LE_WIFICLIENT_EVENT_DISCONNECTED);
-
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The first-layer WiFi Client Event Handler.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void FirstLayerWifiClientEventHandler
-(
-    void *reportPtr,
-    void *secondLayerHandlerFunc
-)
-{
-    le_wifiClient_NewEventHandlerFunc_t  clientHandlerFunc = secondLayerHandlerFunc;
-    le_wifiClient_Event_t               *wifiEventPtr      = (le_wifiClient_Event_t *)reportPtr;
-
-    if (NULL != wifiEventPtr)
-    {
-        LE_DEBUG("Event: %d", *wifiEventPtr);
-        clientHandlerFunc(*wifiEventPtr, le_event_GetContextPtr());
-    }
-    else
-    {
-        LE_ERROR("Event is NULL");
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Add handler function for EVENT 'le_wifiClient_NewEvent'
- *
- * This event provide information on Wifi Client event changes.
- */
-//--------------------------------------------------------------------------------------------------
-le_wifiClient_NewEventHandlerRef_t le_wifiClient_AddNewEventHandler
-(
-    le_wifiClient_NewEventHandlerFunc_t handlerFuncPtr,
-        ///< [IN]
-        ///< Event handling function
-
-    void *contextPtr
-        ///< [IN]
-        ///< Associated event context
-)
-{
-    le_event_HandlerRef_t handlerRef;
-
-    if (handlerFuncPtr == NULL)
-    {
-        LE_KILL_CLIENT("handlerFuncPtr is NULL !");
-        return NULL;
-    }
-
-    // Create an event Id for new Wifi state notification if not already done
-    if (!NewWifiEventId)
-    {
-        NewWifiEventId = le_event_CreateId("WifiClientEvent", sizeof(le_wifiClient_Event_t));
-    }
-
-    handlerRef = le_event_AddLayeredHandler("NewWiFiClientMsgHandler",
-                                            NewWifiEventId,
-                                            FirstLayerWifiClientEventHandler,
-                                            (le_event_HandlerFunc_t)handlerFuncPtr);
-
-    le_event_SetContextPtr(handlerRef, contextPtr);
-
-    return (le_wifiClient_NewEventHandlerRef_t)(handlerRef);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The first-layer WiFi Client Connection Event Handler.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void FirstLayerWifiClientConnectionEventHandler
-(
-    void *reportPtr,
-    void *secondLayerHandlerFunc
-)
-{
-    le_wifiClient_EventInd_t*  wifiEventPtr = reportPtr;
-    le_wifiClient_ConnectionEventHandlerFunc_t  clientHandlerFunc = secondLayerHandlerFunc;
-
-
-    if (NULL != wifiEventPtr)
-    {
-        clientHandlerFunc(wifiEventPtr, le_event_GetContextPtr());
-    }
-    else
-    {
-        LE_WARN("wifiEventPtr is NULL");
-    }
-    // The reportPtr is a reference counted object, so need to release it
-    le_mem_Release(reportPtr);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to register an handler for WiFi connection state change.
- *
- * @return A handler reference, which is only needed for later removal of the handler.
- *
- * @note Doesn't return on failure, so there's no need to check the return value for errors.
- */
-//--------------------------------------------------------------------------------------------------
-le_wifiClient_ConnectionEventHandlerRef_t le_wifiClient_AddConnectionEventHandler
-(
-    le_wifiClient_ConnectionEventHandlerFunc_t handlerFuncPtr,
-        ///< [IN]
-        ///< Event handling function
-
-    void *contextPtr
-        ///< [IN]
-        ///< Associated event context
-)
-{
-    le_event_HandlerRef_t handlerRef;
-
-    // Note: THIS ONE REGISTERS THE CB function..
-    LE_DEBUG("Add wifi connection event handler");
-
-    if (handlerFuncPtr == NULL)
-    {
-        LE_KILL_CLIENT("handlerFuncPtr is NULL !");
-        return NULL;
-    }
-
-    // Create an event Id for Wifi state notification if not already done
-    if (!WifiEventId)
-    {
-        WifiEventId = le_event_CreateIdWithRefCounting("WifiConnectState");
-        WifiEventPool = le_mem_CreatePool("WifiEventPool", sizeof(le_wifiClient_EventInd_t));
-    }
-
-    handlerRef = le_event_AddLayeredHandler("WiFiClientMsgHandler",
-                                            WifiEventId,
-                                            FirstLayerWifiClientConnectionEventHandler,
-                                            (le_event_HandlerFunc_t)handlerFuncPtr);
-
-    le_event_SetContextPtr(handlerRef, contextPtr);
-
-    return (le_wifiClient_ConnectionEventHandlerRef_t)(handlerRef);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * If an Access Point is not announcing it's presence, it will not show up in the scan.
- * But if the SSID is known, a connection can be tried using this create function.
- * First create the Access Point, then le_wifiClient_Connect() to connect to it.
- *
- * @return AccessPoint reference to the current
- */
-//--------------------------------------------------------------------------------------------------
-le_wifiClient_AccessPointRef_t le_wifiClient_Create
-(
-    const uint8_t *ssidPtr,
-        ///< [IN]
-        ///< The SSID as a octet array.
-
-    size_t ssidNumElements
-        ///< [IN]
-        ///< Length of the SSID in octets.
-)
-{
-    return (le_wifiClient_AccessPointRef_t) 0x90000009;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Set the security mode for connection
- *
- * @return LE_FAULT         Function failed.
- * @return LE_BAD_PARAMETER Parameter is invalid.
- * @return LE_OK            Function succeeded.
- *
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_wifiClient_SetSecurityProtocol
-(
-    le_wifiClient_AccessPointRef_t apRef,
-        ///< [IN]
-        ///< WiFi Access Point reference.
-
-    le_wifiClient_SecurityProtocol_t securityProtocol
-        ///< [IN]
-        ///< Security Mode
-)
-{
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Set the passphrase used to generate the PSK.
- *
- * @note This is one way to authenticate against the access point. The other one is provided by the
- * le_wifiClient_SetPreSharedKey() function. Both ways are exclusive and are effective only when used
- * with WPA-personal authentication.
- *
- * @return LE_BAD_PARAMETER Parameter is invalid.
- * @return LE_OK            Function succeeded.
- *
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_wifiClient_SetPassphrase
-(
-    le_wifiClient_AccessPointRef_t apRef,
-        ///< [IN]
-        ///< WiFi Access Point reference.
-
-    const char *passPhrasePtr
-        ///< [IN]
-        ///< pass-phrase for PSK
-)
-{
-    return LE_OK;
-}
-
-
-//--------------------------------------------------------------------------------------------------
 // Config Tree service stubbing
 //--------------------------------------------------------------------------------------------------
 
@@ -885,10 +512,6 @@ bool le_cfg_NodeExists
     {
         exists = strncmp("", WifiSsid, strlen(WifiSsid));
     }
-    else if (0 == strncmp(path, CFG_NODE_PASSPHRASE, strlen(CFG_NODE_PASSPHRASE)))
-    {
-        exists = strncmp("", WifiPassphrase, strlen(WifiPassphrase));
-    }
     else if (0 == strncmp(path, CFG_NODE_SECPROTOCOL, strlen(CFG_NODE_SECPROTOCOL)))
     {
         exists = (WifiSecProtocol != WIFI_SECPROTOCOL_INIT);
@@ -944,10 +567,6 @@ le_result_t le_cfg_GetString
     if (0 == strncmp(path, CFG_NODE_SSID, strlen(CFG_NODE_SSID)))
     {
         result = le_utf8_Copy(value, WifiSsid, valueNumElements, NULL);
-    }
-    else if (0 == strncmp(path, CFG_NODE_PASSPHRASE, strlen(CFG_NODE_PASSPHRASE)))
-    {
-        result = le_utf8_Copy(value, WifiPassphrase, valueNumElements, NULL);
     }
     else if (0 == strncmp(path, CFG_NODE_SERVER, strlen(CFG_NODE_SERVER)))
     {
@@ -1128,377 +747,6 @@ uint32_t le_mdc_GetProfileIndex
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the Access Point Name (APN) for the given profile according to the SIM identification
- * number (ICCID). If no APN is found using the ICCID, fall back on the home network (MCC/MNC)
- * to determine the default APN.
- *
- * @return
- *      - LE_OK on success
- *      - LE_BAD_PARAMETER if an input parameter is not valid
- *      - LE_FAULT for all other errors
- *
- * @note
- *      The process exits if an invalid profile object is given
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_mdc_SetDefaultAPN
-(
-    le_mdc_ProfileRef_t profileRef ///< [IN] Query this profile object
-)
-{
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Allow the caller to know if the given profile is actually supporting IPv4, if the data session
- * is connected.
- *
- * @return TRUE if PDP type is IPv4, FALSE otherwise.
- *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
- */
-//--------------------------------------------------------------------------------------------------
-bool le_mdc_IsIPv4
-(
-    le_mdc_ProfileRef_t profileRef        ///< [IN] Query this profile object
-)
-{
-    return true;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Allow the caller to know if the given profile is actually supporting IPv6, if the data session
- * is connected.
- *
- * @return TRUE if PDP type is IPv6, FALSE otherwise.
- *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
- */
-//--------------------------------------------------------------------------------------------------
-bool le_mdc_IsIPv6
-(
-    le_mdc_ProfileRef_t profileRef        ///< [IN] Query this profile object
-)
-{
-    return false;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the gateway IPv4 address for the given profile, if the data session is connected and has an
- * IPv4 address.
- *
- * @return
- *      - LE_OK on success
- *      - LE_OVERFLOW if the IP address would not fit in gatewayAddrStr
- *      - LE_FAULT for all other errors
- *
- * @note
- *      The process exits, if an invalid profile object is given
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_mdc_GetIPv4GatewayAddress
-(
-    le_mdc_ProfileRef_t profileRef,        ///< [IN] Query this profile object
-    char*   gatewayAddrStr,      ///< [OUT] Gateway IP address in dotted format
-    size_t  gatewayAddrStrSize   ///< [IN] Address buffer size in bytes
-)
-{
-    snprintf(gatewayAddrStr, gatewayAddrStrSize, "192.168.0.254");
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the gateway IPv6 address for the given profile, if the data session is connected and has an
- * IPv6 address.
- *
- * @return
- *      - LE_OK on success
- *      - LE_OVERFLOW if the IP address would not fit in gatewayAddrStr
- *      - LE_FAULT for all other errors
- *
- * @note
- *      The process exits, if an invalid profile object is given
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_mdc_GetIPv6GatewayAddress
-(
-    le_mdc_ProfileRef_t profileRef,         ///< [IN] Query this profile object
-    char*   gatewayAddrStr,       ///< [OUT] Gateway IP address in dotted format
-    size_t  gatewayAddrStrSize    ///< [IN] Address buffer size in bytes
-)
-{
-    snprintf(gatewayAddrStr, gatewayAddrStrSize, "192.168.0.254");
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the primary/secondary DNS v4 addresses for the given profile, if the data session is
- * connected and has an IPv4 address.
- *
- * @return
- *      - LE_OK on success
- *      - LE_OVERFLOW if the IP address would not fit in buffer
- *      - LE_FAULT for all other errors
- *
- * @note
- *      - If only one DNS address is available, then it will be returned, and an empty string will
- *        be returned for the unavailable address
- *      - The process exits, if an invalid profile object is given
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_mdc_GetIPv4DNSAddresses
-(
-    le_mdc_ProfileRef_t profileRef,         ///< [IN] Query this profile object
-    char*   dns1AddrStr,          ///< [OUT] Primary DNS IP address in dotted format
-    size_t  dns1AddrStrSize,      ///< [IN] dns1AddrStr buffer size in bytes
-    char*   dns2AddrStr,          ///< [OUT] Secondary DNS IP address in dotted format
-    size_t  dns2AddrStrSize       ///< [IN] dns2AddrStr buffer size in bytes
-)
-{
-    dns1AddrStr[0] = 0;
-    dns2AddrStr[0] = 0;
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the primary/secondary DNS v6 addresses, if the data session is connected and has an IPv6
- * address.
- *
- * @return
- *      - LE_OK on success
- *      - LE_OVERFLOW if the IP address can't fit in buffer
- *      - LE_FAULT for all other errors
- *
- * @note
- *      - If only one DNS address is available, it will be returned, and an empty string will
- *        be returned for the unavailable address.
- *      - The process exits, if an invalid profile object is given
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_mdc_GetIPv6DNSAddresses
-(
-    le_mdc_ProfileRef_t profileRef,        ///< [IN] Query this profile object
-    char*   dns1AddrStr,         ///< [OUT] Primary DNS IP address in dotted format
-    size_t  dns1AddrStrSize,     ///< [IN] dns1AddrStr buffer size in bytes
-    char*   dns2AddrStr,         ///< [OUT] Secondary DNS IP address in dotted format
-    size_t  dns2AddrStrSize      ///< [IN] dns2AddrStr buffer size in bytes
-)
-{
-    dns1AddrStr[0] = 0;
-    dns2AddrStr[0] = 0;
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the network interface name, if the data session is connected.
- *
- * @return
- *      - LE_OK on success
- *      - LE_OVERFLOW if the interface name can't fit in interfaceNameStr
- *      - LE_FAULT on any other failure
- *
- * @note
- *      The process exits, if an invalid profile object is given
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_mdc_GetInterfaceName
-(
-    le_mdc_ProfileRef_t profileRef,        ///< [IN] Query this profile object
-    char*   interfaceNameStr,    ///< [OUT] Network interface name
-    size_t  interfaceNameStrSize ///< [IN] Name buffer size in bytes
-)
-{
-    snprintf(interfaceNameStr, interfaceNameStrSize, MDC_INTERFACE_NAME);
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Start profile data session.
- *
- * @return
- *      - LE_OK on success
- *      - LE_BAD_PARAMETER if input parameter is incorrect
- *      - LE_DUPLICATE if the data session is already connected for the given profile
- *      - LE_FAULT for other failures
- *
- * @note
- *      The process exits, if an invalid profile object is given
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_mdc_StartSession
-(
-    le_mdc_ProfileRef_t profileRef     ///< [IN] Start data session for this profile object
-)
-{
-    // Update connection status
-    MdcProfile.connectionStatus = LE_MDC_CONNECTED;
-
-    // Start requested, simulate a connected event
-    le_mdcTest_SimulateState(LE_MDC_CONNECTED);
-
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Stop profile data session.
- *
- * @return
- *      - LE_OK on success
- *      - LE_BAD_PARAMETER if the input parameter is not valid
- *      - LE_FAULT for other failures
- *
- * @note
- *      The process exits, if an invalid profile object is given
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_mdc_StopSession
-(
-    le_mdc_ProfileRef_t profileRef     ///< [IN] Stop data session for this profile object
-)
-{
-    // Update connection status
-    MdcProfile.connectionStatus = LE_MDC_DISCONNECTED;
-
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the current data session state.
- *
- * @return
- *      - LE_OK on success
- *      - LE_BAD_PARAMETER if an input parameter is not valid
- *      - LE_FAULT on failure
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_mdc_GetSessionState
-(
-    le_mdc_ProfileRef_t profileRef,        ///< [IN] Query this profile object
-    le_mdc_ConState_t*   statePtr          ///< [OUT] Data session state
-)
-{
-    *statePtr = MdcProfile.connectionStatus;
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the Access Point Name (APN) for the given profile.
- *
- * @return
- *      - LE_OK on success
- *      - LE_BAD_PARAMETER if an input parameter is not valid
- *      - LE_OVERFLOW if the APN is is too long
- *      - LE_FAULT on failed
- *
- * @note
- *      The process exits, if an invalid profile object is given
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_mdc_GetAPN
-(
-    le_mdc_ProfileRef_t profileRef, ///< [IN] Query this profile object
-    char               *apnPtr,     ///< [OUT] The Access Point Name
-    size_t              apnSize     ///< [IN] apnPtr buffer size
-)
-{
-    snprintf(apnPtr, apnSize, "internet.sierrawireless.com");
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The first-layer New Session State Change Handler.
- */
-//--------------------------------------------------------------------------------------------------
-static void FirstLayerSessionStateChangeHandler
-(
-    void* reportPtr,
-    void* secondLayerHandlerFunc
-)
-{
-    le_mdc_Profile_t** profilePtr = reportPtr;
-    le_mdc_SessionStateHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
-
-    clientHandlerFunc(  (*profilePtr)->profileRef,
-                        (*profilePtr)->connectionStatus,
-                        le_event_GetContextPtr()
-                     );
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Register a handler for session state changes on the given profile.
- *
- * @return
- *      - A handler reference, which is only needed for later removal of the handler.
- *      - NULL if the profile index is invalid
- *
- * @note
- *      Process exits on failure.
- */
-//--------------------------------------------------------------------------------------------------
-le_mdc_SessionStateHandlerRef_t le_mdc_AddSessionStateHandler
-(
-    le_mdc_ProfileRef_t profileRef,             ///< [IN] profile object of interest
-    le_mdc_SessionStateHandlerFunc_t handler,   ///< [IN] Handler function
-    void* contextPtr                            ///< [IN] Context pointer
-)
-{
-    if (handler == NULL)
-    {
-        LE_KILL_CLIENT("Handler function is NULL !");
-        return NULL;
-    }
-
-    // Create an event Id for new MDC session state notification if not already done
-    if (!MdcSessionStateEvent)
-    {
-        MdcSessionStateEvent = le_event_CreateId("MDC state", sizeof(le_mdc_Profile_t*));
-    }
-
-    le_event_HandlerRef_t handlerRef =
-                                    le_event_AddLayeredHandler("le_NewSessionStateHandler",
-                                    MdcSessionStateEvent,
-                                    FirstLayerSessionStateChangeHandler,
-                                    (le_event_HandlerFunc_t)handler);
-
-    le_event_SetContextPtr(handlerRef, contextPtr);
-
-    return (le_mdc_SessionStateHandlerRef_t) handlerRef;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Remove a handler for session state changes
- *
- * @note
- *      The process exits on failure
- */
-//--------------------------------------------------------------------------------------------------
-void le_mdc_RemoveSessionStateHandler
-(
-    le_mdc_SessionStateHandlerRef_t    sessionStateHandlerRef ///< [IN] The handler reference.
-)
-{
-    le_event_RemoveHandler((le_event_HandlerRef_t)sessionStateHandlerRef);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * This function must be called to get the current Radio Access Technology in use.
  *
  * @return LE_FAULT         Function failed to get the Radio Access Technology.
@@ -1537,80 +785,6 @@ void le_mrcTest_SetRatInUse
     {
         RatInUse = rat;
     }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The first-layer Packet Switched Change Handler.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void FirstLayerPSChangeHandler
-(
-    void* reportPtr,
-    void* secondLayerHandlerFunc
-)
-{
-    le_mrc_NetRegState_t*         serviceStatePtr = (le_mrc_NetRegState_t*) reportPtr;
-    le_mrc_PacketSwitchedChangeHandlerFunc_t clientHandlerFunc =
-                    (le_mrc_PacketSwitchedChangeHandlerFunc_t) secondLayerHandlerFunc;
-
-    clientHandlerFunc(*serviceStatePtr, le_event_GetContextPtr());
-
-    // The reportPtr is a reference counted object, so need to release it
-    le_mem_Release(reportPtr);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Add handler function for EVENT 'le_mrc_PacketSwitchedChange'
- *
- * This event provides information on Packet Switched service changes.
- *
- * @note <b>multi-app safe</b>
- */
-//--------------------------------------------------------------------------------------------------
-le_mrc_PacketSwitchedChangeHandlerRef_t le_mrc_AddPacketSwitchedChangeHandler
-(
-    le_mrc_PacketSwitchedChangeHandlerFunc_t packetHandlerPtr,  ///< [IN] The handler function.
-    void* contextPtr                                            ///< [IN] The handler's context.
-)
-{
-    if (!PSChangeId)
-    {
-        PSChangeId = le_event_CreateId("Packet switch state", sizeof(le_mrc_NetRegState_t));
-    }
-
-    le_event_HandlerRef_t        handlerRef;
-
-    if (NULL == packetHandlerPtr)
-    {
-        LE_KILL_CLIENT("Handler function is NULL !");
-        return NULL;
-    }
-
-    handlerRef = le_event_AddLayeredHandler("PacketSwitchedChangeHandler",
-                                            PSChangeId,
-                                            FirstLayerPSChangeHandler,
-                                            (le_event_HandlerFunc_t)packetHandlerPtr);
-
-    le_event_SetContextPtr(handlerRef, contextPtr);
-
-    return (le_mrc_PacketSwitchedChangeHandlerRef_t)(handlerRef);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Remove handler function for EVENT 'le_mrc_PacketSwitchedChange'
- */
-//--------------------------------------------------------------------------------------------------
-void le_mrc_RemovePacketSwitchedChangeHandler
-(
-    le_mrc_PacketSwitchedChangeHandlerRef_t handlerRef ///< [IN]
-)
-{
-    le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1668,8 +842,6 @@ le_mrc_NetRegRejectHandlerRef_t le_mrc_AddNetRegRejectHandler
     if (!NetRegRejectId)
     {
         NetRegRejectId = le_event_CreateIdWithRefCounting("NetRegReject");
-        NetRegRejectIndPool = le_mem_CreatePool("NetRegRejectIndPool",
-                                              sizeof(le_mrc_NetRegRejectInd_t));
     }
 
     le_event_HandlerRef_t handlerRef;
@@ -1728,102 +900,6 @@ le_result_t le_mrc_GetPacketSwitchedState
 
     *statePtr = LE_MRC_REG_HOME;
     return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Stub
- *
- * @return
- *      LE_FAULT        Function failed
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_dcs_SetDnsNameServers
-(
-    const char* dns1Ptr,    ///< [IN] Pointer on first DNS address
-    const char* dns2Ptr     ///< [IN] Pointer on second DNS address
-)
-{
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Stub
- *
- * @return
- *      - LE_OK     Function successful
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_dcs_AskForIpAddress
-(
-    const char* interfaceStrPtr
-)
-{
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Stub
- *
- * return
- *      LE_OK           Function succeed
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_dcs_ChangeRoute
-(
-    pa_dcs_RouteAction_t  routeAction,
-    const char*           ipDestAddrStr,
-    const char*           ipDestMaskStr,
-    const char*           interfaceStr
-)
-{
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Stub
- *
- * return
- *      LE_OK           Function succeed
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_dcs_SetDefaultGateway
-(
-    const char* interfacePtr,   ///< [IN] Pointer on the interface name
-    const char* gatewayPtr,     ///< [IN] Pointer on the gateway name
-    bool        isIpv6          ///< [IN] IPv6 or not
-)
-{
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the default route
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_dcs_GetDefaultGateway
-(
-    pa_dcs_InterfaceDataBackup_t* interfaceDataBackupPtr
-)
-{
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Stub
- *
- */
-//--------------------------------------------------------------------------------------------------
-void pa_dcs_RestoreInitialDnsNameServers
-(
-    pa_dcs_InterfaceDataBackup_t* pInterfaceDataBackup
-)
-{
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1898,24 +974,45 @@ uint32_t le_dcsCellular_GetProfileIndex
     int32_t mdcIndex
 )
 {
-    return MdcProfileIndex;
+    uint32_t index;
+    index = (MdcProfileIndex < 0) ? mdcIndex : MdcProfileIndex;
+    return index;
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Stub utility for use by the le_data component to the given channel's sharing status, which is a
- * status about whether it's used by at least 1 app via the le_data APIs.
+ * Stub function for setting the default profile index
+ *
  */
 //--------------------------------------------------------------------------------------------------
-void le_dcs_MarkChannelSharingStatus
+le_result_t le_dcsCellular_SetProfileIndex
 (
-    const char *channelName,
-    le_dcs_Technology_t tech,
-    bool starting
+    int32_t mdcIndex
 )
 {
-    return;
+    MdcProfileIndex = mdcIndex;
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub function to retrieve the name of the channel at the given profile index
+ */
+//--------------------------------------------------------------------------------------------------
+void le_dcsCellular_GetNameFromIndex
+(
+    uint32_t index,
+    char channelName[LE_DCS_CHANNEL_NAME_MAX_LEN]
+)
+{
+    if (index == 0)
+    {
+        channelName[0] = '\0';
+        return;
+    }
+    snprintf(channelName, LE_DCS_CHANNEL_NAME_MAX_LEN-1, "%d", index);
 }
 
 
@@ -1930,7 +1027,127 @@ le_dcs_ChannelRef_t le_dcs_CreateChannelDb
     const char *channelName
 )
 {
-    return (le_dcs_ChannelRef_t)DCS_DUMMY_CHANNEL_REF;
+    memset(&DcsChannelDb, 0, sizeof(DcsChannelDb));
+    DcsChannelDb.technology = tech;
+    strncpy(DcsChannelDb.channelName, channelName, LE_DCS_CHANNEL_NAME_MAX_LEN);
+    DcsChannelDb.channelRef = (le_dcs_ChannelRef_t)DCS_DUMMY_CHANNEL_REF;
+    return DcsChannelDb.channelRef;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub function for querying le_dcs for the channel reference of a channel given by its name
+ */
+//--------------------------------------------------------------------------------------------------
+le_dcs_ChannelRef_t le_dcs_GetReference
+(
+    const char *name,
+    le_dcs_Technology_t technology
+)
+{
+    return (!DcsChannelDb.channelRef ?
+            le_dcs_CreateChannelDb(technology, name) : DcsChannelDb.channelRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The first-layer channel event handler used by the stub function le_dcs_AddEventHandler
+ */
+//--------------------------------------------------------------------------------------------------
+static void DcsFirstLayerEventHandler (void *reportPtr, void *secondLayerHandlerFunc)
+{
+    le_dcs_channelDbEventReport_t *evtReport = reportPtr;
+    le_dcs_channelDb_t *channelDb;
+    le_dcs_EventHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+
+    channelDb = evtReport->channelDb;
+    if (!channelDb)
+    {
+        return;
+    }
+    clientHandlerFunc(channelDb->channelRef, evtReport->event, 0, le_event_GetContextPtr());
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub function for adding an le_dcs channel event handler
+ */
+//--------------------------------------------------------------------------------------------------
+le_dcs_EventHandlerRef_t le_dcs_AddEventHandler
+(
+    le_dcs_ChannelRef_t channelRef,
+    le_dcs_EventHandlerFunc_t channelHandlerPtr,
+    void *contextPtr
+)
+{
+    le_event_HandlerRef_t handlerRef;
+
+    if (DcsChannelEvtHdlr.channelEventId != 0)
+    {
+        return DcsChannelEvtHdlr.hdlrRef;
+    }
+    if (!channelHandlerPtr)
+    {
+        LE_ERROR("Event handler can't be null");
+        return NULL;
+    }
+    memset(&DcsChannelEvtHdlr, 0, sizeof(le_dcs_channelDbEventHdlr_t));
+    DcsChannelEvtHdlr.channelEventId = le_event_CreateId(DcsChannelDb.channelName,
+                                                         sizeof(le_dcs_channelDbEventReport_t));
+    DcsChannelEvtHdlr.channelEventHdlr = channelHandlerPtr;
+    handlerRef = le_event_AddLayeredHandler("le_dcs_EventHandler",
+                                            DcsChannelEvtHdlr.channelEventId,
+                                            DcsFirstLayerEventHandler,
+                                            (le_event_HandlerFunc_t)channelHandlerPtr);
+    DcsChannelEvtHdlr.hdlrRef = (le_dcs_EventHandlerRef_t)handlerRef;
+    le_event_SetContextPtr(handlerRef, contextPtr);
+    return DcsChannelEvtHdlr.hdlrRef;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub function for removing the channel event handler given via a reference object in the argument
+ */
+//--------------------------------------------------------------------------------------------------
+void le_dcs_RemoveEventHandler
+(
+    le_dcs_EventHandlerRef_t channelHandlerRef
+)
+{
+    if (channelHandlerRef != DcsChannelEvtHdlr.hdlrRef)
+    {
+        return;
+    }
+    le_event_RemoveHandler((le_event_HandlerRef_t)DcsChannelEvtHdlr.hdlrRef);
+    memset(&DcsChannelEvtHdlr, 0, sizeof(le_dcs_channelDbEventHdlr_t));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Simulate a DCS connection event
+ */
+//--------------------------------------------------------------------------------------------------
+void le_dcsTest_SimulateConnEvent
+(
+    le_dcs_Event_t evt
+)
+{
+    le_dcs_channelDbEventReport_t evtReport;
+
+    if (DcsChannelEvtHdlr.channelEventId == 0)
+    {
+        return;
+    }
+
+    LE_INFO("Simulating event %d", evt);
+    evtReport.channelDb = &DcsChannelDb;
+    evtReport.event = evt;
+    le_event_Report(DcsChannelEvtHdlr.channelEventId, &evtReport, sizeof(evtReport));
 }
 
 
@@ -1946,6 +1163,7 @@ le_result_t le_dcsTech_Start
     le_dcs_Technology_t tech
 )
 {
+    le_dcsTest_SimulateConnEvent(LE_DCS_EVENT_UP);
     return LE_OK;
 }
 
@@ -1962,53 +1180,228 @@ le_result_t le_dcsTech_Stop
     le_dcs_Technology_t tech
 )
 {
+    le_dcsTest_SimulateConnEvent(LE_DCS_EVENT_DOWN);
     return LE_OK;
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Stub function to retrieve the name of the channel at the given profile index
+ * Stub function for requesting to start a data channel
  */
 //--------------------------------------------------------------------------------------------------
-void le_dcsCellular_GetNameFromIndex
+le_dcs_ReqObjRef_t le_dcs_Start
 (
-    uint32_t index,
-    char channelName[LE_DCS_CHANNEL_NAME_MAX_LEN]
+    le_dcs_ChannelRef_t channelRef
 )
 {
-    channelName[0] = '\0';
+    le_dcsTest_SimulateConnEvent(LE_DCS_EVENT_UP);
+    return (le_dcs_ReqObjRef_t)DCS_DUMMY_CHANNEL_REQ_REF;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub function for requesting to stop a previously started data channel
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_dcs_Stop
+(
+    le_dcs_ReqObjRef_t reqRef
+)
+{
+    le_dcsTest_SimulateConnEvent(LE_DCS_EVENT_DOWN);
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Utility for converting a technology type enum into its name
+ *
+ * @return
+ *     - The string name of the given technology in the function's return value
+ */
+//--------------------------------------------------------------------------------------------------
+const char *le_dcs_ConvertTechEnumToName
+(
+    le_dcs_Technology_t tech
+)
+{
+    char *DcsTechnologyNames[LE_DCS_TECH_MAX] = {"", "wifi", "cellular"};
+    if (tech < LE_DCS_TECH_MAX)
+    {
+        return DcsTechnologyNames[tech];
+    }
+    return "";
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub function for getting the network interface's name of a given channel
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_dcsTech_GetNetInterface
+(
+    le_dcs_Technology_t tech,
+    le_dcs_ChannelRef_t channelRef,
+    char *intfName,
+    int nameSize
+)
+{
+    char *intf;
+
+    switch (tech)
+    {
+        case LE_DCS_TECH_CELLULAR:
+            intf = "rmnet0";
+            break;
+        case LE_DCS_TECH_WIFI:
+            intf = "wlan0";
+            break;
+        default:
+            LE_ERROR("Channel's technology type %s not supported",
+                     le_dcs_ConvertTechEnumToName(tech));
+            return LE_UNSUPPORTED;
+    }
+
+    if (nameSize <= strlen(intf))
+    {
+        return LE_OVERFLOW;
+    }
+
+    strncpy(intfName, intf, strlen(intf));
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub function for querying the DNS addresses of the given connection
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_dcsTech_GetDNSAddresses
+(
+    le_dcs_Technology_t tech,
+    void *techRef,
+    char *v4DnsAddrsPtr,
+    size_t v4DnsAddrSize,
+    char *v6DnsAddrsPtr,
+    size_t v6DnsAddrSize
+)
+{
+    char *dns1Addr, *dns2Addr;
+    le_result_t result = LE_FAULT;
+
+    dns1Addr = v4DnsAddrsPtr;
+    dns2Addr = v4DnsAddrsPtr + v4DnsAddrSize;
+    if (strlen(DCS_DUMMY_DNS_SERVER_ADDR_IPV4) >= v4DnsAddrSize)
+    {
+        dns1Addr[0] = '\0';
+    }
+    else
+    {
+        strncpy(dns1Addr, DCS_DUMMY_DNS_SERVER_ADDR_IPV4, strlen(DCS_DUMMY_DNS_SERVER_ADDR_IPV4));
+        result = LE_OK;
+    }
+    dns2Addr[0] = '\0';
+
+    dns1Addr = v6DnsAddrsPtr;
+    dns2Addr = v6DnsAddrsPtr + v6DnsAddrSize;
+    if (strlen(DCS_DUMMY_DNS_SERVER_ADDR_IPV6) >= v6DnsAddrSize)
+    {
+        dns1Addr[0] = '\0';
+    }
+    else
+    {
+        strncpy(dns1Addr, DCS_DUMMY_DNS_SERVER_ADDR_IPV6, strlen(DCS_DUMMY_DNS_SERVER_ADDR_IPV6));
+        result = LE_OK;
+    }
+    dns2Addr[0] = '\0';
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub function for backing up default GW config in the system
+ */
+//--------------------------------------------------------------------------------------------------
+void le_net_BackupDefaultGW
+(
+    void
+)
+{
     return;
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Stub utility for use by the le_data component to check if a given channel is in use via the
- * le_dcs APIs or not.
+ * Stub function for restoring the default GW config in the system
  */
 //--------------------------------------------------------------------------------------------------
-bool le_dcs_ChannelIsInUse
+le_result_t le_net_RestoreDefaultGW
 (
-    const char *channelName,
-    le_dcs_Technology_t tech
+    void
 )
 {
-    return false;
+    return LE_OK;
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Stub utility for use by the le_data component to check if a given channel is allowed to be
- * started
+ * Stub function for setting the default GW config in the system
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dcsTech_AllowChannelStart
+le_result_t le_net_SetDefaultGW
 (
-    le_dcs_Technology_t tech,
-    const char *channelName
+    le_dcs_ChannelRef_t channelRef
 )
 {
-    return true;
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub function for setting the system's DNS server addresses
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_net_SetDNS
+(
+    le_dcs_ChannelRef_t channelRef
+)
+{
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub function for restoring the system's DNS server addresses to the original
+ */
+//--------------------------------------------------------------------------------------------------
+void le_net_RestoreDNS
+(
+    void
+)
+{
+    return;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub function for changing route
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_net_ChangeRoute
+(
+    le_dcs_ChannelRef_t channelRef,
+    const char *destAddr,
+    const char *destMask,
+    bool isAdd
+)
+{
+    return LE_OK;
 }

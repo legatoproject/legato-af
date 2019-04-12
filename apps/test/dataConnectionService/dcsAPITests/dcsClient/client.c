@@ -455,10 +455,12 @@ COMPONENT_INIT
 #define LOOP_SLEEP10 10
 #define LOOP_SLEEP20 20
 #define LOOP_SLEEP30 30
+#define LOOP_SLEEP50 50
+#define LOOP_SLEEP16 16
+#define LOOP_SLEEP24 24
+#define LOOP_SLEEP36 36
 #define WAIT_FOR_CHANNELS_LOOP 10
 #define TEST_LOOP 3
-
-    uint16_t i, j;
 
     TestThreadRef = le_thread_Create("DCS client test thread", TestThread, NULL);
     le_thread_SetPriority(TestThreadRef, LE_THREAD_PRIORITY_MEDIUM);
@@ -466,7 +468,13 @@ COMPONENT_INIT
 
     sleep(INIT_SLEEP);
 
+    le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_wifiSecurityCleanup, NULL, NULL);
+
+    le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_wifiSecurityConfig, NULL, NULL);
+
 #if 1
+
+    uint16_t i, j;
 
     for (j=0; j<TEST_LOOP && !MyChannel; j++)
     {
@@ -481,10 +489,6 @@ COMPONENT_INIT
         }
     }
 
-    le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_wifiSecurityCleanup, NULL, NULL);
-
-    le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_wifiSecurityConfig, NULL, NULL);
-
     le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_AddEventHandler, NULL, NULL);
 
     for (i=0; i<TEST_LOOP; i++)
@@ -498,8 +502,6 @@ COMPONENT_INIT
     }
 
     le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_RmEventHandler, NULL, NULL);
-
-    le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_wifiSecurityCleanup, NULL, NULL);
 
 #else
 

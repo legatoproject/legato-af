@@ -29,5 +29,12 @@ LE_SHARED le_result_t le_net_GetNetIntfState
     bool *state
 );
 
+LE_SHARED le_result_t le_net_SetDefaultGW(le_dcs_ChannelRef_t channelRef);
+LE_SHARED void le_net_BackupDefaultGW(void);
+LE_SHARED le_result_t le_net_RestoreDefaultGW(void);
+LE_SHARED le_result_t le_net_SetDNS(le_dcs_ChannelRef_t channelRef);
+LE_SHARED void le_net_RestoreDNS(void);
+LE_SHARED le_result_t le_net_ChangeRoute(le_dcs_ChannelRef_t channelRef, const char *destAddr,
+                                         const char *destMask, bool isAdd);
 
 #endif

@@ -269,10 +269,12 @@ DEFINE DISC_USER_AUTHENTIFICATION_FAILURE = 7;
 
 
 /**
- * Define the max # of entries in a profile list.
-
+ * Define the max # of entries in a cellular profile list. So far most of the supported modules
+ * & platforms have a limit of 24 profiles, while on 9x50 Qualcomm on the EM75xx baseline it has
+ * been increased to 34. It's unforeseeable that in the short future this limit will further be
+ * raised beyond this level.
  */
-DEFINE PROFILE_LIST_ENTRY_MAX = 255;
+DEFINE PROFILE_LIST_ENTRY_MAX = 36;
 DEFINE PROFILE_LIST_ENTRY_NAMELEN_MAX = 50;
 
 //--------------------------------------------------------------------------------------------------

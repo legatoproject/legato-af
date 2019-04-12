@@ -21,6 +21,9 @@ static le_dcs_EventHandlerRef_t EventHandlerRef = NULL;
 static le_dcs_ChannelRef_t MyChannel = 0;
 static char channelName[LE_DCS_CHANNEL_NAME_MAX_LEN] = "MY-MOBILE";
 static le_dcs_Technology_t MyTech = LE_DCS_TECH_WIFI;
+static le_wifiClient_SecurityProtocol_t secProtocol = LE_WIFICLIENT_SECURITY_WPA_PSK_PERSONAL;
+static const uint8_t secret[] = "0123456789";
+static const uint8_t ssid[] = "MY-MOBILE";
 static le_dcs_ReqObjRef_t ReqObj;
 static le_data_RequestObjRef_t MyReqRef;
 static le_data_ConnectionStateHandlerRef_t ConnStateHandlerRef = NULL;
@@ -339,6 +342,56 @@ void Dcs_test_data_api_AddConnStateHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *  This function tests le_wifiClient's API le_wifiClient_RemoveSsidSecurityConfigs() for removing
+ *  previously configured user credentials for a given SSID and resetting the security protocol to
+ *  none.
+ */
+//--------------------------------------------------------------------------------------------------
+static void Dcs_test_api_wifiSecurityCleanup
+(
+    void *param1,
+    void *param2
+)
+{
+    le_result_t ret = le_wifiClient_RemoveSsidSecurityConfigs(ssid, sizeof(ssid));
+    if ((ret != LE_OK) && (ret != LE_NOT_FOUND))
+    {
+        LE_ERROR("DCS-client: Failed to clean Wifi security configs; retcode %d", ret);
+    }
+    else
+    {
+        LE_INFO("Succeeded cleaning Wifi security configs");
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  This function tests le_wifiClient's API le_wifiClient_ConfigPsk() for configuring WPA PSK
+ *  user credentials for a given SSID.
+ */
+//--------------------------------------------------------------------------------------------------
+static void Dcs_test_api_wifiSecurityConfig
+(
+    void *param1,
+    void *param2
+)
+{
+    le_result_t ret = le_wifiClient_ConfigurePsk(ssid, sizeof(ssid), secProtocol, secret,
+                                                 sizeof(secret), secret, sizeof(secret));
+    if (ret != LE_OK)
+    {
+        LE_ERROR("DCS-client: Failed to configure Wifi PSK; retcode %d", ret);
+    }
+    else
+    {
+        LE_INFO("Succeeded installing Wifi PSK configs");
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  *  This is the thread that runs an event loop to take test functions to run
  */
 //--------------------------------------------------------------------------------------------------
@@ -363,18 +416,19 @@ static void *TestThread
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-#define CHOSEN_PROFILE 16
-#define INIT_SLEEP 12
+#define CHOSEN_PROFILE 5
+#define INIT_SLEEP 8
 #define END_SLEEP 10
 #define WAIT_FOR_CHANNELS_LOOP_SLEEP 2
-#define LOOP_SLEEP24 24
-#define LOOP_SLEEP16 16
+#define LOOP_SLEEP10 10
 #define LOOP_SLEEP20 20
 #define LOOP_SLEEP30 30
+#define LOOP_SLEEP50 50
+#define LOOP_SLEEP16 16
+#define LOOP_SLEEP24 24
+#define LOOP_SLEEP36 36
 #define WAIT_FOR_CHANNELS_LOOP 10
 #define TEST_LOOP 3
-
-    uint16_t i, j;
 
     TestThreadRef = le_thread_Create("client test thread", TestThread, NULL);
     le_thread_SetPriority(TestThreadRef, LE_THREAD_PRIORITY_MEDIUM);
@@ -382,7 +436,13 @@ COMPONENT_INIT
 
     sleep(INIT_SLEEP);
 
+    le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_wifiSecurityCleanup, NULL, NULL);
+
+    le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_wifiSecurityConfig, NULL, NULL);
+
 #if 1
+    uint16_t i, j;
+
     for (j=0; j<TEST_LOOP && !MyChannel; j++)
     {
         le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_GetChannels, NULL, NULL);
@@ -418,7 +478,7 @@ COMPONENT_INIT
 
     le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_Stop, NULL, NULL);
 
-    int32_t profileIndex = CHOSEN_PROFILE;
+    int32_t i, profileIndex = CHOSEN_PROFILE;
 
     if (LE_OK != le_data_SetTechnologyRank(1, LE_DATA_WIFI) ||
         LE_OK != le_data_SetCellularProfileIndex(profileIndex))

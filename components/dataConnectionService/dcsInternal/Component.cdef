@@ -1,0 +1,22 @@
+requires:
+{
+    api:
+    {
+        le_dcs = $LEGATO_ROOT/interfaces/le_dcs.api
+    }
+    component:
+    {
+        ${LEGATO_ROOT}/components/watchdogChain
+    }
+}
+
+sources:
+{
+    dcsInternal.c
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/dataConnectionService/dcsInternal
+    -I$LEGATO_ROOT/components/watchdogChain
+}

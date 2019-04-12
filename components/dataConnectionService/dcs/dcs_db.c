@@ -62,22 +62,6 @@ DcsChannelQueryHandlerDb_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Startup channel scan timer: This timer is used to trigger an initial channel list query shortly
- * after DCS boots up. Right at the boot up, this query can't be done since other components like
- * cellular and wifi take time to come up. This timer adds a delay to prevent premature scans.
- *
- * This startup scan is necessary for supporting the legacy le_data interface which is used by
- * applications that won't call le_dcs_GetChannels() first before calling le_data_Request(). Thus,
- * the default channel they set to use would become unknown by le_dcs upon executing
- * le_data_Request().
- */
-//--------------------------------------------------------------------------------------------------
-static le_timer_Ref_t StartupChannelScanTimer = NULL;
-#define STARTUP_CHANNEL_SCAN_WAIT 5
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Channel query time limit enforcer timer:
  */
 //--------------------------------------------------------------------------------------------------
@@ -85,22 +69,6 @@ static bool ChannelQueryInAction = false;
 static bool EnforceChannelQueryTimeLimit = false;
 static le_timer_Ref_t ChannelQueryTimeEnforcerTimer = NULL;
 #define GETCHANNELS_TIME_ENFORCER_LIMIT (LE_DCS_TECH_MAX * 20)
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Startup channel scan timer handler
- * When the timer expires, initiate a GetChannels query.
- */
-//--------------------------------------------------------------------------------------------------
-static void StartupChannelScanTimerHandler
-(
-    le_timer_Ref_t timerRef     ///< [IN] Timer used to ensure the end of the session
-)
-{
-    LE_DEBUG("StartupChannelScanTimer expired to trigger initial channel list scan");
-    le_dcs_InitChannelList();
-}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -684,6 +652,10 @@ le_dcs_channelDb_t *le_dcs_GetChannelDbFromRef
     le_dcs_ChannelRef_t channelRef
 )
 {
+    if (!channelRef)
+    {
+        return NULL;
+    }
     return (le_dcs_channelDb_t *)le_ref_Lookup(ChannelRefMap, channelRef);
 }
 
@@ -1046,21 +1018,6 @@ void dcsCreateDbPool
                                               sizeof(le_dcs_startRequestRefDb_t));
     le_mem_ExpandPool(StartRequestRefDbPool, LE_DCF_START_REQ_REF_MAP_SIZE);
     le_mem_SetDestructor(StartRequestRefDbPool, DcsStartRequestRefDbDestructor);
-
-    // Init the startup channel list scan timer
-    StartupChannelScanTimer = le_timer_Create("StartchannelScanTimer");
-    le_clk_Time_t startupChannelScanWait = {STARTUP_CHANNEL_SCAN_WAIT, 0};
-    if ((LE_OK != le_timer_SetHandler(StartupChannelScanTimer, StartupChannelScanTimerHandler))
-        || (LE_OK != le_timer_SetRepeat(StartupChannelScanTimer, 1))    // Set as a one shot timer
-        || (LE_OK != le_timer_SetInterval(StartupChannelScanTimer, startupChannelScanWait))
-        )
-    {
-        LE_ERROR("Failed to configure the startup channel scan timer");
-    }
-    else if (LE_OK != le_timer_Start(StartupChannelScanTimer))
-    {
-        LE_ERROR("Failed to start the startup channel scan timer");
-    }
 
     // Init the channel query query time enforcer timer
     ChannelQueryTimeEnforcerTimer = le_timer_Create("ChannelQueryTimeEnforcerTimer");

@@ -10,13 +10,30 @@
 #ifndef LEGATO_DCS_H_INCLUDE_GUARD
 #define LEGATO_DCS_H_INCLUDE_GUARD
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The config tree path and node definitions.
+ */
+//--------------------------------------------------------------------------------------------------
 #define DCS_CONFIG_TREE_ROOT_DIR    "dataConnectionService:"
+
+#define CFG_PATH_ROUTING            "routing"
+#define CFG_NODE_DEFAULTROUTE       "useDefaultRoute"
+#define CFG_PATH_WIFI               "wifi"
+#define CFG_NODE_SSID               "SSID"
+#define CFG_PATH_CELLULAR           "cellular"
+#define CFG_NODE_PROFILEINDEX       "profileIndex"
+#define CFG_PATH_TIME               "time"
+#define CFG_NODE_PROTOCOL           "protocol"
+#define CFG_NODE_SERVER             "server"
+
 
 #define LE_DCS_TECHNOLOGY_MAX_COUNT 3  // max # of technologies supported
 #define LE_DCS_TECH_MAX_NAME_LEN 16    // max length of the name of a technology
 #define LE_DCS_CHANNELDBS_MAX LE_DCS_CHANNEL_LIST_ENTRY_MAX // max # of channels supported
 #define LE_DCS_CHANNELDB_EVTHDLRS_MAX 20 // max # of channel monitoring event handlers
-#define LE_DCS_APPNAME_MAX_LEN 16      // max length of an app's name
+#define LE_DCS_APPNAME_MAX_LEN 32      // max length of an app's name
 #define LE_DCS_CHANNEL_QUERY_HDLRS_MAX 20 // max # of channel query requester handlers
 #define LE_DCF_START_REQ_REF_MAP_SIZE  20 // reference map size for Start Requests
 
@@ -42,6 +59,7 @@ typedef struct
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
+    le_msg_SessionRef_t internalSessionRef;
     uint16_t reqCount;                            // the request count for the use of le_dcs APIs
     TechListDb_t techListDb[LE_DCS_TECHNOLOGY_MAX_COUNT];   // list of all technologies in action
 } DcsInfo_t;
@@ -77,8 +95,6 @@ typedef struct
     uint16_t refCount;                             ///< refcount: # of apps using this channel
     le_dls_List_t evtHdlrs;                        ///< evtHdlrs list storing event ID, handler, etc
     le_dls_List_t startRequestRefList;             ///< list of Start Request references
-    bool managed_by_le_data;                       ///< this channel is to be managed by le_data
-    bool shared_with_le_data;                      ///< this channel is shared with le_data
 } le_dcs_channelDb_t;
 
 
@@ -129,21 +145,22 @@ typedef struct
 //--------------------------------------------------------------------------------------------------
 
 // from dcs.c
-void le_dcs_InitChannelList(void);
 uint16_t le_dcs_GetChannelCount(le_dcs_Technology_t tech);
 uint16_t le_dcs_IncrementChannelCount(le_dcs_Technology_t tech);
 le_result_t le_dcs_DecrementChannelCount(le_dcs_Technology_t tech, uint16_t *newCount);
+LE_SHARED le_dcs_EventHandlerRef_t le_dcs_AddEventHandler(
+    le_dcs_ChannelRef_t channelRef, le_dcs_EventHandlerFunc_t channelHandlerPtr, void *contextPtr);
+LE_SHARED void le_dcs_RemoveEventHandler(le_dcs_EventHandlerRef_t channelHandlerRef);
+LE_SHARED le_dcs_ChannelRef_t le_dcs_GetReference(const char *name, le_dcs_Technology_t technology);
+LE_SHARED le_dcs_ReqObjRef_t le_dcs_Start(le_dcs_ChannelRef_t channelRef);
+LE_SHARED le_result_t le_dcs_Stop(le_dcs_ReqObjRef_t reqRef);
 
 // from dcs_utils.c
 LE_SHARED const char *le_dcs_ConvertTechEnumToName(le_dcs_Technology_t tech);
-LE_SHARED bool le_dcs_ChannelManagedbyLeData(le_dcs_ChannelRef_t channelRef);
-le_result_t dcsGetTechnology(le_dcs_ChannelRef_t channelRef, le_dcs_Technology_t *technology);
 le_result_t dcsGetAdminState(le_dcs_ChannelRef_t channelRef, le_dcs_State_t *state);
 
 // from dcs_db.c
 void dcsCreateDbPool(void);
-LE_SHARED le_dcs_ChannelRef_t le_dcs_CreateChannelDb(le_dcs_Technology_t tech,
-                                                     const char *channelName);
 LE_SHARED bool le_dcs_DeleteChannelDb(le_dcs_Technology_t tech, void *techRef);
 LE_SHARED void le_dcs_ChannelEventNotifier(le_dcs_ChannelRef_t channelRef, le_dcs_Event_t evt);
 LE_SHARED le_dcs_ChannelRef_t le_dcs_GetChannelRefFromTechRef(le_dcs_Technology_t tech,
@@ -151,12 +168,10 @@ LE_SHARED le_dcs_ChannelRef_t le_dcs_GetChannelRefFromTechRef(le_dcs_Technology_
 LE_SHARED le_result_t le_dcs_GetChannelRefCountFromTechRef(le_dcs_Technology_t tech, void *techRef,
                                                            uint16_t *refCount);
 LE_SHARED void le_dcs_EventNotifierTechStateTransition(le_dcs_Technology_t tech, bool tech_state);
-LE_SHARED void le_dcs_MarkChannelSharingStatus(const char *channelName, le_dcs_Technology_t tech,
-                                               bool starting);
-LE_SHARED bool le_dcs_ChannelIsInUse(const char *channelName, le_dcs_Technology_t tech);
 LE_SHARED le_dcs_channelDb_t *le_dcs_GetChannelDbFromRef(le_dcs_ChannelRef_t channelRef);
 LE_SHARED le_dcs_channelDb_t *le_dcs_GetChannelDbFromName(const char *channelName,
                                                           le_dcs_Technology_t tech);
+le_dcs_ChannelRef_t le_dcs_CreateChannelDb(le_dcs_Technology_t tech, const char *channelName);
 le_dcs_channelDb_t *DcsDelChannelEvtHdlr(le_dcs_EventHandlerRef_t hdlrRef);
 le_dcs_channelDbEventHdlr_t *dcsChannelDbEvtHdlrInit(void);
 void dcsChannelEvtHdlrSendNotice(le_dcs_channelDb_t *channelDb, le_msg_SessionRef_t appSessionRef,
@@ -190,8 +205,7 @@ LE_SHARED void le_dcsTech_CollectChannelQueryResults(le_dcs_Technology_t technol
                                                      le_result_t result,
                                                      le_dcs_ChannelInfo_t *channelList,
                                                      size_t listSize);
-LE_SHARED le_result_t le_dcsTech_AllowChannelStart(le_dcs_Technology_t tech,
-                                                   const char *channelName);
+le_result_t le_dcsTech_AllowChannelStart(le_dcs_Technology_t tech, const char *channelName);
 le_result_t le_dcsTech_GetChannelList(le_dcs_Technology_t tech);
 void *le_dcsTech_CreateTechRef(le_dcs_Technology_t tech, const char *channelName);
 void le_dcsTech_ReleaseTechRef(le_dcs_Technology_t tech, void *techRef);

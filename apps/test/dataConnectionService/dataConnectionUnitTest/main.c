@@ -33,6 +33,7 @@
 
 #include "legato.h"
 #include "interfaces.h"
+#include "pa_mdc.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -304,13 +305,16 @@ static void DcsStateHandler
     void* contextPtr
 )
 {
-    AppContext_t* appCtxPtr = (AppContext_t*) contextPtr;
-    le_data_Technology_t currentTech = le_data_GetTechnology();
-    char currentTechStr[TECH_STR_MAX_SIZE];
-    TechnologyStr(currentTech, currentTechStr, sizeof(currentTechStr));
+    AppContext_t* appCtxPtr = (AppContext_t*)contextPtr;
 
     LE_INFO("Received connection status %d for interface '%s'", isConnected, intfName);
-    LE_DEBUG("Currently used technology: %d=%s", currentTech, currentTechStr);
+    if (isConnected)
+    {
+        le_data_Technology_t currentTech = le_data_GetTechnology();
+        char currentTechStr[TECH_STR_MAX_SIZE];
+        TechnologyStr(currentTech, currentTechStr, sizeof(currentTechStr));
+        LE_INFO("Currently used technology: %d=%s", currentTech, currentTechStr);
+    }
 
     // Check if connection status is coherent
     LE_ASSERT(ExpectedConnectionStatus == isConnected);
@@ -478,6 +482,7 @@ static void Testle_data_Service
 
     // Each applications requests a data connection: the API has therefore to be called
     // by the application threads
+    result = le_data_SetCellularProfileIndex(PA_MDC_MIN_INDEX_3GPP2_PROFILE);
     for (i = 0; i < CLIENTS_NB; i++)
     {
         le_event_QueueFunctionToThread(AppCtx[i].appThreadRef, DcsRequest, &AppCtx[i], NULL);
@@ -501,8 +506,6 @@ static void Testle_data_Service
     // Configure Wifi to be able to use it
     le_cfg_IteratorRef_t wifiTestIteratorRef = (le_cfg_IteratorRef_t)0x01234567;
     le_cfgTest_SetStringNodeValue(wifiTestIteratorRef, CFG_NODE_SSID, "TestSSID");
-    le_cfgTest_SetIntNodeValue(wifiTestIteratorRef, CFG_NODE_SECPROTOCOL, 3);
-    le_cfgTest_SetStringNodeValue(wifiTestIteratorRef, CFG_NODE_PASSPHRASE, "pa$$w0rd");
 
     LE_INFO("Simulate cellular disconnection");
 
@@ -510,10 +513,12 @@ static void Testle_data_Service
     memset(ExpectedIntf, '\0', sizeof(ExpectedIntf));
     ExpectedConnectionStatus = false;
     // Simulate a cellular disconnection
-    le_mdcTest_SimulateState(LE_MDC_DISCONNECTED);
+    le_dcsTest_SimulateConnEvent(LE_DCS_EVENT_DOWN);
 
     // Wait for the handlers call
-    SynchronizeTest();
+    SynchronizeTest();    // To catch the connection event simulated above
+    SynchronizeTest();    // To catch the internally generated down event upon the le_dcs_Stop call
+                          // for the current tech before the next tech is tried
 
     LE_INFO("Wait for Wifi connection");
 
@@ -558,7 +563,7 @@ static void Testle_data_Service
         LE_ASSERT(LE_TIMEOUT == le_sem_WaitWithTimeOut(AppCtx[i].appSemaphore, timeToWait));
     }
 
-    LE_ASSERT(LE_UNSUPPORTED == le_data_AddRoute("216.58.206.45.228"));
+    LE_ASSERT(LE_BAD_PARAMETER == le_data_AddRoute("216.58.206.45.228"));
 }
 
 //--------------------------------------------------------------------------------------------------

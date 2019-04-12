@@ -415,12 +415,13 @@ DEFINE IPADDR_MAX_LEN = 46;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Max # of entries on a data channel list
- * The current define value is one > the # of cellular profiles supported. When more technologies
- * are supported by DCS, e.g. WiFi, this value will be increased accordingly
+ * Max # of channel list entries for a query: CHANNEL_LIST_QUERY_MAX is for per-technology, while
+ * CHANNEL_LIST_ENTRY_MAX is for all channels of all supported technologies. Currently, the former
+ * one's value is set to the max value supported by cellular. The latter is set to 2 times of that.
+ * When more technologies are supported, this latter one's value needs to be raised accordingly.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE CHANNEL_LIST_QUERY_MAX = 32;
+DEFINE CHANNEL_LIST_QUERY_MAX = 36;
 DEFINE CHANNEL_LIST_ENTRY_MAX = (CHANNEL_LIST_QUERY_MAX * 2);
 
 

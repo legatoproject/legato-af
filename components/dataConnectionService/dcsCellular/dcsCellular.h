@@ -55,6 +55,7 @@ LE_SHARED le_result_t le_dcsCellular_GetDNSAddrs(void *techRef, char *v4DnsAddrs
                                                  size_t v4DnsAddrSize, char *v6DnsAddr,
                                                  size_t v6DnsAddrSize);
 LE_SHARED uint32_t le_dcsCellular_GetProfileIndex(int32_t mdcIndex);
+LE_SHARED le_result_t le_dcsCellular_SetProfileIndex(int32_t mdcIndex);
 LE_SHARED le_result_t le_dcsCellular_AllowChannelStart(void *techRef);
 
 #endif

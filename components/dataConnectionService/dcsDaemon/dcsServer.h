@@ -29,10 +29,8 @@ typedef struct
 
 
 // extern from dcsServer.c
-LE_SHARED le_event_Id_t CommandEvent;
-LE_SHARED le_ref_MapRef_t RequestRefMap;
-LE_SHARED bool IsApnEmpty(le_mdc_ProfileRef_t profileRef);
-LE_SHARED bool le_data_IsConnected(uint32_t *requestCount);
-LE_SHARED int32_t le_data_ConnectedDataProfileIndex(uint32_t *requestCount);
+LE_SHARED le_event_Id_t dcs_GetCommandEventId(void);
+LE_SHARED le_ref_MapRef_t dcs_GetRequestRefMap(void);
+bool dcs_ChannelIsConnected(void);
 
 #endif

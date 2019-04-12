@@ -121,7 +121,8 @@ static wifi_connDb_t *DcsWifiGetDbFromRef
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Search for the wifi connection db of the selected SSID to be connected
+ * Retrieve the currently selected SSID to be connected and return its wifi connection db. This
+ * currently selected SSID is set in le_dcsWifi_Start() and recorded in DcsWifi.selectedConnDb.
  *
  * @return
  *     - The found wifi connection db; otherwise NULL
@@ -145,33 +146,35 @@ static wifi_connDb_t *DcsWifiGetSelectedDb
 
     if (DcsWifi.selectedConnDb)
     {
+        // Normal & legitimate case
         return DcsWifi.selectedConnDb;
     }
 
-    // For the case in which the wifi connection was brought up via le_data so that le_dcs hasn't
-    // recorded it into DcsWifi.selectedConnDb, query le_wifiClient for the currently selected
-    // connection
+    // Query le_wifiClient for any currently selected Wifi connection requested not thru DCS
     le_wifiClient_GetCurrentConnection(&apRef);
-    if (NULL == apRef)
+    if (!apRef)
     {
+        // Normal & legitimate case
         return NULL;
     }
+
+    // Illegitimate case: some other app has brought up a Wifi connection without going thru DCS
+    // The following code is for generating warning; the return value is NULL regardless
     ret = le_wifiClient_GetSsid(apRef, &ssid[0], &ssidSize);
     if (LE_OK != ret)
     {
-        LE_ERROR("Failed to find SSID of AP reference %p", apRef);
+        LE_WARN("Failed to find SSID of AP reference %p", apRef);
         return NULL;
     }
     ssid[ssidSize] = '\0';
-    LE_DEBUG("Found currently selected Wifi connection to get established: %s, reference %p",
-             ssid, apRef);
+    LE_WARN("Found currently selected Wifi connection to get established: %s, reference %p",
+            ssid, apRef);
     channelDb = le_dcs_GetChannelDbFromName((const char *)ssid, LE_DCS_TECH_WIFI);
     if (!channelDb)
     {
-        LE_ERROR("Failed to find channel db for SSID %s", ssid);
-        return NULL;
+        LE_WARN("Failed to find channel db for SSID %s", ssid);
     }
-    return DcsWifiGetDbFromRef((le_dcs_WifiConnectionRef_t)channelDb->techRef);
+    return NULL;
 }
 
 
@@ -425,21 +428,21 @@ static wifi_connDb_t *DcsWifiGetDbFromSsid
  *
  * @return
  *     - the name of the net interface as a character string in the presence of a connected Wifi
- *       connection; otherwise a null string
+ *       connection; otherwise a NULL pointer
  */
 //--------------------------------------------------------------------------------------------------
-static char *DcsWifiGetNetInterface
+static const char *DcsWifiGetNetInterface
 (
-    wifi_connDb_t *wifiConnDb
+    const wifi_connDb_t *wifiConnDb
 )
 {
-    wifi_connDb_t *selectedConnDb = DcsWifiGetSelectedDb();
+    const wifi_connDb_t *selectedConnDb = DcsWifiGetSelectedDb();
     if (!selectedConnDb)
     {
-        return "";
+        return NULL;
     }
 
-    return ((wifiConnDb == selectedConnDb) ? WifiNetInterface : "");
+    return ((wifiConnDb == selectedConnDb) ? WifiNetInterface : NULL);
 }
 
 
@@ -461,7 +464,7 @@ le_result_t le_dcsWifi_GetNetInterface
     int nameSize
 )
 {
-    char *netInterface;
+    const char *netInterface;
     wifi_connDb_t *wifiConnDb, *selectedConnDb;
     le_dcs_WifiConnectionRef_t wifiConnRef = (le_dcs_WifiConnectionRef_t)techRef;
 
@@ -496,39 +499,6 @@ le_result_t le_dcsWifi_GetNetInterface
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Function for retrieving the network interface state of the given wifi connection
- *
- * @return
- *     - true if up; false otherwise
- */
-//--------------------------------------------------------------------------------------------------
-static bool DcsWifiGetNetInterfaceStateUp
-(
-    wifi_connDb_t *wifiConnDb
-)
-{
-    bool state;
-    char *netInterface;
-
-    if (!wifiConnDb)
-    {
-        LE_ERROR("Invalid wifi connection db for retrieving interface state");
-        return false;
-    }
-
-    netInterface = DcsWifiGetNetInterface(wifiConnDb);
-    if (!netInterface || (LE_OK != le_net_GetNetIntfState(netInterface, &state)))
-    {
-        LE_ERROR("Failed to get network interface state of SSID %s", wifiConnDb->ssid);
-        return false;
-    }
-
-    return state;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Function for checking if the given wifi connection db's operational state is up or not
  *
  * @return
@@ -547,27 +517,24 @@ bool le_dcsWifi_GetOpState
     selectedConnDb = DcsWifiGetSelectedDb();
     if (!selectedConnDb)
     {
+        // If the selected db is NULL, no matter what the input wifi connection is, its state
+        // can't be up
         LE_DEBUG("Wifi state is down before it's brought up");
         return false;
     }
 
+    // The selected db isn't NULL. Check if it's the same as the one in the input
     if (wifiConnRef != selectedConnDb->connRef)
     {
+        // The input gives a wifi connection different from the one already selected via DCS
         wifiConnDb = DcsWifiGetDbFromRef(wifiConnRef);
         LE_DEBUG("Wifi has connection over SSID %s up rather than SSID %s",
                  selectedConnDb->ssid, wifiConnDb ? wifiConnDb->ssid : "");
         return false;
     }
 
-    if (DcsWifi.selectedConnDb)
-    {
-        return DcsWifi.opStateUp;
-    }
-    else
-    {
-        // This wifi connection was started via le_data
-        return DcsWifiGetNetInterfaceStateUp(selectedConnDb);
-    }
+    // The wifi connection given in the input is the same one already selected via DCS
+    return DcsWifi.opStateUp;
 }
 
 
@@ -808,7 +775,7 @@ static void WifiReadScanResults
 )
 {
     le_wifiClient_AccessPointRef_t apRef = 0;
-    wifi_connDb_t *wifiConnDb, *selectedConnDb;
+    wifi_connDb_t *wifiConnDb, *selectedConnDb = DcsWifiGetSelectedDb();
 
     LE_DEBUG("Get Wifi scan results");
     DcsWifiScan.isActive = false;
@@ -819,7 +786,7 @@ static void WifiReadScanResults
         LE_ERROR("le_wifiClient_GetFirstAccessPoint ERROR");
         le_dcsTech_CollectChannelQueryResults(LE_DCS_TECH_WIFI, LE_FAULT, DcsWifiScan.activeList,
                                               0);
-        if (!DcsWifi.selectedConnDb)
+        if (!selectedConnDb)
         {
             DcsWifiClientStop();
         }
@@ -829,7 +796,6 @@ static void WifiReadScanResults
     // Rebuild the DcsWifiScan.activeList
     memset(&DcsWifiScan.activeList, 0x0, sizeof(DcsWifiScan.activeList));
     DcsWifiScan.listSize = 0;
-    selectedConnDb = DcsWifiGetSelectedDb();
 
     do
     {
@@ -869,19 +835,9 @@ static void WifiReadScanResults
         strncpy(DcsWifiScan.activeList[DcsWifiScan.listSize].name, (char *)ssid, ssidSize);
         DcsWifiScan.activeList[DcsWifiScan.listSize].name[ssidSize] = '\0';
         DcsWifiScan.activeList[DcsWifiScan.listSize].technology = LE_DCS_TECH_WIFI;
-        if (selectedConnDb && (strlen(selectedConnDb->ssid) == ssidSize) &&
-            (strncmp((char *)ssid, selectedConnDb->ssid, ssidSize) == 0))
+        if (selectedConnDb && (strncmp((char *)ssid, selectedConnDb->ssid, ssidSize) == 0))
         {
-            // Since this is the selected SSID for connecting, return its present state
-            if (DcsWifi.selectedConnDb)
-            {
-                state = DcsWifi.opStateUp;
-            }
-            else
-            {
-                // This wifi connection was started via le_data
-                state = DcsWifiGetNetInterfaceStateUp(selectedConnDb);
-            }
+            state = DcsWifi.opStateUp;
             DcsWifiScan.activeList[DcsWifiScan.listSize].state = state ?
                 LE_DCS_STATE_UP : LE_DCS_STATE_DOWN;
         }
@@ -919,7 +875,7 @@ static void WifiReadScanResults
     }
     le_dcsTech_CollectChannelQueryResults(LE_DCS_TECH_WIFI, LE_OK, DcsWifiScan.activeList,
                                           DcsWifiScan.listSize);
-    if (!DcsWifi.selectedConnDb)
+    if (!selectedConnDb)
     {
         DcsWifiClientStop();
     }
@@ -1003,11 +959,14 @@ static void DcsWifiClientConnected
 )
 {
     le_result_t ret;
-    char *netInterface;
+    const char *netInterface;
     le_dcs_ChannelRef_t channelRef;
     wifi_connDb_t *selectedConnDb = DcsWifiGetSelectedDb();
     if (!selectedConnDb)
     {
+        // If the wifi connection has been attempted to be brought up, it should have been via DCS
+        // and selectedConnDb should have been set in le_dcsWifi_Start().
+        // Thus, this connected event isn't for DCS as it was brought about via non-DCS
         LE_DEBUG("Ignore irrelevant wifi Connected event");
         return;
     }
@@ -1017,26 +976,13 @@ static void DcsWifiClientConnected
         le_timer_Stop(DcsWifi.connRetryTimer);
     }
 
-    if (!DcsWifi.selectedConnDb)
-    {
-        // This wifi connection was started via le_data
-        LE_INFO("Wifi client connected on SSID %s", selectedConnDb->ssid);
-        channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef);
-        if (channelRef)
-        {
-            le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_UP);
-        }
-        return;
-    }
+    LE_INFO("Wifi client connected on SSID %s", selectedConnDb->ssid);
 
-    LE_INFO("Wifi client connected on SSID %s", DcsWifi.selectedConnDb->ssid);
-
-    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI,
-                                                 DcsWifi.selectedConnDb->connRef);
+    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef);
     if (!channelRef)
     {
         LE_ERROR("Failed to get channel db reference to send wifi connection up event");
-        ret = DcsWifiClientDisconnect(DcsWifi.selectedConnDb);
+        ret = DcsWifiClientDisconnect(selectedConnDb);
         if ((ret != LE_OK) && (ret != LE_DUPLICATE))
         {
             DcsWifiPostFailureReset();
@@ -1048,14 +994,13 @@ static void DcsWifiClientConnected
 
     // Set the state Up before processing with other subsequent function calls
     DcsWifi.opStateUp = true;
-    netInterface = DcsWifiGetNetInterface(DcsWifi.selectedConnDb);
+    netInterface = DcsWifiGetNetInterface(selectedConnDb);
     if (!netInterface || (strlen(netInterface) == 0) ||
         (LE_OK != pa_dcs_AskForIpAddress(netInterface)))
     {
-        LE_ERROR("Failed to bring up IP on wifi connection over SSID %s",
-                 DcsWifi.selectedConnDb->ssid);
+        LE_ERROR("Failed to bring up IP on wifi connection over SSID %s", selectedConnDb->ssid);
         DcsWifi.opStateUp = false;
-        ret = DcsWifiClientDisconnect(DcsWifi.selectedConnDb);
+        ret = DcsWifiClientDisconnect(selectedConnDb);
         if ((ret != LE_OK) && (ret != LE_DUPLICATE))
         {
             // Send the down event notification here as the Disconnect Request to wifiClient failed
@@ -1067,8 +1012,8 @@ static void DcsWifiClientConnected
         return;
     }
 
-    LE_INFO("Wifi connection over SSID %s on net interface %s got IP up",
-            DcsWifi.selectedConnDb->ssid, netInterface);
+    LE_INFO("Wifi connection over SSID %s on net interface %s got IP up", selectedConnDb->ssid,
+            netInterface);
 
     DcsWifiResetRetries();
 
@@ -1166,36 +1111,25 @@ static void DcsWifiClientDisconnected
     else
     {
         selectedConnDb = DcsWifiGetSelectedDb();
-    }
-
-    if (!DcsWifi.selectedConnDb)
-    {
-        // This wifi connection was started via le_data. Thus, do no more than sending a
-        // notification if possible
-        if (selectedConnDb)
+        if (!selectedConnDb)
         {
-            LE_INFO("Wifi client disconnected on SSID %s", selectedConnDb->ssid);
-            channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI,
-                                                         selectedConnDb->connRef);
-            if (channelRef)
-            {
-                le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
-            }
+            LE_INFO("Wifi client disconnected event ignored for no known selected SSID");
+            return;
         }
-        return;
+        LE_DEBUG("Wifi client disconnected event triggered not thru DCS");
     }
 
-    ssid = DcsWifi.selectedConnDb->ssid;
+    ssid = selectedConnDb->ssid;
     LE_INFO("Wifi client disconnected over SSID %s", ssid);
     DcsWifi.opStateUp = false;
 
-    if (le_dcs_GetChannelRefCountFromTechRef(LE_DCS_TECH_WIFI, DcsWifi.selectedConnDb->connRef,
+    if (le_dcs_GetChannelRefCountFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef,
                                              &refcount) == LE_OK)
     {
         if (refcount > 0)
         {
             // Need to retry connecting until exhausted
-            ret = DcsWifiRetryConn(DcsWifi.selectedConnDb);
+            ret = DcsWifiRetryConn(selectedConnDb);
             switch (ret)
             {
                 case LE_OK:
@@ -1219,8 +1153,7 @@ static void DcsWifiClientDisconnected
 
     // Send connection down event to apps
     LE_DEBUG("Send Down event of connection %s to apps", ssid);
-    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI,
-                                                 DcsWifi.selectedConnDb->connRef);
+    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef);
     if (!channelRef)
     {
         LE_ERROR("Failed to get channel db reference to send wifi connection down event");
@@ -1532,21 +1465,18 @@ le_result_t le_dcsWifi_Start
         }
         LE_ERROR("Failed to start connection with SSID %s while connection with SSID %s "
                  "already selected", wifiConnDb->ssid, DcsWifi.selectedConnDb->ssid);
-        le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
-        return LE_FAULT;
+        return LE_NOT_PERMITTED;
     }
 
     if (DcsWifiScan.isActive)
     {
         LE_ERROR("Starting a wifi connection disallowed while wifi scanning is in progress");
-        le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
         return LE_NOT_PERMITTED;
     }
 
     if (LE_OK != LoadWifiCfg(wifiConnDb->ssid))
     {
         LE_ERROR("Failed to load wifi config to start connection");
-        le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
         return LE_FAULT;
     }
 
@@ -1555,7 +1485,6 @@ le_result_t le_dcsWifi_Start
     if ((LE_OK != ret) && (LE_BUSY != ret) && (LE_DUPLICATE != ret))
     {
         LE_ERROR("Failed to start wifi; error %d", ret);
-        le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
         return LE_FAULT;
     }
 
@@ -1569,15 +1498,15 @@ le_result_t le_dcsWifi_Start
 
     // Connect to the Access Point
     DcsWifi.selectedConnDb = wifiConnDb;
-    LE_INFO("Connecting Wifi client to over SSID %s to AP with reference %p",
-            DcsWifi.selectedConnDb->ssid, DcsWifi.apRef);
+    LE_INFO("Connecting Wifi client to over SSID %s to AP with reference %p", wifiConnDb->ssid,
+            DcsWifi.apRef);
     ret = le_wifiClient_Connect(DcsWifi.apRef);
     if (LE_OK != ret)
     {
         LE_INFO("Failed to connect to AP with reference %p; error %d", DcsWifi.apRef, ret);
 
         // Retry connecting until exhausted
-        ret = DcsWifiRetryConn(DcsWifi.selectedConnDb);
+        ret = DcsWifiRetryConn(wifiConnDb);
         switch (ret)
         {
             case LE_OK:
@@ -1592,9 +1521,8 @@ le_result_t le_dcsWifi_Start
                 break;
         }
 
-        LE_INFO("Exhausted all attempts to connect over SSID %s", DcsWifi.selectedConnDb->ssid);
+        LE_INFO("Exhausted all attempts to connect over SSID %s", wifiConnDb->ssid);
 
-        le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
         DcsWifiPostFailureReset();
     }
 

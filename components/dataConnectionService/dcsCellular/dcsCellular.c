@@ -15,11 +15,8 @@
 #include "le_print.h"
 #include "le_cfg_interface.h"
 #include "dcs.h"
-#include "dcsServer.h"
 #include "dcsCellular.h"
 
-#define CFG_PATH_CELLULAR        "cellular"
-#define CFG_NODE_PROFILEINDEX    "profileIndex"
 #define CELL_CONNDBS_MAX LE_DCS_CHANNEL_LIST_QUERY_MAX  // max # of cellular conns allowed
 
 
@@ -328,6 +325,47 @@ static void DcsCellularConnEventStateHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Function to set the default profile index
+ *
+ * @return
+ *     - LE_OK if successful; LE_FAULT otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_dcsCellular_SetProfileIndex
+(
+    int32_t mdcIndex
+)
+{
+    le_mdc_ProfileRef_t profileRef;
+    le_cfg_IteratorRef_t cfg;
+    char configPath[LE_CFG_STR_LEN_BYTES] = {0};
+
+    profileRef = le_mdc_GetProfile(mdcIndex);
+    if (!profileRef)
+    {
+        // Keep the index from config tree as is, if the data profile at the given index isn't
+        // retrievable
+        LE_ERROR("Unable to retrieve data profile at index %d", mdcIndex);
+        return LE_FAULT;
+    }
+
+    // Set Cid profile
+    snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_CELLULAR);
+    cfg = le_cfg_CreateWriteTxn(configPath);
+    if (!cfg || !le_cfg_NodeExists(cfg, CFG_NODE_PROFILEINDEX))
+    {
+        LE_ERROR("Failed to create config tree node to write cellular profile index");
+        return LE_FAULT;
+    }
+
+    le_cfg_SetInt(cfg, CFG_NODE_PROFILEINDEX, mdcIndex);
+    le_cfg_CommitTxn(cfg);
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Function to get the default profile's index
  *
  * @return
@@ -341,7 +379,6 @@ uint32_t le_dcsCellular_GetProfileIndex
 {
     int32_t index = mdcIndex;
     le_mdc_ProfileRef_t profileRef;
-
     char configPath[LE_CFG_STR_LEN_BYTES];
     snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_CELLULAR);
 
@@ -350,20 +387,18 @@ uint32_t le_dcsCellular_GetProfileIndex
     // Get Cid Profile
     if (le_cfg_NodeExists(cfg, CFG_NODE_PROFILEINDEX))
     {
+        // Always take from config tree if configured
         index = le_cfg_GetInt(cfg, CFG_NODE_PROFILEINDEX, LE_MDC_DEFAULT_PROFILE);
-        LE_DEBUG("Use data profile index %d", index);
+        LE_DEBUG("Use data profile index %d from config tree", index);
     }
     le_cfg_CancelTxn(cfg);
 
+    // Get a modem data profile and create it if absent
     profileRef = le_mdc_GetProfile(index);
     if (!profileRef)
     {
-        // If data profile could not be created/retrieved, we keep the index from config tree as is
-        LE_ERROR("Unable to retrieve data profile");
-    }
-    else
-    {
-        index = le_mdc_GetProfileIndex(profileRef);
+        // Not likely case for failure to retrieve/create data profile
+        LE_ERROR("Unable to retrieve data profile with %d", index);
     }
 
     LE_DEBUG("Cellular profile index retrieved: %d", index);
@@ -919,6 +954,31 @@ le_result_t le_dcsCellular_GetDNSAddrs
 }
 
 
+// -------------------------------------------------------------------------------------------------
+/**
+ * This function will know if the APN name for profileName is empty
+ *
+ * @return
+ *     - True or False
+ */
+// -------------------------------------------------------------------------------------------------
+static bool DcsCellularIsApnEmpty
+(
+    le_mdc_ProfileRef_t profileRef  ///< [IN] Modem data connection profile reference
+)
+{
+    char apnName[LE_CFG_STR_LEN_BYTES] = {0};
+
+    if (LE_OK != le_mdc_GetAPN(profileRef, apnName, sizeof(apnName)))
+    {
+        LE_WARN("APN was truncated");
+        return true;
+    }
+
+    return (apnName[0] == '\0');
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Function for requesting cellular to start the given data/connection in the 1st argument
@@ -938,7 +998,6 @@ le_result_t le_dcsCellular_Start
     le_mdc_ProfileRef_t profileRef;
     le_mdc_DisconnectionReason_t failure_reason;
     int32_t failure_code;
-    uint32_t reqCount;
     cellular_connDb_t *cellConnDb;
 
     cellConnDb = DcsCellularGetDbFromRef((le_dcs_CellularConnectionRef_t)techRef);
@@ -956,19 +1015,6 @@ le_result_t le_dcsCellular_Start
         return LE_FAULT;
     }
 
-    if (cellConnDb->index == le_data_ConnectedDataProfileIndex(&reqCount))
-    {
-        // this profile is already started up via the le_data API
-        LE_INFO("Succeeded sharing cellular connection %s with apps via le_data", connName);
-        cellConnDb->retries = 1;
-        cellConnDb->backoff = CELLULAR_RETRY_BACKOFF_INIT;
-        if (le_timer_IsRunning(cellConnDb->retryTimer))
-        {
-            le_timer_Stop(cellConnDb->retryTimer);
-        }
-        return LE_OK;
-    }
-
     if (!DcsCellularPacketSwitchStateIsUp(CellPacketSwitchState))
     {
         LE_DEBUG("Connection %s not immediately started due to down packet switch state",
@@ -976,7 +1022,7 @@ le_result_t le_dcsCellular_Start
         return LE_UNAVAILABLE;
     }
 
-    if (IsApnEmpty(profileRef))
+    if (DcsCellularIsApnEmpty(profileRef))
     {
         LE_DEBUG("Set default APN for connection %s", connName);
         if (LE_OK != le_mdc_SetDefaultAPN(profileRef))
