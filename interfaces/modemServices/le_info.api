@@ -753,6 +753,7 @@ FUNCTION le_result_t GetSku
  * @return
  *      - LE_OK             Success
  *      - LE_BAD_PARAMETER  Input prameter is a null pointer
+ *      - LE_UNSUPPORTED    If not supported by the platform
  *      - LE_FAULT          Failed to get the number if expected resets
  */
 //--------------------------------------------------------------------------------------------------
@@ -768,6 +769,7 @@ FUNCTION le_result_t GetExpectedResetsCount
  * @return
  *      - LE_OK             Success
  *      - LE_BAD_PARAMETER  Input prameter is a null pointer
+ *      - LE_UNSUPPORTED    If not supported by the platform
  *      - LE_FAULT          Failed to get the number if expected resets
  */
 //--------------------------------------------------------------------------------------------------

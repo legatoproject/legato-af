@@ -14,6 +14,10 @@
 /**
  * Init system resets counter
  *
+ * @return
+ *      - LE_OK           Init succeded
+ *      - LE_FAULT        Init failed
+ *      - LE_UNSUPPORTED  If not supported by the platform
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t sysResets_Init
@@ -26,12 +30,14 @@ le_result_t sysResets_Init
  * Get the number of expected resets
  *
  * @return
- *      - Number of expected resets
+ *  - LE_OK             The function succeeded.
+    - LE_UNSUPPORTED    If not supported by the platform
+ *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-int64_t sysResets_GetExpectedResetsCount
+le_result_t sysResets_GetExpectedResetsCount
 (
-    void
+    uint64_t* expectedPtr
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -39,12 +45,14 @@ int64_t sysResets_GetExpectedResetsCount
  * Get the number of unexpected resets
  *
  * @return
- *      - Number of unexpected resets
+ *  - LE_OK             The function succeeded.
+    - LE_UNSUPPORTED    If not supported by the platform
+ *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-int64_t sysResets_GetUnexpectedResetsCount
+le_result_t sysResets_GetUnexpectedResetsCount
 (
-    void
+    uint64_t* unexpectedPtr
 );
 
 #endif /* _SYSRESETS_H */

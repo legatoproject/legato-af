@@ -102,9 +102,26 @@ static void SetInfo
 COMPONENT_INIT
 {
     LE_INFO("======== INFO API UnitTests ========");
-
+    if (LE_OK != sysResets_Init())
+    {
+        LE_ERROR("Failed to initialize system resets counter");
+    }
     // set pa info simu
     SetInfo();
+    LE_INFO("======== ResetCountTest ========");
+    uint64_t resetsCount;
+    le_result_t res = le_info_GetExpectedResetsCount(&resetsCount);
+    LE_ASSERT((res == LE_OK) || (res == LE_UNSUPPORTED));
+    if(res == LE_OK)
+    {
+        LE_INFO("le_info_GetExpectedResetsCount => %"PRIu64"", resetsCount);
+    }
+    res = le_info_GetUnexpectedResetsCount(&resetsCount);
+    LE_ASSERT((res == LE_OK) || (res == LE_UNSUPPORTED));
+    if(res == LE_OK)
+    {
+        LE_INFO("le_info_GetUnexpectedResetsCount => %"PRIu64"", resetsCount);
+    }
 
     LE_INFO("======== ImeiTest ========");
     LE_ASSERT_OK(le_info_GetImei(Imei, sizeof(Imei)));

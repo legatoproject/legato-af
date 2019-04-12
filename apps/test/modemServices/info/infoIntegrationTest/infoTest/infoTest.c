@@ -607,6 +607,27 @@ static void ImeiTest
     LE_INFO("======== ImeiSvTest PASSED ========");
 }
 
+/*
+ * Test le_info_GetExpectedResetsCount and le_info_GetUnexpectedResetsCount APIs.
+ *
+ * API Tested:
+ *  le_info_GetExpectedResetsCount().
+ *  le_info_GetUnexpectedResetsCount().
+ */
+static void ReboutCountTest
+(
+    void
+)
+{
+    uint64_t resetsCount;
+    le_result_t res = le_info_GetExpectedResetsCount(&resetsCount);
+    LE_ASSERT(res == LE_OK);
+    LE_INFO("le_info_GetExpectedResetsCount => %"PRIu64"", resetsCount);
+    res = le_info_GetUnexpectedResetsCount(&resetsCount);
+    LE_ASSERT(res == LE_OK);
+    LE_INFO("le_info_GetUnexpectedResetsCount => %"PRIu64"", resetsCount);
+}
+
 
 
 /*
@@ -617,6 +638,8 @@ static void ImeiTest
 COMPONENT_INIT
 {
     LE_INFO("======== Start LE_INFO implementation Test ========");
+
+    ReboutCountTest();
 
     GetDeviceBootVersionTest();
 

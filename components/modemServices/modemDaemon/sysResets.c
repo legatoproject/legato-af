@@ -54,6 +54,13 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Resets counter feature
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t ResetCounterFeature = LE_UNSUPPORTED;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Close a fd and log a warning message in case of an error
  *
  */
@@ -221,35 +228,55 @@ static int SetResetsCount
 /**
  * Get system resets count
  *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-static int64_t GetResetsCount
+static le_result_t GetResetsCount
 (
-    const char* filePath
+    const char* filePath,    ///< [IN] Reset file path
+    uint64_t*    valuePtr    ///< [OUT] Reset Value
 )
 {
     char buf[BUFSIZE] = {0};
     le_result_t result;
-    int64_t ret;
+
+    if (NULL == valuePtr)
+    {
+        return LE_BAD_PARAMETER;
+    }
 
     result = ReadFs(filePath, (uint8_t *)buf, sizeof(buf));
 
-    switch (result)
+    if (LE_OK == result)
     {
-        case LE_OK:
-            ret = (int64_t)strtoll(buf, NULL, BASE10);
-            break;
-        case LE_NOT_FOUND:
-            LE_DEBUG("File `%s' not found", filePath);
-            ret = 0;
-            break;
-        default:
-            LE_ERROR("Failed to read from `%s'", filePath);
-            ret = -1;
-            break;
-    }
+        uint64_t value;
+        errno = 0;
 
-    return ret;
+        value = strtoull(buf, NULL, BASE10);
+        if (0 != errno)
+        {
+            LE_ERROR("Failed to convert buf value, %s", buf);
+            return LE_FAULT;
+        }
+
+        *valuePtr = value;
+         return LE_OK;
+    }
+    else if (LE_NOT_FOUND == result)
+    {
+        LE_INFO("File `%s' not found", filePath);
+
+        *valuePtr = 0;
+        return LE_OK;
+    }
+    else
+    {
+        LE_ERROR("Failed to read from `%s'", filePath);
+        return LE_FAULT;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -267,11 +294,11 @@ static le_result_t UpdateResetInfo
     le_info_Reset_t reset;
     char resetInfo[LE_INFO_MAX_RESET_BYTES] = {0};
     uint64_t expected, unexpected;
-
-    expected = GetResetsCount(EXPECTED_RESETS);
-    unexpected = GetResetsCount(UNEXPECTED_RESETS);
-
-    if ( (-1 == expected) || (-1 == unexpected) )
+    if (LE_OK != GetResetsCount(EXPECTED_RESETS, &expected))
+    {
+        return LE_FAULT;
+    }
+    if (LE_OK != GetResetsCount(UNEXPECTED_RESETS, &unexpected))
     {
         return LE_FAULT;
     }
@@ -301,12 +328,12 @@ static le_result_t UpdateResetInfo
             break;
     }
 
-    if(SetResetsCount(EXPECTED_RESETS, expected))
+    if (LE_OK != SetResetsCount(EXPECTED_RESETS, expected))
     {
         return LE_FAULT;
     }
 
-    if(SetResetsCount(UNEXPECTED_RESETS, unexpected))
+    if (LE_OK != SetResetsCount(UNEXPECTED_RESETS, unexpected))
     {
         return LE_FAULT;
     }
@@ -319,15 +346,27 @@ static le_result_t UpdateResetInfo
  * Get the number of expected resets
  *
  * @return
- *      - Number of expected resets
+ *  - LE_OK             The function succeeded.
+    - LE_UNSUPPORTED    If not supported by the platform
+ *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-int64_t sysResets_GetExpectedResetsCount
+le_result_t sysResets_GetExpectedResetsCount
 (
-    void
+    uint64_t* expectedPtr
 )
 {
-    return GetResetsCount(EXPECTED_RESETS);
+    if (NULL == expectedPtr)
+    {
+        return LE_BAD_PARAMETER;
+    }
+    if (LE_UNSUPPORTED == ResetCounterFeature)
+    {
+        LE_INFO("ResetCounterFeature LE_UNSUPPORTED");
+        return LE_UNSUPPORTED;
+    }
+
+    return GetResetsCount(EXPECTED_RESETS, expectedPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -335,15 +374,27 @@ int64_t sysResets_GetExpectedResetsCount
  * Get the number of unexpected resets
  *
  * @return
- *      - Number of unexpected resets
+ *  - LE_OK             The function succeeded.
+    - LE_UNSUPPORTED    If not supported by the platform
+ *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-int64_t sysResets_GetUnexpectedResetsCount
+le_result_t sysResets_GetUnexpectedResetsCount
 (
-    void
+    uint64_t* unexpectedPtr
 )
 {
-    return GetResetsCount(UNEXPECTED_RESETS);
+    if (NULL == unexpectedPtr)
+    {
+        return LE_BAD_PARAMETER;
+    }
+    if (LE_UNSUPPORTED == ResetCounterFeature)
+    {
+        LE_DEBUG("ResetCounterFeature LE_UNSUPPORTED");
+        return LE_UNSUPPORTED;
+    }
+
+    return GetResetsCount(UNEXPECTED_RESETS, unexpectedPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -360,19 +411,21 @@ le_result_t sysResets_Init
     void
 )
 {
+    //This check is done to avoid incrementation of counter if only legato reboots
     if (!access(LOCKFILE, W_OK | R_OK))
     {
         if (UpdateLockFile())
         {
             return LE_FAULT;
         }
-        return LE_OK;
+        ResetCounterFeature = LE_OK;
+        return ResetCounterFeature;
     }
-
     if (UpdateLockFile())
     {
         return LE_FAULT;
     }
+    ResetCounterFeature = UpdateResetInfo();
+    return ResetCounterFeature;
 
-    return UpdateResetInfo();
 }

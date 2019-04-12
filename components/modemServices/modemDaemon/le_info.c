@@ -47,7 +47,7 @@ le_result_t le_info_GetImei
         return LE_FAULT;
     }
 
-    if(pa_info_GetImei(imei) != LE_OK)
+    if (LE_OK != pa_info_GetImei(imei))
     {
         LE_ERROR("Failed to get the IMEI");
         imeiPtr[0] = '\0';
@@ -237,7 +237,7 @@ le_result_t le_info_GetDeviceModel
         ///< [IN] The length of Model identity string.
 )
 {
-    pa_info_DeviceModel_t modelVersion;
+    pa_info_DeviceModel_t modelVersion = {0};
 
     if(modelPtr == NULL)
     {
@@ -251,7 +251,7 @@ le_result_t le_info_GetDeviceModel
         return LE_FAULT;
     }
 
-    if(pa_info_GetDeviceModel(modelVersion) != LE_OK)
+    if (LE_OK != pa_info_GetDeviceModel(modelVersion))
     {
         LE_ERROR("Failed to get the device model");
         modelPtr[0] = '\0';
@@ -732,6 +732,7 @@ le_result_t le_info_GetRfDeviceStatus
  * @return
  *      - LE_OK             Success
  *      - LE_BAD_PARAMETER  Input prameter is a null pointer
+ *      - LE_UNSUPPORTED    If not supported by the platform
  *      - LE_FAULT          Failed to get the number if expected resets
  */
 //--------------------------------------------------------------------------------------------------
@@ -740,24 +741,25 @@ le_result_t le_info_GetExpectedResetsCount
     uint64_t* resetsCountPtr    ///< Number of unexpected resets
 )
 {
-    int64_t count;
+    uint64_t count;
+    le_result_t res;
 
-    if (!resetsCountPtr)
+    if (NULL == resetsCountPtr)
     {
-        LE_ERROR("Invalid parameter");
+        LE_ERROR("resetsCountPtr is NULL");
         return LE_BAD_PARAMETER;
     }
 
-    count = sysResets_GetExpectedResetsCount();
-    if (-1 == count)
+    res = sysResets_GetExpectedResetsCount(&count);
+    if (LE_OK != res)
     {
         LE_ERROR("Failed to get expected resets count");
-        return LE_FAULT;
+        return res;
     }
 
-    *resetsCountPtr = (uint64_t)count;
-
+    *resetsCountPtr = count;
     return LE_OK;
+
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -767,6 +769,7 @@ le_result_t le_info_GetExpectedResetsCount
  * @return
  *      - LE_OK             Success
  *      - LE_BAD_PARAMETER  Input prameter is a null pointer
+ *      - LE_UNSUPPORTED    If not supported by the platform
  *      - LE_FAULT          Failed to get the number if expected resets
  */
 //--------------------------------------------------------------------------------------------------
@@ -775,22 +778,23 @@ le_result_t le_info_GetUnexpectedResetsCount
     uint64_t* resetsCountPtr    ///< Number of unexpected resets
 )
 {
-    int64_t count;
+    uint64_t count;
+    le_result_t res;
 
-    if (!resetsCountPtr)
+    if (NULL == resetsCountPtr)
     {
-        LE_ERROR("Invalid parameter");
+        LE_ERROR("resetsCountPtr is NULL");
         return LE_BAD_PARAMETER;
     }
 
-    count = sysResets_GetUnexpectedResetsCount();
-    if (-1 == count)
+    res = sysResets_GetUnexpectedResetsCount(&count);
+    if (LE_OK != res)
     {
         LE_ERROR("Failed to get unexpected resets count");
-        return LE_FAULT;
+        return res;
     }
 
-    *resetsCountPtr = (uint64_t)count;
-
+    *resetsCountPtr = count;
     return LE_OK;
+
 }
