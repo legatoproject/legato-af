@@ -161,6 +161,11 @@ CFLAGS += -Wall -Werror \
 	-I${LEGATO_ROOT}/build/${TARGET}/framework/include \
 	-I$(LEGATO_ROOT)/framework/liblegato
 
+# Set flags for test coverage
+ifeq ($(LE_CONFIG_TEST_COVERAGE),y)
+	CFLAGS += --coverage
+endif
+
 ifeq ($(LE_CONFIG_ENABLE_IMA),y)
   IMA_LIBS = -lssl -lcrypto
   IMA_MKEXE_FLAGS += $(foreach lib,$(IMA_LIBS),--ldflags=$(lib))
@@ -297,8 +302,7 @@ $(BIN_DIR)/startSystem: $(LINUX_SRC_DIR)/start/start.c $(LINUX_SRC_DIR)/common/i
 	$(Q)$(CCACHE) $(TARGET_CC) $(TARGET_CC_SYSROOT) -o $@ $^ $(CFLAGS) \
 		-I$(LEGATO_ROOT)/framework/liblegato/linux \
 		-I$(LEGATO_ROOT)/framework/daemons/linux/common \
-		-Wl,--enable-new-dtags,-rpath="\$$ORIGIN/../lib" \
-		-L$(LIB_DIR) -llegato $(IMA_LIBS) -ldl
+		$(LIB_DIR)/liblegato.a $(IMA_LIBS) -ldl -lpthread
 
 $(BIN_DIR)/supervisor: liblegato $(BIN_DIR)
 	$(L) MKEXE $@

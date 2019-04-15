@@ -71,6 +71,22 @@
 
 
 //--------------------------------------------------------------------------------------------------
+// Create definitions for inlineable functions
+//
+// See le_fdMonitor.h for bodies & documentation
+//--------------------------------------------------------------------------------------------------
+#if !LE_CONFIG_FD_MONITOR_NAMES_ENABLED
+LE_DECLARE_INLINE le_fdMonitor_Ref_t le_fdMonitor_Create
+(
+    const char                  *name,
+    int                          fd,
+    le_fdMonitor_HandlerFunc_t   handlerFunc,
+    short                        events
+);
+#endif
+
+
+//--------------------------------------------------------------------------------------------------
 /** Fallback definition of EPOLLWAKEUP
  *
  * Definition of EPOLLWAKEUP for kernel versions that do not support it.
@@ -675,15 +691,22 @@ void fdMon_DestructThread
  * @note Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_fdMonitor_Ref_t _le_fdMonitor_Create
-(
 #if LE_CONFIG_FD_MONITOR_NAMES_ENABLED
+le_fdMonitor_Ref_t le_fdMonitor_Create
+(
     const char*             name,       ///< [in] Name of the object (for diagnostics).
-#endif
     int                     fd,         ///< [in] File descriptor to be monitored for events.
     le_fdMonitor_HandlerFunc_t handlerFunc, ///< [in] Handler function.
     short                   events      ///< [in] Initial set of events to be monitored.
 )
+#else
+le_fdMonitor_Ref_t _le_fdMonitor_Create
+(
+    int                     fd,         ///< [in] File descriptor to be monitored for events.
+    le_fdMonitor_HandlerFunc_t handlerFunc, ///< [in] Handler function.
+    short                   events      ///< [in] Initial set of events to be monitored.
+)
+#endif
 //--------------------------------------------------------------------------------------------------
 {
     // Get a pointer to the thread-specific event loop data record.

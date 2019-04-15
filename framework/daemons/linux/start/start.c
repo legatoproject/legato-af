@@ -45,6 +45,9 @@
 /// Default DAC permissions for directory creation.
 #define DEFAULT_PERMS (S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
 
+/// Initalize function for liblegato called when liblegato is linked statically.
+extern void InitFramework(void);
+
 //--------------------------------------------------------------------------------------------------
 /**
  * MAX_TRIES denotes the maximum number of times a new system can be tried (unless it becomes
@@ -140,6 +143,20 @@ static const char ModemPAPath[] = "/read-only/lib/libComponent_le_pa.so";
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Portion of the path to ld.so.conf/ld.so.cache.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LDSO_ROOT_FILE  "/tmp/ld.so"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Path to obsolete legato lib directory.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MNT_LIB_DIR     "/mnt/legato/system/lib"
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Pointer to modem PA (assuming modem PA exists).
  */
 //--------------------------------------------------------------------------------------------------
@@ -154,10 +171,47 @@ static bool IsModemPATimedOut = false;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * The current start program being used.
+ **/
+//--------------------------------------------------------------------------------------------------
+static const char* CurrentStartVersion = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Semaphore to synchronize with Modem PA loading thread.
  */
 //--------------------------------------------------------------------------------------------------
 static le_sem_Ref_t ModemPASemRef;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fix up the contents of ld.so.conf to remove an obsolete and problematic line.
+ */
+//--------------------------------------------------------------------------------------------------
+static void FixLdSoConf
+(
+    void
+)
+{
+    // Remove the /mnt/legato/system/lib entry from ld.so.conf since by the time supervisor is
+    // starting, it is no longer needed anyway.
+    int rc = system(
+        "if /bin/grep '" MNT_LIB_DIR "' " LDSO_ROOT_FILE ".conf; then\n"
+        "    /bin/umount -l /etc/ld.so.conf > /dev/null 2>&1\n"
+        "    /bin/umount -l /etc/ld.so.cache > /dev/null 2>&1\n"
+        "    /bin/sed -i '\\;" MNT_LIB_DIR ";d' " LDSO_ROOT_FILE ".conf\n"
+        "    /usr/sbin/update-ld-cache\n"
+        "fi\n"
+        "exit 0"
+    );
+
+    if (!WIFEXITED(rc) || (WEXITSTATUS(rc) == 1))
+    {
+        // If we removed the obsolete line, we restart the supervisor to make sure it starts up with
+        // the correct libraries.
+        exit(EXIT_FAILURE);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1422,8 +1476,17 @@ static int TryToRun
     {
         // I'm the child. Exec the Supervisor, telling it not to daemonize itself.
         const char supervisorPath[] = "/legato/systems/current/bin/supervisor";
-        (void)execl(supervisorPath, supervisorPath, "--no-daemonize", NULL);
-        LE_FATAL("Failed to run '%s': %m", supervisorPath);
+
+        if (CurrentStartVersion == NULL)
+        {
+            (void)execl(supervisorPath, supervisorPath, "--no-daemonize", NULL);
+            LE_FATAL("Failed to run '%s': %m", supervisorPath);
+        }
+        else
+        {
+            (void)execl(supervisorPath, supervisorPath, "--no-daemonize", "-v", CurrentStartVersion, NULL);
+            LE_FATAL("Failed to run '%s': %m", supervisorPath);
+        }
     }
 
     // Close our stdin so only the Supervisor has a copy of the write end of the pipe.
@@ -2157,9 +2220,18 @@ static void CheckAndInstallCurrentSystem
 int main
 (
     int argc,
-    char** argv
+    const char** argv
 )
 {
+    // Initalize legato framework
+    InitFramework();
+
+    // Pass the args to the Command Line Arguments API.
+    le_arg_SetArgs((size_t)argc, argv);
+
+    le_arg_SetStringVar(&CurrentStartVersion, "v", "version");
+    le_arg_Scan();
+
     bool isReadOnly = sysStatus_IsReadOnly();
     le_thread_Ref_t modemPAThread;
     le_clk_Time_t timeToWait = {10, 0}; // 10s timeout waiting for Modem PA loading thread
@@ -2199,6 +2271,10 @@ int main
             // R/O system are always ready. So, nothing to do for them.
             CheckAndInstallCurrentSystem();
         }
+
+        // Fix ld.so.conf in case the system is still running an older version of start
+        // script that makes legato use the wrong liblegato path.
+        FixLdSoConf();
 
         // Run the current system.
         Launch(isReadOnly);

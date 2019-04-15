@@ -96,6 +96,41 @@
 #   define  EVENT_NAME(var) "<omitted>"
 #endif
 
+
+//--------------------------------------------------------------------------------------------------
+// Create definitions for inlineable functions
+//
+// See le_eventLoop.h for bodies & documentation
+//--------------------------------------------------------------------------------------------------
+#if !LE_CONFIG_EVENT_NAMES_ENABLED
+LE_DECLARE_INLINE le_event_Id_t le_event_CreateId
+(
+    const char *name,
+    size_t      payloadSize
+);
+
+LE_DECLARE_INLINE le_event_Id_t le_event_CreateIdWithRefCounting
+(
+    const char *name
+);
+
+LE_DECLARE_INLINE le_event_HandlerRef_t le_event_AddHandler
+(
+    const char              *name,
+    le_event_Id_t            eventId,
+    le_event_HandlerFunc_t   handlerFunc
+);
+
+LE_DECLARE_INLINE le_event_HandlerRef_t le_event_AddLayeredHandler
+(
+    const char                      *name,
+    le_event_Id_t                    eventId,
+    le_event_LayeredHandlerFunc_t    firstLayerFunc,
+    void*                            secondLayerFunc
+);
+#endif
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Event object
@@ -979,13 +1014,18 @@ void event_SetCurrentContextPtr
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_event_Id_t _le_event_CreateId
-(
 #if LE_CONFIG_EVENT_NAMES_ENABLED
+le_event_Id_t le_event_CreateId
+(
     const char* name,       ///< [in] Name of the event ID.  (Named for diagnostic purposes.)
-#endif
     size_t      payloadSize ///< [in] Data payload size (in bytes) of the event reports (can be 0).
 )
+#else
+le_event_Id_t _le_event_CreateId
+(
+    size_t      payloadSize ///< [in] Data payload size (in bytes) of the event reports (can be 0).
+)
+#endif
 //--------------------------------------------------------------------------------------------------
 {
 #if LE_CONFIG_EVENT_NAMES_ENABLED
@@ -1007,12 +1047,17 @@ le_event_Id_t _le_event_CreateId
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_EVENT_NAMES_ENABLED
+le_event_Id_t le_event_CreateIdWithRefCounting
+(
+    const char* name        ///< [in] Name of the event ID.  (Named for diagnostic purposes.)
+)
+#else
 le_event_Id_t _le_event_CreateIdWithRefCounting
 (
-#if LE_CONFIG_EVENT_NAMES_ENABLED
-    const char* name        ///< [in] Name of the event ID.  (Named for diagnostic purposes.)
-#endif
+    void
 )
+#endif
 //--------------------------------------------------------------------------------------------------
 {
 #if LE_CONFIG_EVENT_NAMES_ENABLED
@@ -1037,18 +1082,24 @@ le_event_Id_t _le_event_CreateIdWithRefCounting
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_event_HandlerRef_t _le_event_AddHandler
-(
 #if LE_CONFIG_EVENT_NAMES_ENABLED
+le_event_HandlerRef_t le_event_AddHandler
+(
     const char*             name,           ///< [in] The name of the handler.
-#endif
     le_event_Id_t           eventId,        ///< [in] The event ID.
     le_event_HandlerFunc_t  handlerFunc     ///< [in] Handler function.
 )
+#else
+le_event_HandlerRef_t _le_event_AddHandler
+(
+    le_event_Id_t eventId,
+    le_event_HandlerFunc_t handlerFunc
+)
+#endif
 //--------------------------------------------------------------------------------------------------
 {
 #if LE_CONFIG_EVENT_NAMES_ENABLED
-    return _le_event_AddLayeredHandler(name, eventId, PubSubHandlerFunc, handlerFunc);
+    return le_event_AddLayeredHandler(name, eventId, PubSubHandlerFunc, handlerFunc);
 #else
     return _le_event_AddLayeredHandler(eventId, PubSubHandlerFunc, handlerFunc);
 #endif
@@ -1072,15 +1123,22 @@ le_event_HandlerRef_t _le_event_AddHandler
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_event_HandlerRef_t _le_event_AddLayeredHandler
-(
 #if LE_CONFIG_EVENT_NAMES_ENABLED
+le_event_HandlerRef_t le_event_AddLayeredHandler
+(
     const char*                     name,           ///< [in] The name of the handler.
-#endif
     le_event_Id_t                   eventId,        ///< [in] The event ID.
     le_event_LayeredHandlerFunc_t   firstLayerFunc, ///< [in] Pointer to first-layer handler func.
     void*                           secondLayerFunc ///< [in] Pointer to second-layer handler func.
 )
+#else
+le_event_HandlerRef_t _le_event_AddLayeredHandler
+(
+    le_event_Id_t eventId,
+    le_event_LayeredHandlerFunc_t firstLayerFunc,
+    void* secondLayerFunc
+)
+#endif
 //--------------------------------------------------------------------------------------------------
 {
     int oldState = event_Lock();

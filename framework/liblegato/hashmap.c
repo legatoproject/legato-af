@@ -33,6 +33,21 @@
 #   define bucket_PeekTail  le_sls_PeekTail
 
 //--------------------------------------------------------------------------------------------------
+// Create definitions for inlineable functions
+//
+// See le_hashmap.h for bodies & documentation
+//--------------------------------------------------------------------------------------------------
+#if !LE_CONFIG_EVENT_NAMES_ENABLED
+LE_DECLARE_INLINE le_hashmap_Ref_t le_hashmap_Create
+(
+    const char                *nameStr,
+    size_t                     capacity,
+    le_hashmap_HashFunc_t      hashFunc,
+    le_hashmap_EqualsFunc_t    equalsFunc
+);
+#endif
+
+//--------------------------------------------------------------------------------------------------
 /**
  *  Remove an entry from a bucket list.
  *
@@ -320,15 +335,22 @@ le_hashmap_Ref_t _le_hashmap_InitStatic
  * @note Terminates the process on failure, so no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_hashmap_Ref_t _le_hashmap_Create
-(
 #if LE_CONFIG_HASHMAP_NAMES_ENABLED
+le_hashmap_Ref_t le_hashmap_Create
+(
     const char*                nameStr,          ///< [in] Name of the HashMap
-#endif
     size_t                     capacity,         ///< [in] Expected capacity of the map
     le_hashmap_HashFunc_t      hashFunc,         ///< [in] The hash function
     le_hashmap_EqualsFunc_t    equalsFunc        ///< [in] The equality function
 )
+#else
+le_hashmap_Ref_t _le_hashmap_Create
+(
+    size_t                     capacity,         ///< [in] Expected capacity of the map
+    le_hashmap_HashFunc_t      hashFunc,         ///< [in] The hash function
+    le_hashmap_EqualsFunc_t    equalsFunc        ///< [in] The equality function
+)
+#endif
 {
 #if LE_CONFIG_HASHMAP_NAMES_ENABLED
     char poolName[LIMIT_MAX_MEM_POOL_NAME_BYTES] = "hashMap_";

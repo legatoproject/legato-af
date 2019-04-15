@@ -74,9 +74,9 @@ done
 # Include auto-generated header directory.
 CFLAGS+=" -I${LEGATO_ROOT}/build/${TARGET}/framework/include"
 
-if [ -z "$LIBLEGATO" ]; then
+if [ -z "$LIBLEGATO_SHARED" ]; then
    cat >&2 <<EOF
-error: Don't know what to build.  liblegato ninja-config for OS did not set LIBLEGATO variable
+error: Don't know what to build.  liblegato ninja-config for OS did not set LIBLEGATO_SHARED variable
 EOF
    exit 1
 fi
@@ -95,7 +95,8 @@ rule Compile
             -I$LEGATO_ROOT/framework/include \$
             -I$LEGATO_ROOT/framework/liblegato
 
-build ${LIBLEGATO} : Link $LIBLEGATO_OBJECTS
+build ${LIBLEGATO_SHARED} : DynamicLink $LIBLEGATO_OBJECTS
+build ${LIBLEGATO_STATIC} : StaticLink $LIBLEGATO_OBJECTS
 
 rule RegenNinjaScript
   description = Regenerating framework build script

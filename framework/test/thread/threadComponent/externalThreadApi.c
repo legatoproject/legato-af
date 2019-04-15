@@ -114,7 +114,7 @@ void eta_Start
     // Need to separately #ifdef this out as the internal function _le_mem_FindPool is not
     // even defined if LE_CONFIG_MEM_POOL_NAMES_ENABLED is not set
 #if LE_CONFIG_MEM_POOL_NAMES_ENABLED
-    pool = _le_mem_FindPool("framework", "ThreadPool");
+    pool = le_mem_FindPool("ThreadPool");
 #endif
     LE_TEST_ASSERT(pool != NULL, "thread pool created");
     le_mem_GetStats(pool, &stats);

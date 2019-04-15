@@ -131,6 +131,23 @@ le_mutex_Ref_t le_ifgen_InitMutexRef = NULL;
 #endif
 
 //--------------------------------------------------------------------------------------------------
+// Create definitions for inlineable functions
+//
+// See le_mutex.h for bodies & documentation
+//--------------------------------------------------------------------------------------------------
+#if !LE_CONFIG_EVENT_NAMES_ENABLED
+LE_DECLARE_INLINE le_mutex_Ref_t le_mutex_CreateRecursive
+(
+    const char *nameStr
+);
+
+LE_DECLARE_INLINE le_mutex_Ref_t le_mutex_CreateNonRecursive
+(
+    const char *nameStr
+);
+#endif
+
+//--------------------------------------------------------------------------------------------------
 /**
  * Creates a mutex.
  *
@@ -441,7 +458,7 @@ void mutex_ThreadInit
  */
 //--------------------------------------------------------------------------------------------------
 #if LE_CONFIG_MUTEX_NAMES_ENABLED
-le_mutex_Ref_t _le_mutex_CreateRecursive
+le_mutex_Ref_t le_mutex_CreateRecursive
 (
     const char* nameStr     ///< [in] Name of the mutex
 )
@@ -466,7 +483,7 @@ le_mutex_Ref_t _le_mutex_CreateRecursive(void)
  */
 //--------------------------------------------------------------------------------------------------
 #if LE_CONFIG_MUTEX_NAMES_ENABLED
-le_mutex_Ref_t _le_mutex_CreateNonRecursive
+le_mutex_Ref_t le_mutex_CreateNonRecursive
 (
     const char* nameStr     ///< [in] Name of the mutex
 )

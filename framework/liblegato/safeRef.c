@@ -60,6 +60,19 @@ static const char ModuleName[] = "ref";
 #endif
 
 //--------------------------------------------------------------------------------------------------
+// Create definitions for inlineable functions
+//
+// See le_safeRef.h for bodies & documentation
+//--------------------------------------------------------------------------------------------------
+#if !LE_CONFIG_EVENT_NAMES_ENABLED
+LE_DECLARE_INLINE le_ref_MapRef_t _le_ref_CreateMap
+(
+    const char *name,
+    size_t      maxRefs
+);
+#endif
+
+//--------------------------------------------------------------------------------------------------
 /**
  * Trace if tracing is enabled for a given reference map.
  **/
@@ -434,14 +447,20 @@ le_ref_MapRef_t _le_ref_InitStaticMap
  * @return A reference to the Reference Map object.
  */
 //--------------------------------------------------------------------------------------------------
-le_ref_MapRef_t _le_ref_CreateMap
-(
 #if LE_CONFIG_SAFE_REF_NAMES_ENABLED
+le_ref_MapRef_t le_ref_CreateMap
+(
     const char      *name,      ///< Name of the map (for diagnostics).
-#endif
     size_t           maxRefs    ///< Maximum number of Safe References expected to be kept in this
                                 ///  Reference Map at any one time.
 )
+#else
+le_ref_MapRef_t _le_ref_CreateMap
+(
+    size_t           maxRefs    ///< Maximum number of Safe References expected to be kept in this
+                                ///  Reference Map at any one time.
+)
+#endif
 {
     le_ref_MapRef_t      mapPtr = calloc(1, sizeof(*mapPtr));
     struct le_ref_Block *initialBlockPtr = calloc(LE_REF_BLOCK_SIZE(maxRefs), sizeof(void *));

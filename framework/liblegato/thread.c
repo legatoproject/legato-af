@@ -193,6 +193,27 @@ static pthread_mutex_t Mutex = PTHREAD_MUTEX_INITIALIZER;   // Pthreads FAST mut
 #   define  THREAD_NAME(var) "<omitted>"
 #endif
 
+
+//--------------------------------------------------------------------------------------------------
+// Create definitions for inlineable functions
+//
+// See le_thread.h for bodies & documentation
+//--------------------------------------------------------------------------------------------------
+#if !LE_CONFIG_THREAD_NAMES_ENABLED
+LE_DECLARE_INLINE le_thread_Ref_t le_thread_Create
+(
+    const char*             name,
+    le_thread_MainFunc_t    mainFunc,
+    void*                   context
+);
+
+LE_DECLARE_INLINE le_thread_InitLegatoThreadData
+(
+    const char* name
+);
+#endif
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Locks the module's mutex.
@@ -985,14 +1006,20 @@ le_result_t thread_GetOSThread
  * @return A reference to the thread (doesn't return if fails).
  */
 //--------------------------------------------------------------------------------------------------
-le_thread_Ref_t _le_thread_Create
-(
 #if LE_CONFIG_THREAD_NAMES_ENABLED
+le_thread_Ref_t le_thread_Create
+(
     const char*             name,       ///< [in] Name of the thread.
-#endif
     le_thread_MainFunc_t    mainFunc,   ///< [in] The thread's main function.
     void*                   context     ///< [in] Value to pass to mainFunc when it is called.
 )
+#else
+le_thread_Ref_t _le_thread_Create
+(
+    le_thread_MainFunc_t    mainFunc,   ///< [in] The thread's main function.
+    void*                   context     ///< [in] Value to pass to mainFunc when it is called.
+)
+#endif
 {
     // Create a new thread object.
 #if LE_CONFIG_THREAD_NAMES_ENABLED
@@ -1549,15 +1576,17 @@ void le_thread_RemoveDestructor
  * @note This is not needed if the thread was started using le_thread_Start().
  **/
 //--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_THREAD_NAMES_ENABLED
+void le_thread_InitLegatoThreadData
+(
+    const char* name    ///< [IN] A name for the thread (will be copied, so can be temporary).
+)
+#else
 void _le_thread_InitLegatoThreadData
 (
-#if LE_CONFIG_THREAD_NAMES_ENABLED
-    const char* name    ///< [IN] A name for the thread (will be copied, so can be temporary).
-#else
     void
-#endif
 )
-//--------------------------------------------------------------------------------------------------
+#endif
 {
     LE_FATAL_IF(ThreadPool == NULL,
                 "Legato C Runtime Library (liblegato) has not been initialized!");

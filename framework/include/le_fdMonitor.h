@@ -343,23 +343,8 @@ typedef void (*le_fdMonitor_HandlerFunc_t)
     short events
 );
 
-/// @cond HIDDEN_IN_USER_DOCS
-//--------------------------------------------------------------------------------------------------
-/**
- * Internal function used to implement le_fdMonitor_Create().
- */
-//--------------------------------------------------------------------------------------------------
-le_fdMonitor_Ref_t _le_fdMonitor_Create
-(
-#if LE_CONFIG_FD_MONITOR_NAMES_ENABLED
-    const char                  *name,
-#endif
-    int                          fd,
-    le_fdMonitor_HandlerFunc_t   handlerFunc,
-    short                        events
-);
-/// @endcond
 
+#if LE_CONFIG_FD_MONITOR_NAMES_ENABLED
 //--------------------------------------------------------------------------------------------------
 /**
  * Creates a File Descriptor Monitor.
@@ -395,12 +380,72 @@ le_fdMonitor_Ref_t _le_fdMonitor_Create
  * @note Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-#if LE_CONFIG_FD_MONITOR_NAMES_ENABLED
-#   define le_fdMonitor_Create(name, fd, handlerFunc, events)   \
-        _le_fdMonitor_Create((name), (fd), (handlerFunc), (events))
+le_fdMonitor_Ref_t le_fdMonitor_Create
+(
+    const char                  *name,
+    int                          fd,
+    le_fdMonitor_HandlerFunc_t   handlerFunc,
+    short                        events
+);
 #else /* if not LE_CONFIG_FD_MONITOR_NAMES_ENABLED */
-#   define le_fdMonitor_Create(name, fd, handlerFunc, events)   \
-        ((void)(name), _le_fdMonitor_Create((fd), (handlerFunc), (events)))
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_fdMonitor_Create().
+ */
+//--------------------------------------------------------------------------------------------------
+le_fdMonitor_Ref_t _le_fdMonitor_Create
+(
+    int                          fd,
+    le_fdMonitor_HandlerFunc_t   handlerFunc,
+    short                        events
+);
+/// @endcond
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a File Descriptor Monitor.
+ *
+ * Creates an object that will monitor a given file descriptor for events.
+ *
+ * The monitoring will be performed by the event loop of the thread that created the Monitor object.
+ * If that thread is blocked, no events will be detected for that file descriptor until that
+ * thread is unblocked and returns to its event loop.
+ *
+ * Events that can be enabled for monitoring:
+ *
+ * - @c POLLIN = Data available to read.
+ * - @c POLLPRI = Urgent data available to read (e.g., out-of-band data on a socket).
+ * - @c POLLOUT = Writing to the fd should accept some data now.
+ *
+ * These are bitmask values and can be combined using the bit-wise OR operator ('|').
+ *
+ * The following events are always monitored, even if not requested:
+ *
+ * - @c POLLRDHUP = Other end of stream socket closed or shutdown.
+ * - @c POLLERR = Error occurred.
+ * - @c POLLHUP = Hang up.
+ *
+ *  @param[in]  name        Name of the object (for diagnostics).
+ *  @param[in]  fd          File descriptor to be monitored for events.
+ *  @param[in]  handlerFunc Handler function.
+ *  @param[in]  events      Initial set of events to be monitored.
+ *
+ * @return
+ *      Reference to the object, which is needed for later deletion.
+ *
+ * @note Doesn't return on failure, there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE le_fdMonitor_Ref_t le_fdMonitor_Create
+(
+    const char                  *name,
+    int                          fd,
+    le_fdMonitor_HandlerFunc_t   handlerFunc,
+    short                        events
+)
+{
+    return _le_fdMonitor_Create(fd, handlerFunc, events);
+}
 #endif /* end LE_CONFIG_FD_MONITOR_NAMES_ENABLED */
 
 

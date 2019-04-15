@@ -73,3 +73,23 @@ __attribute__((constructor)) void _legato_InitFramework
     // thread-specific initialization for the main thread.
     thread_InitThread();
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initializes the Legato framework library.
+ *
+ * Applications should call this function explicitly when liblegato is linked statically.
+ *
+ * @note
+ *    The constructor initalizes the library. Application need to call this function only
+ *    to not get optimized out.
+ */
+//--------------------------------------------------------------------------------------------------
+void InitFramework
+(
+    void
+)
+{
+    // Do nothing
+}

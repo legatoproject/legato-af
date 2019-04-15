@@ -70,6 +70,17 @@ static le_log_TraceRef_t TraceRef;
 //  PRIVATE FUNCTIONS
 // =============================================
 
+//--------------------------------------------------------------------------------------------------
+// Create definitions for inlineable functions
+//
+// See le_timer.h for bodies & documentation
+//--------------------------------------------------------------------------------------------------
+#if !LE_CONFIG_TIMER_NAMES_ENABLED
+LE_DECLARE_INLINE le_timer_Ref_t le_timer_Create
+(
+    const char *nameStr
+);
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -625,14 +636,17 @@ void timer_DestructThread
  *      A reference to the timer object.
  */
 //--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_TIMER_NAMES_ENABLED
+le_timer_Ref_t le_timer_Create
+(
+    const char* nameStr          ///< [IN]  Name of this timer for logging and debug
+)
+#else
 le_timer_Ref_t _le_timer_Create
 (
-#if LE_CONFIG_TIMER_NAMES_ENABLED
-    const char* nameStr          ///< [IN]  Name of this timer for logging and debug
-#else
     void
-#endif
 )
+#endif
 {
     Timer_t* newTimerPtr;
 

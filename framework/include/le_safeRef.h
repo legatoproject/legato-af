@@ -293,21 +293,8 @@ le_ref_MapRef_t _le_ref_InitStaticMap
     _le_ref_InitStaticMap((maxRefs), &_ref_##name##Map, _ref_##name##Data)
 #endif /* end LE_CONFIG_SAFE_REF_NAMES_ENABLED */
 
-/// @cond HIDDEN_IN_USER_DOCS
-//--------------------------------------------------------------------------------------------------
-/**
- * Internal function used to implement le_ref_CreateMap().
- */
-//--------------------------------------------------------------------------------------------------
-le_ref_MapRef_t _le_ref_CreateMap
-(
-#if LE_CONFIG_SAFE_REF_NAMES_ENABLED
-    const char *name,
-#endif
-    size_t      maxRefs
-);
-/// @endcond
 
+#if LE_CONFIG_SAFE_REF_NAMES_ENABLED
 //--------------------------------------------------------------------------------------------------
 /**
  * Create a Reference Map that can hold mappings from Safe References to pointers.
@@ -319,10 +306,39 @@ le_ref_MapRef_t _le_ref_CreateMap
  *  @return A reference to the Reference Map object.
  */
 //--------------------------------------------------------------------------------------------------
-#if LE_CONFIG_SAFE_REF_NAMES_ENABLED
-#   define le_ref_CreateMap(name, maxRefs)  _le_ref_CreateMap((name), (maxRefs))
+le_ref_MapRef_t le_ref_CreateMap
+(
+    const char *name,
+    size_t      maxRefs
+);
 #else /* if not LE_CONFIG_SAFE_REF_NAMES_ENABLED */
-#   define le_ref_CreateMap(name, maxRefs)  ((void)(name), _le_ref_CreateMap(maxRefs))
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_ref_CreateMap().
+ */
+//--------------------------------------------------------------------------------------------------
+le_ref_MapRef_t _le_ref_CreateMap(size_t maxRefs);
+/// @endcond
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create a Reference Map that can hold mappings from Safe References to pointers.
+ *
+ *  @param[in]  name    Name of the map (for diagnostics).
+ *  @param[in]  maxRefs Maximum number of Safe References expected to be kept in this Reference Map
+ *                      at any one time.
+ *
+ *  @return A reference to the Reference Map object.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE le_ref_MapRef_t le_ref_CreateMap
+(
+    const char *name,
+    size_t      maxRefs
+)
+{
+    return _le_ref_CreateMap(maxRefs);
+}
 #endif /* end LE_CONFIG_SAFE_REF_NAMES_ENABLED */
 
 

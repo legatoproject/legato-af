@@ -615,21 +615,8 @@ typedef void (*le_event_DeferredFunc_t)
 //--------------------------------------------------------------------------------------------------
 typedef struct le_event_Handler* le_event_HandlerRef_t;
 
-/// @cond HIDDEN_IN_USER_DOCS
-//--------------------------------------------------------------------------------------------------
-/**
- * Internal function used to implement le_event_CreateId().
- */
-//--------------------------------------------------------------------------------------------------
-le_event_Id_t _le_event_CreateId
-(
-#if LE_CONFIG_EVENT_NAMES_ENABLED
-    const char *name,
-#endif
-    size_t      payloadSize
-);
-/// @endcond
 
+#if LE_CONFIG_EVENT_NAMES_ENABLED
 //--------------------------------------------------------------------------------------------------
 /**
  * Create a new event ID.
@@ -642,26 +629,44 @@ le_event_Id_t _le_event_CreateId
  *  @note Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-#if LE_CONFIG_EVENT_NAMES_ENABLED
-#   define le_event_CreateId(name, payloadSize) _le_event_CreateId((name), (payloadSize))
+le_event_Id_t le_event_CreateId
+(
+    const char *name,
+    size_t      payloadSize
+);
 #else /* if not LE_CONFIG_EVENT_NAMES_ENABLED */
-#   define le_event_CreateId(name, payloadSize) ((void)(name), _le_event_CreateId(payloadSize))
-#endif /* end LE_CONFIG_EVENT_NAMES_ENABLED */
-
 /// @cond HIDDEN_IN_USER_DOCS
 //--------------------------------------------------------------------------------------------------
 /**
- * Internal function used to implement le_event_CreateIdWithRefCounting().
+ * Internal function used to implement le_event_CreateId().
  */
 //--------------------------------------------------------------------------------------------------
-le_event_Id_t _le_event_CreateIdWithRefCounting
-(
-#if LE_CONFIG_EVENT_NAMES_ENABLED
-    const char *name
-#endif
-);
+le_event_Id_t _le_event_CreateId(size_t payloadSize);
 /// @endcond
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create a new event ID.
+ *
+ *  @param[in]  name        Name of the event ID.  (Named for diagnostic purposes.)
+ *  @param[in]  payloadSize Data payload size (in bytes) of the event reports (can be 0).
+ *
+ *  @return Event ID.
+ *
+ *  @note Doesn't return on failure, there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE le_event_Id_t le_event_CreateId
+(
+    const char *name,
+    size_t      payloadSize
+)
+{
+    return _le_event_CreateId(payloadSize);
+}
+#endif /* end LE_CONFIG_EVENT_NAMES_ENABLED */
 
+
+#if LE_CONFIG_EVENT_NAMES_ENABLED
 //--------------------------------------------------------------------------------------------------
 /**
  * Create a new event ID to report events where the payload is a pointer to
@@ -674,29 +679,42 @@ le_event_Id_t _le_event_CreateIdWithRefCounting
  *  @note Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-#if LE_CONFIG_EVENT_NAMES_ENABLED
-#   define le_event_CreateIdWithRefCounting(name) _le_event_CreateIdWithRefCounting(name)
+le_event_Id_t le_event_CreateIdWithRefCounting
+(
+    const char *name
+);
 #else /* if not LE_CONFIG_EVENT_NAMES_ENABLED */
-#   define le_event_CreateIdWithRefCounting(name) \
-        ((void)(name), _le_event_CreateIdWithRefCounting())
-#endif /* end LE_CONFIG_EVENT_NAMES_ENABLED */
-
 /// @cond HIDDEN_IN_USER_DOCS
 //--------------------------------------------------------------------------------------------------
 /**
- * Internal function used to implement le_event_AddHandler().
+ * Internal function used to implement le_event_CreateIdWithRefCounting().
  */
 //--------------------------------------------------------------------------------------------------
-le_event_HandlerRef_t _le_event_AddHandler
-(
-#if LE_CONFIG_EVENT_NAMES_ENABLED
-    const char              *name,
-#endif
-    le_event_Id_t            eventId,
-    le_event_HandlerFunc_t   handlerFunc
-);
+le_event_Id_t _le_event_CreateIdWithRefCounting(void);
 /// @endcond
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create a new event ID to report events where the payload is a pointer to
+ * a reference-counted memory pool object allocated using the @ref c_memory.
+ *
+ *  @param[in]  name    Name of the event ID.  (Named for diagnostic purposes.)
+ *
+ *  @return Event ID.
+ *
+ *  @note Doesn't return on failure, there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE le_event_Id_t le_event_CreateIdWithRefCounting
+(
+    const char *name
+)
+{
+    return _le_event_CreateIdWithRefCounting();
+}
+#endif /* end LE_CONFIG_EVENT_NAMES_ENABLED */
 
+
+#if LE_CONFIG_EVENT_NAMES_ENABLED
 //--------------------------------------------------------------------------------------------------
 /**
  * Adds a handler function for a publish-subscribe event ID.
@@ -715,31 +733,52 @@ le_event_HandlerRef_t _le_event_AddHandler
  *  @note Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-#if LE_CONFIG_EVENT_NAMES_ENABLED
-#   define le_event_AddHandler(name, eventId, handlerFunc)  \
-        _le_event_AddHandler((name), (eventId), (handlerFunc))
+le_event_HandlerRef_t le_event_AddHandler
+(
+    const char              *name,
+    le_event_Id_t            eventId,
+    le_event_HandlerFunc_t   handlerFunc
+);
 #else /* if not LE_CONFIG_EVENT_NAMES_ENABLED */
-#   define le_event_AddHandler(name, eventId, handlerFunc)  \
-        ((void)(name), _le_event_AddHandler((eventId), (handlerFunc)))
-#endif /* end LE_CONFIG_EVENT_NAMES_ENABLED */
-
 /// @cond HIDDEN_IN_USER_DOCS
 //--------------------------------------------------------------------------------------------------
 /**
- * Internal function used to implement le_event_AddLayeredHandler().
+ * Internal function used to implement le_event_AddHandler().
  */
 //--------------------------------------------------------------------------------------------------
-le_event_HandlerRef_t _le_event_AddLayeredHandler
-(
-#if LE_CONFIG_EVENT_NAMES_ENABLED
-    const char                      *name,
-#endif
-    le_event_Id_t                    eventId,
-    le_event_LayeredHandlerFunc_t    firstLayerFunc,
-    void*                            secondLayerFunc
-);
+le_event_HandlerRef_t _le_event_AddHandler(le_event_Id_t eventId, le_event_HandlerFunc_t handlerFunc);
 /// @endcond
+//--------------------------------------------------------------------------------------------------
+/**
+ * Adds a handler function for a publish-subscribe event ID.
+ *
+ * Tells the calling thread event loop to call a specified handler function when a defined event
+ * reaches the front of the event queue.
+ *
+ *  @param[in]  name        Handler name.
+ *  @param[in]  eventId     Event ID.
+ *  @param[in]  handlerFunc Handler function.
+ *
+ *  @return
+ *      Handler reference, only needed to remove the handler (using
+ *      le_event_RemoveHandler() ).  Can be ignored if the handler will never be removed.
+ *
+ *  @note Doesn't return on failure, there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE le_event_HandlerRef_t le_event_AddHandler
+(
+    const char              *name,
+    le_event_Id_t            eventId,
+    le_event_HandlerFunc_t   handlerFunc
+)
+{
+    return _le_event_AddHandler(eventId, handlerFunc);
+}
+#endif /* end LE_CONFIG_EVENT_NAMES_ENABLED */
 
+
+#if LE_CONFIG_EVENT_NAMES_ENABLED
 //--------------------------------------------------------------------------------------------------
 /**
  * Adds a layered handler function for a publish-subscribe event ID.
@@ -761,12 +800,55 @@ le_event_HandlerRef_t _le_event_AddLayeredHandler
  *  @note Doesn't return on failure, there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-#if LE_CONFIG_EVENT_NAMES_ENABLED
-#   define le_event_AddLayeredHandler(name, eventId, firstLayerFunc, secondLayerFunc)   \
-        _le_event_AddLayeredHandler((name), (eventId), (firstLayerFunc), (secondLayerFunc))
+le_event_HandlerRef_t le_event_AddLayeredHandler
+(
+    const char                      *name,
+    le_event_Id_t                    eventId,
+    le_event_LayeredHandlerFunc_t    firstLayerFunc,
+    void*                            secondLayerFunc
+);
 #else /* if not LE_CONFIG_EVENT_NAMES_ENABLED */
-#   define le_event_AddLayeredHandler(name, eventId, firstLayerFunc, secondLayerFunc)   \
-        ((void)(name), _le_event_AddLayeredHandler((eventId), (firstLayerFunc), (secondLayerFunc)))
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_event_AddLayeredHandler().
+ */
+//--------------------------------------------------------------------------------------------------
+le_event_HandlerRef_t _le_event_AddLayeredHandler(le_event_Id_t eventId,
+                                                 le_event_LayeredHandlerFunc_t firstLayerFunc,
+                                                 void* secondLayerFunc);
+/// @endcond
+//--------------------------------------------------------------------------------------------------
+/**
+ * Adds a layered handler function for a publish-subscribe event ID.
+ *
+ * Tells the calling thread event loop to call a specified handler function when a defined event
+ * reaches the front of the event queue.  Passes the required handler functions when called.
+ *
+ * This is intended for use in implementing @ref c_event_layeredPublishSubscribe.
+ *
+ *  @param[in]  name    Handler name.
+ *  @param[in]  name    Event ID.
+ *  @param[in]  name    Pointer to first-layer handler func.
+ *  @param[in]  name    Pointer to second-layer handler func.
+ *
+ *  @return
+ *      Handler reference, only needed for later removal of the handler (using
+ *      le_event_RemoveHandler() ).  Can be ignored if the handler will never be removed.
+ *
+ *  @note Doesn't return on failure, there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE le_event_HandlerRef_t le_event_AddLayeredHandler
+(
+    const char                      *name,
+    le_event_Id_t                    eventId,
+    le_event_LayeredHandlerFunc_t    firstLayerFunc,
+    void*                            secondLayerFunc
+)
+{
+    return _le_event_AddLayeredHandler(eventId, firstLayerFunc, secondLayerFunc);
+}
 #endif /* end LE_CONFIG_EVENT_NAMES_ENABLED */
 
 

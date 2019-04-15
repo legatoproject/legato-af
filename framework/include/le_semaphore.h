@@ -67,21 +67,8 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct le_sem_t* le_sem_Ref_t;
 
-/// @cond HIDDEN_IN_USER_DOCS
-//--------------------------------------------------------------------------------------------------
-/**
- * Internal function used to implement le_sem_Create().
- */
-//--------------------------------------------------------------------------------------------------
-le_sem_Ref_t _le_sem_Create
-(
-#if LE_CONFIG_SEM_NAMES_ENABLED
-    const char  *name,
-#endif
-    int32_t      initialCount
-);
-/// @endcond
 
+#if LE_CONFIG_SEM_NAMES_ENABLED
 //--------------------------------------------------------------------------------------------------
 /**
  * Create a semaphore shared by threads within the same process.
@@ -92,10 +79,38 @@ le_sem_Ref_t _le_sem_Create
  *  @note Terminates the process on failure, no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-#if LE_CONFIG_SEM_NAMES_ENABLED
-#   define le_sem_Create(name, initialCount)    _le_sem_Create((name), (initialCount))
+le_sem_Ref_t le_sem_Create
+(
+    const char *name,
+    int32_t initialCount
+);
 #else /* if not LE_CONFIG_SEM_NAMES_ENABLED */
-#   define le_sem_Create(name, initialCount)    ((void)(name), _le_sem_Create(initialCount))
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_sem_Create().
+ */
+//--------------------------------------------------------------------------------------------------
+le_sem_Ref_t _le_sem_Create(int32_t initialCount);
+/// @endcond
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create a semaphore shared by threads within the same process.
+ *
+ *  @param[in]  name            Name of the semaphore.
+ *  @param[in]  initialCount    Initial number of semaphore.
+ *
+ *  @note Terminates the process on failure, no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE le_sem_Ref_t le_sem_Create
+(
+    const char *name,
+    int32_t initialCount
+)
+{
+    return _le_sem_Create(initialCount);
+}
 #endif /* end LE_CONFIG_SEM_NAMES_ENABLED */
 
 
@@ -110,6 +125,8 @@ void le_sem_Delete
     le_sem_Ref_t    semaphorePtr   ///< [IN] Pointer to the semaphore.
 );
 
+
+#if LE_CONFIG_SEM_NAMES_ENABLED
 //--------------------------------------------------------------------------------------------------
 /**
  * Finds a specified semaphore's name.
@@ -120,23 +137,37 @@ void le_sem_Delete
  *      Reference to the semaphore, or NULL if the semaphore doesn't exist.
  */
 //--------------------------------------------------------------------------------------------------
-#if LE_CONFIG_SEM_NAMES_ENABLED
 le_sem_Ref_t le_sem_FindSemaphore
 (
     const char* name
 );
 #else /* if not LE_CONFIG_SEM_NAMES_ENABLED */
-#   define le_sem_FindSemaphore(name)   ((void)(name), _le_sem_FindSemaphore())
 /// @cond HIDDEN_IN_USER_DOCS
-LE_DECLARE_INLINE le_sem_Ref_t _le_sem_FindSemaphore
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_sem_FindSemaphore().
+ */
+//--------------------------------------------------------------------------------------------------
+le_sem_Ref_t _le_sem_FindSemaphore(void);
+/// @endcond
+//--------------------------------------------------------------------------------------------------
+/**
+ * Finds a specified semaphore's name.
+ *
+ *  @param[in]  name    Name of the semaphore.
+ *
+ *  @return
+ *      Reference to the semaphore, or NULL if the semaphore doesn't exist.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE le_sem_Ref_t le_sem_FindSemaphore
 (
-    void
+    const char* name
 )
 {
     // Cannot look up semaphores by name if names do not exist.
-    return NULL;
+    return _le_sem_FindSemaphore();
 }
-/// @endcond
 #endif /* end LE_CONFIG_SEM_NAMES_ENABLED */
 
 //--------------------------------------------------------------------------------------------------

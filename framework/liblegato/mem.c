@@ -72,7 +72,42 @@
 #   define  MEMPOOL_NAME(var) "<omitted>"
 #endif
 
+//--------------------------------------------------------------------------------------------------
+// Create definitions for inlineable functions
+//
+// See le_mem.h for bodies & documentation
+//--------------------------------------------------------------------------------------------------
+#if !LE_CONFIG_EVENT_NAMES_ENABLED
+LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_CreatePool
+(
+    const char* name,           ///< [IN] Name of the pool inside the component.
+    size_t      objSize ///< [IN] Size of the individual objects to be allocated from this pool
+                        /// (in bytes), e.g., sizeof(MyObject_t).
+);
 
+LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_FindPool
+(
+    const char* name            ///< [IN] Name of the pool inside the component.
+);
+
+LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_CreateSubPool
+(
+    le_mem_PoolRef_t    superPool,      ///< [IN] Super-pool.
+    const char*         name,           ///< [IN] Name of the sub-pool (will be copied into the
+                                        ///   sub-pool).
+    size_t              numObjects      ///< [IN] Number of objects to take from the super-pool.
+);
+
+LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_CreateReducedPool
+(
+    le_mem_PoolRef_t    superPool,      ///< [IN] Super-pool.
+    const char*         name,           ///< [IN] Name of the sub-pool (will be copied into the
+                                        ///   sub-pool).
+    size_t              numObjects,     ///< [IN] Minimum number of objects in the subpool
+                                        ///< by default.
+    size_t              objSize         ///< [IN] Minimum size of objects in the subpool.
+);
+#endif
 //--------------------------------------------------------------------------------------------------
 /**
  * The default number of blocks to expand by when the le_mem_ForceAlloc expands the memory pool.
@@ -808,15 +843,21 @@ le_mem_PoolRef_t _le_mem_GetBlockPool
  *      reference for validity.
  */
 //--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
 le_mem_PoolRef_t _le_mem_CreatePool
 (
-#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
     const char*     componentName,  ///< [IN] Name of the component.
     const char*     name,           ///< [IN] Name of the pool inside the component.
-#endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
     size_t          objSize         ///< [IN] The size of the individual objects to be allocated
                                     /// from this pool (in bytes).  E.g., sizeof(MyObject_t).
 )
+#else
+le_mem_PoolRef_t _le_mem_CreatePool
+(
+    size_t      objSize ///< [IN] Size of the individual objects to be allocated from this pool
+                        /// (in bytes), e.g., sizeof(MyObject_t).
+)
+#endif
 {
     le_mem_PoolRef_t newPool = calloc(1, sizeof(le_mem_Pool_t));
 
@@ -843,6 +884,7 @@ le_mem_PoolRef_t _le_mem_CreatePool
 
     return newPool;
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1702,6 +1744,7 @@ le_mem_PoolRef_t _le_mem_FindPool
 #endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
 
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Creates a sub-pool.  You cannot create sub-pools of sub-pools so do not attempt to pass a
@@ -1717,16 +1760,22 @@ le_mem_PoolRef_t _le_mem_FindPool
  *      reference for validity.
  */
 //--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
 le_mem_PoolRef_t _le_mem_CreateSubPool
 (
     le_mem_PoolRef_t    superPool,      ///< [IN] The super-pool.
-#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
     const char*         componentName,  ///< [IN] Name of the component.
     const char*         name,           ///< [IN] Name of the sub-pool (will be copied into the
                                         ///   sub-pool).
-#endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
     size_t              numObjects      ///< [IN] The number of objects to take from the super-pool.
 )
+#else
+le_mem_PoolRef_t _le_mem_CreateSubPool
+(
+    le_mem_PoolRef_t    superPool,      ///< [IN] Super-pool.
+    size_t              numObjects      ///< [IN] Number of objects to take from the super-pool.
+)
+#endif
 {
     LE_ASSERT(superPool != NULL);
 
@@ -1775,18 +1824,26 @@ le_mem_PoolRef_t _le_mem_CreateSubPool
  *      Reference to the sub-pool.
  */
 //--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
 le_mem_PoolRef_t _le_mem_CreateReducedPool
 (
     le_mem_PoolRef_t    superPool,      ///< [IN] Super-pool.
-#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
     const char*         componentName,  ///< [IN] Name of the component.
     const char*         name,           ///< [IN] Name of the sub-pool (will be copied into the
                                         ///   sub-pool).
-#endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
     size_t              numObjects,     ///< [IN] Minimum number of objects in the subpool
                                         ///< by default.
     size_t              objSize         ///< [IN] Minimum size of objects in the subpool.
 )
+#else
+le_mem_PoolRef_t _le_mem_CreateReducedPool
+(
+    le_mem_PoolRef_t    superPool,      ///< [IN] Super-pool.
+    size_t              numObjects,     ///< [IN] Minimum number of objects in the subpool
+                                        ///< by default.
+    size_t              objSize         ///< [IN] Minimum size of objects in the subpool.
+)
+#endif
 {
     LE_ASSERT(superPool != NULL);
 

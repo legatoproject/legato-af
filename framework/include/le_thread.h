@@ -267,22 +267,8 @@ typedef void* (* le_thread_MainFunc_t)
     void* context   ///< See parameter documentation above.
 );
 
-/// @cond HIDDEN_IN_USER_DOCS
-//--------------------------------------------------------------------------------------------------
-/**
- * Internal function used to implement le_thread_Create().
- */
-//--------------------------------------------------------------------------------------------------
-le_thread_Ref_t _le_thread_Create
-(
-#if LE_CONFIG_THREAD_NAMES_ENABLED
-    const char*             name,
-#endif
-    le_thread_MainFunc_t    mainFunc,
-    void*                   context
-);
-/// @endcond
 
+#if LE_CONFIG_THREAD_NAMES_ENABLED
 //--------------------------------------------------------------------------------------------------
 /**
  * Creates a new Legato thread of execution.  After creating the thread, you have the opportunity
@@ -295,12 +281,42 @@ le_thread_Ref_t _le_thread_Create
  *  @return A reference to the thread (doesn't return if fails).
  */
 //--------------------------------------------------------------------------------------------------
-#if LE_CONFIG_THREAD_NAMES_ENABLED
-#   define le_thread_Create(name, mainFunc, context)    \
-        _le_thread_Create((name), (mainFunc), (context))
+le_thread_Ref_t le_thread_Create
+(
+    const char*             name,
+    le_thread_MainFunc_t    mainFunc,
+    void*                   context
+);
 #else /* if not LE_CONFIG_THREAD_NAMES_ENABLED */
-#   define le_thread_Create(name, mainFunc, context)    \
-        ((void)(name), _le_thread_Create((mainFunc), (context)))
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_thread_Create().
+ */
+//--------------------------------------------------------------------------------------------------
+le_thread_Ref_t _le_thread_Create(le_thread_MainFunc_t mainFunc, void context);
+/// @endcond
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a new Legato thread of execution.  After creating the thread, you have the opportunity
+ * to set attributes before it starts.  It won't start until le_thread_Start() is called.
+ *
+ *  @param[in]  name        Thread name (will be copied, so can be temporary).
+ *  @param[in]  mainFunc    Thread's main function.
+ *  @param[in]  context     Value to pass to mainFunc when it is called.
+ *
+ *  @return A reference to the thread (doesn't return if fails).
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE le_thread_Ref_t le_thread_Create
+(
+    const char*             name,
+    le_thread_MainFunc_t    mainFunc,
+    void*                   context
+)
+{
+    return le_thread_Create(mainFunc, context);
+}
 #endif /* end LE_CONFIG_THREAD_NAMES_ENABLED */
 
 
@@ -618,20 +634,8 @@ void le_thread_RemoveDestructor
     le_thread_DestructorRef_t  destructor ///< [in] Reference to the destructor to remove.
 );
 
-/// @cond HIDDEN_IN_USER_DOCS
-//--------------------------------------------------------------------------------------------------
-/**
- * Internal function used to implement le_thread_InitLegatoThreadData().
- */
-//--------------------------------------------------------------------------------------------------
-void _le_thread_InitLegatoThreadData
-(
-#if LE_CONFIG_THREAD_NAMES_ENABLED
-    const char* name
-#endif
-);
-/// @endcond
 
+#if LE_CONFIG_THREAD_NAMES_ENABLED
 //--------------------------------------------------------------------------------------------------
 /**
  * Initialize the thread-specific data needed by the Legato framework for the calling thread.
@@ -644,10 +648,38 @@ void _le_thread_InitLegatoThreadData
  *  @note This is not needed if the thread was started using le_thread_Start().
  **/
 //--------------------------------------------------------------------------------------------------
-#if LE_CONFIG_THREAD_NAMES_ENABLED
-#   define le_thread_InitLegatoThreadData(name) _le_thread_InitLegatoThreadData(name)
+void le_thread_InitLegatoThreadData
+(
+    const char* name
+);
 #else /* if not LE_CONFIG_THREAD_NAMES_ENABLED */
-#   define le_thread_InitLegatoThreadData(name) ((void)(name), _le_thread_InitLegatoThreadData())
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_thread_InitLegatoThreadData().
+ */
+//--------------------------------------------------------------------------------------------------
+void _le_thread_InitLegatoThreadData(void);
+/// @endcond
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize the thread-specific data needed by the Legato framework for the calling thread.
+ *
+ * This is used to turn a non-Legato thread (a thread that was created using a non-Legato API,
+ * such as pthread_create() ) into a Legato thread.
+ *
+ *  @param[in]  name    A name for the thread (will be copied, so can be temporary).
+ *
+ *  @note This is not needed if the thread was started using le_thread_Start().
+ **/
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE le_thread_InitLegatoThreadData
+(
+    const char* name
+)
+{
+    _le_thread_InitLegatoThreadData();
+}
 #endif /* end LE_CONFIG_THREAD_NAMES_ENABLED */
 
 

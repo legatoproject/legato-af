@@ -623,22 +623,6 @@ le_mem_PoolStats_t;
 /// @cond HIDDEN_IN_USER_DOCS
 //--------------------------------------------------------------------------------------------------
 /**
- * Internal function used to implement le_mem_CreatePool() with automatic component scoping
- * of pool names.
- */
-//--------------------------------------------------------------------------------------------------
-le_mem_PoolRef_t _le_mem_CreatePool
-(
-#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
-    const char* componentName,  ///< [IN] Name of the component.
-    const char* name,           ///< [IN] Name of the pool inside the component.
-#endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
-    size_t      objSize ///< [IN] Size of the individual objects to be allocated from this pool
-                        /// (in bytes), e.g., sizeof(MyObject_t).
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Internal function used to implement le_mem_InitStaticPool() with automatic component scoping
  * of pool names.
  */
@@ -656,6 +640,22 @@ le_mem_PoolRef_t _le_mem_InitStaticPool
 /// @endcond
 
 
+#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
+//--------------------------------------------------------------------------------------------------
+/** @cond HIDDEN_IN_USER_DOCS
+ *
+ * Internal function used to implement le_mem_CreatePool() with automatic component scoping
+ * of pool names.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mem_PoolRef_t _le_mem_CreatePool
+(
+    const char* componentName,  ///< [IN] Name of the component.
+    const char* name,           ///< [IN] Name of the pool inside the component.
+    size_t      objSize         ///< [IN] Size of the individual objects to be allocated from this pool
+                                /// (in bytes), e.g., sizeof(MyObject_t).
+);
+/// @endcond
 //--------------------------------------------------------------------------------------------------
 /**
  * Creates an empty memory pool.
@@ -668,11 +668,50 @@ le_mem_PoolRef_t _le_mem_InitStaticPool
  *      reference for validity.
  */
 //--------------------------------------------------------------------------------------------------
-#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
-#   define le_mem_CreatePool(name, objSize)                                \
-        _le_mem_CreatePool(STRINGIZE(LE_COMPONENT_NAME), (name), (objSize))
+static inline le_mem_PoolRef_t le_mem_CreatePool
+(
+    const char* name,           ///< [IN] Name of the pool inside the component.
+    size_t      objSize         ///< [IN] Size of the individual objects to be allocated from this pool
+                                /// (in bytes), e.g., sizeof(MyObject_t).
+)
+{
+    return _le_mem_CreatePool(STRINGIZE(LE_COMPONENT_NAME), name, objSize);
+}
 #else /* if not LE_CONFIG_MEM_POOL_NAMES_ENABLED */
-#   define le_mem_CreatePool(name, objSize) ((void)(name), _le_mem_CreatePool(objSize))
+//--------------------------------------------------------------------------------------------------
+/** @cond HIDDEN_IN_USER_DOCS
+ *
+ * Internal function used to implement le_mem_CreatePool() with automatic component scoping
+ * of pool names.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mem_PoolRef_t _le_mem_CreatePool
+(
+    size_t      objSize         ///< [IN] Size of the individual objects to be allocated from this pool
+                                /// (in bytes), e.g., sizeof(MyObject_t).
+);
+/// @endcond
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates an empty memory pool.
+ *
+ * @return
+ *      Reference to the memory pool object.
+ *
+ * @note
+ *      On failure, the process exits, so you don't have to worry about checking the returned
+ *      reference for validity.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_CreatePool
+(
+    const char* name,           ///< [IN] Name of the pool inside the component.
+    size_t      objSize         ///< [IN] Size of the individual objects to be allocated from this pool
+                                /// (in bytes), e.g., sizeof(MyObject_t).
+)
+{
+    return _le_mem_CreatePool(objSize);
+}
 #endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
 
 //--------------------------------------------------------------------------------------------------
@@ -1186,9 +1225,9 @@ size_t le_mem_GetObjectFullSize
 
 
 #if LE_CONFIG_MEM_POOL_NAMES_ENABLED
-/// @cond HIDDEN_IN_USER_DOCS
 //--------------------------------------------------------------------------------------------------
-/**
+/** @cond HIDDEN_IN_USER_DOCS
+ *
  * Internal function used to implement le_mem_FindPool() with automatic component scoping
  * of pool names.
  */
@@ -1199,9 +1238,6 @@ le_mem_PoolRef_t _le_mem_FindPool
     const char* name            ///< [IN] Name of the pool inside the component.
 );
 /// @endcond
-#endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Finds a pool based on the pool's name.
@@ -1210,55 +1246,61 @@ le_mem_PoolRef_t _le_mem_FindPool
  *      Reference to the pool, or NULL if the pool doesn't exist.
  */
 //--------------------------------------------------------------------------------------------------
-#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
-#   define le_mem_FindPool(name)    _le_mem_FindPool(STRINGIZE(LE_COMPONENT_NAME), (name))
-#else /* if not LE_CONFIG_MEM_POOL_NAMES_ENABLED */
-#   define le_mem_FindPool(name)    ((void)(name), NULL)
+static inline le_mem_PoolRef_t le_mem_FindPool
+(
+    const char* name            ///< [IN] Name of the pool inside the component.
+)
+{
+    return _le_mem_FindPool(STRINGIZE(LE_COMPONENT_NAME), name);
+}
+#else
+//--------------------------------------------------------------------------------------------------
+/** @cond HIDDEN_IN_USER_DOCS
+ *
+ * Internal function used to implement le_mem_FindPool() with automatic component scoping
+ * of pool names.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mem_PoolRef_t _le_mem_FindPool
+(
+    const char* name            ///< [IN] Name of the pool inside the component.
+);
+/// @endcond
+//--------------------------------------------------------------------------------------------------
+/**
+ * Finds a pool based on the pool's name.
+ *
+ * @return
+ *      Reference to the pool, or NULL if the pool doesn't exist.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_FindPool
+(
+    const char* name            ///< [IN] Name of the pool inside the component.
+)
+{
+    return _le_mem_FindPool(name);
+}
 #endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
 
 
-/// @cond HIDDEN_IN_USER_DOCS
+#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
 //--------------------------------------------------------------------------------------------------
-/**
+/** @cond HIDDEN_IN_USER_DOCS
+ *
  * Internal function used to implement le_mem_CreateSubPool() with automatic component scoping
  * of pool names.
  */
 //--------------------------------------------------------------------------------------------------
 le_mem_PoolRef_t _le_mem_CreateSubPool
 (
-    le_mem_PoolRef_t    superPool,      ///< [IN] Super-pool.
-#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
+    le_mem_PoolRef_t    superPool,  ///< [IN] Super-pool.
     const char*         componentName,  ///< [IN] Name of the component.
-    const char*         name,           ///< [IN] Name of the sub-pool (will be copied into the
-                                        ///   sub-pool).
-#endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
-    size_t              numObjects      ///< [IN] Number of objects to take from the super-pool.
+    const char*         name,       ///< [IN] Name of the sub-pool (will be copied into the
+                                    ///   sub-pool).
+    size_t              numObjects  ///< [IN] Number of objects to take from the super-pool.
 );
 /// @endcond
-
-
-/// @cond HIDDEN_IN_USER_DOCS
-//--------------------------------------------------------------------------------------------------
-/**
- * Internal function used to implement le_mem_CreateReducedPool() with automatic component scoping
- * of pool names.
- */
-//--------------------------------------------------------------------------------------------------
-le_mem_PoolRef_t _le_mem_CreateReducedPool
-(
-    le_mem_PoolRef_t    superPool,      ///< [IN] Super-pool.
-#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
-    const char*         componentName,  ///< [IN] Name of the component.
-    const char*         name,           ///< [IN] Name of the sub-pool (will be copied into the
-                                        ///   sub-pool).
-#endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
-    size_t              numObjects,     ///< [IN] Minimum number of objects in the subpool
-                                        ///< by default.
-    size_t              objSize         ///< [IN] Minimum size of objects in the subpool.
-);
-/// @endcond
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Creates a sub-pool.
@@ -1269,14 +1311,71 @@ le_mem_PoolRef_t _le_mem_CreateReducedPool
  *      Reference to the sub-pool.
  */
 //--------------------------------------------------------------------------------------------------
-#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
-#   define le_mem_CreateSubPool(superPool, name, numObjects)    \
-        _le_mem_CreateSubPool((superPool), STRINGIZE(LE_COMPONENT_NAME), (name), (numObjects))
+static inline le_mem_PoolRef_t le_mem_CreateSubPool
+(
+    le_mem_PoolRef_t    superPool,      ///< [IN] Super-pool.
+    const char*         name,           ///< [IN] Name of the sub-pool (will be copied into the
+                                        ///   sub-pool).
+    size_t              numObjects      ///< [IN] Number of objects to take from the super-pool.
+)
+{
+    return _le_mem_CreateSubPool(superPool, STRINGIZE(LE_COMPONENT_NAME), name, numObjects);
+}
 #else /* if not LE_CONFIG_MEM_POOL_NAMES_ENABLED */
-#   define le_mem_CreateSubPool(superPool, name, numObjects)    \
-        ((void)(name), _le_mem_CreateSubPool((superPool), (numObjects)))
+//--------------------------------------------------------------------------------------------------
+/** @cond HIDDEN_IN_USER_DOCS
+ *
+ * Internal function used to implement le_mem_CreateSubPool() with automatic component scoping
+ * of pool names.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mem_PoolRef_t _le_mem_CreateSubPool
+(
+    le_mem_PoolRef_t    superPool,      ///< [IN] Super-pool.
+    size_t              numObjects      ///< [IN] Number of objects to take from the super-pool.
+);
+/// @endcond
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a sub-pool.
+ *
+ * See @ref mem_sub_pools for more information.
+ *
+ * @return
+ *      Reference to the sub-pool.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_CreateSubPool
+(
+    le_mem_PoolRef_t    superPool,      ///< [IN] Super-pool.
+    const char*         name,           ///< [IN] Name of the sub-pool (will be copied into the
+                                        ///   sub-pool).
+    size_t              numObjects      ///< [IN] Number of objects to take from the super-pool.
+)
+{
+    return _le_mem_CreateSubPool(superPool, numObjects);
+}
 #endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
 
+
+#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
+//--------------------------------------------------------------------------------------------------
+/** @cond HIDDEN_IN_USER_DOCS
+ *
+ * Internal function used to implement le_mem_CreateSubPool() with automatic component scoping
+ * of pool names.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mem_PoolRef_t _le_mem_CreateReducedPool
+(
+    le_mem_PoolRef_t    superPool,      ///< [IN] Super-pool.
+    const char*         componentName,  ///< [IN] Name of the component.
+    const char*         name,           ///< [IN] Name of the sub-pool (will be copied into the
+                                        ///   sub-pool).
+    size_t              numObjects,     ///< [IN] Number of objects to take from the super-pool.
+    size_t              objSize         ///< [IN] Minimum size of objects in the subpool.
+);
+/// @endcond
 //--------------------------------------------------------------------------------------------------
 /**
  * Creates a sub-pool of smaller objects.
@@ -1287,12 +1386,56 @@ le_mem_PoolRef_t _le_mem_CreateReducedPool
  *      Reference to the sub-pool.
  */
 //--------------------------------------------------------------------------------------------------
-#if LE_CONFIG_MEM_POOL_NAMES_ENABLED
-#   define le_mem_CreateReducedPool(superPool, name, numObjects, divider) \
-    _le_mem_CreateReducedPool((superPool), STRINGIZE(LE_COMPONENT_NAME), (name), (numObjects), (divider))
+static inline le_mem_PoolRef_t le_mem_CreateReducedPool
+(
+    le_mem_PoolRef_t    superPool,      ///< [IN] Super-pool.
+    const char*         name,           ///< [IN] Name of the sub-pool (will be copied into the
+                                        ///   sub-pool).
+    size_t              numObjects,     ///< [IN] Minimum number of objects in the subpool
+                                        ///< by default.
+    size_t              objSize         ///< [IN] Minimum size of objects in the subpool.
+)
+{
+    return _le_mem_CreateReducedPool(superPool, STRINGIZE(LE_COMPONENT_NAME), name, numObjects, objSize);
+}
 #else /* if not LE_CONFIG_MEM_POOL_NAMES_ENABLED */
-#   define le_mem_CreateReducedPool(superPool, name, numObjects, divider) \
-    ((void)(name), _le_mem_CreateReducedPool((superPool), (numObjects), (divider)))
+//--------------------------------------------------------------------------------------------------
+/** @cond HIDDEN_IN_USER_DOCS
+ *
+ * Internal function used to implement le_mem_CreateSubPool() with automatic component scoping
+ * of pool names.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mem_PoolRef_t _le_mem_CreateReducedPool
+(
+    le_mem_PoolRef_t    superPool,      ///< [IN] Super-pool.
+    size_t              numObjects,     ///< [IN] Minimum number of objects in the subpool
+                                        ///< by default.
+    size_t              objSize         ///< [IN] Minimum size of objects in the subpool.
+);
+/// @endcond
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a sub-pool of smaller objects.
+ *
+ * See @ref mem_reduced_pools for more information.
+ *
+ * @return
+ *      Reference to the sub-pool.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_CreateReducedPool
+(
+    le_mem_PoolRef_t    superPool,      ///< [IN] Super-pool.
+    const char*         name,           ///< [IN] Name of the sub-pool (will be copied into the
+                                        ///   sub-pool).
+    size_t              numObjects,     ///< [IN] Minimum number of objects in the subpool
+                                        ///< by default.
+    size_t              objSize         ///< [IN] Minimum size of objects in the subpool.
+)
+{
+    return _le_mem_CreateReducedPool(superPool, numObjects, objSize);
+}
 #endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
 
 

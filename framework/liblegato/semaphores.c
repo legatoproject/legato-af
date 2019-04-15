@@ -126,9 +126,15 @@ LE_ASSERT(pthread_mutex_unlock(&(semaphorePtr)->waitingListMutex) == 0)
 // See le_semaphore.h for bodies & documentation
 //--------------------------------------------------------------------------------------------------
 #if !LE_CONFIG_SEM_NAMES_ENABLED
-LE_DEFINE_INLINE le_sem_Ref_t _le_sem_FindSemaphore
+LE_DEFINE_INLINE le_sem_Ref_t le_sem_Create
 (
-    void
+    const char  *name,
+    int32_t      initialCount
+);
+
+LE_DEFINE_INLINE le_sem_Ref_t le_sem_FindSemaphore
+(
+    const char* name
 );
 #endif /* end LE_CONFIG_SEM_NAMES_ENABLED */
 
@@ -247,13 +253,18 @@ void sem_ThreadInit
  * assert with LE_FATAL and log.
  */
 //--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_SEM_NAMES_ENABLED
+le_sem_Ref_t le_sem_Create
+(
+    const char *name,
+    int32_t     initialCount
+)
+#else
 le_sem_Ref_t _le_sem_Create
 (
-#if LE_CONFIG_SEM_NAMES_ENABLED
-    const char*     name,               ///< [IN] Name of the semaphore
-#endif
-    int32_t         initialCount        ///< [IN] initial number of semaphore
+    int32_t     initialCount        ///< [IN] initial number of semaphore
 )
+#endif
 {
     // Allocate a semaphore object and initialize it.
     Semaphore_t* semaphorePtr = le_mem_ForceAlloc(SemaphorePoolRef);
@@ -340,10 +351,17 @@ void le_sem_Delete
  *      Invalid Name will do LE_FATAL
  */
 //--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_SEM_NAMES_ENABLED
 le_sem_Ref_t le_sem_FindSemaphore
 (
     const char* name    ///< [IN] The name of the semaphore.
 )
+#else
+le_sem_Ref_t _le_sem_FindSemaphore
+(
+    void
+)
+#endif
 {
     le_dls_Link_t *semaphorePtr;
     Semaphore_t *Nodeptr;

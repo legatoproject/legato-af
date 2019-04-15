@@ -322,6 +322,14 @@ static bool ShouldNotDaemonize = false;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Indicates to supervisor which start program is being used.
+ **/
+//--------------------------------------------------------------------------------------------------
+static const char* CurrentStartVersion = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Prints man page style usage help to stdout.
  */
 //--------------------------------------------------------------------------------------------------
@@ -353,6 +361,9 @@ static void PrintHelp
             "        -n, --no-daemonize\n"
             "                The Supervisor does not daemonize itself.\n"
             "\n"
+            "        -v, --version\n"
+            "                The version of the start program being used.\n"
+            "\n"
             "        -h --help\n"
             "                Print this help text to standard output stream and exit.\n",
             programName,
@@ -377,6 +388,7 @@ static void ParseCommandLine
     le_arg_SetStringVar(&appStartModeArgPtr, "a", "start-apps");
     le_arg_SetFlagVar(&printHelp, "h", "help");
     le_arg_SetFlagVar(&ShouldNotDaemonize, "n", "no-daemonize");
+    le_arg_SetStringVar(&CurrentStartVersion, "v", "version");
 
     // Run the argument scanner.
     le_arg_Scan();
@@ -403,6 +415,86 @@ static void ParseCommandLine
             exit(EXIT_FAILURE);
         }
     }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Attempt to read the current Legato version string from the file system.
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetCurrentLegatoVersion
+(
+    char* versionBuffer,  ///< Buffer to hold the string.
+    size_t versionSize    ///< Size of buffer
+)
+//--------------------------------------------------------------------------------------------------
+{
+    LE_DEBUG("Read the Legato version string.");
+
+    FILE* versionFile = fopen("/legato/systems/current/version", "r");
+
+    if (versionFile == NULL)
+    {
+        LE_ERROR("Could not open Legato version file.");
+        return;
+    }
+
+    if (fgets(versionBuffer, versionSize, versionFile) != NULL)
+    {
+        char* newLine = strchr(versionBuffer, '\n');
+
+        if (newLine != NULL)
+        {
+            *newLine = 0;
+        }
+
+        LE_DEBUG("The current Legato framework version is, '%s'.", versionBuffer);
+    }
+    else
+    {
+        LE_ERROR("Could not read Legato version.");
+    }
+
+    fclose(versionFile);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Check if supervisor was launched by the startSystem executable. There are cases where supervisor
+ *  is executed from external sources.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsParentStart
+(
+    void
+)
+{
+    char procName[LE_LIMIT_PROC_NAME_LEN + 1] = "";
+    char procPidPath[LE_LIMIT_PROC_NAME_LEN + 1] = "";
+
+    snprintf(procPidPath, sizeof(procPidPath), "/proc/%d/cmdline", getppid());
+
+    int fd = open(procPidPath, O_RDONLY);
+    if (0 <= fd)
+    {
+        ssize_t result = read(fd, procName, LE_LIMIT_PROC_NAME_LEN);
+        if (result <= 0)
+        {
+            LE_ERROR("Unable to read '%s': %m", procName);
+            close(fd);
+            return false;
+        }
+        close(fd);
+    }
+
+    if (strstr(procName, "startSystem") != NULL)
+    {
+        return true;
+    }
+
+    return false;
 }
 
 
@@ -1120,6 +1212,37 @@ COMPONENT_INIT
         // Make sure our umask is always cleared so that the framework created files are given
         // proper permissions.
         umask(0);
+    }
+
+    // Get the current legato version
+    char versionBuffer[255] = "";
+    GetCurrentLegatoVersion(versionBuffer, sizeof(versionBuffer));
+
+    // There are two cases where supervisor will need to fork and exec the latest start program.
+    // 1) When no start version has been specified (implies it is old start program)
+    // 2) When the start program version mismatches with the current legato version
+    if (((CurrentStartVersion == NULL) && IsParentStart()) ||
+       ((CurrentStartVersion != NULL) && (strcmp(CurrentStartVersion, versionBuffer) != 0)))
+    {
+        // Need to fork; otherwise exec the new start will cause the tried counter to increment.
+        pid_t pid = fork();
+
+        if (pid == 0)
+        {
+            LE_INFO("Version mismatch. Fork and exec'ing latest start program.");
+            LE_DEBUG("[Current legato version: %s]", versionBuffer);
+            LE_DEBUG("[Current start version: %s]", CurrentStartVersion);
+
+            // Exec the latest start program
+            const char* startPath = "/legato/systems/current/bin/startSystem";
+            (void)execl(startPath, startPath, "-v", versionBuffer, NULL);
+        }
+        else
+        {
+            // Exit current supervisor and shutdown old start
+            State = STATE_STOPPING;
+            StopSupervisor();
+        }
     }
 
     // Create the Legato runtime directory if it doesn't already exist.

@@ -296,23 +296,8 @@ typedef struct le_hashmap
 }
 le_hashmap_Hashmap_t;
 
-/// @cond HIDDEN_IN_USER_DOCS
-//--------------------------------------------------------------------------------------------------
-/**
- * Internal function used to implement le_hashmap_Create().
- */
-//--------------------------------------------------------------------------------------------------
-le_hashmap_Ref_t _le_hashmap_Create
-(
-#if LE_CONFIG_HASHMAP_NAMES_ENABLED
-    const char                *nameStr,
-#endif
-    size_t                     capacity,
-    le_hashmap_HashFunc_t      hashFunc,
-    le_hashmap_EqualsFunc_t    equalsFunc
-);
-/// @endcond
 
+#if LE_CONFIG_HASHMAP_NAMES_ENABLED
 //--------------------------------------------------------------------------------------------------
 /**
  * Create a HashMap.
@@ -330,12 +315,54 @@ le_hashmap_Ref_t _le_hashmap_Create
  *  @note Terminates the process on failure, so no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-#if LE_CONFIG_HASHMAP_NAMES_ENABLED
-#   define le_hashmap_Create(nameStr, capacity, hashFunc, equalsFunc) \
-        _le_hashmap_Create((nameStr), (capacity), (hashFunc), (equalsFunc))
+le_hashmap_Ref_t le_hashmap_Create
+(
+    const char                *nameStr,
+    size_t                     capacity,
+    le_hashmap_HashFunc_t      hashFunc,
+    le_hashmap_EqualsFunc_t    equalsFunc
+);
 #else /* if not LE_CONFIG_HASHMAP_NAMES_ENABLED */
-#   define le_hashmap_Create(nameStr, capacity, hashFunc, equalsFunc) \
-        ((void)(nameStr), _le_hashmap_Create((capacity), (hashFunc), (equalsFunc)))
+/// @cond HIDDEN_IN_USER_DOCS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal function used to implement le_hashmap_Create().
+ */
+//--------------------------------------------------------------------------------------------------
+le_hashmap_Ref_t _le_hashmap_Create
+(
+    size_t                     capacity,
+    le_hashmap_HashFunc_t      hashFunc,
+    le_hashmap_EqualsFunc_t    equalsFunc
+);
+/// @endcond
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create a HashMap.
+ *
+ * If you create a hashmap with a smaller capacity than you actually use, then
+ * the map will continue to work, but performance will degrade the more you put in the map.
+ *
+ *  @param[in]  nameStr     Name of the HashMap.  This must be a static string as it is not copied.
+ *  @param[in]  capacity    Size of the hashmap
+ *  @param[in]  hashFunc    Hash function
+ *  @param[in]  equalsFunc  Equality function
+ *
+ *  @return  Returns a reference to the map.
+ *
+ *  @note Terminates the process on failure, so no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE le_hashmap_Ref_t le_hashmap_Create
+(
+    const char                *nameStr,
+    size_t                     capacity,
+    le_hashmap_HashFunc_t      hashFunc,
+    le_hashmap_EqualsFunc_t    equalsFunc
+)
+{
+    return _le_hashmap_Create(capacity, hashFunc, equalsFunc);
+}
 #endif /* end LE_CONFIG_HASHMAP_NAMES_ENABLED */
 
 

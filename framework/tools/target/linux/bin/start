@@ -6,6 +6,19 @@ LD_CACHE_SCRIPT_PATH="/usr/sbin/update-ld-cache"
 # Add LEGATO_SYSTEM_PATH with PATH.
 export PATH=$LEGATO_SYSTEM_PATH:$PATH
 
+IsImaEnabled()
+{
+    cmdline=`(cat /proc/cmdline | grep ima_appraise=enforce)`
+    config=`(zcat /proc/config.gz | grep CONFIG_IMA=y)`
+
+    if [ "$config" ] && [ "$cmdline" ];
+    then
+        return 0
+    else
+        return 1
+    fi
+}
+
 case "$1" in
 
     stop)
@@ -51,8 +64,6 @@ case "$1" in
         # Need to support backward compatibility. Check whether yocto providing any script to load
         # legato library. If not then follow the old way.
         if [ -f $LD_CACHE_SCRIPT_PATH ]; then
-            [ ! -d /legato/systems/current/lib ] &&
-            $LD_CACHE_SCRIPT_PATH /mnt/legato/system/lib >/dev/null ||
             $LD_CACHE_SCRIPT_PATH /legato/systems/current/lib >/dev/null
         else
             if [ -z ""`grep -a '^/legato/.*/liblegato.so$' /etc/ld.so.cache` ]; then
@@ -71,12 +82,6 @@ case "$1" in
                    fi
                    cp /etc/ld.so.cache /tmp/ld.so.cache
                    ldconfig -i /legato/systems/current/lib -C /tmp/ld.so.cache
-                   # When installed from scratch, no /legato/systems/current exits, so we need to
-                   # add the installation path to have the Legato starting.
-                   [ ! -d /legato/systems/current/lib ] &&
-                       ldconfig -i /mnt/legato/system/lib -C /tmp/ld.so.cache
-                   chmod 644 /tmp/ld.so.cache
-                   mount -o bind /tmp/ld.so.cache /etc/ld.so.cache
                 fi
             fi
         fi
@@ -100,8 +105,20 @@ case "$1" in
                     [ $? -ne 0 ] && echo "Cannot mount /etc/$file writable" >/dev/stderr
                 done
             fi
-            cd /mnt/legato
-            ./system/bin/startSystem
+
+
+            # Use the start system of the current system if available and ima not enabled
+            if [ -x "/legato/systems/current/bin/startSystem" ] && ! ImaEnabled; then
+                cd "/legato/systems/current"
+                LEGATO_CURRENT_VERSION=`cat /legato/systems/current/version`
+                ./bin/startSystem -v "$LEGATO_CURRENT_VERSION"
+            else
+                # If no system exist, then use startSystem from RO.
+                # Also if IMA is enabled, use startSystem from RO to load keys.
+                cd /mnt/legato
+                LEGATO_CURRENT_VERSION=`cat /mnt/legato/system/version`
+                ./system/bin/startSystem -v "$LEGATO_CURRENT_VERSION"
+            fi
         fi
     ;;
 
