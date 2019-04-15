@@ -22,6 +22,7 @@ requires:
 cflags:
 {
     -I${LEGATO_ROOT}/components/watchdogChain
+    -I${LEGATO_ROOT}/components/portService/portDaemon/
 }
 
 sources:

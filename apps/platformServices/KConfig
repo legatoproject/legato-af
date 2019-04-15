@@ -82,6 +82,24 @@ config ATSERVER_USER_ERRORS
 
 endmenu
 
+menu "Port Service"
+  visible if HAS_PORT_CONFIG_FILE_CONFIGURABLE
+
+config PORT_CONFIG_IS_STATIC
+  bool "The ports configuration is static"
+  default y if CUSTOM_OS
+  default n if LINUX
+  ---help---
+  Allow to choose if the ports configuration is statically defined.
+
+config PORT_JSON_CONFIG_FILE
+  string "Path to json file for Port configuration"
+  default "/legato/systems/current/apps/portService/read-only/usr/local/share/PortConfigurationFile.json" if LINUX
+  ---help---
+  Do not modify the default value.
+
+endmenu # end "Port Service"
+
 menu "Modem Service"
 
 config ENABLE_ECALL

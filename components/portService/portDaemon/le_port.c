@@ -13,10 +13,12 @@
 #include "legato.h"
 #include "interfaces.h"
 #include <sys/types.h>
-#include <sys/un.h>
+#if LE_CONFIG_LINUX
+#   include <sys/un.h>
+#endif
 #include <sys/socket.h>
+#include "le_port_local.h"
 #include "watchdogChain.h"
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -24,10 +26,9 @@
  */
 //--------------------------------------------------------------------------------------------------
 #ifdef LEGATO_EMBEDDED
-#define JSON_CONFIG_FILE \
-     "/legato/systems/current/apps/portService/read-only/usr/local/share/PortConfigurationFile.json"
+#       define JSON_CONFIG_FILE LE_CONFIG_PORT_JSON_CONFIG_FILE
 #else
-#define JSON_CONFIG_FILE le_arg_GetArg(0)
+#       define JSON_CONFIG_FILE le_arg_GetArg(0)
 #endif
 
 //--------------------------------------------------------------------------------------------------
@@ -65,6 +66,14 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define POSSIBLE_MODE_MAX_BYTES  10
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of ports.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_PORTS                6
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -137,14 +146,26 @@ typedef struct
                                                                     ///< command mode.
     int32_t dataModeSockFd;                                         ///< Socket fd created in data
                                                                     ///< mode.
-    le_atServer_DeviceRef_t atServerDevRef;                         ///< AT server device reference.
     char linkName[LINK_NAME_MAX_BYTES];                             ///< Link name.
     char path[PATH_MAX_BYTES];                                      ///< Path name.
     char openingType[OPEN_TYPE_MAX_BYTES];                          ///< Device opening type.
     char possibleMode[MAX_POSSIBLE_MODES][POSSIBLE_MODE_MAX_BYTES]; ///< Possible mode name.
-    bool suspended;
 }
 LinkInformation_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Lookup information for matching AT server instances to clients and links.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_msg_SessionRef_t      clientRef;     ///< Port service client.
+    LinkInformation_t       *linkPtr;       ///< Link to the current AT server.
+    le_atServer_DeviceRef_t  atServerRef;   ///< AT server reference.
+    bool                     suspended;     ///< State of AT server instance.
+}
+ClientLinkAtServer_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -201,10 +222,24 @@ static le_json_ParsingSessionRef_t JsonParsingSessionRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static memory Pool for Port Service Client Handler.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(PortPool, MAX_APPS, sizeof(OpenedInstanceCtx_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Memory Pool for Port Service Client Handler.
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t PortPoolRef;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static memory pool for JSON object
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(LinksConfigPool, MAX_PORTS, sizeof(InstanceConfiguration_t));
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -215,6 +250,14 @@ static le_mem_PoolRef_t LinksConfigPoolRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static memory pool for link information
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(LinkPool, MAX_PORTS*MAX_LINKS, sizeof(LinkInformation_t));
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Memory pool for link information.
  */
 //--------------------------------------------------------------------------------------------------
@@ -222,10 +265,39 @@ static le_mem_PoolRef_t LinkPoolRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static memory pool for list of links.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(LinkListPool, MAX_PORTS, sizeof(LinkList_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Memory pool for list of links.
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t LinkListPoolRef;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Memory pool reference for mapping of client/links to AT servers.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t ClientLinkAtServerPoolRef;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Memory pool for mapping of client/links to AT servers.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(ClientLinkAtServerPool, MAX_APPS * MAX_LINKS,
+                          sizeof(ClientLinkAtServer_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe Reference Map for device.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(DeviceRef, MAX_APPS);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -248,12 +320,14 @@ static le_dls_List_t DeviceList;
 //--------------------------------------------------------------------------------------------------
 static le_dls_List_t InstanceContextList;
 
+#ifndef LE_CONFIG_PORT_CONFIG_IS_STATIC
 //--------------------------------------------------------------------------------------------------
 /**
  * JSON file descriptor.
  */
 //--------------------------------------------------------------------------------------------------
 static int JsonFd;
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -283,6 +357,19 @@ static int PossibleModeNumber;
 //--------------------------------------------------------------------------------------------------
 static le_sem_Ref_t Semaphore;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * AT server references for each client/link combination.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_HASHMAP_DEFINE_STATIC(AtServerDevRefs, MAX_APPS * MAX_LINKS);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Hash map reference to AT server references for each client/link combination.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_hashmap_Ref_t AtServerDevRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -374,9 +461,9 @@ static void CloseWarn
         return;
     }
 
-    if (-1 == close(fd))
+    if (-1 == le_fd_Close(fd))
     {
-        LE_WARN("failed to close fd %d: %m", fd);
+        LE_WARN("failed to close fd %d", fd);
     }
 }
 
@@ -390,11 +477,29 @@ static void CleanJsonConfig
     void
 )
 {
-    // Stop JSON parsing and close the JSON file descriptor.
-    le_json_Cleanup(JsonParsingSessionRef);
+    if (JsonParsingSessionRef)
+    {
+        // Stop JSON parsing and close the JSON file descriptor.
+        le_json_Cleanup(JsonParsingSessionRef);
+        JsonParsingSessionRef = NULL;
+    }
+    else
+    {
+        LE_WARN("JSON parser cleanup called twice");
+    }
 
-    // Close JSON file.
-    CloseWarn(JsonFd);
+#ifndef LE_CONFIG_PORT_CONFIG_IS_STATIC
+    if (JsonFd != -1)
+    {
+        // Close JSON file.
+        CloseWarn(JsonFd);
+        JsonFd = -1;
+    }
+    else
+    {
+        LE_WARN("Closing JSON FD twice");
+    }
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -758,8 +863,6 @@ static void DeviceEventHandler
                 instanceConfigPtr->linkInfo[instanceConfigPtr->linkCounter]->dataModeFd = -1;
                 instanceConfigPtr->linkInfo[instanceConfigPtr->linkCounter]->atModeSockFd = -1;
                 instanceConfigPtr->linkInfo[instanceConfigPtr->linkCounter]->dataModeSockFd = -1;
-                instanceConfigPtr->linkInfo[instanceConfigPtr->linkCounter]->atServerDevRef = NULL;
-                instanceConfigPtr->linkInfo[instanceConfigPtr->linkCounter]->suspended = false;
 
                 // Initialize the counter before parsing of new link.
                 PossibleModeNumber = 0;
@@ -826,13 +929,14 @@ static int32_t OpenSerialDevice
 {
     int32_t fd;
 
-    fd = le_tty_Open(deviceName, O_RDWR);
+    fd = le_fd_Open(deviceName, O_RDWR);
     if (-1 == fd)
     {
         LE_ERROR("Failed to open device");
         return -1;
     }
 
+#if LE_CONFIG_LINUX
     // TODO: how to set a specific configuration ?
 
     // Set serial port into raw (non-canonical) mode. Disables conversion of EOL characters,
@@ -844,10 +948,196 @@ static int32_t OpenSerialDevice
         le_tty_Close(fd);
         return -1;
     }
-
+#endif
     return fd;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create an AT server entry corresponding to the unique combination of link and client session.
+ *
+ * @return
+ *      LE_OK           - Success.
+ *      LE_DUPLICATE    - Entry already exists.
+ *      LE_FAULT        - Could not open AT server instance.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t AddAtServer
+(
+    LinkInformation_t   *infoPtr,   ///< Link info corresponding to port.
+    le_msg_SessionRef_t  clientRef  ///< Client identifier.
+)
+{
+    ClientLinkAtServer_t     key = { clientRef, infoPtr, NULL, false };
+    ClientLinkAtServer_t    *newEntryPtr;
+
+    if (le_hashmap_Get(AtServerDevRefMap, &key) != NULL)
+    {
+        return LE_DUPLICATE;
+    }
+
+    newEntryPtr = le_mem_ForceAlloc(ClientLinkAtServerPoolRef);
+    newEntryPtr->clientRef = clientRef;
+    newEntryPtr->linkPtr = infoPtr;
+    newEntryPtr->suspended = false;
+    newEntryPtr->atServerRef = le_atServer_Open(le_fd_Dup(infoPtr->fd));
+    if (newEntryPtr->atServerRef == NULL)
+    {
+        le_mem_Release(newEntryPtr);
+        return LE_FAULT;
+    }
+
+    LE_ASSERT(le_hashmap_Put(AtServerDevRefMap, newEntryPtr, newEntryPtr) == NULL);
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Find the AT server instance corresponding to a link/client pair.
+ *
+ * @return  The found instance, or NULL if there was no match.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_atServer_DeviceRef_t FindAtServer
+(
+    LinkInformation_t   *infoPtr,   ///< Link info corresponding to port.
+    le_msg_SessionRef_t  clientRef  ///< Client identifier.
+)
+{
+    ClientLinkAtServer_t     key = { clientRef, infoPtr, NULL, false };
+    ClientLinkAtServer_t    *found;
+
+    found = le_hashmap_Get(AtServerDevRefMap, &key);
+    if (found == NULL)
+    {
+        return NULL;
+    }
+    return found->atServerRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Suspend the AT server session for a link/client combination.
+ *
+ * @return
+ *      LE_OK               - Success.
+ *      LE_NOT_FOUND        - No entry found for client/link combination.
+ *      LE_BAD_PARAMETER    - Invalid device reference.
+ *      LE_FAULT            - Device not monitored.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SuspendAtServer
+(
+    LinkInformation_t   *infoPtr,   ///< Link info corresponding to port.
+    le_msg_SessionRef_t  clientRef  ///< Client identifier.
+)
+{
+    ClientLinkAtServer_t     key = { clientRef, infoPtr, NULL, false };
+    ClientLinkAtServer_t    *found;
+    le_result_t              result;
+
+    found = le_hashmap_Get(AtServerDevRefMap, &key);
+    if (found == NULL)
+    {
+        return LE_NOT_FOUND;
+    }
+
+    result = le_atServer_Suspend(found->atServerRef);
+    found->suspended = (result == LE_OK);
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Determine if an AT server instance is suspended.
+ *
+ * @return  False if the AT server exists and is not suspended.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsAtServerSuspended
+(
+    LinkInformation_t   *infoPtr,   ///< Link info corresponding to port.
+    le_msg_SessionRef_t  clientRef  ///< Client identifier.
+)
+{
+    ClientLinkAtServer_t     key = { clientRef, infoPtr, NULL, false };
+    ClientLinkAtServer_t    *found;
+
+    found = le_hashmap_Get(AtServerDevRefMap, &key);
+    if (found == NULL)
+    {
+        return true;
+    }
+
+    return found->suspended;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Resume the AT server session for a link/client combination.
+ *
+ * @return
+ *      LE_OK               - Success.
+ *      LE_NOT_FOUND        - No entry found for client/link combination.
+ *      LE_BAD_PARAMETER    - Invalid device reference.
+ *      LE_FAULT            - Device not monitored.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t ResumeAtServer
+(
+    LinkInformation_t   *infoPtr,   ///< Link info corresponding to port.
+    le_msg_SessionRef_t  clientRef  ///< Client identifier.
+)
+{
+    ClientLinkAtServer_t     key = { clientRef, infoPtr, NULL, false };
+    ClientLinkAtServer_t    *found;
+    le_result_t              result;
+
+    found = le_hashmap_Get(AtServerDevRefMap, &key);
+    if (found == NULL)
+    {
+        return LE_NOT_FOUND;
+    }
+
+    result = le_atServer_Resume(found->atServerRef);
+    found->suspended = (result != LE_OK);
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Close the AT server session for a link/client combination.
+ *
+ * @return
+ *      LE_OK               - Success.
+ *      LE_NOT_FOUND        - No entry found for client/link combination.
+ *      LE_BAD_PARAMETER    - Invalid device reference.
+ *      LE_BUSY             - The requested device is busy.
+ *      LE_FAULT            - Failed to stop the server, check logs for more information.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t RemoveAtServer
+(
+    LinkInformation_t   *infoPtr,   ///< Link info corresponding to port.
+    le_msg_SessionRef_t  clientRef  ///< Client identifier.
+)
+{
+    ClientLinkAtServer_t     key = { clientRef, infoPtr, NULL, false };
+    ClientLinkAtServer_t    *removed;
+    le_result_t              result;
+
+    removed = le_hashmap_Remove(AtServerDevRefMap, &key);
+    if (removed == NULL)
+    {
+        return LE_NOT_FOUND;
+    }
+
+    result = le_atServer_Close(removed->atServerRef);
+    le_mem_Release(removed);
+    return result;
+}
+
+#if LE_CONFIG_LINUX
 //--------------------------------------------------------------------------------------------------
 /**
  * Monitor the client's fd
@@ -859,7 +1149,7 @@ static void MonitorClient
     short events     ///< [IN] Socket event.
 )
 {
-    le_atServer_DeviceRef_t atServerRef;
+    LinkInformation_t *linkInfoPtr;
 
     if (POLLRDHUP & events)
     {
@@ -870,10 +1160,10 @@ static void MonitorClient
         LE_WARN("events %.8x not handled", events);
     }
 
-    atServerRef = (le_atServer_DeviceRef_t)le_fdMonitor_GetContextPtr();
-    if (atServerRef)
+    linkInfoPtr = le_fdMonitor_GetContextPtr();
+    if (linkInfoPtr != NULL)
     {
-        if (LE_OK != le_atServer_Close(atServerRef))
+        if (RemoveAtServer(linkInfoPtr, NULL))
         {
             LE_ERROR("failed to close atServer device");
         }
@@ -899,10 +1189,10 @@ static void MonitorSocket
     short events    ///< [IN] Socket event.
 )
 {
-    int clientFd;
-    char clientSocket[CLIENT_SOCKET_MAX_BYTES];
-    le_fdMonitor_Ref_t fdMonitorRef;
-    LinkInformation_t** linkInfoPtr;
+    char                 clientSocket[CLIENT_SOCKET_MAX_BYTES];
+    int                  clientFd;
+    le_fdMonitor_Ref_t   fdMonitorRef;
+    LinkInformation_t   *linkInfoPtr;
 
     if (POLLIN & events)
     {
@@ -913,28 +1203,26 @@ static void MonitorSocket
             goto exit_close_socket;
         }
 
-        linkInfoPtr = (LinkInformation_t**)le_fdMonitor_GetContextPtr();
+        linkInfoPtr = le_fdMonitor_GetContextPtr();
 
-        if (0 == strcmp((*linkInfoPtr)->possibleMode[0], "DATA"))
+        if (0 == strcmp(linkInfoPtr->possibleMode[0], "DATA"))
         {
             LE_DEBUG("Socket opens in data mode.");
-            (*linkInfoPtr)->dataModeFd = dup(clientFd);
+            linkInfoPtr->dataModeFd = dup(clientFd);
             le_sem_Post(Semaphore);
             return;
         }
 
-        (*linkInfoPtr)->fd = dup(clientFd);
-        (*linkInfoPtr)->atServerDevRef = le_atServer_Open(dup(clientFd));
-
-        if (NULL == (*linkInfoPtr)->atServerDevRef)
+        linkInfoPtr->fd = dup(clientFd);
+        if (AddAtServer(linkInfoPtr, NULL) != LE_OK)
         {
             LE_ERROR("Cannot open the device!");
             CloseWarn(clientFd);
             goto exit_close_socket;
         }
         snprintf(clientSocket, sizeof(clientSocket) - 1, "socket-client-%d", clientFd);
-        fdMonitorRef = le_fdMonitor_Create(clientSocket, clientFd, MonitorClient, POLLRDHUP);
-        le_fdMonitor_SetContextPtr(fdMonitorRef, (*linkInfoPtr)->atServerDevRef);
+        fdMonitorRef = le_fdMonitor_Create(clientSocket, clientFd, &MonitorClient, POLLRDHUP);
+        le_fdMonitor_SetContextPtr(fdMonitorRef, linkInfoPtr);
 
         return;
     }
@@ -958,7 +1246,7 @@ exit_close_socket:
 //--------------------------------------------------------------------------------------------------
 static int32_t OpenSocket
 (
-    LinkInformation_t** linkInfoPtr     ///< [IN/OUT] Link information structure pointer.
+    LinkInformation_t   *linkInfoPtr    ///< [IN] Link information structure pointer.
 )
 {
     int sockFd;
@@ -966,7 +1254,7 @@ static int32_t OpenSocket
     char socketName[SERVER_SOCKET_MAX_BYTES];
     le_fdMonitor_Ref_t fdMonitorRef;
 
-    if ((-1 == unlink((*linkInfoPtr)->path)) && (ENOENT != errno))
+    if ((-1 == unlink(linkInfoPtr->path)) && (ENOENT != errno))
     {
         LE_ERROR("unlink socket failed: %m");
         return -1;
@@ -982,7 +1270,7 @@ static int32_t OpenSocket
 
     memset(&myAddress, 0, sizeof(myAddress));
     myAddress.sun_family = AF_UNIX;
-    if (LE_OK != le_utf8_Copy(myAddress.sun_path, (*linkInfoPtr)->path,
+    if (LE_OK != le_utf8_Copy(myAddress.sun_path, linkInfoPtr->path,
                               sizeof(myAddress.sun_path) - 1, NULL))
     {
         LE_ERROR("Socket path is not set properly!");
@@ -1003,7 +1291,7 @@ static int32_t OpenSocket
     }
 
     snprintf(socketName, sizeof(socketName) - 1, "unixSocket-%d", sockFd);
-    fdMonitorRef = le_fdMonitor_Create(socketName, sockFd, MonitorSocket, POLLIN);
+    fdMonitorRef = le_fdMonitor_Create(socketName, sockFd, &MonitorSocket, POLLIN);
 
     le_fdMonitor_SetContextPtr(fdMonitorRef, linkInfoPtr);
 
@@ -1013,6 +1301,7 @@ exit_close_socket:
     CloseWarn(sockFd);
     return -1;
 }
+#endif /* end LE_CONFIG_LINUX */
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1021,12 +1310,13 @@ exit_close_socket:
 //--------------------------------------------------------------------------------------------------
 static le_result_t OpenInstanceLinks
 (
-    InstanceConfiguration_t* instanceConfigPtr ///< [IN] Instance configuaration.
+    OpenedInstanceCtx_t *openedInstanceCtxPtr ///< [IN] Opened instance configuaration.
 )
 {
-    int i, j;
-
-    le_dls_Link_t* linkPtr = le_dls_Peek(&(instanceConfigPtr->linkList));
+    InstanceConfiguration_t *instanceConfigPtr = openedInstanceCtxPtr->instanceConfigPtr;
+    int                      i;
+    int                      j;
+    le_dls_Link_t           *linkPtr = le_dls_Peek(&(instanceConfigPtr->linkList));
 
     for (i = 0; (i < (instanceConfigPtr->linkCounter)) && (NULL != linkPtr); i++)
     {
@@ -1042,34 +1332,42 @@ static le_result_t OpenInstanceLinks
                 {
                     if (0 == strcmp(instanceConfigPtr->linkInfo[i]->possibleMode[j], "AT"))
                     {
-                        instanceConfigPtr->linkInfo[i]->fd = OpenSerialDevice(instanceConfigPtr
-                                                             ->linkInfo[i]->path);
-
-                        if (0 > instanceConfigPtr->linkInfo[i]->fd)
+                        if (instanceConfigPtr->linkInfo[i]->fd == -1)
                         {
-                            LE_ERROR("Error in opening the device '%s': %m",
-                                     instanceConfigPtr->instanceName);
+                            instanceConfigPtr->linkInfo[i]->fd = OpenSerialDevice(
+                                instanceConfigPtr->linkInfo[i]->path);
+                        }
+                        if (-1 == instanceConfigPtr->linkInfo[i]->fd)
+                        {
+                            LE_ERROR("Error in opening the device '%s': %s %d",
+                                     instanceConfigPtr->instanceName,
+                                     instanceConfigPtr->linkInfo[i]->path,
+                                     (int)instanceConfigPtr->linkInfo[i]->fd);
                             return LE_FAULT;
                         }
 
-                        instanceConfigPtr->linkInfo[i]->atServerDevRef =
-                                          le_atServer_Open(dup(instanceConfigPtr->linkInfo[i]->fd));
-                        if (NULL == instanceConfigPtr->linkInfo[i]->atServerDevRef)
+                        le_result_t result = AddAtServer(instanceConfigPtr->linkInfo[i],
+                            openedInstanceCtxPtr->sessionRef);
+                        if (result != LE_OK)
                         {
-                            LE_ERROR("atServerDevRef is NULL!");
-                            return LE_FAULT;
+                            LE_ERROR("Failed to open AT server: %s", LE_RESULT_TXT(result));
+                            return result;
                         }
                     }
                 }
             }
+#if LE_CONFIG_LINUX
             else if (0 == strcmp(instanceConfigPtr->linkInfo[i]->openingType, "unixSocket"))
             {
                 for (j = 0; j < MAX_POSSIBLE_MODES; j++)
                 {
                     if (0 == strcmp(instanceConfigPtr->linkInfo[i]->possibleMode[j], "AT"))
                     {
-                        instanceConfigPtr->linkInfo[i]->atModeSockFd =
-                                           OpenSocket(&(instanceConfigPtr->linkInfo[i]));
+                        if (instanceConfigPtr->linkInfo[i]->atModeSockFd == -1)
+                        {
+                            instanceConfigPtr->linkInfo[i]->atModeSockFd =
+                                           OpenSocket(instanceConfigPtr->linkInfo[i]);
+                        }
                         if (0 > instanceConfigPtr->linkInfo[i]->atModeSockFd)
                         {
                             LE_ERROR("Error in opening the device '%s': %m",
@@ -1079,6 +1377,7 @@ static le_result_t OpenInstanceLinks
                     }
                 }
             }
+#endif /* end LE_CONFIG_LINUX */
         }
     }
 
@@ -1087,10 +1386,41 @@ static le_result_t OpenInstanceLinks
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Open a port instance.
+ *
+ * @return  New opened port instance context.
+ */
+//--------------------------------------------------------------------------------------------------
+static OpenedInstanceCtx_t *OpenInstance
+(
+    InstanceConfiguration_t *instanceConfigPtr, ///< [IN] Port instance to open.
+    le_msg_SessionRef_t      sessionRef         ///< [IN] Client session reference.
+)
+{
+    le_port_DeviceRef_t  devRef;
+    OpenedInstanceCtx_t *openedInstanceCtxPtr = le_mem_ForceAlloc(PortPoolRef);
+    LE_ASSERT(openedInstanceCtxPtr != NULL);
+
+    devRef = le_ref_CreateRef(DeviceRefMap, openedInstanceCtxPtr);
+    LE_ASSERT(devRef != NULL);
+
+    // Save the client session.
+    openedInstanceCtxPtr->sessionRef = sessionRef;
+
+    openedInstanceCtxPtr->deviceRef = devRef;
+    openedInstanceCtxPtr->instanceConfigPtr = instanceConfigPtr;
+
+    openedInstanceCtxPtr->link = LE_DLS_LINK_INIT;
+    le_dls_Queue(&DeviceList, &openedInstanceCtxPtr->link);
+    return openedInstanceCtxPtr;
+}
+
+//--------------------------------------------------------------------------------------------------
+ /**
  * Open the instances which has "OpenByDefault" property as true.
  */
 //--------------------------------------------------------------------------------------------------
-static void OpenInstances
+static void OpenDefaultInstances
 (
     void
 )
@@ -1104,9 +1434,13 @@ static void OpenInstances
                                                                   link);
         linkPtr = le_dls_PeekNext(&InstanceContextList, linkPtr);
 
-        if (true == instanceConfigPtr->openByDefault)
+        if (instanceConfigPtr->openByDefault)
         {
-            if (LE_OK != OpenInstanceLinks(instanceConfigPtr))
+            // NOTE: NULL is used to indicate the instances opened by the port service itself rather
+            //       than those opened on behalf of a client, as is the case of the "opened by
+            //       default" ports.
+            OpenedInstanceCtx_t *openedInstanceCtxPtr = OpenInstance(instanceConfigPtr, NULL);
+            if (OpenInstanceLinks(openedInstanceCtxPtr) != LE_OK)
             {
                 LE_ERROR("Not able to open the instance links");
             }
@@ -1135,10 +1469,10 @@ static void JsonEventHandler
         case LE_JSON_DOC_END:
             CleanJsonConfig();
             JsonParseComplete = true;
-            LE_DEBUG("JSON parsing is completed.");
+            LE_INFO("JSON parsing is completed.");
 
             // Open the instances which has "OpenByDefault" property as true.
-            OpenInstances();
+            OpenDefaultInstances();
             break;
 
         case LE_JSON_OBJECT_MEMBER:
@@ -1199,39 +1533,43 @@ static void JsonEventHandler
 //--------------------------------------------------------------------------------------------------
 static bool GetAtServerDeviceRef
 (
-    InstanceConfiguration_t* instanceConfigPtr,    ///< [IN] Instance configuration pointer
-    le_atServer_DeviceRef_t* atServerDeviceRef,    ///< [OUT] AtServer device reference.
-    int* linkIndexPtr                              ///< [OUT] Link index of the link which contains
+    OpenedInstanceCtx_t     *openedInstanceCtxPtr, ///< [IN] Opened instance configuration pointer.
+    le_atServer_DeviceRef_t *atServerDeviceRef,    ///< [OUT] AtServer device reference.
+    int                     *linkIndexPtr          ///< [OUT] Link index of the link which contains
                                                    /// both AT and DATA mode.
 )
 {
-    int i;
-    bool allowSuspend = false;
+    bool                     allowSuspend = false;
+    InstanceConfiguration_t *instanceConfigPtr = openedInstanceCtxPtr->instanceConfigPtr;
+    int                      i;
+    int                      j;
 
     for (i = 0; i < (instanceConfigPtr->linkCounter); i++)
     {
-        // Check if the same link supports AT and DATA as possiblemode.
-        if (((0 == strcmp(instanceConfigPtr->linkInfo[i]->possibleMode[0], "AT")) &&
-            (0 == strcmp(instanceConfigPtr->linkInfo[i]->possibleMode[1], "DATA"))) ||
-            ((0 == strcmp(instanceConfigPtr->linkInfo[i]->possibleMode[0], "DATA")) &&
-            (0 == strcmp(instanceConfigPtr->linkInfo[i]->possibleMode[1], "AT"))))
+        // Check if the link supports AT as a possible mode.
+        for (j = 0; j < MAX_POSSIBLE_MODES; j++)
         {
-            *linkIndexPtr = i;
-            allowSuspend = true;
+            if (0 == strcmp(instanceConfigPtr->linkInfo[i]->possibleMode[j], "AT"))
+            {
+                *linkIndexPtr = i;
+                allowSuspend = true;
+                break;
+            }
+        }
+        if (true == allowSuspend)
+        {
+            // Found a link that supports AT, stop searching.
             break;
         }
     }
 
     if (true == allowSuspend)
     {
-        if (NULL == instanceConfigPtr->linkInfo[*linkIndexPtr]->atServerDevRef)
+        *atServerDeviceRef = FindAtServer(instanceConfigPtr->linkInfo[*linkIndexPtr],
+            openedInstanceCtxPtr->sessionRef);
+        if (*atServerDeviceRef == NULL)
         {
-            LE_ERROR("atServerDeviceRef is NULL!");
-            *atServerDeviceRef = NULL;
-        }
-        else
-        {
-            *atServerDeviceRef = instanceConfigPtr->linkInfo[*linkIndexPtr]->atServerDevRef;
+            LE_ERROR("No AT server device reference found");
         }
         return true;
     }
@@ -1248,7 +1586,7 @@ static bool GetAtServerDeviceRef
  *      - NULL if the device is not available.
  */
 //--------------------------------------------------------------------------------------------------
-le_port_DeviceRef_t le_port_Request
+LE_SHARED le_port_DeviceRef_t le_port_Request
 (
     const char* deviceNamePtr  ///< [IN] Device name to be requested.
 )
@@ -1273,37 +1611,18 @@ le_port_DeviceRef_t le_port_Request
         return NULL;
     }
 
-    OpenedInstanceCtx_t* openedInstanceCtxPtr = le_mem_ForceAlloc(PortPoolRef);
-
-    // Save the client session.
-    openedInstanceCtxPtr->sessionRef = le_port_GetClientSessionRef();
-
-    le_port_DeviceRef_t devRef = le_ref_CreateRef(DeviceRefMap, openedInstanceCtxPtr);
-    if (NULL == devRef)
+    OpenedInstanceCtx_t *openedInstanceCtxPtr = OpenInstance(instanceConfigPtr,
+        le_port_GetClientSessionRef());
+    if (OpenInstanceLinks(openedInstanceCtxPtr) != LE_OK)
     {
-        LE_ERROR("devRef is NULL!");
+        LE_ERROR("Not able to open the instance links");
         return NULL;
     }
-    openedInstanceCtxPtr->deviceRef = devRef;
-    openedInstanceCtxPtr->instanceConfigPtr = instanceConfigPtr;
 
-    openedInstanceCtxPtr->link = LE_DLS_LINK_INIT;
-    le_dls_Queue(&DeviceList, &(openedInstanceCtxPtr->link));
-
-    // Check the openbydefault object value. If openbydefault true, then device is already opened.
-    // If the openbydefault is false then open the instance.
-    if (false == instanceConfigPtr->openByDefault)
-    {
-        if (LE_OK != OpenInstanceLinks(instanceConfigPtr))
-        {
-            LE_ERROR("Not able to open the instance links");
-            return NULL;
-        }
-    }
-
-    return devRef;
+    return openedInstanceCtxPtr->deviceRef;
 }
 
+#if LE_CONFIG_LINUX
 //--------------------------------------------------------------------------------------------------
 /**
  * This function creates the socket and waiting for the client socket connection.
@@ -1315,7 +1634,10 @@ static void* SocketThread
 )
 {
     LinkInformation_t* linkInfo = (LinkInformation_t*)ctxPtr;
-    linkInfo->dataModeSockFd = OpenSocket(&linkInfo);
+    if (linkInfo->dataModeSockFd == -1)
+    {
+        linkInfo->dataModeSockFd = OpenSocket(linkInfo);
+    }
     if (0 > linkInfo->dataModeSockFd)
     {
         LE_ERROR("Error in opening the device %m");
@@ -1324,6 +1646,7 @@ static void* SocketThread
 
     le_event_RunLoop();
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1340,14 +1663,16 @@ static void* SocketThread
 le_result_t le_port_SetDataMode
 (
     le_port_DeviceRef_t devRef,   ///< [IN] Device reference.
-    int32_t* fdPtr                ///< [OUT] File descriptor of the device.
+    int* fdPtr                    ///< [OUT] File descriptor of the device.
 )
 {
     le_result_t result = LE_FAULT;
     int i, j, linkIndex;
     le_atServer_DeviceRef_t atServerDeviceRef;
+#if LE_CONFIG_LINUX
     le_clk_Time_t timeToWait = {10, 0};
     le_thread_Ref_t socketThreadRef;
+#endif
 
     if (false == JsonParseComplete)
     {
@@ -1378,7 +1703,7 @@ le_result_t le_port_SetDataMode
 
     // Check whether same link contains AT and DATA mode.
     // If both links contains AT and DATA mode then suspend atServer.
-    if (true == GetAtServerDeviceRef(instanceConfigPtr, &atServerDeviceRef, &linkIndex))
+    if (GetAtServerDeviceRef(openedInstanceCtxPtr, &atServerDeviceRef, &linkIndex))
     {
         if (NULL == atServerDeviceRef)
         {
@@ -1386,18 +1711,17 @@ le_result_t le_port_SetDataMode
             return LE_FAULT;
         }
 
-        result = le_atServer_Suspend(atServerDeviceRef);
-        if (LE_FAULT == result)
+        result = SuspendAtServer(instanceConfigPtr->linkInfo[linkIndex],
+            openedInstanceCtxPtr->sessionRef);
+        if (result == LE_FAULT)
         {
             LE_ERROR("Device is already into data mode!");
             return LE_DUPLICATE;
         }
-        else if (LE_OK != result)
+        else if (result != LE_OK)
         {
-            return LE_FAULT;
+            return result;
         }
-
-        instanceConfigPtr->linkInfo[linkIndex]->suspended = true;
     }
 
     *fdPtr = -1;
@@ -1419,13 +1743,14 @@ le_result_t le_port_SetDataMode
 
                 if (-1 != instanceConfigPtr->linkInfo[i]->dataModeFd)
                 {
-                    *fdPtr = dup(instanceConfigPtr->linkInfo[i]->dataModeFd);
+                    *fdPtr = le_fd_Dup(instanceConfigPtr->linkInfo[i]->dataModeFd);
                 }
                 else
                 {
                     *fdPtr = -1;
                 }
             }
+#if LE_CONFIG_LINUX
             else if ((0 == strcmp(instanceConfigPtr->linkInfo[i]->possibleMode[j], "DATA")) &&
                      (0 == strcmp(instanceConfigPtr->linkInfo[i]->openingType, "unixSocket")))
             {
@@ -1459,6 +1784,7 @@ le_result_t le_port_SetDataMode
                     *fdPtr = -1;
                 }
             }
+#endif
         }
     }
 
@@ -1490,6 +1816,7 @@ le_result_t le_port_SetCommandMode
     le_result_t result;
     int i, j, linkIndex;
     bool atLinkDetect = false;
+    bool dataLinkDetect = false;
 
     if (false == JsonParseComplete)
     {
@@ -1518,6 +1845,30 @@ le_result_t le_port_SetCommandMode
         return LE_FAULT;
     }
 
+    // Check all links to close any that may be opened in DATA mode.
+    for (i = 0; i < instanceConfigPtr->linkCounter; i++)
+    {
+        for (j = 0; j < MAX_POSSIBLE_MODES; j++)
+        {
+            if ((0 == strcmp(instanceConfigPtr->linkInfo[i]->possibleMode[j], "DATA")) &&
+                (0 == strcmp(instanceConfigPtr->linkInfo[i]->openingType, "serialLink")))
+            {
+                // If link is opened in data mode then close it.
+                if (-1 != instanceConfigPtr->linkInfo[i]->dataModeFd)
+                {
+                    CloseWarn(instanceConfigPtr->linkInfo[i]->dataModeFd);
+                    instanceConfigPtr->linkInfo[i]->dataModeFd = -1;
+                }
+                dataLinkDetect = true;
+                break;
+            }
+        }
+        if(dataLinkDetect == true)
+        {
+            break;
+        }
+    }
+
     // Check all the links. Open the link which contains "AT" as possibleMode if not opened in AT
     // command mode.
     for (i = 0; i < (instanceConfigPtr->linkCounter); i++)
@@ -1533,11 +1884,22 @@ le_result_t le_port_SetCommandMode
                     {
                         instanceConfigPtr->linkInfo[i]->fd =
                                            OpenSerialDevice(instanceConfigPtr->linkInfo[i]->path);
+
+                        if (-1 == instanceConfigPtr->linkInfo[i]->fd)
+                        {
+                            LE_ERROR("Error in opening the device '%s': %d",
+                                     instanceConfigPtr->instanceName, errno);
+                            return LE_FAULT;
+                        }
                     }
+#if LE_CONFIG_LINUX
                     else if (0 == strcmp(instanceConfigPtr->linkInfo[i]->openingType, "unixSocket"))
                     {
-                        instanceConfigPtr->linkInfo[i]->atModeSockFd =
-                                           OpenSocket(&(instanceConfigPtr->linkInfo[i]));
+                        if (instanceConfigPtr->linkInfo[i]->atModeSockFd == -1)
+                        {
+                            instanceConfigPtr->linkInfo[i]->atModeSockFd =
+                                           OpenSocket(instanceConfigPtr->linkInfo[i]);
+                        }
                         if (0 > instanceConfigPtr->linkInfo[i]->atModeSockFd)
                         {
                             LE_ERROR("Error in opening the device %s %m",
@@ -1545,6 +1907,7 @@ le_result_t le_port_SetCommandMode
                             return LE_FAULT;
                         }
                     }
+#endif /* end LE_CONFIG_LINUX */
                 }
 
                 // One instance supports only AT link.
@@ -1559,7 +1922,7 @@ le_result_t le_port_SetCommandMode
         }
     }
 
-    if (true == GetAtServerDeviceRef(instanceConfigPtr, deviceRefPtr, &linkIndex))
+    if (GetAtServerDeviceRef(openedInstanceCtxPtr, deviceRefPtr, &linkIndex))
     {
         if (NULL == *deviceRefPtr)
         {
@@ -1567,17 +1930,22 @@ le_result_t le_port_SetCommandMode
             return LE_FAULT;
         }
 
-        if (instanceConfigPtr->linkInfo[linkIndex]->suspended == true)
+        if (IsAtServerSuspended(instanceConfigPtr->linkInfo[linkIndex],
+            openedInstanceCtxPtr->sessionRef))
         {
-            result = le_atServer_Resume(*deviceRefPtr);
+            result = ResumeAtServer(instanceConfigPtr->linkInfo[linkIndex],
+                openedInstanceCtxPtr->sessionRef);
             if (LE_FAULT == result)
             {
                 LE_ERROR("Device is not able to switch into command mode");
                 return LE_FAULT;
             }
-
-            instanceConfigPtr->linkInfo[linkIndex]->suspended = false;
         }
+    }
+    else if (true == atLinkDetect)
+    {
+        LE_ERROR("Failed to get atServer device reference");
+        return LE_FAULT;
     }
 
     return LE_OK;
@@ -1631,7 +1999,7 @@ static void CloseAllFd
  *      - LE_UNAVAILABLE   JSON parsing is not completed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_port_Release
+LE_SHARED le_result_t le_port_Release
 (
     le_port_DeviceRef_t devRef     ///< [IN] Device reference of port service.
 )
@@ -1664,12 +2032,17 @@ le_result_t le_port_Release
     {
         for (j = 0; j < MAX_POSSIBLE_MODES; j++)
         {
-            // Check if the link supports AT as possiblemode.
+            // Check if the link supports AT as a possible mode.
             if (0 == strcmp(instanceConfigPtr->linkInfo[i]->possibleMode[j], "AT"))
             {
                 linkIndex = i;
                 break;
             }
+        }
+        if (-1 != linkIndex)
+        {
+            // Found a link that supports AT, stop searching.
+            break;
         }
     }
 
@@ -1679,13 +2052,21 @@ le_result_t le_port_Release
         return LE_FAULT;
     }
 
-    if (NULL == instanceConfigPtr->linkInfo[linkIndex]->atServerDevRef)
+    // Resume device before closing if it was suspended.
+    if (IsAtServerSuspended(instanceConfigPtr->linkInfo[linkIndex],
+        openedInstanceCtxPtr->sessionRef))
     {
-        LE_ERROR("atServerDevRef is NULL!");
-        return LE_FAULT;
+        result = ResumeAtServer(instanceConfigPtr->linkInfo[linkIndex],
+            openedInstanceCtxPtr->sessionRef);
+        if (LE_FAULT == result)
+        {
+            LE_ERROR("Failed to resume device before closing");
+            return LE_FAULT;
+        }
     }
 
-    result = le_atServer_Close(instanceConfigPtr->linkInfo[linkIndex]->atServerDevRef);
+    result = RemoveAtServer(instanceConfigPtr->linkInfo[linkIndex],
+        openedInstanceCtxPtr->sessionRef);
     if (LE_FAULT == result)
     {
         LE_ERROR("Device is not able to close");
@@ -1752,7 +2133,8 @@ le_result_t le_port_GetPortReference
 
         for (i = 0; i < (instanceConfigPtr->linkCounter); i++)
         {
-            if (instanceConfigPtr->linkInfo[i]->atServerDevRef == atServerDevRef)
+            if (FindAtServer(instanceConfigPtr->linkInfo[i], openedInstanceCtxPtr->sessionRef) ==
+                atServerDevRef)
             {
                  *devRefPtr = openedInstanceCtxPtr->deviceRef;
                  return LE_OK;
@@ -1803,6 +2185,14 @@ static void CloseSessionEventHandler
             }
             else
             {
+                int i;
+
+                // Close AT server handle.
+                for (i = 0; i < instanceConfigPtr->linkCounter; ++i)
+                {
+                    RemoveAtServer(instanceConfigPtr->linkInfo[i], sessionRef);
+                }
+
                 // Close all file descriptors.
                 CloseAllFd(instanceConfigPtr);
             }
@@ -1820,6 +2210,61 @@ static void CloseSessionEventHandler
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Calculate hash of client and link pointers for map.
+ *
+ *  @return Hash value.
+ */
+//--------------------------------------------------------------------------------------------------
+static size_t HashClientAndLink
+(
+    const ClientLinkAtServer_t *entryPtr    ///< Hash map entry to calculate hash over.
+)
+{
+    const uint8_t   *ptr;
+    size_t           hash = 0;
+
+    for (ptr = (const uint8_t *) entryPtr; ptr < (const uint8_t *) &entryPtr->atServerRef; ++ptr)
+    {
+        hash = *ptr + (hash << 6) + (hash << 16) - hash;
+    }
+    return hash;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Determine equality of two client/link to server map entries.
+ *
+ *  @return Equality of entries.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool EqualClientAndLink
+(
+    const ClientLinkAtServer_t *entry1Ptr,  ///< First entry to compare.
+    const ClientLinkAtServer_t *entry2Ptr   ///< Second entry to compare.
+)
+{
+    return (entry1Ptr->clientRef == entry2Ptr->clientRef &&
+        entry1Ptr->linkPtr == entry2Ptr->linkPtr);
+}
+
+#if LE_CONFIG_PORT_CONFIG_IS_STATIC
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Initialize the JSON parsing session with a static configuration
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void le_portLocal_InitStaticCfg
+(
+    const char *cfgPtr   ///< static configuration to parse
+)
+{
+    JsonParsingSessionRef = le_json_ParseString(cfgPtr, JsonEventHandler, JsonErrorHandler,
+                                                NULL);
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1829,23 +2274,28 @@ static void CloseSessionEventHandler
 COMPONENT_INIT
 {
     // Create safe reference map for request references.
-    DeviceRefMap = le_ref_CreateMap("DeviceRef", MAX_APPS);
+    DeviceRefMap = le_ref_InitStaticMap(DeviceRef, MAX_APPS);
+
+    AtServerDevRefMap = le_hashmap_InitStatic(AtServerDevRefs, MAX_APPS * MAX_LINKS,
+        (le_hashmap_HashFunc_t) &HashClientAndLink, (le_hashmap_EqualsFunc_t) &EqualClientAndLink);
+    ClientLinkAtServerPoolRef = le_mem_InitStaticPool(ClientLinkAtServerPool, MAX_APPS * MAX_LINKS,
+        sizeof(ClientLinkAtServer_t));
 
     // Create a pool for client objects.
-    PortPoolRef = le_mem_CreatePool("PortPoolRef", sizeof(OpenedInstanceCtx_t));
-    le_mem_ExpandPool(PortPoolRef, MAX_APPS);
+    PortPoolRef = le_mem_InitStaticPool(PortPool, MAX_APPS, sizeof(OpenedInstanceCtx_t));
 
     // Create a pool for JSON configuration.
-    LinksConfigPoolRef = le_mem_CreatePool("LinksConfigPoolRef", sizeof(InstanceConfiguration_t));
-    le_mem_ExpandPool(LinksConfigPoolRef, MAX_LINKS);
+    LinksConfigPoolRef = le_mem_InitStaticPool(LinksConfigPool,
+                                               MAX_PORTS,
+                                               sizeof(InstanceConfiguration_t));
 
     // Create a pool for link configuration.
-    LinkPoolRef = le_mem_CreatePool("LinkPoolRef", sizeof(LinkInformation_t));
-    le_mem_ExpandPool(LinkPoolRef, MAX_LINKS);
+    LinkPoolRef = le_mem_InitStaticPool(LinkPool,
+                                        MAX_PORTS*MAX_LINKS,
+                                        sizeof(LinkInformation_t));
 
     // Create a pool for list of links.
-    LinkListPoolRef = le_mem_CreatePool("LinkListPoolRef", sizeof(LinkList_t));
-    le_mem_ExpandPool(LinkListPoolRef, MAX_LINKS);
+    LinkListPoolRef = le_mem_InitStaticPool(LinkListPool, MAX_PORTS, sizeof(LinkList_t));
 
     // Add a handler to the close session service.
     le_msg_AddServiceCloseHandler(le_port_GetServiceRef(), CloseSessionEventHandler, NULL);
@@ -1856,11 +2306,13 @@ COMPONENT_INIT
     // Link list for JSON object.
     InstanceContextList = LE_DLS_LIST_INIT;
 
+#if !defined LE_CONFIG_PORT_CONFIG_IS_STATIC
     // Open the JSON file.
     JsonFd = open(JSON_CONFIG_FILE, O_RDONLY);
 
     // Start the parser (and wait for callbacks).
     JsonParsingSessionRef = le_json_Parse(JsonFd, JsonEventHandler, JsonErrorHandler, NULL);
+#endif
 
     // Create the semaphore for client socket connect request.
     Semaphore = le_sem_Create("ClientConnectSem", 0);
