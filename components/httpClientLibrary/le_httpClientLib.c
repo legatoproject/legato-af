@@ -70,6 +70,14 @@
 //--------------------------------------------------------------------------------------------------
 #define RESPONSE_BUFFER_SIZE        1024
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Specific error code introduced in tinyHttp's http_data() function to detect HTTP_HEAD command.
+ */
+//--------------------------------------------------------------------------------------------------
+#define HEAD_CMD_ENDED              2
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Enum for HTTP client state machine
@@ -706,7 +714,7 @@ static le_result_t HandleHttpResponse
     const char* data = buffer;
     size_t length = sizeof(buffer);
     le_result_t status;
-    bool needmore = true;
+    int needmore = 1;
 
     if (tinyCtxPtr->isInit == false)
     {
@@ -746,6 +754,21 @@ static le_result_t HandleHttpResponse
     {
         int read;
         needmore = http_data(&tinyCtxPtr->handler, data, (int)length, &read);
+        // If data read equals HEAD size but body is expected due to
+        // HTTP_GET command, then continue to read remaining data.
+        if (HEAD_CMD_ENDED == needmore)
+        {
+            if (HTTP_GET == contextPtr->command)
+            {
+                LE_DEBUG("HTTP_HEAD response received, continue reading data");
+                break;
+            }
+            else
+            {
+                needmore = 0;
+            }
+        }
+
         length -= read;
         data += read;
     }
