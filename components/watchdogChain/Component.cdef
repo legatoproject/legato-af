@@ -7,7 +7,11 @@ requires:
 {
     api:
     {
+#if ${LE_CONFIG_LINUX} = y
         le_wdog.api [manual-start]
+#else
+        le_wdog.api [optional]
+#endif
     }
 }
 

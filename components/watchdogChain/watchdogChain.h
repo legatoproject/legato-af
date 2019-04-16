@@ -25,6 +25,19 @@ LE_SHARED void le_wdogChain_Init
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Start an arbitrary set of the watchdogs out of the range 0..N-1.  Typically this is used in
+ * COMPONENT_INIT to start the initial watchdogs needed by the process, but defer starting others
+ * until later.  Later watchdogs can be started with an explicit kick, or by starting monitoring.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void le_wdogChain_InitSome
+(
+    uint32_t wdogCount, ///< Total number of watchdogs in the chain, whether enabled or not.
+    uint32_t which      ///< Bitmask indicating (by set bits) which watchdogs to immediately start.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Begin monitoring the event loop on the current thread.
  */
 //--------------------------------------------------------------------------------------------------
