@@ -1,7 +1,7 @@
 /**
  * @page c_args Command Line Arguments API
  *
- * @ref le_args.h "API Reference"
+ * @subpage le_args.h "API Reference"
  *
  * <HR>
  *

@@ -1,7 +1,7 @@
 /**
  * @page c_crc CRC32 API
  *
- * @ref le_crc.h "API Reference"
+ * @subpage le_crc.h "API Reference"
  *
  * <HR>
  *

@@ -75,12 +75,6 @@ block updates from being applied, if it is running a critical process that can't
 The API Install Status can be used by an application to watch for other applications being installed
 or uninstalled from a system.
 
-@subsubsection legatoServicesUpdate_APIs_appRemove App Remove API
-
-<b>API: @ref c_le_appRemove</b>
-
-The App Remove API is used to remove applications from the running system.
-
 @subsection legatoServicesUpdate_Tools Update Clients
 
 Within the application framework there are multiple clients that use the update service:

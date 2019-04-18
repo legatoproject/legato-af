@@ -1,7 +1,7 @@
 /**
  * @page c_rand Random Number API
  *
- * @ref le_rand.h "API Reference"
+ * @subpage le_rand.h "API Reference"
  *
  * <HR>
  *

@@ -1,7 +1,7 @@
 /**
  * @page c_safeRef Safe References API
  *
- * @ref le_safeRef.h "API Reference"
+ * @subpage le_safeRef.h "API Reference"
  *
  * <HR>
  *

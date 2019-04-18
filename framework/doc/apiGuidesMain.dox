@@ -1,10 +1,79 @@
 /** @page apiGuidesMain API Guides
 
-These API guides are available:
-| Section                                  | Description                                        |
-| ---------------------------------------- | -------------------------------------------------- |
-| @subpage legatoServices                  | Pre-built services                                 |
-| @subpage c_APIs                          | C Language library                                 |
-| <a href="files.html">C Prototypes</a>    | C Prototype file reference                         |
+@subpage apiGuidesIndex "Index" of all available APIs within the Legato Application Framework
+
+@section apiGuidesMain_Overview Overview
+
+The Legato Application Framework contains a core set of daemons and a Legato library that make up
+the runtime environment and provide the controls and security for the systems, applications and
+components.
+There are also a set of modular Platform Services that by default are added to the Application
+Framework but can be added or removed as needed.
+
+The Platform Services are applications that control the hardware on your target and provide APIs for
+you to bind to your applications and interface directly with the hardware. i.e., If you want to send
+data over the cell network then you need to bind your application to the dataConnection Service and
+open up a data connection over the cell network by calling the provided APIs.  You do not need to
+know the AT command or QMI commands to do this yourself, as the dataConnection Service takes care
+of this for you.
+
+All Legato AF Daemons and many of the Platform Services are @a multi-app @a safe, this means that
+the API's can be used by several Apps concurrently, and arbitration is fully managed among the Apps
+so multiple Apps can share the same resources.
+
+Overview of Legato AF Architecture:
+@image html AF_Architecture.png width=@textwidth
+
+<h1>Lib Legato APIs</h1>
+
+The Legato Application Framework provide a set of APIs to simplify common C programming tasks.
+@c lib @c legato adds object oriented functions to simplify and enhance the safety and reliability
+of your systems.
+
+@subpage c_APIs provides a host of APIs that are automatically available to your code by including
+@c legato.h into your component.
+
+<h1>Legato Application Framework Daemons</h1>
+
+@subpage legatoDaemons are services that make up the Legato Runtime environment. They provide
+controls to start, stop, and configure the Platform Services and user applications.  You do not need
+to bind daemons into your application and are available for all apps to use.
+
+Daemons provide access to:
+- start and stop apps
+- preform fault recovery and rollback
+- API binding and configuration
+- find all service offerings and secure devices
+- provide in app configuration
+- monitoring services via a watchdog process
+- log control
+- update your target and the framework
+
+<h1>Platform Services</h1>
+
+@subpage legatoServices are Apps that come included in the @c default.sdef to enable hardware on
+your target.  They are modular and can be removed if not needed though take care, as many of the
+services depend on other services to run. See the individual service for details.
+
+Each of the Platform Services exposes a number of APIs that can bound with user applications to add
+the hardware functionality into your own applications. The APIs contain common functions to create,
+start, and stop connections to the specific hardware.
+
+Platform Services APIs are pre-built IPC interfaces designed to create and run multiple services in
+different ways:
+- OEM's can create Legato apps to run as services on their specific hardware.
+- 3rd party software providers can create apps to enable supported hardware.
+- 3rd party software providers can use the built-in APIs for it's core daemons to control and
+  configure other services and Apps.
+
+To access the APIs the associated services must be running on the Legato System before you can
+use the API; targets may already have various service Apps installed on the default Legato System.
+Please check with your hardware vendor for the specifics of what services are enabled and supported
+as some of the services may have @ref platformConstraints "limited support" for the target devices.
+
+@warning Some Services shouldn't be used together in the same app (e.g, if you use a multi-app safe
+service like Data Connection, you can't also use the Modem Data Control Service).
+
+
 
 **/

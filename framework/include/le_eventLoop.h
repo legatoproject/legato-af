@@ -1,7 +1,7 @@
 /**
  * @page c_eventLoop Event Loop API
  *
- * @ref le_eventLoop.h "API Reference"
+ * @subpage le_eventLoop.h "API Reference"
  *
  * <HR>
  *

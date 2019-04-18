@@ -1,7 +1,7 @@
 /**
  * @page c_print Print APIs
  *
- * @ref le_print.h "API Reference"
+ * @subpage le_print.h "API Reference"
  *
  * <HR>
  *

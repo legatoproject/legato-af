@@ -2,7 +2,7 @@
  * @page c_memory Dynamic Memory Allocation API
  *
  *
- * @ref le_mem.h "API Reference"
+ * @subpage le_mem.h "API Reference"
  *
  * <HR>
  *

@@ -1,7 +1,7 @@
 /**
  * @page c_messaging Low-level Messaging API
  *
- * @ref le_messaging.h "API Reference"
+ * @subpage le_messaging.h "API Reference"
  *
  * <HR>
  *

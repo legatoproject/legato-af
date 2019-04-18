@@ -1,7 +1,7 @@
 /**
  * @page c_flock File Locking API
  *
- * @ref le_fileLock.h "API Reference"
+ * @subpage le_fileLock.h "API Reference"
  *
  * <HR>
  *

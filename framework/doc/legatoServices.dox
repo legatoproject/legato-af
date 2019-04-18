@@ -1,34 +1,5 @@
-/** @page legatoServices Services APIs
+/** @page legatoServices Platform Services
 
-Legato's Services APIs are pre-built IPC interfaces designed to create and run multiple services in
-different ways:
-- OEM's can create Legato apps to run as services on their specific hardware.
-- 3rd party software providers can create apps to enable supported hardware.
-- 3rd party software providers can use the built-in APIs for it's core daemons to control and
-  configure other services and Apps.
-
-A simple interface definition language (IDL) similar to C is provided to help define APIs so they
-can be used in multiple, different programming languages. See @ref apiFiles.
-
-To access the APIs the associated services must be running on the Legato System before you can
-use the API; targets may already have various service Apps installed on the default Legato System.
-Please check with your hardware vendor for the specifics of what services are enabled and supported
-as some of the services may have @ref platformConstraints "limited support" for the target devices.
-
-All Legato AF Daemons and many of the Platform Services are @a multi-app @a safe, this means that
-the API's can be used by several Apps concurrently, and arbitration is fully managed among the Apps
-so multiple Apps can share the same resources.
-
-The Legato AF Daemons provide full-featured interface access to configure and
-control services and Apps:
-
-| Daemon                                | Description                             | multi-app safe            |
-| ------------------------------------- | --------------------------------------- | :------------------------:|
-| @subpage legatoServicesConfigTree     | Target configuration database           | @image html green_dot.png |
-| @subpage c_logging                    | Control logging messages and outputs    | @image html green_dot.png |
-| @subpage legatoServicesSupervisor     | Control framework, services and Apps    | @image html green_dot.png |
-| @subpage legatoServicesUpdate         | Update Legato System and Apps           | @image html green_dot.png |
-| @subpage c_wdog                       | Configures watchdogs for Apps           | @image html green_dot.png |
 
 Platform Services provide full-featured interface access to system and modem resources:
 
@@ -50,14 +21,7 @@ Platform Services provide full-featured interface access to system and modem res
 | @subpage legatoAtServices             | AT commands services                        | @image html green_dot.png |
 | @subpage c_port                       | Port service                                |                           |
 
-@warning Some Services shouldn't be used together in the same app (e.g, if you use a multi-app safe
-service like Data Connection, you can't also use the Modem Data Control Service).
-
-Overview of Legato AF Architecture:
-
-@image html AF_Architecture.png width=@textwidth
 
 Copyright (C) Sierra Wireless Inc.
 
 **/
-

@@ -1,7 +1,7 @@
 /**
  * @page c_test Unit Testing API
  *
- * @ref le_test.h "API Reference"
+ * @subpage le_test.h "API Reference"
  *
  * <HR>
  *

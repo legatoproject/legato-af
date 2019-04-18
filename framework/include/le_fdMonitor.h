@@ -1,7 +1,7 @@
 /**
  * @page c_fdMonitor File Descriptor Monitor API
  *
- * @ref le_fdMonitor.h "API Reference"
+ * @subpage le_fdMonitor.h "API Reference"
  *
  * <HR>
  *

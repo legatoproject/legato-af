@@ -1,7 +1,7 @@
 /**
  * @page c_singlyLinkedList Singly Linked List API
  *
- * @ref le_singlyLinkedList.h "API Reference"
+ * @subpage le_singlyLinkedList.h "API Reference"
  *
  * <HR>
  *

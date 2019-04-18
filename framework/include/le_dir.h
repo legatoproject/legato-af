@@ -1,7 +1,7 @@
 /**
  * @page c_dir Directory API
  *
- * @ref le_dir.h "API Reference"
+ * @subpage le_dir.h "API Reference"
  *
  * @section c_dir_create Creating Directories
  *

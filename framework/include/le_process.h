@@ -1,6 +1,6 @@
 /** @page c_process Process API
  *
- * @ref le_process.h "API Reference"
+ * @subpage le_process.h "API Reference"
  *
  * <HR>
  * This API provides a means to spawn external processes.  The function le_proc_Execute() takes a

@@ -3,7 +3,7 @@
 /**
  * @page c_pathIter Path Iterator API
  *
- * @ref le_pathIter.h "API Reference"
+ * @subpage le_pathIter.h "API Reference"
  *
  * <HR>
  *

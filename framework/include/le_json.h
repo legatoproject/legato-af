@@ -4,7 +4,7 @@
  *
  * @warning This API is experimental, and is therefore likely to change.
  *
- * @ref le_json.h "API Reference" <br>
+ * @subpage le_json.h "API Reference" <br>
  *
  * <hr>
  *

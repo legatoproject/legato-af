@@ -1,55 +1,61 @@
 /**
- * @page c_APIs C Runtime Library
+ * @page c_APIs lib Legato
  *
- * This section contains detailed info about Legato's C Language library used for low-level routines like
- * commonly used data structures and OS services APIs.
+ * The Legato Application Framework provide a set of APIs to simplify common C programming tasks.
+ * @c lib @c Legato adds object oriented functions to simplify and enhance the safety and
+ * reliability of your systems.
  *
- * <HR>
+ * These APIs are available automatically to your applications by including @c legato.h into your
+ * code.
  *
- * The C APIs' @ref cApiOverview has high-level info.
+ * It is also good practice to include @c interfaces.h. @c interfaces.h is a C header file that
+ * automatically includes all client and server interface definition that your client imports and
+ * exports. If you need to import or export any other API you will need to explicitly include
+ * @c interfaces.h into your C or C++ code.
  *
- * <HR>
+ @verbatim
+  #include "legato.h"
+  #include "interfaces.h"
+ @endverbatim
  *
- * @subpage c_args <br>
- * @subpage c_atomFile <br>
- * @subpage c_basics <br>
- * @subpage c_cdata <br>
- * @subpage c_clock <br>
- * @subpage c_crc <br>
- * @subpage c_dir <br>
- * @subpage c_doublyLinkedList <br>
- * @subpage c_eventLoop <br>
- * @subpage c_fd <br>
- * @subpage c_fdMonitor <br>
- * @subpage c_flock <br>
- * @subpage c_fs <br>
- * @subpage c_hashmap <br>
- * @subpage c_hex <br>
- * @subpage c_json <br>
- * @subpage c_logging <br>
- * @subpage c_memory <br>
- * @subpage c_messaging <br>
- * @subpage c_mutex <br>
- * @subpage c_pack <br>
- * @subpage c_path <br>
- * @subpage c_pathIter <br>
- * @subpage c_print <br>
- * @subpage c_process <br>
- * @subpage c_rand <br>
- * @subpage c_safeRef <br>
- * @subpage c_semaphore <br>
- * @subpage c_signals <br>
- * @subpage c_singlyLinkedList <br>
- * @subpage c_test <br>
- * @subpage c_threading <br>
- * @subpage c_timer <br>
- * @subpage c_tty <br>
- * @subpage c_utf8 <br>
+ * | API Guide                    | API Reference               | File Name                | Description                                                                                                               |
+ * | -----------------------------|-----------------------------| -------------------------| --------------------------------------------------------------------------------------------------------------------------|
+ * | @subpage c_args              | @ref le_args.h              | @c le_args.h             | Provides the ability to add arguments from the command line                                                               |
+ * | @subpage c_atomFile          | @ref le_atomFile.h          | @c le_atomFile.h         | Provides atomic file access mechanism that can be used to perform file operation (specially file write) in atomic fashion |
+ * | @subpage c_basics            | @ref le_basics.h            | @c le_basics.h           | Provides error codes, portable integer types, and helpful macros that make things easier to use                           |
+ * | @subpage c_clock             | @ref le_clock.h             | @c le_clock.h            | Gets/sets date and/or time values, and performs conversions between these values.                                         |
+ * | @subpage c_crc               | @ref le_crc.h               | @c le_crc.h              | Provides the ability to compute the CRC of a binary buffer                                                                |
+ * | @subpage c_dir               | @ref le_dir.h               | @c le_dir.h              | Provides functions to control directories                                                                                 |
+ * | @subpage c_doublyLinkedList  | @ref le_doublyLinkedList.h  | @c le_doublyLinkedList.h | Provides a data structure that consists of data elements with links to the next node and previous nodes                   |
+ * | @subpage c_eventLoop         | @ref le_eventLoop.h         | @c le_eventLoop.h        | Provides event loop functions to support the event-driven programming model                                               |
+ * | @subpage c_fdMonitor         | @ref le_fdMonitor.h         | @c le_fdMonitor.h        | Provides monitoring of file descriptors, reporting, and related events                                                    |
+ * | @subpage c_flock             | @ref le_fileLock.h          | @c le_fileLock.h         | Provides file locking, a form of IPC used to synchronize multiple processes' access to common files                       |
+ * | @subpage c_fs                | @ref le_fs.h                | @c le_fs.h               | Provides a way to access the file system across different platforms                                                       |
+ * | @subpage c_hashmap           | @ref le_hashmap.h           | @c le_hashmap.h          | Provides creating, iterating and tracing functions for a hashmap                                                          |
+ * | @subpage c_hex               | @ref le_hex.h               | @c le_hex.h              | Provides conversion between Hex and Binary strings                                                                        |
+ * | @subpage c_json              | @ref le_json.h              | @c le_json.h             | Provides fast parsing of a JSON data stream with very little memory required                                              |
+ * | @subpage c_logging           | @ref le_log.h               | @c le_log.h              | Provides a toolkit allowing code to be instrumented with error, warning, informational, and debugging messages            |
+ * | @subpage c_memory            | @ref le_mem.h               | @c le_mem.h              | Provides functions to create, allocate and release data from a memory pool                                                |
+ * | @subpage c_messaging         | @ref le_messaging.h         | @c le_messaging.h        | Provides support to low level messaging within Legato                                                                     |
+ * | @subpage c_mutex             | @ref le_mutex.h             | @c le_mutex.h            | Provides standard mutex functionality with added diagnostics capabilities                                                 |
+ * | @subpage c_pack              | @ref le_pack.h              | @c le_pack.h             | Provides low-level pack/unpack functions to support the higher level IPC messaging system                                 |
+ * | @subpage c_path              | @ref le_path.h              | @c le_path.h             | Provides support for UTF-8 null-terminated strings and multi-character separators                                         |
+ * | @subpage c_pathIter          | @ref le_pathIter.h          | @c le_pathIter.h         | Iterate over paths, traverse the path node-by-node, or create and combine paths together                                  |
+ * | @subpage c_rand              | @ref le_rand.h              | @c le_rand.h             | Used for cryptographic purposes such as encryption keys, initialization vectors, etc.                                     |
+ * | @subpage c_safeRef           | @ref le_safeRef.h           | @c le_safeRef.h          | Protect from damaged or stale references being used by clients                                                            |
+ * | @subpage c_semaphore         | @ref le_semaphore.h         | @c le_semaphore.h        | Provides standard semaphore functionality, but with added diagnostic capabilities                                         |
+ * | @subpage c_signals           | @ref le_signals.h           | @c le_signals.h          | Provides software interrupts for running processes or threads                                                             |
+ * | @subpage c_singlyLinkedList  | @ref le_singlyLinkedList.h  | @c le_singlyLinkedList.h | Provides a data structure consisting of a group of nodes linked together linearly                                         |
+ * | @subpage c_test              | @ref le_test.h              | @c le_test.h             | Provides macros that are used to simplify unit testing                                                                    |
+ * | @subpage c_threading         | @ref le_thread.h            | @c le_thread.h           | Provides controls for creating, ending and joining threads                                                                |
+ * | @subpage c_timer             | @ref le_timer.h             | @c le_timer.h            | Provides functions for managing and using timers                                                                          |
+ * | @subpage c_tty               | @ref le_tty.h               | @c le_tty.h              | Provides routines to configure serial ports                                                                               |
+ * | @subpage c_utf8              | @ref le_utf8.h              | @c le_utf8.h             | Provides safe and easy to use string handling functions for null-terminated strings with UTF-8 encoding                   |
  *
  * @section cApiOverview Overview
  * Here is some background info on Legato's C Language APIs.
  *
- * @subsection Object-Oriented Design
+ * @subsection cApiOverview_ood Object-Oriented Design
  *
  * The Legato framework is constructed in an object-oriented manner.
  *
@@ -63,7 +69,7 @@
  * you can never see the structure of those objects. The implementation is hidden from view.
  * Access to object properties is made available through accessor functions.
  *
- *  @subsection Opaque Types
+ *  @subsection cApiOverview_ot Opaque Types
  *
  * The basic "opaque data type" offered by the C programming language is the "void pointer"
  * <c>(void *)</c>.
@@ -96,7 +102,7 @@
  * is @a not necessarily interchangeable with another, and it won't allow a pointer to
  * an incomplete type to be used where a pointer to another non-void type is expected.
  *
- *  @subsection Handlers and Event-Driven Programs
+ *  @subsection cApiOverview_handlersEvents Handlers and Event-Driven Programs
  *
  * "Handler" is an alias for "callback function".  Many APIs in the Legato world
  * use callback functions to notify their clients of asynchronous events.  For example, to

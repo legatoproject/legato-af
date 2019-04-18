@@ -1,6 +1,6 @@
 /** @page c_semaphore Semaphore API
  *
- * @ref le_semaphore.h "API Reference"
+ * @subpage le_semaphore.h "API Reference"
  *
  * <HR>
  * This API provides standard semaphore functionality, but with added diagnostic capabilities.

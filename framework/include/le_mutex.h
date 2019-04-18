@@ -1,7 +1,7 @@
 /**
  * @page c_mutex Mutex API
  *
- * @ref le_mutex.h "API Reference"
+ * @subpage le_mutex.h "API Reference"
  *
  * <HR>
  *

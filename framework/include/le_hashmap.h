@@ -1,7 +1,7 @@
 /**
  * @page c_hashmap HashMap API
  *
- * @ref le_hashmap.h "API Reference"
+ * @subpage le_hashmap.h "API Reference"
  *
  * <HR>
  *

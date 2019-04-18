@@ -3,7 +3,7 @@
 /**
  * @page c_path Path API
  *
- * @ref le_path.h "API Reference"
+ * @subpage le_path.h "API Reference"
  *
  * <HR>
  *

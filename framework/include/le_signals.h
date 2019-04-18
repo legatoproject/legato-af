@@ -1,7 +1,7 @@
 /**
  * @page c_signals Signals API
  *
- * @ref le_signals.h "API Reference"
+ * @subpage le_signals.h "API Reference"
  *
  * <HR>
  *

@@ -1,7 +1,7 @@
 /**
  * @page c_logging Logging API
  *
- * @ref le_log.h "API Reference" <br>
+ * @subpage le_log.h "API Reference" <br>
  *
  * The Legato Logging API provides a toolkit allowing code to be instrumented with error, warning,
  * informational, and debugging messages. These messages can be turned on or off remotely and pushed or pulled
@@ -291,7 +291,7 @@ $ export LE_LOG_TRACE=framework/fdMonitor:framework/logControl
  * le_log_GetFilterLevel() gets the log filter level.
  *
  * Trace keywords can be enabled and disabled programmatically by calling
- * @ref le_log_EnableTrace() and @ref le_log_DisableTrace().
+ * @subpage le_log_EnableTrace() and @ref le_log_DisableTrace().
  *
  *
  * @section c_log_format Log Formats

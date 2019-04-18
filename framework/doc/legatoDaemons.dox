@@ -1,0 +1,16 @@
+/** @page legatoDaemons Legato Daemons
+
+
+The core set of daemons that are automatically included with the Legato Framework at runtime:
+
+| Daemon                                | Description                             | multi-app safe            |
+| ------------------------------------- | --------------------------------------- | :------------------------:|
+| @subpage legatoServicesConfigTree     | Target configuration database           | @image html green_dot.png |
+| @subpage c_logging                    | Control logging messages and outputs    | @image html green_dot.png |
+| @subpage legatoServicesSupervisor     | Control framework, services and Apps    | @image html green_dot.png |
+| @subpage legatoServicesUpdate         | Update Legato System and Apps           | @image html green_dot.png |
+| @subpage c_wdog                       | Configures watchdogs for Apps           | @image html green_dot.png |
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

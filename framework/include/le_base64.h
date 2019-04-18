@@ -1,7 +1,7 @@
 /**
  * @page c_base64 Base64 encoding/decoding API
  *
- * @ref le_base64.h "API Reference"
+ * @subpage le_base64.h "API Reference"
  *
  * <HR>
  *

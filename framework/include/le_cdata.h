@@ -1,7 +1,7 @@
 /**
  * @page c_cdata Component Data API
  *
- * @ref le_cdata.h "API Reference" <br>
+ * @subpage le_cdata.h "API Reference" <br>
  * <hr>
  *
  * In some contexts (e.g. on real-time operating systems) a single process may contain multiple

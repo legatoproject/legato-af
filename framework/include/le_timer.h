@@ -1,7 +1,7 @@
 /**
  * @page c_timer Timer API
  *
- * @ref le_timer.h "API Reference"
+ * @subpage le_timer.h "API Reference"
  *
  * <HR>
  *

@@ -1,7 +1,7 @@
 /**
  * @page c_atomFile Atomic File Operation API
  *
- * @ref le_atomFile.h "API Reference"
+ * @subpage le_atomFile.h "API Reference"
  *
  * <HR>
  *

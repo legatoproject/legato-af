@@ -1,7 +1,7 @@
 /**
  * @page c_tty tty API
  *
- * @ref le_tty.h "API Reference"
+ * @subpage le_tty.h "API Reference"
  *
  * <HR>
  *

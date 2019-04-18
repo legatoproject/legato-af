@@ -1,0 +1,114 @@
+/** @page apiGuidesIndex API Index
+
+A simple interface definition language (IDL) similar to C is provided to help define APIs so they
+can be used in multiple, different programming languages. See @ref apiFiles.
+
+The following is a directory of all API's that are included by the Framework and by including
+@c default.sdef within your system.
+
+@section apiGuidesIndex_daemons Legato Daemon APIs
+
+The Legato AF Daemons provide full-featured interface access to configure and
+control services and Apps:
+
+| Daemon       | API Guide           | API Reference                            | File Name              | Description                                                 |
+|--------------| ------------------- |------------------------------------------|------------------------| ----------------------------------------------------------- |
+| configTree   | @ref c_config       | @ref le_cfg_interface.h                  | @c le_cfg.api          | Functions to read and write data into the App's Tree        |
+| configTree   | @ref c_configAdmin  | @ref le_cfgAdmin_interface.h             | @c le_cfgAdmin.api     | Tools to facilitate the administration of App's Trees       |
+| supervisor   | @ref c_appCtrl      | @ref le_appCtrl_interface.h              | @c le_appCtrl.api      | Control Legato apps                                         |
+| supervisor   | @ref c_appInfo      | @ref le_appInfo_interface.h              | @c le_appInfo.api      | Legato app info retrieval                                   |
+| supervisor   | @ref c_framework    | @ref le_framework_interface.h            | @c le_framework.api    | Control the Legato Framework                                |
+| supervisor   | @ref c_kernelModule | @ref le_kernelModule_interface.h         | @c le_kernelModule.api | Module load and unload                                      |
+| update       | @ref c_update       | @ref le_update_interface.h               | @c le_update.api       | Control the update daemon on the target                     |
+| update       | @ref c_updateCtrl   | @ref le_updateCtrl_interface.h           | @c le_updateCtrl.api   | Tools to facilitate the administration of the update daemon |
+| update       | @ref c_le_instStat  | @ref le_instStat_interface.h             | @c le_instStat.api     | Notifications when apps are installed and uninstalled       |
+| watchdog     | @ref c_wdog         | @ref le_wdog_interface.h                 | @c le_wdog.api         | Monitor critical applications and services for deadlocks and other similar faults |
+
+@section apiGuidesIndex_platformServices Platform Service APIs
+
+Platform Services provide full-featured interface access to system and modem resources:
+
+Location: @c $LEGATO_ROOT/interfaces
+
+| Service          | API Guide              | API Reference                     | File Name               | Description                                                                                                     |
+|------------------| ---------------------- |---------------------------------- |-------------------------| --------------------------------------------------------------------------------------------------------------- |
+| AirVantage       | @ref c_le_avc          | @ref le_avc_interface.h           | @c le_avc.api           | Control and configure upgrade and network settings                                                              |
+| AirVantage       | @ref c_le_avdata       | @ref le_avdata_interface.h        | @c le_avdata.api        | Send and receive data from the AirVantage Server                                                                |
+| Audio            | @ref c_audio           | @ref le_audio_interface.h         | @c le_audio.api         | Handles audio interfaces including play and record supported formats                                            |
+| Cellular Network | @ref c_le_cellnet      | @ref le_cellnet_interface.h       | @c le_cellnet.api       | Ensures that the modem is registered on the network when an user application makes a request for network access |
+| Data Connection  | @ref c_le_data         | @ref le_data_interface.h          | @c le_data.api          | Creates and manages a single data connection on the cellular network                                            |
+| GPIO             | @ref c_gpio            | @ref le_gpio_interface.h          | @c le_gpio.api          | Controls general-purpose digital input/output pins                                                              |
+| Modem            | @ref c_adc             | @ref le_adc_interface.h           | @c le_adc.api           | Analog to digital converter                                                                                     |
+| Modem            | @ref c_antenna         | @ref le_antenna_interface.h       | @c le_antenna.api       | Antenna diagnostics                                                                                             |
+| Modem            | @ref c_ecall           | @ref le_ecall_interface.h         | @c le_ecall.api         | EU auto accident assistance program                                                                             |
+| Modem            | @ref c_ips             | @ref le_ips_interface.h           | @c le_ips.api           | Input voltage data                                                                                              |
+| Modem            | @ref c_lpt             | @ref le_lpt_interface.h           | @c le_lpt.api           | Control modem low power technologies                                                                            |
+| Modem            | @ref c_mcc             | @ref le_mcc_interface.h           | @c le_mcc.api           | Control voice calls                                                                                             |
+| Modem            | @ref c_mdc             | @ref le_mdc_interface.h           | @c le_mdc.api           | Control modem data connections                                                                                  |
+| Modem            | @ref c_info            | @ref le_info_interface.h          | @c le_info.api          | Retrieve modem data information                                                                                 |
+| Modem            | @ref c_mrc             | @ref le_mrc_interface.h           | @c le_mrc.api           | Modem radio controls                                                                                            |
+| Modem            | @ref c_rsim            | @ref le_rsim_interface.h          | @c le_rsim.api          | Remote SIM service                                                                                              |
+| Modem            | @ref c_riPin           | @ref le_riPin_interface.h         | @c le_riPin.api         | Ring indicator for host wakeup                                                                                  |
+| Modem            | @ref c_sim             | @ref le_sim_interface.h           | @c le_sim.api           | SIM access                                                                                                      |
+| Modem            | @ref c_temp            | @ref le_temp_interface.h          | @c le_temp.api          | Temperature monitoring                                                                                          |
+| Modem            | @ref c_rtc             | @ref le_rtc_interface.h           | @c le_rtc.api           | Set user time base for RTC                                                                                      |
+| Positioning      | @ref c_gnss            | @ref le_gnss_interface.h          | @c le_gnss.api          | GNSS device control                                                                                             |
+| Positioning      | @ref c_pos             | @ref le_pos_interface.h           | @c le_pos.api           | Device physical position/movement                                                                               |
+| Power            | @ref c_pm              | @ref le_pm_interface.h            | @c le_pm.api            | Device power management                                                                                         |
+| Power            | @ref c_ulpm            | @ref le_ulpm_interface.h          | @c le_ulpm.api          | Ultra-low device power management                                                                               |
+| Power            | @ref c_bootReason      | @ref le_bootReason_interface.h    | @c le_bootReason.api    | Device power management                                                                                         |
+| SecStore         | @ref c_secStore        | @ref le_secStore_interface.h      | @c le_secStore.api      | secure storage access                                                                                           |
+| SecStore         | @ref c_secStoreAdmin   | @ref secStoreAdmin_interface.h    | @c le_secStoreAdmin.api | secure storage admin control                                                                                    |
+| SMS              | @ref c_sms             | @ref le_sms_interface.h           | @c le_sms.api           | SMS messaging                                                                                                   |
+| SMS              | @ref c_smsInbox        | @ref le_smsInbox1_interface.h     | @c le_smsInbox1.api     | SMS Inbox Service                                                                                               |
+| SPI              | @ref c_spi             | @ref le_spi_interface.h           | @c le_spi.api           | Serial Port Interface                                                                                           |
+| VoiceCall        | @ref c_le_voicecall    | @ref le_voicecall_interface.h     | @c le_voicecall.api     | Controls the voice call service                                                                                 |
+| WiFi             | @ref c_le_wifi_ap      | @ref le_wifiAp_interface.h        | @c le_wifiAp.api        | Create an access point that clients can connect to                                                              |
+| WiFi             | @ref c_le_wifi_client  | @ref le_wifiClient_interface.h    | @c le_wifiClient.api    | Connect to a WiFi access point.                                                                                 |
+| AT               | @ref c_atClient        | @ref le_atClient_interface.h      | @c le_atClient.api      | AT commands client                                                                                              |
+| AT               | @ref c_atServer        | @ref le_atServer_interface.h      | @c le_atServer.api      | AT commands server                                                                                              |
+| Port             | @ref c_port            | @ref le_port_interface.h          | @c le_port.api          | Port service                                                                                                    |
+
+@section apiGuidesIndex_libLegato Legato C APIs
+
+Lib Legato available APIs to provide more functionality to your Legato C Code and extend C.
+
+Location: @c $LEGATO_ROOT/framework/include
+
+| API Guide                | API Reference               | File Name                | Description                                                                                                               |
+| -------------------------|-----------------------------| -------------------------| --------------------------------------------------------------------------------------------------------------------------|
+| @ref c_args              | @ref le_args.h              | @c le_args.h             | Provides the ability to add arguments from the command line                                                               |
+| @ref c_atomFile          | @ref le_atomFile.h          | @c le_atomFile.h         | Provides atomic file access mechanism that can be used to perform file operation (specially file write) in atomic fashion |
+| @ref c_basics            | @ref le_basics.h            | @c le_basics.h           | Provides error codes, portable integer types, and helpful macros that make things easier to use                           |
+| @ref c_clock             | @ref le_clock.h             | @c le_clock.h            | Gets/sets date and/or time values, and performs conversions between these values.                                         |
+| @ref c_crc               | @ref le_crc.h               | @c le_crc.h              | Provides the ability to compute the CRC of a binary buffer                                                                |
+| @ref c_dir               | @ref le_dir.h               | @c le_dir.h              | Provides functions to control directories                                                                                 |
+| @ref c_doublyLinkedList  | @ref le_doublyLinkedList.h  | @c le_doublyLinkedList.h | Provides a data structure that consists of data elements with links to the next node and previous nodes                   |
+| @ref c_eventLoop         | @ref le_eventLoop.h         | @c le_eventLoop.h        | Provides event loop functions to support the event-driven programming model                                               |
+| @ref c_fdMonitor         | @ref le_fdMonitor.h         | @c le_fdMonitor.h        | Provides monitoring of file descriptors, reporting, and related events                                                    |
+| @ref c_flock             | @ref le_fileLock.h          | @c le_fileLock.h         | Provides file locking, a form of IPC used to synchronize multiple processes' access to common files                       |
+| @ref c_fs                | @ref le_fs.h                | @c le_fs.h               | Provides a way to access the file system across different platforms                                                       |
+| @ref c_hashmap           | @ref le_hashmap.h           | @c le_hashmap.h          | Provides creating, iterating and tracing functions for a hashmap                                                          |
+| @ref c_hex               | @ref le_hex.h               | @c le_hex.h              | Provides conversion between Hex and Binary strings                                                                        |
+| @ref c_json              | @ref le_json.h              | @c le_json.h             | Provides fast parsing of a JSON data stream with very little memory required                                              |
+| @ref c_logging           | @ref le_log.h               | @c le_log.h              | Provides a toolkit allowing code to be instrumented with error, warning, informational, and debugging messages            |
+| @ref c_memory            | @ref le_mem.h               | @c le_mem.h              | Provides functions to create, allocate and release data from a memory pool                                                |
+| @ref c_messaging         | @ref le_messaging.h         | @c le_messaging.h        | Provides support to low level messaging within Legato                                                                     |
+| @ref c_mutex             | @ref le_mutex.h             | @c le_mutex.h            | Provides standard mutex functionality with added diagnostics capabilities                                                 |
+| @ref c_pack              | @ref le_pack.h              | @c le_pack.h             | Provides low-level pack/unpack functions to support the higher level IPC messaging system                                 |
+| @ref c_path              | @ref le_path.h              | @c le_path.h             | Provides support for UTF-8 null-terminated strings and multi-character separators                                         |
+| @ref c_pathIter          | @ref le_pathIter.h          | @c le_pathIter.h         | Iterate over paths, traverse the path node-by-node, or create and combine paths together                                  |
+| @ref c_rand              | @ref le_rand.h              | @c le_rand.h             | Used for cryptographic purposes such as encryption keys, initialization vectors, etc.                                     |
+| @ref c_safeRef           | @ref le_safeRef.h           | @c le_safeRef.h          | Protect from damaged or stale references being used by clients                                                            |
+| @ref c_semaphore         | @ref le_semaphore.h         | @c le_semaphore.h        | Provides standard semaphore functionality, but with added diagnostic capabilities                                         |
+| @ref c_signals           | @ref le_signals.h           | @c le_signals.h          | Provides software interrupts for running processes or threads                                                             |
+| @ref c_singlyLinkedList  | @ref le_singlyLinkedList.h  | @c le_singlyLinkedList.h | Provides a data structure consisting of a group of nodes linked together linearly                                         |
+| @ref c_test              | @ref le_test.h              | @c le_test.h             | Provides macros that are used to simplify unit testing                                                                    |
+| @ref c_threading         | @ref le_thread.h            | @c le_thread.h           | Provides controls for creating, ending and joining threads                                                                |
+| @ref c_timer             | @ref le_timer.h             | @c le_timer.h            | Provides functions for managing and using timers                                                                          |
+| @ref c_tty               | @ref le_tty.h               | @c le_tty.h              | Provides routines to configure serial ports                                                                               |
+| @ref c_utf8              | @ref le_utf8.h              | @c le_utf8.h             | Provides safe and easy to use string handling functions for null-terminated strings with UTF-8 encoding                   |
+
+ Copyright (C) Sierra Wireless Inc.
+
+**/

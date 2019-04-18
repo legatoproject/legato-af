@@ -1,7 +1,7 @@
 /**
  * @page c_clock System Clock API
  *
- * @ref le_clock.h "API Reference"
+ * @subpage le_clock.h "API Reference"
  *
  * <HR>
  *

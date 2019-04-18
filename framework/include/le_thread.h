@@ -1,7 +1,7 @@
 /**
  * @page c_threading Thread Control API
  *
- * @ref le_thread.h "API Reference"
+ * @subpage le_thread.h "API Reference"
  *
  * <HR>
  *

@@ -2,7 +2,7 @@
  * @page c_hex Hex string API
  *
  *
- * @ref le_hex.h "API Reference"
+ * @subpage le_hex.h "API Reference"
  *
  * <HR>
  *

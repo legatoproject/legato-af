@@ -1,7 +1,7 @@
 /**
  * @page c_fs File System service
  *
- * @ref le_fs.h
+ * @subpage le_fs.h
  *
  * <HR>
  *

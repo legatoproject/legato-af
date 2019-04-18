@@ -1,7 +1,7 @@
 /**
  * @page c_doublyLinkedList Doubly Linked List API
  *
- * @ref le_doublyLinkedList.h "API Reference"
+ * @subpage le_doublyLinkedList.h "API Reference"
  *
  * <HR>
  *

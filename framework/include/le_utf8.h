@@ -1,7 +1,7 @@
 /**
  * @page c_utf8 UTF-8 String Handling API
  *
- * @ref le_utf8.h "API Reference"
+ * @subpage le_utf8.h "API Reference"
  *
  * <HR>
  *

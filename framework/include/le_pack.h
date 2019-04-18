@@ -1,7 +1,7 @@
 /**
  * @page c_pack Low-level Pack/Unpack API
  *
- * @ref le_pack.h "API Reference"
+ * @subpage le_pack.h "API Reference"
  *
  * <HR>
  *
