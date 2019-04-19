@@ -1,0 +1,22 @@
+start: manual
+
+requires:
+{
+    configTree:
+    {
+        [w] .
+    }
+}
+
+executables:
+{
+     testConfigTree = (testConfigTree)
+}
+
+processes:
+{
+    run:
+    {
+        (testConfigTree)
+    }
+}
