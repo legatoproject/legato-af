@@ -235,6 +235,31 @@ static le_hashmap_Bucket_t *IndexToBucket
     return (index < mapRef->bucketCount ? &mapRef->bucketsPtr[index] : NULL);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get number of buckets required for a given capacity
+ */
+//--------------------------------------------------------------------------------------------------
+size_t GetBucketCount
+(
+    size_t capacity ///< [IN] Number of expected items in the hashmap
+)
+{
+    size_t buckets;
+
+    // Check for no overflow
+    LE_ASSERT(4*capacity >= capacity);
+
+    capacity = (4*capacity)/3;
+
+    // Round capacity up to a power of 2
+    for (buckets = 4; buckets && buckets < capacity; buckets <<= 1)
+    {
+        /* no body */
+    }
+
+    return buckets;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -312,7 +337,7 @@ le_hashmap_Ref_t _le_hashmap_Create
     char poolName[] = "";
 #endif
 
-    size_t bucketCount = LE_HASHMAP_BUCKET_COUNT(capacity);
+    size_t bucketCount = GetBucketCount(capacity);
 
     // Use same function internally as static allocation, but take pointers from
     // heap instead of static memory
