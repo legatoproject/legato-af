@@ -13,7 +13,7 @@
         "node": "*"
     },
     "dependencies": {
-        "@types/node": "^10.14.3",
+        "@types/node": "^10.14.5",
         "chokidar": "^2.1.5",
         "mode-to-permissions": "^0.0.2",
         "npm": "^6.9.0",
@@ -22,7 +22,7 @@
         "vscode-uri": "^1.0.6"
     },
     "devDependencies": {
-        "tslint": "^5.14.0",
+        "tslint": "^5.16.0",
         "typescript": "3.3.3333"
     },
     "scripts": {

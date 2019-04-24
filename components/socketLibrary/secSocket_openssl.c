@@ -364,17 +364,21 @@ err:
                 status = LE_BAD_PARAMETER;
                 break;
 
+#if defined(BIO_R_BAD_HOSTNAME_LOOKUP)
             case BIO_R_BAD_HOSTNAME_LOOKUP:
                 status = LE_UNAVAILABLE;
                 break;
+#endif
 
             case BIO_R_CONNECT_ERROR:
                 status = LE_COMM_ERROR;
                 break;
 
+#if defined(BIO_R_EOF_ON_MEMORY_BIO)
             case BIO_R_EOF_ON_MEMORY_BIO:
                 status = LE_CLOSED;
                 break;
+#endif
 
             default:
                 status = LE_FAULT;

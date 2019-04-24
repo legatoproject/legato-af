@@ -539,7 +539,7 @@ static le_result_t BuildAndSendCredential
         LE_ERROR("Unable to append CRLF");
         return LE_FAULT;
     }
-    strncpy(buffer+length, CRLF, sizeof(CRLF));
+    le_utf8_Copy(buffer+length, CRLF, sizeof(buffer)-length, NULL);
     length += strlen(CRLF);
 
     // Send request through socket
@@ -625,7 +625,7 @@ end:
             return LE_FAULT;
         }
 
-        strncpy(buffer+length, CRLF, sizeof(CRLF));
+        le_utf8_Copy(buffer+length, CRLF, sizeof(buffer)-length, NULL);
         length += strlen(CRLF);
     }
 

@@ -72,6 +72,7 @@ docManagement
 apps/platformServices/airVantageConnector/
 apps/leTP
 apps/sample/dataHub/
+apps/sample/voiceCallApp/
 
 # Tools
 framework/tools/imgdiff/
