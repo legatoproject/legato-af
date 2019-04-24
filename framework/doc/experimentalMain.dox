@@ -16,13 +16,14 @@ The following are our current list of new experimental features in Legato
 
 | Feature                          | Description                                                   | Maturity     | First Release Version |
 | -------------------------------- | --------------------------------------------------------------| ------------ | ----------------------|
-| @subpage legatoServicesDCS       | New data channel service to replace the current data service  | Alpha        | Legato 18.10.0        |
+| @subpage legatoServicesDCS       | New data connect service to replace the current data service  | Alpha        | Legato 18.10.0        |
+| @subpage tools_vsCode            | Legato Plugin for VSCode on Linux                             | Alpha        | Legato 19.04.0        |
 
 Maturity Descriptions:
 - @b Alpha - the feature is still under development and should not be used on production targets as
 the underlying functionality as well as the APIs may change in future releases.
-- @b Beta - the feature is complete and being testted. Final bugs and issues are being resolved.
-Functionality and APIs are stable and will not change at this point.
+- @b Beta - the feature is complete and being tested. Final bugs and issues are being resolved;
+functionality and APIs are stable and will not change at this point.
 
 Any feedback on these features is welcomed, please post on the
 [Legato forum.](https://forum.legato.io)

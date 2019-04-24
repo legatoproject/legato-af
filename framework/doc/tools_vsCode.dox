@@ -1,0 +1,165 @@
+/** @page tools_vsCode Legato Plugin for VSCode
+
+The Legato team has been working hard on the next generation of an <b>Integrated Development
+Environment (IDE)</b> to develop Legato Systems, Apps and Components.
+
+We are proud to launch the @b Preview @b Version of our Legato Plugin for Visual Studio Code which
+provides a simple to use plugin to a well known IDE that incorporates the Legato workflows and
+convenient tools to let you develop and troubleshoot.
+
+The Legato Plugin for VS Code puts <b>tools into your hands to ease the learning curve and provide a
+visual map</b> of how all the system pieces are put together for building the Legato runtime
+environment.
+
+Your Voice is Important! We are still busy developing features but are releasing this as a preview
+for you to try out and let us know what you like (or don’t like) and add suggestions for features
+you would like to see. This is not intended to be a replacement for Developer Studio for now, as
+some features are not yet complete.
+
+We will be releasing new features as they are complete to get your feedback early and to encourage
+adoption of the new style of IDE. This first version is in an early development state. The primary
+use case that we support is a new developer opening a blank workspace and creating a new system from
+ our wizards.
+
+ @warning Importing your existing systems may cause some bugs with the Legato System View;
+ subsequent version will address these issues and make the view more robust.
+
+ We do value your feedback and want you to use the plugin. Report any issues in the
+ [VSCode category](https://forum.legato.io/) of the forum.
+
+@section tools_vsCode_Features Current Features
+
+- Full integration with Leaf Workspace Manager - install and upgrade Legato and associated tools
+  that your target requires.
+- Legato System View - a logical view of your Legato system model with the ability to add and edit
+  existing systems.
+- Add new apps and components using templates that set up your system using Legato best practices.
+- Build your system and install on your target in one step.
+- Code completion for your C/C++ code with autocompletion for legato.h and the C/C++ standard
+  library.
+
+@section tools_vsCode_NFeatures Upcoming Features
+
+Over the next few months we will be adding features for:
+
+- Debugging with GDB support.
+- More code completion for both the definition files and the Legato APIs.
+- Clear software update process to update the base and overlay layers for your target.
+- Support for adding, editing and removing components through the Legato System view.
+- Support for adding Kernel Modules through Legato (no need to rebuild your Linux distro).
+- Error correction and handling for both the definition files and APIs.
+- We welcome feedback and want to know what features are important for our users.
+
+There is a new forum category: [VSCode](https://forum.legato.io/) Please post feedback, ask
+questions, or report bugs here.
+
+@section tools_vsCode_Setup Setup and Install
+
+To set up the Legato plugin:
+
+@note Current support for the Legato plugin is only for @b Linux machines (either virtual or
+      physical).
+
+The Legato build tools rely on a Linux environment to make the system and app images for your
+targets.
+
+@c 1. Download and install [VSCode](https://code.visualstudio.com/Download)
+ - a. [Install guide for VSCode](https://code.visualstudio.com/docs/?dv=linux64_deb)
+
+@c 2. Search for “Legato” in the VSCode Marketplace
+
+@c 3. Open a folder as your Legato workspace. <b>Ctrl + K + 0</b>
+- @c a. Make or choose a folder to use as a workspace and click Ok
+
+@c 4. Install @b Leaf on your dev machine if not already installed:
+@verbatim
+wget https://downloads.sierrawireless.com/tools/leaf/leaf_latest.deb -O /tmp/leaf_latest.deb && sudo apt install /tmp/leaf_latest.deb
+@endverbatim
+
+@image html vsCode_leafIcon.png
+
+@c 5. Click on the @b Leaf @b Icon on the right hand toolbar to
+search and install a current SDK for your target (for example @c swi-wp76-3.0.3 for the @c wp76
+ target) (@ref confLeaf)
+- @c a. Add a filter for your target and then type the partial name for the target (i.e., wp76,
+  wp77, wp85, wp75)
+
+@image html vsCode_leafFilter.png
+
+- @c b. Expand the @b Available list
+
+@image html vsCode_leafAvailable.png
+
+- @c c. Highlight the SDK you wish to install and click <b>Add to profile…</b> , name your profile
+and then follow any prompts in the terminal window.
+
+You have now successfully installed the Legato SDK for your target. The current profile will show up
+on the bottom toolbar of VSCode.
+@image html vsCode_leafProfile.png
+
+@c 6. Next to install the vscode Legato tools, add a filter for vscode (to install the legato
+tools for vscode support)
+@image html vsCode_leafSupportPkg.png
+Add to profile the swi-vscode-support package to your existing leaf profile
+
+@c 7. Follow the prompts to create a new system. (If this doesn’t appear, reload your window
+<b>Cntl + Shift + P</b> and choose <b>Developer: Reload Window</b>). Either select your @c .sdef if
+you have one or create a new one from our template.
+@image html vsCode_sdefMsg.png
+
+
+@image html vsCode_legatoIcon.png
+A new Legato Icon will appear in the left-hand menu, this is the Legato System View and will
+show you the logical view and the relationships between systems, and apps (components are coming
+in a future release).
+@image html vsCode_legatoSystemView.png
+
+- Expand the default.sdef apps to see the Platform Services included with Legato, or click on
+  @b “New @b app” to create your own application and start coding within Legato.
+- Creating a New App will create the components, a .c file and the .adef for you from templates. To
+  view these files and start working with them switch to the Explorer view and start coding.
+
+@image html vsCode_FileExpIcon.png
+
+
+@image html vsCode_newApp.png
+
+Building and Installing your Code onto your Target
+When you are ready click on the
+@image html vsCode_deviceMgmt.png
+IP Address at the bottom tool bar to configure your target:
+
+@image html vsCode_deviceMgmtMenu.png
+
+or press <b>Ctrl + Shift + B</b> to quickly Build or Build and Install your system onto your target.
+
+To view the logs, click on
+@image html vsCode_deviceMgmt.png
+Choose Open Device logs, this will open the logs in a terminal to troubleshoot any issues.
+@image html vsCode_logs.png
+
+Running Build on your code will parse the code with the mktools and provide you logs in the terminal
+that you can then use to figure out errors and issues.
+
+@section tools_vsCode_DevStudio Dev Studio?
+
+What does this mean for Developer Studio?
+
+Developer Studio is the previous IDE that was used to create and debug Legato systems. Developer
+Studio has served us well for the last 10 years but we couldn’t easily tie in the Developer Studio
+workflow with the Legato workflow in a consistent way that was easy to maintain for current and
+future features.
+
+We will be supporting Developer Studio for Legato while the development of the Legato plugin for
+VSCode is in progress. Once the Legato plugin for VSCode is fully released, we will announce the
+end of support for Developer Studio, and give everyone a few months to transition before we sunset
+Developer Studio.
+
+@image html vsCode_devStudioTimeline.png
+
+Thank you for stepping off on this journey with us to provide you an easy to use IDE that will help
+you configure and code your Legato Systems quicker, getting your product to market quicker.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
