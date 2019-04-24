@@ -1,10 +1,10 @@
-/** @page confLeafSrc Legato Source Code
+/** @page confLeafSrc Get Legato Source Code
 
 The initial package that you download contains a pre-built version of the Legato Application
 Framework, meaning that it contains all the source code that you need and make has already been
 run for the target that you downloaded the package for.  (i.e.; if you download a wp76 package, then
 make will already be run for the wp76).  This means that the build tools and other Legato tools are
-available for you to use as soon as the package gets installed and you use leaf shell.
+available for you to use as soon as the package gets installed and you use @c leaf @c shell.
 
 If you need want to contribute back to the legato project or need a tracked version of the source
 code you can switch from using the pre-built version to the source code.
@@ -131,7 +131,7 @@ $ leaf getsrc swi-linux --disable
 @endverbatim
 
 This will download and install any missing packages for the version and will update the environment
-to use the pre-built version of Legato or Linux. <b>It will not remove the source code
+to use the pre-built version of Legato or Linux. <b>Leaf will not remove the source code
 directory.</b>
 
 Copyright (C) Sierra Wireless Inc.

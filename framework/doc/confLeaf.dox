@@ -15,7 +15,7 @@ The basic workflow that should be followed to download and setup a development e
 for your target. These tutorials use the packages that have been created for the Legato project
 as examples.
 
-@section confLeafInstall Installation
+@section confLeafInstall Install Leaf
 
 Leaf is hosted in the Sierra Wireless debian tools repository, and is provided as a @c .deb package
 to be installed through @c apt. We have also provided
@@ -38,22 +38,24 @@ setting up the leaf workspace in @c $HOME/myWorkspace.
 $ mkdir ~/myWorkspace; cd ~/myWorkspace
 @endverbatim
 
-@section confLeafsearch Search for a Package
+@section confLeafsearch Search for Packages
 
-Now that you have leaf installed, you can now search through that repository to find the
-packages to install and configure your Development Environment.
+Now that you have leaf installed, you can now search through a repository to find the
+packages to download, install and configure your Development Environment.
 
 @warning You are able to search leaf from anywhere on your computer; running @c leaf @c setup will
 add config in the directory that you are currently in. It is recommended to create a workspace dir
 and setup leaf packages from within your workspace.
 
-Next run @c leaf @c search. Using @c leaf @c search with no filters will bring back every package in
-that repository (it may be a huge list). It is better to search with filters to bring back a smaller
-list that will be specific for your environment.
+@b leaf @b search
 
-@subsection confLeafsearchTarget Search for a target
+Using @c leaf @c search with no filters will list every package in
+any repository that you have enabled (it may be a huge list). It is better to search with filters
+that return a smaller list that is specific for your target.
+
+@subsection confLeafsearchTarget Search for a Target
 @verbatim
-$ leaf search -t <target>    (i.e.; leaf search -t wp76 will bring back all packages for the wp76 target)
+$ leaf search -t <target>    (i.e.; leaf search -t wp76xx will bring back all packages for the wp76 target)
 @endverbatim
 
 The search results will return a package identifier (the package name of the package to install), a
@@ -65,40 +67,42 @@ $ leaf search -t wp76xx -t latest     (returns the latest packages for the wp76 
 @endverbatim
 
 To see exactly what is contained in the package perform a search with a @c -v flag (verbose). This
-will list the details of what each package contains including the Release Date, which repo the
-package is hosted on, and the list of versions of everything that is included in the package.
+will list the details of what each package contains including the release date and the list of
+versions of all sub-packages listed as dependencies.
 @verbatim
-$ leaf search wp76 -t latest -v  (returns the details of the latest package for the wp76 target)
+$ leaf search -t wp76xx -t latest -v  (returns the details of the latest package for the wp76 target)
 @endverbatim
 
-From these details you should be able to figure out what package you need to setup for your
-environment to work with your target.
+For details on each of the components of the package visit the vendors page.
+Firmware Details (including Yocto distribution, toolchain and firmware): [source.sierrawireless.com](https://source.sierrawireless.com)
+Legato Details: [Releases](https://legato.io/releases)
 
-@section confLeafSetup Setup your Development Environment
+@section confLeafSetup Setup Development Environment
 
 Now that you know which package that you want to install on your development machine, the next step
-is to run leaf setup.  The setup command will prepare your directory as a workspace and download,
-install and configure your workspace with a profile (settings specific to your target and version)
-preparing you to start developing for your target.
+is to run @c leaf @c setup.  The setup command will prepare your directory as a workspace and
+download, install and configure your workspace with a profile (settings specific to your target and
+version) preparing you to start developing for your target.
 
 @verbatim
 $ leaf setup <profile name> -p <package identifier>
 
-$ leaf setup wp76stable -p swi-wp76_1.0.0  (downloads and installs the swi-wp761.0.0 package in the wp76stable profile)
+$ leaf setup wp76stable -p swi-wp76_1.0.0  (downloads and installs the swi-wp76_1.0.0 package in the wp76stable profile)
 @endverbatim
 
-@note Downloading and installing the package may take a few minutes.  It is configuring everything
-that is needed for you to start developing for your target including the toolchain, legato application
-framework and other development tools. It will also take care of installing any apt dependencies.
-The apt dependencies will require sudo and you will be prompted for your password for sudo
-privileges.
+@note Downloading and installing the package may take a few minutes.  Leaf configures everything
+that is needed for you to start developing for your target including the toolchain, Legato
+application framework and other development tools. It will also take care of installing any apt
+dependencies. The apt dependencies will require sudo and you will be prompted for your password for
+sudo privileges.
 
-After installation a new directory (leaf-data) and a new configuration file (leaf-workspace.json)
-will be created in your workspace directory.  The directory contains symbolic links to all the
-resources needed for development and the leaf tools know how to find the resources for development.
+After installation a new directory (@c leaf-data) and a new configuration file
+(@c leaf-workspace.json) will be created in your workspace directory.  The directory contains
+symbolic links to all the resources needed for development and the leaf tools know how to find the
+resources for development.
 
 You will now be able to use leaf commands to view your environment and use the resources that you
-just downloaded and installed.
+just downloaded and installed. For detailed help on the leaf sub-commands see @subpage toolsLeaf.
 @verbatim
 $ leaf status - displays the profile list and information about the profiles
 $ leaf select - lets you select different profiles (if you have more then one installed)
@@ -106,9 +110,9 @@ $ leaf profile delete <profile name>
 $ leaf profile rename <old name> <new name> - renames your profile
 @endverbatim
 
-@section confLeafSetup2nd Setup a Second Profile
+@section confLeafSetup2nd Setup a 2nd Profile
 
-To set up a second profile (if you wish to use multiple targets, or multiple versions) just run
+To set up a second profile (if you wish to use multiple targets, or multiple versions) run
 the leaf setup command again and choose a new profile name.
 @verbatim
 $ leaf setup <2nd profile> -p <2nd package identifier>
@@ -116,15 +120,17 @@ $ leaf setup <2nd profile> -p <2nd package identifier>
 $ leaf setup wp76dev -p swi-wp76_1.3.0
 @endverbatim
 
-To see the two profiles set up use leaf status and to switch profiles use
+To see the two profiles set up use @c leaf @c status and @c leaf @c select to switch between
+profiles.
 @verbatim
+$ leaf status
 $ leaf select <profile name>.
 @endverbatim
 
 @section confLeafShell Leaf Shell
 
-@c leaf @c shell provides an interactive shell that is profile aware to run all of your commands
-for your development environment.  If you need to switch to a different profile (different target
+@c leaf @c shell provides an interactive shell that is @b profile aware to run all of your tools
+for your development environment. If you need to switch to a different profile (different target
 or version of software) the shell environment will update all environment variables to point to the
 version that matches the profile that you are working with.
 
@@ -132,12 +138,12 @@ version that matches the profile that you are working with.
 workspace you will lose your @c leaf environment variables, and it will not be profile aware
 (automatically switch to the toolchain and tools that match the profile you are using).
 
-i.e.; Using mksys from within the leaf shell will use the version of the tool that is configured for
-that specific profile and will also build a Legato System with the correct toolchain.  If you switch
-profiles and run mksys again it will use the version configured with the second profile and use the
-toolchain configured for the second profile environment.
+i.e.; Using @c mksys from within the leaf shell will use the version of the tool that is configured
+for that specific profile and will also build a Legato System with the correct toolchain. If you
+switch profiles and run @c mksys again it will use the version configured with the second profile
+and use the toolchain configured for the second profile environment.
 
-@section confLeafWorkspace Setup Your Workspace
+@section confLeafWorkspace Setup Workspace
 
 Now that you have all your development environment setup and configured you are now able to start
 development.
@@ -146,8 +152,8 @@ All leaf packages are downloaded to @c $HOME/.leaf by default (see @c leaf @c co
 @c update) and are used as references to be included in to your workspace via environment variables.
 
 Any new environment variables that you would like added to your development environment can be
-added with @c leaf @c env. See leaf help env for details on adding new environment variables to
-either a profile or a workspace.
+added with @c leaf @c env. See @c leaf @c help @c env for details on adding new environment
+variables to either a profile or a workspace.
 @verbatim
 $ leaf env profile --set MYVAR=1  (sets the environment variable MYVAR to 1 for the current profile)
 @endverbatim
@@ -158,33 +164,33 @@ Leaf enables a new style of Legato development that allows you to create your co
 systems in your own workspace instead of working directly in the Legato directory. This will
 keep your custom code separate and still allow a full build of Legato Systems.  Any changes that you
 do make directly to the Legato Application Framework will be reflected in your system when you
-run mksys from within the leaf shell in your workspace.
+run @c mksys from within the leaf shell in your workspace.
 
 If you do wish to use the Git tracked source code for Legato you are able to check-out the source
-code for Legato. This version requires you to have an account on Legato's Gerrit server and the
-version that you get of the source code is not pre-built for any target. Use the command
-@subpage confLeafSrc "leaf getsrc legato" to checkout the version of Legato that matches your
-profile.
+code for Legato. This version requires you to have an account on @b Legato's @b Gerrit server.
+Use the command @subpage confLeafSrc "leaf getsrc legato" to checkout the version of Legato that
+matches your profile.
 
-@subsection confLeafDevelopmentLegato Legato Changes
+@subsection confLeafDevelopmentLegato Legato Workflow Changes
 
-- The version of Legato that you get is pre-built for your module, meaning that there is no need
+- The version of Legato that you install is pre-built for your module, meaning that there is no need
   to run make, or set-up the toolchain and other configuration tasks.
 - You do not need to run @c bin/legs or source @c bin/configlegatoenv in your bash.rc file. The
   leaf shell makes sure that all environment variables are set up and are aware of the specific
   version of Legato that you are using within each profile.
-- Do not add your apps and settings to default.sdef you are now able to #include default.sdef
+- Do not add your apps and settings to default.sdef you are now able to @c #include @c default.sdef
   in an sdef in your workspace and build not only your settings but all the default legato apps
   and configuration.
 
-Note: Because you are now working with a pre-built version of Legato, any changes that you do make
+@note Because you are now working with a pre-built version of Legato, any changes that you do make
 to the Legato Application Framework are not tracked, if you wish to modify the framework and build
-from source code see leaf help legato-source to download and connect tracked Legato source code.
+from source code see @c leaf @c help @c legato-source to download and connect tracked Legato source
+code.
 
-@subsection confLeafDevelopmentSDEF Set-up Yor SDEF
+@subsection confLeafDevelopmentSDEF Set-up SDEF
 
 Using your own @c .sdef file is easy to set up and maintain. Using this method leaves all the Legato
-configuration in default.sdef and allows you to quickly see and work with your customization to
+configuration in @c default.sdef and allows you to quickly see and work with your customization to
 your Legato System.
 
 Create a new @c .sdef file in your leaf workspace:
@@ -202,15 +208,11 @@ You are also able to include any other @c .sdef files you wish using the same me
 A couple of very useful environment variables that are setup in Legato:
 - @c $LEGATO_ROOT - resolves to the location of the Legato Application Framework for your profile
 - @c $CURDIR - resolves to the directory where you run the mktools from (i.e.; add
-- @c $CURDIR/path/to/your/app to the apps section of your .sdef and then run mksys from your
+  @c $CURDIR/path/to/your/app to the apps section of your .sdef and then run mksys from your
   workspace directory to build your apps into the update file)
 
-Feel free to add your apps, kernel modules and other settings that you need to include in your
-.sdef.
-
-To build your system you no longer need to re make the build. Run mksys and point it at your .sdef
-file. Even though leaf is profile aware we still need to catch up the mktools. To build a Legato
-System using your custom sdef run:
+To build your system you no longer need to re-make the build. Run @c mksys and point it at your
+@c .sdef. To build a Legato System using your custom sdef run:
 @verbatim
 $ mksys -t $LEGATO_TARGET <sdef>   (i.e.; mksys -t wp76xx mySystem.sdef from your leaf workspace directory)
 @endverbatim
@@ -219,7 +221,7 @@ $ mksys -t $LEGATO_TARGET <sdef>   (i.e.; mksys -t wp76xx mySystem.sdef from you
 
 Because you are not working directly in the Legato directory anymore, we recommend setting up a
 directory structure that will be easy to use and organize your apps, kernel modules and other
-settings for the Legato Application Framework. Remember to use $CURDIR to reference the workspace
+settings for the Legato Application Framework. Remember to use @c $CURDIR to reference the workspace
 folder in your .sdef.
 
 Example directory structure using the helloWorld app:
