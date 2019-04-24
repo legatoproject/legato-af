@@ -403,7 +403,7 @@ $(BUILD_CONFIG)/WiFi:
 
 # Generate an initial KConfig from the environment.  This rule translates the old configuration
 # method using environment variables into an initial KConfig set.
-$(LEGATO_ROOT)/.config.$(TARGET): $(KCONFIG) $(KCONFIG_SET_VALUE) $(BUILD_CONFIG)/Documentation $(BUILD_CONFIG)/WiFi
+$(LEGATO_ROOT)/.config.$(TARGET): | $(BUILD_CONFIG)/Documentation $(BUILD_CONFIG)/WiFi $(KCONFIG) $(KCONFIG_SET_VALUE)
 ifeq ($(KNOWN_TARGET),1)
 	$(L) KSET "$@ - TARGET_$(TARGET_CAPS)"
 	$(Q)TARGET=1 $(KCONFIG_SET_VALUE) "TARGET_$(TARGET_CAPS)" bool "TARGET" $@
