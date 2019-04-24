@@ -108,18 +108,18 @@ ifeq ($(LE_CONFIG_PYTHON),y)
 endif
 
 # Add appropriate rules for feature/OS selections
-ALL_PARTS_y = liblegato daemons
-DAEMONS_y =
+ALL_PARTS_y := liblegato daemons
+DAEMONS_y   :=
 
 # Currently, these options are not user configurable:
+DAEMON_CONFIGTREE  := $(LE_CONFIG_POSIX)
+DAEMON_LOGCTL      := $(LE_CONFIG_POSIX)
 DAEMON_START       := $(LE_CONFIG_POSIX)
 DAEMON_SUPERVISOR  := $(LE_CONFIG_POSIX)
-DAEMON_USUPERVISOR := $(subst y,n,$(LE_CONFIG_POSIX))
 DAEMON_SVCDIR      := $(LE_CONFIG_POSIX)
-DAEMON_LOGCTL      := $(LE_CONFIG_POSIX)
-DAEMON_CONFIGTREE  := $(LE_CONFIG_POSIX)
-DAEMON_WATCHDOG    := $(LE_CONFIG_POSIX)
 DAEMON_UPDATE      := $(LE_CONFIG_POSIX)
+DAEMON_USUPERVISOR := $(subst 0,y,$(call k2b,$(LE_CONFIG_POSIX)))
+DAEMON_WATCHDOG    := $(LE_CONFIG_POSIX)
 
 DAEMONS_$(DAEMON_START)         += $(BIN_DIR)/startSystem
 DAEMONS_$(DAEMON_SUPERVISOR)    += $(BIN_DIR)/supervisor
@@ -134,13 +134,13 @@ ALL_PARTS_$(LE_CONFIG_JAVA)               += $(LEGATO_JAVA)
 ALL_PARTS_$(LE_CONFIG_PYTHON)             += $(LEGATO_PY)
 ALL_PARTS_$(LE_CONFIG_BUILD_TARGET_TOOLS) += targetTools
 
-# If building with a custom FA, pull in custom definitions
-ifeq ($(LE_CONFIG_CUSTOM_FA),y)
-    include $(LE_CONFIG_CUSTOM_FA_PATH)/Makefile.framework
-endif
-
 # The liblegato build is done by this ninja build script.
 NINJA_SCRIPT := $(BUILD_DIR)/build.ninja
+
+# If building with a custom framework adaptor, pull in custom definitions
+ifeq ($(LE_CONFIG_CUSTOM_FA),y)
+  include $(LE_CONFIG_CUSTOM_FA_PATH)/fa.mk
+endif
 
 # The daemons are built using mkexe.
 LOCAL_MKEXE_FLAGS = $(MKEXE_FLAGS)
@@ -204,7 +204,7 @@ $(BUILD_DIR) $(LIB_DIR) $(BIN_DIR):
 	$(Q)mkdir -p $@
 
 # If the ninja script doesn't exist, we generate it using the ninja-generator script.
-$(NINJA_SCRIPT): $(BUILD_DIR)
+$(NINJA_SCRIPT): | $(BUILD_DIR)
 	$(L) GEN $@
 	$(Q)framework/liblegato/ninja-generator
 

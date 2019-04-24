@@ -45,7 +45,11 @@ function ObjectsFromSources()
 {
     for sourceFile in $*
     do
-        printf "%s" "$BUILD_DIR/obj/$(basename $sourceFile).o "
+        prefix_dir="$(basename $(dirname $sourceFile))/"
+        if [ "${prefix_dir}" = "/" ]; then
+            prefix_dir=
+        fi
+        printf "%s" "$BUILD_DIR/obj/${prefix_dir}$(basename $sourceFile).o "
     done
 }
 

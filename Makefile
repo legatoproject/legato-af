@@ -58,7 +58,7 @@ LISTCMD := $(MAKE) -qp -f $(THIS_FILE) list 2> /dev/null | \
 UTILITIES := list clean distclean kconfig-frontends
 
 # Determine the target platform
-TARGET :=
+TARGET ?=
 ifeq ($(MAKECMDGOALS),)
   TARGET := localhost
   KNOWN_TARGET := 1
@@ -225,10 +225,12 @@ ifneq ($(TARGET),nothing)
     export TOOLCHAIN_DIR        := $(dir $(shell which $(CC_NAME)))
     export TOOLCHAIN_PREFIX     :=
   else # not localhost
-    export LEGATO_KERNELROOT    := $(shell $(FINDTOOLCHAIN) $(TARGET) kernelroot)
-    export LEGATO_SYSROOT       := $(shell $(FINDTOOLCHAIN) $(TARGET) sysroot)
-    export TOOLCHAIN_DIR        := $(shell $(FINDTOOLCHAIN) $(TARGET) dir)
-    export TOOLCHAIN_PREFIX     := $(shell $(FINDTOOLCHAIN) $(TARGET) prefix)
+    ifeq ($(TOOLCHAIN_DIR),)
+      export LEGATO_KERNELROOT    := $(shell $(FINDTOOLCHAIN) $(TARGET) kernelroot)
+      export LEGATO_SYSROOT       := $(shell $(FINDTOOLCHAIN) $(TARGET) sysroot)
+      export TOOLCHAIN_DIR        := $(shell $(FINDTOOLCHAIN) $(TARGET) dir)
+      export TOOLCHAIN_PREFIX     := $(shell $(FINDTOOLCHAIN) $(TARGET) prefix)
+    endif
   endif # end not localhost
 
   # Target compiler variables
