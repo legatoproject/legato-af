@@ -7,22 +7,22 @@
 
 #include "legato.h"
 
-#include "mem.h"
-#include "safeRef.h"
-#include "messaging.h"
-#include "log.h"
-#include "thread.h"
-#include "signals.h"
-#include "eventLoop.h"
-#include "timer.h"
-#include "pathIter.h"
-#include "killProc.h"
-#include "properties.h"
-#include "json.h"
-#include "pipeline.h"
 #include "atomFile.h"
+#include "eventLoop.h"
 #include "fs.h"
+#include "json.h"
+#include "killProc.h"
+#include "log.h"
+#include "mem.h"
+#include "messaging.h"
+#include "pathIter.h"
+#include "pipeline.h"
+#include "properties.h"
 #include "rand.h"
+#include "safeRef.h"
+#include "signals.h"
+#include "thread.h"
+#include "timer.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -50,24 +50,25 @@ __attribute__((constructor)) void _legato_InitFramework
     // hasn't been called yet.  Keep it that way.  Also, be careful when using logging inside
     // the memory pool module, because there is the risk of creating infinite recursion.
 
+    rand_Init();        // Does not use any other resource.  Initialize first so that randomness is
+                        // available for other modules' initialization.
     mem_Init();
-    log_Init();        // Uses memory pools.
-    sig_Init();        // Uses memory pools.
-    safeRef_Init();    // Uses memory pools and hash maps.
-    pathIter_Init();   // Uses memory pools and safe references.
-    mutex_Init();      // Uses memory pools.
-    sem_Init();        // Uses memory pools.
-    event_Init();      // Uses memory pools.
-    timer_Init();      // Uses event loop.
-    thread_Init();     // Uses event loop, memory pools and safe references.
-    msg_Init();        // Uses event loop.
-    kill_Init();       // Uses memory pools and timers.
-    properties_Init(); // Uses memory pools and safe references.
-    json_Init();       // Uses memory pools.
-    pipeline_Init();   // Uses memory pools and FD Monitors.
-    atomFile_Init();   // Uses memory pools.
-    fs_Init();         // Uses memory pools and safe references.
-    rand_Init();       // Do not use anything other resource.
+    log_Init();         // Uses memory pools.
+    sig_Init();         // Uses memory pools.
+    safeRef_Init();     // Uses memory pools and hash maps.
+    pathIter_Init();    // Uses memory pools and safe references.
+    mutex_Init();       // Uses memory pools.
+    sem_Init();         // Uses memory pools.
+    event_Init();       // Uses memory pools.
+    timer_Init();       // Uses event loop.
+    thread_Init();      // Uses event loop, memory pools and safe references.
+    msg_Init();         // Uses event loop.
+    kill_Init();        // Uses memory pools and timers.
+    properties_Init();  // Uses memory pools and safe references.
+    json_Init();        // Uses memory pools.
+    pipeline_Init();    // Uses memory pools and FD Monitors.
+    atomFile_Init();    // Uses memory pools.
+    fs_Init();          // Uses memory pools and safe references.
 
     // This must be called last, because it calls several subsystems to perform the
     // thread-specific initialization for the main thread.
