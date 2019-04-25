@@ -44,7 +44,7 @@
 #include <unistd.h>
 
 // Local includes -- definitions which are different between Linux & RTOS
-#include "fd.h"
+#include "le_fd.h"
 #include "fs.h"
 #include "thread.h"
 

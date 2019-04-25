@@ -34,14 +34,14 @@
 #ifndef LEGATO_FD_H_INCLUDE_GUARD
 #define LEGATO_FD_H_INCLUDE_GUARD
 
-#if !defined(le_fd_Open)    && \
-    !defined(le_fd_Close)   && \
-    !defined(le_fd_Read)    && \
-    !defined(le_fd_Write)   && \
+#if !defined(le_fd_Close)   && \
+    !defined(le_fd_Dup)     && \
+    !defined(le_fd_Fcntl)   && \
     !defined(le_fd_Ioctl)   && \
     !defined(le_fd_MkFifo)  && \
-    !defined(le_fd_Fcntl)   && \
-    !defined(le_fd_Dup)
+    !defined(le_fd_Open)    && \
+    !defined(le_fd_Read)    && \
+    !defined(le_fd_Write)
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -135,6 +135,19 @@ int le_fd_MkFifo
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Create a copy of the file descriptor.
+ *
+ * @return
+ *  On success return the new descriptor, or -1 if an error occurred and errno is set.
+ */
+//--------------------------------------------------------------------------------------------------
+int le_fd_Dup
+(
+    int oldfd                         ///< [IN] File descriptor
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Manipulate a file descriptor.
  *
  * Implements a subset of the commands supported by fcntl(2).
@@ -149,19 +162,6 @@ int le_fd_Fcntl
     int fd,                       ///< [IN] File descriptor
     int cmd,                      ///< [IN] Command
     ... /* arg */                 ///< [IN] Argument (optional)
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Create a copy of the file descriptor.
- *
- * @return
- *  On success return the new descriptor, or -1 if an error occurred and errno is set.
- */
-//--------------------------------------------------------------------------------------------------
-int le_fd_Dup
-(
-    int oldfd                         ///< [IN] File descriptor
 );
 
 #else /* le_fd macros defined */
@@ -195,4 +195,4 @@ int le_fd_Dup
 
 #endif /* end le_fd macros defined */
 
-#endif // LEGATO_FD_H_INCLUDE_GUARD
+#endif /* end LEGATO_FD_H_INCLUDE_GUARD */

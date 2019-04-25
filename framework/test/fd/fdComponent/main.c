@@ -1000,7 +1000,7 @@ static void *FifoWriteMain(void *context)
     LE_TEST_INFO("Started with bufSize %zu", tCtx->bufSize);
 
     ret = le_fd_Write(tCtx->fd, tCtx->buf, tCtx->bufSize);
-    if (tCtx->bufSize == ret)
+    if ((ssize_t) tCtx->bufSize == ret)
     {
         WriteSize = ret;
     }

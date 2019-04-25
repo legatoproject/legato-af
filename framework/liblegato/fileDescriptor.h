@@ -10,6 +10,20 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Initializes the file descriptor service.
+ * This function must be called before any other le_fd functions are called.
+ *
+ * @note
+ *      On failure, the process exits.
+ */
+//--------------------------------------------------------------------------------------------------
+void fd_Init
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Sets a file descriptor non-blocking.
  *
  * @note    This function is used for both clients and servers.

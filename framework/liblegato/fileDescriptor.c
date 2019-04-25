@@ -6,6 +6,9 @@
  */
 
 #include "legato.h"
+
+#include "fa/fd.h"
+
 #include "fileDescriptor.h"
 #include "limit.h"
 
@@ -144,8 +147,10 @@ ssize_t fd_ReadSize
     LE_FATAL_IF(bufPtr == NULL, "Supplied NULL string pointer");
     LE_FATAL_IF(fd < 0, "Supplied invalid file descriptor");
 
-    int bytesRd = 0, tempBufSize = 0, rdReq = bufSize;
-    char *tempStr;
+    char    *tempStr;
+    int      bytesRd = 0;
+    size_t   rdReq = bufSize;
+    size_t   tempBufSize = 0;
 
     // Requested zero bytes to read, return immediately
     if (bufSize == 0)
@@ -176,7 +181,7 @@ ssize_t fd_ReadSize
         else if (bytesRd > 0)
         {
             tempBufSize += bytesRd;
-            LE_DEBUG("Iterating read, bufsize: %" PRIdS " , Requested: %d Read: %d",
+            LE_DEBUG("Iterating read, bufsize: %" PRIuS " , Requested: %" PRIuS " Read: %d",
                 bufSize, rdReq, bytesRd);
 
             if (tempBufSize < bufSize)
@@ -212,8 +217,10 @@ ssize_t fd_WriteSize
     LE_FATAL_IF(bufPtr == NULL, "Supplied NULL String Pointer");
     LE_FATAL_IF(fd < 0, "Supplied invalid file descriptor");
 
-    int bytesWr = 0, tempBufSize = 0, wrReq = bufSize;
-    char *tempStr;
+    char    *tempStr;
+    int      bytesWr = 0;
+    size_t   tempBufSize = 0;
+    size_t   wrReq = bufSize;
 
     // Requested zero bytes to write, returns immediately
     if (bufSize == 0)
@@ -226,7 +233,7 @@ ssize_t fd_WriteSize
         tempStr = (char *)(bufPtr);
         tempStr = tempStr + tempBufSize;
 
-        bytesWr= write(fd, tempStr, wrReq);
+        bytesWr = write(fd, tempStr, wrReq);
 
         if ((bytesWr == -1) && (errno != EINTR))
         {
@@ -236,8 +243,8 @@ ssize_t fd_WriteSize
 
         tempBufSize += bytesWr;
 
-        LE_DEBUG("Iterating write, bufsize: %" PRIdS " , Requested: %d Write: %d", bufSize, wrReq,
-            bytesWr);
+        LE_DEBUG("Iterating write, bufsize: %" PRIuS " , Requested: %" PRIuS " Write: %d",
+            bufSize, wrReq, bytesWr);
 
         if(tempBufSize < bufSize)
         {
@@ -371,7 +378,7 @@ le_result_t fd_ReadFromOffset
         LE_ERROR("Could not read file.  Errno = %d.", errno);
         return LE_FAULT;
     }
-    else if (result != bufSize)
+    else if (result != (int) bufSize)
     {
         LE_ERROR("Unexpected end of file.");
         return LE_FAULT;
