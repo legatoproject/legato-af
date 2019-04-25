@@ -104,6 +104,7 @@ void GenerateCLangComponentMainFile
                   "\n"
                   "#include \"legato.h\"\n"
                   "#include \"../liblegato/eventLoop.h\"\n"
+                  "#include \"../liblegato/linux/logPlatform.h\"\n"
                   "#include \"../liblegato/log.h\"\n"
                   "\n"
                   "#ifdef __cplusplus\n"

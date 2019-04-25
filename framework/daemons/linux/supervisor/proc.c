@@ -10,20 +10,22 @@
  */
 
 #include "legato.h"
-#include "watchdogAction.h"
+
 #include "app.h"
 #include "proc.h"
-#include "limit.h"
-#include "le_cfg_interface.h"
 #include "resourceLimits.h"
-#include "fileDescriptor.h"
-#include "user.h"
-#include "log.h"
-#include "smack.h"
 #include "supervisor.h"
-#include "killProc.h"
+#include "watchdogAction.h"
+
+#include "fileDescriptor.h"
 #include "interfaces.h"
+#include "killProc.h"
+#include "le_cfg_interface.h"
+#include "limit.h"
+#include "linux/logPlatform.h"
+#include "smack.h"
 #include "sysStatus.h"
+#include "user.h"
 
 
 //--------------------------------------------------------------------------------------------------

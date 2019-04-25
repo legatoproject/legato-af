@@ -297,6 +297,13 @@ config MEM_POOL_STATS
    - Number of allocations
    - Maximum blocks used
 
+config LOG_FUNCTION_NAMES
+  bool "Log function names"
+  default n if REDUCE_FOOTPRINT
+  default y
+  ---help---
+  Include the function name where a log message originated in the message preamble.
+
 config THREAD_SETNAME
   bool "Set names of threads created from Legato"
   default y

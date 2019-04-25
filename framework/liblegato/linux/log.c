@@ -8,9 +8,11 @@
  */
 
 #include "legato.h"
+
+#include "limit.h"
 #include "log.h"
 #include "logDaemon/logDaemon.h"
-#include "limit.h"
+#include "logPlatform.h"
 #include "messagingSession.h"
 
 //--------------------------------------------------------------------------------------------------
@@ -19,35 +21,6 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define MAX_MSG_SIZE            256
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Log severity strings.
- */
-//--------------------------------------------------------------------------------------------------
-#define LOG_EMERG_STR       "*EMR*"
-#define LOG_CRIT_STR        "*CRT*"
-#define LOG_ERROR_STR       "=ERR="
-#define LOG_WARN_STR        "-WRN-"
-#define LOG_INFO_STR        " INFO"
-#define LOG_DEBUG_STR       " DBUG"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Strings for the severity levels in the same order as the level constants LE_LOG_DEBUG,
- * LE_LOG_INFO, etc. appear in the enumeration @ref le_log_Level_t in @ref le_log.h .
- */
-//--------------------------------------------------------------------------------------------------
-static const char* SeverityStr[] = {
-        LOG_DEBUG_STR,
-        LOG_INFO_STR,
-        LOG_WARN_STR,
-        LOG_ERROR_STR,
-        LOG_CRIT_STR,
-        LOG_EMERG_STR
-    };
 
 
 //--------------------------------------------------------------------------------------------------
@@ -751,7 +724,7 @@ static void RegisterWithLogControlDaemon
  * Initialize the logging system.
  */
 //--------------------------------------------------------------------------------------------------
-void log_Init
+void fa_log_Init
 (
     void
 )
@@ -903,90 +876,7 @@ le_log_SessionRef_t log_RegComponent
     return logSessionPtr;
 }
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Translates a severity level string to the severity level value.  These strings are received from
- * the log control tool and are different from the strings that are used in the actual log messages.
- *
- * @return
- *      The severity level if successful.
- *      -1 if the string is an invalid log level.
- */
-//--------------------------------------------------------------------------------------------------
-le_log_Level_t log_StrToSeverityLevel
-(
-    const char* levelStr    // The severity level string.
-)
-{
-    if (strcmp(levelStr, LOG_SET_LEVEL_EMERG_STR) == 0)
-    {
-        return LE_LOG_EMERG;
-    }
-    else if (strcmp(levelStr, LOG_SET_LEVEL_CRIT_STR) == 0)
-    {
-        return LE_LOG_CRIT;
-    }
-    else if (strcmp(levelStr, LOG_SET_LEVEL_ERROR_STR) == 0)
-    {
-        return LE_LOG_ERR;
-    }
-    else if (strcmp(levelStr, LOG_SET_LEVEL_WARN_STR) == 0)
-    {
-        return LE_LOG_WARN;
-    }
-    else if (strcmp(levelStr, LOG_SET_LEVEL_INFO_STR) == 0)
-    {
-        return LE_LOG_INFO;
-    }
-    else if (strcmp(levelStr, LOG_SET_LEVEL_DEBUG_STR) == 0)
-    {
-        return LE_LOG_DEBUG;
-    }
-
-    return -1;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Translates a severity level value to a severity level string.
- *
- * @return
- *      Pointer to a string constant containing the severity level string.
- *      NULL if the value is out of range.
- */
-//--------------------------------------------------------------------------------------------------
-const char* log_SeverityLevelToStr
-(
-    le_log_Level_t level    ///< [IN] Severity level.
-)
-{
-    switch (level)
-    {
-        case LE_LOG_DEBUG:
-            return LOG_SET_LEVEL_DEBUG_STR;
-
-        case LE_LOG_INFO:
-            return LOG_SET_LEVEL_INFO_STR;
-
-        case LE_LOG_WARN:
-            return LOG_SET_LEVEL_WARN_STR;
-
-        case LE_LOG_ERR:
-            return LOG_SET_LEVEL_ERROR_STR;
-
-        case LE_LOG_CRIT:
-            return LOG_SET_LEVEL_CRIT_STR;
-
-        case LE_LOG_EMERG:
-            return LOG_SET_LEVEL_EMERG_STR;
-    }
-
-    return NULL;
-}
-
-
+#ifdef LEGATO_EMBEDDED
 //--------------------------------------------------------------------------------------------------
 /**
  * Converts the legato log levels to the syslog priority levels.
@@ -995,8 +885,6 @@ const char* log_SeverityLevelToStr
  *      Syslog priority level.
  */
 //--------------------------------------------------------------------------------------------------
-#ifdef LEGATO_EMBEDDED
-
 static int ConvertToSyslogLevel
 (
     le_log_Level_t legatoLevel
@@ -1025,21 +913,25 @@ static int ConvertToSyslogLevel
 }
 #endif
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Builds the log message and sends it to the logging system.
  */
 //--------------------------------------------------------------------------------------------------
-void _le_log_Send
+void fa_log_Send
 (
-    const le_log_Level_t level,         // The severity level. Set to -1 if this is a Trace log.
-    const le_log_TraceRef_t traceRef,   // The Trace reference. Set to NULL if this is not a Trace log.
-    le_log_SessionRef_t logSession,     // The log session.
-    const char* filenamePtr,            // The name of the source file that logged the message.
-    const char* functionNamePtr,        // The name of the function that logged the message.
-    const unsigned int lineNumber,      // The line number in the source file that logged the message.
-    const char* formatPtr, ...          // The user message format and options.
+    const le_log_Level_t     level,             // The severity level. Set to -1 if this is a Trace
+                                                // log.
+    const le_log_TraceRef_t  traceRef,          // The Trace reference. Set to NULL if this is not a
+                                                // Trace log.
+    le_log_SessionRef_t      logSession,        // The log session.
+    const char              *filenamePtr,       // The name of the source file that logged the
+                                                // message.
+    const char              *functionNamePtr,   // The name of the function that logged the message.
+    const unsigned int       lineNumber,        // The line number in the source file that logged
+                                                // the message.
+    const char              *formatPtr,         // The user message format.
+    va_list                  args               // Positional parameters.
 )
 {
     // Save the current errno to be used in the log message because some of the system calls below
@@ -1067,7 +959,7 @@ void _le_log_Send
     if ( (level <= LOG_DEBUG) && (level >= LOG_EMERG) )
     {
         // Use the severity level.
-        levelPtr = SeverityStr[level];
+        levelPtr = log_GetSeverityStr(level);
     }
     else
     {
@@ -1099,17 +991,12 @@ void _le_log_Send
     // Get the user message.
     char msg[MAX_MSG_SIZE] = "";
 
-    va_list varParams;
-    va_start(varParams, formatPtr);
-
     // Reset the errno to ensure that we report the proper errno value.
     errno = savedErrno;
 
     // Don't need to check the return value because if there is an error we can't do anything about
     // it.  If there was a truncation then that'll just show up in the logs.
-    vsnprintf(msg, sizeof(msg), formatPtr, varParams);
-
-    va_end(varParams);
+    vsnprintf(msg, sizeof(msg), formatPtr, args);
 
     // If running on an embedded target, write the message out to the log.
 #ifdef LEGATO_EMBEDDED
@@ -1161,85 +1048,12 @@ void _le_log_Send
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get a null-terminated, printable string representing an le_result_t value.
- *
- * For example, LE_RESULT_TXT(LE_NOT_PERMITTED) would return a pointer to a string containing
- * "LE_NOT_PERMITTED".
- *
- * "(unknown)" will be returned if the value given is out of range.
- *
- * @return A pointer to a string constant.
- */
-//--------------------------------------------------------------------------------------------------
-const char* _le_log_GetResultCodeString
-(
-    le_result_t resultCode  ///< [in] The result code value to be translated.
-)
-{
-    switch (resultCode)
-    {
-        case LE_OK:
-            return "LE_OK";
-        case LE_NOT_FOUND:
-            return "LE_NOT_FOUND";
-        case LE_NOT_POSSIBLE:
-            return "LE_NOT_POSSIBLE";
-        case LE_OUT_OF_RANGE:
-            return "LE_OUT_OF_RANGE";
-        case LE_NO_MEMORY:
-            return "LE_NO_MEMORY";
-        case LE_NOT_PERMITTED:
-            return "LE_NOT_PERMITTED";
-        case LE_FAULT:
-            return "LE_FAULT";
-        case LE_COMM_ERROR:
-            return "LE_COMM_ERROR";
-        case LE_TIMEOUT:
-            return "LE_TIMEOUT";
-        case LE_OVERFLOW:
-            return "LE_OVERFLOW";
-        case LE_UNDERFLOW:
-            return "LE_UNDERFLOW";
-        case LE_WOULD_BLOCK:
-            return "LE_WOULD_BLOCK";
-        case LE_DEADLOCK:
-            return "LE_DEADLOCK";
-        case LE_FORMAT_ERROR:
-            return "LE_FORMAT_ERROR";
-        case LE_DUPLICATE:
-            return "LE_DUPLICATE";
-        case LE_BAD_PARAMETER:
-            return "LE_BAD_PARAMETER";
-        case LE_CLOSED:
-            return "LE_CLOSED";
-        case LE_BUSY:
-            return "LE_BUSY";
-        case LE_UNSUPPORTED:
-            return "LE_UNSUPPORTED";
-        case LE_IO_ERROR:
-            return "LE_IO_ERROR";
-        case LE_NOT_IMPLEMENTED:
-            return "LE_NOT_IMPLEMENTED";
-        case LE_UNAVAILABLE:
-            return "LE_UNAVAILABLE";
-        case LE_TERMINATED:
-            return "LE_TERMINATED";
-        case LE_IN_PROGRESS:
-            return "LE_IN_PROGRESS";
-    }
-    LE_ERROR("Result code %d out of range.", resultCode);
-    return "(unknown)";
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Gets a reference to a trace keyword's settings.
  *
  * @return  The trace reference.
  **/
 //--------------------------------------------------------------------------------------------------
-le_log_TraceRef_t _le_log_GetTraceRef
+le_log_TraceRef_t fa_log_GetTraceRef
 (
     const le_log_SessionRef_t   logSession,     ///< [IN] The log session.
     const char*                 keywordPtr      ///< [IN] Pointer to the keyword string.
@@ -1272,7 +1086,7 @@ le_log_TraceRef_t _le_log_GetTraceRef
  * @note    This does not affect other processes and does not update the Log Control Daemon.
  **/
 //--------------------------------------------------------------------------------------------------
-void _le_log_SetFilterLevel
+void fa_log_SetFilterLevel
 (
     le_log_SessionRef_t logSession,
     le_log_Level_t level
@@ -1281,65 +1095,6 @@ void _le_log_SetFilterLevel
 {
     LE_ASSERT(logSession != NULL);
     logSession->level = level;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Log data block. Provides a hex dump for debug
- */
-//--------------------------------------------------------------------------------------------------
-void _le_LogData
-(
-    le_log_Level_t level,               // log level
-    const uint8_t* dataPtr,             // The buffer address to be dumped
-    int dataLength,                     // The data length of buffer
-    const char* filenamePtr,            // The name of the source file that logged the message.
-    const char* functionNamePtr,        // The name of the function that logged the message.
-    const unsigned int lineNumber       // The line number in the source file that logged the message.
-)
-{
-    int i, j, numColumns;
-    char c;
-    char buffer[100];   // enough to hold 16 printed bytes, plus ASCII equivalents
-
-    for ( i=0; i<dataLength; i+=16 )
-    {
-        numColumns = dataLength - i;
-        if ( numColumns > 16 )
-        {
-            numColumns = 16;
-        }
-
-        // Print the data as numbers
-        for(j=0; j<numColumns; j++)
-        {
-            sprintf( &buffer[j*3], "%02X ", dataPtr[i+j] );
-        }
-
-        // Print extra spaces, if needed, plus separator at column 49
-        sprintf( &buffer[numColumns*3], "%*c: ", (16-numColumns)*3+1, ' ' );
-
-        // Print the data as characters, starting at column 51
-        for(j=0; j<numColumns; j++)
-        {
-            c = dataPtr[i+j];
-            if ( ! isprint(c) )
-            {
-                c = '.';
-            }
-            sprintf( &buffer[51+j], "%c", c );
-        }
-
-        do
-        {
-            if ((LE_LOG_LEVEL_FILTER_PTR == NULL) || (level >= *LE_LOG_LEVEL_FILTER_PTR))
-            {
-                _le_log_Send(level, NULL, LE_LOG_SESSION, filenamePtr, functionNamePtr,
-                             lineNumber, "%s", buffer);
-            }
-        } while(0);
-    }
 }
 
 
@@ -1360,7 +1115,7 @@ void log_LogGenericMsg
 #ifdef LEGATO_EMBEDDED
 
     syslog(ConvertToSyslogLevel(level), "%s | %s[%d] | %s\n",
-           SeverityStr[level], procNamePtr, pid, msgPtr);
+           log_GetSeverityStr(level), procNamePtr, pid, msgPtr);
 
 #else
 
@@ -1377,10 +1132,8 @@ void log_LogGenericMsg
     }
 
     fprintf(stderr, "%s : %s | %s[%d] | %s\n",
-            timeStampPtr, SeverityStr[level], procNamePtr, pid, msgPtr);
+            timeStampPtr, log_GetSeverityStr(level), procNamePtr, pid, msgPtr);
 
 #endif
 
 }
-
-

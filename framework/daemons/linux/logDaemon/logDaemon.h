@@ -105,18 +105,6 @@
 #define LOG_CMD_FORGET_PROCESS          'x' // No ComponentName or CommandData
 
 
-// =======================================================
-//  LOG LEVELS (CommandData part of SET_LEVEL commands)
-// =======================================================
-
-#define LOG_SET_LEVEL_EMERG_STR "EMERGENCY"
-#define LOG_SET_LEVEL_CRIT_STR  "CRITICAL"
-#define LOG_SET_LEVEL_ERROR_STR "ERROR"
-#define LOG_SET_LEVEL_WARN_STR  "WARNING"
-#define LOG_SET_LEVEL_INFO_STR  "INFO"
-#define LOG_SET_LEVEL_DEBUG_STR "DEBUG"
-
-
 // =========================================================================
 //  LOG OUTPUT LOCATION NAMES (CommandData part of SET_OUTPUT_LOC commands)
 // =========================================================================

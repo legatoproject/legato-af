@@ -1,7 +1,5 @@
 #include "legato.h"
 
-extern void log_TestFrameworkMsgs(void);
-
 COMPONENT_INIT
 {
     int i;

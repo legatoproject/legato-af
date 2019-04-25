@@ -421,40 +421,64 @@ typedef struct le_log_Trace* le_log_TraceRef_t;
     !defined(LE_ERROR) && \
     !defined(LE_CRIT) && \
     !defined(LE_EMERG)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send a message to the logging target.
+ **/
+//--------------------------------------------------------------------------------------------------
 void _le_log_Send
 (
-    const le_log_Level_t level,
-    const le_log_TraceRef_t traceRef,
-    le_log_SessionRef_t logSession,
-    const char* filenamePtr,
-    const char* functionNamePtr,
-    const unsigned int lineNumber,
-    const char* formatPtr,
-    ...
-) __attribute__ ((format (printf, 7, 8)));
+    const le_log_Level_t     level,             ///< Log level.
+    const le_log_TraceRef_t  traceRef,          ///< Trace reference.  May be NULL.
+    le_log_SessionRef_t      logSession,        ///< Log session.  May be NULL.
+    const char              *filenamePtr,       ///< File name.
+    const char              *functionNamePtr,   ///< Function name.  May be NULL.
+    const unsigned int       lineNumber,        ///< Line number.
+    const char              *formatPtr,         ///< Format string.
+    ...                                         ///< Positional parameters.
+) __attribute__((format (printf, 7, 8)));
 
-le_log_TraceRef_t _le_log_GetTraceRef
-(
-    le_log_SessionRef_t logSession,
-    const char* keyword
-);
-
-void _le_log_SetFilterLevel
-(
-    le_log_SessionRef_t logSession,
-    le_log_Level_t level
-);
-
+//--------------------------------------------------------------------------------------------------
+/**
+ * Log data block.  Provides a hex dump for debug.
+ */
+//--------------------------------------------------------------------------------------------------
 void _le_LogData
 (
-    const le_log_Level_t level,         // log level
-    const uint8_t* dataPtr,             // The buffer address to be dumped
-    int dataLength,                     // The data length of buffer
-    const char* filenamePtr,            // The name of the source file that logged the message.
-    const char* functionNamePtr,        // The name of the function that logged the message.
-    const unsigned int lineNumber       // The line number in the source file that logged the message.
+    le_log_Level_t       level,             ///< Log level.
+    const uint8_t       *dataPtr,           ///< The buffer address to be dumped.
+    int                  dataLength,        ///< The data length of buffer.
+    const char          *filenamePtr,       ///< The name of the source file that logged the
+                                            ///< message.
+    const char          *functionNamePtr,   ///< The name of the function that logged the message.
+    const unsigned int   lineNumber         ///< The line number in the source file that logged the
+                                            ///< message.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets a reference to a trace keyword's settings.
+ *
+ * @return  Trace reference.
+ **/
+//--------------------------------------------------------------------------------------------------
+le_log_TraceRef_t _le_log_GetTraceRef
+(
+    le_log_SessionRef_t  logSession,    ///< Log session.
+    const char          *keyword        ///< Trace keyword.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the log filter level for the calling component.
+ **/
+//--------------------------------------------------------------------------------------------------
+void _le_log_SetFilterLevel
+(
+    le_log_SessionRef_t logSession, ///< Log session.
+    le_log_Level_t      level       ///< Log level to apply.
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -481,7 +505,7 @@ extern LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
  * Internal macro to set whether the function name is displayed with log messages.
  */
 //--------------------------------------------------------------------------------------------------
-#ifndef LE_LOG_EXCLUDE_FUNCTION_NAME
+#if LE_CONFIG_LOG_FUNCTION_NAMES
 #   define _LE_LOG_FUNCTION_NAME __func__
 #else
 #   define _LE_LOG_FUNCTION_NAME NULL
@@ -604,8 +628,7 @@ extern LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
  * @return  true if enabled, false if not.
  **/
 //--------------------------------------------------------------------------------------------------
-#define le_log_IsTraceEnabled(traceRef)         \
-    (*((bool*)(traceRef)))
+#define le_log_IsTraceEnabled(traceRef) ((traceRef) == NULL ? false : *((bool *) (traceRef)))
 
 
 //--------------------------------------------------------------------------------------------------
@@ -879,8 +902,7 @@ const char* _le_log_GetResultCodeString
     if (!(condition))                                   \
     {                                                   \
         LE_EMERG("Assert Failed: '%s'", #condition);    \
-        LE_BACKTRACE("Assertion Call Stack");           \
-        exit(EXIT_FAILURE);                             \
+        abort();                                        \
     }
 
 
@@ -894,8 +916,7 @@ const char* _le_log_GetResultCodeString
     if ((condition) != LE_OK)                                           \
     {                                                                   \
         LE_EMERG("Assert Failed: '%s' is not LE_OK (0)", #condition);   \
-        LE_BACKTRACE("Assertion Call Stack");                           \
-        exit(EXIT_FAILURE);                                             \
+        abort();                                                        \
     }
 
 

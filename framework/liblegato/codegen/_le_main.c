@@ -10,9 +10,12 @@
 
 #include "legato.h"
 
-#include "../liblegato/log.h"
 #include "../liblegato/eventLoop.h"
+#include "../liblegato/log.h"
 
+#ifndef NO_LOG_CONTROL
+#   include "../liblegato/linux/logPlatform.h"
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -40,9 +43,9 @@ int main(int argc, const char* argv[])
     // Also, the Service Directory shouldn't try to use the messaging system, so it can't
     // connect to the Log Control Daemon either.  Besides, the Service Directory starts before
     // the Log Control Daemon starts.
-    #ifndef NO_LOG_CONTROL
-        log_ConnectToControlDaemon();
-    #endif
+#ifndef NO_LOG_CONTROL
+    log_ConnectToControlDaemon();
+#endif
 
     //@todo: Block all signals that the user intends to handle with signal events.
 

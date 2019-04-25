@@ -60,6 +60,7 @@ void GenerateCLangExeMain
                   "\n"
                   "#include \"legato.h\"\n"
                   "#include \"../liblegato/eventLoop.h\"\n"
+                  "#include \"../liblegato/linux/logPlatform.h\"\n"
                   "#include \"../liblegato/log.h\"\n"
                   "#include <dlfcn.h>\n"
                   "\n"

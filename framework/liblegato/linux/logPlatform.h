@@ -1,4 +1,4 @@
-/** @file log.h
+/** @file logPlatform.h
  *
  * Linux-specific intra-framework header file for log system.  This file exposes type definitions
  * and function interfaces to other modules inside the framework implementation.
@@ -32,17 +32,8 @@
  * Copyright (C) Sierra Wireless Inc.
  */
 
-#ifndef LINUX_LOG_INCLUDE_GUARD
-#define LINUX_LOG_INCLUDE_GUARD
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Default logging level for sessions when they are first created.
- **/
-//--------------------------------------------------------------------------------------------------
-#define LOG_DEFAULT_LOG_FILTER      LE_LOG_INFO
-
+#ifndef LINUX_LOGPLATFORM_INCLUDE_GUARD
+#define LINUX_LOGPLATFORM_INCLUDE_GUARD
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -86,62 +77,6 @@ le_log_SessionRef_t log_RegComponent
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Registers a trace keyword with the logging system.
- *
- * @return
- *      A log keyword reference.
- */
-//--------------------------------------------------------------------------------------------------
-le_log_TraceRef_t log_RegTraceKeyword
-(
-    const char* keywordPtr,         ///< [IN] A pointer to the keyword string.
-    bool** isEnabledPtrPtr          ///< [OUT] Set to point to the enabled/disabled flag variable.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Translates a severity level string to a severity level value.
- *
- * @return
- *      The severity level if successful.
- *      -1 if the string is an invalid log level.
- */
-//--------------------------------------------------------------------------------------------------
-le_log_Level_t log_StrToSeverityLevel
-(
-    const char* levelStr    ///< [IN] The severity level string.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Translates a severity level value to a severity level string.
- *
- * @return
- *      Pointer to a string constant containing the severity level string.
- *      NULL if the value is out of range.
- */
-//--------------------------------------------------------------------------------------------------
-const char* log_SeverityLevelToStr
-(
-    le_log_Level_t level    ///< [IN] Severity level.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Log messages from the framework.  Used for testing only.
- */
-//--------------------------------------------------------------------------------------------------
-void log_TestFrameworkMsgs
-(
-    void
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Logs a generic message with the given information.
  */
 //--------------------------------------------------------------------------------------------------
@@ -153,4 +88,4 @@ void log_LogGenericMsg
     const char* msgPtr          ///< [IN] Message.
 );
 
-#endif // LINUX_LOG_INCLUDE_GUARD
+#endif /* end LINUX_LOGPLATFORM_INCLUDE_GUARD */
