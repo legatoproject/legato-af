@@ -1,9 +1,11 @@
-// -------------------------------------------------------------------------------------------------
-// Header file for statically allocated thread tests.  These functions are called by the
-// main module (main.c).
-//
-// Copyright (C) Sierra Wireless Inc.
-// -------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+/**
+ * Header file for statically allocated thread tests.  These functions are called by the
+ * main module (main.c).
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ **/
+//--------------------------------------------------------------------------------------------------
 
 #ifndef LE_STATIC_THREAD_TEST_H_INCLUSION_GUARD
 #define LE_STATIC_THREAD_TEST_H_INCLUSION_GUARD

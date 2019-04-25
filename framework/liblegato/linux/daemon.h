@@ -3,7 +3,7 @@
  *
  * Process daemonization function.
  *
- * Copyright (C), Sierra Wireless Inc.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

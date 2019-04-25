@@ -1,15 +1,13 @@
-
 //--------------------------------------------------------------------------------------------------
 /**
  * @file jsonGenerator.h
  *
- * Copyright (C) Sierra Wireless Inc.,
+ * Copyright (C) Sierra Wireless Inc.
  **/
 //--------------------------------------------------------------------------------------------------
 
 #ifndef LEGATO_MKTOOLS_JSON_GENERATOR_H_INCLUDE_GUARD
 #define LEGATO_MKTOOLS_JSON_GENERATOR_H_INCLUDE_GUARD
-
 
 namespace json
 {

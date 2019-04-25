@@ -162,12 +162,12 @@
  */
 
 
- /** @file le_singlyLinkedList.h
-  *
-  * Legato @ref c_singlyLinkedList include file.
-  *
-  * Copyright (C) Sierra Wireless Inc.
-  */
+/** @file le_singlyLinkedList.h
+ *
+ * Legato @ref c_singlyLinkedList include file.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
 
 #ifndef LEGATO_SINGLY_LINKED_LIST_INCLUDE_GUARD
 #define LEGATO_SINGLY_LINKED_LIST_INCLUDE_GUARD

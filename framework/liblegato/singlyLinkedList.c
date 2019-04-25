@@ -1,7 +1,7 @@
- /** @file singlyLinkedList.c
-  *
-  * Copyright (C) Sierra Wireless Inc.
-  */
+/** @file singlyLinkedList.c
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
 
 #include "legato.h"
 

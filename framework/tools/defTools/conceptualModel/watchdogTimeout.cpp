@@ -1,8 +1,8 @@
 //--------------------------------------------------------------------------------------------------
 /**
- *  Implementation of the WatchdogTimeout class.
+ * Implementation of the WatchdogTimeout class.
  *
- *  Copyright (C) Sierra Wireless, Inc.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

@@ -2,7 +2,7 @@
 /**
  * @file codeGenerator.h
  *
- * Copyright (C) Sierra Wireless Inc.,
+ * Copyright (C) Sierra Wireless Inc.
  **/
 //--------------------------------------------------------------------------------------------------
 

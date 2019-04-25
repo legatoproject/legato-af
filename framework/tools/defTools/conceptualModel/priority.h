@@ -2,7 +2,7 @@
 /**
  * Class that holds a thread priority.
  *
- * Copyright (C) Sierra Wireless, Inc.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

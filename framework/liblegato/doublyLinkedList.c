@@ -1,7 +1,7 @@
- /** @file doublyLinkedList.c
-  *
-  * Copyright (C) Sierra Wireless Inc.
-  */
+/** @file doublyLinkedList.c
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
 
 #include "legato.h"
 

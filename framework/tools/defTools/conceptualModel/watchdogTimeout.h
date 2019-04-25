@@ -1,8 +1,8 @@
 //--------------------------------------------------------------------------------------------------
 /**
- *  Class whose objects can be used to store watchdogTimeout settings.
+ * Class whose objects can be used to store watchdogTimeout settings.
  *
- *  Copyright (C) Sierra Wireless, Inc.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

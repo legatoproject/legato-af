@@ -1,8 +1,8 @@
 //--------------------------------------------------------------------------------------------------
 /**
- *  Implementation of the Boolean Limit class.
+ * Implementation of the Boolean Limit class.
  *
- *  Copyright (C) Sierra Wireless, Inc.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

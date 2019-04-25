@@ -2,7 +2,7 @@
 /**
  * Base class for various configurable limits that can have boolean values.
  *
- * Copyright (C) Sierra Wireless, Inc.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

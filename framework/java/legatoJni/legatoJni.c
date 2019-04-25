@@ -1,14 +1,11 @@
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  @file legatoJni.c
+//--------------------------------------------------------------------------------------------------
+/** @file legatoJni.c
  *
- *  Shim layer to provide access to the Legato C library from Java.
+ * Shim layer to provide access to the Legato C library from Java.
  *
- *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
- *
+ * Copyright (C) Sierra Wireless Inc.
  */
-// -------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 
 #include "legato.h"
 #include "log.h"

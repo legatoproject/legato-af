@@ -3,7 +3,7 @@
  *
  * Implementation of process daemonization.
  *
- * Copyright (C), Sierra Wireless Inc.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

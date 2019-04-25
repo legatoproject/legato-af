@@ -1,8 +1,8 @@
 //--------------------------------------------------------------------------------------------------
 /**
- *  Implementation of the FaultAction_t class.
+ * Implementation of the FaultAction_t class.
  *
- *  Copyright (C) Sierra Wireless, Inc.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

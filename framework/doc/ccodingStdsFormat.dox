@@ -540,7 +540,7 @@ purpose. The header comment block should be formatted like this:
  * error codes, portable integer types, and helpful macros to make ugly things nicer to
  * look at and easier to use.
  *
- * Copyright (C) Sierra Wireless, Inc.
+ * Copyright (C) Sierra Wireless Inc.
  */
 @endverbatim
 
@@ -678,7 +678,7 @@ to others with respect to that work, to avoid misconceptions.
 The following statement must be included in every source file:
 
 @verbatim
-Copyright © Sierra Wireless, Inc.
+Copyright (C) Sierra Wireless Inc.
 @endverbatim
 
 In addition, if a source code file is to be released outside of Sierra Wireless under licence

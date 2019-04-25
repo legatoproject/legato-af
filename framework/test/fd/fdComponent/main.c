@@ -1,9 +1,9 @@
- /**
-  * This module is for unit testing the le_fd module in the legato
-  * runtime library.
-  *
-  * Copyright (C) Sierra Wireless Inc.
-  */
+/**
+ * This module is for unit testing the le_fd module in the legato
+ * runtime library.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
 
 #include "legato.h"
 

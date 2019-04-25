@@ -80,7 +80,7 @@ To install the wlcore kernel module we need to use an install and remove script 
 Install Script:
 @verbatim
 #!/bin/sh
-# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc.
 #
 # TI wireless wl18xx specific applications start or stop here
 # TI WIFI IoT board is managed by SDIO/MMC bus. Some signals need to be set
@@ -175,7 +175,7 @@ The removal script must:
 Remove Script:
 @verbatim
 #!/bin/sh
-# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc.
 #
 # TI wireless wl18xx specific applications start or stop here
 # TI WIFI IoT board is managed by SDIO/MMC bus. Some signals need to be set
@@ -277,7 +277,7 @@ scripts:
 The install script for the wp18xx module needs to install the module and enable the wlan0 interface:
 @verbatim
 #!/bin/sh
-# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc.
 #
 # TI wireless wl18xx specific applications start or stop here
 # TI WIFI IoT board is managed by SDIO/MMC bus. Some signals need to be set
@@ -305,7 +305,7 @@ fi
 And the removal script needs to disable the wlan0 interface and remove the module:
 @verbatim
 #!/bin/sh
-# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc.
 #
 # TI wireless wl18xx specific applications start or stop here
 # TI WIFI IoT board is managed by SDIO/MMC bus. Some signals need to be set

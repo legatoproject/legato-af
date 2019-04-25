@@ -1,8 +1,8 @@
 //--------------------------------------------------------------------------------------------------
 /**
- *  Implementation of the Priority class.
+ * Implementation of the Priority class.
  *
- *  Copyright (C) Sierra Wireless, Inc.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

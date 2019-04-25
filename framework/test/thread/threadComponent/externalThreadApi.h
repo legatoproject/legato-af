@@ -1,8 +1,10 @@
-// -------------------------------------------------------------------------------------------------
-// Header file for external thread API compatibility test.
-//
-// Copyright (C) Sierra Wireless Inc.
-// -------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+/**
+ * Header file for external thread API compatibility test.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ **/
+//--------------------------------------------------------------------------------------------------
 
 #ifndef EXTERNAL_THREAD_API_TEST_H_INCLUDE_GUARD
 #define EXTERNAL_THREAD_API_TEST_H_INCLUDE_GUARD

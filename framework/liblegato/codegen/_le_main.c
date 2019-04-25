@@ -1,9 +1,11 @@
 //--------------------------------------------------------------------------------------------------
-// Template main.c file for Legato executables.
-//
-// TODO: Auto-generate this thing.
-//
-// Copyright (C) Sierra Wireless Inc.
+/**
+ * Template main.c file for Legato executables.
+ *
+ * TODO: Auto-generate this thing.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
 //--------------------------------------------------------------------------------------------------
 
 #include "legato.h"

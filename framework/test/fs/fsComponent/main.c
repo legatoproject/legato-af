@@ -1,9 +1,9 @@
- /**
-  * This module is for unit testing the le_fs module in the legato
-  * runtime library (liblegato.so).
-  *
-  * Copyright (C) Sierra Wireless Inc.
-  */
+/**
+ * This module is for unit testing the le_fs module in the legato
+ * runtime library (liblegato.so).
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
 
 #include "legato.h"
 

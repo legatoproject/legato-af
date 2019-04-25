@@ -141,7 +141,7 @@ Example basic @c .sdef:
 // sample system definition that extends the default Legato system and includes configuration
 // specific to XXXX company.
 //
-// Copyright(C) XXXX company.  Use of this work is subject to license.
+// Copyright(C) XXXX company.
 //-------------------------------------------------------------------------------------------------
 
 //Provides all default platform services and target specific configuration.

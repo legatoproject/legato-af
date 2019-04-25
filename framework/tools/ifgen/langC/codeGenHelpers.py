@@ -7,7 +7,7 @@
 #  - tests to switch between templates depending on the type of item being formated
 #  - global helper functions
 #
-# Copyright (C) Sierra Wirless Inc.
+# Copyright (C) Sierra Wireless Inc.
 #
 
 import interfaceIR

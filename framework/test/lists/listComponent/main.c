@@ -1,17 +1,17 @@
- /**
-  * This module is for unit testing the list modules in the legato
-  * runtime library (liblegato.so).
-  *
-  * The following is a list of the test cases:
-  *
-  * - Multiple list creation.
-  * - link insertions.
-  * - link removal.
-  * - Accessing nodes.
-  * - Checking list consistencies.
-  *
-  * Copyright (C) Sierra Wireless Inc.
-  */
+/**
+ * This module is for unit testing the list modules in the legato
+ * runtime library (liblegato.so).
+ *
+ * The following is a list of the test cases:
+ *
+ * - Multiple list creation.
+ * - link insertions.
+ * - link removal.
+ * - Accessing nodes.
+ * - Checking list consistencies.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
 
 #include "legato.h"
 

@@ -1,16 +1,18 @@
-// -------------------------------------------------------------------------------------------------
-// Implementation of the thread creating and joining tests.
-//
-// At initialization time, spawns a single thread and records its thread reference.
-// Each thread that runs to completion increments a mutex-protected counter variable.
-// If everything goes as expected, at the end the counter should be set to the correct value
-// and the completion check function should be able to join with that first thread that was
-// created, and the thread's result value should be its own thread reference.
-//
-// See the comment for ThreadMainFunction() for details on how the rest of this test works.
-//
-// Copyright (C) Sierra Wireless Inc.
-// -------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+/**
+ * Implementation of the thread creating and joining tests.
+ *
+ * At initialization time, spawns a single thread and records its thread reference.
+ * Each thread that runs to completion increments a mutex-protected counter variable.
+ * If everything goes as expected, at the end the counter should be set to the correct value
+ * and the completion check function should be able to join with that first thread that was
+ * created, and the thread's result value should be its own thread reference.
+ *
+ * See the comment for ThreadMainFunction() for details on how the rest of this test works.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ **/
+//--------------------------------------------------------------------------------------------------
 
 /* NOTE:
  *  If a thread starts and then gets cancelled before it gets to register its destructor function,

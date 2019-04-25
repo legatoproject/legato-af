@@ -61,7 +61,7 @@ First, create your header (optional but highly recommend):
 //--------------------------------------------------------------------------------------------------
 // mySystem system definition to provide sample apps and system for a target.
 //
-// Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+// Copyright (C) Sierra Wireless Inc.
 //--------------------------------------------------------------------------------------------------
 @endverbatim
 
@@ -149,7 +149,7 @@ Your mySystem.sdef should now contain the following:
 //--------------------------------------------------------------------------------------------------
 // mySystem system definition to provide sample apps and system to a target.
 //
-// Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+// Copyright (C) Sierra Wireless Inc.
 //--------------------------------------------------------------------------------------------------
 
 #include "$LEGATO_ROOT/default.sdef"

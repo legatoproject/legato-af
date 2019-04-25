@@ -1,14 +1,16 @@
-// -------------------------------------------------------------------------------------------------
-// This file contains the main code that kicks off all the tests and runs the final test wrap-up.
-//
-// When all the tests have finished running, a memory pool object's reference count will reach
-// zero and it's destructor will run a "check completion status" function for each test.  If all
-// of those return true, then the process will exit with EXIT_SUCCESS.  Otherwise, the process
-// will exit with EXIT_FAILURE (or will hang forever, if the destructor never runs or one of
-// the completion status check functions deadlocks).
-//
-// Copyright (C) Sierra Wireless Inc.
-// -------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+/**
+ * This file contains the main code that kicks off all the tests and runs the final test wrap-up.
+ *
+ * When all the tests have finished running, a memory pool object's reference count will reach
+ * zero and it's destructor will run a "check completion status" function for each test.  If all
+ * of those return true, then the process will exit with EXIT_SUCCESS.  Otherwise, the process
+ * will exit with EXIT_FAILURE (or will hang forever, if the destructor never runs or one of
+ * the completion status check functions deadlocks).
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ **/
+//--------------------------------------------------------------------------------------------------
 
 #include "legato.h"
 

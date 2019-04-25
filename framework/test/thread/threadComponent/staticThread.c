@@ -1,11 +1,13 @@
-// -------------------------------------------------------------------------------------------------
-// Implementation of the statically allocated thread test.
-//
-// Spawns two statically allocated threads, performs some work to use the thread stacks, and cancels
-// the threads.
-//
-// Copyright (C) Sierra Wireless Inc.
-// -------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+/**
+ * Implementation of the statically allocated thread test.
+ *
+ * Spawns two statically allocated threads, performs some work to use the thread stacks, and cancels
+ * the threads.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ **/
+//--------------------------------------------------------------------------------------------------
 
 #include "legato.h"
 #include "staticThread.h"

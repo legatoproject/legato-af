@@ -3,7 +3,7 @@
  * Base class for various configurable limits that can have integer values that are non-negative
  * (positive or zero).
  *
- * Copyright (C) Sierra Wireless, Inc.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

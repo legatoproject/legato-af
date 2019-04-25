@@ -176,12 +176,12 @@
  */
 
 
- /** @file le_doublyLinkedList.h
-  *
-  * Legato @ref c_doublyLinkedList include file.
-  *
-  * Copyright (C) Sierra Wireless Inc.
-  */
+/** @file le_doublyLinkedList.h
+ *
+ * Legato @ref c_doublyLinkedList include file.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
 
 #ifndef LEGATO_DOUBLY_LINKED_LIST_INCLUDE_GUARD
 #define LEGATO_DOUBLY_LINKED_LIST_INCLUDE_GUARD

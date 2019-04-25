@@ -5,7 +5,7 @@
  * it holds everything in a single "processes:" section, except for the contents of any "run:"
  * subsections.
  *
- * Copyright (C) Sierra Wireless, Inc.
+ * Copyright (C) Sierra Wireless Inc.
  **/
 //--------------------------------------------------------------------------------------------------
 

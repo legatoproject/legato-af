@@ -1,16 +1,18 @@
-// -------------------------------------------------------------------------------------------------
-// Implementation of the thread priority test.
-//
-// At initialization time, spawns a joinable thread at each non-real-time priority level, and
-// then joins with it.
-// Real-time priority levels are not tested because those require root privileges.
-// An on-target test could be created for that.
-//
-// Each thread simply asks the kernel for its own scheduling policy to make sure it's correct.
-// If an error is detected, the test aborts immediately, so no check at the end is really needed.
-//
-// Copyright (C) Sierra Wireless Inc.
-// -------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+/**
+ * Implementation of the thread priority test.
+ *
+ * At initialization time, spawns a joinable thread at each non-real-time priority level, and
+ * then joins with it.
+ * Real-time priority levels are not tested because those require root privileges.
+ * An on-target test could be created for that.
+ *
+ * Each thread simply asks the kernel for its own scheduling policy to make sure it's correct.
+ * If an error is detected, the test aborts immediately, so no check at the end is really needed.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ **/
+//--------------------------------------------------------------------------------------------------
 
 #include "legato.h"
 #include "priority.h"
