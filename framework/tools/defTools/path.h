@@ -88,6 +88,26 @@ std::string Combine
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Concatenate an arbitrary number of file system paths together.
+ *
+ * @return  The combined path.
+ */
+//--------------------------------------------------------------------------------------------------
+template <typename... args_t>
+std::string Combine
+(
+    const std::string& base,
+    const std::string& first,
+    const args_t&... rest
+)
+//--------------------------------------------------------------------------------------------------
+{
+    return Combine(Combine(base, first), rest...);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Make a file system path into an absolute path.
  *
  * @return  The absolute path.
