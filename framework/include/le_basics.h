@@ -290,7 +290,7 @@ le_onoff_t;
 #  define LE_FULL_API __attribute__((error ("Function not available on this platform")))
 #endif
 
-// CLang feature check macros -- define to return sensible defaults if macro is not available.
+// Clang feature check macros -- define to return sensible defaults if macro is not available.
 #ifndef __is_identifier
 #  define __is_identifier(x) 1
 #endif
@@ -323,6 +323,15 @@ le_onoff_t;
 #  define LE_NONNULL
 #  define LE_NULLABLE
 #endif
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mark a variable as unused.
+ *
+ * @param   v   Variable to mark as unused.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_UNUSED(v)    ((void) (v))
 
 //--------------------------------------------------------------------------------------------------
 /**
