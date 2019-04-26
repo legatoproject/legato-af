@@ -43,6 +43,8 @@ __attribute__((weak)) void Force
     char *buffer    ///< Stack buffer that is being memset.
 )
 {
+    LE_UNUSED(buffer);
+
     // Do nothing.
 }
 

@@ -436,7 +436,7 @@ static void* PThreadStartRoutine
         {
             LE_DEBUG("Set scheduling policy to SCHED_IDLE.");
         }
-#   else
+#   else /* !LE_CONFIG_LINUX */
         if (sched_setscheduler(0, SCHED_OTHER, &param) != 0)
         {
             LE_CRIT("Failed to set scheduling policy to SCHED_OTHER (error %d).", errno);
@@ -445,7 +445,7 @@ static void* PThreadStartRoutine
         {
             LE_DEBUG("Set scheduling policy to SCHED_OTHER.");
         }
-#   endif
+#   endif /* end !LE_CONFIG_LINUX */
     }
 #   if LE_CONFIG_LINUX
     else if ( (threadPtr->priority == LE_THREAD_PRIORITY_MEDIUM) ||
@@ -476,8 +476,8 @@ static void* PThreadStartRoutine
             LE_DEBUG("Set nice level to %d.", niceLevel);
         }
     }
-#   endif
-#endif
+#   endif /* end LE_CONFIG_LINUX */
+#endif /* end !LE_CONFIG_THREAD_REALTIME_ONLY */
 
     // Perform thread specific init
     thread_InitThread();
@@ -1062,8 +1062,7 @@ le_result_t le_thread_SetPriority
 
     LE_FATAL_IF(threadPtr == NULL, "Invalid thread reference %p.", thread);
 
-    if (   (priority < LE_THREAD_PRIORITY_IDLE)
-        || (priority > LE_THREAD_PRIORITY_RT_HIGHEST))
+    if (priority > LE_THREAD_PRIORITY_RT_HIGHEST)
     {
         LE_ERROR("Setting priority out of range");
         return LE_OUT_OF_RANGE;

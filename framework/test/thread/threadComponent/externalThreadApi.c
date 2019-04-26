@@ -41,6 +41,8 @@ static void* ThreadMain
     void* argPtr   ///< [IN] mandatory thread argument; always NULL
 )
 {
+    LE_UNUSED(argPtr);
+
     le_thread_InitLegatoThreadData("externalApiTest");
 
     int i;

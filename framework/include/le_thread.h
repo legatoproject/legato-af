@@ -371,9 +371,9 @@ le_result_t le_thread_SetStackSize
  */
 //--------------------------------------------------------------------------------------------------
 #define LE_THREAD_DEFINE_STATIC_STACK(name, bytes)                                  \
-    static uint8_t _thread_stack_##name[FA_THREAD_STACK_EXTRA_SIZE +                \
-        ((bytes) < FA_THREAD_STACK_MIN_SIZE ? FA_THREAD_STACK_MIN_SIZE : (bytes))]  \
-        __attribute__((aligned(FA_THREAD_STACK_ALIGNMENT)))
+    static uint8_t _thread_stack_##name[LE_THREAD_STACK_EXTRA_SIZE +                \
+        ((bytes) < LE_THREAD_STACK_MIN_SIZE ? LE_THREAD_STACK_MIN_SIZE : (bytes))]  \
+        __attribute__((aligned(LE_THREAD_STACK_ALIGNMENT)))
 
 
 //--------------------------------------------------------------------------------------------------
