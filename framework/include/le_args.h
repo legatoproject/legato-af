@@ -621,4 +621,28 @@ void le_arg_SetArgs
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Tokenizes a string into individual arguments.  Simple quoting is allowed using either ' or " to
+ * enclose multi-word arguments.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_BAD_PARAMETER if a parameter is invalid.
+ *      - LE_OUT_OF_RANGE if more arguments are present than can be captured in the provided array
+ *        (those that can be captured will be).
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_arg_Split
+(
+    const char   *firstStr,     ///< [IN]     A separate string to treat as the first argument (for
+                                ///<          example, the program name).  May be NULL.
+    char         *cmdlinePtr,   ///< [IN,OUT] Command line argument string to split.  This string
+                                ///<          will be modified in-place.
+    int          *argc,         ///< [IN,OUT] As input, the size of the argv array.  As output, the
+                                ///<          number of arguments obtained.
+    const char  **argv          ///< [OUT]    The tokenized arguments.  These will be pointers into
+                                ///<          the firstStr and modified cmdlinePtr buffers.
+);
+
 #endif // LEGATO_ARGS_INCLUDE_GUARD

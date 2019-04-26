@@ -554,6 +554,24 @@ config MAX_MSG_LOCAL_CLIENT_SESSION_POOL_SIZE
   The maximum number of simultaneous messaging sessions supported with local
   clients.
 
+config MAX_ARG_OPTIONS
+  int "Maximum number of command line options"
+  range 0 65535
+  default 16 if RTOS
+  default 64
+  ---help---
+  Total number of command line options that can be handled by an app.  On
+  RTOS, this pool is a shared resource for all apps.
+
+config MAX_ARG_POSITIONAL_CALLBACKS
+  int "Maximum number of positional argument callbacks"
+  range 0 65535
+  default 8 if RTOS
+  default 128
+  ---help---
+  Total number of command line positional arguments that can be handled by an
+  app.  On RTOS, this pool is a shared resource for all apps.
+
 endmenu # end "Performance Tuning"
 
 ### Daemon Options ###

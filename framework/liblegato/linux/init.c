@@ -7,6 +7,7 @@
 
 #include "legato.h"
 
+#include "args.h"
 #include "atomFile.h"
 #include "eventLoop.h"
 #include "fs.h"
@@ -62,6 +63,7 @@ __attribute__((constructor)) void _legato_InitFramework
     event_Init();       // Uses memory pools.
     timer_Init();       // Uses event loop.
     thread_Init();      // Uses event loop, memory pools and safe references.
+    arg_Init();         // Uses memory pools.
     msg_Init();         // Uses event loop.
     kill_Init();        // Uses memory pools and timers.
     properties_Init();  // Uses memory pools and safe references.

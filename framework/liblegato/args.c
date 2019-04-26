@@ -15,9 +15,11 @@
 //--------------------------------------------------------------------------------------------------
 #if !LE_CONFIG_RTOS
 #   define USE_THREAD_LOCAL_STORAGE 0
-#else
+#   define MAX_ARG_INFOS            1
+#else /* LE_CONFIG_RTOS */
 #   define USE_THREAD_LOCAL_STORAGE 1
-#endif
+#   define MAX_ARG_INFOS            LE_CONFIG_MAX_THREAD_POOL_SIZE
+#endif /* end LE_CONFIG_RTOS */
 
 
 /// Default handler should exit on error.
@@ -72,7 +74,11 @@ typedef struct
 }
 PositionalCallbackRec_t;
 
-
+//--------------------------------------------------------------------------------------------------
+/**
+ * Argument handler info structure.
+ **/
+//--------------------------------------------------------------------------------------------------
 typedef struct
 {
     /// Pointer to the function that is to be called when an error is encountered in le_arg_Scan().
@@ -104,6 +110,30 @@ typedef struct
     unsigned int ExitBehaviour;
 } ArgInfo_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Argument info memory pool.
+ **/
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t ArgInfoPoolRef;
+LE_MEM_DEFINE_STATIC_POOL(ArgInfoPool, MAX_ARG_INFOS, sizeof(ArgInfo_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Command line options memory pool.
+ **/
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t OptionRecPoolRef;
+LE_MEM_DEFINE_STATIC_POOL(OptionRecPool, LE_CONFIG_MAX_ARG_OPTIONS, sizeof(OptionRec_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Positional parameter callback pool.
+ **/
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t PositionalCallbackRecPoolRef;
+LE_MEM_DEFINE_STATIC_POOL(PositionalCallbackRecPool, LE_CONFIG_MAX_ARG_POSITIONAL_CALLBACKS,
+    sizeof(PositionalCallbackRec_t));
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -203,7 +233,7 @@ static ArgInfo_t ArgInfo =
 /**
  * Key for thread local storage of argument info
  */
-pthread_key_t ArgInfoKey;
+static pthread_key_t ArgInfoKey;
 
 /**
  * le_args state accessor
@@ -234,17 +264,15 @@ static void ResetArgInfo
     argInfoPtr->ScanError = LE_OK;
     argInfoPtr->ExitBehaviour = DEFAULT_EXIT_ON_ERROR;
 
-    // TODO: Ideally these should be allocated using memory pools rather than directly on the heap,
-    //       so that we don't fragment memory when running RTOS CLI commands.
     while ((linkPtr = le_sls_Pop(&argInfoPtr->OptionList)) != NULL)
     {
         optionPtr = CONTAINER_OF(linkPtr, OptionRec_t, link);
-        free(optionPtr);
+        le_mem_Release(optionPtr);
     }
     while ((linkPtr = le_sls_Pop(&argInfoPtr->PositionalCallbackList)) != NULL)
     {
         positionalPtr = CONTAINER_OF(linkPtr, PositionalCallbackRec_t, link);
-        free(positionalPtr);
+        le_mem_Release(positionalPtr);
     }
 }
 
@@ -274,7 +302,7 @@ static ArgInfo_t* CreateArgInfo
     void
 )
 {
-    ArgInfo_t* argInfoPtr = malloc(sizeof(ArgInfo_t));
+    ArgInfo_t *argInfoPtr = le_mem_Alloc(ArgInfoPoolRef);
 
     InitArgInfo(argInfoPtr);
 
@@ -453,7 +481,7 @@ static void CreateOptionRec
 {
     ArgInfo_t* argInfoPtr = LE_ARG_INFO_PTR;
     LE_FATAL_IF(!argInfoPtr, "No arguments available");
-    OptionRec_t* recPtr = malloc(sizeof(OptionRec_t));
+    OptionRec_t *recPtr = le_mem_Alloc(OptionRecPoolRef);
     LE_ASSERT(recPtr != NULL);
 
     recPtr->link = LE_SLS_LINK_INIT;
@@ -533,10 +561,7 @@ static size_t HandlePositionalArgument
         }
         else
         {
-            // Note: Free is used here only because we expect argument processing to
-            // occur only at start-up, and therefore we can be certain that we won't be creating
-            // a long-running fragmentation problem that slowly eats all memory.
-            free(recPtr);
+            le_mem_Release(recPtr);
         }
     }
 
@@ -783,6 +808,32 @@ void arg_Init
 #if USE_THREAD_LOCAL_STORAGE
     LE_FATAL_IF(pthread_key_create(&ArgInfoKey, NULL) != 0,
                 "Failed to create thread local storage for argument info");
+#endif
+
+    ArgInfoPoolRef = le_mem_InitStaticPool(ArgInfoPool, MAX_ARG_INFOS, sizeof(ArgInfo_t));
+    OptionRecPoolRef = le_mem_InitStaticPool(OptionRecPool, LE_CONFIG_MAX_ARG_OPTIONS,
+        sizeof(OptionRec_t));
+    PositionalCallbackRecPoolRef = le_mem_InitStaticPool(PositionalCallbackRecPool,
+        LE_CONFIG_MAX_ARG_POSITIONAL_CALLBACKS, sizeof(PositionalCallbackRec_t));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Release the argument info (if any) for the current thread.
+ */
+//--------------------------------------------------------------------------------------------------
+void arg_DestructThread
+(
+    void
+)
+{
+#if USE_THREAD_LOCAL_STORAGE
+    ArgInfo_t *argInfoPtr = ((ArgInfo_t *) pthread_getspecific(ArgInfoKey));
+    if (argInfoPtr != NULL)
+    {
+        ResetArgInfo(argInfoPtr);
+        le_mem_Release(argInfoPtr);
+    }
 #endif
 }
 
@@ -1174,7 +1225,7 @@ void le_arg_AddPositionalCallback
     // If we popped a callback record from the list, reuse it.  Otherwise, allocate a new one.
     if (recPtr == NULL)
     {
-        recPtr = malloc(sizeof(PositionalCallbackRec_t));
+        recPtr = le_mem_Alloc(PositionalCallbackRecPoolRef);
         LE_ASSERT(recPtr != NULL);
         recPtr->link = LE_SLS_LINK_INIT;
     }
@@ -1330,10 +1381,10 @@ void le_arg_Scan
 
     LE_DEBUG("Argc = %" PRIuS, argInfoPtr->Argc);
 
-    int i;
+    size_t i;
     for (i = 1; i < argInfoPtr->Argc; i++)  // Start at 1, because 0 is the program name.
     {
-        LE_DEBUG("Argv[%d] = '%s'", i, argInfoPtr->Argv[i]);
+        LE_DEBUG("Argv[%" PRIuS "] = '%s'", i, argInfoPtr->Argv[i]);
 
         // If it doesn't start with a '-', then it must be a positional argument.
         if (argInfoPtr->Argv[i][0] != '-')
@@ -1421,4 +1472,127 @@ void le_arg_SetArgs
     ResetArgInfo(argInfoPtr);
     argInfoPtr->Argc = argc;
     argInfoPtr->Argv = argv;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Collect one quoted argument from the character stream.
+ *
+ * @return Pointer to NUL terminator of captured argument.
+ */
+//--------------------------------------------------------------------------------------------------
+static char *CollectQuotedArg
+(
+    char         *c,        ///< [IN]  Character stream.
+    const char  **argPtr    ///< [OUT] Argument entry to point at the captured argument.
+)
+{
+    char quote = *c;
+
+    // Argument starts after quote
+    ++c;
+    *argPtr = c;
+
+    // Proceed until there is a closing quote or the string ends
+    while (*c != '\0' && *c != quote)
+    {
+        ++c;
+    }
+
+    // Terminate the argument.
+    *c = '\0';
+    return c;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Collect one whitespace delimited argument from the character stream.
+ *
+ * @return Pointer to NUL terminator of captured argument.
+ */
+//--------------------------------------------------------------------------------------------------
+static char *CollectArg
+(
+    char         *c,        ///< [IN]  Character stream.
+    const char  **argPtr    ///< [OUT] Argument entry to point at the captured argument.
+)
+{
+    // Argument starts right away
+    *argPtr = c;
+
+    // Proceed until there is whitespace or the string ends
+    while (*c != '\0' && !isspace(*c))
+    {
+        ++c;
+    }
+
+    // Terminate the argument.
+    *c = '\0';
+    return c;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Tokenizes a string into individual arguments.  Simple quoting is allowed using either ' or " to
+ * enclose multi-word arguments.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_BAD_PARAMETER if a parameter is invalid.
+ *      - LE_OUT_OF_RANGE if more arguments are present than can be captured in the provided array
+ *        (those that can be captured will be).
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_arg_Split
+(
+    const char   *firstStr,     ///< [IN]     A separate string to treat as the first argument (for
+                                ///<          example, the program name).  May be NULL.
+    char         *cmdlinePtr,   ///< [IN,OUT] Command line argument string to split.  This string
+                                ///<          will be modified in-place.
+    int          *argc,         ///< [IN,OUT] As input, the size of the argv array.  As output, the
+                                ///<          number of arguments obtained.
+    const char  **argv          ///< [OUT]    The tokenized arguments.  These will be pointers into
+                                ///<          the firstStr and modified cmdlinePtr buffers.
+)
+{
+    char        *c;
+    int          i = 0;
+    le_result_t  result = LE_OK;
+
+    if (cmdlinePtr == NULL || argc == NULL || *argc < 2 || argv == NULL)
+    {
+        return LE_BAD_PARAMETER;
+    }
+    memset(argv, 0, *argc * sizeof(*argv));
+
+    if (firstStr != NULL)
+    {
+        argv[i] = firstStr;
+        ++i;
+    }
+
+    for (c = cmdlinePtr; *c != '\0'; ++c)
+    {
+        if (!isspace(*c))
+        {
+            if (i >= *argc - 1)
+            {
+                result = LE_OUT_OF_RANGE;
+                break;
+            }
+
+            if (*c == '\'' || *c == '"')
+            {
+                c = CollectQuotedArg(c, &argv[i]);
+            }
+            else
+            {
+                c = CollectArg(c, &argv[i]);
+            }
+            ++i;
+        }
+    }
+
+    *argc = i;
+    return result;
 }

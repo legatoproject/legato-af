@@ -17,4 +17,14 @@ void arg_Init
     void
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Release the argument info (if any) for the current thread.
+ */
+//--------------------------------------------------------------------------------------------------
+void arg_DestructThread
+(
+    void
+);
+
 #endif /* ARGS_INCLUDE_GUARD */
