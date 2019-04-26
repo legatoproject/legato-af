@@ -120,11 +120,6 @@ DAEMON_LOGCTL      := $(LE_CONFIG_POSIX)
 DAEMON_CONFIGTREE  := $(LE_CONFIG_POSIX)
 DAEMON_WATCHDOG    := $(LE_CONFIG_POSIX)
 DAEMON_UPDATE      := $(LE_CONFIG_POSIX)
-ifeq ($(CONFIG_RPC),y)
-DAEMON_RPCPROXY    := $(LE_CONFIG_POSIX)
-else
-DAEMON_RPCPROXY    := n
-endif
 
 DAEMONS_$(DAEMON_START)         += $(BIN_DIR)/startSystem
 DAEMONS_$(DAEMON_SUPERVISOR)    += $(BIN_DIR)/supervisor
@@ -134,7 +129,6 @@ DAEMONS_$(DAEMON_LOGCTL)        += $(BIN_DIR)/logCtrlDaemon
 DAEMONS_$(DAEMON_CONFIGTREE)    += $(BIN_DIR)/configTree
 DAEMONS_$(DAEMON_WATCHDOG)      += $(BIN_DIR)/watchdog
 DAEMONS_$(DAEMON_UPDATE)        += $(BIN_DIR)/updateDaemon
-DAEMONS_$(DAEMON_RPCPROXY)      += rpcProxy
 
 ALL_PARTS_$(LE_CONFIG_JAVA)               += $(LEGATO_JAVA)
 ALL_PARTS_$(LE_CONFIG_PYTHON)             += $(LEGATO_PY)
@@ -349,9 +343,3 @@ $(BIN_DIR)/updateDaemon: liblegato $(BIN_DIR)
 		-s $(LINUX_SRC_DIR)/updateDaemon \
 		--ldflags=-L$(LIB_DIR) \
 		$(IMA_MKEXE_FLAGS)
-
-.PHONY: rpcProxy
-rpcProxy: liblegato $(BIN_DIR)
-	mkexe $(LOCAL_MKEXE_FLAGS) \
-	    $(COMMON_SRC_DIR)/rpcProxy/rpcDaemon \
-	    $(patsubst %,--cflags=%,$(CFLAGS))
