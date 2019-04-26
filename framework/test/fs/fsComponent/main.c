@@ -227,7 +227,7 @@ COMPONENT_INIT
     LE_TEST_OK(LE_OK == le_fs_Open(newFilePath, LE_FS_RDWR | LE_FS_APPEND, &fileRef),
                "open the new file in append mode");
     LE_TEST_INFO("File handler: %p", fileRef);
-    LE_TEST_ASSERT(0 < fileRef, "fileRef %p", fileRef);
+    LE_TEST_ASSERT(fileRef != NULL, "fileRef %p", fileRef);
 
     // Append text to the file
     LE_TEST_INFO("Writing '%s' in file", dataToWrite);
@@ -270,7 +270,7 @@ COMPONENT_INIT
     LE_TEST_OK(LE_OK == le_fs_Open(deleteFilePath, LE_FS_CREAT | LE_FS_RDWR, &fileRef),
                "Open file '%s'", deleteFilePath);
     LE_TEST_INFO("File handler: %p", fileRef);
-    LE_TEST_OK(0 < fileRef, "Check fileRef");
+    LE_TEST_OK(fileRef != NULL, "Check fileRef");
 
     // Close the new file
     LE_TEST_INFO("Closing file handler: %p", fileRef);
@@ -297,7 +297,7 @@ COMPONENT_INIT
     LE_TEST_OK(LE_OK == le_fs_Open(loremFilePath, LE_FS_CREAT | LE_FS_RDWR | LE_FS_TRUNC, &fileRef),
                "Open file '%s'", loremFilePath);
     LE_TEST_INFO("File handler: %p", fileRef);
-    LE_TEST_ASSERT(0 < fileRef, "Check fileRef");
+    LE_TEST_ASSERT(fileRef != NULL, "Check fileRef");
 
     // Write in file
     static const uint8_t loremIpsum[LONG_DATA_LENGTH] =

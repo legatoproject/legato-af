@@ -93,7 +93,7 @@ typedef struct le_fs_File* le_fs_FileRef_t;
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_fs_Open
+LE_API_FILESYSTEM le_result_t le_fs_Open
 (
     const char* filePath,          ///< [IN] File path
     le_fs_AccessMode_t accessMode, ///< [IN] Access mode for the file
@@ -109,7 +109,7 @@ le_result_t le_fs_Open
  *  - LE_FAULT      The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_fs_Close
+LE_API_FILESYSTEM le_result_t le_fs_Close
 (
     le_fs_FileRef_t fileRef ///< [IN] File reference
 );
@@ -125,7 +125,7 @@ le_result_t le_fs_Close
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_fs_Read
+LE_API_FILESYSTEM le_result_t le_fs_Read
 (
     le_fs_FileRef_t fileRef, ///< [IN] File reference
     uint8_t* bufPtr,         ///< [OUT] Buffer to store the data read in the file
@@ -144,7 +144,7 @@ le_result_t le_fs_Read
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_fs_Write
+LE_API_FILESYSTEM le_result_t le_fs_Write
 (
     le_fs_FileRef_t fileRef, ///< [IN] File reference
     const uint8_t* bufPtr,   ///< [IN] Buffer to write in the file
@@ -161,7 +161,7 @@ le_result_t le_fs_Write
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_fs_Seek
+LE_API_FILESYSTEM le_result_t le_fs_Seek
 (
     le_fs_FileRef_t fileRef,   ///< [IN] File reference
     int32_t offset,            ///< [IN] Offset to apply
@@ -181,7 +181,7 @@ le_result_t le_fs_Seek
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_fs_GetSize
+LE_API_FILESYSTEM le_result_t le_fs_GetSize
 (
     const char* filePath, ///< [IN] File path
     size_t* sizePtr       ///< [OUT] File size (if successful)
@@ -202,7 +202,7 @@ le_result_t le_fs_GetSize
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_fs_Delete
+LE_API_FILESYSTEM le_result_t le_fs_Delete
 (
     const char* filePath ///< [IN] File path
 );
@@ -219,7 +219,7 @@ le_result_t le_fs_Delete
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_fs_Move
+LE_API_FILESYSTEM le_result_t le_fs_Move
 (
     const char* srcPath, ///< [IN] Path to file to rename
     const char* destPath ///< [IN] New path to file
@@ -241,7 +241,7 @@ le_result_t le_fs_Move
  *  - LE_FAULT          There is an error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_fs_RemoveDirRecursive
+LE_API_FILESYSTEM le_result_t le_fs_RemoveDirRecursive
 (
     const char* dirPathPtr     ///< [IN] Directory path
 );
@@ -256,7 +256,7 @@ le_result_t le_fs_RemoveDirRecursive
  *  - false             Otherwise.
  */
 //--------------------------------------------------------------------------------------------------
-bool le_fs_Exists
+LE_API_FILESYSTEM bool le_fs_Exists
 (
     const char* filePathPtr     ///< [IN] File path
 );

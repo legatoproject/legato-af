@@ -275,21 +275,6 @@ le_onoff_t;
 #  define LE_DEFINE_INLINE extern inline
 #endif
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Macro used to declare that a symbol is part of the "full" Legato API.
- *
- * There are two APIs for Legato: "full" and "limited".  Linux uses the "full" API and all
- * functions are available.  On other platforms only the "limited" API is supported, and
- * any attempt to use a "full" api function will lead to a compile error.
- */
-//--------------------------------------------------------------------------------------------------
-#ifdef LE_CONFIG_LINUX
-#  define LE_FULL_API
-#else
-#  define LE_FULL_API __attribute__((error ("Function not available on this platform")))
-#endif
-
 // Clang feature check macros -- define to return sensible defaults if macro is not available.
 #ifndef __is_identifier
 #  define __is_identifier(x) 1

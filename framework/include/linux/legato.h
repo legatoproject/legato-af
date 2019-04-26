@@ -45,7 +45,7 @@
 
 // Local includes -- definitions which are different between Linux & RTOS
 #include "le_fd.h"
-#include "fs.h"
+#include "le_fs.h"
 #include "thread.h"
 
 #endif // LINUX_LEGATO_H_INCLUDE_GUARD

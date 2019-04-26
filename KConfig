@@ -173,6 +173,12 @@ config LWIP
   ---help---
   Target platform is using the Lightweight IP (lwIP) network stack.
 
+config FILESYSTEM
+  bool "File system"
+  default y
+  ---help---
+  Target platform has support for a file system.
+
 config SDEF
   string "Default system definition file"
   default "modules/WiFi/wifi.sdef" if ENABLE_WIFI

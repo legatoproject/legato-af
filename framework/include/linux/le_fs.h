@@ -12,8 +12,8 @@
  */
 //--------------------------------------------------------------------------------------------------
 
-#ifndef LEGATO_FA_FS_H_INCLUDE_GUARD
-#define LEGATO_FA_FS_H_INCLUDE_GUARD
+#ifndef LINUX_LE_FS_H_INCLUDE_GUARD
+#define LINUX_LE_FS_H_INCLUDE_GUARD
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -23,4 +23,4 @@
 #define LE_FS_PATH_MAX_LEN PATH_MAX
 
 
-#endif // LEGATO_FA_FS_H_INCLUDE_GUARD
+#endif /* end LINUX_LE_FS_H_INCLUDE_GUARD */

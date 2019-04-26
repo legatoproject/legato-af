@@ -176,6 +176,7 @@
 extern "C" {
 #endif
 
+#include "le_apiFeatures.h"
 #include "le_basics.h"
 
 #include "le_doublyLinkedList.h"
