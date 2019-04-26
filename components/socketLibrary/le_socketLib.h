@@ -205,6 +205,7 @@ LE_SHARED le_result_t le_socket_Delete
  * @return
  *  - LE_OK            Function success
  *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FORMAT_ERROR  Invalid certificate
  *  - LE_FAULT         Internal error
  */
 //--------------------------------------------------------------------------------------------------

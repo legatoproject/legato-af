@@ -52,6 +52,7 @@ le_result_t secSocket_Init
  * @return
  *  - LE_OK            The function succeeded
  *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FORMAT_ERROR  Invalid certificate
  *  - LE_FAULT         Failure
  */
 //--------------------------------------------------------------------------------------------------

@@ -187,6 +187,7 @@ le_result_t secSocket_Init
  * @return
  *  - LE_OK            The function succeeded
  *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FORMAT_ERROR  Invalid certificate
  *  - LE_FAULT         Failure
  */
 //--------------------------------------------------------------------------------------------------
@@ -201,6 +202,7 @@ le_result_t secSocket_AddCertificate
     X509 *cert = NULL;
     BIO *bio = NULL;
     le_result_t status = LE_FAULT;
+    le_clk_Time_t currentTime;
 
     // Check input parameters
     if ((!ctxPtr) || (!certificatePtr) || (!certificateLen))
@@ -229,6 +231,17 @@ le_result_t secSocket_AddCertificate
     if (!cert)
     {
         LE_ERROR("Unable to read certificate");
+        goto end;
+    }
+
+    // Check certificate validity
+    currentTime = le_clk_GetAbsoluteTime();
+
+    if ((X509_cmp_time(X509_get_notBefore(cert), &currentTime.sec) >= 0)  ||
+        (X509_cmp_time(X509_get_notAfter(cert), &currentTime.sec) <= 0))
+    {
+        LE_ERROR("Current certificate expired, please add a valid certificate");
+        status = LE_FORMAT_ERROR;
         goto end;
     }
 

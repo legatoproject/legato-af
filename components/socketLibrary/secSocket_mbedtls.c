@@ -433,6 +433,7 @@ le_result_t secSocket_Init
  * @return
  *  - LE_OK            The function succeeded
  *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FORMAT_ERROR  Invalid certificate
  *  - LE_FAULT         Failure
  */
 //--------------------------------------------------------------------------------------------------
@@ -461,6 +462,14 @@ le_result_t secSocket_AddCertificate
     {
         LE_ERROR("Failed!  mbedtls_x509_crt_parse returned -0x%x", -ret);
         return LE_FAULT;
+    }
+
+    // Check certificate validity
+    if ((mbedtls_x509_time_is_past(&contextPtr->caCert.valid_to)) ||
+        (mbedtls_x509_time_is_future(&contextPtr->caCert.valid_from)))
+    {
+        LE_ERROR("Current certificate expired, please add a valid certificate");
+        return LE_FORMAT_ERROR;
     }
 
     return LE_OK;
