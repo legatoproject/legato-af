@@ -896,7 +896,7 @@ le_mem_PoolRef_t _le_mem_InitStaticPool
 (
     const char* componentName,  ///< [IN] Name of the component.
     const char* name,           ///< [IN] Name of the pool inside the component.
-    size_t      numBlocks  ,    ///< [IN] Number of members in the pool by default
+    size_t      numBlocks,      ///< [IN] Number of members in the pool by default
     size_t      objSize,        ///< [IN] Size of the individual objects to be allocated from this
                                 ///<      pool (in bytes), e.g., sizeof(MyObject_t).
     le_mem_Pool_t* poolPtr,     ///< [IN] Pointer to pre-allocated pool header.
@@ -924,7 +924,7 @@ le_mem_PoolRef_t _le_mem_InitStaticPool
 #if LE_CONFIG_MEM_POOLS
     size_t blockSize = poolPtr->blockSize;
 
-    int i;
+    size_t i;
     for (i = 0; i < numBlocks; i++)
     {
         InitBlock(poolPtr, poolDataPtr);
@@ -1602,7 +1602,7 @@ le_result_t le_mem_GetName
  *      false if it is not a sub-pool.
  */
 //--------------------------------------------------------------------------------------------------
-const bool le_mem_IsSubPool
+bool le_mem_IsSubPool
 (
     le_mem_PoolRef_t    pool        ///< [IN] The memory pool.
 )
@@ -2208,7 +2208,7 @@ void le_mem_Resume
 
         le_mem_Pool_t* currentPoolPtr = compactBlockPtr->poolPtr;
         size_t blockSize = currentPoolPtr->blockSize;
-        int i;
+        size_t i;
 
         // Decompact all free blocks.
         for (i = 0; i < compactBlockPtr->refCount; ++i)

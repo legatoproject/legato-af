@@ -981,6 +981,46 @@ le_mem_PoolRef_t le_mem_ExpandPool
                                __LINE__)
 #endif
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Attempts to allocate an object from a pool using the configured allocation failure behaviour
+ * (force or assert).  Forced allocation will expand into the heap if the configured pool size is
+ * exceeded, while assert allocation will abort the program with an error if the pool cannot satisfy
+ * the request.
+ *
+ * @param  pool Pool from which the object is to be allocated.
+ *
+ * @return Pointer to the allocated object.
+ */
+//--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_MEM_ALLOC_FORCE
+#   define le_mem_Alloc(pool)   le_mem_ForceAlloc(pool)
+#elif LE_CONFIG_MEM_ALLOC_ASSERT
+#   define le_mem_Alloc(pool)   le_mem_AssertAlloc(pool)
+#else
+#   error "No supported allocation scheme selected!"
+#endif
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Attempts to allocate a variably-sized object from a pool using the configured allocation failure
+ * behaviour (force or assert).  Forced allocation will expand into the heap if the configured pool
+ * size is exceeded, while assert allocation will abort the program with an error if the pool cannot
+ * satisfy the request.
+ *
+ * @param  pool Pool from which the object is to be allocated.
+ * @param  size The size of block to allocate.
+ *
+ * @return Pointer to the allocated object.
+ */
+//--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_MEM_ALLOC_FORCE
+#   define le_mem_VarAlloc(pool, size)  le_mem_ForceVarAlloc((pool), (size))
+#elif LE_CONFIG_MEM_ALLOC_ASSERT
+#   define le_mem_VarAlloc(pool, size)  le_mem_AssertVarAlloc((pool), (size))
+#else
+#   error "No supported allocation scheme selected!"
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1175,7 +1215,7 @@ le_result_t le_mem_GetName
  *      false if it is not a sub-pool.
  */
 //--------------------------------------------------------------------------------------------------
-const bool le_mem_IsSubPool
+bool le_mem_IsSubPool
 (
     le_mem_PoolRef_t    pool        ///< [IN] The memory pool.
 );

@@ -138,6 +138,26 @@ config THREAD_REALTIME_ONLY
   ---help---
   Force Legato to use only real-time priorities for tasks.
 
+choice
+  prompt "Memory allocation failure behaviour"
+  default MEM_ALLOC_FORCE
+  ---help---
+  Determine how the memory allocation functions le_mem_Alloc() and
+  le_mem_VarAlloc() behave when the pool that they are allocating from is
+  full.
+
+config MEM_ALLOC_FORCE
+  bool "Force"
+  ---help---
+  Force allocation by expanding the pool onto the heap as necessary.
+
+config MEM_ALLOC_ASSERT
+  bool "Assert"
+  ---help---
+  Abort the program with an error if the pool cannot satisfy the request.
+
+endchoice # end "Memory allocation failure behaviour"
+
 menu "Security Features"
 
 config ENABLE_SMACK
@@ -473,7 +493,7 @@ config MAX_FD_MONITOR_POOL_SIZE
 config MAX_SUB_POOLS_POOL_SIZE
   int "Maximum memory pool sub-pools"
   depends on MEM_POOLS
-  range 1 65535
+  range 0 65535
   default 8
   ---help---
   The maximum number of sub-pool objects in the memory sub-pools pool.  These
