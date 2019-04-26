@@ -7,8 +7,26 @@
 //--------------------------------------------------------------------------------------------------
 
 #define _LARGEFILE64_SOURCE
-#include "legato.h"
+
+#include <ctype.h>
 #include <endian.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <unistd.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+
+// Can't include legato.h because this doesn't run on target
+// Include just these so we have access to Legato CRC function.
+#include <le_basics.h>
+#include <le_crc.h>
 
 #include "flash-ubi.h"
 
