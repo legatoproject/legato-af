@@ -16,8 +16,8 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    unsigned short key;
-    unsigned short instance;
+    short key;
+    short instance;
 } cdata_MapEntry_t;
 
 typedef const cdata_MapEntry_t cdata_ThreadRec_t;

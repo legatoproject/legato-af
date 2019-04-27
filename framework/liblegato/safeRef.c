@@ -741,6 +741,7 @@ void le_ref_EnableTrace
     mapRef->traceRef = le_log_GetTraceRef(mapRef->name);
     le_log_EnableTrace(mapRef->traceRef);
 #else /* if not LE_CONFIG_SAFE_REF_NAMES_ENABLED */
+    LE_UNUSED(mapRef);
     LE_WARN("Safe Reference Map tracing disabled by LE_CONFIG_SAFE_REF_NAMES_ENABLED setting.");
 #endif /* end LE_CONFIG_SAFE_REF_NAMES_ENABLED */
 }

@@ -165,9 +165,17 @@ config POSIX
   ---help---
   Indicate Legato is running on a POSIX platform.
 
+config NETWORK
+  bool "Network stack"
+  default y
+  ---help---
+  Target platform has a network stack available.
+
 config LWIP
   bool "Using lwIP network stack (EXPERIMENTAL)"
   depends on EXPERIMENTAL
+  depends on NETWORK
+  depends on RTOS
   default y if RTOS
   default n
   ---help---

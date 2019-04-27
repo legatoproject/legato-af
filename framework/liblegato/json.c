@@ -1000,6 +1000,8 @@ static void StringEventHandler
 {
     char c;
 
+    LE_UNUSED(unused);
+
     // Increment the reference count on the Parser object so it won't go away until we are done
     // with it, even if the client calls le_json_Cleanup() for this parser.
     le_mem_AddRef(parserPtr);
@@ -1042,8 +1044,12 @@ static le_json_ParsingSessionRef_t NewParser
     void* opaquePtr   ///< Opaque pointer to be fetched by handlers using le_json_GetOpaquePtr().
 )
 {
+    Parser_t *parserPtr;
+
+    LE_UNUSED(eventHandler);
+
     // Create a Parser.
-    Parser_t* parserPtr = le_mem_ForceAlloc(ParserPool);
+    parserPtr = le_mem_ForceAlloc(ParserPool);
     memset(parserPtr, 0, sizeof(*parserPtr));
 
     parserPtr->next = EXPECT_OBJECT_OR_ARRAY;

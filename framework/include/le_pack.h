@@ -1010,6 +1010,9 @@ LE_DECLARE_INLINE bool le_pack_PackArrayHeader
     size_t arrayMaxCount
 )
 {
+    LE_UNUSED(arrayPtr);
+    LE_UNUSED(elementSize);
+
     if (arrayCount > arrayMaxCount)
     {
         return false;
@@ -1609,6 +1612,8 @@ LE_DECLARE_INLINE bool le_pack_UnpackArrayHeader
     size_t arrayMaxCount
 )
 {
+    LE_UNUSED(elementSize);
+
     LE_ASSERT(le_pack_UnpackSize(bufferPtr, arrayCountPtr));
     if (*arrayCountPtr > arrayMaxCount)
     {

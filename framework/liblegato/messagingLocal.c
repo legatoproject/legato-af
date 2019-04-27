@@ -51,7 +51,7 @@ LE_MEM_DEFINE_STATIC_POOL(ClientSession, LE_CONFIG_MAX_MSG_LOCAL_CLIENT_SESSION_
  * Pool for client sessions.
  */
 //--------------------------------------------------------------------------------------------------
-le_mem_PoolRef_t SessionPool;
+static le_mem_PoolRef_t SessionPool;
 
 #if LE_CONFIG_CUSTOM_OS && defined(LE_MSG_SERVICE_READY_FLAG)
     // Include definitions to check service ready flag
@@ -165,6 +165,8 @@ le_msg_ServiceRef_t le_msg_InitLocalService
     le_mem_PoolRef_t messagePoolRef        ///< [in] memory pool for messages
 )
 {
+    LE_UNUSED(serviceNameStr);
+
     // If the service is bound, initialize it.
     if (servicePtr)
     {
@@ -250,6 +252,8 @@ void messagingLocal_GetSessionCloseHandler
                                                    ///<       to the handler.
 )
 {
+    LE_UNUSED(sessionRef);
+
     *handlerFuncPtr = NULL;
     *contextPtrPtr  = NULL;
 }

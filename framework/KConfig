@@ -502,7 +502,7 @@ config MAX_SUB_POOLS_POOL_SIZE
 config MAX_MUTEX_POOL_SIZE
   int "Maximum mutex pool size"
   depends on MEM_POOLS
-  range 1 65535
+  range 4 65535
   default 20
   ---help---
   The maximum number of mutex objects in the process-wide mutex pool, from
@@ -511,7 +511,7 @@ config MAX_MUTEX_POOL_SIZE
 config MAX_SEM_POOL_SIZE
   int "Maximum semaphore pool size"
   depends on MEM_POOLS
-  range 1 65535
+  range 2 65535
   default 64
   ---help---
   The maximum number of semaphore objects in the process-wide semaphore pool,
@@ -538,7 +538,7 @@ config MAX_TIMER_POOL_SIZE
 config MAX_PATH_ITERATOR_POOL_SIZE
   int "Maximum path iterator count"
   depends on MEM_POOLS
-  range 1 65535
+  range 0 65535
   default 10
   ---help---
   The maximum number of path iterator in the process-wide iterator pools, from

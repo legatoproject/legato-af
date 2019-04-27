@@ -29,7 +29,7 @@ unsigned int le_cdata_GetInstance
 
      for (i = 0; cdataPtr[i].key >= 0; ++i)
      {
-         if (cdataPtr[i].key == componentKey)
+         if ((unsigned int) cdataPtr[i].key == componentKey)
          {
              return cdataPtr[i].instance;
          }

@@ -12,6 +12,8 @@ static void *testThread(void *arg)
     const char      *name = "testThread";
     le_thread_Ref_t  threadRef;
 
+    LE_UNUSED(arg);
+
     le_thread_InitLegatoThreadData(name);
 
     threadRef = le_thread_GetCurrent();

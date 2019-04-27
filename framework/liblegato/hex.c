@@ -163,7 +163,7 @@ int32_t le_hex_BinaryToString
     uint32_t       stringSize  ///< [IN] size of string array.  Must be >= (2 * binarySize) + 1
 )
 {
-    int32_t idxString,idxBinary;
+    uint32_t idxString,idxBinary;
 
     if (stringSize < (2 * binarySize) + 1)
     {
@@ -206,7 +206,7 @@ void le_hex_Dump
     size_t    binaryDataLen
 )
 {
-    int     i, j;
+    size_t  i, j;
     char    tempBuffer[DUMP_LINE_LEN];
     size_t  currentDumpLen;
 
@@ -234,7 +234,7 @@ void le_hex_Dump
         /* print offset */
         if (i % DUMP_COLS == 0)
         {
-            snprintf(tempBuffer, sizeof(tempBuffer), "0x%06x: ", i);
+            snprintf(tempBuffer, sizeof(tempBuffer), "0x%06" PRIxS ": ", i);
             SafeStrAppend(asciiBufferPtr, asciiBufferSize, &currentDumpLen, tempBuffer);
         }
 

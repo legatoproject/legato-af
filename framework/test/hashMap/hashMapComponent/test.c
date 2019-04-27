@@ -403,6 +403,8 @@ bool itHandler
     int max = (*(int*)contextPtr);
     //LE_DEBUG("Handler called with %p and %p and %d", keyPtr, valuePtr, max);
 
+    LE_UNUSED(keyPtr);
+    LE_UNUSED(valuePtr);
     return ++count < max;
 }
 

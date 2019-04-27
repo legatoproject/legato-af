@@ -176,6 +176,8 @@ static void* testSyncThreadFunc0
     le_result_t res = LE_FAULT;
     le_clk_Time_t timeout = {GLOBAL_SEM_TIMEOUT, 0};
 
+    LE_UNUSED(contextPtr);
+
     while (i--)
     {
         res = le_sem_WaitWithTimeOut(PingSemPtr, timeout);
@@ -195,6 +197,8 @@ static void* testSyncThreadFunc1
     int i = 3;
     le_result_t res = LE_FAULT;
     le_clk_Time_t timeout = {GLOBAL_SEM_TIMEOUT, 0};
+
+    LE_UNUSED(contextPtr);
 
     while (i--)
     {

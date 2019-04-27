@@ -21,7 +21,7 @@
 #include "hsieh_hash.h"
 #include "limit.h"
 
-#if LE_HASHMAP_MINIMIZE
+#if LE_CONFIG_REDUCE_FOOTPRINT
 #   define BUCKET_LIST_INIT LE_SLS_LIST_INIT
 #   define BUCKET_LINK_INIT LE_SLS_LINK_INIT
 #   define bucket_IsEmpty   le_sls_IsEmpty
@@ -63,6 +63,8 @@ static inline void bucket_Remove
     le_sls_Link_t *prevLinkPtr
 )
 {
+    LE_UNUSED(theLinkPtr);
+
     le_sls_RemoveAfter(listHeadPtr, prevLinkPtr);
 }
 
@@ -95,7 +97,7 @@ static inline le_sls_Link_t *bucket_PeekPrev
     }
     return linkPtr;
 }
-#else /* if not LE_HASHMAP_MINIMIZE */
+#else /* if not LE_CONFIG_REDUCE_FOOTPRINT */
 #   define BUCKET_LIST_INIT LE_DLS_LIST_INIT
 #   define BUCKET_LINK_INIT LE_DLS_LINK_INIT
 #   define bucket_IsEmpty   le_dls_IsEmpty
@@ -119,7 +121,7 @@ static inline le_sls_Link_t *bucket_PeekPrev
 #   define bucket_Remove(listHeadPtr, theLinkPtr, prevLinkPtr) \
     ((void) (prevLinkPtr), le_dls_Remove((listHeadPtr), (theLinkPtr)))
 
-#endif /* end LE_HASHMAP_MINIMIZE */
+#endif /* end LE_CONFIG_REDUCE_FOOTPRINT */
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1462,6 +1464,7 @@ void le_hashmap_MakeTraceable
         mapRef->bucketCount
     );
 #else /* if not LE_CONFIG_HASHMAP_NAMES_ENABLED */
+    LE_UNUSED(mapRef);
     LE_WARN("Hashmap tracing disabled by LE_CONFIG_HASHMAP_NAMES_ENABLED setting.");
 #endif /* end LE_CONFIG_HASHMAP_NAMES_ENABLED */
 }
@@ -1481,6 +1484,7 @@ void le_hashmap_EnableTrace
     le_log_EnableTrace(le_log_GetTraceRef(mapRef->nameStr));
     le_hashmap_MakeTraceable(mapRef);
 #else /* if not LE_CONFIG_HASHMAP_NAMES_ENABLED */
+    LE_UNUSED(mapRef);
     LE_WARN("Hashmap tracing disabled by LE_CONFIG_HASHMAP_NAMES_ENABLED setting.");
 #endif /* end LE_CONFIG_HASHMAP_NAMES_ENABLED */
 }

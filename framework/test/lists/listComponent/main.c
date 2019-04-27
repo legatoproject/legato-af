@@ -69,7 +69,7 @@ bool RecordGreaterThan(le_dls_Link_t* aLinkPtr, le_dls_Link_t* bLinkPtr)
 
 static void TestDoublyLinkLists(size_t maxListSize)
 {
-    int i;
+    size_t i;
     le_dls_List_t list0, list1;
     le_dls_Link_t* removedLinksPtr0[maxListSize];
     le_dls_Link_t* removedLinksPtr1[maxListSize];
@@ -107,7 +107,7 @@ static void TestDoublyLinkLists(size_t maxListSize)
         {
             // Create the new node
             newNodePtr = (dlsIdRecord_t*)malloc(sizeof(dlsIdRecord_t));
-            LE_TEST_ASSERT(newNodePtr, "Allocated list0 node %d", i);
+            LE_TEST_ASSERT(newNodePtr, "Allocated list0 node %" PRIuS, i);
 
             newNodePtr->id = i;
 
@@ -124,7 +124,7 @@ static void TestDoublyLinkLists(size_t maxListSize)
         {
             // Create the new node
             newNodePtr = (dlsIdRecord_t*)malloc(sizeof(dlsIdRecord_t));
-            LE_TEST_ASSERT(newNodePtr, "Allocated list1 node %d", i);
+            LE_TEST_ASSERT(newNodePtr, "Allocated list1 node %" PRIuS, i);
 
             newNodePtr->id = i;
 
@@ -153,13 +153,15 @@ static void TestDoublyLinkLists(size_t maxListSize)
         {
             // Get the node from list 0
             nodePtr = CONTAINER_OF(link0Ptr, dlsIdRecord_t, link);
-            LE_TEST_OK(nodePtr, "nodePtr %d of list0 is not NULL", i);
-            LE_TEST_OK(nodePtr && nodePtr->id == i, "Incorrect node pointer in node %d of list0", i);
+            LE_TEST_OK(nodePtr, "nodePtr %" PRIuS " of list0 is not NULL", i);
+            LE_TEST_OK(nodePtr && nodePtr->id == i,
+                "Incorrect node pointer in node %" PRIuS " of list0", i);
 
             // Get the node from list 1
             nodePtr = CONTAINER_OF(link1Ptr, dlsIdRecord_t, link);
-            LE_TEST_OK(nodePtr, "nodePtr %d of list1 is not NULL", i);
-            LE_TEST_OK(nodePtr && nodePtr->id == i, "Incorrect node pointer in node %d of list1", i);
+            LE_TEST_OK(nodePtr, "nodePtr %" PRIuS " of list1 is not NULL", i);
+            LE_TEST_OK(nodePtr && nodePtr->id == i,
+                "Incorrect node pointer in node %" PRIuS " of list1", i);
 
             // Move to the next node.
             link0Ptr = le_dls_PeekNext(&list0, link0Ptr);
@@ -188,8 +190,8 @@ static void TestDoublyLinkLists(size_t maxListSize)
         le_dls_Link_t* link0Ptr = le_dls_PeekTail(&list0);
         le_dls_Link_t* link1Ptr = le_dls_Peek(&list1);
 
-        int r0 = 0;
-        int r1 = 0;
+        size_t r0 = 0;
+        size_t r1 = 0;
         while (link0Ptr && r0 < maxListSize)
         {
             // For list 0
@@ -241,8 +243,8 @@ static void TestDoublyLinkLists(size_t maxListSize)
             }
         };
 
-        LE_TEST_INFO("Randomly removed %d nodes from list0.", r0);
-        LE_TEST_INFO("Randomly removed %d nodes from list1.", r1);
+        LE_TEST_INFO("Randomly removed %" PRIuS " nodes from list0.", r0);
+        LE_TEST_INFO("Randomly removed %" PRIuS " nodes from list1.", r1);
     }
 
 
@@ -262,7 +264,7 @@ static void TestDoublyLinkLists(size_t maxListSize)
             }
 
             LE_TEST_OK(!le_dls_IsInList(&list0, removedLinksPtr0[i]),
-                       "Check removed node %d is not in list0", i);
+                       "Check removed node %" PRIuS " is not in list0", i);
 
             numNodesRemoved++;
         }
@@ -282,7 +284,7 @@ static void TestDoublyLinkLists(size_t maxListSize)
             }
 
             LE_TEST_OK(!le_dls_IsInList(&list1, removedLinksPtr1[i]),
-                       "Check removed node %d is not in list1", i);
+                       "Check removed node %" PRIuS " is not in list1", i);
 
             numNodesRemoved++;
         }
@@ -394,7 +396,7 @@ static void TestDoublyLinkLists(size_t maxListSize)
             // Get the node from list 0
             nodePtr = CONTAINER_OF(link0Ptr, dlsIdRecord_t, link);
             LE_TEST_ASSERT(nodePtr, "Get node from list0");
-            LE_TEST_OK(nodePtr->id == i, "Node %d from list0 is in the correct order", i);
+            LE_TEST_OK(nodePtr->id == i, "Node %" PRIuS " from list0 is in the correct order", i);
         }
 
         LE_TEST_OK(i == maxListSize, "List0 has expected size %" PRIuS, maxListSize);
@@ -404,7 +406,7 @@ static void TestDoublyLinkLists(size_t maxListSize)
             // Get the node from list 1
             nodePtr = CONTAINER_OF(link1Ptr, dlsIdRecord_t, link);
             LE_TEST_ASSERT(nodePtr, "Get node from list1");
-            LE_TEST_OK(nodePtr->id == i, "Node %d from list1 is in the correct order", i);
+            LE_TEST_OK(nodePtr->id == i, "Node %" PRIuS " from list1 is in the correct order", i);
         }
 
         LE_TEST_OK(i == maxListSize, "List1 has expected size %" PRIuS, maxListSize);
@@ -500,7 +502,7 @@ static void TestDoublyLinkLists(size_t maxListSize)
             LE_TEST_ASSERT(link0Ptr, "Find node of link0");
 
             // Check the node.
-            LE_TEST_OK(nodePtr->id == i, "Node %d of list0 is in the correct spot", i);
+            LE_TEST_OK(nodePtr->id == i, "Node %" PRIuS " of list0 is in the correct spot", i);
         }
 
         LE_TEST_OK(i == maxListSize, "List0 has expected size %"PRIuS, maxListSize);
@@ -512,7 +514,7 @@ static void TestDoublyLinkLists(size_t maxListSize)
             LE_TEST_ASSERT(nodePtr != NULL, "nodePtr is NULL");
 
             // Check the node.
-            LE_TEST_OK(nodePtr->id == i, "Node %d of list1 is in the correct spot", i);
+            LE_TEST_OK(nodePtr->id == i, "Node %" PRIuS " of list1 is in the correct spot", i);
         }
 
         LE_TEST_OK(i == maxListSize, "List1 has expected size %" PRIuS, maxListSize);
@@ -548,7 +550,7 @@ static void TestDoublyLinkLists(size_t maxListSize)
         LE_DLS_FOREACH(&list0, nodePtr, dlsIdRecord_t, link)
         {
             LE_TEST_ASSERT(nodePtr, "nodePtr is not NULL");
-            LE_TEST_OK(nodePtr->id == maxListSize - i - 1, "Node %d is in correct spot", i);
+            LE_TEST_OK(nodePtr->id == maxListSize - i - 1, "Node %" PRIuS " is in correct spot", i);
             ++i;
         }
     }
@@ -603,7 +605,7 @@ static void TestDoublyLinkLists(size_t maxListSize)
             nodePtr = CONTAINER_OF(linkPtr, dlsIdRecord_t, link);
             LE_TEST_ASSERT(nodePtr != NULL, "nodePtr is NULL");
 
-            LE_TEST_OK(nodePtr->id == i, "Node %d is correct", i);
+            LE_TEST_OK(nodePtr->id == i, "Node %" PRIuS " is correct", i);
         }
 
         LE_TEST_OK(i == maxListSize - (maxListSize / 2),
@@ -652,7 +654,7 @@ bool RecordLessThan(le_sls_Link_t* aLinkPtr, le_sls_Link_t* bLinkPtr)
 
 static void TestSinglyLinkLists(size_t maxListSize)
 {
-    int i;
+    size_t i;
     le_sls_List_t list0, list1;
 
     LE_TEST_INFO("Unit Test for le_singlyLinkedList module.");
@@ -684,7 +686,7 @@ static void TestSinglyLinkLists(size_t maxListSize)
         {
             // Create the new node
             newNodePtr = (slsIdRecord_t*)malloc(sizeof(slsIdRecord_t));
-            LE_TEST_ASSERT(newNodePtr, "allocate node %d for list0", i);
+            LE_TEST_ASSERT(newNodePtr, "allocate node %" PRIuS " for list0", i);
 
             newNodePtr->id = i;
 
@@ -711,7 +713,7 @@ static void TestSinglyLinkLists(size_t maxListSize)
         {
             // Create the new node
             newNodePtr = (slsIdRecord_t*)malloc(sizeof(slsIdRecord_t));
-            LE_TEST_ASSERT(newNodePtr, "allocated node %d for list1", i);
+            LE_TEST_ASSERT(newNodePtr, "allocated node %" PRIuS " for list1", i);
 
             newNodePtr->id = i;
 
@@ -730,12 +732,12 @@ static void TestSinglyLinkLists(size_t maxListSize)
     {
         slsIdRecord_t* nodePtr;
 
-        int i = 0;
+        i = 0;
         LE_SLS_FOREACH(&list0, nodePtr, slsIdRecord_t, link)
         {
             LE_TEST_ASSERT(nodePtr, "nodePtr is not NULL");
 
-            LE_TEST_OK(nodePtr->id == i, "node %d is in correct spot", i);
+            LE_TEST_OK(nodePtr->id == i, "node %" PRIuS " is in correct spot", i);
             ++i;
         }
 
@@ -746,7 +748,7 @@ static void TestSinglyLinkLists(size_t maxListSize)
         {
             LE_TEST_ASSERT(nodePtr, "nodePtr is not NULL");
 
-            LE_TEST_OK(nodePtr->id == maxListSize - i - 1, "Node %d is in correct spot", i);
+            LE_TEST_OK(nodePtr->id == maxListSize - i - 1, "Node %" PRIuS " is in correct spot", i);
             ++i;
         }
 
@@ -793,7 +795,7 @@ static void TestSinglyLinkLists(size_t maxListSize)
         {
             LE_TEST_ASSERT(nodePtr, "got node ptr");
             LE_TEST_OK(nodePtr->id == i,
-                       "node %d (value %"PRIu32") in correct location", i, nodePtr->id);
+                       "node %" PRIuS " (value %"PRIu32") in correct location", i, nodePtr->id);
             ++i;
         }
     }
@@ -820,7 +822,7 @@ static void TestSinglyLinkLists(size_t maxListSize)
         {
             LE_TEST_ASSERT(nodePtr, "nodePtr is not NULL");
 
-            LE_TEST_OK(nodePtr->id == i, "Node %d is in correct location", i);
+            LE_TEST_OK(nodePtr->id == i, "Node %" PRIuS " is in correct location", i);
             i++;
         }
 
