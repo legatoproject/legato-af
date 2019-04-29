@@ -1,5 +1,5 @@
 /**
- * @file fa_timer.h
+ * @file timer.h
  *
  * Timer module's intra-framework header file.  This file exposes type definitions and function
  * interfaces to other modules inside the framework implementation.
@@ -9,8 +9,10 @@
  * Copyright (C) Sierra Wireless Inc.
  */
 
-#ifndef LEGATO_SRC_FA_TIMER_H_INCLUDE_GUARD
-#define LEGATO_SRC_FA_TIMER_H_INCLUDE_GUARD
+#ifndef LEGATO_LIBLEGATO_LINUX_TIMER_H_INCLUDE_GUARD
+#define LEGATO_LIBLEGATO_LINUX_TIMER_H_INCLUDE_GUARD
+
+#include "fa/timer.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -26,4 +28,4 @@ typedef struct
 timer_LinuxThreadRec_t;
 
 
-#endif /* LEGATO_SRC_FA_TIMER_H_INCLUDE_GUARD */
+#endif /* end LEGATO_LIBLEGATO_LINUX_TIMER_H_INCLUDE_GUARD */

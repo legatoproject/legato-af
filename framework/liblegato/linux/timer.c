@@ -1,22 +1,21 @@
 /**
- * @file fa_timer.c
+ * @file imer.c
  *
- * Implementation of the @ref c_timer framework adaptor for linux
+ * Implementation of the @ref c_timer framework adaptor for Linux.
  *
  * Copyright (C) Sierra Wireless Inc.
  */
 
 #include "legato.h"
-#include "timer.h"
+
+#include "fileDescriptor.h"
 #include "thread.h"
-#include "fa_timer.h"
-#include "fileDescriptor.h"
-#include <sys/timerfd.h>
-#include "fileDescriptor.h"
+#include "timer.h"
 
 // Include macros for printing out values
 #include "le_print.h"
 
+#include <sys/timerfd.h>
 
 //--------------------------------------------------------------------------------------------------
 /**

@@ -20,7 +20,7 @@
 
 // Format and log time values
 #define LOG_TIME_MSG(msg, tm) \
-    LE_TEST_INFO("%20s %ld.%03ld s", (msg), (tm).sec, (tm).usec / ONE_MSEC);
+    LE_TEST_INFO("%20s %lld.%03ld s", (msg), (long long) (tm).sec, (tm).usec / ONE_MSEC);
 #define LOG_TIME(tm) LOG_TIME_MSG(#tm, (tm))
 
 // Tolerance to use when deciding whether the timer expired at the expected time.
@@ -108,6 +108,7 @@ static void ShortTimerExpiryHandler
     le_timer_Ref_t timerRef    ///< This timer has expired
 )
 {
+    LE_UNUSED(timerRef);
     LE_TEST_FATAL("TEST FAILED: short timer expired");
 }
 
@@ -158,6 +159,8 @@ static void VeryShortTimerExpiryHandler
     le_timer_Ref_t timerRef    ///< This timer has expired
 )
 {
+    LE_UNUSED(timerRef);
+
     // The interval was changed to 500 ms after sleeping for 1 second, so
     // we expect expiry at 1 second.
     le_clk_Time_t expectedInterval = { 1, 0 };
@@ -397,19 +400,20 @@ static void TimerExpiryHandler
             le_thread_Join(ChildThread, &threadResult);
 #endif /* end LE_CONFIG_LINUX */
 
-            int i;
+            size_t i;
             for (i = 0;
                  i < sizeof(TimerTestDataArray)/sizeof(TimerTestDataArray[0]);
                  ++i)
             {
-                int j;
+                uint32_t j;
                 for (j = 0; j < TimerTestDataArray[i].repeatCount; ++j)
                 {
                     LE_TEST_OK(TimerTestDataArray[i].testPassed[1][j],
-                               "Main timer %d expiry %d accuracy within tolerance", i, j);
+                        "Main timer %" PRIuS " expiry %" PRIu32 " accuracy within tolerance", i, j);
 #if LE_CONFIG_LINUX
                     LE_TEST_OK(TimerTestDataArray[i].testPassed[0][j],
-                               "Child timer %d expiry %d accuracy within tolerance", i, j);
+                        "Child timer %" PRIuS " expiry %" PRIu32 " accuracy within tolerance",
+                        i, j);
 #endif /* end LE_CONFIG_LINUX */
                 }
          }
@@ -440,7 +444,7 @@ static void TimerEventLoopTest(void)
 {
     int            isMain = (le_thread_GetCurrent() == MainThread);
     le_timer_Ref_t newTimer;
-    int i;
+    size_t i;
 
     le_clk_Time_t* startTimePtr = malloc(sizeof(le_clk_Time_t));
     LE_ASSERT(startTimePtr != NULL);
@@ -451,7 +455,7 @@ static void TimerEventLoopTest(void)
     {
         char timerName[32] = { 0 };
 
-        snprintf(timerName, sizeof(timerName), "%sTimer%d", (isMain?"main":"child"), i);
+        snprintf(timerName, sizeof(timerName), "%sTimer%" PRIuS, (isMain?"main":"child"), i);
 
         newTimer = le_timer_Create(timerName);
 
@@ -464,10 +468,12 @@ static void TimerEventLoopTest(void)
         le_timer_Start(newTimer);
         TimerTestDataArray[i].offset[isMain] = le_clk_Sub(thisStartTime, *startTimePtr);
 
-        LE_TEST_INFO("Starting %s %ld.%03ld s timer %d (%p) (%" PRIu32 " repeats)",
+        LE_TEST_INFO("Starting %s %lld.%03ld s timer %" PRIuS " (%p) (%" PRIu32 " repeats)",
             (le_thread_GetCurrent() == MainThread ? "main" : "child"),
-            TimerTestDataArray[i].interval.sec, TimerTestDataArray[i].interval.usec / ONE_MSEC,
-                     i, newTimer,
+            (long long) TimerTestDataArray[i].interval.sec,
+            TimerTestDataArray[i].interval.usec / ONE_MSEC,
+            i,
+            newTimer,
             TimerTestDataArray[i].repeatCount - 1);
     }
 
@@ -487,7 +493,7 @@ static void* ThreadMain(void* unused)
 
 COMPONENT_INIT
 {
-    int i;
+    size_t i;
 
     Expired = 0;
     Total = 0;
