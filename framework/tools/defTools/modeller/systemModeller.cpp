@@ -1263,6 +1263,12 @@ static void ModelLinks
                                                              std::list<std::string>(),
                                                              true) };
 
+        // Throw an execption if the link component contains Java
+        if (linkModelPtr->componentPtr->HasJavaCode())
+        {
+            tokens[0]->ThrowException(LE_I18N("Java is not supported on link components."));
+        }
+
         // Build the Command Line Arguments
         for (size_t i = 2; i < tokens.size(); ++i)
         {

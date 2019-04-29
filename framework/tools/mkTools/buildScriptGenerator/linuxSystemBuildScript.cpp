@@ -74,8 +74,10 @@ void LinuxSystemBuildScriptGenerator_t::GenerateSystemBuildRules
     {
         const auto componentPtr = linkEntry.second->componentPtr;
         script << "            "
-               << "find . -name libComponent_" << componentPtr->name << ".so -print | "
-                  "xargs cp -P -t $stagingDir/lib ; $\n";
+               << "legato-install -m 775 "
+               << componentPtr->GetTargetInfo<target::LinuxComponentInfo_t>()->lib
+               << " $stagingDir/lib/libComponent_"
+               << componentPtr->name + ".so" << " ; $\n";
     }
 
     // Create symlinks inside the system's "apps" directory that point to the apps actual
