@@ -93,6 +93,7 @@
  */
 
 #include "legato.h"
+#include "messaging.h"
 #include "serviceDirectory/serviceDirectoryProtocol.h"
 #include "messagingCommon.h"
 #include "messagingMessage.h"

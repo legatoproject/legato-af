@@ -79,3 +79,41 @@ le_msg_MessageRef_t le_msg_GetServiceRxMsg
 {
     return pthread_getspecific(ThreadLocalRxMsgKey);
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fetches the user ID of the client at the far end of a given IPC session.
+ *
+ * @warning This function can only be called for the server-side of a session.
+ *
+ * @return LE_OK if successful.
+ *         LE_CLOSED if the session has closed.
+ **/
+//--------------------------------------------------------------------------------------------------
+le_result_t le_msg_GetClientUserId
+(
+    le_msg_SessionRef_t sessionRef, ///< [in] Reference to the session.
+    uid_t*              userIdPtr   ///< [out] Ptr to where the result is to be stored on success.
+)
+{
+    return le_msg_GetClientUserCreds(sessionRef, userIdPtr, NULL);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fetches the user PID of the client at the far end of a given IPC session.
+ *
+ * @warning This function can only be called for the server-side of a session.
+ *
+ * @return LE_OK if successful.
+ *         LE_CLOSED if the session has closed.
+ **/
+//--------------------------------------------------------------------------------------------------
+le_result_t le_msg_GetClientProcessId
+(
+    le_msg_SessionRef_t sessionRef,   ///< [in] Reference to the session.
+    pid_t*              processIdPtr  ///< [out] Ptr to where the result is to be stored on success.
+)
+{
+    return le_msg_GetClientUserCreds(sessionRef, NULL, processIdPtr);
+}

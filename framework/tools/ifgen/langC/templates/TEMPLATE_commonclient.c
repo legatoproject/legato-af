@@ -31,10 +31,10 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_event_HandlerFunc_t handlerPtr;          ///< Registered handler function
-    void*                  contextPtr;          ///< ContextPtr registered with handler
-    le_event_HandlerRef_t  handlerRef;          ///< HandlerRef for the registered handler
-    le_thread_Ref_t        callersThreadRef;    ///< Caller's thread.
+    void                    *handlerPtr;        ///< Registered handler function
+    void                    *contextPtr;        ///< ContextPtr registered with handler
+    le_event_HandlerRef_t    handlerRef;        ///< HandlerRef for the registered handler
+    le_thread_Ref_t          callersThreadRef;  ///< Caller's thread.
 }
 _ClientData_t;
 
@@ -284,7 +284,7 @@ static void _Handle_ifgen_{{apiBaseName}}_{{function.name}}
 
     // Pull out additional data from the client data pointer
     {{handler.apiType|FormatType(useBaseName=True)}} _handlerRef_ifgen_{{apiBaseName}}_{{function.name}} =
-        {#- #} ({{handler.apiType|FormatType(useBaseName=True)}})_clientDataPtr->handlerPtr;
+        {#- #} _clientDataPtr->handlerPtr;
     void* contextPtr = _clientDataPtr->contextPtr;
 
     // Unpack the remaining parameters
@@ -501,6 +501,8 @@ static void ClientIndicationRecvHandler
     void*                contextPtr
 )
 {
+    LE_UNUSED(contextPtr);
+
     // Get the message payload
     _Message_t* msgPtr = le_msg_GetPayloadPtr(msgRef);
     uint8_t* _msgBufPtr = msgPtr->buffer;

@@ -190,6 +190,7 @@ void ipcTest_ExitServer
     ipcTest_ServerCmdRef_t serverCmdRef
 )
 {
+    LE_UNUSED(serverCmdRef);
     abort();
 }
 
@@ -238,6 +239,7 @@ void AsyncServer_EchoTriggerEventRespond
     void* context
 )
 {
+    LE_UNUSED(context);
     ipcTest_EchoTriggerEventRespond(serverCmdPtr);
 }
 

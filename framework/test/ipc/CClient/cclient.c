@@ -200,6 +200,7 @@ static jmp_buf ServerExitJump;
 
 __attribute__((unused)) static void TestServerExitHandler(void *contextPtr)
 {
+    LE_UNUSED(contextPtr);
     longjmp(ServerExitJump, 1);
 }
 
@@ -229,6 +230,7 @@ static void CallbackTimeout
     le_timer_Ref_t timerRef                   ///< [IN] Timer pointer
 )
 {
+    LE_UNUSED(timerRef);
     LE_TEST_OK(false, "echo event");
     LE_TEST_EXIT;
 }
@@ -239,6 +241,7 @@ void EchoEventHandler
     void* context
 )
 {
+    LE_UNUSED(context);
     LE_TEST_OK(value == 42, "echo event");
 
     le_timer_Stop(TestTimeoutTimerRef);

@@ -247,6 +247,8 @@ __attribute__((unused)) static void CleanupClientData
     void *contextPtr
 )
 {
+    LE_UNUSED(contextPtr);
+
     LE_DEBUG("Client %p is closed !!!", sessionRef);
 
     // Iterate over the server data reference map and remove anything that matches
@@ -313,6 +315,7 @@ __attribute__((unused)) static void SendMsgToClientQueued
     void*  unused   ///< [in] Not used
 )
 {
+    LE_UNUSED(unused);
     le_msg_Send(msgRef);
 }
 
@@ -928,6 +931,8 @@ static void ServerMsgRecvHandler
     void*               contextPtr
 )
 {
+    LE_UNUSED(contextPtr);
+
     // Get the message payload so that we can get the message "id"
     _Message_t* msgPtr = le_msg_GetPayloadPtr(msgRef);
 

@@ -68,18 +68,18 @@ EOF
 LIBLEGATO_SOURCES=$(ls $SRC_DIR/*.c)
 
 for ninja_config in $SRC_DIR/*/ninja-config; do
-    os_path=${ninja_config%/ninja-config}
-    os_name=${os_path#$SRC_DIR/}
-    config_name=LE_CONFIG_${os_name^^}
+    module_path=${ninja_config%/ninja-config}
+    module_name=${module_path#$SRC_DIR/}
+    config_name=LE_CONFIG_${module_name^^}
     if [ "${!config_name}" = y ]; then
         source $ninja_config
-        LIBLEGATO_SOURCES="$LIBLEGATO_SOURCES $(ls $os_path/*.c)"
-        CFLAGS="$CFLAGS -I$os_path"
+        LIBLEGATO_SOURCES="${LIBLEGATO_SOURCES} $(ls ${module_path}/*.c)"
+        CFLAGS="${CFLAGS} -I${module_path}"
     fi
 done
 
 # Include auto-generated header directory.
-CFLAGS+=" -I${LEGATO_ROOT}/build/${TARGET}/framework/include"
+CFLAGS="${CFLAGS} -I${LEGATO_ROOT}/build/${TARGET}/framework/include"
 
 if [ -z "$LIBLEGATO_SHARED" ]; then
    cat >&2 <<EOF

@@ -12,8 +12,6 @@
 #ifndef RAND_INCLUDE_GUARD
 #define RAND_INCLUDE_GUARD
 
-#include "fa/rand.h"
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Initializes the Random Number API service.
