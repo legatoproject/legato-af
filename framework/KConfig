@@ -484,7 +484,7 @@ config MAX_REPORT_POOL_SIZE
 config MAX_FD_MONITOR_POOL_SIZE
   int "Maximum file descriptor monitor pool size"
   depends on MEM_POOLS
-  range 1 65535
+  range 2 65535
   default 10
   ---help---
   The maximum number of objects in the process-wide FD monitor pool, from

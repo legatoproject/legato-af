@@ -996,7 +996,7 @@ __attribute__ ((noreturn));
  * @return The file descriptor.
  */
 //--------------------------------------------------------------------------------------------------
-int le_event_GetFd
+LE_FULL_API int le_event_GetFd
 (
     void
 );
@@ -1018,7 +1018,7 @@ int le_event_GetFd
  *  - LE_WOULD_BLOCK if there is nothing left to do for now and it is safe to go back to sleep.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_event_ServiceLoop
+LE_FULL_API le_result_t le_event_ServiceLoop
 (
     void
 );

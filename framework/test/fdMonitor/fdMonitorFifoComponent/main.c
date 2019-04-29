@@ -49,6 +49,8 @@ static void *FifoWriter
     void *context
 )
 {
+    LE_UNUSED(context);
+
     // Delay to ensure main thread is sleeping
     LE_TEST_INFO("Delaying write");
     sleep(1);

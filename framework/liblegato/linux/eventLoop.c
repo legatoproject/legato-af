@@ -1,5 +1,5 @@
 //--------------------------------------------------------------------------------------------------
-/** @file fa_eventLoop.c
+/** @file eventLoop.c
  *
  * Legato @ref c_linuxEventLoop implementation for Linux
  *
@@ -41,7 +41,6 @@
 
 #include "legato.h"
 #include "eventLoop.h"
-#include "linux/fa_eventLoop.h"
 #include "thread.h"
 #include "fdMonitor.h"
 #include "limit.h"
@@ -63,10 +62,62 @@
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t PerThreadPool;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Converts a set of epoll(7) event flags into a set of poll(2) event flags.
+ *
+ * @return Bit map containing poll(2) events flags.
+ */
+//--------------------------------------------------------------------------------------------------
+static short EPollToPoll
+(
+    uint32_t  epollFlags    ///< [in] Bit map containing epoll(7) event flags.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    short pollFlags = 0;
+
+    if (epollFlags & EPOLLIN)
+    {
+        pollFlags |= POLLIN;
+    }
+
+    if (epollFlags & EPOLLPRI)
+    {
+        pollFlags |= POLLPRI;
+    }
+
+    if (epollFlags & EPOLLOUT)
+    {
+        pollFlags |= POLLOUT;
+    }
+
+    if (epollFlags & EPOLLHUP)
+    {
+        pollFlags |= POLLHUP;
+    }
+
+    if (epollFlags & EPOLLRDHUP)
+    {
+        pollFlags |= POLLRDHUP;
+    }
+
+    if (epollFlags & EPOLLERR)
+    {
+        pollFlags |= POLLERR;
+    }
+
+    return pollFlags;
+}
+
+// ==============================================
+//  FRAMEWORK ADAPTOR FUNCTIONS
+// ==============================================
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Initialize platform-specific info.
+ *
  */
 //--------------------------------------------------------------------------------------------------
 void fa_event_Init
@@ -99,12 +150,12 @@ event_PerThreadRec_t* fa_event_CreatePerThreadInfo
     // Create the epoll file descriptor for this thread.  This will be used to monitor for
     // events on various file descriptors.
     recPtr->epollFd = epoll_create1(0);
-    LE_FATAL_IF(recPtr->epollFd < 0, "epoll_create1(0) failed with errno %d (%m).", errno);
+    LE_FATAL_IF(recPtr->epollFd < 0, "epoll_create1(0) failed with errno %d.", errno);
 
     // Open an eventfd for this thread.  This will be uses to signal to the epoll fd that there
     // are Event Reports on the Event Queue.
     recPtr->eventQueueFd = eventfd(0, 0);
-    LE_FATAL_IF(recPtr->eventQueueFd < 0, "eventfd() failed with errno %d (%m).", errno);
+    LE_FATAL_IF(recPtr->eventQueueFd < 0, "eventfd() failed with errno %d.", errno);
 
     // Add the eventfd to the list of file descriptors to wait for using epoll_wait().
     struct epoll_event ev;
@@ -115,7 +166,7 @@ event_PerThreadRec_t* fa_event_CreatePerThreadInfo
                             // monitored.
     if (epoll_ctl(recPtr->epollFd, EPOLL_CTL_ADD, recPtr->eventQueueFd, &ev) == -1)
     {
-        LE_FATAL(   "epoll_ctl(ADD) failed for fd %d. errno = %d (%m)",
+        LE_FATAL(   "epoll_ctl(ADD) failed for fd %d. errno = %d",
                     recPtr->eventQueueFd,
                     errno);
     }
@@ -171,7 +222,7 @@ void fa_event_DestructThread
  * This must be done exactly once for each Event Report pushed onto the thread's Event Queue.
  */
 //--------------------------------------------------------------------------------------------------
-void fa_eventLoop_TriggerEvent_NoLock
+void fa_event_TriggerEvent_NoLock
 (
     event_PerThreadRec_t* portablePerThreadRecPtr
 )
@@ -195,7 +246,7 @@ void fa_eventLoop_TriggerEvent_NoLock
         {
             if ((writeSize == -1) && (errno != EINTR))
             {
-                LE_FATAL("write() failed with errno %d (%m).", errno);
+                LE_FATAL("write() failed with errno %d.", errno);
             }
             else
             {
@@ -214,7 +265,7 @@ void fa_eventLoop_TriggerEvent_NoLock
  * @return The number of Event Reports on the thread's Event Queue.
  */
 //--------------------------------------------------------------------------------------------------
-uint64_t fa_eventLoop_WaitForEvent
+uint64_t fa_event_WaitForEvent
 (
     event_PerThreadRec_t* portablePerThreadRecPtr
 )
@@ -237,7 +288,7 @@ uint64_t fa_eventLoop_WaitForEvent
         {
             if ((readSize == -1) && (errno != EINTR))
             {
-                LE_FATAL("read() failed with errno %d (%m).", errno);
+                LE_FATAL("read() failed with errno %d.", errno);
             }
             else
             {
@@ -261,7 +312,7 @@ uint64_t fa_eventLoop_WaitForEvent
  *      This function never returns.
  */
 //--------------------------------------------------------------------------------------------------
-void le_event_RunLoop
+void fa_event_RunLoop
 (
     void
 )
@@ -307,7 +358,7 @@ void le_event_RunLoop
 
                 if (safeRef != NULL)
                 {
-                    fdMon_Report(safeRef, epollEventList[i].events);
+                    fdMon_Report(safeRef, EPollToPoll(epollEventList[i].events));
                 }
             }
 
@@ -320,7 +371,7 @@ void le_event_RunLoop
         {
             if (errno != EINTR)
             {
-                LE_FATAL("epoll_wait() failed.  errno = %d (%m).", errno);
+                LE_FATAL("epoll_wait() failed.  errno = %d.", errno);
             }
 
             // It was just EINTR, so we are okay to go back to sleep.  But first,
@@ -336,6 +387,9 @@ void le_event_RunLoop
     }
 }
 
+// ==============================================
+//  PUBLIC API FUNCTIONS
+// ==============================================
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -438,7 +492,7 @@ le_result_t le_event_ServiceLoop
 
             if (safeRef != NULL)
             {
-                fdMon_Report(safeRef, epollEventList[i].events);
+                fdMon_Report(safeRef, EPollToPoll(epollEventList[i].events));
             }
         }
     }
@@ -446,7 +500,7 @@ le_result_t le_event_ServiceLoop
     // Interruptions are tested above, so this is always a fatal error.
     else if (result < 0)
     {
-        LE_FATAL("epoll_wait() failed.  errno = %d (%m).", errno);
+        LE_FATAL("epoll_wait() failed.  errno = %d.", errno);
     }
     // Otherwise, if epoll_wait() returned zero, then either this function was called without
     // waiting for the eventfd to be readable, or the eventfd was readable momentarily, but
@@ -461,7 +515,7 @@ le_result_t le_event_ServiceLoop
 
     // Read the eventfd to reset it to zero so epoll stops telling us about it until more
     // are added.
-    perThreadRecPtr->liveEventCount = fa_eventLoop_WaitForEvent(perThreadRecPtr);
+    perThreadRecPtr->liveEventCount = fa_event_WaitForEvent(perThreadRecPtr);
 
     LE_DEBUG("perThreadRecPtr->liveEventCount is" "%" PRIu64, perThreadRecPtr->liveEventCount);
 

@@ -8,9 +8,12 @@
  *
  * Copyright (C) Sierra Wireless Inc.
  */
+//--------------------------------------------------------------------------------------------------
 
 #ifndef LEGATO_LIBLEGATO_LINUX_EVENTLOOP_H_INCLUDE_GUARD
 #define LEGATO_LIBLEGATO_LINUX_EVENTLOOP_H_INCLUDE_GUARD
+
+#include "fa/eventLoop.h"
 
 /**
  * Per-thread event queue data for Linux
@@ -25,4 +28,4 @@ typedef struct
 event_LinuxPerThreadRec_t;
 
 
-#endif /* LEGATO_LIBLEGATO_LINUX_EVENTLOOP_H_INCLUDE_GUARD */
+#endif /* end LEGATO_LIBLEGATO_LINUX_EVENTLOOP_H_INCLUDE_GUARD */

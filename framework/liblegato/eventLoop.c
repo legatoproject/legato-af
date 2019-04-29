@@ -690,7 +690,7 @@ void event_ProcessEventReports
 {
     // Read the eventfd to fetch the number of Reports on the Event Queue and reset the count
     // to zero.
-    uint64_t numReports = fa_eventLoop_WaitForEvent(perThreadRecPtr);
+    uint64_t numReports = fa_event_WaitForEvent(perThreadRecPtr);
 
     // Process only those event reports that are already on the queue.  Anything reported by the
     // event handlers will have to wait until next time ProcessEventReports() is called.
@@ -758,7 +758,7 @@ static void QueueFunction_NoLock
     le_sls_Queue(&perThreadRecPtr->eventQueue, &reportPtr->baseClass.link);
 
     // Write to the eventfd to notify the Event Loop that there is something on the queue.
-    fa_eventLoop_TriggerEvent_NoLock(perThreadRecPtr);
+    fa_event_TriggerEvent_NoLock(perThreadRecPtr);
 }
 
 
@@ -776,6 +776,8 @@ void CallComponentInitializer
 //--------------------------------------------------------------------------------------------------
 {
     void (*componentInitFunc)(void) = param1Ptr;
+
+    LE_UNUSED(param2Ptr);
 
     componentInitFunc();
 }
@@ -1278,7 +1280,7 @@ void le_event_Report
 
         // Increment the eventfd for the handler's thread's Event Queue.
         // This will wake up the thread and tell it that it has something on its Event Queue.
-        fa_eventLoop_TriggerEvent_NoLock(perThreadRecPtr);
+        fa_event_TriggerEvent_NoLock(perThreadRecPtr);
 
         linkPtr = le_dls_PeekNext(&eventPtr->handlerList, linkPtr);
     }
@@ -1339,7 +1341,7 @@ void le_event_ReportWithRefCounting
 
         // Increment the eventfd for the handler's thread's Event Queue.
         // This will wake up the thread and tell it that it has something on its Event Queue.
-        fa_eventLoop_TriggerEvent_NoLock(perThreadRecPtr);
+        fa_event_TriggerEvent_NoLock(perThreadRecPtr);
 
         linkPtr = le_dls_PeekNext(&eventPtr->handlerList, linkPtr);
     }
@@ -1447,4 +1449,24 @@ void le_event_QueueFunctionToThread
     QueueFunction_NoLock(thread_GetOtherEventRecPtr(thread), func, param1Ptr, param2Ptr);
 
     event_Unlock(oldState);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Runs the event loop for the calling thread.
+ *
+ * This starts the processing of events by the calling thread.
+ *
+ * This function can only be called at most once for each thread, and must never be called in
+ * the process's main thread.
+ *
+ * @note This function never returns.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_event_RunLoop
+(
+    void
+)
+{
+    fa_event_RunLoop();
 }

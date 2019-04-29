@@ -13,6 +13,38 @@
 #ifndef LEGATO_FD_MONITOR_H_INCLUDE_GUARD
 #define LEGATO_FD_MONITOR_H_INCLUDE_GUARD
 
+#include "eventLoop.h"
+#include "fa/fdMonitor.h"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Insert a string name variable if configured or a placeholder string if not.
+ *
+ *  @param  nameVar Name variable to insert.
+ *
+ *  @return Name variable or a placeholder string depending on configuration.
+ **/
+//--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_FD_MONITOR_NAMES_ENABLED
+#   define  FDMON_NAME(var) (var)
+#else
+#   define  FDMON_NAME(var) "<omitted>"
+#endif
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a human readable string describing the fd events in a given bit map.
+ *
+ * @return buffPtr.
+ */
+//--------------------------------------------------------------------------------------------------
+const char *fdMon_GetEventsText
+(
+    char    *buffPtr,   ///< [out] Pointer to buffer to put the string in.
+    size_t   buffSize,  ///< [in]  Size of the buffer, in bytes.
+    short    events     ///< [in]  Bit map of events (see 'man 2 poll').
+);
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Initialize the FD Monitor module.
@@ -66,4 +98,18 @@ void fdMon_DestructThread
     event_PerThreadRec_t* perThreadRecPtr
 );
 
-#endif // LEGATO_FD_MONITOR_H_INCLUDE_GUARD
+//--------------------------------------------------------------------------------------------------
+/**
+ * Signal a file descriptor has pending events.
+ *
+ * @note: This should only be used on customized file descriptors.  Other file descriptors are
+ *        checked by the event loop automatically.
+ **/
+//--------------------------------------------------------------------------------------------------
+void fdMon_SignalFd
+(
+    int         fd,         ///< [in] Reference to the File Descriptor Monitor object
+    uint32_t    eventFlags  ///< [in] Event flags to signal
+);
+
+#endif /* end LEGATO_FD_MONITOR_H_INCLUDE_GUARD */
