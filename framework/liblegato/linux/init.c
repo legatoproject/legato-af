@@ -22,6 +22,7 @@
 #include "rand.h"
 #include "safeRef.h"
 #include "signals.h"
+#include "test.h"
 #include "thread.h"
 #include "timer.h"
 
@@ -53,7 +54,7 @@ __attribute__((constructor)) void _legato_InitFramework
 
     rand_Init();        // Does not use any other resource.  Initialize first so that randomness is
                         // available for other modules' initialization.
-    mem_Init();
+    mem_Init();         // Many things rely on memory pools, so initialize them as soon as possible.
     log_Init();         // Uses memory pools.
     sig_Init();         // Uses memory pools.
     safeRef_Init();     // Uses memory pools and hash maps.
@@ -71,6 +72,7 @@ __attribute__((constructor)) void _legato_InitFramework
     pipeline_Init();    // Uses memory pools and FD Monitors.
     atomFile_Init();    // Uses memory pools.
     fs_Init();          // Uses memory pools and safe references.
+    test_Init();        // Initialize test infrastructure last.
 
     // This must be called last, because it calls several subsystems to perform the
     // thread-specific initialization for the main thread.

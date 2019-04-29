@@ -1,58 +1,43 @@
 /**
- * @file fa_test.c
+ * @file test.h
  *
- * Unitary test framework functions for Linux
+ * Test interface that must be implemented by a Legato framework adaptor.
  *
  * Copyright (C) Sierra Wireless Inc.
  */
+#ifndef FA_TEST_H_INCLUDE_GUARD
+#define FA_TEST_H_INCLUDE_GUARD
 
-#include "legato.h"
-#include "test.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Initialize the unitary test subsystem.
- *
- * Note: System initialization is only done on RTOS.  Regular init is done in fa_test_Start()
+ * Performs test system initialization.
  */
 //--------------------------------------------------------------------------------------------------
-void test_SystemInit
+void fa_test_Init
 (
     void
-)
-{
-    // Do nothing.
-}
+);
+
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Start a unitary test suite
+ * Start a unitary test suite.
  */
 //--------------------------------------------------------------------------------------------------
 void fa_test_Start
 (
     void
-)
-{
-    // Do nothing.
-}
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Exit a unitary test suite
+ * Exit a unitary test suite.  This terminates the process.
  */
 //--------------------------------------------------------------------------------------------------
 void fa_test_Exit
 (
-    int failedTests
-)
-{
-    // Linux exit codes should be in range 0-127 (except for signals), so if there are more
-    // than 126 failed tests, saturate to 126 max.  The value 127 is not used to ease testing
-    // because the shell returns that if the executable was not found.
-    if (failedTests > 126)
-    {
-        failedTests = 126;
-    }
-    exit(failedTests);
-}
+    int failedTests ///< Number of failed test cases.
+) __attribute__((noreturn));
+
+#endif /* end FA_TEST_H_INCLUDE_GUARD */

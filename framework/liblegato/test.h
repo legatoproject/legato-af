@@ -1,44 +1,21 @@
 /**
  * @file test.h
  *
- * This module contains initialization functions for the Legato unitary test system that should
- * be called by the build system on RTOS.
+ * Common internal test interface.
  *
  * Copyright (C) Sierra Wireless Inc.
  */
-#ifndef TEST_INCLUDE_GUARD
-#define TEST_INCLUDE_GUARD
-
+#ifndef TEST_H_INCLUDE_GUARD
+#define TEST_H_INCLUDE_GUARD
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Performs RTOS-specific system initialization.
+ * Performs test system initialization.
  */
 //--------------------------------------------------------------------------------------------------
-void test_SystemInit
+void test_Init
 (
     void
 );
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Start a unitary test suite
- */
-//--------------------------------------------------------------------------------------------------
-void fa_test_Start
-(
-    void
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Exit a unitary test suite
- */
-//--------------------------------------------------------------------------------------------------
-void fa_test_Exit
-(
-    int failedTests
-) __attribute__((noreturn));
-
-#endif /* end TEST_INCLUDE_GUARD */
+#endif /* end TEST_H_INCLUDE_GUARD */
