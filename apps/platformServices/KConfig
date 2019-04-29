@@ -84,6 +84,14 @@ config SOTA
   Select this to enable support for SOTA updates.  SOTA is not supported on
   non-POSIX systems.
 
+config ENABLE_AV_SMS_COUNT
+  bool "Enable AV SMS counting support for LWM2M resources lwm2m.7.0.x"
+  default n if RTOS
+  default y
+  ---help---
+  When checked, SMS monitoring/counting is enabled and LWM2M resources lwm2m.7.0.x return valid
+  statistic values related to SMS counting.
+
 endmenu # end "AirVantage Connector"
 
 menu "AT Service"
