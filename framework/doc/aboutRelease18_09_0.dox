@@ -1,6 +1,6 @@
-/** @page releaseNotes18090 18.09.0 Release Notes
+/** @page releaseNotes18090 18.09.2 Release Notes
 
-Release Date: Oct 12, 2018
+Release Date: May 3rd, 2019
 
 See @ref aboutLicenses to view Legato AF Licensing Information.
 
@@ -9,10 +9,15 @@ The following provides a summary of changes that have been made in the 18.09 Leg
 <b> Download the @ref aboutReleaseInfo "source code" and get started with @ref basicBuild
 "building Legato AF". </b>
 
+@section rn1809_18092 18.09.2 Patch
+
+The ability to use @b secure @b SMS to trigger a connection from a target to AirVantage has been
+disabled.
+
 @section rn1809_18091 18.09.1 Patch
 
-The 18.09.1 patch introduces a fix to improve the @c fwupdate process during poor network 
-conditions. The curl low speedlimit timeout and retry timers have been tweaked to allow 
+The 18.09.1 patch introduces a fix to improve the @c fwupdate process during poor network
+conditions. The curl low speed limit timeout and retry timers have been tweaked to allow
 more time for fwupdate to complete before retrying.
 
 @section rn1809_Features New Features
