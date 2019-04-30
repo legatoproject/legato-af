@@ -1789,3 +1789,8 @@ DOT_CLEANUP            = YES
 # PlantUML jar file path (used to generate PlantUML diagrams during doxygen generation)
 
 PLANTUML_JAR_PATH = "@PLANTUML_JAR_FILE@"
+
+# Include doxygen configuration file with defines from KConfig
+
+@INCLUDE_PATH = @LEGATO_ROOT@/build/doc
+@INCLUDE = "@DOXYGEN_DEFS_FILE@"
