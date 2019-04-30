@@ -121,6 +121,10 @@ HEADER_CONFIG := build/$(TARGET)/framework/include/le_config.h
 # Configuration environment script
 SHELL_CONFIG := build/$(TARGET)/config.sh
 
+# Doxygen definition from KConfig
+DOXYGEN_DEFS_FILE := doxygen.Kconfig.cfg
+DOXYGEN_DEFS := $(LEGATO_ROOT)/build/doc/$(DOXYGEN_DEFS_FILE)
+
 # Include target-specific configuration values
 ifneq ($(TARGET),nothing)
   include $(MAKE_CONFIG)
@@ -490,6 +494,12 @@ ifneq ($(KNOWN_TARGET),1)
 	$(Q)printf '\n# Additional Definitions\nexport LE_CONFIG_TARGET_%s=y\n' "$(TARGET_CAPS)" >> $@
 endif
 
+# Generate doxygen configuration containing the KConfig definitions
+$(DOXYGEN_DEFS): $(LEGATO_KCONFIG) $(BUILD_CONFIG)/Documentation $(BUILD_CONFIG)/WiFi
+	$(L) GEN $@
+	$(Q)mkdir -p $(dir $@)
+	$(Q)sed -e 's/^LE_CONFIG_/PREDEFINED += &/g' -e 's/=y/=1/g' $< > $@
+
 # Interactively select build options
 .PHONY: menuconfig
 menuconfig: $(LEGATO_KCONFIG) $(KCONFIG) $(BUILD_CONFIG)/Documentation $(BUILD_CONFIG)/WiFi
@@ -694,10 +704,10 @@ stage: $(STAGE_SYSTOIMG) $(STAGE_MKAVMODEL)
 
 # Goal for building all documentation
 .PHONY: docs user_docs implementation_docs
-docs: $(PLANTUML_JAR_FILE) user_docs implementation_docs
+docs: $(PLANTUML_JAR_FILE) $(DOXYGEN_DEFS) user_docs implementation_docs
 
 # Docs for people who don't want to be distracted by the internal implementation details.
-user_docs: localhost $(PLANTUML_JAR_FILE) build/localhost/Makefile
+user_docs: localhost $(PLANTUML_JAR_FILE) $(DOXYGEN_DEFS) build/localhost/Makefile
 	$(L) MAKE Documentation
 	$(Q)$(MAKE) -C build/localhost user_docs
 	$(Q)rm -f Documentation
@@ -711,7 +721,7 @@ user_docs: localhost $(PLANTUML_JAR_FILE) build/localhost/Makefile
 	fi
 
 # Generate PDF of documentation
-user_pdf: localhost build/localhost/Makefile
+user_pdf: localhost $(DOXYGEN_DEFS) build/localhost/Makefile
 	$(L) MAKE Documentation.pdf
 	$(Q)$(MAKE) -C build/localhost user_pdf
 	$(Q)ln -sf build/localhost/bin/doc/user/legato-user.pdf Documentation.pdf
@@ -752,6 +762,7 @@ build/$(TARGET)/Makefile:
 			-DLEGATO_TARGET=$(TARGET) \
 			-DLEGATO_JOBS=$(LEGATO_JOBS) \
 			-DPLANTUML_JAR_FILE=$(PLANTUML_JAR_FILE) \
+			-DDOXYGEN_DEFS_FILE=$(DOXYGEN_DEFS_FILE) \
 			-DPA_DIR=$(LEGATO_ROOT)/platformAdaptor \
 			-DTEST_COVERAGE=$(call k2b,$(LE_CONFIG_TEST_COVERAGE)) \
 			-DINCLUDE_ECALL=$(call k2b,$(LE_CONFIG_ENABLE_ECALL)) \
