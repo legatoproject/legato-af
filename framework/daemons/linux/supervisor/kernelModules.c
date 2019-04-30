@@ -852,30 +852,24 @@ static le_result_t ModuleGetDependsInfo(KModuleObj_t *mod)
         depModNameNodePtr->link = LE_SLS_LINK_INIT;
         depModNameNodePtr->useCount = 0;
 
-        char koExt[4] = ".ko";
+        const char koExt[] = ".ko";
 
-        size_t sizeToken = strlen(token);
-        if (sizeToken > (LE_CFG_STR_LEN_BYTES - strlen(koExt) - 1))
+        if (le_utf8_Copy(depModNameNodePtr->modName,
+                        token,
+                        LE_CFG_STR_LEN_BYTES - strlen(koExt),
+                        NULL) != LE_OK)
         {
             LE_ERROR("Internal error: size of token is greater than module name string buffer.");
             return LE_OVERFLOW;
         }
 
-        strncpy(depModNameNodePtr->modName, token, LE_CFG_STR_LEN_BYTES - strlen(koExt) - 1);
-
-        /* If the bytes of token being copied does not have a terminating null byte then
-         * strncpy() produces an unterminated string in depModNameNodePtr->modName.
-         * We need to handle this by forcing null termination.
-         */
-        if (sizeToken > 0)
-        {
-            depModNameNodePtr->modName[sizeToken] = '\0';
-        }
-
         /* Concatenate ".ko" to the end of the module name as the legato modules stored in the hash
          * map are suffixed by ".ko". The module name is used to search through the hash map.
          */
-        strncat(depModNameNodePtr->modName, koExt, strlen(koExt));
+        le_utf8_Append(depModNameNodePtr->modName,
+                       koExt,
+                       LE_CFG_STR_LEN_BYTES,
+                       NULL);
 
         /* Depend modules might also include legato externel kernel modules. These modules cannot
          * cannot be installed using modprobe and is handled separtely using insmod/rmmod. Skip

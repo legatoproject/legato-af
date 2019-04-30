@@ -1849,7 +1849,7 @@ static void SetLevel
 )
 //--------------------------------------------------------------------------------------------------
 {
-    char message[128];
+    char message[256];
 
     // Parse the command data payload to get the level setting.
     le_log_Level_t level = log_StrToSeverityLevel(levelStr);
