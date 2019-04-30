@@ -10,6 +10,9 @@
 #ifndef LEGATO_SRC_MICROSUPERVISOR_INCLUDE_GUARD
 #define LEGATO_SRC_MICROSUPERVISOR_INCLUDE_GUARD
 
+/// Maximum allowed number of command line arguments
+#define MAX_ARGC (1 + 2 * LE_CONFIG_MAX_ARG_OPTIONS + LE_CONFIG_MAX_ARG_POSITIONAL_CALLBACKS)
+
 /**
  * Definitions for tasks managed by the microsupervisor.
  *
@@ -17,12 +20,13 @@
  */
 typedef struct
 {
-    const char* nameStr;                /// Task name -- derived from the process name
-    le_thread_Priority_t priority;      /// Task default priority
-    size_t stackSize;                   /// Task stack size.  If 0, default stack size is used.
-    le_thread_MainFunc_t entryPoint;    /// Task entry point function.
-    int defaultArgc;                    /// Default number of arguments
-    const char** defaultArgv;           /// Default argument list
+    const char               *nameStr;      /// Task name -- derived from the process name
+    le_thread_Priority_t      priority;     /// Task default priority
+    size_t                    stackSize;    /// Task stack size.
+    void                     *stackPtr;
+    le_thread_MainFunc_t      entryPoint;   /// Task entry point function.
+    int                       defaultArgc;  /// Default number of arguments
+    const char              **defaultArgv;  /// Default argument list
 }
 Task_t;
 
@@ -31,9 +35,11 @@ Task_t;
  */
 typedef struct
 {
-    le_thread_Ref_t threadRef;      ///< Thread reference
-    int argc;                       ///< Number of arguments
-    const char* argv[];             ///< Argument list
+    le_thread_Ref_t  threadRef;             ///< Thread reference
+    int              argc;                  ///< Number of arguments
+    const char      *argv[MAX_ARGC + 1];    ///< Argument list
+    char            *cmdlinePtr;            ///< Pointer to buffer of strings for command line
+                                            ///< arguments.
 }
 TaskInfo_t;
 
@@ -42,13 +48,13 @@ TaskInfo_t;
  */
 typedef struct
 {
-    const char* appNameStr;          ///< Application name
-    bool manualStart;                ///< If this app should not be started on system start.
-    uint32_t taskCount;              ///< Number of tasks in this application
-    const Task_t* taskList;          ///< Pointer to array of task definitions for this application.
-    TaskInfo_t** threadList;         ///< Pointer to array of task threads for this application.
-                                     ///< For running applications this array is the same size as
-                                     ///< taskList.  For non-running applications it may be NULL.
+    const char      *appNameStr;    ///< Application name
+    bool             manualStart;   ///< If this app should not be started on system start.
+    uint32_t         taskCount;     ///< Number of tasks in this application
+    const Task_t    *taskList;      ///< Pointer to array of task definitions for this application.
+    TaskInfo_t      *threadList;    ///< Pointer to array of task threads for this application.
+                                    ///< For running applications this array is the same size as
+                                    ///< taskList.  For non-running applications it may be NULL.
 }
 App_t;
 
@@ -143,6 +149,18 @@ LE_SHARED le_result_t le_microSupervisor_RunProc
     const char* procNameStr,
     int argc,
     const char* argv[]
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start a specific process (by name).  The command line is passed as a single string.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_microSupervisor_RunProcStr
+(
+    const char *appNameStr,     ///< App name.
+    const char *procNameStr,    ///< Process name.
+    const char *cmdlineStr      ///< Command line arguments.
 );
 
 //--------------------------------------------------------------------------------------------------

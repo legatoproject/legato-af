@@ -433,6 +433,14 @@ config REDUCE_FOOTPRINT
   of some tests.  Selecting this option may result in lower performance and
   slower applications.
 
+config STATIC_THREAD_STACKS
+  bool "Statically allocate thread stacks"
+  depends on RTOS
+  default n
+  ---help---
+  Allocate stack space for Legato threads from static memory (bss) rather than
+  from the heap.
+
 config MEM_POOLS
   bool "Use memory pools"
   default y
@@ -556,6 +564,7 @@ config MAX_MSG_LOCAL_CLIENT_SESSION_POOL_SIZE
 
 config MAX_ARG_OPTIONS
   int "Maximum number of command line options"
+  depends on MEM_POOLS
   range 0 65535
   default 16 if RTOS
   default 64
@@ -565,6 +574,7 @@ config MAX_ARG_OPTIONS
 
 config MAX_ARG_POSITIONAL_CALLBACKS
   int "Maximum number of positional argument callbacks"
+  depends on MEM_POOLS
   range 0 65535
   default 8 if RTOS
   default 128

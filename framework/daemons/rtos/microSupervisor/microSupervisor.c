@@ -12,17 +12,49 @@
 
 // Initializers are defined in these headers
 #include "args.h"
-#include "mem.h"
-#include "safeRef.h"
-#include "messaging.h"
-#include "log.h"
-#include "thread.h"
 #include "eventLoop.h"
-#include "timer.h"
-#include "test.h"
-#include "json.h"
+#include "fd.h"
+#include "fileDescriptor.h"
 #include "fs.h"
-#include "custom_os/fd_device.h"
+#include "json.h"
+#include "log.h"
+#include "mem.h"
+#include "messaging.h"
+#include "rand.h"
+#include "safeRef.h"
+#include "test.h"
+#include "thread.h"
+#include "timer.h"
+
+/// Number of large entries in the argument string pool.
+#define ARG_STRING_POOL_SIZE        LE_CONFIG_MAX_THREAD_POOL_SIZE
+/// Number of bytes in a large argument string entry.
+#define ARG_STRING_POOL_BYTES       240
+
+/// Number of small entries in the argument string pool.
+#define ARG_STRING_SMALL_POOL_SIZE  (ARG_STRING_POOL_SIZE * 2)
+/// Number of bytes in a large argument string entry.
+#define ARG_STRING_SMALL_POOL_BYTES ((ARG_STRING_POOL_BYTES + 16) / 4 - 16)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Calculate minimum of two values.
+ *
+ * @param   a   First value.
+ * @param   b   Second value.
+ *
+ * @return Smallest value.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MIN(a, b)   ((a) < (b) ? (a) : (b))
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool for argument strings.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t ArgStringPoolRef;
+LE_MEM_DEFINE_STATIC_POOL(ParentArgStringPool, ARG_STRING_POOL_SIZE, ARG_STRING_POOL_BYTES);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -64,23 +96,19 @@ static void InitLegatoFramework
 )
 {
     // The order of initialization is important.
-
-    // While microLegato is under development initialization of unimplemented modules is
-    // commented out.  As the module is implemented, either add implementation for _Init()
-    // function, or remove the init function if that module doesn't require initialization
-    // on RTOS.
-    arg_Init();
+    rand_Init();
     mem_Init();
-    log_Init();
-    safeRef_Init();    // Uses memory pools and hash maps.
-    mutex_Init();      // Uses memory pools.
-    sem_Init();        // Uses memory pools.
-    event_Init();      // Uses memory pools.
-    timer_Init();      // Uses event loop.
-    thread_Init();     // Uses event loop, memory pools and safe references.
-    test_SystemInit(); // Uses mutexes.
-    msg_Init();        // Uses event loop.
-    fs_Init();         // Uses memory pools and safe references and path manipulation.
+    log_Init();         // Uses memory pools.
+    safeRef_Init();     // Uses memory pools and hash maps.
+    mutex_Init();       // Uses memory pools.
+    sem_Init();         // Uses memory pools.
+    arg_Init();         // Uses memory pools.
+    event_Init();       // Uses memory pools.
+    timer_Init();       // Uses event loop.
+    thread_Init();      // Uses event loop, memory pools and safe references.
+    test_Init();        // Uses mutexes.
+    msg_Init();         // Uses event loop.
+    fs_Init();          // Uses memory pools and safe references and path manipulation.
     fd_Init();
     json_Init();
 
@@ -99,22 +127,40 @@ static void CleanupThread
     void* context
 )
 {
-    TaskInfo_t** threadInfoPtrPtr = context;
-    TaskInfo_t* threadInfoPtr = *threadInfoPtrPtr;
-    int i;
+    TaskInfo_t *threadInfoPtr = context;
 
     // Free argument list
-    for (i = 1; i < threadInfoPtr->argc; ++i)
+    if (threadInfoPtr->cmdlinePtr != NULL)
     {
-        free((void*)threadInfoPtr->argv[i]);
+        le_mem_Release(threadInfoPtr->cmdlinePtr);
     }
 
-    // Free thread info and NULL out stored info.
-    free(threadInfoPtr);
-
-    *threadInfoPtrPtr = NULL;
+    threadInfoPtr->threadRef = NULL;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Duplicate a string using a memory pool.
+ *
+ * @return The duplicated string, or NULL if the allocation failed.
+ */
+//--------------------------------------------------------------------------------------------------
+static char *PoolStrDup
+(
+    le_mem_PoolRef_t     poolRef,   ///< Pool to use for allocating the duplicate.
+    const char          *str        ///< String to duplicate.
+)
+{
+    char    *result;
+    size_t   length = strlen(str);
+
+    result = le_mem_TryVarAlloc(poolRef, length);
+    if (result != NULL)
+    {
+        strncpy(result, str, length);
+    }
+    return result;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -123,77 +169,110 @@ static void CleanupThread
 //--------------------------------------------------------------------------------------------------
 static le_result_t StartProc
 (
-    const App_t* appPtr,
-    const Task_t* taskPtr,
-    int argc,
-    const char* argv[]
+    const App_t      *appPtr,
+    const Task_t     *taskPtr,
+    int               argc,
+    const char      **argv,
+    const char       *cmdlineStr
 )
 {
-    int taskNum = taskPtr - appPtr->taskList;
-    int i;
+    int              i;
+    int              taskNum = taskPtr - appPtr->taskList;
+    le_result_t      result = LE_OK;
+    le_thread_Ref_t  currentThread;
+    TaskInfo_t      *taskInfoPtr;
 
     LE_DEBUG(" (%d) Creating task %s", taskNum, taskPtr->nameStr);
 
-    // Create task info -- adding space for task name and terminating NULL.
-    appPtr->threadList[taskNum] = malloc(sizeof(TaskInfo_t)
-                                         + (argc+2)*sizeof(char*));
+    taskInfoPtr = &appPtr->threadList[taskNum];
+    memset(taskInfoPtr, 0, sizeof(*taskInfoPtr));
+    LE_DEBUG("  +- taskInfo: %p", taskInfoPtr);
 
-    LE_DEBUG("  +- taskInfo: %p", &appPtr->threadList[taskNum]);
-    // Create argument list
-    appPtr->threadList[taskNum]->argc = argc + 1;
-    appPtr->threadList[taskNum]->argv[0] = taskPtr->nameStr;
-    for (i = 1; i <= argc; ++i)
+    if (cmdlineStr != NULL)
     {
-        LE_DEBUG("       %d) '%s'", i, argv[i-1]);
-        appPtr->threadList[taskNum]->argv[i] = strdup(argv[i-1]);
-    }
-    appPtr->threadList[taskNum]->argv[i] = NULL;
+        if (cmdlineStr[0] == '\0')
+        {
+            taskInfoPtr->argc = 1;
+            taskInfoPtr->argv[0] = taskPtr->nameStr;
+        }
+        else
+        {
+            taskInfoPtr->cmdlinePtr = PoolStrDup(ArgStringPoolRef, cmdlineStr);
+            if (taskInfoPtr->cmdlinePtr == NULL)
+            {
+                LE_WARN("Cannot create command line string for app '%s' task '%s'",
+                    appPtr->appNameStr, taskPtr->nameStr);
+                result = LE_NO_MEMORY;
+                goto err;
+            }
 
-    LE_DEBUG("  +- with %d arguments:", appPtr->threadList[taskNum]->argc);
-    for (i = 0; i < appPtr->threadList[taskNum]->argc; ++i)
+            taskInfoPtr->argc = MAX_ARGC;
+            le_arg_Split(taskPtr->nameStr, taskInfoPtr->cmdlinePtr,
+                &taskInfoPtr->argc, taskInfoPtr->argv);
+        }
+    }
+    else
     {
-        LE_DEBUG("     %d. '%s'", i, appPtr->threadList[taskNum]->argv[i]);
+        // It is assumed that argv and the strings it points to are long-lived.
+        taskInfoPtr->argc = MIN(argc, MAX_ARGC - 1);
+        memcpy(taskInfoPtr->argv, argv, taskInfoPtr->argc * sizeof(const char *));
     }
 
-    appPtr->threadList[taskNum]->threadRef =
-        le_thread_Create(taskPtr->nameStr, taskPtr->entryPoint, appPtr->threadList[taskNum]);
+    LE_DEBUG("  +- with %d arguments:", taskInfoPtr->argc);
+    for (i = 0; i < taskInfoPtr->argc; ++i)
+    {
+        LE_DEBUG("     %2d. '%s'", i, taskInfoPtr->argv[i]);
+    }
 
-    le_thread_Ref_t currentThread = appPtr->threadList[taskNum]->threadRef;
+    currentThread = le_thread_Create(taskPtr->nameStr, taskPtr->entryPoint, taskInfoPtr);
     if (!currentThread)
     {
         LE_WARN("Cannot create thread for app '%s' task '%s'",
                 appPtr->appNameStr,
                 taskPtr->nameStr);
-        return LE_NO_MEMORY;
+        result = LE_NO_MEMORY;
+        goto err;
     }
+    taskInfoPtr->threadRef = currentThread;
 
-
-    if (le_thread_SetPriority(currentThread,
-                              taskPtr->priority) != LE_OK)
+    if (le_thread_SetPriority(currentThread, taskPtr->priority) != LE_OK)
     {
         LE_WARN("Failed to set priority (%d) for app '%s' task '%s'",
                 taskPtr->priority,
                 appPtr->appNameStr,
                 taskPtr->nameStr);
-        return LE_FAULT;
+        result = LE_FAULT;
+        goto err;
     }
 
-    // If a stack size is set
-    if (taskPtr->stackSize)
+    if (taskPtr->stackPtr != NULL)
     {
-        if (le_thread_SetStackSize(currentThread,
-                                   taskPtr->stackSize) != LE_OK)
+        LE_ASSERT(taskPtr->stackSize > 0);
+
+        if (le_thread_SetStack(currentThread, taskPtr->stackPtr, taskPtr->stackSize) != LE_OK)
+        {
+            LE_WARN("Failed to set stack for app '%s' task '%s'",
+                    appPtr->appNameStr,
+                    taskPtr->nameStr);
+            result = LE_FAULT;
+            goto err;
+        }
+    }
+    else if (taskPtr->stackSize > 0)
+    {
+        if (le_thread_SetStackSize(currentThread, taskPtr->stackSize) != LE_OK)
         {
             LE_WARN("Failed to set stack size for app '%s' task '%s'",
                     appPtr->appNameStr,
                     taskPtr->nameStr);
-            return LE_FAULT;
+            result = LE_FAULT;
+            goto err;
         }
     }
 
     // Register function which will be called just before child thread exits
     le_thread_AddChildDestructor(currentThread,
-                                 CleanupThread,
+                                 &CleanupThread,
                                  &appPtr->threadList[taskNum]);
 
     LE_DEBUG(" (%d) Starting task %s", taskNum, taskPtr->nameStr);
@@ -201,6 +280,17 @@ static le_result_t StartProc
     le_thread_Start(currentThread);
 
     return LE_OK;
+
+err:
+    if (currentThread != NULL)
+    {
+        LE_CRIT("Allocated task %s has not been freed!", taskPtr->nameStr);
+    }
+    if (taskInfoPtr->cmdlinePtr != NULL)
+    {
+        le_mem_Release(taskInfoPtr->cmdlinePtr);
+    }
+    return result;
 }
 
 
@@ -214,14 +304,15 @@ static le_result_t StartApp
     const App_t* appPtr
 )
 {
-    int taskNum;
+    uint32_t taskNum;
     for (taskNum = 0; taskNum < appPtr->taskCount; ++taskNum)
     {
         const Task_t* currentTaskPtr = &appPtr->taskList[taskNum];
 
         le_result_t result = StartProc(appPtr, currentTaskPtr,
                                        currentTaskPtr->defaultArgc,
-                                       currentTaskPtr->defaultArgv);
+                                       currentTaskPtr->defaultArgv,
+                                       NULL);
         if (result != LE_OK)
         {
             return result;
@@ -271,7 +362,7 @@ LE_SHARED const Task_t* microSupervisor_FindTask
     const char* procNameStr              ///< [IN] task name
 )
 {
-    int taskNum;
+    uint32_t taskNum;
 
     for (taskNum = 0; taskNum < appPtr->taskCount; ++taskNum)
     {
@@ -302,10 +393,10 @@ LE_SHARED bool microSupervisor_IsAppRunning
 )
 {
     // Check if there are any running tasks; if so app is already started.
-    int task;
+    uint32_t task;
     for (task = 0; task < appPtr->taskCount; ++task)
     {
-        if (NULL != appPtr->threadList[task])
+        if (appPtr->threadList[task].threadRef != NULL)
         {
             return true;
         }
@@ -333,7 +424,7 @@ LE_SHARED bool microSupervisor_IsTaskRunning
     }
 
     ptrdiff_t taskNum = taskPtr - appPtr->taskList;
-    return !!appPtr->threadList[taskNum];
+    return (appPtr->threadList[taskNum].threadRef != NULL);
 }
 
 
@@ -347,11 +438,19 @@ LE_SHARED void le_microSupervisor_Main
     void
 )
 {
-    const App_t* currentAppPtr;
+    const App_t         *currentAppPtr;
+    le_mem_PoolRef_t     basePoolRef;
 
+#if HAVE_PTHREAD_SETNAME
     pthread_setname_np(pthread_self(), __func__);
+#endif
 
     InitLegatoFramework();
+
+    basePoolRef = le_mem_InitStaticPool(ParentArgStringPool, ARG_STRING_POOL_SIZE,
+        ARG_STRING_POOL_BYTES);
+    ArgStringPoolRef = le_mem_CreateReducedPool(basePoolRef, "ArgStringPool",
+        ARG_STRING_SMALL_POOL_SIZE, ARG_STRING_SMALL_POOL_BYTES);
 
     // Iterate over all apps.  App list is terminated by a NULL entry.
     for (currentAppPtr = _le_supervisor_GetSystemApps();
@@ -445,7 +544,42 @@ le_result_t LE_SHARED le_microSupervisor_RunProc
         return LE_NOT_FOUND;
     }
 
-    return StartProc(appPtr, taskPtr, argc, argv);
+    return StartProc(appPtr, taskPtr, argc, argv, NULL);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start a specific process (by name).  The command line is passed as a single string.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t LE_SHARED le_microSupervisor_RunProcStr
+(
+    const char *appNameStr,     ///< App name.
+    const char *procNameStr,    ///< Process name.
+    const char *cmdlineStr      ///< Command line arguments.
+)
+{
+    const App_t* appPtr;
+    const Task_t* taskPtr;
+
+    appPtr = microSupervisor_FindApp(appNameStr);
+    if (!appPtr)
+    {
+        // No such app
+        LE_WARN("No app found named '%s'", appNameStr);
+        return LE_NOT_FOUND;
+    }
+
+    taskPtr = microSupervisor_FindTask(appPtr, procNameStr);
+    if (!taskPtr)
+    {
+        // No such task/process
+        LE_WARN("No process found named '%s' in app '%s'", procNameStr, appNameStr);
+        return LE_NOT_FOUND;
+    }
+
+    return StartProc(appPtr, taskPtr, 0, NULL, cmdlineStr);
 }
 
 

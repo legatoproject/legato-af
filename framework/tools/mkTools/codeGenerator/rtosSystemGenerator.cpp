@@ -179,10 +179,25 @@ void GenerateRtosSystemTasks
         {
             for (auto processPtr : processEnvPtr->processes)
             {
+                std::string taskName = appPtr->name + "_" + processPtr->GetName();
                 std::string argListName =
-                    "_" + appPtr->name +
-                    "_" + processPtr->GetName() +
-                    "_Args";
+                    "_" + taskName + "_Args";
+                outputFile <<
+                    "#if LE_CONFIG_STATIC_THREAD_STACKS\n"
+                    "// Stack for process " << processPtr->GetName() << "\n"
+                    "LE_THREAD_DEFINE_STATIC_STACK(" << taskName << ", ";
+                if (processEnvPtr->maxStackBytes.IsSet())
+                {
+                    outputFile << processEnvPtr->maxStackBytes.Get();
+                }
+                else
+                {
+                    // Zero forces a minimum stack size
+                    outputFile << "0";
+                }
+                outputFile  << ");\n"
+                            << "#endif /* end LE_CONFIG_STATIC_THREAD_STACKS */\n\n";
+
                 outputFile <<
                     "// Arguments for process "
                            << processPtr->GetName()
@@ -208,6 +223,7 @@ void GenerateRtosSystemTasks
         {
             for (auto processPtr : processEnvPtr->processes)
             {
+                auto taskName = appPtr->name + std::string("_") + processPtr->GetName();
                 auto exePtr = appPtr->executables[model::Exe_t::NameFromPath(processPtr->exePath)];
 
                 outputFile <<
@@ -215,22 +231,22 @@ void GenerateRtosSystemTasks
                     "        .nameStr = \""
                            << processPtr->GetName()
                            << "\",\n"
-                    "        .priority = " << processEnvPtr->GetStartPriority() << ",\n";
-                if (processEnvPtr->maxStackBytes.IsSet())
-                {
-                    outputFile <<
-                        "        .stackSize = " << processEnvPtr->maxStackBytes.Get() << ",\n";
-                }
-                outputFile <<
+                    "        .priority = " << processEnvPtr->GetStartPriority() << ",\n"
+                    "#if LE_CONFIG_STATIC_THREAD_STACKS\n"
+                    "        .stackSize = sizeof(_thread_stack_" << taskName << "),\n"
+                    "        .stackPtr = _thread_stack_" << taskName << ",\n"
+                    "#else /* !LE_CONFIG_STATIC_THREAD_STACKS */\n"
+                    "        .stackSize = " << (processEnvPtr->maxStackBytes.IsSet() ?
+                        processEnvPtr->maxStackBytes.Get() : 0) << ",\n"
+                    "        .stackPtr = NULL,\n"
+                    "#endif /* end !LE_CONFIG_STATIC_THREAD_STACKS */\n"
                     "        .entryPoint = "
                            << exePtr->GetTargetInfo<target::RtosExeInfo_t>()->entryPoint
                            << ",\n"
                     "        .defaultArgc = "
                            << processPtr->commandLineArgs.size()
                            << ",\n"
-                    "        .defaultArgv = " << "_" << appPtr->name
-                                              << "_" << processPtr->GetName()
-                                              << "_Args\n"
+                    "        .defaultArgv = " << "_" << taskName << "_Args\n"
                     "    },\n";
             }
         }
@@ -239,14 +255,14 @@ void GenerateRtosSystemTasks
             "};\n"
             "\n"
             "// ThreadInfo list for app '" << appPtr->name << "'\n"
-            "static TaskInfo_t* " << appPtr->name
+            "static TaskInfo_t " << appPtr->name
                    << "TaskInfo[" << appPtr->executables.size() << "];\n";
     }
 
     // Generate app list
     outputFile <<
         "// App list for system '" << systemPtr->name << "'\n"
-        "/* global */ const App_t _le_supervisor_SystemApps[] =\n"
+        "static const App_t SystemApps[] =\n"
         "{\n";
     for (auto& appItem : systemPtr->apps)
     {
@@ -270,6 +286,14 @@ void GenerateRtosSystemTasks
         "        .appNameStr = NULL\n"
         "    }\n"
         "};\n"
+        "\n"
+        "const App_t *_le_supervisor_GetSystemApps\n"
+        "(\n"
+        "    void\n"
+        ")\n"
+        "{\n"
+        "    return SystemApps;\n"
+        "}\n"
         "\n";
 
     outputFile << "// CLI command list, if any\n";
