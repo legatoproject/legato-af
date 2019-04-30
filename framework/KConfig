@@ -15,7 +15,8 @@ config LINUX_TARGET_TOOLS
 ### Core Options ###
 
 config CUSTOM_FA
-  bool "Use custom framework adaptor"
+  bool "Use custom framework adaptor (EXPERIMENTAL)"
+  depends on EXPERIMENTAL
   default y if CUSTOM_OS
   default n
   ---help---
