@@ -366,10 +366,20 @@ le_result_t le_dcsCellular_SetProfileIndex
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Function to get the default profile's index
+ * Function to get the default profile's index. If a configured default exists on the config tree,
+ * it will use & return this profile index back to the caller. If no such config is on the config
+ * tree, the index from the input argument will be taken. 
+ *
+ * Then, this function calls le_mdc_GetProfile() with the taken index to let MDC create a cellular
+ * profile for this index if it's not existent yet.
+ *
+ * @input
+ *     - The cellular profile index to be used if no default has been configured on the config tree.
+ *       If it is given as unknown (i.e. -1 for MDC), MDC will create a default profile with a new
+ *       index which won't be -1 anymore.
  *
  * @return
- *     - The function returns back the profile index found
+ *     - The profile index found as the configured default or the default returned from MDC
  */
 //--------------------------------------------------------------------------------------------------
 uint32_t le_dcsCellular_GetProfileIndex
@@ -377,28 +387,44 @@ uint32_t le_dcsCellular_GetProfileIndex
     int32_t mdcIndex
 )
 {
-    int32_t index = mdcIndex;
+    int32_t index;
     le_mdc_ProfileRef_t profileRef;
     char configPath[LE_CFG_STR_LEN_BYTES];
+
+    // Seek to retrieve the configured default profile index from the config tree
     snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_CELLULAR);
-
     le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
-
-    // Get Cid Profile
     if (le_cfg_NodeExists(cfg, CFG_NODE_PROFILEINDEX))
     {
-        // Always take from config tree if configured
         index = le_cfg_GetInt(cfg, CFG_NODE_PROFILEINDEX, LE_MDC_DEFAULT_PROFILE);
         LE_DEBUG("Use data profile index %d from config tree", index);
     }
+    else
+    {
+        // Take the index given in the function input since no default has been configured
+        index = mdcIndex;
+    }
     le_cfg_CancelTxn(cfg);
 
-    // Get a modem data profile and create it if absent
+    // Retrieve the cellular profile for this index and let MDC create it if absent
     profileRef = le_mdc_GetProfile(index);
     if (!profileRef)
     {
         // Not likely case for failure to retrieve/create data profile
         LE_ERROR("Unable to retrieve data profile with %d", index);
+    }
+    else
+    {
+        // The above call to le_mdc_GetProfile() has returned the profileRef for use for our
+        // index. But the index for use with profileRef might be different and our copy of index
+        // here hasn't been updated yet. Thus, call MDC again with profileRef to update index.
+        //
+        // For example, index is originally -1. Then the call to le_mdc_GetProfile() gets MDC's
+        // default profile created anew with index 1. Thus, profileRef is returned back here
+        // non-NULL for use with profile index 1. Then, the call below updates our copy of
+        // index from -1 to 1.
+        // TB: The le_mdc_GetProfile(index) API should be improved to le_mdc_GetProfile(&index)
+        index = le_mdc_GetProfileIndex(profileRef);
     }
 
     LE_DEBUG("Cellular profile index retrieved: %d", index);
