@@ -142,7 +142,8 @@ config LINUX
   Run on Linux.
 
 config CUSTOM_OS
-  bool "Custom"
+  bool "Custom (EXPERIMENTAL)"
+  depends on EXPERIMENTAL
   select CUSTOM_FA
   ---help---
   Run on another operating system, such as a proprietary OS distribution.  A
@@ -165,7 +166,8 @@ config POSIX
   Indicate Legato is running on a POSIX platform.
 
 config LWIP
-  bool "Using lwIP network stack"
+  bool "Using lwIP network stack (EXPERIMENTAL)"
+  depends on EXPERIMENTAL
   default y if RTOS
   default n
   ---help---

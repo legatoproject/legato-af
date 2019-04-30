@@ -164,27 +164,28 @@ config SOCKET_LIB_SESSION_MAX
   Maximum number of simultaneous sockets. This value is used for sizing
   memory pools.
 
-menu "SSL encryption library"
+choice
+  prompt "SSL encryption library"
+  default SOCKET_LIB_USE_MBEDTLS if RTOS
+  default SOCKET_LIB_USE_OPENSSL
 
 config SOCKET_LIB_USE_OPENSSL
   bool "Use OpenSSL library for encryption"
-  default y if LINUX
-  default n
   ---help---
   Use OpenSSL library for SSL encryption in socket library
 
 config SOCKET_LIB_USE_MBEDTLS
-  bool "Use mbed TLS library for encryption"
-  default y if RTOS
-  default n
+  bool "Use mbed TLS library for encryption (EXPERIMENTAL)"
+  depends on EXPERIMENTAL
   ---help---
   Use mbed TLS library for SSL encryption in socket library
 
-endmenu #end "SSL encryption library"
+endchoice #end "SSL encryption library"
 
 endmenu # end "Socket Library"
 
 menu "Config Tree"
+visible if RTOS
 
 config ENABLE_CONFIG_TREE
   bool "Enable Config Tree"
