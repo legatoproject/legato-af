@@ -261,7 +261,7 @@ void dcs_ChannelSetChannelName
     }
     else
     {
-        strncpy(DataChannelName, channelName, LE_DCS_CHANNEL_NAME_MAX_LEN);
+        le_utf8_Copy(DataChannelName, channelName, sizeof(DataChannelName), NULL);
     }
 }
 
