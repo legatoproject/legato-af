@@ -585,6 +585,8 @@ LE_SHARED le_result_t le_comm_Delete (void* handle)
 {
     HandleRecord_t* connectionRecordPtr = (HandleRecord_t*) handle;
 
+    LE_INFO("Deleting AF_INET socket, fd %d .........", connectionRecordPtr->fd);
+
     if (FdMonitorRef != NULL)
     {
         // Delete FD monitor
@@ -594,6 +596,9 @@ LE_SHARED le_result_t le_comm_Delete (void* handle)
 
     // Remove the Handle record
     le_hashmap_Remove(HandleRecordByFileDescriptor, (void*)(intptr_t) connectionRecordPtr->fd);
+
+    // Shut-down the open socket
+    shutdown(connectionRecordPtr->fd, SHUT_RDWR);
 
     // Close Socket Handle
     close(connectionRecordPtr->fd);
