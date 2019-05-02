@@ -97,7 +97,7 @@ config PYTHON
   bool "Enable Python support (EXPERIMENTAL)"
   depends on POSIX
   depends on EXPERIMENTAL
-  default y
+  default n
   ---help---
   Enable support for Python.  Python is not supported on non-POSIX
   systems.
@@ -114,7 +114,7 @@ config JAVA
   bool "Enable Java support (EXPERIMENTAL)"
   depends on POSIX
   depends on EXPERIMENTAL
-  default y
+  default n
   ---help---
   Enable support for Java.  Java is not supported on non-POSIX systems.
 
