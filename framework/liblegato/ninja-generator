@@ -53,6 +53,9 @@ function ObjectsFromSources()
     done
 }
 
+# On failure, clean out ninja build script
+trap "rm -f $NINJA_SCRIPT" EXIT
+
 # Clean out previous ninja script, put in header
 cat > $NINJA_SCRIPT <<EOF
 # Build script for the Legato application framework's C runtime library (liblegato).
@@ -120,3 +123,5 @@ do
     echo
 
 done >> $NINJA_SCRIPT
+
+trap - EXIT
