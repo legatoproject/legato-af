@@ -1,3 +1,10 @@
+externalBuild:
+{
+   // Use a Makefile to build the kernel module and list in the preBuilt section
+   //"make -f ${CURDIR}/Makefile"
+}
+
+
 preBuilt:
 {
     // empty ko files for testing build

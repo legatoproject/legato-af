@@ -180,6 +180,10 @@ static parseTree::CompoundItem_t* ParseSection
     {
        return ParseComplexSection(lexer, sectionNameTokenPtr, ParseKernelModuleSubsection);
     }
+    else if (sectionName == "externalBuild")
+    {
+        return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
+    }
     else
     {
         lexer.ThrowException(

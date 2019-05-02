@@ -43,6 +43,31 @@ preBuilt:
 }
 @endcode
 
+@section defFilesMdef_externalBuild externalBuild
+
+Specifies a list of commands required to build a kernel module using an external build process.
+These commands will be executed in order by the shell.
+
+If @c externalBuild: section is used in a module, the @c sources: section cannot be used.
+
+A common use is to create a Makefile and to run the Makefile using an external build process. To use
+the module built from externalBuild section, list the module object in the preBuilt section.
+
+For example, suppose hello.ko module is built using a Makefile. Specify the make command in the
+externalBuild section and list the built module object in the preBuilt section.
+
+@code
+externalBuild:
+{
+    "make -f $CURDIR/Makefile"
+}
+
+preBuilt:
+{
+    $CURDIR/hello.ko
+}
+@endcode
+
 @section defFilesMdef_params params
 
 The optional @c params: section lists all module parameters that must be provided to the

@@ -37,6 +37,8 @@ struct Module_t : public HasTargetInfo_t
     std::list<ObjectFile_t*> subCObjectFiles; ///< List of .o files to build from C source files
                                               ///< only for sub kernel modules
 
+    std::list<std::string> externalBuildCommands; ///< List of external build commands.
+
     enum ModuleBuildType_t : int {Invalid = 0, Sources, Prebuilt};
 
     ModuleBuildType_t moduleBuildType; ///< Enum to differentiate type of kernel module:
@@ -94,6 +96,12 @@ struct Module_t : public HasTargetInfo_t
     void AddParam(std::string name, std::string value);  ///< Add module param
 
     static Module_t* GetModule(const std::string& path); ///< Get module object for a module name
+
+    // Is the module built using an external build process
+    bool HasExternalBuild() const
+    {
+        return (!externalBuildCommands.empty());
+    }
 
 protected:
 
