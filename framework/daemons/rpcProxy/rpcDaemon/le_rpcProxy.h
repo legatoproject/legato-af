@@ -109,6 +109,7 @@ typedef struct __attribute__((packed))
     char  systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];   ///< System-Name
     char  serviceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];  ///< Interface name
     char  protocolIdStr[LIMIT_MAX_PROTOCOL_ID_BYTES];       ///< Protocol ID Str
+    int32_t serviceCode; ///< Connect-Service Set-up result-code
 }
 rpcProxy_ConnectServiceMessage_t;
 

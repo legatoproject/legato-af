@@ -651,7 +651,8 @@ void rpcProxyNetwork_DeleteNetworkCommunicationChannel
         return;
     }
 
-    LE_INFO("Network Status: DOWN, system-name [%s], handle [%d] - deleting communication channel",
+    LE_INFO("Network Status: DOWN, system-name [%s], "
+            "handle [%d] - deleting communication channel",
             systemName,
             le_comm_GetId(networkRecordPtr->handle));
 
