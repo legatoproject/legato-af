@@ -79,6 +79,44 @@ void ModuleBuildScriptGenerator_t::GenerateBuildStatements
 )
 //--------------------------------------------------------------------------------------------------
 {
+    if (modulePtr->HasExternalBuild())
+    {
+        // Create external build commands for each line
+        std::list<std::string>::const_iterator commandPtr;
+        int lineno;
+        for (commandPtr = modulePtr->externalBuildCommands.begin(), lineno = 0;
+             commandPtr != modulePtr->externalBuildCommands.end();
+             ++commandPtr, ++lineno)
+        {
+            script << "build " << modulePtr->name << "ExternalBuild_line"
+                   << lineno
+                   << " : BuildExternal | ";
+            if (lineno != 0)
+            {
+                // Create dependencies to the previous command line
+                script << modulePtr->name << "ExternalBuild_line" << (lineno - 1);
+            }
+            script << std::endl;
+            script   << "  externalCommand = " << EscapeString(*commandPtr) << std::endl;
+        }
+
+        // Overall build depends on last line
+        script << "build " << modulePtr->name << "ExternalBuild";
+
+        // Assume every pre-built file listed in the preBuilt section could be a build output of
+        // the external build step
+        for (auto const& itKo : modulePtr->koFiles)
+        {
+            script << " " << itKo.first;
+        }
+
+        // Use phony rule to create alias
+        script << " : phony "
+               << modulePtr->name << "ExternalBuild_line"
+               << (lineno - 1);
+        script << "\n\n";
+    }
+
     if (modulePtr->moduleBuildType == model::Module_t::Sources)
     {
         for (auto const& it : modulePtr->koFiles)

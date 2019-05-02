@@ -67,6 +67,14 @@ void PrintSummary
         }
     }
 
+    if (modulePtr->HasExternalBuild())
+    {
+        for (const auto& itCmd : modulePtr->externalBuildCommands)
+        {
+            std::cout << " " << itCmd << std::endl;
+        }
+    }
+
     // load trigger.
     if (modulePtr->loadTrigger == model::Module_t::AUTO)
     {
@@ -95,15 +103,16 @@ static void AddSources
 {
     auto tokenListPtr = static_cast<parseTree::TokenList_t*>(sectionPtr);
 
-    if (modulePtr->moduleBuildType != model::Module_t::Prebuilt)
+    if ((modulePtr->moduleBuildType != model::Module_t::Prebuilt) &&
+        (!modulePtr->HasExternalBuild()))
     {
-        // Allow either Sources or Prebuilt section, not both
+        // Allow either sources or preBuilt/externalBuild section.
         modulePtr->moduleBuildType = model::Module_t::Sources;
     }
     else
     {
         throw mk::Exception_t(
-                  LE_I18N("error: Use either 'sources' or 'preBuilt' section."));
+                  LE_I18N("error: Use either 'sources' or 'preBuilt/externalBuild' section."));
     }
 
     for (auto contentPtr: tokenListPtr->Contents())
@@ -178,7 +187,7 @@ static void AddPrebuilt
 
     if (modulePtr->moduleBuildType != model::Module_t::Sources)
     {
-        // Allow either Sources or Prebuilt section, not both
+        // Allow either sources or preBuilt section.
         modulePtr->moduleBuildType = model::Module_t::Prebuilt;
     }
     else
@@ -197,7 +206,10 @@ static void AddPrebuilt
                 mk::format(LE_I18N("File '%s' is not a kernel module (*.ko)."), modulePath)
             );
         }
-        if (!file::FileExists(modulePath))
+
+        // If the file does not exist then the module might be generated from an external build
+        // process. Throw exception if externelBuild section does not exist.
+        if (!file::FileExists(modulePath) && !modulePtr->HasExternalBuild())
         {
             // Throw exception: file doesn't exist
             sectionPtr->ThrowException(
@@ -521,6 +533,26 @@ static void AddSubKernelModule
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Add the commands from a given "externalBuild:" section to a given Module_t object.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddExternalBuild
+(
+    model::Module_t* modulePtr,
+    parseTree::CompoundItem_t* sectionPtr ///< The parse tree object for the "externalBuild:" section.
+)
+{
+    auto tokenListPtr = static_cast<parseTree::TokenList_t*>(sectionPtr);
+
+    for (auto contentPtr: tokenListPtr->Contents())
+    {
+        modulePtr->externalBuildCommands.push_back(path::Unquote(DoSubstitution(contentPtr)));
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get a conceptual model for a module whose .mdef file can be found at a given path.
  *
  * @return Pointer to the module object.
@@ -615,6 +647,12 @@ model::Module_t* GetModule
                                                             modulePtr->requiredModulesOfSubMod;
             // Setup the build environment as both module name and sub module name is now available.
             modulePtr->SetBuildEnvironmentSubModule(modulePtr->defFilePtr->path);
+        }
+        else if (sectionName == "externalBuild")
+        {
+            modulePtr->name = path::RemoveSuffix(path::GetLastNode(modulePtr->defFilePtr->path),
+                                                 ".mdef");
+            AddExternalBuild(modulePtr, sectionPtr);
         }
         else
         {
