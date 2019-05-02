@@ -285,19 +285,8 @@ ifneq ($(TARGET),nothing)
   endif # end LE_CONFIG_CONFIGURED
 endif # end not "nothing" target
 
-# Enable Python support?
-ENABLE_PYTHON := 0
+# Python executable
 PYTHON_EXECUTABLE ?= python2.7
-ifeq ($(shell $(PYTHON_EXECUTABLE) -c "import cffi" > /dev/null 2>&1 && echo 1),1)
-  PYVERSION := python$(shell $(PYTHON_EXECUTABLE) -c \
-      'import sys; print("{0}.{1}".format(*sys.version_info))')
-  ifneq ($(wildcard $(LEGATO_SYSROOT)/usr/include/$(PYVERSION)/pyconfig.h),)
-    ENABLE_PYTHON := 1
-  endif
-endif
-
-# Enable Java support?
-ENABLE_JAVA ?= $(if $(JDK_INCLUDE_DIR),1,0)
 
 # KConfig executable
 KCONFIG ?= $(LEGATO_ROOT)/bin/kconfig
@@ -453,13 +442,9 @@ endif
 	$(L) KSET "$@ - SVCDIR_CLIENT_SOCKET_NAME"
 	$(Q)$(KCONFIG_SET_VALUE) "SVCDIR_CLIENT_SOCKET_NAME" string "LE_SVCDIR_CLIENT_SOCKET_NAME" $@
 
-	$(L) KSET "$@ - PYTHON"
-	$(Q)ENABLE_PYTHON=$(ENABLE_PYTHON) $(KCONFIG_SET_VALUE) "PYTHON" bool "ENABLE_PYTHON" $@
 	$(L) KSET "$@ - PYTHON_EXECUTABLE"
 	$(Q)$(KCONFIG_SET_VALUE) "PYTHON_EXECUTABLE" string "PYTHON_EXECUTABLE" $@
 
-	$(L) KSET "$@ - JAVA"
-	$(Q)ENABLE_JAVA=$(ENABLE_JAVA) $(KCONFIG_SET_VALUE) "JAVA" bool "ENABLE_JAVA" $@
 	$(L) KSET "$@ - JDK_INCLUDE_DIR"
 	$(Q)$(KCONFIG_SET_VALUE) "JDK_INCLUDE_DIR" string "JDK_INCLUDE_DIR" $@
 	$(L) KSET "$@ - EJDK_DIR"
