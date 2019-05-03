@@ -284,6 +284,10 @@ le_onoff_t;
 #  define  __has_warning(x) 0
 #endif
 
+#ifndef __has_attribute
+#  define __has_attribute(x) 0
+#endif
+
 #if !__is_identifier(_Nonnull)
 
 // Nullability information is not complete.  Normally clang will warn in that case.

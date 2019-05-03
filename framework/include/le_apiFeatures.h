@@ -17,8 +17,15 @@
  * @param   setting Configuration setting name string.
  */
 //--------------------------------------------------------------------------------------------------
-#define LE_FUNC_DISABLED(setting) \
+#if (defined(__GNUC__) && !defined(__clang__)) || __has_attribute(error)
+#  define LE_FUNC_DISABLED(setting) \
     __attribute__((error("Function unavailable due to " setting " configuration")))
+#elif __has_attribute(enable_if)
+#  define LE_FUNC_DISABLED(setting) \
+    __attribute__((enable_if(0, "Function unavailable due to " setting " configuration")))
+#else
+#  define LE_FUNC_DISABLED(setting)
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
