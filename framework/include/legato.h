@@ -190,6 +190,7 @@ extern "C" {
 #include "le_cdata.h"
 #include "le_semaphore.h"
 #include "le_hashmap.h"
+#include "le_redBlackTree.h"
 #include "le_safeRef.h"
 #include "le_thread.h"
 #include "le_eventLoop.h"
