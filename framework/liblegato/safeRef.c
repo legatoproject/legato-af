@@ -65,7 +65,7 @@ static const char ModuleName[] = "ref";
 // See le_safeRef.h for bodies & documentation
 //--------------------------------------------------------------------------------------------------
 #if !LE_CONFIG_EVENT_NAMES_ENABLED
-LE_DECLARE_INLINE le_ref_MapRef_t _le_ref_CreateMap
+LE_DEFINE_INLINE le_ref_MapRef_t le_ref_CreateMap
 (
     const char *name,
     size_t      maxRefs

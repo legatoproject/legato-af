@@ -78,19 +78,19 @@
 // See le_mem.h for bodies & documentation
 //--------------------------------------------------------------------------------------------------
 #if !LE_CONFIG_EVENT_NAMES_ENABLED
-LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_CreatePool
+LE_DEFINE_INLINE le_mem_PoolRef_t le_mem_CreatePool
 (
     const char* name,           ///< [IN] Name of the pool inside the component.
     size_t      objSize ///< [IN] Size of the individual objects to be allocated from this pool
                         /// (in bytes), e.g., sizeof(MyObject_t).
 );
 
-LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_FindPool
+LE_DEFINE_INLINE le_mem_PoolRef_t le_mem_FindPool
 (
     const char* name            ///< [IN] Name of the pool inside the component.
 );
 
-LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_CreateSubPool
+LE_DEFINE_INLINE le_mem_PoolRef_t le_mem_CreateSubPool
 (
     le_mem_PoolRef_t    superPool,      ///< [IN] Super-pool.
     const char*         name,           ///< [IN] Name of the sub-pool (will be copied into the
@@ -98,7 +98,7 @@ LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_CreateSubPool
     size_t              numObjects      ///< [IN] Number of objects to take from the super-pool.
 );
 
-LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_CreateReducedPool
+LE_DEFINE_INLINE le_mem_PoolRef_t le_mem_CreateReducedPool
 (
     le_mem_PoolRef_t    superPool,      ///< [IN] Super-pool.
     const char*         name,           ///< [IN] Name of the sub-pool (will be copied into the

@@ -200,14 +200,14 @@ static pthread_mutex_t Mutex = PTHREAD_MUTEX_INITIALIZER;   // Pthreads FAST mut
 // See le_thread.h for bodies & documentation
 //--------------------------------------------------------------------------------------------------
 #if !LE_CONFIG_THREAD_NAMES_ENABLED
-LE_DECLARE_INLINE le_thread_Ref_t le_thread_Create
+LE_DEFINE_INLINE le_thread_Ref_t le_thread_Create
 (
     const char*             name,
     le_thread_MainFunc_t    mainFunc,
     void*                   context
 );
 
-LE_DECLARE_INLINE le_thread_InitLegatoThreadData
+LE_DEFINE_INLINE void le_thread_InitLegatoThreadData
 (
     const char* name
 );

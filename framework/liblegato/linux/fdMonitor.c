@@ -76,7 +76,7 @@
 // See le_fdMonitor.h for bodies & documentation
 //--------------------------------------------------------------------------------------------------
 #if !LE_CONFIG_FD_MONITOR_NAMES_ENABLED
-LE_DECLARE_INLINE le_fdMonitor_Ref_t le_fdMonitor_Create
+LE_DEFINE_INLINE le_fdMonitor_Ref_t le_fdMonitor_Create
 (
     const char                  *name,
     int                          fd,

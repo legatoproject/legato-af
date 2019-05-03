@@ -76,7 +76,7 @@ static le_log_TraceRef_t TraceRef;
 // See le_timer.h for bodies & documentation
 //--------------------------------------------------------------------------------------------------
 #if !LE_CONFIG_TIMER_NAMES_ENABLED
-LE_DECLARE_INLINE le_timer_Ref_t le_timer_Create
+LE_DEFINE_INLINE le_timer_Ref_t le_timer_Create
 (
     const char *nameStr
 );

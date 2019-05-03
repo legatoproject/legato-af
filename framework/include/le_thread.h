@@ -294,7 +294,7 @@ le_thread_Ref_t le_thread_Create
  * Internal function used to implement le_thread_Create().
  */
 //--------------------------------------------------------------------------------------------------
-le_thread_Ref_t _le_thread_Create(le_thread_MainFunc_t mainFunc, void context);
+le_thread_Ref_t _le_thread_Create(le_thread_MainFunc_t mainFunc, void* context);
 /// @endcond
 //--------------------------------------------------------------------------------------------------
 /**
@@ -315,7 +315,7 @@ LE_DECLARE_INLINE le_thread_Ref_t le_thread_Create
     void*                   context
 )
 {
-    return le_thread_Create(mainFunc, context);
+    return _le_thread_Create(mainFunc, context);
 }
 #endif /* end LE_CONFIG_THREAD_NAMES_ENABLED */
 
@@ -673,7 +673,7 @@ void _le_thread_InitLegatoThreadData(void);
  *  @note This is not needed if the thread was started using le_thread_Start().
  **/
 //--------------------------------------------------------------------------------------------------
-LE_DECLARE_INLINE le_thread_InitLegatoThreadData
+LE_DECLARE_INLINE void le_thread_InitLegatoThreadData
 (
     const char* name
 )

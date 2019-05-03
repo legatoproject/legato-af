@@ -103,25 +103,25 @@
 // See le_eventLoop.h for bodies & documentation
 //--------------------------------------------------------------------------------------------------
 #if !LE_CONFIG_EVENT_NAMES_ENABLED
-LE_DECLARE_INLINE le_event_Id_t le_event_CreateId
+LE_DEFINE_INLINE le_event_Id_t le_event_CreateId
 (
     const char *name,
     size_t      payloadSize
 );
 
-LE_DECLARE_INLINE le_event_Id_t le_event_CreateIdWithRefCounting
+LE_DEFINE_INLINE le_event_Id_t le_event_CreateIdWithRefCounting
 (
     const char *name
 );
 
-LE_DECLARE_INLINE le_event_HandlerRef_t le_event_AddHandler
+LE_DEFINE_INLINE le_event_HandlerRef_t le_event_AddHandler
 (
     const char              *name,
     le_event_Id_t            eventId,
     le_event_HandlerFunc_t   handlerFunc
 );
 
-LE_DECLARE_INLINE le_event_HandlerRef_t le_event_AddLayeredHandler
+LE_DEFINE_INLINE le_event_HandlerRef_t le_event_AddLayeredHandler
 (
     const char                      *name,
     le_event_Id_t                    eventId,
