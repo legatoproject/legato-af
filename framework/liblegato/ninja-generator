@@ -67,12 +67,12 @@ EOF
 
 LIBLEGATO_SOURCES=$(ls $SRC_DIR/*.c)
 
-for ninja_config in $SRC_DIR/*/ninja-config; do
-    module_path=${ninja_config%/ninja-config}
+for module_path in $(find $SRC_DIR/* -type d -prune); do
+    ninja_config=${module_path}/ninja-config
     module_name=${module_path#$SRC_DIR/}
     config_name=LE_CONFIG_${module_name^^}
     if [ "${!config_name}" = y ]; then
-        source $ninja_config
+        [[ ! -f $ninja_config ]] || source $ninja_config
         LIBLEGATO_SOURCES="${LIBLEGATO_SOURCES} $(ls ${module_path}/*.c)"
         CFLAGS="${CFLAGS} -I${module_path}"
     fi
@@ -81,12 +81,9 @@ done
 # Include auto-generated header directory.
 CFLAGS="${CFLAGS} -I${LEGATO_ROOT}/build/${TARGET}/framework/include"
 
-if [ -z "$LIBLEGATO_SHARED" ]; then
-   cat >&2 <<EOF
-error: Don't know what to build.  liblegato ninja-config for OS did not set LIBLEGATO_SHARED variable
-EOF
-   exit 1
-fi
+
+LIBLEGATO_SHARED_NAME=$LIB_DIR/liblegato.so
+LIBLEGATO_STATIC_NAME=$LIB_DIR/liblegato.a
 
 LIBLEGATO_OBJECTS=$(ObjectsFromSources $LIBLEGATO_SOURCES)
 
@@ -102,8 +99,30 @@ rule Compile
             -I$LEGATO_ROOT/framework/include \$
             -I$LEGATO_ROOT/framework/liblegato
 
-build ${LIBLEGATO_SHARED} : DynamicLink $LIBLEGATO_OBJECTS
-build ${LIBLEGATO_STATIC} : StaticLink $LIBLEGATO_OBJECTS
+END-OF-HERE-DOC
+
+if [ "${LE_CONFIG_STRIP_STAGING_TREE}" = y ]; then
+
+    cat >>$NINJA_SCRIPT <<EOF
+rule DynamicLink
+  description = Dynamic linking liblegato
+  command = $CC -shared -Wl,--build-id -o \$out \$in -lpthread -lrt -ldl $NINJA_LDFLAGS \$
+            && $LEGATO_ROOT/framework/tools/scripts/splitdebug -d $DEBUG_DIR \$out
+
+EOF
+else
+    cat >>$NINJA_SCRIPT <<EOF
+rule DynamicLink
+  description = Dynamic linking liblegato
+  command = $CC -shared -Wl,--build-id -o \$out \$in -lpthread -lrt -ldl $NINJA_LDFLAGS
+
+EOF
+fi
+
+cat >>$NINJA_SCRIPT <<END-OF-HERE-DOC
+rule StaticLink
+  description = Static linking liblegato
+  command = $AR rcs \$out \$in
 
 rule RegenNinjaScript
   description = Regenerating framework build script
@@ -112,9 +131,18 @@ rule RegenNinjaScript
             export LEGATO_ROOT="$LEGATO_ROOT" && \$
             $NINJA_SCRIPT_GENERATOR
 
-build $NINJA_SCRIPT : RegenNinjaScript | $NINJA_SCRIPT_GENERATOR
-
 END-OF-HERE-DOC
+
+if [[ "$LIBLEGATO_SHARED" = y ]]; then
+    echo "build ${LIBLEGATO_SHARED_NAME} : DynamicLink $LIBLEGATO_OBJECTS"
+    echo
+fi >> $NINJA_SCRIPT
+
+# Always build static liblegato -- the start daemon needs it even on Linux
+cat >> $NINJA_SCRIPT <<EOF
+build ${LIBLEGATO_STATIC_NAME} : StaticLink $LIBLEGATO_OBJECTS
+
+EOF
 
 for sourceFile in $LIBLEGATO_SOURCES
 do
@@ -123,5 +151,7 @@ do
     echo
 
 done >> $NINJA_SCRIPT
+
+echo "build $NINJA_SCRIPT : RegenNinjaScript | $NINJA_SCRIPT_GENERATOR" >> $NINJA_SCRIPT
 
 trap - EXIT

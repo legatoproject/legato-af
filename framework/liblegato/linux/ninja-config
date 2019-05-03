@@ -47,27 +47,4 @@ else
     CFLAGS="$CFLAGS -O2 -fno-omit-frame-pointer"
 fi
 
-LIBLEGATO_SHARED=$LIB_DIR/liblegato.so
-LIBLEGATO_STATIC=$LIB_DIR/liblegato.a
-
-if [ "${LE_CONFIG_STRIP_STAGING_TREE}" = y ]; then
-
-    cat >>$NINJA_SCRIPT <<EOF
-rule DynamicLink
-  description = Dynamic linking liblegato
-  command = $CC -shared -Wl,--build-id -o \$out \$in -lpthread -lrt -ldl $NINJA_LDFLAGS \$
-            && $LEGATO_ROOT/framework/tools/scripts/splitdebug -d $DEBUG_DIR \$out
-EOF
-else
-    cat >>$NINJA_SCRIPT <<EOF
-rule DynamicLink
-  description = Dynamic linking liblegato
-  command = $CC -shared -Wl,--build-id -o \$out \$in -lpthread -lrt -ldl $NINJA_LDFLAGS
-EOF
-fi
-
-  cat >>$NINJA_SCRIPT <<EOF
-rule StaticLink
-  description = Static linking liblegato
-  command = $AR rcs \$out \$in
-EOF
+LIBLEGATO_SHARED=y

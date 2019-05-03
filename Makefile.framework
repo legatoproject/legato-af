@@ -139,7 +139,7 @@ NINJA_SCRIPT := $(BUILD_DIR)/build.ninja
 
 # If building with a custom framework adaptor, pull in custom definitions
 ifeq ($(LE_CONFIG_CUSTOM_FA),y)
-  include $(LE_CONFIG_CUSTOM_FA_PATH)/fa.mk
+  -include $(LE_CONFIG_CUSTOM_FA_PATH)/fa.mk
 endif
 
 # The daemons are built using mkexe.
