@@ -12,3 +12,9 @@
 #else
   #include "${LEGATO_TARGET_SINC}"
 #endif
+
+// Also include any Legato target cflags from the environment
+cflags:
+{
+    ${TARGET_CFLAGS}
+}
