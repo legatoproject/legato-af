@@ -1,7 +1,7 @@
 /** @page aboutReleaseNotes Release Notes
 
-Version: <b>Legato 19.02.0</b><br>
-Date: <b>March 22nd, 2019</b><br>
+Version: <b>Legato 19.04.0</b><br>
+Date: <b>May 10, 2019</b><br>
 @ref aboutLicenses "Legato Application Framework Licensing Information"
 
 Visit the <a href="https://legato.io/releases">release page</a> to @b download the tarball,
@@ -19,93 +19,75 @@ Update your profile to the latest version:
 $ leaf update
 @endverbatim
 
-@section rn1902_Features New Features
+@section rn1904_Features New Features
 
-List of new features in the 19.02 Release:
+List of new features in the 19.04 Release:
 
-@subsection rn1902_Features_kConfig KConfig
+@subsection rn1904_Features_exfeatures Experimental Features Section
 
-The Legato Application Framework now includes a KConfig menu system for configuring the Framework
-including:
-- General build parameters
-- Framework flags and options
-- Module specific flags and options
-- New Experimental Features
+We are now releasing alpha and beta features as experimental features within Legato. The
+current experimental features are @ref c_le_dcs and @ref conceptsRPC. Experimental features are not
+enabled by default in Legato and must be configured with @ref kconfigDescription.
 
-@ref kconfigDescription KConfig provides a unified mechanism for configuring the framework and
-service builds. This includes target selection, enabling security and diagnostic features, and many
-others. The full list of options may be found at KConfig Options. KConfig replaces a mixture of
-environment variables and preprocessor defines which were previously used to set the parameters of
-the build.
+To enable Experimental Features within KConfig:
+@verbatim
+make menuconfig_<target>
 
-Legato uses kconfig-frontends to manage KConfig files and configuration. This is a version of the
-Linux kernel's KConfig system that has been extracted and tweaked for independent use.
+General Setup
+  -> Prompt for experimental (alpha-quality) features
+@endverbatim
 
-@subsection rn1902_Features_cfgBinary Binary Support within ConfigTree
+@subsection rn1904_Features_dataConnection Migrate from le_data to le_dcs
 
-The config tree API (@ref c_le_cfg le_cfg.api) now includes support for Binary objects within the
-Config Tree.  New functions have been added to get, set and quick set of binary objects.
+The le_data API (@ref c_le_data le_data.api) has been refactored to use le_dcs
+(@ref c_le_dcs le_dcs.api).
+This addresses unexpected behaviors when using both le_data and le_dcs API simultaneously.
 
-@subsection rn1902_Features_devMode devMode Enhancements
+@subsection rn1904_Features_wifi New wifi configuration APIs
 
-The following Linux utilities have been added to the @c devMode app and are only available after you
-install @ref basicTargetDevMode "devMode" on your target device:
-- tcpdump - a traffic monitoring tool
-- iperf3/libiperf.so.0 - a network speed test tool
-- lsusb/usb-devices - lists all usb devices on a target
-- lsof - lists open files on a target
+Introduced new wifi APIs to configure access points for 802.11 n and/or ac
+(@ref c_le_wifi_ap le_wifiAp.api).
 
-@subsection rn1902_Features_AirVantage AirVantage
+@section rn1904_BFeatures Beta Features
 
-The AirVantage Platform Service now supports secured SMS wake-up requests from the AirVantage
-Service.
+@section rn1904_AFeatures Alpha Features
 
-@section rn1902_BFeatures Beta Features
-
-The following features have been added to the 19.02 Release and are feature complete but are still
-in a testing phase. Please provide feedback for these features on our
-[forums](https://forum.legato.io/).
-
-@section rn1902_AFeatures Alpha Features
-
-The following are the list of features that have been added into the 19.02 Release but are still
+The following are the list of features that have been added into the 19.04 Release but are still
 being developed and should not be used on production targets. Please provide feedback for these
 features on our [forums](https://forum.legato.io/):
 
-@subsection rn1902_AFeatures_CoAP AirVantage CoAP
+@subsection rn1904_AFeatures_RPC Legato RPC
 
-The AirVantage constrained application protocol is under development. @c le_coap.api is included in
-the @c interfaces directory but is only in a prototype state and should not be used on production
-targets at this time.
+Provide legato RPC as an experimental feature (@ref conceptsRPC Remote procedure call). Please refer
+to @ref getStartRPC Legato RPC on how to get started and also the current limitations.
 
-@subsection rn1902_AFeatures_DCS New Data Connection Service
+@subsection rn1904_AFeatures_IDE Experimental IDE
 
-A new Data Connection Service is under development. @c le_dcs.api is included in the @c interfaces
-directory but is only in a prototype state and should not be used on production targets at this time.
+The Legato team has launched the @b alpha version of a @ref tools_vsCode "Legato Plugin for VSCode".
 
-@section rn1902_Fixes Fixed Issues
+@section rn1904_Fixes Fixed Issues
 
-All changes are tagged in GitHub as "19.02.0".  The full list of changes and commit
+All changes are tagged in GitHub as "19.04.0".  The full list of changes and commit
 messages can be found on GitHub.
 
-- [Legato AF 19.02.0 Fixes](https://github.com/legatoproject/legato-af/commits/19.02.0)
+- [Legato AF 19.04.0 Fixes](https://github.com/legatoproject/legato-af/commits/19.04.0)
 
 @note This is only the list of fixes for the Application Framework and Platform Services, for the
-list of changes in the Platform Adapters and AVC Service view the commits under the tag 19.02.0 in
+list of changes in the Platform Adapters and AVC Service view the commits under the tag 19.04.0 in
 individual repositories on GitHub.
 
-@section rn1902_KnownIssues Known Issues
+@section rn1904_KnownIssues Known Issues
 
-@subsection rn1902_Constraints Constraints and Limitations
+@subsection rn1904_Constraints Constraints and Limitations
 
-@subsubsection rn1902_ConstraintsLinuxSupport Dev Machine Linux Version
+@subsubsection rn1904_ConstraintsLinuxSupport Dev Machine Linux Version
 
 To develop applications within the Legato Application Framework, a current supported
 [Long Term Support version of Ubuntu Linux](https://www.ubuntu.com/info/release-end-of-life) is
 required on your dev machine (or running in a virtual box on Windows).  Ubuntu 18.04 is the current
 @b recommended version to use on your dev machine.
 
-@subsubsection rn1902_ConstECMUSB ECM-USB modem manager issue
+@subsubsection rn1904_ConstECMUSB ECM-USB modem manager issue
 
 Ubuntu 15.10 and newer has Modem Manager version @c 1.4.12-1ubuntu1  installed by default which
 conflicts with the ECM-USB driver when connecting a target.  Modem manager may cause the Ubuntu
