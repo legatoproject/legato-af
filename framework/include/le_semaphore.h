@@ -142,14 +142,6 @@ le_sem_Ref_t le_sem_FindSemaphore
     const char* name
 );
 #else /* if not LE_CONFIG_SEM_NAMES_ENABLED */
-/// @cond HIDDEN_IN_USER_DOCS
-//--------------------------------------------------------------------------------------------------
-/**
- * Internal function used to implement le_sem_FindSemaphore().
- */
-//--------------------------------------------------------------------------------------------------
-le_sem_Ref_t _le_sem_FindSemaphore(void);
-/// @endcond
 //--------------------------------------------------------------------------------------------------
 /**
  * Finds a specified semaphore's name.
@@ -166,7 +158,7 @@ LE_DECLARE_INLINE le_sem_Ref_t le_sem_FindSemaphore
 )
 {
     // Cannot look up semaphores by name if names do not exist.
-    return _le_sem_FindSemaphore();
+    return NULL;
 }
 #endif /* end LE_CONFIG_SEM_NAMES_ENABLED */
 

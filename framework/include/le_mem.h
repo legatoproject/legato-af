@@ -1295,18 +1295,6 @@ static inline le_mem_PoolRef_t le_mem_FindPool
 }
 #else
 //--------------------------------------------------------------------------------------------------
-/** @cond HIDDEN_IN_USER_DOCS
- *
- * Internal function used to implement le_mem_FindPool() with automatic component scoping
- * of pool names.
- */
-//--------------------------------------------------------------------------------------------------
-le_mem_PoolRef_t _le_mem_FindPool
-(
-    const char* name            ///< [IN] Name of the pool inside the component.
-);
-/// @endcond
-//--------------------------------------------------------------------------------------------------
 /**
  * Finds a pool based on the pool's name.
  *
@@ -1319,7 +1307,7 @@ LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_FindPool
     const char* name            ///< [IN] Name of the pool inside the component.
 )
 {
-    return _le_mem_FindPool(name);
+    return NULL;
 }
 #endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
 

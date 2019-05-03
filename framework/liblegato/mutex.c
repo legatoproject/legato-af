@@ -136,12 +136,12 @@ le_mutex_Ref_t le_ifgen_InitMutexRef = NULL;
 // See le_mutex.h for bodies & documentation
 //--------------------------------------------------------------------------------------------------
 #if !LE_CONFIG_EVENT_NAMES_ENABLED
-LE_DECLARE_INLINE le_mutex_Ref_t le_mutex_CreateRecursive
+LE_DEFINE_INLINE le_mutex_Ref_t le_mutex_CreateRecursive
 (
     const char *nameStr
 );
 
-LE_DECLARE_INLINE le_mutex_Ref_t le_mutex_CreateNonRecursive
+LE_DEFINE_INLINE le_mutex_Ref_t le_mutex_CreateNonRecursive
 (
     const char *nameStr
 );

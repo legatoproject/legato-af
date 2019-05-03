@@ -46,7 +46,7 @@ Semaphore_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-#if LE_CONFIG_SEM_NAMES_ENABLED
+#if LE_CONFIG_LINUX_TARGET_TOOLS
     le_sem_Ref_t    waitingOnSemaphore; ///< Reference to the semaphore that is being waited on.
     le_dls_Link_t   waitingListLink;    ///< Used to link into Semaphore object's waiting list.
 #endif

@@ -37,8 +37,8 @@
 //
 // See le_hashmap.h for bodies & documentation
 //--------------------------------------------------------------------------------------------------
-#if !LE_CONFIG_EVENT_NAMES_ENABLED
-LE_DECLARE_INLINE le_hashmap_Ref_t le_hashmap_Create
+#if !LE_CONFIG_HASHMAP_NAMES_ENABLED
+LE_DEFINE_INLINE le_hashmap_Ref_t le_hashmap_Create
 (
     const char                *nameStr,
     size_t                     capacity,
