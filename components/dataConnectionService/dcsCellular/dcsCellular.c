@@ -352,7 +352,7 @@ le_result_t le_dcsCellular_SetProfileIndex
     // Set Cid profile
     snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_CELLULAR);
     cfg = le_cfg_CreateWriteTxn(configPath);
-    if (!cfg || !le_cfg_NodeExists(cfg, CFG_NODE_PROFILEINDEX))
+    if (!cfg)
     {
         LE_ERROR("Failed to create config tree node to write cellular profile index");
         return LE_FAULT;
