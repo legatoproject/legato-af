@@ -1013,7 +1013,7 @@ const char* rpcProxyConfig_GetSystemNameByServiceName
     }
 
     LE_WARN("Unable to find matching service-name [%s]", serviceName);
-    return "N/A";
+    return NULL;
 }
 
 
@@ -1043,7 +1043,7 @@ const char* rpcProxyConfig_GetRemoteServiceNameByServiceName
     }
 
     LE_WARN("Unable to find matching service-name [%s]", serviceName);
-    return "N/A";
+    return NULL;
 }
 
 
@@ -1073,7 +1073,7 @@ const char* rpcProxyConfig_GetServiceNameByRemoteServiceName
     }
 
     LE_WARN("Unable to find matching remote service-name [%s]", remoteServiceName);
-    return "N/A";
+    return NULL;
 }
 
 
@@ -1103,7 +1103,7 @@ const char* rpcProxyConfig_GetSystemNameByLinkName
     }
 
     LE_WARN("Unable to find matching link-name [%s]", linkName);
-    return "N/A";
+    return NULL;
 }
 
 

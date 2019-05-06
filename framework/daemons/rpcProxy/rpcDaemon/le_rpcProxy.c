@@ -45,6 +45,15 @@ static le_result_t DoConnectService(const char*, const uint32_t, const char*);
 static void ProcessServerResponse(rpcProxy_Message_t*, bool);
 static le_result_t RepackMessage(rpcProxy_Message_t*, rpcProxy_Message_t*, bool);
 static le_result_t PreProcessResponse(void*, size_t*);
+#ifndef RPC_PROXY_LOCAL_SERVICE
+static void SendDisconnectService(const char* systemName,
+                                  const char* serviceInstanceName,
+                                  const char* protocolIdStr);
+#endif
+static void SendSessionConnectRequest(const char* systemName,
+                                      const char* serviceInstanceName,
+                                      const char* protocolIdStr);
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -431,75 +440,6 @@ static void CleanUpLocalMessageResources
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Handler function for Expired Request-Response Message Timers
- */
-//--------------------------------------------------------------------------------------------------
-void requestResponseTimerExpiryHandler
-(
-    le_timer_Ref_t timerRef
-)
-{
-    // Retrieve the Request-Response Record, using the Proxy Message Id (stored in the contextPtr)
-    rpcProxy_ClientRequestResponseRecord_t* requestResponsePtr =
-        le_hashmap_Get(RequestResponseRefByProxyId, le_timer_GetContextPtr(timerRef));
-
-    if (requestResponsePtr != NULL)
-    {
-        rpcProxy_Message_t  proxyMessage;
-        le_result_t result;
-
-        LE_INFO("Request-Response has timed out, "
-                "service-id [%" PRIu32 "], proxy id [%" PRIu32 "]; "
-                "check if client-response needs to be generated",
-                requestResponsePtr->commonHeader.serviceId,
-                requestResponsePtr->commonHeader.id);
-
-        // Sanity Check
-        LE_ASSERT(requestResponsePtr->timerRef == timerRef);
-
-        // Set the Proxy Message ID, Service-ID, and type
-        proxyMessage.commonHeader.id = requestResponsePtr->commonHeader.id;
-        proxyMessage.commonHeader.serviceId = requestResponsePtr->commonHeader.serviceId;
-        proxyMessage.commonHeader.type = RPC_PROXY_SERVER_RESPONSE;
-
-        // Set the Legato Msg-ID
-        memcpy(&proxyMessage.message[0], &requestResponsePtr->msgId, LE_PACK_SIZEOF_UINT32);
-
-        // Generate LE_TIMOUT Server-Response
-        GenerateServerResponseErrorMessage(
-            &proxyMessage,
-            LE_TIMEOUT);
-
-        // Send the Response to the far-side
-        result = rpcProxy_SendMsg(requestResponsePtr->systemName, &proxyMessage);
-        if (result != LE_OK)
-        {
-            LE_ERROR("le_comm_Send failed, result %d", result);
-        }
-
-#ifdef RPC_PROXY_LOCAL_SERVICE
-        // Clean-up Local Message memory allocation associated with this Proxy Message ID
-        CleanUpLocalMessageResources(requestResponsePtr->commonHeader.id);
-#endif
-
-        // Remove entry from hash-map, using the Proxy Message Id
-        le_hashmap_Remove(RequestResponseRefByProxyId,
-                          (void*)(uintptr_t) requestResponsePtr->commonHeader.id);
-
-        // Free Proxy Message Copy Memory
-        le_mem_Release(requestResponsePtr);
-    }
-    else
-    {
-        LE_FATAL("Unable to retrieve Request-Response Reference");
-    }
-
-    // Delete Timer
-    le_timer_Delete(timerRef);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Handler function for Generic Expired Proxy Message Timers
  */
 //--------------------------------------------------------------------------------------------------
@@ -569,8 +509,11 @@ void rpcProxy_ProxyMessageTimerExpiryHandler
             // Make a copy of the Connect-Service-Request message
             memcpy(&proxyMessageCopy, proxyMessageCopyPtr, sizeof(proxyMessageCopy));
 
-            LE_INFO("%s timer expired; re-trigger request event",
-                    DisplayMessageType(proxyMessageCopy.commonHeader.type));
+            LE_INFO("%s timer expired; Re-trigger "
+                    "connect-service request '%s', service-id [%" PRIu32 "]",
+                    DisplayMessageType(proxyMessageCopy.commonHeader.type),
+                    proxyMessageCopy.serviceName,
+                    proxyMessageCopy.commonHeader.serviceId);
 
             // Re-trigger connect-service-request to the remote system
             le_result_t result =
@@ -766,6 +709,7 @@ le_result_t rpcProxy_SendMsg
     {
         case RPC_PROXY_CONNECT_SERVICE_REQUEST:
         case RPC_PROXY_CONNECT_SERVICE_RESPONSE:
+        case RPC_PROXY_DISCONNECT_SERVICE:
         {
             // Set a pointer to the message
             rpcProxy_ConnectServiceMessage_t* proxyMsgPtr =
@@ -1604,6 +1548,7 @@ static le_result_t PreProcessResponse
     {
         case RPC_PROXY_CONNECT_SERVICE_REQUEST:
         case RPC_PROXY_CONNECT_SERVICE_RESPONSE:
+        case RPC_PROXY_DISCONNECT_SERVICE:
         {
             // Set a pointer to the message
             rpcProxy_ConnectServiceMessage_t* proxyMsgPtr =
@@ -1894,15 +1839,6 @@ static void ServerResponseCompletionCallback
         return;
     }
 
-    // If the Timer Reference is NULL, it must be assumed that the
-    // timer has already expired and this incoming response is to be discarded
-    if (requestResponsePtr->timerRef != NULL)
-    {
-        // Delete Timer, it's no longer needed
-        le_timer_Delete(requestResponsePtr->timerRef);
-        requestResponsePtr->timerRef = NULL;
-    }
-
     // Sanity Check - Verify Message Type
     if (requestResponsePtr->commonHeader.type != RPC_PROXY_REQUEST_RESPONSE)
     {
@@ -1985,16 +1921,41 @@ static le_result_t ProcessClientRequest
     //
 
     // Retrieve the Session reference for the specified Service-ID
-    sessionRef = le_hashmap_Get(SessionRefMapByID, (void*)(uintptr_t) proxyMessagePtr->commonHeader.serviceId);
+    sessionRef =
+        le_hashmap_Get(
+            SessionRefMapByID,
+            (void*)(uintptr_t) proxyMessagePtr->commonHeader.serviceId);
+
     if (sessionRef == NULL)
     {
         LE_ERROR("Unable to find matching Session Reference "
                  "in hashmap, service-id [%" PRIu32 "]",
                  proxyMessagePtr->commonHeader.serviceId);
-        return LE_FAULT;
+
+        // Generate LE_UNAVAILABLE Server-Response
+        GenerateServerResponseErrorMessage(
+            proxyMessagePtr,
+            LE_UNAVAILABLE);
+
+        // Send the Response to the far-side
+        le_result_t result =
+            rpcProxy_SendMsg(systemName, proxyMessagePtr);
+
+        if (result != LE_OK)
+        {
+            LE_ERROR("le_comm_Send failed, result %d", result);
+        }
+
+#ifdef RPC_PROXY_LOCAL_SERVICE
+        // Clean-up Local Message memory allocation associated with this Proxy Message ID
+        CleanUpLocalMessageResources(proxyMessagePtr->commonHeader.id);
+#endif
+
+        return LE_UNAVAILABLE;
     }
 
-    LE_DEBUG("Successfully retrieved Session Reference, session safe reference [%" PRIuPTR "]",
+    LE_DEBUG("Successfully retrieved Session Reference, "
+             "session safe reference [%" PRIuPTR "]",
              (uintptr_t) sessionRef);
 
     // Create Client Message
@@ -2030,7 +1991,6 @@ static le_result_t ProcessClientRequest
 #ifdef RPC_PROXY_LOCAL_SERVICE
         uint32_t proxyId = proxyMessagePtr->commonHeader.id;
 #endif
-        le_result_t result;
 
         LE_WARN("Request-Response Record memory pool is exhausted, "
                 "service-id [%" PRIu32 "], proxy id [%" PRIu32 "] - "
@@ -2048,7 +2008,7 @@ static le_result_t ProcessClientRequest
             LE_NO_MEMORY);
 
         // Send the Response to the far-side
-        result = rpcProxy_SendMsg(systemName, proxyMessagePtr);
+        le_result_t result = rpcProxy_SendMsg(systemName, proxyMessagePtr);
         if (result != LE_OK)
         {
             LE_ERROR("le_comm_Send failed, result %d", result);
@@ -2059,7 +2019,7 @@ static le_result_t ProcessClientRequest
         CleanUpLocalMessageResources(proxyId);
 #endif
 
-        return result;
+        return LE_NO_MEMORY;
     }
 
     //
@@ -2070,7 +2030,6 @@ static le_result_t ProcessClientRequest
     requestResponsePtr->commonHeader.id = proxyMessagePtr->commonHeader.id;
     requestResponsePtr->commonHeader.serviceId = proxyMessagePtr->commonHeader.serviceId;
     requestResponsePtr->commonHeader.type = RPC_PROXY_REQUEST_RESPONSE;
-    requestResponsePtr->timerRef = NULL;
 
     // Copy the Source of the request (system-name) so we know who to send the response back to
     le_utf8_Copy(requestResponsePtr->systemName,
@@ -2084,34 +2043,6 @@ static le_result_t ProcessClientRequest
     // Send an asynchronous request-response to the server.
     le_msg_RequestResponse(msgRef, &ServerResponseCompletionCallback,
                            (void*)(uintptr_t) proxyMessagePtr->commonHeader.id);
-
-    // Check if client requires a response
-    if (le_msg_NeedsResponse(msgRef))
-    {
-        //
-        // Client requires a response - Set-up a timer in the event
-        // we do not hear back from the server
-        //
-        le_clk_Time_t timerInterval = {.sec=RPC_PROXY_REQUEST_RESPONSE_TIMER_INTERVAL, .usec=0};
-
-        // Create a timer to handle "lost" requests
-        requestResponsePtr->timerRef = le_timer_Create("Request-Response timer");
-        le_timer_SetInterval(requestResponsePtr->timerRef , timerInterval);
-        le_timer_SetHandler(requestResponsePtr->timerRef , requestResponseTimerExpiryHandler);
-        le_timer_SetWakeup(requestResponsePtr->timerRef , false);
-
-        // Set the Proxy Message ID in the Timer's Context Ptr
-        le_timer_SetContextPtr(requestResponsePtr->timerRef,
-                               (void*)(uintptr_t) proxyMessagePtr->commonHeader.id);
-
-        // Start timer
-        le_timer_Start(requestResponsePtr->timerRef);
-
-        LE_DEBUG("Starting timer for Request-Response, "
-                 "service-id [%" PRIu32 "], proxy id [%" PRIu32 "]",
-                 proxyMessagePtr->commonHeader.serviceId,
-                 proxyMessagePtr->commonHeader.id);
-    }
 
     // Store the Request-Response Record Ptr in a hashmap,
     // using the Proxy Message ID as a key, so that it can be retreived later by either
@@ -2141,9 +2072,6 @@ static void ServerCloseSessionHandler
     void*               contextPtr ///< [IN] Context pointer to identify the service
 )
 {
-    const char* systemName;
-    const char* serviceName;
-
     // Confirm context pointer is valid
     if (contextPtr == NULL)
     {
@@ -2161,8 +2089,16 @@ static void ServerCloseSessionHandler
     rpcProxy_ExternServer_t* contextDataPtr = (rpcProxy_ExternServer_t*) contextPtr;
 
     // Retrieve the system-name and service-name from the context data pointer
-    serviceName = contextDataPtr->serviceName;
-    systemName = rpcProxyConfig_GetSystemNameByServiceName(contextDataPtr->serviceName);
+    const char* serviceName = contextDataPtr->serviceName;
+    const char* systemName =
+        rpcProxyConfig_GetSystemNameByServiceName(contextDataPtr->serviceName);
+
+    if (systemName == NULL)
+    {
+        LE_ERROR("Unable to retrieve system-name for service-name '%s'",
+                 contextDataPtr->serviceName);
+        return;
+    }
 
     LE_INFO("Client session %p closed, service '%s', system '%s'",
             sessionRef, serviceName, systemName);
@@ -2179,9 +2115,6 @@ static void ServerOpenSessionHandler
     void*               contextPtr ///< [IN] Context pointer to identify the service
 )
 {
-    const char* systemName;
-    const char* serviceName;
-
     // Confirm context pointer is valid
     if (contextPtr == NULL)
     {
@@ -2199,8 +2132,16 @@ static void ServerOpenSessionHandler
     rpcProxy_ExternServer_t* contextDataPtr = (rpcProxy_ExternServer_t*) contextPtr;
 
     // Retrieve the system-name and service-name from the context data pointer
-    serviceName = contextDataPtr->serviceName;
-    systemName = rpcProxyConfig_GetSystemNameByServiceName(contextDataPtr->serviceName);
+    const char* serviceName = contextDataPtr->serviceName;
+    const char* systemName =
+        rpcProxyConfig_GetSystemNameByServiceName(contextDataPtr->serviceName);
+
+    if (systemName == NULL)
+    {
+        LE_ERROR("Unable to retrieve system-name for service-name '%s'",
+                 contextDataPtr->serviceName);
+        return;
+    }
 
     LE_INFO("Client session %p opened, service '%s', system '%s'",
             sessionRef, serviceName, systemName);
@@ -2224,6 +2165,26 @@ static void ClientServiceCloseHandler
     }
 
     LE_INFO("Service %p closed", sessionRef);
+
+    rpcProxy_ExternClient_t* bindingRefPtr = (rpcProxy_ExternClient_t*) contextPtr;
+
+    // Retrieve the system-name for the specified service-name
+    const char* systemName =
+        rpcProxyConfig_GetSystemNameByServiceName(bindingRefPtr->serviceName);
+
+    if (systemName == NULL)
+    {
+        LE_ERROR("Unable to retrieve system-name for service-name '%s'",
+                 bindingRefPtr->serviceName);
+        return;
+    }
+
+    // Generate a Disconnect-Service event to inform the far-side that this
+    // service is no longer available
+    SendDisconnectService(
+        systemName,
+        bindingRefPtr->serviceName,
+        bindingRefPtr->protocolIdStr);
 }
 #endif
 
@@ -2321,18 +2282,31 @@ static le_result_t ProcessConnectServiceResponse
     for (uint8_t index = 0; rpcProxy_ServerReferenceArray[index]; index++)
     {
         const rpcProxy_ExternServer_t* serviceRefPtr = NULL;
-        const char* systemName = NULL;
-        const char* serviceName = NULL;
 
         // Set a pointer to the Service Reference element
         serviceRefPtr = rpcProxy_ServerReferenceArray[index];
 
         // Retrieve the system-name for the specified service-name
-        systemName = rpcProxyConfig_GetSystemNameByServiceName(serviceRefPtr->serviceName);
+        const char* systemName =
+            rpcProxyConfig_GetSystemNameByServiceName(serviceRefPtr->serviceName);
+
+        if (systemName == NULL)
+        {
+            LE_ERROR("Unable to retrieve system-name for service-name '%s'",
+                     serviceRefPtr->serviceName);
+            return LE_FAULT;
+        }
 
         // Retrieve the service-name for the specified remote service-name
-        serviceName =
+        const char* serviceName =
             rpcProxyConfig_GetServiceNameByRemoteServiceName(proxyMessagePtr->serviceName);
+
+        if (serviceName == NULL)
+        {
+            LE_ERROR("Unable to retrieve service-name for remote service-name '%s'",
+                     proxyMessagePtr->serviceName);
+            return LE_FAULT;
+        }
 
         // Compare the system-name, remote service-name, and protocol-Id-str
         if ((strcmp(systemName, proxyMessagePtr->systemName) == 0) &&
@@ -2479,6 +2453,137 @@ static le_result_t ProcessConnectServiceRequest
     return result;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function for Deleting a Service, using the service-name
+ */
+//--------------------------------------------------------------------------------------------------
+static void DeleteService
+(
+    const char* serviceName  ///< Name of service being deleted
+)
+{
+    // Retrieve the Service-ID, using the service-name
+    uint32_t* serviceIdCopyPtr =
+        le_hashmap_Get(ServiceIDMapByName, serviceName);
+
+    if (serviceIdCopyPtr != NULL)
+    {
+        // Retrieve the Session reference, using the Service-ID
+        le_msg_ServiceRef_t serviceRef =
+            le_hashmap_Get(ServiceRefMapByID, (void*)(uintptr_t) *serviceIdCopyPtr);
+
+        if (serviceRef != NULL)
+        {
+            LE_INFO("======= Stopping service '%s' ========", serviceName);
+
+#ifndef RPC_PROXY_LOCAL_SERVICE
+            // Delete the server side of the service
+            le_msg_DeleteService(serviceRef);
+#endif
+
+            // Remove sessionRef from hash-map
+            le_hashmap_Remove(ServiceRefMapByID, (void*)(uintptr_t) *serviceIdCopyPtr);
+
+            LE_INFO("======= Service '%s' stopped ========", serviceName);
+        }
+
+        // Free the memory allocated for the Service-ID
+        le_mem_Release(serviceIdCopyPtr);
+    }
+    else
+    {
+        LE_INFO("Unable to retrieve service-Id for service '%s'",
+                serviceName);
+    }
+
+    // Get the stored key object
+    char* serviceNameCopyPtr =
+        le_hashmap_GetStoredKey(ServiceIDMapByName, serviceName);
+
+    if (serviceNameCopyPtr != NULL)
+    {
+        // Remove the Service-ID in a hashmap, using the service-name as a key
+        le_hashmap_Remove(ServiceIDMapByName, serviceNameCopyPtr);
+
+        LE_INFO("Successfully removed Service ID Reference, service-name [%s]",
+                serviceNameCopyPtr);
+
+        // Free the memory allocated for the Service Name string
+        le_mem_Release(serviceNameCopyPtr);
+    }
+    else
+    {
+        LE_INFO("Unable to retrieve service-name object key "
+                "from hashmap record, service '%s'",
+                serviceName);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function for Processing Disconnect Service Request
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t ProcessDisconnectService
+(
+    const char* systemName, ///< [IN] Name of the system that sent the Connect-Service Request
+    rpcProxy_ConnectServiceMessage_t* proxyMessagePtr ///< [IN] Pointer to the Proxy Message
+)
+{
+    // Sanity Check - Verify Message Type
+    LE_ASSERT(proxyMessagePtr->commonHeader.type == RPC_PROXY_DISCONNECT_SERVICE);
+
+    LE_INFO("======= Stopping RPC Proxy server for '%s' service, '%s' protocol ========",
+            proxyMessagePtr->serviceName, proxyMessagePtr->protocolIdStr);
+
+    const char* serviceName =
+        rpcProxyConfig_GetServiceNameByRemoteServiceName(proxyMessagePtr->serviceName);
+
+    if (serviceName == NULL)
+    {
+        LE_ERROR("Unable to retrieve service-name for remote service-name '%s'",
+                 proxyMessagePtr->serviceName);
+        return LE_FAULT;
+    }
+
+    // Delete the Service associated with the service-name
+    DeleteService(serviceName);
+
+    //
+    // Clean-up Service ID Safe Reference for this service-name, if it exists
+    //
+    le_ref_IterRef_t iterRef = le_ref_GetIterator(ServiceIDSafeRefMap);
+
+    // Iterate over all Service-ID Safe References looking for the service-name match
+    while (le_ref_NextNode(iterRef) == LE_OK)
+    {
+        if (strcmp(le_ref_GetValue(iterRef), serviceName) == 0)
+        {
+            LE_INFO("Releasing Service ID Safe Reference, "
+                    "service-name [%s], service-id [%" PRIuPTR "]",
+                    (char*) le_ref_GetValue(iterRef),
+                    (uintptr_t) le_ref_GetSafeRef(iterRef));
+
+            // Free the Service-ID Safe Reference now that the Service is being deleted
+            le_ref_DeleteRef(ServiceIDSafeRefMap, (void*) le_ref_GetSafeRef(iterRef));
+            break;
+        }
+    }
+
+    // Send Connect-Service Message to the far-side for the specified service-name
+    // and wait for a valid Connect-Service response before advertising the service
+    SendSessionConnectRequest(
+        systemName,
+        proxyMessagePtr->serviceName,
+        proxyMessagePtr->protocolIdStr);
+
+    return LE_OK;
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Receive Handler Callback Function for RPC Communication
@@ -2562,7 +2667,8 @@ void rpcProxy_AsyncRecvHandler
 
             case RPC_PROXY_CLIENT_REQUEST:
             {
-                LE_DEBUG("Received Proxy Client-Request Message, id [%" PRIu32 "]", commonHeaderPtr->id);
+                LE_DEBUG("Received Proxy Client-Request Message, id [%" PRIu32 "]",
+                         commonHeaderPtr->id);
 
                 result = ProcessClientRequest(systemName, (rpcProxy_Message_t*) buffer);
                 break;
@@ -2570,29 +2676,41 @@ void rpcProxy_AsyncRecvHandler
 
             case RPC_PROXY_SERVER_RESPONSE:
             {
-                LE_DEBUG("Received Proxy Server-Response Message, proxy id [%" PRIu32 "]", commonHeaderPtr->id);
+                LE_DEBUG("Received Proxy Server-Response Message, proxy id [%" PRIu32 "]",
+                         commonHeaderPtr->id);
                 ProcessServerResponse((rpcProxy_Message_t*) buffer, true);
                 break;
             }
 
             case RPC_PROXY_CONNECT_SERVICE_REQUEST:
             {
-                LE_DEBUG("Received Proxy Connect-Service-Request Message, id [%" PRIu32 "]", commonHeaderPtr->id);
-                result = ProcessConnectServiceRequest(systemName, (rpcProxy_ConnectServiceMessage_t*) buffer);
+                LE_DEBUG("Received Proxy Connect-Service-Request Message, id [%" PRIu32 "]",
+                         commonHeaderPtr->id);
+                result =
+                    ProcessConnectServiceRequest(
+                        systemName,
+                        (rpcProxy_ConnectServiceMessage_t*) buffer);
                 break;
             }
 
             case RPC_PROXY_CONNECT_SERVICE_RESPONSE:
             {
-                LE_DEBUG("Received Proxy Connect-Service-Response Message, id [%" PRIu32 "]", commonHeaderPtr->id);
-                result = ProcessConnectServiceResponse((rpcProxy_ConnectServiceMessage_t*) buffer);
+                LE_DEBUG("Received Proxy Connect-Service-Response Message, id [%" PRIu32 "]",
+                         commonHeaderPtr->id);
+                result =
+                    ProcessConnectServiceResponse(
+                        (rpcProxy_ConnectServiceMessage_t*) buffer);
                 break;
             }
 
             case RPC_PROXY_DISCONNECT_SERVICE:
             {
-                // NOTE:  To be done
-                LE_DEBUG("Received Proxy Disconnect-Service Message, id [%" PRIu32 "]", commonHeaderPtr->id);
+                LE_DEBUG("Received Proxy Disconnect-Service Message, id [%" PRIu32 "]",
+                        commonHeaderPtr->id);
+                result =
+                    ProcessDisconnectService(
+                        systemName,
+                        (rpcProxy_ConnectServiceMessage_t*) buffer);
                 break;
             }
 
@@ -2621,7 +2739,9 @@ void rpcProxy_AsyncRecvHandler
     }
     else
     {
-        LE_ERROR("Unknown POLL event, handle [%" PRIiPTR "], events [0x%x]", (intptr_t) handle, events);
+        LE_ERROR("Unknown POLL event, handle [%" PRIiPTR "], events [0x%x]",
+                 (intptr_t) handle,
+                 events);
     }
 
     return;
@@ -2646,8 +2766,6 @@ static void ServerMsgRecvHandler
 {
     rpcProxy_Message_t  proxyMessage;
     rpcProxy_Message_t *proxyMessageCopyPtr = NULL;
-    const char*         systemName;
-    const char*         serviceName;
     le_result_t         result;
 
     // Confirm context pointer is valid
@@ -2661,8 +2779,16 @@ static void ServerMsgRecvHandler
     const rpcProxy_ExternServer_t* contextDataPtr = (rpcProxy_ExternServer_t*) contextPtr;
 
     // Retrieve the system-name and service-name from the context data pointer
-    serviceName = contextDataPtr->serviceName;
-    systemName = rpcProxyConfig_GetSystemNameByServiceName(contextDataPtr->serviceName);
+    const char* serviceName = contextDataPtr->serviceName;
+    const char* systemName =
+        rpcProxyConfig_GetSystemNameByServiceName(contextDataPtr->serviceName);
+
+    if (systemName == NULL)
+    {
+        LE_ERROR("Unable to retrieve system-name for service-name '%s'",
+                 contextDataPtr->serviceName);
+        return;
+    }
 
     //
     // Prepare a Client-Request Proxy Message
@@ -2689,6 +2815,7 @@ static void ServerMsgRecvHandler
     uint32_t* serviceIdPtr = le_hashmap_Get(ServiceIDMapByName, serviceName);
     if (serviceIdPtr == NULL)
     {
+        // Raise an error message and return
         LE_ERROR("Service is not available, service-name [%s]", serviceName);
         goto exit;
     }
@@ -2697,6 +2824,7 @@ static void ServerMsgRecvHandler
 
     if (sizeof(proxyMessage.message) < le_msg_GetMaxPayloadSize(msgRef))
     {
+        // Raise an error message and return
         LE_ERROR("Proxy Message buffer too small");
         goto exit;
     }
@@ -2760,6 +2888,73 @@ exit:
                  proxyMessageCopyPtr->commonHeader.id);
     }
 }
+
+
+#ifndef RPC_PROXY_LOCAL_SERVICE
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function for Generating a Disconnect Service event
+ */
+//--------------------------------------------------------------------------------------------------
+static void SendDisconnectService
+(
+    const char* systemName,  ///< [IN] Name of the system
+    const char* serviceInstanceName, ///< [IN] Name of the service instance
+    const char* protocolIdStr ///< [IN] Protocol ID str
+)
+{
+    rpcProxy_ConnectServiceMessage_t  proxyMessage;
+    le_result_t result;
+
+    // Create a Disconnect-Service Request Message
+    proxyMessage.commonHeader.id = rpcProxy_GenerateProxyMessageId();
+    proxyMessage.commonHeader.type = RPC_PROXY_DISCONNECT_SERVICE;
+
+    // Retrieve the Service-ID for the specified service-name
+    uint32_t* serviceIdPtr = le_hashmap_Get(ServiceIDMapByName, serviceInstanceName);
+    if (serviceIdPtr == NULL)
+    {
+        LE_ERROR("Service is not available, remote service-name [%s]", serviceInstanceName);
+        return;
+    }
+
+    // Set the Service-ID
+    proxyMessage.commonHeader.serviceId = *serviceIdPtr;
+
+    // Copy the system-name into the Proxy Connect-Service Message
+    le_utf8_Copy(proxyMessage.systemName,
+                 systemName,
+                 sizeof(proxyMessage.systemName),
+                 NULL);
+
+    // Copy the Service-Name into the Proxy Connect-Service Message
+    le_utf8_Copy(proxyMessage.serviceName,
+                 serviceInstanceName,
+                 sizeof(proxyMessage.serviceName),
+                 NULL);
+
+    // Copy the Protocol-ID-Str into the Proxy Connect-Service Message
+    le_utf8_Copy(proxyMessage.protocolIdStr,
+                 protocolIdStr,
+                 sizeof(proxyMessage.protocolIdStr),
+                 NULL);
+
+    // Initialize the service-code to LE_OK
+    proxyMessage.serviceCode = LE_OK;
+
+    LE_INFO("Sending %s Proxy Message, service-id [%" PRIu32 "], service-name [%s]",
+            DisplayMessageType(proxyMessage.commonHeader.type),
+            proxyMessage.commonHeader.serviceId,
+            proxyMessage.serviceName);
+
+    // Send Proxy Message to far-side
+    result = rpcProxy_SendMsg(systemName, &proxyMessage);
+    if (result != LE_OK)
+    {
+        LE_ERROR("le_comm_Send failed, result %d", result);
+    }
+}
+#endif
 
 
 //--------------------------------------------------------------------------------------------------
@@ -2865,7 +3060,7 @@ static void SendSessionConnectRequest
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Do-Connect-Service
+ * Function to Connect a Service
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t DoConnectService
@@ -2973,8 +3168,8 @@ static le_result_t DoConnectService
                 // Clean-up Session
                 le_msg_DeleteSession(sessionRef);
 
-                LE_ERROR("Could not connect to '%s' service, result %d",
-                         bindingRefPtr->serviceName, result);
+                LE_WARN("Could not connect to '%s' service, result %d",
+                        bindingRefPtr->serviceName, result);
                 return result;
             }
 
@@ -3055,9 +3250,18 @@ void rpcProxy_AdvertiseServices
         // Set a pointer the Service Reference element
         serviceRefPtr = rpcProxy_ServerReferenceArray[index];
 
+        const char* systemNamePtr =
+            rpcProxyConfig_GetSystemNameByServiceName(serviceRefPtr->serviceName);
+
+        if (systemNamePtr == NULL)
+        {
+            LE_ERROR("Unable to retrieve system-name for service-name '%s'",
+                     serviceRefPtr->serviceName);
+            return;
+        }
+
         // Only interested in those services on the specified system-name
-        if (strcmp(systemName,
-                   rpcProxyConfig_GetSystemNameByServiceName(serviceRefPtr->serviceName)) != 0)
+        if (strcmp(systemName, systemNamePtr) != 0)
         {
             continue;
         }
@@ -3068,11 +3272,21 @@ void rpcProxy_AdvertiseServices
         {
             LE_INFO("======= Starting Server %s ========", serviceRefPtr->serviceName);
 
+            const char* remoteServiceName =
+                rpcProxyConfig_GetRemoteServiceNameByServiceName(serviceRefPtr->serviceName);
+
+            if (remoteServiceName == NULL)
+            {
+                LE_ERROR("Unable to retrieve remote service-name for service-name '%s'",
+                         serviceRefPtr->serviceName);
+                continue;
+            }
+
             // Send Connect-Service Message to the far-side for the specified service-name
             // and wait for a valid Connect-Service response before advertising the service
             SendSessionConnectRequest(
                 systemName,
-                rpcProxyConfig_GetRemoteServiceNameByServiceName(serviceRefPtr->serviceName),
+                remoteServiceName,
                 serviceRefPtr->protocolIdStr);
         }
     }
@@ -3093,13 +3307,20 @@ void rpcProxy_HideServices
     for (uint8_t index = 0; rpcProxy_ServerReferenceArray[index]; index++)
     {
         const rpcProxy_ExternServer_t* serviceRefPtr = NULL;
-        const char* systemNamePtr = NULL;
 
         // Set a pointer to the Service Reference element
         serviceRefPtr = rpcProxy_ServerReferenceArray[index];
 
         // Retrieve the system-name for the specified service-name
-        systemNamePtr = rpcProxyConfig_GetSystemNameByServiceName(serviceRefPtr->serviceName);
+        const char* systemNamePtr =
+            rpcProxyConfig_GetSystemNameByServiceName(serviceRefPtr->serviceName);
+
+        if (systemNamePtr == NULL)
+        {
+            LE_ERROR("Unable to retrieve system-name for service-name '%s'",
+                     serviceRefPtr->serviceName);
+            return;
+        }
 
         // Only interested in those services on the specified system-name
         if (strcmp(systemName, systemNamePtr) != 0)
@@ -3107,45 +3328,8 @@ void rpcProxy_HideServices
             continue;
         }
 
-        // Retrieve the Service-ID, using the service-name
-        uint32_t* serviceIdCopyPtr = le_hashmap_Get(ServiceIDMapByName, serviceRefPtr->serviceName);
-        if (serviceIdCopyPtr != NULL)
-        {
-            // Retrieve the Session reference, using the Service-ID
-            le_msg_ServiceRef_t serviceRef =
-                le_hashmap_Get(ServiceRefMapByID, (void*)(uintptr_t) *serviceIdCopyPtr);
-
-            if (serviceRef != NULL)
-            {
-                LE_INFO("======= Stopping Server %s ========", serviceRefPtr->serviceName);
-
-#ifndef RPC_PROXY_LOCAL_SERVICE
-                // Delete the server side of the service
-                le_msg_DeleteService(serviceRef);
-#endif
-
-                // Remove sessionRef from hash-map
-                le_hashmap_Remove(ServiceRefMapByID, (void*)(uintptr_t) *serviceIdCopyPtr);
-
-                LE_INFO("======= Service %s Stopped ========", serviceRefPtr->serviceName);
-            }
-
-            // Get the stored key object
-            char* serviceNameCopyPtr = le_hashmap_GetStoredKey(ServiceIDMapByName, serviceRefPtr->serviceName);
-
-            // Remove the Service-ID in a hashmap, using the service-name as a key
-            le_hashmap_Remove(ServiceIDMapByName, serviceNameCopyPtr);
-
-            LE_INFO("Successfully removed Service ID Reference, service-name [%s], service-id [%" PRIu32 "]",
-                    serviceNameCopyPtr,
-                    *serviceIdCopyPtr);
-
-            // Free the memory allocated for the Service-ID
-            le_mem_Release(serviceIdCopyPtr);
-
-            // Free the memory allocated for the Service Name string
-            le_mem_Release(serviceNameCopyPtr);
-        }
+        // Delete the Service associated with the service-name
+        DeleteService(serviceRefPtr->serviceName);
 
         //
         // Clean-up Service ID Safe Reference for this service-name, if it exists
@@ -3157,7 +3341,8 @@ void rpcProxy_HideServices
         {
             if (strcmp(le_ref_GetValue(iterRef), serviceRefPtr->serviceName) == 0)
             {
-                LE_INFO("Releasing Service ID Safe Reference, service-name [%s], service-id [%" PRIuPTR "]",
+                LE_INFO("Releasing Service ID Safe Reference, "
+                        "service-name [%s], service-id [%" PRIuPTR "]",
                         (char*) le_ref_GetValue(iterRef),
                         (uintptr_t) le_ref_GetSafeRef(iterRef));
 
@@ -3183,14 +3368,21 @@ void rpcProxy_DisconnectSessions
     for (uint8_t index = 0; rpcProxy_ClientReferenceArray[index]; index++)
     {
         const rpcProxy_ExternClient_t* sessionRefPtr = NULL;
-        const char* systemNamePtr = NULL;
         le_msg_SessionRef_t sessionRef = NULL;
 
         // Set a pointer to the Binding Reference element
         sessionRefPtr = rpcProxy_ClientReferenceArray[index];
 
         // Retrieve the system-name for the specified service-name
-        systemNamePtr = rpcProxyConfig_GetSystemNameByServiceName(sessionRefPtr->serviceName);
+        const char* systemNamePtr =
+            rpcProxyConfig_GetSystemNameByServiceName(sessionRefPtr->serviceName);
+
+        if (systemNamePtr == NULL)
+        {
+            LE_ERROR("Unable to retrieve system-name for service-name '%s'",
+                     sessionRefPtr->serviceName);
+            return;
+        }
 
         // Only interested in those sessions on the specified system-name
         if (strcmp(systemName, systemNamePtr) != 0)
@@ -3232,13 +3424,6 @@ void rpcProxy_DisconnectSessions
                     {
                         LE_INFO("======= Cleaning up Request-Response record for service Id [%" PRIu32 "]",
                                 requestResponsePtr->commonHeader.serviceId);
-
-                        if (requestResponsePtr->timerRef != NULL)
-                        {
-                            // Delete Timer, it's no longer needed
-                            le_timer_Delete(requestResponsePtr->timerRef);
-                            requestResponsePtr->timerRef = NULL;
-                        }
 
 #ifdef RPC_PROXY_LOCAL_SERVICE
                         // Clean-up Local Message memory allocation associated with this Proxy Message ID
@@ -3434,7 +3619,6 @@ COMPONENT_INIT
     // create the Network Communication channel
     for (uint8_t index = 0; rpcProxy_SystemLinkArray[index].systemName; index++)
     {
-        const char* systemName;
         const rpcProxy_SystemLinkElement_t* systemLinkPtr = &rpcProxy_SystemLinkArray[index];
 
 #ifndef RPC_PROXY_LOCAL_SERVICE
@@ -3458,15 +3642,23 @@ COMPONENT_INIT
 #endif
 
         // Get the System Name using the Link Name
-        systemName = rpcProxyConfig_GetSystemNameByLinkName(systemLinkPtr->systemName);
+        const char* systemName =
+            rpcProxyConfig_GetSystemNameByLinkName(systemLinkPtr->systemName);
+
+        if (systemName == NULL)
+        {
+            LE_ERROR("Unable to retrieve system--name for system-link '%s'",
+                    systemLinkPtr->systemName);
+            goto exit;
+        }
 
         // Create and connect a network communication channel
         result = rpcProxyNetwork_CreateNetworkCommunicationChannel(systemName);
         if (result == LE_OK)
         {
             // Start the Advertise-Service sequence for services being hosted by the RPC Proxy
-            // NOTE:  The advertise-service will only be completed once we have successfully performed
-            //        a connect-service on the far-side
+            // NOTE:  The advertise-service will only be completed once we have
+            //        successfully performed a connect-service on the far-side
             rpcProxy_AdvertiseServices(systemName);
         }
         else if (result != LE_IN_PROGRESS)

@@ -47,8 +47,20 @@
  * RPC Proxy Timer Interval Definitions
  */
 //--------------------------------------------------------------------------------------------------
-#define RPC_PROXY_CLIENT_REQUEST_TIMER_INTERVAL     (RPC_PROXY_REQUEST_RESPONSE_TIMER_INTERVAL * 2)
-#define RPC_PROXY_REQUEST_RESPONSE_TIMER_INTERVAL           15
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * RPC Proxy Client-Request Timer
+ * NOTE: This is used as part of an interim solution that ensures a Client does not become
+ *       blocked indefinitely as a result of spurious packet-drops over the RPC-to-RPC network.
+ *
+ * TODO: Replace with a solution that is more deterministic, such as introducing a time-out
+ *       solution originating at the Client or in the Legato Messaging framework.
+ */
+//--------------------------------------------------------------------------------------------------
+#define RPC_PROXY_CLIENT_REQUEST_TIMER_INTERVAL \
+            (RPC_PROXY_NETWORK_KEEPALIVE_SERVICE_INTERVAL)
+
 #define RPC_PROXY_CONNECT_SERVICE_REQUEST_TIMER_INTERVAL    15
 #define RPC_PROXY_NETWORK_KEEPALIVE_SERVICE_INTERVAL        120
 #define RPC_PROXY_NETWORK_KEEPALIVE_REQUEST_TIMER_INTERVAL  30
@@ -155,7 +167,6 @@ typedef struct rpcProxy_ClientRequestResponseRecord
 
     uint32_t msgId;                                        ///< Legato Msg-ID
     char  systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];  ///< Source of the request
-    le_timer_Ref_t timerRef;                               ///< Legato Timer Reference
 }
 rpcProxy_ClientRequestResponseRecord_t;
 
