@@ -772,7 +772,7 @@ clean_exit:
  * Call at exit(3) to perform all clean-up actions
  */
 //--------------------------------------------------------------------------------------------------
-static void Exithandler
+static void ExitHandler
 (
     void
 )
@@ -925,13 +925,14 @@ int main
     char* toolchainPtr = NULL;
     char* toolchainEnvPtr = NULL;
     char* envPtr = NULL;
+    int ret;
 
     ProgName = argv[0];
 
     CheckForTool( BSDIFF, NULL );
 
     getcwd(CurrentWorkDir, sizeof(CurrentWorkDir));
-    atexit( Exithandler );
+    atexit( ExitHandler );
     snprintf( CmdBuf, sizeof(CmdBuf), "/tmp/patchdir.%u", pid );
     if( -1 == mkdir(CmdBuf, (mode_t)(S_IRWXU | S_IRWXG | S_IRWXO)) )
     {
@@ -1169,11 +1170,21 @@ int main
             chunkLen = FlashPEBSize - (2 * FlashPageSize);
             if( OrigPtr[0] != '/' )
             {
-                snprintf(OrigName, sizeof(OrigName), "%s/%s", CurrentWorkDir, OrigPtr);
+                ret = snprintf(OrigName, sizeof(OrigName), "%s/%s", CurrentWorkDir, OrigPtr);
+                if (ret >= sizeof(OrigName))
+                {
+                    fprintf(stderr, "string truncated in file %s at line # %d", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
             }
             else
             {
-                snprintf(OrigName, sizeof(OrigName), "%s", OrigPtr);
+                ret = snprintf(OrigName, sizeof(OrigName), "%s", OrigPtr);
+                if (ret >= sizeof(OrigName))
+                {
+                    fprintf(stderr, "string truncated in file %s at line # %d", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
             }
             fdr = open( OrigName, O_RDONLY );
             if( 0 > fdr )
@@ -1185,18 +1196,33 @@ int main
             ScanUbi(fdr, st.st_size, &nbVolumeOrig);
             for( i = 0; i < nbVolumeOrig; i++ )
             {
-                snprintf(OrigName, sizeof(OrigName), "%s.orig.%u.%u", partPtr, i, pid );
+                ret = snprintf(OrigName, sizeof(OrigName), "%s.orig.%u.%u", partPtr, i, pid );
+                if (ret >= sizeof(OrigName))
+                {
+                    fprintf(stderr, "string truncated in file %s at line # %d", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
                 ExtractUbiData( fdr, i, OrigName, &size, &crc32Orig );
                 PatchMetaHeader.origSize = htobe32(size);
             }
             close(fdr);
             if( DestPtr[0] != '/' )
             {
-                snprintf(DestName, sizeof(DestName), "%s/%s", CurrentWorkDir, DestPtr);
+                ret = snprintf(DestName, sizeof(DestName), "%s/%s", CurrentWorkDir, DestPtr);
+                if (ret >= sizeof(DestName))
+                {
+                    fprintf(stderr, "string truncated in file %s at line # %d", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
             }
             else
             {
-                snprintf(DestName, sizeof(DestName), "%s", DestPtr);
+                ret = snprintf(DestName, sizeof(DestName), "%s", DestPtr);
+                if (ret >= sizeof(DestName))
+                {
+                    fprintf(stderr, "string truncated in file %s at line # %d", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
             }
             fdr = open( DestName, O_RDONLY );
             if( 0 > fdr )
@@ -1209,7 +1235,12 @@ int main
             ScanUbi(fdr, st.st_size, &nbVolumeDest);
             for( i = 0; i < nbVolumeDest; i++ )
             {
-                snprintf(DestName, sizeof(DestName), "%s.dest.%u.%u", partPtr, i, pid );
+                ret = snprintf(DestName, sizeof(DestName), "%s.dest.%u.%u", partPtr, i, pid );
+                if (ret >= sizeof(DestName))
+                {
+                    fprintf(stderr, "string truncated in file %s at line # %d", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
                 ExtractUbiData( fdr, i, DestName, &size, &crc32Orig );
                 PatchMetaHeader.destSize = htobe32(size);
             }
@@ -1240,17 +1271,24 @@ int main
 
             if( notUbiOpt && isUbiImage )
             {
-                snprintf(OrigName, sizeof(OrigName), "%s.orig.%u.%u", partPtr, ubiIdx, pid );
+                ret = snprintf(OrigName, sizeof(OrigName), "%s.orig.%u.%u", partPtr, ubiIdx, pid );
                 ubiVolId = ubiIdx;
             }
             else if( OrigPtr[0] != '/' )
             {
-                snprintf(OrigName, sizeof(OrigName), "%s/%s", CurrentWorkDir, OrigPtr);
+                ret = snprintf(OrigName, sizeof(OrigName), "%s/%s", CurrentWorkDir, OrigPtr);
             }
             else
             {
-                snprintf(OrigName, sizeof(OrigName), "%s", OrigPtr);
+                ret = snprintf(OrigName, sizeof(OrigName), "%s", OrigPtr);
             }
+
+            if (ret >= sizeof(OrigName))
+            {
+                fprintf(stderr, "string truncated in file %s at line # %d", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+
             fdr = open( OrigName, O_RDONLY );
             if( 0 > fdr )
             {
@@ -1271,16 +1309,23 @@ int main
 
             if( notUbiOpt && isUbiImage )
             {
-                snprintf(DestName, sizeof(DestName), "%s.dest.%u.%u", partPtr, ubiIdx, pid );
+                ret = snprintf(DestName, sizeof(DestName), "%s.dest.%u.%u", partPtr, ubiIdx, pid );
             }
             else if( DestPtr[0] != '/' )
             {
-                snprintf(DestName, sizeof(DestName), "%s/%s", CurrentWorkDir, DestPtr);
+                ret = snprintf(DestName, sizeof(DestName), "%s/%s", CurrentWorkDir, DestPtr);
             }
             else
             {
-                snprintf(DestName, sizeof(DestName), "%s", DestPtr);
+                ret = snprintf(DestName, sizeof(DestName), "%s", DestPtr);
             }
+
+            if (ret >= sizeof(DestName))
+            {
+                fprintf(stderr, "string truncated in file %s at line # %d", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+
             fdr = open( DestName, O_RDONLY );
             if( 0 > fdr )
             {
@@ -1319,15 +1364,29 @@ int main
                     fprintf( stderr, "Open of patch file %s fails: %m\n", tmpName );
                     exit(3);
                 }
-                snprintf( CmdBuf, sizeof(CmdBuf),
-                          BSDIFF " %s %s patched.%u.bin.%d",
-                          OrigName, tmpName, pid, patchNum );
+
+                ret = snprintf(CmdBuf, sizeof(CmdBuf),
+                               BSDIFF " %s %s patched.%u.bin.%d",
+                               OrigName, tmpName, pid, patchNum);
+                if (ret >= sizeof(CmdBuf))
+                {
+                    fprintf(stderr, "command truncated in file %s at line # %d", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
+
                 if( IsVerbose )
                 {
                     printf( "%s\n", CmdBuf );
                 }
                 ExecSystem( CmdBuf );
-                snprintf( tmpName, sizeof(tmpName), "patched.%u.bin.%d", pid, patchNum );
+
+                ret = snprintf( tmpName, sizeof(tmpName), "patched.%u.bin.%d", pid, patchNum );
+                if (ret >= sizeof(tmpName))
+                {
+                    fprintf(stderr, "string truncated in file %s at line # %d", __FILE__, __LINE__);
+                    exit(EXIT_FAILURE);
+                }
+
                 fdw = open( tmpName, O_RDONLY );
                 if( 0 > fdw )
                 {
@@ -1410,17 +1469,25 @@ int main
 
             if( noSpkgHeader )
             {
-                snprintf( CmdBuf, sizeof(CmdBuf),
-                          "cat patch.%u.hdr patch.%u.bin >>%s/patch-%s.cwe",
-                          pid, pid, CurrentWorkDir, productPtr );
+                ret = snprintf(CmdBuf, sizeof(CmdBuf),
+                               "cat patch.%u.hdr patch.%u.bin >>%s/patch-%s.cwe",
+                               pid, pid, CurrentWorkDir, productPtr);
             }
             else
             {
-                snprintf( CmdBuf, sizeof(CmdBuf),
-                          "cat patch.%u.hdr patch.%u.bin >>patch.%u.cwe",
-                          pid, pid, pid );
+                ret = snprintf(CmdBuf, sizeof(CmdBuf),
+                               "cat patch.%u.hdr patch.%u.bin >>patch.%u.cwe",
+                               pid, pid, pid);
             }
+
+            if (ret >= sizeof(CmdBuf))
+            {
+                fprintf(stderr, "command truncated in file %s at line # %d", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+
             ExecSystem( CmdBuf );
+
             snprintf( CmdBuf, sizeof(CmdBuf), "rm -f patch*.%u.bin*", pid );
             ExecSystem( CmdBuf );
         }
@@ -1429,13 +1496,24 @@ int main
 
     if( !noSpkgHeader )
     {
-        snprintf( CmdBuf, sizeof(CmdBuf),
-                  HDRCNV " patch.%u.cwe -OH patch.%u.cwe.hdr -IT %s -PT %s -V \"1.0\" -B 00000001",
-                  pid, pid, pckgPtr, productPtr );
+        ret = snprintf(CmdBuf, sizeof(CmdBuf),
+                       HDRCNV " patch.%u.cwe -OH patch.%u.cwe.hdr -IT %s -PT %s -V \"1.0\" -B 00000001",
+                       pid, pid, pckgPtr, productPtr);
+        if (ret >= sizeof(CmdBuf))
+        {
+            fprintf(stderr, "command truncated in file %s at line # %d", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
         ExecSystem( CmdBuf );
-        snprintf( CmdBuf, sizeof(CmdBuf),
-                  "cat patch.%u.cwe.hdr patch.%u.cwe >%s/patch-%s.cwe",
-                  pid, pid, CurrentWorkDir, targetPtr );
+
+        ret = snprintf(CmdBuf, sizeof(CmdBuf),
+                       "cat patch.%u.cwe.hdr patch.%u.cwe >%s/patch-%s.cwe",
+                       pid, pid, CurrentWorkDir, targetPtr);
+        if (ret >= sizeof(CmdBuf))
+        {
+            fprintf(stderr, "command truncated in file %s at line # %d", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
         ExecSystem( CmdBuf );
     }
     chdir(CurrentWorkDir);

@@ -2,7 +2,9 @@
 
 set -o pipefail
 
-rsync -ap "${LEGATO_ROOT}/3rdParty/lighttpd/" lighttpd/
+rm -rf lighttpd
+
+cp -R "${LEGATO_ROOT}/3rdParty/lighttpd/" lighttpd
 
 INSTALL_DIR="${LEGATO_BUILD}/3rdParty/lighttpd/"
 

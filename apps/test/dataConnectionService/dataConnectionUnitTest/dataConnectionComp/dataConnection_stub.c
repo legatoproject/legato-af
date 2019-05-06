@@ -1299,7 +1299,7 @@ le_result_t le_dcsTech_GetDNSAddresses
     }
     else
     {
-        strncpy(dns1Addr, DCS_DUMMY_DNS_SERVER_ADDR_IPV4, strlen(DCS_DUMMY_DNS_SERVER_ADDR_IPV4));
+        le_utf8_Copy(dns1Addr, DCS_DUMMY_DNS_SERVER_ADDR_IPV4, v4DnsAddrSize, NULL);
         result = LE_OK;
     }
     dns2Addr[0] = '\0';
@@ -1312,7 +1312,7 @@ le_result_t le_dcsTech_GetDNSAddresses
     }
     else
     {
-        strncpy(dns1Addr, DCS_DUMMY_DNS_SERVER_ADDR_IPV6, strlen(DCS_DUMMY_DNS_SERVER_ADDR_IPV6));
+        le_utf8_Copy(dns1Addr, DCS_DUMMY_DNS_SERVER_ADDR_IPV6, v6DnsAddrSize, NULL);
         result = LE_OK;
     }
     dns2Addr[0] = '\0';
