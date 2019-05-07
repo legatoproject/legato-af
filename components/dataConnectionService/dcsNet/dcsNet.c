@@ -151,7 +151,7 @@ le_result_t le_net_SetDefaultGW
                                     ///< addr is to be set
 )
 {
-    le_result_t ret, v4Ret = LE_OK, v6Ret = LE_OK;
+    le_result_t ret, v4Ret = LE_FAULT, v6Ret = LE_FAULT;
     char intf[LE_DCS_INTERFACE_NAME_MAX_LEN] = {0};
     int intfSize = LE_DCS_INTERFACE_NAME_MAX_LEN;
     size_t v4GwAddrSize = PA_DCS_IPV4_ADDR_MAX_BYTES;
@@ -211,21 +211,25 @@ le_result_t le_net_SetDefaultGW
     }
 
     // Seek to set IPv6 default GW address
-    if ((strlen(v6GwAddr) > 0) &&
-        (pa_dcs_SetDefaultGateway(intf, v6GwAddr, true) != LE_OK))
+    if (strlen(v6GwAddr) > 0)
     {
-        LE_ERROR("Failed to set IPv6 default GW for channel %s of technology %s", channelName,
-                 le_dcs_ConvertTechEnumToName(channelDb->technology));
-        v6Ret = LE_FAULT;
+        v6Ret = pa_dcs_SetDefaultGateway(intf, v6GwAddr, true);
+        if (v6Ret != LE_OK)
+        {
+            LE_ERROR("Failed to set IPv6 default GW for channel %s of technology %s", channelName,
+                     le_dcs_ConvertTechEnumToName(channelDb->technology));
+        }
     }
 
     // Seek to set IPv4 default GW address
-    if ((strlen(v4GwAddr) > 0) &&
-        (pa_dcs_SetDefaultGateway(intf, v4GwAddr, false) != LE_OK))
+    if (strlen(v4GwAddr) > 0)
     {
-        LE_ERROR("Failed to set IPv4 default GW for channel %s of technology %s", channelName,
-                 le_dcs_ConvertTechEnumToName(channelDb->technology));
-        v4Ret = LE_FAULT;
+        v4Ret = pa_dcs_SetDefaultGateway(intf, v4GwAddr, false);
+        if (v4Ret != LE_OK)
+        {
+            LE_ERROR("Failed to set IPv4 default GW for channel %s of technology %s", channelName,
+                     le_dcs_ConvertTechEnumToName(channelDb->technology));
+        }
     }
 
     if ((v4Ret == LE_OK) || (v6Ret == LE_OK))
@@ -360,7 +364,7 @@ le_result_t le_net_SetDNS
                                     ///< will be set into the system config
 )
 {
-    le_result_t ret, v4Ret = LE_OK, v6Ret = LE_OK;
+    le_result_t ret, v4Ret = LE_FAULT, v6Ret = LE_FAULT;
     char *channelName;
     char v4DnsAddrs[2][PA_DCS_IPV4_ADDR_MAX_BYTES] = {{0}, {0}};
     char v6DnsAddrs[2][PA_DCS_IPV6_ADDR_MAX_BYTES] = {{0}, {0}};
@@ -401,7 +405,7 @@ le_result_t le_net_SetDNS
     // Set IPv6 DNS server addresses
     if ((strlen(v6DnsAddrs[0]) > 0) || (strlen(v6DnsAddrs[1]) > 0))
     {
-        v4Ret = DcsNetSetDNS(true, v6DnsAddrs[0], v6DnsAddrs[1], PA_DCS_IPV6_ADDR_MAX_BYTES);
+        v6Ret = DcsNetSetDNS(true, v6DnsAddrs[0], v6DnsAddrs[1], PA_DCS_IPV6_ADDR_MAX_BYTES);
         if (v6Ret != LE_OK)
         {
             LE_ERROR("Failed to set DNS addresses for channel %s of technology %s", channelName,
