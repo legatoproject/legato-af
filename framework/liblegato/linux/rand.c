@@ -47,6 +47,7 @@ static GetRandom_t GetRandom = NULL;
 //--------------------------------------------------------------------------------------------------
 static int RandFd = -1;
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Read data from /dev/urandom.
@@ -63,6 +64,29 @@ static ssize_t ReadDev
 {
     LE_UNUSED(flags);
     return read(RandFd, bufPtr, count);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize the reading of data from /dev/urandom.
+ */
+//--------------------------------------------------------------------------------------------------
+static void InitDev
+(
+    void
+)
+{
+    LE_FATAL_IF(RandFd != -1, "/dev/urandom already initialized");
+
+    // Open /dev/urandom for reading.
+    do
+    {
+        RandFd = open("/dev/urandom", O_RDONLY);
+    }
+    while ((RandFd == -1) && (errno == EINTR));
+
+    LE_FATAL_IF(RandFd == -1, "Failed to open /dev/urandom (error %d)", errno);
+    GetRandom = &ReadDev;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -93,15 +117,7 @@ void fa_rand_Init
     // we need to read directly from /dev/urandom.
     if (GetRandom == NULL)
     {
-        // Open /dev/urandom for reading.
-        do
-        {
-            RandFd = open("/dev/urandom", O_RDONLY);
-        }
-        while ((RandFd == -1) && (errno == EINTR));
-
-        LE_FATAL_IF(RandFd == -1, "Failed to open /dev/urandom (error %d)", errno);
-        GetRandom = &ReadDev;
+        InitDev();
     }
 }
 
@@ -134,6 +150,13 @@ le_result_t fa_rand_Read
 
         if (c == -1)
         {
+            if ( (errno == ENOSYS) && (GetRandom != &ReadDev) )
+            {
+                // Fallback to /dev/urandom
+                InitDev();
+                continue;
+            }
+
             LE_CRIT("Could not read random numbers (error %d)", errno);
             return LE_IO_ERROR;
         }
