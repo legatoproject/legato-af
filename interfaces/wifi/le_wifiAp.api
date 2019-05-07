@@ -309,7 +309,7 @@ FUNCTION le_result_t GetIeeeStandard
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetChannel
 (
-    int8 channelNumber IN ///< the channel number.
+    uint16 channelNumber IN ///< the channel number.
 );
 
 //--------------------------------------------------------------------------------------------------
