@@ -10,14 +10,14 @@ menu "Service Directory"
 
 config SVCDIR_SERVER_SOCKET_NAME
   string "Service directory server socket name"
-  default "serviceDirectoryServer"
+  default "$(def,$(LE_SVCDIR_SERVER_SOCKET_NAME),serviceDirectoryServer)"
   ---help---
   Name of the Service Directory's server UNIX domain socket.  The full
   path will be this name appended to the runtime directory path.
 
 config SVCDIR_CLIENT_SOCKET_NAME
   string "Service directory client socket name"
-  default "serviceDirectoryClient"
+  default "$(def,$(LE_SVCDIR_CLIENT_SOCKET_NAME),serviceDirectoryClient)"
   ---help---
   Name of the Service Directory's client UNIX domain socket.  The full
   path will be this name appended to the runtime directory path.

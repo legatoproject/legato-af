@@ -6,4 +6,4 @@
 
 ### Sub-sections ###
 
-source "build/.KConfig/WiFi"
+orsource "WiFi/KConfig"

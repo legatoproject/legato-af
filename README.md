@@ -16,13 +16,42 @@ Visit [legato.io](https://legato.io) to learn more or visit the [Legato forum](h
   - Install required packages:
 
 ```bash
-$ sudo apt-get install -y build-essential \
-                          python python-jinja2 python-pkg-resources python-git \
-                          cmake git libsdl-dev diffstat texinfo gawk chrpath \
-                          wget cpio bash ninja-build bc unzip libxml2-utils gcovr \
-                          libcurl4-gnutls-dev zlib1g-dev libbz2-dev \
-                          bsdiff libssl-dev autoconf automake iputils-ping \
-                          libtool flex bison gperf libncursesw5-dev libncurses5-dev
+$ sudo apt-get install -y   \
+    autoconf                \
+    automake                \
+    bash                    \
+    bc                      \
+    bison                   \
+    bsdiff                  \
+    build-essential         \
+    chrpath                 \
+    cmake                   \
+    cpio                    \
+    diffstat                \
+    flex                    \
+    gawk                    \
+    gcovr                   \
+    git                     \
+    gperf                   \
+    iputils-ping            \
+    libbz2-dev              \
+    libcurl4-gnutls-dev     \
+    libncurses5-dev         \
+    libncursesw5-dev        \
+    libsdl-dev              \
+    libssl-dev              \
+    libtool                 \
+    libxml2-utils           \
+    ninja-build             \
+    python                  \
+    python-git              \
+    python-jinja2           \
+    python-pkg-resources    \
+    python3                 \
+    texinfo                 \
+    unzip                   \
+    wget                    \
+    zlib1g-dev
 ```
 
 Optional packages: ```openjdk-8-jdk``` (for Java support, at least Java 8 is required),

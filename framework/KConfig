@@ -105,7 +105,7 @@ config PYTHON
 config PYTHON_EXECUTABLE
   string "Python executable"
   depends on PYTHON
-  default "python2.7"
+  default "$(def,$(PYTHON_EXECUTABLE),python2.7)"
   ---help---
   Python executable to use for building Python support.  This may be set to an
   absolute path.
@@ -121,6 +121,7 @@ config JAVA
 config JDK_INCLUDE_DIR
   string "JDK include directory"
   depends on JAVA
+  default "$(JDK_INCLUDE_DIR)"
   ---help---
   Java Development Kit include directory to use when building Java
   support.
@@ -128,6 +129,7 @@ config JDK_INCLUDE_DIR
 config EJDK_DIR
   string "Embedded Java Developer Kit directory"
   depends on JAVA
+  default "$(EJDK_DIR)"
   ---help---
   Path to Oracle's Embedded Java Developer Kit, needed if that JVM is to be
   bundled with the system.
@@ -164,7 +166,7 @@ config ENABLE_SMACK
   bool "Enable SMACK for access controls"
   depends on LINUX
   depends on !TARGET_LOCALHOST
-  default y
+  default !$(b2k,$(DISABLE_SMACK))
   ---help---
   Enable the Simplified Mandatory Access Control Kernel (SMACK) security
   module on Linux for access controls.
@@ -172,7 +174,7 @@ config ENABLE_SMACK
 config SMACK_ONLYCAP
   bool "Enable SMACK onlycap"
   depends on ENABLE_SMACK
-  default n
+  default !$(b2k,$(DISABLE_SMACK_ONLYCAP))
   ---help---
   Require a specific SMACK label for CAP_MAC_ADMIN and CAP_MAC_OVERRIDE to be
   effective.  The label is typically set in /smack/onlycap.
@@ -180,7 +182,7 @@ config SMACK_ONLYCAP
 config SMACK_ATTR_NAME
   string "SMACK attribute name"
   depends on ENABLE_SMACK
-  default "security.SMACK64"
+  default "$(def,$(SMACK_ATTR_NAME),security.SMACK64)"
   ---help---
   Name of the Legato SMACK attribute.
 
@@ -189,7 +191,7 @@ config SMACK_ATTR_NAME
 config SMACK_ATTR_VALUE
   string "SMACK attribute value"
   depends on ENABLE_SMACK
-  default "_"
+  default "$(def,$(SMACK_ATTR_VALUE),_)"
   ---help---
   Value of the Legato SMACK attribute.
 
@@ -198,7 +200,7 @@ config SMACK_ATTR_VALUE
 config ENABLE_IMA
   bool "Enable IMA for file integrity checking"
   depends on LINUX && !TARGET_LOCALHOST
-  default n
+  default $(b2k,$(ENABLE_IMA))
   ---help---
   Enable the Integrity Measurement Architecture (IMA) on Linux to prevent
   accidental or malicious file system changes.
@@ -206,19 +208,21 @@ config ENABLE_IMA
 config IMA_PRIVATE_KEY
   string "IMA private key location"
   depends on ENABLE_IMA
+  default "$(IMA_PRIVATE_KEY)"
   ---help---
   File to load the IMA private key from.
 
 config IMA_PUBLIC_CERT
   string "IMA public certificate location"
   depends on ENABLE_IMA
+  default "$(IMA_PUBLIC_CERT)"
   ---help---
   File to load the IMA public certificate from.
 
 config IMA_SMACK
   string "SMACK label for IMA"
   depends on ENABLE_SMACK && ENABLE_IMA
-  default "imaLegato"
+  default "$(def,$(IMA_SMACK),imaLegato)"
   ---help---
   SMACK label to use for IMA purposes.
 
@@ -587,7 +591,7 @@ endmenu # end "Performance Tuning"
 ### Daemon Options ###
 
 menu "Daemon Setup"
-source "framework/daemons/KConfig"
+rsource "daemons/KConfig"
 endmenu # end "Daemons"
 
 menu "RPC"

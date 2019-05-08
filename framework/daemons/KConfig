@@ -13,7 +13,7 @@ config WDOG_FRAMEWORK
   The watchdog observes the Legato framework daemons and, if one deadlocks,
   restarts the system.
 
-source "framework/daemons/linux/supervisor/KConfig"
-source "framework/daemons/linux/serviceDirectory/KConfig"
-source "framework/daemons/configTree/KConfig"
-source "framework/daemons/linux/watchdog/KConfig"
+rsource "linux/supervisor/KConfig"
+rsource "linux/serviceDirectory/KConfig"
+rsource "configTree/KConfig"
+rsource "linux/watchdog/KConfig"

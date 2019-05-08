@@ -55,7 +55,7 @@ LISTCMD := $(MAKE) -qp -f $(THIS_FILE) list 2> /dev/null | \
   awk -F: '/^[a-zA-Z0-9/][a-zA-Z0-9._/]*:([^=]|$$)/ {split($$1,A,/ /); for(i in A) print A[i]}'
 
 # List of "utility" recipies
-UTILITIES := list clean distclean kconfig-frontends
+UTILITIES := list clean distclean
 
 # Determine the target platform
 TARGET ?=
@@ -105,9 +105,6 @@ TARGET_CAPS := $(shell echo $(TARGET) | tr a-z- A-Z_)
 ifneq ($(TARGET),nothing)
   $(info Building Legato for target '$(TARGET)')
 endif
-
-# Build-specific menu entries
-BUILD_CONFIG := build/.KConfig
 
 # KConfig settings location.
 export LEGATO_KCONFIG ?= $(LEGATO_ROOT)/.config.$(TARGET)
@@ -217,11 +214,6 @@ else
   unexport CCACHE
 endif
 
-# Try to find a ccache for default configuration
-define getccache
-$(if $(CCACHE),$(CCACHE),$(if $(shell which sccache 2>/dev/null),sccache,$(if $(shell which ccache 2>/dev/null),ccache)))
-endef
-
 ifneq ($(TARGET),nothing)
   ifeq ($(TARGET),localhost)
     export LEGATO_KERNELROOT    :=
@@ -291,11 +283,10 @@ endif # end not "nothing" target
 # Python executable
 PYTHON_EXECUTABLE ?= python2.7
 
-# KConfig executable
-KCONFIG ?= $(LEGATO_ROOT)/bin/kconfig
-
-# kconfig-set-value executable
-KCONFIG_SET_VALUE := $(LEGATO_ROOT)/bin/kconfig-set-value
+# KConfig executables
+MENUCONFIG_TOOL   ?= $(LEGATO_ROOT)/3rdParty/Kconfiglib/menuconfig.py
+SETCONFIG_TOOL    ?= $(LEGATO_ROOT)/3rdParty/Kconfiglib/setconfig.py
+OLDDEFCONFIG_TOOL ?= $(LEGATO_ROOT)/3rdParty/Kconfiglib/olddefconfig.py
 
 # Set KConfig prefix
 export CONFIG_ := LE_CONFIG_
@@ -381,86 +372,23 @@ ALL_SAMPLES_$(LE_CONFIG_JAVA) += samples_java
 
 # ========== CONFIGURATION RECIPES ============
 
-# Generate build-specific hidden KConfig options.  This is to get around limitations in the current
-# kconfig-frontends version which make it difficult to conditionally source KConfig files.
-$(BUILD_CONFIG)/Documentation:
-	$(L) GEN $@
-	$(Q)mkdir -p $(BUILD_CONFIG)
-	$(Q)printf '# Automatically generated file.  Do not edit!\n\n' > $@
-	$(Q)printf '$(if $(wildcard docManagement/KConfig),source "docManagement/KConfig")\n' >> $@
-
-# Generate build-specific hidden KConfig options.  This is to get around limitations in the current
-# kconfig-frontends version which make it difficult to conditionally source KConfig files.
-$(BUILD_CONFIG)/WiFi:
-	$(L) GEN $@
-	$(Q)mkdir -p $(BUILD_CONFIG)
-	$(Q)printf '# Automatically generated file.  Do not edit!\n\n' > $@
-	$(Q)printf '$(if $(wildcard modules/WiFi/KConfig),source "modules/WiFi/KConfig")\n' >> $@
-
 # Generate an initial KConfig from the environment.  This rule translates the old configuration
 # method using environment variables into an initial KConfig set.
-$(LEGATO_ROOT)/.config.$(TARGET): | $(BUILD_CONFIG)/Documentation $(BUILD_CONFIG)/WiFi $(KCONFIG) $(KCONFIG_SET_VALUE)
+$(LEGATO_ROOT)/.config.$(TARGET): $(shell find . -name 'KConfig' -o -name '*.kconfig')
 ifeq ($(KNOWN_TARGET),1)
 	$(L) KSET "$@ - TARGET_$(TARGET_CAPS)"
-	$(Q)TARGET=1 $(KCONFIG_SET_VALUE) "TARGET_$(TARGET_CAPS)" bool "TARGET" $@
+	$(Q)KCONFIG_CONFIG=$@ $(SETCONFIG_TOOL) --kconfig=KConfig "TARGET_$(TARGET_CAPS)=y" $(VOUTPUT)
 else
 	$(L) KSET "$@ - TARGET_CUSTOM"
-	$(Q)TARGET=1 $(KCONFIG_SET_VALUE) "TARGET_CUSTOM" bool "TARGET" $@
+	$(Q)KCONFIG_CONFIG=$@ $(SETCONFIG_TOOL) --kconfig=KConfig "TARGET_CUSTOM=y" $(VOUTPUT)
 endif
 
-	$(L) KSET "$@ - DEBUG"
-	$(Q)$(KCONFIG_SET_VALUE) "DEBUG" bool "DEBUG" $@
-	$(L) KSET "$@ - USE_CCACHE"
-	$(Q)USE_CCACHE=$(if $(call getccache,),1,0) \
-		$(KCONFIG_SET_VALUE) "USE_CCACHE" bool "USE_CCACHE" $@
-	$(L) KSET "$@ - CCACHE"
-	$(Q)CCACHE_VALUE="$(call getccache,)" $(KCONFIG_SET_VALUE) "CCACHE" string "CCACHE_VALUE" $@
-	$(L) KSET "$@ - TEST_COVERAGE"
-	$(Q)$(KCONFIG_SET_VALUE) "TEST_COVERAGE" bool "TEST_COVERAGE" $@
-
-	$(L) KSET "$@ - ENABLE_IMA"
-	$(Q)$(KCONFIG_SET_VALUE) "ENABLE_IMA" bool "ENABLE_IMA" $@
-	$(L) KSET "$@ - IMA_PRIVATE_KEY"
-	$(Q)$(KCONFIG_SET_VALUE) "IMA_PRIVATE_KEY" string "IMA_PRIVATE_KEY" $@
-	$(L) KSET "$@ - IMA_PUBLIC_CERT"
-	$(Q)$(KCONFIG_SET_VALUE) "IMA_PUBLIC_CERT" string "IMA_PUBLIC_CERT" $@
-	$(L) KSET "$@ - IMA_SMACK"
-	$(Q)$(KCONFIG_SET_VALUE) "IMA_SMACK" string "IMA_SMACK" $@
-
-	$(L) KSET "$@ - ENABLE_SMACK"
-	$(Q)$(KCONFIG_SET_VALUE) "ENABLE_SMACK" invbool "DISABLE_SMACK" $@
-	$(L) KSET "$@ - SMACK_ONLYCAP"
-	$(Q)$(KCONFIG_SET_VALUE) "SMACK_ONLYCAP" invbool "DISABLE_SMACK_ONLYCAP" $@
-	$(L) KSET "$@ - SMACK_ATTR_NAME"
-	$(Q)$(KCONFIG_SET_VALUE) "SMACK_ATTR_NAME" string "SMACK_ATTR_NAME" $@
-	$(L) KSET "$@ - SMACK_ATTR_VALUE"
-	$(Q)$(KCONFIG_SET_VALUE) "SMACK_ATTR_VALUE" string "SMACK_ATTR_VALUE" $@
-
-	$(L) KSET "$@ - SDEF"
-	$(Q)$(KCONFIG_SET_VALUE) "SDEF" string "SDEF_TO_USE" $@
-	$(L) KSET "$@ - SUPERV_NICE_LEVEL"
-	$(Q)$(KCONFIG_SET_VALUE) "SUPERV_NICE_LEVEL" string "LEGATO_FRAMEWORK_NICE_LEVEL" $@
-	$(L) KSET "$@ - SVCDIR_SERVER_SOCKET_NAME"
-	$(Q)$(KCONFIG_SET_VALUE) "SVCDIR_SERVER_SOCKET_NAME" string "LE_SVCDIR_SERVER_SOCKET_NAME" $@
-	$(L) KSET "$@ - SVCDIR_CLIENT_SOCKET_NAME"
-	$(Q)$(KCONFIG_SET_VALUE) "SVCDIR_CLIENT_SOCKET_NAME" string "LE_SVCDIR_CLIENT_SOCKET_NAME" $@
-
-	$(L) KSET "$@ - PYTHON_EXECUTABLE"
-	$(Q)$(KCONFIG_SET_VALUE) "PYTHON_EXECUTABLE" string "PYTHON_EXECUTABLE" $@
-
-	$(L) KSET "$@ - JDK_INCLUDE_DIR"
-	$(Q)$(KCONFIG_SET_VALUE) "JDK_INCLUDE_DIR" string "JDK_INCLUDE_DIR" $@
-	$(L) KSET "$@ - EJDK_DIR"
-	$(Q)$(KCONFIG_SET_VALUE) "EJDK_DIR" string "EJDK_DIR" $@
-
-	$(L) KSET "$@ - ENABLE_SECSTORE_ADMIN"
-	$(Q)$(KCONFIG_SET_VALUE) "ENABLE_SECSTORE_ADMIN" bool "SECSTOREADMIN" $@
-
-	$(Q)KCONFIG_CONFIG=$@ $(KCONFIG)-conf --olddefconfig KConfig $(VOUTPUT)
+	$(L) KCONFIG $@
+	$(Q)KCONFIG_CONFIG=$@ $(OLDDEFCONFIG_TOOL) KConfig $(VOUTPUT)
 	$(Q)rm -f $@.old
 
 # Generate the Makefile include containing the KConfig values
-$(MAKE_CONFIG): $(LEGATO_KCONFIG) $(BUILD_CONFIG)/Documentation $(BUILD_CONFIG)/WiFi
+$(MAKE_CONFIG): $(LEGATO_KCONFIG)
 	$(Q)cat $< $(VOUTPUT)
 	$(L) GEN $@
 	$(Q)mkdir -p $(dir $@)
@@ -474,7 +402,7 @@ ifneq ($(KNOWN_TARGET),1)
 endif
 
 # Generate a shell include file containing the KConfig values
-$(SHELL_CONFIG): $(LEGATO_KCONFIG) $(BUILD_CONFIG)/Documentation $(BUILD_CONFIG)/WiFi
+$(SHELL_CONFIG): $(LEGATO_KCONFIG)
 	$(L) GEN $@
 	$(Q)mkdir -p $(dir $@)
 	$(Q)sed -e 's/^LE_CONFIG_/export &/g' $< > $@
@@ -483,32 +411,22 @@ ifneq ($(KNOWN_TARGET),1)
 endif
 
 # Generate doxygen configuration containing the KConfig definitions
-$(DOXYGEN_DEFS): $(LEGATO_KCONFIG) $(BUILD_CONFIG)/Documentation $(BUILD_CONFIG)/WiFi
+$(DOXYGEN_DEFS): $(LEGATO_KCONFIG)
 	$(L) GEN $@
 	$(Q)mkdir -p $(dir $@)
 	$(Q)sed -e 's/^LE_CONFIG_/PREDEFINED += &/g' -e 's/=y/=1/g' $< > $@
 
 # Interactively select build options
 .PHONY: menuconfig
-menuconfig: $(LEGATO_KCONFIG) $(KCONFIG) $(BUILD_CONFIG)/Documentation $(BUILD_CONFIG)/WiFi
+menuconfig: $(LEGATO_KCONFIG)
 	$(L) KCONFIG $(LEGATO_KCONFIG)
-	$(Q)KCONFIG_CONFIG=$(LEGATO_KCONFIG) $(LEGATO_ROOT)/bin/kconfig-nconf KConfig
+	$(Q)KCONFIG_CONFIG=$(LEGATO_KCONFIG) $(MENUCONFIG_TOOL) KConfig
 
 # Interactively select build options for a specific target
 .PHONY: menuconfig_$(TARGET)
 menuconfig_$(TARGET): menuconfig
 
 # ========== TOOLS RECIPES ============
-
-# Build kconfig-frontends for manipulating configuration
-kconfig-frontends: $(KCONFIG)
-$(KCONFIG):
-	$(L) MAKE $@
-	$(Q)$(MAKE) -f Makefile.hostTools kconfig-frontends
-
-$(KCONFIG_SET_VALUE):
-	$(L) MAKE $@
-	$(Q)$(MAKE) -f Makefile.hostTools kconfig-set-value
 
 # Rule for how to build the build tools.
 .PHONY: tools
@@ -583,7 +501,7 @@ package.properties: version sources.md5
 	$(Q)echo "md5=`cat sources.md5`" >> $@
 
 # Header containing all of the KConfig parameters
-$(HEADER_CONFIG): $(LEGATO_KCONFIG) Makefile $(BUILD_CONFIG)/Documentation $(BUILD_CONFIG)/WiFi
+$(HEADER_CONFIG): $(LEGATO_KCONFIG) Makefile
 	$(L) GEN $@
 	$(Q)mkdir -p $(dir $@)
 	$(Q)printf '#ifndef LEGATO_CONFIG_INCLUDE_GUARD\n' > $@
