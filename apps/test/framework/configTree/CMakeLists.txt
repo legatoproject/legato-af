@@ -4,7 +4,8 @@
 
 # Build host unit tests.
 
-set(LEGATO_BIN_DIR          ${LEGATO_ROOT}/build/${LEGATO_TARGET}/framework/bin)
+set(LEGATO_BUILD            ${LEGATO_ROOT}/build/${LEGATO_TARGET})
+set(LEGATO_BIN_DIR          ${LEGATO_BUILD}/framework/bin)
 
 set(SERVICE_DIRECTORY_BIN   ${LEGATO_BIN_DIR}/serviceDirectory)
 set(LOG_CTRL_DAEMON_BIN     ${LEGATO_BIN_DIR}/logCtrlDaemon)

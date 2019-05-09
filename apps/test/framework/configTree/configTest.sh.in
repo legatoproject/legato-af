@@ -1,9 +1,11 @@
 #!/bin/bash
 
-
 # Make sure that the shared libraries are available.
 _script="$(readlink -f ${BASH_SOURCE[0]})"
 _base="$(dirname $_script)"
+
+# Make sure Legato config is available
+source @LEGATO_BUILD@/config.sh
 
 export LD_LIBRARY_PATH=$_base/../lib
 
@@ -19,7 +21,9 @@ echo "--------------------------------------------------------------------------
 SERVEROPT="withserver"
 SERVER_PARAM=$1
 
-
+if [ "${LE_CONFIG_DEBUG}" = y ]; then
+    CONFIG_ERROR_EXIT=134
+fi
 
 
 if [ "$SERVER_PARAM" = "$SERVEROPT" ]; then
@@ -119,8 +123,8 @@ ExecWithTimeout 10 0 @EXECUTABLE_OUTPUT_PATH@/configDropWriteExe
 
 
 # Now, tell them to hang around to make sure that the automatic timeouts work.
-ExecWithTimeout 10 1 @EXECUTABLE_OUTPUT_PATH@/configDropReadExe hangAround
-ExecWithTimeout 10 1 @EXECUTABLE_OUTPUT_PATH@/configDropWriteExe hangAround
+ExecWithTimeout 10 ${CONFIG_ERROR_EXIT:-1} @EXECUTABLE_OUTPUT_PATH@/configDropReadExe hangAround
+ExecWithTimeout 10 ${CONFIG_ERROR_EXIT:-1} @EXECUTABLE_OUTPUT_PATH@/configDropWriteExe hangAround
 
 
 

@@ -875,8 +875,13 @@ const char* _le_log_GetResultCodeString
  * to be printed (depending on the contents of the format string).
  */
 //--------------------------------------------------------------------------------------------------
+#if !LE_CONFIG_DEBUG
 #define LE_FATAL(formatString, ...) \
         { LE_EMERG(formatString, ##__VA_ARGS__); exit(EXIT_FAILURE); }
+#else
+#define LE_FATAL(formatString, ...) \
+        { LE_EMERG(formatString, ##__VA_ARGS__); abort(); }
+#endif
 
 
 //--------------------------------------------------------------------------------------------------
@@ -899,11 +904,7 @@ const char* _le_log_GetResultCodeString
  */
 //--------------------------------------------------------------------------------------------------
 #define LE_ASSERT(condition)                            \
-    if (!(condition))                                   \
-    {                                                   \
-        LE_EMERG("Assert Failed: '%s'", #condition);    \
-        abort();                                        \
-    }
+    LE_FATAL_IF(!(condition), "Assert Failed: '%s'", #condition)
 
 
 //--------------------------------------------------------------------------------------------------
@@ -913,11 +914,7 @@ const char* _le_log_GetResultCodeString
  */
 //--------------------------------------------------------------------------------------------------
 #define LE_ASSERT_OK(condition)                                         \
-    if ((condition) != LE_OK)                                           \
-    {                                                                   \
-        LE_EMERG("Assert Failed: '%s' is not LE_OK (0)", #condition);   \
-        abort();                                                        \
-    }
+    LE_FATAL_IF((condition) != LE_OK, "Assert Failed: '%s' is not LE_OK (0)", #condition)
 
 
 //--------------------------------------------------------------------------------------------------
