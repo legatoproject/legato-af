@@ -20,11 +20,6 @@
  * Extern Declarations
  */
 //--------------------------------------------------------------------------------------------------
-extern const rpcProxy_SystemLinkElement_t rpcProxy_SystemLinkArray[];
-extern const rpcProxy_ExternServer_t *rpcProxy_ServerReferenceArray[];
-extern const rpcProxy_ExternClient_t *rpcProxy_ClientReferenceArray[];
-extern const rpcProxy_SystemServiceConfig_t rpcProxy_SystemServiceArray[];
-
 #ifdef RPC_PROXY_UNIT_TEST
 extern le_result_t rpcDaemonTest_ProcessClientRequest(rpcProxy_Message_t* proxyMessagePtr);
 #endif
@@ -67,7 +62,7 @@ static void SendSessionConnectRequest(const char* systemName,
  * Maximum receive buffer size.
  */
 //--------------------------------------------------------------------------------------------------
-#define RPC_PROXY_RECV_BUFFER_MAX              RPC_PROXY_MAX_MESSAGE
+#define RPC_PROXY_RECV_BUFFER_MAX              (RPC_PROXY_MAX_MESSAGE + RPC_PROXY_MSG_HEADER_SIZE)
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1053,7 +1048,7 @@ static le_result_t RepackUnOptimizedData
 
         // Verify validity of the pointer data size
         if (((*msgBufPtr + value) - &proxyMessagePtr->message[0]) >=
-                LE_RPC_PROXY_MAX_MESSAGE)
+                RPC_PROXY_MAX_MESSAGE)
         {
             // Insufficient space to store the pointer data
             LE_ERROR("Format Error - Insufficient space "
@@ -1163,6 +1158,8 @@ static le_result_t RepackStoreResponsePointer
     le_hashmap_Put(ResponseParameterArrayByProxyId,
                    (void*)(uintptr_t) proxyMessagePtr->commonHeader.id,
                    arrayPtr);
+
+    return LE_OK;
 }
 
 
@@ -2279,12 +2276,12 @@ static le_result_t ProcessConnectServiceResponse
 
     // Traverse all Service Reference entries in the Service Reference array and
     // search for matching service-name
-    for (uint8_t index = 0; rpcProxy_ServerReferenceArray[index]; index++)
+    for (uint32_t index = 0; rpcProxyConfig_GetServerReferenceArray(index); index++)
     {
         const rpcProxy_ExternServer_t* serviceRefPtr = NULL;
 
         // Set a pointer to the Service Reference element
-        serviceRefPtr = rpcProxy_ServerReferenceArray[index];
+        serviceRefPtr = rpcProxyConfig_GetServerReferenceArray(index);
 
         // Retrieve the system-name for the specified service-name
         const char* systemName =
@@ -3073,12 +3070,12 @@ static le_result_t DoConnectService
     bool serviceMatch = false;
 
     // Traverse the Binding Reference array searching for a service-name match
-    for (uint8_t index = 0; rpcProxy_ClientReferenceArray[index]; index++)
+    for (uint32_t index = 0; rpcProxyConfig_GetClientReferenceArray(index); index++)
     {
         const rpcProxy_ExternClient_t* bindingRefPtr = NULL;
 
         // Set a pointer to the Binding Reference element
-        bindingRefPtr = rpcProxy_ClientReferenceArray[index];
+        bindingRefPtr = rpcProxyConfig_GetClientReferenceArray(index);
 
         // Traverse service-name array searching for matching service-name
         if (strcmp(bindingRefPtr->serviceName, serviceName) == 0)
@@ -3243,12 +3240,12 @@ void rpcProxy_AdvertiseServices
 
     // Traverse all Service Reference entries in the Service Reference array and
     // advertise their service
-    for (uint8_t index = 0; rpcProxy_ServerReferenceArray[index]; index++)
+    for (uint32_t index = 0; rpcProxyConfig_GetServerReferenceArray(index); index++)
     {
         const rpcProxy_ExternServer_t* serviceRefPtr = NULL;
 
         // Set a pointer the Service Reference element
-        serviceRefPtr = rpcProxy_ServerReferenceArray[index];
+        serviceRefPtr = rpcProxyConfig_GetServerReferenceArray(index);
 
         const char* systemNamePtr =
             rpcProxyConfig_GetSystemNameByServiceName(serviceRefPtr->serviceName);
@@ -3304,12 +3301,12 @@ void rpcProxy_HideServices
 {
     // Traverse all Service Reference entries in the Service Reference array and
     // hide their service
-    for (uint8_t index = 0; rpcProxy_ServerReferenceArray[index]; index++)
+    for (uint32_t index = 0; rpcProxyConfig_GetServerReferenceArray(index); index++)
     {
         const rpcProxy_ExternServer_t* serviceRefPtr = NULL;
 
         // Set a pointer to the Service Reference element
-        serviceRefPtr = rpcProxy_ServerReferenceArray[index];
+        serviceRefPtr = rpcProxyConfig_GetServerReferenceArray(index);
 
         // Retrieve the system-name for the specified service-name
         const char* systemNamePtr =
@@ -3365,13 +3362,13 @@ void rpcProxy_DisconnectSessions
 )
 {
     // Traverse the Binding Reference array searching for a service-name match
-    for (uint8_t index = 0; rpcProxy_ClientReferenceArray[index]; index++)
+    for (uint32_t index = 0; rpcProxyConfig_GetClientReferenceArray(index); index++)
     {
         const rpcProxy_ExternClient_t* sessionRefPtr = NULL;
         le_msg_SessionRef_t sessionRef = NULL;
 
         // Set a pointer to the Binding Reference element
-        sessionRefPtr = rpcProxy_ClientReferenceArray[index];
+        sessionRefPtr = rpcProxyConfig_GetClientReferenceArray(index);
 
         // Retrieve the system-name for the specified service-name
         const char* systemNamePtr =
@@ -3578,8 +3575,6 @@ COMPONENT_INIT
         goto exit;
     }
 
-
-#ifndef RPC_PROXY_LOCAL_SERVICE
     // Load the ConfigTree configuration for links, bindings and references
     result = rpcProxyConfig_LoadSystemLinks();
     if (result != LE_OK)
@@ -3594,12 +3589,18 @@ COMPONENT_INIT
         LE_ERROR("Unable to load References configuration, result [%d]", result);
         goto exit;
     }
-#endif
 
     result = rpcProxyConfig_LoadBindings();
     if (result != LE_OK)
     {
         LE_ERROR("Unable to load Bindings configuration, result [%d]", result);
+        goto exit;
+    }
+
+    result = rpcProxyConfig_ValidateConfiguration();
+    if (result != LE_OK)
+    {
+        LE_ERROR("Configuration validation error, result [%d]", result);
         goto exit;
     }
 
@@ -3617,38 +3618,38 @@ COMPONENT_INIT
 
     // Traverse all System-Link entries in the System-Link array and
     // create the Network Communication channel
-    for (uint8_t index = 0; rpcProxy_SystemLinkArray[index].systemName; index++)
+    for (uint32_t index = 0; rpcProxyConfig_GetSystemLinkArray(index).systemName; index++)
     {
-        const rpcProxy_SystemLinkElement_t* systemLinkPtr = &rpcProxy_SystemLinkArray[index];
-
 #ifndef RPC_PROXY_LOCAL_SERVICE
-        LE_INFO("Opening library %s", rpcProxy_SystemLinkArray[index].libraryName);
+        LE_INFO("Opening library %s",
+                rpcProxyConfig_GetSystemLinkArray(index).libraryName);
 
         // Open System-Link Library, using dlopen
         // Provides le_comm API implementation
         // NOTE: Only a single le_comm API implementation is currently supported at a time
-        void* handle = dlopen(rpcProxy_SystemLinkArray[index].libraryName,
+        void* handle = dlopen(rpcProxyConfig_GetSystemLinkArray(index).libraryName,
                               RTLD_LAZY | RTLD_GLOBAL);
         if (!handle)
         {
             LE_ERROR("Failed to load library '%s' (%s)",
-                     rpcProxy_SystemLinkArray[index].libraryName,
+                     rpcProxyConfig_GetSystemLinkArray(index).libraryName,
                      dlerror());
             goto exit;
         }
 
         LE_INFO("Finished opening library %s",
-                rpcProxy_SystemLinkArray[index].libraryName);
+                rpcProxyConfig_GetSystemLinkArray(index).libraryName);
 #endif
 
         // Get the System Name using the Link Name
         const char* systemName =
-            rpcProxyConfig_GetSystemNameByLinkName(systemLinkPtr->systemName);
+            rpcProxyConfig_GetSystemNameByLinkName(
+                rpcProxyConfig_GetSystemLinkArray(index).systemName);
 
         if (systemName == NULL)
         {
             LE_ERROR("Unable to retrieve system--name for system-link '%s'",
-                    systemLinkPtr->systemName);
+                    rpcProxyConfig_GetSystemLinkArray(index).systemName);
             goto exit;
         }
 

@@ -7,6 +7,7 @@
  */
 
 #include "le_rpcProxy.h"
+#include "le_rpcProxyConfig.h"
 #include "le_rpcProxyNetwork.h"
 #include "le_comm.h"
 
@@ -16,7 +17,6 @@
  * Extern declaration for system links
  */
 //--------------------------------------------------------------------------------------------------
-extern const rpcProxy_SystemServiceConfig_t rpcProxy_SystemServiceArray[];
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -499,18 +499,17 @@ le_result_t rpcProxyNetwork_CreateNetworkCommunicationChannel
     {
         // Traverse the System-Link array and
         // retrieve the argc and argv[] arguments configured for the systemName
-        for (uint8_t index = 0; rpcProxy_SystemServiceArray[index].systemName; index++)
+        for (uint32_t index = 0; rpcProxyConfig_GetSystemServiceArray(index).systemName; index++)
         {
-            if (strcmp(rpcProxy_SystemServiceArray[index].systemName, systemName) == 0)
+            if (strcmp(rpcProxyConfig_GetSystemServiceArray(index).systemName, systemName) == 0)
             {
-                // Argument array holding the System-Name
-                const char* argv[] =
-                    {(char*) rpcProxy_SystemServiceArray[index].systemName,
-                     (char*) rpcProxy_SystemServiceArray[index].linkName};
-
-                // Create the Network Connection, passing in the argv
-                // containing the systemName and linkName
-                networkRecordPtr->handle = le_comm_Create(2, argv, &result);
+                // Create the Network Connection, passing in the command-line
+                // arguments that were read from the RPC Proxy links configuration
+                networkRecordPtr->handle =
+                    le_comm_Create(
+                        rpcProxyConfig_GetSystemServiceArray(index).argc,
+                        rpcProxyConfig_GetSystemServiceArray(index).argv,
+                        &result);
 
                 if ((result != LE_OK) && (result != LE_IN_PROGRESS))
                 {

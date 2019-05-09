@@ -169,137 +169,6 @@ COMPONENT_INIT
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Reads the Network System configuration from the ConfigTree.
- *
- * NOTE: Format is,
- *
- * systems:
- * {
- *     "S1": {
- *         "LINK1": {
- *             "address" : "10.1.1.2"
- *             "port" : "443"
- *         },
- *
- *         "LINK2": {
- *             ....
- *         }
- *     },
- *
- *     "S2": {
- *     }
- * }
- *
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t LoadSystemsFromConfigTree
-(
-    const char* systemName,
-    const char* linkName
-)
-{
-    char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
-    le_result_t result;
-
-    // Open up a read transaction on the Config Tree
-    le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateReadTxn("rpcProxy/systems");
-
-    if (le_cfg_NodeExists(iteratorRef, "") == false)
-    {
-        LE_WARN("RPC Proxy 'rpcProxy/systems' configuration not found.");
-
-        // Close the transaction and return the failure
-        le_cfg_CancelTxn(iteratorRef);
-        return LE_NOT_FOUND;
-    }
-
-    le_cfg_GoToNode(iteratorRef, systemName);
-    if (le_cfg_IsEmpty(iteratorRef, ""))
-    {
-        LE_ERROR("System %s configuration not found", systemName);
-
-        // Close the transaction and return the failure
-        le_cfg_CancelTxn(iteratorRef);
-        return LE_NOT_FOUND;
-    }
-
-    result = le_cfg_GoToFirstChild(iteratorRef);
-    if (result != LE_OK)
-    {
-        LE_WARN("No configuration found.");
-
-        // Close the transaction and return the failure
-        le_cfg_CancelTxn(iteratorRef);
-        return result;
-    }
-
-    // Loop through all link-name nodes.
-    do
-    {
-        // Get the Link-Name
-        result = le_cfg_GetNodeName(iteratorRef, "", strBuffer, sizeof(strBuffer));
-        if (result != LE_OK)
-        {
-            LE_WARN("Link-Name configuration not found.");
-
-            // Close the transaction and return the failure
-            le_cfg_CancelTxn(iteratorRef);
-            return result;
-        }
-
-        // Check if this is the System we are provisioning
-        if (strcmp(linkName, strBuffer) == 0)
-        {
-            // Get the IP Address
-            result = le_cfg_GetString(iteratorRef,
-                                      "address",
-                                      strBuffer,
-                                      sizeof(strBuffer),
-                                      "");
-            if (result != LE_OK)
-            {
-                LE_WARN("IP Address configuration not found.");
-
-                // Close the transaction and return the failure
-                le_cfg_CancelTxn(iteratorRef);
-                return result;
-            }
-            // Extract the Server's IP address
-            memcpy(NetworkSocketIpAddress, strBuffer, sizeof(NetworkSocketIpAddress));
-            LE_INFO("Setting Network Socket IP Address '%s'", NetworkSocketIpAddress);
-
-            // Get the TCP Port
-            result = le_cfg_GetString(iteratorRef,
-                                      "port",
-                                      strBuffer,
-                                      sizeof(strBuffer),
-                                      "");
-            if (result != LE_OK)
-            {
-                LE_WARN("TCP Port configuration not found.");
-
-                // Close the transaction and return the failure
-                le_cfg_CancelTxn(iteratorRef);
-                return result;
-            }
-            // Extract the Server's TCP Listening port
-            NetworkSocketTCPListeningPort = atoi(strBuffer);
-            LE_INFO("Setting Network Socket TCP Port [%" PRIu16 "]",
-                    NetworkSocketTCPListeningPort);
-        }
-        break;
-    }
-    while (le_cfg_GoToNextSibling(iteratorRef) == LE_OK);
-
-    // Close the transaction and return success
-    le_cfg_CancelTxn(iteratorRef);
-
-    return LE_OK;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Callback function to receive events on a connection and pass them onto the RPC Proxy
  */
 //--------------------------------------------------------------------------------------------------
@@ -328,7 +197,7 @@ static le_result_t ParseCommandLineArgs
     const char* argv[]
 )
 {
-    le_result_t result;
+    le_result_t result = LE_OK;
 
     LE_INFO("Parsing Command Line Arguments");
     if (argc != 2)
@@ -337,15 +206,23 @@ static le_result_t ParseCommandLineArgs
         return LE_BAD_PARAMETER;
     }
 
-    // Load the IP Address and port number from the ConfigTree
-    result = LoadSystemsFromConfigTree(argv[0], argv[1]);
-    if (result != LE_OK)
-    {
-        LE_WARN("Unable to load Systems configuration, result [%d]", result);
-        return result;
-    }
+    // Extract the Server's IP address
+    le_utf8_Copy(NetworkSocketIpAddress, argv[0], sizeof(NetworkSocketIpAddress), NULL);
+    LE_INFO("Setting Network Socket IP Address [%s]", NetworkSocketIpAddress);
 
-    return LE_OK;
+    // Extract the Server's TCP Listening port
+    int portNumber = atoi(argv[1]);
+
+    // Verify the TCP Port range
+    if (portNumber > 0xffff)
+    {
+        return LE_BAD_PARAMETER;
+    }
+    NetworkSocketTCPListeningPort = portNumber;
+    LE_INFO("Setting Network Socket TCP Port [%" PRIu16 "]",
+            NetworkSocketTCPListeningPort);
+
+    return result;
 }
 
 #ifdef SOCKET_SERVER

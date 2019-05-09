@@ -138,8 +138,8 @@ static void HandleHelpRequest
         "            Retrieves the node-value for the specified system-name,\n"
         "            link-name, and node-name.\n"
         "\n"
-        "    rpctool reset link <systemName> <linkName>\n"
-        "            Resets the RPC link for the specifed system-name and link-name.\n"
+        "    rpctool reset link <systemName>\n"
+        "            Resets the RPC link for the specifed system-name.\n"
         "\n"
         "    rpctool list links\n"
         "            Lists all RPC links configured in the system.\n"
@@ -376,7 +376,6 @@ static void ObjectTypeArgHandler
             case ACTION_RESET:
             {
                 le_arg_AddPositionalCallback(SystemNameArgHandler);
-                le_arg_AddPositionalCallback(LinkNameArgHandler);
                 break;
             }
             case ACTION_GET:
@@ -721,7 +720,7 @@ COMPONENT_INIT
                     break;
 
                 case OBJECT_LINK:
-                    le_rpc_ResetSystemLink(SystemNameArg, LinkNameArg);
+                    le_rpc_ResetSystemLink(SystemNameArg);
                     break;
 
                 default:

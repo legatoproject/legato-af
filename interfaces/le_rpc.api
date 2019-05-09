@@ -160,8 +160,7 @@ FUNCTION le_result_t GetSystemLink
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ResetSystemLink
 (
-    string systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN, ///< Remote System-Name
-    string linkName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN    ///< System Link-Name
+    string systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN  ///< Remote System-Name
 );
 
 //--------------------------------------------------------------------------------------------------

@@ -2,7 +2,14 @@ sources:
 {
     le_rpcProxy.c
     le_rpcProxyNetwork.c
+#if ${LE_CONFIG_RTOS} = y
+    le_rpcProxyConfigLocal.c
+#elif ${LE_CONFIG_RPC_PROXY_LIBRARY} = y
+    le_rpcProxyConfigLocal.c
+#else
     le_rpcProxyConfig.c
+#endif
+    le_rpcProxyConfigCommon.c
 }
 
 requires:

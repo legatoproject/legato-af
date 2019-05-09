@@ -72,7 +72,7 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define RPC_PROXY_MAX_MESSAGE                  1024
-#define RPC_LOCAL_MAX_MESSAGE                  1024
+#define RPC_LOCAL_MAX_MESSAGE                  RPC_PROXY_MAX_MESSAGE
 
 #define RPC_PROXY_MSG_SERVICE_NAME_SIZE        (sizeof(char) * LIMIT_MAX_IPC_INTERFACE_NAME_BYTES)
 
@@ -286,10 +286,12 @@ typedef struct rpcProxy_ExternLinuxClient
 //--------------------------------------------------------------------------------------------------
 typedef struct rpcProxy_SystemServiceConfig
 {
-    const char *systemName; ///< System-Name
-    const char *linkName;   ///< Link-Name
-    const char *serviceName; ///< Service-Instance-Name
+    const char *systemName;        ///< System-Name
+    const char *linkName;          ///< Link-Name
+    const char *serviceName;       ///< Service-Instance-Name
     const char *remoteServiceName; ///< Remote Service-Instance-Name
+    int argc; ///< Number of strings pointed to by argv (used by le_comm plugin implementation)
+    const char **argv; ///< Array of character strings (used by le_comm plugin implementation)
 } rpcProxy_SystemServiceConfig_t;
 
 
