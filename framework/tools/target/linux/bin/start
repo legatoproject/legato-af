@@ -108,7 +108,7 @@ case "$1" in
 
 
             # Use the start system of the current system if available and ima not enabled
-            if [ -x "/legato/systems/current/bin/startSystem" ] && ! ImaEnabled; then
+            if [ -x "/legato/systems/current/bin/startSystem" ] && ! IsImaEnabled; then
                 cd "/legato/systems/current"
                 LEGATO_CURRENT_VERSION=`cat /legato/systems/current/version`
                 ./bin/startSystem -v "$LEGATO_CURRENT_VERSION"

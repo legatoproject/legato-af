@@ -232,6 +232,71 @@ void sysStatus_DecrementTryCount
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Returns the number of boot count
+ *
+ * @return The number of consecutive reboots by the current system."
+ */
+//--------------------------------------------------------------------------------------------------
+int sysStatus_BootCount
+(
+    void
+)
+{
+    char bootCountBuffer[100] = "";
+
+    if (file_ReadStr(BOOT_COUNT_PATH, bootCountBuffer, sizeof(bootCountBuffer)) == -1)
+    {
+        LE_INFO("The boot count  could not be found, '%s'.", BOOT_COUNT_PATH);
+        return 0;
+    }
+
+    int tryCount;
+
+    // Max value for bootCount is 4
+    bootCountBuffer[1] = '\0';
+    le_result_t result = le_utf8_ParseInt(&tryCount, bootCountBuffer);
+
+    if (result != LE_OK)
+    {
+        LE_FATAL("Boot count '%s' is not a valid integer. (%s)",
+                 bootCountBuffer,
+                 LE_RESULT_TXT(result));
+    }
+    else
+    {
+        return tryCount;
+    }
+
+    return 0;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decrement the boot count.
+ */
+//--------------------------------------------------------------------------------------------------
+void sysStatus_DecrementBootCount
+(
+    void
+)
+{
+    int bootCount = sysStatus_BootCount();
+    char bootBuffer[100] = "";
+
+    --bootCount;
+
+    int len = snprintf(bootBuffer, sizeof(bootBuffer), "%d %"PRIu64,
+                       bootCount, (uint64_t)time(NULL));
+
+    LE_ASSERT(len < sizeof(bootBuffer));
+
+    file_WriteStrAtomic(BOOT_COUNT_PATH, bootBuffer, 0644 /* rw-r--r-- */);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Mark the system "bad".
  */
 //--------------------------------------------------------------------------------------------------
