@@ -307,6 +307,7 @@ static enum
     STATE_STOPPING,           ///< Controlled shutdown of framework underway.
     STATE_RESTARTING,         ///< Controlled shutdown and restart of framework underway.
     STATE_RESTARTING_MANUAL,  ///< Manual shutdown and restart of framework underway.
+    STATE_RESTARTING_START,   ///< Controlled shutdown of framework and run current start.
 }
 State = STATE_STARTING;
 
@@ -666,6 +667,14 @@ static void StopSupervisor
         LE_INFO("Legato framework shut down.");
         sysStatus_DecrementTryCount();
         // Exit the Supervisor.
+        exit(EXIT_SUCCESS);
+    }
+    else if (State == STATE_RESTARTING_START)
+    {
+        // Initiated by user command stopLegato
+        LE_INFO("Legato framework shut down. Restarting with current start.");
+        sysStatus_DecrementTryCount();
+        sysStatus_DecrementBootCount();
         exit(EXIT_SUCCESS);
     }
     else
@@ -1240,7 +1249,7 @@ COMPONENT_INIT
         else
         {
             // Exit current supervisor and shutdown old start
-            State = STATE_STOPPING;
+            State = STATE_RESTARTING_START;
             StopSupervisor();
         }
     }
