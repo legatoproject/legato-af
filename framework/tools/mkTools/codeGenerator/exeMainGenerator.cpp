@@ -152,7 +152,7 @@ void GenerateCLangExeMain
                   "    // Connect to the log control daemon.\n"
                   "    // Note that there are some rare cases where we don't want the\n"
                   "    // process to try to connect to the Log Control Daemon (e.g.,\n"
-                  "    // the Supervisor and the Service Directory shouldn't).\n"
+                  "    // the Service Directory shouldn't).\n"
                   "    // The NO_LOG_CONTROL macro can be used to control that.\n"
                   "    #ifndef NO_LOG_CONTROL\n"
                   "        le_log_ConnectToControlDaemon();\n"

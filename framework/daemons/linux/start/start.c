@@ -26,7 +26,7 @@
 //--------------------------------------------------------------------------------------------------
 
 #include "legato.h"
-
+#include "log.h"
 #include "start.h"
 #include "pa_start.h"
 
@@ -1354,6 +1354,8 @@ static int TryToRun
     pid_t supervisorPid = fork();
     if (supervisorPid == 0)
     {
+        // Set envs of default log level for framework daemons.
+        log_SetFrameworkLevelEnv();
         // I'm the child. Exec the Supervisor, telling it not to daemonize itself.
         const char supervisorPath[] = "/legato/systems/current/bin/supervisor";
 

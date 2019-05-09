@@ -220,6 +220,7 @@
 #include "sysStatus.h"
 #include "ima.h"
 #include "fs.h"
+#include "log.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -519,6 +520,7 @@ static void StartFramework
 
     // Connect to the services we need from the framework daemons.
     LE_DEBUG("---- Connecting to services ----");
+    log_ConnectToControlDaemon();
     le_cfg_ConnectService();
     logFd_ConnectService();
     le_instStat_ConnectService();
@@ -738,6 +740,7 @@ static void ShutdownFramework
 {
     // Disconnect ourselves from services we use so when we kill the servers it does not cause us
     // to die too.
+    log_DisconnectFromControlDaemon();
     le_cfg_DisconnectService();
     logFd_DisconnectService();
     le_instStat_DisconnectService();

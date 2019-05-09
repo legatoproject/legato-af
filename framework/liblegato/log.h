@@ -42,6 +42,29 @@ void log_Init
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Connects to the Log Control Daemon.  This must not be done until after the Messaging system
+ * is initialized, but must be done before the main thread's Event Loop starts to ensure that
+ * all log settings are received from the Log Control Daemon and applied to sessions in the local
+ * process before any component initialization functions are run.
+ */
+//--------------------------------------------------------------------------------------------------
+void log_ConnectToControlDaemon
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disconnects from the Log Control Daemon.
+ */
+//--------------------------------------------------------------------------------------------------
+void log_DisconnectFromControlDaemon
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Convert log level enum values to strings suitable for message logging.
  *
  * @return Severity string.
@@ -78,6 +101,16 @@ le_log_Level_t log_StrToSeverityLevel
 const char* log_SeverityLevelToStr
 (
     le_log_Level_t level    ///< Severity level.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the the log level env for framework daemons. log level MACROs can be specified at built time.
+ **/
+//--------------------------------------------------------------------------------------------------
+void log_SetFrameworkLevelEnv
+(
+    void
 );
 
 #endif // LOG_INCLUDE_GUARD
