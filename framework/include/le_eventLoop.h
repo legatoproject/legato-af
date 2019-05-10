@@ -543,13 +543,28 @@ typedef struct le_event_Id* le_event_Id_t;
 #endif
 
 // This macro is set by the build system.  However, if it hasn't been set, use a sensible default.
-// TODO: Remove this.
-#ifndef COMPONENT_INIT
-    /**
-     * Initialization event handler function.
-     */
-    #define COMPONENT_INIT LE_CI_LINKAGE LE_SHARED void _le_event_InitializeComponent(void)
+#ifndef LE_COMPONENT_NAME
+#   define LE_COMPONENT_NAME    le
 #endif
+
+/// Construct prototype of component init function
+#define COMPONENT_INIT_PROTOTYPE(name)  LE_CI_LINKAGE LE_SHARED void name               \
+                                        (                                               \
+                                            __attribute__((unused)) void *param1Ptr,    \
+                                            __attribute__((unused)) void *param2Ptr     \
+                                        )
+
+/// Compose component initialization function name
+#define COMPONENT_INIT_NAME             CAT(CAT(_, LE_COMPONENT_NAME), _COMPONENT_INIT)
+
+/// Compose component initialization function prototype
+#define COMPONENT_INIT                  COMPONENT_INIT_PROTOTYPE(COMPONENT_INIT_NAME)
+
+/// Compose one-time component initialization function name
+#define COMPONENT_INIT_ONCE_NAME        CAT(COMPONENT_INIT_NAME, _ONCE)
+
+/// Compose one-time component initialization function prototype
+#define COMPONENT_INIT_ONCE             COMPONENT_INIT_PROTOTYPE(COMPONENT_INIT_ONCE_NAME)
 
 /// Deprecated name for @ref COMPONENT_INIT.
 #define LE_EVENT_INIT_HANDLER COMPONENT_INIT

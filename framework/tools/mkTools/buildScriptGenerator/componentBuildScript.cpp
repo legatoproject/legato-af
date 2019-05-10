@@ -132,12 +132,6 @@ void ComponentBuildScriptGenerator_t::GenerateCommonCAndCxxFlags
 
     // Define the component name
     script << " -DLE_COMPONENT_NAME=" << componentPtr->name;
-
-    // Define the COMPONENT_INIT and COMPONENT_INIT_ONCE.
-    script << " \"-DCOMPONENT_INIT=LE_CI_LINKAGE LE_SHARED void "
-           << componentPtr->initFuncName << "()\""
-           << " \"-DCOMPONENT_INIT_ONCE=LE_CI_LINKAGE LE_SHARED void "
-           << componentPtr->initFuncName << "_ONCE()\"";
 }
 
 
