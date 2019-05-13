@@ -339,6 +339,21 @@ void fdMon_Unlock
 // ==============================================
 
 //--------------------------------------------------------------------------------------------------
+// Create definitions for inlineable functions
+//
+// See le_fdMonitor.h for bodies & documentation
+//--------------------------------------------------------------------------------------------------
+#if !LE_CONFIG_FD_MONITOR_NAMES_ENABLED
+LE_DEFINE_INLINE le_fdMonitor_Ref_t le_fdMonitor_Create
+(
+    const char                  *name,
+    int                          fd,
+    le_fdMonitor_HandlerFunc_t   handlerFunc,
+    short                        events
+);
+#endif
+
+//--------------------------------------------------------------------------------------------------
 /**
  * Creates a File Descriptor Monitor.
  *

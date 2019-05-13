@@ -13,7 +13,6 @@
 // Initializers are defined in these headers
 #include "args.h"
 #include "eventLoop.h"
-#include "fd.h"
 #include "fileDescriptor.h"
 #include "fs.h"
 #include "json.h"

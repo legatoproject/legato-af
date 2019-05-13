@@ -8,7 +8,7 @@
 
 #include "legato.h"
 
-#include "fa/messaging.h"
+#include "messaging.h"
 #include "messagingCommon.h"
 #include "messagingLocal.h"
 #include "thread.h"

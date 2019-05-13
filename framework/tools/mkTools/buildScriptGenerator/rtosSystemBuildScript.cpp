@@ -77,7 +77,7 @@ void RtosSystemBuildScriptGenerator_t::GenerateLdFlags
     script <<
         " $ldFlags -Wl,-Map=" <<
         path::MakeAbsolute(path::Combine(buildParams.outputDir, "$target.map")) <<
-        " -Wl,--gc-sections"
+        " -Wl,--gc-sections -T $$LEGATO_ROOT/framework/rtos/rtos.ld"
         " \"-L$$LEGATO_BUILD/framework/lib\" -llegato\n"
         "  entry=le_microSupervisor_Main\n"
         "  pplFlags=--entry=le_microSupervisor_Main\n"

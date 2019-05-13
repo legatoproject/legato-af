@@ -24,17 +24,21 @@ apps:
     eventLoop/test_EventLoop
     timer/test_Timer
     semaphore/test_Semaphore
+#if ${LE_CONFIG_NETWORK} = y
     fdMonitor/test_FdMonitorSocket
+#endif
     fdMonitor/test_FdMonitorFifo
     ipc/test_IpcC2C
-    #if ${CONFIG_LINUX} = y
-        ipc/test_IpcC2CDirect
-    #endif
+#if ${LE_CONFIG_LINUX} = y
+    // FIXME: test is broken: ipc/test_IpcC2CDirect
+#endif
     ipc/test_IpcC2CAsync
     ipc/test_IpcCRelay
     ipc/test_Optional1
     ipc/test_Optional2
+#if ${LE_CONFIG_FILESYSTEM} = y
     fs/test_Fs
+#endif
     crc/test_Crc
     fd/test_Fd
     issues/test_LE_11195

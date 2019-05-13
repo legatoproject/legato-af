@@ -1,0 +1,9 @@
+sources:
+{
+    legatoCmd.c
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}
+}

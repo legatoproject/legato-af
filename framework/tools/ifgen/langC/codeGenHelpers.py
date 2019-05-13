@@ -10,6 +10,7 @@
 # Copyright (C) Sierra Wireless Inc.
 #
 
+import os
 import interfaceIR
 from jinja2 import contextfilter, environmentfilter
 

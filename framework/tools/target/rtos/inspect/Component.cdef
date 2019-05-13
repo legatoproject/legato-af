@@ -1,0 +1,9 @@
+cflags:
+{
+    -I$LEGATO_ROOT/framework/liblegato
+}
+
+sources:
+{
+    inspect.c
+}

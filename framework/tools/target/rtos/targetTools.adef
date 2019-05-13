@@ -1,0 +1,16 @@
+// Application that generates on-target tools.
+
+// None of these tools should actually be run if someone tells the supervisor to start the app.
+// So we don't have a "run:" section at all, and we can set it to manual start so the supervisor
+// doesn't waste time "starting" it.
+start: manual
+sandboxed: false
+
+executables:
+{
+    legato = (legato)
+
+#if ${CONFIG_RTOS_TARGET_TOOL_INSPECT} = y
+    inspect = (inspect)
+#endif
+}
