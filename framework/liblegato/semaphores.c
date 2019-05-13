@@ -110,16 +110,6 @@ static pthread_mutex_t SemaphoreListMutex = PTHREAD_MUTEX_INITIALIZER;
 #   define  SEM_NAME(var) "<omitted>"
 #endif
 
-#if LE_CONFIG_LINUX_TARGET_TOOLS
-
-/// Lock a semaphore's Waiting List Mutex.
-#define LOCK_WAITING_LIST(semaphorePtr) \
-LE_ASSERT(pthread_mutex_lock(&(semaphorePtr)->waitingListMutex) == 0)
-
-/// Unlock a semaphore's Waiting List Mutex.
-#define UNLOCK_WAITING_LIST(semaphorePtr) \
-LE_ASSERT(pthread_mutex_unlock(&(semaphorePtr)->waitingListMutex) == 0)
-
 //--------------------------------------------------------------------------------------------------
 // Create definitions for inlineable functions
 //
@@ -137,6 +127,16 @@ LE_DEFINE_INLINE le_sem_Ref_t le_sem_FindSemaphore
     const char* name
 );
 #endif /* end LE_CONFIG_SEM_NAMES_ENABLED */
+
+#if LE_CONFIG_LINUX_TARGET_TOOLS
+
+/// Lock a semaphore's Waiting List Mutex.
+#define LOCK_WAITING_LIST(semaphorePtr) \
+LE_ASSERT(pthread_mutex_lock(&(semaphorePtr)->waitingListMutex) == 0)
+
+/// Unlock a semaphore's Waiting List Mutex.
+#define UNLOCK_WAITING_LIST(semaphorePtr) \
+LE_ASSERT(pthread_mutex_unlock(&(semaphorePtr)->waitingListMutex) == 0)
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -176,7 +176,7 @@ static void RemoveFromWaitingList
 
     UNLOCK_WAITING_LIST(semaphorePtr);
 }
-#endif
+#endif /* end LE_CONFIG_LINUX_TARGET_TOOLS */
 
 
 // ==============================
@@ -351,17 +351,10 @@ void le_sem_Delete
  *      Invalid Name will do LE_FATAL
  */
 //--------------------------------------------------------------------------------------------------
-#if LE_CONFIG_SEM_NAMES_ENABLED
 le_sem_Ref_t le_sem_FindSemaphore
 (
     const char* name    ///< [IN] The name of the semaphore.
 )
-#else
-le_sem_Ref_t _le_sem_FindSemaphore
-(
-    void
-)
-#endif
 {
     le_dls_Link_t *semaphorePtr;
     Semaphore_t *Nodeptr;
