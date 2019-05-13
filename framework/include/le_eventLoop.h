@@ -676,6 +676,7 @@ LE_DECLARE_INLINE le_event_Id_t le_event_CreateId
     size_t      payloadSize
 )
 {
+    LE_UNUSED(name);
     return _le_event_CreateId(payloadSize);
 }
 #endif /* end LE_CONFIG_EVENT_NAMES_ENABLED */
@@ -724,6 +725,7 @@ LE_DECLARE_INLINE le_event_Id_t le_event_CreateIdWithRefCounting
     const char *name
 )
 {
+    LE_UNUSED(name);
     return _le_event_CreateIdWithRefCounting();
 }
 #endif /* end LE_CONFIG_EVENT_NAMES_ENABLED */
@@ -788,6 +790,7 @@ LE_DECLARE_INLINE le_event_HandlerRef_t le_event_AddHandler
     le_event_HandlerFunc_t   handlerFunc
 )
 {
+    LE_UNUSED(name);
     return _le_event_AddHandler(eventId, handlerFunc);
 }
 #endif /* end LE_CONFIG_EVENT_NAMES_ENABLED */
@@ -862,6 +865,7 @@ LE_DECLARE_INLINE le_event_HandlerRef_t le_event_AddLayeredHandler
     void*                            secondLayerFunc
 )
 {
+    LE_UNUSED(name);
     return _le_event_AddLayeredHandler(eventId, firstLayerFunc, secondLayerFunc);
 }
 #endif /* end LE_CONFIG_EVENT_NAMES_ENABLED */

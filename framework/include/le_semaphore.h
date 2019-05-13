@@ -109,6 +109,7 @@ LE_DECLARE_INLINE le_sem_Ref_t le_sem_Create
     int32_t initialCount
 )
 {
+    LE_UNUSED(name);
     return _le_sem_Create(initialCount);
 }
 #endif /* end LE_CONFIG_SEM_NAMES_ENABLED */
@@ -157,6 +158,7 @@ LE_DECLARE_INLINE le_sem_Ref_t le_sem_FindSemaphore
     const char* name
 )
 {
+    LE_UNUSED(name);
     // Cannot look up semaphores by name if names do not exist.
     return NULL;
 }

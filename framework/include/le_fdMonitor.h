@@ -444,6 +444,7 @@ LE_DECLARE_INLINE le_fdMonitor_Ref_t le_fdMonitor_Create
     short                        events
 )
 {
+    LE_UNUSED(name);
     return _le_fdMonitor_Create(fd, handlerFunc, events);
 }
 #endif /* end LE_CONFIG_FD_MONITOR_NAMES_ENABLED */

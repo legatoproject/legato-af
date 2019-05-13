@@ -137,6 +137,7 @@ LE_DECLARE_INLINE le_mutex_Ref_t le_mutex_CreateRecursive
     const char *nameStr
 )
 {
+    LE_UNUSED(nameStr);
     return _le_mutex_CreateRecursive();
 }
 #endif /* end LE_CONFIG_MUTEX_NAMES_ENABLED */
@@ -183,6 +184,7 @@ LE_DECLARE_INLINE le_mutex_Ref_t le_mutex_CreateNonRecursive
     const char *nameStr
 )
 {
+    LE_UNUSED(nameStr);
     return _le_mutex_CreateNonRecursive();
 }
 #endif /* end LE_CONFIG_MUTEX_NAMES_ENABLED */

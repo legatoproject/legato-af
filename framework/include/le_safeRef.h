@@ -337,6 +337,7 @@ LE_DECLARE_INLINE le_ref_MapRef_t le_ref_CreateMap
     size_t      maxRefs
 )
 {
+    LE_UNUSED(name);
     return _le_ref_CreateMap(maxRefs);
 }
 #endif /* end LE_CONFIG_SAFE_REF_NAMES_ENABLED */

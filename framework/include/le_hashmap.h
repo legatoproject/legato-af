@@ -361,6 +361,7 @@ LE_DECLARE_INLINE le_hashmap_Ref_t le_hashmap_Create
     le_hashmap_EqualsFunc_t    equalsFunc
 )
 {
+    LE_UNUSED(nameStr);
     return _le_hashmap_Create(capacity, hashFunc, equalsFunc);
 }
 #endif /* end LE_CONFIG_HASHMAP_NAMES_ENABLED */

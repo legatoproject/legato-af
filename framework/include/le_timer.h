@@ -199,6 +199,7 @@ LE_DECLARE_INLINE le_timer_Ref_t le_timer_Create
     const char *nameStr
 )
 {
+    LE_UNUSED(nameStr);
     return _le_timer_Create();
 }
 #endif /* end LE_CONFIG_TIMER_NAMES_ENABLED */
