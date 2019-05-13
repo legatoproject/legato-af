@@ -18,6 +18,18 @@
 static le_pos_MovementHandlerRef_t  NavigationHandlerRef;
 static le_pos_MovementHandlerRef_t  FiftyNavigationHandlerRef;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Default acquisition rate is 1 sample/sec
+ */
+//--------------------------------------------------------------------------------------------------
+#define DEFAULT_ACQUISITION_RATE 1000
+
+#ifdef LE_CONFIG_LINUX
+#define LINUX_OS 1
+#else
+#define LINUX_OS 0
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -395,13 +407,21 @@ static void Testle_pos_TestAcquisitionRate
     void
 )
 {
-    LE_ASSERT_OK(le_pos_SetAcquisitionRate(3000));
-    LE_ASSERT(3000 == le_pos_GetAcquisitionRate());
+    uint32_t    acquisitionRate=0;
+    le_result_t res = le_pos_SetAcquisitionRate(3000);
+    LE_ASSERT((LE_OK == res) || (LE_UNSUPPORTED == res));
 
-    LE_ASSERT(LE_OUT_OF_RANGE == le_pos_SetAcquisitionRate(0));
+    acquisitionRate = le_pos_GetAcquisitionRate();
+    LE_ASSERT((3000 == acquisitionRate) || (DEFAULT_ACQUISITION_RATE == acquisitionRate));
 
-    LE_ASSERT_OK(le_pos_SetAcquisitionRate(1000));
-    LE_ASSERT(1000 == le_pos_GetAcquisitionRate());
+    res = le_pos_SetAcquisitionRate(0);
+    LE_ASSERT((LE_OUT_OF_RANGE == res) || (LE_UNSUPPORTED == res));
+
+    res = le_pos_SetAcquisitionRate(1000);
+    LE_ASSERT((LE_OK == res) || (LE_UNSUPPORTED == res));
+
+    acquisitionRate = le_pos_GetAcquisitionRate();
+    LE_ASSERT((1000 == acquisitionRate) || (DEFAULT_ACQUISITION_RATE == acquisitionRate));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -419,11 +439,12 @@ static void Testle_pos_ActivateGpsNmeaSentences
     le_gnss_NmeaBitMask_t nmeaMask;
     le_gnss_NmeaBitMask_t saveNmeaMask;
 
-    LE_INFO("Start Test TestLeGnssNmeaSentences");
+    LE_TEST_INFO("Start Test TestLeGnssNmeaSentences");
 
     // Test 1: bit mask too big, error
     nmeaMask = (LE_GNSS_NMEA_SENTENCES_MAX << 1) | 1;
-    LE_ASSERT(LE_BAD_PARAMETER == le_gnss_SetNmeaSentences(nmeaMask));
+    LE_TEST_OK(LE_BAD_PARAMETER == le_gnss_SetNmeaSentences(nmeaMask),
+            "Set invalid NMEA mask %d", nmeaMask);
 
     // Test 2: test all bits from the bit mask
     le_gnss_NmeaBitMask_t nmeaSentencesList[] = {
@@ -432,6 +453,8 @@ static void Testle_pos_ActivateGpsNmeaSentences
         LE_GNSS_NMEA_MASK_GPGSV,
         LE_GNSS_NMEA_MASK_GPRMC,
         LE_GNSS_NMEA_MASK_GPVTG,
+        LE_GNSS_NMEA_MASK_GPGLL,
+#ifdef LE_CONFIG_LINUX
         LE_GNSS_NMEA_MASK_GLGSV,
         LE_GNSS_NMEA_MASK_GNGNS,
         LE_GNSS_NMEA_MASK_GNGSA,
@@ -440,78 +463,124 @@ static void Testle_pos_ActivateGpsNmeaSentences
         LE_GNSS_NMEA_MASK_GAGSV,
         LE_GNSS_NMEA_MASK_GARMC,
         LE_GNSS_NMEA_MASK_GAVTG,
+#else
+        LE_GNSS_NMEA_MASK_GPGNS,
+        LE_GNSS_NMEA_MASK_GPZDA,
+        LE_GNSS_NMEA_MASK_GPGST,
+#endif
+
         0
     };
 
     for (i = 0; nmeaSentencesList[i]; i++)
     {
-        LE_ASSERT_OK(le_gnss_SetNmeaSentences(nmeaSentencesList[i]));
-        LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
-        LE_ASSERT(nmeaMask == nmeaSentencesList[i]);
+        LE_TEST_OK(LE_OK == le_gnss_SetNmeaSentences(nmeaSentencesList[i]),
+                "Set NMEA sentence mask to 0x%08X",nmeaSentencesList[i]);
+        LE_TEST_OK(LE_OK == le_gnss_GetNmeaSentences(&nmeaMask), "Get NMEA sentences");
+        LE_TEST_OK(nmeaMask == nmeaSentencesList[i],
+                "Confirm NMEA sentence mask is set to 0x%08X", nmeaSentencesList[i]);
     }
 
     // @deprecated, PQXFI is deprecated. PTYPE is used instead.
-    LE_ASSERT_OK(le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_PQXFI));
-    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
-    LE_ASSERT(nmeaMask == (LE_GNSS_NMEA_MASK_PQXFI | LE_GNSS_NMEA_MASK_PTYPE));
+    LE_TEST_BEGIN_SKIP(!LINUX_OS, 21);
+    LE_TEST_OK(LE_OK == le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_PQXFI),
+            "Set NMEA sentence mask to %08X", LE_GNSS_NMEA_MASK_PQXFI);
+    LE_TEST_OK(LE_OK == le_gnss_GetNmeaSentences(&nmeaMask), "Get NMEA sentences");
+    LE_TEST_OK(nmeaMask == (LE_GNSS_NMEA_MASK_PQXFI | LE_GNSS_NMEA_MASK_PTYPE),
+            "Confirm NMEA sentence mask is set to %08X",
+            (LE_GNSS_NMEA_MASK_PQXFI | LE_GNSS_NMEA_MASK_PTYPE));
 
-    LE_ASSERT_OK(le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_PTYPE));
-    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
-    LE_ASSERT(nmeaMask == (LE_GNSS_NMEA_MASK_PQXFI | LE_GNSS_NMEA_MASK_PTYPE));
+    LE_TEST_OK(LE_OK == le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_PTYPE),
+            "Set NMEA sentence mask to %08X",LE_GNSS_NMEA_MASK_PTYPE);
+    LE_TEST_OK(le_gnss_GetNmeaSentences(&nmeaMask), "Get NMEA sentences");
+    LE_TEST_OK(nmeaMask == (LE_GNSS_NMEA_MASK_PQXFI | LE_GNSS_NMEA_MASK_PTYPE),
+            "Confirm NMEA sentence mask is set to %08X",
+            (LE_GNSS_NMEA_MASK_PQXFI | LE_GNSS_NMEA_MASK_PTYPE));
 
-    LE_ASSERT_OK(le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_PSTIS));
-    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
-    LE_ASSERT((LE_GNSS_NMEA_MASK_GPGRS == nmeaMask) || (0 == nmeaMask));
+    LE_TEST_OK(LE_OK == le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_PSTIS),
+            "Set NMEA sentence mask to %08X", LE_GNSS_NMEA_MASK_PSTIS);
+    LE_TEST_OK(LE_OK == le_gnss_GetNmeaSentences(&nmeaMask), "Get NMEA sentences");
+    LE_TEST_OK((LE_GNSS_NMEA_MASK_PSTIS == nmeaMask) || (0 == nmeaMask),
+            "Confirm NMEA sentence mask is set to %08X or 0", LE_GNSS_NMEA_MASK_PSTIS);
 
-    LE_ASSERT_OK(le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_GPGRS));
-    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
-    LE_ASSERT((LE_GNSS_NMEA_MASK_GPGRS == nmeaMask) || (0 == nmeaMask));
+    LE_TEST_OK(LE_OK == le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_GPGRS),
+            "set NMEA sentence mask to %08X", LE_GNSS_NMEA_MASK_GPGRS);
+    LE_TEST_OK(LE_OK == le_gnss_GetNmeaSentences(&nmeaMask),
+            "Get NMEA sentences");
+    LE_TEST_OK((LE_GNSS_NMEA_MASK_GPGRS == nmeaMask) || (0 == nmeaMask),
+            "Confirm NMEA sentence mas is set to %08X or 0", LE_GNSS_NMEA_MASK_GPGRS);
 
-    LE_ASSERT_OK(le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_GPGLL));
-    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
-    LE_ASSERT((LE_GNSS_NMEA_MASK_GPGLL == nmeaMask) || (0 == nmeaMask));
+    LE_TEST_OK(LE_OK == le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_DEBUG),
+            "Set NMEA sentence mask to %08X", LE_GNSS_NMEA_MASK_DEBUG);
+    LE_TEST_OK(LE_OK == le_gnss_GetNmeaSentences(&nmeaMask), "Get NMEA sentences");
+    LE_TEST_OK((LE_GNSS_NMEA_MASK_DEBUG == nmeaMask) || (0 == nmeaMask),
+            "Confirm NMEA sentence mask is set to %08X or 0", LE_GNSS_NMEA_MASK_DEBUG);
 
-    LE_ASSERT_OK(le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_DEBUG));
-    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
-    LE_ASSERT((LE_GNSS_NMEA_MASK_DEBUG == nmeaMask) || (0 == nmeaMask));
+    LE_TEST_OK(LE_OK == le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_GPDTM),
+            "Set NMEA sentence mask to %08X", LE_GNSS_NMEA_MASK_GPDTM);
+    LE_TEST_OK(LE_OK == le_gnss_GetNmeaSentences(&nmeaMask),
+            "Get NMEA sentences");
+    LE_TEST_OK((LE_GNSS_NMEA_MASK_GPDTM == nmeaMask) || (0 == nmeaMask),
+            "Confirm NMEA sentence mask is set to %08X or 0", LE_GNSS_NMEA_MASK_GPDTM);
 
-    LE_ASSERT_OK(le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_GPDTM));
-    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
-    LE_ASSERT((LE_GNSS_NMEA_MASK_GPDTM == nmeaMask) || (0 == nmeaMask));
+    LE_TEST_OK(LE_OK == le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_GAGNS),
+            "Set NMEA sentences to %08X", LE_GNSS_NMEA_MASK_GAGNS);
+    LE_TEST_OK(LE_OK == le_gnss_GetNmeaSentences(&nmeaMask),
+            "Get NMEA sentences");
+    LE_TEST_OK((LE_GNSS_NMEA_MASK_GAGNS == nmeaMask) || (0 == nmeaMask),
+            "Confirm NMEA sentence mask is set to %08X or 0", LE_GNSS_NMEA_MASK_GAGNS);
+    LE_TEST_END_SKIP();
 
-    LE_ASSERT_OK(le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_GAGNS));
-    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
-    LE_ASSERT((LE_GNSS_NMEA_MASK_GAGNS == nmeaMask) || (0 == nmeaMask));
+    LE_TEST_OK(LE_OK == le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_GPGLL),
+            "Set NMEA sentence mask to %08X", LE_GNSS_NMEA_MASK_GPGLL);
+    LE_TEST_OK(LE_OK == le_gnss_GetNmeaSentences(&nmeaMask),
+            "Get NMEA sentences");
+    LE_TEST_OK((LE_GNSS_NMEA_MASK_GPGLL == nmeaMask) || (0 == nmeaMask),
+            "Confirm NMEA sentence mask is set to %08X or 0", LE_GNSS_NMEA_MASK_GPGLL);
+
     // Test 3: test bit mask combinations
-    saveNmeaMask = LE_GNSS_NMEA_MASK_GPGGA | LE_GNSS_NMEA_MASK_GPGSA | LE_GNSS_NMEA_MASK_GPGSV |
-                   LE_GNSS_NMEA_MASK_GPRMC | LE_GNSS_NMEA_MASK_GPVTG | LE_GNSS_NMEA_MASK_GLGSV |
-                   LE_GNSS_NMEA_MASK_GNGNS | LE_GNSS_NMEA_MASK_GNGSA | LE_GNSS_NMEA_MASK_GAGGA |
-                   LE_GNSS_NMEA_MASK_GAGSA | LE_GNSS_NMEA_MASK_GAGSV | LE_GNSS_NMEA_MASK_GARMC |
-                   LE_GNSS_NMEA_MASK_GAVTG | LE_GNSS_NMEA_MASK_PQXFI | LE_GNSS_NMEA_MASK_PTYPE;
+    saveNmeaMask = LE_GNSS_NMEA_MASK_GPGGA | LE_GNSS_NMEA_MASK_GPGSA | LE_GNSS_NMEA_MASK_GPGSV;
 
-    LE_ASSERT_OK(le_gnss_SetNmeaSentences(saveNmeaMask));
-    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
-    LE_ASSERT(nmeaMask == saveNmeaMask);
+    LE_TEST_OK(LE_OK == le_gnss_SetNmeaSentences(saveNmeaMask),
+            "Set NMEA sentence mask to %08X", saveNmeaMask);
+    LE_TEST_OK(LE_OK == le_gnss_GetNmeaSentences(&nmeaMask),
+            "Get NMEA sentences");
+    LE_TEST_OK(nmeaMask == saveNmeaMask,
+            "Confirm NMEA sentence mask is set to %08X", saveNmeaMask);
 
-    LE_ASSERT_OK(le_gnss_SetNmeaSentences(saveNmeaMask | LE_GNSS_NMEA_MASK_GPGRS));
-    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
-    LE_ASSERT(((saveNmeaMask | LE_GNSS_NMEA_MASK_GPGRS) == nmeaMask) || (saveNmeaMask == nmeaMask));
+    LE_TEST_OK(LE_OK == le_gnss_SetNmeaSentences(saveNmeaMask | LE_GNSS_NMEA_MASK_GPRMC),
+            "Set NMEA sentence mask to %08X", (saveNmeaMask | LE_GNSS_NMEA_MASK_GPRMC));
+    LE_TEST_OK(LE_OK == le_gnss_GetNmeaSentences(&nmeaMask), "Get NMEA sentences");
+    LE_TEST_OK(((saveNmeaMask | LE_GNSS_NMEA_MASK_GPRMC) == nmeaMask) || (saveNmeaMask == nmeaMask),
+            "Confirm NMEA mask is set correctly");
 
-    LE_ASSERT_OK(le_gnss_SetNmeaSentences(saveNmeaMask | LE_GNSS_NMEA_MASK_GPGLL));
-    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
-    LE_ASSERT(((saveNmeaMask | LE_GNSS_NMEA_MASK_GPGLL) == nmeaMask) || (saveNmeaMask == nmeaMask));
+    LE_TEST_OK(LE_OK == le_gnss_SetNmeaSentences(saveNmeaMask | LE_GNSS_NMEA_MASK_GPGLL),
+            "Set NMEA sentence mask to %08X", (saveNmeaMask | LE_GNSS_NMEA_MASK_GPGLL));
+    LE_TEST_OK(LE_OK == le_gnss_GetNmeaSentences(&nmeaMask), "Get NMEA sentences");
+    LE_TEST_OK(((saveNmeaMask | LE_GNSS_NMEA_MASK_GPGLL) == nmeaMask) || (saveNmeaMask == nmeaMask),
+            "Confirm NMEA mask is set correctly");
 
-    LE_ASSERT_OK(le_gnss_SetNmeaSentences(saveNmeaMask | LE_GNSS_NMEA_MASK_DEBUG));
-    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
-    LE_ASSERT(((saveNmeaMask | LE_GNSS_NMEA_MASK_DEBUG) == nmeaMask) || (saveNmeaMask == nmeaMask));
+    LE_TEST_BEGIN_SKIP(!LINUX_OS, 9);
+    LE_TEST_OK(LE_OK == le_gnss_SetNmeaSentences(saveNmeaMask | LE_GNSS_NMEA_MASK_DEBUG),
+            "Set NMEA sentence mask to %08X", (saveNmeaMask | LE_GNSS_NMEA_MASK_DEBUG));
+    LE_TEST_OK(LE_OK == le_gnss_GetNmeaSentences(&nmeaMask), "Get NMEA sentences");
+    LE_TEST_OK(((saveNmeaMask | LE_GNSS_NMEA_MASK_DEBUG) == nmeaMask) ||
+            (saveNmeaMask == nmeaMask), "Confirm NMEA sentence mask is set correctly");
 
-    LE_ASSERT_OK(le_gnss_SetNmeaSentences(saveNmeaMask | LE_GNSS_NMEA_MASK_GPDTM));
-    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
-    LE_ASSERT(((saveNmeaMask | LE_GNSS_NMEA_MASK_GPDTM) == nmeaMask) || (saveNmeaMask == nmeaMask));
+    LE_TEST_OK(LE_OK == le_gnss_SetNmeaSentences(saveNmeaMask | LE_GNSS_NMEA_MASK_GPDTM),
+            "Set NMEA sentence mask to %08X", (saveNmeaMask | LE_GNSS_NMEA_MASK_GPDTM));
+    LE_TEST_OK(LE_OK == le_gnss_GetNmeaSentences(&nmeaMask), "Get NMEA sentences");
+    LE_TEST_OK(((saveNmeaMask | LE_GNSS_NMEA_MASK_GPDTM) == nmeaMask) || (saveNmeaMask == nmeaMask),
+            "Confirm NMEA sentence mask is set correctly");
 
-    LE_ASSERT_OK(le_gnss_SetNmeaSentences(saveNmeaMask | LE_GNSS_NMEA_MASK_GAGNS));
-    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
-    LE_ASSERT(((saveNmeaMask | LE_GNSS_NMEA_MASK_GAGNS) == nmeaMask) || (saveNmeaMask == nmeaMask));
+    LE_TEST_OK(LE_OK == le_gnss_SetNmeaSentences(saveNmeaMask | LE_GNSS_NMEA_MASK_GAGNS),
+            "Set NMEA sentence mask to %08X", (saveNmeaMask | LE_GNSS_NMEA_MASK_GAGNS));
+    LE_TEST_OK(LE_OK == le_gnss_GetNmeaSentences(&nmeaMask), "Get NMEA sentence mask");
+    LE_TEST_OK(((saveNmeaMask | LE_GNSS_NMEA_MASK_GAGNS) == nmeaMask) || (saveNmeaMask == nmeaMask),
+            "Confirm NMEA sentence mask is set correctly");
+    LE_TEST_END_SKIP();
+
+    LE_TEST_INFO("Test Testle_pos_ActivateGpsNmeaSentences OK");
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -561,7 +630,6 @@ COMPONENT_INIT
     le_posCtrl_ActivationRef_t      activationRef;
     le_thread_Ref_t                 navigationThreadRef;
 
-
     LE_INFO("======== Positioning Test started  ========");
     Testle_pos_TestAcquisitionRate();
     // Add Position Handler Test
@@ -579,7 +647,6 @@ COMPONENT_INIT
     sleep(1);
     LE_INFO("Release the positioning service");
     le_posCtrl_Release(activationRef);
-    LE_INFO("======== Positioning Test finished ========");
 
     //Remove the movement handlers
     RemoveMovementHandlers();
@@ -588,6 +655,8 @@ COMPONENT_INIT
 
     Testle_pos_ActivateGpsNmeaSentences();
     Testle_pos_ResetGpsNmeaSentences();
+
+    LE_INFO("======== Positioning Test finished ========");
 
     exit(EXIT_SUCCESS);
 }

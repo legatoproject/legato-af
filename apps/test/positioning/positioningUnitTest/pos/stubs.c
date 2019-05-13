@@ -59,13 +59,6 @@ le_msg_SessionRef_t le_pos_GetClientSessionRef
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Reference to a tree iterator object.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct le_cfg_Iterator* le_cfg_IteratorRef_t;
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Simulated config tree values.
  */
 //--------------------------------------------------------------------------------------------------
@@ -324,4 +317,19 @@ void le_wdogChain_MonitorEventLoop
     le_clk_Time_t watchdogInterval ///< Interval at which to check event loop is functioning
 )
 {
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop a watchdog.
+ *
+ * This can also cause the chain to be completely kicked, so check it.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_wdogChain_Stop
+(
+    uint32_t watchdog
+)
+{
+    // do nothing
 }

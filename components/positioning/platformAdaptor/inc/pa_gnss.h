@@ -26,20 +26,6 @@
 // Symbol and Enum definitions.
 //--------------------------------------------------------------------------------------------------
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Type of restart.
- */
-//--------------------------------------------------------------------------------------------------
-typedef enum {
-    PA_GNSS_UNKNOWN_RESTART = 0,    ///< Unknown case.
-    PA_GNSS_HOT_RESTART,            ///< Hot restart.
-    PA_GNSS_WARM_RESTART,           ///< Warm restart.
-    PA_GNSS_COLD_RESTART,           ///< Cold restart.
-    PA_GNSS_FACTORY_RESTART         ///< Factory restart.
-}pa_gnss_Restart_t;
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Time structure.
@@ -352,6 +338,58 @@ LE_SHARED le_result_t pa_gnss_GetAcquisitionRate
     uint32_t* ratePtr     ///< [IN] rate in milliseconds
 );
 
+// -------------------------------------------------------------------------------------------------
+/**
+ * Get the minimum NMEA rate supported on this platform
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_FAULT            Function failed.
+ */
+// -------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_GetMinNmeaRate
+(
+    uint32_t* minNmeaRatePtr    ///< [OUT] Minimum NMEA rate in milliseconds.
+);
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Get the maximum NMEA rate supported on this platform
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_FAULT            Function failed.
+ */
+// -------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_GetMaxNmeaRate
+(
+    uint32_t* maxNmeaRatePtr    ///< [OUT] Maximum NMEA rate in milliseconds.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Returns a bitmask containing all NMEA sentences supported on this platform
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_FAULT            Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_GetSupportedNmeaSentences
+(
+    le_gnss_NmeaBitMask_t* nmeaMaskPtr    ///< [OUT] Supported NMEA sentences
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Returns a bitmask containing all satellite constellations supported on this platform
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_FAULT            Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_GetSupportedConstellations
+(
+    le_gnss_ConstellationBitMask_t* constellationMaskPtr    ///< [OUT] Supported GNSS constellations
+);
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to register an handler for GNSS position data notifications.
@@ -479,15 +517,30 @@ LE_SHARED le_result_t pa_gnss_InjectUtcTime
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to restart the GNSS device.
+ * This function delete GNSS assistance data for warm/cold/factory start
  *
- * @return LE_FAULT         The function failed.
- * @return LE_OK            The function succeeded.
+ * @return LE_FAULT           The function failed.
+ * @return LE_OK              The function succeeded.
+ * @return LE_UNSUPPORTED     Restart type not supported.
+ * @return LE_BAD_PARAMETER   Bad input parameter.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_ForceRestart
+LE_SHARED le_result_t pa_gnss_DeleteAssistData
 (
-    pa_gnss_Restart_t  restartType ///< [IN] type of restart
+    le_gnss_StartMode_t mode    ///< [IN] Start mode
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to stop the GNSS engine.
+ *
+ * @return LE_FAULT  The function failed.
+ * @return LE_OK     The function succeed.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_ForceEngineStop
+(
+    void
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -730,6 +783,35 @@ LE_SHARED le_result_t pa_gnss_GetConstellationArea
 (
     le_gnss_Constellation_t satConstellation,         ///< [IN] GNSS constellation used in solution.
     le_gnss_ConstellationArea_t* constellationAreaPtr ///< [OUT] GNSS constellation area.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enables the EXT_GPS_LNA_EN signal
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_UNSUPPORTED      Function not supported on this platform
+ *
+ * @note The EXT_GPS_LNA_EN signal will be set high when the GNSS state is active
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_EnableExternalLna
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disables the EXT_GPS_LNA_EN signal
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_UNSUPPORTED      Function not supported on this platform
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_DisableExternalLna
+(
+    void
 );
 
 //--------------------------------------------------------------------------------------------------

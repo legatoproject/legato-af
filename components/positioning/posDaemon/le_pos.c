@@ -12,7 +12,9 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "le_gnss_local.h"
+#ifdef LE_CONFIG_ENABLE_GNSS_ACQUISITION_RATE_SETTING
 #include "posCfgEntries.h"
+#endif // LE_CONFIG_ENABLE_GNSS_ACQUISITION_RATE_SETTING
 #include "watchdogChain.h"
 
 #include <math.h>
@@ -34,10 +36,8 @@
 
 #define POSITIONING_SAMPLE_MAX          1
 
-
-/// Typically, we don't expect more than this number of concurrent activation requests.
-#define POSITIONING_ACTIVATION_MAX      13      // Ideally should be a prime number.
-
+/// Expected number of sample handlers
+#define HIGH_POS_SAMPLE_HANDLER_COUNT   1
 
 #define CHECK_VALIDITY(_par_,_max_) (((_par_) == (_max_))? false : true)
 
@@ -55,6 +55,13 @@
 //--------------------------------------------------------------------------------------------------
 #define SEC_TO_MSEC            1000
 #define HOURS_TO_SEC           3600
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Default acquisition rate is 1 sample/sec
+ */
+//--------------------------------------------------------------------------------------------------
+#define DEFAULT_ACQUISITION_RATE 1000
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -210,6 +217,13 @@ PositionParam_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static safe Reference Map for service activation requests.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(PositioningClient, LE_CONFIG_POSITIONING_ACTIVATION_MAX);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Safe Reference Map for service activation requests.
  */
 //--------------------------------------------------------------------------------------------------
@@ -238,11 +252,29 @@ static le_dls_List_t PosSampleHandlerList = LE_DLS_LIST_INIT;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static pool for position samples
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(PosSample, POSITIONING_SAMPLE_MAX, sizeof(le_pos_Sample_t));
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Memory Pool for position samples.
- *
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t   PosSamplePoolRef;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static memory pool for position sample requests.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(PosSampleRequest,
+                          POSITIONING_SAMPLE_MAX,
+                          sizeof(PosSampleRequest_t));
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -252,6 +284,25 @@ static le_mem_PoolRef_t   PosSamplePoolRef;
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t   PosSampleRequestPoolRef;
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of expected sample handlers
+ */
+//--------------------------------------------------------------------------------------------------
+#define HIGH_SAMPLE_HANDLER_COUNT       1
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define static pool for sample handlers
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(PosSampleHandler,
+                          HIGH_SAMPLE_HANDLER_COUNT,
+                          sizeof(le_pos_SampleHandler_t));
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Memory Pool for position sample's handlers.
@@ -260,6 +311,16 @@ static le_mem_PoolRef_t   PosSampleRequestPoolRef;
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t   PosSampleHandlerPoolRef;
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static safe Reference Map for Positioning Sample objects.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(PosSampleMap, POSITIONING_SAMPLE_MAX);
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Safe Reference Map for Positioning Sample objects.
@@ -267,6 +328,16 @@ static le_mem_PoolRef_t   PosSampleHandlerPoolRef;
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t PosSampleMap;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static pool for positioning client handlers
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(PosCtrlHandler,
+                          LE_CONFIG_POSITIONING_ACTIVATION_MAX,
+                          sizeof(ClientRequest_t));
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -416,7 +487,7 @@ static uint32_t CalculateAcquisitionRate
     uint32_t  rate;
     uint32_t  metersec = averageSpeed * SEC_TO_MSEC/HOURS_TO_SEC;
 
-    LE_DEBUG("metersec %d (m/sec), h_Magnitude %d, v_Magnitude %d",
+    LE_DEBUG("metersec %"PRIu32" (m/sec), h_Magnitude %"PRIu32", v_Magnitude %"PRIu32"",
                   metersec,
                   horizontalMagnitude,
                   verticalMagnitude);
@@ -671,7 +742,7 @@ static le_result_t ComputeMove
     }
 
     // Compute horizontal and vertical move
-    LE_DEBUG("Last Position lat.%d, long.%d",
+    LE_DEBUG("Last Position lat.%"PRIi32", long.%"PRIi32,
                  posSampleHandlerNodePtr->lastLat, posSampleHandlerNodePtr->lastLong);
 
     // Save the current latitude values into lastLat.
@@ -699,7 +770,7 @@ static le_result_t ComputeMove
 
     uint32_t verticalMove = abs(posParamPtr->altitude - posSampleHandlerNodePtr->lastAlt);
 
-    LE_DEBUG("horizontalMove.%d, verticalMove.%d", horizontalMove, verticalMove);
+    LE_DEBUG("horizontalMove.%"PRIu32", verticalMove.%"PRIu32, horizontalMove, verticalMove);
 
     if (INT32_MAX == posParamPtr->vAccuracy)
     {
@@ -801,13 +872,13 @@ static void PosSampleHandlerfunc
         ((LE_OUT_OF_RANGE == result) && (INT32_MAX != latitude) && (INT32_MAX != longitude)))
     {
         locationValid = true;
-        LE_DEBUG("Position lat.%d, long.%d, hAccuracy.%d",
+        LE_DEBUG("Position lat.%"PRIi32", long.%"PRIi32", hAccuracy.%"PRIi32,
                  latitude, longitude, ConvertDistance(hAccuracy, H_ACCURACY));
     }
     else
     {
         locationValid = false;
-        LE_DEBUG("Position unknown [%d,%d,%d]", latitude, longitude, hAccuracy);
+        LE_DEBUG("Position unknown [%"PRIi32",%"PRIi32",%"PRIi32"]", latitude, longitude, hAccuracy);
     }
 
     // Get altitude
@@ -817,13 +888,13 @@ static void PosSampleHandlerfunc
         ((LE_OUT_OF_RANGE != result) && (INT32_MAX != altitude)))
     {
         altitudeValid = true;
-        LE_DEBUG("Altitude.%d, vAccuracy.%d", ConvertDistance(altitude, ALTITUDE),
-                                              ConvertDistance(vAccuracy, V_ACCURACY));
+        LE_DEBUG("Altitude.%"PRIi32", vAccuracy.%"PRIi32, ConvertDistance(altitude, ALTITUDE),
+                                                          ConvertDistance(vAccuracy, V_ACCURACY));
     }
     else
     {
         altitudeValid = false;
-        LE_DEBUG("Altitude unknown [%d,%d]", altitude, vAccuracy);
+        LE_DEBUG("Altitude unknown [%"PRIi32",%"PRIi32"]", altitude, vAccuracy);
     }
 
     // Positioning sample
@@ -1011,6 +1082,7 @@ static void PosSampleHandlerfunc
     le_gnss_ReleaseSampleRef(positionSampleRef);
 }
 
+#ifdef LE_CONFIG_ENABLE_GNSS_ACQUISITION_RATE_SETTING
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler function when an Acquition Rate change in configDB
@@ -1027,7 +1099,7 @@ static void AcquitisionRateUpdate
 
     AcqRate = le_cfg_GetInt(posCfg, CFG_NODE_RATE, DEFAULT_ACQUISITION_RATE);
 
-    LE_DEBUG("New acquisition rate (%d) for positioning",AcqRate);
+    LE_DEBUG("New acquisition rate (%"PRIu32") for positioning", AcqRate);
 
     le_cfg_CancelTxn(posCfg);
 }
@@ -1047,14 +1119,14 @@ static void LoadPositioningFromConfigDb
 
     // Default configuration
     AcqRate = le_cfg_GetInt(posCfg, CFG_NODE_RATE, DEFAULT_ACQUISITION_RATE);
-    LE_DEBUG("Set acquisition rate to value %d", AcqRate);
+    LE_DEBUG("Set acquisition rate to value %"PRIu32, AcqRate);
 
     // Add a configDb handler to check if the acquition rate change.
     le_cfg_AddChangeHandler(CFG_POSITIONING_RATE_PATH, AcquitisionRateUpdate,NULL);
 
     le_cfg_CancelTxn(posCfg);
 }
-
+#endif // LE_CONFIG_ENABLE_GNSS_ACQUISITION_RATE_SETTING
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1159,14 +1231,15 @@ static void PosCloseSessionEventHandler
 COMPONENT_INIT
 {
     // Create a pool for Position Sample objects
-    PosSamplePoolRef = le_mem_CreatePool("PosSamplePoolRef", sizeof(le_pos_Sample_t));
-    le_mem_ExpandPool(PosSamplePoolRef,POSITIONING_SAMPLE_MAX);
+    PosSamplePoolRef = le_mem_InitStaticPool(PosSample,
+                                             POSITIONING_SAMPLE_MAX,
+                                             sizeof(le_pos_Sample_t));
     le_mem_SetDestructor(PosSamplePoolRef, PosSampleDestructor);
 
     // Create a pool for Position sample request objects
-    PosSampleRequestPoolRef = le_mem_CreatePool("PosSampleRequestPoolRef",
-                                                sizeof(PosSampleRequest_t));
-    le_mem_ExpandPool(PosSampleRequestPoolRef, POSITIONING_SAMPLE_MAX);
+    PosSampleRequestPoolRef = le_mem_InitStaticPool(PosSampleRequest,
+                                                    POSITIONING_SAMPLE_MAX,
+                                                    sizeof(PosSampleRequest_t));
 
     // Initialize the event client close function handler.
     le_msg_ServiceRef_t posMsgService = le_pos_GetServiceRef();
@@ -1177,29 +1250,34 @@ COMPONENT_INIT
     le_msg_AddServiceCloseHandler(posCtrlMsgService, PosCtrlCloseSessionEventHandler, NULL);
 
     // Create a pool for Position Sample Handler objects
-    PosSampleHandlerPoolRef = le_mem_CreatePool("PosSampleHandlerPoolRef",
-                                                sizeof(le_pos_SampleHandler_t));
+    PosSampleHandlerPoolRef = le_mem_InitStaticPool(PosSampleHandler,
+                                                    HIGH_POS_SAMPLE_HANDLER_COUNT,
+                                                    sizeof(le_pos_SampleHandler_t));
     le_mem_SetDestructor(PosSampleHandlerPoolRef, PosSampleHandlerDestructor);
 
     // Create the reference HashMap for positioning sample
-    PosSampleMap = le_ref_CreateMap("PosSampleMap", POSITIONING_SAMPLE_MAX);
+    PosSampleMap = le_ref_InitStaticMap(PosSampleMap, POSITIONING_SAMPLE_MAX);
 
     NumOfHandlers = 0;
     GnssHandlerRef = NULL;
 
     // Create safe reference map for request references. The size of the map should be based on
     // the expected number of simultaneous data requests, so take a reasonable guess.
-    ActivationRequestRefMap = le_ref_CreateMap("Positioning Client", POSITIONING_ACTIVATION_MAX);
+    ActivationRequestRefMap = le_ref_InitStaticMap(PositioningClient,
+            LE_CONFIG_POSITIONING_ACTIVATION_MAX);
 
     // Create a pool for Position control client objects.
-    PosCtrlHandlerPoolRef = le_mem_CreatePool("PosCtrlHandlerPoolRef", sizeof(ClientRequest_t));
-    le_mem_ExpandPool(PosCtrlHandlerPoolRef,POSITIONING_ACTIVATION_MAX);
+    PosCtrlHandlerPoolRef = le_mem_InitStaticPool(PosCtrlHandler,
+                                                  LE_CONFIG_POSITIONING_ACTIVATION_MAX,
+                                                  sizeof(ClientRequest_t));
 
     // TODO define a policy for positioning device selection
     if (IsGNSSAvailable() == true)
     {
         gnss_Init();
+#ifdef LE_CONFIG_ENABLE_GNSS_ACQUISITION_RATE_SETTING
         LoadPositioningFromConfigDb();
+#endif // LE_CONFIG_ENABLE_GNSS_ACQUISITION_RATE_SETTING
     }
     else
     {
@@ -1210,7 +1288,6 @@ COMPONENT_INIT
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_Init(1);
     le_wdogChain_MonitorEventLoop(0, watchdogInterval);
-
     LE_DEBUG("Positioning service started.");
 }
 
@@ -1242,7 +1319,7 @@ le_posCtrl_ActivationRef_t le_posCtrl_Request
 
         if (le_gnss_SetAcquisitionRate(AcqRate) != LE_OK)
         {
-            LE_WARN("Failed to set GNSS's acquisition rate (%d)", AcqRate);
+            LE_WARN("Failed to set GNSS's acquisition rate (%"PRIu32")", AcqRate);
         }
 
         // Start the GNSS acquisition.
@@ -1343,11 +1420,12 @@ le_pos_MovementHandlerRef_t le_pos_AddMovementHandler
     posSampleHandlerNodePtr->sessionRef = le_pos_GetClientSessionRef();
     AcqRate = ComputeCommonSmallestRate(posSampleHandlerNodePtr->acquisitionRate);
 
-    LE_DEBUG("Calculated acquisition rate %d msec for an average speed of %d km/h",
+    LE_DEBUG("Calculated acquisition rate %"PRIu32" msec for an average speed of %d km/h",
              posSampleHandlerNodePtr->acquisitionRate,
              SUPPOSED_AVERAGE_SPEED);
-    LE_DEBUG("Smallest computed acquisition rate %d msec", AcqRate);
+    LE_DEBUG("Smallest computed acquisition rate %"PRIu32" msec", AcqRate);
 
+#ifdef LE_CONFIG_ENABLE_GNSS_ACQUISITION_RATE_SETTING
     // update configDB with the new rate.
     {
         // Add the default acquisition rate,.
@@ -1356,6 +1434,7 @@ le_pos_MovementHandlerRef_t le_pos_AddMovementHandler
         le_cfg_SetInt(posCfg, CFG_NODE_RATE, AcqRate);
         le_cfg_CommitTxn(posCfg);
     }
+#endif // LE_CONFIG_ENABLE_GNSS_ACQUISITION_RATE_SETTING
 
     posSampleHandlerNodePtr->horizontalMagnitude = horizontalMagnitude;
     posSampleHandlerNodePtr->verticalMagnitude = verticalMagnitude;
@@ -2700,17 +2779,20 @@ le_result_t le_pos_SetAcquisitionRate
     uint32_t  acquisitionRate   ///< IN Acquisition rate in milliseconds.
 )
 {
+#ifdef LE_CONFIG_ENABLE_GNSS_ACQUISITION_RATE_SETTING
     if (!acquisitionRate)
     {
-        LE_WARN("Invalid acquisition rate (%d)", acquisitionRate);
+        LE_WARN("Invalid acquisition rate (%"PRIu32")", acquisitionRate);
         return LE_OUT_OF_RANGE;
     }
 
     le_cfg_IteratorRef_t posCfg = le_cfg_CreateWriteTxn(CFG_POSITIONING_PATH);
     le_cfg_SetInt(posCfg,CFG_NODE_RATE,acquisitionRate);
     le_cfg_CommitTxn(posCfg);
-
     return LE_OK;
+#else
+    return LE_UNSUPPORTED;
+#endif // LE_CONFIG_ENABLE_GNSS_ACQUISITION_RATE_SETTING
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -2726,13 +2808,16 @@ uint32_t le_pos_GetAcquisitionRate
     void
 )
 {
-    uint32_t  acquisitionRate;
+    uint32_t  acquisitionRate = DEFAULT_ACQUISITION_RATE;
 
+#ifdef LE_CONFIG_ENABLE_GNSS_ACQUISITION_RATE_SETTING
     le_cfg_IteratorRef_t posCfg = le_cfg_CreateReadTxn(CFG_POSITIONING_PATH);
     acquisitionRate = le_cfg_GetInt(posCfg, CFG_NODE_RATE, DEFAULT_ACQUISITION_RATE);
     le_cfg_CancelTxn(posCfg);
 
-    LE_DEBUG("acquisition rate (%d) for positioning",acquisitionRate);
+    LE_DEBUG("acquisition rate (%"PRIu32") for positioning",acquisitionRate);
+#endif // LE_CONFIG_ENABLE_GNSS_ACQUISITION_RATE_SETTING
+
     return acquisitionRate;
 }
 

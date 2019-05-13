@@ -1049,6 +1049,8 @@ static void Testle_gnss_DeviceActiveStateTest
     LE_ASSERT(LE_OUT_OF_RANGE == result);
     LE_ASSERT(LE_FAULT == (le_gnss_GetMinElevation(NULL)));
 
+    // Test le_gnss_ForceXXXRestart. When the functions return LE_FAULT, the GNSS state passes to
+    // READY
     LE_ASSERT(LE_FAULT == (le_gnss_ForceHotRestart()));
     LE_ASSERT_OK(le_gnss_Start());
     LE_ASSERT(LE_FAULT == (le_gnss_ForceWarmRestart()));
@@ -1061,6 +1063,27 @@ static void Testle_gnss_DeviceActiveStateTest
 
     LE_ASSERT_OK(le_gnss_Stop());
     LE_ASSERT(LE_GNSS_STATE_READY == (le_gnss_GetState()));
+
+    // Test le_gnss_StartMode in Ready state
+    LE_ASSERT(LE_BAD_PARAMETER == (le_gnss_StartMode(LE_GNSS_UNKNOWN_START)));
+    LE_ASSERT(LE_OK == (le_gnss_StartMode(LE_GNSS_HOT_START)));
+    LE_ASSERT(LE_DUPLICATE == (le_gnss_StartMode(LE_GNSS_HOT_START)));
+    LE_ASSERT_OK(le_gnss_Stop());
+    LE_ASSERT(LE_OK == (le_gnss_StartMode(LE_GNSS_WARM_START)));
+    LE_ASSERT(LE_DUPLICATE == (le_gnss_StartMode(LE_GNSS_WARM_START)));
+    LE_ASSERT(LE_DUPLICATE == (le_gnss_StartMode(LE_GNSS_HOT_START)));
+    LE_ASSERT_OK(le_gnss_Stop());
+    LE_ASSERT(LE_OK == (le_gnss_StartMode(LE_GNSS_COLD_START)));
+    LE_ASSERT(LE_DUPLICATE == (le_gnss_StartMode(LE_GNSS_COLD_START)));
+    LE_ASSERT(LE_DUPLICATE == (le_gnss_StartMode(LE_GNSS_WARM_START)));
+    LE_ASSERT(LE_DUPLICATE == (le_gnss_StartMode(LE_GNSS_HOT_START)));
+    LE_ASSERT_OK(le_gnss_Stop());
+    LE_ASSERT(LE_OK == (le_gnss_StartMode(LE_GNSS_FACTORY_START)));
+    LE_ASSERT(LE_DUPLICATE == (le_gnss_StartMode(LE_GNSS_FACTORY_START)));
+    LE_ASSERT(LE_DUPLICATE == (le_gnss_StartMode(LE_GNSS_COLD_START)));
+    LE_ASSERT(LE_DUPLICATE == (le_gnss_StartMode(LE_GNSS_WARM_START)));
+    LE_ASSERT(LE_DUPLICATE == (le_gnss_StartMode(LE_GNSS_HOT_START)));
+    LE_ASSERT_OK(le_gnss_Stop());
     LE_ASSERT_OK(le_gnss_Start());
     LE_ASSERT(LE_GNSS_STATE_ACTIVE == (le_gnss_GetState()));
 
@@ -1126,20 +1149,42 @@ static void Testle_gnss_DeviceReadyStateTest
     LE_INFO("GNSS min elevation obtained: %d",minElevation);
     LE_ASSERT(minElevation == 0);
 
-    //In Ready state test  force reset not permitted
-    LE_ASSERT(LE_NOT_PERMITTED == (le_gnss_ForceHotRestart()));
-    LE_ASSERT(LE_NOT_PERMITTED == (le_gnss_ForceWarmRestart()));
-    LE_ASSERT(LE_NOT_PERMITTED == (le_gnss_ForceColdRestart()));
-    LE_ASSERT(LE_NOT_PERMITTED == (le_gnss_ForceFactoryRestart()));
     LE_ASSERT(LE_DUPLICATE == (le_gnss_Enable()));
     LE_ASSERT(LE_FAULT == (le_gnss_GetTtff(&ttffValue)));
     LE_ASSERT(LE_DUPLICATE == (le_gnss_Stop()));
 
     //When state is ready check disable/enable.
     LE_ASSERT(LE_GNSS_STATE_READY == (le_gnss_GetState()));
+
+    // Test force reset in Ready state
+    LE_ASSERT(LE_NOT_PERMITTED == (le_gnss_ForceHotRestart()));
+    LE_ASSERT(LE_NOT_PERMITTED == (le_gnss_ForceWarmRestart()));
+    LE_ASSERT(LE_NOT_PERMITTED == (le_gnss_ForceColdRestart()));
+    LE_ASSERT(LE_NOT_PERMITTED == (le_gnss_ForceFactoryRestart()));
+
+    // Test le_gnss_StartMode in Ready state
+    LE_ASSERT(LE_OK == (le_gnss_StartMode(LE_GNSS_HOT_START)));
+    LE_ASSERT(LE_DUPLICATE == (le_gnss_StartMode(LE_GNSS_WARM_START)));
+    LE_ASSERT(LE_DUPLICATE == (le_gnss_StartMode(LE_GNSS_COLD_START)));
+    LE_ASSERT(LE_DUPLICATE == (le_gnss_StartMode(LE_GNSS_FACTORY_START)));
+
+    LE_ASSERT_OK(le_gnss_Stop());
+
     LE_ASSERT_OK(le_gnss_Disable());
     LE_ASSERT(LE_GNSS_STATE_DISABLED == (le_gnss_GetState()));
     LE_ASSERT(LE_DUPLICATE == (le_gnss_Disable()));
+
+    // Test force reset in Disable state
+    LE_ASSERT(LE_NOT_PERMITTED == (le_gnss_ForceHotRestart()));
+    LE_ASSERT(LE_NOT_PERMITTED == (le_gnss_ForceWarmRestart()));
+    LE_ASSERT(LE_NOT_PERMITTED == (le_gnss_ForceColdRestart()));
+    LE_ASSERT(LE_NOT_PERMITTED == (le_gnss_ForceFactoryRestart()));
+
+    // Test le_gnss_StartMode in Disable state
+    LE_ASSERT(LE_NOT_PERMITTED == (le_gnss_StartMode(LE_GNSS_HOT_START)));
+    LE_ASSERT(LE_NOT_PERMITTED == (le_gnss_StartMode(LE_GNSS_WARM_START)));
+    LE_ASSERT(LE_NOT_PERMITTED == (le_gnss_StartMode(LE_GNSS_COLD_START)));
+    LE_ASSERT(LE_NOT_PERMITTED == (le_gnss_StartMode(LE_GNSS_FACTORY_START)));
 
     LE_ASSERT_OK(le_gnss_Enable());
     LE_ASSERT(LE_GNSS_STATE_READY == (le_gnss_GetState()));

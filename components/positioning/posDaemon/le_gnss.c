@@ -12,6 +12,7 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "pa_gnss.h"
+#include "le_gnss_local.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -20,8 +21,13 @@
 
 #define GNSS_POSITION_SAMPLE_MAX         1
 
-/// Typically, we don't expect more than this number of concurrent activation requests.
-#define GNSS_POSITION_ACTIVATION_MAX      13      // Ideally should be a prime number.
+/// Maximum expected position handlers
+#define GNSS_POSITION_HANDLER_HIGH       1
+
+/// Some platforms don't define O_CLOEXEC.  If not defined, define it as 0 (no effect)
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -246,6 +252,16 @@ static le_gnss_State_t GnssState = LE_GNSS_STATE_UNINITIALIZED;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static memory pool for position handlers
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(PositionHandler,
+                          GNSS_POSITION_HANDLER_HIGH,
+                          sizeof(le_gnss_PositionHandler_t));
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Memory Pool for position sample's handlers.
  *
  */
@@ -294,6 +310,15 @@ static le_gnss_PositionSample_t   LastPositionSample;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static pool for position samples.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(PositionSample,
+                          GNSS_POSITION_SAMPLE_MAX,
+                          sizeof(le_gnss_PositionSample_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Memory Pool for position samples.
  *
  */
@@ -302,11 +327,30 @@ static le_mem_PoolRef_t   PositionSamplePoolRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static memory pool for position sample request objects.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(PositionSampleRequest,
+                          GNSS_POSITION_SAMPLE_MAX,
+                          sizeof(le_gnss_PositionSampleRequest_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Memory Pool for Client Handler.
  *
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t   ClientPoolRef;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static Memory Pool for Client Handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(Client,
+                          LE_CONFIG_POSITIONING_ACTIVATION_MAX,
+                          sizeof(le_gnss_Client_t));
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -323,6 +367,14 @@ static le_mem_PoolRef_t   PositionSampleRequestPoolRef;
  */
 //--------------------------------------------------------------------------------------------------
 static le_dls_List_t PositionSampleList = LE_DLS_LIST_INIT;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static safe Reference Map for Positioning Sample objects.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(PositionSampleMap, GNSS_POSITION_SAMPLE_MAX);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -346,6 +398,242 @@ static le_ref_MapRef_t ClientRequestRefMap;
  */
 //--------------------------------------------------------------------------------------------------
 static int NmeaPipeFd = -1;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference to the FD Monitor for the NMEA stream
+ */
+//--------------------------------------------------------------------------------------------------
+static le_fdMonitor_Ref_t NmeaFdMonitor = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Current FD monitor enable/disable state
+ */
+//--------------------------------------------------------------------------------------------------
+static bool FdMonitorDisabled = true;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * NMEA sentence to write to NMEA fifo
+ */
+//--------------------------------------------------------------------------------------------------
+static char* CurrentNmeaStringPtr = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Position in NMEA sentence
+ */
+//--------------------------------------------------------------------------------------------------
+static ssize_t  CurrentNmeaWritePosition = 0;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Close the NMEA pipe
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t CloseNmeaPipe
+(
+    void
+)
+{
+    int result;
+
+    // Check NMEA pipe file descriptor
+    if(NmeaPipeFd == -1)
+    {
+        LE_WARN("Pipe already closed");
+        return LE_DUPLICATE;
+    }
+
+    // Close NMEA pipe
+    do
+    {
+        result = le_fd_Close(NmeaPipeFd);
+    }
+    while ((result != 0) && (errno == EINTR));
+
+    if (0 != result)
+    {
+        LE_ERROR("Could not close %s. errno.%d (%s)", LE_GNSS_NMEA_NODE_PATH,
+                 errno, strerror(errno));
+        return LE_FAULT;
+    }
+
+    // Release the NMEA pipe file descriptor
+    NmeaPipeFd = -1;
+    if (NmeaFdMonitor)
+    {
+        le_fdMonitor_Delete(NmeaFdMonitor);
+        NmeaFdMonitor = NULL;
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write the NMEA sentence to NMEA pipe
+ */
+//--------------------------------------------------------------------------------------------------
+static void WriteNmeaPipe
+(
+   char* nmeaString        // [IN] The NMEA string
+)
+{
+    // Increment by one to add the terminating null byte
+    size_t stringSize = strlen(nmeaString)+1;
+    size_t sizeToWrite = stringSize - CurrentNmeaWritePosition;
+
+    size_t writeSize = le_fd_Write(NmeaPipeFd,
+                                   nmeaString + CurrentNmeaWritePosition,
+                                   sizeToWrite);
+
+    LE_DEBUG("resultWrite %zd / %zd, error, errno.%d (%s)",writeSize, sizeToWrite, errno,
+             strerror(errno));
+
+    if (-1 != writeSize)
+    {
+        if (!writeSize)
+        {
+            LE_ERROR("EOF error");
+            goto error;
+        }
+
+        if (writeSize == sizeToWrite)
+        {
+            // NMEA frame was completely writen
+            LE_DEBUG("Frame completely writen");
+
+            le_mem_Release(nmeaString);
+            CurrentNmeaStringPtr = NULL;
+            CurrentNmeaWritePosition = 0;
+            if (!FdMonitorDisabled)
+            {
+                le_fdMonitor_Disable(NmeaFdMonitor, POLLOUT);
+                FdMonitorDisabled = true;
+            }
+            return;
+        }
+
+        if (writeSize < sizeToWrite)
+        {
+            // Wait for the next POLLOUT to complete the frame
+            LE_DEBUG("Wait for the next POLLOUT to complete the frame");
+
+            CurrentNmeaStringPtr     = nmeaString;
+            CurrentNmeaWritePosition += writeSize;
+
+            if (FdMonitorDisabled)
+            {
+                le_fdMonitor_Enable(NmeaFdMonitor, POLLOUT);
+                FdMonitorDisabled = false;
+            }
+            return;
+        }
+
+        LE_ERROR("Fifo write error");
+    }
+    else
+    {
+        if ((errno == EINTR) || (errno == EAGAIN))
+        {
+            // Retry writing the frame
+            LE_DEBUG("Retry writing the frame");
+
+            CurrentNmeaStringPtr = nmeaString;
+
+            if (FdMonitorDisabled)
+            {
+                le_fdMonitor_Enable(NmeaFdMonitor, POLLOUT);
+                FdMonitorDisabled = false;
+            }
+            return;
+
+        }
+
+        LE_ERROR("Could not write to %s (write error, errno.%d (%s))",
+                     LE_GNSS_NMEA_NODE_PATH,
+                     errno, strerror(errno));
+    }
+
+error:
+    le_mem_Release(nmeaString);
+    CurrentNmeaWritePosition = 0;
+    CurrentNmeaStringPtr = NULL;
+    CloseNmeaPipe();
+
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Event handler for NMEA frames writing to FIFO
+ */
+//--------------------------------------------------------------------------------------------------
+static void NmeaEventsHandler
+(
+    int fd,                 ///< [IN] Read file descriptor
+    short events            ///< [IN] FD events
+)
+{
+    LE_DEBUG("Received FIFO event: %x", events);
+
+    if (events & POLLOUT)
+    {
+        if (CurrentNmeaStringPtr)
+        {
+            WriteNmeaPipe(CurrentNmeaStringPtr);
+        }
+    }
+
+    if (events & POLLERR)
+    {
+        LE_DEBUG("Event POLLERR");
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Open the NMEA pipe
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t OpenNmeaPipe
+(
+    void
+)
+{
+    // Check NMEA pipe file descriptor
+    if (NmeaPipeFd != -1)
+    {
+        LE_DEBUG("Nmea Pipe is already open");
+        return LE_DUPLICATE;
+    }
+
+    // Open NMEA pipe
+    LE_DEBUG("Open Nmea Pipe");
+    do
+    {
+        NmeaPipeFd = le_fd_Open(LE_GNSS_NMEA_NODE_PATH, O_WRONLY|O_APPEND|O_CLOEXEC|O_NONBLOCK);
+
+        if ((NmeaPipeFd == -1) && (errno != EINTR))
+        {
+            LE_WARN_IF(errno != ENXIO, "Open %s failure: errno.%d (%s)", LE_GNSS_NMEA_NODE_PATH,
+                                                                         errno, strerror(errno));
+            return LE_FAULT;
+        }
+
+    }while (NmeaPipeFd == -1);
+
+    if (!NmeaFdMonitor)
+    {
+        NmeaFdMonitor = le_fdMonitor_Create("NmeaPipe", NmeaPipeFd, NmeaEventsHandler, POLLOUT);
+
+        le_fdMonitor_Disable(NmeaFdMonitor, POLLOUT);
+        FdMonitorDisabled = true;
+    }
+    return LE_OK;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -435,134 +723,20 @@ static void CreateNmeaPipe
     void
 )
 {
-    int result = 0;
+    int result = -1;
 
     LE_DEBUG("Create %s", LE_GNSS_NMEA_NODE_PATH);
 
+#ifdef LE_CONFIG_LINUX
     // Create the node for /dev/nmea device folder
     umask(0);
-    result = mknod(LE_GNSS_NMEA_NODE_PATH, S_IFIFO|0666, 0);
+#endif
+
+    // Create the node for /dev/nmea fifo buffer
+    result = le_fd_MkFifo(LE_GNSS_NMEA_NODE_PATH, S_IFIFO|0666);
 
     LE_ERROR_IF((result != 0)&&(result != EEXIST),
            "Could not create %s. errno.%d (%s)", LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno));
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Open the NMEA pipe
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t OpenNmeaPipe
-(
-    void
-)
-{
-
-    // Check NMEA pipe file descriptor
-    if(NmeaPipeFd != -1)
-    {
-        return LE_DUPLICATE;
-    }
-
-    // Open NMEA pipe
-    do
-    {
-        if (((NmeaPipeFd=open(LE_GNSS_NMEA_NODE_PATH,
-                                O_WRONLY|O_APPEND|O_CLOEXEC|O_NONBLOCK)) == -1)
-            && (errno != EINTR))
-        {
-            LE_WARN_IF(errno != 6, "Open %s failure: errno.%d (%s)",
-                       LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno));
-            return LE_FAULT;
-        }
-    }while (NmeaPipeFd==-1);
-
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Close the NMEA pipe
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t CloseNmeaPipe
-(
-    void
-)
-{
-    le_result_t retResult = LE_OK;
-    int result;
-
-    // Check NMEA pipe file descriptor
-    if(NmeaPipeFd == -1)
-    {
-        LE_WARN("Invalid file descriptor. File already closed");
-        return LE_DUPLICATE;
-    }
-
-    // Close NMEA pipe
-    do
-    {
-        result = close(NmeaPipeFd);
-    }
-    while ((result != 0) && (errno == EINTR));
-
-    LE_ERROR_IF(result != 0, "Could not close %s. errno.%d (%s)",
-               LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno));
-
-    if(result != 0)
-    {
-        retResult = LE_FAULT;
-    }
-    else
-    {
-        // Release the NMEA pipe file descriptor
-        NmeaPipeFd = -1;
-    }
-
-    return retResult;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Write the NMEA sentence to NMEA pipe
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t WriteNmeaPipe
-(
-    const char*  nmeaStringPtr          ///< [IN] Pointer to the NMEA sentence to write.
-)
-{
-    le_result_t resultNmeaPipe = LE_OK;
-    ssize_t resultWrite = 0;
-    ssize_t written = 0;
-    ssize_t stringSize = 0;
-
-    // Open the NMEA FIFO pipe
-    resultNmeaPipe = OpenNmeaPipe();
-
-    if((resultNmeaPipe == LE_OK)||(resultNmeaPipe == LE_DUPLICATE))
-    {
-        written = 0;
-        stringSize = strlen(nmeaStringPtr)+1;
-        // Write to NMEA pipe
-        while (written < stringSize)
-        {
-            resultWrite = write(NmeaPipeFd, nmeaStringPtr + written, stringSize - written);
-
-            if ((resultWrite < 0) && (errno != EINTR))
-            {
-                LE_ERROR("Could not write to %s (write error, errno.%d (%s))",
-                         LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno));
-                CloseNmeaPipe();
-                return LE_FAULT;
-            }
-
-            written += resultWrite;
-        }
-    }
-
-    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -573,17 +747,31 @@ static le_result_t WriteNmeaPipe
 //--------------------------------------------------------------------------------------------------
 static void PaNmeaHandler
 (
-    char* nmeaPtr
+    char* nmeaPtr        // [IN] The NMEA string
 )
 {
-    LE_DEBUG("Handler Function called with PA NMEA %p", nmeaPtr);
+    LE_DEBUG("NMEA Handler %s", nmeaPtr);
 
-    // Write the NMEA sentence to the /dev/nmea device folder
+    // Open the NMEA FIFO pipe
+    le_result_t resultNmeaPipe = OpenNmeaPipe();
+    if ((resultNmeaPipe != LE_OK) && (resultNmeaPipe != LE_DUPLICATE))
+    {
+        LE_WARN("Could not open Nmea Pipe");
+        le_mem_Release(nmeaPtr);
+        return;
+    }
+
+    if (NULL != CurrentNmeaStringPtr)
+    {
+        // The last frame (CurrentNmeaStringPtr) was not sent completely, discard the new one
+        LE_WARN("Lost Frame");
+        le_mem_Release(nmeaPtr);
+        return;
+    }
+
+    CurrentNmeaWritePosition = 0;
     WriteNmeaPipe(nmeaPtr);
-
-    le_mem_Release(nmeaPtr);
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -701,6 +889,7 @@ static void GetPosSampleData
 }
 
 
+#ifdef LE_CONFIG_LINUX
 //--------------------------------------------------------------------------------------------------
 /**
  * The signal event handler function for SIGPIPE called from the Legato event loop.
@@ -718,6 +907,7 @@ static void SigPipeHandler
     LE_FATAL_IF(sigNum != SIGPIPE, "Unknown signal %s.", strsignal(sigNum));
     LE_INFO("%s received through SigPipeHandler.", strsignal(sigNum));
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -847,7 +1037,8 @@ static uint32_t ConvertDop
              resValue = dopValue;
              break;
     }
-    LE_DEBUG("resolution %d, dopValue %d, new dopValue %d", (int)resolution, dopValue, resValue);
+    LE_DEBUG("resolution %d, dopValue %"PRIu32", new dopValue %"PRIu16, (int)resolution, dopValue,
+             resValue);
     return resValue;
 }
 
@@ -935,7 +1126,7 @@ static le_result_t ConvertPositionData
              LE_ERROR("Unsupported resolution.");
              return LE_FAULT;
     }
-    LE_DEBUG("resolution %d, value %d, new value %d", (int)resolution, value, *valuePtr);
+    LE_DEBUG("resolution %d, value %"PRIi32", new value %"PRIi32, (int)resolution, value, *valuePtr);
     return LE_OK;
 }
 
@@ -1212,37 +1403,49 @@ le_result_t gnss_Init
         break;
     }
 
+    // If PA initialization failed, or in a wrong state, fail now so data structures below
+    // are not re-initialized.
+    if (result != LE_OK)
+    {
+        LE_ERROR("Bad PA gnss initialisation");
+        return result;
+    }
+
+#ifdef LE_CONFIG_LINUX
     // Block signals.  All signals that are to be used in signal events must be blocked.
     le_sig_Block(SIGPIPE);
 
     // Register a signal event handler for SIGPIPE signal.
     le_sig_SetEventHandler(SIGPIPE, SigPipeHandler);
+#endif
 
     // Create a pool for Position  Handler objects
-    PositionHandlerPoolRef = le_mem_CreatePool("PositionHandlerPoolRef",
-                                               sizeof(le_gnss_PositionHandler_t));
+    PositionHandlerPoolRef = le_mem_InitStaticPool(PositionHandler,
+                                                   GNSS_POSITION_HANDLER_HIGH,
+                                                   sizeof(le_gnss_PositionHandler_t));
     le_mem_SetDestructor(PositionHandlerPoolRef, PositionHandlerDestructor);
 
     // Create a pool for Position Sample objects
-    PositionSamplePoolRef = le_mem_CreatePool("PositionSamplePoolRef",
-                                              sizeof(le_gnss_PositionSample_t));
-    le_mem_ExpandPool(PositionSamplePoolRef,GNSS_POSITION_SAMPLE_MAX);
+    PositionSamplePoolRef = le_mem_InitStaticPool(PositionSample,
+                                                  GNSS_POSITION_SAMPLE_MAX,
+                                                  sizeof(le_gnss_PositionSample_t));
     le_mem_SetDestructor(PositionSamplePoolRef, PositionSampleDestructor);
 
     // Create a pool for Position Sample request objects
-    PositionSampleRequestPoolRef = le_mem_CreatePool("PositionSampleRequestPoolRef",
-                                                     sizeof(le_gnss_PositionSampleRequest_t));
-    le_mem_ExpandPool(PositionSampleRequestPoolRef,GNSS_POSITION_SAMPLE_MAX);
+    PositionSampleRequestPoolRef = le_mem_InitStaticPool(PositionSampleRequest,
+                                                         GNSS_POSITION_SAMPLE_MAX,
+                                                         sizeof(le_gnss_PositionSampleRequest_t));
 
     // Create the reference HashMap for positioning sample
-    PositionSampleMap = le_ref_CreateMap("PositionSampleMap", GNSS_POSITION_SAMPLE_MAX);
+    PositionSampleMap = le_ref_InitStaticMap(PositionSampleMap, GNSS_POSITION_SAMPLE_MAX);
 
     // Create safe reference map for request references.
-    ClientRequestRefMap = le_ref_CreateMap("ClientRequestRefMap", GNSS_POSITION_ACTIVATION_MAX);
+    ClientRequestRefMap = le_ref_CreateMap("ClientRequestRefMap",
+            LE_CONFIG_POSITIONING_ACTIVATION_MAX);
 
     // Create a pool for client session object structure.
-    ClientPoolRef = le_mem_CreatePool("ClientPoolRef", sizeof(le_gnss_Client_t));
-    le_mem_ExpandPool(ClientPoolRef, GNSS_POSITION_ACTIVATION_MAX);
+    ClientPoolRef = le_mem_InitStaticPool(Client,
+            LE_CONFIG_POSITIONING_ACTIVATION_MAX, sizeof(le_gnss_Client_t));
 
     // Initialize the event client close function handler.
     le_msg_ServiceRef_t msgService = le_gnss_GetServiceRef();
@@ -1279,7 +1482,11 @@ le_result_t gnss_Init
     {
         LE_INFO("%s is a character device file", LE_GNSS_NMEA_NODE_PATH);
     }
+#ifdef LE_CONFIG_LINUX
     else if((resultStat == -1)&&(errno == ENOENT)) // No such file or directory
+#else
+    else if(resultStat == -1) // No such file or directory
+#endif
     {
         if ((PaNmeaHandlerRef=pa_gnss_AddNmeaHandler(PaNmeaHandler)) != NULL)
         {
@@ -1293,8 +1500,8 @@ le_result_t gnss_Init
     }
     else
     {
-        LE_ERROR("Could not get file info for '%s'. errno.%d (%s)",
-               LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno));
+        LE_ERROR("Could not get file info for '%s'. errno.%d (%s). resultstat:%d",
+               LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno),resultStat);
     }
 
     return result;
@@ -3330,7 +3537,7 @@ le_result_t le_gnss_DisableExtendedEphemerisFile
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_LoadExtendedEphemerisFile
 (
-    int32_t       fd      ///< [IN] extended ephemeris file descriptor
+    int       fd      ///< [IN] extended ephemeris file descriptor
 )
 {
     return (pa_gnss_LoadExtendedEphemerisFile(fd));
@@ -3448,6 +3655,43 @@ le_result_t le_gnss_Start
     return result;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function starts the GNSS device in the specified start mode.
+ *
+ * @return
+ *  - LE_OK              The function succeeded.
+ *  - LE_BAD_PARAMETER   Invalid start mode
+ *  - LE_FAULT           The function failed.
+ *  - LE_DUPLICATE       If the GNSS device is already started.
+ *  - LE_NOT_PERMITTED   If the GNSS device is not initialized or disabled.
+ *
+ * @warning This function may be subject to limitations depending on the platform. Please refer to
+ *          the @ref platformConstraintsGnss page.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_StartMode
+(
+    le_gnss_StartMode_t mode    ///< [IN] Start mode
+)
+{
+    if (mode >= LE_GNSS_UNKNOWN_START)
+    {
+        LE_ERROR("Invalid start mode %d", mode);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (LE_GNSS_STATE_READY == GnssState)
+    {
+        if (LE_FAULT == pa_gnss_DeleteAssistData(mode))
+        {
+            LE_ERROR("le_gnss_StartMode fail");
+            return LE_FAULT;
+        }
+    }
+
+    return le_gnss_Start();
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -3489,15 +3733,13 @@ le_result_t le_gnss_Stop
         case LE_GNSS_STATE_UNINITIALIZED:
         case LE_GNSS_STATE_DISABLED:
         {
-                        LE_ERROR("Bad state for that request [%d]", GnssState);
-
+            LE_ERROR("Bad state for that request [%d]", GnssState);
             result = LE_NOT_PERMITTED;
         }
         break;
         case LE_GNSS_STATE_READY:
         {
-                        LE_ERROR("Bad state for that request [%d]", GnssState);
-
+            LE_ERROR("Bad state for that request [%d]", GnssState);
             result = LE_DUPLICATE;
         }
         break;
@@ -3528,19 +3770,22 @@ le_result_t le_gnss_ForceHotRestart
     void
 )
 {
-    le_result_t result = LE_FAULT;
+    le_result_t result = LE_OK;
 
     // Check the GNSS device state
     switch (GnssState)
     {
         case LE_GNSS_STATE_ACTIVE:
         {
-            // Restart GNSS
-            result = pa_gnss_ForceRestart(PA_GNSS_HOT_RESTART);
-            // GNSS device state is updated ONLY if the restart is failed
-            if(result == LE_FAULT)
+            // Stop and start GNSS
+            if ((LE_FAULT == pa_gnss_ForceEngineStop()) ||
+                (LE_FAULT == pa_gnss_DeleteAssistData(LE_GNSS_HOT_START)) ||
+                (LE_FAULT == pa_gnss_Start()))
             {
+                // GNSS device state is updated ONLY if the restart failed
+                LE_ERROR("le_gnss_ForceHotRestart fails");
                 GnssState = LE_GNSS_STATE_READY;
+                result = LE_FAULT;
             }
         }
         break;
@@ -3548,8 +3793,7 @@ le_result_t le_gnss_ForceHotRestart
         case LE_GNSS_STATE_DISABLED:
         case LE_GNSS_STATE_READY:
         {
-                        LE_ERROR("Bad state for that request [%d]", GnssState);
-
+            LE_ERROR("Bad state for that request [%d]", GnssState);
             result = LE_NOT_PERMITTED;
         }
         break;
@@ -3580,19 +3824,22 @@ le_result_t le_gnss_ForceWarmRestart
     void
 )
 {
-    le_result_t result = LE_FAULT;
+    le_result_t result = LE_OK;
 
     // Check the GNSS device state
     switch (GnssState)
     {
         case LE_GNSS_STATE_ACTIVE:
         {
-            // Restart GNSS
-            result = pa_gnss_ForceRestart(PA_GNSS_WARM_RESTART);
-            // GNSS device state is updated ONLY if the restart is failed
-            if(result == LE_FAULT)
+            // Stop, clean data and restart GNSS
+            if ((LE_FAULT == pa_gnss_ForceEngineStop()) ||
+                (LE_FAULT == pa_gnss_DeleteAssistData(LE_GNSS_WARM_START)) ||
+                (LE_FAULT == pa_gnss_Start()))
             {
+                // GNSS device state is updated ONLY if the restart failed
+                LE_ERROR("le_gnss_ForceWarmRestart fails");
                 GnssState = LE_GNSS_STATE_READY;
+                result = LE_FAULT;
             }
         }
         break;
@@ -3600,8 +3847,7 @@ le_result_t le_gnss_ForceWarmRestart
         case LE_GNSS_STATE_DISABLED:
         case LE_GNSS_STATE_READY:
         {
-                        LE_ERROR("Bad state for that request [%d]", GnssState);
-
+            LE_ERROR("Bad state for that request [%d]", GnssState);
             result = LE_NOT_PERMITTED;
         }
         break;
@@ -3632,19 +3878,22 @@ le_result_t le_gnss_ForceColdRestart
     void
 )
 {
-    le_result_t result = LE_FAULT;
+    le_result_t result = LE_OK;
 
     // Check the GNSS device state
     switch (GnssState)
     {
         case LE_GNSS_STATE_ACTIVE:
         {
-            // Restart GNSS
-            result = pa_gnss_ForceRestart(PA_GNSS_COLD_RESTART);
-            // GNSS device state is updated ONLY if the restart is failed
-            if(result == LE_FAULT)
+            // Stop, clean data and restart GNSS
+            if ((LE_FAULT == pa_gnss_ForceEngineStop()) ||
+                (LE_FAULT == pa_gnss_DeleteAssistData(LE_GNSS_COLD_START)) ||
+                (LE_FAULT == pa_gnss_Start()))
             {
+                // GNSS device state is updated ONLY if the restart failed
+                LE_ERROR("le_gnss_ForceColdRestart fails");
                 GnssState = LE_GNSS_STATE_READY;
+                result = LE_FAULT;
             }
         }
         break;
@@ -3652,8 +3901,7 @@ le_result_t le_gnss_ForceColdRestart
         case LE_GNSS_STATE_DISABLED:
         case LE_GNSS_STATE_READY:
         {
-                        LE_ERROR("Bad state for that request [%d]", GnssState);
-
+            LE_ERROR("Bad state for that request [%d]", GnssState);
             result = LE_NOT_PERMITTED;
         }
         break;
@@ -3684,19 +3932,22 @@ le_result_t le_gnss_ForceFactoryRestart
     void
 )
 {
-    le_result_t result = LE_FAULT;
+    le_result_t result = LE_OK;
 
     // Check the GNSS device state
     switch (GnssState)
     {
         case LE_GNSS_STATE_ACTIVE:
         {
-            // Restart GNSS
-            result = pa_gnss_ForceRestart(PA_GNSS_FACTORY_RESTART);
-            // GNSS device state is updated ONLY if the restart is failed
-            if(result == LE_FAULT)
+            // Stop, clean data and restart GNSS
+            if ((LE_FAULT == pa_gnss_ForceEngineStop()) ||
+                (LE_FAULT == pa_gnss_DeleteAssistData(LE_GNSS_FACTORY_START)) ||
+                (LE_FAULT == pa_gnss_Start()))
             {
+                // GNSS device state is updated ONLY if the restart failed
+                LE_ERROR("le_gnss_ForceFactoryRestart fails");
                 GnssState = LE_GNSS_STATE_READY;
+                result = LE_FAULT;
             }
         }
         break;
@@ -3704,8 +3955,7 @@ le_result_t le_gnss_ForceFactoryRestart
         case LE_GNSS_STATE_DISABLED:
         case LE_GNSS_STATE_READY:
         {
-                        LE_ERROR("Bad state for that request [%d]", GnssState);
-
+            LE_ERROR("Bad state for that request [%d]", GnssState);
             result = LE_NOT_PERMITTED;
         }
         break;
@@ -4009,6 +4259,70 @@ le_result_t le_gnss_GetAcquisitionRate
     }
 
     return result;
+}
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Get the minimum NMEA rate supported on this platform
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_FAULT            Function failed.
+ */
+// -------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetMinNmeaRate
+(
+    uint32_t* minNmeaRatePtr    ///< [OUT] Minimum NMEA rate in milliseconds.
+)
+{
+    return pa_gnss_GetMinNmeaRate(minNmeaRatePtr);
+}
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Get the maximum NMEA rate supported on this platform
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_FAULT            Function failed.
+ */
+// -------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetMaxNmeaRate
+(
+    uint32_t* maxNmeaRatePtr    ///< [OUT] Maximum NMEA rate in milliseconds.
+)
+{
+    return pa_gnss_GetMaxNmeaRate(maxNmeaRatePtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Returns a bitmask containing all NMEA sentences supported on this platform
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_FAULT            Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetSupportedNmeaSentences
+(
+    le_gnss_NmeaBitMask_t* nmeaMaskPtr    ///< [OUT] Supported NMEA sentences
+)
+{
+    return pa_gnss_GetSupportedNmeaSentences(nmeaMaskPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Returns a bitmask containing all satellite constellations supported on this platform
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_FAULT            Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetSupportedConstellations
+(
+    le_gnss_ConstellationBitMask_t* constellationMaskPtr    ///< [OUT] Supported GNSS constellations
+)
+{
+    return pa_gnss_GetSupportedConstellations(constellationMaskPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -4486,6 +4800,53 @@ le_result_t le_gnss_SetDataResolution
     LE_DEBUG("clientRequest %p, data type %d, resolution %d saved",
              clientRequestPtr, (int)dataType, (int)resolution);
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enables the EXT_GPS_LNA_EN signal
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_UNSUPPORTED      Function not supported on this platform
+ * @return LE_NOT_PERMITTED    GNSS is not in the ready state
+ *
+ * @note The EXT_GPS_LNA_EN signal will be set high when the GNSS state is active
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_EnableExternalLna
+(
+    void
+)
+{
+    if(LE_GNSS_STATE_READY != GnssState)
+    {
+        return LE_NOT_PERMITTED;
+    }
+
+    return pa_gnss_EnableExternalLna();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disables the EXT_GPS_LNA_EN signal
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_UNSUPPORTED      Function not supported on this platform
+ * @return LE_NOT_PERMITTED    GNSS is not in the ready state
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_DisableExternalLna
+(
+    void
+)
+{
+    if(LE_GNSS_STATE_READY != GnssState)
+    {
+        return LE_NOT_PERMITTED;
+    }
+
+    return pa_gnss_DisableExternalLna();
 }
 
 //--------------------------------------------------------------------------------------------------

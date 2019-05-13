@@ -203,6 +203,18 @@ config ENABLE_CONFIG_TREE
 
 endmenu # end "Config Tree"
 
+menu "Positioning Service"
+
+config POSITIONING_ACTIVATION_MAX
+  int "Define the maximum number of concurrent positioning activation requests"
+  default 13
+
+config ENABLE_GNSS_ACQUISITION_RATE_SETTING
+  bool "Allow GNSS acquisition rate to be set via Legato API"
+  default y
+
+endmenu # end "Positioning Service"
+
 config FEATURE_SPISVC
   bool "Enable SPI service"
   default y if TARGET_WP85

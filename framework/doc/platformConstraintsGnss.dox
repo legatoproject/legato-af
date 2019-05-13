@@ -189,6 +189,8 @@ le_gnss_GetTtff(). This API calculates the TTFF started from a succeed GNSS star
 In case of le_gnss_ForceWarmRestart(), the 10 sec delay is added before re-starting the GNSS
 session.
 
+@note le_gnss_StartMode() function is not supported on Qualcomm-based platform.
+
 @section platformConstraintsGnss_ColdRestart GNSS COLD restart
 
 "COLD" restart le_gnss_ForceColdRestart() API stops the current GNSS session then starts it again.
@@ -196,6 +198,8 @@ In this case, the Ephemeris, time and position data are being cleared.
 
 @note On modules AR758x & AR759x when performed "COLD" restart there is a possibility for
 longitude/latitude values to get retrieved from camped live cell network before getting the fix.
+
+@note le_gnss_StartMode() function is not supported on Qualcomm-based platform.
 
 @section platformConstraintsGnss_FactoryRestart GNSS FACTORY restart
 
@@ -227,6 +231,8 @@ service.<br><br>
 
 @note On modules AR758x & AR759x when performed "FACTORY" restart there is a possibility for
 longitude/latitude values to get retrieved from camped live cell network before getting the fix.
+
+@note le_gnss_StartMode() function is not supported on Qualcomm-based platform.
 
 @section platformConstraintsGnss_speedAccuracies Horizontal and Vertical speed accuracies
 

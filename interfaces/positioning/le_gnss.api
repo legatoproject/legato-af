@@ -41,10 +41,14 @@
  *
  * @subsection le_gnss_StartStop Start/Stop GNSS device
  *
- * The application can start/stop the GNSS device with the le_gnss_Start() / le_gnss_Stop()
- * functions.
- * The default "HOT" start condition is applied and all assistance data are used.
- * Also see @ref howToGNSS.
+ * The application shall start the GNSS device calling le_gnss_Start() function.
+ * The other starting functions that allow to start or restart the GNSS devices in particular modes
+ * (see @ref le_gnss_StartingMode) are only used for test purposes and allow start performance
+ * measurement.
+ * The application shall stop the GNSS device calling le_gnss_Stop() function.
+ *
+ * A diagram of GNSS device state machine showing how to use the different starting fonctions can be
+ * seen at @ref howToGNSS.
  *
  * A sample code can be seen in the following page:
  * - @subpage c_gnssSampleCodeStartStop
@@ -55,10 +59,35 @@
  * @note For more information about start performances, please refer to your specific
  * platform documentation.
  *
- * @subsubsection SettingConfiguration Setting configuration
+ * @subsubsection le_gnss_startMode Start the GNSS device in the specified starting mode
+ * The le_gnss_StartMode() function clears the @ref le_gnss_Data according to the starting mode and
+ * starts the GNSS device.
+ * In HOT mode, no data are cleared, the GNSS is started with its available data. It is equivalent
+ * to @ref le_gnss_Start() function. In WARM mode, GNSS is started after the Ephemeris are cleared.
+ * In COLD mode, GNSS is started after all data are cleared except Almanac and in Factory mode GNSS
+ * is started after default data are set.
  *
- * @warning The GNSS setting configuration depends on the platform. Please refer to
- *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
+ * @subsubsection le_gnss_ForceHotRestart Restart the GNSS device in HOT mode
+ * The le_gnss_ForceHotRestart() function performs a "HOT" restart of the GNSS device. The current
+ * GNSS session is stopped, then started using the available @ref le_gnss_Data.
+ * Please refer to @ref le_gnss_APIcallsRequirements. Also see @ref howToGNSS.
+ *
+ * @subsubsection le_gnss_ForceWarmRestart Restart the GNSS device in WARM mode
+ * The le_gnss_ForceWarmRestart() function performs a "WARM" restart of the GNSS device. The current
+ * GNSS session is stopped, then started using the available @ref le_gnss_Data.
+ * Please refer to @ref le_gnss_APIcallsRequirements. Also see @ref howToGNSS.
+ * @Note This API has a platform dependent feature. Please refer to
+ * @ref platformConstraintsGnss_WarmRestart for further details.
+ *
+ * @subsubsection le_gnss_ForceColdRestart Restart the GNSS device in COLD mode
+ * The le_gnss_ForceColdRestart() function performs a "COLD" restart of the GNSS device. The current
+ * GNSS session is stopped, then started using the available @ref le_gnss_Data.
+ * Please refer to @ref le_gnss_APIcallsRequirements. Also see @ref howToGNSS.
+ *
+ * @subsubsection le_gnss_ForceFactoryRestart Restart the GNSS device in FACTORY mode
+ * The le_gnss_ForceFactoryRestart() function performs a "FACTORY" restart of the GNSS device.
+ * The current GNSS session is stopped, then started using the available @ref le_gnss_Data.
+ * Please refer to @ref le_gnss_APIcallsRequirements. Also see @ref howToGNSS.
  *
  * @subsubsection le_gnss_Data GNSS data
  * The following table describes the <b>minimum</b> required data for those starting modes:
@@ -80,6 +109,11 @@
  * @note (3) Extended Ephemeris are removed when a FACTORY start is requested.
  * The Extended Ephemeris could be loaded again using the le_gnss_LoadExtendedEphemerisFile()
  * function.
+ *
+ * @subsubsection SettingConfiguration Setting configuration
+ *
+ * @warning The GNSS setting configuration depends on the platform. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  *
  * @subsubsection le_gnss_TTFF Time To First Fix (TTFF)
  * The le_gnss_GetTtff() function provides the TTFF (first between 2-Dimensional or 3-Dimensional
@@ -105,34 +139,21 @@
  * Please refer to your platform documentation @ref platformConstraintsGnss_SettingConfiguration for
  * further details.
  *
- * @subsubsection le_gnss_ForceHotRestart Force HOT restart
- * The le_gnss_ForceHotRestart() function performs a "HOT" restart of the GNSS device. The current
- * GNSS session is stopped, then started using the available @ref le_gnss_Data.
- * Please refer to @ref le_gnss_APIcallsRequirements. Also see @ref howToGNSS.
- *
- * @subsubsection le_gnss_ForceWarmRestart Force WARM restart
- * The le_gnss_ForceWarmRestart() function performs a "WARM" restart of the GNSS device. The current
- * GNSS session is stopped, then started using the available @ref le_gnss_Data.
- * Please refer to @ref le_gnss_APIcallsRequirements. Also see @ref howToGNSS.
- * @Note This API has a platform dependent feature. Please refer to
- * @ref platformConstraintsGnss_WarmRestart for further details.
- *
- * @subsubsection le_gnss_ForceColdRestart Force COLD restart
- * The le_gnss_ForceColdRestart() function performs a "COLD" restart of the GNSS device. The current
- * GNSS session is stopped, then started using the available @ref le_gnss_Data.
- * Please refer to @ref le_gnss_APIcallsRequirements. Also see @ref howToGNSS.
- *
- * @subsubsection le_gnss_ForceFactoryRestart Force FACTORY restart
- * The le_gnss_ForceFactoryRestart() function performs a "FACTORY" restart of the GNSS device.
- * The current GNSS session is stopped, then started using the available @ref le_gnss_Data.
- * Please refer to @ref le_gnss_APIcallsRequirements. Also see @ref howToGNSS.
- *
  * @subsection le_gnss_AcquisitionRate Acquisition rate
  * The GNSS position is computed and delivered each acquisition rate. The acquisition rate defines
  * the time interval that must elapse between two final GPS positions calculation and reports.
  * Its default value is 1 second.
  * The application can configure/retreive the GNSS device acquisition rate with the
  * le_gnss_SetAcquisitionRate() / le_gnss_GetAcquisitionRate() functions.
+ *
+ * Please refer to @ref le_gnss_APIcallsRequirements.
+ *
+ * @subsection le_gnss_EnableDisableExternalLna Control EXT_GPS_LNA_EN signal
+ * The le_gnss_EnableExternalLna() function enables the EXT_GPS_LNA_EN signal. The pin is set high
+ * when the GNSS state is active, and set low when the GNSS state is inactive.
+ *
+ * The le_gnss_DisableExternalLna() function disables the EXT_GPS_LNA_EN signal. The pin remains off
+ * regardless of the GNSS state.
  *
  * Please refer to @ref le_gnss_APIcallsRequirements.
  *
@@ -164,6 +185,9 @@
  * A sample code can be seen in the following page:
  * - @subpage c_gnssSampleCodeConstellation
  *
+ * The le_gnss_GetSupportedConstellations() function gets a bit mask of the constellations
+ * supported on the platform.
+ *
  * @subsection le_gnss_SetGetMinElevation GNSS minimum elevation selection
  *
  * The le_gnss_SetMinElevation() function sets the GNSS minimum elevation.
@@ -194,10 +218,20 @@
  * The le_gnss_GetNmeaSentences() function gets the bit mask of the enabled NMEA sentences in the
  * @ref le_gnss_NMEA.
  *
+ * The le_gnss_GetSupportedNmeaSentences() function gets a bit mask of the NMEA sentences supported
+ * on the platform.
+ *
  * Please refer to @ref le_gnss_APIcallsRequirements.
  *
  * A sample code can be seen in the following page:
  * - @subpage c_gnssSampleCodeNmeaSentences
+ *
+ * @subsection le_gnss_GetMinMaxNmeaRate Get the supported NMEA rates
+ * The le_gnss_GetMinNmeaRate() function gets the minimum NMEA rate supported on the platform
+ * in milliseconds.
+ *
+ * The le_gnss_GetMaxNmeaRate() function gets the maximum NMEA rate supported on the platform
+ * in milliseconds.
  *
  * @subsection le_gnss_APIcallsRequirements API calls Requirements
  * The following table shows the pre-requisites when using the GNSS service API function set.
@@ -223,6 +257,8 @@
  *| le_gnss_GetAcquisitionRate() | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
  *| le_gnss_SetNmeaSentences() | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
  *| le_gnss_GetNmeaSentences() | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
+ *| le_gnss_EnableExternalLna() | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
+ *| le_gnss_DisableExternalLna() | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
  *
  * Also see @ref howToGNSS.
  *
@@ -525,7 +561,7 @@ DEFINE SV_INFO_MAX_LEN = 80;
  * @note This maximal value should be coherent with @ref le_gnss_NmeaBitMask_t
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE NMEA_SENTENCES_MAX = 0x003FFFFF;
+DEFINE NMEA_SENTENCES_MAX = 0x00EFFFFF;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -751,7 +787,10 @@ BITMASK NmeaBitMask
     NMEA_MASK_DEBUG,    ///< DEBUG type enabled: Debug NMEA indication.
     NMEA_MASK_GPDTM,    ///< GPDTM type enabled: Local geodetic datum and datum offset from a
                         ///  reference.
-    NMEA_MASK_GAGNS     ///< GAGNS type enabled: Fix data for Galileo.
+    NMEA_MASK_GAGNS,    ///< GAGNS type enabled: Fix data for Galileo.
+    NMEA_MASK_GPGNS,    ///< GPGNS type enabled: Fix data for GPS.
+    NMEA_MASK_GPGST,    ///< GPGST type enabled: Position Error statistics for GPS.
+    NMEA_MASK_GPZDA     ///< GPZDA type enabled: UTC day, month, year, and local time zone offset.
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -777,6 +816,20 @@ ENUM LocationDataType
    POS_LONGITUDE,    ///< Longitude data position.
    POS_ALTITUDE,     ///< Altitude data position.
    POS_MAX           ///< Maximum value.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Type of GNSS start.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM StartMode
+{
+    HOT_START,         ///< Hot start.
+    WARM_START,        ///< Warm start.
+    COLD_START,        ///< Cold start.
+    FACTORY_START,     ///< Factory start.
+    UNKNOWN_START      ///< Unknown start.
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -963,6 +1016,26 @@ FUNCTION le_result_t Start
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function starts the GNSS device in the specified start mode.
+ *
+ * @return
+ *  - LE_OK              The function succeeded.
+ *  - LE_BAD_PARAMETER   Invalid start mode
+ *  - LE_FAULT           The function failed.
+ *  - LE_DUPLICATE       If the GNSS device is already started.
+ *  - LE_NOT_PERMITTED   If the GNSS device is not initialized or disabled.
+ *
+ * @warning This function may be subject to limitations depending on the platform. Please refer to
+ *          the @ref platformConstraintsGnss page.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t StartMode
+(
+    StartMode mode IN   ///< [IN] Start mode
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function stops the GNSS device.
  *
  * @return
@@ -986,6 +1059,8 @@ FUNCTION le_result_t Stop
  *  - LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
  *  - LE_OK            The function succeeded.
  *
+ * @Note This API can be used to restart the GNSS device. It is equivalent calling le_gnss_Stop()
+ *       and le_gnss_Start().
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ForceHotRestart
@@ -1984,4 +2059,85 @@ FUNCTION le_result_t ConvertDataCoordinateSystem
     LocationDataType locationDataType IN,   ///< Type of location data to convert.
     int64 locationDataSrc IN,               ///< Data to convert.
     int64 locationDataDst OUT               ///< Converted Data.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enables the EXT_GPS_LNA_EN signal
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_NOT_PERMITTED    GNSS is not in the ready state
+ * @return LE_UNSUPPORTED      Function not supported on this platform
+ *
+ * @note The EXT_GPS_LNA_EN signal will be set high when the GNSS state is active
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t EnableExternalLna
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disables the EXT_GPS_LNA_EN signal
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_NOT_PERMITTED    GNSS is not in the ready state
+ * @return LE_UNSUPPORTED      Function not supported on this platform
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DisableExternalLna
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Returns a bitmask containing all NMEA sentences supported on this platform
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_UNSUPPORTED      Function not supported on this platform.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSupportedNmeaSentences
+(
+    NmeaBitMask NmeaMask      OUT  ///< Supported NMEA sentences
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Returns a bitmask containing all satellite constellations supported on this platform
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_UNSUPPORTED      Function not supported on this platform.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSupportedConstellations
+(
+    ConstellationBitMask constellationMask      OUT  ///< Supported GNSS constellations
+);
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Get the minimum NMEA rate supported on this platform
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_UNSUPPORTED      Function not supported on this platform
+ */
+// -------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetMinNmeaRate
+(
+    uint32 minNmeaRate OUT  ///< Minimum NMEA rate in milliseconds.
+);
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Get the maximum NMEA rate supported on this platform
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_UNSUPPORTED      Function not supported on this platform
+ */
+// -------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetMaxNmeaRate
+(
+    uint32 maxNmeaRate OUT  ///< Maximum NMEA rate in milliseconds.
 );
