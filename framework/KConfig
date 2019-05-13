@@ -49,25 +49,6 @@ config RTOS_TARGET_TOOL_INSPECT
   tool provides details of the state and resource usage of many Legato
   objects.
 
-config RTOS_TARGET_TOOL_DLSUM
-  bool "Include the dlsum tool"
-  depends on RTOS && BUILD_TARGET_TOOLS
-  default n
-  ---help---
-  Select this if you want to build and install the "dlsum" tool.  This tool
-  makes HTTP requests and calculates a hash of the returned resource.  Note
-  that enabling this tool will significantly increase binary size due to a
-  dependency on libcurl.
-
-config RTOS_TARGET_TOOL_HTTPD
-  bool "Include the httpd tool"
-  depends on RTOS && BUILD_TARGET_TOOLS
-  default n
-  ---help---
-  Select this if you want to build and install the "httpd" tool.  This is a
-  simple web server which can be used for testing purposes.  It serves a
-  small set of static, pre-compiled pages on port 80.
-
 config RUNTIME_DIR
   string "Runtime directory"
   depends on POSIX

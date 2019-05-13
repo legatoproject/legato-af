@@ -69,10 +69,4 @@ commands:
 #if ${LE_CONFIG_RTOS_TARGET_TOOL_INSPECT} = y
     inspect = targetTools:/inspect
 #endif
-#if ${LE_CONFIG_RTOS_TARGET_TOOL_DLSUM} = y
-    dlsum = targetTools:/dlsum
-#endif
-#if ${LE_CONFIG_RTOS_TARGET_TOOL_HTTPD} = y
-    httpd = targetTools:/httpd
-#endif
 }
