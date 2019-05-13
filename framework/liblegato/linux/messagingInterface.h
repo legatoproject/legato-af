@@ -218,7 +218,8 @@ static inline le_msg_ProtocolRef_t msgInterface_GetProtocolRef
 //--------------------------------------------------------------------------------------------------
 void msgInterface_Release
 (
-    le_msg_InterfaceRef_t interfaceRef
+    le_msg_InterfaceRef_t interfaceRef,  ///< Interface Reference
+    const bool mutexLocked  ///< Indicates whether Mutex is already locked
 );
 
 
@@ -241,8 +242,9 @@ void msgInterface_AddSession
 //--------------------------------------------------------------------------------------------------
 void msgInterface_RemoveSession
 (
-    le_msg_InterfaceRef_t interfaceRef,
-    le_msg_SessionRef_t sessionRef
+    le_msg_InterfaceRef_t interfaceRef,  ///< Interface Reference
+    le_msg_SessionRef_t sessionRef,   ///< Session Reference
+    const bool mutexLocked   ///< Indicates whether Mutex is already locked
 );
 
 

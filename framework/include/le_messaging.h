@@ -1293,6 +1293,17 @@ void le_msg_CloseSession
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Terminates a session, already having acquired the Mutex lock.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_msg_CloseSessionLocked
+(
+    le_msg_SessionRef_t sessionRef  ///< [in] Reference to the session.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Fetches a reference to the protocol that is being used for a given session.
  *
  * @return Reference to the protocol.

@@ -712,26 +712,27 @@ static void CloseAllSessions
 )
 //--------------------------------------------------------------------------------------------------
 {
+    // NOTE: Lock the mutex here to prevent concurrent access of the sessionList
+    // while traversing over and closing all sessions associated with a service.
     LOCK
+
     // Retrieve the first link in the sessionList
     le_dls_Link_t* linkPtr = le_dls_Peek(&servicePtr->interface.sessionList);
-    UNLOCK
 
     // Verify link pointer
     while (linkPtr != NULL)
     {
-        LOCK
         // Retrieve the next link in the sessionList
         le_dls_Link_t* nextLinkPtr =
             le_dls_PeekNext(&servicePtr->interface.sessionList, linkPtr);
-        UNLOCK
 
         // Close the session pointed to by the link pointer
-        le_msg_CloseSession(msgSession_GetSessionContainingLink(linkPtr));
+        le_msg_CloseSessionLocked(msgSession_GetSessionContainingLink(linkPtr));
 
         // Set the link pointer to the next link
         linkPtr = nextLinkPtr;
     }
+    UNLOCK
 }
 
 
@@ -901,14 +902,20 @@ void msgInterface_GetInterfaceDetails
 //--------------------------------------------------------------------------------------------------
 void msgInterface_Release
 (
-    le_msg_InterfaceRef_t interfaceRef
+    le_msg_InterfaceRef_t interfaceRef,   ///< Interface Reference
+    const bool mutexLocked  ///< Indicates whether Mutex is already locked
 )
 {
-    // NOTE: Must lock the mutex before releasing in case the destructor runs, because
-    //       the destructor manipulates structures that are shared by all threads in the
-    //       process.
+    // Check if the Mutex has already been locked prior to this function.
+    // Only lock the Mutex if not already acquired.
+    if (!mutexLocked)
+    {
+        // NOTE: Must lock the mutex before releasing in case the destructor runs, because
+        //       the destructor manipulates structures that are shared by all threads in the
+        //       process.
 
-    LOCK
+        LOCK
+    }
 
     if (interfaceRef->interfaceType == LE_MSG_INTERFACE_SERVER)
     {
@@ -923,7 +930,12 @@ void msgInterface_Release
         LE_FATAL("Unknown interface type %d", interfaceRef->interfaceType);
     }
 
-    UNLOCK
+    // Check if the Mutex has already been locked prior to this function.
+    // Only unlock it if acquired within this function.
+    if (!mutexLocked)
+    {
+        UNLOCK
+    }
 }
 
 
@@ -955,17 +967,30 @@ void msgInterface_AddSession
 //--------------------------------------------------------------------------------------------------
 void msgInterface_RemoveSession
 (
-    le_msg_InterfaceRef_t interfaceRef,
-    le_msg_SessionRef_t sessionRef
+    le_msg_InterfaceRef_t interfaceRef,  ///< Interface Reference
+    le_msg_SessionRef_t sessionRef, ///< Session Reference
+    const bool mutexLocked  ///< Indicates whether Mutex is already locked
 )
 //--------------------------------------------------------------------------------------------------
 {
-    LOCK
+    // Check if the Mutex has already been locked prior to this function.
+    // Only lock the Mutex if not already acquired.
+    if (!mutexLocked)
+    {
+        LOCK
+    }
+
     le_dls_Remove(&interfaceRef->sessionList, msgSession_GetListLink(sessionRef));
-    UNLOCK
+
+    // Check if the Mutex has already been locked prior to this function.
+    // Only unlock it if acquired within this function.
+    if (!mutexLocked)
+    {
+        UNLOCK
+    }
 
     // The Session object no longer holds a reference to the Interface object.
-    msgInterface_Release(interfaceRef);
+    msgInterface_Release(interfaceRef, mutexLocked);
 }
 
 

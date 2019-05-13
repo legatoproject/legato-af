@@ -517,7 +517,8 @@ static void CloseSession
 //--------------------------------------------------------------------------------------------------
 static void DeleteSession
 (
-    msgSession_UnixSession_t* sessionPtr
+    msgSession_UnixSession_t* sessionPtr,  ///< Pointer to the Unix Session
+    const bool mutexLocked  ///< Indicates whether Mutex is already locked
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -530,7 +531,8 @@ static void DeleteSession
     // Remove the Session from the Interface's Session List.
     SessionObjListChangeCount++;
     msgInterface_RemoveSession(sessionPtr->interfaceRef,
-                               msgSession_GetSessionRef(sessionPtr));
+                               msgSession_GetSessionRef(sessionPtr),
+                               mutexLocked);
 
     // Release the Session object itself.
     le_mem_Release(sessionPtr);
@@ -974,7 +976,7 @@ static void ServerSocketHangUp
           le_msg_GetInterfaceName(sessionPtr->interfaceRef),
           le_msg_GetProtocolIdStr(le_msg_GetInterfaceProtocol(sessionPtr->interfaceRef)));
 
-    DeleteSession(sessionPtr);
+    DeleteSession(sessionPtr, false);
 }
 
 
@@ -997,7 +999,7 @@ static void ServerSocketError
              le_msg_GetInterfaceName(sessionPtr->interfaceRef),
              le_msg_GetProtocolIdStr(le_msg_GetSessionProtocol(msgSession_GetSessionRef(sessionPtr))));
 
-    DeleteSession(sessionPtr);
+    DeleteSession(sessionPtr, false);
 }
 
 
@@ -1947,7 +1949,7 @@ le_msg_SessionRef_t le_msg_CreateSession
 
     msgSession_UnixSession_t* sessionPtr = CreateSession(&clientRef->interface);
 
-    msgInterface_Release(&clientRef->interface);
+    msgInterface_Release(&clientRef->interface, false);
 
     return msgSession_GetSessionRef(sessionPtr);
 }
@@ -2035,7 +2037,7 @@ void le_msg_DeleteSession
             msgSession_UnixSession_t* unixSessionPtr = msgSession_GetUnixSessionPtr(sessionRef);
             LE_FATAL_IF((unixSessionPtr->interfaceRef->interfaceType == LE_MSG_INTERFACE_SERVER),
                         "Server attempted to delete a session.");
-            DeleteSession(unixSessionPtr);
+            DeleteSession(unixSessionPtr, false);
             break;
         }
         default:
@@ -2326,12 +2328,13 @@ le_result_t le_msg_TryOpenSessionSync
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Terminates a session.
+ * Common code for terminating a session.
  */
 //--------------------------------------------------------------------------------------------------
-void le_msg_CloseSession
+static void CloseSessionCommon
 (
-    le_msg_SessionRef_t sessionRef  ///< [in] Reference to the session.
+    le_msg_SessionRef_t sessionRef,  ///< [in] Reference to the session.
+    const bool mutexLocked ///< Indicates whether Mutex is already locked
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -2348,7 +2351,7 @@ void le_msg_CloseSession
             // On the server side, sessions are automatically deleted when they close.
             if (unixSessionPtr->interfaceRef->interfaceType == LE_MSG_INTERFACE_SERVER)
             {
-                DeleteSession(unixSessionPtr);
+                DeleteSession(unixSessionPtr, mutexLocked);
             }
             else if (unixSessionPtr->state != LE_MSG_SESSION_STATE_CLOSED)
             {
@@ -2359,6 +2362,36 @@ void le_msg_CloseSession
         default:
             LE_FATAL("Corrupted session type: %d", sessionRef->type);
     }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Terminates a session.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_msg_CloseSession
+(
+    le_msg_SessionRef_t sessionRef  ///< [in] Reference to the session.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    CloseSessionCommon(sessionRef, false);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Terminates a session, already having acquired the Mutex lock.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_msg_CloseSessionLocked
+(
+    le_msg_SessionRef_t sessionRef  ///< [in] Reference to the session.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    CloseSessionCommon(sessionRef, true);
 }
 
 
