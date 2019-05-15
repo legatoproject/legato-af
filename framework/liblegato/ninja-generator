@@ -67,8 +67,6 @@ EOF
 
 LIBLEGATO_SOURCES=$(ls $SRC_DIR/*.c)
 
-CFLAGS=${TARGET_CFLAGS}
-
 for module_path in $(find $SRC_DIR/* -type d -prune); do
     ninja_config=${module_path}/ninja-config
     module_name=${module_path#$SRC_DIR/}
