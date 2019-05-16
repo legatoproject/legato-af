@@ -56,11 +56,12 @@ int32_t le_dev_Write
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dev_AddFdMonitoring
+le_result_t le_dev_EnableFdMonitoring
 (
-    Device_t*                   devicePtr,    ///< device pointer
-    le_fdMonitor_HandlerFunc_t  handlerFunc, ///< [in] Handler function.
-    void*                       contextPtr
+    Device_t                    *devicePtr,     ///< Device pointer.
+    le_fdMonitor_HandlerFunc_t   handlerFunc,   ///< Handler function.
+    void                        *contextPtr,    ///< Context data.
+    short                        events         ///< Events to monitor.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -69,9 +70,20 @@ le_result_t le_dev_AddFdMonitoring
  *
  */
 //--------------------------------------------------------------------------------------------------
-void le_dev_RemoveFdMonitoring
+void le_dev_DeleteFdMonitoring
 (
     Device_t*   devicePtr
 );
 
-#endif
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disable monitoring of the device.  Monitoring can be resumed with le_dev_EnableFdMonitoring().
+ */
+//--------------------------------------------------------------------------------------------------
+void le_dev_DisableFdMonitoring
+(
+    Device_t    *devicePtr, ///< Device to stop monitoring.
+    short        events     ///< Events to stop monitoring.
+);
+
+#endif /* end LEGATO_LE_DEV_INCLUDE_GUARD */

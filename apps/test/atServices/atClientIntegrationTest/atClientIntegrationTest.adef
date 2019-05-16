@@ -1,0 +1,26 @@
+sandboxed: false
+
+start: manual
+
+executables:
+{
+    atClientIntegrationTest = ( atClientIntegrationTestComponent )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        ( atClientIntegrationTest )
+    }
+}
+
+bindings:
+{
+        atClientIntegrationTest.atClientIntegrationTestComponent.le_atClient -> atService.le_atClient
+}

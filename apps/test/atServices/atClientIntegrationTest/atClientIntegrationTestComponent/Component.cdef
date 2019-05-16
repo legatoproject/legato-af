@@ -1,0 +1,13 @@
+sources:
+{
+    atClientIntegrationTest.c
+}
+
+
+requires:
+{
+    api:
+    {
+        le_atClient.api
+    }
+}

@@ -77,14 +77,14 @@ static void RxNewData
             {
                 LE_INFO("Received AT command: %s", buffer);
                 // Send the response of AT command
-                write(fd, "\r\n\r\n+CREG: 0,1\r\n\r\n\r\nOK\r\n", 24);
+                LE_ASSERT(write(fd, "\r\n\r\n+CREG: 0,1\r\n\r\n\r\nOK\r\n", 24) == 24);
                 return;
             }
             else if (strcmp(buffer, "AT+CGSN\r") == 0)
             {
                 LE_INFO("Received AT command: %s", buffer);
                 // Send the response of AT command
-                write(fd, "\r\n359377060033064\r\n\r\nOK\r\n", 25);
+                LE_ASSERT(write(fd, "\r\n359377060033064\r\n\r\nOK\r\n", 25) == 25);
                 return;
             }
         }

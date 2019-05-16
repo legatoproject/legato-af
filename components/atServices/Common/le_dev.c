@@ -72,6 +72,7 @@ static char* StrError
     return errMsg;
 }
 
+#if LE_CONFIG_LINUX
 //--------------------------------------------------------------------------------------------------
 /**
  * Get device information
@@ -150,7 +151,7 @@ static le_result_t GetDeviceInformation
 
     return LE_FAULT;
 }
-
+#endif // CONFIG_LINUX
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to print a buffer byte by byte
@@ -213,50 +214,17 @@ static void PrintBuffer
             }
         }
 
+#if LE_CONFIG_LINUX
         if (GetDeviceInformation())
         {
             LE_DEBUG("'%d' -> %s", fd, string);
         }
         else
+#endif
         {
             LE_DEBUG("'%s' -> %s", DevInfo.linkName, string);
         }
     }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function sets the function in non blocking mode
- *
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t SetSocketNonBlocking
-(
-    int fd
-)
-{
-    int flags;
-
-    flags = fcntl(fd, F_GETFL, 0);
-    if (flags < 0)
-    {
-        LE_ERROR("fcntl failed, %s", StrError(errno));
-        return LE_FAULT;
-    }
-
-    if (flags & O_NONBLOCK)
-    {
-        return LE_OK;
-    }
-
-    flags |= O_NONBLOCK;
-    if (fcntl(fd, F_SETFL, flags) < 0)
-    {
-        LE_ERROR("fcntl failed, %s", StrError(errno));
-        return LE_FAULT;
-    }
-
-    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -294,18 +262,21 @@ ssize_t le_dev_Read
     }
 
     DevInfo.fd = devicePtr->fd;
+#if LE_CONFIG_LINUX
     if (!GetDeviceInformation())
     {
         LE_INFO("%s", DevInfo.devInfoStr);
     }
+#endif
 
-    count = read(devicePtr->fd, rxDataPtr, size);
+    count = le_fd_Read(devicePtr->fd, rxDataPtr, size - 1);
     if (-1 == count)
     {
         LE_ERROR("read error: %s", StrError(errno));
-        return -1;
+        return 0;
     }
 
+    *(char *)(rxDataPtr+count) = '\0';
     PrintBuffer(devicePtr->fd, rxDataPtr, count);
 
     return count;
@@ -332,10 +303,12 @@ int32_t le_dev_Write
     ssize_t sizeWritten;
 
     DevInfo.fd = devicePtr->fd;
+#if LE_CONFIG_LINUX
     if (!GetDeviceInformation())
     {
         LE_DEBUG("%s", DevInfo.devInfoStr);
     }
+#endif
 
     LE_FATAL_IF(devicePtr->fd==-1,"Write Handle error\n");
 
@@ -344,7 +317,7 @@ int32_t le_dev_Write
         sizeToWrite = size - currentSize;
 
         sizeWritten =
-            write(devicePtr->fd, &txDataPtr[currentSize], sizeToWrite);
+            le_fd_Write(devicePtr->fd, &txDataPtr[currentSize], sizeToWrite);
 
         if (sizeWritten < 0)
         {
@@ -362,7 +335,6 @@ int32_t le_dev_Write
 
     if(currentSize > 0)
     {
-        size  -= currentSize;
         amount  += currentSize;
     }
 
@@ -375,62 +347,60 @@ int32_t le_dev_Write
 /**
  * This function must be called to monitor the specified file descriptor
  * in the calling thread event loop.
- *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dev_AddFdMonitoring
+le_result_t le_dev_EnableFdMonitoring
 (
-    Device_t*                   devicePtr,    ///< device pointer
-    le_fdMonitor_HandlerFunc_t  handlerFunc, ///< [in] Handler function.
-    void*                       contextPtr
+    Device_t                    *devicePtr,     ///< Device pointer.
+    le_fdMonitor_HandlerFunc_t   handlerFunc,   ///< Handler function.
+    void                        *contextPtr,    ///< Context data.
+    short                        events         ///< Events to monitor.
 )
 {
     char monitorName[64];
-    le_fdMonitor_Ref_t fdMonitorRef;
 
     DevInfo.fd = devicePtr->fd;
+
+#if LE_CONFIG_LINUX
     if (!GetDeviceInformation())
     {
         LE_DEBUG("%s", DevInfo.devInfoStr);
     }
+#endif
 
-    if (devicePtr->fdMonitor)
+    if (devicePtr->fdMonitor != NULL)
     {
-        LE_WARN("Interface %d already started",devicePtr->fd);
-        return LE_FAULT;
+        le_fdMonitor_Enable(devicePtr->fdMonitor, events);
     }
-
-    // Set the fd in non blocking
-    if (SetSocketNonBlocking( devicePtr->fd ) != LE_OK)
+    else
     {
-        return LE_FAULT;
-    }
+        // Create a File Descriptor Monitor object for the file descriptor.
+        snprintf(monitorName,
+                 sizeof(monitorName),
+                 "Monitor-%"PRIi32"",
+                 devicePtr->fd);
 
-    // Create a File Descriptor Monitor object for the file descriptor.
-    snprintf(monitorName,
-             sizeof(monitorName),
-             "Monitor-%d",
-             devicePtr->fd);
+        devicePtr->fdMonitor = le_fdMonitor_Create(monitorName,
+                                           devicePtr->fd,
+                                           handlerFunc,
+                                           events);
+        if (devicePtr->fdMonitor == NULL)
+        {
+            return LE_FAULT;
+        }
+        le_fdMonitor_SetContextPtr(devicePtr->fdMonitor, contextPtr);
 
-    fdMonitorRef = le_fdMonitor_Create(monitorName,
-                                       devicePtr->fd,
-                                       handlerFunc,
-                                       POLLIN | POLLPRI | POLLRDHUP);
-
-    devicePtr->fdMonitor = fdMonitorRef;
-
-    le_fdMonitor_SetContextPtr(fdMonitorRef, contextPtr);
-
-    if (le_log_GetFilterLevel() == LE_LOG_DEBUG)
-    {
-        char threadName[25];
-        le_thread_GetName(le_thread_GetCurrent(), threadName, 25);
-        LE_DEBUG("Resume %s with fd(%d)(%p) [%s]",
-                 threadName,
-                 devicePtr->fd,
-                 devicePtr->fdMonitor,
-                 monitorName
-                );
+        if (le_log_GetFilterLevel() == LE_LOG_DEBUG)
+        {
+            char threadName[25];
+            le_thread_GetName(le_thread_GetCurrent(), threadName, 25);
+            LE_DEBUG("Resume %s with fd(%"PRIi32")(%p) [%s]",
+                     threadName,
+                     devicePtr->fd,
+                     devicePtr->fdMonitor,
+                     monitorName
+                    );
+        }
     }
 
     return LE_OK;
@@ -443,16 +413,18 @@ le_result_t le_dev_AddFdMonitoring
  *
  */
 //--------------------------------------------------------------------------------------------------
-void le_dev_RemoveFdMonitoring
+void le_dev_DeleteFdMonitoring
 (
     Device_t*   devicePtr
 )
 {
     DevInfo.fd = devicePtr->fd;
+#if LE_CONFIG_LINUX
     if (!GetDeviceInformation())
     {
         LE_DEBUG("%s", DevInfo.devInfoStr);
     }
+#endif
 
     if (devicePtr->fdMonitor)
     {
@@ -460,4 +432,21 @@ void le_dev_RemoveFdMonitoring
     }
 
     devicePtr->fdMonitor = NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disable monitoring of the device.  Monitoring can be resumed with le_dev_EnableFdMonitoring().
+ */
+//--------------------------------------------------------------------------------------------------
+void le_dev_DisableFdMonitoring
+(
+    Device_t    *devicePtr, ///< Device to stop monitoring.
+    short        events     ///< Events to stop monitoring.
+)
+{
+    if ((devicePtr != NULL) && (devicePtr->fdMonitor != NULL))
+    {
+        le_fdMonitor_Disable(devicePtr->fdMonitor, events);
+    }
 }

@@ -232,34 +232,34 @@ static void AtiCmdHandler
         // responses and an OK final response
         case LE_ATSERVER_TYPE_ACT:
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
-            sprintf(rsp, "%s",
+            snprintf(rsp, LE_ATDEFS_RESPONSE_MAX_BYTES, "%s",
                 "Manufacturer: Sierra Wireless, Incorporated");
             LE_ASSERT_OK(le_atServer_SendIntermediateResponse(commandRef, rsp));
 
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
-            sprintf(rsp, "%s", "Model: WP8548");
+            snprintf(rsp, LE_ATDEFS_RESPONSE_MAX_BYTES, "%s", "Model: WP8548");
             LE_ASSERT_OK(le_atServer_SendIntermediateResponse(commandRef, rsp));
 
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
-            sprintf(rsp, "%s",
+            snprintf(rsp, LE_ATDEFS_RESPONSE_MAX_BYTES, "%s",
                 "Revision: SWI9X15Y_07.10.04.00 12c1700 jenkins"
                 " 2016/06/02 02:52:45");
             LE_ASSERT_OK(le_atServer_SendIntermediateResponse(commandRef, rsp));
 
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
-            sprintf(rsp, "%s", "IMEI: 359377060009700");
+            snprintf(rsp, LE_ATDEFS_RESPONSE_MAX_BYTES, "%s", "IMEI: 359377060009700");
             LE_ASSERT_OK(le_atServer_SendIntermediateResponse(commandRef, rsp));
 
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
-            sprintf(rsp, "%s", "IMEI SV: 42");
+            snprintf(rsp, LE_ATDEFS_RESPONSE_MAX_BYTES, "%s", "IMEI SV: 42");
             LE_ASSERT_OK(le_atServer_SendIntermediateResponse(commandRef, rsp));
 
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
-            sprintf(rsp, "%s", "FSN: LL542500111503");
+            snprintf(rsp, LE_ATDEFS_RESPONSE_MAX_BYTES, "%s", "FSN: LL542500111503");
             LE_ASSERT_OK(le_atServer_SendIntermediateResponse(commandRef, rsp));
 
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
-            sprintf(rsp, "%s", "+GCAP: +CGSM");
+            snprintf(rsp, LE_ATDEFS_RESPONSE_MAX_BYTES, "%s", "+GCAP: +CGSM");
             LE_ASSERT_OK(le_atServer_SendIntermediateResponse(commandRef, rsp));
 
             // send an OK final response
@@ -877,7 +877,11 @@ static void ErrorCodeCmdHandler
                                                       2,
                                                       verboseStr,
                                                       LE_ATDEFS_PARAMETER_MAX_BYTES));
+#ifdef LE_CONFIG_ATSERVER_USER_ERRORS
                 LE_ASSERT_OK(le_atServer_SetVerboseErrorCode(ref, verboseStr));
+#else
+                LE_ASSERT(LE_FAULT == le_atServer_SetVerboseErrorCode(ref, verboseStr));
+#endif
             }
 
             LE_ASSERT_OK(le_atServer_SendFinalResultCode(cmdRef, LE_ATSERVER_ERROR,
@@ -890,25 +894,41 @@ static void ErrorCodeCmdHandler
             char patternStr[] = "CUSTOM ERROR: ";
             char verboseStr[] = "MESSAGE";
 
-            // Nominal case
-            ref = le_atServer_CreateErrorCode(errorCodeID, patternStr);
-            LE_ASSERT(NULL != ref);
-            LE_ASSERT_OK(le_atServer_SetVerboseErrorCode(ref, verboseStr));
-            LE_ASSERT_OK(le_atServer_DeleteErrorCode(ref));
+            // Creates a custom error code for the combinaison (errorCodeID, patternStr):
 
-            // Error code already exists
-            ref = le_atServer_CreateErrorCode(errorCodeID, patternStr);
-            LE_ASSERT(NULL != ref);
-            LE_ASSERT(NULL == le_atServer_CreateErrorCode(errorCodeID, patternStr));
-
-            // Reference not found
-            le_atServer_DeleteErrorCode(ref);
-            LE_ASSERT(LE_OK != le_atServer_SetVerboseErrorCode(ref, verboseStr));
-            LE_ASSERT(LE_OK != le_atServer_DeleteErrorCode(ref));
-
-            // Invalid parameter
+            // Test for NULL reference when the errorCodeID is invalid.
             LE_ASSERT(NULL == le_atServer_CreateErrorCode(1, patternStr));
 
+#ifdef LE_CONFIG_ATSERVER_USER_ERRORS
+            // Get a custom error code reference.
+            ref = le_atServer_CreateErrorCode(errorCodeID, patternStr);
+            LE_ASSERT(NULL != ref);
+
+            // Test for NULL reference when the error code reference already exists.
+            LE_ASSERT(NULL == le_atServer_CreateErrorCode(errorCodeID, patternStr));
+
+            // Add a verbose message to the specified custom error code.
+            LE_ASSERT_OK(le_atServer_SetVerboseErrorCode(ref, verboseStr));
+            // Delete the custom error code.
+            LE_ASSERT_OK(le_atServer_DeleteErrorCode(ref));
+
+            // Test for errors when the  error code reference is not found.
+            LE_ASSERT(LE_FAULT == le_atServer_SetVerboseErrorCode(ref, verboseStr));
+            LE_ASSERT(LE_NOT_FOUND == le_atServer_DeleteErrorCode(ref));
+
+            // Get a custom error code reference after a delete
+            ref = le_atServer_CreateErrorCode(errorCodeID, patternStr);
+            LE_ASSERT(NULL != ref);
+#else
+            // Test for NULL reference
+            ref = le_atServer_CreateErrorCode(errorCodeID, patternStr);
+            LE_ASSERT(NULL == ref);
+
+            // Add a verbose message to the specified custom error code, test for error.
+            LE_ASSERT(LE_FAULT == le_atServer_SetVerboseErrorCode(ref, verboseStr));
+            // Delete the custom error code, test for error.
+            LE_ASSERT(LE_NOT_FOUND == le_atServer_DeleteErrorCode(ref));
+#endif
             LE_ASSERT_OK(le_atServer_SendFinalResultCode(cmdRef,
                                                          LE_ATSERVER_OK,
                                                          "",

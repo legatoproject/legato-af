@@ -116,7 +116,7 @@ le_result_t le_dev_AddFdMonitoring
  * This function must be called to remove the file descriptor monitoring from the event loop.
  */
 //--------------------------------------------------------------------------------------------------
-void le_dev_RemoveFdMonitoring
+void le_dev_DeleteFdMonitoring
 (
     Device_t* devicePtr    ///< [IN] Device pointer
 )
@@ -246,7 +246,7 @@ static void RxNewData
     if (events & POLLRDHUP)
     {
         LE_INFO("fd %d: Connection reset by peer", fd);
-        le_dev_RemoveFdMonitoring(devPtr);
+        le_dev_DeleteFdMonitoring(devPtr);
         return;
     }
     if (events & (POLLIN | POLLPRI))
