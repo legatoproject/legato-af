@@ -79,14 +79,14 @@ GetSysrootDefs() {
         SYSROOT_DEFS+=("armv7ahf-neon-poky-linux-gnueabi")
         ;;
 
-    raspi | virt_arm)
+    raspi | virt_arm | virt-arm)
         if [[ "$yocto_mode" == "true" ]]; then
             SYSROOT_DEFS+=("swi-virt-arm")
         fi
         SYSROOT_DEFS+=("armv5e-poky-linux-gnueabi")
         ;;
 
-    virt_x86)
+    virt_x86 | virt-x86)
         if [[ "$yocto_mode" == "true" ]]; then
             SYSROOT_DEFS+=("swi-virt-x86")
         fi
@@ -299,6 +299,9 @@ SelectToolchainDirs() {
 
         for prefix in $(ListToolchainPrefix "$target"); do
             AppendYoctoToolchain "${prefix}" "${target}"
+        done
+        for prefix in $(ListToolchainPrefix "virt"); do
+            AppendYoctoToolchain "${prefix}" "virt-arm"
         done
         ;;
     virt_arm | virt-arm)
