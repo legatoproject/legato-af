@@ -256,6 +256,16 @@ static le_mem_PoolRef_t ProxyClientRequestResponseRecordPoolRef = NULL;
 #ifdef RPC_PROXY_LOCAL_SERVICE
 //--------------------------------------------------------------------------------------------------
 /**
+ * Hash Map to store Service-Name (key) and Local-Messaging Queue ServiceRef (value) mappings.
+ * Initialized in rpcProxy_COMPONENT_INIT_ONCE().
+ */
+//--------------------------------------------------------------------------------------------------
+LE_HASHMAP_DEFINE_STATIC(ServerRefHashMap, RPC_PROXY_SERVICE_BINDINGS_MAX_NUM);
+static le_hashmap_Ref_t ServerRefMapByName = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This pool is used to allocate memory for local message pointers to String and Array Parameters.
  * Initialized in rpcProxy_COMPONENT_INIT().
  */
@@ -2350,11 +2360,14 @@ static le_result_t ProcessConnectServiceResponse
                     return LE_FAULT;
                 }
 #else
-                rpcProxy_ExternLocalServer_t* refPtr =
-                    CONTAINER_OF(serviceRefPtr, rpcProxy_ExternLocalServer_t, common);
-
-                // Initialization the Local Service
-                serviceRef = refPtr->initLocalServicePtr();
+                // Retrieve the Service reference, using the Service-Name
+                serviceRef = le_hashmap_Get(ServerRefMapByName, serviceName);
+                if (serviceRef == NULL)
+                {
+                    LE_ERROR("Unable to retrieve server-reference for '%s' service",
+                             serviceRefPtr->serviceName);
+                    return LE_FAULT;
+                }
 #endif
 
                 // Allocate memory from Service Name string pool to hold the service-name
@@ -3439,7 +3452,10 @@ void rpcProxy_DisconnectSessions
 
 
             // Get the stored key object
-            char* serviceNameCopyPtr = le_hashmap_GetStoredKey(ServiceIDMapByName, sessionRefPtr->serviceName);
+            char* serviceNameCopyPtr =
+                le_hashmap_GetStoredKey(
+                    ServiceIDMapByName,
+                    sessionRefPtr->serviceName);
 
             // Remove the serviceId in a hashmap, using the service-name as a key
             le_hashmap_Remove(ServiceIDMapByName, serviceNameCopyPtr);
@@ -3458,19 +3474,86 @@ void rpcProxy_DisconnectSessions
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to initialize the RPC Proxy Services.
+ * One-time init for RPC Proxy application component
  *
- * @note If the initialization failed, it is a fatal error, the function will not return.
+ * This pre-initializes the Local-Messaging queues for all server-references.
+ *
+ * @note Must be called either directly, such as in the case of the RPC Proxy Library,
+ *       or indirectly as a Legato component via the RPC Proxy's COMPONENT_INIT_ONCE.
+ *
+ * @return
+ *      - LE_OK if successful.
  */
 //--------------------------------------------------------------------------------------------------
-#ifdef LE_CONFIG_RPC_PROXY_LIBRARY
+le_result_t le_rpcProxy_InitializeOnce
+(
+    void
+)
+{
+#ifdef RPC_PROXY_LOCAL_SERVICE
+    // Create hash map for server references, using Service Name as key.
+    ServerRefMapByName = le_hashmap_InitStatic(ServerRefHashMap,
+                                               RPC_PROXY_SERVICE_BINDINGS_MAX_NUM,
+                                               le_hashmap_HashString,
+                                               le_hashmap_EqualsString);
+
+    // Traverse all Service Reference entries in the Server-Reference array and
+    // initialize the Local Messaging queue.
+    for (uint32_t index = 0; rpcProxyConfig_GetServerReferenceArray(index); index++)
+    {
+        const rpcProxy_ExternServer_t* serviceRefPtr = NULL;
+
+        // Set a pointer to the Service Reference element
+        serviceRefPtr = rpcProxyConfig_GetServerReferenceArray(index);
+
+        rpcProxy_ExternLocalServer_t* refPtr =
+            CONTAINER_OF(serviceRefPtr, rpcProxy_ExternLocalServer_t, common);
+
+        // Initialization the Local Service
+        le_msg_ServiceRef_t serviceRef = refPtr->initLocalServicePtr();
+
+        // Store the serviceRef in a hashmap, using the Service-Name as a key
+        le_hashmap_Put(ServerRefMapByName,
+                       serviceRefPtr->serviceName,
+                       serviceRef);
+    }
+#endif
+
+    return LE_OK;
+}
+
+
+#ifndef LE_CONFIG_RPC_PROXY_LIBRARY
+//--------------------------------------------------------------------------------------------------
+/**
+ * Component once initializer.
+ */
+//--------------------------------------------------------------------------------------------------
+COMPONENT_INIT_ONCE
+{
+    le_rpcProxy_InitializeOnce();
+}
+#endif
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function initializes and starts the RPC Proxy Services.
+ *
+ * @note Must be called either directly, such as in the case of the RPC Proxy Library,
+ *       or indirectly as a Legato component via the RPC Proxy's COMPONENT_INIT.
+ *
+ * @return
+ *      - LE_OK if successful.
+ *      - LE_NOT_FOUND if mandatory configuration is not found.
+ *      - LE_BAD_PARAMETER if number of elements exceeds the storage array size.
+ *      - LE_FAULT for all other errors.
+ */
+//--------------------------------------------------------------------------------------------------
 le_result_t le_rpcProxy_Initialize
 (
     void
 )
-#else
-COMPONENT_INIT
-#endif
 {
     le_result_t  result = LE_OK;
 
@@ -3673,7 +3756,18 @@ COMPONENT_INIT
 exit:
     LE_INFO("RPC Proxy Service Init done");
 
-#ifdef LE_CONFIG_RPC_PROXY_LIBRARY
     return result;
-#endif
 }
+
+
+#ifndef LE_CONFIG_RPC_PROXY_LIBRARY
+//--------------------------------------------------------------------------------------------------
+/**
+ * Component initializer.
+ */
+//--------------------------------------------------------------------------------------------------
+COMPONENT_INIT
+{
+    le_rpcProxy_Initialize();
+}
+#endif
