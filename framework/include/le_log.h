@@ -835,6 +835,13 @@ const char* _le_log_GetResultCodeString
     le_result_t resultCode  ///< [in] Result code value to be translated.
 );
 
+/// Function that exits in a race-free manner -- work around glibc BZ#14333
+__attribute__((noreturn))
+void _le_log_ExitFatal
+(
+    void
+);
+
 //--------------------------------------------------------------------------------------------------
 /** @internal
  * The following macros are used to send log messages at different severity levels conditionally.
@@ -877,7 +884,7 @@ const char* _le_log_GetResultCodeString
 //--------------------------------------------------------------------------------------------------
 #if !LE_CONFIG_DEBUG
 #define LE_FATAL(formatString, ...) \
-        { LE_EMERG(formatString, ##__VA_ARGS__); exit(EXIT_FAILURE); }
+        { LE_EMERG(formatString, ##__VA_ARGS__); _le_log_ExitFatal(); }
 #else
 #define LE_FATAL(formatString, ...) \
         { LE_EMERG(formatString, ##__VA_ARGS__); abort(); }

@@ -207,6 +207,26 @@ const char* _le_log_GetResultCodeString
     return "(unknown)";
 }
 
+/// Function that exits in a race-free manner -- work around glibc BZ#14333
+__attribute__((noreturn))
+void _le_log_ExitFatal
+(
+    void
+)
+{
+    static bool exitCalled = false;
+
+    if (!__atomic_test_and_set(&exitCalled, __ATOMIC_SEQ_CST))
+    {
+        exit(EXIT_FAILURE);
+    }
+    else
+    {
+        pthread_exit(NULL);
+    }
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Log data block. Provides a hex dump for debug
