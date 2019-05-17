@@ -145,7 +145,7 @@
 typedef struct {
     le_mdc_Auth_t type;                       ///< Authentication using PAP
     char userName[PA_MDC_USERNAME_MAX_BYTES]; ///< UserName used by authentication
-    char password[PA_MDC_APN_MAX_BYTES];      ///< Password used by authentication
+    char password[PA_MDC_PWD_MAX_BYTES];      ///< Password used by authentication
 }
 pa_mdc_Authentication_t;
 

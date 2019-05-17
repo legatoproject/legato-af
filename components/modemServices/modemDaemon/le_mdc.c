@@ -1886,6 +1886,9 @@ le_result_t le_mdc_SetPDP
     le_mdc_Pdp_t        pdp          ///< [IN] The Packet Data Protocol
 )
 {
+    le_result_t result;
+    le_mdc_ConState_t state;
+    le_mdc_Pdp_t originalPdp;
     le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
     if (profilePtr == NULL)
     {
@@ -1893,18 +1896,43 @@ le_result_t le_mdc_SetPDP
         return LE_BAD_PARAMETER;
     }
 
-    le_result_t result;
-    le_mdc_ConState_t state;
+    // Update the le_mdc copy of modemData of the given profile in case its contents got
+    // changed outside le_mdc's notice, e.g. via the AT command AT+CGDCONT
+    result = pa_mdc_ReadProfile(profilePtr->profileIndex, &profilePtr->modemData);
+    if ((result != LE_OK) && (result != LE_NOT_FOUND))
+    {
+        // LE_OK and LE_NOT_FOUND are the normal results, and any other isn't
+        LE_ERROR("Error in reading profile at index %d; error %d", profilePtr->profileIndex,
+                 result);
+        return result;
+    }
 
     result = le_mdc_GetSessionState(profileRef, &state);
-    if ( (result != LE_OK) || (state == LE_MDC_CONNECTED) )
+    if (result != LE_OK)
     {
+        LE_ERROR("Failed to get session state of profile at index %d", profilePtr->profileIndex);
+        return LE_FAULT;
+
+    }
+    if (state == LE_MDC_CONNECTED)
+    {
+        LE_ERROR("Failed to set PDP on profile at index %d with a connected session",
+                 profilePtr->profileIndex);
         return LE_FAULT;
     }
 
+    // Set the PDP into modemData and write it back into the modem
+    originalPdp = profilePtr->modemData.pdp;
     profilePtr->modemData.pdp = pdp;
-
-    return pa_mdc_WriteProfile(profilePtr->profileIndex, &profilePtr->modemData);
+    result = pa_mdc_WriteProfile(profilePtr->profileIndex, &profilePtr->modemData);
+    if (result != LE_OK)
+    {
+        LE_ERROR("Failed to write PDP data into modem for profile at index %d",
+                 profilePtr->profileIndex);
+        // Revert back to original setting
+        profilePtr->modemData.pdp = originalPdp;
+    }
+    return result;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1974,6 +2002,9 @@ le_result_t le_mdc_SetAPN
     const char         *apnPtr      ///< [IN] The Access Point Name
 )
 {
+    le_result_t result;
+    le_mdc_ConState_t state;
+    char originalApn[PA_MDC_APN_MAX_BYTES];
     le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
     if (profilePtr == NULL)
     {
@@ -1989,18 +2020,46 @@ le_result_t le_mdc_SetAPN
         return LE_BAD_PARAMETER;
     }
 
-    le_result_t result;
-    le_mdc_ConState_t state;
+    // Update the le_mdc copy of modemData of the given profile in case its contents got
+    // changed outside le_mdc's notice, e.g. via the AT command AT+CGDCONT
+    result = pa_mdc_ReadProfile(profilePtr->profileIndex, &profilePtr->modemData);
+    if ((result != LE_OK) && (result != LE_NOT_FOUND))
+    {
+        // LE_OK and LE_NOT_FOUND are the normal results, and any other isn't
+        LE_ERROR("Error in reading profile at index %d; error %d", profilePtr->profileIndex,
+                 result);
+        return result;
+    }
 
     result = le_mdc_GetSessionState(profileRef, &state);
-    if ( (result != LE_OK) || (state == LE_MDC_CONNECTED) )
+    if (result != LE_OK)
     {
+        LE_ERROR("Failed to get session state of profile at index %d", profilePtr->profileIndex);
+        return LE_FAULT;
+
+    }
+    if (state == LE_MDC_CONNECTED)
+    {
+        LE_ERROR("Failed to set APN on profile at index %d with a connected session",
+                 profilePtr->profileIndex);
         return LE_FAULT;
     }
 
-    le_utf8_Copy(profilePtr->modemData.apn, apnPtr, sizeof(profilePtr->modemData.apn), NULL);
-
-    return pa_mdc_WriteProfile(profilePtr->profileIndex, &profilePtr->modemData);
+    // Set the APN into modemData and write it back into the modem
+    LE_ASSERT(le_utf8_Copy(originalApn, profilePtr->modemData.apn, PA_MDC_APN_MAX_BYTES, NULL)
+              == LE_OK);
+    LE_ASSERT(le_utf8_Copy(profilePtr->modemData.apn, apnPtr, sizeof(profilePtr->modemData.apn),
+                           NULL) == LE_OK);
+    result = pa_mdc_WriteProfile(profilePtr->profileIndex, &profilePtr->modemData);
+    if (result != LE_OK)
+    {
+        LE_ERROR("Failed to write APN data into modem for profile at index %d",
+                 profilePtr->profileIndex);
+        // Revert back to original setting
+        LE_ASSERT(le_utf8_Copy(profilePtr->modemData.apn, originalApn, PA_MDC_APN_MAX_BYTES, NULL)
+                  == LE_OK);
+    }
+    return result;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2110,18 +2169,10 @@ le_result_t le_mdc_GetAPN
     }
 
     status = pa_mdc_ReadProfile(profilePtr->profileIndex,&profilePtr->modemData);
-    if ( status != LE_OK)
+    if (status != LE_OK)
     {
-        if (status == LE_NOT_FOUND)
-        {
-            // Fill APN with an empty string
-            memset(profilePtr->modemData.apn, 0, sizeof(profilePtr->modemData.apn));
-        }
-        else
-        {
-            LE_ERROR("Could not read profile at index %d", profilePtr->profileIndex);
-            return LE_FAULT;
-        }
+        LE_ERROR("Failed to read profile at index %d; error %d", profilePtr->profileIndex, status);
+        return status;
     }
 
     return le_utf8_Copy(apnPtr,profilePtr->modemData.apn,apnSize,NULL);
@@ -2155,6 +2206,9 @@ le_result_t le_mdc_SetAuthentication
 )
 {
     le_result_t result;
+    le_mdc_ConState_t state;
+    le_mdc_Auth_t originalType;
+    char originalUsername[PA_MDC_USERNAME_MAX_BYTES], originalPassword[PA_MDC_PWD_MAX_BYTES];
     le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
     if (profilePtr == NULL)
     {
@@ -2174,31 +2228,57 @@ le_result_t le_mdc_SetAuthentication
         return LE_FAULT;
     }
 
-    le_mdc_ConState_t state;
-    result = le_mdc_GetSessionState(profileRef, &state);
-    if ( (result != LE_OK) || (state == LE_MDC_CONNECTED) )
+    // Update the le_mdc copy of modemData of the given profile in case its contents got
+    // changed outside le_mdc's notice, e.g. via the AT command AT+CGDCONT
+    result = pa_mdc_ReadProfile(profilePtr->profileIndex, &profilePtr->modemData);
+    if ((result != LE_OK) && (result != LE_NOT_FOUND))
     {
+        // LE_OK and LE_NOT_FOUND are the normal results, and any other isn't
+        LE_ERROR("Error in reading profile at index %d; error %d", profilePtr->profileIndex,
+                 result);
+        return result;
+    }
+
+    result = le_mdc_GetSessionState(profileRef, &state);
+    if (result != LE_OK)
+    {
+        LE_ERROR("Failed to get session state of profile at index %d", profilePtr->profileIndex);
+        return LE_FAULT;
+
+    }
+    if (state == LE_MDC_CONNECTED)
+    {
+        LE_ERROR("Failed to set authentication on profile at index %d with a connected session",
+                 profilePtr->profileIndex);
         return LE_FAULT;
     }
 
+    // Set the authentication property into modemData and write it back into the modem
+    originalType = profilePtr->modemData.authentication.type;
     profilePtr->modemData.authentication.type = type;
+    LE_ASSERT(le_utf8_Copy(originalUsername, profilePtr->modemData.authentication.userName,
+                           PA_MDC_USERNAME_MAX_BYTES, NULL) == LE_OK);
+    LE_ASSERT(le_utf8_Copy(profilePtr->modemData.authentication.userName, userName,
+                           sizeof(profilePtr->modemData.authentication.userName), NULL) == LE_OK);
 
-    result = le_utf8_Copy(profilePtr->modemData.authentication.userName,
-                          userName,
-                          sizeof(profilePtr->modemData.authentication.userName),
-                          NULL);
-    if (result != LE_OK) {
-        return result;
-    }
-    result = le_utf8_Copy(profilePtr->modemData.authentication.password,
-                          password,
-                          sizeof(profilePtr->modemData.authentication.password),
-                          NULL);
-    if (result != LE_OK) {
-        return result;
-    }
+    LE_ASSERT(le_utf8_Copy(originalPassword, profilePtr->modemData.authentication.password,
+                           PA_MDC_PWD_MAX_BYTES, NULL) == LE_OK);
+    LE_ASSERT(le_utf8_Copy(profilePtr->modemData.authentication.password, password,
+                           sizeof(profilePtr->modemData.authentication.password), NULL) == LE_OK);
 
-    return pa_mdc_WriteProfile(profilePtr->profileIndex, &profilePtr->modemData);
+    result = pa_mdc_WriteProfile(profilePtr->profileIndex, &profilePtr->modemData);
+    if (result != LE_OK)
+    {
+        LE_ERROR("Failed to write authentication data into modem for profile at index %d",
+                 profilePtr->profileIndex);
+        // Revert back to original setting
+        profilePtr->modemData.authentication.type = originalType;
+        LE_ASSERT(le_utf8_Copy(profilePtr->modemData.authentication.userName, originalUsername,
+                               PA_MDC_USERNAME_MAX_BYTES, NULL) == LE_OK);
+        LE_ASSERT(le_utf8_Copy(profilePtr->modemData.authentication.password, originalPassword,
+                               PA_MDC_PWD_MAX_BYTES, NULL) == LE_OK);
+    }
+    return result;
 }
 
 
