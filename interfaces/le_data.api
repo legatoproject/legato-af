@@ -55,6 +55,11 @@
  * connection is initiated. The cellular data profile can be configured by le_mdc APIs or
  * cm data tool.
  *
+ * @deprecated: The DCS functionality in populating the default APN name into the default cellular
+ * channel's modem profile when found blank upon an attempt to start it will be deprecated in
+ * Legato Release 19.08. Thereafter, DCS will never seek to alter the APN name in any cellular
+ * channel's modem profile.
+ *
  * @section le_data_sample Code sample
  *
  * A sample code that implements the establishment of a data connection service can be found in
@@ -278,6 +283,11 @@ EVENT ConnectionState
 //--------------------------------------------------------------------------------------------------
 /**
  * Request the default data connection
+ *
+ * @deprecated: The DCS functionality in populating the default APN name into the default cellular
+ * channel's modem profile when found blank upon an attempt to start it will be deprecated in
+ * Legato Release 19.08. Thereafter, DCS will never seek to alter the APN name in any cellular
+ * channel's modem profile.
  *
  * @return
  *      - Reference to the data connection (to be used later for releasing the connection)

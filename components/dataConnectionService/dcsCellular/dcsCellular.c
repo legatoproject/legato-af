@@ -1048,6 +1048,9 @@ le_result_t le_dcsCellular_Start
         return LE_UNAVAILABLE;
     }
 
+    // @deprecated: The following functionality in DCS to populate the default APN name into a
+    // modem profile when found blank upon an attempt to start a connection with this profile.
+    // However, the MDC API le_mdc_SetDefaultAPN() will stay & not be deprecated.
     if (DcsCellularIsApnEmpty(profileRef))
     {
         LE_DEBUG("Set default APN for connection %s", connName);

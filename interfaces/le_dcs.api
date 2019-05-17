@@ -285,6 +285,11 @@
  * The function for an application to start a selected data channel and associate itself with it is
  * le_dcs_Start(), while the opposite to stop and disassociate with it is le_dcs_Stop().
  *
+ * @deprecated: The DCS functionality in populating the default APN name into the given cellular
+ * channel's modem profile when found blank upon an attempt to start it will be deprecated in
+ * Legato Release 19.08. Thereafter, DCS will never seek to alter the APN name in any cellular
+ * channel's modem profile.
+ *
  * Example of starting and stoping a channel:
  * @code
     void ClientStartChannel
@@ -535,6 +540,11 @@ FUNCTION le_result_t GetState
 //--------------------------------------------------------------------------------------------------
 /**
  * Request by an app to start a data channel
+ *
+ * @deprecated: The DCS functionality in populating the default APN name into the given cellular
+ * channel's modem profile when found blank upon an attempt to start it will be deprecated in
+ * Legato Release 19.08. Thereafter, DCS will never seek to alter the APN name in any cellular
+ * channel's modem profile.
  *
  * @return
  *      - Object reference to the request (to be used later for releasing the channel)
