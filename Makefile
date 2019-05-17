@@ -145,7 +145,7 @@ ifeq ($(LE_CONFIG_READ_ONLY),y)
   override STAGE_SYSTOIMG := stage_systoimgro
 endif
 
-export MKTOOLS_FLAGS
+export MKTOOLS_FLAGS:=$(addprefix --cflags=,$($(TARGET_CAPS)_CFLAGS))
 export MKSYS_FLAGS=$(MKTOOLS_FLAGS)
 export MKAPP_FLAGS=$(MKTOOLS_FLAGS)
 export MKEXE_FLAGS=$(MKTOOLS_FLAGS)
@@ -230,16 +230,17 @@ ifneq ($(TARGET),nothing)
   endif # end not localhost
 
   # Target compiler variables
-  export TARGET_CC                       ?= $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)$(CC_NAME)
-  export TARGET_CXX                      ?= $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)$(CXX_NAME)
-  export TARGET_CPP                      ?= $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)$(CPP_NAME)
-  export $(TARGET_CAPS)_CC               := $(TARGET_CC)
-  export $(TARGET_CAPS)_CXX              := $(TARGET_CXX)
-  export $(TARGET_CAPS)_CPP              := $(TARGET_CPP)
+  export $(TARGET_CAPS)_CC               ?= $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)$(CC_NAME)
+  export $(TARGET_CAPS)_CXX              ?= $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)$(CXX_NAME)
+  export $(TARGET_CAPS)_CPP              ?= $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)$(CPP_NAME)
   export $(TARGET_CAPS)_TOOLCHAIN_DIR    := $(TOOLCHAIN_DIR)
   export $(TARGET_CAPS)_TOOLCHAIN_PREFIX := $(TOOLCHAIN_PREFIX)
-  export $(TARGET_CAPS)_SYSROOT          := $(LEGATO_SYSROOT)
+  export $(TARGET_CAPS)_SYSROOT          ?= $(LEGATO_SYSROOT)
   export $(TARGET_CAPS)_KERNELROOT       := $(LEGATO_KERNELROOT)
+
+  export TARGET_CC                       := $($(TARGET_CAPS)_CC)
+  export TARGET_CXX                      := $($(TARGET_CAPS)_CXX)
+  export TARGET_CPP                      := $($(TARGET_CAPS)_CPP)
 
   ifeq ($(TARGET_CC),/$(CC_NAME))
     $(error Unable to find toolchain for target '$(TARGET)')
@@ -532,7 +533,7 @@ endif
 framework_$(TARGET): framework
 framework: tools package.properties $(HEADER_CONFIG) $(SHELL_CONFIG)
 	$(L) MAKE $@
-	$(Q)$(MAKE) -f Makefile.framework CC=$(TARGET_CC)
+	$(Q)$(MAKE) -f Makefile.framework CC="$(TARGET_CC)"
 
 .PHONY: system system_$(TARGET)
 system_$(TARGET): system

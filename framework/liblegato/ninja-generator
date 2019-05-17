@@ -39,6 +39,9 @@ BIN_DIR=$BUILD_DIR/bin
 LIB_DIR=$BUILD_DIR/lib
 SRC_DIR=$LEGATO_ROOT/framework/liblegato
 
+legato_target_caps=${LEGATO_TARGET^^}
+legato_target_caps=${legato_target_caps/-/_}
+
 declare -A LIBLEGATO_FILES
 
 # Turn a source file path into a path to the object (.o) file that it will be compiled into.
@@ -86,6 +89,12 @@ cat > $NINJA_SCRIPT <<EOF
 EOF
 
 AddSources liblegato $(ls $SRC_DIR/*.c)
+
+base_cflags_name="${legato_target_caps}_CFLAGS"
+
+echo "Pulling base CFLAGS from $base_cflags_name."
+
+CFLAGS="${!base_cflags_name}"
 
 for module_path in $(find -L $SRC_DIR/* -type d -prune); do
     ninja_config=${module_path}/ninja-config

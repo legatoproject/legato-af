@@ -150,10 +150,13 @@ LOCAL_MKEXE_FLAGS += -i $(LEGATO_ROOT)/framework/liblegato
 LOCAL_MKEXE_FLAGS += -i $(LEGATO_ROOT)/framework/liblegato/linux
 
 # Common CFlags
+TARGET_CAPS := $(shell echo $(TARGET) | tr a-z- A-Z_)
+
 CFLAGS += -Wall -Werror \
 	-I$(LEGATO_ROOT)/framework/include \
 	-I${LEGATO_ROOT}/build/${TARGET}/framework/include \
-	-I$(LEGATO_ROOT)/framework/liblegato
+	-I$(LEGATO_ROOT)/framework/liblegato \
+	$($(TARGET_CAPS)_CFLAGS)
 
 # Set flags for test coverage
 ifeq ($(LE_CONFIG_TEST_COVERAGE),y)
