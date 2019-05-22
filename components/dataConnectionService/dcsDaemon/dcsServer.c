@@ -644,8 +644,8 @@ static void ChannelEventHandler
     void *contextPtr                ///< [IN] Associated user context pointer
 )
 {
-    LE_INFO("Received for channel reference %p event %s", channelRef,
-            (event == LE_DCS_EVENT_UP) ? "Up" : "Down");
+    const char *eventString = le_dcs_ConvertEventToString(event);
+    LE_INFO("Received for channel reference %p event %s", channelRef, eventString);
 
     if (channelRef != DataChannelRef)
     {
@@ -687,8 +687,17 @@ static void ChannelEventHandler
 
             // Down event
             LE_DEBUG("Channel state IsConnected after event: %d", IsConnected);
-            TryStopTechSession();
-            UpdateTechnologyStatus(CurrentTech, IsConnected, true);
+            if (event == LE_DCS_EVENT_DOWN)
+            {
+                TryStopTechSession();
+                UpdateTechnologyStatus(CurrentTech, IsConnected, true);
+            }
+            else if (event == LE_DCS_EVENT_TEMP_DOWN)
+            {
+                // Don't stop tech nor start tech retry timer since le_dcs will retry it again
+                // Just send a notification to upper app(s)
+                SendConnStateEvent(IsConnected);
+            }
 
             if (IsDefaultRouteSet)
             {
@@ -706,12 +715,24 @@ static void ChannelEventHandler
         case LE_DATA_WIFI:
             LE_DEBUG("Channel state IsConnected after event: %d", IsConnected);
 
-            if (!IsConnected)
+            if (IsConnected)
             {
-                TryStopTechSession();
+                UpdateTechnologyStatus(CurrentTech, IsConnected, true);
+                break;
             }
 
-            UpdateTechnologyStatus(CurrentTech, IsConnected, true);
+            // Down event
+            if (event == LE_DCS_EVENT_DOWN)
+            {
+                TryStopTechSession();
+                UpdateTechnologyStatus(CurrentTech, IsConnected, true);
+            }
+            else if (event == LE_DCS_EVENT_TEMP_DOWN)
+            {
+                // Don't stop tech nor start tech retry timer since le_dcs will retry it again
+                // Just send a notification to upper app(s)
+                SendConnStateEvent(IsConnected);
+            }
             break;
         default:
             break;

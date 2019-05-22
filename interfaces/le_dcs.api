@@ -113,6 +113,12 @@
  * subsequent @c le_dcs APIs. le_dcs_GetChannels() is asynchronous, due to need of some technologies
  * to actively re-scan for their latest lists of available channels, i.e., WiFi.
  *
+ * @note Moreover, on the returned channel list the channel state of each channel is provided.
+ * However, it is a dynamic parameter which value might keep changing and is, thus, included as
+ * a result only for reference. Client apps need to know that it was a value retrieved at the
+ * moment when DCS performed the channel query, but may not necessarily stay the same when they
+ * get it as part of the channel list results.
+ *
  * Example of le_dcs_GetChannels():
  * @code
     // This is the callback function for handling the results of a channel list query
@@ -240,13 +246,29 @@
     static void clientEventHandler
     (
         le_dcs_ChannelRef_t channelRef, ///< [IN] The channel for which the event is
-        le_dcs_Event_t event,           ///< [IN] Event up or down
+        le_dcs_Event_t event,           ///< [IN] Event up, down or temp-down
         int32_t code,                   ///< [IN] Additional event code, like error code
         void *contextPtr                ///< [IN] Associated user context pointer
     )
     {
+        char *eventString;
+        switch (event)
+        {
+            case LE_DCS_EVENT_UP:
+                eventString = "Up";
+                break;
+            case LE_DCS_EVENT_DOWN:
+                eventString = "Down";
+                break;
+            case LE_DCS_EVENT_TEMP_DOWN:
+                eventString = "Temporary Down";
+                break;
+            default:
+                eventString = "Unknown";
+                break;
+        }
         LE_INFO("Received for channel reference %p event %s", channelRef,
-                (event == LE_DCS_EVENT_UP) ? "Up" : "Down");
+                eventString, channelDb->channelName, appSessionRef);
     }
 
     void ClientAddEventHandler
@@ -285,10 +307,10 @@
  * The function for an application to start a selected data channel and associate itself with it is
  * le_dcs_Start(), while the opposite to stop and disassociate with it is le_dcs_Stop().
  *
- * @deprecated: The DCS functionality in populating the default APN name into the given cellular
- * channel's modem profile when found blank upon an attempt to start it will be deprecated in
- * Legato Release 19.08. Thereafter, DCS will never seek to alter the APN name in any cellular
- * channel's modem profile.
+ * @deprecated The DCS functionality to populate the default APN name into the cellular channel's
+ * modem profile if blank at startup upon an attempt to start it will be deprecated in Legato
+ * Release 19.08. After 19.08, DCS will not alter the APN name in any cellular channel's
+ * modem profile.
  *
  * Example of starting and stoping a channel:
  * @code
@@ -458,13 +480,27 @@ ENUM State
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Channel events.
+ * Channel events: These are the data channel events in DCS' northbound towards client apps.
+ *
+ * The LE_DCS_EVENT_UP event for a given data channel means that it has been brought up and become
+ * usable.
+ *
+ * The LE_DCS_EVENT_DOWN event means that the given data channel has gone down, been disassociated
+ * from all the client apps which have called le_dcs_Start() to start it, and its technology has
+ * stopped to retry reconnecting it back further.
+ *
+ * The LE_DCS_EVEN_TEMP_DOWN event means, on the other hand, that the given data channel has
+ * temporarily gone down, but remains associated with those client apps which have called
+ * le_dcs_Start() to start but not yet le_dcs_Stop() to stop it, and its technology will
+ * continue to retry reconnecting it back after some backoff.
+ *
  */
 //--------------------------------------------------------------------------------------------------
 ENUM Event
 {
     EVENT_DOWN = 0,
-    EVENT_UP
+    EVENT_UP,
+    EVENT_TEMP_DOWN
 };
 
 
@@ -541,10 +577,10 @@ FUNCTION le_result_t GetState
 /**
  * Request by an app to start a data channel
  *
- * @deprecated: The DCS functionality in populating the default APN name into the given cellular
- * channel's modem profile when found blank upon an attempt to start it will be deprecated in
- * Legato Release 19.08. Thereafter, DCS will never seek to alter the APN name in any cellular
- * channel's modem profile.
+ * @deprecated The DCS functionality to populate the default APN name into the cellular channel's
+ * modem profile if blank at startup upon an attempt to start it will be deprecated in Legato
+ * Release 19.08. After 19.08, DCS will not alter the APN name in any cellular channel's
+ * modem profile.
  *
  * @return
  *      - Object reference to the request (to be used later for releasing the channel)

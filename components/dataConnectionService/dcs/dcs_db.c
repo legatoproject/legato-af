@@ -240,6 +240,7 @@ void dcsChannelEvtHdlrSendNotice
     le_dcs_channelDbEventHdlr_t *channelAppEvt =
         le_dcs_GetChannelAppEvtHdlr(channelDb, appSessionRef);
     le_dcs_channelDbEventReport_t evtReport;
+    const char *eventString;
 
     if (!channelAppEvt)
     {
@@ -248,9 +249,9 @@ void dcsChannelEvtHdlrSendNotice
         return;
     }
 
+    eventString = le_dcs_ConvertEventToString(evt);
     LE_DEBUG("Send %s event notice for channel %s to app with session reference %p",
-             (evt == LE_DCS_EVENT_DOWN) ? "Down" : "Up", channelDb->channelName,
-             appSessionRef);
+             eventString, channelDb->channelName, appSessionRef);
     evtReport.channelDb = channelDb;
     evtReport.event = evt;
     le_event_Report(channelAppEvt->channelEventId, &evtReport, sizeof(evtReport));
@@ -281,7 +282,7 @@ static void DcsApplyTechSystemDownEventAction
         LE_DEBUG("Send Down event notice for channel %s to app with session reference %p",
                  channelDb->channelName, channelAppEvt->appSessionRef);
         evtReport.channelDb = channelDb;
-        evtReport.event = LE_DCS_EVENT_DOWN;
+        evtReport.event = LE_DCS_EVENT_TEMP_DOWN;
         le_event_Report(channelAppEvt->channelEventId, &evtReport, sizeof(evtReport));
         evtHdlrPtr = le_dls_PeekNext(&channelDb->evtHdlrs, evtHdlrPtr);
     }
@@ -523,6 +524,11 @@ void le_dcs_ChannelEventNotifier
             evtReport.channelDb = channelDb;
             evtReport.event = evt;
             le_event_Report(channelEventId, &evtReport, sizeof(evtReport));
+            if (evt == LE_DCS_EVENT_DOWN)
+            {
+                // Reset the refcount upon sending a Down event northbound
+                le_dcs_AdjustReqCount(channelDb, false);
+            }
         }
         evtHdlrPtr = le_dls_PeekNext(&channelDb->evtHdlrs, evtHdlrPtr);
     }

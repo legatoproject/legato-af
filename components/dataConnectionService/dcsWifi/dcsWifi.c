@@ -316,8 +316,8 @@ static void DcsWifiPostFailureReset
     DcsWifi.apRef = NULL;
     DcsWifi.selectedConnDb = NULL;
 
-    // Still call le_wifiClient_Disconnect() to reset authentication upon. Otherwise, next connect
-    // attempt will get authentication failure
+    // Still call le_wifiClient_Disconnect() to reset authentication upon failure. Otherwise, next
+    // connect attempt will get authentication failure
     le_wifiClient_Disconnect();
 
     DcsWifiClientStop();
@@ -950,80 +950,6 @@ static void DcsWifiResetRetries
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function processes the Connected event from wifiClient
- */
-//--------------------------------------------------------------------------------------------------
-static void DcsWifiClientConnected
-(
-    void
-)
-{
-    le_result_t ret;
-    const char *netInterface;
-    le_dcs_ChannelRef_t channelRef;
-    wifi_connDb_t *selectedConnDb = DcsWifiGetSelectedDb();
-    if (!selectedConnDb)
-    {
-        // If the wifi connection has been attempted to be brought up, it should have been via DCS
-        // and selectedConnDb should have been set in le_dcsWifi_Start().
-        // Thus, this connected event isn't for DCS as it was brought about via non-DCS
-        LE_DEBUG("Ignore irrelevant wifi Connected event");
-        return;
-    }
-
-    if (le_timer_IsRunning(DcsWifi.connRetryTimer))
-    {
-        le_timer_Stop(DcsWifi.connRetryTimer);
-    }
-
-    LE_INFO("Wifi client connected on SSID %s", selectedConnDb->ssid);
-
-    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef);
-    if (!channelRef)
-    {
-        LE_ERROR("Failed to get channel db reference to send wifi connection up event");
-        ret = DcsWifiClientDisconnect(selectedConnDb);
-        if ((ret != LE_OK) && (ret != LE_DUPLICATE))
-        {
-            DcsWifiPostFailureReset();
-        }
-        // Wait till the Disconnected event from wifiClient before sending the Down event
-        // notification
-        return;
-    }
-
-    // Set the state Up before processing with other subsequent function calls
-    DcsWifi.opStateUp = true;
-    netInterface = DcsWifiGetNetInterface(selectedConnDb);
-    if (!netInterface || (strlen(netInterface) == 0) ||
-        (LE_OK != pa_dcs_AskForIpAddress(netInterface)))
-    {
-        LE_ERROR("Failed to bring up IP on wifi connection over SSID %s", selectedConnDb->ssid);
-        DcsWifi.opStateUp = false;
-        ret = DcsWifiClientDisconnect(selectedConnDb);
-        if ((ret != LE_OK) && (ret != LE_DUPLICATE))
-        {
-            // Send the down event notification here as the Disconnect Request to wifiClient failed
-            le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
-            DcsWifiPostFailureReset();
-        }
-        // Wait till the Disconnected event from wifiClient before sending the Down event
-        // notification
-        return;
-    }
-
-    LE_INFO("Wifi connection over SSID %s on net interface %s got IP up", selectedConnDb->ssid,
-            netInterface);
-
-    DcsWifiResetRetries();
-
-    // Send connection up event to apps
-    le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_UP);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Function to initiate a connection retry by starting the connection's retry timer upon which
  * expiry the retry will be carried out
  *
@@ -1089,6 +1015,106 @@ static le_result_t DcsWifiRetryConn
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function processes the Connected event from wifiClient
+ */
+//--------------------------------------------------------------------------------------------------
+static void DcsWifiClientConnected
+(
+    void
+)
+{
+    le_result_t ret;
+    const char *netInterface;
+    le_dcs_ChannelRef_t channelRef;
+    wifi_connDb_t *selectedConnDb = DcsWifiGetSelectedDb();
+    if (!selectedConnDb)
+    {
+        // If the wifi connection has been attempted to be brought up, it should have been via DCS
+        // and selectedConnDb should have been set in le_dcsWifi_Start().
+        // Thus, this connected event isn't for DCS as it was brought about via non-DCS
+        LE_DEBUG("Ignore irrelevant wifi Connected event");
+        return;
+    }
+
+    if (le_timer_IsRunning(DcsWifi.connRetryTimer))
+    {
+        le_timer_Stop(DcsWifi.connRetryTimer);
+    }
+
+    LE_INFO("Wifi client connected on SSID %s", selectedConnDb->ssid);
+
+    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef);
+    if (!channelRef)
+    {
+        LE_ERROR("Failed to get channel db reference to send wifi connection up event");
+        ret = DcsWifiClientDisconnect(selectedConnDb);
+        if ((ret != LE_OK) && (ret != LE_DUPLICATE))
+        {
+            DcsWifiPostFailureReset();
+        }
+        // Wait till the Disconnected event from wifiClient before sending the Down event
+        // notification
+        return;
+    }
+
+    // Set the state Up before processing with other subsequent function calls
+    DcsWifi.opStateUp = true;
+    netInterface = DcsWifiGetNetInterface(selectedConnDb);
+    if (!netInterface || (strlen(netInterface) == 0) ||
+        (LE_OK != pa_dcs_AskForIpAddress(netInterface)))
+    {
+        LE_ERROR("Failed to bring up IP on wifi connection over SSID %s", selectedConnDb->ssid);
+        DcsWifi.opStateUp = false;
+        ret = DcsWifiClientDisconnect(selectedConnDb);
+        if ((ret != LE_OK) && (ret != LE_DUPLICATE))
+        {
+            uint16_t refcount;
+            if ((le_dcs_GetChannelRefCountFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef,
+                                                      &refcount) == LE_OK) && (refcount > 0))
+            {
+                le_result_t ret;
+                char *ssid = selectedConnDb->ssid;
+                // Initiate retry
+                ret = DcsWifiRetryConn(selectedConnDb);
+                switch (ret)
+                {
+                    case LE_OK:
+                        LE_INFO("Wait for the next retry before failing connection %s", ssid);
+                        le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_TEMP_DOWN);
+                        break;
+                    case LE_DUPLICATE:
+                        LE_DEBUG("No need to re-trigger retry for connection %s", ssid);
+                        break;
+                    case LE_OVERFLOW:
+                    case LE_FAULT:
+                    default:
+                        le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+                        DcsWifiPostFailureReset();
+                        break;
+                }
+            }
+            else
+            {
+                // refcount is 0 or unknown; no need to retry connecting
+                le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+                DcsWifiPostFailureReset();
+            }
+        }
+        return;
+    }
+
+    LE_INFO("Wifi connection over SSID %s on net interface %s got IP up", selectedConnDb->ssid,
+            netInterface);
+
+    DcsWifiResetRetries();
+
+    // Send connection up event to apps
+    le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_UP);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function processes the Disconnected event from wifiClient
  */
 //--------------------------------------------------------------------------------------------------
@@ -1123,6 +1149,16 @@ static void DcsWifiClientDisconnected
     LE_INFO("Wifi client disconnected over SSID %s", ssid);
     DcsWifi.opStateUp = false;
 
+    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef);
+    if (!channelRef)
+    {
+        LE_ERROR("Failed to get channel db reference to send wifi connection down event");
+        DcsWifi.selectedConnDb = NULL;
+        DcsWifi.apRef = NULL;
+        DcsWifiClientStop();
+        return;
+    }
+
     if (le_dcs_GetChannelRefCountFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef,
                                              &refcount) == LE_OK)
     {
@@ -1134,6 +1170,7 @@ static void DcsWifiClientDisconnected
             {
                 case LE_OK:
                     LE_INFO("Wait for the next retry before failing connection %s", ssid);
+                    le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_TEMP_DOWN);
                     return;
                 case LE_DUPLICATE:
                     LE_DEBUG("No need to re-trigger retry for connection %s", ssid);
@@ -1153,15 +1190,7 @@ static void DcsWifiClientDisconnected
 
     // Send connection down event to apps
     LE_DEBUG("Send Down event of connection %s to apps", ssid);
-    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef);
-    if (!channelRef)
-    {
-        LE_ERROR("Failed to get channel db reference to send wifi connection down event");
-    }
-    else
-    {
-        le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
-    }
+    le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
     DcsWifi.selectedConnDb = NULL;
     DcsWifi.apRef = NULL;
     DcsWifiClientStop();

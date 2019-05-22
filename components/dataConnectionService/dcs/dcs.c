@@ -100,7 +100,7 @@ static le_msg_SessionRef_t DcsGetSessionRef
  *       if not found
  */
 //--------------------------------------------------------------------------------------------------
-static int16_t DcsGetListIndx
+static int16_t DcsGetListIndex
 (
     le_dcs_Technology_t technology
 )
@@ -290,7 +290,7 @@ le_result_t le_dcs_GetState
         }
     }
 
-    ret = dcsGetAdminState(channelRef, state);
+    ret = le_dcs_GetAdminState(channelRef, state);
     if (LE_OK != ret)
     {
         LE_ERROR("Failed to get admin state of channel %s of technology %s", channelName,
@@ -311,9 +311,13 @@ le_result_t le_dcs_GetState
  * to the boolean input argument
  */
 //--------------------------------------------------------------------------------------------------
-static void DcsAdjustReqCount (le_dcs_channelDb_t *channelDb, bool up)
+void le_dcs_AdjustReqCount
+(
+    le_dcs_channelDb_t *channelDb,
+    bool up
+)
 {
-    int16_t indx = DcsGetListIndx(channelDb->technology);
+    int16_t indx = DcsGetListIndex(channelDb->technology);
 
     if (indx < 0)
     {
@@ -400,7 +404,7 @@ le_dcs_ReqObjRef_t le_dcs_Start
         }
 
         LE_INFO("Channel %s already started; refCount %d", channelName, channelDb->refCount);
-        DcsAdjustReqCount(channelDb, true);
+        le_dcs_AdjustReqCount(channelDb, true);
         if (le_dcsTech_GetOpState(channelDb))
         {
             // Only send apps the Up notification when the state is up. Otherwise, the channel is
@@ -430,7 +434,7 @@ le_dcs_ReqObjRef_t le_dcs_Start
         le_ref_DeleteRef(dcs_GetRequestRefMap(), reqRef);
         return NULL;
     }
-    DcsAdjustReqCount(channelDb, true);
+    le_dcs_AdjustReqCount(channelDb, true);
     cmdData.command = START_COMMAND;
     cmdData.technology = channelDb->technology;
     strncpy(cmdData.channelName, channelName, LE_DCS_CHANNEL_NAME_MAX_LEN);
@@ -510,13 +514,13 @@ le_result_t le_dcs_Stop
     {
         // channel still used by other apps; no need to initiate a disconnect
         LE_INFO("Channel %s still used by others; refCount %d", channelName, channelDb->refCount);
-        DcsAdjustReqCount(channelDb, false);
+        le_dcs_AdjustReqCount(channelDb, false);
         dcsChannelEvtHdlrSendNotice(channelDb, sessionRef, LE_DCS_EVENT_DOWN);
         return LE_OK;
     }
 
     // initiate a disconnect
-    DcsAdjustReqCount(channelDb, false);
+    le_dcs_AdjustReqCount(channelDb, false);
     cmdData.command = STOP_COMMAND;
     cmdData.technology = channelDb->technology;
     strncpy(cmdData.channelName, channelName, LE_DCS_CHANNEL_NAME_MAX_LEN);

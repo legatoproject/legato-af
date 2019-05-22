@@ -209,24 +209,24 @@ void gc_InitiateGeocode
     }
 
     // Get reference to channel
-    LE_INFO("DCS-client: asking for channel reference for channel %s", channelName);
+    LE_INFO("asking for channel reference for channel %s", channelName);
     ret_ref = le_dcs_GetReference(channelName, LE_DCS_TECH_CELLULAR);
-    LE_INFO("DCS-client: returned channel reference: %p", ret_ref);
+    LE_INFO("returned channel reference: %p", ret_ref);
 
     // Add connection handler
-    LE_INFO("DCS-client: asking to add event handler for channel %s", channelName);
+    LE_INFO("asking to add event handler for channel %s", channelName);
     connectionHandlerRef = le_dcs_AddEventHandler(myChannel, ConnectionStateHandler, NULL);
-    LE_INFO("DCS-client: channel event handler added %p for channel %s", ConnectionStateHandler,
+    LE_INFO("channel event handler added %p for channel %s", ConnectionStateHandler,
             channelName);
 
     // Start connection
-    LE_INFO("DCS-client: asking to start channel %s", channelName);
+    LE_INFO("asking to start channel %s", channelName);
     reqObj = le_dcs_Start(myChannel);
-    LE_INFO("DCS-client: returned RequestObj %p", reqObj);
+    LE_INFO("returned RequestObj %p", reqObj);
     sleep(5);
 
     // Setting default gateway
-    LE_INFO("DCS-client: asking to add route for channel %s", channelName);
+    LE_INFO("asking to add route for channel %s", channelName);
     le_net_BackupDefaultGW();
     le_net_SetDefaultGW(myChannel);
     le_net_SetDNS(myChannel);
@@ -247,23 +247,36 @@ static void ConnectionStateHandler
     void *contextPtr                ///< [IN] Associated user context pointer
 )
 {
-    LE_INFO("DCS-client: received for channel reference %p event %s", channelRef,
-            (event == LE_DCS_EVENT_UP) ? "Up" : "Down");
+    char *eventString;
+    switch (event)
+    {
+        case LE_DCS_EVENT_UP:
+            LE_INFO("CONNECTED!");
+            eventString = "Up";
+            break;
+        case LE_DCS_EVENT_DOWN:
+            LE_INFO("DISCONNECTED!");
+            eventString = "Down";
+            break;
+        case LE_DCS_EVENT_TEMP_DOWN:
+            LE_INFO("TEMPORARILY DISCONNECTED!");
+            eventString = "Temporary Down";
+            break;
+        default:
+            eventString = "Unknown";
+            break;
+    }
+    LE_INFO("received for channel reference %p event %s", channelRef, eventString);
 
     le_result_t res = LE_OK;
     if (event == LE_DCS_EVENT_UP)
     {
-        LE_INFO("CONNECTED!");
         sleep(5);
         res = GetUrl();
         if (res != LE_OK)
         {
             ctrlGPS_CleanUp(false);
         }
-    }
-    else
-    {
-        LE_INFO("DISCONNECTED!");
     }
 }
 
@@ -635,7 +648,7 @@ le_result_t ctrlGPS_CleanUp
     // Cleanup data connection
     if (reqObj)
     {
-        LE_INFO("DCS-client: asking to remove route for channel %s", channelName);
+        LE_INFO("asking to remove route for channel %s", channelName);
         le_net_RestoreDefaultGW();
         le_net_RestoreDNS();
         le_net_ChangeRoute(myChannel, "1.1.1.1", "", false);

@@ -17,4 +17,5 @@ bindings:
     dcsClient.dcsClient.le_net -> dataConnectionService.le_net
     dcsClient.dcsClient.le_data -> dataConnectionService.le_data
     dcsClient.dcsClient.le_wifiClient -> <root>.le_wifiClient
+    dcsClient.dcsClient.le_mdc -> modemService.le_mdc
 }

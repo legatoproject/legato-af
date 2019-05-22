@@ -43,8 +43,23 @@ void ClientEventHandler
     void *contextPtr                ///< [IN] Associated user context pointer
 )
 {
-    LE_INFO("DCS-client: received for channel reference %p event %s", channelRef,
-            (event == LE_DCS_EVENT_UP) ? "Up" : "Down");
+    char *eventString;
+    switch (event)
+    {
+        case LE_DCS_EVENT_UP:
+            eventString = "Up";
+            break;
+        case LE_DCS_EVENT_DOWN:
+            eventString = "Down";
+            break;
+        case LE_DCS_EVENT_TEMP_DOWN:
+            eventString = "Temporary Down";
+            break;
+        default:
+            eventString = "Unknown";
+            break;
+    }
+    LE_INFO("DCS-client: received for channel reference %p event %s", channelRef, eventString);
 }
 
 

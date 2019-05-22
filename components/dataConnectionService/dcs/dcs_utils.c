@@ -47,7 +47,7 @@ const char *le_dcs_ConvertTechEnumToName
  *       failure cause
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t dcsGetAdminState
+le_result_t le_dcs_GetAdminState
 (
     le_dcs_ChannelRef_t channelRef,
     le_dcs_State_t *state
@@ -64,4 +64,31 @@ le_result_t dcsGetAdminState
 
     *state = (channelDb->refCount > 0) ? LE_DCS_STATE_UP : LE_DCS_STATE_DOWN;
     return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Utility for converting an le_dcs event into a string for printing
+ *
+ * @return
+ *     - The string name of the given le_dcs event
+ */
+//--------------------------------------------------------------------------------------------------
+const char *le_dcs_ConvertEventToString
+(
+    le_dcs_Event_t event
+)
+{
+    switch (event)
+    {
+        case LE_DCS_EVENT_UP:
+            return "Up";
+        case LE_DCS_EVENT_DOWN:
+            return "Down";
+        case LE_DCS_EVENT_TEMP_DOWN:
+            return "Temporary Down";
+        default:
+            return "Unknown";
+    }
 }

@@ -253,14 +253,24 @@ static void DcsCellularConnEventStateHandler
     LE_INFO("State of connection %s transitioned from %s to %s", connName,
             oldStateUp ? "up" : "down", newStateUp ? "up" : "down");
 
+    if (le_dcs_GetChannelRefCountFromTechRef(LE_DCS_TECH_CELLULAR, cellConnDb->connRef,
+                                             &refcount) != LE_OK)
+    {
+        LE_ERROR("Failed to get reference count of connection %s to handle state change",
+                 connName);
+        le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+        return;
+    }
+
     if (!DcsCellularPacketSwitchStateIsUp(CellPacketSwitchState))
     {
         // declare state down due to packet switch state's being down regarding of the state
         // input in the function argument
         LE_INFO("Send down notification for connection %s due to down packet switch state",
                 connName);
+        le_dcs_Event_t eventToSend = (refcount > 0) ? LE_DCS_EVENT_TEMP_DOWN : LE_DCS_EVENT_DOWN;
         cellConnDb->opState = LE_MDC_DISCONNECTED;
-        le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+        le_dcs_ChannelEventNotifier(channelRef, eventToSend);
         return;
     }
 
@@ -284,15 +294,6 @@ static void DcsCellularConnEventStateHandler
     else
     {
         // new state is down
-        if (le_dcs_GetChannelRefCountFromTechRef(LE_DCS_TECH_CELLULAR, cellConnDb->connRef,
-                                                 &refcount) != LE_OK)
-        {
-            LE_ERROR("Failed to get reference count of connection %s to handle state change",
-                     connName);
-            le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
-            return;
-        }
-
         if (refcount == 0)
         {
             if (oldStateUp)
@@ -308,6 +309,7 @@ static void DcsCellularConnEventStateHandler
         {
             case LE_OK:
                 LE_INFO("Wait for the next retry before failing connection %s", connName);
+                le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_TEMP_DOWN);
                 break;
             case LE_DUPLICATE:
                 LE_DEBUG("No need to trigger retry for connection %s", connName);
@@ -758,11 +760,13 @@ static void DcsNetRegRejectHandler
              networkRejectIndPtr->cause, networkRejectIndPtr->rejDomain, networkRejectIndPtr->rat,
              networkRejectIndPtr->mcc, networkRejectIndPtr->mnc);
 
-    if ( networkRejectIndPtr->cause == LE_MRC_NETWORK_IMPLICIT_DETACH )
+    if (networkRejectIndPtr->cause == LE_MRC_NETWORK_IMPLICIT_DETACH)
     {
+        // ToDo: This code needs to be re-addressed since currently it is a trick used in
+        // reporting up event upon a network detached event for the purpose of triggering to
+        // retry reconnecting.
         le_dcs_EventNotifierTechStateTransition(LE_DCS_TECH_CELLULAR, true);
     }
-
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1243,7 +1247,6 @@ le_result_t le_dcsCellular_RetryConn
 {
     char cellConnName[LE_DCS_CHANNEL_NAME_MAX_LEN];
     cellular_connDb_t *cellConnDb;
-    le_dcs_ChannelRef_t channelRef;
     le_dcs_CellularConnectionRef_t cellConnRef = (le_dcs_CellularConnectionRef_t)techRef;
 
     cellConnDb = DcsCellularGetDbFromRef(cellConnRef);
@@ -1253,7 +1256,6 @@ le_result_t le_dcsCellular_RetryConn
         return LE_FAULT;
     }
 
-    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_CELLULAR, cellConnRef);
     le_clk_Time_t retryInterval = {cellConnDb->backoff, 0};
     le_dcsCellular_GetNameFromIndex(cellConnDb->index, cellConnName);
 
@@ -1267,7 +1269,6 @@ le_result_t le_dcsCellular_RetryConn
     {
         LE_INFO("Cellular connection %s already maxed out retry allowed (%d)", cellConnName,
                 CELLULAR_RETRY_MAX);
-        le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
         return LE_OVERFLOW;
     }
 

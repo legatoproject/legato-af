@@ -1053,6 +1053,33 @@ le_dcs_ChannelRef_t le_dcs_GetReference
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Utility for converting an le_dcs event into a string for printing
+ *
+ * @return
+ *     - The string name of the given le_dcs event
+ */
+//--------------------------------------------------------------------------------------------------
+const char *le_dcs_ConvertEventToString
+(
+    le_dcs_Event_t event
+)
+{
+    switch (event)
+    {
+        case LE_DCS_EVENT_UP:
+            return "Up";
+        case LE_DCS_EVENT_DOWN:
+            return "Down";
+        case LE_DCS_EVENT_TEMP_DOWN:
+            return "Temporary Down";
+        default:
+            return "Unknown";
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The first-layer channel event handler used by the stub function le_dcs_AddEventHandler
  */
 //--------------------------------------------------------------------------------------------------

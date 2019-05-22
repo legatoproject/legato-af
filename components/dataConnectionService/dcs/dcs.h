@@ -148,6 +148,7 @@ typedef struct
 uint16_t le_dcs_GetChannelCount(le_dcs_Technology_t tech);
 uint16_t le_dcs_IncrementChannelCount(le_dcs_Technology_t tech);
 le_result_t le_dcs_DecrementChannelCount(le_dcs_Technology_t tech, uint16_t *newCount);
+void le_dcs_AdjustReqCount(le_dcs_channelDb_t *channelDb, bool up);
 LE_SHARED le_dcs_EventHandlerRef_t le_dcs_AddEventHandler(
     le_dcs_ChannelRef_t channelRef, le_dcs_EventHandlerFunc_t channelHandlerPtr, void *contextPtr);
 LE_SHARED void le_dcs_RemoveEventHandler(le_dcs_EventHandlerRef_t channelHandlerRef);
@@ -157,7 +158,8 @@ LE_SHARED le_result_t le_dcs_Stop(le_dcs_ReqObjRef_t reqRef);
 
 // from dcs_utils.c
 LE_SHARED const char *le_dcs_ConvertTechEnumToName(le_dcs_Technology_t tech);
-le_result_t dcsGetAdminState(le_dcs_ChannelRef_t channelRef, le_dcs_State_t *state);
+LE_SHARED const char *le_dcs_ConvertEventToString(le_dcs_Event_t event);
+le_result_t le_dcs_GetAdminState(le_dcs_ChannelRef_t channelRef, le_dcs_State_t *state);
 
 // from dcs_db.c
 void dcsCreateDbPool(void);
