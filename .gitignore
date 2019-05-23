@@ -21,6 +21,7 @@ _build_*
 binaries
 /framework/tools/ifgen/cache
 server.pem
+*.gcno
 
 # Update pack files
 *.update

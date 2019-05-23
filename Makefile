@@ -284,12 +284,15 @@ endif # end not "nothing" target
 PYTHON_EXECUTABLE ?= python2.7
 
 # KConfig executables
-MENUCONFIG_TOOL   ?= $(LEGATO_ROOT)/3rdParty/Kconfiglib/menuconfig.py
-SETCONFIG_TOOL    ?= $(LEGATO_ROOT)/3rdParty/Kconfiglib/setconfig.py
-OLDDEFCONFIG_TOOL ?= $(LEGATO_ROOT)/3rdParty/Kconfiglib/olddefconfig.py
+MENUCONFIG_TOOL   ?= python3 $(LEGATO_ROOT)/3rdParty/Kconfiglib/menuconfig.py
+SETCONFIG_TOOL    ?= python3 $(LEGATO_ROOT)/3rdParty/Kconfiglib/setconfig.py
+OLDDEFCONFIG_TOOL ?= python3 $(LEGATO_ROOT)/3rdParty/Kconfiglib/olddefconfig.py
 
 # Set KConfig prefix
-export CONFIG_ := LE_CONFIG_
+export CONFIG_    := LE_CONFIG_
+
+# Set path to find KConfig functions.
+export PYTHONPATH := .
 
 # Set non-debug flags
 ifeq ($(LE_CONFIG_DEBUG),y)

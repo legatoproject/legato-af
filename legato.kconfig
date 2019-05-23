@@ -4,15 +4,6 @@
 # Copyright (C) Sierra Wireless Inc.
 #
 
-### Macros ###
-
-HELPER    := $(LEGATO_ROOT)/framework/tools/scripts/kconfig-helper
-
-b2k        = $(shell,$(HELPER) b2k "$(1)")
-def        = $(shell,$(HELPER) def "$(1)" "$(2)")
-empty      = $(shell,$(HELPER) empty "$(1)")
-getccache  = $(shell,$(HELPER) getccache)
-
 ### "Hidden" Options ###
 # These are set automatically and not by user action.
 

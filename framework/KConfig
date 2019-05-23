@@ -155,7 +155,7 @@ config ENABLE_SMACK
 config SMACK_ONLYCAP
   bool "Enable SMACK onlycap"
   depends on ENABLE_SMACK
-  default !$(b2k,$(DISABLE_SMACK_ONLYCAP))
+  default !$(b2k,$(def,$(DISABLE_SMACK_ONLYCAP),y))
   ---help---
   Require a specific SMACK label for CAP_MAC_ADMIN and CAP_MAC_OVERRIDE to be
   effective.  The label is typically set in /smack/onlycap.
