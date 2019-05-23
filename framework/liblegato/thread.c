@@ -925,6 +925,38 @@ timer_ThreadRec_t* thread_GetTimerRecPtr
     return (GetCurrentThreadPtr())->timerRecPtr[timerType];
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the calling thread's component instance data record.
+ */
+//--------------------------------------------------------------------------------------------------
+const cdata_ThreadRec_t* thread_GetCDataInstancePtr
+(
+    void
+)
+{
+    const cdata_ThreadRec_t* cdataRecPtr = (GetCurrentThreadPtr())->cdataRecPtr;
+
+    LE_FATAL_IF(NULL == cdataRecPtr, "CData instances not set for this thread.");
+
+    return cdataRecPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the calling thread's component instance data record.
+ */
+//--------------------------------------------------------------------------------------------------
+void thread_SetCDataInstancePtr
+(
+    const cdata_ThreadRec_t* cdataPtr
+)
+{
+    (GetCurrentThreadPtr())->cdataRecPtr = cdataPtr;
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  *  Get the specified Legato thread's raw thread handle.
@@ -1613,34 +1645,4 @@ void le_thread_CleanupLegatoThreadData
     {
         CleanupThread(threadPtr);
     }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the calling thread's component instance data record.
- */
-//--------------------------------------------------------------------------------------------------
-const _le_cdata_ThreadRec_t *_le_thread_GetCDataInstancePtr
-(
-    void
-)
-{
-    const _le_cdata_ThreadRec_t *cdataRecPtr = (GetCurrentThreadPtr())->cdataRecPtr;
-
-    LE_FATAL_IF(NULL == cdataRecPtr, "CData instances not set for this thread.");
-
-    return cdataRecPtr;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Sets the calling thread's component instance data record.
- */
-//--------------------------------------------------------------------------------------------------
-void _le_thread_SetCDataInstancePtr
-(
-    const _le_cdata_ThreadRec_t *cdataPtr
-)
-{
-    (GetCurrentThreadPtr())->cdataRecPtr = cdataPtr;
 }

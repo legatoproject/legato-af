@@ -634,25 +634,6 @@ void le_thread_RemoveDestructor
     le_thread_DestructorRef_t  destructor ///< [in] Reference to the destructor to remove.
 );
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the calling thread's component instance data record.
- */
-//--------------------------------------------------------------------------------------------------
-const _le_cdata_ThreadRec_t *_le_thread_GetCDataInstancePtr
-(
-    void
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Sets the calling thread's component instance data record.
- */
-//--------------------------------------------------------------------------------------------------
-void _le_thread_SetCDataInstancePtr
-(
-    const _le_cdata_ThreadRec_t *cdataPtr   ///< CData instance for the thread.
-);
 
 #if LE_CONFIG_THREAD_NAMES_ENABLED
 //--------------------------------------------------------------------------------------------------

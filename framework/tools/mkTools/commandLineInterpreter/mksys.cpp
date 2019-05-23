@@ -62,7 +62,6 @@ static const generator::SystemGenerator_t RTOSSteps[] =
     code::CountSystemComponentUsage,
     generator::ForAllApps<GenerateRtosCode>,
     code::GenerateRtosSystemTasks,
-    code::GenerateRtosCliCommandRegistration,
     code::GenerateRtosRpcServices,
     code::GenerateLinkerScript,
     ninja::GenerateRtos,

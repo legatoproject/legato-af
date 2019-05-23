@@ -44,22 +44,10 @@
 #define LEGATO_CDATA_INCLUDE_GUARD
 
 #ifndef LE_CDATA_COMPONENT_COUNT
-    // If legato.h is used in a program built outside of the mktools framework there's only one
-    // instance of each component.
-#   define LE_CDATA_COMPONENT_COUNT 1
+// If legato.h is used in a program built outside of the mktools framework there's only one
+// instance of each component.
+#define LE_CDATA_COMPONENT_COUNT 1
 #endif
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Map component key to a component instance number.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct
-{
-    short key;
-    short instance;
-} _le_cdata_MapEntry_t;
-typedef const _le_cdata_MapEntry_t _le_cdata_ThreadRec_t;
 
 /**
  * Define per-component instance data.
@@ -73,12 +61,12 @@ typedef const _le_cdata_MapEntry_t _le_cdata_ThreadRec_t;
 /**
  * Fetch per-instance data for the current instance.
  */
-#   define LE_CDATA_THIS    (&_le_cdata_Instance[0])
+#  define LE_CDATA_THIS       (&_le_cdata_Instance[0])
 #else
 /**
  * Fetch per-instance data for the current instance.
  */
-#   define LE_CDATA_THIS    (&_le_cdata_Instance[le_cdata_GetInstance(LE_CDATA_KEY)])
+#  define LE_CDATA_THIS       (&_le_cdata_Instance[le_cdata_GetInstance(LE_CDATA_KEY)])
 #endif
 
 /**

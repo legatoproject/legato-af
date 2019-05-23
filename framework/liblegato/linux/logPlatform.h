@@ -48,6 +48,35 @@ void log_ReInit
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Connects to the Log Control Daemon.  This must not be done until after the Messaging system
+ * is initialized, but must be done before the main thread's Event Loop starts to ensure that
+ * all log settings are received from the Log Control Daemon and applied to sessions in the local
+ * process before any component initialization functions are run.
+ */
+//--------------------------------------------------------------------------------------------------
+void log_ConnectToControlDaemon
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Registers a named component with the logging system.
+ *
+ * @return
+ *      A log session reference.  This reference must be kept by the component and accessible
+ *      through a local macro with the name LE_LOG_SESSION.
+ */
+//--------------------------------------------------------------------------------------------------
+le_log_SessionRef_t log_RegComponent
+(
+    const char* componentNamePtr,       ///< [IN] A pointer to the component's name.
+    le_log_Level_t** levelFilterPtrPtr  ///< [OUT] Set to point to the component's level filter.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Logs a generic message with the given information.
  */
 //--------------------------------------------------------------------------------------------------

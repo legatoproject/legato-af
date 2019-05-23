@@ -303,14 +303,8 @@ void GenerateRtosSystemTasks
         std::string component = commandPtr->exePath.substr(1);
         std::string description = "Legato '" + commandPtr->name + "' command";
 
-        outputFile <<   "LE_RTOS_CLI_DEFINECMD\n"
-                        "(\n"
-                        "    " << commandPtr->appPtr->name << ",\n"
-                        "    " << component << ",\n"
-                        "    LE_RTOS_CLI_MAXARGS,\n"
-                        "    \"" << commandPtr->name  << "\",\n"
-                        "    \"" << description << "\"\n"
-                        ");\n";
+        outputFile  << "LE_RTOS_CLI_DEFINECMD(" << commandPtr->appPtr->name << ", " << component
+                    << ", \"" << commandPtr->name  << "\",\n    \"" << description << "\");\n";
     }
     outputFile  << "\n";
 
@@ -345,7 +339,7 @@ void GenerateRtosSystemTasks
                 << "    " << exePtr->GetTargetInfo<target::RtosExeInfo_t>()->initFunc << "();\n";
         }
     }
-    outputFile << "\n    // CLI command registration follows:\n";
+    outputFile << "\n    // Any CLI command registration will follow\n";
 
     // Create CLI commands for all the the shell commands specified in the .sdef file's "commands:"
     // section.
@@ -353,64 +347,13 @@ void GenerateRtosSystemTasks
     {
         const auto  commandPtr = cmdItem.second;
         std::string component = commandPtr->exePath.substr(1);
-        std::string description = "Legato '" + commandPtr->name + "' command";
 
-        outputFile <<   "LE_RTOS_CLI_ADDCMD_RUNTIME\n"
-                        "(\n"
-                        "    " << commandPtr->appPtr->name << ",\n"
-                        "    " << component << ",\n"
-                        "    LE_RTOS_CLI_MAXARGS,\n"
-                        "    \"" << commandPtr->name << "\",\n"
-                        "    \"" << description << "\"\n"
-                        ");\n";
+        outputFile  << "    le_rtos_cli_RegisterCommand(&LE_RTOS_CLI_CMD("
+                    << commandPtr->appPtr->name << ", " << component << "));\n";
     }
 
-    outputFile << "}\n";
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Generate a cli_commands.h for commands in a given system.
- */
-//--------------------------------------------------------------------------------------------------
-void GenerateRtosCliCommandRegistration
-(
-    model::System_t         *systemPtr,     ///< System model.
-    const mk::BuildParams_t &buildParams    ///< Build properties.
-)
-{
-    auto sourceFile = path::Combine(buildParams.workingDir, "src/cli_commands.h");
-
-    // Open the file as an output stream.
-    file::MakeDir(path::GetContainingDir(sourceFile));
-    std::ofstream outputFile(sourceFile);
-    if (outputFile.is_open() == false)
-    {
-        throw mk::Exception_t(mk::format(LE_I18N("Could not open '%s' for writing."), sourceFile));
-    }
-
-    // Generate the file header comment and #include directives.
-    outputFile << "// CLI command declarations for system '" << systemPtr->name << "'.\n"
-                  "// This is a generated file, do not edit.\n"
-                  "\n";
-
-    // Create CLI commands for all the the shell commands specified in the .sdef file's "commands:"
-    // section.
-    for (auto cmdItem : systemPtr->commands)
-    {
-        const auto  commandPtr = cmdItem.second;
-        std::string component = commandPtr->exePath.substr(1);
-        std::string description = "Legato '" + commandPtr->name + "' command";
-
-        outputFile <<   "LE_RTOS_CLI_ADDCMD_COMPILETIME\n"
-                        "(\n"
-                        "    " << commandPtr->appPtr->name << ",\n"
-                        "    " << component << ",\n"
-                        "    LE_RTOS_CLI_MAXARGS,\n"
-                        "    \"" << commandPtr->name << "\",\n"
-                        "    \"" << description << "\"\n"
-                        ")\n";
-    }
+    outputFile <<
+        "}\n";
 }
 
 //--------------------------------------------------------------------------------------------------

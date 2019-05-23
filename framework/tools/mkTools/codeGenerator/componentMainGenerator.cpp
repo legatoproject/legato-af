@@ -103,6 +103,9 @@ void GenerateCLangComponentMainFile
                   " */\n"
                   "\n"
                   "#include \"legato.h\"\n"
+                  "#include \"../liblegato/eventLoop.h\"\n"
+                  "#include \"../liblegato/linux/logPlatform.h\"\n"
+                  "#include \"../liblegato/log.h\"\n"
                   "\n"
                   "#ifdef __cplusplus\n"
                   "extern \"C\" {\n"
@@ -137,11 +140,11 @@ void GenerateCLangComponentMainFile
                   "// Declare component's COMPONENT_INIT_ONCE function,\n"
                   "// and provide default empty implementation.\n"
                   "__attribute__((weak))\n"
-                  "COMPONENT_INIT_ONCE\n"
+                  "void " << componentPtr->initFuncName << "_ONCE(void)\n"
                   "{\n"
                   "}\n"
                   "// Component initialization function (COMPONENT_INIT).\n"
-                  "COMPONENT_INIT;\n"
+                  "void " << componentPtr->initFuncName << "(void);\n"
                   "\n"
 
     // Define the library initialization function to be run by the dynamic linker/loader.
@@ -200,16 +203,16 @@ void GenerateCLangComponentMainFile
 
     // Register with the Log Daemon.
     fileStream << "    // Register the component with the Log Daemon.\n"
-                  "    " << compName << "_LogSession = le_log_RegComponent(\"" <<
+                  "    " << compName << "_LogSession = log_RegComponent(\"" <<
                   compName << "\", &" << compName << "_LogLevelFilterPtr);\n"
 
     // Queue the initialization function to the event loop.
                   "\n"
-                  "    // Queue the default component's COMPONENT_INIT_ONCE to Event Loop.\n"
-                  "    le_event_QueueFunction(&COMPONENT_INIT_ONCE_NAME, NULL, NULL);\n"
+                  "// Queue the default component's COMPONENT_INIT_ONCE to Event Loop.\n"
+                  "    event_QueueComponentInit(" << componentPtr->initFuncName << "_ONCE);\n"
                   "\n"
-                  "    // Queue the COMPONENT_INIT function to be called by the event loop\n"
-                  "    le_event_QueueFunction(&COMPONENT_INIT_NAME, NULL, NULL);\n"
+                  "    //Queue the COMPONENT_INIT function to be called by the event loop\n"
+                  "    event_QueueComponentInit(" << componentPtr->initFuncName << ");\n"
 
     // Put the finishing touches on the file.
                   "}\n"

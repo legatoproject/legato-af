@@ -29,6 +29,9 @@ void GenerateCLangExeMain
     // Compute the name of the executable's "default" component...
     std::string defaultCompName = exeName + "_exe";
 
+    // Compute the name of the default component's COMPONENT_INIT function.
+    std::string initFuncName = "_" + defaultCompName + "_COMPONENT_INIT";
+
     // Compute the path to the file to be generated.
     auto sourceFile = exePtr->MainObjectFile().sourceFilePath;
 
@@ -55,7 +58,10 @@ void GenerateCLangExeMain
                   "// Startup code for the executable '" << exeName << "'.\n"
                   "// This is a generated file, do not edit.\n"
                   "\n"
-                  "#include \"legato.h\"\n\n"
+                  "#include \"legato.h\"\n"
+                  "#include \"../liblegato/eventLoop.h\"\n"
+                  "#include \"../liblegato/linux/logPlatform.h\"\n"
+                  "#include \"../liblegato/log.h\"\n"
                   "#include <dlfcn.h>\n"
                   "\n"
                   "\n";
@@ -106,13 +112,13 @@ void GenerateCLangExeMain
             "// Declare default component's COMPONENT_INIT_ONCE function,\n"
             "// and provide default empty implementation.\n"
             "__attribute__((weak))\n"
-            "COMPONENT_INIT_ONCE\n"
+            "void " << initFuncName << "_ONCE(void)\n"
             "{\n"
             "}\n"
             "\n"
             "\n"
             "// Declare default component's COMPONENT_INIT function.\n"
-            "COMPONENT_INIT;\n"
+            "void " << initFuncName << "(void);\n"
             "\n"
             "\n";
     }
@@ -146,7 +152,7 @@ void GenerateCLangExeMain
                   "\n"
 
     // Register the component with the Log Control Daemon.
-                  "    " << defaultCompName << "_LogSession = le_log_RegComponent(\"" <<
+                  "    " << defaultCompName << "_LogSession = log_RegComponent(\"" <<
                   defaultCompName << "\", &" << defaultCompName << "_LogLevelFilterPtr);\n"
                   "\n"
                   "    // Connect to the log control daemon.\n"
@@ -155,7 +161,7 @@ void GenerateCLangExeMain
                   "    // the Supervisor and the Service Directory shouldn't).\n"
                   "    // The NO_LOG_CONTROL macro can be used to control that.\n"
                   "    #ifndef NO_LOG_CONTROL\n"
-                  "        le_log_ConnectToControlDaemon();\n"
+                  "        log_ConnectToControlDaemon();\n"
                   "    #else\n"
                   "        LE_DEBUG(\"Not connecting to the Log Control Daemon.\");\n"
                   "    #endif\n"
@@ -192,11 +198,11 @@ void GenerateCLangExeMain
     if ((!exePtr->cObjectFiles.empty()) || (!exePtr->cxxObjectFiles.empty()))
     {
         outputFile <<
-            "    // Queue the default component's COMPONENT_INIT_ONCE to Event Loop.\n"
-            "    le_event_QueueFunction(&COMPONENT_INIT_ONCE_NAME, NULL, NULL);\n"
+            "// Queue the default component's COMPONENT_INIT_ONCE to Event Loop.\n"
+            "    event_QueueComponentInit(" << initFuncName << "_ONCE);\n"
             "\n"
-            "    // Queue the default component's COMPONENT_INIT to Event Loop.\n"
-            "    le_event_QueueFunction(&COMPONENT_INIT_NAME, NULL, NULL);\n";
+            "// Queue the default component's COMPONENT_INIT to Event Loop.\n"
+            "    event_QueueComponentInit(" << initFuncName << ");\n";
     }
 
     outputFile << "    // Set the Signal Fault handler\n"
