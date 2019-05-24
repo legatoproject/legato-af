@@ -127,6 +127,10 @@
  *
  * @section c_le_data_time Date and time
  *
+ * @warning To get the date and time, use GetDateTime rather than sequential calls to GetDate and
+ * GetTime to avoid the possibility of a date change between the two calls.
+ *
+ *
  * When the data connection service is connected, the date and time can be retrieved from a distant
  * server using le_data_GetDate() and le_data_GetTime(). The time protocol and time server to use
  * are configured through the @ref c_le_data_configdb database:
@@ -452,6 +456,9 @@ FUNCTION le_result_t SetCellularProfileIndex
 /**
  * Get the date from the configured server using the configured time protocol.
  *
+ * @warning To get the date and time, use GetDateTime rather than sequential calls to GetDate and
+ * GetTime to avoid the possibility of a date change between the two calls.
+ *
  * @warning An active data connection is necessary to retrieve the date.
  *
  * @return
@@ -471,6 +478,9 @@ FUNCTION le_result_t GetDate
 /**
  * Get the time from the configured server using the configured time protocol.
  *
+ * @warning To get the date and time, use GetDateTime rather than sequential calls to GetDate and
+ * GetTime to avoid the possibility of a date change between the two calls.
+ *
  * @warning An active data connection is necessary to retrieve the time.
  *
  * @return
@@ -481,6 +491,29 @@ FUNCTION le_result_t GetDate
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetTime
 (
+    uint16 hours        OUT,    ///< UTC Hours into the day [range 0..23].
+    uint16 minutes      OUT,    ///< UTC Minutes into the hour [range 0..59].
+    uint16 seconds      OUT,    ///< UTC Seconds into the minute [range 0..59].
+    uint16 milliseconds OUT     ///< UTC Milliseconds into the second [range 0..999].
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the date and time from the configured server using the configured time protocol.
+ *
+ * @warning An active data connection is necessary to retrieve the time.
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_BAD_PARAMETER  if a parameter is incorrect
+ *      - LE_FAULT          if an error occurred
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetDateTime
+(
+    uint16 year         OUT,    ///< UTC Year A.D. [e.g. 2017].
+    uint16 month        OUT,    ///< UTC Month into the year [range 1...12].
+    uint16 day          OUT,    ///< UTC Days into the month [range 1...31].
     uint16 hours        OUT,    ///< UTC Hours into the day [range 0..23].
     uint16 minutes      OUT,    ///< UTC Minutes into the hour [range 0..59].
     uint16 seconds      OUT,    ///< UTC Seconds into the minute [range 0..59].

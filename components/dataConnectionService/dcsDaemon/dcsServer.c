@@ -1581,6 +1581,9 @@ le_result_t le_data_DelRoute
 /**
  * Get the date from the configured server using the configured time protocol.
  *
+ * @warning To get the date and time, use GetDateTime rather than sequential calls to GetDate and
+ * GetTime to avoid the possibility of a date change between the two calls.
+ *
  * @warning An active data connection is necessary to retrieve the date.
  *
  * @return
@@ -1596,35 +1599,21 @@ le_result_t le_data_GetDate
     uint16_t* dayPtr        ///< [OUT] UTC Days into the month [range 1...31].
 )
 {
-    pa_dcs_TimeStruct_t timeStruct;
+    uint16_t hours;
+    uint16_t minutes;
+    uint16_t seconds;
+    uint16_t milliseconds;
 
-    if ((!yearPtr) || (!monthPtr) || (!dayPtr))
-    {
-        LE_ERROR("Incorrect parameter");
-        return LE_BAD_PARAMETER;
-    }
-
-    if (!IsConnected)
-    {
-        LE_ERROR("Data Connection Service is not connected");
-        return LE_FAULT;
-    }
-
-    memset(&timeStruct, 0, sizeof(timeStruct));
-    if (LE_OK != RetrieveTimeFromServer(&timeStruct))
-    {
-        return LE_FAULT;
-    }
-
-    *yearPtr  = (uint16_t) timeStruct.year;
-    *monthPtr = (uint16_t) timeStruct.mon;
-    *dayPtr   = (uint16_t) timeStruct.day;
-    return LE_OK;
+    return le_data_GetDateTime(yearPtr, monthPtr, dayPtr,
+                               &hours, &minutes, &seconds, &milliseconds);
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Get the time from the configured server using the configured time protocol.
+ *
+ * @warning To get the date and time, use GetDateTime rather than sequential calls to GetDate and
+ * GetTime to avoid the possibility of a date change between the two calls.
  *
  * @warning An active data connection is necessary to retrieve the time.
  *
@@ -1642,9 +1631,41 @@ le_result_t le_data_GetTime
     uint16_t* millisecondsPtr   ///< [OUT] UTC Milliseconds into the second [range 0..999].
 )
 {
+    uint16_t year;
+    uint16_t month;
+    uint16_t day;
+
+    return le_data_GetDateTime(&year, &month, &day,
+                               hoursPtr, minutesPtr, secondsPtr, millisecondsPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the date and time from the configured server using the configured time protocol.
+ *
+ * @warning An active data connection is necessary to retrieve the date and time.
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_BAD_PARAMETER  if a parameter is incorrect
+ *      - LE_FAULT          if an error occurred
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_data_GetDateTime
+(
+    uint16_t* yearPtr,          ///< [OUT] UTC Year A.D. [e.g. 2017].
+    uint16_t* monthPtr,         ///< [OUT] UTC Month into the year [range 1...12].
+    uint16_t* dayPtr,           ///< [OUT] UTC Days into the month [range 1...31].
+    uint16_t* hoursPtr,         ///< [OUT] UTC Hours into the day [range 0..23].
+    uint16_t* minutesPtr,       ///< [OUT] UTC Minutes into the hour [range 0..59].
+    uint16_t* secondsPtr,       ///< [OUT] UTC Seconds into the minute [range 0..59].
+    uint16_t* millisecondsPtr   ///< [OUT] UTC Milliseconds into the second [range 0..999].
+)
+{
     pa_dcs_TimeStruct_t timeStruct;
 
-    if ((!hoursPtr) || (!minutesPtr) || (!secondsPtr) || (!millisecondsPtr))
+    if ((!yearPtr) || (!monthPtr) || (!dayPtr) ||
+        (!hoursPtr) || (!minutesPtr) || (!secondsPtr) || (!millisecondsPtr))
     {
         LE_ERROR("Incorrect parameter");
         return LE_BAD_PARAMETER;
@@ -1662,6 +1683,9 @@ le_result_t le_data_GetTime
         return LE_FAULT;
     }
 
+    *yearPtr         = (uint16_t) timeStruct.year;
+    *monthPtr        = (uint16_t) timeStruct.mon;
+    *dayPtr          = (uint16_t) timeStruct.day;
     *hoursPtr        = (uint16_t) timeStruct.hour;
     *minutesPtr      = (uint16_t) timeStruct.min;
     *secondsPtr      = (uint16_t) timeStruct.sec;

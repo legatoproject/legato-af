@@ -390,6 +390,15 @@ static void Testle_data_Service
     LE_ASSERT(LE_BAD_PARAMETER == le_data_GetTime(&hour, &minute, &second, NULL));
     LE_ASSERT(LE_FAULT == le_data_GetTime(&hour, &minute, &second, &millisecond));
 
+    LE_ASSERT(LE_BAD_PARAMETER == le_data_GetDateTime(NULL, &month, &day, &hour, &minute, &second, &millisecond));
+    LE_ASSERT(LE_BAD_PARAMETER == le_data_GetDateTime(&year, NULL, &day, &hour, &minute, &second, &millisecond));
+    LE_ASSERT(LE_BAD_PARAMETER == le_data_GetDateTime(&year, &month, NULL, &hour, &minute, &second, &millisecond));
+    LE_ASSERT(LE_BAD_PARAMETER == le_data_GetDateTime(&year, &month, &day, NULL, &minute, &second, &millisecond));
+    LE_ASSERT(LE_BAD_PARAMETER == le_data_GetDateTime(&year, &month, &day, &hour, NULL, &second, &millisecond));
+    LE_ASSERT(LE_BAD_PARAMETER == le_data_GetDateTime(&year, &month, &day, &hour, &minute, NULL, &millisecond));
+    LE_ASSERT(LE_BAD_PARAMETER == le_data_GetDateTime(&year, &month, &day, &hour, &minute, &second, NULL));
+    LE_ASSERT(LE_FAULT == le_data_GetDateTime(&year, &month, &day, &hour, &minute, &second, &millisecond));
+
     LE_ASSERT(le_data_GetDefaultRouteStatus());
 
     // Read the default profile index
