@@ -57,7 +57,7 @@ export class Profile
 
     /**
      * Allow for multiple file change events to come in quickly.  (They often come in multiples,
-     * even for the same file.)  So, we simply wait for a given number of miliseconds without a
+     * even for the same file.)  So, we simply wait for a given number of milliseconds without a
      * file change event before we attempt to reload the model. */
     private reloadTimer?: NodeJS.Timeout;
 
@@ -177,7 +177,9 @@ export class Profile
             && (this.clientReceiveModelUpdates))
         {
             let flags: conversion.ConversionFlags = { supportsDefaultCollapsed: true };
-            let logicalView = conversion.SystemAsSymbol(flags, this.activeModel as model.System);
+            let logicalView = conversion.SystemAsSymbol(flags,
+                                                        this.activeModel as model.System,
+                                                        this.jsonDocument.model.modules);
 
             this.client.connection.sendNotification('le_UpdateLogicalView', logicalView);
         }
@@ -405,11 +407,5 @@ export class LspClient
             };
 
         this.profile = new Profile(this);
-    }
-
-    /** Shortcut to log messages in the client console. */
-    log(message: string)
-    {
-        this.connection.console.log(message);
     }
 }
