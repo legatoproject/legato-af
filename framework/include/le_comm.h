@@ -12,6 +12,19 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Definition to enable the RPC Proxy to be built to use local-service messaging
+ */
+//--------------------------------------------------------------------------------------------------
+#ifdef LE_CONFIG_RPC
+#if defined (LE_CONFIG_RTOS) || defined(LE_CONFIG_RPC_PROXY_LIBRARY)
+// Enable RPC Proxy to use local-service messaging
+#define RPC_PROXY_LOCAL_SERVICE      1
+#endif
+#endif
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Legato RPC Communication Types
  */
 //--------------------------------------------------------------------------------------------------

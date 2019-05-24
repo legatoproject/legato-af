@@ -563,34 +563,13 @@ void rpcProxy_ProxyMessageTimerExpiryHandler
                 }
                 else
                 {
-                    le_msg_ServiceRef_t serviceRef = NULL;
+                    // Generate LE_TIMEOUT Server-Response
+                    GenerateServerResponseErrorMessage(
+                        proxyMessageCopyPtr,
+                        LE_TIMEOUT);
 
-                    // Retrieve the Session reference, using the Service-ID
-                    serviceRef =
-                        le_hashmap_Get(
-                            ServiceRefMapByID,
-                            (void*)(uintptr_t) proxyMessageCopyPtr->commonHeader.serviceId);
-
-                    if (serviceRef != NULL)
-                    {
-                        //
-                        // Generate a LE_TIMEOUT event back to the client
-                        //
-
-                        // Generate LE_TIMEOUT Server-Response
-                        GenerateServerResponseErrorMessage(
-                            proxyMessageCopyPtr,
-                            LE_TIMEOUT);
-
-                        // Trigger a response back to the client
-                        ProcessServerResponse(proxyMessageCopyPtr, false);
-                    }
-                    else
-                    {
-                        LE_INFO("Unable to retrieve Service Reference, service-id [%" PRIu32 "] - "
-                                "do not generate response message",
-                                proxyMessageCopyPtr->commonHeader.serviceId);
-                    }
+                    // Trigger a response back to the client
+                    ProcessServerResponse(proxyMessageCopyPtr, true);
                 }
 
                 // Remove entry from hash-map
@@ -642,6 +621,20 @@ le_hashmap_Ref_t rpcProxy_GetExpiryTimerRefByProxyId
 {
     return ExpiryTimerRefByProxyId;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function for retrieving the Service-ID Hash-map reference.
+ */
+//--------------------------------------------------------------------------------------------------
+le_hashmap_Ref_t rpcProxy_GetServiceIDMapByName
+(
+    void
+)
+{
+    return ServiceIDMapByName;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -933,7 +926,7 @@ static le_result_t RepackRetrieveResponsePointer
     }
 
     LE_DEBUG("Retrieving response pointer, proxy id [%" PRIu32 "], "
-            "slot id [%" PRIu8 "], pointer [%" PRIuS "]",
+             "slot id [%" PRIu8 "], pointer [%" PRIuS "]",
              proxyMessagePtr->commonHeader.id,
              *slotIndexPtr,
              (size_t) arrayPtr->pointer[*slotIndexPtr]);
@@ -999,21 +992,19 @@ static le_result_t RepackUnOptimizedData
 {
     le_result_t result = LE_OK;
 
+    // Copy the contents up to this tag into the new message buffer
+    RepackCopyContents(msgBufPtr, previousMsgBufPtr, newMsgBufPtr);
+
     if (proxyMessagePtr->commonHeader.type == RPC_PROXY_SERVER_RESPONSE)
     {
         uint32_t value = 0;
 
-        //
-        // Copy everything up to this tag
-        //
-
-        // Copy the contents
-        RepackCopyContents(msgBufPtr, previousMsgBufPtr, newMsgBufPtr);
-
         // Unpack the string size
         LE_ASSERT(le_pack_UnpackUint32(msgBufPtr, &value));
 
-        LE_DEBUG("Received string, size [%" PRIu32 "]", value);
+        LE_DEBUG("Received string [%s], size [%" PRIu32 "]",
+                 (const char* ) *msgBufPtr,
+                 value);
 
         // Verify validity of the string size
         if (((*msgBufPtr + value) - &proxyMessagePtr->message[0]) >=
@@ -1070,9 +1061,6 @@ static le_result_t RepackUnOptimizedData
             return LE_FORMAT_ERROR;
         }
 
-        // Copy the contents
-        RepackCopyContents(msgBufPtr, previousMsgBufPtr, newMsgBufPtr);
-
         // Allocate the "in" parameter memory
         uint8_t* responsePtr;
         RepackAllocateResponseMemory(proxyMessagePtr, value, &responsePtr);
@@ -1088,24 +1076,28 @@ static le_result_t RepackUnOptimizedData
         // Pack memory pointer
 #if UINTPTR_MAX == UINT32_MAX
         // Set pointer to data in new message buffer
-        LE_ASSERT(le_pack_PackUint32(newMsgBufPtr, (uint32_t) responsePtr));
-
-        LE_DEBUG("Rolling-up data, dataSize [%" PRIuS "], "
-                 "proxy id [%" PRIu32 "], pointer [%" PRIu32 "]",
-                 value,
-                 proxyMessagePtr->commonHeader.id,
-                 (uint32_t) responsePtr);
+        LE_ASSERT(le_pack_PackTaggedUint32Tuple(
+                      newMsgBufPtr,
+                      value,
+                      (uint32_t) responsePtr,
+                      (tagId == LE_PACK_STRING) ?
+                      LE_PACK_IN_STRING_POINTER : LE_PACK_IN_ARRAY_POINTER));
 
 #elif UINTPTR_MAX == UINT64_MAX
         // Set pointer to data in new message buffer
-        LE_ASSERT(le_pack_PackUint64(newMsgBufPtr, (uint64_t) responsePtr));
+        LE_ASSERT(le_pack_PackTaggedUint64Tuple(
+                      newMsgBufPtr,
+                      value,
+                      (uint64_t) responsePtr,
+                      (tagId == LE_PACK_STRING) ?
+                      LE_PACK_IN_STRING_POINTER : LE_PACK_IN_ARRAY_POINTER));
+#endif
 
         LE_DEBUG("Rolling-up data, dataSize [%" PRIuS "], "
-                 "proxy id [%" PRIu32 "], pointer [%" PRIu64 "]",
+                 "proxy id [%" PRIu32 "], pointer [%p]",
                  value,
                  proxyMessagePtr->commonHeader.id,
-                 (uint64_t) responsePtr);
-#endif
+                 responsePtr);
     }
 
     // Update the previous message buffer pointer to reflect what has been processed
@@ -1158,10 +1150,10 @@ static le_result_t RepackStoreResponsePointer
     arrayPtr->pointer[*slotIndexPtr] = pointer;
 
     LE_DEBUG("Storing response pointer, proxy id [%" PRIu32 "], "
-            "slot id [%" PRIu8 "], pointer [%" PRIuS "]",
-            proxyMessagePtr->commonHeader.id,
-            *slotIndexPtr,
-            (size_t) pointer);
+             "slot id [%" PRIu8 "], pointer [%d]",
+             proxyMessagePtr->commonHeader.id,
+             *slotIndexPtr,
+             pointer);
 
     // Store the array of memory pointer until
     // the server response is received, using the proxy message Id
@@ -1198,11 +1190,10 @@ static le_result_t RepackOptimizedData
 )
 {
     le_result_t result = LE_OK;
-    uint8_t* msgBufCopyPtr = (*msgBufPtr - 1);
     size_t size;
 
     // Copy all content up to, but not including the Tuple TagID
-    RepackCopyContents(&msgBufCopyPtr, previousMsgBufPtr, newMsgBufPtr);
+    RepackCopyContents(msgBufPtr, previousMsgBufPtr, newMsgBufPtr);
 
     // Retrieve the Array size and pointer from the Proxy Message
 #if UINTPTR_MAX == UINT32_MAX
@@ -1261,6 +1252,8 @@ static le_result_t RepackOptimizedData
                      "proxy id [%" PRIu32 "]",
                      size,
                      proxyMessagePtr->commonHeader.id);
+
+            LE_DEBUG("String [%s]", (const char *)pointer);
 
             // Pack the string into the new message buffer
             LE_ASSERT(le_pack_PackString(newMsgBufPtr, (const char*) pointer, size));
@@ -1675,8 +1668,8 @@ static le_result_t PreProcessResponse
 //--------------------------------------------------------------------------------------------------
 static void ProcessServerResponse
 (
-    rpcProxy_Message_t *proxyMessagePtr, ///< {IN] Pointer to the Proxy Message
-    bool cleanUpTimer ///< [IN] Boolean to indicate a timer clean-up
+    rpcProxy_Message_t *proxyMessagePtr, ///< [IN] Pointer to the Proxy Message
+    bool triggeredByTimer ///< [IN] Boolean indicating if this was triggered by a timer
 )
 {
     // Sanity Check - Verify Message Type
@@ -1693,15 +1686,20 @@ static void ProcessServerResponse
         return;
     }
 
-    // Retrieve the Session reference, using the Service-ID
-    le_msg_ServiceRef_t serviceRef =
-        le_hashmap_Get(ServiceRefMapByID,
-                       (void*)(uintptr_t) proxyMessagePtr->commonHeader.serviceId);
-    if (serviceRef == NULL)
+    // Don't check for the Service-Reference if triggered by timer -
+    // Service may no longer exist when client-request timer expires
+    if (!triggeredByTimer)
     {
-        LE_INFO("Error retrieving Service Reference, service id [%" PRIu32 "]",
-                proxyMessagePtr->commonHeader.serviceId);
-        return;
+        // Retrieve the Session reference, using the Service-ID
+        le_msg_ServiceRef_t serviceRef =
+            le_hashmap_Get(ServiceRefMapByID,
+                           (void*)(uintptr_t) proxyMessagePtr->commonHeader.serviceId);
+        if (serviceRef == NULL)
+        {
+            LE_INFO("Error retrieving Service Reference, service id [%" PRIu32 "]",
+                    proxyMessagePtr->commonHeader.serviceId);
+            return;
+        }
     }
 
     LE_DEBUG("Successfully retrieved Message Reference, proxy id [%" PRIu32 "]",
@@ -1711,7 +1709,7 @@ static void ProcessServerResponse
     if (le_msg_NeedsResponse(msgRef))
     {
         // Check if timer needs to be cleaned up
-        if (cleanUpTimer)
+        if (!triggeredByTimer)
         {
             // Retrieve and delete timer associated with Proxy Message ID
             le_timer_Ref_t timerRef =
@@ -2320,19 +2318,17 @@ static le_result_t ProcessConnectServiceResponse
             (strcmp(serviceRefPtr->serviceName, serviceName) == 0) &&
             (strcmp(serviceRefPtr->protocolIdStr, proxyMessagePtr->protocolIdStr) == 0))
         {
-            le_msg_ServiceRef_t tmpServiceRef;
+            le_msg_ServiceRef_t serviceRef = NULL;
 
             // Check to see if service is already advertised (UP)
             // Retrieve the Service reference, using the Service-ID
-            tmpServiceRef =
+            serviceRef =
                 le_hashmap_Get(
                     ServiceRefMapByID,
                     (void*)(uintptr_t) proxyMessagePtr->commonHeader.serviceId);
 
-            if (tmpServiceRef == NULL)
+            if (serviceRef == NULL)
             {
-                le_msg_ServiceRef_t serviceRef = NULL;
-
                 LE_INFO("======= Advertise Server '%s' ========", serviceRefPtr->serviceName);
 
 #ifndef RPC_PROXY_LOCAL_SERVICE
@@ -2359,6 +2355,16 @@ static le_result_t ProcessConnectServiceResponse
                              refPtr->localServiceInstanceName);
                     return LE_FAULT;
                 }
+
+                // Add a handler for client session close
+                le_msg_AddServiceCloseHandler(serviceRef,
+                                              ServerCloseSessionHandler,
+                                              (void*) serviceRefPtr);
+
+                // Add a handler for client session open
+                le_msg_AddServiceOpenHandler(serviceRef,
+                                             ServerOpenSessionHandler,
+                                             (void*) serviceRefPtr);
 #else
                 // Retrieve the Service reference, using the Service-Name
                 serviceRef = le_hashmap_Get(ServerRefMapByName, serviceName);
@@ -2370,49 +2376,42 @@ static le_result_t ProcessConnectServiceResponse
                 }
 #endif
 
-                // Allocate memory from Service Name string pool to hold the service-name
-                char* serviceNameCopyPtr = le_mem_ForceAlloc(ServiceNameStringPoolRef);
-
-                // Copy the service-name string
-                le_utf8_Copy(serviceNameCopyPtr,
-                             serviceRefPtr->serviceName,
-                             LIMIT_MAX_IPC_INTERFACE_NAME_BYTES, NULL);
-
-                // Allocate memory from Service-ID pool
-                uint32_t* serviceIdCopyPtr = le_mem_ForceAlloc(ServiceIdPoolRef);
-
-                // Copy the Service-ID
-                *serviceIdCopyPtr = proxyMessagePtr->commonHeader.serviceId;
-
-                // Store the Service-ID in a hashmap, using the service-name as a key
-                le_hashmap_Put(ServiceIDMapByName, serviceNameCopyPtr, serviceIdCopyPtr);
-
-                LE_INFO("Successfully saved Service Reference ID, "
-                        "service-name [%s], service-id [%" PRIu32 "]",
-                        serviceNameCopyPtr,
-                        *serviceIdCopyPtr);
-
-                // Store the serviceRef in a hashmap, using the Service-ID as a key
-                le_hashmap_Put(ServiceRefMapByID,
-                               (void*)(uintptr_t) proxyMessagePtr->commonHeader.serviceId, serviceRef);
-
-                LE_INFO("Successfully saved Service Reference, "
-                        "service safe reference [%" PRIuPTR "], service-id [%" PRIu32 "]",
-                        (uintptr_t) serviceRef,
-                        proxyMessagePtr->commonHeader.serviceId);
-
-#ifndef RPC_PROXY_LOCAL_SERVICE
-                // Add a handler for client session close
-                le_msg_AddServiceCloseHandler(serviceRef, ServerCloseSessionHandler, (void*) serviceRefPtr);
-
-                // Add a handler for client session open
-                le_msg_AddServiceOpenHandler(serviceRef, ServerOpenSessionHandler, (void*) serviceRefPtr);
-#endif
-
                 // Start the server side of the service
                 le_msg_SetServiceRecvHandler(serviceRef, ServerMsgRecvHandler, (void *)serviceRefPtr);
                 le_msg_AdvertiseService(serviceRef);
+
             }
+
+            // Allocate memory from Service Name string pool to hold the service-name
+            char* serviceNameCopyPtr = le_mem_ForceAlloc(ServiceNameStringPoolRef);
+
+            // Copy the service-name string
+            le_utf8_Copy(serviceNameCopyPtr,
+                         serviceRefPtr->serviceName,
+                         LIMIT_MAX_IPC_INTERFACE_NAME_BYTES, NULL);
+
+            // Allocate memory from Service-ID pool
+            uint32_t* serviceIdCopyPtr = le_mem_ForceAlloc(ServiceIdPoolRef);
+
+            // Copy the Service-ID
+            *serviceIdCopyPtr = proxyMessagePtr->commonHeader.serviceId;
+
+            // Store the Service-ID in a hashmap, using the service-name as a key
+            le_hashmap_Put(ServiceIDMapByName, serviceNameCopyPtr, serviceIdCopyPtr);
+
+            LE_INFO("Successfully saved Service Reference ID, "
+                    "service-name [%s], service-id [%" PRIu32 "]",
+                    serviceNameCopyPtr,
+                    *serviceIdCopyPtr);
+
+            // Store the serviceRef in a hashmap, using the Service-ID as a key
+            le_hashmap_Put(ServiceRefMapByID,
+                           (void*)(uintptr_t) proxyMessagePtr->commonHeader.serviceId, serviceRef);
+
+            LE_INFO("Successfully saved Service Reference, "
+                    "service safe reference [%" PRIuPTR "], service-id [%" PRIu32 "]",
+                    (uintptr_t) serviceRef,
+                    proxyMessagePtr->commonHeader.serviceId);
         }
     }
 
@@ -2529,6 +2528,27 @@ static void DeleteService
                 "from hashmap record, service '%s'",
                 serviceName);
     }
+
+    //
+    // Clean-up Service ID Safe Reference for this service-name, if it exists
+    //
+    le_ref_IterRef_t iterRef = le_ref_GetIterator(ServiceIDSafeRefMap);
+
+    // Iterate over all Service-ID Safe References looking for the service-name match
+    while (le_ref_NextNode(iterRef) == LE_OK)
+    {
+        if (strcmp(le_ref_GetValue(iterRef), serviceName) == 0)
+        {
+            LE_INFO("Releasing Service ID Safe Reference, "
+                    "service-name [%s], service-id [%" PRIuPTR "]",
+                    (char*) le_ref_GetValue(iterRef),
+                    (uintptr_t) le_ref_GetSafeRef(iterRef));
+
+            // Free the Service-ID Safe Reference now that the Service is being deleted
+            le_ref_DeleteRef(ServiceIDSafeRefMap, (void*) le_ref_GetSafeRef(iterRef));
+            break;
+        }
+    }
 }
 
 
@@ -2561,27 +2581,6 @@ static le_result_t ProcessDisconnectService
 
     // Delete the Service associated with the service-name
     DeleteService(serviceName);
-
-    //
-    // Clean-up Service ID Safe Reference for this service-name, if it exists
-    //
-    le_ref_IterRef_t iterRef = le_ref_GetIterator(ServiceIDSafeRefMap);
-
-    // Iterate over all Service-ID Safe References looking for the service-name match
-    while (le_ref_NextNode(iterRef) == LE_OK)
-    {
-        if (strcmp(le_ref_GetValue(iterRef), serviceName) == 0)
-        {
-            LE_INFO("Releasing Service ID Safe Reference, "
-                    "service-name [%s], service-id [%" PRIuPTR "]",
-                    (char*) le_ref_GetValue(iterRef),
-                    (uintptr_t) le_ref_GetSafeRef(iterRef));
-
-            // Free the Service-ID Safe Reference now that the Service is being deleted
-            le_ref_DeleteRef(ServiceIDSafeRefMap, (void*) le_ref_GetSafeRef(iterRef));
-            break;
-        }
-    }
 
     // Send Connect-Service Message to the far-side for the specified service-name
     // and wait for a valid Connect-Service response before advertising the service
@@ -2688,7 +2687,7 @@ void rpcProxy_AsyncRecvHandler
             {
                 LE_DEBUG("Received Proxy Server-Response Message, proxy id [%" PRIu32 "]",
                          commonHeaderPtr->id);
-                ProcessServerResponse((rpcProxy_Message_t*) buffer, true);
+                ProcessServerResponse((rpcProxy_Message_t*) buffer, false);
                 break;
             }
 
@@ -2777,6 +2776,7 @@ static void ServerMsgRecvHandler
     rpcProxy_Message_t  proxyMessage;
     rpcProxy_Message_t *proxyMessageCopyPtr = NULL;
     le_result_t         result;
+    bool                send = true;
 
     // Confirm context pointer is valid
     if (contextPtr == NULL)
@@ -2825,18 +2825,23 @@ static void ServerMsgRecvHandler
     uint32_t* serviceIdPtr = le_hashmap_Get(ServiceIDMapByName, serviceName);
     if (serviceIdPtr == NULL)
     {
-        // Raise an error message and return
-        LE_ERROR("Service is not available, service-name [%s]", serviceName);
-        goto exit;
+        // Raise a warning message
+        LE_WARN("Service is not available, service-name [%s]", serviceName);
+        proxyMessage.commonHeader.serviceId = 0;
+
+        // Service is not available - do not send message to far-side
+        send = false;
     }
-
-    proxyMessage.commonHeader.serviceId = *serviceIdPtr;
-
-    if (sizeof(proxyMessage.message) < le_msg_GetMaxPayloadSize(msgRef))
+    else
     {
-        // Raise an error message and return
-        LE_ERROR("Proxy Message buffer too small");
-        goto exit;
+        proxyMessage.commonHeader.serviceId = *serviceIdPtr;
+
+        if (sizeof(proxyMessage.message) < le_msg_GetMaxPayloadSize(msgRef))
+        {
+            // Raise an error message and return
+            LE_ERROR("Proxy Message buffer too small");
+            goto exit;
+        }
     }
 
     // Check if client requires a response
@@ -2850,6 +2855,12 @@ static void ServerMsgRecvHandler
         memcpy(proxyMessageCopyPtr,
                &proxyMessage,
                (RPC_PROXY_MSG_HEADER_SIZE + proxyMessage.msgSize));
+    }
+
+    // Check if message should be sent to the far-side
+    if (!send)
+    {
+        goto exit;
     }
 
     // Send a request to the server and get the response.
@@ -2893,8 +2904,8 @@ exit:
                        (void*)(uintptr_t) proxyMessageCopyPtr->commonHeader.id,
                        clientRequestTimerRef);
 
-        LE_DEBUG("Starting timer for Client-Request, service-id [%" PRIu32 "], id [%" PRIu32 "]",
-                 proxyMessageCopyPtr->commonHeader.serviceId,
+        LE_DEBUG("Starting timer for Client-Request, service-name [%s], id [%" PRIu32 "]",
+                 serviceName,
                  proxyMessageCopyPtr->commonHeader.id);
     }
 }
@@ -2992,7 +3003,7 @@ static void SendSessionConnectRequest
 
     // Generate the Service-ID, using a safe reference
     proxyMessage.commonHeader.serviceId = serviceId =
-        (uint32_t)(uintptr_t) le_ref_CreateRef(ServiceIDSafeRefMap, (void*) serviceInstanceName);
+       (uint32_t)(uintptr_t) le_ref_CreateRef(ServiceIDSafeRefMap, (void*) serviceInstanceName);
 
     proxyMessage.commonHeader.type = RPC_PROXY_CONNECT_SERVICE_REQUEST;
 
@@ -3341,26 +3352,6 @@ void rpcProxy_HideServices
         // Delete the Service associated with the service-name
         DeleteService(serviceRefPtr->serviceName);
 
-        //
-        // Clean-up Service ID Safe Reference for this service-name, if it exists
-        //
-        le_ref_IterRef_t iterRef = le_ref_GetIterator(ServiceIDSafeRefMap);
-
-        // Iterate over all Service-ID Safe References looking for the service-name match
-        while (le_ref_NextNode(iterRef) == LE_OK)
-        {
-            if (strcmp(le_ref_GetValue(iterRef), serviceRefPtr->serviceName) == 0)
-            {
-                LE_INFO("Releasing Service ID Safe Reference, "
-                        "service-name [%s], service-id [%" PRIuPTR "]",
-                        (char*) le_ref_GetValue(iterRef),
-                        (uintptr_t) le_ref_GetSafeRef(iterRef));
-
-                // Free the Service-ID Safe Reference now that the Service is being deleted
-                le_ref_DeleteRef(ServiceIDSafeRefMap, (void*) le_ref_GetSafeRef(iterRef));
-                break;
-            }
-        }
     } // End of for-loop
 }
 

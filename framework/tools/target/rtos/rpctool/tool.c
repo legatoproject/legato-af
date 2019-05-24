@@ -1,23 +1,19 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * Implementation of the RPC Configuration command-line tool for administering the RPC from the
- * command line.
+ * Implementation of the RPC Configuration 'shim' tool.  It provides support to run the
+ * RPC Configuration Tool process using the the Micro-Supervisor's
+ * "app runProc appName procName [-- <args> ]" feature.
+ *
+ * NOTE:  This is seen as a temporary work-around for the HL78, which does not currently allow
+ * command-line tools to invoke Legato API function calls from within a tool.
  *
  * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 
 #include "interfaces.h"
-#include "limit.h"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Maximum output string length.
- */
-//--------------------------------------------------------------------------------------------------
-#define RPC_TOOL_STRING_BUFFER_MAX    60
-
+#include "legato.h"
+#include "microSupervisor.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -43,10 +39,11 @@ Action = ACTION_UNSPECIFIED;
 //--------------------------------------------------------------------------------------------------
 static enum
 {
+    OBJECT_UNSPECIFIED,
     OBJECT_BINDING,
     OBJECT_LINK,
 }
-Object;
+Object = OBJECT_UNSPECIFIED;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -88,26 +85,10 @@ static const char* LinkNameArg = NULL;
 static const char* ParametersArg = NULL;
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Function to handle exiting from the RPC Tool.
- */
-//--------------------------------------------------------------------------------------------------
-static void ExitTool
-(
-    int exitCode  ///< Exit code
-)
-{
-#ifndef LE_CONFIG_RTOS
-        exit(exitCode);
-#else
-        le_thread_Exit(NULL);
-#endif
-}
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Print help text to stdout and exit with EXIT_SUCCESS.
+ * Print help text to stdout.
  */
 //--------------------------------------------------------------------------------------------------
 static void HandleHelpRequest
@@ -154,7 +135,7 @@ static void HandleHelpRequest
         "\n"
         "    rpctool get link <systemName>\n"
         "            Retrieves the link-name, link-parameters, and status\n"
-        "            for the specified system-name.\n"
+        "            for the specified system.\n"
         "\n"
         "    rpctool reset link <systemName>\n"
         "            Resets the RPC link for the specifed system-name.\n"
@@ -170,71 +151,8 @@ static void HandleHelpRequest
         "    All output is always sent to stdout and error messages to stderr.\n"
         "\n"
         );
-
-        ExitTool(EXIT_SUCCESS);
 }
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Handles a failure to connect an IPC session with the Data Hub by reporting an error to stderr
- * and exiting with EXIT_FAILURE.
- */
-//--------------------------------------------------------------------------------------------------
-static void HandleConnectionError
-(
-    const char* serviceName,    ///< The name of the service to which we failed to connect.
-    le_result_t errorCode   ///< Error result code returned by the TryConnectService() function.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    fprintf(stderr, "***ERROR: Can't connect to the RPC Proxy.\n");
-
-    switch (errorCode)
-    {
-        case LE_UNAVAILABLE:
-            fprintf(stderr, "%s service not currently available.\n", serviceName);
-            break;
-
-        case LE_NOT_PERMITTED:
-            fprintf(stderr,
-                    "Missing binding to %s service.\n"
-                    "System misconfiguration detected.\n",
-                    serviceName);
-            break;
-
-        case LE_COMM_ERROR:
-            fprintf(stderr,
-                    "Service Directory is unreachable.\n"
-                    "Perhaps the Service Directory is not running?\n");
-            break;
-
-        default:
-            printf("Unexpected result code %d (%s)\n", errorCode, LE_RESULT_TXT(errorCode));
-            break;
-    }
-
-    ExitTool(EXIT_FAILURE);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Opens IPC sessions with the RPC Proxy.
- */
-//--------------------------------------------------------------------------------------------------
-static void ConnectToRpcProxy
-(
-    void
-)
-//--------------------------------------------------------------------------------------------------
-{
-    le_result_t result = le_rpc_TryConnectService();
-    if (result != LE_OK)
-    {
-        HandleConnectionError("RPC Tool", result);
-    }
-}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -343,8 +261,14 @@ static void ObjectTypeArgHandler
                 break;
             }
             default:
-                fprintf(stderr, "Unknown object type '%s'.\n", arg);
-                ExitTool(EXIT_FAILURE);
+                fprintf(stderr,
+                        "Unknown object type '%s'.  Try 'rpcTool help' for assistance.\n",
+                        arg);
+
+                // Reset the Action and Object types
+                Action = ACTION_UNSPECIFIED;
+                Object = OBJECT_UNSPECIFIED;
+                return;
                 break;
         }
     }
@@ -358,8 +282,14 @@ static void ObjectTypeArgHandler
                 break;
 
             default:
-                fprintf(stderr, "Unknown object type '%s'.\n", arg);
-                ExitTool(EXIT_FAILURE);
+                fprintf(stderr,
+                        "Unknown object type '%s'.  Try 'rpcTool help' for assistance.\n",
+                        arg);
+
+                // Reset the Action and Object types
+                Action = ACTION_UNSPECIFIED;
+                Object = OBJECT_UNSPECIFIED;
+                return;
                 break;
         }
     }
@@ -387,8 +317,14 @@ static void ObjectTypeArgHandler
                 break;
             }
             default:
-                fprintf(stderr, "Unknown action type '%s'.\n", arg);
-                ExitTool(EXIT_FAILURE);
+                fprintf(stderr,
+                        "Unknown object type '%s'.  Try 'rpcTool help' for assistance.\n",
+                        arg);
+
+                // Reset the Action and Object types
+                Action = ACTION_UNSPECIFIED;
+                Object = OBJECT_UNSPECIFIED;
+                return;
                 break;
         }
     }
@@ -402,15 +338,26 @@ static void ObjectTypeArgHandler
                 break;
 
             default:
-                fprintf(stderr, "Unknown object type '%s'.\n", arg);
-                ExitTool(EXIT_FAILURE);
+                fprintf(stderr,
+                        "Unknown object type '%s'.  Try 'rpcTool help' for assistance.\n",
+                        arg);
+
+                // Reset the Action and Object types
+                Action = ACTION_UNSPECIFIED;
+                Object = OBJECT_UNSPECIFIED;
+                return;
                 break;
         }
     }
     else
     {
-        fprintf(stderr, "Unknown object type '%s'.\n", arg);
-        ExitTool(EXIT_FAILURE);
+        fprintf(stderr,
+                "Unknown object type '%s'.  Try 'rpcTool help' for assistance.\n",
+                arg);
+
+        // Reset the Action type
+        Action = ACTION_UNSPECIFIED;
+        return;
     }
 }
 
@@ -461,156 +408,13 @@ static void CommandArgHandler
     else
     {
         fprintf(stderr, "Unrecognized command '%s'.  Try 'rpcTool help' for assistance.\n", arg);
-        ExitTool(EXIT_FAILURE);
-    }
-}
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Function to display all "bindings".
- */
-//--------------------------------------------------------------------------------------------------
-static void PrintAllBindings
-(
-    void
-)
-{
-    char serviceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];
-    char systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];
-    char remoteServiceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];
-    uint32_t serviceId;
-    le_result_t result;
-
-    result = le_rpc_GetFirstSystemBinding(serviceName, sizeof(serviceName));
-    if (result != LE_OK)
-    {
+        // Reset the Action type
+        Action = ACTION_UNSPECIFIED;
         return;
     }
-
-    printf("\n========================================= RPC Bindings "
-           "=========================================\n");
-
-    do
-    {
-        // Get the binding, using the service-name
-        result = le_rpc_GetSystemBinding(
-                    serviceName,
-                    systemName,
-                    sizeof(systemName),
-                    remoteServiceName,
-                    sizeof(remoteServiceName),
-                    &serviceId);
-
-        if (result == LE_OK)
-        {
-            char strBuffer[RPC_TOOL_STRING_BUFFER_MAX];
-            snprintf(strBuffer,
-                     sizeof(strBuffer),
-                     "CONNECTED, Service-ID: %-10" PRIu32,
-                     serviceId);
-
-            printf("\nService-Name: %-40s Status: %s\n"
-                   "    System-Name: %s\n"
-                   "    Remote Service-Name: %s\n",
-                   serviceName,
-                   (serviceId == 0) ? "NOT CONNECTED" : strBuffer,
-                   systemName,
-                   remoteServiceName);
-        }
-        else
-        {
-            printf("Configuration not found!\n");
-        }
-    }
-    while (le_rpc_GetNextSystemBinding(
-               serviceName,
-               serviceName,
-               sizeof(serviceName)) == LE_OK);
-
-    printf("\n================================================"
-           "================================================\n");
 }
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Function to display all system "links".
- */
-//--------------------------------------------------------------------------------------------------
-static void PrintAllLinks
-(
-    void
-)
-{
-    char systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];
-    char linkName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];
-    char parameters[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];
-    le_rpc_NetworkState_t state;
-    le_result_t result;
-
-    result = le_rpc_GetFirstSystemLink(systemName, sizeof(systemName));
-    if (result != LE_OK)
-    {
-        return;
-    }
-
-    printf("\n========================================== RPC Links "
-           "===========================================\n");
-
-    do
-    {
-        // Get the system link, using the system, link, and node names
-        result = le_rpc_GetSystemLink(systemName,
-                                      linkName,
-                                      sizeof(linkName),
-                                      parameters,
-                                      sizeof(parameters),
-                                      &state);
-
-        if (result == LE_OK)
-        {
-           char strBuffer[RPC_TOOL_STRING_BUFFER_MAX];
-           switch (state)
-            {
-                case LE_RPC_NETWORK_UP:
-                    snprintf(strBuffer,
-                             sizeof(strBuffer),
-                             "UP");
-                    break;
-                case LE_RPC_NETWORK_DOWN:
-                    snprintf(strBuffer,
-                             sizeof(strBuffer),
-                             "DOWN");
-                    break;
-
-                case LE_RPC_NETWORK_UNKNOWN:
-                default:
-                    snprintf(strBuffer,
-                             sizeof(strBuffer),
-                             "NOT STARTED");
-                    break;
-            }
-
-            printf("\nSystem-Name: %-40s  Status: %s\n"
-                   "    Link-Name: %s\n"
-                   "    Parameters: %s\n",
-                   systemName,
-                   strBuffer,
-                   linkName,
-                   parameters);
-        }
-        else
-        {
-            printf("Configuration not found!\n");
-        }
-    }
-    while (le_rpc_GetNextSystemLink(
-               systemName,
-               systemName,
-               sizeof(systemName)) == LE_OK);
-
-    printf("\n================================================"
-           "================================================\n");
-}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -619,15 +423,18 @@ static void PrintAllLinks
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    le_result_t result;
+    // Initialize Globals
+    Action = ACTION_UNSPECIFIED;
+    Object = OBJECT_UNSPECIFIED;
+    ServiceNameArg = NULL;
+    SystemNameArg = NULL;
+    LinkNameArg = NULL;
+    ParametersArg = NULL;
+    RemoteServiceNameArg = NULL;
 
     le_arg_SetFlagCallback(HandleHelpRequest, "h", "help");
-
     le_arg_AddPositionalCallback(CommandArgHandler);
-
     le_arg_Scan();
-
-    ConnectToRpcProxy();
 
     switch (Action)
     {
@@ -640,98 +447,45 @@ COMPONENT_INIT
             {
                 case OBJECT_BINDING:
                 {
-                    char systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];
-                    char remoteServiceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];
-                    uint32_t serviceId;
-                    result = le_rpc_GetSystemBinding(
-                                ServiceNameArg,
-                                systemName,
-                                sizeof(systemName),
-                                remoteServiceName,
-                                sizeof(remoteServiceName),
-                                &serviceId);
-
-                    if (result == LE_OK)
+                    // Check the arguments are valid
+                    if (ServiceNameArg == NULL)
                     {
-                        char strBuffer[RPC_TOOL_STRING_BUFFER_MAX];
-                        printf("\n========================================= RPC Binding "
-                               "==========================================\n");
-
-                        snprintf(strBuffer,
-                                 sizeof(strBuffer),
-                                 "CONNECTED, Service-ID: %-10" PRIu32,
-                                 serviceId);
-
-                        printf("\nService-Name: %-40s Status: %s\n"
-                               "    System-Name: %s\n"
-                               "    Remote Service-Name: %s\n",
-                               ServiceNameArg,
-                               (serviceId == 0) ? "NOT CONNECTED" : strBuffer,
-                               systemName,
-                               remoteServiceName);
-                        printf("\n================================================"
-                               "================================================\n");
+                        fprintf(stderr,
+                                "Too few arguments.  Try 'rpcTool help' for assistance.\n");
+                        return;
                     }
-                    else
-                    {
-                        printf("Configuration not found!\n");
-                    }
+
+                    const char *argv[] = {
+                        "get",
+                        "binding",
+                        ServiceNameArg,
+                        NULL,
+                    };
+                    // Call the microSupervisor to execute the
+                    // 'get binding' command on the rpcTool daemon
+                    le_microSupervisor_RunProc("tools", "rpcTool", 3, argv);
                     break;
                 }
 
                 case OBJECT_LINK:
                 {
-                    char linkName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];
-                    char parameters[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];
-                    le_rpc_NetworkState_t state;
-                    result = le_rpc_GetSystemLink(SystemNameArg,
-                                                  linkName,
-                                                  sizeof(linkName),
-                                                  parameters,
-                                                  sizeof(parameters),
-                                                  &state);
-
-                    if (result == LE_OK)
+                    // Check the arguments are valid
+                    if (SystemNameArg == NULL)
                     {
-                        char strBuffer[RPC_TOOL_STRING_BUFFER_MAX];
-                        printf("\n========================================== RPC Link "
-                               "============================================\n");
-
-                        switch (state)
-                        {
-                            case LE_RPC_NETWORK_UP:
-                                snprintf(strBuffer,
-                                         sizeof(strBuffer),
-                                         "UP");
-                                break;
-                            case LE_RPC_NETWORK_DOWN:
-                                snprintf(strBuffer,
-                                         sizeof(strBuffer),
-                                         "DOWN");
-                                break;
-
-                            case LE_RPC_NETWORK_UNKNOWN:
-                            default:
-                                snprintf(strBuffer,
-                                         sizeof(strBuffer),
-                                         "NOT STARTED");
-                                break;
-                        }
-
-                        printf("\nSystem-Name: %-40s  Status: %s\n"
-                               "    Link-Name: %s\n"
-                               "    Parameters: %s\n",
-                               SystemNameArg,
-                               strBuffer,
-                               linkName,
-                               parameters);
-                        printf("\n================================================"
-                               "================================================\n");
+                        fprintf(stderr,
+                                "Too few arguments.  Try 'rpcTool help' for assistance.\n");
+                        return;
                     }
-                    else
-                    {
-                        printf("Configuration not found!\n");
-                    }
+
+                    const char *argv[] = {
+                        "get",
+                        "link",
+                        SystemNameArg,
+                        NULL,
+                    };
+                    // Call the microSupervisor to execute the
+                    // 'get link' command on the rpcTool daemon
+                    le_microSupervisor_RunProc("tools", "rpcTool", 3, argv);
                     break;
                 }
 
@@ -745,13 +499,27 @@ COMPONENT_INIT
             {
                 case OBJECT_BINDING:
                 {
-                    PrintAllBindings();
+                    const char *argv[] = {
+                        "list",
+                        "bindings",
+                        NULL,
+                    };
+                    // Call the microSupervisor to execute the
+                    // 'list bindings' command on the rpcTool daemon
+                    le_microSupervisor_RunProc("tools", "rpcTool", 2, argv);
                     break;
                 }
 
                 case OBJECT_LINK:
                 {
-                    PrintAllLinks();
+                    const char *argv[] = {
+                        "list",
+                        "links",
+                        NULL,
+                    };
+                    // Call the microSupervisor to execute the
+                    // 'list links' command on the rpcTool daemon
+                    le_microSupervisor_RunProc("tools", "rpcTool", 2, argv);
                     break;
                 }
 
@@ -764,16 +532,56 @@ COMPONENT_INIT
             switch (Object)
             {
                 case OBJECT_BINDING:
-                    le_rpc_SetSystemBinding(ServiceNameArg,
-                                            SystemNameArg,
-                                            RemoteServiceNameArg);
+                {
+                    // Check the arguments are valid
+                    if ((ServiceNameArg == NULL) ||
+                        (SystemNameArg == NULL) ||
+                        (RemoteServiceNameArg == NULL))
+                    {
+                        fprintf(stderr,
+                                "Too few arguments.  Try 'rpcTool help' for assistance.\n");
+                        return;
+                    }
+
+                    const char *argv[] = {
+                        "set",
+                        "binding",
+                        ServiceNameArg,
+                        SystemNameArg,
+                        RemoteServiceNameArg,
+                        NULL,
+                    };
+                    // Call the microSupervisor to execute the
+                    // 'set binding' command on the rpcTool daemon
+                    le_microSupervisor_RunProc("tools", "rpcTool", 5, argv);
                     break;
+                }
 
                 case OBJECT_LINK:
-                    le_rpc_SetSystemLink(SystemNameArg,
-                                         LinkNameArg,
-                                         ParametersArg);
+                {
+                    // Check the arguments are valid
+                    if ((SystemNameArg == NULL) ||
+                        (LinkNameArg == NULL) ||
+                        (ParametersArg == NULL))
+                    {
+                        fprintf(stderr,
+                                "Too few arguments.  Try 'rpcTool help' for assistance.\n");
+                        return;
+                    }
+
+                    const char *argv[] = {
+                        "set",
+                        "link",
+                        SystemNameArg,
+                        LinkNameArg,
+                        ParametersArg,
+                        NULL,
+                    };
+                    // Call the microSupervisor to execute the
+                    // 'set link' command on the rpcTool daemon
+                    le_microSupervisor_RunProc("tools", "rpcTool", 5, argv);
                     break;
+                }
 
                 default:
                     break;
@@ -784,12 +592,48 @@ COMPONENT_INIT
             switch (Object)
             {
                 case OBJECT_BINDING:
-                    le_rpc_ResetSystemBinding(ServiceNameArg);
+                {
+                    // Check the arguments are valid
+                    if (ServiceNameArg == NULL)
+                    {
+                        fprintf(stderr,
+                                "Too few arguments.  Try 'rpcTool help' for assistance.\n");
+                        return;
+                    }
+
+                    const char *argv[] = {
+                        "reset",
+                        "binding",
+                        ServiceNameArg,
+                        NULL,
+                    };
+                    // Call the microSupervisor to execute the
+                    // 'reset binding' command on the rpcTool daemon
+                    le_microSupervisor_RunProc("tools", "rpcTool", 3, argv);
                     break;
+                }
 
                 case OBJECT_LINK:
-                    le_rpc_ResetSystemLink(SystemNameArg);
+                {
+                    // Check the arguments are valid
+                    if (SystemNameArg == NULL)
+                    {
+                        fprintf(stderr,
+                                "Too few arguments.  Try 'rpcTool help' for assistance.\n");
+                        return;
+                    }
+
+                    const char *argv[] = {
+                        "reset",
+                        "link",
+                        SystemNameArg,
+                        NULL,
+                    };
+                    // Call the microSupervisor to execute the
+                    // 'reset link' command on the rpcTool daemon
+                    le_microSupervisor_RunProc("tools", "rpcTool", 3, argv);
                     break;
+                }
 
                 default:
                     break;
@@ -797,10 +641,6 @@ COMPONENT_INIT
             break;
 
         default:
-
-            LE_FATAL("Unimplemented action.");
             break;
     }
-
-    ExitTool(EXIT_SUCCESS);
 }

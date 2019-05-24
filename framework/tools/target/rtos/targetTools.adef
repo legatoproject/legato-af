@@ -10,7 +10,10 @@ executables:
 {
     legato = (legato)
 
-#if ${CONFIG_RTOS_TARGET_TOOL_INSPECT} = y
+#if ${LE_CONFIG_RTOS_TARGET_TOOL_INSPECT} = y
     inspect = (inspect)
+#endif
+#if ${LE_CONFIG_RPC} = y
+    rpctool = (rpctool)
 #endif
 }

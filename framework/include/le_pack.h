@@ -479,11 +479,13 @@ LE_DECLARE_INLINE bool le_pack_PackTaggedUint32Tuple
     TagID_t tagId
 )
 {
-    le_pack_PackTagID(bufferPtr, tagId);
     if (size > UINT32_MAX)
     {
         return false;
     }
+
+    le_pack_PackTagID(bufferPtr, tagId);
+
     uint32_t newSize = htobe32(size);
     LE_PACK_PACK_SIMPLE_VALUE(newSize);
 
@@ -511,12 +513,14 @@ LE_DECLARE_INLINE bool le_pack_PackTaggedUint64Tuple
     TagID_t tagId
 )
 {
-    le_pack_PackTagID(bufferPtr, tagId);
-    if (size > UINT32_MAX)
+   if (size > UINT32_MAX)
     {
         return false;
     }
-    uint32_t newSize = htobe32(size);
+
+    le_pack_PackTagID(bufferPtr, tagId);
+
+     uint32_t newSize = htobe32(size);
     LE_PACK_PACK_SIMPLE_VALUE(newSize);
 
     uint64_t newValue = htobe64(value);

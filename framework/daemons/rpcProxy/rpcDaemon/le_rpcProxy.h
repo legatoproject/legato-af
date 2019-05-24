@@ -17,19 +17,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Definition to enable the RPC Proxy to be built to use local-service messaging
- */
-//--------------------------------------------------------------------------------------------------
-#ifdef LE_CONFIG_RPC
-#if defined (LE_CONFIG_RTOS) || defined(LE_CONFIG_RPC_PROXY_LIBRARY)
-// Enable RPC Proxy to use local-service messaging
-#define RPC_PROXY_LOCAL_SERVICE      1
-#endif
-#endif
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Maximum number of simultaneous service bindings hosted by the RPC Proxy.
  */
 //--------------------------------------------------------------------------------------------------
@@ -379,6 +366,16 @@ void rpcProxy_ProxyMessageTimerExpiryHandler
  */
 //--------------------------------------------------------------------------------------------------
 le_hashmap_Ref_t rpcProxy_GetExpiryTimerRefByProxyId
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function for retrieving the Service-ID Hash-map reference.
+ */
+//--------------------------------------------------------------------------------------------------
+le_hashmap_Ref_t rpcProxy_GetServiceIDMapByName
 (
     void
 );

@@ -137,16 +137,24 @@ __attribute__((constructor))
 static void networkSocketInitialize(void)
 {
     LE_INFO("RPC Network Socket Init start");
-    HandleRecordPoolRef = le_mem_InitStaticPool(HandleRecordPool,
-                                                NETWORK_SOCKET_HANDLE_RECORD_MAX,
-                                                sizeof(HandleRecord_t));
 
-    // Create hash map for storing the handle record (value) using the FD (key)
-    HandleRecordByFileDescriptor = le_hashmap_InitStatic(
-                                       HandleRecordByFileDescriptorHashMap,
-                                       NETWORK_SOCKET_HANDLE_RECORD_MAX,
-                                       le_hashmap_HashVoidPointer,
-                                       le_hashmap_EqualsVoidPointer);
+    if (HandleRecordPoolRef == NULL)
+    {
+        // NOTE: Must be performed once.
+        HandleRecordPoolRef = le_mem_InitStaticPool(HandleRecordPool,
+                                                    NETWORK_SOCKET_HANDLE_RECORD_MAX,
+                                                    sizeof(HandleRecord_t));
+    }
+
+    if (HandleRecordByFileDescriptor == NULL) {
+        // Create hash map for storing the handle record (value) using the FD (key)
+        // NOTE: Must be performed once.
+        HandleRecordByFileDescriptor = le_hashmap_InitStatic(
+                                           HandleRecordByFileDescriptorHashMap,
+                                           NETWORK_SOCKET_HANDLE_RECORD_MAX,
+                                           le_hashmap_HashVoidPointer,
+                                           le_hashmap_EqualsVoidPointer);
+    }
 
     LE_INFO("RPC Network Socket Init done");
 }
@@ -161,9 +169,6 @@ static void networkSocketInitialize(void)
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-#ifdef RPC_PROXY_LOCAL_SERVICE
-    networkSocketInitialize();
-#endif
 }
 
 
@@ -303,6 +308,9 @@ LE_SHARED void* le_comm_Create
         LE_ERROR("resultPtr is NULL");
         return NULL;
     }
+
+    // Check if Communication Globals need initialization
+    networkSocketInitialize();
 
     if (!le_hashmap_isEmpty(HandleRecordByFileDescriptor))
     {

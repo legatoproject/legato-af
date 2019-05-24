@@ -508,7 +508,8 @@ void GenerateRtosRpcServices
             "};\n"
             "\n"
             "LE_MEM_DEFINE_STATIC_POOL(" << externClientEntry.first << "Messages, 1,"
-            " IFGEN_" << defaultCapsPrefix << "_LOCAL_MSG_SIZE);\n"
+            " IFGEN_" << defaultCapsPrefix << "_LOCAL_MSG_SIZE +\n"
+            "                          LE_MSG_LOCAL_HEADER_SIZE);\n"
             "\n";
     }
     outputFile <<
@@ -596,7 +597,8 @@ void GenerateRtosRpcServices
         outputFile <<
             "    le_mem_PoolRef_t serverMsgPoolRef = \n"
             "        le_mem_InitStaticPool(" << externClientEntry.first << "Messages, 1, IFGEN_"
-                   << defaultCapsPrefix << "_LOCAL_MSG_SIZE);\n"
+                   << defaultCapsPrefix << "_LOCAL_MSG_SIZE +\n"
+            "                              LE_MSG_LOCAL_HEADER_SIZE);\n"
             "\n"
             "    return le_msg_InitLocalService(&"
                    << ConvertInterfaceNameToSymbol(externClientEntry.second->name)

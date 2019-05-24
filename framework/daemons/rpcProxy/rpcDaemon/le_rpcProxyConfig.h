@@ -34,38 +34,38 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Ptr to the RPC Proxy Bindings Configuration Tree Node.
+ * RPC Proxy Bindings Configuration Tree Node.
  */
 //--------------------------------------------------------------------------------------------------
-#define RPC_PROXY_CONFIG_BINDINGS_TREE_NODE  "rpcProxy/bindings"
+#define RPC_PROXY_CONFIG_BINDINGS_TREE_NODE  "system:/rpcProxy/bindings"
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Ptr to the RPC Proxy Systems Configuration Tree Node.
+ * RPC Proxy Systems Configuration Tree Node.
  */
 //--------------------------------------------------------------------------------------------------
-#define RPC_PROXY_CONFIG_SYSTEMS_TREE_NODE   "rpcProxy/systems"
+#define RPC_PROXY_CONFIG_SYSTEMS_TREE_NODE   "system:/rpcProxy/systems"
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Ptr to the RPC Proxy System-links Framework Configuration Tree Node.
+ * RPC Proxy System-links Framework Configuration Tree Node.
  */
 //--------------------------------------------------------------------------------------------------
-#define RPC_PROXY_CONFIG_SYSTEM_LINKS_TREE_NODE  "framework/systemLinks"
+#define RPC_PROXY_CONFIG_SYSTEM_LINKS_TREE_NODE  "system:/framework/systemLinks"
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Ptr to the RPC Proxy Client-Reference Framework Configuration Tree Node.
+ * RPC Proxy Client-Reference Framework Configuration Tree Node.
  */
 //--------------------------------------------------------------------------------------------------
-#define RPC_PROXY_CONFIG_CLIENT_REFERENCES_TREE_NODE  "framework/clientReferences"
+#define RPC_PROXY_CONFIG_CLIENT_REFERENCES_TREE_NODE  "system:/framework/clientReferences"
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Ptr to the RPC Proxy Server-Reference Framework Configuration Tree Node.
+ * RPC Proxy Server-Reference Framework Configuration Tree Node.
  */
 //--------------------------------------------------------------------------------------------------
-#define RPC_PROXY_CONFIG_SERVER_REFERENCES_TREE_NODE  "framework/serverReferences"
+#define RPC_PROXY_CONFIG_SERVER_REFERENCES_TREE_NODE  "system:/framework/serverReferences"
 
 
 

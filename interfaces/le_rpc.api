@@ -31,6 +31,19 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Network states.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM NetworkState
+{
+    NETWORK_UNKNOWN, ///< Network link state not known
+    NETWORK_UP,      ///< Network link state is up
+    NETWORK_DOWN     ///< Network link state is down
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Interface name string length.
  */
 //--------------------------------------------------------------------------------------------------
@@ -46,7 +59,7 @@ DEFINE  LIMIT_MAX_IPC_INTERFACE_NAME_BYTES = 128;
  *      LE_OK if successful, error otherwise.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t SetBinding
+FUNCTION le_result_t SetSystemBinding
 (
     string serviceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,  ///< External Interface-Name
     string systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,   ///< Remote System-Name
@@ -61,11 +74,12 @@ FUNCTION le_result_t SetBinding
  *      LE_OK if successful.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t GetBinding
+FUNCTION le_result_t GetSystemBinding
 (
     string serviceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,   ///< External RPC Interface-Name
     string systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT,   ///< Remote System-Name
-    string remoteServiceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT ///< Remote RPC Interface-Name
+    string remoteServiceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT, ///< Remote RPC Interface-Name
+    uint32 serviceId OUT ///< Service-ID (Non-zero if successfully connected, zero otherwise)
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -76,7 +90,7 @@ FUNCTION le_result_t GetBinding
  *      LE_OK if successful, error otherwise.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t ResetBinding
+FUNCTION le_result_t ResetSystemBinding
 (
     string serviceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN  ///< External RPC Interface-Name
 );
@@ -92,7 +106,7 @@ FUNCTION le_result_t ResetBinding
  *  - LE_NOT_FOUND if the resource doesn't have any children.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t GetFirstBinding
+FUNCTION le_result_t GetFirstSystemBinding
 (
     string serviceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT  ///< External RPC Interface-Name
 );
@@ -108,7 +122,7 @@ FUNCTION le_result_t GetFirstBinding
  *  - LE_NOT_FOUND if the resource is the last child in its parent's list of children.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t GetNextBinding
+FUNCTION le_result_t GetNextSystemBinding
 (
     string currentServiceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,
         ///< External RPC Interface-Name of current binding.
@@ -130,8 +144,7 @@ FUNCTION le_result_t SetSystemLink
 (
     string systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN, ///< Remote System-Name
     string linkName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,   ///< System Link-Name
-    string nodeName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,   ///< Configuration Node-Name
-    string nodeValue[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN   ///< Configuration Node-Value
+    string parameters[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN  ///< Parameters
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -145,9 +158,9 @@ FUNCTION le_result_t SetSystemLink
 FUNCTION le_result_t GetSystemLink
 (
     string systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN, ///< Remote System-Name
-    string linkName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,   ///< System Link-Name
-    string nodeName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,   ///< Configuration Node-Name
-    string nodeValue[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT  ///< Configuration Node-Value
+    string linkName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT,  ///< System Link-Name
+    string parameters[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT, ///< Parameters
+    NetworkState state OUT  ///< Current Network Link State
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -165,7 +178,7 @@ FUNCTION le_result_t ResetSystemLink
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the Node-Name of the first system-link in the RPC Configuration tree.
+ * Gets the first system-link in the RPC Configuration tree.
  *
  * @return
  *  - LE_OK if successful
@@ -175,15 +188,13 @@ FUNCTION le_result_t ResetSystemLink
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetFirstSystemLink
 (
-    string systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT,  ///< System-Name
-    string linkName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT,    ///< System Link-Name
-    string nodeName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT     ///< Configuration Node-Name
+    string systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT  ///< System-Name
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the Node-Name of the next system-link in the RPC Configuration tree.
+ * Gets the next system-link in the RPC Configuration tree.
  *
  * @return
  *  - LE_OK if successful
@@ -194,11 +205,5 @@ FUNCTION le_result_t GetFirstSystemLink
 FUNCTION le_result_t GetNextSystemLink
 (
     string currentSystemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,  ///< Current System-Name
-    string currentLinkName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,    ///< Current System Link-Name
-    string currnetNodeName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] IN,
-        ///< Current configuration Node-Name
-    string nextSystemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT,    ///< Next System-Name
-    string nextLinkName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT,      ///< Next Link-Name
-    string nextNodeName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT
-        ///< Next configuration Node-Name
+    string nextSystemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES] OUT    ///< Next System-Name
 );

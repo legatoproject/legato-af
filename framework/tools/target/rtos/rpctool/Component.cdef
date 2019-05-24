@@ -1,0 +1,18 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * Component definition for the RPC Configuration command-line tool.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+sources:
+{
+    tool.c
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/framework/liblegato
+    -I$LEGATO_ROOT/framework/daemons/rtos/microSupervisor
+}
