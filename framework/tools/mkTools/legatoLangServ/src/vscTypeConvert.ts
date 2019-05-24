@@ -15,6 +15,7 @@ import * as path from 'path';
 
 import * as model from './model/annotatedModel';
 import * as loader from './model/loader';
+import * as jdoc from "./model/jsonDocument";
 import * as ext from './lspExtensionDefs';
 
 
@@ -46,7 +47,7 @@ export class DefinitionObject implements ext.le_DefinitionObject
     public kind: ext.le_DefinitionObjectType;
     public detail?: string;
 
-    public defaultCollapsed?: boolean;
+    public defaultCollapsed: boolean;
 
     public defPath: string;
     public children?: ext.le_DefinitionObject[];
@@ -56,7 +57,7 @@ export class DefinitionObject implements ext.le_DefinitionObject
 
     public constructor(type: ext.le_DefinitionObjectType, name: string, path: string,
                        start: loader.Location, end: loader.Location,
-                       defaultCollapsed?: boolean)
+                       defaultCollapsed: boolean = undefined)
     {
         let newRange = lsp.Range.create(start.line - 1, start.column, end.line - 1, end.column + 1);
 
@@ -67,13 +68,43 @@ export class DefinitionObject implements ext.le_DefinitionObject
         this.range = newRange;
         this.selectionRange = newRange;
 
-        if (defaultCollapsed !== undefined)
+        if (defaultCollapsed === undefined)
         {
             this.defaultCollapsed = true;
+        }
+        else
+        {
+            this.defaultCollapsed = defaultCollapsed;
         }
 
         this.children = [];
     }
+}
+
+
+
+function SourcesAsSymbols(component: model.Component): ext.le_DefinitionObject[]
+{
+    let sources: ext.le_DefinitionObject[] = [];
+
+    for (let section of component.sourcesSections)
+    {
+        for (let source of section.sources)
+        {
+            let location = new loader.Location(source.path, 0, 0);
+            let sourceRef = new DefinitionObject(ext.le_DefinitionObjectType.Source,
+                                                 path.basename(source.name),
+                                                 source.path,
+                                                 location,
+                                                 location);
+
+            sourceRef.children = undefined;
+
+            sources.push(sourceRef);
+        }
+    }
+
+    return sources;
 }
 
 
@@ -85,39 +116,32 @@ export class DefinitionObject implements ext.le_DefinitionObject
 //--------------------------------------------------------------------------------------------------
 function ComponentsAsSymbols(componentSections: model.ComponentSection[]): DefinitionObject[]
 {
-    let sectionMap: { [index: string]: DefinitionObject } = {};
+    let componentList: DefinitionObject[] = [];
 
     for (let componentSection of componentSections)
     {
-        let section = sectionMap[componentSection.location.file];
-
-        if (section === undefined)
-        {
-            section = new DefinitionObject(ext.le_DefinitionObjectType.DefSection,
-                                           'components',
-                                           componentSection.location.file,
-                                           componentSection.location,
-                                           componentSection.endLocation);
-
-            sectionMap[componentSection.location.file] = section;
-        }
-
         for (let component of componentSection.components)
         {
+            let location = new loader.Location(component.target.path, 0, 0);
+            let comp = new DefinitionObject(ext.le_DefinitionObjectType.ComponentRef,
+                                            component.name,
+                                            component.target.path,
+                                            location,
+                                            location,
+                                            true);
+            comp.children = SourcesAsSymbols(component.target);
 
-            let sym = new DefinitionObject(ext.le_DefinitionObjectType.ComponentRef,
-                                           component.name,
-                                           component.location.file,
-                                           component.location,
-                                           new loader.Location(component.name,
-                                                               component.location.line,
-                                                               component.location.column +
-                                                                   component.name.length));
-            section.children.push(sym);
+            if (   (comp.children !== undefined)
+                && (comp.children.length === 0))
+            {
+                comp.children = undefined;
+            }
+
+            componentList.push(comp);
         }
     }
 
-    return Object.keys(sectionMap).map(key => sectionMap[key]);
+    return componentList;
 }
 
 
@@ -165,7 +189,6 @@ function ExecutablesAsSymbols(executableSections: model.ExecutableSection[]): De
 
 
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Convert a collection of application references into symbol objects.  The apps are grouped by
@@ -187,18 +210,11 @@ function AppsAsSymbols(flags: ConversionFlags,
 
         if (section === undefined)
         {
-            let defaultCollapsed = undefined;
+            let defaultCollapsed: boolean = false;
 
-            if (flags.supportsDefaultCollapsed)
+            if (appSection.location.file !== systemPath)
             {
-                if (appSection.location.file !== systemPath)
-                {
-                    defaultCollapsed = true;
-                }
-                else
-                {
-                    defaultCollapsed = false;
-                }
+                defaultCollapsed = true;
             }
 
             section = new DefinitionObject(ext.le_DefinitionObjectType.DefSection,
@@ -220,25 +236,15 @@ function AppsAsSymbols(flags: ConversionFlags,
                                            start,
                                            start);
 
-            // Disabled for initial commit, will be re-enabled once the model loading stablity is
-            // fixed.
+            if (appRef.target !== undefined)
+            {
+                let components = ComponentsAsSymbols(appRef.target.componentSections);
 
-            // if (appRef.target !== undefined)
-            // {
-            //     let components = ComponentsAsSymbols(appRef.target.componentSections);
-            //
-            //     if (components.length > 0)
-            //     {
-            //         sym.children = sym.children.concat(components);
-            //     }
-            //
-            //     let executables = ExecutablesAsSymbols(appRef.target.executableSections);
-            //
-            //     if (executables.length > 0)
-            //     {
-            //         sym.children = sym.children.concat(executables);
-            //     }
-            // }
+                if (components.length > 0)
+                {
+                    sym.children = sym.children.concat(components);
+                }
+            }
 
             section.children.push(sym);
         }
@@ -248,9 +254,44 @@ function AppsAsSymbols(flags: ConversionFlags,
         (key):DefinitionObject =>
         {
             return sectionMap[key];
+        })
+        .filter(
+            (defObject: DefinitionObject): boolean =>
+            {
+                if (defObject.children.length === 0)
+                {
+                    return false;
+                }
+
+                return true;
+            });
+}
+
+
+
+function ModulesAsSymbols(systemPath: string, modules: jdoc.Module[]): DefinitionObject
+{
+    let newModules = modules.map((module: jdoc.Module): DefinitionObject =>
+        {
+            let location = new loader.Location(module.path, 0, 0);
+
+            return new DefinitionObject(ext.le_DefinitionObjectType.KernelRef,
+                                        module.name,
+                                        module.path,
+                                        location,
+                                        location);
         });
 
-//    return Object.keys(sectionMap).map(key => sectionMap[key]);
+    let location = new loader.Location(systemPath, 0, 0);
+    let moduleCollection = new DefinitionObject(ext.le_DefinitionObjectType.KernelRef,
+                                                "Kernel Modules",
+                                                systemPath,
+                                                location,
+                                                location);
+
+    moduleCollection.children = newModules;
+
+    return moduleCollection;
 }
 
 
@@ -261,16 +302,19 @@ function AppsAsSymbols(flags: ConversionFlags,
  * logical model will be represented by this object's children collection.
  */
 //--------------------------------------------------------------------------------------------------
-export function SystemAsSymbol(flags: ConversionFlags, system: model.System): DefinitionObject
+export function SystemAsSymbol(flags: ConversionFlags, system: model.System,
+                               modules: jdoc.Module[]): DefinitionObject
 {
     let start = new loader.Location(system.path, 0, 0);
     let symbol = new DefinitionObject(ext.le_DefinitionObjectType.DefinitionFile,
                                       system.name,
                                       system.path,
                                       start,
-                                      start);
+                                      start,
+                                      false);
 
     symbol.children = AppsAsSymbols(flags, system.path, system.appSections);
+    symbol.children.push(ModulesAsSymbols(system.path, modules));
 
     return symbol;
 }

@@ -92,7 +92,9 @@ export enum le_DefinitionObjectType
     DefSection     = lsp.SymbolKind.Namespace,
     ApplicationRef = lsp.SymbolKind.Interface,
     ComponentRef   = lsp.SymbolKind.Class,
-    ApiRef         = lsp.SymbolKind.Function
+    KernelRef      = lsp.SymbolKind.Struct,
+    ApiRef         = lsp.SymbolKind.Function,
+    Source         = lsp.SymbolKind.Method,
 }
 
 /**

@@ -686,6 +686,27 @@ static data::Value_t ModelApp
             },
 
             {
+                "executables",
+                JsonArray<model::Exe_t*>(appPtr->executables,
+                    [](model::Exe_t* executablePtr)
+                    {
+                        return data::Object_t
+                            {
+                                { "name", executablePtr->name },
+                                { "path", executablePtr->path },
+                                {
+                                    "components",
+                                    JsonArray<model::ComponentInstance_t*>(executablePtr->componentInstances,
+                                        [](model::ComponentInstance_t* instancePtr)
+                                        {
+                                            return Cache.Append(instancePtr->componentPtr);
+                                        })
+                                }
+                            };
+                    })
+            },
+
+            {
                 "bundled",
                 data::Object_t
                 {
@@ -860,7 +881,11 @@ static data::Value_t ModelModule
 {
     Cache.Append(modulePtr->defFilePtr);
 
-    return data::Object_t { { "name", modulePtr->name } };
+    return data::Object_t
+        {
+            { "name", modulePtr->name },
+            { "path", modulePtr->defFilePtr->path }
+        };
 }
 
 

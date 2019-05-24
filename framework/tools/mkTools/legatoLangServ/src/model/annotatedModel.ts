@@ -88,6 +88,7 @@ export enum SectionType
     bundlesSection = 'bundles',
     cFlags = 'cFlags',
     commands = 'commands',
+    sources = 'sources',
     components = 'components',
     componentSearch = 'componentSearch',
     cxxFlags = 'cxxFlags',
@@ -931,31 +932,130 @@ export class DefFile
 
 //--------------------------------------------------------------------------------------------------
 /**
- * .
+ * What kind of code is being represented here?
  */
 //--------------------------------------------------------------------------------------------------
-export class Component extends DefFile
+export enum SourceType
 {
+    C,   // C code.
+    Cpp  // C++ code.
 }
 
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * .
+ * Represents a source object contained within a component.
+ */
+//--------------------------------------------------------------------------------------------------
+export class Source extends NamedDefObject
+{
+    /** Path to the source code file. */
+    path: string;
+
+    /** The kind of source code we're referring to. */
+    type: SourceType;
+
+    constructor(location: Location, path: string, type: SourceType)
+    {
+        super(path, location);
+        this.path = path;
+        this.type = type;
+    }
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Represent the source code section within a component.
+ */
+//--------------------------------------------------------------------------------------------------
+export class SourceSection extends DefSection
+{
+    /** List of source code files for the enclosing component. */
+    public sources: Source[];
+
+    constructor(location: BlockMatchLocation, sources: Source[])
+    {
+        super(SectionType.sources, location);
+        this.sources = sources;
+    }
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * A Legato component.
+ */
+//--------------------------------------------------------------------------------------------------
+export class Component extends DefFile
+{
+    // List of all the source sections found in the component.
+    public sourcesSections: SourceSection[];
+
+    /**
+     * Construct a new component definition object.
+     *
+     * @param filePath Path to the component definition file.
+     * @param name Name of the app.  If the name is not supplied, the file name is used.
+     */
+    public constructor(filePath: string, name?: string)
+    {
+        if (name === undefined)
+        {
+            name = path.basename(filePath, path.extname(filePath));
+        }
+
+        super(DefType.componentDef, filePath, name);
+
+        this.sourcesSections = [];
+    }
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * A Legato application.
  */
 //--------------------------------------------------------------------------------------------------
 export class Application extends DefFile
 {
+    /** Application properties, ie, isSandboxed, etc. */
     public properties: PropertyCollection;
+
+    /** Bundled components within the application. */
     public componentSections: ComponentSection[];
+
+    /** Legato executables generated for the application. */
     public executableSections: ExecutableSection[];
+
+    /** The processes to be launched with the application. */
     public processSections: ProcessSection[];
+
+    /** Resources that the application requires from the system it runs on. */
     public requiresSections: RequiresSection[];
+
+    /** Resources that the application will bundle with it. */
     public bundlesSections: BundlesSection[];
+
+    /** Bindings of this application's executables/components to other Legato services. */
     public bindingsSections: BindingsSection[];
+
+    /**
+     * The interfaces that this application is making available to other applications within it's
+     * system.
+     */
     public externSections: ExternSection[];
 
+    /**
+     * Construct a new application definition object.
+     *
+     * @param filePath Path to the application definition file.
+     * @param name Name of the app.  If the name is not supplied, the file name is used.
+     */
     public constructor(filePath: string, name?: string)
     {
         if (name === undefined)
@@ -976,23 +1076,27 @@ export class Application extends DefFile
         this.externSections = [];
     }
 
+    /**
+     * Set the path to the application's .adef.  The name property is updated as well from the file
+     * name.
+     */
     public setPath(filePath: string)
     {
         super.path = filePath;
         super.name = path.basename(filePath, path.extname(filePath));
     }
 
+    /**
+     * Append a definition file section to the application model.
+     */
     public appendSection(newSection: DefSection)
     {
-console.log('### Application.appendSection');
         if (newSection instanceof ComponentSection)
         {
-console.log('###      ComponentSection');
             this.componentSections.push(newSection);
         }
         else if (newSection instanceof ExecutableSection)
         {
-console.log('###      ExecutableSection');
             this.executableSections.push(newSection);
         }
     }
@@ -1002,7 +1106,7 @@ console.log('###      ExecutableSection');
 
 //--------------------------------------------------------------------------------------------------
 /**
- * .
+ * Represent a Legato Kernel module.
  */
 //--------------------------------------------------------------------------------------------------
 export class KernelModule extends DefFile
@@ -1013,17 +1117,32 @@ export class KernelModule extends DefFile
 
 //--------------------------------------------------------------------------------------------------
 /**
- * .
+ * Represent a Legato system definition.
  */
 //--------------------------------------------------------------------------------------------------
 export class System extends DefFile
 {
+    /** The search paths for applications, interfaces, components, APIs and modules. */
     public searchPathSections: SearchPathSection[];
+
+    /** List of sections that contain user defined build variables. */
     public buildVarSections: BuildVarSection[];
+
+    /** Sections that hold the application references to be contained within this system. */
     public appSections: SystemAppsSection[];
+
+    /** Application commands to be added to the module's command line path. */
     public commandSections: CommandSection[];
+
+    /** Kernel modules to be bundled with this system. */
     public moduleSections: KernelModuleSection[];
 
+    /**
+     * Construct a new Legato system model object.
+     *
+     * @param filePath Path to the system definition file.
+     * @param name Name of the new system.  If not supplied, the file name is used.
+     */
     public constructor(filePath: string, name?: string)
     {
         if (name === undefined)
@@ -1040,6 +1159,10 @@ export class System extends DefFile
         this.moduleSections = [];
     }
 
+    /**
+     * Append definition sections to the system definition object.  This is normally used during
+     * model loading only.
+     */
     public appendSection(newSection: DefSection)
     {
         interface AddMap
