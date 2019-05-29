@@ -100,6 +100,16 @@ void GenerateRtosSystemTasks
     const mk::BuildParams_t& buildParams
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate a cli_commands.h for commands in a given system.
+ */
+//--------------------------------------------------------------------------------------------------
+void GenerateRtosCliCommandRegistration
+(
+    model::System_t         *systemPtr,     ///< System model.
+    const mk::BuildParams_t &buildParams    ///< Build properties.
+);
 
 //--------------------------------------------------------------------------------------------------
 /**

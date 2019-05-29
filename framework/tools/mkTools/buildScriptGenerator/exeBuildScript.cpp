@@ -79,13 +79,6 @@ void ExeBuildScriptGenerator_t::GenerateCandCxxFlags
     // Define the component name
     std::string componentName = exePtr->name + "_exe";
     script << " -DLE_COMPONENT_NAME=" << componentName;
-
-    // Define the COMPONENT_INIT.
-    script << " \"-DCOMPONENT_INIT=LE_CI_LINKAGE LE_SHARED"
-              " void _" << componentName << "_COMPONENT_INIT()\""
-           << " \"-DCOMPONENT_INIT_ONCE=LE_CI_LINKAGE LE_SHARED void "
-           << componentName << "_COMPONENT_INIT_ONCE()\"";
-
 }
 
 

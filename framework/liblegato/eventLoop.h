@@ -16,16 +16,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Component Initialization Function.
- *
- * All component initialization functions must conform to this prototype
- * (no parameters, no return value).
- */
-//--------------------------------------------------------------------------------------------------
-typedef void (*event_ComponentInitFunc_t)(void);
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Initialize the Event Loop module.
  *
  * This function must be called exactly once at process start-up, before any other Event module
@@ -69,23 +59,6 @@ void event_ThreadInit
 (
     void
 );
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Defer the component initializer for later execution.
- *
- * This function must be called at process start-up, before le_event_Runloop() is called for the
- * main thread.
- *
- * It takes a pointer to a Component Initialization Functions to be called when the event loop is
- * started (i.e., when le_event_RunLoop() is called) for the process's main thread.
- */
-//--------------------------------------------------------------------------------------------------
-void event_QueueComponentInit
-(
-    const event_ComponentInitFunc_t func    /// The initialization function to call.
-);
-
 
 //--------------------------------------------------------------------------------------------------
 /**

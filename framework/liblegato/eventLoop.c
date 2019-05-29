@@ -861,28 +861,6 @@ void event_ThreadInit
     fa_event_ThreadInit(thread_GetEventRecPtr());
 }
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Defer the component initializer for later execution.
- *
- * This function must be called at process start-up, before le_event_Runloop() is called for the
- * main thread.
- *
- * It takes a pointer to a Component Initialization Functions to be called when the event loop is
- * started (i.e., when le_event_RunLoop() is called) for the process's main thread.
- */
-//--------------------------------------------------------------------------------------------------
-void event_QueueComponentInit
-(
-    const event_ComponentInitFunc_t func    /// The initialization function to call.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    le_event_QueueFunction(CallComponentInitializer, func, NULL);
-}
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Destruct the Event Loop for a given thread.
