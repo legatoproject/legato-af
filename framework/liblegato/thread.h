@@ -10,7 +10,6 @@
 #ifndef THREAD_INCLUDE_GUARD
 #define THREAD_INCLUDE_GUARD
 
-#include "cdata.h"
 #include "eventLoop.h"
 #include "mutex.h"
 #include "semaphores.h"
@@ -53,16 +52,16 @@ typedef struct
     }
     state;
 
-    le_thread_MainFunc_t    mainFunc;       ///< The main function for the thread.
-    void*                   context;        ///< Context value to be passed to mainFunc.
-    le_dls_List_t           destructorList; ///< The destructor list for this thread.
-    mutex_ThreadRec_t       mutexRec;       ///< The thread's mutex record.
-    sem_ThreadRec_t         semaphoreRec;   ///< the thread's semaphore record.
-    event_PerThreadRec_t*   eventRecPtr;    ///< The thread's event record.
-    const cdata_ThreadRec_t* cdataRecPtr;   ///< The thread's current component instances.
-    pthread_t               threadHandle;   ///< The pthreads thread handle.
-    le_thread_Ref_t         safeRef;        ///< Safe reference for this object.
-    timer_ThreadRec_t*      timerRecPtr[TIMER_TYPE_COUNT]; ///< The thread's timer records.
+    le_thread_MainFunc_t         mainFunc;          ///< The main function for the thread.
+    void                        *context;           ///< Context value to be passed to mainFunc.
+    le_dls_List_t                destructorList;    ///< The destructor list for this thread.
+    mutex_ThreadRec_t            mutexRec;          ///< The thread's mutex record.
+    sem_ThreadRec_t              semaphoreRec;      ///< the thread's semaphore record.
+    event_PerThreadRec_t        *eventRecPtr;       ///< The thread's event record.
+    const _le_cdata_ThreadRec_t *cdataRecPtr;       ///< The thread's current component instances.
+    pthread_t                    threadHandle;      ///< The pthreads thread handle.
+    le_thread_Ref_t              safeRef;           ///< Safe reference for this object.
+    timer_ThreadRec_t           *timerRecPtr[TIMER_TYPE_COUNT]; ///< The thread's timer records.
 }
 thread_Obj_t;
 
@@ -189,28 +188,6 @@ event_PerThreadRec_t* thread_GetOtherEventRecPtr
 timer_ThreadRec_t* thread_GetTimerRecPtr
 (
     timer_Type_t timerType
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the calling thread's component instance data record.
- */
-//--------------------------------------------------------------------------------------------------
-const cdata_ThreadRec_t* thread_GetCDataInstancePtr
-(
-    void
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Sets the calling thread's component instance data record.
- */
-//--------------------------------------------------------------------------------------------------
-void thread_SetCDataInstancePtr
-(
-    const cdata_ThreadRec_t* cdataPtr
 );
 
 //--------------------------------------------------------------------------------------------------

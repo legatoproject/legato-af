@@ -10,12 +10,7 @@
 
 #include "legato.h"
 
-#include "../liblegato/eventLoop.h"
-#include "../liblegato/log.h"
-
-#ifndef NO_LOG_CONTROL
-#   include "../liblegato/linux/logPlatform.h"
-#endif
+extern COMPONENT_INIT;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -25,15 +20,13 @@
 le_log_SessionRef_t LE_LOG_SESSION;
 le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 
-void _le_event_InitializeComponent(void);
-
 int main(int argc, const char* argv[])
 {
     le_arg_SetArgs((size_t)argc, argv);
 
     LE_DEBUG("== Starting Executable '%s' ==", STRINGIZE(LE_EXECUTABLE_NAME));
 
-    LE_LOG_SESSION = log_RegComponent( STRINGIZE(LE_COMPONENT_NAME), &LE_LOG_LEVEL_FILTER_PTR);
+    LE_LOG_SESSION = le_log_RegComponent(STRINGIZE(LE_COMPONENT_NAME), &LE_LOG_LEVEL_FILTER_PTR);
 
     // Connect to the Log Control Daemon.
     // The sooner we can connect to the Log Control Daemon, the better, because that is when
@@ -44,15 +37,14 @@ int main(int argc, const char* argv[])
     // connect to the Log Control Daemon either.  Besides, the Service Directory starts before
     // the Log Control Daemon starts.
 #ifndef NO_LOG_CONTROL
-    log_ConnectToControlDaemon();
+    le_log_ConnectToControlDaemon();
 #endif
 
     //@todo: Block all signals that the user intends to handle with signal events.
 
     // Queue up all the component initialization functions to be called by the Event Loop after
     // it processes any messages that were received from the Log Control Daemon.
-    event_QueueComponentInit(_le_event_InitializeComponent);
-
+    le_event_QueueFunction(&COMPONENT_INIT_NAME, NULL, NULL);
 
     LE_DEBUG("== Starting Event Processing Loop ==");
 

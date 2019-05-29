@@ -102,8 +102,6 @@ void GenerateRtosComponentMainFile
     // Add the component-specific info now (if not already present)
     componentPtr->SetTargetInfo(new target::RtosComponentInfo_t(componentPtr, buildParams));
 
-    std::string componentInitFuncName = componentPtr->initFuncName;
-
     // Compute the path to the output file.
     std::string outputDir = path::Minimize(buildParams.workingDir
                                         + '/'
@@ -138,7 +136,6 @@ void GenerateRtosComponentMainFile
                   " */\n"
                   "\n"
                   "#include \"legato.h\"\n"
-                  "#include \"../liblegato/eventLoop.h\"\n"
                   "\n";
 
     // For each of the component's client-side interfaces,
@@ -163,10 +160,10 @@ void GenerateRtosComponentMainFile
 
     fileStream << "\n"
                   "// Component instance initialization function (COMPONENT_INIT).\n"
-                  "void " << componentInitFuncName << "(void);\n"
+                  "COMPONENT_INIT;\n"
                   "// One-time component initalization function (COMPONENT_INIT_ONCE).\n"
                   "__attribute__((weak))\n"
-                  "void " << componentInitFuncName << "_ONCE(void)\n"
+                  "COMPONENT_INIT_ONCE\n"
                   "{\n"
                   "}\n"
                   "\n"
@@ -191,7 +188,7 @@ void GenerateRtosComponentMainFile
                   "    // Perform one-time initialization\n"
                   "    if (!ComponentOnceInit)\n"
                   "    {\n"
-                  "        " << componentInitFuncName << "_ONCE();\n"
+                  "        COMPONENT_INIT_ONCE_NAME(NULL, NULL);\n"
                   "        ComponentOnceInit = true;\n"
                   "    }\n"
                   "}\n"
@@ -212,7 +209,8 @@ void GenerateRtosComponentMainFile
                   "    // clients can start queueing messages. That can lead to a race\n"
                   "    // condition where a client's IPC message is processed before COMPONENT_INIT\n"
                   "    // had a chance to run\n"
-                  "    event_QueueComponentInit(" << componentInitFuncName << ");\n\n";
+                  "    le_event_QueueFunction(&COMPONENT_INIT_NAME, NULL, "
+                    "NULL);\n\n";
 
 
     // Queue the initialization function to the event loop.
@@ -316,7 +314,6 @@ void GenerateRtosExeMain
     {
         exeFullName = "_" + exePtr->name;
     }
-    std::string initFuncName = "_" + exePtr->name + "_COMPONENT_INIT";
     std::string mainFuncName = exeFullName + "_Main";
     std::string serviceInitFuncName =
         exeFullName + "InitEarly";
@@ -349,9 +346,6 @@ void GenerateRtosExeMain
                   "// This is a generated file, do not edit.\n"
                   "\n"
                   "#include \"legato.h\"\n"
-                  "#include \"../liblegato/eventLoop.h\"\n"
-                  "#include \"../liblegato/thread.h\"\n"
-                  "#include \"../liblegato/cdata.h\"\n"
                   "#include \"../daemons/rtos/microSupervisor/microSupervisor.h\"\n"
                   "\n";
 
@@ -409,12 +403,12 @@ void GenerateRtosExeMain
     if ((!exePtr->cObjectFiles.empty()) || (!exePtr->cxxObjectFiles.empty()))
     {
         outputFile << "// Declare default component's COMPONENT_INIT function.\n"
-                      "void " << initFuncName << "(void);\n"
+                      "COMPONENT_INIT;\n"
                       "\n"
                       "\n";
     }
 
-    outputFile << "static const cdata_MapEntry_t componentDataMap[] =\n"
+    outputFile << "static const _le_cdata_MapEntry_t componentDataMap[] =\n"
                   "{\n";
 
     // Declare component instance ID of all shared components
@@ -493,7 +487,7 @@ void GenerateRtosExeMain
                   "\n"
 
     // Set component instance map
-                  "    thread_SetCDataInstancePtr(componentDataMap);\n"
+                  "    _le_thread_SetCDataInstancePtr(componentDataMap);\n"
     // Set arguments
                   "    LE_DEBUG(\"Starting " << mainFuncName << ".  taskInfo=%p with %d arguments\",\n"
                   "             taskInfo, taskInfo->argc);\n"
@@ -556,7 +550,7 @@ void GenerateRtosExeMain
     if ((!exePtr->cObjectFiles.empty()) || (!exePtr->cxxObjectFiles.empty()))
     {
         outputFile << "// Queue the default component's COMPONENT_INIT to Event Loop.\n"
-                      "    event_QueueComponentInit(" << initFuncName << ");\n";
+                      "    le_event_QueueFunction(&COMPONENT_INIT_NAME, NULL, NULL);\n";
     }
 
     // Start the event loop

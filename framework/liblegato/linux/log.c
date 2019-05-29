@@ -743,7 +743,7 @@ void fa_log_Init
     le_mem_ExpandPool(SessionMemPool, 10);  /// @todo Make this configurable.
 
     // Register the framework as a component.
-    LE_LOG_SESSION = log_RegComponent(STRINGIZE(LE_COMPONENT_NAME), &LE_LOG_LEVEL_FILTER_PTR);
+    LE_LOG_SESSION = le_log_RegComponent(STRINGIZE(LE_COMPONENT_NAME), &LE_LOG_LEVEL_FILTER_PTR);
 
     // Load the default list of enabled trace keywords from the environment.
     ReadTraceKeywordsFromEnv();
@@ -777,7 +777,7 @@ void log_ReInit
  * log control tool.
  */
 //--------------------------------------------------------------------------------------------------
-void log_ConnectToControlDaemon
+void le_log_ConnectToControlDaemon
 (
     void
 )
@@ -854,7 +854,7 @@ void log_ConnectToControlDaemon
  *      through a local macro with the name LE_LOG_SESSION.
  */
 //--------------------------------------------------------------------------------------------------
-le_log_SessionRef_t log_RegComponent
+le_log_SessionRef_t le_log_RegComponent
 (
     const char* componentNamePtr,       ///< [IN] A pointer to the component's name.
     le_log_Level_t** levelFilterPtrPtr  ///< [OUT] Set to point to the component's level filter.
