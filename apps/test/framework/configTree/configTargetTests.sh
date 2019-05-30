@@ -159,6 +159,8 @@ TestConfigToolImportExport() {
     # Remove
     ssh root@$targetAddr "$BIN_PATH/config rmtree testcfg"
     CheckRet
+
+    echo "TestConfigToolImportExport passed"
 }
 
 #---------------------------------------------------------------------------------------------------
@@ -168,34 +170,42 @@ TestConfigToolImportExportJSON() {
     echo "*****************  configTree import/export JSON Tests started.  *****************"
 
     # Create/clear empty tree
-    ssh root@$targetAddr "$BIN_PATH/config clear testcfg:/"
+    ssh root@$targetAddr "$BIN_PATH/config clear testcfg"
     CheckRet
 
-    # Add an entry
-    ssh root@$targetAddr "$BIN_PATH/config set testcfg:/mykey myvalue"
+    # Add entries
+    ssh root@$targetAddr "$BIN_PATH/config set testcfg/mykey1 myvalue"
+    ssh root@$targetAddr "$BIN_PATH/config set testcfg/mykey2 myvalue string"
+    ssh root@$targetAddr "$BIN_PATH/config set testcfg/mykey3 true bool"
+    ssh root@$targetAddr "$BIN_PATH/config set testcfg/mykey4 false bool"
+    ssh root@$targetAddr "$BIN_PATH/config set testcfg/mykey5 1025 int"
+    ssh root@$targetAddr "$BIN_PATH/config set testcfg/mykey6 3.1415 float"
     CheckRet
 
     # export as JSON
-    ssh root@$targetAddr "rm -rf /tmp/testcfgjson && $BIN_PATH/config export testcfg:/ /tmp/testcfgjson --format=json"
+    ssh root@$targetAddr "rm -rf /tmp/testcfgjson && $BIN_PATH/config export testcfg /tmp/testcfgjson --format=json"
     CheckRet
     CheckExportedTree "/tmp/testcfgjson"
 
     # Override entry
-    ssh root@$targetAddr "$BIN_PATH/config set testcfg:/mykey newvalue"
+    ssh root@$targetAddr "$BIN_PATH/config set testcfg/mykey1 newvalue"
     CheckRet
 
     # import from JSON
-    ssh root@$targetAddr "$BIN_PATH/config import testcfg:/ /tmp/testcfgjson --format=json"
+    ssh root@$targetAddr "$BIN_PATH/config import testcfg /tmp/testcfgjson --format=json"
     CheckRet
-    ssh root@$targetAddr "test \"\$($BIN_PATH/config get testcfg:/mykey)\" = 'myvalue'"
+
+    ssh root@$targetAddr "test \"\$($BIN_PATH/config get testcfg/mykey1)\" = 'myvalue'"
     CheckRet
 
     # Remove
-    ssh root@$targetAddr "$BIN_PATH/config rmtree testcfg"
+    ssh root@$targetAddr "$BIN_PATH/config delete testcfg"
     CheckRet
+
+    echo "TestConfigToolImportExportJSON passed"
 }
 
-#TestAcl
+TestAcl
 TestConfigToolImportExport
-#TestConfigToolImportExportJSON
+TestConfigToolImportExportJSON
 
