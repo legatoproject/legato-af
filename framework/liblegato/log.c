@@ -216,14 +216,12 @@ void _le_log_ExitFatal
 {
     static bool exitCalled = false;
 
-    if (!__atomic_test_and_set(&exitCalled, __ATOMIC_SEQ_CST))
-    {
-        exit(EXIT_FAILURE);
-    }
-    else
+    if (__atomic_test_and_set(&exitCalled, __ATOMIC_SEQ_CST))
     {
         pthread_exit(NULL);
     }
+
+    exit(EXIT_FAILURE);
 }
 
 

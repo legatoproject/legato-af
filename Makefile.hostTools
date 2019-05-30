@@ -89,8 +89,9 @@ LANG_SERV_PATH = "$(LEGATO_ROOT)/framework/tools/mkTools/legatoLangServ"
 
 .PHONY: languageServer
 languageServer: $(INSTALL_DIR)
-	# Check to see if node.js is installed, and if so, fetch the language server's dependencies.
-	if [ ! -z "$(NPM_PATH)" ] ; \
+	$(L) NPM $@
+	@# Check to see if node.js is installed, and if so, fetch the language server's dependencies.
+	$(Q)if [ ! -z "$(NPM_PATH)" ] ; \
 	then \
 		cd "$(LANG_SERV_PATH)" ; \
 		if [ -d "./node_modules" ] ; \
