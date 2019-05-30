@@ -787,7 +787,12 @@ static le_result_t HandleImportJSONIteration
                         case LE_CFG_TYPE_DOESNT_EXIST:
                         case LE_CFG_TYPE_STEM:
                         case LE_CFG_TYPE_EMPTY:
-                            // Not existing, already a stem or empty node, nothing to do
+                        case LE_CFG_TYPE_STRING:
+                        case LE_CFG_TYPE_BOOL:
+                        case LE_CFG_TYPE_INT:
+                        case LE_CFG_TYPE_FLOAT:
+                            // If not existing, already a stem, empty node,
+                            // or any expected type, do nothing
                         break;
 
                         default:
