@@ -55,7 +55,8 @@
  * That is, if a call event handler is registered by one thread but le_mcc_Create() is called by
  * another thread, they will each get different call references for the same call. So, when multiple
  * threads are being used to work with the same call, a comparison of the call references themselves
- * can't be used to tell whether or not they refer to the same call.
+ * can't be used to tell whether or not they refer to the same call. The callRefs of the thread will
+ * be deleted when the thread is disconnected from the mcc service.
  *
  * The Adaptive Multi Rate (AMR) is an audio compression format optimized for speech coding and used
  * during a voice call. Two AMRs are supported:

@@ -28,6 +28,14 @@ an app controls an LED, but the LED is connected to a different GPIO pin on diff
 devices, that same app can be used on both devices, with its LED control interface bound to
 different GPIO pin control services in each device.
 
+Some APIs can create references for the client to get access to the service objects. For example,
+the client calls le_mcc_Create to create a reference of the call object. The reference can be
+passed to other mcc APIs as a parameter. The references created by the APIs will be cleaned
+automatically when the client exits. Other references that are created by the server will be
+cleaned by the server itself. If a reference is shared among different clients(threads), make
+sure the thread which calls the le_xxx_Create API won't exit when other threads are still using
+the reference.
+
 Using language-independent IPC makes components inherently more reusable,
 creates opportunities for function isolation in different processes or different app
 sandboxes, and automatically creates potential debugging trace points.
