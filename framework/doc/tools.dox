@@ -1,14 +1,18 @@
 /** @page tools Tools
 
 To download, install and configure your development environment, Legato recommends using
-@subpage toolsLeaf. Leaf is a a stand alone tool that will set up and customize your development
+@ref toolsLeaf. Leaf is a a stand alone tool that will set up and customize your development
 environment and get you developing quickly. Leaf is also @b profile @b aware, meaning that you can
 easily switch to a new version of Legato or a different target and automatically update your dev
 environment to use the environment variables and toolchain specific to that profile.
 
+Alternatively, you can clone the source code from our @ref toolsGerrit server but you must set up
+your development environment @ref basicBuild "manually".
+
 | Section                           | Description                                                  |
 | --------------------------------- | ------------------------------------------------------------ |
-| @ref toolsLeaf                    | Download, Install and Configure your development environment |
+| @subpage toolsLeaf                | Download, Install and Configure your development environment |
+| @subpage toolsGerrit              | Clone the source code of both Legato and the Linux Distros   |
 
 Once you've set up your development environment, Legato contains Tools that will help you configure
 and diagnose your target or dev machine and build Systems, Apps and Components for Legato.

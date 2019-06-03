@@ -5,13 +5,13 @@ for a Legato development environment.
 
 This tutorial will walk you through how to:
 - Install Leaf
-- Setup a remote to point to a package repository
+- Set up a remote to point to a package repository
 - Search for a package to install
-- Setup your development environment
+- Set up your development environment
 - Use the built in shell to access the development tools
-- Setup your workspace to start development
+- Set up your workspace to start development
 
-The basic workflow that should be followed to download and setup a development environment
+The basic workflow that should be followed to download and set up a development environment
 for your target. These tutorials use the packages that have been created for the Legato project
 as examples.
 
@@ -22,7 +22,7 @@ to be installed through @c apt. We have also provided
 @subpage confLeaf_Install "alternative install instructions" for older Ubuntu Distributions
 (14.04 and below) and instructions for manually installing from a tarball.
 
-Install leaf download and setup our debian package from the Sierra Wireless tools repository:
+Install leaf download and set up our debian package from the Sierra Wireless tools repository:
 @verbatim
 $ wget https://downloads.sierrawireless.com/tools/leaf/leaf_latest.deb -O /tmp/leaf_latest.deb && sudo apt install /tmp/leaf_latest.deb
 @endverbatim
@@ -45,7 +45,7 @@ packages to download, install and configure your Development Environment.
 
 @warning You are able to search leaf from anywhere on your computer; running @c leaf @c setup will
 add config in the directory that you are currently in. It is recommended to create a workspace dir
-and setup leaf packages from within your workspace.
+and set up leaf packages from within your workspace.
 
 @b leaf @b search
 
@@ -77,10 +77,10 @@ For details on each of the components of the package visit the vendors page.
 Firmware Details (including Yocto distribution, toolchain and firmware): [source.sierrawireless.com](https://source.sierrawireless.com)
 Legato Details: [Releases](https://legato.io/releases)
 
-@section confLeafSetup Setup Development Environment
+@section confLeafSetup Set up Development Environment
 
 Now that you know which package that you want to install on your development machine, the next step
-is to run @c leaf @c setup.  The setup command will prepare your directory as a workspace and
+is to run @c leaf @c setup.  The @c setup command will prepare your directory as a workspace and
 download, install and configure your workspace with a profile (settings specific to your target and
 version) preparing you to start developing for your target.
 
@@ -110,14 +110,14 @@ $ leaf profile delete <profile name>
 $ leaf profile rename <old name> <new name> - renames your profile
 @endverbatim
 
-@section confLeafSetup2nd Setup a 2nd Profile
+@section confLeafSetup2nd Set up a 2nd Profile
 
 To set up a second profile (if you wish to use multiple targets, or multiple versions) run
-the leaf setup command again and choose a new profile name.
+the @c leaf @c setup command again and choose a new profile name.
 @verbatim
 $ leaf setup <2nd profile> -p <2nd package identifier>
 
-$ leaf setup wp76dev -p swi-wp76_1.3.0
+$ leaf setup wp76dev -p swi-wp76_1.0.0
 @endverbatim
 
 To see the two profiles set up use @c leaf @c status and @c leaf @c select to switch between
@@ -143,9 +143,9 @@ for that specific profile and will also build a Legato System with the correct t
 switch profiles and run @c mksys again it will use the version configured with the second profile
 and use the toolchain configured for the second profile environment.
 
-@section confLeafWorkspace Setup Workspace
+@section confLeafWorkspace Set up Workspace
 
-Now that you have all your development environment setup and configured you are now able to start
+Now that you have all your development environment set up and configured you are now able to start
 development.
 
 All leaf packages are downloaded to @c $HOME/.leaf by default (see @c leaf @c config to
@@ -205,7 +205,7 @@ In @c mySystem.sdef use the following line to include all the default Legato set
 
 You are also able to include any other @c .sdef files you wish using the same method.
 
-A couple of very useful environment variables that are setup in Legato:
+A couple of very useful environment variables that are set up in Legato:
 - @c $LEGATO_ROOT - resolves to the location of the Legato Application Framework for your profile
 - @c $CURDIR - resolves to the directory where you run the mktools from (i.e.; add
   @c $CURDIR/path/to/your/app to the apps section of your .sdef and then run mksys from your
@@ -254,7 +254,7 @@ target devices.
 
 @subsection confLeafWorkflows Workflows
 
-The Leaf workflow design includes a hierarchy and is setup with the first install of a leaf
+The Leaf workflow design includes a hierarchy and is set up with the first install of a leaf
 package:
 - USER            (universal config for all workspace and profiles)
 - WORKSPACE       (the working directory for your code and your customization)
