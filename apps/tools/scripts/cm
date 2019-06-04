@@ -106,11 +106,13 @@ update_route() {
 update_dns() {
     if [ "x$1" = "xconnect" ]; then
         if [ -f "$RESOLV_CONF" ]; then
-            mv "$RESOLV_CONF" "$DEFAULT_RESOLV_CONF"
+            cp "$RESOLV_CONF" "$DEFAULT_RESOLV_CONF"
+            echo "" > "$RESOLV_CONF"
         fi
     elif [ "x$1" = "xdisconnect" ]; then
         if [ -f "$DEFAULT_RESOLV_CONF" ]; then
-            mv "$DEFAULT_RESOLV_CONF" "$RESOLV_CONF"
+            cat "$DEFAULT_RESOLV_CONF" > "$RESOLV_CONF"
+            rm "$DEFAULT_RESOLV_CONF"
         fi
     fi
     shift 1
