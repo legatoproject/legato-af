@@ -18,6 +18,6 @@ processes:
     }
 
 #if ${LE_CONFIG_RTOS} = y
-    maxStackBytes = 8096
+    maxStackBytes: 8096
 #endif
 }
