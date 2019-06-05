@@ -277,6 +277,14 @@ void ExeBuildScriptGenerator_t::Generate
     {
         includes += " -I" + dir;
     }
+
+    // Add the FA include path if a custom FA is in use
+    if (envVars::GetConfigBool("LE_CONFIG_CUSTOM_FA"))
+    {
+        includes += " -I";
+        includes += path::Combine(envVars::GetRequired("LE_CONFIG_CUSTOM_FA_PATH"), "include");
+    }
+
     script << "builddir = " << path::MakeAbsolute(buildParams.workingDir) << "\n\n";
     script << "cFlags = " << buildParams.cFlags << includes << "\n\n";
     script << "cxxFlags = " << buildParams.cxxFlags << includes << "\n\n";

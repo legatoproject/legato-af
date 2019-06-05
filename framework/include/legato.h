@@ -151,7 +151,7 @@
 #if LE_CONFIG_LINUX
 #   include "linux/legato.h"
 #elif LE_CONFIG_CUSTOM_OS
-#   include "custom_os/legato.h"
+#   include "fa.h"
 #else
 #   error "Unsupported OS type"
 #endif

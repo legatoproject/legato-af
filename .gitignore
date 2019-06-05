@@ -78,9 +78,6 @@ apps/sample/voiceCallApp/
 # Tools
 framework/tools/imgdiff/
 
-# Custom OSes
-/framework/*/custom_os
-
 # Tests
 .cache
 

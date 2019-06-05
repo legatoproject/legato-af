@@ -39,17 +39,37 @@ BIN_DIR=$BUILD_DIR/bin
 LIB_DIR=$BUILD_DIR/lib
 SRC_DIR=$LEGATO_ROOT/framework/liblegato
 
-# Turn a list of source file paths into a list of paths to the object (.o) files that they will
-# be compiled into.
-function ObjectsFromSources()
+declare -A LIBLEGATO_FILES
+
+# Turn a source file path into a path to the object (.o) file that it will be compiled into.
+function ObjectFromSource()
 {
-    for sourceFile in $*
-    do
-        prefix_dir="$(basename $(dirname $sourceFile))/"
-        if [ "${prefix_dir}" = "/" ]; then
-            prefix_dir=
-        fi
-        printf "%s" "$BUILD_DIR/obj/${prefix_dir}$(basename $sourceFile).o "
+    local module="${1}"
+    local source="${2}"
+    local prefix_dir="$(basename $(dirname $source))/"
+
+    if [ "${prefix_dir}" = "/" ]; then
+        prefix_dir=
+    fi
+    printf "%s" "${BUILD_DIR}/obj/${module}/${prefix_dir}$(basename $source).o"
+}
+
+# Insert input source and output object into associative array
+function AddSources()
+{
+    local module="${1}"
+    shift
+
+    for source in "$@"; do
+        LIBLEGATO_FILES["${source}"]=$(ObjectFromSource $module "${source}")
+    done
+}
+
+# List all of the object files
+function ListObjects()
+{
+    for source in "${!LIBLEGATO_FILES[@]}"; do
+        printf " %s" "${LIBLEGATO_FILES[$source]}"
     done
 }
 
@@ -65,7 +85,7 @@ cat > $NINJA_SCRIPT <<EOF
 
 EOF
 
-LIBLEGATO_SOURCES=$(ls $SRC_DIR/*.c)
+AddSources liblegato $(ls $SRC_DIR/*.c)
 
 for module_path in $(find -L $SRC_DIR/* -type d -prune); do
     ninja_config=${module_path}/ninja-config
@@ -73,21 +93,27 @@ for module_path in $(find -L $SRC_DIR/* -type d -prune); do
     config_name=LE_CONFIG_${module_name^^}
     if [ "${!config_name}" = y ]; then
         [[ ! -f $ninja_config ]] || source $ninja_config
-        LIBLEGATO_SOURCES="${LIBLEGATO_SOURCES} $(ls ${module_path}/*.c)"
+        AddSources $module_name $(ls ${module_path}/*.c)
         CFLAGS="${CFLAGS} -I${module_path}"
     fi
 done
 
+# Handle custom framework adaptor
+if [ "${LE_CONFIG_CUSTOM_FA}" = y ]; then
+    module_path="${LE_CONFIG_CUSTOM_FA_PATH}/liblegato"
+    ninja_config="${module_path}/ninja-config"
+    [[ ! -f "${ninja_config}" ]] || source "${ninja_config}"
+    AddSources fa $(ls ${module_path}/*.c)
+    CFLAGS="${CFLAGS} -I${LE_CONFIG_CUSTOM_FA_PATH}/include"
+fi
+
 # Include auto-generated header directory.
 CFLAGS="${CFLAGS} -I${LEGATO_ROOT}/build/${TARGET}/framework/include"
-
 
 LIBLEGATO_SHARED_NAME=$LIB_DIR/liblegato.so
 LIBLEGATO_STATIC_NAME=$LIB_DIR/liblegato.a
 
-LIBLEGATO_OBJECTS=$(ObjectsFromSources $LIBLEGATO_SOURCES)
-
-cat >> $NINJA_SCRIPT <<END-OF-HERE-DOC
+cat >> $NINJA_SCRIPT <<EOF
 builddir = $BUILD_DIR
 
 rule Compile
@@ -99,7 +125,7 @@ rule Compile
             -I$LEGATO_ROOT/framework/include \$
             -I$LEGATO_ROOT/framework/liblegato
 
-END-OF-HERE-DOC
+EOF
 
 if [ "${LE_CONFIG_STRIP_STAGING_TREE}" = y ]; then
 
@@ -119,7 +145,7 @@ rule DynamicLink
 EOF
 fi
 
-cat >>$NINJA_SCRIPT <<END-OF-HERE-DOC
+cat >>$NINJA_SCRIPT <<EOF
 rule StaticLink
   description = Static linking liblegato
   command = $AR rcs \$out \$in
@@ -131,25 +157,23 @@ rule RegenNinjaScript
             export LEGATO_ROOT="$LEGATO_ROOT" && \$
             $NINJA_SCRIPT_GENERATOR
 
-END-OF-HERE-DOC
+EOF
 
 if [[ "$LIBLEGATO_SHARED" = y ]]; then
-    echo "build ${LIBLEGATO_SHARED_NAME} : DynamicLink $LIBLEGATO_OBJECTS"
+    echo "build ${LIBLEGATO_SHARED_NAME} : DynamicLink$(ListObjects)"
     echo
 fi >> $NINJA_SCRIPT
 
 # Always build static liblegato -- the start daemon needs it even on Linux
 cat >> $NINJA_SCRIPT <<EOF
-build ${LIBLEGATO_STATIC_NAME} : StaticLink $LIBLEGATO_OBJECTS
+build ${LIBLEGATO_STATIC_NAME} : StaticLink$(ListObjects)
 
 EOF
 
-for sourceFile in $LIBLEGATO_SOURCES
-do
-    echo "build $(ObjectsFromSources $sourceFile) : Compile $sourceFile"
+for source in "${!LIBLEGATO_FILES[@]}"; do
+    echo "build ${LIBLEGATO_FILES[$source]} : Compile $source"
     echo "  flags = $CFLAGS"
     echo
-
 done >> $NINJA_SCRIPT
 
 echo "build $NINJA_SCRIPT : RegenNinjaScript | $NINJA_SCRIPT_GENERATOR" >> $NINJA_SCRIPT

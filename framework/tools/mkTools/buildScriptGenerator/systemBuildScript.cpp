@@ -150,6 +150,13 @@ void SystemBuildScriptGenerator_t::Generate
         includes += " -I" + dir;
     }
 
+    // Add the FA include path if a custom FA is in use
+    if (envVars::GetConfigBool("LE_CONFIG_CUSTOM_FA"))
+    {
+        includes += " -I";
+        includes += path::Combine(envVars::GetRequired("LE_CONFIG_CUSTOM_FA_PATH"), "include");
+    }
+
     auto buildDir = path::MakeAbsolute(buildParams.workingDir);
 
     script << "builddir = " << buildDir << "\n\n";

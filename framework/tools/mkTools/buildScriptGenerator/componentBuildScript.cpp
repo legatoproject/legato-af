@@ -115,6 +115,13 @@ void ComponentBuildScriptGenerator_t::GenerateCommonCAndCxxFlags
 
     GenerateHeaderDir(componentPtr->dir);
 
+    // Add the FA include path if a custom FA is in use
+    if (envVars::GetConfigBool("LE_CONFIG_CUSTOM_FA"))
+    {
+        script  << " -I"
+                << path::Combine(envVars::GetRequired("LE_CONFIG_CUSTOM_FA_PATH"), "include");
+    }
+
     // For each server-side USETYPES statement, include the server code generation directory.
     // NOTE: It's very important that this comes after the serverApis, because the server
     //       may serve the async version of an API that another API uses types from, and
