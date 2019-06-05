@@ -1214,8 +1214,7 @@ static void AddExternApiInterfaces
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (envVars::Get("LE_CONFIG_CONFIGURED") == "y" &&
-        envVars::Get("LE_CONFIG_RPC") != "y")
+    if (envVars::GetConfigBool("LE_CONFIG_CONFIGURED") && !envVars::GetConfigBool("LE_CONFIG_RPC"))
     {
         // Warn the user if adding RPC interfaces without the appropriate config environment
         // variable set.  This is not an error because the user may be invoking the mk tools
@@ -1293,8 +1292,7 @@ static void AddLinks
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (envVars::Get("LE_CONFIG_CONFIGURED") == "y" &&
-        envVars::Get("LE_CONFIG_RPC") != "y")
+    if (envVars::GetConfigBool("LE_CONFIG_CONFIGURED") && !envVars::GetConfigBool("LE_CONFIG_RPC"))
     {
         // Warn the user if adding RPC interfaces without the appropriate config environment
         // variable set.  This is not an error because the user may be invoking the mk tools

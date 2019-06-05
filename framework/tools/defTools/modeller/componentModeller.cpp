@@ -180,8 +180,8 @@ static void AddJavaPackage
 {
     auto tokenListPtr = static_cast<parseTree::TokenList_t*>(sectionPtr);
 
-    if (envVars::Get("LE_CONFIG_CONFIGURED") == "y" &&
-        envVars::Get("LE_CONFIG_ENABLE_JAVA") != "y")
+    if (envVars::GetConfigBool("LE_CONFIG_CONFIGURED") &&
+        !envVars::GetConfigBool("LE_CONFIG_ENABLE_JAVA"))
     {
         // Warn the user if adding a Java package without the appropriate config environment
         // variable set.  This is not an error because the user may be invoking the mk tools
@@ -222,8 +222,8 @@ static void AddPythonPackage
 {
     auto tokenListPtr = static_cast<parseTree::TokenList_t*>(sectionPtr);
 
-    if (envVars::Get("LE_CONFIG_CONFIGURED") == "y" &&
-        envVars::Get("LE_CONFIG_ENABLE_PYTHON") != "y")
+    if (envVars::GetConfigBool("LE_CONFIG_CONFIGURED") &&
+        !envVars::GetConfigBool("LE_CONFIG_ENABLE_PYTHON"))
     {
         // Warn the user if adding a Python package without the appropriate config environment
         // variable set.  This is not an error because the user may be invoking the mk tools

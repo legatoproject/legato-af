@@ -352,8 +352,7 @@ void CheckForIMASigning
     // LE_CONFIG_ENABLE_IMA
     if (!buildParams.signPkg)
     {
-        std::string imaEnable = envVars::Get("LE_CONFIG_ENABLE_IMA");
-        buildParams.signPkg = (imaEnable.compare("1") == 0);
+        buildParams.signPkg = envVars::GetConfigBool("LE_CONFIG_ENABLE_IMA");
     }
 
     if (buildParams.signPkg)

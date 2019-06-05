@@ -74,6 +74,27 @@ std::string Get
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Fetch the value of a given optional environment variable and translate it to a boolean value as
+ * though it were a KConfig setting.
+ *
+ * @return  True if the value is "1" or "y", false if it is any other value or not set.
+ */
+//--------------------------------------------------------------------------------------------------
+bool GetConfigBool
+(
+    const std::string &name  ///< The name of the environment variable.
+)
+{
+    const char *value = getenv(name.c_str());
+    if (value == nullptr)
+    {
+        return false;
+    }
+    return (value[0] == '1' || value[0] == 'y');
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Fetch the value of a given mandatory environment variable.
  *
  * @return  The value.
