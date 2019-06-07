@@ -296,6 +296,7 @@ le_result_t secSocket_Connect
     secSocket_Ctx_t* ctxPtr,     ///< [INOUT] Secure socket context pointer
     char*            hostPtr,    ///< [IN] Host to connect on
     uint16_t         port,       ///< [IN] Port to connect on
+    char*            srcAddrPtr, ///< [IN] Source address pointer (not used)
     SocketType_t     type,       ///< [IN] Socket type (TCP, UDP)
     int*             fdPtr       ///< [OUT] Socket file descriptor
 )

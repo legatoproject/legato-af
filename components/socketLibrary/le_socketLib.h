@@ -34,7 +34,9 @@
  * @section socket_reference Socket reference
  *
  * Since socket library is multi-app safe, a reference needs to be created in order to use the APIs.
- * First, call @ref le_socket_Create and specify the host address, the port and the socket type.
+ * First, call @ref le_socket_Create and specify the host address, the source IP address in string
+ * format, the port and the socket type. If the Source IP string is Null, the default PDP profile is
+ * used.
  * The returned context reference must be used later to configure the socket and send/receive data.
  * Call @ref le_socket_Delete to destroy the previously allocated context if not needed anymore.
  *

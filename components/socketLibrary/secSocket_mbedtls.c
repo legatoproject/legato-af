@@ -15,6 +15,7 @@
 
 #include "le_socketLib.h"
 #include "secSocket.h"
+#include "netSocket.h"
 
 #include "mbedtls/error.h"
 #include "mbedtls/net_sockets.h"
@@ -267,6 +268,11 @@ le_result_t secSocket_AddCertificate
 /**
  * Initiate a connection with host:port and the given protocol
  *
+ * @note
+ *  - srcAddrPtr can be a Null string. In this case, the default PDP profile will be used
+ *    and the address family will be selected in the following order: Try IPv4 first, then
+ *    try IPv6
+ *
  * @return
  *  - LE_OK            The function succeeded
  *  - LE_BAD_PARAMETER Invalid parameter
@@ -280,11 +286,12 @@ le_result_t secSocket_AddCertificate
 //--------------------------------------------------------------------------------------------------
 le_result_t secSocket_Connect
 (
-    secSocket_Ctx_t *ctxPtr,    ///< [INOUT] Secure socket context pointer
-    char            *hostPtr,   ///< [IN] Host to connect on
-    uint16_t         port,      ///< [IN] Port to connect on
-    SocketType_t     type,      ///< [IN] Socket type (TCP, UDP)
-    int             *fdPtr      ///< [OUT] Socket file descriptor
+    secSocket_Ctx_t* ctxPtr,     ///< [INOUT] Secure socket context pointer
+    char*            hostPtr,    ///< [IN] Host to connect on
+    uint16_t         port,       ///< [IN] Port to connect on
+    char*            srcAddrPtr, ///< [IN] Source address pointer
+    SocketType_t     type,       ///< [IN] Socket type (TCP, UDP)
+    int*             fdPtr       ///< [OUT] Socket file descriptor
 )
 {
     char             portBuffer[6] = {0};
@@ -299,22 +306,12 @@ le_result_t secSocket_Connect
     snprintf(portBuffer, sizeof(portBuffer), "%d", port);
     LE_INFO("Connecting to %d/%s:%d - %s:%s...", type, hostPtr, port, hostPtr, portBuffer);
 
-    if ((ret = mbedtls_net_connect(&(contextPtr->sock),
-                                   hostPtr,
-                                   portBuffer,
-                                   (type == TCP_TYPE) ?
-                                   MBEDTLS_NET_PROTO_TCP : MBEDTLS_NET_PROTO_UDP)) != 0)
+    le_result_t result = netSocket_Connect(hostPtr, port, srcAddrPtr, TCP_TYPE,
+                                           (int *)&(contextPtr->sock));
+    if ( result != LE_OK)
     {
-        LE_INFO("Failed! mbedtls_net_connect returned %d", ret);
-        if (ret == MBEDTLS_ERR_NET_UNKNOWN_HOST)
-        {
-            return LE_UNAVAILABLE;
-        }
-        else if (ret == MBEDTLS_ERR_NET_CONNECT_FAILED)
-        {
-            return LE_COMM_ERROR;
-        }
-        return LE_FAULT;
+        LE_ERROR("Failed! mbedtls_net_connect returned %d", result);
+        return result;
     }
 
     //Get the file descriptor

@@ -38,10 +38,11 @@
 //--------------------------------------------------------------------------------------------------
 le_result_t netSocket_Connect
 (
-    char*         hostPtr,    ///< [IN] Host address pointer
-    uint16_t      port,       ///< [IN] Port number
-    SocketType_t  type,       ///< [IN] Socket type (TCP, UDP)
-    int*          fdPtr       ///< [OUT] Socket file descriptor
+    char*           hostPtr,    ///< [IN] Host address pointer
+    uint16_t        port,       ///< [IN] Port number
+    char*           srcAddrPtr, ///< [IN] Source address pointer
+    SocketType_t    type,       ///< [IN] Socket type (TCP, UDP)
+    int*            fdPtr       ///< [OUT] Socket file descriptor
 );
 
 //--------------------------------------------------------------------------------------------------

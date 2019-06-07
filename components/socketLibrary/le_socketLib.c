@@ -18,7 +18,7 @@
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions
 //--------------------------------------------------------------------------------------------------
-#define ADDR_MAX_LEN    46
+#define ADDR_MAX_LEN    LE_MDC_IPV6_ADDR_MAX_BYTES
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -334,10 +334,10 @@ le_socket_Ref_t le_socket_Create
     }
 
     strncpy(contextPtr->host, hostPtr, sizeof(contextPtr->host)-1);
-    contextPtr->port    = port;
-    contextPtr->type    = type;
-    contextPtr->fd      = -1;
-    contextPtr->timeout = COMM_TIMEOUT_DEFAULT_MS;
+    contextPtr->port      = port;
+    contextPtr->type      = type;
+    contextPtr->fd        = -1;
+    contextPtr->timeout   = COMM_TIMEOUT_DEFAULT_MS;
     contextPtr->isMonitoring = false;
 
     return contextPtr->reference;
@@ -463,6 +463,7 @@ le_result_t le_socket_Connect
 {
     le_result_t status;
     SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+
     if (contextPtr == NULL)
     {
         LE_ERROR("Reference not found: %p", ref);
@@ -472,11 +473,12 @@ le_result_t le_socket_Connect
     if (contextPtr->isSecure)
     {
         status = secSocket_Connect(contextPtr->secureCtxPtr, contextPtr->host,
-                                   contextPtr->port, contextPtr->type, &(contextPtr->fd));
+                                   contextPtr->port, contextPtr->srcAddr,
+                                   contextPtr->type, &(contextPtr->fd));
     }
     else
     {
-        status = netSocket_Connect(contextPtr->host, contextPtr->port,
+        status = netSocket_Connect(contextPtr->host, contextPtr->port, contextPtr->srcAddr,
                                    contextPtr->type, &(contextPtr->fd));
     }
 

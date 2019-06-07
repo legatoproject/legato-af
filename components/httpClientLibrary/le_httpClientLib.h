@@ -331,7 +331,10 @@ typedef void (*le_httpClient_EventCb_t)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Create a HTTP session reference and store the host address in a dedicated context.
+ * Create a HTTP session reference on the default PDP profile.
+ *
+ * @note
+ *  - The address family is selected in the following order: Try IPv4 first, then try IPv6
  *
  * @return
  *  - Reference to the created context

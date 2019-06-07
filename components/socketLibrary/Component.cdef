@@ -20,4 +20,8 @@ requires:
         crypto
     }
 #endif
+    api:
+    {
+        modemServices/le_mdc.api
+    }
 }
