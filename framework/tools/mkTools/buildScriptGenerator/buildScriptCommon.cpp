@@ -240,7 +240,7 @@ void BuildScriptGenerator_t::GenerateBuildRules
     const std::string& cCompilerPath = buildParams.cCompilerPath;
     const std::string& cxxCompilerPath = buildParams.cxxCompilerPath;
     const std::string& compilerCachePath = buildParams.compilerCachePath;
-    const std::string& preProcessorPath = buildParams.cppPath;
+    const std::string& preProcessorPath = buildParams.cPreProcessorPath;
     std::string sysrootOption;
     std::string crossToolPath;
 
