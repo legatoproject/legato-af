@@ -518,6 +518,51 @@ std::string GetContainingDir
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Find the common base path between a given path and a reference path, then erase the common base
+ * path from the given path.
+ *
+ * @return string with base path erased from the given path.
+ */
+//--------------------------------------------------------------------------------------------------
+std::string EraseCommonBasePath
+(
+    std::string eraseFromPath,   ///< Given path to erase common base path with a reference path
+    std::string refPath,         ///< Reference path to compare and find the common base path
+    bool isRefPathFile           ///< true if refPath is a file, false if refPath is a directory
+)
+{
+    std::string erasePath;
+
+    if (isRefPathFile)
+    {
+        // If refPath is a file, find the containing directory
+        erasePath = GetContainingDir(refPath);
+    }
+    else
+    {
+        // If refPath is already a directory
+        erasePath = refPath;
+    }
+
+    erasePath = Minimize(erasePath);
+    eraseFromPath = Minimize(eraseFromPath);
+
+    if (erasePath.back() != '/')
+    {
+        erasePath += '/';
+    }
+
+    std::size_t posFound = eraseFromPath.find(erasePath);
+    if (posFound == 0)
+    {
+        eraseFromPath.erase(posFound, erasePath.length());
+    }
+
+    return eraseFromPath;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**

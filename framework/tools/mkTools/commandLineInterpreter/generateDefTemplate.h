@@ -9,10 +9,10 @@
 
 namespace defs
 {
-    void GenerateSdefTemplate(ArgHandler_t handler);
-    void GenerateAdefTemplate(ArgHandler_t handler);
-    void GenerateCdefTemplate(ArgHandler_t& handler);
-    void GenerateMdefTemplate(ArgHandler_t handler);
+    void GenerateSystemTemplate(ArgHandler_t& handler);
+    void GenerateApplicationTemplate(ArgHandler_t& handler);
+    void GenerateComponentTemplate(ArgHandler_t& handler);
+    void GenerateModuleTemplate(ArgHandler_t& handler);
 }
 
 #endif

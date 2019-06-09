@@ -7,6 +7,8 @@
 #ifndef MKEDIT_H_INCLUDE_GUARD
 #define MKEDIT_H_INCLUDE_GUARD
 
+#include "editAction.h"
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -25,90 +27,121 @@ class ArgHandler_t
         std::string absAdefFilePath;    ///< Absolute path of adef
         std::string absCdefFilePath;    ///< Absolute path of cdef
         std::string absMdefFilePath;    ///< Absolute path of mdef
+        std::string absSdefFilePath;    ///< Absolute path of sdef
 
         std::string oldAdefFilePath;    ///< Old adef file name
         std::string oldCdefFilePath;    ///< Old component folder name
         std::string oldMdefFilePath;    ///< Old mdef file name
         std::string oldSdefFilePath;    ///< Old sdef file name
 
-        bool isAppSearchPath;           ///< True if appSearch section is present in sdef
-        bool isCompSearchPath;          ///< True if componentSearch section is present in sdef
-        bool isModSearchPath;           ///< True if moduleSearch section is present in sdef
+        std::string tempWorkDefFilePath;  ///< Temporary working file of the definition file to edit
 
-        enum class State_t              ///< State of commands passed as arguments
-        {
-            None,
+        std::list<std::string> appSearchPath;       ///< List of app search path in active sdef
+        std::list<std::string> compSearchPath;      ///< List of comp search path in active sdef
+        std::list<std::string> moduleSearchPath;    ///< List of module search path in active sdef
 
-            Add,
-            AddApp,
-            AddAppName,
-            AddAppNameSystem,
-            AddComponent,
-            AddComponentName,
-            AddComponentNameApp,
-            AddComponentNameSystem,
-            AddComponentNameAppName,
-            AddComponentNameAppNameSystem,
-            AddModule,
-            AddModuleName,
-            AddModuleNameSystem,
-            AddSystem,
+        model::System_t* systemPtr;     ///< Pointer for system model
 
-            Create,
-            CreateApp,
-            CreateAppName,
-            CreateAppNameComponent,
-            CreateAppNameComponentName,
-            CreateAppNameComponentNameSystem,
-            CreateAppNameSystem,
-            CreateComponent,
-            CreateComponentName,
-            CreateComponentNameApp,
-            CreateComponentNameSystem,
-            CreateModule,
-            CreateModuleName,
-            CreateModuleNameSystem,
-            CreateSystem,
-
-            Rename,
-            RenameApp,
-            RenameAppOld,
-            RenameAppOldNew,
-            RenameAppOldNewSystem,
-            RenameComponent,
-            RenameComponentOld,
-            RenameComponentOldNew,
-            RenameComponentOldNewApp,
-            RenameComponentOldNewSystem,
-            RenameComponentOldNewAppName,
-            RenameComponentOldNewAppNameSystem,
-            RenameModule,
-            RenameModuleOld,
-            RenameModuleOldNew,
-            RenameModuleOldNewSystem,
-            RenameSystem,
-            RenameSystemOld,
-            RenameSystemOldNew,
-
-            Remove,
-            RemoveApp,
-            RemoveAppName,
-            RemoveAppNameSystem,
-            RemoveComponent,
-            RemoveComponentName,
-            RemoveComponentNameApp,
-            RemoveComponentNameSystem,
-            RemoveComponentNameAppName,
-            RemoveComponentNameAppNameSystem,
-            RemoveModule,
-            RemoveModuleName,
-            RemoveModuleNameSystem,
-            RemoveSystem
+        enum CommandLineNextArgType_t { ///< Enum to track the command line arguments
+            INVALID_ARG = 0,
+            ACTION_KEY,
+            EDIT_ITEM_KEY,
+            NONEDIT_ITEM_KEY,
+            EDIT_ITEM_VALUE,
+            NONEDIT_APP_VALUE,
+            NONEDIT_COMP_VALUE,
+            NONEDIT_SYSTEM_VALUE,
+            EDIT_COMPLETE
         };
 
-        State_t MyState = State_t::None;
+        enum EditActionType_t {         ///< Enum for edit action type
+            INVALID_ACTION = 0,
+            ADD,
+            CREATE,
+            RENAME,
+            REMOVE
+        };
+
+        enum EditItemType_t {           ///< Enum for edit item type
+            INVALID_ITEM = 0,
+            APP,
+            COMPONENT,
+            MODULE,
+            SYSTEM
+        };
+
+        enum EditActionState_t {        ///< Enum for tracking the state of each edit action
+            INIT = 0,
+            PENDING,
+            SUCCESS
+        };
+
+        CommandLineNextArgType_t commandLineNextArgType;
+        EditActionType_t editActionType;
+        EditItemType_t editItemType;
+        EditActionState_t editActionState;
 
         void operator()(const char* arg);
+
+        std::string GetFileForEditItemType();    ///< Get file path for corresponding edit item type
+        std::string GetOldFileForEditItemType(); ///< Get old file path for corresponding item type
+
+        void Add();                     ///< Add action
+        void Create();                  ///< Create action
+        void Remove();                  ///< Remove action
+        void Rename();                  ///< Rename action
+
+        // Vector to store the series of edit actions to complete a full edit
+        std::vector<std::shared_ptr<EditAction_t> > editActions;
+
+        struct LinePosition_t
+        {
+            std::string lineToWrite;  ///< Line to write to definition file
+            int beforePos;            ///< Position in definition file before the line to write
+            int afterPos;             ///< Position in definition file after the line to write
+        };
+
+        std::vector<LinePosition_t> linePositionToWrite; ///< Vector of line and position to write
+
+        void SetEditSuccess(EditActionState_t value) noexcept
+        {
+            editActionState = value;
+        }
+
+        // Set definition file path for rename action
+        void ActionRenameSetDefFilePath(const char* arg);
+
+        // Set definition file path for non-rename action
+        void ActionNotRenameSetDefFilePath(const char* arg);
+
+        // Evaluate the next command line argument type
+        void EvaluateCommandLineNextArgType(const char* arg);
+
+        // Add action to the edit action vector
+        void AddAction(std::shared_ptr<EditAction_t> action);
+
+        // Constructor
+        ArgHandler_t()
+            : commandLineNextArgType(INVALID_ARG),
+            editActionType(INVALID_ACTION),
+            editItemType(INVALID_ITEM),
+            editActionState(INIT)
+        {}
+
+        // Destructor
+        virtual ~ArgHandler_t()
+        {
+            // If the action is PENDING, it means an error exception occurred.
+            // Execute undo action for each edit action.
+            if (editActionState == PENDING)
+            {
+                while (!editActions.empty())
+                {
+                    editActions.back()->UndoAction();
+                    editActions.pop_back();
+                }
+            }
+        }
 };
 
 
