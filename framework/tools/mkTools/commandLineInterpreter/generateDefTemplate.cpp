@@ -140,9 +140,9 @@ static void GenerateKernelModulesSection
  * Print header for sdef
  **/
 //--------------------------------------------------------------------------------------------------
-void GenerateSdefTemplate
+void GenerateSystemTemplate
 (
-    ArgHandler_t handler
+    ArgHandler_t& handler
 )
 {
     std::string filePath = path::MakeAbsolute(handler.sdefFilePath);
@@ -190,32 +190,14 @@ static void GenerateComponentsSection
 static void GenerateProcessesSection
 (
     std::ostream& defStream,
-    ArgHandler_t handler
+    ArgHandler_t& handler
 )
 {
     std::string compName;
-    std::string compPath;
+    std::string exeName;
 
-    compPath = handler.absCdefFilePath;
-    compName = path::GetLastNode(compPath);
-
-    // If componentSearch section is present, list the component name (no need to specify full path)
-    if (handler.isCompSearchPath)
-    {
-        compPath = compName;
-    }
-    else
-    {
-        std::string adefContainDir = path::GetContainingDir(handler.absAdefFilePath);
-
-        std::size_t foundAdefContainDir = compPath.find(adefContainDir);
-        if (foundAdefContainDir != std::string::npos)
-        {
-            compPath.erase(foundAdefContainDir, adefContainDir.length()+1);
-        }
-    }
-
-    std::string exeName = compName + "Exe";
+    compName = path::GetLastNode(handler.absCdefFilePath);
+    exeName = compName + "Exe";
 
     defStream << "\n"
                  "processes:\n"
@@ -237,29 +219,29 @@ static void GenerateProcessesSection
 static void GenerateExecutablesSection
 (
     std::ostream& defStream,
-    ArgHandler_t handler
+    ArgHandler_t& handler
 )
 {
     std::string compName;
     std::string compPath;
 
-    compPath = handler.absCdefFilePath;
-    compName = path::GetLastNode(compPath);
+    compName = path::GetLastNode(handler.absCdefFilePath);
 
-    // If componentSearch section is present, list the component name (no need to specify full path)
-    if (handler.isCompSearchPath)
+    // If componentSearch section is present, list just the relative component name and no need to
+    // specify full absolute path.
+    for (const auto& it : handler.compSearchPath)
     {
-        compPath = compName;
-    }
-    else
-    {
-        std::string adefContainDir = path::GetContainingDir(handler.absAdefFilePath);
-
-        std::size_t foundAdefContainDir = compPath.find(adefContainDir);
-        if (foundAdefContainDir != std::string::npos)
+        compPath = path::EraseCommonBasePath(handler.absCdefFilePath, it, false);
+        if (!compPath.empty())
         {
-            compPath.erase(foundAdefContainDir, adefContainDir.length()+1);
+            break;
         }
+    }
+
+    if (compPath.empty())
+    {
+        compPath = path::EraseCommonBasePath(handler.absCdefFilePath, handler.absAdefFilePath,
+                                             true);
     }
 
     defStream << "\n"
@@ -297,9 +279,9 @@ static void GenerateBindingsSection
  * Print header and other sections for adef
  **/
 //--------------------------------------------------------------------------------------------------
-void GenerateAdefTemplate
+void GenerateApplicationTemplate
 (
-    ArgHandler_t handler
+    ArgHandler_t& handler
 )
 {
     if (file::FileExists(handler.absAdefFilePath))
@@ -374,7 +356,7 @@ static void GenerateRequiresSection
  * Print header for cdef
  **/
 //--------------------------------------------------------------------------------------------------
-void GenerateCdefTemplate
+void GenerateComponentTemplate
 (
     ArgHandler_t& handler
 )
@@ -399,6 +381,8 @@ void GenerateCdefTemplate
                          "Component/" + sourceFileName;
         compFilePath =  path::GetContainingDir(handler.absAdefFilePath) + "/" + adefFileName +
                         "Component/" + COMP_CDEF;
+        handler.absCdefFilePath =  path::GetContainingDir(handler.absAdefFilePath) + "/" +
+                                   adefFileName + "Component";
     }
     else
     {
@@ -522,14 +506,21 @@ static void GenerateRequiresModuleSection
  * Print header for mdef
  **/
 //--------------------------------------------------------------------------------------------------
-void GenerateMdefTemplate
+void GenerateModuleTemplate
 (
-    ArgHandler_t handler
+    ArgHandler_t& handler
 )
 {
-    std::string filePath = handler.absMdefFilePath;
+    if (file::FileExists(handler.absMdefFilePath))
+    {
+        throw mk::Exception_t(
+               mk::format(LE_I18N("Module definition file already exists: '%s'"),
+                          handler.absAdefFilePath)
+        );
+    }
+    file::MakeDir(path::GetContainingDir(handler.absMdefFilePath));
 
-    std::ofstream defStream(filePath, std::ofstream::trunc);
+    std::ofstream defStream(handler.absMdefFilePath, std::ofstream::trunc);
 
     defStream << "// " << path::GetLastNode(handler.mdefFilePath) << "\n"
                  "// This is a module definition file that declares kernel modules to be bundled"
@@ -542,7 +533,6 @@ void GenerateMdefTemplate
     GenerateScriptsSection(defStream);
     GenerateRequiresModuleSection(defStream);
 }
-
 
 
 } // namespace defs
