@@ -6,6 +6,20 @@
 
 ### Options ###
 
+menu "Config Tree"
+
+config ENABLE_CONFIG_TREE
+  bool "Enable Config Tree"
+  default y
+  ---help---
+  Enable the Config Tree for storing settings.  The Config Tree is always
+  enabled on Linux.
+
+# At one point the full Config tree was ported to FreeRTOS, but it was found
+# to be unnecessary.  For now, the configuration of the full version remains
+# Linux-only.
+if LINUX
+
 config CFGTREE_MAX_USER_POOL_SIZE
   int "Maximum user pool size"
   depends on LINUX
@@ -81,3 +95,7 @@ config CFGTREE_MAX_TREE_ITERATOR_POOL_SIZE
   default 11
   ---help---
   The maximum number of tree iterators in the configTree tree iterator pool.
+
+endif # end LINUX
+
+endmenu # end "Config Tree"

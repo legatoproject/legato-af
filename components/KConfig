@@ -1,0 +1,96 @@
+#
+# Configuration for Legato component libraries.
+#
+# Copyright (C) Sierra Wireless Inc.
+#
+
+menu "FTP Client"
+
+config FTPCLIENT_SESSION_MAX
+  int "Maximum number simultaneous FTP client sessions"
+  depends on LWIP
+  range 1 1024
+  default 2
+  ---help---
+  Maximum number of simultaneous FTP client sessions permitted.  This value is
+  used for sizing memory pools.
+
+config FTPCLIENT_EVENT_MAX
+  int "Size of FTP client asynchronous event queue"
+  depends on LWIP
+  range 1 1024
+  default 8
+  ---help---
+  Maximum number of FTP client events that can be queued at once.
+
+config FTPCLIENT_BUFFER_SIZE
+  int "Size of FTP client data buffers"
+  depends on LWIP
+  range 8 65536
+  default 256
+  ---help---
+  Size in bytes of the data buffers used to queue up chunks of data for
+  sending or receiving.
+
+config FTPCLIENT_SERVER_NAME_MAX
+  int "Maximum size of server name"
+  depends on LWIP
+  range 2 1024
+  default 64
+  ---help---
+  Maximum size of FTP server name.  This size includes the terminating NUL
+  character.
+
+config FTPCLIENT_USER_NAME_MAX
+  int "Maximum size of user name"
+  depends on LWIP
+  range 2 1024
+  default 32
+  ---help---
+  Maximum size of FTP user name.  This size includes the terminating NUL
+  character.
+
+config FTPCLIENT_PASSWORD_MAX
+  int "Maximum size of user name"
+  depends on LWIP
+  range 2 1024
+  default 32
+  ---help---
+  Maximum size of FTP password.  This size includes the terminating NUL
+  character.
+
+endmenu # end "FTP Client"
+
+menu "Socket Library"
+
+config SOCKET_LIB_SESSION_MAX
+  int "Maximum number of simultaneous sockets"
+  range 1 1024
+  default 2 if RTOS
+  default 4
+  ---help---
+  Maximum number of simultaneous sockets. This value is used for sizing
+  memory pools.
+
+choice
+  prompt "SSL Encryption Library"
+  default SOCKET_LIB_USE_MBEDTLS if RTOS
+  default SOCKET_LIB_USE_OPENSSL
+  ---help---
+  Select the SSL library implementation to use with the socket library.
+
+config SOCKET_LIB_USE_OPENSSL
+  bool "OpenSSL"
+  depends on !RTOS
+  ---help---
+  Use OpenSSL for SSL encryption in socket library.
+
+config SOCKET_LIB_USE_MBEDTLS
+  bool "mbedTLS"
+  depends on EXPERIMENTAL
+  ---help---
+  Use mbedTLS for SSL encryption in socket library.
+
+endchoice # end "SSL Encryption Library"
+
+endmenu # end "Socket Library"

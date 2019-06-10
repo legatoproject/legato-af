@@ -89,20 +89,31 @@ config ENABLE_AV_SMS_COUNT
   default n if RTOS
   default y
   ---help---
-  When checked, SMS monitoring/counting is enabled and LWM2M resources lwm2m.7.0.x return valid
-  statistic values related to SMS counting.
+  When checked, SMS monitoring/counting is enabled and LWM2M resources
+  lwm2m.7.0.x return valid statistic values related to SMS counting.
 
 endmenu # end "AirVantage Connector"
 
 menu "AT Service"
 
+config ATSERVER_DEVICE_POOL_SIZE
+  int "Define the maximal number of AT server devices"
+  default 2
+
 config ATSERVER_USER_ERRORS
-  bool "Enable user-defined errors in AT Server"
+  bool "Enable user-defined AT errors"
   default y if LINUX
   default n
   ---help---
-  Allow setting user-defined error strings in AT Server.  Enabling this
-  increases the memory consumption of the AT Server.
+  Allow setting user-defined error strings in AT server.  Enabling this
+  increases the memory consumption of the AT server.
+
+config ATSERVER_TEXT_API
+  bool "Enable text API"
+  default y if POSIX
+  default n
+  ---help---
+    Allow use of text API.
 
 endmenu
 
@@ -148,6 +159,33 @@ config SIM_ENABLE_AUTOSWITCH
   ---help---
   Enable SIM auto switch support.
 
+config MODEM_DAEMON_PREFERRED_NETWORK
+  bool "Enable preferred network management API"
+  default y if POSIX
+  ---help---
+    Allow managing preferred networks via Legato API.
+
+config ENABLE_PCI_SCAN
+  bool "Enable use of PCI scan related APIs"
+  default y if LINUX
+  default n
+  ---help---
+    Allow managing PCI scan information via Legato API.
+
+config ENABLE_TIME_TO_OS
+  bool "Enable provide time and date to OS"
+  default y if LINUX
+  default n
+  ---help---
+    Allow the modem service to provide time information to the OS.
+
+config ENABLE_SIM_WAKEUP_FALLBACK
+  bool "Enable SIM fallback options"
+  default n
+  ---help---
+    Allow the setting of SIM fallback options for device wakeup/
+    initialization.
+
 endmenu
 
 menu "Secure Storage"
@@ -160,48 +198,7 @@ config ENABLE_SECSTORE_ADMIN
   permits reading, writing, and deleting secure storage files and should be
   used with caution.
 
-endmenu
-
-menu "Socket Library"
-
-config SOCKET_LIB_SESSION_MAX
-  int "Maximum number of simultaneous sockets"
-  range 1 1024
-  default 4
-  ---help---
-  Maximum number of simultaneous sockets. This value is used for sizing
-  memory pools.
-
-choice
-  prompt "SSL encryption library"
-  default SOCKET_LIB_USE_MBEDTLS if RTOS
-  default SOCKET_LIB_USE_OPENSSL
-
-config SOCKET_LIB_USE_OPENSSL
-  bool "Use OpenSSL library for encryption"
-  ---help---
-  Use OpenSSL library for SSL encryption in socket library
-
-config SOCKET_LIB_USE_MBEDTLS
-  bool "Use mbed TLS library for encryption (EXPERIMENTAL)"
-  depends on EXPERIMENTAL
-  ---help---
-  Use mbed TLS library for SSL encryption in socket library
-
-endchoice #end "SSL encryption library"
-
-endmenu # end "Socket Library"
-
-menu "Config Tree"
-visible if RTOS
-
-config ENABLE_CONFIG_TREE
-  bool "Enable Config Tree"
-  default y
-  ---help---
-  Enable the Config Tree for storing settings.
-
-endmenu # end "Config Tree"
+endmenu # end "Secure Storage"
 
 menu "Positioning Service"
 
@@ -224,3 +221,10 @@ config FEATURE_SPISVC
   default n
   ---help---
   Enable the SPI service to allow devices to use SPI-attached peripherals.
+
+config SMS_SERVICE_ENABLED
+  bool "Enable SMS Service"
+  depends on POSIX
+  default y
+  ---help---
+    Enable SMS Service, which is not supported on RTOS systems.

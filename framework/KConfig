@@ -211,6 +211,168 @@ config IMA_SMACK
 
 endmenu # end "Security Features"
 
+menu "Performance Tuning"
+
+config REDUCE_FOOTPRINT
+  bool "Reduce memory and storage use where possible"
+  default n
+  ---help---
+  Try to reduce the memory and storage footprint of Legato.  This may use
+  alternate data structures which are optimized for size and reduce the scale
+  of some tests.  Selecting this option may result in lower performance and
+  slower applications.
+
+config STATIC_THREAD_STACKS
+  bool "Statically allocate thread stacks"
+  depends on RTOS
+  default n
+  ---help---
+  Allocate stack space for Legato threads from static memory (bss) rather than
+  from the heap.
+
+config MEM_POOLS
+  bool "Use memory pools"
+  default y
+  ---help---
+  Use memory pools for dynamic memory allocation.  Memory pools help prevent
+  memory fragmentation, but require that the pools be sized appropriately for
+  the application.
+  Disabling this option will still allocate memory using the memory pool
+  interface (le_mem), but switches the internal behaviour to use malloc and
+  free on a per-block basis.  This allows tools like Valgrind to accurately
+  track the allocations and de-allocations at the cost of potential memory
+  fragmentation.
+
+config MAX_EVENT_POOL_SIZE
+  int "Maximum event pool size"
+  depends on MEM_POOLS
+  range 1 65535
+  default 30
+  ---help---
+  The maximum number of objects in the process-wide event pool, from which the
+  event objects are allocated.
+
+config MAX_HANDLER_POOL_SIZE
+  int "Maximum event handler pool size"
+  depends on MEM_POOLS
+  range 1 65535
+  default 15
+  ---help---
+  The maximum number of objects in the process-wide handler pool, from which
+  all handler objects are allocated.
+
+config MAX_QUEUED_FUNCTION_POOL_SIZE
+  int "Maximum queued event function pool size"
+  depends on MEM_POOLS
+  range 1 65535
+  default 15
+  ---help---
+  The maximum number of objects in the process-wide queued function report
+  pool, from which Queued Function reports are allocated.
+
+config MAX_REPORT_POOL_SIZE
+  int "Maximum event report pool size"
+  depends on MEM_POOLS
+  range 1 65535
+  default 1
+  ---help---
+  The maximum number of objects in a per event ID report pool.
+
+config MAX_FD_MONITOR_POOL_SIZE
+  int "Maximum file descriptor monitor pool size"
+  depends on MEM_POOLS
+  range 2 65535
+  default 10
+  ---help---
+  The maximum number of objects in the process-wide FD monitor pool, from
+  which all FD monitor objects are allocated.
+
+config MAX_SUB_POOLS_POOL_SIZE
+  int "Maximum memory pool sub-pools"
+  depends on MEM_POOLS
+  range 0 65535
+  default 8
+  ---help---
+  The maximum number of sub-pool objects in the memory sub-pools pool.  These
+  are control structures used for managing the subdivision of memory pools.
+
+config MAX_MUTEX_POOL_SIZE
+  int "Maximum mutex pool size"
+  depends on MEM_POOLS
+  range 4 65535
+  default 20
+  ---help---
+  The maximum number of mutex objects in the process-wide mutex pool, from
+  which all Legato mutexes are allocated.
+
+config MAX_SEM_POOL_SIZE
+  int "Maximum semaphore pool size"
+  depends on MEM_POOLS
+  range 2 65535
+  default 64
+  ---help---
+  The maximum number of semaphore objects in the process-wide semaphore pool,
+  from which all Legato semaphores are allocated.
+
+config MAX_THREAD_POOL_SIZE
+  int "Maximum thread pool size"
+  depends on MEM_POOLS
+  range 1 65535
+  default 20
+  ---help---
+  The maximum number of thread objects in the process-wide thread pool, from
+  which all Legato threads are allocated.
+
+config MAX_TIMER_POOL_SIZE
+  int "Maximum timer pool size"
+  depends on MEM_POOLS
+  range 1 65535
+  default 40
+  ---help---
+  The maximum number of timer objects in the process-wide timer pool, from
+  which all Legato timers are allocated.
+
+config MAX_PATH_ITERATOR_POOL_SIZE
+  int "Maximum path iterator count"
+  depends on MEM_POOLS
+  range 0 65535
+  default 10
+  ---help---
+  The maximum number of path iterator in the process-wide iterator pools, from
+  which all Legato path iterators are allocated.
+
+config MAX_MSG_LOCAL_CLIENT_SESSION_POOL_SIZE
+  int "Maximum local client messaging sessions"
+  depends on MEM_POOLS
+  range 0 65535
+  default 50 if RTOS
+  default 0
+  ---help---
+  The maximum number of simultaneous messaging sessions supported with local
+  clients.
+
+config MAX_ARG_OPTIONS
+  int "Maximum number of command line options"
+  depends on MEM_POOLS
+  range 0 65535
+  default 16 if RTOS
+  default 64
+  ---help---
+  Total number of command line options that can be handled by an app.  On
+  RTOS, this pool is a shared resource for all apps.
+
+config MAX_ARG_POSITIONAL_CALLBACKS
+  int "Maximum number of positional argument callbacks"
+  depends on MEM_POOLS
+  range 0 65535
+  default 8 if RTOS
+  default 128
+  ---help---
+  Total number of command line positional arguments that can be handled by an
+  app.  On RTOS, this pool is a shared resource for all apps.
+
+endmenu # end "Performance Tuning"
+
 menu "Diagnostic Features"
 
 choice
@@ -406,168 +568,6 @@ config SAFE_REF_NAMES_ENABLED
   Add a name field to Legato safe references.
 
 endmenu # end "Diagnostic Features"
-
-menu "Performance Tuning"
-
-config REDUCE_FOOTPRINT
-  bool "Reduce memory and storage use where possible"
-  default n
-  ---help---
-  Try to reduce the memory and storage footprint of Legato.  This may use
-  alternate data structures which are optimized for size and reduce the scale
-  of some tests.  Selecting this option may result in lower performance and
-  slower applications.
-
-config STATIC_THREAD_STACKS
-  bool "Statically allocate thread stacks"
-  depends on RTOS
-  default n
-  ---help---
-  Allocate stack space for Legato threads from static memory (bss) rather than
-  from the heap.
-
-config MEM_POOLS
-  bool "Use memory pools"
-  default y
-  ---help---
-  Use memory pools for dynamic memory allocation.  Memory pools help prevent
-  memory fragmentation, but require that the pools be sized appropriately for
-  the application.
-  Disabling this option will still allocate memory using the memory pool
-  interface (le_mem), but switches the internal behaviour to use malloc and
-  free on a per-block basis.  This allows tools like Valgrind to accurately
-  track the allocations and de-allocations at the cost of potential memory
-  fragmentation.
-
-config MAX_EVENT_POOL_SIZE
-  int "Maximum event pool size"
-  depends on MEM_POOLS
-  range 1 65535
-  default 30
-  ---help---
-  The maximum number of objects in the process-wide event pool, from which the
-  event objects are allocated.
-
-config MAX_HANDLER_POOL_SIZE
-  int "Maximum event handler pool size"
-  depends on MEM_POOLS
-  range 1 65535
-  default 15
-  ---help---
-  The maximum number of objects in the process-wide handler pool, from which
-  all handler objects are allocated.
-
-config MAX_QUEUED_FUNCTION_POOL_SIZE
-  int "Maximum queued event function pool size"
-  depends on MEM_POOLS
-  range 1 65535
-  default 15
-  ---help---
-  The maximum number of objects in the process-wide queued function report
-  pool, from which Queued Function reports are allocated.
-
-config MAX_REPORT_POOL_SIZE
-  int "Maximum event report pool size"
-  depends on MEM_POOLS
-  range 1 65535
-  default 1
-  ---help---
-  The maximum number of objects in a per event ID report pool.
-
-config MAX_FD_MONITOR_POOL_SIZE
-  int "Maximum file descriptor monitor pool size"
-  depends on MEM_POOLS
-  range 2 65535
-  default 10
-  ---help---
-  The maximum number of objects in the process-wide FD monitor pool, from
-  which all FD monitor objects are allocated.
-
-config MAX_SUB_POOLS_POOL_SIZE
-  int "Maximum memory pool sub-pools"
-  depends on MEM_POOLS
-  range 0 65535
-  default 8
-  ---help---
-  The maximum number of sub-pool objects in the memory sub-pools pool.  These
-  are control structures used for managing the subdivision of memory pools.
-
-config MAX_MUTEX_POOL_SIZE
-  int "Maximum mutex pool size"
-  depends on MEM_POOLS
-  range 4 65535
-  default 20
-  ---help---
-  The maximum number of mutex objects in the process-wide mutex pool, from
-  which all Legato mutexes are allocated.
-
-config MAX_SEM_POOL_SIZE
-  int "Maximum semaphore pool size"
-  depends on MEM_POOLS
-  range 2 65535
-  default 64
-  ---help---
-  The maximum number of semaphore objects in the process-wide semaphore pool,
-  from which all Legato semaphores are allocated.
-
-config MAX_THREAD_POOL_SIZE
-  int "Maximum thread pool size"
-  depends on MEM_POOLS
-  range 1 65535
-  default 20
-  ---help---
-  The maximum number of thread objects in the process-wide thread pool, from
-  which all Legato threads are allocated.
-
-config MAX_TIMER_POOL_SIZE
-  int "Maximum timer pool size"
-  depends on MEM_POOLS
-  range 1 65535
-  default 40
-  ---help---
-  The maximum number of timer objects in the process-wide timer pool, from
-  which all Legato timers are allocated.
-
-config MAX_PATH_ITERATOR_POOL_SIZE
-  int "Maximum path iterator count"
-  depends on MEM_POOLS
-  range 0 65535
-  default 10
-  ---help---
-  The maximum number of path iterator in the process-wide iterator pools, from
-  which all Legato path iterators are allocated.
-
-config MAX_MSG_LOCAL_CLIENT_SESSION_POOL_SIZE
-  int "Maximum local client messaging sessions"
-  depends on MEM_POOLS
-  range 0 65535
-  default 50 if RTOS
-  default 0
-  ---help---
-  The maximum number of simultaneous messaging sessions supported with local
-  clients.
-
-config MAX_ARG_OPTIONS
-  int "Maximum number of command line options"
-  depends on MEM_POOLS
-  range 0 65535
-  default 16 if RTOS
-  default 64
-  ---help---
-  Total number of command line options that can be handled by an app.  On
-  RTOS, this pool is a shared resource for all apps.
-
-config MAX_ARG_POSITIONAL_CALLBACKS
-  int "Maximum number of positional argument callbacks"
-  depends on MEM_POOLS
-  range 0 65535
-  default 8 if RTOS
-  default 128
-  ---help---
-  Total number of command line positional arguments that can be handled by an
-  app.  On RTOS, this pool is a shared resource for all apps.
-
-endmenu # end "Performance Tuning"
 
 ### Daemon Options ###
 

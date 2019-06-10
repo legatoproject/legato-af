@@ -1,0 +1,15 @@
+sources:
+{
+    // For now, the only implementation is for lwip + lwftp
+    ${LEGATO_ROOT}/3rdParty/lwftp/lwftp.c
+    lwftp/impl.c
+    ftpClient.c
+}
+
+cflags:
+{
+    -DLWFTP_DEBUG=LWIP_DBG_OFF
+
+    // For now, the only implementation is for lwip + lwftp
+    -I${LEGATO_ROOT}/3rdParty/lwftp
+}

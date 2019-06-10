@@ -136,6 +136,7 @@ choice
 config LINUX
   bool "Linux"
   select POSIX
+  select ENABLE_CONFIG_TREE
   ---help---
   Run on Linux.
 
@@ -267,6 +268,10 @@ endmenu # end "Framework"
 menu "Services"
 rsource "apps/platformServices/KConfig"
 endmenu # end "Services"
+
+menu "Components"
+rsource "components/KConfig"
+endmenu # end "Components"
 
 menu "Modules"
 rsource "modules/KConfig"
