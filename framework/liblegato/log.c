@@ -224,7 +224,7 @@ void _le_log_ExitFatal
     exit(EXIT_FAILURE);
 }
 
-
+#if LE_LOG_DEFAULT_IMPL
 //--------------------------------------------------------------------------------------------------
 /**
  * Log data block. Provides a hex dump for debug
@@ -287,6 +287,7 @@ void _le_LogData
         } while(0);
     }
 }
+#endif /* end LE_LOG_DEFAULT_IMPL */
 
 //--------------------------------------------------------------------------------------------------
 /**

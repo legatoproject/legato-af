@@ -55,7 +55,7 @@ static le_mem_PoolRef_t SessionPool;
 
 #if LE_CONFIG_CUSTOM_OS && defined(LE_MSG_SERVICE_READY_FLAG)
     // Include definitions to check service ready flag
-#   include "custom_os/fa_messagingLocal.h"
+#   include "platformMessagingLocal.h"
 #else
 
 static pthread_mutex_t ServiceReadyMutex = PTHREAD_MUTEX_INITIALIZER;

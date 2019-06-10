@@ -1,0 +1,31 @@
+//
+// Provides appInfo as an application
+//
+// For use on RTOS platforms which use the microSupervisor
+//
+// Copyright (C) Sierra Wireless Inc.
+//
+
+sandboxed: false
+
+executables:
+{
+    appInfo = ( $LEGATO_ROOT/framework/daemons/rtos/microSupervisor/appInfo )
+}
+
+processes:
+{
+    run:
+    {
+        (appInfo)
+    }
+    maxStackBytes: 1536
+
+
+    faultAction: restart
+}
+
+extern:
+{
+    appInfo.appInfo.le_appInfo
+}

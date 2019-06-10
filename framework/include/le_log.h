@@ -422,6 +422,9 @@ typedef struct le_log_Trace* le_log_TraceRef_t;
     !defined(LE_CRIT) && \
     !defined(LE_EMERG)
 
+/// Default log implementation is in use.
+#   define LE_LOG_DEFAULT_IMPL 1
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Send a message to the logging target.

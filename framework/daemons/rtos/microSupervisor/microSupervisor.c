@@ -178,7 +178,7 @@ static le_result_t StartProc
     int              i;
     int              taskNum = taskPtr - appPtr->taskList;
     le_result_t      result = LE_OK;
-    le_thread_Ref_t  currentThread;
+    le_thread_Ref_t  currentThread = NULL;
     TaskInfo_t      *taskInfoPtr;
 
     LE_DEBUG(" (%d) Creating task %s", taskNum, taskPtr->nameStr);
