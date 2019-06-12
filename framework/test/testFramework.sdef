@@ -43,6 +43,7 @@ apps:
     fd/test_Fd
     issues/test_LE_11195
     json/test_Json
+    rand/test_Rand
 
     /*
      * Helper applications assocated with python tests
