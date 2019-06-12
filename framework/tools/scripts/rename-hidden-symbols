@@ -42,7 +42,7 @@ def read_symbols(obj, all_syms=False, verbose=False):
         fields = line.split()
         if len(fields) >= 8:
             if symbol_type_matches(fields, all_syms):
-                symbols.add(fields[7])
+                symbols.add(fields[-1])
 
     return symbols
 
