@@ -116,19 +116,19 @@ le_result_t le_appInfo_GetName
          currentAppPtr->appNameStr != NULL;
          ++currentAppPtr)
     {
-        int task;
+        uint32_t task;
 
         for (task = 0; task < currentAppPtr->taskCount; ++task)
         {
             le_result_t result;
             pthread_t   thread;
 
-            if (currentAppPtr->threadList[task] == NULL)
+            if (currentAppPtr->threadList[task].threadRef == NULL)
             {
                 continue;
             }
 
-            result = thread_GetOSThread(currentAppPtr->threadList[task]->threadRef, &thread);
+            result = thread_GetOSThread(currentAppPtr->threadList[task].threadRef, &thread);
             if (result == LE_OK && (int32_t) thread == pid)
             {
                 return le_utf8_Copy(appNameStr, currentAppPtr->appNameStr, appNameSize, NULL);
@@ -162,6 +162,10 @@ le_result_t le_appInfo_GetHash
     size_t hashSize            ///< Hash string size.
 )
 {
+    LE_UNUSED(appNameStr);
+    LE_UNUSED(hashStr);
+    LE_UNUSED(hashSize);
+
     return LE_NOT_IMPLEMENTED;
 }
 
