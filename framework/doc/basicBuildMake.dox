@@ -12,7 +12,7 @@ specific for your target.
 All supported platforms use the @c make tool and have pre-configured makefiles included in the
 Framework.
 
-The framework build and configuration may be modified using @ref kconfigDescription "KConfig" to
+The framework build and configuration may be modified using @ref toolsKconfig "KConfig" to
 select configuration options.
 
 @warning You must have the matching @ref buildToolchain "toolchain installed" for your target.
