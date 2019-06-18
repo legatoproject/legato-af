@@ -29,11 +29,6 @@ class ComponentBuildScriptGenerator_t : protected RequireBaseGenerator_t
         virtual void GetExternalDependencies(model::Component_t* componentPtr);
         virtual void GetObjectFiles(model::Component_t* componentPtr);
 
-        virtual void GetCInterfaceHeaders(std::list<std::string>& result,
-                                          model::Component_t* componentPtr);
-        virtual void GetJavaInterfaceFiles(std::list<std::string>& result,
-                                           model::Component_t* componentPtr);
-
         virtual void GenerateTypesOnlyBuildStatement(const model::ApiTypesOnlyInterface_t* ifPtr);
         virtual void GenerateJavaTypesOnlyBuildStatement(const model::ApiTypesOnlyInterface_t* ifPtr);
         virtual void GenerateClientUsetypesBuildStatement(const model::ApiFile_t* apiFilePtr);
@@ -76,6 +71,11 @@ class ComponentBuildScriptGenerator_t : protected RequireBaseGenerator_t
                                           std::set<std::string>& dependencies);
 
     public:
+        virtual void GetCInterfaceHeaders(std::list<std::string>& result,
+                                          model::Component_t* componentPtr);
+        virtual void GetJavaInterfaceFiles(std::list<std::string>& result,
+                                           model::Component_t* componentPtr);
+
         virtual void GenerateCSourceBuildStatement(model::Component_t* componentPtr,
                                                    const model::ObjectFile_t* objFilePtr,
                                                    const std::list<std::string>& apiHeaders);

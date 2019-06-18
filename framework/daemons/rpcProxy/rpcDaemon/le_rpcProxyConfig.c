@@ -1,7 +1,7 @@
 /**
  * @file le_rpcProxyConfig.c
  *
- * UNIX-domain socket Messaging version of the RPC Proxy Configuration Service.
+ * UNIX-domain socket Messaging version of the RPC Proxy Framework Configuration Service.
  *
  * Copyright (C) Sierra Wireless Inc.
  */
@@ -143,7 +143,7 @@ static le_mem_PoolRef_t ConfigArgumentArrayPoolRef = NULL;
  * Function for retrieving a System-Link element from the System-Link array
  */
 //--------------------------------------------------------------------------------------------------
-const rpcProxy_SystemLinkElement_t rpcProxyConfig_GetSystemLinkArray
+rpcProxy_SystemLinkElement_t rpcProxyConfig_GetSystemLinkArray
 (
     uint32_t index
 )
@@ -185,12 +185,12 @@ const rpcProxy_ExternClient_t* rpcProxyConfig_GetClientReferenceArray
  * Function for retrieving a System-service element from the System-service array
  */
 //--------------------------------------------------------------------------------------------------
-const rpcProxy_SystemServiceConfig_t rpcProxyConfig_GetSystemServiceArray
+LE_SHARED rpcProxy_SystemServiceConfig_t* rpcProxyConfig_GetSystemServiceArray
 (
     uint32_t index
 )
 {
-    return rpcProxy_SystemServiceArray[index];
+    return &(rpcProxy_SystemServiceArray[index]);
 };
 
 

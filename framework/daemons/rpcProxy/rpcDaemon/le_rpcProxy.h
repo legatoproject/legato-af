@@ -20,14 +20,14 @@
  * Maximum number of simultaneous service bindings hosted by the RPC Proxy.
  */
 //--------------------------------------------------------------------------------------------------
-#define RPC_PROXY_SERVICE_BINDINGS_MAX_NUM     10
+#define RPC_PROXY_SERVICE_BINDINGS_MAX_NUM     LE_CONFIG_RPC_PROXY_SERVICE_BINDINGS_MAX_NUM
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Maximum number of simultaneous server data objects supported by the RPC Proxy.
  */
 //--------------------------------------------------------------------------------------------------
-#define RPC_PROXY_MSG_REFERENCE_MAX_NUM        10
+#define RPC_PROXY_MSG_REFERENCE_MAX_NUM        LE_CONFIG_RPC_PROXY_SERVICE_BINDINGS_MAX_NUM
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -65,6 +65,14 @@
 
 #define RPC_PROXY_MSG_HEADER_SIZE              (sizeof(rpcProxy_CommonHeader_t) + \
                                                sizeof(uint16_t))
+
+#define RPC_PROXY_COMMON_MSG_HEADER_SIZE       sizeof(rpcProxy_CommonHeader_t)
+
+#define RPC_PROXY_CONNECT_SERVICE_MSG_SIZE     (sizeof(rpcProxy_ConnectServiceMessage_t) - \
+                                               RPC_PROXY_COMMON_MSG_HEADER_SIZE)
+
+#define RPC_PROXY_KEEPALIVE_MSG_SIZE           (sizeof(rpcProxy_KeepAliveMessage_t) - \
+                                               RPC_PROXY_COMMON_MSG_HEADER_SIZE)
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -166,6 +174,7 @@ rpcProxy_ClientRequestResponseRecord_t;
 typedef struct rpcProxy_LocalMessage
 {
     uint32_t                id;       ///< Proxy Message Id, uniquely identifies each RPC Message.
+    TagID_t                 tagId;    ///< Tag ID of the link-list element
     uint8_t*                dataPtr;  ///< Pointer to String and Array Parameters
     le_dls_Link_t           link;
 }

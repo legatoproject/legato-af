@@ -101,6 +101,7 @@ static void ExitTool
 #ifndef LE_CONFIG_RTOS
         exit(exitCode);
 #else
+        LE_UNUSED(exitCode);
         le_thread_Exit(NULL);
 #endif
 }
@@ -460,7 +461,7 @@ static void CommandArgHandler
     }
     else
     {
-        fprintf(stderr, "Unrecognized command '%s'.  Try 'rpcTool help' for assistance.\n", arg);
+        fprintf(stderr, "Unrecognized command '%s'.  Try 'rpctool help' for assistance.\n", arg);
         ExitTool(EXIT_FAILURE);
     }
 }

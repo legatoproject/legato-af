@@ -84,6 +84,7 @@ void RtosSystemBuildScriptGenerator_t::GenerateLdFlags
         "\n";
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Pack build into a single file.
@@ -110,9 +111,55 @@ void RtosSystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
 
     // Build rpc services file
     script << "build " << rpcServicesOutputFile << ":"
-              "  CompileC " << path::Combine(buildParams.workingDir, "src/rpcServices.c") << "\n"
-              "    cFlags = $cFlags -I$$LEGATO_ROOT/framework/daemons/rpcProxy/rpcDaemon"
+              "  CompileC " << path::Combine(buildParams.workingDir, "src/rpcServices.c");
+
+    // Create a set of header files that need to be generated for all IPC API interfaces.
+    std::list<std::string> interfaceHeaders;
+
+    // Traverse all External Server Interfaces and add them into the
+    // interface headers list
+    for (auto &serverEntry : systemPtr->externServerInterfaces)
+    {
+        auto componentPtr = serverEntry.second->ifPtr->componentPtr;
+
+        if (componentPtr->HasCOrCppCode())
+        {
+            componentGeneratorPtr->GetCInterfaceHeaders(interfaceHeaders, componentPtr);
+        }
+        else if (componentPtr->HasJavaCode())
+        {
+            componentGeneratorPtr->GetJavaInterfaceFiles(interfaceHeaders, componentPtr);
+        }
+    }
+
+    // Traverse all External Client Interfaces and add them into the
+    // interface headers list
+    for (auto &serverEntry : systemPtr->externClientInterfaces)
+    {
+        auto componentPtr = serverEntry.second->ifPtr->componentPtr;
+
+        if (componentPtr->HasCOrCppCode())
+        {
+            componentGeneratorPtr->GetCInterfaceHeaders(interfaceHeaders, componentPtr);
+        }
+        else if (componentPtr->HasJavaCode())
+        {
+            componentGeneratorPtr->GetJavaInterfaceFiles(interfaceHeaders, componentPtr);
+        }
+    }
+
+    if (!interfaceHeaders.empty())
+    {
+        // Generate a dependency statement for each interface header
+        script << " || ";
+        std::copy(interfaceHeaders.begin(), interfaceHeaders.end(),
+                  std::ostream_iterator<std::string>(script, " "));
+    }
+
+    script << "\n";
+    script << "    cFlags = $cFlags -I$$LEGATO_ROOT/framework/daemons/rpcProxy/rpcDaemon"
               " -I$$LEGATO_ROOT/framework/liblegato";
+
     std::set<const model::ApiFile_t*> useTypesApis;
     for (auto &serverEntry : systemPtr->externServerInterfaces)
     {

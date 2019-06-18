@@ -916,6 +916,16 @@ static void Handle_{{apiName}}_{{function.name}}
     // Pack any "out" parameters
     {{- pack.PackOutputs(function.parameters,initiatorWaits=True) }}
 
+#ifdef LE_CONFIG_RPC
+    // Check if we are at the end of the response buffer
+    if ((_msgBufPtr - _msgBufStartPtr) <
+        (int)(le_msg_GetMaxPayloadSize(_msgRef) - sizeof(uint32_t)))
+    {
+        // Add EOF TagID to the end of response message
+        *_msgBufPtr = LE_PACK_EOF;
+    }
+#endif
+
     // Return the response
     TRACE("Sending response to client session %p : %ti bytes sent",
           le_msg_GetSession(_msgRef),

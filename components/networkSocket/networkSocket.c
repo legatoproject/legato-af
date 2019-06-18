@@ -560,6 +560,25 @@ LE_SHARED le_result_t le_comm_Connect (void* handle)
         le_fdMonitor_Enable(FdMonitorRef, PollingEvents);
     }
 
+
+    //
+    // Set the Socket as Non-Blocking
+    //
+
+    // Retrieve existing socket options
+    int opts = fcntl(connectionRecordPtr->fd, F_GETFL);
+    if (opts < 0) {
+        LE_ERROR("fcntl(F_GETFL)");
+        return LE_FAULT;
+    }
+
+    // Set Non-Blocking socket option
+    opts = (opts | O_NONBLOCK);
+    if (fcntl(connectionRecordPtr->fd, F_SETFL, opts) < 0) {
+        LE_ERROR("fcntl(F_SETFL)");
+        return LE_FAULT;
+    }
+
     LE_INFO("Connecting AF_INET socket, fd %d ......... [DONE]", connectionRecordPtr->fd);
     return result;
 }
@@ -660,11 +679,13 @@ LE_SHARED le_result_t le_comm_Receive (void* handle, void* buf, size_t* len)
     while ((bytesReceived < 0) && (errno == EINTR));
 
     // If we failed, process the error and return.
-    if (bytesReceived <= 0)
+    if (bytesReceived < 0)
     {
         if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
         {
-            return LE_WOULD_BLOCK;
+            // Set the length to zero and return
+            *len = 0;
+            return LE_OK;
         }
         else if (errno == ECONNRESET)
         {

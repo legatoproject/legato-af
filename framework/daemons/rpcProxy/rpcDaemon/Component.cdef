@@ -9,15 +9,27 @@ sources:
 #else
     le_rpcProxyConfig.c
 #endif
-    le_rpcProxyConfigCommon.c
+
+#if ${LE_CONFIG_RPC_RUNTIME_CONFIG_TREE} = y
+    le_rpcProxyRuntimeConfigTree.c
+#else
+    le_rpcProxyRuntimeStatic.c
+#endif
 }
 
 requires:
 {
+#if ${LE_CONFIG_RPC_ENABLE_CONFIG_TREE} = y
     api:
     {
         le_cfg.api
     }
+#else
+    component:
+    {
+        rpcStaticConfig
+    }
+#endif
 }
 
 provides:
@@ -31,6 +43,6 @@ provides:
 cflags:
 {
     -I$LEGATO_ROOT/framework/daemons/rpcProxy
-    -I$LEGATO_ROOT/framework/rpcProxy/rpcDaemon
+    -I$LEGATO_ROOT/framework/daemons/rpcProxy/rpcDaemon
     -I$LEGATO_ROOT/framework/liblegato
 }

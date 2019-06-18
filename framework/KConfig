@@ -594,4 +594,34 @@ config RPC_PROXY_LIBRARY
     Select this to build the RPC Proxy as a library component
     that can be linked into an application or executable file.
 
+config RPC_RUNTIME_CONFIG_TREE
+  bool "Use ConfigTree to store RPC Run-time configuration"
+  depends on RPC && ENABLE_CONFIG_TREE
+  default y if ENABLE_CONFIG_TREE
+  default n
+  ---help---
+    Select this to enable the RPC Proxy to store dynamic run-time configuration
+    in the Configuration Tree.
+
+config RPC_ENABLE_CONFIG_TREE
+  bool
+  default y if LINUX || RPC_RUNTIME_CONFIG_TREE
+  default n
+
+config RPC_PROXY_SERVICE_BINDINGS_MAX_NUM
+  int "Maximum number of RPC service bindings"
+  depends on RPC
+  range 0 30
+  default 10
+  ---help---
+  The maximum number of simultaneous RPC service bindings.
+
+config RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM
+  int "Maximum number of response message parameters"
+  depends on RPC
+  range 0 32
+  default 32
+  ---help---
+  The maximum number of "out" parameters per response message.
+
 endmenu

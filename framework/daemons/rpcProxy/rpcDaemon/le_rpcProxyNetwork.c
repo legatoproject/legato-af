@@ -269,9 +269,13 @@ void rpcProxyNetwork_StartNetworkConnectionRetryTimer
     }
     else
     {
+        // Reset Network Record
         networkTimerPtr->record.handle = NULL;
         networkTimerPtr->record.state = NETWORK_DOWN;
         networkTimerPtr->record.type = UNKNOWN;
+
+        // Reset Network Message Re-assembly State-Machine
+        networkTimerPtr->record.messageState.recvState = NETWORK_MSG_IDLE;
     }
 
     // Set Network Status record  in the timer event
@@ -494,21 +498,24 @@ le_result_t rpcProxyNetwork_CreateNetworkCommunicationChannel
             systemName,
             le_comm_GetId(networkRecordPtr->handle));
 
+    // Reset Network Message Re-assembly State-Machine
+    networkRecordPtr->messageState.recvState = NETWORK_MSG_IDLE;
+
     // Check the handle pointer to see if it is valid
     if (networkRecordPtr->handle == NULL)
     {
         // Traverse the System-Link array and
         // retrieve the argc and argv[] arguments configured for the systemName
-        for (uint32_t index = 0; rpcProxyConfig_GetSystemServiceArray(index).systemName; index++)
+        for (uint32_t index = 0; rpcProxyConfig_GetSystemServiceArray(index)->systemName; index++)
         {
-            if (strcmp(rpcProxyConfig_GetSystemServiceArray(index).systemName, systemName) == 0)
+            if (strcmp(rpcProxyConfig_GetSystemServiceArray(index)->systemName, systemName) == 0)
             {
                 // Create the Network Connection, passing in the command-line
                 // arguments that were read from the RPC Proxy links configuration
                 networkRecordPtr->handle =
                     le_comm_Create(
-                        rpcProxyConfig_GetSystemServiceArray(index).argc,
-                        rpcProxyConfig_GetSystemServiceArray(index).argv,
+                        rpcProxyConfig_GetSystemServiceArray(index)->argc,
+                        rpcProxyConfig_GetSystemServiceArray(index)->argv,
                         &result);
 
                 if ((result != LE_OK) && (result != LE_IN_PROGRESS))
@@ -669,6 +676,9 @@ void rpcProxyNetwork_DeleteNetworkCommunicationChannel
 
     // Set Network Connection state to DOWN
     networkRecordPtr->state = NETWORK_DOWN;
+
+    // Reset Network Message Re-assembly State-Machine
+    networkRecordPtr->messageState.recvState = NETWORK_MSG_IDLE;
 
     // Stop Network Keep-Alive service
     StopNetworkKeepAliveService(systemName, networkRecordPtr);
@@ -1080,6 +1090,8 @@ static void AsyncConnectionCallbackHandler
     short events ///< Event bit-mask
 )
 {
+    LE_UNUSED(events);
+
     le_result_t result;
 
     LE_INFO("Asynchronous Connection Callback function triggered, handle [%d]",

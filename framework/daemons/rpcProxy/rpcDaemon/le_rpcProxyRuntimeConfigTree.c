@@ -1,7 +1,8 @@
 /**
- * @file le_rpcProxyConfigCommon.c
+ * @file le_rpcProxyRuntimeConfigTree.c
  *
- * This file contains the common source code for the RPC Proxy Configuration Service.
+ * This file contains source code for implementing the RPC Proxy Run-time Configuration
+ * Service using the Legato Configuration Tree.
  *
  * Copyright (C) Sierra Wireless Inc.
  */
@@ -97,17 +98,17 @@ le_result_t rpcProxyConfig_ValidateConfiguration
     LE_INFO("Validating RPC Configuration");
 
     // Traverse all the Bindings in the System-service array
-    for (uint32_t index = 0; rpcProxyConfig_GetSystemServiceArray(index).systemName; index++)
+    for (uint32_t index = 0; rpcProxyConfig_GetSystemServiceArray(index)->systemName; index++)
     {
         bool matchFound = false;
         const char* serviceName =
-            rpcProxyConfig_GetSystemServiceArray(index).serviceName;
+            rpcProxyConfig_GetSystemServiceArray(index)->serviceName;
 
         // Verify the Service-Name is not NULL
         if (serviceName == NULL)
         {
             LE_ERROR("Invalid service-name on system '%s'",
-                     rpcProxyConfig_GetSystemServiceArray(index).systemName);
+                     rpcProxyConfig_GetSystemServiceArray(index)->systemName);
             return LE_NOT_FOUND;
         }
 
@@ -178,7 +179,7 @@ le_result_t rpcProxyConfig_ValidateConfiguration
         matchFound = false;
 
         const char* linkName =
-            rpcProxyConfig_GetSystemServiceArray(index).linkName;
+            rpcProxyConfig_GetSystemServiceArray(index)->linkName;
 
         // Verify the Link-Name is not NULL
         if (linkName == NULL)
@@ -429,7 +430,7 @@ static le_result_t LoadSystemsFromConfigTree
  *      - LE_BAD_PARAMETER if number of elements exceeds the storage array size.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t rpcProxyConfig_LoadBindings
+LE_SHARED le_result_t rpcProxyConfig_LoadBindings
 (
     void
 )
@@ -600,12 +601,12 @@ const char* rpcProxyConfig_GetSystemNameByServiceName
 )
 {
     // Traverse all System-Service entries
-    for (uint32_t index = 0; rpcProxyConfig_GetSystemServiceArray(index).systemName; index++)
+    for (uint32_t index = 0; rpcProxyConfig_GetSystemServiceArray(index)->systemName; index++)
     {
         // Check if service name matches
-        if (strcmp(serviceName, rpcProxyConfig_GetSystemServiceArray(index).serviceName) == 0)
+        if (strcmp(serviceName, rpcProxyConfig_GetSystemServiceArray(index)->serviceName) == 0)
         {
-            return rpcProxyConfig_GetSystemServiceArray(index).systemName;
+            return rpcProxyConfig_GetSystemServiceArray(index)->systemName;
         }
     }
 
@@ -625,12 +626,12 @@ const char* rpcProxyConfig_GetRemoteServiceNameByServiceName
 )
 {
     // Traverse all System-Service entries
-    for (uint32_t index = 0; rpcProxyConfig_GetSystemServiceArray(index).systemName; index++)
+    for (uint32_t index = 0; rpcProxyConfig_GetSystemServiceArray(index)->systemName; index++)
     {
         // Check if service name matches
-        if (strcmp(serviceName, rpcProxyConfig_GetSystemServiceArray(index).serviceName) == 0)
+        if (strcmp(serviceName, rpcProxyConfig_GetSystemServiceArray(index)->serviceName) == 0)
         {
-            return rpcProxyConfig_GetSystemServiceArray(index).remoteServiceName;
+            return rpcProxyConfig_GetSystemServiceArray(index)->remoteServiceName;
         }
     }
 
@@ -650,13 +651,13 @@ const char* rpcProxyConfig_GetServiceNameByRemoteServiceName
 )
 {
     // Traverse all System-Service entries
-    for (uint32_t index = 0; rpcProxyConfig_GetSystemServiceArray(index).systemName; index++)
+    for (uint32_t index = 0; rpcProxyConfig_GetSystemServiceArray(index)->systemName; index++)
     {
         // Check if service name matches
         if (strcmp(remoteServiceName,
-                   rpcProxyConfig_GetSystemServiceArray(index).remoteServiceName) == 0)
+                   rpcProxyConfig_GetSystemServiceArray(index)->remoteServiceName) == 0)
         {
-            return rpcProxyConfig_GetSystemServiceArray(index).serviceName;
+            return rpcProxyConfig_GetSystemServiceArray(index)->serviceName;
         }
     }
 
@@ -676,12 +677,12 @@ const char* rpcProxyConfig_GetSystemNameByLinkName
 )
 {
     // Traverse all System-Service entries
-    for (uint32_t index = 0; rpcProxyConfig_GetSystemServiceArray(index).systemName; index++)
+    for (uint32_t index = 0; rpcProxyConfig_GetSystemServiceArray(index)->systemName; index++)
     {
         // Check if the link name matches
-        if (strcmp(linkName, rpcProxyConfig_GetSystemServiceArray(index).linkName) == 0)
+        if (strcmp(linkName, rpcProxyConfig_GetSystemServiceArray(index)->linkName) == 0)
         {
-            return rpcProxyConfig_GetSystemServiceArray(index).systemName;
+            return rpcProxyConfig_GetSystemServiceArray(index)->systemName;
         }
     }
 
@@ -1509,4 +1510,3 @@ le_result_t le_rpc_GetNextSystemLink
     le_cfg_CancelTxn(iteratorRef);
     return LE_NOT_FOUND;
 }
-

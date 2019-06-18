@@ -27,6 +27,7 @@ processes:
     faultAction: restart
 }
 
+#if ${LE_CONFIG_RPC_ENABLE_CONFIG_TREE} = y
 requires:
 {
     configTree:
@@ -34,6 +35,7 @@ requires:
         [w] .
     }
 }
+#endif
 
 extern:
 {

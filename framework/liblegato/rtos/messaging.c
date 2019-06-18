@@ -435,6 +435,33 @@ le_msg_SessionRef_t le_msg_GetSession
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Requests a response from a server by sending it a request.  Doesn't block.  Instead,
+ * provides a callback function to be called when the response arrives or the transaction
+ * terminates without a response (due to the session terminating or the server deleting the
+ * request without responding).
+ *
+ * Async response not supported with mailbox API
+ *
+ * @note
+ *     - The thread attached to the session (i.e., thread created by the session)
+ *       will trigger the callback from its main event loop.  This means if
+ *       that thread doesn't run its main event loop, it won't trigger the callback.
+ *     - Function can only be used on the client side of a session.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_msg_RequestResponse
+(
+    le_msg_MessageRef_t         msgRef,     ///< [in] Reference to the request message.
+    le_msg_ResponseCallback_t   handlerFunc,///< [in] Function to be called when transaction done.
+    void*                       contextPtr  ///< [in] Opaque value to be passed to handler function.
+)
+{
+    msgLocal_RequestResponse(msgRef, handlerFunc, contextPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Requests a response from a server by sending it a request.  Blocks until the response arrives
  * or until the transaction terminates without a response (i.e., if the session terminates or
  * the server deletes the request without responding).
