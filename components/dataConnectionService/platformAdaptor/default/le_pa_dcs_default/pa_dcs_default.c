@@ -122,6 +122,28 @@ void pa_dcs_RestoreInitialDnsNameServers
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Returns DHCP lease file location
+ *
+ * @return
+ *      LE_OVERFLOW     Destination buffer too small and output will be truncated
+ *      LE_UNSUPPORTED  If not supported by OS
+ *      LE_FAULT        Function failed
+ *      LE_OK           Function succeedv
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_dcs_GetDhcpLeaseFilePath
+(
+    const char*  interfaceStrPtr,   ///< [IN] Pointer on the interface name
+    char*        pathPtr,           ///< [OUT] Output 1 pointer
+    size_t       bufferSize         ///< [IN]  Size of buffer
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Set the DNS configuration
  *
  * @return

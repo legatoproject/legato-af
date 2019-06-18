@@ -1,3 +1,5 @@
+sandboxed: false
+
 executables:
 {
     dcsClient = ( dcsClient )

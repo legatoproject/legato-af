@@ -104,6 +104,8 @@ LE_SHARED le_result_t pa_dcs_AskForIpAddress
     const char* interfaceStrPtr
 );
 
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Delete the current default gateway config on the system
@@ -111,6 +113,24 @@ LE_SHARED le_result_t pa_dcs_AskForIpAddress
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_dcs_DeleteDefaultGateway
 (
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Returns DHCP lease file location
+ *
+ * @return
+ *      LE_OVERFLOW     Destination buffer too small and output will be truncated
+ *      LE_UNSUPPORTED  If not supported by OS
+ *      LE_FAULT        Function failed
+ *      LE_OK           Function succeed
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_dcs_GetDhcpLeaseFilePath
+(
+    const char*  interfaceStrPtr,   ///< [IN] Pointer on the interface name
+    char*        pathPtr,           ///< [OUT] Output 1 pointer
+    size_t       bufferSize         ///< [IN]  Size of buffer
 );
 
 //--------------------------------------------------------------------------------------------------

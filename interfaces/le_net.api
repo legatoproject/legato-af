@@ -35,9 +35,11 @@
  * | -------------------------------| ---------------------------------------------------------------------------------------------------|
  * | le_net_ChangeRoute()           | Add or remove host or network route onto the network interface of a given data channel             |
  * | le_net_SetDefaultGW()          | Set a device's default gateway addresses to those assigned for a given channel use                 |
+ * | le_net_GetDefaultGW()          | Get the default gateway address(es) for the channel provided (retrieved from DHCP lease file)      |
  * | le_net_BackupDefaultGW()       | Back up a device's current default gateway addresses                                               |
  * | le_net_RestoreDefaultGW()      | Restore the default gateway addresses of a device previously backed up by le_net_BackupDefaultGW() |
  * | le_net_SetDNS()                | Set the DNS server addresses into the device's name server address table                           |
+ * | le_net_GetDNS()                | Get the DNS server addresses for the channel provided (retrieved from DHCP lease file)             |
  * | le_net_RestoreDNS()            | Remove the DNS server addresses previously added to the device's name server address table         |
  *
  *
@@ -92,7 +94,7 @@
  *
  * @subsection le_net_APIDetails_DefaultGW Default Gateway Address
  *
- * The @c le_net interface provides three APIs for changing the default gateway address on a
+ * The @c le_net interface provides four APIs for changing the default gateway address on a
  * device. To back up the original setting before changing it, le_net_BackupDefaultGW() can be
  * used. This will save both the default gateway address and the network interface on which it is
  * installed. Later, when this original setting is to be restored, le_net_RestoreDefaultGW() can
@@ -101,10 +103,8 @@
  * To install a different default GW address on a device, le_net_SetDefaultGW() can be called
  * with the channel reference of the channel provided, which assigned default gateway address will
  * be used as the device's. Its assigned network interface will be the interface used for this
- * configuration.
- *
- * @note This set of APIs for default gateway configuration management currently only supports
- * cellular channels but not WiFi.
+ * configuration. To query the channel's default GW address prior to installing it on the device,
+ * le_net_GetDefaultGW() can be used.
  *
  * The following is some sample code over how to use le_net_RestoreDefaultGW() and
  * le_net_BackupDefaultGW():
@@ -146,12 +146,13 @@
  *
  * @subsection le_net_APIDetails_DNS DNS Server Addresses
  *
- * There are two functions provided for setting a device's DNS server addresses and restoring
+ * There are three functions provided for setting a device's DNS server addresses and restoring
  * them. When an application calls le_net_SetDNS() to provide a channel reference, @c le_net
  * would query for the DNS server addresses assigned for this channel's use and add them into
  * the device's global name server address table, which on a typical Linux-based device is at
  * /etc/resolv.conf. The @c le_net interface would remember this lastly added set of DNS server
- * address.
+ * address. If, for whatever reason, an application needs to know what a channel's DNS server
+ * address is, le_net_GetDNS() can be used.
  *
  * When the application is done with the channel, it needs to remove these previously added DNS
  * server addresses from the device's global name server address table, which can be done via
@@ -159,7 +160,7 @@
  * set of DNS server addresses and seek to delete them from the global table.
  *
  * Note that for each data channel there could be zero to two DNS server addresses assigned. The
- * @c le_net interface currently supports both IPv4 and IPv6, but cellular channels only.
+ * @c le_net interface currently supports both IPv4 and IPv6.
  *
  * The following is some sample code over how to use le_net_SetDNS() and le_net_RestoreDNS():
  * @code
@@ -174,7 +175,7 @@
         if (isAdd)
         {
             LE_INFO("Adding DNS configs for channel reference %p", myChannelRef);
-            IsDnsAdded = (le_net_SetDNS(myChannelRef) == LE_OK);
+            isDnsAdded = (le_net_SetDNS(myChannelRef) == LE_OK);
         }
         else if (isDnsAdded)
         {
@@ -218,11 +219,50 @@ DEFINE INTERFACE_NAME_MAX_LEN = 100;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * IPv4 addr string's max length
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE IPV4ADDR_MAX_LEN = 16;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * IPv6 addr string's max length
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE IPV6ADDR_MAX_LEN = 46;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * IP addr string's max length
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE IPADDR_MAX_LEN = 46;
+DEFINE IPADDR_MAX_LEN = IPV6ADDR_MAX_LEN;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Structure used to communitcate a channel's DNS Server address
+ */
+//--------------------------------------------------------------------------------------------------
+STRUCT DnsServerAddresses
+{
+    string  ipv4Addr1[IPV4ADDR_MAX_LEN]; ///< Holds first IPv4 address
+    string  ipv4Addr2[IPV4ADDR_MAX_LEN]; ///< Holds second IPv4 address
+    string  ipv6Addr1[IPV6ADDR_MAX_LEN]; ///< Holds first IPv6 address
+    string  ipv6Addr2[IPV6ADDR_MAX_LEN]; ///< Holds second IPv6 address
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Structure used to communitcate a channel's Default Gateway
+ */
+//--------------------------------------------------------------------------------------------------
+STRUCT DefaultGatewayAddresses
+{
+    string  ipv4Addr[IPV4ADDR_MAX_LEN]; ///< Holds IPv4 address
+    string  ipv6Addr[IPV6ADDR_MAX_LEN]; ///< Holds IPv6 address
+};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -246,11 +286,11 @@ DEFINE IPADDR_MAX_LEN = 46;
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ChangeRoute
 (
-    le_dcs.Channel channelRef         IN, ///< the channel onto which the route change is made
-    string destAddr[IPADDR_MAX_LEN]   IN, ///< Destination IP address for the route
-    string destSubnet[IPADDR_MAX_LEN] IN, ///< Destination's subnet: IPv4 netmask or IPv6 prefix
-                                          ///< length
-    bool isAdd                        IN  ///< the change is to add (true) or delete (false)
+    le_dcs.Channel channelRef           IN, ///< the channel onto which the route change is made
+    string destAddr[IPADDR_MAX_LEN]     IN, ///< Destination IP address for the route
+    string destSubnet[IPADDR_MAX_LEN]   IN, ///< Destination's subnet: IPv4 netmask or IPv6 prefix
+                                            ///< length
+    bool isAdd                          IN  ///< the change is to add (true) or delete (false)
 );
 
 
@@ -266,6 +306,25 @@ FUNCTION le_result_t SetDefaultGW
 (
     le_dcs.Channel channelRef         IN  ///< the channel on which interface its default GW
                                           ///< addr is to be set
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the default GW address for the given data channel.
+ *
+ * @note
+ *      Accomodates dual-stack IPv4/IPv6 addresses. If the default GW address only is only IPv4 or
+ *      IPv6, but not both, the unused field of "addr" will be nulled.
+ *
+ * @return
+ *      - LE_OK upon success, otherwise LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetDefaultGW
+(
+    le_dcs.Channel          channelRef IN, ///< Channel to retrieve GW addresses
+    DefaultGatewayAddresses addr       OUT ///< Channel's Default GW addresses
 );
 
 
@@ -301,6 +360,27 @@ FUNCTION le_result_t SetDNS
 (
     le_dcs.Channel channelRef         IN ///< the channel from which the DNS addresses retrieved
                                          ///< will be set into the system config
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the DNS server addresses for the given data channel retrieved from its technology
+ *
+ * @note
+ *      Can accomodate up to two dual-stack DNS server addresses. In the case that there are more
+ *      than two server addresses, the first two addresses of each IP version will be returned. If
+ *      there are fewer than two dual-stack addresses, or contain only one type of IPv4 or IPv6
+ *      addresses, the unused portions of the passed structure will be nulled and returned.
+ *
+ * @return
+ *      - LE_OK upon success, otherwise LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetDNS
+(
+    le_dcs.Channel     channelRef       IN, ///< Channel to retrieve DNS server addresses
+    DnsServerAddresses addr             OUT ///< DNS server addresses
 );
 
 
