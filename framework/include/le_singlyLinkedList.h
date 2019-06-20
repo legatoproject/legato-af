@@ -217,16 +217,24 @@ typedef bool (*le_sls_LessThanFunc_t)(le_sls_Link_t* a, le_sls_Link_t* b);
 
 //--------------------------------------------------------------------------------------------------
 /**
- * When a list is created, it must be initialized by assigning this macro to the list before the list
- * can be used.
+ * When a list is created it must be initialized to this macro in the declaration,
+ * or have @c LE_SLS_LIST_INIT assigned to it, before being used
  */
 //--------------------------------------------------------------------------------------------------
-#define LE_SLS_LIST_INIT (le_sls_List_t){NULL}
+#define LE_SLS_LIST_DECL_INIT {NULL}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * When a list is created it must be initialized by assigning this macro to the list, or
+ * initializing to @c LE_SLS_LIST_DECL_INIT in the declaration, before the list can be used.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_SLS_LIST_INIT (le_sls_List_t)LE_SLS_LIST_DECL_INIT
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * When a link is created, it must be initialized by assigning this macro to the link before it can
+ * When a link is created it must be initialized by assigning this macro to the link before it can
  * be used.
  */
 //--------------------------------------------------------------------------------------------------
@@ -479,4 +487,3 @@ bool le_sls_IsListCorrupted
 
 
 #endif  // LEGATO_SINGLY_LINKED_LIST_INCLUDE_GUARD
-

@@ -232,11 +232,19 @@ typedef bool (*le_dls_LessThanFunc_t)(le_dls_Link_t* a, le_dls_Link_t* b);
 
 //--------------------------------------------------------------------------------------------------
 /**
- * When a list is created it must be initialized by assigning this macro to the list before the list
- * can be used.
+ * When a list is created it must be initialized to this macro in the declaration,
+ * or have @c LE_DLS_LIST_INIT assigned to it, before being used
  */
 //--------------------------------------------------------------------------------------------------
-#define LE_DLS_LIST_INIT (le_dls_List_t){NULL}
+#define LE_DLS_LIST_DECL_INIT {NULL}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * When a list is created it must be initialized by assigning this macro to the list, or
+ * initializing to @c LE_DLS_LIST_DECL_INIT in the declaration, before the list can be used.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_DLS_LIST_INIT (le_dls_List_t)LE_DLS_LIST_DECL_INIT
 
 
 //--------------------------------------------------------------------------------------------------
@@ -549,4 +557,3 @@ bool le_dls_IsListCorrupted
 
 
 #endif  // LEGATO_DOUBLY_LINKED_LIST_INCLUDE_GUARD
-
