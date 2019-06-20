@@ -11,17 +11,17 @@
 #include "microSupervisor.h"
 
 // Initializers are defined in these headers
-#include "args.h"
+/* #include "args.h" */
 #include "eventLoop.h"
-#include "fileDescriptor.h"
-#include "fs.h"
-#include "json.h"
+/* #include "fileDescriptor.h" */
+/* #include "fs.h" */
+/* #include "json.h" */
 #include "log.h"
 #include "mem.h"
-#include "messaging.h"
-#include "rand.h"
+/* #include "messaging.h" */
+/* #include "rand.h" */
 #include "safeRef.h"
-#include "test.h"
+/* #include "test.h" */
 #include "thread.h"
 #include "timer.h"
 
@@ -45,8 +45,11 @@
  * @return Smallest value.
  */
 //--------------------------------------------------------------------------------------------------
-#define MIN(a, b)   ((a) < (b) ? (a) : (b))
+#ifndef MIN
+#  define MIN(a, b)   ((a) < (b) ? (a) : (b))
+#endif
 
+#if NOT_IMPLEMENTED
 //--------------------------------------------------------------------------------------------------
 /**
  * Pool for argument strings.
@@ -54,6 +57,7 @@
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t ArgStringPoolRef;
 LE_MEM_DEFINE_STATIC_POOL(ParentArgStringPool, ARG_STRING_POOL_SIZE, ARG_STRING_POOL_BYTES);
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -95,21 +99,21 @@ static void InitLegatoFramework
 )
 {
     // The order of initialization is important.
-    rand_Init();
+    // rand_Init();
     mem_Init();
     log_Init();         // Uses memory pools.
     safeRef_Init();     // Uses memory pools and hash maps.
     mutex_Init();       // Uses memory pools.
     sem_Init();         // Uses memory pools.
-    arg_Init();         // Uses memory pools.
+    // arg_Init();         // Uses memory pools.
     event_Init();       // Uses memory pools.
-    timer_Init();       // Uses event loop.
+    //timer_Init();       // Uses event loop.
     thread_Init();      // Uses event loop, memory pools and safe references.
-    test_Init();        // Uses mutexes.
-    msg_Init();         // Uses event loop.
-    fs_Init();          // Uses memory pools and safe references and path manipulation.
-    fd_Init();
-    json_Init();
+    // test_Init();        // Uses mutexes.
+    // msg_Init();         // Uses event loop.
+    // fs_Init();          // Uses memory pools and safe references and path manipulation.
+    // fd_Init();
+    // json_Init();
 
     // Init space for all services.
     _le_supervisor_InitAllServices();
@@ -137,6 +141,7 @@ static void CleanupThread
     threadInfoPtr->threadRef = NULL;
 }
 
+#if NOT_IMPLEMENTED
 //--------------------------------------------------------------------------------------------------
 /**
  * Duplicate a string using a memory pool.
@@ -160,6 +165,7 @@ static char *PoolStrDup
     }
     return result;
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -189,6 +195,7 @@ static le_result_t StartProc
 
     if (cmdlineStr != NULL)
     {
+#if NOT_IMPLEMENTED
         if (cmdlineStr[0] == '\0')
         {
             taskInfoPtr->argc = 1;
@@ -209,6 +216,9 @@ static le_result_t StartProc
             le_arg_Split(taskPtr->nameStr, taskInfoPtr->cmdlinePtr,
                 &taskInfoPtr->argc, taskInfoPtr->argv);
         }
+#else
+        LE_FATAL("Called unimplemented code path");
+#endif
     }
     else
     {
@@ -438,7 +448,9 @@ LE_SHARED void le_microSupervisor_Main
 )
 {
     const App_t         *currentAppPtr;
+#if NOT_IMPLEMENTED
     le_mem_PoolRef_t     basePoolRef;
+#endif
 
 #if HAVE_PTHREAD_SETNAME
     pthread_setname_np(pthread_self(), __func__);
@@ -446,10 +458,12 @@ LE_SHARED void le_microSupervisor_Main
 
     InitLegatoFramework();
 
+#if NOT_IMPLEMENTED
     basePoolRef = le_mem_InitStaticPool(ParentArgStringPool, ARG_STRING_POOL_SIZE,
         ARG_STRING_POOL_BYTES);
     ArgStringPoolRef = le_mem_CreateReducedPool(basePoolRef, "ArgStringPool",
         ARG_STRING_SMALL_POOL_SIZE, ARG_STRING_SMALL_POOL_BYTES);
+#endif
 
     // Iterate over all apps.  App list is terminated by a NULL entry.
     for (currentAppPtr = _le_supervisor_GetSystemApps();
