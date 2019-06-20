@@ -103,7 +103,7 @@ struct le_ref_Block
  * Local list of all reference maps created within this process.
  */
 //--------------------------------------------------------------------------------------------------
-static le_dls_List_t RefMapList = LE_DLS_LIST_INIT;
+static le_dls_List_t RefMapList = LE_DLS_LIST_DECL_INIT;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -222,7 +222,7 @@ static void InitMap
 
     do
     {
-        mapPtr->mapBase = le_rand_GetNumBetween(1, UINT32_MAX) & REF_BASE_MASK;
+        mapPtr->mapBase = /* le_rand_GetNumBetween(1, UINT32_MAX) & */ REF_BASE_MASK;
     }
     while (mapPtr->mapBase == 0);
 
@@ -536,7 +536,7 @@ void *le_ref_CreateRef
 
     LE_WARN("Safe reference map maximum references exceeded for %s.", SAFEREF_NAME(mapRef->name));
     index = BlockAndSlotToIndex(mapRef, blockCount, 0);
-    __atomic_store_n(&block->nextPtr, NewOverflowBlock(), __ATOMIC_RELAXED);
+    block->nextPtr = NewOverflowBlock();
     block = block->nextPtr;
     SAFE_REF_TRACE(mapRef, "    Created new overflow block %p", block);
 
