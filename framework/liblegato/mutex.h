@@ -36,6 +36,7 @@ typedef struct le_mutex
 Mutex_t;
 
 
+#if LE_CONFIG_LINUX_TARGET_TOOLS
 //--------------------------------------------------------------------------------------------------
 /**
  * Mutex Thread Record.
@@ -50,13 +51,14 @@ Mutex_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-#if LE_CONFIG_LINUX_TARGET_TOOLS
     le_mutex_Ref_t  waitingOnMutex;     ///< Reference to the mutex that is being waited on.
     le_dls_List_t   lockedMutexList;    ///< List of mutexes currently held by this thread.
     le_dls_Link_t   waitingListLink;    ///< Used to link into Mutex object's waiting list.
-#endif
 }
 mutex_ThreadRec_t;
+#else
+typedef struct mutex_ThreadRec mutex_ThreadRec_t;
+#endif
 
 
 //--------------------------------------------------------------------------------------------------

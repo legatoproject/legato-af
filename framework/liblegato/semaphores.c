@@ -67,7 +67,7 @@ static le_mem_PoolRef_t SemaphorePoolRef;
  * List on which all Semaphore objects in the process are kept.
  */
 //--------------------------------------------------------------------------------------------------
-static le_dls_List_t SemaphoreList = LE_DLS_LIST_INIT;
+static le_dls_List_t SemaphoreList = LE_DLS_LIST_DECL_INIT;
 
 //--------------------------------------------------------------------------------------------------
 /**

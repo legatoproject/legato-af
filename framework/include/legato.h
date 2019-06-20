@@ -205,18 +205,18 @@ extern "C" {
 /* #include "le_json.h" */
 #include "le_mem.h"
 /* #include "le_messaging.h" */
-/* #include "le_mutex.h" */
+#include "le_mutex.h"
 /* #include "le_pack.h" */
 /* #include "le_path.h" */
 /* #include "le_pathIter.h" */
 /* #include "le_process.h" */
 #include "le_rand.h"
 #include "le_safeRef.h"
-/* #include "le_semaphore.h" */
+#include "le_semaphore.h"
 /* #include "le_signals.h" */
 #include "le_singlyLinkedList.h"
 /* #include "le_test.h" */
-/* #include "le_thread.h" */
+#include "le_thread.h"
 #include "le_timer.h"
 /* #include "le_tls.h" */
 /* #include "le_tty.h" */

@@ -32,6 +32,7 @@ typedef struct le_sem_t
 Semaphore_t;
 
 
+#if LE_CONFIG_LINUX_TARGET_TOOLS
 //--------------------------------------------------------------------------------------------------
 /**
  * Semaphore Thread Record.
@@ -46,12 +47,13 @@ Semaphore_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-#if LE_CONFIG_LINUX_TARGET_TOOLS
     le_sem_Ref_t    waitingOnSemaphore; ///< Reference to the semaphore that is being waited on.
     le_dls_Link_t   waitingListLink;    ///< Used to link into Semaphore object's waiting list.
-#endif
 }
 sem_ThreadRec_t;
+#else
+typedef struct sem_ThreadRec sem_ThreadRec_t;
+#endif
 
 
 //--------------------------------------------------------------------------------------------------
