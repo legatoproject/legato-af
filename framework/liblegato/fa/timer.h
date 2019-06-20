@@ -10,7 +10,7 @@
 #define FA_TIMER_H_INCLUDE_GUARD
 
 #include "legato.h"
-#include "limit.h"
+#include "../limit.h"
 
 //--------------------------------------------------------------------------------------------------
 /**

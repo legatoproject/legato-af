@@ -191,7 +191,7 @@ extern "C" {
 /* #include "le_backtrace.h" */
 /* #include "le_base64.h" */
 #include "le_cdata.h"
-/* #include "le_clock.h" */
+#include "le_clock.h"
 /* #include "le_crc.h" */
 /* #include "le_dir.h" */
 #include "le_doublyLinkedList.h"
@@ -217,7 +217,7 @@ extern "C" {
 #include "le_singlyLinkedList.h"
 /* #include "le_test.h" */
 /* #include "le_thread.h" */
-/* #include "le_timer.h" */
+#include "le_timer.h"
 /* #include "le_tls.h" */
 /* #include "le_tty.h" */
 #include "le_utf8.h"
