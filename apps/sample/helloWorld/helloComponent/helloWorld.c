@@ -2,5 +2,9 @@
 
 COMPONENT_INIT
 {
-    LE_INFO("Hello, world.");
+    while (1)
+    {
+        LE_INFO("Hello, world.");
+        sleep(5);
+    }
 }
