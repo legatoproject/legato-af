@@ -183,7 +183,7 @@ extern "C" {
 // the dependant header should #include the one(s) it depends on.
 #include "le_basics.h"
 #include "le_apiFeatures.h"
-/* #include "le_log.h" */
+#include "le_log.h"
 
 /* #include "le_args.h" */
 /* #include "le_atomFile.h" */

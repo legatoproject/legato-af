@@ -93,7 +93,7 @@ le_log_Level_t log_StrToSeverityLevel
         return LE_LOG_DEBUG;
     }
 
-    return -1;
+    return (le_log_Level_t)-1;
 }
 
 
@@ -216,7 +216,7 @@ void _le_log_ExitFatal
 {
     static bool exitCalled = false;
 
-    if (__atomic_test_and_set(&exitCalled, __ATOMIC_SEQ_CST))
+    if (LE_ATOMIC_TEST_AND_SET(&exitCalled, LE_ATOMIC_ORDER_ACQ_REL))
     {
         pthread_exit(NULL);
     }
@@ -287,7 +287,6 @@ void _le_LogData
         } while(0);
     }
 }
-#endif /* end LE_LOG_DEFAULT_IMPL */
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -342,3 +341,4 @@ void _le_log_Send
         args);
     va_end(args);
 }
+#endif  /* end LE_LOG_DEFAULT_IMPL */

@@ -88,6 +88,9 @@ cat > $NINJA_SCRIPT <<EOF
 
 EOF
 
+AddSources liblegato ${LEGATO_ROOT}/framework/liblegato/log.c \
+                   ${LEGATO_ROOT}/framework/liblegato/utf8.c
+
 base_cflags_name="${legato_target_caps}_CFLAGS"
 
 CFLAGS="${!base_cflags_name}"
