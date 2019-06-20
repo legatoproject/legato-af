@@ -67,7 +67,7 @@
 #include "legato.h"
 #include "eventLoop.h"
 #include "thread.h"
-#include "fdMonitor.h"
+//#include "fdMonitor.h"
 #include "limit.h"
 
 // ==============================================
@@ -190,7 +190,7 @@ static le_mem_PoolRef_t EventPool;
  * @warning This can be accessed by multiple threads.  Use the Mutex to protect it from races.
  */
 //--------------------------------------------------------------------------------------------------
-static le_sls_List_t EventList = LE_SLS_LIST_INIT;
+static le_sls_List_t EventList = LE_SLS_LIST_DECL_INIT;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -424,37 +424,6 @@ void event_Unlock
     LE_FATAL_IF(err != 0, "pthread_setcancelstate() failed (%s)", strerror(err));
 }
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Wait for a condition to fire.
- *
- * The event lock must be held before calling this function.
- */
-//--------------------------------------------------------------------------------------------------
-void event_CondWait
-(
-    pthread_cond_t* cond      ///< [IN] Condition to wait for.
-)
-{
-    LE_ASSERT(pthread_cond_wait(cond, &Mutex) == 0);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Wait for a condition to fire until timeout occurs.
- *
- * The event lock must be held before calling this function.
- */
-//--------------------------------------------------------------------------------------------------
-int event_CondTimedWait
-(
-    pthread_cond_t* cond,           ///< [IN] Condition to wait for.
-    const struct timespec* timePtr  ///< [IN] Time to wait for condition before returning.
-)
-{
-    return pthread_cond_timedwait(cond, &Mutex, timePtr);
-}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -825,7 +794,7 @@ void event_Init
     fa_event_Init();
 
     // Initialize the FD Monitor module.
-    fdMon_Init();
+    //fdMon_Init();
 }
 
 
@@ -862,7 +831,7 @@ event_PerThreadRec_t* event_CreatePerThreadInfo
     recPtr->contextPtr = NULL;
 
     // Initialize the FD Monitor module's thread-specific stuff.
-    fdMon_InitThread(recPtr);
+    //fdMon_InitThread(recPtr);
 
     // Take note of the fact that the Event Loop for this thread has been initialized, but
     // not started.
@@ -958,7 +927,7 @@ void event_DestructThread
     event_Unlock(oldState);
 
     // Delete all the FD Monitors for this thread.
-    fdMon_DestructThread(perThreadRecPtr);
+    //fdMon_DestructThread(perThreadRecPtr);
 
     // Discard everything on the Event Queue.
     while (NULL != (singleLinkPtr = le_sls_Pop(&perThreadRecPtr->eventQueue)))

@@ -91,6 +91,7 @@ EOF
 AddSources liblegato ${LEGATO_ROOT}/framework/liblegato/clock.c \
                    ${LEGATO_ROOT}/framework/liblegato/doublyLinkedList.c \
                    ${LEGATO_ROOT}/framework/liblegato/hashmap.c \
+                   ${LEGATO_ROOT}/framework/liblegato/eventLoop.c \
                    ${LEGATO_ROOT}/framework/liblegato/log.c \
                    ${LEGATO_ROOT}/framework/liblegato/mem.c \
                    ${LEGATO_ROOT}/framework/liblegato/mutex.c \
