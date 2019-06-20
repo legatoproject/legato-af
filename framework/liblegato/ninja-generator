@@ -88,11 +88,7 @@ cat > $NINJA_SCRIPT <<EOF
 
 EOF
 
-AddSources liblegato $(ls $SRC_DIR/*.c)
-
 base_cflags_name="${legato_target_caps}_CFLAGS"
-
-echo "Pulling base CFLAGS from $base_cflags_name."
 
 CFLAGS="${!base_cflags_name}"
 
@@ -102,7 +98,7 @@ for module_path in $(find -L $SRC_DIR/* -type d -prune); do
     config_name=LE_CONFIG_${module_name^^}
     if [ "${!config_name}" = y ]; then
         [[ ! -f $ninja_config ]] || source $ninja_config
-        AddSources $module_name $(ls ${module_path}/*.c)
+        #AddSources $module_name $(ls ${module_path}/*.c)
         CFLAGS="${CFLAGS} -I${module_path}"
     fi
 done

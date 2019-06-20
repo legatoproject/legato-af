@@ -108,7 +108,7 @@ ifeq ($(LE_CONFIG_PYTHON),y)
 endif
 
 # Add appropriate rules for feature/OS selections
-ALL_PARTS_y := liblegato daemons
+ALL_PARTS_y := liblegato # TODO: Re-enable building daemons by re-adding: daemons
 DAEMONS_y   :=
 
 # Currently, these options are not user configurable:
@@ -130,9 +130,10 @@ DAEMONS_$(DAEMON_CONFIGTREE)    += $(BIN_DIR)/configTree
 DAEMONS_$(DAEMON_WATCHDOG)      += $(BIN_DIR)/watchdog
 DAEMONS_$(DAEMON_UPDATE)        += $(BIN_DIR)/updateDaemon
 
-ALL_PARTS_$(LE_CONFIG_JAVA)               += $(LEGATO_JAVA)
-ALL_PARTS_$(LE_CONFIG_PYTHON)             += $(LEGATO_PY)
-ALL_PARTS_$(LE_CONFIG_BUILD_TARGET_TOOLS) += targetTools
+# TODO: Re-add once liblegato is ported by uncommenting these lines
+# ALL_PARTS_$(LE_CONFIG_JAVA)               += $(LEGATO_JAVA)
+# ALL_PARTS_$(LE_CONFIG_PYTHON)             += $(LEGATO_PY)
+# ALL_PARTS_$(LE_CONFIG_BUILD_TARGET_TOOLS) += targetTools
 
 # The liblegato build is done by this ninja build script.
 NINJA_SCRIPT := $(BUILD_DIR)/build.ninja
@@ -152,9 +153,9 @@ LOCAL_MKEXE_FLAGS += -i $(LEGATO_ROOT)/framework/liblegato/linux
 # Common CFlags
 TARGET_CAPS := $(shell echo $(TARGET) | tr a-z- A-Z_)
 
-ifneq ($(filter %gcc% %clang%,$(CC)),)
+ifneq ($(filter %gcc %clang %gcc% %clang%,$(TARGET_CC)),)
   CFLAGS += -Wall -Werror
-else ifneq ($(filter %armcc%,$(CC)),)
+else ifneq ($(filter %armcc%,$(TARGET_CC)),)
   CFLAGS += --diag_error=warning
 endif
 CFLAGS += -I$(LEGATO_ROOT)/framework/include \

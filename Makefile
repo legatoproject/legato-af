@@ -368,11 +368,11 @@ define sysmk
 endef
 
 # Test and sample selection
-ALL_TESTS_y   = mktools_tests subsys_tests tests_c
-ALL_SAMPLES_y = samples_c
+ALL_TESTS_y   = # TODO: Re-enable by re-adding: mktools_tests subsys_tests tests_c
+ALL_SAMPLES_y = # TODO: Re-enable by re-adding: samples_c
 
-ALL_TESTS_$(LE_CONFIG_JAVA)   += tests_java
-ALL_SAMPLES_$(LE_CONFIG_JAVA) += samples_java
+ALL_TESTS_$(LE_CONFIG_JAVA)   += # TODO: Re-enable by re-adding tests_java
+ALL_SAMPLES_$(LE_CONFIG_JAVA) += # TODO: Re-enable by re-adding samples_java
 
 # ========== CONFIGURATION RECIPES ============
 
@@ -549,7 +549,7 @@ system: framework
 # Trigger the build for a specific target
 ifneq ($(TARGET),nothing)
 .PHONY: $(TARGET)
-$(TARGET): system stage
+$(TARGET): framework # TODO: Re-enable system & staging build by re-adding: system stage
 
 # NOTE: In the "virt" cases, the target will always be one of virt-arm or virt-x86.
 .PHONY: virt all_$(TARGET) all_virt all_c_$(TARGET)
