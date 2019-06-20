@@ -118,6 +118,10 @@ void RtosSystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
     auto tasksOutputFile = "$builddir/obj/tasks.c.o";
     auto rpcServicesOutputFile = "$builddir/obj/rpcServices.c.o";
 
+    bool rpcEnabled = (!envVars::GetConfigBool("LE_CONFIG_CONFIGURED") ||
+                        envVars::GetConfigBool("LE_CONFIG_RPC"));
+
+
     // Build task list file
     script << "build " << tasksOutputFile << ":"
               "  CompileC " << path::Combine(buildParams.workingDir, "src/tasks.c") << "\n"
@@ -125,10 +129,14 @@ void RtosSystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
               "\n";
 
     // Build rpc services file
-    script << "build " << rpcServicesOutputFile << ":"
-              "  CompileC " << path::Combine(buildParams.workingDir, "src/rpcServices.c") << "\n"
-              "    cFlags = $cFlags -I$$LEGATO_ROOT/framework/daemons/rpcProxy/rpcDaemon"
-              " -I$$LEGATO_ROOT/framework/liblegato";
+    if (rpcEnabled)
+    {
+        script << "build " << rpcServicesOutputFile << ":"
+            "  CompileC " << path::Combine(buildParams.workingDir, "src/rpcServices.c") << "\n"
+            "    cFlags = $cFlags -I$$LEGATO_ROOT/framework/daemons/rpcProxy/rpcDaemon"
+            " -I$$LEGATO_ROOT/framework/liblegato";
+    }
+
     std::set<const model::ApiFile_t*> useTypesApis;
     for (auto &serverEntry : systemPtr->externServerInterfaces)
     {
@@ -160,9 +168,13 @@ void RtosSystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
            << path::Combine(envVars::Get("LEGATO_ROOT"),
                             "build/$target/framework/lib/microSupervisor.o")
            << " "
-           << tasksOutputFile
-           << " "
-           << rpcServicesOutputFile;
+           << tasksOutputFile;
+
+    if (rpcEnabled)
+    {
+        script << " "
+               << rpcServicesOutputFile;
+    }
 
 
     // For each app built by the mk tools for this system,
