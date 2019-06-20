@@ -90,6 +90,7 @@ EOF
 
 AddSources liblegato ${LEGATO_ROOT}/framework/liblegato/doublyLinkedList.c \
                    ${LEGATO_ROOT}/framework/liblegato/log.c \
+                   ${LEGATO_ROOT}/framework/liblegato/mem.c \
                    ${LEGATO_ROOT}/framework/liblegato/singlyLinkedList.c \
                    ${LEGATO_ROOT}/framework/liblegato/utf8.c
 

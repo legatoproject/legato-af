@@ -141,6 +141,15 @@ config MEM_ALLOC_ASSERT
 
 endchoice # end "Memory allocation failure behaviour"
 
+config MEM_HIBERNATION
+  bool "Support memory compaction for hibernate to RAM"
+  depends on RTOS
+  default y
+  ---help---
+  Some chips can conserve memory by powering off some memory banks during hibernation.  This
+  option enables compacting memory used by Legato to allow powering off more memory banks during
+  hibernation.
+
 menu "Security Features"
 
 config ENABLE_SMACK

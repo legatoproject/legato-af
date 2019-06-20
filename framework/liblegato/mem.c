@@ -157,7 +157,7 @@ MemBlock_t;
  * within this process.
  */
 //--------------------------------------------------------------------------------------------------
-static le_dls_List_t PoolList = LE_DLS_LIST_INIT;
+static le_dls_List_t PoolList = LE_DLS_LIST_DECL_INIT;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -1939,7 +1939,7 @@ void le_mem_DeleteSubPool
     le_mem_Release(subPool);
 }
 
-#if LE_CONFIG_RTOS
+#if LE_CONFIG_MEM_HIBERNATION
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1986,7 +1986,7 @@ static uint8_t *EndOfHibernationPtr;
  * Non-empty only after calling le_mem_Hibernate() but before calling le_mem_Resume()
  */
 //--------------------------------------------------------------------------------------------------
-static le_sls_List_t CompactBlockList = LE_SLS_LIST_INIT;
+static le_sls_List_t CompactBlockList = LE_SLS_LIST_DECL_INIT;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2226,4 +2226,4 @@ void le_mem_Resume
     }
 }
 
-#endif /* end LE_CONFIG_RTOS */
+#endif /* end LE_CONFIG_MEM_HIBERNATION */
