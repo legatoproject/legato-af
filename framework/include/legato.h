@@ -20,6 +20,7 @@
  *
  * | API Guide                    | API Reference               | File Name                | Description                                                                                                               |
  * | -----------------------------|-----------------------------| -------------------------| --------------------------------------------------------------------------------------------------------------------------|
+ * | @subpage c_atomic            | @ref le_atomic.h            | @c le_atomic.h           | Provides atomic operations                                                                                                |
  * | @subpage c_args              | @ref le_args.h              | @c le_args.h             | Provides the ability to add arguments from the command line                                                               |
  * | @subpage c_atomFile          | @ref le_atomFile.h          | @c le_atomFile.h         | Provides atomic file access mechanism that can be used to perform file operation (specially file write) in atomic fashion |
  * | @subpage c_basics            | @ref le_basics.h            | @c le_basics.h           | Provides error codes, portable integer types, and helpful macros that make things easier to use                           |
@@ -186,7 +187,7 @@ extern "C" {
 
 /* #include "le_args.h" */
 /* #include "le_atomFile.h" */
-/* #include "le_atomic.h" */
+#include "le_atomic.h"
 /* #include "le_backtrace.h" */
 /* #include "le_base64.h" */
 #include "le_cdata.h"
