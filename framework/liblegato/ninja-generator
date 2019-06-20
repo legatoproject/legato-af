@@ -119,6 +119,18 @@ fi
 # Include auto-generated header directory.
 CFLAGS="${CFLAGS} -I${LEGATO_ROOT}/build/${TARGET}/framework/include"
 
+case "${CC}" in
+    *armcc*)
+        # ARM method of specifying dependencies
+        depends_flags="--depend=\$out.d --depend-format=unix_escaped"
+        ;;
+    *)
+        # GCC and clang method of specifying dependencies
+        depends_flags="-MMD -MF \$out.d"
+        ;;
+esac
+
+
 LIBLEGATO_SHARED_NAME=$LIB_DIR/liblegato.so
 LIBLEGATO_STATIC_NAME=$LIB_DIR/liblegato.a
 
@@ -128,7 +140,7 @@ builddir = $BUILD_DIR
 rule Compile
   description = Compiling liblegato source file
   depfile = \$out.d
-  command = $CCACHE $CC -MMD -MF \$out.d -c \$in -o \$out -Wall -Werror \$flags \$
+  command = $CCACHE $CC $depends_flags -c \$in -o \$out \$flags \$
             -DLE_COMPONENT_NAME=framework \$
             -DLE_FILENAME=\`basename \$in\` \$
             -I$LEGATO_ROOT/framework/include \$

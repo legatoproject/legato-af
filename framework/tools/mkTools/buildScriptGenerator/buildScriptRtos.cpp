@@ -72,9 +72,29 @@ void RtosBuildScriptGenerator_t::GenerateBuildRules
     {
         script << " -g";
     }
-    script << " -Wl,-r -nostdlib -Wl,--entry=$entry -o $out $in $ldFlags && $\n"
-              "            rename-hidden-symbols $pplFlags $out\n"
-              "\n";
+
+    if (buildParams.compilerType == mk::BuildParams_t::COMPILER_ARM_RVCT)
+    {
+        script << " -L--ldpartial -L--entry=$entry";
+    }
+    else
+    {
+        script << " -Wl,-r -nostdlib -Wl,--entry=$entry";
+    }
+
+    script << " -o $out $in $ldFlags ";
+
+    if (buildParams.compilerType == mk::BuildParams_t::COMPILER_GCC)
+    {
+        script << "&& $\n"
+            "            rename-hidden-symbols $pplFlags $out\n";
+    }
+    else
+    {
+        script << "\n";
+    }
+
+    script << "\n";
 }
 
 
@@ -93,7 +113,14 @@ void RtosBuildScriptGenerator_t::GenerateCFlags
     // Generate per-data & per-function sections so these can be removed if not referenced.
     // ELF file generated is larger, but final link will be smaller when combined with
     // --gc-sections linker flag.
-    script << " -fdata-sections -ffunction-sections";
+    if (buildParams.compilerType == mk::BuildParams_t::COMPILER_ARM_RVCT)
+    {
+        script << " --split_sections";
+    }
+    else
+    {
+        script << " -fdata-sections -ffunction-sections";
+    }
 }
 
 

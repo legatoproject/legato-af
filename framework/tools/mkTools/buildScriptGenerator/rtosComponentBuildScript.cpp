@@ -73,10 +73,7 @@ void RtosComponentBuildScriptGenerator_t::GenerateComponentLinkStatement
     GetImplicitDependencies(componentPtr);
     GetExternalDependencies(componentPtr);
     script << "\n";
-    script << "  entry=" << componentPtr->initFuncName << "\n"
-           << "  ldFlags=";
-
-    script << "-Wl,--undefined=_" << componentPtr->name << "_InitServices $ldflags\n";
+    script << "  entry=" << componentPtr->initFuncName << "\n";
 }
 
 //--------------------------------------------------------------------------------------------------

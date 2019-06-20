@@ -152,11 +152,19 @@ LOCAL_MKEXE_FLAGS += -i $(LEGATO_ROOT)/framework/liblegato/linux
 # Common CFlags
 TARGET_CAPS := $(shell echo $(TARGET) | tr a-z- A-Z_)
 
-CFLAGS += -Wall -Werror \
-	-I$(LEGATO_ROOT)/framework/include \
+ifneq ($(filter %gcc% %clang%,$(CC)),)
+  CFLAGS += -Wall -Werror
+else ifneq ($(filter %armcc%,$(CC)),)
+  CFLAGS += --diag_error=warning
+endif
+CFLAGS += -I$(LEGATO_ROOT)/framework/include \
 	-I${LEGATO_ROOT}/build/${TARGET}/framework/include \
 	-I$(LEGATO_ROOT)/framework/liblegato \
 	$($(TARGET_CAPS)_CFLAGS)
+
+ifeq ($(LE_CONFIG_CUSTOM_FA),y)
+        CFLAGS += -I$(LE_CONFIG_CUSTOM_FA_PATH)/include
+endif
 
 # Set flags for test coverage
 ifeq ($(LE_CONFIG_TEST_COVERAGE),y)

@@ -628,6 +628,27 @@ bool HasSuffix
     return false;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks whether a given tool has a given suffix.
+ *
+ * Some tools will contain a few flags as well as the tool itself, so check for the suffix
+ * at the end of the first word.
+ *
+ * @return  true if it has that suffix.
+ */
+//--------------------------------------------------------------------------------------------------
+bool ToolHasSuffix
+(
+    const std::string& path,
+    const std::string& suffix
+)
+{
+    size_t firstSpace = path.find(' ');
+
+    return HasSuffix(path.substr(0, firstSpace), suffix);
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**

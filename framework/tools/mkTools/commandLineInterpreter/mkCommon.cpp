@@ -141,7 +141,7 @@ std::string GetSysRootPath
     }
 
     // Else, if the compiler is gcc, ask gcc what sysroot it uses by default.
-    if (path::HasSuffix(cCompilerPath, "gcc"))
+    if (path::ToolHasSuffix(cCompilerPath, "gcc"))
     {
         std::string commandLine = cCompilerPath + " --print-sysroot";
 
@@ -308,6 +308,15 @@ void FindToolChain
     buildParams.readelfPath = GetToolPath(buildParams.target, "READELF");
     buildParams.compilerCachePath = GetToolPath(buildParams.target, "CCACHE", false);
     buildParams.crossToolPaths = GetCrossToolPaths(buildParams.target);
+
+    if (path::ToolHasSuffix(buildParams.cCompilerPath, "armcc"))
+    {
+        buildParams.compilerType = mk::BuildParams_t::COMPILER_ARM_RVCT;
+    }
+    else
+    {
+        buildParams.compilerType = mk::BuildParams_t::COMPILER_GCC;
+    }
 
     if (buildParams.beVerbose)
     {

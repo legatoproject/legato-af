@@ -69,6 +69,14 @@ struct BuildParams_t
     std::list<std::string>  crossToolPaths;     ///< Tool chain executable paths
     bool                    readOnly;           ///< true = only read. Required by tools such as
                                                 ///< mkedit, mkparse
+
+    enum
+    {
+        COMPILER_GCC,
+        COMPILER_ARM_RVCT
+    } compilerType;                             ///< Type of the compiler.  clang is GCC-compatible
+                                                ///< for this purpose
+
     /// Constructor
     BuildParams_t();
 

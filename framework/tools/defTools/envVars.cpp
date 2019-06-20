@@ -11,41 +11,12 @@
 #include "defTools.h"
 #include <string.h>
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Maximum length of the environment variable
- */
-//--------------------------------------------------------------------------------------------------
-#define ENV_VAR_MAX_LEN     1024
-
 /// The standard C environment variable list.
 extern char**environ;
 
 
 namespace envVars
 {
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Safely copy the environment variable.
- */
-//--------------------------------------------------------------------------------------------------
-static void SafeCopyEnvVar
-(
-    char*       dst,        ///< Destination pointer.
-    const char* src,        ///< Source pointer.
-    uint32_t    dstSize     ///< Destination buffer size.
-)
-{
-    // If variable is longer than MAX_LEN, it will be truncated. Zero at the end is guaranteed.
-    strncpy(dst, src, dstSize - 1);
-    dst[dstSize - 1] = '\0';
-
-    // Tell Coverity this data can be trusted now.
-#ifdef __COVERITY__
-    __coverity_tainted_data_sanitize__(dst);
-#endif // __COVERITY__
-}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -60,16 +31,14 @@ std::string Get
 )
 //--------------------------------------------------------------------------------------------------
 {
-    char envVar[ENV_VAR_MAX_LEN] = {0};
     const char* value = getenv(name.c_str());
 
     if (value == nullptr)
     {
         return std::string();
     }
-    SafeCopyEnvVar(envVar, value, sizeof(envVar));
 
-    return std::string(envVar);
+    return std::string(value);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -108,7 +77,6 @@ std::string GetRequired
 )
 //--------------------------------------------------------------------------------------------------
 {
-    char envVar[ENV_VAR_MAX_LEN] = {0};
     const char* value = getenv(name.c_str());
 
     if (value == nullptr)
@@ -117,9 +85,8 @@ std::string GetRequired
             mk::format(LE_I18N("The required environment variable %s has not been set."), name)
         );
     }
-    SafeCopyEnvVar(envVar, value, sizeof(envVar));
 
-    return std::string(envVar);
+    return std::string(value);
 }
 
 

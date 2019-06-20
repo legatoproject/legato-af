@@ -215,6 +215,23 @@ bool HasSuffix
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Checks whether a given tool has a given suffix.
+ *
+ * Some tools will contain a few flags as well as the tool itself, so check for the suffix
+ * at the end of the first word.
+ *
+ * @return  true if it has that suffix.
+ */
+//--------------------------------------------------------------------------------------------------
+bool ToolHasSuffix
+(
+    const std::string& path,
+    const std::string& suffix
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Remove a given suffix from the end of a file path.
  *
  * @return  The path, with the suffix removed.

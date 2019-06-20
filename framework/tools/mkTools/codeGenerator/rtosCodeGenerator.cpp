@@ -42,6 +42,12 @@ void GenerateComponentInitPrototype
         }
         output << "le_msg_LocalService_t* " << clientApiPtr->internalName << "Ptr";
     }
+
+    if (argCount == 0)
+    {
+        output << "void";
+    }
+
     output << ")";
 }
 
@@ -67,6 +73,12 @@ void GenerateEarlyInitPrototype
         }
         output << "le_msg_LocalService_t* " << ifPtr->internalName << "Ptr";
     }
+
+    if (argCount == 0)
+    {
+        output << "void";
+    }
+
     output << ")";
 }
 
