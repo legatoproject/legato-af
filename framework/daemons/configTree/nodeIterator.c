@@ -359,9 +359,6 @@ ni_IteratorRef_t ni_InternalRefFromExternalRef
 
     ni_IteratorRef_t iteratorRef = le_ref_Lookup(IteratorRefMap, externalRef);
 
-    LE_ASSERT(iteratorRef != NULL);
-    LE_ASSERT(iteratorRef->userRef != NULL);
-
     if (   (iteratorRef == NULL)
         || (tu_GetUserId(userRef) != tu_GetUserId(iteratorRef->userRef)))
     {
