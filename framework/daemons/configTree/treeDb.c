@@ -1795,7 +1795,7 @@ static signed char PeekChar
 )
 // -------------------------------------------------------------------------------------------------
 {
-    char next = fgetc(filePtr);
+    int next = fgetc(filePtr);
     ungetc(next, filePtr);
 
     return next;
@@ -1862,7 +1862,7 @@ static le_result_t SkipToNextChar
     signed char nextChar    ///< [IN]  The character we're searching for.
 )
 {
-    signed char next;
+    int next;
 
     while ((next = fgetc(filePtr)) != nextChar)
     {
@@ -1892,7 +1892,7 @@ static bool ReadBoolToken
 )
 // -------------------------------------------------------------------------------------------------
 {
-    signed char next = fgetc(filePtr);
+    int next = fgetc(filePtr);
 
     if (   (next == 't')
         || (next == 'f'))
@@ -1928,7 +1928,7 @@ static le_result_t ReadTextLiteral
 )
 // -------------------------------------------------------------------------------------------------
 {
-    signed char next;
+    int next;
     size_t count = 0;
 
     char* oldPtr = stringPtr;
@@ -2090,7 +2090,7 @@ static le_result_t ReadToken
         return LE_OUT_OF_RANGE;
     }
 
-    signed char next;
+    int next;
 
     while ((next = fgetc(filePtr)) != EOF)
     {
