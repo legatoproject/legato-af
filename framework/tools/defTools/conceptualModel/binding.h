@@ -30,7 +30,11 @@ struct Binding_t
 
     const parseTree::TokenList_t* parseTreePtr; ///< Ptr to parse tree object. NULL if auto-bound.
 
-    Binding_t(const parseTree::TokenList_t* p): parseTreePtr(p) {}
+    Binding_t(const parseTree::TokenList_t* p)
+    :   clientType(EndPointType_t::INTERNAL),
+        serverType(EndPointType_t::INTERNAL),
+        parseTreePtr(p)
+    {}
 };
 
 

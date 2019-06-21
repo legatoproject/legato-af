@@ -15,7 +15,7 @@ class NonNegativeIntLimit_t : public Limit_t
 {
     public:
 
-        NonNegativeIntLimit_t(void) {}
+        NonNegativeIntLimit_t(void): value(0) {}
         explicit NonNegativeIntLimit_t(size_t defaultValue): value(defaultValue) {}
 
     protected:
