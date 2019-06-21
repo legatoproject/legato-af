@@ -2419,7 +2419,7 @@ static void ParseAtCmd
                 }
             }
 
-            int sizeMax = sizeof(LE_ATSERVER_CME_ERROR);
+            const int sizeMax = LE_ATDEFS_RESPONSE_MAX_BYTES;
             strncpy(devPtr->finalRsp.pattern, LE_ATSERVER_CME_ERROR, sizeMax - 1);
 
             // Make devPtr->finalRsp.pattern string null terminated if patternPtr string size is
