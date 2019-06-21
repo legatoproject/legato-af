@@ -12,6 +12,7 @@
 #ifndef LEGATO_INSTALLER_H_INCLUDE_GUARD
 #define LEGATO_INSTALLER_H_INCLUDE_GUARD
 
+#include "limit.h"
 
 //--------------------------------------------------------------------------------------------------
 /**

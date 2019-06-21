@@ -28,7 +28,28 @@ config VIRT_TARGET_ARCH
   Set the name of the virtual target platform, if applicable.  This value is
   determined by the target platform selection.
 
+# Platform supports QMI
 config QMI
+  bool
+  default n
+
+# Platform uses MDM9x07 modem
+config MDM9X07
+  bool
+  default n
+
+# Platform uses MDM9x15 modem
+config MDM9X15
+  bool
+  default n
+
+# Platform uses MDM9x28 modem
+config MDM9X28
+  bool
+  default n
+
+# Platform uses MDM9x40 modem
+config MDM9X40
   bool
   default n
 
@@ -75,48 +96,56 @@ config TARGET_RASPI
 config TARGET_AR7
   bool "SWI AR755x (ar7)"
   select QMI
+  select MDM9X15
   ---help---
   Run on a Sierra Wireless AR755x.
 
 config TARGET_AR758X
   bool "SWI AR758x (ar758x)"
   select QMI
+  select MDM9X28
   ---help---
   Run on a Sierra Wireless AR758x.
 
 config TARGET_AR759X
   bool "SWI AR759x (ar759x)"
   select QMI
+  select MDM9X40
   ---help---
   Run on a Sierra Wireless AR759x.
 
 config TARGET_AR86
   bool "SWI AR86xx (ar86)"
   select QMI
+  select MDM9X15
   ---help---
   Run on a Sierra Wireless AR86xx.
 
 config TARGET_WP85
   bool "SWI WP85xx (wp85)"
   select QMI
+  select MDM9X15
   ---help---
   Run on a Sierra Wireless WP85xx.
 
 config TARGET_WP750X
   bool "SWI WP750x (wp750x)"
   select QMI
+  select MDM9X15
   ---help---
   Run on a Sierra Wireless WP750x.
 
 config TARGET_WP76XX
   bool "SWI WP76xx (wp76xx)"
   select QMI
+  select MDM9X07
   ---help---
   Run on a Sierra Wireless WP76xx.
 
 config TARGET_WP77XX
   bool "SWI WP77xx (wp77xx)"
   select QMI
+  select MDM9X07
   ---help---
   Run on a Sierra Wireless WP77xx.
 

@@ -151,13 +151,13 @@ LOCAL_MKEXE_FLAGS += -i $(LEGATO_ROOT)/framework/liblegato/linux
 
 # Common CFlags
 CFLAGS += -Wall -Werror \
-	-I$(LEGATO_ROOT)/framework/include \
-	-I${LEGATO_ROOT}/build/${TARGET}/framework/include \
-	-I$(LEGATO_ROOT)/framework/liblegato
+  -I$(LEGATO_ROOT)/framework/include \
+  -I${LEGATO_ROOT}/build/${TARGET}/framework/include \
+  -I$(LEGATO_ROOT)/framework/liblegato
 
 # Set flags for test coverage
 ifeq ($(LE_CONFIG_TEST_COVERAGE),y)
-	CFLAGS += --coverage
+  CFLAGS += --coverage
 endif
 
 ifeq ($(LE_CONFIG_ENABLE_IMA),y)
@@ -167,6 +167,41 @@ else
   IMA_LIBS =
   IMA_MKEXE_FLAGS =
 endif
+
+# Start PA files
+PA_START_NAME      := Component_le_pa_start
+PA_START_LIB_DIR   := $(LEGATO_ROOT)/platformAdaptor/qmi/bin/$(TARGET)/components/le_pa_start
+PA_START_LIB       := $(PA_START_LIB_DIR)/lib$(PA_START_NAME).so
+ifneq ($(wildcard $(LEGATO_ROOT)/platformAdaptor/qmi/src),)
+  PA_START_SRCS    := $(LINUX_SRC_DIR)/start/default/pa_start.c
+  PA_START_LIB_DIR := $(LIB_DIR)
+  PA_START_LIB     := $(PA_START_LIB_DIR)/lib$(PA_START_NAME).so
+  PA_START_CFLAGS  := $(CFLAGS) -I$(LINUX_SRC_DIR)/start
+  PA_START_LDFLAGS := -ldl
+ifeq ($(LE_CONFIG_QMI),y)
+ifneq ($(LE_CONFIG_MDM9X15),y)
+  PA_START_SRCS    := $(LEGATO_ROOT)/platformAdaptor/qmi/src/components/le_pa_start/pa_start.c
+  PA_START_CFLAGS  += -I$(LEGATO_ROOT)/proprietary/qct/$(TARGET)/inc           \
+                     -I$(LEGATO_ROOT)/proprietary/qct/$(TARGET)/inc/framework \
+                     -I$(LEGATO_ROOT)/proprietary/qct/$(TARGET)/inc/services
+  PA_START_LDFLAGS += -Wl,--start-group -lqmi_client_qmux                           \
+                     $(LEGATO_ROOT)/proprietary/qct/$(TARGET)/lib/libsierra_qapi.a \
+                     $(LEGATO_ROOT)/proprietary/qct/$(TARGET)/lib/libqmiservices.a \
+                     $(LEGATO_ROOT)/proprietary/qct/$(TARGET)/lib/libqmi_cci.a
+
+ifeq ($(or $(LE_CONFIG_MDM9X28),$(LE_CONFIG_MDM9X07)),y)
+  PA_START_LDFLAGS += -lqmi
+else ifeq ($(LE_CONFIG_MDM9X40),y)
+  PA_START_LDFLAGS += -lqmi_encdec
+endif
+  PA_START_LDFLAGS += -Wl,--end-group
+endif # end not LE_CONFIG_MDM9X15
+endif # end LE_CONFIG_QMI
+endif # end QMI PA source available
+
+# Source files for startSystem executable
+START_SRCS := $(LINUX_SRC_DIR)/start/start.c \
+              $(LINUX_SRC_DIR)/common/ima.c
 
 # ========== MAIN RECIPES ============
 
@@ -198,6 +233,16 @@ endif # end LE_CONFIG_BUILD_TARGET_TOOLS
 liblegato: $(LIB_DIR) $(NINJA_SCRIPT)
 	$(L) NINJA $(NINJA_SCRIPT)
 	$(Q)ninja $(NINJA_FLAGS) -f $(NINJA_SCRIPT)
+
+ifneq ($(PA_START_SRCS),)
+$(PA_START_LIB): $(PA_START_SRCS) | $(LIB_DIR)
+	$(L) CCLD $@
+	$(Q)$(CCACHE) $(TARGET_CC) $(TARGET_CC_SYSROOT) -o $@ $< \
+	    -fPIC                                                \
+	    -shared                                              \
+	    $(PA_START_CFLAGS)                                   \
+	    $(PA_START_LDFLAGS)
+endif # end have le_pa_start sources
 
 # Rules for creating directories.
 $(BUILD_DIR) $(LIB_DIR) $(BIN_DIR):
@@ -291,7 +336,7 @@ $(LIB_DIR)/microSupervisor.o: $(RTOS_SRC_DIR)/microSupervisor/microSupervisor.c 
 	$(L) CC $@
 	$(Q)$(CCACHE) $(CC) $(TARGET_CC_SYSROOT) -o $@ -c $< $(CFLAGS)
 
-$(BIN_DIR)/startSystem: $(LINUX_SRC_DIR)/start/start.c $(LINUX_SRC_DIR)/common/ima.c | liblegato $(BIN_DIR)
+$(BIN_DIR)/startSystem: $(START_SRCS) | liblegato $(PA_START_LIB) $(BIN_DIR)
 	$(L) CCLD $@
 	$(Q)$(CCACHE) $(TARGET_CC) $(TARGET_CC_SYSROOT) -o $@ $^ $(CFLAGS) \
 		-I$(LEGATO_ROOT)/framework/liblegato/linux \
