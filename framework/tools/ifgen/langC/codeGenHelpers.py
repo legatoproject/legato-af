@@ -403,6 +403,7 @@ class SizeParameter(interfaceIR.Parameter):
     def __init__(self, relatedParameter, direction):
         super(SizeParameter, self).__init__(interfaceIR.SIZE_TYPE,
                                             relatedParameter.name + 'Size',
+                                            relatedParameter.location,
                                             direction)
         self.relatedParameter = relatedParameter
 

@@ -121,6 +121,15 @@ options {
             return "{}:{}:{}: warning:".format(source_name, token.line, token.charPositionInLine)
         return "{}:{}: warning:".format(token.line, token.charPositionInLine)
 
+    def getLocationTuple(self, token):
+        """
+        Returns a tuple specifying the exact location of a token:
+        (path, line, col)
+        """
+        return (self.getSourceName(),
+            token.line,
+            token.charPositionInLine)
+
 }
 
 @footer
@@ -344,7 +353,9 @@ docPreComment returns [comment]
 defineDecl returns [define]
     : DEFINE IDENTIFIER '=' valueExpression ';'
         {
-            $define = interfaceIR.Definition($IDENTIFIER.text, $valueExpression.value)
+            $define = interfaceIR.Definition($IDENTIFIER.text,
+                                            self.getLocationTuple($IDENTIFIER),
+                                            $valueExpression.value)
         }
     ;
 
@@ -352,7 +363,8 @@ namedValue returns [namedValue]
     : IDENTIFIER ( '=' integer )? docPostComments
         {
             $namedValue = interfaceIR.NamedValue($IDENTIFIER.text,
-                                                  $integer.value)
+                                                self.getLocationTuple($IDENTIFIER),
+                                                $integer.value)
             $namedValue.comments = $docPostComments.comments
         }
     ;
@@ -371,21 +383,26 @@ namedValueList returns [values]
 enumDecl returns [enum]
     : ENUM IDENTIFIER '{' namedValueList '}' ';'
         {
-            $enum = interfaceIR.EnumType($IDENTIFIER.text, $namedValueList.values)
+            $enum = interfaceIR.EnumType($IDENTIFIER.text,
+                                        self.getLocationTuple($IDENTIFIER),
+                                        $namedValueList.values)
         }
     ;
 
 bitmaskDecl returns [bitmask]
     : BITMASK IDENTIFIER '{' namedValueList '}' ';'
         {
-            $bitmask = interfaceIR.BitmaskType($IDENTIFIER.text, $namedValueList.values)
+            $bitmask = interfaceIR.BitmaskType($IDENTIFIER.text,
+                                                self.getLocationTuple($IDENTIFIER),
+                                                $namedValueList.values)
         }
     ;
 
 referenceDecl returns [ref]
     : REFERENCE IDENTIFIER ';'
         {
-            $ref = interfaceIR.ReferenceType($IDENTIFIER.text)
+            $ref = interfaceIR.ReferenceType($IDENTIFIER.text,
+                                            self.getLocationTuple($IDENTIFIER))
         }
     ;
 
@@ -403,6 +420,7 @@ compoundMember returns [member]
                 $member = interfaceIR.MakeStructMember(self.iface,
                                                        $typeIdentifier.typeObj,
                                                        $IDENTIFIER.text,
+                                                       self.getLocationTuple($IDENTIFIER),
                                                        $arrayExpression.size)
         }
     ;
@@ -419,7 +437,9 @@ compoundMemberList returns [members]
 structDecl returns [struct]
     : STRUCT IDENTIFIER '{' compoundMemberList? '}' ';'
         {
-            $struct = interfaceIR.StructType($IDENTIFIER.text, $compoundMemberList.members)
+            $struct = interfaceIR.StructType($IDENTIFIER.text,
+                                            self.getLocationTuple($IDENTIFIER),
+                                            $compoundMemberList.members)
         }
     ;
 
@@ -435,6 +455,7 @@ formalParameter returns [parameter]
             $parameter = interfaceIR.MakeParameter(self.iface,
                                                    $typeIdentifier.typeObj,
                                                    $IDENTIFIER.text,
+                                                   self.getLocationTuple($IDENTIFIER),
                                                    $arrayExpression.size,
                                                    $direction.direction)
             $parameter.comments = $docPostComments.comments
@@ -463,6 +484,7 @@ functionDecl returns [function]
                 parameterList = $formalParameterList.parameters
             $function = interfaceIR.Function($typeIdentifier.typeObj,
                                               $IDENTIFIER.text,
+                                              self.getLocationTuple($IDENTIFIER),
                                               parameterList)
         }
     ;
@@ -475,6 +497,7 @@ handlerDecl returns [handler]
             else:
                 parameterList = $formalParameterList.parameters
             $handler = interfaceIR.HandlerType($IDENTIFIER.text,
+                                                self.getLocationTuple($IDENTIFIER),
                                                 parameterList)
         }
     ;
@@ -487,6 +510,7 @@ eventDecl returns [event]
             else:
                 parameterList = $formalParameterList.parameters
             $event = interfaceIR.Event($IDENTIFIER.text,
+                                        self.getLocationTuple($IDENTIFIER),
                                         parameterList)
         }
     ;
