@@ -19,7 +19,7 @@ This sample app provides two executables, one for the service and another one fo
 @note The app is built along with a complete system using the .sdef in order to use the command line tools to control the application.
 
 Go to the
-<a href="https://gerrit.legato/c/Legato/+/41813">sample code</a>.
+<a href="https://github.com/legatoproject/legato-af/tree/master/apps/sample/voiceCallApp">sample code</a>.
 
 Install the sample app:
 
