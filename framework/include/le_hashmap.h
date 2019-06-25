@@ -174,6 +174,11 @@
 #ifndef LEGATO_HASHMAP_INCLUDE_GUARD
 #define LEGATO_HASHMAP_INCLUDE_GUARD
 
+#include "le_mem.h"
+
+#include "le_singlyLinkedList.h"
+#include "le_doublyLinkedList.h"
+
 #if LE_CONFIG_REDUCE_FOOTPRINT
 typedef le_sls_List_t le_hashmap_Bucket_t;
 typedef le_sls_Link_t le_hashmap_Link_t;
