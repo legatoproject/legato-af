@@ -1,7 +1,7 @@
 /** @page aboutReleaseNotes Release Notes
 
-Version: <b>Legato 19.04.0</b><br>
-Date: <b>May 10, 2019</b><br>
+Version: <b>Legato 19.05.0</b><br>
+Date: <b>July 2, 2019</b><br>
 @ref aboutLicenses "Legato Application Framework Licensing Information"
 
 Visit the <a href="https://legato.io/releases">release page</a> to @b download the tarball,
@@ -19,75 +19,80 @@ Update your profile to the latest version:
 $ leaf update
 @endverbatim
 
-@section rn1904_Features New Features
+@section rn1905_Features New Features
 
-List of new features in the 19.04 Release:
+List of new features in the 19.05 Release:
 
-@subsection rn1904_Features_exfeatures Experimental Features Section
+@subsection rn1905_Features_datetime Data Connection API
 
-We are now releasing alpha and beta features as experimental features within Legato. The
-current experimental features are @ref c_le_dcs and @ref conceptsRPC. Experimental features are not
-enabled by default in Legato and must be configured with @ref kconfigDescription.
+A new function, le_data_GetDateTime(), has been added to le_data.api to return both the date and
+time as one function instead of two separate functions.
 
-To enable Experimental Features within KConfig:
-@verbatim
-make menuconfig_<target>
+@subsection rn1905_Features_Gerrit Legato Gerrit Instance
 
-General Setup
-  -> Prompt for experimental (alpha-quality) features
-@endverbatim
+The Legato project now includes a Gerrit (code repository) for all Legato releases and the Linux
+Distribution for Sierra Wireless product releases. @ref toolsGerrit walks through how to set up and
+clone the source code repository.  Gerrit provides a way that we can include Sierra Wireless
+proprietary code/binaries along with the open source code, allowing customers one place to download
+all the software needed to rebuild a target. See the @ref toolsGerrit documentation to get started.
 
-@subsection rn1904_Features_dataConnection Migrate from le_data to le_dcs
+@subsection rn1905_Features_debug DevMode Application
 
-The le_data API (@ref c_le_data le_data.api) has been refactored to use le_dcs
-(@ref c_le_dcs le_dcs.api).
-This addresses unexpected behaviors when using both le_data and le_dcs API simultaneously.
+The devMode App can now be included in the default Legato System by setting the following
+environment variable: @c LEGATO_DEV_MODE_ENABLE=1, and then running @c mksys.
 
-@subsection rn1904_Features_wifi New wifi configuration APIs
+@subsection rn1905_Features_dcsIPv6 IPV6 DCS Support
 
-Introduced new wifi APIs to configure access points for 802.11 n and/or ac
-(@ref c_le_wifi_ap le_wifiAp.api).
+IPv6 support has been added to DCS and a bug was fixed where IPv6 customers could not connect to
+AirVantage.
 
-@section rn1904_BFeatures Beta Features
+@section rn1905_BFeatures Beta Features
 
-@section rn1904_AFeatures Alpha Features
+There are no Beta Features for this release.
 
-The following are the list of features that have been added into the 19.04 Release but are still
+@section rn1905_AFeatures Alpha Features
+
+The following are the list of features that have been added into the 19.05 Release but are still
 being developed and should not be used on production targets. Please provide feedback for these
 features on our [forums](https://forum.legato.io/):
 
-@subsection rn1904_AFeatures_RPC Legato RPC
+@subsection rn1905_AFeatures_RPC Legato RPC
 
-Provide legato RPC as an experimental feature (@ref conceptsRPC Remote procedure call). Please refer
-to @ref getStartRPC Legato RPC on how to get started and also the current limitations.
+RPC has been added as an experimental feature (@ref conceptsRPC Remote procedure call). Please refer
+to @ref getStartRPC Legato RPC on how to get started.
 
-@subsection rn1904_AFeatures_IDE Experimental IDE
+@subsection rn1905_AFeatures_IDE Experimental IDE
 
 The Legato team has launched the @b alpha version of a @ref tools_vsCode "Legato Plugin for VSCode".
 
-@section rn1904_Fixes Fixed Issues
+@section rn1905_Fixes Fixed Issues
 
-All changes are tagged in GitHub as "19.04.0".  The full list of changes and commit
+All changes are tagged in GitHub as "19.05.0".  The full list of changes and commit
 messages can be found on GitHub.
 
-- [Legato AF 19.04.0 Fixes](https://github.com/legatoproject/legato-af/commits/19.04.0)
+- [Legato AF 19.05.0 Fixes](https://github.com/legatoproject/legato-af/commits/19.05.0)
 
 @note This is only the list of fixes for the Application Framework and Platform Services, for the
-list of changes in the Platform Adapters and AVC Service view the commits under the tag 19.04.0 in
+list of changes in the Platform Adapters and AVC Service view the commits under the tag 19.05.0 in
 individual repositories on GitHub.
 
-@section rn1904_KnownIssues Known Issues
+@section rn1905_KnownIssues Known Issues
 
-@subsection rn1904_Constraints Constraints and Limitations
+@subsection rn1905_Constraints Constraints and Limitations
 
-@subsubsection rn1904_ConstraintsLinuxSupport Dev Machine Linux Version
+@subsubsection rn1905_ConstraintsSimSupport SIM Support for the WP77xx
+
+The WP77xx module does not support hot swapping SIM cards with Legato 19.05. The device must be
+rebooted each time a SIM module needs to be replaced.
+
+@subsubsection rn1905_ConstraintsLinuxSupport Dev Machine Linux Version
 
 To develop applications within the Legato Application Framework, a current supported
 [Long Term Support version of Ubuntu Linux](https://www.ubuntu.com/info/release-end-of-life) is
 required on your dev machine (or running in a virtual box on Windows).  Ubuntu 18.04 is the current
 @b recommended version to use on your dev machine.
 
-@subsubsection rn1904_ConstECMUSB ECM-USB modem manager issue
+@subsubsection rn1905_ConstECMUSB ECM-USB modem manager issue
 
 Ubuntu 15.10 and newer has Modem Manager version @c 1.4.12-1ubuntu1  installed by default which
 conflicts with the ECM-USB driver when connecting a target.  Modem manager may cause the Ubuntu
