@@ -853,6 +853,7 @@ static void SetSmackRulesForBindings
     {
         // No bindings.
         le_cfg_CancelTxn(bindCfg);
+        return;
     }
 
     do

@@ -381,6 +381,10 @@ static void __attribute__((noreturn)) StartApp
             fprintf(stderr, "Application '%s' is not installed.\n", AppNamePtr);
             exit(EXIT_FAILURE);
 
+        case LE_BUSY:
+            fprintf(stderr, "Application '%s' is going to be updated/removed.\n", AppNamePtr);
+            exit(EXIT_FAILURE);
+
         default:
             fprintf(stderr,
                     "There was an error.  Application '%s' could not be started.\n"

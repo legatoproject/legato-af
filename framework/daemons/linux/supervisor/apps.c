@@ -712,6 +712,47 @@ static le_result_t StartApp
     return result;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check whether an APP is going to be removed or updated by checking
+ * /legato/systems/current/apps/.del.appname or .new.appname
+ * is present or not.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsAppBusy
+(
+    const char* appNamePtr      ///< [IN] Name of the application
+)
+{
+    char tmpAppName[PATH_MAX] = "";
+    int count = 0;
+
+    count = snprintf(tmpAppName,
+                     sizeof(tmpAppName),
+                     "/legato/systems/current/apps/%s%s",
+                     ".del.",
+                     appNamePtr);
+    LE_ASSERT(count < sizeof(tmpAppName));
+    if(le_dir_IsDir(tmpAppName))
+    {
+        LE_INFO("Application '%s' is going to be removed.", tmpAppName);
+        return true;
+    }
+
+    count = snprintf(tmpAppName,
+                     sizeof(tmpAppName),
+                     "/legato/systems/current/apps/%s%s",
+                     ".new.",
+                     appNamePtr);
+    LE_ASSERT(count < sizeof(tmpAppName));
+    if(le_dir_IsDir(tmpAppName))
+    {
+        LE_INFO("Application '%s' is going to be updated.", tmpAppName);
+        return true;
+    }
+
+    return false;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -719,6 +760,7 @@ static le_result_t StartApp
  *
  * @return
  *      LE_OK if successfully launched the app.
+ *      LE_BUSY if the app cannot be launched at the moment.
  *      LE_DUPLICATE if the app is already running.
  *      LE_NOT_FOUND if the app is not installed.
  *      LE_FAULT if the app could not be launched.
@@ -731,6 +773,11 @@ static le_result_t LaunchApp
 {
     // Create the app.
     AppContainer_t* appContainerPtr;
+    if(IsAppBusy(appNamePtr))
+    {
+        return LE_BUSY;
+    }
+
     le_result_t result = CreateApp(appNamePtr, &appContainerPtr);
     if (result != LE_OK)
     {
