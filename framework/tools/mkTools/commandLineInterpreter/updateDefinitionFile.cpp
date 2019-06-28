@@ -38,7 +38,7 @@ namespace updateDefs
 //--------------------------------------------------------------------------------------------------
 void UpdateDefinitionFile
 (
-    std::string sourceFile,                 ///< Original defintion file is the source file
+    std::string sourceFile,                 ///< Original definition file is the source file
     std::string tempWorkingFile,            ///< Temporary working file where the section is updated
     std::vector<ArgHandler_t::LinePosition_t>& writePos   ///< Vector containing line to write and
                                                           ///< the line position
@@ -591,7 +591,7 @@ void ParseSdefUpdateItem
 
         else
         {
-            // Evalutae end positon which is closer to the end of the file.
+            // Evaluate end positon which is closer to the end of the file.
             std::size_t found = sectionPtr->lastTokenPtr->GetLocation().find(sdefFilePtr->path);
             if (found != std::string::npos)
             {
@@ -646,7 +646,7 @@ void ParseSdefUpdateItem
         }
 
         handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{strWrite, endPos,
-                                                                           endPos+1});
+                                                                           endPos});
     }
 }
 
@@ -938,12 +938,10 @@ static void ParseAdefGetEditLinePosition
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Evaluate the application definition file to update depending on the edit action type and edit
- * item type. Parse application defintion file to evaluate the line to be written and the position
- * in application definition file to write.
+ * Evaluate CDEF file path and component's relevant string and ts position to write in ADEF.
  **/
 //--------------------------------------------------------------------------------------------------
-void EvaluateAdefGetEditLinePosition
+void GetAdefComponentEditLinePosition
 (
     ArgHandler_t& handler,
     model::System_t* systemPtr
@@ -953,18 +951,6 @@ void EvaluateAdefGetEditLinePosition
     std::string absCdefFile = handler.absCdefFilePath + "/" + COMP_CDEF;
     std::string compMustExist;
     std::string compMustNotExist;
-
-    if (handler.adefFilePath.empty())
-    {
-        if (path::HasSuffix(envVars::Get("LEGATO_DEF_FILE"), ADEF_EXT))
-        {
-            handler.adefFilePath = envVars::Get("LEGATO_DEF_FILE");
-        }
-        else
-        {
-            return;
-        }
-    }
 
     switch(handler.editActionType)
     {
@@ -981,6 +967,7 @@ void EvaluateAdefGetEditLinePosition
                 absAdefFile = handler.absAdefFilePath;
             }
             break;
+
         case  ArgHandler_t::EditActionType_t::REMOVE:
         {
             compMustExist = handler.absCdefFilePath;
@@ -1006,6 +993,7 @@ void EvaluateAdefGetEditLinePosition
             }
             break;
         }
+
         case  ArgHandler_t::EditActionType_t::RENAME:
         {
             compMustExist = handler.oldCdefFilePath;
@@ -1034,7 +1022,11 @@ void EvaluateAdefGetEditLinePosition
             }
             break;
         }
+
         default:
+            throw mk::Exception_t(
+                    LE_I18N("Internal error: Invalid edit action type.")
+            );
             break;
     }
 
@@ -1042,6 +1034,139 @@ void EvaluateAdefGetEditLinePosition
     ParseAdefGetEditLinePosition(handler, absAdefFile, absCdefFile, compMustExist,
                                  compMustNotExist);
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Find a particular section in ADEF and evaluate the string to write and its position in ADEF.
+ **/
+//--------------------------------------------------------------------------------------------------
+void GetAdefSectionEditLinePosition
+(
+    ArgHandler_t& handler,
+    std::string section
+)
+{
+    auto adefFilePtr = parser::adef::Parse(handler.absAdefFilePath, false);
+    if (adefFilePtr == NULL)
+    {
+        throw mk::Exception_t(
+           mk::format(LE_I18N("Internal error: '%s' file pointer is NULL"), handler.absAdefFilePath)
+        );
+    }
+
+    bool foundSection = false;
+    int foundPos, nextPos, endPos = 0;
+
+    // Iterate over the .adef file's list of sections, processing content items.
+    for (auto sectionPtr : adefFilePtr->sections)
+    {
+        auto& sectionName = sectionPtr->firstTokenPtr->text;
+
+        if (sectionName == section)
+        {
+            foundSection = true;
+            auto foundSectionPtr = dynamic_cast<const parseTree::SimpleSection_t*>(sectionPtr);
+            if (foundSectionPtr == NULL)
+            {
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("Internal error: '%s' section pointer is NULL"), sectionName)
+                );
+            }
+
+            std::string sectionValue = foundSectionPtr->Text();
+
+            if ((sectionName == "sandboxed") && (sectionValue == handler.appSandboxed))
+            {
+                std::cout << mk::format(LE_I18N("'sandboxed' value is already '%s'.\n"),
+                                        handler.appSandboxed);
+                return;
+            }
+
+            if ((sectionName == "start") && (sectionValue == handler.appStart))
+            {
+                std::cout << mk::format(LE_I18N("'start' value is already '%s'.\n"),
+                                        handler.appStart);
+                return;
+            }
+
+            foundPos = sectionPtr->lastTokenPtr->curPos;
+            nextPos = sectionPtr->lastTokenPtr->nextPtr->curPos;
+        }
+        endPos = sectionPtr->lastTokenPtr->nextPtr->curPos;
+    }
+
+    std::string strWrite;
+
+    if (!foundSection)
+    {
+        // If section is not found, append section to the end of the definition file.
+        if (!handler.appSandboxed.empty())
+        {
+            strWrite = "\n\nsandboxed: " + handler.appSandboxed + "\n";
+        }
+
+        if (!handler.appStart.empty())
+        {
+            strWrite = "\n\nstart: " + handler.appStart + "\n";
+        }
+
+        handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{strWrite, endPos,
+                                                                           endPos});
+    }
+    else
+    {
+        // If section is found, update the section's value in place.
+        if (section == "sandboxed")
+        {
+            strWrite = handler.appSandboxed;
+        }
+        else if (section == "start")
+        {
+            strWrite = handler.appStart;
+        }
+
+        handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{strWrite, foundPos,
+                                                                           nextPos});
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Evaluate the application definition file to update depending on the edit item type. Parse
+ * application defintion file to evaluate the line to be written and the position in application
+ * definition file to write.
+ **/
+//--------------------------------------------------------------------------------------------------
+void EvaluateAdefGetEditLinePosition
+(
+    ArgHandler_t& handler,
+    model::System_t* systemPtr
+)
+{
+    switch (handler.editItemType)
+    {
+        case ArgHandler_t::EditItemType_t::COMPONENT:
+            GetAdefComponentEditLinePosition(handler, systemPtr);
+            break;
+
+        case ArgHandler_t::EditItemType_t::SANDBOXED:
+            GetAdefSectionEditLinePosition(handler, "sandboxed");
+            break;
+
+        case ArgHandler_t::EditItemType_t::START:
+            GetAdefSectionEditLinePosition(handler, "start");
+            break;
+
+        default:
+            throw mk::Exception_t(
+                    LE_I18N("Internal error: Invalid edit item type.")
+            );
+            break;
+    }
+}
+
 
 } // namespace updateDefs
 

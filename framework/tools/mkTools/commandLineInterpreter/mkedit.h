@@ -36,6 +36,9 @@ class ArgHandler_t
 
         std::string tempWorkDefFilePath;  ///< Temporary working file of the definition file to edit
 
+        std::string appSandboxed;       ///< App's sandboxed value
+        std::string appStart;           ///< App's start value
+
         std::list<std::string> appSearchPath;       ///< List of app search path in active sdef
         std::list<std::string> compSearchPath;      ///< List of comp search path in active sdef
         std::list<std::string> moduleSearchPath;    ///< List of module search path in active sdef
@@ -67,7 +70,10 @@ class ArgHandler_t
             APP,
             COMPONENT,
             MODULE,
-            SYSTEM
+            SYSTEM,
+
+            SANDBOXED,
+            START
         };
 
         enum EditActionState_t {        ///< Enum for tracking the state of each edit action

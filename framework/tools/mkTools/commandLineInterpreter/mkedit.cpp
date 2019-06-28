@@ -176,6 +176,40 @@ static void ValidateSdefExtension
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Validate the app start value.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void ValidateAppStartValue(std::string& appStart)
+{
+    if ((appStart != "auto") && (appStart != "manual"))
+    {
+        throw mk::Exception_t(
+               mk::format(LE_I18N("'%s' start value is not supported. Set to 'auto' or 'manual'."),
+                          appStart)
+        );
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Validate the app sandboxed value.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void ValidateAppSandboxedValue(std::string& appSandboxed)
+{
+    if ((appSandboxed != "true") && (appSandboxed != "false"))
+    {
+        throw mk::Exception_t(
+               mk::format(LE_I18N("'%s' sandboxed value is not supported. Set to 'true' or"
+                                  "'false'."), appSandboxed)
+        );
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get corresponding file path based on the type of edit item.
  **/
 //--------------------------------------------------------------------------------------------------
@@ -345,6 +379,18 @@ void ArgHandler_t::ActionNotRenameSetDefFilePath(const char* arg)
             commandLineNextArgType = EDIT_COMPLETE;
             break;
 
+        case SANDBOXED:
+            appSandboxed = arg;
+            ValidateAppSandboxedValue(appSandboxed);
+            commandLineNextArgType = NONEDIT_ITEM_KEY;
+            break;
+
+        case START:
+            appStart = arg;
+            ValidateAppStartValue(appStart);
+            commandLineNextArgType = NONEDIT_ITEM_KEY;
+            break;
+
         default:
             throw mk::Exception_t(
                 mk::format(LE_I18N("'%s' is invalid target command."), arg)
@@ -414,6 +460,20 @@ void ArgHandler_t::EvaluateCommandLineNextArgType(const char* arg)
             commandLineNextArgType = NONEDIT_SYSTEM_VALUE;
             break;
 
+        case SANDBOXED:
+        case START:
+            if (strcmp(arg, "app") == 0)
+            {
+                commandLineNextArgType = NONEDIT_APP_VALUE;
+            }
+            else
+            {
+                throw mk::Exception_t(
+                        mk::format(LE_I18N("'%s' is invalid key command."), arg)
+                );
+            }
+            break;
+
         default:
             throw mk::Exception_t(
                     mk::format(LE_I18N("'%s' is invalid item type for editing."), arg)
@@ -467,7 +527,9 @@ void ArgHandler_t::operator()
                 {"app", APP},
                 {"component", COMPONENT},
                 {"module", MODULE},
-                {"system", SYSTEM}
+                {"system", SYSTEM},
+                {"sandboxed", SANDBOXED},
+                {"start", START}
             };
 
             if (commands.find(arg) != commands.end())
@@ -663,6 +725,18 @@ void ArgHandler_t::Add()
 
         case SYSTEM:
             throw mk::Exception_t(LE_I18N("Adding system command is not supported."));
+            break;
+
+        case SANDBOXED:
+            AddAction(std::make_shared<CheckDefFileExistAction_t>(*this, absAdefFilePath, true));
+            AddAction(std::make_shared<CreateUpdateTempAdefAction_t>(*this));
+            AddAction(std::make_shared<RenameTempWorkToActiveFileAction_t>(*this, absAdefFilePath));
+            break;
+
+        case START:
+            AddAction(std::make_shared<CheckDefFileExistAction_t>(*this, absAdefFilePath, true));
+            AddAction(std::make_shared<CreateUpdateTempAdefAction_t>(*this));
+            AddAction(std::make_shared<RenameTempWorkToActiveFileAction_t>(*this, absAdefFilePath));
             break;
 
         default:
