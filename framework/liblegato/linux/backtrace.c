@@ -13,6 +13,10 @@
 #include <setjmp.h>
 #include <ucontext.h>
 
+#if defined(__arm__)
+static const int SKIP_COUNT = 3;
+#endif
+
 #if LE_CONFIG_ENABLE_SEGV_HANDLER
 //--------------------------------------------------------------------------------------------------
 /**
@@ -45,17 +49,9 @@ static __attribute__((unused)) void SigSegVHandler( int signum )
 
 #endif // LE_CONFIG_ENABLE_SEGV_HANDLER
 
-#if defined(__arm__)
-
 static inline void DumpContextStack(const void *infoPtr, int skip, char *buf, size_t bufLen)
 {
-    const struct sigcontext     *ctxPtr = (const struct sigcontext *)
-                                    &(((const ucontext_t *) infoPtr)->uc_mcontext);
-    int                          addr = ctxPtr->arm_pc;
-    int                         *base = (int*)__builtin_frame_address(0);
-    int                         *frame = base;
-
-#if LE_CONFIG_ENABLE_SEGV_HANDLER
+#if (defined(LE_CONFIG_ENABLE_SEGV_HANDLER))
     struct sigaction sa, saveSaSegV;
     int ret;
 
@@ -68,60 +64,76 @@ static inline void DumpContextStack(const void *infoPtr, int skip, char *buf, si
         snprintf(buf, bufLen, "sigaction returns %d\n", ret);
         SIG_WRITE(buf, strlen(buf));
     }
+#endif //LE_CONFIG_ENABLE_SEGV_HANDLER
 
+#if defined(__arm__)
+    const struct sigcontext     *ctxPtr = (const struct sigcontext *)
+                                          &(((const ucontext_t *) infoPtr)->uc_mcontext);
+#if (defined(LE_CONFIG_ENABLE_SEGV_HANDLER))
     if (0 == sigsetjmp(SigEnv, 1))
-#endif // LE_CONFIG_ENABLE_SEGV_HANDLER
+#endif //LE_CONFIG_ENABLE_SEGV_HANDLER
     {
-        snprintf(buf, bufLen, "PC at %08x\n",
-                 (int)ctxPtr->arm_pc);
+        int addr = ctxPtr->arm_pc;
+        int* base = (int*)__builtin_frame_address(0);
+        int* frame  = base;
+
+        snprintf(buf, bufLen, "PC at %08lx\n",
+                 ctxPtr->arm_pc);
         SIG_WRITE(buf, strlen(buf));
-        snprintf(buf, bufLen, "LR at %08x [%p]\n",
-                 (int)ctxPtr->arm_lr , frame);
-        SIG_WRITE(buf, strlen(buf));
-#if LE_CONFIG_ENABLE_SEGV_HANDLER
-        if (frame)
-#else
-        if ((frame) && (frame <= (base + 1024*1024)) && (frame >= base))
-#endif // LE_CONFIG_ENABLE_SEGV_HANDLER
+
+        // Here we first get LR from current FP. If FP is illegal, dump LR register instead.
+        // This is because the LR register value passed to signal handler is unreliable.
+        if ((frame < (int*)0x1000) || (frame > (base + 1024*1024)) || (frame < base))
         {
-            frame = (int*)*(frame-1);
-        }
-        for ( ; ; )
-        {
-            // On arm, current frame points to previous LR. The previous frame is stored into
-            // the word before PC. We have
-            // FP[0] -> LR[1]
-            //          FP[1] -> LR[2]
-            //                   FP[2] -> ...
-            if ((frame < (int*)0x1000) || (frame > (base + 1024*1024)) || (frame < base))
-            {
-                // Exit if FP == 0 or FP[n] == 0 or if FP[n] is less than FP[0] or
-                // if FP[0] is outside 1MB
-                break;
-            }
-            addr = *(frame);
-            snprintf(buf, bufLen, "LR at %08x [%p]\n",
-                     addr, frame);
+            snprintf(buf, bufLen, "LR at %08lx\n",
+                     ctxPtr->arm_lr );
             SIG_WRITE(buf, strlen(buf));
-            frame = (int *)*(frame-1);
+        }
+        else
+        {
+            for (int i = 0; ;i++)
+            {
+                // On arm, current frame points to previous LR. The previous frame is stored into
+                // the word before PC. We have
+                // FP[0] -> LR[1]
+                //          FP[1] -> LR[2]
+                //                   FP[2] -> ...
+                if ((frame < (int*)0x1000) || (frame > (base + 1024*1024)) || (frame < base))
+                {
+                    // Exit if FP == 0 or FP[n] == 0 or if FP[n] is less than FP[0] or
+                    // if FP[0] is outside 1MB
+                    break;
+                }
+
+                if(i >= SKIP_COUNT)
+                {
+                    addr = *(frame);
+                    snprintf(buf, bufLen, "LR at %08x [%p]\n",
+                         addr, frame);
+                    SIG_WRITE(buf, strlen(buf));
+                }
+                frame = (int *)*(frame-1);
+            }
         }
     }
-#if LE_CONFIG_ENABLE_SEGV_HANDLER
+#if (defined(LE_CONFIG_ENABLE_SEGV_HANDLER))
     else
     {
         snprintf(buf, bufLen, "Abort while dumping the backtrace\n");
         SIG_WRITE(buf, strlen(buf));
-    }
 
-    ret = sigaction( SIGSEGV, &sa, NULL );
-    if (ret)
-    {
-        snprintf(buf, bufLen, "sigaction returns %d\n", ret);
-        SIG_WRITE(buf, strlen(buf));
+        // When the code is long jumped back from SigSegVHandler(),
+        // register handler again since current handler is already reset to default.
+        ret = sigaction( SIGSEGV, &sa, NULL );
+        if (ret)
+        {
+            snprintf(buf, bufLen, "sigaction returns %d\n", ret);
+            SIG_WRITE(buf, strlen(buf));
+        }
     }
 
     if (0 == sigsetjmp(SigEnv, 1))
-#endif // LE_CONFIG_ENABLE_SEGV_HANDLER
+#endif //LE_CONFIG_ENABLE_SEGV_HANDLER
     {
         snprintf(buf, bufLen,
                  "r0  %08lx r1  %08lx r2  %08lx r3  %08lx r4  %08lx  r5  %08lx\n",
@@ -141,12 +153,15 @@ static inline void DumpContextStack(const void *infoPtr, int skip, char *buf, si
         snprintf(buf, bufLen,
                  "STACK %08lx, FRAME %08lx\n", ctxPtr->arm_sp, ctxPtr->arm_fp);
         SIG_WRITE(buf, strlen(buf));
+
+        int addr;
+        int* frame;
         for (addr = 0, frame = (int*)ctxPtr->arm_sp-32;
-#if LE_CONFIG_ENABLE_SEGV_HANDLER
+#if (defined(LE_CONFIG_ENABLE_SEGV_HANDLER))
              addr < 1024;
 #else
              addr < 256;
-#endif // LE_CONFIG_ENABLE_SEGV_HANDLER
+#endif //LE_CONFIG_ENABLE_SEGV_HANDLER
              addr += 8, frame += 8)
         {
             snprintf(buf, bufLen,
@@ -157,48 +172,48 @@ static inline void DumpContextStack(const void *infoPtr, int skip, char *buf, si
             SIG_WRITE(buf, strlen(buf));
         }
     }
-#if LE_CONFIG_ENABLE_SEGV_HANDLER
+#if (defined(LE_CONFIG_ENABLE_SEGV_HANDLER))
     else
     {
-        snprintf(buf, bufLen, "Abort while dumping the stack\n");
+        snprintf(buf, bufLen, "Abort while dumping the stack and registers\n");
         SIG_WRITE(buf, strlen(buf));
     }
 
+    // All dumps are done, reset to default handler so that coredump
+    // can be generated later.
     (void)sigaction( SIGSEGV, &saveSaSegV, NULL );
-#endif // LE_CONFIG_ENABLE_SEGV_HANDLER
-}
-
-#else /* if not __arm__ */
-
-static inline void DumpContextStack(const void *infoPtr, int skip, char *buf, size_t bufLen)
-{
-    void *retSp[14];
-    size_t nRetSp;
-    int n;
-#if LE_CONFIG_ENABLE_SEGV_HANDLER
-    if(0 == setjmp(SigEnv))
+#endif //LE_CONFIG_ENABLE_SEGV_HANDLER
+#else //!__arm__
+#if (defined(LE_CONFIG_ENABLE_SEGV_HANDLER))
+    if (0 == sigsetjmp(SigEnv, 1))
+#endif //LE_CONFIG_ENABLE_SEGV_HANDLER
     {
-#endif // LE_CONFIG_ENABLE_SEGV_HANDLER
-        nRetSp = backtrace(&retSp[0], 14);
+        void *retSp[12];
+        size_t nRetSp;
+        int n;
+        nRetSp = backtrace( &retSp[0], 12 );
         // Skip HandleSignal() and <signal handler called> frames
         for (n = skip; n < nRetSp; n++)
         {
             snprintf(buf, bufLen,
-                     "#%d : %p\n", n - skip, (void*)retSp[n]);
+                     "#%d : %p\n", n-skip, (void*)retSp[n]);
             SIG_WRITE(buf, strlen(buf));
         }
-#if LE_CONFIG_ENABLE_SEGV_HANDLER
     }
+#if (defined(LE_CONFIG_ENABLE_SEGV_HANDLER))
     else
     {
         snprintf(buf, bufLen,
                  "Catching SEGV while dumping the backtrace\n");
         SIG_WRITE(buf, strlen(buf));
     }
-#endif // LE_CONFIG_ENABLE_SEGV_HANDLER
-}
 
-#endif /* end __arm__ */
+    // All dumps are done, reset to default handler so that coredump
+    // can be generated later.
+    (void)sigaction( SIGSEGV, &saveSaSegV, NULL );
+#endif //LE_CONFIG_ENABLE_SEGV_HANDLER
+#endif //defined(__arm__)
+}
 
 void backtrace_DumpContextStack(const void *infoPtr, int skip, char *buf, size_t bufLen)
 {
