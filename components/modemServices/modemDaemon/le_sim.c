@@ -611,16 +611,15 @@ static le_result_t GetICCID
 {
     pa_sim_CardId_t  iccid;
 
+    if (!le_sim_IsPresent(simPtr->simId))
+    {
+        return LE_FAULT;
+    }
+
     // ICCID has already been retreived and stored in SIM structure. No need to read it again.
     if (0 != simPtr->ICCID[0])
     {
         return LE_OK;
-    }
-
-    // Select SIM card and attempt to read ICCID from PA.
-    if (LE_OK != SelectSIMCard(simPtr->simId))
-    {
-        return LE_FAULT;
     }
 
     if (false == simPtr->isReacheable)
@@ -653,16 +652,15 @@ static le_result_t GetIMSI
 {
     pa_sim_Imsi_t    imsi;
 
+    if (!le_sim_IsPresent(simPtr->simId))
+    {
+        return LE_FAULT;
+    }
+
     // IMSI has already been retreived and stored in SIM structure. No need to read it again.
     if (0 != simPtr->IMSI[0])
     {
         return LE_OK;
-    }
-
-    // Select SIM card and attempt to read IMSI from PA.
-    if (LE_OK != SelectSIMCard(simPtr->simId))
-    {
-        return LE_FAULT;
     }
 
     if (false == simPtr->isReacheable)
