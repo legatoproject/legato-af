@@ -154,7 +154,7 @@ menu "Secure Storage"
 
 config ENABLE_SECSTORE_ADMIN
   bool "Enable secure storage administration API"
-  default n
+  default $(b2k,$(SECSTOREADMIN))
   ---help---
   Allow administrative control of the Legato secure storage system.  This
   permits reading, writing, and deleting secure storage files and should be
