@@ -193,9 +193,10 @@ LE_SHARED void pa_dcs_RestoreInitialDnsNameServers
  * Set the DNS configuration
  *
  * @return
- *      LE_FAULT        Function failed
  *      LE_OK           Function succeed
+ *      LE_DUPLICATE    Function found no need to add as the given inputs are already set in
  *      LE_UNSUPPORTED  Function not supported by the target
+ *      LE_FAULT        Function failed
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_dcs_SetDnsNameServers

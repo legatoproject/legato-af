@@ -544,7 +544,10 @@ le_result_t le_net_GetDefaultGW
  * Set the given DNS addresses into the system configs
  *
  * @return
- *     - LE_OK upon success in setting them, otherwise some other le_result_t failure code
+ *      LE_OK           Function succeed
+ *      LE_DUPLICATE    Function found no need to add as the given inputs are already set in
+ *      LE_UNSUPPORTED  Function not supported by the target
+ *      LE_FAULT        Function failed
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t DcsNetSetDNS
@@ -556,7 +559,12 @@ static le_result_t DcsNetSetDNS
 )
 {
     le_result_t ret = pa_dcs_SetDnsNameServers(dns1Addr, dns2Addr);
-    if (ret != LE_OK)
+    if (ret == LE_DUPLICATE)
+    {
+        LE_DEBUG("Given DNS addresses already set");
+        return ret;
+    }
+    else if (ret != LE_OK)
     {
         LE_ERROR("Failed to set DNS addresses %s and %s", dns1Addr, dns2Addr);
         return ret;
@@ -724,7 +732,7 @@ le_result_t le_net_SetDNS
     if ((strlen(v6DnsAddrs[0]) > 0) || (strlen(v6DnsAddrs[1]) > 0))
     {
         v6Ret = DcsNetSetDNS(true, v6DnsAddrs[0], v6DnsAddrs[1], PA_DCS_IPV6_ADDR_MAX_BYTES);
-        if (v6Ret != LE_OK)
+        if ((v6Ret != LE_OK) && (v6Ret != LE_DUPLICATE))
         {
             LE_ERROR("Failed to set DNS addresses for channel %s of technology %s", channelName,
                      le_dcs_ConvertTechEnumToName(channelDb->technology));
@@ -735,11 +743,18 @@ le_result_t le_net_SetDNS
     if ((strlen(v4DnsAddrs[0]) > 0) || (strlen(v4DnsAddrs[1]) > 0))
     {
         v4Ret = DcsNetSetDNS(false, v4DnsAddrs[0], v4DnsAddrs[1], PA_DCS_IPV4_ADDR_MAX_BYTES);
-        if (v4Ret != LE_OK)
+        if ((v4Ret != LE_OK) && (v4Ret != LE_DUPLICATE))
         {
             LE_ERROR("Failed to set DNS addresses for channel %s of technology %s", channelName,
                      le_dcs_ConvertTechEnumToName(channelDb->technology));
         }
+    }
+
+    if ((v4Ret == LE_DUPLICATE) || (v6Ret == LE_DUPLICATE))
+    {
+        LE_INFO("DNS addresses of channel %s of technology %s already set in",
+                channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
+        return LE_DUPLICATE;
     }
 
     if ((v4Ret == LE_OK) || (v6Ret == LE_OK))
@@ -769,7 +784,7 @@ le_result_t le_net_GetDNS
     le_result_t result;
     char intf[LE_DCS_INTERFACE_NAME_MAX_LEN] = {0};
     char v4DnsAddrs[2][PA_DCS_IPV4_ADDR_MAX_BYTES] = {{0}, {0}};
-    char v6DnsAddrs[2][PA_DCS_IPV6_ADDR_MAX_BYTES] = {{0}, {0}};    
+    char v6DnsAddrs[2][PA_DCS_IPV6_ADDR_MAX_BYTES] = {{0}, {0}};
     int intfSize = LE_DCS_INTERFACE_NAME_MAX_LEN;
     le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
 
