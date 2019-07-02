@@ -261,4 +261,19 @@ LE_API_FILESYSTEM bool le_fs_Exists
     const char* filePathPtr     ///< [IN] File path
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Obtain the absolute directory containing the running executable and the name of the executable.
+ *
+ * @return LE_OK on success or an appropriate error on failure.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_API_FILESYSTEM le_result_t le_fs_GetExecutablePath
+(
+    char    *dirPathPtr,    ///< [OUT] Buffer to put executable's directory path in.
+    size_t   dirPathSize,   ///< [IN]  Size of the directory path buffer.
+    char    *exeNamePtr,    ///< [OUT] Buffer to put the executable's name in.
+    size_t   exeNameSize    ///< [IN]  Size of the executable name buffer.
+);
+
 #endif // LE_FS_H_INCLUDE_GUARD

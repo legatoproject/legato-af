@@ -32,6 +32,12 @@
 // -------------------------------------------------------------------------------------------------
 #define LONG_DATA_LENGTH    5000
 
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Executable name.
+ */
+// -------------------------------------------------------------------------------------------------
+#define EXE_NAME "testFs"
 
 //--------------------------------------------------------------------------------------------------
 // Test functions
@@ -48,12 +54,12 @@ COMPONENT_INIT
 
     LE_TEST_INFO("Starting FS test");
 
-    LE_TEST_PLAN(89);
+    LE_TEST_PLAN(91);
 
     le_fs_FileRef_t fileRef = NULL;
 
     // Create and open a new file
-    static const char filePath[PATH_LENGTH] = "/foo/bar/test.txt";
+    const char filePath[PATH_LENGTH] = "/foo/bar/test.txt";
     LE_TEST_INFO("Open file '%s'", filePath);
     res = le_fs_Open(filePath, LE_FS_CREAT | LE_FS_RDWR | LE_FS_TRUNC, &fileRef);
     LE_DEBUG("res = %d", res);
@@ -62,7 +68,7 @@ COMPONENT_INIT
     LE_TEST_ASSERT(NULL != fileRef, "Check fileRef");
 
     // Write in file
-    static const uint8_t dataToWrite[SHORT_DATA_LENGTH] = "Hello world!";
+    const uint8_t dataToWrite[SHORT_DATA_LENGTH] = "Hello world!";
     LE_TEST_INFO("Writing '%s' in file", dataToWrite);
     size_t writeSize = strlen((char*)dataToWrite);
     LE_TEST_ASSERT(LE_OK == le_fs_Write(fileRef, dataToWrite, writeSize),
@@ -82,7 +88,7 @@ COMPONENT_INIT
     int32_t currentOffset;
     int32_t offset;
     size_t readLength;
-    static uint8_t readData[SHORT_DATA_LENGTH];
+    uint8_t readData[SHORT_DATA_LENGTH];
 
     // Seek negative offset from the beginning
     offset = -5;
@@ -215,7 +221,7 @@ COMPONENT_INIT
     fileRef = NULL;
 
     // Move the file
-    static const char newFilePath[PATH_LENGTH] = "/foo/bar/test2.txt";
+    const char newFilePath[PATH_LENGTH] = "/foo/bar/test2.txt";
     LE_TEST_INFO("Moving file from '%s' to '%s'", filePath, newFilePath);
     LE_TEST_OK(LE_OK == le_fs_Move(filePath, newFilePath), "move file");
     // Check that old file cannot be opened
@@ -265,7 +271,7 @@ COMPONENT_INIT
     LE_TEST_OK((2 * strlen((char*)dataToWrite)) == fileSize, "File size check");
 
     // Create and open a new file
-    static const char deleteFilePath[PATH_LENGTH] = "/foo/bar/delete.txt";
+    const char deleteFilePath[PATH_LENGTH] = "/foo/bar/delete.txt";
     LE_TEST_INFO("Open file '%s'", deleteFilePath);
     LE_TEST_OK(LE_OK == le_fs_Open(deleteFilePath, LE_FS_CREAT | LE_FS_RDWR, &fileRef),
                "Open file '%s'", deleteFilePath);
@@ -292,7 +298,7 @@ COMPONENT_INIT
                    "Check file deletion");
 
     // Create and open a new file
-    static const char loremFilePath[PATH_LENGTH] = "/bar/foo/lorem_ipsum.txt";
+    const char loremFilePath[PATH_LENGTH] = "/bar/foo/lorem_ipsum.txt";
     LE_TEST_INFO("Open file '%s'", loremFilePath);
     LE_TEST_OK(LE_OK == le_fs_Open(loremFilePath, LE_FS_CREAT | LE_FS_RDWR | LE_FS_TRUNC, &fileRef),
                "Open file '%s'", loremFilePath);
@@ -300,7 +306,7 @@ COMPONENT_INIT
     LE_TEST_ASSERT(fileRef != NULL, "Check fileRef");
 
     // Write in file
-    static const uint8_t loremIpsum[LONG_DATA_LENGTH] =
+    const uint8_t loremIpsum[LONG_DATA_LENGTH] =
     "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla molestie metus ac ultricies \
 ultricies. Mauris sollicitudin pulvinar lorem vitae vehicula. Vestibulum quam tellus, vehicula in \
 consequat et, tincidunt vel ligula. In fringilla ex sit amet vehicula pharetra. Etiam porttitor \
@@ -367,7 +373,7 @@ facilisis erat, a imperdiet risus eleifend nec.";
     LE_TEST_OK(offset == currentOffset, "Check new position");
 
     // Read 5000 bytes from the current position
-    static uint8_t readLoremIpsum[LONG_DATA_LENGTH];
+    uint8_t readLoremIpsum[LONG_DATA_LENGTH];
     memset(readLoremIpsum, '\0', LONG_DATA_LENGTH);
     readLength = LONG_DATA_LENGTH;
     LE_TEST_OK(LE_OK == le_fs_Read(fileRef, readLoremIpsum, &readLength),
@@ -427,7 +433,7 @@ facilisis erat, a imperdiet risus eleifend nec.";
                "Test le_fs_Seek with bad ref");
 
     // Error cases with wrong file paths
-    static const char wrongFilePath[PATH_LENGTH] = "foo/bar/";
+    const char wrongFilePath[PATH_LENGTH] = "foo/bar/";
     LE_TEST_INFO("Test error cases with file path '%s'", wrongFilePath);
     LE_TEST_OK(LE_BAD_PARAMETER == le_fs_Open(wrongFilePath, LE_FS_RDWR, &fileRef),
                "Test le_fs_Open with wrong file name");
@@ -437,6 +443,13 @@ facilisis erat, a imperdiet risus eleifend nec.";
                "Test le_fs_Delete with wrong file name");
     LE_TEST_OK(LE_BAD_PARAMETER == le_fs_Move(loremFilePath, loremFilePath),
                "Test le_fs_Move with wrong file name");
+
+    char dirPathStr[PATH_LENGTH];
+    char exeNameStr[PATH_LENGTH];
+    res = le_fs_GetExecutablePath(dirPathStr, sizeof(dirPathStr), exeNameStr, sizeof(exeNameStr));
+    LE_TEST_OK(res == LE_OK, "Get executable path: %s", LE_RESULT_TXT(res));
+    LE_TEST_OK(strncmp(exeNameStr, EXE_NAME, sizeof(exeNameStr)) == 0,
+        "Executable name: %s", exeNameStr);
 
     LE_TEST_INFO("End of FS test");
     LE_TEST_EXIT;
