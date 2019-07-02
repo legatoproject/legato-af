@@ -124,10 +124,10 @@ supported constellation types for each platform.
 
 | Constellation type            | AR7 | AR758x | AR759x | AR8652 | WP750x | WP76xx | WP77xx | WP85 |
 | ----------------------------- | --- | ------ | ------ | ------ | ------ | ------ | ------ | ---- |
-| LE_GNSS_CONSTELLATION_GPS     |     |   X    |   X    |        |        |        |        |  X   |
-| LE_GNSS_CONSTELLATION_GLONASS |     |   X    |   X    |        |        |        |        |  X   |
-| LE_GNSS_CONSTELLATION_BEIDOU  |     |   X    |   X    |        |        |        |        |      |
-| LE_GNSS_CONSTELLATION_GALILEO |     |   X    |   X    |        |        |        |        |      |
+| LE_GNSS_CONSTELLATION_GPS     |     |   X    |   X    |        |   X    |   X    |   X    |  X   |
+| LE_GNSS_CONSTELLATION_GLONASS |     |   X    |   X    |        |   X    |   X    |   X    |  X   |
+| LE_GNSS_CONSTELLATION_BEIDOU  |     |   X    |   X    |        |        |   X    |   X    |      |
+| LE_GNSS_CONSTELLATION_GALILEO |     |   X    |   X    |        |        |   X    |   X    |      |
 | LE_GNSS_CONSTELLATION_SBAS    |     |        |        |        |        |        |        |      |
 | LE_GNSS_CONSTELLATION_QZSS    |     |   X    |   X    |        |        |        |        |      |
 

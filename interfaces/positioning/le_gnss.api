@@ -172,7 +172,7 @@
  * Combinations of constellation for GPS, GLONASS, BDS, GALILEO and QZSS satellites are currently
  * supported. Constellation for SBAS satellites is not supported.
  *
- * @warning Some constellation types are unsupported depending on the plateform. Please refer to
+ * @warning Some constellation types are unsupported depending on the platform. Please refer to
  * @ref platformConstraintsGnss_ConstellationType section for full details.
  *
  * All supported GNSS constellations are enabled by default.
@@ -210,7 +210,7 @@
  * Please refer to your platform documentation @ref platformConstraintsGnss_SettingConfiguration for
  * further details.
  *
- * @warning Some NMEA sentences are unsupported depending on the plateform. Please refer to
+ * @warning Some NMEA sentences are unsupported depending on the platform. Please refer to
  * @ref platformConstraintsGnss_nmeaMask section for full details.
  *
  * @note All supported NMEA sentences are enabled by default.
@@ -842,7 +842,7 @@ ENUM StartMode
  *  - LE_NOT_PERMITTED If the GNSS device is not initialized, disabled or active.
  *  - LE_OK            The function succeeded.
  *
- * @warning Some constellation types are unsupported depending on the plateform. Please refer to
+ * @warning Some constellation types are unsupported depending on the platform. Please refer to
  *          @ref platformConstraintsGnss_ConstellationType section for full details.
  *
  * @warning The settings are platform dependent. Please refer to
@@ -1914,7 +1914,7 @@ FUNCTION le_result_t DeleteSuplCertificate
  * @warning This function may be subject to limitations depending on the platform. Please refer to
  *          the @ref platformConstraintsGnss page.
  *
- * @note Some NMEA sentences are unsupported depending on the plateform. Please refer to
+ * @note Some NMEA sentences are unsupported depending on the platform. Please refer to
  *       @ref platformConstraintsGnss_nmeaMask section for full details. Setting an unsuported NMEA
  *       sentence won't report an error.
  *
@@ -1944,7 +1944,7 @@ FUNCTION le_result_t SetNmeaSentences
  * @note If the caller is passing a null pointer to this function, it is a fatal error, the
  *       function will not return.
  *
- * @note Some NMEA sentences are unsupported depending on the plateform. Please refer to
+ * @note Some NMEA sentences are unsupported depending on the platform. Please refer to
  *       @ref platformConstraintsGnss_nmeaMask section for full details. The bit mask for an unset
  *       or unsupported NMEA sentence is zero.
  */

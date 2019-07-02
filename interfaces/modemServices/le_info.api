@@ -73,7 +73,7 @@
  *
  * le_info_GetResetInformation() is used to retrieve the last reset reason.
  * For each reset reason, an information string is provided to specify the reset cause. These
- * strings are listed in the table below. This list may be partially supported by some plateforms.
+ * strings are listed in the table below. This list may be partially supported by some platforms.
  *
  * @note See platform constraints @subpage platformConstraintsInfo
  *
