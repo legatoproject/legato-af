@@ -217,6 +217,20 @@ void fa_event_DestructThread
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Inform event loop an FD event has fired.  Wakes the event loop if it is asleep.
+ */
+//--------------------------------------------------------------------------------------------------
+void fa_event_TriggerFd_NoLock
+(
+    struct fdMon         *fdMonitorPtr     ///< [IN] Pointer to fd monitor
+)
+{
+    fa_event_TriggerEvent_NoLock(fdMonitorPtr->threadRecPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Write to a thread's Event File Descriptor.  This increments it by one.
  *
  * This must be done exactly once for each Event Report pushed onto the thread's Event Queue.

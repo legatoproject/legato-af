@@ -982,7 +982,7 @@ void event_SetCurrentContextPtr
 /// Expose old symbol name to support apps compiled against an older liblegato.
 __attribute__((deprecated)) void event_QueueComponentInit
 (
-    const void (*func)(void)
+    void (*func)(void)
 )
 {
     le_event_QueueFunction(&CallComponentInitializer, func, NULL);

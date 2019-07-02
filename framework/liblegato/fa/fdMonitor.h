@@ -25,7 +25,7 @@
  * FD Monitor Reference Map.
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct
+typedef struct fdMon
 {
     le_dls_Link_t            link;              ///< Used to link onto a thread's FD Monitor List.
     int                      fd;                ///< File descriptor being monitored.

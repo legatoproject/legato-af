@@ -11,6 +11,10 @@
 
 #include "legato.h"
 
+
+// File Descriptor Monitor
+struct fdMon;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Enumeration of the possible states that a thread's Event Loop can be in.
@@ -92,6 +96,16 @@ event_PerThreadRec_t *fa_event_CreatePerThreadInfo
 void fa_event_ThreadInit
 (
     event_PerThreadRec_t *perThreadRecPtr ///< [IN] Per-thread event record
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Inform event loop an FD event has fired.  Wakes the event loop if it is asleep.
+ */
+//--------------------------------------------------------------------------------------------------
+void fa_event_TriggerFd_NoLock
+(
+    struct fdMon         *fdMonitorPtr     ///< [IN] Pointer to fd monitor
 );
 
 //--------------------------------------------------------------------------------------------------

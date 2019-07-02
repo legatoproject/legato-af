@@ -302,7 +302,7 @@ void fdMon_SignalFd
             (fdMonitorPtr->eventFlags & eventFlags))
         {
             oldState = event_Lock();
-            fa_event_TriggerEvent_NoLock(fdMonitorPtr->threadRecPtr);
+            fa_event_TriggerFd_NoLock(fdMonitorPtr);
             event_Unlock(oldState);
         }
     }
