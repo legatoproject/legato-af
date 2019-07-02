@@ -1,5 +1,5 @@
 sandboxed: true
-start: manual
+start: auto
 
 executables:
 {
@@ -20,4 +20,7 @@ bindings:
 {
     testPublisher.testPublisher.mqtt    -> mqttClient.mqtt
     testPublisher.testPublisher.le_info -> modemService.le_info
+    testPublisher.testPublisher.io -> dataHub.io
+    testPublisher.testPublisher.query -> dataHub.query
+    testPublisher.testPublisher.admin -> dataHub.admin
 }

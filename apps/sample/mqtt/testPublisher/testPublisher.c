@@ -21,6 +21,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum length of a Publish topic string, defined as
+ * IO_MAX_RESOURCE_PATH_LEN + length_of_an_imei + 1 (for / separator) + 1 (for null terminator)
+ */
+//--------------------------------------------------------------------------------------------------
+#define PUBLISH_STR_MAX_LEN  (IO_MAX_RESOURCE_PATH_LEN + LE_INFO_IMEI_MAX_BYTES + 1 + 1)
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Device IMEI, used as a unique device identifier
  */
 //--------------------------------------------------------------------------------------------------
@@ -65,6 +73,100 @@ static void OnMessageArrived
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Publish the payload.
+ */
+//--------------------------------------------------------------------------------------------------
+static void PublishData
+(
+    const char* pathPtr,
+    const char* payloadPtr,
+    size_t payloadLen
+)
+{
+    char publishTopic[PUBLISH_STR_MAX_LEN];
+    snprintf(publishTopic, sizeof(publishTopic), "%s%s", DeviceIMEI, pathPtr);
+    const bool retain = false;
+    const le_result_t publishResult = mqtt_Publish(
+        MQTTSession,
+        publishTopic,
+        (const uint8_t*)payloadPtr,
+        payloadLen,
+        MQTT_QOS0_TRANSMIT_ONCE,
+        retain);
+
+    LE_DEBUG("Published Topic %s data %s result %s", publishTopic, payloadPtr,
+            LE_RESULT_TXT(publishResult));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Publish the entry in the resource tree at a given path.
+ */
+//--------------------------------------------------------------------------------------------------
+static void PublishEntry
+(
+    const char* path
+)
+//--------------------------------------------------------------------------------------------------
+{
+    admin_EntryType_t entryType = admin_GetEntryType(path);
+
+    if (entryType == ADMIN_ENTRY_TYPE_NONE)
+    {
+        LE_ERROR("No resource at path '%s'.\n", path);
+        exit(EXIT_FAILURE);
+    }
+    else if (entryType == ADMIN_ENTRY_TYPE_NAMESPACE)
+    {
+        // There's not much to do for a namespace.
+    }
+    else // Resource
+    {
+        double timestamp;
+        char value[IO_MAX_STRING_VALUE_LEN + 1];
+
+        le_result_t result = query_GetJson(path, &timestamp, value, sizeof(value));
+
+        if (result == LE_OK)
+        {
+            PublishData(path, value, strlen(value));
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Publish all the entries in datahub to mqtt server
+ */
+//--------------------------------------------------------------------------------------------------
+static void PublishDataHubList
+(
+    const char* path
+)
+//--------------------------------------------------------------------------------------------------
+{
+    PublishEntry(path);
+
+    char childPath[IO_MAX_RESOURCE_PATH_LEN + 1];
+
+    le_result_t result = admin_GetFirstChild(path, childPath, sizeof(childPath));
+    LE_ASSERT(result != LE_OVERFLOW);
+
+    while (result == LE_OK)
+    {
+        PublishDataHubList(childPath);
+
+        result = admin_GetNextSibling(childPath, childPath, sizeof(childPath));
+
+        LE_ASSERT(result != LE_OVERFLOW);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Timer handler for periodically publishing data
  */
 //--------------------------------------------------------------------------------------------------
@@ -73,23 +175,7 @@ static void PublishTimerHandler
     le_timer_Ref_t timer
 )
 {
-    static int messageData = 0;
-    uint8_t payload[64];
-    snprintf((char*)payload, sizeof(payload), "{\"value\":%d}", messageData);
-    size_t payloadLen = strlen((char*)payload);
-    const bool retain = false;
-    char publishTopic[64];
-    snprintf(publishTopic, sizeof(publishTopic), "%s/messages/json", DeviceIMEI);
-    const le_result_t publishResult = mqtt_Publish(
-        MQTTSession,
-        publishTopic,
-        payload,
-        payloadLen,
-        MQTT_QOS0_TRANSMIT_ONCE,
-        retain);
-    LE_INFO("Published Topic %s data %s result %s", publishTopic, payload,
-            LE_RESULT_TXT(publishResult));
-    messageData++;
+    PublishDataHubList("/");
 }
 
 

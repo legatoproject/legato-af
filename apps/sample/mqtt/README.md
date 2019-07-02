@@ -39,7 +39,7 @@ Testing
 2) MQTT Mosquitto subscriber command-line client can run on different host, e.g.
 on the Linux workstation, and be able to receive the published messages:
 
-    $ mosquitto_sub -t <device_id>/messages/json
+    $ mosquitto_sub -t <imei>/messages/json
     {"value":3}
     {"value":4}
     {"value":5}

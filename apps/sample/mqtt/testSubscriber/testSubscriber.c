@@ -110,7 +110,8 @@ COMPONENT_INIT
     else
     {
         char subscribeTopic[64];
-        snprintf(subscribeTopic, sizeof(subscribeTopic), "%s/messages/json", DeviceIMEI);
+        // subscribe to everything published under the current device id
+        snprintf(subscribeTopic, sizeof(subscribeTopic), "%s/#", DeviceIMEI);
         LE_FATAL_IF(
             mqtt_Subscribe(MQTTSession, subscribeTopic, MQTT_QOS0_TRANSMIT_ONCE) != LE_OK,
             "failed to subscribe to %s",
