@@ -155,6 +155,7 @@ config SIM_ENABLE_AUTOSWITCH
   bool "Enable SIM auto switch support"
   depends on QMI
   default y if TARGET_WP76XX
+  default y if TARGET_WP77XX
   default n
   ---help---
   Enable SIM auto switch support.
