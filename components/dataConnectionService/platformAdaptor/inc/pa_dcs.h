@@ -104,7 +104,20 @@ LE_SHARED le_result_t pa_dcs_AskForIpAddress
     const char* interfaceStrPtr
 );
 
-
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop DHCP running specific network interface
+ *
+ * @return
+ *      - LE_OK             Function succeeded
+ *      - LE_BAD_PARAMETER  Invalid parameter
+ *      - LE_FAULT          Function failed
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_dcs_StopDhcp
+(
+    const char *interface   ///< [IN] Network interface name
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -254,7 +267,8 @@ LE_SHARED le_result_t pa_dcs_GetTimeWithNetworkTimeProtocol
 LE_SHARED le_result_t pa_dcs_GetInterfaceState
 (
     const char *interface,  ///< [IN] network interface name
-    bool *stateIsUp         ///< [OUT] interface state down/up as false/true
+    bool *ipv4IsUp,         ///< [INOUT] IPV4 is not assigned/assigned as false/true
+    bool *ipv6IsUp          ///< [INOUT] IPV6 is not assigned/assigned as false/true
 );
 
 #endif

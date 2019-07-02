@@ -113,10 +113,20 @@ le_result_t le_net_GetNetIntfState
     bool *state
 )
 {
-    le_result_t ret = pa_dcs_GetInterfaceState(connIntf, state);
+    bool ipv4AddrAssigned = false;
+    bool ipv6AddrAssigned = false;
+    *state = false;
+    le_result_t ret = pa_dcs_GetInterfaceState(connIntf,
+                                               &ipv4AddrAssigned,
+                                               &ipv6AddrAssigned);
     if (ret != LE_OK)
     {
         LE_DEBUG("Failed to get state of channel interface %s; error: %d", connIntf, ret);
+    }
+
+    if (ipv4AddrAssigned || ipv6AddrAssigned)
+    {
+        *state = true;
     }
     return ret;
 }
@@ -404,8 +414,8 @@ le_result_t le_net_SetDefaultGW
     }
     channelName = channelDb->channelName;
 
-    if ((channelDb->technology != LE_DCS_TECH_CELLULAR) &&
-        (channelDb->technology != LE_DCS_TECH_WIFI))
+    if ((LE_DCS_TECH_UNKNOWN == channelDb->technology) ||
+        (LE_DCS_TECH_MAX <= channelDb->technology))
     {
         LE_ERROR("Channel's technology %s not supported",
                  le_dcs_ConvertTechEnumToName(channelDb->technology));
@@ -683,8 +693,8 @@ le_result_t le_net_SetDNS
     }
     channelName = channelDb->channelName;
 
-    if ((channelDb->technology != LE_DCS_TECH_CELLULAR) &&
-        (channelDb->technology != LE_DCS_TECH_WIFI))
+    if ((LE_DCS_TECH_UNKNOWN == channelDb->technology) ||
+        (LE_DCS_TECH_MAX <= channelDb->technology))
     {
         LE_ERROR("Channel's technology %s not supported",
                  le_dcs_ConvertTechEnumToName(channelDb->technology));
@@ -911,8 +921,8 @@ le_result_t le_net_ChangeRoute
     channelName = channelDb->channelName;
 
     // Validate inputs
-    if ((channelDb->technology != LE_DCS_TECH_CELLULAR) &&
-        (channelDb->technology != LE_DCS_TECH_WIFI))
+    if ((LE_DCS_TECH_UNKNOWN == channelDb->technology) ||
+        (LE_DCS_TECH_MAX <= channelDb->technology))
     {
         LE_ERROR("Channel's technology %s not supported",
                  le_dcs_ConvertTechEnumToName(channelDb->technology));

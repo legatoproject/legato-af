@@ -677,7 +677,7 @@ void le_dcs_RemoveEventHandler
  * DcsGetSessionRef() when the session app's name is found as DCS_INTERNAL_SESSION_NAME or
  * "dataConnectionService", which confirms the caller being the internal component dcsInternal.
  * This allows le_dcs to distinguish whether an API caller is external or its internal le_data
- * component. In another word, dcsInternal's client session reference in le_dcs is used as 
+ * component. In another word, dcsInternal's client session reference in le_dcs is used as
  * le_data's session reference in its le_dcs API calls.
  */
 //--------------------------------------------------------------------------------------------------

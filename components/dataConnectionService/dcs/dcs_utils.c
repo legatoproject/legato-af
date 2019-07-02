@@ -13,8 +13,12 @@
 #include "interfaces.h"
 #include "dcs.h"
 
-static const char *DcsTechnologyNames[LE_DCS_TECH_MAX] = {"", "wifi", "cellular"};
-
+//--------------------------------------------------------------------------------------------------
+/**
+ * DCS technology name
+ */
+//--------------------------------------------------------------------------------------------------
+static char DcsTechnologyName[LE_DCS_TECH_MAX_NAME_LEN];
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -29,11 +33,25 @@ const char *le_dcs_ConvertTechEnumToName
     le_dcs_Technology_t tech
 )
 {
-    if (tech < LE_DCS_TECH_MAX)
+    switch(tech)
     {
-        return DcsTechnologyNames[tech];
+        case LE_DCS_TECH_WIFI:
+            le_utf8_Copy(DcsTechnologyName, "wifi", sizeof(DcsTechnologyName), NULL);
+            break;
+
+        case LE_DCS_TECH_CELLULAR:
+            le_utf8_Copy(DcsTechnologyName, "cellular", sizeof(DcsTechnologyName), NULL);
+            break;
+
+        case LE_DCS_TECH_ETHERNET:
+            le_utf8_Copy(DcsTechnologyName, "ethernet", sizeof(DcsTechnologyName), NULL);
+            break;
+
+        default:
+            le_utf8_Copy(DcsTechnologyName, "unknown", sizeof(DcsTechnologyName), NULL);
+            break;
     }
-    return "";
+    return DcsTechnologyName;
 }
 
 

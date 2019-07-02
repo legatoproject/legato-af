@@ -6,7 +6,8 @@ executables:
                   $LEGATO_ROOT/components/dataConnectionService/dcs
                   $LEGATO_ROOT/components/dataConnectionService/dcsNet
                   $LEGATO_ROOT/components/dataConnectionService/dcsCellular
-                  $LEGATO_ROOT/components/dataConnectionService/dcsWifi )
+                  $LEGATO_ROOT/components/dataConnectionService/dcsWifi
+                  $LEGATO_ROOT/components/dataConnectionService/dcsEthernet)
     dcsInternal = ( $LEGATO_ROOT/components/dataConnectionService/dcsInternal )
 }
 
