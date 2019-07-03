@@ -285,9 +285,17 @@ Client.connection.onRequest("le_GetLogicalView",
 Client.connection.onRequest("le_registerModelUpdates",
     () =>
     {
-        if (Client.profile.clientProperties.supportsModelUpdates)
+        try
         {
-            Client.profile.receiveModelUpdates = true;
+            if (Client.profile.clientProperties.supportsModelUpdates)
+            {
+                Client.profile.receiveModelUpdates = true;
+            }
+        }
+        catch (e)
+        {
+            console.log('  le_registerModelUpdates Exception: ' + e);
+            console.error(e.stack);
         }
     });
 

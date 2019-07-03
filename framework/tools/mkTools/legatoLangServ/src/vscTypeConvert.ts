@@ -229,7 +229,13 @@ function AppsAsSymbols(flags: ConversionFlags,
 
         for (let appRef of appSection.apps)
         {
-            let start = new loader.Location(appRef.target.path, 0, 0);
+            if (appRef.target === undefined)
+            {
+                console.log('Skipping: ' + appRef.name);
+                continue;
+            }
+
+            let start = new loader.Location(appRef.refString, 0, 0);
             let sym = new DefinitionObject(ext.le_DefinitionObjectType.ApplicationRef,
                                            path.basename(appRef.name, path.extname(appRef.name)),
                                            appRef.target.path,
