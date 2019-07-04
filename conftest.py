@@ -13,6 +13,7 @@ import pytest, re, os, stat, sys, termios
 import tap.parser
 import pexpect, pexpect.fdpexpect, pexpect.pxssh
 import time
+import sys
 
 def pytest_addoption(parser):
     """Add test configuration options."""
@@ -67,13 +68,13 @@ class SerialPort:
         def __enter__(self):
             try:
                 return super(SerialPort.ttyspawn, self).__enter__()
-            except AttributeError, e:
+            except AttributeError as e:
                 return self
 
         def __exit__(self, etype, evalue, tb):
             try:
                 super(SerialPort.ttyspawn, self).__exit__(etype, evalue, tb)
-            except AttributeError, e:
+            except AttributeError as e:
                 pass
 
     @staticmethod
@@ -120,7 +121,7 @@ class SerialPort:
 
         if baudrate is None:
             baud_value = self._tty_attr[self.CFLAG] & termios.CBAUD
-            for b, v in self.BAUD.iteritems():
+            for b, v in self.BAUD.items():
                 if v == baud_value:
                     baudrate = b
                     break
@@ -245,7 +246,10 @@ def connect_target(app_name, target_name, baudrate=115200):
             pytest.skip()
     else:
         # Assume IP or hostname for ssh
-        app = pexpect.pxssh.pxssh(logfile=sys.stderr)
+        if sys.version_info[0] < 3:
+            app = pexpect.pxssh.pxssh(logfile=sys.stderr)
+        else:
+            app = pexpect.pxssh.pxssh(logfile=sys.stderr, encoding="utf-8")
         app.login(target_name, "root")
         app.send("app status\r")
         app_status=app.expect_exact(["[stopped] " + app_name + "\r\n",
@@ -545,7 +549,7 @@ class LegatoTapItem(pytest.Item):
             try:
                 self.add_report_section("call", "tap", tap_output)
             except AttributeError:
-                print tap_output
+                print(tap_output)
             return
         raise LegatoException(["Test execution failed"])
 
@@ -594,7 +598,7 @@ def target(request):
     Fixture to obtain the test application process wrapper for customized tests.  This provides the
     primary interface for communicating with a test application's stdin/stdout/stderr.
     """
-    target_name = request.config.getoption('target')
+    target_name = request.config.getoption('target').encode("utf-8")
     baudrate = int(request.config.getoption('baudrate'))
     if target_name == '':
         request.raiseerror("Target not set")
