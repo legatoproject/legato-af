@@ -170,34 +170,40 @@ endif
 
 # Start PA files
 PA_START_NAME      := Component_le_pa_start
-PA_START_LIB_DIR   := $(LEGATO_ROOT)/platformAdaptor/qmi/bin/$(TARGET)/components/le_pa_start
-PA_START_LIB       := $(PA_START_LIB_DIR)/lib$(PA_START_NAME).so
-ifneq ($(wildcard $(LEGATO_ROOT)/platformAdaptor/qmi/src),)
-  PA_START_SRCS    := $(LINUX_SRC_DIR)/start/default/pa_start.c
-  PA_START_LIB_DIR := $(LIB_DIR)
-  PA_START_LIB     := $(PA_START_LIB_DIR)/lib$(PA_START_NAME).so
-  PA_START_CFLAGS  := $(CFLAGS) -I$(LINUX_SRC_DIR)/start
-  PA_START_LDFLAGS := -ldl
+PA_START_LIB_DIR   := $(LIB_DIR)
+PA_START_CFLAGS    := $(CFLAGS) -I$(LINUX_SRC_DIR)/start
+PA_START_LDFLAGS   := -ldl
 ifeq ($(LE_CONFIG_QMI),y)
-ifneq ($(LE_CONFIG_MDM9X15),y)
+ifneq ($(wildcard $(LEGATO_ROOT)/platformAdaptor/qmi/src),)
+ifeq ($(LE_CONFIG_MDM9X15),y)
+  # MDM9x15 doesn't have the necessary QMI API
+  PA_START_SRCS    := $(LINUX_SRC_DIR)/start/default/pa_start.c
+else # not LE_CONFIG_MDM9X15
   PA_START_SRCS    := $(LEGATO_ROOT)/platformAdaptor/qmi/src/components/le_pa_start/pa_start.c
   PA_START_CFLAGS  += -I$(LEGATO_ROOT)/proprietary/qct/$(TARGET)/inc           \
-                     -I$(LEGATO_ROOT)/proprietary/qct/$(TARGET)/inc/framework \
-                     -I$(LEGATO_ROOT)/proprietary/qct/$(TARGET)/inc/services
+                      -I$(LEGATO_ROOT)/proprietary/qct/$(TARGET)/inc/framework \
+                      -I$(LEGATO_ROOT)/proprietary/qct/$(TARGET)/inc/services
   PA_START_LDFLAGS += -Wl,--start-group -lqmi_client_qmux                           \
-                     $(LEGATO_ROOT)/proprietary/qct/$(TARGET)/lib/libsierra_qapi.a \
-                     $(LEGATO_ROOT)/proprietary/qct/$(TARGET)/lib/libqmiservices.a \
-                     $(LEGATO_ROOT)/proprietary/qct/$(TARGET)/lib/libqmi_cci.a
+                      $(LEGATO_ROOT)/proprietary/qct/$(TARGET)/lib/libsierra_qapi.a \
+                      $(LEGATO_ROOT)/proprietary/qct/$(TARGET)/lib/libqmiservices.a \
+                      $(LEGATO_ROOT)/proprietary/qct/$(TARGET)/lib/libqmi_cci.a
 
 ifeq ($(or $(LE_CONFIG_MDM9X28),$(LE_CONFIG_MDM9X07)),y)
   PA_START_LDFLAGS += -lqmi
 else ifeq ($(LE_CONFIG_MDM9X40),y)
   PA_START_LDFLAGS += -lqmi_encdec
 endif
+
   PA_START_LDFLAGS += -Wl,--end-group
 endif # end not LE_CONFIG_MDM9X15
-endif # end LE_CONFIG_QMI
-endif # end QMI PA source available
+
+else # QMI source not present
+  PA_START_LIB_DIR := $(LEGATO_ROOT)/platformAdaptor/qmi/bin/$(TARGET)/components/le_pa_start
+endif # end QMI source not present
+else # not LE_CONFIG_QMI
+  PA_START_SRCS    := $(LINUX_SRC_DIR)/start/default/pa_start.c
+endif # end not LE_CONFIG_QMI
+PA_START_LIB       := $(PA_START_LIB_DIR)/lib$(PA_START_NAME).so
 
 # Source files for startSystem executable
 START_SRCS := $(LINUX_SRC_DIR)/start/start.c \
