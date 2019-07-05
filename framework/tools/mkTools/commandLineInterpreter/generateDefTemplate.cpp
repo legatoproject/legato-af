@@ -32,8 +32,12 @@ static void IncludeDefaultSdef
 )
 {
     defStream << "\n"
-              << "// Include the default legato system and the platform services." << "\n"
-              << "#include $LEGATO_ROOT/default.sdef" << "\n";
+                 "// Directs mksys to build the default Legato system and all the default platform "
+                 "services along\n"
+                 "// with your apps and customizations.\n"
+                 "#include $LEGATO_ROOT/default.sdef\n"
+                 "\n"
+                 "\n";
 }
 
 
@@ -48,10 +52,16 @@ static void GenerateBuildVarsSection
 )
 {
     defStream << "\n"
+                 "// Declare custom variables available at build time for all of your project's "
+                 "apps, components and\n"
+                 "// modules.\n"
+                 "//\n"
+                 "// Variables are defined as <name> = <value>.  Values can come from previously "
+                 "defined variables or\n"
+                 "// from environment variables.\n"
                  "buildVars:\n"
                  "{\n"
-                 "    // Declare custom variables in the build tool's process environment at build"
-                 " time\n"
+                 "    // Define a base directory for your project.\n"
                  "    MY_SYSTEM_DIR = $CURDIR\n"
                  "}\n";
 }
@@ -68,31 +78,48 @@ static void GenerateSearchSection
 )
 {
     defStream << "\n"
+                 "// Interfaces are searched for in the following directories. Each "
+                 "directory/sub-directory needs to\n"
+                 "// be identified here for the system to find and use .api files.\n"
                  "interfaceSearch:\n"
                  "{\n"
-                 "    // Directories where interfaces are searched\n"
+                 "    // Your project's search paths.\n"
                  "    ${MY_SYSTEM_DIR}/interfaces\n"
-                 "    ${LEGATO_ROOT}/interfaces \n"
+                 "\n"
+                 "    // Legato API search paths.\n"
+                 "    ${LEGATO_ROOT}/interfaces\n"
+                 "    ${LEGATO_ROOT}/interfaces/airVantage\n"
+                 "    ${LEGATO_ROOT}/interfaces/atServices\n"
+                 "    ${LEGATO_ROOT}/interfaces/logDaemon\n"
+                 "    ${LEGATO_ROOT}/interfaces/modemServices\n"
+                 "    ${LEGATO_ROOT}/interfaces/portService\n"
+                 "    ${LEGATO_ROOT}/interfaces/positioning\n"
+                 "    ${LEGATO_ROOT}/interfaces/secureStorage\n"
+                 "    ${LEGATO_ROOT}/interfaces/wifi\n"
                  "}\n";
 
     defStream << "\n"
+                 "// Apps are searched for in the following directories. Each "
+                 "directory/sub-directory needs to be\n"
+                 "// identified here for the system to find and use the .adef files.\n"
                  "appSearch:\n"
                  "{\n"
-                 "    // Directories where apps are searched\n"
                  "    ${MY_SYSTEM_DIR}/apps\n"
                  "}\n";
 
     defStream << "\n"
+                 "// Directories where components are searched.\n"
                  "componentSearch:\n"
                  "{\n"
-                 "    // Directories where components are searched\n"
                  "    ${MY_SYSTEM_DIR}/components\n"
                  "}\n";
 
     defStream << "\n"
+                 "// Kernel Modules are searched for in the following directories. Each "
+                 "directory/sub-directory\n"
+                 "// needs to be identified here for the system to find and use the .mdef files.\n"
                  "moduleSearch:\n"
                  "{\n"
-                 "    // Directories where kernel modules are searched\n"
                  "    ${MY_SYSTEM_DIR}/modules\n"
                  "}\n";
 
@@ -110,9 +137,11 @@ static void GenerateAppsSection
 )
 {
     defStream << "\n"
+                 "// Add your project/system specific apps here. You just need to add the name as "
+                 "long as the\n"
+                 "// directory path is specified in the search path in the appSearch: section.\n"
                  "apps:\n"
                  "{\n"
-                 "    // Applications\n"
                  "}\n";
 }
 
@@ -128,9 +157,12 @@ static void GenerateKernelModulesSection
 )
 {
     defStream << "\n"
+                 "// Add your project/system specific kernel modules here. You just need to add "
+                 "the name as long as\n"
+                 "// the directory path is specified in the search path in the moduleSearch: "
+                 "section.\n"
                  "kernelModules:\n"
                  "{\n"
-                 "    // Kernel modules\n"
                  "}\n";
 }
 
@@ -149,12 +181,14 @@ void GenerateSystemTemplate
 
     std::ofstream defStream(filePath, std::ofstream::trunc);
 
-    defStream << "// " << path::GetLastNode(handler.sdefFilePath) << "\n"
+    defStream << "\n// " << path::GetLastNode(handler.sdefFilePath) << "\n"
+                 "//\n"
                  "// This is a system definition file which defines and interconnects a system of"
-                 " one or more applications\n"
-                 "// with the target's run-time environment." << "\n"
-                 "// For more details on the system definition (.sdef) file format see:" << "\n"
-                 "// https://docs.legato.io/latest/defFilesSdef.html\n";
+                 " one or more \n"
+                 "// applications with the target's run-time environment.\n"
+                 "//\n"
+                 "// For more details on the system definition (.sdef) file format see:\n"
+                 "// https://docs.legato.io/latest/defFilesSdef.html\n\n";
 
     IncludeDefaultSdef(defStream);
     GenerateBuildVarsSection(defStream);
@@ -175,9 +209,11 @@ static void GenerateComponentsSection
 )
 {
     defStream << "\n"
+                 "// Specify the bundled components for your application here. This section needs "
+                 "to contain a list\n"
+                 "// of system paths to your component directory.\n"
                  "components:\n"
                  "{\n"
-                 "    // Components for this application\n"
                  "}\n";
 }
 
@@ -200,9 +236,11 @@ static void GenerateProcessesSection
     exeName = compName + "Exe";
 
     defStream << "\n"
+                 "// The processes section specifies processes to run when the app is started"
+                 "including environment\n"
+                 "// variables, command-line arguments, limits, and fault handling actions.\n"
                  "processes:\n"
                  "{\n"
-                 "    // Processes to run when the app is started\n"
                  "    run:\n"
                  "    {\n";
     defStream << "        ( " << exeName  << " )\n"
@@ -245,13 +283,18 @@ static void GenerateExecutablesSection
     }
 
     defStream << "\n"
+                 "// Add the list of executables to be constructed and moved to the /bin "
+                 "directory of the app. The\n"
+                 "// executable content is a list of the components inside the executable.\n"
+                 "//\n"
+                 "// Example binding format:\n"
+                 "// clientExe.clientComponent.clientInterface -> "
+                 "serverExe.serverComponent.serverInterface\n"
                  "executables:\n"
                  "{\n"
-                 "    // Executables which later is added to the bin directory of the app\n";
-    defStream << "    " << compName
-              <<"Exe = ( " << compPath << " )\n";
-
-    defStream << "}\n";
+                 "    " << compName
+              << "Exe = ( " << compPath << " )\n"
+              << "}\n";
 }
 
 
@@ -266,10 +309,11 @@ static void GenerateBindingsSection
 )
 {
     defStream << "\n"
+                 "// Bindings that allow client side API interfaces to be bound to servers found "
+                 "within other\n"
+                 "// applications in the system.\n"
                  "bindings:\n"
                  "{\n"
-                 "    // Bindings that allow client side API interfaces to be bound to the server"
-                 " side interfaces\n"
                  "}\n";
 }
 
@@ -296,11 +340,15 @@ void GenerateApplicationTemplate
 
     std::ofstream defStream(handler.absAdefFilePath, std::ofstream::trunc);
 
-    defStream << "// " << handler.adefFilePath << "\n"
+    defStream << "\n// " << handler.adefFilePath << "\n"
+                 "//\n"
                  "// This is an application definition file that specifies the internal content of"
-                 " application and external interfaces\n"
+                 " application and\n"
+                 "// external interfaces.\n"
+                 "//\n"
                  "// For more details on the application definition (.adef) file format see:\n"
-                 "// https://docs.legato.io/latest/defFilesAdef.html\n";
+                 "// https://docs.legato.io/latest/defFilesAdef.html\n"
+                 "\n";
 
     GenerateComponentsSection(defStream);
     GenerateExecutablesSection(defStream, handler);
@@ -320,34 +368,34 @@ static void GenerateRequiresSection
 )
 {
     defStream << "\n"
+                 "// Bind resources from the target module into your application.\n"
                  "requires:\n"
                  "{\n"
+                 "    // IPC APIs used by this component.\n"
                  "    api:\n"
                  "    {\n"
-                 "        // IPC APIs used by this component\n"
                  "    }\n"
                  "    \n"
+                 "    // File paths local to your target module.\n"
                  "    file:\n"
                  "    {\n"
-                 "        // File paths\n"
                  "    }\n"
                  "    \n"
-                 "    device:\n"
-                 "    {\n"
-                 "        // Device paths\n"
-                 "    }\n"
-                 "    \n"
+                 "    // Directories on your target module to make accessible to the app.\n"
                  "    dir:\n"
                  "    {\n"
-                 "        // Directories on target device to make accessible to the app\n"
                  "    }\n"
                  "    \n"
+                 "    // Linux filesystem device paths.\n"
+                 "    device:\n"
+                 "    {\n"
+                 "    }\n"
+                 "    \n"
+                 "    // Shared libraries pre-installed on the module.\n"
                  "    lib:\n"
                  "    {\n"
-                 "        // Shared libraries required by any component\n"
                  "    }\n"
                  "}\n";
-
 }
 
 
@@ -395,29 +443,43 @@ void GenerateComponentTemplate
 
     std::ofstream sourceDefStream(sourceFilePath, std::ofstream::trunc);
 
-    sourceDefStream << "/* " << sourceFileName  << " */\n\n"
-                       "#include \"legato.h\"\n"
-                       "#include \"interfaces.h\"\n\n"
+    sourceDefStream << "\n// " << sourceFileName << "\n"
+                       "//\n"
+                       "// Specifies the main source file of the component. Add initialization "
+                       "and event registrations to\n"
+                       "// the files COMPONENT_INIT functions.\n"
+                       "\n"
+                       "\n"
+                       "// Include the core framework C APIs.\n"
+                       "#include \"legato.h\"\n\n"
+                       "// Include your component's API interfaces.\n"
+                       "#include \"interfaces.h\"\n\n\n"
+                       "// This function is called only once on startup.  Place your initialization"
+                       " and event registration\n"
+                       "// here.\n"
                        "COMPONENT_INIT\n"
                        "{\n"
+                       "    // Write in the log that this component has started.\n"
                        "    LE_INFO(\"Component " << path::RemoveSuffix(sourceFileName, ".c")
                                                   << " started.\");\n"
-                       "}";
+                       "}\n";
 
     file::MakeDir(path::GetContainingDir(compFilePath));
 
     std::ofstream defStream(compFilePath, std::ofstream::trunc);
 
-    defStream << "// \n"
+    defStream << "\n// " << path::GetLastNode(path::GetContainingDir(compFilePath)) << "\n"
+                 "//\n"
                  "// This is component definition file that specifies the internal content and"
                  " external interfaces\n"
                  "// of reusable software components." << "\n"
+                 "//\n"
                  "// For more details on the component definition (.cdef) file format see:" << "\n"
-                 "// https://docs.legato.io/latest/defFilesCdef.html\n";
-    defStream << "\n"
+                 "// https://docs.legato.io/latest/defFilesCdef.html\n\n"
+                 "\n"
+                 "// Source code files.\n"
                  "sources:\n"
                  "{\n"
-                 "    // Source code files\n"
                  "    " << sourceFileName << "\n"
                  "}\n";
 
@@ -438,7 +500,8 @@ static void GenerateLoadSection
     defStream << "\n"
                  "// Specifies the module is loaded automatically at system startup.\n"
                  "// Replace 'auto' with 'manual' to manually load the module.\n"
-                 "load: auto\n";
+                 "load: auto\n"
+                 "\n";
 }
 
 
@@ -453,9 +516,9 @@ static void GenerateSourcesModuleSection
 )
 {
     defStream << "\n"
+                 "// Path of the source code files to build the kernel module.\n"
                  "sources:\n"
                  "{\n"
-                 "    // Path of the source code files to build the kernel module\n"
                  "}\n";
 }
 
@@ -471,9 +534,9 @@ static void GenerateScriptsSection
 )
 {
     defStream << "\n"
+                 "// Provide path to the installation and removal scripts.\n"
                  "scripts:\n"
                  "{\n"
-                 "    // Provide path to the installation and removal scripts\n"
                  "    //install:\n"
                  "    //remove:\n"
                  "}\n";
@@ -491,11 +554,11 @@ static void GenerateRequiresModuleSection
 )
 {
     defStream << "\n"
+                 "// Kernel modules which this module is dependent on.\n"
                  "requires:\n"
                  "{\n"
                  "    kernelModules:\n"
                  "    {\n"
-                 "        // Kernel modules which this module is dependent on\n"
                  "    }\n"
                  "}\n";
 }
@@ -522,11 +585,14 @@ void GenerateModuleTemplate
 
     std::ofstream defStream(handler.absMdefFilePath, std::ofstream::trunc);
 
-    defStream << "// " << path::GetLastNode(handler.mdefFilePath) << "\n"
+    defStream << "\n// " << path::GetLastNode(handler.mdefFilePath) << "\n"
+                 "//\n"
                  "// This is a module definition file that declares kernel modules to be bundled"
                  " with Legato.\n"
-                 "// For more details on the module definition (.mdef) file format see:" << "\n"
-                 "// https://docs.legato.io/latest/defFilesMdef.html\n";
+                 "//\n"
+                 "// For more details on the module definition (.mdef) file format see:\n"
+                 "// https://docs.legato.io/latest/defFilesMdef.html\n"
+                 "\n";
 
     GenerateLoadSection(defStream);
     GenerateSourcesModuleSection(defStream);
