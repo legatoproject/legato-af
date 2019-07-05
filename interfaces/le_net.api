@@ -51,10 +51,12 @@
  * is an add or a remove depends on the isAdd boolean value of the last API input argument.
  *
  * The IP address and mask input arguments specify the destination address and mask for the route.
- * The formats used for them are the same as used in the Linux command "route add -net <ipAddr>
- * netmask <ipMask> dev <netInterface>". If the route is a host route, the ipMask input argument
- * can be given as "" (i.e. null string) or "255.255.255.255". If it is a network route, it
- * should then be specified in the quad-dotted octet format, like 255.255.0.0.
+ * The formats used for them are the same as used in the Linux command
+ *   "ip route add <ipAddr>/<prefixLength> dev <netInterface>".
+ * If the route is a host route, the prefixLength input argument can be given as
+ * "" (i.e. null string) or "32".
+ * If it is a network route, it should then be specified as a prefix length, such as "16" for
+ * 255.255.0.0 or "24" for 255.255.255.0.
  *
  * The following is some sample code over how to use le_net_ChangeRoute():
  * @code
@@ -64,14 +66,14 @@
     (
         le_dcs_ChannelRef_t channelRef,
         char *ipAddr,
-        char *ipAddrMask,
+        char *prefixLength,
         bool isAdd
     )
     {
-        if (LE_OK != le_net_ChangeRoute(channelRef, ipAddr, ipAddrMask, isAdd))
+        if (LE_OK != le_net_ChangeRoute(channelRef, ipAddr, prefixLength, isAdd))
         {
-            LE_ERROR("Failed to %s route to destination address %s mask %s",
-                     isAdd ? "add" : "remove", ipAddr, ipAddrMask);
+            LE_ERROR("Failed to %s route to destination address %s/%s",
+                     isAdd ? "add" : "remove", ipAddr, prefixLength);
         }
     }
 
@@ -88,7 +90,7 @@
         bool isAdd
     )
     {
-        ClientChannelChangeRoute(myChannelRef, "1.1.0.0", "255.255.0.0", isAdd);
+        ClientChannelChangeRoute(myChannelRef, "1.1.0.0", "16", isAdd);
     }
    @endcode
  *
@@ -115,7 +117,7 @@
     void ClientConfigNetwork
     (
         char *ipAddr,
-        char *ipAddrMask,
+        char *prefixLength,
         bool isAdd
     )
     {
@@ -135,10 +137,10 @@
             IsDefaultGWAdded = false;
         }
 
-        if (LE_OK != le_net_ChangeRoute(myChannelRef, ipAddr, ipAddrMask, isAdd))
+        if (LE_OK != le_net_ChangeRoute(myChannelRef, ipAddr, prefixLength, isAdd))
         {
-            LE_ERROR("Failed to %s route to destination %s mask %s on channel with "
-                     "reference %p", isAdd ? "add : "remove", ipAddr, ipAddrMask,
+            LE_ERROR("Failed to %s route to destination %s/%s on channel with "
+                     "reference %p", isAdd ? "add : "remove", ipAddr, prefixLength,
                      myChannelRef);
         }
     }
@@ -267,8 +269,7 @@ STRUCT DefaultGatewayAddresses
 //--------------------------------------------------------------------------------------------------
 /**
  * Add or remove a route on the given channel according to the input flag in the last argument for
- * the given destination address its given subnet, which is a subnet mask for IPv4 and subnet mask's
- * prefix length for IPv6
+ * the given destination address its given subnet's mask prefix length.
  *
  * The channel reference in the first input argument identifies the network interface which a route
  * is to be added onto or removed from. Whether the operation is an add or a remove depends on the
@@ -276,9 +277,13 @@ STRUCT DefaultGatewayAddresses
  *
  * The IP address and subnet input arguments specify the destination address and subnet for the
  * route. If it is a network route, the formats used for them are the same as used in the Linux
- * command "route -A inet add -net <ipAddr> netmask <ipSubnet> dev <netInterface>" for IPv4, and
- * "route -A inet6 add -net <ipAddr/prefixLength> dev <netInterface>" for IPv6. If the route is a
- * host route, the subnet input argument should be given as "" (i.e. a null string).
+ * command "route add -net <ipAddr>/<prefixLength> dev <netInterface>". If the route is a
+ * host route, the prefixLength input argument should be given as "" (i.e. a null string).
+ *
+ * @note The prefixLength parameter used to take a subnet mask (255.255.255.0) for IPv4 and prefix
+ *       length for IPv6. Now it only takes prefix length, although compatibility code is present
+ *       to make it compatible with previous API declaration. Providing a subnet mask is however
+ *       deprecated and the compatibility code will be removed in a latter version.
  *
  * @return
  *      - LE_OK upon success, otherwise another le_result_t failure code
@@ -288,8 +293,7 @@ FUNCTION le_result_t ChangeRoute
 (
     le_dcs.Channel channelRef           IN, ///< the channel onto which the route change is made
     string destAddr[IPADDR_MAX_LEN]     IN, ///< Destination IP address for the route
-    string destSubnet[IPADDR_MAX_LEN]   IN, ///< Destination's subnet: IPv4 netmask or IPv6 prefix
-                                            ///< length
+    string prefixLength[IPADDR_MAX_LEN] IN, ///< Destination's subnet prefix length
     bool isAdd                          IN  ///< the change is to add (true) or delete (false)
 );
 
