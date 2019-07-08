@@ -99,6 +99,8 @@ AddSources liblegato ${LEGATO_ROOT}/framework/liblegato/clock.c \
                    ${LEGATO_ROOT}/framework/liblegato/safeRef.c \
                    ${LEGATO_ROOT}/framework/liblegato/semaphores.c \
                    ${LEGATO_ROOT}/framework/liblegato/singlyLinkedList.c \
+                   ${LEGATO_ROOT}/framework/liblegato/test.c \
+                   ${LEGATO_ROOT}/framework/liblegato/crc.c \
                    ${LEGATO_ROOT}/framework/liblegato/utf8.c
 
 base_cflags_name="${legato_target_caps}_CFLAGS"

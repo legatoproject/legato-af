@@ -21,7 +21,7 @@
 /* #include "messaging.h" */
 /* #include "rand.h" */
 #include "safeRef.h"
-/* #include "test.h" */
+#include "test.h"
 #include "thread.h"
 #include "timer.h"
 
@@ -109,7 +109,7 @@ static void InitLegatoFramework
     event_Init();       // Uses memory pools.
     //timer_Init();       // Uses event loop.
     thread_Init();      // Uses event loop, memory pools and safe references.
-    // test_Init();        // Uses mutexes.
+    test_Init();        // Uses mutexes.
     // msg_Init();         // Uses event loop.
     // fs_Init();          // Uses memory pools and safe references and path manipulation.
     // fd_Init();
