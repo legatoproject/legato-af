@@ -979,6 +979,14 @@ void event_SetCurrentContextPtr
     thread_GetEventRecPtr()->contextPtr = contextPtr;
 }
 
+/// Expose old symbol name to support apps compiled against an older liblegato.
+__attribute__((deprecated)) void event_QueueComponentInit
+(
+    const void (*func)(void)
+)
+{
+    le_event_QueueFunction(&CallComponentInitializer, func, NULL);
+}
 
 // ==============================================
 //  PUBLIC API FUNCTIONS

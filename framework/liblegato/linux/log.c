@@ -844,6 +844,14 @@ void le_log_ConnectToControlDaemon
     }
 }
 
+/// Expose old symbol name to support apps compiled against an older liblegato.
+__attribute__((deprecated)) void log_ConnectToControlDaemon
+(
+    void
+)
+{
+    le_log_ConnectToControlDaemon();
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -874,6 +882,16 @@ le_log_SessionRef_t le_log_RegComponent
 
     // Give the log session back to the caller.
     return logSessionPtr;
+}
+
+/// Expose old symbol name to support apps compiled against an older liblegato.
+__attribute__((deprecated)) le_log_SessionRef_t log_RegComponent
+(
+    const char       *componentNamePtr,
+    le_log_Level_t  **levelFilterPtrPtr
+)
+{
+    return le_log_RegComponent(componentNamePtr, levelFilterPtrPtr);
 }
 
 #ifdef LEGATO_EMBEDDED
