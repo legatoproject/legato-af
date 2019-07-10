@@ -35,9 +35,12 @@ class ComponentBuildScriptGenerator_t : protected RequireBaseGenerator_t
         virtual void GenerateServerUsetypesBuildStatement(const model::ApiFile_t* apiFilePtr);
         virtual void GenerateCommonUsetypesBuildStatement(const model::ApiFile_t* apiFilePtr);
         virtual void GenerateJavaUsetypesBuildStatement(const model::ApiFile_t* apiFilePtr);
-        virtual void GenerateCCommonBuildStatement(const model::ApiFile_t* apiFilePtr);
-        virtual void GenerateCBuildStatement(const model::ApiClientInterface_t* ifPtr);
-        virtual void GenerateCBuildStatement(const model::ApiServerInterface_t* ifPtr);
+        virtual void GenerateCCommonBuildStatement(const model::Component_t *componentPtr,
+                                                   const model::ApiFile_t   *apiFilePtr);
+        virtual void GenerateCBuildStatement(const model::Component_t           *componentPtr,
+                                             const model::ApiClientInterface_t  *ifPtr);
+        virtual void GenerateCBuildStatement(const model::Component_t           *componentPtr,
+                                             const model::ApiServerInterface_t  *ifPtr);
 
         virtual void GenerateJavaBuildStatement(const model::InterfaceJavaFiles_t& javaFiles,
                                                 const model::Component_t* componentPtr,
@@ -60,6 +63,9 @@ class ComponentBuildScriptGenerator_t : protected RequireBaseGenerator_t
         virtual void GenerateCommonCAndCxxFlags(model::Component_t* componentPtr);
 
         virtual void GenerateComponentLinkStatement(model::Component_t* componentPtr) = 0;
+
+        virtual void GenerateMemPoolDefinitions(const model::Component_t            *componentPtr,
+                                                model::MemPoolSize_t::PoolType_t     poolType);
 
         virtual void GenerateCommentHeader(model::Component_t* componentPtr);
 

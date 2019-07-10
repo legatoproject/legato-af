@@ -11,6 +11,43 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Memory pool size specification.
+ */
+//--------------------------------------------------------------------------------------------------
+struct MemPoolSize_t
+{
+    enum PoolType_t
+    {
+        POOLTYPE_USER,      ///< User-created memory pool in the component.
+        POOLTYPE_MESSAGING  ///< Auto-generated memory pool in the messaging code.
+    };
+
+    PoolType_t      type;   ///< Pool type.
+    std::string     name;   ///< Pool name.
+    unsigned int    size;   ///< Number of entries.
+
+    MemPoolSize_t(PoolType_t type, const std::string &name, unsigned int size) :
+        type(type), name(name), size(size)
+    {
+        // Do nothing.
+    }
+
+    bool operator<(const MemPoolSize_t &lhs) const
+    {
+        if (type < lhs.type)
+        {
+            return true;
+        }
+        else if (name < lhs.name)
+        {
+            return true;
+        }
+        return false;
+    }
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Represents a single component.
  */
 //--------------------------------------------------------------------------------------------------
@@ -67,6 +104,8 @@ struct Component_t : public HasTargetInfo_t
     std::set<const ApiFile_t*> serverUsetypesApis; ///< .api files imported by server-side APIs.
 
     std::set<std::string> implicitDependencies; ///< Changes to these files triggers a re-link.
+
+    std::set<MemPoolSize_t> poolSizeEntries; ///< Memory pool size specifications.
 
     // Get a pre-existing Component object for the component found at a given directory path.
     // @return Pointer to the object or NULL if not found.

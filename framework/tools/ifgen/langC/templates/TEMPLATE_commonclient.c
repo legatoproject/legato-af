@@ -41,7 +41,7 @@ _ClientData_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Expected maximum simultaneous client data items.
+ * Default expected maximum simultaneous client data items.
  */
 //--------------------------------------------------------------------------------------------------
 #define HIGH_CLIENT_DATA_COUNT   {{events|length+1}}
@@ -70,7 +70,8 @@ static le_mem_PoolRef_t _ClientDataPool;
  * Static safe reference map for use with Add/Remove handler references
  */
 //--------------------------------------------------------------------------------------------------
-LE_REF_DEFINE_STATIC_MAP({{apiBaseName}}_ClientHandlers, HIGH_CLIENT_DATA_COUNT);
+LE_REF_DEFINE_STATIC_MAP({{apiBaseName}}_ClientHandlers,
+    LE_MEM_BLOCKS({{apiBaseName}}_ClientData, HIGH_CLIENT_DATA_COUNT));
 
 
 //--------------------------------------------------------------------------------------------------
