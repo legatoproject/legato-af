@@ -50,6 +50,7 @@ endif
 
 export BUILD_DIR := $(LEGATO_ROOT)/build/$(TARGET)/framework
 export INSTALL_DIR ?= $(LEGATO_ROOT)/bin
+export STATIC_LIB_DIR := $(LEGATO_ROOT)/build/$(TARGET)/lib-static
 BIN_DIR := $(BUILD_DIR)/bin
 LIB_DIR := $(BUILD_DIR)/lib
 COMMON_SRC_DIR := $(LEGATO_ROOT)/framework/daemons
@@ -251,11 +252,11 @@ $(PA_START_LIB): $(PA_START_SRCS) | $(LIB_DIR)
 endif # end have le_pa_start sources
 
 # Rules for creating directories.
-$(BUILD_DIR) $(LIB_DIR) $(BIN_DIR):
+$(BUILD_DIR) $(LIB_DIR) $(BIN_DIR) $(STATIC_LIB_DIR):
 	$(Q)mkdir -p $@
 
 # If the ninja script doesn't exist, we generate it using the ninja-generator script.
-$(NINJA_SCRIPT): | $(BUILD_DIR)
+$(NINJA_SCRIPT): | $(BUILD_DIR) $(STATIC_LIB_DIR)
 	$(L) GEN $@
 	$(Q)framework/liblegato/ninja-generator
 
@@ -347,7 +348,7 @@ $(BIN_DIR)/startSystem: $(START_SRCS) | liblegato $(PA_START_LIB) $(BIN_DIR)
 	$(Q)$(CCACHE) $(TARGET_CC) $(TARGET_CC_SYSROOT) -o $@ $^ $(CFLAGS) \
 		-I$(LEGATO_ROOT)/framework/liblegato/linux \
 		-I$(LEGATO_ROOT)/framework/daemons/linux/common \
-		$(LIB_DIR)/liblegato.a $(IMA_LIBS) -ldl -lpthread
+		$(STATIC_LIB_DIR)/liblegato.a $(IMA_LIBS) -ldl -lpthread
 
 $(BIN_DIR)/supervisor: liblegato $(BIN_DIR)
 	$(L) MKEXE $@
