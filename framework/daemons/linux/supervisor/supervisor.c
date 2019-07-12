@@ -256,6 +256,12 @@
 //--------------------------------------------------------------------------------------------------
 #define DEFAULT_BOOT_PERIOD                 60000
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Path to the current Start program
+ */
+//--------------------------------------------------------------------------------------------------
+#define START_PROGRAM_PATH "/legato/systems/current/bin/startSystem"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1234,24 +1240,31 @@ COMPONENT_INIT
        ((CurrentStartVersion != NULL) && (strcmp(CurrentStartVersion, versionBuffer) != 0)))
     {
         // Need to fork; otherwise exec the new start will cause the tried counter to increment.
-        pid_t pid = fork();
+        LE_INFO("Version mismatch. Fork and exec'ing latest start program.");
+        LE_INFO("Current legato version: [%s]", versionBuffer);
+        LE_INFO("Current start version: [%s]", CurrentStartVersion);
 
-        if (pid == 0)
+        char *argumentsPtr[4];
+        argumentsPtr[0] =  START_PROGRAM_PATH;
+        argumentsPtr[1] = "-v";
+        argumentsPtr[2] = versionBuffer;
+        argumentsPtr[3] = NULL;
+        le_proc_Parameters_t proc =
         {
-            LE_INFO("Version mismatch. Fork and exec'ing latest start program.");
-            LE_DEBUG("[Current legato version: %s]", versionBuffer);
-            LE_DEBUG("[Current start version: %s]", CurrentStartVersion);
+            .executableStr   = START_PROGRAM_PATH,
+            .argumentsPtr    = argumentsPtr,
+            .environmentPtr  = environ, // Pass along the environment of the current process
+            .detach          = false,
+            .closeFds        = STDERR_FILENO + 1,
+            .init            = NULL,
+            .userPtr         = NULL
+        };
 
-            // Exec the latest start program
-            const char* startPath = "/legato/systems/current/bin/startSystem";
-            (void)execl(startPath, startPath, "-v", versionBuffer, NULL);
-        }
-        else
-        {
-            // Exit current supervisor and shutdown old start
-            State = STATE_RESTARTING_START;
-            StopSupervisor();
-        }
+        le_proc_Execute(&proc);
+
+        LE_INFO("Exit current supervisor and shutdown the old start program");
+        State = STATE_RESTARTING_START;
+        StopSupervisor();
     }
 
     // Create the Legato runtime directory if it doesn't already exist.
