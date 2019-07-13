@@ -199,6 +199,12 @@ void ParseSdefReadSearchPath
         // When app is being created
         if (appFoundPath.empty() && !handler.appSearchPath.empty())
         {
+            // Create directory if it does not exist.
+            if (!file::DirectoryExists(handler.appSearchPath.front()))
+            {
+                file::MakeDir(handler.appSearchPath.front());
+            }
+
             handler.absAdefFilePath = path::MakeCanonical(handler.appSearchPath.front()) + "/" +
                                       handler.adefFilePath;
         }
@@ -226,6 +232,12 @@ void ParseSdefReadSearchPath
             // When component is being created ...
             if (compFoundPath.empty() && !handler.compSearchPath.empty())
             {
+                // Create directory if it does not exist.
+                if (!file::DirectoryExists(handler.compSearchPath.front()))
+                {
+                    file::MakeDir(handler.compSearchPath.front());
+                }
+
                 handler.absCdefFilePath = path::MakeCanonical(handler.compSearchPath.front()) +
                                           "/" + handler.cdefFilePath;
             }
@@ -234,6 +246,12 @@ void ParseSdefReadSearchPath
         // Component is created when app is created
         if (handler.cdefFilePath.empty() && !handler.compSearchPath.empty())
         {
+            // Create directory if it does not exist.
+            if (!file::DirectoryExists(handler.compSearchPath.front()))
+            {
+                file::MakeDir(handler.compSearchPath.front());
+            }
+
             handler.absCdefFilePath = path::MakeCanonical(handler.compSearchPath.front()) + "/"
                                       + path::GetLastNode(path::RemoveSuffix(
                                                           handler.adefFilePath, ADEF_EXT))
@@ -262,6 +280,12 @@ void ParseSdefReadSearchPath
         // When module is being created
         if (modFoundPath.empty() && !handler.moduleSearchPath.empty())
         {
+            // Create directory if it does not exist.
+            if (!file::DirectoryExists(handler.moduleSearchPath.front()))
+            {
+                file::MakeDir(handler.moduleSearchPath.front());
+            }
+
             handler.absMdefFilePath = path::MakeCanonical(handler.moduleSearchPath.front()) + "/" +
                                       handler.mdefFilePath;
         }
