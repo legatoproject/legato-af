@@ -50,7 +50,7 @@ endif
 
 export BUILD_DIR := $(LEGATO_ROOT)/build/$(TARGET)/framework
 export INSTALL_DIR ?= $(LEGATO_ROOT)/bin
-export STATIC_LIB_DIR := $(LEGATO_ROOT)/build/$(TARGET)/lib-static
+export STATIC_LIB_DIR := $(BUILD_DIR)/lib-static
 BIN_DIR := $(BUILD_DIR)/bin
 LIB_DIR := $(BUILD_DIR)/lib
 COMMON_SRC_DIR := $(LEGATO_ROOT)/framework/daemons
