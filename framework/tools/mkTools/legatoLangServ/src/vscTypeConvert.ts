@@ -22,6 +22,66 @@ import * as ext from './lspExtensionDefs';
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Extract the definition name from it's path.
+ *
+ * For most def files, the file name is the name of the definition.  With components, the definition
+ * name is the enclosing directory name.  So, extract the definition name based on the definition
+ * file type.
+ *
+ * @param defPath The path we're extracting a name from.
+ */
+//--------------------------------------------------------------------------------------------------
+function GetLegatoDefName(defPath: string): string
+{
+    let name: string;
+
+    if (path.extname(defPath) === model.DefType.componentDef)
+    {
+        name = path.basename(path.dirname(defPath));
+    }
+    else
+    {
+        name = path.basename(defPath, path.extname(defPath));
+    }
+
+    return name;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert a list of Legato file paths into symbol objects for the client plug-in.
+ *
+ * @param pathList The list of paths to convert.
+ */
+//--------------------------------------------------------------------------------------------------
+export function FilePathsToSymbolInformation(pathList: string[]): lsp.SymbolInformation[]
+{
+
+    return pathList.map(
+        (defPath: string): lsp.SymbolInformation =>
+        {
+            return {
+                    "name": GetLegatoDefName(defPath),
+                    "kind": lsp.SymbolKind.File,
+
+                    "location": {
+                            "uri": Uri.file(defPath).toString(),
+                            "range": {
+                                    "start": { "line": 0, "character": 0 },
+                                    "end":   { "line": 0, "character": 0 }
+                                }
+                        },
+
+                };
+        });
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * A set of flags to indicate what features to enable during object conversion.
  */
 //--------------------------------------------------------------------------------------------------

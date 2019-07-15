@@ -767,7 +767,8 @@ export enum DefType
     systemDef      = '.sdef',
     systemInc      = '.sinc',
     moduleDef      = '.mdef',
-    moduleInc      = '.minc'
+    moduleInc      = '.minc',
+    apiDef         = '.api'
 }
 
 

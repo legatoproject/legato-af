@@ -302,18 +302,20 @@ export class Profile
         return this.fileList(searchPaths, def);
     }
 
-//    public get availableComponents(): string[]
-//    {
-//        let searchPaths = this.jsonDocument.buildParams.search.componentDirs;
-//        let def = model.DefType.componentDef;
-//
-//        return this.fileList(searchPaths, def);
-//    }
+    public get availableComponents(): string[]
+    {
+        let searchPaths = this.jsonDocument.buildParams.search.componentDirs;
+        let def = model.DefType.componentDef;
 
-//    public get availableInterfaces(): string[]
-//    {
-//        return this.fileList(apiFolders, '.api');
-//    }
+        return this.fileList(searchPaths, def);
+    }
+
+    public get availableInterfaces(): string[]
+    {
+        let searchPaths = this.jsonDocument.buildParams.search.interfaceDirs;
+
+        return this.fileList(searchPaths, '.api');
+    }
 
     /**
      * Internal function that will read a value from the environment, if the value is undefined an

@@ -252,6 +252,38 @@ Client.connection.onFoldingRanges((params: lsp.FoldingRangeRequestParam): lsp.Fo
 
 
 // -------------------------------------------------------------------------------------------------
+//   Workspace event handlers.
+// -------------------------------------------------------------------------------------------------
+
+Client.connection.onWorkspaceSymbol((params: lsp.WorkspaceSymbolParams): lsp.SymbolInformation[] =>
+    {
+        let filePaths: string[] = [];
+
+        switch ('.' + params.query)
+        {
+            case model.DefType.systemDef:
+                filePaths = Client.profile.availableSystems;
+                break;
+
+            case model.DefType.applicationDef:
+                filePaths = Client.profile.availableApps;
+                break;
+
+            case model.DefType.componentDef:
+                filePaths = Client.profile.availableComponents;
+                break;
+
+            case model.DefType.apiDef:
+                filePaths = Client.profile.availableInterfaces;
+                break;
+        }
+
+        return conversion.FilePathsToSymbolInformation(filePaths);
+    });
+
+
+
+// -------------------------------------------------------------------------------------------------
 //   Core extension protocol handlers.
 // -------------------------------------------------------------------------------------------------
 
