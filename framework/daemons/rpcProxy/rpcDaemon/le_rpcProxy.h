@@ -46,11 +46,16 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define RPC_PROXY_CLIENT_REQUEST_TIMER_INTERVAL \
-            (RPC_PROXY_NETWORK_KEEPALIVE_SERVICE_INTERVAL)
+            (LE_CONFIG_RPC_PROXY_NETWORK_KEEPALIVE_SERVICE_INTERVAL)
 
-#define RPC_PROXY_CONNECT_SERVICE_REQUEST_TIMER_INTERVAL    15
-#define RPC_PROXY_NETWORK_KEEPALIVE_SERVICE_INTERVAL        120
-#define RPC_PROXY_NETWORK_KEEPALIVE_REQUEST_TIMER_INTERVAL  30
+#define RPC_PROXY_CONNECT_SERVICE_REQUEST_TIMER_INTERVAL \
+            (LE_CONFIG_RPC_PROXY_CONNECT_SERVICE_REQUEST_TIMER_INTERVAL)
+
+#define RPC_PROXY_NETWORK_KEEPALIVE_SERVICE_INTERVAL \
+            (LE_CONFIG_RPC_PROXY_NETWORK_KEEPALIVE_SERVICE_INTERVAL)
+
+#define RPC_PROXY_NETWORK_KEEPALIVE_REQUEST_TIMER_INTERVAL  \
+            (LE_CONFIG_RPC_PROXY_NETWORK_KEEPALIVE_REQUEST_TIMER_INTERVAL)
 
 
 //--------------------------------------------------------------------------------------------------
@@ -58,7 +63,7 @@
  * RPC Proxy Message Definitions
  */
 //--------------------------------------------------------------------------------------------------
-#define RPC_PROXY_MAX_MESSAGE                  1024
+#define RPC_PROXY_MAX_MESSAGE                  LE_CONFIG_RPC_PROXY_MAX_MESSAGE
 #define RPC_LOCAL_MAX_MESSAGE                  RPC_PROXY_MAX_MESSAGE
 
 #define RPC_PROXY_MSG_SERVICE_NAME_SIZE        (sizeof(char) * LIMIT_MAX_IPC_INTERFACE_NAME_BYTES)

@@ -37,7 +37,6 @@ typedef void (*le_comm_CallbackHandlerFunc_t) (void* handle, short events);
  *
  * Return Code
  *      - LE_OK if successfully,
- *      - LE_WAITING if pending on asynchronous connection,
  *      - otherwise failure
  *
  * @return
@@ -87,7 +86,9 @@ LE_SHARED le_result_t le_comm_Delete
  * Function for Connecting a RPC Communication Channel
  *
  * @return
- *      - LE_OK if successfully.
+ *      - LE_OK if successfully,
+ *      - LE_IN_PROGRESS if pending on asynchronous connection,
+ *      - otherwise failure.
  */
 //--------------------------------------------------------------------------------------------------
 __attribute__((weak))
