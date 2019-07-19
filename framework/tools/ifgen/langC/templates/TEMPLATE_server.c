@@ -219,7 +219,7 @@ LE_CDATA_DECLARE({le_msg_ServiceRef_t _ServerServiceRef;
  * Trace reference used for controlling tracing in this module.
  */
 //--------------------------------------------------------------------------------------------------
-#if defined(LE_CONFIG_LINUX) && defined(MK_TOOLS_BUILD) && !defined(NO_LOG_SESSION)
+#if defined(MK_TOOLS_BUILD) && !defined(NO_LOG_SESSION)
 
 static le_log_TraceRef_t TraceRef;
 
@@ -428,37 +428,26 @@ void {{apiName}}_AdvertiseService
     LE_DEBUG("======= Starting Server %s ========", SERVICE_INSTANCE_NAME);
 
     // Get a reference to the trace keyword that is used to control tracing in this module.
-#if defined(LE_CONFIG_LINUX) && defined(MK_TOOLS_BUILD) && !defined(NO_LOG_SESSION)
+#if defined(MK_TOOLS_BUILD) && !defined(NO_LOG_SESSION)
     TraceRef = le_log_GetTraceRef("ipc");
 #endif
 
-    _LOCK
-    if (_ServerDataPool == NULL)
-    {
-        // Create the server data pool
-        _ServerDataPool = le_mem_InitStaticPool({{apiName}}_ServerData,
-                                                HIGH_SERVER_DATA_COUNT,
-                                                sizeof(_ServerData_t));
-    }
+    // Create the server data pool
+    _ServerDataPool = le_mem_InitStaticPool({{apiName}}_ServerData,
+                                            HIGH_SERVER_DATA_COUNT,
+                                            sizeof(_ServerData_t));
     {%- if args.async %}
 
-    if (_ServerCmdPool == NULL)
-    {
-        // Create the server command pool
-        _ServerCmdPool = le_mem_InitStaticPool({{apiName}}_ServerCmd,
-                                               HIGH_SERVER_CMD_COUNT,
-                                               sizeof({{apiName}}_ServerCmd_t));
-    }
+    // Create the server command pool
+    _ServerCmdPool = le_mem_InitStaticPool({{apiName}}_ServerCmd,
+                                           HIGH_SERVER_CMD_COUNT,
+                                           sizeof({{apiName}}_ServerCmd_t));
     {%- endif %}
 
-    if (_HandlerRefMap == NULL)
-    {
-        // Create safe reference map for handler references.
-        // The size of the map should be based on the number of handlers defined for the server.
-        // Don't expect that to be more than 2-3, so use 3 as a reasonable guess.
-        _HandlerRefMap = le_ref_InitStaticMap({{apiName}}_ServerHandlers, HIGH_SERVER_DATA_COUNT);
-    }
-    _UNLOCK
+    // Create safe reference map for handler references.
+    // The size of the map should be based on the number of handlers defined for the server.
+    // Don't expect that to be more than 2-3, so use 3 as a reasonable guess.
+    _HandlerRefMap = le_ref_InitStaticMap({{apiName}}_ServerHandlers, HIGH_SERVER_DATA_COUNT);
 
     // Start the server side of the service
     {%- if not args.localService %}

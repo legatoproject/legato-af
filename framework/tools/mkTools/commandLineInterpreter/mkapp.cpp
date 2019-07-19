@@ -411,8 +411,6 @@ void MakeApp
 
     if (!appPtr->requiredModules.empty())
     {
-        // mkTools leaks memory by design but added to hush Klocwork
-        delete appPtr;
         throw mk::Exception_t(
                     LE_I18N("Kernel modules cannot be added to an application without a system."));
     }

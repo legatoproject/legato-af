@@ -260,19 +260,17 @@ LE_SHARED le_result_t ifgen_{{apiBaseName}}_OpenSession
 static void _Handle_ifgen_{{apiBaseName}}_{{function.name}}
 (
     void* _reportPtr,
-    void* _sentCliendDataPtr
+    void* _dataPtr
 )
 {
     {%- with error_unpack_label=Labeler("error_unpack") %}
-    {%- with handler_removed_label=Labeler("handler_removed") %}
     le_msg_MessageRef_t _msgRef = _reportPtr;
     _Message_t* _msgPtr = le_msg_GetPayloadPtr(_msgRef);
     uint8_t* _msgBufPtr = _msgPtr->buffer;
 
-    // The _clientContextPtr always exists and is always first. It is a safe reference to the client
+    // The clientContextPtr always exists and is always first. It is a safe reference to the client
     // data object, but we already get the pointer to the client data object through the _dataPtr
-    // parameter. We also want to make sure that the "sent" clientDataPtr is the same as
-    // the one we pull via reference
+    // parameter, so we don't need to do anything with clientContextPtr, other than unpacking it.
     void* _clientContextPtr;
     if (!le_pack_UnpackReference( &_msgBufPtr,
                                   &_clientContextPtr ))
@@ -280,28 +278,14 @@ static void _Handle_ifgen_{{apiBaseName}}_{{function.name}}
         goto {{error_unpack_label}};
     }
 
-    // You need to lock here as it is possible that RemoveHandleFunction
-    // if invoked from another thread, the clientDataPtr gets released
-    // and then possibly reused (can point to a new mem location)
-    _LOCK
-    _ClientData_t* _clientDataPtr = le_ref_Lookup(_HandlerRefMap, _clientContextPtr);
-
-    // The clientContextPtr is a safe reference for the client data object.  If the client data
-    // pointer is NULL, this means the handler was removed before the event was reported to the
-    // client. This is valid, and the event will be dropped.
-    if (_clientDataPtr == NULL || _clientDataPtr != _sentCliendDataPtr)
-    {
-        LE_DEBUG("Ignore reported event after handler removed");
-        _UNLOCK
-        goto {{handler_removed_label}};
-    }
+    // The client data pointer is passed in as a parameter, since the lookup in the safe ref map
+    // and check for NULL has already been done when this function is queued.
+    _ClientData_t* _clientDataPtr = _dataPtr;
 
     // Pull out additional data from the client data pointer
     {{handler.apiType|FormatType(useBaseName=True)}} _handlerRef_ifgen_{{apiBaseName}}_{{function.name}} =
         {#- #} _clientDataPtr->handlerPtr;
     void* contextPtr = _clientDataPtr->contextPtr;
-
-    _UNLOCK
 
     // Unpack the remaining parameters
     {%- call pack.UnpackInputs(handler.apiType.parameters,useBaseName=True) %}
@@ -320,7 +304,6 @@ static void _Handle_ifgen_{{apiBaseName}}_{{function.name}}
     {
         LE_FATAL("Error in client data: no registered handler");
     }
-
     {%- if function is not EventFunction %}
 
     // The registered handler has been called, so no longer need the client data.
@@ -329,14 +312,7 @@ static void _Handle_ifgen_{{apiBaseName}}_{{function.name}}
     le_ref_DeleteRef(_HandlerRefMap, _clientContextPtr);
     _clientDataPtr->handlerPtr = NULL;
     le_mem_Release(_clientDataPtr);
-
     {% endif %}
-
-    {%- if handler_removed_label.IsUsed() %}
-handler_removed:
-    {%- endif %}
-    {%- endwith %}
-
 
     // Release the message, now that we are finished with it.
     le_msg_ReleaseMsg(_msgRef);
@@ -544,20 +520,16 @@ static void ClientIndicationRecvHandler
     // pointer is NULL, this means the handler was removed before the event was reported to the
     // client. This is valid, and the event will be dropped.
     _LOCK
-
     _ClientData_t* clientDataPtr = le_ref_Lookup(_HandlerRefMap, clientContextPtr);
-
+    _UNLOCK
     if ( clientDataPtr == NULL )
     {
         LE_DEBUG("Ignore reported event after handler removed");
-        _UNLOCK
         return;
     }
 
     // Pull out the callers thread
     le_thread_Ref_t callersThreadRef = clientDataPtr->callersThreadRef;
-
-    _UNLOCK
 
     // Trigger the appropriate event
     switch (msgPtr->id)

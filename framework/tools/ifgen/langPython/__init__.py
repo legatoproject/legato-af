@@ -33,6 +33,11 @@ Filters = {
 
 Tests = { 'SizeParameter':         langC.codeGenHelpers.IsSizeParameter }
 
+Globals = langC.Globals.copy()
+Globals.update({
+    'dontGenerateAttrs': True
+})
+
 GeneratedFiles = { 'interface' : '%s.py',
                    'cdef' : '%s_cdef.h',
                    'c_interface' : 'C/%s_interface.h',
