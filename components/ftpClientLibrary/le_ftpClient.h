@@ -225,7 +225,8 @@ typedef enum
     LE_FTP_CLIENT_EVENT_TIMEOUT,    ///< Connection timed out.
     LE_FTP_CLIENT_EVENT_ERROR,      ///< Asynchronous error.
     LE_FTP_CLIENT_EVENT_DATA,       ///< Buffer of file data to transmit or receive.
-    LE_FTP_CLIENT_EVENT_DATAEND     ///< End of data.
+    LE_FTP_CLIENT_EVENT_DATAEND,    ///< End of data.
+    LE_FTP_CLIENT_EVENT_MEMORY_FREE ///< Memory available to send more data
 } le_ftpClient_Event_t;
 
 //--------------------------------------------------------------------------------------------------
