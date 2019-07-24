@@ -39,6 +39,8 @@ class ArgHandler_t
         std::string appSandboxed;       ///< App's sandboxed value
         std::string appStart;           ///< App's start value
 
+        std::vector<std::string> adefFilePathList; // List of apps that need to be updated
+
         std::list<std::string> appSearchPath;       ///< List of app search path in active sdef
         std::list<std::string> compSearchPath;      ///< List of comp search path in active sdef
         std::list<std::string> moduleSearchPath;    ///< List of module search path in active sdef

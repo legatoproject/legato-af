@@ -821,42 +821,91 @@ void ArgHandler_t::Rename()
     switch (editItemType)
     {
         case APP:
+        {
             AddAction(std::make_shared<CheckDefFileExistAction_t>(*this, oldAdefFilePath, true));
             AddAction(std::make_shared<CheckDefFileExistAction_t>(*this, absAdefFilePath, false));
             AddAction(std::make_shared<CreateUpdateTempSdefAction_t>(*this));
             AddAction(std::make_shared<RenameFileAction_t>(*this));
             AddAction(std::make_shared<RenameTempWorkToActiveFileAction_t>(*this, absSdefFilePath));
             break;
+        }
 
         case COMPONENT:
+        {
             AddAction(std::make_shared<CheckDirExistAction_t>(*this, oldCdefFilePath, true));
             AddAction(std::make_shared<CheckDirExistAction_t>(*this, absCdefFilePath, false));
-            if (file::FileExists(absAdefFilePath))
+
+            std::string absOldCdefFile = oldCdefFilePath + "/" + COMP_CDEF;
+
+            // Find apps that lists the components to be renamed and insert in adefFilePathList.
+            for (const auto& it : systemPtr->apps)
             {
-                AddAction(std::make_shared<CreateUpdateTempAdefAction_t>(*this));
-                AddAction(std::make_shared<RenameTempWorkToActiveFileAction_t>(*this,
-                                                                               absAdefFilePath));
+                for (auto const& itcomp : it.second->components)
+                {
+                    if (itcomp->defFilePtr->path.compare(absOldCdefFile) == 0)
+                    {
+                        adefFilePathList.push_back(it.second->defFilePtr->path);
+                    }
+                }
             }
+
+            if (!adefFilePath.empty())
+            {
+                // If single app is provided, but multiple apps lists the component.
+                if (adefFilePathList.size() > 1)
+                {
+                    std::cerr << mk::format(
+                                    LE_I18N("** WARNING: component '%s' listed in multiple apps:\n"),
+                                            oldCdefFilePath);
+                    for (const auto& it : adefFilePathList)
+                    {
+                        std::cerr << mk::format(LE_I18N("%s\n"), it);
+                    }
+                }
+
+                adefFilePathList.clear();
+                adefFilePathList.push_back(absAdefFilePath);
+            }
+
+            // Update each app in adefFilePathList.
+            for (const auto& it : adefFilePathList)
+            {
+                absAdefFilePath = it;
+                if (file::FileExists(absAdefFilePath))
+                {
+                    AddAction(std::make_shared<CreateUpdateTempAdefAction_t>(*this));
+                    AddAction(std::make_shared<RenameTempWorkToActiveFileAction_t>(*this,
+                                                                                  absAdefFilePath));
+                }
+            }
+
             AddAction(std::make_shared<RenameFileAction_t>(*this));
             break;
+        }
 
         case MODULE:
+        {
             AddAction(std::make_shared<CheckDefFileExistAction_t>(*this, oldMdefFilePath, true));
             AddAction(std::make_shared<CheckDefFileExistAction_t>(*this, absMdefFilePath, false));
             AddAction(std::make_shared<CreateUpdateTempSdefAction_t>(*this));
             AddAction(std::make_shared<RenameFileAction_t>(*this));
             AddAction(std::make_shared<RenameTempWorkToActiveFileAction_t>(*this, absSdefFilePath));
             break;
+        }
 
         case SYSTEM:
+        {
             AddAction(std::make_shared<CheckDefFileExistAction_t>(*this, oldSdefFilePath, true));
             AddAction(std::make_shared<CheckDefFileExistAction_t>(*this, absSdefFilePath, false));
             AddAction(std::make_shared<RenameFileAction_t>(*this));
             break;
+        }
 
         default:
+        {
             throw mk::Exception_t(LE_I18N("Internal error: edit item type is invalid"));
             break;
+        }
     }
 }
 
@@ -871,38 +920,104 @@ void ArgHandler_t::Remove()
     switch (editItemType)
     {
         case APP:
+        {
             AddAction(std::make_shared<CheckDefFileExistAction_t>(*this, absAdefFilePath, true));
             AddAction(std::make_shared<CreateUpdateTempSdefAction_t>(*this));
             AddAction(std::make_shared<RemoveFileAction_t>(*this));
             AddAction(std::make_shared<RenameTempWorkToActiveFileAction_t>(*this, absSdefFilePath));
             break;
+        }
 
         case COMPONENT:
+        {
+            std::string absCdefFile = absCdefFilePath + "/" + COMP_CDEF;
             AddAction(std::make_shared<CheckDirExistAction_t>(*this, absCdefFilePath, true));
-            if (file::FileExists(absAdefFilePath))
+
+            // Find apps that list the components to be removed and insert in adefFilePathList.
+            for (const auto& it : systemPtr->apps)
             {
-                AddAction(std::make_shared<CreateUpdateTempAdefAction_t>(*this));
-                AddAction(std::make_shared<RenameTempWorkToActiveFileAction_t>(*this,
-                                                                               absAdefFilePath));
+                for (auto const& itcomp : it.second->components)
+                {
+                    if (itcomp->defFilePtr->path.compare(absCdefFile) == 0)
+                    {
+                        adefFilePathList.push_back(it.second->defFilePtr->path);
+                    }
+                }
             }
-            AddAction(std::make_shared<RemoveDirAction_t>(*this));
+
+           // Boolean flag to track if the specified component directory is safe to be removed.
+           bool isCompSafeToRemove = false;
+
+            // The component directory is safe to be removed if:
+            // - Only the specified app refers to the specified component.
+            // - No app is specified.
+            if (!adefFilePath.empty())
+            {
+                // If app name is specified and no other apps list the specified component.
+                if (adefFilePathList.size() == 0)
+                {
+                    isCompSafeToRemove = true;
+                }
+
+                // If app name is specified and only that app lists the specified component.
+                if (adefFilePathList.size() == 1)
+                {
+                    if (adefFilePathList.back().compare(absAdefFilePath) == 0)
+                    {
+                        isCompSafeToRemove = true;
+                    }
+                }
+
+                adefFilePathList.clear();
+                // Push the specified app to the vector.
+                adefFilePathList.push_back(absAdefFilePath);
+            }
+            else
+            {
+                // If no app name is specified, remove the component directory.
+                isCompSafeToRemove = true;
+            }
+
+            // Update each app in adefFilePathList.
+            for (const auto& it : adefFilePathList)
+            {
+                absAdefFilePath = it;
+                if (file::FileExists(absAdefFilePath))
+                {
+                    AddAction(std::make_shared<CreateUpdateTempAdefAction_t>(*this));
+                    AddAction(std::make_shared<RenameTempWorkToActiveFileAction_t>(*this,
+                                                                              absAdefFilePath));
+                }
+            }
+
+            if (isCompSafeToRemove)
+            {
+                 AddAction(std::make_shared<RemoveDirAction_t>(*this));
+            }
             break;
+        }
 
         case MODULE:
+        {
             AddAction(std::make_shared<CheckDefFileExistAction_t>(*this, absMdefFilePath, true));
             AddAction(std::make_shared<CreateUpdateTempSdefAction_t>(*this));
             AddAction(std::make_shared<RemoveFileAction_t>(*this));
             AddAction(std::make_shared<RenameTempWorkToActiveFileAction_t>(*this, absSdefFilePath));
             break;
+        }
 
         case SYSTEM:
+        {
             AddAction(std::make_shared<CheckDefFileExistAction_t>(*this, absSdefFilePath, true));
             AddAction(std::make_shared<RemoveFileAction_t>(*this));
             break;
+        }
 
         default:
+        {
             throw mk::Exception_t(LE_I18N("Internal error: edit item type is invalid"));
             break;
+        }
     }
 }
 

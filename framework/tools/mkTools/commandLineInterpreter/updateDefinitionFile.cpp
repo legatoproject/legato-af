@@ -97,20 +97,18 @@ void UpdateDefinitionFile
             }
 
             // Write the line to the destination file.
-            dest << it.lineToWrite << std::endl;
+            dest << it.lineToWrite;
         }
         else
         {
-           dest << "" <<std::endl;
+           dest << "" ;
         }
-        startPos = it.afterPos;
+        startPos = it.afterPos-1;
 
         source.seekg(startPos);
     }
 
     // Copy the remaining part of sdef
-    source.seekg(startPos);
-
     int remainLength = totalLength-startPos;
     std::unique_ptr<char> secondBuffer(new char[remainLength]);
 
@@ -679,7 +677,7 @@ void ParseSdefUpdateItem
 /**
  * Parse the application definition file to update the components: or executables: section.
  * 1. Parse the cdef file to check if cdef contains .c files listed in sources: section.
- * 2. Parse the adef file for parsing.
+ * 2. Parse the adef file:
  *    a. If cdef contains sources: section, update the executables: section of the adef.
  *    b. If cdef does not contain sources: section, add component to components: section of adef.
  * 3. Update the adef file by adding the component in either sources or executables section.
@@ -698,7 +696,6 @@ static void ParseAdefGetEditLinePosition
 )
 {
     bool sourcesSectionExist = false;
-
     auto cdefFilePtr = parser::cdef::Parse(cdefPath, false);
 
     // Iterate over the .cdef file's list of sections.
@@ -714,15 +711,37 @@ static void ParseAdefGetEditLinePosition
 
     auto adefFilePtr = parser::adef::Parse(adefPath, false);
 
-    // Position for the component in components: or executables: section.
-    int foundPos1, nextPos1, length1 = 0;
-    bool foundItem = false;
+    // Position of the end of the components: or executables: section.
+    int length1 = 0;
+    // Boolean flag to check if the component is found in the components: or executables: section.
+    bool foundItem1 = false;
 
-    // Position for the component in processes: run: section.
-    int foundPos2, nextPos2, length2 = 0;
+    // Position of the end of the component in processes: run: section.
+    int length2 = 0;
+    // Boolean flag to check if the executable name is found in the processes: run: section.
     bool foundItem2 = false;
 
-    std::string exeName;
+    // Boolean flag to check if the component name is found in the bindings: section.
+    bool foundItem3 = false;
+
+    CompPosition_t compPosition {false, 0, 0, 0, 0};
+    CompPosition_t exeCompPosition {false, 0, 0, 0, 0};
+    CompPosition_t procRunPosition {false, 0, 0, 0, 0};
+    CompPosition_t bindingPosition {false, 0, 0, 0, 0};
+
+    // List of components found in the components: section.
+    std::vector<CompPosition_t> compPositionList;
+    // List of components found in the executables: section.
+    std::vector<CompPosition_t> exeCompPositionList;
+    // List of executables related to the component found in the processes: run: section.
+    std::vector<CompPosition_t> procRunPositionList;
+    // List of components found in the bindings: section.
+    std::vector<CompPosition_t> bindingPositionList;
+
+    // List of executables containing only single component.
+    std::vector<std::string> singleCompExe;
+
+    handler.linePositionToWrite.clear();
 
     // Iterate over the .adef file's list of sections, processing content items.
     for (auto sectionPtr : adefFilePtr->sections)
@@ -752,16 +771,34 @@ static void ParseAdefGetEditLinePosition
                     );
                 }
 
+                if (exePtr->Contents().size() > 1)
+                {
+                    // If the executables: section contain list of multiple components, set bool
+                    // flag exeMultiComp to true.
+                    exeCompPosition.isExeMultiComp = true;
+                }
+
                 for (auto tokenPtr : exePtr->Contents())
                 {
                     // Resolve the path to the component.
                     std::string componentPath = path::Unquote(DoSubstitution(tokenPtr));
                     if (path::GetLastNode(compList).compare(path::GetLastNode(componentPath)) == 0)
                     {
-                        foundItem = true;
-                        foundPos1 = itemPtr->firstTokenPtr->curPos;
-                        nextPos1 = itemPtr->lastTokenPtr->nextPtr->curPos;
-                        exeName = itemPtr->firstTokenPtr->text;
+                        foundItem1 = true;
+
+                        // If executables doesn't contain multiple components.
+                        if (!exeCompPosition.isExeMultiComp)
+                        {
+                            // Push the executable name into the vector.
+                            singleCompExe.push_back(itemPtr->firstTokenPtr->text);
+                        }
+
+                        exeCompPosition.foundPos = tokenPtr->curPos;
+                        exeCompPosition.nextPos = tokenPtr->nextPtr->curPos;
+                        exeCompPosition.sectionPos = itemPtr->firstTokenPtr->curPos;
+                        exeCompPosition.sectionNextPos = itemPtr->lastTokenPtr->nextPtr->curPos;
+
+                        exeCompPositionList.push_back(exeCompPosition);
                     }
 
                     if (path::GetLastNode(compNotList).compare(path::GetLastNode(componentPath))
@@ -793,14 +830,16 @@ static void ParseAdefGetEditLinePosition
                 // Resolve the path to the component.
                 std::string componentPath = path::Unquote(DoSubstitution(tokenPtr));
 
-                if (path::MakeAbsolute(compList).compare(componentPath) == 0)
+                if (path::GetLastNode(compList).compare(path::GetLastNode(componentPath)) == 0)
                 {
-                    foundItem = true;
-                    foundPos1 = tokenPtr->curPos;
-                    nextPos1 = tokenPtr->nextPtr->curPos;
+                    foundItem1 = true;
+
+                    compPosition.foundPos = tokenPtr->curPos;
+                    compPosition.nextPos =   tokenPtr->nextPtr->curPos;
+                    compPositionList.push_back(compPosition);
                 }
 
-                if (path::MakeAbsolute(compNotList).compare(componentPath) == 0)
+                if (path::GetLastNode(compNotList).compare(path::GetLastNode(componentPath)) == 0)
                 {
                     throw mk::Exception_t(
                            mk::format(LE_I18N("Component already listed: '%s'"),
@@ -858,19 +897,67 @@ static void ParseAdefGetEditLinePosition
                         if (i != tokens.end())
                         {
                             auto procName = (*i)->text;
-                            if (exeName.compare(procName) == 0)
+                            for (const auto& it : singleCompExe)
                             {
-                                foundItem2 = true;
-                                foundPos2 = itemPtr->firstTokenPtr->curPos;
-                                nextPos2 = itemPtr->lastTokenPtr->nextPtr->curPos;
+                                // If executable with single component  match the process name then
+                                // mark for removal. This is used only for remove cases.
+                                if (it.compare(procName) == 0)
+                                {
+                                    foundItem2 = true;
+
+                                    procRunPosition.foundPos = itemPtr->firstTokenPtr->curPos;
+                                    procRunPosition.nextPos = itemPtr->lastTokenPtr->nextPtr->curPos;
+                                }
                             }
                         }
                     }
+                    procRunPositionList.push_back(procRunPosition);
                     length2 = subsectionPtr->lastTokenPtr->curPos;
                 }
             }
-        }
-    }
+        } //end of if
+
+        if (sectionName == "bindings")
+        {
+            auto bindSectionPtr = dynamic_cast<const parseTree::CompoundItemList_t*>(sectionPtr);
+
+            if (bindSectionPtr == NULL)
+            {
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("Internal error: '%s' section pointer is NULL"), sectionName)
+                );
+            }
+
+            for (auto itemPtr : bindSectionPtr->Contents())
+            {
+                const parseTree::Binding_t* bindPtr =
+                                    dynamic_cast<const parseTree::Binding_t*>(itemPtr);
+                if (bindPtr == NULL)
+                {
+                    throw mk::Exception_t(
+                        mk::format(LE_I18N("Internal error: '%s' section content pointer is NULL"),
+                                   sectionName)
+                    );
+                }
+
+                for (auto tokenPtr : bindPtr->Contents())
+                {
+                    // If component to rename/remove is found in the list of bindings.
+                    if (path::GetLastNode(compList).compare(tokenPtr->text) == 0)
+                    {
+                        foundItem3  = true;
+
+                        bindingPosition.foundPos = tokenPtr->curPos;
+                        bindingPosition.nextPos = tokenPtr->nextPtr->curPos;
+                        bindingPosition.sectionPos = itemPtr->firstTokenPtr->curPos;
+                        bindingPosition.sectionNextPos = itemPtr->lastTokenPtr->nextPtr->curPos;
+
+                        bindingPositionList.push_back(bindingPosition);
+                    }
+                }
+            }
+        } //end of if
+    } // end of for
 
     std::string compName;
     std::string compPath;
@@ -895,46 +982,110 @@ static void ParseAdefGetEditLinePosition
 
     std::string lineToWrite1;
     std::string lineToWrite2;
+    std::string lineToWrite3;
 
-    if (!compList.empty()  && !compNotList.empty() && foundItem && foundItem2)
+    if (!compList.empty()  && !compNotList.empty())
     {
-        if (sourcesSectionExist)
+        // Rename component in adef
+        if (foundItem1)
         {
-            // Append the executable and component path to the adef in the executables: section
-            lineToWrite1 = compName + "Exe = ( " +
-                          compPath + " )";
-            lineToWrite2 = "( " + compName + "Exe )";
+            if (sourcesSectionExist)
+            {
+                // Append the executable and component path to the adef in the executables: section
+                lineToWrite1 =  compPath;
+            }
+            else
+            {
+                // Append the component path to the adef in the components: section
+                lineToWrite1 = "    " + compPath;
+            }
         }
         else
         {
-            // Append the component path to the adef in the components: section
-             lineToWrite1 = "    " + compPath;
+            // Component to rename not found on the list, throw error.
+            throw mk::Exception_t(
+                mk::format(LE_I18N(
+                           "Component '%s' not listed in either components: or executables: section"
+                           " of '%s'."), compList, adefPath)
+            );
         }
 
-        // Renaming components in adef
-        handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite1,
-                                                                           foundPos1, nextPos1});
-        handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite2,
-                                                                           foundPos2, nextPos2});
+        for (auto it : exeCompPositionList)
+        {
+            handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite1,
+                                                                       it.foundPos, it.nextPos});
+        }
 
-    }
-    else if (!compList.empty() && compNotList.empty() && foundItem && foundItem2)
-    {
-        //Remove component
-        handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{"", foundPos1,
-                                                                           nextPos1});
-        handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{"", foundPos2,
-                                                                           nextPos2});
+        for (const auto& it : compPositionList)
+        {
+             handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite1,
+                                                                        it.foundPos, it.nextPos});
+        }
 
+        if (foundItem3)
+        {
+            lineToWrite3 = path::GetLastNode(compNotList);
+
+            for (auto it : bindingPositionList)
+            {
+                handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite3,
+                                                                          it.foundPos, it.nextPos});
+            }
+        }
     }
-    else if (!compList.empty() && !foundItem && !foundItem2)
+    else if (!compList.empty() && compNotList.empty())
     {
-        // If the component to be renamed or removed is not found on the list, print error.
-        throw mk::Exception_t(
-               mk::format(LE_I18N(
-                          "Component '%s' not listed in either components: or executables: section"
+        // Remove component from adef.
+        if (foundItem1)
+        {
+            for (const auto& it : exeCompPositionList)
+            {
+                if (!it.isExeMultiComp)
+                {
+                    handler.linePositionToWrite.push_back(
+                            ArgHandler_t::LinePosition_t{"", it.sectionPos, it.sectionNextPos});
+                }
+                else
+                {
+                    handler.linePositionToWrite.push_back(
+                            ArgHandler_t::LinePosition_t{"", it.foundPos, it.nextPos});
+                }
+            }
+
+            for (const auto& it : compPositionList)
+            {
+                 handler.linePositionToWrite.push_back(
+                         ArgHandler_t::LinePosition_t{"", it.foundPos, it.nextPos});
+            }
+        }
+        else
+        {
+            // Component to be removed not found on the list, throw error.
+            throw mk::Exception_t(
+                mk::format(LE_I18N(
+                           "Component '%s' not listed in either components: or executables: section"
                            " of '%s'."), compList, adefPath)
-        );
+            );
+        }
+
+        if (foundItem2)
+        {
+            for (const auto& it : procRunPositionList)
+            {
+                handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{"", it.foundPos,
+                                                                                   it.nextPos});
+
+            }
+        }
+
+        if (foundItem3)
+        {
+           for (const auto& it : bindingPositionList)
+           {
+                handler.linePositionToWrite.push_back(
+                                ArgHandler_t::LinePosition_t{"", it.sectionPos, it.sectionNextPos});
+           }
+        }
     }
     else if (!compNotList.empty())
     {
@@ -944,25 +1095,35 @@ static void ParseAdefGetEditLinePosition
             lineToWrite1 = "    " + compName + "Exe = ( " +
                           compPath + " )";
             lineToWrite2 = "    ( " + compName + "Exe )";
+
+            // Adding component to adef
+            handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite1, length1,
+                                                                               length1-1});
+            handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite2, length2,
+                                                                               length2-1});
         }
         else
         {
             // Append the component path to the adef in the components: section
-             lineToWrite1 = "    " + compPath;
-        }
-
-        // Adding component to adef
-        handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite1, length1,
-                                                                           length1-1});
-        handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite2, length2,
-                                                                           length2-1});
+            lineToWrite1 = "    " + compPath;
+            handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite1, length1,
+                                                                               length1-1});
+       }
+    }
+    else
+    {
+        // Unhandled case.
+        throw mk::Exception_t(
+           mk::format(LE_I18N(
+                      "Internal error: Unhandled case when getting line to edit in '%s'"), adefPath)
+        );
     }
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Evaluate CDEF file path and component's relevant string and ts position to write in ADEF.
+ * Evaluate CDEF file path and component's relevant string and its position to write in ADEF.
  **/
 //--------------------------------------------------------------------------------------------------
 void GetAdefComponentEditLinePosition
@@ -980,6 +1141,7 @@ void GetAdefComponentEditLinePosition
     {
         case  ArgHandler_t::EditActionType_t::ADD:
         case  ArgHandler_t::EditActionType_t::CREATE:
+        {
             compMustExist = "";
             compMustNotExist = handler.absCdefFilePath;
             if (handler.adefFilePath.empty())
@@ -991,30 +1153,11 @@ void GetAdefComponentEditLinePosition
                 absAdefFile = handler.absAdefFilePath;
             }
             break;
-
+        }
         case  ArgHandler_t::EditActionType_t::REMOVE:
         {
             compMustExist = handler.absCdefFilePath;
             compMustNotExist = "";
-
-            if (handler.adefFilePath.empty())
-            {
-                for(const auto& it : systemPtr->apps)
-                {
-                    for (auto const& itcomp : it.second->components)
-                    {
-                        if (itcomp->defFilePtr->path.compare(absCdefFile) == 0)
-                        {
-                            absAdefFile = it.second->defFilePtr->path;
-                        }
-                    }
-                }
-                handler.absAdefFilePath = absAdefFile;
-            }
-            else
-            {
-                absAdefFile = handler.absAdefFilePath;
-            }
             break;
         }
 
@@ -1025,37 +1168,20 @@ void GetAdefComponentEditLinePosition
 
             std::string absOldCdefFile = handler.oldCdefFilePath + "/" + COMP_CDEF;
             absCdefFile = absOldCdefFile;
-
-            if (handler.adefFilePath.empty())
-            {
-                for(const auto& it : systemPtr->apps)
-                {
-                    for (auto const& itcomp : it.second->components)
-                    {
-                        if (itcomp->defFilePtr->path.compare(absOldCdefFile) == 0)
-                        {
-                            absAdefFile = it.second->defFilePtr->path;
-                        }
-                    }
-                }
-                handler.absAdefFilePath = absAdefFile;
-            }
-            else
-            {
-                absAdefFile = handler.absAdefFilePath;
-            }
             break;
         }
 
         default:
+        {
             throw mk::Exception_t(
                     LE_I18N("Internal error: Invalid edit action type.")
             );
             break;
+        }
     }
 
     // Parse the definition files to get the line and its position to write.
-    ParseAdefGetEditLinePosition(handler, absAdefFile, absCdefFile, compMustExist,
+    ParseAdefGetEditLinePosition(handler, handler.absAdefFilePath, absCdefFile, compMustExist,
                                  compMustNotExist);
 }
 

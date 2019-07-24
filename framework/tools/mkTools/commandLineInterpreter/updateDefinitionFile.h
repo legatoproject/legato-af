@@ -11,6 +11,15 @@
 
 namespace updateDefs
 {
+    struct CompPosition_t
+    {
+        bool isExeMultiComp; // Bool flag to check if executables: section has multiple components.
+        int foundPos;        // Position where the component is found.
+        int nextPos;         // Position of the next token after the found component.
+        int sectionPos;      // Start position of the line where the component is found.
+        int sectionNextPos;  // Next token position of the line where the component is found.
+    };
+
     void ParseSdefReadSearchPath(ArgHandler_t& handler);
     void ParseSdefUpdateItem (ArgHandler_t& handler);
     void UpdateDefinitionFile(std::string sdefFilePath, std::string backupDefFilePath,
