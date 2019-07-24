@@ -25,6 +25,7 @@
 #include "test.h"
 #include "thread.h"
 #include "timer.h"
+#include <locale.h>
 
 #include <locale.h>
 

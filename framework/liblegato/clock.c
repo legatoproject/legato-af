@@ -254,7 +254,6 @@ le_clk_Time_t le_clk_Multiply
     return result;
 }
 
-#if NOT_IMPLEMENTED
 //--------------------------------------------------------------------------------------------------
 /**
  * Convert broken down time into a formatted string.
@@ -609,7 +608,6 @@ le_result_t le_clk_SetAbsoluteTime
 
     return LE_OK;
 }
-#endif
 
 #if LE_CONFIG_LINUX
 //--------------------------------------------------------------------------------------------------
