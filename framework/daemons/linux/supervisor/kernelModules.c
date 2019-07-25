@@ -687,9 +687,9 @@ static void ModuleGetInstallScript(KModuleObj_t *module)
 
     le_cfg_IteratorRef_t iter = le_cfg_CreateReadTxn(cfgTreePath);
 
-    if (le_cfg_GetNodeType(iter, ".") != LE_CFG_TYPE_EMPTY)
+    if (le_cfg_GetNodeType(iter, ".") == LE_CFG_TYPE_EMPTY)
     {
-        LE_DEBUG("Found empty intall script node");
+        LE_DEBUG("Found empty install script node");
         le_cfg_CancelTxn(iter);
         return;
     }
@@ -744,7 +744,7 @@ static void ModuleGetRemoveScript(KModuleObj_t *module)
 
     le_cfg_IteratorRef_t iter = le_cfg_CreateReadTxn(cfgTreePath);
 
-    if (le_cfg_GetNodeType(iter, ".") != LE_CFG_TYPE_EMPTY)
+    if (le_cfg_GetNodeType(iter, ".") == LE_CFG_TYPE_EMPTY)
     {
         LE_DEBUG("Found empty remove script node");
         le_cfg_CancelTxn(iter);
