@@ -298,6 +298,11 @@ static void ModelApp
             return;
         }
 
+        if (buildParams.isRelaxedStrictness)
+        {
+            return;
+        }
+
         std::string formattedMsg =
             mk::format(LE_I18N("Can't find definition file (%s.adef) or binary app (%s) "
                                "for app specification '%s'.\n"
@@ -318,6 +323,11 @@ static void ModelApp
     auto appsIter = systemPtr->apps.find(appName);
     if (appsIter != systemPtr->apps.end())
     {
+        if (buildParams.isRelaxedStrictness)
+        {
+            return;
+        }
+
         std::stringstream msg;
 
         msg << "App '" << appName << "' added to the system more than once.\n"
@@ -616,6 +626,7 @@ static void AddNonAppUserBinding
 //--------------------------------------------------------------------------------------------------
 static void ModelBindingsSection
 (
+    const mk::BuildParams_t& buildParams,
     model::System_t* systemPtr,
     const parseTree::CompoundItem_t* bindingsSectionPtr,
     bool beVerbose
@@ -731,7 +742,10 @@ static void ModelBindingsSection
             {
                 // 0         1    2    3    4         5
                 // IPC_AGENT NAME NAME NAME IPC_AGENT NAME
-                auto clientIfPtr = appPtr->FindClientInterface(tokens[1], tokens[2], tokens[3]);
+                auto clientIfPtr = appPtr->FindClientInterface(buildParams,
+                                                               tokens[1],
+                                                               tokens[2],
+                                                               tokens[3]);
                 bindingPtr->clientType = model::Binding_t::INTERNAL;
                 bindingPtr->clientAgentName = appPtr->name;
                 bindingPtr->clientIfName = clientIfPtr->name;
@@ -845,6 +859,7 @@ static void ModelApps
 //--------------------------------------------------------------------------------------------------
 static void ModelBindings
 (
+    const mk::BuildParams_t& buildParams,
     model::System_t* systemPtr,
     const std::list<const parseTree::CompoundItem_t*>& bindingsSections,
     bool beVerbose
@@ -853,7 +868,7 @@ static void ModelBindings
 {
     for (auto bindingsSectionPtr : bindingsSections)
     {
-        ModelBindingsSection(systemPtr, bindingsSectionPtr, beVerbose);
+        ModelBindingsSection(buildParams, systemPtr, bindingsSectionPtr, beVerbose);
     }
 }
 
@@ -1440,7 +1455,7 @@ model::System_t* GetSystem
 
     // Process bindings.  This must be done after all the components and executables have been
     // modelled and all the external API interfaces have been processed.
-    ModelBindings(systemPtr, bindingsSections, buildParams.beVerbose);
+    ModelBindings(buildParams, systemPtr, bindingsSections, buildParams.beVerbose);
 
     // Add all RPC bindings
     ModelRpcBindings(systemPtr);

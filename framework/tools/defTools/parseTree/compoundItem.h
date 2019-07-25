@@ -22,6 +22,7 @@ struct CompoundItem_t : public Content_t
     Token_t* firstTokenPtr; ///< Ptr to the first token in the item.
     Token_t* lastTokenPtr;  ///< Ptr to the last token in the item.
 
+    [[noreturn]]
     void ThrowException(const std::string& msg) const __attribute__ ((noreturn))
     {
         firstTokenPtr->ThrowException(msg);

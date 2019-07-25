@@ -16,8 +16,10 @@ import Uri from 'vscode-uri';
 
 import * as ext from './lspExtensionDefs';
 import * as lspCli from './lspClient';
+import * as fsUtil from './fsUtil';
 import * as model from './model/annotatedModel';
 import * as conversion from './vscTypeConvert';
+import * as nav from './model/dataNavigation';
 
 
 
@@ -37,7 +39,6 @@ const Client = new lspCli.LspClient();
 //   Connection event handlers.
 // -------------------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------------------
-
 
 
 
@@ -89,17 +90,23 @@ Client.connection.onInitialize((params: lsp.InitializeParams): lsp.InitializeRes
         return {
             capabilities:
             {
-                definitionProvider: false,
-                documentHighlightProvider: false,
-                documentSymbolProvider: false,
-                foldingRangeProvider: false,
+                workspaceSymbolProvider: true,
+                documentSymbolProvider: true,
+                hoverProvider: true,
 
-                textDocumentSync: lsp.TextDocumentSyncKind.Full,
+                textDocumentSync:
+                    {
+                        openClose: true,
+                        change: lsp.TextDocumentSyncKind.Full,
+                        willSave: false,
+                        willSaveWaitUntil: false,
+                        save: { includeText: false }
+                    },
 
                 completionProvider:
-                {
-                    resolveProvider: false
-                }
+                    {
+                        resolveProvider: false
+                    }
             }
         };
     });
@@ -177,6 +184,125 @@ Client.connection.onExit(() =>
 
 
 // -------------------------------------------------------------------------------------------------
+/**
+ * Record an exception that occurred to the language server log.
+ *
+ * @param error The exception object itself.
+ */
+// -------------------------------------------------------------------------------------------------
+function RecordError(error: any)
+{
+    console.error(error.message);
+    console.error('Call stack:\n' + error.stack);
+}
+
+
+
+type RegHandlerType<PT, RT> = (arg: PT) => RT;
+type RegFunctionType<PT, RT> = (handler: RegHandlerType<PT, RT>) => void;
+type RegType<PT, RT> = string | RegFunctionType<PT, RT>;
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * A type guard to determine if the given argument is either a registration handler or a string.
+ *
+ * Returns: A true if the argument is a string, false otherwise.
+ *
+ * @param arg Is this a registration handler or is it a string object?
+ */
+// -------------------------------------------------------------------------------------------------
+function isString<PT, RT>(arg: RegType<PT, RT>): arg is string
+{
+    return typeof arg === "string";
+}
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Wrap an event handler in a simple default try catch handler.  This catch handler will simply dump
+ * the error information to the VS code console and return the default value that was passed in.
+ *
+ * @param defaultResult What to return if the call fails.
+ * @param registerFn The function that handles the event registration.
+ * @param handler The user code that will do the actual work.
+ */
+// -------------------------------------------------------------------------------------------------
+function RegValHandler<PT, RT>(defaultResult: RT,
+                               registerFn: RegType<PT, RT>,
+                               handler: (arg: PT) => RT)
+{
+    // Attempt to call the user handler, if any exception is thrown, log it.
+    function TryHandler(arg: PT): RT
+    {
+        let result: RT = defaultResult;
+
+        try
+        {
+            result = handler(arg);
+        }
+        catch (e)
+        {
+            RecordError(e);
+        }
+
+        return result;
+    }
+
+    // If registerFn is a string, it's a custom protocol handler.  Otherwise it's a standard
+    // protocol item.
+    if (isString(registerFn))
+    {
+        Client.connection.onRequest(registerFn, TryHandler);
+    }
+    else
+    {
+        registerFn(TryHandler);
+    }
+}
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Wrap an event handler in a simple default try catch handler.  If any exceptions occur, the error
+ * information is reported on the console.
+ *
+ * @param registerFn The function that handles the event registration.
+ * @param handler The actual work happens in this function.
+ */
+// -------------------------------------------------------------------------------------------------
+function RegHandler<PT>(registerFn: RegType<PT, void>, handler: (arg: PT) => void)
+{
+    // Attempt to call the user handler, if any exception is thrown, log it.
+    function TryHandler(arg: PT)
+    {
+        try
+        {
+            handler(arg);
+        }
+        catch (e)
+        {
+            RecordError(e);
+        }
+    }
+
+    // See if we are registering a builtin handler, or a custom protocol handler.
+    if (isString(registerFn))
+    {
+        Client.connection.onRequest(registerFn, TryHandler);
+    }
+    else
+    {
+        registerFn(TryHandler);
+    }
+}
+
+
+
+// -------------------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------------------
 //   Workspace folder event handlers.
 // -------------------------------------------------------------------------------------------------
@@ -188,28 +314,34 @@ Client.connection.onExit(() =>
 //   Text sync event handlers.
 // -------------------------------------------------------------------------------------------------
 
-Client.connection.onDidOpenTextDocument((params: lsp.DidOpenTextDocumentParams) =>
+RegHandler(Client.connection.onDidOpenTextDocument,
+    (_params: lsp.DidOpenTextDocumentParams) =>
     {
     });
 
-Client.connection.onDidChangeTextDocument((params: lsp.DidChangeTextDocumentParams) =>
+RegHandler(Client.connection.onDidChangeTextDocument,
+    (_params: lsp.DidChangeTextDocumentParams) =>
     {
     });
 
-Client.connection.onWillSaveTextDocument((params: lsp.WillSaveTextDocumentParams) =>
+RegHandler(Client.connection.onWillSaveTextDocument,
+    (_params: lsp.WillSaveTextDocumentParams) =>
     {
     });
 
-Client.connection.onWillSaveTextDocumentWaitUntil((params: lsp.WillSaveTextDocumentParams): lsp.TextEdit[] =>
+RegValHandler([], Client.connection.onWillSaveTextDocumentWaitUntil,
+    (_params: lsp.WillSaveTextDocumentParams): lsp.TextEdit[] =>
     {
-        return undefined;
+        return [];
     });
 
-Client.connection.onDidSaveTextDocument((params: lsp.DidSaveTextDocumentParams) =>
+RegHandler(Client.connection.onDidSaveTextDocument,
+    (_params: lsp.DidSaveTextDocumentParams) =>
     {
     });
 
-Client.connection.onDidCloseTextDocument((params: lsp.DidCloseTextDocumentParams) =>
+RegHandler(Client.connection.onDidCloseTextDocument,
+    (_params: lsp.DidCloseTextDocumentParams) =>
     {
     });
 
@@ -219,18 +351,102 @@ Client.connection.onDidCloseTextDocument((params: lsp.DidCloseTextDocumentParams
 //   Language feature event handlers.
 // -------------------------------------------------------------------------------------------------
 
-Client.connection.onCompletion((params: lsp.CompletionParams): lsp.CompletionList =>
+RegValHandler(undefined, Client.connection.onCompletion,
+    (params: lsp.CompletionParams): lsp.CompletionList =>
+    {
+        console.log("On completion...");
+
+        let filePathUri = params.textDocument.uri;
+        let dirPath = path.dirname(path.normalize(Uri.parse(filePathUri).fsPath));
+        let env = conversion.getClientLocalEnvironment(Client, dirPath);
+
+        let results = conversion.envVarsToCompletion(env);
+
+        let line = params.position.line + 1;
+        let column = params.position.character;
+
+        let docTokens = Client.profile.getDocTokens(filePathUri);
+
+        if (docTokens === undefined)
+        {
+            return results;
+        }
+
+        let section = nav.getSectionType(dirPath, docTokens, line, column, true);
+
+        if (section === undefined)
+        {
+            return results;
+        }
+
+        let workspace = Uri.parse(Client.profile.workspaceFolders[0].uri).fsPath;
+        conversion.appendSectionCompletions(results, section, workspace);
+
+        return results;
+    });
+
+RegValHandler(undefined, Client.connection.onCompletionResolve,
+    (_params: lsp.CompletionItem): lsp.CompletionItem =>
     {
         return undefined;
     });
 
- Client.connection.onCompletionResolve((params: lsp.CompletionItem): lsp.CompletionItem =>
+RegValHandler(undefined, Client.connection.onHover,
+    (params: lsp.TextDocumentPositionParams): lsp.Hover | undefined =>
     {
+        if (Client.profile.uriInActiveModel(params.textDocument.uri) === false)
+        {
+            return undefined;
+        }
+
+        let filePathUri = params.textDocument.uri;
+
+        let line = params.position.line + 1;
+        let column = params.position.character;
+
+        let docTokens = Client.profile.getDocTokens(filePathUri);
+        let dirPath = path.dirname(path.normalize(Uri.parse(filePathUri).fsPath));
+        let section = nav.getSectionType(dirPath, docTokens, line, column);
+        let env = conversion.getClientLocalEnvironment(Client, dirPath);
+
+        if (section !== undefined)
+        {
+            if (section.onToken !== undefined)
+            {
+                let oldText = section.onToken.text;
+                let newText = nav.expandText(oldText, env);
+
+                if (oldText !== newText)
+                {
+                    return {
+                            contents: newText,
+
+                            range: {
+                                start: {
+                                    line: section.onToken.location.line - 1,
+                                    character: section.onToken.location.column
+                                },
+
+                                end: {
+                                    line: section.onToken.location.line - 1,
+                                    character:   section.onToken.location.column
+                                               + section.onToken.text.length
+                                }
+                            }
+                        };
+                }
+            }
+        }
+        else
+        {
+            console.log("Point not in section.");
+        }
+
         return undefined;
     });
 
-Client.connection.onDocumentSymbol(
-    (params: lsp.DocumentSymbolParams): lsp.SymbolInformation[] | lsp.DocumentSymbol[] =>
+RegValHandler([], Client.connection.onDocumentSymbol,
+    (_params: lsp.DocumentSymbolParams): lsp.SymbolInformation[] | lsp.DocumentSymbol[] =>
     {
         if (!(Client.profile.activeModel instanceof model.System))
         {
@@ -244,7 +460,8 @@ Client.connection.onDocumentSymbol(
         return [];
     });
 
-Client.connection.onFoldingRanges((params: lsp.FoldingRangeRequestParam): lsp.FoldingRange[] =>
+RegValHandler([], Client.connection.onFoldingRanges,
+    (_params: lsp.FoldingRangeRequestParam): lsp.FoldingRange[] =>
     {
         return undefined;
     });
@@ -255,28 +472,38 @@ Client.connection.onFoldingRanges((params: lsp.FoldingRangeRequestParam): lsp.Fo
 //   Workspace event handlers.
 // -------------------------------------------------------------------------------------------------
 
-Client.connection.onWorkspaceSymbol((params: lsp.WorkspaceSymbolParams): lsp.SymbolInformation[] =>
+RegValHandler([], Client.connection.onWorkspaceSymbol,
+    (params: lsp.WorkspaceSymbolParams): lsp.SymbolInformation[] =>
     {
         let filePaths: string[] = [];
 
         switch ('.' + params.query)
         {
             case model.DefType.systemDef:
-                filePaths = Client.profile.availableSystems;
+                filePaths = Client.profile.getAvailableSystems();
                 break;
 
             case model.DefType.applicationDef:
-                filePaths = Client.profile.availableApps;
+                let dirPath = path.dirname(
+                    path.normalize(Uri.parse(Client.profile.workspaceFolders[0].uri).fsPath));
+
+                filePaths = Client.profile.getAvailableApps();
+
+                filePaths = filePaths.concat(fsUtil.recursiveFileFind(dirPath, '.adef'));
+                filePaths = filePaths.concat(fsUtil.recursiveFileFind(dirPath, '.app'));
                 break;
 
             case model.DefType.componentDef:
-                filePaths = Client.profile.availableComponents;
+                filePaths = Client.profile.getAvailableComponents();
                 break;
 
             case model.DefType.apiDef:
-                filePaths = Client.profile.availableInterfaces;
+                filePaths = Client.profile.getAvailableInterfaces();
                 break;
         }
+
+        // Make sure that there are no duplicate paths.
+        filePaths = [ ...new Set(filePaths) ];
 
         return conversion.FilePathsToSymbolInformation(filePaths);
     });
@@ -290,14 +517,14 @@ Client.connection.onWorkspaceSymbol((params: lsp.WorkspaceSymbolParams): lsp.Sym
 const ExtensionVersion = "0.2";
 
 
-Client.connection.onRequest("le_GetExtensionProtocolVersion",
+RegValHandler("", "le_GetExtensionProtocolVersion",
     (): string =>
     {
         return ExtensionVersion;
     });
 
-Client.connection.onRequest("le_SetClientExtensionProtocolVersion",
-    (requestedVersion: string): boolean =>
+RegValHandler(true, "le_SetClientExtensionProtocolVersion",
+    (_requestedVersion: string): boolean =>
     {
         return true;
     });
@@ -307,31 +534,22 @@ Client.connection.onRequest("le_SetClientExtensionProtocolVersion",
 //   Legato system extension protocol handlers.
 // -------------------------------------------------------------------------------------------------
 
-Client.connection.onRequest("le_GetLogicalView",
+RegValHandler([], "le_GetLogicalView",
     (): any =>
     {
-        let flags: conversion.ConversionFlags = { supportsDefaultCollapsed: false };
-        return conversion.SystemAsSymbol(flags, Client.profile.activeModel as model.System, []);
+        return conversion.SystemAsSymbol(Client.profile.activeModel as model.System);
     });
 
-Client.connection.onRequest("le_registerModelUpdates",
+RegHandler("le_registerModelUpdates",
     () =>
     {
-        try
+        if (Client.profile.clientProperties.supportsModelUpdates)
         {
-            if (Client.profile.clientProperties.supportsModelUpdates)
-            {
-                Client.profile.receiveModelUpdates = true;
-            }
-        }
-        catch (e)
-        {
-            console.log('  le_registerModelUpdates Exception: ' + e);
-            console.error(e.stack);
+            Client.profile.receiveModelUpdates = true;
         }
     });
 
-Client.connection.onRequest("le_unregisterModelUpdates",
+RegHandler("le_unregisterModelUpdates",
     () =>
     {
         if (Client.profile.clientProperties.supportsModelUpdates)
@@ -340,7 +558,7 @@ Client.connection.onRequest("le_unregisterModelUpdates",
         }
     });
 
-Client.connection.onRequest("le_listDefinitions",
+RegValHandler({ definitions: [] }, "le_listDefinitions",
     (params: ext.le_ListAvailableDefsRequest): ext.le_ListAvailableDefsResponse =>
     {
         let response: ext.le_ListAvailableDefsResponse = { definitions: [] };
@@ -348,7 +566,7 @@ Client.connection.onRequest("le_listDefinitions",
         switch (params.defType)
         {
             case ext.le_DefinitionType.sdef:
-                response.definitions = Client.profile.availableSystems.map(
+                response.definitions = Client.profile.getAvailableSystems().map(
                     (value: string): ext.le_DefinitionFile =>
                     {
                         return {
@@ -360,7 +578,7 @@ Client.connection.onRequest("le_listDefinitions",
                 break;
 
             case ext.le_DefinitionType.adef:
-                response.definitions = Client.profile.availableApps.map(
+                response.definitions = Client.profile.getAvailableApps().map(
                     (value: string): ext.le_DefinitionFile =>
                     {
                         return {

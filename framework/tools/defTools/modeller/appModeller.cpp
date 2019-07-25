@@ -415,7 +415,8 @@ static void AddLocalBindings
 void AddExecutable
 (
     model::App_t* appPtr,
-    model::Exe_t* exePtr
+    model::Exe_t* exePtr,
+    const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -440,7 +441,8 @@ void AddExecutable
     // would just sit there doing nothing, so throw an exception.
     if (   (exePtr->hasCOrCppCode == false)
         && (exePtr->hasJavaCode == false)
-        && (exePtr->hasPythonCode == false))
+        && (exePtr->hasPythonCode == false)
+        && (buildParams.isRelaxedStrictness == false))
     {
         exePtr->exeDefPtr->ThrowException(LE_I18N("Executable doesn't contain any components"
                                                   " that have source code files."));
@@ -514,7 +516,7 @@ static void AddExecutables
             }
 
             // Add the executable to the application.
-            AddExecutable(appPtr, exePtr);
+            AddExecutable(appPtr, exePtr, buildParams);
         };
 
     auto executablesSectionPtr = ToCompoundItemListPtr(sectionPtr);
@@ -578,8 +580,14 @@ static model::ApiFile_t* GetPreBuiltInterface
         interfaceName = contentList[0]->text;
         apiFilePath = file::FindFile(DoSubstitution(contentList[1]),
                                      buildParams.interfaceDirs);
+
         if (apiFilePath == "")
         {
+            if (buildParams.isRelaxedStrictness)
+            {
+                return nullptr;
+            }
+
             contentList[1]->ThrowException("Couldn't find file '" + contentList[1]->text + "'.");
         }
     }
@@ -590,6 +598,11 @@ static model::ApiFile_t* GetPreBuiltInterface
                                      buildParams.interfaceDirs);
         if (apiFilePath == "")
         {
+            if (buildParams.isRelaxedStrictness)
+            {
+                return nullptr;
+            }
+
             contentList[0]->ThrowException(
                                  mk::format(LE_I18N("Couldn't find file, '%s'."),
                                                     DoSubstitution(contentList[0])));
@@ -1012,6 +1025,7 @@ static void AddProcessesSections
 //--------------------------------------------------------------------------------------------------
 static void MarkInterfaceExternal
 (
+    const mk::BuildParams_t& buildParams,
     model::App_t* appPtr,
     model::ApiInterfaceInstance_t* ifInstancePtr, ///< Ptr to the interface instance object.
     const parseTree::Token_t* nameTokenPtr    ///< Ptr to token containing name to use outside app.
@@ -1041,6 +1055,7 @@ static void MarkInterfaceExternal
 //--------------------------------------------------------------------------------------------------
 static void MakeInterfaceExternal
 (
+    const mk::BuildParams_t& buildParams,
     model::App_t* appPtr,
     const parseTree::Token_t* nameTokenPtr,
     const parseTree::Token_t* exeTokenPtr,
@@ -1072,6 +1087,11 @@ static void MakeInterfaceExternal
 
     if ((clientIfPtr == NULL) && (serverIfPtr == NULL))
     {
+        if (buildParams.isRelaxedStrictness)
+        {
+            return;
+        }
+
         nameTokenPtr->ThrowException(
             mk::format(LE_I18N("Interface '%s' not found in component '%s' in executable '%s'."),
                        interfaceName, componentName, exeName)
@@ -1081,13 +1101,13 @@ static void MakeInterfaceExternal
     // Mark the interface "external", and add it to the appropriate list of external interfaces.
     if (clientIfPtr != NULL)
     {
-        MarkInterfaceExternal(appPtr, clientIfPtr, nameTokenPtr);
+        MarkInterfaceExternal(buildParams, appPtr, clientIfPtr, nameTokenPtr);
 
         appPtr->externClientInterfaces[name] = clientIfPtr;
     }
     else
     {
-        MarkInterfaceExternal(appPtr, serverIfPtr, nameTokenPtr);
+        MarkInterfaceExternal(buildParams, appPtr, serverIfPtr, nameTokenPtr);
 
         appPtr->externServerInterfaces[name] = serverIfPtr;
     }
@@ -1101,6 +1121,7 @@ static void MakeInterfaceExternal
 //--------------------------------------------------------------------------------------------------
 static void MakeInterfacesExternal
 (
+    const mk::BuildParams_t& buildParams,
     model::App_t* appPtr,
     const std::list<const parseTree::ExternApiInterface_t*>& interfaces
 )
@@ -1116,13 +1137,13 @@ static void MakeInterfacesExternal
         // exe, component, and interface names of the interface instance.
         if (tokens.size() == 4)
         {
-            MakeInterfaceExternal(appPtr, tokens[0], tokens[1], tokens[2], tokens[3]);
+            MakeInterfaceExternal(buildParams, appPtr, tokens[0], tokens[1], tokens[2], tokens[3]);
         }
         // Otherwise, there are 3 content tokens and the interface is exported using the
         // internal name of the interface on the component.
         else
         {
-            MakeInterfaceExternal(appPtr, tokens[2], tokens[0], tokens[1], tokens[2]);
+            MakeInterfaceExternal(buildParams, appPtr, tokens[2], tokens[0], tokens[1], tokens[2]);
         }
     }
 }
@@ -1135,6 +1156,7 @@ static void MakeInterfacesExternal
 //--------------------------------------------------------------------------------------------------
 static void GetBindingServerSide
 (
+    const mk::BuildParams_t& buildParams,
     model::Binding_t* bindingPtr,   ///< Binding object to populate with the server-side details.
     const std::vector<parseTree::Token_t*>& tokens, ///< List of tokens in the binding spec.
     size_t startIndex,  ///< Index into the token list of the first token in the server i/f spec.
@@ -1146,7 +1168,6 @@ static void GetBindingServerSide
     // NAME         NAME            NAME            = internal binding
     // IPC_AGENT    NAME                            = external binding
     // STAR         NAME                            = internal binding to pre-built binary server
-
     // External binding?
     if (tokens[startIndex]->type == parseTree::Token_t::IPC_AGENT)
     {
@@ -1175,7 +1196,8 @@ static void GetBindingServerSide
     else
     {
         // Find the interface that matches this specification.
-        auto serverIfPtr = appPtr->FindServerInterface(tokens[startIndex],
+        auto serverIfPtr = appPtr->FindServerInterface(buildParams,
+                                                       tokens[startIndex],
                                                        tokens[startIndex + 1],
                                                        tokens[startIndex + 2]);
         // Populate the binding object.
@@ -1194,6 +1216,7 @@ static void GetBindingServerSide
 //--------------------------------------------------------------------------------------------------
 static void AddBindings
 (
+    const mk::BuildParams_t& buildParams,
     model::App_t* appPtr,
     const parseTree::CompoundItem_t* bindingsSectionPtr
 )
@@ -1222,7 +1245,7 @@ static void AddBindings
             // STAR NAME IPC_AGENT NAME      = external binding to user or app
             // STAR NAME NAME      NAME NAME = internal binding to exe
             bindingPtr->clientIfName = tokens[1]->text;
-            GetBindingServerSide(bindingPtr, tokens, 2, appPtr);
+            GetBindingServerSide(buildParams, bindingPtr, tokens, 2, appPtr);
 
             // Look up the interface object.
             auto i = appPtr->preBuiltClientInterfaces.find(bindingPtr->clientIfName);
@@ -1280,23 +1303,29 @@ static void AddBindings
             // 0    1    2    3         4    5
             // NAME NAME NAME IPC_AGENT NAME      = external binding to user or app
             // NAME NAME NAME NAME      NAME NAME = internal binding to exe
-            auto clientIfPtr = appPtr->FindClientInterface(tokens[0], tokens[1], tokens[2]);
-            bindingPtr->clientIfName = clientIfPtr->name;
-            GetBindingServerSide(bindingPtr, tokens, 3, appPtr);
-
-            // Check for multiple bindings of the same client-side interface.
-            if (clientIfPtr->bindingPtr != NULL)
+            auto clientIfPtr = appPtr->FindClientInterface(buildParams,
+                                                           tokens[0],
+                                                           tokens[1],
+                                                           tokens[2]);
+            if (clientIfPtr != nullptr)
             {
-                tokens[0]->ThrowException(
-                    mk::format(LE_I18N("Client interface bound more than once.\n"
-                                       "%s: note: First binding here"),
-                               clientIfPtr->bindingPtr->parseTreePtr->Contents()[0]->GetLocation()
-                    )
-                );
-            }
+                bindingPtr->clientIfName = clientIfPtr->name;
+                GetBindingServerSide(buildParams, bindingPtr, tokens, 3, appPtr);
 
-            // Record the binding in the client-side interface object.
-            clientIfPtr->bindingPtr = bindingPtr;
+                // Check for multiple bindings of the same client-side interface.
+                if (clientIfPtr->bindingPtr != NULL)
+                {
+                    tokens[0]->ThrowException(
+                        mk::format(LE_I18N("Client interface bound more than once.\n"
+                                        "%s: note: First binding here"),
+                                clientIfPtr->bindingPtr->parseTreePtr->Contents()[0]->GetLocation()
+                        )
+                    );
+                }
+
+                // Record the binding in the client-side interface object.
+                clientIfPtr->bindingPtr = bindingPtr;
+            }
         }
     }
 }
@@ -1309,6 +1338,7 @@ static void AddBindings
 //--------------------------------------------------------------------------------------------------
 static void AddBindings
 (
+    const mk::BuildParams_t& buildParams,
     model::App_t* appPtr,
     std::list<const parseTree::CompoundItem_t*> bindingsSections
 )
@@ -1316,7 +1346,7 @@ static void AddBindings
 {
     for (auto bindingsSectionPtr : bindingsSections)
     {
-        AddBindings(appPtr, bindingsSectionPtr);
+        AddBindings(buildParams, appPtr, bindingsSectionPtr);
     }
 }
 
@@ -2103,11 +2133,11 @@ model::App_t* GetApp
 
     // Process IPC API externs on executables built by the mk tools.
     // This must be done after all components and executables have been modelled.
-    MakeInterfacesExternal(appPtr, externApiInterfaces);
+    MakeInterfacesExternal(buildParams, appPtr, externApiInterfaces);
 
     // Process bindings.  This must be done after all the components and executables have been
     // modelled and all the external API interfaces have been processed.
-    AddBindings(appPtr, bindingsSections);
+    AddBindings(buildParams, appPtr, bindingsSections);
 
     // Ensure that all processes have a PATH environment variable.
     EnsurePathIsSet(appPtr);

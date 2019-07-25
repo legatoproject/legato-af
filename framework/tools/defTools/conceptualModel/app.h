@@ -30,6 +30,7 @@ struct App_t : public HasTargetInfo_t
         ANY_VERSION     ///< App is preloaded; no version check, MD5 hash can be any.
     };
 
+    App_t(const std::string& name, const std::string& filePath);
     App_t(parseTree::AdefFile_t* filePtr);
 
     const parseTree::AdefFile_t* defFilePtr;  ///< Pointer to root of parse tree for the .adef file.
@@ -114,10 +115,12 @@ struct App_t : public HasTargetInfo_t
                                                const parseTree::Token_t* componentTokenPtr);
 
     // Functions for looking up interface instances.  Throw exception if not found.
-    ApiServerInterfaceInstance_t* FindServerInterface(const parseTree::Token_t* exeTokenPtr,
+    ApiServerInterfaceInstance_t* FindServerInterface(const mk::BuildParams_t& buildParams,
+                                                      const parseTree::Token_t* exeTokenPtr,
                                                       const parseTree::Token_t* componentTokenPtr,
                                                       const parseTree::Token_t* interfaceTokenPtr);
-    ApiClientInterfaceInstance_t* FindClientInterface(const parseTree::Token_t* exeTokenPtr,
+    ApiClientInterfaceInstance_t* FindClientInterface(const mk::BuildParams_t& buildParams,
+                                                      const parseTree::Token_t* exeTokenPtr,
                                                       const parseTree::Token_t* componentTokenPtr,
                                                       const parseTree::Token_t* interfaceTokenPtr);
     ApiClientInterfaceInstance_t* FindClientInterface(const parseTree::Token_t* interfaceTokenPtr);

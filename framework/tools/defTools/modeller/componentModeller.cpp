@@ -495,8 +495,13 @@ static void GetProvidedApi
         apiFilePath = file::FindFile(DoSubstitution(contentList[1]), buildParams.interfaceDirs);
         if (apiFilePath == "")
         {
+            if (buildParams.isRelaxedStrictness)
+            {
+                return;
+            }
+
             contentList[1]->ThrowException(
-                mk::format(LE_I18N("Couldn't find file '%s'."), contentList[1]->text)
+                mk::format(LE_I18N("* Couldn't find file '%s'."), contentList[1]->text)
             );
         }
     }
@@ -506,8 +511,13 @@ static void GetProvidedApi
         apiFilePath = file::FindFile(DoSubstitution(contentList[0]), buildParams.interfaceDirs);
         if (apiFilePath == "")
         {
+            if (buildParams.isRelaxedStrictness)
+            {
+                return;
+            }
+
             contentList[0]->ThrowException(
-                mk::format(LE_I18N("Couldn't find file '%s'."), contentList[0]->text)
+                mk::format(LE_I18N("* Couldn't find file '%s'."), contentList[0]->text)
             );
         }
     }
@@ -537,6 +547,11 @@ static void GetProvidedApi
 
     if (direct && async)
     {
+        if (buildParams.isRelaxedStrictness)
+        {
+            return;
+        }
+
         itemPtr->ThrowException(LE_I18N("Can't use [direct] with [async]"
                                   " for the same interface."));
     }
@@ -731,6 +746,11 @@ static void GetRequiredApi
         apiFilePath = file::FindFile(DoSubstitution(contentList[1]), buildParams.interfaceDirs);
         if (apiFilePath == "")
         {
+            if (buildParams.isRelaxedStrictness)
+            {
+                return;
+            }
+
             contentList[1]->ThrowException(
                 mk::format(LE_I18N("Couldn't find file '%s'."), contentList[1]->text)
             );
@@ -743,7 +763,12 @@ static void GetRequiredApi
         apiFilePath = file::FindFile(substString, buildParams.interfaceDirs);
         if (apiFilePath == "")
         {
-            contentList[0]->ThrowException(mk::format(LE_I18N("Couldn't find file '%s.'"),
+            if (buildParams.isRelaxedStrictness)
+            {
+                return;
+            }
+
+            contentList[0]->ThrowException(mk::format(LE_I18N("* Couldn't find file '%s.'"),
                                                       substString));
         }
     }
@@ -1507,6 +1532,11 @@ model::Component_t* GetComponent
     }
     if (resolvedPath.empty())
     {
+        if (buildParams.isRelaxedStrictness)
+        {
+            return nullptr;
+        }
+
         tokenPtr->ThrowException(
             mk::format(LE_I18N("Couldn't find component '%s'."), componentPath)
         );

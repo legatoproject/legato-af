@@ -9,8 +9,6 @@
 
 "use strict";
 
-import * as fs from 'fs';
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -219,6 +217,52 @@ export interface Executable
 }
 
 
+export interface BindingSide
+{
+    agent: string;
+    interface: string;
+    type: string
+}
+
+
+export interface BindingInfo
+{
+    client: BindingInfo;
+    server: BindingInfo;
+}
+
+
+export interface ClientInterface
+{
+    binding: BindingInfo;
+    interface: { manualStart: boolean; name: string; optional: boolean; path: string };
+    name: string;
+}
+
+
+export interface ServerInterface
+{
+    interface: { async: boolean; manualStart: boolean; name: string; path: string };
+    name: string;
+}
+
+
+
+export interface InterfaceCollection
+{
+    clients: ClientInterface[];
+    servers: ServerInterface[];
+}
+
+
+
+export interface Interfaces
+{
+    extern: InterfaceCollection;
+    preBuilt: InterfaceCollection;
+}
+
+
 
 export interface Application
 {
@@ -226,6 +270,7 @@ export interface Application
     path: string;
     components: string[];
     executables: Executable[];
+    interfaces: Interfaces;
 }
 
 
@@ -278,6 +323,13 @@ export interface Model
 
 
 
+export interface EnvVars
+{
+    [name: string]: string;
+}
+
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * .
@@ -286,6 +338,7 @@ export interface Model
 export interface Document
 {
     version: string;
+    env?: EnvVars;
     buildParams: BuildParams;
     model: Model;
     tokenMap: TokenMap;

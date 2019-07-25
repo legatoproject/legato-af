@@ -387,7 +387,7 @@ void Save
 /**
  * Compares the current environment variables with those stored in the build's working directory.
  *
- * @return true if the environment variabls are effectively the same or
+ * @return true if the environment variables are effectively the same or
  *         false if there's a significant difference.
  */
 //--------------------------------------------------------------------------------------------------

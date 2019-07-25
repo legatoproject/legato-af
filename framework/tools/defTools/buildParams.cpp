@@ -23,6 +23,7 @@ BuildParams_t::BuildParams_t
 )
 //--------------------------------------------------------------------------------------------------
 :   beVerbose(false),
+    isRelaxedStrictness(false),
     jobCount(0),
     target("localhost"),
     osType("linux"),

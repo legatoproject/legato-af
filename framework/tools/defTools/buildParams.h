@@ -21,6 +21,7 @@ namespace mk
 struct BuildParams_t
 {
     bool                    beVerbose;          ///< true = output progress msgs to stdout.
+    bool                    isRelaxedStrictness;///< true = Will build the model even with errors.
     int                     jobCount;           ///< Number of job counts (ninja default if 0)
     std::string             target;             ///< (e.g., "localhost" or "ar7")
     std::string             osType;             ///< (e.g., "linux" or "rtos")

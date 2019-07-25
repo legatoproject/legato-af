@@ -19,6 +19,38 @@ namespace model
 //--------------------------------------------------------------------------------------------------
 App_t::App_t
 (
+    const std::string& name,
+    const std::string& filePath
+)
+//--------------------------------------------------------------------------------------------------
+:   defFilePtr(nullptr),
+    parseTreePtr(nullptr),
+    dir(path::MakeAbsolute(path::GetContainingDir(filePath))),
+    name(name),
+    workingDir("app/" + name),
+    isSandboxed(true),
+    startTrigger(AUTO),
+    preloadedMode(NONE),
+    isPreBuilt(false),
+    cpuShare(1024),
+    maxFileSystemBytes(128 * 1024),   // 128 KB
+    maxMemoryBytes(40000 * 1024), // 40 MB
+    maxMQueueBytes(512),
+    maxQueuedSignals(100),
+    maxThreads(20),
+    maxSecureStorageBytes(8192)
+//--------------------------------------------------------------------------------------------------
+{
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Constructor
+ **/
+//--------------------------------------------------------------------------------------------------
+App_t::App_t
+(
     parseTree::AdefFile_t* filePtr  ///< Pointer to the root of the parse tree for the .adef file.
 )
 //--------------------------------------------------------------------------------------------------
@@ -106,6 +138,7 @@ ComponentInstance_t* App_t::FindComponentInstance
 //--------------------------------------------------------------------------------------------------
 ApiServerInterfaceInstance_t* App_t::FindServerInterface
 (
+    const mk::BuildParams_t& buildParams,
     const parseTree::Token_t* exeTokenPtr,
     const parseTree::Token_t* componentTokenPtr,
     const parseTree::Token_t* interfaceTokenPtr
@@ -143,6 +176,11 @@ ApiServerInterfaceInstance_t* App_t::FindServerInterface
 
             if (ifInstancePtr == NULL)
             {
+                if (buildParams.isRelaxedStrictness)
+                {
+                    return nullptr;
+                }
+
                 interfaceTokenPtr->ThrowException(
                                   mk::format(LE_I18N("Server interface '%s' not found in component "
                                                      "'%s' in executable '%s'."),
@@ -169,6 +207,7 @@ ApiServerInterfaceInstance_t* App_t::FindServerInterface
 //--------------------------------------------------------------------------------------------------
 ApiClientInterfaceInstance_t* App_t::FindClientInterface
 (
+    const mk::BuildParams_t& buildParams,
     const parseTree::Token_t* exeTokenPtr,
     const parseTree::Token_t* componentTokenPtr,
     const parseTree::Token_t* interfaceTokenPtr
@@ -195,9 +234,13 @@ ApiClientInterfaceInstance_t* App_t::FindClientInterface
 
         // Find the interface in the component instance's list of client interfaces,
         ifInstancePtr = componentInstancePtr->FindClientInterface(interfaceName);
-
         if (ifInstancePtr == NULL)
         {
+            if (buildParams.isRelaxedStrictness)
+            {
+                return nullptr;
+            }
+
             interfaceTokenPtr->ThrowException(
                         mk::format(LE_I18N("Client interface '%s' not found in component '%s'"
                                             " in executable '%s'."),

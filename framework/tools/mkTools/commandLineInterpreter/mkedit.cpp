@@ -1384,6 +1384,7 @@ void MakeEdit
     Handler.buildParams.argc = argc;
     Handler.buildParams.argv = argv;
     Handler.buildParams.readOnly = true;
+    Handler.buildParams.isRelaxedStrictness = true;
 
     // Get tool chain info from environment variables.
     // (Must be done after command-line args parsing and before setting target-specific env vars.)

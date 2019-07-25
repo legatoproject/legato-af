@@ -35,7 +35,7 @@ struct CommandArgs_t
 
 //--------------------------------------------------------------------------------------------------
 /**
- * .
+ * Create a string that represents the allowed extensions.
  **/
 //--------------------------------------------------------------------------------------------------
 static std::string ExtensionsToStr
@@ -58,7 +58,7 @@ static std::string ExtensionsToStr
 
 //--------------------------------------------------------------------------------------------------
 /**
- * .
+ * Throw an exception for missing definition error.
  **/
 //--------------------------------------------------------------------------------------------------
 [[noreturn]]
@@ -77,7 +77,7 @@ static void ThrowMissingDefinitionError
 
 //--------------------------------------------------------------------------------------------------
 /**
- * .
+ * Throw an exception for having had too many definition files as parameters.
  **/
 //--------------------------------------------------------------------------------------------------
 [[noreturn]]
@@ -96,7 +96,7 @@ static void ThrowMultipleDefinitionError
 
 //--------------------------------------------------------------------------------------------------
 /**
- * .
+ * A file extension was specified, but this version of the software doesn't support it.
  **/
 //--------------------------------------------------------------------------------------------------
 [[noreturn]]
@@ -117,7 +117,7 @@ static void ThrowUnrecognizedExtension
 
 //--------------------------------------------------------------------------------------------------
 /**
- * .
+ * Given a list of known extensions, does the file's extension match one of our known ones?
  **/
 //--------------------------------------------------------------------------------------------------
 static DefType_t TestDefinitionExtension
@@ -176,6 +176,14 @@ static CommandArgs_t GetCommandLineArgs
                             LE_I18N("Specify the directory into which the generated json model "
                                     "should be written.  Specify a dash, -, to write to standard "
                                     "out instead."));
+
+    args::AddOptionalString(&buildParams.workingDir,
+                            "",
+                            'w',
+                            "object-dir",
+                            LE_I18N("Specify the directory into which any intermediate build "
+                                    "artifacts (such as .o files and generated source code files)"
+                                    " should be put."));
 
     args::AddMultipleString('i',
                             "interface-search",
@@ -265,6 +273,29 @@ static CommandArgs_t GetCommandLineArgs
         sourceDefinition = path::MakeAbsolute(sourceDefinition);
     }
 
+    // If we were not given a working directory (intermediate build output directory) path,
+    // use a subdirectory of the current directory, and use a different working dir for
+    // different systems and for the same system built for different targets.
+    if (buildParams.workingDir == "")
+    {
+        buildParams.workingDir = path::MakeAbsolute("./_build_"
+            + path::RemoveSuffix(path::GetLastNode(sourceDefinition),
+                                                   path::GetFileNameExtension(sourceDefinition))
+            + "/" + buildParams.target);
+    }
+    else if (buildParams.workingDir.back() == '/')
+    {
+        // Strip the trailing slash from the workingDir so the generated system will be exactly the
+        // same if the only difference is whether or not the working dir path has a trailing slash.
+        auto iter = buildParams.workingDir.end();
+        --iter;
+
+        buildParams.workingDir.erase(iter);
+    }
+    else if (!path::IsAbsolute(buildParams.workingDir))
+    {
+        buildParams.workingDir = path::MakeAbsolute(buildParams.workingDir);
+    }
 
     // Normalize the output directory and return our completed arguments structure.
     buildParams.outputDir = path::MakeAbsolute(buildParams.outputDir);
@@ -277,6 +308,8 @@ static CommandArgs_t GetCommandLineArgs
     buildParams.componentDirs.push_back(defFileDir);
     buildParams.sourceDirs.push_back(defFileDir);
     buildParams.interfaceDirs.push_back(defFileDir);
+
+    buildParams.readOnly = false;
 
     return { buildParams, sourceDefinition, sourceType };
 }
@@ -321,7 +354,6 @@ void MakeParsedModel
 
     FindToolChain(processedArgs.params);
     mk::BuildParams_t& buildParams = processedArgs.params;
-    //buildParams.readOnly = true;
 
     // Set the target-specific environment variables (e.g., LEGATO_TARGET).
     envVars::SetTargetSpecific(buildParams);

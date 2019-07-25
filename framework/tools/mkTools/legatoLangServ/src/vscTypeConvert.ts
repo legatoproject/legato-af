@@ -1,7 +1,7 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * .
+ * Convert internal language server model objects into something that the language client expects.
  *
  * Copyright (C) Sierra Wireless Inc.
  */
@@ -11,12 +11,15 @@
 
 import * as lsp from 'vscode-languageserver';
 import Uri from 'vscode-uri';
+import * as fsUtil from './fsUtil';
 import * as path from 'path';
 
 import * as model from './model/annotatedModel';
 import * as loader from './model/loader';
-import * as jdoc from "./model/jsonDocument";
 import * as ext from './lspExtensionDefs';
+import * as lspCli from './lspClient';
+import * as nav from './model/dataNavigation';
+import * as jdoc from './model/jsonDocument';
 
 
 
@@ -58,7 +61,6 @@ function GetLegatoDefName(defPath: string): string
 //--------------------------------------------------------------------------------------------------
 export function FilePathsToSymbolInformation(pathList: string[]): lsp.SymbolInformation[]
 {
-
     return pathList.map(
         (defPath: string): lsp.SymbolInformation =>
         {
@@ -143,6 +145,11 @@ export class DefinitionObject implements ext.le_DefinitionObject
 
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert component source file names into symbol objects for the language client.
+ */
+//--------------------------------------------------------------------------------------------------
 function SourcesAsSymbols(component: model.Component): ext.le_DefinitionObject[]
 {
     let sources: ext.le_DefinitionObject[] = [];
@@ -171,7 +178,8 @@ function SourcesAsSymbols(component: model.Component): ext.le_DefinitionObject[]
 
 //--------------------------------------------------------------------------------------------------
 /**
- * .
+ * Convert component names into source symbols for the language client.  Then append any source
+ * files as child symbols.
  */
 //--------------------------------------------------------------------------------------------------
 function ComponentsAsSymbols(componentSections: model.ComponentSection[]): DefinitionObject[]
@@ -206,45 +214,79 @@ function ComponentsAsSymbols(componentSections: model.ComponentSection[]): Defin
 
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- * .
- */
-//--------------------------------------------------------------------------------------------------
-function ExecutablesAsSymbols(executableSections: model.ExecutableSection[]): DefinitionObject[]
+function AddExternalInterfaces
+(
+    appSym: DefinitionObject,
+    appPath: string,
+    clients: jdoc.ClientInterface[],
+    servers: jdoc.ServerInterface[]
+)
 {
-    let sectionMap: { [index: string]: DefinitionObject } = {};
+    let start = new loader.Location(appPath, 0, 0);
 
-    for (let executableSection of executableSections)
+    let extSym = new DefinitionObject(ext.le_DefinitionObjectType.ExternalIf,
+                                      "Interface",
+                                      appPath,
+                                      start,
+                                      start,
+                                      true);
+
+    let clientSym = new DefinitionObject(ext.le_DefinitionObjectType.ExternalIf,
+                                         "Clients",
+                                         appPath,
+                                         start,
+                                         start,
+                                         true);
+
+    let serverSym = new DefinitionObject(ext.le_DefinitionObjectType.ExternalIf,
+                                         "Services",
+                                         appPath,
+                                         start,
+                                         start,
+                                         true);
+
+    for (let clientApi of clients)
     {
-        let section = sectionMap[executableSection.location.file];
+        let apiName = `${clientApi.name} (${clientApi.interface.name}.api)`;
 
-        if (section === undefined)
-        {
-            section = new DefinitionObject(ext.le_DefinitionObjectType.DefSection,
-                                           'executables',
-                                           executableSection.location.file,
-                                           executableSection.location,
-                                           executableSection.endLocation);
+        let ifSym = new DefinitionObject(ext.le_DefinitionObjectType.ExternalIf,
+            apiName,
+            clientApi.interface.path,
+            start,
+            start,
+            true);
 
-            sectionMap[executableSection.location.file] = section;
-        }
-
-        for (let executable of executableSection.executables)
-        {
-            let sym = new DefinitionObject(ext.le_DefinitionObjectType.ComponentRef,
-                                           executable.name,
-                                           executable.location.file,
-                                           executable.location,
-                                           new loader.Location(executable.name,
-                                                               executable.location.line,
-                                                               executable.location.column +
-                                                                   executable.name.length));
-            section.children.push(sym);
-        }
+        clientSym.children.push(ifSym);
     }
 
-    return Object.keys(sectionMap).map(key => sectionMap[key]);
+    for (let serverApi of servers)
+    {
+        let apiName = `${serverApi.name} (${serverApi.interface.name}.api)`;
+
+        let ifSym = new DefinitionObject(ext.le_DefinitionObjectType.ExternalIf,
+            apiName,
+            serverApi.interface.path,
+            start,
+            start,
+            true);
+
+        serverSym.children.push(ifSym);
+    }
+
+    if (clientSym.children.length > 0)
+    {
+        extSym.children.push(clientSym);
+    }
+
+    if (serverSym.children.length > 0)
+    {
+        extSym.children.push(serverSym);
+    }
+
+    if (extSym.children.length > 0)
+    {
+        appSym.children.push(extSym);
+    }
 }
 
 
@@ -255,12 +297,12 @@ function ExecutablesAsSymbols(executableSections: model.ExecutableSection[]): De
  * which system definition they came from.
  */
 //--------------------------------------------------------------------------------------------------
-function AppsAsSymbols(flags: ConversionFlags,
-                       systemPath: string,
+function AppsAsSymbols(systemPath: string,
                        appSections: model.SystemAppsSection[]): DefinitionObject[]
 {
     // Keep track of the app subsections that needed to be created.
     let sectionMap: { [index: string]: DefinitionObject } = {};
+    let mainSection: DefinitionObject = undefined;
 
     // Go through all of the system's subsections, and convert them over to the symbol model
     for (let appSection of appSections)
@@ -285,6 +327,11 @@ function AppsAsSymbols(flags: ConversionFlags,
                                            defaultCollapsed);
 
             sectionMap[newName] = section;
+
+            if (section.defaultCollapsed === false)
+            {
+                mainSection = section;
+            }
         }
 
         for (let appRef of appSection.apps)
@@ -304,60 +351,70 @@ function AppsAsSymbols(flags: ConversionFlags,
 
             if (appRef.target !== undefined)
             {
-                let components = ComponentsAsSymbols(appRef.target.componentSections);
+                console.log(`## Application ${appRef.name}: isIncluded: ${appRef.target.isIncluded}.`);
 
-                if (components.length > 0)
+                let clients: jdoc.ClientInterface[] = [];
+                let servers: jdoc.ServerInterface[] = [];
+
+                console.log(`interfaces:\n${appRef.target.interfaces.extern}`);
+
+                for (let x in appRef.target.interfaces.extern)
                 {
-                    sym.children = sym.children.concat(components);
+                    console.log(`## ${x}`);
                 }
+
+                if (appRef.target.isIncluded === false)
+                {
+                    let components = ComponentsAsSymbols(appRef.target.componentSections);
+
+                    if (components.length > 0)
+                    {
+                        sym.children = sym.children.concat(components);
+                    }
+
+                    clients = appRef.target.interfaces.extern.clients;
+                    console.log(`Clinets:\n${clients}`);
+                }
+
+                servers = appRef.target.interfaces.extern.servers;
+                console.log(`Servers:\n${servers}`);
+
+                AddExternalInterfaces(sym, appRef.target.path, clients, servers);
             }
 
             section.children.push(sym);
         }
     }
 
-    return Object.keys(sectionMap).map(
-        (key):DefinitionObject =>
+    let includedApps = Object.keys(sectionMap).map(
+        (key): DefinitionObject =>
         {
             return sectionMap[key];
         })
         .filter(
             (defObject: DefinitionObject): boolean =>
             {
-                if (defObject.children.length === 0)
+                // Filter out off if the includes with children.  We also filter out the main def
+                // file as well.
+                if (   (defObject.children.length === 0)
+                    || (defObject.defaultCollapsed === false))
                 {
                     return false;
                 }
 
                 return true;
             });
-}
 
+    let incSection = new DefinitionObject(ext.le_DefinitionObjectType.IncDefs,
+                                         'includes',
+                                         systemPath,
+                                         new loader.Location(),
+                                         new loader.Location(),
+                                         true);
 
+    incSection.children = includedApps;
 
-function ModulesAsSymbols(systemPath: string, modules: jdoc.Module[]): DefinitionObject
-{
-    let newModules = modules.map((module: jdoc.Module): DefinitionObject =>
-        {
-            let location = new loader.Location(module.path, 0, 0);
-
-            return new DefinitionObject(ext.le_DefinitionObjectType.KernelRef,
-                                        module.name,
-                                        module.path,
-                                        location,
-                                        location);
-        });
-
-    let location = new loader.Location(systemPath, 0, 0);
-    let moduleCollection = new DefinitionObject(ext.le_DefinitionObjectType.KernelRef,
-                                                "Kernel Modules",
-                                                systemPath,
-                                                location,
-                                                location);
-
-    moduleCollection.children = newModules;
-
-    return moduleCollection;
+    return [ mainSection, incSection ];
 }
 
 
@@ -368,8 +425,7 @@ function ModulesAsSymbols(systemPath: string, modules: jdoc.Module[]): Definitio
  * logical model will be represented by this object's children collection.
  */
 //--------------------------------------------------------------------------------------------------
-export function SystemAsSymbol(flags: ConversionFlags, system: model.System,
-                               modules: jdoc.Module[]): DefinitionObject
+export function SystemAsSymbol(system: model.System): DefinitionObject
 {
     let start = new loader.Location(system.path, 0, 0);
     let symbol = new DefinitionObject(ext.le_DefinitionObjectType.DefinitionFile,
@@ -379,8 +435,163 @@ export function SystemAsSymbol(flags: ConversionFlags, system: model.System,
                                       start,
                                       false);
 
-    symbol.children = AppsAsSymbols(flags, system.path, system.appSections);
-    symbol.children.push(ModulesAsSymbols(system.path, modules));
+    symbol.children = AppsAsSymbols(system.path, system.appSections);
 
     return symbol;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Construct an environment that is local to a given directory.
+ *
+ * @param localDir Include this directory in the user environment.
+ */
+//--------------------------------------------------------------------------------------------------
+export function getClientLocalEnvironment
+(
+    client: lspCli.LspClient,
+    localDir: string
+)
+//--------------------------------------------------------------------------------------------------
+: NodeJS.ProcessEnv
+//--------------------------------------------------------------------------------------------------
+{
+    let env = client.profile.environment;
+    env['CURDIR'] = localDir;
+    return env;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Turn the workspace's environment variables into language server completion items.
+ *
+ * @param env The environment we're walking to create completions.
+ */
+//--------------------------------------------------------------------------------------------------
+export function envVarsToCompletion(env: NodeJS.ProcessEnv): lsp.CompletionList
+{
+    function createItem(name: string, trueName: string): lsp.CompletionItem
+    {
+        let newItem = lsp.CompletionItem.create(name);
+
+        newItem.documentation = 'Build environment variable.';
+        newItem.filterText = trueName;
+        newItem.sortText = trueName;
+
+        return newItem;
+    }
+
+    let list: lsp.CompletionItem[] = [];
+
+    for (let variable in env)
+    {
+        list.push(createItem(variable, variable));
+        list.push(createItem('{' + variable + '}', variable));
+    }
+
+    return lsp.CompletionList.create(list);
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * CHeck the section name, and if it has a specific file extension associated with it's items,
+ * return that extension.  Otherwise return undefined.
+ *
+ * @param name The section name to check.
+ */
+//--------------------------------------------------------------------------------------------------
+function sectionNameToExtension(name: string): string | undefined
+{
+    let result: string = undefined;
+
+    switch (name)
+    {
+        case 'components':    result = '.cdef'; break;
+        case 'apps':          result = '.adef'; break;
+        case 'kernelModules': result = '.mdef'; break;
+        case 'api':           result = '.api';  break;
+        case 'sources':       result = '.c';    break;
+        case 'file':          result = '*';     break;
+    }
+
+    return result;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check the given section name and see if it is supposed to contain directory paths.
+ * @param name The section name to check.
+ */
+//--------------------------------------------------------------------------------------------------
+function sectionHasDirectoryItems(name: string): boolean
+{
+    let result = false;
+
+    switch (name)
+    {
+        case 'interfaceSearch':
+        case 'appSearch':
+        case 'componentSearch':
+        case 'moduleSearch':
+        case 'dir':
+            result = true;
+            break;
+    }
+
+    return result;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Append completion items to the results collection based on the type of section that the user is
+ * editing.
+ *
+ * @param results Append the completion items to this collection.
+ * @param section Determine the type of completion required from the section type.
+ * @param workspace The root directory we're working out of.
+ */
+//--------------------------------------------------------------------------------------------------
+export function appendSectionCompletions
+(
+    results: lsp.CompletionList,
+    section: nav.Section,
+    workspace: string
+)
+//--------------------------------------------------------------------------------------------------
+{
+    function appendCompletionStrings(regex: RegExp, results: lsp.CompletionList, strings: string[])
+    {
+        let newItems = strings.map(
+            function (item: string): lsp.CompletionItem
+            {
+                return lsp.CompletionItem.create('.' + item.replace(regex, ''));
+            });
+
+        results.items = results.items.concat(newItems);
+    }
+
+    console.log('Completion Test: ' + section.name);
+
+    let regex = new RegExp("^" + workspace);
+    let extension = sectionNameToExtension(section.name);
+
+    if (extension !== undefined)
+    {
+        console.log('File completion: ' + section.name + ': ' + extension);
+        appendCompletionStrings(regex, results, fsUtil.recursiveFileFind(workspace, extension));
+    }
+    else if (sectionHasDirectoryItems(section.name))
+    {
+        appendCompletionStrings(regex, results, fsUtil.recursiveDirFind(workspace));
+    }
 }

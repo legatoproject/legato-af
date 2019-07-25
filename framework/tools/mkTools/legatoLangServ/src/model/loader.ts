@@ -923,27 +923,6 @@ export const systemDefinition =
 
 
 
-const appPropertiesSection =
-    parser.expectOneOf
-    (
-        expectIntProperty('cpuShare', defTokens.Integer),
-        expectIntProperty('maxFileSystemBytes', defTokens.Integer),
-        expectIntProperty('maxMemoryBytes', defTokens.Integer),
-        expectIntProperty('maxMQueueBytes', defTokens.Integer),
-        expectIntProperty('maxQueuedSignals', defTokens.Integer),
-        expectIntProperty('maxThreads', defTokens.Integer),
-        expectIntProperty('maxSecureStorageBytes', defTokens.Integer),
-
-        expectStrProperty('groups', defTokens.GroupName),
-        expectStrProperty('sandboxed', defTokens.Name),
-        expectStrProperty('start', defTokens.Name),
-        expectStrProperty('version', defTokens.FileName),
-
-        //watchdogProperties
-    );
-
-
-
 const executablesSection =
     expectNamedBlockOf
     (
@@ -978,32 +957,6 @@ const executablesSection =
         (location: parser.BlockMatchLocation, data: any[]): any =>
         {
             return new model.ExecutableSection(location, data);
-        }
-    );
-
-
-
-const runSection =
-    expectNamedBlockOf
-    (
-        "run",
-        expectNamedCollection
-        (
-            (name: string, location: BlockMatchLocation, values: model.ProcessParam[]) =>
-            {
-                return new model.Process(name, location.endLocation, values);
-            },
-            (value: string, location: Location): model.ProcessParam =>
-            {
-                return new model.ProcessParam(location, value);
-            },
-            defTokens.Name,
-            defTokens.FilePath
-        ),
-
-        (location: parser.BlockMatchLocation, data: any[]): any =>
-        {
-            return new model.RunSection(location, data as model.Process[]);
         }
     );
 
@@ -1064,7 +1017,7 @@ const processSection =
             procPropertiesSection
         ),
 
-        (location: parser.BlockMatchLocation, data: any[]): any =>
+        (_location: parser.BlockMatchLocation, data: any[]): any =>
         {
             return data;
         }
@@ -1215,7 +1168,7 @@ function preProcess(tokens: Token[]): Token[]
  * Convert from the json tokens to our internal token type.
  */
 //--------------------------------------------------------------------------------------------------
-function convertTokensFromJson(testFile: string, jsonTokens: any[]): Token[]
+export function convertTokensFromJson(testFile: string, jsonTokens: any[]): Token[]
 {
     let newTokens: Token[] = [];
 
@@ -1346,7 +1299,9 @@ function convertComponent(jsonDoc: jdoc.Document, appRef: string, name: string):
  * Convert an app object found within the JSON document into a parsed annotated model object.
  */
 //--------------------------------------------------------------------------------------------------
-function convertApp(jsonDoc: jdoc.Document, appDefPath: string): model.Application
+function convertApp(jsonDoc: jdoc.Document,
+                    appDefPath: string,
+                    isIncluded: boolean): model.Application
 {
     let foundApp: jdoc.Application = undefined;
 
@@ -1370,6 +1325,9 @@ function convertApp(jsonDoc: jdoc.Document, appDefPath: string): model.Applicati
             startLocation: new Location(newApp.path, 1, 1),
             endLocation: new Location(newApp.path, 1, 1)
         };
+
+    newApp.interfaces = foundApp.interfaces;
+    newApp.isIncluded = isIncluded;
 
     newApp.componentSections.push(new model.ComponentSection(location, []));
     newApp.executableSections.push(new model.ExecutableSection(location, []));
@@ -1406,7 +1364,9 @@ function convertApp(jsonDoc: jdoc.Document, appDefPath: string): model.Applicati
  * Load the Legato model from the given json document.
  */
 //--------------------------------------------------------------------------------------------------
-export function parseSystem(jsonDoc: jdoc.Document, sysDefPath: string): model.System
+export function parseSystem(jsonDoc: jdoc.Document,
+                            sysDefPath: string,
+                            isIncluded: boolean): model.System
 {
     let tokenList = convertTokensFromJson(sysDefPath, jsonDoc.tokenMap[sysDefPath]);
     let buffer = new parser.TokenBuffer(tokenList,
@@ -1428,7 +1388,7 @@ export function parseSystem(jsonDoc: jdoc.Document, sysDefPath: string): model.S
 
             if (appDefPath !== undefined)
             {
-                let app = convertApp(jsonDoc, appDefPath);
+                let app = convertApp(jsonDoc, appDefPath, isIncluded);
 
                 if (app !== undefined)
                 {

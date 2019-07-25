@@ -17,7 +17,8 @@ namespace json
 
 //--------------------------------------------------------------------------------------------------
 /**
- * .
+ * Convert the given data map into a JSON array using the given converter function.  The resulting
+ * array does not use the keys of the original map.
  **/
 //--------------------------------------------------------------------------------------------------
 template <typename value_t>
@@ -43,7 +44,7 @@ static data::Array_t JsonArray
 
 //--------------------------------------------------------------------------------------------------
 /**
- * .
+ * Convert the given set of values into a JSON array, using the specified converter function.
  **/
 //--------------------------------------------------------------------------------------------------
 template <typename value_t>
@@ -368,7 +369,7 @@ static data::Value_t ModelBinding
 
 //--------------------------------------------------------------------------------------------------
 /**
- * .
+ * Model client API bindings.
  **/
 //--------------------------------------------------------------------------------------------------
 static data::Value_t ModelBindings
@@ -389,90 +390,113 @@ static data::Value_t ModelBindings
 
 
 
-//static data::Value_t ModelApiClientIfInstance
-//(
-//    model::ApiClientInterface_t* ifPtr
-//)
-//{
-//    return data::Object_t
-//        {
-//            { "name", ifPtr->internalName },
-//            { "path", ifPtr->apiFilePtr->path },
-//            { "manualStart", ifPtr->manualStart },
-//            { "optional", ifPtr->optional }
-//        };
-//}
-//
-//
-//
-//static data::Value_t ModelApiServerIfInstance
-//(
-//    model::ApiServerInterface_t* ifPtr
-//)
-//{
-//    return data::Object_t
-//        {
-//            { "name", ifPtr->internalName },
-//            { "path", ifPtr->apiFilePtr->path },
-//            { "manualStart", ifPtr->manualStart },
-//            { "async", ifPtr->async }
-//        };
-//}
-
-
-
-//static data::Value_t ModelApiClientIfInstances
-//(
-//    const std::map<std::string, model::ApiClientInterfaceInstance_t*>& clientInterfaces
-//)
-//{
-//    data::Array_t ifArray;
-//
-//    for (const auto& iter : clientInterfaces)
-//    {
-//        const auto ifPtr = iter.second;
-//        data::Object_t jsonInfo =
-//            {
-//                { "name", ifPtr->name },
-//                { "interface", ModelApiClientIfInstance(ifPtr->ifPtr) },
-//                { "binding", ModelBinding(ifPtr->bindingPtr) }
-//            };
-//
-//        ifArray.push_back(jsonInfo);
-//    }
-//
-//    return ifArray;
-//}
-//
-//
-//
-//static data::Value_t ModelApiServerIfInstances
-//(
-//    const std::map<std::string, model::ApiServerInterfaceInstance_t*>& serverInterfaces
-//)
-//{
-//    data::Array_t ifArray;
-//
-//    for (const auto& iter : serverInterfaces)
-//    {
-//        const auto ifPtr = iter.second;
-//        data::Object_t jsonInfo =
-//            {
-//                { "name", ifPtr->name },
-//                { "interface", ModelApiServerIfInstance(ifPtr->ifPtr) }
-//            };
-//
-//        ifArray.push_back(jsonInfo);
-//    }
-//
-//    return ifArray;
-//}
+//--------------------------------------------------------------------------------------------------
+/**
+ * Model a client API interface instance.
+ **/
+//--------------------------------------------------------------------------------------------------
+static data::Value_t ModelApiClientIfInstance
+(
+    model::ApiClientInterface_t* ifPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    return data::Object_t
+        {
+            { "name", ifPtr->internalName },
+            { "path", ifPtr->apiFilePtr->path },
+            { "manualStart", ifPtr->manualStart },
+            { "optional", ifPtr->optional }
+        };
+}
 
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * .
+ * Model a server API interface instance.
+ **/
+//--------------------------------------------------------------------------------------------------
+static data::Value_t ModelApiServerIfInstance
+(
+    model::ApiServerInterface_t* ifPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    return data::Object_t
+        {
+            { "name", ifPtr->internalName },
+            { "path", ifPtr->apiFilePtr->path },
+            { "manualStart", ifPtr->manualStart },
+            { "async", ifPtr->async }
+        };
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Model instances of Legato API clients.
+ **/
+//--------------------------------------------------------------------------------------------------
+static data::Value_t ModelApiClientIfInstances
+(
+    const std::map<std::string, model::ApiClientInterfaceInstance_t*>& clientInterfaces
+)
+//--------------------------------------------------------------------------------------------------
+{
+    data::Array_t ifArray;
+
+    for (const auto& iter : clientInterfaces)
+    {
+        const auto ifPtr = iter.second;
+        data::Object_t jsonInfo =
+            {
+                { "name", ifPtr->name },
+                { "interface", ModelApiClientIfInstance(ifPtr->ifPtr) },
+                { "binding", ModelBinding(ifPtr->bindingPtr) }
+            };
+
+        ifArray.push_back(jsonInfo);
+    }
+
+    return ifArray;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Model cases where an API is being served.
+ **/
+//--------------------------------------------------------------------------------------------------
+static data::Value_t ModelApiServerIfInstances
+(
+    const std::map<std::string, model::ApiServerInterfaceInstance_t*>& serverInterfaces
+)
+{
+    data::Array_t ifArray;
+
+    for (const auto& iter : serverInterfaces)
+    {
+        const auto ifPtr = iter.second;
+        data::Object_t jsonInfo =
+            {
+                { "name", ifPtr->name },
+                { "interface", ModelApiServerIfInstance(ifPtr->ifPtr) }
+            };
+
+        ifArray.push_back(jsonInfo);
+    }
+
+    return ifArray;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Model a set of files and their permissions within the JSON.
  **/
 //--------------------------------------------------------------------------------------------------
 static data::Value_t ModelFilePtrSet
@@ -511,7 +535,7 @@ static data::Value_t ModelFilePtrSet
 
 //--------------------------------------------------------------------------------------------------
 /**
- * .
+ * Model a Legato component.
  **/
 //--------------------------------------------------------------------------------------------------
 static data::Value_t ModelComponent
@@ -774,10 +798,10 @@ static data::Value_t ModelApp
                         "preBuilt",
                         data::Object_t
                         {
-                            //{"clients",
-                            //    ModelApiClientIfInstances(appPtr->preBuiltServerInterfaces) },
-                            //{ "servers",
-                            //    ModelApiServerIfInstances(appPtr->preBuiltClientInterfaces) }
+                            {"clients",
+                                ModelApiClientIfInstances(appPtr->preBuiltClientInterfaces) },
+                            { "servers",
+                                ModelApiServerIfInstances(appPtr->preBuiltServerInterfaces) }
                         }
                     },
 
@@ -785,10 +809,10 @@ static data::Value_t ModelApp
                         "extern",
                         data::Object_t
                         {
-                            //{ "clients",
-                            //    ModelApiClientIfInstances(appPtr->externServerInterfaces) },
-                            //{ "servers",
-                            //    ModelApiServerIfInstances(appPtr->externClientInterfaces) }
+                            { "clients",
+                                ModelApiClientIfInstances(appPtr->externClientInterfaces) },
+                            { "servers",
+                                ModelApiServerIfInstances(appPtr->externServerInterfaces) }
                         }
                     }
                 }
@@ -996,6 +1020,28 @@ static data::Value_t ModelBuildParams
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Capture the current process environment in the generated JSON.
+ **/
+//--------------------------------------------------------------------------------------------------
+static data::Value_t ModelEnv
+(
+)
+//--------------------------------------------------------------------------------------------------
+{
+    data::Object_t envVars = {};
+
+    envVars::Iterate([&envVars](const std::string& name, const std::string& value)
+        {
+            envVars.insert({ name, value });
+        });
+
+    return envVars;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * .
  **/
 //--------------------------------------------------------------------------------------------------
@@ -1025,7 +1071,9 @@ static data::Value_t ModelDocument
                 }
             },
 
-            { "tokenMap", Cache.TokenMap() }
+            { "tokenMap", Cache.TokenMap() },
+
+            { "env", ModelEnv() }
         };
 }
 

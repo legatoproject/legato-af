@@ -685,6 +685,67 @@ void Lexer_t::NextTokenOrDirective
     }
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Abandon current section, skipping to just after the next closing '}'
+ *
+ * Returns the target line/col.
+ */
+//--------------------------------------------------------------------------------------------------
+std::vector<parseTree::Token_t*> Lexer_t::BailUntil
+(
+    parseTree::Token_t::Type_t untilType,  ///< Eat tokens until this type is hit.
+    bool stopAtNewline                     ///< Or should we also abandon the search at the next
+                                           ///<  next newline?
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::vector<parseTree::Token_t*> tokenPtrList;
+    parseTree::Token_t* phonyTokenPtr = new parseTree::Token_t(parseTree::Token_t::COMMENT,
+                                                               context.top().filePtr,
+                                                               context.top().line,
+                                                               context.top().column,
+                                                               context.top().curPos);
+
+    std::cout << mk::format(LE_I18N("Skipping from %d:%d "),
+                            context.top().line,
+                            context.top().column);
+    bool done = false;
+
+    do
+    {
+        if (   stopAtNewline
+            && (context.top().nextChars[0] == '\n'))
+        {
+
+            std::cerr << mk::format(LE_I18N("to %d:%d"), context.top().line, context.top().column)
+                      << std::endl;
+            done = true;
+        }
+        else if (IsMatch(untilType))
+        {
+            std::cerr << mk::format(LE_I18N("to %d:%d"), context.top().line, context.top().column)
+                      << std::endl;
+            tokenPtrList.push_back(Pull(untilType));
+            done = true;
+        }
+        else if (IsMatch(parseTree::Token_t::END_OF_FILE))
+        {
+            done = true;
+        }
+        else
+        {
+            AdvanceOneCharacter(phonyTokenPtr);
+            tokenPtrList.push_back(phonyTokenPtr);
+        }
+    }
+    while (done == false);
+
+    return tokenPtrList;
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Reset lexer back to state immedately after the given token.

@@ -11,6 +11,7 @@
 
 import * as path from 'path';
 import * as ldr from './loader';
+import * as jdoc from "./jsonDocument";
 
 
 
@@ -1045,11 +1046,11 @@ export class Application extends DefFile
     /** Bindings of this application's executables/components to other Legato services. */
     public bindingsSections: BindingsSection[];
 
-    /**
-     * The interfaces that this application is making available to other applications within it's
-     * system.
-     */
-    public externSections: ExternSection[];
+    /** The application's external interface. */
+    public interfaces: jdoc.Interfaces;
+
+    /** True if this application was included through an external .sinc. */
+    public isIncluded: boolean;
 
     /**
      * Construct a new application definition object.
@@ -1074,7 +1075,6 @@ export class Application extends DefFile
         this.requiresSections = [];
         this.bundlesSections = [];
         this.bindingsSections = [];
-        this.externSections = [];
     }
 
     /**

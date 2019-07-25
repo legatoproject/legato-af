@@ -88,6 +88,7 @@ export interface le_ExtensionClientCapabilities
   */
 export enum le_DefinitionObjectType
 {
+    IncDefs        = lsp.SymbolKind.Array,
     DefinitionFile = lsp.SymbolKind.File,
     DefSection     = lsp.SymbolKind.Namespace,
     ApplicationRef = lsp.SymbolKind.Interface,
@@ -95,6 +96,7 @@ export enum le_DefinitionObjectType
     KernelRef      = lsp.SymbolKind.Struct,
     ApiRef         = lsp.SymbolKind.Function,
     Source         = lsp.SymbolKind.Method,
+    ExternalIf     = lsp.SymbolKind.Boolean
 }
 
 /**

@@ -32,6 +32,10 @@ class Lexer_t
         // Pull a token from the file being parsed. Advances to the next token in the file.
         parseTree::Token_t* Pull(parseTree::Token_t::Type_t type);
 
+        // Abandon current section, skipping to just after the next closing '}'
+        std::vector<parseTree::Token_t*> BailUntil(parseTree::Token_t::Type_t untilType,
+                                                   bool stopAtNewline = false);
+
         // Reset parser back to immediately after a given token.  Later tokens cannot have already
         // been stored in a parse tree.
         void ResetTo(parseTree::Token_t* resetToken);
@@ -47,6 +51,10 @@ class Lexer_t
 
         // true = print progress messages to the standard output stream.
         bool beVerbose;
+
+        // Errors encountered so far.
+        std::vector<mk::Exception_t> errorList;
+        bool recoverFromErrors;
 
         // Throw an exception with the file, line and column at the front.
         void ThrowException(const std::string& message) __attribute__ ((noreturn));

@@ -25,7 +25,7 @@ import * as jdoc from './model/jsonDocument';
  */
 //--------------------------------------------------------------------------------------------------
 function exec(workDir: string, env: NodeJS.ProcessEnv, command: string,
-              ...args: string[]): string
+              ...args: string[]): [ number, string ]
 {
     // Check to see if we're running under Windows.  If we are, then we need to take care of running
     // our child processes under WSL.
@@ -45,7 +45,14 @@ function exec(workDir: string, env: NodeJS.ProcessEnv, command: string,
             env: env
         });
 
-    return process.output.join('');
+    let output = (process.output !== null) ? process.output.join('') : '';
+
+    if (process.status !== null)
+    {
+        return [ process.status, output ];
+    }
+
+    return [ 0, output ];
 }
 
 
@@ -66,12 +73,6 @@ function findInPath(paths: string[], executable: string): string
 
         if (fs.existsSync(fullPathStr))
         {
-//            let permissions =
-//                perm.modeToPermissions(fs.statSync(fullPathStr).mode);
-//
-//            if (   (permissions.execute.owner)
-//                || (permissions.execute.group)
-//                || (permissions.execute.others))
             {
                 return fullPathStr;
             }
@@ -92,13 +93,61 @@ function findInPath(paths: string[], executable: string): string
  * @param defFilePath  Path to the Legato definition file to model..
  */
 //--------------------------------------------------------------------------------------------------
-export function mkInfo(profile: lspCli.Profile, defFilePath: string): jdoc.Document
+export function mkInfo(profile: lspCli.Profile, defFilePath: string): jdoc.Document | string
 {
-    let output = exec(path.dirname(defFilePath),
-                      profile.environment,
-                      findInPath(profile.path, 'mkparse'),
-                      '-t', profile.legatoTarget,
-                      defFilePath);
+    let result: jdoc.Document | string = undefined;
+    let [ , output ] = exec(path.dirname(defFilePath),
+                            profile.environment,
+                            findInPath(profile.path, 'mkparse'),
+                            '-t', profile.legatoTarget,
+                            defFilePath);
 
-    return JSON.parse(output);
+    try
+    {
+        result = JSON.parse(output);
+    }
+    catch (e)
+    {
+        result = output;
+    }
+
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enumeration of the types of search paths mkedit can update.
+ */
+//--------------------------------------------------------------------------------------------------
+export enum SearchPath
+{
+    AppSearch = 'appSearch',
+    ComponentSearch = 'componentSearch',
+    InterfaceSearch = 'interfaceSearch',
+    ModuleSearch = 'moduleSearch'
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Call on mkEdit to modify the search paths in the current .sdef.
+ *
+ * @param profile Information about the active LSP client.
+ * @param pathType What kind of search path are we adding?
+ * @param newPath THe path to add.
+ */
+//--------------------------------------------------------------------------------------------------
+export function mkEditAddSearchPath(profile: lspCli.Profile,
+                                    pathType: SearchPath,
+                                    newPath: string): boolean
+{
+    let [ code, ] = exec(path.dirname(profile.activeDefFile),
+                         profile.environment,
+                         findInPath(profile.path, 'mkedit'),
+                         'add',
+                         pathType.toString(),
+                         newPath);
+
+    return code === 0;
 }

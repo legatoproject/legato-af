@@ -21,6 +21,7 @@ import * as loader from './model/loader';
 import * as tooling from './legatoTooling';
 import * as conversion from './vscTypeConvert';
 import * as ext from './lspExtensionDefs';
+import * as fsUtil from './fsUtil';
 
 
 
@@ -31,28 +32,22 @@ import * as ext from './lspExtensionDefs';
 //--------------------------------------------------------------------------------------------------
 export class Profile
 {
-    /** The build environment we are to run/build under. */
-    private envVars: NodeJS.ProcessEnv;
-
     /** The directories in the user's editing workspace. */
     public workspaceFolders: lsp.WorkspaceFolder[];
 
     /** The Json model as loaded from mkparse. */
     private jsonDocument: jdoc.Document;
 
-    /** The active Legato definition file that provides the build model that we're working with. */
-    //activeDefFile: string;
-
     /** A loaded version of that definition file. */
     public activeModel: model.System | model.Application;
 
     /** Watch the filesystem for any changes to any of the files that make up the active model. */
-    //private fileWatchers: fs.FSWatcher[];
     private fileWatcher: fs_watcher.FSWatcher;
 
     /** Keep track of if the client is receiving model load updates. */
     private clientReceiveModelUpdates: boolean;
 
+    /** Properties of the attached client. */
     private clientProps: ext.le_ExtensionClientCapabilities;
 
     /**
@@ -61,6 +56,7 @@ export class Profile
      * file change event before we attempt to reload the model. */
     private reloadTimer?: NodeJS.Timeout;
 
+    /** The connection of this language server to the attached client. */
     private client: LspClient;
 
     /** Simply construct with default values. */
@@ -99,7 +95,21 @@ export class Profile
      * */
     public get environment(): NodeJS.ProcessEnv
     {
-        return this.clientProps.env;
+        if (this.jsonDocument !== undefined)
+        {
+            let modelEnv = this.jsonDocument.env;
+            let clientEnv = this.clientProperties.env;
+
+            Object.keys(clientEnv).forEach(
+                function (name: string)
+                {
+                    modelEnv[name] = clientEnv[name];
+                });
+
+            return modelEnv;
+        }
+
+        return this.clientProperties.env;
     }
 
     public set environment(envVars: NodeJS.ProcessEnv)
@@ -117,15 +127,22 @@ export class Profile
         }
     }
 
+    /**
+     * Type guard to check if the argument is a string or if it's a json document.
+     *
+     * @param arg The argument to check.
+     */
+    private isDocument(arg: jdoc.Document | string): arg is jdoc.Document
+    {
+        return typeof arg !== 'string';
+    }
+
     /** Reload the active module from definition files. */
     public reloadActiveModel()
     {
         let watchPaths: string[] = [];
 
         this.clearFileWatch();
-
-        this.jsonDocument = undefined;
-        this.activeModel = undefined;
 
         if (   (this.activeDefFile !== undefined)
             && (!fs.existsSync(this.activeDefFile)))
@@ -134,41 +151,188 @@ export class Profile
             return;
         }
 
-        let jsonDocument = tooling.mkInfo(this, this.activeDefFile);
+        let mkResponse = tooling.mkInfo(this, this.activeDefFile);
 
-        /*if (model.isApplicationDef(this.activeDefFile))
+        if (this.isDocument(mkResponse))
         {
-        }
-        else */ if (model.DefFile.isSystemDef(this.activeDefFile))
-        {
-            let systemInfo = loader.parseSystem(jsonDocument, this.activeDefFile);
-
-            for (let def in jsonDocument.tokenMap)
+            if (model.DefFile.isSystemDef(this.activeDefFile))
             {
-                watchPaths.push(def);
+                let isIncluded = false;
+                let systemInfo = loader.parseSystem(mkResponse, this.activeDefFile, isIncluded);
 
-                if (   (model.DefFile.isSystemDef(def))
-                    && (def !== this.activeDefFile))
+                for (let def in mkResponse.tokenMap)
                 {
-                    let newInfo = loader.parseSystem(jsonDocument, def);
+                    isIncluded = true;
+                    watchPaths.push(def);
 
-                    function splice<T>(listA: T[], listB: T[])
+                    if (   (model.DefFile.isSystemDef(def))
+                        && (def !== this.activeDefFile))
                     {
-                        listA.splice(listA.length - 1, 0, ...listB);
-                    }
+                        let newInfo = loader.parseSystem(mkResponse, def, isIncluded);
 
-                    splice(systemInfo.searchPathSections, newInfo.searchPathSections);
-                    splice(systemInfo.appSections, newInfo.appSections);
-                    splice(systemInfo.commandSections, newInfo.commandSections);
-                    splice(systemInfo.moduleSections, newInfo.moduleSections);
+                        systemInfo.searchPathSections =
+                            systemInfo.searchPathSections.concat(newInfo.searchPathSections);
+
+                        systemInfo.appSections =
+                            systemInfo.appSections.concat(newInfo.appSections);
+
+                        systemInfo.commandSections =
+                            systemInfo.commandSections.concat(newInfo.commandSections);
+
+                        systemInfo.moduleSections =
+                            systemInfo.moduleSections.concat(newInfo.moduleSections);
+                    }
                 }
+
+                this.jsonDocument = mkResponse;
+                this.activeModel = systemInfo;
             }
 
-            this.jsonDocument = jsonDocument;
-            this.activeModel = systemInfo;
+            this.watchFiles(watchPaths);
+        }
+        else
+        {
+            // Looks like we couldn't properly load the current model.  So search this directory for
+            // all 'interesting' model files.
+            console.log(`An error occurred during model load.`);
+            console.log(mkResponse);
+            console.log('Watching the filesystem for changes.');
+
+            let rootDirList: string[] = this.workspaceFolders.map(
+                (nextDir: lsp.WorkspaceFolder): string =>
+                {
+                    return lsp.Files.uriToFilePath(nextDir.uri)
+                });
+
+            let dirList: string[] = [];
+
+            for (let nextDir of rootDirList)
+            {
+                console.log(`-- ${nextDir}`);
+                let newDirs = fsUtil.recursiveDirFind(nextDir);
+                dirList = dirList.concat(newDirs);
+            }
+
+            let fileList = this.getAvailableSystems(dirList)
+                .concat(this.getAvailableApps(dirList))
+                .concat(this.getAvailableComponents(dirList))
+                .concat(this.getAvailableInterfaces(dirList));
+
+
+            for (let filePath of fileList)
+            {
+                console.log(`## ${filePath}`);
+            }
+
+            this.watchFiles(fileList);
+
+            // Attempt to fix up the fix up the model, which should trigger a reload event if
+            // successful.
+
+            this.attemptModelFixup(mkResponse, fileList);
+        }
+    }
+
+    private attemptModelFixup(mkResponse: string, fileList: string[])
+    {
+        interface Extractor
+        {
+            section: tooling.SearchPath;
+            regex: RegExp;
+            filterFunc: (extractedStr: string) => string;
         }
 
-        this.watchFiles(watchPaths);
+        let matchers: Extractor[] =
+            [
+                {
+                    section: tooling.SearchPath.AppSearch,
+                    regex: /Can\'t find definition file \((.*)\) or binary app/,
+                    filterFunc: function (newName: string): string
+                        {
+                            console.log(`Test 2: ${newName}`);
+                            return newName;
+                        }
+                },
+
+                {
+                    section: tooling.SearchPath.ComponentSearch,
+                    regex: /Couldn\'t find component \'(.*)\'/,
+                    filterFunc: function (newName: string): string
+                        {
+                            console.log(`Test 1: ${newName}`);
+                            return path.join(newName, 'Component.cdef');
+                        }
+                },
+
+                {
+                    section: tooling.SearchPath.InterfaceSearch,
+                    regex: /Couldn't find file \'(.*)\'/,
+                    filterFunc: function (newName: string): string
+                        {
+                            let ext = path.extname(newName);
+
+                            if (ext !== '.api')
+                            {
+                                return newName + '.api';
+                            }
+
+                            return newName;
+                        }
+                }
+            ];
+
+        let name: string = undefined;
+        let section: tooling.SearchPath = undefined;
+
+        for (let matcher of matchers)
+        {
+            let result = mkResponse.match(matcher.regex);
+
+            if (result !== null)
+            {
+                name = matcher.filterFunc(result[1]);
+                section = matcher.section;
+
+                console.log(`### Matching ${name}: ${section}`);
+                break;
+            }
+        }
+
+        if (name === undefined)
+        {
+            return;
+        }
+
+        let foundDir: string = undefined;
+
+        for (let filePath of fileList)
+        {
+            console.log(`### ${filePath}`);
+            if (filePath.endsWith(name))
+            {
+                console.log('### FOUND');
+                foundDir = path.dirname(filePath);
+
+                if (section === tooling.SearchPath.ComponentSearch)
+                {
+                    foundDir = path.dirname(foundDir);
+                }
+
+                break;
+            }
+        }
+
+        console.log(`### Add search path ${section} --> ${foundDir}`);
+
+        if (foundDir === undefined)
+        {
+            return;
+        }
+
+        if (tooling.mkEditAddSearchPath(this, section, foundDir))
+        {
+            console.log('Error adding the search path!!');
+        }
     }
 
     private notifyModelUpdate()
@@ -176,10 +340,7 @@ export class Profile
         if (   (this.activeModel !== undefined)
             && (this.clientReceiveModelUpdates))
         {
-            let flags: conversion.ConversionFlags = { supportsDefaultCollapsed: true };
-            let logicalView = conversion.SystemAsSymbol(flags,
-                                                        this.activeModel as model.System,
-                                                        this.jsonDocument.model.modules);
+            let logicalView = conversion.SystemAsSymbol(this.activeModel as model.System);
 
             this.client.connection.sendNotification('le_UpdateLogicalView', logicalView);
         }
@@ -196,7 +357,7 @@ export class Profile
             this.fileWatcher = fs_watcher.watch(watchPaths);
 
             this.fileWatcher.on('change',
-                function (path, stats)
+                function (_path, _stats)
                 {
                     theThis.clearModifyTimeout();
                     theThis.reloadTimer = setTimeout(
@@ -249,8 +410,19 @@ export class Profile
      */
     public uriInActiveModel(uriStr: string): boolean
     {
-        let filePath = Uri.parse(uriStr).fsPath;
+        if (this.jsonDocument === undefined)
+        {
+            return false;
+        }
+
+        let filePath = path.normalize(Uri.parse(uriStr).fsPath);
         return (this.jsonDocument.tokenMap[filePath] !== undefined);
+    }
+
+    public getDocTokens(uriStr: string): jdoc.Token[] | undefined
+    {
+        let filePath = path.normalize(Uri.parse(uriStr).fsPath);
+        return this.jsonDocument.tokenMap[filePath];
     }
 
     /** Where is our current 'active' version of Legato located? */
@@ -262,6 +434,7 @@ export class Profile
     /** Path to the legato bin directory. */
     public get legatoBin(): string
     {
+        console.log('Test 2');
         return path.join(this.legatoRoot, 'bin');
     }
 
@@ -283,36 +456,44 @@ export class Profile
     }
 
     /** List of available system definition files. */
-    public get availableSystems(): string[]
+    public getAvailableSystems(additionalDirs: string[] = []): string[]
     {
-        return this.fileList(
-                this.workspaceFolders.map(
-                    (rootFolder: lsp.WorkspaceFolder): string =>
-                    {
-                        return lsp.Files.uriToFilePath(rootFolder.uri);
-                    }),
-                '.sdef');
+        let searchDirs = this.workspaceFolders.map(
+            (nextRootDir: lsp.WorkspaceFolder): string =>
+            {
+                return lsp.Files.uriToFilePath(nextRootDir.uri);
+            })
+            .concat(additionalDirs);
+
+        return this.fileList(searchDirs, '.sdef');
     }
 
-    public get availableApps(): string[]
+    public getAvailableApps(additionalDirs: string[] = []): string[]
     {
-        let searchPaths = this.jsonDocument.buildParams.search.appDirs;
-        let def = model.DefType.applicationDef;
+        let searchPaths =
+            ((this.jsonDocument !== undefined) ? this.jsonDocument.buildParams.search.appDirs : [])
+            .concat(additionalDirs);
 
-        return this.fileList(searchPaths, def);
+        return this.fileList(searchPaths, model.DefType.applicationDef)
+            .concat(this.fileList(searchPaths, '.app'));
     }
 
-    public get availableComponents(): string[]
+    public getAvailableComponents(additionalDirs: string[] = []): string[]
     {
-        let searchPaths = this.jsonDocument.buildParams.search.componentDirs;
-        let def = model.DefType.componentDef;
+        let searchPaths =
+            (  (this.jsonDocument !== undefined)
+             ? this.jsonDocument.buildParams.search.componentDirs : [])
+            .concat(additionalDirs);
 
-        return this.fileList(searchPaths, def);
+        return this.fileList(searchPaths, model.DefType.componentDef);
     }
 
-    public get availableInterfaces(): string[]
+    public getAvailableInterfaces(additionalDirs: string[] = []): string[]
     {
-        let searchPaths = this.jsonDocument.buildParams.search.interfaceDirs;
+        let searchPaths =
+            ( (this.jsonDocument !== undefined)
+             ? this.jsonDocument.buildParams.search.interfaceDirs : [])
+            .concat(additionalDirs);
 
         return this.fileList(searchPaths, '.api');
     }
@@ -342,22 +523,50 @@ export class Profile
      */
     private fileList(directories: string[], extension: string): string[]
     {
-        let foundFiles: string[] = [];
-
-        for (let directory of directories)
+        function getFiles(directory: string, extension: string, foundFiles: string[])
         {
-            fs.readdirSync(directory).forEach((found: string) =>
-                {
-                    found = path.resolve(found);
+            let items = fs.readdirSync(directory);
 
-                    if (path.extname(found) == extension)
+            items.forEach(
+                function (nextItem: string)
+                {
+                    if (   (nextItem !== '.')
+                        && (nextItem !== '..'))
                     {
-                        foundFiles.push(found);
+                        let fullPath = path.join(directory, nextItem);
+
+                        if (fs.statSync(fullPath).isDirectory())
+                        {
+                            if (!fsUtil.ignoreDir(directory, fullPath))
+                            {
+                                getFiles(fullPath, extension, foundFiles);
+                            }
+                            else
+                            {
+                                console.log('  Ignored.');
+                            }
+                        }
+                        else if (path.extname(fullPath) === extension)
+                        {
+                            foundFiles.push(fullPath);
+                        }
                     }
                 });
         }
 
-        return foundFiles.sort();
+        let fileList: string[] = [];
+
+        for (let directory of directories)
+        {
+            if (!fs.existsSync(directory))
+            {
+                continue;
+            }
+
+            getFiles(directory, extension, fileList);
+        }
+
+        return fileList.sort();
     }
 }
 

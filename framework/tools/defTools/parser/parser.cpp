@@ -29,11 +29,19 @@ parseTree::SimpleSection_t* ParseSimpleSection
 {
     auto sectionPtr = new parseTree::SimpleSection_t(sectionNameTokenPtr);
 
-    // Expect a ':' next.
-    (void)lexer.Pull(parseTree::Token_t::COLON);
+    try
+    {
+        // Expect a ':' next.
+        (void)lexer.Pull(parseTree::Token_t::COLON);
 
-    // Expect the content token next.
-    sectionPtr->AddContent(lexer.Pull(tokenType));
+        // Expect the content token next.
+        sectionPtr->AddContent(lexer.Pull(tokenType));
+    }
+    catch (mk::Exception_t &e)
+    {
+        std::cerr << "[ERROR] " << e.what() << std::endl;
+        lexer.BailUntil(parseTree::Token_t::END_OF_FILE, true);
+    }
 
     return sectionPtr;
 }
@@ -106,7 +114,16 @@ parseTree::TokenList_t* ParseTokenListSection
             );
         }
 
-        sectionPtr->AddContent(lexer.Pull(tokenType));
+        try
+        {
+            sectionPtr->AddContent(lexer.Pull(tokenType));
+        }
+        catch (mk::Exception_t& e)
+        {
+            std::cerr << "[ERROR] " << e.what() << std::endl;
+            lexer.BailUntil(parseTree::Token_t::CLOSE_CURLY);
+            return sectionPtr;
+        }
     }
 
     // Pull out the '}' and make that the last token in the section.
@@ -278,7 +295,16 @@ parseTree::CompoundItemList_t* ParseComplexSection
             );
         }
 
-        sectionPtr->AddContent(contentParserFunc(lexer));
+        try
+        {
+            sectionPtr->AddContent(contentParserFunc(lexer));
+        }
+        catch (mk::Exception_t& e)
+        {
+            std::cerr << "[ERROR] " << e.what() << std::endl;
+            lexer.BailUntil(parseTree::Token_t::CLOSE_CURLY);
+            return sectionPtr;
+        }
     }
 
     // Pull out the '}' and make that the last token in the section.
@@ -327,7 +353,16 @@ parseTree::CompoundItemList_t* ParseNamedComplexSection
             );
         }
 
-        sectionPtr->AddContent(contentParserFunc(lexer));
+        try
+        {
+            sectionPtr->AddContent(contentParserFunc(lexer));
+        }
+        catch (mk::Exception_t &e)
+        {
+            std::cerr << "[ERROR] " << e.what() << std::endl;
+            lexer.BailUntil(parseTree::Token_t::CLOSE_CURLY);
+            return sectionPtr;
+        }
     }
 
     // Pull out the '}' and make that the last token in the section.
@@ -395,21 +430,29 @@ void ParseFile
     // Create a Lexer for this file.
     Lexer_t lexer(defFilePtr);
     lexer.beVerbose = beVerbose;
+    lexer.recoverFromErrors = true;
 
     // Expect a list of any combination of sections.
     while (!lexer.IsMatch(parseTree::Token_t::END_OF_FILE))
     {
-        if (lexer.IsMatch(parseTree::Token_t::NAME))
+        try
         {
-            defFilePtr->sections.push_back(sectionParserFunc(lexer));
+            if (lexer.IsMatch(parseTree::Token_t::NAME))
+            {
+                defFilePtr->sections.push_back(sectionParserFunc(lexer));
+            }
+            else
+            {
+                lexer.UnexpectedChar(LE_I18N("Unexpected character %s"));
+            }
         }
-        else
+        catch (mk::Exception_t &e)
         {
-            lexer.UnexpectedChar(LE_I18N("Unexpected character %s"));
+            std::cerr << "[ERROR (root level)] " << e.what() << std::endl;
+            lexer.BailUntil(parseTree::Token_t::CLOSE_CURLY);
         }
     }
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
