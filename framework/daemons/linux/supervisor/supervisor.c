@@ -680,7 +680,7 @@ static void StopSupervisor
         // Initiated by user command stopLegato
         LE_INFO("Legato framework shut down. Restarting with current start.");
         sysStatus_DecrementTryCount();
-        sysStatus_DecrementBootCount();
+        DeleteRebootCount();
         exit(EXIT_SUCCESS);
     }
     else
