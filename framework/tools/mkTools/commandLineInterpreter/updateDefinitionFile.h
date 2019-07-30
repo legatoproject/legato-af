@@ -22,8 +22,7 @@ namespace updateDefs
 
     void ParseSdefReadSearchPath(ArgHandler_t& handler);
     void ParseSdefUpdateItem (ArgHandler_t& handler);
-    void UpdateDefinitionFile(std::string sdefFilePath, std::string backupDefFilePath,
-                              std::vector<ArgHandler_t::LinePosition_t>& writePos);
+    void UpdateDefinitionFile(ArgHandler_t& handler, std::string sdefFilePath);
     void EvaluateAdefGetEditLinePosition (ArgHandler_t& handler, model::System_t* systemPtr);
 }
 

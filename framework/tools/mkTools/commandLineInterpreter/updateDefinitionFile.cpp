@@ -38,14 +38,25 @@ namespace updateDefs
 //--------------------------------------------------------------------------------------------------
 void UpdateDefinitionFile
 (
-    std::string sourceFile,                 ///< Original definition file is the source file
-    std::string tempWorkingFile,            ///< Temporary working file where the section is updated
-    std::vector<ArgHandler_t::LinePosition_t>& writePos   ///< Vector containing line to write and
-                                                          ///< the line position
+    ArgHandler_t& handler,      ///< ArgHandler_t object
+    std::string sourceFile      ///< Original definition file is the source file
 )
 {
+    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    {
+        std::cout << mk::format(LE_I18N(
+                                  "\nCreating temporary working file '%s' from original file '%s'."
+                                  "\nEditing the specified section(s) in the temporary file."),
+                                handler.tempWorkDefFilePath, sourceFile);
+    }
+
+    if (handler.buildParams.isDryRun)
+    {
+        return;
+    }
+
     std::ifstream source(sourceFile);
-    std::ofstream dest(tempWorkingFile);
+    std::ofstream dest(handler.tempWorkDefFilePath);
 
     if (!source)
     {
@@ -57,7 +68,7 @@ void UpdateDefinitionFile
     if (!dest)
     {
         throw mk::Exception_t(
-            mk::format(LE_I18N("Failed to open file '%s' for output."), tempWorkingFile)
+            mk::format(LE_I18N("Failed to open file '%s' for output."), handler.tempWorkDefFilePath)
         );
     }
 
@@ -68,7 +79,7 @@ void UpdateDefinitionFile
     source.seekg(0, source.beg);
 
     int startPos = 0;
-    for (auto& it : writePos)
+    for (auto& it : handler.linePositionToWrite)
     {
         int length = it.beforePos - startPos;
         std::unique_ptr<char> firstBuffer(new char[length]);
@@ -78,7 +89,8 @@ void UpdateDefinitionFile
         if (!dest.is_open())
         {
             throw mk::Exception_t(
-                mk::format(LE_I18N("Failed to open file '%s' for writing."), tempWorkingFile)
+                mk::format(LE_I18N("Failed to open file '%s' for writing."),
+                           handler.tempWorkDefFilePath)
             );
         }
 
@@ -94,6 +106,11 @@ void UpdateDefinitionFile
             else if (path::HasSuffix(it.lineToWrite, MDEF_EXT))
             {
                 it.lineToWrite = path::RemoveSuffix(it.lineToWrite, MDEF_EXT);
+            }
+
+            if (handler.buildParams.beVerbose)
+            {
+                std::cout << mk::format(LE_I18N("\nWriting '%s'."), it.lineToWrite);
             }
 
             // Write the line to the destination file.
@@ -530,6 +547,15 @@ void ParseSdefUpdateItem
                         foundItem = true;
                         foundPos = itemPtr->lastTokenPtr->curPos;
                         nextPos = itemPtr->firstTokenPtr->nextPtr->curPos;
+
+                        if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+                        {
+                            std::cout << mk::format(
+                                            LE_I18N("\nApp '%s' found in apps: section in '%s'."),
+                                            itemMustExistStrip,
+                                            itemPtr->lastTokenPtr->GetLocation()
+                                         );
+                        }
                     }
 
                     if (!itemMustNotExist.empty())
@@ -595,6 +621,15 @@ void ParseSdefUpdateItem
                         foundItem = true;
                         foundPos = itemPtr->lastTokenPtr->curPos;
                         nextPos = itemPtr->firstTokenPtr->nextPtr->curPos;
+
+                        if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+                        {
+                            std::cout << mk::format(
+                                            LE_I18N("\nModule '%s' found in kernelModules: section "
+                                                    "at '%s'."),
+                                            itemMustExistStrip, itemPtr->lastTokenPtr->GetLocation()
+                                         );
+                        }
                     }
 
                     if (!itemMustNotExist.empty())
@@ -669,6 +704,14 @@ void ParseSdefUpdateItem
 
         handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{strWrite, endPos,
                                                                            endPos});
+
+        if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+        {
+            std::cout << mk::format(
+                            LE_I18N("Section not found. Append '%s' to end of the file '%s'."),
+                            strWrite, handler.absSdefFilePath
+                         );
+        }
     }
 }
 
@@ -707,6 +750,13 @@ static void ParseAdefGetEditLinePosition
         {
             sourcesSectionExist = true;
         }
+    }
+
+    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    {
+        std::cout << mk::format(LE_I18N("\nSearching component '%s' in ADEF file '%s'."),
+                                compList, adefPath
+                     );
     }
 
     auto adefFilePtr = parser::adef::Parse(adefPath, false);
@@ -799,6 +849,15 @@ static void ParseAdefGetEditLinePosition
                         exeCompPosition.sectionNextPos = itemPtr->lastTokenPtr->nextPtr->curPos;
 
                         exeCompPositionList.push_back(exeCompPosition);
+
+                        if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+                        {
+                            std::cout << mk::format(
+                                            LE_I18N("\nComponent '%s' found in '%s' section '%s'"),
+                                            path::GetLastNode(compList), sectionName,
+                                            tokenPtr->GetLocation()
+                                         );
+                        }
                     }
 
                     if (path::GetLastNode(compNotList).compare(path::GetLastNode(componentPath))
@@ -835,8 +894,17 @@ static void ParseAdefGetEditLinePosition
                     foundItem1 = true;
 
                     compPosition.foundPos = tokenPtr->curPos;
-                    compPosition.nextPos =   tokenPtr->nextPtr->curPos;
+                    compPosition.nextPos = tokenPtr->nextPtr->curPos;
                     compPositionList.push_back(compPosition);
+
+                    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+                    {
+                        std::cout << mk::format(
+                                        LE_I18N("\nComponent '%s' found in '%s' section at '%s'"),
+                                        path::GetLastNode(compList), sectionName,
+                                        tokenPtr->GetLocation()
+                                     );
+                    }
                 }
 
                 if (path::GetLastNode(compNotList).compare(path::GetLastNode(componentPath)) == 0)
@@ -907,6 +975,17 @@ static void ParseAdefGetEditLinePosition
 
                                     procRunPosition.foundPos = itemPtr->firstTokenPtr->curPos;
                                     procRunPosition.nextPos = itemPtr->lastTokenPtr->nextPtr->curPos;
+
+                                    if (handler.buildParams.beVerbose ||
+                                        handler.buildParams.isDryRun)
+                                    {
+                                        std::cout << mk::format(
+                                                        LE_I18N("\nProcess '%s' found in '%s' "
+                                                                "section '%s'"),
+                                                        procName, sectionName,
+                                                        itemPtr->firstTokenPtr->GetLocation()
+                                                     );
+                                    }
                                 }
                             }
                         }
@@ -953,6 +1032,15 @@ static void ParseAdefGetEditLinePosition
                         bindingPosition.sectionNextPos = itemPtr->lastTokenPtr->nextPtr->curPos;
 
                         bindingPositionList.push_back(bindingPosition);
+
+                        if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+                        {
+                            std::cout << mk::format(
+                                            LE_I18N("\nComponent '%s' found in '%s' section '%s'"),
+                                            path::GetLastNode(compList), sectionName,
+                                            tokenPtr->GetLocation()
+                                         );
+                        }
                     }
                 }
             }
@@ -999,6 +1087,14 @@ static void ParseAdefGetEditLinePosition
                 // Append the component path to the adef in the components: section
                 lineToWrite1 = "    " + compPath;
             }
+
+            if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+            {
+                std::cout << mk::format(
+                                LE_I18N("\nRename component to '%s' in components: or executables: "
+                                        "section"), compPath
+                             );
+            }
         }
         else
         {
@@ -1031,6 +1127,13 @@ static void ParseAdefGetEditLinePosition
                 handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite3,
                                                                           it.foundPos, it.nextPos});
             }
+
+            if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+            {
+                std::cout << mk::format(LE_I18N("\nRename component to '%s' in bindings: section."),
+                                        lineToWrite3
+                             );
+            }
         }
     }
     else if (!compList.empty() && compNotList.empty())
@@ -1057,6 +1160,14 @@ static void ParseAdefGetEditLinePosition
                  handler.linePositionToWrite.push_back(
                          ArgHandler_t::LinePosition_t{"", it.foundPos, it.nextPos});
             }
+
+            if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+            {
+                std::cout << mk::format(
+                                LE_I18N("\nRemove component '%s' from components: or executables: "
+                                        "section."), path::GetLastNode(compList)
+                             );
+            }
         }
         else
         {
@@ -1074,17 +1185,30 @@ static void ParseAdefGetEditLinePosition
             {
                 handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{"", it.foundPos,
                                                                                    it.nextPos});
-
             }
+
+            if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+            {
+                std::cout << LE_I18N("\nRemove process name from processes: run: section.");
+            }
+
         }
 
         if (foundItem3)
         {
-           for (const auto& it : bindingPositionList)
-           {
+            for (const auto& it : bindingPositionList)
+            {
                 handler.linePositionToWrite.push_back(
                                 ArgHandler_t::LinePosition_t{"", it.sectionPos, it.sectionNextPos});
-           }
+            }
+
+            if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+            {
+                std::cout << mk::format(
+                                LE_I18N("\nRemove bindings with component '%s' from bindings: "
+                                        "section."), path::GetLastNode(compList)
+                             );
+            }
         }
     }
     else if (!compNotList.empty())
@@ -1097,17 +1221,31 @@ static void ParseAdefGetEditLinePosition
             lineToWrite2 = "    ( " + compName + "Exe )";
 
             // Adding component to adef
-            handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite1, length1,
-                                                                               length1-1});
+            handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite1,
+                                                                               length1, length1-1});
             handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite2, length2,
                                                                                length2-1});
+
+            if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+            {
+                std::cout << mk::format(
+                                LE_I18N("\nAdd '%s' and '%s' to executables: and processes: run: "
+                                        "section."), lineToWrite1, lineToWrite2
+                             );
+            }
         }
         else
         {
             // Append the component path to the adef in the components: section
             lineToWrite1 = "    " + compPath;
-            handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite1, length1,
-                                                                               length1-1});
+            handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite1,
+                                                                               length1, length1-1});
+            if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+            {
+                std::cout << mk::format(
+                                LE_I18N("\nAdd '%s' to components: section."), lineToWrite1
+                             );
+            }
        }
     }
     else
@@ -1205,6 +1343,14 @@ void GetAdefSectionEditLinePosition
         );
     }
 
+    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    {
+        std::cout << mk::format(
+                        LE_I18N("Searching section '%s' in ADEF file '%s'."),
+                        section, handler.absAdefFilePath
+                     );
+    }
+
     bool foundSection = false;
     int foundPos, nextPos, endPos = 0;
 
@@ -1242,6 +1388,14 @@ void GetAdefSectionEditLinePosition
 
             foundPos = sectionPtr->lastTokenPtr->curPos;
             nextPos = sectionPtr->lastTokenPtr->nextPtr->curPos;
+
+            if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+            {
+                std::cout << mk::format(
+                                LE_I18N("\nSection '%s' found in '%s'."),
+                                section, sectionPtr->lastTokenPtr->GetLocation()
+                             );
+            }
         }
         endPos = sectionPtr->lastTokenPtr->nextPtr->curPos;
     }
@@ -1263,6 +1417,13 @@ void GetAdefSectionEditLinePosition
 
         handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{strWrite, endPos,
                                                                            endPos});
+        if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+        {
+            std::cout << mk::format(
+                            LE_I18N("\nSection '%s' not found. Append '%s' to the end of file."),
+                            section, strWrite
+                         );
+        }
     }
     else
     {
@@ -1278,6 +1439,10 @@ void GetAdefSectionEditLinePosition
 
         handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{strWrite, foundPos,
                                                                            nextPos});
+        if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+        {
+            std::cout << mk::format(LE_I18N("\nUpdate section '%s' to '%s' ."), section, strWrite);
+        }
     }
 }
 

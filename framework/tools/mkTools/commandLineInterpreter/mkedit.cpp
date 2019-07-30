@@ -23,10 +23,6 @@
 
 namespace cli
 {
-
-/// Object that stores the gathered build parameters
-static mk::BuildParams_t BuildParams;
-
 // Object of argument handler for mkedit
 static ArgHandler_t Handler;
 
@@ -1251,7 +1247,7 @@ static void GetCommandLineArgs
     // argument on the command line.
     auto ifPathPush = [&](const char* path)
         {
-            BuildParams.interfaceDirs.push_back(path);
+            Handler.buildParams.interfaceDirs.push_back(path);
         };
 
 
@@ -1261,13 +1257,13 @@ static void GetCommandLineArgs
         {
             // In order to preserve original command line functionality, we push this new path into
             // all of the various search paths.
-            BuildParams.moduleDirs.push_back(path);
-            BuildParams.appDirs.push_back(path);
-            BuildParams.componentDirs.push_back(path);
-            BuildParams.sourceDirs.push_back(path);
+            Handler.buildParams.moduleDirs.push_back(path);
+            Handler.buildParams.appDirs.push_back(path);
+            Handler.buildParams.componentDirs.push_back(path);
+            Handler.buildParams.sourceDirs.push_back(path);
         };
 
-    args::AddOptionalString(&BuildParams.target,
+    args::AddOptionalString(&Handler.buildParams.target,
                             "localhost",
                             't',
                             "target",
@@ -1283,16 +1279,21 @@ static void GetCommandLineArgs
                             LE_I18N("Add a directory to the source search path."),
                             sourcePathPush);
 
-    args::AddOptionalFlag(&BuildParams.beVerbose,
+    args::AddOptionalFlag(&Handler.buildParams.beVerbose,
                           'v',
                           "verbose",
                           LE_I18N("Set into verbose mode for extra diagnostic information."));
 
-    args::AddOptionalInt(&BuildParams.jobCount,
+    args::AddOptionalInt(&Handler.buildParams.jobCount,
                          0,
                          'j',
                          "jobs",
                          LE_I18N("Run N jobs in parallel (default derived from CPUs available)"));
+
+    args::AddOptionalFlag(&Handler.buildParams.isDryRun,
+                          'd',
+                          "dry-run",
+                          LE_I18N("Dry run for testing before real process execution."));
 
     Handler.commandLineNextArgType = ArgHandler_t::CommandLineNextArgType_t::ACTION_KEY;
 
@@ -1308,11 +1309,11 @@ static void GetCommandLineArgs
     // Add the directory containing the .sdef file to the list of source search directories
     // and the list of interface search directories.
     std::string sdefFileDir = path::GetContainingDir(Handler.sdefFilePath);
-    BuildParams.moduleDirs.push_back(sdefFileDir);
-    BuildParams.appDirs.push_back(sdefFileDir);
-    BuildParams.componentDirs.push_back(sdefFileDir);
-    BuildParams.sourceDirs.push_back(sdefFileDir);
-    BuildParams.interfaceDirs.push_back(sdefFileDir);
+    Handler.buildParams.moduleDirs.push_back(sdefFileDir);
+    Handler.buildParams.appDirs.push_back(sdefFileDir);
+    Handler.buildParams.componentDirs.push_back(sdefFileDir);
+    Handler.buildParams.sourceDirs.push_back(sdefFileDir);
+    Handler.buildParams.interfaceDirs.push_back(sdefFileDir);
 }
 
 
@@ -1328,15 +1329,15 @@ void MakeEdit
 )
 //--------------------------------------------------------------------------------------------------
 {
-    FindToolChain(BuildParams);
+    FindToolChain(Handler.buildParams);
 
-    BuildParams.argc = argc;
-    BuildParams.argv = argv;
-    BuildParams.readOnly = true;
+    Handler.buildParams.argc = argc;
+    Handler.buildParams.argv = argv;
+    Handler.buildParams.readOnly = true;
 
     // Get tool chain info from environment variables.
     // (Must be done after command-line args parsing and before setting target-specific env vars.)
-    envVars::SetTargetSpecific(BuildParams);
+    envVars::SetTargetSpecific(Handler.buildParams);
 
     GetCommandLineArgs(argc, argv);
 
@@ -1357,7 +1358,7 @@ void MakeEdit
         if (!Handler.sdefFilePath.empty())
         {
             // Do not load the model for create commands
-            Handler.systemPtr = modeller::GetSystem(Handler.sdefFilePath, BuildParams);
+            Handler.systemPtr = modeller::GetSystem(Handler.sdefFilePath, Handler.buildParams);
         }
     }
 

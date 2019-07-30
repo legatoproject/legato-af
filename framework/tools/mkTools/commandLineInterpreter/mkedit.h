@@ -46,6 +46,7 @@ class ArgHandler_t
         std::list<std::string> moduleSearchPath;    ///< List of module search path in active sdef
 
         model::System_t* systemPtr;     ///< Pointer for system model
+        mk::BuildParams_t buildParams;  ///< Object that stores the gathered build parameters
 
         enum CommandLineNextArgType_t { ///< Enum to track the command line arguments
             INVALID_ARG = 0,

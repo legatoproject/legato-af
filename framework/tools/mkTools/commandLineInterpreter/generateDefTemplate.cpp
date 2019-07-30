@@ -179,6 +179,16 @@ void GenerateSystemTemplate
 {
     std::string filePath = path::MakeAbsolute(handler.sdefFilePath);
 
+    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    {
+        std::cout << mk::format(LE_I18N("\nGenerating SDEF file '%s'."), filePath);
+    }
+
+    if (handler.buildParams.isDryRun)
+    {
+        return;
+    }
+
     std::ofstream defStream(filePath, std::ofstream::trunc);
 
     defStream << "\n// " << path::GetLastNode(handler.sdefFilePath) << "\n"
@@ -336,6 +346,17 @@ void GenerateApplicationTemplate
         );
     }
 
+    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    {
+        std::cout << mk::format(LE_I18N("\nGenerating ADEF file '%s'."), handler.absAdefFilePath);
+    }
+
+    if (handler.buildParams.isDryRun)
+    {
+        return;
+    }
+
+
     file::MakeDir(path::GetContainingDir(handler.absAdefFilePath));
 
     std::ofstream defStream(handler.absAdefFilePath, std::ofstream::trunc);
@@ -437,6 +458,19 @@ void GenerateComponentTemplate
         sourceFileName = path::GetLastNode(handler.absCdefFilePath) + ".c";
         sourceFilePath = handler.absCdefFilePath + "/"+ sourceFileName;
         compFilePath = handler.absCdefFilePath + "/" + COMP_CDEF;
+    }
+
+    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    {
+        std::cout << mk::format(LE_I18N("\nCreating component template files:"
+                                        "\nSource file: '%s'."
+                                        "\nCDEF file: '%s'."), sourceFilePath, compFilePath
+                     );
+    }
+
+    if (handler.buildParams.isDryRun)
+    {
+        return;
     }
 
     file::MakeDir(path::GetContainingDir(sourceFilePath));
@@ -577,10 +611,22 @@ void GenerateModuleTemplate
     if (file::FileExists(handler.absMdefFilePath))
     {
         throw mk::Exception_t(
-               mk::format(LE_I18N("Module definition file already exists: '%s'"),
-                          handler.absAdefFilePath)
+               mk::format(LE_I18N("\nModule definition file already exists: '%s'"),
+                          handler.absMdefFilePath)
         );
     }
+
+    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    {
+        std::cout << mk::format(LE_I18N("Generating MDEF file '%s'."), handler.absMdefFilePath);
+    }
+
+    if (handler.buildParams.isDryRun)
+    {
+        return;
+    }
+
+
     file::MakeDir(path::GetContainingDir(handler.absMdefFilePath));
 
     std::ofstream defStream(handler.absMdefFilePath, std::ofstream::trunc);

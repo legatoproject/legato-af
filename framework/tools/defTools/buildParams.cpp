@@ -31,6 +31,7 @@ BuildParams_t::BuildParams_t
     isStandAloneComp(false),
     binPack(false),
     noPie(false),
+    isDryRun(false),
     argc(0),
     argv(NULL),
     readOnly(false)

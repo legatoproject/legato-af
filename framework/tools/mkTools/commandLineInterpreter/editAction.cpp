@@ -13,7 +13,6 @@ namespace cli
 
 #define TEMP_EXT ".temp"
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Do action to check if a directory exists.
@@ -21,6 +20,18 @@ namespace cli
 //--------------------------------------------------------------------------------------------------
 void CheckDirExistAction_t::DoAction()
 {
+    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    {
+        if (dirMustExist)
+        {
+            std::cout << mk::format(LE_I18N("\nChecking if directory '%s' exists"), dirPath);
+        }
+        else
+        {
+            std::cout << mk::format(LE_I18N("\nChecking if directory '%s' does not exist"), dirPath);
+        }
+    }
+
     if (dirMustExist)
     {
        dirPath = path::MakeCanonical(dirPath);
@@ -40,7 +51,6 @@ void CheckDirExistAction_t::DoAction()
             );
         }
     }
-
 }
 
 
@@ -51,6 +61,23 @@ void CheckDirExistAction_t::DoAction()
 //--------------------------------------------------------------------------------------------------
 void CheckDefFileExistAction_t::DoAction()
 {
+    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    {
+        if (fileMustExist)
+        {
+            std::cout << mk::format(LE_I18N("\nChecking if definition file '%s' exists."),
+                                    filePath
+                         );
+        }
+        else
+        {
+            std::cout << mk::format(LE_I18N("\nChecking if definition file '%s' does not exist."),
+                                    filePath
+                         );
+
+        }
+    }
+
     if (fileMustExist)
     {
         if (!file::FileExists(filePath))
@@ -83,8 +110,7 @@ void CreateUpdateTempAdefAction_t::DoAction()
     // List of do actions to update the temporary working application definition file.
     handler.tempWorkDefFilePath = handler.absAdefFilePath + TEMP_EXT;
     updateDefs::EvaluateAdefGetEditLinePosition(handler, handler.systemPtr);
-    updateDefs::UpdateDefinitionFile(handler.absAdefFilePath, handler.tempWorkDefFilePath,
-                                     handler.linePositionToWrite);
+    updateDefs::UpdateDefinitionFile(handler, handler.absAdefFilePath);
 }
 
 
@@ -95,6 +121,14 @@ void CreateUpdateTempAdefAction_t::DoAction()
 //--------------------------------------------------------------------------------------------------
 void CreateUpdateTempAdefAction_t::UndoAction()
 {
+    if (handler.buildParams.beVerbose)
+    {
+        std::cout << mk::format(
+                        LE_I18N("\nDeleting temporary definition file '%s'."),
+                        handler.tempWorkDefFilePath
+                     );
+    }
+
     file::DeleteFile(handler.tempWorkDefFilePath);
 }
 
@@ -110,8 +144,7 @@ void CreateUpdateTempSdefAction_t::DoAction()
     // List of do actions to update the temporary working system definition file.
     handler.tempWorkDefFilePath = handler.absSdefFilePath + TEMP_EXT;
     updateDefs::ParseSdefUpdateItem(handler);
-    updateDefs::UpdateDefinitionFile(handler.absSdefFilePath, handler.tempWorkDefFilePath,
-                                     handler.linePositionToWrite);
+    updateDefs::UpdateDefinitionFile(handler, handler.absSdefFilePath);
 }
 
 
@@ -122,6 +155,14 @@ void CreateUpdateTempSdefAction_t::DoAction()
 //--------------------------------------------------------------------------------------------------
 void CreateUpdateTempSdefAction_t::UndoAction()
 {
+    if (handler.buildParams.beVerbose)
+    {
+        std::cout << mk::format(
+                        LE_I18N("\nDeleting temporary SDEF file '%s'."),
+                        handler.tempWorkDefFilePath
+                     );
+    }
+
     file::DeleteFile(handler.tempWorkDefFilePath);
 }
 
@@ -144,6 +185,12 @@ void GenerateComponentTemplateAction_t::DoAction()
 //--------------------------------------------------------------------------------------------------
 void GenerateComponentTemplateAction_t::UndoAction()
 {
+    if (handler.buildParams.beVerbose)
+    {
+        std::cout << mk::format(
+                        LE_I18N("\nDeleting component directory '%s'."), handler.absCdefFilePath);
+    }
+
     file::DeleteDir(handler.absCdefFilePath);
 }
 
@@ -185,6 +232,11 @@ void GenerateDefTemplateAction_t::UndoAction()
 {
     std::string fileName = handler.GetFileForEditItemType();
 
+    if (handler.buildParams.beVerbose)
+    {
+        std::cout << mk::format(LE_I18N("\nDeleting definition file '%s'."), fileName);
+    }
+
     // Delete the template file created in case of error exceptions to keep user's workspace clean.
     file::DeleteFile(fileName);
 }
@@ -196,7 +248,19 @@ void GenerateDefTemplateAction_t::UndoAction()
 //--------------------------------------------------------------------------------------------------
 void RemoveDirAction_t::DoAction()
 {
-     file::DeleteDir(handler.absCdefFilePath);
+    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    {
+        std::cout << mk::format(LE_I18N("\nDeleting component directory '%s'."),
+                                handler.absCdefFilePath
+                     );
+    }
+
+    if (handler.buildParams.isDryRun)
+    {
+        return;
+    }
+
+    file::DeleteDir(handler.absCdefFilePath);
 }
 
 
@@ -224,13 +288,24 @@ void RemoveDirAction_t::UndoAction()
 void RemoveFileAction_t::DoAction()
 {
     std::string fileName = handler.GetFileForEditItemType();
+
+    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    {
+        std::cout << mk::format(LE_I18N("\nDeleting file '%s'."), fileName);
+    }
+
+    if (handler.buildParams.isDryRun)
+    {
+        return;
+    }
+
     file::RemoveFile(fileName);
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Undo action of removing a defintion file which is to throw an error exception.
+ * Undo action of removing a definition file which is to throw an error exception.
  **/
 //--------------------------------------------------------------------------------------------------
 void RemoveFileAction_t::UndoAction()
@@ -255,6 +330,18 @@ void RenameFileAction_t::DoAction()
     std::string oldFileName = handler.GetOldFileForEditItemType();
     std::string newFileName = handler.GetFileForEditItemType();
 
+    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    {
+        std::cout << mk::format(LE_I18N("\nRenaming definition file '%s' to '%s'."),
+                                oldFileName, newFileName
+                     );
+    }
+
+    if (handler.buildParams.isDryRun)
+    {
+        return;
+    }
+
     file::RenameFile(oldFileName, newFileName);
 }
 
@@ -269,6 +356,11 @@ void RenameFileAction_t::UndoAction()
     std::string fileName = handler.GetFileForEditItemType();
     std::string oldFileName = handler.GetOldFileForEditItemType();
 
+    if (handler.buildParams.beVerbose)
+    {
+        std::cout << mk::format(LE_I18N("\nRenaming file '%s' to '%s'."), fileName, oldFileName);
+    }
+
     file::RenameFile(fileName, oldFileName);
 }
 
@@ -280,6 +372,18 @@ void RenameFileAction_t::UndoAction()
 //--------------------------------------------------------------------------------------------------
 void RenameTempWorkToActiveFileAction_t::DoAction()
 {
+    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    {
+        std::cout << mk::format(LE_I18N("\nRenaming file '%s' to '%s'."),
+                                handler.tempWorkDefFilePath, activeDefFilePath
+                     );
+    }
+
+    if (handler.buildParams.isDryRun)
+    {
+        return;
+    }
+
     file::RenameFile(handler.tempWorkDefFilePath, activeDefFilePath);
 }
 
