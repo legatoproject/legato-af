@@ -43,7 +43,6 @@ colourObj_t;
 #define NUM_ALLOC_SUPER_POOL    1
 
 static unsigned int NumRelease = 0;
-static unsigned int ReleaseId;
 
 LE_MEM_DEFINE_STATIC_POOL(StaticIdPool, ID_POOL_SIZE, sizeof(idObj_t));
 LE_MEM_DEFINE_STATIC_POOL(StaticColourPool, COLOUR_POOL_SIZE, sizeof(colourObj_t));
@@ -52,7 +51,6 @@ LE_MEM_DEFINE_STATIC_POOL(StaticStringsPool, STRING_POOL_SIZE, STRING_POOL_BYTES
 static void IdDestructor(void* objPtr)
 {
     NumRelease++;
-    ReleaseId = ((idObj_t*)objPtr)->id;
 
     LE_TEST_BEGIN_SKIP(!LE_CONFIG_IS_ENABLED(LE_CONFIG_MEM_POOL_NAMES_ENABLED), 1);
     // Test for deadlock on Memory Pool's internal mutex.
@@ -64,7 +62,6 @@ static void IdDestructor(void* objPtr)
 static void StaticIdDestructor(void *objPtr)
 {
     NumRelease++;
-    ReleaseId = ((idObj_t*)objPtr)->id;
 
     // Test for deadlock on Memory Pool's internal mutex.
     // Also test that the ID Pool (from which this object was allocated) can be found.
@@ -491,8 +488,8 @@ static void TestPools
     }
 
     // Now try hibernating -- first disable interrupts
-    LE_TEST_BEGIN_SKIP(!LE_CONFIG_IS_ENABLED(LE_CONFIG_RTOS), 3);
-#if LE_CONFIG_RTOS
+    LE_TEST_BEGIN_SKIP(!LE_CONFIG_IS_ENABLED(LE_CONFIG_MEM_HIBERNATION), 3);
+#if LE_CONFIG_MEM_HIBERNATION
     taskENTER_CRITICAL();
     void *beginFree, *endFree;
     le_mem_Hibernate(&beginFree, &endFree);
@@ -500,7 +497,7 @@ static void TestPools
                "Free %" PRIuS " bytes of memory by hibernating", endFree - beginFree);
     le_mem_Resume();
     taskEXIT_CRITICAL();
-#endif /* end LE_CONFIG_RTOS */
+#endif /* end LE_CONFIG_MEM_HIBERNATION */
     LE_TEST_END_SKIP();
 
     // Now finish up by allocating some small strings

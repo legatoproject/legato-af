@@ -96,7 +96,9 @@ static pthread_key_t StartTimeKey;
 static le_thread_Ref_t MainThread;
 
 // Reference to the child thread.
+#if LE_CONFIG_LINUX
 static le_thread_Ref_t ChildThread;
+#endif
 
 // Mutex used to prevent races between the threads.
 static le_mutex_Ref_t Mutex;
@@ -511,8 +513,6 @@ COMPONENT_INIT
 
 #if LE_CONFIG_LINUX
     ChildThread = le_thread_Create("Timer Test", ThreadMain, NULL);
-#else
-    ChildThread = NULL;
 #endif
 
     LE_TEST_PLAN(2 * Total * TESTS_PER_TIMER + ADDITIONAL_TEST_COUNT);

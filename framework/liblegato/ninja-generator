@@ -91,6 +91,7 @@ EOF
 AddSources liblegato ${LEGATO_ROOT}/framework/liblegato/clock.c \
                    ${LEGATO_ROOT}/framework/liblegato/doublyLinkedList.c \
                    ${LEGATO_ROOT}/framework/liblegato/hashmap.c \
+                   ${LEGATO_ROOT}/framework/liblegato/hsieh_hash.c \
                    ${LEGATO_ROOT}/framework/liblegato/eventLoop.c \
                    ${LEGATO_ROOT}/framework/liblegato/log.c \
                    ${LEGATO_ROOT}/framework/liblegato/mem.c \
@@ -101,7 +102,8 @@ AddSources liblegato ${LEGATO_ROOT}/framework/liblegato/clock.c \
                    ${LEGATO_ROOT}/framework/liblegato/singlyLinkedList.c \
                    ${LEGATO_ROOT}/framework/liblegato/test.c \
                    ${LEGATO_ROOT}/framework/liblegato/crc.c \
-                   ${LEGATO_ROOT}/framework/liblegato/utf8.c
+                   ${LEGATO_ROOT}/framework/liblegato/utf8.c \
+                   ${LEGATO_ROOT}/framework/liblegato/cdata.c
 
 base_cflags_name="${legato_target_caps}_CFLAGS"
 
