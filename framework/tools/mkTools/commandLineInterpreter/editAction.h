@@ -120,6 +120,8 @@ class GenerateComponentTemplateAction_t : public EditAction_t
 //--------------------------------------------------------------------------------------------------
 class GenerateDefTemplateAction_t : public EditAction_t
 {
+    private:
+        bool isDirExist;
     public:
         GenerateDefTemplateAction_t(ArgHandler_t& arghandle) : EditAction_t(arghandle) {}
         void DoAction() override;

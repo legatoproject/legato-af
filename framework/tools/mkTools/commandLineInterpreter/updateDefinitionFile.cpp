@@ -42,7 +42,7 @@ void UpdateDefinitionFile
     std::string sourceFile      ///< Original definition file is the source file
 )
 {
-    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    if (handler.isPrintLogging())
     {
         std::cout << mk::format(LE_I18N(
                                   "\nCreating temporary working file '%s' from original file '%s'."
@@ -214,14 +214,14 @@ void ParseSdefReadSearchPath
         // When app is being created
         if (appFoundPath.empty() && !handler.appSearchPath.empty())
         {
-            // Create directory if it does not exist.
-            if (!file::DirectoryExists(handler.appSearchPath.front()))
+            std::string absAppSearchPath = path::Minimize(handler.appSearchPath.front());
+
+            if (!path::IsAbsolute(absAppSearchPath))
             {
-                file::MakeDir(handler.appSearchPath.front());
+                absAppSearchPath = path::MakeAbsolute(absAppSearchPath);
             }
 
-            handler.absAdefFilePath = path::MakeCanonical(handler.appSearchPath.front()) + "/" +
-                                      handler.adefFilePath;
+            handler.absAdefFilePath = absAppSearchPath + "/" + handler.adefFilePath;
         }
 
 
@@ -244,30 +244,31 @@ void ParseSdefReadSearchPath
                 handler.absCdefFilePath = compFoundPath;
             }
 
-            // When component is being created ...
+            // When component is being created
             if (compFoundPath.empty() && !handler.compSearchPath.empty())
             {
-                // Create directory if it does not exist.
-                if (!file::DirectoryExists(handler.compSearchPath.front()))
+                std::string absCompSearchPath = path::Minimize(handler.compSearchPath.front());
+
+                if (!path::IsAbsolute(absCompSearchPath))
                 {
-                    file::MakeDir(handler.compSearchPath.front());
+                    absCompSearchPath = path::MakeAbsolute(absCompSearchPath);
                 }
 
-                handler.absCdefFilePath = path::MakeCanonical(handler.compSearchPath.front()) +
-                                          "/" + handler.cdefFilePath;
+                handler.absCdefFilePath = absCompSearchPath + "/" + handler.cdefFilePath;
             }
         }
 
         // Component is created when app is created
         if (handler.cdefFilePath.empty() && !handler.compSearchPath.empty())
         {
-            // Create directory if it does not exist.
-            if (!file::DirectoryExists(handler.compSearchPath.front()))
+            std::string absCompSearchPath = path::Minimize(handler.compSearchPath.front());
+
+            if (!path::IsAbsolute(absCompSearchPath))
             {
-                file::MakeDir(handler.compSearchPath.front());
+                absCompSearchPath = path::MakeAbsolute(absCompSearchPath);
             }
 
-            handler.absCdefFilePath = path::MakeCanonical(handler.compSearchPath.front()) + "/"
+            handler.absCdefFilePath = absCompSearchPath + "/"
                                       + path::GetLastNode(path::RemoveSuffix(
                                                           handler.adefFilePath, ADEF_EXT))
                                       + "Component";
@@ -295,14 +296,14 @@ void ParseSdefReadSearchPath
         // When module is being created
         if (modFoundPath.empty() && !handler.moduleSearchPath.empty())
         {
-            // Create directory if it does not exist.
-            if (!file::DirectoryExists(handler.moduleSearchPath.front()))
+            std::string absModSearchPath = path::Minimize(handler.moduleSearchPath.front());
+
+            if (!path::IsAbsolute(absModSearchPath))
             {
-                file::MakeDir(handler.moduleSearchPath.front());
+                absModSearchPath = path::MakeAbsolute(absModSearchPath);
             }
 
-            handler.absMdefFilePath = path::MakeCanonical(handler.moduleSearchPath.front()) + "/" +
-                                      handler.mdefFilePath;
+            handler.absMdefFilePath = absModSearchPath + "/" + handler.mdefFilePath;
         }
     }
 
@@ -548,7 +549,7 @@ void ParseSdefUpdateItem
                         foundPos = itemPtr->lastTokenPtr->curPos;
                         nextPos = itemPtr->firstTokenPtr->nextPtr->curPos;
 
-                        if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+                        if (handler.isPrintLogging())
                         {
                             std::cout << mk::format(
                                             LE_I18N("\nApp '%s' found in apps: section in '%s'."),
@@ -622,7 +623,7 @@ void ParseSdefUpdateItem
                         foundPos = itemPtr->lastTokenPtr->curPos;
                         nextPos = itemPtr->firstTokenPtr->nextPtr->curPos;
 
-                        if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+                        if (handler.isPrintLogging())
                         {
                             std::cout << mk::format(
                                             LE_I18N("\nModule '%s' found in kernelModules: section "
@@ -705,7 +706,7 @@ void ParseSdefUpdateItem
         handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{strWrite, endPos,
                                                                            endPos});
 
-        if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+        if (handler.isPrintLogging())
         {
             std::cout << mk::format(
                             LE_I18N("Section not found. Append '%s' to end of the file '%s'."),
@@ -752,7 +753,7 @@ static void ParseAdefGetEditLinePosition
         }
     }
 
-    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    if (handler.isPrintLogging())
     {
         std::cout << mk::format(LE_I18N("\nSearching component '%s' in ADEF file '%s'."),
                                 compList, adefPath
@@ -850,7 +851,7 @@ static void ParseAdefGetEditLinePosition
 
                         exeCompPositionList.push_back(exeCompPosition);
 
-                        if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+                        if (handler.isPrintLogging())
                         {
                             std::cout << mk::format(
                                             LE_I18N("\nComponent '%s' found in '%s' section '%s'"),
@@ -897,7 +898,7 @@ static void ParseAdefGetEditLinePosition
                     compPosition.nextPos = tokenPtr->nextPtr->curPos;
                     compPositionList.push_back(compPosition);
 
-                    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+                    if (handler.isPrintLogging())
                     {
                         std::cout << mk::format(
                                         LE_I18N("\nComponent '%s' found in '%s' section at '%s'"),
@@ -976,8 +977,7 @@ static void ParseAdefGetEditLinePosition
                                     procRunPosition.foundPos = itemPtr->firstTokenPtr->curPos;
                                     procRunPosition.nextPos = itemPtr->lastTokenPtr->nextPtr->curPos;
 
-                                    if (handler.buildParams.beVerbose ||
-                                        handler.buildParams.isDryRun)
+                                    if (handler.isPrintLogging())
                                     {
                                         std::cout << mk::format(
                                                         LE_I18N("\nProcess '%s' found in '%s' "
@@ -1033,7 +1033,7 @@ static void ParseAdefGetEditLinePosition
 
                         bindingPositionList.push_back(bindingPosition);
 
-                        if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+                        if (handler.isPrintLogging())
                         {
                             std::cout << mk::format(
                                             LE_I18N("\nComponent '%s' found in '%s' section '%s'"),
@@ -1088,7 +1088,7 @@ static void ParseAdefGetEditLinePosition
                 lineToWrite1 = "    " + compPath;
             }
 
-            if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+            if (handler.isPrintLogging())
             {
                 std::cout << mk::format(
                                 LE_I18N("\nRename component to '%s' in components: or executables: "
@@ -1128,7 +1128,7 @@ static void ParseAdefGetEditLinePosition
                                                                           it.foundPos, it.nextPos});
             }
 
-            if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+            if (handler.isPrintLogging())
             {
                 std::cout << mk::format(LE_I18N("\nRename component to '%s' in bindings: section."),
                                         lineToWrite3
@@ -1161,7 +1161,7 @@ static void ParseAdefGetEditLinePosition
                          ArgHandler_t::LinePosition_t{"", it.foundPos, it.nextPos});
             }
 
-            if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+            if (handler.isPrintLogging())
             {
                 std::cout << mk::format(
                                 LE_I18N("\nRemove component '%s' from components: or executables: "
@@ -1187,7 +1187,7 @@ static void ParseAdefGetEditLinePosition
                                                                                    it.nextPos});
             }
 
-            if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+            if (handler.isPrintLogging())
             {
                 std::cout << LE_I18N("\nRemove process name from processes: run: section.");
             }
@@ -1202,7 +1202,7 @@ static void ParseAdefGetEditLinePosition
                                 ArgHandler_t::LinePosition_t{"", it.sectionPos, it.sectionNextPos});
             }
 
-            if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+            if (handler.isPrintLogging())
             {
                 std::cout << mk::format(
                                 LE_I18N("\nRemove bindings with component '%s' from bindings: "
@@ -1226,7 +1226,7 @@ static void ParseAdefGetEditLinePosition
             handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite2, length2,
                                                                                length2-1});
 
-            if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+            if (handler.isPrintLogging())
             {
                 std::cout << mk::format(
                                 LE_I18N("\nAdd '%s' and '%s' to executables: and processes: run: "
@@ -1240,7 +1240,7 @@ static void ParseAdefGetEditLinePosition
             lineToWrite1 = "    " + compPath;
             handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite1,
                                                                                length1, length1-1});
-            if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+            if (handler.isPrintLogging())
             {
                 std::cout << mk::format(
                                 LE_I18N("\nAdd '%s' to components: section."), lineToWrite1
@@ -1343,7 +1343,7 @@ void GetAdefSectionEditLinePosition
         );
     }
 
-    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    if (handler.isPrintLogging())
     {
         std::cout << mk::format(
                         LE_I18N("Searching section '%s' in ADEF file '%s'."),
@@ -1389,7 +1389,7 @@ void GetAdefSectionEditLinePosition
             foundPos = sectionPtr->lastTokenPtr->curPos;
             nextPos = sectionPtr->lastTokenPtr->nextPtr->curPos;
 
-            if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+            if (handler.isPrintLogging())
             {
                 std::cout << mk::format(
                                 LE_I18N("\nSection '%s' found in '%s'."),
@@ -1417,7 +1417,7 @@ void GetAdefSectionEditLinePosition
 
         handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{strWrite, endPos,
                                                                            endPos});
-        if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+        if (handler.isPrintLogging())
         {
             std::cout << mk::format(
                             LE_I18N("\nSection '%s' not found. Append '%s' to the end of file."),
@@ -1439,7 +1439,7 @@ void GetAdefSectionEditLinePosition
 
         handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{strWrite, foundPos,
                                                                            nextPos});
-        if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+        if (handler.isPrintLogging())
         {
             std::cout << mk::format(LE_I18N("\nUpdate section '%s' to '%s' ."), section, strWrite);
         }

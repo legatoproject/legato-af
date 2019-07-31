@@ -206,6 +206,23 @@ static void ValidateAppSandboxedValue(std::string& appSandboxed)
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Print logging based on the build parameter gathered from the command line.
+ **/
+//--------------------------------------------------------------------------------------------------
+bool ArgHandler_t::isPrintLogging()
+{
+    // Print logging if either beVerbose or isDryRun is true.
+    if (buildParams.beVerbose || buildParams.isDryRun)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get corresponding file path based on the type of edit item.
  **/
 //--------------------------------------------------------------------------------------------------

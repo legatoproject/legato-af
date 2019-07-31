@@ -179,7 +179,7 @@ void GenerateSystemTemplate
 {
     std::string filePath = path::MakeAbsolute(handler.sdefFilePath);
 
-    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    if (handler.isPrintLogging())
     {
         std::cout << mk::format(LE_I18N("\nGenerating SDEF file '%s'."), filePath);
     }
@@ -346,7 +346,7 @@ void GenerateApplicationTemplate
         );
     }
 
-    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    if (handler.isPrintLogging())
     {
         std::cout << mk::format(LE_I18N("\nGenerating ADEF file '%s'."), handler.absAdefFilePath);
     }
@@ -460,7 +460,7 @@ void GenerateComponentTemplate
         compFilePath = handler.absCdefFilePath + "/" + COMP_CDEF;
     }
 
-    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    if (handler.isPrintLogging())
     {
         std::cout << mk::format(LE_I18N("\nCreating component template files:"
                                         "\nSource file: '%s'."
@@ -616,7 +616,7 @@ void GenerateModuleTemplate
         );
     }
 
-    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    if (handler.isPrintLogging())
     {
         std::cout << mk::format(LE_I18N("Generating MDEF file '%s'."), handler.absMdefFilePath);
     }

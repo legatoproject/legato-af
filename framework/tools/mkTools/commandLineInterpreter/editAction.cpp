@@ -15,12 +15,33 @@ namespace cli
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Function to check if a file's containing directory exists or not.
+ **/
+//--------------------------------------------------------------------------------------------------
+bool ContainingDirectoryExists
+(
+    std::string filePath
+)
+{
+    if (file::DirectoryExists(path::GetContainingDir(filePath)))
+    {
+       return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Do action to check if a directory exists.
  **/
 //--------------------------------------------------------------------------------------------------
 void CheckDirExistAction_t::DoAction()
 {
-    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    if (handler.isPrintLogging())
     {
         if (dirMustExist)
         {
@@ -61,7 +82,7 @@ void CheckDirExistAction_t::DoAction()
 //--------------------------------------------------------------------------------------------------
 void CheckDefFileExistAction_t::DoAction()
 {
-    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    if (handler.isPrintLogging())
     {
         if (fileMustExist)
         {
@@ -205,14 +226,17 @@ void GenerateDefTemplateAction_t::DoAction()
     switch (handler.editItemType)
     {
         case ArgHandler_t::EditItemType_t::APP:
+            isDirExist = ContainingDirectoryExists(handler.absAdefFilePath);
             defs::GenerateApplicationTemplate(handler);
             break;
 
         case ArgHandler_t::EditItemType_t::MODULE:
+            isDirExist = ContainingDirectoryExists(handler.absMdefFilePath);
             defs::GenerateModuleTemplate(handler);
             break;
 
         case ArgHandler_t::EditItemType_t::SYSTEM:
+            isDirExist = ContainingDirectoryExists(handler.absSdefFilePath);
             defs::GenerateSystemTemplate(handler);
             break;
 
@@ -232,14 +256,29 @@ void GenerateDefTemplateAction_t::UndoAction()
 {
     std::string fileName = handler.GetFileForEditItemType();
 
-    if (handler.buildParams.beVerbose)
+    // In case of error exceptions user's workspace must be kept clean.
+    // If the file's containing directory did not initially exist, delete the directory. Otherwise
+    // delete only the file.
+    if (!isDirExist)
     {
-        std::cout << mk::format(LE_I18N("\nDeleting definition file '%s'."), fileName);
-    }
+        if (handler.buildParams.beVerbose)
+        {
+            std::cout << mk::format(LE_I18N("\nDeleting directory '%s'."), fileName);
+        }
 
-    // Delete the template file created in case of error exceptions to keep user's workspace clean.
-    file::DeleteFile(fileName);
+        file::DeleteDir(path::GetContainingDir(fileName));
+    }
+    else
+    {
+        if (handler.buildParams.beVerbose)
+        {
+            std::cout << mk::format(LE_I18N("\nDeleting definition file '%s'."), fileName);
+        }
+
+        file::DeleteFile(fileName);
+    }
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -248,7 +287,7 @@ void GenerateDefTemplateAction_t::UndoAction()
 //--------------------------------------------------------------------------------------------------
 void RemoveDirAction_t::DoAction()
 {
-    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    if (handler.isPrintLogging())
     {
         std::cout << mk::format(LE_I18N("\nDeleting component directory '%s'."),
                                 handler.absCdefFilePath
@@ -289,7 +328,7 @@ void RemoveFileAction_t::DoAction()
 {
     std::string fileName = handler.GetFileForEditItemType();
 
-    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    if (handler.isPrintLogging())
     {
         std::cout << mk::format(LE_I18N("\nDeleting file '%s'."), fileName);
     }
@@ -330,7 +369,7 @@ void RenameFileAction_t::DoAction()
     std::string oldFileName = handler.GetOldFileForEditItemType();
     std::string newFileName = handler.GetFileForEditItemType();
 
-    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    if (handler.isPrintLogging())
     {
         std::cout << mk::format(LE_I18N("\nRenaming definition file '%s' to '%s'."),
                                 oldFileName, newFileName
@@ -372,7 +411,7 @@ void RenameFileAction_t::UndoAction()
 //--------------------------------------------------------------------------------------------------
 void RenameTempWorkToActiveFileAction_t::DoAction()
 {
-    if (handler.buildParams.beVerbose || handler.buildParams.isDryRun)
+    if (handler.isPrintLogging())
     {
         std::cout << mk::format(LE_I18N("\nRenaming file '%s' to '%s'."),
                                 handler.tempWorkDefFilePath, activeDefFilePath

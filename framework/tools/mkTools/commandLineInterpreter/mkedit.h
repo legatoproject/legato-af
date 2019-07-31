@@ -129,6 +129,9 @@ class ArgHandler_t
         // Add action to the edit action vector
         void AddAction(std::shared_ptr<EditAction_t> action);
 
+        // Print logs based on buildParams value
+        bool isPrintLogging();
+
         // Constructor
         ArgHandler_t()
             : commandLineNextArgType(INVALID_ARG),
