@@ -424,6 +424,12 @@ void GenerateRtosRpcServices
     const mk::BuildParams_t& buildParams
 )
 {
+    // DO NOT generate the rpcServices.c file unless LE_CONFIG_RPC is enabled.
+    if (!envVars::GetConfigBool("LE_CONFIG_RPC"))
+    {
+        return;
+    }
+
     auto sourceFile = path::Combine(buildParams.workingDir, "src/rpcServices.c");
 
     // Open the file as an output stream.
