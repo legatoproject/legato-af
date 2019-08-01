@@ -807,18 +807,30 @@ le_result_t file_CopyRecursive
                 {
                     char linkBuffer[PATH_MAX] = "";
                     ssize_t bytesRead = readlink(entPtr->fts_path, linkBuffer, sizeof(linkBuffer));
-                    if (bytesRead < 0)
+                    if ((bytesRead < 0) || (bytesRead >= sizeof(linkBuffer)))
                     {
-                        LE_CRIT("Failed to read symlink '%s'.", entPtr->fts_path);
+                        LE_CRIT("Failed to read symlink '%s': bytesRead %" PRIdS,
+                                entPtr->fts_path, bytesRead);
                         result = LE_IO_ERROR;
                         goto cleanup;
                     }
+                    // Null-terminate the string.
+                    linkBuffer[bytesRead] = '\0';
 
-                    int linkResult;
+                    int linkResult = -1;
                     char resolvedLinkPath[PATH_MAX] = "";
                     if (realpath(linkBuffer, resolvedLinkPath) == NULL)
                     {
-                        LE_CRIT("No such path : '%s'",linkBuffer);
+                        // If the link has no real path, this is most likely result of using
+                        // a "preloaded" flag but the actual app is absent. Still proceed with
+                        // copying the link; this is needed to keep system integrity and to be able
+                        // to uninstall/reinstall the missing app.
+                        LE_ERROR("No real path for symlink: '%s'", linkBuffer);
+                    }
+                    // Validate the link path
+                    if (strlen(linkBuffer) <= 0)
+                    {
+                        LE_CRIT("Link path is invalid");
                         result = LE_IO_ERROR;
                         goto cleanup;
                     }
