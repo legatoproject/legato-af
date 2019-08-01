@@ -812,6 +812,51 @@ static void DcsCommandHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Handler function for the close session service
+ */
+//--------------------------------------------------------------------------------------------------
+static void CloseSessionEventHandler
+(
+    le_msg_SessionRef_t sessionRef,
+    void*               contextPtr
+)
+{
+    LE_INFO("Client %p killed, remove allocated resources", sessionRef);
+
+    if (!sessionRef)
+    {
+        LE_ERROR("Failed resource clean up for a null sessionRef upon session closure");
+        return;
+    }
+
+    // Search the data reference used by the killed client
+    le_ref_IterRef_t iterRef = le_ref_GetIterator(dcs_GetRequestRefMap());
+    le_result_t result = le_ref_NextNode(iterRef);
+
+    while (LE_OK == result)
+    {
+        le_msg_SessionRef_t session = (le_msg_SessionRef_t)le_ref_GetValue(iterRef);
+
+        // Check if the session reference saved matches with the current session reference
+        if (session == sessionRef)
+        {
+            // Stop the data channel after moving iterRef to the next node, because in the
+            // stopping this node will be removed.
+            le_dcs_ReqObjRef_t reqRef = (le_dcs_ReqObjRef_t)le_ref_GetSafeRef(iterRef);
+            result = le_ref_NextNode(iterRef);
+            le_dcs_Stop(reqRef);
+        }
+        else
+        {
+            // Move to the next node
+            result = le_ref_NextNode(iterRef);
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  *  Server initialization
  */
 //--------------------------------------------------------------------------------------------------
@@ -828,6 +873,9 @@ COMPONENT_INIT
     }
 
     dcsCreateDbPool();
+
+    // Add a handler to the close session service
+    le_msg_AddServiceCloseHandler(le_dcs_GetServiceRef(), CloseSessionEventHandler, NULL);
 
     DcsCommandEventId = le_event_CreateId("DcsCommandEventId", sizeof(DcsCommand_t));
     le_event_AddHandler("DcsCommand", DcsCommandEventId, DcsCommandHandler);
