@@ -161,13 +161,14 @@ ifeq ($(LE_CONFIG_TEST_COVERAGE),y)
   CFLAGS += --coverage
 endif
 
-ifeq ($(LE_CONFIG_ENABLE_IMA),y)
-  IMA_LIBS = -lssl -lcrypto
-  IMA_MKEXE_FLAGS += $(foreach lib,$(IMA_LIBS),--ldflags=$(lib))
-else
-  IMA_LIBS =
-  IMA_MKEXE_FLAGS =
-endif
+# IMA checking is done during run time. Also IMA checking may be done (e.g. new app install)
+# when legato is running from read-only partition. On target side LE_CONFIG_ENABLE_IMA should have
+# no impact. Include these IMA libraries no matter whether LE_CONFIG_ENABLE_IMA is set or not.
+# LE_CONFIG_ENABLE_IMA should only be used for generating signed update files.
+
+IMA_LIBS = -lssl -lcrypto
+IMA_MKEXE_FLAGS += $(foreach lib,$(IMA_LIBS),--ldflags=$(lib))
+
 
 # Start PA files
 PA_START_NAME         := Component_le_pa_start

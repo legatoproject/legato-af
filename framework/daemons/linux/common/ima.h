@@ -53,6 +53,8 @@ bool ima_IsEnabled
  * Import IMA public certificate to linux keyring. Public certificate must be signed by system
  * private key to import it properly.
  *
+ * NOTE: Caller should make sure that ima is enabled before calling this function.
+ *
  * @return
  *      - LE_OK if imports properly
  *      - LE_FAULT if fails to import
@@ -67,6 +69,8 @@ le_result_t ima_ImportPublicCert
 //--------------------------------------------------------------------------------------------------
 /**
  * Verify a file IMA signature against provided public certificate path
+ *
+ * NOTE: Caller should make sure that ima is enabled before calling this function.
  *
  * @return
  *      - LE_OK on success
@@ -84,6 +88,8 @@ le_result_t  ima_VerifyFile
 /**
  * Recursively traverse the directory and verify each file IMA signature against provided public
  * certificate path
+ *
+ * NOTE: Caller should make sure that ima is enabled before calling this function.
  *
  * @return
  *      - LE_OK on success
