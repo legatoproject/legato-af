@@ -132,7 +132,13 @@ bool _le_test_SetTodo(bool todo);
 void _le_test_Skip(int count);
 bool _le_test_IsSkipping(void);
 const char* _le_test_GetTag(void);
-#define LE_TEST_OUTPUT(format, ...) LE_INFO("TAP | " format, ##__VA_ARGS__)
+
+//
+// Allow overriding LE_TEST_OUTPUT by a frameworkAdaptor
+//
+#ifndef LE_TEST_OUTPUT
+#   define LE_TEST_OUTPUT(format, ...) LE_INFO("TAP | " format, ##__VA_ARGS__)
+#endif
 // @}
 
 //--------------------------------------------------------------------------------------------------
