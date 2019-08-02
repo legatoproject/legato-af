@@ -2139,6 +2139,7 @@ le_result_t le_mdc_SetDefaultAPN
  *
  * @return
  *      - LE_OK on success
+ *      - LE_NOT_FOUND if the given profile can be found
  *      - LE_BAD_PARAMETER if an input parameter is not valid
  *      - LE_OVERFLOW if the APN is is too long
  *      - LE_FAULT on failed
@@ -2169,7 +2170,12 @@ le_result_t le_mdc_GetAPN
     }
 
     status = pa_mdc_ReadProfile(profilePtr->profileIndex,&profilePtr->modemData);
-    if (status != LE_OK)
+    if (status == LE_NOT_FOUND)
+    {
+        LE_WARN("Profile with reference %p not created in MDC yet", profileRef);
+        return status;
+    }
+    else if (status != LE_OK)
     {
         LE_ERROR("Failed to read profile at index %d; error %d", profilePtr->profileIndex, status);
         return status;
