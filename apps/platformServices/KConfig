@@ -98,6 +98,14 @@ config AVC_HTTP_TIMEOUT_MS
   ---help---
   The timeout (msec) of the HTTP connection used to download the package.
 
+config AVC_FEATURE_FILETRANSFER
+  bool "Enable file transfer feature"
+  default y if TARGET_WP77XX
+  default y if TARGET_WP76XX
+  default n
+  ---help---
+    Select this to enable file transfer feature.
+
 config AVC_FEATURE_EDM
   bool "Enable Extended Device Management (EDM)"
   default y if TARGET_WP750X

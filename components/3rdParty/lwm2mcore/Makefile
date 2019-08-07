@@ -8,6 +8,7 @@ LWM2MCORE_SRC=\
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/objectManager/handlers.c \
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/objectManager/utils.c \
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/packageDownloader/lwm2mcorePackageDownloader.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/packageDownloader/fileTransfer.c \
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/packageDownloader/update.c \
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/packageDownloader/workspace.c \
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/objectManager/lwm2mcoreCoapHandlers.c \
@@ -41,6 +42,11 @@ CFLAGS+=\
     -DLWM2M_DEREGISTER \
     -DLWM2M_RETAIN_SERVER_LIST \
     -DAV_SYSTEM_CONFIGURATION
+
+ifeq ($(LE_CONFIG_AVC_FEATURE_FILETRANSFER),y)
+CFLAGS+=\
+    -DLWM2M_OBJECT_33406
+endif
 
 ifeq ($(DEBUG),yes)
     CFLAGS += -g

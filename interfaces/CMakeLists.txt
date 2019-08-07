@@ -11,6 +11,8 @@ generate_header(airVantage/le_avc.api)
 generate_header(airVantage/le_avdata.api)
 #coap api is internal only at this point
 #generate_header(airVantage/le_coap.api)
+# file download api is internal only at this point
+#generate_header(airVantage/le_avtransfer.api)
 generate_header(atServices/le_atDefs.api)
 generate_header(atServices/le_atClient.api)
 generate_header(atServices/le_atServer.api)

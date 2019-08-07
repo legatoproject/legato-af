@@ -1,0 +1,32 @@
+
+provides:
+{
+    api:
+    {
+        le_fileStreamClient.api
+    }
+}
+
+sources:
+{
+    fileStreamClient.c
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}/components/fileStream/fileStreamServer
+    -I${LEGATO_ROOT}/components/watchdogChain
+    -I$LEGATO_ROOT/framework/liblegato
+}
+
+requires:
+{
+    component:
+    {
+        ${LEGATO_ROOT}/components/watchdogChain
+    }
+    api:
+    {
+        le_appInfo.api
+    }
+}

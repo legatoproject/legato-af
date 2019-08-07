@@ -1,0 +1,18 @@
+sources:
+{
+    fileStreamDemo.c
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/fileStream
+}
+
+requires:
+{
+    api:
+    {
+        le_fileStreamClient.api
+        airVantage/le_avc.api
+    }
+}

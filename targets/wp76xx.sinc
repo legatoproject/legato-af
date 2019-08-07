@@ -78,4 +78,8 @@ cflags:
 
     // SecStore disable limit flags
     //-DMK_CONFIG_SECSTORE_DISABLE_LIMIT
+
+#if ${LE_CONFIG_AVC_FEATURE_FILETRANSFER} = y
+    -DLWM2M_OBJECT_33406
+#endif
 }

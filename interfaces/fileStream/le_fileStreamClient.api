@@ -1,0 +1,289 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_le_fileStream File Stream API to download/upload files from/to cloud.
+ *
+ * The File Stream Service provides API to:
+ *
+ *  - Download a file from cloud
+ *  - Upload a file to cloud (Not supported)
+ *  - Save the received stream locally on target
+ *  - Transfer the received stream to an external application
+ *  - Retrieve meta data and sync processed streams (Not supported)
+ *
+ * @section c_le_fileStream File Stream Service
+ *
+ * The File stream service can save received stream locally or pass it transparently to
+ * interested applications. Applications have to register to receive streams on a certain topic
+ * and provide callbacks for processing data.
+ *
+ * File stream is managed by AirVantage via new Sierra Proprietary LWM2M objects (33406/33407).
+ *
+ * Incoming streams are provided with a specific topic and direction type (save locally or stream
+ * directly to interested application). Applications that register a topic stream for locally saved
+ * streams will receive an event when the stream is fully saved. While streaming directly will
+ * require an application to register on the topic; otherwise the stream will abort.
+ *
+ * The API for File Stream Service is divided into two parts:
+ *
+ *  - Server Side Interface: Interfaces to the avcService app which interacts with the
+ *                           AirVantage server. This server side API is responsible for processing
+ *                           operations on File Stream and File Sync Object.
+ *
+ *  - Client Side Interface: Interfaces to the customer application. This interface allows customer
+ *                           application to subscribe to a stream "topic" and receive events or
+ *                           data from File Stream Service. While subscribing to a stream topic,
+ *                           Customer application need to provide the list of callbacks which are
+ *                           responsible for processing a specific event or data.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * File name string maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE FILE_NAME_MAX_LEN = 128;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * File class string maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE FILE_TOPIC_MAX_LEN = 255;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * File hash string maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE HASH_MAX_LEN = 64;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * File name string maximum bytes.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE FILE_NAME_MAX_BYTES = (FILE_NAME_MAX_LEN + 1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * File class string maximum bytes.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE FILE_TOPIC_MAX_BYTES = (FILE_TOPIC_MAX_LEN + 1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * File hash string maximum bytes.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE HASH_MAX_BYTES = (HASH_MAX_LEN + 1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enumeration of file upload state
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM UploadState
+{
+    UPLOAD_IDLE,                       ///< Idle (Received URL but nothing happened after that)
+    UPLOAD_IN_PROGRESS,                ///< Upload in progress
+    UPLOAD_COMPLETED,                  ///< Upload complete
+    UPLOAD_FAILED                      ///< Upload failed
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enumeration of file download state
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM DownloadState
+{
+    DOWNLOAD_IDLE,                      ///< Idle (Received URL but nothing happened after that)
+    DOWNLOAD_PENDING,                   ///< Download is pending
+    DOWNLOAD_IN_PROGRESS,               ///< Download in progress
+    DOWNLOAD_COMPLETED,                 ///< Download completed
+    DOWNLOAD_FAILED                     ///< Download failed
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Result after processing the stream
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Result
+{
+    ERR_NO_MEMORY,              ///< No storage space available
+    ERR_FILE_UNAVAILABLE,       ///< File being pushed out is unavailable
+    ERR_UNKNOWN                 ///< Unknown error
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enumeration of file stream direction
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Direction
+{
+    DIRECTION_DOWNLOAD,     ///< File download
+    DIRECTION_UPLOAD        ///< File upload (not yet supported)
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enumeration of file stream origin
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Origin
+{
+    ORIGIN_SERVER           ///< File sent by the server
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This is the structure with info about all the streams currently managed by the customer app
+ */
+//--------------------------------------------------------------------------------------------------
+STRUCT MetaData
+{
+    string fileName[FILE_NAME_MAX_LEN];         ///< Name of the stream
+    Direction direction;                        ///< File direction
+    string hash[HASH_MAX_LEN];                  ///< Hash of bytes downloaded so far
+    DownloadState downloadStatus;               ///< Download Status
+    UploadState uploadStatus;                   ///< Upload Status
+    Result result;                              ///< Result while processing the stream
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Structure representing the stream management object.
+ */
+//--------------------------------------------------------------------------------------------------
+STRUCT StreamMgmt
+{
+    string      pkgName[FILE_NAME_MAX_LEN];         ///< Name of the stream
+    string      pkgTopic[FILE_TOPIC_MAX_LEN];       ///< Package Topic
+    Direction   direction;                          ///< Direction
+    Origin      origin;                             ///< Origin
+    string      hash[HASH_MAX_LEN];                 ///< Hash of the bytes downloaded so far
+    uint64      offset;                             ///< Current download offset
+    uint64      pkgSize;                            ///< Size of entire package
+    int32       streamStatus;                       ///< Status of current stream
+    int32       streamResult;                       ///< Result of current stream
+    uint16      instanceId;                         ///< Instance Id for object 33407
+    uint8       progress;                           ///< File transfer progress
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read the stream management object
+ *
+ * If a file is present, its related instance Id (for LwM2M object) is returned in instanceId
+ * parameter.
+ * This instance ID value range is [0 - LE_FILESTREAMSERVER_INSTANCE_ID_DOWNLOAD[ for any stored
+ * files.
+ * If the instance ID value is LE_FILESTREAMSERVER_INSTANCE_ID_DOWNLOAD, it indicates that this
+ * file is transferring
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_BAD_PARAMETER  Incorrect parameter provided
+ *      - LE_FAULT          The function failed
+ *      - LE_NOT_FOUND      The file is not present
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetStreamMgmtObject
+(
+    uint16      instanceId      IN,             ///< Instance Id of the file
+    StreamMgmt  streamMgmtObj   OUT             ///< Stream management object
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write the stream management object
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetStreamMgmtObject
+(
+    StreamMgmt streamMgmtObj IN                     ///< Stream management object
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler that receives an fd of a locally saved stream or incoming stream.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER Stream
+(
+    file fd IN                                             ///< File descriptor of the stream
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start sending packets on the fd (Not supported)
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER Upload
+(
+    string topic[FILE_TOPIC_MAX_LEN]    IN,         ///< Topic of current stream
+    UploadState state IN                                ///< Status of the current stream
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on upload state changes (Not supported)
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT UploadState
+(
+    string topic[FILE_TOPIC_MAX_LEN]    IN,     ///< Subscribing to topic type
+    file fd IN,                                 ///< Client has to provide the read end of the pipe
+    Upload handler                              ///< This callback will receive status events
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides the stream registered on a specific topic.
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT StreamEvent
+(
+    string topic[FILE_TOPIC_MAX_LEN]    IN,         ///< Subscribing to topic type
+    Stream handler                            ///< This callback will stream event
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure that the file stream/download is completed
+ * This API is supposed to be called by client side to tell server that client has completed its
+ * stream/download task.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION StreamComplete
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure the resume position for following stream
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetResumePosition
+(
+    size poition    IN              ///< Stream resume position
+);

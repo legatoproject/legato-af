@@ -1,0 +1,17 @@
+requires:
+{
+    api:
+    {
+        le_fileStreamClient.api [types-only]
+    }
+}
+
+sources:
+{
+    pa_ftStream.c
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}/components/fileStream/fileStreamServer/platformAdaptor/inc
+}

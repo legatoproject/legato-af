@@ -1,0 +1,314 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_le_fileStream File Stream Server API provides interfaces to avcService to handle
+ * Stream Management Object and Stream Sync Object. It also manages local store or passes stream to
+ * interested customer application for processing.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+USETYPES le_fileStreamClient.api;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * File name string maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE FILE_NAME_MAX_LEN = 128;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * File class string maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE FILE_TOPIC_MAX_LEN = 255;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * File path string maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE FILE_PATH_MAX_LEN = 255;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * File hash string maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE HASH_MAX_LEN = 64;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Instance IF for a file which is transferring
+ */
+//--------------------------------------------------------------------------------------------------
+
+DEFINE INSTANCE_ID_DOWNLOAD = 0xFFFF;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * File name string maximum bytes.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE FILE_NAME_MAX_BYTES = (FILE_NAME_MAX_LEN + 1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * File class string maximum bytes.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE FILE_TOPIC_MAX_BYTES = (FILE_TOPIC_MAX_LEN + 1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * File path string maximum bytes.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE FILE_PATH_MAX_BYTES = (FILE_PATH_MAX_LEN + 1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * File hash string maximum bytes.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE HASH_MAX_BYTES = (HASH_MAX_LEN + 1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define the max number of stored files
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE FILE_MAX_NUMBER = 50;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define the max number of stored files
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE DOWNLOADING_FILE_INSTANCE = -1;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Init Stream
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t InitStream
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Find if a stream is currently in progress
+ *
+ * @return
+ *      - 0 if not busy
+ *      - 1 if busy
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION bool IsBusy
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Process download stream status events. Receive status and process it locally or pass to
+ * interested applications.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION DownloadStatus
+(
+    le_fileStreamClient.DownloadState status IN,    ///< Download status
+    int32 bytesLeft IN,                             ///< Number of bytes left to be downloaded
+    int32 progress IN                               ///< Download progress in %
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start Download
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Download
+(
+    file fd IN                                  ///< File descriptor to read data from
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start Upload
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Upload
+(
+   file fd IN                                   ///< File descriptor to write data to
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Find resume position of the stream currently in progress
+ *
+ * @return
+ *      - LE_OK if able to retrieve resume position
+ *      - LE_FAULT otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetResumePosition
+(
+    size position  OUT                         ///< Stream resume position
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete a file
+ *
+ * The instance ID value range is [0 - LE_FILESTREAMSERVER_INSTANCE_ID_DOWNLOAD[ for any stored
+ * files.
+ * If the instance ID value is LE_FILESTREAMSERVER_INSTANCE_ID_DOWNLOAD, all information on
+ * file which is transferring will be deleted
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DeleteFileByInstance
+(
+    uint16      Id                                  IN          ///< File instance
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get file info
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetFileInfoByInstance
+(
+    uint16      instanceId                          IN,         ///< File instance
+    string      fileNamePtr[FILE_NAME_MAX_LEN]      OUT,        ///< File name
+    string      fileTopicPtr[FILE_TOPIC_MAX_LEN]    OUT,        ///< File topic
+    string      fileHashPtr[HASH_MAX_LEN]           OUT,        ///< File hash
+    uint64      fileSize                            OUT,        ///< File size
+    uint8       fileOrigin                          OUT         ///< File origin
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get file instance list
+ *
+ * @return
+ *      - LE_OK             The function succeeded
+ *      - LE_BAD_PARAMETER  Incorrect parameter provided
+ *      - LE_FAULT          The function failed
+ *      - LE_NOT_FOUND      The file is not present
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetFileInstanceList
+(
+    uint16      instance[FILE_MAX_NUMBER]   OUT         ///< File instance list
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete a file
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if failed.
+ *      - LE_BAD_PARAMETER if a provided parameter is incorrect.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Delete
+(
+    string      fileNamePtr[FILE_NAME_MAX_LEN]      IN        ///< File name
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the available space for file storage
+ *
+ * @return
+ *      - LE_OK             The function succeeded
+ *      - LE_BAD_PARAMETER  Incorrect parameter provided
+ *      - LE_FAULT          The function failed
+ *      - LE_NOT_FOUND      The file is not present
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetAvailableSpace
+(
+    uint64      availableSpace      OUT                     ///< Available space (in bytes)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get path storage
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_BAD_PARAMETER if a provided parameter is incorrect.
+ *      - LE_OVERFLOW in case of overflow
+ *      - LE_FAULT if failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPathStorage
+(
+    string      pathPtr[FILE_PATH_MAX_LEN]          OUT     ///< Path
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if a file name is already present
+ *
+ * If a file is present, its related instance Id (for LwM2M object) is returned in instanceId
+ * parameter.
+ * This instance ID value range is [0 - LE_FILESTREAMSERVER_INSTANCE_ID_DOWNLOAD[ for any stored
+ * files.
+ * If the instance ID value is LE_FILESTREAMSERVER_INSTANCE_ID_DOWNLOAD, it indicates that this
+ * file is transferring
+ *
+ * @return
+ *      - LE_OK if the file is already present.
+ *      - LE_FAULT if failed.
+ *      - LE_BAD_PARAMETER if a provided parameter is incorrect.
+ *      - LE_NOT_FOUND if the file is not present.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t IsFilePresent
+(
+    string      fileNamePtr[FILE_NAME_MAX_LEN]      IN,     ///< File name
+    string      fileHashPtr[HASH_MAX_LEN]           IN,     ///< File hash
+    uint16      instanceId                          OUT     ///< Instance Id if the file is present
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler that a new file was stored
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER Stream
+(
+    file fd IN                                             ///< File descriptor of the stream
+);

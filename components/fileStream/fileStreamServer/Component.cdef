@@ -1,0 +1,50 @@
+provides:
+{
+    api:
+    {
+        le_fileStreamServer.api
+    }
+}
+
+sources:
+{
+    fileStreamServer.c
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}/components/fileStream/fileStreamServer/platformAdaptor/inc
+    -I${LEGATO_ROOT}/components/fileStream/fileStreamClient
+    -I${LEGATO_ROOT}/components/watchdogChain
+#if ${LE_CONFIG_LINUX} = y
+    -I$LEGATO_BUILD/framework/libjansson/include
+#endif
+}
+
+requires:
+{
+    api:
+    {
+#if ${LE_CONFIG_LINUX} = y
+        le_cfg.api
+#endif
+        le_fileStreamClient.api [types-only]
+    }
+
+    component:
+    {
+        ${LEGATO_ROOT}/components/watchdogChain
+#if ${LE_CONFIG_LINUX} = y
+        ${LEGATO_ROOT}/components/fileStream/fileStreamServer/platformAdaptor/fileStorage
+#else
+        ${LEGATO_ROOT}/components/fileStream/fileStreamServer/platformAdaptor/fileStream
+#endif
+    }
+}
+
+ldflags:
+{
+#if ${LE_CONFIG_LINUX} = y
+    -ljansson
+#endif
+}

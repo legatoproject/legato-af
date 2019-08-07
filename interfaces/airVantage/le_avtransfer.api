@@ -1,0 +1,239 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_le_avtransfer AV file transfer API
+ *
+ * @warning File transfer APIs are in beta stage and for internal use only at this point.
+ * @warning File transfer and FOTA/SOTA cannot be used concurrently.
+ *
+ * @section le_avtransfer_overview File transfer Overview
+ *
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of file name
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_NAME_LENGTH = 128;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of file class
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_CLASS_LENGTH = 255;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of file URI
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_URI_LENGTH = 255;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of file hash
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_HASH_LENGTH = 64;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes of file name
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_NAME_NUM_BYTES = MAX_NAME_LENGTH + 1;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes of file class
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_CLASS_NUM_BYTES = MAX_CLASS_LENGTH + 1;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes of file URI
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_URI_NUM_BYTES = MAX_URI_LENGTH + 1;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes of file hash
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_HASH_NUM_BYTES = MAX_HASH_LENGTH + 1;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Status of file transfer
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Status
+{
+    NONE,                   ///< No file transfer pending
+    PENDING,                ///< File transfer pending
+    IN_PROGRESS,            ///< File transfer in progress
+    COMPLETE,               ///< Transfer has completed
+    FAILED,                 ///< An error occurred trasferring the file
+    SUSPENDED,              ///< Transfer was suspended
+    DELETED,                ///< A file was deleted by the server
+    ABORTED,                ///< A file transfer was aborted
+    MAX                     ///< Internal usage
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Direction of the file transfer
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Direction
+{
+    UNKNOWN,                ///< Unknown
+    DOWNLOAD,               ///< File download
+    UPNLOAD,                ///< File upload
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for update availability status
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER StatusHandler
+(
+    Status status IN,                           ///< File transfer status
+    string fileName[MAX_NAME_NUM_BYTES] IN,     ///< File name
+    int32 totalNumBytes IN,                     ///< Total number of bytes to be transferred
+                                                ///<   only valid when updateStatus is one of
+                                                ///<   PENDING, IN_PROGRESS or COMPLETE.
+                                                ///<   returns -1 if value is unknown
+    int32 dloadProgress IN                      ///< Transfer completion in percentage
+                                                ///<   only valid when status is one of
+                                                ///<   PENDING, IN_PROGRESS or COMPLETE.
+                                                ///<   returns -1 if value is unknown
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Operations which require user agreement
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM UserAgreement
+{
+    USER_AGREEMENT_DOWNLOAD,    ///< User agreement for file download
+    USER_AGREEMENT_UPLOAD,      ///< User agreement for file upload
+};
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on update availability status
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT StatusEvent
+(
+    StatusHandler handler
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to set user agreements for file transfer
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if failed to configure user agreement.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetUserAgreement
+(
+    UserAgreement updateStatus IN,         ///< Operation for which user agreements has to be set.
+    bool enable IN                         ///< true = enable, false = disable.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to get user agreements for file transfer
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if failed to read user agreement state.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetUserAgreement
+(
+    UserAgreement updateStatus IN,         ///< Operation for which user agreements has to be read.
+    bool enable OUT                        ///< true = enable, false = disable.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to accept a file transfer
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Accept
+(
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to suspend a file transfer
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Suspend
+(
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to abort a file transfer
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Abort
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to synchronize the LwM2M objects regarding stored files with the server
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Synchronize
+(
+);

@@ -1,0 +1,22 @@
+requires:
+{
+    api:
+    {
+        le_cfg.api                      [types-only]
+        le_fileStreamClient.api         [types-only]
+    }
+}
+
+sources:
+{
+    main.c
+    ${LEGATO_ROOT}/components/fileStream/fileStreamClient/fileStreamClient.c
+    ${LEGATO_ROOT}/components/fileStream/fileStreamServer/fileStreamServer.c
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}/components/watchdogChain
+    -I${LEGATO_ROOT}/components/fileStream/fileStreamServer
+    -Dle_msg_AddServiceCloseHandler=MyAddServiceCloseHandler
+}

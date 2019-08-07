@@ -1,0 +1,48 @@
+#if ${LE_CONFIG_LINUX} = y
+requires:
+{
+    configTree:
+    {
+        [w] .       // I need write access to my configuration data.
+    }
+}
+#endif
+
+executables:
+{
+    fileStreamDaemon = ( $LEGATO_ROOT/components/fileStream/fileStreamServer
+                         $LEGATO_ROOT/components/fileStream/fileStreamClient)
+}
+
+processes:
+{
+    run:
+    {
+        (fileStreamDaemon)
+    }
+
+    faultAction: restart
+
+    // ToDo: For Development only. Enable watchdog before release
+    watchdogTimeout: never
+    maxFileBytes: 85000K
+}
+
+bindings:
+{
+#if ${LE_CONFIG_LINUX} = y
+    fileStreamDaemon.watchdogChain.le_wdog -> <root>.le_wdog
+    fileStreamDaemon.fileStreamClient.le_appInfo -> <root>.le_appInfo
+#else
+    fileStreamDaemon.watchdogChain.le_wdog -> watchdog.le_wdog
+    fileStreamDaemon.fileStreamClient.le_appInfo -> appInfo.le_appInfo
+#endif
+}
+
+extern:
+{
+    fileStreamDaemon.fileStreamServer.le_fileStreamServer
+    fileStreamDaemon.fileStreamClient.le_fileStreamClient
+}
+
+sandboxed: false

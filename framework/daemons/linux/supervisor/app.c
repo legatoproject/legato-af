@@ -977,6 +977,10 @@ static void SetDefaultSmackRules
            "app.wifiService",
            "app.wifiWebAp",
            "app.powerService"
+#ifdef LE_CONFIG_AVC_FEATURE_FILETRANSFER
+           ,
+           "app.fileStreamService"
+#endif
        };
 
     // Providing legato platform service access to qmuxd

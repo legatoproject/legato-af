@@ -1,0 +1,20 @@
+executables:
+{
+    fileStreamDemo = ( fileStreamDemoComponent )
+}
+
+bindings:
+{
+    fileStreamDemo.fileStreamDemoComponent.le_fileStreamClient -> fileStreamService.le_fileStreamClient
+    fileStreamDemo.fileStreamDemoComponent.le_avc -> avcService.le_avc
+}
+
+processes:
+{
+    run:
+    {
+        ( fileStreamDemo )
+    }
+
+    maxFileBytes: 50000K
+}
