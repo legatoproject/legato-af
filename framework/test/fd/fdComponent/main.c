@@ -1011,6 +1011,8 @@ static void *FifoWriteMain(void *context)
 
     LE_TEST_INFO("Write ended");
 
+    le_fd_Close(tCtx->fd);
+
     return NULL;
 }
 
@@ -1027,6 +1029,8 @@ COMPONENT_INIT
 #if LE_CONFIG_LINUX
     le_sig_Block(SIGPIPE);
 #endif
+
+    sleep(10);
 
     LE_TEST_INFO("Starting FD test");
 
@@ -1069,19 +1073,12 @@ COMPONENT_INIT
     struct threadCtx tWCtx = { .fd = fdW, .buf = WriteBufSmall, .bufSize = sizeof(WriteBufSmall)};
     threadWRef = le_thread_Create("Fifo Write Thread", FifoWriteMain, (void*)&tWCtx);
 
-    le_thread_SetJoinable(threadRRef);
-    le_thread_SetJoinable(threadWRef);
+    le_thread_SetPriority(threadRRef, LE_THREAD_PRIORITY_RT_17);
+    le_thread_SetPriority(threadWRef, LE_THREAD_PRIORITY_RT_17);
 
     // start the threads
-    le_thread_Start(threadRRef);
     le_thread_Start(threadWRef);
-
-    le_thread_Join(threadWRef, NULL);
-    LE_TEST_INFO("Write thread join");
-    le_fd_Close(fdW);
-
-    le_thread_Join(threadRRef, NULL);
-    LE_TEST_INFO("Read thread join");
+    le_thread_Start(threadRRef);
     le_fd_Close(fdR);
 
     LE_TEST_ASSERT(ReadSize == sizeof(WriteBufSmall), "Check read count: %" PRIuS, ReadSize);
@@ -1120,19 +1117,12 @@ COMPONENT_INIT
     tWCtx.bufSize = sizeof(WriteBufBig);
     threadWRef = le_thread_Create("Fifo Write Thread", FifoWriteMain, (void*)&tWCtx);
 
-    le_thread_SetJoinable(threadRRef);
-    le_thread_SetJoinable(threadWRef);
+    le_thread_SetPriority(threadRRef, LE_THREAD_PRIORITY_RT_17);
+    le_thread_SetPriority(threadWRef, LE_THREAD_PRIORITY_RT_17);
 
     // start the threads
-    le_thread_Start(threadRRef);
     le_thread_Start(threadWRef);
-
-    le_thread_Join(threadWRef, NULL);
-    LE_TEST_INFO("Write thread join");
-    le_fd_Close(fdW);
-
-    le_thread_Join(threadRRef, NULL);
-    LE_TEST_INFO("Read thread join");
+    le_thread_Start(threadRRef);
     le_fd_Close(fdR);
 
     LE_TEST_ASSERT(ReadSize == sizeof(WriteBufBig),
@@ -1165,26 +1155,24 @@ COMPONENT_INIT
     tRCtx.buf = ReadBufBig;
     tRCtx.bufSize = sizeof(ReadBufBig);
     threadRRef = le_thread_Create("Fifo Read Thread", FifoReadCloseMain, (void*)&tRCtx);
-    le_thread_SetJoinable(threadRRef);
+    le_thread_SetPriority(threadRRef, LE_THREAD_PRIORITY_RT_17);
 
     // start the threads
     le_thread_Start(threadRRef);
 
-    le_thread_Join(threadRRef, NULL);
-    LE_TEST_INFO("Read thread join");
+    LE_TEST_INFO("Read thread complete");
 
 
     tWCtx.fd = fdW;
     tWCtx.buf = WriteBufBig;
     tWCtx.bufSize = sizeof(WriteBufBig);
     threadWRef = le_thread_Create("Fifo Write Thread", FifoWriteReadCloseMain, (void*)&tWCtx);
-    le_thread_SetJoinable(threadWRef);
+    le_thread_SetPriority(threadWRef, LE_THREAD_PRIORITY_RT_17);
 
     // start the threads
     le_thread_Start(threadWRef);
 
-    le_thread_Join(threadWRef, NULL);
-    LE_TEST_INFO("Write thread join");
+    LE_TEST_INFO("Write thread complete");
 
     LE_TEST_INFO("FD test end reached");
     LE_TEST_EXIT;
