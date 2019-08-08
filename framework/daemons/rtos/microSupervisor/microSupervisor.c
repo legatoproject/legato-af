@@ -13,7 +13,7 @@
 // Initializers are defined in these headers
 /* #include "args.h" */
 #include "eventLoop.h"
-/* #include "fileDescriptor.h" */
+#include "fileDescriptor.h"
 /* #include "fs.h" */
 /* #include "json.h" */
 #include "log.h"
@@ -112,7 +112,7 @@ static void InitLegatoFramework
     test_Init();        // Uses mutexes.
     // msg_Init();         // Uses event loop.
     // fs_Init();          // Uses memory pools and safe references and path manipulation.
-    // fd_Init();
+    fd_Init();
     // json_Init();
 
     // Init space for all services.

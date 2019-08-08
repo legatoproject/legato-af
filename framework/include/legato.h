@@ -196,8 +196,8 @@ extern "C" {
 /* #include "le_dir.h" */
 #include "le_doublyLinkedList.h"
 #include "le_eventLoop.h"
-/* #include "le_fd.h" */
-/* #include "le_fdMonitor.h" */
+#include "le_fd.h"
+#include "le_fdMonitor.h"
 /* #include "le_fileLock.h" */
 /* #include "le_fs.h" */
 #include "le_hashmap.h"

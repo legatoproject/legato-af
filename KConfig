@@ -7,3 +7,7 @@
 mainmenu "Legato Configuration"
 
 rsource "legato.kconfig"
+
+menu "Framework Adaptor"
+orsource "../frameworkAdaptor/KConfig"
+endmenu # end "Legato Framework Adaptor"
