@@ -276,8 +276,7 @@ le_result_t le_dcsEthernet_GetChannelList
     while ((le_ref_NextNode(iterRef) == LE_OK) && (i < LE_DCS_CHANNEL_LIST_QUERY_MAX))
     {
         ethernetConnDb = (ethernet_connDb_t *)le_ref_GetValue(iterRef);
-        strncpy(channelList[i].name, ethernetConnDb->netIntf, LE_DCS_CHANNEL_NAME_MAX_LEN);
-        channelList[i].name[LE_DCS_CHANNEL_NAME_MAX_LEN] = '\0';
+        le_utf8_Copy(channelList[i].name, ethernetConnDb->netIntf, sizeof(channelList[i].name), NULL);
         channelList[i].technology = LE_DCS_TECH_ETHERNET;
         channelList[i].state = (ethernetConnDb->opState)? LE_DCS_STATE_UP : LE_DCS_STATE_DOWN;
         i++;
