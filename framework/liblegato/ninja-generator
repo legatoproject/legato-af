@@ -112,12 +112,19 @@ base_cflags_name="${legato_target_caps}_CFLAGS"
 
 CFLAGS="${!base_cflags_name}"
 
+used_ninja_configs=
+modules=
+
 for module_path in $(find -L $SRC_DIR/* -type d -prune); do
     ninja_config=${module_path}/ninja-config
     module_name=${module_path#$SRC_DIR/}
     config_name=LE_CONFIG_${module_name^^}
     if [ "${!config_name}" = y ]; then
-        [[ ! -f $ninja_config ]] || source $ninja_config
+        if [[ -f $ninja_config ]]; then
+            source $ninja_config
+            used_ninja_configs="$used_ninja_configs $ninja_config"
+        fi
+        modules="$modules ${module_path}"
         #AddSources $module_name $(ls ${module_path}/*.c)
         CFLAGS="${CFLAGS} -I${module_path}"
     fi
@@ -127,7 +134,11 @@ done
 if [ "${LE_CONFIG_CUSTOM_FA}" = y ]; then
     module_path="${LE_CONFIG_CUSTOM_FA_PATH}/liblegato"
     ninja_config="${module_path}/ninja-config"
-    [[ ! -f "${ninja_config}" ]] || source "${ninja_config}"
+    if [[ -f "${ninja_config}" ]]; then
+        source "${ninja_config}"
+        used_ninja_configs="$used_ninja_configs $ninja_config"
+    fi
+    modules="$modules ${module_path}"
     AddSources fa $(ls ${module_path}/*.c)
     CFLAGS="${CFLAGS} -I${LE_CONFIG_CUSTOM_FA_PATH}/include"
 fi
@@ -213,6 +224,8 @@ for source in "${!LIBLEGATO_FILES[@]}"; do
     echo
 done >> $NINJA_SCRIPT
 
-echo "build $NINJA_SCRIPT : RegenNinjaScript | $NINJA_SCRIPT_GENERATOR" >> $NINJA_SCRIPT
+cat <<EOF  >> $NINJA_SCRIPT
+build $NINJA_SCRIPT : RegenNinjaScript | $NINJA_SCRIPT_GENERATOR $used_ninja_configs $modules
+EOF
 
 trap - EXIT
