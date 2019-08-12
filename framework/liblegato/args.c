@@ -525,11 +525,8 @@ static size_t HandlePositionalArgument
 {
     ArgInfo_t* argInfoPtr = LE_ARG_INFO_PTR;
 
-    if (!argInfoPtr)
-    {
-        // No arguments is always an underflow when trying to fetch the next argument
-        return LE_UNDERFLOW;
-    }
+    // There must always be an argument when calling this function
+    LE_ASSERT (argInfoPtr);
 
     // Pop the first positional callback from the list.
     le_sls_Link_t* linkPtr = le_sls_Pop(&argInfoPtr->PositionalCallbackList);
@@ -586,7 +583,7 @@ static void HandleFlagOption
     }
     else // must be LE_ARG_OPTION_FLAG_CALLBACK:
     {
-        le_arg_FlagCallbackFunc_t func = recPtr->destPtr;
+        le_arg_FlagCallbackFunc_t func = (le_arg_FlagCallbackFunc_t)recPtr->destPtr;
         func();
     }
 }
@@ -622,7 +619,7 @@ static le_result_t HandleOptionWithValue
 
         if (result == LE_OK)
         {
-            le_arg_IntCallbackFunc_t func = recPtr->destPtr;
+            le_arg_IntCallbackFunc_t func = (le_arg_IntCallbackFunc_t)recPtr->destPtr;
             func(value);
         }
     }
@@ -635,7 +632,7 @@ static le_result_t HandleOptionWithValue
     }
     else if (recPtr->type == LE_ARG_OPTION_STRING_CALLBACK)
     {
-        le_arg_StringCallbackFunc_t func = recPtr->destPtr;
+        le_arg_StringCallbackFunc_t func = (le_arg_StringCallbackFunc_t)recPtr->destPtr;
         func(valueStr);
 
         result = LE_OK;

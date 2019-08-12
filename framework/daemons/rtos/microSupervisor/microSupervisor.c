@@ -11,7 +11,7 @@
 #include "microSupervisor.h"
 
 // Initializers are defined in these headers
-/* #include "args.h" */
+#include "args.h"
 #include "eventLoop.h"
 #include "fileDescriptor.h"
 /* #include "fs.h" */
@@ -105,7 +105,7 @@ static void InitLegatoFramework
     safeRef_Init();     // Uses memory pools and hash maps.
     mutex_Init();       // Uses memory pools.
     sem_Init();         // Uses memory pools.
-    // arg_Init();         // Uses memory pools.
+    arg_Init();         // Uses memory pools.
     event_Init();       // Uses memory pools.
     //timer_Init();       // Uses event loop.
     thread_Init();      // Uses event loop, memory pools and safe references.

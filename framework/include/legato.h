@@ -147,8 +147,12 @@
 #define __STDC_LIMIT_MACROS
 #endif
 
+// Helper macros required by other includes
 #include "le_config.h"
+#include "le_basics.h"
+#include "le_apiFeatures.h"
 
+// Platform-specific includes
 #if LE_CONFIG_LINUX
 #   include "linux/legato.h"
 #elif LE_CONFIG_CUSTOM_OS
@@ -181,11 +185,9 @@ extern "C" {
 
 // Everything else is alphabetical, and if there are dependencies
 // the dependant header should #include the one(s) it depends on.
-#include "le_basics.h"
-#include "le_apiFeatures.h"
 #include "le_log.h"
 
-/* #include "le_args.h" */
+#include "le_args.h"
 /* #include "le_atomFile.h" */
 #include "le_atomic.h"
 /* #include "le_backtrace.h" */
@@ -207,7 +209,7 @@ extern "C" {
 /* #include "le_messaging.h" */
 #include "le_mutex.h"
 /* #include "le_pack.h" */
-/* #include "le_path.h" */
+#include "le_path.h"
 /* #include "le_pathIter.h" */
 /* #include "le_process.h" */
 #include "le_rand.h"

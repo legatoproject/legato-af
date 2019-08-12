@@ -128,6 +128,9 @@ struct App_t : public HasTargetInfo_t
 
     // Get the path to the app's root.cfg file relative to the build's working directory.
     std::string ConfigFilePath() const;
+
+    // Get the total number of processes in this application
+    int GetProcessCount() const;
 };
 
 
