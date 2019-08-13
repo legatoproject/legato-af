@@ -795,7 +795,7 @@ static void CheckCurDirSdef()
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Check for number of sdefs in current directory.
+ * Check for number of adefs in current directory.
  **/
 //--------------------------------------------------------------------------------------------------
 static void CheckCurDirAdef()
@@ -813,13 +813,10 @@ static void CheckCurDirAdef()
         }
     }
 
-    if (count > 1)
+    // If there is only one ADEF file in the current directory, consider this ADEF file.
+    if (count == 1)
     {
-        return;
-    }
-    else
-    {
-        Handler.adefFilePath = adefFile;
+        Handler.adefFilePath = path::MakeAbsolute(adefFile);
     }
 }
 
