@@ -15,12 +15,27 @@
 #include "legato.h"
 #include "microSupervisor.h"
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum allowed number of command line arguments.
+ */
+//--------------------------------------------------------------------------------------------------
+#define RPCTOOL_MAX_ARGC               7
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of command line arguments.
+ */
+//--------------------------------------------------------------------------------------------------
+#define RPCTOOL_MAX_ARGS_STR_BYTES     48
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Command-line Argument Vector.
  */
 //--------------------------------------------------------------------------------------------------
-static char argv[MAX_ARGC + 1][LIMIT_MAX_ARGS_STR_BYTES];
+static char argv[RPCTOOL_MAX_ARGC + 1][RPCTOOL_MAX_ARGS_STR_BYTES];
 
 
 //--------------------------------------------------------------------------------------------------
@@ -31,7 +46,7 @@ static char argv[MAX_ARGC + 1][LIMIT_MAX_ARGS_STR_BYTES];
 COMPONENT_INIT
 {
     int argc = le_arg_NumArgs();
-    const char *argvPtr[MAX_ARGC + 1] = {0};
+    const char *argvPtr[RPCTOOL_MAX_ARGC + 1] = {0};
 
     // Verify command-line argument count is within range
     if (argc > MAX_ARGC)

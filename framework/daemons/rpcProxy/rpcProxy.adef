@@ -37,10 +37,12 @@ requires:
 }
 #endif
 
+#if ${LE_CONFIG_RPC_RUNTIME_CONFIG_TREE} = y
 extern:
 {
     le_rpc = rpcDaemon.rpcDaemon.le_rpc
 }
+#endif
 
 // rpcProxy does not have an extern or bindings section as these are automatically
 // generated
