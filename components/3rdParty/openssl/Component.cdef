@@ -1,3 +1,6 @@
+#if ${USE_ROOTFS_OPENSSL} = 1
+#else
+
 bundles:
 {
     file:
@@ -47,3 +50,5 @@ bundles:
         #endif
     }
 }
+
+#endif

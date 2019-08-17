@@ -1,3 +1,6 @@
+#if ${USE_ROOTFS_ZLIB} = 1
+#else
+
 bundles:
 {
     file:
@@ -18,3 +21,5 @@ bundles:
         #endif
     }
 }
+
+#endif
