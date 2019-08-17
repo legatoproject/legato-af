@@ -1,3 +1,6 @@
+#if ${USE_ROOTFS_CURL} = 1
+#else
+
 requires:
 {
     component:
@@ -30,3 +33,5 @@ bundles:
         #endif
     }
 }
+
+#endif
