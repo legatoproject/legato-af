@@ -16,6 +16,10 @@ apps:
     /*
      * Test applications
      */
+    hex/test_Hex
+    pack/test_Pack
+    pathIter/test_PathIter
+
     memPool/test_MemPool
     hashMap/test_HashMap
     lists/test_Lists

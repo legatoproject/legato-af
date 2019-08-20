@@ -106,7 +106,10 @@ AddSources liblegato ${LEGATO_ROOT}/framework/liblegato/args.c \
                    ${LEGATO_ROOT}/framework/liblegato/test.c \
                    ${LEGATO_ROOT}/framework/liblegato/crc.c \
                    ${LEGATO_ROOT}/framework/liblegato/utf8.c \
-                   ${LEGATO_ROOT}/framework/liblegato/cdata.c
+                   ${LEGATO_ROOT}/framework/liblegato/cdata.c \
+                   ${LEGATO_ROOT}/framework/liblegato/hex.c \
+                   ${LEGATO_ROOT}/framework/liblegato/pack.c \
+                   ${LEGATO_ROOT}/framework/liblegato/pathIter.c
 
 base_cflags_name="${legato_target_caps}_CFLAGS"
 

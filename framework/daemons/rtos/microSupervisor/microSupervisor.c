@@ -19,11 +19,14 @@
 #include "log.h"
 #include "mem.h"
 /* #include "messaging.h" */
+#include "pathIter.h"
 /* #include "rand.h" */
 #include "safeRef.h"
 #include "test.h"
 #include "thread.h"
 #include "timer.h"
+
+#include <locale.h>
 
 /// Number of large entries in the argument string pool.
 #define ARG_STRING_POOL_SIZE        LE_CONFIG_MAX_THREAD_POOL_SIZE
@@ -98,6 +101,9 @@ static void InitLegatoFramework
     void
 )
 {
+    // Init locale for locale-dependent C functions
+    setlocale(LC_ALL, "C");
+
     // The order of initialization is important.
     // rand_Init();
     mem_Init();
@@ -107,13 +113,14 @@ static void InitLegatoFramework
     sem_Init();         // Uses memory pools.
     arg_Init();         // Uses memory pools.
     event_Init();       // Uses memory pools.
-    //timer_Init();       // Uses event loop.
+    // timer_Init();    // Uses event loop.
     thread_Init();      // Uses event loop, memory pools and safe references.
     test_Init();        // Uses mutexes.
-    // msg_Init();         // Uses event loop.
-    // fs_Init();          // Uses memory pools and safe references and path manipulation.
+    // msg_Init();      // Uses event loop.
+    // fs_Init();       // Uses memory pools and safe references and path manipulation.
     fd_Init();
     // json_Init();
+    pathIter_Init();    // Uses memory pools and safe references.
 
     // Init space for all services.
     _le_supervisor_InitAllServices();

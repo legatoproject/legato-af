@@ -1,0 +1,19 @@
+start: manual
+
+executables:
+{
+    testHex = ( hexComponent )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        ( testHex )
+    }
+}

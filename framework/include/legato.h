@@ -203,14 +203,14 @@ extern "C" {
 /* #include "le_fileLock.h" */
 /* #include "le_fs.h" */
 #include "le_hashmap.h"
-/* #include "le_hex.h" */
+#include "le_hex.h"
 /* #include "le_json.h" */
 #include "le_mem.h"
 /* #include "le_messaging.h" */
 #include "le_mutex.h"
-/* #include "le_pack.h" */
+#include "le_pack.h"
 #include "le_path.h"
-/* #include "le_pathIter.h" */
+#include "le_pathIter.h"
 /* #include "le_process.h" */
 #include "le_rand.h"
 #include "le_safeRef.h"

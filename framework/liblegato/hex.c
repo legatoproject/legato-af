@@ -126,11 +126,10 @@ int32_t le_hex_StringToBinary
 
     for (idxString=0,idxBinary=0 ; idxString<stringLength ; idxString+=2,idxBinary++)
     {
-        char* ch1Ptr;
-        char* ch2Ptr;
+        char* ch1Ptr = strchr(refStrPtr, toupper(stringPtr[idxString]));
+        char* ch2Ptr = strchr(refStrPtr, toupper((int)stringPtr[idxString+1]));
 
-        if ( ((ch1Ptr = strchr(refStrPtr, toupper((int)stringPtr[idxString]))) && *ch1Ptr) &&
-             ((ch2Ptr = strchr(refStrPtr, toupper((int)stringPtr[idxString+1]))) && *ch2Ptr) )
+        if ( (ch1Ptr && *ch1Ptr) && (ch2Ptr && *ch2Ptr) )
         {
             binaryPtr[idxBinary] = ((ch2Ptr - refStrPtr) & 0x0F) |
                                    (((ch1Ptr - refStrPtr)<<4) & 0xF0);
