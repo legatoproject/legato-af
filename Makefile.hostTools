@@ -69,17 +69,17 @@ ninja: $(INSTALL_DIR)
 # Create a bunch of symlinks from the install directory to the tools.
 .PHONY: symlinks
 symlinks: $(INSTALL_DIR)
-	$(Q)ln -sf $(BUILD_DIR)/bin/mk $(INSTALL_DIR)/mk
+	$(Q)ln -sfr $(BUILD_DIR)/bin/mk $(INSTALL_DIR)/mk
 	$(Q)ln -sf mk $(INSTALL_DIR)/mkcomp
 	$(Q)ln -sf mk $(INSTALL_DIR)/mkexe
 	$(Q)ln -sf mk $(INSTALL_DIR)/mkapp
 	$(Q)ln -sf mk $(INSTALL_DIR)/mksys
 	$(Q)ln -sf mk $(INSTALL_DIR)/mkparse
 	$(Q)ln -sf mk $(INSTALL_DIR)/mkedit
-	$(Q)ln -sf $(foreach script,$(SCRIPTS),$(script)) $(INSTALL_DIR)/
-	$(Q)ln -sf $(LEGATO_ROOT)/framework/tools/ifgen/ifgen $(INSTALL_DIR)/
-	$(Q)ln -sf $(LEGATO_ROOT)/3rdParty/ima-support-tools/ima-sign.sh $(INSTALL_DIR)/
-	$(Q)ln -sf $(LEGATO_ROOT)/3rdParty/ima-support-tools/ima-gen-keys.sh $(INSTALL_DIR)/
+	$(Q)ln -sfr $(foreach script,$(SCRIPTS),$(script)) $(INSTALL_DIR)/
+	$(Q)ln -sfr $(LEGATO_ROOT)/framework/tools/ifgen/ifgen $(INSTALL_DIR)/
+	$(Q)ln -sfr $(LEGATO_ROOT)/3rdParty/ima-support-tools/ima-sign.sh $(INSTALL_DIR)/
+	$(Q)ln -sfr $(LEGATO_ROOT)/3rdParty/ima-support-tools/ima-gen-keys.sh $(INSTALL_DIR)/
 
 # Get the paths of the node.js runtime and the TypeScript compiler.
 NPM_PATH := $(shell which npm)
@@ -133,14 +133,14 @@ kconfig-frontends: $(INSTALL_DIR) $(KCONFIG_BUILD_DIR)/config.status
 	$(Q)cd $(KCONFIG_BUILD_DIR) && make
 	$(L) INSTALL $@
 	$(Q)cd $(KCONFIG_BUILD_DIR) && make install $(VOUTPUT)
-	$(Q)ln -sf $(BUILD_DIR)/bin/kconfig-conf $(INSTALL_DIR)/kconfig-conf
-	$(Q)ln -sf $(BUILD_DIR)/bin/kconfig-mconf $(INSTALL_DIR)/kconfig-mconf
-	$(Q)ln -sf $(BUILD_DIR)/bin/kconfig-nconf $(INSTALL_DIR)/kconfig-nconf
-	$(Q)ln -sf $(BUILD_DIR)/bin/kconfig-tweak $(INSTALL_DIR)/kconfig-tweak
-	$(Q)ln -sf $(BUILD_DIR)/bin/kconfig $(INSTALL_DIR)/kconfig
+	$(Q)ln -sfr $(BUILD_DIR)/bin/kconfig-conf $(INSTALL_DIR)/kconfig-conf
+	$(Q)ln -sfr $(BUILD_DIR)/bin/kconfig-mconf $(INSTALL_DIR)/kconfig-mconf
+	$(Q)ln -sfr $(BUILD_DIR)/bin/kconfig-nconf $(INSTALL_DIR)/kconfig-nconf
+	$(Q)ln -sfr $(BUILD_DIR)/bin/kconfig-tweak $(INSTALL_DIR)/kconfig-tweak
+	$(Q)ln -sfr $(BUILD_DIR)/bin/kconfig $(INSTALL_DIR)/kconfig
 
 kconfig-set-value: $(INSTALL_DIR) $(LEGATO_ROOT)/framework/tools/scripts/kconfig-set-value
-	$(Q)ln -sf $(LEGATO_ROOT)/framework/tools/scripts/kconfig-set-value \
+	$(Q)ln -sfr $(LEGATO_ROOT)/framework/tools/scripts/kconfig-set-value \
 		$(INSTALL_DIR)/kconfig-set-value
 
 $(KCONFIG_BUILD_DIR)/config.status: $(KCONFIG_BUILD_DIR)/configure
