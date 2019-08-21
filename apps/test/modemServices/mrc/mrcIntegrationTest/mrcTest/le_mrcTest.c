@@ -1139,47 +1139,50 @@ static void MyNetworkPciScanHandler
         }
 
         while ((scanInfoRef = le_mrc_GetNextPciScanInfo(listRef)) != NULL)
+        {
+            physicalCellId = le_mrc_GetPciScanCellId(scanInfoRef);
+            globalCellId = le_mrc_GetPciScanGlobalCellId(scanInfoRef);
+            LE_INFO("Next cell ID: physical %"PRIu16" global %"PRIu32"", physicalCellId,
+                    globalCellId);
+            PlmnInfoRef = le_mrc_GetFirstPlmnInfo(scanInfoRef);
+
+            if(PlmnInfoRef == NULL)
             {
-                physicalCellId = le_mrc_GetPciScanCellId(scanInfoRef);
-                globalCellId = le_mrc_GetPciScanGlobalCellId(scanInfoRef);
-                LE_INFO("Next cell ID: physical %"PRIu16" global %"PRIu32"", physicalCellId,
-                        globalCellId);
-                PlmnInfoRef = le_mrc_GetFirstPlmnInfo(scanInfoRef);
-
-                if(PlmnInfoRef == NULL)
+                LE_INFO("FAIL to get ref to plmn info");
+            }
+            else
+            {
+                LE_INFO(" SUCCESS to get ref to plmn info");
+                res = le_mrc_GetPciScanMccMnc(PlmnInfoRef,
+                                              mcc,
+                                              LE_MRC_MCC_BYTES,
+                                              mnc,
+                                              LE_MRC_MNC_BYTES);
+                if (res == LE_OK )
                 {
-                    LE_INFO("FAIL to get ref to plmn info");
-                }
-                else
-                {
-                    LE_INFO(" SUCCESS to get ref to plmn info");
-                    res = le_mrc_GetPciScanMccMnc(PlmnInfoRef,
-                                                  mcc,
-                                                  LE_MRC_MCC_BYTES,
-                                                  mnc,
-                                                  LE_MRC_MNC_BYTES);
-                    if (res == LE_OK )
-                    {
-                    LE_INFO("the first value of mcc in the next cell is :%s",mcc);
-                    LE_INFO("the first value of mnc in the next cell is :%s",mnc);
-                    }
-                }
-
-                while ((PlmnInfoRef = le_mrc_GetNextPlmnInfo(scanInfoRef)) != NULL)
-                {
-                    res = le_mrc_GetPciScanMccMnc(PlmnInfoRef,
-                                                  mcc,
-                                                  LE_MRC_MCC_BYTES,
-                                                  mnc,
-                                                  LE_MRC_MNC_BYTES);
-                    if (res == LE_OK )
-                    {
-                        LE_INFO("The Next value of mcc in the Next cell is :%s",mcc);
-                        LE_INFO("The Next value of mnc in the Next cell is :%s",mnc);
-                    }
+                LE_INFO("the first value of mcc in the next cell is :%s",mcc);
+                LE_INFO("the first value of mnc in the next cell is :%s",mnc);
                 }
             }
-   }
+
+            while ((PlmnInfoRef = le_mrc_GetNextPlmnInfo(scanInfoRef)) != NULL)
+            {
+                res = le_mrc_GetPciScanMccMnc(PlmnInfoRef,
+                                              mcc,
+                                              LE_MRC_MCC_BYTES,
+                                              mnc,
+                                              LE_MRC_MNC_BYTES);
+                if (res == LE_OK )
+                {
+                    LE_INFO("The Next value of mcc in the Next cell is :%s",mcc);
+                    LE_INFO("The Next value of mnc in the Next cell is :%s",mnc);
+                }
+            }
+        }
+    }
+    // Deleting the scan results
+    le_mrc_DeletePciNetworkScan(listRef);
+
     le_sem_Post(ThreadSemaphore);
 }
 
