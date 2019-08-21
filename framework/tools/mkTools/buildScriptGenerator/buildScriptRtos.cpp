@@ -82,19 +82,15 @@ void RtosBuildScriptGenerator_t::GenerateBuildRules
         script << " -Wl,-r -nostdlib -Wl,--entry=$entry";
     }
 
-    script << " -o $out $in $ldFlags ";
-
-    if (buildParams.compilerType == mk::BuildParams_t::COMPILER_GCC)
+    script << " -o $out $in $ldFlags "
+              "&& $\n"
+              "            rename-hidden-symbols";
+    if (buildParams.compilerType == mk::BuildParams_t::COMPILER_ARM_RVCT)
     {
-        script << "&& $\n"
-            "            rename-hidden-symbols $pplFlags $out\n";
+        script << " --arm";
     }
-    else
-    {
-        script << "\n";
-    }
-
-    script << "\n";
+    script << " $pplFlags $out\n"
+              "\n";
 }
 
 

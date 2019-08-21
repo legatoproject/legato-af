@@ -503,7 +503,7 @@ void GenerateRtosExeMain
     // Set arguments
                   "    LE_DEBUG(\"Starting " << mainFuncName << ".  taskInfo=%p with %d arguments\",\n"
                   "             taskInfo, taskInfo->argc);\n"
-                  "    //le_arg_SetArgs(taskInfo->argc, taskInfo->argv);\n"
+                  "    le_arg_SetArgs(taskInfo->argc, taskInfo->argv);\n"
                   "\n";
 
     // Set bindings and initialize included components for C/C++ components

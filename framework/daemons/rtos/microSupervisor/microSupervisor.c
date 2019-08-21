@@ -223,8 +223,12 @@ static le_result_t StartProc
     else
     {
         // It is assumed that argv and the strings it points to are long-lived.
-        taskInfoPtr->argc = MIN(argc, MAX_ARGC - 1);
-        memcpy(taskInfoPtr->argv, argv, taskInfoPtr->argc * sizeof(const char *));
+        taskInfoPtr->argc = MIN(argc + 1, MAX_ARGC - 1);
+
+        // Set the program name as the first argument
+        taskInfoPtr->argv[0] = taskPtr->nameStr;
+        memcpy(taskInfoPtr->argv + 1, argv, taskInfoPtr->argc * sizeof(const char *));
+        taskInfoPtr->argv[taskInfoPtr->argc] = NULL;
     }
 
     LE_DEBUG("  +- with %d arguments:", taskInfoPtr->argc);

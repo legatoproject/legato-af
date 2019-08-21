@@ -89,15 +89,9 @@ void RtosSystemBuildScriptGenerator_t::GenerateLdFlags
     }
 
     script <<
-        "  entry=le_microSupervisor_Main\n";
-
-    if (buildParams.compilerType == mk::BuildParams_t::COMPILER_GCC)
-    {
-        script <<
-            "  pplFlags=--entry=le_microSupervisor_Main\n";
-    }
-
-    script << "\n";
+        "  entry=le_microSupervisor_Main\n"
+        "  pplFlags=--entry=le_microSupervisor_Main\n"
+        "\n";
 }
 
 //--------------------------------------------------------------------------------------------------

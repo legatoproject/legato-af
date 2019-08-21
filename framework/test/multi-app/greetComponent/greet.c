@@ -22,7 +22,7 @@ void greet_Greet
     // LE_INFO on certain platforms (ie. ThreadX) can only accept constant literals
     char buffer[64] = {0};
     snprintf(buffer, sizeof(buffer) - 1, LE_CDATA_THIS->greeting, object);
-    LE_INFO("%s", buffer);
+    LE_TEST_OUTPUT("%s", buffer);
 }
 
 COMPONENT_INIT
