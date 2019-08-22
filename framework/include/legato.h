@@ -201,7 +201,7 @@ extern "C" {
 #include "le_fd.h"
 #include "le_fdMonitor.h"
 /* #include "le_fileLock.h" */
-/* #include "le_fs.h" */
+#include "le_fs.h"
 #include "le_hashmap.h"
 #include "le_hex.h"
 /* #include "le_json.h" */

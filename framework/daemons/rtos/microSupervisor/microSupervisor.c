@@ -118,7 +118,7 @@ static void InitLegatoFramework
     thread_Init();      // Uses event loop, memory pools and safe references.
     test_Init();        // Uses mutexes.
     msg_Init();         // Uses event loop.
-    // fs_Init();       // Uses memory pools and safe references and path manipulation.
+    fs_Init();          // Uses memory pools and safe references and path manipulation.
     fd_Init();
     // json_Init();
     pathIter_Init();    // Uses memory pools and safe references.

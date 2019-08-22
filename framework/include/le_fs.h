@@ -44,18 +44,15 @@
  * File access modes used when opening a file.
  */
 //--------------------------------------------------------------------------------------------------
-typedef enum
-{
-    LE_FS_RDONLY = 0x1,        ///< Read only
-    LE_FS_WRONLY = 0x2,        ///< Write only
-    LE_FS_RDWR   = 0x4,        ///< Read/Write
-    LE_FS_CREAT  = 0x8,        ///< Create a new file
-    LE_FS_TRUNC  = 0x10,       ///< Truncate
-    LE_FS_APPEND = 0x20,       ///< Append
-    LE_FS_SYNC   = 0x40        ///< Synchronized
-}
-le_fs_AccessMode_t;
+typedef int le_fs_AccessMode_t;
 
+#define LE_FS_RDONLY 0x1        ///< Read only
+#define LE_FS_WRONLY 0x2        ///< Write only
+#define LE_FS_RDWR   0x4        ///< Read/Write
+#define LE_FS_CREAT  0x8        ///< Create a new file
+#define LE_FS_TRUNC  0x10       ///< Truncate
+#define LE_FS_APPEND 0x20       ///< Append
+#define LE_FS_SYNC   0x40       ///< Synchronized
 
 //--------------------------------------------------------------------------------------------------
 /**
