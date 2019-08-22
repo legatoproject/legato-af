@@ -1030,8 +1030,6 @@ COMPONENT_INIT
     le_sig_Block(SIGPIPE);
 #endif
 
-    sleep(10);
-
     LE_TEST_INFO("Starting FD test");
 
     LE_TEST_PLAN(14);

@@ -1,3 +1,5 @@
+start: manual
+
 executables:
 {
     helloWorld = ( helloComponent )
@@ -14,6 +16,4 @@ processes:
     {
         ( helloWorld )
     }
-
-    maxStackBytes: 4K
 }
