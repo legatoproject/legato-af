@@ -1319,7 +1319,11 @@ model::Component_t* GetComponent
     // build's root working directory.
     componentPtr = model::Component_t::CreateComponent(cdefFilePtr);
 
-    file::MakeDir(path::Combine(buildParams.workingDir, componentPtr->workingDir));
+    // Directory must not be created if readOnly is set to true.
+    if (!buildParams.readOnly)
+    {
+        file::MakeDir(path::Combine(buildParams.workingDir, componentPtr->workingDir));
+    }
 
     if (buildParams.beVerbose)
     {
