@@ -147,6 +147,8 @@ config ENABLE_SMACK
   bool "Enable SMACK for access controls"
   depends on LINUX
   depends on !TARGET_LOCALHOST
+  depends on !TARGET_VIRT_X86 && !TARGET_VIRT_ARM
+  depends on !TARGET_RASPI
   default !$(b2k,$(DISABLE_SMACK))
   ---help---
   Enable the Simplified Mandatory Access Control Kernel (SMACK) security
