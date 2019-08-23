@@ -206,6 +206,8 @@ static void AsyncRecvHandler
     short events            ///< [IN] events that has happened on this fd
 )
 {
+    char tmp;
+
     LE_DEBUG("Handle provided to fd monitor got called");
     if (handle != SerialHandleRecord.serialFd)
     {
@@ -230,12 +232,25 @@ static void AsyncRecvHandler
             LE_ASSERT(le_fd_Write(handle, &helloAckChar, 1) == 1);
             AsyncConnectionHandlerFuncPtr(&SerialHandleRecord, events);
         }
+        else
+        {
+            // Discard any data that is in the receive buffer for this fd
+            // before returning
+            goto discard;
+        }
 #else
         if (response == LE_COMM_CONNECT_HELLOACK)
         {
             // received an ack to our hello. we're now officially connected.
             SerialHandleRecord.connState = LE_COMM_CONNECTED;
             AsyncConnectionHandlerFuncPtr(&SerialHandleRecord, events);
+            if (AsyncReceiveHandlerFuncPtr != NULL)
+            {
+                // Call the RPC Proxy's data receive handler in the event
+                // new data has been received over the serial link
+                // during this time
+                AsyncReceiveHandlerFuncPtr(&SerialHandleRecord, events);
+            }
         }
 #endif
         return;
@@ -251,14 +266,22 @@ static void AsyncRecvHandler
         {
             LE_ERROR("rpcProxy has not registered a call for for receiving events");
         }
+
+        return;
     }
-    else{
-        //purge the whatever is on the fd
-        char tmp;
-        // read until there's nothing left.
-        while (le_fd_Read(handle, &tmp, 1))
-        {
-        }
+    else
+    {
+        // Discard any data that is in the receive buffer for this fd
+        // before returning
+        goto discard;
+    }
+
+discard:
+    //purge the whatever is on the fd
+    // read until there's nothing left.
+    while (le_fd_Read(handle, &tmp, 1) >= 1)
+    {
+        // Discard data
     }
 }
 
