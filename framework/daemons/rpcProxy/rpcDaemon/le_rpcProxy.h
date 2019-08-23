@@ -29,6 +29,7 @@
 //--------------------------------------------------------------------------------------------------
 #define RPC_PROXY_MSG_REFERENCE_MAX_NUM        LE_CONFIG_RPC_PROXY_SERVICE_BINDINGS_MAX_NUM
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * RPC Proxy Timer Interval Definitions
@@ -54,8 +55,8 @@
 #define RPC_PROXY_NETWORK_KEEPALIVE_SERVICE_INTERVAL \
             (LE_CONFIG_RPC_PROXY_NETWORK_KEEPALIVE_SERVICE_INTERVAL)
 
-#define RPC_PROXY_NETWORK_KEEPALIVE_REQUEST_TIMER_INTERVAL  \
-            (LE_CONFIG_RPC_PROXY_NETWORK_KEEPALIVE_REQUEST_TIMER_INTERVAL)
+#define RPC_PROXY_NETWORK_KEEPALIVE_TIMEOUT_TIMER_INTERVAL  \
+            (LE_CONFIG_RPC_PROXY_NETWORK_KEEPALIVE_TIMEOUT_TIMER_INTERVAL)
 
 
 //--------------------------------------------------------------------------------------------------
@@ -118,7 +119,7 @@ typedef struct __attribute__((packed))
     rpcProxy_CommonHeader_t commonHeader; ///< RPC Proxy Common Message Header
                                           ///< NOTE: Must be defined as first parameter
 
-    char  systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];   ///< System-Name
+    char  systemName[LIMIT_MAX_SYSTEM_NAME_BYTES];        ///< System-Name
     char  serviceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];  ///< Interface name
     char  protocolIdStr[LIMIT_MAX_PROTOCOL_ID_BYTES];       ///< Protocol ID Str
     int32_t serviceCode; ///< Connect-Service Set-up result-code
@@ -135,7 +136,7 @@ typedef struct __attribute__((packed))
     rpcProxy_CommonHeader_t commonHeader; ///< RPC Proxy Common Message Header
                                           ///< NOTE: Must be defined as first parameter
 
-    char  systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];  ///< Destination of the request
+    char  systemName[LIMIT_MAX_SYSTEM_NAME_BYTES];  ///< Destination of the request
 }
 rpcProxy_KeepAliveMessage_t;
 
@@ -165,8 +166,8 @@ typedef struct rpcProxy_ClientRequestResponseRecord
     rpcProxy_CommonHeader_t commonHeader; ///< RPC Proxy Common Message Header
                                           ///< NOTE: Must be defined as first parameter
 
-    uint32_t msgId;                                        ///< Legato Msg-ID
-    char  systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];  ///< Source of the request
+    uint32_t  msgId;                                      ///< Legato Msg-ID
+    char      systemName[LIMIT_MAX_SYSTEM_NAME_BYTES];  ///< Source of the request
 }
 rpcProxy_ClientRequestResponseRecord_t;
 

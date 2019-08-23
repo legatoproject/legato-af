@@ -176,10 +176,13 @@ static le_hashmap_Ref_t ServiceRefMapByID = NULL;
 //--------------------------------------------------------------------------------------------------
 /**
  * Hash Map to store Proxy Message ID (key) and TimerRef (value) mappings.
+ * NOTE: Maximum number of simultaneous timer-references is defined by the maximum number of
+ * Message Reference and Keep-alive messages supported by the RPC Proxy.
  * Initialized in rpcProxy_COMPONENT_INIT().
  */
 //--------------------------------------------------------------------------------------------------
-LE_HASHMAP_DEFINE_STATIC(ExpiryTimerRefHashMap, RPC_PROXY_MSG_REFERENCE_MAX_NUM);
+LE_HASHMAP_DEFINE_STATIC(ExpiryTimerRefHashMap,
+                         (RPC_PROXY_MSG_REFERENCE_MAX_NUM + RPC_PROXY_NETWORK_SYSTEM_MAX_NUM));
 static le_hashmap_Ref_t ExpiryTimerRefByProxyId = NULL;
 
 //--------------------------------------------------------------------------------------------------
@@ -495,54 +498,45 @@ void rpcProxy_ProxyMessageTimerExpiryHandler
                 // Delete the Network Communication Channel
                 rpcProxyNetwork_DeleteNetworkCommunicationChannel(
                     proxyMessageCopyPtr->systemName);
-
-                // Remove entry from hash-map
-                le_hashmap_Remove(ExpiryTimerRefByProxyId,
-                                  (void*)(uintptr_t) proxyMessageCopyPtr->commonHeader.id);
-
-                // Free Proxy Message Copy Memory
-                le_mem_Release(proxyMessageCopyPtr);
             }
             else
             {
                 LE_ERROR("Unable to retrieve copy of the "
                          "Proxy Keep-Alive Message Reference");
             }
-            break;
+
+            // Timer Reference deleted as a part of the
+            // Network Communication Channel deletion - Skip to exit.
+            goto exit;
         }
 
         case RPC_PROXY_CONNECT_SERVICE_REQUEST:
         {
-            rpcProxy_ConnectServiceMessage_t proxyMessageCopy;
-
             // Retrieve the Connect-Service-Request message from the timer context
-            const rpcProxy_ConnectServiceMessage_t* proxyMessageCopyPtr =
+            rpcProxy_ConnectServiceMessage_t* proxyMessagePtr =
                 (rpcProxy_ConnectServiceMessage_t*) le_timer_GetContextPtr(timerRef);
 
-            if (proxyMessageCopyPtr == NULL)
+            if (proxyMessagePtr == NULL)
             {
                 LE_ERROR("Unable to retrieve copy of the "
                          "Proxy Connect-Service Message Reference");
             }
 
-            // Make a copy of the Connect-Service-Request message
-            memcpy(&proxyMessageCopy, proxyMessageCopyPtr, sizeof(proxyMessageCopy));
-
             LE_INFO("%s timer expired; Re-trigger "
                     "connect-service request '%s', service-id [%" PRIu32 "]",
-                    DisplayMessageType(proxyMessageCopy.commonHeader.type),
-                    proxyMessageCopy.serviceName,
-                    proxyMessageCopy.commonHeader.serviceId);
+                    DisplayMessageType(proxyMessagePtr->commonHeader.type),
+                    proxyMessagePtr->serviceName,
+                    proxyMessagePtr->commonHeader.serviceId);
 
             // Re-trigger connect-service-request to the remote system
             le_result_t result =
-                rpcProxy_SendMsg(proxyMessageCopy.systemName, &proxyMessageCopy);
+                rpcProxy_SendMsg(proxyMessagePtr->systemName, proxyMessagePtr);
 
             if (result == LE_OK)
             {
                 // Re-start the timer
                 le_timer_Start(timerRef);
-                return;
+                goto exit;
             }
             else
             {
@@ -553,47 +547,47 @@ void rpcProxy_ProxyMessageTimerExpiryHandler
 
         case RPC_PROXY_CLIENT_REQUEST:
         {
-            rpcProxy_Message_t* proxyMessageCopyPtr =
+            rpcProxy_Message_t* proxyMessagePtr =
                 (rpcProxy_Message_t*) le_timer_GetContextPtr(timerRef);
 
-            if (proxyMessageCopyPtr != NULL)
+            if (proxyMessagePtr != NULL)
             {
                 LE_INFO("Client-Request has timed out, "
                         "service-id [%" PRIu32 "], proxy id [%" PRIu32 "]; "
                         "check if client-response needs to be generated",
-                        proxyMessageCopyPtr->commonHeader.serviceId,
-                        proxyMessageCopyPtr->commonHeader.id);
+                        proxyMessagePtr->commonHeader.serviceId,
+                        proxyMessagePtr->commonHeader.id);
 
                 // Retrieve Message Reference from hash map, using the Proxy Message Id
                 le_msg_MessageRef_t msgRef =
                     le_hashmap_Get(MsgRefMapByProxyId,
-                                   (void*)(uintptr_t) proxyMessageCopyPtr->commonHeader.id);
+                                   (void*)(uintptr_t) proxyMessagePtr->commonHeader.id);
 
                 if (msgRef == NULL)
                 {
                     LE_INFO("Unable to retrieve Message Reference, proxy id [%" PRIu32 "] - "
                             "do not generate response message",
-                            proxyMessageCopyPtr->commonHeader.id);
+                            proxyMessagePtr->commonHeader.id);
                 }
                 else
                 {
                     // Generate LE_TIMEOUT Server-Response
                     GenerateServerResponseErrorMessage(
-                        proxyMessageCopyPtr,
+                        proxyMessagePtr,
                         LE_TIMEOUT);
 
                     // Trigger a response back to the client
-                    ProcessServerResponse(proxyMessageCopyPtr, true);
+                    ProcessServerResponse(proxyMessagePtr, true);
                 }
 
                 // Remove entry from hash-map
                 le_hashmap_Remove(
                     ExpiryTimerRefByProxyId,
-                    (void*)(uintptr_t) proxyMessageCopyPtr->commonHeader.id);
+                    (void*)(uintptr_t) proxyMessagePtr->commonHeader.id);
 
                 // Free Proxy Message Copy Memory
-                le_mem_Release(proxyMessageCopyPtr);
-                proxyMessageCopyPtr = NULL;
+                le_mem_Release(proxyMessagePtr);
+                proxyMessagePtr = NULL;
             }
             else
             {
@@ -612,6 +606,9 @@ void rpcProxy_ProxyMessageTimerExpiryHandler
     // Delete Timer
     le_timer_Delete(timerRef);
     timerRef = NULL;
+
+exit:
+    return;
 }
 
 #if RPC_PROXY_HEX_DUMP
@@ -679,12 +676,11 @@ le_result_t rpcProxy_SendMsg
     void* messagePtr ///< [IN] Void pointer to the message buffer
 )
 {
-    le_result_t          result;
-    size_t               byteCount;
-    rpcProxy_Message_t   tmpProxyMessage;
-    rpcProxy_Message_t  *proxyMessagePtr;
-    void                *sendMessagePtr;
-    uint32_t             id, serviceId;
+    le_result_t         result;
+    size_t              byteCount;
+    rpcProxy_Message_t  tmpProxyMessage;
+    rpcProxy_Message_t *proxyMessagePtr;
+    void               *sendMessagePtr;
 
     // Retrieve the Network Record for this system
     NetworkRecord_t* networkRecordPtr =
@@ -713,9 +709,6 @@ le_result_t rpcProxy_SendMsg
 
     // Set a pointer to the common message header
     rpcProxy_CommonHeader_t *commonHeaderPtr = (rpcProxy_CommonHeader_t*) messagePtr;
-
-    id = commonHeaderPtr->id;
-    serviceId = commonHeaderPtr->serviceId;
 
     switch (commonHeaderPtr->type)
     {
@@ -787,11 +780,13 @@ le_result_t rpcProxy_SendMsg
             // Prepare the Proxy Common Message Header of the tmpProxyMessage
             //
 
+            // Prepare the Proxy Message Common Header
+            commonHeaderPtr->id = htobe32(commonHeaderPtr->id);
+            commonHeaderPtr->serviceId = htobe32(commonHeaderPtr->serviceId);
+
             // Set the Message Id, Service Id, and type
-            tmpProxyMessage.commonHeader.id =
-                htobe32(proxyMessagePtr->commonHeader.id);
-            tmpProxyMessage.commonHeader.serviceId =
-                htobe32(proxyMessagePtr->commonHeader.serviceId);
+            tmpProxyMessage.commonHeader.id = commonHeaderPtr->id;
+            tmpProxyMessage.commonHeader.serviceId = commonHeaderPtr->serviceId;
             tmpProxyMessage.commonHeader.type =
                 proxyMessagePtr->commonHeader.type;
 
@@ -814,18 +809,22 @@ le_result_t rpcProxy_SendMsg
     LE_DEBUG("Sending %s Proxy Message, service-id [%" PRIu32 "], "
              "proxy id [%" PRIu32 "], size [%" PRIuS "]",
              DisplayMessageType(commonHeaderPtr->type),
-             serviceId,
-             id,
+             be32toh(commonHeaderPtr->serviceId),
+             be32toh(commonHeaderPtr->id),
              byteCount);
 
     // Send the Message Payload as an outgoing Proxy Message to the far-size RPC Proxy
     result = le_comm_Send(networkRecordPtr->handle, sendMessagePtr, byteCount);
-
     if (result != LE_OK)
     {
         // Delete the Network Communication Channel
         rpcProxyNetwork_DeleteNetworkCommunicationChannel(systemName);
     }
+
+    // Prepare the Proxy Message Common Header
+    commonHeaderPtr->id = be32toh(commonHeaderPtr->id);
+    commonHeaderPtr->serviceId = be32toh(commonHeaderPtr->serviceId);
+
     return result;
 }
 
@@ -1745,7 +1744,7 @@ static le_result_t RepackMessage
                 {
                     if (localMessagePtr->tagId == LE_PACK_STRING_RESPONSE_SIZE)
                     {
-                        LE_INFO("String [%s]", (const char *)localMessagePtr->dataPtr);
+                        LE_DEBUG("String [%s]", (const char *)localMessagePtr->dataPtr);
 
                         // Pack the string into the new message buffer
                         LE_ASSERT(le_pack_PackString(
@@ -2483,8 +2482,6 @@ static le_result_t DeleteConnectServiceRequestTimer
         return LE_FAULT;
     }
 
-    rpcProxy_Message_t* proxyMessageCopyPtr = NULL;
-
     LE_DEBUG("Deleting timer for Connect-Service Request, "
              "service-id [%" PRIu32 "]",
              serviceId);
@@ -2497,7 +2494,7 @@ static le_result_t DeleteConnectServiceRequestTimer
     //
 
     // Retrieve ContextPtr data (proxyMessage copy)
-    proxyMessageCopyPtr = le_timer_GetContextPtr(timerRef);
+    rpcProxy_Message_t* proxyMessageCopyPtr = le_timer_GetContextPtr(timerRef);
 
     if (proxyMessageCopyPtr == NULL)
     {
@@ -3063,8 +3060,7 @@ static void ServerMsgRecvHandler
     void*               contextPtr
 )
 {
-    rpcProxy_Message_t  proxyMessage;
-    rpcProxy_Message_t *proxyMessageCopyPtr = NULL;
+    rpcProxy_Message_t *proxyMessagePtr = NULL;
     le_result_t         result;
     bool                send = true;
 
@@ -3094,22 +3090,29 @@ static void ServerMsgRecvHandler
     // Prepare a Client-Request Proxy Message
     //
 
+    // Allocate memory for a Proxy Message buffer
+    proxyMessagePtr = le_mem_ForceAlloc(ProxyMessagesPoolRef);
+
     // Copy the Message Reference payload into the Proxy Message
-    memcpy(proxyMessage.message, le_msg_GetPayloadPtr(msgRef), le_msg_GetMaxPayloadSize(msgRef));
+    memcpy(proxyMessagePtr->message,
+           le_msg_GetPayloadPtr(msgRef),
+           le_msg_GetMaxPayloadSize(msgRef));
 
     // Save the message payload size
-    proxyMessage.msgSize = le_msg_GetMaxPayloadSize(msgRef);
+    proxyMessagePtr->msgSize = le_msg_GetMaxPayloadSize(msgRef);
 
-    LE_DEBUG("Received message from client, msgSize [%u]", proxyMessage.msgSize);
+    LE_DEBUG("Received message from client, msgSize [%u]", proxyMessagePtr->msgSize);
 
 
     // Set the Proxy Message common header id and type
-    proxyMessage.commonHeader.id = rpcProxy_GenerateProxyMessageId();
-    proxyMessage.commonHeader.type = RPC_PROXY_CLIENT_REQUEST;
+    proxyMessagePtr->commonHeader.id = rpcProxy_GenerateProxyMessageId();
+    proxyMessagePtr->commonHeader.type = RPC_PROXY_CLIENT_REQUEST;
 
     // Cache Message Reference to use later.
     // Store the Message Reference in a hash map using the proxy Id as the key.
-    le_hashmap_Put(MsgRefMapByProxyId, (void*)(uintptr_t) proxyMessage.commonHeader.id, msgRef);
+    le_hashmap_Put(MsgRefMapByProxyId,
+                   (void*)(uintptr_t) proxyMessagePtr->commonHeader.id,
+                   msgRef);
 
     // Retrieve the Service-ID for the specified service-name
     uint32_t* serviceIdPtr = le_hashmap_Get(ServiceIDMapByName, serviceName);
@@ -3117,34 +3120,21 @@ static void ServerMsgRecvHandler
     {
         // Raise a warning message
         LE_WARN("Service is not available, service-name [%s]", serviceName);
-        proxyMessage.commonHeader.serviceId = 0;
+        proxyMessagePtr->commonHeader.serviceId = 0;
 
         // Service is not available - do not send message to far-side
         send = false;
     }
     else
     {
-        proxyMessage.commonHeader.serviceId = *serviceIdPtr;
+        proxyMessagePtr->commonHeader.serviceId = *serviceIdPtr;
 
-        if (sizeof(proxyMessage.message) < le_msg_GetMaxPayloadSize(msgRef))
+        if (sizeof(proxyMessagePtr->message) < le_msg_GetMaxPayloadSize(msgRef))
         {
             // Raise an error message and return
             LE_ERROR("Proxy Message buffer too small");
             goto exit;
         }
-    }
-
-    // Check if client requires a response
-    if (le_msg_NeedsResponse(msgRef))
-    {
-        // Allocate memory for a Proxy Message copy
-        proxyMessageCopyPtr = le_mem_ForceAlloc(ProxyMessagesPoolRef);
-
-        // Make a copy of the Proxy Message
-        // (NOTE: Needs to be done prior to calling SendMsg)
-        memcpy(proxyMessageCopyPtr,
-               &proxyMessage,
-               (RPC_PROXY_MSG_HEADER_SIZE + proxyMessage.msgSize));
     }
 
     // Check if message should be sent to the far-side
@@ -3156,10 +3146,10 @@ static void ServerMsgRecvHandler
     // Send a request to the server and get the response.
     LE_DEBUG("Sending message to '%s' RPC Proxy and waiting for response : %u bytes sent",
              systemName,
-             proxyMessage.msgSize);
+             proxyMessagePtr->msgSize);
 
     // Send Proxy Message to far-side
-    result = rpcProxy_SendMsg(systemName, &proxyMessage);
+    result = rpcProxy_SendMsg(systemName, proxyMessagePtr);
     if (result != LE_OK)
     {
         LE_ERROR("le_comm_Send failed, result %d", result);
@@ -3183,7 +3173,7 @@ exit:
         le_timer_SetWakeup(clientRequestTimerRef, false);
 
         // Set Proxy Message (copy) in the timer event
-        le_timer_SetContextPtr(clientRequestTimerRef, proxyMessageCopyPtr);
+        le_timer_SetContextPtr(clientRequestTimerRef, proxyMessagePtr);
 
         // Start timer
         le_timer_Start(clientRequestTimerRef);
@@ -3191,12 +3181,18 @@ exit:
         // Store the timerRef in a hashmap, using the Proxy Message ID as a key, so that
         // it can be retrieved later
         le_hashmap_Put(ExpiryTimerRefByProxyId,
-                       (void*)(uintptr_t) proxyMessageCopyPtr->commonHeader.id,
+                       (void*)(uintptr_t) proxyMessagePtr->commonHeader.id,
                        clientRequestTimerRef);
 
-        LE_DEBUG("Starting timer for Client-Request, service-name [%s], id [%" PRIu32 "]",
+        LE_DEBUG("Starting timer (%d secs.) for Client-Request, "
+                 "service-name [%s], id [%" PRIu32 "]",
+                 RPC_PROXY_CLIENT_REQUEST_TIMER_INTERVAL,
                  serviceName,
-                 proxyMessageCopyPtr->commonHeader.id);
+                 proxyMessagePtr->commonHeader.id);
+    }
+    else
+    {
+        le_mem_Release(proxyMessagePtr);
     }
 }
 
@@ -3280,62 +3276,56 @@ static void SendSessionConnectRequest
     const char* protocolIdStr ///< [IN] Protocol ID str
 )
 {
-    rpcProxy_ConnectServiceMessage_t  proxyMessage;
-    uint32_t                          serviceId;
-    le_result_t                       result;
+    uint32_t     serviceId;
+    le_result_t  result;
 
     //
     // Create a Session Connect Proxy Message
     //
 
+    // Allocate memory for a Proxy Message
+    rpcProxy_ConnectServiceMessage_t *proxyMessagePtr =
+        le_mem_ForceAlloc(ProxyConnectServiceMessagesPoolRef);
+
     // Generate the proxy message id
-    proxyMessage.commonHeader.id = rpcProxy_GenerateProxyMessageId();
+    proxyMessagePtr->commonHeader.id = rpcProxy_GenerateProxyMessageId();
 
     // Generate the Service-ID, using a safe reference
-    proxyMessage.commonHeader.serviceId = serviceId =
+    proxyMessagePtr->commonHeader.serviceId = serviceId =
        (uint32_t)(uintptr_t) le_ref_CreateRef(ServiceIDSafeRefMap, (void*) serviceInstanceName);
 
-    proxyMessage.commonHeader.type = RPC_PROXY_CONNECT_SERVICE_REQUEST;
+    proxyMessagePtr->commonHeader.type = RPC_PROXY_CONNECT_SERVICE_REQUEST;
 
     // Copy the system-name into the Proxy Connect-Service Message
-    le_utf8_Copy(proxyMessage.systemName,
+    le_utf8_Copy(proxyMessagePtr->systemName,
                  systemName,
-                 sizeof(proxyMessage.systemName),
+                 sizeof(proxyMessagePtr->systemName),
                  NULL);
 
     // Copy the Service-Name into the Proxy Connect-Service Message
-    le_utf8_Copy(proxyMessage.serviceName,
+    le_utf8_Copy(proxyMessagePtr->serviceName,
                  serviceInstanceName,
-                 sizeof(proxyMessage.serviceName),
+                 sizeof(proxyMessagePtr->serviceName),
                  NULL);
 
     // Copy the Protocol-ID-Str into the Proxy Connect-Service Message
-    le_utf8_Copy(proxyMessage.protocolIdStr,
+    le_utf8_Copy(proxyMessagePtr->protocolIdStr,
                  protocolIdStr,
-                 sizeof(proxyMessage.protocolIdStr),
+                 sizeof(proxyMessagePtr->protocolIdStr),
                  NULL);
 
     // Initialize the service-code to LE_OK
-    proxyMessage.serviceCode = LE_OK;
-
-    // Allocate memory for a Proxy Message copy
-    rpcProxy_ConnectServiceMessage_t *proxyMessageCopyPtr =
-        le_mem_ForceAlloc(ProxyConnectServiceMessagesPoolRef);
-
-    // Make a copy of the Proxy Message
-    // (NOTE: Needs to be done prior to calling SendMsg)
-    memcpy(proxyMessageCopyPtr,
-           &proxyMessage,
-           sizeof(rpcProxy_ConnectServiceMessage_t));
+    proxyMessagePtr->serviceCode = LE_OK;
 
     // Send Proxy Message to far-side
-    result = rpcProxy_SendMsg(systemName, &proxyMessage);
+    result = rpcProxy_SendMsg(systemName, proxyMessagePtr);
     if (result != LE_OK)
     {
         LE_ERROR("le_comm_Send failed, result %d", result);
 
         // Free the Service-ID Safe Reference now that the Service is being deleted
         le_ref_DeleteRef(ServiceIDSafeRefMap, (void*)(uintptr_t) serviceId);
+        le_mem_Release(proxyMessagePtr);
         return;
     }
 
@@ -3353,7 +3343,7 @@ static void SendSessionConnectRequest
     le_timer_SetWakeup(connectServiceTimerRef, false);
 
     // Set Proxy Message (copy) in the timer event
-    le_timer_SetContextPtr(connectServiceTimerRef, proxyMessageCopyPtr);
+    le_timer_SetContextPtr(connectServiceTimerRef, proxyMessagePtr);
 
     // Start timer
     le_timer_Start(connectServiceTimerRef);
@@ -3361,12 +3351,14 @@ static void SendSessionConnectRequest
     // Store the timerRef in a hashmap, using the Service-ID as a key, so that
     // it can be retrieved later
     le_hashmap_Put(ExpiryTimerRefByServiceId,
-                   (void*)(uintptr_t) proxyMessageCopyPtr->commonHeader.serviceId,
+                   (void*)(uintptr_t) proxyMessagePtr->commonHeader.serviceId,
                    connectServiceTimerRef);
 
-    LE_INFO("Connecting to service '%s' - starting retry timer, service-id [%" PRIu32 "]",
-            proxyMessageCopyPtr->serviceName,
-            proxyMessageCopyPtr->commonHeader.serviceId);
+    LE_INFO("Connecting to service '%s' - "
+            "starting retry timer (%d secs.), service-id [%" PRIu32 "]",
+            proxyMessagePtr->serviceName,
+            RPC_PROXY_CONNECT_SERVICE_REQUEST_TIMER_INTERVAL,
+            proxyMessagePtr->commonHeader.serviceId);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3905,7 +3897,8 @@ le_result_t le_rpcProxy_Initialize
 
     // Create hash map for expiry timer references, using the Proxy Message ID (key).
     ExpiryTimerRefByProxyId = le_hashmap_InitStatic(ExpiryTimerRefHashMap,
-                                                    RPC_PROXY_MSG_REFERENCE_MAX_NUM,
+                                                    (RPC_PROXY_MSG_REFERENCE_MAX_NUM +
+                                                    RPC_PROXY_NETWORK_SYSTEM_MAX_NUM),
                                                     le_hashmap_HashVoidPointer,
                                                     le_hashmap_EqualsVoidPointer);
 

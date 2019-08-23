@@ -522,7 +522,7 @@ LE_SHARED le_result_t rpcProxyConfig_LoadBindings
         // Copy the System-Name into the allocated memory
         le_utf8_Copy(systemNameCopyPtr,
                      strBuffer,
-                     LIMIT_MAX_IPC_INTERFACE_NAME_BYTES,
+                     LIMIT_MAX_SYSTEM_NAME_BYTES,
                      NULL);
 
         // Set the Service-Name pointer

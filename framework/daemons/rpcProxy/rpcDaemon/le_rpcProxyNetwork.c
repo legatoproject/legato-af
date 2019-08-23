@@ -43,7 +43,7 @@ static le_hashmap_Ref_t SystemNameByAsyncHandle = NULL;
  */
 //--------------------------------------------------------------------------------------------------
 LE_MEM_DEFINE_STATIC_POOL(ProxyKeepAliveMessagePool,
-                          RPC_PROXY_MSG_REFERENCE_MAX_NUM,
+                          RPC_PROXY_NETWORK_SYSTEM_MAX_NUM,
                           sizeof(rpcProxy_KeepAliveMessage_t));
 static le_mem_PoolRef_t ProxyKeepAliveMessagesPoolRef = NULL;
 
@@ -235,14 +235,16 @@ void rpcProxyNetwork_StartNetworkConnectionRetryTimer
        le_hashmap_Get(NetworkRecordHashMapByName, systemName);
 
     LE_INFO("Network is unavailable, system-name [%s] - "
-            "starting timer to trigger a retry",
-            systemName);
+            "starting timer (%d secs.) to trigger a retry",
+            systemName,
+            LE_CONFIG_RPC_PROXY_NETWORK_CONNECTION_RETRY_TIMER_INTERVAL);
 
     //
     // Set-up Network Status timer to periodically attempt to bring-up Network Connection
     //
     le_timer_Ref_t  networkStatusTimerRef;
-    le_clk_Time_t timerInterval = { .sec=15, .usec=0 };
+    le_clk_Time_t timerInterval =
+        { .sec=LE_CONFIG_RPC_PROXY_NETWORK_CONNECTION_RETRY_TIMER_INTERVAL, .usec=0 };
 
     // Create a timer to trigger a Network status check
     networkStatusTimerRef = le_timer_Create("Network-Status timer");
@@ -1005,7 +1007,8 @@ le_result_t rpcProxyNetwork_ProcessKeepAliveResponse
     if (networkRecordPtr->state == NETWORK_DOWN)
     {
         // Inconsistent state
-        LE_ERROR("Sanity Check: Unexpected Network state, system [%s]", proxyMessagePtr->systemName);
+        LE_ERROR("Sanity Check: Unexpected Network state, system [%s]",
+                 proxyMessagePtr->systemName);
     }
 
     // Retrieve and delete the timer associated with Proxy Message ID
@@ -1018,8 +1021,8 @@ le_result_t rpcProxyNetwork_ProcessKeepAliveResponse
         rpcProxy_KeepAliveMessage_t* proxyMessageCopyPtr = NULL;
 
         LE_DEBUG("Deleting timer for KEEPALIVE-Request, '%s', id [%" PRIu32 "]",
-                proxyMessagePtr->systemName,
-                proxyMessagePtr->commonHeader.id);
+                 proxyMessagePtr->systemName,
+                 proxyMessagePtr->commonHeader.id);
 
         // Remove timer entry associated with Proxy Message ID from hash-map
         le_hashmap_Remove(rpcProxy_GetExpiryTimerRefByProxyId(),
@@ -1077,30 +1080,25 @@ void rpcProxyNetwork_SendKeepAliveRequest
     const char* systemName ///< System name
 )
 {
-    rpcProxy_KeepAliveMessage_t  proxyMessage;
-    rpcProxy_KeepAliveMessage_t *proxyMessageCopyPtr = NULL;
+    rpcProxy_KeepAliveMessage_t *proxyMessagePtr = NULL;
     le_result_t                  result;
 
+    // Allocate memory for a Proxy Message copy
+    proxyMessagePtr = le_mem_ForceAlloc(ProxyKeepAliveMessagesPoolRef);
+
     // Create an Keep-Alive Request Message
-    proxyMessage.commonHeader.id = rpcProxy_GenerateProxyMessageId();
-    proxyMessage.commonHeader.type = RPC_PROXY_KEEPALIVE_REQUEST;
-    proxyMessage.commonHeader.serviceId = 0;
+    proxyMessagePtr->commonHeader.id = rpcProxy_GenerateProxyMessageId();
+    proxyMessagePtr->commonHeader.type = RPC_PROXY_KEEPALIVE_REQUEST;
+    proxyMessagePtr->commonHeader.serviceId = 0;
 
     // Set the System-Name
-    memcpy(proxyMessage.systemName, systemName, sizeof(proxyMessage.systemName));
+    memcpy(proxyMessagePtr->systemName, systemName, sizeof(proxyMessagePtr->systemName));
 
     LE_INFO("Sending Proxy KEEPALIVE-Request Message, id [%" PRIu32 "]",
-             proxyMessage.commonHeader.id);
-
-    // Allocate memory for a Proxy Message copy
-    proxyMessageCopyPtr = le_mem_ForceAlloc(ProxyKeepAliveMessagesPoolRef);
-
-    // Make a copy of the Proxy Message
-    // (NOTE: Needs to be done prior to calling SendMsg)
-    memcpy(proxyMessageCopyPtr, &proxyMessage, sizeof(proxyMessage));
+             proxyMessagePtr->commonHeader.id);
 
     // Send Proxy Message to far-side
-    result = rpcProxy_SendMsg(systemName, &proxyMessage);
+    result = rpcProxy_SendMsg(systemName, proxyMessagePtr);
     if (result != LE_OK)
     {
         LE_ERROR("le_comm_Send failed, result %d", result);
@@ -1111,7 +1109,7 @@ void rpcProxyNetwork_SendKeepAliveRequest
     // we do not hear back from the far-side RPC Proxy
     //
     le_timer_Ref_t  keepAliveRequestTimerRef;
-    le_clk_Time_t  timerInterval = {.sec=RPC_PROXY_NETWORK_KEEPALIVE_REQUEST_TIMER_INTERVAL,
+    le_clk_Time_t  timerInterval = {.sec=RPC_PROXY_NETWORK_KEEPALIVE_TIMEOUT_TIMER_INTERVAL,
                                     .usec=0};
 
     // Create a timer to handle "lost" requests
@@ -1121,7 +1119,7 @@ void rpcProxyNetwork_SendKeepAliveRequest
     le_timer_SetWakeup(keepAliveRequestTimerRef, false);
 
     // Set Proxy Message (copy) in the timer event
-    le_timer_SetContextPtr(keepAliveRequestTimerRef, proxyMessageCopyPtr);
+    le_timer_SetContextPtr(keepAliveRequestTimerRef, proxyMessagePtr);
 
     // Start timer
     le_timer_Start(keepAliveRequestTimerRef);
@@ -1129,12 +1127,13 @@ void rpcProxyNetwork_SendKeepAliveRequest
     // Store the timerRef in a hashmap, using the Proxy Message ID as a key,
     // in order to retrieve it in the event we receive a response
     le_hashmap_Put(rpcProxy_GetExpiryTimerRefByProxyId(),
-                   (void*)(uintptr_t) proxyMessageCopyPtr->commonHeader.id,
+                   (void*)(uintptr_t) proxyMessagePtr->commonHeader.id,
                    keepAliveRequestTimerRef);
 
-    LE_INFO("Starting timer for KEEPALIVE-Request, '%s', id [%" PRIu32 "]",
-             systemName,
-             proxyMessageCopyPtr->commonHeader.id);
+    LE_INFO("Starting timer (%d secs.) for KEEPALIVE-Request, '%s', id [%" PRIu32 "]",
+            RPC_PROXY_NETWORK_KEEPALIVE_TIMEOUT_TIMER_INTERVAL,
+            systemName,
+            proxyMessagePtr->commonHeader.id);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1217,7 +1216,7 @@ le_result_t rpcProxyNetwork_Initialize
     // Initialize memory pool for allocating Keep-Alive messages.
     ProxyKeepAliveMessagesPoolRef = le_mem_InitStaticPool(
                                          ProxyKeepAliveMessagePool,
-                                         RPC_PROXY_MSG_REFERENCE_MAX_NUM,
+                                         RPC_PROXY_NETWORK_SYSTEM_MAX_NUM,
                                          sizeof(rpcProxy_KeepAliveMessage_t));
 
     // Initialize memory pool for allocating Network Timer Records.

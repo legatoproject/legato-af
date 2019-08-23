@@ -633,26 +633,35 @@ config RPC_PROXY_MAX_MESSAGE
   The maximum size of a RPC message that can be sent and received between RPC-enabled systems.
 
 config RPC_PROXY_NETWORK_KEEPALIVE_SERVICE_INTERVAL
-  int "Frequency of RPC Keep-Alive network service"
+  int "Frequency of RPC Keep-Alive network service (in seconds)"
   depends on RPC
-  range 0 1800
+  range 1 4294967295
   default 120
   ---help---
   The Frequency of Keep-Alice service, used to monitor the health of a remote RPC-enabled system.
 
-config RPC_PROXY_NETWORK_KEEPALIVE_REQUEST_TIMER_INTERVAL
-  int "RPC Keep-Alive time-out period"
+config RPC_PROXY_NETWORK_KEEPALIVE_TIMEOUT_TIMER_INTERVAL
+  int "RPC Keep-Alive time-out period (in seconds)"
   depends on RPC
-  range 0 300
+  range 1 4294967295
   default 30
   ---help---
   The length of time the RPC Proxy will wait before declaring a
   remote RPC-enabled system as unreachable (DOWN).
 
-config RPC_PROXY_CONNECT_SERVICE_REQUEST_TIMER_INTERVAL
-  int "RPC Connect-Service time-out period"
+config RPC_PROXY_NETWORK_CONNECTION_RETRY_TIMER_INTERVAL
+  int "Network connection retry timer (in seconds)"
   depends on RPC
-  range 0 300
+  range 1 4294967295
+  default 15
+  ---help---
+  The length of time the RPC Proxy will wait before attempting to
+  re-connect to a remote RPC-enabled system.
+
+config RPC_PROXY_CONNECT_SERVICE_REQUEST_TIMER_INTERVAL
+  int "RPC Connect-Service time-out period (in seconds)"
+  depends on RPC
+  range 1 4294967295
   default 15
   ---help---
   The length of time the RPC Proxy will wait before abandoning a

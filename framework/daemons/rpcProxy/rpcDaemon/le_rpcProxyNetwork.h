@@ -120,7 +120,7 @@ typedef struct NetworkTimerRecord
         KEEPALIVE,
     } event;  ///< Type of Timer Event
 
-    char systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES]; ///< Name of Destination System
+    char systemName[LIMIT_MAX_SYSTEM_NAME_BYTES]; ///< Name of Destination System
     NetworkRecord_t record;  ///< Network Record for the Destination System
 }
 NetworkTimerRecord_t;
