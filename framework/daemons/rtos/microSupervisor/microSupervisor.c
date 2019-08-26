@@ -114,7 +114,7 @@ static void InitLegatoFramework
     sem_Init();         // Uses memory pools.
     arg_Init();         // Uses memory pools.
     event_Init();       // Uses memory pools.
-    // timer_Init();    // Uses event loop.
+    timer_Init();       // Uses event loop.
     thread_Init();      // Uses event loop, memory pools and safe references.
     test_Init();        // Uses mutexes.
     msg_Init();         // Uses event loop.

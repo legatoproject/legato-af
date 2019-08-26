@@ -88,30 +88,32 @@ cat > $NINJA_SCRIPT <<EOF
 
 EOF
 
-AddSources liblegato ${LEGATO_ROOT}/framework/liblegato/args.c \
-                   ${LEGATO_ROOT}/framework/liblegato/clock.c \
-                   ${LEGATO_ROOT}/framework/liblegato/doublyLinkedList.c \
-                   ${LEGATO_ROOT}/framework/liblegato/hashmap.c \
-                   ${LEGATO_ROOT}/framework/liblegato/hsieh_hash.c \
-                   ${LEGATO_ROOT}/framework/liblegato/eventLoop.c \
-                   ${LEGATO_ROOT}/framework/liblegato/fd.c \
-                   ${LEGATO_ROOT}/framework/liblegato/log.c \
-                   ${LEGATO_ROOT}/framework/liblegato/mem.c \
-                   ${LEGATO_ROOT}/framework/liblegato/messagingCommon.c \
-                   ${LEGATO_ROOT}/framework/liblegato/messagingLocal.c \
-                   ${LEGATO_ROOT}/framework/liblegato/mutex.c \
-                   ${LEGATO_ROOT}/framework/liblegato/path.c \
-                   ${LEGATO_ROOT}/framework/liblegato/thread.c \
-                   ${LEGATO_ROOT}/framework/liblegato/safeRef.c \
-                   ${LEGATO_ROOT}/framework/liblegato/semaphores.c \
-                   ${LEGATO_ROOT}/framework/liblegato/singlyLinkedList.c \
-                   ${LEGATO_ROOT}/framework/liblegato/test.c \
-                   ${LEGATO_ROOT}/framework/liblegato/crc.c \
-                   ${LEGATO_ROOT}/framework/liblegato/utf8.c \
-                   ${LEGATO_ROOT}/framework/liblegato/cdata.c \
-                   ${LEGATO_ROOT}/framework/liblegato/hex.c \
-                   ${LEGATO_ROOT}/framework/liblegato/pack.c \
-                   ${LEGATO_ROOT}/framework/liblegato/pathIter.c
+AddSources liblegato                                        \
+    ${LEGATO_ROOT}/framework/liblegato/args.c               \
+    ${LEGATO_ROOT}/framework/liblegato/cdata.c              \
+    ${LEGATO_ROOT}/framework/liblegato/clock.c              \
+    ${LEGATO_ROOT}/framework/liblegato/crc.c                \
+    ${LEGATO_ROOT}/framework/liblegato/doublyLinkedList.c   \
+    ${LEGATO_ROOT}/framework/liblegato/eventLoop.c          \
+    ${LEGATO_ROOT}/framework/liblegato/fd.c                 \
+    ${LEGATO_ROOT}/framework/liblegato/hashmap.c            \
+    ${LEGATO_ROOT}/framework/liblegato/hex.c                \
+    ${LEGATO_ROOT}/framework/liblegato/hsieh_hash.c         \
+    ${LEGATO_ROOT}/framework/liblegato/log.c                \
+    ${LEGATO_ROOT}/framework/liblegato/mem.c                \
+    ${LEGATO_ROOT}/framework/liblegato/messagingCommon.c    \
+    ${LEGATO_ROOT}/framework/liblegato/messagingLocal.c     \
+    ${LEGATO_ROOT}/framework/liblegato/mutex.c              \
+    ${LEGATO_ROOT}/framework/liblegato/pack.c               \
+    ${LEGATO_ROOT}/framework/liblegato/path.c               \
+    ${LEGATO_ROOT}/framework/liblegato/pathIter.c           \
+    ${LEGATO_ROOT}/framework/liblegato/safeRef.c            \
+    ${LEGATO_ROOT}/framework/liblegato/semaphores.c         \
+    ${LEGATO_ROOT}/framework/liblegato/singlyLinkedList.c   \
+    ${LEGATO_ROOT}/framework/liblegato/test.c               \
+    ${LEGATO_ROOT}/framework/liblegato/thread.c             \
+    ${LEGATO_ROOT}/framework/liblegato/timer.c              \
+    ${LEGATO_ROOT}/framework/liblegato/utf8.c
 
 base_cflags_name="${legato_target_caps}_CFLAGS"
 

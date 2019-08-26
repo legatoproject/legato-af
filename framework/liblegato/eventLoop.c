@@ -744,7 +744,7 @@ void CallComponentInitializer
 )
 //--------------------------------------------------------------------------------------------------
 {
-    void (*componentInitFunc)(void) = param1Ptr;
+    void (*componentInitFunc)(void) = (void (*)(void)) param1Ptr;
 
     LE_UNUSED(param2Ptr);
 

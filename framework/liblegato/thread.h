@@ -33,7 +33,7 @@
  *          actual detach state.
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct
+typedef struct thread_Obj
 {
     le_dls_Link_t           link;           ///< Link for exposure to the Inpsect tool.
 #if LE_CONFIG_THREAD_NAMES_ENABLED

@@ -557,21 +557,21 @@ static thread_Obj_t* CreateThread
     threadPtr->destructorList = LE_DLS_LIST_INIT;
     threadPtr->threadHandle = 0;
 
-    threadPtr->eventRecPtr = event_CreatePerThreadInfo();
-    timer_Type_t i;
-    for (i = TIMER_NON_WAKEUP; i < TIMER_TYPE_COUNT; i++)
-    {
-        threadPtr->timerRecPtr[i] = NULL; //timer_InitThread(i);
-    }
-
     // By default, inherit cdata from the current thread.
     if (currentThreadPtr)
     {
         threadPtr->cdataRecPtr = currentThreadPtr->cdataRecPtr;
     }
 
+    threadPtr->eventRecPtr = event_CreatePerThreadInfo();
+    timer_Type_t i;
+    for (i = TIMER_NON_WAKEUP; i < TIMER_TYPE_COUNT; i++)
+    {
+        threadPtr->timerRecPtr[i] = timer_InitThread(i, threadPtr);
+    }
+
     // Create a safe reference for this object and put this object on the thread object list (for
-    // the Inpsect tool).
+    // the Inspect tool).
     Lock();
     threadPtr->safeRef = le_ref_CreateRef(ThreadRefMap, threadPtr);
     ThreadObjListChangeCount++;

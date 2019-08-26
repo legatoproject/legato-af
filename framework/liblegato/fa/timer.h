@@ -12,6 +12,9 @@
 #include "legato.h"
 #include "../limit.h"
 
+// Forward reference.
+struct thread_Obj;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Timer type codes.
@@ -99,7 +102,8 @@ int fa_timer_Init
 //--------------------------------------------------------------------------------------------------
 timer_ThreadRec_t *fa_timer_InitThread
 (
-    timer_Type_t timerType ///< Type of timer being initialized.
+    timer_Type_t             timerType, ///< Type of timer being initialized.
+    const struct thread_Obj *threadPtr  ///< Thread object for the new thread.
 );
 
 //--------------------------------------------------------------------------------------------------

@@ -14,7 +14,7 @@
 /**
  * Get relative time since some fixed but unspecified starting point. However, retrieve the time
  * based on the desired wakeup behaviour.
-   IsWakeup: False - Use non-waking clock. Otherwise not.
+   isWakeup: False - Use non-waking clock. Otherwise not.
  *
  * @return
  *      Relative time in seconds/microseconds
@@ -23,7 +23,7 @@
 //--------------------------------------------------------------------------------------------------
 le_clk_Time_t clk_GetRelativeTime
 (
-    bool IsWakeup   ///< Use a waking clock.
+    bool isWakeup   ///< Use a waking clock.
 );
 
 #endif /* LEGATO_SRC_CLOCK_H_INCLUDE_GUARD */

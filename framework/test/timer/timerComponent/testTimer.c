@@ -137,9 +137,9 @@ static void LongTimerExpiryHandler
     LE_TEST_OK(!testFailed, "timer accuracy within tolerance");
     if ( testFailed )
     {
-        LOG_TIME(expectedInterval);
-        LOG_TIME(diffTime);
-        LOG_TIME(subTime);
+        LOG_TIME_MSG("Expected Duration", expectedInterval);
+        LOG_TIME_MSG("Actual Duration", diffTime);
+        LOG_TIME_MSG("Difference", subTime);
     }
 
 
@@ -174,9 +174,9 @@ static void VeryShortTimerExpiryHandler
     LE_TEST_OK(!testFailed, "very short timer accuracy within tolerance");
     if ( testFailed )
     {
-        LOG_TIME(expectedInterval);
-        LOG_TIME(diffTime);
-        LOG_TIME(subTime);
+        LOG_TIME_MSG("Expected Duration", expectedInterval);
+        LOG_TIME_MSG("Actual Duration", diffTime);
+        LOG_TIME_MSG("Difference", subTime);
     }
 }
 
@@ -197,9 +197,9 @@ static void MediumTimerExpiryHandler
     LE_TEST_OK(!testFailed, "medium timer accuracy within tolerance");
     if ( testFailed )
     {
-        LOG_TIME(expectedInterval);
-        LOG_TIME(diffTime);
-        LOG_TIME(subTime);
+        LOG_TIME_MSG("Expected Duration", expectedInterval);
+        LOG_TIME_MSG("Actual Duration", diffTime);
+        LOG_TIME_MSG("Difference", subTime);
     }
 
     // Verify that veryShortTimer (passed in as contextPtr) expired exactly once
@@ -289,9 +289,9 @@ static void AdditionalTests
     LE_TEST_OK(!testFailed, "Time remaining was within tolerance.");
     if (testFailed)
     {
-        LOG_TIME(timeRemaining);
-        LOG_TIME(elapsedTime);
-        LOG_TIME(TimerTolerance);
+        LOG_TIME_MSG("Time Remaining", timeRemaining);
+        LOG_TIME_MSG("Elapsed Time", elapsedTime);
+        LOG_TIME_MSG("Tolerance", TimerTolerance);
     }
 
     le_timer_Stop(shortTimer);
@@ -368,11 +368,11 @@ static void TimerExpiryHandler
     testDataPtr->testPassed[isMain][expiryCount-1] = !testFailed;
     if ( testFailed )
     {
-        LOG_TIME_MSG("testDataPtr", testDataPtr->interval);
-        LOG_TIME(expectedInterval);
-        LOG_TIME(diffTime);
-        LOG_TIME(subTime);
-        LOG_TIME(tolerance);
+        LOG_TIME_MSG("Timer Interval", testDataPtr->interval);
+        LOG_TIME_MSG("Expected Duration", expectedInterval);
+        LOG_TIME_MSG("Actual Duration", diffTime);
+        LOG_TIME_MSG("Difference", subTime);
+        LOG_TIME_MSG("Tolerance", tolerance);
     }
     else
     {

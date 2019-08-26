@@ -29,15 +29,18 @@
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_clk_Time_t clk_GetRelativeTime(bool IsWakeup)
+le_clk_Time_t clk_GetRelativeTime
+(
+    bool isWakeup
+)
 {
     struct timespec systemTime;
     le_clk_Time_t relativeTime;
 
-    if (!IsWakeup)
+    if (isWakeup)
     {
         // Use a clock coherent with timerfd functions.
-        if (0 > clock_gettime(CLOCK_MONOTONIC, &systemTime))
+        if (0 > clock_gettime((clockid_t) timer_GetClockType(), &systemTime))
         {
             LE_FATAL("clock_gettime() failed. errno = %d", errno);
         }
@@ -45,7 +48,7 @@ le_clk_Time_t clk_GetRelativeTime(bool IsWakeup)
     else
     {
         // Use a clock coherent with timerfd functions.
-        if (0 > clock_gettime(timer_GetClockType(), &systemTime))
+        if (0 > clock_gettime(CLOCK_MONOTONIC, &systemTime))
         {
             LE_FATAL("clock_gettime() failed. errno = %d", errno);
         }
@@ -76,19 +79,7 @@ le_clk_Time_t clk_GetRelativeTime(bool IsWakeup)
 //--------------------------------------------------------------------------------------------------
 le_clk_Time_t le_clk_GetRelativeTime(void)
 {
-    struct timespec systemTime;
-    le_clk_Time_t relativeTime;
-
-    // Use a clock coherent with timerfd functions.
-    if (0 > clock_gettime(timer_GetClockType(), &systemTime))
-    {
-        LE_FATAL("clock_gettime() failed. errno = %d", errno);
-    }
-
-    relativeTime.sec = systemTime.tv_sec;
-    relativeTime.usec = systemTime.tv_nsec/1000;
-
-    return relativeTime;
+    return clk_GetRelativeTime(true);
 }
 
 

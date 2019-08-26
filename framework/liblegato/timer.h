@@ -65,9 +65,10 @@ void timer_Init
  *     pointer on an initialized timer reference
  */
 //--------------------------------------------------------------------------------------------------
-timer_ThreadRec_t*  timer_InitThread
+timer_ThreadRec_t *timer_InitThread
 (
-    timer_Type_t timerType
+    timer_Type_t             timerType, ///< Timer type being initialized.
+    const struct thread_Obj *threadPtr  ///< Thread object for the new thread.
 );
 
 
