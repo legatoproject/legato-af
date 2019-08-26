@@ -1688,7 +1688,10 @@ le_result_t le_data_GetDateTime
         return LE_BAD_PARAMETER;
     }
 
-    if (!IsConnected)
+    // Do not let the attempt to get current time proceed when there is no data connection
+    // established via le_data nor requested via le_dcs, since TP and NTP have to work over
+    // a data connection
+    if (!IsConnected && (le_dcs_GetReqCount() == 0))
     {
         LE_ERROR("Data Connection Service is not connected");
         return LE_FAULT;

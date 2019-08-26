@@ -1087,6 +1087,23 @@ const char *le_dcs_ConvertEventToString
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Return le_dcs's request count back to the caller
+ *
+ * @return
+ *     - the count of channel requests made thru le_dcs API
+ */
+//--------------------------------------------------------------------------------------------------
+uint16_t le_dcs_GetReqCount
+(
+    void
+)
+{
+    return 0;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The first-layer channel event handler used by the stub function le_dcs_AddEventHandler
  */
 //--------------------------------------------------------------------------------------------------

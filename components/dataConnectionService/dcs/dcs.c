@@ -307,6 +307,23 @@ le_result_t le_dcs_GetState
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Return le_dcs's request count back to the caller
+ *
+ * @return
+ *     - the count of channel requests made thru le_dcs API
+ */
+//--------------------------------------------------------------------------------------------------
+uint16_t le_dcs_GetReqCount
+(
+    void
+)
+{
+    return DcsInfo.reqCount;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Adjust the request count of both the given channel and the global count up or down according
  * to the boolean input argument
  */

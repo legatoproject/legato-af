@@ -150,6 +150,7 @@ uint16_t le_dcs_GetChannelCount(le_dcs_Technology_t tech);
 uint16_t le_dcs_IncrementChannelCount(le_dcs_Technology_t tech);
 le_result_t le_dcs_DecrementChannelCount(le_dcs_Technology_t tech, uint16_t *newCount);
 void le_dcs_AdjustReqCount(le_dcs_channelDb_t *channelDb, bool up);
+LE_SHARED uint16_t le_dcs_GetReqCount(void);
 LE_SHARED le_dcs_EventHandlerRef_t le_dcs_AddEventHandler(
     le_dcs_ChannelRef_t channelRef, le_dcs_EventHandlerFunc_t channelHandlerPtr, void *contextPtr);
 LE_SHARED void le_dcs_RemoveEventHandler(le_dcs_EventHandlerRef_t channelHandlerRef);
