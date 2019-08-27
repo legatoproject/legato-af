@@ -30,26 +30,10 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Expected number of clients of this server API.
- *
- * Default to one client per server.
- */
-//--------------------------------------------------------------------------------------------------
-#ifndef HIGH_CLIENT_COUNT
-#define HIGH_CLIENT_COUNT (LE_CDATA_COMPONENT_COUNT)
-#endif
-
-/// Expected number of client messages.  Expect at most one event to each client and one
-/// call from each client.
-#define HIGH_CLIENT_MESSAGES  (HIGH_CLIENT_COUNT*2)
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Static pool for client messages
  */
 //--------------------------------------------------------------------------------------------------
-LE_MEM_DEFINE_STATIC_POOL({{apiName}}Messages, HIGH_CLIENT_COUNT,
+LE_MEM_DEFINE_STATIC_POOL({{apiName}}_Messages, LE_CDATA_COMPONENT_COUNT,
                           LE_CDATA_COMPONENT_COUNT*(LE_MSG_LOCAL_HEADER_SIZE +_MAX_MSG_SIZE));
 
 //--------------------------------------------------------------------------------------------------
@@ -85,21 +69,21 @@ typedef struct
 }
 _ServerData_t;
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Expected number of simultaneous server data objects.
  */
 //--------------------------------------------------------------------------------------------------
-#define HIGH_SERVER_DATA_COUNT            3
-
+#define HIGH_SERVER_DATA_COUNT  3
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Static pool for server data objects
  */
 //--------------------------------------------------------------------------------------------------
-LE_MEM_DEFINE_STATIC_POOL({{apiName}}_ServerData, HIGH_SERVER_DATA_COUNT, sizeof(_ServerData_t));
+LE_MEM_DEFINE_STATIC_POOL({{apiName}}_ServerData,
+                          HIGH_SERVER_DATA_COUNT,
+                          sizeof(_ServerData_t));
 {%- if args.async %}
 
 //--------------------------------------------------------------------------------------------------
@@ -120,13 +104,12 @@ typedef struct {{apiName}}_ServerCmd
     {%- endif %}
 } {{apiName}}_ServerCmd_t;
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Expected number of simultaneous async server commands.
  */
 //--------------------------------------------------------------------------------------------------
-#define HIGH_SERVER_CMD_COUNT            5
+#define HIGH_SERVER_CMD_COUNT   5
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -152,7 +135,8 @@ static le_mem_PoolRef_t _ServerDataPool;
  *  Static safe reference map for use with Add/Remove handler references
  */
 //--------------------------------------------------------------------------------------------------
-LE_REF_DEFINE_STATIC_MAP({{apiName}}_ServerHandlers, HIGH_SERVER_DATA_COUNT);
+LE_REF_DEFINE_STATIC_MAP({{apiName}}_ServerHandlers,
+    LE_MEM_BLOCKS({{apiName}}_ServerCmd, HIGH_SERVER_DATA_COUNT));
 
 
 //--------------------------------------------------------------------------------------------------
@@ -361,8 +345,8 @@ void {{apiName}}_InitService
 {
     if (!{{apiName}}MessagesRef)
     {
-        {{apiName}}MessagesRef = le_mem_InitStaticPool({{apiName}}Messages,
-                                                       HIGH_CLIENT_COUNT,
+        {{apiName}}MessagesRef = le_mem_InitStaticPool({{apiName}}_Messages,
+                                                       LE_CDATA_COMPONENT_COUNT,
                                                        LE_MSG_LOCAL_HEADER_SIZE +
                                                        _MAX_MSG_SIZE);
     }
@@ -446,8 +430,8 @@ void {{apiName}}_AdvertiseService
 
     // Create safe reference map for handler references.
     // The size of the map should be based on the number of handlers defined for the server.
-    // Don't expect that to be more than 2-3, so use 3 as a reasonable guess.
-    _HandlerRefMap = le_ref_InitStaticMap({{apiName}}_ServerHandlers, HIGH_SERVER_DATA_COUNT);
+    _HandlerRefMap = le_ref_InitStaticMap({{apiName}}_ServerHandlers,
+                        LE_MEM_BLOCKS({{apiName}}_ServerData, HIGH_SERVER_DATA_COUNT));
 
     // Start the server side of the service
     {%- if not args.localService %}
@@ -705,7 +689,7 @@ static void Handle_{{apiName}}_{{function.name}}
 {
     {%- with error_unpack_label=Labeler("error_unpack") %}
     // Create a server command object
-    {{apiName}}_ServerCmd_t* _serverCmdPtr = le_mem_ForceAlloc(_ServerCmdPool);
+    {{apiName}}_ServerCmd_t* _serverCmdPtr = le_mem_Alloc(_ServerCmdPool);
     _serverCmdPtr->cmdLink = LE_DLS_LINK_INIT;
     _serverCmdPtr->msgRef = _msgRef;
 
@@ -819,7 +803,7 @@ static void Handle_{{apiName}}_{{function.name}}
     {%- for handler in function.parameters if handler.apiType is HandlerType %}
 
     // Create a new server data object and fill it in
-    _ServerData_t* serverDataPtr = le_mem_ForceAlloc(_ServerDataPool);
+    _ServerData_t* serverDataPtr = le_mem_Alloc(_ServerDataPool);
     serverDataPtr->clientSessionRef = le_msg_GetSession(_msgRef);
     serverDataPtr->contextPtr = contextPtr;
     serverDataPtr->handlerRef = NULL;

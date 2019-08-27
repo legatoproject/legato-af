@@ -964,6 +964,64 @@ static void AddRequiredItems
 
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Adds the items from a given "pools:" section to a given Component_t object.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddPoolItems
+(
+    model::Component_t              *componentPtr,
+    const parseTree::CompoundItem_t *sectionPtr,
+    const mk::BuildParams_t         &buildParams
+)
+{
+    model::MemPoolSize_t::PoolType_t    type;
+    std::string                         name;
+    unsigned int                        size;
+
+    // Iterate over every parsed pool token object in the pools section.
+    for (auto itemPtr : static_cast<const parseTree::ComplexSection_t *>(sectionPtr)->Contents())
+    {
+        auto poolPtr = static_cast<const parseTree::Pool_t *>(itemPtr);
+
+        // A valid specification must have at least two tokens: POOL_NAME and SIZE.
+        if (poolPtr->Contents().size() < 2)
+        {
+            poolPtr->ThrowException(LE_I18N("Invalid pool size specification."));
+        }
+
+        // A pool size specification may have an optional leading scope token.  Currently
+        // "messaging" is the only non-default scope.
+        if (poolPtr->Contents()[0]->text == "<messaging>")
+        {
+            // If a scope is specified, then at least three tokens are needed: SCOPE, POOL_NAME, and
+            // SIZE.
+            if (poolPtr->Contents().size() < 3)
+            {
+                poolPtr->ThrowException(LE_I18N("Missing pool name."));
+            }
+
+            // Messaging pool specification.
+            type = model::MemPoolSize_t::POOLTYPE_MESSAGING;
+            name = poolPtr->Contents()[1]->text;
+            size = std::stoul(poolPtr->Contents()[2]->text);
+        }
+        else
+        {
+            // Normal, two token user pool specification.
+            type = model::MemPoolSize_t::POOLTYPE_USER;
+            name = poolPtr->Contents()[0]->text;
+            size = std::stoul(poolPtr->Contents()[1]->text);
+        }
+
+        // Insert the new pool size specification.
+        if (!componentPtr->poolSizeEntries.insert(model::MemPoolSize_t(type, name, size)).second)
+        {
+            poolPtr->ThrowException(LE_I18N("Duplicate pool entry."));
+        }
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1324,6 +1382,10 @@ model::Component_t* GetComponent
         else if (sectionName == "requires")
         {
             AddRequiredItems(componentPtr, sectionPtr, buildParams);
+        }
+        else if (sectionName == "pools")
+        {
+            AddPoolItems(componentPtr, sectionPtr, buildParams);
         }
         else
         {

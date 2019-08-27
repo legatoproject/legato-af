@@ -302,7 +302,7 @@ le_msg_SessionRef_t le_msg_CreateLocalSession
         return NULL;
     }
 
-    msg_LocalSession_t* clientSessionPtr = le_mem_ForceAlloc(SessionPool);
+    msg_LocalSession_t* clientSessionPtr = le_mem_Alloc(SessionPool);
     memset(clientSessionPtr, 0, sizeof(msg_LocalSession_t));
     clientSessionPtr->session.type = LE_MSG_SESSION_LOCAL;
     clientSessionPtr->receiver.thread = le_thread_GetCurrent();
@@ -451,7 +451,7 @@ le_msg_MessageRef_t msgLocal_CreateMsg
     LE_FATAL_IF(!sessionRef, "No such session");
     LE_FATAL_IF(!sessionRef->servicePtr, "No such service");
     le_msg_LocalService_t* servicePtr = sessionRef->servicePtr;
-    le_msg_LocalMessage_t* msgPtr = le_mem_ForceAlloc(servicePtr->messagePool);
+    le_msg_LocalMessage_t* msgPtr = le_mem_Alloc(servicePtr->messagePool);
     msgPtr->message.sessionRef = &sessionRef->session;
     msgPtr->responseReady = le_sem_Create("msgResponseReady", 0);
     msgPtr->fd = -1;

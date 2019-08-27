@@ -453,6 +453,8 @@ le_rbtree_Node_t* le_rbtree_GetNext
     le_rbtree_Node_t *x             ///< [IN] Current node pointer.
 )
 {
+    LE_UNUSED(rbt);
+
     if (x->right != LE_RBTREE_NULL)
     {
         for (x = x->right; x->left != LE_RBTREE_NULL;)
@@ -490,6 +492,8 @@ le_rbtree_Node_t* le_rbtree_GetPrev
     le_rbtree_Node_t *x                  ///< [IN] Get the link that is relative to this link.
 )
 {
+    LE_UNUSED(rbt);
+
     if (x->left != LE_RBTREE_NULL)
     {
         for (x = x->left; x->right != LE_RBTREE_NULL;)

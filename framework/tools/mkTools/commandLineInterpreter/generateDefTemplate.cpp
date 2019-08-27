@@ -59,6 +59,9 @@ static void GenerateBuildVarsSection
                  "// Variables are defined as <name> = <value>.  Values can come from previously "
                  "defined variables or\n"
                  "// from environment variables.\n"
+                 "// These variables are available to use throughout the definition file. "
+                 "buildVars section is \n"
+                 "// evaluated before processing any other sections.\n"
                  "buildVars:\n"
                  "{\n"
                  "    // Define a base directory for your project.\n"
@@ -246,7 +249,7 @@ static void GenerateProcessesSection
     exeName = compName + "Exe";
 
     defStream << "\n"
-                 "// The processes section specifies processes to run when the app is started"
+                 "// The processes section specifies processes to run when the app is started "
                  "including environment\n"
                  "// variables, command-line arguments, limits, and fault handling actions.\n"
                  "processes:\n"

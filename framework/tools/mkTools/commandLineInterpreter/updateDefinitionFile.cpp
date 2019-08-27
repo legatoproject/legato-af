@@ -348,7 +348,7 @@ static std::string GetLineToWrite
             for (const auto& it : handler.appSearchPath)
             {
                 writePath = path::EraseCommonBasePath(handler.absAdefFilePath, it, false);
-                if (!writePath.empty())
+                if (!writePath.empty() && !path::IsAbsolute(writePath))
                 {
                     break;
                 }
@@ -362,7 +362,7 @@ static std::string GetLineToWrite
             for (const auto& it : handler.moduleSearchPath)
             {
                 writePath = path::EraseCommonBasePath(handler.absMdefFilePath, it, false);
-                if (!writePath.empty())
+                if (!writePath.empty() && !path::IsAbsolute(writePath))
                 {
                     break;
                 }
@@ -1270,7 +1270,6 @@ void GetAdefComponentEditLinePosition
     model::System_t* systemPtr
 )
 {
-    std::string absAdefFile;
     std::string absCdefFile = handler.absCdefFilePath + "/" + COMP_CDEF;
     std::string compMustExist;
     std::string compMustNotExist;
@@ -1284,11 +1283,7 @@ void GetAdefComponentEditLinePosition
             compMustNotExist = handler.absCdefFilePath;
             if (handler.adefFilePath.empty())
             {
-                return;
-            }
-            else
-            {
-                absAdefFile = handler.absAdefFilePath;
+               return;
             }
             break;
         }

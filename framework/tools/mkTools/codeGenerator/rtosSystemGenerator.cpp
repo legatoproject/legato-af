@@ -355,14 +355,14 @@ void GenerateRtosSystemTasks
         std::string component = commandPtr->exePath.substr(1);
         std::string description = "Legato '" + commandPtr->name + "' command";
 
-        outputFile <<   "LE_RTOS_CLI_ADDCMD_RUNTIME\n"
-                        "(\n"
-                        "    " << commandPtr->appPtr->name << ",\n"
-                        "    " << component << ",\n"
-                        "    LE_RTOS_CLI_MAXARGS,\n"
-                        "    \"" << commandPtr->name << "\",\n"
-                        "    \"" << description << "\"\n"
-                        ");\n";
+        outputFile <<   "    LE_RTOS_CLI_ADDCMD_RUNTIME\n"
+                        "    (\n"
+                        "        " << commandPtr->appPtr->name << ",\n"
+                        "        " << component << ",\n"
+                        "        LE_RTOS_CLI_MAXARGS,\n"
+                        "        \"" << commandPtr->name << "\",\n"
+                        "        \"" << description << "\"\n"
+                        "    );\n";
     }
 
     outputFile << "}\n";

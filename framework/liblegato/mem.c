@@ -2227,3 +2227,32 @@ void le_mem_Resume
 }
 
 #endif /* end LE_CONFIG_RTOS */
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Duplicate a UTF-8 string.  The space for the duplicate string will be allocated from the provided
+ * memory pool using le_mem_VarAlloc().
+ *
+ * @return  The allocated duplicate of the string.  This may later be released with
+ *          le_mem_Release().
+ */
+//--------------------------------------------------------------------------------------------------
+char *le_mem_StrDup
+(
+    le_mem_PoolRef_t     poolRef,   ///< Pool from which to allocate the string.
+    const char          *srcStr     ///< String to duplicate.
+)
+{
+    char    *resultStr;
+    size_t   size;
+
+    LE_ASSERT(poolRef != NULL);
+    LE_ASSERT(srcStr != NULL);
+
+    size = le_utf8_NumBytes(srcStr) + 1;
+    resultStr = le_mem_VarAlloc(poolRef, size);
+    LE_ASSERT(le_utf8_Copy(resultStr, srcStr, size, NULL) == LE_OK);
+
+    return resultStr;
+}

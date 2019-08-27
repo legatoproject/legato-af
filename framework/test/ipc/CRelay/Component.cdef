@@ -22,3 +22,8 @@ sources:
 {
     crelay.c
 }
+
+pools:
+{
+    <messaging>.ipcServer_Messages = 3
+}

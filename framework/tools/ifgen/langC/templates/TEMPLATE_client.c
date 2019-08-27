@@ -53,7 +53,6 @@ typedef struct
 }
 _ClientThreadData_t;
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Static pool for client threads.
@@ -143,7 +142,7 @@ static le_result_t InitClientForThread
 
     // Store the client sessionRef in thread-local storage, since each thread requires
     // its own sessionRef.
-    _ClientThreadData_t* clientThreadPtr = le_mem_ForceAlloc(_ClientThreadDataPool);
+    _ClientThreadData_t* clientThreadPtr = le_mem_Alloc(_ClientThreadDataPool);
     memset(clientThreadPtr, 0, sizeof(_ClientThreadData_t));
     clientThreadPtr->sessionRef = sessionRef;
     if (pthread_setspecific(_ThreadDataKey, clientThreadPtr) != 0)

@@ -9,8 +9,10 @@
 
 #include <string.h>
 
-#define MAX_VALUE_SIZE 257
+#define MAX_VALUE_SIZE  257
+#define VALUE_ENTRIES   6
 
+LE_MEM_DEFINE_STATIC_POOL(ValuePool, VALUE_ENTRIES, MAX_VALUE_SIZE);
 le_mem_PoolRef_t ValuePool;
 
 void AsyncServer_EchoSimpleRespond
@@ -75,7 +77,7 @@ void ipcTest_EchoLargeEnum
     ipcTest_LargeEnum_t InValue
 )
 {
-    ipcTest_LargeEnum_t* valuePtr = le_mem_ForceAlloc(ValuePool);
+    ipcTest_LargeEnum_t* valuePtr = le_mem_AssertAlloc(ValuePool);
     *valuePtr = InValue;
 
     le_event_QueueFunction(AsyncServer_EchoLargeEnumRespond,
@@ -124,7 +126,7 @@ void ipcTest_EchoLargeBitMask
     ipcTest_LargeBitMask_t InValue
 )
 {
-    ipcTest_LargeBitMask_t* valuePtr = le_mem_ForceAlloc(ValuePool);
+    ipcTest_LargeBitMask_t* valuePtr = le_mem_AssertAlloc(ValuePool);
     *valuePtr = InValue;
 
     le_event_QueueFunction(AsyncServer_EchoLargeBitMaskRespond,
@@ -176,7 +178,7 @@ void ipcTest_EchoString
     // Cap output string size at maximum size of buffer
     if (OutStringSize > MAX_VALUE_SIZE) { OutStringSize = MAX_VALUE_SIZE; }
 
-    char* OutString = le_mem_ForceAlloc(ValuePool);
+    char* OutString = le_mem_AssertAlloc(ValuePool);
     strncpy(OutString, InString, OutStringSize);
     OutString[OutStringSize-1] = '\0';
     le_event_QueueFunction(AsyncServer_EchoStringRespond,
@@ -266,5 +268,5 @@ void ipcTest_EchoTriggerEvent
 
 COMPONENT_INIT
 {
-    ValuePool = le_mem_CreatePool("values", MAX_VALUE_SIZE);
+    ValuePool = le_mem_InitStaticPool(ValuePool, VALUE_ENTRIES, MAX_VALUE_SIZE);
 }

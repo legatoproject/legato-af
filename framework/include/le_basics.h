@@ -232,6 +232,22 @@ le_onoff_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Helper macro for @ref SECOND(...).  Always select the second parameter.
+ */
+//--------------------------------------------------------------------------------------------------
+#define SECOND(a, b, ...) b
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * If the macro passed as the first parameter is defined in the form ,<value> (note the leading
+ * comma) this evaluates to <value>.  If the macro is not defined in this format (or not defined at
+ * all, this evaluates to the second, default parameter.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_DEFAULT(...) SECOND(__VA_ARGS__)
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Macro used to declare that a symbol should be shared outside the dynamic shared object in
  * which it is defined.
  *

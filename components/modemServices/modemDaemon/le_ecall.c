@@ -5004,3 +5004,24 @@ le_result_t le_ecall_GetPropulsionType
 
     return result;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Terminate NAD registered on the network. After termination of an emergency call the in-vehicle
+ * system remains registered on the network for a period of time, this API will deregister device
+ * from network in this period.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_TerminateRegistration
+(
+    void
+)
+{
+    return pa_ecall_TerminateRegistration();
+}
+

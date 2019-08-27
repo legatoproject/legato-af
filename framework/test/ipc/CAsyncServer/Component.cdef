@@ -14,3 +14,8 @@ sources:
 {
     casyncserver.c
 }
+
+pools:
+{
+    <messaging>.ipcTest_Messages = 3
+}

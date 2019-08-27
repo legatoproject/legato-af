@@ -239,6 +239,54 @@ static parseTree::CompoundItem_t* ParseRequiresSubsection
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parse a pool size item from inside a "pools:" section.
+ *
+ * @return Pointer to the item.
+ */
+//--------------------------------------------------------------------------------------------------
+static parseTree::CompoundItem_t *ParsePoolSize
+(
+    Lexer_t &lexer
+)
+{
+    parseTree::Token_t *namePtr;
+    parseTree::Token_t *scopePtr = NULL;
+    parseTree::Token_t *sizePtr;
+
+    // If the first token is a value in angle brackets (not a valid C variable name), handle it as a
+    // scope prefix.
+    if (!lexer.IsMatch(parseTree::Token_t::NAME))
+    {
+        // Get the scope value.
+        scopePtr = lexer.Pull(parseTree::Token_t::IPC_AGENT);
+        // Discard the (required) following dot.
+        (void) lexer.Pull(parseTree::Token_t::DOT);
+    }
+
+    // Get the pool name.
+    namePtr = lexer.Pull(parseTree::Token_t::NAME);
+    // Discard the (required) assignment operator.
+    (void) lexer.Pull(parseTree::Token_t::EQUALS);
+    // Finally, get the size value itself.
+    sizePtr = lexer.Pull(parseTree::Token_t::INTEGER);
+
+    auto poolPtr = parseTree::CreateTokenList(parseTree::CompoundItem_t::POOL,
+                        (scopePtr == NULL ? namePtr : scopePtr));
+
+    if (scopePtr != NULL)
+    {
+        // If specified, add the prefix to the parsed tokens.
+        poolPtr->AddContent(scopePtr);
+    }
+
+    // Add the pool name and size to the parsed tokens.
+    poolPtr->AddContent(namePtr);
+    poolPtr->AddContent(sizePtr);
+
+    return poolPtr;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -291,6 +339,10 @@ static parseTree::CompoundItem_t* ParseSection
     else if (sectionName == "requires")
     {
         return ParseComplexSection(lexer, sectionNameTokenPtr, ParseRequiresSubsection);
+    }
+    else if (sectionName == "pools")
+    {
+        return ParseComplexSection(lexer, sectionNameTokenPtr, ParsePoolSize);
     }
     else
     {
