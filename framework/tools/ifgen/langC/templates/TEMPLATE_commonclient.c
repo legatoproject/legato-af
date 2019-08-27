@@ -178,7 +178,8 @@ LE_SHARED void ifgen_{{apiBaseName}}_InitCommonData
             // the number of client threads.  Since this number can't be completely determined at
             // build time, just make a reasonable guess.
             _HandlerRefMap = le_ref_InitStaticMap({{apiBaseName}}_ClientHandlers,
-                                                  HIGH_CLIENT_DATA_COUNT);
+                                                  LE_MEM_BLOCKS({{apiBaseName}}_ClientData,
+                                                                HIGH_CLIENT_DATA_COUNT));
         }
 
 #if defined(MK_TOOLS_BUILD) && !defined(NO_LOG_SESSION)
