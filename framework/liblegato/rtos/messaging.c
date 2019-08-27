@@ -488,7 +488,7 @@ void le_msg_Respond
     le_msg_MessageRef_t msgRef      ///< [in] Reference to the request message.
 )
 {
-    return msgLocal_Respond(msgRef);
+    msgLocal_Respond(msgRef);
 }
 
 //--------------------------------------------------------------------------------------------------

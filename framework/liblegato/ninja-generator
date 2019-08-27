@@ -97,6 +97,8 @@ AddSources liblegato ${LEGATO_ROOT}/framework/liblegato/args.c \
                    ${LEGATO_ROOT}/framework/liblegato/fd.c \
                    ${LEGATO_ROOT}/framework/liblegato/log.c \
                    ${LEGATO_ROOT}/framework/liblegato/mem.c \
+                   ${LEGATO_ROOT}/framework/liblegato/messagingCommon.c \
+                   ${LEGATO_ROOT}/framework/liblegato/messagingLocal.c \
                    ${LEGATO_ROOT}/framework/liblegato/mutex.c \
                    ${LEGATO_ROOT}/framework/liblegato/path.c \
                    ${LEGATO_ROOT}/framework/liblegato/thread.c \
@@ -128,7 +130,10 @@ for module_path in $(find -L $SRC_DIR/* -type d -prune); do
             used_ninja_configs="$used_ninja_configs $ninja_config"
         fi
         modules="$modules ${module_path}"
-        #AddSources $module_name $(ls ${module_path}/*.c)
+        # Only care about RTOS for now
+        if [[ $module_name == "rtos" ]]; then
+            AddSources $module_name $(ls ${module_path}/*.c)
+        fi
         CFLAGS="${CFLAGS} -I${module_path}"
     fi
 done
