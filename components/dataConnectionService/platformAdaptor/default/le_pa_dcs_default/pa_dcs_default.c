@@ -76,13 +76,22 @@ le_result_t pa_dcs_SetDefaultGateway
  * Save the default route
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_dcs_GetDefaultGateway
+void pa_dcs_GetDefaultGateway
 (
-    pa_dcs_InterfaceDataBackup_t*  interfaceDataBackupPtr
+    pa_dcs_DefaultGwBackup_t*  defGwConfigBackupPtr,
+    le_result_t* v4Result,
+    le_result_t* v6Result
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_UNSUPPORTED;
+    if (v4Result)
+    {
+        *v4Result = LE_FAULT;
+    }
+    if (v6Result)
+    {
+        *v6Result = LE_FAULT;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -114,7 +123,7 @@ le_result_t pa_dcs_ChangeRoute
 //--------------------------------------------------------------------------------------------------
 void pa_dcs_RestoreInitialDnsNameServers
 (
-    pa_dcs_InterfaceDataBackup_t*  interfaceDataBackupPtr
+    pa_dcs_DnsBackup_t*  dnsConfigBackupPtr
 )
 {
     LE_ERROR("Unsupported function called");

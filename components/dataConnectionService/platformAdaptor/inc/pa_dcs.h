@@ -52,17 +52,30 @@ pa_dcs_RouteAction_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Data associated to retrieve the state before the DCS started managing the default connection
+ * Data structures for backing up network configs before changes
+ *     pa_dcs_DefaultGwBackup_t: default GW configs
+ *     pa_dcs_DnsBackup_t: DNS configs
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    char defaultGateway[PA_DCS_IPV6_ADDR_MAX_BYTES];
-    char defaultInterface[PA_DCS_INTERFACE_NAME_MAX_BYTES];
+    le_msg_SessionRef_t appSessionRef;
+    char defaultV4GW[PA_DCS_IPV4_ADDR_MAX_BYTES];
+    char defaultV4Interface[PA_DCS_INTERFACE_NAME_MAX_BYTES];
+    bool setV4GwToSystem;
+    char defaultV6GW[PA_DCS_IPV6_ADDR_MAX_BYTES];
+    char defaultV6Interface[PA_DCS_INTERFACE_NAME_MAX_BYTES];
+    bool setV6GwToSystem;
+}
+pa_dcs_DefaultGwBackup_t;
+
+typedef struct
+{
     char newDnsIPv4[2][PA_DCS_IPV4_ADDR_MAX_BYTES];
     char newDnsIPv6[2][PA_DCS_IPV6_ADDR_MAX_BYTES];
 }
-pa_dcs_InterfaceDataBackup_t;
+pa_dcs_DnsBackup_t;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -121,15 +134,6 @@ LE_SHARED le_result_t pa_dcs_StopDhcp
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Delete the current default gateway config on the system
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_dcs_DeleteDefaultGateway
-(
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Returns DHCP lease file location
  *
  * @return
@@ -168,9 +172,11 @@ LE_SHARED le_result_t pa_dcs_SetDefaultGateway
  * Get the default route
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_dcs_GetDefaultGateway
+LE_SHARED void pa_dcs_GetDefaultGateway
 (
-    pa_dcs_InterfaceDataBackup_t*  interfaceDataBackupPtr
+    pa_dcs_DefaultGwBackup_t*  defGwConfigBackupPtr,
+    le_result_t* v4Result,
+    le_result_t* v6Result
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -198,7 +204,7 @@ LE_SHARED le_result_t pa_dcs_ChangeRoute
 //--------------------------------------------------------------------------------------------------
 LE_SHARED void pa_dcs_RestoreInitialDnsNameServers
 (
-    pa_dcs_InterfaceDataBackup_t*  interfaceDataBackupPtr
+    pa_dcs_DnsBackup_t*  dnsConfigBackupPtr
 );
 
 //--------------------------------------------------------------------------------------------------

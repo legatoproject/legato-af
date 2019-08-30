@@ -334,7 +334,15 @@ FUNCTION le_result_t GetDefaultGW
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Backup default GW config of the system
+ * Backup the current default GW configs of the system, including both IPv4 and IPv6 as applicable.
+ * For each client application using this API to back up this system setting, only one backup copy
+ * is kept. When a client application makes a second call to this API, its first backup copy will
+ * be overwritten by the newer.
+ * Thus, le_net keeps one single backup copy per client application, and, thus, multiple backup
+ * copies altogether.  They are kept in their LIFO (last-in-first-out) chronological order that
+ * the sequence for client applications to call le_net_RestoreDefaltGW() should be in the exact
+ * reverse order of their calling le_net_BackupDefaultGW() such that config backups and restorations
+ * happen in the correct LIFO manner.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION BackupDefaultGW
@@ -344,7 +352,20 @@ FUNCTION BackupDefaultGW
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Backup default GW config of the system
+ * Restore the default GW configs of the system to the last backed up ones, including IPv4 and/or
+ * IPv6 depending on whether this same client application has called le_net_SetDefaultGW() to
+ * change the system's IPv4 and/or IPv6 configs or not. The le_net interface remembers it and
+ * perform config restoration only as necessary when le_net_RestoreDefaultGW() is called. When
+ * le_net_BackupDefaultGW() is called, both IPv4 and IPv6 default GW configs are archived when
+ * present.
+ * As le_net keeps one single backup copy per client application, and, thus, multiple backup
+ * copies altogether, they are kept in their LIFO (last-in-first-out) chronological order that
+ * the sequence for client applications to call le_net_RestoreDefaltGW() should be in the exact
+ * reverse order of their calling le_net_BackupDefaultGW() such that config backups and restorations
+ * happen in the correct LIFO manner.
+ * If these applications do not follow this order, the le_net interface will first generate a
+ * warning in the system log and then still go ahead to restore the configs as directed. These
+ * applications hold the responsibility for the resulting routing configs on the device.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t RestoreDefaultGW

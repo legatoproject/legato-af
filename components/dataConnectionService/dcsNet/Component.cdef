@@ -6,6 +6,14 @@ provides:
     }
 }
 
+requires:
+{
+    api:
+    {
+        le_appInfo.api
+    }
+}
+
 sources:
 {
     dcsNet.c

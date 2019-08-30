@@ -31,10 +31,11 @@
 #define CFG_NODE_ETHERNET_INTERFACE "ethernetInterface"
 
 #define LE_DCS_TECHNOLOGY_MAX_COUNT    LE_DCS_TECH_MAX  // max # of technologies supported
-#define LE_DCS_TECH_MAX_NAME_LEN       16    // max length of the name of a technology
+#define LE_DCS_TECH_MAX_NAME_LEN       16 // max length of the name of a technology
 #define LE_DCS_CHANNELDBS_MAX          LE_DCS_CHANNEL_LIST_ENTRY_MAX // max # of channels supported
-#define LE_DCS_CHANNELDB_EVTHDLRS_MAX  20 // max # of channel monitoring event handlers
-#define LE_DCS_APPNAME_MAX_LEN         32      // max length of an app's name
+#define LE_DCS_CLIENT_APPS_MAX         20 // max # of simultaneously le_dcs using client apps
+#define LE_DCS_CHANNELDB_EVTHDLRS_MAX  LE_DCS_CLIENT_APPS_MAX // max # of channel event handlers
+#define LE_DCS_APPNAME_MAX_LEN         32 // max length of an app's name
 #define LE_DCS_CHANNEL_QUERY_HDLRS_MAX 20 // max # of channel query requester handlers
 #define LE_DCF_START_REQ_REF_MAP_SIZE  20 // reference map size for Start Requests
 

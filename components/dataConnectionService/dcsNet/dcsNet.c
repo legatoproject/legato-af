@@ -14,9 +14,9 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "le_print.h"
+#include "dcs.h"
 #include "dcsNet.h"
 #include "pa_dcs.h"
-#include "dcs.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -90,10 +90,186 @@ DhcpAddress_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Structure used to back up the system's default network interface configs
+ * Data structure for backing up the system's default DNS configs
  */
 //--------------------------------------------------------------------------------------------------
-static pa_dcs_InterfaceDataBackup_t NetConfigBackup;
+static pa_dcs_DnsBackup_t DnsBackup;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Data structures for backing up the system's default IPv4/v6 GW configs:
+ *    DcsDefaultGwConfigDb_t: a default GW config backup db (data structure), one per client app
+ *    DcsDefaultGwConfigDataDbPool: the memory pool from which DcsDefaultGwConfigDb_t is allocated
+ *    DcsDefaultGwConfigDbList: the list of config backup db ordered in a lasst-in-first-out stack
+ *
+ * Inserting into DcsDefaultGwConfigDbList:
+ *    Any new list member will be added to the start of the list, which is like the stack's top
+ * Popping from DcsDefaultGwConfigDbList:
+ *    When a backup db is popped for restoring config, it is popped from the start of the list to
+ *    implement a last-in-first-out stack to maintain the right order
+ * Changing backup config in a member already on DcsDefaultGwConfigDbList:
+ *    This member will first be removed from this list, updated with the given configs, and then
+ *    re-inserted back to the start of the list
+ * Request for restoring the configs in a member not in the start of the list:
+ *    A warning debug message will be given to the client that this config restoration is out of
+ *    sequence. But then the request will still be honoured with this member removed from the list
+ *    for use.
+ *
+ * This backup mechanism is so far implemented for default IPv4/v6 GW configs, and not DNS configs
+ * yet.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    pa_dcs_DefaultGwBackup_t backupConfig; ///< Data structure for archiving backup configs
+    le_dls_Link_t dbLink;                  ///< Double-link used to order elements as a LIFO stack
+} DcsDefaultGwConfigDb_t;
+
+static le_mem_PoolRef_t DcsDefaultGwConfigDataDbPool;
+static le_dls_List_t DcsDefaultGwConfigDbList;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve the session reference of the client app which calls the corresponding le_net API to
+ * perform network config management over a data channel. If the result is 0, it is valid and means
+ * that the internal client le_data is the one.
+ *
+ * @return
+ *     session reference: non-zero means a client app while 0 means le_data which is an internal
+ *     client
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_SessionRef_t DcsNetGetSessionRef
+(
+    void
+)
+{
+    le_msg_SessionRef_t sessionRef = le_net_GetClientSessionRef();
+    if (!sessionRef)
+    {
+        LE_DEBUG("Client app's sessionRef (nil) reflects it's from le_data");
+    }
+    return sessionRef;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function searches through DcsDefaultGwConfigDbList for a matching session reference with
+ * the given one in the input. If it is at the start of the list, the 2nd argument isRecent will be
+ * set to true to let the function caller know.
+ *
+ * @return
+ *     DcsDefaultGwConfigDb_t with the matching session reference. NULL if none is found.
+ */
+//--------------------------------------------------------------------------------------------------
+static DcsDefaultGwConfigDb_t* GetDefaultGwConfigDb
+(
+    le_msg_SessionRef_t appSessionRef,
+    bool* isRecent
+)
+{
+    le_dls_Link_t* defGwConfigDbLinkPtr;
+    DcsDefaultGwConfigDb_t* defGwConfigDbPtr;
+    pa_dcs_DefaultGwBackup_t* backupDbPtr;
+    *isRecent = false;
+
+    for (defGwConfigDbLinkPtr = le_dls_Peek(&DcsDefaultGwConfigDbList); defGwConfigDbLinkPtr;
+         defGwConfigDbLinkPtr = le_dls_PeekNext(&DcsDefaultGwConfigDbList, defGwConfigDbLinkPtr))
+    {
+        defGwConfigDbPtr = CONTAINER_OF(defGwConfigDbLinkPtr, DcsDefaultGwConfigDb_t, dbLink);
+        if (!defGwConfigDbPtr)
+        {
+            continue;
+        }
+        if (!(backupDbPtr = &defGwConfigDbPtr->backupConfig))
+        {
+            LE_WARN("Default GW config Db missing on its Db list");
+            continue;
+        }
+        if (backupDbPtr->appSessionRef == appSessionRef)
+        {
+            LE_DEBUG("Found default GW config backup for session reference %p on a queue "
+                     "of %" PRIuS, appSessionRef, le_dls_NumLinks(&DcsDefaultGwConfigDbList));
+            *isRecent = le_dls_IsHead(&DcsDefaultGwConfigDbList, defGwConfigDbLinkPtr);
+            return defGwConfigDbPtr;
+        }
+    }
+    return NULL;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function seeks to insert a pa_dcs_DefaultGwBackup_t for the given session reference into
+ * the start of DcsDefaultGwConfigDbList with the given default GW configs in the input
+ * backupDataPtr saved in it. If for it there is already a pa_dcs_DefaultGwBackup_t found on the
+ * list, it'll be removed first. If there is none, a new one will be allocated from
+ * DcsDefaultGwConfigDataDbPool. Each of these pa_dcs_DefaultGwBackup_t's will be le_mem_Release()
+ * in le_net_RestoreDefaultGW() upon the time of config restoration.
+ */
+//--------------------------------------------------------------------------------------------------
+void InsertDefaultGwBackupDb
+(
+    le_msg_SessionRef_t appSessionRef,
+    pa_dcs_DefaultGwBackup_t* backupDataPtr
+)
+{
+    bool isRecent, found = false;
+    DcsDefaultGwConfigDb_t* archivedDbPtr = GetDefaultGwConfigDb(appSessionRef, &isRecent);
+    pa_dcs_DefaultGwBackup_t *archivedDataPtr;
+
+    if (!archivedDbPtr)
+    {
+        archivedDbPtr = le_mem_ForceAlloc(DcsDefaultGwConfigDataDbPool);
+        memset(archivedDbPtr, 0x0, sizeof(DcsDefaultGwConfigDb_t));
+        archivedDbPtr->backupConfig.appSessionRef = appSessionRef;
+        LE_DEBUG("New default GW config backup created for session reference %p", appSessionRef);
+    }
+    else
+    {
+        found = true;
+        LE_DEBUG("Default GW config backup for session reference %p found; it is%s recent",
+                 appSessionRef, isRecent ? "" : " not");
+        le_dls_Remove(&DcsDefaultGwConfigDbList, &archivedDbPtr->dbLink);
+    }
+
+    archivedDataPtr = &archivedDbPtr->backupConfig;
+    if (found)
+    {
+        archivedDataPtr->setV4GwToSystem =
+            ((0 == strncmp(archivedDataPtr->defaultV4GW, backupDataPtr->defaultV4GW,
+                           PA_DCS_IPV4_ADDR_MAX_BYTES)) &&
+             (0 == strncmp(archivedDataPtr->defaultV4Interface, backupDataPtr->defaultV4Interface,
+                           PA_DCS_INTERFACE_NAME_MAX_BYTES))) ?
+            backupDataPtr->setV4GwToSystem : false;
+
+        archivedDataPtr->setV6GwToSystem =
+            ((0 == strncmp(archivedDataPtr->defaultV6GW, backupDataPtr->defaultV6GW,
+                           PA_DCS_IPV6_ADDR_MAX_BYTES)) &&
+             (0 == strncmp(archivedDataPtr->defaultV6Interface, backupDataPtr->defaultV6Interface,
+                           PA_DCS_INTERFACE_NAME_MAX_BYTES))) ?
+            backupDataPtr->setV6GwToSystem : false;
+    }
+    else
+    {
+        archivedDataPtr->setV4GwToSystem = archivedDataPtr->setV6GwToSystem = false;
+    }
+
+    LE_DEBUG("Archived default GWs set? IPv4 %d IPv6 %d", archivedDataPtr->setV4GwToSystem,
+             archivedDataPtr->setV6GwToSystem);
+    le_utf8_Copy(archivedDataPtr->defaultV4GW, backupDataPtr->defaultV4GW,
+                 PA_DCS_IPV4_ADDR_MAX_BYTES, NULL);
+    le_utf8_Copy(archivedDataPtr->defaultV4Interface, backupDataPtr->defaultV4Interface,
+                 PA_DCS_INTERFACE_NAME_MAX_BYTES, NULL);
+    le_utf8_Copy(archivedDataPtr->defaultV6GW, backupDataPtr->defaultV6GW,
+                 PA_DCS_IPV6_ADDR_MAX_BYTES, NULL);
+    le_utf8_Copy(archivedDataPtr->defaultV6Interface, backupDataPtr->defaultV6Interface,
+                 PA_DCS_INTERFACE_NAME_MAX_BYTES, NULL);
+
+    le_dls_Stack(&DcsDefaultGwConfigDbList, &archivedDbPtr->dbLink);
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -330,15 +506,42 @@ void le_net_BackupDefaultGW
     void
 )
 {
-    le_result_t ret = pa_dcs_GetDefaultGateway(&NetConfigBackup);
-    if (ret != LE_OK)
+    pa_dcs_DefaultGwBackup_t defGwConfigBackup;
+    le_msg_SessionRef_t sessionRef = DcsNetGetSessionRef();
+    char appName[LE_DCS_APPNAME_MAX_LEN] = {0};
+    pid_t pid = 0;
+    uid_t uid = 0;
+    le_result_t v4Ret, v6Ret;
+
+    LE_DEBUG("Client app's sessionRef %p", sessionRef);
+    if (sessionRef && (LE_OK == le_msg_GetClientUserCreds(sessionRef, &uid, &pid)) &&
+        (LE_OK == le_appInfo_GetName(pid, appName, sizeof(appName)-1)))
     {
-        LE_INFO("No default GW currently set or retrievable");
-        return;
+        LE_DEBUG("Client app's name %s", appName);
     }
 
-    LE_INFO("Default GW address %s on interface %s backed up",
-            NetConfigBackup.defaultGateway, NetConfigBackup.defaultInterface);
+    memset(&defGwConfigBackup, 0x0, sizeof(pa_dcs_DefaultGwBackup_t));
+    pa_dcs_GetDefaultGateway(&defGwConfigBackup, &v4Ret, &v6Ret);
+    if ((v4Ret != LE_OK) || (strlen(defGwConfigBackup.defaultV4GW) == 0))
+    {
+        LE_DEBUG("No default IPv4 GW setting retrieved");
+    }
+    else
+    {
+        LE_DEBUG("Default IPv4 GW address %s on interface %s backed up",
+                 defGwConfigBackup.defaultV4GW, defGwConfigBackup.defaultV4Interface);
+    }
+
+    if ((v6Ret != LE_OK) || (strlen(defGwConfigBackup.defaultV6GW) == 0))
+    {
+        LE_DEBUG("No default IPv6 GW setting retrieved");
+    }
+    else
+    {
+        LE_DEBUG("Default IPv6 GW address %s on interface %s backed up",
+                 defGwConfigBackup.defaultV6GW, defGwConfigBackup.defaultV6Interface);
+    }
+    InsertDefaultGwBackupDb(sessionRef, &defGwConfigBackup);
 }
 
 
@@ -355,31 +558,74 @@ le_result_t le_net_RestoreDefaultGW
     void
 )
 {
-    le_result_t result;
+    DcsDefaultGwConfigDb_t* defGwConfigDbPtr;
+    pa_dcs_DefaultGwBackup_t* defGwConfigBackup;
+    le_msg_SessionRef_t sessionRef = DcsNetGetSessionRef();
+    char appName[LE_DCS_APPNAME_MAX_LEN] = {0};
+    pid_t pid = 0;
+    uid_t uid = 0;
+    bool isRecent;
+    le_result_t v4Result = LE_OK, v6Result = LE_OK;
 
-    pa_dcs_DeleteDefaultGateway();
-    if ((strlen(NetConfigBackup.defaultInterface) == 0) ||
-        (strlen(NetConfigBackup.defaultGateway) == 0))
+    LE_DEBUG("Client app's sessionRef %p", sessionRef);
+    if (sessionRef && (LE_OK == le_msg_GetClientUserCreds(sessionRef, &uid, &pid)) &&
+        (LE_OK == le_appInfo_GetName(pid, appName, sizeof(appName)-1)))
     {
-        // Need both to set a default GW config; thus, bail out when not both are available
-        LE_DEBUG("No backed up default GW address to restore");
-        // memset in case either one isn't empty
-        memset(NetConfigBackup.defaultInterface, '\0', sizeof(NetConfigBackup.defaultInterface));
-        memset(NetConfigBackup.defaultGateway, '\0', sizeof(NetConfigBackup.defaultGateway));
+        LE_DEBUG("Client app's name %s", appName);
+    }
+
+    defGwConfigDbPtr = GetDefaultGwConfigDb(sessionRef, &isRecent);
+    if (!defGwConfigDbPtr)
+    {
+        LE_INFO("No backed up default GW configs found to restore to");
+        return LE_NOT_FOUND;
+    }
+    if (!isRecent)
+    {
+        LE_WARN("Default GW configs restored not in the reversed order of being backed up");
+    }
+
+    defGwConfigBackup = &defGwConfigDbPtr->backupConfig;
+    if (defGwConfigBackup->setV4GwToSystem)
+    {
+        v4Result = pa_dcs_SetDefaultGateway(defGwConfigBackup->defaultV4Interface,
+                                            defGwConfigBackup->defaultV4GW, false);
+        if (v4Result == LE_OK)
+        {
+            LE_INFO("Default IPv4 GW address %s on interface %s restored",
+                    defGwConfigBackup->defaultV4GW, defGwConfigBackup->defaultV4Interface);
+        }
+        else
+        {
+            LE_ERROR("Failed to restore IPv4 GW address %s on interface %s",
+                     defGwConfigBackup->defaultV4GW, defGwConfigBackup->defaultV4Interface);
+        }
+    }
+
+    if (defGwConfigBackup->setV6GwToSystem)
+    {
+        v6Result = pa_dcs_SetDefaultGateway(defGwConfigBackup->defaultV6Interface,
+                                            defGwConfigBackup->defaultV6GW, true);
+        if (v6Result == LE_OK)
+        {
+            LE_INFO("Default IPv6 GW address %s on interface %s restored",
+                    defGwConfigBackup->defaultV6GW, defGwConfigBackup->defaultV6Interface);
+        }
+        else
+        {
+            LE_ERROR("Failed to restore IPv6 GW address %s on interface %s",
+                     defGwConfigBackup->defaultV6GW, defGwConfigBackup->defaultV6Interface);
+        }
+    }
+
+    le_mem_Release(defGwConfigDbPtr);
+
+    if ((v4Result == LE_OK) || (v6Result == LE_OK))
+    {
         return LE_OK;
     }
 
-    result = pa_dcs_SetDefaultGateway(NetConfigBackup.defaultInterface,
-                                      NetConfigBackup.defaultGateway, false);
-    if (result == LE_OK)
-    {
-        LE_INFO("Default GW address %s on interface %s restored",
-                NetConfigBackup.defaultGateway, NetConfigBackup.defaultInterface);
-    }
-
-    memset(NetConfigBackup.defaultInterface, '\0', sizeof(NetConfigBackup.defaultInterface));
-    memset(NetConfigBackup.defaultGateway, '\0', sizeof(NetConfigBackup.defaultGateway));
-    return result;
+    return LE_FAULT;
 }
 
 
@@ -405,7 +651,12 @@ le_result_t le_net_SetDefaultGW
     size_t v4GwAddrSize = PA_DCS_IPV4_ADDR_MAX_BYTES;
     size_t v6GwAddrSize = PA_DCS_IPV6_ADDR_MAX_BYTES;
     char *channelName, v4GwAddr[PA_DCS_IPV4_ADDR_MAX_BYTES], v6GwAddr[PA_DCS_IPV6_ADDR_MAX_BYTES];
-    pa_dcs_InterfaceDataBackup_t currentGwCfg;
+    le_msg_SessionRef_t sessionRef = DcsNetGetSessionRef();
+    char appName[LE_DCS_APPNAME_MAX_LEN] = {0};
+    DcsDefaultGwConfigDb_t* defGwConfigDbPtr;
+    bool isRecent;
+    pid_t pid = 0;
+    uid_t uid = 0;
     le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
     {
@@ -429,6 +680,13 @@ le_result_t le_net_SetDefaultGW
         LE_ERROR("Failed to get network interface for channel %s of technology %s to set "
                  "default GW", channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
         return LE_FAULT;
+    }
+
+    LE_DEBUG("Client app's sessionRef %p", sessionRef);
+    if (sessionRef && (LE_OK == le_msg_GetClientUserCreds(sessionRef, &uid, &pid)) &&
+        (LE_OK == le_appInfo_GetName(pid, appName, sizeof(appName)-1)))
+    {
+        LE_DEBUG("Client app's name %s", appName);
     }
 
     // Query technology for IPv4 and IPv6 default GW address assignments
@@ -458,15 +716,14 @@ le_result_t le_net_SetDefaultGW
         return LE_FAULT;
     }
 
-    // Get current default GW setting for reference
-    if (LE_OK != pa_dcs_GetDefaultGateway(&currentGwCfg))
+    defGwConfigDbPtr = GetDefaultGwConfigDb(sessionRef, &isRecent);
+    if (!defGwConfigDbPtr)
     {
-        LE_DEBUG("No default GW currently set or retrievable on device");
+        LE_WARN("Present default GW configs on system not backed up before config changes");
     }
-    else
+    if (!isRecent)
     {
-        LE_DEBUG("Default GW set at address %s on interface %s before change",
-                 currentGwCfg.defaultGateway, currentGwCfg.defaultInterface);
+        LE_WARN("Another app made a newer default GW configs backup");
     }
 
     // Seek to set IPv6 default GW address
@@ -478,6 +735,11 @@ le_result_t le_net_SetDefaultGW
             LE_ERROR("Failed to set IPv6 default GW for channel %s of technology %s", channelName,
                      le_dcs_ConvertTechEnumToName(channelDb->technology));
         }
+        else if (defGwConfigDbPtr)
+        {
+            LE_DEBUG("Archived default IPv6 GW set");
+            defGwConfigDbPtr->backupConfig.setV6GwToSystem = true;
+        }
     }
 
     // Seek to set IPv4 default GW address
@@ -488,6 +750,11 @@ le_result_t le_net_SetDefaultGW
         {
             LE_ERROR("Failed to set IPv4 default GW for channel %s of technology %s", channelName,
                      le_dcs_ConvertTechEnumToName(channelDb->technology));
+        }
+        else if (defGwConfigDbPtr)
+        {
+            LE_DEBUG("Archived default IPv4 GW archived set");
+            defGwConfigDbPtr->backupConfig.setV4GwToSystem = true;
         }
     }
 
@@ -582,13 +849,13 @@ static le_result_t DcsNetSetDNS
 
     if (isIpv6)
     {
-        le_utf8_Copy(NetConfigBackup.newDnsIPv6[0], dns1Addr, dnsAddrSize, NULL);
-        le_utf8_Copy(NetConfigBackup.newDnsIPv6[1], dns2Addr, dnsAddrSize, NULL);
+        le_utf8_Copy(DnsBackup.newDnsIPv6[0], dns1Addr, dnsAddrSize, NULL);
+        le_utf8_Copy(DnsBackup.newDnsIPv6[1], dns2Addr, dnsAddrSize, NULL);
     }
     else
     {
-        le_utf8_Copy(NetConfigBackup.newDnsIPv4[0], dns1Addr, dnsAddrSize, NULL);
-        le_utf8_Copy(NetConfigBackup.newDnsIPv4[1], dns2Addr, dnsAddrSize, NULL);
+        le_utf8_Copy(DnsBackup.newDnsIPv4[0], dns1Addr, dnsAddrSize, NULL);
+        le_utf8_Copy(DnsBackup.newDnsIPv4[1], dns2Addr, dnsAddrSize, NULL);
     }
 
     LE_INFO("Succeeded to set DNS addresses %s and %s", dns1Addr, dns2Addr);
@@ -853,9 +1120,9 @@ void le_net_RestoreDNS
 )
 {
     LE_DEBUG("Removing lastly added DNS addresses: IPv4: %s %s; IPv6: %s %s",
-             NetConfigBackup.newDnsIPv4[0], NetConfigBackup.newDnsIPv4[1],
-             NetConfigBackup.newDnsIPv6[0], NetConfigBackup.newDnsIPv6[1]);
-    pa_dcs_RestoreInitialDnsNameServers(&NetConfigBackup);
+             DnsBackup.newDnsIPv4[0], DnsBackup.newDnsIPv4[1],
+             DnsBackup.newDnsIPv6[0], DnsBackup.newDnsIPv6[1]);
+    pa_dcs_RestoreInitialDnsNameServers(&DnsBackup);
 }
 
 
@@ -1083,6 +1350,25 @@ le_result_t le_net_ChangeRoute
     return ret;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Destructor function that runs when a network config db is deallocated
+ */
+//--------------------------------------------------------------------------------------------------
+static void DcsDefaultGwConfigDbDestructor
+(
+    void *objPtr
+)
+{
+    DcsDefaultGwConfigDb_t *defGwConfigDb = (DcsDefaultGwConfigDb_t *)objPtr;
+    if (!defGwConfigDb)
+    {
+        return;
+    }
+
+    le_dls_Remove(&DcsDefaultGwConfigDbList, &defGwConfigDb->dbLink);
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1091,5 +1377,11 @@ le_result_t le_net_ChangeRoute
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+    DcsDefaultGwConfigDbList = LE_DLS_LIST_INIT;
+    DcsDefaultGwConfigDataDbPool = le_mem_CreatePool("DcsDefaultGwConfigDataDbPool",
+                                               sizeof(DcsDefaultGwConfigDb_t));
+    le_mem_ExpandPool(DcsDefaultGwConfigDataDbPool, LE_DCS_CLIENT_APPS_MAX);
+    le_mem_SetDestructor(DcsDefaultGwConfigDataDbPool, DcsDefaultGwConfigDbDestructor);
+
     LE_INFO("Data Channel Service's network component is ready");
 }

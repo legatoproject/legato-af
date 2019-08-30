@@ -35,6 +35,7 @@ bindings:
     dcsDaemon.dcs.le_mdc -> modemService.le_mdc
     dcsDaemon.dcs.le_mrc -> modemService.le_mrc
     dcsDaemon.dcs.le_appInfo -> <root>.le_appInfo
+    dcsDaemon.dcsNet.le_appInfo -> <root>.le_appInfo
     dcsDaemon.dcsCellular.le_mdc -> modemService.le_mdc
     dcsDaemon.dcsCellular.le_mrc -> modemService.le_mrc
     dcsDaemon.dcsWifi.le_wifiClient -> <root>.le_wifiClient

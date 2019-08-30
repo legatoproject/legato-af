@@ -1070,6 +1070,26 @@ static void TryStopTechSession
         return;
     }
 
+    // Seek to restore changed network configs before stopping the channel. Otherwise, after it is
+    // is stopped, its network interface would have been disassociated that any network config
+    // changes on it might not complete successfully.
+    if (IsDnsSet)
+    {
+        le_net_RestoreDNS();
+        IsDnsSet = false;
+    }
+    if (IsDefaultRouteSet)
+    {
+        le_net_RestoreDefaultGW();
+        IsDefaultRouteSet = false;
+    }
+    else if (RoutesAdded)
+    {
+        // Here means having IsDefaultRouteSet false; remove routes for DNS addresses
+        // previously added by DCS
+        SetDnsRoutes(false);
+    }
+
     if (LE_OK != le_dcs_Stop(DataChannelReqRef))
     {
         LE_ERROR("Failed to stop data channel with request reference %p", DataChannelReqRef);
