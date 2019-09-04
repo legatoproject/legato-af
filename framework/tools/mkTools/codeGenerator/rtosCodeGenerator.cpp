@@ -313,6 +313,14 @@ void GenerateRtosExeMain
 
     auto& exeName = exePtr->name;
 
+    std::string apiAgentPrefix("");
+
+    // Disambiguation prefix between identical interfaces exported by different apps.
+    if (exePtr->appPtr)
+    {
+        apiAgentPrefix = exePtr->appPtr->name + "_";
+    }
+
     // Set target info for executable
     exePtr->SetTargetInfo<target::RtosExeInfo_t>(new target::RtosExeInfo_t);
 
@@ -377,10 +385,11 @@ void GenerateRtosExeMain
             else if (clientApiInstancePtr->bindingPtr)
             {
                 // If service is bound, declare extern for bound service.
+                auto bindingPtr = clientApiInstancePtr->bindingPtr;
+
                 outputFile << "extern le_msg_LocalService_t "
-                           << ConvertInterfaceNameToSymbol(clientApiInstancePtr->
-                                                           bindingPtr->
-                                                           serverIfName)
+                           << bindingPtr->serverAgentName << "_"
+                           << ConvertInterfaceNameToSymbol(bindingPtr->serverIfName)
                            << ";\n";
             }
         }
@@ -391,7 +400,7 @@ void GenerateRtosExeMain
         for (auto serverApiInstancePtr : componentInstancePtr->serverApis)
         {
             outputFile << "LE_SHARED le_msg_LocalService_t "
-                       << ConvertInterfaceNameToSymbol(serverApiInstancePtr->name)
+                       << apiAgentPrefix << ConvertInterfaceNameToSymbol(serverApiInstancePtr->name)
                        << ";\n";
         }
     }
@@ -483,7 +492,7 @@ void GenerateRtosExeMain
             {
                 outputFile << ", ";
             }
-            outputFile << "&" << ConvertInterfaceNameToSymbol(apiPtr->name);
+            outputFile << "&" << apiAgentPrefix << ConvertInterfaceNameToSymbol(apiPtr->name);
         }
         outputFile << ");\n";
     }
@@ -525,8 +534,8 @@ void GenerateRtosExeMain
                 outputFile << ", ";
             }
             outputFile << "&"
-                       << ConvertInterfaceNameToSymbol(serverApiInstancePtr->
-                                                       name);
+                       << apiAgentPrefix << ConvertInterfaceNameToSymbol(serverApiInstancePtr->
+                                                                         name);
         }
         for (auto clientApiInstancePtr : componentInstancePtr->clientApis)
         {
@@ -543,11 +552,12 @@ void GenerateRtosExeMain
             }
             else if (clientApiInstancePtr->bindingPtr)
             {
+                auto bindingPtr = clientApiInstancePtr->bindingPtr;
+
                 // A binding exists for this client API -- pass to component init
                 outputFile << "&"
-                           << ConvertInterfaceNameToSymbol(clientApiInstancePtr->
-                                                           bindingPtr->
-                                                           serverIfName);
+                           << bindingPtr->serverAgentName << "_"
+                           << ConvertInterfaceNameToSymbol(bindingPtr->serverIfName);
             }
             else
             {

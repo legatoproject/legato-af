@@ -11,9 +11,9 @@ static inline bool {{type.iface.name}}_Pack{{type.name}}
 )
 {
     {%- if type.size == interface.findType('uint32').size %}
-    return le_pack_PackUint32(bufferPtr, value);
+    return le_pack_PackUint32(bufferPtr, (uint32_t)value);
     {%- elif type.size == interface.findType('uint64').size %}
-    return le_pack_PackUint64(bufferPtr, value);
+    return le_pack_PackUint64(bufferPtr, (uint64_t)value);
     {%- else %}
     #error "Unexpected enum size"
     {%- endif %}
@@ -37,7 +37,7 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {%- endif %}
     if (result)
     {
-        *valuePtr = value;
+        *valuePtr = ({{type|FormatType}})value;
     }
     return result;
 }
@@ -128,24 +128,24 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {%- if parameter is InParameter %}
     // "In" Parameters
     {%- if parameter is StringParameter %}
-#if UINTPTR_MAX == UINT32_MAX
+#if IFGEN_PTR32
     LE_ASSERT(le_pack_PackTaggedUint32Tuple( &_msgBufPtr,
                                              {{parameter|GetParameterCount}},
                                              (uint32_t){{parameter|FormatParameterName}},
                                              LE_PACK_IN_STRING_POINTER ));
-#elif UINTPTR_MAX == UINT64_MAX
+#elif IFGEN_PTR64
     LE_ASSERT(le_pack_PackTaggedUint64Tuple( &_msgBufPtr,
                                              {{parameter|GetParameterCount}},
                                              (uint64_t){{parameter|FormatParameterName}},
                                              LE_PACK_IN_STRING_POINTER ));
 #endif
     {%- else %}
-#if UINTPTR_MAX == UINT32_MAX
+#if IFGEN_PTR32
     LE_ASSERT(le_pack_PackTaggedUint32Tuple( &_msgBufPtr,
                                              {{parameter|GetParameterCount}},
                                              (uint32_t){{parameter|FormatParameterName}},
                                              LE_PACK_IN_ARRAY_POINTER ));
-#elif UINTPTR_MAX == UINT64_MAX
+#elif IFGEN_PTR64
     LE_ASSERT(le_pack_PackTaggedUint64Tuple( &_msgBufPtr,
                                              {{parameter|GetParameterCount}},
                                              (uint64_t){{parameter|FormatParameterName}},
@@ -155,24 +155,24 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {%- else %}
     // "Out" Parameters
     {%- if parameter is StringParameter %}
-#if UINTPTR_MAX == UINT32_MAX
+#if IFGEN_PTR32
     LE_ASSERT(le_pack_PackTaggedUint32Tuple( &_msgBufPtr,
                                              {{parameter|GetParameterCount}},
                                              (uint32_t){{parameter|FormatParameterName}},
                                              LE_PACK_OUT_STRING_POINTER ));
-#elif UINTPTR_MAX == UINT64_MAX
+#elif IFGEN_PTR64
     LE_ASSERT(le_pack_PackTaggedUint64Tuple( &_msgBufPtr,
                                              {{parameter|GetParameterCount}},
                                              (uint64_t){{parameter|FormatParameterName}},
                                              LE_PACK_OUT_STRING_POINTER ));
 #endif
     {%- else %}
-#if UINTPTR_MAX == UINT32_MAX
+#if IFGEN_PTR32
     LE_ASSERT(le_pack_PackTaggedUint32Tuple( &_msgBufPtr,
                                              {{parameter|GetParameterCount}},
                                              (uint32_t){{parameter|FormatParameterName}},
                                              LE_PACK_OUT_ARRAY_POINTER ));
-#elif UINTPTR_MAX == UINT64_MAX
+#elif IFGEN_PTR64
     LE_ASSERT(le_pack_PackTaggedUint64Tuple( &_msgBufPtr,
                                              {{parameter|GetParameterCount}},
                                              (uint64_t){{parameter|FormatParameterName}},
@@ -183,9 +183,9 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
 #else
     LE_ASSERT(le_pack_PackSize( &_msgBufPtr, {{parameter|GetParameterCount}} ));
 
-#if UINTPTR_MAX == UINT32_MAX
+#if IFGEN_PTR32
     LE_ASSERT(le_pack_PackUint32( &_msgBufPtr, (uint32_t){{parameter|FormatParameterName}} ));
-#elif UINTPTR_MAX == UINT64_MAX
+#elif IFGEN_PTR64
     LE_ASSERT(le_pack_PackUint64( &_msgBufPtr, (uint64_t){{parameter|FormatParameterName}} ));
 #endif
 #endif // LE_CONFIG_RPC
@@ -234,7 +234,25 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {%- endfor %}
 {%- endmacro %}
 
-{%- macro UnpackInputs(parameterList,useBaseName=False,initiatorWaits=False) %}
+{#-
+ # Declare and initialize default values for variables for all input parameters.  This must
+ # be called before UnpackInputs to create the variables UnpackInputs will use.
+ #
+ # Params:
+ #     - parameterList: List of all parameters to the API function
+ #     - useBaseName: Use the API name instead of the API alias name for naming functions.
+ #       For example, if a .cdef contains `requires: { api: { le_gpio5 = le_gpio.api } }`,
+ #       typically functions and types will have a `le_gpio5` prefix.  With useBaseName=True
+ #       they will have a `le_gpio` prefix.  This is used when generating common client code
+ #       such as in TEMPLATE_common.c.
+ #     - initiatorWaits: True if the caller waits for a response.  In this case some stack
+ #       space and time can be saved by using the caller's buffer directly instead of creating
+ #       a copy.
+ #
+ # Note: This is split from UnpackInputs for compilers such as ARM RVCT which warn when skipping
+ #       initializers via goto.
+ #}
+{%- macro DeclareInputs(parameterList,useBaseName=False,initiatorWaits=False) %}
     {%- for parameter in parameterList
         if parameter is InParameter
            or parameter is StringParameter
@@ -251,15 +269,63 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     void
     {%- endif %}
         *{{parameter|FormatParameterName}};
+    {%- elif parameter is not InParameter %}
+    size_t {{parameter.name}}Size = 0;
+    {%- elif parameter is StringParameter %}
+    char {{parameter|FormatParameterName}}[{{parameter.maxCount + 1}}] = {0};
+    {%- elif parameter is ArrayParameter %}
+    size_t {{parameter.name}}Size = 0;
+    {{parameter.apiType|FormatType(useBaseName)}}
+        {{parameter|FormatParameterName}}[{{parameter.maxCount}}]
+            = { {{parameter.apiType|FormatTypeInitializer(useBaseName)}} };
+    bool {{parameter.name}}Result;
+    {%- elif parameter.apiType is HandlerType %}
+    void *contextPtr = NULL;
+    {%- elif parameter.apiType is BasicType and parameter.apiType.name == 'file' %}
+    {{parameter.apiType|FormatType(useBaseName)}} {{parameter.name|DecorateName}}
+        {#- #} = {{parameter.apiType|FormatTypeInitializer(useBaseName)}};
+    {%- else %}
+    {{parameter.apiType|FormatType(useBaseName)}} {{parameter.name|DecorateName}}
+        {#- #} = {{parameter.apiType|FormatTypeInitializer(useBaseName)}};
+    {%- if parameter.apiType is StructType %}
+    {{parameter.apiType|FormatType}} *{{parameter|FormatParameterName}} =
+        &{{parameter.name|DecorateName}};
+    {%- endif %}
+    {%- endif %}
+    {%- endfor %}
+{%- endmacro %}
+
+{#-
+ # Unpack all input parameters to this function into temporary variables previously declared
+ # with DeclareInputs
+ #
+ # Params:
+ #     - parameterList: List of all parameters to the API function
+ #     - useBaseName: Use the API name instead of the API alias name for naming functions.
+ #       For example, if a .cdef contains `requires: { api: { le_gpio5 = le_gpio.api } }`,
+ #       typically functions and types will have a `le_gpio5` prefix.  With useBaseName=True
+ #       they will have a `le_gpio` prefix.  This is used when generating common client code
+ #       such as in TEMPLATE_common.c.
+ #     - initiatorWaits: True if the caller waits for a response.  In this case some stack
+ #       space and time can be saved by using the caller's buffer directly instead of creating
+ #       a copy.
+ #}
+{%- macro UnpackInputs(parameterList,useBaseName=False,initiatorWaits=False) %}
+    {%- for parameter in parameterList
+        if parameter is InParameter
+           or parameter is StringParameter
+           or parameter is ArrayParameter %}
+    {%- if args.localService and initiatorWaits and (parameter is StringParameter or
+                                                  parameter is ArrayParameter) %}
 #ifdef LE_CONFIG_RPC
-#if UINTPTR_MAX == UINT32_MAX
+#if IFGEN_PTR32
     if (!le_pack_UnpackUint32Tuple( &_msgBufPtr,
                                     &{{parameter.name}}Size,
                                     (uint32_t*)&{{parameter|FormatParameterName}} ))
     {
         {{- caller() }}
     }
-#elif UINTPTR_MAX == UINT64_MAX
+#elif IFGEN_PTR64
     if (!le_pack_UnpackUint64Tuple( &_msgBufPtr,
                                     &{{parameter.name}}Size,
                                     (uint64_t*)&{{parameter|FormatParameterName}} ))
@@ -293,13 +359,13 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
         {{parameter.name}}Size++;
     }
     {%- endif %}
-#if UINTPTR_MAX == UINT32_MAX
+#if IFGEN_PTR32
     if (!le_pack_UnpackUint32( &_msgBufPtr,
                                (uint32_t*)&{{parameter|FormatParameterName}} ))
     {
         {{- caller() }}
     }
-#elif UINTPTR_MAX == UINT64_MAX
+#elif IFGEN_PTR64
     if (!le_pack_UnpackUint64( &_msgBufPtr,
                                (uint64_t*)&{{parameter|FormatParameterName}} ))
     {
@@ -308,7 +374,6 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
 #endif
 #endif // LE_CONFIG_RPC
     {%- elif parameter is not InParameter %}
-    size_t {{parameter.name}}Size = 0;
     if (!le_pack_UnpackSize( &_msgBufPtr,
                              &{{parameter.name}}Size ))
     {
@@ -332,7 +397,6 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     }
     {%- endif %}
     {%- elif parameter is StringParameter %}
-    char {{parameter|FormatParameterName}}[{{parameter.maxCount + 1}}] = {0};
     if (!le_pack_UnpackString( &_msgBufPtr,
                                {{parameter|FormatParameterName}},
                                sizeof({{parameter|FormatParameterName}}),
@@ -341,11 +405,6 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
         {{- caller() }}
     }
     {%- elif parameter is ArrayParameter %}
-    size_t {{parameter.name}}Size = 0;
-    {{parameter.apiType|FormatType(useBaseName)}}
-        {{parameter|FormatParameterName}}[{{parameter.maxCount}}]
-            = { {{parameter.apiType|FormatTypeInitializer(useBaseName)}} };
-    bool {{parameter.name}}Result;
         {%- if parameter.apiType is StructType %}
             LE_PACK_UNPACKSTRUCTARRAY( &_msgBufPtr,
                          {{parameter|FormatParameterName}}, &{{parameter.name}}Size,
@@ -364,27 +423,18 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
         {{- caller() }}
     }
     {%- elif parameter.apiType is HandlerType %}
-    void *contextPtr = NULL;
     if (!le_pack_UnpackReference( &_msgBufPtr, &contextPtr ))
     {
         {{- caller() }}
     }
     {%- elif parameter.apiType is BasicType and parameter.apiType.name == 'file' %}
-    {{parameter.apiType|FormatType(useBaseName)}} {{parameter.name|DecorateName}}
-        {#- #} = {{parameter.apiType|FormatTypeInitializer(useBaseName)}};
     {{parameter.name|DecorateName}} = le_msg_GetFd(_msgRef);
     {%- else %}
-    {{parameter.apiType|FormatType(useBaseName)}} {{parameter.name|DecorateName}}
-        {#- #} = {{parameter.apiType|FormatTypeInitializer(useBaseName)}};
     if (!{{parameter.apiType|UnpackFunction}}( &_msgBufPtr,
                                                &{{parameter.name|DecorateName}} ))
     {
         {{- caller() }}
     }
-    {%- if parameter.apiType is StructType %}
-    {{parameter.apiType|FormatType}} *{{parameter|FormatParameterName}} =
-        &{{parameter.name|DecorateName}};
-    {%- endif %}
     {%- endif %}
     {%- endfor %}
 {%- endmacro %}
@@ -442,6 +492,15 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {%- endfor %}
 {%- endmacro %}
 
+{#-
+ # Unpack all output parameters from this function into buffers provided by the caller.
+ #
+ # Params:
+ #     - parameterList: List of all parameters to the API function
+ #     - initiatorWaits: True if the caller waits for a response.  In this case some stack
+ #       space and time can be saved by using the caller's buffer directly instead of creating
+ #       a copy.
+ #}
 {%- macro UnpackOutputs(parameterList,initiatorWaits=False) %}
     {%- for parameter in parameterList if parameter is OutParameter %}
     {%- if args.localService and initiatorWaits and parameter is StringParameter %}

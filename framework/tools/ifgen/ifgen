@@ -289,7 +289,8 @@ def Main():
     TemplateEnvironment = jinja2.Environment(
         loader=jinja2.PackageLoader(langPkg.__name__),
         extensions=['jinja2.ext.with_'],
-        autoescape=False
+        autoescape=False,
+        keep_trailing_newline=True
     )
 
     # Add global tests & filters

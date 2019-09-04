@@ -32,14 +32,17 @@ apps:
 //    fdMonitor/test_FdMonitorSocket
 #endif
 //    fdMonitor/test_FdMonitorFifo
-//    ipc/test_IpcC2C
+    ipc/test_IpcC2C
 #if ${LE_CONFIG_LINUX} = y
     // FIXME: test is broken: ipc/test_IpcC2CDirect
 #endif
-//    ipc/test_IpcC2CAsync
-//    ipc/test_IpcCRelay
-//    ipc/test_Optional1
-//    ipc/test_Optional2
+    ipc/test_IpcC2CAsync
+    ipc/test_IpcCRelay
+#if ${LE_CONFIG_LINUX} = y
+    // Bindings to non-existant interfaces aren't supported on RTOS.  Remove the binding instead.
+    ipc/test_Optional1
+#endif
+    ipc/test_Optional2
 #if ${LE_CONFIG_FILESYSTEM} = y
     fs/test_Fs
 #endif

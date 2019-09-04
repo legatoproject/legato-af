@@ -18,7 +18,7 @@
 /* #include "json.h" */
 #include "log.h"
 #include "mem.h"
-/* #include "messaging.h" */
+#include "messaging.h"
 #include "pathIter.h"
 /* #include "rand.h" */
 #include "safeRef.h"

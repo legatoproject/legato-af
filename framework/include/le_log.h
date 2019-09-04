@@ -776,7 +776,7 @@ extern LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
  * Logs the string if the keyword has been enabled by a runtime tool or configuration setting.
  */
 //--------------------------------------------------------------------------------------------------
-#define LE_TRACE(traceRef, string, ...) ((void)0)
+#define LE_TRACE(traceRef, string, ...) ((void)(traceRef))
 
 
 //--------------------------------------------------------------------------------------------------

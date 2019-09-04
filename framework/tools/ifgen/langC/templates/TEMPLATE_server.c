@@ -704,6 +704,9 @@ static void Handle_{{apiName}}_{{function.name}}
 )
 {
     {%- with error_unpack_label=Labeler("error_unpack") %}
+    // Declare temporaries for input parameters
+    {{- pack.DeclareInputs(function.parameters,initiatorWaits=True) }}
+
     // Create a server command object
     {{apiName}}_ServerCmd_t* _serverCmdPtr = le_mem_ForceAlloc(_ServerCmdPool);
     _serverCmdPtr->cmdLink = LE_DLS_LINK_INIT;
@@ -773,59 +776,16 @@ static void Handle_{{apiName}}_{{function.name}}
     // Needed if we are returning a result or output values
     uint8_t* _msgBufStartPtr = _msgBufPtr;
 
-    // Unpack which outputs are needed
-    {%- if any(function.parameters, "OutParameter") %}
-    uint32_t _requiredOutputs = 0;
-    if (!le_pack_UnpackUint32(&_msgBufPtr, &_requiredOutputs))
-    {
-        goto {{error_unpack_label}};
-    }
-    {%- endif %}
-
-    // Unpack the input parameters from the message
     {%- if function is RemoveHandlerFunction %}
-    {#- Remove handlers only have one parameter which is treated specially,
-     # so do separate handling
-     #}
-    {{function.parameters[0].apiType|FormatType}} {{function.parameters[0]|FormatParameterName}}
-        {#- #} = {{function.parameters[0].apiType|FormatTypeInitializer}};
-    if (!le_pack_UnpackReference( &_msgBufPtr,
-                                  &{{function.parameters[0]|FormatParameterName}} ))
-    {
-        goto {{error_unpack_label}};
-    }
-    // The passed in handlerRef is a safe reference for the server data object.  Need to get the
-    // real handlerRef from the server data object and then delete both the safe reference and
-    // the object since they are no longer needed.
-    _LOCK
-    _ServerData_t* serverDataPtr = le_ref_Lookup(_HandlerRefMap,
-                                                 {{function.parameters[0]|FormatParameterName}});
-    if ( serverDataPtr == NULL )
-    {
-        _UNLOCK
-        LE_KILL_CLIENT("Invalid reference");
-        return;
-    }
-    le_ref_DeleteRef(_HandlerRefMap, {{function.parameters[0]|FormatParameterName}});
-    _UNLOCK
-    handlerRef = ({{function.parameters[0].apiType|FormatType}})serverDataPtr->handlerRef;
-    le_mem_Release(serverDataPtr);
+    _ServerData_t* serverDataPtr;
     {%- else %}
-    {%- call pack.UnpackInputs(function.parameters,initiatorWaits=True) %}
-        goto {{error_unpack_label}};
-    {%- endcall %}
-    {%- endif %}
-    {#- Now create handler parameters, if there are any.  Should be zero or one #}
+    // Declare temporaries for input parameters
+    {{- pack.DeclareInputs(function.parameters,initiatorWaits=True) }}
+    {#- Now declare handler parameters, if there are any.  Should be zero or one #}
     {%- for handler in function.parameters if handler.apiType is HandlerType %}
-
-    // Create a new server data object and fill it in
-    _ServerData_t* serverDataPtr = le_mem_ForceAlloc(_ServerDataPool);
-    serverDataPtr->clientSessionRef = le_msg_GetSession(_msgRef);
-    serverDataPtr->contextPtr = contextPtr;
-    serverDataPtr->handlerRef = NULL;
-    serverDataPtr->removeHandlerFunc = NULL;
-    contextPtr = serverDataPtr;
+    _ServerData_t* serverDataPtr = NULL;
     {%- endfor %}
+    {%- endif %}
 
     // Define storage for output parameters
     {%- for parameter in function.parameters if parameter is OutParameter %}
@@ -845,6 +805,18 @@ static void Handle_{{apiName}}_{{function.name}}
     {{parameter.apiType|FormatType}} {{parameter.name}}Buffer = {{parameter.apiType|FormatTypeInitializer}};
     {{parameter.apiType|FormatType}} *{{parameter|FormatParameterName}} = &{{parameter.name}}Buffer;
     {%- endif %}
+    {%- endfor %}
+
+    // Unpack which outputs are needed
+    {%- if any(function.parameters, "OutParameter") %}
+    uint32_t _requiredOutputs = 0;
+    if (!le_pack_UnpackUint32(&_msgBufPtr, &_requiredOutputs))
+    {
+        goto {{error_unpack_label}};
+    }
+    {%- endif %}
+
+    {%- for parameter in function.parameters if parameter is OutParameter %}
     if (!(_requiredOutputs & (1u << {{loop.index0}})))
     {
         {{parameter|FormatParameterName}} = NULL;
@@ -852,6 +824,51 @@ static void Handle_{{apiName}}_{{function.name}}
         {{parameter.name}}Size = 0;
         {%- endif %}
     }
+    {%- endfor %}
+
+    // Unpack the input parameters from the message
+    {%- if function is RemoveHandlerFunction %}
+    {#- Remove handlers only have one parameter which is treated specially,
+     # so do separate handling
+     #}
+    {{function.parameters[0].apiType|FormatType}} {{function.parameters[0]|FormatParameterName}}
+        {#- #} = {{function.parameters[0].apiType|FormatTypeInitializer}};
+    if (!le_pack_UnpackReference( &_msgBufPtr,
+                                  &{{function.parameters[0]|FormatParameterName}} ))
+    {
+        goto {{error_unpack_label}};
+    }
+    // The passed in handlerRef is a safe reference for the server data object.  Need to get the
+    // real handlerRef from the server data object and then delete both the safe reference and
+    // the object since they are no longer needed.
+    _LOCK
+    serverDataPtr = le_ref_Lookup(_HandlerRefMap,
+                                  {{function.parameters[0]|FormatParameterName}});
+    if ( serverDataPtr == NULL )
+    {
+        _UNLOCK
+        LE_KILL_CLIENT("Invalid reference");
+        return;
+    }
+    le_ref_DeleteRef(_HandlerRefMap, {{function.parameters[0]|FormatParameterName}});
+    _UNLOCK
+    handlerRef = ({{function.parameters[0].apiType|FormatType}})serverDataPtr->handlerRef;
+    le_mem_Release(serverDataPtr);
+    {%- else %}
+    {%- call pack.UnpackInputs(function.parameters,initiatorWaits=True) %}
+        goto {{error_unpack_label}};
+    {%- endcall %}
+    {%- endif %}
+    {#- Now create handler parameters, if there are any.  Should be zero or one #}
+    {%- for handler in function.parameters if handler.apiType is HandlerType %}
+
+    // Create a new server data object and fill it in
+    serverDataPtr = le_mem_ForceAlloc(_ServerDataPool);
+    serverDataPtr->clientSessionRef = le_msg_GetSession(_msgRef);
+    serverDataPtr->contextPtr = contextPtr;
+    serverDataPtr->handlerRef = NULL;
+    serverDataPtr->removeHandlerFunc = NULL;
+    contextPtr = serverDataPtr;
     {%- endfor %}
 
     // Call the function
