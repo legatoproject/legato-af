@@ -488,5 +488,28 @@ different:
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Execute the given callback function.  Once for every current environment variable.
+ */
+//--------------------------------------------------------------------------------------------------
+void Iterate
+(
+    /// Function that is called with the name and value of every environment variable.
+    const std::function<void(const std::string&, const std::string&)>& callback
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (int i = 0; environ[i] != NULL; i++)
+    {
+        const auto next = std::string(environ[i]);
+        const auto found = next.find('=');
+
+        const auto name = next.substr(0, found);
+        const auto value = next.substr(found + 1);
+
+        callback(name, value);
+    }
+}
 
 } // namespace envVars

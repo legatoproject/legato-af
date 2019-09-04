@@ -134,6 +134,16 @@ bool MatchesSaved
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Execute the given callback function.  Once for every current environment variable.
+ */
+//--------------------------------------------------------------------------------------------------
+void Iterate
+(
+    /// Function that is called with the name and value of every environment variable.
+    const std::function<void(const std::string&, const std::string&)>& callback
+);
 
 } // namespace envVars
 

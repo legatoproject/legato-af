@@ -45,6 +45,8 @@ class ArgHandler_t
         std::list<std::string> compSearchPath;      ///< List of comp search path in active sdef
         std::list<std::string> moduleSearchPath;    ///< List of module search path in active sdef
 
+        std::string searchPath;         ///< App, component, module, interface search path
+
         model::System_t* systemPtr;     ///< Pointer for system model
         mk::BuildParams_t buildParams;  ///< Object that stores the gathered build parameters
 
@@ -74,6 +76,11 @@ class ArgHandler_t
             COMPONENT,
             MODULE,
             SYSTEM,
+
+            APPSEARCH,
+            COMPONENTSEARCH,
+            INTERFACESEARCH,
+            MODULESEARCH,
 
             SANDBOXED,
             START

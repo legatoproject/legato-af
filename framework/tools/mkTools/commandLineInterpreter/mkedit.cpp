@@ -392,6 +392,14 @@ void ArgHandler_t::ActionNotRenameSetDefFilePath(const char* arg)
             commandLineNextArgType = EDIT_COMPLETE;
             break;
 
+        case APPSEARCH:
+        case COMPONENTSEARCH:
+        case MODULESEARCH:
+        case INTERFACESEARCH:
+            searchPath = arg;
+            commandLineNextArgType = NONEDIT_ITEM_KEY;
+            break;
+
         case SANDBOXED:
             appSandboxed = arg;
             ValidateAppSandboxedValue(appSandboxed);
@@ -473,6 +481,22 @@ void ArgHandler_t::EvaluateCommandLineNextArgType(const char* arg)
             commandLineNextArgType = NONEDIT_SYSTEM_VALUE;
             break;
 
+        case APPSEARCH:
+        case COMPONENTSEARCH:
+        case MODULESEARCH:
+        case INTERFACESEARCH:
+            if (strcmp(arg, "system") == 0)
+            {
+                commandLineNextArgType = NONEDIT_SYSTEM_VALUE;
+            }
+            else
+            {
+                throw mk::Exception_t(
+                        mk::format(LE_I18N("'%s' is invalid key command."), arg)
+                );
+            }
+            break;
+
         case SANDBOXED:
         case START:
             if (strcmp(arg, "app") == 0)
@@ -541,6 +565,10 @@ void ArgHandler_t::operator()
                 {"component", COMPONENT},
                 {"module", MODULE},
                 {"system", SYSTEM},
+                {"appSearch", APPSEARCH},
+                {"componentSearch", COMPONENTSEARCH},
+                {"moduleSearch", MODULESEARCH},
+                {"interfaceSearch", INTERFACESEARCH},
                 {"sandboxed", SANDBOXED},
                 {"start", START}
             };
@@ -738,6 +766,14 @@ void ArgHandler_t::Add()
 
         case SYSTEM:
             throw mk::Exception_t(LE_I18N("Adding system command is not supported."));
+            break;
+
+        case APPSEARCH:
+        case COMPONENTSEARCH:
+        case MODULESEARCH:
+        case INTERFACESEARCH:
+            AddAction(std::make_shared<CreateUpdateTempSdefAction_t>(*this));
+            AddAction(std::make_shared<RenameTempWorkToActiveFileAction_t>(*this, absSdefFilePath));
             break;
 
         case SANDBOXED:

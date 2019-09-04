@@ -342,6 +342,7 @@ static std::string GetLineToWrite
     switch (handler.editItemType)
     {
         case ArgHandler_t::EditItemType_t::APP:
+        {
             defFile = handler.absAdefFilePath;
             // If appSearch section is present, list just relative app name, no need to specify
             // the absolute path.
@@ -354,8 +355,9 @@ static std::string GetLineToWrite
                 }
             }
             break;
-
+        }
         case ArgHandler_t::EditItemType_t::MODULE:
+        {
             defFile = handler.absMdefFilePath;
             // If moduleSearch section is present, list just relative module name, no need to
             // specify full absolute path.
@@ -368,13 +370,87 @@ static std::string GetLineToWrite
                 }
             }
             break;
+        }
+        case ArgHandler_t::EditItemType_t::APPSEARCH:
+        case ArgHandler_t::EditItemType_t::COMPONENTSEARCH:
+        case ArgHandler_t::EditItemType_t::MODULESEARCH:
+        case ArgHandler_t::EditItemType_t::INTERFACESEARCH:
+        {
+            std::string dirPath = handler.searchPath;
+            std::map<std::string, std::string> matchedEnvVarMap;
 
+            // Iterate through the existing environment variables to match base path of the search
+            // path and to replace sub-string of the search path with an environment variable.
+            envVars::Iterate([&matchedEnvVarMap, &dirPath](const std::string& name,
+                                                           const std::string& value)
+            {
+                if (value.empty())
+                {
+                    return;
+                }
+
+                std::size_t posFound = dirPath.find(value);
+                if (posFound == 0)
+                {
+                    // Skip irrelevant environment variables.
+                    if (name == "PWD" || name == "OLDPWD" || name == "HOME" || value == "/")
+                    {
+                        return;
+                    }
+
+                    // Insert matching environment variables to the map.
+                    matchedEnvVarMap.insert({value, name});
+                }
+            });
+
+            if (matchedEnvVarMap.size() == 0)
+            {
+                // If path does not match any of the environment variables. Check if base path
+                // of the sdef matches the search path.
+                std::string sdefDir = path::GetContainingDir(handler.absSdefFilePath);
+                std::string erasedCommonPath = path::EraseCommonBasePath(dirPath, sdefDir, false);
+
+                if (erasedCommonPath.empty())
+                {
+                    // Do not write empty string to sdef, write the absolute dirPath instead.
+                    writePath = dirPath;
+                }
+                else
+                {
+                    // Write the relative path to sdef.
+                    writePath = erasedCommonPath;
+                }
+            }
+            else
+            {
+                // If there are multiple strings matching the search path's sub-string, select the
+                // longest string. Since, elements in map are always sorted by its key, select the
+                // last element for the environment variable value of longest string length.
+                std::string matchedEnvVar = matchedEnvVarMap.rbegin()->second;
+                std::string matchedEnvValue = matchedEnvVarMap.rbegin()->first;
+
+                dirPath = path::EraseCommonBasePath(dirPath, matchedEnvValue, false);
+
+                if (dirPath.empty())
+                {
+                    writePath = "${" + matchedEnvVar + "}";
+                }
+                else
+                {
+                    writePath = "${" + matchedEnvVar + "}/" + dirPath;
+                }
+            }
+
+            break;
+        }
         default:
+        {
             throw mk::Exception_t(
                 mk::format(LE_I18N("Internal error: '%s' edit item type is invalid"),
                            handler.editItemType)
             );
             break;
+        }
     }
 
     if (writePath.empty())
@@ -393,6 +469,30 @@ static std::string GetLineToWrite
     }
 
     return lineToWrite;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if section is a search section (appSearch, componentSearch, moduleSearch, interfaceSearch)
+ * and the edit item type matches the corresponding search section.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool isSearchSection (const std::string& sectionName, ArgHandler_t& handler)
+{
+     if (((sectionName == "appSearch") &&
+           (handler.editItemType == ArgHandler_t::EditItemType_t::APPSEARCH))
+          || ((sectionName == "componentSearch") &&
+              (handler.editItemType == ArgHandler_t::EditItemType_t::COMPONENTSEARCH))
+          || ((sectionName == "moduleSearch") &&
+              (handler.editItemType == ArgHandler_t::EditItemType_t::MODULESEARCH))
+          || ((sectionName == "interfaceSearch") &&
+              (handler.editItemType == ArgHandler_t::EditItemType_t::INTERFACESEARCH)))
+    {
+        return true;
+    }
+
+    return false;
 }
 
 
@@ -483,6 +583,16 @@ void ParseSdefUpdateItem
                 {
                     itemMustNotExistStrip = path::RemoveSuffix(itemMustNotExistStrip, MDEF_EXT);
                 }
+            break;
+
+        case ArgHandler_t::EditItemType_t::APPSEARCH:
+        case ArgHandler_t::EditItemType_t::COMPONENTSEARCH:
+        case ArgHandler_t::EditItemType_t::MODULESEARCH:
+        case ArgHandler_t::EditItemType_t::INTERFACESEARCH:
+            if (handler.editActionType == ArgHandler_t::EditActionType_t::ADD)
+            {
+                itemMustNotExist = handler.searchPath;
+            }
             break;
 
         default:
@@ -647,6 +757,46 @@ void ParseSdefUpdateItem
             } //end of if
         } //end of if
 
+        else if (isSearchSection(sectionName, handler))
+        {
+            // There can be multiple files with search section included in the active sdef.
+            // Need to make sure only the active sdef is looked into for updating apps.
+            std::size_t found = sectionPtr->lastTokenPtr->GetLocation().find(sdefFilePtr->path);
+
+            if (found != std::string::npos)
+            {
+                foundSection = true;
+                length = sectionPtr->lastTokenPtr->curPos;
+            }
+
+            auto intSearchSectionPtr =
+                        dynamic_cast<const parseTree::TokenList_t*>(sectionPtr);
+            if (intSearchSectionPtr == NULL)
+            {
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("Internal error: '%s' section pointer is NULL"),
+                               sectionName)
+                );
+            }
+
+            for (const auto contentItemPtr : intSearchSectionPtr->Contents())
+            {
+                auto tokenPtr = dynamic_cast<const parseTree::Token_t*>(contentItemPtr);
+
+                auto dirPath = path::Unquote(DoSubstitution(tokenPtr));
+
+                if (!itemMustNotExist.empty())
+                {
+                    if (dirPath.compare(itemMustNotExist) == 0)
+                    {
+                        throw mk::Exception_t(
+                               mk::format(LE_I18N("interfaceSearch already listed: '%s'"),
+                                          contentItemPtr->GetLocation())
+                        );
+                    }
+                }
+            }
+        }
         else
         {
             // Evaluate end positon which is closer to the end of the file.
@@ -692,9 +842,27 @@ void ParseSdefUpdateItem
             case ArgHandler_t::EditItemType_t::APP:
                   strWrite = "\n\napps:\n{\n" + lineToWrite + "\n}\n";
                   break;
+
             case ArgHandler_t::EditItemType_t::MODULE:
                   strWrite = "\n\nkernelModules:\n{\n" + lineToWrite + "\n}\n";
                   break;
+
+            case ArgHandler_t::EditItemType_t::APPSEARCH:
+                  strWrite = "\n\nappSearch:\n{\n" + lineToWrite + "\n}\n";
+                  break;
+
+            case ArgHandler_t::EditItemType_t::COMPONENTSEARCH:
+                  strWrite = "\n\ncomponentSearch:\n{\n" + lineToWrite + "\n}\n";
+                  break;
+
+            case ArgHandler_t::EditItemType_t::MODULESEARCH:
+                  strWrite = "\n\nmoduleSearch:\n{\n" + lineToWrite + "\n}\n";
+                  break;
+
+            case ArgHandler_t::EditItemType_t::INTERFACESEARCH:
+                  strWrite = "\n\ninterfaceSearch:\n{\n" + lineToWrite + "\n}\n";
+                  break;
+
             default:
                   throw mk::Exception_t(
                             mk::format(LE_I18N("Internal: '%s' edit item type is invalid."),
