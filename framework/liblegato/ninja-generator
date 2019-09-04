@@ -96,6 +96,7 @@ AddSources liblegato                                        \
     ${LEGATO_ROOT}/framework/liblegato/doublyLinkedList.c   \
     ${LEGATO_ROOT}/framework/liblegato/eventLoop.c          \
     ${LEGATO_ROOT}/framework/liblegato/fd.c                 \
+    ${LEGATO_ROOT}/framework/liblegato/fdMonitor.c          \
     ${LEGATO_ROOT}/framework/liblegato/hashmap.c            \
     ${LEGATO_ROOT}/framework/liblegato/hex.c                \
     ${LEGATO_ROOT}/framework/liblegato/hsieh_hash.c         \

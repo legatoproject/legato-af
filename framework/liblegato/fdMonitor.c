@@ -293,19 +293,26 @@ void fdMon_SignalFd
 {
     fdMon_t             *fdMonitorPtr;
     int                  oldState;
-    le_ref_IterRef_t     iter = le_ref_GetIterator(FdMonitorRefMap);
+    le_ref_IterRef_t     iter;
 
+    LOCK;
+
+    iter = le_ref_GetIterator(FdMonitorRefMap);
     while (le_ref_NextNode(iter) == LE_OK)
     {
         fdMonitorPtr = le_ref_GetValue(iter);
-        if ((fdMonitorPtr->fd == fd)                &&
+        if ((fdMonitorPtr != NULL)      &&
+            (fdMonitorPtr->fd == fd)    &&
             (fdMonitorPtr->eventFlags & eventFlags))
         {
             oldState = event_Lock();
             fa_event_TriggerEvent_NoLock(fdMonitorPtr->threadRecPtr);
             event_Unlock(oldState);
+            break;
         }
     }
+
+    UNLOCK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -405,7 +412,7 @@ le_fdMonitor_Ref_t _le_fdMonitor_Create
     event_PerThreadRec_t *recPtr = thread_GetEventRecPtr();
 
     // Allocate the object.
-    fdMon_t *fdMonitorPtr = le_mem_ForceAlloc(FdMonitorPool);
+    fdMon_t *fdMonitorPtr = le_mem_Alloc(FdMonitorPool);
 
     // Initialize the object.
     fdMonitorPtr->link = LE_DLS_LINK_INIT;
@@ -485,7 +492,7 @@ void le_fdMonitor_Enable
         fdMon_GetEventsText(textBuff, sizeof(textBuff), events & ~filteredEvents));
 
     // Bit-wise OR the newly enabled event flags into the FD Monitor's event group flags set.
-    monitorPtr->eventFlags |= filteredEvents;
+    monitorPtr->eventFlags |= (uint32_t) filteredEvents;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -534,7 +541,7 @@ void le_fdMonitor_Disable
         fdMon_GetEventsText(textBuff, sizeof(textBuff), events & ~filteredEvents));
 
     // Remove them from the FD Monitor's event group flags set.
-    monitorPtr->eventFlags &= ~filteredEvents;
+    monitorPtr->eventFlags &= ~((uint32_t) filteredEvents);
 }
 
 //--------------------------------------------------------------------------------------------------

@@ -65,10 +65,11 @@
  */
 
 #include "legato.h"
+
 #include "eventLoop.h"
-#include "thread.h"
-//#include "fdMonitor.h"
+#include "fdMonitor.h"
 #include "limit.h"
+#include "thread.h"
 
 // ==============================================
 //  PRIVATE DATA
@@ -794,7 +795,7 @@ void event_Init
     fa_event_Init();
 
     // Initialize the FD Monitor module.
-    //fdMon_Init();
+    fdMon_Init();
 }
 
 

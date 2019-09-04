@@ -4,9 +4,9 @@
 // TODO: Open a pipe and test event-driven writing and reading using two threads and a couple
 //       of fd event monitors.
 
-static bool TestAPassed = false;
-static bool TestBPassed = false;
-static bool TestCPassed = false;
+static bool TestAPassed;
+static bool TestBPassed;
+static bool TestCPassed;
 
 static le_event_Id_t EventIdA;
 static le_event_Id_t EventIdB;
@@ -105,6 +105,10 @@ static void CheckTestResults
 COMPONENT_INIT
 {
     Report_t* reportPtr;
+
+    TestAPassed = false;
+    TestBPassed = false;
+    TestCPassed = false;
 
     LE_INFO("======== BEGIN EVENT LOOP TEST ========");
 

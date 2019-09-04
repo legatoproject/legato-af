@@ -9,12 +9,16 @@
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  File path length
+ *  Test FIFO path.
  */
 // -------------------------------------------------------------------------------------------------
-#define PATH_LENGTH         128
+static const char FifoPath[] = "/tmp/fifoTestDevice";
 
-
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Buffers for test data.
+ */
+// -------------------------------------------------------------------------------------------------
 static uint32_t ReadCrc;
 static char ReadBufSmall[32];
 static char ReadBufBig[100];
@@ -1038,26 +1042,25 @@ COMPONENT_INIT
     le_thread_Ref_t threadRRef, threadWRef;
 
     // Create a fifo
-    static const char fifoPath[PATH_LENGTH] = "/tmp/fifoTestDevice";
-    LE_TEST_INFO("Create fifo '%s'", fifoPath);
-    res = le_fd_MkFifo(fifoPath, S_IRUSR | S_IWUSR);
+    LE_TEST_INFO("Create fifo '%s'", FifoPath);
+    res = le_fd_MkFifo(FifoPath, S_IRUSR | S_IWUSR);
     LE_DEBUG("res = %d", res);
-    LE_TEST_OK((0 == res) || ((-1 == res) && (EEXIST == errno)), "fifo '%s' created", fifoPath);
+    LE_TEST_OK((0 == res) || ((-1 == res) && (EEXIST == errno)), "fifo '%s' created", FifoPath);
 
     // small transfer
     LE_INFO("Start small transfer test");
 
     // Open the read end of the fifo
-    LE_TEST_INFO("Open read end of fifo '%s'", fifoPath);
-    fdR = le_fd_Open(fifoPath, O_RDONLY | O_NONBLOCK );
+    LE_TEST_INFO("Open read end of fifo '%s'", FifoPath);
+    fdR = le_fd_Open(FifoPath, O_RDONLY | O_NONBLOCK );
     LE_DEBUG("fdR = %d", fdR);
-    LE_TEST_ASSERT(fdR != -1, "fifo read end '%s' opened", fifoPath);
+    LE_TEST_ASSERT(fdR != -1, "fifo read end '%s' opened", FifoPath);
 
     // Open the write end of the fifo
-    LE_TEST_INFO("Open write end of fifo '%s'", fifoPath);
-    fdW = le_fd_Open(fifoPath, O_WRONLY );
+    LE_TEST_INFO("Open write end of fifo '%s'", FifoPath);
+    fdW = le_fd_Open(FifoPath, O_WRONLY );
     LE_DEBUG("fdW = %d", fdW);
-    LE_TEST_ASSERT(fdW != -1, "fifo write end '%s' opened", fifoPath);
+    LE_TEST_ASSERT(fdW != -1, "fifo write end '%s' opened", FifoPath);
 
     uint32_t dataCrc = le_crc_Crc32((uint8_t*)WriteBufSmall, sizeof(WriteBufSmall),
                                        LE_CRC_START_CRC32);
@@ -1091,16 +1094,16 @@ COMPONENT_INIT
     dataCrc = le_crc_Crc32((uint8_t*)WriteBufBig, sizeof(WriteBufBig), LE_CRC_START_CRC32);
 
     // Open the read end of the fifo
-    LE_TEST_INFO("Open read end of fifo '%s'", fifoPath);
-    fdR = le_fd_Open(fifoPath, O_RDONLY | O_NONBLOCK);
+    LE_TEST_INFO("Open read end of fifo '%s'", FifoPath);
+    fdR = le_fd_Open(FifoPath, O_RDONLY | O_NONBLOCK);
     LE_DEBUG("fdR = %d", fdR);
-    LE_TEST_ASSERT(fdR != -1, "fifo read end '%s' opened", fifoPath);
+    LE_TEST_ASSERT(fdR != -1, "fifo read end '%s' opened", FifoPath);
 
     // Open the write end of the fifo
-    LE_TEST_INFO("Open write end of fifo '%s'", fifoPath);
-    fdW = le_fd_Open(fifoPath, O_WRONLY );
+    LE_TEST_INFO("Open write end of fifo '%s'", FifoPath);
+    fdW = le_fd_Open(FifoPath, O_WRONLY);
     LE_DEBUG("fdW = %d", fdW);
-    LE_TEST_ASSERT(fdW != -1, "fifo write end '%s' opened", fifoPath);
+    LE_TEST_ASSERT(fdW != -1, "fifo write end '%s' opened", FifoPath);
 
     ReadSize = 0;
     WriteSize = 0;
@@ -1137,16 +1140,16 @@ COMPONENT_INIT
     LE_TEST_INFO("Start read end closure");
 
     // Open the read end of the fifo
-    LE_TEST_INFO("Open read end of fifo '%s'", fifoPath);
-    fdR = le_fd_Open(fifoPath, O_RDONLY | O_NONBLOCK);
+    LE_TEST_INFO("Open read end of fifo '%s'", FifoPath);
+    fdR = le_fd_Open(FifoPath, O_RDONLY | O_NONBLOCK);
     LE_DEBUG("fdR = %d", fdR);
-    LE_TEST_ASSERT(fdR != -1, "fifo read end '%s' opened", fifoPath);
+    LE_TEST_ASSERT(fdR != -1, "fifo read end '%s' opened", FifoPath);
 
     // Open the write end of the fifo
-    LE_TEST_INFO("Open write end of fifo '%s'", fifoPath);
-    fdW = le_fd_Open(fifoPath, O_WRONLY );
+    LE_TEST_INFO("Open write end of fifo '%s'", FifoPath);
+    fdW = le_fd_Open(FifoPath, O_WRONLY );
     LE_DEBUG("fdW = %d", fdW);
-    LE_TEST_ASSERT(fdW != -1, "fifo write end '%s' opened", fifoPath);
+    LE_TEST_ASSERT(fdW != -1, "fifo write end '%s' opened", FifoPath);
 
     // create 2 thread: one for for read and the other for write operations
     tRCtx.fd = fdR;

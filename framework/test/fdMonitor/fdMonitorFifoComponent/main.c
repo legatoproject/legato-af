@@ -10,17 +10,40 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Name of the FIFO to create.
+ */
+//--------------------------------------------------------------------------------------------------
+static const char FifoName[] = "/tmp/fifoMonitorTestDevice";
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test string to push through the FIFO.
+ *
+ * Must be small so writing to the FIFO doesn't block
+ */
+//--------------------------------------------------------------------------------------------------
+static const char TestString[] = "Mary had a little lamb whose fleece was white as snow";
+
+//--------------------------------------------------------------------------------------------------
+/**
  * File descriptor for read end of the fifo.
  */
 //--------------------------------------------------------------------------------------------------
-static int ReadFD = -1;
+static int ReadFD;
 
 //--------------------------------------------------------------------------------------------------
 /**
  * File descriptor for write end of the fifo.
  */
 //--------------------------------------------------------------------------------------------------
-static int WriteFD = -1;
+static int WriteFD;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Flag to indicate test completion.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool Completed;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -31,22 +54,14 @@ static le_fdMonitor_Ref_t FifoMonitor;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Test string to push through the FIFO.
+ * Thread to write to FIFO after a delay to wake up the main thread with the write.
  *
- * Must be small so writing to the FIFO doesn't block
- */
-//--------------------------------------------------------------------------------------------------
-static char TestString[] = "Mary had a little lamb whose fleece was white as snow";
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Write to FIFO after a delay to wake up the main thread with the write
+ * @return Thread result (unused).
  */
 //--------------------------------------------------------------------------------------------------
 static void *FifoWriter
 (
-    void *context
+    void *context   ///< Thread context.
 )
 {
     LE_UNUSED(context);
@@ -55,6 +70,7 @@ static void *FifoWriter
     LE_TEST_INFO("Delaying write");
     sleep(1);
 
+    Completed = true;
     if (le_fd_Write(WriteFD, TestString, sizeof(TestString)) != sizeof(TestString))
     {
         LE_TEST_FATAL("Failed to write test string to FIFO");
@@ -66,75 +82,28 @@ static void *FifoWriter
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Run the next test in sequence, and return TRUE if there are more tests to run
+ * Handle new data available on the FIFO.
  */
 //--------------------------------------------------------------------------------------------------
-static bool RunNextTest
-(
-    void
-)
-{
-    static int testNum = 0;
-    static le_thread_Ref_t writeThread = NULL;
-
-    switch (testNum++)
-    {
-        case 0:
-            // Test writing to FIFO when it's not currently blocked in the event loop
-            LE_TEST_ASSERT(le_fd_Write(WriteFD, TestString, sizeof(TestString))
-                           == sizeof(TestString),
-                           "Write test string to FIFO");
-            return true;
-
-        case 1:
-            // Test writing to the FIFO when it's blocked in the event loop by creating a
-            // second thread which writes to the FIFO
-            LE_TEST_INFO("Creating thread to write to FIFO");
-            writeThread = le_thread_Create("FifoWriteThread",
-                                           FifoWriter,
-                                           NULL);
-            if (!writeThread)
-            {
-                LE_TEST_FATAL("Cannot create writer thread");
-            }
-            le_thread_Start(writeThread);
-            return true;
-
-        default:
-        {
-            // No more tests
-            return false;
-        }
-    }
-}
-
-
-
 static void FifoReadHandler
 (
-    int fd,
-    short events
+    int     fd,     ///< File descriptor.
+    short   events  ///< Signalled event flags.
 )
 {
-    char buffer[sizeof(TestString)];
+    char    buffer[sizeof(TestString)];
     ssize_t readSize;
 
     LE_TEST_OK(fd == ReadFD, "Received event from read end of FIFO");
     LE_TEST_OK(events == POLLIN, "Received POLLIN");
 
     readSize = le_fd_Read(ReadFD, buffer, sizeof(TestString));
-    LE_TEST_OK(readSize > 0, "Read succeeded from FIFO");
-    LE_TEST_OK(readSize == sizeof(TestString) &&
-               memcmp(buffer, TestString, sizeof(TestString)) == 0,
-               "Read data '%s' matches test string '%s'", (readSize>0?buffer:""), TestString);
+    LE_TEST_OK(readSize == sizeof(TestString), "Read succeeded from FIFO");
+    LE_TEST_OK(memcmp(buffer, TestString, sizeof(TestString)) == 0,
+               "Read data '%s' matches test string '%s'", buffer, TestString);
 
-    // Do multiple tests which all re-enter this function.  If RunNextTest() returns true,
-    // it means there's another test to run.
-    if (RunNextTest())
-    {
-        return;
-    }
-    else
+    // Do multiple tests which all re-enter this function.  Exit if this is the last test.
+    if (Completed)
     {
         le_fd_Close(ReadFD);
         le_fd_Close(WriteFD);
@@ -145,38 +114,52 @@ static void FifoReadHandler
 
 COMPONENT_INIT
 {
-    static const char fifoPath[] = "/tmp/fifoMonitorTestDevice";
+    le_thread_Ref_t writeThread = NULL;
+
+    Completed = false;
+    FifoMonitor = NULL;
+    ReadFD = -1;
+    WriteFD = -1;
 
     LE_TEST_PLAN(10);
 
     // Prepare FIFO for for test.  Since this is a test of fdMonitor, not FIFO, do
     // not record these as tests.  But we still need to bail if this fails for
-    // an unexpected reason
+    // an unexpected reason.
     LE_TEST_INFO("Preparing FIFO for test");
-    if (le_fd_MkFifo(fifoPath, S_IRUSR | S_IWUSR) != LE_OK)
+    if (le_fd_MkFifo(FifoName, S_IRUSR | S_IWUSR) != LE_OK)
     {
         LE_TEST_FATAL("Cannot create fifo test device");
     }
 
-    ReadFD = le_fd_Open(fifoPath, O_RDONLY | O_NONBLOCK);
+    ReadFD = le_fd_Open(FifoName, O_RDONLY | O_NONBLOCK);
     if (ReadFD == -1)
     {
         LE_TEST_FATAL("Cannot open read end of test device");
     }
 
-    WriteFD = le_fd_Open(fifoPath, O_WRONLY | O_NONBLOCK);
+    WriteFD = le_fd_Open(FifoName, O_WRONLY | O_NONBLOCK);
     if (WriteFD == -1)
     {
         LE_TEST_FATAL("Cannot open write end of test device");
     }
 
     // Create monitor for FIFO
-    FifoMonitor = le_fdMonitor_Create("FIFO",
-                                      ReadFD,
-                                      FifoReadHandler,
-                                      POLLIN);
+    FifoMonitor = le_fdMonitor_Create("FIFO", ReadFD, &FifoReadHandler, POLLIN);
 
-    LE_TEST_ASSERT(FifoMonitor, "Create FD monitor on FIFO");
+    LE_TEST_ASSERT(FifoMonitor != NULL, "Create FD monitor on FIFO");
 
-    RunNextTest();
+    // Test writing to FIFO when it's not currently blocked in the event loop.
+    LE_TEST_ASSERT(le_fd_Write(WriteFD, TestString, sizeof(TestString)) == sizeof(TestString),
+                   "Write test string to FIFO");
+
+    // Test writing to the FIFO when it's blocked in the event loop by creating a second thread
+    // which writes to the FIFO.
+    LE_TEST_INFO("Creating thread to write to FIFO");
+    writeThread = le_thread_Create("FifoWriteThread", &FifoWriter, NULL);
+    if (writeThread == NULL)
+    {
+        LE_TEST_FATAL("Cannot create writer thread");
+    }
+    le_thread_Start(writeThread);
 }
