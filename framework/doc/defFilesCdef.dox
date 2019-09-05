@@ -43,6 +43,8 @@ bundles:
 }
 @endcode
 
+If the directory that you bundle into the component is empty, the directory will not be copied over.
+
 Three things need to be specified for each file or directory:
 - access permissions
 - build system path
