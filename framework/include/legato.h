@@ -195,7 +195,7 @@ extern "C" {
 #include "le_cdata.h"
 #include "le_clock.h"
 #include "le_crc.h"
-/* #include "le_dir.h" */
+#include "le_dir.h"
 #include "le_doublyLinkedList.h"
 #include "le_eventLoop.h"
 #include "le_fd.h"

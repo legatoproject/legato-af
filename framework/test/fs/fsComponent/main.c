@@ -395,14 +395,12 @@ facilisis erat, a imperdiet risus eleifend nec.";
     LE_TEST_OK(LE_OK == le_fs_Close(fileRef), "Close file '%s'", loremFilePath);
     fileRef = NULL;
 
-#if NOT_IMPLEMENTED // TODO: Re-enable after le_dir implementation
     // Remove all created files and directories
     LE_TEST_INFO("Remove all created files and directories");
     LE_TEST_OK(LE_OK == le_fs_RemoveDirRecursive("/foo"), "Remove directory '/foo'");
     LE_TEST_ASSERT(false == le_fs_Exists("/foo"), "Check if the directory '/foo' is deleted");
     LE_TEST_OK(LE_OK == le_fs_RemoveDirRecursive("/bar"), "Remove directory '/bar'");
     LE_TEST_ASSERT(false == le_fs_Exists("/bar"), "Check if the directory '/bar' is deleted");
-#endif
 
 
     // Error cases with wrong file handler
