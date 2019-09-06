@@ -3167,7 +3167,8 @@ le_result_t le_sms_SetText
     LE_DEBUG("Try to copy data %s, len.%zd @ msgPtr->text.%p for msgPtr.%p",
              textPtr, length, msgPtr->text, msgPtr);
 
-    le_utf8_Copy(msgPtr->text, textPtr, sizeof(msgPtr->text), NULL);
+    strncpy(msgPtr->text, textPtr, LE_SMS_TEXT_MAX_BYTES);
+    msgPtr->text[LE_SMS_TEXT_MAX_BYTES - 1] = '\0';
 
     return LE_OK;
 }
