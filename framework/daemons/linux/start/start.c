@@ -1989,10 +1989,12 @@ static void CheckAndInstallCurrentSystem
         LE_INFO("The previous 'current' system has index %d.", currentIndex);
     }
 
-    // Hardware faults say nothing about whether we should rollback or not
-    if (pa_start_IsHardwareFaultReset())
+    // If there is enough time between the last reboot and the previous one, the boot counter
+    // will be cleared.
+    bool isRepeatedReboot = (ReadBootCount() > 0);
+    if (pa_start_IsHardwareFaultReset(isRepeatedReboot))
     {
-        // Do nothing
+        // Hardware faults say nothing about whether we should rollback or not, so do nothing.
     }
     // Check if we should fall back to the "golden" system due to a boot loop
     else if ((newestIndex == currentIndex) &&

@@ -35,7 +35,7 @@ PA_START_SHARED void pa_start_Init
 //--------------------------------------------------------------------------------------------------
 PA_START_SHARED bool pa_start_IsHardwareFaultReset
 (
-    void
+    bool isRepeated     ///< Whether the reboot happened shortly after the previous reboot.
 )
 {
     return false;

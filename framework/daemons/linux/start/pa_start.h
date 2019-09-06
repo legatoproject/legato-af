@@ -31,7 +31,7 @@ typedef void (*pa_start_Init_t)
 //--------------------------------------------------------------------------------------------------
 typedef bool (*pa_start_IsHardwareFaultReset_t)
 (
-    void
+    bool isRepeated     ///< Whether the reboot happened shortly after the previous reboot.
 );
 
 #endif /* end LEGATO_SRC_PA_START_INCLUDE_GUARD */
