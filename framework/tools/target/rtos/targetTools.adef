@@ -10,6 +10,7 @@ executables:
 {
     legato = (legato)
     app = (apptool)
+    reset = (reset)
 
 #if ${LE_CONFIG_RTOS_TARGET_TOOL_INSPECT} = y
     inspect = (inspect)

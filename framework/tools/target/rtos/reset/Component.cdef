@@ -1,0 +1,10 @@
+sources:
+{
+    resetCmd.c
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}
+    -I${LEGATO_ROOT}/framework/daemons/rtos/microSupervisor/
+}

@@ -22,12 +22,12 @@ apps:
 
     memPool/test_MemPool
     hashMap/test_HashMap
-    lists/test_Lists
+//    lists/test_Lists
 //    clock/test_Clock
-    thread/test_Thread
+//    thread/test_Thread
     eventLoop/test_EventLoop
 //    timer/test_Timer
-    semaphore/test_Semaphore
+//    semaphore/test_Semaphore
 #if ${LE_CONFIG_NETWORK} = y
 //    fdMonitor/test_FdMonitorSocket
 #endif
@@ -44,7 +44,7 @@ apps:
 #endif
     ipc/test_Optional2
 #if ${LE_CONFIG_FILESYSTEM} = y
-    fs/test_Fs
+//    fs/test_Fs
 #endif
     crc/test_Crc
 //    fd/test_Fd

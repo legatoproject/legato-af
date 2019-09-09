@@ -413,6 +413,7 @@ $(SHELL_CONFIG): $(LEGATO_KCONFIG)
 ifneq ($(KNOWN_TARGET),1)
 	$(Q)printf '\n# Additional Definitions\nexport LE_CONFIG_TARGET_%s=y\n' "$(TARGET_CAPS)" >> $@
 endif
+	$(Q)sed -i 's@$${FRAMEWORK_ADAPTOR}@'"${FRAMEWORK_ADAPTOR}"'@' $@
 
 # Generate doxygen configuration containing the KConfig definitions
 $(DOXYGEN_DEFS): $(LEGATO_KCONFIG)
