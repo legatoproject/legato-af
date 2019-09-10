@@ -332,10 +332,10 @@ static void CleanupThread
 
     // Destruct timer resources: this function has to be called after event_DestructThread(), the
     // timerFd is used when its fdMonitor is deleted
-    //timer_DestructThread();
+    timer_DestructThread();
 
     // Release any argument info associated with the thread.
-    //arg_DestructThread();
+    arg_DestructThread();
 
     // If this thread is NOT joinable, then immediately invalidate its safe reference, remove it
     // from the thread object list, and free the thread object.  Otherwise, wait until someone
