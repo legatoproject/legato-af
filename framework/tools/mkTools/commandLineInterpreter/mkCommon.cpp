@@ -434,7 +434,7 @@ void RunNinja
     if (file::FileExists(ninjaFilePath))
     {
         std::string ninjaArgvJobCount;
-        const char* ninjaArgv[9] = {
+        const char* ninjaArgv[16] = {
             "ninja",
             "-f", ninjaFilePath.c_str(),
             (char*)NULL,
@@ -452,6 +452,7 @@ void RunNinja
         if (buildParams.beVerbose)
         {
             ninjaArgv[ninjaArgvPos++] = "-v";
+            ninjaArgv[ninjaArgvPos++] = "-k0";
             ninjaArgv[ninjaArgvPos++] = "-d";
             ninjaArgv[ninjaArgvPos++] = "explain";
             ninjaArgv[ninjaArgvPos] = NULL;
