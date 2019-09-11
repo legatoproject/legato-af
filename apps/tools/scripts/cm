@@ -19,7 +19,7 @@ IFCONFIG=${IFCONFIG:="/sbin/ifconfig"}
 CURL=${CURL:-"/usr/bin/curl"}
 RESOLV_CONF=${RESOLV_CONF="/etc/resolv.conf"}
 LOG=${LOG:="/var/log/cm"}
-TEST_SITE=${TEST_SITE:="http://www.akamai.com"}
+TEST_SITE=${TEST_SITE:="https://www.akamai.com"}
 RUN_TIME=${RUN_TIME:="/var/run/cm"}
 DEFAULT_ROUTE=${DEFAULT_ROUTE:="$RUN_TIME/default.bck"}
 DEFAULT_RESOLV_CONF=${DEFAULT_RESOLV_CONF:="$RUN_TIME/resolv.conf.bck"}
