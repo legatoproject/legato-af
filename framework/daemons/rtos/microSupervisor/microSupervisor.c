@@ -15,7 +15,7 @@
 #include "eventLoop.h"
 #include "fileDescriptor.h"
 /* #include "fs.h" */
-/* #include "json.h" */
+#include "json.h"
 #include "log.h"
 #include "mem.h"
 #include "messaging.h"
@@ -120,7 +120,7 @@ static void InitLegatoFramework
     msg_Init();         // Uses event loop.
     fs_Init();          // Uses memory pools and safe references and path manipulation.
     fd_Init();
-    // json_Init();
+    json_Init();
     pathIter_Init();    // Uses memory pools and safe references.
 
     // Init space for all services.

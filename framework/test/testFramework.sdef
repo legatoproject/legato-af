@@ -49,7 +49,7 @@ apps:
     crc/test_Crc
 //    fd/test_Fd
 //    issues/test_LE_11195
-//    json/test_Json
+    json/test_Json
 
     /*
      * Helper applications assocated with python tests

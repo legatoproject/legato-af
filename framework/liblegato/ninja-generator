@@ -99,6 +99,7 @@ AddSources liblegato                                        \
     ${LEGATO_ROOT}/framework/liblegato/hashmap.c            \
     ${LEGATO_ROOT}/framework/liblegato/hex.c                \
     ${LEGATO_ROOT}/framework/liblegato/hsieh_hash.c         \
+    ${LEGATO_ROOT}/framework/liblegato/json.c               \
     ${LEGATO_ROOT}/framework/liblegato/log.c                \
     ${LEGATO_ROOT}/framework/liblegato/mem.c                \
     ${LEGATO_ROOT}/framework/liblegato/messagingCommon.c    \
