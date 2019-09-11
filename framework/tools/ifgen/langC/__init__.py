@@ -42,7 +42,8 @@ Filters = { 'DecorateName':        codeGenHelpers.DecorateName,
             'LocalMessageSize':      codeGenHelpers.GetLocalMessageSize}
 
 
-Tests = { 'SizeParameter':         codeGenHelpers.IsSizeParameter }
+Tests = { 'SizeParameter':         codeGenHelpers.IsSizeParameter,
+          'HandlerUser':           codeGenHelpers.UsesHandlers }
 
 Globals = { 'Labeler':             codeGenHelpers.Labeler }
 

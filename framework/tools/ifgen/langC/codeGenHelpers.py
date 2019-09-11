@@ -214,7 +214,8 @@ def FormatTypeInitializer(apiType,useBaseName=False):
     elif isinstance(apiType, interfaceIR.EnumType) or isinstance(apiType, interfaceIR.BitmaskType):
         return "({0}) 0".format(FormatType(apiType,useBaseName))
     elif isinstance(apiType, interfaceIR.StructType):
-        return "{ }"
+        return "{" + ", ".join([FormatTypeInitializer(member.apiType) \
+                                for member in apiType.members]) + "}"
     else:
         return "NULL"
 
@@ -391,6 +392,9 @@ def GetMaxCOutputBuffers(interface):
 #---------------------------------------------------------------------------------------------------
 def IsSizeParameter(parameter):
     return isinstance(parameter, SizeParameter)
+
+def UsesHandlers(interface):
+    return interface.usesHandlers()
 
 #---------------------------------------------------------------------------------------------------
 # Global functions

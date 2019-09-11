@@ -59,7 +59,7 @@ LE_MEM_DEFINE_STATIC_POOL({{apiName}}Messages, HIGH_CLIENT_COUNT,
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t {{apiName}}MessagesRef;
 {%- endif %}
-
+{% if interface is HandlerUser %}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -100,6 +100,7 @@ _ServerData_t;
  */
 //--------------------------------------------------------------------------------------------------
 LE_MEM_DEFINE_STATIC_POOL({{apiName}}_ServerData, HIGH_SERVER_DATA_COUNT, sizeof(_ServerData_t));
+{%- endif %}
 {%- if args.async %}
 
 //--------------------------------------------------------------------------------------------------
@@ -136,16 +137,14 @@ typedef struct {{apiName}}_ServerCmd
 LE_MEM_DEFINE_STATIC_POOL({{apiName}}_ServerCmd,
                           HIGH_SERVER_CMD_COUNT,
                           sizeof({{apiName}}_ServerCmd_t));
-
 {%- endif %}
-
+{% if interface is HandlerUser %}
 //--------------------------------------------------------------------------------------------------
 /**
  * The memory pool for server data objects
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t _ServerDataPool;
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -163,6 +162,7 @@ LE_REF_DEFINE_STATIC_MAP({{apiName}}_ServerHandlers, HIGH_SERVER_DATA_COUNT);
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t _HandlerRefMap;
+{% endif %}
 {%- if args.async %}
 
 //--------------------------------------------------------------------------------------------------
@@ -258,6 +258,7 @@ __attribute__((unused)) static void CleanupClientData
     // Store the client session ref so it can be retrieved by the server using the
     // GetClientSessionRef() function, if it's needed inside handler removal functions.
     LE_CDATA_THIS->_ClientSessionRef = sessionRef;
+{% if interface is HandlerUser %}
 
     le_ref_IterRef_t iterRef = le_ref_GetIterator(_HandlerRefMap);
     le_result_t result = le_ref_NextNode(iterRef);
@@ -293,6 +294,7 @@ __attribute__((unused)) static void CleanupClientData
         // Get the next value in the reference mpa
         result = le_ref_NextNode(iterRef);
     }
+{%- endif %}
 
     // Clear the client session ref, since the event has now been processed.
     LE_CDATA_THIS->_ClientSessionRef = 0;
@@ -431,11 +433,13 @@ void {{apiName}}_AdvertiseService
 #if defined(MK_TOOLS_BUILD) && !defined(NO_LOG_SESSION)
     TraceRef = le_log_GetTraceRef("ipc");
 #endif
+    {%- if interface is HandlerUser %}
 
     // Create the server data pool
     _ServerDataPool = le_mem_InitStaticPool({{apiName}}_ServerData,
                                             HIGH_SERVER_DATA_COUNT,
                                             sizeof(_ServerData_t));
+    {%- endif %}
     {%- if args.async %}
 
     // Create the server command pool
@@ -443,11 +447,13 @@ void {{apiName}}_AdvertiseService
                                            HIGH_SERVER_CMD_COUNT,
                                            sizeof({{apiName}}_ServerCmd_t));
     {%- endif %}
+    {%- if interface is HandlerUser %}
 
     // Create safe reference map for handler references.
     // The size of the map should be based on the number of handlers defined for the server.
     // Don't expect that to be more than 2-3, so use 3 as a reasonable guess.
     _HandlerRefMap = le_ref_InitStaticMap({{apiName}}_ServerHandlers, HIGH_SERVER_DATA_COUNT);
+    {%- endif %}
 
     // Start the server side of the service
     {%- if not args.localService %}

@@ -643,6 +643,17 @@ class Interface(object):
                        [handler.GetMessageSize()
                         for handler in self.types.values() if isinstance(handler, HandlerType)])
 
+    def usesHandlers(self):
+        """
+        Returns if any function in this API use handlers.
+
+        If no function uses handlers, some code may be optimized out.
+        """
+        for function in self.functions.values():
+            if any([isinstance(parameter.apiType, HandlerType) \
+                    for parameter in function.parameters]):
+                return True
+        return False
 
     def __str__(self):
         resultStr  = "=== Interface ===\n"
