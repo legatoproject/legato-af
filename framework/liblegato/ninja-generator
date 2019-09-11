@@ -109,6 +109,7 @@ AddSources liblegato                                        \
     ${LEGATO_ROOT}/framework/liblegato/pack.c               \
     ${LEGATO_ROOT}/framework/liblegato/path.c               \
     ${LEGATO_ROOT}/framework/liblegato/pathIter.c           \
+    ${LEGATO_ROOT}/framework/liblegato/rand.c               \
     ${LEGATO_ROOT}/framework/liblegato/safeRef.c            \
     ${LEGATO_ROOT}/framework/liblegato/semaphores.c         \
     ${LEGATO_ROOT}/framework/liblegato/singlyLinkedList.c   \

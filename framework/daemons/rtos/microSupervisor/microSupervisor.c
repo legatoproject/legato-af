@@ -20,7 +20,7 @@
 #include "mem.h"
 #include "messaging.h"
 #include "pathIter.h"
-/* #include "rand.h" */
+#include "rand.h"
 #include "safeRef.h"
 #include "test.h"
 #include "thread.h"
@@ -106,7 +106,7 @@ static void InitLegatoFramework
     setlocale(LC_ALL, "C");
 
     // The order of initialization is important.
-    // rand_Init();
+    rand_Init();
     mem_Init();
     log_Init();         // Uses memory pools.
     safeRef_Init();     // Uses memory pools and hash maps.

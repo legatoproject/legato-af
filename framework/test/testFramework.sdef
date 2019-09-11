@@ -28,6 +28,7 @@ apps:
     eventLoop/test_EventLoop
     timer/test_Timer
     semaphore/test_Semaphore
+    random/test_Random
 #if ${LE_CONFIG_NETWORK} = y
 //    fdMonitor/test_FdMonitorSocket
 #endif
