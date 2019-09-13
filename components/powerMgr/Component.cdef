@@ -5,7 +5,6 @@ provides:
         le_pm.api
         le_ulpm.api
         le_bootReason.api
-        le_shutdown.api
     }
 }
 
@@ -35,5 +34,4 @@ sources:
     linux/le_pm.c
     linux/le_ulpm.c
     linux/le_bootReason.c
-    le_shutdown.c
 }
