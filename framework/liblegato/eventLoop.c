@@ -1367,6 +1367,32 @@ void le_event_SetContextPtr
     event_Unlock(oldState);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fetches the context pointer for a given event handler.
+ *
+ * @return
+ *      The context pointer associated with the handlerRef.
+ */
+//--------------------------------------------------------------------------------------------------
+void* le_event_GetContextPtrFromRef
+(
+    le_event_HandlerRef_t   handlerRef ///< [in] Handler whose context pointer is to be set.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    void*      contextPtr = NULL;
+
+    int oldState = event_Lock();
+
+    Handler_t* handlerPtr = le_ref_Lookup(HandlerRefMap, handlerRef);
+    LE_FATAL_IF(handlerPtr == NULL, "Handler %p not found.", handlerPtr);
+
+    contextPtr = handlerPtr->contextPtr;
+
+    event_Unlock(oldState);
+    return contextPtr;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

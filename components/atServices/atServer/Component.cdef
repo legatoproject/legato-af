@@ -19,19 +19,22 @@ requires:
     }
 }
 
-cflags:
-{
-    -I${LEGATO_ROOT}/components/watchdogChain
-}
-
 sources:
 {
-    le_atServer.c
-    bridge.c
     $CURDIR/../Common/le_dev.c
+    le_atServer.c
+#if ${MK_CONFIG_DISABLE_AT_BRIDGE} = y
+#else
+    bridge.c
+#endif
 }
 
 cflags:
 {
+-I${LEGATO_ROOT}/components/watchdogChain
+#if ${MK_CONFIG_DISABLE_AT_BRIDGE} = y
+    -DMK_CONFIG_DISABLE_AT_BRIDGE=1
+#endif
+
     -I$CURDIR/../Common
 }

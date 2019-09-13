@@ -936,6 +936,18 @@ void le_event_SetContextPtr
     void*                   contextPtr  ///< [in] Context pointer value.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fetches the context pointer for a given event handler.
+ *
+ * @return
+ *      The context pointer associated to the handlerRef.
+ */
+//--------------------------------------------------------------------------------------------------
+void* le_event_GetContextPtrFromRef
+(
+    le_event_HandlerRef_t   handlerRef  ///< [in] Handler whose context pointer is to be set.
+);
 
 //--------------------------------------------------------------------------------------------------
 /**

@@ -7,9 +7,12 @@
 
 #include "legato.h"
 #include "interfaces.h"
-#include "le_dev.h"
-#include "bridge.h"
+
+#if !MK_CONFIG_DISABLE_AT_BRIDGE
+#   include "bridge.h"
+#endif
 #include "le_atServer_local.h"
+#include "le_dev.h"
 #include "watchdogChain.h"
 
 //--------------------------------------------------------------------------------------------------
@@ -236,20 +239,6 @@ static le_mem_PoolRef_t  ParamStringPool;
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t  RspStringPool;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Pool for user-defined error codes
- */
-//--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t UserErrorPool;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Map for user-defined error codes
- */
-//--------------------------------------------------------------------------------------------------
-static le_ref_MapRef_t UserErrorRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -622,9 +611,11 @@ typedef struct
     le_dls_List_t           paramList;                              ///< parameters list
     bool                    processing;                             ///< is command processing
     le_atServer_DeviceRef_t deviceRef;                              ///< device refrence
+#if !MK_CONFIG_DISABLE_AT_BRIDGE
     bool                    bridgeCmd;                              ///< is command created by the
                                                                     ///< AT bridge
     void*                   modemCmdDescRefPtr;                     ///< modem desc reference
+#endif /* end !MK_CONFIG_DISABLE_AT_BRIDGE */
     le_msg_SessionRef_t     sessionRef;                             ///< session reference
     bool                    isDialCommand;                          ///< specific dial command
     bool                    isBasicCommand;                         ///< is a basic format command
@@ -703,7 +694,7 @@ typedef struct
 {
     Device_t                device;                               ///< data of the connected device
     le_atServer_DeviceRef_t ref;                                  ///< reference of the device
-    char                    currentCmd[LE_ATDEFS_COMMAND_MAX_LEN];///< input buffer
+    char                    currentCmd[LE_ATDEFS_COMMAND_MAX_BYTES];///< input buffer
     uint32_t                indexRead;                            ///< last read character position
                                                                   ///< in currentCmd
     uint32_t                parseIndex;                           ///< current index in currentCmd
@@ -716,7 +707,9 @@ typedef struct
                                                                   ///< over
     bool                    isFirstIntermediate;                  ///< is first intermediate sent
     RspState_t              rspState;                             ///< sending response state
+#if !MK_CONFIG_DISABLE_AT_BRIDGE
     le_atServer_BridgeRef_t bridgeRef;                            ///< bridge reference
+#endif
     le_msg_SessionRef_t     sessionRef;                           ///< session reference
     bool                    suspended;                            ///< is device in data mode
     bool                    echo;                                 ///< is echo enabled
@@ -1433,6 +1426,7 @@ static void SendUnsolRsp
     }
 }
 
+#if !MK_CONFIG_DISABLE_AT_BRIDGE
 //--------------------------------------------------------------------------------------------------
 /**
  * Create a modem AT command using the ATBridge.
@@ -1483,7 +1477,7 @@ static le_result_t CreateModemCommand
 
     return LE_OK;
 }
-
+#endif /* end !MK_CONFIG_DISABLE_AT_BRIDGE */
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1505,6 +1499,7 @@ static le_result_t GetAtCmdContext
         if ( cmdParserPtr->currentCmdPtr == NULL )
         {
             LE_DEBUG("AT command not found");
+#if !MK_CONFIG_DISABLE_AT_BRIDGE
             if ( devPtr->bridgeRef )
             {
                 if (( CreateModemCommand(cmdParserPtr,
@@ -1517,6 +1512,7 @@ static le_result_t GetAtCmdContext
                 }
             }
             else
+#endif /* end !MK_CONFIG_DISABLE_AT_BRIDGE */
             {
                 return LE_FAULT;
             }
@@ -1661,6 +1657,7 @@ static le_result_t ParseBasicCmdParam
                 tokenQuote = true;
             }
 
+#if !MK_CONFIG_DISABLE_AT_BRIDGE
             // If "bridge command", keep the quote
             if ((cmdParserPtr->currentCmdPtr)->bridgeCmd)
             {
@@ -1673,6 +1670,7 @@ static le_result_t ParseBasicCmdParam
                     return LE_OVERFLOW;
                 }
             }
+#endif /* end !MK_CONFIG_DISABLE_AT_BRIDGE */
         }
         else
         {
@@ -1960,7 +1958,9 @@ static le_result_t ParseBasic
     }
 
     uint32_t len = cmdParserPtr->currentCharPtr-cmdParserPtr->currentAtCmdPtr+1;
+#if !MK_CONFIG_DISABLE_AT_BRIDGE
     char* initialPosPtr = cmdParserPtr->currentCharPtr;
+#endif
     char atCmd[len];
     memset(atCmd,0,len);
     strncpy(atCmd, cmdParserPtr->currentAtCmdPtr, len-1);
@@ -1984,6 +1984,7 @@ static le_result_t ParseBasic
         }
     }
 
+#if !MK_CONFIG_DISABLE_AT_BRIDGE
     DeviceContext_t* devPtr = CONTAINER_OF(cmdParserPtr, DeviceContext_t, cmdParser);
 
     if ( devPtr->bridgeRef )
@@ -2008,6 +2009,7 @@ static le_result_t ParseBasic
 
         return LE_OK;
     }
+#endif /* end !MK_CONFIG_DISABLE_AT_BRIDGE */
 
     return LE_FAULT;
 }
@@ -2085,6 +2087,7 @@ static le_result_t ParseParam
                 tokenQuote = true;
             }
 
+#if !MK_CONFIG_DISABLE_AT_BRIDGE
             // If "bridge command", keep the quote
             if ((cmdParserPtr->currentCmdPtr)->bridgeCmd)
             {
@@ -2097,6 +2100,7 @@ static le_result_t ParseParam
                     return LE_OVERFLOW;
                 }
             }
+#endif /* end !MK_CONFIG_DISABLE_AT_BRIDGE */
         }
         else
         {
@@ -2974,7 +2978,7 @@ static le_result_t CloseServer
         LE_ERROR("%s", strerror_r(errno, errMsg, ERR_MSG_MAX));
         return LE_FAULT;
     }
-#endif
+#endif /* end LE_CONFIG_LINUX */
 
     cmdPtr = devPtr->cmdParser.currentCmdPtr;
     if (cmdPtr)
@@ -2991,11 +2995,13 @@ static le_result_t CloseServer
         le_mem_Release(unsolicitedPtr);
     }
 
+#if !MK_CONFIG_DISABLE_AT_BRIDGE
     // Remove from bridge
     if (devPtr->bridgeRef)
     {
         le_atServer_RemoveDeviceFromBridge(devRef, devPtr->bridgeRef);
     }
+#endif /* end !MK_CONFIG_DISABLE_AT_BRIDGE */
 
     le_ref_DeleteRef(DevicesRefMap, devPtr->ref);
 
@@ -3028,12 +3034,14 @@ static void CloseSessionEventHandler
         {
             if (sessionRef == cmdPtr->sessionRef)
             {
+#if !MK_CONFIG_DISABLE_AT_BRIDGE
                 if (cmdPtr->bridgeCmd)
                 {
                     LE_DEBUG("deleting '%s' (created by bridge device)", cmdPtr->cmdName);
                     bridge_ReleaseModemCmd(cmdPtr->modemCmdDescRefPtr);
                 }
                 else
+#endif /* end !MK_CONFIG_DISABLE_AT_BRIDGE */
                 {
                     LE_DEBUG("deleting '%s' (created by app)", cmdPtr->cmdName);
                     le_mem_Release(cmdPtr);
@@ -3042,8 +3050,10 @@ static void CloseSessionEventHandler
         }
     }
 
+#if !MK_CONFIG_DISABLE_AT_BRIDGE
     // close associated bridge
     bridge_CleanContext(sessionRef);
+#endif /* end !MK_CONFIG_DISABLE_AT_BRIDGE */
 
     iter = le_ref_GetIterator(DevicesRefMap);
     while (LE_OK == le_ref_NextNode(iter))
@@ -3179,6 +3189,7 @@ le_result_t le_atServer_GetBridgeRef
         return LE_FAULT;
     }
 
+#if !MK_CONFIG_DISABLE_AT_BRIDGE
     if (cmdPtr->bridgeCmd && cmdPtr->processing)
     {
         DeviceContext_t* devPtr = le_ref_Lookup(DevicesRefMap, cmdPtr->deviceRef);
@@ -3193,6 +3204,7 @@ le_result_t le_atServer_GetBridgeRef
 
         return LE_OK;
     }
+#endif /* end !MK_CONFIG_DISABLE_AT_BRIDGE */
 
     return LE_FAULT;
 }
@@ -3215,6 +3227,9 @@ le_result_t le_atServer_UnlinkDeviceFromBridge
     le_atServer_BridgeRef_t bridgeRef
 )
 {
+#if MK_CONFIG_DISABLE_AT_BRIDGE
+    return LE_OK;
+#else /* !MK_CONFIG_DISABLE_AT_BRIDGE */
     DeviceContext_t* devPtr = le_ref_Lookup(DevicesRefMap, deviceRef);
 
     if (devPtr == NULL)
@@ -3233,7 +3248,7 @@ le_result_t le_atServer_UnlinkDeviceFromBridge
                                                     deviceRef, bridgeRef, devPtr->bridgeRef);
 
     return LE_FAULT;
-
+#endif /* end !MK_CONFIG_DISABLE_AT_BRIDGE */
 }
 
 
@@ -3436,7 +3451,7 @@ le_result_t le_atServer_Delete
  * This event provides information when a new AT command is subscribed.
  */
 //--------------------------------------------------------------------------------------------------
-le_atServer_CmdRegistrationHandlerRef_t le_atServer_AddCmdRegistrationHandler
+LE_SHARED le_atServer_CmdRegistrationHandlerRef_t le_atServer_AddCmdRegistrationHandler
 (
     le_atServer_CmdRegistrationHandlerFunc_t handlerPtr,
         ///< [IN]
@@ -3619,7 +3634,7 @@ le_result_t le_atServer_GetParameter
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_atServer_GetCommandName
+LE_SHARED le_result_t le_atServer_GetCommandName
 (
     le_atServer_CmdRef_t commandRef,
         ///< [IN] AT command reference
@@ -4021,12 +4036,15 @@ le_atServer_BridgeRef_t le_atServer_OpenBridge
         ///< [IN] File descriptor.
 )
 {
-    le_atServer_BridgeRef_t bridgeRef = bridge_Open(fd);
+    le_atServer_BridgeRef_t bridgeRef = NULL;
 
+#if !MK_CONFIG_DISABLE_AT_BRIDGE
+    bridgeRef = bridge_Open(fd);
     if (bridgeRef == NULL)
     {
         LE_ERROR("Error during bridge creation");
     }
+#endif /* end !MK_CONFIG_DISABLE_AT_BRIDGE */
 
     return bridgeRef;
 }
@@ -4047,7 +4065,11 @@ le_result_t le_atServer_CloseBridge
         ///< [IN] Bridge refence
 )
 {
+#if MK_CONFIG_DISABLE_AT_BRIDGE
+    return LE_OK;
+#else /* !MK_CONFIG_DISABLE_AT_BRIDGE */
     return bridge_Close(bridgeRef);
+#endif /* end !MK_CONFIG_DISABLE_AT_BRIDGE */
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -4069,6 +4091,7 @@ le_result_t le_atServer_AddDeviceToBridge
         ///< [IN] Bridge refence
 )
 {
+#if !MK_CONFIG_DISABLE_AT_BRIDGE
     DeviceContext_t* devPtr = le_ref_Lookup(DevicesRefMap, deviceRef);
     le_result_t res;
 
@@ -4089,6 +4112,7 @@ le_result_t le_atServer_AddDeviceToBridge
     }
 
     devPtr->bridgeRef = bridgeRef;
+#endif /* end !MK_CONFIG_DISABLE_AT_BRIDGE */
 
     return LE_OK;
 }
@@ -4112,6 +4136,7 @@ le_result_t le_atServer_RemoveDeviceFromBridge
         ///< [IN] Bridge refence
 )
 {
+#if !MK_CONFIG_DISABLE_AT_BRIDGE
     DeviceContext_t* devPtr = le_ref_Lookup(DevicesRefMap, deviceRef);
 
     if (devPtr == NULL)
@@ -4140,6 +4165,7 @@ le_result_t le_atServer_RemoveDeviceFromBridge
     }
 
     devPtr->bridgeRef = NULL;
+#endif /* end !MK_CONFIG_DISABLE_AT_BRIDGE */
 
     return LE_OK;
 }
@@ -4149,7 +4175,7 @@ le_result_t le_atServer_RemoveDeviceFromBridge
  * This function enables verbose error codes on the selected device
  */
 //--------------------------------------------------------------------------------------------------
-void le_atServer_EnableVerboseErrorCodes
+LE_SHARED void le_atServer_EnableVerboseErrorCodes
 (
     void
 )
@@ -4162,7 +4188,7 @@ void le_atServer_EnableVerboseErrorCodes
  * This function enables extended error codes on the selected device
  */
 //--------------------------------------------------------------------------------------------------
-void le_atServer_EnableExtendedErrorCodes
+LE_SHARED void le_atServer_EnableExtendedErrorCodes
 (
     void
 )
@@ -4176,7 +4202,7 @@ void le_atServer_EnableExtendedErrorCodes
  *
  */
 //--------------------------------------------------------------------------------------------------
-void le_atServer_DisableExtendedErrorCodes
+LE_SHARED void le_atServer_DisableExtendedErrorCodes
 (
     void
 )
@@ -4365,60 +4391,6 @@ le_result_t le_atServer_GetTextAsync
 #endif
 }
 
-
-//--------------------------------------------------------------------------------------------------
-// Simple pass-throughs for functions which may be called from other components in the same
-// executable as this one.
-//
-// Other components cannot call le_atServer_...() functions directly as this will conflict
-// with client stub names on RTOS.
-//--------------------------------------------------------------------------------------------------
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Add handler function for EVENT 'le_atServer_CmdRegistration'
- *
- * This event provides information when a new AT command is subscribed.
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED le_atServer_CmdRegistrationHandlerRef_t le_atServerLocal_AddCmdRegistrationHandler
-(
-    le_atServer_CmdRegistrationHandlerFunc_t handlerPtr,
-        ///< [IN]
-
-    void* contextPtr
-        ///< [IN]
-)
-{
-    return le_atServer_AddCmdRegistrationHandler(handlerPtr, contextPtr);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function can be used to get the AT command string.
- *
- * @return
- *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed to get the AT command string.
- *
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t le_atServerLocal_GetCommandName
-(
-    le_atServer_CmdRef_t commandRef,
-        ///< [IN] AT command reference
-
-    char* namePtr,
-        ///< [OUT] AT command string
-
-    size_t nameNumElements
-        ///< [IN]
-)
-{
-    return le_atServer_GetCommandName(commandRef, namePtr, nameNumElements);
-}
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * The COMPONENT_INIT intialize the AT Server Component when Legato start
@@ -4483,7 +4455,9 @@ COMPONENT_INIT
     // Create an event Id for platform-specific AT command registration
     CmdRegId = le_event_CreateId("CmdRegEventId", sizeof(le_atServer_CmdRef_t));
 
+#if !MK_CONFIG_DISABLE_AT_BRIDGE
     bridge_Init();
+#endif /* end !MK_CONFIG_DISABLE_AT_BRIDGE */
 
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
