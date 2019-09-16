@@ -57,6 +57,14 @@ typedef enum
 CmdType_t;
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Max number of archived async handlers provided by client apps that have called an async le_mdc
+ * API.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MDC_ASYNC_HDLRS_MAX 20
+
+//--------------------------------------------------------------------------------------------------
 // Data structures.
 //--------------------------------------------------------------------------------------------------
 
@@ -151,6 +159,31 @@ static le_log_TraceRef_t TraceRef;
 /// Macro used to query current trace state in this module
 #define IS_TRACE_ENABLED LE_IS_TRACE_ENABLED(TraceRef)
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * AsyncHandlerDb_t is the async handler db structure type for archiving an async handler provided
+ * in an async le_mdc API call. After an async handler called or its provider client app closes,
+ * it'll be removed from the archive. Before it is called, its presence in this archive is 1st of
+ * all checked to make sure it's valid. If it's not found, it means that its provider client app
+ * is already gone, and, thus, it shouldn't be called at all.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_msg_SessionRef_t sessionRef;            ///< handler's owner session's reference
+    le_mdc_SessionHandlerFunc_t asyncHandler;  ///< async handler
+    le_dls_Link_t handlerLink;                 ///< double link list's link element
+}
+AsyncHandlerDb_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The memory pool for async handler dbs and the list structure serving as their archive.
+ * Although it might matter little, AsyncHandlerDbList is implemented as a FIFO double linked-list.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t AsyncHandlerDbPool;
+static le_dls_List_t AsyncHandlerDbList;
 
 
 // =============================================
@@ -558,6 +591,142 @@ static le_result_t FindApnWithIccidFromFile
     return result;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function looks up the async handler db on AsyncHandlerDbList for a given async handler in
+ * the input. This async handler on the le_mdc side would be unique across multiple client apps as
+ * a result of Legato's IDL generation of stub functions for API servers, such that here an async
+ * handler on the le_mdc side provided by client app X would not be incorrectly mapped to another
+ * client app Y.
+ *
+ * @return
+ *     AsyncHandlerDb_t*    the found async handler db; otherwise NULL
+ */
+//--------------------------------------------------------------------------------------------------
+static AsyncHandlerDb_t* FindAsyncHandlerDbByHandler
+(
+    le_mdc_SessionHandlerFunc_t asyncHandler
+)
+{
+    AsyncHandlerDb_t *asyncHandlerDb;
+    le_dls_Link_t *handlerLinkPtr = le_dls_Peek(&AsyncHandlerDbList);
+    while (handlerLinkPtr)
+    {
+        asyncHandlerDb = CONTAINER_OF(handlerLinkPtr, AsyncHandlerDb_t, handlerLink);
+        if (asyncHandlerDb->asyncHandler == asyncHandler)
+        {
+            LE_DEBUG("Found async handler %p for session reference %p", asyncHandler,
+                     asyncHandlerDb->sessionRef);
+            return asyncHandlerDb;
+        }
+        handlerLinkPtr = le_dls_PeekNext(&AsyncHandlerDbList, handlerLinkPtr);
+    }
+    LE_DEBUG("Found no async handler %p enlisted", asyncHandler);
+    return NULL;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function cleans up the async handler db's on AsyncHandlerDbList for a given client app
+ * identified by the session reference in the input. While a client app may have multiple async
+ * handlers there, this function seeks to find & remove all of them.
+ */
+//--------------------------------------------------------------------------------------------------
+static void CleanupAsyncHandlerDbs
+(
+    le_msg_SessionRef_t sessionRef
+)
+{
+    uint16_t numCleaned = 0;
+    AsyncHandlerDb_t *asyncHandlerDb;
+    le_dls_Link_t *handlerLinkPtr = le_dls_Peek(&AsyncHandlerDbList);
+    while (handlerLinkPtr)
+    {
+        asyncHandlerDb = CONTAINER_OF(handlerLinkPtr, AsyncHandlerDb_t, handlerLink);
+        handlerLinkPtr = le_dls_PeekNext(&AsyncHandlerDbList, handlerLinkPtr);
+        if (asyncHandlerDb->sessionRef == sessionRef)
+        {
+            le_mem_Release(asyncHandlerDb);
+            numCleaned++;
+        }
+    }
+    LE_DEBUG("# of async handlers of session reference %p cleaned: %d ", sessionRef, numCleaned);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function creats a new async handler db for the async handler given in the input for the
+ * specified client app identified by its session reference. Then, it archives this new db onto
+ * AsyncHandlerDbList.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddAsyncHandlerDb
+(
+    le_msg_SessionRef_t sessionRef,
+    le_mdc_SessionHandlerFunc_t asyncHandler
+)
+{
+    AsyncHandlerDb_t *asyncHandlerDb;
+    char appName[LE_LIMIT_APP_NAME_LEN] = {0};
+    pid_t pid = 0;
+    uid_t uid = 0;
+
+    if (!sessionRef || !asyncHandler)
+    {
+        return;
+    }
+
+    if ((LE_OK == le_msg_GetClientUserCreds(sessionRef, &uid, &pid)) &&
+        (LE_OK == le_appInfo_GetName(pid, appName, sizeof(appName)-1)))
+    {
+        LE_DEBUG("Async API called by client app %s", appName);
+    }
+
+    asyncHandlerDb = le_mem_ForceAlloc(AsyncHandlerDbPool);
+    if (!asyncHandlerDb)
+    {
+        LE_ERROR("Failed to alloc memory for async handler db");
+        return;
+    }
+
+    memset(asyncHandlerDb, 0, sizeof(AsyncHandlerDb_t));
+    asyncHandlerDb->asyncHandler = asyncHandler;
+    asyncHandlerDb->sessionRef = sessionRef;
+    asyncHandlerDb->handlerLink = LE_DLS_LINK_INIT;
+    le_dls_Queue(&AsyncHandlerDbList, &asyncHandlerDb->handlerLink);
+    LE_DEBUG("asyncHandlerDbList size: %"PRIuS, le_dls_NumLinks(&AsyncHandlerDbList));
+    LE_DEBUG("Added async handler %p for session reference %p", asyncHandler, sessionRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Destructor function that runs when a channelDb is deallocated
+ */
+//--------------------------------------------------------------------------------------------------
+static void AsyncHandlerDbDestructor
+(
+    void *objPtr
+)
+{
+    AsyncHandlerDb_t *asyncHandlerDb = (AsyncHandlerDb_t *)objPtr;
+    if (!asyncHandlerDb || !le_dls_IsInList(&AsyncHandlerDbList, &asyncHandlerDb->handlerLink))
+    {
+        return;
+    }
+
+    LE_DEBUG("Remove async handler %p for session reference %p from the list & free it db",
+             objPtr, asyncHandlerDb->sessionRef);
+    le_dls_Remove(&AsyncHandlerDbList, &asyncHandlerDb->handlerLink);
+    asyncHandlerDb->asyncHandler = NULL;
+    asyncHandlerDb->handlerLink = LE_DLS_LINK_INIT;
+    LE_DEBUG("asyncHandlerDbList size: %"PRIuS, le_dls_NumLinks(&AsyncHandlerDbList));
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler to process a command
@@ -602,10 +771,21 @@ static void ProcessCommandEventHandler
         // Check if a handler function is available.
         if (cmdRequestPtr->handlerFunc)
         {
-            LE_DEBUG("Calling Handler (%p), Status %d", cmdRequestPtr->handlerFunc, result);
-            cmdRequestPtr->handlerFunc( cmdRequestPtr->profileRef,
-                                        result,
-                                        cmdRequestPtr->contextPtr );
+            // Before calling an async handler, check to see if it's on AsyncHandlerDbList to mean
+            // that it's still valid. If the client session which provided it is already gone, it
+            // would have been removed from AsyncHandlerDbList.
+            AsyncHandlerDb_t *asyncHandlerDb =
+                FindAsyncHandlerDbByHandler(cmdRequestPtr->handlerFunc);
+            if (!asyncHandlerDb)
+            {
+                LE_WARN("Async handler %p not called as its client session is already closed",
+                        cmdRequestPtr->handlerFunc);
+                return;
+            }
+            LE_DEBUG("Calling async handler %p with status %d", cmdRequestPtr->handlerFunc, result);
+            cmdRequestPtr->handlerFunc(cmdRequestPtr->profileRef, result,
+                                       cmdRequestPtr->contextPtr);
+            le_mem_Release(asyncHandlerDb);
         }
         else
         {
@@ -738,6 +918,27 @@ static le_result_t SetDataCounters
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Handler function to release memory objects of le_mdc upon the closing of a client app that
+ * include the async handlers archived earlier on AsyncHandlerDbList.
+ */
+//--------------------------------------------------------------------------------------------------
+static void CloseSessionEventHandler
+(
+    le_msg_SessionRef_t sessionRef, ///< [IN] Session reference of client application.
+    void* contextPtr                ///< [IN] Context pointer got from ServiceCloseHandler.
+)
+{
+    if (!sessionRef)
+    {
+        LE_ERROR("ERROR sessionRef is NULL");
+        return;
+    }
+    LE_INFO("SessionRef %p has been closed", sessionRef);
+    CleanupAsyncHandlerDbs(sessionRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initialize the MDC component.
  *
  */
@@ -787,8 +988,17 @@ void le_mdc_Init
     le_sem_Wait(initSemaphore);
     le_sem_Delete(initSemaphore);
 
-    //  MT-PDP change handler counter initialization
+    // MT-PDP change handler counter initialization
     MtPdpStateChangeHandlerCounter = 0;
+
+    // Initialize the list for archiving async handler data structures
+    AsyncHandlerDbList = LE_DLS_LIST_INIT;
+    AsyncHandlerDbPool = le_mem_CreatePool("MdcAsyncHandlerDbPool", sizeof(AsyncHandlerDb_t));
+    le_mem_ExpandPool(AsyncHandlerDbPool, MDC_ASYNC_HDLRS_MAX);
+    le_mem_SetDestructor(AsyncHandlerDbPool, AsyncHandlerDbDestructor);
+
+    // Add a close session event handler for doing cleanup for closing clients
+    le_msg_AddServiceCloseHandler(le_mdc_GetServiceRef(), CloseSessionEventHandler, NULL);
 }
 
 // =============================================
@@ -1059,6 +1269,7 @@ void le_mdc_StartSessionAsync
 )
 {
     le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+    le_msg_SessionRef_t sessionRef = le_mdc_GetClientSessionRef();
     CmdRequest_t cmd;
     memset(&cmd,0,sizeof(CmdRequest_t));
 
@@ -1072,6 +1283,9 @@ void le_mdc_StartSessionAsync
     cmd.profileRef = profileRef;
     cmd.contextPtr = contextPtr;
     cmd.handlerFunc = handlerPtr;
+
+    // Archive the async handler provided by the calling client app if any
+    AddAsyncHandlerDb(sessionRef, handlerPtr);
 
     // Sending start data session command
     LE_DEBUG("Send start data session command");
@@ -1133,7 +1347,9 @@ void le_mdc_StopSessionAsync
 )
 {
     le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+    le_msg_SessionRef_t sessionRef = le_mdc_GetClientSessionRef();
     CmdRequest_t cmd;
+    memset(&cmd,0,sizeof(CmdRequest_t));
 
     if (profilePtr == NULL)
     {
@@ -1145,6 +1361,9 @@ void le_mdc_StopSessionAsync
     cmd.profileRef = profileRef;
     cmd.contextPtr = contextPtr;
     cmd.handlerFunc = handlerPtr;
+
+    // Archive the async handler provided by the calling client app if any
+    AddAsyncHandlerDb(sessionRef, handlerPtr);
 
     // Sending stop data session command
     LE_DEBUG("Send stop data session command");

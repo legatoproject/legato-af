@@ -73,6 +73,47 @@ le_msg_SessionRef_t le_mrc_GetClientSessionRef
  * Get the server service reference (STUBBED FUNCTION)
  */
 //--------------------------------------------------------------------------------------------------
+le_msg_ServiceRef_t le_mdc_GetServiceRef
+(
+    void
+)
+{
+    return _ServerServiceRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the client session reference for the current message (STUBBED FUNCTION)
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_SessionRef_t le_mdc_GetClientSessionRef
+(
+    void
+)
+{
+    return _ClientSessionRef;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Gets the application name of the process with the specified PID (STUBBED FUNCTION)
+ */
+//-------------------------------------------------------------------------------------------------
+le_result_t le_appInfo_GetName
+(
+    int32_t  pid,           ///< [IN]  PID of the process.
+    char    *appNameStr,    ///< [OUT] Application name buffer.
+    size_t   appNameSize    ///< [IN]  Buffer size.
+)
+{
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the server service reference (STUBBED FUNCTION)
+ */
+//--------------------------------------------------------------------------------------------------
 le_msg_ServiceRef_t le_sim_GetServiceRef
 (
     void

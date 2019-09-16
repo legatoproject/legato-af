@@ -38,6 +38,7 @@ bindings:
     modemDaemon.modemDaemon.le_pm -> powerMgr.le_pm
     modemDaemon.watchdogChain.le_wdog -> <root>.le_wdog
     rSimDaemon.watchdogChain.le_wdog -> <root>.le_wdog
+    modemDaemon.modemDaemon.le_appInfo -> <root>.le_appInfo
 }
 
 requires:
