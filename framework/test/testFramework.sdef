@@ -45,7 +45,7 @@ apps:
 #endif
     ipc/test_Optional2
 #if ${LE_CONFIG_FILESYSTEM} = y
-//    fs/test_Fs
+    fs/test_Fs
 #endif
     crc/test_Crc
     fd/test_Fd
