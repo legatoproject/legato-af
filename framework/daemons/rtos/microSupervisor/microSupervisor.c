@@ -14,7 +14,7 @@
 #include "args.h"
 #include "eventLoop.h"
 #include "fileDescriptor.h"
-/* #include "fs.h" */
+#include "fs.h"
 #include "json.h"
 #include "log.h"
 #include "mem.h"
