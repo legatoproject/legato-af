@@ -371,7 +371,7 @@ Jan  3 02:37:56  INFO  | processName[pid]/componentName T=threadName | fileName.
  * Local definitions that should not be used directly.
  */
 //--------------------------------------------------------------------------------------------------
-typedef enum
+typedef enum _le_log_Level_t
 {
     LE_LOG_DEBUG,   ///< Debug message.
     LE_LOG_INFO,    ///< Informational message.  Normally expected.
