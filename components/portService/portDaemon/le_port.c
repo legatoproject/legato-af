@@ -1204,7 +1204,10 @@ static void MonitorSocket
         }
 
         linkInfoPtr = le_fdMonitor_GetContextPtr();
-
+        if (linkInfoPtr == NULL)
+        {
+            goto exit_close_socket;
+        }
         if (0 == strcmp(linkInfoPtr->possibleMode[0], "DATA"))
         {
             LE_DEBUG("Socket opens in data mode.");
@@ -2173,7 +2176,7 @@ static void CloseSessionEventHandler
         OpenedInstanceCtx_t* openedInstanceCtxPtr = (OpenedInstanceCtx_t*)le_ref_GetValue(iterRef);
 
         // Check if the session reference saved matches with the current session reference.
-        if (openedInstanceCtxPtr->sessionRef == sessionRef)
+        if ((openedInstanceCtxPtr != NULL) && (openedInstanceCtxPtr->sessionRef == sessionRef))
         {
             le_port_DeviceRef_t devRef = (le_port_DeviceRef_t)le_ref_GetSafeRef(iterRef);
             LE_DEBUG("Release device reference 0x%p, sessionRef 0x%p", devRef, sessionRef);
