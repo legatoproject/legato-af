@@ -179,10 +179,6 @@ static DcsDefaultGwConfigDb_t* GetDefaultGwConfigDb
          defGwConfigDbLinkPtr = le_dls_PeekNext(&DcsDefaultGwConfigDbList, defGwConfigDbLinkPtr))
     {
         defGwConfigDbPtr = CONTAINER_OF(defGwConfigDbLinkPtr, DcsDefaultGwConfigDb_t, dbLink);
-        if (!defGwConfigDbPtr)
-        {
-            continue;
-        }
         if (!(backupDbPtr = &defGwConfigDbPtr->backupConfig))
         {
             LE_WARN("Default GW config Db missing on its Db list");
