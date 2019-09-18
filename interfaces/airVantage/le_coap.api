@@ -32,6 +32,10 @@
  * by setting the status to LE_COAP_RX_STREAM_END unless an error condition is detected.
  * LE_COAP_TX_STREAM_ERROR and LE_COAP_RX_STREAM_ERROR are error messages of the transmit
  * stream and receive stream respectively.
+ * The client can cancel the stream by pushing a message with LE_COAP_TX_STREAM_CANCEL status.
+ *
+ * @Note: Current implementation supports only single client, single thread mode. It does not
+ * support multiple streams being pushed in parallel.
  *
  * This code sample shows how to add an external CoAP Handler and receive an incoming
  * CoAP stream.
@@ -246,8 +250,9 @@ ENUM Code
  * CoAP stream status (write request block-2 & read response block-1).
  *
  * Note: This enum is used for receiving CoAP messages and also starting a transmit stream from
- * the device. TX_STREAM_START/ TX_STREAM_END will never be received on incoming CoAP messages but
- * can be used to indicate status of outgoing stream using le_coap_SendResponse() api.
+ * the device. TX_STREAM_START/ TX_STREAM_END / TX_STREAM_CANCEL will never be received on incoming
+ * CoAP messages but can be used to indicate status of outgoing stream using
+ * le_coap_SendResponse() api.
  */
 //--------------------------------------------------------------------------------------------------
 ENUM StreamStatus
@@ -260,6 +265,7 @@ ENUM StreamStatus
     TX_STREAM_START,                    ///< Starting a transmit Stream
     TX_STREAM_IN_PROGRESS,              ///< Continue streaming
     TX_STREAM_END,                      ///< All blocks sent out successfully
+    TX_STREAM_CANCEL,                   ///< Cancel the stream
     TX_STREAM_ERROR,                    ///< Error in sending stream
     STREAM_INVALID                      ///< Invalid stream status
 };
@@ -352,9 +358,20 @@ EVENT MessageEvent
 //--------------------------------------------------------------------------------------------------
 HANDLER PushHandler
 (
-    PushStatus status IN                                ///< push status
+    PushStatus status                       IN,         ///< Push status
+    uint8 token[MAX_TOKEN_NUM_BYTES]        IN          ///< Token in CoAP message header
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event delivers the response to Push operation.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT PushEvent
+(
+    PushHandler handler
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -368,7 +385,5 @@ FUNCTION le_result_t Push
     uint8 token[MAX_TOKEN_NUM_BYTES]        IN,         ///< Token in CoAP message header
     uint16 contentType                      IN,         ///< Content type of the payload
     StreamStatus streamStatus               IN,         ///< Status of transmit stream
-    uint8 payload[MAX_PAYLOAD_NUM_BYTES]    IN,         ///< CoAP Payload
-    PushHandler pushHandlerRef              IN          ///< Handler for receiving response
-                                                        ///  for the push operation
+    uint8 payload[MAX_PAYLOAD_NUM_BYTES]    IN          ///< CoAP Payload
 );
