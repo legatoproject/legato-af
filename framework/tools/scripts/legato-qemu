@@ -178,10 +178,10 @@ function img_get_timestamp {
     local target=$1
     local img_type=$2
 
-    img_url_for_target $target $img_type
+    img_url_for_target "$target" "$img_type"
 
     # Get image timestamp from server
-    export IMG_TIMESTAMP=$(curl -I $IMG_SRC 2> /dev/null | sed -e 's/Last-Modified: //g;t;d' | xargs -i date -d "{}" +"%s")
+    export IMG_TIMESTAMP=$(curl -I "$IMG_SRC" 2> /dev/null | sed -e 's/Last-Modified: //gi;t;d' | xargs -i date -d "{}" +"%s")
 }
 
 function img_save_timestamp {
@@ -196,7 +196,7 @@ function img_save_timestamp {
         return
     fi
 
-    message $COLOR_INFO "Saving image timestamp ($img_timestamp)"
+    message $COLOR_INFO "Saving image timestamp ($img_timestamp = $(date --date "@${img_timestamp}"))"
     local ts_file="$img_dest/.img-timestamp-${img_type}"
     echo $img_timestamp > "$ts_file"
 }
@@ -224,7 +224,7 @@ function check_new_image {
 
     if [ -z "$IMG_TIMESTAMP" ]; then
         message $COLOR_WARN "Unable to determine if a new image is available"
-    elif [ $IMG_TIMESTAMP -ne $current_img_timestamp ]; then
+    elif [ "$IMG_TIMESTAMP" -ne "$current_img_timestamp" ]; then
         message $COLOR_WARN "New image available, delete $img_dest to upgrade"
     fi
 }
@@ -246,18 +246,18 @@ function fetch_image {
         return 0
     fi
 
-    message $COLOR_INFO "Fetching image for '$img_type' from server"
+    message $COLOR_INFO "Fetching images for '$img_type' from server"
 
     if ! [ -e "$img_dest" ]; then
-        message $COLOR_INFO "Create $img_dest to hold images ..."
-        mkdir -p $img_dest
+        message $COLOR_INFO "Creating $img_dest to hold images ..."
+        mkdir -p "$img_dest"
     fi
 
     message $COLOR_INFO "Fetching images from $IMG_SRC ..."
-    local img_dest_name="$(basename $IMG_SRC)"
-    (cd $img_dest && rm -f $img_dest_name && wget -O "$img_dest_name" $IMG_SRC)
+    local img_dest_name="$(basename "$IMG_SRC")"
+    (cd $img_dest && rm -f $img_dest_name && wget -O "$img_dest_name" "$IMG_SRC")
     if [ $? -ne 0 ]; then
-        message $COLOR_ERROR "Failed to retrieve image"
+        message $COLOR_ERROR "Failed to retrieve images"
         exit 1
     fi
 
@@ -266,8 +266,8 @@ function fetch_image {
         check_ret
     fi
 
-    img_get_timestamp $target $img_type
-    img_save_timestamp $target $img_type $IMG_TIMESTAMP
+    img_get_timestamp "$target" "$img_type"
+    img_save_timestamp "$target" "$img_type" "$IMG_TIMESTAMP"
 }
 
 # Create snapshot from image
@@ -276,7 +276,7 @@ function create_snapshot {
     local img_dest=$2
 
     message $COLOR_INFO "Create snapshot from rootfs ..."
-    qemu-img create -f qcow2 -b $img_src $img_dest
+    $QEMU_IMG create -f qcow2 -b $img_src $img_dest
     check_ret
 }
 
@@ -360,9 +360,38 @@ function find_qemu_bin {
     fi
 
     QEMU_BIN=$best_bin
+    QEMU_IMG="$(dirname "$best_bin")/qemu-img"
     QEMU_VERSION=$best_version
 
     return 0
+}
+
+find_qemu() {
+    if [ -z "$QEMU_BIN" ]; then
+        if [ -z "$QEMU_ARCH" ]; then
+            case "$OPT_TARGET" in
+                virt-x86)
+                    QEMU_ARCH=i386
+                    ;;
+                virt-x86_64)
+                    QEMU_ARCH=x86_64
+                    ;;
+                *)
+                    QEMU_ARCH=arm
+                    ;;
+            esac
+        fi
+
+        find_qemu_bin
+    else
+        get_qemu_version "$QEMU_BIN"
+        if [ -z "$FOUND_QEMU_VERSION" ]; then
+            message $COLOR_ERROR "Unable to get qemu version"
+            exit 1
+        fi
+
+        QEMU_VERSION=$FOUND_QEMU_VERSION
+    fi
 }
 
 ## Arguments associated with options
@@ -390,7 +419,7 @@ fi
 # Per-host options
 if [ -e "$USER_DIR/options.$HOSTNAME" ]; then
     message $COLOR_MSG "Loading options for $HOSTNAME ..."
-    source $USER_DIR/options.$HOSTNAME
+    source "$USER_DIR/options.$HOSTNAME"
 fi
 
 # Configure
@@ -399,7 +428,7 @@ function configure_virt_common {
 
     # Linux
     if [ -z "$KERNEL_IMG" ] && [ -z "$ROOTFS_IMG" ]; then
-        fetch_image $OPT_TARGET 'yocto'
+        fetch_image "$OPT_TARGET" 'yocto'
 
         KERNEL_IMG="$DATA_DIR/kernel"
         ROOTFS_IMG="$DATA_DIR/rootfs.qcow2"
@@ -411,9 +440,9 @@ function configure_virt_common {
 
         if [ -e "$LEGATO_ROOT/build/${OPT_TARGET}/legato.squashfs" ]; then
             # Use the local image if available
-            ln -sf $LEGATO_ROOT/build/${OPT_TARGET}/legato.squashfs $LEGATO_IMG
+            ln -sf "$LEGATO_ROOT/build/${OPT_TARGET}/legato.squashfs" "$LEGATO_IMG"
         else
-            fetch_image $OPT_TARGET 'legato'
+            fetch_image "$OPT_TARGET" 'legato'
         fi
     fi
 
@@ -422,15 +451,23 @@ function configure_virt_common {
         USERFS_IMG="$DATA_DIR/userfs.qcow2"
 
         if [ ! -e "$USERFS_IMG" ]; then
-            USERFS_IMG_ext4="$DATA_DIR/userfs.ext4"
+            USERFS_IMG_EXT4="$DATA_DIR/userfs.ext4"
+
+            if [ -z "$QEMU_IMG" ]; then
+                find_qemu
+            fi
+            if [ -z "$QEMU_IMG" ] || [ ! -e "$QEMU_IMG" ]; then
+                message $COLOR_ERROR "Unable to find qemu-img"
+                exit 1
+            fi
 
             # Generate an empty ext4 partition that will be used as /mnt/flash
-            qemu-img create -f raw "$USERFS_IMG_ext4" $USERFS_SIZE
+            $QEMU_IMG create -f raw "$USERFS_IMG_EXT4" "$USERFS_SIZE"
 
-            mkfs -t ext4 "$USERFS_IMG_ext4"
+            mkfs -t ext4 "$USERFS_IMG_EXT4"
 
             # Convert to qcow2 (mostly to save space)
-            qemu-img convert -f raw -O qcow2 "$USERFS_IMG_ext4" "$USERFS_IMG"
+            $QEMU_IMG convert -f raw -O qcow2 "$USERFS_IMG_EXT4" "$USERFS_IMG"
             USERFS_IMG="$USERFS_IMG"
         fi
     fi
@@ -535,31 +572,7 @@ else
     exit 1
 fi
 
-if [ -z "$QEMU_BIN" ]; then
-    if [ -z "$QEMU_ARCH" ]; then
-        case "$LEGATO_TARGET" in
-            virt-x86)
-                QEMU_ARCH=i386
-                ;;
-            virt-x86_64)
-                QEMU_ARCH=x86_64
-                ;;
-            *)
-                QEMU_ARCH=arm
-                ;;
-        esac
-    fi
-
-    find_qemu_bin
-else
-    get_qemu_version "$QEMU_BIN"
-    if [ -z "$FOUND_QEMU_VERSION" ]; then
-        message $COLOR_ERROR "Unable to get qemu version"
-        exit 1
-    fi
-
-    QEMU_VERSION=$FOUND_QEMU_VERSION
-fi
+find_qemu
 
 if [ "$OPT_PERSIST" -eq 1 ]; then
     message $COLOR_MSG "Persistent mode"
@@ -703,7 +716,7 @@ if [ "$OPT_NET" == "user" ]; then
 
     message $COLOR_INFO " => Access SSH through 'ssh -p $SSH_PORT root@localhost'"
 
-    if verlte "$QEMU_VERSION" "2.12.0"; then
+    if verlte "$QEMU_VERSION" "2.11.0"; then
         ARG_NET="-net nic,model=$NET_DRV,netdev=vlan0"
     else
         ARG_NET="-device $NET_DRV,netdev=vlan0"
@@ -718,7 +731,7 @@ elif [ "$OPT_NET" == "tap" ]; then
     fi
 
     message $COLOR_INFO " => Using interface $TAP_IF"
-    if verlte "$QEMU_VERSION" "2.12.0"; then
+    if verlte "$QEMU_VERSION" "2.11.0"; then
         ARG_NET="-net nic,model=$NET_DRV,netdev=vlan0,macaddr=b2:5b:96:c8:51:34"
     else
         ARG_NET="-device $NET_DRV,netdev=vlan0,macaddr=b2:5b:96:c8:51:34"
@@ -731,7 +744,7 @@ fi
 # Net: vlan 1
 if [ "$OPT_NET2" == "simu" ]; then
     message $COLOR_MSG "Network interface for simulation"
-    if verlte "$QEMU_VERSION" "2.12.0"; then
+    if verlte "$QEMU_VERSION" "2.11.0"; then
         ARG_NET2="-net nic,model=$NET_DRV,netdev=vlan1"
     else
         ARG_NET2="-device $NET_DRV,netdev=vlan1"
