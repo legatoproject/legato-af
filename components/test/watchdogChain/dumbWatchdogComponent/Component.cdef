@@ -1,0 +1,12 @@
+provides:
+{
+    api:
+    {
+        le_wdog.api
+    }
+}
+
+sources:
+{
+    watchdog.c
+}

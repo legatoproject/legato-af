@@ -47,6 +47,43 @@
  */
 #define LE_ATOMIC_TEST_AND_SET(ptr, order) __atomic_test_and_set((ptr), (order))
 
+/**
+ * Performs an atomic add operation. Results are stored in address pointed to by ptr
+ *
+ * @return output value of operation
+ */
+#define LE_ATOMIC_ADD_FETCH(ptr, value, order)  __atomic_add_fetch((ptr), (value), (order))
+
+/**
+ * Performs an atomic subtract operation. Results are stored in address pointed to by ptr
+ *
+ * @return output value of operation
+ */
+#define LE_ATOMIC_SUB_FETCH(ptr, value, order)  __atomic_sub_fetch((ptr), (value), (order))
+
+/**
+ * Performs an atomic bitwise-OR operation. Results are stored in address pointed to by ptr
+ *
+ * @return output value of operation
+ */
+#define LE_ATOMIC_OR_FETCH(ptr, value, order)  __atomic_or_fetch((ptr), (value), (order))
+
+/**
+ * Performs an atomic bitwise-AND operation. Results are stored in address pointed to by ptr
+ *
+ * @return output value of operation
+ */
+#define LE_ATOMIC_AND_FETCH(ptr, value, order) __atomic_and_fetch((ptr), (value), (order))
+
+/**
+ * Perform an atomic compare and swap. If the current value of *ptr is oldval, then write newval
+ * into *ptr.
+ *
+ * @return True if comparison is successful and newval was written
+ */
+#define LE_SYNC_BOOL_COMPARE_AND_SWAP(ptr, oldval, newval) \
+            __sync_bool_compare_and_swap((ptr), (oldval), (newval))
+
 #else /* !__GCC__ */
 
 // On compilers other than GCC, the framework adaptor must provide an implementation.
@@ -68,6 +105,26 @@
 
 #ifndef LE_ATOMIC_TEST_AND_SET
 #error "The frameworkAdaptor is missing a definition of LE_ATOMIC_TEST_AND_SET"
+#endif
+
+#ifndef LE_ATOMIC_ADD_FETCH
+#error "The frameworkAdaptor is missing a definition of LE_ATOMIC_ADD_FETCH"
+#endif
+
+#ifndef LE_ATOMIC_SUB_FETCH
+#error "The frameworkAdaptor is missing a definition of LE_ATOMIC_SUB_FETCH"
+#endif
+
+#ifndef LE_ATOMIC_OR_FETCH
+#error "The frameworkAdaptor is missing a definition of LE_ATOMIC_OR_FETCH"
+#endif
+
+#ifndef LE_ATOMIC_AND_FETCH
+#error "The frameworkAdaptor is missing a definition of LE_ATOMIC_AND_FETCH"
+#endif
+
+#ifndef LE_SYNC_BOOL_COMPARE_AND_SWAP
+#error "The frameworkAdaptor is missing a definition of LE_SYNC_BOOL_COMPARE_AND_SWAP"
 #endif
 
 #endif /* __GCC__ */

@@ -392,7 +392,7 @@ void msgLocal_OpenSessionSync
 //--------------------------------------------------------------------------------------------------
 le_result_t msgLocal_TryOpenSessionSync
 (
-    le_msg_SessionRef_t             sessionRef      ///< [in] Reference to the session.
+    msg_LocalSession_t*            sessionRef      ///< [in] Reference to the session.
 )
 {
     // Check if session exists and is started.
@@ -402,7 +402,7 @@ le_result_t msgLocal_TryOpenSessionSync
         return LE_NOT_PERMITTED;
     }
 
-    le_msg_LocalService_t* servicePtr = (le_msg_LocalService_t*)sessionRef;
+    le_msg_LocalService_t* servicePtr = sessionRef->servicePtr;
 
     // Do not lock; we want to fail if service is not yet started rather than blocking
     // until service starts.

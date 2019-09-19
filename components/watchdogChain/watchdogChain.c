@@ -25,7 +25,7 @@
  * code below should also be modified to match.
  */
 //--------------------------------------------------------------------------------------------------
-#define MAX_WATCHDOG_CHAINS                  32
+#define MAX_WATCHDOG_CHAINS         32
 #endif
 
 //--------------------------------------------------------------------------------------------------
@@ -135,7 +135,7 @@ static inline watchdog_t MarkOneStarted
 {
     watchdog_t mask =   (WATCHDOG_C(1) << watchdog) |
                         (WATCHDOG_C(1) << (watchdog + MAX_WATCHDOG_CHAINS));
-    return __sync_or_and_fetch(&LE_CDATA_THIS->WatchdogChain, mask);
+    return LE_ATOMIC_OR_FETCH(&LE_CDATA_THIS->WatchdogChain, mask, LE_ATOMIC_ORDER_ACQ_REL);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -151,7 +151,7 @@ static inline watchdog_t MarkOneStopped
 )
 {
     watchdog_t mask = ~(WATCHDOG_C(1) << (watchdog + MAX_WATCHDOG_CHAINS));
-    return __sync_and_and_fetch(&LE_CDATA_THIS->WatchdogChain, mask);
+    return LE_ATOMIC_AND_FETCH(&LE_CDATA_THIS->WatchdogChain, mask, LE_ATOMIC_ORDER_ACQ_REL);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -167,7 +167,9 @@ static inline watchdog_t MarkManyStarted
 )
 {
     watchdog_t mask = watchdogs << MAX_WATCHDOG_CHAINS;
-    return __sync_or_and_fetch(&LE_CDATA_THIS->WatchdogChain, mask);
+    return LE_ATOMIC_OR_FETCH(&LE_CDATA_THIS->WatchdogChain,
+                              mask,
+                              LE_ATOMIC_ORDER_ACQ_REL);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -195,7 +197,7 @@ static inline watchdog_t SetBits
 static inline watchdog_t MarkAllUnkicked(void)
 {
     watchdog_t mask = ~SetBits(MAX_WATCHDOG_CHAINS);
-    return __sync_and_and_fetch(&LE_CDATA_THIS->WatchdogChain, mask);
+    return LE_ATOMIC_AND_FETCH(&LE_CDATA_THIS->WatchdogChain, mask, LE_ATOMIC_ORDER_ACQ_REL);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -377,24 +379,22 @@ void le_wdogChain_InitSome
 {
     // Ensure watchdog count is within allowable range.
     LE_ASSERT(wdogCount <= MAX_WATCHDOG_CHAINS);
-
     // Allow multiple init if all but one of the init are for only 1 watchdog.  Assume that
     // in general only one watchdog means just monitoring the main loop.
-    uint32_t currentWdogCount = __sync_add_and_fetch(&LE_CDATA_THIS->WatchdogCount, 0);
+    uint32_t currentWdogCount = 0;
+    currentWdogCount = LE_ATOMIC_AND_FETCH(&LE_CDATA_THIS->WatchdogCount, 0, LE_ATOMIC_ORDER_ACQ_REL);
     LE_FATAL_IF((currentWdogCount > 1) && (wdogCount > 1),
                 "Watchdog already initialized with multiple watchdogs");
-
     // If we need to initialize more watchdogs, do so now.
     if (wdogCount > currentWdogCount)
     {
-        LE_FATAL_IF(!__sync_bool_compare_and_swap(&LE_CDATA_THIS->WatchdogCount,
-                                                 currentWdogCount,
-                                                  wdogCount),
+        LE_FATAL_IF(!LE_SYNC_BOOL_COMPARE_AND_SWAP(&LE_CDATA_THIS->WatchdogCount,
+                                                   currentWdogCount,
+                                                   wdogCount),
                     "Race while initializing watchdogs."
                     "  Watchdogs should be initialized"
                     " in one thread");
     }
-
     // And start some watchdogs.
     MarkManyStarted(which);
     TRACE("Starting initial watchdog chain %08" PRIXWDC " (%" PRIu32 " watchdogs total)",

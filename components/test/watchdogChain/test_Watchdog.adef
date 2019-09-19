@@ -3,6 +3,9 @@ start: manual
 executables:
 {
     testWatchdog = ( watchdogComponent )
+#if ${MK_CONFIG_NO_WATCHDOG} = y
+    dumbWatchdog = ( dumbWatchdogComponent )
+#endif
 }
 
 processes:
@@ -10,6 +13,9 @@ processes:
     run:
     {
         ( testWatchdog )
+#if ${MK_CONFIG_NO_WATCHDOG} = y
+        ( dumbWatchdog )
+#endif
     }
 
     watchdogTimeout: 5000
@@ -17,5 +23,13 @@ processes:
 
 bindings:
 {
+#if ${MK_CONFIG_NO_WATCHDOG} = y
+    testWatchdog.watchdogChain.le_wdog -> dumbWatchdog.dumbWatchdogComponent.le_wdog
+#else // MK_CONFIG_NO_WATCHDOG
+ #if ${LE_CONFIG_LINUX} = y
     testWatchdog.watchdogChain.le_wdog -> <root>.le_wdog
+ #else
+    // Add with LE-13551
+ #endif // ${LE_CONFIG_LINUX} = y
+#endif
 }

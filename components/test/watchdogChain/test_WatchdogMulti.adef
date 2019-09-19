@@ -4,6 +4,9 @@ executables:
 {
     pingWatchdog  = ( pingComponent )
     sleepWatchdog = ( sleepComponent )
+#if ${MK_CONFIG_NO_WATCHDOG} = y
+    dumbWatchdog = ( dumbWatchdogComponent )
+#endif
 }
 
 processes:
@@ -12,6 +15,9 @@ processes:
     {
         ( pingWatchdog )
         ( sleepWatchdog )
+#if ${MK_CONFIG_NO_WATCHDOG} = y
+        ( dumbWatchdog )
+#endif
     }
 
     watchdogTimeout: 5000
@@ -19,8 +25,12 @@ processes:
 
 bindings:
 {
+#if ${MK_CONFIG_NO_WATCHDOG} = y
+    pingWatchdog.watchdogChain.le_wdog -> dumbWatchdog.dumbWatchdogComponent.le_wdog
+    sleepWatchdog.watchdogChain.le_wdog -> dumbWatchdog.dumbWatchdogComponent.le_wdog
+#else
     pingWatchdog.watchdogChain.le_wdog -> <root>.le_wdog
     sleepWatchdog.watchdogChain.le_wdog -> <root>.le_wdog
-
+#endif
     pingWatchdog.pingComponent.sleep -> sleepWatchdog.sleepComponent.sleep
 }

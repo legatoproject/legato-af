@@ -10,8 +10,25 @@ interfaceSearch:
     ${CURDIR}/watchdogChain/interfaces
 }
 
+componentSearch:
+{
+    ${LEGATO_ROOT}/components
+}
+
 apps:
 {
     watchdogChain/test_Watchdog
     watchdogChain/test_WatchdogMulti
 }
+
+#if ${LE_CONFIG_RTOS} = y
+cflags:
+{
+    -DMK_CONFIG_NO_WATCHDOG
+}
+
+buildVars:
+{
+    MK_CONFIG_NO_WATCHDOG = y
+}
+#endif
