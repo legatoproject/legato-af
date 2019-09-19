@@ -263,7 +263,7 @@ static bool TestSmallRange(void)
 
 static bool TestLargeRange(void)
 {
-    return TestRange(9, 10000008, 40000000);
+    return TestRange(9, 10000008, 100000);
 }
 
 static bool TestSmallBuffer(void)
