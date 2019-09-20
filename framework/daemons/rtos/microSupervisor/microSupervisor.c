@@ -133,6 +133,16 @@ static void CleanupThread
     {
         le_mem_Release(threadInfoPtr->cmdlinePtr);
     }
+    else
+    {
+        for (int i = 1; i < threadInfoPtr->argc; ++i)
+        {
+            if (threadInfoPtr->argv[i] != NULL)
+            {
+                le_mem_Release((void*)threadInfoPtr->argv[i]);
+            }
+        }
+    }
 
     threadInfoPtr->threadRef = NULL;
 }
@@ -217,7 +227,10 @@ static le_result_t StartProc
 
         // Set the program name as the first argument
         taskInfoPtr->argv[0] = taskPtr->nameStr;
-        memcpy(taskInfoPtr->argv + 1, argv, taskInfoPtr->argc * sizeof(const char *));
+        for (i = 1; i < taskInfoPtr->argc; ++i)
+        {
+            taskInfoPtr->argv[i] = PoolStrDup(ArgStringPoolRef, argv[i-1]);
+        }
         taskInfoPtr->argv[taskInfoPtr->argc] = NULL;
     }
 
