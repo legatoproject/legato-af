@@ -12,6 +12,9 @@ executables:
     #if ${LE_CONFIG_ENABLE_ETHERNET} = y
                   $LEGATO_ROOT/components/dataConnectionService/dcsEthernet
     #endif
+    #if ${LE_CONFIG_LINUX} = y
+                  $LEGATO_ROOT/components/clockService/clockSync
+    #endif
                 )
 }
 
@@ -77,4 +80,7 @@ extern:
     dcsDaemon.dcsDaemon.le_data
     dcsDaemon.dcs.le_dcs
     dcsDaemon.dcsNet.le_net
+#if ${LE_CONFIG_LINUX} = y
+    dcsDaemon.clockSync.le_clkSync
+#endif
 }

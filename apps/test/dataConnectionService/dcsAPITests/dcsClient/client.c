@@ -603,6 +603,49 @@ static void Dcs_test_api_wifiSecurityConfig
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Callback function for executing a clock time update
+ */
+//--------------------------------------------------------------------------------------------------
+static void ClockTimeUpdateCallbackFunction
+(
+    le_result_t status,        ///< Status of the system time update
+    void* contextPtr
+)
+{
+    LE_INFO("Clock update result: %d", status);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  This function tests the execution of the clock update/sync operation by contacting the earlier
+ * given clock source to get the up-to-date clock and setting it into the system clock(s)
+ */
+//--------------------------------------------------------------------------------------------------
+static void Dcs_test_api_executeClockTimeUpdate
+(
+    void *param1,
+    void *param2
+)
+{
+    LE_INFO("Adding callback function %p", ClockTimeUpdateCallbackFunction);
+#if 0
+    le_clkSync_UpdateSystemTime(ClockTimeUpdateCallbackFunction, NULL);
+#else
+    uint16_t year, month, day, hour, minute, second, millisecond;
+
+    // Retrieve the date and time from a server.
+    if (LE_OK != le_data_GetDateTime(&year, &month, &day,
+                                     &hour, &minute, &second, &millisecond))
+    {
+        LE_ERROR("Failed to get time");
+    }
+#endif
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  *  This is the thread that runs an event loop to take test functions to run
  */
 //--------------------------------------------------------------------------------------------------
@@ -743,6 +786,8 @@ COMPONENT_INIT
     }
 
 #endif
+
+    le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_executeClockTimeUpdate, NULL, NULL);
 
     le_thread_Sleep(END_SLEEP);
 

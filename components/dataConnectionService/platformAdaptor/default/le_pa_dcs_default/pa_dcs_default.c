@@ -177,48 +177,6 @@ le_result_t pa_dcs_SetDnsNameServers
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Retrieve time from a server using the Time Protocol.
- *
- * @return
- *      - LE_OK             Function successful
- *      - LE_BAD_PARAMETER  A parameter is incorrect
- *      - LE_FAULT          Function failed
- *      - LE_UNSUPPORTED    Function not supported by the target
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_dcs_GetTimeWithTimeProtocol
-(
-    const char* serverStrPtr,       ///< [IN]  Time server
-    pa_dcs_TimeStruct_t* timePtr    ///< [OUT] Time structure
-)
-{
-    LE_ERROR("Unsupported function called");
-    return LE_UNSUPPORTED;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Retrieve time from a server using the Network Time Protocol.
- *
- * @return
- *      - LE_OK             Function successful
- *      - LE_BAD_PARAMETER  A parameter is incorrect
- *      - LE_FAULT          Function failed
- *      - LE_UNSUPPORTED    Function not supported by the target
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_dcs_GetTimeWithNetworkTimeProtocol
-(
-    const char* serverStrPtr,       ///< [IN]  Time server
-    pa_dcs_TimeStruct_t* timePtr    ///< [OUT] Time structure
-)
-{
-    LE_ERROR("Unsupported function called");
-    return LE_UNSUPPORTED;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Query for a connection's network interface state
  *
  * @return

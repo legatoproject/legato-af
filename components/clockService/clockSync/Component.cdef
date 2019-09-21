@@ -1,0 +1,35 @@
+provides:
+{
+    api:
+    {
+        $LEGATO_ROOT/interfaces/le_clkSync.api
+    }
+}
+
+requires:
+{
+#if ${LE_CONFIG_ENABLE_CONFIG_TREE} = y
+    api:
+    {
+        le_cfg.api
+    }
+#endif
+    component:
+    {
+        $LEGATO_CLOCKSYNC_PA_DEFAULT
+        $LEGATO_CLOCKSYNC_PA
+        ${LEGATO_ROOT}/components/watchdogChain
+    }
+}
+
+sources:
+{
+    clockSync.c
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}/components/clockService/platformAdaptor/inc
+    -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/objectManager/
+    -I${LEGATO_ROOT}/components/watchdogChain
+}

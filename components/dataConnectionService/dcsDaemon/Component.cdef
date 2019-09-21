@@ -48,6 +48,7 @@ cflags:
     -I$LEGATO_ROOT/components/dataConnectionService/dcs
     -I$LEGATO_ROOT/components/dataConnectionService/dcsNet
     -I$LEGATO_ROOT/components/dataConnectionService/dcsCellular
+    -I$LEGATO_ROOT/components/clockService/clockSync
 #if ${LE_CONFIG_SERVICES_WATCHDOG} = y
     -I${LEGATO_ROOT}/components/watchdogChain
 #endif

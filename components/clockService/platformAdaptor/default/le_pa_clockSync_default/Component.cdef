@@ -1,0 +1,12 @@
+requires:
+{
+    api:
+    {
+	le_clkSync.api [types-only]
+    }
+}
+
+sources:
+{
+    pa_clockSync_default.c
+}

@@ -51,6 +51,7 @@ static int  WifiSecProtocol = WIFI_SECPROTOCOL_INIT;
 #define MAX_TIME_SERVER_LENGTH  200
 static uint8_t TimeProtocol = 0;
 static char TimeServer[MAX_TIME_SERVER_LENGTH] = {0};
+static char ClockTimeConfig[MAX_TIME_SERVER_LENGTH] = {0};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -533,6 +534,32 @@ bool le_cfg_NodeExists
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Deletes the node specified by the path. If the node doesn't exist, nothing happens. All child
+ * nodes are also deleted.
+ *
+ * If the path is empty, the iterator's current node is deleted.
+ *
+ * This function is only valid during a write transaction.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_cfg_DeleteNode
+(
+    le_cfg_IteratorRef_t iteratorRef,
+        ///< [IN] Iterator to use as a basis for the transaction.
+    const char* LE_NONNULL path
+        ///< [IN] Path to the target node. Can be an absolute path, or
+        ///< a path relative from the iterator's current position.
+)
+{
+    if (strstr(path, LE_CLKSYNC_CONFIG_TREE_ROOT_SOURCE) &&
+        strstr(path, LE_CLKSYNC_CONFIG_NODE_SOURCE_CONFIG))
+    {
+        memset(ClockTimeConfig, '\0', MAX_TIME_SERVER_LENGTH);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Read a string value from the config tree. If the value isn't a string, or if the node is
  * empty or doesn't exist, the default value will be returned.
  *
@@ -579,8 +606,42 @@ le_result_t le_cfg_GetString
     {
         result = le_utf8_Copy(value, TimeServer, valueNumElements, NULL);
     }
+    else
+    {
+        if (strstr(path, LE_CLKSYNC_CONFIG_TREE_ROOT_SOURCE) &&
+            strstr(path, LE_CLKSYNC_CONFIG_NODE_SOURCE_CONFIG))
+        {
+            result = le_utf8_Copy(value, ClockTimeConfig, valueNumElements, NULL);
+        }
+    }
 
     return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Writes a string value to the config tree. Only valid during a write
+ * transaction.
+ *
+ * If the path is empty, the iterator's current node will be set.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_cfg_SetString
+(
+    le_cfg_IteratorRef_t iteratorRef,
+        ///< [IN] Iterator to use as a basis for the transaction.
+    const char* LE_NONNULL path,
+        ///< [IN] Path to the target node. Can be an absolute path, or
+        ///< a path relative from the iterator's current position.
+    const char* LE_NONNULL value
+        ///< [IN] Value to write.
+)
+{
+    if (strstr(path, LE_CLKSYNC_CONFIG_TREE_ROOT_SOURCE) &&
+        strstr(path, LE_CLKSYNC_CONFIG_NODE_SOURCE_CONFIG))
+    {
+        (void)le_utf8_Copy(ClockTimeConfig, value, MAX_TIME_SERVER_LENGTH, NULL);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1496,5 +1557,30 @@ le_result_t net_ChangeRoute
     bool isAdd
 )
 {
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve time from the time source(s) configured
+ *
+ * @return
+ *      - LE_OK             Function successful
+ *      - LE_BAD_PARAMETER  A parameter is incorrect
+ *      - LE_FAULT          Function failed
+ *      - LE_UNSUPPORTED    Function not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t clkSync_GetCurrentTime
+(
+    le_clkSync_ClockTime_t* timePtr,    ///< [OUT] Clock time retrieved from configured source
+    le_clkSync_ClockSource_t* sourcePtr ///< [OUT] Clock source from which current time is acquired
+)
+{
+    if (timePtr)
+    {
+        memset(timePtr, 0, sizeof(le_clkSync_ClockTime_t));
+    }
     return LE_OK;
 }
