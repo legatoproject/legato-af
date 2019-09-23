@@ -914,7 +914,7 @@ static void ErrorCodeCmdHandler
 
             // Test for errors when the  error code reference is not found.
             LE_ASSERT(LE_FAULT == le_atServer_SetVerboseErrorCode(ref, verboseStr));
-            LE_ASSERT(LE_NOT_FOUND == le_atServer_DeleteErrorCode(ref));
+            LE_ASSERT(LE_FAULT == le_atServer_DeleteErrorCode(ref));
 
             // Get a custom error code reference after a delete
             ref = le_atServer_CreateErrorCode(errorCodeID, patternStr);
@@ -927,7 +927,7 @@ static void ErrorCodeCmdHandler
             // Add a verbose message to the specified custom error code, test for error.
             LE_ASSERT(LE_FAULT == le_atServer_SetVerboseErrorCode(ref, verboseStr));
             // Delete the custom error code, test for error.
-            LE_ASSERT(LE_NOT_FOUND == le_atServer_DeleteErrorCode(ref));
+            LE_ASSERT(LE_FAULT == le_atServer_DeleteErrorCode(ref));
 #endif
             LE_ASSERT_OK(le_atServer_SendFinalResultCode(cmdRef,
                                                          LE_ATSERVER_OK,
