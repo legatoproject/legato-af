@@ -8,7 +8,9 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+#ifndef DCS_USE_AUTOMATIC_SETTINGS
 #include <arpa/inet.h>
+#endif
 #include <stdlib.h>
 #include <string.h>
 #include "legato.h"
@@ -326,6 +328,7 @@ le_result_t GetDhcpLeaseFileEntry
 )
 {
     le_result_t result = LE_NOT_FOUND;
+#ifndef DCS_USE_AUTOMATIC_SETTINGS
     FILE*       leaseFile;
     char        pathBuff[FILE_PATH_LENGTH_BYTES];
     char        line[LEASE_FILE_MAX_LINE_LENGTH_BYTES];
@@ -404,7 +407,7 @@ le_result_t GetDhcpLeaseFileEntry
     }
 
     le_flock_CloseStream(leaseFile);
-
+#endif
     return result;
 }
 

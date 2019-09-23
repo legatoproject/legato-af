@@ -109,7 +109,7 @@ void le_dcsCellular_GetNameFromIndex
         channelName[0] = '\0';
         return;
     }
-    snprintf(channelName, LE_DCS_CHANNEL_NAME_MAX_LEN-1, "%d", index);
+    snprintf(channelName, LE_DCS_CHANNEL_NAME_MAX_LEN-1, "%"PRIu32"", index);
 }
 
 
@@ -1008,6 +1008,57 @@ static bool DcsCellularIsApnEmpty
     return (apnName[0] == '\0');
 }
 
+// -------------------------------------------------------------------------------------------------
+/**
+ * This function handles a duplicate session request
+ */
+// -------------------------------------------------------------------------------------------------
+static void DcsCellularDuplicateSessionUpdate
+(
+    le_mdc_ProfileRef_t profileRef         ///< [IN] Mobile data connection profile reference
+)
+{
+    uint32_t profileIndex = le_mdc_GetProfileIndex(profileRef);
+    char connName[LE_DCS_CHANNEL_NAME_MAX_LEN];
+    cellular_connDb_t *cellConnDb;
+    le_dcs_ChannelRef_t channelRef;
+    le_mdc_ConState_t mdcState;
+    uint16_t refcount;
+    bool opState;
+
+    le_dcsCellular_GetNameFromIndex(profileIndex, connName);
+    cellConnDb = DcsCellularGetDbFromIndex(profileIndex);
+    if (!cellConnDb)
+    {
+        LE_ERROR("No db found for connection %s", connName);
+        return;
+    }
+
+    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_CELLULAR, cellConnDb->connRef);
+    if (le_dcs_GetChannelRefCountFromTechRef(LE_DCS_TECH_CELLULAR, cellConnDb->connRef,
+                                             &refcount) != LE_OK)
+    {
+        LE_ERROR("Failed to get reference count of connection %s to handle state change",
+                 connName);
+        refcount = 0;
+    }
+
+    // Channel opState could be LE_MDC_DISCONNECTED due to delayed PS attached event,
+    // update it here.
+    opState = DcsCellularMdcStateIsUp(cellConnDb->opState);
+    if (!opState)
+    {
+        (void)DcsCellularGetConnState(connName, &mdcState);
+        cellConnDb->opState = (uint16_t)mdcState;
+    }
+
+    // If it is the first request of the app, and session is already started,
+    // send a connected event so that the app knows about the current state to move on
+    if ((refcount == 1) && opState)
+    {
+        le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_UP);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1068,6 +1119,10 @@ le_result_t le_dcsCellular_Start
     ret = le_mdc_StartSession(profileRef);
     if ((ret == LE_DUPLICATE) || (ret == LE_OK))
     {
+        if (ret == LE_DUPLICATE)
+        {
+            DcsCellularDuplicateSessionUpdate(profileRef);
+        }
         LE_INFO("Succeeded starting cellular connection %s", connName);
         cellConnDb->retries = 1;
         cellConnDb->backoff = CELLULAR_RETRY_BACKOFF_INIT;

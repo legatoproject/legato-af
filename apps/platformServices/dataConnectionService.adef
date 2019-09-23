@@ -6,8 +6,13 @@ executables:
                   $LEGATO_ROOT/components/dataConnectionService/dcs
                   $LEGATO_ROOT/components/dataConnectionService/dcsNet
                   $LEGATO_ROOT/components/dataConnectionService/dcsCellular
+    #if ${LE_CONFIG_ENABLE_WIFI} = y
                   $LEGATO_ROOT/components/dataConnectionService/dcsWifi
-                  $LEGATO_ROOT/components/dataConnectionService/dcsEthernet)
+    #endif
+    #if ${LE_CONFIG_ENABLE_ETHERNET} = y
+                  $LEGATO_ROOT/components/dataConnectionService/dcsEthernet
+    #endif
+                )
     dcsInternal = ( $LEGATO_ROOT/components/dataConnectionService/dcsInternal )
 }
 
@@ -25,12 +30,13 @@ processes:
     #else
         watchdogTimeout: never
     #endif
+
+    maxStackBytes: 6000
 }
 
 bindings:
 {
     dcsDaemon.dcsDaemon.le_mrc -> modemService.le_mrc
-    dcsDaemon.dcsDaemon.le_wifiClient -> <root>.le_wifiClient
     dcsDaemon.watchdogChain.le_wdog -> <root>.le_wdog
     dcsDaemon.dcs.le_mdc -> modemService.le_mdc
     dcsDaemon.dcs.le_mrc -> modemService.le_mrc
@@ -38,8 +44,11 @@ bindings:
     dcsDaemon.dcsNet.le_appInfo -> <root>.le_appInfo
     dcsDaemon.dcsCellular.le_mdc -> modemService.le_mdc
     dcsDaemon.dcsCellular.le_mrc -> modemService.le_mrc
-    dcsDaemon.dcsWifi.le_wifiClient -> <root>.le_wifiClient
     dcsInternal.dcsInternal.le_dcs -> <root>.le_dcs
+#if ${LE_CONFIG_ENABLE_WIFI} = y
+    dcsDaemon.dcsDaemon.le_wifiClient -> <root>.le_wifiClient
+    dcsDaemon.dcsWifi.le_wifiClient -> <root>.le_wifiClient
+#endif
 }
 
 requires:

@@ -213,6 +213,14 @@ config ENABLE_GNSS_ACQUISITION_RATE_SETTING
 
 endmenu # end "Positioning Service"
 
+menu "Data Connection Service"
+
+config ENABLE_ETHERNET
+  bool "Enable DCS to manage Ethernet"
+  default n
+
+endmenu # end "Data Connection Service"
+
 config FEATURE_SPISVC
   bool "Enable SPI service"
   default y if TARGET_WP85

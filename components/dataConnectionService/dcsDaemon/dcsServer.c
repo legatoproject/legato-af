@@ -28,12 +28,17 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+#ifndef DCS_USE_AUTOMATIC_SETTINGS
 #include <arpa/inet.h>
+#endif
 #include <stdlib.h>
 
 #include "legato.h"
 #include "interfaces.h"
+#if LE_CONFIG_ENABLE_CONFIG_TREE
 #include "le_cfg_interface.h"
+#include "mdmCfgEntries.h"
+#endif
 #include "le_print.h"
 #include "pa_dcs.h"
 #include "dcsServer.h"
@@ -137,6 +142,7 @@ static le_data_Technology_t CurrentTech = LE_DATA_MAX;
 static le_dcs_ChannelRef_t DataChannelRef = NULL;
 static le_dcs_ReqObjRef_t DataChannelReqRef = NULL;
 
+#ifndef DCS_USE_AUTOMATIC_SETTINGS
 //--------------------------------------------------------------------------------------------------
 /**
  * Set DNS Configuration Timer reference
@@ -144,6 +150,28 @@ static le_dcs_ReqObjRef_t DataChannelReqRef = NULL;
 //--------------------------------------------------------------------------------------------------
 #define DNS_CONFIG_RETRY_TIMEOUT 10
 static le_timer_Ref_t SetDNSConfigTimer = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Has default GW and route set on the device for the connected data connection
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsDefaultRouteSet = false;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Has DNS server addresses set on the device for the connected data connection
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsDnsSet = false;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Has route been added on the device for the connected data connection
+ */
+//--------------------------------------------------------------------------------------------------
+static bool RoutesAdded = false;
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -174,7 +202,6 @@ static le_event_Id_t ConnStateEvent;
  */
 //--------------------------------------------------------------------------------------------------
 static bool IsConnected = false;
-static bool RoutesAdded = false;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -182,6 +209,13 @@ static bool RoutesAdded = false;
  */
 //--------------------------------------------------------------------------------------------------
 static uint32_t RequestCount = 0;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static safe Reference Map for the request reference
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(Requests, REFERENCE_MAP_SIZE);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -198,20 +232,6 @@ static le_ref_MapRef_t RequestRefMap;
  */
 //--------------------------------------------------------------------------------------------------
 static bool DefaultRouteStatus = true;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Has default GW and route set on the device for the connected data connection
- */
-//--------------------------------------------------------------------------------------------------
-static bool IsDefaultRouteSet = false;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Has DNS server addresses set on the device for the connected data connection
- */
-//--------------------------------------------------------------------------------------------------
-static bool IsDnsSet = false;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -386,7 +406,7 @@ static void SendConnStateEvent
     le_event_Report(ConnStateEvent, &eventData, sizeof(eventData));
 }
 
-
+#ifndef DCS_USE_AUTOMATIC_SETTINGS
 //--------------------------------------------------------------------------------------------------
 /**
  * Set the default GW configuration
@@ -398,7 +418,6 @@ static void SetDefaultGWConfiguration
     void
 )
 {
-    le_result_t ret;
     if (!DefaultRouteStatus || IsDefaultRouteSet)
     {
         return;
@@ -406,7 +425,7 @@ static void SetDefaultGWConfiguration
 
     LE_INFO("Setting default GW address on device");
     le_net_BackupDefaultGW();
-    ret = le_net_SetDefaultGW(DataChannelRef);
+    le_result_t ret = le_net_SetDefaultGW(DataChannelRef);
     if (LE_OK != ret)
     {
         LE_ERROR("Failed to set default GW address");
@@ -641,101 +660,6 @@ static le_result_t SetDefaultRouteAndDns
     return LE_OK;
 }
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This is the event handler to be added via le_dcs_AddEventHandler() for the selected channel to
- * be started via le_dcs
- */
-//--------------------------------------------------------------------------------------------------
-static void ChannelEventHandler
-(
-    le_dcs_ChannelRef_t channelRef, ///< [IN] The channel for which the event is
-    le_dcs_Event_t event,           ///< [IN] Event up or down
-    int32_t code,                   ///< [IN] Additional event code, like error code
-    void *contextPtr                ///< [IN] Associated user context pointer
-)
-{
-    const char *eventString = le_dcs_ConvertEventToString(event);
-    LE_INFO("Received for channel reference %p event %s", channelRef, eventString);
-
-    if (channelRef != DataChannelRef)
-    {
-        LE_DEBUG("Data channel event %d skipped; current channel in use: reference %p, name %s, "
-                 "technology %d", event, DataChannelRef, DataChannelName, CurrentTech);
-        return;
-    }
-
-    LE_DEBUG("Channel state IsConnected before event: %d", IsConnected);
-    IsConnected = (event == LE_DCS_EVENT_UP) ? true : false;
-
-    switch (CurrentTech)
-    {
-        case LE_DATA_CELLULAR:
-        case LE_DATA_WIFI:
-            if (IsConnected)
-            {
-                // Up event. Set the default route (if necessary) and the DNS.
-                switch (SetDefaultRouteAndDns())
-                {
-                    case LE_OK:
-                        LE_DEBUG("Channel state IsConnected after event: %d", IsConnected);
-                        UpdateTechnologyStatus(CurrentTech, IsConnected, true);
-                        break;
-                    case LE_BUSY:
-                        LE_DEBUG("Failed to set default GW and DNS server addresses immediately; "
-                                 "wait for retry");
-                        break;
-                    case LE_FAULT:
-                    default:
-                        // Impossible to use this technology, try the next one
-                        LE_ERROR("Failed to set default GW and DNS server addresses; "
-                                 "stopping current technology to try the next");
-                        TryStopTechSession();
-                        UpdateTechnologyStatus(CurrentTech, false, false);
-                        break;
-                }
-                break;
-            }
-
-            // Down event
-            LE_DEBUG("Channel state IsConnected after event: %d", IsConnected);
-            if (event == LE_DCS_EVENT_DOWN)
-            {
-                TryStopTechSession();
-                UpdateTechnologyStatus(CurrentTech, IsConnected, true);
-            }
-            else if (event == LE_DCS_EVENT_TEMP_DOWN)
-            {
-                // Don't stop tech nor start tech retry timer since le_dcs will retry it again
-                // Just send a notification to upper app(s)
-                SendConnStateEvent(IsConnected);
-            }
-
-            if (IsDnsSet)
-            {
-                le_net_RestoreDNS();
-                IsDnsSet = false;
-            }
-            if (IsDefaultRouteSet)
-            {
-                le_net_RestoreDefaultGW();
-                IsDefaultRouteSet = false;
-            }
-            else if (RoutesAdded)
-            {
-                // Here means having IsDefaultRouteSet false; remove routes for DNS addresses
-                // previously added by DCS
-                SetDnsRoutes(false);
-            }
-            break;
-
-        default:
-            break;
-    }
-}
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  *  Get default route activation status from config tree
@@ -747,7 +671,7 @@ static bool GetDefaultRouteStatus
 )
 {
     bool defaultRouteStatus = true;
-
+#if LE_CONFIG_ENABLE_CONFIG_TREE
     char configPath[LE_CFG_STR_LEN_BYTES];
     snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_ROUTING);
 
@@ -760,72 +684,8 @@ static bool GetDefaultRouteStatus
         LE_DEBUG("Default gateway activation status = %d", defaultRouteStatus);
     }
     le_cfg_CancelTxn(cfg);
-
+#endif
     return defaultRouteStatus;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  Get the time protocol to use from config tree
- */
-//--------------------------------------------------------------------------------------------------
-static le_data_TimeProtocol_t GetTimeProtocol
-(
-    void
-)
-{
-    le_data_TimeProtocol_t protocol = LE_DATA_TP;
-
-    char configPath[LE_CFG_STR_LEN_BYTES];
-    snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_TIME);
-
-    le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
-    if (le_cfg_NodeExists(cfg, CFG_NODE_PROTOCOL))
-    {
-        protocol = le_cfg_GetInt(cfg, CFG_NODE_PROTOCOL, LE_DATA_TP);
-    }
-    le_cfg_CancelTxn(cfg);
-
-    LE_DEBUG("Use time protocol %d", protocol);
-    return protocol;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  Get the time server to use from config tree
- */
-//--------------------------------------------------------------------------------------------------
-static void GetTimeServer
-(
-    char* serverPtr,                ///< [IN] Time server buffer
-    const size_t serverSize,        ///< [IN] Time server buffer size
-    const char* defaultServerPtr    ///< [IN] Default time server
-)
-{
-    char configPath[LE_CFG_STR_LEN_BYTES];
-    snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_TIME);
-
-    le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
-    if (le_cfg_NodeExists(cfg, CFG_NODE_SERVER))
-    {
-        if (LE_OK != le_cfg_GetString(cfg,
-                                      CFG_NODE_SERVER,
-                                      serverPtr,
-                                      serverSize,
-                                      defaultServerPtr))
-        {
-            LE_ERROR("Unable to retrieve time server");
-            le_utf8_Copy(serverPtr, defaultServerPtr, serverSize, NULL);
-        }
-    }
-    else
-    {
-        LE_WARN("No server configured, use the default one");
-        le_utf8_Copy(serverPtr, defaultServerPtr, serverSize, NULL);
-    }
-    le_cfg_CancelTxn(cfg);
-
-    LE_DEBUG("Use time server '%s'", serverPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -874,6 +734,199 @@ static void SetDNSConfigTimerHandler
         LE_DEBUG("Channel state IsConnected after event: %d", IsConnected);
         UpdateTechnologyStatus(CurrentTech, IsConnected, true);
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check IP address
+ *
+ * @return
+ *      - LE_OK     on success
+ *      - LE_FAULT  on failure
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t CheckIpAddress
+(
+    int af,             ///< Address family
+    const char* addStr  ///< IP address to check
+)
+{
+    struct sockaddr_in sa;
+
+    if (inet_pton(af, addStr, &(sa.sin_addr)))
+    {
+        return LE_OK;
+    }
+
+    return LE_FAULT;
+}
+#endif
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This is the event handler to be added via le_dcs_AddEventHandler() for the selected channel to
+ * be started via le_dcs
+ */
+//--------------------------------------------------------------------------------------------------
+static void ChannelEventHandler
+(
+    le_dcs_ChannelRef_t channelRef, ///< [IN] The channel for which the event is
+    le_dcs_Event_t event,           ///< [IN] Event up or down
+    int32_t code,                   ///< [IN] Additional event code, like error code
+    void *contextPtr                ///< [IN] Associated user context pointer
+)
+{
+    const char *eventString = le_dcs_ConvertEventToString(event);
+    LE_INFO("Received for channel reference %p event %s", channelRef, eventString);
+
+    if (channelRef != DataChannelRef)
+    {
+        LE_DEBUG("Data channel event %d skipped; current channel in use: reference %p, name %s, "
+                 "technology %d", event, DataChannelRef, DataChannelName, CurrentTech);
+        return;
+    }
+
+    LE_DEBUG("Channel state IsConnected before event: %d", IsConnected);
+    IsConnected = (event == LE_DCS_EVENT_UP) ? true : false;
+
+    switch (CurrentTech)
+    {
+        case LE_DATA_CELLULAR:
+#if LE_CONFIG_ENABLE_WIFI
+        case LE_DATA_WIFI:
+#endif
+            if (IsConnected)
+            {
+                // Up event. Set the default route (if necessary) and the DNS.
+#ifndef DCS_USE_AUTOMATIC_SETTINGS
+                switch (SetDefaultRouteAndDns())
+                {
+                    case LE_OK:
+                        LE_DEBUG("Channel state IsConnected after event: %d", IsConnected);
+                        UpdateTechnologyStatus(CurrentTech, IsConnected, true);
+                        break;
+                    case LE_BUSY:
+                        LE_DEBUG("Failed to set default GW and DNS server addresses immediately; "
+                                 "wait for retry");
+                        break;
+                    case LE_FAULT:
+                    default:
+                        // Impossible to use this technology, try the next one
+                        LE_ERROR("Failed to set default GW and DNS server addresses; "
+                                 "stopping current technology to try the next");
+                        TryStopTechSession();
+                        UpdateTechnologyStatus(CurrentTech, false, false);
+                        break;
+                }
+                break;
+#else
+                LE_INFO("Channel state IsConnected after event: %d", IsConnected);
+                UpdateTechnologyStatus(CurrentTech, IsConnected, true);
+#endif
+            }
+
+            // Down event
+            LE_DEBUG("Channel state IsConnected after event: %d", IsConnected);
+            if (event == LE_DCS_EVENT_DOWN)
+            {
+                TryStopTechSession();
+                UpdateTechnologyStatus(CurrentTech, IsConnected, true);
+            }
+            else if (event == LE_DCS_EVENT_TEMP_DOWN)
+            {
+                // Don't stop tech nor start tech retry timer since le_dcs will retry it again
+                // Just send a notification to upper app(s)
+                SendConnStateEvent(IsConnected);
+            }
+#ifndef DCS_USE_AUTOMATIC_SETTINGS
+            if (IsDnsSet)
+            {
+                le_net_RestoreDNS();
+                IsDnsSet = false;
+            }
+            if (IsDefaultRouteSet)
+            {
+                le_net_RestoreDefaultGW();
+                IsDefaultRouteSet = false;
+            }
+            else if (RoutesAdded)
+            {
+                // Here means having IsDefaultRouteSet false; remove routes for DNS addresses
+                // previously added by DCS
+                SetDnsRoutes(false);
+            }
+#endif
+            break;
+
+        default:
+            break;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Get the time protocol to use from config tree
+ */
+//--------------------------------------------------------------------------------------------------
+static le_data_TimeProtocol_t GetTimeProtocol
+(
+    void
+)
+{
+    le_data_TimeProtocol_t protocol = LE_DATA_TP;
+
+#if LE_CONFIG_ENABLE_CONFIG_TREE
+    char configPath[LE_CFG_STR_LEN_BYTES];
+    snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_TIME);
+
+    le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
+    if (le_cfg_NodeExists(cfg, CFG_NODE_PROTOCOL))
+    {
+        protocol = le_cfg_GetInt(cfg, CFG_NODE_PROTOCOL, LE_DATA_TP);
+    }
+    le_cfg_CancelTxn(cfg);
+#endif
+    LE_DEBUG("Use time protocol %d", protocol);
+    return protocol;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Get the time server to use from config tree
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetTimeServer
+(
+    char* serverPtr,                ///< [IN] Time server buffer
+    const size_t serverSize,        ///< [IN] Time server buffer size
+    const char* defaultServerPtr    ///< [IN] Default time server
+)
+{
+#if LE_CONFIG_ENABLE_CONFIG_TREE
+    char configPath[LE_CFG_STR_LEN_BYTES];
+    snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_TIME);
+
+    le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
+    if (le_cfg_NodeExists(cfg, CFG_NODE_SERVER))
+    {
+        if (LE_OK != le_cfg_GetString(cfg,
+                                      CFG_NODE_SERVER,
+                                      serverPtr,
+                                      serverSize,
+                                      defaultServerPtr))
+        {
+            LE_ERROR("Unable to retrieve time server");
+            le_utf8_Copy(serverPtr, defaultServerPtr, serverSize, NULL);
+        }
+    }
+    else
+    {
+        LE_WARN("No server configured, use the default one");
+        le_utf8_Copy(serverPtr, defaultServerPtr, serverSize, NULL);
+    }
+    le_cfg_CancelTxn(cfg);
+#endif
+    LE_INFO("Use time server '%s'", serverPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1070,6 +1123,7 @@ static void TryStopTechSession
         return;
     }
 
+#ifndef DCS_USE_AUTOMATIC_SETTINGS
     // Seek to restore changed network configs before stopping the channel. Otherwise, after it is
     // is stopped, its network interface would have been disassociated that any network config
     // changes on it might not complete successfully.
@@ -1089,6 +1143,7 @@ static void TryStopTechSession
         // previously added by DCS
         SetDnsRoutes(false);
     }
+#endif
 
     if (LE_OK != le_dcs_Stop(DataChannelReqRef))
     {
@@ -1301,31 +1356,6 @@ static void CloseSessionEventHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Check IP address
- *
- * @return
- *      - LE_OK     on success
- *      - LE_FAULT  on failure
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t CheckIpAddress
-(
-    int af,             ///< Address family
-    const char* addStr  ///< IP address to check
-)
-{
-    struct sockaddr_in sa;
-
-    if (inet_pton(af, addStr, &(sa.sin_addr)))
-    {
-        return LE_OK;
-    }
-
-    return LE_FAULT;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Change the route on the data connection service interface, if the data connection is connected
  * using the cellular technology and has an IPv4 or IPv6 address.
  *
@@ -1344,6 +1374,9 @@ static le_result_t ChangeRoute
     pa_dcs_RouteAction_t action          ///< Add or remove the route
 )
 {
+#ifdef DCS_USE_AUTOMATIC_SETTINGS
+    return LE_OK;
+#else
     le_result_t ret;
 
     // Check if the given address is in IPv4 format
@@ -1374,7 +1407,7 @@ static le_result_t ChangeRoute
                 DataChannelName, CurrentTech);
     }
     return ret;
-
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1746,8 +1779,8 @@ COMPONENT_INIT
 
     // Create safe reference map for request references. The size of the map should be based on
     // the expected number of simultaneous data requests, so take a reasonable guess.
-    RequestRefMap = le_ref_CreateMap("Requests", REFERENCE_MAP_SIZE);
-
+    RequestRefMap = le_ref_InitStaticMap(Requests, REFERENCE_MAP_SIZE);
+#ifndef DCS_USE_AUTOMATIC_SETTINGS
     // Set a one-shot timer for requesting the DNS configuration.
     SetDNSConfigTimer = le_timer_Create("SetDNSConfigTimer");
     le_clk_Time_t dnsInterval = {DNS_CONFIG_RETRY_TIMEOUT, 0};
@@ -1763,7 +1796,7 @@ COMPONENT_INIT
     // Retrieve default gateway activation status from config tree
     // Any change in its value there won't be picked up until next Legato restart
     DefaultRouteStatus = GetDefaultRouteStatus();
-
+#endif
     // Set a timer to retry the tech
     RetryTechTimer = le_timer_Create("RetryTechTimer");
     RetryTechBackoffCurrent = RETRY_TECH_BACKOFF_INIT;

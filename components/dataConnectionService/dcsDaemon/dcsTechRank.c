@@ -105,8 +105,10 @@ le_dcs_Technology_t dcsTechRank_ConvertToDcsTechEnum
 {
     switch (leDataTech)
     {
+#ifdef LE_CONFIG_ENABLE_WIFI
         case LE_DATA_WIFI:
             return LE_DCS_TECH_WIFI;
+#endif
         case LE_DATA_CELLULAR:
             return LE_DCS_TECH_CELLULAR;
         default:
@@ -114,7 +116,7 @@ le_dcs_Technology_t dcsTechRank_ConvertToDcsTechEnum
     }
 }
 
-
+#ifdef LE_CONFIG_ENABLE_WIFI
 //--------------------------------------------------------------------------------------------------
 /**
  * Try to retrieve the configured SSID from the config tree and set it into the global variable
@@ -158,7 +160,7 @@ static bool RetrieveWifiCfgSsid
     le_cfg_CancelTxn(cfg);
     return true;
 }
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -179,7 +181,10 @@ le_result_t dcsTechRank_SelectDataChannel
 )
 {
     int32_t index;
-    char ssid[LE_WIFIDEFS_MAX_SSID_BYTES] = {0}, dataChannelName[LE_DCS_CHANNEL_NAME_MAX_LEN] = {0};
+    char dataChannelName[LE_DCS_CHANNEL_NAME_MAX_LEN] = {0};
+#ifdef LE_CONFIG_ENABLE_WIFI
+    char ssid[LE_WIFIDEFS_MAX_SSID_BYTES] = {0};
+#endif
     le_dcs_ChannelRef_t dataChannelRef;
 
     if (dcs_ChannelIsConnected())
@@ -214,6 +219,7 @@ le_result_t dcsTechRank_SelectDataChannel
             MdcIndexProfile = index;
             LE_INFO("Selected channel name %s", dataChannelName);
             return LE_OK;
+#ifdef LE_CONFIG_ENABLE_WIFI
         case LE_DATA_WIFI:
             if (!RetrieveWifiCfgSsid(ssid) || (strlen(ssid) == 0))
             {
@@ -232,6 +238,7 @@ le_result_t dcsTechRank_SelectDataChannel
             dcs_ChannelSetChannelName(ssid);
             LE_INFO("Selected channel name %s", ssid);
             return LE_OK;
+#endif
         default:
             LE_ERROR("Can't choose unknown technology %d", technology);
             return LE_FAULT;
@@ -370,6 +377,7 @@ static le_result_t GetTechnologyString
 
     switch (tech)
     {
+#ifdef LE_CONFIG_ENABLE_WIFI
         case LE_DATA_WIFI:
             if (LE_OK != le_utf8_Copy(techStr, "wifi", techStrNumElem, NULL))
             {
@@ -377,6 +385,7 @@ static le_result_t GetTechnologyString
                 result = LE_OVERFLOW;
             }
             break;
+#endif
         case LE_DATA_CELLULAR:
             if (LE_OK != le_utf8_Copy(techStr, "cellular", techStrNumElem, NULL))
             {
@@ -776,6 +785,7 @@ void dcsTechRank_Init
 
     // 2. Wifi service
     // Check wifi client availability
+#ifdef LE_CONFIG_ENABLE_WIFI
     if (LE_OK == le_wifiClient_TryConnectService())
     {
         LE_INFO("Wifi client is available");
@@ -786,6 +796,9 @@ void dcsTechRank_Init
         LE_INFO("Wifi client is not available");
         TechAvailability[LE_DATA_WIFI] = false;
     }
+#else
+    TechAvailability[LE_DATA_WIFI] = false;
+#endif
 
     // Initialize technologies list with default values
     InitDefaultTechList();

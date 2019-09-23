@@ -213,17 +213,20 @@ static void Testle_data_Technologies
     LE_INFO("Set technologies: 2=Cellular, 5=Wifi");
     LE_ASSERT_OK(le_data_SetTechnologyRank(2, LE_DATA_CELLULAR));
     TechList[techCounter++] = LE_DATA_CELLULAR;
+#ifdef LE_CONFIG_ENABLE_WIFI
     LE_ASSERT_OK(le_data_SetTechnologyRank(5, LE_DATA_WIFI));
     TechList[techCounter++] = LE_DATA_WIFI;
-
+#endif
     // Check technologies list
     TestTechnologies();
 
     // Change technologies list: 1=Wifi, 2=Cellular
     LE_INFO("Set technologies: 1=Wifi, 2=Cellular");
     techCounter = 0;
+#ifdef LE_CONFIG_ENABLE_WIFI
     LE_ASSERT_OK(le_data_SetTechnologyRank(1, LE_DATA_WIFI));
     TechList[techCounter++] = LE_DATA_WIFI;
+#endif
     LE_ASSERT_OK(le_data_SetTechnologyRank(2, LE_DATA_CELLULAR));
     TechList[techCounter++] = LE_DATA_CELLULAR;
 
@@ -529,11 +532,11 @@ static void Testle_data_Service
     SynchronizeTest();    // To catch the internally generated down event upon the le_dcs_Stop call
                           // for the current tech before the next tech is tried
 
+#ifdef LE_CONFIG_ENABLE_WIFI
     LE_INFO("Wait for Wifi connection");
-
-    // Wifi should now be used to connect
     memset(ExpectedIntf, '\0', sizeof(ExpectedIntf));
     snprintf(ExpectedIntf, sizeof(ExpectedIntf), WIFI_INTERFACE_NAME);
+#endif
     ExpectedConnectionStatus = true;
 
     // Wait for the handlers call
@@ -549,7 +552,6 @@ static void Testle_data_Service
     }
 
     // All data connection released, wait for the disconnection notifications
-    LE_INFO("Wait for Wifi disconnection");
     SynchronizeTest();
 
     // Each application removes the data connection status handler: the API has therefore
@@ -563,8 +565,10 @@ static void Testle_data_Service
     SynchronizeTest();
 
     // Simulate a wifi disconnection
-    LE_INFO("Simulate Wifi disconnection");
+#ifdef LE_CONFIG_ENABLE_WIFI
+    LE_INFO("Wait for Wifi disconnection");
     le_wifiClientTest_SimulateEvent(LE_WIFICLIENT_EVENT_DISCONNECTED);
+#endif
     // Wait for the semaphore timeout to check that handlers are not called
     le_clk_Time_t timeToWait = {SHORT_TIMEOUT, 0};
     for (i = 0; i < CLIENTS_NB; i++)

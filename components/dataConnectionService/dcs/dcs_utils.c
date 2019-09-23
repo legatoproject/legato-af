@@ -35,18 +35,19 @@ const char *le_dcs_ConvertTechEnumToName
 {
     switch(tech)
     {
+#ifdef LE_CONFIG_ENABLE_WIFI
         case LE_DCS_TECH_WIFI:
             le_utf8_Copy(DcsTechnologyName, "wifi", sizeof(DcsTechnologyName), NULL);
             break;
-
+#endif
         case LE_DCS_TECH_CELLULAR:
             le_utf8_Copy(DcsTechnologyName, "cellular", sizeof(DcsTechnologyName), NULL);
             break;
-
+#ifdef LE_CONFIG_ENABLE_ETHERNET
         case LE_DCS_TECH_ETHERNET:
             le_utf8_Copy(DcsTechnologyName, "ethernet", sizeof(DcsTechnologyName), NULL);
             break;
-
+#endif
         default:
             le_utf8_Copy(DcsTechnologyName, "unknown", sizeof(DcsTechnologyName), NULL);
             break;
