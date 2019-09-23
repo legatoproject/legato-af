@@ -785,7 +785,7 @@ fi
 
 # QEmu Pid file
 if true; then
-    PID_FILE="${PID_FILE:-"$DATA_DIR/qemu.pid"}"
+    PID_FILE="${PID_FILE:-"$USER_DIR/qemu.pid"}"
 
     if [ -e "$PID_FILE" ]; then
         PID=$(cat $PID_FILE)
