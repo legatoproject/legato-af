@@ -4241,8 +4241,8 @@ le_atServer_ErrorCodeRef_t le_atServer_CreateErrorCode
  * This function deletes a custom error code
  *
  * @return
- *      - LE_OK            Error code deleted sucessfully
-        - LE_NOT_FOUND     Error code reference not found
+ *      - LE_OK            The function succeeded
+        - LE_FAULT         The function failed to delete the error code
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_atServer_DeleteErrorCode
@@ -4255,7 +4255,7 @@ le_result_t le_atServer_DeleteErrorCode
     UserErrorCode_t* errorCodePtr = le_ref_Lookup(UserErrorRefMap, errorCodeRef);
     if (NULL == errorCodePtr)
     {
-        return LE_NOT_FOUND;
+        return LE_FAULT;
     }
 
     le_ref_DeleteRef(UserErrorRefMap, errorCodeRef);
@@ -4264,7 +4264,7 @@ le_result_t le_atServer_DeleteErrorCode
     return LE_OK;
 #else
     // Not supported outside of Linux
-    return LE_NOT_FOUND;
+    return LE_FAULT;
 #endif
 }
 
