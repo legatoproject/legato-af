@@ -257,6 +257,8 @@
 #ifndef LEGATO_ATOMFILE_INCLUDE_GUARD
 #define LEGATO_ATOMFILE_INCLUDE_GUARD
 
+#include "le_fileLock.h"
+
 
 //--------------------------------------------------------------------------------------------------
 /**

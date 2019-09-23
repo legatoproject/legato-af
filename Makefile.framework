@@ -111,30 +111,28 @@ endif
 ALL_PARTS_y := liblegato daemons
 DAEMONS_y   :=
 
-# Re-add by uncommenting these lines once liblegato is ported
 # Currently, these options are not user configurable:
-# DAEMON_CONFIGTREE  := $(LE_CONFIG_POSIX)
-# DAEMON_LOGCTL      := $(LE_CONFIG_POSIX)
-# DAEMON_START       := $(LE_CONFIG_POSIX)
-# DAEMON_SUPERVISOR  := $(LE_CONFIG_POSIX)
-# DAEMON_SVCDIR      := $(LE_CONFIG_POSIX)
-# DAEMON_UPDATE      := $(LE_CONFIG_POSIX)
+DAEMON_CONFIGTREE  := $(LE_CONFIG_POSIX)
+DAEMON_LOGCTL      := $(LE_CONFIG_POSIX)
+DAEMON_START       := $(LE_CONFIG_POSIX)
+DAEMON_SUPERVISOR  := $(LE_CONFIG_POSIX)
+DAEMON_SVCDIR      := $(LE_CONFIG_POSIX)
+DAEMON_UPDATE      := $(LE_CONFIG_POSIX)
 DAEMON_USUPERVISOR := $(subst 0,y,$(call k2b,$(LE_CONFIG_POSIX)))
-# DAEMON_WATCHDOG    := $(LE_CONFIG_POSIX)
+DAEMON_WATCHDOG    := $(LE_CONFIG_POSIX)
 
-# DAEMONS_$(DAEMON_START)         += $(BIN_DIR)/startSystem
-# DAEMONS_$(DAEMON_SUPERVISOR)    += $(BIN_DIR)/supervisor
+DAEMONS_$(DAEMON_START)         += $(BIN_DIR)/startSystem
+DAEMONS_$(DAEMON_SUPERVISOR)    += $(BIN_DIR)/supervisor
 DAEMONS_$(DAEMON_USUPERVISOR)   += $(LIB_DIR)/microSupervisor.o
-# DAEMONS_$(DAEMON_SVCDIR)        += $(BIN_DIR)/serviceDirectory
-# DAEMONS_$(DAEMON_LOGCTL)        += $(BIN_DIR)/logCtrlDaemon
-# DAEMONS_$(DAEMON_CONFIGTREE)    += $(BIN_DIR)/configTree
-# DAEMONS_$(DAEMON_WATCHDOG)      += $(BIN_DIR)/watchdog
-# DAEMONS_$(DAEMON_UPDATE)        += $(BIN_DIR)/updateDaemon
+DAEMONS_$(DAEMON_SVCDIR)        += $(BIN_DIR)/serviceDirectory
+DAEMONS_$(DAEMON_LOGCTL)        += $(BIN_DIR)/logCtrlDaemon
+DAEMONS_$(DAEMON_CONFIGTREE)    += $(BIN_DIR)/configTree
+DAEMONS_$(DAEMON_WATCHDOG)      += $(BIN_DIR)/watchdog
+DAEMONS_$(DAEMON_UPDATE)        += $(BIN_DIR)/updateDaemon
 
-# TODO: Re-add once liblegato is ported by uncommenting these lines
-# ALL_PARTS_$(LE_CONFIG_JAVA)               += $(LEGATO_JAVA)
-# ALL_PARTS_$(LE_CONFIG_PYTHON)             += $(LEGATO_PY)
-# ALL_PARTS_$(LE_CONFIG_BUILD_TARGET_TOOLS) += targetTools
+ALL_PARTS_$(LE_CONFIG_JAVA)               += $(LEGATO_JAVA)
+ALL_PARTS_$(LE_CONFIG_PYTHON)             += $(LEGATO_PY)
+ALL_PARTS_$(LE_CONFIG_BUILD_TARGET_TOOLS) += targetTools
 
 # The liblegato build is done by this ninja build script.
 NINJA_SCRIPT := $(BUILD_DIR)/build.ninja

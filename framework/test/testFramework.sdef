@@ -22,15 +22,15 @@ apps:
 
     memPool/test_MemPool
     hashMap/test_HashMap
-//    lists/test_Lists
-//    clock/test_Clock
+    lists/test_Lists
+    clock/test_Clock
     thread/test_Thread
     eventLoop/test_EventLoop
     timer/test_Timer
     semaphore/test_Semaphore
     random/test_Random
 #if ${LE_CONFIG_NETWORK} = y
-//    fdMonitor/test_FdMonitorSocket
+    fdMonitor/test_FdMonitorSocket
 #endif
     fdMonitor/test_FdMonitorFifo
     ipc/test_IpcC2C
@@ -49,15 +49,15 @@ apps:
 #endif
     crc/test_Crc
     fd/test_Fd
-//    issues/test_LE_11195
+    issues/test_LE_11195
     json/test_Json
 
     /*
      * Helper applications assocated with python tests
      */
-//    multi-app/helloWorld
+    multi-app/helloWorld
     log/logTester
-//    issues/LE_2322
+    issues/LE_2322
     // Framework Tools.
 #if ${DISABLE_FRAMEWORK_TOOLS} = 1
 #else

@@ -188,10 +188,10 @@ extern "C" {
 #include "le_log.h"
 
 #include "le_args.h"
-/* #include "le_atomFile.h" */
+#include "le_atomFile.h"
 #include "le_atomic.h"
-/* #include "le_backtrace.h" */
-/* #include "le_base64.h" */
+#include "le_backtrace.h"
+#include "le_base64.h"
 #include "le_cdata.h"
 #include "le_clock.h"
 #include "le_crc.h"
@@ -200,7 +200,7 @@ extern "C" {
 #include "le_eventLoop.h"
 #include "le_fd.h"
 #include "le_fdMonitor.h"
-/* #include "le_fileLock.h" */
+#include "le_fileLock.h"
 #include "le_fs.h"
 #include "le_hashmap.h"
 #include "le_hex.h"
@@ -211,17 +211,16 @@ extern "C" {
 #include "le_pack.h"
 #include "le_path.h"
 #include "le_pathIter.h"
-/* #include "le_process.h" */
+#include "le_process.h"
 #include "le_rand.h"
 #include "le_safeRef.h"
 #include "le_semaphore.h"
-/* #include "le_signals.h" */
+#include "le_signals.h"
 #include "le_singlyLinkedList.h"
 #include "le_test.h"
 #include "le_thread.h"
 #include "le_timer.h"
-/* #include "le_tls.h" */
-/* #include "le_tty.h" */
+#include "le_tty.h"
 #include "le_utf8.h"
 
 #ifdef __cplusplus

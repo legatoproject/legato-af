@@ -66,7 +66,7 @@ void fd_Close
  * which are usually the standard file descriptors, stdin, stdout, stderr.
  */
 //--------------------------------------------------------------------------------------------------
-void fd_CloseAllNonStd
+LE_FULL_API void fd_CloseAllNonStd
 (
     void
 );
@@ -141,7 +141,7 @@ le_result_t fd_ReadLine
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t fd_ReadFromOffset
+LE_FULL_API le_result_t fd_ReadFromOffset
 (
     int fd,                 ///< [IN] File to read.
     off_t offset,           ///< [IN] Offset from the beginning of the file to start reading from.

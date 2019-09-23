@@ -92,7 +92,7 @@ void fd_Close
 }
 
 
-
+#if defined(LE_CONFIG_LINUX)
 //--------------------------------------------------------------------------------------------------
 /**
  * Closes all file descriptors in the calling process except for the file descriptors 0, 1 and 2
@@ -124,7 +124,7 @@ void fd_CloseAllNonStd
         }
     }
 }
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -340,6 +340,7 @@ le_result_t fd_ReadLine
 }
 
 
+#if defined(LE_CONFIG_LINUX)
 //--------------------------------------------------------------------------------------------------
 /**
  * Reads bufSize bytes from the open file descriptor specified by fd, starting at offset, and stores
@@ -386,4 +387,4 @@ le_result_t fd_ReadFromOffset
 
     return LE_OK;
 }
-
+#endif

@@ -103,7 +103,7 @@ void ipcTest_EchoSmallBitMask
 {
     le_event_QueueFunction(AsyncServer_EchoSmallBitMaskRespond,
                            serverCmdPtr,
-                           (void*)InValue);
+                           (void*)((uintptr_t)InValue));
 }
 
 void AsyncServer_EchoLargeBitMaskRespond
