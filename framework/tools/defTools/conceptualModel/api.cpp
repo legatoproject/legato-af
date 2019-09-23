@@ -378,7 +378,7 @@ const
 {
     std::string codeGenDir = path::Combine(apiFilePtr->codeGenDir, "client/");
 
-    cFiles.interfaceFile = codeGenDir + apiFilePtr->defaultPrefix + "_interface.h";
+    cFiles.interfaceFile = codeGenDir + internalName + "_interface.h";
     cFiles.internalHFile = "";
     cFiles.sourceFile = "";
     cFiles.objectFile = "";
