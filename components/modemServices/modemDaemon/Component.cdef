@@ -2,6 +2,7 @@ requires:
 {
     api:
     {
+        le_limit.api  [types-only]
     #if ${LE_CONFIG_ENABLE_CONFIG_TREE} = y
         le_cfg.api
     #endif
@@ -53,12 +54,18 @@ sources:
     le_ms.c
     le_sim.c
     le_sms.c
-    smsPdu.c
-    cdmaPdu.c
     le_ips.c
     le_temp.c
-    le_riPin.c
     le_adc.c
+    le_riPin.c
+    sysResets.c
+
+#if ${MK_CONFIG_SMS_LIGHT} = y
+    le_sms_stub.c
+#else
+    smsPdu.c
+    cdmaPdu.c
+#endif
 
 #if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
     le_mcc.c
@@ -67,7 +74,6 @@ sources:
     le_antenna.c
     le_rtc.c
     le_mdmCfg.c
-    sysResets.c
     le_lpt.c
 #endif
 }
@@ -101,5 +107,6 @@ requires:
         $LEGATO_MODEM_PA_ECALL_DEFAULT
         $LEGATO_MODEM_PA_ECALL
 #endif
+        $PLATFORM_AT_CLIENT_COMPONENT
     }
 }

@@ -31,6 +31,21 @@ void le_wdogChain_MonitorEventLoop
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Stop a watchdog.
+ *
+ * This can also cause the chain to be completely kicked, so check it.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_wdogChain_Stop
+(
+    uint32_t watchdog
+)
+{
+    // do nothing
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Create a write transaction and open a new iterator for both reading and writing.
  * This will respond with a newly created iterator reference.
  *

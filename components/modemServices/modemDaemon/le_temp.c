@@ -283,6 +283,8 @@ static void CloseSessionEventHandler
 
             SensorCtx_t* sensorCtxPtr = le_ref_Lookup(SensorRefMap, sessionRefNodePtr->ref);
 
+            LE_ASSERT(sensorCtxPtr != NULL);
+
             // Release temperature sensor handle reference.
             le_mem_Release(sensorCtxPtr);
 
@@ -475,6 +477,13 @@ le_temp_SensorRef_t le_temp_Request
     if ((sensorRef = FindSensorRef(sensorPtr)) != NULL)
     {
         SensorCtx_t* sensorCtxPtr = le_ref_Lookup(SensorRefMap, sensorRef);
+
+        if (!sensorCtxPtr)
+        {
+            LE_KILL_CLIENT("Invalid reference (%p) provided!", sensorRef);
+            return NULL;
+        }
+
         le_mem_AddRef(sensorCtxPtr);
 
         // Create session reference list which associate to the sensor reference.

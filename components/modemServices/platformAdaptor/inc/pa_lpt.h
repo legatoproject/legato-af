@@ -165,4 +165,17 @@ LE_SHARED le_result_t pa_lpt_GetNetworkProvidedPagingTimeWindow
     uint8_t*            pagingTimeWindowPtr ///< [OUT] Network-provided Paging Time Window.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+* This function must be called to initialize the LPT module.
+*
+* @return
+*  - LE_OK            The function succeeded.
+*  - LE_FAULT         The function failed to initialize the module.
+*/
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_lpt_Init
+(
+   void
+);
 #endif // LEGATO_PALPT_INCLUDE_GUARD

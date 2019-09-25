@@ -34,6 +34,14 @@ typedef struct
 //--------------------------------------------------------------------------------------------------
 //                                       Static declarations
 //--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static safe Reference Map for the antenna reference
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(AntennaRef, LE_ANTENNA_MAX);
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Safe Reference Map for the antenna reference
@@ -546,7 +554,7 @@ void le_antenna_Init
 )
 {
     // Create safe reference map for antenna references.
-    AntennaRefMap = le_ref_CreateMap("AntennaRef", LE_ANTENNA_MAX);
+    AntennaRefMap = le_ref_InitStaticMap(AntennaRef, LE_ANTENNA_MAX);
 
     memset( AntennaCtx, 0, LE_ANTENNA_MAX*sizeof(AntennaCtx_t) );
 

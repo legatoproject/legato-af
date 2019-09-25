@@ -61,6 +61,9 @@ bindings:
 extern:
 {
     modemDaemon.modemDaemon.le_appInfo
+#if ${LE_CONFIG_ENABLE_CONFIG_TREE} = y
+    modemDaemon.modemDaemon.le_cfg
+#endif
     modemWDog = modemDaemon.watchdogChain.le_wdog
     #if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
     rSimWDog = rSimDaemon.watchdogChain.le_wdog
@@ -87,6 +90,10 @@ extern:
     modemDaemon.modemDaemon.le_temp
     modemDaemon.modemDaemon.le_riPin
     modemDaemon.modemDaemon.le_adc
+
+#if file_exists(${LEGATO_MODEM_PA}/exports)
+#include "${LEGATO_MODEM_PA}/exports"
+#endif
 
 #if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
     modemDaemon.modemDaemon.le_mcc

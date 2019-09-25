@@ -558,3 +558,32 @@ __attribute__((weak)) le_result_t pa_mdc_GetCidList
     LE_ERROR("Unsupported function called");
     return LE_FAULT;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the number of profiles on the modem.
+ *
+ * @return
+ *      - number of profile existing on modem
+ */
+//--------------------------------------------------------------------------------------------------
+__attribute__((weak)) uint32_t pa_mdc_GetNumProfiles
+(
+    void
+)
+{
+    return PA_MDC_MAX_PROFILE;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called from each thread to connect PA MDC services.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+__attribute__((weak)) void pa_mdc_AsyncInit
+(
+    void
+)
+{
+}

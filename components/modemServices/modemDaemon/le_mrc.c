@@ -101,6 +101,13 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum number of metrics sessions we expect to have at one time.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_NUM_METRICS_SESSION 1
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Path for the 'tzoneset' command
  */
 //--------------------------------------------------------------------------------------------------
@@ -198,6 +205,7 @@ typedef struct
 } CellList_t;
 
 
+#ifdef LE_CONFIG_MODEM_DAEMON_PREFERRED_OPERATORS
 //--------------------------------------------------------------------------------------------------
 /**
  * Preferred Operator safe Reference list structure.
@@ -226,6 +234,83 @@ typedef struct
     le_dls_Link_t       *currentLinkPtr;   // link for current PreferredOperatorsSafeRef_t reference
 } PreferredOperatorsList_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static pool for preferred PLMN operators list.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(PrefOpList,
+                          MAX_NUM_PREFERRED_OPERATORS_LISTS,
+                          sizeof(PreferredOperatorsList_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool for preferred PLMN operators list.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t PrefOpsListPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static pool for preferred PLMN operators safe reference.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(PreferredOperatorsSafeRef,
+                          MAX_NUM_PREFERRED_OPERATORS,
+                          sizeof(PreferredOperatorsSafeRef_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool for preferred PLMN operators safe reference.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t  PreferredOperatorsSafeRefPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static safe Reference Map for Preferred operators list.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(PreferredOperatorsListRefMap, MAX_NUM_PREFERRED_OPERATORS_LISTS);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe Reference Map for Preferred operators list.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t PreferredOperatorsListRefMap;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static safe Reference Map for Preferred operators.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(PreferredOperatorsMap, MAX_NUM_PREFERRED_OPERATORS);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe Reference Map for Preferred operators.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t PreferredOperatorsRefMap;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static pool for preferred network operators
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(PreferredNetworkOperator,
+                          MAX_NUM_PREFERRED_OPERATORS,
+                          sizeof(pa_mrc_PreferredNetworkOperator_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool for Preferred network Operator.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t PreferredNetworkOperatorPool;
+
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -366,10 +451,28 @@ JammingDetectionRef_t;
 //--------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static pool for neighboring cells information list.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(CellList,
+                          MAX_NUM_NEIGHBOR_LISTS,
+                          sizeof(CellList_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Pool for neighboring cells information list.
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t CellListPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static pool for cell information safe reference.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(CellInfoSafeRef,
+                          MAX_NUM_NEIGHBOR_LISTS,
+                          sizeof(CellSafeRef_t));
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -383,7 +486,21 @@ static le_mem_PoolRef_t  CellInfoSafeRefPool;
  * Safe Reference Map for all neighboring cells information list objects
  */
 //--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(CellListRefMap, MAX_NUM_NEIGHBOR_LISTS);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe Reference Map for all neighboring cells information list objects
+ */
+//--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t CellListRefMap;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe Reference Map for one neighboring cell information objects
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(CellInfoCellMap, MAX_NUM_NEIGHBORS);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -394,38 +511,20 @@ static le_ref_MapRef_t CellRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pool for preferred PLMN operators list.
- */
-//--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t PrefOpsListPool;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Pool for preferred PLMN operators safe reference.
- */
-//--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t  PreferredOperatorsSafeRefPool;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Safe Reference Map for Preferred operators list.
- */
-//--------------------------------------------------------------------------------------------------
-static le_ref_MapRef_t PreferredOperatorsListRefMap;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Safe Reference Map for Preferred operators.
- */
-//--------------------------------------------------------------------------------------------------
-static le_ref_MapRef_t PreferredOperatorsRefMap;
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Event ID for New Network Registration State notification.
  */
 //--------------------------------------------------------------------------------------------------
 static le_event_Id_t NewNetRegStateId;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static pool for Listed ScanInformation
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(ScanInformationList,
+                          MRC_MAX_SCANLIST,
+                          sizeof(ScanInfoList_t));
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -436,10 +535,26 @@ static le_mem_PoolRef_t  ScanInformationListPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static memory pool for listed information structure safe reference.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(ScanInformationSafeRef,
+                          MRC_MAX_SCAN,
+                          sizeof(ScanInfoSafeRef_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Memory Pool for Listed Information structure safe reference.
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t  ScanInformationSafeRefPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static safe Reference Map for Scan Information List.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(ScanInformationListMap, MRC_MAX_SCANLIST);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -450,12 +565,19 @@ static le_ref_MapRef_t ScanInformationListRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static safe Reference Map for one Scan Information.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(ScanInformationMap, MRC_MAX_SCAN);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Safe Reference Map for one Scan Information.
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t ScanInformationRefMap;
 
-
+#if LE_CONFIG_ENABLE_PCI_SCAN
 //--------------------------------------------------------------------------------------------------
 /**
  * Memory Pool for Listed PciScanInformation.
@@ -497,6 +619,7 @@ static le_ref_MapRef_t PciScanInformationRefMap;
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t PlmnInformationRefMap;
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -532,6 +655,15 @@ static le_event_Id_t NetRegRejectId;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static memory pool for signal metrics data.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(Metrics,
+                          MAX_NUM_METRICS,
+                          sizeof(pa_mrc_SignalMetrics_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Event ID for jamming detection notification.
  *
  */
@@ -554,10 +686,26 @@ static le_mem_PoolRef_t  MetricsPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static memory Pool for client session Signal Metrics.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(MetricsSession,
+                          MAX_NUM_METRICS_SESSION,
+                          sizeof(SignalMetrics_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Memory Pool for client session Signal Metrics.
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t  MetricsSessionPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static safe Reference Map for signal Metrics.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(MetricsRefMap, MAX_NUM_METRICS);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -566,12 +714,21 @@ static le_mem_PoolRef_t  MetricsSessionPool;
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t MetricsRefMap;
 
+#if LE_CONFIG_ENABLE_TIME_TO_OS
 //--------------------------------------------------------------------------------------------------
 /**
  * Network Time retry interval.
  */
 //--------------------------------------------------------------------------------------------------
 static le_clk_Time_t NetworkTimeRetryInterval = {.sec = 1};
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Retry Timer for the Network Time query.
+ */
+// ------------------------------------------------------------------------------------------------
+static le_timer_Ref_t NetworkTimeTimerRef = NULL;
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -590,14 +747,15 @@ static le_event_Id_t CdmaSsChangeId;
  * Event ID for message sending commands.
  */
 //--------------------------------------------------------------------------------------------------
-static le_event_Id_t MrcCommandEventId;
+static le_event_Id_t MrcCommandEventId = NULL;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pool for Preferred network Operator.
+ * Counter of events that should trigger command thread creation.
  */
 //--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t PreferredNetworkOperatorPool;
+static size_t CommandThreadStarts = 0;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -605,13 +763,6 @@ static le_mem_PoolRef_t PreferredNetworkOperatorPool;
  */
 //--------------------------------------------------------------------------------------------------
 static le_dls_List_t  JammingSessionRefList;
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Retry Timer for the Network Time query.
- */
-// ------------------------------------------------------------------------------------------------
-static le_timer_Ref_t NetworkTimeTimerRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -631,28 +782,6 @@ static void DeleteCellInfoSafeRefList
     {
         nodePtr = CONTAINER_OF(linkPtr, CellSafeRef_t, link);
         le_ref_DeleteRef(CellRefMap, nodePtr->safeRef);
-        le_mem_Release(nodePtr);
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Function to destroy all safeRef elements in the PreferredOperatorsRefMap list.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void DeletePreferredOperatorsSafeRefList
-(
-    le_dls_List_t* listPtr
-)
-{
-    PreferredOperatorsSafeRef_t* nodePtr;
-    le_dls_Link_t* linkPtr;
-
-    while ((linkPtr = le_dls_Pop(listPtr)) != NULL)
-    {
-        nodePtr = CONTAINER_OF(linkPtr, PreferredOperatorsSafeRef_t, link);
-        le_ref_DeleteRef(PreferredOperatorsRefMap, nodePtr->safeRef);
         le_mem_Release(nodePtr);
     }
 }
@@ -718,6 +847,7 @@ static void DeleteSafeRefList
     }
 }
 
+#if LE_CONFIG_ENABLE_PCI_SCAN
 //--------------------------------------------------------------------------------------------------
 /**
  * Function to destroy all Pci safeRef elements in the list.
@@ -761,7 +891,7 @@ static void DeletePlmnSafeRefList
         le_mem_Release(nodePtr);
     }
 }
-
+#endif
 //--------------------------------------------------------------------------------------------------
 /**
  * The first-layer Radio Access Technology Change Handler.
@@ -875,7 +1005,7 @@ static void SignalStrengthIndHandlerFunc
     pa_mrc_SignalStrengthIndication_t* ssIndPtr
 )
 {
-    LE_INFO("Signal Strength Ind Handler called with RAT.%d and ss.%d",
+    LE_INFO("Signal Strength Ind Handler called with RAT.%d and ss.%" PRIi32,
              ssIndPtr->rat, ssIndPtr->ss);
 
     switch(ssIndPtr->rat)
@@ -996,7 +1126,7 @@ static void ProcessMrcCommandEventHandler
         if (LE_OK != le_mrc_TestMccMnc(mccStr, mncStr))
         {
             LE_WARN("Invalid mcc or mnc");
-            return;
+            goto end;
         }
 
         LOCK();
@@ -1057,6 +1187,7 @@ static void ProcessMrcCommandEventHandler
             LE_WARN("No handler function, status %d!!", res);
         }
     }
+#if LE_CONFIG_ENABLE_PCI_SCAN
     else if (cmdRequest->command == LE_MRC_CMD_TYPE_ASYNC_PCISCAN)
     {
         le_mrc_PciNetworkScanHandlerFunc_t handlerFunc =
@@ -1100,9 +1231,17 @@ static void ProcessMrcCommandEventHandler
             LE_WARN("No handler function, status %d!!", res);
         }
     }
+#endif
     else
     {
         LE_FATAL("Invalid command type (%d)", cmdRequest->command);
+    }
+
+end:
+    if (LE_ATOMIC_SUB_FETCH(&CommandThreadStarts, 1, LE_ATOMIC_ORDER_RELAXED) == 0)
+    {
+        le_wdogChain_Stop(MS_WDOG_MRC_LOOP);
+        le_thread_Exit(NULL);
     }
 }
 
@@ -1126,7 +1265,7 @@ static void* MrcCommandThread
 
     le_sem_Post(initSemaphore);
 
-    // Watchodg MRC loop
+    // Watchdog MRC loop
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_MonitorEventLoop(MS_WDOG_MRC_LOOP, watchdogInterval);
@@ -1136,7 +1275,28 @@ static void* MrcCommandThread
     return NULL;
 }
 
+#ifdef LE_CONFIG_MODEM_DAEMON_PREFERRED_OPERATORS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to destroy all safeRef elements in the PreferredOperatorsRefMap list.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void DeletePreferredOperatorsSafeRefList
+(
+    le_dls_List_t* listPtr
+)
+{
+    PreferredOperatorsSafeRef_t* nodePtr;
+    le_dls_Link_t* linkPtr;
 
+    while ((linkPtr = le_dls_Pop(listPtr)) != NULL)
+    {
+        nodePtr = CONTAINER_OF(linkPtr, PreferredOperatorsSafeRef_t, link);
+        le_ref_DeleteRef(PreferredOperatorsRefMap, nodePtr->safeRef);
+        le_mem_Release(nodePtr);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1288,23 +1448,6 @@ static void DeletePreferredOperatorsList
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function test the the Radio Access Technology (RAT) validity
- *
- * @return
- *      - true          valid RAT
- *      - false         invalid RAT
- */
-//--------------------------------------------------------------------------------------------------
-static bool IsRatInvalid
-(
-    le_mrc_Rat_t rat   ///< [IN] Radio Access Technology
-)
-{
-    return ((rat < LE_MRC_RAT_GSM) || (rat> LE_MRC_RAT_CDMA));
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * This function must be called to get the current preferred operators list.
  *
  * @return
@@ -1364,6 +1507,24 @@ static le_result_t GetPreferredOperatorsList
     }
 
     return LE_FAULT;
+}
+#endif
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function test the Radio Access Technology (RAT) validity
+ *
+ * @return
+ *      - true          valid RAT
+ *      - false         invalid RAT
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsRatValid
+(
+    le_mrc_Rat_t rat   ///< [IN] Radio Access Technology
+)
+{
+    return ((rat > LE_MRC_RAT_UNKNOWN) && (rat <= LE_MRC_RAT_CDMA));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1478,7 +1639,7 @@ static void JammingDetectionIndHandler
     le_event_ReportWithRefCounting(JammingDetectionIndId, jammingDetectionIndPtr);
 }
 
-#if LE_CONFIG_LINUX
+#if LE_CONFIG_ENABLE_TIME_TO_OS
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1553,8 +1714,7 @@ static void NetworkTimeIndHandler
     // Fork to avoid delaying the main process.
     le_proc_Execute(&proc);
 }
-
-#endif /* end LE_CONFIG_LINUX */
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1651,7 +1811,7 @@ static void CloseSessionEventHandler
         CellList_t *cellListPtr = (CellList_t*)le_ref_GetValue(iterRef);
 
         // Check if the session reference saved matchs with the current session reference.
-        if (cellListPtr->sessionRef == sessionRef)
+        if (cellListPtr && (cellListPtr->sessionRef == sessionRef))
         {
             le_mrc_NeighborCellsRef_t safeRef =
                                       (le_mrc_NeighborCellsRef_t)le_ref_GetSafeRef(iterRef);
@@ -1665,6 +1825,7 @@ static void CloseSessionEventHandler
         result = le_ref_NextNode(iterRef);
     }
 
+#ifdef LE_CONFIG_MODEM_DAEMON_PREFERRED_OPERATORS
     // Search for all references used by the current client session that has been closed.
     iterRef = le_ref_GetIterator(PreferredOperatorsListRefMap);
     result = le_ref_NextNode(iterRef);
@@ -1688,6 +1849,7 @@ static void CloseSessionEventHandler
         // Get the next value in the reference
         result = le_ref_NextNode(iterRef);
     }
+#endif
 
     // Search for all references used by the current client session that has been closed.
     iterRef = le_ref_GetIterator(ScanInformationListRefMap);
@@ -1697,7 +1859,7 @@ static void CloseSessionEventHandler
         ScanInfoList_t *scanInfoListPtr = (ScanInfoList_t*)le_ref_GetValue(iterRef);
 
         // Check if the session reference saved matchs with the current session reference.
-        if (scanInfoListPtr->sessionRef == sessionRef)
+        if (scanInfoListPtr && (scanInfoListPtr->sessionRef == sessionRef))
         {
             le_mrc_ScanInformationListRef_t safeRef =
                                         (le_mrc_ScanInformationListRef_t)le_ref_GetSafeRef(iterRef);
@@ -1721,7 +1883,7 @@ static void CloseSessionEventHandler
                                 (SignalMetrics_t*)le_ref_GetValue(iterRef);
 
         // Check if the session reference saved matchs with the current session reference.
-        if (signalMetricsPtr->sessionRef == sessionRef)
+        if (signalMetricsPtr && (signalMetricsPtr->sessionRef == sessionRef))
         {
             le_mrc_MetricsRef_t safeRef = (le_mrc_MetricsRef_t)le_ref_GetSafeRef(iterRef);
             LE_DEBUG("Call le_mrc_DeleteSignalMetrics 0x%p, Session 0x%p", safeRef, sessionRef);
@@ -1733,7 +1895,7 @@ static void CloseSessionEventHandler
         // Get the next value in the reference
         result = le_ref_NextNode(iterRef);
     }
-
+#if LE_CONFIG_ENABLE_PCI_SCAN
     // Search for all references used by the current client session that has been closed.
     iterRef = le_ref_GetIterator(PciScanInformationListRefMap);
     result = le_ref_NextNode(iterRef);
@@ -1755,7 +1917,7 @@ static void CloseSessionEventHandler
         // Get the next value in the reference
         result = le_ref_NextNode(iterRef);
     }
-
+#endif
     // Check if the application started the jamming detection
     if (true == JammingDetectionRemoveReference(sessionRef))
     {
@@ -1786,6 +1948,7 @@ static void FirstLayerJammingDetectionHandler
     le_mem_Release(reportPtr);
 }
 
+#if LE_CONFIG_ENABLE_TIME_TO_OS
 //--------------------------------------------------------------------------------------------------
 /**
  * Called when the Network Time retry timer expires
@@ -1812,6 +1975,7 @@ static void RetrySyncNetworkTimeHandler
         LE_ERROR("Unable to sync network time from the modem: result %d", result);
     }
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 // APIs.
@@ -1830,19 +1994,21 @@ void le_mrc_Init
     le_result_t                 result=LE_OK;
     pa_mrc_NetworkRegSetting_t  setting;
 
-    ScanInformationListPool = le_mem_CreatePool("ScanInformationListPool",
-                                                sizeof(ScanInfoList_t));
+    ScanInformationListPool = le_mem_InitStaticPool(ScanInformationList,
+                                                    MRC_MAX_SCANLIST,
+                                                    sizeof(ScanInfoList_t));
 
-    ScanInformationSafeRefPool = le_mem_CreatePool("ScanInformationSafeRefPool",
-                                                   sizeof(ScanInfoSafeRef_t));
+    ScanInformationSafeRefPool = le_mem_InitStaticPool(ScanInformationSafeRef,
+                                                       MRC_MAX_SCAN,
+                                                       sizeof(ScanInfoSafeRef_t));
 
     // Create the Safe Reference Map to use for Scan Information List object Safe References.
-    ScanInformationListRefMap = le_ref_CreateMap("ScanInformationListMap", MRC_MAX_SCANLIST);
+    ScanInformationListRefMap = le_ref_InitStaticMap(ScanInformationListMap, MRC_MAX_SCANLIST);
 
     // Create the Safe Reference Map to use for Scan Information List object Safe References.
-    ScanInformationRefMap = le_ref_CreateMap("ScanInformationMap", MRC_MAX_SCAN);
+    ScanInformationRefMap = le_ref_InitStaticMap(ScanInformationMap, MRC_MAX_SCAN);
 
-
+#if LE_CONFIG_ENABLE_PCI_SCAN
     PciScanInformationListPool = le_mem_CreatePool("PciScanInformationListPool",
                                                 sizeof(PciScanInfoList_t));
 
@@ -1860,48 +2026,62 @@ void le_mrc_Init
 
     PlmnInformationSafeRefPool = le_mem_CreatePool("PlmnInformationSafeRefPool",
                                                    sizeof(PlmnInfoSafeRef_t));
+#endif
     // Create the pool for cells information list.
-    CellListPool = le_mem_CreatePool("CellListPool", sizeof(CellList_t));
+    CellListPool = le_mem_InitStaticPool(CellList,
+                                         MAX_NUM_NEIGHBOR_LISTS,
+                                         sizeof(CellList_t));
 
+#ifdef LE_CONFIG_MODEM_DAEMON_PREFERRED_OPERATORS
     // Create the pool for Preferred cells information list.
-    PrefOpsListPool = le_mem_CreatePool("PrefOpListPool", sizeof(PreferredOperatorsList_t));
-
-    // Create the Safe Reference Map to use for neighboring cells information object Safe
-    // References.
-    CellRefMap = le_ref_CreateMap("CellInfoCellMap", MAX_NUM_NEIGHBORS);
-
-    // Create the pool for cells information safe ref list.
-    CellInfoSafeRefPool = le_mem_CreatePool("CellInfoSafeRefPool", sizeof(CellSafeRef_t));
-
-    // Create the Safe Reference Map to use for neighboring cells information list object Safe
-    // References.
-    CellListRefMap = le_ref_CreateMap("CellListRefMap", MAX_NUM_NEIGHBOR_LISTS);
-
+    PrefOpsListPool = le_mem_InitStaticPool(PrefOpList,
+                                            MAX_NUM_PREFERRED_OPERATORS_LISTS,
+                                            sizeof(PreferredOperatorsList_t));
     // Create the Safe Reference Map to use for preferred Operators information object Safe
     // References.
-    PreferredOperatorsRefMap = le_ref_CreateMap("PreferredOperatorsMap",
-                    MAX_NUM_PREFERRED_OPERATORS);
+    PreferredOperatorsRefMap = le_ref_InitStaticMap(PreferredOperatorsMap,
+                                                    MAX_NUM_PREFERRED_OPERATORS);
 
     // Create the pool for preferred Operators safe ref list.
-    PreferredOperatorsSafeRefPool = le_mem_CreatePool("PreferredOperatorsSafeRefPool",
-                    sizeof(CellSafeRef_t));
+    PreferredOperatorsSafeRefPool = le_mem_InitStaticPool(PreferredOperatorsSafeRef,
+                                                          MAX_NUM_PREFERRED_OPERATORS,
+                                                          sizeof(CellSafeRef_t));
 
     // Create the Safe Reference Map to use for preferred Operators information list object Safe
     // References.
-    PreferredOperatorsListRefMap = le_ref_CreateMap("PreferredOperatorsListRefMap",
-                    MAX_NUM_PREFERRED_OPERATORS_LISTS);
+    PreferredOperatorsListRefMap = le_ref_InitStaticMap(PreferredOperatorsListRefMap,
+                                                        MAX_NUM_PREFERRED_OPERATORS_LISTS);
 
-    PreferredNetworkOperatorPool = le_mem_CreatePool("PreferredNetworkOperatorPool",
-                                             sizeof(pa_mrc_PreferredNetworkOperator_t));
+    PreferredNetworkOperatorPool = le_mem_InitStaticPool(PreferredNetworkOperator,
+                                                         MAX_NUM_PREFERRED_OPERATORS,
+                                                         sizeof(pa_mrc_PreferredNetworkOperator_t));
+#endif
+
+    // Create the Safe Reference Map to use for neighboring cells information object Safe
+    // References.
+    CellRefMap = le_ref_InitStaticMap(CellInfoCellMap, MAX_NUM_NEIGHBORS);
+
+    // Create the pool for cells information safe ref list.
+    CellInfoSafeRefPool = le_mem_InitStaticPool(CellInfoSafeRef,
+                                                MAX_NUM_NEIGHBOR_LISTS,
+                                                sizeof(CellSafeRef_t));
+
+    // Create the Safe Reference Map to use for neighboring cells information list object Safe
+    // References.
+    CellListRefMap = le_ref_InitStaticMap(CellListRefMap, MAX_NUM_NEIGHBOR_LISTS);
 
     // Create the pool for each client session Signal Metrics.
-    MetricsSessionPool = le_mem_CreatePool("MetricsSessionPool", sizeof(SignalMetrics_t));
+    MetricsSessionPool = le_mem_InitStaticPool(MetricsSession,
+                                               MAX_NUM_METRICS_SESSION,
+                                               sizeof(SignalMetrics_t));
 
     // Create the pool for Signal Metrics.
-    MetricsPool = le_mem_CreatePool("MetricsPool", sizeof(pa_mrc_SignalMetrics_t));
+    MetricsPool = le_mem_InitStaticPool(Metrics,
+                                        MAX_NUM_METRICS,
+                                        sizeof(pa_mrc_SignalMetrics_t));
 
     // Create the Safe Reference Map to use for Signal Metrics object Safe References.
-    MetricsRefMap = le_ref_CreateMap("MetricsRefMap", MAX_NUM_METRICS);
+    MetricsRefMap = le_ref_InitStaticMap(MetricsRefMap, MAX_NUM_METRICS);
 
     // Add a handler to the close session service
     le_msg_ServiceRef_t msgService = le_mrc_GetServiceRef();
@@ -1953,11 +2133,6 @@ void le_mrc_Init
     // Register a handler function for jamming detection indication
     pa_mrc_AddJammingDetectionIndHandler(JammingDetectionIndHandler, NULL);
 
-#if LE_CONFIG_LINUX
-    // Register a handler function for network time indication
-    pa_mrc_AddNetworkTimeIndHandler(NetworkTimeIndHandler);
-#endif /* end LE_CONFIG_LINUX */
-
     MrcCommandEventId = le_event_CreateId("CommandEvent", sizeof(CmdRequest_t));
 
     // initSemaphore is used to wait for MrcCommandThread() execution. It ensures that the thread is
@@ -1988,6 +2163,9 @@ void le_mrc_Init
         pa_mrc_ConfigureNetworkReg(PA_MRC_ENABLE_REG_NOTIFICATION);
     }
 
+#if LE_CONFIG_ENABLE_TIME_TO_OS
+    // Register a handler function for network time indication
+    pa_mrc_AddNetworkTimeIndHandler(NetworkTimeIndHandler);
     NetworkTimeTimerRef = le_timer_Create("Network time sync retry timer");
     le_timer_SetHandler(NetworkTimeTimerRef, RetrySyncNetworkTimeHandler);
 
@@ -2009,6 +2187,7 @@ void le_mrc_Init
         LE_INFO("%s does not exist - can't set the time zone on this platform.",
                 TIME_ZONE_CMD_PATH);
     }
+#endif
 }
 
 
@@ -2502,6 +2681,7 @@ le_result_t le_mrc_AddPreferredOperator
         ///< Bit mask for the Radio Access Technology preferences.
 )
 {
+#ifdef LE_CONFIG_MODEM_DAEMON_PREFERRED_OPERATORS
     le_dls_List_t preferredOperatorsList = LE_DLS_LIST_INIT;
     int32_t nbEntries;
 
@@ -2548,6 +2728,9 @@ le_result_t le_mrc_AddPreferredOperator
 
     DeletePreferredOperatorsList(&preferredOperatorsList);
     return LE_OK;
+#else
+    return LE_UNSUPPORTED;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2578,6 +2761,7 @@ le_result_t le_mrc_RemovePreferredOperator
         ///< Mobile Network Code
 )
 {
+#ifdef LE_CONFIG_MODEM_DAEMON_PREFERRED_OPERATORS
     le_dls_List_t preferredOperatorsList = LE_DLS_LIST_INIT;
     int32_t nbItem;
     le_result_t res;
@@ -2614,6 +2798,9 @@ le_result_t le_mrc_RemovePreferredOperator
     }
 
     return res;
+#else
+    return LE_UNSUPPORTED;
+#endif
 }
 
 
@@ -2631,6 +2818,7 @@ le_mrc_PreferredOperatorListRef_t le_mrc_GetPreferredOperatorsList
     void
 )
 {
+#ifdef LE_CONFIG_MODEM_DAEMON_PREFERRED_OPERATORS
     PreferredOperatorsList_t * OperatorListPtr = le_mem_ForceAlloc(PrefOpsListPool);
     OperatorListPtr->paPrefOpList = LE_DLS_LIST_INIT;
     OperatorListPtr->safeRefPrefOpList = LE_DLS_LIST_INIT;
@@ -2658,6 +2846,10 @@ fault:
 cleanup:
     le_mem_Release(OperatorListPtr);
     return NULL;
+#else
+    LE_ERROR("Preferred network operator management disabled!");
+    return NULL;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2679,6 +2871,7 @@ le_mrc_PreferredOperatorRef_t le_mrc_GetFirstPreferredOperator
                                                                 ///  operators.
 )
 {
+#ifdef LE_CONFIG_MODEM_DAEMON_PREFERRED_OPERATORS
     pa_mrc_PreferredNetworkOperator_t* nodePtr;
     le_dls_Link_t*             linkPtr;
     PreferredOperatorsList_t * prefOperatorListPtr =
@@ -2704,6 +2897,7 @@ le_mrc_PreferredOperatorRef_t le_mrc_GetFirstPreferredOperator
 
         return ((le_mrc_PreferredOperatorRef_t)newPrefOpsInfoPtr->safeRef);
     }
+#endif
 
     return NULL;
 }
@@ -2728,6 +2922,7 @@ le_mrc_PreferredOperatorRef_t le_mrc_GetNextPreferredOperator
                                                                 ///<  operators.
 )
 {
+#ifdef LE_CONFIG_MODEM_DAEMON_PREFERRED_OPERATORS
     pa_mrc_PreferredNetworkOperator_t* nodePtr;
     le_dls_Link_t*             linkPtr;
     PreferredOperatorsList_t * prefOperatorsListPtr =
@@ -2754,6 +2949,7 @@ le_mrc_PreferredOperatorRef_t le_mrc_GetNextPreferredOperator
 
         return ((le_mrc_PreferredOperatorRef_t)newPrefOpsInfoPtr->safeRef);
     }
+#endif
 
     return NULL;
 }
@@ -2773,6 +2969,7 @@ void le_mrc_DeletePreferredOperatorsList
                                                                 ///<  operators.
 )
 {
+#ifdef LE_CONFIG_MODEM_DAEMON_PREFERRED_OPERATORS
     PreferredOperatorsList_t * prefOperatorsListPtr =
                     le_ref_Lookup(PreferredOperatorsListRefMap, preferredOperatorListRef);
 
@@ -2793,6 +2990,7 @@ void le_mrc_DeletePreferredOperatorsList
     le_ref_DeleteRef(PreferredOperatorsListRefMap, preferredOperatorListRef);
 
     le_mem_Release(prefOperatorsListPtr);
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2830,6 +3028,7 @@ le_result_t le_mrc_GetPreferredOperatorDetails
         ///< Bit mask for the RAT preferences.
 )
 {
+#ifdef LE_CONFIG_MODEM_DAEMON_PREFERRED_OPERATORS
     pa_mrc_PreferredNetworkOperator_t* prefOperatorInfoPtr =
                     le_ref_Lookup(PreferredOperatorsRefMap, preferredOperatorRef);
 
@@ -2876,6 +3075,9 @@ le_result_t le_mrc_GetPreferredOperatorDetails
     *ratMaskPtr = prefOperatorInfoPtr->ratMask;
 
     return LE_OK;
+#else
+    return LE_UNSUPPORTED;
+#endif
 }
 
 
@@ -3019,10 +3221,13 @@ void le_mrc_RemovePacketSwitchedChangeHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to set the power of the Radio Module.
+ * Set the power of the Radio Module.
  *
- * @return LE_FAULT  The function failed.
- * @return LE_OK     The function succeed.
+ * @return LE_BAD_PARAMETER Bad power mode specified.
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeed.
+ *
+ * @note <b>NOT multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_SetRadioPower
@@ -3030,11 +3235,13 @@ le_result_t le_mrc_SetRadioPower
     le_onoff_t    power   ///< [IN] The power state.
 )
 {
-    le_result_t res;
+    if((LE_OFF != power) && (LE_ON != power))
+    {
+        LE_ERROR("Bad Parameters!");
+        return LE_BAD_PARAMETER;
+    }
 
-    res=pa_mrc_SetRadioPower(power);
-
-    if (res != LE_OK)
+    if (pa_mrc_SetRadioPower(power) != LE_OK)
     {
         return LE_FAULT;
     }
@@ -3195,7 +3402,7 @@ le_result_t le_mrc_GetSignalQual
             *qualityPtr = i;
         }
 
-        LE_DEBUG("pa_mrc_GetSignalStrength has returned rssi=%ddBm", rssi);
+        LE_DEBUG("pa_mrc_GetSignalStrength has returned rssi=%"PRIi32"dBm", rssi);
         return LE_OK;
     }
     else if (res == LE_OUT_OF_RANGE)
@@ -3360,6 +3567,7 @@ le_mrc_PciScanInformationListRef_t le_mrc_PerformPciNetworkScan
     le_mrc_RatBitMask_t ratMask ///< [IN] Radio Access Technology bitmask
 )
 {
+#if LE_CONFIG_ENABLE_PCI_SCAN
     le_result_t result;
     PciScanInfoList_t* newScanInformationListPtr = NULL;
 
@@ -3383,6 +3591,9 @@ le_mrc_PciScanInformationListRef_t le_mrc_PerformPciNetworkScan
     newScanInformationListPtr->sessionRef = le_mrc_GetClientSessionRef();
 
     return le_ref_CreateRef(PciScanInformationListRefMap, newScanInformationListPtr);
+#else
+    return NULL;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3477,6 +3688,7 @@ void le_mrc_PerformPciNetworkScanAsync
     void* contextPtr
 )
 {
+#if LE_CONFIG_ENABLE_PCI_SCAN
     CmdRequest_t cmd;
 
     cmd.contextPtr = contextPtr;
@@ -3490,6 +3702,7 @@ void le_mrc_PerformPciNetworkScanAsync
     // Sending Cellular Network scan command
     LE_DEBUG("Send asynchronous Cellular Network scan command");
     le_event_Report(MrcCommandEventId, &cmd, sizeof(cmd));
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3743,7 +3956,7 @@ le_mrc_Rat_t le_mrc_GetCellularNetworkRat
     if (scanInformationPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", scanInformationRef);
-        return (le_mrc_Rat_t)LE_FAULT;
+        return LE_MRC_RAT_UNKNOWN;
     }
 
     return scanInformationPtr->rat;
@@ -4670,7 +4883,7 @@ le_result_t le_mrc_SetSignalStrengthIndThresholds
     int32_t      upperRangeThreshold  ///< [IN] upper-range Signal strength threshold in dBm
 )
 {
-    if (IsRatInvalid (rat))
+    if (!IsRatValid(rat))
     {
         LE_ERROR("Bad RAT parameter : %d", rat);
         return LE_BAD_PARAMETER;
@@ -4678,7 +4891,7 @@ le_result_t le_mrc_SetSignalStrengthIndThresholds
 
     if (lowerRangeThreshold >= upperRangeThreshold)
     {
-        LE_ERROR("lowerRangeThreshold %d >= upperRangeThreshold %d !",
+        LE_ERROR("lowerRangeThreshold %"PRIi32" >= upperRangeThreshold %"PRIi32" !",
             lowerRangeThreshold, upperRangeThreshold);
         return LE_BAD_PARAMETER;
     }
@@ -4708,7 +4921,7 @@ le_result_t le_mrc_SetSignalStrengthIndDelta
     uint16_t delta                    ///< [IN] Signal delta in units of 0.1 dBm
 )
 {
-    if (IsRatInvalid (rat))
+    if (!IsRatValid(rat))
     {
         LE_ERROR("Bad RAT parameter : %d", rat);
         return LE_BAD_PARAMETER;
@@ -4753,7 +4966,7 @@ le_mrc_SignalStrengthChangeHandlerRef_t le_mrc_AddSignalStrengthChangeHandler
         return NULL;
     }
 
-    if (IsRatInvalid (rat))
+    if (!IsRatValid(rat))
     {
         LE_KILL_CLIENT("Bad RAT parameter : %d", rat);
         return NULL;
@@ -4761,7 +4974,7 @@ le_mrc_SignalStrengthChangeHandlerRef_t le_mrc_AddSignalStrengthChangeHandler
 
     if (lowerRangeThreshold >= upperRangeThreshold)
     {
-        LE_KILL_CLIENT("lowerRangeThreshold %d >= upperRangeThreshold %d !",
+        LE_KILL_CLIENT("lowerRangeThreshold %"PRIi32" >= upperRangeThreshold %"PRIi32" !",
                        lowerRangeThreshold, upperRangeThreshold);
         return NULL;
     }
@@ -5417,9 +5630,10 @@ le_result_t le_mrc_GetSarBackoffState
  * Plmn Information retrieved with le_mrc_GetFirstPlmnInfo() and le_mrc_GetNextPlmnInfo().
  *
  * @return
- *      - LE_OK on success
- *      - LE_OVERFLOW if the MCC or MNC would not fit in buffer
- *      - LE_FAULT for all other errors
+ *      - LE_OK           on success
+ *      - LE_OVERFLOW     if the MCC or MNC would not fit in buffer
+ *      - LE_UNSUPPORTED  the feature is not supported
+ *      - LE_FAULT        for all other errors
  *
  *
  */
@@ -5437,7 +5651,8 @@ le_result_t le_mrc_GetPciScanMccMnc
         ///< [IN]
 )
 {
-     if (mccPtr == NULL)
+#if LE_CONFIG_ENABLE_PCI_SCAN
+    if (mccPtr == NULL)
     {
         LE_KILL_CLIENT("mccStr is NULL !");
         return LE_FAULT;
@@ -5473,6 +5688,9 @@ le_result_t le_mrc_GetPciScanMccMnc
     memcpy(mncPtr, PlmnInformationPtr->mobileCode.mnc, LE_MRC_MNC_BYTES);
 
     return LE_OK;
+#else
+    return LE_UNSUPPORTED;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -5480,7 +5698,7 @@ le_result_t le_mrc_GetPciScanMccMnc
  * This function must be called to get the physical cell id referenced by PciScanInformation which
  * is returned by le_mrc_GetFirstPciScanInfo() and le_mrc_GetNextPciScanInfo().
  *
- * @return The Physical Cell Identifier.
+ * @return The Physical Cell Identifier. UINT16_MAX is returned if the value is not available.
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
@@ -5492,16 +5710,21 @@ uint16_t le_mrc_GetPciScanCellId
         ///< [IN] [IN] The reference to the cell information.
 )
 {
+#if LE_CONFIG_ENABLE_PCI_SCAN
     pa_mrc_PciScanInformation_t* scanInformationPtr = le_ref_Lookup(PciScanInformationRefMap,
                                                                  pciScanInformationRef);
 
     if (scanInformationPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", pciScanInformationRef);
-        return (uint16_t)LE_FAULT;
+        return UINT16_MAX;
     }
 
     return scanInformationPtr->physicalCellId;
+#else
+    LE_ERROR("Not supported!");
+    return UINT16_MAX;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -5509,7 +5732,7 @@ uint16_t le_mrc_GetPciScanCellId
  * This function must be called to get the global cell id referenced by PciScanInformation which is
  * returned by le_mrc_GetFirstPciScanInfo() and le_mrc_GetNextPciScanInfo().
  *
- * @return The Global Cell Identifier.
+ * @return The Global Cell Identifier. UINT32_MAX is returned if the value is not available.
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
@@ -5521,16 +5744,21 @@ uint32_t le_mrc_GetPciScanGlobalCellId
         ///< [IN] [IN] The reference to the cell information.
 )
 {
+#if LE_CONFIG_ENABLE_PCI_SCAN
     pa_mrc_PciScanInformation_t* scanInformationPtr = le_ref_Lookup(PciScanInformationRefMap,
                                                                  pciScanInformationRef);
 
     if (scanInformationPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", pciScanInformationRef);
-        return (uint32_t)LE_FAULT;
+        return UINT32_MAX;
     }
 
     return scanInformationPtr->globalCellId;
+#else
+    LE_ERROR("Not supported!");
+    return UINT32_MAX;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -5548,6 +5776,7 @@ void le_mrc_DeletePciNetworkScan
     le_mrc_PciScanInformationListRef_t  scanInformationListRef ///< [IN] list of scan information
 )
 {
+#if LE_CONFIG_ENABLE_PCI_SCAN
     //Delet all the plminfo list in all PciScanInformation
     le_mrc_PciScanInformationRef_t     scanInfoRef = NULL;
 
@@ -5602,6 +5831,7 @@ void le_mrc_DeletePciNetworkScan
     // Release the Reference to the Scan Information List, and free the memory.
     le_ref_DeleteRef(PciScanInformationListRefMap, scanInformationListRef);
     le_mem_Release(scanInformationListPtr);
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -5623,6 +5853,7 @@ le_mrc_PlmnInformationRef_t le_mrc_GetFirstPlmnInfo
         ///< [IN] [IN] The reference to the cell information.
 )
 {
+#if LE_CONFIG_ENABLE_PCI_SCAN
     pa_mrc_PlmnInformation_t* nodePtr;
     le_dls_Link_t*          linkPtr;
 
@@ -5650,6 +5881,9 @@ le_mrc_PlmnInformationRef_t le_mrc_GetFirstPlmnInfo
     {
         return NULL;
     }
+#else
+    return NULL;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -5671,7 +5905,8 @@ le_mrc_PlmnInformationRef_t le_mrc_GetNextPlmnInfo
         ///< [IN] [IN] The reference to the cell information.
 )
 {
-     pa_mrc_PlmnInformation_t* nodePtr;
+#if LE_CONFIG_ENABLE_PCI_SCAN
+    pa_mrc_PlmnInformation_t* nodePtr;
     le_dls_Link_t*          linkPtr;
 
     pa_mrc_PciScanInformation_t* scanInformationPtr = le_ref_Lookup(PciScanInformationRefMap,
@@ -5698,6 +5933,9 @@ le_mrc_PlmnInformationRef_t le_mrc_GetNextPlmnInfo
     {
         return NULL;
     }
+#else
+    return NULL;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -5720,6 +5958,7 @@ le_mrc_PciScanInformationRef_t le_mrc_GetFirstPciScanInfo
         ///< [IN] The list of scan information.
 )
 {
+#if LE_CONFIG_ENABLE_PCI_SCAN
     pa_mrc_PciScanInformation_t* nodePtr;
     le_dls_Link_t*          linkPtr;
 
@@ -5750,6 +5989,9 @@ le_mrc_PciScanInformationRef_t le_mrc_GetFirstPciScanInfo
     {
         return NULL;
     }
+#else
+    return NULL;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -5771,6 +6013,8 @@ le_mrc_PciScanInformationRef_t le_mrc_GetNextPciScanInfo
         ///< [IN] The list of scan information.
 )
 {
+#if LE_CONFIG_ENABLE_PCI_SCAN
+
     pa_mrc_PciScanInformation_t* nodePtr;
     le_dls_Link_t*          linkPtr;
 
@@ -5802,4 +6046,7 @@ le_mrc_PciScanInformationRef_t le_mrc_GetNextPciScanInfo
     {
         return NULL;
     }
+#else
+    return NULL;
+#endif
 }

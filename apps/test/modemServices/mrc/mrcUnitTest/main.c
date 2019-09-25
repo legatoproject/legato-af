@@ -993,7 +993,7 @@ static void Testle_mrc_PciScan
 
     do
     {
-        LE_ASSERT(LE_FAULT == (int16_t)le_mrc_GetPciScanCellId(NULL));
+        LE_ASSERT(UINT16_MAX == le_mrc_GetPciScanCellId(NULL));
         cellId = le_mrc_GetPciScanCellId(scanInfoRef);
 
         LE_ASSERT(NULL == le_mrc_GetFirstPlmnInfo(NULL));

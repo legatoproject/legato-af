@@ -344,6 +344,14 @@ static ECall_t ECallObj;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static safe Reference Map for eCall objects.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(ECallMap, ECALL_MAX);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Safe Reference Map for eCall objects.
  *
  */
@@ -372,6 +380,16 @@ static le_sem_Ref_t SemaphoreRef;
  */
 //--------------------------------------------------------------------------------------------------
 static le_thread_Ref_t MainThread = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static pool used for eCall events
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(ECallEvents,
+                          ECALL_EVENTS_POOL_SIZE,
+                          sizeof(ECallEventData_t));
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2201,7 +2219,7 @@ le_result_t le_ecall_Init
     ECallEventStateId = le_event_CreateId("ECallState", sizeof(ReportState_t));
 
     // Create the Safe Reference Map to use for eCall object Safe References.
-    ECallRefMap = le_ref_CreateMap("ECallMap", ECALL_MAX);
+    ECallRefMap = le_ref_InitStaticMap(ECallMap, ECALL_MAX);
 
     // Initialize ECallObj
     memset(&ECallObj, 0, sizeof(ECallObj));
@@ -2332,9 +2350,9 @@ le_result_t le_ecall_Init
     MainThread = le_thread_GetCurrent();
 
     // Create pool to report eCall events to the handler
-    ECallEventsPool = le_mem_CreatePool("ECallEventsPool", sizeof(ECallEventData_t));
-    // Expand the pool to be able to store eCall events received almost at the same time
-    le_mem_ExpandPool(ECallEventsPool, ECALL_EVENTS_POOL_SIZE);
+    ECallEventsPool = le_mem_InitStaticPool(ECallEvents,
+                                            ECALL_EVENTS_POOL_SIZE,
+                                            sizeof(ECallEventData_t));
 
     // Start ECall thread
     le_sem_Ref_t initSemaphore = le_sem_Create("InitSem",0);

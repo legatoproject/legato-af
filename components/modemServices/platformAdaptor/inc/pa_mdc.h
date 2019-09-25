@@ -249,6 +249,21 @@ LE_SHARED le_result_t pa_mdc_GetDefaultProfileIndex
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the list of all profiles
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mdc_GetProfileList
+(
+    le_mdc_ProfileInfo_t* profileListPtr, ///< [OUT] list of available profiles
+    size_t* listSizePtr                   ///< [INOUT] list size
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the index of the default profile for Bearer Independent Protocol (link to the platform)
  *
  * @return
@@ -526,7 +541,7 @@ LE_SHARED le_result_t pa_mdc_GetGatewayAddress
 LE_SHARED le_result_t pa_mdc_GetDNSAddresses
 (
     uint32_t profileIndex,                  ///< [IN] The profile to use
-    le_mdmDefs_IpVersion_t ipVersion,               ///< [IN] IP Version
+    le_mdmDefs_IpVersion_t ipVersion,       ///< [IN] IP Version
     char*  dns1AddrStr,                     ///< [OUT] The primary DNS IP address in dotted format
     size_t dns1AddrStrSize,                 ///< [IN] The size in bytes of the dns1AddrStr buffer
     char*  dns2AddrStr,                     ///< [OUT] The secondary DNS IP address in dotted format
@@ -641,20 +656,28 @@ LE_SHARED le_result_t pa_mdc_MapProfileOnNetworkInterface
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the list of all profiles
+ * Get the number of profiles on the modem.
  *
  * @return
- *      - LE_OK on success
- *      - LE_FAULT on failure
+ *      - number of profile existing on modem
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED uint32_t pa_mdc_GetNumProfiles
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called from each thread to connect PA MDC services.
  *
  * ToDo: The output argument will soon be replaced after code integration with the new struct type
  *       support in .api
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_mdc_GetProfileList
+LE_SHARED void pa_mdc_AsyncInit
 (
-    le_mdc_ProfileInfo_t *profileList, ///< [OUT] list of available profiles
-    size_t *listSize                   ///< [INOUT] list size
+    void
 );
 
 //--------------------------------------------------------------------------------------------------

@@ -115,10 +115,24 @@ static uint8_t MtPdpStateChangeHandlerCounter;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static memory pool for data profile objects
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(DataProfile, PA_MDC_MAX_PROFILE, sizeof(le_mdc_Profile_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The memory pool for data profile objects
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t DataProfilePool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static safe Reference Map for data profile objects.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(DataProfileMap, PA_MDC_MAX_PROFILE);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -140,7 +154,14 @@ static le_event_Id_t MtPdpEventId;
  * Event ID for sending commands.
  */
 //--------------------------------------------------------------------------------------------------
-static le_event_Id_t CommandEventId;
+static le_event_Id_t CommandEventId = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Counter of events that should trigger command thread creation.
+ */
+//--------------------------------------------------------------------------------------------------
+static size_t CommandThreadStarts = 0;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -206,7 +227,7 @@ static le_mdc_Profile_t* SearchProfileInList
     {
         le_mdc_Profile_t* profilePtr = (le_mdc_Profile_t*) le_ref_GetValue(iterRef);
 
-        if ( profilePtr->profileIndex == index )
+        if (profilePtr && (profilePtr->profileIndex == index))
         {
             if ( IS_TRACE_ENABLED )
             {
@@ -270,7 +291,7 @@ static void NewSessionStateHandler
         }
         else
         {
-            LE_DEBUG("profileIndex %d, old connection status %d, new state %d, pdp Type %d",
+            LE_DEBUG("profileIndex %"PRIi32", old connection status %d, new state %d, pdp Type %d",
                                                             sessionStatePtr->profileIndex,
                                                             profilePtr->connectionStatus,
                                                             sessionStatePtr->newState,
@@ -290,13 +311,13 @@ static void NewSessionStateHandler
         // Profile doesn't exist and should be created
         if(profilePtr == NULL)
         {
-            LE_DEBUG("MT-PDP profile created - index %d", sessionStatePtr->profileIndex);
+            LE_DEBUG("MT-PDP profile created - index %"PRIi32, sessionStatePtr->profileIndex);
             le_mdc_ProfileRef_t profileRef = CreateModemProfile(sessionStatePtr->profileIndex);
             profilePtr =  le_ref_Lookup(DataProfileRefMap, profileRef);
         }
         else
         {
-            LE_DEBUG("MT-PDP profile found - index %d", sessionStatePtr->profileIndex);
+            LE_DEBUG("MT-PDP profile found - index %"PRIi32, sessionStatePtr->profileIndex);
         }
 
         // MT-PDP notification management
@@ -376,7 +397,7 @@ static le_mdc_ProfileRef_t CreateModemProfile
         profilePtr->profileIndex = index;
 
         // Each profile has its own event for reporting session state changes
-        snprintf(eventName,sizeof(eventName)-1, "profile-%d",index);
+        snprintf(eventName,sizeof(eventName)-1, "profile-%"PRIi32"",index);
         profilePtr->sessionStateEvent = le_event_CreateId(eventName, sizeof(le_mdc_Profile_t*));
 
         // Init the remaining fields
@@ -387,7 +408,7 @@ static le_mdc_ProfileRef_t CreateModemProfile
         profilePtr->profileRef = le_ref_CreateRef(DataProfileRefMap, profilePtr);
     }
 
-    LE_DEBUG("profileRef %p created for index %d",  profilePtr->profileRef, index);
+    LE_DEBUG("profileRef %p created for index %"PRIi32,  profilePtr->profileRef, index);
 
     return profilePtr->profileRef;
 }
@@ -803,6 +824,12 @@ static void ProcessCommandEventHandler
             LE_WARN("No CallhandlerFunction, status %d!!", result);
         }
     }
+
+    if (LE_ATOMIC_SUB_FETCH(&CommandThreadStarts, 1, LE_ATOMIC_ORDER_RELAXED) == 0)
+    {
+        le_wdogChain_Stop(MS_WDOG_MDC_LOOP);
+        le_thread_Exit(NULL);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -816,7 +843,10 @@ static void* CommandThread
 )
 {
     le_sem_Ref_t initSemaphore = (le_sem_Ref_t)contextPtr;
-#ifdef LE_CONFIG_ENABLE_CONFIG_TREE
+
+    // Init PA MDC service to this thread.
+    pa_mdc_AsyncInit();
+#if LE_CONFIG_ENABLE_CONFIG_TREE
     // Connect to services used by this thread
     le_cfg_ConnectService();
 #endif
@@ -845,10 +875,8 @@ static bool GetDataCounterState
     void
 )
 {
-#ifndef LE_CONFIG_ENABLE_CONFIG_TREE
-    return true;
-#else
-    bool activationState;
+    bool activationState = false;
+#if LE_CONFIG_ENABLE_CONFIG_TREE
     le_cfg_IteratorRef_t iteratorRef;
 
     iteratorRef = le_cfg_CreateReadTxn(CFG_MODEMSERVICE_MDC_PATH);
@@ -856,9 +884,8 @@ static bool GetDataCounterState
     le_cfg_CancelTxn(iteratorRef);
 
     LE_DEBUG("Retrieved data counter activation state: %d", activationState);
-
-    return activationState;
 #endif
+    return activationState;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -871,7 +898,7 @@ static void SetDataCounterState
     bool activationState    ///< New data counter activation state
 )
 {
-#ifdef LE_CONFIG_ENABLE_CONFIG_TREE
+#if LE_CONFIG_ENABLE_CONFIG_TREE
     le_cfg_IteratorRef_t iteratorRef;
 
     LE_DEBUG("New data counter activation state: %d", activationState);
@@ -896,7 +923,6 @@ static le_result_t GetDataCounters
 #ifndef LE_CONFIG_ENABLE_CONFIG_TREE
     *rxBytesPtr = 0;
     *txBytesPtr = 0;
-    return LE_OK;
 #else
     le_cfg_IteratorRef_t iteratorRef;
 
@@ -906,9 +932,8 @@ static le_result_t GetDataCounters
     le_cfg_CancelTxn(iteratorRef);
 
     LE_DEBUG("Saved rxBytes=%"PRIu64", txBytes=%"PRIu64, *rxBytesPtr, *txBytesPtr);
-
-    return LE_OK;
 #endif
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -981,12 +1006,13 @@ void le_mdc_Init
 #endif
 
     // Allocate the profile pool, and set the max number of objects, since it is already known.
-    DataProfilePool = le_mem_CreatePool("DataProfilePool", sizeof(le_mdc_Profile_t));
-    le_mem_ExpandPool(DataProfilePool, PA_MDC_MAX_PROFILE);
+    DataProfilePool = le_mem_InitStaticPool(DataProfile,
+                                            PA_MDC_MAX_PROFILE,
+                                            sizeof(le_mdc_Profile_t));
     le_mem_SetDestructor(DataProfilePool, DataProfileDestructor);
 
     // Create the Safe Reference Map to use for data profile object Safe References.
-    DataProfileRefMap = le_ref_CreateMap("DataProfileMap", PA_MDC_MAX_PROFILE);
+    DataProfileRefMap = le_ref_InitStaticMap(DataProfileMap, PA_MDC_MAX_PROFILE);
 
     // Subscribe to the session state handler
     pa_mdc_AddSessionStateHandler(NewSessionStateHandler, NULL);
@@ -1231,7 +1257,8 @@ le_result_t le_mdc_StartSession
         }
     }
 
-    if ((LE_OK != result) && (LE_MDC_PDP_UNKNOWN != pdpType))
+    if ((LE_OK != result) && (LE_DUPLICATE != result)
+         && (LE_MDC_PDP_UNKNOWN != pdpType))
     {
         if (LE_MDC_PDP_IPV4V6 == pdpType)
         {
@@ -1242,7 +1269,7 @@ le_result_t le_mdc_StartSession
                 LE_ERROR("conFailurePtr is NULL");
                 return LE_FAULT;
             }
-            LE_ERROR("Get IPv4v6 Async Connection failureV4 %d, %d, %d, %d",
+            LE_ERROR("Get IPv4v6 Async Connection failureV4 %d, %"PRIi32", %"PRIi32", %"PRIi32,
                 profilePtr->conFailurePtr->callEndFailure,
                 profilePtr->conFailurePtr->callEndFailureCode,
                 profilePtr->conFailurePtr->callConnectionFailureType,
@@ -1255,7 +1282,7 @@ le_result_t le_mdc_StartSession
                 LE_ERROR("conFailurePtr is NULL");
                 return LE_FAULT;
             }
-            LE_ERROR("Get IPv4v6 Async Connection failureV6 %d, %d, %d, %d",
+            LE_ERROR("Get IPv4v6 Async Connection failureV6 %d, %"PRIi32", %"PRIi32", %"PRIi32,
                 profilePtr->conFailurePtr->callEndFailure,
                 profilePtr->conFailurePtr->callEndFailureCode,
                 profilePtr->conFailurePtr->callConnectionFailureType,
@@ -1270,7 +1297,7 @@ le_result_t le_mdc_StartSession
                 LE_ERROR("conFailurePtr is NULL");
                 return LE_FAULT;
             }
-            LE_ERROR("Get Async Connection failure %d, %d, %d, %d",
+            LE_ERROR("Get Async Connection failure %d, %"PRIi32", %"PRIi32", %"PRIi32,
                 profilePtr->conFailurePtr->callEndFailure,
                 profilePtr->conFailurePtr->callEndFailureCode,
                 profilePtr->conFailurePtr->callConnectionFailureType,
@@ -1346,8 +1373,10 @@ le_result_t le_mdc_StopSession
 )
 {
     uint64_t rxBytes, txBytes;
+    le_result_t result;
+
     le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
-    if (profilePtr == NULL)
+    if (NULL == profilePtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) found!", profileRef);
         return LE_BAD_PARAMETER;
@@ -1356,7 +1385,29 @@ le_result_t le_mdc_StopSession
     // Store data counters
     le_mdc_GetBytesCounters(&rxBytes, &txBytes);
 
-    return pa_mdc_StopSession(profilePtr->profileIndex);
+    result = pa_mdc_StopSession(profilePtr->profileIndex);
+    if (LE_OK != result)
+    {
+        if (NULL == profilePtr->conFailurePtr)
+        {
+            LE_ERROR("conFailurePtr is NULL");
+            return LE_FAULT;
+        }
+        pa_mdc_GetConnectionFailureReason(profilePtr->profileIndex, &(profilePtr->conFailurePtr));
+        if (NULL == profilePtr->conFailurePtr)
+        {
+            LE_ERROR("conFailurePtr is NULL");
+            return LE_FAULT;
+        }
+        LE_ERROR("Get Connection failure %d, %"PRIi32", %"PRIi32", %"PRIi32"",
+                profilePtr->conFailurePtr->callEndFailure,
+                profilePtr->conFailurePtr->callEndFailureCode,
+                profilePtr->conFailurePtr->callConnectionFailureType,
+                profilePtr->conFailurePtr->callConnectionFailureCode);
+    }
+
+    return result;
+
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1633,7 +1684,8 @@ le_result_t le_mdc_GetInterfaceName
         return LE_FAULT;
     }
 
-    return pa_mdc_GetInterfaceName(profilePtr->profileIndex, interfaceNameStr, interfaceNameStrSize);
+    return pa_mdc_GetInterfaceName(profilePtr->profileIndex, interfaceNameStr,
+                                   interfaceNameStrSize);
 }
 
 
@@ -1855,10 +1907,10 @@ le_result_t le_mdc_GetIPv6GatewayAddress
 le_result_t le_mdc_GetIPv6DNSAddresses
 (
     le_mdc_ProfileRef_t profileRef,        ///< [IN] Query this profile object
-    char*   dns1AddrStr,         ///< [OUT] Primary DNS IP address in dotted format
-    size_t  dns1AddrStrSize,     ///< [IN] dns1AddrStr buffer size in bytes
-    char*   dns2AddrStr,         ///< [OUT] Secondary DNS IP address in dotted format
-    size_t  dns2AddrStrSize      ///< [IN] dns2AddrStr buffer size in bytes
+    char*   dns1AddrStr,                   ///< [OUT] Primary DNS IP address in dotted format
+    size_t  dns1AddrStrSize,               ///< [IN] dns1AddrStr buffer size in bytes
+    char*   dns2AddrStr,                   ///< [OUT] Secondary DNS IP address in dotted format
+    size_t  dns2AddrStrSize                ///< [IN] dns2AddrStr buffer size in bytes
 )
 {
     le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
@@ -1899,8 +1951,10 @@ le_result_t le_mdc_GetIPv6DNSAddresses
 le_result_t le_mdc_GetDataBearerTechnology
 (
     le_mdc_ProfileRef_t            profileRef,                ///< [IN] Query this profile object
-    le_mdc_DataBearerTechnology_t* downlinkDataBearerTechPtr, ///< [OUT] downlink data bearer technology
-    le_mdc_DataBearerTechnology_t* uplinkDataBearerTechPtr    ///< [OUT] uplink data bearer technology
+    le_mdc_DataBearerTechnology_t* downlinkDataBearerTechPtr, ///< [OUT] downlink data bearer
+                                                              ///< technology
+    le_mdc_DataBearerTechnology_t* uplinkDataBearerTechPtr    ///< [OUT] uplink data bearer
+                                                              ///< technology
 )
 {
     le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
@@ -2223,7 +2277,7 @@ le_mdc_Pdp_t le_mdc_GetPDP
         }
         else
         {
-            LE_ERROR("Could not read profile at index %d", profilePtr->profileIndex);
+            LE_ERROR("Could not read profile at index %"PRIi32, profilePtr->profileIndex);
             return LE_MDC_PDP_UNKNOWN;
         }
     }
@@ -2590,7 +2644,7 @@ le_result_t le_mdc_GetAuthentication
 
     if ( pa_mdc_ReadProfile(profilePtr->profileIndex,&profilePtr->modemData) != LE_OK )
     {
-        LE_ERROR("Could not read profile at index %d", profilePtr->profileIndex);
+        LE_ERROR("Could not read profile at index %"PRIi32, profilePtr->profileIndex);
         return LE_FAULT;
     }
 
@@ -2627,7 +2681,7 @@ uint32_t le_mdc_NumProfiles
     void
 )
 {
-    return PA_MDC_MAX_PROFILE;
+    return pa_mdc_GetNumProfiles();
 }
 
 //--------------------------------------------------------------------------------------------------

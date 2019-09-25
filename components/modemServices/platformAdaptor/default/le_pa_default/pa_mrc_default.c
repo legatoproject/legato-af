@@ -103,13 +103,12 @@ le_event_HandlerRef_t pa_mrc_AddNetworkRegHandler
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mrc_RemoveNetworkRegHandler
+void pa_mrc_RemoveNetworkRegHandler
 (
     le_event_HandlerRef_t handlerRef
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
 }
 
 

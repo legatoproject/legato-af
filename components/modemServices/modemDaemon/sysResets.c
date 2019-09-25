@@ -3,15 +3,17 @@
  *
  * Copyright (C) Sierra Wireless Inc.
  */
-
+#if LE_CONFIG_LINUX
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdint.h>
+#endif
 #include <legato.h>
 #include <interfaces.h>
 #include "sysResets.h"
 
+#if LE_CONFIG_LINUX
 //--------------------------------------------------------------------------------------------------
 /**
  * Lock file location
@@ -19,6 +21,7 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define LOCKFILE                "/var/lock/modemDeamon.lock"
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -59,6 +62,7 @@
 //--------------------------------------------------------------------------------------------------
 static le_result_t ResetCounterFeature = LE_UNSUPPORTED;
 
+#if LE_CONFIG_LINUX
 //--------------------------------------------------------------------------------------------------
 /**
  * Close a fd and log a warning message in case of an error
@@ -112,45 +116,61 @@ static int UpdateLockFile
 
     return 0;
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Read from file using Legato le_fs API
  *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_OVERFLOW       The file path is too long.
+ *  - LE_NOT_FOUND      The file does not exists or a directory in the path does not exist
+ *  - LE_NOT_PERMITTED  Access denied to the file or to a directory in the path
+ *  - LE_UNSUPPORTED    The prefix cannot be added and the function is unusable
+ *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t ReadFs
 (
-    const char* pathPtr,
-    uint8_t*    bufPtr,
-    size_t      size
+    const char* pathPtr,    ///< [IN] File path
+    uint8_t*    bufPtr,     ///< [IN] Buffer to write
+    size_t      size        ///< [IN] Number of bytes to read when this function is called
 )
 {
     le_fs_FileRef_t fileRef;
     le_result_t result;
+    size_t expectedLen = size;
 
     result = le_fs_Open(pathPtr, LE_FS_RDONLY, &fileRef);
     if (LE_OK != result)
     {
-        LE_ERROR("failed to open %s: %s", pathPtr, LE_RESULT_TXT(result));
+        LE_ERROR("Failed to open %s: %s", pathPtr, LE_RESULT_TXT(result));
         return result;
     }
 
     result = le_fs_Read(fileRef, bufPtr, &size);
     if (LE_OK != result)
     {
-        LE_ERROR("failed to read %s: %s", pathPtr, LE_RESULT_TXT(result));
+        LE_ERROR("Failed to read %s: %s", pathPtr, LE_RESULT_TXT(result));
         if (LE_OK != le_fs_Close(fileRef))
         {
-            LE_ERROR("failed to close %s", pathPtr);
+            LE_ERROR("Failed to close %s", pathPtr);
         }
         return result;
+    }
+
+    if (expectedLen != size)
+    {
+        LE_ERROR("Read %zu out of the expected length: %zu ", size, expectedLen);
+        result = LE_FAULT;
     }
 
     result = le_fs_Close(fileRef);
     if (LE_OK != result)
     {
-        LE_ERROR("failed to close %s: %s", pathPtr, LE_RESULT_TXT(result));
+        LE_ERROR("Failed to close %s: %s", pathPtr, LE_RESULT_TXT(result));
     }
 
     return result;
@@ -160,32 +180,41 @@ static le_result_t ReadFs
 /**
  * Write to file using Legato le_fs API
  *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_OVERFLOW       The file path is too long.
+ *  - LE_UNDERFLOW      The write succeed but was not able to write all bytes
+ *  - LE_NOT_FOUND      The file does not exists or a directory in the path does not exist
+ *  - LE_NOT_PERMITTED  Access denied to the file or to a directory in the path
+ *  - LE_UNSUPPORTED    The prefix cannot be added and the function is unusable
+ *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t WriteFs
 (
-    const char* pathPtr,
-    uint8_t*    bufPtr,
-    size_t      size
+    const char* pathPtr,    ///< [IN] File path
+    uint8_t*    bufPtr,     ///< [IN] Buffer to write
+    size_t      size        ///< [IN] Size Value
 )
 {
     le_fs_FileRef_t fileRef;
     le_result_t result;
 
-    result = le_fs_Open(pathPtr, LE_FS_WRONLY | LE_FS_CREAT, &fileRef);
+    result = le_fs_Open(pathPtr, LE_FS_WRONLY | LE_FS_CREAT | LE_FS_TRUNC, &fileRef);
     if (LE_OK != result)
     {
-        LE_ERROR("failed to open %s: %s", pathPtr, LE_RESULT_TXT(result));
+        LE_ERROR("Failed to open %s: %s", pathPtr, LE_RESULT_TXT(result));
         return result;
     }
 
     result = le_fs_Write(fileRef, bufPtr, size);
     if (LE_OK != result)
     {
-        LE_ERROR("failed to write %s: %s", pathPtr, LE_RESULT_TXT(result));
+        LE_ERROR("Failed to write %s: %s", pathPtr, LE_RESULT_TXT(result));
         if (LE_OK != le_fs_Close(fileRef))
         {
-            LE_ERROR("failed to close %s", pathPtr);
+            LE_ERROR("Failed to close %s", pathPtr);
         }
         return result;
     }
@@ -193,7 +222,7 @@ static le_result_t WriteFs
     result = le_fs_Close(fileRef);
     if (LE_OK != result)
     {
-        LE_ERROR("failed to close %s: %s", pathPtr, LE_RESULT_TXT(result));
+        LE_ERROR("Failed to close %s: %s", pathPtr, LE_RESULT_TXT(result));
     }
 
     return result;
@@ -203,25 +232,28 @@ static le_result_t WriteFs
 /**
  * Set system resets count
  *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-static int SetResetsCount
+static le_result_t SetResetsCount
 (
-    const char* filePath,
-    uint64_t    value
+    const char* filePath,    ///< [IN] Reset file path
+    uint64_t    value        ///< [IN] Reset Value
 )
 {
     char buf[BUFSIZE] = {0};
 
-    snprintf(buf, BUFSIZE, "%lu\n", (long unsigned)value);
+    snprintf(buf, BUFSIZE, "%"PRIu64, value);
 
     if (LE_OK != WriteFs(filePath, (uint8_t *)buf, sizeof(buf)))
     {
         LE_ERROR("Failed to write to `%s'", filePath);
-        return -1;
+        return LE_FAULT;
     }
 
-    return 0;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -267,7 +299,7 @@ static le_result_t GetResetsCount
     }
     else if (LE_NOT_FOUND == result)
     {
-        LE_INFO("File `%s' not found", filePath);
+        LE_DEBUG("File `%s' not found", filePath);
 
         *valuePtr = 0;
         return LE_OK;
@@ -283,6 +315,10 @@ static le_result_t GetResetsCount
 /**
  * Update reset information
  *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed.
+ *  - LE_UNSUPPORTED    If not supported by the platform
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t UpdateResetInfo
@@ -307,7 +343,7 @@ static le_result_t UpdateResetInfo
     if (LE_OK != result)
     {
         LE_ERROR("Failed to get reset info: %s", LE_RESULT_TXT(result));
-        return LE_FAULT;
+        return result;
     }
 
     switch (reset)
@@ -362,7 +398,7 @@ le_result_t sysResets_GetExpectedResetsCount
     }
     if (LE_UNSUPPORTED == ResetCounterFeature)
     {
-        LE_INFO("ResetCounterFeature LE_UNSUPPORTED");
+        LE_DEBUG("ResetCounterFeature LE_UNSUPPORTED");
         return LE_UNSUPPORTED;
     }
 
@@ -402,8 +438,9 @@ le_result_t sysResets_GetUnexpectedResetsCount
  * Init system resets counter
  *
  * @return
- *      - LE_OK     Init succeded
- *      - LE_FAULT  Init failed
+ *      - LE_OK           Init succeded
+ *      - LE_FAULT        Init failed
+ *      - LE_UNSUPPORTED  If not supported by the platform
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t sysResets_Init
@@ -411,6 +448,7 @@ le_result_t sysResets_Init
     void
 )
 {
+#if LE_CONFIG_LINUX
     //This check is done to avoid incrementation of counter if only legato reboots
     if (!access(LOCKFILE, W_OK | R_OK))
     {
@@ -425,6 +463,7 @@ le_result_t sysResets_Init
     {
         return LE_FAULT;
     }
+#endif
     ResetCounterFeature = UpdateResetInfo();
     return ResetCounterFeature;
 

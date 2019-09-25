@@ -560,6 +560,7 @@ static void FirstLayerIccidChangeHandler
  * @return
  *      - LE_OK on success
  *      - LE_FAULT on failure
+ *      - LE_BAD_PARAMETER on invalid parameters
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t GetEID
@@ -568,6 +569,11 @@ static le_result_t GetEID
 )
 {
     pa_sim_Eid_t eid;
+
+    if (NULL == simPtr)
+    {
+        return LE_BAD_PARAMETER;
+    }
 
     // EID has already been retreived and stored in SIM structure. No need to read it again.
     if (0 != simPtr->EID[0])
@@ -602,6 +608,7 @@ static le_result_t GetEID
  * @return
  *      - LE_OK on success
  *      - LE_FAULT on failure
+ *      - LE_BAD_PARAMETER on invalid parameters
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t GetICCID
@@ -610,6 +617,11 @@ static le_result_t GetICCID
 )
 {
     pa_sim_CardId_t  iccid;
+
+    if (NULL == simPtr)
+    {
+        return LE_BAD_PARAMETER;
+    }
 
     if (!le_sim_IsPresent(simPtr->simId))
     {
@@ -643,6 +655,7 @@ static le_result_t GetICCID
  * @return
  *      - LE_OK on success
  *      - LE_FAULT on failure
+ *      - LE_BAD_PARAMETER on invalid parameters
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t GetIMSI
@@ -651,6 +664,11 @@ static le_result_t GetIMSI
 )
 {
     pa_sim_Imsi_t    imsi;
+
+    if(NULL == simPtr)
+    {
+        return LE_BAD_PARAMETER;
+    }
 
     if (!le_sim_IsPresent(simPtr->simId))
     {
@@ -684,6 +702,7 @@ static le_result_t GetIMSI
  * @return
  *      - LE_OK on success
  *      - LE_FAULT on failure
+ *      - LE_BAD_PARAMETER on invalid parameters
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t GetPhoneNumber
@@ -692,6 +711,11 @@ static le_result_t GetPhoneNumber
 )
 {
     char phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
+
+    if (NULL == simPtr)
+    {
+        return LE_BAD_PARAMETER;
+    }
 
     // Phone number has already been retreived and stored. No need to read it again from PA.
     if (0 != simPtr->phoneNumber[0])
@@ -857,6 +881,11 @@ static void GetSimCardInformation
     le_sim_States_t state
 )
 {
+    if (NULL == simPtr)
+    {
+        LE_ERROR("Bad parameters");
+        return;
+    }
 
     switch(state)
     {
@@ -1291,7 +1320,7 @@ static void CloseSessionEventHandler
         le_sim_FPLMNList_t* FPLMNListPtr = (le_sim_FPLMNList_t*)le_ref_GetValue(iterRef);
 
         // Check if the session reference saved matchs with the current session reference.
-        if (FPLMNListPtr->sessionRef == sessionRef)
+        if (FPLMNListPtr && (FPLMNListPtr->sessionRef == sessionRef))
         {
             le_sim_FPLMNListRef_t FPLMNListRef = (le_sim_FPLMNListRef_t) le_ref_GetSafeRef(iterRef);
 

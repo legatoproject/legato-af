@@ -39,6 +39,61 @@
 //--------------------------------------------------------------------------------------------------
 // Symbols and enums.
 //--------------------------------------------------------------------------------------------------
+
+#ifdef MK_CONFIG_SMS_LIGHT
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of session objects we expect to have at one time.
+ */
+//--------------------------------------------------------------------------------------------------
+#define SMS_MAX_SESSION   1
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * HandlerCtx structure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_sms_RxMessageHandlerRef_t  handlerRef;     ///< Handler reference.
+    le_sms_RxMessageHandlerFunc_t handlerFuncPtr; ///< Handler function.
+    void*                         userContext;    ///< handler context.
+}
+HandlerCtx_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static memory pool for handlers context.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(Handler, SMS_MAX_SESSION, sizeof(HandlerCtx_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Memory Pool for RX handlers context.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t HandlerPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Message Ref
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_sms_MsgRef_t MsgRef;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The handler's context.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static HandlerCtx_t* HandlerCtxPtr = NULL;
+
+#else
 //--------------------------------------------------------------------------------------------------
 /**
  * Maximum Message IDs returned by the List SMS messages command.
@@ -247,6 +302,14 @@ MsgRefNode_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static memory pool for SMS messages.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(SmsMsg, MAX_NUM_OF_SMS_MSG, sizeof(le_sms_Msg_t));
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Memory Pool for SMS messages.
  *
  */
@@ -255,11 +318,27 @@ static le_mem_PoolRef_t   MsgPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static safe Reference Map for Message objects.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(SmsMsgMap, MAX_NUM_OF_SMS_MSG);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Safe Reference Map for Message objects.
  *
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t MsgRefMap;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static memory pool for listed SMS messages.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(ListSms, MAX_NUM_OF_LIST, sizeof(le_sms_List_t));
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -271,6 +350,14 @@ static le_mem_PoolRef_t   ListPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static safe Reference Map for List objects.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(ListSmsMap, MAX_NUM_OF_LIST);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Safe Reference Map for List objects.
  *
  */
@@ -279,11 +366,32 @@ static le_ref_MapRef_t ListRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static pool for message references.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(SmsReference,
+                          MAX_NUM_OF_SMS_MSG,
+                          sizeof(le_sms_MsgReference_t));
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Memory Pool for message references.
  *
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t   ReferencePool;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static memory pool for handlers context.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(Handler,
+                          SMS_MAX_SESSION,
+                          sizeof(HandlerCtxNode_t));
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -295,6 +403,16 @@ static le_mem_PoolRef_t   HandlerPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static memory pool for sessions context.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(SessionCtx,
+                          SMS_MAX_SESSION,
+                          sizeof(SessionCtxNode_t));
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Memory Pool for sessions context.
  *
  */
@@ -303,11 +421,30 @@ static le_mem_PoolRef_t   SessionCtxPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static pool for msgRef context.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(MsgRef,
+                          SMS_MAX_SESSION*MAX_NUM_OF_SMS_MSG,
+                          sizeof(MsgRefNode_t));
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Memory Pool for msgRef context.
  *
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t   MsgRefPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static safe Reference Map for handlers objects.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(HandlerRefMap, SMS_MAX_SESSION);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1652,147 +1789,6 @@ static void MessageHandlers
     }
 }
 
-//--------------------------------------------------------------------------------------------------
-/**
- * New SMS message handler function.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void NewSmsHandler
-(
-    pa_sms_NewMessageIndication_t *newMessageIndicationPtr
-)
-{
-    pa_sms_Pdu_t messagePdu;
-    memset(&messagePdu, 0, sizeof(pa_sms_Pdu_t));
-    le_result_t res = LE_OK;
-    bool handlerPresent = false;
-    bool smscInfoPresent = true;
-
-    le_dls_Link_t* linkPtr = le_dls_Peek(&SessionCtxList);
-
-    // For all sessions, check if any handlers are present.
-    while (linkPtr)
-    {
-        SessionCtxNode_t* sessionCtxPtr = CONTAINER_OF(linkPtr, SessionCtxNode_t, link);
-        linkPtr = le_dls_PeekNext(&SessionCtxList, linkPtr);
-        le_dls_Link_t* linkHandlerPtr = le_dls_Peek(&(sessionCtxPtr->handlerList));
-
-        if (linkHandlerPtr)
-        {
-            LE_DEBUG("Handler has been subscribed for the session (%p)", sessionCtxPtr);
-            handlerPresent = true;
-            break;
-        }
-    }
-
-    LE_DEBUG("Handler Function called with message ID %d with protocol %d, Storage %d",
-             newMessageIndicationPtr->msgIndex,
-             newMessageIndicationPtr->protocol,
-             newMessageIndicationPtr->storage);
-
-    if (newMessageIndicationPtr->storage != PA_SMS_STORAGE_NONE)
-    {
-        le_sem_Wait(SmsSem);
-        res = pa_sms_RdPDUMsgFromMem(newMessageIndicationPtr->msgIndex,
-                                     newMessageIndicationPtr->protocol,
-                                     newMessageIndicationPtr->storage,
-                                     &messagePdu);
-        le_sem_Post(SmsSem);
-    }
-    else
-    {
-        LE_DEBUG("SMS Cell Broadcast GW '%c', CDMA Format '%c', GSM Format '%c'",
-                 (newMessageIndicationPtr->protocol == PA_SMS_PROTOCOL_GW_CB ? 'Y' : 'N'),
-                 (newMessageIndicationPtr->protocol == PA_SMS_PROTOCOL_CDMA ? 'Y' : 'N'),
-                 (newMessageIndicationPtr->protocol == PA_SMS_PROTOCOL_GSM ? 'Y' : 'N'));
-
-        memcpy(messagePdu.data, newMessageIndicationPtr->pduCB, LE_SMS_PDU_MAX_BYTES);
-        messagePdu.dataLen = newMessageIndicationPtr->pduLen;
-        messagePdu.protocol = newMessageIndicationPtr->protocol;
-
-        // No SMSC information in PDUs which are not stored
-        smscInfoPresent = false;
-    }
-
-    if (LE_OK != res)
-    {
-        LE_ERROR("pa_sms_RdPDUMsgFromMem failed");
-        return;
-    }
-
-    pa_sms_Message_t messageConverted;
-    le_sms_Msg_t* newSmsMsgObjPtr = NULL;
-
-    if (messagePdu.dataLen > LE_SMS_PDU_MAX_BYTES)
-    {
-        LE_ERROR("PDU length out of range (%u) !", messagePdu.dataLen);
-    }
-
-    // Try to decode message.
-    res = smsPdu_Decode(messagePdu.protocol,
-                        messagePdu.data,
-                        messagePdu.dataLen,
-                        smscInfoPresent,
-                        &messageConverted);
-    if (   (LE_OK == res)
-        && (   (messageConverted.type == PA_SMS_DELIVER)
-            || (messageConverted.type == PA_SMS_CELL_BROADCAST)
-            || (messageConverted.type == PA_SMS_STATUS_REPORT)))
-    {
-        newSmsMsgObjPtr = CreateAndPopulateMessage(newMessageIndicationPtr->msgIndex,
-                                                   &messagePdu,
-                                                   &messageConverted);
-    }
-    else
-    {
-        LE_DEBUG("Could not decode the message");
-        newSmsMsgObjPtr = CreateMessage(newMessageIndicationPtr->msgIndex, &messagePdu);
-    }
-
-    if (newSmsMsgObjPtr == NULL)
-    {
-        LE_CRIT("Cannot create a new message object, no report!");
-        return;
-    }
-
-    newSmsMsgObjPtr->storage = newMessageIndicationPtr->storage;
-
-    // Update received message count if necessary
-    if (MessageStats.counting)
-    {
-        if (LE_SMS_TYPE_RX == newSmsMsgObjPtr->type)
-        {
-            SetMessageCount(newSmsMsgObjPtr->type, MessageStats.rxCount + 1);
-        }
-        else if (LE_SMS_TYPE_BROADCAST_RX == newSmsMsgObjPtr->type)
-        {
-            SetMessageCount(newSmsMsgObjPtr->type, MessageStats.rxCbCount + 1);
-        }
-        else if (LE_SMS_TYPE_STATUS_REPORT == newSmsMsgObjPtr->type)
-        {
-            // SMS Status Report are not considered in received messages
-        }
-        else
-        {
-            LE_ERROR("Unexpected message type %d received", newSmsMsgObjPtr->type);
-        }
-    }
-
-    // If no client sessions are subscribed for handler then free memory and return
-    if (false == handlerPresent)
-    {
-        LE_DEBUG("No client sessions are subscribed for handler.");
-        le_mem_Release(newSmsMsgObjPtr);
-        return;
-    }
-
-    // Notify all the registered client's handlers with own reference.
-    MessageHandlers(newSmsMsgObjPtr);
-
-    LE_DEBUG("All the registered client's handlers notified with objPtr %p, Obj %p",
-             &newSmsMsgObjPtr, newSmsMsgObjPtr);
-}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2240,97 +2236,162 @@ static void CloseSessionEventHandler
         result = le_ref_NextNode(iterRef);
     }
 }
+#endif
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * New SMS message handler function.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void NewSmsHandler
+(
+    pa_sms_NewMessageIndication_t *newMessageIndicationPtr
+)
+{
+#ifdef MK_CONFIG_SMS_LIGHT
+    if ((HandlerCtxPtr) && (HandlerCtxPtr->handlerFuncPtr))
+    {
+        HandlerCtxPtr->handlerFuncPtr(MsgRef, HandlerCtxPtr->userContext);
+    }
+#else
+    pa_sms_Pdu_t messagePdu;
+    memset(&messagePdu, 0, sizeof(pa_sms_Pdu_t));
+    le_result_t res = LE_OK;
+    bool handlerPresent = false;
+    bool smscInfoPresent = true;
+
+    le_dls_Link_t* linkPtr = le_dls_Peek(&SessionCtxList);
+
+    // For all sessions, check if any handlers are present.
+    while (linkPtr)
+    {
+        SessionCtxNode_t* sessionCtxPtr = CONTAINER_OF(linkPtr, SessionCtxNode_t, link);
+        linkPtr = le_dls_PeekNext(&SessionCtxList, linkPtr);
+        le_dls_Link_t* linkHandlerPtr = le_dls_Peek(&(sessionCtxPtr->handlerList));
+
+        if (linkHandlerPtr)
+        {
+            LE_DEBUG("Handler has been subscribed for the session (%p)", sessionCtxPtr);
+            handlerPresent = true;
+            break;
+        }
+    }
+
+    LE_DEBUG("Handler Function called with message ID %d with protocol %d, Storage %d",
+             newMessageIndicationPtr->msgIndex,
+             newMessageIndicationPtr->protocol,
+             newMessageIndicationPtr->storage);
+
+    if (newMessageIndicationPtr->storage != PA_SMS_STORAGE_NONE)
+    {
+        le_sem_Wait(SmsSem);
+        res = pa_sms_RdPDUMsgFromMem(newMessageIndicationPtr->msgIndex,
+                                     newMessageIndicationPtr->protocol,
+                                     newMessageIndicationPtr->storage,
+                                     &messagePdu);
+        le_sem_Post(SmsSem);
+    }
+    else
+    {
+        LE_DEBUG("SMS Cell Broadcast GW '%c', CDMA Format '%c', GSM Format '%c'",
+                 (newMessageIndicationPtr->protocol == PA_SMS_PROTOCOL_GW_CB ? 'Y' : 'N'),
+                 (newMessageIndicationPtr->protocol == PA_SMS_PROTOCOL_CDMA ? 'Y' : 'N'),
+                 (newMessageIndicationPtr->protocol == PA_SMS_PROTOCOL_GSM ? 'Y' : 'N'));
+
+        memcpy(messagePdu.data, newMessageIndicationPtr->pduCB, LE_SMS_PDU_MAX_BYTES);
+        messagePdu.dataLen = newMessageIndicationPtr->pduLen;
+        messagePdu.protocol = newMessageIndicationPtr->protocol;
+
+        // No SMSC information in PDUs which are not stored
+        smscInfoPresent = false;
+    }
+
+    if (LE_OK != res)
+    {
+        LE_ERROR("pa_sms_RdPDUMsgFromMem failed");
+        return;
+    }
+
+    pa_sms_Message_t messageConverted;
+    le_sms_Msg_t* newSmsMsgObjPtr = NULL;
+
+    if (messagePdu.dataLen > LE_SMS_PDU_MAX_BYTES)
+    {
+        LE_ERROR("PDU length out of range (%u) !", messagePdu.dataLen);
+    }
+
+    // Try to decode message.
+    res = smsPdu_Decode(messagePdu.protocol,
+                        messagePdu.data,
+                        messagePdu.dataLen,
+                        smscInfoPresent,
+                        &messageConverted);
+    if (   (LE_OK == res)
+        && (   (messageConverted.type == PA_SMS_DELIVER)
+            || (messageConverted.type == PA_SMS_CELL_BROADCAST)
+            || (messageConverted.type == PA_SMS_STATUS_REPORT)))
+    {
+        newSmsMsgObjPtr = CreateAndPopulateMessage(newMessageIndicationPtr->msgIndex,
+                                                   &messagePdu,
+                                                   &messageConverted);
+    }
+    else
+    {
+        LE_DEBUG("Could not decode the message");
+        newSmsMsgObjPtr = CreateMessage(newMessageIndicationPtr->msgIndex, &messagePdu);
+    }
+
+    if (newSmsMsgObjPtr == NULL)
+    {
+        LE_CRIT("Cannot create a new message object, no report!");
+        return;
+    }
+
+    newSmsMsgObjPtr->storage = newMessageIndicationPtr->storage;
+
+    // Update received message count if necessary
+    if (MessageStats.counting)
+    {
+        if (LE_SMS_TYPE_RX == newSmsMsgObjPtr->type)
+        {
+            SetMessageCount(newSmsMsgObjPtr->type, MessageStats.rxCount + 1);
+        }
+        else if (LE_SMS_TYPE_BROADCAST_RX == newSmsMsgObjPtr->type)
+        {
+            SetMessageCount(newSmsMsgObjPtr->type, MessageStats.rxCbCount + 1);
+        }
+        else if (LE_SMS_TYPE_STATUS_REPORT == newSmsMsgObjPtr->type)
+        {
+            // SMS Status Report are not considered in received messages
+        }
+        else
+        {
+            LE_ERROR("Unexpected message type %d received", newSmsMsgObjPtr->type);
+        }
+    }
+
+    // If no client sessions are subscribed for handler then free memory and return
+    if (false == handlerPresent)
+    {
+        LE_DEBUG("No client sessions are subscribed for handler.");
+        le_mem_Release(newSmsMsgObjPtr);
+        return;
+    }
+
+    // Notify all the registered client's handlers with own reference.
+    MessageHandlers(newSmsMsgObjPtr);
+
+    LE_DEBUG("All the registered client's handlers notified with objPtr %p, Obj %p",
+             &newSmsMsgObjPtr, newSmsMsgObjPtr);
+#endif
+}
 
 //--------------------------------------------------------------------------------------------------
 //                                       Public declarations
 //--------------------------------------------------------------------------------------------------
 
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to initialize the SMS operations component.
- *
- * @return LE_FAULT  The function failed.
- * @return LE_OK     The function succeed.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_sms_Init
-(
-    void
-)
-{
-    // Initialize the smsPdu module.
-    smsPdu_Initialize();
-
-    // Initialize the message statistics
-    InitializeMessageStatistics();
-
-    // Initialize Status Report activation state
-    StatusReportActivation = GetStatusReportState();
-
-    // Create a pool for Message objects.
-    MsgPool = le_mem_CreatePool("SmsMsgPool", sizeof(le_sms_Msg_t));
-    le_mem_ExpandPool(MsgPool, MAX_NUM_OF_SMS_MSG);
-
-    // Create the Safe Reference Map to use for Message object Safe References.
-    MsgRefMap = le_ref_CreateMap("SmsMsgMap", MAX_NUM_OF_SMS_MSG);
-
-    // Create a pool for List objects.
-    ListPool = le_mem_CreatePool("ListSmsPool", sizeof(le_sms_List_t));
-    le_mem_ExpandPool(ListPool, MAX_NUM_OF_LIST);
-
-    // Create the Safe Reference Map to use for List object Safe References.
-    ListRefMap = le_ref_CreateMap("ListSmsMap", MAX_NUM_OF_LIST);
-
-    // Create a pool for Message references list.
-    ReferencePool = le_mem_CreatePool("SmsReferencePool", sizeof(le_sms_MsgReference_t));
-    le_mem_ExpandPool(ReferencePool, MAX_NUM_OF_SMS_MSG);
-
-    MsgRefPool = le_mem_CreatePool("MsgRefPool", sizeof(MsgRefNode_t));
-    le_mem_ExpandPool(MsgRefPool, SMS_MAX_SESSION*MAX_NUM_OF_SMS_MSG);
-
-    // Create pool for received message handler.
-    HandlerPool = le_mem_CreatePool("HandlerPool", sizeof(HandlerCtxNode_t));
-    le_mem_ExpandPool(HandlerPool, SMS_MAX_SESSION);
-
-    // Create safe reference map to use handler object safe references.
-    HandlerRefMap = le_ref_CreateMap("HandlerRefMap", SMS_MAX_SESSION);
-
-    // Create pool for client session list.
-    SessionCtxPool = le_mem_CreatePool("SessionCtxPool", sizeof(SessionCtxNode_t));
-    le_mem_ExpandPool(SessionCtxPool, SMS_MAX_SESSION);
-
-    // Create an event Id for SMS storage indication.
-    StorageStatusEventId = le_event_CreateId("StorageStatusEventId", sizeof(le_sms_Storage_t));
-
-    // Add a handler to the close session service.
-    le_msg_AddServiceCloseHandler(le_sms_GetServiceRef(), CloseSessionEventHandler, NULL);
-
-    SessionCtxList = LE_DLS_LIST_INIT;
-
-    // Register a handler function for SMS storage status indication.
-    if (pa_sms_AddStorageStatusHandler(StorageIndicationHandler) == NULL)
-    {
-        LE_WARN("failed to register a handler function for SMS storage");
-    }
-
-    SmsSem = le_sem_Create("SmsSem", 1);
-
-    // Init the SMS command Event Id.
-    SmsCommandEventId = le_event_CreateId("SmsSendCmd", sizeof(CmdRequest_t));
-    le_thread_Start(le_thread_Create(WDOG_THREAD_NAME_SMS_COMMAND_SENDING, SmsSenderThread, NULL));
-
-    le_sem_Wait(SmsSem);
-
-    // Register a handler function for new message indication.
-    if (pa_sms_SetNewMsgHandler(NewSmsHandler) != LE_OK)
-    {
-        LE_CRIT("Add pa_sms_SetNewMsgHandler failed");
-        return LE_FAULT;
-    }
-    return LE_OK;
-}
-
-
+#ifndef MK_CONFIG_SMS_LIGHT
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to create an SMS Message data structure.
@@ -3129,8 +3190,7 @@ le_result_t le_sms_SetText
     LE_DEBUG("Try to copy data %s, len.%zd @ msgPtr->text.%p for msgPtr.%p",
              textPtr, length, msgPtr->text, msgPtr);
 
-    strncpy(msgPtr->text, textPtr, LE_SMS_TEXT_MAX_BYTES);
-    msgPtr->text[LE_SMS_TEXT_MAX_BYTES - 1] = '\0';
+    le_utf8_Copy(msgPtr->text, textPtr, sizeof(msgPtr->text), NULL);
 
     return LE_OK;
 }
@@ -3529,86 +3589,6 @@ le_result_t le_sms_GetPDU
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to register an handler function for SMS message reception.
- *
- * @return A handler reference, which is only needed for later removal of the handler.
- *
- * @note Doesn't return on failure, so there's no need to check the return value for errors.
- */
-//--------------------------------------------------------------------------------------------------
-le_sms_RxMessageHandlerRef_t le_sms_AddRxMessageHandler
-(
-    le_sms_RxMessageHandlerFunc_t handlerFuncPtr, ///< [IN] The handler function for message
-    ///  reception.
-    void*                         contextPtr      ///< [IN] The handler's context.
-)
-{
-    if (NULL == handlerFuncPtr)
-    {
-        LE_KILL_CLIENT("handlerFuncPtr is NULL !");
-        return NULL;
-    }
-
-    // search the sessionCtx; create it if doesn't exist.
-    SessionCtxNode_t* sessionCtxPtr = GetSessionCtx(le_sms_GetClientSessionRef());
-    if (!sessionCtxPtr)
-    {
-        // Create the session context.
-        sessionCtxPtr = CreateSessionCtx();
-    }
-
-    // Add the handler in the list.
-    HandlerCtxNode_t* handlerCtxPtr = le_mem_ForceAlloc(HandlerPool);
-
-    handlerCtxPtr->handlerFuncPtr = handlerFuncPtr;
-    handlerCtxPtr->userContext = contextPtr;
-    handlerCtxPtr->handlerRef = le_ref_CreateRef(HandlerRefMap, handlerCtxPtr);
-    handlerCtxPtr->sessionCtxPtr = sessionCtxPtr;
-    handlerCtxPtr->link = LE_DLS_LINK_INIT;
-
-    le_dls_Queue(&(sessionCtxPtr->handlerList), &(handlerCtxPtr->link));
-
-    return handlerCtxPtr->handlerRef;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to unregister a handler function.
- *
- * @note Doesn't return on failure, so there's no need to check the return value for errors.
- */
-//--------------------------------------------------------------------------------------------------
-void le_sms_RemoveRxMessageHandler
-(
-    le_sms_RxMessageHandlerRef_t   handlerRef ///< [IN] The handler reference.
-)
-{
-    // Get the hander context
-    HandlerCtxNode_t* handlerCtxPtr = le_ref_Lookup(HandlerRefMap, handlerRef);
-    if (NULL == handlerCtxPtr)
-    {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!", handlerRef);
-        return;
-    }
-
-    // Invalidate the Safe Reference.
-    le_ref_DeleteRef(HandlerRefMap, handlerRef);
-
-    SessionCtxNode_t* sessionCtxPtr = handlerCtxPtr->sessionCtxPtr;
-    if (!sessionCtxPtr)
-    {
-        LE_ERROR("No sessionCtxPtr !!!");
-        return;
-    }
-
-    // Remove the handler node from the session context.
-    le_dls_Remove(&(sessionCtxPtr->handlerList), &(handlerCtxPtr->link));
-    le_mem_Release(handlerCtxPtr);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * This function must be called to register a handler function for SMS full storage
  * message reception.
  *
@@ -3815,7 +3795,7 @@ le_sms_ErrorCode3GPP2_t le_sms_Get3GPP2ErrorCode
     if (NULL == msgPtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
-        return (le_sms_ErrorCode3GPP2_t)LE_BAD_PARAMETER;
+        return LE_SMS_ERROR_3GPP2_MAX;
     }
 
     return msgPtr->pdu.errorCode.code3GPP2;
@@ -5018,5 +4998,225 @@ le_result_t le_sms_GetTpSt
     *stPtr = msgPtr->status;
     LE_DEBUG("Status: %d", *stPtr);
 
+    return LE_OK;
+}
+#endif
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register an handler function for SMS message reception.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+le_sms_RxMessageHandlerRef_t le_sms_AddRxMessageHandler
+(
+    le_sms_RxMessageHandlerFunc_t handlerFuncPtr, ///< [IN] The handler function for message
+    ///  reception.
+    void*                         contextPtr      ///< [IN] The handler's context.
+)
+{
+    if (NULL == handlerFuncPtr)
+    {
+        LE_KILL_CLIENT("handlerFuncPtr is NULL !");
+        return NULL;
+    }
+
+#ifdef MK_CONFIG_SMS_LIGHT
+    if (HandlerCtxPtr)
+    {
+        LE_KILL_CLIENT("Only one subscrition permitted !");
+        return NULL;
+    }
+
+    // Create HandlerCtx structure from pool
+    HandlerCtxPtr = le_mem_TryAlloc(HandlerPool);
+    if (NULL == HandlerCtxPtr)
+    {
+        LE_KILL_CLIENT("Memory error !");
+        return NULL;
+    }
+
+    HandlerCtxPtr->handlerFuncPtr = handlerFuncPtr;
+    HandlerCtxPtr->userContext    = contextPtr;
+    // Create a safe reference for this object
+    HandlerCtxPtr->handlerRef     = (void *)HandlerCtxPtr;
+
+    return HandlerCtxPtr->handlerRef;
+
+#else
+    // search the sessionCtx; create it if doesn't exist.
+    SessionCtxNode_t* sessionCtxPtr = GetSessionCtx(le_sms_GetClientSessionRef());
+    if (!sessionCtxPtr)
+    {
+        // Create the session context.
+        sessionCtxPtr = CreateSessionCtx();
+    }
+
+    // Add the handler in the list.
+    HandlerCtxNode_t* handlerCtxPtr = le_mem_ForceAlloc(HandlerPool);
+
+    handlerCtxPtr->handlerFuncPtr = handlerFuncPtr;
+    handlerCtxPtr->userContext = contextPtr;
+    handlerCtxPtr->handlerRef = le_ref_CreateRef(HandlerRefMap, handlerCtxPtr);
+    handlerCtxPtr->sessionCtxPtr = sessionCtxPtr;
+    handlerCtxPtr->link = LE_DLS_LINK_INIT;
+
+    le_dls_Queue(&(sessionCtxPtr->handlerList), &(handlerCtxPtr->link));
+
+    return handlerCtxPtr->handlerRef;
+#endif
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to unregister a handler function.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sms_RemoveRxMessageHandler
+(
+    le_sms_RxMessageHandlerRef_t   handlerRef ///< [IN] The handler reference.
+)
+{
+#ifdef MK_CONFIG_SMS_LIGHT
+    if (!HandlerCtxPtr)
+    {
+        LE_ERROR("No subscrition was done !");
+        return;
+    }
+
+    if ((NULL == handlerRef) || (handlerRef != HandlerCtxPtr->handlerRef))
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", handlerRef);
+        return;
+    }
+
+    le_mem_Release(HandlerCtxPtr);
+    HandlerCtxPtr = NULL;
+
+#else
+    // Get the hander context
+    HandlerCtxNode_t* handlerCtxPtr = le_ref_Lookup(HandlerRefMap, handlerRef);
+    if (NULL == handlerCtxPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", handlerRef);
+        return;
+    }
+
+    // Invalidate the Safe Reference.
+    le_ref_DeleteRef(HandlerRefMap, handlerRef);
+
+    SessionCtxNode_t* sessionCtxPtr = handlerCtxPtr->sessionCtxPtr;
+    if (!sessionCtxPtr)
+    {
+        LE_ERROR("No sessionCtxPtr !!!");
+        return;
+    }
+
+    // Remove the handler node from the session context.
+    le_dls_Remove(&(sessionCtxPtr->handlerList), &(handlerCtxPtr->link));
+    le_mem_Release(handlerCtxPtr);
+#endif
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to initialize the SMS operations component.
+ *
+ * @return LE_FAULT  The function failed.
+ * @return LE_OK     The function succeed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sms_Init
+(
+    void
+)
+{
+#ifdef MK_CONFIG_SMS_LIGHT
+    // Create pool for received message handler.
+    HandlerPool = le_mem_InitStaticPool(Handler,
+                                        SMS_MAX_SESSION,
+                                        sizeof(HandlerCtx_t));
+#else
+    // Initialize the smsPdu module.
+    smsPdu_Initialize();
+
+    // Initialize the message statistics
+    InitializeMessageStatistics();
+
+    // Initialize Status Report activation state
+    StatusReportActivation = GetStatusReportState();
+
+    // Create a pool for Message objects.
+    MsgPool = le_mem_InitStaticPool(SmsMsg,
+                                    MAX_NUM_OF_SMS_MSG,
+                                    sizeof(le_sms_Msg_t));
+
+    // Create the Safe Reference Map to use for Message object Safe References.
+    MsgRefMap = le_ref_InitStaticMap(SmsMsgMap, MAX_NUM_OF_SMS_MSG);
+
+    // Create a pool for List objects.
+    ListPool = le_mem_InitStaticPool(ListSms,
+                                     MAX_NUM_OF_LIST,
+                                     sizeof(le_sms_List_t));
+
+    // Create the Safe Reference Map to use for List object Safe References.
+    ListRefMap = le_ref_InitStaticMap(ListSmsMap, MAX_NUM_OF_LIST);
+
+    // Create a pool for Message references list.
+    ReferencePool = le_mem_InitStaticPool(SmsReference,
+                                          MAX_NUM_OF_SMS_MSG,
+                                          sizeof(le_sms_MsgReference_t));
+
+    MsgRefPool = le_mem_InitStaticPool(MsgRef,
+                                       SMS_MAX_SESSION*MAX_NUM_OF_SMS_MSG,
+                                       sizeof(MsgRefNode_t));
+
+    // Create pool for received message handler.
+    HandlerPool = le_mem_InitStaticPool(Handler,
+                                        SMS_MAX_SESSION,
+                                        sizeof(HandlerCtxNode_t));
+
+    // Create safe reference map to use handler object safe references.
+    HandlerRefMap = le_ref_InitStaticMap(HandlerRefMap, SMS_MAX_SESSION);
+
+    // Create pool for client session list.
+    SessionCtxPool = le_mem_InitStaticPool(SessionCtx,
+                                           SMS_MAX_SESSION,
+                                           sizeof(SessionCtxNode_t));
+
+    // Create an event Id for SMS storage indication.
+    StorageStatusEventId = le_event_CreateId("StorageStatusEventId", sizeof(le_sms_Storage_t));
+
+    // Add a handler to the close session service.
+    le_msg_AddServiceCloseHandler(le_sms_GetServiceRef(), CloseSessionEventHandler, NULL);
+
+    SessionCtxList = LE_DLS_LIST_INIT;
+
+    // Register a handler function for SMS storage status indication.
+    if (pa_sms_AddStorageStatusHandler(StorageIndicationHandler) == NULL)
+    {
+        LE_WARN("failed to register a handler function for SMS storage");
+    }
+
+    SmsSem = le_sem_Create("SmsSem", 1);
+
+    // Init the SMS command Event Id.
+    SmsCommandEventId = le_event_CreateId("SmsSendCmd", sizeof(CmdRequest_t));
+    le_thread_Start(le_thread_Create(WDOG_THREAD_NAME_SMS_COMMAND_SENDING, SmsSenderThread, NULL));
+
+    le_sem_Wait(SmsSem);
+#endif
+
+    // Register a handler function for new message indication.
+    if (pa_sms_SetNewMsgHandler(NewSmsHandler) != LE_OK)
+    {
+        LE_CRIT("Add pa_sms_SetNewMsgHandler failed");
+        return LE_FAULT;
+    }
     return LE_OK;
 }

@@ -155,6 +155,15 @@ static le_thread_Ref_t MainThread;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static pool used to transfer RSIM messages processing to the main thread
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(RsimMessages,
+                          RSIM_EVENTS_POOL_SIZE,
+                          sizeof(RsimMessageSending_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Memory pool used to transfer RSIM messages processing to the main thread
  */
 //--------------------------------------------------------------------------------------------------
@@ -1731,8 +1740,9 @@ le_result_t le_rsim_Init
     RsimMsgEventId = le_event_CreateId("RsimMessage", sizeof(RsimMessage_t));
 
     // Create and expand RSIM messages memory pool
-    RsimMessagesPool = le_mem_CreatePool("RsimMessagesPool", sizeof(RsimMessageSending_t));
-    le_mem_ExpandPool(RsimMessagesPool, RSIM_EVENTS_POOL_SIZE);
+    RsimMessagesPool = le_mem_InitStaticPool(RsimMessages,
+                                             RSIM_EVENTS_POOL_SIZE,
+                                             sizeof(RsimMessageSending_t));
 
     // Create timer to secure connection establishment
     SapConnectionTimer = le_timer_Create("SapConnectionTimer");

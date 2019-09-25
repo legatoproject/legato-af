@@ -29,6 +29,20 @@ le_result_t pa_riPin_Init
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Platform specific initialization of the pulse ring signal thread
+ *
+ * @return
+ *   - LE_FAULT         The function failed.
+ *   - LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_riPin_RingSignalThreadInit
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Check whether the application core is the current owner of the Ring Indicator signal.
  *
  * @return

@@ -129,10 +129,28 @@ HandlerCtxNode_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static memory pool for the clients sessionRef objects.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(SessionRef,
+                          MCC_MAX_CALL,
+                          sizeof(SessionRefNode_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The memory pool for the clients sessionRef objects
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t SessionRefPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static memory pool for calls.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(MccCall,
+                          MCC_MAX_CALL,
+                          sizeof(struct le_mcc_Call));
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -144,11 +162,29 @@ static le_mem_PoolRef_t   MccCallPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static memory pool for handlers context.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(HandlerPool,
+                          MCC_MAX_SESSION,
+                          sizeof(HandlerCtxNode_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Memory Pool for handlers context.
  *
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t   HandlerPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *Static memory pool for sessions context.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(SessionCtx,
+                               MCC_MAX_SESSION,
+                               sizeof(SessionCtxNode_t));
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -160,6 +196,15 @@ static le_mem_PoolRef_t   SessionCtxPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static memory Pool for callRef context.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(CallRef,
+                          MCC_MAX_SESSION*MCC_MAX_CALL,
+                          sizeof(CallRefNode_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Memory Pool for callRef context.
  *
  */
@@ -168,11 +213,27 @@ static le_mem_PoolRef_t   CallRefPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static safe Reference Map for Calls objects.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(MccCallMap, MCC_MAX_CALL);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Safe Reference Map for Calls objects.
  *
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t MccCallRefMap;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static safe Reference Map for handlers objects.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(HandlerRefMap, MCC_MAX_SESSION);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -938,26 +999,31 @@ le_result_t le_mcc_Init
 )
 {
     // Create a pool for Call objects
-    MccCallPool = le_mem_CreatePool("MccCallPool", sizeof(struct le_mcc_Call));
-    le_mem_ExpandPool(MccCallPool, MCC_MAX_CALL);
+    MccCallPool = le_mem_InitStaticPool(MccCall,
+                                        MCC_MAX_CALL,
+                                        sizeof(struct le_mcc_Call));
     le_mem_SetDestructor(MccCallPool, CallDestructor);
 
-    SessionRefPool = le_mem_CreatePool("SessionRefPool", sizeof(SessionRefNode_t));
-    le_mem_ExpandPool(SessionRefPool, MCC_MAX_CALL);
+    SessionRefPool = le_mem_InitStaticPool(SessionRef,
+                                           MCC_MAX_CALL,
+                                           sizeof(SessionRefNode_t));
 
-    HandlerPool = le_mem_CreatePool("HandlerPool", sizeof(HandlerCtxNode_t));
-    le_mem_ExpandPool(HandlerPool, MCC_MAX_SESSION);
+    HandlerPool = le_mem_InitStaticPool(HandlerPool,
+                                        MCC_MAX_SESSION,
+                                        sizeof(HandlerCtxNode_t));
 
-    CallRefPool = le_mem_CreatePool("CallRefPool", sizeof(CallRefNode_t));
-    le_mem_ExpandPool(CallRefPool, MCC_MAX_SESSION*MCC_MAX_CALL);
+    CallRefPool = le_mem_InitStaticPool(CallRef,
+                                        MCC_MAX_SESSION*MCC_MAX_CALL,
+                                        sizeof(CallRefNode_t));
 
-    SessionCtxPool = le_mem_CreatePool("SessionCtxPool", sizeof(SessionCtxNode_t));
-    le_mem_ExpandPool(SessionCtxPool, MCC_MAX_SESSION);
+    SessionCtxPool = le_mem_InitStaticPool(SessionCtx,
+                                           MCC_MAX_SESSION,
+                                           sizeof(SessionCtxNode_t));
 
-    HandlerRefMap = le_ref_CreateMap("HandlerRefMap", MCC_MAX_SESSION);
+    HandlerRefMap = le_ref_InitStaticMap(HandlerRefMap, MCC_MAX_SESSION);
 
     // Create the Safe Reference Map to use for Call object Safe References.
-    MccCallRefMap = le_ref_CreateMap("MccCallMap", MCC_MAX_CALL);
+    MccCallRefMap = le_ref_InitStaticMap(MccCallMap, MCC_MAX_CALL);
 
     // Initialize call wakeup source - succeeds or terminates caller
     WakeupSource = le_pm_NewWakeupSource(0, CALL_WAKEUP_SOURCE_NAME);

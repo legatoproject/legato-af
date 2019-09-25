@@ -818,6 +818,8 @@ BITMASK RatBitMask
     BITMASK_RAT_TDSCDMA,///< TD-SCDMA RAT Bit Mask
     BITMASK_RAT_LTE,    ///< LTE RAT Bit Mask
     BITMASK_RAT_CDMA,   ///< CDMA RAT Bit Mask
+    BITMASK_RAT_CATM1,  ///< CAT-M1 RAT Bit Mask
+    BITMASK_RAT_NB1,    ///< NB1 RAT Bit Mask
     BITMASK_RAT_ALL,    ///< To Set all RAT preference Bit Mask
     BITMASK_RAT_MAX
 };

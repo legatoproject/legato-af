@@ -7,6 +7,7 @@
  */
 
 
+#include "pa.h"
 #include "legato.h"
 #include "interfaces.h"
 
@@ -38,8 +39,17 @@
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    le_wdogChain_Init(MS_WDOG_COUNT);
+    uint32_t immediateWatchdogs = (1 << MS_WDOG_MAIN_LOOP);
+    // MS_WDOG_MDC_LOOP is started on demand.
+    immediateWatchdogs |= (1 << MS_WDOG_SMS_LOOP);
+    // MS_WDOG_MRC_LOOP is started on demand.
+    immediateWatchdogs |= (1 << MS_WDOG_RIPIN_LOOP);
+#if LE_CONFIG_ENABLE_ECALL
+    immediateWatchdogs |= (1 << MS_WDOG_ECALL_LOOP);
+#endif
+    le_wdogChain_InitSome(MS_WDOG_COUNT, immediateWatchdogs);
 
+    pa_Init();
     le_mrc_Init();
     le_sim_Init();
     le_sms_Init();

@@ -14,5 +14,5 @@ sources:
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/sysResets.c
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_info.c
     simu/components/le_pa/pa_info_simu.c
-    ${LEGATO_ROOT}/components/modemServices/platformAdaptor/default/le_pa_default/pa_sim_default.c
+    simu/components/le_pa/pa_sim_stubs.c
 }

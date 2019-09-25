@@ -447,7 +447,7 @@ LE_SHARED void pa_mrc_RemoveRatChangeHandler
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_event_HandlerRef_t pa_mrc_SetPSChangeHandler
 (
-    pa_mrc_ServiceChangeHdlrFunc_t handlerFuncPtr ///< [IN] The handler function.
+    pa_mrc_ServiceChangeHdlrFunc_t PSChangeHandler ///< [IN] The handler function.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -484,7 +484,7 @@ LE_SHARED le_event_HandlerRef_t pa_mrc_AddNetworkRegHandler
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_mrc_RemoveNetworkRegHandler
+LE_SHARED void pa_mrc_RemoveNetworkRegHandler
 (
     le_event_HandlerRef_t handlerRef
 );
@@ -544,6 +544,21 @@ LE_SHARED int32_t pa_mrc_GetPlatformSpecificRegistrationErrorCode
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_mrc_GetNetworkRegState
+(
+    le_mrc_NetRegState_t* statePtr  ///< [OUT] The network registration state.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the Packet switch registration state.
+ *
+ * @return LE_BAD_PARAMETER Bad parameter passed to the function
+ * @return LE_FAULT         The function failed.
+ * @return LE_TIMEOUT       No response was received.
+ * @return LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mrc_GetPacketSwitchRegState
 (
     le_mrc_NetRegState_t* statePtr  ///< [OUT] The network registration state.
 );

@@ -251,10 +251,12 @@ pa_sms_Message_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct {
     uint32_t          msgIndex;    ///< Message index
+#ifndef MK_CONFIG_SMS_LIGHT
     pa_sms_Protocol_t protocol;    ///< protocol used
     pa_sms_Storage_t  storage;     ///< SMS Storage used
     uint8_t           pduLen;      ///< Cell Broadcast PDU len
     uint8_t           pduCB[255];  ///< Cell Broadcast PDU data
+#endif
 }
 pa_sms_NewMessageIndication_t;
 
@@ -647,6 +649,19 @@ LE_SHARED le_result_t pa_sms_RemoveCdmaCellBroadcastServices
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_sms_ClearCdmaCellBroadcastServices
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to initialize the sms module.
+ *
+ * @return LE_FAULT         The function failed to initialize the module.
+ * @return LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sms_Init
 (
     void
 );

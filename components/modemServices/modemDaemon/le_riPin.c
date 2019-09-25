@@ -79,6 +79,8 @@ static void PulseSignal
     void* param2Ptr  // not used
 )
 {
+    LE_DEBUG("Entering PulseSignal");
+
     if (le_timer_IsRunning(RiDurationTimerRef))
     {
         LE_WARN("The signal is already pulsed!");
@@ -121,13 +123,14 @@ static void* PulseRingSignalThread
         return NULL;
     }
 
+    pa_riPin_RingSignalThreadInit();
+
     le_sem_Post(ThreadSemaphore);
 
     // Watchdog riPin loop
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_MonitorEventLoop(MS_WDOG_RIPIN_LOOP, watchdogInterval);
-
     // Run the event loop
     le_event_RunLoop();
 
@@ -163,7 +166,6 @@ le_result_t le_riPin_Init
     le_thread_Start(PulseRingSignalThreadRef);
 
     le_sem_Wait(ThreadSemaphore);
-
     return LE_OK;
 }
 
@@ -254,7 +256,6 @@ void le_riPin_PulseRingSignal
     {
         le_sem_Wait(SemRef);
         PulseDuration = duration;
-
         le_event_QueueFunctionToThread(PulseRingSignalThreadRef,
                                        PulseSignal,
                                        NULL,
