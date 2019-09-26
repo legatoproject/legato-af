@@ -1,7 +1,7 @@
 /** @page aboutReleaseNotes Release Notes
 
-Version: <b>Legato 19.07.0</b><br>
-Date: <b>Aug 25th, 2019</b><br>
+Version: <b>Legato 19.09.0</b><br>
+Date: <b>Oct 4th, 2019</b><br>
 @ref aboutLicenses "Legato Application Framework Licensing Information"
 
 Visit the <a href="https://legato.io/releases">release page</a> to @b download the tarball,
@@ -19,87 +19,57 @@ Update your profile to the latest version:
 $ leaf update
 @endverbatim
 
-@section rn1907_Features New Features
+@section rn1909_Features New Features
 
-List of new features in the 19.07 Release:
+List of new features in the 19.09 Release:
 
-@subsection rn1907_Features_DCS Ethernet support in DCS
+The Legato 19.09 Release only contains bug fixes see @ref rn1909_Fixes for the list of fixed issues.
 
-@ref c_le_dcs now supports ethernet as a technology within the Data Connection Service.
-
-@subsection rn1907_Features_tzone Secure Storage Trust Zone
-
-The WP76xx/WP77xx family of devices now supports the TrustZone secure storage solution.
-
-@warning Once you upgrade your target to Legato 19.07 you can not downgrade again.  If you do, your
-secure storage data can't be decrypted and can not be recovered. You can remove/overwrite the data.
-To delete the data use <code>config delete secStore:/</code>.
-
-@subsection rn1907_Features_datetime Data Connection API
-
-A new function, le_data_GetDateTime(), has been added to le_data.api to return both the date and
-time as one function instead of two separate functions.
-
-@subsection rn1907_Features_Gerrit Legato Gerrit Instance
-
-The Legato project now includes a Gerrit (code repository) for all Legato releases and the Linux
-Distribution for Sierra Wireless product releases. @ref toolsGerrit walks through how to set up and
-clone the source code repository.  Gerrit provides a way that we can include Sierra Wireless
-proprietary code/binaries along with the open source code, allowing customers one place to download
-all the software needed to rebuild a target. See the @ref toolsGerrit documentation to get started.
-
-@subsection rn1907_Features_debug DevMode Application
-
-The devMode App can now be included in the default Legato System by setting the following
-environment variable: @c LEGATO_DEV_MODE_ENABLE=1, and then running @c mksys.
-
-@subsection rn1907_Features_dcsIPv6 IPV6 DCS Support
-
-IPv6 support has been added to DCS and a bug was fixed where IPv6 customers could not connect to
-AirVantage.
-
-@section rn1907_BFeatures Beta Features
+@section rn1909_BFeatures Beta Features
 
 There are no Beta Features for this release.
 
-@section rn1907_AFeatures Alpha Features
+@section rn1909_AFeatures Alpha Features
 
-The following are the list of features that have been added into the 19.07 Release but are still
+The following are the list of features that have been added into the 19.09 Release but are still
 being developed and should not be used on production targets. Please provide feedback for these
 features on our [forums](https://forum.legato.io/):
 
-@subsection rn1907_AFeatures_RPC Legato RPC
+@subsection rn1909_AFeatures_RPC Legato RPC
 
 RPC has been added as an experimental feature (@ref conceptsRPC Remote procedure call). Please refer
 to @ref getStartRPC Legato RPC on how to get started.
 
-@subsection rn1907_AFeatures_IDE Experimental IDE
+@subsection rn1909_AFeatures_IDE Experimental IDE
 
 The Legato team has launched the @b alpha version of a @ref tools_vsCode "Legato Plugin for VSCode".
 
-@section rn1907_Fixes Fixed Issues
+@section rn1909_Fixes Fixed Issues
 
-All changes are tagged in GitHub as "19.07.0".  The full list of changes and commit
+All changes are tagged in GitHub as "19.09.0".  The full list of changes and commit
 messages can be found on GitHub.
 
-- [Legato AF 19.07.0 Fixes](https://github.com/legatoproject/legato-af/commits/19.07.0)
+- [Legato Application Framework 19.09.0 Fixes](https://github.com/legatoproject/legato-af/commits/19.09.0)
+- [Legato WiFi 19.09.0 Fixes](https://github.com/legatoproject/legato-WiFi/commits/19.09-release)
+- [Legato AirVantage Connector 19.09.0 Fixes](https://github.com/legatoproject/legato-Service-AirVantageConnector/commits/19.09-release)
+- [Legato DataHub 19.09.0 Fixes](https://github.com/legatoproject/legato-Service-DataHub/commits/19.09-release)
 
 @note This is only the list of fixes for the Application Framework and Platform Services, for the
-list of changes in the Platform Adapters and AVC Service view the commits under the tag 19.07.0 in
-individual repositories on GitHub.
+list of changes in the Platform Adapter view the commits under the tag 19.09.0 in individual
+repositories on GitHub.
 
-@section rn1907_KnownIssues Known Issues
+@section rn1909_KnownIssues Known Issues
 
-@subsection rn1907_Constraints Constraints and Limitations
+@subsection rn1909_Constraints Constraints and Limitations
 
-@subsubsection rn1907_ConstraintsLinuxSupport Dev Machine Linux Version
+@subsubsection rn1909_ConstraintsLinuxSupport Dev Machine Linux Version
 
 To develop applications within the Legato Application Framework, a current supported
 [Long Term Support version of Ubuntu Linux](https://www.ubuntu.com/info/release-end-of-life) is
 required on your dev machine (or running in a virtual box on Windows).  Ubuntu 18.04 is the current
 @b recommended version to use on your dev machine.
 
-@subsubsection rn1907_ConstECMUSB ECM-USB modem manager issue
+@subsubsection rn1909_ConstECMUSB ECM-USB modem manager issue
 
 Ubuntu 15.10 and newer has Modem Manager version @c 1.4.12-1ubuntu1  installed by default which
 conflicts with the ECM-USB driver when connecting a target.  Modem manager may cause the Ubuntu
