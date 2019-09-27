@@ -10,7 +10,10 @@
 #include "interfaces.h"
 #include "pa_info.h"
 #include "pa_sim.h"
+
+#if !MK_CONFIG_MODEMSERVICE_SIMPLE
 #include "sysResets.h"
+#endif
 
 //--------------------------------------------------------------------------------------------------
 //                                       Public declarations
@@ -741,14 +744,15 @@ le_result_t le_info_GetExpectedResetsCount
     uint64_t* resetsCountPtr    ///< Number of unexpected resets
 )
 {
-    uint64_t count;
-    le_result_t res;
-
     if (NULL == resetsCountPtr)
     {
         LE_ERROR("resetsCountPtr is NULL");
         return LE_BAD_PARAMETER;
     }
+
+#if !MK_CONFIG_MODEMSERVICE_SIMPLE
+    uint64_t count;
+    le_result_t res;
 
     res = sysResets_GetExpectedResetsCount(&count);
     if (LE_OK != res)
@@ -759,7 +763,9 @@ le_result_t le_info_GetExpectedResetsCount
 
     *resetsCountPtr = count;
     return LE_OK;
-
+#else
+    return LE_UNSUPPORTED;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -778,14 +784,15 @@ le_result_t le_info_GetUnexpectedResetsCount
     uint64_t* resetsCountPtr    ///< Number of unexpected resets
 )
 {
-    uint64_t count;
-    le_result_t res;
-
     if (NULL == resetsCountPtr)
     {
         LE_ERROR("resetsCountPtr is NULL");
         return LE_BAD_PARAMETER;
     }
+
+#if !MK_CONFIG_MODEMSERVICE_SIMPLE
+    uint64_t count;
+    le_result_t res;
 
     res = sysResets_GetUnexpectedResetsCount(&count);
     if (LE_OK != res)
@@ -796,5 +803,7 @@ le_result_t le_info_GetUnexpectedResetsCount
 
     *resetsCountPtr = count;
     return LE_OK;
-
+#else
+    return LE_UNSUPPORTED;
+#endif
 }

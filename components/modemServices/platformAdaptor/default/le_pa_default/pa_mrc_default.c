@@ -410,7 +410,7 @@ le_result_t pa_mrc_CountPreferredOperators
  *      - LE_NOT_FOUND if Preferred operator list is not available
  */
 //--------------------------------------------------------------------------------------------------
-int32_t pa_mrc_GetPreferredOperators
+le_result_t pa_mrc_GetPreferredOperators
 (
     pa_mrc_PreferredNetworkOperator_t*   preferredOperatorPtr,
                        ///< [IN/OUT] The preferred operators pointer.

@@ -1,0 +1,19 @@
+requires:
+{
+    api:
+    {
+        le_mdc.api
+        le_riPin.api
+        le_mrc.api
+        le_sim.api
+        le_temp.api
+        le_lpt.api
+        le_sms.api
+        le_ips.api
+    }
+}
+
+sources:
+{
+    msDefaultPA.c
+}

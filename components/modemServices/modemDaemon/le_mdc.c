@@ -11,7 +11,11 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "le_print.h"
+
+// Currently no jansson support for RTOS
+#ifndef MK_CONFIG_MODEMSERVICE_NO_JANSSON
 #include "jansson.h"
+#endif
 #include "mdmCfgEntries.h"
 #include "pa_mdc.h"
 #include "le_ms_local.h"
@@ -35,13 +39,6 @@
 #define APN_IIN_FILE    le_arg_GetArg(0)
 #define APN_MCCMNC_FILE le_arg_GetArg(1)
 #endif
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Maximum number of profile objects supported
- */
-//--------------------------------------------------------------------------------------------------
-#define LE_MDC_MAX_PROFILE_INDEX            16
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -150,7 +147,9 @@ static le_event_Id_t CommandEventId;
  * Trace reference used for controlling tracing in this module.
  */
 //--------------------------------------------------------------------------------------------------
+#if LE_LOG_CAN_TRACE
 static le_log_TraceRef_t TraceRef;
+#endif
 
 /// Macro used to generate trace output in this module.
 /// Takes the same parameters as LE_DEBUG() et. al.
@@ -233,7 +232,8 @@ static void FirstLayerSessionStateChangeHandler
 )
 {
     le_mdc_Profile_t** profilePtr = reportPtr;
-    le_mdc_SessionStateHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+    le_mdc_SessionStateHandlerFunc_t clientHandlerFunc =
+        (le_mdc_SessionStateHandlerFunc_t)secondLayerHandlerFunc;
 
     clientHandlerFunc(  (*profilePtr)->profileRef,
                         (*profilePtr)->connectionStatus,
@@ -379,7 +379,7 @@ static le_mdc_ProfileRef_t CreateModemProfile
         profilePtr->sessionStateEvent = le_event_CreateId(eventName, sizeof(le_mdc_Profile_t*));
 
         // Init the remaining fields
-        profilePtr->connectionStatus = -1;
+        profilePtr->connectionStatus = (le_mdc_ConState_t)-1;
         profilePtr->conFailurePtr = NULL;
 
         // Create a Safe Reference for this data profile object.
@@ -409,6 +409,10 @@ static le_result_t FindApnWithMccMncFromFile
     size_t mccMncApnSize    ///< [IN]  size of mccMncApn buffer
 )
 {
+    // Currently no jansson support for RTOS
+#ifdef MK_CONFIG_MODEMSERVICE_NO_JANSSON
+    return LE_NOT_FOUND;
+#else
     le_result_t result = LE_FAULT;
     json_t *root, *apns, *apnArray;
     json_error_t error;
@@ -496,6 +500,7 @@ static le_result_t FindApnWithMccMncFromFile
 
     json_decref(root);
     return result;
+#endif
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -515,6 +520,10 @@ static le_result_t FindApnWithIccidFromFile
     size_t iccidApnSize     ///< [IN]  size of iccidApn buffer
 )
 {
+    // Currently no jansson support for RTOS
+#ifdef MK_CONFIG_MODEMSERVICE_NO_JANSSON
+    return LE_NOT_FOUND;
+#else
     le_result_t result = LE_FAULT;
     json_t *root, *apns, *apnArray;
     json_error_t error;
@@ -589,6 +598,7 @@ static le_result_t FindApnWithIccidFromFile
 
     json_decref(root);
     return result;
+#endif
 }
 
 
@@ -805,10 +815,10 @@ static void* CommandThread
 )
 {
     le_sem_Ref_t initSemaphore = (le_sem_Ref_t)contextPtr;
-
+#ifndef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
     // Connect to services used by this thread
     le_cfg_ConnectService();
-
+#endif
     // Register for MDC command events
     le_event_AddHandler("ProcessCommandHandler", CommandEventId, ProcessCommandEventHandler);
 
@@ -816,9 +826,10 @@ static void* CommandThread
 
     // Monitor event loop
     // Try to kick a couple of times before each timeout.
+#ifndef MK_CONFIG_MODEMSERVICE_NO_WATCHDOG
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_MonitorEventLoop(MS_WDOG_MDC_LOOP, watchdogInterval);
-
+#endif
     // Run the event loop
     le_event_RunLoop();
     return NULL;
@@ -834,6 +845,9 @@ static bool GetDataCounterState
     void
 )
 {
+#ifdef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
+    return false;
+#else
     bool activationState;
     le_cfg_IteratorRef_t iteratorRef;
 
@@ -844,6 +858,7 @@ static bool GetDataCounterState
     LE_DEBUG("Retrieved data counter activation state: %d", activationState);
 
     return activationState;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -856,6 +871,7 @@ static void SetDataCounterState
     bool activationState    ///< New data counter activation state
 )
 {
+#ifndef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
     le_cfg_IteratorRef_t iteratorRef;
 
     LE_DEBUG("New data counter activation state: %d", activationState);
@@ -863,6 +879,7 @@ static void SetDataCounterState
     iteratorRef = le_cfg_CreateWriteTxn(CFG_MODEMSERVICE_MDC_PATH);
     le_cfg_SetBool(iteratorRef, CFG_NODE_COUNTING, activationState);
     le_cfg_CommitTxn(iteratorRef);
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -876,6 +893,9 @@ static le_result_t GetDataCounters
     uint64_t* txBytesPtr    ///< Transmitted bytes
 )
 {
+#ifdef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
+    return LE_FAULT;
+#else
     le_cfg_IteratorRef_t iteratorRef;
 
     iteratorRef = le_cfg_CreateReadTxn(CFG_MODEMSERVICE_MDC_PATH);
@@ -886,6 +906,7 @@ static le_result_t GetDataCounters
     LE_DEBUG("Saved rxBytes=%"PRIu64", txBytes=%"PRIu64, *rxBytesPtr, *txBytesPtr);
 
     return LE_OK;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -899,6 +920,9 @@ static le_result_t SetDataCounters
     uint64_t txBytes    ///< Transmitted bytes
 )
 {
+#ifdef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
+    return LE_FAULT;
+#else
     le_cfg_IteratorRef_t iteratorRef;
 
     iteratorRef = le_cfg_CreateWriteTxn(CFG_MODEMSERVICE_MDC_PATH);
@@ -909,6 +933,7 @@ static le_result_t SetDataCounters
     LE_DEBUG("Saved rxBytes=%"PRIu64", txBytes=%"PRIu64, rxBytes, txBytes);
 
     return LE_OK;
+#endif
 }
 
 // =============================================
@@ -948,8 +973,10 @@ void le_mdc_Init
     void
 )
 {
+#if LE_LOG_CAN_TRACE
     // Get a reference to the trace keyword that is used to control tracing in this module.
     TraceRef = le_log_GetTraceRef("mdc");
+#endif
 
     // Allocate the profile pool, and set the max number of objects, since it is already known.
     DataProfilePool = le_mem_CreatePool("DataProfilePool", sizeof(le_mdc_Profile_t));
@@ -1030,14 +1057,14 @@ le_mdc_ProfileRef_t le_mdc_GetProfile
        LE_ERROR("index 0 is not valid!");
        return NULL;
     }
-    else if ( LE_MDC_DEFAULT_PROFILE == index )
+    else if ( LE_MDC_DEFAULT_PROFILE == (int)index )
     {
         if (pa_mdc_GetDefaultProfileIndex(&index) != LE_OK)
         {
             return NULL;
         }
     }
-    else if ( LE_MDC_SIMTOOLKIT_BIP_DEFAULT_PROFILE == index )
+    else if ( LE_MDC_SIMTOOLKIT_BIP_DEFAULT_PROFILE == (int)index )
     {
         if (pa_mdc_GetBipDefaultProfileIndex(&index) != LE_OK)
         {
@@ -1136,7 +1163,7 @@ uint32_t le_mdc_GetProfileIndex
     if (profilePtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) found!", profileRef);
-        return LE_FAULT;
+        return (uint32_t)LE_FAULT;
     }
 
     return profilePtr->profileIndex;

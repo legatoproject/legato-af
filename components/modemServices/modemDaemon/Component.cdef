@@ -2,14 +2,21 @@ requires:
 {
     api:
     {
+    #if ${MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE} = ""
         le_cfg.api
+    #endif
+
+    #if ${MK_CONFIG_MODEMSERVICE_NO_POWERMANAGER} = ""
         le_pm.api
+    #endif
         le_appInfo.api
     }
 
     component:
     {
+    #if ${MK_CONFIG_MODEMSERVICE_NO_WATCHDOG} = ""
         ${LEGATO_ROOT}/components/watchdogChain
+    #endif
     }
 }
 
@@ -22,23 +29,25 @@ provides:
         modemServices/le_mrc.api
         modemServices/le_sim.api
         modemServices/le_mdc.api
-        modemServices/le_mcc.api
-        modemServices/le_ecall.api
         modemServices/le_ips.api
         modemServices/le_temp.api
-        modemServices/le_antenna.api
         modemServices/le_riPin.api
         modemServices/le_adc.api
+        modemServices/le_lpt.api
+
+    #if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
+        modemServices/le_mcc.api
+        modemServices/le_ecall.api
+        modemServices/le_antenna.api
         modemServices/le_rtc.api
         modemServices/le_mdmCfg.api
-        modemServices/le_lpt.api
+    #endif
     }
 }
 
 sources:
 {
     le_info.c
-    le_mcc.c
     le_mdc.c
     le_mrc.c
     le_ms.c
@@ -46,17 +55,21 @@ sources:
     le_sms.c
     smsPdu.c
     cdmaPdu.c
-    asn1Msd.c
-    le_ecall.c
     le_ips.c
     le_temp.c
-    le_antenna.c
     le_riPin.c
     le_adc.c
-    le_rtc.c
-    sysResets.c
-    le_mdmCfg.c
     le_lpt.c
+
+#if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
+    le_mcc.c
+    asn1Msd.c
+    le_ecall.c
+    le_antenna.c
+    le_rtc.c
+    le_mdmCfg.c
+    sysResets.c
+#endif
 }
 
 cflags:
@@ -68,10 +81,12 @@ cflags:
     -I$LEGATO_BUILD/framework/libjansson/include
 }
 
+#if ${MK_CONFIG_MODEMSERVICE_NO_JANSSON} = ""
 ldflags:
 {
     -ljansson
 }
+#endif
 
 requires:
 {
@@ -80,7 +95,9 @@ requires:
         $LEGATO_MODEM_PA_DEFAULT
         $LEGATO_MODEM_PA
 
+#if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
         $LEGATO_MODEM_PA_ECALL_DEFAULT
         $LEGATO_MODEM_PA_ECALL
+#endif
     }
 }

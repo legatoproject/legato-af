@@ -202,7 +202,8 @@ static void FirstLayerTemperatureChangeHandler
 )
 {
     ThresholdReport_t*                  tempPtr = reportPtr;
-    le_temp_ThresholdEventHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+    le_temp_ThresholdEventHandlerFunc_t clientHandlerFunc =
+        (le_temp_ThresholdEventHandlerFunc_t)secondLayerHandlerFunc;
 
     LE_DEBUG("Call application handler for %p sensor reference with '%s' threshold",
              tempPtr->ref,

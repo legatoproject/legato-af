@@ -25,6 +25,16 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * If the compiler is armcc, allow anonymous unions, as these are useful and used
+ * quite a bit in Legato
+ */
+//--------------------------------------------------------------------------------------------------
+#ifdef __ARMCC_VERSION
+#pragma anon_unions
+#endif
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Standard result codes.
  *
  * @note All error codes are negative integers. They allow functions with signed

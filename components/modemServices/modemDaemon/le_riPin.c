@@ -125,9 +125,10 @@ static void* PulseRingSignalThread
 
     // Watchdog riPin loop
     // Try to kick a couple of times before each timeout.
+#ifndef MK_CONFIG_MODEMSERVICE_NO_WATCHDOG
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_MonitorEventLoop(MS_WDOG_RIPIN_LOOP, watchdogInterval);
-
+#endif
     // Run the event loop
     le_event_RunLoop();
 

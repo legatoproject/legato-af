@@ -1,0 +1,33 @@
+sandboxed: false
+
+executables:
+{
+    testMSDefaultPA = ( msComponent )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        ( testMSDefaultPA )
+    }
+}
+
+start: manual
+
+bindings:
+{
+    testMSDefaultPA.msComponent.le_mdc -> modemService.le_mdc
+    testMSDefaultPA.msComponent.le_riPin -> modemService.le_riPin
+    testMSDefaultPA.msComponent.le_mrc -> modemService.le_mrc
+    testMSDefaultPA.msComponent.le_sim -> modemService.le_sim
+    testMSDefaultPA.msComponent.le_temp -> modemService.le_temp
+    testMSDefaultPA.msComponent.le_lpt -> modemService.le_lpt
+    testMSDefaultPA.msComponent.le_sms -> modemService.le_sms
+    testMSDefaultPA.msComponent.le_ips -> modemService.le_ips
+}

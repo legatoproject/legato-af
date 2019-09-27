@@ -203,7 +203,7 @@ const uint8_t Ascii8to7[] = {
     62+128,     /*    93    ] right square bracket                    */
     20+128,     /*    94    ^ circumflex accent                       */
     17,         /*    95    _ underscore                              */
-    -39,        /*    96    ` back apostrophe                         */
+    (uint8_t)-39, /*  96    ` back apostrophe                         */
     97,         /*    97    a lowercase a                             */
     98,         /*    98    b lowercase b                             */
     99,         /*    99    c lowercase c                             */
@@ -811,7 +811,7 @@ static uint32_t ConvertBinaryIntoPhoneNumber
 
     if (phoneSize < 2*binSize+1)
     {
-        return -1;
+        return (uint32_t)-1;
     }
 
     uint8_t pos = 0;
@@ -957,7 +957,7 @@ static smsPdu_Encoding_t DetermineEncoding
      */
     if ((tpDcs >> 6) == 0)
     {
-        encoding = ((tpDcs >> 2) & 0x3);
+        encoding = (smsPdu_Encoding_t)((tpDcs >> 2) & 0x3);
     }
     /* 1111 xxxx :  Data coding/message class
      *
@@ -976,7 +976,7 @@ static smsPdu_Encoding_t DetermineEncoding
      */
     else if ((tpDcs >> 4) == 0xF)
     {
-        encoding = (tpDcs >> 2) & 1;
+        encoding = (smsPdu_Encoding_t)((tpDcs >> 2) & 1);
     }
     else
     {
@@ -1007,6 +1007,7 @@ static le_result_t DecodeUserDataField
     size_t           destDataSize;
     uint32_t*        destDataLenPtr;
     le_sms_Format_t* formatPtr;
+    int              size;
 
     switch (smsPtr->type)
     {
@@ -1056,7 +1057,7 @@ static le_result_t DecodeUserDataField
             }
             *posPtr -= ((tpUdhl * 8) + 6) / 7; // translate the pos in 7bits char unit
             *formatPtr = LE_SMS_FORMAT_TEXT;
-            int size = Convert7BitsTo8Bits(&dataPtr[*posPtr],
+            size = Convert7BitsTo8Bits(&dataPtr[*posPtr],
                                            0,
                                            messageLen,
                                            destDataPtr,
@@ -2759,6 +2760,11 @@ le_result_t smsPdu_Initialize
 {
     // Get a reference to the trace keyword that is used to control tracing in this module.
     TraceRef = le_log_GetTraceRef("smsPdu");
+
+    // Avoid the unreferenced symbol compilation error on armcc
+#ifndef __GNUC__
+    ((void)TraceRef);
+#endif
 
     return LE_OK;
 }
