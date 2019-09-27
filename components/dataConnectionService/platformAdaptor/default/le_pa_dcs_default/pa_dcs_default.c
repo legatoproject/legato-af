@@ -153,7 +153,9 @@ LE_SHARED le_result_t pa_dcs_GetDhcpLeaseFilePath
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the DNS configuration
+ * Add the provided DNS configurations into /etc/resolv.conf. An empty string in any of the 2
+ * input arguments means that it has no DNS address to add in that field. And this function's
+ * caller should have blocked the case in having both inputs empty.
  *
  * @return
  *      LE_FAULT        Function failed
@@ -163,8 +165,10 @@ LE_SHARED le_result_t pa_dcs_GetDhcpLeaseFilePath
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_dcs_SetDnsNameServers
 (
-    const char* dns1Ptr,    ///< [IN] Pointer on first DNS address
-    const char* dns2Ptr     ///< [IN] Pointer on second DNS address
+    const char* dns1Ptr,    ///< [IN] Pointer to 1st DNS address; empty string means nothing to add
+    const char* dns2Ptr,    ///< [IN] Pointer to 2nd DNS address; empty string means nothing to add
+    bool* isDns1Added,      ///< [OUT] Whether the 1st DNS address is added or not
+    bool* isDns2Added       ///< [OUT] Whether the 2nd DNS address is added or not
 )
 {
     LE_ERROR("Unsupported function called");

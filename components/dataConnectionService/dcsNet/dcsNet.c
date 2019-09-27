@@ -92,17 +92,10 @@ DhcpAddress_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Data structure for backing up the system's default DNS configs
- */
-//--------------------------------------------------------------------------------------------------
-static pa_dcs_DnsBackup_t DnsBackup;
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Data structures for backing up the system's default IPv4/v6 GW configs:
  *    DcsDefaultGwConfigDb_t: a default GW config backup db (data structure), one per client app
  *    DcsDefaultGwConfigDataDbPool: the memory pool from which DcsDefaultGwConfigDb_t is allocated
- *    DcsDefaultGwConfigDbList: the list of config backup db ordered in a lasst-in-first-out stack
+ *    DcsDefaultGwConfigDbList: the list of config backup db ordered in a last-in-first-out stack
  *
  * Inserting into DcsDefaultGwConfigDbList:
  *    Any new list member will be added to the start of the list, which is like the stack's top
@@ -116,9 +109,6 @@ static pa_dcs_DnsBackup_t DnsBackup;
  *    A warning debug message will be given to the client that this config restoration is out of
  *    sequence. But then the request will still be honoured with this member removed from the list
  *    for use.
- *
- * This backup mechanism is so far implemented for default IPv4/v6 GW configs, and not DNS configs
- * yet.
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
@@ -129,6 +119,36 @@ typedef struct
 
 static le_mem_PoolRef_t DcsDefaultGwConfigDataDbPool;
 static le_dls_List_t DcsDefaultGwConfigDbList;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Data structures for backing up the IPv4/v6 DNS configs set onto the device by a client app:
+ *    DcsDnsConfigDb_t: a DNS config backup db (data structure), one per client app
+ *    DcsDnsConfigDataDbPool: the memory pool from which DcsDnsConfigDb_t is allocated
+ *    DcsDnsConfigDbList: the list of config backup db ordered in a (LIFO) last-in-first-out stack
+ *
+ * Inserting into DcsDnsConfigDbList:
+ *    Any new list member will be added to the start of the list, which is like the stack's top
+ * Popping from DcsDnsConfigDbList:
+ *    When a backup db is popped for restoring config, it is popped from the start of the list to
+ *    implement a last-in-first-out stack to maintain the right order
+ * Changing backup config in a member already on DcsDnsGwConfigDbList:
+ *    This member will first be removed from this list, updated with the given configs, and then
+ *    re-inserted back to the start of the list
+ * Request for restoring the configs in a member not in the start of the list:
+ *    A warning debug message will be given to the client that this config restoration is out of
+ *    sequence. But then the request will still be honoured with this member removed from the list
+ *    for use.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    pa_dcs_DnsBackup_t backupConfig;       ///< Data structure for archiving backup configs
+    le_dls_Link_t dbLink;                  ///< Double-link used to order elements as a LIFO stack
+} DcsDnsConfigDb_t;
+
+static le_mem_PoolRef_t DcsDnsConfigDataDbPool;
+static le_dls_List_t DcsDnsConfigDbList;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -151,6 +171,7 @@ le_msg_SessionRef_t DcsNetGetSessionRef
     if (!sessionRef)
     {
         LE_DEBUG("Client app's sessionRef (nil) reflects it's from le_data");
+        return le_dcs_GetInternalSessionRef();
     }
     return sessionRef;
 }
@@ -267,6 +288,48 @@ void InsertDefaultGwBackupDb
                  PA_DCS_INTERFACE_NAME_MAX_BYTES, NULL);
 
     le_dls_Stack(&DcsDefaultGwConfigDbList, &archivedDbPtr->dbLink);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function searches through DcsDnsConfigDbList for a matching session reference with
+ * the given one in the input. If it is at the start of the list, the 2nd argument isRecent will be
+ * set to true to let the function caller know.
+ *
+ * @return
+ *     DcsDnsConfigDb_t with the matching session reference. NULL if none is found.
+ */
+//--------------------------------------------------------------------------------------------------
+static DcsDnsConfigDb_t* GetDnsConfigDb
+(
+    le_msg_SessionRef_t appSessionRef,
+    bool* isRecent
+)
+{
+    le_dls_Link_t* dnsConfigDbLinkPtr;
+    DcsDnsConfigDb_t* dnsConfigDbPtr;
+    pa_dcs_DnsBackup_t* backupDbPtr;
+    *isRecent = false;
+
+    for (dnsConfigDbLinkPtr = le_dls_Peek(&DcsDnsConfigDbList); dnsConfigDbLinkPtr;
+         dnsConfigDbLinkPtr = le_dls_PeekNext(&DcsDnsConfigDbList, dnsConfigDbLinkPtr))
+    {
+        dnsConfigDbPtr = CONTAINER_OF(dnsConfigDbLinkPtr, DcsDnsConfigDb_t, dbLink);
+        if (!(backupDbPtr = &dnsConfigDbPtr->backupConfig))
+        {
+            LE_WARN("DNS config Db missing on its Db list");
+            continue;
+        }
+        if (backupDbPtr->appSessionRef == appSessionRef)
+        {
+            LE_DEBUG("Found DNS config backup for session reference %p on a queue "
+                     "of %" PRIuS, appSessionRef, le_dls_NumLinks(&DcsDnsConfigDbList));
+            *isRecent = le_dls_IsHead(&DcsDnsConfigDbList, dnsConfigDbLinkPtr);
+            return dnsConfigDbPtr;
+        }
+    }
+    return NULL;
 }
 
 
@@ -621,6 +684,7 @@ le_result_t le_net_RestoreDefaultGW
 
     if ((v4Result == LE_OK) || (v6Result == LE_OK))
     {
+        LE_DEBUG("Old default GW configs for session reference %p restored", sessionRef);
         return LE_OK;
     }
 
@@ -820,45 +884,107 @@ le_result_t le_net_GetDefaultGW
  * Set the given DNS addresses into the system configs
  *
  * @return
- *      LE_OK           Function succeed
- *      LE_DUPLICATE    Function found no need to add as the given inputs are already set in
- *      LE_UNSUPPORTED  Function not supported by the target
- *      LE_FAULT        Function failed
+ *      LE_OK           Function succeeded
+ *      LE_DUPLICATE    Function found no need to add any given DNS addr provided in the input
+ *      LE_FAULT        Function failed to set any of the given DNS addr provided in the input
+ *
+ * This overall return value reflects the status of DNS address installation for both IPv4 and v6.
+ * The following matrix makes it clearER about what will be returned for various combos of IPv4
+ * v6 failures and successes.
+ *
+ * IPv4\IPv6    | LE_OK         LE_DUPLICATE  LE_FAULT       LE_NOT_FOUND
+ * ----------------------------------------------------------------------
+ * LE_OK        | LE_OK         LE_OK         LE_OK          LE_OK
+ * LE_DUPLICATE | LE_OK         LE_DUPLICATE  LE_DUPLICATE   LE_DUPLICATE
+ * LE_FAULT     | LE_OK         LE_DUPLICATE  LE_FAULT       LE_FAULT
+ * LE_NOT_FOUND | LE_OK         LE_DUPLICATE  LE_FAULT       LE_FAULT
+ *
+ * The above table reflects that only when the overall return is LE_OK there's the need for
+ * backing up what's got installed onto the system.
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t DcsNetSetDNS
+static le_result_t DcsNetSetDns
 (
-    bool isIpv6,                     ///< [IN] it's of type IPv6 (true) or IPv4 (false)
-    char *dns1Addr,                  ///< [IN] 1st DNS IP addr to be installed
-    char *dns2Addr,                  ///< [IN] 2nd DNS IP addr to be installed
-    int dnsAddrSize                  ///< [IN] array length of the DNS IP addresses to be installed
+    DcsDnsConfigDb_t* dnsConfigDbPtr ///< [IN] DNS config backup db
 )
 {
-    le_result_t ret = pa_dcs_SetDnsNameServers(dns1Addr, dns2Addr);
-    if (ret == LE_DUPLICATE)
+    pa_dcs_DnsBackup_t* backupConfigPtr = &dnsConfigDbPtr->backupConfig;
+    le_result_t v4Ret = LE_NOT_FOUND, v6Ret = LE_NOT_FOUND;
+
+    if ((strlen(backupConfigPtr->dnsIPv6[0]) > 0) ||
+        (strlen(backupConfigPtr->dnsIPv6[1]) > 0))
     {
-        LE_DEBUG("Given DNS addresses already set");
-        return ret;
-    }
-    else if (ret != LE_OK)
-    {
-        LE_ERROR("Failed to set DNS addresses %s and %s", dns1Addr, dns2Addr);
-        return ret;
+        v6Ret = pa_dcs_SetDnsNameServers(backupConfigPtr->dnsIPv6[0],
+                                         backupConfigPtr->dnsIPv6[1],
+                                         &backupConfigPtr->setDnsV6ToSystem[0],
+                                         &backupConfigPtr->setDnsV6ToSystem[1]);
+        if ((v6Ret != LE_OK) && (v6Ret != LE_DUPLICATE))
+        {
+            LE_ERROR("Failed to set any IPv6 DNS address");
+        }
     }
 
-    if (isIpv6)
+    if ((strlen(backupConfigPtr->dnsIPv4[0]) > 0) ||
+        (strlen(backupConfigPtr->dnsIPv4[1]) > 0))
     {
-        le_utf8_Copy(DnsBackup.newDnsIPv6[0], dns1Addr, dnsAddrSize, NULL);
-        le_utf8_Copy(DnsBackup.newDnsIPv6[1], dns2Addr, dnsAddrSize, NULL);
-    }
-    else
-    {
-        le_utf8_Copy(DnsBackup.newDnsIPv4[0], dns1Addr, dnsAddrSize, NULL);
-        le_utf8_Copy(DnsBackup.newDnsIPv4[1], dns2Addr, dnsAddrSize, NULL);
+        v4Ret = pa_dcs_SetDnsNameServers(backupConfigPtr->dnsIPv4[0],
+                                         backupConfigPtr->dnsIPv4[1],
+                                         &backupConfigPtr->setDnsV4ToSystem[0],
+                                         &backupConfigPtr->setDnsV4ToSystem[1]);
+        if ((v4Ret != LE_OK) && (v4Ret != LE_DUPLICATE))
+        {
+            LE_ERROR("Failed to set any IPv4 DNS address");
+        }
     }
 
-    LE_INFO("Succeeded to set DNS addresses %s and %s", dns1Addr, dns2Addr);
-    return ret;
+    // Formulate the overall return value back to the caller. See the function header for more.
+    if ((v4Ret == LE_NOT_FOUND) || (v6Ret == LE_NOT_FOUND))
+    {
+        le_result_t ret = LE_FAULT;
+        if ((v4Ret == LE_NOT_FOUND) && (v6Ret == LE_NOT_FOUND))
+        {
+            // Impossible case, but put here to catch the unexpected & to return fault
+            LE_WARN("Got no IPv4 nor IPv6 DNS address to set");
+            return ret;
+        }
+        if (v4Ret == LE_NOT_FOUND)
+        {
+            // With no IPv4 DNS address, take IPv6's result as the overall result
+            ret = v6Ret;
+        }
+        if (v6Ret == LE_NOT_FOUND)
+        {
+            // With no IPv6 DNS address, take IPv4's result as the overall result
+            ret = v4Ret;
+        }
+        return ret;
+    }
+    if ((v4Ret == LE_FAULT) || (v6Ret == LE_FAULT))
+    {
+        le_result_t ret = LE_FAULT;
+        if ((v4Ret == LE_FAULT) && (v6Ret == LE_FAULT))
+        {
+            return LE_FAULT;
+        }
+        if (v4Ret == LE_FAULT)
+        {
+            // Upon IPv4 fault, take IPv6's result as the overall result
+            ret = v6Ret;
+        }
+        if (v6Ret == LE_FAULT)
+        {
+            // Upon IPv6 fault, take IPv6's result as the overall result
+            ret = v4Ret;
+        }
+        return ret;
+    }
+    if ((v4Ret == LE_DUPLICATE) && (v6Ret == LE_DUPLICATE))
+    {
+        LE_DEBUG("Given IPv4 & IPv6 DNS addresses are already set on device");
+        return LE_DUPLICATE;
+    }
+
+    return LE_OK;
 }
 
 
@@ -932,6 +1058,111 @@ static le_result_t DcsNetChangeRoute
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Initialize a backup db for DNS addresses provided in the input. If an existing one is present,
+ * remove those DNS configs before installing the new since each client app is restricted to one
+ * set of DNS addresses to install that includes 2 IPv4 addresses and 2 IPv6 addresses. If no
+ * existing one is present, allocate a new db and return it back to the caller after saving the
+ * provided DNS addresses into this db, unless none of these 4 addresses is valid (non-empty).
+ *
+ * @return
+ *      - DcsDnsConfigDb_t* as a pointer to the initialized backup db; NULL if none necessary
+ */
+//--------------------------------------------------------------------------------------------------
+static DcsDnsConfigDb_t* DcsNetInitDnsBackup
+(
+    char *v4DnsAddr1,
+    char *v4DnsAddr2,
+    char *v6DnsAddr1,
+    char *v6DnsAddr2
+)
+{
+    pid_t pid = 0;
+    uid_t uid = 0;
+    bool isRecent;
+    char appName[LE_DCS_APPNAME_MAX_LEN] = {0};
+    DcsDnsConfigDb_t* dnsConfigDbPtr;
+    pa_dcs_DnsBackup_t* dnsConfigBackup;
+    le_msg_SessionRef_t sessionRef = DcsNetGetSessionRef();
+    uint16_t v4DnsAddr1Len = strlen(v4DnsAddr1);
+    uint16_t v4DnsAddr2Len = strlen(v4DnsAddr2);
+    uint16_t v6DnsAddr1Len = strlen(v6DnsAddr1);
+    uint16_t v6DnsAddr2Len = strlen(v6DnsAddr2);
+
+    if ((v4DnsAddr1Len == 0) && (v4DnsAddr2Len == 0) &&
+        (v6DnsAddr1Len == 0) && (v6DnsAddr2Len == 0))
+    {
+        // No new DNS address to install
+        return NULL;
+    }
+
+    LE_DEBUG("DNS addresses to install for client app with sessionRef %p: IPv4 %s and %s; "
+             "IPv6 %s and %s", sessionRef, v4DnsAddr1, v4DnsAddr2, v6DnsAddr1, v6DnsAddr2);
+
+    if ((LE_OK == le_msg_GetClientUserCreds(sessionRef, &uid, &pid)) &&
+        (LE_OK == le_appInfo_GetName(pid, appName, sizeof(appName)-1)))
+    {
+        LE_DEBUG("Client app's name %s", appName);
+    }
+
+    dnsConfigDbPtr = GetDnsConfigDb(sessionRef, &isRecent);
+    if (dnsConfigDbPtr)
+    {
+        // Warn that an old backup is found. Restore that before install the new
+        LE_WARN("Client app with session reference %p already set DNS once", sessionRef);
+        LE_WARN("Restoring that before setting the new as requested");
+        if (!isRecent)
+        {
+            LE_WARN("DNS configs restored not in the reversed order of being backed up");
+        }
+        dnsConfigBackup = &dnsConfigDbPtr->backupConfig;
+        if (!dnsConfigBackup->setDnsV4ToSystem[0] && !dnsConfigBackup->setDnsV4ToSystem[1] &&
+            !dnsConfigBackup->setDnsV6ToSystem[0] && !dnsConfigBackup->setDnsV6ToSystem[1])
+        {
+            LE_DEBUG("Neither IPv4 nor IPv6 backed up DNS configs found to restore to");
+        }
+        else
+        {
+            pa_dcs_RestoreInitialDnsNameServers(dnsConfigBackup);
+        }
+        // Dequeue the element here if it's already queued before it'll be reinserted back to
+        // the queue head in le_net_SetDNS()
+        if (le_dls_IsInList(&DcsDnsConfigDbList, &dnsConfigDbPtr->dbLink))
+        {
+            le_dls_Remove(&DcsDnsConfigDbList, &dnsConfigDbPtr->dbLink);
+        }
+    }
+    else
+    {
+        // Create a new backup
+        dnsConfigDbPtr = le_mem_ForceAlloc(DcsDnsConfigDataDbPool);
+    }
+    // Initialize the backup db
+    memset(dnsConfigDbPtr, 0x0, sizeof(DcsDnsConfigDb_t));
+    dnsConfigDbPtr->dbLink = LE_DLS_LINK_INIT;
+    dnsConfigBackup = &dnsConfigDbPtr->backupConfig;
+    dnsConfigBackup->appSessionRef = sessionRef;
+    if (v6DnsAddr1Len)
+    {
+        le_utf8_Copy(dnsConfigBackup->dnsIPv6[0], v6DnsAddr1, PA_DCS_IPV6_ADDR_MAX_BYTES, NULL);
+    }
+    if (v6DnsAddr2Len)
+    {
+        le_utf8_Copy(dnsConfigBackup->dnsIPv6[1], v6DnsAddr2, PA_DCS_IPV6_ADDR_MAX_BYTES, NULL);
+    }
+    if (v4DnsAddr1Len)
+    {
+        le_utf8_Copy(dnsConfigBackup->dnsIPv4[0], v4DnsAddr1, PA_DCS_IPV4_ADDR_MAX_BYTES, NULL);
+    }
+    if (v4DnsAddr2Len)
+    {
+        le_utf8_Copy(dnsConfigBackup->dnsIPv4[1], v4DnsAddr2, PA_DCS_IPV4_ADDR_MAX_BYTES, NULL);
+    }
+    return dnsConfigDbPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Set the system DNS addresses to those given to the given channel specified in the input argument.
  * These DNS addresses are retrieved from this channel's technology
  *
@@ -945,12 +1176,12 @@ le_result_t le_net_SetDNS
                                     ///< will be set into the system config
 )
 {
-    le_result_t ret, v4Ret = LE_FAULT, v6Ret = LE_FAULT;
-    char intf[LE_DCS_INTERFACE_NAME_MAX_LEN] = {0};
-    int intfSize = LE_DCS_INTERFACE_NAME_MAX_LEN;
-    char *channelName;
+    le_result_t ret;
+    char *channelName, intf[LE_DCS_INTERFACE_NAME_MAX_LEN] = {0};
     char v4DnsAddrs[2][PA_DCS_IPV4_ADDR_MAX_BYTES] = {{0}, {0}};
     char v6DnsAddrs[2][PA_DCS_IPV6_ADDR_MAX_BYTES] = {{0}, {0}};
+    int intfSize = LE_DCS_INTERFACE_NAME_MAX_LEN;
+    DcsDnsConfigDb_t* dnsConfigDbPtr;
     le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
     {
@@ -996,50 +1227,41 @@ le_result_t le_net_SetDNS
         return ret;
     }
 
-    if ((strlen(v4DnsAddrs[0]) == 0) && (strlen(v4DnsAddrs[1]) == 0) &&
-        (strlen(v6DnsAddrs[0]) == 0) && (strlen(v6DnsAddrs[1]) == 0))
+    dnsConfigDbPtr = DcsNetInitDnsBackup(v4DnsAddrs[0], v4DnsAddrs[1], v6DnsAddrs[0],
+                                         v6DnsAddrs[1]);
+    if (!dnsConfigDbPtr)
     {
         LE_INFO("Given channel %s of technology %s got no DNS server address assigned",
                 channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
         return LE_FAULT;
     }
 
-    // Set IPv6 DNS server addresses
-    if ((strlen(v6DnsAddrs[0]) > 0) || (strlen(v6DnsAddrs[1]) > 0))
+    // Set the retrieved DNS address(es) onto the device now
+    ret = DcsNetSetDns(dnsConfigDbPtr);
+    switch (ret)
     {
-        v6Ret = DcsNetSetDNS(true, v6DnsAddrs[0], v6DnsAddrs[1], PA_DCS_IPV6_ADDR_MAX_BYTES);
-        if ((v6Ret != LE_OK) && (v6Ret != LE_DUPLICATE))
-        {
-            LE_ERROR("Failed to set DNS addresses for channel %s of technology %s", channelName,
-                     le_dcs_ConvertTechEnumToName(channelDb->technology));
-        }
+        case LE_OK:
+            // Archive the backup onto DcsDnsConfigDbList
+            LE_INFO("Succeeded to set DNS address(es) of channel %s of technology %s onto device",
+                    channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
+            le_dls_Stack(&DcsDnsConfigDbList, &dnsConfigDbPtr->dbLink);
+            return LE_OK;
+        case LE_DUPLICATE:
+            LE_INFO("DNS address(es) of channel %s of technology %s already set onto device",
+                    channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
+            break;
+        case LE_FAULT:
+            LE_ERROR("Failed to set DNS address for channel %s of technology %s onto device",
+                     channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
+            break;
+        default:
+            LE_ERROR("Error in setting DNS address for channel %s of technology %s onto device: %d",
+                     channelName, le_dcs_ConvertTechEnumToName(channelDb->technology), ret);
+            break;
     }
-
-    // Set IPv4 DNS server addresses
-    if ((strlen(v4DnsAddrs[0]) > 0) || (strlen(v4DnsAddrs[1]) > 0))
-    {
-        v4Ret = DcsNetSetDNS(false, v4DnsAddrs[0], v4DnsAddrs[1], PA_DCS_IPV4_ADDR_MAX_BYTES);
-        if ((v4Ret != LE_OK) && (v4Ret != LE_DUPLICATE))
-        {
-            LE_ERROR("Failed to set DNS addresses for channel %s of technology %s", channelName,
-                     le_dcs_ConvertTechEnumToName(channelDb->technology));
-        }
-    }
-
-    if ((v4Ret == LE_DUPLICATE) || (v6Ret == LE_DUPLICATE))
-    {
-        LE_INFO("DNS addresses of channel %s of technology %s already set in",
-                channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
-        return LE_DUPLICATE;
-    }
-
-    if ((v4Ret == LE_OK) || (v6Ret == LE_OK))
-    {
-        LE_INFO("Succeeded to set onto device DNS addresses of channel %s of technology %s",
-                channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
-        return LE_OK;
-    }
-    return LE_FAULT;
+    // No need for backup; thus, release the allocated backup db
+    le_mem_Release(dnsConfigDbPtr);
+    return ret;
 }
 
 
@@ -1118,10 +1340,42 @@ void le_net_RestoreDNS
     void
 )
 {
-    LE_DEBUG("Removing lastly added DNS addresses: IPv4: %s %s; IPv6: %s %s",
-             DnsBackup.newDnsIPv4[0], DnsBackup.newDnsIPv4[1],
-             DnsBackup.newDnsIPv6[0], DnsBackup.newDnsIPv6[1]);
-    pa_dcs_RestoreInitialDnsNameServers(&DnsBackup);
+    pid_t pid = 0;
+    uid_t uid = 0;
+    bool isRecent;
+    char appName[LE_DCS_APPNAME_MAX_LEN] = {0};
+    DcsDnsConfigDb_t* dnsConfigDbPtr;
+    pa_dcs_DnsBackup_t* dnsConfigBackup;
+    le_msg_SessionRef_t sessionRef = DcsNetGetSessionRef();
+    LE_DEBUG("Client app's sessionRef %p", sessionRef);
+    if (sessionRef && (LE_OK == le_msg_GetClientUserCreds(sessionRef, &uid, &pid)) &&
+        (LE_OK == le_appInfo_GetName(pid, appName, sizeof(appName)-1)))
+    {
+        LE_DEBUG("Client app's name %s", appName);
+    }
+    dnsConfigDbPtr = GetDnsConfigDb(sessionRef, &isRecent);
+    if (!dnsConfigDbPtr)
+    {
+        LE_INFO("No backed up DNS configs found to restore to");
+        return;
+    }
+    if (!isRecent)
+    {
+        LE_WARN("DNS configs restored not in the reversed order of being backed up");
+    }
+
+    dnsConfigBackup = &dnsConfigDbPtr->backupConfig;
+    if (!dnsConfigBackup->setDnsV4ToSystem[0] && !dnsConfigBackup->setDnsV4ToSystem[1] &&
+        !dnsConfigBackup->setDnsV6ToSystem[0] && !dnsConfigBackup->setDnsV6ToSystem[1])
+    {
+        LE_INFO("Neither IPv4 nor IPv6 backed up DNS configs found to restore to");
+        le_mem_Release(dnsConfigDbPtr);
+        return;
+    }
+
+    pa_dcs_RestoreInitialDnsNameServers(dnsConfigBackup);
+    le_mem_Release(dnsConfigDbPtr);
+    LE_DEBUG("Old DNS config backup for session reference %p restored", sessionRef);
 }
 
 
@@ -1365,9 +1619,33 @@ static void DcsDefaultGwConfigDbDestructor
         return;
     }
 
-    le_dls_Remove(&DcsDefaultGwConfigDbList, &defGwConfigDb->dbLink);
+    if (le_dls_IsInList(&DcsDefaultGwConfigDbList, &defGwConfigDb->dbLink))
+    {
+        le_dls_Remove(&DcsDefaultGwConfigDbList, &defGwConfigDb->dbLink);
+    }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Destructor function that runs when a network config db is deallocated
+ */
+//--------------------------------------------------------------------------------------------------
+static void DcsDnsConfigDbDestructor
+(
+    void *objPtr
+)
+{
+    DcsDnsConfigDb_t *dnsConfigDb = (DcsDnsConfigDb_t *)objPtr;
+    if (!dnsConfigDb)
+    {
+        return;
+    }
+
+    if (le_dls_IsInList(&DcsDnsConfigDbList, &dnsConfigDb->dbLink))
+    {
+        le_dls_Remove(&DcsDnsConfigDbList, &dnsConfigDb->dbLink);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1381,6 +1659,11 @@ COMPONENT_INIT
                                                sizeof(DcsDefaultGwConfigDb_t));
     le_mem_ExpandPool(DcsDefaultGwConfigDataDbPool, LE_DCS_CLIENT_APPS_MAX);
     le_mem_SetDestructor(DcsDefaultGwConfigDataDbPool, DcsDefaultGwConfigDbDestructor);
+
+    DcsDnsConfigDbList = LE_DLS_LIST_INIT;
+    DcsDnsConfigDataDbPool = le_mem_CreatePool("DcsDnsConfigDataDbPool", sizeof(DcsDnsConfigDb_t));
+    le_mem_ExpandPool(DcsDnsConfigDataDbPool, LE_DCS_CLIENT_APPS_MAX);
+    le_mem_SetDestructor(DcsDnsConfigDataDbPool, DcsDnsConfigDbDestructor);
 
     LE_INFO("Data Channel Service's network component is ready");
 }

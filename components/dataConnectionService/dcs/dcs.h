@@ -158,6 +158,7 @@ LE_SHARED void le_dcs_RemoveEventHandler(le_dcs_EventHandlerRef_t channelHandler
 LE_SHARED le_dcs_ChannelRef_t le_dcs_GetReference(const char *name, le_dcs_Technology_t technology);
 LE_SHARED le_dcs_ReqObjRef_t le_dcs_Start(le_dcs_ChannelRef_t channelRef);
 LE_SHARED le_result_t le_dcs_Stop(le_dcs_ReqObjRef_t reqRef);
+LE_SHARED le_msg_SessionRef_t le_dcs_GetInternalSessionRef(void);
 
 // from dcs_utils.c
 LE_SHARED const char *le_dcs_ConvertTechEnumToName(le_dcs_Technology_t tech);

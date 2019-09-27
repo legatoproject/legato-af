@@ -66,6 +66,24 @@ DcsCommand_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function retrieves the internal session reference used by le_data saved in DcsInfo, since
+ * le_data is an internal client of le_dcs and le_net.
+ *
+ * @return
+ *     - internal client session reference for le_data
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_SessionRef_t le_dcs_GetInternalSessionRef
+(
+    void
+)
+{
+    return DcsInfo.internalSessionRef;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function retrieves the client session reference of the caller. If it's an external client
  * outside DCS, it'll return the DCS API client session reference. Otherwise, le_data is the caller
  * since it's the only one internal client possible; then, the internal session reference in

@@ -52,9 +52,9 @@ pa_dcs_RouteAction_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Data structures for backing up network configs before changes
- *     pa_dcs_DefaultGwBackup_t: default GW configs
- *     pa_dcs_DnsBackup_t: DNS configs
+ * Data structures for backing up network configs:
+ *     pa_dcs_DefaultGwBackup_t: default GW configs before change
+ *     pa_dcs_DnsBackup_t: DNS configs being added in the change
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
@@ -71,8 +71,11 @@ pa_dcs_DefaultGwBackup_t;
 
 typedef struct
 {
-    char newDnsIPv4[2][PA_DCS_IPV4_ADDR_MAX_BYTES];
-    char newDnsIPv6[2][PA_DCS_IPV6_ADDR_MAX_BYTES];
+    le_msg_SessionRef_t appSessionRef;
+    char dnsIPv4[2][PA_DCS_IPV4_ADDR_MAX_BYTES];
+    bool setDnsV4ToSystem[2];
+    char dnsIPv6[2][PA_DCS_IPV6_ADDR_MAX_BYTES];
+    bool setDnsV6ToSystem[2];
 }
 pa_dcs_DnsBackup_t;
 
@@ -209,7 +212,9 @@ LE_SHARED void pa_dcs_RestoreInitialDnsNameServers
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the DNS configuration
+ * Add the provided DNS configurations into /etc/resolv.conf. An empty string in any of the 2
+ * input arguments means that it has no DNS address to add in that field. And this function's
+ * caller should have blocked the case in having both inputs empty.
  *
  * @return
  *      LE_OK           Function succeed
@@ -220,8 +225,10 @@ LE_SHARED void pa_dcs_RestoreInitialDnsNameServers
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_dcs_SetDnsNameServers
 (
-    const char* dns1Ptr,    ///< [IN] Pointer on first DNS address
-    const char* dns2Ptr     ///< [IN] Pointer on second DNS address
+    const char* dns1Ptr,    ///< [IN] Pointer to 1st DNS address; empty string means nothing to add
+    const char* dns2Ptr,    ///< [IN] Pointer to 2nd DNS address; empty string means nothing to add
+    bool* isDns1Added,      ///< [OUT] Whether the 1st DNS address is added or not
+    bool* isDns2Added       ///< [OUT] Whether the 2nd DNS address is added or not
 );
 
 //--------------------------------------------------------------------------------------------------
