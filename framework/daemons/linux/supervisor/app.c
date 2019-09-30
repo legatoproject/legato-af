@@ -464,6 +464,7 @@ static le_result_t CreateSupplementaryGroups
 
     if (le_cfg_GoToFirstChild(cfgIter) != LE_OK)
     {
+        appRef->numSupplementGids = 0;
         LE_DEBUG("No supplementary groups for app '%s'.", appRef->name);
         le_cfg_CancelTxn(cfgIter);
 
@@ -3232,6 +3233,7 @@ app_Ref_t app_Create
 {
     // Create a new app object.
     App_t* appPtr = le_mem_ForceAlloc(AppPool);
+    memset(appPtr, 0, sizeof(*appPtr));
 
     // Save the config path.
     if (   le_utf8_Copy(appPtr->cfgPathRoot, cfgPathRootPtr, sizeof(appPtr->cfgPathRoot), NULL)
