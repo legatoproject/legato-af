@@ -42,6 +42,13 @@ static le_ref_MapRef_t EthernetConnectionRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Flag to allow Ethernet channel query
+ */
+//--------------------------------------------------------------------------------------------------
+static bool AllowEthernetChannelQuery = true;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Search for the given Ethernet connection reference's connDb from its reference map
  *
  * @return
@@ -272,19 +279,10 @@ le_result_t le_dcsEthernet_GetChannelList
     memset(channelList, 0, sizeof(channelList));
     le_ref_IterRef_t iterRef = le_ref_GetIterator(EthernetConnectionRefMap);
 
-    //Fill channel list from Ethernet channel db.
-    while ((le_ref_NextNode(iterRef) == LE_OK) && (i < LE_DCS_CHANNEL_LIST_QUERY_MAX))
-    {
-        ethernetConnDb = (ethernet_connDb_t *)le_ref_GetValue(iterRef);
-        le_utf8_Copy(channelList[i].name, ethernetConnDb->netIntf, sizeof(channelList[i].name), NULL);
-        channelList[i].technology = LE_DCS_TECH_ETHERNET;
-        channelList[i].state = (ethernetConnDb->opState)? LE_DCS_STATE_UP : LE_DCS_STATE_DOWN;
-        i++;
-    }
-
     //If Ethernet cable is connected before power cycle, there could be no channel event
-    //to update Ethernet connection db, hence allow channel query if no channel available.
-    if (i == 0)
+    //to update Ethernet connection db, hence allow channel query if no channel available,
+    //and at least once.
+    if (AllowEthernetChannelQuery)
     {
         le_result_t ret = pa_ethernet_GetChannelList(channelList, &listLen);
         if (LE_OK != ret)
@@ -303,7 +301,21 @@ le_result_t le_dcsEthernet_GetChannelList
     }
     else
     {
-        listLen = i;
+        //Fill channel list from Ethernet channel db.
+        i = 0;
+        while ((le_ref_NextNode(iterRef) == LE_OK) && (i < LE_DCS_CHANNEL_LIST_QUERY_MAX))
+        {
+            ethernetConnDb = (ethernet_connDb_t *)le_ref_GetValue(iterRef);
+            le_utf8_Copy(channelList[i].name, ethernetConnDb->netIntf, sizeof(channelList[i].name), NULL);
+            channelList[i].technology = LE_DCS_TECH_ETHERNET;
+            channelList[i].state = (ethernetConnDb->opState)? LE_DCS_STATE_UP : LE_DCS_STATE_DOWN;
+            i++;
+        }
+    }
+
+    if (i > 0)
+    {
+        AllowEthernetChannelQuery = false;
     }
 
     le_dcsTech_CollectChannelQueryResults(LE_DCS_TECH_ETHERNET, LE_OK, channelList, listLen);
