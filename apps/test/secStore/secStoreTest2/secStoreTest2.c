@@ -137,7 +137,7 @@ static void Test4
 }
 
 // writing a normal file
-// reading a normal file, with insufficient read buffer size
+// reading a normal file, with insufficient read buffer size (zero)
 // delete a normal file
 static void Test5
 (
@@ -191,6 +191,83 @@ static void Test6
     LE_TEST_INFO("End of Test6");
 }
 
+// writing a normal file
+// reading a normal file, with insufficient read buffer size (one byte short)
+// delete a normal file
+static void Test7
+(
+    void
+)
+{
+    LE_TEST_INFO("Test7");
+
+    char outBuffer[1024] = {0};
+    size_t outBufferSize = 9;
+    le_result_t result;
+
+
+    result = le_secStore_Write("file1", (uint8_t*)"string321", 10);
+    LE_TEST_OK(result == LE_OK, "Create a 10-byte file: [%s]", LE_RESULT_TXT(result));
+
+    result = le_secStore_Read("file1", (uint8_t*)outBuffer, &outBufferSize);
+    LE_TEST_OK(result == LE_OVERFLOW, "Reading from 10-byte file to a 9-byte buffer: [%s]",
+               LE_RESULT_TXT(result));
+
+    LE_TEST_OK(strcmp(outBuffer, "") == 0,
+               "Checking secStore item contents '%s', expecting ''",
+               outBuffer);
+
+    result = le_secStore_Delete("file1");
+    LE_TEST_OK(result == LE_OK, "Delete the 10-byte file: [%s]", LE_RESULT_TXT(result));
+
+    LE_TEST_INFO("End of Test7");
+}
+
+// writing a large file
+// reading a large file, with sufficient read buffer size
+// delete a large file
+static void Test8
+(
+    void
+)
+{
+    LE_TEST_INFO("Test8");
+
+    uint8_t inBuffer[5000] = {0};
+    uint8_t outBuffer[5000] = {0};
+    size_t inBufferSize = sizeof(outBuffer);
+    size_t outBufferSize = sizeof(outBuffer);
+    le_result_t result;
+
+    int i;
+    for (i = 0; i < sizeof(inBuffer); i++)
+    {
+        inBuffer[i] = i % 256;
+    }
+    result = le_secStore_Write("file1", inBuffer, inBufferSize);
+    LE_TEST_OK(result == LE_OK, "Create a 5000-byte file: [%s]", LE_RESULT_TXT(result));
+
+
+    result = le_secStore_Read("file1", (uint8_t*)outBuffer, &outBufferSize);
+    LE_TEST_OK(result == LE_OK, "Read from the 5000-byte file: [%s]", LE_RESULT_TXT(result));
+
+    int mismatch = 0;
+    for (i = 0; i < sizeof(outBuffer); i++)
+    {
+        if (outBuffer[i] != i % 256)
+        {
+            mismatch++;
+        }
+    }
+    LE_TEST_OK(mismatch == 0,
+               "Checking secStore item contents: %d bytes mismatch",
+               mismatch);
+
+    result = le_secStore_Delete("file1");
+    LE_TEST_OK(result == LE_OK, "Delete the 5000-byte file: [%s]", LE_RESULT_TXT(result));
+
+    LE_TEST_INFO("End of Test8");
+}
 
 COMPONENT_INIT
 {
@@ -204,6 +281,8 @@ COMPONENT_INIT
     Test4();
     Test5();
     Test6();
+    Test7();
+    Test8();
 
     LE_TEST_INFO("=== SecStoreTest2 END ===");
 
