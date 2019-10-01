@@ -7,6 +7,9 @@
 from __future__ import print_function
 import os, shutil, tempfile
 
+import pytest
+
+@pytest.mark.skipif(os.environ.get('LE_CONFIG_LINUX') != 'y', reason="not Linux build environment")
 def test_Stub():
     tmpdir = tempfile.mkdtemp()
     scriptdir = os.path.dirname(os.path.realpath(__file__))
@@ -16,6 +19,7 @@ def test_Stub():
     assert os.system("$(findtoolchain $TARGET_TYPE dir)/$(findtoolchain $TARGET_TYPE prefix)gcc --sysroot=$(findtoolchain $TARGET_TYPE sysroot) -I$LEGATO_ROOT/framework/include -I$LEGATO_ROOT/build/$TARGET_TYPE/framework/include -c {dir}/ipcTest_stub.c -o {dir}/ipcTest.o".format(dir=tmpdir)) == 0
     shutil.rmtree(tmpdir)
 
+@pytest.mark.skipif(os.environ.get('LE_CONFIG_LINUX') != 'y', reason="not Linux build environment")
 def test_AsyncStub():
     tmpdir = tempfile.mkdtemp()
     scriptdir = os.path.dirname(os.path.realpath(__file__))
