@@ -27,7 +27,7 @@ config CUSTOM_FA_PATH
   depends on CUSTOM_FA
   ---help---
   Path of custom OS adaptor source directory relative to the legato/ root
-  directory.  This source directory should contain liblegato/ and daemons/
+  directory.  This source directory should contain liblegato/ and include/
   directories containing the source code needed to support the custom
   operating system.
 
