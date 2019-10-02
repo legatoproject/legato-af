@@ -4253,7 +4253,14 @@ le_cfg_ChangeHandlerRef_t tdb_AddChangeHandler
     }
     else
     {
-        snprintf(newPathBuffer, sizeof(newPathBuffer), "%s:%s", treeRef->name, pathPtr);
+        if (pathPtr[0] != '/')
+        {
+            snprintf(newPathBuffer, sizeof(newPathBuffer), "%s:/%s", treeRef->name, pathPtr);
+        }
+        else
+        {
+            snprintf(newPathBuffer, sizeof(newPathBuffer), "%s:%s", treeRef->name, pathPtr);
+        }
         pathIterRef = le_pathIter_CreateForUnix(newPathBuffer);
     }
 
