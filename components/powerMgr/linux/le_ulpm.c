@@ -514,3 +514,32 @@ le_result_t le_ulpm_ShutDown
 
     return result;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initiate rebooting of app processor/modem etc.
+ *
+ * @return
+ *      - LE_OK if reboot initiates properly.
+ *      - LE_NOT_POSSIBLE if rebooting is not possible now. Try again.
+ *      - LE_FAULT if there is a non-specific failure.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ulpm_Reboot
+(
+    void
+)
+{
+    if (pm_CheckWakeLock())
+    {
+        LE_ERROR("Wakelock held!! System can't be shut down. Try again.");
+        return LE_NOT_POSSIBLE;
+    }
+
+    le_framework_NotifyExpectedReboot();
+
+    reboot(RB_AUTOBOOT);
+
+    LE_ERROR("Failed to reboot!");
+    return LE_FAULT;
+}

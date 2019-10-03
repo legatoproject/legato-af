@@ -141,7 +141,7 @@ static void RegularShutDown
     UpdateRebootCount();
 
     // Reboot the system.
-    if (reboot(RB_AUTOBOOT) == -1)
+    if (le_ulpm_Reboot() != LE_OK)
     {
         LE_FATAL("Failed to reboot. Errno = %s.", strerror(errno));
     }
