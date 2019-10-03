@@ -28,16 +28,6 @@ config VIRT_TARGET_ARCH
   Set the name of the virtual target platform, if applicable.  This value is
   determined by the target platform selection.
 
-# Platform supports QMI
-config QMI
-  bool
-  default n
-
-config QMI_NO_QMUX
-  bool
-  depends on QMI
-  default n
-
 # Platform uses MDM9x07 modem
 config MDM9X07
   bool
@@ -219,6 +209,21 @@ config FILESYSTEM
   default y
   ---help---
   Target platform has support for a file system.
+
+# Platform supports QMI
+config QMI
+  bool "Platform uses QMI"
+  default n
+  ---help---
+  Target platform uses the Qualcomm Messaging Interface to communicate with
+  the cellular modem.
+
+config QMI_NO_QMUX
+  bool "No QMUX support is available in QMI"
+  depends on QMI
+  default n
+  ---help---
+  Target platform uses QMI but does not support the (deprecated) QMUX API.
 
 config SDEF
   string "Default system definition file"
