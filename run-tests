@@ -557,7 +557,8 @@ function ExecTargetPyTest()
     fi
 
     py.test --junitxml="build/$TARGET_TYPE/tests/results/$(echo ${pytest_name} | tr '/' '_').xml" \
-            --target=$DEST_IP \
+            --dut=$DEST_IP \
+            --target=$TARGET_TYPE \
             "${pytest_name}"
     if [ $? -ne 0 ]; then
         message $COLOR_ERROR "'${pytest_name}' tests failed"

@@ -204,7 +204,7 @@ def connect_target(app_name, target_name, baudrate=115200):
 
     @return A pexpect wrapper around the connection that can be used to run tests.
     """
-    port = SerialPort.open(target_name)
+    port = SerialPort.open(target_name, baudrate)
     if port:
         app = port.io
         gotConsole=False
@@ -602,10 +602,20 @@ class LegatoTapItem(pytest.Item):
         adaptor = target_adaptor(self.config.getoption('target'))
         if adaptor:
             with adaptor.connect_target(SerialPort, self.name, dut, baudrate) as test_proc:
-                tap_output = test_loop(test_proc, catch_legato=False)
+                try:
+                    tap_output = test_loop(test_proc, catch_legato=False)
+                    adaptor.reset_target(SerialPort, test_proc)
+                except Exception, e:
+                    adaptor.reset_target(SerialPort, test_proc)
+                    raise e
         else:
             with connect_target(self.name, dut, baudrate) as test_proc:
-                tap_output = test_loop(test_proc, catch_legato=False)
+                try:
+                    tap_output = test_loop(test_proc, catch_legato=False)
+                    reset_target(test_proc)
+                except Exception, e:
+                    reset_target(test_proc)
+                    raise e
 
         try:
             self.add_report_section("call", "tap", tap_output)

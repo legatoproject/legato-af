@@ -16,6 +16,4 @@ processes:
     {
         ( testCrc )
     }
-
-    maxStackBytes: 4K
 }

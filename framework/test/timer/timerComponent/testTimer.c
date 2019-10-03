@@ -412,11 +412,11 @@ static void TimerExpiryHandler
                 {
                     LE_TEST_OK(TimerTestDataArray[i].testPassed[1][j],
                         "Main timer %" PRIuS " expiry %" PRIu32 " accuracy within tolerance", i, j);
-#if LE_CONFIG_LINUX
+                    LE_TEST_BEGIN_SKIP(!LE_CONFIG_IS_ENABLED(LE_CONFIG_LINUX), 1);
                     LE_TEST_OK(TimerTestDataArray[i].testPassed[0][j],
                         "Child timer %" PRIuS " expiry %" PRIu32 " accuracy within tolerance",
                         i, j);
-#endif /* end LE_CONFIG_LINUX */
+                    LE_TEST_END_SKIP();
                 }
          }
 
@@ -521,13 +521,10 @@ COMPONENT_INIT
 
     LE_ASSERT(pthread_key_create(&StartTimeKey, NULL) == 0);
 
-    // Skip child timer tests on RTOS as timer accuracy isn't good enough
-    LE_TEST_BEGIN_SKIP(!LE_CONFIG_IS_ENABLED(LE_CONFIG_LINUX), Total);
 #if LE_CONFIG_LINUX
     le_thread_SetJoinable(ChildThread);
     le_thread_Start(ChildThread);
 #endif
-    LE_TEST_END_SKIP();
 
     TimerEventLoopTest();
     LE_TEST_INFO("==== Timer Tests Started ====\n");

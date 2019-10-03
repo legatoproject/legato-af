@@ -30,7 +30,10 @@ apps:
     semaphore/test_Semaphore
     random/test_Random
 #if ${LE_CONFIG_NETWORK} = y
+#if ${LEGATO_TARGET} = hl76
+#else
     fdMonitor/test_FdMonitorSocket
+#endif
 #endif
     fdMonitor/test_FdMonitorFifo
     ipc/test_IpcC2C
@@ -58,25 +61,6 @@ apps:
     multi-app/helloWorld
     log/logTester
     issues/LE_2322
-    // Framework Tools.
-#if ${DISABLE_FRAMEWORK_TOOLS} = 1
-#else
-    #if ${LE_CONFIG_LINUX} = y
-    #else
-//    $LEGATO_ROOT/framework/tools/target/rtos/targetTools.adef
-    #endif
-#endif
-}
-
-commands:
-{
-#if ${LE_CONFIG_LINUX} = y
-#else
-//    legato = targetTools:/legato
-#endif
-#if ${LE_CONFIG_RTOS_TARGET_TOOL_INSPECT} = y
-//    inspect = targetTools:/inspect
-#endif
 }
 
 cflags:
