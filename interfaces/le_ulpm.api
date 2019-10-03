@@ -198,3 +198,18 @@ FUNCTION le_result_t GetFirmwareVersion
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ShutDown();
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initiate reboot of app processor/modem etc.
+ *
+ * @return
+ *      - LE_OK if reboot initiates properly.
+ *      - LE_NOT_POSSIBLE if rebooting is not possible now. Try again.
+ *      - LE_NOT_PERMITTED if the process lacks sufficient permissions to perform a reboot.
+ *      - LE_UNSUPPORTED if the device lacks the ability to reboot via ULPM.
+ *      - LE_FAULT if there is a non-specific failure.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Reboot();
