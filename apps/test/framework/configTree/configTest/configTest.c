@@ -847,8 +847,10 @@ static void ListTreeTest()
 
 
 
-le_cfg_ChangeHandlerRef_t handlerRef = NULL;
-le_cfg_ChangeHandlerRef_t rootHandlerRef = NULL;
+le_cfg_ChangeHandlerRef_t HandlerRef = NULL;
+le_cfg_ChangeHandlerRef_t RootHandlerRef = NULL;
+static le_sem_Ref_t CallbackSemaphore;
+static le_sem_Ref_t RootCallbackSemaphore;
 
 static void ConfigCallbackFunction
 (
@@ -856,7 +858,8 @@ static void ConfigCallbackFunction
 )
 {
     LE_INFO("------- Callback Called ------------------------------------");
-   le_cfg_RemoveChangeHandler(handlerRef);
+   le_cfg_RemoveChangeHandler(HandlerRef);
+   le_sem_Post(CallbackSemaphore);
 }
 
 
@@ -866,9 +869,9 @@ static void RootConfigCallbackFunction
 )
 {
     LE_INFO("------- Root Callback Called ------------------------------------");
-    le_cfg_RemoveChangeHandler(rootHandlerRef);
+    le_cfg_RemoveChangeHandler(RootHandlerRef);
 
-    exit(EXIT_SUCCESS);
+    le_sem_Post(RootCallbackSemaphore);
 }
 
 
@@ -877,18 +880,21 @@ static void RootConfigCallbackFunction
 static void CallbackTest()
 {
     static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
+    le_clk_Time_t timeToWait = {5, 0};
     LE_ASSERT(snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "/%s/callbacks/", TestRootDir)
               <= LE_CFG_STR_LEN_BYTES);
 
     LE_INFO("------- Callback Test --------------------------------------");
 
-    handlerRef = le_cfg_AddChangeHandler(pathBuffer, ConfigCallbackFunction, NULL);
-    rootHandlerRef = le_cfg_AddChangeHandler("/", RootConfigCallbackFunction, NULL);
+    HandlerRef = le_cfg_AddChangeHandler(pathBuffer, ConfigCallbackFunction, NULL);
+    RootHandlerRef = le_cfg_AddChangeHandler("/", RootConfigCallbackFunction, NULL);
 
     le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn(pathBuffer);
 
     le_cfg_SetString(iterRef, "valueA", "aNewValue");
     le_cfg_CommitTxn(iterRef);
+    LE_ASSERT_OK(le_sem_WaitWithTimeOut(CallbackSemaphore, timeToWait));
+    LE_ASSERT_OK(le_sem_WaitWithTimeOut(RootCallbackSemaphore, timeToWait));
 }
 
 
@@ -982,9 +988,59 @@ static void TestStringOverwrite
                 strBuffer);
 }
 
+static le_cfg_ChangeHandlerRef_t HandlerRefSetEmpty = NULL;
+static le_sem_Ref_t SetEmptySemaphore;
+static void SetEmptyCallbackFunction
+(
+    void* contextPtr
+)
+{
+    LE_INFO("------- Set Empty Callback Called ------------------------------------");
+    le_sem_Post(SetEmptySemaphore);
+    le_cfg_RemoveChangeHandler(HandlerRefSetEmpty);
+}
+
+static void TestSetEmptyTest()
+{
+    static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
+    static char pathMonitor[LE_CFG_STR_LEN_BYTES] = "";
+    static char pathSetEmpty[LE_CFG_STR_LEN_BYTES] = "";
+    le_clk_Time_t timeToWait = {5, 0};
+
+    LE_ASSERT(snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "%s/testa/testb/testc", TestRootDir)
+              <= LE_CFG_STR_LEN_BYTES);
+    LE_ASSERT(snprintf(pathMonitor, LE_CFG_STR_LEN_BYTES, "%s/testa/testb", TestRootDir)
+              <= LE_CFG_STR_LEN_BYTES);
+    LE_ASSERT(snprintf(pathSetEmpty, LE_CFG_STR_LEN_BYTES, "%s/testa", TestRootDir)
+              <= LE_CFG_STR_LEN_BYTES);
+
+    LE_INFO("------- Create tree handler ------------------------------------------");
+    le_cfg_IteratorRef_t iterRefSetString = le_cfg_CreateWriteTxn(pathBuffer);
+    le_cfg_SetString(iterRefSetString, pathBuffer, "Test_SetEmpty");
+    le_cfg_CommitTxn(iterRefSetString);
+    LE_INFO("------- Add monitor handler ------------------------------------------");
+    HandlerRefSetEmpty = le_cfg_AddChangeHandler(pathMonitor, SetEmptyCallbackFunction, NULL);
+
+    LE_INFO("------- Set Empty Node -----------------------------------------------");
+    le_cfg_IteratorRef_t iterRefSetEmpty = le_cfg_CreateWriteTxn(pathSetEmpty);
+    le_cfg_SetEmpty(iterRefSetEmpty, pathSetEmpty);
+    le_cfg_CommitTxn(iterRefSetEmpty);
+
+    // Check if callback is called.
+    LE_ASSERT_OK(le_sem_WaitWithTimeOut(SetEmptySemaphore, timeToWait));
+
+    le_cfg_IteratorRef_t iterRefGetEmpty = le_cfg_CreateReadTxn(pathSetEmpty);
+    LE_TEST(le_cfg_IsEmpty(iterRefGetEmpty, "") == true);
+    le_cfg_CancelTxn(iterRefGetEmpty);
+}
+
 COMPONENT_INIT
 {
     strncpy(TestRootDir, "/configTest", LE_CFG_STR_LEN_BYTES);
+    SetEmptySemaphore = le_sem_Create("SetEmptySemaphore", 0);
+    CallbackSemaphore = le_sem_Create("CallbackSemaphore", 0);
+    RootCallbackSemaphore = le_sem_Create("RootCallbackSemaphore", 0);
+
 
     if (le_arg_NumArgs() == 1)
     {
@@ -1008,6 +1064,9 @@ COMPONENT_INIT
     MultiTreeTest();
     ExistAndEmptyTest();
     ListTreeTest();
+    // Test set empty and callback
+    TestSetEmptyTest();
+
     CallbackTest();
     BinaryTest();
 

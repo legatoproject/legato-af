@@ -1101,6 +1101,13 @@ static void MergeNode
     // that we can properly populate it again.
     le_cfg_nodeType_t nodeType = tdb_GetNodeType(nodeRef);
 
+    // If the nodeRef->type is LE_CFG_TYPE_EMPTY, tdb_GetNodeType will return node type of
+    // original node, which is incorrect. nodeType should be LE_CFG_TYPE_EMPTY.
+    if(nodeRef->type == LE_CFG_TYPE_EMPTY)
+    {
+      nodeType = LE_CFG_TYPE_EMPTY;
+    }
+
     if (   (nodeType == LE_CFG_TYPE_EMPTY)
         || (nodeType != originalRef->type))
     {
@@ -1272,6 +1279,13 @@ static bool OriginalToBeCleared
 // -------------------------------------------------------------------------------------------------
 {
     le_cfg_nodeType_t nodeType = tdb_GetNodeType(nodeRef);
+
+    // If the nodeRef->type is LE_CFG_TYPE_EMPTY, tdb_GetNodeType will return node type of
+    // original node, which is incorrect. nodeType should be LE_CFG_TYPE_EMPTY.
+    if(nodeRef->type == LE_CFG_TYPE_EMPTY)
+    {
+      nodeType = LE_CFG_TYPE_EMPTY;
+    }
 
     if (   (nodeType == LE_CFG_TYPE_EMPTY)
         || (nodeType != tdb_GetNodeType(nodeRef->shadowRef)))
