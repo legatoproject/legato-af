@@ -33,6 +33,11 @@ config QMI
   bool
   default n
 
+config QMI_NO_QMUX
+  bool
+  depends on QMI
+  default n
+
 # Platform uses MDM9x07 modem
 config MDM9X07
   bool
