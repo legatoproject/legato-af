@@ -20,19 +20,19 @@ iio-kfifo-buf
 Because the modules are dependent on each other they must be loaded in a specific order:
 The order in which the drivers are loaded must be in the order:
 
-@c 1. bmi160-12c </br>
-@c 2. bmi160 </br>
-@c 3. iio-triggered-buffer </br>
-@c 4. iio-kfifo-buf </br>
-@c 5. iio </br>
+@c 1. bmi160-12c <br/>
+@c 2. bmi160 <br/>
+@c 3. iio-triggered-buffer <br/>
+@c 4. iio-kfifo-buf <br/>
+@c 5. iio <br/>
 
 And they must be unloaded in the reverse order:
 
-@c 1. iio </br>
-@c 2. iio-kfifo-buf </br>
-@c 3. iio-triggered-buffer </br>
-@c 4. bmi160 </br>
-@c 5. bmi160-12c </br>
+@c 1. iio <br/>
+@c 2. iio-kfifo-buf <br/>
+@c 3. iio-triggered-buffer <br/>
+@c 4. bmi160 <br/>
+@c 5. bmi160-12c <br/>
 
 To facilitate this the dependant tree must be specified in the dependant module's @c .mdef. The
 next steps walk you through how to add a series of dependencies.

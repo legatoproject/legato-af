@@ -14,9 +14,9 @@ The TI WiFi driver is comprised of 3 kernel modules:
 
 The load sequence for the modules is (the unload sequence is done in reverse):
 
-@c 1. wlcore </br>
-@c 2. wlcore_sdio </br>
-@c 3. wl18xx </br>
+@c 1. wlcore <br/>
+@c 2. wlcore_sdio <br/>
+@c 3. wl18xx <br/>
 
 All three modules must be called in your systems @c .sdef file:
 @verbatim

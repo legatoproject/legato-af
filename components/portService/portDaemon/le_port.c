@@ -6,7 +6,7 @@
  * Handles the devices which are opened by default.
  * Manages devices modes (AT command and data modes).
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 

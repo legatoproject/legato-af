@@ -8,7 +8,7 @@
  * All commands and responses are sent in unsolicited to the console used to issue the command
  * AT+TEST.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 

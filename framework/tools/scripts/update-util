@@ -115,7 +115,7 @@ def Help():
                 if lastHeading == 'NAME' and line.strip():
                     print '@b', line
                 elif lastHeading == 'SYNOPSIS' and line.strip():
-                    print '<code>', line, '</code></br>'
+                    print '<code>', line, '</code><br/>'
                 elif lastHeading == 'DESCRIPTION':
                     print '@verbatim', line
                     lastHeading = 'verbatim' # now in verbatim state
