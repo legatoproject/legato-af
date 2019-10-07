@@ -7,6 +7,7 @@
 
 #include "legato.h"
 #include "timer.h"
+#include "fa/clock.h"
 
 
 // Microseconds should be less than this value.
@@ -598,6 +599,25 @@ le_result_t le_clk_SetAbsoluteTime
     }
 
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the timezone information
+ *
+ * @return
+ *      - LE_OK if the time is correctly set
+ *      - LE_FAULT if an error occurred
+ *      - LE_UNSUPPORTED if the function is not supported
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_clk_SetTimezoneFile
+(
+    const int32_t timezoneOffsetSeconds, ///< [IN] Timezone offset in seconds
+    const uint8_t dstOffsetHours         ///< [IN] Daylight savings adjustment in hours
+)
+{
+    return fa_clk_SetTimezoneFile(timezoneOffsetSeconds, dstOffsetHours);
 }
 
 #if LE_CONFIG_LINUX

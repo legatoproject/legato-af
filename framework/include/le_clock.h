@@ -405,5 +405,20 @@ LE_FULL_API le_result_t le_clk_SetUTCDateTimeString
     const char* srcStrPtr           ///< [IN] Formatted date/time string.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the timezone information
+ *
+ * @return
+ *      - LE_OK if the time is correctly set
+ *      - LE_FAULT if an error occurred
+ *      - LE_UNSUPPORTED if the function is not supported
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_clk_SetTimezoneFile
+(
+    const int32_t timezoneOffsetSeconds, ///< [IN] Timezone offset in seconds
+    const uint8_t dstOffsetHours         ///< [IN] Daylight savings adjustment in hours
+);
 
 #endif // LEGATO_CLK_INCLUDE_GUARD

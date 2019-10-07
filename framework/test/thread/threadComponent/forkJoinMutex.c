@@ -435,7 +435,7 @@ void fjm_CheckSingleResult
                    "joinable thread %d-%d-%d joined", fanOut1+1, fanOut2, fanOut3);
 
         // Remove buildswitch with LE-13268
-        LE_TEST_BEGIN_TODO(!LE_CONFIG_IS_ENABLED(DUT_TARGET_gill));
+        LE_TEST_BEGIN_TODO(LE_CONFIG_IS_ENABLED(DUT_TARGET_gill));
         LE_TEST_OK(TestResults[item].expectedJoin == TestResults[item].actualJoin,
                    "join return: expected %p, actual %p",
                    TestResults[item].expectedJoin, TestResults[item].actualJoin);

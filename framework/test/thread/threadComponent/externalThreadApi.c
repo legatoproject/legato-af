@@ -112,7 +112,11 @@ void eta_Start
     le_mem_PoolRef_t pool = NULL;
     le_mem_PoolStats_t stats;
 
-    LE_TEST_BEGIN_SKIP(!LE_CONFIG_IS_ENABLED(LE_CONFIG_MEM_POOL_NAMES_ENABLED), 1);
+    // TODO:Remove DUT_TARGET_gill condition after LE-13706
+    LE_TEST_BEGIN_SKIP(
+            !LE_CONFIG_IS_ENABLED(LE_CONFIG_MEM_POOL_NAMES_ENABLED) ||
+            LE_CONFIG_IS_ENABLED(DUT_TARGET_gill),
+            1);
     // Need to separately #ifdef this out as the internal function _le_mem_FindPool is not
     // even defined if LE_CONFIG_MEM_POOL_NAMES_ENABLED is not set
 #if LE_CONFIG_MEM_POOL_NAMES_ENABLED
@@ -152,7 +156,11 @@ void eta_Start
     // The Counter should be back to zero.
     LE_ASSERT(Counter == 0);
 
-    LE_TEST_BEGIN_SKIP(!LE_CONFIG_IS_ENABLED(LE_CONFIG_MEM_POOL_NAMES_ENABLED), 1);
+    // TODO:Remove DUT_TARGET_gill condition after LE-13706
+    LE_TEST_BEGIN_SKIP(
+            !LE_CONFIG_IS_ENABLED(LE_CONFIG_MEM_POOL_NAMES_ENABLED) ||
+            LE_CONFIG_IS_ENABLED(DUT_TARGET_gill),
+            1);
     // Check final number of blocks in use
     le_mem_GetStats(pool, &stats);
     LE_TEST_INFO("numBlocksInUse=%u", (unsigned int)stats.numBlocksInUse);

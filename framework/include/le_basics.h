@@ -405,6 +405,6 @@ le_onoff_t;
  * Test if a KConfig feature is enabled.
  */
 //--------------------------------------------------------------------------------------------------
-#define LE_CONFIG_IS_ENABLED(option)    (("" #option)[0] == '1')
+#define LE_CONFIG_IS_ENABLED(option)    (("" STRINGIZE(option))[0] == '1')
 
 #endif // LEGATO_BASICS_INCLUDE_GUARD
