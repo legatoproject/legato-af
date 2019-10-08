@@ -986,30 +986,6 @@ le_result_t le_dcsCellular_GetDNSAddrs
 
 // -------------------------------------------------------------------------------------------------
 /**
- * This function will know if the APN name for profileName is empty
- *
- * @return
- *     - True or False
- */
-// -------------------------------------------------------------------------------------------------
-static bool DcsCellularIsApnEmpty
-(
-    le_mdc_ProfileRef_t profileRef  ///< [IN] Modem data connection profile reference
-)
-{
-    char apnName[LE_CFG_STR_LEN_BYTES] = {0};
-
-    if (LE_OK != le_mdc_GetAPN(profileRef, apnName, sizeof(apnName)))
-    {
-        LE_WARN("APN was truncated");
-        return true;
-    }
-
-    return (apnName[0] == '\0');
-}
-
-// -------------------------------------------------------------------------------------------------
-/**
  * This function handles a duplicate session request
  */
 // -------------------------------------------------------------------------------------------------
@@ -1101,19 +1077,6 @@ le_result_t le_dcsCellular_Start
         LE_DEBUG("Connection %s not immediately started due to down packet switch state",
                  connName);
         return LE_UNAVAILABLE;
-    }
-
-    // @deprecated: The following functionality in DCS to populate the default APN name into a
-    // modem profile when found blank upon an attempt to start a connection with this profile.
-    // However, the MDC API le_mdc_SetDefaultAPN() will stay & not be deprecated.
-    if (DcsCellularIsApnEmpty(profileRef))
-    {
-        LE_DEBUG("Set default APN for connection %s", connName);
-        if (LE_OK != le_mdc_SetDefaultAPN(profileRef))
-        {
-            // Don't fail the request, as an empty APN might still get it connected
-            LE_WARN("Failed to set default APN");
-        }
     }
 
     ret = le_mdc_StartSession(profileRef);
