@@ -14,12 +14,15 @@ fi
 
 set_toolchain_dir ()
 {
-    local target=$1
+    local target="$1"
 
-    toolchain_dir_env_name="$(echo "$target" | tr '[:lower:]' '[:upper:]')_TOOLCHAIN_DIR"
-    toolchain_prefix_env_name="$(echo "$target" | tr '[:lower:]' '[:upper:]')_TOOLCHAIN_PREFIX"
-    sysroot_env_name="$(echo "$target" | tr '[:lower:]' '[:upper:]')_SYSROOT"
-    kernelroot_env_name="$(echo "$target" | tr '[:lower:]' '[:upper:]')_KERNELROOT"
+    local prefix toolchain_dir toolchain_err toolchain_prefix sysroot kernelroot
+
+    prefix="$(echo "$target" | tr '[:lower:]-' '[:upper:]_')"
+    local toolchain_dir_env_name="${prefix}_TOOLCHAIN_DIR"
+    local toolchain_prefix_env_name="${prefix}_TOOLCHAIN_PREFIX"
+    local sysroot_env_name="${prefix}_SYSROOT"
+    local kernelroot_env_name="${prefix}_KERNELROOT"
 
     toolchain_dir=$(findtoolchain "$target" dir 2>/dev/null)
     if [ -z "$toolchain_dir" ] || ! [ -e "$toolchain_dir" ]; then
@@ -40,6 +43,7 @@ set_toolchain_dir ()
     eval "export ${sysroot_env_name}='$sysroot'"
     eval "export ${kernelroot_env_name}='$kernelroot'"
 
+    local spacing spacing_len
     spacing_len=$((${#target}+12))
     spacing=$(printf " %.0s" {1..${spacing_len}})
 
@@ -51,8 +55,16 @@ set_toolchain_dir ()
     return 0
 }
 
-for t in ar7 ar86 wp85 wp750x wp76xx wp77xx ar758x ar759x virt
-do
+declare -a TOOLCHAIN_TARGETS
+TOOLCHAIN_TARGETS+=(ar7 ar86)
+TOOLCHAIN_TARGETS+=(wp85 wp750x)
+TOOLCHAIN_TARGETS+=(wp76xx)
+TOOLCHAIN_TARGETS+=(wp77xx)
+TOOLCHAIN_TARGETS+=(ar758x)
+TOOLCHAIN_TARGETS+=(ar759x)
+TOOLCHAIN_TARGETS+=(virt-x86 virt-arm)
+
+for t in "${TOOLCHAIN_TARGETS[@]}"; do
     set_toolchain_dir $t
 done
 

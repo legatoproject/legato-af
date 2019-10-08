@@ -33,6 +33,9 @@ std::string GetTargetEnvInfo
     // If the all-caps, target-specific tool path env var (e.g., "WP85_CC") is set, then use that.
     auto allCapsPrefix = target + "_";
     std::transform(allCapsPrefix.begin(), allCapsPrefix.end(), allCapsPrefix.begin(), ::toupper);
+    // Converting prefix '-' to '_' as it in invalid in variable names.
+    // VIRT_X86_CC is used instead of VIRT-X86_CC for virt-x86 target for instance.
+    std::replace(allCapsPrefix.begin(), allCapsPrefix.end(), '-', '_');
     auto value = envVars::Get(allCapsPrefix + info);
     if (!value.empty())
     {
