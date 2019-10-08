@@ -222,7 +222,7 @@ static void InitMap
 
     do
     {
-        mapPtr->mapBase = /* le_rand_GetNumBetween(1, UINT32_MAX) & */ REF_BASE_MASK;
+        mapPtr->mapBase = le_rand_GetNumBetween(1, UINT32_MAX) & REF_BASE_MASK;
     }
     while (mapPtr->mapBase == 0);
 
@@ -534,7 +534,6 @@ void *le_ref_CreateRef
         block = block->nextPtr;
     }
 
-    LE_WARN("Safe reference map maximum references exceeded for %s.", SAFEREF_NAME(mapRef->name));
     index = BlockAndSlotToIndex(mapRef, blockCount, 0);
     block->nextPtr = NewOverflowBlock();
     block = block->nextPtr;
@@ -544,6 +543,8 @@ void *le_ref_CreateRef
     SAFE_REF_TRACE(mapRef, "    Inserted %p at %" PRIuS " (%p)", ptr, index, &block->slots[0]);
     result = MakeRef(mapRef->mapBase, index);
     mapRef->size += OVERFLOW_BLOCK_SIZE;
+    LE_WARN("Safe reference map maximum exceeded for %s, new size %" PRIuS,
+            SAFEREF_NAME(mapRef->name), mapRef->size);
     mapRef->index = mapRef->size;
 
 end:

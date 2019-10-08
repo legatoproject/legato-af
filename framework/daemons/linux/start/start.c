@@ -26,27 +26,36 @@
 //--------------------------------------------------------------------------------------------------
 
 #include "legato.h"
+
 #include "start.h"
-#include "limit.h"
-#include "file.h"
-#include "dir.h"
-#include "installer.h"
-#include "fileDescriptor.h"
-#include "smack.h"
+#include "pa_start.h"
+
 #include "daemon.h"
+#include "dir.h"
+#include "file.h"
+#include "fileDescriptor.h"
 #include "fileSystem.h"
+#include "ima.h"
+#include "installer.h"
+#include "limit.h"
+#include "smack.h"
 #include "sysPaths.h"
 #include "sysStatus.h"
-#include "ima.h"
-#include <mntent.h>
-#include <linux/limits.h>
+
 #include <dlfcn.h>
+#include <linux/limits.h>
+#include <mntent.h>
 
 /// Default DAC permissions for directory creation.
 #define DEFAULT_PERMS (S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
 
 /// Initalize function for liblegato called when liblegato is linked statically.
 extern void InitFramework(void);
+
+/// PA Initialization function pointer.
+static pa_start_Init_t                  pa_start_Init;
+/// PA hardware reset query function.
+static pa_start_IsHardwareFaultReset_t  pa_start_IsHardwareFaultReset;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -137,10 +146,6 @@ static const char CurrentVersionFile[] = "/legato/systems/current/version";
 
 static const char NoRebootFile[] = "/tmp/legato/.DEBUG_NO_REBOOT";
 
-static const char GoldenAppsPath[] = "/mnt/legato/apps/";
-static const char GoldenModemService[] = "/mnt/legato/system/apps/modemService";
-static const char ModemPAPath[] = "/read-only/lib/libComponent_le_pa.so";
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Portion of the path to ld.so.conf/ld.so.cache.
@@ -157,31 +162,10 @@ static const char ModemPAPath[] = "/read-only/lib/libComponent_le_pa.so";
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pointer to modem PA (assuming modem PA exists).
- */
-//--------------------------------------------------------------------------------------------------
-static void* ModemPASoPtr;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Whether loading modem PA resulted in timeout
- */
-//--------------------------------------------------------------------------------------------------
-static bool IsModemPATimedOut = false;
-
-//--------------------------------------------------------------------------------------------------
-/**
  * The current start program being used.
  **/
 //--------------------------------------------------------------------------------------------------
 static const char* CurrentStartVersion = NULL;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Semaphore to synchronize with Modem PA loading thread.
- */
-//--------------------------------------------------------------------------------------------------
-static le_sem_Ref_t ModemPASemRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -211,110 +195,6 @@ static void FixLdSoConf
         // the correct libraries.
         exit(EXIT_FAILURE);
     }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Load the golden system modem PA
- */
-//--------------------------------------------------------------------------------------------------
-static void* LoadModemPA
-(
-    void* contextPtr
-)
-{
-    char ModemPA[PATH_MAX];
-    char GoldenSymlink[PATH_MAX] = "";
-
-    // Build up the path to the golden system's modem PA.  Use the golden system's PA to
-    // ensure it is compatible with this code.
-    ssize_t size = readlink(GoldenModemService, GoldenSymlink, sizeof(GoldenSymlink) - 1);
-
-    if (size < 0) {
-        LE_INFO("Unable to read %s symlink", GoldenModemService);
-        goto done;
-    }
-
-    // Find app hash -- link will be to current system, so may be broken if current is
-    // not the golden system.
-    const char *appHash = strrchr(GoldenSymlink, '/');
-
-    if (!appHash) {
-        LE_INFO("%s -> %s symlink doesn't contain slash", GoldenModemService, GoldenSymlink);
-        goto done;
-    }
-
-    appHash++;
-
-    // Assemble modem PA path in the golden system.
-    if (snprintf(ModemPA, sizeof(ModemPA), "%s%s%s", GoldenAppsPath, appHash, ModemPAPath)
-        >= sizeof(ModemPA))
-    {
-        LE_INFO("Path %s%s%s exceeds PATH_MAX", GoldenAppsPath, appHash, ModemPAPath);
-        goto done;
-    }
-
-    LE_INFO("Trying to open modem PA %s", ModemPA);
-
-    ModemPASoPtr = dlopen(ModemPA, RTLD_LAZY);
-
-    if (NULL == ModemPASoPtr)
-    {
-        LE_INFO("Could not open %s.", ModemPAPath);
-        LE_INFO("%s", dlerror());
-    }
-
-done:
-    if (!ModemPASoPtr)
-    {
-        LE_WARN("Cannot open modem PA; hardware state detection disabled");
-    }
-
-    LE_INFO("Modem PA is loaded - signaling to the main thread.");
-    le_sem_Post(ModemPASemRef);
-
-    // Starting the event receiving loop
-    le_event_RunLoop();
-
-    return NULL;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Check if system reboot is due to hardware reason (under voltage, over temperature)
- */
-//--------------------------------------------------------------------------------------------------
-static bool IsHardwareFaultReset
-(
-    void
-)
-{
-    static int (*pa_info_GetResetInformation)(int*, char*, size_t) = NULL;
-    int resetCode;
-    char resetReason[64];
-
-    if (IsModemPATimedOut || !ModemPASoPtr)
-    {
-        // No way to reset reason information -- assume not a hardware fault.
-        return false;
-    }
-
-    pa_info_GetResetInformation = dlsym(ModemPASoPtr, "pa_info_GetResetInformation");
-    if (!pa_info_GetResetInformation)
-    {
-        LE_WARN("Could not get function pa_info_GetResetInformation.");
-        LE_INFO("%s", dlerror());
-        return false;
-    }
-
-    if (pa_info_GetResetInformation(&resetCode, resetReason, sizeof(resetReason)))
-    {
-        return false;
-    }
-    LE_INFO("Checking reset reason %d", resetCode);
-
-    return (resetCode == LE_INFO_VOLT_CRIT) || (resetCode == LE_INFO_TEMP_CRIT);
 }
 
 
@@ -2109,10 +1989,12 @@ static void CheckAndInstallCurrentSystem
         LE_INFO("The previous 'current' system has index %d.", currentIndex);
     }
 
-    // Hardware faults say nothing about whether we should rollback or not
-    if (IsHardwareFaultReset())
+    // If there is enough time between the last reboot and the previous one, the boot counter
+    // will be cleared.
+    bool isRepeatedReboot = (ReadBootCount() > 0);
+    if (pa_start_IsHardwareFaultReset(isRepeatedReboot))
     {
-        // Do nothing
+        // Hardware faults say nothing about whether we should rollback or not, so do nothing.
     }
     // Check if we should fall back to the "golden" system due to a boot loop
     else if ((newestIndex == currentIndex) &&
@@ -2214,6 +2096,38 @@ static void CheckAndInstallCurrentSystem
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Load the start PA library.  Failures here will terminate the process.
+ */
+//--------------------------------------------------------------------------------------------------
+static void LoadPa
+(
+    void
+)
+{
+    char         libPathStr[PATH_MAX + 1];
+    const char   LIB_NAME[] = "/../lib/libComponent_le_pa_start.so";
+    le_result_t  result = le_fs_GetExecutablePath(libPathStr, sizeof(libPathStr), NULL, 0);
+    void        *libPtr;
+
+    LE_FATAL_IF(result != LE_OK, "Failed to get executable path: %s", LE_RESULT_TXT(result));
+
+    result = le_utf8_Append(libPathStr, LIB_NAME, sizeof(libPathStr), NULL);
+    LE_FATAL_IF(result != LE_OK, "Failed to construct PA path (%s%s): %s",
+        libPathStr, LIB_NAME, LE_RESULT_TXT(result));
+
+    libPtr = dlopen(libPathStr, RTLD_NOW);
+    LE_FATAL_IF(libPtr == NULL, "Failed to open PA library %s (error %d)", libPathStr, errno);
+
+    pa_start_Init = dlsym(libPtr, "pa_start_Init");
+    LE_FATAL_IF(pa_start_Init == NULL, "Failed load pa_start_Init: %s", dlerror());
+
+    pa_start_IsHardwareFaultReset = dlsym(libPtr, "pa_start_IsHardwareFaultReset");
+    LE_FATAL_IF(pa_start_IsHardwareFaultReset == NULL,
+        "Failed load pa_start_IsHardwareFaultReset: %s", dlerror());
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * It all starts here.
  */
 //--------------------------------------------------------------------------------------------------
@@ -2233,9 +2147,6 @@ int main
     le_arg_Scan();
 
     bool isReadOnly = sysStatus_IsReadOnly();
-    le_thread_Ref_t modemPAThread;
-    le_clk_Time_t timeToWait = {10, 0}; // 10s timeout waiting for Modem PA loading thread
-
     if (!isReadOnly)
     {
         // Bind mount if they are not already mounted.
@@ -2249,18 +2160,11 @@ int main
 
     daemon_Daemonize(5000); // 5 second timeout in case older supervisor is installed.
 
-    ModemPASemRef = le_sem_Create("ModemPA", 0);
-    LE_INFO("Starting Modem PA loading thread.");
+    LE_INFO("Loading platform adaptor");
+    LoadPa();
 
-    modemPAThread = le_thread_Create("ModemPAThread", LoadModemPA, NULL);
-    le_thread_Start(modemPAThread);
-
-    // Waiting till Modem PA is loaded
-    if (LE_OK != le_sem_WaitWithTimeOut(ModemPASemRef, timeToWait))
-    {
-        LE_ERROR("Time Out waiting for the Modem PA loader thread.");
-        IsModemPATimedOut = true;
-    }
+    LE_INFO("Initializing platform adaptor");
+    pa_start_Init();
 
     LE_INFO("Installing/launching the system.");
     while(1)

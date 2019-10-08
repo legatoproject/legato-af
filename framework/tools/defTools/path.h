@@ -246,6 +246,21 @@ std::string RemoveSuffix
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Erase from a given file path the common base path between the given file and a reference path.
+ *
+ * @return  The given file path with common base path erased.
+ */
+//--------------------------------------------------------------------------------------------------
+std::string EraseCommonBasePath
+(
+    std::string eraseFromPath,
+    std::string refPath,
+    bool isRefPathFile
+);
+
+
 //----------------------------------------------------------------------------------------------
 /**
  * Figures out whether or not a given string is a C source code file path.

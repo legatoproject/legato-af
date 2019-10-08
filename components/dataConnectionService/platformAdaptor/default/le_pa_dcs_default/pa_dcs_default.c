@@ -76,13 +76,22 @@ le_result_t pa_dcs_SetDefaultGateway
  * Save the default route
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_dcs_GetDefaultGateway
+void pa_dcs_GetDefaultGateway
 (
-    pa_dcs_InterfaceDataBackup_t*  interfaceDataBackupPtr
+    pa_dcs_DefaultGwBackup_t*  defGwConfigBackupPtr,
+    le_result_t* v4Result,
+    le_result_t* v6Result
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_UNSUPPORTED;
+    if (v4Result)
+    {
+        *v4Result = LE_FAULT;
+    }
+    if (v6Result)
+    {
+        *v6Result = LE_FAULT;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -114,10 +123,32 @@ le_result_t pa_dcs_ChangeRoute
 //--------------------------------------------------------------------------------------------------
 void pa_dcs_RestoreInitialDnsNameServers
 (
-    pa_dcs_InterfaceDataBackup_t*  interfaceDataBackupPtr
+    pa_dcs_DnsBackup_t*  dnsConfigBackupPtr
 )
 {
     LE_ERROR("Unsupported function called");
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Returns DHCP lease file location
+ *
+ * @return
+ *      LE_OVERFLOW     Destination buffer too small and output will be truncated
+ *      LE_UNSUPPORTED  If not supported by OS
+ *      LE_FAULT        Function failed
+ *      LE_OK           Function succeedv
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_dcs_GetDhcpLeaseFilePath
+(
+    const char*  interfaceStrPtr,   ///< [IN] Pointer on the interface name
+    char*        pathPtr,           ///< [OUT] Output 1 pointer
+    size_t       bufferSize         ///< [IN]  Size of buffer
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------

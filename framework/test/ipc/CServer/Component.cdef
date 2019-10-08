@@ -19,3 +19,8 @@ sources:
 {
     cserver.c
 }
+
+pools:
+{
+    <messaging>.ipcTest_Messages = 3
+}

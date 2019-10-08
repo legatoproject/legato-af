@@ -29,20 +29,18 @@ class ComponentBuildScriptGenerator_t : protected RequireBaseGenerator_t
         virtual void GetExternalDependencies(model::Component_t* componentPtr);
         virtual void GetObjectFiles(model::Component_t* componentPtr);
 
-        virtual void GetCInterfaceHeaders(std::list<std::string>& result,
-                                          model::Component_t* componentPtr);
-        virtual void GetJavaInterfaceFiles(std::list<std::string>& result,
-                                           model::Component_t* componentPtr);
-
         virtual void GenerateTypesOnlyBuildStatement(const model::ApiTypesOnlyInterface_t* ifPtr);
         virtual void GenerateJavaTypesOnlyBuildStatement(const model::ApiTypesOnlyInterface_t* ifPtr);
         virtual void GenerateClientUsetypesBuildStatement(const model::ApiFile_t* apiFilePtr);
         virtual void GenerateServerUsetypesBuildStatement(const model::ApiFile_t* apiFilePtr);
         virtual void GenerateCommonUsetypesBuildStatement(const model::ApiFile_t* apiFilePtr);
         virtual void GenerateJavaUsetypesBuildStatement(const model::ApiFile_t* apiFilePtr);
-        virtual void GenerateCCommonBuildStatement(const model::ApiFile_t* apiFilePtr);
-        virtual void GenerateCBuildStatement(const model::ApiClientInterface_t* ifPtr);
-        virtual void GenerateCBuildStatement(const model::ApiServerInterface_t* ifPtr);
+        virtual void GenerateCCommonBuildStatement(const model::Component_t *componentPtr,
+                                                   const model::ApiFile_t   *apiFilePtr);
+        virtual void GenerateCBuildStatement(const model::Component_t           *componentPtr,
+                                             const model::ApiClientInterface_t  *ifPtr);
+        virtual void GenerateCBuildStatement(const model::Component_t           *componentPtr,
+                                             const model::ApiServerInterface_t  *ifPtr);
 
         virtual void GenerateJavaBuildStatement(const model::InterfaceJavaFiles_t& javaFiles,
                                                 const model::Component_t* componentPtr,
@@ -66,6 +64,9 @@ class ComponentBuildScriptGenerator_t : protected RequireBaseGenerator_t
 
         virtual void GenerateComponentLinkStatement(model::Component_t* componentPtr) = 0;
 
+        virtual void GenerateMemPoolDefinitions(const model::Component_t            *componentPtr,
+                                                model::MemPoolSize_t::PoolType_t     poolType);
+
         virtual void GenerateCommentHeader(model::Component_t* componentPtr);
 
         virtual void GenerateHeaderDir(const std::string& path);
@@ -76,6 +77,11 @@ class ComponentBuildScriptGenerator_t : protected RequireBaseGenerator_t
                                           std::set<std::string>& dependencies);
 
     public:
+        virtual void GetCInterfaceHeaders(std::list<std::string>& result,
+                                          model::Component_t* componentPtr);
+        virtual void GetJavaInterfaceFiles(std::list<std::string>& result,
+                                           model::Component_t* componentPtr);
+
         virtual void GenerateCSourceBuildStatement(model::Component_t* componentPtr,
                                                    const model::ObjectFile_t* objFilePtr,
                                                    const std::list<std::string>& apiHeaders);

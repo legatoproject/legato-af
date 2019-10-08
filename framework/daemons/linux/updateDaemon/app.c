@@ -679,6 +679,32 @@ le_result_t app_SetUpAppWriteables
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Check to see if the given application name is valid.
+ */
+//--------------------------------------------------------------------------------------------------
+bool app_IsAppNameValid
+(
+    const char* appNamePtr  ///< [IN] The name or the hash of the app to find.
+)
+{
+    if ( (appNamePtr == NULL) || (strcmp(appNamePtr, "") == 0) )
+    {
+        LE_ERROR("App name cannot be empty.");
+        return false;
+    }
+
+    if (strstr(appNamePtr, "/") != NULL)
+    {
+        LE_ERROR("App name contains illegal character '/'.");
+        return false;
+    }
+
+    return true;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Install a new individual application update in the current running system.
  *
  * @return
@@ -694,6 +720,12 @@ le_result_t app_InstallIndividual
 )
 //--------------------------------------------------------------------------------------------------
 {
+    if (!app_IsAppNameValid(appNamePtr))
+    {
+        LE_WARN("App name '%s' is invalid, cannot install app.", appNamePtr);
+        return LE_FAULT;
+    }
+
     bool systemHasThisApp = false;
 
     if (system_HasApp(appNamePtr))
@@ -817,6 +849,12 @@ le_result_t app_RemoveIndividual
 )
 //--------------------------------------------------------------------------------------------------
 {
+    if (!app_IsAppNameValid(appNamePtr))
+    {
+        LE_WARN("App name '%s' is invalid, cannot remove app.", appNamePtr);
+        return LE_FAULT;
+    }
+
     le_cfg_IteratorRef_t i = le_cfg_CreateWriteTxn("system:/apps");
 
     if (!system_HasApp(appNamePtr) && !le_cfg_NodeExists(i, appNamePtr))

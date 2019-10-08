@@ -369,6 +369,41 @@ static void MyECallEventHandler
                                                  LE_ECALL_STATE_END_OF_REDIAL_PERIOD.");
             break;
         }
+        case LE_ECALL_STATE_TIMEOUT_T2:
+        {
+            LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_TIMEOUT_T2.");
+            break;
+        }
+        case LE_ECALL_STATE_TIMEOUT_T3:
+        {
+            LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_TIMEOUT_T3.");
+            break;
+        }
+        case LE_ECALL_STATE_TIMEOUT_T5:
+        {
+            LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_TIMEOUT_T5.");
+            break;
+        }
+        case LE_ECALL_STATE_TIMEOUT_T6:
+        {
+            LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_TIMEOUT_T6.");
+            break;
+        }
+        case LE_ECALL_STATE_TIMEOUT_T7:
+        {
+            LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_TIMEOUT_T7.");
+            break;
+        }
+        case LE_ECALL_STATE_TIMEOUT_T9:
+        {
+            LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_TIMEOUT_T9.");
+            break;
+        }
+        case LE_ECALL_STATE_TIMEOUT_T10:
+        {
+            LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_TIMEOUT_T10.");
+            break;
+        }
         case LE_ECALL_STATE_UNKNOWN:
         default:
         {
@@ -714,6 +749,11 @@ static void Testle_ecall_ConfigSettings
     LE_ASSERT((LE_OK == le_ecall_SetPropulsionType(propulsionType)));
     LE_ASSERT((LE_OK == le_ecall_GetPropulsionType(&propulsionType)));
     LE_ASSERT( LE_ECALL_PROPULSION_TYPE_OTHER == propulsionType );
+
+    LE_ASSERT_OK(le_ecall_SetIntervalBetweenDialAttempts(30));
+    uint16_t pause = 0;
+    LE_ASSERT_OK(le_ecall_GetIntervalBetweenDialAttempts(&pause));
+    LE_ASSERT(pause == 30);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -841,6 +881,8 @@ static void Testle_ecall_LoadMsd
 )
 {
     le_ecall_CallRef_t   testECallRef = 0x00;
+    uint8_t              exportMsd[LE_ECALL_MSD_MAX_LEN] = {0};
+    size_t               msdSize = LE_ECALL_MSD_MAX_LEN;
 
     LE_INFO("Start Testle_ecall_LoadMsd");
 
@@ -851,6 +893,8 @@ static void Testle_ecall_LoadMsd
     LE_ASSERT(le_ecall_SetMsdPositionN2(testECallRef, -512, -512) == LE_OK);
 
     LE_ASSERT(le_ecall_SetMsdPassengersCount(testECallRef, 3) == LE_OK);
+
+    LE_ASSERT_OK(le_ecall_ExportMsd(testECallRef, exportMsd, &msdSize));
 
     // Check LE_DUPLICATE on le_ecall_SetMsdPosition and le_ecall_SetMsdPassengersCount
     LE_ASSERT(le_ecall_ImportMsd(testECallRef, ImportedMsd, sizeof(ImportedMsd)) == LE_OK);

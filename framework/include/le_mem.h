@@ -731,11 +731,30 @@ LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_CreatePool
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Calculate the number of blocks for a pool.
+ *
+ * @param name  Pool name.
+ * @param def   Default number of blocks.
+ *
+ * @return Number of blocks, either the value provided by <name>_POOL_SIZE if it is defined, or
+ *         <def>.  To be valid, <name>_POOL_SIZE must be defined as ,<value> (note the leading
+ *         comma).
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_MEM_BLOCKS(name, def) (LE_DEFAULT(CAT(_mem_, CAT(name, _POOL_SIZE)), (def)))
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Declare variables for a static memory pool.
  *
  * In a static memory pool initial pool memory is statically allocated at compile time, ensuring
  * pool can be created with at least some elements.  This is especially valuable on embedded
  * systems.
+ *
+ * @param name      Pool name.
+ * @param numBlocks Default number of blocks.  This can be overriden in components using the "pools"
+ *                  directive.
+ * @param objSize   Size of each block in the pool.
  */
 /*
  * Internal Note: size_t is used instead of uint8_t to ensure alignment on platforms where
@@ -743,18 +762,55 @@ LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_CreatePool
  */
 //--------------------------------------------------------------------------------------------------
 #if LE_CONFIG_MEM_POOLS
-#  define LE_MEM_DEFINE_STATIC_POOL(name, numBlocks, objSize)             \
-    static le_mem_Pool_t _mem_##name##Pool;                             \
-    static size_t _mem_##name##Data[LE_MEM_POOL_WORDS(numBlocks, objSize)]
+#  define LE_MEM_DEFINE_STATIC_POOL(name, numBlocks, objSize)   \
+    static le_mem_Pool_t _mem_##name##Pool;                     \
+    static size_t _mem_##name##Data[LE_MEM_POOL_WORDS(LE_MEM_BLOCKS(name, numBlocks), objSize)]
 #else
-#  define LE_MEM_DEFINE_STATIC_POOL(name, numBlocks, objSize)             \
+#  define LE_MEM_DEFINE_STATIC_POOL(name, numBlocks, objSize)   \
     static le_mem_Pool_t _mem_##name##Pool
 #endif
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Declare variables for a static memory pool, must specify which object section the variable goes
+ *   into
+ *
+ * By default static memory will the assigned to the bss or data section of the final object.
+ * This macro tells the linker to assign to variable to a specific section, sectionName.
+ * Essentially a "__attribute__((section("sectionName")))"  will be added after the variable
+ * declaration.
+ *
+ *
+ * @param name      Pool name.
+ * @param numBlocks Default number of blocks.  This can be overridden in components using the "pools"
+ *                  directive.
+ * @param objSize   Size of each block in the pool.
+ * @param sectionName   __attribute__((section("section"))) will be added to the pool declaration so the
+                    memory is associated with a the specific section instead of bss, data,..
+ */
+/*
+ * Internal Note: size_t is used instead of uint8_t to ensure alignment on platforms where
+ * alignment matters.
+ */
+//--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_MEM_POOLS
+#  define LE_MEM_DEFINE_STATIC_POOL_IN_SECTION(name, numBlocks, objSize, sectionName)    \
+    static le_mem_Pool_t _mem_##name##Pool __attribute__((section(sectionName)));        \
+    static size_t _mem_##name##Data[LE_MEM_POOL_WORDS(                                   \
+        LE_MEM_BLOCKS(name, numBlocks), objSize)] __attribute__((section(sectionName)))
+#else
+#  define LE_MEM_DEFINE_STATIC_POOL_IN_SECTION(name, numBlocks, objSize, sectionName)    \
+    static le_mem_Pool_t _mem_##name##Pool __attribute__((section(sectionName)));
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Initialize an empty static memory pool.
+ *
+ * @param name      Pool name.
+ * @param numBlocks Default number of blocks.  This can be overriden in components using the "pools"
+ *                  directive.
+ * @param objSize   Size of each block in the pool.
  *
  * @return
  *      Reference to the memory pool object.
@@ -764,16 +820,17 @@ LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_CreatePool
  */
 //--------------------------------------------------------------------------------------------------
 #if LE_CONFIG_MEM_POOLS
-#  define le_mem_InitStaticPool(name, numBlocks, objSize)                                   \
-    (inline_static_assert(                                                                  \
-        sizeof(_mem_##name##Data) == sizeof(size_t[LE_MEM_POOL_WORDS(numBlocks, objSize)]), \
-        "initial pool size does not match definition"),                                     \
-    _le_mem_InitStaticPool(STRINGIZE(LE_COMPONENT_NAME), #name, (numBlocks), (objSize),     \
-                           &_mem_##name##Pool, _mem_##name##Data))
-#else
 #  define le_mem_InitStaticPool(name, numBlocks, objSize)                               \
-    _le_mem_InitStaticPool(STRINGIZE(LE_COMPONENT_NAME), #name, (numBlocks), (objSize), \
-                           &_mem_##name##Pool, NULL)
+    (inline_static_assert(                                                              \
+        sizeof(_mem_##name##Data) ==                                                    \
+            sizeof(size_t[LE_MEM_POOL_WORDS(LE_MEM_BLOCKS(name, numBlocks), objSize)]), \
+        "initial pool size does not match definition"),                                 \
+    _le_mem_InitStaticPool(STRINGIZE(LE_COMPONENT_NAME), #name,                         \
+        LE_MEM_BLOCKS(name, numBlocks), (objSize), &_mem_##name##Pool, _mem_##name##Data))
+#else
+#  define le_mem_InitStaticPool(name, numBlocks, objSize)       \
+    _le_mem_InitStaticPool(STRINGIZE(LE_COMPONENT_NAME), #name, \
+        LE_MEM_BLOCKS(name, numBlocks), (objSize), &_mem_##name##Pool, NULL)
 #endif
 
 //--------------------------------------------------------------------------------------------------
@@ -1519,5 +1576,19 @@ void le_mem_Resume
 
 #endif /* end LE_CONFIG_RTOS */
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Duplicate a UTF-8 string.  The space for the duplicate string will be allocated from the provided
+ * memory pool using le_mem_VarAlloc().
+ *
+ * @return  The allocated duplicate of the string.  This may later be released with
+ *          le_mem_Release().
+ */
+//--------------------------------------------------------------------------------------------------
+char *le_mem_StrDup
+(
+    le_mem_PoolRef_t     poolRef,   ///< Pool from which to allocate the string.
+    const char          *srcStr     ///< String to duplicate.
+);
 
 #endif // LEGATO_MEM_INCLUDE_GUARD

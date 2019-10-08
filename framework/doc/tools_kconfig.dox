@@ -1,4 +1,4 @@
-/** @page kconfigDescription Legato KConfig
+/** @page toolsKconfig KConfig
 
 See @subpage kconfigOptions for the current list of configuration options.
 
@@ -158,4 +158,4 @@ KConfig options are denoted with "(EXPERIMENTAL)" in their descriptions.
 
 Copyright (C) Sierra Wireless Inc.
 
-*/
+**/

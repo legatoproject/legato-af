@@ -92,7 +92,6 @@ static le_hashmap_Ref_t HandleRecordByFileDescriptor = NULL;
 //--------------------------------------------------------------------------------------------------
 static le_comm_CallbackHandlerFunc_t AsyncReceiveHandlerFuncPtr = NULL;
 
-#ifdef SOCKET_SERVER
 //--------------------------------------------------------------------------------------------------
 /**
  * Registered Asycnhronous Connection Callback Handler function
@@ -103,11 +102,10 @@ static le_comm_CallbackHandlerFunc_t AsyncConnectionHandlerFuncPtr = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Listening Socket File descriptor and monitor object
+ * Connection Socket File descriptor and monitor object
  */
 //--------------------------------------------------------------------------------------------------
-static le_fdMonitor_Ref_t ListeningFdMonitorRef = NULL;
-#endif
+static le_fdMonitor_Ref_t ConnectionFdMonitorRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -230,53 +228,106 @@ static le_result_t ParseCommandLineArgs
     return result;
 }
 
-#ifdef SOCKET_SERVER
 //--------------------------------------------------------------------------------------------------
 /**
- * Callback function to listen for client connections and pass them onto the RPC Proxy
+ * Callback function to handle connections and pass them onto the RPC Proxy
  */
 //--------------------------------------------------------------------------------------------------
-static void ListeningRecvHandler(void* handle, short events)
+static void ConnectionRecvHandler(void* handle, short events)
 {
+    HandleRecord_t *connectionRecordPtr = NULL;
+    short connectionEvents = events;
+
+#ifdef SOCKET_SERVER
     int clientFd = -1;
 
-    if (events != POLLIN)
+    if (!(events & POLLIN))
     {
         LE_ERROR("Unexpected fd event(s): 0x%hX", events);
         return;
     }
 
     // Retrieve the Handle record, using the FD
-    HandleRecord_t* parentRecordPtr = le_hashmap_Get(HandleRecordByFileDescriptor, handle);
+    HandleRecord_t* parentRecordPtr =
+        le_hashmap_Get(HandleRecordByFileDescriptor, handle);
+
     if (parentRecordPtr == NULL)
     {
-        LE_ERROR("Unable to find matching Handle Record, fd [%" PRIiPTR "]", (intptr_t) handle);
+        LE_ERROR("Unable to find matching Handle Record, "
+                 "fd [%" PRIiPTR "]", (intptr_t) handle);
         return;
     }
 
     // Accept the connection, setting the connection to be non-blocking.
-    clientFd = accept((int)(size_t)handle, NULL, NULL);
+    clientFd = accept4((int)(size_t)handle, NULL, NULL, SOCK_NONBLOCK);
     if (clientFd < 0)
     {
         LE_ERROR("Failed to accept client connection. Errno %d", errno);
     }
 
     LE_INFO("Accepting Client socket connection, fd [%d]", clientFd);
-    HandleRecord_t *connectionRecordPtr = le_mem_AssertAlloc(HandleRecordPoolRef);
+    connectionRecordPtr = le_mem_AssertAlloc(HandleRecordPoolRef);
 
     // Initialize the connection record
     connectionRecordPtr->fd = clientFd;
     connectionRecordPtr->isListeningFd = false;
     connectionRecordPtr->parentRecordPtr = parentRecordPtr;
 
-    le_hashmap_Put(HandleRecordByFileDescriptor, (void*)(intptr_t) connectionRecordPtr->fd, connectionRecordPtr);
+    le_hashmap_Put(HandleRecordByFileDescriptor,
+                   (void*)(intptr_t) connectionRecordPtr->fd,
+                   connectionRecordPtr);
 
-    LE_INFO("Notifying RPC Proxy Client socket connected, fd [%d]", clientFd);
+#else
+    if (!(events & POLLOUT))
+    {
+        LE_ERROR("Unexpected fd event(s): 0x%hX", events);
+        return;
+    }
 
-    // Notify the RPC Proxy of the Client connection
-    AsyncConnectionHandlerFuncPtr(connectionRecordPtr, events);
-}
+    int socketErr = 0;
+    socklen_t socketLen = sizeof(socketErr);
+    if (getsockopt((int)(size_t)handle,
+                   SOL_SOCKET,
+                   SO_ERROR,
+                   &socketErr,
+                   &socketLen) < 0)
+    {
+        LE_ERROR("Unable to retrieve Socket Error option, "
+                 "fd [%" PRIiPTR "], ErrorNo [%d]",
+                 (intptr_t) handle,
+                 errno);
+        return;
+    }
+
+    if (socketErr != 0)
+    {
+        connectionEvents = POLLERR;
+        LE_INFO("Connect failed with errno %d", socketErr);
+    }
+
+    // Retrieve the Handle record, using the FD
+    connectionRecordPtr = le_hashmap_Get(HandleRecordByFileDescriptor, handle);
+    if (connectionRecordPtr == NULL)
+    {
+        LE_ERROR("Unable to find matching Connection Handle Record, "
+                 "fd [%" PRIiPTR "]", (intptr_t) handle);
+        return;
+    }
+
+    // Set the parent record to ourself
+    connectionRecordPtr->parentRecordPtr = connectionRecordPtr;
+
 #endif
+
+    LE_INFO("Notifying RPC Proxy socket is connected, fd [%d]",
+            connectionRecordPtr->fd);
+
+    if (AsyncConnectionHandlerFuncPtr != NULL)
+    {
+        // Notify the RPC Proxy of the Client connection
+        AsyncConnectionHandlerFuncPtr(connectionRecordPtr, connectionEvents);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -284,7 +335,6 @@ static void ListeningRecvHandler(void* handle, short events)
  *
  * Return Code values:
  *      - LE_OK if successfully,
- *      - LE_IN_PROGRESS if pending on asynchronous connection,
  *      - otherwise failure
  *
  * @return
@@ -345,6 +395,36 @@ LE_SHARED void* le_comm_Create
         return (connectionRecordPtr);
     }
 
+    //
+    // Set the Socket as Non-Blocking
+    //
+
+    // Retrieve existing socket options
+    int opts = fcntl(connectionRecordPtr->fd, F_GETFL);
+    if (opts < 0) {
+        LE_ERROR("fcntl(F_GETFL)");
+
+        // Close the Socket handle
+        close(connectionRecordPtr->fd);
+        connectionRecordPtr->fd = -1;
+
+        *resultPtr = LE_FAULT;
+        return (connectionRecordPtr);
+    }
+
+    // Set Non-Blocking socket option
+    opts = (opts | O_NONBLOCK);
+    if (fcntl(connectionRecordPtr->fd, F_SETFL, opts) < 0) {
+        LE_ERROR("fcntl(F_SETFL)");
+
+        // Close the Socket handle
+        close(connectionRecordPtr->fd);
+        connectionRecordPtr->fd = -1;
+
+        *resultPtr = LE_FAULT;
+        return (connectionRecordPtr);
+    }
+
 #ifdef SOCKET_SERVER
     struct sockaddr_in sockAddr;
 
@@ -368,43 +448,14 @@ LE_SHARED void* le_comm_Create
         *resultPtr = LE_FAULT;
         return (connectionRecordPtr);
     }
-
-    // Listen
-    if (listen(connectionRecordPtr->fd, NETWORK_SOCKET_MAX_CONNECT_REQUEST_BACKLOG) != 0)
-    {
-        LE_WARN("Server socket listen() call failed with errno %d", errno);
-    }
-
-    LE_INFO("Registering handle_monitor callback");
-
-    char socketName[80];
-    snprintf(socketName, sizeof(socketName) - 1, "inetSocket-%d", connectionRecordPtr->fd);
-
-    // Create thread to monitor FD handle for activity, as defined by the events
-    ListeningFdMonitorRef = le_fdMonitor_Create(socketName,
-                                                connectionRecordPtr->fd,
-                                                (le_fdMonitor_HandlerFunc_t) &ListeningRecvHandler,
-                                                POLLIN);
-
-    // Flag as a listening socket
-    connectionRecordPtr->isListeningFd = true;
-
-    LE_INFO("Successfully registered listening callback function, events [0x%x]", POLLIN);
-
 #endif
 
     LE_INFO("Created AF_INET Socket, fd %d", connectionRecordPtr->fd);
 
-    // Set the return code to reflect if client can proceed with connect call, or whether it needs to
-    // wait for asynchronous connection
-#ifdef SOCKET_SERVER
-    *resultPtr = LE_IN_PROGRESS;
-#else
-    *resultPtr = LE_OK;
-#endif
-
     // Store the Handle record
-    le_hashmap_Put(HandleRecordByFileDescriptor, (void*)(intptr_t) connectionRecordPtr->fd, connectionRecordPtr);
+    le_hashmap_Put(HandleRecordByFileDescriptor,
+                   (void*)(intptr_t) connectionRecordPtr->fd,
+                   connectionRecordPtr);
 
     return (connectionRecordPtr);
 }
@@ -418,40 +469,49 @@ LE_SHARED void* le_comm_Create
  *      - LE_OK if successfully.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t le_comm_RegisterHandleMonitor (void* handle, le_comm_CallbackHandlerFunc_t handlerFunc, short events)
+LE_SHARED le_result_t le_comm_RegisterHandleMonitor
+(
+    void* handle,
+    le_comm_CallbackHandlerFunc_t handlerFunc,
+    short events
+)
 {
     char socketName[80];
     HandleRecord_t* connectionRecordPtr = (HandleRecord_t*) handle;
 
-    // Store the Asynchronous Receive callback function
-    AsyncReceiveHandlerFuncPtr = handlerFunc;
-
-#ifdef SOCKET_SERVER
-    if (connectionRecordPtr->isListeningFd)
+    if (events & POLLIN)
     {
-        //
-        // Listening Socket Fd
-        //
+        // Store the Asynchronous Receive callback function
+        AsyncReceiveHandlerFuncPtr = handlerFunc;
 
-        // Store the Asynchronous Connection callback function
-        AsyncConnectionHandlerFuncPtr = handlerFunc;
+        LE_INFO("Registering Asynchronous Receive callback on fd: %d", connectionRecordPtr->fd);
+        snprintf(socketName, sizeof(socketName) - 1, "inetSocket-%d", connectionRecordPtr->fd);
 
-        // No need to proceed further - return
-        return LE_OK;
-    }
+        // Set the Polling Events
+        PollingEvents = events;
+
+#ifndef SOCKET_SERVER
+        if (ConnectionFdMonitorRef != NULL)
+        {
+            // Delete Connection FD monitor
+            le_fdMonitor_Delete(ConnectionFdMonitorRef);
+            ConnectionFdMonitorRef = NULL;
+        }
 #endif
 
-    LE_INFO("Registering handle_monitor callback");
-    snprintf(socketName, sizeof(socketName) - 1, "inetSocket-%d", connectionRecordPtr->fd);
-
-    // Set the Polling Events
-    PollingEvents = events;
-
-    // Create thread to monitor FD handle for activity, as defined by the events
-    FdMonitorRef = le_fdMonitor_Create(socketName,
-                                       connectionRecordPtr->fd,
-                                       (le_fdMonitor_HandlerFunc_t) AsyncRecvHandler,
-                                       PollingEvents);
+        // Create thread to monitor FD handle for activity, as defined by the events
+        FdMonitorRef =
+            le_fdMonitor_Create(
+                socketName,
+                connectionRecordPtr->fd,
+                (le_fdMonitor_HandlerFunc_t) AsyncRecvHandler,
+                PollingEvents);
+    }
+    else
+    {
+        // Store the Asynchronous Connection callback function
+        AsyncConnectionHandlerFuncPtr = handlerFunc;
+    }
 
     LE_INFO("Successfully registered handle_monitor callback, events [0x%x]", events);
 
@@ -472,7 +532,8 @@ LE_SHARED le_result_t le_comm_Delete (void* handle)
 
     LE_INFO("Deleting AF_INET socket, fd %d .........", connectionRecordPtr->fd);
 
-    if (FdMonitorRef != NULL)
+    if ((FdMonitorRef != NULL) &&
+        (le_fdMonitor_GetFd(FdMonitorRef) == connectionRecordPtr->fd))
     {
         // Delete FD monitor
         le_fdMonitor_Delete(FdMonitorRef);
@@ -505,15 +566,36 @@ LE_SHARED le_result_t le_comm_Delete (void* handle)
  * Function for Connecting RPC Network-Socket Communication Channel
  *
  * @return
- *      - LE_OK if successfully.
+ *      - LE_OK if successfully,
+ *      - LE_IN_PROGRESS if pending on asynchronous connection,
+ *      - otherwise failure
+ *
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t le_comm_Connect (void* handle)
 {
     HandleRecord_t* connectionRecordPtr = (HandleRecord_t*) handle;
-    int result = LE_OK;
 
     LE_INFO("Connecting AF_INET socket, fd %d .........", connectionRecordPtr->fd);
+
+    LE_INFO("Registering Connection Callback handler");
+
+    char socketName[80];
+    snprintf(socketName, sizeof(socketName) - 1, "inetSocket-%d", connectionRecordPtr->fd);
+
+    // Create thread to monitor FD handle for activity, as defined by the events
+    ConnectionFdMonitorRef =
+        le_fdMonitor_Create(
+            socketName,
+            connectionRecordPtr->fd,
+            (le_fdMonitor_HandlerFunc_t) &ConnectionRecvHandler,
+#ifdef SOCKET_SERVER
+            POLLIN);
+#else
+            POLLOUT);
+#endif
+
+    LE_INFO("Successfully registered listening callback function, events [0x%x]", POLLIN);
 
 #ifndef SOCKET_SERVER
     struct sockaddr_in sockAddr;
@@ -522,20 +604,16 @@ LE_SHARED le_result_t le_comm_Connect (void* handle)
     sockAddr.sin_family = AF_INET;
     sockAddr.sin_port = htons(NetworkSocketTCPListeningPort);
 
-    do
-    {
-        result = connect(connectionRecordPtr->fd, (struct sockaddr *) &sockAddr, sizeof(sockAddr));
-    }
-    while ((result == -1) && (errno == EINTR));
+    // Connect the client socket
+    int result =
+        connect(
+            connectionRecordPtr->fd,
+            (struct sockaddr *) &sockAddr,
+             sizeof(sockAddr));
 
     if (result != 0)
     {
-        if (FdMonitorRef != NULL)
-        {
-            // Disable FD Monitoring
-            le_fdMonitor_Disable(FdMonitorRef, PollingEvents);
-        }
-
+        // Check the error code
         switch (errno)
         {
             case EACCES:
@@ -545,23 +623,28 @@ LE_SHARED le_result_t le_comm_Connect (void* handle)
                 return LE_NOT_FOUND;
 
             case EINPROGRESS:
-                return LE_WOULD_BLOCK;
+                // Connection is in progress, and will be notified via the connection callback
+                return LE_IN_PROGRESS;
 
             default:
                 LE_ERROR("Connect failed with errno %d", errno);
                 return LE_FAULT;
         }
     }
-#endif
+#else
+    // Flag as a listening socket
+    connectionRecordPtr->isListeningFd = true;
 
-    if (FdMonitorRef != NULL)
+    // Listen
+    if (listen(connectionRecordPtr->fd, NETWORK_SOCKET_MAX_CONNECT_REQUEST_BACKLOG) != 0)
     {
-        // Enable FD Monitoring
-        le_fdMonitor_Enable(FdMonitorRef, PollingEvents);
+        LE_WARN("Server socket listen() call failed with errno %d", errno);
     }
 
+#endif
+
     LE_INFO("Connecting AF_INET socket, fd %d ......... [DONE]", connectionRecordPtr->fd);
-    return result;
+    return LE_IN_PROGRESS;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -660,11 +743,13 @@ LE_SHARED le_result_t le_comm_Receive (void* handle, void* buf, size_t* len)
     while ((bytesReceived < 0) && (errno == EINTR));
 
     // If we failed, process the error and return.
-    if (bytesReceived <= 0)
+    if (bytesReceived < 0)
     {
         if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
         {
-            return LE_WOULD_BLOCK;
+            // Set the length to zero and return
+            *len = 0;
+            return LE_OK;
         }
         else if (errno == ECONNRESET)
         {

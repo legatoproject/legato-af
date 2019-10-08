@@ -32,6 +32,12 @@
 // -------------------------------------------------------------------------------------------------
 #define LONG_DATA_LENGTH    5000
 
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Executable name.
+ */
+// -------------------------------------------------------------------------------------------------
+#define EXE_NAME "testFs"
 
 //--------------------------------------------------------------------------------------------------
 // Test functions
@@ -48,7 +54,7 @@ COMPONENT_INIT
 
     LE_TEST_INFO("Starting FS test");
 
-    LE_TEST_PLAN(89);
+    LE_TEST_PLAN(91);
 
     le_fs_FileRef_t fileRef = NULL;
 
@@ -437,6 +443,15 @@ facilisis erat, a imperdiet risus eleifend nec.";
                "Test le_fs_Delete with wrong file name");
     LE_TEST_OK(LE_BAD_PARAMETER == le_fs_Move(loremFilePath, loremFilePath),
                "Test le_fs_Move with wrong file name");
+
+    LE_TEST_BEGIN_SKIP(!LE_CONFIG_IS_ENABLED(LE_CONFIG_LINUX), 2);
+    char dirPathStr[PATH_LENGTH];
+    char exeNameStr[PATH_LENGTH];
+    res = le_fs_GetExecutablePath(dirPathStr, sizeof(dirPathStr), exeNameStr, sizeof(exeNameStr));
+    LE_TEST_OK(res == LE_OK, "Get executable path: %s", LE_RESULT_TXT(res));
+    LE_TEST_OK(strncmp(exeNameStr, EXE_NAME, sizeof(exeNameStr)) == 0,
+        "Executable name: %s", exeNameStr);
+    LE_TEST_END_SKIP();
 
     LE_TEST_INFO("End of FS test");
     LE_TEST_EXIT;

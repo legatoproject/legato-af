@@ -7,6 +7,7 @@ requires:
         le_limit.api                    [types-only]
         le_appInfo.api                  [types-only]
         le_update.api                   [types-only]
+        le_instStat.api                 [types-only]
     }
 }
 

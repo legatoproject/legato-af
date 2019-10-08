@@ -134,6 +134,29 @@ bool MatchesSaved
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Execute the given callback function.  Once for every current environment variable.
+ */
+//--------------------------------------------------------------------------------------------------
+void Iterate
+(
+    /// Function that is called with the name and value of every environment variable.
+    const std::function<void(const std::string&, const std::string&)>& callback
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Load environment variables from a file into the current process' environment.  The environment
+ * variables are formatted as VAR=value\n in the file.  Blank lines and comments (lines beginning
+ * with #) are ignored.
+ */
+//--------------------------------------------------------------------------------------------------
+void Load
+(
+    const std::string       &envFilePath, ///< Path to the file listing the environment variables.
+    const mk::BuildParams_t &buildParams  ///< Current build parameters.
+);
 
 } // namespace envVars
 

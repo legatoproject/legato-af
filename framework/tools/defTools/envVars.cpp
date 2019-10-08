@@ -11,6 +11,9 @@
 #include "defTools.h"
 #include <string.h>
 
+/// Prefix on environment variable entries in config.sh.
+#define CFG_VAR_PREFIX  "export "
+
 /// The standard C environment variable list.
 extern char**environ;
 
@@ -455,5 +458,96 @@ different:
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Execute the given callback function.  Once for every current environment variable.
+ */
+//--------------------------------------------------------------------------------------------------
+void Iterate
+(
+    /// Function that is called with the name and value of every environment variable.
+    const std::function<void(const std::string&, const std::string&)>& callback
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (int i = 0; environ[i] != NULL; i++)
+    {
+        const auto next = std::string(environ[i]);
+        const auto found = next.find('=');
+
+        const auto name = next.substr(0, found);
+        const auto value = next.substr(found + 1);
+
+        callback(name, value);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Load environment variables from a file into the current process' environment.  The environment
+ * variables are formatted as (export )?VAR=value\n in the file.  Blank lines and comments (lines
+ * beginning with #) are ignored.
+ */
+//--------------------------------------------------------------------------------------------------
+void Load
+(
+    const std::string       &envFilePath, ///< Path to the file listing the environment variables.
+    const mk::BuildParams_t &buildParams  ///< Current build parameters.
+)
+{
+    char            lineBuff[8 * 1024];
+    std::ifstream   envFile(envFilePath);
+
+    if (!envFile.is_open())
+    {
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Failed to open file '%s' for reading."), envFilePath)
+        );
+    }
+
+    // Read each environment line.
+    for (envFile.getline(lineBuff, sizeof(lineBuff));
+        !envFile.eof();
+        envFile.getline(lineBuff, sizeof(lineBuff)))
+    {
+        std::string line(lineBuff);
+
+        if (line.empty() || line.front() == '#')
+        {
+            // Skip empty or comment lines.
+            continue;
+        }
+
+        size_t found = line.find('=');
+        if (found == std::string::npos)
+        {
+            // Skip lines with no '='.
+            continue;
+        }
+        size_t start = 0;
+        if (line.compare(0, strlen(CFG_VAR_PREFIX), CFG_VAR_PREFIX) == 0)
+        {
+            // Strip the initial "export " if present.
+            start = strlen(CFG_VAR_PREFIX);
+        }
+        std::string name = line.substr(start, found - start);
+
+        std::string value = line.substr(found + 1);
+        if (value.size() > 1 && value.front() == '"' && value.back() == '"')
+        {
+            // Strip the double quotation marks around the value if present.
+            value.pop_back();
+            value.erase(0, 1);
+        }
+
+        if (buildParams.beVerbose)
+        {
+            std::cout   << mk::format(LE_I18N("Loading environment variable '%s' with value '%s'."),
+                            name, value)
+                        << std::endl;
+        }
+        Set(name, value);
+    }
+}
 
 } // namespace envVars

@@ -138,6 +138,13 @@ static le_event_Id_t WifiEventId = NULL;
 static le_mem_PoolRef_t WifiEventPool;
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * DCS technology name
+ */
+//--------------------------------------------------------------------------------------------------
+static char DcsTechnologyName[LE_DCS_TECH_MAX_NAME_LEN];
+
+//--------------------------------------------------------------------------------------------------
 // Unit test specific functions
 //--------------------------------------------------------------------------------------------------
 
@@ -1080,6 +1087,23 @@ const char *le_dcs_ConvertEventToString
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Return le_dcs's request count back to the caller
+ *
+ * @return
+ *     - the count of channel requests made thru le_dcs API
+ */
+//--------------------------------------------------------------------------------------------------
+uint16_t le_dcs_GetReqCount
+(
+    void
+)
+{
+    return 0;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The first-layer channel event handler used by the stub function le_dcs_AddEventHandler
  */
 //--------------------------------------------------------------------------------------------------
@@ -1253,12 +1277,25 @@ const char *le_dcs_ConvertTechEnumToName
     le_dcs_Technology_t tech
 )
 {
-    char *DcsTechnologyNames[LE_DCS_TECH_MAX] = {"", "wifi", "cellular"};
-    if (tech < LE_DCS_TECH_MAX)
+    switch(tech)
     {
-        return DcsTechnologyNames[tech];
+        case LE_DCS_TECH_WIFI:
+            le_utf8_Copy(DcsTechnologyName, "wifi", sizeof(DcsTechnologyName), NULL);
+            break;
+
+        case LE_DCS_TECH_CELLULAR:
+            le_utf8_Copy(DcsTechnologyName, "cellular", sizeof(DcsTechnologyName), NULL);
+            break;
+
+        case LE_DCS_TECH_ETHERNET:
+            le_utf8_Copy(DcsTechnologyName, "ethernet", sizeof(DcsTechnologyName), NULL);
+            break;
+
+        default:
+            le_utf8_Copy(DcsTechnologyName, "unknown", sizeof(DcsTechnologyName), NULL);
+            break;
     }
-    return "";
+    return DcsTechnologyName;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1283,6 +1320,9 @@ le_result_t le_dcsTech_GetNetInterface
             break;
         case LE_DCS_TECH_WIFI:
             intf = "wlan0";
+            break;
+        case LE_DCS_TECH_ETHERNET:
+            intf = "eth0";
             break;
         default:
             LE_ERROR("Channel's technology type %s not supported",

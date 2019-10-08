@@ -35,4 +35,5 @@ cflags:
     -I $LEGATO_ROOT/components/dataConnectionService/dcsNet
     -I $LEGATO_ROOT/components/dataConnectionService/dcsCellular
     -I $LEGATO_ROOT/components/dataConnectionService/dcsWifi
+    -I $LEGATO_ROOT/components/dataConnectionService/dcsEthernet
 }

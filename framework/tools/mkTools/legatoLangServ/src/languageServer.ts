@@ -50,7 +50,7 @@ Client.connection.onInitialize((params: lsp.InitializeParams): lsp.InitializeRes
     {
         try
         {
-            Client.log("Language server onInitialize.");
+            console.log("Language server onInitialize.");
 
             // Here the client has told us the protocol features that it supports.
             Client.capabilities.hasWorkspaces =    params.capabilities.workspace
@@ -80,29 +80,25 @@ Client.connection.onInitialize((params: lsp.InitializeParams): lsp.InitializeRes
                         supportsModelUpdates: false
                     }
             }
-
-            Client.log("LEGATO_ROOT:" + Client.profile.legatoRoot);
         }
         catch (e)
         {
-            Client.log('exception: ' + e);
+            console.log('  exception: ' + e);
         }
 
         return {
             capabilities:
             {
-                // codeActionProvider: true,
-                // documentFormattingProvider: true,
-                definitionProvider: true,
-                documentHighlightProvider: true,
-                documentSymbolProvider: true,
-                foldingRangeProvider: true,
+                definitionProvider: false,
+                documentHighlightProvider: false,
+                documentSymbolProvider: false,
+                foldingRangeProvider: false,
 
                 textDocumentSync: lsp.TextDocumentSyncKind.Full,
 
                 completionProvider:
                 {
-                    resolveProvider: true
+                    resolveProvider: false
                 }
             }
         };
@@ -117,7 +113,7 @@ Client.connection.onInitialize((params: lsp.InitializeParams): lsp.InitializeRes
 //--------------------------------------------------------------------------------------------------
 Client.connection.onInitialized(() =>
     {
-        Client.log("Language server initialized.");
+        console.log("Language server initialized.");
 
         if (Client.capabilities.hasWorkspaces)
         {
@@ -126,20 +122,14 @@ Client.connection.onInitialized(() =>
                 // On a successful request...
                 (folders: lsp.WorkspaceFolder[]) =>
                 {
-                    Client.log('Received workspace folders.');
                     Client.profile.workspaceFolders = folders;
-
-                    for (let folder of Client.profile.workspaceFolders)
-                    {
-                        Client.log('  ' + folder.name + ": " + folder.uri);
-                    }
                 },
 
                 // On a failed request...
                 (reason: any) =>
                 {
-                    Client.log('The folder request was rejected.');
-                    Client.log('Reason: ' + reason);
+                    console.log('The folder request was rejected.');
+                    console.log('Reason: ' + reason);
                 });
 
             // Register a handler that will be executed whenever the user adds or removes folders
@@ -169,7 +159,6 @@ Client.connection.onInitialized(() =>
 
 Client.connection.onDidChangeConfiguration((settings: any) =>
     {
-        Client.log('Client.connection.onDidChangeConfiguration');
         Client.profile.environment = settings;
     });
 
@@ -183,7 +172,6 @@ Client.connection.onShutdown(() =>
 
 Client.connection.onExit(() =>
     {
-        //
     });
 
 
@@ -202,45 +190,27 @@ Client.connection.onExit(() =>
 
 Client.connection.onDidOpenTextDocument((params: lsp.DidOpenTextDocumentParams) =>
     {
-        Client.log('Client.connection.onDidOpenTextDocument');
-        Client.log('  params.textDocument.languageId: ' + params.textDocument.languageId);
-        Client.log('  params.textDocument.uri:        ' + params.textDocument.uri);
-        Client.log('  params.textDocument.version:    ' + params.textDocument.version.toString());
-        //Client.log('  params.textDocument.text:       ' + params.textDocument.text);
     });
 
 Client.connection.onDidChangeTextDocument((params: lsp.DidChangeTextDocumentParams) =>
     {
-        Client.log('Client.connection.onDidChangeTextDocument');
     });
 
 Client.connection.onWillSaveTextDocument((params: lsp.WillSaveTextDocumentParams) =>
     {
-        Client.log('Client.connection.onWillSaveTextDocument');
     });
 
 Client.connection.onWillSaveTextDocumentWaitUntil((params: lsp.WillSaveTextDocumentParams): lsp.TextEdit[] =>
     {
-        Client.log('Client.connection.onWillSaveTextDocumentWaitUntil');
-        return null;
+        return undefined;
     });
 
 Client.connection.onDidSaveTextDocument((params: lsp.DidSaveTextDocumentParams) =>
     {
-        Client.log('Client.connection.onDidSaveTextDocument');
-
-        //if (Client.profile.uriInActiveModel(params.textDocument.uri))
-        //{
-        //    Client.log('The model has been modified, reloading now...');
-        //    Client.profile.reloadActiveModel();
-        //    Client.log('Load complete.');
-        //}
     });
 
 Client.connection.onDidCloseTextDocument((params: lsp.DidCloseTextDocumentParams) =>
     {
-        Client.log('Client.connection.onDidCloseTextDocument');
-        Client.log('  params.textDocument.uri: ' + params.textDocument.uri);
     });
 
 
@@ -251,30 +221,17 @@ Client.connection.onDidCloseTextDocument((params: lsp.DidCloseTextDocumentParams
 
 Client.connection.onCompletion((params: lsp.CompletionParams): lsp.CompletionList =>
     {
-        return null;
+        return undefined;
     });
 
  Client.connection.onCompletionResolve((params: lsp.CompletionItem): lsp.CompletionItem =>
     {
-        return null;
+        return undefined;
     });
-
-// Client.connection.onHover(() => {});
-// Client.connection.onSignatureHelp(() => {});
-// Client.connection.onDefinition(() => {});
-// Client.connection.onTypeDefinition(() => {});
-// Client.connection.onImplementation(() => {});
-// Client.connection.onReferences(() => {});
-// Client.connection.onDocumentHighlight(() => {});
 
 Client.connection.onDocumentSymbol(
     (params: lsp.DocumentSymbolParams): lsp.SymbolInformation[] | lsp.DocumentSymbol[] =>
     {
-        Client.log('Client.connection.onDocumentSymbol');
-        Client.log('  params:                  ' + params);
-        Client.log('  params.textDocument:     ' + params.textDocument);
-        Client.log('  params.textDocument.uri: ' + params.textDocument.uri);
-
         if (!(Client.profile.activeModel instanceof model.System))
         {
             return [];
@@ -282,38 +239,46 @@ Client.connection.onDocumentSymbol(
 
         if (Client.capabilities.hasHierarchicalDocumentSymbol)
         {
-            //return [conversion.SystemAsSymbol(Client.profile.activeModel)] as lsp.DocumentSymbol[];
         }
 
         return [];
     });
 
-//Client.connection.onCodeAction((params: lsp.CodeActionParams): (lsp.Command | lsp.CodeAction)[] =>
-//    {
-//        Client.log('Client.connection.onCodeAction');
-//        return [];
-//    });
-
-// Client.connection.onCodeLens(() => {});
-// Client.connection.onCodeLensResolve(() => {});
-// Client.connection.onDocumentLinks(() => {});
-// Client.connection.onDocumentLinkResolve(() => {});
-// Client.connection.onDocumentColor(() => {});
-// Client.connection.onColorPresentation(() => {});
-// Client.connection.onDocumentFormatting(() => {});
-// Client.connection.onDocumentRangeFormatting(() => {});
-// Client.connection.onDocumentOnTypeFormatting(() => {});
-// Client.connection.onRenameRequest(() => {});
-// Client.connection.onPrepareRename(() => {});
-
 Client.connection.onFoldingRanges((params: lsp.FoldingRangeRequestParam): lsp.FoldingRange[] =>
     {
-        Client.log('Client.connection.onFoldingRanges');
-
-        let filePath = lsp.Files.uriToFilePath(params.textDocument.uri);
-        Client.log('   path: ' + filePath);
-
         return undefined;
+    });
+
+
+
+// -------------------------------------------------------------------------------------------------
+//   Workspace event handlers.
+// -------------------------------------------------------------------------------------------------
+
+Client.connection.onWorkspaceSymbol((params: lsp.WorkspaceSymbolParams): lsp.SymbolInformation[] =>
+    {
+        let filePaths: string[] = [];
+
+        switch ('.' + params.query)
+        {
+            case model.DefType.systemDef:
+                filePaths = Client.profile.availableSystems;
+                break;
+
+            case model.DefType.applicationDef:
+                filePaths = Client.profile.availableApps;
+                break;
+
+            case model.DefType.componentDef:
+                filePaths = Client.profile.availableComponents;
+                break;
+
+            case model.DefType.apiDef:
+                filePaths = Client.profile.availableInterfaces;
+                break;
+        }
+
+        return conversion.FilePathsToSymbolInformation(filePaths);
     });
 
 
@@ -328,14 +293,12 @@ const ExtensionVersion = "0.2";
 Client.connection.onRequest("le_GetExtensionProtocolVersion",
     (): string =>
     {
-        Client.log("Warning, client using deprecated API.");
         return ExtensionVersion;
     });
 
 Client.connection.onRequest("le_SetClientExtensionProtocolVersion",
     (requestedVersion: string): boolean =>
     {
-        Client.log("Warning, client using deprecated API.");
         return true;
     });
 
@@ -347,17 +310,24 @@ Client.connection.onRequest("le_SetClientExtensionProtocolVersion",
 Client.connection.onRequest("le_GetLogicalView",
     (): any =>
     {
-        Client.log("Warning, client using deprecated API.");
         let flags: conversion.ConversionFlags = { supportsDefaultCollapsed: false };
-        return conversion.SystemAsSymbol(flags, Client.profile.activeModel as model.System);
+        return conversion.SystemAsSymbol(flags, Client.profile.activeModel as model.System, []);
     });
 
 Client.connection.onRequest("le_registerModelUpdates",
     () =>
     {
-        if (Client.profile.clientProperties.supportsModelUpdates)
+        try
         {
-            Client.profile.receiveModelUpdates = true;
+            if (Client.profile.clientProperties.supportsModelUpdates)
+            {
+                Client.profile.receiveModelUpdates = true;
+            }
+        }
+        catch (e)
+        {
+            console.log('  le_registerModelUpdates Exception: ' + e);
+            console.error(e.stack);
         }
     });
 

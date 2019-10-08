@@ -13,6 +13,7 @@ import pytest, re, os, stat, sys, termios, imp
 import tap.parser
 import pexpect, pexpect.fdpexpect, pexpect.pxssh
 import time
+import sys
 
 def pytest_addoption(parser):
     """Add test configuration options."""
@@ -22,7 +23,7 @@ def pytest_addoption(parser):
         action='store',
         dest='dut',
         default='',
-        help='Serial port name or SSH host to connect to.'
+        help='Serial port name or SSH host of device under test (DUT)'
     )
     group.addoption(
         '--baudrate',
@@ -74,13 +75,13 @@ class SerialPort:
         def __enter__(self):
             try:
                 return super(SerialPort.ttyspawn, self).__enter__()
-            except AttributeError:
+            except AttributeError as e:
                 return self
 
         def __exit__(self, etype, evalue, tb):
             try:
                 super(SerialPort.ttyspawn, self).__exit__(etype, evalue, tb)
-            except AttributeError:
+            except AttributeError as e:
                 pass
 
     @staticmethod
@@ -136,7 +137,7 @@ class SerialPort:
 
         if baudrate is None:
             baud_value = self._tty_attr[self.CFLAG] & termios.CBAUD
-            for b, v in self.BAUD.iteritems():
+            for b, v in self.BAUD.items():
                 if v == baud_value:
                     baudrate = b
                     break
@@ -264,7 +265,10 @@ def connect_target(app_name, target_name, baudrate=115200):
             pytest.skip()
     else:
         # Assume IP or hostname for ssh
-        app = pexpect.pxssh.pxssh(logfile=sys.stderr)
+        if sys.version_info[0] < 3:
+            app = pexpect.pxssh.pxssh(logfile=sys.stderr)
+        else:
+            app = pexpect.pxssh.pxssh(logfile=sys.stderr, encoding="utf-8")
         app.login(target_name, "root")
         app.send("app status\r")
         app_status=app.expect_exact(["[stopped] " + app_name + "\r\n",
@@ -669,7 +673,7 @@ def target(request):
     primary interface for communicating with a test application's stdin/stdout/stderr.
     """
     baudrate = int(request.config.getoption('baudrate'))
-    dut = request.config.getoption('dut')
+    dut = request.config.getoption('dut').encode("utf-8")
     if dut == '':
         request.raiseerror("Target not set")
 

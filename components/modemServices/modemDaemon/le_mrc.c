@@ -1726,6 +1726,28 @@ static void CloseSessionEventHandler
         result = le_ref_NextNode(iterRef);
     }
 
+    // Search for all references used by the current client session that has been closed.
+    iterRef = le_ref_GetIterator(PciScanInformationListRefMap);
+    result = le_ref_NextNode(iterRef);
+    while (LE_OK == result)
+    {
+        PciScanInfoList_t* scanInformationListPtr = le_ref_GetValue(iterRef);
+
+        // Check if the session reference saved matchs with the current session reference.
+        if (scanInformationListPtr->sessionRef == sessionRef)
+        {
+            le_mrc_PciScanInformationListRef_t safeRef =
+                                (le_mrc_PciScanInformationListRef_t) le_ref_GetSafeRef(iterRef);
+            LE_DEBUG("Call le_mrc_DeletePciNetworkScan 0x%p, Session 0x%p", safeRef, sessionRef);
+
+            // Delete PCI scan results.
+            le_mrc_DeletePciNetworkScan(safeRef);
+        }
+
+        // Get the next value in the reference
+        result = le_ref_NextNode(iterRef);
+    }
+
     // Check if the application started the jamming detection
     if (true == JammingDetectionRemoveReference(sessionRef))
     {
@@ -1822,7 +1844,7 @@ void le_mrc_Init
     PciScanInformationListRefMap = le_ref_CreateMap("PciScanInformationListMap", MRC_MAX_SCANLIST);
 
     // Create the Safe Reference Map to use for Scan Information List object Safe References.
-    PciScanInformationRefMap = le_ref_CreateMap("PciScanInformationMap", MRC_MAX_SCANLIST);
+    PciScanInformationRefMap = le_ref_CreateMap("PciScanInformationMap", MRC_MAX_SCAN);
 
     // Create the Safe Reference Map to use for Scan Information List object Safe References.
     PlmnInformationRefMap = le_ref_CreateMap("PlmnInformationMap", MRC_MAX_PLMNLIST);
@@ -5327,7 +5349,7 @@ uint32_t le_mrc_GetPciScanGlobalCellId
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to delete the list of the Scan Information retrieved with
- * le_mrc_PerformCellularNetworkScan().
+ * le_mrc_PerformPciNetworkScan() or le_mrc_PerformPciNetworkScanAsync().
  *
  * @note
  *      On failure, the process exits, so you don't have to worry about checking the returned
@@ -5352,11 +5374,11 @@ void le_mrc_DeletePciNetworkScan
         return;
     }
     scanInformationPtr->currentLink = NULL;
+
+    // Delete PA-specific PLMN data
     pa_mrc_DeletePlmnScanInformation(&(scanInformationPtr->plmnList));
-    // Delete the safe Reference list.
+    // Release References to PLMN objects, and free the memory.
     DeletePlmnSafeRefList(&(scanInformationPtr->safeRefPlmnInfoList));
-    // Invalidate the Safe Reference.
-    le_ref_DeleteRef(PlmnInformationRefMap, scanInfoRef);
     while ((scanInfoRef = le_mrc_GetNextPciScanInfo(scanInformationListRef)) != NULL)
     {
         pa_mrc_PciScanInformation_t* scanInformationPtr = le_ref_Lookup(PciScanInformationRefMap,
@@ -5367,14 +5389,14 @@ void le_mrc_DeletePciNetworkScan
             return;
         }
         scanInformationPtr->currentLink = NULL;
+
+        // Delete PA-specific PLMN data
         pa_mrc_DeletePlmnScanInformation(&(scanInformationPtr->plmnList));
-        // Delete the safe Reference list.
+        // Release References to PLMN objects, and free the memory.
         DeletePlmnSafeRefList(&(scanInformationPtr->safeRefPlmnInfoList));
-        // Invalidate the Safe Reference.
-        le_ref_DeleteRef(PlmnInformationRefMap, scanInfoRef);
     }
 
-    // Delete PciScanInformation liste
+    // Delete PciScanInformation list
 
     PciScanInfoList_t* scanInformationListPtr = le_ref_Lookup(PciScanInformationListRefMap,
                                                                          scanInformationListRef);
@@ -5384,11 +5406,14 @@ void le_mrc_DeletePciNetworkScan
         return;
     }
     scanInformationListPtr->currentLink = NULL;
+
+    // Delete PA-specific Scan information data
     pa_mrc_DeletePciScanInformation(&(scanInformationListPtr->paPciScanInfoList));
-    // Delete the safe Reference list.
+    // Release the References to the Scan Information objects, and free the memory.
     DeletePciSafeRefList(&(scanInformationListPtr->safeRefPciScanInfoList));
-    // Invalidate the Safe Reference.
-    le_ref_DeleteRef(PlmnInformationRefMap, scanInformationListRef);
+
+    // Release the Reference to the Scan Information List, and free the memory.
+    le_ref_DeleteRef(PciScanInformationListRefMap, scanInformationListRef);
     le_mem_Release(scanInformationListPtr);
 }
 

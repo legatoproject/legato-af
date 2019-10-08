@@ -11,18 +11,19 @@
 
 namespace updateDefs
 {
-    void UpdateSdefApp(ArgHandler_t& handler);
-    void UpdateSdefModule(ArgHandler_t& handler);
-    void UpdateSdefRenameApp(ArgHandler_t handler);
-    void UpdateSdefRenameModule(ArgHandler_t& handler);
-    void UpdateSdefRemoveApp(ArgHandler_t handler);
-    void UpdateSdefRemoveModule(ArgHandler_t& handler);
-
-    void UpdateAdefComponent(ArgHandler_t& handler);
-    void UpdateAdefRenameComponent(ArgHandler_t& handler, model::System_t* systemPtr);
-    void UpdateAdefRemoveComponent(ArgHandler_t& handler);
+    struct CompPosition_t
+    {
+        bool isExeMultiComp; // Bool flag to check if executables: section has multiple components.
+        int foundPos;        // Position where the component is found.
+        int nextPos;         // Position of the next token after the found component.
+        int sectionPos;      // Start position of the line where the component is found.
+        int sectionNextPos;  // Next token position of the line where the component is found.
+    };
 
     void ParseSdefReadSearchPath(ArgHandler_t& handler);
+    void ParseSdefUpdateItem (ArgHandler_t& handler);
+    void UpdateDefinitionFile(ArgHandler_t& handler, std::string sdefFilePath);
+    void EvaluateAdefGetEditLinePosition (ArgHandler_t& handler, model::System_t* systemPtr);
 }
 
 #endif

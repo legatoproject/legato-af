@@ -1461,7 +1461,7 @@ static le_result_t LoadWifiCfg
 //--------------------------------------------------------------------------------------------------
 le_result_t le_dcsWifi_Start
 (
-    void *techRef                   ///< [IN] object reference of the cellular connection
+    void *techRef                   ///< [IN] object reference of the WiFi connection
 )
 {
     le_result_t ret;

@@ -1,0 +1,9 @@
+sources:
+{
+    serialComm.c
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/framework/liblegato
+}

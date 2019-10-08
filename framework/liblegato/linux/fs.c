@@ -774,6 +774,82 @@ le_result_t le_fs_Move
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Obtain the absolute directory containing the running executable and the name of the executable.
+ *
+ * @return LE_OK on success or an appropriate error on failure.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_fs_GetExecutablePath
+(
+    char    *dirPathPtr,    ///< [OUT] Buffer to put executable's directory path in.
+    size_t   dirPathSize,   ///< [IN]  Size of the directory path buffer.
+    char    *exeNamePtr,    ///< [OUT] Buffer to put the executable's name in.
+    size_t   exeNameSize    ///< [IN]  Size of the executable name buffer.
+)
+{
+    bool     isRoot = false;
+    char     buffer[PATH_MAX + 1];
+    char    *exeStartPtr;
+    ssize_t  result;
+
+    memset(buffer, 0, sizeof(buffer));
+    result = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
+    if (result < 0)
+    {
+        if (errno == ENOENT)
+        {
+            return LE_NOT_FOUND;
+        }
+        return LE_FAULT;
+    }
+
+    exeStartPtr = strrchr(buffer, '/');
+    if (exeStartPtr != NULL)
+    {
+        isRoot = (exeStartPtr == buffer);
+        *exeStartPtr = '\0';
+        ++exeStartPtr;
+    }
+    else
+    {
+        exeStartPtr = buffer;
+    }
+
+    if (exeNamePtr != NULL)
+    {
+        LE_ASSERT(exeNameSize > 0);
+        if (le_utf8_Copy(exeNamePtr, exeStartPtr, exeNameSize, NULL) != LE_OK)
+        {
+            return LE_OVERFLOW;
+        }
+    }
+
+    if (dirPathPtr != NULL)
+    {
+        LE_ASSERT(dirPathSize > 0);
+        dirPathPtr[0] = '\0';
+
+        if (exeStartPtr != buffer)
+        {
+            if (le_utf8_Copy(dirPathPtr, buffer, dirPathSize, NULL) != LE_OK)
+            {
+                return LE_OVERFLOW;
+            }
+        }
+        else if (isRoot)
+        {
+            if (le_utf8_Copy(dirPathPtr, "/", dirPathSize, NULL) != LE_OK)
+            {
+                return LE_OVERFLOW;
+            }
+        }
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initialize this component
  */
 //--------------------------------------------------------------------------------------------------

@@ -1,0 +1,56 @@
+ARG LEGATO_TARGET="virt-x86"
+ARG FLASH_FILE
+ARG KERNEL_IMG=/data/kernel
+ARG DTB_FILE=/data/target.dtb
+ARG ROOTFS_IMG
+ARG LEGATO_IMG
+ARG USERFS_IMG
+ARG QEMU_ARCH
+ARG QEMU_CONFIG=/data/qemu-config
+ARG QEMU_CONFIG_JSON=/data/qemu.json
+
+FROM alpine
+ARG LEGATO_TARGET
+ARG FLASH_FILE
+ARG KERNEL_IMG
+ARG DTB_FILE
+ARG ROOTFS_IMG
+ARG LEGATO_IMG
+ARG USERFS_IMG
+ARG QEMU_ARCH
+ARG QEMU_CONFIG
+ARG QEMU_CONFIG_JSON
+
+RUN ( \
+        apk add --no-cache qemu-system-${QEMU_ARCH} bash jq \
+    )
+
+ADD data /data/
+
+ENV PID_FILE=/tmp/qemu.pid \
+    DATA_DIR=/data \
+    LEGATO_TARGET=$LEGATO_TARGET \
+    FLASH_FILE=$FLASH_FILE \
+    KERNEL_IMG=$KERNEL_IMG \
+    DTB_FILE=$DTB_FILE \
+    ROOTFS_IMG=$ROOTFS_IMG \
+    LEGATO_IMG=$LEGATO_IMG \
+    USERFS_IMG=$USERFS_IMG \
+    QEMU_CONFIG=$QEMU_CONFIG \
+    QEMU_CONFIG_JSON=$QEMU_CONFIG_JSON
+
+# No offset at the port level, so:
+# - telnet is available on 21
+# - SSH on 22
+# - simu control on 5000
+ENV OFFSET_PORT 0
+
+VOLUME /data
+
+EXPOSE 21 \
+       22 \
+       5000 \
+       8080 \
+       8443
+
+ENTRYPOINT ["/data/legato-qemu"]

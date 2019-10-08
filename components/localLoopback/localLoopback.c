@@ -15,7 +15,6 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "le_comm.h"
-#include "le_rpcProxy.h"
 
 static le_comm_CallbackHandlerFunc_t local_callback_handler;
 static char local_buffer[200];
@@ -40,6 +39,9 @@ LE_SHARED void* le_comm_Create
     le_result_t* resultPtr  ///< [OUT] Return Code
 )
 {
+    LE_UNUSED(argc);
+    LE_UNUSED(argv);
+
     int fd = 1;
     if (resultPtr == NULL)
     {
@@ -53,6 +55,9 @@ LE_SHARED void* le_comm_Create
 
 LE_SHARED le_result_t le_comm_RegisterHandleMonitor (void* handle, le_comm_CallbackHandlerFunc_t handlerFunc, short events)
 {
+    LE_UNUSED(handle);
+    LE_UNUSED(events);
+
     LE_INFO("Registering handle_monitor callback");
 
     local_callback_handler = handlerFunc;
@@ -64,6 +69,7 @@ LE_SHARED le_result_t le_comm_RegisterHandleMonitor (void* handle, le_comm_Callb
 
 LE_SHARED le_result_t le_comm_Delete (void* handle)
 {
+    LE_UNUSED(handle);
     return LE_OK;
 }
 
@@ -78,6 +84,7 @@ LE_SHARED le_result_t le_comm_Connect (void* handle)
 
 LE_SHARED le_result_t le_comm_Disconnect (void* handle)
 {
+    LE_UNUSED(handle);
     return LE_OK;
 }
 
@@ -105,6 +112,7 @@ LE_SHARED le_result_t le_comm_Send (void* handle, const void* buf, size_t len)
 
 LE_SHARED le_result_t le_comm_Receive (void* handle, void* buf, size_t* len)
 {
+    LE_UNUSED(handle);
     LE_INFO("Calling myLocal le_comm_Receive");
 
     if (*len < local_msgsize)
@@ -139,6 +147,7 @@ LE_SHARED int le_comm_GetId
     void* handle
 )
 {
+    LE_UNUSED(handle);
     return 1;
 }
 
@@ -157,5 +166,6 @@ LE_SHARED void* le_comm_GetParentHandle
     void* handle
 )
 {
+    LE_UNUSED(handle);
     return NULL;
 }

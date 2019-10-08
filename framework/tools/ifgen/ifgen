@@ -152,7 +152,7 @@ def ParseArguments(parser, argList):
 
     # fix relative paths for all paths that aren't ''
     args.importDirs = [ os.path.abspath(path) if path else path for path in args.importDirs ]
-    if args.outputDir:
+    if args.outputDir and args.outputDir != '-':
         args.outputDir = os.path.abspath(args.outputDir)
 
     return args
@@ -326,10 +326,15 @@ def Main():
     # Generate requested files from templates
     for fileType, fileName in langPkg.GeneratedFiles.iteritems():
         if args.gen_all or getattr(args, 'gen_%s' % ( fileType.replace('-', '_') )):
-            destPath = os.path.join(args.outputDir, fileName % args.namePrefix)
-            destDir = os.path.dirname(destPath)
-            if destDir and not os.path.exists(destDir):
-                os.makedirs(destDir)
+            if args.outputDir == '-':
+                if args.gen_all:
+                    sys.stderr.write(fileName % args.namePrefix + ":\n")
+                destPath = sys.stdout
+            else:
+                destPath = os.path.join(args.outputDir, fileName % args.namePrefix)
+                destDir = os.path.dirname(destPath)
+                if destDir and not os.path.exists(destDir):
+                    os.makedirs(destDir)
             Template = TemplateEnvironment.get_template(fileName % ('TEMPLATE'))
             Template.stream(args=args,
                             # Although we pass full args, break out a few commonly used arguments

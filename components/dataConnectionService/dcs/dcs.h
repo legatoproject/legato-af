@@ -27,13 +27,15 @@
 #define CFG_PATH_TIME               "time"
 #define CFG_NODE_PROTOCOL           "protocol"
 #define CFG_NODE_SERVER             "server"
+#define CFG_PATH_ETHERNET           "ethernet"
+#define CFG_NODE_ETHERNET_INTERFACE "ethernetInterface"
 
-
-#define LE_DCS_TECHNOLOGY_MAX_COUNT 3  // max # of technologies supported
-#define LE_DCS_TECH_MAX_NAME_LEN 16    // max length of the name of a technology
-#define LE_DCS_CHANNELDBS_MAX LE_DCS_CHANNEL_LIST_ENTRY_MAX // max # of channels supported
-#define LE_DCS_CHANNELDB_EVTHDLRS_MAX 20 // max # of channel monitoring event handlers
-#define LE_DCS_APPNAME_MAX_LEN 32      // max length of an app's name
+#define LE_DCS_TECHNOLOGY_MAX_COUNT    LE_DCS_TECH_MAX  // max # of technologies supported
+#define LE_DCS_TECH_MAX_NAME_LEN       16 // max length of the name of a technology
+#define LE_DCS_CHANNELDBS_MAX          LE_DCS_CHANNEL_LIST_ENTRY_MAX // max # of channels supported
+#define LE_DCS_CLIENT_APPS_MAX         20 // max # of simultaneously le_dcs using client apps
+#define LE_DCS_CHANNELDB_EVTHDLRS_MAX  LE_DCS_CLIENT_APPS_MAX // max # of channel event handlers
+#define LE_DCS_APPNAME_MAX_LEN         32 // max length of an app's name
 #define LE_DCS_CHANNEL_QUERY_HDLRS_MAX 20 // max # of channel query requester handlers
 #define LE_DCF_START_REQ_REF_MAP_SIZE  20 // reference map size for Start Requests
 
@@ -149,6 +151,7 @@ uint16_t le_dcs_GetChannelCount(le_dcs_Technology_t tech);
 uint16_t le_dcs_IncrementChannelCount(le_dcs_Technology_t tech);
 le_result_t le_dcs_DecrementChannelCount(le_dcs_Technology_t tech, uint16_t *newCount);
 void le_dcs_AdjustReqCount(le_dcs_channelDb_t *channelDb, bool up);
+LE_SHARED uint16_t le_dcs_GetReqCount(void);
 LE_SHARED le_dcs_EventHandlerRef_t le_dcs_AddEventHandler(
     le_dcs_ChannelRef_t channelRef, le_dcs_EventHandlerFunc_t channelHandlerPtr, void *contextPtr);
 LE_SHARED void le_dcs_RemoveEventHandler(le_dcs_EventHandlerRef_t channelHandlerRef);
@@ -173,7 +176,7 @@ LE_SHARED void le_dcs_EventNotifierTechStateTransition(le_dcs_Technology_t tech,
 LE_SHARED le_dcs_channelDb_t *le_dcs_GetChannelDbFromRef(le_dcs_ChannelRef_t channelRef);
 LE_SHARED le_dcs_channelDb_t *le_dcs_GetChannelDbFromName(const char *channelName,
                                                           le_dcs_Technology_t tech);
-le_dcs_ChannelRef_t le_dcs_CreateChannelDb(le_dcs_Technology_t tech, const char *channelName);
+LE_SHARED le_dcs_ChannelRef_t le_dcs_CreateChannelDb(le_dcs_Technology_t tech, const char *channelName);
 le_dcs_channelDb_t *DcsDelChannelEvtHdlr(le_dcs_EventHandlerRef_t hdlrRef);
 le_dcs_channelDbEventHdlr_t *dcsChannelDbEvtHdlrInit(void);
 void dcsChannelEvtHdlrSendNotice(le_dcs_channelDb_t *channelDb, le_msg_SessionRef_t appSessionRef,

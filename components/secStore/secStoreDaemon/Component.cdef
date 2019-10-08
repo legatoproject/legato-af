@@ -18,6 +18,7 @@ requires:
     {
         $LEGATO_SECSTORE_PA_DEFAULT
         $LEGATO_SECSTORE_PA
+        $LEGATO_SECSTORE_PA_TZ
         $LEGATO_ROOT/components/appCfg
         $LEGATO_ROOT/components/watchdogChain
     }
@@ -26,6 +27,7 @@ requires:
     {
         le_appInfo.api
         le_update.api
+        le_instStat.api
     }
 }
 

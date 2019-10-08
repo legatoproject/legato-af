@@ -1,19 +1,28 @@
 /** @page tools Tools
 
 To download, install and configure your development environment, Legato recommends using
-@subpage toolsLeaf. Leaf is a a stand alone tool that will set up and customize your development
+@ref toolsLeaf. Leaf is a a stand alone tool that will set up and customize your development
 environment and get you developing quickly. Leaf is also @b profile @b aware, meaning that you can
 easily switch to a new version of Legato or a different target and automatically update your dev
 environment to use the environment variables and toolchain specific to that profile.
 
+Alternatively, you can clone the source code from our @ref toolsGerrit server but you must set up
+your development environment @ref basicBuild "manually".
+
+To configure the Legato Application Framework we provide a @ref toolsKconfig "Kconfig menu system"
+to enable or disable Framework features.
+
 | Section                           | Description                                                  |
 | --------------------------------- | ------------------------------------------------------------ |
-| @ref toolsLeaf                    | Download, Install and Configure your development environment |
+| @subpage toolsLeaf                | Download, Install and Configure your development environment |
+| @subpage toolsGerrit              | Clone the source code of both Legato and the Linux Distros   |
+| @subpage toolsKconfig             | Configure the Legato Application Framework                   |
+
+@note If you change options within Kconfig you must rebuild the framework by running
+      @c make @c <target>.
 
 Once you've set up your development environment, Legato contains Tools that will help you configure
 and diagnose your target or dev machine and build Systems, Apps and Components for Legato.
-
-They are broken down into 3 categories:
 
 | Section                           | Description                                                  |
 | --------------------------------- | ------------------------------------------------------------ |
@@ -21,16 +30,15 @@ They are broken down into 3 categories:
 | @subpage toolsTargetMgmt          | Tools for managing target devices (run on Linux dev machine) |
 | @subpage toolsBuild               | Tools for building software (run on Linux dev machine)       |
 
-
 @note When using Leaf workspace manager all the environment configuration is done for your target,
 and you are able to build for multiple targets by switching profiles. There is no need to run
 @c bin/legs or other shell configuration steps. Running @c leaf @c shell will drop you into a
-configurable environment that you can automatically run any of the Target Management or Build Tools.
+configurable environment that automatically runs any of the Target Management or Build Tools.
 
 If you have downloaded, installed and configured your environment manually; before running tools on
- your host machine you will need to configure your shell.
+your development machine you will need to configure your shell.
 
-<h1> Configuring your Shell (without Leaf) </h1>
+<h1> Manually Configure a Shell (without Leaf) </h1>
 
 Some of the Legato tools need certain environment variables to be set. @ref toolsLeaf will take care
 of the environment set up for you or if you have set up your environment manually there are two ways
@@ -51,7 +59,7 @@ You can run an interactive bash shell configured for Legato by running
 $ bin/legs
 @endcode
 
-After running @c legs, you can @c exit the shell at any time to terminate @c legs and restore your
+After running @c legs, @c exit the shell at any time to terminate @c legs and restore your
 shell's environment.
 
 @warning If you have two Legato framework versions installed on your PC, to switch versions you
@@ -59,7 +67,7 @@ shell's environment.
 
 <h2> bin/configlegatoenv </h2>
 
-You can use @c configlegatoenv as alternative to @c bin/legs:
+Use @c configlegatoenv as alternative to @c bin/legs:
 
 @code
 $ source bin/configlegatoenv

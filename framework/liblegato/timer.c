@@ -438,8 +438,6 @@ static Timer_t *GetTimer
     Lock();
     retVal = le_ref_Lookup(SafeRefMap, timerRef);
     Unlock();
-    LE_FATAL_IF(retVal == NULL, "Invalid timer reference %p.", timerRef);
-
     return retVal;
 }
 
@@ -681,6 +679,7 @@ void le_timer_Delete
 )
 {
     Timer_t* timerPtr = GetTimer(timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     // If the timer is running, stop it first.
     if ( timerPtr->isActive )
@@ -715,6 +714,7 @@ le_result_t le_timer_SetHandler
 )
 {
     Timer_t* timerPtr = GetTimer(timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     if ( timerPtr->isActive )
     {
@@ -750,6 +750,7 @@ le_result_t le_timer_SetInterval
 )
 {
     Timer_t* timerPtr = GetTimer(timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     if ( le_clk_Equal(timerPtr->interval, interval))
     {
@@ -796,6 +797,7 @@ le_clk_Time_t le_timer_GetInterval
 //--------------------------------------------------------------------------------------------------
 {
     Timer_t* timerPtr = GetTimer(timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     return (timerPtr->interval);
 }
@@ -850,6 +852,7 @@ uint32_t le_timer_GetMsInterval
 //--------------------------------------------------------------------------------------------------
 {
     Timer_t* timerPtr = GetTimer(timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     return ((timerPtr->interval.sec * 1000) + (timerPtr->interval.usec / 1000));
 }
@@ -877,6 +880,7 @@ le_result_t le_timer_SetRepeat
 )
 {
     Timer_t* timerPtr = GetTimer(timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     if ( timerPtr->isActive )
     {
@@ -909,6 +913,7 @@ le_result_t le_timer_SetWakeup
 )
 {
     Timer_t* timerPtr = GetTimer(timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     if ( timerPtr->isActive )
     {
@@ -942,6 +947,7 @@ le_result_t le_timer_SetContextPtr
 )
 {
     Timer_t* timerPtr = GetTimer(timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     if ( timerPtr->isActive )
     {
@@ -973,6 +979,7 @@ void* le_timer_GetContextPtr
 )
 {
     Timer_t* timerPtr = GetTimer(timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     return timerPtr->contextPtr;
 }
@@ -998,6 +1005,7 @@ uint32_t le_timer_GetExpiryCount
 )
 {
     Timer_t* timerPtr = GetTimer(timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     return timerPtr->expiryCount;
 }
@@ -1022,6 +1030,7 @@ le_clk_Time_t le_timer_GetTimeRemaining
 {
     le_clk_Time_t    relTime;
     Timer_t         *timerPtr = GetTimer(timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     // Get current time.
     relTime = clk_GetRelativeTime(timerPtr->isWakeupEnabled);
@@ -1083,6 +1092,7 @@ le_result_t le_timer_Start
 )
 {
     Timer_t* timerPtr = GetTimer(timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     if ( timerPtr->isActive )
     {
@@ -1127,6 +1137,7 @@ le_result_t le_timer_Stop
 )
 {
     Timer_t* timerPtr = GetTimer(timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     if ( ! timerPtr->isActive )
     {
@@ -1156,6 +1167,9 @@ void le_timer_Restart
     le_timer_Ref_t timerRef      ///< [IN] (Re)start this timer object
 )
 {
+    Timer_t* timerPtr = GetTimer(timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
+
     // Ignore the error if the timer is not currently running
     (void)le_timer_Stop(timerRef);
 
@@ -1178,6 +1192,7 @@ bool le_timer_IsRunning
 )
 {
     Timer_t* timerPtr = GetTimer(timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     return timerPtr->isActive;
 }

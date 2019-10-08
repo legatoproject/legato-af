@@ -1,7 +1,7 @@
 /** @page aboutReleaseNotes Release Notes
 
-Version: <b>Legato 19.04.0</b><br>
-Date: <b>May 10, 2019</b><br>
+Version: <b>Legato 19.09.0</b><br>
+Date: <b>Oct 4th, 2019</b><br>
 @ref aboutLicenses "Legato Application Framework Licensing Information"
 
 Visit the <a href="https://legato.io/releases">release page</a> to @b download the tarball,
@@ -19,75 +19,57 @@ Update your profile to the latest version:
 $ leaf update
 @endverbatim
 
-@section rn1904_Features New Features
+@section rn1909_Features New Features
 
-List of new features in the 19.04 Release:
+List of new features in the 19.09 Release:
 
-@subsection rn1904_Features_exfeatures Experimental Features Section
+The Legato 19.09 Release only contains bug fixes see @ref rn1909_Fixes for the list of fixed issues.
 
-We are now releasing alpha and beta features as experimental features within Legato. The
-current experimental features are @ref c_le_dcs and @ref conceptsRPC. Experimental features are not
-enabled by default in Legato and must be configured with @ref kconfigDescription.
+@section rn1909_BFeatures Beta Features
 
-To enable Experimental Features within KConfig:
-@verbatim
-make menuconfig_<target>
+There are no Beta Features for this release.
 
-General Setup
-  -> Prompt for experimental (alpha-quality) features
-@endverbatim
+@section rn1909_AFeatures Alpha Features
 
-@subsection rn1904_Features_dataConnection Migrate from le_data to le_dcs
-
-The le_data API (@ref c_le_data le_data.api) has been refactored to use le_dcs
-(@ref c_le_dcs le_dcs.api).
-This addresses unexpected behaviors when using both le_data and le_dcs API simultaneously.
-
-@subsection rn1904_Features_wifi New wifi configuration APIs
-
-Introduced new wifi APIs to configure access points for 802.11 n and/or ac
-(@ref c_le_wifi_ap le_wifiAp.api).
-
-@section rn1904_BFeatures Beta Features
-
-@section rn1904_AFeatures Alpha Features
-
-The following are the list of features that have been added into the 19.04 Release but are still
+The following are the list of features that have been added into the 19.09 Release but are still
 being developed and should not be used on production targets. Please provide feedback for these
 features on our [forums](https://forum.legato.io/):
 
-@subsection rn1904_AFeatures_RPC Legato RPC
+@subsection rn1909_AFeatures_RPC Legato RPC
 
-Provide legato RPC as an experimental feature (@ref conceptsRPC Remote procedure call). Please refer
-to @ref getStartRPC Legato RPC on how to get started and also the current limitations.
+RPC has been added as an experimental feature (@ref conceptsRPC Remote procedure call). Please refer
+to @ref getStartRPC Legato RPC on how to get started.
 
-@subsection rn1904_AFeatures_IDE Experimental IDE
+@subsection rn1909_AFeatures_IDE Experimental IDE
 
 The Legato team has launched the @b alpha version of a @ref tools_vsCode "Legato Plugin for VSCode".
 
-@section rn1904_Fixes Fixed Issues
+@section rn1909_Fixes Fixed Issues
 
-All changes are tagged in GitHub as "19.04.0".  The full list of changes and commit
+All changes are tagged in GitHub as "19.09.0".  The full list of changes and commit
 messages can be found on GitHub.
 
-- [Legato AF 19.04.0 Fixes](https://github.com/legatoproject/legato-af/commits/19.04.0)
+- [Legato Application Framework 19.09.0 Fixes](https://github.com/legatoproject/legato-af/commits/19.09.0)
+- [Legato WiFi 19.09.0 Fixes](https://github.com/legatoproject/legato-WiFi/commits/19.09-release)
+- [Legato AirVantage Connector 19.09.0 Fixes](https://github.com/legatoproject/legato-Service-AirVantageConnector/commits/19.09-release)
+- [Legato DataHub 19.09.0 Fixes](https://github.com/legatoproject/legato-Service-DataHub/commits/19.09-release)
 
 @note This is only the list of fixes for the Application Framework and Platform Services, for the
-list of changes in the Platform Adapters and AVC Service view the commits under the tag 19.04.0 in
-individual repositories on GitHub.
+list of changes in the Platform Adapter view the commits under the tag 19.09.0 in individual
+repositories on GitHub.
 
-@section rn1904_KnownIssues Known Issues
+@section rn1909_KnownIssues Known Issues
 
-@subsection rn1904_Constraints Constraints and Limitations
+@subsection rn1909_Constraints Constraints and Limitations
 
-@subsubsection rn1904_ConstraintsLinuxSupport Dev Machine Linux Version
+@subsubsection rn1909_ConstraintsLinuxSupport Dev Machine Linux Version
 
 To develop applications within the Legato Application Framework, a current supported
 [Long Term Support version of Ubuntu Linux](https://www.ubuntu.com/info/release-end-of-life) is
 required on your dev machine (or running in a virtual box on Windows).  Ubuntu 18.04 is the current
 @b recommended version to use on your dev machine.
 
-@subsubsection rn1904_ConstECMUSB ECM-USB modem manager issue
+@subsubsection rn1909_ConstECMUSB ECM-USB modem manager issue
 
 Ubuntu 15.10 and newer has Modem Manager version @c 1.4.12-1ubuntu1  installed by default which
 conflicts with the ECM-USB driver when connecting a target.  Modem manager may cause the Ubuntu

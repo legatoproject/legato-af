@@ -296,7 +296,6 @@ void FindToolChain
     buildParams.cPreProcessorPath = GetToolPath(buildParams.target, "CPP");
     buildParams.cCompilerPath = GetToolPath(buildParams.target, "CC");
     buildParams.cxxCompilerPath = GetToolPath(buildParams.target, "CXX");
-    buildParams.cppPath = GetToolPath(buildParams.target, "CPP");
     buildParams.toolChainDir = GetTargetEnvInfo(buildParams.target, "TOOLCHAIN_DIR");
     buildParams.toolChainPrefix = GetTargetEnvInfo(buildParams.target, "TOOLCHAIN_PREFIX");
     buildParams.sysrootDir = GetSysRootPath(buildParams.target, buildParams.cCompilerPath);
@@ -323,7 +322,6 @@ void FindToolChain
         std::cout << "C pre-processor = " << buildParams.cPreProcessorPath << std::endl;
         std::cout << "C compiler = " << buildParams.cCompilerPath << std::endl;
         std::cout << "C++ compiler = " << buildParams.cxxCompilerPath << std::endl;
-        std::cout << "Preprocessor = " << buildParams.cppPath << std::endl;
         std::cout << "Compiler directory = " << buildParams.toolChainDir << std::endl;
         std::cout << "Compiler prefix = " << buildParams.toolChainPrefix << std::endl;
         std::cout << "Compiler sysroot = " << buildParams.sysrootDir << std::endl;

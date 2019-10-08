@@ -1,0 +1,8 @@
+requires:
+{
+}
+
+sources:
+{
+    mcuWdog.c
+}

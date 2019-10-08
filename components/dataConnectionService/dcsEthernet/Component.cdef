@@ -1,0 +1,26 @@
+requires:
+{
+    api:
+    {
+        le_cfg.api
+        $LEGATO_ROOT/interfaces/le_dcs.api [types-only]
+    }
+    component:
+    {
+        $LEGATO_ROOT/platformAdaptor/dcs/linux/components/le_pa_ethernet
+    }
+}
+
+sources:
+{
+    dcsEthernet.c
+}
+
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/dataConnectionService/dcs
+    -I$LEGATO_ROOT/components/dataConnectionService/dcsDaemon
+    -I$LEGATO_ROOT/components/dataConnectionService/platformAdaptor/inc/
+    -I$LEGATO_ROOT/platformAdaptor/dcs/linux/components/le_pa_ethernet/
+}

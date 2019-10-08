@@ -5,8 +5,6 @@ sources:
 
 cflags:
 {
-    -I$LEGATO_ROOT/components/rpcProxy
-    -I$LEGATO_ROOT/components/rpcProxy/rpcDaemon
     -I$LEGATO_ROOT/framework/liblegato
 
     -I$LEGATO_ROOT/framework/liblegato/linux

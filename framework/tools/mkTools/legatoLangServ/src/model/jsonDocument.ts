@@ -92,7 +92,7 @@ export interface SigningInfo
 {
     privKey: string;
     pubCert: string;
-    signPkg: string;
+    signPkg: boolean;
 }
 
 
@@ -193,6 +193,91 @@ export interface TokenMap
 
 
 
+export interface Sources
+{
+    c: string[]
+    cxx: string[]
+}
+
+
+
+export interface Component
+{
+    name: string;
+    path: string;
+
+    sources: Sources;
+}
+
+
+
+export interface Executable
+{
+    name: string;
+    path: string;
+    components: string[];
+}
+
+
+
+export interface Application
+{
+    name: string;
+    path: string;
+    components: string[];
+    executables: Executable[];
+}
+
+
+
+export interface Module
+{
+    name: string;
+    path: string;
+}
+
+
+
+export interface Command
+{
+    name: string;
+    exePath: string;
+}
+
+
+
+export interface ModuleRef
+{
+    info: Module;
+    optional: boolean;
+}
+
+
+
+export interface System
+{
+    name: string;
+    path: string;
+
+    watchdogKick: string;
+
+    apps: string[];
+    commands: Command[];
+    modules: ModuleRef[];
+}
+
+
+
+export interface Model
+{
+    components: Component[];
+    apps: Application[];
+    modules: Module[];
+    systems: System[];
+}
+
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * .
@@ -202,5 +287,6 @@ export interface Document
 {
     version: string;
     buildParams: BuildParams;
+    model: Model;
     tokenMap: TokenMap;
 }

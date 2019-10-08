@@ -43,7 +43,7 @@ static le_hashmap_Ref_t SystemNameByAsyncHandle = NULL;
  */
 //--------------------------------------------------------------------------------------------------
 LE_MEM_DEFINE_STATIC_POOL(ProxyKeepAliveMessagePool,
-                          RPC_PROXY_MSG_REFERENCE_MAX_NUM,
+                          RPC_PROXY_NETWORK_SYSTEM_MAX_NUM,
                           sizeof(rpcProxy_KeepAliveMessage_t));
 static le_mem_PoolRef_t ProxyKeepAliveMessagesPoolRef = NULL;
 
@@ -235,14 +235,16 @@ void rpcProxyNetwork_StartNetworkConnectionRetryTimer
        le_hashmap_Get(NetworkRecordHashMapByName, systemName);
 
     LE_INFO("Network is unavailable, system-name [%s] - "
-            "starting timer to trigger a retry",
-            systemName);
+            "starting timer (%d secs.) to trigger a retry",
+            systemName,
+            LE_CONFIG_RPC_PROXY_NETWORK_CONNECTION_RETRY_TIMER_INTERVAL);
 
     //
     // Set-up Network Status timer to periodically attempt to bring-up Network Connection
     //
     le_timer_Ref_t  networkStatusTimerRef;
-    le_clk_Time_t timerInterval = { .sec=15, .usec=0 };
+    le_clk_Time_t timerInterval =
+        { .sec=LE_CONFIG_RPC_PROXY_NETWORK_CONNECTION_RETRY_TIMER_INTERVAL, .usec=0 };
 
     // Create a timer to trigger a Network status check
     networkStatusTimerRef = le_timer_Create("Network-Status timer");
@@ -269,9 +271,13 @@ void rpcProxyNetwork_StartNetworkConnectionRetryTimer
     }
     else
     {
+        // Reset Network Record
         networkTimerPtr->record.handle = NULL;
         networkTimerPtr->record.state = NETWORK_DOWN;
         networkTimerPtr->record.type = UNKNOWN;
+
+        // Reset Network Message Re-assembly State-Machine
+        networkTimerPtr->record.messageState.recvState = NETWORK_MSG_IDLE;
     }
 
     // Set Network Status record  in the timer event
@@ -391,6 +397,87 @@ static void StopNetworkKeepAliveService
     // Delete Timer
     le_timer_Delete(networkRecordPtr->keepAliveTimerRef);
     networkRecordPtr->keepAliveTimerRef = NULL;
+
+    //
+    // Next, clean-up the Keep-Alive expiry-timer associated
+    // with this system, if set
+    //
+
+    // Create iterator to traverse ExpiryTimerRefByProxyId map
+    le_hashmap_It_Ref_t iter =
+        le_hashmap_GetIterator(rpcProxy_GetExpiryTimerRefByProxyId());
+
+    // Boolean to track when we are done
+    bool done = false;
+
+    // Traverse the entire ExpiryTimerRefByProxyId map
+    while ((le_hashmap_NextNode(iter) == LE_OK) && !done)
+    {
+        // Get the timer reference
+        le_timer_Ref_t timerRef =
+            (le_timer_Ref_t) le_hashmap_GetValue(iter);
+
+        if (timerRef == NULL)
+        {
+            LE_ERROR("Error retrieving the expiry-timer reference");
+            return;
+        }
+
+        // Retrieve ContextPtr data (Proxy Message Common Header copy)
+        rpcProxy_CommonHeader_t* commonHeaderPtr =
+            (rpcProxy_CommonHeader_t*) le_timer_GetContextPtr(timerRef);
+
+        if (commonHeaderPtr == NULL)
+        {
+            LE_ERROR("Error extracting copy of Proxy Message from timer record");
+            return;
+        }
+
+        // Switch on the Message Type
+        switch (commonHeaderPtr->type)
+        {
+            case RPC_PROXY_KEEPALIVE_REQUEST:
+            {
+                rpcProxy_KeepAliveMessage_t* proxyMessageCopyPtr =
+                    (rpcProxy_KeepAliveMessage_t*) le_timer_GetContextPtr(timerRef);
+
+                if (proxyMessageCopyPtr == NULL)
+                {
+                    LE_ERROR("Unable to retrieve copy of the "
+                             "Proxy Keep-Alive Message Reference");
+                    continue;
+                }
+
+                // Check if this belongs to the system that is being prcoessed
+                if (strcmp(proxyMessageCopyPtr->systemName, systemName) == 0)
+                {
+                    // Found matching Keep-Alive expiry-timer for this system
+                    LE_INFO("Removing KEEPALIVE-Request expiry-timer, "
+                            "system [%s]",
+                            proxyMessageCopyPtr->systemName);
+
+                    // Remove entry from hash-map
+                    le_hashmap_Remove(
+                        rpcProxy_GetExpiryTimerRefByProxyId(),
+                        (void*)(uintptr_t) proxyMessageCopyPtr->commonHeader.id);
+
+                    // Free Proxy Message Copy Memory
+                    le_mem_Release(proxyMessageCopyPtr);
+
+                    // Delete Timer
+                    le_timer_Delete(timerRef);
+                    timerRef = NULL;
+
+                    // We are done
+                    done = true;
+                }
+                break;
+            }
+
+            default:
+                break;
+        } /* End of switch-statement */
+    } /* End of while-loop */
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -494,94 +581,61 @@ le_result_t rpcProxyNetwork_CreateNetworkCommunicationChannel
             systemName,
             le_comm_GetId(networkRecordPtr->handle));
 
-    // Check the handle pointer to see if it is valid
-    if (networkRecordPtr->handle == NULL)
+    // Reset Network Message Re-assembly State-Machine
+    networkRecordPtr->messageState.recvState = NETWORK_MSG_IDLE;
+
+    LE_ASSERT(networkRecordPtr->handle == NULL);
+
+    // Traverse the System-Link array and
+    // retrieve the argc and argv[] arguments configured for the systemName
+    for (uint32_t index = 0; rpcProxyConfig_GetSystemServiceArray(index)->systemName; index++)
     {
-        // Traverse the System-Link array and
-        // retrieve the argc and argv[] arguments configured for the systemName
-        for (uint32_t index = 0; rpcProxyConfig_GetSystemServiceArray(index).systemName; index++)
+        if (strcmp(rpcProxyConfig_GetSystemServiceArray(index)->systemName, systemName) == 0)
         {
-            if (strcmp(rpcProxyConfig_GetSystemServiceArray(index).systemName, systemName) == 0)
+            // Create the Network Connection, passing in the command-line
+            // arguments that were read from the RPC Proxy links configuration
+            networkRecordPtr->handle =
+                le_comm_Create(
+                    rpcProxyConfig_GetSystemServiceArray(index)->argc,
+                    rpcProxyConfig_GetSystemServiceArray(index)->argv,
+                    &result);
+
+            if ((result != LE_OK) ||
+                (networkRecordPtr->handle == NULL))
             {
-                // Create the Network Connection, passing in the command-line
-                // arguments that were read from the RPC Proxy links configuration
-                networkRecordPtr->handle =
-                    le_comm_Create(
-                        rpcProxyConfig_GetSystemServiceArray(index).argc,
-                        rpcProxyConfig_GetSystemServiceArray(index).argv,
-                        &result);
+                LE_INFO("Unable to Create RPC Communication Handle, result [%d]", result);
+                return result;
+            }
 
-                if ((result != LE_OK) && (result != LE_IN_PROGRESS))
-                {
-                    LE_INFO("Unable to Create RPC Communication Handle, result [%d]", result);
-                    return result;
-                }
+            LE_DEBUG("Successfully created network communication channel, "
+                     "system-name [%s], handle [%d], result [%d]",
+                     systemName,
+                     le_comm_GetId(networkRecordPtr->handle),
+                     result);
 
-                LE_DEBUG("Successfully created network communication channel, "
-                         "system-name [%s], handle [%d], result [%d]",
-                         systemName,
-                         le_comm_GetId(networkRecordPtr->handle),
-                         result);
+            // Register Connection Callback Handler to receive asynchronous connections.
+            result = le_comm_RegisterHandleMonitor(
+                        networkRecordPtr->handle,
+                        &AsyncConnectionCallbackHandler,
+                        0x00);
 
-                if (result == LE_IN_PROGRESS)
-                {
-                    //
-                    // Asynchronous Connection sequence
-                    //
+            if (result != LE_OK)
+            {
+                LE_INFO("Unable to register callback handler for "
+                        "RPC responses, result %d", result);
 
-                    // Register Callback Handler to receive asynchronous connections.
-                    result = le_comm_RegisterHandleMonitor(
-                                networkRecordPtr->handle,
-                                &AsyncConnectionCallbackHandler,
-                                0x00);
+                // Delete Communication channel
+                le_comm_Delete(networkRecordPtr->handle);
+                networkRecordPtr->handle = NULL;
+                return result;
+            }
 
-                    if (result != LE_OK)
-                    {
-                        LE_INFO("Unable to register callback handler for "
-                                "RPC responses, result %d", result);
+            break;
+        } // End of if-statement
+    } // End of for-loop statement
 
-                        // Delete Communication channel
-                        le_comm_Delete(networkRecordPtr->handle);
-                        networkRecordPtr->handle = NULL;
-                        return result;
-                    }
-
-                    LE_INFO("Waiting for client connection, system-name [%s], handle [%d]",
-                            systemName,
-                            le_comm_GetId(networkRecordPtr->handle));
-
-                    // Set the Network Type
-                    networkRecordPtr->type = ASYNC;
-
-                    // Store the system-name, using the Asynchronous Communication Handle
-                    le_hashmap_Put(SystemNameByAsyncHandle, networkRecordPtr->handle, systemName);
-
-                    return LE_IN_PROGRESS;
-                }
-                else
-                {
-                    // Register Callback Handler to receive incoming RPC messages asynchronously.
-                    result = le_comm_RegisterHandleMonitor(
-                                networkRecordPtr->handle,
-                                &rpcProxy_AsyncRecvHandler,
-                                POLLIN | POLLRDHUP | POLLERR);
-
-                    if (result != LE_OK)
-                    {
-                        LE_INFO("Unable to register callback handler for "
-                                "RPC responses, result %d", result);
-
-                        // Delete Communication channel
-                        le_comm_Delete(networkRecordPtr->handle);
-                        networkRecordPtr->handle = NULL;
-                        return result;
-                    }
-                }
-                break;
-            } // End of if-statement
-        } // End of for-loop statement
-    }
-
+    // Check if the handle is still NULL.
+    // NOTE: This may occur if the systemName match is not found.
     if (networkRecordPtr->handle == NULL)
     {
         return LE_BAD_PARAMETER;
@@ -589,11 +643,12 @@ le_result_t rpcProxyNetwork_CreateNetworkCommunicationChannel
 
     // Connect RPC Communication channel
     result = le_comm_Connect(networkRecordPtr->handle);
-    if (result != LE_OK)
+    if ((result != LE_OK) && (result != LE_IN_PROGRESS))
     {
         // NOTE: If connect() fails, consider the state of the socket as unspecified.
         // Portable applications should close the socket and create a new one for reconnecting.
-        LE_DEBUG("Unable to connect Communication channel, system-name [%s], handle [%d], result %d",
+        LE_DEBUG("Unable to connect Communication channel, "
+                 "system-name [%s], handle [%d], result %d",
                  systemName,
                  le_comm_GetId(networkRecordPtr->handle),
                  result);
@@ -601,23 +656,54 @@ le_result_t rpcProxyNetwork_CreateNetworkCommunicationChannel
         // Delete Communication channel
         le_comm_Delete(networkRecordPtr->handle);
         networkRecordPtr->handle = NULL;
+        return result;
     }
-    else
+
+    if (result == LE_IN_PROGRESS)
     {
-        LE_DEBUG("Successfully connected network communication channel, system-name [%s], handle [%d]",
-                 systemName,
-                 le_comm_GetId(networkRecordPtr->handle));
-
-        // Mark Network Connection State as UP
-        networkRecordPtr->state = NETWORK_UP;
-        networkRecordPtr->type = SYNC;
-
-        // Start Keep-Alive service to monitor the health of the network
-        StartNetworkKeepAliveService(systemName, networkRecordPtr);
-        LE_INFO("Network Status: UP, system-name [%s], handle [%d] - ready to receive events",
+        LE_INFO("Waiting for out-of-band connection callback, system-name [%s], handle [%d]",
                 systemName,
                 le_comm_GetId(networkRecordPtr->handle));
+
+        // Set the Network Type
+        networkRecordPtr->type = ASYNC;
+
+        // Store the system-name, using the Asynchronous Communication Handle
+        le_hashmap_Put(SystemNameByAsyncHandle, networkRecordPtr->handle, systemName);
+        return result;
     }
+
+    // Register Callback Handler to receive incoming RPC messages asynchronously.
+    result = le_comm_RegisterHandleMonitor(
+                networkRecordPtr->handle,
+                &rpcProxy_AsyncRecvHandler,
+                POLLIN | POLLRDHUP | POLLERR);
+
+    if (result != LE_OK)
+    {
+        LE_INFO("Unable to register callback handler for "
+                "RPC responses, result %d", result);
+
+        // Delete Communication channel
+        le_comm_Delete(networkRecordPtr->handle);
+        networkRecordPtr->handle = NULL;
+        return result;
+    }
+
+    LE_DEBUG("Successfully connected network communication channel, "
+             "system-name [%s], handle [%d]",
+             systemName,
+             le_comm_GetId(networkRecordPtr->handle));
+
+    // Mark Network Connection State as UP
+    networkRecordPtr->state = NETWORK_UP;
+    networkRecordPtr->type = SYNC;
+
+    // Start Keep-Alive service to monitor the health of the network
+    StartNetworkKeepAliveService(systemName, networkRecordPtr);
+    LE_INFO("Network Status: UP, system-name [%s], handle [%d] - ready to receive events",
+            systemName,
+            le_comm_GetId(networkRecordPtr->handle));
 
     return result;
 }
@@ -670,19 +756,15 @@ void rpcProxyNetwork_DeleteNetworkCommunicationChannel
     // Set Network Connection state to DOWN
     networkRecordPtr->state = NETWORK_DOWN;
 
+    // Reset Network Message Re-assembly State-Machine
+    networkRecordPtr->messageState.recvState = NETWORK_MSG_IDLE;
+
     // Stop Network Keep-Alive service
     StopNetworkKeepAliveService(systemName, networkRecordPtr);
 
-    if (networkRecordPtr->type != ASYNC)
-    {
-        // Start Network Connection Retry timer to periodically
-        // attempt to bring-up Network Connection
-        rpcProxyNetwork_StartNetworkConnectionRetryTimer(systemName);
-    }
-    else
-    {
-        LE_INFO("Waiting for client connection, system-name [%s]", systemName);
-    }
+    // Start Network Connection Retry timer to periodically
+    // attempt to bring-up Network Connection
+    rpcProxyNetwork_StartNetworkConnectionRetryTimer(systemName);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -784,22 +866,6 @@ le_result_t rpcProxyNetwork_ConnectNetworkCommunicationChannel
     {
         LE_INFO("Unable to register callback handler for RPC responses, result %d", result);
 
-        // Delete Communication channel
-        le_comm_Delete(handle);
-        return result;
-    }
-
-    // Connect RPC Communication channel
-    result = le_comm_Connect(handle);
-    if (result != LE_OK)
-    {
-        // NOTE: If connect() fails, consider the state of the socket as unspecified.
-        // Portable applications should close the socket and create a new one for reconnecting.
-        LE_INFO("Unable to connect Communication channel, system-name [%s], handle [%d], result %d",
-                systemName,
-                le_comm_GetId(handle),
-                result);
-
         // Unable to estblish Network Connection
         // Start Network Retry Timer
         rpcProxyNetwork_StartNetworkConnectionRetryTimer(systemName);
@@ -808,26 +874,30 @@ le_result_t rpcProxyNetwork_ConnectNetworkCommunicationChannel
         le_comm_Delete(handle);
         return result;
     }
-    else
+
+    LE_INFO("Network Status: UP, system-name [%s], handle [%d] - ready to receive events",
+            systemName,
+            le_comm_GetId(handle));
+
+    // Mark Network Connection State as UP
+    networkRecordPtr->state = NETWORK_UP;
+
+    if (parentHandlePtr != handle)
     {
-        LE_INFO("Network Status: UP, system-name [%s], handle [%d] - ready to receive events",
-                systemName,
-                le_comm_GetId(handle));
-
-        // Mark Network Connection State as UP
-        networkRecordPtr->state = NETWORK_UP;
-
-        // Store the new connection handle
-        networkRecordPtr->handle = handle;
-
-        // Start Keep-Alive service to monitor the health of the network
-        StartNetworkKeepAliveService(systemName, networkRecordPtr);
-
-        // Start the Advertise-Service sequence for services being hosted by the RPC Proxy
-        // NOTE:  The advertise-service will only be completed once we have successfully performed
-        //        a connect-service on the far-side
-        rpcProxy_AdvertiseServices(systemName);
+        // Delete the parent handle before taking the new connection handle
+        le_comm_Delete(parentHandlePtr);
     }
+
+    // Store the new connection handle
+    networkRecordPtr->handle = handle;
+
+    // Start Keep-Alive service to monitor the health of the network
+    StartNetworkKeepAliveService(systemName, networkRecordPtr);
+
+    // Start the Advertise-Service sequence for services being hosted by the RPC Proxy
+    // NOTE:  The advertise-service will only be completed once we have successfully performed
+    //        a connect-service on the far-side
+    rpcProxy_AdvertiseServices(systemName);
 
     return result;
 }
@@ -937,7 +1007,8 @@ le_result_t rpcProxyNetwork_ProcessKeepAliveResponse
     if (networkRecordPtr->state == NETWORK_DOWN)
     {
         // Inconsistent state
-        LE_ERROR("Sanity Check: Unexpected Network state, system [%s]", proxyMessagePtr->systemName);
+        LE_ERROR("Sanity Check: Unexpected Network state, system [%s]",
+                 proxyMessagePtr->systemName);
     }
 
     // Retrieve and delete the timer associated with Proxy Message ID
@@ -950,8 +1021,8 @@ le_result_t rpcProxyNetwork_ProcessKeepAliveResponse
         rpcProxy_KeepAliveMessage_t* proxyMessageCopyPtr = NULL;
 
         LE_DEBUG("Deleting timer for KEEPALIVE-Request, '%s', id [%" PRIu32 "]",
-                proxyMessagePtr->systemName,
-                proxyMessagePtr->commonHeader.id);
+                 proxyMessagePtr->systemName,
+                 proxyMessagePtr->commonHeader.id);
 
         // Remove timer entry associated with Proxy Message ID from hash-map
         le_hashmap_Remove(rpcProxy_GetExpiryTimerRefByProxyId(),
@@ -1009,30 +1080,25 @@ void rpcProxyNetwork_SendKeepAliveRequest
     const char* systemName ///< System name
 )
 {
-    rpcProxy_KeepAliveMessage_t  proxyMessage;
-    rpcProxy_KeepAliveMessage_t *proxyMessageCopyPtr = NULL;
+    rpcProxy_KeepAliveMessage_t *proxyMessagePtr = NULL;
     le_result_t                  result;
 
+    // Allocate memory for a Proxy Message copy
+    proxyMessagePtr = le_mem_ForceAlloc(ProxyKeepAliveMessagesPoolRef);
+
     // Create an Keep-Alive Request Message
-    proxyMessage.commonHeader.id = rpcProxy_GenerateProxyMessageId();
-    proxyMessage.commonHeader.type = RPC_PROXY_KEEPALIVE_REQUEST;
-    proxyMessage.commonHeader.serviceId = 0;
+    proxyMessagePtr->commonHeader.id = rpcProxy_GenerateProxyMessageId();
+    proxyMessagePtr->commonHeader.type = RPC_PROXY_KEEPALIVE_REQUEST;
+    proxyMessagePtr->commonHeader.serviceId = 0;
 
     // Set the System-Name
-    memcpy(proxyMessage.systemName, systemName, sizeof(proxyMessage.systemName));
+    memcpy(proxyMessagePtr->systemName, systemName, sizeof(proxyMessagePtr->systemName));
 
     LE_INFO("Sending Proxy KEEPALIVE-Request Message, id [%" PRIu32 "]",
-             proxyMessage.commonHeader.id);
-
-    // Allocate memory for a Proxy Message copy
-    proxyMessageCopyPtr = le_mem_ForceAlloc(ProxyKeepAliveMessagesPoolRef);
-
-    // Make a copy of the Proxy Message
-    // (NOTE: Needs to be done prior to calling SendMsg)
-    memcpy(proxyMessageCopyPtr, &proxyMessage, sizeof(proxyMessage));
+             proxyMessagePtr->commonHeader.id);
 
     // Send Proxy Message to far-side
-    result = rpcProxy_SendMsg(systemName, &proxyMessage);
+    result = rpcProxy_SendMsg(systemName, proxyMessagePtr);
     if (result != LE_OK)
     {
         LE_ERROR("le_comm_Send failed, result %d", result);
@@ -1043,7 +1109,7 @@ void rpcProxyNetwork_SendKeepAliveRequest
     // we do not hear back from the far-side RPC Proxy
     //
     le_timer_Ref_t  keepAliveRequestTimerRef;
-    le_clk_Time_t  timerInterval = {.sec=RPC_PROXY_NETWORK_KEEPALIVE_REQUEST_TIMER_INTERVAL,
+    le_clk_Time_t  timerInterval = {.sec=RPC_PROXY_NETWORK_KEEPALIVE_TIMEOUT_TIMER_INTERVAL,
                                     .usec=0};
 
     // Create a timer to handle "lost" requests
@@ -1053,7 +1119,7 @@ void rpcProxyNetwork_SendKeepAliveRequest
     le_timer_SetWakeup(keepAliveRequestTimerRef, false);
 
     // Set Proxy Message (copy) in the timer event
-    le_timer_SetContextPtr(keepAliveRequestTimerRef, proxyMessageCopyPtr);
+    le_timer_SetContextPtr(keepAliveRequestTimerRef, proxyMessagePtr);
 
     // Start timer
     le_timer_Start(keepAliveRequestTimerRef);
@@ -1061,12 +1127,13 @@ void rpcProxyNetwork_SendKeepAliveRequest
     // Store the timerRef in a hashmap, using the Proxy Message ID as a key,
     // in order to retrieve it in the event we receive a response
     le_hashmap_Put(rpcProxy_GetExpiryTimerRefByProxyId(),
-                   (void*)(uintptr_t) proxyMessageCopyPtr->commonHeader.id,
+                   (void*)(uintptr_t) proxyMessagePtr->commonHeader.id,
                    keepAliveRequestTimerRef);
 
-    LE_INFO("Starting timer for KEEPALIVE-Request, '%s', id [%" PRIu32 "]",
-             systemName,
-             proxyMessageCopyPtr->commonHeader.id);
+    LE_INFO("Starting timer (%d secs.) for KEEPALIVE-Request, '%s', id [%" PRIu32 "]",
+            RPC_PROXY_NETWORK_KEEPALIVE_TIMEOUT_TIMER_INTERVAL,
+            systemName,
+            proxyMessagePtr->commonHeader.id);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1080,12 +1147,53 @@ static void AsyncConnectionCallbackHandler
     short events ///< Event bit-mask
 )
 {
-    le_result_t result;
+    le_result_t result = LE_OK;
 
-    LE_INFO("Asynchronous Connection Callback function triggered, handle [%d]",
-            le_comm_GetId(handle));
+    LE_INFO("Asynchronous Connection Callback function triggered, "
+            "handle [%d], events [%d]",
+            le_comm_GetId(handle),
+            events);
 
-    // New File handle - connect the network communication channel
+    // Check if this is an error condition
+    if (events & POLLERR)
+    {
+        // Time-out error waiting for network connection
+        // Retrieve the system-name, using the Handle
+        char* systemName =
+            le_hashmap_Get(SystemNameByAsyncHandle, handle);
+
+        if (systemName == NULL)
+        {
+            LE_ERROR("Unable to retrieve system-name, "
+                     "handle [%d] - unknown system", le_comm_GetId(handle));
+            return;
+        }
+
+        // Retrieve the network-record
+        NetworkRecord_t* networkRecordPtr =
+            le_hashmap_Get(NetworkRecordHashMapByName, systemName);
+
+        if (networkRecordPtr == NULL)
+        {
+            LE_ERROR("Unable to connect network communication channel, "
+                     "system-name [%s] - unknown system", systemName);
+            return;
+        }
+
+        // Assert that this is the same handle that
+        // was created through le_comm_Create
+        LE_ASSERT(handle == networkRecordPtr->handle);
+
+        // Delete Communication channel
+        le_comm_Delete(networkRecordPtr->handle);
+        networkRecordPtr->handle = NULL;
+
+        // Start Network Retry Timer
+        rpcProxyNetwork_StartNetworkConnectionRetryTimer(systemName);
+        return;
+    }
+
+    // Process network connection event
     result = rpcProxyNetwork_ConnectNetworkCommunicationChannel(handle);
     if (result != LE_OK)
     {
@@ -1108,7 +1216,7 @@ le_result_t rpcProxyNetwork_Initialize
     // Initialize memory pool for allocating Keep-Alive messages.
     ProxyKeepAliveMessagesPoolRef = le_mem_InitStaticPool(
                                          ProxyKeepAliveMessagePool,
-                                         RPC_PROXY_MSG_REFERENCE_MAX_NUM,
+                                         RPC_PROXY_NETWORK_SYSTEM_MAX_NUM,
                                          sizeof(rpcProxy_KeepAliveMessage_t));
 
     // Initialize memory pool for allocating Network Timer Records.

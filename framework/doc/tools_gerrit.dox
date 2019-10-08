@@ -1,0 +1,127 @@
+/** @page toolsGerrit Gerrit
+
+Gerrit is a web based code review system for Git projects.  The Legato Application Framework uses
+Gerrit to provide a way for users to clone both the open source code and proprietary apps/libraries
+that are needed to build and configure the Legato Application Framework and a Linux
+Distribution on your target.
+
+Legato provides its code both on GitHub (open source components only) and on our own
+Gerrit server (open source + proprietary code).  Downloading the code from GitHub will exclude
+the following Sierra Wireless Proprietary apps that are needed for communication with
+AirVantage:
+- @c atQmiLinker
+- @c atAirVantage
+- @c qmiAirVantage
+
+The Yocto source code (to rebuild the Linux Distro) can only be provided by our Gerrit instance
+because many 3rd party proprietary binaries (that are not open source) are used to communicate with
+the modem hardware are included in the Yocto source code.
+
+@note In the future you will also be able to upstream changes and patches to the Legato team for
+inclusion in our builds.
+
+@section toolsGerrit_setup First Time Set up
+
+Before being able to download and use the source code for both Legato and Linux users must sign in
+to Gerrit and set up ssh keys to their dev machine.  Once the ssh keys are set up then you are
+able to pull the source code and get all the tracked changes.
+
+The following steps only need to be done the first time you are connecting your development machine
+to Legato Gerrit.
+
+Visit https://gerrit.legato.io
+
+If you don't have an account click @b Register and create an account with AirVantage. In the future
+you will be able to use existing accounts created on source.sierrawireless.com and other Sierra
+sites.
+
+Once you have an account click on @b Sign @b In and enter in your user name and password.
+
+After you have successfully signed in click your user id in the right hand corner and choose
+@b Settings.
+
+Under the Profile settings enter in a @b user @b name (it must be unique for the site). This will be
+the user name you use to connect to Gerrit.
+
+If you already have a @c ~/.ssh/id_rsa.pub created, open it and copy & paste the contents into the
+box labeled <b>New SSH Key</b>, then click on <b>Add New SSH Key</b>.
+
+If you have not created RSA keys for your linux development machine, follow these steps:
+- From the Terminal or Git Bash, run @c ssh-keygen
+- Confirm the default path @c .ssh/id_rsa
+- Enter a passphrase (recommended) or leave it blank. Remember this passphrase, as you will need it
+  to unlock the key whenever you use it.
+- Open @c ~/.ssh/id_rsa.pub and copy & paste the contents into the box labeled New SSH Key, then
+  click on <b>Add New SSH Key</b>.
+
+@note @c id_rsa.pub is your public key and can be shared, while the key contained in id_rsa is your
+private key and should be kept secret.
+
+Your account is now set up for ssh authentication to Legato's Gerrit server and you are ready to
+download the tracked source code.
+
+@section toolsGerrit_repo Repo and Git
+
+Now that you have an account set up, you will be able to use the @b repo tool to clone the
+repositories needed to obtain the source code for both the Legato Application Framework and the
+Linux Distribution.
+
+Repo unifies Git repositories and makes it possible to work with multiple git repositories. The
+repo command augments Git to give a more unified workflow and keep multiple repositories in sync.
+
+For more details on Git, see the [Git documentation](https://git-scm.com/doc).
+
+For more details on Repo, see the
+[Repo command reference](https://source.android.com/setup/develop/repo).
+
+Install Git and Repo:
+@verbatim
+$ sudo apt-get install git
+
+$ sudo apt-get install repo
+@endverbatim
+
+@section toolsGerrit_manifests Manifests
+
+For each new release, a new manifest is published on Gerrit, the manifest will
+clone all the different repositories needed to build either the Legato source code and/or the Linux
+Distribution.
+
+Gerrit manifests can be found by cloning the manifest repo or by
+[browsing the manifest repo](https://gerrit.legato.io/plugins/gitiles/manifest/+/master).
+@verbatim
+git clone ssh://gerrit.legato.io:29418/manifest
+@endverbatim
+
+To clone the latest release of the Legato source code:
+@verbatim
+repo init -u ssh://<userid>@gerrit.legato.io:29418/manifest; repo sync
+@endverbatim
+
+To clone a specific release of Legato or the Linux distribution use repo with the @c -m flag and
+specify the path to the manifest that you wish to clone:
+@verbatim
+repo init -u ssh://<userid>@gerrit.legato.io:29418/manifest -m path/to/the/manifest/manifestName.xml -g default,-cache; repo sync
+@endverbatim
+
+To clone the source code (both Linux and Legato) for a specific release use the @c -m flag and
+specify the path to the manifest.
+
+@verbatim
+repo init -u ssh://<userid>@gerrit.legato.io:29418/manifest -m products/<target>/releases/<ReleaseXX>.xml -g default,-cache; repo sync
+@endverbatim
+
+For example to get Release 13 for the wp76xx target (assumes that your Gerrit user id is the same as
+the linux user):
+@verbatim
+repo init -u ssh://gerrit.legato.io:29418/manifest -m products/wp76xx/releases/Release13.xml -g default,-cache; repo sync
+@endverbatim
+
+@warning If you are downloading the product release, you are only able to upgrade Legato to the
+Legato version that is released with the Sierra Wireless product version. e.g., You can clone the
+Legato version published with Release 13. Any interim Legato versions will need to be cloned into
+their own repository.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

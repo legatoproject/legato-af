@@ -251,7 +251,7 @@ static void* AtHost
                 "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
                 "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
                 "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
-                "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
+                "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
                 "\r\nERROR\r\n"));
 
     LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+DATA=?",
@@ -443,11 +443,17 @@ static void* AtHost
 
     LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+CMEE=2", "\r\nOK\r\n"));
 
+#if LE_CONFIG_ATSERVER_USER_ERRORS
     LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd,
                                      "AT+ERRCODE=\"514\",\"CUSTOM_ERROR: \",\"VERBOSE_MSG\"",
                                      "\r\nCUSTOM_ERROR: VERBOSE_MSG\r\n"
                                      ));
-
+#else
+    LE_ASSERT(LE_OK != SendCommandsAndTest(socketFd, epollFd,
+                                     "AT+ERRCODE=\"514\",\"CUSTOM_ERROR: \",\"VERBOSE_MSG\"",
+                                     "\r\nCUSTOM_ERROR: VERBOSE_MSG\r\n"
+                                     ));
+#endif
     LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd,
                                      "AT+ERRCODE=\"159\",\"+CME ERROR: \"",
                                      "\r\n+CME ERROR: Uplink busy\r\n"

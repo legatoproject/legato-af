@@ -29,6 +29,7 @@
 #ifdef LE_CONFIG_RPC
 typedef uint8_t TagID_t;
 
+#define LE_PACK_EOF                   0
 #define LE_PACK_UINT8                 1
 #define LE_PACK_UINT16                2
 #define LE_PACK_UINT32                3
@@ -50,6 +51,8 @@ typedef uint8_t TagID_t;
 #define LE_PACK_OUT_STRING_POINTER    19
 #define LE_PACK_IN_ARRAY_POINTER      20
 #define LE_PACK_OUT_ARRAY_POINTER     21
+#define LE_PACK_STRING_RESPONSE_SIZE  22
+#define LE_PACK_ARRAY_RESPONSE_SIZE   23
 
 #define LE_PACK_SIZEOF_TAG_ID         sizeof(TagID_t)
 #define LE_PACK_SIZEOF_BOOL           sizeof(bool)
@@ -1050,6 +1053,9 @@ LE_DECLARE_INLINE bool le_pack_PackTaggedArrayHeader
     TagID_t tagId
 )
 {
+    LE_UNUSED(arrayPtr);
+    LE_UNUSED(elementSize);
+
     if (arrayCount > arrayMaxCount)
     {
         return false;

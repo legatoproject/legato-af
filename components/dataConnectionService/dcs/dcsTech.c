@@ -20,6 +20,7 @@
 #include "dcsNet.h"
 #include "dcsCellular.h"
 #include "dcsWifi.h"
+#include "dcsEthernet.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -65,6 +66,9 @@ void *le_dcsTech_CreateTechRef
         case LE_DCS_TECH_WIFI:
             techRef = le_dcsWifi_CreateConnDb(channelName);
             break;
+        case LE_DCS_TECH_ETHERNET:
+            techRef = le_dcsEthernet_CreateConnDb(channelName);
+            break;
         default:
             LE_ERROR("Unsupported technology %d", tech);
     }
@@ -91,6 +95,9 @@ void le_dcsTech_ReleaseTechRef
             break;
         case LE_DCS_TECH_WIFI:
             le_dcsWifi_ReleaseConnDb(techRef);
+            break;
+        case LE_DCS_TECH_ETHERNET:
+            le_dcsEthernet_ReleaseConnDb(techRef);
             break;
         default:
             LE_ERROR("Unsupported technology %d", tech);
@@ -148,6 +155,7 @@ void DcsTechInitQueryChannelList
     memset(&QueryChannel, 0, sizeof(QueryChannel));
     QueryChannel.techPending[LE_DCS_TECH_CELLULAR] = 1;
     QueryChannel.techPending[LE_DCS_TECH_WIFI] = 1;
+    QueryChannel.techPending[LE_DCS_TECH_ETHERNET] = 1;
 }
 
 
@@ -193,6 +201,11 @@ le_result_t le_dcsTech_GetChannelList
             // pending flag still set, until wifi posts a notification about scan completion.
             ret = le_dcsWifi_GetChannelList();
             break;
+        case LE_DCS_TECH_ETHERNET:
+            // For Ethernet the channel list query is a synchronous call. After the function
+            // call below, the list would have been learned back and its pending flag reset
+            ret = le_dcsEthernet_GetChannelList();
+            break;
         default:
             LE_ERROR("Unsupported technology %d", tech);
             ret = LE_UNSUPPORTED;
@@ -232,7 +245,7 @@ le_result_t le_dcsTech_GetNetInterface
     char *channelName;
     le_dcs_channelDb_t *channelDb;
 
-    if ((tech != LE_DCS_TECH_CELLULAR) && (tech != LE_DCS_TECH_WIFI))
+    if ((tech == LE_DCS_TECH_UNKNOWN) || (tech >= LE_DCS_TECH_MAX))
     {
         LE_ERROR("Channel's technology type %s not supported", le_dcs_ConvertTechEnumToName(tech));
         return LE_UNSUPPORTED;
@@ -254,6 +267,9 @@ le_result_t le_dcsTech_GetNetInterface
             break;
         case LE_DCS_TECH_WIFI:
             ret = le_dcsWifi_GetNetInterface(channelDb->techRef, intfName, nameSize);
+            break;
+        case LE_DCS_TECH_ETHERNET:
+            ret = le_dcsEthernet_GetNetInterface(channelDb->techRef, intfName, nameSize);
             break;
         default:
             LE_ERROR("Unsupported technology %d", tech);
@@ -303,6 +319,9 @@ le_result_t le_dcsTech_Start
             break;
         case LE_DCS_TECH_WIFI:
             ret = le_dcsWifi_Start(channelDb->techRef);
+            break;
+        case LE_DCS_TECH_ETHERNET:
+            ret = le_dcsEthernet_Start(channelDb->techRef);
             break;
         default:
             LE_ERROR("Unsupported technology %d", tech);
@@ -358,6 +377,9 @@ le_result_t le_dcsTech_Stop
         case LE_DCS_TECH_WIFI:
             ret = le_dcsWifi_Stop(channelDb->techRef);
             break;
+        case LE_DCS_TECH_ETHERNET:
+            ret = le_dcsEthernet_Stop(channelDb->techRef);
+            break;
         default:
             LE_ERROR("Unsupported technology %d", tech);
             ret = LE_UNSUPPORTED;
@@ -395,6 +417,8 @@ bool le_dcsTech_GetOpState
             return le_dcsCellular_GetOpState(channelDb->techRef);
         case LE_DCS_TECH_WIFI:
             return le_dcsWifi_GetOpState(channelDb->techRef);
+        case LE_DCS_TECH_ETHERNET:
+            return le_dcsEthernet_GetOpState(channelDb->techRef);
         default:
             LE_ERROR("Unsupported technology %s",
                      le_dcs_ConvertTechEnumToName(channelDb->technology));
@@ -535,6 +559,9 @@ le_result_t le_dcsTech_AllowChannelStart
             break;
         case LE_DCS_TECH_WIFI:
             return le_dcsWifi_AllowChannelStart(channelDb->techRef);
+            break;
+        case LE_DCS_TECH_ETHERNET:
+            return le_dcsEthernet_AllowChannelStart(channelDb->techRef);
             break;
         default:
             LE_ERROR("Unsupported technology %s", le_dcs_ConvertTechEnumToName(tech));

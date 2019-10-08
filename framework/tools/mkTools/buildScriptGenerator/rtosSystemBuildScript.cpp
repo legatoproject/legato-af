@@ -78,14 +78,14 @@ void RtosSystemBuildScriptGenerator_t::GenerateLdFlags
 
     if (buildParams.compilerType == mk::BuildParams_t::COMPILER_ARM_RVCT)
     {
-        script << " $$LEGATO_BUILD/framework/lib/liblegato.a\n";
+        script << " $$LEGATO_BUILD/framework/lib-static/liblegato.a\n";
     }
     else
     {
         script << " -Wl,-Map=" <<
             path::MakeAbsolute(path::Combine(buildParams.outputDir, "$target.map")) <<
             " -Wl,--gc-sections -T $$LEGATO_ROOT/framework/rtos/rtos.ld"
-            " \"-L$$LEGATO_BUILD/framework/lib\" -llegato\n";
+            " \"-L$$LEGATO_BUILD/framework/lib-static\" -llegato\n";
     }
 
     script <<
@@ -93,6 +93,7 @@ void RtosSystemBuildScriptGenerator_t::GenerateLdFlags
         "  pplFlags=--entry=le_microSupervisor_Main\n"
         "\n";
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -112,49 +113,91 @@ void RtosSystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
     auto tasksOutputFile = "$builddir/obj/tasks.c.o";
     auto rpcServicesOutputFile = "$builddir/obj/rpcServices.c.o";
 
-    bool rpcEnabled = (!envVars::GetConfigBool("LE_CONFIG_CONFIGURED") ||
-                        envVars::GetConfigBool("LE_CONFIG_RPC"));
-
-
     // Build task list file
     script << "build " << tasksOutputFile << ":"
               "  CompileC " << path::Combine(buildParams.workingDir, "src/tasks.c") << "\n"
               "    cFlags = $cFlags -I$$LEGATO_ROOT/framework/daemons/rtos/microSupervisor\n"
               "\n";
 
-    // Build rpc services file
-    if (rpcEnabled)
+    if (envVars::GetConfigBool("LE_CONFIG_RPC"))
     {
+        // Build rpc services file
         script << "build " << rpcServicesOutputFile << ":"
-            "  CompileC " << path::Combine(buildParams.workingDir, "src/rpcServices.c") << "\n"
-            "    cFlags = $cFlags -I$$LEGATO_ROOT/framework/daemons/rpcProxy/rpcDaemon"
-            " -I$$LEGATO_ROOT/framework/liblegato";
-    }
+                  "  CompileC " << path::Combine(buildParams.workingDir, "src/rpcServices.c");
 
-    std::set<const model::ApiFile_t*> useTypesApis;
-    for (auto &serverEntry : systemPtr->externServerInterfaces)
-    {
-        auto apiFilePtr = serverEntry.second->ifPtr->apiFilePtr;
+        // Create a set of header files that need to be generated for all IPC API interfaces.
+        std::list<std::string> interfaceHeaders;
 
-        script << " -I$builddir/" << apiFilePtr->codeGenDir;
+        // Traverse all External Server Interfaces and add them into the
+        // interface headers list
+        for (auto &serverEntry : systemPtr->externServerInterfaces)
+        {
+            auto componentPtr = serverEntry.second->ifPtr->componentPtr;
 
-        apiFilePtr->GetUsetypesApis(useTypesApis);
-    }
-    for (auto &clientEntry : systemPtr->externClientInterfaces)
-    {
-        auto apiFilePtr = clientEntry.second->ifPtr->apiFilePtr;
+            if (componentPtr->HasCOrCppCode())
+            {
+                componentGeneratorPtr->GetCInterfaceHeaders(interfaceHeaders, componentPtr);
+            }
+            else if (componentPtr->HasJavaCode())
+            {
+                componentGeneratorPtr->GetJavaInterfaceFiles(interfaceHeaders, componentPtr);
+            }
+        }
 
-        script << " -I$builddir/" << apiFilePtr->codeGenDir;
+        // Traverse all External Client Interfaces and add them into the
+        // interface headers list
+        for (auto &serverEntry : systemPtr->externClientInterfaces)
+        {
+            auto componentPtr = serverEntry.second->ifPtr->componentPtr;
 
-        apiFilePtr->GetUsetypesApis(useTypesApis);
-    }
-    for (auto apiFilePtr : useTypesApis)
-    {
-        script << " -I$builddir/" << apiFilePtr->codeGenDir;
-    }
+            if (componentPtr->HasCOrCppCode())
+            {
+                componentGeneratorPtr->GetCInterfaceHeaders(interfaceHeaders, componentPtr);
+            }
+            else if (componentPtr->HasJavaCode())
+            {
+                componentGeneratorPtr->GetJavaInterfaceFiles(interfaceHeaders, componentPtr);
+            }
+        }
 
-    script << "\n"
-        "\n";
+        if (!interfaceHeaders.empty())
+        {
+            // Generate a dependency statement for each interface header
+            script << " || ";
+            std::copy(interfaceHeaders.begin(), interfaceHeaders.end(),
+                      std::ostream_iterator<std::string>(script, " "));
+        }
+
+        script << "\n";
+        script << "    cFlags = $cFlags -I$$LEGATO_ROOT/framework/daemons/rpcProxy/rpcDaemon"
+                  " -I$$LEGATO_ROOT/framework/liblegato";
+
+        std::set<const model::ApiFile_t*> useTypesApis;
+        for (auto &serverEntry : systemPtr->externServerInterfaces)
+        {
+            auto apiFilePtr = serverEntry.second->ifPtr->apiFilePtr;
+
+            script << " -I$builddir/" << apiFilePtr->codeGenDir;
+
+            apiFilePtr->GetUsetypesApis(useTypesApis);
+        }
+        for (auto &clientEntry : systemPtr->externClientInterfaces)
+        {
+            auto apiFilePtr = clientEntry.second->ifPtr->apiFilePtr;
+
+            script << " -I$builddir/" << apiFilePtr->codeGenDir;
+
+            apiFilePtr->GetUsetypesApis(useTypesApis);
+        }
+        for (auto apiFilePtr : useTypesApis)
+        {
+            script << " -I$builddir/" << apiFilePtr->codeGenDir;
+        }
+
+        script << "\n"
+            "\n";
+
+    } // End of LE_CONFIG_RPC
 
     // And link everything together into a system file.  This system file exports only one
     // symbol -- the entry point of the microSupervisor
@@ -164,12 +207,11 @@ void RtosSystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
            << " "
            << tasksOutputFile;
 
-    if (rpcEnabled)
+    // Link the rpcServicesOutputFile into the system if RPC is enabled
+    if (envVars::GetConfigBool("LE_CONFIG_RPC"))
     {
-        script << " "
-               << rpcServicesOutputFile;
+        script << " " << rpcServicesOutputFile;
     }
-
 
     // For each app built by the mk tools for this system,
     for (auto& appEntry : systemPtr->apps)

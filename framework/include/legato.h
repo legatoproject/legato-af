@@ -213,6 +213,7 @@ extern "C" {
 #include "le_pathIter.h"
 #include "le_process.h"
 #include "le_rand.h"
+#include "le_redBlackTree.h"
 #include "le_safeRef.h"
 #include "le_semaphore.h"
 #include "le_signals.h"

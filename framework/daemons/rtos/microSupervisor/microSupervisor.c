@@ -25,7 +25,6 @@
 #include "test.h"
 #include "thread.h"
 #include "timer.h"
-#include <locale.h>
 
 #include <locale.h>
 
@@ -53,7 +52,6 @@
 #  define MIN(a, b)   ((a) < (b) ? (a) : (b))
 #endif
 
-#if NOT_IMPLEMENTED
 //--------------------------------------------------------------------------------------------------
 /**
  * Pool for argument strings.
@@ -61,7 +59,6 @@
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t ArgStringPoolRef;
 LE_MEM_DEFINE_STATIC_POOL(ParentArgStringPool, ARG_STRING_POOL_SIZE, ARG_STRING_POOL_BYTES);
-#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -145,11 +142,20 @@ static void CleanupThread
     {
         le_mem_Release(threadInfoPtr->cmdlinePtr);
     }
+    else
+    {
+        for (int i = 1; i < threadInfoPtr->argc; ++i)
+        {
+            if (threadInfoPtr->argv[i] != NULL)
+            {
+                le_mem_Release((void*)threadInfoPtr->argv[i]);
+            }
+        }
+    }
 
     threadInfoPtr->threadRef = NULL;
 }
 
-#if NOT_IMPLEMENTED
 //--------------------------------------------------------------------------------------------------
 /**
  * Duplicate a string using a memory pool.
@@ -173,7 +179,6 @@ static char *PoolStrDup
     }
     return result;
 }
-#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -203,7 +208,6 @@ static le_result_t StartProc
 
     if (cmdlineStr != NULL)
     {
-#if NOT_IMPLEMENTED
         if (cmdlineStr[0] == '\0')
         {
             taskInfoPtr->argc = 1;
@@ -224,9 +228,6 @@ static le_result_t StartProc
             le_arg_Split(taskPtr->nameStr, taskInfoPtr->cmdlinePtr,
                 &taskInfoPtr->argc, taskInfoPtr->argv);
         }
-#else
-        LE_FATAL("Called unimplemented code path");
-#endif
     }
     else
     {
@@ -235,7 +236,10 @@ static le_result_t StartProc
 
         // Set the program name as the first argument
         taskInfoPtr->argv[0] = taskPtr->nameStr;
-        memcpy(taskInfoPtr->argv + 1, argv, taskInfoPtr->argc * sizeof(const char *));
+        for (i = 1; i < taskInfoPtr->argc; ++i)
+        {
+            taskInfoPtr->argv[i] = PoolStrDup(ArgStringPoolRef, argv[i-1]);
+        }
         taskInfoPtr->argv[taskInfoPtr->argc] = NULL;
     }
 
@@ -460,9 +464,7 @@ LE_SHARED void le_microSupervisor_Main
 )
 {
     const App_t         *currentAppPtr;
-#if NOT_IMPLEMENTED
     le_mem_PoolRef_t     basePoolRef;
-#endif
 
 #if HAVE_PTHREAD_SETNAME
     pthread_setname_np(pthread_self(), __func__);
@@ -470,12 +472,10 @@ LE_SHARED void le_microSupervisor_Main
 
     InitLegatoFramework();
 
-#if NOT_IMPLEMENTED
     basePoolRef = le_mem_InitStaticPool(ParentArgStringPool, ARG_STRING_POOL_SIZE,
         ARG_STRING_POOL_BYTES);
     ArgStringPoolRef = le_mem_CreateReducedPool(basePoolRef, "ArgStringPool",
         ARG_STRING_SMALL_POOL_SIZE, ARG_STRING_SMALL_POOL_BYTES);
-#endif
 
     // Iterate over all apps.  App list is terminated by a NULL entry.
     for (currentAppPtr = _le_supervisor_GetSystemApps();

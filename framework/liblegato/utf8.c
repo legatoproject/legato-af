@@ -171,7 +171,9 @@ le_result_t le_utf8_Copy
 )
 {
     // Check parameters.
-    LE_ASSERT( (destStr != NULL) && (srcStr != NULL) && (destSize > 0) );
+    LE_ASSERT(destStr != NULL);
+    LE_ASSERT(srcStr != NULL);
+    LE_ASSERT(destSize > 0);
 
     // Go through the string copying one character at a time.
     size_t i = 0;

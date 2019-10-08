@@ -155,6 +155,7 @@ config SIM_ENABLE_AUTOSWITCH
   bool "Enable SIM auto switch support"
   depends on QMI
   default y if TARGET_WP76XX
+  default y if TARGET_WP77XX
   default n
   ---help---
   Enable SIM auto switch support.
@@ -192,7 +193,7 @@ menu "Secure Storage"
 
 config ENABLE_SECSTORE_ADMIN
   bool "Enable secure storage administration API"
-  default n
+  default $(b2k,$(SECSTOREADMIN))
   ---help---
   Allow administrative control of the Legato secure storage system.  This
   permits reading, writing, and deleting secure storage files and should be

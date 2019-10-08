@@ -421,6 +421,25 @@ LE_DECLARE_INLINE le_hashmap_Ref_t le_hashmap_Create
     LE_MEM_DEFINE_STATIC_POOL(_hashmap_##name, (capacity), sizeof(le_hashmap_Entry_t));   \
     static le_hashmap_Bucket_t _hashmap_##name##Buckets[LE_HASHMAP_BUCKET_COUNT(capacity)]
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Statically define a hash-map in a specific memory section
+ *
+ * By default static memory will the assigned to the bss or data section of the final object.
+ *  This macro tells the linker to assign to variable to a specific section, sectionName.
+ *  Essentially a "__attribute__((section("sectionName")))"  will be added after the variable
+ *  declaration.
+ *
+ * @note Dynamic hash maps set initial pool to bucket count/2, static hash maps set
+ * pool size to capacity to avoid overflowing the pool.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_HASHMAP_DEFINE_STATIC_IN_SECTION(name, capacity, sectionName)                          \
+    static le_hashmap_Hashmap_t _hashmap_##name##Hashmap __attribute__((section(sectionName)));   \
+    LE_MEM_DEFINE_STATIC_POOL_IN_SECTION(_hashmap_##name, (capacity), sizeof(le_hashmap_Entry_t), \
+                                         sectionName);                                            \
+    static le_hashmap_Bucket_t _hashmap_##name##Buckets[                                          \
+        LE_HASHMAP_BUCKET_COUNT(capacity)] __attribute__((section(sectionName)))
 
 //--------------------------------------------------------------------------------------------------
 /**

@@ -99,12 +99,12 @@ LE_SHARED le_result_t pa_secStore_Read
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Copy the meta file to the specified path.
+ * Write the meta data to the specified path.
  *
  * @return
  *      LE_OK if successful.
- *      LE_NOT_FOUND if the meta file does not exist.
- *      LE_UNAVAILABLE if the sfs is currently unavailable.
+ *      LE_NOT_FOUND if the meta data cannot be retrieved.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
  *      LE_FAULT if there was some other error.
  */
 //--------------------------------------------------------------------------------------------------

@@ -80,7 +80,7 @@
  * Function for retrieving a System-Link element from the System-Link array
  */
 //--------------------------------------------------------------------------------------------------
-const rpcProxy_SystemLinkElement_t rpcProxyConfig_GetSystemLinkArray
+rpcProxy_SystemLinkElement_t rpcProxyConfig_GetSystemLinkArray
 (
     uint32_t index
 );
@@ -110,7 +110,7 @@ const rpcProxy_ExternClient_t* rpcProxyConfig_GetClientReferenceArray
  * Function for retrieving a System-service element from the System-service array
  */
 //--------------------------------------------------------------------------------------------------
-const rpcProxy_SystemServiceConfig_t rpcProxyConfig_GetSystemServiceArray
+LE_SHARED rpcProxy_SystemServiceConfig_t* rpcProxyConfig_GetSystemServiceArray
 (
     uint32_t index
 );
@@ -147,7 +147,13 @@ le_result_t rpcProxyConfig_LoadReferences
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Reads the System-Service Bindings configuration from the ConfigTree.
+ * Abstract function for providing the RPC Proxy Run-time Configuration
+ * for the RPC System-Service Bindings.
+ *
+ * NOTE: For systems with config-tree support, this will be internally provided by the RPC Proxy
+ * component.  While, systems without config-tree support, a third-party component must be
+ * supplied, such as the $SWI_ROOT/components/rpcProxyConfig, to define these
+ * definitions statically.
  *
  * @return
  *      - LE_OK if successful.
@@ -155,7 +161,7 @@ le_result_t rpcProxyConfig_LoadReferences
  *      - LE_BAD_PARAMETER if number of elements exceeds the storage array size.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t rpcProxyConfig_LoadBindings
+LE_SHARED le_result_t rpcProxyConfig_LoadBindings
 (
     void
 );

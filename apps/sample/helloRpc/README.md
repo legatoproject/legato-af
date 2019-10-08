@@ -135,8 +135,7 @@ On System "Alice",
     // Define the System network-link configuration
     // Assuming System "Bob" has an IP address of 192.168.3.2
     // with a TCP Port # 54323
-    rpctool set link Bob LinkToBob argc 2
-    rpctool set link Bob LinkToBob argv "192.168.3.2 54323"
+    rpctool set link Bob LinkToBob "192.168.3.2 54323"
 
 
 On System "Bob" (assuming an IP Address of 192.168.3.2),
@@ -148,8 +147,7 @@ On System "Bob" (assuming an IP Address of 192.168.3.2),
     // Define the System network-link configuration
     // Assuming System "Alice" has an IP address of 192.168.2.2
     // with a TCP Port # 54323
-    rpctool set link Alice LinkToAlice argc 2
-    rpctool set link Alice LinkToAlice argv "192.168.2.2 54323"
+    rpctool set link Alice LinkToAlice "192.168.2.2 54323"
 
 
 To list all configured bindings and system links,

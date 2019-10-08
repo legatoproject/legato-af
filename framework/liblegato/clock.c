@@ -31,7 +31,7 @@
 //--------------------------------------------------------------------------------------------------
 le_clk_Time_t clk_GetRelativeTime
 (
-    bool isWakeup
+    bool isWakeup   ///< true if a waking clock be used, false otherwise
 )
 {
     struct timespec systemTime;

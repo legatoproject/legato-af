@@ -15,7 +15,7 @@ executables:
 #if ${LE_CONFIG_RTOS_TARGET_TOOL_INSPECT} = y
     inspect = (inspect)
 #endif
-#if ${LE_CONFIG_RPC} = y
+#if ${LE_CONFIG_RPC_RUNTIME_CONFIG_TREE} = y
     rpctool = (rpctool)
 #endif
 }

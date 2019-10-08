@@ -1740,7 +1740,7 @@ FUNCTION DeleteCellularNetworkScan
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to delete the list of the Pci Scan Information retrieved with
- * le_mrc_PerformPciNetworkScan().
+ * le_mrc_PerformPciNetworkScan() or le_mrc_PerformPciNetworkScanAsync().
  *
  * @note
  *      On failure, the process exits, so you don't have to worry about checking the returned

@@ -132,12 +132,22 @@
  * parameter value using le_atServer_GetParameter() API. If a parmeter is not parsed with quotes,
  * that parameter is converted to uppercase equivalent.
  *
+ * @subsection atServer_RegistrationHandler Registration Handler
+ *
+ * The AT command handling mechanism may rely on an intermediate handler to reroute the AT commands
+ * to the atServer.
+ * le_atServer_AddCmdRegistrationHandler() installs such a registration handler that will be called
+ * each time a new command is subscribed by an application with le_atServer_AddCommandHandler().
+ *
  * @section atServer_responses Responses
  *
  * @subsection intermediateRsp Intermediate response
  *
  * The application has can send intermediate responses through
  * le_atServer_SendIntermediateResponse().
+ *
+ * @note If le_atServer_SendIntermediateResponse() return LE_FAULT, the final response have to be
+ * sent.
  *
  * @subsection finalResultCode Final result code
  *
@@ -468,10 +478,32 @@ FUNCTION Cmd Create
  *
  */
 //--------------------------------------------------------------------------------------------------
-
 FUNCTION le_result_t Delete
 (
     Cmd commandRef IN   ///< AT command reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for platform-specific command registration.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER CmdRegistrationHandler
+(
+    Cmd            commandRef         IN    ///< AT command reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information when a new AT command is subscribed.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT CmdRegistration
+(
+    CmdRegistrationHandler handler  IN   ///< Handler to called when a new AT command
+                                         ///< is subscribed
 );
 
 //--------------------------------------------------------------------------------------------------

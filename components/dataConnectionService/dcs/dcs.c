@@ -307,6 +307,23 @@ le_result_t le_dcs_GetState
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Return le_dcs's request count back to the caller
+ *
+ * @return
+ *     - the count of channel requests made thru le_dcs API
+ */
+//--------------------------------------------------------------------------------------------------
+uint16_t le_dcs_GetReqCount
+(
+    void
+)
+{
+    return DcsInfo.reqCount;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Adjust the request count of both the given channel and the global count up or down according
  * to the boolean input argument
  */
@@ -677,7 +694,7 @@ void le_dcs_RemoveEventHandler
  * DcsGetSessionRef() when the session app's name is found as DCS_INTERNAL_SESSION_NAME or
  * "dataConnectionService", which confirms the caller being the internal component dcsInternal.
  * This allows le_dcs to distinguish whether an API caller is external or its internal le_data
- * component. In another word, dcsInternal's client session reference in le_dcs is used as 
+ * component. In another word, dcsInternal's client session reference in le_dcs is used as
  * le_data's session reference in its le_dcs API calls.
  */
 //--------------------------------------------------------------------------------------------------
@@ -812,6 +829,51 @@ static void DcsCommandHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Handler function for the close session service
+ */
+//--------------------------------------------------------------------------------------------------
+static void CloseSessionEventHandler
+(
+    le_msg_SessionRef_t sessionRef,
+    void*               contextPtr
+)
+{
+    LE_INFO("Client %p killed, remove allocated resources", sessionRef);
+
+    if (!sessionRef)
+    {
+        LE_ERROR("Failed resource clean up for a null sessionRef upon session closure");
+        return;
+    }
+
+    // Search the data reference used by the killed client
+    le_ref_IterRef_t iterRef = le_ref_GetIterator(dcs_GetRequestRefMap());
+    le_result_t result = le_ref_NextNode(iterRef);
+
+    while (LE_OK == result)
+    {
+        le_msg_SessionRef_t session = (le_msg_SessionRef_t)le_ref_GetValue(iterRef);
+
+        // Check if the session reference saved matches with the current session reference
+        if (session == sessionRef)
+        {
+            // Stop the data channel after moving iterRef to the next node, because in the
+            // stopping this node will be removed.
+            le_dcs_ReqObjRef_t reqRef = (le_dcs_ReqObjRef_t)le_ref_GetSafeRef(iterRef);
+            result = le_ref_NextNode(iterRef);
+            le_dcs_Stop(reqRef);
+        }
+        else
+        {
+            // Move to the next node
+            result = le_ref_NextNode(iterRef);
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  *  Server initialization
  */
 //--------------------------------------------------------------------------------------------------
@@ -828,6 +890,9 @@ COMPONENT_INIT
     }
 
     dcsCreateDbPool();
+
+    // Add a handler to the close session service
+    le_msg_AddServiceCloseHandler(le_dcs_GetServiceRef(), CloseSessionEventHandler, NULL);
 
     DcsCommandEventId = le_event_CreateId("DcsCommandEventId", sizeof(DcsCommand_t));
     le_event_AddHandler("DcsCommand", DcsCommandEventId, DcsCommandHandler);

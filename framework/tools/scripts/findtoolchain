@@ -317,7 +317,7 @@ SelectToolchainDirs() {
         AppendYoctoToolchain "LXSWI*+virt"         "${target}"       'i586-poky-linux'
 
         for prefix in $(ListToolchainPrefix "$target"); do
-            AppendYoctoToolchain "${prefix}" "${target}"
+            AppendYoctoToolchain "${prefix}" "${target}" 'i586-poky-linux'
         done
         ;;
     virt)

@@ -1611,6 +1611,7 @@ static void FinishSystemUpdate
     // Set correct smack label for certain tools
     smack_SetLabelExec("/legato/systems/current/bin/_appStopClient", "admin");
     smack_SetLabelExec("/legato/systems/current/bin/sdir", "framework");
+    smack_SetLabelExec("/legato/systems/current/bin/configEcm", "_");
 
     // Path to the config tree directory in the linux filesystem.
     const char* usersFilePath = "/legato/systems/current/config/users.cfg";

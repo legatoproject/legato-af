@@ -19,7 +19,10 @@ apps:
     hex/test_Hex
     pack/test_Pack
     pathIter/test_PathIter
+#if ${LE_CONFIG_LINUX} = y
+#else
     pipe/test_Pipe
+#endif
 
     memPool/test_MemPool
     hashMap/test_HashMap
@@ -29,7 +32,6 @@ apps:
     eventLoop/test_EventLoop
     timer/test_Timer
     semaphore/test_Semaphore
-    random/test_Random
 #if ${LE_CONFIG_NETWORK} = y
 #if ${LEGATO_TARGET} = hl76
 #else
@@ -55,6 +57,7 @@ apps:
     fd/test_Fd
     issues/test_LE_11195
     json/test_Json
+    rand/test_Rand
 
     /*
      * Helper applications assocated with python tests

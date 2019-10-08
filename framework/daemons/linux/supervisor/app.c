@@ -167,7 +167,7 @@
  * Maximum number of bytes in a permission string for devices.
  */
 //--------------------------------------------------------------------------------------------------
-#define MAX_DEVICE_PERM_STR_BYTES                       3
+#define MAX_DEVICE_PERM_STR_BYTES                       4
 
 
 //--------------------------------------------------------------------------------------------------
@@ -464,6 +464,7 @@ static le_result_t CreateSupplementaryGroups
 
     if (le_cfg_GoToFirstChild(cfgIter) != LE_OK)
     {
+        appRef->numSupplementGids = 0;
         LE_DEBUG("No supplementary groups for app '%s'.", appRef->name);
         le_cfg_CancelTxn(cfgIter);
 
@@ -1871,7 +1872,7 @@ static le_result_t CreateIntermediateDirs
 static bool DoesLinkExist
 (
     app_Ref_t appRef,                   ///< [IN] Application reference.
-    struct stat srcStat,                ///< [IN] Status of the source.
+    const struct stat* srcStatPtr,      ///< [IN] Status of the source.
     const char* destPath                ///< [IN] Destination path.
 )
 {
@@ -1888,18 +1889,18 @@ static bool DoesLinkExist
     else
     {
         // Destination file already exists.  See if it has changed.
-        if (S_ISCHR(srcStat.st_mode) || S_ISBLK(srcStat.st_mode))
+        if (S_ISCHR(srcStatPtr->st_mode) || S_ISBLK(srcStatPtr->st_mode))
         {
             // Special devices need to have same device number but different inode numbers
-            if ((srcStat.st_rdev == destStat.st_rdev) &&
-                (srcStat.st_ino != destStat.st_ino))
+            if ((srcStatPtr->st_rdev == destStat.st_rdev) &&
+                (srcStatPtr->st_ino != destStat.st_ino))
             {
                 return true;
             }
         }
         else
         {
-            if (srcStat.st_ino == destStat.st_ino)
+            if (srcStatPtr->st_ino == destStat.st_ino)
             {
                 // Link already exists.
                 return true;
@@ -1970,7 +1971,7 @@ static le_result_t CreateDirLink
     }
 
     // See if the destination already exists.
-    if (DoesLinkExist(appRef, srcStat, destPath))
+    if (DoesLinkExist(appRef, &srcStat, destPath))
     {
         LE_INFO("Skipping directory link '%s' to '%s': Already exists", srcPtr, destPath);
         return LE_OK;
@@ -2078,7 +2079,7 @@ static le_result_t CreateFileLink
     }
 
     // See if the destination already exists.
-    if (DoesLinkExist(appRef, srcStat, destPath))
+    if (DoesLinkExist(appRef, &srcStat, destPath))
     {
         LE_INFO("Skipping file link '%s' to '%s': Already exists", srcPtr, destPath);
         return LE_OK;
@@ -3232,6 +3233,7 @@ app_Ref_t app_Create
 {
     // Create a new app object.
     App_t* appPtr = le_mem_ForceAlloc(AppPool);
+    memset(appPtr, 0, sizeof(*appPtr));
 
     // Save the config path.
     if (   le_utf8_Copy(appPtr->cfgPathRoot, cfgPathRootPtr, sizeof(appPtr->cfgPathRoot), NULL)

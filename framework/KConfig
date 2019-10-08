@@ -27,7 +27,7 @@ config CUSTOM_FA_PATH
   depends on CUSTOM_FA
   ---help---
   Path of custom OS adaptor source directory relative to the legato/ root
-  directory.  This source directory should contain liblegato/ and daemons/
+  directory.  This source directory should contain liblegato/ and include/
   directories containing the source code needed to support the custom
   operating system.
 
@@ -156,6 +156,8 @@ config ENABLE_SMACK
   bool "Enable SMACK for access controls"
   depends on LINUX
   depends on !TARGET_LOCALHOST
+  depends on !TARGET_VIRT_X86 && !TARGET_VIRT_ARM
+  depends on !TARGET_RASPI
   default !$(b2k,$(DISABLE_SMACK))
   ---help---
   Enable the Simplified Mandatory Access Control Kernel (SMACK) security
@@ -602,5 +604,79 @@ config RPC_PROXY_LIBRARY
   ---help---
     Select this to build the RPC Proxy as a library component
     that can be linked into an application or executable file.
+
+config RPC_RUNTIME_CONFIG_TREE
+  bool "Use ConfigTree to store RPC Run-time configuration"
+  depends on RPC && ENABLE_CONFIG_TREE
+  default y if ENABLE_CONFIG_TREE
+  default n
+  ---help---
+    Select this to enable the RPC Proxy to store dynamic run-time configuration
+    in the Configuration Tree.
+
+config RPC_ENABLE_CONFIG_TREE
+  bool
+  default y if LINUX || RPC_RUNTIME_CONFIG_TREE
+  default n
+
+config RPC_PROXY_SERVICE_BINDINGS_MAX_NUM
+  int "Maximum number of RPC service bindings"
+  depends on RPC
+  range 0 30
+  default 10
+  ---help---
+  The maximum number of simultaneous RPC service bindings.
+
+config RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM
+  int "Maximum number of response message parameters"
+  depends on RPC
+  range 0 32
+  default 32
+  ---help---
+  The maximum number of "out" parameters per response message.
+
+config RPC_PROXY_MAX_MESSAGE
+  int "Maximum size of a RPC message"
+  depends on RPC
+  range 0 4096
+  default 1024
+  ---help---
+  The maximum size of a RPC message that can be sent and received between RPC-enabled systems.
+
+config RPC_PROXY_NETWORK_KEEPALIVE_SERVICE_INTERVAL
+  int "Frequency of RPC Keep-Alive network service (in seconds)"
+  depends on RPC
+  range 1 4294967295
+  default 120
+  ---help---
+  The Frequency of Keep-Alice service, used to monitor the health of a remote RPC-enabled system.
+
+config RPC_PROXY_NETWORK_KEEPALIVE_TIMEOUT_TIMER_INTERVAL
+  int "RPC Keep-Alive time-out period (in seconds)"
+  depends on RPC
+  range 1 4294967295
+  default 30
+  ---help---
+  The length of time the RPC Proxy will wait before declaring a
+  remote RPC-enabled system as unreachable (DOWN).
+
+config RPC_PROXY_NETWORK_CONNECTION_RETRY_TIMER_INTERVAL
+  int "Network connection retry timer (in seconds)"
+  depends on RPC
+  range 1 4294967295
+  default 15
+  ---help---
+  The length of time the RPC Proxy will wait before attempting to
+  re-connect to a remote RPC-enabled system.
+
+config RPC_PROXY_CONNECT_SERVICE_REQUEST_TIMER_INTERVAL
+  int "RPC Connect-Service time-out period (in seconds)"
+  depends on RPC
+  range 1 4294967295
+  default 15
+  ---help---
+  The length of time the RPC Proxy will wait before abandoning a
+  pending connect-service request.
+
 
 endmenu

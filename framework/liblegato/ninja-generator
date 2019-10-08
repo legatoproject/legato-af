@@ -30,6 +30,12 @@ then
     exit 1
 fi
 
+if [ -z "$STATIC_LIB_DIR" ]
+then
+    echo "**ERROR: STATIC_LIB_DIR is not set." 1>&2
+    exit 1
+fi
+
 DEBUG_DIR=$BUILD_DIR/../debug
 
 NINJA_SCRIPT=$BUILD_DIR/build.ninja
@@ -141,7 +147,7 @@ esac
 
 
 LIBLEGATO_SHARED_NAME=$LIB_DIR/liblegato.so
-LIBLEGATO_STATIC_NAME=$LIB_DIR/liblegato.a
+LIBLEGATO_STATIC_NAME=$STATIC_LIB_DIR/liblegato.a
 
 cat >> $NINJA_SCRIPT <<EOF
 builddir = $BUILD_DIR

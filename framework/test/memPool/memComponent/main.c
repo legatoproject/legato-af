@@ -42,6 +42,12 @@ colourObj_t;
 #define NUM_EXPAND_SUB_POOL 2
 #define NUM_ALLOC_SUPER_POOL    1
 
+#define TEST_STR_1  "No one would have believed in the last years of the nineteenth century that " \
+                    "this world was being watched keenly and closely by intelligences greater "    \
+                    "than man’s and yet as mortal as his own"
+#define TEST_STR_2  "L'année 1866 fut marquée par un événement bizarre, un phénomène inexpliqué "  \
+                    "et inexplicable que personne n'a sans doute oublié."
+
 static unsigned int NumRelease = 0;
 
 LE_MEM_DEFINE_STATIC_POOL(StaticIdPool, ID_POOL_SIZE, sizeof(idObj_t));
@@ -540,6 +546,16 @@ static void TestPools
         stringsPtr[i] = NULL;
     }
 
+    // Try duplicating some strings
+    char *dupStr = le_mem_StrDup(tieredStrPoolSmall, TEST_STR_1);
+    LE_TEST_OK(dupStr != NULL, "duplicate string");
+    LE_TEST_OK(strcmp(dupStr, TEST_STR_1) == 0, "duplicate matches");
+    char *dup2Str = le_mem_StrDup(tieredStrPoolSmall, TEST_STR_2);
+    LE_TEST_OK(dup2Str != NULL, "duplicate string");
+    LE_TEST_OK(strcmp(dup2Str, TEST_STR_2) == 0, "duplicate matches");
+    le_mem_Release(dupStr);
+    le_mem_Release(dup2Str);
+
     // And delete the sub-pools
     LE_TEST_INFO("Delete sub-pools");
     le_mem_DeleteSubPool(tieredStrPoolSmall);
@@ -556,7 +572,7 @@ COMPONENT_INIT
     LE_TEST_INFO("Unit Test for le_mem module.");
     LE_TEST_PLAN(LE_TEST_NO_PLAN);
 
-    LE_TEST_INFO("Creating two dynamic memory pools.");
+    LE_TEST_INFO("Creating dynamic memory pools.");
 
     //
     // Create multiple pools.

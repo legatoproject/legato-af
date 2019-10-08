@@ -47,7 +47,7 @@ struct BuildParams_t
     bool                    isStandAloneComp;   ///< true = generate stand-alone component
     bool                    binPack;            ///< true = generate a binary package for redist.
     bool                    noPie;              ///< true = generate executable without pie.
-
+    bool                    isDryRun;           ///< true = test process before real execution
     int                     argc;               ///< Number of arguments (argc to main)
     const char**            argv;               ///< Argument list (argv to main)
 
@@ -55,7 +55,6 @@ struct BuildParams_t
     std::string             cPreProcessorPath;  ///< C pre-processor
     std::string             cCompilerPath;      ///< C compiler
     std::string             cxxCompilerPath;    ///< C++ compiler
-    std::string             cppPath;            ///< C pre-processor
     std::string             toolChainDir;       ///< Toolchain directory
     std::string             toolChainPrefix;    ///< Toolchain prefix
     std::string             sysrootDir;         ///< Root directory of compiler's system files

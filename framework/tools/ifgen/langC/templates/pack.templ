@@ -216,7 +216,7 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     // data object, and it is a safe reference to this object that is passed down
     // as the context pointer.  The handlerPtr is not passed down.
     // Create a new client data object and fill it in
-    _ClientData_t* _clientDataPtr = le_mem_ForceAlloc(_ClientDataPool);
+    _ClientData_t* _clientDataPtr = le_mem_Alloc(_ClientDataPool);
     _clientDataPtr->handlerPtr = {{parameter|FormatParameterName}};
     _clientDataPtr->contextPtr = contextPtr;
     _clientDataPtr->callersThreadRef = le_thread_GetCurrent();

@@ -43,6 +43,8 @@ bundles:
 }
 @endcode
 
+If the directory that you bundle into the component is empty, the directory will not be copied over.
+
 Three things need to be specified for each file or directory:
 - access permissions
 - build system path
@@ -229,14 +231,45 @@ ldflags:
 
 @section defFilesCdef_pools pools
 
-@warning This feature not yet implemented.
+This section specifies the number of memory pool blocks that each @ref c_memory "memory pool" should
+contain.  If a pool's size is not specified here then it takes whatever default is defined in the
+code at the location where the pool is created.
 
-Specifies the number of memory pool blocks that each @ref c_memory "memory pool" should contain.
+This feature can be useful on any platform to adjust pools to the right size if le_mem_AssertAlloc
+is being used or if the @ref MEM_ALLOC_ASSERT KConfig option is selected.  On highly constrained
+systems such as those running RTOSes this feature allows for easier fine tuning of the system's
+memory footprint.
+
+There are two pool "scopes" that are currently defined.
+
+The "user" scope is the default and requires no prefix.  It defines a preprocessor macro of
+`_mem_%poolName%_POOL_SIZE`, which must then be used as the parameter specifying the number of
+blocks when creating the memory pool to have any effect.  Replace `%poolSize%` with the camel-cased
+name of the pool.  The macros for static memory pool creation will perform this substitution
+automatically, and will select the default value from code if the value is not provided in the
+.cdef.  This default selection behaviour can be used elsewhere in code explicitly via the
+@ref LE_MEM_BLOCKS macro.
+
+The "messaging" scope is denoted by prefixing the pool name with the literal string "<messaging>."
+and provides control over the pool sizes in the generated IPC messaging code.  The following pool
+names may be used in this scope, each corresponding to a generated memory pool (replace %api% here
+with the API name):
+
+ * `%api%_ClientThreadData`: Expected maximum simultaneous client threads.
+ * `%api%_ClientData`: Expected maximum simultaneous client data items.
+ * `%api%_Messages`: Expected number of clients of this server API.
+ * `%api%_ServerData`: Expected number of simultaneous server data objects.
+ * `%api%_ServerCmd`: Expected number of simultaneous async server commands.
 
 @code
 pools:
 {
-    myPool = 45
+    <messaging>.myApi_Messages = 4  // Set size of generated "myApi_Messages" memory pool.
+
+    myPool                     = 45 // Set size of the explicitly declared pool "myPool."  The
+                                    // component's code must use the macro "myPool_POOL_SIZE" when
+                                    // declaring the number of blocks in the pool for this to have
+                                    // any effect.
 }
 @endcode
 

@@ -78,7 +78,7 @@ interfaceSearch:
 
 #if ${LE_CONFIG_DEBUG} = y
 
-    envVars:
+    buildVars:
     {
         LEGATO_DEV_MODE_ENABLE = 1
     }

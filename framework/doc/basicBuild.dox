@@ -7,12 +7,12 @@ To install and get started with the Legato Application Framework you need to ins
 - A toolchain that corresponds to the Linux Distro installed on your target.
 - Configure the Legato Application Framework for your target.
 
-| Section                            | Description                                                         |
-| ---------------------------------- | ------------------------------------------------------------------- |
-| @subpage basicBuildLegato          | Install the Application Framework on a Linux development machine    |
-| @subpage basicBuildToolchain       | Install a toolchain for your target                                 |
-| @subpage basicBuildMake            | Configure your environment and update your target                   |
-| @subpage kconfigDescription        | Modify the framework configuration                                  |
+| Section                       | Description                                                         |
+| ------------------------------| ------------------------------------------------------------------- |
+| @subpage basicBuildLegato     | Install the Application Framework on a Linux development machine    |
+| @subpage basicBuildToolchain  | Install a toolchain for your target                                 |
+| @subpage basicBuildMake       | Configure your environment and update your target                   |
+| @ref toolsKconfig             | Modify the framework configuration                                  |
 
 If you wish to upgrade to a new version of the Framework or to uninstall existing versions:
 

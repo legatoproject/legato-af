@@ -101,6 +101,7 @@ static void ExitTool
 #ifndef LE_CONFIG_RTOS
         exit(exitCode);
 #else
+        LE_UNUSED(exitCode);
         le_thread_Exit(NULL);
 #endif
 }
@@ -460,7 +461,7 @@ static void CommandArgHandler
     }
     else
     {
-        fprintf(stderr, "Unrecognized command '%s'.  Try 'rpcTool help' for assistance.\n", arg);
+        fprintf(stderr, "Unrecognized command '%s'.  Try 'rpctool help' for assistance.\n", arg);
         ExitTool(EXIT_FAILURE);
     }
 }
@@ -476,7 +477,7 @@ static void PrintAllBindings
 )
 {
     char serviceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];
-    char systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];
+    char systemName[LIMIT_MAX_SYSTEM_NAME_BYTES];
     char remoteServiceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];
     uint32_t serviceId;
     le_result_t result;
@@ -541,7 +542,7 @@ static void PrintAllLinks
     void
 )
 {
-    char systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];
+    char systemName[LIMIT_MAX_SYSTEM_NAME_BYTES];
     char linkName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];
     char parameters[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];
     le_rpc_NetworkState_t state;
@@ -640,7 +641,7 @@ COMPONENT_INIT
             {
                 case OBJECT_BINDING:
                 {
-                    char systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];
+                    char systemName[LIMIT_MAX_SYSTEM_NAME_BYTES];
                     char remoteServiceName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES];
                     uint32_t serviceId;
                     result = le_rpc_GetSystemBinding(

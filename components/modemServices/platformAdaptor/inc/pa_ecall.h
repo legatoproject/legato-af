@@ -437,4 +437,19 @@ LE_SHARED le_result_t pa_ecall_UpdateSystemStandard
     pa_ecall_SysStd_t sysStandard  ///< [IN] The system standard
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is called to deregister device from network before T9/T10 expiration.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_ecall_TerminateRegistration
+(
+    void
+);
+
 #endif // LEGATO_PAECALL_INCLUDE_GUARD

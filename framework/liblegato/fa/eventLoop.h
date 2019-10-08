@@ -11,6 +11,10 @@
 
 #include "legato.h"
 
+
+// File Descriptor Monitor
+struct fdMon;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Enumeration of the possible states that a thread's Event Loop can be in.

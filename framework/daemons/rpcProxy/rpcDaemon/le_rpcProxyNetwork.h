@@ -27,6 +27,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum receive buffer size.
+ */
+//--------------------------------------------------------------------------------------------------
+#define RPC_PROXY_RECV_BUFFER_MAX               (RPC_PROXY_MAX_MESSAGE + RPC_PROXY_MSG_HEADER_SIZE)
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * RPC Proxy Network Operational State definition
  */
 //--------------------------------------------------------------------------------------------------
@@ -52,6 +60,41 @@ NetworkConnectionType_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * RPC Proxy Network Message Receive State
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum NetworkMessageReceiveState
+{
+    NETWORK_MSG_IDLE = 0, ///< IDLE State
+    NETWORK_MSG_PARTIAL_HEADER, ///< Partial HEADER State
+    NETWORK_MSG_HEADER, ///< Complete HEADER State
+    NETWORK_MSG_PARTIAL_MESSAGE, ///< Partial MESSAGE State
+    NETWORK_MSG_MESSAGE, ///< Complete MESSAGE State
+    NETWORK_MSG_PARTIAL_VARIABLE_LEN_MESSAGE, ///< Partial (Variable-length) MESSAGE State
+    NETWORK_MSG_DONE ///< DONE - Complete message received
+}
+NetworkMessageReceiveState_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * RPC Proxy Network Message Re-assembly State-Machine structure
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct NetworkMessageState
+{
+    char     buffer[RPC_PROXY_RECV_BUFFER_MAX]; ///< Receive Message Buffer
+    NetworkMessageReceiveState_t  recvState;    ///< Receive Message State
+    size_t   expectedSize; ///< Number of bytes that needed to be read
+    size_t   recvSize;     ///< Number of bytes that have been read so far
+    size_t   offSet;       ///< Offset into the receive buffer where new data should be written
+    uint8_t  type;         ///< Message Type (RPC_PROXY_CONNECT_SERVICE_REQUEST,
+                           ///< RPC_PROXY_CONNECT_SERVICE_RESPONSE, etc.)
+}
+NetworkMessageState_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * RPC Proxy Network Record structure
  */
 //--------------------------------------------------------------------------------------------------
@@ -61,6 +104,7 @@ typedef struct NetworkRecord
     NetworkState_t           state;     ///< Operational state of the network connection
     NetworkConnectionType_t  type;      ///< Type of network connection
     le_timer_Ref_t           keepAliveTimerRef; ///< Keep-Alive Timer Ref
+    NetworkMessageState_t    messageState; ///< Message Re-assembly State-Machine
 }
 NetworkRecord_t;
 
@@ -76,7 +120,7 @@ typedef struct NetworkTimerRecord
         KEEPALIVE,
     } event;  ///< Type of Timer Event
 
-    char systemName[LIMIT_MAX_IPC_INTERFACE_NAME_BYTES]; ///< Name of Destination System
+    char systemName[LIMIT_MAX_SYSTEM_NAME_BYTES]; ///< Name of Destination System
     NetworkRecord_t record;  ///< Network Record for the Destination System
 }
 NetworkTimerRecord_t;

@@ -19,10 +19,11 @@ DIR_INOUT = (DIR_IN | DIR_OUT)
 # Named values
 #---------------------------------------------------------------------------------------------------
 class NamedValue(object):
-    def __init__(self, name, value):
+    def __init__(self, name, location, value):
         self.name = name
         self.value = value
         self.comments = []
+        self.location = location
 
     def __repr__(self):
         return "NamedValue({},{})".format(repr(self.name), self.value)
@@ -31,7 +32,7 @@ class NamedValue(object):
 # Types
 #---------------------------------------------------------------------------------------------------
 class Type(object):
-    def __init__(self, name, size):
+    def __init__(self, name, location, size):
         self.iface = None
         self.name = name
         if (os.environ.get('LE_CONFIG_RPC') == "y"):
@@ -40,6 +41,7 @@ class Type(object):
         else:
             self.size = size
         self.comment = ""
+        self.location = location
 
     def __str__(self):
         return "Type<%d> %s" % (self.size, self.name)
@@ -49,8 +51,8 @@ class Type(object):
 
 class BasicType(Type):
     """Basic type represents a built-in type"""
-    def __init__(self, name, size):
-        super(BasicType, self).__init__(name, size)
+    def __init__(self, name, size, location=None):
+        super(BasicType, self).__init__(name, location, size)
 
     def __str__(self):
         return "BasicType<%d> %s" % (self.size, self.name)
@@ -59,7 +61,7 @@ class BasicType(Type):
         return "BasicType({},{})".format(repr(self.name), self.size)
 
 class EnumType(Type):
-    def __init__(self, name, elements=[]):
+    def __init__(self, name, location, elements=[]):
         nextValue = 0
         size = 4
         resolvedElements = []
@@ -78,7 +80,7 @@ class EnumType(Type):
                                     (name,))
             resolvedElements.append(resolvedElement)
 
-        super(EnumType, self).__init__(name, size)
+        super(EnumType, self).__init__(name, location, size)
 
         self.elements = resolvedElements
 
@@ -95,7 +97,7 @@ class EnumType(Type):
 
 
 class BitmaskType(Type):
-    def __init__(self, name, elements=[]):
+    def __init__(self, name, location, elements=[]):
         nextValue = 1
         size = 4
         resolvedElements = []
@@ -119,7 +121,7 @@ class BitmaskType(Type):
                                     (name,))
             resolvedElements.append(resolvedElement)
 
-        super(BitmaskType, self).__init__(name, size)
+        super(BitmaskType, self).__init__(name, location, size)
 
         self.elements = resolvedElements
 
@@ -135,8 +137,8 @@ class BitmaskType(Type):
         return "EnumType({},{})".format(repr(self.name), repr(self.elements))
 
 class ReferenceType(Type):
-    def __init__(self, name):
-        super(ReferenceType, self).__init__(name, 4)
+    def __init__(self, name, location):
+        super(ReferenceType, self).__init__(name, location, 4)
 
     def __str__(self):
         return "Reference %s" % (self.name)
@@ -151,17 +153,17 @@ class HandlerReferenceType(ReferenceType):
 
     A special type is used for this so the event it's associated with can be tracked.
     """
-    def __init__(self, eventObj):
-        super(HandlerReferenceType, self).__init__(eventObj.name + "Handler")
+    def __init__(self, eventObj, location):
+        super(HandlerReferenceType, self).__init__(eventObj.name + "Handler", location)
         self.event = eventObj
 
     def __str__(self):
         return "HandlerRef %s" % (self.name, )
 
 class HandlerType(Type):
-    def __init__(self, name, parameters):
+    def __init__(self, name, location, parameters):
         # Handlers are the size of a reference
-        super(HandlerType, self).__init__(name, 4)
+        super(HandlerType, self).__init__(name, location, 4)
         self.parameters = parameters
 
         if any([isinstance(parameter.apiType, HandlerType) for parameter in self.parameters]):
@@ -180,20 +182,21 @@ class OldHandlerType(Type):
     Magic type for old-style handlers.  When used as a parameter, will be converted to a handler
     with type equal to the name of the parameter.  Error when used in other contexts.
     """
-    def __init__(self):
-        super(OldHandlerType, self).__init__("handler", 4)
+    def __init__(self, location=None):
+        super(OldHandlerType, self).__init__("handler", location, 4)
 
     def __str__(self):
         return "OldHandler"
 
 class StructMember(object):
-    def __init__(self, apiType, name):
+    def __init__(self, apiType, name, location):
         assert not isinstance(apiType, HandlerReferenceType)
         assert not isinstance(apiType, HandlerType)
         assert not isinstance(apiType, OldHandlerType)
 
         self.apiType = apiType
         self.name = name
+        self.location = location
 
     def MaxSize(self):
         return self.apiType.size
@@ -202,8 +205,8 @@ class StructMember(object):
         return "{} {}".format(apiType, name)
 
 class StructStringMember(StructMember):
-    def __init__(self, name, maxCount):
-        super(StructStringMember, self).__init__(STRING_TYPE, name)
+    def __init__(self, name, location, maxCount):
+        super(StructStringMember, self).__init__(STRING_TYPE, name, location)
         self.maxCount = maxCount
 
     def MaxSize(self):
@@ -213,8 +216,8 @@ class StructStringMember(StructMember):
         return "{} {}[{}]".format(self.apiType, self.name, self.maxCount)
 
 class StructArrayMember(StructMember):
-    def __init__(self, apiType, name, maxCount):
-        super(StructArrayMember, self).__init__(apiType, name)
+    def __init__(self, apiType, name, location, maxCount):
+        super(StructArrayMember, self).__init__(apiType, name, location)
         self.maxCount = maxCount
 
     def MaxSize(self):
@@ -227,13 +230,13 @@ class StructType(Type):
     """
     Structure type.  Contains a list of other types and names (similar to C structures).
     """
-    def __init__(self, name, members=[]):
+    def __init__(self, name, location, members=[]):
         size = 0
         for member in members:
             assert isinstance(member, StructMember)
             size += member.MaxSize()
 
-        super(StructType, self).__init__(name, size)
+        super(StructType, self).__init__(name, location, size)
         self.members = list(members)
 
     def __str__(self):
@@ -241,19 +244,19 @@ class StructType(Type):
                                          ["{};".format(member)
                                           for member in self.members].join(" "))
 
-def MakeStructMember(interface, typeObj, name, arraySize):
+def MakeStructMember(interface, typeObj, name, location, arraySize):
     """Helper to make a parameter object"""
     if isinstance(typeObj, BasicType) and typeObj.name == "string":
         # Strings are special
         if arraySize == None:
             raise Exception("String needs a size limit")
-        return StructStringMember(name, arraySize)
+        return StructStringMember(name, location, arraySize)
     elif arraySize != None:
         # If a range is provided, it's an array
-        return StructArrayMember(typeObj, name, arraySize)
+        return StructArrayMember(typeObj, name, location, arraySize)
     else:
         # Simple structure member
-        return StructMember(typeObj, name)
+        return StructMember(typeObj, name, location)
 
 
 #---------------------------------------------------------------------------------------------------
@@ -284,11 +287,12 @@ OLD_HANDLER_TYPE = OldHandlerType()
 # Formal parameters
 #---------------------------------------------------------------------------------------------------
 class Parameter(object):
-    def __init__(self, apiType, name, direction=DIR_IN):
+    def __init__(self, apiType, name, location=None, direction=DIR_IN):
         self.apiType = apiType
         self.name = name
         self.direction = direction
         self.comments = []
+        self.location = location
 
     def GetMaxSize(self, direction):
         if direction & self.direction != 0:
@@ -309,8 +313,8 @@ class Parameter(object):
         return "<Parameter {}>".format(str(self))
 
 class ArrayParameter(Parameter):
-    def __init__(self, apiType, name, maxCount, direction=DIR_IN):
-        super(ArrayParameter, self).__init__(apiType, name, direction)
+    def __init__(self, apiType, name, location, maxCount, direction=DIR_IN):
+        super(ArrayParameter, self).__init__(apiType, name, location, direction)
         self.maxCount = maxCount
 
     def GetMaxSize(self, direction):
@@ -337,8 +341,8 @@ class ArrayParameter(Parameter):
         return "<ArrayParameter {}>".format(str(self))
 
 class StringParameter(Parameter):
-    def __init__(self, name, maxCount, direction=DIR_IN):
-        super(StringParameter, self).__init__(STRING_TYPE, name, direction)
+    def __init__(self, name, location, maxCount, direction=DIR_IN):
+        super(StringParameter, self).__init__(STRING_TYPE, name, location, direction)
         self.maxCount = maxCount
 
     def GetMaxSize(self, direction):
@@ -365,7 +369,7 @@ class StringParameter(Parameter):
     def __repr__(self):
         return "<StringParameter {}>".format(str(self))
 
-def MakeParameter(interface, typeObj, name, arraySize, direction=DIR_IN):
+def MakeParameter(interface, typeObj, name, location, arraySize, direction=DIR_IN):
     """Helper to make a parameter object"""
     if direction == None:
         direction = DIR_IN
@@ -379,24 +383,25 @@ def MakeParameter(interface, typeObj, name, arraySize, direction=DIR_IN):
         # Strings are special
         if arraySize == None:
             raise Exception("String needs a size limit")
-        return StringParameter(name, arraySize, direction)
+        return StringParameter(name, location, arraySize, direction)
     elif arraySize != None:
         if isinstance(typeObj, HandlerType):
             raise Exception("Cannot have arrays of handlers")
         # If a range is provided, it's an array
-        return ArrayParameter(typeObj, name, arraySize, direction)
+        return ArrayParameter(typeObj, name, location, arraySize, direction)
     else:
         # Simple parameter
-        return Parameter(typeObj, name, direction)
+        return Parameter(typeObj, name, location, direction)
 
 #---------------------------------------------------------------------------------------------------
 # Declarations
 #---------------------------------------------------------------------------------------------------
 class Definition(object):
-    def __init__(self, name, value):
+    def __init__(self, name, location, value):
         self.name = name
         self.value = value
         self.comment = ""
+        self.location = location
 
     def __str__(self):
         return "%s = %s" % (self.name, repr(self.value))
@@ -405,10 +410,11 @@ class Definition(object):
         return "Definition({},{})".format(repr(self.name), repr(self.value))
 
 class Function(object):
-    def __init__(self, returnType, name, parameters):
+    def __init__(self, returnType, name, location, parameters):
         self.returnType = returnType
         self.name = name
         self.parameters = parameters
+        self.location = location
 
         if returnType == OLD_HANDLER_TYPE or isinstance(returnType, HandlerType):
             raise Exception ('Functions cannot return handlers')
@@ -442,10 +448,11 @@ class Function(object):
                        [parameter.GetMaxSize(DIR_OUT) for parameter in self.parameters]))
 
 class Event(object):
-    def __init__(self, name, parameters):
+    def __init__(self, name, location, parameters):
         self.name = name
         self.parameters = parameters
         self.comment = ""
+        self.location = location
 
         if len([handler for handler in self.parameters
                 if isinstance(handler.apiType, HandlerType)]) != 1:
@@ -468,8 +475,8 @@ class EventFunction(Function):
 
     These functions get a special type so they can track which events they're associated with.
     """
-    def __init__(self, eventObj, returnType, name, parameters):
-        super(EventFunction, self).__init__(returnType, name, parameters)
+    def __init__(self, eventObj, returnType, name, location, parameters):
+        super(EventFunction, self).__init__(returnType, name, location, parameters)
         self.event = eventObj
 
 
@@ -584,7 +591,7 @@ class Interface(object):
 
         # Events also need a reference and functions for add/remove handlers.  Add these here.
 
-        eventRefType = HandlerReferenceType(eventObj)
+        eventRefType = HandlerReferenceType(eventObj, eventObj.location)
         eventRefType.iface = self
         eventRefType.comment = \
             "\n Reference type used by Add/Remove functions for EVENT '%s_%s'\n" % (self.name,
@@ -597,6 +604,7 @@ class Interface(object):
         eventAddFunc = EventFunction(eventObj,
                                      eventRefType,
                                      "Add%sHandler" % (eventObj.name,),
+                                     eventObj.location,
                                      eventObj.parameters)
         eventAddFunc.comment = \
             "\n Add handler function for EVENT '%s_%s'\n%s" % (self.name,
@@ -606,8 +614,8 @@ class Interface(object):
 
         eventRemoveFunc = EventFunction(eventObj,
                                         None,
-                                        "Remove%sHandler" % (eventObj.name,),
-                                        [ Parameter(eventRefType, u"handlerRef") ])
+                                        "Remove%sHandler" % (eventObj.name,), eventObj.location,
+                                        [ Parameter(eventRefType, u"handlerRef", eventObj.location) ])
         eventRemoveFunc.comment = \
             "\n Remove handler function for EVENT '%s_%s'\n" % (self.name,
                                                                 eventObj.name)

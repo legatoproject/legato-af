@@ -265,3 +265,39 @@ void le_wdogChain_MonitorEventLoop
 )
 {
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add handler function for EVENT 'le_instStat_AppInstallEvent'
+ *
+ * This event provides a notification of when an application is installed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_instStat_AppInstallEventHandlerRef_t le_instStat_AddAppInstallEventHandler
+(
+    le_instStat_AppInstallHandlerFunc_t handlerPtr,
+        ///< [IN]
+    void* contextPtr
+        ///< [IN]
+)
+{
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add handler function for EVENT 'le_instStat_AppUninstallEvent'
+ *
+ * This event provides a notification of when an application is uninstalled.
+ */
+//--------------------------------------------------------------------------------------------------
+le_instStat_AppUninstallEventHandlerRef_t le_instStat_AddAppUninstallEventHandler
+(
+    le_instStat_AppUninstallHandlerFunc_t handlerPtr,
+        ///< [IN]
+    void* contextPtr
+        ///< [IN]
+)
+{
+    return NULL;
+}

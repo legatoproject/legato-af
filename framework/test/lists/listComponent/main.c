@@ -29,8 +29,6 @@ COMPONENT_INIT
 
     LE_TEST_PLAN(LE_TEST_NO_PLAN);
 
-    /*
-     * TODO: Enable after le_arg is ported
     // Get the max size list
     if (le_arg_NumArgs() >= 1)
     {
@@ -38,7 +36,7 @@ COMPONENT_INIT
         LE_TEST_ASSERT(maxListSizePtr != NULL, "maxListSizePtr is NULL");
         maxListSize = atoi(maxListSizePtr);
         LE_TEST_ASSERT(maxListSize < MAX_LIST_SIZE, "List size too large for test");
-    }*/
+    }
 
     if (maxListSize <= 0)
     {

@@ -522,7 +522,8 @@ ApiServerInterface_t::ApiServerInterface_t
 //--------------------------------------------------------------------------------------------------
 :   ApiRef_t(itemPtr, aPtr, cPtr, iName),
     async(isAsync),
-    manualStart(false)
+    manualStart(false),
+    direct(false)
 //--------------------------------------------------------------------------------------------------
 {
 }

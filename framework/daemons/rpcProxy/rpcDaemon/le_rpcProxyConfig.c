@@ -1,7 +1,7 @@
 /**
  * @file le_rpcProxyConfig.c
  *
- * UNIX-domain socket Messaging version of the RPC Proxy Configuration Service.
+ * UNIX-domain socket Messaging version of the RPC Proxy Framework Configuration Service.
  *
  * Copyright (C) Sierra Wireless Inc.
  */
@@ -143,7 +143,7 @@ static le_mem_PoolRef_t ConfigArgumentArrayPoolRef = NULL;
  * Function for retrieving a System-Link element from the System-Link array
  */
 //--------------------------------------------------------------------------------------------------
-const rpcProxy_SystemLinkElement_t rpcProxyConfig_GetSystemLinkArray
+rpcProxy_SystemLinkElement_t rpcProxyConfig_GetSystemLinkArray
 (
     uint32_t index
 )
@@ -185,12 +185,12 @@ const rpcProxy_ExternClient_t* rpcProxyConfig_GetClientReferenceArray
  * Function for retrieving a System-service element from the System-service array
  */
 //--------------------------------------------------------------------------------------------------
-const rpcProxy_SystemServiceConfig_t rpcProxyConfig_GetSystemServiceArray
+LE_SHARED rpcProxy_SystemServiceConfig_t* rpcProxyConfig_GetSystemServiceArray
 (
     uint32_t index
 )
 {
-    return rpcProxy_SystemServiceArray[index];
+    return &(rpcProxy_SystemServiceArray[index]);
 };
 
 
@@ -285,7 +285,7 @@ le_result_t rpcProxyConfig_LoadSystemLinks
         // Copy the System-Name into the allocated memory
         le_utf8_Copy(systemNameCopyPtr,
                      strBuffer,
-                     LIMIT_MAX_IPC_INTERFACE_NAME_BYTES,
+                     LIMIT_MAX_SYSTEM_NAME_BYTES,
                      NULL);
 
         // Set the System-Name pointer

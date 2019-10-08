@@ -206,6 +206,12 @@ static bool DefaultRouteStatus = true;
 //--------------------------------------------------------------------------------------------------
 static bool IsDefaultRouteSet = false;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Has DNS server addresses set on the device for the connected data connection
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsDnsSet = false;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -558,7 +564,12 @@ static le_result_t SetDnsConfiguration
 
     LE_INFO("Setting DNS server addresses on device");
     ret = le_net_SetDNS(DataChannelRef);
-    if (LE_OK != ret)
+    if (LE_DUPLICATE == ret)
+    {
+        LE_DEBUG("DNS server addresses already set on device");
+        return LE_OK;
+    }
+    else if (LE_OK != ret)
     {
         LE_ERROR("Failed to set DNS server addresses; error %d", ret);
         return ret;
@@ -571,6 +582,7 @@ static le_result_t SetDnsConfiguration
     }
 
     LE_INFO("Succeeded setting DNS configuration");
+    IsDnsSet = true;
     return LE_OK;
 }
 
@@ -660,6 +672,7 @@ static void ChannelEventHandler
     switch (CurrentTech)
     {
         case LE_DATA_CELLULAR:
+        case LE_DATA_WIFI:
             if (IsConnected)
             {
                 // Up event. Set the default route (if necessary) and the DNS.
@@ -699,10 +712,14 @@ static void ChannelEventHandler
                 SendConnStateEvent(IsConnected);
             }
 
+            if (IsDnsSet)
+            {
+                le_net_RestoreDNS();
+                IsDnsSet = false;
+            }
             if (IsDefaultRouteSet)
             {
                 le_net_RestoreDefaultGW();
-                le_net_RestoreDNS();
                 IsDefaultRouteSet = false;
             }
             else if (RoutesAdded)
@@ -712,28 +729,7 @@ static void ChannelEventHandler
                 SetDnsRoutes(false);
             }
             break;
-        case LE_DATA_WIFI:
-            LE_DEBUG("Channel state IsConnected after event: %d", IsConnected);
 
-            if (IsConnected)
-            {
-                UpdateTechnologyStatus(CurrentTech, IsConnected, true);
-                break;
-            }
-
-            // Down event
-            if (event == LE_DCS_EVENT_DOWN)
-            {
-                TryStopTechSession();
-                UpdateTechnologyStatus(CurrentTech, IsConnected, true);
-            }
-            else if (event == LE_DCS_EVENT_TEMP_DOWN)
-            {
-                // Don't stop tech nor start tech retry timer since le_dcs will retry it again
-                // Just send a notification to upper app(s)
-                SendConnStateEvent(IsConnected);
-            }
-            break;
         default:
             break;
     }
@@ -1072,6 +1068,26 @@ static void TryStopTechSession
     {
         LE_DEBUG("Found no valid data channel request reference to stop its data connection");
         return;
+    }
+
+    // Seek to restore changed network configs before stopping the channel. Otherwise, after it is
+    // is stopped, its network interface would have been disassociated that any network config
+    // changes on it might not complete successfully.
+    if (IsDnsSet)
+    {
+        le_net_RestoreDNS();
+        IsDnsSet = false;
+    }
+    if (IsDefaultRouteSet)
+    {
+        le_net_RestoreDefaultGW();
+        IsDefaultRouteSet = false;
+    }
+    else if (RoutesAdded)
+    {
+        // Here means having IsDefaultRouteSet false; remove routes for DNS addresses
+        // previously added by DCS
+        SetDnsRoutes(false);
     }
 
     if (LE_OK != le_dcs_Stop(DataChannelReqRef))
@@ -1692,7 +1708,10 @@ le_result_t le_data_GetDateTime
         return LE_BAD_PARAMETER;
     }
 
-    if (!IsConnected)
+    // Do not let the attempt to get current time proceed when there is no data connection
+    // established via le_data nor requested via le_dcs, since TP and NTP have to work over
+    // a data connection
+    if (!IsConnected && (le_dcs_GetReqCount() == 0))
     {
         LE_ERROR("Data Connection Service is not connected");
         return LE_FAULT;

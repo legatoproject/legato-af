@@ -832,7 +832,7 @@ event_PerThreadRec_t* event_CreatePerThreadInfo
     recPtr->contextPtr = NULL;
 
     // Initialize the FD Monitor module's thread-specific stuff.
-    //fdMon_InitThread(recPtr);
+    fdMon_InitThread(recPtr);
 
     // Take note of the fact that the Event Loop for this thread has been initialized, but
     // not started.
@@ -906,7 +906,7 @@ void event_DestructThread
     event_Unlock(oldState);
 
     // Delete all the FD Monitors for this thread.
-    //fdMon_DestructThread(perThreadRecPtr);
+    fdMon_DestructThread(perThreadRecPtr);
 
     // Discard everything on the Event Queue.
     while (NULL != (singleLinkPtr = le_sls_Pop(&perThreadRecPtr->eventQueue)))
@@ -949,6 +949,14 @@ void event_SetCurrentContextPtr
     thread_GetEventRecPtr()->contextPtr = contextPtr;
 }
 
+/// Expose old symbol name to support apps compiled against an older liblegato.
+__attribute__((deprecated)) void event_QueueComponentInit
+(
+    void (*func)(void)
+)
+{
+    le_event_QueueFunction(&CallComponentInitializer, func, NULL);
+}
 
 // ==============================================
 //  PUBLIC API FUNCTIONS

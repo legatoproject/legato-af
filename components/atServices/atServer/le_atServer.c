@@ -21,17 +21,17 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Device pool size
+ * AT command string pool size
  */
 //--------------------------------------------------------------------------------------------------
-#define DEVICE_POOL_SIZE    2
+#define CMD_STRING_POOL_SIZE 10
 
 //--------------------------------------------------------------------------------------------------
 /**
- * AT commands pool size
+ * Typical length of a command string
  */
 //--------------------------------------------------------------------------------------------------
-#define CMD_POOL_SIZE       100
+#define CMD_STRING_TYPICAL_BYTES 32
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -45,14 +45,21 @@
  * Command responses pool size
  */
 //--------------------------------------------------------------------------------------------------
-#define RSP_POOL_SIZE       10
+#define RSP_POOL_SIZE       2
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Typical length of a response string
+ */
+//--------------------------------------------------------------------------------------------------
+#define RSP_STRING_TYPICAL_BYTES 24
 
 //--------------------------------------------------------------------------------------------------
 /**
  * User-defined error strings pool size
  */
 //--------------------------------------------------------------------------------------------------
-#define USER_ERROR_POOL_SIZE       50
+#define USER_ERROR_POOL_SIZE       20
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -173,6 +180,20 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define MS_WDOG_INTERVAL 8
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Events to monitor on AT port.
+ */
+//--------------------------------------------------------------------------------------------------
+#define AT_EVENTS   (POLLIN | POLLPRI | POLLRDHUP)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * +CME ERROR: 3 definition
+ */
+//--------------------------------------------------------------------------------------------------
+#define CME_ER_OPERATION_NOT_ALLOWED   3  /* +CME ERROR: 3 */
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -514,8 +535,8 @@ ParamString_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    char            resp[LE_ATDEFS_RESPONSE_MAX_BYTES];     ///< string value
     le_dls_Link_t   link;                                   ///< link for list
+    char            resp[];                                 ///< string value
 }
 RspString_t;
 
@@ -595,7 +616,7 @@ TextProcessingState_t;
 typedef struct
 {
     le_atServer_CmdRef_t    cmdRef;                                 ///< cmd refrence
-    char                    cmdName[LE_ATDEFS_COMMAND_MAX_BYTES];   ///< Command to send
+    char*                   cmdName;                                ///< Command to send
     le_atServer_AvailableDevice_t availableDevice;                  ///< device to send unsol rsp
     le_atServer_Type_t      type;                                   ///< cmd type
     le_dls_List_t           paramList;                              ///< parameters list
@@ -658,6 +679,7 @@ FinalRsp_t;
  *
  */
 //--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_ATSERVER_TEXT_API
 typedef struct
 {
     bool                                mode;                           ///< Is text mode
@@ -669,6 +691,7 @@ typedef struct
     le_result_t                         result;                         ///< Text processing result
 }
 Text_t;
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -697,9 +720,184 @@ typedef struct
     le_msg_SessionRef_t     sessionRef;                           ///< session reference
     bool                    suspended;                            ///< is device in data mode
     bool                    echo;                                 ///< is echo enabled
+#if LE_CONFIG_ATSERVER_TEXT_API
     Text_t                  text;                                 ///< text data
+#endif
 }
 DeviceContext_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static pool for device contexts
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(ATServerDevices,
+                          DEVICE_POOL_SIZE,
+                          sizeof(DeviceContext_t));
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool for device context
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t    DevicesPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static pool for AT commands
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(AtServerCommandsPool,
+                          CMD_POOL_SIZE,
+                          sizeof(ATCmdSubscribed_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool for AT command
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t  AtCommandsPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static pool for AT command strings
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(AtServerCommandStringsPool,
+                          CMD_STRING_POOL_SIZE,
+                          LE_ATDEFS_COMMAND_MAX_BYTES);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool for AT command strings
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t AtCommandStringsPool;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static pool for parameter string
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(ParamString,
+                          PARAM_POOL_SIZE,
+                          sizeof(ParamString_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool for parameter string
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t  ParamStringPool;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static pool for response
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(RspString,
+                          RSP_POOL_SIZE,
+                          sizeof(RspString_t) + LE_ATDEFS_RESPONSE_MAX_BYTES);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool for response
+ * w string
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t  RspStringPool;
+
+#if LE_CONFIG_ATSERVER_USER_ERRORS
+//--------------------------------------------------------------------------------------------------
+/*
+ * Static pool for user-defined error codes
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(UserError,
+                          USER_ERROR_POOL_SIZE,
+                          sizeof(UserErrorCode_t));
+
+//--------------------------------------------------------------------------------------------------
+/*
+ * Pool for user-defined error codes
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t UserErrorPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Map for user-defined error codes
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(UserErrorCmd,
+                         USER_ERROR_POOL_SIZE);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Map for user-defined error codes
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t UserErrorRefMap;
+#endif
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static map for devices
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(DevicesRefMap, DEVICE_POOL_SIZE);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Map for devices
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t DevicesRefMap;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static map for AT commands
+ */
+//--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(SubscribedCmdRefMap, CMD_POOL_SIZE);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Map for AT commands
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t   SubscribedCmdRefMap;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static hashmap for AT commands
+ */
+//--------------------------------------------------------------------------------------------------
+LE_HASHMAP_DEFINE_STATIC(CmdHashMap, CMD_POOL_SIZE);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Map for AT commands
+ */
+//--------------------------------------------------------------------------------------------------
+static le_hashmap_Ref_t   CmdHashMap;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Event ID for new AT command registration.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t CmdRegId;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -855,6 +1053,7 @@ static void AtCmdPoolDestructor
 
     // cleanup the hashmap
     le_hashmap_Remove(CmdHashMap, cmdPtr->cmdName);
+    le_mem_Release(cmdPtr->cmdName);
 
     // cleanup ParamList dls pool
     while((linkPtr = le_dls_Pop(&cmdPtr->paramList)) != NULL)
@@ -872,14 +1071,20 @@ static void AtCmdPoolDestructor
 /**
  * Send a response on the opened device.
  *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to send response.
  */
 //--------------------------------------------------------------------------------------------------
-static void SendRspString
+static le_result_t SendRspString
 (
     DeviceContext_t* devPtr,
     const char* rspPtr
 )
 {
+    ssize_t strLenWritted;
+    size_t stringLen;
+
     char string[LE_ATDEFS_RESPONSE_MAX_BYTES+4] = {0};
 
     if ((devPtr->rspState == AT_RSP_FINAL) || (devPtr->rspState == AT_RSP_UNSOLICITED) ||
@@ -893,7 +1098,25 @@ static void SendRspString
         snprintf(string, LE_ATDEFS_RESPONSE_MAX_BYTES+2, "%s\r\n", rspPtr);
     }
 
-    le_dev_Write(&devPtr->device, (uint8_t*)string, strlen(string));
+    stringLen = strnlen(string, LE_ATDEFS_RESPONSE_MAX_BYTES);
+    strLenWritted = le_dev_Write(&devPtr->device, (uint8_t*) string, stringLen);
+
+#ifdef LE_AT_FLUSH
+    if (devPtr->rspState != AT_RSP_INTERMEDIATE)
+    {
+        le_fd_Ioctl(devPtr->device.fd, LE_AT_FLUSH, NULL);
+    }
+#endif
+
+    if(strLenWritted < stringLen)
+    {
+        LE_ERROR("Failed to send data");
+        return LE_FAULT;
+    }
+    else
+    {
+        return LE_OK;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -913,6 +1136,7 @@ static UserErrorCode_t* GetCustomErrorCode
         ///< [IN] Prefix of the final response string
 )
 {
+#if LE_CONFIG_ATSERVER_USER_ERRORS
     le_ref_IterRef_t iter;
     UserErrorCode_t* errorCodePtr = NULL;
 
@@ -934,6 +1158,7 @@ static UserErrorCode_t* GetCustomErrorCode
             }
         }
     }
+#endif
 
     return NULL;
 }
@@ -981,13 +1206,13 @@ static const char* GetStdVerboseMsg
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void SendFinalRsp
+static le_result_t SendFinalRsp
 (
     DeviceContext_t* devPtr
 )
 {
-    UserErrorCode_t* errorCodePtr;
     size_t patternLength = 0;
+    le_result_t res = LE_OK;
 
     devPtr->rspState = AT_RSP_FINAL;
 
@@ -1052,7 +1277,7 @@ static void SendFinalRsp
                 LE_DEBUG("Extended mode");
                 snprintf(devPtr->finalRsp.resp + patternLength,
                          LE_ATDEFS_RESPONSE_MAX_BYTES - patternLength,
-                         "%d",
+                         "%"PRIu32,
                          devPtr->finalRsp.errorCode);
             }
             else if (MODE_VERBOSE == ErrorCodesMode)
@@ -1072,12 +1297,14 @@ static void SendFinalRsp
                     {
                         snprintf(devPtr->finalRsp.resp + patternLength,
                                  LE_ATDEFS_RESPONSE_MAX_BYTES - patternLength,
-                                 "%d",
+                                 "%"PRIu32,
                                  devPtr->finalRsp.errorCode);
                     }
                 }
                 else
                 {
+                    UserErrorCode_t* errorCodePtr;
+
                     errorCodePtr = GetCustomErrorCode(devPtr->finalRsp.errorCode,
                                                       devPtr->finalRsp.pattern);
                     if (errorCodePtr)
@@ -1090,7 +1317,7 @@ static void SendFinalRsp
                     {
                         snprintf(devPtr->finalRsp.resp + patternLength,
                                  LE_ATDEFS_RESPONSE_MAX_BYTES - patternLength,
-                                 "%d",
+                                 "%"PRIu32,
                                  devPtr->finalRsp.errorCode);
                     }
                 }
@@ -1100,7 +1327,7 @@ static void SendFinalRsp
         default:
             break;
     }
-    SendRspString(devPtr, devPtr->finalRsp.resp);
+    res = SendRspString(devPtr, devPtr->finalRsp.resp);
 
 end_processing:
     devPtr->processing = false;
@@ -1120,31 +1347,38 @@ end_processing:
         SendRspString(devPtr, rspStringPtr->resp);
         le_mem_Release(rspStringPtr);
     }
+
+    return res;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Send a intermediate response on the opened device.
  *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to send the intermediate response.
  */
 //--------------------------------------------------------------------------------------------------
-static void SendIntermediateRsp
+static le_result_t SendIntermediateRsp
 (
     DeviceContext_t* devPtr,
     RspString_t* rspStringPtr
 )
 {
+    le_result_t res;
+
     if (rspStringPtr == NULL)
     {
         LE_ERROR("Bad rspStringPtr");
-        return;
+        return LE_FAULT;
     }
 
     if (devPtr == NULL)
     {
         LE_ERROR("Bad devPtr");
         le_mem_Release(rspStringPtr);
-        return;
+        return LE_FAULT;
     }
 
     devPtr->rspState = AT_RSP_INTERMEDIATE;
@@ -1155,11 +1389,12 @@ static void SendIntermediateRsp
     {
         LE_ERROR("Command not processing anymore");
         le_mem_Release(rspStringPtr);
-        return;
+        return LE_FAULT;
     }
 
-    SendRspString(devPtr, rspStringPtr->resp);
+    res = SendRspString(devPtr, rspStringPtr->resp);
     le_mem_Release(rspStringPtr);
+    return res;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1485,9 +1720,9 @@ static le_result_t ParseBasicDCmdParam
     CmdParser_t* cmdParserPtr
 )
 {
-    const char* possibleCharUpper[]={"A","B","C","D","T","P","W"};
-    const char* possibleChar[]={"0","1","2","3","4","5","6","7","8","9","*","#","+",",","!","@",";",
-                                "I","i","G","g"};
+    static const char possibleCharUpper[]={'A','B','C','D','T','P','W'};
+    static const char possibleChar[]={'0','1','2','3','4','5','6','7','8','9','*','#','+',',','!',
+                                      '@',';','I','i','G','g'};
 
     int i;
     int index = 0;
@@ -1573,7 +1808,7 @@ static le_result_t ParseBasicDCmdParam
 
             bool charFound = false;
             int nbPass = 0;
-            const char** charTabPtr = possibleChar;
+            const char* charTabPtr = possibleChar;
             int nbValue = NUM_ARRAY_MEMBERS(possibleChar);
             char* testCharPtr = cmdParserPtr->currentCharPtr;
 
@@ -1582,7 +1817,7 @@ static le_result_t ParseBasicDCmdParam
             {
                 for (i=0; i<nbValue; i++)
                 {
-                    if (*testCharPtr == *charTabPtr[i])
+                    if (*testCharPtr == charTabPtr[i])
                     {
                         if (index < sizeof(paramPtr->param) -1)
                         {
@@ -1834,6 +2069,13 @@ static le_result_t ParseParam
 
     while (loop)
     {
+        if (LE_ATDEFS_PARAMETER_MAX_BYTES <= index)
+        {
+            LE_ERROR("Parameter size exceeds %d bytes", LE_ATDEFS_PARAMETER_MAX_BYTES);
+            le_mem_Release(paramPtr);
+            return LE_FAULT;
+        }
+
         if ( IS_QUOTE(*cmdParserPtr->currentCharPtr) )
         {
             if (tokenQuote)
@@ -2179,6 +2421,13 @@ static void ParseAtCmd
                 }
             }
 
+            const int sizeMax = LE_ATDEFS_RESPONSE_MAX_BYTES;
+            strncpy(devPtr->finalRsp.pattern, LE_ATSERVER_CME_ERROR, sizeMax - 1);
+
+            // Make devPtr->finalRsp.pattern string null terminated if patternPtr string size is
+            // bigger than sizeMax - 1.
+            devPtr->finalRsp.pattern[sizeMax-1] = '\0';
+            devPtr->finalRsp.errorCode = CME_ER_OPERATION_NOT_ALLOWED;
             goto sendErrorRsp;
         }
     }
@@ -2393,6 +2642,7 @@ static void ReceiveCmd
  *      modified string
  */
 //--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_ATSERVER_TEXT_API
 static char* RemoveBackspace
 (
     char* strPtr
@@ -2432,6 +2682,7 @@ static char* RemoveBackspace
 
     return (strPtr - i);
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2441,6 +2692,7 @@ static char* RemoveBackspace
  *      processing state.
  */
 //--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_ATSERVER_TEXT_API
 static TextProcessingState_t ProcessText
 (
     Text_t*     textPtr,
@@ -2507,6 +2759,7 @@ static TextProcessingState_t ProcessText
 
     return state;
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2514,6 +2767,7 @@ static TextProcessingState_t ProcessText
  *
  */
 //--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_ATSERVER_TEXT_API
 static void ReceiveText
 (
     DeviceContext_t *devPtr
@@ -2584,6 +2838,7 @@ static void ReceiveText
         textPtr->mode = false;
     }
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2591,7 +2846,7 @@ static void ReceiveText
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void RxNewData
+__attribute__((unused)) static void RxNewData
 (
     int fd,      ///< File descriptor to read on
     short events ///< Event reported on fd (expect only POLLIN)
@@ -2604,12 +2859,13 @@ static void RxNewData
     if (events & POLLRDHUP)
     {
         LE_INFO("fd %d: Connection reset by peer", fd);
-        le_dev_RemoveFdMonitoring(&devPtr->device);
+        le_dev_DeleteFdMonitoring(&devPtr->device);
         return;
     }
 
     if (events & (POLLIN | POLLPRI))
     {
+#if LE_CONFIG_ATSERVER_TEXT_API
         if (devPtr->text.mode)
         {
             LE_DEBUG("Receiving text");
@@ -2620,12 +2876,38 @@ static void RxNewData
             LE_DEBUG("Receiving AT command");
             ReceiveCmd(devPtr);
         }
+#else
+        LE_DEBUG("Receiving AT command");
+        ReceiveCmd(devPtr);
+#endif
     }
     else
     {
         LE_CRIT("Unexpected event(s) on fd %d (0x%hX).", fd, events);
     }
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Allocate and initialize a new unsolicited response structure
+ */
+//--------------------------------------------------------------------------------------------------
+static RspString_t* CreateResponse
+(
+    const char* rspStr
+)
+{
+    size_t rspLen = strlen(rspStr);
+
+    RspString_t* rspStringPtr = le_mem_ForceVarAlloc(RspStringPool,
+                                                     rspLen + sizeof(RspString_t) + 1);
+    memset(rspStringPtr, 0, sizeof(RspString_t));
+    le_utf8_Copy(rspStringPtr->resp, rspStr,
+                 le_mem_GetBlockSize(rspStringPtr) - sizeof(RspString_t), NULL);
+
+    return rspStringPtr;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2645,8 +2927,7 @@ static le_result_t SendUnsolicitedResponse
         return LE_FAULT;
     }
 
-    RspString_t* rspStringPtr = le_mem_ForceAlloc(RspStringPool);
-    le_utf8_Copy(rspStringPtr->resp, unsolRsp, LE_ATDEFS_RESPONSE_MAX_BYTES, NULL);
+    RspString_t* rspStringPtr = CreateResponse(unsolRsp);
 
     SendUnsolRsp(devPtr, rspStringPtr);
 
@@ -2673,8 +2954,6 @@ static le_result_t CloseServer
 {
     ATCmdSubscribed_t* cmdPtr = NULL;
     le_dls_Link_t* linkPtr = NULL;
-    char errMsg[ERR_MSG_MAX];
-
     DeviceContext_t* devPtr = le_ref_Lookup(DevicesRefMap, devRef);
 
     if (!devPtr)
@@ -2683,9 +2962,12 @@ static le_result_t CloseServer
         return LE_BAD_PARAMETER;
     }
 
-    LE_DEBUG("Stopping device %d", devPtr->device.fd);
+    LE_DEBUG("Stopping device %"PRIi32"", devPtr->device.fd);
 
-    le_dev_RemoveFdMonitoring(&devPtr->device);
+    le_dev_DeleteFdMonitoring(&devPtr->device);
+
+#if LE_CONFIG_LINUX
+    char errMsg[ERR_MSG_MAX];
 
     if (le_fd_Close(devPtr->device.fd))
     {
@@ -2694,6 +2976,7 @@ static le_result_t CloseServer
         LE_ERROR("%s", strerror_r(errno, errMsg, ERR_MSG_MAX));
         return LE_FAULT;
     }
+#endif
 
     cmdPtr = devPtr->cmdParser.currentCmdPtr;
     if (cmdPtr)
@@ -2772,11 +3055,30 @@ static void CloseSessionEventHandler
         {
             if (sessionRef == devPtr->sessionRef)
             {
-                LE_DEBUG("deleting device fd %d", devPtr->device.fd);
+                LE_DEBUG("deleting device fd %"PRIi32"", devPtr->device.fd);
                 CloseServer(devPtr->ref);
             }
         }
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The first-layer AT command Registration Handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void FirstLayerCmdRegistrationHandler
+(
+    void* reportPtr,
+    void* secondLayerHandlerFunc
+)
+{
+    le_atServer_CmdRef_t*                    reportCmdRefPtr = reportPtr;
+    le_atServer_CmdRegistrationHandlerFunc_t clientHandlerFunc =
+        (le_atServer_CmdRegistrationHandlerFunc_t)secondLayerHandlerFunc;
+
+    clientHandlerFunc(*reportCmdRefPtr, le_event_GetContextPtr());
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2799,25 +3101,16 @@ le_result_t le_atServer_Suspend
 )
 {
     DeviceContext_t* devPtr;
-    Device_t *devicePtr;
 
     devPtr = le_ref_Lookup(DevicesRefMap, devRef);
+
     if (!devPtr)
     {
         LE_ERROR("Invalid device");
         return LE_BAD_PARAMETER;
     }
 
-    devicePtr = &devPtr->device;
-
-    if (!devicePtr || !devicePtr->fdMonitor)
-    {
-        LE_ERROR("Device is not monitored");
-        return LE_FAULT;
-    }
-
-    le_dev_RemoveFdMonitoring(devicePtr);
-
+    le_dev_DisableFdMonitoring(&devPtr->device, AT_EVENTS);
     devPtr->suspended = true;
 
     LE_INFO("server suspended");
@@ -2841,32 +3134,25 @@ le_result_t le_atServer_Suspend
 //--------------------------------------------------------------------------------------------------
 le_result_t le_atServer_Resume
 (
-    le_atServer_DeviceRef_t devRef ///< [IN] device to be unbinded
+    le_atServer_DeviceRef_t devRef ///< [IN] device to be unbound
 )
 {
     DeviceContext_t* devPtr;
-    Device_t *devicePtr;
+    le_result_t      result;
 
     devPtr = le_ref_Lookup(DevicesRefMap, devRef);
-    devicePtr = &devPtr->device;
-
-    if (!devPtr || !devicePtr)
+    if (!devPtr)
     {
         LE_ERROR("Invalid device");
         return LE_BAD_PARAMETER;
     }
 
-    if (le_dev_AddFdMonitoring(devicePtr, RxNewData, devPtr) != LE_OK)
-    {
-        LE_ERROR("Error during adding the fd monitoring");
-        return LE_FAULT;
-    }
-
-    devPtr->suspended = false;
+    result = le_dev_EnableFdMonitoring(&devPtr->device, &RxNewData, devPtr, AT_EVENTS);
+    devPtr->suspended = (result != LE_OK);
 
     LE_INFO("server resumed");
 
-    return LE_OK;
+    return result;
 }
 
 
@@ -2965,7 +3251,7 @@ le_result_t le_atServer_UnlinkDeviceFromBridge
 //--------------------------------------------------------------------------------------------------
 le_atServer_DeviceRef_t le_atServer_Open
 (
-    int32_t              fd          ///< The file descriptor
+    int fd          ///< The file descriptor
 )
 {
     char errMsg[ERR_MSG_MAX];
@@ -2978,7 +3264,6 @@ le_atServer_DeviceRef_t le_atServer_Open
         return NULL;
     }
 
-
     DeviceContext_t* devPtr = le_mem_ForceAlloc(DevicesPool);
     if (!devPtr)
     {
@@ -2987,18 +3272,14 @@ le_atServer_DeviceRef_t le_atServer_Open
 
     memset(devPtr,0,sizeof(DeviceContext_t));
 
-    LE_DEBUG("Create a new interface for %d", fd);
+    LE_DEBUG("Create a new interface for fd=%x", fd);
     devPtr->device.fd = fd;
 
-    if (devPtr->device.fdMonitor)
+    le_result_t result = le_dev_EnableFdMonitoring(&devPtr->device, &RxNewData, devPtr, AT_EVENTS);
+    if (result != LE_OK)
     {
-        LE_ERROR("Interface already monitored %d", devPtr->device.fd);
-        return NULL;
-    }
-
-    if (le_dev_AddFdMonitoring(&devPtr->device, RxNewData, devPtr) != LE_OK)
-    {
-        LE_ERROR("Error during adding the fd monitoring");
+        LE_ERROR("Error during adding the fd monitoring: %s", LE_RESULT_TXT(result));
+        le_mem_Release(devPtr);
         return NULL;
     }
 
@@ -3010,7 +3291,7 @@ le_atServer_DeviceRef_t le_atServer_Open
     devPtr->ref = le_ref_CreateRef(DevicesRefMap, devPtr);
     devPtr->suspended = false;
 
-    LE_INFO("created device");
+    LE_INFO("created device fd=%x", fd);
 
     return devPtr->ref;
 }
@@ -3084,7 +3365,11 @@ le_atServer_CmdRef_t le_atServer_Create
 
     memset(cmdPtr,0,sizeof(ATCmdSubscribed_t));
 
+    cmdPtr->cmdName = le_mem_ForceVarAlloc(AtCommandStringsPool, strlen(namePtr)+1);
     le_utf8_Copy(cmdPtr->cmdName, namePtr, LE_ATDEFS_COMMAND_MAX_BYTES,0);
+
+    LE_INFO("Create command '%s', name length %"PRIuS,
+            cmdPtr->cmdName, le_mem_GetBlockSize(cmdPtr->cmdName));
 
     cmdPtr->cmdRef = le_ref_CreateRef(SubscribedCmdRefMap, cmdPtr);
 
@@ -3149,6 +3434,53 @@ le_result_t le_atServer_Delete
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Add handler function for EVENT 'le_atServer_CmdRegistration'
+ *
+ * This event provides information when a new AT command is subscribed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_atServer_CmdRegistrationHandlerRef_t le_atServer_AddCmdRegistrationHandler
+(
+    le_atServer_CmdRegistrationHandlerFunc_t handlerPtr,
+        ///< [IN]
+
+    void* contextPtr
+        ///< [IN]
+)
+{
+    le_event_HandlerRef_t  handlerRef;
+
+    if (handlerPtr == NULL)
+    {
+        LE_KILL_CLIENT("Handler function is NULL !");
+        return NULL;
+    }
+
+    handlerRef = le_event_AddLayeredHandler("CmdRegHandler",
+                                            CmdRegId,
+                                            FirstLayerCmdRegistrationHandler,
+                                            (le_event_HandlerFunc_t)handlerPtr);
+
+    le_event_SetContextPtr(handlerRef, contextPtr);
+
+    return (le_atServer_CmdRegistrationHandlerRef_t)(handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * le_atServer_CmdRegistrationHandler handler REMOVE function
+ */
+//--------------------------------------------------------------------------------------------------
+void le_atServer_RemoveCmdRegistrationHandler
+(
+    le_atServer_CmdRegistrationHandlerRef_t handlerRef ///< [IN] The handler reference
+)
+{
+    le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Add handler function for EVENT 'le_atServer_Command'
  *
  * This event provides information when the AT command is detected.
@@ -3182,6 +3514,10 @@ le_atServer_CommandHandlerRef_t le_atServer_AddCommandHandler
 
     cmdPtr->handlerFunc = handlerPtr;
     cmdPtr->handlerContextPtr = contextPtr;
+
+    // Register to the platform that the atServer will handle that command
+    // (it may be not used depending on the platform)
+    le_event_Report(CmdRegId, &commandRef, sizeof(le_atServer_CmdRef_t));
 
     return (le_atServer_CommandHandlerRef_t)(cmdPtr->cmdRef);
 }
@@ -3391,12 +3727,9 @@ le_result_t le_atServer_SendIntermediateResponse
         return LE_FAULT;
     }
 
-    RspString_t* rspStringPtr = le_mem_ForceAlloc(RspStringPool);
-    le_utf8_Copy(rspStringPtr->resp, intermediateRspPtr, LE_ATDEFS_RESPONSE_MAX_BYTES, NULL);
+    RspString_t* rspStringPtr = CreateResponse(intermediateRspPtr);
 
-    SendIntermediateRsp(devPtr, rspStringPtr);
-
-    return LE_OK;
+    return SendIntermediateRsp(devPtr, rspStringPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3470,7 +3803,7 @@ le_result_t le_atServer_SendFinalResponse
     }
     else
     {
-        SendFinalRsp(devPtr);
+        return SendFinalRsp(devPtr);
     }
 
     return LE_OK;
@@ -3550,7 +3883,7 @@ le_result_t le_atServer_SendFinalResultCode
     }
     else
     {
-        SendFinalRsp(devPtr);
+        return SendFinalRsp(devPtr);
     }
 
     return LE_OK;
@@ -3875,6 +4208,7 @@ le_atServer_ErrorCodeRef_t le_atServer_CreateErrorCode
         ///< [IN] Prefix of the final response string
 )
 {
+#if LE_CONFIG_ATSERVER_USER_ERRORS
     int bufLength = 0;
 
     if ((errorCode < STD_ERROR_CODE_SIZE) || (NULL == patternPtr))
@@ -3899,6 +4233,10 @@ le_atServer_ErrorCodeRef_t le_atServer_CreateErrorCode
     newErrorCode->ref = le_ref_CreateRef(UserErrorRefMap, newErrorCode);
 
     return newErrorCode->ref;
+#else
+    // Not supported outside of Linux
+    return NULL;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3916,6 +4254,7 @@ le_result_t le_atServer_DeleteErrorCode
         ///< [IN] Reference to a custom error code
 )
 {
+#if LE_CONFIG_ATSERVER_USER_ERRORS
     UserErrorCode_t* errorCodePtr = le_ref_Lookup(UserErrorRefMap, errorCodeRef);
     if (NULL == errorCodePtr)
     {
@@ -3926,6 +4265,10 @@ le_result_t le_atServer_DeleteErrorCode
     le_mem_Release(errorCodePtr);
 
     return LE_OK;
+#else
+    // Not supported outside of Linux
+    return LE_NOT_FOUND;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3946,6 +4289,7 @@ le_result_t le_atServer_SetVerboseErrorCode
         ///< [IN] Verbose string
 )
 {
+#if LE_CONFIG_ATSERVER_USER_ERRORS
     int bufLength = 0;
 
     if (NULL == messagePtr)
@@ -3966,6 +4310,10 @@ le_result_t le_atServer_SetVerboseErrorCode
     errorCodePtr->verboseMsg[bufLength - 1] = '\0';
 
     return LE_OK;
+#else
+    // Not supported outside of Linux
+    return LE_FAULT;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3976,6 +4324,7 @@ le_result_t le_atServer_SetVerboseErrorCode
  * @return
  *      - LE_OK             The function succeeded.
  *      - LE_BAD_PARAMETER  Invalid device or command reference.
+ *      - LE_UNSUPPORTED    if unsupported
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_atServer_GetTextAsync
@@ -3985,6 +4334,7 @@ le_result_t le_atServer_GetTextAsync
     void *ctxPtr
 )
 {
+#if LE_CONFIG_ATSERVER_TEXT_API
     ATCmdSubscribed_t* cmdPtr = le_ref_Lookup(SubscribedCmdRefMap, cmdRef);
 
     if (!cmdPtr)
@@ -4008,10 +4358,69 @@ le_result_t le_atServer_GetTextAsync
     devPtr->text.ctxPtr = ctxPtr;
     devPtr->text.cmdRef = cmdRef;
 
+    // @TODO: Rework the write operation if this function is ever needed for RTOS
     le_dev_Write(&devPtr->device, (uint8_t *)TEXT_PROMPT, TEXT_PROMPT_LEN);
 
     return LE_OK;
+#else
+    LE_ERROR("Unsupported function called.");
+    return LE_UNSUPPORTED;
+#endif
 }
+
+
+//--------------------------------------------------------------------------------------------------
+// Simple pass-throughs for functions which may be called from other components in the same
+// executable as this one.
+//
+// Other components cannot call le_atServer_...() functions directly as this will conflict
+// with client stub names on RTOS.
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add handler function for EVENT 'le_atServer_CmdRegistration'
+ *
+ * This event provides information when a new AT command is subscribed.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_atServer_CmdRegistrationHandlerRef_t le_atServerLocal_AddCmdRegistrationHandler
+(
+    le_atServer_CmdRegistrationHandlerFunc_t handlerPtr,
+        ///< [IN]
+
+    void* contextPtr
+        ///< [IN]
+)
+{
+    return le_atServer_AddCmdRegistrationHandler(handlerPtr, contextPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function can be used to get the AT command string.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the AT command string.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_atServerLocal_GetCommandName
+(
+    le_atServer_CmdRef_t commandRef,
+        ///< [IN] AT command reference
+
+    char* namePtr,
+        ///< [OUT] AT command string
+
+    size_t nameNumElements
+        ///< [IN]
+)
+{
+    return le_atServer_GetCommandName(commandRef, namePtr, nameNumElements);
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -4022,37 +4431,60 @@ le_result_t le_atServer_GetTextAsync
 COMPONENT_INIT
 {
     // Device pool allocation
-    DevicesPool = le_mem_CreatePool("ATServerDevicesPool",sizeof(DeviceContext_t));
-    le_mem_ExpandPool(DevicesPool,DEVICE_POOL_SIZE);
-    DevicesRefMap = le_ref_CreateMap("DevicesRefMap", DEVICE_POOL_SIZE);
+    DevicesPool = le_mem_InitStaticPool(ATServerDevices,
+                                        DEVICE_POOL_SIZE,
+                                        sizeof(DeviceContext_t));
+    DevicesRefMap = le_ref_InitStaticMap(DevicesRefMap, DEVICE_POOL_SIZE);
 
     // AT commands pool allocation
-    AtCommandsPool = le_mem_CreatePool("AtServerCommandsPool",sizeof(ATCmdSubscribed_t));
-    le_mem_ExpandPool(AtCommandsPool, CMD_POOL_SIZE);
+    AtCommandsPool = le_mem_InitStaticPool(AtServerCommandsPool,
+                                           CMD_POOL_SIZE,
+                                           sizeof(ATCmdSubscribed_t));
     le_mem_SetDestructor(AtCommandsPool,AtCmdPoolDestructor);
-    SubscribedCmdRefMap = le_ref_CreateMap("SubscribedCmdRefMap", CMD_POOL_SIZE);
-    CmdHashMap = le_hashmap_Create("CmdHashMap",
+    SubscribedCmdRefMap = le_ref_InitStaticMap(SubscribedCmdRefMap, CMD_POOL_SIZE);
+    CmdHashMap = le_hashmap_InitStatic(CmdHashMap,
                                     CMD_POOL_SIZE,
                                     le_hashmap_HashString,
-                                    le_hashmap_EqualsString
-                                   );
+                                       le_hashmap_EqualsString);
+
+    // AT command strings pool allocation
+    AtCommandStringsPool = le_mem_InitStaticPool(AtServerCommandStringsPool,
+                                                 CMD_STRING_POOL_SIZE,
+                                                 LE_ATDEFS_COMMAND_MAX_BYTES);
+    // Most strings are small, so create them from a sub-pool
+    AtCommandStringsPool = le_mem_CreateReducedPool(AtCommandStringsPool,
+                                                    "AtCommandSmallStringsPool",
+                                                    0, CMD_STRING_TYPICAL_BYTES);
+
 
     // Parameters pool allocation
-    ParamStringPool = le_mem_CreatePool("ParamStringPool",sizeof(ParamString_t));
-    le_mem_ExpandPool(ParamStringPool,PARAM_POOL_SIZE);
+    ParamStringPool = le_mem_InitStaticPool(ParamString,
+                                            PARAM_POOL_SIZE,
+                                            sizeof(ParamString_t));
 
     // Parameters pool allocation
-    RspStringPool = le_mem_CreatePool("RspStringPool",sizeof(RspString_t));
-    le_mem_ExpandPool(RspStringPool,RSP_POOL_SIZE);
+    RspStringPool = le_mem_InitStaticPool(RspString,
+                                          RSP_POOL_SIZE,
+                                          sizeof(RspString_t) + LE_ATDEFS_RESPONSE_MAX_BYTES);
+    RspStringPool = le_mem_CreateReducedPool(RspStringPool,
+                                             "RspSmallStringPool",
+                                             0, sizeof(RspString_t) + RSP_STRING_TYPICAL_BYTES);
 
+#if LE_CONFIG_ATSERVER_USER_ERRORS
     // User-defined errors pool allocation
-    UserErrorPool = le_mem_CreatePool("UserErrorPool",sizeof(UserErrorCode_t));
-    le_mem_ExpandPool(UserErrorPool,USER_ERROR_POOL_SIZE);
-    UserErrorRefMap = le_ref_CreateMap("UserErrorCmdRefMap", USER_ERROR_POOL_SIZE);
+    UserErrorPool = le_mem_InitStaticPool(UserError,
+                                          USER_ERROR_POOL_SIZE,
+                                          sizeof(UserErrorCode_t));
+    UserErrorRefMap = le_ref_InitStaticMap(UserErrorCmd, USER_ERROR_POOL_SIZE);
+#endif
 
     // Add a handler to the close session service
     le_msg_AddServiceCloseHandler(
         le_atServer_GetServiceRef(), CloseSessionEventHandler, NULL);
+
+
+    // Create an event Id for platform-specific AT command registration
+    CmdRegId = le_event_CreateId("CmdRegEventId", sizeof(le_atServer_CmdRef_t));
 
     bridge_Init();
 

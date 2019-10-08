@@ -2101,11 +2101,14 @@ static void CallEventHandler
     {
         case LE_MCC_EVENT_INCOMING:
         case LE_MCC_EVENT_ORIGINATING:
-            LE_DEBUG("Updating callId: eCallPtr->callId %d = callId %d. sessionState %d",
-                     eCallPtr->callId, callId, ECallObj.sessionState);
             // An incoming or outgoing call is being established while an eCall session is active:
             // it is an eCall, update the eCall id with this call identifier
-            eCallPtr->callId = callId;
+            if(-1 == eCallPtr->callId)
+            {
+                LE_DEBUG("Updating callId: eCallPtr->callId %d = callId %d. sessionState %d",
+                          eCallPtr->callId, callId, ECallObj.sessionState);
+                eCallPtr->callId = callId;
+            }
             break;
 
         case LE_MCC_EVENT_TERMINATED:
@@ -2880,6 +2883,9 @@ le_result_t le_ecall_StartAutomatic
         return LE_FAULT;
     }
 
+    // Update eCall call ID
+    ECallObj.callId = -1;
+
     // Update eCall session state
     ECallObj.sessionState = ECALL_SESSION_REQUEST;
 
@@ -2965,6 +2971,9 @@ le_result_t le_ecall_StartManual
         return LE_FAULT;
     }
 
+    // Update eCall call ID
+    ECallObj.callId = -1;
+
     // Update eCall session state
     ECallObj.sessionState = ECALL_SESSION_REQUEST;
 
@@ -3049,6 +3058,9 @@ le_result_t le_ecall_StartTest
         LE_ERROR("Hang up ongoing call(s) failed");
         return LE_FAULT;
     }
+
+    // Update eCall call ID
+    ECallObj.callId = -1;
 
     // Update eCall session state
     ECallObj.sessionState = ECALL_SESSION_REQUEST;
@@ -4991,4 +5003,24 @@ le_result_t le_ecall_GetPropulsionType
     }
 
     return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Terminate NAD registered on the network. After termination of an emergency call the in-vehicle
+ * system remains registered on the network for a period of time, this API will deregister device
+ * from network in this period.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED if the function is not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_TerminateRegistration
+(
+    void
+)
+{
+    return pa_ecall_TerminateRegistration();
 }

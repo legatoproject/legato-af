@@ -26,27 +26,37 @@ namespace updateDefs
 /**
  * Update a given definition file with a string of line to write to the definition file at a
  * given position.
- * 1. Create a temporary file where the appropriate section is updated.
- * 2. Copy the contents of the original definition file to the temporary file until 'firstPosition'.
+ * 1. Create a temporary backup file where the appropriate section is updated.
+ * 2. Copy the contents of the original definition source file to the temporary file until first
+ *    position of line to write.
  * 3. Update the temporary file with the line that need to be written.
- * 4. Copy the remaining contents of the original definition file from 'secondPosition' till the end
+ * 4. Copy the remaining contents of the original definition file from second position till the end
  *    of the file.
  * 5. After the temporary file is successfully updated, rename the temporary file to the original
  *    file name such that the orignal file is updated.
- **/
+ */
 //--------------------------------------------------------------------------------------------------
-static void UpdateDefinitionFile
+void UpdateDefinitionFile
 (
-    std::string sourceFile,
-    int firstPosition,
-    int secondPosition,
-    std::string lineToWrite
+    ArgHandler_t& handler,      ///< ArgHandler_t object
+    std::string sourceFile      ///< Original definition file is the source file
 )
 {
-    std::string destpath = "mkedit_temp.sdef";
+    if (handler.isPrintLogging())
+    {
+        std::cout << mk::format(LE_I18N(
+                                  "\nCreating temporary working file '%s' from original file '%s'."
+                                  "\nEditing the specified section(s) in the temporary file."),
+                                handler.tempWorkDefFilePath, sourceFile);
+    }
 
-    std::ifstream source(sourceFile, std::ios::binary);
-    std::ofstream dest(destpath, std::ios::binary);
+    if (handler.buildParams.isDryRun)
+    {
+        return;
+    }
+
+    std::ifstream source(sourceFile);
+    std::ofstream dest(handler.tempWorkDefFilePath);
 
     if (!source)
     {
@@ -58,7 +68,7 @@ static void UpdateDefinitionFile
     if (!dest)
     {
         throw mk::Exception_t(
-            mk::format(LE_I18N("Failed to open file '%s' for output."), destpath)
+            mk::format(LE_I18N("Failed to open file '%s' for output."), handler.tempWorkDefFilePath)
         );
     }
 
@@ -68,195 +78,62 @@ static void UpdateDefinitionFile
     // Copy first part of sdef
     source.seekg(0, source.beg);
 
-    char *firstBuffer = new char [firstPosition];
-
-    source.read(firstBuffer, firstPosition-1);
-
-    if (!dest.is_open())
+    int startPos = 0;
+    for (auto& it : handler.linePositionToWrite)
     {
-        throw mk::Exception_t(
-            mk::format(LE_I18N("Failed to open file '%s' for writing."), destpath)
-        );
-    }
+        int length = it.beforePos - startPos;
+        std::unique_ptr<char> firstBuffer(new char[length]);
 
-    dest.write(firstBuffer, firstPosition-1);
+        source.read(firstBuffer.get(), length-1);
 
-    if (!lineToWrite.empty())
-    {
-        // Strip off '.adef' or '.mdef' optional suffix before writing to the definition file.
-        if (path::HasSuffix(lineToWrite, ADEF_EXT))
+        if (!dest.is_open())
         {
-            lineToWrite = path::RemoveSuffix(lineToWrite, ADEF_EXT);
-        }
-        else if (path::HasSuffix(lineToWrite, MDEF_EXT))
-        {
-            lineToWrite = path::RemoveSuffix(lineToWrite, MDEF_EXT);
+            throw mk::Exception_t(
+                mk::format(LE_I18N("Failed to open file '%s' for writing."),
+                           handler.tempWorkDefFilePath)
+            );
         }
 
-        // Write the line to the destination file.
-        dest << lineToWrite << std::endl;
+        dest.write(firstBuffer.get(), length-1);
+
+        if (!it.lineToWrite.empty())
+        {
+            // Strip off '.adef' or '.mdef' optional suffix before writing to the definition file.
+            if (path::HasSuffix(it.lineToWrite, ADEF_EXT))
+            {
+                it.lineToWrite = path::RemoveSuffix(it.lineToWrite, ADEF_EXT);
+            }
+            else if (path::HasSuffix(it.lineToWrite, MDEF_EXT))
+            {
+                it.lineToWrite = path::RemoveSuffix(it.lineToWrite, MDEF_EXT);
+            }
+
+            if (handler.buildParams.beVerbose)
+            {
+                std::cout << mk::format(LE_I18N("\nWriting '%s'."), it.lineToWrite);
+            }
+
+            // Write the line to the destination file.
+            dest << it.lineToWrite;
+        }
+        else
+        {
+           dest << "" ;
+        }
+        startPos = it.afterPos-1;
+
+        source.seekg(startPos);
     }
-    else
-    {
-       dest << "" <<std::endl;
-    }
 
-    // Copy the second part of the sdef
-    source.seekg(secondPosition);
+    // Copy the remaining part of sdef
+    int remainLength = totalLength-startPos;
+    std::unique_ptr<char> secondBuffer(new char[remainLength]);
 
-    int remainLength = totalLength-secondPosition;
-
-    char *secondBuffer = new char [remainLength];
-    source.read(secondBuffer, remainLength);
-
-    dest.write(secondBuffer, remainLength);
+    source.read(secondBuffer.get(), remainLength);
+    dest.write(secondBuffer.get(), remainLength);
 
     source.close();
     dest.close();
-
-    delete[] firstBuffer;
-    delete[] secondBuffer;
-
-    // After successfully updating the definition file, rename temporary destination file to
-    // the original file.
-    file::RenameFile(destpath, sourceFile);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Use this function if two lines need to be updated in the definition file.
- *
- * Update a given definition file with two lines of string to write to the definition file at two
- * given positions.
- * 1. Create a temporary file where the appropriate section is updated.
- * 2. Copy contents of the original definition file to the temporary file until 'firstPosition1'.
- * 3. Update the temporary file with the line that need to be written.
- * 4. Copy remaining contents of the original definition file from 'secondPosition2' until
- *    'firstPosition2'.
- * 5. Copy remaining contents of the original definition file from 'secondPosition2' till the end
- *    of the file.
- * 6. After the temporary file is successfully updated, rename the temporary file to the original
- *    file name such that the orignal file is updated.
- **/
-//--------------------------------------------------------------------------------------------------
-static void UpdateDefinitionFile
-(
-    std::string sourceFile,
-    int firstPosition1,
-    int secondPosition1,
-    int firstPosition2,
-    int secondPosition2,
-    std::string lineToWrite1,
-    std::string lineToWrite2
-)
-{
-    std::string destpath = "mkedit_temp.sdef";
-
-    std::ifstream source(sourceFile, std::ios::binary);
-    std::ofstream dest(destpath, std::ios::binary);
-
-    if (!source)
-    {
-        throw mk::Exception_t(
-            mk::format(LE_I18N("Failed to open file '%s' for input."), sourceFile)
-        );
-    }
-
-    if (!dest)
-    {
-        throw mk::Exception_t(
-            mk::format(LE_I18N("Failed to open file '%s' for output."), destpath)
-        );
-    }
-
-    source.seekg(0, source.end);
-    int totalLength = source.tellg();
-
-    // Copy first part of sdef
-    source.seekg(0, source.beg);
-
-    char *firstBuffer = new char [firstPosition1];
-
-    source.read(firstBuffer, firstPosition1-1);
-
-    if (!dest.is_open())
-    {
-        throw mk::Exception_t(
-            mk::format(LE_I18N("Failed to open file '%s' for writing."), destpath)
-        );
-    }
-
-    dest.write(firstBuffer, firstPosition1-1);
-
-    if (!lineToWrite1.empty())
-    {
-        // Strip off '.adef' or '.mdef' optional suffix before writing to the definition file.
-        if (path::HasSuffix(lineToWrite1, ADEF_EXT))
-        {
-            lineToWrite1 = path::RemoveSuffix(lineToWrite1, ADEF_EXT);
-        }
-        else if (path::HasSuffix(lineToWrite1, MDEF_EXT))
-        {
-            lineToWrite1 = path::RemoveSuffix(lineToWrite1, MDEF_EXT);
-        }
-
-        // Write the line to the destination file.
-        dest << lineToWrite1 << std::endl;
-    }
-    else
-    {
-       dest << "" <<std::endl;
-    }
-
-    // Copy the second part of the sdef
-    source.seekg(secondPosition1);
-
-    int tempLength = firstPosition2 - secondPosition1;
-    char *tempBuffer = new char [tempLength];
-    source.read(tempBuffer, tempLength-1);
-
-    dest.write(tempBuffer, tempLength-1);
-
-    if (!lineToWrite2.empty())
-    {
-        // Strip off '.adef' or '.mdef' optional suffix before writing to the definition file.
-        if (path::HasSuffix(lineToWrite2, ADEF_EXT))
-        {
-            lineToWrite2 = path::RemoveSuffix(lineToWrite2, ADEF_EXT);
-        }
-        else if (path::HasSuffix(lineToWrite2, MDEF_EXT))
-        {
-            lineToWrite2 = path::RemoveSuffix(lineToWrite2, MDEF_EXT);
-        }
-
-        // Write the line to the destination file.
-        dest << lineToWrite2 << std::endl << "    ";
-    }
-    else
-    {
-       dest << "" <<std::endl;
-    }
-
-    source.seekg(secondPosition2);
-
-    int remainLength = totalLength-secondPosition2;
-
-    char *secondBuffer = new char [remainLength];
-    source.read(secondBuffer, remainLength);
-
-    dest.write(secondBuffer, remainLength);
-
-    source.close();
-    dest.close();
-
-    delete[] firstBuffer;
-    delete[] tempBuffer;
-    delete[] secondBuffer;
-
-    // After successfully updating the definition file, rename temporary destination file to
-    // the original file.
-    file::RenameFile(destpath, sourceFile);
 }
 
 
@@ -268,7 +145,7 @@ static void UpdateDefinitionFile
 static void ReadSearchDirs
 (
     std::list<std::string>& searchPathList,   ///< And add the new search paths to this list.
-    const parseTree::TokenList_t* sectionPtr  ///< From the search paths from this section.
+    const parseTree::TokenList_t* sectionPtr    ///< From the search paths from this section.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -307,97 +184,136 @@ void ParseSdefReadSearchPath
     // Parse the sdef file and read appSearch, componentSearch, moduleSearch sections
     const auto sdefFilePtr = parser::sdef::Parse(sdefPath, false);
 
-    std::list<std::string> appSearchPathList;
-    std::list<std::string> componentSearchPathList;
-    std::list<std::string> moduleSearchPathList;
-
     for (auto sectionPtr : sdefFilePtr->sections)
     {
         auto& sectionName = sectionPtr->firstTokenPtr->text;
 
         if (sectionName == "appSearch")
         {
-             ReadSearchDirs(appSearchPathList, ToTokenListPtr(sectionPtr));
+             ReadSearchDirs(handler.appSearchPath, ToTokenListPtr(sectionPtr));
         }
         else if (sectionName == "componentSearch")
         {
-            ReadSearchDirs(componentSearchPathList, ToTokenListPtr(sectionPtr));
+            ReadSearchDirs(handler.compSearchPath, ToTokenListPtr(sectionPtr));
         }
         else if (sectionName == "moduleSearch")
         {
-            ReadSearchDirs(moduleSearchPathList, ToTokenListPtr(sectionPtr));
+            ReadSearchDirs(handler.moduleSearchPath, ToTokenListPtr(sectionPtr));
         }
     }
 
     // Use the search paths to get absolute paths for apps, components, modules.
     if (!handler.adefFilePath.empty() || !handler.cdefFilePath.empty())
     {
-        for (auto const& it : appSearchPathList)
+        std::string appFoundPath = file::FindFile(handler.adefFilePath, handler.appSearchPath);
+        if (!appFoundPath.empty())
         {
-            if (it.find(path::GetContainingDir(sdefPath)) != std::string::npos)
+            handler.absAdefFilePath = appFoundPath;
+        }
+
+        // When app is being created
+        if (appFoundPath.empty() && !handler.appSearchPath.empty())
+        {
+            std::string absAppSearchPath = path::Minimize(handler.appSearchPath.front());
+
+            if (!path::IsAbsolute(absAppSearchPath))
             {
-                if (path::GetLastNode(it) == "apps")
-                {
-                    handler.absAdefFilePath = it + "/" + handler.adefFilePath;
-                    if (!handler.oldAdefFilePath.empty())
-                    {
-                        handler.oldAdefFilePath = it + "/" + handler.oldAdefFilePath;
-                    }
-                    handler.isAppSearchPath = true;
-                    break;
-                }
+                absAppSearchPath = path::MakeAbsolute(absAppSearchPath);
+            }
+
+            handler.absAdefFilePath = absAppSearchPath + "/" + handler.adefFilePath;
+        }
+
+
+        if (!handler.oldAdefFilePath.empty())
+        {
+            std::string oldAppFoundPath = file::FindFile(handler.oldAdefFilePath,
+                                                         handler.appSearchPath);
+            if (!oldAppFoundPath.empty())
+            {
+                handler.oldAdefFilePath = oldAppFoundPath;
             }
         }
 
-        for (auto const& it : componentSearchPathList)
+        if (!handler.cdefFilePath.empty())
         {
-            if (it.find(path::GetContainingDir(sdefPath)) != std::string::npos)
+            std::string compFoundPath = file::FindComponent(handler.cdefFilePath,
+                                                            handler.compSearchPath);
+            if (!compFoundPath.empty())
             {
-                if (path::GetLastNode(it) == "components")
+                handler.absCdefFilePath = compFoundPath;
+            }
+
+            // When component is being created
+            if (compFoundPath.empty() && !handler.compSearchPath.empty())
+            {
+                std::string absCompSearchPath = path::Minimize(handler.compSearchPath.front());
+
+                if (!path::IsAbsolute(absCompSearchPath))
                 {
-                    if (handler.cdefFilePath.empty())
-                    {
-                        handler.absCdefFilePath = it + "/"
-                                               + path::GetLastNode(path::RemoveSuffix(
-                                                                    handler.adefFilePath, ADEF_EXT))
-                                               + "Component";
-                    }
-                    else
-                    {
-                        handler.absCdefFilePath = it + "/" + handler.cdefFilePath;
-                    }
-
-                    if (!handler.oldCdefFilePath.empty())
-                    {
-                        handler.oldCdefFilePath = it + "/" + handler.oldCdefFilePath;
-                    }
-
-                    handler.isCompSearchPath = true;
-                    break;
+                    absCompSearchPath = path::MakeAbsolute(absCompSearchPath);
                 }
+
+                handler.absCdefFilePath = absCompSearchPath + "/" + handler.cdefFilePath;
+            }
+        }
+
+        // Component is created when app is created
+        if (handler.cdefFilePath.empty() && !handler.compSearchPath.empty())
+        {
+            std::string absCompSearchPath = path::Minimize(handler.compSearchPath.front());
+
+            if (!path::IsAbsolute(absCompSearchPath))
+            {
+                absCompSearchPath = path::MakeAbsolute(absCompSearchPath);
+            }
+
+            handler.absCdefFilePath = absCompSearchPath + "/"
+                                      + path::GetLastNode(path::RemoveSuffix(
+                                                          handler.adefFilePath, ADEF_EXT))
+                                      + "Component";
+        }
+
+        if (!handler.oldCdefFilePath.empty())
+        {
+            std::string oldCompFoundPath = file::FindComponent(handler.oldCdefFilePath,
+                                                               handler.compSearchPath);
+            if (!oldCompFoundPath.empty())
+            {
+                handler.oldCdefFilePath = oldCompFoundPath;
             }
         }
     }
 
     if (!handler.mdefFilePath.empty())
     {
-        for (auto const& it : moduleSearchPathList)
+        std::string modFoundPath = file::FindFile(handler.mdefFilePath, handler.moduleSearchPath);
+        if (!modFoundPath.empty())
         {
-            if (it.find(path::GetContainingDir(sdefPath)) != std::string::npos)
+            handler.absMdefFilePath = modFoundPath;
+        }
+
+        // When module is being created
+        if (modFoundPath.empty() && !handler.moduleSearchPath.empty())
+        {
+            std::string absModSearchPath = path::Minimize(handler.moduleSearchPath.front());
+
+            if (!path::IsAbsolute(absModSearchPath))
             {
-                if (path::GetLastNode(it) == "modules")
-                {
-                    handler.absMdefFilePath = it + "/" + handler.mdefFilePath;
-
-                    if (!handler.oldMdefFilePath.empty())
-                    {
-                        handler.oldMdefFilePath = it + "/" + handler.oldMdefFilePath;
-                    }
-
-                    handler.isModSearchPath = true;
-                    break;
-                }
+                absModSearchPath = path::MakeAbsolute(absModSearchPath);
             }
+
+            handler.absMdefFilePath = absModSearchPath + "/" + handler.mdefFilePath;
+        }
+    }
+
+    if (!handler.oldMdefFilePath.empty())
+    {
+        std::string oldModFoundPath = file::FindFile(handler.oldMdefFilePath,
+                                                     handler.moduleSearchPath);
+        if (!oldModFoundPath.empty())
+        {
+            handler.oldMdefFilePath = oldModFoundPath;
         }
     }
 }
@@ -405,27 +321,297 @@ void ParseSdefReadSearchPath
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Parse the system definition file to update the apps: section.
- **/
+ * Evaluate the line that needs to be written to the definition file.
+ */
 //--------------------------------------------------------------------------------------------------
-static void ParseSdefUpdateApp
+static std::string GetLineToWrite
 (
-    std::string sdefPath,
-    std::string appList,
-    std::string appNotList,
-    std::string lineToWrite
+    ArgHandler_t& handler
 )
 {
-    // Parse the sdef file and look for the apps: section to update
-    const auto sdefFilePtr = parser::sdef::Parse(sdefPath, false);
+    std::string defFile;
+    std::string writePath;
+    std::string lineToWrite;
+
+    if (handler.editActionType == ArgHandler_t::EditActionType_t::REMOVE)
+    {
+        lineToWrite = "";
+        return lineToWrite;
+    }
+
+    switch (handler.editItemType)
+    {
+        case ArgHandler_t::EditItemType_t::APP:
+        {
+            defFile = handler.absAdefFilePath;
+            // If appSearch section is present, list just relative app name, no need to specify
+            // the absolute path.
+            for (const auto& it : handler.appSearchPath)
+            {
+                writePath = path::EraseCommonBasePath(handler.absAdefFilePath, it, false);
+                if (!writePath.empty() && !path::IsAbsolute(writePath))
+                {
+                    break;
+                }
+            }
+            break;
+        }
+        case ArgHandler_t::EditItemType_t::MODULE:
+        {
+            defFile = handler.absMdefFilePath;
+            // If moduleSearch section is present, list just relative module name, no need to
+            // specify full absolute path.
+            for (const auto& it : handler.moduleSearchPath)
+            {
+                writePath = path::EraseCommonBasePath(handler.absMdefFilePath, it, false);
+                if (!writePath.empty() && !path::IsAbsolute(writePath))
+                {
+                    break;
+                }
+            }
+            break;
+        }
+        case ArgHandler_t::EditItemType_t::APPSEARCH:
+        case ArgHandler_t::EditItemType_t::COMPONENTSEARCH:
+        case ArgHandler_t::EditItemType_t::MODULESEARCH:
+        case ArgHandler_t::EditItemType_t::INTERFACESEARCH:
+        {
+            std::string dirPath = handler.searchPath;
+            std::map<std::string, std::string> matchedEnvVarMap;
+
+            // Iterate through the existing environment variables to match base path of the search
+            // path and to replace sub-string of the search path with an environment variable.
+            envVars::Iterate([&matchedEnvVarMap, &dirPath](const std::string& name,
+                                                           const std::string& value)
+            {
+                if (value.empty())
+                {
+                    return;
+                }
+
+                std::size_t posFound = dirPath.find(value);
+                if (posFound == 0)
+                {
+                    // Skip irrelevant environment variables.
+                    if (name == "PWD" || name == "OLDPWD" || name == "HOME" || value == "/")
+                    {
+                        return;
+                    }
+
+                    // Insert matching environment variables to the map.
+                    matchedEnvVarMap.insert({value, name});
+                }
+            });
+
+            if (matchedEnvVarMap.size() == 0)
+            {
+                // If path does not match any of the environment variables. Check if base path
+                // of the sdef matches the search path.
+                std::string sdefDir = path::GetContainingDir(handler.absSdefFilePath);
+                std::string erasedCommonPath = path::EraseCommonBasePath(dirPath, sdefDir, false);
+
+                if (erasedCommonPath.empty())
+                {
+                    // Do not write empty string to sdef, write the absolute dirPath instead.
+                    writePath = dirPath;
+                }
+                else
+                {
+                    // Write the relative path to sdef.
+                    writePath = erasedCommonPath;
+                }
+            }
+            else
+            {
+                // If there are multiple strings matching the search path's sub-string, select the
+                // longest string. Since, elements in map are always sorted by its key, select the
+                // last element for the environment variable value of longest string length.
+                std::string matchedEnvVar = matchedEnvVarMap.rbegin()->second;
+                std::string matchedEnvValue = matchedEnvVarMap.rbegin()->first;
+
+                dirPath = path::EraseCommonBasePath(dirPath, matchedEnvValue, false);
+
+                if (dirPath.empty())
+                {
+                    writePath = "${" + matchedEnvVar + "}";
+                }
+                else
+                {
+                    writePath = "${" + matchedEnvVar + "}/" + dirPath;
+                }
+            }
+
+            break;
+        }
+        default:
+        {
+            throw mk::Exception_t(
+                mk::format(LE_I18N("Internal error: '%s' edit item type is invalid"),
+                           handler.editItemType)
+            );
+            break;
+        }
+    }
+
+    if (writePath.empty())
+    {
+        writePath = path::EraseCommonBasePath(defFile, handler.absSdefFilePath, true);
+    }
+
+    if (handler.editActionType == ArgHandler_t::EditActionType_t::RENAME)
+    {
+        lineToWrite = writePath;
+    }
+    else
+    {
+        // mkedit adds 4 spaces infront any text added to the active definition file.
+        lineToWrite = "    " + writePath;
+    }
+
+    return lineToWrite;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if section is a search section (appSearch, componentSearch, moduleSearch, interfaceSearch)
+ * and the edit item type matches the corresponding search section.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool isSearchSection (const std::string& sectionName, ArgHandler_t& handler)
+{
+     if (((sectionName == "appSearch") &&
+           (handler.editItemType == ArgHandler_t::EditItemType_t::APPSEARCH))
+          || ((sectionName == "componentSearch") &&
+              (handler.editItemType == ArgHandler_t::EditItemType_t::COMPONENTSEARCH))
+          || ((sectionName == "moduleSearch") &&
+              (handler.editItemType == ArgHandler_t::EditItemType_t::MODULESEARCH))
+          || ((sectionName == "interfaceSearch") &&
+              (handler.editItemType == ArgHandler_t::EditItemType_t::INTERFACESEARCH)))
+    {
+        return true;
+    }
+
+    return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parse system definition file to evaluate the line to write and its position. If the section to
+ * update is not present in the defintion file, append the new section and new contents to the end
+ * of the file.
+ */
+//--------------------------------------------------------------------------------------------------
+void ParseSdefUpdateItem
+(
+    ArgHandler_t& handler
+)
+{
+    std::string itemMustExist;
+    std::string itemMustNotExist;
+    std::string itemMustExistStrip;
+    std::string itemMustNotExistStrip;
+
+    switch (handler.editItemType)
+    {
+        case ArgHandler_t::EditItemType_t::APP:
+                if (handler.editActionType == ArgHandler_t::EditActionType_t::ADD)
+                {
+                    itemMustNotExist = handler.absAdefFilePath;
+                }
+                else if (handler.editActionType == ArgHandler_t::EditActionType_t::CREATE)
+                {
+                    itemMustNotExist = handler.absAdefFilePath;
+                }
+                else if (handler.editActionType == ArgHandler_t::EditActionType_t::REMOVE)
+                {
+                    itemMustExist = handler.absAdefFilePath;
+                    itemMustNotExist = "";
+                }
+                else if (handler.editActionType == ArgHandler_t::EditActionType_t::RENAME)
+                {
+                    itemMustExist = handler.oldAdefFilePath;
+                    itemMustNotExist = handler.absAdefFilePath;
+                }
+
+                itemMustExistStrip = path::GetLastNode(itemMustExist);
+
+                if (path::HasSuffix(itemMustExistStrip, ADEF_EXT))
+                {
+                    itemMustExistStrip = path::RemoveSuffix(itemMustExistStrip, ADEF_EXT);
+                }
+
+                itemMustNotExistStrip =  path::GetLastNode(itemMustNotExist);
+
+                if (path::HasSuffix(itemMustNotExistStrip, ADEF_EXT))
+                {
+                    itemMustNotExistStrip = path::RemoveSuffix(itemMustNotExistStrip, ADEF_EXT);
+                }
+            break;
+
+        case ArgHandler_t::EditItemType_t::MODULE:
+                if (handler.editActionType == ArgHandler_t::EditActionType_t::ADD)
+                {
+                    itemMustNotExist = handler.absMdefFilePath;
+                }
+                else if (handler.editActionType == ArgHandler_t::EditActionType_t::CREATE)
+                {
+                    itemMustNotExist = handler.absMdefFilePath;
+                }
+                else if (handler.editActionType == ArgHandler_t::EditActionType_t::REMOVE)
+                {
+                    itemMustExist = handler.absMdefFilePath;
+                    itemMustNotExist = "";
+                }
+                else if (handler.editActionType == ArgHandler_t::EditActionType_t::RENAME)
+                {
+                    itemMustExist = handler.oldMdefFilePath;
+                    itemMustNotExist = handler.absMdefFilePath;
+                }
+
+                itemMustExistStrip = path::GetLastNode(itemMustExist);
+
+                if (path::HasSuffix(itemMustExistStrip, MDEF_EXT))
+                {
+                    itemMustExistStrip = path::RemoveSuffix(itemMustExistStrip, MDEF_EXT);
+                }
+
+                itemMustNotExistStrip =  path::GetLastNode(itemMustNotExist);
+
+                if (path::HasSuffix(itemMustNotExistStrip, MDEF_EXT))
+                {
+                    itemMustNotExistStrip = path::RemoveSuffix(itemMustNotExistStrip, MDEF_EXT);
+                }
+            break;
+
+        case ArgHandler_t::EditItemType_t::APPSEARCH:
+        case ArgHandler_t::EditItemType_t::COMPONENTSEARCH:
+        case ArgHandler_t::EditItemType_t::MODULESEARCH:
+        case ArgHandler_t::EditItemType_t::INTERFACESEARCH:
+            if (handler.editActionType == ArgHandler_t::EditActionType_t::ADD)
+            {
+                itemMustNotExist = handler.searchPath;
+            }
+            break;
+
+        default:
+            break;
+    };
+
+    // Parse the sdef file and look for the section to update
+    const auto sdefFilePtr = parser::sdef::Parse(handler.absSdefFilePath, false);
 
     bool foundSection = false;
+    bool foundItem = false;
+    int foundPos, nextPos, length, endPos = 0;
+    std::string lineToWrite = GetLineToWrite(handler);
 
     for (auto sectionPtr : sdefFilePtr->sections)
     {
         auto& sectionName = sectionPtr->firstTokenPtr->text;
 
-        if (sectionName == "apps")
+        if ((sectionName == "apps") && (handler.editItemType == ArgHandler_t::EditItemType_t::APP))
         {
             // There can be multiple files with apps: section included in the active sdef.
             // Need to make sure only the active sdef is looked into for updating apps.
@@ -434,49 +620,58 @@ static void ParseSdefUpdateApp
             if (found != std::string::npos)
             {
                 foundSection = true;
-                bool foundItem = false;
-                int foundPos, nextPos = 0;
-                int length = sectionPtr->lastTokenPtr->curPos;
+                length = sectionPtr->lastTokenPtr->curPos;
 
                 auto appsSectionPtr =
                             dynamic_cast<const parseTree::CompoundItemList_t*>(sectionPtr);
+                if (appsSectionPtr == NULL)
+                {
+                    throw mk::Exception_t(
+                        mk::format(LE_I18N("Internal error: '%s' section pointer is NULL"),
+                                   sectionName)
+                    );
+                }
 
                 for (auto itemPtr : appsSectionPtr->Contents())
                 {
-                    const parseTree::App_t* appPtr = dynamic_cast<const parseTree::App_t*>(itemPtr);
+                    const auto appPtr = dynamic_cast<const parseTree::App_t*>(itemPtr);
+                    if (appPtr == NULL)
+                    {
+                        throw mk::Exception_t(
+                            mk::format(LE_I18N("Internal error: '%s' section item pointer is NULL"),
+                                       sectionName)
+                        );
+                    }
+
                     const auto appSpec = path::Unquote(DoSubstitution(appPtr->firstTokenPtr));
-                    std::string appSpecStrip, appListStrip, appNotListStrip;
+                    std::string appSpecStrip;
 
                     appSpecStrip = path::GetLastNode(appSpec);
-                    appListStrip = path::GetLastNode(appList);
 
                     if (path::HasSuffix(appSpecStrip, ADEF_EXT))
                     {
                         appSpecStrip = path::RemoveSuffix(appSpecStrip, ADEF_EXT);
                     }
 
-                    if (path::HasSuffix(appListStrip, ADEF_EXT))
-                    {
-                        appListStrip = path::RemoveSuffix(appListStrip, ADEF_EXT);
-                    }
-
-                    if (path::HasSuffix(appNotList, ADEF_EXT))
-                    {
-                        appNotListStrip = path::RemoveSuffix(appNotList, ADEF_EXT);
-                    }
-
-                    std::size_t appListFound = appSpecStrip.find(appListStrip);
-                    if (appListFound != std::string::npos)
+                    if (appSpecStrip.compare(itemMustExistStrip) == 0)
                     {
                         foundItem = true;
                         foundPos = itemPtr->lastTokenPtr->curPos;
                         nextPos = itemPtr->firstTokenPtr->nextPtr->curPos;
+
+                        if (handler.isPrintLogging())
+                        {
+                            std::cout << mk::format(
+                                            LE_I18N("\nApp '%s' found in apps: section in '%s'."),
+                                            itemMustExistStrip,
+                                            itemPtr->lastTokenPtr->GetLocation()
+                                         );
+                        }
                     }
 
-                    if (!appNotList.empty())
+                    if (!itemMustNotExist.empty())
                     {
-                        std::size_t appNotListFound = appSpecStrip.find(appNotListStrip);
-                        if (appNotListFound != std::string::npos)
+                        if (appSpecStrip.compare(itemMustNotExistStrip) == 0)
                         {
                             throw mk::Exception_t(
                                    mk::format(LE_I18N("App already listed: '%s'"),
@@ -485,140 +680,72 @@ static void ParseSdefUpdateApp
                         }
                     }
                 }
-
-                if (!appList.empty() && foundItem)
-                {
-                    // Rename or remove app from sdef
-                    UpdateDefinitionFile(sdefPath, foundPos, nextPos, lineToWrite);
-                }
-                else if (!appList.empty() && !foundItem)
-                {
-                    // If the app to be renamed or removed is not found on the list, print error.
-                    throw mk::Exception_t(
-                           mk::format( LE_I18N("App '%s' not listed in apps: section."), appList)
-                    );
-                }
-                else if (!appNotList.empty())
-                {
-                    // Add app to sdef
-                    UpdateDefinitionFile(sdefPath, length, length-1, lineToWrite);
-                }
-            } //end of if
+           } //end of if
         } // end of if
-    } // end of for
 
-
-    // If the section is not found then add new section and append to the end of the sdef file
-    if (!foundSection && !appNotList.empty() && appList.empty())
-    {
-        std::string destpath = "mkedit_temp.sdef";
-
-        std::ifstream source(sdefPath, std::ios::binary);
-        std::ofstream dest(destpath, std::ios::binary);
-
-        dest << source.rdbuf();
-
-        std::fstream dest1;
-        dest1.open(destpath, std::ios::in | std::ios::out | std::ios::ate);
-
-        if (!dest1.is_open())
-        {
-            throw mk::Exception_t(
-                mk::format(LE_I18N("Failed to open file '%s' for writing."), destpath)
-            );
-        }
-
-        std::string strWrite;
-
-        strWrite = "\napps:\n{\n" + lineToWrite + "\n}\n";
-
-        dest1.write(strWrite.c_str(), strWrite.size());
-        dest1.close();
-
-        source.close();
-        dest.close();
-
-        file::RenameFile(destpath, sdefPath);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Parse the system definition file to update the kernelModule(s): section.
- **/
-//--------------------------------------------------------------------------------------------------
-static void ParseSdefUpdateKernelModules
-(
-    std::string sdefPath,
-    std::string moduleList,
-    std::string moduleNotList,
-    std::string lineToWrite
-)
-{
-    bool foundSection = false;
-    bool foundItem = false;
-
-    // Parse the sdef file and look for the kernelModule(s): section to update
-    const auto sdefFilePtr = parser::sdef::Parse(sdefPath, false);
-
-    for (auto sectionPtr : sdefFilePtr->sections)
-    {
-        auto& sectionName = sectionPtr->firstTokenPtr->text;
-
-        if (parser::IsNameSingularPlural(sectionName, "kernelModule"))
+        else if (parser::IsNameSingularPlural(sectionName, "kernelModule") &&
+            (handler.editItemType == ArgHandler_t::EditItemType_t::MODULE))
         {
             // There can be multiple files with kernelModules: section included with active sdef.
             // Need to make sure only the active sdef is looked into for updating apps.
             std::size_t found = sectionPtr->lastTokenPtr->GetLocation().find(sdefFilePtr->path);
 
-            int length = sectionPtr->lastTokenPtr->curPos;
+            length = sectionPtr->lastTokenPtr->curPos;
 
             if (found != std::string::npos)
             {
-                int foundPos, nextPos = 0;
-
                 foundSection = true;
                 auto moduleSectionPtr =
                             dynamic_cast<const parseTree::CompoundItemList_t*>(sectionPtr);
+                if (moduleSectionPtr == NULL)
+                {
+                    throw mk::Exception_t(
+                        mk::format(LE_I18N("Internal error: '%s' section pointer is NULL"),
+                                   sectionName)
+                    );
+                }
+
                 for (auto itemPtr : moduleSectionPtr->Contents())
                 {
                     const parseTree::RequiredModule_t* modulePtr =
                                         dynamic_cast<const parseTree::RequiredModule_t*>(itemPtr);
+                   if (modulePtr == NULL)
+                    {
+                        throw mk::Exception_t(
+                            mk::format(LE_I18N("Internal error: '%s' section item pointer is NULL"),
+                                       sectionName)
+                        );
+                    }
+
                     const auto moduleSpec = path::Unquote(DoSubstitution(modulePtr->firstTokenPtr));
 
-                    std::string moduleSpecStrip, moduleListStrip, moduleNotListStrip;
-
+                    std::string moduleSpecStrip;
                     moduleSpecStrip = path::GetLastNode(moduleSpec);
-                    moduleListStrip = path::GetLastNode(moduleList);
 
                     if (path::HasSuffix(moduleSpecStrip, MDEF_EXT))
                     {
                         moduleSpecStrip = path::RemoveSuffix(moduleSpecStrip, MDEF_EXT);
                     }
 
-                    if (path::HasSuffix(moduleListStrip, MDEF_EXT))
-                    {
-                        moduleListStrip = path::RemoveSuffix(moduleListStrip, MDEF_EXT);
-                    }
-
-                    if (path::HasSuffix(moduleNotList, MDEF_EXT))
-                    {
-                        moduleNotListStrip = path::RemoveSuffix(moduleNotList, MDEF_EXT);
-                    }
-
-                    std::size_t moduleListFound = moduleSpecStrip.find(moduleListStrip);
-                    if (moduleListFound != std::string::npos)
+                    if (moduleSpecStrip.compare(itemMustExistStrip) == 0)
                     {
                         foundItem = true;
                         foundPos = itemPtr->lastTokenPtr->curPos;
                         nextPos = itemPtr->firstTokenPtr->nextPtr->curPos;
+
+                        if (handler.isPrintLogging())
+                        {
+                            std::cout << mk::format(
+                                            LE_I18N("\nModule '%s' found in kernelModules: section "
+                                                    "at '%s'."),
+                                            itemMustExistStrip, itemPtr->lastTokenPtr->GetLocation()
+                                         );
+                        }
                     }
 
-                    if (!moduleNotList.empty())
+                    if (!itemMustNotExist.empty())
                     {
-                        std::size_t moduleNotListFound = moduleSpecStrip.find(moduleNotListStrip);
-                        if (moduleNotListFound != std::string::npos)
+                        if (moduleSpecStrip.compare(itemMustNotExistStrip) == 0)
                         {
                             throw mk::Exception_t(
                                    mk::format(LE_I18N("Module already listed: '%s'"),
@@ -626,62 +753,134 @@ static void ParseSdefUpdateKernelModules
                             );
                         }
                     }
-               }
+               } //end of for
+            } //end of if
+        } //end of if
 
-                if (!moduleList.empty() && foundItem)
+        else if (isSearchSection(sectionName, handler))
+        {
+            // There can be multiple files with search section included in the active sdef.
+            // Need to make sure only the active sdef is looked into for updating apps.
+            std::size_t found = sectionPtr->lastTokenPtr->GetLocation().find(sdefFilePtr->path);
+
+            if (found != std::string::npos)
+            {
+                foundSection = true;
+                length = sectionPtr->lastTokenPtr->curPos;
+            }
+
+            auto intSearchSectionPtr =
+                        dynamic_cast<const parseTree::TokenList_t*>(sectionPtr);
+            if (intSearchSectionPtr == NULL)
+            {
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("Internal error: '%s' section pointer is NULL"),
+                               sectionName)
+                );
+            }
+
+            for (const auto contentItemPtr : intSearchSectionPtr->Contents())
+            {
+                auto tokenPtr = dynamic_cast<const parseTree::Token_t*>(contentItemPtr);
+
+                auto dirPath = path::Unquote(DoSubstitution(tokenPtr));
+
+                if (!itemMustNotExist.empty())
                 {
-                    // Renaming module in sdef
-                    UpdateDefinitionFile(sdefPath, foundPos, nextPos, lineToWrite);
+                    if (dirPath.compare(itemMustNotExist) == 0)
+                    {
+                        throw mk::Exception_t(
+                               mk::format(LE_I18N("interfaceSearch already listed: '%s'"),
+                                          contentItemPtr->GetLocation())
+                        );
+                    }
                 }
-                else if (!moduleList.empty() && !foundItem)
-                {
-                    // If the app to be renamed or removed is not found on the list, print error.
-                    throw mk::Exception_t(
-                          mk::format(LE_I18N("Module '%s' not listed in kernelModule(s): section."),
-                                     moduleList)
-                    );
-                }
-                else if (!moduleNotList.empty())
-                {
-                    // Adding module to sdef
-                    UpdateDefinitionFile(sdefPath, length, length-1, lineToWrite);
-                }
-            } // end of if
-        } // end of if
+            }
+        }
+        else
+        {
+            // Evaluate end positon which is closer to the end of the file.
+            std::size_t found = sectionPtr->lastTokenPtr->GetLocation().find(sdefFilePtr->path);
+            if (found != std::string::npos)
+            {
+                endPos = sectionPtr->lastTokenPtr->nextPtr->curPos;
+            }
+        }
     } // end of for
 
-    // If a module is being added to the sdef but the section is not found, then create a new
-    // section at the end of the sdef file.
-    if (!foundSection && !moduleNotList.empty() && moduleList.empty())
+    if (foundSection)
     {
-        std::string destpath = "mkedit_temp.sdef";
-
-        std::ifstream source(sdefPath, std::ios::binary);
-        std::ofstream dest(destpath, std::ios::binary);
-
-        dest << source.rdbuf();
-
-        std::fstream dest1;
-        dest1.open(destpath, std::ios::in | std::ios::out | std::ios::ate);
-
-        if (!dest1.is_open())
+        if (!itemMustExist.empty() && foundItem)
         {
+            // Rename or remove app from sdef
+            handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite,
+                                                                               foundPos, nextPos});
+        }
+        else if (!itemMustExist.empty() && !foundItem)
+        {
+            // If the app to be renamed or removed is not found on the list, print error.
             throw mk::Exception_t(
-                mk::format(LE_I18N("Failed to open file '%s' for writing."), destpath)
+                   mk::format( LE_I18N("'%s' not listed in Sdef"), itemMustExist)
             );
         }
+        else if (!itemMustNotExist.empty())
+        {
+            // Add app to sdef
+            handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite,
+                                                                               length, length-1});
+        }
+    }
 
+    // If the section is not found then add new section and append to the end of the sdef file
+    if (!foundSection && !itemMustNotExist.empty() && itemMustExist.empty())
+    {
         std::string strWrite;
 
-        strWrite = "\nkernelModules:\n{\n" + lineToWrite + "\n}\n";
+        switch (handler.editItemType)
+        {
+            // Evaluate line to be written to the end of the file.
+            case ArgHandler_t::EditItemType_t::APP:
+                  strWrite = "\n\napps:\n{\n" + lineToWrite + "\n}\n";
+                  break;
 
-        dest1.write(strWrite.c_str(), strWrite.size());
-        dest1.close();
+            case ArgHandler_t::EditItemType_t::MODULE:
+                  strWrite = "\n\nkernelModules:\n{\n" + lineToWrite + "\n}\n";
+                  break;
 
-        source.close();
-        dest.close();
+            case ArgHandler_t::EditItemType_t::APPSEARCH:
+                  strWrite = "\n\nappSearch:\n{\n" + lineToWrite + "\n}\n";
+                  break;
 
-        file::RenameFile(destpath, sdefPath);
+            case ArgHandler_t::EditItemType_t::COMPONENTSEARCH:
+                  strWrite = "\n\ncomponentSearch:\n{\n" + lineToWrite + "\n}\n";
+                  break;
+
+            case ArgHandler_t::EditItemType_t::MODULESEARCH:
+                  strWrite = "\n\nmoduleSearch:\n{\n" + lineToWrite + "\n}\n";
+                  break;
+
+            case ArgHandler_t::EditItemType_t::INTERFACESEARCH:
+                  strWrite = "\n\ninterfaceSearch:\n{\n" + lineToWrite + "\n}\n";
+                  break;
+
+            default:
+                  throw mk::Exception_t(
+                            mk::format(LE_I18N("Internal: '%s' edit item type is invalid."),
+                                       handler.editItemType)
+                  );
+                  break;
+        }
+
+        handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{strWrite, endPos,
+                                                                           endPos});
+
+        if (handler.isPrintLogging())
+        {
+            std::cout << mk::format(
+                            LE_I18N("Section not found. Append '%s' to end of the file '%s'."),
+                            strWrite, handler.absSdefFilePath
+                         );
+        }
     }
 }
 
@@ -690,7 +889,7 @@ static void ParseSdefUpdateKernelModules
 /**
  * Parse the application definition file to update the components: or executables: section.
  * 1. Parse the cdef file to check if cdef contains .c files listed in sources: section.
- * 2. Parse the adef file for parsing.
+ * 2. Parse the adef file:
  *    a. If cdef contains sources: section, update the executables: section of the adef.
  *    b. If cdef does not contain sources: section, add component to components: section of adef.
  * 3. Update the adef file by adding the component in either sources or executables section.
@@ -699,17 +898,16 @@ static void ParseSdefUpdateKernelModules
  * compNotList: Component that must not be already listed in the definition file.
  **/
 //--------------------------------------------------------------------------------------------------
-static void ParseAdefUpdateComponent
+static void ParseAdefGetEditLinePosition
 (
+    ArgHandler_t& handler,
     std::string adefPath,
     std::string cdefPath,
     std::string compList,
-    std::string compNotList,
-    bool isCompSearchPath
+    std::string compNotList
 )
 {
     bool sourcesSectionExist = false;
-
     auto cdefFilePtr = parser::cdef::Parse(cdefPath, false);
 
     // Iterate over the .cdef file's list of sections.
@@ -723,17 +921,46 @@ static void ParseAdefUpdateComponent
         }
     }
 
+    if (handler.isPrintLogging())
+    {
+        std::cout << mk::format(LE_I18N("\nSearching component '%s' in ADEF file '%s'."),
+                                compList, adefPath
+                     );
+    }
+
     auto adefFilePtr = parser::adef::Parse(adefPath, false);
 
-    // Position for the component in components: or executables: section.
-    int foundPos1, nextPos1, length1 = 0;
-    bool foundItem = false;
+    // Position of the end of the components: or executables: section.
+    int length1 = 0;
+    // Boolean flag to check if the component is found in the components: or executables: section.
+    bool foundItem1 = false;
 
-    // Position for the component in processes: run: section.
-    int foundPos2, nextPos2, length2 = 0;
+    // Position of the end of the component in processes: run: section.
+    int length2 = 0;
+    // Boolean flag to check if the executable name is found in the processes: run: section.
     bool foundItem2 = false;
 
-    std::string exeName;
+    // Boolean flag to check if the component name is found in the bindings: section.
+    bool foundItem3 = false;
+
+    CompPosition_t compPosition {false, 0, 0, 0, 0};
+    CompPosition_t exeCompPosition {false, 0, 0, 0, 0};
+    CompPosition_t procRunPosition {false, 0, 0, 0, 0};
+    CompPosition_t bindingPosition {false, 0, 0, 0, 0};
+
+    // List of components found in the components: section.
+    std::vector<CompPosition_t> compPositionList;
+    // List of components found in the executables: section.
+    std::vector<CompPosition_t> exeCompPositionList;
+    // List of executables related to the component found in the processes: run: section.
+    std::vector<CompPosition_t> procRunPositionList;
+    // List of components found in the bindings: section.
+    std::vector<CompPosition_t> bindingPositionList;
+
+    // List of executables containing only single component.
+    std::vector<std::string> singleCompExe;
+
+    handler.linePositionToWrite.clear();
 
     // Iterate over the .adef file's list of sections, processing content items.
     for (auto sectionPtr : adefFilePtr->sections)
@@ -744,10 +971,31 @@ static void ParseAdefUpdateComponent
         {
             auto exeSectionPtr = dynamic_cast<const parseTree::CompoundItemList_t*>(sectionPtr);
 
+            if (exeSectionPtr == NULL)
+            {
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("Internal error: '%s' section pointer is NULL"), sectionName)
+                );
+            }
+
             for (auto itemPtr : exeSectionPtr->Contents())
             {
                 const parseTree::Executable_t* exePtr =
                                     dynamic_cast<const parseTree::Executable_t*>(itemPtr);
+                if (exePtr == NULL)
+                {
+                    throw mk::Exception_t(
+                        mk::format(LE_I18N("Internal error: '%s' section content pointer is NULL"),
+                                   sectionName)
+                    );
+                }
+
+                if (exePtr->Contents().size() > 1)
+                {
+                    // If the executables: section contain list of multiple components, set bool
+                    // flag exeMultiComp to true.
+                    exeCompPosition.isExeMultiComp = true;
+                }
 
                 for (auto tokenPtr : exePtr->Contents())
                 {
@@ -755,10 +1003,30 @@ static void ParseAdefUpdateComponent
                     std::string componentPath = path::Unquote(DoSubstitution(tokenPtr));
                     if (path::GetLastNode(compList).compare(path::GetLastNode(componentPath)) == 0)
                     {
-                        foundItem = true;
-                        foundPos1 = itemPtr->firstTokenPtr->curPos;
-                        nextPos1 = itemPtr->lastTokenPtr->nextPtr->curPos;
-                        exeName = itemPtr->firstTokenPtr->text;
+                        foundItem1 = true;
+
+                        // If executables doesn't contain multiple components.
+                        if (!exeCompPosition.isExeMultiComp)
+                        {
+                            // Push the executable name into the vector.
+                            singleCompExe.push_back(itemPtr->firstTokenPtr->text);
+                        }
+
+                        exeCompPosition.foundPos = tokenPtr->curPos;
+                        exeCompPosition.nextPos = tokenPtr->nextPtr->curPos;
+                        exeCompPosition.sectionPos = itemPtr->firstTokenPtr->curPos;
+                        exeCompPosition.sectionNextPos = itemPtr->lastTokenPtr->nextPtr->curPos;
+
+                        exeCompPositionList.push_back(exeCompPosition);
+
+                        if (handler.isPrintLogging())
+                        {
+                            std::cout << mk::format(
+                                            LE_I18N("\nComponent '%s' found in '%s' section '%s'"),
+                                            path::GetLastNode(compList), sectionName,
+                                            tokenPtr->GetLocation()
+                                         );
+                        }
                     }
 
                     if (path::GetLastNode(compNotList).compare(path::GetLastNode(componentPath))
@@ -778,19 +1046,37 @@ static void ParseAdefUpdateComponent
         {
             auto componentSectionPtr =
                         dynamic_cast<const parseTree::TokenListSection_t*>(sectionPtr);
+            if (componentSectionPtr == NULL)
+            {
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("Internal error: '%s' section pointer is NULL"), sectionName)
+                );
+            }
+
             for (auto tokenPtr : componentSectionPtr->Contents())
             {
                 // Resolve the path to the component.
                 std::string componentPath = path::Unquote(DoSubstitution(tokenPtr));
 
-                if (path::MakeAbsolute(compList).compare(componentPath) == 0)
+                if (path::GetLastNode(compList).compare(path::GetLastNode(componentPath)) == 0)
                 {
-                    foundItem = true;
-                    foundPos1 = tokenPtr->curPos;
-                    nextPos1 = tokenPtr->nextPtr->curPos;
+                    foundItem1 = true;
+
+                    compPosition.foundPos = tokenPtr->curPos;
+                    compPosition.nextPos = tokenPtr->nextPtr->curPos;
+                    compPositionList.push_back(compPosition);
+
+                    if (handler.isPrintLogging())
+                    {
+                        std::cout << mk::format(
+                                        LE_I18N("\nComponent '%s' found in '%s' section at '%s'"),
+                                        path::GetLastNode(compList), sectionName,
+                                        tokenPtr->GetLocation()
+                                     );
+                    }
                 }
 
-                if (path::MakeAbsolute(compNotList).compare(componentPath) == 0)
+                if (path::GetLastNode(compNotList).compare(path::GetLastNode(componentPath)) == 0)
                 {
                     throw mk::Exception_t(
                            mk::format(LE_I18N("Component already listed: '%s'"),
@@ -805,6 +1091,12 @@ static void ParseAdefUpdateComponent
         {
             auto processesSectionPtr =
                         dynamic_cast<const parseTree::CompoundItemList_t*>(sectionPtr);
+            if (processesSectionPtr == NULL)
+            {
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("Internal error: '%s' section pointer is NULL"), sectionName)
+                );
+            }
 
             for (auto subsectionPtr : processesSectionPtr->Contents())
             {
@@ -814,6 +1106,14 @@ static void ParseAdefUpdateComponent
                 {
                     auto runSectionPtr =
                             dynamic_cast<const parseTree::CompoundItemList_t*>(subsectionPtr);
+
+                    if (runSectionPtr == NULL)
+                    {
+                        throw mk::Exception_t(
+                            mk::format(LE_I18N("Internal error: '%s' section pointer is NULL"),
+                                       sectionName)
+                        );
+                    }
 
                     // Each item in this section is a process specification in the form of a
                     // TokenList_t.
@@ -834,449 +1134,517 @@ static void ParseAdefUpdateComponent
                         if (i != tokens.end())
                         {
                             auto procName = (*i)->text;
-                            if (exeName.compare(procName) == 0)
+                            for (const auto& it : singleCompExe)
                             {
-                                foundItem2 = true;
-                                foundPos2 = itemPtr->firstTokenPtr->curPos;
-                                nextPos2 = itemPtr->lastTokenPtr->nextPtr->curPos;
+                                // If executable with single component  match the process name then
+                                // mark for removal. This is used only for remove cases.
+                                if (it.compare(procName) == 0)
+                                {
+                                    foundItem2 = true;
+
+                                    procRunPosition.foundPos = itemPtr->firstTokenPtr->curPos;
+                                    procRunPosition.nextPos = itemPtr->lastTokenPtr->nextPtr->curPos;
+
+                                    if (handler.isPrintLogging())
+                                    {
+                                        std::cout << mk::format(
+                                                        LE_I18N("\nProcess '%s' found in '%s' "
+                                                                "section '%s'"),
+                                                        procName, sectionName,
+                                                        itemPtr->firstTokenPtr->GetLocation()
+                                                     );
+                                    }
+                                }
                             }
                         }
                     }
+                    procRunPositionList.push_back(procRunPosition);
                     length2 = subsectionPtr->lastTokenPtr->curPos;
                 }
             }
-        }
-    }
+        } //end of if
+
+        if (sectionName == "bindings")
+        {
+            auto bindSectionPtr = dynamic_cast<const parseTree::CompoundItemList_t*>(sectionPtr);
+
+            if (bindSectionPtr == NULL)
+            {
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("Internal error: '%s' section pointer is NULL"), sectionName)
+                );
+            }
+
+            for (auto itemPtr : bindSectionPtr->Contents())
+            {
+                const parseTree::Binding_t* bindPtr =
+                                    dynamic_cast<const parseTree::Binding_t*>(itemPtr);
+                if (bindPtr == NULL)
+                {
+                    throw mk::Exception_t(
+                        mk::format(LE_I18N("Internal error: '%s' section content pointer is NULL"),
+                                   sectionName)
+                    );
+                }
+
+                for (auto tokenPtr : bindPtr->Contents())
+                {
+                    // If component to rename/remove is found in the list of bindings.
+                    if (path::GetLastNode(compList).compare(tokenPtr->text) == 0)
+                    {
+                        foundItem3  = true;
+
+                        bindingPosition.foundPos = tokenPtr->curPos;
+                        bindingPosition.nextPos = tokenPtr->nextPtr->curPos;
+                        bindingPosition.sectionPos = itemPtr->firstTokenPtr->curPos;
+                        bindingPosition.sectionNextPos = itemPtr->lastTokenPtr->nextPtr->curPos;
+
+                        bindingPositionList.push_back(bindingPosition);
+
+                        if (handler.isPrintLogging())
+                        {
+                            std::cout << mk::format(
+                                            LE_I18N("\nComponent '%s' found in '%s' section '%s'"),
+                                            path::GetLastNode(compList), sectionName,
+                                            tokenPtr->GetLocation()
+                                         );
+                        }
+                    }
+                }
+            }
+        } //end of if
+    } // end of for
 
     std::string compName;
     std::string compPath;
 
-    compPath = compNotList;
-    compName = path::GetLastNode(compPath);
+    compName = path::GetLastNode(compNotList);
 
-    // If componentSearch section is present, list component name (no need to specify full path)
-    if (isCompSearchPath)
+    // If componentSearch section is present, list the relative component name.
+    // No need to specify full absolute path.
+    for (const auto& it : handler.compSearchPath)
     {
-        compPath = compName;
-    }
-    else
-    {
-        std::string adefContainDir = path::GetContainingDir(adefPath);
-
-        std::size_t foundAdefContainDir = compPath.find(adefContainDir);
-        if (foundAdefContainDir != std::string::npos)
+        compPath = path::EraseCommonBasePath(compNotList, it, false);
+        if (!compPath.empty())
         {
-            compPath.erase(foundAdefContainDir, adefContainDir.length()+1);
+            break;
         }
     }
 
-    std::string lineToWrite;
-    std::string lineToWrite2;
-
-    if (!compList.empty()  && !compNotList.empty() && foundItem && foundItem2)
+    if (compPath.empty())
     {
-        if (sourcesSectionExist)
+        compPath = path::EraseCommonBasePath(compNotList, handler.absAdefFilePath, true);
+    }
+
+    std::string lineToWrite1;
+    std::string lineToWrite2;
+    std::string lineToWrite3;
+
+    if (!compList.empty()  && !compNotList.empty())
+    {
+        // Rename component in adef
+        if (foundItem1)
         {
-            // Append the executable and component path to the adef in the executables: section
-            lineToWrite = compName + "Exe = ( " +
-                          compPath + " )";
-            lineToWrite2 = "( " + compName + "Exe )";
+            if (sourcesSectionExist)
+            {
+                // Append the executable and component path to the adef in the executables: section
+                lineToWrite1 =  compPath;
+            }
+            else
+            {
+                // Append the component path to the adef in the components: section
+                lineToWrite1 = "    " + compPath;
+            }
+
+            if (handler.isPrintLogging())
+            {
+                std::cout << mk::format(
+                                LE_I18N("\nRename component to '%s' in components: or executables: "
+                                        "section"), compPath
+                             );
+            }
         }
         else
         {
-            // Append the component path to the adef in the components: section
-             lineToWrite = "    " + compPath;
+            // Component to rename not found on the list, throw error.
+            throw mk::Exception_t(
+                mk::format(LE_I18N(
+                           "Component '%s' not listed in either components: or executables: section"
+                           " of '%s'."), compList, adefPath)
+            );
         }
 
-        // Renaming components in adef
-        UpdateDefinitionFile(adefPath, foundPos1, nextPos1, foundPos2, nextPos2, lineToWrite,
-                             lineToWrite2);
+        for (auto it : exeCompPositionList)
+        {
+            handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite1,
+                                                                       it.foundPos, it.nextPos});
+        }
 
+        for (const auto& it : compPositionList)
+        {
+             handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite1,
+                                                                        it.foundPos, it.nextPos});
+        }
+
+        if (foundItem3)
+        {
+            lineToWrite3 = path::GetLastNode(compNotList);
+
+            for (auto it : bindingPositionList)
+            {
+                handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite3,
+                                                                          it.foundPos, it.nextPos});
+            }
+
+            if (handler.isPrintLogging())
+            {
+                std::cout << mk::format(LE_I18N("\nRename component to '%s' in bindings: section."),
+                                        lineToWrite3
+                             );
+            }
+        }
     }
-    else if (!compList.empty() && compNotList.empty() && foundItem && foundItem2)
+    else if (!compList.empty() && compNotList.empty())
     {
-        //Remove component
-        UpdateDefinitionFile(adefPath, foundPos1, nextPos1, foundPos2, nextPos2, "", "");
-    }
-    else if (!compList.empty() && !foundItem && !foundItem2)
-    {
-        // If the component to be renamed or removed is not found on the list, print error.
-        throw mk::Exception_t(
-               mk::format(LE_I18N(
-                          "Component '%s' not listed in either components: or executables: section"
+        // Remove component from adef.
+        if (foundItem1)
+        {
+            for (const auto& it : exeCompPositionList)
+            {
+                if (!it.isExeMultiComp)
+                {
+                    handler.linePositionToWrite.push_back(
+                            ArgHandler_t::LinePosition_t{"", it.sectionPos, it.sectionNextPos});
+                }
+                else
+                {
+                    handler.linePositionToWrite.push_back(
+                            ArgHandler_t::LinePosition_t{"", it.foundPos, it.nextPos});
+                }
+            }
+
+            for (const auto& it : compPositionList)
+            {
+                 handler.linePositionToWrite.push_back(
+                         ArgHandler_t::LinePosition_t{"", it.foundPos, it.nextPos});
+            }
+
+            if (handler.isPrintLogging())
+            {
+                std::cout << mk::format(
+                                LE_I18N("\nRemove component '%s' from components: or executables: "
+                                        "section."), path::GetLastNode(compList)
+                             );
+            }
+        }
+        else
+        {
+            // Component to be removed not found on the list, throw error.
+            throw mk::Exception_t(
+                mk::format(LE_I18N(
+                           "Component '%s' not listed in either components: or executables: section"
                            " of '%s'."), compList, adefPath)
-        );
+            );
+        }
+
+        if (foundItem2)
+        {
+            for (const auto& it : procRunPositionList)
+            {
+                handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{"", it.foundPos,
+                                                                                   it.nextPos});
+            }
+
+            if (handler.isPrintLogging())
+            {
+                std::cout << LE_I18N("\nRemove process name from processes: run: section.");
+            }
+
+        }
+
+        if (foundItem3)
+        {
+            for (const auto& it : bindingPositionList)
+            {
+                handler.linePositionToWrite.push_back(
+                                ArgHandler_t::LinePosition_t{"", it.sectionPos, it.sectionNextPos});
+            }
+
+            if (handler.isPrintLogging())
+            {
+                std::cout << mk::format(
+                                LE_I18N("\nRemove bindings with component '%s' from bindings: "
+                                        "section."), path::GetLastNode(compList)
+                             );
+            }
+        }
     }
     else if (!compNotList.empty())
     {
         if (sourcesSectionExist)
         {
             // Append the executable and component path to the adef in the executables: section
-            lineToWrite = "    " + compName + "Exe = ( " +
+            lineToWrite1 = "    " + compName + "Exe = ( " +
                           compPath + " )";
             lineToWrite2 = "    ( " + compName + "Exe )";
+
+            // Adding component to adef
+            handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite1,
+                                                                               length1, length1-1});
+            handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite2, length2,
+                                                                               length2-1});
+
+            if (handler.isPrintLogging())
+            {
+                std::cout << mk::format(
+                                LE_I18N("\nAdd '%s' and '%s' to executables: and processes: run: "
+                                        "section."), lineToWrite1, lineToWrite2
+                             );
+            }
         }
         else
         {
             // Append the component path to the adef in the components: section
-             lineToWrite = "    " + compPath;
-        }
-
-        // Adding component to adef
-        UpdateDefinitionFile(adefPath, length1, length1-1, length2, length2-1, lineToWrite,
-                             lineToWrite2);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Update the system definition file (sdef) to add/rename/remove an application.
- **/
-//--------------------------------------------------------------------------------------------------
-void UpdateSdefApp
-(
-    ArgHandler_t& handler
-)
-{
-    std::string srcpath;
-    std::string fullAppPath;
-
-    if (handler.sdefFilePath.empty())
-    {
-        return;
-    }
-    else
-    {
-        srcpath = path::MakeAbsolute(handler.sdefFilePath);
-        if (!path::IsAbsolute(handler.adefFilePath))
-        {
-            fullAppPath = handler.absAdefFilePath;
-        }
-        else
-        {
-            fullAppPath = handler.adefFilePath;
-        }
-
-        if (handler.isAppSearchPath)
-        {
-            // If appSearch section is present, list just app name, no need to specify full path.
-            fullAppPath = path::GetLastNode(handler.adefFilePath);
-        }
-        else
-        {
-            std::string sdefContainDir = path::GetContainingDir(
-                                                    path::MakeAbsolute(handler.sdefFilePath)
-                                                );
-
-            std::size_t foundsdefContainDir = (handler.absAdefFilePath).find(sdefContainDir);
-            if (foundsdefContainDir != std::string::npos)
+            lineToWrite1 = "    " + compPath;
+            handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite1,
+                                                                               length1, length1-1});
+            if (handler.isPrintLogging())
             {
-                fullAppPath.erase(foundsdefContainDir, sdefContainDir.length()+1);
+                std::cout << mk::format(
+                                LE_I18N("\nAdd '%s' to components: section."), lineToWrite1
+                             );
             }
-        }
-    }
-
-    std::string lineToWrite = "    " + fullAppPath;
-    ParseSdefUpdateApp(srcpath, "", handler.absAdefFilePath, lineToWrite);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Update the system definition file (sdef) to add/rename/remove the kernel module.
- **/
-//--------------------------------------------------------------------------------------------------
-void UpdateSdefModule
-(
-    ArgHandler_t& handler
-)
-{
-    std::string srcpath;
-    std::string fullModulePath;
-
-    if (handler.sdefFilePath.empty())
-    {
-        return;
+       }
     }
     else
     {
-        srcpath = path::MakeAbsolute(handler.sdefFilePath);
-
-        if (!path::IsAbsolute(handler.mdefFilePath))
-        {
-            fullModulePath = handler.absMdefFilePath;
-        }
-        else
-        {
-            fullModulePath = handler.mdefFilePath;
-        }
-
-        if (handler.isModSearchPath)
-        {
-            // If moduleSearch section is present, list module name, no need to specify full path.
-            fullModulePath = path::GetLastNode(handler.mdefFilePath);
-        }
-        else
-        {
-            std::string sdefContainDir = path::GetContainingDir(
-                                                    path::MakeAbsolute(handler.sdefFilePath)
-                                                );
-
-            std::size_t foundsdefContainDir = (handler.absMdefFilePath).find(sdefContainDir);
-            if (foundsdefContainDir != std::string::npos)
-            {
-                fullModulePath.erase(foundsdefContainDir, sdefContainDir.length()+1);
-            }
-        }
+        // Unhandled case.
+        throw mk::Exception_t(
+           mk::format(LE_I18N(
+                      "Internal error: Unhandled case when getting line to edit in '%s'"), adefPath)
+        );
     }
-
-    std::string lineToWrite = "    " + fullModulePath;
-    ParseSdefUpdateKernelModules(srcpath, "", handler.absMdefFilePath, lineToWrite);
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Update the application definition file (adef) by updating component.
+ * Evaluate CDEF file path and component's relevant string and its position to write in ADEF.
  **/
 //--------------------------------------------------------------------------------------------------
-void UpdateAdefComponent
-(
-    ArgHandler_t& handler
-)
-{
-    if (handler.adefFilePath.empty())
-    {
-        if (path::HasSuffix(envVars::Get("LEGATO_DEF_FILE"), ADEF_EXT))
-        {
-            handler.adefFilePath = envVars::Get("LEGATO_DEF_FILE");
-        }
-        else
-        {
-            return;
-        }
-    }
-
-    std::string absCdefFile = handler.absCdefFilePath + "/"+ COMP_CDEF;
-    ParseAdefUpdateComponent(handler.absAdefFilePath, absCdefFile, "", handler.absCdefFilePath,
-                             handler.isCompSearchPath);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Update the system definition file (sdef) by removing application.
- **/
-//--------------------------------------------------------------------------------------------------
-void UpdateSdefRemoveApp
-(
-    ArgHandler_t handler
-)
-{
-    std::string srcpath;
-
-    if (handler.sdefFilePath.empty())
-    {
-        return;
-    }
-    else
-    {
-       srcpath = path::MakeAbsolute(handler.sdefFilePath);
-    }
-
-    ParseSdefUpdateApp(srcpath, handler.adefFilePath, "", "");
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Update the system definition file (sdef) by removing the kernel module.
- **/
-//--------------------------------------------------------------------------------------------------
-void UpdateSdefRemoveModule
-(
-    ArgHandler_t& handler
-)
-{
-    std::string srcpath;
-
-    if (handler.sdefFilePath.empty())
-    {
-        return;
-    }
-    else
-    {
-       srcpath = path::MakeAbsolute(handler.sdefFilePath);
-    }
-
-    ParseSdefUpdateKernelModules(srcpath, handler.absMdefFilePath, "", "");
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Update the application definition file (adef) by removing the component.
- **/
-//--------------------------------------------------------------------------------------------------
-void UpdateAdefRemoveComponent
-(
-    ArgHandler_t& handler
-)
-{
-    if (handler.adefFilePath.empty())
-    {
-        return;
-    }
-
-    std::string absCdefFile = handler.absCdefFilePath + "/" + COMP_CDEF;
-    ParseAdefUpdateComponent(handler.absAdefFilePath, absCdefFile, handler.absCdefFilePath, "",
-                             handler.isCompSearchPath);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Update the system definition file (sdef) by updating the apps section.
- **/
-//--------------------------------------------------------------------------------------------------
-void UpdateSdefRenameApp
-(
-    ArgHandler_t handler
-)
-{
-    std::string srcpath;
-    std::string fullAppPath;
-
-    if (handler.sdefFilePath.empty())
-    {
-        return;
-    }
-    else
-    {
-        srcpath = path::MakeAbsolute(handler.sdefFilePath);
-
-        if (!path::IsAbsolute(handler.adefFilePath))
-        {
-            fullAppPath = handler.absAdefFilePath;
-        }
-        else
-        {
-            fullAppPath = handler.adefFilePath;
-        }
-
-        if (handler.isAppSearchPath)
-        {
-            // If appSearch section is present, list just app name, no need to specify full path.
-            fullAppPath = path::GetLastNode(handler.adefFilePath);
-        }
-        else
-        {
-            std::string sdefContainDir = path::GetContainingDir(
-                                                    path::MakeAbsolute(handler.sdefFilePath)
-                                                );
-
-            std::size_t foundsdefContainDir = (handler.absAdefFilePath).find(sdefContainDir);
-            if (foundsdefContainDir != std::string::npos)
-            {
-                fullAppPath.erase(foundsdefContainDir, sdefContainDir.length()+1);
-            }
-        }
-    }
-
-    ParseSdefUpdateApp(srcpath, handler.oldAdefFilePath, handler.absAdefFilePath, fullAppPath);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Update the system definition file (sdef) by renaming the kernel module.
- **/
-//--------------------------------------------------------------------------------------------------
-void UpdateSdefRenameModule
-(
-    ArgHandler_t& handler
-)
-{
-    std::string srcpath;
-    std::string fullModulePath;
-
-    if (handler.sdefFilePath.empty())
-    {
-        return;
-    }
-    else
-    {
-        srcpath = path::MakeAbsolute(handler.sdefFilePath);
-        if (!path::IsAbsolute(handler.mdefFilePath))
-        {
-            fullModulePath = handler.absMdefFilePath;
-        }
-        else
-        {
-            fullModulePath = handler.mdefFilePath;
-        }
-
-        if (handler.isModSearchPath)
-        {
-            // If moduleSearch section is present, list just module name, no need to specify full path.
-            fullModulePath = path::GetLastNode(handler.mdefFilePath);
-        }
-        else
-        {
-            std::string sdefContainDir = path::GetContainingDir(
-                                                    path::MakeAbsolute(handler.sdefFilePath)
-                                                );
-
-            std::size_t foundsdefContainDir = (handler.absMdefFilePath).find(sdefContainDir);
-            if (foundsdefContainDir != std::string::npos)
-            {
-                fullModulePath.erase(foundsdefContainDir, sdefContainDir.length()+1);
-            }
-        }
-    }
-
-    ParseSdefUpdateKernelModules(srcpath, handler.oldMdefFilePath, handler.absMdefFilePath,
-                                 fullModulePath);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Update application definition file (adef) by renaming the component.
- **/
-//--------------------------------------------------------------------------------------------------
-void UpdateAdefRenameComponent
+void GetAdefComponentEditLinePosition
 (
     ArgHandler_t& handler,
     model::System_t* systemPtr
 )
 {
-    std::string absAdefFile;
     std::string absCdefFile = handler.absCdefFilePath + "/" + COMP_CDEF;
-    std::string absOldCdefFile = handler.oldCdefFilePath + "/" + COMP_CDEF;
+    std::string compMustExist;
+    std::string compMustNotExist;
 
-    if (handler.adefFilePath.empty())
+    switch(handler.editActionType)
     {
-        for(const auto& it : systemPtr->apps)
+        case  ArgHandler_t::EditActionType_t::ADD:
+        case  ArgHandler_t::EditActionType_t::CREATE:
         {
-            absAdefFile = it.second->defFilePtr->path;
-            for (auto const& itcomp : it.second->components)
+            compMustExist = "";
+            compMustNotExist = handler.absCdefFilePath;
+            if (handler.adefFilePath.empty())
             {
-                if (itcomp->defFilePtr->path.compare(absOldCdefFile) == 0)
-                {
-                    ParseAdefUpdateComponent(absAdefFile, absCdefFile, handler.oldCdefFilePath,
-                                             handler.cdefFilePath, handler.isCompSearchPath);
-                }
+               return;
             }
+            break;
+        }
+        case  ArgHandler_t::EditActionType_t::REMOVE:
+        {
+            compMustExist = handler.absCdefFilePath;
+            compMustNotExist = "";
+            break;
+        }
+
+        case  ArgHandler_t::EditActionType_t::RENAME:
+        {
+            compMustExist = handler.oldCdefFilePath;
+            compMustNotExist = handler.absCdefFilePath;
+
+            std::string absOldCdefFile = handler.oldCdefFilePath + "/" + COMP_CDEF;
+            absCdefFile = absOldCdefFile;
+            break;
+        }
+
+        default:
+        {
+            throw mk::Exception_t(
+                    LE_I18N("Internal error: Invalid edit action type.")
+            );
+            break;
+        }
+    }
+
+    // Parse the definition files to get the line and its position to write.
+    ParseAdefGetEditLinePosition(handler, handler.absAdefFilePath, absCdefFile, compMustExist,
+                                 compMustNotExist);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Find a particular section in ADEF and evaluate the string to write and its position in ADEF.
+ **/
+//--------------------------------------------------------------------------------------------------
+void GetAdefSectionEditLinePosition
+(
+    ArgHandler_t& handler,
+    std::string section
+)
+{
+    auto adefFilePtr = parser::adef::Parse(handler.absAdefFilePath, false);
+    if (adefFilePtr == NULL)
+    {
+        throw mk::Exception_t(
+           mk::format(LE_I18N("Internal error: '%s' file pointer is NULL"), handler.absAdefFilePath)
+        );
+    }
+
+    if (handler.isPrintLogging())
+    {
+        std::cout << mk::format(
+                        LE_I18N("Searching section '%s' in ADEF file '%s'."),
+                        section, handler.absAdefFilePath
+                     );
+    }
+
+    bool foundSection = false;
+    int foundPos, nextPos, endPos = 0;
+
+    // Iterate over the .adef file's list of sections, processing content items.
+    for (auto sectionPtr : adefFilePtr->sections)
+    {
+        auto& sectionName = sectionPtr->firstTokenPtr->text;
+
+        if (sectionName == section)
+        {
+            foundSection = true;
+            auto foundSectionPtr = dynamic_cast<const parseTree::SimpleSection_t*>(sectionPtr);
+            if (foundSectionPtr == NULL)
+            {
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("Internal error: '%s' section pointer is NULL"), sectionName)
+                );
+            }
+
+            std::string sectionValue = foundSectionPtr->Text();
+
+            if ((sectionName == "sandboxed") && (sectionValue == handler.appSandboxed))
+            {
+                std::cout << mk::format(LE_I18N("'sandboxed' value is already '%s'.\n"),
+                                        handler.appSandboxed);
+                return;
+            }
+
+            if ((sectionName == "start") && (sectionValue == handler.appStart))
+            {
+                std::cout << mk::format(LE_I18N("'start' value is already '%s'.\n"),
+                                        handler.appStart);
+                return;
+            }
+
+            foundPos = sectionPtr->lastTokenPtr->curPos;
+            nextPos = sectionPtr->lastTokenPtr->nextPtr->curPos;
+
+            if (handler.isPrintLogging())
+            {
+                std::cout << mk::format(
+                                LE_I18N("\nSection '%s' found in '%s'."),
+                                section, sectionPtr->lastTokenPtr->GetLocation()
+                             );
+            }
+        }
+        endPos = sectionPtr->lastTokenPtr->nextPtr->curPos;
+    }
+
+    std::string strWrite;
+
+    if (!foundSection)
+    {
+        // If section is not found, append section to the end of the definition file.
+        if (!handler.appSandboxed.empty())
+        {
+            strWrite = "\n\nsandboxed: " + handler.appSandboxed + "\n";
+        }
+
+        if (!handler.appStart.empty())
+        {
+            strWrite = "\n\nstart: " + handler.appStart + "\n";
+        }
+
+        handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{strWrite, endPos,
+                                                                           endPos});
+        if (handler.isPrintLogging())
+        {
+            std::cout << mk::format(
+                            LE_I18N("\nSection '%s' not found. Append '%s' to the end of file."),
+                            section, strWrite
+                         );
         }
     }
     else
     {
-        ParseAdefUpdateComponent(handler.absAdefFilePath, absCdefFile, handler.oldCdefFilePath,
-                                 handler.absCdefFilePath, handler.isCompSearchPath);
+        // If section is found, update the section's value in place.
+        if (section == "sandboxed")
+        {
+            strWrite = handler.appSandboxed;
+        }
+        else if (section == "start")
+        {
+            strWrite = handler.appStart;
+        }
+
+        handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{strWrite, foundPos,
+                                                                           nextPos});
+        if (handler.isPrintLogging())
+        {
+            std::cout << mk::format(LE_I18N("\nUpdate section '%s' to '%s' ."), section, strWrite);
+        }
     }
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Evaluate the application definition file to update depending on the edit item type. Parse
+ * application defintion file to evaluate the line to be written and the position in application
+ * definition file to write.
+ **/
+//--------------------------------------------------------------------------------------------------
+void EvaluateAdefGetEditLinePosition
+(
+    ArgHandler_t& handler,
+    model::System_t* systemPtr
+)
+{
+    switch (handler.editItemType)
+    {
+        case ArgHandler_t::EditItemType_t::COMPONENT:
+            GetAdefComponentEditLinePosition(handler, systemPtr);
+            break;
+
+        case ArgHandler_t::EditItemType_t::SANDBOXED:
+            GetAdefSectionEditLinePosition(handler, "sandboxed");
+            break;
+
+        case ArgHandler_t::EditItemType_t::START:
+            GetAdefSectionEditLinePosition(handler, "start");
+            break;
+
+        default:
+            throw mk::Exception_t(
+                    LE_I18N("Internal error: Invalid edit item type.")
+            );
+            break;
+    }
+}
+
 
 } // namespace updateDefs
 

@@ -52,17 +52,30 @@ pa_dcs_RouteAction_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Data associated to retrieve the state before the DCS started managing the default connection
+ * Data structures for backing up network configs before changes
+ *     pa_dcs_DefaultGwBackup_t: default GW configs
+ *     pa_dcs_DnsBackup_t: DNS configs
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    char defaultGateway[PA_DCS_IPV6_ADDR_MAX_BYTES];
-    char defaultInterface[PA_DCS_INTERFACE_NAME_MAX_BYTES];
+    le_msg_SessionRef_t appSessionRef;
+    char defaultV4GW[PA_DCS_IPV4_ADDR_MAX_BYTES];
+    char defaultV4Interface[PA_DCS_INTERFACE_NAME_MAX_BYTES];
+    bool setV4GwToSystem;
+    char defaultV6GW[PA_DCS_IPV6_ADDR_MAX_BYTES];
+    char defaultV6Interface[PA_DCS_INTERFACE_NAME_MAX_BYTES];
+    bool setV6GwToSystem;
+}
+pa_dcs_DefaultGwBackup_t;
+
+typedef struct
+{
     char newDnsIPv4[2][PA_DCS_IPV4_ADDR_MAX_BYTES];
     char newDnsIPv6[2][PA_DCS_IPV6_ADDR_MAX_BYTES];
 }
-pa_dcs_InterfaceDataBackup_t;
+pa_dcs_DnsBackup_t;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -106,11 +119,35 @@ LE_SHARED le_result_t pa_dcs_AskForIpAddress
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Delete the current default gateway config on the system
+ * Stop DHCP running specific network interface
+ *
+ * @return
+ *      - LE_OK             Function succeeded
+ *      - LE_BAD_PARAMETER  Invalid parameter
+ *      - LE_FAULT          Function failed
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_dcs_DeleteDefaultGateway
+LE_SHARED le_result_t pa_dcs_StopDhcp
 (
+    const char *interface   ///< [IN] Network interface name
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Returns DHCP lease file location
+ *
+ * @return
+ *      LE_OVERFLOW     Destination buffer too small and output will be truncated
+ *      LE_UNSUPPORTED  If not supported by OS
+ *      LE_FAULT        Function failed
+ *      LE_OK           Function succeed
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_dcs_GetDhcpLeaseFilePath
+(
+    const char*  interfaceStrPtr,   ///< [IN] Pointer on the interface name
+    char*        pathPtr,           ///< [OUT] Output 1 pointer
+    size_t       bufferSize         ///< [IN]  Size of buffer
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -135,9 +172,11 @@ LE_SHARED le_result_t pa_dcs_SetDefaultGateway
  * Get the default route
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_dcs_GetDefaultGateway
+LE_SHARED void pa_dcs_GetDefaultGateway
 (
-    pa_dcs_InterfaceDataBackup_t*  interfaceDataBackupPtr
+    pa_dcs_DefaultGwBackup_t*  defGwConfigBackupPtr,
+    le_result_t* v4Result,
+    le_result_t* v6Result
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -165,7 +204,7 @@ LE_SHARED le_result_t pa_dcs_ChangeRoute
 //--------------------------------------------------------------------------------------------------
 LE_SHARED void pa_dcs_RestoreInitialDnsNameServers
 (
-    pa_dcs_InterfaceDataBackup_t*  interfaceDataBackupPtr
+    pa_dcs_DnsBackup_t*  dnsConfigBackupPtr
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -173,9 +212,10 @@ LE_SHARED void pa_dcs_RestoreInitialDnsNameServers
  * Set the DNS configuration
  *
  * @return
- *      LE_FAULT        Function failed
  *      LE_OK           Function succeed
+ *      LE_DUPLICATE    Function found no need to add as the given inputs are already set in
  *      LE_UNSUPPORTED  Function not supported by the target
+ *      LE_FAULT        Function failed
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_dcs_SetDnsNameServers
@@ -233,7 +273,8 @@ LE_SHARED le_result_t pa_dcs_GetTimeWithNetworkTimeProtocol
 LE_SHARED le_result_t pa_dcs_GetInterfaceState
 (
     const char *interface,  ///< [IN] network interface name
-    bool *stateIsUp         ///< [OUT] interface state down/up as false/true
+    bool *ipv4IsUp,         ///< [INOUT] IPV4 is not assigned/assigned as false/true
+    bool *ipv6IsUp          ///< [INOUT] IPV6 is not assigned/assigned as false/true
 );
 
 #endif

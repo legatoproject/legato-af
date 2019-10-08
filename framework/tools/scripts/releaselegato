@@ -108,7 +108,7 @@ StageComponent() {
         fi
 
         local src="build/${target}/${comp_src}"
-        local dst="platformAdaptor/qmi/bin/${target}/components/${comp_name}/"
+        local dst="platformAdaptor/qmi/bin/${target}/components/${comp_name}"
 
         if ! [ -e "$LEGATO_ROOT/$src" ]; then
             echo "$src doesn't exist"
@@ -133,7 +133,7 @@ StageComponent() {
         fi
 
         echo "        (target $target) = $src -> $dst"
-        install -D $LEGATO_ROOT/$src $STAGE_DIR/$dst
+        install -Dt $STAGE_DIR/$dst $LEGATO_ROOT/$src
         if [ $? -ne 0 ]; then
             ExitWithError "Unable to copy '$src'"
         fi
@@ -201,6 +201,8 @@ StageProprietaryApp() {
         fi
     done
 }
+
+StageComponent "le_pa_start" "framework/lib/libComponent_le_pa_start.so" ar7 wp85 ar758x ar759x wp76xx
 
 StagePaComponent swiQmi          modemService        ar7 wp85 ar758x ar759x wp76xx
 StagePaComponent le_pa_audio     audioService        ar7 wp85 ar758x ar759x wp76xx

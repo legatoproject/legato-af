@@ -370,7 +370,7 @@ le_result_t le_dcsCellular_SetProfileIndex
 /**
  * Function to get the default profile's index. If a configured default exists on the config tree,
  * it will use & return this profile index back to the caller. If no such config is on the config
- * tree, the index from the input argument will be taken. 
+ * tree, the index from the input argument will be taken.
  *
  * Then, this function calls le_mdc_GetProfile() with the taken index to let MDC create a cellular
  * profile for this index if it's not existent yet.

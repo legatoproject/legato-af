@@ -273,30 +273,6 @@ int sysStatus_BootCount
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Decrement the boot count.
- */
-//--------------------------------------------------------------------------------------------------
-void sysStatus_DecrementBootCount
-(
-    void
-)
-{
-    int bootCount = sysStatus_BootCount();
-    char bootBuffer[100] = "";
-
-    --bootCount;
-
-    int len = snprintf(bootBuffer, sizeof(bootBuffer), "%d %"PRIu64,
-                       bootCount, (uint64_t)time(NULL));
-
-    LE_ASSERT(len < sizeof(bootBuffer));
-
-    file_WriteStrAtomic(BOOT_COUNT_PATH, bootBuffer, 0644 /* rw-r--r-- */);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Mark the system "bad".
  */
 //--------------------------------------------------------------------------------------------------

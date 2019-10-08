@@ -20,6 +20,26 @@ namespace ninja
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Generate preprocessor definition arguments for memory pool sizes.
+ */
+//--------------------------------------------------------------------------------------------------
+void ComponentBuildScriptGenerator_t::GenerateMemPoolDefinitions
+(
+    const model::Component_t            *componentPtr,
+    model::MemPoolSize_t::PoolType_t     poolType
+)
+{
+    for (auto poolSizeEntry : componentPtr->poolSizeEntries)
+    {
+        if (poolSizeEntry.type == poolType)
+        {
+            script << " -D_mem_" << poolSizeEntry.name << "_POOL_SIZE=," << poolSizeEntry.size;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Generate comment header for component build script.
  */
 //--------------------------------------------------------------------------------------------------
@@ -118,8 +138,10 @@ void ComponentBuildScriptGenerator_t::GenerateCommonCAndCxxFlags
     // Add the FA include path if a custom FA is in use
     if (envVars::GetConfigBool("LE_CONFIG_CUSTOM_FA"))
     {
+        std::string customFAPath = path::Combine(envVars::GetRequired("LEGATO_ROOT"),
+                                                 envVars::GetRequired("LE_CONFIG_CUSTOM_FA_PATH"));
         script  << " -I"
-                << path::Combine(envVars::GetRequired("LE_CONFIG_CUSTOM_FA_PATH"), "include");
+                << path::Combine(customFAPath, "include");
     }
 
     // For each server-side USETYPES statement, include the server code generation directory.
@@ -139,6 +161,9 @@ void ComponentBuildScriptGenerator_t::GenerateCommonCAndCxxFlags
 
     // Define the component name
     script << " -DLE_COMPONENT_NAME=" << componentPtr->name;
+
+    // Add cFlags for user memory pool sizes, if provided.
+    GenerateMemPoolDefinitions(componentPtr, model::MemPoolSize_t::POOLTYPE_USER);
 }
 
 
@@ -904,7 +929,8 @@ void ComponentBuildScriptGenerator_t::GenerateServerUsetypesBuildStatement
 //--------------------------------------------------------------------------------------------------
 void ComponentBuildScriptGenerator_t::GenerateCCommonBuildStatement
 (
-    const model::ApiFile_t* apiFilePtr
+    const model::Component_t    *componentPtr,
+    const model::ApiFile_t      *apiFilePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -952,6 +978,9 @@ void ComponentBuildScriptGenerator_t::GenerateCCommonBuildStatement
                 script << " -I$builddir/" << dirPath;
             }
         }
+
+        // Add cFlags for generated message pool sizes, if provided.
+        GenerateMemPoolDefinitions(componentPtr, model::MemPoolSize_t::POOLTYPE_MESSAGING);
         script << "\n\n";
     }
 
@@ -1027,7 +1056,8 @@ void ComponentBuildScriptGenerator_t::GenerateJavaUsetypesBuildStatement
 //--------------------------------------------------------------------------------------------------
 void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
 (
-    const model::ApiClientInterface_t* ifPtr
+    const model::Component_t            *componentPtr,
+    const model::ApiClientInterface_t   *ifPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1035,7 +1065,7 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
     ifPtr->GetInterfaceFiles(cFiles);
 
     // Generate common interface files (if needed)
-    GenerateCCommonBuildStatement(ifPtr->apiFilePtr);
+    GenerateCCommonBuildStatement(componentPtr, ifPtr->apiFilePtr);
 
     if (   (!buildParams.codeGenOnly)
         && (generatedIPC.find(cFiles.objectFile) == generatedIPC.end())  )
@@ -1081,6 +1111,9 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
                 script << " -I$builddir/" << dirPath;
             }
         }
+
+        // Add cFlags for generated message pool sizes, if provided.
+        GenerateMemPoolDefinitions(componentPtr, model::MemPoolSize_t::POOLTYPE_MESSAGING);
         script << "\n\n";
     }
 
@@ -1310,7 +1343,8 @@ void ComponentBuildScriptGenerator_t::GeneratePythonBuildStatement
 //--------------------------------------------------------------------------------------------------
 void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
 (
-    const model::ApiServerInterface_t* ifPtr
+    const model::Component_t            *componentPtr,
+    const model::ApiServerInterface_t   *ifPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1318,7 +1352,7 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
     ifPtr->GetInterfaceFiles(cFiles);
 
     // Generate common interface files (if needed)
-    GenerateCCommonBuildStatement(ifPtr->apiFilePtr);
+    GenerateCCommonBuildStatement(componentPtr, ifPtr->apiFilePtr);
 
     if (   (!buildParams.codeGenOnly)
         && (generatedIPC.find(cFiles.objectFile) == generatedIPC.end())  )
@@ -1364,6 +1398,9 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
                 script << " -I$builddir/" << dirPath;
             }
         }
+
+        // Add cFlags for generated message pool sizes, if provided.
+        GenerateMemPoolDefinitions(componentPtr, model::MemPoolSize_t::POOLTYPE_MESSAGING);
         script << "\n\n";
     }
 
@@ -1500,7 +1537,7 @@ void ComponentBuildScriptGenerator_t::GenerateIpcBuildStatements
         }
         else
         {
-            GenerateCBuildStatement(clientApi);
+            GenerateCBuildStatement(componentPtr, clientApi);
         }
     }
 
@@ -1516,7 +1553,7 @@ void ComponentBuildScriptGenerator_t::GenerateIpcBuildStatements
         }
         else
         {
-            GenerateCBuildStatement(serverApi);
+            GenerateCBuildStatement(componentPtr, serverApi);
         }
     }
 

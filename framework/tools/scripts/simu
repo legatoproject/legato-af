@@ -75,12 +75,10 @@ COLOR_RESET="\033[0m"
 SIMU_IP=${SIMU_IP-localhost}
 SIMU_PORT=${SIMU_PORT-10022}
 
-SCRIPT_DIR=$( cd `dirname "$0"` && pwd )
+SCRIPT_DIR=$( cd "$(dirname "$0")" && pwd )
 
 function message {
-    COLOR=$1
-    MESSAGE=$2
-    echo -e $COLOR $MESSAGE $COLOR_RESET
+    echo -e "$1" "$2" $COLOR_RESET
 }
 
 function check_ret {
@@ -92,11 +90,11 @@ function check_ret {
 }
 
 function do_ssh {
-    ssh -p $SIMU_PORT -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null root@$SIMU_IP $@
+    ssh -p $SIMU_PORT -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null root@$SIMU_IP "$@"
 }
 
 function do_scp {
-    scp -P $SIMU_PORT -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -r $@
+    scp -P $SIMU_PORT -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -r "$@"
 }
 
 function do_start {
@@ -146,7 +144,7 @@ function CheckLegatoRoot {
     fi
 }
 
-CheckForHelp $@
+CheckForHelp "$@"
 
 # By default, store images & configuration in script directory
 if [ -z "$USER_DIR" ]; then
@@ -169,7 +167,7 @@ elif [[ "$COMMAND" == "pull" ]]; then
     do_scp root@$SIMU_IP:$2 $3
 elif [[ "$COMMAND" == "instlegato" ]]; then
     CheckLegatoRoot
-    $LEGATO_ROOT/bin/instlegato $LEGATO_ROOT/build/virt $SIMU_IP
+    $LEGATO_ROOT/bin/instlegato "$LEGATO_ROOT/build/$LEGATO_TARGET" $SIMU_IP
 elif [[ "$COMMAND" == "instapp" ]]; then
     CheckLegatoRoot
     $LEGATO_ROOT/bin/app install $2 $SIMU_IP

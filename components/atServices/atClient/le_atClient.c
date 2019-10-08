@@ -694,7 +694,7 @@ static void DestroyDeviceThread
 
     if (interfacePtr->device.fd)
     {
-        le_dev_RemoveFdMonitoring(&interfacePtr->device);
+        le_dev_DeleteFdMonitoring(&interfacePtr->device);
         le_fd_Close(interfacePtr->device.fd);
     }
 }
@@ -721,7 +721,8 @@ static void *DeviceThread
 
     InitializeState(interfacePtr);
 
-    if (le_dev_AddFdMonitoring(&interfacePtr->device, RxNewData, interfacePtr) != LE_OK)
+    if (le_dev_EnableFdMonitoring(&interfacePtr->device, RxNewData, interfacePtr, POLLIN | POLLPRI)
+        != LE_OK)
     {
         LE_ERROR("Error during adding the fd monitoring");
         return NULL;

@@ -1170,10 +1170,52 @@ export const appDefinition =
 
 //--------------------------------------------------------------------------------------------------
 /**
- * .
+ * Called to filter out any preprocessor directives from the supplied token list.
  */
 //--------------------------------------------------------------------------------------------------
-export function convertTokensFromJson(testFile: string, jsonTokens: any[]): Token[]
+function preProcess(tokens: Token[]): Token[]
+{
+    let discard = 0;
+
+    return tokens.filter(
+        (token: Token): boolean =>
+        {
+            // Check to see if we are keeping or dropping the current token...
+
+            if (discard > 0)
+            {
+                // We are in the middle of dropping paramter tokens, so drop this one.
+                discard = discard - 1;
+                return false;
+            }
+            else if (token.type === jdoc.TokenType.Directive)
+            {
+                if (   (token.text === "#if")
+                    || (token.text === "#elif"))
+                {
+                    // We will also need to remove the whitespace and parameter tokens for the "if"
+                    // statement.
+                    discard = 6;
+                }
+
+                // Make sure that this directive token is removed, no matter what type of directive
+                // it is, like #endif.
+                return false;
+            }
+
+            // This token is good, keep it.
+            return true;
+        });
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert from the json tokens to our internal token type.
+ */
+//--------------------------------------------------------------------------------------------------
+function convertTokensFromJson(testFile: string, jsonTokens: any[]): Token[]
 {
     let newTokens: Token[] = [];
 
@@ -1182,11 +1224,16 @@ export function convertTokensFromJson(testFile: string, jsonTokens: any[]): Toke
         newTokens.push(new Token(testFile, jToken));
     }
 
-    return newTokens;
+    return preProcess(newTokens);
 }
 
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Find the given file path from the given document's token map.
+ */
+//--------------------------------------------------------------------------------------------------
 function findFile(jsonDoc: jdoc.Document, fileName: string)
 {
     if (path.extname(fileName) === '')
@@ -1244,6 +1291,116 @@ export function parseApp(jsonDoc: jdoc.Document, defFilePath: string): model.App
 
 
 
+function convertComponent(jsonDoc: jdoc.Document, appRef: string, name: string): model.ComponentRef
+{
+    let foundComponent: jdoc.Component;
+
+    for (let component of jsonDoc.model.components)
+    {
+        if (component.name === name)
+        {
+            foundComponent = component;
+            break;
+        }
+    }
+
+    if (foundComponent === undefined)
+    {
+        return undefined;
+    }
+
+    let refLoc: Location = new Location(appRef, 1, 1);
+    let componentRef = new model.ComponentRef(name, refLoc);
+
+    let newComponent = new model.Component(foundComponent.path, foundComponent.name);
+    let newComponentLoc = new Location(foundComponent.path, 1, 1);
+    let newBlockLoc: BlockMatchLocation =
+        {
+            startLocation: new Location(foundComponent.path, 1, 1),
+            endLocation: new Location(foundComponent.path, 1, 1)
+        };
+
+    newComponent.sourcesSections.push(new model.SourceSection(newBlockLoc, []));
+
+    foundComponent.sources.c.forEach(cSource =>
+        {
+            let source = new model.Source(newComponentLoc, cSource, model.SourceType.C);
+            newComponent.sourcesSections[0].sources.push(source);
+        });
+
+    foundComponent.sources.cxx.forEach(cxxSource =>
+        {
+            let source = new model.Source(newComponentLoc, cxxSource, model.SourceType.Cpp);
+            newComponent.sourcesSections[0].sources.push(source);
+        });
+
+    componentRef.target = newComponent;
+
+    return componentRef;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert an app object found within the JSON document into a parsed annotated model object.
+ */
+//--------------------------------------------------------------------------------------------------
+function convertApp(jsonDoc: jdoc.Document, appDefPath: string): model.Application
+{
+    let foundApp: jdoc.Application = undefined;
+
+    for (let app of jsonDoc.model.apps)
+    {
+        if (app.path === appDefPath)
+        {
+            foundApp = app;
+            break;
+        }
+    }
+
+    if (foundApp === undefined)
+    {
+        return undefined;
+    }
+
+    let newApp = new model.Application(foundApp.path, foundApp.name);
+    let location: BlockMatchLocation =
+        {
+            startLocation: new Location(newApp.path, 1, 1),
+            endLocation: new Location(newApp.path, 1, 1)
+        };
+
+    newApp.componentSections.push(new model.ComponentSection(location, []));
+    newApp.executableSections.push(new model.ExecutableSection(location, []));
+
+    foundApp.components.forEach(foundComponent =>
+        {
+            newApp.componentSections[0].components.push(convertComponent(jsonDoc,
+                                                                         appDefPath,
+                                                                         foundComponent));
+        });
+
+    foundApp.executables.forEach(foundExecutable =>
+        {
+            let newLoc = new Location(foundApp.path);
+            let newExe = new model.Executable(foundExecutable.name, newLoc, []);
+
+            foundExecutable.components.forEach(foundComponent =>
+                {
+                    newExe.componentRefs.push(convertComponent(jsonDoc,
+                                                               appDefPath,
+                                                               foundComponent));
+                });
+
+            newApp.executableSections[0].executables.push(newExe);
+        });
+
+    return newApp;
+}
+
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Load the Legato model from the given json document.
@@ -1268,17 +1425,16 @@ export function parseSystem(jsonDoc: jdoc.Document, sysDefPath: string): model.S
         for (let appRef of appSections.apps)
         {
             let appDefPath = findFile(jsonDoc, path.basename(appRef.name));
-            appRef.target = new model.Application(appDefPath);
 
-            //            if (appDefPath !== undefined)
-//            {
-//                let app = parseApp(jsonDoc, appDefPath);
-//
-//                if (app !== undefined)
-//                {
-//                    appRef.target = app;
-//                }
-//            }
+            if (appDefPath !== undefined)
+            {
+                let app = convertApp(jsonDoc, appDefPath);
+
+                if (app !== undefined)
+                {
+                    appRef.target = app;
+                }
+            }
         }
     }
 

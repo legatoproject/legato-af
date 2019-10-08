@@ -1,0 +1,24 @@
+executables:
+{
+    mcuWdog = (mcuWdog)
+}
+
+processes:
+{
+    run:
+    {
+        (mcuWdog)
+    }
+
+    envVars:
+    {
+        LE_LOG_LEVEL = INFO
+    }
+}
+
+bindings:
+{
+}
+
+// sandbox disabled is needed to write mcu watchdog sysfs node
+sandboxed: false

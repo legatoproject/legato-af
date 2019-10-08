@@ -15,6 +15,7 @@
 #include <string.h>
 #include "legato.h"
 #include "interfaces.h"
+#include "dcs.h"
 
 static le_thread_Ref_t TestThreadRef;
 static le_dcs_EventHandlerRef_t EventHandlerRef = NULL;
@@ -28,6 +29,40 @@ static le_dcs_ReqObjRef_t ReqObj;
 static le_data_RequestObjRef_t MyReqRef;
 static le_data_ConnectionStateHandlerRef_t ConnStateHandlerRef = NULL;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * DHCP Lease Test constants
+ */
+//--------------------------------------------------------------------------------------------------
+static char DHCP_LEASE_FILE_PATH[] = "/var/run/udhcpc.wlan0.leases";
+static char DHCP_LEASE_FILE_BACKUP_PATH[] = "/var/run/udhcpc.wlan0.leases.bk";
+static char RESOLV_CONF_PATH[]     = "/etc/resolv.conf";
+static char WLAN0_INTERFACE_NAME[] = "wlan0";
+static char GW_TEST_ADDRESS[LE_DCS_IPADDR_MAX_LEN] = "beef:b0b:beef::beef:b0b:beef";
+static char DNS_TEST_ADDRESS[][LE_DCS_IPADDR_MAX_LEN] = \
+                {"42.42.42.42", "10.10.10.10",
+                "beef:fed:beef::beef:fed:beef", "feed:b0b:beef::feed:b0b:beef",
+                "1.1.1.1"};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Lease File
+ */
+//--------------------------------------------------------------------------------------------------
+static char leaseFile[] = "\
+lease {\n\
+  interface \"test\";\n\
+  fixed-address 10.1.42.45;\n\
+  option subnet-mask 255.255.254.0;\n\
+  option routers %s;\n\
+  option dhcp-lease-time 7200;\n\
+  option domain-name-servers %s %s %s %s %s;\n\
+  option dhcp-server-identifier 10.1.10.1;\n\
+  option domain-name \"sierrawireless.local\";\n\
+  renew 2 2019/06/18 13:08:00;\n\
+  rebind 2 2019/06/18 13:53:00;\n\
+  expire 2 2019/06/18 14:08:00;\n\
+}\n";
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -62,6 +97,135 @@ static void ClientEventHandler
     LE_INFO("DCS-client: received for channel reference %p event %s", channelRef, eventString);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Runs DHCP Lease File test
+ *
+ * This test exercises DHCP lease file parsing by loading a dummy lease file and setting
+ * the system DNS address to what's in that dummy file. If resolv.conf has what was originally in
+ * the lease file, it can be concluded that the lease file was parsed correctly.
+ */
+//--------------------------------------------------------------------------------------------------
+void Dcs_test_lease_file_parsing
+(
+    void *param1,
+    void *param2
+)
+{
+    le_result_t result;
+    FILE *fptr, *resolvFPtr;
+    le_dcs_State_t state;
+    le_net_DefaultGatewayAddresses_t gwAddr;
+    le_net_DnsServerAddresses_t dnsServerAddr;
+
+    char name[LE_DCS_INTERFACE_NAME_MAX_LEN+1];
+    char line[256];
+    int i;
+
+    // Retrieve interface name
+    result = le_dcs_GetState(MyChannel, &state, name, LE_DCS_INTERFACE_NAME_MAX_LEN);
+
+    // Only run for "wlan0" now
+    if (strncmp(name, WLAN0_INTERFACE_NAME, sizeof(WLAN0_INTERFACE_NAME)) == 0)
+    {
+        LE_INFO("DCS-client: Running DHCP Lease file parsing test on %s", name);
+    }
+    else
+    {
+        LE_INFO("DCS-client: Not running lease test for interface \'%s\'", name);
+        return;
+    }
+
+    /*
+     *  -------------- Test Setup --------------
+     */
+
+    // Backup lease file
+    if ((fptr = fopen(DHCP_LEASE_FILE_PATH, "r")))
+    {
+        rename(DHCP_LEASE_FILE_PATH, DHCP_LEASE_FILE_BACKUP_PATH);
+        fclose(fptr);
+    }
+
+    // Create Test File
+    fptr = le_flock_CreateStream(DHCP_LEASE_FILE_PATH,
+                                 LE_FLOCK_WRITE,
+                                 LE_FLOCK_REPLACE_IF_EXIST,
+                                 S_IRWXU,
+                                 &result);
+
+    // Write to test lease file
+    if (LE_OK == result)
+    {
+        LE_INFO("DCS-client: Writing to /var/run/udhcpc.%s.leases", name);
+        fprintf(fptr,
+                leaseFile,
+                GW_TEST_ADDRESS,
+                DNS_TEST_ADDRESS[0],
+                DNS_TEST_ADDRESS[1],
+                DNS_TEST_ADDRESS[2],
+                DNS_TEST_ADDRESS[3],
+                DNS_TEST_ADDRESS[4]
+                );
+        le_flock_CloseStream(fptr);
+    }
+
+    // Try opening resolv.conf
+    resolvFPtr = le_flock_TryOpenStream(RESOLV_CONF_PATH,
+                                        LE_FLOCK_READ,
+                                        &result
+                                       );
+    if (result != LE_OK)
+    {
+        LE_ERROR("DCS-client: Cannot open resolv.conf!");
+        return;
+    }
+    LE_INFO("DCS-client: Opened resolv.conf for reading");
+
+    /*
+     *  -------------- Test Run --------------
+     */
+
+    LE_ERROR_IF(le_net_SetDNS(MyChannel) != LE_OK, "DCS-client: TEST FAILED");
+
+    // Check what's in the resolv.conf reflects what is in the test dhcp lease file
+    for (i = 0; i < 3; i++)
+    {
+        fgets(line, sizeof(line), resolvFPtr);
+        LE_ERROR_IF(strstr(line, DNS_TEST_ADDRESS[i]) == NULL, "DCS-client: TEST FAILED");
+    }
+
+    // Test get default GW address
+    LE_ERROR_IF(le_net_GetDefaultGW(MyChannel, &gwAddr) != LE_OK, "DCS-client: TEST FAILED");
+    LE_ERROR_IF(strlen(gwAddr.ipv4Addr) != 0, "DCS-client: TEST FAILED");
+    LE_ERROR_IF(strcmp(gwAddr.ipv6Addr, GW_TEST_ADDRESS) != 0, "DCS-client: TEST FAILED");
+
+    // Test get DNS server address
+    LE_ERROR_IF(le_net_GetDNS(MyChannel, &dnsServerAddr) != LE_OK, "DCS-client: TEST FAILED");
+    LE_ERROR_IF(strcmp(dnsServerAddr.ipv4Addr1, DNS_TEST_ADDRESS[0]) != 0, "DCS-client: TEST FAILED");
+    LE_ERROR_IF(strcmp(dnsServerAddr.ipv4Addr2, DNS_TEST_ADDRESS[1]) != 0, "DCS-client: TEST FAILED");
+    LE_ERROR_IF(strcmp(dnsServerAddr.ipv6Addr1, DNS_TEST_ADDRESS[2]) != 0, "DCS-client: TEST FAILED");
+    LE_ERROR_IF(strcmp(dnsServerAddr.ipv6Addr2, DNS_TEST_ADDRESS[3]) != 0, "DCS-client: TEST FAILED");
+
+    /*
+     *  -------------- Test Teardown ---------------
+     */
+
+    // Close resolv.conf
+    le_flock_CloseStream(resolvFPtr);
+
+    // Restore DNS addresses
+    le_net_RestoreDNS();
+
+    // Restore lease file backup
+    if ((fptr = fopen(DHCP_LEASE_FILE_BACKUP_PATH, "r")))
+    {
+        rename(DHCP_LEASE_FILE_BACKUP_PATH, DHCP_LEASE_FILE_PATH);
+        fclose(fptr);
+    }
+
+    LE_INFO("DCS-client: Test passed unless specified otherwise");
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -509,6 +673,8 @@ COMPONENT_INIT
     for (i=0; i<TEST_LOOP; i++)
     {
         le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_Start, NULL, NULL);
+        sleep(LOOP_SLEEP20);
+        le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_lease_file_parsing, NULL, NULL);
         sleep(LOOP_SLEEP20);
         le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_Stop, NULL, NULL);
         sleep(LOOP_SLEEP20);
