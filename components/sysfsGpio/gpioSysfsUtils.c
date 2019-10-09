@@ -394,11 +394,19 @@ static le_result_t SetDirection
 {
     char path[64];
     const char *attr;
+    gpioSysfs_PinMode_t currentMode;
 
     if ((!gpioRef) || (gpioRef->pinNum == 0))
     {
         LE_ERROR("gpioRef is NULL or object not initialized");
         return LE_BAD_PARAMETER;
+    }
+
+    currentMode = (gpioSysfs_IsInput(gpioRef)) ? SYSFS_PIN_MODE_INPUT : SYSFS_PIN_MODE_OUTPUT;
+    if (currentMode == mode)
+    {
+        // Direction is already correct, don't do anything.
+        return LE_OK;
     }
 
     snprintf(path, sizeof(path), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
