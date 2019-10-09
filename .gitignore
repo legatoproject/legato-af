@@ -74,6 +74,7 @@ apps/platformServices/airVantageConnector/
 apps/leTP
 apps/sample/dataHub/
 apps/sample/voiceCallApp/
+apps/sample/sensorFramework/
 
 # Tools
 framework/tools/imgdiff/
