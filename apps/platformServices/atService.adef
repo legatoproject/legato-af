@@ -25,7 +25,9 @@ processes:
 bindings:
 {
     atServerDaemon.atServer.le_atClient -> atClientDaemon.atClient.le_atClient
+#if ${MK_CONFIG_ATSERVICE_NO_WATCHDOG} = ""
     atServerDaemon.watchdogChain.le_wdog -> <root>.le_wdog
+#endif
 }
 
 extern:

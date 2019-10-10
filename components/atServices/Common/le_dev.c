@@ -8,9 +8,12 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "le_dev.h"
-#include <pwd.h>
-#include <grp.h>
+#include "le_fd.h"
 
+#if LE_CONFIG_LINUX
+#   include <pwd.h>
+#   include <grp.h>
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -88,8 +91,10 @@ static le_result_t GetDeviceInformation
     void
 )
 {
-    if(le_log_GetFilterLevel() == LE_LOG_DEBUG)
+    le_log_Level_t level = le_log_GetFilterLevel();
+    if (level == LE_LOG_DEBUG)
     {
+#ifdef LE_CONFIG_LINUX
         struct stat fdStats;
         struct passwd* passwd;
         struct group* group;
@@ -146,6 +151,15 @@ static le_result_t GetDeviceInformation
             DevInfo.gName);
 
         return LE_OK;
+#elif LE_CONFIG_RTOS
+        int fd = DevInfo.fd;
+        memset(&DevInfo, 0, sizeof(DevInfo));
+        DevInfo.fd = fd;
+        snprintf(DevInfo.devInfoStr, sizeof(DevInfo.devInfoStr), "fd: %d", DevInfo.fd);
+        return LE_OK;
+#else
+#   error "Unsupported OS type"
+#endif
     }
 
     return LE_FAULT;
@@ -237,7 +251,7 @@ static le_result_t SetSocketNonBlocking
 {
     int flags;
 
-    flags = fcntl(fd, F_GETFL, 0);
+    flags = le_fd_Fcntl(fd, F_GETFL, 0);
     if (flags < 0)
     {
         LE_ERROR("fcntl failed, %s", StrError(errno));
@@ -250,7 +264,7 @@ static le_result_t SetSocketNonBlocking
     }
 
     flags |= O_NONBLOCK;
-    if (fcntl(fd, F_SETFL, flags) < 0)
+    if (le_fd_Fcntl(fd, F_SETFL, flags) < 0)
     {
         LE_ERROR("fcntl failed, %s", StrError(errno));
         return LE_FAULT;
@@ -299,7 +313,7 @@ ssize_t le_dev_Read
         LE_INFO("%s", DevInfo.devInfoStr);
     }
 
-    count = read(devicePtr->fd, rxDataPtr, size);
+    count = le_fd_Read(devicePtr->fd, rxDataPtr, size);
     if (-1 == count)
     {
         LE_ERROR("read error: %s", StrError(errno));
@@ -344,7 +358,7 @@ int32_t le_dev_Write
         sizeToWrite = size - currentSize;
 
         sizeWritten =
-            write(devicePtr->fd, &txDataPtr[currentSize], sizeToWrite);
+            le_fd_Write(devicePtr->fd, &txDataPtr[currentSize], sizeToWrite);
 
         if (sizeWritten < 0)
         {

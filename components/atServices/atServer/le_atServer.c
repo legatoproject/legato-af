@@ -2687,7 +2687,7 @@ static le_result_t CloseServer
 
     le_dev_RemoveFdMonitoring(&devPtr->device);
 
-    if (close(devPtr->device.fd))
+    if (le_fd_Close(devPtr->device.fd))
     {
         // using thread safe strerror
         memset(errMsg, 0, ERR_MSG_MAX);
@@ -2971,7 +2971,7 @@ le_atServer_DeviceRef_t le_atServer_Open
     char errMsg[ERR_MSG_MAX];
 
     // check if the file descriptor is valid
-    if (fcntl(fd, F_GETFD) == -1)
+    if (le_fd_Fcntl(fd, F_GETFD) == -1)
     {
         memset(errMsg, 0, ERR_MSG_MAX);
         LE_ERROR("%s", strerror_r(errno, errMsg, ERR_MSG_MAX));
@@ -4056,8 +4056,10 @@ COMPONENT_INIT
 
     bridge_Init();
 
+#ifndef MK_CONFIG_ATSERVICE_NO_WATCHDOG
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_Init(1);
     le_wdogChain_MonitorEventLoop(0, watchdogInterval);
+#endif
 }
