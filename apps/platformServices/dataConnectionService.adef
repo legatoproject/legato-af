@@ -31,7 +31,9 @@ processes:
         watchdogTimeout: never
     #endif
 
-    maxStackBytes: 6000
+#if ${LE_CONFIG_RTOS} = y
+    maxStackBytes: 6144
+#endif
 }
 
 bindings:

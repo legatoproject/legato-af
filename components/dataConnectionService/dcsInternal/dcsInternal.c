@@ -58,8 +58,7 @@ static void dcsInternalChannelQueryHandler
 COMPONENT_INIT
 {
     le_dcs_ConnectService();
-    // sleep cause crash on HL78, disable sleep on HL78
-#ifndef LE_CONFIG_CUSTOM_OS
+#ifdef LE_CONFIG_LINUX
     sleep(STARTUP_CHANNEL_SCAN_WAIT);
 #endif
     LE_INFO("Initializing data channels");
