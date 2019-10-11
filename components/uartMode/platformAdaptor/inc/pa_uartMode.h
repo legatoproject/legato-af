@@ -14,17 +14,17 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * UART modes.
+ * UART modes. Must numerically match the corresponding QMI modes.
  */
 //--------------------------------------------------------------------------------------------------
 typedef enum
 {
-    UART_DISABLED,
-    UART_AT_CMD,
-    UART_DIAG_MSG,
-    UART_NMEA,
-    UART_LINUX_CONSOLE,
-    UART_LINUX_APP
+    UART_DISABLED      = 0,
+    UART_AT_CMD        = 1,
+    UART_DIAG_MSG      = 2,
+    UART_NMEA          = 4,
+    UART_LINUX_CONSOLE = 16,
+    UART_LINUX_APP     = 17,
 }
 pa_uartMode_Mode_t;
 
