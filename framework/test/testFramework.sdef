@@ -19,6 +19,7 @@ apps:
     hex/test_Hex
     pack/test_Pack
     pathIter/test_PathIter
+    pipe/test_Pipe
 
     memPool/test_MemPool
     hashMap/test_HashMap
