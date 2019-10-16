@@ -756,7 +756,7 @@ static void PaNmeaHandler
     le_result_t resultNmeaPipe = OpenNmeaPipe();
     if ((resultNmeaPipe != LE_OK) && (resultNmeaPipe != LE_DUPLICATE))
     {
-        LE_WARN("Could not open Nmea Pipe");
+        LE_DEBUG("Could not open Nmea Pipe");
         le_mem_Release(nmeaPtr);
         return;
     }
