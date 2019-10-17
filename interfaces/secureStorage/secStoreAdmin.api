@@ -17,11 +17,22 @@
  * is in an encrypted format. It also allows privileged users to debug stored data issues.
 
  * @note This API is mostly disabled by default in Legato Framework for security concerns. Only
- * few functions remains to get non sensitive information about secure storage. In order
- * to make the secure storage admin API fully available, Legato has be to be compiled using a
- * special flag: SECSTOREADMIN=1 make
+ * few functions remains to get non sensitive information about secure storage. In order to enable
+ * the secure storage admin API, Legato must be compiled using the @c SECSTOREADMIN flag.
+ * @verbatim
+ * make distclean
+ * SECSTOREADMIN=1 make wp76xx
+ * @endverbatim
+ * Alternatively, you can enable the Secure Storage Admin API from within the kconfig menu system.
+ * @verbatim
+ * make menuconfig_wp76xx
+ * @endverbatim
+ * In the displayed configuration menu, enable SecStore Admin API flag by following the
+ * following menu path and enabling <code>Enable Secure Storage Administration API</code>
+ * Services > Secure Storage > Enable Secure Storage Administration API
  *
- * Two functions are enabled by default whether the flag SECSTOREADMIN is set or not:
+ * Even if the Secure Storage Admin API is disabled the following two functions are always
+ * available:
  * - secStoreAdmin_GetTotalSpace(): gets total space and available free space in secure storage.
  * - secStoreAdmin_GetSize(): gets the size, in bytes, of all items under the specified path
  *
