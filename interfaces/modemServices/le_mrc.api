@@ -613,7 +613,9 @@ BITMASK LteBandBitMask
     BITMASK_LTE_BAND_E_UTRA_OP_BAND_40,
     BITMASK_LTE_BAND_E_UTRA_OP_BAND_41,
     BITMASK_LTE_BAND_E_UTRA_OP_BAND_42,
-    BITMASK_LTE_BAND_E_UTRA_OP_BAND_43
+    BITMASK_LTE_BAND_E_UTRA_OP_BAND_43,
+    BITMASK_LTE_BAND_E_UTRA_OP_BAND_66,
+    BITMASK_LTE_BAND_E_UTRA_OP_BAND_71
 };
 
 //--------------------------------------------------------------------------------------------------
