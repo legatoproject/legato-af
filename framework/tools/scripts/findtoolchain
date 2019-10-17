@@ -223,6 +223,10 @@ ListToolchainPrefix() {
     local target="$1"
     local suffix="$2"
 
+    if [ ! -e "/opt/swi" ]; then
+        return 0
+    fi
+
     for prefix in $(ls -1 /opt/swi | grep -e '^y' | sort -r); do
         if [[ "$prefix" == *"${suffix}-${target}" ]]; then
             echo "$prefix"

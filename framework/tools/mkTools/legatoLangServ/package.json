@@ -13,16 +13,16 @@
         "node": "*"
     },
     "dependencies": {
-        "@types/node": "^10.14.12",
-        "chokidar": "^2.1.6",
+        "@types/node": "^10.14.22",
+        "chokidar": "^2.1.8",
         "mode-to-permissions": "^0.0.2",
-        "npm": "^6.10.0",
-        "vscode": "^1.1.35",
+        "npm": "^6.12.0",
+        "vscode": "^1.1.36",
         "vscode-languageserver": "^5.2.1",
         "vscode-uri": "^1.0.8"
     },
     "devDependencies": {
-        "tslint": "^5.18.0",
+        "tslint": "^5.20.0",
         "typescript": "3.3.3333"
     },
     "scripts": {
