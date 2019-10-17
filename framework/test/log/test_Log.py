@@ -12,7 +12,7 @@ logStrings = [ '[^|]* \| [^|]* \| frame 0 msg',
                '[^|]* \| [^|]* \| frame 4 msg',
                '[^|]* \| [^|]* \| frame 5 msg' ]
 
-@pytest.mark.skipif(pytest.config.getvalue('target') == 'hl76',
+@pytest.mark.skipif(pytest.config.getvalue('target') == 'gill',
                     reason="Cannot read QXDM log from Python")
 def testLogFilter(target):
     for filterLevel in range(len(logStrings)):

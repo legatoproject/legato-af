@@ -9,7 +9,7 @@ import pytest
 
 app_name = 'LE_2322'
 
-@pytest.mark.skipif(pytest.config.getvalue('target') == 'hl76',
+@pytest.mark.skipif(pytest.config.getvalue('target') == 'gill',
                     reason="Cannot read QXDM log from Python")
 def testLogFilter(target):
     assert target.expect('Legato threading API used in non-Legato thread!', timeout=10) == 0, \
