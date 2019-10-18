@@ -183,4 +183,15 @@ LE_SHARED void le_microSupervisor_SetLogLevel
     le_log_Level_t level     ///< [IN] the filter level to set
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+* Get legato version string
+*/
+//--------------------------------------------------------------------------------------------------
+LE_SHARED bool le_microSupervisor_GetLegatoVersion
+(
+    char*  bufferPtr,        ///< [OUT] output buffer to contain version string
+    size_t size              ///< [IN] buffer length
+);
+
 #endif /* LEGATO_SRC_MICROSUPERVISOR_INCLUDE_GUARD */

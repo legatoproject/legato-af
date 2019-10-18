@@ -642,3 +642,23 @@ LE_SHARED void le_microSupervisor_SetLogLevel
 {
     le_log_SetFilterLevel(level);
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+* Get legato version string
+*/
+//--------------------------------------------------------------------------------------------------
+LE_SHARED bool le_microSupervisor_GetLegatoVersion
+(
+    char*  bufferPtr,        ///< [OUT] output buffer to contain version string
+    size_t size              ///< [IN] buffer length
+)
+{
+    if (bufferPtr == NULL)
+    {
+        LE_ERROR("Version bufferPtr is NULL.");
+        return false;
+    }
+
+    return le_utf8_Copy(bufferPtr, LE_VERSION, size, NULL) == LE_OK;
+}
