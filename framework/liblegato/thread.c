@@ -35,6 +35,8 @@
 #include "args.h"
 #include "thread.h"
 
+#include "fa/thread.h"
+
 #ifndef HAVE_PTHREAD_SETNAME
 #   if LE_CONFIG_LINUX
 #       define HAVE_PTHREAD_SETNAME 1
@@ -98,7 +100,7 @@ static le_ref_MapRef_t ThreadRefMap;
  * this module, the safe reference map should be used.
  */
 //--------------------------------------------------------------------------------------------------
-static le_dls_List_t ThreadObjList = LE_DLS_LIST_INIT;
+static le_dls_List_t ThreadObjList = LE_DLS_LIST_DECL_INIT;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -367,7 +369,7 @@ void thread_InitThread
     // Init the thread's mutex tracking structures.
     mutex_ThreadInit();
 
-    // Init the thread's mutex.
+    // Init the thread's semaphore tracking structures
     sem_ThreadInit();
 
     // Init the thread's eventLoop structures
@@ -555,21 +557,21 @@ static thread_Obj_t* CreateThread
     threadPtr->destructorList = LE_DLS_LIST_INIT;
     threadPtr->threadHandle = 0;
 
-    threadPtr->eventRecPtr = event_CreatePerThreadInfo();
-    timer_Type_t i;
-    for (i = TIMER_NON_WAKEUP; i < TIMER_TYPE_COUNT; i++)
-    {
-        threadPtr->timerRecPtr[i] = timer_InitThread(i);
-    }
-
     // By default, inherit cdata from the current thread.
     if (currentThreadPtr)
     {
         threadPtr->cdataRecPtr = currentThreadPtr->cdataRecPtr;
     }
 
+    threadPtr->eventRecPtr = event_CreatePerThreadInfo();
+    timer_Type_t i;
+    for (i = TIMER_NON_WAKEUP; i < TIMER_TYPE_COUNT; i++)
+    {
+        threadPtr->timerRecPtr[i] = timer_InitThread(i, threadPtr);
+    }
+
     // Create a safe reference for this object and put this object on the thread object list (for
-    // the Inpsect tool).
+    // the Inspect tool).
     Lock();
     threadPtr->safeRef = le_ref_CreateRef(ThreadRefMap, threadPtr);
     ThreadObjListChangeCount++;
@@ -747,6 +749,9 @@ void thread_Init
     void
 )
 {
+    // For RTOSes which may need to perform some platform-specific initialization
+    fa_thread_Init();
+
     // Get OS min & max priorities for real-time scheduler.
     MinRTPriority = sched_get_priority_min(SCHED_RR);
 
@@ -805,7 +810,11 @@ mutex_ThreadRec_t* thread_GetMutexRecPtr
     void
 )
 {
+#if LE_CONFIG_LINUX_TARGET_TOOLS
     return &((GetCurrentThreadPtr())->mutexRec);
+#else
+    return NULL;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -818,6 +827,7 @@ mutex_ThreadRec_t* thread_TryGetMutexRecPtr
     void
 )
 {
+#if LE_CONFIG_LINUX_TARGET_TOOLS
     thread_Obj_t* threadObjPtr = TryGetCurrentThreadPtr();
 
     if (threadObjPtr)
@@ -828,6 +838,9 @@ mutex_ThreadRec_t* thread_TryGetMutexRecPtr
     {
         return NULL;
     }
+#else
+    return NULL;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -840,7 +853,11 @@ sem_ThreadRec_t* thread_GetSemaphoreRecPtr
     void
 )
 {
+#if LE_CONFIG_LINUX_TARGET_TOOLS
     return &((GetCurrentThreadPtr())->semaphoreRec);
+#else
+    return NULL;
+#endif
 }
 
 
@@ -854,6 +871,7 @@ sem_ThreadRec_t* thread_TryGetSemaphoreRecPtr
     void
 )
 {
+#if LE_CONFIG_LINUX_TARGET_TOOLS
     thread_Obj_t* threadObjPtr = TryGetCurrentThreadPtr();
 
     if (threadObjPtr)
@@ -864,6 +882,9 @@ sem_ThreadRec_t* thread_TryGetSemaphoreRecPtr
     {
         return NULL;
     }
+#else
+    return NULL;
+#endif
 }
 
 

@@ -18,14 +18,9 @@
 #define le_fd_Fcntl                     fcntl
 #define le_fd_Ioctl(fd, request, argp)  ioctl((fd), (request), (argp))
 #define le_fd_MkFifo(pathname, mode)    mkfifo((pathname), (mode))
+#define le_fd_MkPipe(pathname, mode)    (-1)
 #define le_fd_Open(pathname, flags)     open((pathname), (flags))
 #define le_fd_Read(fd, buf, count)      read((fd), (buf), (count))
 #define le_fd_Write(fd, buf, count)     write((fd), (buf), (count))
-
-//--------------------------------------------------------------------------------------------------
-/** Request codes for le_fd_Ioctl API
- */
-//--------------------------------------------------------------------------------------------------
-#define LE_FD_FLUSH 0x7F00            // Send AT command to ATSERVER device.
 
 #endif /* end LINUX_LE_FD_H_INCLUDE_GUARD */

@@ -159,7 +159,12 @@ __attribute__((unused)) static void NewSessionHandler
     // of the client to be the same user ID that we are running as.
     LE_TEST_BEGIN_SKIP(!LE_CONFIG_IS_ENABLED(LE_CONFIG_LINUX), 1)
     uid_t clientUserId;
+#if LE_CONFIG_LINUX
     uid_t myUserId = getuid();
+#else
+    // Since test is skipped on non-Linux platforms, just set to 0 to avoid dependency on getuid().
+    uid_t myUserId = 0;
+#endif
     le_result_t result = le_msg_GetClientUserId(sessionRef, &clientUserId);
     LE_TEST_INFO("le_msg_GetClientUserId() returned '%s' with UID %u.",
                  LE_RESULT_TXT(result),

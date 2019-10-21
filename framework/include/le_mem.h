@@ -461,6 +461,8 @@
 #ifndef LEGATO_MEM_INCLUDE_GUARD
 #define LEGATO_MEM_INCLUDE_GUARD
 
+#include "le_singlyLinkedList.h"
+
 #ifndef LE_COMPONENT_NAME
 #   define LE_COMPONENT_NAME
 #endif

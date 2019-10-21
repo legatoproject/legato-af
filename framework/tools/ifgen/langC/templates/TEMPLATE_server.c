@@ -43,7 +43,7 @@ LE_MEM_DEFINE_STATIC_POOL({{apiName}}_Messages, LE_CDATA_COMPONENT_COUNT,
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t {{apiName}}MessagesRef;
 {%- endif %}
-
+{% if interface is HandlerUser %}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -84,6 +84,7 @@ _ServerData_t;
 LE_MEM_DEFINE_STATIC_POOL({{apiName}}_ServerData,
                           HIGH_SERVER_DATA_COUNT,
                           sizeof(_ServerData_t));
+{%- endif %}
 {%- if args.async %}
 
 //--------------------------------------------------------------------------------------------------
@@ -119,16 +120,14 @@ typedef struct {{apiName}}_ServerCmd
 LE_MEM_DEFINE_STATIC_POOL({{apiName}}_ServerCmd,
                           HIGH_SERVER_CMD_COUNT,
                           sizeof({{apiName}}_ServerCmd_t));
-
 {%- endif %}
-
+{% if interface is HandlerUser %}
 //--------------------------------------------------------------------------------------------------
 /**
  * The memory pool for server data objects
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t _ServerDataPool;
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -147,6 +146,7 @@ LE_REF_DEFINE_STATIC_MAP({{apiName}}_ServerHandlers,
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t _HandlerRefMap;
+{% endif %}
 {%- if args.async %}
 
 //--------------------------------------------------------------------------------------------------
@@ -242,6 +242,7 @@ __attribute__((unused)) static void CleanupClientData
     // Store the client session ref so it can be retrieved by the server using the
     // GetClientSessionRef() function, if it's needed inside handler removal functions.
     LE_CDATA_THIS->_ClientSessionRef = sessionRef;
+{% if interface is HandlerUser %}
 
     le_ref_IterRef_t iterRef = le_ref_GetIterator(_HandlerRefMap);
     le_result_t result = le_ref_NextNode(iterRef);
@@ -277,6 +278,7 @@ __attribute__((unused)) static void CleanupClientData
         // Get the next value in the reference mpa
         result = le_ref_NextNode(iterRef);
     }
+{%- endif %}
 
     // Clear the client session ref, since the event has now been processed.
     LE_CDATA_THIS->_ClientSessionRef = 0;
@@ -415,11 +417,13 @@ void {{apiName}}_AdvertiseService
 #if defined(MK_TOOLS_BUILD) && !defined(NO_LOG_SESSION)
     TraceRef = le_log_GetTraceRef("ipc");
 #endif
+    {%- if interface is HandlerUser %}
 
     // Create the server data pool
     _ServerDataPool = le_mem_InitStaticPool({{apiName}}_ServerData,
                                             HIGH_SERVER_DATA_COUNT,
                                             sizeof(_ServerData_t));
+    {%- endif %}
     {%- if args.async %}
 
     // Create the server command pool
@@ -427,11 +431,13 @@ void {{apiName}}_AdvertiseService
                                            HIGH_SERVER_CMD_COUNT,
                                            sizeof({{apiName}}_ServerCmd_t));
     {%- endif %}
+    {%- if interface is HandlerUser %}
 
     // Create safe reference map for handler references.
     // The size of the map should be based on the number of handlers defined for the server.
     _HandlerRefMap = le_ref_InitStaticMap({{apiName}}_ServerHandlers,
                         LE_MEM_BLOCKS({{apiName}}_ServerData, HIGH_SERVER_DATA_COUNT));
+    {%- endif %}
 
     // Start the server side of the service
     {%- if not args.localService %}
@@ -688,6 +694,9 @@ static void Handle_{{apiName}}_{{function.name}}
 )
 {
     {%- with error_unpack_label=Labeler("error_unpack") %}
+    // Declare temporaries for input parameters
+    {{- pack.DeclareInputs(function.parameters,initiatorWaits=True) }}
+
     // Create a server command object
     {{apiName}}_ServerCmd_t* _serverCmdPtr = le_mem_Alloc(_ServerCmdPool);
     _serverCmdPtr->cmdLink = LE_DLS_LINK_INIT;
@@ -757,59 +766,16 @@ static void Handle_{{apiName}}_{{function.name}}
     // Needed if we are returning a result or output values
     uint8_t* _msgBufStartPtr = _msgBufPtr;
 
-    // Unpack which outputs are needed
-    {%- if any(function.parameters, "OutParameter") %}
-    uint32_t _requiredOutputs = 0;
-    if (!le_pack_UnpackUint32(&_msgBufPtr, &_requiredOutputs))
-    {
-        goto {{error_unpack_label}};
-    }
-    {%- endif %}
-
-    // Unpack the input parameters from the message
     {%- if function is RemoveHandlerFunction %}
-    {#- Remove handlers only have one parameter which is treated specially,
-     # so do separate handling
-     #}
-    {{function.parameters[0].apiType|FormatType}} {{function.parameters[0]|FormatParameterName}}
-        {#- #} = {{function.parameters[0].apiType|FormatTypeInitializer}};
-    if (!le_pack_UnpackReference( &_msgBufPtr,
-                                  &{{function.parameters[0]|FormatParameterName}} ))
-    {
-        goto {{error_unpack_label}};
-    }
-    // The passed in handlerRef is a safe reference for the server data object.  Need to get the
-    // real handlerRef from the server data object and then delete both the safe reference and
-    // the object since they are no longer needed.
-    _LOCK
-    _ServerData_t* serverDataPtr = le_ref_Lookup(_HandlerRefMap,
-                                                 {{function.parameters[0]|FormatParameterName}});
-    if ( serverDataPtr == NULL )
-    {
-        _UNLOCK
-        LE_KILL_CLIENT("Invalid reference");
-        return;
-    }
-    le_ref_DeleteRef(_HandlerRefMap, {{function.parameters[0]|FormatParameterName}});
-    _UNLOCK
-    handlerRef = ({{function.parameters[0].apiType|FormatType}})serverDataPtr->handlerRef;
-    le_mem_Release(serverDataPtr);
+    _ServerData_t* serverDataPtr;
     {%- else %}
-    {%- call pack.UnpackInputs(function.parameters,initiatorWaits=True) %}
-        goto {{error_unpack_label}};
-    {%- endcall %}
-    {%- endif %}
-    {#- Now create handler parameters, if there are any.  Should be zero or one #}
+    // Declare temporaries for input parameters
+    {{- pack.DeclareInputs(function.parameters,initiatorWaits=True) }}
+    {#- Now declare handler parameters, if there are any.  Should be zero or one #}
     {%- for handler in function.parameters if handler.apiType is HandlerType %}
-
-    // Create a new server data object and fill it in
-    _ServerData_t* serverDataPtr = le_mem_Alloc(_ServerDataPool);
-    serverDataPtr->clientSessionRef = le_msg_GetSession(_msgRef);
-    serverDataPtr->contextPtr = contextPtr;
-    serverDataPtr->handlerRef = NULL;
-    serverDataPtr->removeHandlerFunc = NULL;
-    contextPtr = serverDataPtr;
+    _ServerData_t* serverDataPtr = NULL;
     {%- endfor %}
+    {%- endif %}
 
     // Define storage for output parameters
     {%- for parameter in function.parameters if parameter is OutParameter %}
@@ -829,6 +795,18 @@ static void Handle_{{apiName}}_{{function.name}}
     {{parameter.apiType|FormatType}} {{parameter.name}}Buffer = {{parameter.apiType|FormatTypeInitializer}};
     {{parameter.apiType|FormatType}} *{{parameter|FormatParameterName}} = &{{parameter.name}}Buffer;
     {%- endif %}
+    {%- endfor %}
+
+    // Unpack which outputs are needed
+    {%- if any(function.parameters, "OutParameter") %}
+    uint32_t _requiredOutputs = 0;
+    if (!le_pack_UnpackUint32(&_msgBufPtr, &_requiredOutputs))
+    {
+        goto {{error_unpack_label}};
+    }
+    {%- endif %}
+
+    {%- for parameter in function.parameters if parameter is OutParameter %}
     if (!(_requiredOutputs & (1u << {{loop.index0}})))
     {
         {{parameter|FormatParameterName}} = NULL;
@@ -836,6 +814,51 @@ static void Handle_{{apiName}}_{{function.name}}
         {{parameter.name}}Size = 0;
         {%- endif %}
     }
+    {%- endfor %}
+
+    // Unpack the input parameters from the message
+    {%- if function is RemoveHandlerFunction %}
+    {#- Remove handlers only have one parameter which is treated specially,
+     # so do separate handling
+     #}
+    {{function.parameters[0].apiType|FormatType}} {{function.parameters[0]|FormatParameterName}}
+        {#- #} = {{function.parameters[0].apiType|FormatTypeInitializer}};
+    if (!le_pack_UnpackReference( &_msgBufPtr,
+                                  &{{function.parameters[0]|FormatParameterName}} ))
+    {
+        goto {{error_unpack_label}};
+    }
+    // The passed in handlerRef is a safe reference for the server data object.  Need to get the
+    // real handlerRef from the server data object and then delete both the safe reference and
+    // the object since they are no longer needed.
+    _LOCK
+    serverDataPtr = le_ref_Lookup(_HandlerRefMap,
+                                  {{function.parameters[0]|FormatParameterName}});
+    if ( serverDataPtr == NULL )
+    {
+        _UNLOCK
+        LE_KILL_CLIENT("Invalid reference");
+        return;
+    }
+    le_ref_DeleteRef(_HandlerRefMap, {{function.parameters[0]|FormatParameterName}});
+    _UNLOCK
+    handlerRef = ({{function.parameters[0].apiType|FormatType}})serverDataPtr->handlerRef;
+    le_mem_Release(serverDataPtr);
+    {%- else %}
+    {%- call pack.UnpackInputs(function.parameters,initiatorWaits=True) %}
+        goto {{error_unpack_label}};
+    {%- endcall %}
+    {%- endif %}
+    {#- Now create handler parameters, if there are any.  Should be zero or one #}
+    {%- for handler in function.parameters if handler.apiType is HandlerType %}
+
+    // Create a new server data object and fill it in
+    serverDataPtr = le_mem_Alloc(_ServerDataPool);
+    serverDataPtr->clientSessionRef = le_msg_GetSession(_msgRef);
+    serverDataPtr->contextPtr = contextPtr;
+    serverDataPtr->handlerRef = NULL;
+    serverDataPtr->removeHandlerFunc = NULL;
+    contextPtr = serverDataPtr;
     {%- endfor %}
 
     // Call the function

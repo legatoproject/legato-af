@@ -354,5 +354,29 @@ const
     return workingDir + "/staging/root.cfg";
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the total number of processes in this application
+ *
+ * @return the number of processes in the application
+ */
+//--------------------------------------------------------------------------------------------------
+int App_t::GetProcessCount
+(
+    void
+) const
+{
+    int processCount = 0;
+
+    // Calculate number of processes in this application
+    for (auto processEnvPtr : processEnvs)
+    {
+        processCount += processEnvPtr->processes.size();
+    }
+
+    return processCount;
+}
+
+
 
 } // namespace modeller

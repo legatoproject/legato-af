@@ -818,6 +818,8 @@
 #ifndef LE_MESSAGING_H_INCLUDE_GUARD
 #define LE_MESSAGING_H_INCLUDE_GUARD
 
+#include "le_semaphore.h"
+
 // =======================================
 //  DATA TYPES
 // =======================================
@@ -1007,9 +1009,8 @@ typedef struct le_msg_LocalMessage
     bool needsResponse;                     ///< True if message needs a response
     le_msg_ResponseCallback_t completionCallback; ///< Function to be called when transaction done.
     void* contextPtr;                       ///< Opaque value to be passed to handler function.
-    uint8_t data[] __attribute__((aligned(__BIGGEST_ALIGNMENT__)));   ///< Start of message data
-                                                                      // Align so any type of
-                                                                      // data can be stored inside.
+    uint8_t data[] __attribute__((aligned));   ///< Start of message data.
+                                               ///< Align so any type of data can be stored inside.
 } le_msg_LocalMessage_t;
 
 

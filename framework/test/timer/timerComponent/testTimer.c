@@ -96,7 +96,9 @@ static pthread_key_t StartTimeKey;
 static le_thread_Ref_t MainThread;
 
 // Reference to the child thread.
+#if LE_CONFIG_LINUX
 static le_thread_Ref_t ChildThread;
+#endif
 
 // Mutex used to prevent races between the threads.
 static le_mutex_Ref_t Mutex;
@@ -135,9 +137,9 @@ static void LongTimerExpiryHandler
     LE_TEST_OK(!testFailed, "timer accuracy within tolerance");
     if ( testFailed )
     {
-        LOG_TIME(expectedInterval);
-        LOG_TIME(diffTime);
-        LOG_TIME(subTime);
+        LOG_TIME_MSG("Expected Duration", expectedInterval);
+        LOG_TIME_MSG("Actual Duration", diffTime);
+        LOG_TIME_MSG("Difference", subTime);
     }
 
 
@@ -172,9 +174,9 @@ static void VeryShortTimerExpiryHandler
     LE_TEST_OK(!testFailed, "very short timer accuracy within tolerance");
     if ( testFailed )
     {
-        LOG_TIME(expectedInterval);
-        LOG_TIME(diffTime);
-        LOG_TIME(subTime);
+        LOG_TIME_MSG("Expected Duration", expectedInterval);
+        LOG_TIME_MSG("Actual Duration", diffTime);
+        LOG_TIME_MSG("Difference", subTime);
     }
 }
 
@@ -195,9 +197,9 @@ static void MediumTimerExpiryHandler
     LE_TEST_OK(!testFailed, "medium timer accuracy within tolerance");
     if ( testFailed )
     {
-        LOG_TIME(expectedInterval);
-        LOG_TIME(diffTime);
-        LOG_TIME(subTime);
+        LOG_TIME_MSG("Expected Duration", expectedInterval);
+        LOG_TIME_MSG("Actual Duration", diffTime);
+        LOG_TIME_MSG("Difference", subTime);
     }
 
     // Verify that veryShortTimer (passed in as contextPtr) expired exactly once
@@ -287,9 +289,9 @@ static void AdditionalTests
     LE_TEST_OK(!testFailed, "Time remaining was within tolerance.");
     if (testFailed)
     {
-        LOG_TIME(timeRemaining);
-        LOG_TIME(elapsedTime);
-        LOG_TIME(TimerTolerance);
+        LOG_TIME_MSG("Time Remaining", timeRemaining);
+        LOG_TIME_MSG("Elapsed Time", elapsedTime);
+        LOG_TIME_MSG("Tolerance", TimerTolerance);
     }
 
     le_timer_Stop(shortTimer);
@@ -366,11 +368,11 @@ static void TimerExpiryHandler
     testDataPtr->testPassed[isMain][expiryCount-1] = !testFailed;
     if ( testFailed )
     {
-        LOG_TIME_MSG("testDataPtr", testDataPtr->interval);
-        LOG_TIME(expectedInterval);
-        LOG_TIME(diffTime);
-        LOG_TIME(subTime);
-        LOG_TIME(tolerance);
+        LOG_TIME_MSG("Timer Interval", testDataPtr->interval);
+        LOG_TIME_MSG("Expected Duration", expectedInterval);
+        LOG_TIME_MSG("Actual Duration", diffTime);
+        LOG_TIME_MSG("Difference", subTime);
+        LOG_TIME_MSG("Tolerance", tolerance);
     }
     else
     {
@@ -410,11 +412,11 @@ static void TimerExpiryHandler
                 {
                     LE_TEST_OK(TimerTestDataArray[i].testPassed[1][j],
                         "Main timer %" PRIuS " expiry %" PRIu32 " accuracy within tolerance", i, j);
-#if LE_CONFIG_LINUX
+                    LE_TEST_BEGIN_SKIP(!LE_CONFIG_IS_ENABLED(LE_CONFIG_LINUX), 1);
                     LE_TEST_OK(TimerTestDataArray[i].testPassed[0][j],
                         "Child timer %" PRIuS " expiry %" PRIu32 " accuracy within tolerance",
                         i, j);
-#endif /* end LE_CONFIG_LINUX */
+                    LE_TEST_END_SKIP();
                 }
          }
 
@@ -511,8 +513,6 @@ COMPONENT_INIT
 
 #if LE_CONFIG_LINUX
     ChildThread = le_thread_Create("Timer Test", ThreadMain, NULL);
-#else
-    ChildThread = NULL;
 #endif
 
     LE_TEST_PLAN(2 * Total * TESTS_PER_TIMER + ADDITIONAL_TEST_COUNT);
@@ -521,13 +521,10 @@ COMPONENT_INIT
 
     LE_ASSERT(pthread_key_create(&StartTimeKey, NULL) == 0);
 
-    // Skip child timer tests on RTOS as timer accuracy isn't good enough
-    LE_TEST_BEGIN_SKIP(!LE_CONFIG_IS_ENABLED(LE_CONFIG_LINUX), Total);
 #if LE_CONFIG_LINUX
     le_thread_SetJoinable(ChildThread);
     le_thread_Start(ChildThread);
 #endif
-    LE_TEST_END_SKIP();
 
     TimerEventLoopTest();
     LE_TEST_INFO("==== Timer Tests Started ====\n");

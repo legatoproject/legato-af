@@ -31,10 +31,13 @@
 #define IFGEN_{{apiBaseName|upper}}_PROTOCOL_ID "{{idString}}"
 #define IFGEN_{{apiBaseName|upper}}_MSG_SIZE {{messageSize}}
 {%- if args.localService %}
-#if UINT32_MAX == UINTPTR_MAX
+// with ARM RVCT the max size of UINTPTR_MAX is signed.
+#if UINT32_MAX == UINTPTR_MAX || INT32_MAX == UINTPTR_MAX
 #  define IFGEN_{{apiBaseName|upper}}_LOCAL_MSG_SIZE {{interface|LocalMessageSize(4)}}
-#elif UINT64_MAX == UINTPTR_MAX
+#  define IFGEN_PTR32 1
+#elif UINT64_MAX == UINTPTR_MAX || INT64_MAX == UINTPTR_MAX
 #  define IFGEN_{{apiBaseName|upper}}_LOCAL_MSG_SIZE {{interface|LocalMessageSize(8)}}
+#  define IFGEN_PTR64 1
 #else
 #  error "Unsupported pointer size -- only 32- and 64-bit are supported for local services."
 #endif
@@ -66,14 +69,17 @@ typedef enum
 }
 {{type|FormatType(useBaseName=True)}};
 {%- elif type is BitMaskType %}
-typedef enum
-{
-    {%- for element in type.elements %}
-    {{apiBaseName|upper}}_{{element.name}} = {{"0x%x" % element.value}}{%if not loop.last%},{%endif%}
-    {%- if element.comments %}        ///<{{element.comments|join("\n///<")|indent(8)}}{%endif%}
-    {%- endfor %}
-}
-{{type|FormatType(useBaseName=True)}};
+{%- for element in type.elements %}
+{%- if element.comments %}///{{element.comments|join("\n///")}}{%endif%}
+#define {{apiBaseName|upper}}_{{element.name}} {{"0x%x" % element.value}}
+{%- endfor %}
+{%- if type.size == interface.findType('uint32').size %}
+typedef uint32_t {{type|FormatType(useBaseName=True)}};
+{%- elif type.size == interface.findType('uint64').size %}
+typedef uint64_t {{type|FormatType(useBaseName=True)}};
+{%- else %}
+#error "Unexpected enum size"
+{%- endif %}
 {%- elif type is StructType %}
 typedef struct
 {

@@ -74,11 +74,21 @@ void RtosSystemBuildScriptGenerator_t::GenerateLdFlags
         }
     }
 
+    script << " $ldFlags";
+
+    if (buildParams.compilerType == mk::BuildParams_t::COMPILER_ARM_RVCT)
+    {
+        script << " $$LEGATO_BUILD/framework/lib-static/liblegato.a\n";
+    }
+    else
+    {
+        script << " -Wl,-Map=" <<
+            path::MakeAbsolute(path::Combine(buildParams.outputDir, "$target.map")) <<
+            " -Wl,--gc-sections -T $$LEGATO_ROOT/framework/rtos/rtos.ld"
+            " \"-L$$LEGATO_BUILD/framework/lib-static\" -llegato\n";
+    }
+
     script <<
-        " $ldFlags -Wl,-Map=" <<
-        path::MakeAbsolute(path::Combine(buildParams.outputDir, "$target.map")) <<
-        " -Wl,--gc-sections -T $$LEGATO_ROOT/framework/rtos/rtos.ld"
-        " \"-L$$LEGATO_BUILD/framework/lib-static\" -llegato\n"
         "  entry=le_microSupervisor_Main\n"
         "  pplFlags=--entry=le_microSupervisor_Main\n"
         "\n";
@@ -243,7 +253,14 @@ void RtosSystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
     }
 
     // Add the legato linker script onto any default linker scripts
-    script << " $builddir/src/legato.ld";
+    if (buildParams.compilerType == mk::BuildParams_t::COMPILER_GCC)
+    {
+        script << " $builddir/src/legato.ld";
+    }
+    else if (buildParams.compilerType == mk::BuildParams_t::COMPILER_ARM_RVCT)
+    {
+        script << " | $builddir/src/legato.ld";
+    }
 
     GenerateLdFlags();
 

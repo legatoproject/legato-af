@@ -506,6 +506,8 @@
 #ifndef LEGATO_EVENTLOOP_INCLUDE_GUARD
 #define LEGATO_EVENTLOOP_INCLUDE_GUARD
 
+#include "le_thread.h"
+
 
 //--------------------------------------------------------------------------------------------------
 /**

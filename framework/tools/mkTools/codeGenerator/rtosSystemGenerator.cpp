@@ -118,6 +118,71 @@ void CountSystemComponentUsage
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Generate process list in tasks.c for a given application
+ */
+//--------------------------------------------------------------------------------------------------
+void GenerateProcessList
+(
+    std::ostream &outputFile,
+    model::App_t *appPtr
+)
+{
+    int processCount = appPtr->GetProcessCount();
+
+    if (!processCount)
+    {
+        // No processes in this application (e.g. tool-only application), just return
+        return;
+    }
+
+    std::string appTasksName = appPtr->name + "Tasks";
+
+    outputFile <<
+        "// Task list for all processes in app\n"
+        "static Task_t " << appTasksName << "[" << processCount << "] =\n"
+        "{\n";
+    for (auto processEnvPtr : appPtr->processEnvs)
+    {
+        for (auto processPtr : processEnvPtr->processes)
+        {
+            auto taskName = appPtr->name + std::string("_") + processPtr->GetName();
+            auto exePtr = appPtr->executables[model::Exe_t::NameFromPath(processPtr->exePath)];
+
+            outputFile <<
+                "    {\n"
+                "        .nameStr = \""
+                       << processPtr->GetName()
+                       << "\",\n"
+                "        .priority = " << processEnvPtr->GetStartPriority() << ",\n"
+                "#if LE_CONFIG_STATIC_THREAD_STACKS\n"
+                "        .stackSize = sizeof(_thread_stack_" << taskName << "),\n"
+                "        .stackPtr = _thread_stack_" << taskName << ",\n"
+                "#else /* !LE_CONFIG_STATIC_THREAD_STACKS */\n"
+                "        .stackSize = " << (processEnvPtr->maxStackBytes.IsSet() ?
+                                            processEnvPtr->maxStackBytes.Get() : 0) << ",\n"
+                "        .stackPtr = NULL,\n"
+                "#endif /* end !LE_CONFIG_STATIC_THREAD_STACKS */\n"
+                "        .entryPoint = "
+                       << exePtr->GetTargetInfo<target::RtosExeInfo_t>()->entryPoint
+                       << ",\n"
+                "        .defaultArgc = "
+                       << processPtr->commandLineArgs.size()
+                       << ",\n"
+                "        .defaultArgv = " << "_" << taskName << "_Args\n"
+                "    },\n";
+        }
+    }
+
+    outputFile <<
+        "};\n"
+        "\n"
+        "// ThreadInfo list for app '" << appPtr->name << "'\n"
+        "static TaskInfo_t " << appPtr->name
+               << "TaskInfo[" << processCount << "];\n";
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Generate a tasks.c for tasks in a given system.
  */
 //--------------------------------------------------------------------------------------------------
@@ -170,8 +235,6 @@ void GenerateRtosSystemTasks
     {
         auto appPtr = appItem.second;
 
-        std::string appTasksName = appPtr->name + "Tasks";
-
         outputFile <<
             "////////////////////////////////////////////////////////////////\n"
             "// Tasks for app '" << appPtr->name << "'\n";
@@ -215,48 +278,8 @@ void GenerateRtosSystemTasks
                     "};\n";
             }
         }
-        outputFile <<
-            "// Task list for all processes in app\n"
-            "static Task_t " << appTasksName << "[] =\n"
-            "{\n";
-        for (auto processEnvPtr : appPtr->processEnvs)
-        {
-            for (auto processPtr : processEnvPtr->processes)
-            {
-                auto taskName = appPtr->name + std::string("_") + processPtr->GetName();
-                auto exePtr = appPtr->executables[model::Exe_t::NameFromPath(processPtr->exePath)];
 
-                outputFile <<
-                    "    {\n"
-                    "        .nameStr = \""
-                           << processPtr->GetName()
-                           << "\",\n"
-                    "        .priority = " << processEnvPtr->GetStartPriority() << ",\n"
-                    "#if LE_CONFIG_STATIC_THREAD_STACKS\n"
-                    "        .stackSize = sizeof(_thread_stack_" << taskName << "),\n"
-                    "        .stackPtr = _thread_stack_" << taskName << ",\n"
-                    "#else /* !LE_CONFIG_STATIC_THREAD_STACKS */\n"
-                    "        .stackSize = " << (processEnvPtr->maxStackBytes.IsSet() ?
-                        processEnvPtr->maxStackBytes.Get() : 0) << ",\n"
-                    "        .stackPtr = NULL,\n"
-                    "#endif /* end !LE_CONFIG_STATIC_THREAD_STACKS */\n"
-                    "        .entryPoint = "
-                           << exePtr->GetTargetInfo<target::RtosExeInfo_t>()->entryPoint
-                           << ",\n"
-                    "        .defaultArgc = "
-                           << processPtr->commandLineArgs.size()
-                           << ",\n"
-                    "        .defaultArgv = " << "_" << taskName << "_Args\n"
-                    "    },\n";
-            }
-        }
-
-        outputFile <<
-            "};\n"
-            "\n"
-            "// ThreadInfo list for app '" << appPtr->name << "'\n"
-            "static TaskInfo_t " << appPtr->name
-                   << "TaskInfo[" << appPtr->executables.size() << "];\n";
+        GenerateProcessList(outputFile, appPtr);
     }
 
     // Generate app list
@@ -273,9 +296,20 @@ void GenerateRtosSystemTasks
             "        .appNameStr = \"" << appPtr->name << "\",\n"
             "        .manualStart = " << ((appPtr->startTrigger == model::App_t::MANUAL)?
                                           "true":"false") << ",\n"
-            "        .taskCount = " << appPtr->executables.size() << ",\n"
-            "        .taskList = " << appPtr->name << "Tasks,\n"
-            "        .threadList = " << appPtr->name << "TaskInfo,\n"
+            "        .taskCount = " << appPtr->GetProcessCount() << ",\n";
+        if (appPtr->GetProcessCount())
+        {
+            outputFile <<
+                "        .taskList = " << appPtr->name << "Tasks,\n"
+                "        .threadList = " << appPtr->name << "TaskInfo,\n";
+        }
+        else
+        {
+            outputFile <<
+                "        .taskList = NULL,\n"
+                "        .threadList = NULL,\n";
+        }
+        outputFile <<
             "    },\n";
     }
 
@@ -303,16 +337,19 @@ void GenerateRtosSystemTasks
         std::string component = commandPtr->exePath.substr(1);
         std::string description = "Legato '" + commandPtr->name + "' command";
 
-        outputFile <<   "LE_RTOS_CLI_DEFINECMD\n"
+        outputFile <<   "LE_RTOSCLI_DEFINECMD\n"
                         "(\n"
                         "    " << commandPtr->appPtr->name << ",\n"
                         "    " << component << ",\n"
-                        "    LE_RTOS_CLI_MAXARGS,\n"
                         "    \"" << commandPtr->name  << "\",\n"
                         "    \"" << description << "\"\n"
                         ");\n";
     }
-    outputFile  << "\n";
+    outputFile  << "\n"
+                   "// Include compile-time CLI definitions\n"
+                   "#include \"cli_commands.h\"\n"
+                   "\n";
+
 
     for (auto appItem : systemPtr->apps)
     {
@@ -345,7 +382,9 @@ void GenerateRtosSystemTasks
                 << "    " << exePtr->GetTargetInfo<target::RtosExeInfo_t>()->initFunc << "();\n";
         }
     }
-    outputFile << "\n    // CLI command registration follows:\n";
+    outputFile << "\n"
+                  "    // CLI command registration follows:\n"
+                  "    LE_RTOSCLI_BEGIN_RUNTIME();\n";
 
     // Create CLI commands for all the the shell commands specified in the .sdef file's "commands:"
     // section.
@@ -355,17 +394,17 @@ void GenerateRtosSystemTasks
         std::string component = commandPtr->exePath.substr(1);
         std::string description = "Legato '" + commandPtr->name + "' command";
 
-        outputFile <<   "    LE_RTOS_CLI_ADDCMD_RUNTIME\n"
+        outputFile <<   "    LE_RTOSCLI_ADDCMD_RUNTIME\n"
                         "    (\n"
                         "        " << commandPtr->appPtr->name << ",\n"
                         "        " << component << ",\n"
-                        "        LE_RTOS_CLI_MAXARGS,\n"
                         "        \"" << commandPtr->name << "\",\n"
                         "        \"" << description << "\"\n"
                         "    );\n";
     }
 
-    outputFile << "}\n";
+    outputFile << "    LE_RTOSCLI_END_RUNTIME();\n"
+                  "}\n";
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -392,7 +431,8 @@ void GenerateRtosCliCommandRegistration
     // Generate the file header comment and #include directives.
     outputFile << "// CLI command declarations for system '" << systemPtr->name << "'.\n"
                   "// This is a generated file, do not edit.\n"
-                  "\n";
+                  "\n"
+                  "LE_RTOSCLI_BEGIN_COMPILETIME()\n";
 
     // Create CLI commands for all the the shell commands specified in the .sdef file's "commands:"
     // section.
@@ -402,15 +442,16 @@ void GenerateRtosCliCommandRegistration
         std::string component = commandPtr->exePath.substr(1);
         std::string description = "Legato '" + commandPtr->name + "' command";
 
-        outputFile <<   "LE_RTOS_CLI_ADDCMD_COMPILETIME\n"
-                        "(\n"
-                        "    " << commandPtr->appPtr->name << ",\n"
-                        "    " << component << ",\n"
-                        "    LE_RTOS_CLI_MAXARGS,\n"
-                        "    \"" << commandPtr->name << "\",\n"
-                        "    \"" << description << "\"\n"
-                        ")\n";
+        outputFile <<   "    LE_RTOSCLI_ADDCMD_COMPILETIME\n"
+                        "    (\n"
+                        "        " << commandPtr->appPtr->name << ",\n"
+                        "        " << component << ",\n"
+                        "        \"" << commandPtr->name << "\",\n"
+                        "        \"" << description << "\"\n"
+                        "    )\n";
     }
+
+    outputFile << "LE_RTOSCLI_END_COMPILETIME()\n";
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -424,9 +465,9 @@ void GenerateRtosRpcServices
     const mk::BuildParams_t& buildParams
 )
 {
-    // DO NOT generate the rpcServices.c file unless LE_CONFIG_RPC is enabled.
     if (!envVars::GetConfigBool("LE_CONFIG_RPC"))
     {
+        // RPC not enabled -- no need to generate rpcServices.c
         return;
     }
 

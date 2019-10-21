@@ -7,7 +7,6 @@
  * See @ref c_pathIter for details.
  *
  * Copyright (C) Sierra Wireless Inc.
- * license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -31,16 +30,16 @@
 typedef struct PathIterator_t
 {
     char path[LIMIT_MAX_PATH_BYTES];             ///< The path to iterate and manuipulate.
-    size_t pathSize;                             ///< Size of the path in bytes, not chars.
+    ssize_t pathSize;                            ///< Size of the path in bytes, not chars.
 
     char separator[MAX_COMPONENT_NAME_BYTES];    ///< String to represent the path separator.
-    size_t separatorSize;                        ///< Size of the separator in bytes.
+    ssize_t separatorSize;                       ///< Size of the separator in bytes.
 
     char parentSpec[MAX_COMPONENT_NAME_BYTES];   ///< Name of the parent component of the path.
-    size_t parentSpecSize;                       ///< Size of the parent name string in bytes.
+    ssize_t parentSpecSize;                      ///< Size of the parent name string in bytes.
 
     char currentSpec[MAX_COMPONENT_NAME_BYTES];  ///< Name of the "current" component of the path.
-    size_t currentSpecSize;                      ///< Size of the current name string in bytes.
+    ssize_t currentSpecSize;                     ///< Size of the current name string in bytes.
 
     ssize_t firstNodeIndex;                      ///< Index of the first node in the path, or -1 if
                                                  ///<   the path has no nodes.
@@ -144,7 +143,7 @@ static ssize_t FindNextNodeIndex
     size_t startPoint     ///< [IN] Where to start in that search.
 )
 {
-    ssize_t i = startPoint;
+    size_t i = startPoint;
 
     // If already in a separator... skip past it, and any adjacent ones if there.
     if (IsAtSeperator(pathStr, pathSize, sepStr, sepSize, i))
@@ -445,11 +444,15 @@ static le_result_t AppendNode
     // If there's no path then we can append anything, including ".." and "." type segments.
     if (iterPtr->pathSize == 0)
     {
+        size_t pathSize;
+
         result = le_utf8_CopyUpToSubStr(iterPtr->path,
                                         newSegmentPtr,
                                         iterPtr->separator,
                                         LIMIT_MAX_PATH_BYTES,
-                                        &iterPtr->pathSize);
+                                        &pathSize);
+
+        iterPtr->pathSize = pathSize;
 
         iterPtr->firstNodeIndex = 0;
         iterPtr->lastNodeIndex = 0;
@@ -488,7 +491,7 @@ static le_result_t AppendNode
 
         ssize_t position = FindPrevNodeIndex(iterPtr, iterPtr->pathSize);
 
-        LE_ASSERT(position != -1);
+        LE_ASSERT(position >= 0);
 
         if (position > iterPtr->separatorSize)
         {
@@ -580,41 +583,53 @@ le_pathIter_Ref_t le_pathIter_Create
     iterPtr->lastNodeIndex = -1;
     iterPtr->currNodeIndex = -1;
 
+    size_t separatorSize;
+
     // Set our parameters.
     result = le_utf8_Copy(iterPtr->separator,
                           separatorPtr,
                           MAX_COMPONENT_NAME_BYTES,
-                          &iterPtr->separatorSize);
+                          &separatorSize);
 
     LE_FATAL_IF(result != LE_OK,
                 "Separator '%s' is too big for internal buffers.  Max size: %d.",
                 separatorPtr,
                 MAX_COMPONENT_NAME_BYTES);
 
+    iterPtr->separatorSize = separatorSize;
+
     if (parentSpecPtr)
     {
+        size_t parentSpecSize;
+
         result = le_utf8_Copy(iterPtr->parentSpec,
                               parentSpecPtr,
                               MAX_COMPONENT_NAME_BYTES,
-                              &iterPtr->parentSpecSize);
+                              &parentSpecSize);
 
         LE_FATAL_IF(result != LE_OK,
                     "Parent node specifier '%s' is too big for internal buffers.  Max size: %d.",
                     parentSpecPtr,
                     MAX_COMPONENT_NAME_BYTES);
+
+        iterPtr->parentSpecSize = parentSpecSize;
     }
 
     if (currentSpecPtr)
     {
+        size_t currentSpecSize;
+
         result = le_utf8_Copy(iterPtr->currentSpec,
                               currentSpecPtr,
                               MAX_COMPONENT_NAME_BYTES,
-                              &iterPtr->currentSpecSize);
+                              &currentSpecSize);
 
         LE_FATAL_IF(result != LE_OK,
                     "Current node specifier '%s' is too big for internal buffers.  Max size: %d.",
                     currentSpecPtr,
                     MAX_COMPONENT_NAME_BYTES);
+
+        iterPtr->currentSpecSize = currentSpecSize;
     }
 
     // Setup the path, we call append so that it can take care of normalizing the path.  If we were
@@ -1019,7 +1034,11 @@ le_result_t le_pathIter_Append
     // Check to see if the new path is absolute.  If it is, then we're replacing the original path.
     if (memcmp(pathStr, iterPtr->separator, iterPtr->separatorSize) == 0)
     {
-        le_utf8_Copy(iterPtr->path, iterPtr->separator, LIMIT_MAX_PATH_BYTES, &iterPtr->pathSize);
+        size_t pathSize;
+
+        le_utf8_Copy(iterPtr->path, iterPtr->separator, LIMIT_MAX_PATH_BYTES, &pathSize);
+        iterPtr->pathSize = pathSize;
+
         newPosition += iterPtr->separatorSize;
 
         iterPtr->firstNodeIndex = -1;

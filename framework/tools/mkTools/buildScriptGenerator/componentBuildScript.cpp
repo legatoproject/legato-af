@@ -138,8 +138,10 @@ void ComponentBuildScriptGenerator_t::GenerateCommonCAndCxxFlags
     // Add the FA include path if a custom FA is in use
     if (envVars::GetConfigBool("LE_CONFIG_CUSTOM_FA"))
     {
+        std::string customFAPath = path::Combine(envVars::GetRequired("LEGATO_ROOT"),
+                                                 envVars::GetRequired("LE_CONFIG_CUSTOM_FA_PATH"));
         script  << " -I"
-                << path::Combine(envVars::GetRequired("LE_CONFIG_CUSTOM_FA_PATH"), "include");
+                << path::Combine(customFAPath, "include");
     }
 
     // For each server-side USETYPES statement, include the server code generation directory.

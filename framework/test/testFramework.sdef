@@ -16,6 +16,14 @@ apps:
     /*
      * Test applications
      */
+    hex/test_Hex
+    pack/test_Pack
+    pathIter/test_PathIter
+#if ${LE_CONFIG_LINUX} = y
+#else
+    pipe/test_Pipe
+#endif
+
     memPool/test_MemPool
     hashMap/test_HashMap
     lists/test_Lists
@@ -25,7 +33,10 @@ apps:
     timer/test_Timer
     semaphore/test_Semaphore
 #if ${LE_CONFIG_NETWORK} = y
+#if ${LEGATO_TARGET} = gill
+#else
     fdMonitor/test_FdMonitorSocket
+#endif
 #endif
     fdMonitor/test_FdMonitorFifo
     ipc/test_IpcC2C
@@ -34,7 +45,10 @@ apps:
 #endif
     ipc/test_IpcC2CAsync
     ipc/test_IpcCRelay
+#if ${LE_CONFIG_LINUX} = y
+    // Bindings to non-existant interfaces aren't supported on RTOS.  Remove the binding instead.
     ipc/test_Optional1
+#endif
     ipc/test_Optional2
 #if ${LE_CONFIG_FILESYSTEM} = y
     fs/test_Fs
@@ -51,23 +65,9 @@ apps:
     multi-app/helloWorld
     log/logTester
     issues/LE_2322
-    // Framework Tools.
-#if ${DISABLE_FRAMEWORK_TOOLS} = 1
-#else
-    #if ${LE_CONFIG_LINUX} = y
-    #else
-    $LEGATO_ROOT/framework/tools/target/rtos/targetTools.adef
-    #endif
-#endif
 }
 
-commands:
+cflags:
 {
-#if ${LE_CONFIG_LINUX} = y
-#else
-    legato = targetTools:/legato
-#endif
-#if ${LE_CONFIG_RTOS_TARGET_TOOL_INSPECT} = y
-    inspect = targetTools:/inspect
-#endif
+    -DDUT_TARGET_${LEGATO_TARGET_SYMBOL}
 }

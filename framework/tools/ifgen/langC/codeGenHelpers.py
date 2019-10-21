@@ -188,6 +188,14 @@ def FormatType(apiType, useBaseName=False):
     else:
         return "%s_%s_t" % (apiName, apiType.name)
 
+def FormatStructMemberInitializer(structMember,useBaseName=False):
+    if isinstance(structMember, interfaceIR.StructStringMember):
+        return '""'
+    elif isinstance(structMember, interfaceIR.StructArrayMember):
+        return '{ ' + FormatTypeInitializer(structMember.apiType, useBaseName) + ' }'
+    else:
+        return FormatTypeInitializer(structMember.apiType, useBaseName)
+
 def FormatTypeInitializer(apiType,useBaseName=False):
     """Produce a C initializer from an API type"""
     BasicTypeMapping = {
@@ -214,7 +222,8 @@ def FormatTypeInitializer(apiType,useBaseName=False):
     elif isinstance(apiType, interfaceIR.EnumType) or isinstance(apiType, interfaceIR.BitmaskType):
         return "({0}) 0".format(FormatType(apiType,useBaseName))
     elif isinstance(apiType, interfaceIR.StructType):
-        return "{ }"
+        return "{" + ", ".join([FormatStructMemberInitializer(member) \
+                                for member in apiType.members]) + "}"
     else:
         return "NULL"
 
@@ -391,6 +400,9 @@ def GetMaxCOutputBuffers(interface):
 #---------------------------------------------------------------------------------------------------
 def IsSizeParameter(parameter):
     return isinstance(parameter, SizeParameter)
+
+def UsesHandlers(interface):
+    return interface.usesHandlers()
 
 #---------------------------------------------------------------------------------------------------
 # Global functions

@@ -7,3 +7,8 @@
 mainmenu "Legato Configuration"
 
 rsource "legato.kconfig"
+
+menu "Framework Adaptor"
+depends on CUSTOM_FA
+orsource "$(LE_CONFIG_CUSTOM_FA_PATH)/KConfig"
+endmenu # end "Legato Framework Adaptor"

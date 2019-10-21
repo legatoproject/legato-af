@@ -62,6 +62,7 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "le_dev.h"
+#include "le_fd.h"
 #include "watchdogChain.h"
 
 //--------------------------------------------------------------------------------------------------
@@ -694,7 +695,7 @@ static void DestroyDeviceThread
     if (interfacePtr->device.fd)
     {
         le_dev_DeleteFdMonitoring(&interfacePtr->device);
-        close(interfacePtr->device.fd);
+        le_fd_Close(interfacePtr->device.fd);
     }
 }
 
@@ -2156,7 +2157,7 @@ le_atClient_DeviceRef_t le_atClient_Start
     char errMsg[ERR_MSG_MAX] = {0};
 
     // check if the file descriptor is valid
-    if (fcntl(fd, F_GETFD) == -1)
+    if (le_fd_Fcntl(fd, F_GETFD) == -1)
     {
         LE_ERROR("%s", strerror_r(errno, errMsg, ERR_MSG_MAX));
         return NULL;
@@ -2254,8 +2255,10 @@ COMPONENT_INIT
     le_msg_AddServiceCloseHandler(
         le_atClient_GetServiceRef(), CloseSessionEventHandler, NULL);
 
+#ifndef MK_CONFIG_ATSERVICE_NO_WATCHDOG
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_Init(1);
     le_wdogChain_MonitorEventLoop(0, watchdogInterval);
+#endif
 }

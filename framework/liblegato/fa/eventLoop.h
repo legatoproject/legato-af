@@ -100,16 +100,6 @@ void fa_event_ThreadInit
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Inform event loop an FD event has fired.  Wakes the event loop if it is asleep.
- */
-//--------------------------------------------------------------------------------------------------
-void fa_event_TriggerFd_NoLock
-(
-    struct fdMon         *fdMonitorPtr     ///< [IN] Pointer to fd monitor
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Inform event loop an event has fired.  Wakes the event loop if it is asleep.
  */
 //--------------------------------------------------------------------------------------------------

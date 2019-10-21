@@ -54,4 +54,3 @@ EXPOSE 21 \
        8443
 
 ENTRYPOINT ["/data/legato-qemu"]
-

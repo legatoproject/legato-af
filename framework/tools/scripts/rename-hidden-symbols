@@ -11,6 +11,7 @@ import subprocess
 import sys
 import textwrap
 
+FROMELF = 'fromelf'
 OBJCOPY = 'objcopy'
 READELF = 'readelf'
 
@@ -21,7 +22,10 @@ READELF = 'readelf'
 #
 #   @return True if the type should be considered, False if not.
 def symbol_type_matches(fields, all_syms=False):
-    return fields[3] in ['FUNC', 'OBJECT'] and (all_syms or fields[5] == 'HIDDEN')
+    return fields[3] in ['FUNC', 'OBJECT'] and \
+           (all_syms or fields[5] == 'HIDDEN') and \
+           fields[6] != 'UND' and \
+           not fields[7].startswith('__ARM')
 
 #   Generate list of renaming candidate symbols from an object.
 #
@@ -64,12 +68,12 @@ def renamed_symbol(obj, original_name, verbose=False):
         print("    {0} -> {1}".format(original_name, renamed))
     return renamed
 
-#   Rename symbols in an object file.
+#   Rename symbols in an object file using objcopy.
 #
 #   @param obj      Path to object file.
 #   @param renames  Dictionary of original -> new name mappings.
 #   @param verbose  Display verbose messages.
-def rename_symbols(obj, renames, verbose=False):
+def rename_symbols_gnu(obj, renames, verbose=False):
     renames_file = "{0}.renames.txt".format(obj)
     with open(renames_file, 'w') as f:
         f.write('# Automatically generated file, do not edit.\n')
@@ -81,14 +85,31 @@ def rename_symbols(obj, renames, verbose=False):
         print("Writing {0}....".format(output_file))
     subprocess.check_call([OBJCOPY, "--redefine-syms={0}".format(renames_file), obj])
 
+#   Rename symbols in an object file using fromelf.
+#
+#   @param obj      Path to object file.
+#   @param renames  Dictionary of original -> new name mappings.
+#   @param verbose  Display verbose messages.
+def rename_symbols_arm(obj, renames, verbose=False):
+    renames_file = "{0}.renames.txt".format(obj)
+    with open(renames_file, 'w') as f:
+        for symbol in renames:
+            f.write("--rename={0}={1}\n".format(symbol, renamed_symbol(obj, symbol, verbose)))
+
+    output_file = obj
+    if verbose:
+        print("Writing {0}....".format(output_file))
+    subprocess.check_call([FROMELF, "--elf", "--in_place", "--via={0}".format(renames_file), obj])
+
 #   Process list of object files, renaming symbols to avoid naming conflicts.
 #
 #   @param objects          List of object files.
 #   @param externals        Path to file containing extra symbols to search for conflicts with.
 #   @param verbose          Display verbose messages.
+#   @param rename_symbols   Function to use to perform the symbol rename.
 #
 #   @return Status, 0 for success, 1 for failure.
-def process(obj, entry=None, verbose=False):
+def process(obj, entry=None, verbose=False, rename_symbols=rename_symbols_gnu):
     symbols = {}
 
     symbols = read_symbols(obj, verbose=verbose)
@@ -109,6 +130,7 @@ def process(obj, entry=None, verbose=False):
     return 0
 
 def main():
+    global FROMELF
     global OBJCOPY
     global READELF
 
@@ -123,6 +145,9 @@ def main():
                                      formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='display information about operation')
+    parser.add_argument('--arm', action='store_true',
+                        help='use arm toolchain for rename.' +
+                             '  The default is to use the GNU toolchain')
     parser.add_argument('-e', '--entry', nargs=1,
                         help='the entry point.  All other symbols will be renamed')
     parser.add_argument('-c', '--rename-common', action='store_true',
@@ -130,7 +155,10 @@ def main():
     parser.add_argument('object_file', metavar='obj', type=str, help='input object file')
     parsed = parser.parse_args()
 
-    OBJCOPY = os.getenv('OBJCOPY', OBJCOPY)
+    if parsed.arm:
+        FROMELF = os.getenv('FROMELF', FROMELF)
+    else:
+        OBJCOPY = os.getenv('OBJCOPY', OBJCOPY)
     READELF = os.getenv('READELF', READELF)
 
     if parsed.verbose:
@@ -138,7 +166,11 @@ def main():
         print("Using readelf: {0}".format(READELF))
 
     entry = parsed.entry[0] if parsed.entry else None
-    return process(parsed.object_file, entry, parsed.verbose)
+    if parsed.arm:
+        renamer = rename_symbols_arm
+    else:
+        renamer = rename_symbols_gnu
+    return process(parsed.object_file, entry, parsed.verbose, rename_symbols=renamer)
 
 if __name__ == '__main__':
     sys.exit(main())

@@ -39,6 +39,14 @@ config BUILD_TARGET_TOOLS
   Include Legato's command-line tools (inspect, config, sdir, etc.) for the
   target.
 
+config RTOS_TARGET_TOOL_RESET
+  bool "Include the reset tool"
+  depends on RTOS && BUILD_TARGET_TOOLS
+  default n
+  --help--
+  Select this if you want to build and install the "reset" tool.  This
+  tools reboots the CPU.
+
 config RTOS_TARGET_TOOL_INSPECT
   bool "Include the inspect tool"
   depends on RTOS && BUILD_TARGET_TOOLS
@@ -140,6 +148,15 @@ config MEM_ALLOC_ASSERT
   Abort the program with an error if the pool cannot satisfy the request.
 
 endchoice # end "Memory allocation failure behaviour"
+
+config MEM_HIBERNATION
+  bool "Support memory compaction for hibernate to RAM"
+  depends on RTOS
+  default y
+  ---help---
+  Some chips can conserve memory by powering off some memory banks during hibernation.  This
+  option enables compacting memory used by Legato to allow powering off more memory banks during
+  hibernation.
 
 menu "Security Features"
 

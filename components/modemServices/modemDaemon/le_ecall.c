@@ -5024,4 +5024,3 @@ le_result_t le_ecall_TerminateRegistration
 {
     return pa_ecall_TerminateRegistration();
 }
-

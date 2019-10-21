@@ -14,41 +14,12 @@
 /// Prefix on environment variable entries in config.sh.
 #define CFG_VAR_PREFIX  "export "
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Maximum length of the environment variable
- */
-//--------------------------------------------------------------------------------------------------
-#define ENV_VAR_MAX_LEN     1024
-
 /// The standard C environment variable list.
 extern char**environ;
 
 
 namespace envVars
 {
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Safely copy the environment variable.
- */
-//--------------------------------------------------------------------------------------------------
-static void SafeCopyEnvVar
-(
-    char*       dst,        ///< Destination pointer.
-    const char* src,        ///< Source pointer.
-    uint32_t    dstSize     ///< Destination buffer size.
-)
-{
-    // If variable is longer than MAX_LEN, it will be truncated. Zero at the end is guaranteed.
-    strncpy(dst, src, dstSize - 1);
-    dst[dstSize - 1] = '\0';
-
-    // Tell Coverity this data can be trusted now.
-#ifdef __COVERITY__
-    __coverity_tainted_data_sanitize__(dst);
-#endif // __COVERITY__
-}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -63,16 +34,14 @@ std::string Get
 )
 //--------------------------------------------------------------------------------------------------
 {
-    char envVar[ENV_VAR_MAX_LEN] = {0};
     const char* value = getenv(name.c_str());
 
     if (value == nullptr)
     {
         return std::string();
     }
-    SafeCopyEnvVar(envVar, value, sizeof(envVar));
 
-    return std::string(envVar);
+    return std::string(value);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -111,7 +80,6 @@ std::string GetRequired
 )
 //--------------------------------------------------------------------------------------------------
 {
-    char envVar[ENV_VAR_MAX_LEN] = {0};
     const char* value = getenv(name.c_str());
 
     if (value == nullptr)
@@ -120,9 +88,8 @@ std::string GetRequired
             mk::format(LE_I18N("The required environment variable %s has not been set."), name)
         );
     }
-    SafeCopyEnvVar(envVar, value, sizeof(envVar));
 
-    return std::string(envVar);
+    return std::string(value);
 }
 
 
@@ -290,12 +257,32 @@ void SetTargetSpecific
 //--------------------------------------------------------------------------------------------------
 {
     // WARNING: If you add another target-specific variable, remember to update IsReserved().
+    std::string target_symbol;
 
     // Set compiler, linker, etc variables specific to the target device type, if they're not set.
     SetToolChainVars(buildParams);
 
     // Set LEGATO_TARGET.
     Set("LEGATO_TARGET", buildParams.target);
+
+    for (auto c : buildParams.target)
+    {
+        if (std::isalnum(c))
+        {
+            target_symbol.push_back(c);
+        }
+        else if (c == '-')
+        {
+            target_symbol.push_back('_');
+        }
+        else
+        {
+            // Drop other letters
+        }
+    }
+
+    // Set LEGATO_TARGET_SYMBOL to a version of target that can be used in a symbol name.
+    Set("LEGATO_TARGET_SYMBOL", target_symbol);
 
     // Set LEGATO_BUILD based on the contents of LEGATO_ROOT, which must be already defined.
     std::string path = GetRequired("LEGATO_ROOT");
@@ -324,6 +311,7 @@ bool IsReserved
 {
     return (   (name == "LEGATO_ROOT")
             || (name == "LEGATO_TARGET")
+            || (name == "LEGATO_TARGET_SYMBOL")
             || (name == "LEGATO_BUILD")
             || (name == "LEGATO_SYSROOT")
             || (name == "CURDIR"));

@@ -53,9 +53,18 @@ void RtosExeBuildScriptGenerator_t::GenerateBuildStatement
 
     script << "\n"
               "  entry=" << exePtr->GetTargetInfo<target::RtosExeInfo_t>()->entryPoint << "\n"
-              "  ldFlags="
-              "-Wl,--undefined=" << exePtr->GetTargetInfo<target::RtosExeInfo_t>()->initFunc <<
-              " $ldFlags\n"
+              "  ldFlags=";
+    if (buildParams.compilerType == mk::BuildParams_t::COMPILER_GCC)
+    {
+        script <<
+            "-Wl,--undefined=" << exePtr->GetTargetInfo<target::RtosExeInfo_t>()->initFunc;
+    }
+    else if (buildParams.compilerType == mk::BuildParams_t::COMPILER_ARM_RVCT)
+    {
+        script <<
+            "-L--undefined=" << exePtr->GetTargetInfo<target::RtosExeInfo_t>()->initFunc;
+    }
+    script << " $ldFlags\n"
               "\n";
 }
 

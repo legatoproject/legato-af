@@ -284,7 +284,7 @@ void TestHashFns(void)
 
     /* Test int hash function */
     uint32_t ikey1 = 100;
-    uint32_t ikey2 = -250;
+    uint32_t ikey2 = (uint32_t)-250;
     uint32_t ikey3 = 256789;
     uint32_t ikey4 = 256789;
     const char* skey1 = "skey1";

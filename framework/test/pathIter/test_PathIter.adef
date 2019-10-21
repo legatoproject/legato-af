@@ -1,0 +1,19 @@
+start: manual
+
+executables:
+{
+    testPathIter = ( pathIterComponent )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        ( testPathIter )
+    }
+}

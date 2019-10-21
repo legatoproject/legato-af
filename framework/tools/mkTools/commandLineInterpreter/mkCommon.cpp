@@ -144,7 +144,7 @@ std::string GetSysRootPath
     }
 
     // Else, if the compiler is gcc, ask gcc what sysroot it uses by default.
-    if (path::HasSuffix(cCompilerPath, "gcc"))
+    if (path::ToolHasSuffix(cCompilerPath, "gcc"))
     {
         std::string commandLine = cCompilerPath + " --print-sysroot";
 
@@ -311,6 +311,15 @@ void FindToolChain
     buildParams.compilerCachePath = GetToolPath(buildParams.target, "CCACHE", false);
     buildParams.crossToolPaths = GetCrossToolPaths(buildParams.target);
 
+    if (path::ToolHasSuffix(buildParams.cCompilerPath, "armcc"))
+    {
+        buildParams.compilerType = mk::BuildParams_t::COMPILER_ARM_RVCT;
+    }
+    else
+    {
+        buildParams.compilerType = mk::BuildParams_t::COMPILER_GCC;
+    }
+
     if (buildParams.beVerbose)
     {
         std::cout << "C pre-processor = " << buildParams.cPreProcessorPath << std::endl;
@@ -426,7 +435,7 @@ void RunNinja
     if (file::FileExists(ninjaFilePath))
     {
         std::string ninjaArgvJobCount;
-        const char* ninjaArgv[9] = {
+        const char* ninjaArgv[16] = {
             "ninja",
             "-f", ninjaFilePath.c_str(),
             (char*)NULL,
@@ -444,6 +453,7 @@ void RunNinja
         if (buildParams.beVerbose)
         {
             ninjaArgv[ninjaArgvPos++] = "-v";
+            ninjaArgv[ninjaArgvPos++] = "-k0";
             ninjaArgv[ninjaArgvPos++] = "-d";
             ninjaArgv[ninjaArgvPos++] = "explain";
             ninjaArgv[ninjaArgvPos] = NULL;

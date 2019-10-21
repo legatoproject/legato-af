@@ -10,7 +10,9 @@ requires:
 {
     component:
     {
+    #if ${MK_CONFIG_ATSERVICE_NO_WATCHDOG} = ""
         ${LEGATO_ROOT}/components/watchdogChain
+    #endif
     }
 }
 

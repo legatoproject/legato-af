@@ -103,7 +103,7 @@ struct le_ref_Block
  * Local list of all reference maps created within this process.
  */
 //--------------------------------------------------------------------------------------------------
-static le_dls_List_t RefMapList = LE_DLS_LIST_INIT;
+static le_dls_List_t RefMapList = LE_DLS_LIST_DECL_INIT;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -535,7 +535,7 @@ void *le_ref_CreateRef
     }
 
     index = BlockAndSlotToIndex(mapRef, blockCount, 0);
-    __atomic_store_n(&block->nextPtr, NewOverflowBlock(), __ATOMIC_RELAXED);
+    block->nextPtr = NewOverflowBlock();
     block = block->nextPtr;
     SAFE_REF_TRACE(mapRef, "    Created new overflow block %p", block);
 

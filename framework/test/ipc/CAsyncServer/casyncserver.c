@@ -45,7 +45,7 @@ void AsyncServer_EchoSmallEnumRespond
 )
 {
     ipcTest_EchoSmallEnumRespond(serverCmdPtr,
-                                 (ipcTest_SmallEnum_t)valuePtr);
+                                 (ipcTest_SmallEnum_t)((uintptr_t)valuePtr));
 }
 
 void ipcTest_EchoSmallEnum
@@ -93,7 +93,7 @@ void AsyncServer_EchoSmallBitMaskRespond
 )
 {
     ipcTest_EchoSmallBitMaskRespond(serverCmdPtr,
-                                    (ipcTest_SmallBitMask_t)valuePtr);
+                                    (ipcTest_SmallBitMask_t)((uintptr_t)valuePtr));
 }
 
 
@@ -105,7 +105,7 @@ void ipcTest_EchoSmallBitMask
 {
     le_event_QueueFunction(AsyncServer_EchoSmallBitMaskRespond,
                            serverCmdPtr,
-                           (void*)InValue);
+                           (void*)((uintptr_t)InValue));
 }
 
 void AsyncServer_EchoLargeBitMaskRespond

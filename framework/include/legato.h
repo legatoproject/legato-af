@@ -20,6 +20,7 @@
  *
  * | API Guide                    | API Reference               | File Name                | Description                                                                                                               |
  * | -----------------------------|-----------------------------| -------------------------| --------------------------------------------------------------------------------------------------------------------------|
+ * | @subpage c_atomic            | @ref le_atomic.h            | @c le_atomic.h           | Provides atomic operations                                                                                                |
  * | @subpage c_args              | @ref le_args.h              | @c le_args.h             | Provides the ability to add arguments from the command line                                                               |
  * | @subpage c_atomFile          | @ref le_atomFile.h          | @c le_atomFile.h         | Provides atomic file access mechanism that can be used to perform file operation (specially file write) in atomic fashion |
  * | @subpage c_basics            | @ref le_basics.h            | @c le_basics.h           | Provides error codes, portable integer types, and helpful macros that make things easier to use                           |
@@ -146,8 +147,12 @@
 #define __STDC_LIMIT_MACROS
 #endif
 
+// Helper macros required by other includes
 #include "le_config.h"
+#include "le_basics.h"
+#include "le_apiFeatures.h"
 
+// Platform-specific includes
 #if LE_CONFIG_LINUX
 #   include "linux/legato.h"
 #elif LE_CONFIG_CUSTOM_OS
@@ -176,45 +181,48 @@
 extern "C" {
 #endif
 
-#include "le_basics.h"
-#include "le_apiFeatures.h"
+// These are fundamental, so go first.
 
-#include "le_doublyLinkedList.h"
-#include "le_singlyLinkedList.h"
-#include "le_utf8.h"
-#include "le_backtrace.h"
+// Everything else is alphabetical, and if there are dependencies
+// the dependant header should #include the one(s) it depends on.
 #include "le_log.h"
-#include "le_mem.h"
-#include "le_mutex.h"
-#include "le_clock.h"
-#include "le_cdata.h"
-#include "le_semaphore.h"
-#include "le_hashmap.h"
-#include "le_redBlackTree.h"
-#include "le_safeRef.h"
-#include "le_thread.h"
-#include "le_eventLoop.h"
-#include "le_fdMonitor.h"
-#include "le_signals.h"
+
 #include "le_args.h"
-#include "le_timer.h"
+#include "le_atomFile.h"
+#include "le_atomic.h"
+#include "le_backtrace.h"
+#include "le_base64.h"
+#include "le_cdata.h"
+#include "le_clock.h"
+#include "le_crc.h"
+#include "le_dir.h"
+#include "le_doublyLinkedList.h"
+#include "le_eventLoop.h"
+#include "le_fd.h"
+#include "le_fdMonitor.h"
+#include "le_fileLock.h"
+#include "le_fs.h"
+#include "le_hashmap.h"
+#include "le_hex.h"
+#include "le_json.h"
+#include "le_mem.h"
 #include "le_messaging.h"
-#include "le_test.h"
+#include "le_mutex.h"
 #include "le_pack.h"
 #include "le_path.h"
 #include "le_pathIter.h"
-#include "le_hex.h"
-#include "le_dir.h"
-#include "le_fileLock.h"
-#include "le_json.h"
-#include "le_tty.h"
-#include "le_atomFile.h"
-#include "le_crc.h"
-#include "le_fs.h"
-#include "le_rand.h"
-#include "le_fd.h"
-#include "le_base64.h"
 #include "le_process.h"
+#include "le_rand.h"
+#include "le_redBlackTree.h"
+#include "le_safeRef.h"
+#include "le_semaphore.h"
+#include "le_signals.h"
+#include "le_singlyLinkedList.h"
+#include "le_test.h"
+#include "le_thread.h"
+#include "le_timer.h"
+#include "le_tty.h"
+#include "le_utf8.h"
 
 #ifdef __cplusplus
 }

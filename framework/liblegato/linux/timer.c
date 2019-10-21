@@ -209,7 +209,8 @@ int fa_timer_Init
 //--------------------------------------------------------------------------------------------------
 timer_ThreadRec_t* fa_timer_InitThread
 (
-    timer_Type_t timerType
+    timer_Type_t         timerType, ///< Type of timer being initialized.
+    const thread_Obj_t  *threadPtr  ///< Thread object for the new thread.
 )
 {
     timer_LinuxThreadRec_t* localThreadRecPtr =  le_mem_ForceAlloc(LinuxThreadRecPoolRef);

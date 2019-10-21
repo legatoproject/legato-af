@@ -361,4 +361,3 @@ echo "$LONG_BUILD_ID" > "$BUILD_DIR/image.id"
 
 docker save -o "$BUILD_DIR/qemu.img" "$LONG_BUILD_ID"
 ln -sf "qemu.img" "$BUILD_DIR/virt.img"
-

@@ -8,9 +8,12 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "le_dev.h"
-#include <pwd.h>
-#include <grp.h>
+#include "le_fd.h"
 
+#if LE_CONFIG_LINUX
+#   include <pwd.h>
+#   include <grp.h>
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**

@@ -270,6 +270,19 @@ static void _Handle_ifgen_{{apiBaseName}}_{{function.name}}
     _Message_t* _msgPtr = le_msg_GetPayloadPtr(_msgRef);
     uint8_t* _msgBufPtr = _msgPtr->buffer;
 
+    // The client data pointer is passed in as a parameter, since the lookup in the safe ref map
+    // and check for NULL has already been done when this function is queued.
+    _ClientData_t* _clientDataPtr = _dataPtr;
+
+    // Declare temporaries for input parameters
+    {{- pack.DeclareInputs(handler.apiType.parameters,useBaseName=True) }}
+
+    // Pull out additional data from the client data pointer
+    {{handler.apiType|FormatType(useBaseName=True)}}
+    {#- #} _handlerRef_ifgen_{{apiBaseName}}_{{function.name}} =
+        ({{handler.apiType|FormatType(useBaseName=True)}})_clientDataPtr->handlerPtr;
+    void* contextPtr = _clientDataPtr->contextPtr;
+
     // The clientContextPtr always exists and is always first. It is a safe reference to the client
     // data object, but we already get the pointer to the client data object through the _dataPtr
     // parameter, so we don't need to do anything with clientContextPtr, other than unpacking it.
@@ -280,16 +293,7 @@ static void _Handle_ifgen_{{apiBaseName}}_{{function.name}}
         goto {{error_unpack_label}};
     }
 
-    // The client data pointer is passed in as a parameter, since the lookup in the safe ref map
-    // and check for NULL has already been done when this function is queued.
-    _ClientData_t* _clientDataPtr = _dataPtr;
-
-    // Pull out additional data from the client data pointer
-    {{handler.apiType|FormatType(useBaseName=True)}} _handlerRef_ifgen_{{apiBaseName}}_{{function.name}} =
-        {#- #} _clientDataPtr->handlerPtr;
-    void* contextPtr = _clientDataPtr->contextPtr;
-
-    // Unpack the remaining parameters
+    // Unpack the remaining parameters.
     {%- call pack.UnpackInputs(handler.apiType.parameters,useBaseName=True) %}
         goto {{error_unpack_label}};
     {%- endcall %}

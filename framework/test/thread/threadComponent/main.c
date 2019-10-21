@@ -39,7 +39,10 @@ static void FinishTest
     fjm_CheckResults();
     eta_CheckResults();
     prio_CheckResults();
+
+    LE_TEST_BEGIN_SKIP(!LE_CONFIG_IS_ENABLED(LE_CONFIG_STATIC_THREAD_STACKS), 2);
     static_CheckResults();
+    LE_TEST_END_SKIP();
 
     LE_TEST_EXIT;
 }
@@ -56,7 +59,10 @@ COMPONENT_INIT
     eta_Start();
     fjm_Start();
     prio_Start();
+
+    LE_TEST_BEGIN_SKIP(!LE_CONFIG_IS_ENABLED(LE_CONFIG_STATIC_THREAD_STACKS), 4);
     static_Start();
+    LE_TEST_END_SKIP();
 
     FinishTest();
 }

@@ -2,7 +2,7 @@
 
 COMPONENT_INIT
 {
-    int i;
+    le_log_Level_t i;
     le_log_Level_t origLevel = le_log_GetFilterLevel();
 
     for(i = LE_LOG_DEBUG; i <= LE_LOG_EMERG; i++)

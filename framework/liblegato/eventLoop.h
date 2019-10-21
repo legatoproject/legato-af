@@ -139,31 +139,4 @@ void event_Unlock
     int restoreTo   ///< Old state of cancellability to be restored.
 );
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Wait for a condition to fire.
- *
- * The event lock must be held before calling this function.
- */
-//--------------------------------------------------------------------------------------------------
-void event_CondWait
-(
-    pthread_cond_t* cond        ///< [IN] Condition to wait for
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Wait for a condition to fire until timeout occurs.
- *
- * The event lock must be held before calling this function.
- *
- * @return A value of zero upon successful completion, an error number otherwise.
- */
-//--------------------------------------------------------------------------------------------------
-int event_CondTimedWait
-(
-    pthread_cond_t* cond,           ///< [IN] Condition to wait for.
-    const struct timespec* timePtr  ///< [IN] Time to wait for condition before returning.
-);
-
 #endif // LEGATO_LIBLEGATO_EVENTLOOP_H_INCLUDE_GUARD

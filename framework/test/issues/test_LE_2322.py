@@ -5,8 +5,12 @@
 # The app is expected to abort when an attempt is made to access the thread info after cleanup.
 #
 
+import pytest
+
 app_name = 'LE_2322'
 
+@pytest.mark.skipif(pytest.config.getvalue('target') == 'gill',
+                    reason="Cannot read QXDM log from Python")
 def testLogFilter(target):
     assert target.expect('Legato threading API used in non-Legato thread!', timeout=10) == 0, \
         'Missing non-Legato thread error'

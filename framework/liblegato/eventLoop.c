@@ -65,10 +65,11 @@
  */
 
 #include "legato.h"
+
 #include "eventLoop.h"
-#include "thread.h"
 #include "fdMonitor.h"
 #include "limit.h"
+#include "thread.h"
 
 // ==============================================
 //  PRIVATE DATA
@@ -190,7 +191,7 @@ static le_mem_PoolRef_t EventPool;
  * @warning This can be accessed by multiple threads.  Use the Mutex to protect it from races.
  */
 //--------------------------------------------------------------------------------------------------
-static le_sls_List_t EventList = LE_SLS_LIST_INIT;
+static le_sls_List_t EventList = LE_SLS_LIST_DECL_INIT;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -424,37 +425,6 @@ void event_Unlock
     LE_FATAL_IF(err != 0, "pthread_setcancelstate() failed (%s)", strerror(err));
 }
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Wait for a condition to fire.
- *
- * The event lock must be held before calling this function.
- */
-//--------------------------------------------------------------------------------------------------
-void event_CondWait
-(
-    pthread_cond_t* cond      ///< [IN] Condition to wait for.
-)
-{
-    LE_ASSERT(pthread_cond_wait(cond, &Mutex) == 0);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Wait for a condition to fire until timeout occurs.
- *
- * The event lock must be held before calling this function.
- */
-//--------------------------------------------------------------------------------------------------
-int event_CondTimedWait
-(
-    pthread_cond_t* cond,           ///< [IN] Condition to wait for.
-    const struct timespec* timePtr  ///< [IN] Time to wait for condition before returning.
-)
-{
-    return pthread_cond_timedwait(cond, &Mutex, timePtr);
-}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -775,7 +745,7 @@ void CallComponentInitializer
 )
 //--------------------------------------------------------------------------------------------------
 {
-    void (*componentInitFunc)(void) = param1Ptr;
+    void (*componentInitFunc)(void) = (void (*)(void)) param1Ptr;
 
     LE_UNUSED(param2Ptr);
 

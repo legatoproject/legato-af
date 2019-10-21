@@ -185,13 +185,23 @@ void BuildScriptGenerator_t::GenerateCFlags
         sysrootOption = "--sysroot=" + buildParams.sysrootDir;
     }
 
-    script << " " << sysrootOption <<
-              " -MMD -MF $out.d -c $in -o $out"
-              " -DLE_FILENAME=`basename $in`" // Define the file name for the log macros.
-              " -Wall" // Enable all warnings.
-              " -Werror" // Treat all warnings as errors.
-              " -fvisibility=hidden" // Prevent exporting of symbols by default.
-              " -DMK_TOOLS_BUILD"; // Indicate build is being done by the mk tools.
+    if (buildParams.compilerType == mk::BuildParams_t::COMPILER_ARM_RVCT)
+    {
+        script << " --depend=$out.d --depend-format=unix_escaped "
+            " --diag_error=warning"; // Treat all warnings as errors.
+    }
+    else
+    {
+        script << " " << sysrootOption <<
+            " -MMD -MF $out.d"
+            " -Wall" // Enable all warnings.
+            " -Werror" // Treat all warnings as errors.
+            " -fvisibility=hidden"; // Prevent exporting of symbols by default.
+    }
+
+    script << "  -c $in -o $out "
+        " -DLE_FILENAME=`basename $in`" // Define the file name for the log macros.
+        " -DMK_TOOLS_BUILD"; // Indicate build is being done by the mk tools.
     if (target != "localhost")
     {
         script << "  -DLEGATO_EMBEDDED";    // Indicate target is an embedded device (not a PC).

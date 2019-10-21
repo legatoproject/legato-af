@@ -433,7 +433,8 @@ static Timer_t *GetTimer
     le_timer_Ref_t timerRef      ///< [IN] Timer reference
 )
 {
-    Timer_t* retVal;
+    Timer_t *retVal;
+
     Lock();
     retVal = le_ref_Lookup(SafeRefMap, timerRef);
     Unlock();
@@ -558,12 +559,16 @@ void timer_Init
  *     pointer on an initialized timer reference
  */
 //--------------------------------------------------------------------------------------------------
-timer_ThreadRec_t* timer_InitThread
+timer_ThreadRec_t *timer_InitThread
 (
-    timer_Type_t timerType
+    timer_Type_t         timerType, ///< Timer type being initialized.
+    const thread_Obj_t  *threadPtr  ///< Thread object for the new thread.
 )
 {
-    timer_ThreadRec_t* threadRecPtr = fa_timer_InitThread(timerType);
+    timer_ThreadRec_t *threadRecPtr;
+
+    LE_ASSERT(threadPtr != NULL);
+    threadRecPtr = fa_timer_InitThread(timerType, threadPtr);
 
     threadRecPtr->activeTimerList = LE_DLS_LIST_INIT;
     threadRecPtr->firstTimerPtr = NULL;
@@ -1023,27 +1028,21 @@ le_clk_Time_t le_timer_GetTimeRemaining
 )
 //--------------------------------------------------------------------------------------------------
 {
-    Timer_t* timerPtr = GetTimer(timerRef);
+    le_clk_Time_t    relTime;
+    Timer_t         *timerPtr = GetTimer(timerRef);
     LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
-    // If the timer is not running, return 0.
-    if (timerPtr->isActive == false)
+    // Get current time.
+    relTime = clk_GetRelativeTime(timerPtr->isWakeupEnabled);
+
+    // If the timer is not running or expired, return 0.
+    if (timerPtr->isActive == false || le_clk_GreaterThan(relTime, timerPtr->expiryTime))
     {
         return (le_clk_Time_t){0, 0};
     }
 
     // Compute the time remaining by subtracting the current time from the expiry time.
-    le_clk_Time_t timeRemaining = le_clk_Sub(timerPtr->expiryTime,
-                                             clk_GetRelativeTime(timerPtr->isWakeupEnabled));
-
-    // If the time remaining is negative, it means this timer has expired and is waiting to
-    // have that expiry processed.
-    if (timeRemaining.sec < 0)
-    {
-        return (le_clk_Time_t){0, 0};
-    }
-
-    return timeRemaining;
+    return le_clk_Sub(timerPtr->expiryTime, relTime);
 }
 
 

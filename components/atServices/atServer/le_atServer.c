@@ -1094,10 +1094,12 @@ static le_result_t SendRspString
     stringLen = strnlen(string, LE_ATDEFS_RESPONSE_MAX_BYTES);
     strLenWritted = le_dev_Write(&devPtr->device, (uint8_t*) string, stringLen);
 
+#ifdef LE_AT_FLUSH
     if (devPtr->rspState != AT_RSP_INTERMEDIATE)
     {
-        le_fd_Ioctl(devPtr->device.fd, LE_FD_FLUSH, NULL);
+        le_fd_Ioctl(devPtr->device.fd, LE_AT_FLUSH, NULL);
     }
+#endif
 
     if(strLenWritted < stringLen)
     {
@@ -2971,7 +2973,7 @@ static le_result_t CloseServer
 #if LE_CONFIG_LINUX
     char errMsg[ERR_MSG_MAX];
 
-    if (close(devPtr->device.fd))
+    if (le_fd_Close(devPtr->device.fd))
     {
         // using thread safe strerror
         memset(errMsg, 0, ERR_MSG_MAX);
@@ -3083,7 +3085,8 @@ static void FirstLayerCmdRegistrationHandler
 )
 {
     le_atServer_CmdRef_t*                    reportCmdRefPtr = reportPtr;
-    le_atServer_CmdRegistrationHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+    le_atServer_CmdRegistrationHandlerFunc_t clientHandlerFunc =
+        (le_atServer_CmdRegistrationHandlerFunc_t)secondLayerHandlerFunc;
 
     clientHandlerFunc(*reportCmdRefPtr, le_event_GetContextPtr());
 }
@@ -3269,7 +3272,7 @@ le_atServer_DeviceRef_t le_atServer_Open
     char errMsg[ERR_MSG_MAX];
 
     // check if the file descriptor is valid
-    if (fcntl(fd, F_GETFD) == -1)
+    if (le_fd_Fcntl(fd, F_GETFD) == -1)
     {
         memset(errMsg, 0, ERR_MSG_MAX);
         LE_ERROR("%s", strerror_r(errno, errMsg, ERR_MSG_MAX));
@@ -4459,8 +4462,10 @@ COMPONENT_INIT
     bridge_Init();
 #endif /* end !MK_CONFIG_DISABLE_AT_BRIDGE */
 
+#ifndef MK_CONFIG_ATSERVICE_NO_WATCHDOG
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_Init(1);
     le_wdogChain_MonitorEventLoop(0, watchdogInterval);
+#endif
 }

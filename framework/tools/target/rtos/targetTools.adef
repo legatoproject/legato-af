@@ -9,7 +9,11 @@ sandboxed: false
 executables:
 {
     legato = (legato)
+    app = (apptool)
 
+#if ${LE_CONFIG_RTOS_TARGET_TOOL_REBOOT} = y
+    reset = (reset)
+#endif
 #if ${LE_CONFIG_RTOS_TARGET_TOOL_INSPECT} = y
     inspect = (inspect)
 #endif

@@ -15,7 +15,7 @@ then
 fi
 
 # Set position-independent code
-CFLAGS="$CFLAGS -fPIC -I${LEGATO_ROOT}/framework/daemons/linux"
+CFLAGS="$CFLAGS -Wall -Werror -fPIC -I${LEGATO_ROOT}/framework/daemons/linux"
 
 # enable coverage.flags
 if [ "${LE_CONFIG_TEST_COVERAGE}" == "y" ]

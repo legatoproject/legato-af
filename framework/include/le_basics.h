@@ -382,7 +382,13 @@ le_onoff_t;
 //--------------------------------------------------------------------------------------------------
 #   define static_assert(cond, msg) _Static_assert((cond), #cond ": " msg)
 #endif
-#define inline_static_assert(cond, msg) ({ static_assert(cond, msg); })
+
+#if __GNUC__
+// ({ }) is a GNU extension, so only use it if compiler is GCC-compatible
+#  define inline_static_assert(cond, msg) ({ static_assert(cond, msg); })
+#else
+#  define inline_static_assert(cond, msg) ((void)(0))
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**

@@ -984,6 +984,10 @@ static void *FifoReadMain(void *context)
             ReadCrc = le_crc_Crc32((uint8_t*)tCtx->buf, ret, ReadCrc);
             totalRead += ret;
         }
+        else if (errno == EAGAIN)
+        {
+            sched_yield();
+        }
     }
     while (ret != 0);
 

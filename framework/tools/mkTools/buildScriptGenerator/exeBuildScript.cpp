@@ -274,8 +274,10 @@ void ExeBuildScriptGenerator_t::Generate
     // Add the FA include path if a custom FA is in use
     if (envVars::GetConfigBool("LE_CONFIG_CUSTOM_FA"))
     {
+        std::string customFAPath = path::Combine(envVars::GetRequired("LEGATO_ROOT"),
+                                                 envVars::GetRequired("LE_CONFIG_CUSTOM_FA_PATH"));
         includes += " -I";
-        includes += path::Combine(envVars::GetRequired("LE_CONFIG_CUSTOM_FA_PATH"), "include");
+        includes += path::Combine(customFAPath, "include");
     }
 
     script << "builddir = " << path::MakeAbsolute(buildParams.workingDir) << "\n\n";

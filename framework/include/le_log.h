@@ -371,7 +371,7 @@ Jan  3 02:37:56  INFO  | processName[pid]/componentName T=threadName | fileName.
  * Local definitions that should not be used directly.
  */
 //--------------------------------------------------------------------------------------------------
-typedef enum
+typedef enum _le_log_Level_t
 {
     LE_LOG_DEBUG,   ///< Debug message.
     LE_LOG_INFO,    ///< Informational message.  Normally expected.
@@ -776,7 +776,7 @@ extern LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
  * Logs the string if the keyword has been enabled by a runtime tool or configuration setting.
  */
 //--------------------------------------------------------------------------------------------------
-#define LE_TRACE(traceRef, string, ...) ((void)0)
+#define LE_TRACE(traceRef, string, ...) ((void)(traceRef))
 
 
 //--------------------------------------------------------------------------------------------------
