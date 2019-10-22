@@ -133,7 +133,9 @@ DAEMONS_$(DAEMON_UPDATE)        += $(BIN_DIR)/updateDaemon
 
 ALL_PARTS_$(LE_CONFIG_JAVA)               += $(LEGATO_JAVA)
 ALL_PARTS_$(LE_CONFIG_PYTHON)             += $(LEGATO_PY)
-ALL_PARTS_$(LE_CONFIG_BUILD_TARGET_TOOLS) += targetTools
+# Only build Linux target tools as part of the framework.  RTOS
+# target tools need to be included in the .sdef directly.
+ALL_PARTS_$(LE_CONFIG_LINUX_TARGET_TOOLS) += targetTools
 
 # The liblegato build is done by this ninja build script.
 NINJA_SCRIPT := $(BUILD_DIR)/build.ninja
@@ -241,12 +243,12 @@ all: $(ALL_PARTS_y)
 	echo "$$md5" > $(BUILD_DIR)/md5 && \
 	echo "Legato Framework MD5 sum = $$md5" $(VOUTPUT)
 
-ifeq ($(LE_CONFIG_BUILD_TARGET_TOOLS),y)
+
 .PHONY: targetTools
 targetTools: liblegato
 	$(L) MAKE $@
 	$(Q)$(MAKE) -f Makefile.targetTools
-endif # end LE_CONFIG_BUILD_TARGET_TOOLS
+
 
 .PHONY: liblegato
 liblegato: $(LIB_DIR) $(NINJA_SCRIPT)

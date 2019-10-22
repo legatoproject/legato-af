@@ -11,7 +11,7 @@ executables:
     legato = (legato)
     app = (apptool)
 
-#if ${LE_CONFIG_RTOS_TARGET_TOOL_REBOOT} = y
+#if ${LE_CONFIG_RTOS_TARGET_TOOL_RESET} = y
     reset = (reset)
 #endif
 #if ${LE_CONFIG_RTOS_TARGET_TOOL_INSPECT} = y
