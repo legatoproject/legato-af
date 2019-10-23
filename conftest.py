@@ -40,6 +40,14 @@ def pytest_addoption(parser):
         help='Target to run tests against.'
     )
 
+def pytest_collection_modifyitems(config, items):
+    target = config.getoption('target')
+    for item in items:
+        for marker in item.iter_markers(name='skipif_target'):
+            if marker.args[0] == target:
+                skipif_target = pytest.mark.skip(reason='Cannot run test in {0}'.format(target))
+                item.add_marker(skipif_target)
+
 class SerialPort:
     """Class providing serial port configuration and a pexpect wrapper."""
 
@@ -68,20 +76,20 @@ class SerialPort:
         def __init__(self, fd, **kwargs):
             # Hold a reference so file object is not garbage collected
             self.fd = fd
-            super(SerialPort.ttyspawn, self).__init__(fd.fileno(), **kwargs)
+            super(SerialPort.ttyspawn, self).__init__(fd.fileno(), encoding='utf-8', **kwargs)
 
         # Ubuntu 14.04 does not have __enter__ and __exit__ in pexpect, so define
         # them here.
         def __enter__(self):
             try:
                 return super(SerialPort.ttyspawn, self).__enter__()
-            except AttributeError as e:
+            except AttributeError:
                 return self
 
         def __exit__(self, etype, evalue, tb):
             try:
                 super(SerialPort.ttyspawn, self).__exit__(etype, evalue, tb)
-            except AttributeError as e:
+            except AttributeError:
                 pass
 
     @staticmethod
@@ -117,7 +125,7 @@ class SerialPort:
         @param  baudrate    Initial baud rate to set.  Defaults to port's default if None.
         """
         self._device = device
-        self._tty = open(self._device, 'r+')
+        self._tty = open(self._device, 'rb+', buffering=0)
         if not self._tty.isatty():
             raise Exception('Device <{0}> is not a TTY'.format(device))
 
@@ -149,7 +157,7 @@ class SerialPort:
         try:
             self._io.close()
             self._tty.close()
-        except OSError:
+        except (OSError, AttributeError):
             pass
 
     def flush(self):
@@ -246,7 +254,7 @@ def connect_target(app_name, target_name, baudrate=115200):
         app.send("boot\r")
         time.sleep(1)
         app.send("\r")
-        for n in range(5):
+        for _ in range(5):
             result = app.expect_exact(["\n>", pexpect.TIMEOUT], timeout=15)
             if result == 0:
                 break
@@ -383,7 +391,7 @@ class LegatoTestStep:
         """Evaluate the test line and pass or fail based on the output of the test process."""
         self._run = True
 
-        tap_regex = " \| TAP \| ([^\r\n]*)\r\n"
+        tap_regex = " [|] TAP [|] ([^\r\n]*)\r\n"
         if hasattr(self._process, "tap_regex"):
             tap_regex = self._process.tap_regex
 
@@ -609,7 +617,7 @@ class LegatoTapItem(pytest.Item):
                 try:
                     tap_output = test_loop(test_proc, catch_legato=False)
                     adaptor.reset_target(SerialPort, test_proc)
-                except Exception, e:
+                except Exception as e:
                     adaptor.reset_target(SerialPort, test_proc)
                     raise e
         else:
@@ -617,7 +625,7 @@ class LegatoTapItem(pytest.Item):
                 try:
                     tap_output = test_loop(test_proc, catch_legato=False)
                     reset_target(test_proc)
-                except Exception, e:
+                except Exception as e:
                     reset_target(test_proc)
                     raise e
 
