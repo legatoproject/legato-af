@@ -1156,6 +1156,7 @@ static void PosCtrlCloseSessionEventHandler
     {
         ClientRequest_t * posCtrlHandlerPtr =
                         (ClientRequest_t *) le_ref_GetValue(iterRef);
+        LE_ASSERT(posCtrlHandlerPtr != NULL);
 
         // Check if the session reference saved matchs with the current session reference.
         if (posCtrlHandlerPtr->sessionRef == sessionRef)
@@ -1201,6 +1202,7 @@ static void PosCloseSessionEventHandler
     while (result == LE_OK)
     {
         PosSampleRequest_t *posSampleRequestPtr = (PosSampleRequest_t*)le_ref_GetValue(iterRef);
+        LE_ASSERT(posSampleRequestPtr != NULL)
 
         // Check if the session reference saved matchs with the current session reference.
         if (posSampleRequestPtr->sessionRef == sessionRef)

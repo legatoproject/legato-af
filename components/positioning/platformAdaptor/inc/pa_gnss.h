@@ -26,6 +26,20 @@
 // Symbol and Enum definitions.
 //--------------------------------------------------------------------------------------------------
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Type of restart.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum {
+    PA_GNSS_UNKNOWN_RESTART = 0,    ///< Unknown case.
+    PA_GNSS_HOT_RESTART,            ///< Hot restart.
+    PA_GNSS_WARM_RESTART,           ///< Warm restart.
+    PA_GNSS_COLD_RESTART,           ///< Cold restart.
+    PA_GNSS_FACTORY_RESTART         ///< Factory restart.
+}pa_gnss_Restart_t;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Time structure.
@@ -812,6 +826,20 @@ LE_SHARED le_result_t pa_gnss_EnableExternalLna
 LE_SHARED le_result_t pa_gnss_DisableExternalLna
 (
     void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read the EXT_GPS_LNA_EN status
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_UNSUPPORTED      Function not supported on this platform
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_GetExternalLna
+(
+    uint8_t *lnaEnStatusPtr      ///< [OUT] GNSS LNA Status.
 );
 
 //--------------------------------------------------------------------------------------------------

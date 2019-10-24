@@ -38,7 +38,6 @@ requires:
 {
     component:
     {
-        $LEGATO_GNSS_PA_DEFAULT
         $LEGATO_GNSS_PA
     }
 }

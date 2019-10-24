@@ -73,6 +73,10 @@
 #define SBAS_SDCM_SV_ID_53    53
 #define SBAS_SDCM_SV_ID_54    54
 
+// GNSS Stop engine with or without confirmation
+#define STOP_WITHOUT_CONFIRMATION    0
+#define STOP_WITH_CONFIRMATION       1
+
 //--------------------------------------------------------------------------------------------------
 // Data structures.
 //--------------------------------------------------------------------------------------------------
@@ -942,6 +946,7 @@ static le_gnss_Client_t* FindClientSessionReference
     while (LE_OK == result)
     {
         le_gnss_Client_t* gnssCtrlPtr = (le_gnss_Client_t*) le_ref_GetValue(iterRef);
+        LE_ASSERT(gnssCtrlPtr != NULL)
 
         LE_DEBUG("gnssCtrlPtr %p, gnssCtrlPtr->sessionRef %p, sessionRef %p",
                  gnssCtrlPtr, gnssCtrlPtr->sessionRef, sessionRef);
@@ -1284,7 +1289,7 @@ static void CloseSessionEventHandler
     {
         le_gnss_PositionSampleRequest_t *positionSampleRequestPtr =
                                 (le_gnss_PositionSampleRequest_t*)le_ref_GetValue(iterRef);
-
+        LE_ASSERT(positionSampleRequestPtr != NULL)
         // Check if the session reference saved matchs with the current session reference.
         if (positionSampleRequestPtr->sessionRef == sessionRef)
         {
@@ -1304,7 +1309,7 @@ static void CloseSessionEventHandler
     while (LE_OK == result)
     {
         le_gnss_Client_t* gnssCtrlPtr = (le_gnss_Client_t*) le_ref_GetValue(iterRef);
-
+        LE_ASSERT(gnssCtrlPtr != NULL)
         // Check if the session reference saved matchs with the current session reference.
         if (sessionRef == gnssCtrlPtr->sessionRef)
         {
@@ -4847,6 +4852,29 @@ le_result_t le_gnss_DisableExternalLna
     }
 
     return pa_gnss_DisableExternalLna();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read the EXT_GPS_LNA_EN signal
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_UNSUPPORTED      Function not supported on this platform
+ * @return LE_NOT_PERMITTED    GNSS is not in the ready state
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetExternalLna
+(
+    uint8_t *lnaStatusPtr  ///< [OUT] LNA Status.
+)
+{
+    if(LE_GNSS_STATE_READY != GnssState)
+    {
+        return LE_NOT_PERMITTED;
+    }
+
+    return pa_gnss_GetExternalLna(lnaStatusPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
