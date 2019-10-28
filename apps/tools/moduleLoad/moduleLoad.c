@@ -24,6 +24,11 @@ static void PrintHelp
 // -------------------------------------------------------------------------------------------------
 {
     const char* programName = le_arg_GetProgramName();
+    char *atPtr;
+    int printLen;
+
+    atPtr = strchr(programName, '@');
+    printLen = atPtr ? ((int)(atPtr - programName)) : (strlen(programName));
 
     printf("Load/Unload a Legato bundled kernel module.\n"
            "\n"
@@ -31,13 +36,13 @@ static void PrintHelp
            "\n"
            "  To load a module:\n"
            "\n"
-           "      %1$s load <moduleName>\n"
+           "      %.*s load <moduleName>\n"
            "\n"
            "  To unload a module:\n"
            "\n"
-           "      %1$s unload <moduleName>\n"
+           "      %.*s unload <moduleName>\n"
            "\n",
-           programName);
+           printLen, programName, printLen, programName);
 }
 
 
