@@ -1,0 +1,26 @@
+//-------------------------------------------------------------------------------------------------
+// wl18xx.mdef
+//
+// Copyright (C) Sierra Wireless Inc.
+//-------------------------------------------------------------------------------------------------
+
+load: manual
+
+sources:
+{
+    main.c
+    acx.c
+    tx.c
+    io.c
+    debugfs.c
+    scan.c
+    cmd.c
+    event.c
+}
+
+cflags:
+{
+    -DCONFIG_WL_TI
+    -DCONFIG_WLCORE
+    -DCONFIG_WL18XX
+}

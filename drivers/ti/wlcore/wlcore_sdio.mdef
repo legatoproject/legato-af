@@ -1,0 +1,21 @@
+//-------------------------------------------------------------------------------------------------
+// wlcore_sdio.mdef
+//
+// Copyright (C) Sierra Wireless Inc.
+//-------------------------------------------------------------------------------------------------
+
+load: manual
+
+sources:
+{
+    wilink_platform_data.c
+    sdio.c
+}
+
+cflags:
+{
+    -D__CHECK_ENDIAN__
+    -DCONFIG_WL_TI
+    -DCONFIG_WLCORE
+    -DCONFIG_WILINK_PLATFORM_DATA
+}

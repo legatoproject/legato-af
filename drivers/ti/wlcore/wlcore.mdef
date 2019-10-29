@@ -1,0 +1,48 @@
+//-------------------------------------------------------------------------------------------------
+// wlcore.mdef
+//
+// Copyright (C) Sierra Wireless Inc.
+//-------------------------------------------------------------------------------------------------
+
+load: manual
+
+sources:
+{
+    main.c
+    cmd.c
+    io.c
+    event.c
+    tx.c
+    rx.c
+    ps.c
+    acx.c
+    boot.c
+    init.c
+    debugfs.c
+    scan.c
+    sysfs.c
+    vendor_cmd.c
+    testmode.c
+}
+
+bundles:
+{
+    file:
+    {
+        $CURDIR/bin/wl18xx-conf.bin /bin/ti-connectivity/wl18xx-conf.bin
+        $CURDIR/bin/wl18xx-fw-4.bin /bin/ti-connectivity/wl18xx-fw-4.bin
+    }
+}
+
+scripts:
+{
+    install: $CURDIR/scripts/wlcore_install.sh
+    remove: $CURDIR/scripts/wlcore_remove.sh
+}
+
+cflags:
+{
+    -D__CHECK_ENDIAN__
+    -DCONFIG_WLCORE
+    -DCONFIG_WL_TI
+}
