@@ -32,6 +32,9 @@ processes:
     #else
         watchdogTimeout: never
     #endif
+#if ${LE_CONFIG_RTOS} = y
+    maxStackBytes: 16000
+#endif
 }
 
 bundles:
@@ -48,7 +51,7 @@ bindings:
 #if ${MK_CONFIG_MODEMSERVICE_NO_POWERMANAGER} = ""
     modemDaemon.modemDaemon.le_pm -> powerMgr.le_pm
 #endif
-#if ${MK_CONFIG_MODEMSERVICE_NO_WATCHDOG} = ""
+#if ${LE_CONFIG_LINUX} = y
     modemDaemon.watchdogChain.le_wdog -> <root>.le_wdog
     #if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
     rSimDaemon.watchdogChain.le_wdog -> <root>.le_wdog
@@ -64,6 +67,10 @@ bindings:
 extern:
 {
     modemDaemon.modemDaemon.le_appInfo
+    modemWDog = modemDaemon.watchdogChain.le_wdog
+    #if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
+    rSimWDog = rSimDaemon.watchdogChain.le_wdog
+    #endif
 }
 #endif
 

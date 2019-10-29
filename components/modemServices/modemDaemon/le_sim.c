@@ -140,6 +140,7 @@ ApduMsg_t;
 //--------------------------------------------------------------------------------------------------
 static le_sim_Id_t  SelectedCard;
 
+#if LE_CONFIG_ENABLE_CONFIG_TREE
 //--------------------------------------------------------------------------------------------------
 /**
  * During initialization of the service, each new subscription to the ICCID change event is notified
@@ -148,6 +149,7 @@ static le_sim_Id_t  SelectedCard;
  */
 //--------------------------------------------------------------------------------------------------
 static le_timer_Ref_t EventTimerRef;
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -171,15 +173,6 @@ static le_event_Id_t NewSimStateEventId;
 //--------------------------------------------------------------------------------------------------
 static le_event_Id_t SimToolkitEventId;
 
-#if LE_CONFIG_ENABLE_CONFIG_TREE
-//--------------------------------------------------------------------------------------------------
-/**
- * Event ID for ICCID change notification.
- */
-//--------------------------------------------------------------------------------------------------
-static le_event_Id_t IccidChangeEventId;
-#endif
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Counter for SIM Toolkit event handlers.
@@ -194,6 +187,14 @@ static uint32_t SimToolkitHandlerCount = 0;
 //--------------------------------------------------------------------------------------------------
 static uint32_t SimProfileHandlerCount = 0;
 
+#if LE_CONFIG_ENABLE_CONFIG_TREE
+//--------------------------------------------------------------------------------------------------
+/**
+ * Event ID for ICCID change notification.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t IccidChangeEventId;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Forward the last ICCID change to every new subscribed client to the ICCID change event.
@@ -201,7 +202,6 @@ static uint32_t SimProfileHandlerCount = 0;
 //--------------------------------------------------------------------------------------------------
 static bool ForwardLastIccidChange = true;
 
-#if LE_CONFIG_ENABLE_CONFIG_TREE
 //--------------------------------------------------------------------------------------------------
 /**
  * Last ICCID change event.
@@ -736,7 +736,7 @@ static bool IsNewICCID
     Sim_t* simPtr   ///< [IN,OUT] The SIM structure
 )
 {
-#ifdef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
+#ifndef LE_CONFIG_ENABLE_CONFIG_TREE
     return false;
 #else
     le_cfg_IteratorRef_t iteratorRef;
@@ -778,7 +778,7 @@ static le_result_t SaveICCID
     Sim_t* simPtr   ///< [IN,OUT] The SIM structure
 )
 {
-#ifdef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
+#ifndef LE_CONFIG_ENABLE_CONFIG_TREE
     return LE_FAULT;
 #else
     le_cfg_IteratorRef_t iteratorRef;
@@ -1247,6 +1247,7 @@ static void DeleteFPLMNOperatorsList
     }
 }
 
+#if LE_CONFIG_ENABLE_CONFIG_TREE
 //--------------------------------------------------------------------------------------------------
 /**
  * Timer handler: On expiry, this function stops the forwarding of the last ICCID change to new
@@ -1262,6 +1263,7 @@ void EventTimerHandler
     LE_INFO("Disabling last ICCID change forwarding");
     ForwardLastIccidChange = false;
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1406,12 +1408,14 @@ le_result_t le_sim_Init
 
     MonitorICCIDChange(&SimList[SelectedCard]);
 
+#if LE_CONFIG_ENABLE_CONFIG_TREE
     // Create a one-shot timer to delimit the initialization phase of the daemon.
     EventTimerRef = le_timer_Create("EventTimer");
     le_timer_SetMsInterval(EventTimerRef, 5000);
     le_timer_SetRepeat(EventTimerRef, 1);
     le_timer_SetHandler(EventTimerRef, EventTimerHandler);
     le_timer_Start(EventTimerRef);
+#endif
 
     return LE_OK;
 }

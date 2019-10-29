@@ -815,7 +815,7 @@ static void* CommandThread
 )
 {
     le_sem_Ref_t initSemaphore = (le_sem_Ref_t)contextPtr;
-#ifndef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
+#ifdef LE_CONFIG_ENABLE_CONFIG_TREE
     // Connect to services used by this thread
     le_cfg_ConnectService();
 #endif
@@ -826,10 +826,9 @@ static void* CommandThread
 
     // Monitor event loop
     // Try to kick a couple of times before each timeout.
-#ifndef MK_CONFIG_MODEMSERVICE_NO_WATCHDOG
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_MonitorEventLoop(MS_WDOG_MDC_LOOP, watchdogInterval);
-#endif
+
     // Run the event loop
     le_event_RunLoop();
     return NULL;
@@ -845,8 +844,8 @@ static bool GetDataCounterState
     void
 )
 {
-#ifdef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
-    return false;
+#ifndef LE_CONFIG_ENABLE_CONFIG_TREE
+    return true;
 #else
     bool activationState;
     le_cfg_IteratorRef_t iteratorRef;
@@ -871,7 +870,7 @@ static void SetDataCounterState
     bool activationState    ///< New data counter activation state
 )
 {
-#ifndef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
+#ifdef LE_CONFIG_ENABLE_CONFIG_TREE
     le_cfg_IteratorRef_t iteratorRef;
 
     LE_DEBUG("New data counter activation state: %d", activationState);
@@ -893,8 +892,10 @@ static le_result_t GetDataCounters
     uint64_t* txBytesPtr    ///< Transmitted bytes
 )
 {
-#ifdef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
-    return LE_FAULT;
+#ifndef LE_CONFIG_ENABLE_CONFIG_TREE
+    *rxBytesPtr = 0;
+    *txBytesPtr = 0;
+    return LE_OK;
 #else
     le_cfg_IteratorRef_t iteratorRef;
 
@@ -920,7 +921,7 @@ static le_result_t SetDataCounters
     uint64_t txBytes    ///< Transmitted bytes
 )
 {
-#ifdef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
+#ifndef LE_CONFIG_ENABLE_CONFIG_TREE
     return LE_FAULT;
 #else
     le_cfg_IteratorRef_t iteratorRef;

@@ -2255,10 +2255,8 @@ COMPONENT_INIT
     le_msg_AddServiceCloseHandler(
         le_atClient_GetServiceRef(), CloseSessionEventHandler, NULL);
 
-#ifndef MK_CONFIG_ATSERVICE_NO_WATCHDOG
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_Init(1);
     le_wdogChain_MonitorEventLoop(0, watchdogInterval);
-#endif
 }

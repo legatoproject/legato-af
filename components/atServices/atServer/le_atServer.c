@@ -4462,10 +4462,8 @@ COMPONENT_INIT
     bridge_Init();
 #endif /* end !MK_CONFIG_DISABLE_AT_BRIDGE */
 
-#ifndef MK_CONFIG_ATSERVICE_NO_WATCHDOG
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_Init(1);
     le_wdogChain_MonitorEventLoop(0, watchdogInterval);
-#endif
 }

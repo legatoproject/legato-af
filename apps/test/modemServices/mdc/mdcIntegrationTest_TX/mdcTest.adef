@@ -1,0 +1,31 @@
+sandboxed: false
+
+executables:
+{
+    mdcTest = ( mdcTestComp )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        ( mdcTest )
+    }
+}
+
+start: manual
+
+bindings:
+{
+    mdcTest.mdcTestComp.le_mdc -> modemService.le_mdc
+}
+
+extern:
+{
+    mdcTest.mdcTestComp.le_mdc
+}

@@ -22,7 +22,6 @@
 #if !MK_CONFIG_MODEMSERVICE_SIMPLE
 #include "le_ms_local.h"
 #include "le_mcc_local.h"
-#include "le_ips_local.h"
 #include "le_ecall_local.h"
 #include "le_antenna_local.h"
 #include "watchdogChain.h"

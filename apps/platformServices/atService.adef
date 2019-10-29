@@ -25,7 +25,7 @@ processes:
 bindings:
 {
     atServerDaemon.atServer.le_atClient -> atClientDaemon.atClient.le_atClient
-#if ${MK_CONFIG_ATSERVICE_NO_WATCHDOG} = ""
+#if ${LE_CONFIG_LINUX} = y
     atServerDaemon.watchdogChain.le_wdog -> <root>.le_wdog
 #endif
 }
@@ -34,5 +34,9 @@ extern:
 {
     atServerDaemon.atServer.le_atServer
     atClientDaemon.atClient.le_atClient
+#if ${LE_CONFIG_LINUX} = y
+#else
+    atServerDaemon.watchdogChain.le_wdog
+#endif
 }
 

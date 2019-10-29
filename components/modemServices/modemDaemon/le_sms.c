@@ -372,7 +372,7 @@ static bool GetCountingState
     void
 )
 {
-#ifdef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
+#ifndef LE_CONFIG_ENABLE_CONFIG_TREE
     return false;
 #else
     bool countingState;
@@ -398,7 +398,7 @@ static void SetCountingState
     bool countState     ///< New message counting state
 )
 {
-#ifndef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
+#ifdef LE_CONFIG_ENABLE_CONFIG_TREE
     le_cfg_IteratorRef_t iteratorRef;
 
     LE_DEBUG("New message counting state: %d", countState);
@@ -422,7 +422,7 @@ static le_result_t GetMessageCount
     int32_t*        messageCountPtr     ///< [OUT] Message count pointer
 )
 {
-#ifdef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
+#ifndef LE_CONFIG_ENABLE_CONFIG_TREE
     return LE_FAULT;
 #else
     le_cfg_IteratorRef_t iteratorRef;
@@ -468,7 +468,7 @@ static le_result_t SetMessageCount
     int32_t         messageCount    ///< [IN] New message count
 )
 {
-#ifdef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
+#ifndef LE_CONFIG_ENABLE_CONFIG_TREE
     return LE_FAULT;
 #else
     le_cfg_IteratorRef_t iteratorRef;
@@ -541,7 +541,7 @@ static bool GetStatusReportState
     void
 )
 {
-#ifdef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
+#ifndef LE_CONFIG_ENABLE_CONFIG_TREE
     return false;
 #else
     bool statusReportState;
@@ -567,7 +567,7 @@ static void SetStatusReportState
     bool statusReportState  ///< New SMS Status Report activation state
 )
 {
-#ifndef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
+#ifdef LE_CONFIG_ENABLE_CONFIG_TREE
     le_cfg_IteratorRef_t iteratorRef;
 
     LE_DEBUG("New Status Report state: %d", statusReportState);
@@ -2159,7 +2159,7 @@ static void* SmsSenderThread
 )
 {
     LE_INFO("Sms command Thread started");
-#ifndef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
+#ifdef LE_CONFIG_ENABLE_CONFIG_TREE
     // Connect to services used by this thread
     le_cfg_ConnectService();
 #endif
@@ -2171,10 +2171,9 @@ static void* SmsSenderThread
 
     // Watchdog SMS event loop
     // Try to kick a couple of times before each timeout.
-#ifndef MK_CONFIG_MODEMSERVICE_NO_WATCHDOG
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_MonitorEventLoop(MS_WDOG_SMS_LOOP, watchdogInterval);
-#endif
+
     // Run the event loop
     le_event_RunLoop();
     return NULL;
