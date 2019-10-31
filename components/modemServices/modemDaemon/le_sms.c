@@ -372,9 +372,6 @@ static bool GetCountingState
     void
 )
 {
-#ifdef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
-    return false;
-#else
     bool countingState;
     le_cfg_IteratorRef_t iteratorRef;
 
@@ -385,7 +382,6 @@ static bool GetCountingState
     LE_DEBUG("Retrieved counting state: %d", countingState);
 
     return countingState;
-#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -398,7 +394,6 @@ static void SetCountingState
     bool countState     ///< New message counting state
 )
 {
-#ifndef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
     le_cfg_IteratorRef_t iteratorRef;
 
     LE_DEBUG("New message counting state: %d", countState);
@@ -408,7 +403,6 @@ static void SetCountingState
     le_cfg_CommitTxn(iteratorRef);
 
     MessageStats.counting = countState;
-#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -422,9 +416,6 @@ static le_result_t GetMessageCount
     int32_t*        messageCountPtr     ///< [OUT] Message count pointer
 )
 {
-#ifdef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
-    return LE_FAULT;
-#else
     le_cfg_IteratorRef_t iteratorRef;
     char countPath[LE_CFG_STR_LEN_BYTES];
 
@@ -454,7 +445,6 @@ static le_result_t GetMessageCount
     LE_DEBUG("Type=%d, count=%d", messageType, *messageCountPtr);
 
     return LE_OK;
-#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -468,9 +458,6 @@ static le_result_t SetMessageCount
     int32_t         messageCount    ///< [IN] New message count
 )
 {
-#ifdef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
-    return LE_FAULT;
-#else
     le_cfg_IteratorRef_t iteratorRef;
     char countPath[LE_CFG_STR_LEN_BYTES];
 
@@ -503,7 +490,6 @@ static le_result_t SetMessageCount
     LE_DEBUG("Type=%d, count=%d", messageType, messageCount);
 
     return LE_OK;
-#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -541,9 +527,6 @@ static bool GetStatusReportState
     void
 )
 {
-#ifdef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
-    return false;
-#else
     bool statusReportState;
     le_cfg_IteratorRef_t iteratorRef;
 
@@ -554,7 +537,6 @@ static bool GetStatusReportState
     LE_DEBUG("Retrieved Status Report state: %d", statusReportState);
 
     return statusReportState;
-#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -567,7 +549,6 @@ static void SetStatusReportState
     bool statusReportState  ///< New SMS Status Report activation state
 )
 {
-#ifndef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
     le_cfg_IteratorRef_t iteratorRef;
 
     LE_DEBUG("New Status Report state: %d", statusReportState);
@@ -577,7 +558,6 @@ static void SetStatusReportState
     le_cfg_CommitTxn(iteratorRef);
 
     StatusReportActivation = statusReportState;
-#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1806,8 +1786,7 @@ static void FirstLayerStorageSmsHandler
     void* secondLayerHandlerFunc
 )
 {
-    le_sms_FullStorageHandlerFunc_t clientHandlerFunc =
-        (le_sms_FullStorageHandlerFunc_t)secondLayerHandlerFunc;
+    le_sms_FullStorageHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
     le_sms_Storage_t storage = *(le_sms_Storage_t *)reportPtr;
 
@@ -2005,7 +1984,7 @@ static void SendSmsSendingStateEvent
         return;
     }
 
-    le_sms_CallbackResultFunc_t Myfunction = (le_sms_CallbackResultFunc_t)(msgPtr->callBackPtr);
+    le_sms_CallbackResultFunc_t Myfunction = msgPtr->callBackPtr;
 
     // Check if a callback function is available.
     if (Myfunction)
@@ -2159,10 +2138,10 @@ static void* SmsSenderThread
 )
 {
     LE_INFO("Sms command Thread started");
-#ifndef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
+
     // Connect to services used by this thread
     le_cfg_ConnectService();
-#endif
+
     // Register for SMS command events.
     le_event_AddHandler("ProcessCommandHandler", SmsCommandEventId,
         ProcessSmsSendingCommandHandler);
@@ -2171,10 +2150,9 @@ static void* SmsSenderThread
 
     // Watchdog SMS event loop
     // Try to kick a couple of times before each timeout.
-#ifndef MK_CONFIG_MODEMSERVICE_NO_WATCHDOG
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_MonitorEventLoop(MS_WDOG_SMS_LOOP, watchdogInterval);
-#endif
+
     // Run the event loop
     le_event_RunLoop();
     return NULL;
@@ -2579,7 +2557,7 @@ le_sms_Type_t le_sms_GetType
     if (NULL == msgPtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
-        return (le_sms_Type_t)LE_BAD_PARAMETER;
+        return LE_BAD_PARAMETER;
     }
 
     return (msgPtr->type);
@@ -3007,6 +2985,7 @@ le_result_t le_sms_GetUCS2
         return LE_OK;
     }
 
+    return LE_FAULT;
 }
 
 
@@ -3874,7 +3853,7 @@ le_sms_ErrorCode3GPP2_t le_sms_Get3GPP2ErrorCode
     if (NULL == msgPtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
-        return (le_sms_ErrorCode3GPP2_t)LE_BAD_PARAMETER;
+        return LE_BAD_PARAMETER;
     }
 
     return msgPtr->pdu.errorCode.code3GPP2;

@@ -493,8 +493,7 @@ static void FirstLayerProfileUpdateHandler
        return;
     }
 
-    le_sim_ProfileUpdateHandlerFunc_t clientHandlerFunc =
-        (le_sim_ProfileUpdateHandlerFunc_t)secondLayerHandlerFunc;
+    le_sim_ProfileUpdateHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
     clientHandlerFunc(eventDataPtr->simId, eventDataPtr->stkEvent, le_event_GetContextPtr());
 }
@@ -519,8 +518,7 @@ static void FirstLayerNewSimStateHandler
        return;
     }
 
-    le_sim_NewStateHandlerFunc_t clientHandlerFunc =
-        (le_sim_NewStateHandlerFunc_t)secondLayerHandlerFunc;
+    le_sim_NewStateHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
     clientHandlerFunc(simEventPtr->simId, simEventPtr->state, le_event_GetContextPtr());
 }
@@ -546,8 +544,7 @@ static void FirstLayerIccidChangeHandler
        return;
     }
 
-    le_sim_IccidChangeHandlerFunc_t clientHandlerFunc =
-        (le_sim_IccidChangeHandlerFunc_t)secondLayerHandlerFunc;
+    le_sim_IccidChangeHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
     clientHandlerFunc(eventDataPtr->simId, eventDataPtr->ICCID, le_event_GetContextPtr());
 }
@@ -736,9 +733,6 @@ static bool IsNewICCID
     Sim_t* simPtr   ///< [IN,OUT] The SIM structure
 )
 {
-#ifdef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
-    return false;
-#else
     le_cfg_IteratorRef_t iteratorRef;
     char storedICCID[LE_SIM_ICCID_BYTES] = {0};
 
@@ -761,7 +755,6 @@ static bool IsNewICCID
     {
         return true;
     }
-#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -778,9 +771,6 @@ static le_result_t SaveICCID
     Sim_t* simPtr   ///< [IN,OUT] The SIM structure
 )
 {
-#ifdef MK_CONFIG_MODEMSERVICE_NO_CONFIGTREE
-    return LE_FAULT;
-#else
     le_cfg_IteratorRef_t iteratorRef;
 
     if (NULL == simPtr)
@@ -794,7 +784,6 @@ static le_result_t SaveICCID
     le_cfg_CommitTxn(iteratorRef);
 
     return LE_OK;
-#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -978,8 +967,7 @@ static void FirstLayerSimToolkitHandler
 )
 {
     pa_sim_StkEvent_t*                  stkEventPtr = reportPtr;
-    le_sim_SimToolkitEventHandlerFunc_t clientHandlerFunc =
-        (le_sim_SimToolkitEventHandlerFunc_t)secondLayerHandlerFunc;
+    le_sim_SimToolkitEventHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
     LE_DEBUG("Report STK event %d on SIM %d", stkEventPtr->stkEvent, stkEventPtr->simId);
     clientHandlerFunc(stkEventPtr->simId, stkEventPtr->stkEvent, le_event_GetContextPtr());
@@ -1328,7 +1316,7 @@ le_result_t le_sim_Init
     // Initialize the SIM list
     for (i = 0; i < LE_SIM_ID_MAX; i++)
     {
-        SimList[i].simId = (le_sim_Id_t)i;
+        SimList[i].simId = i;
         SimList[i].ICCID[0] = '\0';
         SimList[i].IMSI[0] = '\0';
         SimList[i].EID[0] = '\0';

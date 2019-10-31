@@ -245,7 +245,7 @@ static void ReadParameterServiceCategory
 )
 {
     // Read the parameter value
-    cdmaSmsPtr->message.serviceCategory = (cdmaPdu_ServiceCategory_t)ReadBits(decoderPtr,16);
+    cdmaSmsPtr->message.serviceCategory = ReadBits(decoderPtr,16);
 
     // Service Category is available
     cdmaSmsPtr->message.parameterMask |= CDMAPDU_PARAMETERMASK_SERVICE_CATEGORY;
@@ -272,12 +272,12 @@ static bool ReadParameterAddress
     // Read number type when digit mode is true
     if (addrPtr->digitMode)
     {
-        addrPtr->numberType = (cdmaPdu_NumberingType_t)ReadBits(decoderPtr,3);
+        addrPtr->numberType = ReadBits(decoderPtr,3);
 
         // Read number plan type when number mode is true
         if (addrPtr->numberMode)
         {
-            addrPtr->numberPlan = (cdmaPdu_NumberingPlan_t)ReadBits(decoderPtr,4);
+            addrPtr->numberPlan = ReadBits(decoderPtr,4);
         }
     }
 
@@ -369,7 +369,7 @@ static bool ReadParameterSubAddress
 )
 {
     // Read the type value
-    subAddrPtr->type = (cdmaPdu_SubAddress_type_t)ReadBits(decoderPtr,3);
+    subAddrPtr->type = ReadBits(decoderPtr,3);
 
     // Read the odd value
     subAddrPtr->odd = ReadBits(decoderPtr,1);
@@ -475,7 +475,7 @@ static void ReadParameterCauseCodes
     cdmaSmsPtr->message.causeCodes.replySeq = ReadBits(decoderPtr,6);
 
     // Read the error class value
-    cdmaSmsPtr->message.causeCodes.errorClass = (cdmaPdu_ErrorClass_t)ReadBits(decoderPtr,2);
+    cdmaSmsPtr->message.causeCodes.errorClass = ReadBits(decoderPtr,2);
 
     // Read cause code value
     if (cdmaSmsPtr->message.causeCodes.errorClass!=CDMAPDU_ERRORCLASS_NO_ERROR)
@@ -500,8 +500,7 @@ static void ReadSubParameterMessageIdentifier
 )
 {
     // Read the message type value
-    cdmaSmsPtr->message.bearerData.messageIdentifier.messageType =
-        (cdmaPdu_MessageType_t)ReadBits(decoderPtr,4);
+    cdmaSmsPtr->message.bearerData.messageIdentifier.messageType = ReadBits(decoderPtr,4);
 
     // Read the message id value
     cdmaSmsPtr->message.bearerData.messageIdentifier.messageIdentifier = ReadBits(decoderPtr,16);
@@ -530,8 +529,7 @@ static void ReadSubParameterUserData
 )
 {
     // Read the encoding value
-    cdmaSmsPtr->message.bearerData.userData.messageEncoding =
-        (cdmaPdu_Encoding_t)ReadBits(decoderPtr,5);
+    cdmaSmsPtr->message.bearerData.userData.messageEncoding = ReadBits(decoderPtr,5);
 
     cdmaPdu_Encoding_t encoding = cdmaSmsPtr->message.bearerData.userData.messageEncoding;
     // Read the message type value
@@ -746,7 +744,7 @@ static void ReadSubParameterPriorityIndicator
 )
 {
     // Read the priority value
-    cdmaSmsPtr->message.bearerData.priority = (cdmaPdu_Priority_t)ReadBits(decoderPtr,2);
+    cdmaSmsPtr->message.bearerData.priority = ReadBits(decoderPtr,2);
 
     // Skip the reserved bits
     SkipBits(decoderPtr);
@@ -768,7 +766,7 @@ static void ReadSubParameterPrivacyIndicator
 )
 {
     // Read the privacy value
-    cdmaSmsPtr->message.bearerData.privacy = (cdmaPdu_Privacy_t)ReadBits(decoderPtr,2);
+    cdmaSmsPtr->message.bearerData.privacy = ReadBits(decoderPtr,2);
 
     // Skip the reserved bits
     SkipBits(decoderPtr);
@@ -840,8 +838,7 @@ static void ReadSubParameterAlertOnMessageDelivery
 )
 {
     // Read the alert priority value
-    cdmaSmsPtr->message.bearerData.alertOnMessageDelivery =
-        (cdmaPdu_AlertPriority_t)ReadBits(decoderPtr,2);
+    cdmaSmsPtr->message.bearerData.alertOnMessageDelivery = ReadBits(decoderPtr,2);
 
     // Skip the reserved bits
     SkipBits(decoderPtr);
@@ -864,8 +861,7 @@ static void ReadSubParameterLanguageIndicator
 )
 {
     // Read the language value
-    cdmaSmsPtr->message.bearerData.alertOnMessageDelivery =
-        (cdmaPdu_AlertPriority_t)ReadBits(decoderPtr,8);
+    cdmaSmsPtr->message.bearerData.alertOnMessageDelivery = ReadBits(decoderPtr,8);
 
     // Language indicator is available
     cdmaSmsPtr->message.bearerData.subParameterMask |= CDMAPDU_SUBPARAMETERMASK_LANGUAGE;
@@ -903,8 +899,7 @@ static void ReadSubParameterMessageDisplayMode
 )
 {
     // Read the message display mode value
-    cdmaSmsPtr->message.bearerData.messageDisplayMode =
-        (cdmaPdu_MessageDisplay_t)ReadBits(decoderPtr,2);
+    cdmaSmsPtr->message.bearerData.messageDisplayMode = ReadBits(decoderPtr,2);
 
     // Skip the reserved bits
     SkipBits(decoderPtr);
@@ -947,12 +942,10 @@ static void ReadSubParameterMessageStatus
 )
 {
     // Read the error class value
-    cdmaSmsPtr->message.bearerData.messageStatus.errorClass =
-        (cdmaPdu_ErrorClass_t)ReadBits(decoderPtr,2);
+    cdmaSmsPtr->message.bearerData.messageStatus.errorClass = ReadBits(decoderPtr,2);
 
     // Read the message status mode value
-    cdmaSmsPtr->message.bearerData.messageStatus.messageStatusCode =
-        (cdmaPdu_MessageStatusCode_t)ReadBits(decoderPtr,6);
+    cdmaSmsPtr->message.bearerData.messageStatus.messageStatusCode = ReadBits(decoderPtr,6);
 
     // Message status is available
     cdmaSmsPtr->message.bearerData.subParameterMask
@@ -2412,7 +2405,7 @@ le_result_t cdmaPdu_Decode
     InitializeReadBuffer(&pduBuffer, dataPtr);
 
     // Read message format
-    cdmaSmsPtr->messageFormat = (cdmaPdu_MessageFormat_t)ReadBits(&pduBuffer,8);
+    cdmaSmsPtr->messageFormat = ReadBits(&pduBuffer,8);
     pduSize--;
 
     while (pduSize>0)

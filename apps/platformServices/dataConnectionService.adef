@@ -32,7 +32,7 @@ processes:
     #endif
 
 #if ${LE_CONFIG_RTOS} = y
-    maxStackBytes: 8192
+    maxStackBytes: 6144
 #endif
 }
 

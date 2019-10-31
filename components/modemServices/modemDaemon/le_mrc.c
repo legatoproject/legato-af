@@ -670,8 +670,7 @@ static void FirstLayerNetRegStateChangeHandler
 )
 {
     le_mrc_NetRegState_t*           statePtr = reportPtr;
-    le_mrc_NetRegStateHandlerFunc_t clientHandlerFunc =
-        (le_mrc_NetRegStateHandlerFunc_t)secondLayerHandlerFunc;
+    le_mrc_NetRegStateHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
     clientHandlerFunc(*statePtr, le_event_GetContextPtr());
 
@@ -775,8 +774,7 @@ static void FirstLayerRatChangeHandler
 )
 {
     le_mrc_Rat_t*           ratPtr = reportPtr;
-    le_mrc_RatChangeHandlerFunc_t clientHandlerFunc =
-        (le_mrc_RatChangeHandlerFunc_t)secondLayerHandlerFunc;
+    le_mrc_RatChangeHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
     clientHandlerFunc(*ratPtr, le_event_GetContextPtr());
 
@@ -855,8 +853,7 @@ static void FirstLayerSsChangeHandler
 )
 {
     pa_mrc_SignalStrengthIndication_t*    ssIndPtr = (pa_mrc_SignalStrengthIndication_t*)reportPtr;
-    le_mrc_SignalStrengthChangeHandlerFunc_t clientHandlerFunc =
-        (le_mrc_SignalStrengthChangeHandlerFunc_t)secondLayerHandlerFunc;
+    le_mrc_SignalStrengthChangeHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
     clientHandlerFunc(ssIndPtr->ss, le_event_GetContextPtr());
 
@@ -988,8 +985,7 @@ static void ProcessMrcCommandEventHandler
     {
         char * mccStr = cmdRequest->selection.mccStr;
         char * mncStr = cmdRequest->selection.mncStr;
-        le_mrc_ManualSelectionHandlerFunc_t handlerFunc =
-            (le_mrc_ManualSelectionHandlerFunc_t)cmdRequest->callBackPtr;
+        le_mrc_ManualSelectionHandlerFunc_t handlerFunc = cmdRequest->callBackPtr;
 
         LE_DEBUG("Register plmn (%s,%s)", mccStr, mncStr);
 
@@ -1016,8 +1012,7 @@ static void ProcessMrcCommandEventHandler
     }
     else if (cmdRequest->command == LE_MRC_CMD_TYPE_ASYNC_SCAN)
     {
-        le_mrc_CellularNetworkScanHandlerFunc_t handlerFunc =
-            (le_mrc_CellularNetworkScanHandlerFunc_t)cmdRequest->callBackPtr;
+        le_mrc_CellularNetworkScanHandlerFunc_t handlerFunc = cmdRequest->callBackPtr;
         le_mrc_RatBitMask_t ratMask = cmdRequest->scan.ratMask;
 
         ScanInfoList_t* newScanInformationListPtr = NULL;
@@ -1059,8 +1054,7 @@ static void ProcessMrcCommandEventHandler
     }
     else if (cmdRequest->command == LE_MRC_CMD_TYPE_ASYNC_PCISCAN)
     {
-        le_mrc_PciNetworkScanHandlerFunc_t handlerFunc =
-            (le_mrc_PciNetworkScanHandlerFunc_t)cmdRequest->callBackPtr;
+        le_mrc_PciNetworkScanHandlerFunc_t handlerFunc = cmdRequest->callBackPtr;
         le_mrc_RatBitMask_t ratMask = cmdRequest->scan.ratMask;
 
         PciScanInfoList_t* newScanInformationListPtr = NULL;
@@ -1128,10 +1122,9 @@ static void* MrcCommandThread
 
     // Watchodg MRC loop
     // Try to kick a couple of times before each timeout.
-#ifndef MK_CONFIG_MODEMSERVICE_NO_WATCHDOG
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_MonitorEventLoop(MS_WDOG_MRC_LOOP, watchdogInterval);
-#endif
+
     // Run the event loop
     le_event_RunLoop();
     return NULL;
@@ -1398,8 +1391,7 @@ static void FirstLayerNetworkRejectHandler
     pa_mrc_NetworkRejectIndication_t* networkRejectIndPtr =
                                       (pa_mrc_NetworkRejectIndication_t*)reportPtr;
 
-    le_mrc_NetworkRejectHandlerFunc_t clientHandlerFunc =
-        (le_mrc_NetworkRejectHandlerFunc_t)secondLayerHandlerFunc;
+    le_mrc_NetworkRejectHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
     clientHandlerFunc(networkRejectIndPtr->mcc, networkRejectIndPtr->mnc, networkRejectIndPtr->rat,
                       le_event_GetContextPtr());
@@ -1436,8 +1428,7 @@ static void FirstLayerNetRegRejectHandler
     le_mrc_NetRegRejectInd_t* networkRejectIndPtr =
                                       (le_mrc_NetRegRejectInd_t*)reportPtr;
 
-    le_mrc_NetRegRejectHandlerFunc_t clientHandlerFunc =
-        (le_mrc_NetRegRejectHandlerFunc_t)secondLayerHandlerFunc;
+    le_mrc_NetRegRejectHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
     clientHandlerFunc(networkRejectIndPtr, le_event_GetContextPtr());
 
@@ -1776,8 +1767,7 @@ static void FirstLayerJammingDetectionHandler
 )
 {
     pa_mrc_JammingDetectionIndication_t* eventDataPtr = reportPtr;
-    le_mrc_JammingDetectionHandlerFunc_t clientHandlerFunc =
-        (le_mrc_JammingDetectionHandlerFunc_t)secondLayerHandlerFunc;
+    le_mrc_JammingDetectionHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
     clientHandlerFunc(eventDataPtr->report,
                       eventDataPtr->status,
@@ -3710,7 +3700,7 @@ le_mrc_Rat_t le_mrc_GetCellularNetworkRat
     if (scanInformationPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", scanInformationRef);
-        return (le_mrc_Rat_t)LE_FAULT;
+        return LE_FAULT;
     }
 
     return scanInformationPtr->rat;
@@ -4016,7 +4006,7 @@ uint32_t le_mrc_GetNeighborCellId
     if (cellInfoPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ngbrCellInfoRef);
-        return (uint32_t)LE_FAULT;
+        return LE_FAULT;
     }
 
     return (cellInfoPtr->id);
@@ -4042,7 +4032,7 @@ uint32_t le_mrc_GetNeighborCellLocAreaCode
     if (cellInfoPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ngbrCellInfoRef);
-        return (uint32_t)LE_FAULT;
+        return LE_FAULT;
     }
 
     return (cellInfoPtr->lac);
@@ -4092,7 +4082,7 @@ le_mrc_Rat_t le_mrc_GetNeighborCellRat
     if (cellInfoPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ngbrCellInfoRef);
-        return (le_mrc_Rat_t)LE_FAULT;
+        return LE_FAULT;
     }
 
     return (cellInfoPtr->rat);
@@ -5321,7 +5311,7 @@ uint16_t le_mrc_GetPciScanCellId
     if (scanInformationPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", pciScanInformationRef);
-        return (uint16_t)LE_FAULT;
+        return LE_FAULT;
     }
 
     return scanInformationPtr->physicalCellId;
@@ -5350,7 +5340,7 @@ uint32_t le_mrc_GetPciScanGlobalCellId
     if (scanInformationPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", pciScanInformationRef);
-        return (uint32_t)LE_FAULT;
+        return LE_FAULT;
     }
 
     return scanInformationPtr->globalCellId;
