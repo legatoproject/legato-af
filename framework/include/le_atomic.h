@@ -52,28 +52,28 @@
  *
  * @return output value of operation
  */
-#define LE_ATOMIC_ADD_FETCH(ptr, value, order)  __atomic_add_fetch((ptr), (value), (order))
+#define LE_ATOMIC_ADD_FETCH(ptr, value, order)  __sync_add_and_fetch((ptr), (value))
 
 /**
  * Performs an atomic subtract operation. Results are stored in address pointed to by ptr
  *
  * @return output value of operation
  */
-#define LE_ATOMIC_SUB_FETCH(ptr, value, order)  __atomic_sub_fetch((ptr), (value), (order))
+#define LE_ATOMIC_SUB_FETCH(ptr, value, order)  __sync_sub_and_fetch((ptr), (value))
 
 /**
  * Performs an atomic bitwise-OR operation. Results are stored in address pointed to by ptr
  *
  * @return output value of operation
  */
-#define LE_ATOMIC_OR_FETCH(ptr, value, order)  __atomic_or_fetch((ptr), (value), (order))
+#define LE_ATOMIC_OR_FETCH(ptr, value, order)  __sync_or_and_fetch((ptr), (value))
 
 /**
  * Performs an atomic bitwise-AND operation. Results are stored in address pointed to by ptr
  *
  * @return output value of operation
  */
-#define LE_ATOMIC_AND_FETCH(ptr, value, order) __atomic_and_fetch((ptr), (value), (order))
+#define LE_ATOMIC_AND_FETCH(ptr, value, order) __sync_and_and_fetch((ptr), (value))
 
 /**
  * Perform an atomic compare and swap. If the current value of *ptr is oldval, then write newval

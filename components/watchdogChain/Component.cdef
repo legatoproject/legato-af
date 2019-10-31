@@ -13,12 +13,6 @@ requires:
         le_wdog.api [manual-start]
 #endif
     }
-#if file_exists(${LEGATO_SYSROOT}/usr/lib/libatomic.so)
-    lib:
-    {
-        atomic
-    }
-#endif
 }
 
 sources:
