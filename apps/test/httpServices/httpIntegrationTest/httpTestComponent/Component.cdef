@@ -14,6 +14,5 @@ requires:
 
 cflags:
 {
-    -std=c99
     -I$LEGATO_ROOT/components/httpClientLibrary
 }

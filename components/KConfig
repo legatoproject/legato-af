@@ -79,6 +79,11 @@ choice
   ---help---
   Select the SSL library implementation to use with the socket library.
 
+config SOCKET_LIB_NO_SSL
+  bool "None"
+  ---help---
+  Do not use an SSL encryption library
+
 config SOCKET_LIB_USE_OPENSSL
   bool "OpenSSL"
   depends on !RTOS

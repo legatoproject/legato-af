@@ -318,7 +318,7 @@ static void EventCb
             LE_INFO("Event: LE_HTTP_CLIENT_EVENT_CLOSED");
             le_httpClient_Stop(ref);
             le_httpClient_Delete(ref);
-            exit(EXIT_SUCCESS);
+            pthread_exit(NULL);
             break;
 
         default:
@@ -340,7 +340,7 @@ COMPONENT_INIT
     if (le_arg_NumArgs() < 4)
     {
         LE_INFO("Usage: app runProc httpTest httpTest -- security_flag host port");
-        exit(EXIT_FAILURE);
+        pthread_exit(NULL);
     }
 
     // Get and decode arguments
@@ -353,14 +353,14 @@ COMPONENT_INIT
     if ((!hostPtr) || (!uriPtr))
     {
         LE_ERROR("Null parameter provided");
-        exit(EXIT_FAILURE);
+        pthread_exit(NULL);
     }
 
     // Port number range is [1 .. 65535]
     if ((portNumber < 1) || (portNumber > USHRT_MAX))
     {
         LE_ERROR("Invalid port number. Accepted range: [1 .. %d]", USHRT_MAX);
-        exit(EXIT_FAILURE);
+        pthread_exit(NULL);
     }
 
     LE_INFO("Creating a HTTP client...");
@@ -369,7 +369,7 @@ COMPONENT_INIT
     if (sessionRef == NULL)
     {
         LE_ERROR("Unable to create HTTP client");
-        exit(EXIT_FAILURE);
+        pthread_exit(NULL);
     }
     //! [HttpConnect]
 
@@ -389,14 +389,14 @@ COMPONENT_INIT
     if (LE_OK != status)
     {
         LE_ERROR("Unable to set callback");
-        exit(EXIT_FAILURE);
+        pthread_exit(NULL);
     }
 
     status = le_httpClient_SetHeaderResponseCallback(sessionRef, HeaderResponseCb);
     if (LE_OK != status)
     {
         LE_ERROR("Unable to set callback");
-        exit(EXIT_FAILURE);
+        pthread_exit(NULL);
     }
 
     //! [HttpSetCb]
@@ -404,7 +404,7 @@ COMPONENT_INIT
     if (LE_OK != status)
     {
         LE_ERROR("Unable to set callback");
-        exit(EXIT_FAILURE);
+        pthread_exit(NULL);
     }
     //! [HttpSetCb]
 
@@ -412,21 +412,21 @@ COMPONENT_INIT
     if (LE_OK != status)
     {
         LE_ERROR("Unable to set callback");
-        exit(EXIT_FAILURE);
+        pthread_exit(NULL);
     }
 
     status = le_httpClient_SetResourceUpdateCallback(sessionRef, ResourceUpdateCb);
     if (LE_OK != status)
     {
         LE_ERROR("Unable to set callback");
-        exit(EXIT_FAILURE);
+        pthread_exit(NULL);
     }
 
     status = le_httpClient_SetEventCallback(sessionRef, EventCb);
     if (LE_OK != status)
     {
         LE_ERROR("Unable to set callback");
-        exit(EXIT_FAILURE);
+        pthread_exit(NULL);
     }
 
     LE_INFO("Setting timeout to %d milliseconds...", RX_TIMEOUT_MS);
@@ -446,9 +446,9 @@ COMPONENT_INIT
     }
 
     LE_INFO("Sending synchronous HTTP requests %d times...", REQUESTS_LOOP);
-    int i = REQUESTS_LOOP;
+    int i;
 
-    while (i)
+    for (i = REQUESTS_LOOP; i; i--)
     {
         LE_INFO("Sending a HTTP HEAD command on URI...");
         status = le_httpClient_SendRequest(sessionRef, HTTP_HEAD, uriPtr);
@@ -465,8 +465,6 @@ COMPONENT_INIT
             LE_ERROR("Unable to send request");
             goto end;
         }
-
-        i--;
     }
 
     LE_INFO("Enable asynchronous mode");
@@ -509,6 +507,6 @@ end:
         LE_INFO("Stopping and deleting the HTTP client...");
         le_httpClient_Stop(sessionRef);
         le_httpClient_Delete(sessionRef);
-        exit(EXIT_FAILURE);
+        pthread_exit(NULL);
     }
 }

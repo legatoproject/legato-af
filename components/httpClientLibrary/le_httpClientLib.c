@@ -581,8 +581,13 @@ static le_result_t BuildAndSendResource
 
     char keyBuf[REQUEST_BUFFER_SIZE/2];
     char valueBuf[REQUEST_BUFFER_SIZE/2];
-    int keyLen = sizeof(keyBuf) - reservedBytes;
-    int valueLen = sizeof(valueBuf);
+    int keyLen;
+    int valueLen;
+
+    // Do not put these in the initializer -- ARM RVCT complains about
+    // skipped initializer if you do.
+    keyLen = sizeof(keyBuf) - reservedBytes;
+    valueLen = sizeof(valueBuf);
 
     status = contextPtr->resourceUpdateCb(contextPtr->reference,
                                           keyBuf, &keyLen, valueBuf, &valueLen);
@@ -821,6 +826,8 @@ static void HttpClientStateMachine
         LE_ERROR("Reference not found: %p", userPtr);
         return;
     }
+
+    LE_DEBUG("HTTP event received %x state %d", events, contextPtr->state);
 
     // Check if remote server closed connection
     if (events & POLLRDHUP)

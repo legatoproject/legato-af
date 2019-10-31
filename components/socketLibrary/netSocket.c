@@ -13,12 +13,9 @@
 #include "interfaces.h"
 #include "netSocket.h"
 
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/socket.h>
+#if LE_CONFIG_LINUX
 #include <netdb.h>
-#include <unistd.h>
+#endif
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions
@@ -84,6 +81,9 @@ le_result_t netSocket_Connect
     // Try the sockaddrs until a connection succeeds
     for(cur = addrList; cur != NULL; cur = cur->ai_next)
     {
+        LE_DEBUG("Trying socket af:%d st:%d proto:%d",
+                 cur->ai_family, cur->ai_socktype, cur->ai_protocol);
+
         fd = socket(cur->ai_family, cur->ai_socktype, cur->ai_protocol);
 
         if( fd < 0 )

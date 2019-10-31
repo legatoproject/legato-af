@@ -10,7 +10,6 @@ sources:
 
 cflags:
 {
-    -std=c99
     -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/tinyhttp/
     -I${LEGATO_ROOT}/components/socketLibrary
 }

@@ -10,10 +10,10 @@ processes:
 {
     run:
     {
-        ( httpTest )
+        ( httpTest 0 www.google.ca 80 / )
     }
 
-#if ${CONFIG_LINUX} = y
+#if ${LE_CONFIG_LINUX} = y
 #else
     maxStackBytes: 8192
 #endif
