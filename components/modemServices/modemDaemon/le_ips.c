@@ -50,7 +50,8 @@ static void FirstLayerVoltageChangeHandler
 )
 {
     le_ips_ThresholdStatus_t*           ipsPtr = reportPtr;
-    le_ips_ThresholdEventHandlerFunc_t  clientHandlerFunc = secondLayerHandlerFunc;
+    le_ips_ThresholdEventHandlerFunc_t  clientHandlerFunc =
+        (le_ips_ThresholdEventHandlerFunc_t)secondLayerHandlerFunc;
 
     clientHandlerFunc(*ipsPtr, le_event_GetContextPtr());
 

@@ -580,6 +580,14 @@ extern LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Mark tracing as used, so trace-related code can be compiled in.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_LOG_CAN_TRACE        1
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Queries whether or not a trace keyword is enabled.
  *
  * @return
