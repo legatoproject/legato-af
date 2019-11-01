@@ -805,7 +805,6 @@ static void WifiReadScanResults
         size_t bssidSize = LE_WIFIDEFS_MAX_BSSID_BYTES;
         int16_t signalStrength;
         le_result_t ret;
-        bool state;
 
         ret = le_wifiClient_GetSsid(apRef, &ssid[0], &ssidSize);
         if (LE_OK != ret)
@@ -835,16 +834,7 @@ static void WifiReadScanResults
         strncpy(DcsWifiScan.activeList[DcsWifiScan.listSize].name, (char *)ssid, ssidSize);
         DcsWifiScan.activeList[DcsWifiScan.listSize].name[ssidSize] = '\0';
         DcsWifiScan.activeList[DcsWifiScan.listSize].technology = LE_DCS_TECH_WIFI;
-        if (selectedConnDb && (strncmp((char *)ssid, selectedConnDb->ssid, ssidSize) == 0))
-        {
-            state = DcsWifi.opStateUp;
-            DcsWifiScan.activeList[DcsWifiScan.listSize].state = state ?
-                LE_DCS_STATE_UP : LE_DCS_STATE_DOWN;
-        }
-        else
-        {
-            DcsWifiScan.activeList[DcsWifiScan.listSize].state = LE_DCS_STATE_DOWN;
-        }
+        // each SSID's channel state is updated in dcsTech.c
 
         wifiConnDb = DcsWifiGetDbFromSsid((const char *)ssid);
         if (wifiConnDb)

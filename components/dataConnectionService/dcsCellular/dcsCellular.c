@@ -662,7 +662,6 @@ le_result_t le_dcsCellular_GetChannelList
     le_mdc_ProfileInfo_t profileList[LE_DCS_CHANNEL_LIST_QUERY_MAX];
     size_t listLen = LE_DCS_CHANNEL_LIST_QUERY_MAX;
     uint16_t i;
-    le_mdc_ConState_t mdcState;
     le_mdc_ProfileRef_t profileRef;
     char apn[LE_MDC_APN_NAME_MAX_LEN];
 
@@ -699,18 +698,9 @@ le_result_t le_dcsCellular_GetChannelList
         DcsCellularCreateConnDb(profileList[i].index);
         le_dcsCellular_GetNameFromIndex(profileList[i].index, channelList[i].name);
         channelList[i].technology = LE_DCS_TECH_CELLULAR;
-        if (LE_OK != DcsCellularGetConnState(channelList[i].name, &mdcState))
-        {
-            LE_WARN("Failed to get state of cellular connection %s, profile %s",
-                    channelList[i].name, profileList[i].name);
-        }
-        else
-        {
-            channelList[i].state = DcsCellularMdcStateIsUp(mdcState) ?
-                LE_DCS_STATE_UP : LE_DCS_STATE_DOWN;
-        }
-        LE_DEBUG("Cellular channel %s profile %s has state %d (apn %s)",
-                 channelList[i].name, profileList[i].name, channelList[i].state, apn);
+        // each cellular connection's channel state is updated in dcsTech.c
+        LE_DEBUG("Cellular connection %s with modem profile %d and apn %s collected)",
+                 channelList[i].name, profileList[i].index, apn);
     }
 
     le_dcsTech_CollectChannelQueryResults(LE_DCS_TECH_CELLULAR, LE_OK, channelList, listLen);

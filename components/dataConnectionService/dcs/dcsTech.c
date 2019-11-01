@@ -649,6 +649,12 @@ static void DcsTechUpdateChannelDbList
             channelRef = channelDb->channelRef;
         }
         channelList[i].ref = channelRef;
+        // Retrieve each channel's admin state here
+        if (LE_OK != le_dcs_GetAdminState(channelList[i].ref, &channelList[i].state))
+        {
+            LE_ERROR("Failed to update admin state of channel %s of technology %d",
+                     channelList[i].name, tech);
+        }
     }
 }
 

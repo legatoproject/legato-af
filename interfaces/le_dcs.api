@@ -555,7 +555,7 @@ FUNCTION Technology GetTechnology
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Query for a channel's state
+ * Query for a channel's administrative state
  *
  * @return
  *      - The given channel's state in the 2nd argument and associated network interface

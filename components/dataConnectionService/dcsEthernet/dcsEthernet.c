@@ -308,7 +308,6 @@ le_result_t le_dcsEthernet_GetChannelList
             ethernetConnDb = (ethernet_connDb_t *)le_ref_GetValue(iterRef);
             le_utf8_Copy(channelList[i].name, ethernetConnDb->netIntf, sizeof(channelList[i].name), NULL);
             channelList[i].technology = LE_DCS_TECH_ETHERNET;
-            channelList[i].state = (ethernetConnDb->opState)? LE_DCS_STATE_UP : LE_DCS_STATE_DOWN;
             i++;
         }
     }
