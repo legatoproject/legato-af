@@ -406,7 +406,7 @@ function AppsAsSymbols(systemPath: string,
             });
 
     let incSection = new DefinitionObject(ext.le_DefinitionObjectType.IncDefs,
-                                         'includes',
+                                         'included apps',
                                          systemPath,
                                          new loader.Location(),
                                          new loader.Location(),
