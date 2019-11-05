@@ -3595,21 +3595,12 @@ void app_Stop
 {
     LE_INFO("Stopping app '%s'", appRef->name);
 
-    CleanupAppSmackSettings(appRef);
-
     if (appRef->state == APP_STATE_STOPPED)
     {
         LE_ERROR("Application '%s' is already stopped.", appRef->name);
         return;
     }
 
-    if (!le_sls_IsEmpty(&(appRef->reqModuleName)))
-    {
-        if (kernelModules_RemoveListOfModules(appRef->reqModuleName) != LE_OK)
-        {
-            LE_ERROR("Error in removing the list of kernel modules");
-        }
-    }
 
     // Soft kill all the processes in the app.
     if (KillAppProcs(appRef, KILL_SOFT) == LE_OK)
@@ -3633,13 +3624,22 @@ void app_Stop
     // This case is essential to stop a "running app" with no configured processes.
     else if (!HasRunningProc(appRef))
     {
-        // There are no more running processes in the app.
+        // There are no more running processes in the app. Kernel modules and SMACK settings
+        // can be removed.
         LE_DEBUG("app '%s' has stopped.", appRef->name);
+        if (!le_sls_IsEmpty(&(appRef->reqModuleName)))
+        {
+            if (kernelModules_RemoveListOfModules(appRef->reqModuleName) != LE_OK)
+            {
+                LE_ERROR("Error in removing the list of kernel modules");
+            }
+        }
+        DeleteModuleNodeList(appRef->reqModuleName);
+
+        CleanupAppSmackSettings(appRef);
 
         appRef->state = APP_STATE_STOPPED;
     }
-
-    DeleteModuleNodeList(appRef->reqModuleName);
 }
 
 
@@ -4750,6 +4750,16 @@ void app_StopComplete
         le_timer_Stop(appRef->killTimer);
     }
 
+    // Remove kernel modules (if applicable) ans SMACK settings.
+    if (!le_sls_IsEmpty(&(appRef->reqModuleName)))
+    {
+        if (kernelModules_RemoveListOfModules(appRef->reqModuleName) != LE_OK)
+        {
+            LE_ERROR("Error in removing the list of kernel modules");
+        }
+    }
+    DeleteModuleNodeList(appRef->reqModuleName);
+    CleanupAppSmackSettings(appRef);
     LE_INFO("app '%s' has stopped.", appRef->name);
 
     appRef->state = APP_STATE_STOPPED;
