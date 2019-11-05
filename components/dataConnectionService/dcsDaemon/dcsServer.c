@@ -493,7 +493,7 @@ static le_result_t SetDnsRoutes
     }
 
     // For adding routes for DNS addresses
-    ret = le_dcsTech_GetDNSAddresses(CurrentTech, DataChannelRef,
+    ret = le_dcsTech_GetDNSAddresses(dcsTechRank_ConvertToDcsTechEnum(CurrentTech), DataChannelRef,
                                      (char *)v4DnsAddrs, PA_DCS_IPV4_ADDR_MAX_BYTES,
                                      (char *)v6DnsAddrs, PA_DCS_IPV6_ADDR_MAX_BYTES);
     if ((ret == LE_UNSUPPORTED) || (ret == LE_FAULT))
