@@ -546,11 +546,8 @@ le_result_t le_msg_GetClientUserCreds
 
     if (processIdPtr)
     {
-        // On RTOS the "process" is the current pthread id.  Not quite the same as on Linux, but
-        // as close as we can get.
-
         threadRef = msgLocal_GetClientThreadRef(sessionRef);
-        result = thread_GetOSThread(threadRef, (pthread_t *) processIdPtr);
+        result = thread_GetPid(threadRef, processIdPtr);
     }
 
     return result;

@@ -38,9 +38,7 @@
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-#if !MK_CONFIG_MODEMSERVICE_SIMPLE
     le_wdogChain_Init(MS_WDOG_COUNT);
-#endif
 
     le_mrc_Init();
     le_sim_Init();

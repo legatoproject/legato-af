@@ -12,3 +12,10 @@ processes:
         (dogTestRevertAfterTimeout 32000 31000)
     }
 }
+
+#if ${LE_CONFIG_RTOS} = y
+bindings:
+{
+    dogTestRevertAfterTimeout.dogTestRevertAfterTimeout.le_wdog -> watchdog.le_wdog
+}
+#endif

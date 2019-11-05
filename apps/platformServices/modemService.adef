@@ -3,16 +3,10 @@ sandboxed: false
 executables:
 {
     modemDaemon = ($LEGATO_ROOT/components/modemServices/modemDaemon
-#if ${MK_CONFIG_MODEMSERVICE_NO_WATCHDOG} = ""
-                   $LEGATO_ROOT/components/watchdogChain
-#endif
-                   )
+                   $LEGATO_ROOT/components/watchdogChain)
 #if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
     rSimDaemon  = ($LEGATO_ROOT/components/modemServices/rSimDaemon
-    #if ${MK_CONFIG_MODEMSERVICE_NO_WATCHDOG} = ""
-                   $LEGATO_ROOT/components/watchdogChain
-    #endif
-                   )
+                   $LEGATO_ROOT/components/watchdogChain)
 #endif
 }
 
@@ -53,11 +47,11 @@ bindings:
 #endif
 #if ${LE_CONFIG_LINUX} = y
     modemDaemon.watchdogChain.le_wdog -> <root>.le_wdog
+
     #if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
     rSimDaemon.watchdogChain.le_wdog -> <root>.le_wdog
     #endif
-#endif
-#if ${LE_CONFIG_LINUX} = y
+
     modemDaemon.modemDaemon.le_appInfo -> <root>.le_appInfo
 #endif
 }

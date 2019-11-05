@@ -12,3 +12,10 @@ processes:
         (dogTestNeverNow)
     }
 }
+
+#if ${LE_CONFIG_RTOS} = y
+bindings:
+{
+    dogTestNeverNow.dogTestNeverNow.le_wdog -> watchdog.le_wdog
+}
+#endif

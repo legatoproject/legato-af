@@ -1,12 +1,11 @@
-provides:
+requires:
 {
     api:
     {
         le_wdog.api
     }
 }
-
 sources:
 {
-    watchdog.c
+    main.c
 }

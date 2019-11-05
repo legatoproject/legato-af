@@ -14,3 +14,10 @@ processes:
         (dogTestNever)
     }
 }
+
+#if ${LE_CONFIG_RTOS} = y
+bindings:
+{
+    dogTestNever.dogTestNever.le_wdog -> watchdog.le_wdog
+}
+#endif

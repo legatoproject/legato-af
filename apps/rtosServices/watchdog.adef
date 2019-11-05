@@ -1,0 +1,20 @@
+start: auto
+sandboxed:false
+
+executables:
+{
+    wdog = ( $LEGATO_ROOT/framework/daemons/rtos/watchdog/watchdogDaemon )
+}
+
+processes:
+{
+    run:
+    {
+        ( wdog )
+    }
+}
+
+extern:
+{
+    wdog.watchdogDaemon.le_wdog
+}

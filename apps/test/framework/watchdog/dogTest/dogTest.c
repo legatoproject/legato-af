@@ -1,6 +1,5 @@
 #include "legato.h"
 #include "interfaces.h"
-#include <time.h>
 
 #define timeval_to_ms(x) ( (x.tv_sec * 1000) + (x.tv_usec / 1000) )
 #define timeval_to_us(x) ( (x.tv_sec * 1000000) + (x.tv_usec) )
@@ -84,12 +83,17 @@ COMPONENT_INIT
           millisecondSleep < millisecondLimit;
           millisecondSleep += millisecondIncrement)
     {
+        struct timespec sleepTime =
+        {
+            .tv_sec = millisecondSleep / 1000,
+            .tv_nsec = (millisecondSleep % 1000) * 1000000,
+        };
         gettimeofday(&t1, NULL);
         LE_INFO("le_wdog_Kick then sleep for %d usec", millisecondSleep * 1000);
         le_wdog_Kick();
         gettimeofday(&t2, NULL);
         LE_INFO("kick took %ld usec", timeval_to_us(timeval_sub(t2, t1)));
-        usleep(millisecondSleep * 1000);
+        nanosleep(&sleepTime, NULL);
         gettimeofday(&t3, NULL);
         LE_INFO("slept for %ld usec", timeval_to_us(timeval_sub(t3, t2)));
     }

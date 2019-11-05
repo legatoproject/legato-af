@@ -1,6 +1,5 @@
 #include "legato.h"
 #include "interfaces.h"
-#include <time.h>
 
 #define timeval_to_ms(x) ( (x.tv_sec * 1000) + (x.tv_usec / 1000) )
 #define timeval_to_us(x) ( (x.tv_sec * 1000000) + (x.tv_usec) )
@@ -28,6 +27,8 @@ COMPONENT_INIT
     struct timeval t1={0,0};
     struct timeval t2={0,0};
     struct timeval t3={0,0};
+    int sleepTimeMs = 90;
+    struct timespec sleepTime = { .tv_sec = 0, .tv_nsec = (sleepTimeMs * 1000000) };
 
     LE_INFO("Watchdog test starting");
 
@@ -46,7 +47,7 @@ COMPONENT_INIT
         le_wdog_Timeout(100);
         gettimeofday(&t2, NULL);
         LE_INFO("kick took %ld usec", timeval_to_us(timeval_sub(t2, t1)));
-        usleep(90 * 1000); // 10 ms margin - might make this configurable some time.
+        nanosleep(&sleepTime, NULL); // 10 ms margin - might make this configurable some time.
         gettimeofday(&t3, NULL);
         LE_INFO("slept for %ld usec", timeval_to_us(timeval_sub(t3, t2)));
     }

@@ -16,3 +16,10 @@ processes:
         (dogTest 500 100)
     }
 }
+
+#if ${LE_CONFIG_RTOS} = y
+bindings:
+{
+    dogTest.dogTest.le_wdog -> watchdog.le_wdog
+}
+#endif

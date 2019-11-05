@@ -1,0 +1,25 @@
+start: manual
+sandboxed:false
+
+executables:
+{
+    wdApp = ( watchdogConfigurationComponent )
+}
+
+processes:
+{
+    run:
+    {
+        ( wdApp 15000 -1)
+    }
+}
+
+watchdogTimeout: 15000
+maxWatchdogTimeout : 50000
+
+#if ${LE_CONFIG_RTOS} = y
+bindings:
+{
+    wdApp.watchdogConfigurationComponent.le_wdog -> watchdog.le_wdog
+}
+#endif

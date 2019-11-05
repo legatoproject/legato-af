@@ -1,0 +1,24 @@
+start: manual
+
+executables:
+{
+    wdogLongTimeout = ( dogTestLongTimeout )
+}
+
+processes:
+{
+    run:
+    {
+        ( wdogLongTimeout )
+    }
+}
+
+#if ${LE_CONFIG_RTOS} = y
+bindings:
+{
+    wdogLongTimeout.dogTestLongTimeout.le_wdog -> watchdog.le_wdog
+}
+#endif
+
+watchdogTimeout : 10000
+maxWatchdogTimeout : 600000

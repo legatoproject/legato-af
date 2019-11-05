@@ -13,6 +13,14 @@ config WDOG_FRAMEWORK
   The watchdog observes the Legato framework daemons and, if one deadlocks,
   restarts the system.
 
+config WDOG_HASHTABLE_SIZE
+  int "Watchdog hashtable size"
+  depends on WDOG_FRAMEWORK
+  range 1 65535
+  default 31
+  ---help---
+  The maximum number of watchdogs to be monitored
+
 rsource "linux/supervisor/KConfig"
 rsource "linux/serviceDirectory/KConfig"
 rsource "configTree/KConfig"

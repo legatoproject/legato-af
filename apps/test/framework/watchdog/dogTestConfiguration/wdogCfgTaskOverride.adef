@@ -1,0 +1,29 @@
+start: manual
+sandboxed:false
+
+executables:
+{
+    wdogTaskOverride = ( watchdogConfigurationComponent )
+}
+
+processes:
+{
+    run:
+    {
+        ( wdogTaskOverride 10000 -1 )
+    }
+
+    watchdogTimeout: 10000
+    maxWatchdogTimeout : 23000
+}
+
+watchdogTimeout: 12000
+maxWatchdogTimeout : 30000
+
+
+#if ${LE_CONFIG_RTOS} = y
+bindings:
+{
+    wdogTaskOverride.watchdogConfigurationComponent.le_wdog -> watchdog.le_wdog
+}
+#endif

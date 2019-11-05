@@ -1,0 +1,28 @@
+/*
+ * Watchdog test system -- contains test apps for testing watchdog functionality directly
+ */
+
+#include "$LEGATO_ROOT/legatoTargetConfig.sinc"
+
+interfaceSearch:
+{
+    ${LEGATO_ROOT}/interfaces
+}
+
+apps:
+{
+#if ${LE_CONFIG_RTOS} = y
+    $LEGATO_ROOT/apps/rtosServices/watchdog.adef
+#endif
+    dogTest.adef
+    dogTestNonSandboxed.adef
+    dogTestLongTimeout.adef
+    dogTestNever.adef
+    dogTestNeverNow.adef
+    dogTestRevertAfterTimeout.adef
+    dogTestWolfPack.adef
+    dogTestConfiguration/wdogCfgApp.adef
+    dogTestConfiguration/wdogCfgNoTimeout.adef
+    dogTestConfiguration/wdogCfgTask.adef
+    dogTestConfiguration/wdogCfgTaskOverride.adef
+}

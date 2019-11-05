@@ -1,6 +1,5 @@
 #include "legato.h"
 #include "interfaces.h"
-#include <time.h>
 
 /*
  * This watchdog test begins calls le_wdog_Timeout with TIMEOUT_NEVER and then waits for a minute
@@ -13,6 +12,8 @@
 COMPONENT_INIT
 {
     const int millisecondLimit = 60000; // one minute
+    struct timespec sleepTime = { .tv_sec = (millisecondLimit / 1000), .tv_nsec = 0 };
+    struct timespec endTestSleepTime = { .tv_sec = 1, .tv_nsec = 0 };
 
     LE_INFO("Watchdog test starting");
 
@@ -26,13 +27,13 @@ COMPONENT_INIT
     le_wdog_Timeout(LE_WDOG_TIMEOUT_NEVER);
 
     // sleep for much longer than regular timeout
-    usleep(millisecondLimit * 1000);
+    nanosleep(&sleepTime, NULL);
 
     LE_INFO("calling le_wdog_Timeout(TIMEOUT_NOW)");
     le_wdog_Timeout(LE_WDOG_TIMEOUT_NOW);
 
     // Sleep for a second. We should get killed in our sleep
-    usleep(1000000);
+    nanosleep(&endTestSleepTime, NULL);
 
     // We should never get here
     LE_INFO("FAIL");

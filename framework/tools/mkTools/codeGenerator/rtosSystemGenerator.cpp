@@ -168,7 +168,11 @@ void GenerateProcessList
                 "        .defaultArgc = "
                        << processPtr->commandLineArgs.size()
                        << ",\n"
-                "        .defaultArgv = " << "_" << taskName << "_Args\n"
+                "        .defaultArgv = " << "_" << taskName << "_Args,\n"
+                "        .watchdogTimeout = " << (processEnvPtr->watchdogTimeout.IsSet() ?
+                                            processEnvPtr->watchdogTimeout.Get() : 0) << ",\n"
+                "        .maxWatchdogTimeout = " << (processEnvPtr->maxWatchdogTimeout.IsSet() ?
+                                            processEnvPtr->maxWatchdogTimeout.Get() : 0) << ",\n"
                 "    },\n";
         }
     }
@@ -309,6 +313,31 @@ void GenerateRtosSystemTasks
                 "        .taskList = NULL,\n"
                 "        .threadList = NULL,\n";
         }
+
+        outputFile << "        .watchdogTimeout = ";
+        if (appPtr->watchdogTimeout.IsSet())
+        {
+            outputFile << appPtr->watchdogTimeout.Get();
+        }
+        else
+        {
+            outputFile << "0";
+        }
+
+        outputFile << ",\n";
+
+        outputFile << "        .maxWatchdogTimeout = ";
+        if (appPtr->maxWatchdogTimeout.IsSet())
+        {
+            outputFile << appPtr->maxWatchdogTimeout.Get();
+        }
+        else
+        {
+            outputFile << "0";
+        }
+
+        outputFile << ",\n";
+
         outputFile <<
             "    },\n";
     }

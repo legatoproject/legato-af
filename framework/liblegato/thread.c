@@ -63,7 +63,6 @@
 #   define DEFAULT_THREAD_PRIORITY         LE_THREAD_PRIORITY_MEDIUM
 #endif
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Lowest OS priority
@@ -481,6 +480,12 @@ static void* PThreadStartRoutine
 #   endif /* end LE_CONFIG_LINUX */
 #endif /* end !LE_CONFIG_THREAD_REALTIME_ONLY */
 
+    // Set the thread ID as a proc ID if configured
+    if (threadPtr->setPidOnStart)
+    {
+        threadPtr->procId = (pid_t) threadPtr->threadHandle;
+    }
+
     // Perform thread specific init
     thread_InitThread();
 
@@ -568,10 +573,17 @@ static thread_Obj_t* CreateThread
     threadPtr->context = context;
     threadPtr->destructorList = LE_DLS_LIST_INIT;
     threadPtr->threadHandle = 0;
+    threadPtr->setPidOnStart = false;
+    threadPtr->procId = 0;
+
 
     // By default, inherit cdata from the current thread.
     if (currentThreadPtr)
     {
+        if (currentThreadPtr->procId != 0)
+        {
+            threadPtr->procId = currentThreadPtr->procId;
+        }
         threadPtr->cdataRecPtr = currentThreadPtr->cdataRecPtr;
     }
 
@@ -996,6 +1008,84 @@ le_result_t thread_GetOSThread
     {
         *threadHandlePtr = threadPtr->threadHandle;
     }
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Set the thread ID as a "Process ID" once the thread starts. All threads created by this thread
+ *  shall inherit the 'Process ID".
+ *
+ *  @return
+ *      - LE_OK         - Thread handle was found and returned.
+ *      - LE_NOT_FOUND  - No matching thread was found.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t thread_SetPidOnStart
+(
+    le_thread_Ref_t  threadRef     ///< [IN] reference to the thread to set
+)
+{
+    thread_Obj_t *threadPtr;
+
+    Lock();
+    threadPtr = le_ref_Lookup(ThreadRefMap, threadRef);
+    Unlock();
+
+
+    if (threadPtr != NULL)
+    {
+        LE_FATAL_IF(threadPtr->state != THREAD_STATE_NEW,
+                    "Attempt to set PID on running thread '%s'.",
+                    THREAD_NAME(threadPtr->name));
+
+        threadPtr->setPidOnStart = true;
+    }
+    else
+    {
+        return LE_NOT_FOUND;
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Get the "Process ID" for the thread.
+ *
+ *  @return
+ *      - LE_OK         - pid was found and returned.
+ *      - LE_NOT_FOUND  - There is no valid pid for this thread
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t thread_GetPid
+(
+    le_thread_Ref_t         threadRef,     ///< [IN] reference to the thread to set
+    pid_t*                  pidPtr         ///< [OUT] pointer to store the pid
+
+)
+{
+    thread_Obj_t *threadPtr;
+
+    if (pidPtr == NULL)
+    {
+        return LE_BAD_PARAMETER;
+    }
+
+    Lock();
+    threadPtr = le_ref_Lookup(ThreadRefMap, threadRef);
+    Unlock();
+
+    if (threadPtr && (threadPtr->procId != 0))
+    {
+        *pidPtr = threadPtr->procId;
+    }
+    else
+    {
+        LE_DEBUG("Pid not set on this thread\n");
+        return LE_NOT_FOUND;
+    }
+
     return LE_OK;
 }
 

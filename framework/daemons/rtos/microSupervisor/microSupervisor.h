@@ -20,13 +20,15 @@
  */
 typedef struct
 {
-    const char               *nameStr;      /// Task name -- derived from the process name
-    le_thread_Priority_t      priority;     /// Task default priority
-    size_t                    stackSize;    /// Task stack size.
+    const char               *nameStr;           ///< Task name -- derived from the process name
+    le_thread_Priority_t      priority;          ///< Task default priority
+    size_t                    stackSize;         ///< Task stack size.
     void                     *stackPtr;
-    le_thread_MainFunc_t      entryPoint;   /// Task entry point function.
-    int                       defaultArgc;  /// Default number of arguments
-    const char              **defaultArgv;  /// Default argument list
+    le_thread_MainFunc_t      entryPoint;        ///< Task entry point function.
+    int                       defaultArgc;       ///< Default number of arguments
+    const char              **defaultArgv;       ///< Default argument list
+    int32_t                   watchdogTimeout;   ///< Watchdog timeout for the task
+    int32_t                   maxWatchdogTimeout;///< Max watchdog timeout for the task
 }
 Task_t;
 
@@ -48,13 +50,16 @@ TaskInfo_t;
  */
 typedef struct
 {
-    const char      *appNameStr;    ///< Application name
-    bool             manualStart;   ///< If this app should not be started on system start.
-    uint32_t         taskCount;     ///< Number of tasks in this application
-    const Task_t    *taskList;      ///< Pointer to array of task definitions for this application.
-    TaskInfo_t      *threadList;    ///< Pointer to array of task threads for this application.
-                                    ///< For running applications this array is the same size as
-                                    ///< taskList.  For non-running applications it may be NULL.
+    const char   *appNameStr;          ///< Application name
+    bool          manualStart;         ///< If this app should not be started on system start.
+    uint32_t      taskCount;           ///< Number of tasks in this application
+    const Task_t *taskList;            ///< Pointer to array of task definitions
+                                       ///< for this application.
+    TaskInfo_t   *threadList;          ///< Pointer to array of task threads for this application.
+                                       ///< For running applications this array is the same size as
+                                       ///< taskList.  For non-running applications it may be NULL.
+    int32_t       watchdogTimeout;     ///< Watchdog timeout for all tasks in the app
+    int32_t       maxWatchdogTimeout;  ///< Max watchdog timeout all tasks in the app
 }
 App_t;
 
@@ -192,6 +197,36 @@ LE_SHARED bool le_microSupervisor_GetLegatoVersion
 (
     char*  bufferPtr,        ///< [OUT] output buffer to contain version string
     size_t size              ///< [IN] buffer length
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieves the configured max watchdog timeout if one exists
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED int32_t le_microSupervisor_GetMaxWatchdogTimeout
+(
+    pthread_t threadId ///< [IN] thread to find in the app list
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+* Returns the configured default watchdog timeout if one exists
+*/
+//--------------------------------------------------------------------------------------------------
+LE_SHARED int32_t le_microSupervisor_GetWatchdogTimeout
+(
+    pthread_t threadId ///< [IN] thread to find in the app list
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+* Returns the configured manual start configuration
+*/
+//--------------------------------------------------------------------------------------------------
+LE_SHARED bool le_microSupervisor_GetManualStart
+(
+    pthread_t threadId ///< [IN] thread to find in the app list
 );
 
 #endif /* LEGATO_SRC_MICROSUPERVISOR_INCLUDE_GUARD */

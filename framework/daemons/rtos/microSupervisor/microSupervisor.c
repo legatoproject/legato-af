@@ -302,6 +302,9 @@ static le_result_t StartProc
 
     LE_DEBUG(" (%d) Starting task %s", taskNum, taskPtr->nameStr);
 
+    // set a pid for threads created by this task to inherit
+    thread_SetPidOnStart(currentThread);
+
     le_thread_Start(currentThread);
 
     return LE_OK;
@@ -661,4 +664,139 @@ LE_SHARED bool le_microSupervisor_GetLegatoVersion
     }
 
     return le_utf8_Copy(bufferPtr, LE_VERSION, size, NULL) == LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Returns the corresponding task index for the specified thread
+ */
+//--------------------------------------------------------------------------------------------------
+static int32_t GetAppTaskCount
+(
+    const App_t * pApp,     ///< [IN] the app to look through
+    pthread_t threadId      ///< [IN] thread to find in the task list
+)
+{
+    uint32_t task;
+    for (task = 0; task < pApp->taskCount; ++task)
+    {
+        if (pApp->threadList[task].threadRef == NULL)
+        {
+            continue;
+        }
+
+        pthread_t currThreadId;
+        if (LE_OK == thread_GetOSThread(pApp->threadList[task].threadRef, &currThreadId))
+        {
+            if (currThreadId == threadId)
+            {
+                return (int32_t) task;
+            }
+        }
+    }
+
+    return -1;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieves the configured max watchdog timeout if one exists
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED int32_t le_microSupervisor_GetMaxWatchdogTimeout
+(
+    pthread_t threadId ///< [IN] thread to find in the app list
+)
+{
+    int32_t maxWatchdogTimeout = 0;
+    int32_t taskCount = -1;
+    const App_t* currentAppPtr;
+    // Iterate over all looking for the app to start.  App list is terminated by a NULL entry.
+    for (currentAppPtr = _le_supervisor_GetSystemApps();
+         currentAppPtr->appNameStr != NULL;
+         ++currentAppPtr)
+    {
+        taskCount = GetAppTaskCount(currentAppPtr, threadId);
+        if (taskCount != -1)
+        {
+            if (currentAppPtr->maxWatchdogTimeout)
+            {
+                maxWatchdogTimeout = currentAppPtr->maxWatchdogTimeout;
+            }
+
+            if (currentAppPtr->taskList[taskCount].maxWatchdogTimeout)
+            {
+                maxWatchdogTimeout = currentAppPtr->taskList[taskCount].maxWatchdogTimeout;
+            }
+
+            return maxWatchdogTimeout;
+        }
+    }
+
+    return 0;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+* Returns the configured default watchdog timeout if one exists
+*/
+//--------------------------------------------------------------------------------------------------
+LE_SHARED int32_t le_microSupervisor_GetWatchdogTimeout
+(
+    pthread_t threadId ///< [IN] thread to find in the app list
+)
+{
+    int32_t watchdogTimeout = 0;
+    int32_t taskCount = -1;
+    const App_t* currentAppPtr;
+    // Iterate over all looking for the app to start.  App list is terminated by a NULL entry.
+    for (currentAppPtr = _le_supervisor_GetSystemApps();
+         currentAppPtr->appNameStr != NULL;
+         ++currentAppPtr)
+    {
+        taskCount = GetAppTaskCount(currentAppPtr, threadId);
+        if (taskCount != -1)
+        {
+            if (currentAppPtr->watchdogTimeout)
+            {
+                watchdogTimeout = currentAppPtr->watchdogTimeout;
+            }
+
+            if (currentAppPtr->taskList[taskCount].watchdogTimeout)
+            {
+                watchdogTimeout = currentAppPtr->taskList[taskCount].watchdogTimeout;
+            }
+
+            return watchdogTimeout;
+        }
+    }
+
+    return 0;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+* Returns the configured manual start configuration
+*/
+//--------------------------------------------------------------------------------------------------
+LE_SHARED bool le_microSupervisor_GetManualStart
+(
+    pthread_t threadId ///< [IN] thread to find in the app list
+)
+{
+    int32_t taskCount = -1;
+    const App_t* currentAppPtr;
+    // Iterate over all looking for the app to start.  App list is terminated by a NULL entry.
+    for (currentAppPtr = _le_supervisor_GetSystemApps();
+         currentAppPtr->appNameStr != NULL;
+         ++currentAppPtr)
+    {
+        taskCount = GetAppTaskCount(currentAppPtr, threadId);
+        if (taskCount != -1)
+        {
+            return currentAppPtr->manualStart;
+        }
+    }
+
+    return false;
 }

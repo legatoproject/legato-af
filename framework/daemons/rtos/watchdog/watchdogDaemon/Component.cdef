@@ -1,0 +1,25 @@
+provides:
+{
+   api:
+    {
+        le_wdog.api
+    }
+}
+requires:
+{
+    component:
+    {
+        ${LEGATO_WDOG_PA}
+    }
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}/framework/daemons/rtos/microSupervisor/
+    -I${LEGATO_ROOT}/framework/daemons/rtos/watchdog/inc/
+}
+
+sources:
+{
+    wdog.c
+}

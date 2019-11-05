@@ -1,0 +1,24 @@
+start: manual
+sandboxed:false
+
+executables:
+{
+    wdogConfigNoTimeout = ( watchdogConfigurationComponent )
+}
+
+processes:
+{
+    run:
+    {
+        ( wdogConfigNoTimeout 30000 -1)
+    }
+}
+
+maxWatchdogTimeout : 50000
+
+#if ${LE_CONFIG_RTOS} = y
+bindings:
+{
+    wdogConfigNoTimeout.watchdogConfigurationComponent.le_wdog -> watchdog.le_wdog
+}
+#endif

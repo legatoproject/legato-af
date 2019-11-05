@@ -64,6 +64,8 @@ typedef struct thread_Obj
     pthread_t                    threadHandle;      ///< The pthreads thread handle.
     le_thread_Ref_t              safeRef;           ///< Safe reference for this object.
     timer_ThreadRec_t           *timerRecPtr[TIMER_TYPE_COUNT]; ///< The thread's timer records.
+    bool                         setPidOnStart;     ///< Set PID on start flag
+    pid_t                        procId;            ///< The main process ID for this thread
 }
 thread_Obj_t;
 
@@ -208,4 +210,33 @@ le_result_t thread_GetOSThread
     pthread_t       *threadHandlePtr    ///< [OUT] OS thread handle.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Set the thread ID as a "Process ID" once the thread starts. All threads created by this thread
+ *  shall inherit the 'Process ID".
+ *
+ *  @return
+ *      - LE_OK         - Thread handle was found and returned.
+ *      - LE_NOT_FOUND  - No matching thread was found.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t thread_SetPidOnStart
+(
+    le_thread_Ref_t  threadRef     ///< [IN] reference to the thread to set
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Get the "Process ID" for the thread.
+ *
+ *  @return
+ *      - LE_OK         - Thread handle was found and returned.
+ *      - LE_NOT_FOUND  - No matching thread was found.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t thread_GetPid
+(
+    le_thread_Ref_t       threadRef,     ///< [IN] reference to the thread to set
+    pid_t*                pidPtr         ///< [OUT] pointer to store the pid
+);
 #endif  // THREAD_INCLUDE_GUARD

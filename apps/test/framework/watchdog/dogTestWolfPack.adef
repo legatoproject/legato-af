@@ -16,6 +16,7 @@ processes:
         w05 = (loneWolf)
         w06 = (loneWolf)
         w07 = (loneWolf)
+#if ${LE_CONFIG_LINUX} = y
         w08 = (loneWolf)
         w09 = (loneWolf)
         w10 = (loneWolf)
@@ -59,5 +60,12 @@ processes:
         w48 = (loneWolf)
         w49 = (loneWolf)
         w50 = (loneWolf)
+#endif
     }
 }
+#if ${LE_CONFIG_RTOS} = y
+bindings:
+{
+    loneWolf.loneWolf.le_wdog -> watchdog.le_wdog
+}
+#endif

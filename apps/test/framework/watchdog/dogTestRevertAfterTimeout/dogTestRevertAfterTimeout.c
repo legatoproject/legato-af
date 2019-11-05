@@ -1,6 +1,5 @@
 #include "legato.h"
 #include "interfaces.h"
-#include <time.h>
 
 /*
  * This watchdog test begins by calling for a timeout longer than the usual timeout from a kick.
@@ -33,6 +32,7 @@ COMPONENT_INIT
     le_result_t result;
     int millisecondLongTimeout;
     int millisecondLongSleep;
+    struct timespec sleepTime;
 
     millisecondsStr = le_arg_GetArg(0);
     LE_ASSERT(millisecondsStr != NULL);
@@ -52,11 +52,14 @@ COMPONENT_INIT
 
     LE_INFO("Starting timeout %d milliseconds then sleep for %d", millisecondLongTimeout, millisecondLongSleep);
     le_wdog_Timeout(millisecondLongTimeout);
-    usleep(millisecondLongSleep * 1000);
+
+    sleepTime.tv_sec = millisecondLongSleep / 1000;
+    sleepTime.tv_nsec = 0;
+    nanosleep(&sleepTime, NULL);
     // We should still be alive
     LE_INFO("Kicking with configured timeout then sleep for %d", millisecondLongSleep);
     le_wdog_Kick();
-    usleep(millisecondLongSleep * 1000);
+    nanosleep(&sleepTime, NULL);
     // We should never get here
     LE_FATAL("FAIL");
 }

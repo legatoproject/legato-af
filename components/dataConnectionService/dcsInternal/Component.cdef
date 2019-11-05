@@ -6,7 +6,9 @@ requires:
     }
     component:
     {
+    #if ${LE_CONFIG_SERVICES_WATCHDOG} = y
         ${LEGATO_ROOT}/components/watchdogChain
+    #endif
     }
 }
 
