@@ -11,22 +11,72 @@
 #include "microSupervisor.h"
 
 // Maximum number of arguments for "runProc"
-#define MAX_ARGS_FOR_RUN_PROC   10
+#define MAX_ARGS_FOR_RUN_PROC   32
 
 // Argument list for runProc, the last one is preserved for NULL
-static const char *argV[MAX_ARGS_FOR_RUN_PROC + 1];
+static const char *ArgV[MAX_ARGS_FOR_RUN_PROC + 1];
 
 // App name for runProc
-static const char* appNameStr = NULL;
+static const char* AppNameStr = NULL;
 
 // Proc name for runProc
-static const char* procNameStr = NULL;
+static const char* ProcNameStr = NULL;
 
 // Number of arguments for runProc
-static int argC = 0;
+static int ArgC = 0;
 
-// Counter of collected arguments
-static int argsCounter = 0;
+// Has the -- argument separator been found?
+static bool FoundArgSeparator = false;
+
+// Command which to run
+enum {
+    CMD_UNKNOWN,
+    CMD_STATUS,
+    CMD_START_APP,
+    CMD_START_PROC,
+    CMD_ERROR
+} Command;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Error handler
+ */
+//--------------------------------------------------------------------------------------------------
+static size_t ErrorHandler
+(
+    size_t argIndex,          ///< [IN] Argument where the error occured
+    le_result_t errorCode     ///< [IN] Detected error code
+)
+{
+    const char * errorString;
+
+    Command = CMD_ERROR;
+
+    switch (errorCode)
+    {
+        case LE_OVERFLOW:
+
+            errorString = "Too many arguments";
+            break;
+
+        case LE_UNDERFLOW:
+
+            errorString = "Too few arguments";
+            break;
+
+        default:
+            errorString = "Unknown error while processing arguments";
+    }
+
+    const char* programNamePtr = le_arg_GetProgramName();
+
+    printf("* %s: at argument %" PRIuS ": %s.\n", programNamePtr, argIndex + 1,
+        errorString);
+    printf("Try '%s --help'.\n", programNamePtr);
+
+    return 0;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -53,7 +103,9 @@ static void StartAppHandler
     const char* arg
 )
 {
-    le_microSupervisor_StartApp(arg);
+    AppNameStr = arg;
+
+    Command = CMD_START_APP;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -66,18 +118,27 @@ static void RunProcArgsHandler
     const char* arg
 )
 {
-    if (strcmp(arg, "--") != 0 &&
-        argsCounter < argC)
+    if (!FoundArgSeparator)
+    {
+        if (strcmp(arg, "--") == 0)
+        {
+            FoundArgSeparator = true;
+        }
+        else
+        {
+            printf("app runProc: unrecognized argument %s\n", arg);
+            Command = CMD_ERROR;
+        }
+    }
+    else if (Command != CMD_ERROR)
     {
         // Collect an argument
-        argV[argsCounter++] = arg;
+        ArgV[ArgC++] = arg;
 
-        if (argsCounter == argC)
+        if (ArgC > MAX_ARGS_FOR_RUN_PROC)
         {
-            // Add NULL
-            argV[argsCounter] = NULL;
-
-            le_microSupervisor_RunProc(appNameStr, procNameStr, argC, argV);
+            printf("%s: too many arguments\n", ArgV[0]);
+            Command = CMD_ERROR;
         }
     }
 }
@@ -92,26 +153,20 @@ static void RunProcProcNameHandler
     const char* arg
 )
 {
-    procNameStr = arg;
-    int totalArgs = le_arg_NumArgs();
+    ProcNameStr = arg;
 
-    if (totalArgs == 3)
-    {
-        le_microSupervisor_RunProc(appNameStr, procNameStr, 0, NULL);
-    }
-    else if (totalArgs > 4 && strcmp(le_arg_GetArg(3), "--") == 0)
-    {
-        // Set the number of arguments after "--" that we need to collect
-        argC = totalArgs - 4;
+    Command = CMD_START_PROC;
 
-        // Initialize the counter of collected arguments to 0
-        argsCounter = 0;
+    // Initialize the counter of collected arguments to 0
+    ArgC = 0;
 
-        // Allow one callback handler to deal with all rest arguments
-        le_arg_AllowMorePositionalArgsThanCallbacks();
+    // Have not found separator "--" yet
+    FoundArgSeparator = false;
 
-        le_arg_AddPositionalCallback(RunProcArgsHandler);
-    }
+    // Allow one callback handler to deal with all rest arguments
+    le_arg_AllowMorePositionalArgsThanCallbacks();
+
+    le_arg_AddPositionalCallback(RunProcArgsHandler);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -124,7 +179,7 @@ static void RunProcAppNameHandler
     const char* arg
 )
 {
-    appNameStr = arg;
+    AppNameStr = arg;
 
     le_arg_AddPositionalCallback(RunProcProcNameHandler);
 }
@@ -141,7 +196,7 @@ static void CommandArgHandler
 {
     if (strcmp(command, "status") == 0)
     {
-        le_microSupervisor_DebugAppStatus();
+        Command = CMD_STATUS;
     }
     else if (strcmp(command, "start") == 0)
     {
@@ -150,10 +205,6 @@ static void CommandArgHandler
     else if (strcmp(command, "runProc") == 0)
     {
         le_arg_AddPositionalCallback(RunProcAppNameHandler);
-    }
-    else
-    {
-        CommandHelpHandler();
     }
 }
 
@@ -164,7 +215,28 @@ static void CommandArgHandler
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+    le_arg_SetErrorHandler(&ErrorHandler);
     le_arg_AddPositionalCallback(&CommandArgHandler);
 
     le_arg_Scan();
+
+    switch (Command)
+    {
+        case CMD_UNKNOWN:
+            CommandHelpHandler();
+            return;
+        case CMD_ERROR:
+            // Error occurred -- do nothing as error has already been reported
+            return;
+        case CMD_STATUS:
+            le_microSupervisor_DebugAppStatus();
+            return;
+        case CMD_START_APP:
+            le_microSupervisor_StartApp(AppNameStr);
+            return;
+        case CMD_START_PROC:
+            ArgV[ArgC] = NULL;
+            le_microSupervisor_RunProc(AppNameStr, ProcNameStr, ArgC, ArgV);
+            return;
+    }
 }
