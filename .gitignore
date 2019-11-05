@@ -84,3 +84,6 @@ framework/tools/imgdiff/
 
 # nodejs ignores:
 node_modules
+
+# Linker report tool for memory analysis
+tools/linkerReport

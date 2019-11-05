@@ -129,11 +129,16 @@ tty_Speed_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Open a serial port device and locks it for exclusive use.
+ * Open a serial port device and lock it for exclusive use.
  *
  * @return
  *  - Serial port file descriptor number on success.
  *  - -1 on failure.
+ *
+ *  @note
+ *  Previous versions of le_tty_Open() would exit the process with LE_FATAL if the tty failed
+ *  to successfully open; now either a file descriptor is returned or -1 on failure.
+ *
  */
 //--------------------------------------------------------------------------------------------------
 int le_tty_Open

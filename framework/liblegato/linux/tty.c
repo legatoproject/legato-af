@@ -214,6 +214,10 @@ static inline le_result_t ConvertBaudIntoSpeed
  * @return
  *  - Serial port file descriptor number on success.
  *  - -1 on failure.
+ *
+ *  @note
+ *  Previous versions of le_tty_Open() would exit the process with LE_FATAL if the tty failed
+ *  to successfully open; now either a file descriptor is returned or -1 on failure.
  */
 //--------------------------------------------------------------------------------------------------
 int le_tty_Open
@@ -228,24 +232,41 @@ int le_tty_Open
 
     // Open path and check if it is a serial device
     fd = open(ttyDev, flags);
-    LE_FATAL_IF(0 > fd, "Error opening serial device '%s': %m", ttyDev);
-
-    LE_FATAL_IF(0 > fstat(fd, &ttyStatus),
-                "Error checking status of serial device '%s': %m", ttyDev);
-
-    LE_FATAL_IF(!S_ISCHR(ttyStatus.st_mode), "Error: '%s' is not a character device.", ttyDev);
-
-    // Place a lock on the serial device
-    ttyLock.l_type = F_WRLCK;
-    ttyLock.l_whence = SEEK_SET;
-    if (0 > fcntl(fd, F_SETLK, &ttyLock)) {
-        LE_ERROR("Error: '%s' locked by process %d: %m.", ttyDev, ttyLock.l_pid);
-        fd_Close(fd);
-        return -1;
+    if (fd < 0)
+    {
+        LE_ERROR("Error opening serial device '%s': %m", ttyDev);
+        goto error;
     }
+    else if (fstat(fd, &ttyStatus) < 0)
+    {
+        LE_ERROR("Error checking status of serial device '%s': %m", ttyDev);
+        goto error;
+    }
+    else if (!S_ISCHR(ttyStatus.st_mode))
+    {
+        LE_ERROR("Error: '%s' is not a character device.", ttyDev);
+        goto error;
+    }
+    else
+    {
+        // Place a lock on the serial device
+        ttyLock.l_type = F_WRLCK;
+        ttyLock.l_whence = SEEK_SET;
+        if (0 > fcntl(fd, F_SETLK, &ttyLock))
+        {
+            LE_ERROR("Error: '%s' locked by process %d: %m.", ttyDev, ttyLock.l_pid);
+            goto error;
+        }
 
-    LE_DEBUG("Serial device '%s' acquired by pid %d.", ttyDev, getpid());
+        LE_DEBUG("Serial device '%s' acquired by pid %d.", ttyDev, getpid());
+    }
     return fd;
+error:
+    if (fd > -1)
+    {
+        fd_Close(fd);
+    }
+    return -1;
 }
 
 //--------------------------------------------------------------------------------------------------
