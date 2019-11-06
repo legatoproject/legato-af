@@ -286,7 +286,7 @@ static void TestTime()
     LE_TEST_END_SKIP();
 
     // Test leap year 2080
-    num = 3476520032;
+    num = 3476520032ul;
     expectedTm = (struct tm) {
         .tm_sec = 32,
         .tm_min = 0,
