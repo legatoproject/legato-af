@@ -44,6 +44,8 @@ class Result(IntEnum):
     LE_NOT_IMPLEMENTED = -20
     LE_UNAVAILABLE = -21
     LE_TERMINATED = -22
+    LE_IN_PROGRESS = -23
+    LE_SUSPENDED = -24
 
 {%- for definition in definitions %}
 {{definition.comment|PyFormatHeaderComment}}
