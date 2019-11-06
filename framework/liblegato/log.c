@@ -202,6 +202,8 @@ const char* _le_log_GetResultCodeString
             return "LE_TERMINATED";
         case LE_IN_PROGRESS:
             return "LE_IN_PROGRESS";
+        case LE_SUSPENDED:
+            return "LE_SUSPENDED";
     }
     LE_ERROR("Result code %d out of range.", resultCode);
     return "(unknown)";
