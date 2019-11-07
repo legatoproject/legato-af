@@ -535,23 +535,33 @@ le_result_t le_dcsTech_GetDefaultGWAddress
  *     - The retrieved IPv4 DNS address(es) will be returned in the 3rd & the IPv6 ones in 5th
  *       arguments which allowed buffer lengths are specified in the 4th & 6th arguments
  *       respectively. It's up to 2 addresses to be returned per IP type.
- *     - The function returns LE_OK upon a successful retrieval; otherwise, LE_FAULT
+ *     - The function returns:
+ *           - LE_OK upon successful retrievals
+ *           - LE_UNSUPPORTED upon an unsupported technolgoy type given in the 1st argument
+ *           - LE_FAULT otherwise
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_dcsTech_GetDNSAddresses
 (
     le_dcs_Technology_t tech,    ///< [IN] technology type of the connection
-    void *techRef,               ///< [IN] object reference of the connection
+    le_dcs_ChannelRef_t channelRef,  ///< [IN] object reference of the channel
     char *v4DnsAddrs,            ///< [OUT] 2 IPv4 DNS addresses to be installed
     size_t v4DnsAddrSize,        ///< [IN] size of each of the 2 IPv4 DNS addresses to be installed
     char *v6DnsAddrs,            ///< [OUT] 2 IPv6 DNS addresses to be installed
     size_t v6DnsAddrSize         ///< [IN] size of each of the 2 IPv6 DNS addresses to be installed
 )
 {
+    le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
+    if (!channelDb)
+    {
+        LE_ERROR("Invalid channel reference %p", channelRef);
+        return LE_FAULT;
+    }
+
     switch (tech)
     {
         case LE_DCS_TECH_CELLULAR:
-            return le_dcsCellular_GetDNSAddrs(techRef, v4DnsAddrs, v4DnsAddrSize,
+            return le_dcsCellular_GetDNSAddrs(channelDb->techRef, v4DnsAddrs, v4DnsAddrSize,
                                               v6DnsAddrs, v6DnsAddrSize);
             break;
         case LE_DCS_TECH_WIFI:

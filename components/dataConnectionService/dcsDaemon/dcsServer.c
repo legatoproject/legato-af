@@ -510,6 +510,12 @@ static le_result_t SetDnsRoutes
                 DataChannelName, CurrentTech);
         return LE_NOT_POSSIBLE;
     }
+    else
+    {
+        LE_DEBUG("Data channel %s of technology %d got DNS server addresses v4: %s %s, v6: %s %s",
+                 DataChannelName, CurrentTech, v4DnsAddrs[0], v4DnsAddrs[1],
+                 v6DnsAddrs[0], v6DnsAddrs[1]);
+    }
 
     if (strlen(v4DnsAddrs[0]))
     {
@@ -586,6 +592,23 @@ static le_result_t SetDnsConfiguration
     if (LE_DUPLICATE == ret)
     {
         LE_DEBUG("DNS server addresses already set on device");
+        // Add specific routes for the DNS servers when DefaultRouteStatus indicates that the
+        // connection's default GW addr hasn't been set as the device's default route
+        if (!DefaultRouteStatus)
+        {
+            switch (SetDnsRoutes(true))
+            {
+                case LE_OK:
+                    LE_INFO("Succeeded to add host routes for DNS addresses");
+                    break;
+                case LE_FAULT:
+                    LE_WARN("Failed to automatically add host routes for DNS addresses");
+                    break;
+                default:
+                    LE_DEBUG("No host routes for DNS addresses automatically added");
+                    break;
+            }
+        }
         return LE_OK;
     }
     else if (LE_OK != ret)
@@ -594,10 +617,23 @@ static le_result_t SetDnsConfiguration
         return ret;
     }
 
-    // Add the DNS route
-    if (!DefaultRouteStatus && (SetDnsRoutes(true) == LE_OK))
+    // Add specific routes for the DNS servers when DefaultRouteStatus indicates that the
+    // connection's default GW addr hasn't been set as the device's default route
+    if (!DefaultRouteStatus)
     {
-        LE_INFO("Succeeded to add routes for DNS addresses");
+        switch (SetDnsRoutes(true))
+        {
+            case LE_OK:
+                LE_INFO("Succeeded to add host routes for newly installed DNS addresses");
+                break;
+            case LE_FAULT:
+                LE_WARN("Failed to automatically add host routes for newly installed DNS "
+                        "addresses");
+                break;
+            default:
+                LE_DEBUG("No host routes for newly installed DNS addresses automatically added");
+                break;
+        }
     }
 
     LE_INFO("Succeeded setting DNS configuration");
@@ -605,6 +641,33 @@ static le_result_t SetDnsConfiguration
     return LE_OK;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Get default route activation status from config tree
+ */
+//--------------------------------------------------------------------------------------------------
+static bool GetDefaultRouteStatus
+(
+    void
+)
+{
+    bool defaultRouteStatus = true;
+#if LE_CONFIG_ENABLE_CONFIG_TREE
+    char configPath[LE_CFG_STR_LEN_BYTES];
+    snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_ROUTING);
+
+    le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
+
+    // Get default gateway activation status
+    if (le_cfg_NodeExists(cfg, CFG_NODE_DEFAULTROUTE))
+    {
+        defaultRouteStatus = le_cfg_GetBool(cfg, CFG_NODE_DEFAULTROUTE, true);
+        LE_DEBUG("Default gateway activation status = %d", defaultRouteStatus);
+    }
+    le_cfg_CancelTxn(cfg);
+#endif
+    return defaultRouteStatus;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -628,6 +691,9 @@ static le_result_t SetDefaultRouteAndDns
         LE_ERROR("Unknown data channel reference for setting default GW and DNS server addresses");
         return LE_FAULT;
     }
+
+    // Get the latest config from the config tree
+    DefaultRouteStatus = GetDefaultRouteStatus();
 
     // Check if the default route should be set
     SetDefaultGWConfiguration();
@@ -658,34 +724,6 @@ static le_result_t SetDefaultRouteAndDns
         LE_INFO("Succeeded setting DNS configuration");
     }
     return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  Get default route activation status from config tree
- */
-//--------------------------------------------------------------------------------------------------
-static bool GetDefaultRouteStatus
-(
-    void
-)
-{
-    bool defaultRouteStatus = true;
-#if LE_CONFIG_ENABLE_CONFIG_TREE
-    char configPath[LE_CFG_STR_LEN_BYTES];
-    snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_ROUTING);
-
-    le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
-
-    // Get default gateway activation status
-    if (le_cfg_NodeExists(cfg, CFG_NODE_DEFAULTROUTE))
-    {
-        defaultRouteStatus = le_cfg_GetBool(cfg, CFG_NODE_DEFAULTROUTE, true);
-        LE_DEBUG("Default gateway activation status = %d", defaultRouteStatus);
-    }
-    le_cfg_CancelTxn(cfg);
-#endif
-    return defaultRouteStatus;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1595,7 +1633,8 @@ bool le_data_GetDefaultRouteStatus
     void
 )
 {
-    return DefaultRouteStatus;
+    bool defaultRouteStatus = GetDefaultRouteStatus();
+    return defaultRouteStatus;
 }
 
 //--------------------------------------------------------------------------------------------------

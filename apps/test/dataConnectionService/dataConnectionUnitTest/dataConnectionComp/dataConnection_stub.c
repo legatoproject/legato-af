@@ -1348,7 +1348,7 @@ le_result_t le_dcsTech_GetNetInterface
 le_result_t le_dcsTech_GetDNSAddresses
 (
     le_dcs_Technology_t tech,
-    void *techRef,
+    le_dcs_ChannelRef_t channelRef,
     char *v4DnsAddrsPtr,
     size_t v4DnsAddrSize,
     char *v6DnsAddrsPtr,

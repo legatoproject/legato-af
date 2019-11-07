@@ -1201,7 +1201,7 @@ le_result_t le_net_SetDNS
     // Query technology for IPv4 and IPv6 DNS server address assignments
     if (channelDb->technology == LE_DCS_TECH_CELLULAR)
     {
-        ret = le_dcsTech_GetDNSAddresses(channelDb->technology, channelDb->techRef,
+        ret = le_dcsTech_GetDNSAddresses(channelDb->technology, channelRef,
                                         (char *)v4DnsAddrs, PA_DCS_IPV4_ADDR_MAX_BYTES,
                                         (char *)v6DnsAddrs, PA_DCS_IPV6_ADDR_MAX_BYTES);
     }
