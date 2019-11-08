@@ -1653,6 +1653,9 @@ static int RunCurrentSystem
     {
         case EXIT_FAILURE:
 
+            // Request a wakeup source for start program (timeout: 10s)
+            system("echo start 10000000000 > /sys/power/wake_lock");
+
             // Sync file systems before rebooting.
             sync();
 
