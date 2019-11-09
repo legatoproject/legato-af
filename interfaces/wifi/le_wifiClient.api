@@ -1002,3 +1002,56 @@ FUNCTION le_result_t RemoveSsidSecurityConfigs
 (
     uint8 ssid[le_wifiDefs.MAX_SSID_BYTES]  IN  ///<  SSID which user credentials to be deconfigured
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the signal strength from the Access Point which is currently connecting.
+ * signalStrength in dBm. Example -30 = -30dBm.
+ * If no signal is available, signalStrength will return LE_WIFICLIENT_NO_SIGNAL_STRENGTH.
+ *
+ * @return
+ *      - LE_OK     The function succeeded.
+ *      - LE_FAULT  The function failed.
+ *
+ * @note The function returns the signal strength as reported at the time of the scan.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetCurrentSignalStrength
+(
+    int16 signalStrength OUT  ///< WiFi signal strength.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the RX data from the Access Point, RX data is in bytes. Example 1024 = 1024 bytes
+ *
+ * @return
+ *      - LE_OK     The function succeeded.
+ *      - LE_FAULT  The function failed.
+ *
+ * @note The function returns the RX data following by "iw wlan0 link" command.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetRxData
+(
+    uint64 rxData OUT  ///< WiFi bytes of data received.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the TX data from the Access Point, TX data is in bytes. Example 1024 = 1024 bytes
+ *
+ * @return
+ *       - LE_OK     The function succeeded.
+ *       - LE_FAULT  The function failed.
+ *
+ * @note The function returns the TX data following by "iw wlan0 link" command.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetTxData
+(
+    uint64 txData OUT  ///< WiFi bytes of data transmitted.
+);
