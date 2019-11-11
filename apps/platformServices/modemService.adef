@@ -33,7 +33,7 @@ processes:
         watchdogTimeout: never
     #endif
 #if ${LE_CONFIG_RTOS} = y
-    maxStackBytes: 16000
+    maxStackBytes: 131072
 #endif
 }
 
