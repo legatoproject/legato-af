@@ -1010,9 +1010,14 @@ void le_mdc_Init
     // initSemaphore is used to wait for CommandThread() execution. It ensures that the thread is
     // ready when we exit from le_mdc_Init().
     le_sem_Ref_t initSemaphore = le_sem_Create("InitSem", 0);
-    le_thread_Start(le_thread_Create(WDOG_THREAD_NAME_MDC_COMMAND_EVENT,
-                                     CommandThread,
-                                     (void*)initSemaphore));
+    le_thread_Ref_t mdcThreadRef = le_thread_Create(WDOG_THREAD_NAME_MDC_COMMAND_EVENT,
+                                                    CommandThread,
+                                                    (void*)initSemaphore);
+
+#if LE_CONFIG_RTOS
+    le_thread_SetStackSize(mdcThreadRef, MS_STACK_SIZE_MDC);
+#endif
+    le_thread_Start(mdcThreadRef);
     le_sem_Wait(initSemaphore);
     le_sem_Delete(initSemaphore);
 

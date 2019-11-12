@@ -45,4 +45,12 @@ typedef enum
 }
 MS_Watchdog_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stack sizes (on RTOS) for all threads in the modem service
+ */
+//--------------------------------------------------------------------------------------------------
+#define MS_STACK_SIZE_MDC     131072
+#define MS_STACK_SIZE_MRC     131072
+
 #endif /* LEGATO_MS_LOCAL_INCLUDE_GUARD */

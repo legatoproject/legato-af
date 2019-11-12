@@ -1963,9 +1963,16 @@ void le_mrc_Init
     // initSemaphore is used to wait for MrcCommandThread() execution. It ensures that the thread is
     // ready when we exit from le_mrc_Init().
     le_sem_Ref_t initSemaphore = le_sem_Create("InitSem", 0);
-    le_thread_Start(le_thread_Create(WDOG_THREAD_NAME_MRC_COMMAND_PROCESS,
-                                     MrcCommandThread,
-                                     (void*)initSemaphore));
+
+    le_thread_Ref_t mrcThreadRef = le_thread_Create(WDOG_THREAD_NAME_MRC_COMMAND_PROCESS,
+                                                    MrcCommandThread,
+                                                    (void*)initSemaphore);
+
+#if LE_CONFIG_RTOS
+    le_thread_SetStackSize(mrcThreadRef, MS_STACK_SIZE_MRC);
+#endif
+
+    le_thread_Start(mrcThreadRef);
     le_sem_Wait(initSemaphore);
     le_sem_Delete(initSemaphore);
 
