@@ -6,10 +6,12 @@ sources:
 cflags:
 {
     -I$CURDIR/../platformAdaptor/inc
-    -I$LEGATO_ROOT/components/appCfg
-    -I$LEGATO_ROOT/framework/liblegato
-    -I$LEGATO_ROOT/framework/liblegato/linux
     -I$LEGATO_ROOT/components/watchdogChain
+    -I$LEGATO_ROOT/framework/liblegato
+
+#if ${MK_CONFIG_SECSTORE_DISABLE_LIMIT} = ""
+    -I$LEGATO_ROOT/components/appCfg
+#endif
 }
 
 requires:
@@ -19,15 +21,21 @@ requires:
         $LEGATO_SECSTORE_PA_DEFAULT
         $LEGATO_SECSTORE_PA
         $LEGATO_SECSTORE_PA_TZ
-        $LEGATO_ROOT/components/appCfg
         $LEGATO_ROOT/components/watchdogChain
+
+#if ${MK_CONFIG_SECSTORE_DISABLE_LIMIT} = ""
+        $LEGATO_ROOT/components/appCfg
+#endif
     }
 
     api:
     {
         le_appInfo.api
+
+#if ${LE_CONFIG_SOTA} = y
         le_update.api
         le_instStat.api
+#endif
     }
 }
 
@@ -36,7 +44,12 @@ provides:
     api:
     {
         le_secStore.api
-        secStoreGlobal = le_secStore.api
+
+#if ${MK_CONFIG_SECSTORE_DISABLE_ADMIN} = ""
         secureStorage/secStoreAdmin.api
+#endif
+#if ${MK_CONFIG_SECSTORE_DISABLE_GLOBAL_ACCESS} = ""
+        secStoreGlobal = le_secStore.api
+#endif
     }
 }

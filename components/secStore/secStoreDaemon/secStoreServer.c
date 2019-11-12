@@ -20,11 +20,26 @@
 
 #include "legato.h"
 #include "interfaces.h"
-#include "appCfg.h"
-#include "pa_secStore.h"
+
 #include "limit.h"
-#include "user.h"
+#include "pa_secStore.h"
 #include "watchdogChain.h"
+#include "user.h"
+
+#if !MK_CONFIG_SECSTORE_DISABLE_LIMIT
+#   include "appCfg.h"
+#endif
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Number of bytes in secure storage path buffer.
+ */
+//--------------------------------------------------------------------------------------------------
+#ifdef SECSTOREADMIN_MAX_PATH_BYTES
+#   define SECSTORE_MAX_PATH_BYTES SECSTOREADMIN_MAX_PATH_BYTES
+#else
+#   define SECSTORE_MAX_PATH_BYTES 512
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -63,12 +78,15 @@
 //--------------------------------------------------------------------------------------------------
 #define MS_WDOG_INTERVAL 8
 
+#if LE_CONFIG_SOTA
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Current system path.
  */
 //--------------------------------------------------------------------------------------------------
-static char CurrSysPath[LIMIT_MAX_PATH_BYTES] = "";
+static char CurrSysPath[SECSTORE_MAX_PATH_BYTES] = "";
+#define CURR_SYS_PATH CurrSysPath
 
 
 //--------------------------------------------------------------------------------------------------
@@ -112,6 +130,14 @@ typedef struct
 }
 SystemsIndex_t;
 
+#else /* not LE_CONFIG_SOTA */
+
+// No concept of system versions without SOTA, so use an empty current system path.
+#define CURR_SYS_PATH ""
+
+#endif /* end LE_CONFIG_SOTA */
+
+#if !MK_CONFIG_SECSTORE_DISABLE_ADMIN
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -150,10 +176,10 @@ static le_ref_MapRef_t EntryIterMap = NULL;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    char path[SECSTOREADMIN_MAX_PATH_BYTES]; ///< Entry name.
-    bool isDir;                              ///< true if the entry is a directory, otherwise the
-                                             ///  entry is a file.
-    le_sls_Link_t link;                      ///< Link in entries iterator.
+    char path[SECSTORE_MAX_PATH_BYTES]; ///< Entry name.
+    bool isDir;                         ///< true if the entry is a directory, otherwise the entry
+                                        ///< is a file.
+    le_sls_Link_t link;                 ///< Link in entries iterator.
 }
 Entry_t;
 
@@ -165,6 +191,9 @@ Entry_t;
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t EntryPool = NULL;
 
+#endif /* end !MK_CONFIG_SECSTORE_DISABLE_ADMIN */
+
+#if LE_CONFIG_SOTA
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -318,7 +347,7 @@ static le_result_t SetCurrSystem
                 "Secure storage path '%s...' is too long.", CurrSysPath);
 
     // Get the path to the current system's secure storage hash.
-    char secSysHashPath[LIMIT_MAX_PATH_BYTES] = "";
+    char secSysHashPath[SECSTORE_MAX_PATH_BYTES] = "";
     LE_FATAL_IF(snprintf(secSysHashPath,
                          sizeof(secSysHashPath),
                          "%s/%d/hash",
@@ -378,7 +407,7 @@ static le_result_t SetCurrSystem
     if ((ancestorIndex != -1) && (ancestorIndex != currIndex))
     {
         // Copy all the files from the ancestor to our current system.
-        char ancestorPath[LIMIT_MAX_PATH_BYTES];
+        char ancestorPath[SECSTORE_MAX_PATH_BYTES];
 
         LE_FATAL_IF(snprintf(ancestorPath,
                              sizeof(ancestorPath),
@@ -453,7 +482,7 @@ static void RemoveOldSystems
              (secIndexPtr->index != ancestorIndex))
         {
             // Delete this system from sec store.
-            char path[LIMIT_MAX_PATH_BYTES];
+            char path[SECSTORE_MAX_PATH_BYTES];
 
             LE_FATAL_IF(snprintf(path, sizeof(path), "%s/%d",
                         SYS_PATH, secIndexPtr->index) >= sizeof(path),
@@ -522,6 +551,9 @@ static le_result_t InitSystems
     return LE_OK;
 }
 
+#endif /* end LE_CONFIG_SOTA */
+
+#if !MK_CONFIG_SECSTORE_DISABLE_ADMIN
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -529,7 +561,6 @@ static le_result_t InitSystems
  * attempt to kill the client.
  */
 //--------------------------------------------------------------------------------------------------
-#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
 static EntryIter_t* GetEntryIterPtr
 (
     secStoreAdmin_IterRef_t iterRef  ///< [IN] The ref to translate to a pointer.
@@ -551,8 +582,8 @@ static EntryIter_t* GetEntryIterPtr
 
     return iterPtr;
 }
-#endif
 
+#endif /* end !MK_CONFIG_SECSTORE_DISABLE_ADMIN */
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -599,9 +630,8 @@ static le_result_t GetClientName
 
     LE_FATAL_IF(result == LE_OVERFLOW, "Buffer too small to contain the application name.");
 
-    // The process was not an app.  Get the linux user name for the process.
+    // The process was not an app.  Get the user name for the process.
     result = user_GetName(uid, bufPtr, bufSize);
-
     if (result == LE_OK)
     {
         *isApp = false;
@@ -634,20 +664,15 @@ static void GetClientPath
     size_t bufSize                          ///< [IN] Size of the buffer.
 )
 {
-    bufPtr[0] = '\0';
+    le_result_t result;
 
-    if (isApp)
-    {
-        LE_FATAL_IF(le_path_Concat("/", bufPtr, bufSize, CurrSysPath, clientNamePtr, NULL) != LE_OK,
-                    "Buffer too small for secure storage path for app %s.", clientNamePtr);
-    }
-    else
-    {
-        LE_FATAL_IF(le_path_Concat("/", bufPtr, bufSize, USERS_PATH, clientNamePtr, NULL) != LE_OK,
-                    "Buffer too small for secure storage path for user %s.", clientNamePtr);
-    }
+    bufPtr[0] = '\0';
+    result = le_path_Concat("/", bufPtr, bufSize,
+                (isApp ? CURR_SYS_PATH : USERS_PATH), clientNamePtr, (void *) NULL);
+    LE_FATAL_IF(result != LE_OK, "Buffer too small for secure storage path for %s.", clientNamePtr);
 }
 
+#if !MK_CONFIG_SECSTORE_DISABLE_LIMIT
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -689,10 +714,11 @@ static le_result_t CheckClientLimit
     }
 
     // Get the size of the item in the secure storage if it already exists.
-    char itemPath[SECSTOREADMIN_MAX_PATH_BYTES] = "";
+    char itemPath[SECSTORE_MAX_PATH_BYTES] = "";
 
-    LE_FATAL_IF(le_path_Concat("/", itemPath, sizeof(itemPath), clientPathPtr, itemNamePtr, NULL) != LE_OK,
-                "Client %s's path for item %s is too long.", clientNamePtr, itemNamePtr);
+    LE_FATAL_IF(le_path_Concat("/", itemPath, sizeof(itemPath),
+        clientPathPtr, itemNamePtr, (void *) NULL) != LE_OK,
+            "Client %s's path for item %s is too long.", clientNamePtr, itemNamePtr);
 
     size_t origItemSize = 0;
     result = pa_secStore_GetSize(itemPath, &origItemSize);
@@ -711,6 +737,7 @@ static le_result_t CheckClientLimit
     return LE_NO_MEMORY;
 }
 
+#endif /* end !MK_CONFIG_SECSTORE_DISABLE_LIMIT */
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -754,6 +781,97 @@ static bool IsValidName
     return true;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Prepare for a read or write operation, including constructing the path and initializing the
+ * system if necessary.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NO_MEMORY if there is not enough memory to store the item.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t PrepareOp
+(
+    bool             isGlobal,          ///< [IN]  Is this an operation is the global domain?
+    const char      *name,              ///< [IN]  Name of the secure storage item.
+    size_t           bufNumElements,    ///< [IN]  Size of buffer.
+    bool             checkLimit,        ///< [IN]  Check buffer size against client's secure storage
+                                        ///<       limit?
+    char            *path               ///< [OUT] Buffer to write constructed path into.  Must be
+                                        ///<       SECSTORE_MAX_PATH_BYTES in size.
+)
+{
+    le_result_t result = LE_OK;
+
+    // Check parameters.
+    if (!IsValidName(name))
+    {
+        LE_KILL_CLIENT("Item name is invalid.");
+        return LE_FAULT;
+    }
+
+#if LE_CONFIG_SOTA
+    // Make sure systems are initialized.
+    if (!IsCurrSysPathValid)
+    {
+        result = InitSystems();
+
+        if (result != LE_OK)
+        {
+            return result;
+        }
+    }
+#endif /* end LE_CONFIG_SOTA */
+
+#if MK_CONFIG_SECSTORE_DISABLE_GLOBAL_ACCESS
+    LE_UNUSED(isGlobal);
+#else /* !MK_CONFIG_SECSTORE_DISABLE_GLOBAL_ACCESS */
+    if (isGlobal)
+    {
+        // Build global path based on prefix and item name.
+        LE_FATAL_IF(le_path_Concat("/", path, SECSTORE_MAX_PATH_BYTES, GLOBAL_PATH, name, NULL)
+            != LE_OK, "Global path for item %s is too long.", name);
+    }
+    else
+#endif /* end !MK_CONFIG_SECSTORE_DISABLE_GLOBAL_ACCESS */
+    {
+        // Get the client's name and see if it is an app.
+        bool isApp;
+        char clientName[LIMIT_MAX_USER_NAME_BYTES];
+
+        if (GetClientName(clientName, sizeof(clientName), &isApp) != LE_OK)
+        {
+            LE_KILL_CLIENT("Could not get the client's name.");
+            return LE_FAULT;
+        }
+
+        // Get the path to the client's secure storage area.
+        GetClientPath(clientName, isApp, path, SECSTORE_MAX_PATH_BYTES);
+
+#if MK_CONFIG_SECSTORE_DISABLE_LIMIT
+        LE_UNUSED(checkLimit);
+#else /* !MK_CONFIG_SECSTORE_DISABLE_LIMIT */
+        if (checkLimit)
+        {
+            // Check the available limit for the client.
+            result = CheckClientLimit(clientName, path, name, bufNumElements);
+            if (result != LE_OK)
+            {
+                return result;
+            }
+        }
+#endif /* end !MK_CONFIG_SECSTORE_DISABLE_LIMIT */
+
+        // Append item name to client path.
+        LE_FATAL_IF(le_path_Concat("/", path, SECSTORE_MAX_PATH_BYTES, name, (void *) NULL)
+            != LE_OK, "Client %s's path for item %s is too long.", clientName, name);
+    }
+
+    return result;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -776,65 +894,15 @@ static le_result_t Write
     size_t bufNumElements           ///< [IN] Size of buffer.
 )
 {
-    // Check parameters.
-    if (!IsValidName(name))
-    {
-        LE_KILL_CLIENT("Item name is invalid.");
-        return LE_FAULT;
-    }
-
-    if (bufPtr == NULL)
-    {
-        LE_KILL_CLIENT("Client buffer should not be NULL.");
-        return LE_FAULT;
-    }
-
-    // Make sure systems are initialized.
-    if (!IsCurrSysPathValid)
-    {
-        le_result_t r = InitSystems();
-
-        if (r != LE_OK)
-        {
-            return r;
-        }
-    }
-
-    char path[SECSTOREADMIN_MAX_PATH_BYTES] = {0};
+    char        path[SECSTORE_MAX_PATH_BYTES] = {0};
     le_result_t result;
 
-    if(isGlobal)
+    LE_ASSERT(bufPtr != NULL);
+
+    result  = PrepareOp(isGlobal, name, bufNumElements, true, path);
+    if (result != LE_OK)
     {
-        // Build global path based on prefix and item name.
-        LE_FATAL_IF(le_path_Concat("/", path, sizeof(path), GLOBAL_PATH, name, NULL) != LE_OK,
-                    "Global path for item %s is too long.", name);
-    }
-    else
-    {
-        // Get the client's name and see if it is an app.
-        bool isApp;
-        char clientName[LIMIT_MAX_USER_NAME_BYTES];
-
-        if (GetClientName(clientName, sizeof(clientName), &isApp) != LE_OK)
-        {
-            LE_KILL_CLIENT("Could not get the client's name.");
-            return LE_FAULT;
-        }
-
-        // Get the path to the client's secure storage area.
-        GetClientPath(clientName, isApp, path, sizeof(path));
-
-        // Check the available limit for the client.
-        result = CheckClientLimit(clientName, path, name, bufNumElements);
-
-        if (result != LE_OK)
-        {
-            return result;
-        }
-
-        // Append item name to client path.
-        LE_FATAL_IF(le_path_Concat("/", path, sizeof(path), name, NULL) != LE_OK,
-                    "Client %s's path for item %s is too long.", clientName, name);
+        return result;
     }
 
     // Write the item to the secure storage.
@@ -844,7 +912,6 @@ static le_result_t Write
     {
         return LE_FAULT;
     }
-
     return result;
 }
 
@@ -871,6 +938,8 @@ le_result_t le_secStore_Write
     return Write(false, name, bufPtr, bufNumElements);
 }
 
+#if !MK_CONFIG_SECSTORE_DISABLE_GLOBAL_ACCESS
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Writes an item to secure storage.  If the item already exists then it will be overwritten with
@@ -894,6 +963,8 @@ le_result_t secStoreGlobal_Write
     return Write(true, name, bufPtr, bufNumElements);
 }
 
+#endif /* end !MK_CONFIG_SECSTORE_ENABLE_GLOBAL_ACCESS */
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Reads an item from secure storage.
@@ -915,57 +986,16 @@ static le_result_t Read
     size_t* bufNumElementsPtr       ///< [INOUT] Size of buffer.
 )
 {
-    // Check parameters.
-    if (!IsValidName(name))
-    {
-        LE_KILL_CLIENT("Item name is invalid.");
-        return LE_FAULT;
-    }
-
-    if (bufPtr == NULL)
-    {
-        LE_KILL_CLIENT("Client buffer should not be NULL.");
-        return LE_FAULT;
-    }
-
-    // Make sure systems are initialized.
-    if (!IsCurrSysPathValid)
-    {
-        le_result_t r = InitSystems();
-
-        if (r != LE_OK)
-        {
-            return r;
-        }
-    }
-
-    char path[SECSTOREADMIN_MAX_PATH_BYTES] = {0};
+    char        path[SECSTORE_MAX_PATH_BYTES] = {0};
     le_result_t result;
 
-    if(isGlobal)
+    LE_ASSERT(bufPtr != NULL);
+    LE_ASSERT(bufNumElementsPtr != NULL);
+
+    result = PrepareOp(isGlobal, name, *bufNumElementsPtr, false, path);
+    if (result != LE_OK)
     {
-        // Build global path based on prefix and item name.
-        LE_FATAL_IF(le_path_Concat("/", path, sizeof(path), GLOBAL_PATH, name, NULL) != LE_OK,
-                    "Global path for item %s is too long.", name);
-    }
-    else
-    {
-        // Get the client's name and see if it is an app.
-        bool isApp;
-        char clientName[LIMIT_MAX_USER_NAME_BYTES];
-
-        if (GetClientName(clientName, sizeof(clientName), &isApp) != LE_OK)
-        {
-            LE_KILL_CLIENT("Could not get the client's name.");
-            return LE_FAULT;
-        }
-
-        // Get the path to the client's secure storage area.
-        GetClientPath(clientName, isApp, path, sizeof(path));
-
-        // Append item name to client path.
-        LE_FATAL_IF(le_path_Concat("/", path, sizeof(path), name, NULL) != LE_OK,
-                    "Client %s's path for item %s is too long.", clientName, name);
+        return result;
     }
 
     // Read the item from the secure storage.
@@ -1004,6 +1034,8 @@ le_result_t le_secStore_Read
     return Read(false, name, bufPtr, bufNumElementsPtr);
 }
 
+#if !MK_CONFIG_SECSTORE_DISABLE_GLOBAL_ACCESS
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Reads an item from secure storage.
@@ -1027,6 +1059,8 @@ le_result_t secStoreGlobal_Read
     return Read(true, name, bufPtr, bufNumElementsPtr);
 }
 
+#endif /* end !MK_CONFIG_SECSTORE_DISABLE_GLOBAL_ACCESS */
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Deletes an item from secure storage.
@@ -1044,50 +1078,11 @@ le_result_t Delete
     const char* name    ///< [IN] Name of the secure storage item.
 )
 {
-    // Check parameters.
-    if (!IsValidName(name))
+    char path[SECSTORE_MAX_PATH_BYTES] = {0};
+    le_result_t result = PrepareOp(isGlobal, name, 0, false, path);
+    if (result != LE_OK)
     {
-        LE_KILL_CLIENT("Item name is invalid.");
-        return LE_FAULT;
-    }
-
-    // Make sure systems are initialized.
-    if (!IsCurrSysPathValid)
-    {
-        le_result_t r = InitSystems();
-
-        if (r != LE_OK)
-        {
-            return r;
-        }
-    }
-
-    char path[SECSTOREADMIN_MAX_PATH_BYTES] = {0};
-
-    if(isGlobal)
-    {
-        // Build global path based on prefix and item name.
-        LE_FATAL_IF(le_path_Concat("/", path, sizeof(path), GLOBAL_PATH, name, NULL) != LE_OK,
-                    "Global path for item %s is too long.", name);
-    }
-    else
-    {
-        // Get the client's name and see if it is an app.
-        bool isApp;
-        char clientName[LIMIT_MAX_USER_NAME_BYTES];
-
-        if (GetClientName(clientName, sizeof(clientName), &isApp) != LE_OK)
-        {
-            LE_KILL_CLIENT("Could not get the client's name.");
-            return LE_FAULT;
-        }
-
-        // Get the path to the client's secure storage area.
-        GetClientPath(clientName, isApp, path, sizeof(path));
-
-        // Append item name to client path.
-        LE_FATAL_IF(le_path_Concat("/", path, sizeof(path), name, NULL) != LE_OK,
-                    "Client %s's path for item %s is too long.", clientName, name);
+        return result;
     }
 
     // Delete the item from the secure storage.
@@ -1113,6 +1108,8 @@ le_result_t le_secStore_Delete
     return Delete(false, name);
 }
 
+#if !MK_CONFIG_SECSTORE_DISABLE_GLOBAL_ACCESS
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Deletes an item from secure storage.
@@ -1132,6 +1129,9 @@ le_result_t secStoreGlobal_Delete
     return Delete(true, name);
 }
 
+#endif /* end !MK_CONFIG_SECSTORE_DISABLE_GLOBAL_ACCESS */
+
+#if !MK_CONFIG_SECSTORE_DISABLE_ADMIN
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1142,7 +1142,6 @@ le_result_t secStoreGlobal_Delete
  *      false otherwise.
  */
 //--------------------------------------------------------------------------------------------------
-#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
 static bool IsInEntryList
 (
     const char* entry,                  ///< [IN] Entry.
@@ -1155,7 +1154,7 @@ static bool IsInEntryList
     {
         Entry_t* entryPtr = CONTAINER_OF(linkPtr, Entry_t, link);
 
-        if (strncmp(entryPtr->path, entry, SECSTOREADMIN_MAX_PATH_BYTES) == 0)
+        if (strncmp(entryPtr->path, entry, SECSTORE_MAX_PATH_BYTES) == 0)
         {
             return true;
         }
@@ -1165,7 +1164,6 @@ static bool IsInEntryList
 
     return false;
 }
-#endif
 
 
 //--------------------------------------------------------------------------------------------------
@@ -1278,7 +1276,6 @@ static void CleanupClientIterators
     LE_FATAL_IF(result == LE_FAULT, "Error iterating over safe reference.");
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Create an iterator for listing entries in secure storage under the specified path.
@@ -1288,7 +1285,6 @@ static void CleanupClientIterators
  *      NULL if there is an error.
  */
 //--------------------------------------------------------------------------------------------------
-#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
 static void StoreEntry
 (
     const char* entryNamePtr,       ///< [IN] Entry name.
@@ -1308,15 +1304,13 @@ static void StoreEntry
 
         LE_ASSERT(le_utf8_Copy(entryPtr->path,
                                entryNamePtr,
-                               SECSTOREADMIN_MAX_PATH_BYTES,
+                               SECSTORE_MAX_PATH_BYTES,
                                NULL) == LE_OK);
         entryPtr->isDir = isDir;
 
         le_sls_Queue(&(iterPtr->entryList), &(entryPtr->link));
     }
 }
-#endif
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1334,7 +1328,6 @@ secStoreAdmin_IterRef_t secStoreAdmin_CreateIter
         ///< Path to iterate over.
 )
 {
-#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
     // Check parameters.
     if (!IsValidPath(path, false))
     {
@@ -1359,9 +1352,6 @@ secStoreAdmin_IterRef_t secStoreAdmin_CreateIter
 
     // Create the saference for this iterator.
     return le_ref_CreateRef(EntryIterMap, iterPtr);
-#else
-    return NULL;
-#endif
 }
 
 
@@ -1377,7 +1367,6 @@ void secStoreAdmin_DeleteIter
         ///< Iterator reference.
 )
 {
-#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
     // Get the iterator from the safe reference.
     EntryIter_t* iterPtr = GetEntryIterPtr(iterRef);
 
@@ -1391,7 +1380,6 @@ void secStoreAdmin_DeleteIter
     le_ref_DeleteRef(EntryIterMap, iterRef);
 
     DeleteIter(iterPtr);
-#endif
 }
 
 
@@ -1413,7 +1401,6 @@ le_result_t secStoreAdmin_Next
         ///< Iterator reference.
 )
 {
-#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
     // Get the iterator from the safe reference.
     EntryIter_t* iterPtr = GetEntryIterPtr(iterRef);
 
@@ -1439,9 +1426,6 @@ le_result_t secStoreAdmin_Next
     }
 
     return LE_OK;
-#else
-    return LE_UNSUPPORTED;
-#endif
 }
 
 
@@ -1473,7 +1457,6 @@ le_result_t secStoreAdmin_GetEntry
         ///< True if the entry is a directory, false otherwise.
 )
 {
-#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
     if (name == NULL)
     {
         LE_KILL_CLIENT("name buffer is NULL.");
@@ -1507,9 +1490,6 @@ le_result_t secStoreAdmin_GetEntry
 
     *isDir = entryPtr->isDir;
     return le_utf8_Copy(name, entryPtr->path, nameNumElements, NULL);
-#else
-    return LE_UNSUPPORTED;
-#endif
 }
 
 
@@ -1544,7 +1524,6 @@ le_result_t secStoreAdmin_Write
         ///< [IN]
 )
 {
-#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
     // Check parameters.
     if (!IsValidPath(path, true))
     {
@@ -1560,10 +1539,6 @@ le_result_t secStoreAdmin_Write
 
     // Write the item to the secure storage.
     return pa_secStore_Write(path, bufPtr, bufNumElements);
-
-#else
-    return LE_UNSUPPORTED;
-#endif
 }
 
 
@@ -1597,7 +1572,6 @@ le_result_t secStoreAdmin_Read
         ///< [INOUT]
 )
 {
-#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
     // Check parameters.
     if (!IsValidPath(path, true))
     {
@@ -1613,9 +1587,6 @@ le_result_t secStoreAdmin_Read
 
     // Read the item from the secure storage.
     return pa_secStore_Read(path, bufPtr, bufNumElementsPtr);
-#else
-    return LE_UNSUPPORTED;
-#endif
 }
 
 
@@ -1637,11 +1608,7 @@ le_result_t secStoreAdmin_CopyMetaTo
         ///< Destination path of meta file copy.
 )
 {
-#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
     return pa_secStore_CopyMetaTo(path);
-#else
-    return LE_UNSUPPORTED;
-#endif
 }
 
 
@@ -1667,7 +1634,6 @@ le_result_t secStoreAdmin_Delete
         ///< Path of the secure storage item.
 )
 {
-#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
     // Check parameters.
     if (!IsValidPath(path, false))
     {
@@ -1677,9 +1643,6 @@ le_result_t secStoreAdmin_Delete
 
     // Delete the item from the secure storage.
     return pa_secStore_Delete(path);
-#else
-    return LE_UNSUPPORTED;
-#endif
 }
 
 
@@ -1773,6 +1736,9 @@ le_result_t secStoreAdmin_GetTotalSpace
     return result;
 }
 
+#endif /* end !MK_CONFIG_SECSTORE_DISABLE_ADMIN */
+
+#if LE_CONFIG_SOTA
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1797,7 +1763,7 @@ static void SecStoreUpdate
 
 //--------------------------------------------------------------------------------------------------
 /**
- * QMI event handler for NV restoration done.
+ * Event handler for NV restoration done.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -1856,6 +1822,8 @@ static void AppUninstallHandler
     SecStoreUpdate();
 }
 
+#endif /* end LE_CONFIG_SOTA */
+
 //--------------------------------------------------------------------------------------------------
 /**
  * The secure storage daemon's initialization function.
@@ -1863,23 +1831,28 @@ static void AppUninstallHandler
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+#if !MK_CONFIG_SECSTORE_DISABLE_ADMIN
     EntryIterMap = le_ref_CreateMap("EntryIterMap", 1);
 
     EntryIterPool = le_mem_CreatePool("EntryIterPool", sizeof(EntryIter_t));
     EntryPool = le_mem_CreatePool("EntryPool", sizeof(Entry_t));
 
-    SystemIndexPool = le_mem_CreatePool("SystemIndexPool", sizeof(SystemsIndex_t));
-
     // Register a handler that will clean up client specific data when clients disconnect.
     le_msg_AddServiceCloseHandler(secStoreAdmin_GetServiceRef(),
                                   CleanupClientIterators,
                                   NULL);
+#endif /* end !MK_CONFIG_SECSTORE_DISABLE_ADMIN */
+
+#if LE_CONFIG_SOTA
+    SystemIndexPool = le_mem_CreatePool("SystemIndexPool", sizeof(SystemsIndex_t));
+
     // Register a handler function for secure storage restore indication.
     pa_secStore_SetRestoreHandler(RestoreHandler);
 
     // Register handlers for app installation/un-installiation events to update secure storage PATH.
     le_instStat_AddAppInstallEventHandler(AppInstallHandler, NULL);
     le_instStat_AddAppUninstallEventHandler(AppUninstallHandler, NULL);
+#endif /* end LE_CONFIG_SOTA */
 
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };

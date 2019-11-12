@@ -9,30 +9,45 @@ processes:
 {
     run:
     {
-        (secStore)
+        ( secStore )
     }
 
     faultAction: restart
-    #if ${LE_CONFIG_SERVICES_WATCHDOG} = y
-        maxWatchdogTimeout: 120000
-    #else
-        watchdogTimeout: never
-    #endif
+#if ${LE_CONFIG_SERVICES_WATCHDOG} = y
+    maxWatchdogTimeout: 120000
+#else
+    watchdogTimeout: never
+#endif
 }
 
 extern:
 {
     secStore.secStoreDaemon.le_secStore
+
+#if ${LE_CONFIG_LINUX} = ""
+    secStore.secStoreDaemon.le_appInfo
+    secStore.watchdogChain.le_wdog
+#endif
+#if ${MK_CONFIG_SECSTORE_DISABLE_ADMIN} = ""
     secStore.secStoreDaemon.secStoreAdmin
+#endif
+#if ${MK_CONFIG_SECSTORE_DISABLE_GLOBAL_ACCESS} = ""
     secStore.secStoreDaemon.secStoreGlobal
+#endif
 }
 
-
+#if ${LE_CONFIG_LINUX} = y
 bindings:
 {
-    secStore.secStoreDaemon.le_appInfo -> <root>.le_appInfo
-    secStore.secStoreDaemon.le_update -> <root>.le_update
-    secStore.watchdogChain.le_wdog -> <root>.le_wdog
-    secStore.secStoreDaemon.le_instStat-> <root>.le_instStat
-}
+    secStore.secStoreDaemon.le_appInfo  -> <root>.le_appInfo
 
+    #if ${LE_CONFIG_SERVICES_WATCHDOG} = y
+    secStore.watchdogChain.le_wdog      -> <root>.le_wdog
+    #endif
+
+    #if ${LE_CONFIG_SOTA} = y
+    secStore.secStoreDaemon.le_instStat -> <root>.le_instStat
+    secStore.secStoreDaemon.le_update   -> <root>.le_update
+    #endif
+}
+#endif
