@@ -524,6 +524,9 @@ static thread_Obj_t* CreateThread
     // in that case we just use default values.
     thread_Obj_t* currentThreadPtr = pthread_getspecific(ThreadLocalDataKey);
 
+    // Initialize the pthreads attribute structure.
+    LE_ASSERT(pthread_attr_init(&(threadPtr->attr)) == 0);
+
 #if LE_CONFIG_THREAD_NAMES_ENABLED
     // Copy the name.  We will make the names unique by adding the thread ID later so we allow any
     // string as the name.
@@ -531,10 +534,19 @@ static thread_Obj_t* CreateThread
                "Thread name '%s' has been truncated to '%s'.",
                name,
                threadPtr->name);
-#endif /* end LE_CONFIG_THREAD_NAMES_ENABLED */
 
-    // Initialize the pthreads attribute structure.
-    LE_ASSERT(pthread_attr_init(&(threadPtr->attr)) == 0);
+#   if LE_CONFIG_THREAD_SETNAME && HAVE_PTHREAD_ATTR_SETNAME_NP
+
+    // Set the thread's name for debugging using JTAG
+    if (pthread_attr_setname_np(&(threadPtr->attr), threadPtr->name) != 0)
+    {
+        LE_WARN("Could not set name for thread \'%s\'. This might be okay because it can be set"
+                " later on", threadPtr->name);
+    }
+
+#   endif /* end LE_CONFIG_THREAD_SETNAME && HAVE_PTHREAD_ATTR_SETNAME_NP */
+
+#endif /* end LE_CONFIG_THREAD_NAMES_ENABLED */
 
     // Make sure when we create the thread it takes it attributes from the attribute object,
     // as opposed to inheriting them from its parent thread.
