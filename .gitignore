@@ -84,6 +84,7 @@ framework/tools/imgdiff/
 
 # nodejs ignores:
 node_modules
+package-lock.json
 
 # Linker report tool for memory analysis
 tools/linkerReport

@@ -19,7 +19,6 @@ import * as loader from './model/loader';
 import * as ext from './lspExtensionDefs';
 import * as lspCli from './lspClient';
 import * as nav from './model/dataNavigation';
-import * as jdoc from './model/jsonDocument';
 
 
 
@@ -100,7 +99,7 @@ export interface ConversionFlags
 
 //--------------------------------------------------------------------------------------------------
 /**
- * .
+ * The system view in the IDE is a tree of these definition objects.
  */
 //--------------------------------------------------------------------------------------------------
 export class DefinitionObject implements ext.le_DefinitionObject
@@ -214,38 +213,19 @@ function ComponentsAsSymbols(componentSections: model.ComponentSection[]): Defin
 
 
 
-function AddExternalInterfaces
-(
-    appSym: DefinitionObject,
-    appPath: string,
-    clients: jdoc.ClientInterface[],
-    servers: jdoc.ServerInterface[]
-)
+//--------------------------------------------------------------------------------------------------
+/**
+ * Extract an app's client APIs from it's external interface.
+ *
+ * @param appRef The application we generating for.
+ */
+//--------------------------------------------------------------------------------------------------
+function InterfaceClientsAsSymbols(appRef: model.ApplicationRef): DefinitionObject[]
 {
-    let start = new loader.Location(appPath, 0, 0);
+    let start = new loader.Location(appRef.target.path, 0, 0);
+    let clientSymbols: DefinitionObject[] = [];
 
-    let extSym = new DefinitionObject(ext.le_DefinitionObjectType.ExternalIf,
-                                      "Interface",
-                                      appPath,
-                                      start,
-                                      start,
-                                      true);
-
-    let clientSym = new DefinitionObject(ext.le_DefinitionObjectType.ExternalIf,
-                                         "Clients",
-                                         appPath,
-                                         start,
-                                         start,
-                                         true);
-
-    let serverSym = new DefinitionObject(ext.le_DefinitionObjectType.ExternalIf,
-                                         "Services",
-                                         appPath,
-                                         start,
-                                         start,
-                                         true);
-
-    for (let clientApi of clients)
+    for (let clientApi of appRef.target.interfaces.extern.clients)
     {
         let apiName = `${clientApi.name} (${clientApi.interface.name}.api)`;
 
@@ -256,59 +236,199 @@ function AddExternalInterfaces
             start,
             true);
 
-        clientSym.children.push(ifSym);
+        clientSymbols.push(ifSym);
     }
 
-    for (let serverApi of servers)
-    {
-        let apiName = `${serverApi.name} (${serverApi.interface.name}.api)`;
-
-        let ifSym = new DefinitionObject(ext.le_DefinitionObjectType.ExternalIf,
-            apiName,
-            serverApi.interface.path,
-            start,
-            start,
-            true);
-
-        serverSym.children.push(ifSym);
-    }
-
-    if (clientSym.children.length > 0)
-    {
-        extSym.children.push(clientSym);
-    }
-
-    if (serverSym.children.length > 0)
-    {
-        extSym.children.push(serverSym);
-    }
-
-    if (extSym.children.length > 0)
-    {
-        appSym.children.push(extSym);
-    }
+    return clientSymbols;
 }
 
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Convert a collection of application references into symbol objects.  The apps are grouped by
- * which system definition they came from.
+ * Extract an app's service APIs from it's external interface.
+ *
+ * @param appRef The application we generating for.
  */
 //--------------------------------------------------------------------------------------------------
-function AppsAsSymbols(systemPath: string,
-                       appSections: model.SystemAppsSection[]): DefinitionObject[]
+function InterfaceServersAsSymbols(appRef: model.ApplicationRef): DefinitionObject[]
 {
-    // Keep track of the app subsections that needed to be created.
-    let sectionMap: { [index: string]: DefinitionObject } = {};
-    let mainSection: DefinitionObject = undefined;
+    let start = new loader.Location(appRef.target.path, 0, 0);
+    let serverSymbols: DefinitionObject[] = [];
+
+    for (let serverApi of appRef.target.interfaces.extern.servers)
+    {
+        let apiName = `${serverApi.name} (${serverApi.interface.name}.api)`;
+        let ifSym = new DefinitionObject(ext.le_DefinitionObjectType.ExternalIf,
+                                         apiName,
+                                         serverApi.interface.path,
+                                         start,
+                                         start,
+                                         true);
+
+        serverSymbols.push(ifSym);
+    }
+
+    return serverSymbols;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Construct a view of an app's external interfaces.
+ *
+ * @param appRef The application we generating for.
+ */
+//--------------------------------------------------------------------------------------------------
+function ExternalInterfaces
+(
+    appRef: model.ApplicationRef
+)
+//--------------------------------------------------------------------------------------------------
+: DefinitionObject
+//--------------------------------------------------------------------------------------------------
+{
+    let appPath = appRef.target.path;
+    let start = new loader.Location(appPath, 0, 0);
+
+
+    // Collect all the app's external client interfaces.
+    let clientCollection = new DefinitionObject(ext.le_DefinitionObjectType.ExternalIf,
+                                               "Clients",
+                                               appPath,
+                                               start,
+                                               start,
+                                               true);
+
+    clientCollection.children = InterfaceClientsAsSymbols(appRef);
+
+
+    // Now collect all the server interfaces.
+    let serverCollection = new DefinitionObject(ext.le_DefinitionObjectType.ExternalIf,
+                                               "Services",
+                                               appPath,
+                                               start,
+                                               start,
+                                               true);
+
+    serverCollection.children = InterfaceServersAsSymbols(appRef);
+
+
+    // Bundle all of these interfaces under app's external interface.
+    let interfaceSymbol = new DefinitionObject(ext.le_DefinitionObjectType.ExternalIf,
+                                              "Interface",
+                                              appPath,
+                                              start,
+                                              start,
+                                              true);
+
+    interfaceSymbol.children = [];
+
+    if (clientCollection.children.length > 0)
+    {
+        interfaceSymbol.children.push(clientCollection);
+    }
+
+    if (serverCollection.children.length > 0)
+    {
+        interfaceSymbol.children.push(serverCollection);
+    }
+
+    return interfaceSymbol;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert an application ref into a system view symbol.
+ */
+//--------------------------------------------------------------------------------------------------
+function AppAsSymbol(appRef: model.ApplicationRef): DefinitionObject
+{
+    let start = new loader.Location(appRef.refString, 0, 0);
+    let sym = new DefinitionObject(ext.le_DefinitionObjectType.ApplicationRef,
+                                   path.basename(appRef.name, path.extname(appRef.name)),
+                                   appRef.target.path,
+                                   start,
+                                   start);
+
+    // Check to see if there is a proper target reference for this app ref.  If there is not a valid
+    // reference, return early.
+    if (appRef.target === undefined)
+    {
+        return sym;
+    }
+
+    // Extract and provide any extra information we can find for this app.
+    if (appRef.target.isIncluded === false)
+    {
+        let externalInterfaces = ExternalInterfaces(appRef);
+        let components = ComponentsAsSymbols(appRef.target.componentSections);
+
+        if (externalInterfaces.children.length > 0)
+        {
+            sym.children.push(externalInterfaces);
+        }
+
+        if (components.length > 0)
+        {
+            sym.children = sym.children.concat(components);
+        }
+    }
+    else
+    {
+        // If this is an included app, we simplify what we add to the view.  In this case we just
+        // add the external interfaces that the included app provides for binding.
+        sym.children = InterfaceServersAsSymbols(appRef);
+    }
+
+    return sym;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * A map of definition sections, collected by their names.
+ */
+//--------------------------------------------------------------------------------------------------
+type SectionMapType = { [index: string]: DefinitionObject };
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define a logical view of application objects for the system view.
+ */
+//--------------------------------------------------------------------------------------------------
+interface SystemAppView
+{
+    /** Map of system app includes. */
+    includedAppSections: SectionMapType;
+
+    /** Section that represents the apps of the main .sdef. */
+    mainSection: DefinitionObject;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create the display sections for the apps found within the system model, broken down into where
+ * the apps were found.
+ */
+//--------------------------------------------------------------------------------------------------
+function CreateSections(systemPath: string, appSections: model.SystemAppsSection[]): SystemAppView
+{
+    let viewSections: SystemAppView = { includedAppSections: {}, mainSection: undefined };
 
     // Go through all of the system's subsections, and convert them over to the symbol model
     for (let appSection of appSections)
     {
         let newName = 'apps [' + path.basename(appSection.location.file) + ']';
-        let section = sectionMap[newName];
+        let section = viewSections.includedAppSections[newName];
 
         if (section === undefined)
         {
@@ -326,67 +446,37 @@ function AppsAsSymbols(systemPath: string,
                                            appSection.location,
                                            defaultCollapsed);
 
-            sectionMap[newName] = section;
+            viewSections.includedAppSections[newName] = section;
 
             if (section.defaultCollapsed === false)
             {
-                mainSection = section;
+                viewSections.mainSection = section;
             }
         }
 
+        // Now, lets go through and sort all of our apps into the correct sections.
         for (let appRef of appSection.apps)
         {
-            if (appRef.target === undefined)
-            {
-                console.log('Skipping: ' + appRef.name);
-                continue;
-            }
-
-            let start = new loader.Location(appRef.refString, 0, 0);
-            let sym = new DefinitionObject(ext.le_DefinitionObjectType.ApplicationRef,
-                                           path.basename(appRef.name, path.extname(appRef.name)),
-                                           appRef.target.path,
-                                           start,
-                                           start);
-
             if (appRef.target !== undefined)
             {
-                console.log(`## Application ${appRef.name}: isIncluded: ${appRef.target.isIncluded}.`);
-
-                let clients: jdoc.ClientInterface[] = [];
-                let servers: jdoc.ServerInterface[] = [];
-
-                console.log(`interfaces:\n${appRef.target.interfaces.extern}`);
-
-                for (let x in appRef.target.interfaces.extern)
-                {
-                    console.log(`## ${x}`);
-                }
-
-                if (appRef.target.isIncluded === false)
-                {
-                    let components = ComponentsAsSymbols(appRef.target.componentSections);
-
-                    if (components.length > 0)
-                    {
-                        sym.children = sym.children.concat(components);
-                    }
-
-                    clients = appRef.target.interfaces.extern.clients;
-                    console.log(`Clinets:\n${clients}`);
-                }
-
-                servers = appRef.target.interfaces.extern.servers;
-                console.log(`Servers:\n${servers}`);
-
-                AddExternalInterfaces(sym, appRef.target.path, clients, servers);
+                section.children.push(AppAsSymbol(appRef));
             }
-
-            section.children.push(sym);
         }
     }
 
-    let includedApps = Object.keys(sectionMap).map(
+    return viewSections;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert our section map to an array of system view objects.
+ */
+//--------------------------------------------------------------------------------------------------
+function SectionMapToDefinitionObjects(sectionMap: SectionMapType): DefinitionObject[]
+{
+    return Object.keys(sectionMap).map(
         (key): DefinitionObject =>
         {
             return sectionMap[key];
@@ -394,8 +484,9 @@ function AppsAsSymbols(systemPath: string,
         .filter(
             (defObject: DefinitionObject): boolean =>
             {
-                // Filter out off if the includes with children.  We also filter out the main def
-                // file as well.
+                // Filter out any sections that don't have any children.  If the collection's
+                // default collapsed flag is false, that means it's the main section, and we don't
+                // want that in here either.
                 if (   (defObject.children.length === 0)
                     || (defObject.defaultCollapsed === false))
                 {
@@ -404,17 +495,39 @@ function AppsAsSymbols(systemPath: string,
 
                 return true;
             });
+}
 
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert a collection of application references into symbol objects.  The apps are grouped by
+ * which system definition they came from.
+ */
+//--------------------------------------------------------------------------------------------------
+function AppsAsSymbols
+(
+    systemPath: string,
+    appSections: model.SystemAppsSection[]
+)
+: DefinitionObject[]
+//--------------------------------------------------------------------------------------------------
+{
+    // Keep track of the app subsections that needed to be created.
+    let viewSections = CreateSections(systemPath, appSections);
+
+    // Convert or app map to the include node for the system view.
     let incSection = new DefinitionObject(ext.le_DefinitionObjectType.IncDefs,
-                                         'included apps',
-                                         systemPath,
-                                         new loader.Location(),
-                                         new loader.Location(),
-                                         true);
+                                          'included apps',
+                                          systemPath,
+                                          new loader.Location(),
+                                          new loader.Location(),
+                                          true);
 
-    incSection.children = includedApps;
+    incSection.children = SectionMapToDefinitionObjects(viewSections.includedAppSections);
 
-    return [ mainSection, incSection ];
+    // Return the main app nodes as well as the included apps.
+    return [ viewSections.mainSection, incSection ];
 }
 
 

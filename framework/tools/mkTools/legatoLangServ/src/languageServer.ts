@@ -198,8 +198,34 @@ function RecordError(error: any)
 
 
 
+// -------------------------------------------------------------------------------------------------
+/**
+ * This type represents the functions that actually handle the language server protocol events.
+ *
+ * All handlers take either no arguments or a single argument that is a structure broken down into
+ * all the actual parameters to handle.  They may or may not return a value so they may be functions
+ * that return 'undefined.'
+ */
+// -------------------------------------------------------------------------------------------------
 type RegHandlerType<PT, RT> = (arg: PT) => RT;
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * A function that knows how to register a handler for a given protocol sync point.
+ */
+// -------------------------------------------------------------------------------------------------
 type RegFunctionType<PT, RT> = (handler: RegHandlerType<PT, RT>) => void;
+
+
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Custom protocol handlers are registered by name.  Standard protocol handlers are registered by
+ * function handle.  This type allows our binding functions to take both.
+ */
+// -------------------------------------------------------------------------------------------------
 type RegType<PT, RT> = string | RegFunctionType<PT, RT>;
 
 
