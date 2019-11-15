@@ -371,7 +371,7 @@ LE_SHARED le_result_t pa_mdc_StartSessionIPV6
  *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED LE_SHARED le_result_t pa_mdc_StartSessionIPV4V6
+LE_SHARED le_result_t pa_mdc_StartSessionIPV4V6
 (
     uint32_t profileIndex        ///< [IN] The profile to use
 );

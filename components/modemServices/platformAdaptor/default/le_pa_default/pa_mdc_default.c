@@ -19,7 +19,7 @@
  *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_GetDefaultProfileIndex
+__attribute__((weak)) le_result_t pa_mdc_GetDefaultProfileIndex
 (
     uint32_t* profileIndexPtr
 )
@@ -37,7 +37,7 @@ le_result_t pa_mdc_GetDefaultProfileIndex
  *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_GetBipDefaultProfileIndex
+__attribute__((weak)) le_result_t pa_mdc_GetBipDefaultProfileIndex
 (
     uint32_t* profileIndexPtr   ///< [OUT] index of the profile.
 )
@@ -55,7 +55,7 @@ le_result_t pa_mdc_GetBipDefaultProfileIndex
  *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_ReadProfile
+__attribute__((weak)) le_result_t pa_mdc_ReadProfile
 (
     uint32_t profileIndex,                  ///< [IN] The profile to read
     pa_mdc_ProfileData_t* profileDataPtr    ///< [OUT] The profile data
@@ -75,7 +75,7 @@ le_result_t pa_mdc_ReadProfile
  *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_InitializeProfile
+__attribute__((weak)) le_result_t pa_mdc_InitializeProfile
 (
     uint32_t   profileIndex     ///< [IN] The profile to write
 )
@@ -93,7 +93,7 @@ le_result_t pa_mdc_InitializeProfile
  *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_WriteProfile
+__attribute__((weak)) le_result_t pa_mdc_WriteProfile
 (
     uint32_t profileIndex,                  ///< [IN] The profile to write
     pa_mdc_ProfileData_t* profileDataPtr    ///< [IN] The profile data
@@ -113,7 +113,7 @@ le_result_t pa_mdc_WriteProfile
  *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_StartSessionIPV4
+__attribute__((weak)) le_result_t pa_mdc_StartSessionIPV4
 (
     uint32_t profileIndex          ///< [IN] The profile to use
 )
@@ -132,7 +132,7 @@ le_result_t pa_mdc_StartSessionIPV4
  *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_StartSessionIPV6
+__attribute__((weak)) le_result_t pa_mdc_StartSessionIPV6
 (
     uint32_t profileIndex        ///< [IN] The profile to use
 )
@@ -151,7 +151,7 @@ le_result_t pa_mdc_StartSessionIPV6
  *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_StartSessionIPV4V6
+__attribute__((weak)) le_result_t pa_mdc_StartSessionIPV4V6
 (
     uint32_t profileIndex        ///< [IN] The profile to use
 )
@@ -169,7 +169,7 @@ le_result_t pa_mdc_StartSessionIPV4V6
  *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_GetSessionType
+__attribute__((weak)) le_result_t pa_mdc_GetSessionType
 (
     uint32_t profileIndex,              ///< [IN] The profile to use
     pa_mdc_SessionType_t* sessionIpPtr  ///< [OUT] IP family session
@@ -189,7 +189,7 @@ le_result_t pa_mdc_GetSessionType
  *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_StopSession
+__attribute__((weak)) le_result_t pa_mdc_StopSession
 (
     uint32_t profileIndex              ///< [IN] The profile to use
 )
@@ -208,7 +208,7 @@ le_result_t pa_mdc_StopSession
  *      - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_RejectMtPdpSession
+__attribute__((weak)) le_result_t pa_mdc_RejectMtPdpSession
 (
     uint32_t profileIndex             ///< [IN] The profile to use
 )
@@ -226,7 +226,7 @@ le_result_t pa_mdc_RejectMtPdpSession
  *      - LE_FAULT on error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_GetSessionState
+__attribute__((weak)) le_result_t pa_mdc_GetSessionState
 (
     uint32_t profileIndex,                  ///< [IN] The profile to use
     le_mdc_ConState_t* sessionStatePtr      ///< [OUT] The data session state
@@ -246,7 +246,7 @@ le_result_t pa_mdc_GetSessionState
  *      The process exits on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_event_HandlerRef_t pa_mdc_AddSessionStateHandler
+__attribute__((weak)) le_event_HandlerRef_t pa_mdc_AddSessionStateHandler
 (
     pa_mdc_SessionStateHandler_t handlerRef, ///< [IN] The session state handler function.
     void*                        contextPtr  ///< [IN] The context to be given to the handler.
@@ -262,7 +262,7 @@ le_event_HandlerRef_t pa_mdc_AddSessionStateHandler
  *
  */
 //--------------------------------------------------------------------------------------------------
-void pa_mdc_GetConnectionFailureReason
+__attribute__((weak)) void pa_mdc_GetConnectionFailureReason
 (
     uint32_t profileIndex,              ///< [IN] The profile to use
     pa_mdc_ConnectionFailureCode_t** failureCodesPtr  ///< [OUT] The specific Failure Reason codes
@@ -277,7 +277,7 @@ void pa_mdc_GetConnectionFailureReason
  *
  */
 //--------------------------------------------------------------------------------------------------
-void pa_mdc_GetConnectionFailureReasonExt
+__attribute__((weak)) void pa_mdc_GetConnectionFailureReasonExt
 (
     uint32_t profileIndex,                           ///< [IN] The profile to use
     le_mdc_Pdp_t pdp,                                ///< [IN] The failure reason pdp type
@@ -297,7 +297,7 @@ void pa_mdc_GetConnectionFailureReasonExt
  *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_GetInterfaceName
+__attribute__((weak)) le_result_t pa_mdc_GetInterfaceName
 (
     uint32_t profileIndex,                  ///< [IN] The profile to use
     char*  interfaceNameStr,                ///< [OUT] The name of the network interface
@@ -319,7 +319,7 @@ le_result_t pa_mdc_GetInterfaceName
  *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_GetIPAddress
+__attribute__((weak)) le_result_t pa_mdc_GetIPAddress
 (
     uint32_t profileIndex,             ///< [IN] The profile to use
     le_mdmDefs_IpVersion_t ipVersion,          ///< [IN] IP Version
@@ -342,7 +342,7 @@ le_result_t pa_mdc_GetIPAddress
  *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_GetGatewayAddress
+__attribute__((weak)) le_result_t pa_mdc_GetGatewayAddress
 (
     uint32_t profileIndex,                  ///< [IN] The profile to use
     le_mdmDefs_IpVersion_t ipVersion,               ///< [IN] IP Version
@@ -369,7 +369,7 @@ le_result_t pa_mdc_GetGatewayAddress
  *      be returned for the unavailable address
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_GetDNSAddresses
+__attribute__((weak)) le_result_t pa_mdc_GetDNSAddresses
 (
     uint32_t profileIndex,                  ///< [IN] The profile to use
     le_mdmDefs_IpVersion_t ipVersion,               ///< [IN] IP Version
@@ -393,7 +393,7 @@ le_result_t pa_mdc_GetDNSAddresses
  *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_GetAccessPointName
+__attribute__((weak)) le_result_t pa_mdc_GetAccessPointName
 (
     uint32_t profileIndex,             ///< [IN] The profile to use
     char*  apnNameStr,                 ///< [OUT] The Access Point Name
@@ -413,7 +413,7 @@ le_result_t pa_mdc_GetAccessPointName
  *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_GetDataBearerTechnology
+__attribute__((weak)) le_result_t pa_mdc_GetDataBearerTechnology
 (
     uint32_t                       profileIndex,              ///< [IN] The profile to use
     le_mdc_DataBearerTechnology_t* downlinkDataBearerTechPtr, ///< [OUT] downlink data bearer technology
@@ -434,7 +434,7 @@ le_result_t pa_mdc_GetDataBearerTechnology
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_GetDataFlowStatistics
+__attribute__((weak)) le_result_t pa_mdc_GetDataFlowStatistics
 (
     pa_mdc_PktStatistics_t *dataStatisticsPtr ///< [OUT] Statistics data
 )
@@ -453,7 +453,7 @@ le_result_t pa_mdc_GetDataFlowStatistics
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_ResetDataFlowStatistics
+__attribute__((weak)) le_result_t pa_mdc_ResetDataFlowStatistics
 (
     void
 )
@@ -471,7 +471,7 @@ le_result_t pa_mdc_ResetDataFlowStatistics
  *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_StopDataFlowStatistics
+__attribute__((weak)) le_result_t pa_mdc_StopDataFlowStatistics
 (
     void
 )
@@ -489,7 +489,7 @@ le_result_t pa_mdc_StopDataFlowStatistics
  *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_StartDataFlowStatistics
+__attribute__((weak)) le_result_t pa_mdc_StartDataFlowStatistics
 (
     void
 )
@@ -509,14 +509,14 @@ le_result_t pa_mdc_StartDataFlowStatistics
  *
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_mdc_MapProfileOnNetworkInterface
+__attribute__((weak)) LE_SHARED le_result_t pa_mdc_MapProfileOnNetworkInterface
 (
     uint32_t         profileIndex,         ///< [IN] The profile to use
     const char*      interfaceNamePtr      ///< [IN] Network interface name
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -528,7 +528,7 @@ LE_SHARED le_result_t pa_mdc_MapProfileOnNetworkInterface
  *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_mdc_GetProfileList
+__attribute__((weak)) le_result_t pa_mdc_GetProfileList
 (
     le_mdc_ProfileInfo_t* profileList, ///< [OUT] list of available profiles
     size_t* listSize                   ///< [INOUT] list size

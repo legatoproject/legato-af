@@ -169,9 +169,6 @@ static void SetConfiguration
     // Get the profile reference
     *profileRefPtr = le_mdc_GetProfile(profile);
 
-    LE_TEST_OK(LE_OK == le_mdc_MapProfileOnNetworkInterface(*profileRefPtr, "rmnet_data0"),
-               "call le_mdc_MapProfileOnNetworkInterface");
-
     LE_TEST_OK(NULL != *profileRefPtr, "Test profileRefPtr");
 
     // Check the current state of the cid
@@ -201,7 +198,7 @@ static void SetConfiguration
     {
         pdp = LE_MDC_PDP_IPV4V6;
     }
-pdp = LE_MDC_PDP_IPV4;
+    pdp = LE_MDC_PDP_IPV4;
     LE_TEST_OK(LE_OK == le_mdc_SetPDP(*profileRefPtr, pdp), "Test le_mdc_SetPDP");
 
     // Set APN
