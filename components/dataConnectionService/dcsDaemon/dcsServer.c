@@ -45,8 +45,9 @@
 #include "dcs.h"
 #include "dcsNet.h"
 #include "dcsTechRank.h"
+#if LE_CONFIG_SERVICES_WATCHDOG
 #include "watchdogChain.h"
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions
@@ -80,13 +81,14 @@
 //--------------------------------------------------------------------------------------------------
 #define DEFAULT_NTP_SERVER              "pool.ntp.org"
 
+#if LE_CONFIG_SERVICES_WATCHDOG
 //--------------------------------------------------------------------------------------------------
 /**
  * The timer interval to kick the watchdog chain.
  */
 //--------------------------------------------------------------------------------------------------
 #define MS_WDOG_INTERVAL 8
-
+#endif
 //--------------------------------------------------------------------------------------------------
 /**
  * Retry Tech Timer's backoff durations:
@@ -171,6 +173,15 @@ static bool IsDnsSet = false;
  */
 //--------------------------------------------------------------------------------------------------
 static bool RoutesAdded = false;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Default route activation status, read at start-up in config tree.
+ * - true:  default route is set by DCS
+ * - false: default route is not set by DCS
+ */
+//--------------------------------------------------------------------------------------------------
+static bool DefaultRouteStatus = true;
 #endif
 
 //--------------------------------------------------------------------------------------------------
@@ -223,15 +234,6 @@ LE_REF_DEFINE_STATIC_MAP(Requests, REFERENCE_MAP_SIZE);
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t RequestRefMap;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Default route activation status, read at start-up in config tree.
- * - true:  default route is set by DCS
- * - false: default route is not set by DCS
- */
-//--------------------------------------------------------------------------------------------------
-static bool DefaultRouteStatus = true;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -404,6 +406,34 @@ static void SendConnStateEvent
 
     // Send the event to interested applications
     le_event_Report(ConnStateEvent, &eventData, sizeof(eventData));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Get default route activation status from config tree
+ */
+//--------------------------------------------------------------------------------------------------
+static bool GetDefaultRouteStatus
+(
+    void
+)
+{
+    bool defaultRouteStatus = true;
+#if LE_CONFIG_ENABLE_CONFIG_TREE
+    char configPath[LE_CFG_STR_LEN_BYTES];
+    snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_ROUTING);
+
+    le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
+
+    // Get default gateway activation status
+    if (le_cfg_NodeExists(cfg, CFG_NODE_DEFAULTROUTE))
+    {
+        defaultRouteStatus = le_cfg_GetBool(cfg, CFG_NODE_DEFAULTROUTE, true);
+        LE_DEBUG("Default gateway activation status = %d", defaultRouteStatus);
+    }
+    le_cfg_CancelTxn(cfg);
+#endif
+    return defaultRouteStatus;
 }
 
 #ifndef DCS_USE_AUTOMATIC_SETTINGS
@@ -639,34 +669,6 @@ static le_result_t SetDnsConfiguration
     LE_INFO("Succeeded setting DNS configuration");
     IsDnsSet = true;
     return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  Get default route activation status from config tree
- */
-//--------------------------------------------------------------------------------------------------
-static bool GetDefaultRouteStatus
-(
-    void
-)
-{
-    bool defaultRouteStatus = true;
-#if LE_CONFIG_ENABLE_CONFIG_TREE
-    char configPath[LE_CFG_STR_LEN_BYTES];
-    snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_ROUTING);
-
-    le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
-
-    // Get default gateway activation status
-    if (le_cfg_NodeExists(cfg, CFG_NODE_DEFAULTROUTE))
-    {
-        defaultRouteStatus = le_cfg_GetBool(cfg, CFG_NODE_DEFAULTROUTE, true);
-        LE_DEBUG("Default gateway activation status = %d", defaultRouteStatus);
-    }
-    le_cfg_CancelTxn(cfg);
-#endif
-    return defaultRouteStatus;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1242,7 +1244,8 @@ static void RetryTechTimerHandler
     le_timer_Ref_t timerRef     ///< [IN] Timer used to ensure the end of the session
 )
 {
-    le_data_Technology_t technology = (intptr_t)le_timer_GetContextPtr(timerRef);
+    uintptr_t timerRefContext = (uintptr_t)le_timer_GetContextPtr(timerRef);
+    le_data_Technology_t technology = (le_data_Technology_t)timerRefContext;
     LE_DEBUG("RetryTechTimer expired for technology %d", technology);
 
     if (0 == RequestCount)
@@ -1346,7 +1349,8 @@ static void FirstLayerConnectionStateHandler
 )
 {
     DcsConnStateData_t* eventDataPtr = reportPtr;
-    le_data_ConnectionStateHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+    le_data_ConnectionStateHandlerFunc_t clientHandlerFunc =
+                                       (le_data_ConnectionStateHandlerFunc_t)secondLayerHandlerFunc;
 
     clientHandlerFunc(eventDataPtr->interfaceName,
                       eventDataPtr->isConnected,
@@ -1856,12 +1860,12 @@ COMPONENT_INIT
 
     // Register for command events
     le_event_AddHandler("ProcessCommand", dcs_CommandEventId, ProcessCommand);
-
+#if LE_CONFIG_SERVICES_WATCHDOG
     // Register main loop with watchdog chain
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_Init(1);
     le_wdogChain_MonitorEventLoop(0, watchdogInterval);
-
+#endif
     LE_INFO("Data Channel Service le_data is ready");
 }

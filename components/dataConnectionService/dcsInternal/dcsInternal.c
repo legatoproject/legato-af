@@ -17,8 +17,9 @@
 
 #include "legato.h"
 #include "interfaces.h"
+#if LE_CONFIG_SERVICES_WATCHDOG
 #include "watchdogChain.h"
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -27,7 +28,9 @@
  * STARTUP_CHANNEL_SCAN_WAIT - startup initial channel list query
  */
 //--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_SERVICES_WATCHDOG
 #define MS_WDOG_INTERVAL 60
+#endif
 #define STARTUP_CHANNEL_SCAN_WAIT 5
 
 
@@ -63,10 +66,11 @@ COMPONENT_INIT
 #endif
     LE_INFO("Initializing data channels");
     le_dcs_GetChannels(dcsInternalChannelQueryHandler, NULL);
-
+#if LE_CONFIG_SERVICES_WATCHDOG
     // Register main loop with watchdog chain
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_Init(1);
     le_wdogChain_MonitorEventLoop(0, watchdogInterval);
+#endif
 }

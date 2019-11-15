@@ -574,7 +574,7 @@ static void DcsFirstLayerEventHandler (void *reportPtr, void *secondLayerHandler
 {
     le_dcs_channelDbEventReport_t *evtReport = reportPtr;
     le_dcs_channelDb_t *channelDb;
-    le_dcs_EventHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+    le_dcs_EventHandlerFunc_t clientHandlerFunc = (le_dcs_EventHandlerFunc_t)secondLayerHandlerFunc;
 
     channelDb = evtReport->channelDb;
     if (!channelDb)
@@ -795,14 +795,14 @@ void le_dcs_GetChannelList
 )
 {
     le_result_t ret;
-    uint16_t i;
+    le_dcs_Technology_t i;
 
     if (le_dcs_ChannelQueryIsRunning()) {
         // GetChannels is already in action; thus, do not retrigger another round & just return
         return;
     }
 
-    for (i=0; i<LE_DCS_TECH_MAX; i++)
+    for (i = LE_DCS_TECH_UNKNOWN; i < LE_DCS_TECH_MAX; i++)
     {
         ret = le_dcsTech_GetChannelList(i);
         if (ret != LE_OK)
@@ -897,10 +897,10 @@ static void CloseSessionEventHandler
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    uint16_t i;
+    le_dcs_Technology_t i;
 
     memset(&DcsInfo, 0, sizeof(DcsInfo));
-    for (i=0; i< LE_DCS_TECH_MAX; i++)
+    for (i = LE_DCS_TECH_UNKNOWN; i< LE_DCS_TECH_MAX; i++)
     {
         DcsInfo.techListDb[i].techEnum = i;
         strncpy(DcsInfo.techListDb[i].techName, le_dcs_ConvertTechEnumToName(i),

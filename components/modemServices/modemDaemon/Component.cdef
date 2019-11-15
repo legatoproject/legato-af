@@ -14,7 +14,7 @@ requires:
 
     component:
     {
-    #if ${MK_CONFIG_MODEMSERVICE_NO_WATCHDOG} = ""
+    #if ${LE_CONFIG_SERVICES_WATCHDOG} = y
         ${LEGATO_ROOT}/components/watchdogChain
     #endif
     }
@@ -92,7 +92,7 @@ requires:
 {
     component:
     {
-#if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
+#if ${LE_CONFIG_LINUX} = y
         $LEGATO_MODEM_PA_DEFAULT
 #endif
         $LEGATO_MODEM_PA

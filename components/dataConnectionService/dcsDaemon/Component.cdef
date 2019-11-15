@@ -12,15 +12,25 @@ requires:
     {
         modemServices/le_mdmDefs.api [types-only]
         modemServices/le_mrc.api
+    #if ${LE_CONFIG_LINUX} = y
+    #else
+        le_dcs.api
+    #endif
+    #if ${LE_CONFIG_ENABLE_CONFIG_TREE} = y
         le_cfg.api
+    #endif
         ${LEGATO_ROOT}/interfaces/wifi/le_wifiClient.api [optional]
     }
 
     component:
     {
+#if ${LE_CONFIG_LINUX} = y
         $LEGATO_DCS_PA_DEFAULT
+#endif
         $LEGATO_DCS_PA
+    #if ${LE_CONFIG_SERVICES_WATCHDOG} = y
         ${LEGATO_ROOT}/components/watchdogChain
+    #endif
     }
 }
 
@@ -32,11 +42,15 @@ sources:
 
 cflags:
 {
+#if ${LE_CONFIG_ENABLE_CONFIG_TREE} = y
     -I$LEGATO_ROOT/components/cfgEntries
+#endif
     -I$LEGATO_ROOT/components/modemServices/platformAdaptor/inc
     -I$LEGATO_ROOT/components/dataConnectionService/platformAdaptor/inc
     -I$LEGATO_ROOT/components/dataConnectionService/dcs
     -I$LEGATO_ROOT/components/dataConnectionService/dcsNet
     -I$LEGATO_ROOT/components/dataConnectionService/dcsCellular
+#if ${LE_CONFIG_SERVICES_WATCHDOG} = y
     -I${LEGATO_ROOT}/components/watchdogChain
+#endif
 }

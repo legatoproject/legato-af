@@ -514,7 +514,6 @@ le_result_t le_dcsTech_GetDefaultGWAddress
         case LE_DCS_TECH_CELLULAR:
             return le_dcsCellular_GetDefaultGWAddress(techRef, v4GwAddrPtr, v4GwAddrSize,
                                                       v6GwAddrPtr, v6GwAddrSize);
-            break;
         case LE_DCS_TECH_WIFI:
         default:
             LE_ERROR("Unsupported technology %s", le_dcs_ConvertTechEnumToName(tech));
@@ -563,7 +562,6 @@ le_result_t le_dcsTech_GetDNSAddresses
         case LE_DCS_TECH_CELLULAR:
             return le_dcsCellular_GetDNSAddrs(channelDb->techRef, v4DnsAddrs, v4DnsAddrSize,
                                               v6DnsAddrs, v6DnsAddrSize);
-            break;
         case LE_DCS_TECH_WIFI:
         default:
             LE_ERROR("Unsupported technology %s", le_dcs_ConvertTechEnumToName(tech));
@@ -602,16 +600,13 @@ le_result_t le_dcsTech_AllowChannelStart
     {
         case LE_DCS_TECH_CELLULAR:
             return le_dcsCellular_AllowChannelStart(channelDb->techRef);
-            break;
 #ifdef LE_CONFIG_ENABLE_WIFI
         case LE_DCS_TECH_WIFI:
             return le_dcsWifi_AllowChannelStart(channelDb->techRef);
-            break;
 #endif
 #ifdef LE_CONFIG_ENABLE_ETHERNET
         case LE_DCS_TECH_ETHERNET:
             return le_dcsEthernet_AllowChannelStart(channelDb->techRef);
-            break;
 #endif
         default:
             LE_ERROR("Unsupported technology %s", le_dcs_ConvertTechEnumToName(tech));

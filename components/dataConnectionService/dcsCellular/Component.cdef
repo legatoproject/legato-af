@@ -5,7 +5,9 @@ requires:
         modemServices/le_mdmDefs.api [types-only]
         modemServices/le_mdc.api
         modemServices/le_mrc.api
+    #if ${LE_CONFIG_ENABLE_CONFIG_TREE} = y
         le_cfg.api
+    #endif
         $LEGATO_ROOT/interfaces/le_dcs.api [types-only]
     }
 }

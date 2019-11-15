@@ -11,7 +11,9 @@
 
 #include "legato.h"
 #include "interfaces.h"
+#ifdef LE_CONFIG_ENABLE_CONFIG_TREE
 #include "le_cfg_interface.h"
+#endif
 #include "pa_mdc.h"
 #include "dcsServer.h"
 #include "dcs.h"
@@ -52,7 +54,7 @@ TechRecord_t;
  * List of used technologies
  */
 //--------------------------------------------------------------------------------------------------
-static le_dls_List_t TechList = LE_DLS_LIST_INIT;
+static le_dls_List_t TechList = LE_DLS_LIST_DECL_INIT;
 
 //--------------------------------------------------------------------------------------------------
 /**

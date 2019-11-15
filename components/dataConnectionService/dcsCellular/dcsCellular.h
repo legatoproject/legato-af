@@ -25,7 +25,7 @@ typedef struct
     le_dcs_CellularConnectionRef_t connRef; ///< cellular connection's safe reference
     uint32_t index;                         ///< profile index
     char netIntf[LE_DCS_INTERFACE_NAME_MAX_LEN]; ///< network interface name
-    uint16_t opState;                       ///< technology defined operational state
+    le_mdc_ConState_t opState;                   ///< technology defined operational state
     uint16_t retries;                       ///< # of retries attempted in a sequence
     uint16_t backoff;                       ///< latest backoff duration to use in next retry
     le_mdc_SessionStateHandlerRef_t evtHdlrRef; ///< cellular connection event handler reference

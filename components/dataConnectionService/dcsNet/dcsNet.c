@@ -202,7 +202,7 @@ static DcsDefaultGwConfigDb_t* GetDefaultGwConfigDb
          defGwConfigDbLinkPtr = le_dls_PeekNext(&DcsDefaultGwConfigDbList, defGwConfigDbLinkPtr))
     {
         defGwConfigDbPtr = CONTAINER_OF(defGwConfigDbLinkPtr, DcsDefaultGwConfigDb_t, dbLink);
-        if (!(backupDbPtr = &defGwConfigDbPtr->backupConfig))
+        if ((backupDbPtr = &defGwConfigDbPtr->backupConfig) == NULL)
         {
             LE_WARN("Default GW config Db missing on its Db list");
             continue;
@@ -316,7 +316,7 @@ static DcsDnsConfigDb_t* GetDnsConfigDb
          dnsConfigDbLinkPtr = le_dls_PeekNext(&DcsDnsConfigDbList, dnsConfigDbLinkPtr))
     {
         dnsConfigDbPtr = CONTAINER_OF(dnsConfigDbLinkPtr, DcsDnsConfigDb_t, dbLink);
-        if (!(backupDbPtr = &dnsConfigDbPtr->backupConfig))
+        if ((backupDbPtr = &dnsConfigDbPtr->backupConfig) == NULL)
         {
             LE_WARN("DNS config Db missing on its Db list");
             continue;
@@ -496,7 +496,7 @@ le_result_t GetLeaseAddresses
     size_t          numAddresses        ///< [IN]  Number of addresses of each type
 )
 {
-    int     result;
+    le_result_t     result;
     char    addressBuffer[MAX_NUM_DNS_ADDRESS_BY_TYPE
                         * (PA_DCS_IPV4_ADDR_MAX_BYTES + PA_DCS_IPV6_ADDR_MAX_BYTES + 1)];
     char    *token, *rest;
@@ -531,7 +531,7 @@ le_result_t GetLeaseAddresses
         rest = addressBuffer;
 
         // Addresses should be separated by spaces
-        while ((token = strtok_r(rest, " ", &rest)))
+        while ((token = strtok_r(rest, " ", &rest)) != NULL)
         {
             // If it contains a colon, it's likely an IPv6 address
             isIpv6 = ((strchr(token, ':') == NULL) ? false : true);

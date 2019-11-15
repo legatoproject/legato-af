@@ -217,6 +217,28 @@ le_result_t pa_dcs_GetTimeWithNetworkTimeProtocol
     return LE_UNSUPPORTED;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Query for a connection's network interface state
+ *
+ * @return
+ *      - LE_OK             Function successful
+ *      - LE_BAD_PARAMETER  A parameter is incorrect
+ *      - LE_FAULT          Function failed
+ *      - LE_UNSUPPORTED    Function not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_dcs_GetInterfaceState
+(
+    const char *interface,  ///< [IN] network interface name
+    bool *ipv4IsUp,         ///< [INOUT] IPV4 is not assigned/assigned as false/true
+    bool *ipv6IsUp          ///< [INOUT] IPV6 is not assigned/assigned as false/true
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
 COMPONENT_INIT
 {
 }

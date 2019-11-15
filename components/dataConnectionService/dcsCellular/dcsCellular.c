@@ -13,7 +13,9 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "le_print.h"
+#ifdef LE_CONFIG_ENABLE_CONFIG_TREE
 #include "le_cfg_interface.h"
+#endif
 #include "dcs.h"
 #include "dcsCellular.h"
 
@@ -338,6 +340,7 @@ le_result_t le_dcsCellular_SetProfileIndex
     int32_t mdcIndex
 )
 {
+#ifdef LE_CONFIG_ENABLE_CONFIG_TREE
     le_mdc_ProfileRef_t profileRef;
     le_cfg_IteratorRef_t cfg;
     char configPath[LE_CFG_STR_LEN_BYTES] = {0};
@@ -362,6 +365,7 @@ le_result_t le_dcsCellular_SetProfileIndex
 
     le_cfg_SetInt(cfg, CFG_NODE_PROFILEINDEX, mdcIndex);
     le_cfg_CommitTxn(cfg);
+#endif
     return LE_OK;
 }
 
@@ -389,7 +393,8 @@ uint32_t le_dcsCellular_GetProfileIndex
     int32_t mdcIndex
 )
 {
-    int32_t index;
+    int32_t index = 1;
+#ifdef LE_CONFIG_ENABLE_CONFIG_TREE
     le_mdc_ProfileRef_t profileRef;
     char configPath[LE_CFG_STR_LEN_BYTES];
 
@@ -428,7 +433,7 @@ uint32_t le_dcsCellular_GetProfileIndex
         // TB: The le_mdc_GetProfile(index) API should be improved to le_mdc_GetProfile(&index)
         index = le_mdc_GetProfileIndex(profileRef);
     }
-
+#endif
     LE_DEBUG("Cellular profile index retrieved: %d", index);
     return index;
 }
@@ -638,7 +643,7 @@ static cellular_connDb_t *DcsCellularCreateConnDb
     (void)le_dcsCellular_GetNetInterface(cellConnDb->connRef, cellConnDb->netIntf,
                                          LE_DCS_INTERFACE_NAME_MAX_LEN);
     (void)DcsCellularGetConnState(cellConnName, &mdcState);
-    cellConnDb->opState = (uint16_t)mdcState;
+    cellConnDb->opState = mdcState;
     LE_DEBUG("ConnRef %p created for cellular connection %s", cellConnDb->connRef, cellConnName);
     return (cellConnDb);
 }
@@ -1015,7 +1020,7 @@ static void DcsCellularDuplicateSessionUpdate
     if (!opState)
     {
         (void)DcsCellularGetConnState(connName, &mdcState);
-        cellConnDb->opState = (uint16_t)mdcState;
+        cellConnDb->opState = mdcState;
     }
 
     // If it is the first request of the app, and session is already started,
@@ -1182,7 +1187,7 @@ void *le_dcsCellular_CreateConnDb
     uint32_t profileIdx = DcsCellularGetProfileIndex(conn);
 
     cellConnDb = DcsCellularGetDbFromIndex(profileIdx);
-    if (!cellConnDb && !(cellConnDb = DcsCellularCreateConnDb(profileIdx)))
+    if (!cellConnDb && (cellConnDb = DcsCellularCreateConnDb(profileIdx)) == NULL)
     {
         LE_ERROR("Failed to create cellular connection db for connection %s", conn);
         return NULL;

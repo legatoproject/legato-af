@@ -85,11 +85,11 @@ static void ChannelQueryTimeEnforcerTimerHandler
     le_timer_Ref_t timerRef     ///< [IN] Timer used to ensure the end of the session
 )
 {
-    uint16_t i;
+    le_dcs_Technology_t i;
 
     LE_DEBUG("ChannelQueryTimeEnforcerTimer expired to enforce channel query completion");
 
-    for (i=0; i<LE_DCS_TECH_MAX; i++)
+    for (i = LE_DCS_TECH_UNKNOWN; i < LE_DCS_TECH_MAX; i++)
     {
         if (le_dcsTech_ChannelQueryIsPending(i))
         {
@@ -516,7 +516,7 @@ void le_dcs_ChannelEventNotifier
     while (evtHdlrPtr)
     {
         channelAppEvt = CONTAINER_OF(evtHdlrPtr, le_dcs_channelDbEventHdlr_t, hdlrLink);
-        if (channelAppEvt && (channelEventId = channelAppEvt->channelEventId))
+        if (channelAppEvt && (channelEventId = channelAppEvt->channelEventId) != NULL )
         {
             LE_DEBUG("Notify app of event %d on channel %s with eventID %p, handler %p",
                      (uint16_t)evt, channelDb->channelName, channelEventId,
