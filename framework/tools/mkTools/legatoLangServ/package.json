@@ -16,7 +16,7 @@
         "@types/node": "^10.17.5",
         "chokidar": "^2.1.8",
         "mode-to-permissions": "^0.0.2",
-        "npm": "^6.13.0",
+        "npm": "^6.13.1",
         "vscode": "^1.1.36",
         "vscode-languageserver": "^5.2.1",
         "vscode-uri": "^1.0.8"

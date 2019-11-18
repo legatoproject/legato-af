@@ -347,23 +347,18 @@ function ExternalInterfaces
 //--------------------------------------------------------------------------------------------------
 function AppAsSymbol(appRef: model.ApplicationRef): DefinitionObject
 {
-    let start = new loader.Location(appRef.refString, 0, 0);
-    let sym = new DefinitionObject(ext.le_DefinitionObjectType.ApplicationRef,
+    let sym: DefinitionObject = undefined;
+
+    // Extract and provide any extra information we can find for this app.
+    if (appRef.target.isIncluded === false)
+    {
+        let start = new loader.Location(appRef.refString, 0, 0);
+        sym = new DefinitionObject(ext.le_DefinitionObjectType.ApplicationRef,
                                    path.basename(appRef.name, path.extname(appRef.name)),
                                    appRef.target.path,
                                    start,
                                    start);
 
-    // Check to see if there is a proper target reference for this app ref.  If there is not a valid
-    // reference, return early.
-    if (appRef.target === undefined)
-    {
-        return sym;
-    }
-
-    // Extract and provide any extra information we can find for this app.
-    if (appRef.target.isIncluded === false)
-    {
         let externalInterfaces = ExternalInterfaces(appRef);
         let components = ComponentsAsSymbols(appRef.target.componentSections);
 
@@ -379,6 +374,14 @@ function AppAsSymbol(appRef: model.ApplicationRef): DefinitionObject
     }
     else
     {
+        let start = new loader.Location(appRef.location.file, appRef.location.line, -1);
+        sym = new DefinitionObject(ext.le_DefinitionObjectType.ApplicationRef,
+                                   path.basename(appRef.name,
+                                                 path.extname(appRef.name)),
+                                   appRef.location.file,
+                                   start,
+                                   start);
+
         // If this is an included app, we simplify what we add to the view.  In this case we just
         // add the external interfaces that the included app provides for binding.
         sym.children = InterfaceServersAsSymbols(appRef);
