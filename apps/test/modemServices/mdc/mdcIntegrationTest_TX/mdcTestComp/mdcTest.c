@@ -180,7 +180,7 @@ static void SetConfiguration
     // If already connected, disconnect the session
     if (LE_MDC_CONNECTED == state)
     {
-        LE_ASSERT(le_mdc_StopSession(*profileRefPtr) == LE_OK);
+        LE_TEST_OK(le_mdc_StopSession(*profileRefPtr) == LE_OK, "Stop connected session");
     }
 
     // Set pdp type
@@ -224,10 +224,11 @@ static void SetConfiguration
 
         if (LE_MDC_AUTH_NONE != auth)
         {
-            LE_ASSERT(LE_OK == le_mdc_SetAuthentication(*profileRefPtr,
-                                                auth,
-                                                configuration.userName,
-                                                configuration.password));
+            LE_TEST_OK(LE_OK == le_mdc_SetAuthentication(*profileRefPtr,
+                                                         auth,
+                                                         configuration.userName,
+                                                         configuration.password),
+                       "Set authentication");
         }
     }
 
@@ -254,41 +255,47 @@ static void SetNetworkConfiguration
     le_mdc_ConState_t state = LE_MDC_DISCONNECTED;
 
     // Check the state
-    LE_ASSERT( le_mdc_GetSessionState(profileRef, &state) == LE_OK );
-    LE_ASSERT( state == LE_MDC_CONNECTED );
+    LE_TEST_OK( le_mdc_GetSessionState(profileRef, &state) == LE_OK, "Get session state" );
+    LE_TEST_OK( state == LE_MDC_CONNECTED, "Session is connected" );
 
     // Get IP, gateway and DNS addresses for IPv4 or IPv6 connectivity
     if ( le_mdc_IsIPv4(profileRef) )
     {
-        LE_ASSERT(le_mdc_GetIPv4Address(profileRef, ipAddr, sizeof(ipAddr)) == LE_OK);
-        LE_PRINT_VALUE("%s", ipAddr);
+        LE_TEST_OK(le_mdc_GetIPv4Address(profileRef, ipAddr, sizeof(ipAddr)) == LE_OK,
+                   "Get IPv4 address");
+        LE_TEST_INFO("IPv4 address: %s", ipAddr);
 
-        LE_ASSERT(le_mdc_GetIPv4GatewayAddress(profileRef, gatewayAddr, sizeof(gatewayAddr))
-                                                                                          == LE_OK);
-        LE_PRINT_VALUE("%s", gatewayAddr);
+        LE_TEST_OK(le_mdc_GetIPv4GatewayAddress(profileRef, gatewayAddr, sizeof(gatewayAddr))
+                   == LE_OK,
+                   "Get IPv4 gateway address");
+        LE_TEST_INFO("IPv4 gateway: %s", gatewayAddr);
 
-        LE_ASSERT(le_mdc_GetIPv4DNSAddresses( profileRef,
-                                              dns1Addr, sizeof(dns1Addr),
-                                              dns2Addr, sizeof(dns2Addr)) == LE_OK );
-        LE_PRINT_VALUE("%s", dns1Addr);
-        LE_PRINT_VALUE("%s", dns2Addr);
+        LE_TEST_OK(le_mdc_GetIPv4DNSAddresses( profileRef,
+                                               dns1Addr, sizeof(dns1Addr),
+                                               dns2Addr, sizeof(dns2Addr)) == LE_OK,
+                   "Get IPv4 DNS addresses");
+        LE_TEST_INFO("DNS1: %s", dns1Addr);
+        LE_TEST_INFO("DNS2: %s", dns2Addr);
 
 //        snprintf(systemCmd, sizeof(systemCmd), "/sbin/route add default gw %s", gatewayAddr);
     }
     else if ( le_mdc_IsIPv6(profileRef) )
     {
-        LE_ASSERT(le_mdc_GetIPv6Address(profileRef, ipAddr, sizeof(ipAddr)) == LE_OK);
-        LE_PRINT_VALUE("%s", ipAddr);
+        LE_TEST_OK(le_mdc_GetIPv6Address(profileRef, ipAddr, sizeof(ipAddr)) == LE_OK,
+                   "Get IPv6 address");
+        LE_TEST_INFO("IPv6 address: %s", ipAddr);
 
-        LE_ASSERT(le_mdc_GetIPv6GatewayAddress(profileRef, gatewayAddr, sizeof(gatewayAddr))
-                                                                                          == LE_OK);
-        LE_PRINT_VALUE("%s", gatewayAddr);
+        LE_TEST_OK(le_mdc_GetIPv6GatewayAddress(profileRef, gatewayAddr, sizeof(gatewayAddr))
+                   == LE_OK,
+                   "Get IPv6 gateway address");
+        LE_TEST_INFO("IPv6 gateway: %s", gatewayAddr);
 
-        LE_ASSERT(le_mdc_GetIPv6DNSAddresses( profileRef,
+        LE_TEST_OK(le_mdc_GetIPv6DNSAddresses( profileRef,
                                               dns1Addr, sizeof(dns1Addr),
-                                              dns2Addr, sizeof(dns2Addr)) == LE_OK );
-        LE_PRINT_VALUE("%s", dns1Addr);
-        LE_PRINT_VALUE("%s", dns2Addr);
+                                               dns2Addr, sizeof(dns2Addr)) == LE_OK,
+                   "Get IPv6 DNS addresses");
+        LE_TEST_INFO("DNS1: %s", dns1Addr);
+        LE_TEST_INFO("DNS2: %s", dns2Addr);
 
 //        snprintf(systemCmd, sizeof(systemCmd), "/sbin/route -A inet6 add default gw %s",
 //                                                gatewayAddr);
@@ -414,15 +421,18 @@ void TestConnectivity
     uint64_t rxBytes = 0, txBytes = 0;
     uint64_t latestRxBytes = 0, latestTxBytes = 0;
 
-    LE_ASSERT_OK(le_mdc_GetDataBearerTechnology(profileRef,
-                                                &downlinkDataBearerTech,
-                                                &uplinkDataBearerTech));
+    LE_TEST_OK(le_mdc_GetDataBearerTechnology(profileRef,
+                                              &downlinkDataBearerTech,
+                                              &uplinkDataBearerTech) == LE_OK,
+               "Get data bearer technology");
 
     LE_INFO("downlinkDataBearerTech %d, uplinkDataBearerTech %d",
             downlinkDataBearerTech, uplinkDataBearerTech);
 
     // Get interface name
-    LE_ASSERT_OK(le_mdc_GetInterfaceName(profileRef, itfName, LE_MDC_INTERFACE_NAME_MAX_BYTES));
+    LE_TEST_OK(le_mdc_GetInterfaceName(profileRef, itfName, LE_MDC_INTERFACE_NAME_MAX_BYTES)
+               == LE_OK,
+               "Get interface name");
 
     if (le_mdc_IsIPv4(profileRef))
     {
@@ -444,13 +454,14 @@ void TestConnectivity
     LE_ASSERT(!WEXITSTATUS(status));
 */
     // Get data counters
-    LE_ASSERT_OK(le_mdc_GetBytesCounters(&rxBytes, &txBytes));
+    LE_TEST_OK(le_mdc_GetBytesCounters(&rxBytes, &txBytes) == LE_OK,
+               "Get RX/TX byte counts");
     latestRxBytes = rxBytes;
     latestTxBytes = txBytes;
-    LE_INFO("rxBytes %d, txBytes %d", rxBytes, txBytes);
+    LE_TEST_INFO("rxBytes %"PRIu64", txBytes %"PRIu64, rxBytes, txBytes);
 
     // Stop data counters and ping to test the connectivity
-    LE_ASSERT_OK(le_mdc_StopBytesCounter());/*
+    LE_TEST_OK(le_mdc_StopBytesCounter(), "Stop byte counter");/*
     status = system(systemCmd);
     if (WEXITSTATUS(status))
     {
@@ -460,13 +471,15 @@ void TestConnectivity
 */
 
     // Get data counters
-    LE_ASSERT_OK(le_mdc_GetBytesCounters(&rxBytes, &txBytes));
-    LE_INFO("rxBytes %d, txBytes %d", rxBytes, txBytes);
-    LE_ASSERT(latestRxBytes == rxBytes);
-    LE_ASSERT(latestTxBytes == txBytes);
+    LE_TEST_OK(le_mdc_GetBytesCounters(&rxBytes, &txBytes) == LE_OK,
+               "Get RX/TX byte counts");
+    LE_TEST_INFO("rxBytes %"PRIu64", txBytes %"PRIu64, rxBytes, txBytes);
+    LE_TEST_OK(latestRxBytes == rxBytes, "No change in number of bytes received");
+    LE_TEST_OK(latestTxBytes == txBytes, "No change in number of bytes sent");
 
     // Start data counters
-    LE_ASSERT_OK(le_mdc_StartBytesCounter());
+    LE_TEST_OK(le_mdc_StartBytesCounter() == LE_OK,
+               "Restart byte counter");
 }
 //! [Statistics]
 
@@ -521,8 +534,9 @@ COMPONENT_INIT
                                                &sessionStart);
 
                 // Wait for the call of the event handler
-                LE_ASSERT_OK(le_sem_WaitWithTimeOut(AsyncTestSemaphore, myTimeout));
-                LE_ASSERT_OK(sessionStart);
+                LE_TEST_OK(le_sem_WaitWithTimeOut(AsyncTestSemaphore, myTimeout) == LE_OK,
+                           "Wait for async session notification");
+                LE_TEST_OK(LE_FAULT != sessionStart, "Async session started");
                 LE_TEST_OK(LE_OK == le_mdc_ResetBytesCounter(), "Test le_mdc_ResetBytesCounter");
             }
             break;
@@ -560,7 +574,7 @@ COMPONENT_INIT
 
                 // Wait for the call of the event handler
                 LE_TEST_OK(LE_OK == le_sem_WaitWithTimeOut(AsyncTestSemaphore, myTimeout), "Test le_sem_WaitWithTimeOut");
-                LE_TEST_OK(LE_FAULT != sessionStart, "Session is started");
+                LE_TEST_OK(LE_FAULT != sessionStart, "Session is stopped");
             }
             break;
 

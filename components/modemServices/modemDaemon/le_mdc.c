@@ -265,7 +265,8 @@ static void NewSessionStateHandler
     {
         if (profilePtr == NULL)
         {
-             LE_WARN("Reference not created");
+            LE_WARN("Reference not created for profile %d",
+                    sessionStatePtr->profileIndex);
         }
         else
         {
