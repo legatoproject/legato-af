@@ -12,11 +12,13 @@
 
 #include "legato.h"
 #include "interfaces.h"
-#include <sys/types.h>
+
 #if LE_CONFIG_LINUX
+#   include <sys/socket.h>
+#   include <sys/types.h>
 #   include <sys/un.h>
 #endif
-#include <sys/socket.h>
+
 #include "le_port_local.h"
 #include "watchdogChain.h"
 
@@ -130,7 +132,6 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define SERVER_SOCKET_MAX_BYTES  30
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -355,7 +356,9 @@ static int PossibleModeNumber;
  * Semaphore to be used for client socket connection.
  */
 //--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_LINUX
 static le_sem_Ref_t Semaphore;
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -954,6 +957,32 @@ static int32_t OpenSerialDevice
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function opens the pipe device.
+ *
+ * @return
+ *      - -1 if function failed.
+ *      - Valid file descriptor.
+ */
+//--------------------------------------------------------------------------------------------------
+static int32_t OpenPipeDevice
+(
+    char* deviceName  ///< [IN] Device name.
+)
+{
+    int32_t fd;
+
+    fd = le_fd_MkPipe(deviceName, O_RDWR);
+    if (-1 == fd)
+    {
+        LE_ERROR("Failed to open pipe device");
+        return -1;
+    }
+
+    return fd;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Create an AT server entry corresponding to the unique combination of link and client session.
  *
  * @return
@@ -1338,6 +1367,36 @@ static le_result_t OpenInstanceLinks
                         if (instanceConfigPtr->linkInfo[i]->fd == -1)
                         {
                             instanceConfigPtr->linkInfo[i]->fd = OpenSerialDevice(
+                                instanceConfigPtr->linkInfo[i]->path);
+                        }
+                        if (-1 == instanceConfigPtr->linkInfo[i]->fd)
+                        {
+                            LE_ERROR("Error in opening the device '%s': %s %d",
+                                     instanceConfigPtr->instanceName,
+                                     instanceConfigPtr->linkInfo[i]->path,
+                                     (int)instanceConfigPtr->linkInfo[i]->fd);
+                            return LE_FAULT;
+                        }
+
+                        le_result_t result = AddAtServer(instanceConfigPtr->linkInfo[i],
+                            openedInstanceCtxPtr->sessionRef);
+                        if (result != LE_OK)
+                        {
+                            LE_ERROR("Failed to open AT server: %s", LE_RESULT_TXT(result));
+                            return result;
+                        }
+                    }
+                }
+            }
+            else if (0 == strcmp(instanceConfigPtr->linkInfo[i]->openingType, "pipeLink"))
+            {
+                for (j = 0; j < MAX_POSSIBLE_MODES; j++)
+                {
+                    if (0 == strcmp(instanceConfigPtr->linkInfo[i]->possibleMode[j], "AT"))
+                    {
+                        if (instanceConfigPtr->linkInfo[i]->fd == -1)
+                        {
+                            instanceConfigPtr->linkInfo[i]->fd = OpenPipeDevice(
                                 instanceConfigPtr->linkInfo[i]->path);
                         }
                         if (-1 == instanceConfigPtr->linkInfo[i]->fd)
@@ -1895,6 +1954,18 @@ le_result_t le_port_SetCommandMode
                             return LE_FAULT;
                         }
                     }
+                    else if (0 == strcmp(instanceConfigPtr->linkInfo[i]->openingType, "pipeLink"))
+                    {
+                        instanceConfigPtr->linkInfo[i]->fd =
+                                           OpenPipeDevice(instanceConfigPtr->linkInfo[i]->path);
+
+                        if (-1 == instanceConfigPtr->linkInfo[i]->fd)
+                        {
+                            LE_ERROR("Error in opening the device '%s': %d",
+                                     instanceConfigPtr->instanceName, errno);
+                            return LE_FAULT;
+                        }
+                    }
 #if LE_CONFIG_LINUX
                     else if (0 == strcmp(instanceConfigPtr->linkInfo[i]->openingType, "unixSocket"))
                     {
@@ -2271,6 +2342,27 @@ void le_portLocal_InitStaticCfg
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Create the pipe device before atFwdLinker opens the client-side file descriptor of the pipe.
+ *
+ * COMPONENT_INIT_ONCE is executed before COMPONENT_INIT of any component, including
+ * afFwdLinkderComponent. That's how we ensure the pipe device is created before apps using it.
+ */
+//--------------------------------------------------------------------------------------------------
+COMPONENT_INIT_ONCE
+{
+    int fd = le_fd_MkPipe(DEVICE_PIPE_ATCMD_MODE, O_RDWR);
+    if (fd == -1)
+    {
+        LE_ERROR("Failed to create pipe: %m");
+        return;
+    }
+
+    int rc = le_fd_Close(fd);
+    LE_ASSERT(rc == 0);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to initialize the port service.
  */
 //--------------------------------------------------------------------------------------------------
@@ -2317,8 +2409,10 @@ COMPONENT_INIT
     JsonParsingSessionRef = le_json_Parse(JsonFd, JsonEventHandler, JsonErrorHandler, NULL);
 #endif
 
+#if LE_CONFIG_LINUX
     // Create the semaphore for client socket connect request.
     Semaphore = le_sem_Create("ClientConnectSem", 0);
+#endif
 
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };

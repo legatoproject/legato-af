@@ -1,0 +1,27 @@
+sandboxed: false
+
+executables:
+{
+    portServiceDataModeTest = ( portServiceDataModeTestComp )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        (portServiceDataModeTest)
+    }
+}
+
+start: manual
+
+bindings:
+{
+    portServiceDataModeTest.portServiceDataModeTestComp.le_port -> portService.le_port
+    portServiceDataModeTest.portServiceDataModeTestComp.le_atServer -> atService.le_atServer
+}

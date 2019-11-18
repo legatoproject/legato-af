@@ -23,6 +23,7 @@ buildVars:
     LEGATO_SECSTORE_PA = ''
     LEGATO_FWUPDATE_PA = ''
     LEGATO_UARTMODE_PA = ''
+    LEGATO_PORT_PA = ''
 
     LEGATO_AUDIO_PA_DEFAULT =
         ${LEGATO_ROOT}/components/audio/platformAdaptor/default/le_pa_audio_default
@@ -44,6 +45,8 @@ buildVars:
         ${LEGATO_ROOT}/components/secStore/platformAdaptor/default/le_pa_secStore_default
     LEGATO_FWUPDATE_PA_DEFAULT =
         ${LEGATO_ROOT}/components/fwupdate/platformAdaptor/default/le_pa_fwupdate_default
+    LEGATO_PORT_PA_DEFAULT =
+        ${LEGATO_ROOT}/components/portService/platformAdaptor/default/le_pa_port_default
     LEGATO_UARTMODE_PA_DEFAULT =
         ${LEGATO_ROOT}/components/uartMode/platformAdaptor/default/le_pa_uartMode_default
     LEGATO_MODEM_PA_RSIM_DEFAULT =

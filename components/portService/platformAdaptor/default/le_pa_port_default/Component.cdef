@@ -1,0 +1,4 @@
+sources:
+{
+    pa_port_default.c
+}

@@ -10,6 +10,12 @@
 
 #include "legato.h"
 
+#define PIPE_NAME "/tmp/pipeTestDevice"
+static le_sem_Ref_t SemaphoreReadComplete;
+static le_sem_Ref_t SemaphorePipeSrvReady;
+static le_sem_Ref_t SemaphorePipeCliReady;
+
+
 // -------------------------------------------------------------------------------------------------
 /**
  *  Test PIPE path length.
@@ -921,17 +927,27 @@ struct threadCtx
 static volatile size_t WriteSize;
 
 
-static void *PipeWriteMain(void *context)
+static void *PipeWriteNonBlockMain
+(
+    void *context
+)
 {
+    LE_TEST_INFO("(non-block) Create pipe '%s' and open the server end", PIPE_NAME);
+    int fdPipeSrv = le_fd_MkPipe(PIPE_NAME, O_RDWR | O_NONBLOCK);
+    LE_TEST_INFO("(non-block) fdPipeSrv = %d", fdPipeSrv);
+    LE_TEST_ASSERT(fdPipeSrv != -1, "(non-block) pipe '%s' server-side opened", PIPE_NAME);
+
+    le_sem_Post(SemaphorePipeSrvReady);
+
     struct threadCtx *tCtx = (struct threadCtx *)context;
 
-    LE_TEST_INFO("Started with bufSize %"PRIuS, tCtx->bufSize);
+    LE_TEST_INFO("(non-block) Started with bufSize %"PRIuS, tCtx->bufSize);
 
     WriteSize = 0;
     ssize_t ws = 0;
     do
     {
-        ws = le_fd_Write(tCtx->fd, tCtx->buf + WriteSize, tCtx->bufSize - WriteSize);
+        ws = le_fd_Write(fdPipeSrv, tCtx->buf + WriteSize, tCtx->bufSize - WriteSize);
         if (ws == -1 && errno != EAGAIN)
         {
             break;
@@ -945,6 +961,59 @@ static void *PipeWriteMain(void *context)
     }
     while (WriteSize < tCtx->bufSize);
 
+    LE_TEST_INFO("(non-block) Complete writing with bufSize %"PRIuS, tCtx->bufSize);
+
+    le_sem_Wait(SemaphoreReadComplete);
+
+    int rc = le_fd_Close(fdPipeSrv);
+    LE_TEST_OK(rc == 0, "(non-block) Close the pipe server-side file descriptor");
+
+    LE_TEST_INFO("(non-block) Write ended %"PRIuS, WriteSize);
+    return NULL;
+}
+
+
+static void *PipeWriteMain
+(
+    void *context
+)
+{
+    LE_TEST_INFO("Create pipe '%s' and open the server end", PIPE_NAME);
+    int fdPipeSrv = le_fd_MkPipe(PIPE_NAME, O_RDWR);
+    LE_TEST_INFO("fdPipeSrv = %d", fdPipeSrv);
+    LE_TEST_ASSERT(fdPipeSrv != -1, "pipe '%s' server-side opened", PIPE_NAME);
+
+    le_sem_Post(SemaphorePipeSrvReady);
+
+    le_sem_Wait(SemaphorePipeCliReady);
+
+    struct threadCtx *tCtx = (struct threadCtx *)context;
+
+    LE_TEST_INFO("Started with bufSize %"PRIuS, tCtx->bufSize);
+
+    WriteSize = 0;
+    ssize_t ws = 0;
+    do
+    {
+        ws = le_fd_Write(fdPipeSrv, tCtx->buf + WriteSize, tCtx->bufSize - WriteSize);
+        if (ws == -1 && errno != EAGAIN)
+        {
+            break;
+        }
+        else if (ws > 0)
+        {
+            WriteSize += ws;
+        }
+    }
+    while (WriteSize < tCtx->bufSize);
+
+    LE_TEST_INFO("Complete writing with bufSize %"PRIuS, tCtx->bufSize);
+
+    le_sem_Wait(SemaphoreReadComplete);
+
+    int rc = le_fd_Close(fdPipeSrv);
+    LE_TEST_OK(rc == 0, "Close the pipe server-side file descriptor");
+
     LE_TEST_INFO("Write ended %"PRIuS, WriteSize);
     return NULL;
 }
@@ -955,20 +1024,9 @@ COMPONENT_INIT
     LE_TEST_INIT;
     LE_TEST_INFO("======== pipe Test Started ========\n");
 
-    // Create a pipe custom device and open the server-side file descriptor
-
-    static const char pipePath[PATH_LENGTH] = "/tmp/pipeTestDevice";
-    LE_TEST_INFO("Create pipe '%s' and open the server end", pipePath);
-    int fdPipeSrv = le_fd_MkPipe(pipePath, 0);
-    LE_TEST_INFO("fdPipeSrv = %d", fdPipeSrv);
-    LE_TEST_ASSERT(fdPipeSrv != -1, "pipe '%s' server-side opened", pipePath);
-
-    // Connect to the pipe and open the client-side file descriptor
-
-    LE_TEST_INFO("Open client end of pipe '%s'", pipePath);
-    int fdPipeCli = le_fd_Open(pipePath, O_RDWR | O_NONBLOCK );
-    LE_TEST_INFO("fdPipeCli = %d", fdPipeCli);
-    LE_TEST_ASSERT(fdPipeCli != -1, "pipe '%s' client-side opened", pipePath);
+    SemaphoreReadComplete = le_sem_Create("ReadCompleteSem", 0);
+    SemaphorePipeSrvReady = le_sem_Create("PipeSrvReadySem", 0);
+    SemaphorePipeCliReady = le_sem_Create("PipeCliReadySem", 0);
 
     // Small transfer test
 
@@ -977,14 +1035,117 @@ COMPONENT_INIT
     uint32_t dataCrc = le_crc_Crc32((uint8_t*)WriteBufSmall, sizeof(WriteBufSmall),
                                        LE_CRC_START_CRC32);
 
-    struct threadCtx tWCtx = { .fd = fdPipeSrv, .buf = WriteBufSmall, .bufSize = sizeof(WriteBufSmall)};
+    struct threadCtx tWCtx = {.buf = WriteBufSmall, .bufSize = sizeof(WriteBufSmall)};
     le_thread_Ref_t threadWRef = le_thread_Create("Pipe Write Thread", PipeWriteMain, (void*)&tWCtx);
     le_thread_SetJoinable(threadWRef);
     le_thread_Start(threadWRef);
 
+    le_sem_Wait(SemaphorePipeSrvReady);
+
+    LE_TEST_INFO("Open client end of pipe '%s'", PIPE_NAME);
+    int fdPipeCli = le_fd_Open(PIPE_NAME, O_RDWR);
+    LE_TEST_INFO("fdPipeCli = %d", fdPipeCli);
+    LE_TEST_ASSERT(fdPipeCli != -1, "pipe '%s' client-side opened", PIPE_NAME);
+
+    le_sem_Post(SemaphorePipeCliReady);
+
     uint32_t ReadCrc = LE_CRC_START_CRC32;
     ssize_t totalRead = 0;
     ssize_t rs = 0;
+    do
+    {
+        memset(ReadBufSmall, 0, sizeof(ReadBufSmall));
+        rs = le_fd_Read(fdPipeCli, ReadBufSmall, sizeof(ReadBufSmall));
+        if (rs == -1 && errno != EAGAIN)
+        {
+            break;
+        }
+        else if (rs > 0)
+        {
+            ReadCrc = le_crc_Crc32((uint8_t*)ReadBufSmall, rs, ReadCrc);
+            totalRead += rs;
+        }
+    }
+    while (totalRead < sizeof(WriteBufSmall));
+
+    le_sem_Post(SemaphoreReadComplete);
+
+    le_thread_Join(threadWRef, NULL);
+    LE_TEST_INFO("Write thread join");
+
+    LE_TEST_OK(ReadCrc == dataCrc, "CRC check result ReadCrc = 0x%x, expected Crc = 0x%x",
+               (unsigned int)ReadCrc, (unsigned int)dataCrc);
+
+    // Big transfer test
+
+    LE_TEST_INFO("Start big transfer test");
+
+    dataCrc = le_crc_Crc32((uint8_t*)WriteBufBig, sizeof(WriteBufBig),
+                           LE_CRC_START_CRC32);
+
+    tWCtx.buf = WriteBufBig;
+    tWCtx.bufSize = sizeof(WriteBufBig);
+    threadWRef = le_thread_Create("Pipe Write Thread", PipeWriteMain, (void*)&tWCtx);
+    le_thread_SetJoinable(threadWRef);
+    le_thread_Start(threadWRef);
+
+    le_sem_Post(SemaphorePipeCliReady);
+
+    ReadCrc = LE_CRC_START_CRC32;
+    totalRead = 0;
+    rs = 0;
+    do
+    {
+        memset(ReadBufBig, 0, sizeof(ReadBufBig));
+        rs = le_fd_Read(fdPipeCli, ReadBufBig, sizeof(ReadBufBig));
+        if (rs == -1 && errno != EAGAIN)
+        {
+            break;
+        }
+        else if (rs > 0)
+        {
+            ReadCrc = le_crc_Crc32((uint8_t*)ReadBufBig, rs, ReadCrc);
+            totalRead += rs;
+        }
+    }
+    while (totalRead < sizeof(WriteBufBig));
+
+    le_sem_Post(SemaphoreReadComplete);
+
+    le_thread_Join(threadWRef, NULL);
+    LE_TEST_INFO("Write thread join");
+
+    LE_TEST_OK(ReadCrc == dataCrc, "CRC result ReadCrc = 0x%x, expected Crc = 0x%x",
+               (unsigned int)ReadCrc, (unsigned int)dataCrc);
+
+    // Close the client-side pipe file descriptors
+
+    int rc = le_fd_Close(fdPipeCli);
+    LE_TEST_OK(rc == 0, "Close the pipe client-side file descriptor");
+
+    // Small transfer test
+
+    LE_TEST_INFO("(non-block) Start small transfer test");
+
+    dataCrc = le_crc_Crc32((uint8_t*)WriteBufSmall, sizeof(WriteBufSmall),
+                           LE_CRC_START_CRC32);
+
+    tWCtx.buf = WriteBufSmall;
+    tWCtx.bufSize = sizeof(WriteBufSmall);
+    threadWRef = le_thread_Create("(non-block) Pipe Write Thread", PipeWriteNonBlockMain, (void*)&tWCtx);
+    le_thread_SetJoinable(threadWRef);
+    le_thread_Start(threadWRef);
+
+    le_sem_Wait(SemaphorePipeSrvReady);
+
+    LE_TEST_INFO("(non-block) Open client end of pipe '%s'", PIPE_NAME);
+    fdPipeCli = le_fd_Open(PIPE_NAME, O_RDWR | O_NONBLOCK);
+    LE_TEST_INFO("(non-block) fdPipeCli = %d", fdPipeCli);
+    LE_TEST_ASSERT(fdPipeCli != -1, "(non-block) pipe '%s' client-side opened", PIPE_NAME);
+
+    ReadCrc = LE_CRC_START_CRC32;
+    totalRead = 0;
+    rs = 0;
     do
     {
         memset(ReadBufSmall, 0, sizeof(ReadBufSmall));
@@ -1003,23 +1164,24 @@ COMPONENT_INIT
     }
     while (totalRead < sizeof(WriteBufSmall));
 
-    le_thread_Join(threadWRef, NULL);
-    LE_TEST_INFO("Write thread join");
+    le_sem_Post(SemaphoreReadComplete);
 
-    LE_TEST_OK(ReadCrc == dataCrc, "CRC check result ReadCrc = 0x%x, expected Crc = 0x%x",
+    le_thread_Join(threadWRef, NULL);
+    LE_TEST_INFO("(non-block) Write thread join");
+
+    LE_TEST_OK(ReadCrc == dataCrc, "(non-block) CRC result ReadCrc = 0x%x, expected Crc = 0x%x",
                (unsigned int)ReadCrc, (unsigned int)dataCrc);
 
     // Big transfer test
 
-    LE_TEST_INFO("Start big transfer test");
+    LE_TEST_INFO("(non-block) Start big transfer test");
 
     dataCrc = le_crc_Crc32((uint8_t*)WriteBufBig, sizeof(WriteBufBig),
                            LE_CRC_START_CRC32);
 
-    tWCtx.fd = fdPipeSrv;
     tWCtx.buf = WriteBufBig;
     tWCtx.bufSize = sizeof(WriteBufBig);
-    threadWRef = le_thread_Create("Pipe Write Thread", PipeWriteMain, (void*)&tWCtx);
+    threadWRef = le_thread_Create("(non-block) Pipe Write Thread", PipeWriteNonBlockMain, (void*)&tWCtx);
     le_thread_SetJoinable(threadWRef);
     le_thread_Start(threadWRef);
 
@@ -1044,19 +1206,18 @@ COMPONENT_INIT
     }
     while (totalRead < sizeof(WriteBufBig));
 
-    le_thread_Join(threadWRef, NULL);
-    LE_TEST_INFO("Write thread join");
+    le_sem_Post(SemaphoreReadComplete);
 
-    LE_TEST_OK(ReadCrc == dataCrc, "CRC check result ReadCrc = 0x%x, expected Crc = 0x%x",
+    le_thread_Join(threadWRef, NULL);
+    LE_TEST_INFO("(non-block) Write thread join");
+
+    LE_TEST_OK(ReadCrc == dataCrc, "(non-block) CRC result ReadCrc = 0x%x, expected Crc = 0x%x",
                (unsigned int)ReadCrc, (unsigned int)dataCrc);
 
-    // Close the server-side and client-side pipe file descriptors
-
-    int rc = le_fd_Close(fdPipeSrv);
-    LE_TEST_OK(rc == 0, "Close the pipe server-side file descriptor");
+    // Close the client-side pipe file descriptors
 
     rc = le_fd_Close(fdPipeCli);
-    LE_TEST_OK(rc == 0, "Close the pipe client-side file descriptor");
+    LE_TEST_OK(rc == 0, "(non-block) Close the pipe client-side file descriptor");
 
     LE_TEST_INFO("======== pipe Test Complete ========\n");
     LE_TEST_EXIT;
