@@ -19,6 +19,7 @@ mkexe(${TEST_EXEC}
     -i ${LEGATO_PORT_SERVICE}/portDaemon
     -i ${LEGATO_AT_SERVICES}
     -i ${LEGATO_AT_SERVICES}/Common
+    -i ${LEGATO_ROOT}/framework/liblegato
     -i ${LEGATO_ROOT}/framework/liblegato/linux/
     -i ${LEGATO_ROOT}/interfaces/atServices/
     -i ${LEGATO_ROOT}/interfaces/portService/

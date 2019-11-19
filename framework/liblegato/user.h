@@ -1,7 +1,7 @@
 //--------------------------------------------------------------------------------------------------
 /** @file user.h
  *
- * API for creating/deleting Linux users and groups.
+ * API for accessing/creating/deleting users and groups.
  *
  * This API is thread-safe.
  *
@@ -18,7 +18,7 @@
  * Initialize the user system.  This should be called before any other functions in this API.
  */
 //--------------------------------------------------------------------------------------------------
-void user_Init
+LE_FULL_API void user_Init
 (
     void
 );
@@ -40,7 +40,7 @@ void user_Init
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t user_Create
+LE_FULL_API le_result_t user_Create
 (
     const char* usernamePtr,    ///< [IN] Pointer to the name of the user and group to create.
     uid_t* uidPtr,              ///< [OUT] Pinter to a location to store the uid for the created
@@ -61,7 +61,7 @@ le_result_t user_Create
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t user_CreateGroup
+LE_FULL_API le_result_t user_CreateGroup
 (
     const char* groupNamePtr,    ///< [IN] Pointer to the name of the group to create.
     gid_t* gidPtr                ///< [OUT] Pointer to store the gid.
@@ -78,7 +78,7 @@ le_result_t user_CreateGroup
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t user_Delete
+LE_FULL_API le_result_t user_Delete
 (
     const char* usernamePtr     ///< [IN] Pointer to the name of the user to delete.
 );
@@ -94,7 +94,7 @@ le_result_t user_Delete
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t user_DeleteGroup
+LE_FULL_API le_result_t user_DeleteGroup
 (
     const char* groupNamePtr     ///< [IN] Pointer to the name of the group to delete.
 );
@@ -111,7 +111,7 @@ le_result_t user_DeleteGroup
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t user_GetIDs
+LE_FULL_API le_result_t user_GetIDs
 (
     const char* usernamePtr,    ///< [IN] Pointer to the name of the user to get.
     uid_t* uidPtr,              ///< [OUT] Pinter to a location to store the uid for this user.
@@ -131,7 +131,7 @@ le_result_t user_GetIDs
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t user_GetUid
+LE_FULL_API le_result_t user_GetUid
 (
     const char* usernamePtr,    ///< [IN] Pointer to the name of the user to get.
     uid_t* uidPtr               ///< [OUT] Pointer to store the uid.
@@ -148,7 +148,7 @@ le_result_t user_GetUid
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t user_GetGid
+LE_FULL_API le_result_t user_GetGid
 (
     const char* groupNamePtr,   ///< [IN] Pointer to the name of the group.
     gid_t* gidPtr                ///< [OUT] Pointer to store the gid.
@@ -185,7 +185,7 @@ le_result_t user_GetName
  *      LE_FAULT if there was an error getting the group name.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t user_GetGroupName
+LE_FULL_API le_result_t user_GetGroupName
 (
     gid_t gid,                  ///< [IN] The gid of the group to get the name for.
     char* nameBufPtr,           ///< [OUT] The buffer to store the group name in.
@@ -203,7 +203,7 @@ le_result_t user_GetGroupName
  *      LE_NOT_FOUND if the user does not have an application or may have multiple applications.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t user_GetAppName
+LE_FULL_API le_result_t user_GetAppName
 (
     uid_t uid,                  ///< [IN] The uid of the user.
     char* nameBufPtr,           ///< [OUT] The buffer to store the app name in.
@@ -220,7 +220,7 @@ le_result_t user_GetAppName
  *      LE_OVERFLOW if the provided buffer is too small and only part of the name was copied.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t user_AppNameToUserName
+LE_FULL_API le_result_t user_AppNameToUserName
 (
     const char* appName,        ///< [IN] The application's name.
     char* nameBufPtr,           ///< [OUT] The buffer to store the user name in.
@@ -239,7 +239,7 @@ le_result_t user_AppNameToUserName
  *      LE_FAULT if there was some other error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t user_GetAppUid
+LE_FULL_API le_result_t user_GetAppUid
 (
     const char* appName,        ///< [IN] Name of the application to get the uid for.
     uid_t* uidPtr               ///< [OUT] UID of the application.
@@ -257,7 +257,7 @@ le_result_t user_GetAppUid
  *      LE_FAULT if there was some other error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t user_GetAppGid
+LE_FULL_API le_result_t user_GetAppGid
 (
     const char* appName,        ///< [IN] Name of the application to get the gid for.
     gid_t* gidPtr               ///< [OUT] GID of the application.

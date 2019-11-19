@@ -5,6 +5,7 @@
 mkexe(  rogue
             rogue.c
             -o ${EXECUTABLE_OUTPUT_PATH}/rogue
+            -i ${LEGATO_ROOT}/framework/liblegato
             -i ${LEGATO_ROOT}/framework/liblegato/linux
      )
 
