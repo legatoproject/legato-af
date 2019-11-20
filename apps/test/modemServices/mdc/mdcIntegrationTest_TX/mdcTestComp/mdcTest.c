@@ -426,13 +426,15 @@ void TestConnectivity
                                               &uplinkDataBearerTech) == LE_OK,
                "Get data bearer technology");
 
-    LE_INFO("downlinkDataBearerTech %d, uplinkDataBearerTech %d",
-            downlinkDataBearerTech, uplinkDataBearerTech);
+    LE_TEST_INFO("downlinkDataBearerTech %d, uplinkDataBearerTech %d",
+                 downlinkDataBearerTech, uplinkDataBearerTech);
 
     // Get interface name
     LE_TEST_OK(le_mdc_GetInterfaceName(profileRef, itfName, LE_MDC_INTERFACE_NAME_MAX_BYTES)
                == LE_OK,
                "Get interface name");
+
+    LE_TEST_INFO("interface name %s", itfName);
 
     if (le_mdc_IsIPv4(profileRef))
     {
@@ -461,7 +463,7 @@ void TestConnectivity
     LE_TEST_INFO("rxBytes %"PRIu64", txBytes %"PRIu64, rxBytes, txBytes);
 
     // Stop data counters and ping to test the connectivity
-    LE_TEST_OK(le_mdc_StopBytesCounter(), "Stop byte counter");/*
+    LE_TEST_OK(le_mdc_StopBytesCounter() == LE_OK, "Stop byte counter");/*
     status = system(systemCmd);
     if (WEXITSTATUS(status))
     {
