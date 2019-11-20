@@ -198,7 +198,8 @@ le_dcs_channelDb_t *le_dcs_GetChannelDbFromStartRequestRef(le_dcs_ReqObjRef_t re
 // from dcsTech.c
 LE_SHARED le_result_t le_dcsTech_Start(const char *channelName, le_dcs_Technology_t tech);
 LE_SHARED le_result_t le_dcsTech_Stop(const char *channelName, le_dcs_Technology_t tech);
-LE_SHARED le_result_t le_dcsTech_GetDefaultGWAddress(le_dcs_Technology_t tech, void *techRef,
+LE_SHARED le_result_t le_dcsTech_GetDefaultGWAddress(le_dcs_Technology_t tech,
+                                                     le_dcs_ChannelRef_t channelRef,
                                                      char *v4GwAddrPtr, size_t v4GwAddrSize,
                                                      char *v6GwAddrPtr, size_t v6GwAddrSize);
 LE_SHARED le_result_t le_dcsTech_GetDNSAddresses(le_dcs_Technology_t tech,

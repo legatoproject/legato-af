@@ -496,25 +496,50 @@ void le_dcsTech_RetryChannel
  *     - The retrieved IPv4 default GW address will be returned in the 3rd argument which allowed
  *       buffer length is specified in the 4th argument. Similarly the 5th & 6th arguments for
  *       the retrieved IPv6 default GW address
- *     - The function returns LE_OK upon a successful retrieval; otherwise, LE_FAULT
+ *     - The function returns:
+ *           - LE_OK upon a successful retrieval
+ *           - LE_UNSUPPORTED upon an unsupported technolgoy type given in the 1st argument
+ *           - LE_FAULT otherwise
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_dcsTech_GetDefaultGWAddress
 (
-    le_dcs_Technology_t tech,
-    void *techRef,
-    char *v4GwAddrPtr,
-    size_t v4GwAddrSize,
-    char *v6GwAddrPtr,
-    size_t v6GwAddrSize
+    le_dcs_Technology_t tech,    ///< [IN] technology type of the connection
+    le_dcs_ChannelRef_t channelRef,  ///< [IN] object reference of the channel
+    char *v4GwAddrPtr,           ///< [OUT] IPv4 default GW addresses to be installed
+    size_t v4GwAddrSize,         ///< [IN] size of each of the IPv4 default GW addresses
+    char *v6GwAddrPtr,           ///< [OUT] IPv6 default GW addresses to be installed
+    size_t v6GwAddrSize          ///< [IN] size of each of the IPv6 default GW addresses
 )
 {
+    char intf[LE_DCS_INTERFACE_NAME_MAX_LEN] = {0};
+    le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
+    if (!channelDb)
+    {
+        LE_ERROR("Invalid channel reference %p", channelRef);
+        return LE_FAULT;
+    }
+
     switch (tech)
     {
         case LE_DCS_TECH_CELLULAR:
-            return le_dcsCellular_GetDefaultGWAddress(techRef, v4GwAddrPtr, v4GwAddrSize,
+            return le_dcsCellular_GetDefaultGWAddress(channelDb->techRef, v4GwAddrPtr, v4GwAddrSize,
                                                       v6GwAddrPtr, v6GwAddrSize);
         case LE_DCS_TECH_WIFI:
+        case LE_DCS_TECH_ETHERNET:
+            if (LE_OK != le_dcsTech_GetNetInterface(tech, channelRef, intf,
+                                                    LE_DCS_INTERFACE_NAME_MAX_LEN))
+            {
+                LE_ERROR("Failed to get network interface for channel %s of technology %s to set "
+                         "default GW", channelDb->channelName,
+                         le_dcs_ConvertTechEnumToName(tech));
+                return LE_FAULT;
+            }
+            // The last argument is 1 since only 1 address is to be retrieved per IP type, which is
+            // also the # of v4DnsAddrs and v6DnsAddrs in the input arguments
+            return le_net_GetLeaseAddresses(intf, LE_NET_DEFAULT_GATEWAY_ADDRESS,
+                                            v4GwAddrPtr, v4GwAddrSize, v6GwAddrPtr, v6GwAddrSize,
+                                            1);
         default:
             LE_ERROR("Unsupported technology %s", le_dcs_ConvertTechEnumToName(tech));
             return LE_UNSUPPORTED;
@@ -544,12 +569,13 @@ le_result_t le_dcsTech_GetDNSAddresses
 (
     le_dcs_Technology_t tech,    ///< [IN] technology type of the connection
     le_dcs_ChannelRef_t channelRef,  ///< [IN] object reference of the channel
-    char *v4DnsAddrs,            ///< [OUT] 2 IPv4 DNS addresses to be installed
-    size_t v4DnsAddrSize,        ///< [IN] size of each of the 2 IPv4 DNS addresses to be installed
-    char *v6DnsAddrs,            ///< [OUT] 2 IPv6 DNS addresses to be installed
-    size_t v6DnsAddrSize         ///< [IN] size of each of the 2 IPv6 DNS addresses to be installed
+    char *v4DnsAddrs,            ///< [OUT] 2 IPv4 DNS addresses, each of size v4DnsAddrSize
+    size_t v4DnsAddrSize,        ///< [IN] size of each of the IPv4 DNS addresses to be installed
+    char *v6DnsAddrs,            ///< [OUT] 2 IPv6 DNS addresses, each of size v6DnsAddrSize
+    size_t v6DnsAddrSize         ///< [IN] size of each of the IPv6 DNS addresses to be installed
 )
 {
+    char intf[LE_DCS_INTERFACE_NAME_MAX_LEN] = {0};
     le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
     {
@@ -563,6 +589,20 @@ le_result_t le_dcsTech_GetDNSAddresses
             return le_dcsCellular_GetDNSAddrs(channelDb->techRef, v4DnsAddrs, v4DnsAddrSize,
                                               v6DnsAddrs, v6DnsAddrSize);
         case LE_DCS_TECH_WIFI:
+        case LE_DCS_TECH_ETHERNET:
+            if (LE_OK != le_dcsTech_GetNetInterface(tech, channelRef, intf,
+                                                    LE_DCS_INTERFACE_NAME_MAX_LEN))
+            {
+                LE_ERROR("Failed to get network interface for channel %s of technology %s to set "
+                         "DNS addresses", channelDb->channelName,
+                         le_dcs_ConvertTechEnumToName(tech));
+                return LE_FAULT;
+            }
+            // The last argument is 2 since 2 DNS addresses are to be retrieved per IP type, which
+            // is also the array size of v4DnsAddrs and v6DnsAddrs in the input arguments
+            return le_net_GetLeaseAddresses(intf, LE_NET_DNS_SERVER_ADDRESS,
+                                            (char *)v4DnsAddrs, v4DnsAddrSize,
+                                            (char *)v6DnsAddrs, v6DnsAddrSize, 2);
         default:
             LE_ERROR("Unsupported technology %s", le_dcs_ConvertTechEnumToName(tech));
             return LE_UNSUPPORTED;

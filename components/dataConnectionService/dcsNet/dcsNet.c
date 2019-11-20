@@ -80,18 +80,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Enumeration for DHCP Address
- */
-//--------------------------------------------------------------------------------------------------
-typedef enum
-{
-    LE_NET_DEFAULT_GATEWAY_ADDRESS,   ///< Default gateway address(es)
-    LE_NET_DNS_SERVER_ADDRESS         ///< DNS server address(es)
-}
-DhcpAddress_t;
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Data structures for backing up the system's default IPv4/v6 GW configs:
  *    DcsDefaultGwConfigDb_t: a default GW config backup db (data structure), one per client app
  *    DcsDefaultGwConfigDataDbPool: the memory pool from which DcsDefaultGwConfigDb_t is allocated
@@ -384,7 +372,7 @@ le_result_t le_net_GetNetIntfState
 le_result_t GetDhcpLeaseFileEntry
 (
     const char*     interfaceStrPtr,    ///< [IN]    Pointer to interface string
-    DhcpAddress_t   infoType,           ///< [IN]    Lease file address to return
+    le_net_DhcpInfoType_t infoType,     ///< [IN]    Lease file info type to return
     char*           destPtr,            ///< [OUT]   Output destination
     size_t*         destSizeBytes       ///< [INOUT] Size of buffer in,
                                         ///< Number of bytes filled out
@@ -485,15 +473,15 @@ le_result_t GetDhcpLeaseFileEntry
  *      LE_OK           Function succeeded
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t GetLeaseAddresses
+le_result_t le_net_GetLeaseAddresses
 (
     const char*     interfaceStrPtr,    ///< [IN]  Pointer to interface string
-    DhcpAddress_t   infoType,           ///< [IN]  Lease file address to return
+    le_net_DhcpInfoType_t infoType,     ///< [IN]  Lease file info type to return
     char*           v4AddrPtr,          ///< [OUT] Pointer to address
     size_t          v4AddrSize,         ///< [IN]  Size of each of the IPv4 addresses
     char*           v6AddrPtr,          ///< [OUT] 2 IPv6 DNS addresses to be installed
     size_t          v6AddrSize,         ///< [IN]  Size of each IPv6 DNS addresses
-    size_t          numAddresses        ///< [IN]  Number of addresses of each type
+    uint16_t        numAddresses        ///< [IN]  Number of addresses of each type
 )
 {
     le_result_t     result;
@@ -507,7 +495,7 @@ le_result_t GetLeaseAddresses
 
     if (numAddresses > MAX_NUM_DNS_ADDRESS_BY_TYPE)
     {
-        LE_ERROR("Too many addresses requested. Requested %zu but max allowed is %d",
+        LE_ERROR("Too many addresses requested. Requested %d but max allowed is %d",
                  numAddresses,
                  MAX_NUM_DNS_ADDRESS_BY_TYPE);
         return LE_FAULT;
@@ -710,7 +698,6 @@ le_result_t le_net_SetDefaultGW
 {
     le_result_t ret, v4Ret = LE_FAULT, v6Ret = LE_FAULT;
     char intf[LE_DCS_INTERFACE_NAME_MAX_LEN] = {0};
-    int intfSize = LE_DCS_INTERFACE_NAME_MAX_LEN;
     size_t v4GwAddrSize = PA_DCS_IPV4_ADDR_MAX_BYTES;
     size_t v6GwAddrSize = PA_DCS_IPV6_ADDR_MAX_BYTES;
     char *channelName, v4GwAddr[PA_DCS_IPV4_ADDR_MAX_BYTES], v6GwAddr[PA_DCS_IPV6_ADDR_MAX_BYTES];
@@ -728,22 +715,6 @@ le_result_t le_net_SetDefaultGW
     }
     channelName = channelDb->channelName;
 
-    if ((LE_DCS_TECH_UNKNOWN == channelDb->technology) ||
-        (LE_DCS_TECH_MAX <= channelDb->technology))
-    {
-        LE_ERROR("Channel's technology %s not supported",
-                 le_dcs_ConvertTechEnumToName(channelDb->technology));
-        return LE_UNSUPPORTED;
-    }
-
-    // Get network interface for setting default GW config
-    ret = le_dcsTech_GetNetInterface(channelDb->technology, channelRef, intf, intfSize);
-    if (ret != LE_OK)
-    {
-        LE_ERROR("Failed to get network interface for channel %s of technology %s to set "
-                 "default GW", channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
-        return LE_FAULT;
-    }
 
     LE_DEBUG("Client app's sessionRef %p", sessionRef);
     if (sessionRef && (LE_OK == le_msg_GetClientUserCreds(sessionRef, &uid, &pid)) &&
@@ -752,23 +723,22 @@ le_result_t le_net_SetDefaultGW
         LE_DEBUG("Client app's name %s", appName);
     }
 
-    // Query technology for IPv4 and IPv6 default GW address assignments
-    if (channelDb->technology == LE_DCS_TECH_CELLULAR)
+    if (LE_OK != le_dcsTech_GetNetInterface(channelDb->technology, channelRef, intf,
+                                            LE_DCS_INTERFACE_NAME_MAX_LEN))
     {
-        ret = le_dcsTech_GetDefaultGWAddress(channelDb->technology, channelDb->techRef,
-                                             v4GwAddr, v4GwAddrSize, v6GwAddr, v6GwAddrSize);
-    }
-    else
-    {
-        ret = GetLeaseAddresses(intf, LE_NET_DEFAULT_GATEWAY_ADDRESS,
-                                v4GwAddr, v4GwAddrSize, v6GwAddr, v6GwAddrSize,
-                                MAX_NUM_DEFAULT_GATEWAY_ADDRESS_BY_TYPE);
+        LE_ERROR("Failed to get network interface for channel %s of technology %s to set "
+                 "default GW", channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
+        return LE_FAULT;
     }
 
+    // Query technology for IPv4 and IPv6 default GW address assignments
+    ret = le_dcsTech_GetDefaultGWAddress(channelDb->technology, channelRef,
+                                         v4GwAddr, v4GwAddrSize, v6GwAddr, v6GwAddrSize);
     if (ret != LE_OK)
     {
-        LE_ERROR("Failed to get GW addr for channel %s of technology %s to set default GW",
-                 channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
+        LE_ERROR("Failed to get default GW addr for channel %s of technology %s to set default GW; "
+                 "error %d", channelName, le_dcs_ConvertTechEnumToName(channelDb->technology),
+                 ret);
         return ret;
     }
 
@@ -845,8 +815,6 @@ le_result_t le_net_GetDefaultGW
 )
 {
     le_result_t ret;
-    char intf[LE_DCS_INTERFACE_NAME_MAX_LEN] = {0};
-    int intfSize = LE_DCS_INTERFACE_NAME_MAX_LEN;
     le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
 
     if (addr == NULL)
@@ -854,29 +822,27 @@ le_result_t le_net_GetDefaultGW
         LE_ERROR("Passing a NULL ptr refence is not allowed");
         return LE_FAULT;
     }
+
+    // Clear addresses
+    addr->ipv4Addr[0] = '\0';
+    addr->ipv6Addr[0] = '\0';
+
     if (!channelDb)
     {
         LE_ERROR("Invalid channel reference %p for setting default GW", channelRef);
         return LE_FAULT;
     }
 
-    // Get network interface for setting default GW config
-    ret = le_dcsTech_GetNetInterface(channelDb->technology, channelRef, intf, intfSize);
+    // Query technology for IPv4 and IPv6 default GW address assignments
+    ret = le_dcsTech_GetDefaultGWAddress(channelDb->technology, channelRef,
+                                         addr->ipv4Addr, sizeof(addr->ipv4Addr),
+                                         addr->ipv6Addr, sizeof(addr->ipv6Addr));
     if (ret != LE_OK)
     {
-        LE_ERROR("Failed to get network interface for channel %s of technology %s to set default GW",
-                 channelDb->channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
-        return LE_FAULT;
+        LE_ERROR("Failed to get default GW addr for channel %s of technology %s; error %d",
+                 channelDb->channelName, le_dcs_ConvertTechEnumToName(channelDb->technology), ret);
     }
-
-    // Clear addresses
-    addr->ipv4Addr[0] = '\0';
-    addr->ipv6Addr[0] = '\0';
-
-    return GetLeaseAddresses(intf, LE_NET_DEFAULT_GATEWAY_ADDRESS,
-                             addr->ipv4Addr, sizeof(addr->ipv4Addr),
-                             addr->ipv6Addr, sizeof(addr->ipv6Addr),
-                             MAX_NUM_DEFAULT_GATEWAY_ADDRESS_BY_TYPE);
+    return ret;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1177,10 +1143,9 @@ le_result_t le_net_SetDNS
 )
 {
     le_result_t ret;
-    char *channelName, intf[LE_DCS_INTERFACE_NAME_MAX_LEN] = {0};
+    char *channelName;
     char v4DnsAddrs[2][PA_DCS_IPV4_ADDR_MAX_BYTES] = {{0}, {0}};
     char v6DnsAddrs[2][PA_DCS_IPV6_ADDR_MAX_BYTES] = {{0}, {0}};
-    int intfSize = LE_DCS_INTERFACE_NAME_MAX_LEN;
     DcsDnsConfigDb_t* dnsConfigDbPtr;
     le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
@@ -1190,40 +1155,15 @@ le_result_t le_net_SetDNS
     }
     channelName = channelDb->channelName;
 
-    if ((LE_DCS_TECH_UNKNOWN == channelDb->technology) ||
-        (LE_DCS_TECH_MAX <= channelDb->technology))
-    {
-        LE_ERROR("Channel's technology %s not supported",
-                 le_dcs_ConvertTechEnumToName(channelDb->technology));
-        return LE_UNSUPPORTED;
-    }
-
     // Query technology for IPv4 and IPv6 DNS server address assignments
-    if (channelDb->technology == LE_DCS_TECH_CELLULAR)
-    {
-        ret = le_dcsTech_GetDNSAddresses(channelDb->technology, channelRef,
-                                        (char *)v4DnsAddrs, PA_DCS_IPV4_ADDR_MAX_BYTES,
-                                        (char *)v6DnsAddrs, PA_DCS_IPV6_ADDR_MAX_BYTES);
-    }
-    else
-    {
-        ret = le_dcsTech_GetNetInterface(channelDb->technology, channelRef, intf, intfSize);
-        if (ret != LE_OK)
-        {
-            LE_ERROR("Failed to get network interface for channel %s of technology %s to set "
-                    "default GW", channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
-            return LE_FAULT;
-        }
-        ret = GetLeaseAddresses(intf, LE_NET_DNS_SERVER_ADDRESS,
-                                (char *)v4DnsAddrs, PA_DCS_IPV4_ADDR_MAX_BYTES,
-                                (char *)v6DnsAddrs, PA_DCS_IPV6_ADDR_MAX_BYTES,
-                                MAX_NUM_DNS_ADDRESS_BY_TYPE);
-    }
-
+    ret = le_dcsTech_GetDNSAddresses(channelDb->technology, channelRef,
+                                     (char *)v4DnsAddrs, PA_DCS_IPV4_ADDR_MAX_BYTES,
+                                     (char *)v6DnsAddrs, PA_DCS_IPV6_ADDR_MAX_BYTES);
     if (ret != LE_OK)
     {
-        LE_ERROR("Failed to get DNS addresses for channel %s of technology %s to set DNS config",
-                 channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
+        LE_ERROR("Failed to get DNS addresses for channel %s of technology %s to set DNS config; "
+                 "error %d", channelName, le_dcs_ConvertTechEnumToName(channelDb->technology),
+                 ret);
         return ret;
     }
 
@@ -1279,11 +1219,9 @@ le_result_t le_net_GetDNS
     le_net_DnsServerAddresses_t* addr        ///< [OUT]   DNS server Addresses
 )
 {
-    le_result_t result;
-    char intf[LE_DCS_INTERFACE_NAME_MAX_LEN] = {0};
+    le_result_t ret;
     char v4DnsAddrs[2][PA_DCS_IPV4_ADDR_MAX_BYTES] = {{0}, {0}};
     char v6DnsAddrs[2][PA_DCS_IPV6_ADDR_MAX_BYTES] = {{0}, {0}};
-    int intfSize = LE_DCS_INTERFACE_NAME_MAX_LEN;
     le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
 
     if (addr == NULL)
@@ -1291,33 +1229,24 @@ le_result_t le_net_GetDNS
         LE_ERROR("Passing a NULL ptr refence is not allowed");
         return LE_FAULT;
     }
+
+    // Clear addresses
+    memset(addr, '\0', sizeof(*addr));
+
     if (!channelDb)
     {
         LE_ERROR("Invalid channel reference %p for setting default GW", channelRef);
         return LE_FAULT;
     }
 
-    // Get Network Interface
-    result = le_dcsTech_GetNetInterface(channelDb->technology, channelRef, intf, intfSize);
-    if (result != LE_OK)
+    // Query technology for IPv4 and IPv6 DNS server address assignments
+    ret = le_dcsTech_GetDNSAddresses(channelDb->technology, channelRef,
+                                     (char *)v4DnsAddrs, PA_DCS_IPV4_ADDR_MAX_BYTES,
+                                     (char *)v6DnsAddrs, PA_DCS_IPV6_ADDR_MAX_BYTES);
+    if (ret != LE_OK)
     {
-        LE_ERROR("Failed to get network interface for channel %s of technology %s to set "
-                "default GW", channelDb->channelName,
-                le_dcs_ConvertTechEnumToName(channelDb->technology));
-        return LE_FAULT;
-    }
-
-    // Clear addresses
-    memset(addr, '\0', sizeof(*addr));
-
-    result = GetLeaseAddresses(intf, LE_NET_DNS_SERVER_ADDRESS,
-                               (char *)v4DnsAddrs, PA_DCS_IPV4_ADDR_MAX_BYTES,
-                               (char *)v6DnsAddrs, PA_DCS_IPV6_ADDR_MAX_BYTES,
-                               MAX_NUM_DNS_ADDRESS_BY_TYPE);
-    if (result != LE_OK)
-    {
-        LE_ERROR("Failed to get DNS lease addresses for %s interface",
-                 intf);
+        LE_ERROR("Failed to get DNS server addresses for channel %s of technology %s; error %d",
+                 channelDb->channelName, le_dcs_ConvertTechEnumToName(channelDb->technology), ret);
         return LE_FAULT;
     }
 
@@ -1327,7 +1256,7 @@ le_result_t le_net_GetDNS
     le_utf8_Copy(addr->ipv6Addr1, v6DnsAddrs[0], sizeof(addr->ipv6Addr1), NULL);
     le_utf8_Copy(addr->ipv6Addr2, v6DnsAddrs[1], sizeof(addr->ipv6Addr2), NULL);
 
-    return result;
+    return ret;
 }
 
 //--------------------------------------------------------------------------------------------------
