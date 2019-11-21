@@ -199,6 +199,8 @@ static void TestTime()
         .tm_isdst = 0,
     };
 
+    LE_TEST_OK(num == timegm(&expectedTm), "Test timegm at time %lu", num);
+
     gmtime_r(&num, &actualTm);
     LE_TEST_OK(VerifyTimeMatch(&expectedTm, &actualTm),
                "Test gmtime_r at time %lu", num);
@@ -236,6 +238,8 @@ static void TestTime()
         .tm_isdst = 0,
     };
 
+    LE_TEST_OK(num == timegm(&expectedTm), "Test timegm at time %lu", num);
+
     gmtime_r(&num, &actualTm);
     LE_TEST_OK(VerifyTimeMatch(&expectedTm, &actualTm),
                "Test gmtime_r at time %lu", num);
@@ -271,6 +275,8 @@ static void TestTime()
         .tm_isdst = 0,
     };
 
+    LE_TEST_OK(num == timegm(&expectedTm), "Test timegm at time %lu", num);
+
     gmtime_r(&num, &actualTm);
     LE_TEST_OK(VerifyTimeMatch(&expectedTm, &actualTm),
                "Test gmtime_r at time %lu", num);
@@ -298,6 +304,9 @@ static void TestTime()
         .tm_yday = 60,
         .tm_isdst = 0,
     };
+
+    LE_TEST_OK(num == timegm(&expectedTm), "Test timegm at time %lu", num);
+
     gmtime_r(&num, &actualTm);
     LE_TEST_OK(VerifyTimeMatch(&expectedTm, &actualTm),
                "Test gmtime_r at time %lu", num);
@@ -358,7 +367,7 @@ static void TestFailCases()
 
 COMPONENT_INIT
 {
-    LE_TEST_PLAN(56);
+    LE_TEST_PLAN(60);
     TestTzset();
     TestClock();
     TestDateTimeString();
