@@ -35,6 +35,11 @@ struct Exe_t : public HasTargetInfo_t
     /// other component instances that they depend on.
     std::list<ComponentInstance_t*> componentInstances;
 
+    // This list contains the same components in the above list but with a different order. It is a
+    // preorder traversal of the component tree, so parent components appear before their
+    // components. This order is need for linking the executable in Linux.
+    std::list<ComponentInstance_t*> componentInstancesPreOrderList;
+
     std::list<ObjectFile_t*> cObjectFiles;  ///< .o files to build into exe from C sources.
     std::list<ObjectFile_t*> cxxObjectFiles;///< .o files to build into exe from C++ sources.
 
@@ -46,6 +51,7 @@ struct Exe_t : public HasTargetInfo_t
     bool hasIncompatibleLanguageCode;
 
     void AddComponentInstance(ComponentInstance_t* componentInstancePtr);
+    void AddComponentInstanceToPreOrderList(ComponentInstance_t* componentInstancePtr);
 
     void AddCObjectFile(ObjectFile_t* object)
     {

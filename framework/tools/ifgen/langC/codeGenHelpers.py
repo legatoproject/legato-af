@@ -258,8 +258,7 @@ def FormatParameter(env, parameter, forceInput=False, useBaseName=False):
     if isinstance(parameter, interfaceIR.StringParameter):
         return ((u"const " if forceInput or parameter.direction == interfaceIR.DIR_IN else u"") +
                 FormatType(parameter.apiType,useBaseName) +
-                (u" LE_NONNULL " if not env.globals.get('dontGenerateAttrs') and
-                 parameter.direction == interfaceIR.DIR_IN else u" ") +
+                (u" LE_NONNULL " if parameter.direction == interfaceIR.DIR_IN else u" ") +
                 parameter.name)
     elif isinstance(parameter, interfaceIR.ArrayParameter):
         return ((u"const " if forceInput or parameter.direction == interfaceIR.DIR_IN else u"") +
@@ -268,8 +267,7 @@ def FormatParameter(env, parameter, forceInput=False, useBaseName=False):
         return FormatType(parameter.apiType,useBaseName) + " " + parameter.name + "Ptr"
     elif isinstance(parameter.apiType, interfaceIR.StructType):
         if forceInput or parameter.direction == interfaceIR.DIR_IN:
-            return u"const " + FormatType(parameter.apiType,useBaseName) + " * " + \
-                (u"LE_NONNULL " if not env.globals.get('dontGenerateAttrs') else "") + \
+            return u"const " + FormatType(parameter.apiType) + " * LE_NONNULL " + \
                 parameter.name + "Ptr"
         else:
             return FormatType(parameter.apiType,useBaseName) + " * " + parameter.name + "Ptr"

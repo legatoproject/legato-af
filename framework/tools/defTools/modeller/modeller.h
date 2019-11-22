@@ -96,6 +96,17 @@ void AddComponentInstance
     model::Component_t* componentPtr
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Adds an instance of a given component to a given executable's pre order list
+ **/
+//--------------------------------------------------------------------------------------------------
+void AddComponentInstanceToPreOrderList
+(
+    model::Exe_t* exePtr,
+    model::Component_t* componentPtr
+);
+
 
 //--------------------------------------------------------------------------------------------------
 /**

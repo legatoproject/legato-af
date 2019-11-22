@@ -956,9 +956,11 @@ static void AddRequiredItems
         else if (subsectionName == "component")
         {
             auto subsectionPtr = parseTree::ToCompoundItemListPtr(memberPtr);
-            for (auto itemPtr : subsectionPtr->Contents())
+            for (auto it = subsectionPtr->Contents().rbegin();
+                it != subsectionPtr->Contents().rend();
+                ++it)
             {
-                auto subitemPtr = parseTree::ToTokenListPtr(itemPtr);
+                auto subitemPtr = parseTree::ToTokenListPtr(*it);
 
                 GetRequiredComponent(componentPtr, subitemPtr, buildParams);
 
@@ -1598,5 +1600,38 @@ void AddComponentInstance
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Adds an instance of a given component to a given executable's pre order list
+ **/
+//--------------------------------------------------------------------------------------------------
+void AddComponentInstanceToPreOrderList
+(
+    model::Exe_t* exePtr,
+    model::Component_t* componentPtr
+)
+{
+    // If there is already an instance of this component in this executable, ignore this.
+    for (auto instancePtr : exePtr->componentInstancesPreOrderList)
+    {
+        if (instancePtr->componentPtr == componentPtr)
+        {
+            return;
+        }
+    }
+
+    for (auto instancePtr : exePtr->componentInstances)
+    {
+        if (instancePtr->componentPtr == componentPtr)
+        {
+            exePtr->AddComponentInstanceToPreOrderList(instancePtr);
+            break;
+        }
+    }
+    for (auto subComponentPtr : componentPtr->subComponents)
+    {
+        AddComponentInstanceToPreOrderList(exePtr, subComponentPtr.componentPtr);
+    }
+}
 
 } // namespace modeller

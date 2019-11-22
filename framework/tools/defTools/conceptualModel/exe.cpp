@@ -76,6 +76,19 @@ void Exe_t::AddComponentInstance
     hasIncompatibleLanguageCode |= (hasCOrCppCode + hasJavaCode + hasPythonCode) > 1;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a new component instance to the pre order list.
+ **/
+//--------------------------------------------------------------------------------------------------
+void Exe_t::AddComponentInstanceToPreOrderList
+(
+    ComponentInstance_t* componentInstancePtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    componentInstancesPreOrderList.push_back(componentInstancePtr);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
