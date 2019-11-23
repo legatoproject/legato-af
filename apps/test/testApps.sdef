@@ -5,7 +5,11 @@
  * This ensures behaviour of these services is compatible on both platforms
  */
 
-#include "$LEGATO_ROOT/legatoTargetConfig.sinc"
+#if file_exists($SDEF_TO_USE)
+    #include "$SDEF_TO_USE"
+#else
+    #include "$LEGATO_ROOT/legatoTargetConfig.sinc"
+#endif
 
 apps:
 {

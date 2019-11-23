@@ -1,0 +1,22 @@
+start: manual
+
+sandboxed:false
+
+executables:
+{
+    atCommandTest = ( atGenericComponent atServerUtilComponent )
+}
+
+processes:
+{
+    run:
+    {
+        ( atCommandTest )
+    }
+}
+
+bindings:
+{
+    atCommandTest.atGenericComponent.le_atServer -> atService.le_atServer
+    atCommandTest.atServerUtilComponent.le_atServer -> atService.le_atServer
+}

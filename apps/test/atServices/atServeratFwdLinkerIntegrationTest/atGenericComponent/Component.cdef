@@ -1,0 +1,19 @@
+requires:
+{
+    api:
+    {
+        atServices/le_atServer.api
+    }
+}
+
+cflags:
+{
+    -I${CURDIR}/../atServerUtilComponent
+    -I${CURDIR}/handlers
+}
+
+sources:
+{
+    atGeneric.c
+    handlers/handlers.c
+}
