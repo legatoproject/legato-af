@@ -1,4 +1,3 @@
-
 sandboxed: false
 
 executables:
@@ -14,23 +13,32 @@ processes:
     }
 
     faultAction: restart
-    #if ${LE_CONFIG_SERVICES_WATCHDOG} = y
-        maxWatchdogTimeout: 960000
-    #else
-        watchdogTimeout: never
-    #endif
+#if ${LE_CONFIG_SERVICES_WATCHDOG} = y
+    maxWatchdogTimeout: 960000
+#else
+    watchdogTimeout: never
+#endif
     maxFileBytes: 2000K
+
+#if ${LE_CONFIG_RTOS} = y
+    maxStackBytes: 64K
+#endif
+
 }
 
 bindings:
 {
+#if ${LE_CONFIG_LINUX} = y
     fwupdateDaemon.watchdogChain.le_wdog -> <root>.le_wdog
+#endif
 }
 
 extern:
 {
     fwupdateDaemon.fwupdateDaemon.le_fwupdate
+#if ${LE_CONFIG_LINUX} = y
     fwupdateDaemon.fwupdateDaemon.le_dualsys
     fwupdateDaemon.fwupdateDaemon.le_flash
+#endif
 }
 

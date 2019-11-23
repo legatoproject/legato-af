@@ -4,16 +4,20 @@ provides:
     api:
     {
         le_fwupdate.api
+#if ${LE_CONFIG_LINUX} = y
         le_dualsys.api
         le_flash.api
+#endif
     }
 }
 
 sources:
 {
     fwupdateServer.c
+#if ${LE_CONFIG_LINUX} = y
     le_dualsys.c
     le_flash.c
+#endif
 }
 
 cflags:
@@ -27,11 +31,13 @@ requires:
 {
     component:
     {
-        ${LEGATO_FWUPDATE_PA_DEFAULT}
         ${LEGATO_FWUPDATE_PA}
+#if ${LE_CONFIG_LINUX} = y
+        ${LEGATO_FWUPDATE_PA_DEFAULT}
         ${LEGATO_FWUPDATE_PA_DUALSYS}
         ${LEGATO_FWUPDATE_PA_SINGLESYS}
         ${LEGATO_FWUPDATE_PA_FLASH}
+#endif
         ${LEGATO_ROOT}/components/watchdogChain
     }
 }
