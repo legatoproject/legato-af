@@ -390,7 +390,11 @@ le_onoff_t;
  * Provide static_assert if not available.
  */
 //--------------------------------------------------------------------------------------------------
-#   define static_assert(cond, msg) _Static_assert((cond), #cond ": " msg)
+#  if __GNUC__ || __STDC_VERSION__ >= 201112L
+#    define static_assert(cond, msg) _Static_assert((cond), #cond ": " msg)
+#  else
+#    define static_assert(cond, msg) ((void)sizeof(char[1 - 2*!(cond)]))
+#  endif
 #endif
 
 #if __GNUC__

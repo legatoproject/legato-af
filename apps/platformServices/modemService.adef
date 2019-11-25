@@ -33,7 +33,7 @@ processes:
         watchdogTimeout: never
     #endif
 #if ${LE_CONFIG_RTOS} = y
-    maxStackBytes: 131072
+    maxStackBytes: 8192
 #endif
 }
 
@@ -93,7 +93,6 @@ extern:
     modemDaemon.modemDaemon.le_temp
     modemDaemon.modemDaemon.le_riPin
     modemDaemon.modemDaemon.le_adc
-    modemDaemon.modemDaemon.le_lpt
 
 #if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
     modemDaemon.modemDaemon.le_mcc
@@ -102,5 +101,6 @@ extern:
     modemDaemon.modemDaemon.le_rtc
     modemDaemon.modemDaemon.le_mdmCfg
     rSimDaemon.rSimDaemon.le_rsim
+    modemDaemon.modemDaemon.le_lpt
 #endif
 }

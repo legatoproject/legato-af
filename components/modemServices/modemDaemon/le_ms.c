@@ -9,23 +9,25 @@
 
 #include "legato.h"
 #include "interfaces.h"
+
+#include "le_ms_local.h"
 #include "le_mrc_local.h"
 #include "le_sim_local.h"
 #include "le_sms_local.h"
 #include "le_mdc_local.h"
 #include "le_temp_local.h"
 #include "le_riPin_local.h"
-#include "le_lpt_local.h"
 #include "le_ips_local.h"
 #include "sysResets.h"
 
 #if !MK_CONFIG_MODEMSERVICE_SIMPLE
-#include "le_ms_local.h"
 #include "le_mcc_local.h"
 #include "le_ecall_local.h"
 #include "le_antenna_local.h"
-#include "watchdogChain.h"
+#include "le_lpt_local.h"
 #endif
+
+#include "watchdogChain.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -46,8 +48,8 @@ COMPONENT_INIT
     le_mdc_Init();
 #if !MK_CONFIG_MODEMSERVICE_SIMPLE
     le_mcc_Init();
-#endif
     le_lpt_Init();
+#endif
     le_ips_Init();
     le_temp_Init();
     le_riPin_Init();
@@ -62,11 +64,9 @@ COMPONENT_INIT
     }
 #endif
 
-#if MK_CONFIG_MODEMSERVICE_SIMPLE
-    LE_INFO("Modem Service Init done");
-#else
+    LE_DEBUG("Modem Service Init done");
+
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_MonitorEventLoop(MS_WDOG_MAIN_LOOP, watchdogInterval);
-#endif
 }
