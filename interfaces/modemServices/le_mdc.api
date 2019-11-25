@@ -262,13 +262,6 @@ DEFINE DEFAULT_PROFILE = -1;
 DEFINE SIMTOOLKIT_BIP_DEFAULT_PROFILE = -2;
 
 /**
- * @deprecated LE_MDC_DISC_USER_AUTHENTIFICATION_FAILURE is deprecated.
- * LE_MDC_DISC_USER_AUTHENTICATION_FAILURE should be used instead.
- */
-DEFINE DISC_USER_AUTHENTIFICATION_FAILURE = 7;
-
-
-/**
  * Define the max # of entries in a cellular profile list. So far most of the supported modules
  * & platforms have a limit of 24 profiles, while on 9x50 Qualcomm on the EM75xx baseline it has
  * been increased to 34. It's unforeseeable that in the short future this limit will further be
