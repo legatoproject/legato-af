@@ -149,6 +149,66 @@ static void SetConfiguration
     le_utf8_Copy(configuration.pdp, PdpIpv4, sizeof(configuration.pdp), NULL);
     le_utf8_Copy(configuration.apn, automaticApn, sizeof(configuration.apn), NULL);
 
+    le_mdc_ProfileInfo_t profileList[LE_MDC_PROFILE_LIST_ENTRY_MAX];
+    size_t listLen = LE_MDC_PROFILE_LIST_ENTRY_MAX;
+    le_mdc_ProfileRef_t profileRef;
+    char apnStr[LE_MDC_APN_NAME_MAX_BYTES];
+    char userName[LE_MDC_USER_NAME_MAX_BYTES], password[LE_MDC_PASSWORD_NAME_MAX_BYTES];
+    le_mdc_Auth_t authType;
+    int i;
+
+    LE_TEST_OK(LE_OK == le_mdc_GetProfileList(profileList, &listLen),
+               "Test le_mdc_GetProfileList and %d profiles obtained", listLen);
+
+    for (i=0; i<listLen; i++)
+    {
+        LE_DEBUG("Cellular profile retrieved index %i, type %i, name %s",
+                 profileList[i].index, profileList[i].type, profileList[i].name);
+        profileRef = le_mdc_GetProfile(profileList[i].index);
+        if (!profileRef)
+        {
+            LE_WARN("Failed to get profile with index %d", profileList[i].index);
+        }
+        else
+        {
+            le_mdc_Pdp_t pdpType = le_mdc_GetPDP(profileRef);
+            switch (pdpType)
+            {
+            case LE_MDC_PDP_IPV4:
+                LE_TEST_INFO("PDP type is IPV4");
+                break;
+            case LE_MDC_PDP_IPV6:
+                LE_TEST_INFO("PDP type is IPV6");
+                break;
+            case LE_MDC_PDP_IPV4V6:
+                LE_TEST_INFO("PDP type is IPV4V6");
+                break;
+            default:
+                LE_TEST_INFO("PDP type is UNKNOWN");
+                break;
+            }
+
+            memset(apnStr, 0, sizeof(apnStr));
+            LE_TEST_OK(LE_OK == le_mdc_GetAPN(profileRef, apnStr, sizeof(apnStr)),
+                       "Test le_mdc_GetAPN()");
+            LE_TEST_INFO("le_mdc_GetAPN returns APN: %s", apnStr);
+
+            memset(userName, 0, sizeof(userName));
+            memset(password, 0, sizeof(password));
+            LE_TEST_OK(LE_OK == le_mdc_GetAuthentication(profileRef,
+                                                         &authType,
+                                                         userName,
+                                                         sizeof(userName),
+                                                         password,
+                                                         sizeof(password)),
+                       "Test le_mdc_GetAuthentication()");
+            LE_TEST_INFO("The Authentication type is: %s",
+                         authType == LE_MDC_AUTH_PAP ? "PAP" : \
+                         (authType == LE_MDC_AUTH_CHAP ? "CHAP" : "NONE"));
+            LE_TEST_INFO("The Authentication username: %s, password: %s", userName, password);
+        }
+    }
+
     uint32_t profile;
 
     if ( strncmp(configuration.cid, DefaultCid, sizeof(DefaultCid)) == 0 )
@@ -175,7 +235,8 @@ static void SetConfiguration
     le_mdc_ConState_t state = LE_MDC_DISCONNECTED;
 
     // Check the state
-    LE_TEST_OK(LE_OK == le_mdc_GetSessionState(*profileRefPtr, &state), "Test le_mdc_GetSessionState");
+    LE_TEST_OK(LE_OK == le_mdc_GetSessionState(*profileRefPtr, &state),
+               "Test le_mdc_GetSessionState");
 
     // If already connected, disconnect the session
     if (LE_MDC_CONNECTED == state)
@@ -598,6 +659,5 @@ COMPONENT_INIT
     LE_INFO("======= MDC TEST PASSED =======");
 
     le_thread_Cancel(testThread);
-
-//    exit(EXIT_SUCCESS);
+    pthread_exit(NULL);
 }
