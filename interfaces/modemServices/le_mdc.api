@@ -34,6 +34,8 @@
  * default index used by the modem for Bearer Independent Protocol (BIP).
  * The maximum number of data profiles supported is modem dependent and can be retrieved with
  * le_mdc_NumProfiles().
+ * The list of supported PDP context identifiers (CID) are modem dependent and can be retrieved by
+ * calling le_mdc_GetCidList().
  *
  * @note le_mdc_GetProfile() creates a new profile if the profile's index can't be found.
  *
@@ -269,6 +271,7 @@ DEFINE SIMTOOLKIT_BIP_DEFAULT_PROFILE = -2;
  */
 DEFINE PROFILE_LIST_ENTRY_MAX = 36;
 DEFINE PROFILE_LIST_ENTRY_NAMELEN_MAX = 50;
+DEFINE MAX_PDP_CID_INDEX = PROFILE_LIST_ENTRY_MAX;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -518,6 +521,21 @@ FUNCTION Profile GetProfile
 FUNCTION uint32 GetProfileIndex
 (
     Profile profileRef ///< Query this profile object
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the list of supported PDP context identifiers
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if the input parameter is not valid
+ *      - LE_FAULT for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetCidList
+(
+    uint8 cid[MAX_PDP_CID_INDEX] OUT ///< List of supported PDP context identifiers
 );
 
 //--------------------------------------------------------------------------------------------------
