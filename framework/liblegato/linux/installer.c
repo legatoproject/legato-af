@@ -73,15 +73,18 @@ void installer_GetAppHashFromSymlink
     ssize_t bytesRead = readlink(linkPath, linkContent, sizeof(linkContent));
     if (bytesRead < 0)
     {
-        LE_FATAL("Failed to read symlink '%s' (%m).", linkPath);
+        linkContent[0] = '\0';
+        LE_ERROR("Failed to read symlink '%s' (%m).", linkPath);
     }
     else if (bytesRead >= sizeof(linkContent))
     {
+        linkContent[0] = '\0';
         LE_FATAL("Contents of symlink '%s' too long (> %zu).", linkPath, sizeof(linkContent) - 1);
     }
-
-    // Null-terminate.
-    linkContent[bytesRead] = '\0';
+    else
+    {
+        linkContent[bytesRead] = '\0';
+    }
 
     LE_ASSERT(LE_OK == le_utf8_Copy(hashBuffer,
                                     le_path_GetBasenamePtr(linkContent, "/"),
