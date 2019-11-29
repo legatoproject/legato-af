@@ -359,7 +359,7 @@ static void GetWatchdogAction
         // Set the watchdog action based on the fault action string.
         if (result == LE_OK)
         {
-            LE_WARN("%s watchdogAction '%s' in proc section", procRef->namePtr, watchdogActionStr);
+            LE_DEBUG("%s watchdogAction '%s' in proc section", procRef->namePtr, watchdogActionStr);
             procRef->watchdogAction = wdog_action_EnumFromString(watchdogActionStr);
         }
         else
