@@ -68,5 +68,7 @@ COMPONENT_INIT
 {
     // The command-line has a command string.
     le_arg_AddPositionalCallback(&CommandArgHandler);
+    le_arg_AllowLessPositionalArgsThanCallbacks();
+    le_arg_SetFlagCallback(DisplayHelp, "h", "help");
     le_arg_Scan();
 }
