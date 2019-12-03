@@ -66,6 +66,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Use the same CRC32 as LWM2M.
+ */
+//--------------------------------------------------------------------------------------------------
+#define CRC32(buf, len, init)   (~le_crc_Crc32((buf), (len), ~(init)))
+#define CRC32_INIT              0UL
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Asynchronous request data structure
  */
 //--------------------------------------------------------------------------------------------------
@@ -101,13 +109,20 @@ static le_timer_Ref_t DelayTimerRef;
  * Sample of HTTP header request fields (key/value pair)
  */
 //--------------------------------------------------------------------------------------------------
-const char* SampleHttpHeaderFields[2*SAMPLE_FIELDS_NB] =
+static const char* SampleHttpHeaderFields[2*SAMPLE_FIELDS_NB] =
 {
     "accept",          "*/*",
     "cache-control",   "no-cache",
     "user-agent",      "Legato app",
     "accept-encoding", "gzip, deflate"
 };
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Body CRC32 value.
+ */
+//--------------------------------------------------------------------------------------------------
+static uint32_t Crc;
 
 //--------------------------------------------------------------------------------------------------
 // Functions
@@ -126,6 +141,7 @@ static void BodyResponseCb
 )
 {
     LE_INFO("Data size: %d", size);
+    Crc = CRC32((void *) dataPtr, size, Crc);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -158,6 +174,8 @@ static void StatusCodeCb
 )
 {
     LE_INFO("HTTP status code: %d", code);
+    LE_INFO("Resetting CRC32");
+    Crc = CRC32_INIT;
 }
 //! [HttpStatusCb]
 
@@ -267,6 +285,7 @@ static void SendRequestRspCb
     AsyncRequest_t* requestPtr = &AsyncRequest;
 
     LE_INFO("Request %d final status: %d", requestPtr->index, result);
+    LE_INFO("CRC32: 0x%08X", Crc);
 
     if (requestPtr->index)
     {
@@ -339,7 +358,7 @@ COMPONENT_INIT
     // Check arguments number
     if (le_arg_NumArgs() < 4)
     {
-        LE_INFO("Usage: app runProc httpTest httpTest -- security_flag host port");
+        LE_INFO("Usage: app runProc httpTest httpTest -- security_flag host port uri");
         pthread_exit(NULL);
     }
 
@@ -465,6 +484,7 @@ COMPONENT_INIT
             LE_ERROR("Unable to send request");
             goto end;
         }
+        LE_INFO("CRC32: 0x%08X", Crc);
     }
 
     LE_INFO("Enable asynchronous mode");

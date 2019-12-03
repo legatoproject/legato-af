@@ -1,8 +1,7 @@
 /**
  * @file secSocket_default.c
  *
- * This file implements a set of networking functions to manage secure TCP/UDP sockets using
- * mbedTLS library.
+ * This file provides a set of stub networking functions to manage secure TCP/UDP sockets.
  *
  * <hr>
  *

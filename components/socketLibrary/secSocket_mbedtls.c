@@ -13,22 +13,12 @@
 #include "legato.h"
 #include "interfaces.h"
 
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <unistd.h>
-#include "secSocket.h"
-#include "mbedtls/debug.h"
 #include "le_socketLib.h"
+#include "secSocket.h"
 
+#include "mbedtls/error.h"
 #include "mbedtls/net_sockets.h"
 #include "mbedtls/ssl.h"
-#include "mbedtls/ctr_drbg.h"
-#include "mbedtls/entropy.h"
-#include "mbedtls/platform.h"
-#include "mbedtls/ssl_internal.h"
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions
@@ -53,68 +43,25 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Number of large memory buffers required by MbedTLS
- */
-//--------------------------------------------------------------------------------------------------
-#define MBEDTLS_LARGE_BUFFER_COUNT  2
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Magic number used in MbedTLS structure to check the structure validity
- */
-//--------------------------------------------------------------------------------------------------
-#define MBEDTLS_MAGIC_NUMBER        0x6D626564
-
-//--------------------------------------------------------------------------------------------------
-/**
  * MbedTLS global context
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    uint32_t                 magicNb;   ///< Magic number to check structure validity
-    mbedtls_net_context      serverFd;  ///< MbedTLS wrapper for socket
-    mbedtls_ctr_drbg_context ctrDrbg;   ///< CTR_DRBG context structure
-    mbedtls_ssl_context      sslCtx;    ///< SSL/TLS context
-    mbedtls_ssl_config       sslConf;   ///< SSL/TLS configuration
-    mbedtls_entropy_context  entropy;   ///< Entropy context structure
-    mbedtls_x509_crt         caCert;    ///< X.509 certificate
-    bool                     isInit;    ///< TRUE if the secure socket context is initialized
+    mbedtls_net_context sock;       ///< MbedTLS wrapper for socket.
+    mbedtls_ssl_context sslCtx;     ///< SSL/TLS context.
+    mbedtls_ssl_config  sslConf;    ///< SSL/TLS configuration.
+    mbedtls_x509_crt    caCert;     ///< X.509 certificate.
 }
 MbedtlsCtx_t;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Memory pool for MbedTLS.  Largest blocks are in/out buffers which are MBEDTLS_SSL_BUFFER_LEN
- * sized.
- */
-//--------------------------------------------------------------------------------------------------
-LE_MEM_DEFINE_STATIC_POOL(MbedTLS, MBEDTLS_LARGE_BUFFER_COUNT, MBEDTLS_SSL_BUFFER_LEN);
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Memory pool for MbedTLS sockets context.
  */
 //--------------------------------------------------------------------------------------------------
-LE_MEM_DEFINE_STATIC_POOL(SocketCtxPool, MAX_SOCKET_NB, sizeof(MbedtlsCtx_t));
-
-//--------------------------------------------------------------------------------------------------
-// Internal variables
-//--------------------------------------------------------------------------------------------------
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Memory pool reference for MbedTLS pool
- */
-//--------------------------------------------------------------------------------------------------
-le_mem_PoolRef_t MbedTLSPoolRef = NULL;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Memory pool reference for the MbedtLS context pool
- */
-//--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t SocketCtxPoolRef = NULL;
+LE_MEM_DEFINE_STATIC_POOL(SocketCtxPool, MAX_SOCKET_NB, sizeof(MbedtlsCtx_t));
 
 //--------------------------------------------------------------------------------------------------
 // Static functions
@@ -122,110 +69,31 @@ static le_mem_PoolRef_t SocketCtxPoolRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Calloc replacement for MbedTLS. Pull from a memory pool, as with LWM2M on RTOS.
- */
-//--------------------------------------------------------------------------------------------------
-static void* MemoryCalloc
-(
-    size_t n,
-    size_t size
-)
-{
-    void* memPtr = NULL;
-    size_t totalSize = n*size;
-
-    // Try to allocate SSL buffers off the memory pool
-    if (totalSize == MBEDTLS_SSL_BUFFER_LEN)
-    {
-        memPtr = le_mem_TryAlloc(MbedTLSPoolRef);
-    }
-
-#ifndef LE_MEM_VALGRIND
-    // Otherwise use malloc.  This includes if buffer would overflow
-    if (!memPtr)
-    {
-        memPtr = malloc(totalSize);
-    }
-#endif
-
-    // And zero memory if allocated via either method above, because calloc zeros but
-    // le_mem_TryAlloc() and malloc() do not.
-    if (memPtr)
-    {
-        memset(memPtr, 0, totalSize);
-    }
-
-    return memPtr;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Free replacement for mbedtls.  Place blocks back on the memory pool.
- */
-//--------------------------------------------------------------------------------------------------
-static void MemoryFree
-(
-    void* memPtr
-)
-{
-    // Free NULL does nothing
-    if (!memPtr)
-    {
-        LE_WARN("Null pointer provided");
-        return;
-    }
-
-    // Check if this is in the memory pool.
-
-    // There's no good general purpose way of doing this,
-    // but in the case of static memory pools allocated only via le_mem_TryAlloc() we can check
-    // if it's in the pool data area.  Do this here directly as it's not something we should
-    // be encouraging by providing an API.
-#ifndef LE_MEM_VALGRIND
-    if ((memPtr >= ((void*)(&_mem_MbedTLSData))) &&
-        (memPtr < (void*)(&_mem_MbedTLSData[sizeof(_mem_MbedTLSData)/sizeof(_mem_MbedTLSData[0])])))
-    {
-#endif
-        // This is in the memory pool
-        le_mem_Release(memPtr);
-#ifndef LE_MEM_VALGRIND
-    }
-    else
-    {
-        // This is malloc'ed memory
-        free(memPtr);
-    }
-#endif
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Write to a stream and handle restart if necessary
  *
  * @return
  *  -  0 when all data are written
- *  - -1 on failure
- *
+ *  - < on failure
  */
 //--------------------------------------------------------------------------------------------------
 static int WriteToStream
 (
-    mbedtls_ssl_context*    sslCtxPtr,      ///< [IN] SSL context
-    char*                   bufferPtr,      ///< [IN] Data to be sent
-    int                     length          ///< [IN] Data length
+    mbedtls_ssl_context *sslCtxPtr, ///< [IN] SSL context
+    char                *bufferPtr, ///< [IN] Data to be sent
+    int                  length     ///< [IN] Data length
 )
 {
     int r;
 
-    if ((!bufferPtr) || (!sslCtxPtr))
-    {
-        return -1;
-    }
+    LE_ASSERT(sslCtxPtr != NULL);
+    LE_ASSERT(bufferPtr != NULL);
 
     r = mbedtls_ssl_write(sslCtxPtr, (const unsigned char*)bufferPtr, (size_t)length);
     if (0 >= r)
     {
-        LE_ERROR("Error on write %d", r);
+        char str[256];
+        mbedtls_strerror(r, str, sizeof(str));
+        LE_ERROR("Error %d on write: %s", r, str);
         return r;
     }
 
@@ -242,40 +110,11 @@ static int WriteToStream
 
     if (0 > r)
     {
-        LE_ERROR("Error on write %d", r);
+        char str[256];
+        mbedtls_strerror(r, str, sizeof(str));
+        LE_ERROR("Error %d on write: %s", r, str);
     }
     return r;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Cast secure socket context into MbedTLS socket context and check its validity
- *
- * @return
- *  - MbedTLS socket context pointer
- */
-//--------------------------------------------------------------------------------------------------
-static MbedtlsCtx_t* GetContext
-(
-    secSocket_Ctx_t*  ctxPtr   ///< [IN] Secure socket context pointer
-)
-{
-    if (!ctxPtr)
-    {
-        return NULL;
-    }
-
-    MbedtlsCtx_t* mbedSocketCtx = (secSocket_Ctx_t*)ctxPtr;
-
-    if (mbedSocketCtx->magicNb == MBEDTLS_MAGIC_NUMBER)
-    {
-        return mbedSocketCtx;
-    }
-    else
-    {
-        LE_ERROR("Unrecognized context provided");
-        return NULL;
-    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -288,15 +127,15 @@ static MbedtlsCtx_t* GetContext
  *  - LWM2MCORE_ERR_TIMEOUT if no data are read
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t ReadFromStream
+static int ReadFromStream
 (
-    mbedtls_ssl_context*    sslCtxPtr,      ///< [IN] SSL context
-    char*                   bufferPtr,      ///< [IN] Buffer
-    int                     length          ///< [IN] Buffer length
+    mbedtls_ssl_context     *sslCtxPtr, ///< [IN] SSL context
+    char                    *bufferPtr, ///< [IN] Buffer
+    int                      length     ///< [IN] Buffer length
 )
 {
-    int r = -1;
-    static int count = 0;
+    int             r = -1;
+    static size_t   count = 0;
 
     mbedtls_ssl_context* ctxPtr = (mbedtls_ssl_context*)sslCtxPtr;
 
@@ -352,27 +191,12 @@ static le_result_t ReadFromStream
 //--------------------------------------------------------------------------------------------------
 le_result_t secSocket_Init
 (
-    secSocket_Ctx_t**  ctxPtr       ///< [INOUT] Secure socket context pointer
+    secSocket_Ctx_t **ctxPtr ///< [OUT] Secure socket context pointer
 )
 {
-    int ret;
+    MbedtlsCtx_t *contextPtr;
 
-    // Check input parameter
-    if (!ctxPtr)
-    {
-        LE_ERROR("Null pointer provided");
-        return LE_BAD_PARAMETER;
-    }
-
-    // Initialize MbedTLS internal pool and attach callbacks
-    if (!MbedTLSPoolRef)
-    {
-        MbedTLSPoolRef = le_mem_InitStaticPool(MbedTLS,
-                                               MBEDTLS_LARGE_BUFFER_COUNT,
-                                               MBEDTLS_SSL_BUFFER_LEN);
-
-        mbedtls_platform_set_calloc_free(MemoryCalloc, MemoryFree);
-    }
+    LE_ASSERT(ctxPtr != NULL);
 
     // Initialize the socket context pool
     if (!SocketCtxPoolRef)
@@ -382,46 +206,15 @@ le_result_t secSocket_Init
                                                  sizeof(MbedtlsCtx_t));
     }
 
-    // Check if the socket is already initialized
-    MbedtlsCtx_t* contextPtr = GetContext(*ctxPtr);
-    if ((contextPtr) && (contextPtr->isInit))
-    {
-        LE_ERROR("Socket context already initialized");
-        return LE_FAULT;
-    }
-
     // Alloc memory from pool
-    contextPtr = le_mem_TryAlloc(SocketCtxPoolRef);
-    if (NULL == contextPtr)
-    {
-        LE_ERROR("Unable to allocate a socket context from pool");
-        return LE_FAULT;
-    }
+    contextPtr = le_mem_Alloc(SocketCtxPoolRef);
 
-    // Set the magic number
-    contextPtr->magicNb = MBEDTLS_MAGIC_NUMBER;
-
-    // Initialize the RNG and the session data
-    mbedtls_net_init(&(contextPtr->serverFd));
+    // Initialize the session data
+    mbedtls_net_init(&(contextPtr->sock));
     mbedtls_ssl_init(&(contextPtr->sslCtx));
     mbedtls_ssl_config_init(&(contextPtr->sslConf));
-    mbedtls_ctr_drbg_init(&(contextPtr->ctrDrbg));
 
-    LE_DEBUG("Seeding the random number generator...");
-    mbedtls_entropy_init(&(contextPtr->entropy));
-    ret = mbedtls_ctr_drbg_seed(&(contextPtr->ctrDrbg),
-                                mbedtls_entropy_func,
-                                &(contextPtr->entropy),
-                                NULL,
-                                0);
-    if (ret)
-    {
-        LE_ERROR("Failed! mbedtls_ctr_drbg_seed returned %d", ret);
-        return LE_FAULT;
-    }
-
-    contextPtr->isInit = true;
-    *ctxPtr = (secSocket_Ctx_t*)contextPtr;
+    *ctxPtr = (secSocket_Ctx_t *) contextPtr;
 
     return LE_OK;
 }
@@ -444,20 +237,15 @@ le_result_t secSocket_AddCertificate
     size_t            certificateLen    ///< [IN] Certificate Length
 )
 {
-    // Check input parameters
-    if ((!ctxPtr) || (!certificatePtr) || (!certificateLen))
-    {
-        return LE_BAD_PARAMETER;
-    }
+    int              ret;
+    MbedtlsCtx_t    *contextPtr = (MbedtlsCtx_t *) ctxPtr;
 
-    MbedtlsCtx_t* contextPtr = GetContext(ctxPtr);
-    if (!contextPtr)
-    {
-        return LE_BAD_PARAMETER;
-    }
+    LE_ASSERT(contextPtr != NULL);
+    LE_ASSERT(certificatePtr != NULL);
+    LE_ASSERT(certificateLen > 0);
 
     LE_DEBUG("Certificate: %p Len:%zu", certificatePtr, certificateLen);
-    int ret = mbedtls_x509_crt_parse(&(contextPtr->caCert), certificatePtr, certificateLen);
+    ret = mbedtls_x509_crt_parse(&(contextPtr->caCert), certificatePtr, certificateLen);
     if (ret < 0)
     {
         LE_ERROR("Failed!  mbedtls_x509_crt_parse returned -0x%x", -ret);
@@ -492,33 +280,26 @@ le_result_t secSocket_AddCertificate
 //--------------------------------------------------------------------------------------------------
 le_result_t secSocket_Connect
 (
-    secSocket_Ctx_t* ctxPtr,     ///< [INOUT] Secure socket context pointer
-    char*            hostPtr,    ///< [IN] Host to connect on
-    uint16_t         port,       ///< [IN] Port to connect on
-    SocketType_t     type,       ///< [IN] Socket type (TCP, UDP)
-    int*             fdPtr       ///< [OUT] Socket file descriptor
+    secSocket_Ctx_t *ctxPtr,    ///< [INOUT] Secure socket context pointer
+    char            *hostPtr,   ///< [IN] Host to connect on
+    uint16_t         port,      ///< [IN] Port to connect on
+    SocketType_t     type,      ///< [IN] Socket type (TCP, UDP)
+    int             *fdPtr      ///< [OUT] Socket file descriptor
 )
 {
-    int ret;
-    char portBuffer[6] = {0};
+    char             portBuffer[6] = {0};
+    int              ret;
+    MbedtlsCtx_t    *contextPtr = (MbedtlsCtx_t *) ctxPtr;
 
-    if ((!ctxPtr) || (!hostPtr) || (!fdPtr))
-    {
-        LE_ERROR("Invalid argument: ctxPtr %p, hostPtr %p fdPtr %p", ctxPtr, hostPtr, fdPtr);
-        return LE_BAD_PARAMETER;
-    }
-
-    MbedtlsCtx_t* contextPtr = GetContext(ctxPtr);
-    if (!contextPtr)
-    {
-        return LE_BAD_PARAMETER;
-    }
+    LE_ASSERT(contextPtr != NULL);
+    LE_ASSERT(hostPtr != NULL);
+    LE_ASSERT(fdPtr != NULL);
 
     // Start the connection
     snprintf(portBuffer, sizeof(portBuffer), "%d", port);
     LE_INFO("Connecting to %d/%s:%d - %s:%s...", type, hostPtr, port, hostPtr, portBuffer);
 
-    if ((ret = mbedtls_net_connect(&(contextPtr->serverFd),
+    if ((ret = mbedtls_net_connect(&(contextPtr->sock),
                                    hostPtr,
                                    portBuffer,
                                    (type == TCP_TYPE) ?
@@ -537,7 +318,7 @@ le_result_t secSocket_Connect
     }
 
     //Get the file descriptor
-    *fdPtr = contextPtr->serverFd.fd;
+    *fdPtr = contextPtr->sock.fd;
     LE_DEBUG("File descriptor: %d", *fdPtr);
 
     // Setup
@@ -555,7 +336,7 @@ le_result_t secSocket_Connect
 
     mbedtls_ssl_conf_authmode(&(contextPtr->sslConf), MBEDTLS_SSL_VERIFY_REQUIRED);
     mbedtls_ssl_conf_ca_chain(&(contextPtr->sslConf), &(contextPtr->caCert), NULL);
-    mbedtls_ssl_conf_rng(&(contextPtr->sslConf), mbedtls_ctr_drbg_random, &(contextPtr->ctrDrbg));
+    mbedtls_port_SSLSetRNG(&contextPtr->sslConf);
 
     if ((ret = mbedtls_ssl_setup(&(contextPtr->sslCtx), &(contextPtr->sslConf))) != 0)
     {
@@ -577,7 +358,7 @@ le_result_t secSocket_Connect
         return LE_FAULT;
     }
 
-    mbedtls_ssl_set_bio(&(contextPtr->sslCtx), &(contextPtr->serverFd),
+    mbedtls_ssl_set_bio(&(contextPtr->sslCtx), &(contextPtr->sock),
                         mbedtls_net_send, NULL, mbedtls_net_recv_timeout);
 
     // Set the timeout for the initial handshake.
@@ -627,21 +408,13 @@ le_result_t secSocket_Connect
 //--------------------------------------------------------------------------------------------------
 le_result_t secSocket_Disconnect
 (
-    secSocket_Ctx_t* ctxPtr      ///< [INOUT] Secure socket context pointer
+    secSocket_Ctx_t *ctxPtr ///< [INOUT] Secure socket context pointer
 )
 {
-    if (!ctxPtr)
-    {
-        return LE_BAD_PARAMETER;
-    }
+    MbedtlsCtx_t *contextPtr = (MbedtlsCtx_t *) ctxPtr;
+    LE_ASSERT(contextPtr != NULL);
 
-    MbedtlsCtx_t* contextPtr = GetContext(ctxPtr);
-    if (!contextPtr)
-    {
-        return LE_BAD_PARAMETER;
-    }
-
-    mbedtls_net_free(&(contextPtr->serverFd));
+    mbedtls_net_free(&(contextPtr->sock));
     return LE_OK;
 }
 
@@ -656,30 +429,19 @@ le_result_t secSocket_Disconnect
 //--------------------------------------------------------------------------------------------------
 le_result_t secSocket_Delete
 (
-    secSocket_Ctx_t* ctxPtr      ///< [INOUT] Secure socket context pointer
+    secSocket_Ctx_t *ctxPtr ///< [IN] Secure socket context pointer
 )
 {
-    if (!ctxPtr)
-    {
-        return LE_BAD_PARAMETER;
-    }
+    MbedtlsCtx_t *contextPtr = (MbedtlsCtx_t *) ctxPtr;
 
-    MbedtlsCtx_t* contextPtr = GetContext(ctxPtr);
-    if (!contextPtr)
-    {
-        return LE_BAD_PARAMETER;
-    }
+    LE_ASSERT(contextPtr != NULL);
 
-    mbedtls_net_free(&(contextPtr->serverFd));
+    mbedtls_net_free(&(contextPtr->sock));
     mbedtls_x509_crt_free(&(contextPtr->caCert));
     mbedtls_ssl_free(&(contextPtr->sslCtx));
     mbedtls_ssl_config_free(&(contextPtr->sslConf));
-    mbedtls_ctr_drbg_free(&(contextPtr->ctrDrbg));
-    mbedtls_entropy_free(&(contextPtr->entropy));
 
-    contextPtr->isInit = false;
     le_mem_Release(contextPtr);
-
     return LE_OK;
 }
 
@@ -695,21 +457,15 @@ le_result_t secSocket_Delete
 //--------------------------------------------------------------------------------------------------
 le_result_t secSocket_Write
 (
-    secSocket_Ctx_t* ctxPtr,      ///< [INOUT] Secure socket context pointer
-    char*            dataPtr,     ///< [IN] Data pointer
-    size_t           dataLen      ///< [IN] Data length
+    secSocket_Ctx_t *ctxPtr,    ///< [INOUT] Secure socket context pointer
+    char            *dataPtr,   ///< [IN] Data pointer
+    size_t           dataLen    ///< [IN] Data length
 )
 {
-    if ((!ctxPtr) || (!dataPtr))
-    {
-        return LE_BAD_PARAMETER;
-    }
+    MbedtlsCtx_t *contextPtr = (MbedtlsCtx_t *) ctxPtr;
 
-    MbedtlsCtx_t* contextPtr = GetContext(ctxPtr);
-    if (!contextPtr)
-    {
-        return LE_BAD_PARAMETER;
-    }
+    LE_ASSERT(contextPtr != NULL);
+    LE_ASSERT(dataPtr != NULL);
 
     if (0 > WriteToStream(&(contextPtr->sslCtx), dataPtr, (int)dataLen))
     {
@@ -733,38 +489,32 @@ le_result_t secSocket_Write
 //--------------------------------------------------------------------------------------------------
 le_result_t secSocket_Read
 (
-    secSocket_Ctx_t* ctxPtr,       ///< [INOUT] Secure socket context pointer
-    char*            dataPtr,      ///< [INOUT] Data pointer
-    size_t*          dataLenPtr,   ///< [IN] Data length pointer
-    uint32_t         timeout       ///< [IN] Read timeout in milliseconds.
+    secSocket_Ctx_t *ctxPtr,        ///< [INOUT] Secure socket context pointer
+    char            *dataPtr,       ///< [INOUT] Data pointer
+    size_t          *dataLenPtr,    ///< [IN] Data length pointer
+    uint32_t         timeout        ///< [IN] Read timeout in milliseconds.
 )
 {
-    if ((!ctxPtr) || (!dataPtr) || (!dataLenPtr))
-    {
-        return LE_BAD_PARAMETER;
-    }
+    int           count;
+    MbedtlsCtx_t *contextPtr = (MbedtlsCtx_t *) ctxPtr;
 
-    MbedtlsCtx_t* contextPtr = GetContext(ctxPtr);
-    if (!contextPtr)
-    {
-        return LE_BAD_PARAMETER;
-    }
+    LE_ASSERT(contextPtr != NULL);
+    LE_ASSERT(dataPtr != NULL);
+    LE_ASSERT(dataLenPtr != NULL);
 
     mbedtls_ssl_conf_read_timeout(&(contextPtr->sslConf), timeout);
-
-    int data = ReadFromStream(&(contextPtr->sslCtx), dataPtr, (int)*dataLenPtr);
-
-    if (data == LE_TIMEOUT)
+    count = ReadFromStream(&(contextPtr->sslCtx), dataPtr, (int)*dataLenPtr);
+    if (count == LE_TIMEOUT)
     {
         return LE_TIMEOUT;
     }
-    else if (data < 0)
+    else if (count < 0)
     {
         LE_INFO("ERROR on reading data from stream");
         return LE_FAULT;
     }
 
-    *dataLenPtr = data;
+    *dataLenPtr = count;
     return LE_OK;
 }
 
@@ -778,19 +528,11 @@ le_result_t secSocket_Read
 //--------------------------------------------------------------------------------------------------
 bool secSocket_IsDataAvailable
 (
-    secSocket_Ctx_t* ctxPtr       ///< [INOUT] Secure socket context pointer
+    secSocket_Ctx_t *ctxPtr ///< [IN] Secure socket context pointer
 )
 {
-    if (!ctxPtr)
-    {
-        return false;
-    }
+    MbedtlsCtx_t *contextPtr = (MbedtlsCtx_t *) ctxPtr;
 
-    MbedtlsCtx_t* contextPtr = GetContext(ctxPtr);
-    if (!contextPtr)
-    {
-        return false;
-    }
-
+    LE_ASSERT(contextPtr != NULL);
     return (mbedtls_ssl_get_bytes_avail(&(contextPtr->sslCtx)) != 0);
 }
