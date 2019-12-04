@@ -217,7 +217,10 @@ menu "Data Connection Service"
 
 config ENABLE_ETHERNET
   bool "Enable DCS to manage Ethernet"
-  default n
+  default n if RTOS
+  default y
+  ---help---
+  Enable Legato Ethernet support.
 
 endmenu # end "Data Connection Service"
 
