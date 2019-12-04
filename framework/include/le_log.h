@@ -380,7 +380,8 @@ typedef enum _le_log_Level_t
                     ///  Possibly resulted in a system failure.
     LE_LOG_CRIT,    ///< Critical error.  Fault that almost certainly has or will result in a
                     ///  system failure.
-    LE_LOG_EMERG    ///< Emergency.  A fatal error has occurred.  A process is being terminated.
+    LE_LOG_EMERG,   ///< Emergency.  A fatal error has occurred.  A process is being terminated.
+    LE_LOG_MAX      ///< One beyond maximum log level
 }
 le_log_Level_t;
 
@@ -392,7 +393,9 @@ le_log_Level_t;
  *       at runtime.
  */
 //--------------------------------------------------------------------------------------------------
-#if LE_CONFIG_LOG_STATIC_FILTER_EMERG
+#if LE_CONFIG_LOG_STATIC_FILTER_NO_LOG
+#   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_MAX
+#elif LE_CONFIG_LOG_STATIC_FILTER_EMERG
 #   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_EMERG
 #elif LE_CONFIG_LOG_STATIC_FILTER_CRIT
 #   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_CRIT

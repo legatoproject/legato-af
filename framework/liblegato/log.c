@@ -48,6 +48,8 @@ const char *log_GetSeverityStr
             return " INFO";
         case LE_LOG_DEBUG:
             return " DBUG";
+        case LE_LOG_MAX:
+            LE_FATAL("Invalid log level");
     }
 
     return " ??? ";
@@ -130,6 +132,9 @@ const char* log_SeverityLevelToStr
 
         case LE_LOG_EMERG:
             return LOG_SET_LEVEL_EMERG_STR;
+
+        case LE_LOG_MAX:
+            LE_FATAL("Invalid log level");
     }
 
     return NULL;

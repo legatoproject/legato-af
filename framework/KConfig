@@ -432,6 +432,11 @@ config LOG_STATIC_FILTER_EMERG
   ---help---
   Include only emergency-level log statements.
 
+config LOG_STATIC_FILTER_NO_LOG
+  bool "No logging"
+  ---help---
+  Disable all logging statements.
+
 endchoice # end "Static log level filter"
 
 config ENABLE_SEGV_HANDLER
