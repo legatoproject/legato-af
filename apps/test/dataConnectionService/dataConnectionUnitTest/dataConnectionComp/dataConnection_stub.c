@@ -1266,6 +1266,19 @@ le_result_t le_dcs_Stop
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Stub function for requesting app's session reference
+ */
+//--------------------------------------------------------------------------------------------------
+void le_dcs_UpdateSessionRef
+(
+    le_msg_SessionRef_t sessionRef
+)
+{
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Utility for converting a technology type enum into its name
  *
  * @return

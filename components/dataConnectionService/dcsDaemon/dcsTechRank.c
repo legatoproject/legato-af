@@ -184,6 +184,7 @@ le_result_t dcsTechRank_SelectDataChannel
 {
     int32_t index;
     char dataChannelName[LE_DCS_CHANNEL_NAME_MAX_LEN] = {0};
+    le_dcs_Technology_t dcsTech = dcsTechRank_ConvertToDcsTechEnum(technology);
 #ifdef LE_CONFIG_ENABLE_WIFI
     char ssid[LE_WIFIDEFS_MAX_SSID_BYTES] = {0};
 #endif
@@ -208,16 +209,28 @@ le_result_t dcsTechRank_SelectDataChannel
             }
             le_dcsCellular_GetNameFromIndex(index, dataChannelName);
             dcs_ChannelSetChannelName(dataChannelName);
-            dataChannelRef = le_dcs_GetReference(dataChannelName,
-                                                 dcsTechRank_ConvertToDcsTechEnum(technology));
-            dcs_ChannelSetCurrentReference(dataChannelRef);
+            dataChannelRef = le_dcs_GetReference(dataChannelName, dcsTech);
             if (!dataChannelRef)
             {
+            #ifdef LE_CONFIG_LINUX
                 dcs_ChannelSetChannelName(NULL);
                 LE_ERROR("Failed to select cellular profile index %d due to invalid channel "
                          "reference", index);
                 return LE_FAULT;
+            #else
+                // Allow to create the channel Db even the request channel is not in channel list.
+                dataChannelRef = le_dcs_CreateChannelDb(dcsTech, dataChannelName);
+                if (!dataChannelRef)
+                {
+                    LE_ERROR("Failed to create dbs for new channel %s of technology %d",
+                             dataChannelName, dcsTech);
+                    return LE_FAULT;
+                }
+                LE_DEBUG("Create dbs for new channel %s of technology %d",
+                         dataChannelName, dcsTech);
+            #endif
             }
+            dcs_ChannelSetCurrentReference(dataChannelRef);
             MdcIndexProfile = index;
             LE_INFO("Selected channel name %s", dataChannelName);
             return LE_OK;
@@ -228,7 +241,7 @@ le_result_t dcsTechRank_SelectDataChannel
                 LE_ERROR("Failed to retrieve wifi config SSID");
                 return LE_FAULT;
             }
-            dataChannelRef = le_dcs_GetReference(ssid, dcsTechRank_ConvertToDcsTechEnum(technology));
+            dataChannelRef = le_dcs_GetReference(ssid, dcsTech);
             dcs_ChannelSetCurrentReference(dataChannelRef);
             if (!dataChannelRef)
             {
@@ -242,7 +255,7 @@ le_result_t dcsTechRank_SelectDataChannel
             return LE_OK;
 #endif
         default:
-            LE_ERROR("Can't choose unknown technology %d", technology);
+            LE_ERROR("Can't choose unknown technology %d", dcsTech);
             return LE_FAULT;
     }
 }

@@ -157,6 +157,7 @@ LE_SHARED le_dcs_EventHandlerRef_t le_dcs_AddEventHandler(
 LE_SHARED void le_dcs_RemoveEventHandler(le_dcs_EventHandlerRef_t channelHandlerRef);
 LE_SHARED le_dcs_ChannelRef_t le_dcs_GetReference(const char *name, le_dcs_Technology_t technology);
 LE_SHARED le_dcs_ReqObjRef_t le_dcs_Start(le_dcs_ChannelRef_t channelRef);
+LE_SHARED void le_dcs_UpdateSessionRef(le_msg_SessionRef_t sessionRef);
 LE_SHARED le_result_t le_dcs_Stop(le_dcs_ReqObjRef_t reqRef);
 LE_SHARED le_msg_SessionRef_t le_dcs_GetInternalSessionRef(void);
 

@@ -20,5 +20,7 @@ sources:
 cflags:
 {
     -I$LEGATO_ROOT/components/dataConnectionService/dcsInternal
+#if ${LE_CONFIG_SERVICES_WATCHDOG} = y
     -I$LEGATO_ROOT/components/watchdogChain
+#endif
 }

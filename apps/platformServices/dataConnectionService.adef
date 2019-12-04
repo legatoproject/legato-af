@@ -2,7 +2,6 @@ sandboxed: false
 
 executables:
 {
-#if ${LE_CONFIG_LINUX} = y
     dcsDaemon = ( $LEGATO_ROOT/components/dataConnectionService/dcsDaemon
                   $LEGATO_ROOT/components/dataConnectionService/dcs
                   $LEGATO_ROOT/components/dataConnectionService/dcsNet
@@ -14,15 +13,9 @@ executables:
                   $LEGATO_ROOT/components/dataConnectionService/dcsEthernet
     #endif
                 )
-#else
-    dcs =       ( $LEGATO_ROOT/components/dataConnectionService/dcs
-                  $LEGATO_ROOT/components/dataConnectionService/dcsNet
-                  $LEGATO_ROOT/components/dataConnectionService/dcsCellular
-                )
-    dcsDaemon = ( $LEGATO_ROOT/components/dataConnectionService/dcsDaemon
-                )
-#endif
+#if ${LE_CONFIG_LINUX} = y
     dcsInternal = ( $LEGATO_ROOT/components/dataConnectionService/dcsInternal )
+#endif
 }
 
 processes:
@@ -30,11 +23,9 @@ processes:
     run:
     {
         (dcsDaemon)
+#if ${LE_CONFIG_LINUX} = y
         (dcsInternal)
-    #if ${LE_CONFIG_LINUX} = y
-    #else
-        (dcs)
-    #endif
+#endif
     }
 
     faultAction: restart
@@ -45,37 +36,31 @@ processes:
     #endif
 
 #if ${LE_CONFIG_RTOS} = y
-    maxStackBytes: 131072
+    maxStackBytes: 8192
 #endif
 }
 
 bindings:
 {
     dcsDaemon.dcsDaemon.le_mrc -> modemService.le_mrc
-#if ${LE_CONFIG_LINUX} = y
-    #if ${LE_CONFIG_SERVICES_WATCHDOG} = y
-        dcsDaemon.watchdogChain.le_wdog -> <root>.le_wdog
-    #endif
     dcsDaemon.dcs.le_mdc -> modemService.le_mdc
     dcsDaemon.dcs.le_mrc -> modemService.le_mrc
+    dcsDaemon.dcsCellular.le_mdc -> modemService.le_mdc
+    dcsDaemon.dcsCellular.le_mrc -> modemService.le_mrc
+#if ${LE_CONFIG_LINUX} = y
     dcsDaemon.dcs.le_appInfo -> <root>.le_appInfo
     dcsDaemon.dcsNet.le_appInfo -> <root>.le_appInfo
     dcsInternal.dcsInternal.le_dcs -> <root>.le_dcs
-    dcsDaemon.dcsCellular.le_mdc -> modemService.le_mdc
-    dcsDaemon.dcsCellular.le_mrc -> modemService.le_mrc
+    #if ${LE_CONFIG_SERVICES_WATCHDOG} = y
+        dcsDaemon.watchdogChain.le_wdog -> <root>.le_wdog
+    #endif
     #if ${LE_CONFIG_ENABLE_WIFI} = y
         dcsDaemon.dcsDaemon.le_wifiClient -> <root>.le_wifiClient
         dcsDaemon.dcsWifi.le_wifiClient -> <root>.le_wifiClient
     #endif
 #else
-    dcs.dcs.le_appInfo -> appInfo.le_appInfo
-    dcs.dcsNet.le_appInfo -> appInfo.le_appInfo
-    dcsDaemon.dcsDaemon.le_dcs -> dcs.dcs.le_dcs
-    dcs.dcs.le_mdc -> modemService.le_mdc
-    dcs.dcs.le_mrc -> modemService.le_mrc
-    dcs.dcsCellular.le_mdc -> modemService.le_mdc
-    dcs.dcsCellular.le_mrc -> modemService.le_mrc
-    dcsInternal.dcsInternal.le_dcs -> dcs.dcs.le_dcs
+    dcsDaemon.dcs.le_appInfo -> appInfo.le_appInfo
+    dcsDaemon.dcsNet.le_appInfo -> appInfo.le_appInfo
 #endif
 }
 
@@ -92,11 +77,6 @@ requires:
 extern:
 {
     dcsDaemon.dcsDaemon.le_data
-#if ${LE_CONFIG_LINUX} = y
     dcsDaemon.dcs.le_dcs
     dcsDaemon.dcsNet.le_net
-#else
-    dcs.dcs.le_dcs
-    dcs.dcsNet.le_net
-#endif
 }

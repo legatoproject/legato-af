@@ -1567,7 +1567,7 @@ le_data_RequestObjRef_t le_data_Request
     // Need to return a unique reference that will be used by Release.  Don't actually have
     // any data for now, but have to use some value other than NULL for the data pointer.
     le_data_RequestObjRef_t reqRef = le_ref_CreateRef(RequestRefMap, (void*)sessionRef);
-
+    le_dcs_UpdateSessionRef(sessionRef);
     LE_DEBUG("Connection requested by session %p, reference %p", sessionRef, reqRef);
 
     return reqRef;

@@ -35,6 +35,12 @@
 //--------------------------------------------------------------------------------------------------
 DcsInfo_t DcsInfo;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Session reference of apps request data connection via le_data
+ */
+//--------------------------------------------------------------------------------------------------
+static le_msg_SessionRef_t DcsSessionRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -99,12 +105,40 @@ static le_msg_SessionRef_t DcsGetSessionRef
     void
 )
 {
-    le_msg_SessionRef_t sessionRef = le_dcs_GetClientSessionRef();
+    le_msg_SessionRef_t sessionRef;
+#ifdef LE_CONFIG_LINUX
+    sessionRef = le_dcs_GetClientSessionRef();
+#else
+    sessionRef = DcsSessionRef;
+#endif
     if (!sessionRef)
     {
         return DcsInfo.internalSessionRef;
     }
     return sessionRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function update the client session reference of the caller requesting data connection via
+ * le_data.api.
+ *
+ * @return
+ *     - client session reference of the caller
+ */
+//--------------------------------------------------------------------------------------------------
+void le_dcs_UpdateSessionRef
+(
+    le_msg_SessionRef_t sessionRef
+)
+{
+    if (!sessionRef)
+    {
+        LE_ERROR("Invalid session reference");
+        return;
+    }
+    DcsSessionRef = sessionRef;
+    LE_DEBUG("DcsSessionRef is updated %p", DcsSessionRef);
 }
 
 

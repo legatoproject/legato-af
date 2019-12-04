@@ -36,7 +36,7 @@ static le_data_RequestObjRef_t RequestRef = NULL;
  *  List of technologies to use
  */
 //--------------------------------------------------------------------------------------------------
-static le_data_Technology_t TechList[LE_DATA_MAX] = {};
+static le_data_Technology_t TechList[LE_DATA_MAX];
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -63,24 +63,27 @@ static void SetTechnologies
     LE_INFO("Setting the technologies to use for the data connection.");
 
     // Add 'Wifi' as the first technology to use
-    le_result_t wifiResult = le_data_SetTechnologyRank(1, LE_DATA_WIFI);
-    if (LE_OK == wifiResult)
+    le_result_t result = le_data_SetTechnologyRank(1, LE_DATA_WIFI);
+    if (LE_OK == result)
     {
         TechList[techCounter++] = LE_DATA_WIFI;
+        // Add 'Cellular' as the second technology to use
+        LE_ASSERT(LE_OK == le_data_SetTechnologyRank(2, LE_DATA_CELLULAR));
+        TechList[techCounter++] = LE_DATA_CELLULAR;
     }
-    else if (LE_UNSUPPORTED == wifiResult)
+    else if (LE_UNSUPPORTED == result)
     {
         LE_INFO("Wifi not available on this platform.");
+        // Add 'Cellular' as the first technology to use
+        LE_ASSERT(LE_OK == le_data_SetTechnologyRank(1, LE_DATA_CELLULAR));
+        TechList[techCounter++] = LE_DATA_CELLULAR;
     }
     else
     {
-        LE_ERROR("Error %d when adding wifi to the list of technologies to use.", wifiResult);
+        LE_ERROR("Failed to set technology");
         exit(EXIT_FAILURE);
     }
 
-    // Add 'Cellular' as the second technology to use
-    LE_ASSERT(LE_OK == le_data_SetTechnologyRank(2, LE_DATA_CELLULAR));
-    TechList[techCounter++] = LE_DATA_CELLULAR;
 }
 
 //--------------------------------------------------------------------------------------------------

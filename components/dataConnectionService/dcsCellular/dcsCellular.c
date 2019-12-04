@@ -393,9 +393,9 @@ uint32_t le_dcsCellular_GetProfileIndex
     int32_t mdcIndex
 )
 {
-    int32_t index = 1;
-#ifdef LE_CONFIG_ENABLE_CONFIG_TREE
+    int32_t index = mdcIndex;
     le_mdc_ProfileRef_t profileRef;
+#ifdef LE_CONFIG_ENABLE_CONFIG_TREE
     char configPath[LE_CFG_STR_LEN_BYTES];
 
     // Seek to retrieve the configured default profile index from the config tree
@@ -412,7 +412,7 @@ uint32_t le_dcsCellular_GetProfileIndex
         index = mdcIndex;
     }
     le_cfg_CancelTxn(cfg);
-
+#endif
     // Retrieve the cellular profile for this index and let MDC create it if absent
     profileRef = le_mdc_GetProfile(index);
     if (!profileRef)
@@ -433,7 +433,7 @@ uint32_t le_dcsCellular_GetProfileIndex
         // TB: The le_mdc_GetProfile(index) API should be improved to le_mdc_GetProfile(&index)
         index = le_mdc_GetProfileIndex(profileRef);
     }
-#endif
+
     LE_DEBUG("Cellular profile index retrieved: %d", index);
     return index;
 }
