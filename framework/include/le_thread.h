@@ -242,15 +242,6 @@ le_thread_Priority_t;
 #define LE_THREAD_PRIORITY_RT_LOWEST    LE_THREAD_PRIORITY_RT_1     ///< Lowest real-time priority.
 #define LE_THREAD_PRIORITY_RT_HIGHEST   LE_THREAD_PRIORITY_RT_32    ///< Highest real-time priority.
 
-//--------------------------------------------------------------------------------------------------
-/**
- * @deprecated
- *
- * LE_THREAD_PRIORITY_NORMAL is deprecated, use LE_THREAD_PRIORITY_MEDIUM instead.
- */
-//--------------------------------------------------------------------------------------------------
-#define LE_THREAD_PRIORITY_NORMAL       LE_THREAD_PRIORITY_MEDIUM
-
 
 //--------------------------------------------------------------------------------------------------
 /**

@@ -88,7 +88,7 @@ void prio_Start
 #if LE_CONFIG_LINUX
     LE_ASSERT(LE_OK == le_thread_SetPriority(idleThread, LE_THREAD_PRIORITY_IDLE));
 #endif
-    LE_ASSERT(LE_OK == le_thread_SetPriority(normalThread, LE_THREAD_PRIORITY_NORMAL));
+    LE_ASSERT(LE_OK == le_thread_SetPriority(normalThread, LE_THREAD_PRIORITY_MEDIUM));
 
 #if LE_CONFIG_LINUX
     le_thread_Start(idleThread);
