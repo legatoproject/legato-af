@@ -363,13 +363,13 @@ void GenerateRtosSystemTasks
     for (auto cmdItem : systemPtr->commands)
     {
         const auto  commandPtr = cmdItem.second;
-        std::string component = commandPtr->exePath.substr(1);
+        std::string exeName = commandPtr->exePath.substr(1);
         std::string description = "Legato '" + commandPtr->name + "' command";
 
         outputFile <<   "LE_RTOSCLI_DEFINECMD\n"
                         "(\n"
                         "    " << commandPtr->appPtr->name << ",\n"
-                        "    " << component << ",\n"
+                        "    " << exeName << ",\n"
                         "    \"" << commandPtr->name  << "\",\n"
                         "    \"" << description << "\"\n"
                         ");\n";
@@ -420,13 +420,13 @@ void GenerateRtosSystemTasks
     for (auto cmdItem : systemPtr->commands)
     {
         const auto  commandPtr = cmdItem.second;
-        std::string component = commandPtr->exePath.substr(1);
+        std::string exeName = commandPtr->exePath.substr(1);
         std::string description = "Legato '" + commandPtr->name + "' command";
 
         outputFile <<   "    LE_RTOSCLI_ADDCMD_RUNTIME\n"
                         "    (\n"
                         "        " << commandPtr->appPtr->name << ",\n"
-                        "        " << component << ",\n"
+                        "        " << exeName << ",\n"
                         "        \"" << commandPtr->name << "\",\n"
                         "        \"" << description << "\"\n"
                         "    );\n";
@@ -468,13 +468,13 @@ void GenerateRtosCliCommandRegistration
     for (auto cmdItem : systemPtr->commands)
     {
         const auto  commandPtr = cmdItem.second;
-        std::string component = commandPtr->exePath.substr(1);
+        std::string exeName = commandPtr->exePath.substr(1);
         std::string description = "Legato '" + commandPtr->name + "' command";
 
         outputFile <<   "    LE_RTOSCLI_ADDCMD_COMPILETIME\n"
                         "    (\n"
                         "        " << commandPtr->appPtr->name << ",\n"
-                        "        " << component << ",\n"
+                        "        " << exeName << ",\n"
                         "        \"" << commandPtr->name << "\",\n"
                         "        \"" << description << "\"\n"
                         "    )\n";

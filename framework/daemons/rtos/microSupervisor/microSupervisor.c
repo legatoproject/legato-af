@@ -182,6 +182,22 @@ static char *PoolStrDup
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Exit the current thread.  Designed to be queued to a thread to exit via QueueFunctionToThread
+ */
+//--------------------------------------------------------------------------------------------------
+static void ExitThread
+(
+    void *param1Ptr,
+    void *param2Ptr
+)
+{
+    LE_UNUSED(param2Ptr);
+
+    le_thread_Exit(param1Ptr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Start a task, given a pointer to the task structure.
  */
 //--------------------------------------------------------------------------------------------------
@@ -608,6 +624,56 @@ le_result_t LE_SHARED le_microSupervisor_RunProcStr
     }
 
     return StartProc(appPtr, taskPtr, 0, NULL, cmdlineStr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Run a specific command (by name)
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t LE_SHARED le_microSupervisor_RunCommand
+(
+    const char* appNameStr,            ///< [IN] App name
+    const char* procNameStr,           ///< [IN] Process name
+    int argc,                          ///< [IN] Process argument count
+    const char* argv[]                 ///< [IN] Process argument list
+)
+{
+    const App_t* appPtr;
+    const Task_t* taskPtr;
+    le_result_t result = LE_FAULT;
+
+    appPtr = microSupervisor_FindApp(appNameStr);
+    if (!appPtr)
+    {
+        // No such app
+        LE_WARN("No app found named '%s'", appNameStr);
+        return LE_NOT_FOUND;
+    }
+
+    taskPtr = microSupervisor_FindTask(appPtr, procNameStr);
+    if (!taskPtr)
+    {
+        // No such task/process
+        LE_WARN("No process found named '%s' in app '%s'", procNameStr, appNameStr);
+        return LE_NOT_FOUND;
+    }
+
+    int taskNum = taskPtr - appPtr->taskList;
+    TaskInfo_t *taskInfoPtr = &appPtr->threadList[taskNum];
+    void *retVal;
+
+    result = StartProc(appPtr, taskPtr, argc, argv, NULL);
+
+    // Immediately stop process once COMPONENT_INIT is processed
+    if (result)
+    {
+        le_event_QueueFunctionToThread(taskInfoPtr->threadRef, ExitThread, NULL, NULL);
+        le_thread_Join(taskInfoPtr->threadRef, &retVal);
+    }
+
+    return result;
 }
 
 

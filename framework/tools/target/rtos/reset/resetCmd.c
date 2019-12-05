@@ -7,6 +7,7 @@
  */
 
 #include "legato.h"
+#include "interfaces.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -56,5 +57,5 @@ COMPONENT_INIT
         return;
     }
 
-    reboot(RB_AUTOBOOT);
+    le_ulpm_Reboot();
 }

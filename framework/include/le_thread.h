@@ -168,6 +168,8 @@
 #ifndef LEGATO_THREAD_INCLUDE_GUARD
 #define LEGATO_THREAD_INCLUDE_GUARD
 
+#include "le_cdata.h"
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Reference to a thread of execution.

@@ -170,6 +170,19 @@ LE_SHARED le_result_t le_microSupervisor_RunProcStr
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Run a specific command (by name)
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t LE_SHARED le_microSupervisor_RunCommand
+(
+    const char* appNameStr,            ///< [IN] App name
+    const char* procNameStr,           ///< [IN] Process name
+    int argc,                          ///< [IN] Process argument count
+    const char* argv[]                 ///< [IN] Process argument list
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Print app status on serial port (using printf).
  */
 //--------------------------------------------------------------------------------------------------
