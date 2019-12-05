@@ -170,7 +170,7 @@ static char *PoolStrDup
 )
 {
     char    *result;
-    size_t   length = strlen(str);
+    size_t   length = strlen(str) + 1;
 
     result = le_mem_TryVarAlloc(poolRef, length);
     if (result != NULL)
