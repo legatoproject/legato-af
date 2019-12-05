@@ -69,6 +69,19 @@ void CalcCmdHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Port service data mode test command handler
+ */
+//--------------------------------------------------------------------------------------------------
+void DataModeCmdHandler
+(
+    le_atServer_CmdRef_t commandRef,    ///< command reference
+    le_atServer_Type_t type,            ///< command type
+    uint32_t parametersNumber,          ///< number of command parameters
+    void* contextPtr                    ///< context pointer
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Send response command handler
  */
 //--------------------------------------------------------------------------------------------------

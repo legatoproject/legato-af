@@ -11,6 +11,20 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Standard final response when switching to the command mode
+ */
+//--------------------------------------------------------------------------------------------------
+#define ATSERVERUTIL_OK "\r\nOK\r\n"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Standard response when switching to the data mode
+ */
+//--------------------------------------------------------------------------------------------------
+#define ATSERVERUTIL_CONNECT "\r\nCONNECT\r\n"
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Maximum number of parameters
  */
 //--------------------------------------------------------------------------------------------------
@@ -427,4 +441,153 @@ void SendResponseCmdHandler
     }
 
     LE_ASSERT(le_atServer_SendUnsolicitedResponse("OK", LE_ATSERVER_ALL_DEVICES, NULL) == LE_OK);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Data mode command handler
+ *
+ * This command handler is used to test the Switch API and Data Forward API.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void DataModeCmdHandler
+(
+    le_atServer_CmdRef_t commandRef,
+    le_atServer_Type_t type,
+    uint32_t parametersNumber,
+    void* contextPtr
+)
+{
+    char rsp[LE_ATDEFS_RESPONSE_MAX_BYTES];
+    char atCommandName[LE_ATDEFS_COMMAND_MAX_BYTES];
+
+    memset(atCommandName, 0, LE_ATDEFS_COMMAND_MAX_BYTES);
+
+    // Get command name
+    LE_ASSERT_OK(le_atServer_GetCommandName(commandRef, atCommandName,
+                 LE_ATDEFS_COMMAND_MAX_BYTES));
+
+    snprintf(rsp, LE_ATDEFS_RESPONSE_MAX_BYTES, "%s TYPE: ", atCommandName + 2);
+
+    switch (type)
+    {
+        case LE_ATSERVER_TYPE_PARA:
+            LE_INFO("Type PARA");
+            le_utf8_Append(rsp, "PARA", LE_ATDEFS_RESPONSE_MAX_BYTES, NULL);
+        break;
+
+        case LE_ATSERVER_TYPE_TEST:
+            LE_INFO("Type TEST");
+            le_utf8_Append(rsp, "TEST", LE_ATDEFS_RESPONSE_MAX_BYTES, NULL);
+        break;
+
+        case LE_ATSERVER_TYPE_READ:
+            LE_INFO("Type READ");
+            le_utf8_Append(rsp, "READ", LE_ATDEFS_RESPONSE_MAX_BYTES, NULL);
+        break;
+
+        case LE_ATSERVER_TYPE_ACT:
+            LE_INFO("Type ACT");
+            le_utf8_Append(rsp, "ACT", LE_ATDEFS_RESPONSE_MAX_BYTES, NULL);
+        break;
+
+        default:
+            LE_TEST_INFO("AT command type is not proper!");
+            LE_ERROR("AT command type is not proper!");
+            pthread_exit(NULL);
+        break;
+    }
+
+    if (type != LE_ATSERVER_TYPE_ACT)
+    {
+        LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, ""));
+        return;
+    }
+
+    le_atServer_DeviceRef_t atServerDevRef = NULL;
+    le_result_t result = le_atServer_GetDevice(commandRef, &atServerDevRef);
+    if (LE_OK != result)
+    {
+        LE_ERROR("Cannot get device information! Result: %d", result);
+        LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, ""));
+        return;
+    }
+
+    le_port_DeviceRef_t devRefPtr = NULL;
+    result = le_port_GetPortReference(atServerDevRef, &devRefPtr);
+    if (LE_OK != result)
+    {
+        LE_ERROR("Cannot get port reference! Result: %d", result);
+        LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, ""));
+        return;
+    }
+
+    int atSockFd = -1;
+    result = le_port_SetDataMode(devRefPtr, &atSockFd);
+    if (LE_OK != result)
+    {
+        LE_ERROR("le_port_SetDataMode API usage error");
+        LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, ""));
+        return;
+    }
+
+    if(-1 == le_fd_Write(atSockFd, ATSERVERUTIL_CONNECT, strlen(ATSERVERUTIL_CONNECT)))
+    {
+        LE_ERROR("CONNECT write error");
+        LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, ""));
+        return;
+    }
+
+    char buf[LE_CONFIG_PIPE_BLOCK_SIZE * 3] = {0};
+    for (;;)
+    {
+        memset(buf, 0, sizeof(buf));
+        ssize_t ret = le_fd_Read(atSockFd, buf, sizeof(buf));
+        if (ret <= 0)
+        {
+            LE_TEST_INFO("Fail to read raw data from MCU: %d", errno);
+            LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, ""));
+            return;
+        }
+        else if (ret > 0)
+        {
+            if (strcmp(buf, "+++") == 0)
+            {
+                break;
+            }
+
+            size_t writeSize = 0;
+            ssize_t ws = 0;
+            do
+            {
+                ws = le_fd_Write(atSockFd, buf + writeSize, ret - writeSize);
+                if (ws == -1 && errno != EAGAIN)
+                {
+                    break;
+                }
+                else if (ws > 0)
+                {
+                    writeSize += ws;
+                }
+            }
+            while (writeSize < ret);
+
+            continue;
+        }
+    }
+
+    // Close data port
+    LE_INFO("Switch back to the command mode");
+    le_fd_Close(atSockFd);
+    result = le_port_SetCommandMode(devRefPtr, &atServerDevRef);
+    if(LE_OK != result)
+    {
+        LE_ERROR("le_port_SetDataMode API usage error");
+        LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, ""));
+        return;
+    }
+
+    LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, ""));
 }

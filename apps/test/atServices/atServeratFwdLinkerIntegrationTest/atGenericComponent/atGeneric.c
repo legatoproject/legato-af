@@ -35,6 +35,12 @@ static atServerUtil_AtCmd_t AtCmdCreation[] =
         .handlerPtr = SendResponseCmdHandler,
         .contextPtr = NULL
     },
+    {
+        .cmdPtr = "AT+KFTPCNX",
+        .cmdRef = NULL,
+        .handlerPtr = DataModeCmdHandler,
+        .contextPtr = NULL
+    },
 };
 
 
