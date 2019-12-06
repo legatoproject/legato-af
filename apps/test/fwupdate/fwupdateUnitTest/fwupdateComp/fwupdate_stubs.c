@@ -118,3 +118,56 @@ void le_wdogChain_Stop
 {
     // do nothing
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Try to connect to PowerManager service
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_pm_TryConnectService
+(
+    void
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disconnect from PowerManager service
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_pm_DisconnectService
+(
+    void
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create a new wakeup source
+ */
+//--------------------------------------------------------------------------------------------------
+le_pm_WakeupSourceRef_t le_pm_NewWakeupSource
+(
+    uint32_t opts,      ///< [in] Wakeup source options
+    const char *tag     ///< [in] Context-specific wakeup source tag
+)
+{
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Acquire a wakeup source
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_pm_StayAwake
+(
+    le_pm_WakeupSourceRef_t w   ///< [in] Wakeup source reference
+)
+{
+    return LE_OK;
+}

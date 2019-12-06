@@ -29,6 +29,10 @@ cflags:
 
 requires:
 {
+    api:
+    {
+        ${LEGATO_ROOT}/interfaces/le_pm.api [optional]
+    }
     component:
     {
         ${LEGATO_FWUPDATE_PA}
