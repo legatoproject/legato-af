@@ -25,6 +25,7 @@ processes:
 bindings:
 {
     fwupdateDaemon.watchdogChain.le_wdog -> <root>.le_wdog
+    fwupdateDaemon.fwupdateDaemon.le_pm -> <root>.le_pm
 }
 
 extern:

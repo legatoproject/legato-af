@@ -37,3 +37,51 @@ le_msg_SessionEventHandlerRef_t le_msg_AddServiceCloseHandler
     le_msg_SessionEventHandler_t    handlerFunc,///< [in] Handler function.
     void*                           contextPtr  ///< [in] Opaque pointer value to pass to handler.
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Wakeup source reference
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*le_pm_WakeupSourceRef_t);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Try to connect to PowerManager service
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_pm_TryConnectService
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disconnect from PowerManager service
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_pm_DisconnectService
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create a new wakeup source
+ */
+//--------------------------------------------------------------------------------------------------
+le_pm_WakeupSourceRef_t le_pm_NewWakeupSource
+(
+    uint32_t opts,      ///< [in] Wakeup source options
+    const char *tag     ///< [in] Context-specific wakeup source tag
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Acquire a wakeup source
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_pm_StayAwake
+(
+    le_pm_WakeupSourceRef_t w   ///< [in] Wakeup source reference
+);

@@ -19,6 +19,75 @@
 //--------------------------------------------------------------------------------------------------
 #define MS_WDOG_INTERVAL 8
 
+//--------------------------------------------------------------------------------------------------
+//                                       Static declarations
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Wakeup source to keep system awake during download/update.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_pm_WakeupSourceRef_t WakeupSource = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Obtain a wake lock - prevent system from suspending during FOTA operations
+ */
+//--------------------------------------------------------------------------------------------------
+static void SetWakeLock
+(
+    void
+)
+{
+    le_result_t result;
+
+    if (WakeupSource)
+    {
+        LE_ERROR("Wakeup source and wakelock already exist.");
+        return;
+    }
+
+    LE_DEBUG("Connecting to PowerManager");
+    result = le_pm_TryConnectService();
+    if (LE_OK != result)
+    {
+        LE_WARN("PowerManager is unavailable, %s", LE_RESULT_TXT(result));
+        return;
+    }
+
+    WakeupSource = le_pm_NewWakeupSource(0, "FWUpdate");
+    if (NULL == WakeupSource)
+    {
+        LE_ERROR("Can't create wakeup source");
+        le_pm_DisconnectService();
+        return;
+    }
+
+    result = le_pm_StayAwake(WakeupSource);
+    LE_ERROR_IF((LE_OK != result), "Can't StayAwake, err %s", LE_RESULT_TXT(result));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Release a wake lock
+ */
+//--------------------------------------------------------------------------------------------------
+static void ReleaseWakeLock
+(
+    void
+)
+{
+    if (WakeupSource)
+    {
+        LE_DEBUG("Disconnecting from PowerManager");
+        // on disconnect, PM removes wakeup sources for this client.
+        le_pm_DisconnectService();
+        WakeupSource = NULL;
+    }
+}
+
+
 //==================================================================================================
 //                                       Public API Functions
 //==================================================================================================
@@ -57,8 +126,14 @@ le_result_t le_fwupdate_Download
         return LE_BAD_PARAMETER;
     }
 
+    SetWakeLock();
+
     // Pass the fd to the PA layer, which will handle the details.
-    return pa_fwupdate_Download(fd);
+    le_result_t result = pa_fwupdate_Download(fd);
+
+    ReleaseWakeLock();
+
+    return result;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -345,8 +420,12 @@ le_result_t le_fwupdate_Install
 {
     le_result_t result;
 
+    SetWakeLock();
+
     /* request system install */
     result = pa_fwupdate_Install(false);
+
+    ReleaseWakeLock();
 
     return result;
 }
@@ -404,10 +483,16 @@ le_result_t le_fwupdate_InstallAndMarkGood
 )
 {
     le_result_t result;
+
+    SetWakeLock();
+
     /* request the swap and sync */
     result = pa_fwupdate_Install(true);
     /* the previous function returns only if there has been an error */
     LE_ERROR(" !!! Error %s", LE_RESULT_TXT(result));
+
+    ReleaseWakeLock();
+
     return result;
 }
 
