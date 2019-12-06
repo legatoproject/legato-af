@@ -18,7 +18,9 @@ requires:
 {
     component:
     {
+#if ${LE_CONFIG_LINUX} = y
         $LEGATO_SECSTORE_PA_DEFAULT
+#endif
         $LEGATO_SECSTORE_PA
         $LEGATO_SECSTORE_PA_TZ
         $LEGATO_ROOT/components/watchdogChain
