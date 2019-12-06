@@ -183,6 +183,7 @@ cm_data_connect () {
     # Remove route backup file
     rm -f $DEFAULT_ROUTE
 
+    local dns_list=""
     for ipversion in IPv4 IPv6; do
         family=$(cm_data_get_param "$info" "Family\[${ipversion}\]")
 
@@ -202,14 +203,16 @@ cm_data_connect () {
         if [ -z "$dns1" ]; then
             echo "No ${ipversion} dns1."
         fi
+        dns_list="${dns_list} $dns1"
 
         if [ -z "$dns2" ]; then
             echo "No ${ipversion} dns2."
         fi
+        dns_list="${dns_list} $dns2"
 
         update_route connect $family $iface $gw
-        update_dns connect $dns1 $dns2
     done
+    update_dns connect ${dns_list}
 
     echo -n "Testing connection ... "
     curl --silent $TEST_SITE > $LOG 2>&1
