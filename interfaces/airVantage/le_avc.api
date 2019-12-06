@@ -1220,7 +1220,7 @@ FUNCTION le_result_t SetApnConfig
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Function to set the polling timer.
+ * Function to set the polling timer to a value in minutes.
  *
  * @return
  *      - LE_OK on success.
