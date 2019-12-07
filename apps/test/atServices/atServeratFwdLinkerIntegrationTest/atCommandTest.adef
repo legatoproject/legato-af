@@ -4,7 +4,7 @@ sandboxed:false
 
 executables:
 {
-    atCommandTest = ( atGenericComponent atServerUtilComponent )
+    atCommandTest = ( atGenericComponent )
 }
 
 processes:
@@ -18,5 +18,7 @@ processes:
 bindings:
 {
     atCommandTest.atGenericComponent.le_atServer -> atService.le_atServer
-    atCommandTest.atServerUtilComponent.le_atServer -> atService.le_atServer
+    atCommandTest.atGenericComponent.le_port -> portService.le_port
+    atCommandTest.atServerUtil.le_atServer -> atService.le_atServer
+    atCommandTest.atServerUtil.le_port -> portService.le_port
 }
