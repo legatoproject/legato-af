@@ -87,23 +87,6 @@ void fdMon_Report
     uint32_t    eventFlags      ///< [in] OR'd together event flags from epoll_wait().
 );
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Report FD Events to another thread.
- *
- * Some framework adaptors will set up an auxilliary thread to monitor a certain class of
- * file descriptors (e.g. sockets on Qualcomm ThreadX).  This function is called by that thread
- * to report an event
- */
-//--------------------------------------------------------------------------------------------------
-void fdMon_ReportToThread
-(
-    le_thread_Ref_t thread,     ///< [in] The thread to report the event to.
-    void        *safeRef,       ///< [in] Safe Reference for the FD Monitor object for the fd.
-    uint32_t     eventFlags     ///< [in] OR'd together event flags.
-);
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Delete all FD Monitor objects for the calling thread.

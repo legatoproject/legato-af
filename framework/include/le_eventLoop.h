@@ -996,6 +996,28 @@ void le_event_QueueFunctionToThread
     void*                   param2Ptr   ///< [in] Value to be passed to the function when called.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Queue a function onto a specific thread's Event Queue if it isn't already on the Event
+ * Queue with the same parameters.  When it reaches the head of that Event Queue, it will be
+ * called by that thread's Event Loop.
+ *
+ * Using this function generally indicates poor design.
+ * It's generally better to ensure the event is only generated once, for example by disabling
+ * generating the event until the event handler is run.
+ *
+ * @return LE_OK if the function was queued to the Event Queue
+ * @return LE_DUPLICATE if the function was already in the Event Queue
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_event_QueueFunctionToThreadUnique
+(
+    le_thread_Ref_t         thread,     ///< [in] Thread to queue the function to.
+    le_event_DeferredFunc_t func,       ///< [in] The function.
+    void*                   param1Ptr,  ///< [in] Value to be passed to the function when called.
+    void*                   param2Ptr   ///< [in] Value to be passed to the function when called.
+);
+
 
 //--------------------------------------------------------------------------------------------------
 /**
