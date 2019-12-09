@@ -1331,6 +1331,28 @@ static void AddLinks
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the BUILDDIR environment variable which points to the directory where the files are
+ * generated from the code generator for a given system.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SetSystemBuildDirEnvVar
+(
+    model::System_t* systemPtr,
+    const mk::BuildParams_t& buildParams
+)
+{
+    std::string sysBuildDir;
+
+    // BUILDDIR is a combination of buildParams.workingDir, module and pathMd5.
+    // /home/user/workspace/legato/_build_wifi/wp85/system/5b3b157328326f66388f6a3296e4dcba/
+    sysBuildDir = path::Minimize(buildParams.workingDir + "/system/" +
+                                 systemPtr->defFilePtr->pathMd5);
+
+    envVars::Set("BUILDDIR", sysBuildDir);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get a conceptual model for a system whose .sdef file can be found at a given path.
  *
  * @return Pointer to the system object.
@@ -1364,6 +1386,9 @@ model::System_t* GetSystem
     std::list<const parseTree::CompoundItem_t*> kernelModulesSections;
     std::list<const parseTree::ExternApiInterface_t*> externApiInterfaces;
     std::list<const parseTree::TokenList_t*> linkSections;
+
+    // Set BUILDDIR environment variable for this system
+    SetSystemBuildDirEnvVar(systemPtr, buildParams);
 
     // Iterate over the .sdef file's list of sections, processing content items.
     for (auto sectionPtr : sdefFilePtr->sections)

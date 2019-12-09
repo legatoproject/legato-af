@@ -1945,6 +1945,27 @@ static void EnsurePathIsSet
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the BUILDDIR environment variable which points to the directory where the files are
+ * generated from the code generator for a given app.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SetAppBuildDirEnvVar
+(
+    model::App_t* appPtr,
+    const mk::BuildParams_t& buildParams
+)
+{
+    std::string appBuildDir;
+
+    // BUILDDIR is a combination of buildParams.workingDir, app and pathMd5.
+    // /home/user/workspace/legato/build/wp76xx/system/app/5b3b157328326f66388f6a3296e4dcba/
+    appBuildDir = path::Minimize(buildParams.workingDir + "/app/" +
+                                 appPtr->defFilePtr->pathMd5);
+
+    envVars::Set("BUILDDIR", appBuildDir);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2035,6 +2056,13 @@ model::App_t* GetApp
     std::list<const parseTree::CompoundItem_t*> processesSections;
     std::list<const parseTree::CompoundItem_t*> bindingsSections;
     std::list<const parseTree::ExternApiInterface_t*> externApiInterfaces;
+
+    // Remember current BUILDDIR value so we can restore it before returning back to processing
+    // the parent def file.
+    std::string curBuildDir = envVars::Get("BUILDDIR");
+
+    // Set BUILDDIR environment variable for this app
+    SetAppBuildDirEnvVar(appPtr, buildParams);
 
     // Iterate over the .adef file's list of sections, processing content items.
     for (auto sectionPtr : adefFilePtr->sections)
@@ -2164,6 +2192,13 @@ model::App_t* GetApp
     }
 
     GetKModuleFromExecs(appPtr);
+
+    // Restore BUILDDIR environment variable
+    envVars::Unset("BUILDDIR");
+    if (!curBuildDir.empty())
+    {
+        envVars::Set("BUILDDIR", curBuildDir);
+    }
 
     return appPtr;
 }

@@ -1366,6 +1366,10 @@ model::Component_t* GetComponent
         componentPtr->isStandAloneComp = true;
     }
 
+    // Remember current BUILDDIR value so we can restore it before returning back to processing
+    // the parent def file.
+    std::string curBuildDir = envVars::Get("BUILDDIR");
+
     // Set BUILDDIR environment variable for this component
     SetComponentBuildDirEnvVar(componentPtr, buildParams);
 
@@ -1469,8 +1473,12 @@ model::Component_t* GetComponent
         PrintSummary(componentPtr);
     }
 
-    // Unset BUILDDIR environment variable for this component
+    // Restore BUILDDIR environment variable
     envVars::Unset("BUILDDIR");
+    if (!curBuildDir.empty())
+    {
+        envVars::Set("BUILDDIR", curBuildDir);
+    }
 
     return componentPtr;
 }

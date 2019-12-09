@@ -550,6 +550,27 @@ static void AddExternalBuild
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the BUILDDIR environment variable which points to the directory where the files are
+ * generated from the code generator for a given module.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SetModuleBuildDirEnvVar
+(
+    model::Module_t* modulePtr,
+    const mk::BuildParams_t& buildParams
+)
+{
+    std::string moduleBuildDir;
+
+    // BUILDDIR is a combination of buildParams.workingDir, module and pathMd5.
+    // /home/user/workspace/legato/build/wp76xx/system/module/5b3b157328326f66388f6a3296e4dcba/
+    moduleBuildDir = path::Minimize(buildParams.workingDir + "/module/" +
+                                    modulePtr->defFilePtr->pathMd5);
+
+    envVars::Set("BUILDDIR", moduleBuildDir);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -573,6 +594,13 @@ model::Module_t* GetModule
         std::cout << mk::format(LE_I18N("Modelling module defined in: '%s'"), mdefPath)
                   << std::endl;
     }
+
+    // Remember current BUILDDIR value so we can restore it before returning back to processing
+    // the parent def file.
+    std::string curBuildDir = envVars::Get("BUILDDIR");
+
+    // Set BUILDDIR environment variable for this module
+    SetModuleBuildDirEnvVar(modulePtr, buildParams);
 
     for (auto sectionPtr : mdefFilePtr->sections)
     {
@@ -688,6 +716,13 @@ model::Module_t* GetModule
             mk::format(LE_I18N("%s: error: '%s' is not a valid kernel source directory."),
             mdefPath, kernelDir)
         );
+    }
+
+    // Restore BUILDDIR environment variable
+    envVars::Unset("BUILDDIR");
+    if (!curBuildDir.empty())
+    {
+        envVars::Set("BUILDDIR", curBuildDir);
     }
 
     return modulePtr;
