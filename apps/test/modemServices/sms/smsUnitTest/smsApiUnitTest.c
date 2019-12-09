@@ -464,7 +464,6 @@ static void Testle_sms_DecodingReceivedList()
     LE_ASSERT(le_sms_GetStatus(lMsg1) == LE_SMS_RX_UNREAD);
 
     // test readonly field
-    LE_ASSERT(le_sms_SetTimeout(lMsg1, 0) == LE_FAULT);
     LE_ASSERT(le_sms_SetDestination(lMsg1, VOID_PATTERN) == LE_NOT_PERMITTED);
     LE_ASSERT(le_sms_SetText(lMsg1, VOID_PATTERN) == LE_NOT_PERMITTED);
     LE_ASSERT(le_sms_SetBinary(lMsg1, BINARY_TEST_PATTERN, 0) == LE_NOT_PERMITTED);
@@ -939,7 +938,6 @@ static void Testle_sms_Send
     LE_ASSERT(le_sms_SetDestination(myMsg, DEST_TEST_PATTERN) == LE_OK);
     LE_ASSERT(le_sms_SetBinary(myMsg, BINARY_TEST_PATTERN, sizeof(BINARY_TEST_PATTERN)/
                                sizeof(BINARY_TEST_PATTERN[0])) == LE_OK);
-    LE_ASSERT(le_sms_SetTimeout(myMsg, 20) == LE_OK);
     LE_ASSERT(le_sms_SendAsync(myMsg,CallbackSendTestHandler,
                                (void*) SMS_SEND_TEST_NUMBER_6) == LE_OK);
     // send again
@@ -950,7 +948,6 @@ static void Testle_sms_Send
     LE_ASSERT(le_sms_SetDestination(myMsg, DEST_TEST_PATTERN) == LE_OK);
     LE_ASSERT(le_sms_SetBinary(myMsg, BINARY_TEST_PATTERN, sizeof(BINARY_TEST_PATTERN)/
                                sizeof(BINARY_TEST_PATTERN[0])) == LE_OK);
-    LE_ASSERT(le_sms_SetTimeout(myMsg, 20) == LE_FAULT);
 
     WaitForSem(SmsSendSemaphore, LONG_TIMEOUT, LE_OK);
 

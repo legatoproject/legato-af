@@ -2398,64 +2398,6 @@ le_sms_MsgRef_t le_sms_Create
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the timeout to send a SMS Message.
- *
- * @return
- * - LE_FAULT         Message is not in UNSENT state or is Read-Only.
- * - LE_OK            Function succeeded.
- *
- * @note
- *      On failure, the process exits, so you don't have to worry about checking the returned
- *      reference for validity.
- *
- * @deprecated
- *      This API should not be used for new applications and will be removed in a future version
- *      of Legato.
- */
- //--------------------------------------------------------------------------------------------------
-le_result_t le_sms_SetTimeout
-(
-    le_sms_MsgRef_t msgRef,
-        ///< [IN]
-        ///< Reference to the message object.
-
-    uint32_t timeout
-        ///< [IN]
-        ///< Timeout in seconds.
-)
-{
-    le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
-
-    if (msgPtr == NULL)
-    {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
-        return LE_NOT_FOUND;
-    }
-
-    if(msgPtr->readonly)
-    {
-        LE_ERROR("Message is Read-only");
-        return LE_FAULT;
-    }
-
-    if(msgPtr->pdu.status != LE_SMS_UNSENT)
-    {
-        LE_ERROR("Message is not in UNSENT state");
-        return LE_FAULT;
-    }
-
-    if (timeout == 0)
-    {
-        LE_ERROR("Timeout is equal to zero");
-        return LE_FAULT;
-    }
-
-    LE_WARN("Deprecated API, should not be used anymore");
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * This function must be called to delete a Message data structure.
  *
  * It deletes the Message data structure, all the allocated memory is freed. However if several

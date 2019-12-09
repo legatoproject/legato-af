@@ -803,29 +803,6 @@ FUNCTION Msg Create
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the timeout to send a SMS Message.
- *
- * @return
- * - LE_FAULT         Message is not in UNSENT state or is Read-Only.
- * - LE_OK            Function succeeded.
- *
- * @note
- *      On failure, the process exits, so you don't have to worry about checking the returned
- *      reference for validity.
- *
- * @deprecated
- *      This API should not be used for new applications and will be removed in a future version
- *      of Legato.
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t SetTimeout
-(
-    Msg     msgRef,      ///< Reference to the message object.
-    uint32  timeout IN   ///< Timeout in seconds.
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Set the Telephone destination number.
  *
  * Telephone number is defined in ITU-T recommendations E.164/E.163.
