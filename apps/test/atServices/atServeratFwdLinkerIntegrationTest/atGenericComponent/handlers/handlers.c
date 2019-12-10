@@ -376,14 +376,6 @@ void SendResponseCmdHandler
     void* contextPtr
 )
 {
-    if (type != LE_ATSERVER_TYPE_ACT)
-    {
-        LE_ASSERT(
-            le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, "")
-            == LE_OK);
-        return;
-    }
-
     char atCommandName[LE_ATDEFS_COMMAND_MAX_BYTES] = {0};
 
     /* Get command name */
@@ -393,54 +385,84 @@ void SendResponseCmdHandler
 
     LE_INFO("AT command name %s", atCommandName);
 
-    char resp[LE_ATDEFS_RESPONSE_MAX_BYTES] = {0};
-
-    memset(resp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
-    snprintf(resp, LE_ATDEFS_RESPONSE_MAX_BYTES, "Sending intermediate response for %s AT COMMAND ",
-             atCommandName+2);
-
-    char urcResp[LE_ATDEFS_RESPONSE_MAX_BYTES] = {0};
-
-    LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, resp) == LE_OK);
-
-    /* Send unsolicited response in between intermediate and final response */
-    for (int i = 1; i <= 2; i++)
+    switch (type)
     {
-        memset(urcResp, 0, sizeof(urcResp));
-        snprintf(urcResp, sizeof(urcResp), "%s %d", "Sending URC before final response", 1234567+i);
+        case LE_ATSERVER_TYPE_ACT:
+        {
+            char resp[LE_ATDEFS_RESPONSE_MAX_BYTES] = {0};
 
-        LE_ASSERT(
-            le_atServer_SendUnsolicitedResponse(urcResp, LE_ATSERVER_ALL_DEVICES, NULL)
-            == LE_OK);
+            memset(resp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
+            snprintf(resp, LE_ATDEFS_RESPONSE_MAX_BYTES,
+                     "Sending intermediate response for %s AT COMMAND ",
+                     atCommandName+2);
+
+            char urcResp[LE_ATDEFS_RESPONSE_MAX_BYTES] = {0};
+
+            LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, resp) == LE_OK);
+
+            /* Send unsolicited response in between intermediate and final response */
+            for (int i = 1; i <= 2; i++)
+            {
+                memset(urcResp, 0, sizeof(urcResp));
+                snprintf(urcResp, sizeof(urcResp), "%s %d", "Sending URC before final response",
+                         1234567+i);
+
+                LE_ASSERT(
+                    le_atServer_SendUnsolicitedResponse(urcResp, LE_ATSERVER_ALL_DEVICES, NULL)
+                    == LE_OK);
+            }
+
+            LE_ASSERT(
+                le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0)
+                == LE_OK);
+
+            /* Send unsolicited responses, testing string with ':' */
+            for (int i = 1; i <= 10; i++)
+            {
+                memset(urcResp, 0, sizeof(urcResp));
+                snprintf(urcResp, sizeof(urcResp), "%s : %d", "Sending URC", i);
+
+                LE_ASSERT(
+                    le_atServer_SendUnsolicitedResponse(urcResp, LE_ATSERVER_ALL_DEVICES, NULL)
+                    == LE_OK);
+            }
+
+            /* Send unsolicited responses, testing string without ':' */
+            for (int i = 1; i <= 10; i++)
+            {
+                memset(urcResp, 0, sizeof(urcResp));
+                snprintf(urcResp, sizeof(urcResp), "%s %d", "Sending URC", 10+i);
+
+                LE_ASSERT(
+                    le_atServer_SendUnsolicitedResponse(urcResp, LE_ATSERVER_ALL_DEVICES, NULL)
+                    == LE_OK);
+            }
+
+            LE_ASSERT(
+                     le_atServer_SendUnsolicitedResponse("OK", LE_ATSERVER_ALL_DEVICES, NULL)
+                     == LE_OK);
+            break;
+        }
+
+        case LE_ATSERVER_TYPE_TEST:
+        {
+            LE_ASSERT(
+                le_atServer_SendIntermediateResponse(commandRef, "Send final non-empty patternPtr")
+                == LE_OK);
+            LE_ASSERT(
+              le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_NO_DIALTONE, "NO DIALTONE", 3)
+              == LE_OK);
+            break;
+        }
+
+        default:
+        {
+            LE_ASSERT(
+                   le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR, "+CME ERROR: ", 4)
+                   == LE_OK);
+            break;
+        }
     }
-
-    LE_ASSERT(
-        le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "")
-        == LE_OK);
-
-    /* Send unsolicited responses, testing string with ':' */
-    for (int i = 1; i <= 10; i++)
-    {
-        memset(urcResp, 0, sizeof(urcResp));
-        snprintf(urcResp, sizeof(urcResp), "%s : %d", "Sending URC", i);
-
-        LE_ASSERT(
-            le_atServer_SendUnsolicitedResponse(urcResp, LE_ATSERVER_ALL_DEVICES, NULL)
-            == LE_OK);
-    }
-
-    /* Send unsolicited responses, testing string without ':' */
-    for (int i = 1; i <= 10; i++)
-    {
-        memset(urcResp, 0, sizeof(urcResp));
-        snprintf(urcResp, sizeof(urcResp), "%s %d", "Sending URC", 10+i);
-
-        LE_ASSERT(
-            le_atServer_SendUnsolicitedResponse(urcResp, LE_ATSERVER_ALL_DEVICES, NULL)
-            == LE_OK);
-    }
-
-    LE_ASSERT(le_atServer_SendUnsolicitedResponse("OK", LE_ATSERVER_ALL_DEVICES, NULL) == LE_OK);
 }
 
 
