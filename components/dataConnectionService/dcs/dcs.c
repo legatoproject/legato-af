@@ -122,9 +122,6 @@ static le_msg_SessionRef_t DcsGetSessionRef
 /**
  * This function update the client session reference of the caller requesting data connection via
  * le_data.api.
- *
- * @return
- *     - client session reference of the caller
  */
 //--------------------------------------------------------------------------------------------------
 void le_dcs_UpdateSessionRef

@@ -16,6 +16,10 @@
 /* data Connection Services (Client) */
 #include "le_data_interface.h"
 
+#ifdef LE_CONFIG_LINUX
+#else
+    #define exit(x)    pthread_exit(x)
+#endif
 //--------------------------------------------------------------------------------------------------
 /**
  * The technology string max length
