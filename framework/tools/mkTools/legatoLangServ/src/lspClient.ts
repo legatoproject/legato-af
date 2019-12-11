@@ -196,6 +196,7 @@ export class Profile
             // all 'interesting' model files.
             console.log(`An error occurred during model load.`);
             console.log(mkResponse);
+            this.client.connection.window.showWarningMessage("An error occurred when loading Legato system view: " + mkResponse);
             console.log('Watching the filesystem for changes.');
 
             let rootDirList: string[] = this.workspaceFolders.map(
