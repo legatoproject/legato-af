@@ -1337,13 +1337,6 @@ end_processing:
                                     RspString_t,
                                     link);
 
-#if LE_CONFIG_CUSTOM_OS
-        // fdMonitor may fire POLLIN events at the wrong time when we signal the
-        // event too fast. When we resolve the fdMonitor issue, we should be able
-        // to remove this workaround.
-        msleep(1);
-#endif
-
         SendRspString(devPtr, rspStringPtr->resp);
         le_mem_Release(rspStringPtr);
     }
