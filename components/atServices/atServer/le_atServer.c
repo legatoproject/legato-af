@@ -1193,6 +1193,32 @@ static const char* GetStdVerboseMsg
     return NULL;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send backed-up unsolicited responses on the opened device.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void SendStoredURC
+(
+    DeviceContext_t* devPtr
+)
+{
+    le_dls_Link_t* linkPtr;
+
+    while ( (linkPtr = le_dls_Pop(&devPtr->unsolicitedList)) != NULL )
+    {
+        RspString_t* rspStringPtr = CONTAINER_OF(linkPtr,
+                                    RspString_t,
+                                    link);
+
+        SendRspString(devPtr, rspStringPtr->resp);
+        le_mem_Release(rspStringPtr);
+    }
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Send a final response on the opened device.
@@ -3698,6 +3724,41 @@ le_result_t le_atServer_GetDevice
 
     *deviceRefPtr = cmdPtr->deviceRef;
 
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is used to send stored unsolicited responses.
+ * It can be used to send unsolicited reponses that were stored before switching to data mode.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to send the intermediate response.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atServer_SendStoredUnsolicitedResponses
+(
+    le_atServer_CmdRef_t commandRef        ///< [IN] AT command reference
+)
+{
+    ATCmdSubscribed_t* cmdPtr = le_ref_Lookup(SubscribedCmdRefMap, commandRef);
+
+    if (cmdPtr == NULL)
+    {
+        LE_ERROR("Bad command reference");
+        return LE_FAULT;
+    }
+
+    if (!cmdPtr->processing)
+    {
+        LE_ERROR("Command not processing");
+        return LE_FAULT;
+    }
+
+    DeviceContext_t* devPtr = le_ref_Lookup(DevicesRefMap, cmdPtr->deviceRef);
+    SendStoredURC(devPtr);
     return LE_OK;
 }
 

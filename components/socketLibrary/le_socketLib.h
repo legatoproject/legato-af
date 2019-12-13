@@ -170,7 +170,12 @@ typedef void (*le_socket_EventHandler_t)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Create a socket reference and store the user configuration in a dedicated context
+ * Create a a socket reference and stores the user configuration in a dedicated context.
+ *
+ * @note
+ *  - PDP source address (srcAddr) can be set to Null. In this case, the default PDP profile will
+ *    be used and the address family will be selected in the following order: Try IPv4 first, then
+ *    try IPv6
  *
  * @return
  *  - Reference to the created context
@@ -180,6 +185,7 @@ LE_SHARED le_socket_Ref_t le_socket_Create
 (
     char*           hostPtr,         ///< [IN] Host address pointer
     uint16_t        port,            ///< [IN] Port number
+    char*           srcAddr,         ///< [IN] Source IP address
     SocketType_t    type             ///< [IN] Socket type (TCP, UDP)
 );
 

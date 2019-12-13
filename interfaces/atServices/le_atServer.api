@@ -606,6 +606,22 @@ FUNCTION le_result_t SendIntermediateResponse
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function is used to send stored unsolicited reponses.
+ * It can be used to send unsolicited reponses that were stored before switching to data mode.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to send the intermediate response.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SendStoredUnsolicitedResponses
+(
+    Cmd      commandRef                             IN  ///< AT command reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function can be used to send the final response.
  *
  * @deprecated le_atServer_SendFinalResponse() should not be used anymore and will be removed soon.

@@ -18,6 +18,7 @@
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions
 //--------------------------------------------------------------------------------------------------
+#define ADDR_MAX_LEN    46
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -30,6 +31,7 @@ typedef struct
     int                fd;                     ///< Socket file descriptor
     char               host[HOST_ADDR_LEN];    ///< Host address
     uint16_t           port;                   ///< Host port
+    char               srcAddr[ADDR_MAX_LEN];  ///< Source IP address
     SocketType_t       type;                   ///< Socket type (TCP, UDP)
     uint32_t           timeout;                ///< Communication timeout in milliseconds
     bool               isSecure;               ///< True if the socket uses a certificate
@@ -279,6 +281,11 @@ static void ReadMoreAsyncData
 /**
  * Create a a socket reference and stores the user configuration in a dedicated context.
  *
+ * @note
+ *  - PDP source address (srcAddr) can be set to Null. In this case, the default PDP profile will
+ *    be used and the address family will be selected in the following order: Try IPv4 first, then
+ *    try IPv6
+ *
  * @return
  *  - Reference to the created context
  */
@@ -287,6 +294,7 @@ le_socket_Ref_t le_socket_Create
 (
     char*           hostPtr,         ///< [IN] Host address pointer
     uint16_t        port,            ///< [IN] Port number
+    char*           srcAddr,         ///< [IN] Source IP address
     SocketType_t    type             ///< [IN] Socket type (TCP, UDP)
 )
 {
@@ -305,6 +313,24 @@ le_socket_Ref_t le_socket_Create
     {
         LE_ERROR("Unable to allocate a socket context from pool");
         return NULL;
+    }
+
+    if (srcAddr)
+    {
+        if (strlen(srcAddr) >= sizeof(contextPtr->srcAddr))
+        {
+            LE_ERROR("Source address too long");
+            FreeSocketContext(contextPtr);
+            return NULL;
+        }
+        else
+        {
+            strncpy(contextPtr->srcAddr, srcAddr, sizeof(contextPtr->srcAddr));
+        }
+    }
+    else
+    {
+        contextPtr->srcAddr[0] = '\0';
     }
 
     strncpy(contextPtr->host, hostPtr, sizeof(contextPtr->host)-1);

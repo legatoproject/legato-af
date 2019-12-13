@@ -345,6 +345,26 @@ LE_SHARED le_httpClient_Ref_t le_httpClient_Create
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Create a HTTP session reference on specified PDP source address.
+ *
+ * @note
+ *  - PDP source address (srcAddr) can be set to Null. In this case, the default PDP profile will
+ *    be used and the address family will be selected in the following order: Try IPv4 first, then
+ *    try IPv6
+ *
+ * @return
+ *  - Reference to the created context
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_httpClient_Ref_t le_httpClient_CreateOnSrcAddr
+(
+    char*            hostPtr,     ///< [IN] HTTP server address
+    uint16_t         port,        ///< [IN] HTTP server port numeric number (0-65535)
+    char*            srcAddr      ///< [IN] Source Address of PDP profile
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Delete a previously created HTTP session and free allocated resources.
  *
  * @return

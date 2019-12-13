@@ -20,4 +20,9 @@ requires:
     {
         $LEGATO_ROOT/components/socketLibrary
     }
+
+    api:
+    {
+        modemServices/le_mdc.api
+    }
 }

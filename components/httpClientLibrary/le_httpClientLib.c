@@ -1037,7 +1037,10 @@ static void HttpClientStateMachine
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Create a HTTP session reference and store the host address in a dedicated context.
+ * Create a HTTP session reference on the default PDP profile.
+ *
+ * @note
+ *  - The address family is selected in the following order: Try IPv4 first, then try IPv6
  *
  * @return
  *  - Reference to the created context
@@ -1047,6 +1050,54 @@ le_httpClient_Ref_t le_httpClient_Create
 (
     char*            hostPtr,     ///< [IN] HTTP server address
     uint16_t         port         ///< [IN] HTTP server port numeric number (0-65535)
+)
+{
+    char srcIpAddress[LE_MDC_IPV6_ADDR_MAX_BYTES] = {0};
+
+    // use default profile
+    le_mdc_ProfileRef_t profileRef = le_mdc_GetProfile((uint32_t)LE_MDC_DEFAULT_PROFILE);
+    if(!profileRef)
+    {
+         LE_ERROR("le_mdc_GetProfile cannot get default profile");
+         return NULL;
+    }
+
+    // Try IPv4, then Ipv6
+    if (LE_OK == le_mdc_GetIPv4Address(profileRef, srcIpAddress, sizeof(srcIpAddress)))
+    {
+        LE_INFO("le_httpClient_Create using IPv4 profile");
+    }
+    else if (LE_OK == le_mdc_GetIPv6Address(profileRef, srcIpAddress, sizeof(srcIpAddress)))
+    {
+        LE_INFO("le_httpClient_Create using IPv6 profile");
+    }
+    else
+    {
+        LE_ERROR("le_httpClient_Create No IPv4 or IPv6 profile");
+        return NULL;
+    }
+
+    return le_httpClient_CreateOnSrcAddr(hostPtr, port, srcIpAddress);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create a HTTP session reference on specified PDP source address.
+ *
+ * @note
+ *  - PDP source address (srcAddr) can be set to Null. In this case, the default PDP profile will
+ *    be used and the address family will be selected in the following order: Try IPv4 first, then
+ *    try IPv6
+ *
+ * @return
+ *  - Reference to the created context
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_httpClient_Ref_t le_httpClient_CreateOnSrcAddr
+(
+    char*            hostPtr,     ///< [IN] HTTP server address
+    uint16_t         port,        ///< [IN] HTTP server port numeric number (0-65535)
+    char*            srcAddr      ///< [IN] Source Address of PDP profile
 )
 {
     HttpSessionCtx_t* contextPtr = NULL;
@@ -1079,8 +1130,8 @@ le_httpClient_Ref_t le_httpClient_Create
     strncpy(contextPtr->host, hostPtr + offset, sizeof(contextPtr->host)-1);
     contextPtr->port = port;
 
-    // Connect the socket
-    contextPtr->socketRef = le_socket_Create(contextPtr->host, contextPtr->port, TCP_TYPE);
+    // Create the socket
+    contextPtr->socketRef = le_socket_Create(contextPtr->host, contextPtr->port, srcAddr, TCP_TYPE);
     if (NULL == contextPtr->socketRef)
     {
         LE_ERROR("Failed to connect socket");
