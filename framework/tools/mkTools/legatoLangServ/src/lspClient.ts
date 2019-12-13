@@ -192,11 +192,16 @@ export class Profile
         }
         else
         {
+            this.activeModel = undefined;
             // Looks like we couldn't properly load the current model.  So search this directory for
             // all 'interesting' model files.
             console.log(`An error occurred during model load.`);
             console.log(mkResponse);
-            this.client.connection.window.showWarningMessage("An error occurred when loading Legato system view: " + mkResponse);
+            // Adef file is not supported for Legato system view. So the warning message will not be displayed for it.
+            if (this.activeDefFile.slice(-5) === ".sdef")
+            {
+                this.client.connection.window.showWarningMessage("An error occurred when loading Legato system view: " + mkResponse);
+            }
             console.log('Watching the filesystem for changes.');
 
             let rootDirList: string[] = this.workspaceFolders.map(
@@ -338,12 +343,18 @@ export class Profile
 
     private notifyModelUpdate()
     {
-        if (   (this.activeModel !== undefined)
-            && (this.clientReceiveModelUpdates))
+        if (this.clientReceiveModelUpdates)
         {
-            let logicalView = conversion.SystemAsSymbol(this.activeModel as model.System);
+            if (this.activeModel !== undefined)
+            {
+                let logicalView = conversion.SystemAsSymbol(this.activeModel as model.System);
 
-            this.client.connection.sendNotification('le_UpdateLogicalView', logicalView);
+                this.client.connection.sendNotification('le_UpdateLogicalView', logicalView);
+            }
+            else
+            {
+                this.client.connection.sendNotification('le_UpdateLogicalView', "");
+            }
         }
     }
 

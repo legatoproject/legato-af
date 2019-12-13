@@ -63,6 +63,8 @@ Client.connection.onInitialize((params: lsp.InitializeParams): lsp.InitializeRes
                       .documentSymbol
                       .hierarchicalDocumentSymbolSupport;
 
+            // Specify workspace folder
+            Client.profile.workspaceFolders = params.workspaceFolders;
 
             // Hopefully the client has also supplied us their full extension properties set as
             // well.
