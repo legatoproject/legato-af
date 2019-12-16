@@ -3214,6 +3214,33 @@ le_result_t le_mrc_GetSignalQual
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the base station identity code (BSIC) for the serving cell on GSM network.
+ *
+ * @return LE_OK            The function succeeded.
+ * @return LE_BAD_PARAMETER Bad parameter passed to the function
+ * @return LE_FAULT         The function failed.
+ * @return LE_UNAVAILABLE   The BSIC is not available. The BSIC value is set to UINT8_MAX.
+ *
+ * @note If the caller is passing a null pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetServingCellGsmBsic
+(
+    uint8_t*    bsicPtr    ///< [OUT] The BSIC value
+)
+{
+    if (NULL == bsicPtr)
+    {
+        LE_KILL_CLIENT("bsicPtr is NULL.");
+        return LE_BAD_PARAMETER;
+    }
+
+    return pa_mrc_GetServingCellGsmBsic(bsicPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to get the Current Network Name information.
  *
  * @return
@@ -4228,6 +4255,52 @@ le_result_t le_mrc_GetNeighborCellLteInterFreq
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the base station identity Code (BSIC) for a neighbour cell on GSM network.
+ *
+ * @return LE_OK            The function succeeded.
+ * @return LE_BAD_PARAMETER Bad parameter passed to the function
+ * @return LE_FAULT         The function failed.
+ * @return LE_UNAVAILABLE   The BSIC is not available. The BSIC value is set to UINT8_MAX.
+ *
+ * @note If the caller is passing a null pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetNeighborCellGsmBsic
+(
+    le_mrc_CellInfoRef_t ngbrCellInfoRef, ///< [IN] The cell information reference
+    uint8_t*             bsicPtr          ///< [OUT] The BSIC value
+)
+{
+    if (NULL == bsicPtr)
+    {
+        LE_KILL_CLIENT("bsicPtr is NULL.");
+        return LE_FAULT;
+    }
+
+    pa_mrc_CellInfo_t* cellInfoPtr = le_ref_Lookup(CellRefMap, ngbrCellInfoRef);
+    if (cellInfoPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", ngbrCellInfoRef);
+        return LE_FAULT;
+    }
+    else
+    {
+        *bsicPtr = cellInfoPtr->bsic;
+
+        if (UINT8_MAX == cellInfoPtr->bsic)
+        {
+            return LE_UNAVAILABLE;
+        }
+        else
+        {
+            return LE_OK;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to measure the signal metrics. It creates and returns a reference
  * to the signal metrics.
  *
@@ -4795,6 +4868,22 @@ uint32_t le_mrc_GetServingCellId
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the physical serving cell Id. The physical cell Id is in the range from 0 to 503.
+ *
+ * @return The physical serving Cell Id. UINT16_MAX value is returned if the value is
+ * not available.
+ */
+//--------------------------------------------------------------------------------------------------
+uint16_t le_mrc_GetPhysicalServingLteCellId
+(
+    void
+)
+{
+    return pa_mrc_GetPhysicalServingLteCellId();
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -5187,6 +5276,88 @@ void le_mrc_RemoveJammingDetectionEventHandler
 {
     le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the serving cell radio frequency channel number. The EARFCN is in the range from 0 to 262143.
+ *
+ * @return The serving cell frequency channel number. UINT32_MAX value is returned if the value is
+ * not available.
+ */
+//--------------------------------------------------------------------------------------------------
+uint32_t le_mrc_GetServingCellEarfcn
+(
+    void
+)
+{
+    return pa_mrc_GetServingCellEarfcn();
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the neighbor cell radio frequency channel number. The EARFCN is in the range from 0
+ * to 262143.
+ *
+ * @return The neighbor cell frequency channel number. UINT32_MAX value is returned if the value is
+ * not available.
+ */
+//--------------------------------------------------------------------------------------------------
+uint32_t le_mrc_GetNeighborCellEarfcn
+(
+    le_mrc_CellInfoRef_t     ngbrCellInfoRef ///< [IN] The Cell information reference
+)
+{
+    pa_mrc_CellInfo_t* cellInfoPtr = le_ref_Lookup(CellRefMap, ngbrCellInfoRef);
+    if (cellInfoPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", ngbrCellInfoRef);
+        return UINT32_MAX;
+    }
+    return (cellInfoPtr->earfcn);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the serving cell timing advance index value. Timing advance index value is in the range
+ * from 0 to 1280.
+ *
+ * @return The serving cell timing advance index value. UINT32_MAX value is returned if the value
+ * is not available.
+ */
+//--------------------------------------------------------------------------------------------------
+uint32_t le_mrc_GetServingCellTimingAdvance
+(
+    void
+)
+{
+    return pa_mrc_GetServingCellTimingAdvance();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the neighbor physical cell Id. The physical cell Id is in the range from 0 to 503.
+ *
+ * @return The physical serving cell Id. UINT16_MAX value is returned if the value is
+ * not available.
+ */
+//--------------------------------------------------------------------------------------------------
+uint16_t le_mrc_GetPhysicalNeighborLteCellId
+(
+    le_mrc_CellInfoRef_t     ngbrCellInfoRef ///< [IN] The cell information reference
+)
+{
+    pa_mrc_CellInfo_t* cellInfoPtr = le_ref_Lookup(CellRefMap, ngbrCellInfoRef);
+    if (cellInfoPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", ngbrCellInfoRef);
+        return UINT16_MAX;
+    }
+
+    return (cellInfoPtr->physCellId);
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**

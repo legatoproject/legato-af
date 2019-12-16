@@ -259,8 +259,26 @@
  *
  * le_mrc_GetServingCellLocAreaCode() retrieves the Location Area Code of the serving cell.
  *
- * le_mrc_GetServingCellLteTracAreaCode() retrieves the the Tracking Area Code of the serving cell
+ * le_mrc_GetServingCellLteTracAreaCode() retrieves the Tracking Area Code of the serving cell
  * (LTE only).
+ *
+ * le_mrc_GetServingCellEarfcn() retrieves the serving cell E-UTRA Absolute Radio Frequency
+ * Channel Number (EARFCN, defined in 3GPP TS 36.101). The EARFCN is in the range from 0 to 262143.
+ *
+ * le_mrc_GetServingCellTimingAdvance() retrieves the serving cell timing advance index value.
+ * UINT32_MAX value is returned if the value is not available. The index value returned is defined
+ * by 3GPP 36.213. The index value is in the range from 0 to 1280.
+ *
+ * le_mrc_GetPhysicalServingLteCellId() retrieves the physical serving cell Id in LTE. The physical
+ * cell Id is in the range from 0 to 503.
+ *
+ * le_mrc_GetServingCellGsmBsic() retrieves the Base Station Identity Code (BSIC) for the serving
+ * cell on GSM network.
+ *
+ * The BSIC is a local colour code (CC) that allows a Mobile Station (MS) to distinguish between
+ * different neighbouring base stations. BSIC is a 6-bit length code structured the following way:
+ * NCC (PLMN colour code) 3 bits + BCC (BS colour code) 3 bits. More information is available
+ * under the 3GPP reference 23.003 (Base Station Identify Code (BSIC) )
  *
  * A sample code can be seen in the following page:
  * - @subpage c_mrcLocationinformation
@@ -355,6 +373,12 @@
  * - le_mrc_GetNeighborCellLteIntraFreq() gets the RSRP and RSRQ of the Interfrequency of the cell
  *   specified with the le_mrc_CellInfoRef_t parameter.
  * - le_mrc_GetNeighborCellLteInterFreq() gets the RSRP and RSRQ of the Interfrequency of the cell
+ *   specified with the le_mrc_CellInfoRef_t parameter.
+ * - le_mrc_GetNeighborCellEarfcn() gets the neighbor Cell Frequency Channel Number (EARFCN).
+ *   The EARFCN is in the range from 0 to 262143.
+ * - le_mrc_GetPhysicalNeighborLteCellId() gets the physical neighbor cell Id in LTE. The physical
+ *   cell Id is in the range from 0 to 503.
+ * - le_mrc_GetNeighborCellGsmBsic() retrieves the Base Station Identity Code (BSIC) for the cell
  *   specified with the le_mrc_CellInfoRef_t parameter.
  *
  * A sample code can be seen in the following page:
@@ -2536,4 +2560,99 @@ FUNCTION le_result_t GetSarBackoffState
 (
     uint8 state     OUT ///< Current state. By default, SAR is disabled (state = 0).
                         ///< Refer to @ref platformConstraitsMdc for the number of maximum states.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the serving cell radio frequency channel number. The EARFCN is in the range from 0 to 262143.
+ *
+ * @return The serving cell frequency channel number. UINT32_MAX value is returned if the value is
+ * not available.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint32 GetServingCellEarfcn
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the neighbor cell radio frequency channel number. The EARFCN is in the range from 0
+ * to 262143.
+ *
+ * @return The neighbor cell frequency channel number. UINT32_MAX value is returned if the value is
+ * not available.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint32 GetNeighborCellEarfcn
+(
+    CellInfo     ngbrCellInfoRef    IN ///< The cell information reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the serving cell timing advance index value. Timing advance index value is in the range
+ * from 0 to 1280.
+ *
+ * @return The serving cell timing advance index value. UINT32_MAX value is returned if the value
+ * is not available.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint32 GetServingCellTimingAdvance
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the physical serving cell Id. The physical cell Id is in the range from 0 to 503.
+ *
+ * @return The physical serving cell Id. UINT16_MAX value is returned if the value is
+ * not available.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint16 GetPhysicalServingLteCellId
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the neighbor physical cell Id. The physical cell Id is in the range from 0 to 503.
+ *
+ * @return The physical serving cell Id. UINT16_MAX value is returned if the value is
+ * not available.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint16 GetPhysicalNeighborLteCellId
+(
+    CellInfo     ngbrCellInfoRef    IN ///< The cell information reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Base Station Identity Code (BSIC) for the serving cell on GSM network.
+ *
+ * @return LE_OK            The function succeeded.
+ * @return LE_BAD_PARAMETER Bad parameter passed to the function
+ * @return LE_FAULT         The function failed.
+ * @return LE_UNAVAILABLE   The BSIC is not available. The BSIC value is set to UINT8_MAX.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetServingCellGsmBsic
+(
+    uint8    BSIC    OUT ///< The BSIC value
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Base Station Identity Code (BSIC) for a neighbour cell on GSM network.
+ *
+ * @return LE_OK            The function succeeded.
+ * @return LE_BAD_PARAMETER Bad parameter passed to the function
+ * @return LE_FAULT         The function failed.
+ * @return LE_UNAVAILABLE   The BSIC is not available. The BSIC value is set to UINT8_MAX.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetNeighborCellGsmBsic
+(
+    CellInfo     ngbrCellInfoRef   IN,   ///< The cell information reference.
+    uint8        bsic              OUT   ///< The BSIC value
 );

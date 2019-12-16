@@ -275,6 +275,25 @@ le_result_t pa_mrc_GetSignalStrength
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the base station identity code (BSIC) for the serving cell on GSM network.
+ *
+ * @return LE_OK            The function succeeded.
+ * @return LE_BAD_PARAMETER Bad parameter passed to the function
+ * @return LE_FAULT         The function failed.
+ * @return LE_UNAVAILABLE   The BSIC is not available. The BSIC value is set to UINT8_MAX.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_GetServingCellGsmBsic
+(
+    uint8_t*    bsicPtr    ///< [OUT] The Bsic value
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNAVAILABLE;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to get the Current Network information.
  *
  * @return
@@ -1119,4 +1138,53 @@ le_event_HandlerRef_t pa_mrc_AddNetworkTimeIndHandler
 {
     LE_ERROR("Unsupported function called");
     return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the serving cell timing advance index value. Timing advance index value is in the range
+ * from 0 to 1280.
+ *
+ * @return The serving cell timing advance index value. UINT32_MAX value is returned if the value
+ * is not available.
+ */
+//--------------------------------------------------------------------------------------------------
+uint32_t pa_mrc_GetServingCellTimingAdvance
+(
+    void
+)
+{
+    return UINT32_MAX;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the serving cell radio frequency channel number. The EARFCN is in the range from 0 to 262143.
+ *
+ * @return The serving cell frequency channel number. UINT32_MAX value is returned if the value is
+ * not available.
+ */
+//--------------------------------------------------------------------------------------------------
+uint32_t pa_mrc_GetServingCellEarfcn
+(
+    void
+)
+{
+    return UINT32_MAX;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the physical serving cell Id. The physical cell Id is in the range from 0 to 503.
+ *
+ * @return The physical serving Cell Id. UINT16_MAX value is returned if the value is
+ * not available.
+ */
+//--------------------------------------------------------------------------------------------------
+uint16_t pa_mrc_GetPhysicalServingLteCellId
+(
+    void
+)
+{
+    return UINT16_MAX;
 }

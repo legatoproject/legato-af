@@ -60,6 +60,7 @@ typedef struct pa_mrc_CellInfo
     le_dls_Link_t    link;          ///< Structure is part of a @ref c_doublyLinkedList
     uint32_t         index;         ///< The cell number.
     uint32_t         id;            ///< The cell identifier.
+    uint16_t         physCellId;    ///< The physical cell identifier (LTE only).
     uint16_t         lac;           ///< The location area code.
     int16_t          rxLevel;       ///< The cell Rx level measurement.
     le_mrc_Rat_t     rat;           ///< The cell Radio Access Technology.
@@ -72,6 +73,8 @@ typedef struct pa_mrc_CellInfo
                                     ///  Intrafrequency of a LTE cell.
     int32_t          lteInterRsrq;  ///< The Reference Signal Receiver Quality value of the
                                     ///  Intrafrequency of a LTE cell.
+    uint32_t         earfcn;        ///< Neighbour frequency.
+    uint8_t          bsic;          ///< Base station identify code (GSM only).
 }
 pa_mrc_CellInfo_t;
 
@@ -559,6 +562,21 @@ LE_SHARED le_result_t pa_mrc_GetNetworkRegState
 LE_SHARED le_result_t pa_mrc_GetSignalStrength
 (
     int32_t*          rssiPtr    ///< [OUT] The received signal strength (in dBm).
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the base station identity Code (BSIC) for the serving cell on GSM network.
+ *
+ * @return LE_OK            The function succeeded.
+ * @return LE_BAD_PARAMETER Bad parameter passed to the function
+ * @return LE_FAULT         The function failed.
+ * @return LE_UNAVAILABLE   The BSIC is not available. The BSIC value is set to UINT8_MAX.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mrc_GetServingCellGsmBsic
+(
+    uint8_t*    bsicPtr    ///< [OUT] The BSIC value
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1235,4 +1253,45 @@ LE_SHARED le_result_t pa_mrc_SyncNetworkTime
     void
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the serving cell timing advance index value. Timing advance index value is in the range
+ * from 0 to 1280.
+ *
+ * @return The serving cell timing advance index value. UINT32_MAX value is returned if the value
+ * is not available.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED uint32_t pa_mrc_GetServingCellTimingAdvance
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the serving cell radio frequency channel Number. The EARFCN is in the range from 0 to 262143.
+ *
+ * @return The serving cell frequency channel number. UINT32_MAX value is returned if the value is
+ * not available.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED uint32_t pa_mrc_GetServingCellEarfcn
+(
+    void
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the physical serving cell Id. The physical cell Id is in the range from 0 to 503.
+ *
+ * @return The physical serving Cell Id. UINT16_MAX value is returned if the value is
+ * not available.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED uint16_t pa_mrc_GetPhysicalServingLteCellId
+(
+    void
+);
 #endif // LEGATO_PARC_INCLUDE_GUARD
