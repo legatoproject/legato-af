@@ -190,7 +190,7 @@ ClientRequest_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_pos_SampleRef_t              positionSampleRef;  ///< Store position smaple reference.
+    le_pos_SampleRef_t              positionSampleRef;  ///< Store position sample reference.
     le_pos_Sample_t*                posSampleNodePtr;   ///< Position sample node pointer.
     le_msg_SessionRef_t             sessionRef;         ///< Client session identifier.
     le_dls_Link_t                   link;               ///< Object node link.
@@ -1380,7 +1380,7 @@ void le_posCtrl_Release
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to register an handler for movement notifications.
+ * This function must be called to register a handler for movement notifications.
  *
  * @return A handler reference, which is only needed for later removal of the handler.
  *
@@ -1397,7 +1397,7 @@ le_pos_MovementHandlerRef_t le_pos_AddMovementHandler
                                                       ///       0 means that I don't care about
                                                       ///       changes in the altitude.
     le_pos_MovementHandlerFunc_t handlerPtr,          ///< [IN] The handler function.
-    void*                        contextPtr           ///< [IN] The context pointer
+    void*                        contextPtr           ///< [IN] The context pointer.
 )
 {
     le_pos_SampleHandler_t*  posSampleHandlerNodePtr=NULL;

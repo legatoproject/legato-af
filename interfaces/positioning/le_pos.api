@@ -183,13 +183,13 @@ REFERENCE Sample;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Handler for Movement changes.
+ * Handler for movement changes that returns the reference of a reported position sample.
  *
  */
 //--------------------------------------------------------------------------------------------------
 HANDLER MovementHandler
 (
-    Sample positionSampleRef ///< Position's sample reference
+    Sample positionSampleRef ///< [OUT] Reference of the reported position sample.
 );
 
 //--------------------------------------------------------------------------------------------------
