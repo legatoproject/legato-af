@@ -9,7 +9,7 @@
 # Copyright (C) Sierra Wireless Inc.
 #
 
-import pytest, re, os, stat, sys, termios, imp
+import pytest, re, os, stat, sys, termios, imp, fcntl
 import tap.parser
 import pexpect, pexpect.fdpexpect, pexpect.pxssh
 import time
@@ -117,6 +117,19 @@ class SerialPort:
 
         return port
 
+    @staticmethod
+    def _serialOpen(device, openFlags):
+        """
+        Open serial ports in O_NONBLOCK first, then switch to blocking mode.
+
+        This is necessary since otherwise it will get blocked while opening the port.
+        """
+        fd = os.open(device, openFlags | os.O_NONBLOCK)
+        flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+        fcntl.fcntl(fd, fcntl.F_SETFL, flags & ~os.O_NONBLOCK)
+
+        return fd
+
     def __init__(self, device, baudrate):
         """
         Instantiate serial port wrapper.
@@ -125,7 +138,7 @@ class SerialPort:
         @param  baudrate    Initial baud rate to set.  Defaults to port's default if None.
         """
         self._device = device
-        self._tty = open(self._device, 'rb+', buffering=0)
+        self._tty = open(self._device, 'rb+', buffering=0, opener=self._serialOpen)
         if not self._tty.isatty():
             raise Exception('Device <{0}> is not a TTY'.format(device))
 

@@ -1438,7 +1438,11 @@ end:
             ((argInfoPtr->ExitBehaviour & DEFAULT_EXIT_ON_ERROR) &&
                 (argInfoPtr->ErrorHandler == &DefaultErrorHandler)))
         {
+#if LE_CONFIG_RTOS
+            le_thread_Exit(NULL);
+#else
             exit(EXIT_FAILURE);
+#endif
         }
     }
 }

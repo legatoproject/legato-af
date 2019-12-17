@@ -58,4 +58,10 @@ COMPONENT_INIT
     }
 
     le_ulpm_Reboot();
+
+    /* Wait for reboot */
+    while (1)
+    {
+        sleep(10);
+    }
 }
