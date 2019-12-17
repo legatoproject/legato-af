@@ -266,6 +266,7 @@ InterfaceObjIter_t;
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t IteratorPool;
+static le_mem_PoolRef_t TimerRecPool;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -582,7 +583,7 @@ static void TargetStart
  * Read from the memory of an attached target process.
  */
 //--------------------------------------------------------------------------------------------------
-static bool TargetReadAddress
+static le_result_t TargetReadAddress
 (
     pid_t pid,              ///< [IN] Remote process to read address
     uintptr_t remoteAddr,   ///< [IN] Remote address to read from target
@@ -1445,7 +1446,18 @@ static le_dls_Link_t* GetThreadMemberObjList
     switch (memberObjType)
     {
         case INSPECT_INSP_TYPE_TIMER:
-            return threadObjRef->timerRecPtr[TIMER_NON_WAKEUP]->activeTimerList.headLinkPtr;
+            {
+                timer_ThreadRec_t* timerPtr = le_mem_ForceAlloc(TimerRecPool);
+                if (TargetReadAddress(PidToInspect,
+                            (uintptr_t)threadObjRef->timerRecPtr[TIMER_NON_WAKEUP],
+                            timerPtr,
+                            sizeof(timer_ThreadRec_t)) != LE_OK)
+                {
+                    INTERNAL_ERR(REMOTE_READ_ERR("timer object"));
+                }
+                threadObjRef->timerRecPtr[TIMER_NON_WAKEUP] = timerPtr;
+                return threadObjRef->timerRecPtr[TIMER_NON_WAKEUP]->activeTimerList.headLinkPtr;
+            }
             break;
 
         case INSPECT_INSP_TYPE_MUTEX:
@@ -1507,8 +1519,9 @@ static le_dls_Link_t* GetNextThreadMemberObjLinkPtr
                                                 currThreadMemberObjLinkPtr);
     while (remThreadMemberObjNextLinkPtr == NULL)
     {
+        localThreadObjRef = &(threadMemberObjItrRef->currThreadObj);
         remThreadObjNextLinkPtr = GetNextDlsLink(&(threadMemberObjItrRef->threadObjList),
-                                              &(threadMemberObjItrRef->currThreadObj.link));
+                                              &(localThreadObjRef->link));
 
         // There are no more thread objects on the list (or list is empty)
         if (remThreadObjNextLinkPtr == NULL)
@@ -1519,14 +1532,20 @@ static le_dls_Link_t* GetNextThreadMemberObjLinkPtr
         // Get the address of thread obj.
         thread_Obj_t* remThreadObjPtr = CONTAINER_OF(remThreadObjNextLinkPtr, thread_Obj_t, link);
 
+        // free last timer if applicable
+        if (localThreadObjRef->timerRecPtr[TIMER_NON_WAKEUP])
+        {
+            le_mem_Release(localThreadObjRef->timerRecPtr[TIMER_NON_WAKEUP]);
+            localThreadObjRef->timerRecPtr[TIMER_NON_WAKEUP] = NULL;
+        }
+
         // Read the thread obj into our own memory, and update the local reference
         if (TargetReadAddress(PidToInspect, (uintptr_t)remThreadObjPtr,
-                              &(threadMemberObjItrRef->currThreadObj),
-                              sizeof(threadMemberObjItrRef->currThreadObj)) != LE_OK)
+                              localThreadObjRef,
+                              sizeof(thread_Obj_t)) != LE_OK)
         {
             INTERNAL_ERR(REMOTE_READ_ERR("thread object"));
         }
-        localThreadObjRef = &(threadMemberObjItrRef->currThreadObj);
 
         // retrieve the thread member obj list for the thread object; update our thread member obj
         // list with that list, and reset our local copy of the thread member obj list head.
@@ -4527,6 +4546,7 @@ static void InitIteratorPool
     }
 
     IteratorPool = le_mem_CreatePool("Iterators", size);
+    TimerRecPool = le_mem_CreatePool("TimerRec", sizeof(timer_ThreadRec_t));
 }
 
 
