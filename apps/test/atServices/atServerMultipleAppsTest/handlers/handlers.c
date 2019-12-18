@@ -154,7 +154,7 @@ void GenericCmdHandler
 
     // Send Final response
     LE_ASSERT(
-        le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "")
+        le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0)
         == LE_OK);
 }
 
@@ -174,7 +174,7 @@ void AtCmdHandler
 {
     // Send Final response
     LE_ASSERT(
-        le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "")
+        le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0)
         == LE_OK);
 
 }
@@ -243,8 +243,8 @@ void DelCmdHandler
     }
     // send final response
     LE_ASSERT(
-        le_atServer_SendFinalResponse(
-            commandRef, finalRsp, false, "")
+        le_atServer_SendFinalResultCode(
+            commandRef, finalRsp, "", 0)
         == LE_OK);
 }
 
@@ -273,8 +273,8 @@ void CloseCmdHandler
     case LE_ATSERVER_TYPE_TEST:
     case LE_ATSERVER_TYPE_READ:
         LE_ASSERT(
-            le_atServer_SendFinalResponse(
-                commandRef, LE_ATSERVER_ERROR, false, "")
+            le_atServer_SendFinalResultCode(
+                commandRef, LE_ATSERVER_ERROR, "", 0)
             == LE_OK);
 
         break;

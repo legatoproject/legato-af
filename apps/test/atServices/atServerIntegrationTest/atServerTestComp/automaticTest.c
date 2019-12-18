@@ -203,7 +203,7 @@ void automaticTest_AtTestHandler
 
     if (parametersNumber != 1)
     {
-        LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, "") == LE_OK);
+        LE_ASSERT(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR, "", 0) == LE_OK);
         return;
     }
 
@@ -222,7 +222,7 @@ void automaticTest_AtTestHandler
 
     LE_ASSERT(le_atServer_GetDevice(commandRef, &autoTestCtxPtr->devRef) == LE_OK);
 
-    LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
+    LE_ASSERT(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0) == LE_OK);
 
     char name[30];
     snprintf(name, sizeof(name), "TestThread-%d", testThread);

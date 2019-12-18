@@ -126,7 +126,7 @@ void GenericCmdHandler
 
     /* Send Final response */
     LE_ASSERT(
-        le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "")
+        le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0)
         == LE_OK);
 }
 
@@ -202,7 +202,7 @@ void CalcCmdHandler
                 snprintf(rsp, LE_ATDEFS_RESPONSE_MAX_BYTES,
                         "%s: Wrong number of parameters.", atCommandName + 2);
                 LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
-                LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, "")
+                LE_ASSERT(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR, "", 0)
                         == LE_OK);
                 return;
             }
@@ -241,8 +241,8 @@ void CalcCmdHandler
                         snprintf(rsp, LE_ATDEFS_RESPONSE_MAX_BYTES,
                                 "%s: Unknown operator: '%s'", atCommandName + 2, param);
                         LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
-                        LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR,
-                                                                false, "") == LE_OK);
+                        LE_ASSERT(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR,
+                                                                  "", 0) == LE_OK);
                         return;
                     }
 
@@ -256,8 +256,8 @@ void CalcCmdHandler
                         snprintf(rsp, LE_ATDEFS_RESPONSE_MAX_BYTES,
                                 "%s: Cannot convert '%s' to a number", atCommandName + 2, param);
                         LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
-                        LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR,
-                                                                false, "") == LE_OK);
+                        LE_ASSERT(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR,
+                                                                  "", 0) == LE_OK);
                         return;
                     }
                     else if ((operand == LONG_MAX || operand == LONG_MIN) && errno == ERANGE)
@@ -267,8 +267,8 @@ void CalcCmdHandler
                                  "%s: '%s' is out of range (%d to %d)",
                                  atCommandName + 2, param, SCHAR_MIN, SCHAR_MAX);
                         LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
-                        LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR,
-                                                                false, "") == LE_OK);
+                        LE_ASSERT(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR,
+                                                                  "", 0) == LE_OK);
                         return;
                     }
                     else if (operand < SCHAR_MIN || operand > SCHAR_MAX)
@@ -278,8 +278,8 @@ void CalcCmdHandler
                                  "%s: '%d' is out of range (%d to %d)",
                                  atCommandName + 2, operand, SCHAR_MIN, SCHAR_MAX);
                         LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
-                        LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR,
-                                                                false, "") == LE_OK);
+                        LE_ASSERT(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR,
+                                                                  "", 0) == LE_OK);
                         return;
                     }
                     else
@@ -358,7 +358,7 @@ void CalcCmdHandler
         break;
     }
 
-    LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
+    LE_ASSERT(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0) == LE_OK);
 }
 
 
@@ -524,7 +524,7 @@ void DataModeCmdHandler
 
     if (type != LE_ATSERVER_TYPE_ACT)
     {
-        LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, ""));
+        LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0));
         return;
     }
 
@@ -533,7 +533,7 @@ void DataModeCmdHandler
     if (LE_OK != result)
     {
         LE_ERROR("Cannot get device information! Result: %d", result);
-        LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, ""));
+        LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR, "", 0));
         return;
     }
 
@@ -542,7 +542,7 @@ void DataModeCmdHandler
     if (LE_OK != result)
     {
         LE_ERROR("Cannot get port reference! Result: %d", result);
-        LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, ""));
+        LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR, "", 0));
         return;
     }
 
@@ -551,14 +551,14 @@ void DataModeCmdHandler
     if (LE_OK != result)
     {
         LE_ERROR("le_port_SetDataMode API usage error");
-        LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, ""));
+        LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR, "", 0));
         return;
     }
 
     if(-1 == le_fd_Write(atSockFd, ATSERVERUTIL_CONNECT, strlen(ATSERVERUTIL_CONNECT)))
     {
         LE_ERROR("CONNECT write error");
-        LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, ""));
+        LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR, "", 0));
         return;
     }
 
@@ -570,7 +570,7 @@ void DataModeCmdHandler
         if (ret <= 0)
         {
             LE_TEST_INFO("Fail to read raw data from MCU: %d", errno);
-            LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, ""));
+            LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR, "", 0));
             return;
         }
         else if (ret > 0)
@@ -607,9 +607,9 @@ void DataModeCmdHandler
     if(LE_OK != result)
     {
         LE_ERROR("le_port_SetDataMode API usage error");
-        LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, ""));
+        LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR, "", 0));
         return;
     }
 
-    LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, ""));
+    LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0));
 }

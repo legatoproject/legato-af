@@ -189,7 +189,7 @@ static void AtCmdModeHandler
     PrepareHandler(commandRef, type, parametersNumber, contextPtr);
 
     // Send Final response
-    LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, ""));
+    LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0));
 
     le_sem_Post(Semaphore);
 }
@@ -269,7 +269,7 @@ static void DataModeHandler
     PrepareHandler(commandRef, type, parametersNumber, contextPtr);
 
     // Send Final response
-    LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, ""));
+    LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0));
 
     if (LE_OK == le_port_SetDataMode(devRef, &fd))
     {

@@ -655,7 +655,7 @@ static void DataCmdHandler
  *
  * tested APIs:
  *      le_atServer_SendIntermediateResponse
- *      le_atServer_SendFinalResponse (deprecated API)
+ *      le_atServer_SendFinalResultCode
  */
 //--------------------------------------------------------------------------------------------------
 static void AtdCmdHandler
@@ -679,8 +679,8 @@ static void AtdCmdHandler
     // echo the command in intermediate rsp
     LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, param) == LE_OK);
 
-    // final response using the deprecated API
-    LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
+    // Send final response
+    LE_ASSERT(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0) == LE_OK);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -775,8 +775,8 @@ static void GetTextCallback
         resp = LE_ATSERVER_ERROR;
     }
 
-    // final response using the deprecated API
-    LE_ASSERT_OK(le_atServer_SendFinalResponse(cmdRef, resp, false, ""));
+    // Send final response
+    LE_ASSERT_OK(le_atServer_SendFinalResultCode(cmdRef, resp, "", 0));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -808,8 +808,8 @@ static void TextCmdHandler
         case LE_ATSERVER_TYPE_READ:
         case LE_ATSERVER_TYPE_TEST:
         default:
-            // final response using the deprecated API
-            LE_ASSERT_OK(le_atServer_SendFinalResponse(cmdRef, LE_ATSERVER_ERROR, false, ""));
+            // Send final response
+            LE_ASSERT_OK(le_atServer_SendFinalResultCode(cmdRef, LE_ATSERVER_ERROR, "", 0));
             break;
     }
 }

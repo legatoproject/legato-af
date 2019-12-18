@@ -165,24 +165,6 @@
  * concatenated commands: if one command is failed, next commands are not executed, the final result
  * of the concatenated AT command is the last error.
  *
- * @subsection finalRsp Final response
- *
- * @deprecated le_atServer_SendFinalResponse() should not be used anymore and will be removed soon.
- * It has been replaced by le_atServer_SendFinalResultCode().
- *
- * In all cases, the application must send a final response using
- * le_atServer_SendFinalResponse(). The corresponding device will be locked until the final response
- * is sent.
- *
- * If no answer is sent, the device will not accept any new AT commands (an error will be
- * returned).
- *
- * le_atServer_SendFinalResponse() has to inform of the result thanks to the argument of
- * le_atServer_FinalRsp_t type. This argument permits to the AT command Server to:
- * - create the result string if no custom string is provided
- * - continue or stop the parsing of concatenated commands: if one command is failed, next commands
- * are not executed, the final result of the concatenated AT command is the last error.
- *
  * @subsection unsolicitedRsp Unsolicited response
  *
  * The application can also send unsolicited responses to warn a host
@@ -618,28 +600,6 @@ FUNCTION le_result_t SendIntermediateResponse
 FUNCTION le_result_t SendStoredUnsolicitedResponses
 (
     Cmd      commandRef                             IN  ///< AT command reference
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function can be used to send the final response.
- *
- * @deprecated le_atServer_SendFinalResponse() should not be used anymore and will be removed soon.
- * It has been replaced by le_atServer_SendFinalResultCode()
- *
- * @return
- *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed to send the final response.
- *
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t SendFinalResponse
-(
-    Cmd      commandRef                             IN, ///< AT command reference
-    FinalRsp finalResponse                          IN, ///< Final response to be sent
-    bool     customStringAvailable                  IN, ///< Custom final response has to be sent
-                                                        ///< instead of the default one.
-    string   finalRsp[le_atDefs.RESPONSE_MAX_BYTES] IN  ///< custom final response string
 );
 
 //--------------------------------------------------------------------------------------------------

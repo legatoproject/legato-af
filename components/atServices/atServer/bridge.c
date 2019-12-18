@@ -323,10 +323,10 @@ static void TreatCommandError
     // Send error to the host
     if (modemCmdDescPtr->atServerCmdRef)
     {
-        le_result_t res = le_atServer_SendFinalResponse(modemCmdDescPtr->atServerCmdRef,
-                                                        LE_ATSERVER_ERROR,
-                                                        false,
-                                                        "");
+        le_result_t res = le_atServer_SendFinalResultCode(modemCmdDescPtr->atServerCmdRef,
+                                                          LE_ATSERVER_ERROR,
+                                                          "",
+                                                          0);
 
         if (LE_OK != res)
         {
@@ -418,10 +418,10 @@ static void TreatResponse
 
         LE_DEBUG("finalRsp = %s", (finalRsp == LE_ATSERVER_OK) ? "ok": "error");
 
-        if (LE_OK != le_atServer_SendFinalResponse(atServerCmdRef,
-                                                   finalRsp,
-                                                   true,
-                                                   rsp))
+        if (LE_OK != le_atServer_SendFinalResultCode(atServerCmdRef,
+                                                     finalRsp,
+                                                     rsp,
+                                                     0))
         {
             LE_ERROR("Failed to send final response");
             TreatCommandError(modemCmdDescRef, NULL);
@@ -791,10 +791,10 @@ static void AtCmdHandler
     if (NULL == modemCmdDescPtr)
     {
         LE_ERROR("Bad context");
-        le_result_t res = le_atServer_SendFinalResponse(commandRef,
-                                                        LE_ATSERVER_ERROR,
-                                                        false,
-                                                        "");
+        le_result_t res = le_atServer_SendFinalResultCode(commandRef,
+                                                          LE_ATSERVER_ERROR,
+                                                          "",
+                                                          0);
 
         if (LE_OK != res)
         {

@@ -233,7 +233,7 @@ static void AtCmdModeHandler
 
     if (type != LE_ATSERVER_TYPE_ACT)
     {
-        LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, ""));
+        LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0));
         sched_yield();
         return;
     }
@@ -243,7 +243,7 @@ static void AtCmdModeHandler
     if (LE_OK != result)
     {
         LE_ERROR("Cannot get device information! Result: %d", result);
-        LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, ""));
+        LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR, "", 0));
         return;
     }
 
@@ -252,7 +252,7 @@ static void AtCmdModeHandler
     if (LE_OK != result)
     {
         LE_ERROR("Cannot get port reference! Result: %d", result);
-        LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, ""));
+        LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR, "", 0));
         return;
     }
 
@@ -261,14 +261,14 @@ static void AtCmdModeHandler
     if (LE_OK != result)
     {
         LE_ERROR("le_port_SetDataMode API usage error");
-        LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, ""));
+        LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR, "", 0));
         return;
     }
 
     if(-1 == le_fd_Write(atSockFd, ATSERVERUTIL_CONNECT, strlen(ATSERVERUTIL_CONNECT)))
     {
         LE_ERROR("CONNECT write error");
-        LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, ""));
+        LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR, "", 0));
         return;
     }
 
@@ -279,7 +279,7 @@ static void AtCmdModeHandler
     if (ret <= 0)
     {
         LE_ERROR("Fail to read raw data from MCU: %d", errno);
-        LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, ""));
+        LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR, "", 0));
         return;
     }
 
@@ -292,11 +292,11 @@ static void AtCmdModeHandler
     if(LE_OK != result)
     {
         LE_ERROR("le_port_SetDataMode API usage error");
-        LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, ""));
+        LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR, "", 0));
         return;
     }
 
-    LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, ""));
+    LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0));
 }
 
 //--------------------------------------------------------------------------------------------------

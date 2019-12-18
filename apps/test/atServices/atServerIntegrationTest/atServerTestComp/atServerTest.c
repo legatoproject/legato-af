@@ -410,7 +410,7 @@ static void AtCmdHandler
 {
     PrepareHandler(commandRef, type, parametersNumber, contextPtr);
     // Send Final response
-    LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
+    LE_ASSERT(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0) == LE_OK);
 
 }
 
@@ -443,7 +443,7 @@ static void DelHandler
         i++;
     }
 
-    LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
+    LE_ASSERT(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0) == LE_OK);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -466,7 +466,7 @@ static void CloseHandler
 
     LE_ASSERT(le_atServer_GetDevice(commandRef, &devRef) == LE_OK);
 
-    LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
+    LE_ASSERT(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0) == LE_OK);
 
     LE_ASSERT(le_atServer_Close(devRef) == LE_OK);
 }
@@ -524,11 +524,11 @@ static void AteCmdHandler
     // Send Final response
     if (LE_OK == res)
     {
-        LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
+        LE_ASSERT(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0) == LE_OK);
     }
     else
     {
-        LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, "") == LE_OK);
+        LE_ASSERT(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR, "", 0) == LE_OK);
     }
 }
 
@@ -643,15 +643,15 @@ static void AtdCmdHandler
         goto error;
     }
 
-    LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
+    LE_ASSERT(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0) == LE_OK);
 
     return;
 
 error:
-    LE_ASSERT(le_atServer_SendFinalResponse(commandRef,
-                                            LE_ATSERVER_ERROR,
-                                            true,
-                                            "NO CARRIER") == LE_OK);
+    LE_ASSERT(le_atServer_SendFinalResultCode(commandRef,
+                                              LE_ATSERVER_ERROR,
+                                              "NO CARRIER",
+                                              0) == LE_OK);
 
 }
 
@@ -677,19 +677,19 @@ static void AtaCmdHandler
 
         if (res == LE_OK)
         {
-            LE_ASSERT(le_atServer_SendFinalResponse(commandRef,
-                                                    LE_ATSERVER_OK,
-                                                    false,
-                                                    "") == LE_OK);
+            LE_ASSERT(le_atServer_SendFinalResultCode(commandRef,
+                                                      LE_ATSERVER_OK,
+                                                      "",
+                                                      0) == LE_OK);
 
             return;
         }
     }
 
-    LE_ASSERT(le_atServer_SendFinalResponse(commandRef,
-                                            LE_ATSERVER_ERROR,
-                                            true,
-                                            "NO CARRIER") == LE_OK);
+    LE_ASSERT(le_atServer_SendFinalResultCode(commandRef,
+                                              LE_ATSERVER_ERROR,
+                                              "NO CARRIER",
+                                              0) == LE_OK);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -710,10 +710,10 @@ static void AthCmdHandler
 
     if (dialCtxPtr->testCallRef == NULL)
     {
-        LE_ASSERT(le_atServer_SendFinalResponse(commandRef,
-                                                LE_ATSERVER_OK,
-                                                false,
-                                                "") == LE_OK);
+        LE_ASSERT(le_atServer_SendFinalResultCode(commandRef,
+                                                  LE_ATSERVER_OK,
+                                                  "",
+                                                  0) == LE_OK);
     }
     else
     {
@@ -758,7 +758,7 @@ static void AtBridgeHandler
 
     if (parametersNumber != 1)
     {
-        LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, "") == LE_OK);
+        LE_ASSERT(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR, "", 0) == LE_OK);
         return;
     }
 
@@ -817,12 +817,12 @@ static void AtBridgeHandler
         testCtxPtr->bridgeRef = NULL;
     }
 
-    LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
+    LE_ASSERT(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0) == LE_OK);
 
     return;
 
 error:
-    LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, "") == LE_OK);
+    LE_ASSERT(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR, "", 0) == LE_OK);
 
 }
 
@@ -866,20 +866,20 @@ static void MyCallEventHandler
         {
             case TERMINATED_NO_CARRIER_UNSOL:
                 LE_ASSERT(le_atServer_SendUnsolicitedResponse("NO CARRIER",
-                                                  LE_ATSERVER_ALL_DEVICES,
-                                                  NULL) == LE_OK);
+                                                               LE_ATSERVER_ALL_DEVICES,
+                                                               NULL) == LE_OK);
             break;
             case TERMINATED_NO_CARRIER_FINAL:
-                    LE_ASSERT(le_atServer_SendFinalResponse(dialCtxPtr->commandRef,
-                                                LE_ATSERVER_OK,
-                                                true,
-                                                "NO CARRIER") == LE_OK);
+                    LE_ASSERT(le_atServer_SendFinalResultCode(dialCtxPtr->commandRef,
+                                                              LE_ATSERVER_OK,
+                                                              "NO CARRIER",
+                                                              0) == LE_OK);
             break;
             case TERMINATED_OK:
-                    LE_ASSERT(le_atServer_SendFinalResponse(dialCtxPtr->commandRef,
-                                    LE_ATSERVER_OK,
-                                    false,
-                                    "") == LE_OK);
+                    LE_ASSERT(le_atServer_SendFinalResultCode(dialCtxPtr->commandRef,
+                                                              LE_ATSERVER_OK,
+                                                              "",
+                                                              0) == LE_OK);
             break;
         }
 
