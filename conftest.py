@@ -408,12 +408,15 @@ class LegatoTestStep:
         if hasattr(self._process, "tap_regex"):
             tap_regex = self._process.tap_regex
 
+        self._process.timeout=120
         choice = self._process.expect([tap_regex, pexpect.TIMEOUT])
         if choice == 1:
             self._timeout = True
             self.fail("Test timed out.")
 
-        self._text = self._process.match.group(1)
+        m = self._process.match
+        if hasattr(m, "group"):
+            self._text = m.group(1)
         tap_parsed_line = self._parser.parse_line(self._text)
 
         if tap_parsed_line.category == "plan":
