@@ -983,9 +983,6 @@ static void CreateHardCodedBindings
     CreateBinding(uid, "logDaemonWdog", uid, "logDaemonWdog");
     CreateBinding(uid, "updateDaemonWdog", uid, "updateDaemonWdog");
     CreateBinding(uid, "supervisorWdog", uid, "supervisorWdog");
-
-    // This api is deprecated and will be removed in the future.
-    CreateBinding(uid, "le_sup_ctrl", uid, "le_sup_ctrl");
 }
 
 
