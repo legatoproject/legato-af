@@ -1025,10 +1025,24 @@ void le_dcsCellular_GetNameFromIndex
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Stub function to get dummy internal messaging session.
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_SessionRef_t dcs_GetInternalSessionRef
+(
+    void
+)
+{
+    return DCS_DUMMY_CLIENT_SESSION_REF;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Stub function for creating a channelDb for the given channel in the argument
  */
 //--------------------------------------------------------------------------------------------------
-le_dcs_ChannelRef_t le_dcs_CreateChannelDb
+le_dcs_ChannelRef_t dcs_CreateChannelDb
 (
     le_dcs_Technology_t tech,
     const char *channelName
@@ -1047,14 +1061,14 @@ le_dcs_ChannelRef_t le_dcs_CreateChannelDb
  * Stub function for querying le_dcs for the channel reference of a channel given by its name
  */
 //--------------------------------------------------------------------------------------------------
-le_dcs_ChannelRef_t le_dcs_GetReference
+le_dcs_ChannelRef_t dcs_GetReference
 (
     const char *name,
     le_dcs_Technology_t technology
 )
 {
     return (!DcsChannelDb.channelRef ?
-            le_dcs_CreateChannelDb(technology, name) : DcsChannelDb.channelRef);
+            dcs_CreateChannelDb(technology, name) : DcsChannelDb.channelRef);
 }
 
 
@@ -1066,7 +1080,7 @@ le_dcs_ChannelRef_t le_dcs_GetReference
  *     - The string name of the given le_dcs event
  */
 //--------------------------------------------------------------------------------------------------
-const char *le_dcs_ConvertEventToString
+const char *dcs_ConvertEventToString
 (
     le_dcs_Event_t event
 )
@@ -1093,7 +1107,7 @@ const char *le_dcs_ConvertEventToString
  *     - the count of channel requests made thru le_dcs API
  */
 //--------------------------------------------------------------------------------------------------
-uint16_t le_dcs_GetReqCount
+uint16_t dcs_GetReqCount
 (
     void
 )
@@ -1127,14 +1141,17 @@ static void DcsFirstLayerEventHandler (void *reportPtr, void *secondLayerHandler
  * Stub function for adding an le_dcs channel event handler
  */
 //--------------------------------------------------------------------------------------------------
-le_dcs_EventHandlerRef_t le_dcs_AddEventHandler
+le_dcs_EventHandlerRef_t dcs_AddEventHandler
 (
+    le_msg_SessionRef_t sessionRef,
     le_dcs_ChannelRef_t channelRef,
     le_dcs_EventHandlerFunc_t channelHandlerPtr,
     void *contextPtr
 )
 {
     le_event_HandlerRef_t handlerRef;
+
+    LE_UNUSED(sessionRef);
 
     if (DcsChannelEvtHdlr.channelEventId != 0)
     {
@@ -1164,11 +1181,14 @@ le_dcs_EventHandlerRef_t le_dcs_AddEventHandler
  * Stub function for removing the channel event handler given via a reference object in the argument
  */
 //--------------------------------------------------------------------------------------------------
-void le_dcs_RemoveEventHandler
+void dcs_RemoveEventHandler
 (
+    le_msg_SessionRef_t sessionRef,
     le_dcs_EventHandlerRef_t channelHandlerRef
 )
 {
+    LE_UNUSED(sessionRef);
+
     if (channelHandlerRef != DcsChannelEvtHdlr.hdlrRef)
     {
         return;
@@ -1208,7 +1228,7 @@ void le_dcsTest_SimulateConnEvent
  * after its technology type is retrieved
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dcsTech_Start
+le_result_t dcsTech_Start
 (
     const char *channelName,
     le_dcs_Technology_t tech
@@ -1225,7 +1245,7 @@ le_result_t le_dcsTech_Start
  * is retrieved
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dcsTech_Stop
+le_result_t dcsTech_Stop
 (
     const char *channelName,
     le_dcs_Technology_t tech
@@ -1241,8 +1261,9 @@ le_result_t le_dcsTech_Stop
  * Stub function for requesting to start a data channel
  */
 //--------------------------------------------------------------------------------------------------
-le_dcs_ReqObjRef_t le_dcs_Start
+le_dcs_ReqObjRef_t dcs_Start
 (
+    le_msg_SessionRef_t sessionRef,
     le_dcs_ChannelRef_t channelRef
 )
 {
@@ -1255,8 +1276,9 @@ le_dcs_ReqObjRef_t le_dcs_Start
  * Stub function for requesting to stop a previously started data channel
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dcs_Stop
+le_result_t dcs_Stop
 (
+    le_msg_SessionRef_t sessionRef,
     le_dcs_ReqObjRef_t reqRef
 )
 {
@@ -1264,18 +1286,6 @@ le_result_t le_dcs_Stop
     return LE_OK;
 }
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Stub function for requesting app's session reference
- */
-//--------------------------------------------------------------------------------------------------
-void le_dcs_UpdateSessionRef
-(
-    le_msg_SessionRef_t sessionRef
-)
-{
-    return;
-}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1285,7 +1295,7 @@ void le_dcs_UpdateSessionRef
  *     - The string name of the given technology in the function's return value
  */
 //--------------------------------------------------------------------------------------------------
-const char *le_dcs_ConvertTechEnumToName
+const char *dcs_ConvertTechEnumToName
 (
     le_dcs_Technology_t tech
 )
@@ -1316,7 +1326,7 @@ const char *le_dcs_ConvertTechEnumToName
  * Stub function for getting the network interface's name of a given channel
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dcsTech_GetNetInterface
+le_result_t dcsTech_GetNetInterface
 (
     le_dcs_Technology_t tech,
     le_dcs_ChannelRef_t channelRef,
@@ -1339,7 +1349,7 @@ le_result_t le_dcsTech_GetNetInterface
             break;
         default:
             LE_ERROR("Channel's technology type %s not supported",
-                     le_dcs_ConvertTechEnumToName(tech));
+                     dcs_ConvertTechEnumToName(tech));
             return LE_UNSUPPORTED;
     }
 
@@ -1358,7 +1368,7 @@ le_result_t le_dcsTech_GetNetInterface
  * Stub function for querying the DNS addresses of the given connection
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dcsTech_GetDNSAddresses
+le_result_t dcsTech_GetDNSAddresses
 (
     le_dcs_Technology_t tech,
     le_dcs_ChannelRef_t channelRef,
@@ -1405,9 +1415,9 @@ le_result_t le_dcsTech_GetDNSAddresses
  * Stub function for backing up default GW config in the system
  */
 //--------------------------------------------------------------------------------------------------
-void le_net_BackupDefaultGW
+void net_BackupDefaultGW
 (
-    void
+        le_msg_SessionRef_t sessionRef
 )
 {
     return;
@@ -1419,9 +1429,9 @@ void le_net_BackupDefaultGW
  * Stub function for restoring the default GW config in the system
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_net_RestoreDefaultGW
+le_result_t net_RestoreDefaultGW
 (
-    void
+    le_msg_SessionRef_t sessionRef
 )
 {
     return LE_OK;
@@ -1433,8 +1443,9 @@ le_result_t le_net_RestoreDefaultGW
  * Stub function for setting the default GW config in the system
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_net_SetDefaultGW
+le_result_t net_SetDefaultGW
 (
+    le_msg_SessionRef_t sessionRef,
     le_dcs_ChannelRef_t channelRef
 )
 {
@@ -1447,8 +1458,9 @@ le_result_t le_net_SetDefaultGW
  * Stub function for setting the system's DNS server addresses
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_net_SetDNS
+le_result_t net_SetDNS
 (
+    le_msg_SessionRef_t sessionRef,
     le_dcs_ChannelRef_t channelRef
 )
 {
@@ -1461,9 +1473,9 @@ le_result_t le_net_SetDNS
  * Stub function for restoring the system's DNS server addresses to the original
  */
 //--------------------------------------------------------------------------------------------------
-void le_net_RestoreDNS
+void net_RestoreDNS
 (
-    void
+    le_msg_SessionRef_t sessionRef
 )
 {
     return;
@@ -1475,8 +1487,9 @@ void le_net_RestoreDNS
  * Stub function for changing route
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_net_ChangeRoute
+le_result_t net_ChangeRoute
 (
+    le_msg_SessionRef_t sessionRef,
     le_dcs_ChannelRef_t channelRef,
     const char *destAddr,
     const char *destMask,

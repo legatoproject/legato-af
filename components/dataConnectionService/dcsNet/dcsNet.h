@@ -35,23 +35,59 @@ le_net_DhcpInfoType_t;
  *       failure cause
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t le_net_GetNetIntfState
+LE_SHARED le_result_t net_GetNetIntfState
 (
     const char *connIntf,
     bool *state
 );
 
-LE_SHARED le_result_t le_net_SetDefaultGW(le_dcs_ChannelRef_t channelRef);
-LE_SHARED void le_net_BackupDefaultGW(void);
-LE_SHARED le_result_t le_net_RestoreDefaultGW(void);
-LE_SHARED le_result_t le_net_SetDNS(le_dcs_ChannelRef_t channelRef);
-LE_SHARED void le_net_RestoreDNS(void);
-LE_SHARED le_result_t le_net_ChangeRoute(le_dcs_ChannelRef_t channelRef, const char *destAddr,
-                                         const char *destMask, bool isAdd);
-LE_SHARED le_result_t le_net_GetLeaseAddresses(const char* interfaceStrPtr,
-                                               le_net_DhcpInfoType_t infoType,
-                                               char* v4AddrPtr, size_t v4AddrSize,
-                                               char* v6AddrPtr, size_t v6AddrSize,
-                                               uint16_t numAddresses);
+LE_SHARED le_result_t net_SetDefaultGW
+(
+    le_msg_SessionRef_t sessionRef, ///< [IN] messaging session initiating this request
+    le_dcs_ChannelRef_t channelRef
+);
+LE_SHARED void net_BackupDefaultGW
+(
+    le_msg_SessionRef_t sessionRef    ///< [IN] messaging session initiating this request
+);
+LE_SHARED le_result_t net_RestoreDefaultGW
+(
+    le_msg_SessionRef_t sessionRef    ///< [IN] messaging session initiating this request
+);
+LE_SHARED le_result_t net_SetDNS
+(
+    le_msg_SessionRef_t sessionRef, ///< [IN] messaging session initiating this request
+    le_dcs_ChannelRef_t channelRef  ///< [IN] the channel from which the DNS addresses retrieved
+                                    ///< will be set into the system config
+);
+LE_SHARED void net_RestoreDNS
+(
+    le_msg_SessionRef_t sessionRef    ///< [IN] messaging session initiating this request
+);
+
+LE_SHARED le_result_t net_ChangeRoute(le_dcs_ChannelRef_t channelRef, const char *destAddr,
+                                      const char *destMask, bool isAdd);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Returns the DHCP addresses specified
+ *
+ * @return
+ *      LE_NOT_FOUND    Lease file does not exist or does not contain what is being looked for
+ *      LE_OVERFLOW     Destination buffer
+ *      LE_FAULT        Function failed
+ *      LE_OK           Function succeeded
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t net_GetLeaseAddresses
+(
+    const char*     interfaceStrPtr,    ///< [IN]  Pointer to interface string
+    le_net_DhcpInfoType_t infoType,     ///< [IN]  Lease file info type to return
+    char*           v4AddrPtr,          ///< [OUT] Pointer to address
+    size_t          v4AddrSize,         ///< [IN]  Size of each of the IPv4 addresses
+    char*           v6AddrPtr,          ///< [OUT] 2 IPv6 DNS addresses to be installed
+    size_t          v6AddrSize,         ///< [IN]  Size of each IPv6 DNS addresses
+    uint16_t        numAddresses        ///< [IN]  Number of addresses of each type
+);
 
 #endif

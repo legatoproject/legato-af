@@ -91,11 +91,11 @@ static void ChannelQueryTimeEnforcerTimerHandler
 
     for (i = LE_DCS_TECH_UNKNOWN; i < LE_DCS_TECH_MAX; i++)
     {
-        if (le_dcsTech_ChannelQueryIsPending(i))
+        if (dcsTech_ChannelQueryIsPending(i))
         {
             LE_WARN("Channel query from technology %d unfinished within time limit; DCS quit "
                     "waiting & proceed with result posting", i);
-            le_dcsTech_CollectChannelQueryResults(i, LE_FAULT, NULL, 0);
+            dcsTech_CollectChannelQueryResults(i, LE_FAULT, NULL, 0);
         }
     }
 }
@@ -169,14 +169,14 @@ static void DcsChannelDbDestructor
     {
         return;
     }
-    if (LE_OK != le_dcs_DecrementChannelCount(channelDb->technology, &channelCount))
+    if (LE_OK != dcs_DecrementChannelCount(channelDb->technology, &channelCount))
     {
         LE_ERROR("Error in decrementing 0 channel count of technology %d", channelDb->technology);
     }
 
     DcsDeleteAllChannelEventHandlers(channelDb);
     channelDb->evtHdlrs = LE_DLS_LIST_INIT;
-    le_dcsTech_ReleaseTechRef(channelDb->technology, channelDb->techRef);
+    dcsTech_ReleaseTechRef(channelDb->technology, channelDb->techRef);
     channelDb->techRef = NULL;
     le_ref_DeleteRef(ChannelRefMap, channelDb->channelRef);
     channelDb->channelRef = NULL;
@@ -190,7 +190,7 @@ static void DcsChannelDbDestructor
         {
             continue;
         }
-        le_dcs_DeleteStartRequestRef(refDb, channelDb);
+        dcs_DeleteStartRequestRef(refDb, channelDb);
     }
     channelDb->startRequestRefList = LE_DLS_LIST_INIT;
 }
@@ -201,7 +201,7 @@ static void DcsChannelDbDestructor
  * Find the channel event handler of the given channel for the given owner app by its sessionRef
  */
 //--------------------------------------------------------------------------------------------------
-le_dcs_channelDbEventHdlr_t *le_dcs_GetChannelAppEvtHdlr
+le_dcs_channelDbEventHdlr_t *dcs_GetChannelAppEvtHdlr
 (
     le_dcs_channelDb_t *channelDb,
     le_msg_SessionRef_t appSessionRef
@@ -230,7 +230,7 @@ le_dcs_channelDbEventHdlr_t *le_dcs_GetChannelAppEvtHdlr
  * and generate an event notification to it
  */
 //--------------------------------------------------------------------------------------------------
-void dcsChannelEvtHdlrSendNotice
+void dcs_ChannelEvtHdlrSendNotice
 (
     le_dcs_channelDb_t *channelDb,
     le_msg_SessionRef_t appSessionRef,
@@ -238,7 +238,7 @@ void dcsChannelEvtHdlrSendNotice
 )
 {
     le_dcs_channelDbEventHdlr_t *channelAppEvt =
-        le_dcs_GetChannelAppEvtHdlr(channelDb, appSessionRef);
+        dcs_GetChannelAppEvtHdlr(channelDb, appSessionRef);
     le_dcs_channelDbEventReport_t evtReport;
     const char *eventString;
 
@@ -249,7 +249,7 @@ void dcsChannelEvtHdlrSendNotice
         return;
     }
 
-    eventString = le_dcs_ConvertEventToString(evt);
+    eventString = dcs_ConvertEventToString(evt);
     LE_DEBUG("Send %s event notice for channel %s to app with session reference %p",
              eventString, channelDb->channelName, appSessionRef);
     evtReport.channelDb = channelDb;
@@ -296,7 +296,7 @@ static void DcsApplyTechSystemDownEventAction
  * technology.
  */
 //--------------------------------------------------------------------------------------------------
-void le_dcs_EventNotifierTechStateTransition
+void dcs_EventNotifierTechStateTransition
 (
     le_dcs_Technology_t tech,
     bool techState
@@ -314,7 +314,7 @@ void le_dcs_EventNotifierTechStateTransition
     }
     else
     {
-        func = &le_dcsTech_RetryChannel;
+        func = &dcsTech_RetryChannel;
     }
     while (le_ref_NextNode(iterRef) == LE_OK)
     {
@@ -338,7 +338,7 @@ void le_dcs_EventNotifierTechStateTransition
  * function and context for posting back results when available
  */
 //--------------------------------------------------------------------------------------------------
-void le_dcs_AddChannelQueryHandlerDb
+void dcs_AddChannelQueryHandlerDb
 (
     le_dcs_GetChannelsHandlerFunc_t channelQueryHandlerFunc,
     void *context
@@ -373,7 +373,7 @@ void le_dcs_AddChannelQueryHandlerDb
  * of the latest channel list query and posting the results to each.
  */
 //--------------------------------------------------------------------------------------------------
-void le_dcs_ChannelQueryNotifier
+void dcs_ChannelQueryNotifier
 (
     le_result_t result,
     le_dcs_ChannelInfo_t *channelList,
@@ -449,7 +449,7 @@ static void DcsChannelQueryEnforceTimeLimit
  *
  */
 //--------------------------------------------------------------------------------------------------
-bool le_dcs_ChannelQueryIsRunning
+bool dcs_ChannelQueryIsRunning
 (
     void
 )
@@ -494,7 +494,7 @@ static void DcsChannelQueryHandlerDbDestructor
  * DCS notifies all the apps that have registered with it
  */
 //--------------------------------------------------------------------------------------------------
-void le_dcs_ChannelEventNotifier
+void dcs_ChannelEventNotifier
 (
     le_dcs_ChannelRef_t channelRef,
     le_dcs_Event_t evt
@@ -505,7 +505,7 @@ void le_dcs_ChannelEventNotifier
     le_event_Id_t channelEventId;
     le_dcs_channelDbEventReport_t evtReport;
 
-    le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
+    le_dcs_channelDb_t *channelDb = dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
     {
         LE_ERROR("Invalid channel reference %p for event notification", channelRef);
@@ -527,7 +527,7 @@ void le_dcs_ChannelEventNotifier
             if (evt == LE_DCS_EVENT_DOWN)
             {
                 // Reset the refcount upon sending a Down event northbound
-                le_dcs_AdjustReqCount(channelDb, false);
+                dcs_AdjustReqCount(channelDb, false);
             }
         }
         evtHdlrPtr = le_dls_PeekNext(&channelDb->evtHdlrs, evtHdlrPtr);
@@ -544,7 +544,7 @@ void le_dcs_ChannelEventNotifier
  *     - If not found, NULL is returned
  */
 //--------------------------------------------------------------------------------------------------
-le_dcs_channelDb_t *DcsDelChannelEvtHdlr
+le_dcs_channelDb_t *dcs_DelChannelEvtHdlr
 (
     le_dcs_EventHandlerRef_t hdlrRef
 )
@@ -586,7 +586,7 @@ le_dcs_channelDb_t *DcsDelChannelEvtHdlr
  *     - The found channelDb will be returned in the function's return value; otherwise, 0
  */
 //--------------------------------------------------------------------------------------------------
-le_dcs_ChannelRef_t le_dcs_GetChannelRefFromTechRef
+le_dcs_ChannelRef_t dcs_GetChannelRefFromTechRef
 (
     le_dcs_Technology_t tech,
     void *techRef
@@ -615,7 +615,7 @@ le_dcs_ChannelRef_t le_dcs_GetChannelRefFromTechRef
  *     - The found channelDb will be returned in the function's return value; otherwise, NULL
  */
 //--------------------------------------------------------------------------------------------------
-le_dcs_channelDb_t *le_dcs_GetChannelDbFromName
+le_dcs_channelDb_t *dcs_GetChannelDbFromName
 (
     const char *channelName,
     le_dcs_Technology_t tech
@@ -653,7 +653,7 @@ le_dcs_channelDb_t *le_dcs_GetChannelDbFromName
  *     - The found channelDb will be returned in the function's return value; otherwise, NULL
  */
 //--------------------------------------------------------------------------------------------------
-le_dcs_channelDb_t *le_dcs_GetChannelDbFromRef
+le_dcs_channelDb_t *dcs_GetChannelDbFromRef
 (
     le_dcs_ChannelRef_t channelRef
 )
@@ -696,7 +696,7 @@ static void DcsStartRequestRefDbDestructor
  *     - false upon any failure to add it
  */
 //--------------------------------------------------------------------------------------------------
-bool le_dcs_AddStartRequestRef
+bool dcs_AddStartRequestRef
 (
     le_dcs_ReqObjRef_t reqRef,
     le_dcs_channelDb_t *channelDb
@@ -764,13 +764,13 @@ static le_dcs_startRequestRefDb_t *DcsGetStartRequestRefDb
 /**
  * This function deletes the given Start Request reference db by first removing it from its channel
  * db's reference list and then releasing it to let its destructor to do the rest of the necessary
- * clean up. 
+ * clean up.
  *
  * @return
  *     - true upon successful deletion & cleanup; false otherwise
  */
 //--------------------------------------------------------------------------------------------------
-bool le_dcs_DeleteStartRequestRef
+bool dcs_DeleteStartRequestRef
 (
     le_dcs_startRequestRefDb_t *refDb,
     le_dcs_channelDb_t *channelDb
@@ -798,7 +798,7 @@ bool le_dcs_DeleteStartRequestRef
  *     - Otherwise, it returns NULL in both its function return value & 2nd output argument
  */
 //--------------------------------------------------------------------------------------------------
-le_dcs_channelDb_t *le_dcs_GetChannelDbFromStartRequestRef
+le_dcs_channelDb_t *dcs_GetChannelDbFromStartRequestRef
 (
     le_dcs_ReqObjRef_t reqRef,
     le_dcs_startRequestRefDb_t **reqRefDb
@@ -844,7 +844,7 @@ le_dcs_channelDb_t *le_dcs_GetChannelDbFromStartRequestRef
  *     - Otherwise, 0 as output and LE_FAULT as the function's return value
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dcs_GetChannelRefCountFromTechRef
+le_result_t dcs_GetChannelRefCountFromTechRef
 (
     le_dcs_Technology_t tech,
     void *techRef,
@@ -876,7 +876,7 @@ le_result_t le_dcs_GetChannelRefCountFromTechRef
  *     - Return the newly allocated & initialized channelDb handler back to the function caller
  */
 //--------------------------------------------------------------------------------------------------
-le_dcs_channelDbEventHdlr_t *dcsChannelDbEvtHdlrInit
+le_dcs_channelDbEventHdlr_t *dcs_ChannelDbEvtHdlrInit
 (
     void
 )
@@ -901,14 +901,14 @@ le_dcs_channelDbEventHdlr_t *dcsChannelDbEvtHdlrInit
  *       created anew and returned as the function's return value
  */
 //--------------------------------------------------------------------------------------------------
-le_dcs_ChannelRef_t le_dcs_CreateChannelDb
+le_dcs_ChannelRef_t dcs_CreateChannelDb
 (
     le_dcs_Technology_t tech,
     const char *channelName
 )
 {
     uint16_t channelCount;
-    le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromName(channelName, tech);
+    le_dcs_channelDb_t *channelDb = dcs_GetChannelDbFromName(channelName, tech);
     if (channelDb)
     {
         LE_DEBUG("ChannelDb reference %p present for channel %s", channelDb->channelRef,
@@ -916,7 +916,7 @@ le_dcs_ChannelRef_t le_dcs_CreateChannelDb
         return channelDb->channelRef;
     }
 
-    if (le_dcs_GetChannelCount(tech) >= LE_DCS_CHANNEL_LIST_QUERY_MAX)
+    if (dcs_GetChannelCount(tech) >= LE_DCS_CHANNEL_LIST_QUERY_MAX)
     {
         LE_WARN("No new channel Db created for channel %s of technology %d as max # (%d) of "
                 "channel Dbs supported is reached", channelName, tech, LE_DCS_CHANNELDBS_MAX);
@@ -935,7 +935,7 @@ le_dcs_ChannelRef_t le_dcs_CreateChannelDb
     // Create a safe reference for this data profile object.
     channelDb->channelRef = le_ref_CreateRef(ChannelRefMap, channelDb);
 
-    channelDb->techRef = le_dcsTech_CreateTechRef(channelDb->technology, channelName);
+    channelDb->techRef = dcsTech_CreateTechRef(channelDb->technology, channelName);
     if (!channelDb->techRef)
     {
         LE_ERROR("Failed to create tech db for channel %s", channelName);
@@ -946,7 +946,7 @@ le_dcs_ChannelRef_t le_dcs_CreateChannelDb
 
     channelDb->evtHdlrs = LE_DLS_LIST_INIT;
     channelDb->startRequestRefList = LE_DLS_LIST_INIT;
-    channelCount = le_dcs_IncrementChannelCount(tech);
+    channelCount = dcs_IncrementChannelCount(tech);
 
     LE_DEBUG("ChannelRef %p techRef %p created for channel %s; channel count of tech %d is %d",
              channelDb->channelRef, channelDb->techRef, channelName, tech, channelCount);
@@ -961,21 +961,21 @@ le_dcs_ChannelRef_t le_dcs_CreateChannelDb
  *
  */
 //--------------------------------------------------------------------------------------------------
-bool le_dcs_DeleteChannelDb
+bool dcs_DeleteChannelDb
 (
     le_dcs_Technology_t tech,
     void *techRef
 )
 {
     le_dcs_channelDb_t *channelDb;
-    le_dcs_ChannelRef_t channelRef = le_dcs_GetChannelRefFromTechRef(tech, techRef);
+    le_dcs_ChannelRef_t channelRef = dcs_GetChannelRefFromTechRef(tech, techRef);
     if (!channelRef)
     {
         LE_ERROR("Found no channel db reference for tech db reference %p to delete", techRef);
         return false;
     }
 
-    channelDb = le_dcs_GetChannelDbFromRef(channelRef);
+    channelDb = dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
     {
         LE_ERROR("Found no channel db for tech db reference %p to delete", techRef);
@@ -994,7 +994,7 @@ bool le_dcs_DeleteChannelDb
  * Allocate memory pools, event pools and reference maps during DCS' init
  */
 //--------------------------------------------------------------------------------------------------
-void dcsCreateDbPool
+void dcs_CreateDbPool
 (
     void
 )

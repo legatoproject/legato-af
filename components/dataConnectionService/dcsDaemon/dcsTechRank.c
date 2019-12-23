@@ -209,7 +209,7 @@ le_result_t dcsTechRank_SelectDataChannel
             }
             le_dcsCellular_GetNameFromIndex(index, dataChannelName);
             dcs_ChannelSetChannelName(dataChannelName);
-            dataChannelRef = le_dcs_GetReference(dataChannelName, dcsTech);
+            dataChannelRef = dcs_GetReference(dataChannelName, dcsTech);
             if (!dataChannelRef)
             {
             #ifdef LE_CONFIG_LINUX
@@ -219,7 +219,7 @@ le_result_t dcsTechRank_SelectDataChannel
                 return LE_FAULT;
             #else
                 // Allow to create the channel Db even the request channel is not in channel list.
-                dataChannelRef = le_dcs_CreateChannelDb(dcsTech, dataChannelName);
+                dataChannelRef = dcs_CreateChannelDb(dcsTech, dataChannelName);
                 if (!dataChannelRef)
                 {
                     LE_ERROR("Failed to create dbs for new channel %s of technology %d",
@@ -241,7 +241,7 @@ le_result_t dcsTechRank_SelectDataChannel
                 LE_ERROR("Failed to retrieve wifi config SSID");
                 return LE_FAULT;
             }
-            dataChannelRef = le_dcs_GetReference(ssid, dcsTech);
+            dataChannelRef = dcs_GetReference(ssid, dcsTech);
             dcs_ChannelSetCurrentReference(dataChannelRef);
             if (!dataChannelRef)
             {

@@ -28,7 +28,7 @@ static char DcsTechnologyName[LE_DCS_TECH_MAX_NAME_LEN];
  *     - The string name of the given technology in the function's return value
  */
 //--------------------------------------------------------------------------------------------------
-const char *le_dcs_ConvertTechEnumToName
+const char *dcs_ConvertTechEnumToName
 (
     le_dcs_Technology_t tech
 )
@@ -66,13 +66,13 @@ const char *le_dcs_ConvertTechEnumToName
  *       failure cause
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dcs_GetAdminState
+le_result_t dcs_GetAdminState
 (
     le_dcs_ChannelRef_t channelRef,
     le_dcs_State_t *state
 )
 {
-    le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
+    le_dcs_channelDb_t *channelDb = dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
     {
         LE_ERROR("Failed to find channel with reference %p to get state",
@@ -94,7 +94,7 @@ le_result_t le_dcs_GetAdminState
  *     - The string name of the given le_dcs event
  */
 //--------------------------------------------------------------------------------------------------
-const char *le_dcs_ConvertEventToString
+const char *dcs_ConvertEventToString
 (
     le_dcs_Event_t event
 )

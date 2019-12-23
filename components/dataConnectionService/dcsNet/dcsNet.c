@@ -141,32 +141,6 @@ static le_dls_List_t DcsDnsConfigDbList;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Retrieve the session reference of the client app which calls the corresponding le_net API to
- * perform network config management over a data channel. If the result is 0, it is valid and means
- * that the internal client le_data is the one.
- *
- * @return
- *     session reference: non-zero means a client app while 0 means le_data which is an internal
- *     client
- */
-//--------------------------------------------------------------------------------------------------
-le_msg_SessionRef_t DcsNetGetSessionRef
-(
-    void
-)
-{
-    le_msg_SessionRef_t sessionRef = le_net_GetClientSessionRef();
-    if (!sessionRef)
-    {
-        LE_DEBUG("Client app's sessionRef (nil) reflects it's from le_data");
-        return le_dcs_GetInternalSessionRef();
-    }
-    return sessionRef;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * This function searches through DcsDefaultGwConfigDbList for a matching session reference with
  * the given one in the input. If it is at the start of the list, the 2nd argument isRecent will be
  * set to true to let the function caller know.
@@ -332,7 +306,7 @@ static DcsDnsConfigDb_t* GetDnsConfigDb
  *       failure cause
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_net_GetNetIntfState
+le_result_t net_GetNetIntfState
 (
     const char *connIntf,
     bool *state
@@ -354,6 +328,27 @@ le_result_t le_net_GetNetIntfState
         *state = true;
     }
     return ret;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function for retrieving the network interface state of the given network interface in the 1st
+ * argument
+ *
+ * @return
+ *     - The function returns the retrieved channel state in the 2nd argument
+ *     - The function returns LE_OK upon a successful retrieval; otherwise, some other le_result_t
+ *       failure cause
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_net_GetNetIntfState
+(
+    const char *connIntf,
+    bool *state
+)
+{
+    return net_GetNetIntfState(connIntf, state);
 }
 
 
@@ -473,7 +468,7 @@ le_result_t GetDhcpLeaseFileEntry
  *      LE_OK           Function succeeded
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_net_GetLeaseAddresses
+le_result_t net_GetLeaseAddresses
 (
     const char*     interfaceStrPtr,    ///< [IN]  Pointer to interface string
     le_net_DhcpInfoType_t infoType,     ///< [IN]  Lease file info type to return
@@ -551,17 +546,16 @@ le_result_t le_net_GetLeaseAddresses
  * Backup default GW config in the system
  */
 //--------------------------------------------------------------------------------------------------
-void le_net_BackupDefaultGW
+void net_BackupDefaultGW
 (
-    void
+    le_msg_SessionRef_t sessionRef    ///< [IN] messaging session initiating this request
 )
 {
     pa_dcs_DefaultGwBackup_t defGwConfigBackup;
-    le_msg_SessionRef_t sessionRef = DcsNetGetSessionRef();
     char appName[LE_DCS_APPNAME_MAX_LEN] = {0};
     pid_t pid = 0;
     uid_t uid = 0;
-    le_result_t v4Ret, v6Ret;
+    le_result_t v4Ret = LE_FAULT, v6Ret = LE_FAULT;
 
     LE_DEBUG("Client app's sessionRef %p", sessionRef);
     if (sessionRef && (LE_OK == le_msg_GetClientUserCreds(sessionRef, &uid, &pid)) &&
@@ -597,20 +591,33 @@ void le_net_BackupDefaultGW
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Backup default GW config in the system
+ */
+//--------------------------------------------------------------------------------------------------
+void le_net_BackupDefaultGW
+(
+    void
+)
+{
+    net_BackupDefaultGW(le_net_GetClientSessionRef());
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Restore default GW config in the system
  *
  * @return
  *     - LE_OK upon success in restoring, otherwise, some other le_result_t failure code
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_net_RestoreDefaultGW
+le_result_t net_RestoreDefaultGW
 (
-    void
+    le_msg_SessionRef_t sessionRef    ///< [IN] messaging session initiating this request
 )
 {
     DcsDefaultGwConfigDb_t* defGwConfigDbPtr;
     pa_dcs_DefaultGwBackup_t* defGwConfigBackup;
-    le_msg_SessionRef_t sessionRef = DcsNetGetSessionRef();
     char appName[LE_DCS_APPNAME_MAX_LEN] = {0};
     pid_t pid = 0;
     uid_t uid = 0;
@@ -682,6 +689,23 @@ le_result_t le_net_RestoreDefaultGW
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Restore default GW config in the system
+ *
+ * @return
+ *     - LE_OK upon success in restoring, otherwise, some other le_result_t failure code
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_net_RestoreDefaultGW
+(
+    void
+)
+{
+    return net_RestoreDefaultGW(le_net_GetClientSessionRef());
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Function for setting the system default GW to the default GW addr given to the given channel
  * specified in the input argument.  This default GW addr is retrieved from this channel's
  * technology
@@ -690,8 +714,9 @@ le_result_t le_net_RestoreDefaultGW
  *     - The function returns LE_OK upon a successful addr setting; otherwise, LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_net_SetDefaultGW
+le_result_t net_SetDefaultGW
 (
+    le_msg_SessionRef_t sessionRef, ///< [IN] messaging session initiating this request
     le_dcs_ChannelRef_t channelRef  ///< [IN] the channel on which interface its default GW
                                     ///< addr is to be set
 )
@@ -701,13 +726,12 @@ le_result_t le_net_SetDefaultGW
     size_t v4GwAddrSize = PA_DCS_IPV4_ADDR_MAX_BYTES;
     size_t v6GwAddrSize = PA_DCS_IPV6_ADDR_MAX_BYTES;
     char *channelName, v4GwAddr[PA_DCS_IPV4_ADDR_MAX_BYTES], v6GwAddr[PA_DCS_IPV6_ADDR_MAX_BYTES];
-    le_msg_SessionRef_t sessionRef = DcsNetGetSessionRef();
     char appName[LE_DCS_APPNAME_MAX_LEN] = {0};
     DcsDefaultGwConfigDb_t* defGwConfigDbPtr;
     bool isRecent;
     pid_t pid = 0;
     uid_t uid = 0;
-    le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
+    le_dcs_channelDb_t *channelDb = dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
     {
         LE_ERROR("Invalid channel reference %p for setting default GW", channelRef);
@@ -723,21 +747,21 @@ le_result_t le_net_SetDefaultGW
         LE_DEBUG("Client app's name %s", appName);
     }
 
-    if (LE_OK != le_dcsTech_GetNetInterface(channelDb->technology, channelRef, intf,
+    if (LE_OK != dcsTech_GetNetInterface(channelDb->technology, channelRef, intf,
                                             LE_DCS_INTERFACE_NAME_MAX_LEN))
     {
         LE_ERROR("Failed to get network interface for channel %s of technology %s to set "
-                 "default GW", channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
+                 "default GW", channelName, dcs_ConvertTechEnumToName(channelDb->technology));
         return LE_FAULT;
     }
 
     // Query technology for IPv4 and IPv6 default GW address assignments
-    ret = le_dcsTech_GetDefaultGWAddress(channelDb->technology, channelRef,
+    ret = dcsTech_GetDefaultGWAddress(channelDb->technology, channelRef,
                                          v4GwAddr, v4GwAddrSize, v6GwAddr, v6GwAddrSize);
     if (ret != LE_OK)
     {
         LE_ERROR("Failed to get default GW addr for channel %s of technology %s to set default GW; "
-                 "error %d", channelName, le_dcs_ConvertTechEnumToName(channelDb->technology),
+                 "error %d", channelName, dcs_ConvertTechEnumToName(channelDb->technology),
                  ret);
         return ret;
     }
@@ -745,7 +769,7 @@ le_result_t le_net_SetDefaultGW
     if ((strlen(v6GwAddr) == 0) && (strlen(v4GwAddr) == 0))
     {
         LE_INFO("Given channel %s of technology %s got no default GW address assigned",
-                channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
+                channelName, dcs_ConvertTechEnumToName(channelDb->technology));
         return LE_FAULT;
     }
 
@@ -766,7 +790,7 @@ le_result_t le_net_SetDefaultGW
         if (v6Ret != LE_OK)
         {
             LE_ERROR("Failed to set IPv6 default GW for channel %s of technology %s", channelName,
-                     le_dcs_ConvertTechEnumToName(channelDb->technology));
+                     dcs_ConvertTechEnumToName(channelDb->technology));
         }
         else if (defGwConfigDbPtr)
         {
@@ -782,7 +806,7 @@ le_result_t le_net_SetDefaultGW
         if (v4Ret != LE_OK)
         {
             LE_ERROR("Failed to set IPv4 default GW for channel %s of technology %s", channelName,
-                     le_dcs_ConvertTechEnumToName(channelDb->technology));
+                     dcs_ConvertTechEnumToName(channelDb->technology));
         }
         else if (defGwConfigDbPtr)
         {
@@ -794,10 +818,29 @@ le_result_t le_net_SetDefaultGW
     if ((v4Ret == LE_OK) || (v6Ret == LE_OK))
     {
         LE_INFO("Succeeded to set default GW addr on interface %s for channel %s of technology %s",
-                intf, channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
+                intf, channelName, dcs_ConvertTechEnumToName(channelDb->technology));
         return LE_OK;
     }
     return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function for setting the system default GW to the default GW addr given to the given channel
+ * specified in the input argument.  This default GW addr is retrieved from this channel's
+ * technology
+ *
+ * @return
+ *     - The function returns LE_OK upon a successful addr setting; otherwise, LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_net_SetDefaultGW
+(
+    le_dcs_ChannelRef_t channelRef  ///< [IN] the channel on which interface its default GW
+                                    ///< addr is to be set
+)
+{
+    return net_SetDefaultGW(le_net_GetClientSessionRef(), channelRef);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -815,7 +858,7 @@ le_result_t le_net_GetDefaultGW
 )
 {
     le_result_t ret;
-    le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
+    le_dcs_channelDb_t *channelDb = dcs_GetChannelDbFromRef(channelRef);
 
     if (addr == NULL)
     {
@@ -834,13 +877,13 @@ le_result_t le_net_GetDefaultGW
     }
 
     // Query technology for IPv4 and IPv6 default GW address assignments
-    ret = le_dcsTech_GetDefaultGWAddress(channelDb->technology, channelRef,
+    ret = dcsTech_GetDefaultGWAddress(channelDb->technology, channelRef,
                                          addr->ipv4Addr, sizeof(addr->ipv4Addr),
                                          addr->ipv6Addr, sizeof(addr->ipv6Addr));
     if (ret != LE_OK)
     {
         LE_ERROR("Failed to get default GW addr for channel %s of technology %s; error %d",
-                 channelDb->channelName, le_dcs_ConvertTechEnumToName(channelDb->technology), ret);
+                 channelDb->channelName, dcs_ConvertTechEnumToName(channelDb->technology), ret);
     }
     return ret;
 }
@@ -1036,6 +1079,7 @@ static le_result_t DcsNetChangeRoute
 //--------------------------------------------------------------------------------------------------
 static DcsDnsConfigDb_t* DcsNetInitDnsBackup
 (
+    le_msg_SessionRef_t sessionRef,
     char *v4DnsAddr1,
     char *v4DnsAddr2,
     char *v6DnsAddr1,
@@ -1048,7 +1092,6 @@ static DcsDnsConfigDb_t* DcsNetInitDnsBackup
     char appName[LE_DCS_APPNAME_MAX_LEN] = {0};
     DcsDnsConfigDb_t* dnsConfigDbPtr;
     pa_dcs_DnsBackup_t* dnsConfigBackup;
-    le_msg_SessionRef_t sessionRef = DcsNetGetSessionRef();
     uint16_t v4DnsAddr1Len = strlen(v4DnsAddr1);
     uint16_t v4DnsAddr2Len = strlen(v4DnsAddr2);
     uint16_t v6DnsAddr1Len = strlen(v6DnsAddr1);
@@ -1136,8 +1179,9 @@ static DcsDnsConfigDb_t* DcsNetInitDnsBackup
  *     - The function returns LE_OK upon a successful addr setting; otherwise, LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_net_SetDNS
+le_result_t net_SetDNS
 (
+    le_msg_SessionRef_t sessionRef, ///< [IN] messaging session initiating this request
     le_dcs_ChannelRef_t channelRef  ///< [IN] the channel from which the DNS addresses retrieved
                                     ///< will be set into the system config
 )
@@ -1147,7 +1191,7 @@ le_result_t le_net_SetDNS
     char v4DnsAddrs[2][PA_DCS_IPV4_ADDR_MAX_BYTES] = {{0}, {0}};
     char v6DnsAddrs[2][PA_DCS_IPV6_ADDR_MAX_BYTES] = {{0}, {0}};
     DcsDnsConfigDb_t* dnsConfigDbPtr;
-    le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
+    le_dcs_channelDb_t *channelDb = dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
     {
         LE_ERROR("Invalid channel reference %p for setting default GW", channelRef);
@@ -1156,23 +1200,24 @@ le_result_t le_net_SetDNS
     channelName = channelDb->channelName;
 
     // Query technology for IPv4 and IPv6 DNS server address assignments
-    ret = le_dcsTech_GetDNSAddresses(channelDb->technology, channelRef,
+    ret = dcsTech_GetDNSAddresses(channelDb->technology, channelRef,
                                      (char *)v4DnsAddrs, PA_DCS_IPV4_ADDR_MAX_BYTES,
                                      (char *)v6DnsAddrs, PA_DCS_IPV6_ADDR_MAX_BYTES);
     if (ret != LE_OK)
     {
         LE_ERROR("Failed to get DNS addresses for channel %s of technology %s to set DNS config; "
-                 "error %d", channelName, le_dcs_ConvertTechEnumToName(channelDb->technology),
+                 "error %d", channelName, dcs_ConvertTechEnumToName(channelDb->technology),
                  ret);
         return ret;
     }
 
-    dnsConfigDbPtr = DcsNetInitDnsBackup(v4DnsAddrs[0], v4DnsAddrs[1], v6DnsAddrs[0],
+    dnsConfigDbPtr = DcsNetInitDnsBackup(sessionRef,
+                                         v4DnsAddrs[0], v4DnsAddrs[1], v6DnsAddrs[0],
                                          v6DnsAddrs[1]);
     if (!dnsConfigDbPtr)
     {
         LE_INFO("Given channel %s of technology %s got no DNS server address assigned",
-                channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
+                channelName, dcs_ConvertTechEnumToName(channelDb->technology));
         return LE_FAULT;
     }
 
@@ -1183,25 +1228,44 @@ le_result_t le_net_SetDNS
         case LE_OK:
             // Archive the backup onto DcsDnsConfigDbList
             LE_INFO("Succeeded to set DNS address(es) of channel %s of technology %s onto device",
-                    channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
+                    channelName, dcs_ConvertTechEnumToName(channelDb->technology));
             le_dls_Stack(&DcsDnsConfigDbList, &dnsConfigDbPtr->dbLink);
             return LE_OK;
         case LE_DUPLICATE:
             LE_INFO("DNS address(es) of channel %s of technology %s already set onto device",
-                    channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
+                    channelName, dcs_ConvertTechEnumToName(channelDb->technology));
             break;
         case LE_FAULT:
             LE_ERROR("Failed to set DNS address for channel %s of technology %s onto device",
-                     channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
+                     channelName, dcs_ConvertTechEnumToName(channelDb->technology));
             break;
         default:
             LE_ERROR("Error in setting DNS address for channel %s of technology %s onto device: %d",
-                     channelName, le_dcs_ConvertTechEnumToName(channelDb->technology), ret);
+                     channelName, dcs_ConvertTechEnumToName(channelDb->technology), ret);
             break;
     }
     // No need for backup; thus, release the allocated backup db
     le_mem_Release(dnsConfigDbPtr);
     return ret;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the system DNS addresses to those given to the given channel specified in the input argument.
+ * These DNS addresses are retrieved from this channel's technology
+ *
+ * @return
+ *     - The function returns LE_OK upon a successful addr setting; otherwise, LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_net_SetDNS
+(
+    le_dcs_ChannelRef_t channelRef  ///< [IN] the channel from which the DNS addresses retrieved
+                                    ///< will be set into the system config
+)
+{
+    return net_SetDNS(le_net_GetClientSessionRef(), channelRef);
 }
 
 
@@ -1222,7 +1286,7 @@ le_result_t le_net_GetDNS
     le_result_t ret;
     char v4DnsAddrs[2][PA_DCS_IPV4_ADDR_MAX_BYTES] = {{0}, {0}};
     char v6DnsAddrs[2][PA_DCS_IPV6_ADDR_MAX_BYTES] = {{0}, {0}};
-    le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
+    le_dcs_channelDb_t *channelDb = dcs_GetChannelDbFromRef(channelRef);
 
     if (addr == NULL)
     {
@@ -1240,13 +1304,13 @@ le_result_t le_net_GetDNS
     }
 
     // Query technology for IPv4 and IPv6 DNS server address assignments
-    ret = le_dcsTech_GetDNSAddresses(channelDb->technology, channelRef,
+    ret = dcsTech_GetDNSAddresses(channelDb->technology, channelRef,
                                      (char *)v4DnsAddrs, PA_DCS_IPV4_ADDR_MAX_BYTES,
                                      (char *)v6DnsAddrs, PA_DCS_IPV6_ADDR_MAX_BYTES);
     if (ret != LE_OK)
     {
         LE_ERROR("Failed to get DNS server addresses for channel %s of technology %s; error %d",
-                 channelDb->channelName, le_dcs_ConvertTechEnumToName(channelDb->technology), ret);
+                 channelDb->channelName, dcs_ConvertTechEnumToName(channelDb->technology), ret);
         return LE_FAULT;
     }
 
@@ -1264,9 +1328,9 @@ le_result_t le_net_GetDNS
  * Remove the last added DNS addresses via the le_dcs_SetDNS API
  */
 //--------------------------------------------------------------------------------------------------
-void le_net_RestoreDNS
+void net_RestoreDNS
 (
-    void
+    le_msg_SessionRef_t sessionRef    ///< [IN] messaging session initiating this request
 )
 {
     pid_t pid = 0;
@@ -1275,7 +1339,6 @@ void le_net_RestoreDNS
     char appName[LE_DCS_APPNAME_MAX_LEN] = {0};
     DcsDnsConfigDb_t* dnsConfigDbPtr;
     pa_dcs_DnsBackup_t* dnsConfigBackup;
-    le_msg_SessionRef_t sessionRef = DcsNetGetSessionRef();
     LE_DEBUG("Client app's sessionRef %p", sessionRef);
     if (sessionRef && (LE_OK == le_msg_GetClientUserCreds(sessionRef, &uid, &pid)) &&
         (LE_OK == le_appInfo_GetName(pid, appName, sizeof(appName)-1)))
@@ -1305,6 +1368,19 @@ void le_net_RestoreDNS
     pa_dcs_RestoreInitialDnsNameServers(dnsConfigBackup);
     le_mem_Release(dnsConfigDbPtr);
     LE_DEBUG("Old DNS config backup for session reference %p restored", sessionRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove the last added DNS addresses via the le_dcs_SetDNS API
+ */
+//--------------------------------------------------------------------------------------------------
+void le_net_RestoreDNS
+(
+    void
+)
+{
+    net_RestoreDNS(le_net_GetClientSessionRef());
 }
 
 
@@ -1391,7 +1467,7 @@ static le_result_t ConvertSubnetMaskToPrefixLength
  *      - LE_OK upon success, otherwise another le_result_t failure code
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_net_ChangeRoute
+le_result_t net_ChangeRoute
 (
     le_dcs_ChannelRef_t channelRef,  ///< [IN] the channel onto which the route change is made
     const char *destAddr,     ///< [IN] Destination IP address for the route
@@ -1403,7 +1479,7 @@ le_result_t le_net_ChangeRoute
     uint16_t i, stringLen;
     char *channelName, intfName[LE_DCS_INTERFACE_NAME_MAX_LEN] = {0};
     int intfNameSize = LE_DCS_INTERFACE_NAME_MAX_LEN;
-    le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
+    le_dcs_channelDb_t *channelDb = dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
     {
         LE_ERROR("Invalid channel reference %p for changing route", channelRef);
@@ -1416,7 +1492,7 @@ le_result_t le_net_ChangeRoute
         (LE_DCS_TECH_MAX <= channelDb->technology))
     {
         LE_ERROR("Channel's technology %s not supported",
-                 le_dcs_ConvertTechEnumToName(channelDb->technology));
+                 dcs_ConvertTechEnumToName(channelDb->technology));
         return LE_UNSUPPORTED;
     }
 
@@ -1507,11 +1583,11 @@ le_result_t le_net_ChangeRoute
     }
 
     // Get network interface
-    ret = le_dcsTech_GetNetInterface(channelDb->technology, channelRef, intfName, intfNameSize);
+    ret = dcsTech_GetNetInterface(channelDb->technology, channelRef, intfName, intfNameSize);
     if (ret != LE_OK)
     {
         LE_ERROR("Failed to get net interface of channel %s of technology %s to change route",
-                 channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
+                 channelName, dcs_ConvertTechEnumToName(channelDb->technology));
         return ret;
     }
 
@@ -1521,16 +1597,38 @@ le_result_t le_net_ChangeRoute
     {
         LE_ERROR("Failed to %s route for channel %s of technology %s on interface %s",
                  isAdd ? "add" : "delete", channelName,
-                 le_dcs_ConvertTechEnumToName(channelDb->technology), intfName);
+                 dcs_ConvertTechEnumToName(channelDb->technology), intfName);
     }
     else
     {
         LE_INFO("Succeeded to %s route for channel %s of technology %s on interface %s",
                 isAdd ? "add" : "delete", channelName,
-                le_dcs_ConvertTechEnumToName(channelDb->technology), intfName);
+                dcs_ConvertTechEnumToName(channelDb->technology), intfName);
     }
     return ret;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add or remove a route on the given channel according to the input flag in the last argument for
+ * the given destination address its given subnet, which is a subnet mask for IPv4 and subnet mask's
+ * prefix length for IPv6
+ *
+ * @return
+ *      - LE_OK upon success, otherwise another le_result_t failure code
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_net_ChangeRoute
+(
+    le_dcs_ChannelRef_t channelRef,  ///< [IN] the channel onto which the route change is made
+    const char *destAddr,     ///< [IN] Destination IP address for the route
+    const char *prefixLength, ///< [IN] Destination's subnet prefix length
+    bool isAdd                ///< [IN] The change is to add (true) or delete (false)
+)
+{
+    return net_ChangeRoute(channelRef, destAddr, prefixLength, isAdd);
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**

@@ -169,7 +169,7 @@ static wifi_connDb_t *DcsWifiGetSelectedDb
     ssid[ssidSize] = '\0';
     LE_WARN("Found currently selected Wifi connection to get established: %s, reference %p",
             ssid, apRef);
-    channelDb = le_dcs_GetChannelDbFromName((const char *)ssid, LE_DCS_TECH_WIFI);
+    channelDb = dcs_GetChannelDbFromName((const char *)ssid, LE_DCS_TECH_WIFI);
     if (!channelDb)
     {
         LE_WARN("Failed to find channel db for SSID %s", ssid);
@@ -755,7 +755,7 @@ static void DcsWifiPurgeConnDbs
         // Purge the wifiConnDb which is no longer on the active wifi SSID list, via purging
         // its DCS channel which has to run & finish synchronously
         LE_DEBUG("Purging unavailable & unused Wifi channel with ssid %s", wifiConnDb->ssid);
-        if (!le_dcs_DeleteChannelDb(LE_DCS_TECH_WIFI, wifiConnDb->connRef))
+        if (!dcs_DeleteChannelDb(LE_DCS_TECH_WIFI, wifiConnDb->connRef))
         {
             LE_ERROR("Failed to purge unavailable & unused Wifi channel with ssid %s",
                      wifiConnDb->ssid);
@@ -784,7 +784,7 @@ static void WifiReadScanResults
     if (!apRef)
     {
         LE_ERROR("le_wifiClient_GetFirstAccessPoint ERROR");
-        le_dcsTech_CollectChannelQueryResults(LE_DCS_TECH_WIFI, LE_FAULT, DcsWifiScan.activeList,
+        dcsTech_CollectChannelQueryResults(LE_DCS_TECH_WIFI, LE_FAULT, DcsWifiScan.activeList,
                                               0);
         if (!selectedConnDb)
         {
@@ -863,7 +863,7 @@ static void WifiReadScanResults
         DcsWifiPurgeConnDbs();
         DcsWifiUpdateConnDbList();
     }
-    le_dcsTech_CollectChannelQueryResults(LE_DCS_TECH_WIFI, LE_OK, DcsWifiScan.activeList,
+    dcsTech_CollectChannelQueryResults(LE_DCS_TECH_WIFI, LE_OK, DcsWifiScan.activeList,
                                           DcsWifiScan.listSize);
     if (!selectedConnDb)
     {
@@ -904,7 +904,7 @@ le_result_t le_dcsWifi_GetChannelList
     if ((LE_OK != ret) && (LE_BUSY != ret) && (LE_DUPLICATE != ret))
     {
         LE_WARN("Unable to start wifiClient for scanning");
-        le_dcsTech_CollectChannelQueryResults(LE_DCS_TECH_WIFI, LE_FAULT, NULL, 0);
+        dcsTech_CollectChannelQueryResults(LE_DCS_TECH_WIFI, LE_FAULT, NULL, 0);
         DcsWifiClientStop();
         return ret;
     }
@@ -1033,7 +1033,7 @@ static void DcsWifiClientConnected
 
     LE_INFO("Wifi client connected on SSID %s", selectedConnDb->ssid);
 
-    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef);
+    channelRef = dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef);
     if (!channelRef)
     {
         LE_ERROR("Failed to get channel db reference to send wifi connection up event");
@@ -1059,7 +1059,7 @@ static void DcsWifiClientConnected
         if ((ret != LE_OK) && (ret != LE_DUPLICATE))
         {
             uint16_t refcount;
-            if ((le_dcs_GetChannelRefCountFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef,
+            if ((dcs_GetChannelRefCountFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef,
                                                       &refcount) == LE_OK) && (refcount > 0))
             {
                 le_result_t ret;
@@ -1070,7 +1070,7 @@ static void DcsWifiClientConnected
                 {
                     case LE_OK:
                         LE_INFO("Wait for the next retry before failing connection %s", ssid);
-                        le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_TEMP_DOWN);
+                        dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_TEMP_DOWN);
                         break;
                     case LE_DUPLICATE:
                         LE_DEBUG("No need to re-trigger retry for connection %s", ssid);
@@ -1078,7 +1078,7 @@ static void DcsWifiClientConnected
                     case LE_OVERFLOW:
                     case LE_FAULT:
                     default:
-                        le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+                        dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
                         DcsWifiPostFailureReset();
                         break;
                 }
@@ -1086,7 +1086,7 @@ static void DcsWifiClientConnected
             else
             {
                 // refcount is 0 or unknown; no need to retry connecting
-                le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+                dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
                 DcsWifiPostFailureReset();
             }
         }
@@ -1099,7 +1099,7 @@ static void DcsWifiClientConnected
     DcsWifiResetRetries();
 
     // Send connection up event to apps
-    le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_UP);
+    dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_UP);
 }
 
 
@@ -1139,7 +1139,7 @@ static void DcsWifiClientDisconnected
     LE_INFO("Wifi client disconnected over SSID %s", ssid);
     DcsWifi.opStateUp = false;
 
-    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef);
+    channelRef = dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef);
     if (!channelRef)
     {
         LE_ERROR("Failed to get channel db reference to send wifi connection down event");
@@ -1149,7 +1149,7 @@ static void DcsWifiClientDisconnected
         return;
     }
 
-    if (le_dcs_GetChannelRefCountFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef,
+    if (dcs_GetChannelRefCountFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef,
                                              &refcount) == LE_OK)
     {
         if (refcount > 0)
@@ -1160,7 +1160,7 @@ static void DcsWifiClientDisconnected
             {
                 case LE_OK:
                     LE_INFO("Wait for the next retry before failing connection %s", ssid);
-                    le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_TEMP_DOWN);
+                    dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_TEMP_DOWN);
                     return;
                 case LE_DUPLICATE:
                     LE_DEBUG("No need to re-trigger retry for connection %s", ssid);
@@ -1180,7 +1180,7 @@ static void DcsWifiClientDisconnected
 
     // Send connection down event to apps
     LE_DEBUG("Send Down event of connection %s to apps", ssid);
-    le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+    dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
     DcsWifi.selectedConnDb = NULL;
     DcsWifi.apRef = NULL;
     DcsWifiClientStop();
@@ -1237,7 +1237,7 @@ static void WifiClientEventHandler
 
             LE_ERROR("Wifi scan failed to get results");
             DcsWifiScan.isActive = false;
-            le_dcsTech_CollectChannelQueryResults(LE_DCS_TECH_WIFI, LE_FAULT, NULL, 0);
+            dcsTech_CollectChannelQueryResults(LE_DCS_TECH_WIFI, LE_FAULT, NULL, 0);
             DcsWifiClientStop();
             break;
 
@@ -1288,7 +1288,7 @@ static void DcsWifiDiscRetryTimerHandler
     LE_INFO("Retry disconnect timer expired; initiate retry disconnecting over SSID %s now",
             wifiConnDb->ssid);
 
-    if ((le_dcs_GetChannelRefCountFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef, &refcount)
+    if ((dcs_GetChannelRefCountFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef, &refcount)
          == LE_OK) && (refcount > 0))
     {
         LE_DEBUG("Wifi connection in use again; no need to retry disconnecting");
@@ -1302,14 +1302,14 @@ static void DcsWifiDiscRetryTimerHandler
     }
 
     // Send the down event notification here as the Disconnect Request to wifiClient failed
-    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef);
+    channelRef = dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI, selectedConnDb->connRef);
     if (!channelRef)
     {
         LE_ERROR("Failed to get channel db reference to send wifi connection down event");
     }
     else
     {
-        le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+        dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
     }
     DcsWifi.selectedConnDb = NULL;
     DcsWifi.apRef = NULL;
@@ -1341,7 +1341,7 @@ static void DcsWifiConnRetryTimerHandler
         return;
     }
 
-    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI,
+    channelRef = dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI,
                                                  wifiConnDb->connRef);
     if (!channelRef)
     {
@@ -1354,7 +1354,7 @@ static void DcsWifiConnRetryTimerHandler
     if (!selectedConnDb)
     {
         LE_DEBUG("Wifi connection already disconnected upon connection retry timer expiration");
-        le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+        dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
         return;
     }
 
@@ -1362,7 +1362,7 @@ static void DcsWifiConnRetryTimerHandler
     {
         LE_WARN("DCS has moved onto SSID %s from %s; skip retrying connection",
                 selectedConnDb->ssid, wifiConnDb->ssid);
-        le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+        dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
         return;
     }
 
@@ -1370,7 +1370,7 @@ static void DcsWifiConnRetryTimerHandler
     {
         LE_ERROR("Failed to retry connecting over SSID %s to an unknown AP reference",
                  wifiConnDb->ssid);
-        le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+        dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
         DcsWifiPostFailureReset();
         return;
     }
@@ -1403,7 +1403,7 @@ static void DcsWifiConnRetryTimerHandler
 
     LE_INFO("Exhausted all attempts to connect over SSID %s", wifiConnDb->ssid);
 
-    le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+    dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
     DcsWifiPostFailureReset();
 }
 
@@ -1464,7 +1464,7 @@ le_result_t le_dcsWifi_Start
         return LE_FAULT;
     }
 
-    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI, wifiConnRef);
+    channelRef = dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI, wifiConnRef);
     if (!channelRef)
     {
         LE_ERROR("Failed to get channel db reference for Wifi connection with reference %p",
@@ -1596,14 +1596,14 @@ le_result_t le_dcsWifi_Stop
     if ((ret != LE_OK) && (ret != LE_DUPLICATE))
     {
         // Send the down event notification here as the Disconnect Request to wifiClient failed
-        channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI, wifiConnRef);
+        channelRef = dcs_GetChannelRefFromTechRef(LE_DCS_TECH_WIFI, wifiConnRef);
         if (!channelRef)
         {
             LE_ERROR("Failed to get channel db reference to send wifi connection down event");
         }
         else
         {
-            le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+            dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
         }
         DcsWifi.selectedConnDb = NULL;
         DcsWifi.apRef = NULL;

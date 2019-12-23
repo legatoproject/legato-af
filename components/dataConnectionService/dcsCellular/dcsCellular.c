@@ -233,7 +233,7 @@ static void DcsCellularConnEventStateHandler
         LE_ERROR("No db found for connection %s for event notification", connName);
         return;
     }
-    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_CELLULAR, cellConnDb->connRef);
+    channelRef = dcs_GetChannelRefFromTechRef(LE_DCS_TECH_CELLULAR, cellConnDb->connRef);
 
     LE_DEBUG("Updating profile %d of cellular connection %s", profileIndex, connName);
 
@@ -255,12 +255,12 @@ static void DcsCellularConnEventStateHandler
     LE_INFO("State of connection %s transitioned from %s to %s", connName,
             oldStateUp ? "up" : "down", newStateUp ? "up" : "down");
 
-    if (le_dcs_GetChannelRefCountFromTechRef(LE_DCS_TECH_CELLULAR, cellConnDb->connRef,
+    if (dcs_GetChannelRefCountFromTechRef(LE_DCS_TECH_CELLULAR, cellConnDb->connRef,
                                              &refcount) != LE_OK)
     {
         LE_ERROR("Failed to get reference count of connection %s to handle state change",
                  connName);
-        le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+        dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
         return;
     }
 
@@ -272,7 +272,7 @@ static void DcsCellularConnEventStateHandler
                 connName);
         le_dcs_Event_t eventToSend = (refcount > 0) ? LE_DCS_EVENT_TEMP_DOWN : LE_DCS_EVENT_DOWN;
         cellConnDb->opState = LE_MDC_DISCONNECTED;
-        le_dcs_ChannelEventNotifier(channelRef, eventToSend);
+        dcs_ChannelEventNotifier(channelRef, eventToSend);
         return;
     }
 
@@ -289,7 +289,7 @@ static void DcsCellularConnEventStateHandler
         }
         if (!oldStateUp)
         {
-            le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_UP);
+            dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_UP);
         }
         return;
     }
@@ -300,7 +300,7 @@ static void DcsCellularConnEventStateHandler
         {
             if (oldStateUp)
             {
-                le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+                dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
             }
             return;
         }
@@ -311,7 +311,7 @@ static void DcsCellularConnEventStateHandler
         {
             case LE_OK:
                 LE_INFO("Wait for the next retry before failing connection %s", connName);
-                le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_TEMP_DOWN);
+                dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_TEMP_DOWN);
                 break;
             case LE_DUPLICATE:
                 LE_DEBUG("No need to trigger retry for connection %s", connName);
@@ -321,7 +321,7 @@ static void DcsCellularConnEventStateHandler
             default:
                 // report the down event anyway; even duplicated event notice is better than none
                 cellConnDb->opState = LE_MDC_DISCONNECTED;
-                le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+                dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
         }
     }
 }
@@ -499,7 +499,7 @@ static void DcsCellularRetryConnTimerHandler
     }
 
     le_dcsCellular_GetNameFromIndex(cellConnDb->index, cellConnName);
-    if (le_dcs_GetChannelRefCountFromTechRef(LE_DCS_TECH_CELLULAR, cellConnDb->connRef,
+    if (dcs_GetChannelRefCountFromTechRef(LE_DCS_TECH_CELLULAR, cellConnDb->connRef,
                                              &refcount) != LE_OK)
     {
         LE_ERROR("Failed to get reference count of connection %s to retry connecting",
@@ -676,7 +676,7 @@ le_result_t le_dcsCellular_GetChannelList
     if ((ret != LE_OK) || (listLen == 0))
     {
         LE_ERROR("Failed to get cellular's profile list; error: %d", ret);
-        le_dcsTech_CollectChannelQueryResults(LE_DCS_TECH_CELLULAR, LE_FAULT, channelList, 0);
+        dcsTech_CollectChannelQueryResults(LE_DCS_TECH_CELLULAR, LE_FAULT, channelList, 0);
         return LE_FAULT;
     }
 
@@ -708,7 +708,7 @@ le_result_t le_dcsCellular_GetChannelList
                  channelList[i].name, profileList[i].index, apn);
     }
 
-    le_dcsTech_CollectChannelQueryResults(LE_DCS_TECH_CELLULAR, LE_OK, channelList, listLen);
+    dcsTech_CollectChannelQueryResults(LE_DCS_TECH_CELLULAR, LE_OK, channelList, listLen);
     return LE_OK;
 }
 
@@ -734,7 +734,7 @@ static void DcsCellularPacketSwitchHandler
     CellPacketSwitchState = psState;
     if (oldStateUp != newStateUp)
     {
-        le_dcs_EventNotifierTechStateTransition(LE_DCS_TECH_CELLULAR, newStateUp);
+        dcs_EventNotifierTechStateTransition(LE_DCS_TECH_CELLULAR, newStateUp);
     }
 }
 
@@ -760,7 +760,7 @@ static void DcsNetRegRejectHandler
         // ToDo: This code needs to be re-addressed since currently it is a trick used in
         // reporting up event upon a network detached event for the purpose of triggering to
         // retry reconnecting.
-        le_dcs_EventNotifierTechStateTransition(LE_DCS_TECH_CELLULAR, true);
+        dcs_EventNotifierTechStateTransition(LE_DCS_TECH_CELLULAR, true);
     }
 }
 
@@ -1005,8 +1005,8 @@ static void DcsCellularDuplicateSessionUpdate
         return;
     }
 
-    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_CELLULAR, cellConnDb->connRef);
-    if (le_dcs_GetChannelRefCountFromTechRef(LE_DCS_TECH_CELLULAR, cellConnDb->connRef,
+    channelRef = dcs_GetChannelRefFromTechRef(LE_DCS_TECH_CELLULAR, cellConnDb->connRef);
+    if (dcs_GetChannelRefCountFromTechRef(LE_DCS_TECH_CELLULAR, cellConnDb->connRef,
                                              &refcount) != LE_OK)
     {
         LE_ERROR("Failed to get reference count of connection %s to handle state change",
@@ -1027,7 +1027,7 @@ static void DcsCellularDuplicateSessionUpdate
     // send a connected event so that the app knows about the current state to move on
     if ((refcount == 1) && opState)
     {
-        le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_UP);
+        dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_UP);
     }
 }
 

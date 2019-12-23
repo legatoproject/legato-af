@@ -195,12 +195,12 @@ static void PaEventIndicationHandler
     //Update channel status
     ethernetConnDb->opState = (ethernetChannelInfoPtr->state == LE_DCS_STATE_UP);
 
-    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_ETHERNET, ethernetConnDb->connRef);
+    channelRef = dcs_GetChannelRefFromTechRef(LE_DCS_TECH_ETHERNET, ethernetConnDb->connRef);
     if (!channelRef)
     {
         // It's a newly reported channel, create its dbs for DCS
-        channelRef = le_dcs_CreateChannelDb(ethernetChannelInfoPtr->technology,
-                                            ethernetChannelInfoPtr->name);
+        channelRef = dcs_CreateChannelDb(ethernetChannelInfoPtr->technology,
+                                         ethernetChannelInfoPtr->name);
         if (!channelRef)
         {
             LE_ERROR("Failed to create dbs for new channel %s of technology %d",
@@ -220,7 +220,7 @@ static void PaEventIndicationHandler
                                                   &ipv6AddrAssigned))
             {
                 LE_ERROR("Failed to retrieve IP address status for %s", ethernetConnDb->netIntf);
-                le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+                dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
                 return;
             }
             //Busybox udhcpc only acquires IPV4 address,
@@ -236,11 +236,11 @@ static void PaEventIndicationHandler
                 if (LE_OK != pa_dcs_AskForIpAddress(ethernetConnDb->netIntf))
                 {
                     LE_ERROR("Failed to obtain IP address for %s", ethernetConnDb->netIntf);
-                    le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+                    dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
                     return;
                 }
             }
-            le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_UP);
+            dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_UP);
             break;
 
         case LE_DCS_STATE_DOWN:
@@ -249,7 +249,7 @@ static void PaEventIndicationHandler
             {
                 LE_DEBUG("Failed to stop dhcp for %s", ethernetConnDb->netIntf);
             }
-            le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+            dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
             break;
 
         default:
@@ -288,7 +288,7 @@ le_result_t le_dcsEthernet_GetChannelList
         if (LE_OK != ret)
         {
             LE_ERROR("Failed to get Ethernet channel list; error: %d", ret);
-            le_dcsTech_CollectChannelQueryResults(LE_DCS_TECH_ETHERNET, LE_FAULT, channelList, 0);
+            dcsTech_CollectChannelQueryResults(LE_DCS_TECH_ETHERNET, LE_FAULT, channelList, 0);
             return LE_FAULT;
         }
         else
@@ -317,7 +317,7 @@ le_result_t le_dcsEthernet_GetChannelList
         AllowEthernetChannelQuery = false;
     }
 
-    le_dcsTech_CollectChannelQueryResults(LE_DCS_TECH_ETHERNET, LE_OK, channelList, listLen);
+    dcsTech_CollectChannelQueryResults(LE_DCS_TECH_ETHERNET, LE_OK, channelList, listLen);
     return LE_OK;
 }
 
@@ -412,9 +412,9 @@ le_result_t le_dcsEthernet_Start
         return LE_UNAVAILABLE;
     }
 
-    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_ETHERNET,
+    channelRef = dcs_GetChannelRefFromTechRef(LE_DCS_TECH_ETHERNET,
                                                  ethernetConnDb->connRef);
-    le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_UP);
+    dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_UP);
 
     LE_DEBUG("Ethernet is started successfully");
     return LE_OK;
@@ -449,9 +449,9 @@ le_result_t le_dcsEthernet_Stop
         LE_ERROR("Failed to find Ethernet connection db with reference %p", techRef);
         return LE_FAULT;
     }
-    channelRef = le_dcs_GetChannelRefFromTechRef(LE_DCS_TECH_ETHERNET,
+    channelRef = dcs_GetChannelRefFromTechRef(LE_DCS_TECH_ETHERNET,
                                                  ethernetConnDb->connRef);
-    le_dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
+    dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_DOWN);
     LE_DEBUG("Ethernet is stopped successfully");
     return LE_OK;
 }

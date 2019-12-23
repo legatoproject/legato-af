@@ -393,7 +393,7 @@ static void SendConnStateEvent
 
     // Set the interface name
     if (isConnected &&
-        (LE_OK != le_dcsTech_GetNetInterface(dcsTechRank_ConvertToDcsTechEnum(CurrentTech),
+        (LE_OK != dcsTech_GetNetInterface(dcsTechRank_ConvertToDcsTechEnum(CurrentTech),
                                              DataChannelRef, eventData.interfaceName,
                                              sizeof(eventData.interfaceName))))
     {
@@ -454,8 +454,9 @@ static void SetDefaultGWConfiguration
     }
 
     LE_INFO("Setting default GW address on device");
-    le_net_BackupDefaultGW();
-    le_result_t ret = le_net_SetDefaultGW(DataChannelRef);
+    le_msg_SessionRef_t internalSessionRef = dcs_GetInternalSessionRef();
+    net_BackupDefaultGW(internalSessionRef);
+    le_result_t ret = net_SetDefaultGW(internalSessionRef, DataChannelRef);
     if (LE_OK != ret)
     {
         LE_ERROR("Failed to set default GW address");
@@ -499,22 +500,22 @@ static le_result_t SetDnsRoutes
     {
         if (strlen(v4DnsAddrs[0]))
         {
-            le_net_ChangeRoute(DataChannelRef, v4DnsAddrs[0], "", false);
+            net_ChangeRoute(DataChannelRef, v4DnsAddrs[0], "", false);
             memset(v4DnsAddrs[0], '\0', PA_DCS_IPV4_ADDR_MAX_BYTES);
         }
         if (strlen(v4DnsAddrs[1]))
         {
-            le_net_ChangeRoute(DataChannelRef, v4DnsAddrs[1], "", false);
+            net_ChangeRoute(DataChannelRef, v4DnsAddrs[1], "", false);
             memset(v4DnsAddrs[1], '\0', PA_DCS_IPV4_ADDR_MAX_BYTES);
         }
         if (strlen(v6DnsAddrs[0]))
         {
-            le_net_ChangeRoute(DataChannelRef, v6DnsAddrs[0], "", false);
+            net_ChangeRoute(DataChannelRef, v6DnsAddrs[0], "", false);
             memset(v6DnsAddrs[0], '\0', PA_DCS_IPV6_ADDR_MAX_BYTES);
         }
         if (strlen(v6DnsAddrs[1]))
         {
-            le_net_ChangeRoute(DataChannelRef, v6DnsAddrs[1], "", false);
+            net_ChangeRoute(DataChannelRef, v6DnsAddrs[1], "", false);
             memset(v6DnsAddrs[1], '\0', PA_DCS_IPV6_ADDR_MAX_BYTES);
         }
 
@@ -523,7 +524,7 @@ static le_result_t SetDnsRoutes
     }
 
     // For adding routes for DNS addresses
-    ret = le_dcsTech_GetDNSAddresses(dcsTechRank_ConvertToDcsTechEnum(CurrentTech), DataChannelRef,
+    ret = dcsTech_GetDNSAddresses(dcsTechRank_ConvertToDcsTechEnum(CurrentTech), DataChannelRef,
                                      (char *)v4DnsAddrs, PA_DCS_IPV4_ADDR_MAX_BYTES,
                                      (char *)v6DnsAddrs, PA_DCS_IPV6_ADDR_MAX_BYTES);
     if ((ret == LE_UNSUPPORTED) || (ret == LE_FAULT))
@@ -549,7 +550,7 @@ static le_result_t SetDnsRoutes
 
     if (strlen(v4DnsAddrs[0]))
     {
-        ret = le_net_ChangeRoute(DataChannelRef, v4DnsAddrs[0], "", true);
+        ret = net_ChangeRoute(DataChannelRef, v4DnsAddrs[0], "", true);
         if (LE_OK != ret)
         {
             memset(v4DnsAddrs[0], '\0', PA_DCS_IPV4_ADDR_MAX_BYTES);
@@ -558,7 +559,7 @@ static le_result_t SetDnsRoutes
     }
     if (strlen(v4DnsAddrs[1]))
     {
-        ret = le_net_ChangeRoute(DataChannelRef, v4DnsAddrs[1], "", true);
+        ret = net_ChangeRoute(DataChannelRef, v4DnsAddrs[1], "", true);
         if (LE_OK != ret)
         {
             memset(v4DnsAddrs[1], '\0', PA_DCS_IPV4_ADDR_MAX_BYTES);
@@ -567,7 +568,7 @@ static le_result_t SetDnsRoutes
     }
     if (strlen(v6DnsAddrs[0]))
     {
-        ret = le_net_ChangeRoute(DataChannelRef, v6DnsAddrs[0], "", true);
+        ret = net_ChangeRoute(DataChannelRef, v6DnsAddrs[0], "", true);
         if (LE_OK != ret)
         {
             memset(v6DnsAddrs[0], '\0', PA_DCS_IPV6_ADDR_MAX_BYTES);
@@ -576,7 +577,7 @@ static le_result_t SetDnsRoutes
     }
     if (strlen(v6DnsAddrs[1]))
     {
-        ret = le_net_ChangeRoute(DataChannelRef, v6DnsAddrs[1], "", true);
+        ret = net_ChangeRoute(DataChannelRef, v6DnsAddrs[1], "", true);
         if (LE_OK != ret)
         {
             memset(v6DnsAddrs[1], '\0', PA_DCS_IPV6_ADDR_MAX_BYTES);
@@ -618,7 +619,7 @@ static le_result_t SetDnsConfiguration
     }
 
     LE_INFO("Setting DNS server addresses on device");
-    ret = le_net_SetDNS(DataChannelRef);
+    ret = net_SetDNS(dcs_GetInternalSessionRef(), DataChannelRef);
     if (LE_DUPLICATE == ret)
     {
         LE_DEBUG("DNS server addresses already set on device");
@@ -816,7 +817,7 @@ static void ChannelEventHandler
     void *contextPtr                ///< [IN] Associated user context pointer
 )
 {
-    const char *eventString = le_dcs_ConvertEventToString(event);
+    const char *eventString = dcs_ConvertEventToString(event);
     LE_INFO("Received for channel reference %p event %s", channelRef, eventString);
 
     if (channelRef != DataChannelRef)
@@ -881,12 +882,12 @@ static void ChannelEventHandler
 #ifndef DCS_USE_AUTOMATIC_SETTINGS
             if (IsDnsSet)
             {
-                le_net_RestoreDNS();
+                net_RestoreDNS(dcs_GetInternalSessionRef());
                 IsDnsSet = false;
             }
             if (IsDefaultRouteSet)
             {
-                le_net_RestoreDefaultGW();
+                net_RestoreDefaultGW(dcs_GetInternalSessionRef());
                 IsDefaultRouteSet = false;
             }
             else if (RoutesAdded)
@@ -1016,7 +1017,7 @@ static void ResetDataChannel
     memset(DataChannelName, '\0', sizeof(DataChannelName));
     if (DataChannelEventHandlerRef)
     {
-        le_dcs_RemoveEventHandler(DataChannelEventHandlerRef);
+        dcs_RemoveEventHandler(dcs_GetInternalSessionRef(), DataChannelEventHandlerRef);
         DataChannelEventHandlerRef = NULL;
     }
 }
@@ -1117,12 +1118,15 @@ static void TryStartTechSession
                  DataChannelReqRef);
     }
 
+    le_msg_SessionRef_t internalSessionRef = dcs_GetInternalSessionRef();
+
     if (DataChannelEventHandlerRef)
     {
-        le_dcs_RemoveEventHandler(DataChannelEventHandlerRef);
+        dcs_RemoveEventHandler(internalSessionRef, DataChannelEventHandlerRef);
     }
-    DataChannelEventHandlerRef = le_dcs_AddEventHandler(DataChannelRef, ChannelEventHandler,
-                                                        NULL);
+    DataChannelEventHandlerRef = dcs_AddEventHandler(internalSessionRef,
+                                                     DataChannelRef, ChannelEventHandler,
+                                                     NULL);
     if (!DataChannelEventHandlerRef)
     {
         LE_ERROR("Failed to add event handler for channel %s of technology %d", DataChannelName,
@@ -1132,7 +1136,7 @@ static void TryStartTechSession
     }
     LE_DEBUG("Data channel event handler %p added", DataChannelEventHandlerRef);
 
-    DataChannelReqRef = le_dcs_Start(DataChannelRef);
+    DataChannelReqRef = dcs_Start(internalSessionRef, DataChannelRef);
     if (!DataChannelReqRef)
     {
         LE_ERROR("Failed to initiate the selected data channel");
@@ -1169,12 +1173,12 @@ static void TryStopTechSession
     // changes on it might not complete successfully.
     if (IsDnsSet)
     {
-        le_net_RestoreDNS();
+        net_RestoreDNS(dcs_GetInternalSessionRef());
         IsDnsSet = false;
     }
     if (IsDefaultRouteSet)
     {
-        le_net_RestoreDefaultGW();
+        net_RestoreDefaultGW(dcs_GetInternalSessionRef());
         IsDefaultRouteSet = false;
     }
     else if (RoutesAdded)
@@ -1185,7 +1189,7 @@ static void TryStopTechSession
     }
 #endif
 
-    if (LE_OK != le_dcs_Stop(DataChannelReqRef))
+    if (LE_OK != dcs_Stop(dcs_GetInternalSessionRef(), DataChannelReqRef))
     {
         LE_ERROR("Failed to stop data channel with request reference %p", DataChannelReqRef);
         SendConnStateEvent(false);
@@ -1326,10 +1330,10 @@ static void ProcessCommand
         }
         break;
     case START_COMMAND:
-        le_dcsTech_Start(cmdData.channelName, cmdData.technology);
+        dcsTech_Start(cmdData.channelName, cmdData.technology);
         break;
     case STOP_COMMAND:
-        le_dcsTech_Stop(cmdData.channelName, cmdData.technology);
+        dcsTech_Stop(cmdData.channelName, cmdData.technology);
         break;
     default:
         LE_ERROR("Command %i is not valid", cmdData.command);
@@ -1435,7 +1439,7 @@ static le_result_t ChangeRoute
         return LE_FAULT;
     }
 
-    ret = le_net_ChangeRoute(DataChannelRef, ipDestAddrStr, "", (action == PA_DCS_ROUTE_ADD));
+    ret = net_ChangeRoute(DataChannelRef, ipDestAddrStr, "", (action == PA_DCS_ROUTE_ADD));
     if (LE_OK != ret)
     {
         LE_ERROR("Failed to %s route for address %s onto data channel %s of technology %d, "
@@ -1567,7 +1571,6 @@ le_data_RequestObjRef_t le_data_Request
     // Need to return a unique reference that will be used by Release.  Don't actually have
     // any data for now, but have to use some value other than NULL for the data pointer.
     le_data_RequestObjRef_t reqRef = le_ref_CreateRef(RequestRefMap, (void*)sessionRef);
-    le_dcs_UpdateSessionRef(sessionRef);
     LE_DEBUG("Connection requested by session %p, reference %p", sessionRef, reqRef);
 
     return reqRef;
@@ -1787,7 +1790,7 @@ le_result_t le_data_GetDateTime
     // Do not let the attempt to get current time proceed when there is no data connection
     // established via le_data nor requested via le_dcs, since TP and NTP have to work over
     // a data connection
-    if (!IsConnected && (le_dcs_GetReqCount() == 0))
+    if (!IsConnected && (dcs_GetReqCount() == 0))
     {
         LE_ERROR("Data Connection Service is not connected");
         return LE_FAULT;

@@ -37,13 +37,6 @@ DcsInfo_t DcsInfo;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Session reference of apps request data connection via le_data
- */
-//--------------------------------------------------------------------------------------------------
-static le_msg_SessionRef_t DcsSessionRef;
-
-//--------------------------------------------------------------------------------------------------
-/**
  * DCS command event type & ID
  */
 //--------------------------------------------------------------------------------------------------
@@ -79,63 +72,12 @@ DcsCommand_t;
  *     - internal client session reference for le_data
  */
 //--------------------------------------------------------------------------------------------------
-le_msg_SessionRef_t le_dcs_GetInternalSessionRef
+le_msg_SessionRef_t dcs_GetInternalSessionRef
 (
     void
 )
 {
     return DcsInfo.internalSessionRef;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function retrieves the client session reference of the caller. If it's an external client
- * outside DCS, it'll return the DCS API client session reference. Otherwise, le_data is the caller
- * since it's the only one internal client possible; then, the internal session reference in
- * DcsInfo.internalSessionRef will be returned, which is set in DcsInitInternalSession() upon
- * Legato startup.
- *
- * @return
- *     - client session reference of the caller
- */
-//--------------------------------------------------------------------------------------------------
-static le_msg_SessionRef_t DcsGetSessionRef
-(
-    void
-)
-{
-    le_msg_SessionRef_t sessionRef;
-#ifdef LE_CONFIG_LINUX
-    sessionRef = le_dcs_GetClientSessionRef();
-#else
-    sessionRef = DcsSessionRef;
-#endif
-    if (!sessionRef)
-    {
-        return DcsInfo.internalSessionRef;
-    }
-    return sessionRef;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function update the client session reference of the caller requesting data connection via
- * le_data.api.
- */
-//--------------------------------------------------------------------------------------------------
-void le_dcs_UpdateSessionRef
-(
-    le_msg_SessionRef_t sessionRef
-)
-{
-    if (!sessionRef)
-    {
-        LE_ERROR("Invalid session reference");
-        return;
-    }
-    DcsSessionRef = sessionRef;
-    LE_DEBUG("DcsSessionRef is updated %p", DcsSessionRef);
 }
 
 
@@ -174,7 +116,7 @@ static int16_t DcsGetListIndex
  *     - channel count of the given technology
  */
 //--------------------------------------------------------------------------------------------------
-uint16_t le_dcs_GetChannelCount
+uint16_t dcs_GetChannelCount
 (
     le_dcs_Technology_t tech
 )
@@ -191,7 +133,7 @@ uint16_t le_dcs_GetChannelCount
  *     - updated channel count of the given technology
  */
 //--------------------------------------------------------------------------------------------------
-uint16_t le_dcs_IncrementChannelCount
+uint16_t dcs_IncrementChannelCount
 (
     le_dcs_Technology_t tech
 )
@@ -210,7 +152,7 @@ uint16_t le_dcs_IncrementChannelCount
  *     - LE_OUT_OF_RANGE if the channel count is already 0 and can't be further decremented
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dcs_DecrementChannelCount
+le_result_t dcs_DecrementChannelCount
 (
     le_dcs_Technology_t tech,
     uint16_t *newCount
@@ -235,13 +177,13 @@ le_result_t le_dcs_DecrementChannelCount
  *      - The function returns the given channel's technology type found in its return value
  */
 //--------------------------------------------------------------------------------------------------
-le_dcs_ChannelRef_t le_dcs_GetReference
+le_dcs_ChannelRef_t dcs_GetReference
 (
     const char *name,                 ///< [IN] name of channel which reference is to be retrieved
     le_dcs_Technology_t technology    ///< [IN] technology of the channel given by its name above
 )
 {
-    le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromName(name, technology);
+    le_dcs_channelDb_t *channelDb = dcs_GetChannelDbFromName(name, technology);
     if (!channelDb || !name)
     {
         LE_ERROR("Failed to find channel with name %s of technology %d", name, technology);
@@ -261,6 +203,24 @@ le_dcs_ChannelRef_t le_dcs_GetReference
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Query for the channel reference of a channel given by its name
+ *
+ * @return
+ *      - The function returns the given channel's technology type found in its return value
+ */
+//--------------------------------------------------------------------------------------------------
+le_dcs_ChannelRef_t le_dcs_GetReference
+(
+    const char *name,                 ///< [IN] name of channel which reference is to be retrieved
+    le_dcs_Technology_t technology    ///< [IN] technology of the channel given by its name above
+)
+{
+    return dcs_GetReference(name, technology);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Query for a given channel's technology type
  *
  * @return
@@ -274,7 +234,7 @@ le_dcs_Technology_t le_dcs_GetTechnology
 {
     le_dcs_Technology_t tech;
     char *channelName;
-    le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
+    le_dcs_channelDb_t *channelDb = dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
     {
         LE_ERROR("Invalid channel reference %p for getting technology type", channelRef);
@@ -282,7 +242,7 @@ le_dcs_Technology_t le_dcs_GetTechnology
     }
     channelName = channelDb->channelName;
     tech = channelDb->technology;
-    LE_DEBUG("Channel %s is of technology %s", channelName, le_dcs_ConvertTechEnumToName(tech));
+    LE_DEBUG("Channel %s is of technology %s", channelName, dcs_ConvertTechEnumToName(tech));
     return tech;
 }
 
@@ -317,7 +277,7 @@ le_result_t le_dcs_GetState
         return LE_FAULT;
     }
 
-    channelDb = le_dcs_GetChannelDbFromRef(channelRef);
+    channelDb = dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
     {
         LE_ERROR("Invalid channel reference %p for getting channel status", channelRef);
@@ -331,24 +291,24 @@ le_result_t le_dcs_GetState
     }
     else
     {
-        (void)le_dcsTech_GetNetInterface(channelDb->technology, channelRef, interfaceName,
+        (void)dcsTech_GetNetInterface(channelDb->technology, channelRef, interfaceName,
                                          interfaceNameSize);
-        if (LE_OK == le_net_GetNetIntfState(interfaceName, &netstate))
+        if (LE_OK == net_GetNetIntfState(interfaceName, &netstate))
         {
             LE_DEBUG("Network interface %s has state %s", interfaceName, netstate ? "up" : "down");
         }
     }
 
-    ret = le_dcs_GetAdminState(channelRef, state);
+    ret = dcs_GetAdminState(channelRef, state);
     if (LE_OK != ret)
     {
         LE_ERROR("Failed to get admin state of channel %s of technology %s", channelName,
-                 le_dcs_ConvertTechEnumToName(channelDb->technology));
+                 dcs_ConvertTechEnumToName(channelDb->technology));
     }
     else
     {
         LE_DEBUG("Channel %s of technology %s has network interface %s & state %d", channelName,
-                 le_dcs_ConvertTechEnumToName(channelDb->technology), interfaceName, *state);
+                 dcs_ConvertTechEnumToName(channelDb->technology), interfaceName, *state);
     }
     return ret;
 }
@@ -362,7 +322,7 @@ le_result_t le_dcs_GetState
  *     - the count of channel requests made thru le_dcs API
  */
 //--------------------------------------------------------------------------------------------------
-uint16_t le_dcs_GetReqCount
+uint16_t dcs_GetReqCount
 (
     void
 )
@@ -377,7 +337,7 @@ uint16_t le_dcs_GetReqCount
  * to the boolean input argument
  */
 //--------------------------------------------------------------------------------------------------
-void le_dcs_AdjustReqCount
+void dcs_AdjustReqCount
 (
     le_dcs_channelDb_t *channelDb,
     bool up
@@ -388,7 +348,7 @@ void le_dcs_AdjustReqCount
     if (indx < 0)
     {
         LE_ERROR("Failed to retrieve info of technology %s to adjust reqCount",
-                 le_dcs_ConvertTechEnumToName(channelDb->technology));
+                 dcs_ConvertTechEnumToName(channelDb->technology));
         return;
     }
 
@@ -407,7 +367,107 @@ void le_dcs_AdjustReqCount
     }
     LE_DEBUG("System request count %d; channel %s of technology %s with refcount %d",
              DcsInfo.reqCount, channelDb->channelName,
-             le_dcs_ConvertTechEnumToName(channelDb->technology), channelDb->refCount);
+             dcs_ConvertTechEnumToName(channelDb->technology), channelDb->refCount);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Request by an app to start a data channel
+ *
+ * @return
+ *      - Object reference to the request (to be used later for releasing the channel)
+ *      - NULL if it has failed to process the request
+ */
+//--------------------------------------------------------------------------------------------------
+le_dcs_ReqObjRef_t dcs_Start
+(
+    le_msg_SessionRef_t sessionRef,        ///< [IN] messaging session making request
+    le_dcs_ChannelRef_t channelRef         ///< [IN] channel requested to be started
+)
+{
+    CommandData_t cmdData;
+    le_dcs_ReqObjRef_t reqRef;
+    le_dcs_channelDb_t *channelDb;
+    le_result_t ret;
+    char *channelName, appName[LE_DCS_APPNAME_MAX_LEN] = {0};
+    pid_t pid = 0;
+    uid_t uid = 0;
+
+    if (!sessionRef)
+    {
+        LE_ERROR("Failed to proceed with null session reference");
+        return NULL;
+    }
+
+    channelDb = dcs_GetChannelDbFromRef(channelRef);
+    if (!channelDb)
+    {
+        LE_ERROR("Invalid channel reference %p for starting", channelRef);
+        return NULL;
+    }
+    channelName = channelDb->channelName;
+
+    LE_INFO("Starting channel %s of technology %s by app session with reference %p", channelName,
+            dcs_ConvertTechEnumToName(channelDb->technology), sessionRef);
+
+    if ((sessionRef != DcsInfo.internalSessionRef) &&
+        (LE_OK == le_msg_GetClientUserCreds(sessionRef, &uid, &pid)) &&
+        (LE_OK == le_appInfo_GetName(pid, appName, sizeof(appName)-1)))
+    {
+        LE_DEBUG("Client app's name %s", appName);
+    }
+
+    if ((channelDb->refCount > 0) && dcsTech_GetOpState(channelDb))
+    {
+        // channel already started; no need to send the request down to the technology again
+        reqRef = le_ref_CreateRef(dcs_GetRequestRefMap(), (void*)sessionRef);
+        if (!dcs_AddStartRequestRef(reqRef, channelDb))
+        {
+            LE_ERROR("Failed to record Start Request reference");
+            le_ref_DeleteRef(dcs_GetRequestRefMap(), reqRef);
+            return NULL;
+        }
+
+        LE_INFO("Channel %s already started; refCount %d", channelName, channelDb->refCount);
+        dcs_AdjustReqCount(channelDb, true);
+        if (dcsTech_GetOpState(channelDb))
+        {
+            // Only send apps the Up notification when the state is up. Otherwise, the channel is
+            // in the process of upcoming that this notification will be sent when it's up
+            dcs_ChannelEvtHdlrSendNotice(channelDb, sessionRef, LE_DCS_EVENT_UP);
+        }
+        LE_DEBUG("Channel's session %p, reference %p", sessionRef, reqRef);
+        return reqRef;
+    }
+
+    // Do an early check with the technology in the present running thread & context to see if it
+    // allows this channel start prior to calling le_event_Report() below so that rejection can be
+    // known as early as possible
+    ret = dcsTech_AllowChannelStart(channelDb->technology, channelName);
+    if ((ret != LE_OK) && (ret != LE_DUPLICATE))
+    {
+        LE_ERROR("Technology %s rejected the new Start Request on channel %s; error %d",
+                 dcs_ConvertTechEnumToName(channelDb->technology), channelName, ret);
+        return NULL;
+    }
+
+    // initiate a connect
+    reqRef = le_ref_CreateRef(dcs_GetRequestRefMap(), (void*)sessionRef);
+    if (!dcs_AddStartRequestRef(reqRef, channelDb))
+    {
+        LE_ERROR("Failed to record Start Request reference");
+        le_ref_DeleteRef(dcs_GetRequestRefMap(), reqRef);
+        return NULL;
+    }
+    dcs_AdjustReqCount(channelDb, true);
+    cmdData.command = START_COMMAND;
+    cmdData.technology = channelDb->technology;
+    strncpy(cmdData.channelName, channelName, LE_DCS_CHANNEL_NAME_MAX_LEN);
+    le_event_Report(dcs_GetCommandEventId(), &cmdData, sizeof(cmdData));
+    LE_INFO("Initiating technology to start channel %s for app session %p, request reference %p",
+            channelName, sessionRef, reqRef);
+    return reqRef;
 }
 
 
@@ -425,31 +485,66 @@ le_dcs_ReqObjRef_t le_dcs_Start
     le_dcs_ChannelRef_t channelRef         ///< [IN] channel requested to be started
 )
 {
+    return dcs_Start(le_dcs_GetClientSessionRef(), channelRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop for an app its previously started data channel
+ *
+ * @return
+ *     - LE_OK is returned upon a successful release request; otherwise, LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t dcs_Stop
+(
+    le_msg_SessionRef_t sessionRef,    ///< [IN] Messaging session making stop request
+    le_dcs_ReqObjRef_t reqRef          ///< [IN] Reference to a previously requested channel
+)
+{
     CommandData_t cmdData;
-    le_dcs_ReqObjRef_t reqRef;
-    le_msg_SessionRef_t sessionRef = DcsGetSessionRef();
     le_dcs_channelDb_t *channelDb;
-    le_result_t ret;
     char *channelName, appName[LE_DCS_APPNAME_MAX_LEN] = {0};
-    pid_t pid = 0;
-    uid_t uid = 0;
+    bool inUse;
+    pid_t pid;
+    uid_t uid;
 
     if (!sessionRef)
     {
         LE_ERROR("Failed to proceed with null session reference");
-        return NULL;
+        return LE_FAULT;
     }
 
-    channelDb = le_dcs_GetChannelDbFromRef(channelRef);
+    le_dcs_startRequestRefDb_t *reqRefDb;
+    channelDb = dcs_GetChannelDbFromStartRequestRef(reqRef, &reqRefDb);
     if (!channelDb)
     {
-        LE_ERROR("Invalid channel reference %p for starting", channelRef);
-        return NULL;
+        LE_ERROR("Invalid request reference %p for stopping", reqRef);
+        return LE_FAULT;
     }
     channelName = channelDb->channelName;
 
-    LE_INFO("Starting channel %s of technology %s by app session with reference %p", channelName,
-            le_dcs_ConvertTechEnumToName(channelDb->technology), sessionRef);
+    if (!le_ref_Lookup(dcs_GetRequestRefMap(), reqRef))
+    {
+        LE_ERROR("Invalid request reference %p for stopping channel %s of technology %s",
+                 reqRef, channelName, dcs_ConvertTechEnumToName(channelDb->technology));
+        return LE_FAULT;
+    }
+
+    le_ref_DeleteRef(dcs_GetRequestRefMap(), reqRef);
+    if (!dcs_DeleteStartRequestRef(reqRefDb, channelDb))
+    {
+        LE_ERROR("Failed to delete Start Request reference %p from channel %s", reqRef,
+                 channelName);
+    }
+    else
+    {
+        reqRefDb = NULL;
+    }
+
+    LE_INFO("Stopping channel %s of technology %s", channelName,
+            dcs_ConvertTechEnumToName(channelDb->technology));
 
     if ((sessionRef != DcsInfo.internalSessionRef) &&
         (LE_OK == le_msg_GetClientUserCreds(sessionRef, &uid, &pid)) &&
@@ -458,56 +553,24 @@ le_dcs_ReqObjRef_t le_dcs_Start
         LE_DEBUG("Client app's name %s", appName);
     }
 
-    if ((channelDb->refCount > 0) && le_dcsTech_GetOpState(channelDb))
+    inUse = (channelDb->refCount > 1);
+    if (inUse)
     {
-        // channel already started; no need to send the request down to the technology again
-        reqRef = le_ref_CreateRef(dcs_GetRequestRefMap(), (void*)sessionRef);
-        if (!le_dcs_AddStartRequestRef(reqRef, channelDb))
-        {
-            LE_ERROR("Failed to record Start Request reference");
-            le_ref_DeleteRef(dcs_GetRequestRefMap(), reqRef);
-            return NULL;
-        }
-
-        LE_INFO("Channel %s already started; refCount %d", channelName, channelDb->refCount);
-        le_dcs_AdjustReqCount(channelDb, true);
-        if (le_dcsTech_GetOpState(channelDb))
-        {
-            // Only send apps the Up notification when the state is up. Otherwise, the channel is
-            // in the process of upcoming that this notification will be sent when it's up
-            dcsChannelEvtHdlrSendNotice(channelDb, sessionRef, LE_DCS_EVENT_UP);
-        }
-        LE_DEBUG("Channel's session %p, reference %p", sessionRef, reqRef);
-        return reqRef;
+        // channel still used by other apps; no need to initiate a disconnect
+        LE_INFO("Channel %s still used by others; refCount %d", channelName, channelDb->refCount);
+        dcs_AdjustReqCount(channelDb, false);
+        dcs_ChannelEvtHdlrSendNotice(channelDb, sessionRef, LE_DCS_EVENT_DOWN);
+        return LE_OK;
     }
 
-    // Do an early check with the technology in the present running thread & context to see if it
-    // allows this channel start prior to calling le_event_Report() below so that rejection can be
-    // known as early as possible
-    ret = le_dcsTech_AllowChannelStart(channelDb->technology, channelName);
-    if ((ret != LE_OK) && (ret != LE_DUPLICATE))
-    {
-        LE_ERROR("Technology %s rejected the new Start Request on channel %s; error %d",
-                 le_dcs_ConvertTechEnumToName(channelDb->technology), channelName, ret);
-        return NULL;
-    }
-
-    // initiate a connect
-    reqRef = le_ref_CreateRef(dcs_GetRequestRefMap(), (void*)sessionRef);
-    if (!le_dcs_AddStartRequestRef(reqRef, channelDb))
-    {
-        LE_ERROR("Failed to record Start Request reference");
-        le_ref_DeleteRef(dcs_GetRequestRefMap(), reqRef);
-        return NULL;
-    }
-    le_dcs_AdjustReqCount(channelDb, true);
-    cmdData.command = START_COMMAND;
+    // initiate a disconnect
+    dcs_AdjustReqCount(channelDb, false);
+    cmdData.command = STOP_COMMAND;
     cmdData.technology = channelDb->technology;
     strncpy(cmdData.channelName, channelName, LE_DCS_CHANNEL_NAME_MAX_LEN);
     le_event_Report(dcs_GetCommandEventId(), &cmdData, sizeof(cmdData));
-    LE_INFO("Initiating technology to start channel %s for app session %p, request reference %p",
-            channelName, sessionRef, reqRef);
-    return reqRef;
+    LE_INFO("Channel %s requested to be stopped", channelName);
+    return LE_OK;
 }
 
 
@@ -524,77 +587,8 @@ le_result_t le_dcs_Stop
     le_dcs_ReqObjRef_t reqRef          ///< [IN] Reference to a previously requested channel
 )
 {
-    CommandData_t cmdData;
-    le_msg_SessionRef_t sessionRef = DcsGetSessionRef();
-    le_dcs_channelDb_t *channelDb;
-    char *channelName, appName[LE_DCS_APPNAME_MAX_LEN] = {0};
-    bool inUse;
-    pid_t pid;
-    uid_t uid;
-
-    if (!sessionRef)
-    {
-        LE_ERROR("Failed to proceed with null session reference");
-        return LE_FAULT;
-    }
-
-    le_dcs_startRequestRefDb_t *reqRefDb;
-    channelDb = le_dcs_GetChannelDbFromStartRequestRef(reqRef, &reqRefDb);
-    if (!channelDb)
-    {
-        LE_ERROR("Invalid request reference %p for stopping", reqRef);
-        return LE_FAULT;
-    }
-    channelName = channelDb->channelName;
-
-    if (!le_ref_Lookup(dcs_GetRequestRefMap(), reqRef))
-    {
-        LE_ERROR("Invalid request reference %p for stopping channel %s of technology %s",
-                 reqRef, channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
-        return LE_FAULT;
-    }
-
-    le_ref_DeleteRef(dcs_GetRequestRefMap(), reqRef);
-    if (!le_dcs_DeleteStartRequestRef(reqRefDb, channelDb))
-    {
-        LE_ERROR("Failed to delete Start Request reference %p from channel %s", reqRef,
-                 channelName);
-    }
-    else
-    {
-        reqRefDb = NULL;
-    }
-
-    LE_INFO("Stopping channel %s of technology %s", channelName,
-            le_dcs_ConvertTechEnumToName(channelDb->technology));
-
-    if ((sessionRef != DcsInfo.internalSessionRef) &&
-        (LE_OK == le_msg_GetClientUserCreds(sessionRef, &uid, &pid)) &&
-        (LE_OK == le_appInfo_GetName(pid, appName, sizeof(appName)-1)))
-    {
-        LE_DEBUG("Client app's name %s", appName);
-    }
-
-    inUse = (channelDb->refCount > 1);
-    if (inUse)
-    {
-        // channel still used by other apps; no need to initiate a disconnect
-        LE_INFO("Channel %s still used by others; refCount %d", channelName, channelDb->refCount);
-        le_dcs_AdjustReqCount(channelDb, false);
-        dcsChannelEvtHdlrSendNotice(channelDb, sessionRef, LE_DCS_EVENT_DOWN);
-        return LE_OK;
-    }
-
-    // initiate a disconnect
-    le_dcs_AdjustReqCount(channelDb, false);
-    cmdData.command = STOP_COMMAND;
-    cmdData.technology = channelDb->technology;
-    strncpy(cmdData.channelName, channelName, LE_DCS_CHANNEL_NAME_MAX_LEN);
-    le_event_Report(dcs_GetCommandEventId(), &cmdData, sizeof(cmdData));
-    LE_INFO("Channel %s requested to be stopped", channelName);
-    return LE_OK;
+    return dcs_Stop(le_dcs_GetClientSessionRef(), reqRef);
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -624,8 +618,9 @@ static void DcsFirstLayerEventHandler (void *reportPtr, void *secondLayerHandler
  *     - It returns a reference pointer to the added handler upon success; otherwise, NULL
  */
 //--------------------------------------------------------------------------------------------------
-le_dcs_EventHandlerRef_t le_dcs_AddEventHandler
+le_dcs_EventHandlerRef_t dcs_AddEventHandler
 (
+    le_msg_SessionRef_t sessionRef,    ///< [IN] Messaging session making stop request
     le_dcs_ChannelRef_t channelRef,     ///< [IN] the channel for which the event is
     le_dcs_EventHandlerFunc_t channelHandlerPtr, ///< [IN] Handler pointer
     void *contextPtr                    ///< [IN] Associated user context pointer
@@ -636,7 +631,6 @@ le_dcs_EventHandlerRef_t le_dcs_AddEventHandler
     char *channelName, appName[LE_DCS_APPNAME_MAX_LEN] = {0};
     le_event_HandlerRef_t handlerRef;
     le_dcs_channelDbEventHdlr_t *channelEvtHdlr;
-    le_msg_SessionRef_t sessionRef = DcsGetSessionRef();
     pid_t pid;
     uid_t uid;
 
@@ -646,7 +640,7 @@ le_dcs_EventHandlerRef_t le_dcs_AddEventHandler
         return NULL;
     }
 
-    channelDb = le_dcs_GetChannelDbFromRef(channelRef);
+    channelDb = dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
     {
         LE_ERROR("Failed to find the Db for channel reference %p to add a handler",
@@ -658,14 +652,14 @@ le_dcs_EventHandlerRef_t le_dcs_AddEventHandler
     if (!channelHandlerPtr)
     {
         LE_ERROR("Event handler can't be null for channel %s of technology %s", channelName,
-                 le_dcs_ConvertTechEnumToName(channelDb->technology));
+                 dcs_ConvertTechEnumToName(channelDb->technology));
         return NULL;
     }
 
     LE_INFO("Adding channel handler for channel %s of technology %s",
-            channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
+            channelName, dcs_ConvertTechEnumToName(channelDb->technology));
 
-    channelEvtHdlr = le_dcs_GetChannelAppEvtHdlr(channelDb, sessionRef);
+    channelEvtHdlr = dcs_GetChannelAppEvtHdlr(channelDb, sessionRef);
     if (channelEvtHdlr)
     {
         LE_DEBUG("Remove old event handler of channel %s before adding new", channelName);
@@ -673,7 +667,7 @@ le_dcs_EventHandlerRef_t le_dcs_AddEventHandler
         le_mem_Release(channelEvtHdlr);
     }
 
-    channelEvtHdlr = dcsChannelDbEvtHdlrInit();
+    channelEvtHdlr = dcs_ChannelDbEvtHdlrInit();
     if (!channelEvtHdlr)
     {
         LE_ERROR("Unable to alloc event handler list for channel %s", channelName);
@@ -711,19 +705,45 @@ le_dcs_EventHandlerRef_t le_dcs_AddEventHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function adds a channel event handler
+ *
+ * @return
+ *     - It returns a reference pointer to the added handler upon success; otherwise, NULL
+ */
+//--------------------------------------------------------------------------------------------------
+le_dcs_EventHandlerRef_t le_dcs_AddEventHandler
+(
+    le_dcs_ChannelRef_t channelRef,     ///< [IN] the channel for which the event is
+    le_dcs_EventHandlerFunc_t channelHandlerPtr, ///< [IN] Handler pointer
+    void *contextPtr                    ///< [IN] Associated user context pointer
+)
+{
+    return dcs_AddEventHandler(le_dcs_GetClientSessionRef(),
+                               channelRef, channelHandlerPtr,
+                               contextPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function removes the channel event handler given via a reference object in the argument
  */
 //--------------------------------------------------------------------------------------------------
-void le_dcs_RemoveEventHandler
+void dcs_RemoveEventHandler
 (
+    le_msg_SessionRef_t sessionRef,    ///< [IN] Messaging session making stop request
     le_dcs_EventHandlerRef_t channelHandlerRef   ///< [IN] Channel event handler reference
 )
 {
-    le_dcs_channelDb_t *channelDb = DcsDelChannelEvtHdlr(channelHandlerRef);
+    // The session reference is currently unused, but keep it for consistency with
+    // dcs_AddEventHandler
+    LE_UNUSED(sessionRef);
+
+    le_dcs_channelDb_t *channelDb = dcs_DelChannelEvtHdlr(channelHandlerRef);
     if (channelDb)
     {
         LE_INFO("Channel event handler for channel %s of technology %s removed",
-                channelDb->channelName, le_dcs_ConvertTechEnumToName(channelDb->technology));
+                channelDb->channelName, dcs_ConvertTechEnumToName(channelDb->technology));
     }
     else
     {
@@ -732,6 +752,20 @@ void le_dcs_RemoveEventHandler
     }
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function removes the channel event handler given via a reference object in the argument
+ */
+//--------------------------------------------------------------------------------------------------
+void le_dcs_RemoveEventHandler
+(
+    le_dcs_EventHandlerRef_t channelHandlerRef   ///< [IN] Channel event handler reference
+)
+{
+    dcs_RemoveEventHandler(le_dcs_GetClientSessionRef(),
+                           channelHandlerRef);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -820,7 +854,7 @@ void le_dcs_GetChannels
  *      - LE_OK upon a successful query; otherwise some other le_result_t failure cause
  */
 //--------------------------------------------------------------------------------------------------
-void le_dcs_GetChannelList
+void GetChannelList
 (
     void
 )
@@ -828,14 +862,14 @@ void le_dcs_GetChannelList
     le_result_t ret;
     le_dcs_Technology_t i;
 
-    if (le_dcs_ChannelQueryIsRunning()) {
+    if (dcs_ChannelQueryIsRunning()) {
         // GetChannels is already in action; thus, do not retrigger another round & just return
         return;
     }
 
     for (i = LE_DCS_TECH_UNKNOWN; i < LE_DCS_TECH_MAX; i++)
     {
-        ret = le_dcsTech_GetChannelList(i);
+        ret = dcsTech_GetChannelList(i);
         if (ret != LE_OK)
         {
             LE_WARN("Failed to trigger a query for available channels of technology %d, "
@@ -865,9 +899,9 @@ static void DcsCommandHandler
                 return;
             }
             LE_DEBUG("Process a channel list query");
-            le_dcs_AddChannelQueryHandlerDb(commandPtr->channelQueryHandlerFunc,
-                                            commandPtr->context);
-            le_dcs_GetChannelList();
+            dcs_AddChannelQueryHandlerDb(commandPtr->channelQueryHandlerFunc,
+                                         commandPtr->context);
+            GetChannelList();
             break;
         default:
             LE_ERROR("Invalid command type %d", commandPtr->commandType);
@@ -934,11 +968,11 @@ COMPONENT_INIT
     for (i = LE_DCS_TECH_UNKNOWN; i< LE_DCS_TECH_MAX; i++)
     {
         DcsInfo.techListDb[i].techEnum = i;
-        strncpy(DcsInfo.techListDb[i].techName, le_dcs_ConvertTechEnumToName(i),
+        strncpy(DcsInfo.techListDb[i].techName, dcs_ConvertTechEnumToName(i),
                 LE_DCS_TECH_MAX_NAME_LEN);
     }
 
-    dcsCreateDbPool();
+    dcs_CreateDbPool();
 
     // Add a handler to the close session service
     le_msg_AddServiceCloseHandler(le_dcs_GetServiceRef(), CloseSessionEventHandler, NULL);

@@ -54,7 +54,7 @@ static DcsQueryChannel_t QueryChannel;
  *     - Return NULL back if the creation has failed
  */
 //--------------------------------------------------------------------------------------------------
-void *le_dcsTech_CreateTechRef
+void *dcsTech_CreateTechRef
 (
     le_dcs_Technology_t tech,
     const char *channelName
@@ -90,7 +90,7 @@ void *le_dcsTech_CreateTechRef
  * technology in its 1st argument
  */
 //--------------------------------------------------------------------------------------------------
-void le_dcsTech_ReleaseTechRef
+void dcsTech_ReleaseTechRef
 (
     le_dcs_Technology_t tech,
     void *techRef
@@ -127,7 +127,7 @@ void le_dcsTech_ReleaseTechRef
  *     - True if DCS is pending; otherwise, false
  */
 //--------------------------------------------------------------------------------------------------
-bool le_dcsTech_ChannelQueryIsPending
+bool dcsTech_ChannelQueryIsPending
 (
     le_dcs_Technology_t tech
 )
@@ -186,7 +186,7 @@ void DcsTechInitQueryChannelList
  *       le_result_t failure cause
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dcsTech_GetChannelList
+le_result_t dcsTech_GetChannelList
 (
     le_dcs_Technology_t tech
 )
@@ -199,7 +199,7 @@ le_result_t le_dcsTech_GetChannelList
         case LE_DCS_TECH_UNKNOWN:
             // LE_DCS_TECH_UNKNOWN has enum value 0 which is used as a signal from le_dcs_GetList()
             // to indicate the start of a query; thus, reset QueryChannel as a preparation
-            if (le_dcsTech_ChannelQueryIsPending(LE_DCS_TECH_MAX))
+            if (dcsTech_ChannelQueryIsPending(LE_DCS_TECH_MAX))
             {
                 // Don't reset as collection is already in action
                 return LE_OK;
@@ -253,7 +253,7 @@ le_result_t le_dcsTech_GetChannelList
  *       failure cause
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dcsTech_GetNetInterface
+le_result_t dcsTech_GetNetInterface
 (
     le_dcs_Technology_t tech,
     le_dcs_ChannelRef_t channelRef,
@@ -267,11 +267,11 @@ le_result_t le_dcsTech_GetNetInterface
 
     if ((tech == LE_DCS_TECH_UNKNOWN) || (tech >= LE_DCS_TECH_MAX))
     {
-        LE_ERROR("Channel's technology type %s not supported", le_dcs_ConvertTechEnumToName(tech));
+        LE_ERROR("Channel's technology type %s not supported", dcs_ConvertTechEnumToName(tech));
         return LE_UNSUPPORTED;
     }
 
-    channelDb = le_dcs_GetChannelDbFromRef(channelRef);
+    channelDb = dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
     {
         LE_ERROR("Invalid channel reference %p for getting network interface", channelRef);
@@ -302,7 +302,7 @@ le_result_t le_dcsTech_GetNetInterface
     if (LE_OK != ret)
     {
         LE_ERROR("Failed to get network interface of channel %s of technology %s", channelName,
-                 le_dcs_ConvertTechEnumToName(tech));
+                 dcs_ConvertTechEnumToName(tech));
     }
     return ret;
 }
@@ -318,7 +318,7 @@ le_result_t le_dcsTech_GetNetInterface
  *       le_result_t failure cause
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dcsTech_Start
+le_result_t dcsTech_Start
 (
     const char *channelName,
     le_dcs_Technology_t tech
@@ -327,7 +327,7 @@ le_result_t le_dcsTech_Start
     le_result_t ret;
     le_dcs_channelDb_t *channelDb;
 
-    channelDb = le_dcs_GetChannelDbFromName(channelName, tech);
+    channelDb = dcs_GetChannelDbFromName(channelName, tech);
     if (!channelDb)
     {
         LE_ERROR("Channel %s isn't available", channelName);
@@ -335,7 +335,7 @@ le_result_t le_dcsTech_Start
     }
 
     LE_INFO("Request to start channel %s of technology %s", channelName,
-            le_dcs_ConvertTechEnumToName(tech));
+            dcs_ConvertTechEnumToName(tech));
     switch (tech)
     {
         case LE_DCS_TECH_CELLULAR:
@@ -359,7 +359,7 @@ le_result_t le_dcsTech_Start
     if ((ret != LE_OK) && (ret != LE_DUPLICATE))
     {
         LE_ERROR("Failed to start channel %s; error: %d", channelName, ret);
-        le_dcs_ChannelEventNotifier(channelDb->channelRef, LE_DCS_EVENT_DOWN);
+        dcs_ChannelEventNotifier(channelDb->channelRef, LE_DCS_EVENT_DOWN);
     }
     else
     {
@@ -379,7 +379,7 @@ le_result_t le_dcsTech_Start
  *       le_result_t failure cause
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dcsTech_Stop
+le_result_t dcsTech_Stop
 (
     const char *channelName,
     le_dcs_Technology_t tech
@@ -388,7 +388,7 @@ le_result_t le_dcsTech_Stop
     le_result_t ret;
     le_dcs_channelDb_t *channelDb;
 
-    channelDb = le_dcs_GetChannelDbFromName(channelName, tech);
+    channelDb = dcs_GetChannelDbFromName(channelName, tech);
     if (!channelDb)
     {
         LE_ERROR("Db for channel %s not found", channelName);
@@ -396,7 +396,7 @@ le_result_t le_dcsTech_Stop
     }
 
     LE_INFO("Request to stop channel %s of technology %s", channelName,
-            le_dcs_ConvertTechEnumToName(tech));
+            dcs_ConvertTechEnumToName(tech));
     switch (tech)
     {
         case LE_DCS_TECH_CELLULAR:
@@ -438,7 +438,7 @@ le_result_t le_dcsTech_Stop
  *       channel's tech db is up or not
  */
 //--------------------------------------------------------------------------------------------------
-bool le_dcsTech_GetOpState
+bool dcsTech_GetOpState
 (
     le_dcs_channelDb_t *channelDb
 )
@@ -457,7 +457,7 @@ bool le_dcsTech_GetOpState
 #endif
         default:
             LE_ERROR("Unsupported technology %s",
-                     le_dcs_ConvertTechEnumToName(channelDb->technology));
+                     dcs_ConvertTechEnumToName(channelDb->technology));
     }
     return false;
 }
@@ -469,7 +469,7 @@ bool le_dcsTech_GetOpState
  * technology itself, the failure cause & code are retrievable.
  */
 //--------------------------------------------------------------------------------------------------
-void le_dcsTech_RetryChannel
+void dcsTech_RetryChannel
 (
     le_dcs_channelDb_t *channelDb
 )
@@ -482,7 +482,7 @@ void le_dcsTech_RetryChannel
         case LE_DCS_TECH_WIFI:
         default:
             LE_ERROR("Unsupported technology %s",
-                     le_dcs_ConvertTechEnumToName(channelDb->technology));
+                     dcs_ConvertTechEnumToName(channelDb->technology));
     }
 }
 
@@ -502,7 +502,7 @@ void le_dcsTech_RetryChannel
  *           - LE_FAULT otherwise
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dcsTech_GetDefaultGWAddress
+le_result_t dcsTech_GetDefaultGWAddress
 (
     le_dcs_Technology_t tech,    ///< [IN] technology type of the connection
     le_dcs_ChannelRef_t channelRef,  ///< [IN] object reference of the channel
@@ -513,7 +513,7 @@ le_result_t le_dcsTech_GetDefaultGWAddress
 )
 {
     char intf[LE_DCS_INTERFACE_NAME_MAX_LEN] = {0};
-    le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
+    le_dcs_channelDb_t *channelDb = dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
     {
         LE_ERROR("Invalid channel reference %p", channelRef);
@@ -527,21 +527,21 @@ le_result_t le_dcsTech_GetDefaultGWAddress
                                                       v6GwAddrPtr, v6GwAddrSize);
         case LE_DCS_TECH_WIFI:
         case LE_DCS_TECH_ETHERNET:
-            if (LE_OK != le_dcsTech_GetNetInterface(tech, channelRef, intf,
+            if (LE_OK != dcsTech_GetNetInterface(tech, channelRef, intf,
                                                     LE_DCS_INTERFACE_NAME_MAX_LEN))
             {
                 LE_ERROR("Failed to get network interface for channel %s of technology %s to set "
                          "default GW", channelDb->channelName,
-                         le_dcs_ConvertTechEnumToName(tech));
+                         dcs_ConvertTechEnumToName(tech));
                 return LE_FAULT;
             }
             // The last argument is 1 since only 1 address is to be retrieved per IP type, which is
             // also the # of v4DnsAddrs and v6DnsAddrs in the input arguments
-            return le_net_GetLeaseAddresses(intf, LE_NET_DEFAULT_GATEWAY_ADDRESS,
-                                            v4GwAddrPtr, v4GwAddrSize, v6GwAddrPtr, v6GwAddrSize,
-                                            1);
+            return net_GetLeaseAddresses(intf, LE_NET_DEFAULT_GATEWAY_ADDRESS,
+                                         v4GwAddrPtr, v4GwAddrSize, v6GwAddrPtr, v6GwAddrSize,
+                                         1);
         default:
-            LE_ERROR("Unsupported technology %s", le_dcs_ConvertTechEnumToName(tech));
+            LE_ERROR("Unsupported technology %s", dcs_ConvertTechEnumToName(tech));
             return LE_UNSUPPORTED;
     }
 }
@@ -565,7 +565,7 @@ le_result_t le_dcsTech_GetDefaultGWAddress
  *           - LE_FAULT otherwise
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dcsTech_GetDNSAddresses
+le_result_t dcsTech_GetDNSAddresses
 (
     le_dcs_Technology_t tech,    ///< [IN] technology type of the connection
     le_dcs_ChannelRef_t channelRef,  ///< [IN] object reference of the channel
@@ -576,7 +576,7 @@ le_result_t le_dcsTech_GetDNSAddresses
 )
 {
     char intf[LE_DCS_INTERFACE_NAME_MAX_LEN] = {0};
-    le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromRef(channelRef);
+    le_dcs_channelDb_t *channelDb = dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
     {
         LE_ERROR("Invalid channel reference %p", channelRef);
@@ -590,21 +590,21 @@ le_result_t le_dcsTech_GetDNSAddresses
                                               v6DnsAddrs, v6DnsAddrSize);
         case LE_DCS_TECH_WIFI:
         case LE_DCS_TECH_ETHERNET:
-            if (LE_OK != le_dcsTech_GetNetInterface(tech, channelRef, intf,
+            if (LE_OK != dcsTech_GetNetInterface(tech, channelRef, intf,
                                                     LE_DCS_INTERFACE_NAME_MAX_LEN))
             {
                 LE_ERROR("Failed to get network interface for channel %s of technology %s to set "
                          "DNS addresses", channelDb->channelName,
-                         le_dcs_ConvertTechEnumToName(tech));
+                         dcs_ConvertTechEnumToName(tech));
                 return LE_FAULT;
             }
             // The last argument is 2 since 2 DNS addresses are to be retrieved per IP type, which
             // is also the array size of v4DnsAddrs and v6DnsAddrs in the input arguments
-            return le_net_GetLeaseAddresses(intf, LE_NET_DNS_SERVER_ADDRESS,
-                                            (char *)v4DnsAddrs, v4DnsAddrSize,
-                                            (char *)v6DnsAddrs, v6DnsAddrSize, 2);
+            return net_GetLeaseAddresses(intf, LE_NET_DNS_SERVER_ADDRESS,
+                                         (char *)v4DnsAddrs, v4DnsAddrSize,
+                                         (char *)v6DnsAddrs, v6DnsAddrSize, 2);
         default:
-            LE_ERROR("Unsupported technology %s", le_dcs_ConvertTechEnumToName(tech));
+            LE_ERROR("Unsupported technology %s", dcs_ConvertTechEnumToName(tech));
             return LE_UNSUPPORTED;
     }
 }
@@ -622,17 +622,17 @@ le_result_t le_dcsTech_GetDNSAddresses
  *     - LE_NOT_PERMITTED if the technology doesn't allow this channel to be connected
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dcsTech_AllowChannelStart
+le_result_t dcsTech_AllowChannelStart
 (
     le_dcs_Technology_t tech,
     const char *channelName
 )
 {
-    le_dcs_channelDb_t *channelDb = le_dcs_GetChannelDbFromName(channelName, tech);
+    le_dcs_channelDb_t *channelDb = dcs_GetChannelDbFromName(channelName, tech);
     if (!channelDb)
     {
         LE_WARN("Channel db for le_dcs not found for channel name %s of technology %s", channelName,
-                le_dcs_ConvertTechEnumToName(tech));
+                dcs_ConvertTechEnumToName(tech));
         return LE_FAULT;
     }
 
@@ -649,7 +649,7 @@ le_result_t le_dcsTech_AllowChannelStart
             return le_dcsEthernet_AllowChannelStart(channelDb->techRef);
 #endif
         default:
-            LE_ERROR("Unsupported technology %s", le_dcs_ConvertTechEnumToName(tech));
+            LE_ERROR("Unsupported technology %s", dcs_ConvertTechEnumToName(tech));
             return LE_UNSUPPORTED;
     }
 }
@@ -659,7 +659,7 @@ le_result_t le_dcsTech_AllowChannelStart
 /**
  * Function for traversing each channel included on the given channel list of the given list size
  * in the function arguments and check if a channelDb has not been created for it. If so,
- * call le_dcs_CreateChannelDb() to create one for it.
+ * call dcs_CreateChannelDb() to create one for it.
  */
 //--------------------------------------------------------------------------------------------------
 static void DcsTechUpdateChannelDbList
@@ -676,11 +676,11 @@ static void DcsTechUpdateChannelDbList
     // Create for any new channel its dbs & its reference into the struct to be returned
     for (i = 0; i < listLen; i++)
     {
-        channelDb = le_dcs_GetChannelDbFromName(channelList[i].name, tech);
+        channelDb = dcs_GetChannelDbFromName(channelList[i].name, tech);
         if (!channelDb)
         {
             // It's a newly learned channel; create its dbs
-            channelRef = le_dcs_CreateChannelDb(tech, channelList[i].name);
+            channelRef = dcs_CreateChannelDb(tech, channelList[i].name);
             if (!channelRef)
             {
                 LE_ERROR("Failed to create dbs for new channel %s of technology %d",
@@ -695,7 +695,7 @@ static void DcsTechUpdateChannelDbList
         }
         channelList[i].ref = channelRef;
         // Retrieve each channel's admin state here
-        if (LE_OK != le_dcs_GetAdminState(channelList[i].ref, &channelList[i].state))
+        if (LE_OK != dcs_GetAdminState(channelList[i].ref, &channelList[i].state))
         {
             LE_ERROR("Failed to update admin state of channel %s of technology %d",
                      channelList[i].name, tech);
@@ -716,7 +716,7 @@ static void DcsTechPostChannelList
     void
 )
 {
-    if (le_dcsTech_ChannelQueryIsPending(LE_DCS_TECH_MAX))
+    if (dcsTech_ChannelQueryIsPending(LE_DCS_TECH_MAX))
     {
         LE_DEBUG("Not done collecting available channel lists to post query results");
         return;
@@ -724,7 +724,7 @@ static void DcsTechPostChannelList
 
     // No more tech channel list return pending; notify apps now
     LE_INFO("Posting collected channel list to apps of size %d", QueryChannel.listSize);
-    le_dcs_ChannelQueryNotifier(LE_OK, QueryChannel.list, QueryChannel.listSize);
+    dcs_ChannelQueryNotifier(LE_OK, QueryChannel.list, QueryChannel.listSize);
 }
 
 
@@ -733,7 +733,7 @@ static void DcsTechPostChannelList
  * Function for collecting channel list results of a query from a given technology
  */
 //--------------------------------------------------------------------------------------------------
-void le_dcsTech_CollectChannelQueryResults
+void dcsTech_CollectChannelQueryResults
 (
     le_dcs_Technology_t technology,
     le_result_t result,

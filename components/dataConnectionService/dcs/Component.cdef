@@ -2,11 +2,7 @@ provides:
 {
     api:
     {
-    #if ${LE_CONFIG_LINUX} = y
         le_dcs = $LEGATO_ROOT/interfaces/le_dcs.api
-    #else
-        le_dcs = $LEGATO_ROOT/interfaces/le_dcs.api [direct]
-    #endif
     }
 }
 
