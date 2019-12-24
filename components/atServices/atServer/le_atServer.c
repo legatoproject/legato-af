@@ -3301,7 +3301,12 @@ le_atServer_DeviceRef_t le_atServer_Open
     if (le_fd_Fcntl(fd, F_GETFD) == -1)
     {
         memset(errMsg, 0, ERR_MSG_MAX);
+#ifdef __USE_GNU
         LE_ERROR("%s", strerror_r(errno, errMsg, ERR_MSG_MAX));
+#else /* XSI-compliant */
+        strerror_r(errno, errMsg, ERR_MSG_MAX);
+        LE_ERROR("%s", errMsg);
+#endif
         return NULL;
     }
 
