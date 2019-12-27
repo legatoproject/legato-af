@@ -195,26 +195,6 @@ epoll_err:
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Return a description string of error.
- */
-//--------------------------------------------------------------------------------------------------
-static char* StrError
-(
-    int err
-)
-{
-    static char errMsg[DSIZE];
-
-#ifdef __USE_GNU
-    snprintf(errMsg, DSIZE, "%s", strerror_r(err, errMsg, DSIZE));
-#else /* XSI-compliant */
-    strerror_r(err, errMsg, sizeof(errMsg));
-#endif
-    return errMsg;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Test on an expected result
  */
 //--------------------------------------------------------------------------------------------------
@@ -251,7 +231,7 @@ static le_result_t TestResponses
 
         if (-1 == ret)
         {
-            LE_ERROR("epoll wait failed: %s", strerror(errno));
+            LE_ERROR("epoll wait failed: %s", LE_ERRNO_TXT(errno));
             return LE_IO_ERROR;
         }
 
@@ -263,20 +243,20 @@ static le_result_t TestResponses
 
         if (ev.data.fd != fd)
         {
-            LE_ERROR("%s", strerror(EBADF));
+            LE_ERROR("%s", LE_ERRNO_TXT(EBADF));
             return LE_IO_ERROR;
         }
 
         if (ev.events & EPOLLRDHUP)
         {
-            LE_ERROR("%s", strerror(ECONNRESET));
+            LE_ERROR("%s", LE_ERRNO_TXT(ECONNRESET));
             return LE_TERMINATED;
         }
 
         size = read(fd, buf+offset, DSIZE);
         if (-1 == size)
         {
-            LE_ERROR("read failed: %s", strerror(errno));
+            LE_ERROR("read failed: %s", LE_ERRNO_TXT(errno));
             return LE_IO_ERROR;
         }
 
@@ -341,7 +321,7 @@ static le_result_t SendCommandsAndTest
 
     if (-1 == write(fd, buf, strlen(buf)))
     {
-        LE_ERROR("write failed: %s", strerror(errno));
+        LE_ERROR("write failed: %s", LE_ERRNO_TXT(errno));
         return LE_IO_ERROR;
     }
 
@@ -383,7 +363,7 @@ static le_result_t SendData
 
     if (-1 == write(fd, buf, strlen(buf)))
     {
-        LE_ERROR("write failed: %s", strerror(errno));
+        LE_ERROR("write failed: %s", LE_ERRNO_TXT(errno));
         return LE_IO_ERROR;
     }
 
@@ -431,7 +411,7 @@ static void RxNewData
         count = read(fd, buffer, READ_BYTES);
         if (-1 == count)
         {
-            LE_ERROR("read error: %s", StrError(errno));
+            LE_ERROR("read error: %s", LE_ERRNO_TXT(errno));
             le_sem_Post(Semaphore);
             return;
         }

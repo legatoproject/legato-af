@@ -1689,7 +1689,7 @@ static int RunCurrentSystem
             {
                 struct timespec waitBeforeReboot = { 2, 0 };
 
-                LE_EMERG("Failed to reboot. Errno = %s.", strerror(errno));
+                LE_EMERG("Failed to reboot. Errno = %s.", LE_ERRNO_TXT(errno));
                 // Last chance ! Use /proc/sysrq entries to force reboot...
                 // If this fails, no way to reboot from Legato side.
                 nanosleep(&waitBeforeReboot, NULL);

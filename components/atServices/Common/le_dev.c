@@ -54,27 +54,6 @@ DevInfo_t;
 //--------------------------------------------------------------------------------------------------
 static DevInfo_t DevInfo;
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Return a description string of err
- *
- */
-//--------------------------------------------------------------------------------------------------
-static char* StrError
-(
-    int err
-)
-{
-    static char errMsg[DSIZE];
-
-#ifdef __USE_GNU
-    snprintf(errMsg, DSIZE, "%s", strerror_r(err, errMsg, DSIZE));
-#else /* XSI-compliant */
-    strerror_r(err, errMsg, sizeof(errMsg));
-#endif
-    return errMsg;
-}
-
 #if LE_CONFIG_LINUX
 //--------------------------------------------------------------------------------------------------
 /**
@@ -112,7 +91,7 @@ static le_result_t GetDeviceInformation
         int len = readlink(DevInfo.fdSysPath, DevInfo.linkName, sizeof(DevInfo.fdSysPath));
         // get device path
         if (len < 0) {
-            LE_ERROR("readlink failed %s", StrError(errno));
+            LE_ERROR("readlink failed %s", LE_ERRNO_TXT(errno));
             return LE_FAULT;
         }
         else if (len >= sizeof(DevInfo.fdSysPath))
@@ -124,7 +103,7 @@ static le_result_t GetDeviceInformation
         // try to get device stats
         if (fstat(DevInfo.fd, &fdStats) == -1)
         {
-            LE_ERROR("fstat failed %s", StrError(errno));
+            LE_ERROR("fstat failed %s", LE_ERRNO_TXT(errno));
             return LE_FAULT;
         }
 
@@ -133,7 +112,7 @@ static le_result_t GetDeviceInformation
 
         if ((NULL == passwd) || (NULL == group))
         {
-            LE_ERROR("Get passwd and group failed %s", StrError(errno));
+            LE_ERROR("Get passwd and group failed %s", LE_ERRNO_TXT(errno));
             return LE_FAULT;
         }
 
@@ -275,7 +254,7 @@ ssize_t le_dev_Read
     count = le_fd_Read(devicePtr->fd, rxDataPtr, size);
     if (-1 == count)
     {
-        LE_ERROR("read error: %s", StrError(errno));
+        LE_ERROR("read error: %s", LE_ERRNO_TXT(errno));
         return 0;
     }
 
@@ -325,7 +304,7 @@ int32_t le_dev_Write
         {
             if ((errno != EINTR) && (errno != EAGAIN))
             {
-                LE_ERROR("Cannot write on fd: %s", StrError(errno));
+                LE_ERROR("Cannot write on fd: %s", LE_ERRNO_TXT(errno));
                 return currentSize;
             }
         }

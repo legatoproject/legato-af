@@ -179,7 +179,7 @@ le_result_t netSocket_Write
         }
         else
         {
-            LE_ERROR("Write failed: %d, %s", errno, strerror(errno));
+            LE_ERROR("Write failed: %d, %s", errno, LE_ERRNO_TXT(errno));
             return LE_FAULT;
         }
     }
@@ -237,7 +237,7 @@ le_result_t netSocket_Read
 
             if (count < 0)
             {
-                LE_ERROR("Read failed: %d, %s", errno, strerror(errno));
+                LE_ERROR("Read failed: %d, %s", errno, LE_ERRNO_TXT(errno));
                 return LE_FAULT;
             }
 

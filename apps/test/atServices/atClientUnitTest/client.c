@@ -8,7 +8,6 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "defs.h"
-#include "strerror.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -68,7 +67,7 @@ static void RxNewData
         count = read(fd, buffer, READ_BYTES);
         if (count == -1)
         {
-            LE_ERROR("read error: %s", strerror(errno));
+            LE_ERROR("read error: %s", LE_ERRNO_TXT(errno));
             return;
         }
         else if (count > 0)

@@ -369,7 +369,7 @@ static void* PlaySamplesThread
         int32_t wroteLen = write(Pipefd[1], data, len);
         if (wroteLen <= 0)
         {
-            LE_ERROR("write error errno.%d (%s)", errno, strerror(errno));
+            LE_ERROR("write error errno.%d (%s)", errno, LE_ERRNO_TXT(errno));
             return NULL;
         }
     }
@@ -420,7 +420,7 @@ static void PlayFile
 
     if ((AudioFileFd=open(filePathPtr, O_RDONLY)) == -1)
     {
-        LE_ERROR("Open file %s failure: errno.%d (%s)",  filePathPtr, errno, strerror(errno));
+        LE_ERROR("Open file %s failure: errno.%d (%s)",  filePathPtr, errno, LE_ERRNO_TXT(errno));
         DisconnectAllAudio();
         exit(EXIT_FAILURE);
     }

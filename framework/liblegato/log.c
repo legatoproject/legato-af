@@ -214,6 +214,29 @@ const char* _le_log_GetResultCodeString
     return "(unknown)";
 }
 
+#if LE_LOG_NEED_GET_ERRNO_STRING
+const char *_le_log_GetErrnoCodeString(int error)
+{
+    static __thread char buffer[1024];
+
+#if (_POSIX_C_SOURCE >= 200112L) && !  _GNU_SOURCE
+    // XSI-compliant strerror_r
+    if (strerror_r(error, buffer, sizeof(buffer)) == 0)
+    {
+        // OK to return this since it's a static thread-local buffer.
+        return buffer;
+    }
+    else
+    {
+        return "Unknown error";
+    }
+#else
+    // GNU strerror_r
+    return strerror_r(error, buffer, sizeof(buffer));
+#endif
+}
+#endif
+
 /// Function that exits in a race-free manner -- work around glibc BZ#14333
 __attribute__((noreturn))
 void _le_log_ExitFatal

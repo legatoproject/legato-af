@@ -849,6 +849,12 @@ const char* _le_log_GetResultCodeString
     le_result_t resultCode  ///< [in] Result code value to be translated.
 );
 
+/// Function that does the real work of translating result codes.  See @ref LE_RESULT_TXT.
+const char* _le_log_GetErrnoCodeString
+(
+    int errnoCode  ///< [in] errno value to be translated.
+);
+
 /// Function that exits in a race-free manner -- work around glibc BZ#14333
 __attribute__((noreturn))
 void _le_log_ExitFatal
@@ -951,6 +957,24 @@ void _le_log_ExitFatal
  */
 //--------------------------------------------------------------------------------------------------
 #define LE_RESULT_TXT(v) _le_log_GetResultCodeString(v)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a null-terminated, printable string representing an errno value.
+ *
+ * Use this instead of strerror() or strerror_r() since those have
+ * incompatible implementations on different platforms.
+ *
+ * @return Pointer to a string constant.
+ */
+//--------------------------------------------------------------------------------------------------
+#ifndef LE_ERRNO_TXT
+#  define LE_ERRNO_TXT(v) _le_log_GetErrnoCodeString(v)
+#  define LE_LOG_NEED_GET_ERRNO_STRING 1
+
+const char *_le_log_GetErrnoCodeString(int error);
+#endif
+
 
 //--------------------------------------------------------------------------------------------------
 /**

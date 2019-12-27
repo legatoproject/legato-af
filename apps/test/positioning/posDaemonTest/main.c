@@ -94,14 +94,14 @@ static int thisopen(const char* path)
     strcpy(that.sun_path,path);
 
     if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-        LE_FATAL("socket failed (%d):%s",errno,strerror(errno));
+        LE_FATAL("socket failed (%d):%s",errno,LE_ERRNO_TXT(errno));
     }
 
     for(i=0;(i<60)&&(!isOpen);i++)
     {
         if (connect(sockfd, (struct sockaddr* )&that, sizeof(that)) < 0)  /* error */
         {
-            LE_WARN("[%i] connect to '%s' failed (%d):%s",i,CUSTOM_PORT,errno,strerror(errno));
+            LE_WARN("[%i] connect to '%s' failed (%d):%s",i,CUSTOM_PORT,errno,LE_ERRNO_TXT(errno));
             sleep(1);
         } else {
             isOpen=true;

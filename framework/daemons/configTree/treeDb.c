@@ -2578,7 +2578,7 @@ static void LoadTree
         {
             LE_ERROR("Could not open configuration tree file: %s, reason: %s",
                      pathPtr,
-                     strerror(errno));
+                     LE_ERRNO_TXT(errno));
         }
         else
         {
@@ -3175,7 +3175,7 @@ void tdb_MergeTree
 
     int retVal = fclose(filePtr);
     LE_EMERG_IF(retVal == EOF,
-                "An error occurred while closing the tree file: %s", strerror(errno));
+                "An error occurred while closing the tree file: %s", LE_ERRNO_TXT(errno));
 
     // Finally remove the old version of the tree file, if there is one.
     if (writeResult == LE_OK)

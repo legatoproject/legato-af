@@ -674,7 +674,7 @@ static void SetSchedPolicyAttr
                 policyName,
                 THREAD_NAME(threadPtr->name),
                 result,
-                strerror(result));
+                LE_ERRNO_TXT(result));
     }
     else
     {
@@ -723,7 +723,7 @@ static void SetSchedPriority
                 priority,
                 THREAD_NAME(threadPtr->name),
                 result,
-                strerror(result));
+                LE_ERRNO_TXT(result));
 }
 
 

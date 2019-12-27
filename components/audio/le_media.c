@@ -1297,13 +1297,13 @@ static le_result_t PlayCaptControl
 
                 if ((mask = fcntl(pcmContextPtr->fd, F_GETFL, 0)) == -1)
                 {
-                    LE_ERROR("fcntl error, errno.%d (%s)", errno, strerror(errno));
+                    LE_ERROR("fcntl error, errno.%d (%s)", errno, LE_ERRNO_TXT(errno));
                     res = LE_FAULT;
                     break;
                 }
                 if (fcntl(pcmContextPtr->fd, F_SETFL, mask | O_NONBLOCK) == -1)
                 {
-                    LE_ERROR("fcntl error, errno.%d (%s)", errno, strerror(errno));
+                    LE_ERROR("fcntl error, errno.%d (%s)", errno, LE_ERRNO_TXT(errno));
                     res = LE_FAULT;
                     break;
                 }
@@ -1317,7 +1317,7 @@ static le_result_t PlayCaptControl
 
                 if (fcntl(pcmContextPtr->fd, F_SETFL, mask) == -1)
                 {
-                    LE_ERROR("fcntl error, errno.%d (%s)", errno, strerror(errno));
+                    LE_ERROR("fcntl error, errno.%d (%s)", errno, LE_ERRNO_TXT(errno));
                     res = LE_FAULT;
                     break;
                 }

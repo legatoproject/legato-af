@@ -170,7 +170,7 @@ static void ConnectAudio
 
     if ((AudioFileFd=open(AudioFilePath, O_RDONLY)) == -1)
     {
-        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFilePath, errno, strerror(errno));
+        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFilePath, errno, LE_ERRNO_TXT(errno));
         DisconnectAudio();
         exit(0);
     }

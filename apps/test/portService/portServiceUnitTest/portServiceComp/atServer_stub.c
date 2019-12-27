@@ -154,7 +154,7 @@ ssize_t le_dev_Read
     count = read(devicePtr->fd, rxDataPtr, (size - 1));
     if (count == -1)
     {
-        LE_ERROR("read error: %s", strerror(errno));
+        LE_ERROR("read error: %s", LE_ERRNO_TXT(errno));
         return 0;
     }
 
@@ -192,7 +192,7 @@ int32_t le_dev_Write
         {
             if ((EINTR != errno) && (EAGAIN != errno))
             {
-                LE_ERROR("Cannot write on fd: %s", strerror(errno));
+                LE_ERROR("Cannot write on fd: %s", LE_ERRNO_TXT(errno));
                 return currentSize;
             }
         }
@@ -276,7 +276,7 @@ le_atServer_DeviceRef_t le_atServer_Open
     if (fcntl(fd, F_GETFD) == -1)
     {
         memset(errMsg, 0, ERR_MSG_MAX);
-        LE_ERROR("%s", strerror_r(errno, errMsg, ERR_MSG_MAX));
+        LE_ERROR("%s", LE_ERRNO_TXT(errno));
         return NULL;
     }
 

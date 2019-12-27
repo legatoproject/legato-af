@@ -311,7 +311,7 @@ static le_result_t SetSmackPermReadOnlyDir
                         entPtr->fts_info,
                         appNamePtr,
                         appMd5Ptr,
-                        strerror(entPtr->fts_errno));
+                        LE_ERRNO_TXT(entPtr->fts_errno));
                 LE_CRIT("Offending path: '%s'.", entPtr->fts_path);
                 result = LE_FAULT;
                 break;

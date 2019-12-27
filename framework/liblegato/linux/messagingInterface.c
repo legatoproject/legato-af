@@ -514,7 +514,7 @@ static void DirectorySocketWriteable
         {
             LE_FATAL("Failed to connect to Service Directory. SO_ERROR %d (%s).",
                      errCode,
-                     strerror(errCode));
+                     LE_ERRNO_TXT(errCode));
         }
     }
     else

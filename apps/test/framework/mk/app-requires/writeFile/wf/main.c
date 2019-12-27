@@ -9,14 +9,14 @@ COMPONENT_INIT
 
     if (fd < 0)
     {
-        LE_ERROR("Unable to open file [%s]", strerror(errno));
+        LE_ERROR("Unable to open file [%s]", LE_ERRNO_TXT(errno));
         return;
     }
 
     errno = 0;
     if(write(fd,"hello", 5) == 1)
     {
-        LE_ERROR("Unable to write to file [%s]", strerror(errno));
+        LE_ERROR("Unable to write to file [%s]", LE_ERRNO_TXT(errno));
         return;
     }
     else

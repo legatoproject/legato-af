@@ -8,7 +8,6 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "defs.h"
-#include "strerror.h"
 
 //--------------------------------------------------------------------------------------------------
 /**

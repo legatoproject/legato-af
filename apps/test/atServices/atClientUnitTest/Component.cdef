@@ -10,5 +10,4 @@ sources:
 {
     main.c
     client.c
-    strerror.c
 }

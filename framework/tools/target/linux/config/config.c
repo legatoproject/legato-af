@@ -1068,7 +1068,7 @@ static int HandleCopy
 
     if (tempFd == -1)
     {
-        fprintf(stderr, "Could not create temp file. Reason, %s (%d).", strerror(errno), errno);
+        fprintf(stderr, "Could not create temp file. Reason, %s (%d).", LE_ERRNO_TXT(errno), errno);
         return 1;
     }
 
@@ -1076,7 +1076,7 @@ static int HandleCopy
     // we exit.
     if (unlink(tempFilePath) == -1)
     {
-        printf("Could not unlink temporary file. Reason, %s (%d).", strerror(errno), errno);
+        printf("Could not unlink temporary file. Reason, %s (%d).", LE_ERRNO_TXT(errno), errno);
     }
 
     // Create a transaction and export the data from the config tree.
@@ -1411,7 +1411,7 @@ static void FilePathArgHandler
             return;
         }
 
-        fprintf(stderr, "Cannot find path '%s': %s", filePath, strerror(errno));
+        fprintf(stderr, "Cannot find path '%s': %s", filePath, LE_ERRNO_TXT(errno));
         exit(EXIT_FAILURE);
     }
 }

@@ -10,7 +10,7 @@
 #define LINUX_LEGATO_H_INCLUDE_GUARD
 
 #ifndef _GNU_SOURCE
-#   define _GNU_SOURCE
+#   define _GNU_SOURCE 1
 #endif
 
 #include <dirent.h>

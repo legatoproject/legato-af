@@ -94,7 +94,7 @@ static void ConnectAudioToFileLocalPlay
     le_result_t res;
     if ((AudioFileFd=open(AudioFileRecPath, O_RDWR)) == -1)
     {
-        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFileRecPath, errno, strerror(errno));
+        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFileRecPath, errno, LE_ERRNO_TXT(errno));
     }
     else
     {
@@ -145,7 +145,7 @@ static void ConnectAudioToFileRec
     le_result_t res;
     if ((AudioFileFd=open(AudioFileRecPath, O_RDWR | O_CREAT | O_TRUNC)) == -1)
     {
-        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFileRecPath, errno, strerror(errno));
+        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFileRecPath, errno, LE_ERRNO_TXT(errno));
     }
     else
     {

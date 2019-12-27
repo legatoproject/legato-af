@@ -148,7 +148,7 @@ static le_result_t ExportGpio
     fclose(fp);
     if (fileError != 0)
     {
-        LE_WARN("Failed to export GPIO %s. Error %s", gpioStr, strerror(fileError));
+        LE_WARN("Failed to export GPIO %s. Error %s", gpioStr, LE_ERRNO_TXT(fileError));
         return LE_IO_ERROR;
     }
 
@@ -217,7 +217,9 @@ static le_result_t WriteSysGpioSignalAttr
     int fileError = ferror(fp);
     if (fileError != 0)
     {
-        LE_EMERG("Failed to write %s to GPIO config %s. Error %s", attr, path, strerror(fileError));
+        LE_EMERG("Failed to write %s to GPIO config %s. Error %s",
+                 attr, path,
+                 LE_ERRNO_TXT(fileError));
         fclose(fp);
         return LE_IO_ERROR;
     }

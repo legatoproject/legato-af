@@ -45,7 +45,7 @@ COMPONENT_INIT
         connectErrno = errno;
         if(ret < 0)
         {
-            LE_WARN("connect failed (err %d, %s)", ret, strerror(connectErrno));
+            LE_WARN("connect failed (err %d, %s)", ret, LE_ERRNO_TXT(connectErrno));
             if (ECONNREFUSED == connectErrno)
             {
                 // Connection refused?  Wait a bit and try again.

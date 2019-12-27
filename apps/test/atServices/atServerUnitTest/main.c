@@ -6,7 +6,6 @@
  */
 #include "legato.h"
 #include "defs.h"
-#include "strerror.h"
 
 #define DSIZE           1024     // default buffer size
 #define SERVER_TIMEOUT  10000    // server timeout in milliseconds
@@ -86,7 +85,7 @@ static le_result_t SendText
 
     if (write(fd, textPtr, strlen(textPtr)) == -1)
     {
-        LE_ERROR("write failed: %s", strerror(errno));
+        LE_ERROR("write failed: %s", LE_ERRNO_TXT(errno));
         return LE_IO_ERROR;
     }
 
@@ -532,7 +531,7 @@ le_result_t TestResponses
 
         if (-1 == ret)
         {
-            LE_ERROR("epoll wait failed: %s", strerror(errno));
+            LE_ERROR("epoll wait failed: %s", LE_ERRNO_TXT(errno));
             return LE_IO_ERROR;
         }
 
@@ -544,20 +543,20 @@ le_result_t TestResponses
 
         if (ev.data.fd != fd)
         {
-            LE_ERROR("%s", strerror(EBADF));
+            LE_ERROR("%s", LE_ERRNO_TXT(EBADF));
             return LE_IO_ERROR;
         }
 
         if (ev.events & EPOLLRDHUP)
         {
-            LE_ERROR("%s", strerror(ECONNRESET));
+            LE_ERROR("%s", LE_ERRNO_TXT(ECONNRESET));
             return LE_TERMINATED;
         }
 
         size = read(fd, buf+offset, DSIZE);
         if (size == -1)
         {
-            LE_ERROR("read failed: %s", strerror(errno));
+            LE_ERROR("read failed: %s", LE_ERRNO_TXT(errno));
             return LE_IO_ERROR;
         }
 
@@ -611,7 +610,7 @@ le_result_t SendCommandsAndTest
 
     if (write(fd, buf, strlen(buf)) == -1)
     {
-        LE_ERROR("write failed: %s", strerror(errno));
+        LE_ERROR("write failed: %s", LE_ERRNO_TXT(errno));
         return LE_IO_ERROR;
     }
 

@@ -461,7 +461,7 @@ static le_result_t CloseNmeaPipe
     if (0 != result)
     {
         LE_ERROR("Could not close %s. errno.%d (%s)", LE_GNSS_NMEA_NODE_PATH,
-                 errno, strerror(errno));
+                 errno, LE_ERRNO_TXT(errno));
         return LE_FAULT;
     }
 
@@ -495,7 +495,7 @@ static void WriteNmeaPipe
                                    sizeToWrite);
 
     LE_DEBUG("resultWrite %zd / %zd, error, errno.%d (%s)",writeSize, sizeToWrite, errno,
-             strerror(errno));
+             LE_ERRNO_TXT(errno));
 
     if (-1 != writeSize)
     {
@@ -559,7 +559,7 @@ static void WriteNmeaPipe
 
         LE_ERROR("Could not write to %s (write error, errno.%d (%s))",
                      LE_GNSS_NMEA_NODE_PATH,
-                     errno, strerror(errno));
+                     errno, LE_ERRNO_TXT(errno));
     }
 
 error:
@@ -622,8 +622,11 @@ static le_result_t OpenNmeaPipe
 
         if ((NmeaPipeFd == -1) && (errno != EINTR))
         {
-            LE_WARN_IF(errno != ENXIO, "Open %s failure: errno.%d (%s)", LE_GNSS_NMEA_NODE_PATH,
-                                                                         errno, strerror(errno));
+            LE_WARN_IF(errno != ENXIO,
+                       "Open %s failure: errno.%d (%s)",
+                       LE_GNSS_NMEA_NODE_PATH,
+                       errno,
+                       LE_ERRNO_TXT(errno));
             return LE_FAULT;
         }
 
@@ -740,7 +743,8 @@ static void CreateNmeaPipe
     result = le_fd_MkFifo(LE_GNSS_NMEA_NODE_PATH, S_IFIFO|0666);
 
     LE_ERROR_IF((result != 0)&&(result != EEXIST),
-           "Could not create %s. errno.%d (%s)", LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno));
+                "Could not create %s. errno.%d (%s)", LE_GNSS_NMEA_NODE_PATH,
+                errno, LE_ERRNO_TXT(errno));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1506,7 +1510,7 @@ le_result_t gnss_Init
     else
     {
         LE_ERROR("Could not get file info for '%s'. errno.%d (%s). resultstat:%d",
-               LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno),resultStat);
+               LE_GNSS_NMEA_NODE_PATH, errno, LE_ERRNO_TXT(errno),resultStat);
     }
 
     return result;

@@ -93,7 +93,7 @@ static void PlayFile
 
     if ((AudioFileFd=open(filePathPtr, O_RDONLY)) == -1)
     {
-        LE_ERROR("Open file %s failure: errno.%d (%s)",  filePathPtr, errno, strerror(errno));
+        LE_ERROR("Open file %s failure: errno.%d (%s)",  filePathPtr, errno, LE_ERRNO_TXT(errno));
         exit(0);
     }
     else

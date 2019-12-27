@@ -197,7 +197,7 @@ static void PrintStatError
             break;
 
         default:
-            fprintf(stderr, "Unexpected errno %d (%s).\n", errorCode, strerror(errorCode));
+            fprintf(stderr, "Unexpected errno %d (%s).\n", errorCode, LE_ERRNO_TXT(errorCode));
             break;
     }
 }

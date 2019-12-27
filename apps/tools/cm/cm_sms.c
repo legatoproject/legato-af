@@ -627,7 +627,7 @@ static void HandleSendBin
         filePtr = fopen(filePath, "r");
         if (filePtr == NULL)
         {
-            fprintf(stderr, "Unable to open file '%s': %s\n", filePath, strerror(errno));
+            fprintf(stderr, "Unable to open file '%s': %s\n", filePath, LE_ERRNO_TXT(errno));
             exit(EXIT_FAILURE);
         }
     }
@@ -637,7 +637,7 @@ static void HandleSendBin
 
         if ((-1 == contentLen) || (0 == contentLen))
         {
-            fprintf(stderr, "Error reading input: %s\n", strerror(errno));
+            fprintf(stderr, "Error reading input: %s\n", LE_ERRNO_TXT(errno));
             fclose(filePtr);
             exit(EXIT_FAILURE);
         }

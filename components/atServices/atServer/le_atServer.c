@@ -2997,13 +2997,9 @@ static le_result_t CloseServer
     le_dev_DeleteFdMonitoring(&devPtr->device);
 
 #if LE_CONFIG_LINUX
-    char errMsg[ERR_MSG_MAX];
-
     if (le_fd_Close(devPtr->device.fd))
     {
-        // using thread safe strerror
-        memset(errMsg, 0, ERR_MSG_MAX);
-        LE_ERROR("%s", strerror_r(errno, errMsg, ERR_MSG_MAX));
+        LE_ERROR("%s", LE_ERRNO_TXT(errno));
         return LE_FAULT;
     }
 #endif /* end LE_CONFIG_LINUX */
@@ -3295,18 +3291,10 @@ le_atServer_DeviceRef_t le_atServer_Open
     int fd          ///< The file descriptor
 )
 {
-    char errMsg[ERR_MSG_MAX];
-
     // check if the file descriptor is valid
     if (le_fd_Fcntl(fd, F_GETFD) == -1)
     {
-        memset(errMsg, 0, ERR_MSG_MAX);
-#ifdef __USE_GNU
-        LE_ERROR("%s", strerror_r(errno, errMsg, ERR_MSG_MAX));
-#else /* XSI-compliant */
-        strerror_r(errno, errMsg, ERR_MSG_MAX);
-        LE_ERROR("%s", errMsg);
-#endif
+        LE_ERROR("%s", LE_ERRNO_TXT(errno));
         return NULL;
     }
 

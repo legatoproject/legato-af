@@ -87,7 +87,7 @@ void async_FileTest
     numRead = read(dataOut, buffer, sizeof(buffer));
     if (-1 == numRead)
     {
-        LE_INFO("Read error `%s': %m", strerror(errno));
+        LE_INFO("Read error `%s'", LE_ERRNO_TXT(errno));
     }
     else
     {

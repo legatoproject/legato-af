@@ -928,7 +928,7 @@ static void ReadData
                     return;
 
                 default:
-                    Error(parserPtr, LE_JSON_READ_ERROR, strerror(errno));
+                    Error(parserPtr, LE_JSON_READ_ERROR, LE_ERRNO_TXT(errno));
                     return;
             }
         }

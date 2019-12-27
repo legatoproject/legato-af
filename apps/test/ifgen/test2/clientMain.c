@@ -28,7 +28,7 @@ void writeFdToLog(int fd)
     numRead = read(fd, buffer, sizeof(buffer));
     if (-1 == numRead)
     {
-        LE_INFO("Read error: %s", strerror(errno));
+        LE_INFO("Read error: %s", LE_ERRNO_TXT(errno));
     }
     else
     {

@@ -1087,7 +1087,7 @@ COMPONENT_INIT
 
     if (OutputFilePtr == NULL)
     {
-        LE_ERROR("Output Open Failed: '%s'.", strerror(errno));
+        LE_ERROR("Output Open Failed: '%s'.", LE_ERRNO_TXT(errno));
     }
     else
     {

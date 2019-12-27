@@ -868,7 +868,7 @@ le_result_t file_CopyRecursive
             case FTS_ERR:
                 LE_CRIT("Error reading file/directory information, '%s'. (%s)",
                         entPtr->fts_path,
-                        strerror(entPtr->fts_errno));
+                        LE_ERRNO_TXT(entPtr->fts_errno));
                 result = LE_IO_ERROR;
                 goto cleanup;
 

@@ -81,7 +81,7 @@ static void ConnectAudioToFileRemotePlay
     le_result_t res;
     if ((AudioFileFd=open(AudioFilePath, O_RDONLY)) == -1)
     {
-        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFilePath, errno, strerror(errno));
+        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFilePath, errno, LE_ERRNO_TXT(errno));
     }
     else
     {
@@ -134,7 +134,7 @@ static void ConnectAudioToFileRemoteRec
     le_result_t res;
     if ((AudioFileFd=open(AudioFilePath, O_WRONLY | O_CREAT | O_TRUNC)) == -1)
     {
-        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFilePath, errno, strerror(errno));
+        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFilePath, errno, LE_ERRNO_TXT(errno));
     }
     else
     {
@@ -184,7 +184,7 @@ static void ConnectAudioToFileLocalPlay
     le_result_t res;
     if ((AudioFileFd=open(AudioFilePath, O_RDONLY)) == -1)
     {
-        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFilePath, errno, strerror(errno));
+        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFilePath, errno, LE_ERRNO_TXT(errno));
     }
     else
     {
@@ -237,7 +237,7 @@ static void ConnectAudioToFileLocalRec
     le_result_t res;
     if ((AudioFileFd=open(AudioFilePath, O_WRONLY | O_CREAT | O_TRUNC)) == -1)
     {
-        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFilePath, errno, strerror(errno));
+        LE_ERROR("Open file %s failure: errno.%d (%s)",  AudioFilePath, errno, LE_ERRNO_TXT(errno));
     }
     else
     {

@@ -937,7 +937,7 @@ static void *FifoReadCloseMain(void *context)
 
     if ((-1 == ret) && (errno != EAGAIN))
     {
-        LE_TEST_INFO("error: %s", strerror(errno));
+        LE_TEST_INFO("error: %s", LE_ERRNO_TXT(errno));
     }
 
     le_fd_Close(tCtx->fd);
@@ -955,7 +955,7 @@ static void *FifoWriteReadCloseMain(void *context)
     LE_TEST_INFO("Started with bufSize %zu", tCtx->bufSize);
 
     ret = le_fd_Write(tCtx->fd, tCtx->buf, tCtx->bufSize);
-    LE_TEST_OK((-1 == ret) && (EPIPE == errno), "error %s received ", strerror(errno));
+    LE_TEST_OK((-1 == ret) && (EPIPE == errno), "error %s received ", LE_ERRNO_TXT(errno));
     le_fd_Close(tCtx->fd);
 
     LE_TEST_INFO("Write ended");

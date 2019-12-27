@@ -2154,12 +2154,11 @@ le_atClient_DeviceRef_t le_atClient_Start
 {
     char name[THREAD_NAME_MAX_LENGTH];
     static uint32_t threatCounter = 1;
-    char errMsg[ERR_MSG_MAX] = {0};
 
     // check if the file descriptor is valid
     if (le_fd_Fcntl(fd, F_GETFD) == -1)
     {
-        LE_ERROR("%s", strerror_r(errno, errMsg, ERR_MSG_MAX));
+        LE_ERROR("%s", LE_ERRNO_TXT(errno));
         return NULL;
     }
 

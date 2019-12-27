@@ -1382,7 +1382,7 @@ le_result_t proc_Start
 
         // The program could not be started.  Log an error message.
         log_ReInit();
-        LE_FATAL("Could not exec '%s'.  %s.", argsPtr[0], strerror(execErrno));
+        LE_FATAL("Could not exec '%s'.  %s.", argsPtr[0], LE_ERRNO_TXT(execErrno));
     }
 
     procRef->pid = pID;

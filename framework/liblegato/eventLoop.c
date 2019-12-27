@@ -398,7 +398,7 @@ int event_Lock
 
     int err = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldState);
 
-    LE_FATAL_IF(err != 0, "pthread_setcancelstate() failed (%s)", strerror(err));
+    LE_FATAL_IF(err != 0, "pthread_setcancelstate() failed (%s)", LE_ERRNO_TXT(err));
 
     LE_ASSERT(pthread_mutex_lock(&Mutex) == 0);
 
@@ -422,7 +422,7 @@ void event_Unlock
     LE_ASSERT(pthread_mutex_unlock(&Mutex) == 0);
 
     int err = pthread_setcancelstate(restoreTo, &junk);
-    LE_FATAL_IF(err != 0, "pthread_setcancelstate() failed (%s)", strerror(err));
+    LE_FATAL_IF(err != 0, "pthread_setcancelstate() failed (%s)", LE_ERRNO_TXT(err));
 }
 
 

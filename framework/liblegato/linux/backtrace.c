@@ -220,7 +220,23 @@ void _le_backtrace(const char *msg)
 
     if (getcontext(&ctx) < 0)
     {
+        // Do not use LE_ERRNO_TXT() here, as that uses TLS which may not be available
+        // in a crash situation.
+#if (_POSIX_C_SOURCE >= 200112L) && !  _GNU_SOURCE
+        // XSI-compliant strerror_r
+        if (strerror_r(errno, buffer, sizeof(buffer)) == 0)
+        {
+            // OK to return this since it's a static thread-local buffer.
+            msg = buffer;
+        }
+        else
+        {
+            msg = "Unknown error";
+        }
+#else
+        // GNU strerror_r
         msg = strerror_r(errno, buffer, sizeof(buffer));
+#endif
         LE_ERROR("Failed to get context for backtrace: (%d) %s", errno, msg);
         return;
     }

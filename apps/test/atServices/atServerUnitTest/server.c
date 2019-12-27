@@ -7,7 +7,6 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "defs.h"
-#include "strerror.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -633,7 +632,7 @@ static void DataCmdHandler
 
             if (write(atSessionPtr->fd, "testing the data mode", 21) == -1)
             {
-                LE_ERROR("write failed: %s", strerror(errno));
+                LE_ERROR("write failed: %s", LE_ERRNO_TXT(errno));
             }
 
             LE_ASSERT_OK(le_atServer_Resume(atSessionPtr->devRef));
@@ -957,12 +956,12 @@ static void CleanUp
 
     if (close(serverDataPtr->connFd) == -1)
     {
-        LE_ERROR("close failed %s", strerror(errno));
+        LE_ERROR("close failed %s", LE_ERRNO_TXT(errno));
     }
 
     if (close(serverDataPtr->socketFd) == -1)
     {
-        LE_ERROR("close failed %s", strerror(errno));
+        LE_ERROR("close failed %s", LE_ERRNO_TXT(errno));
     }
 }
 

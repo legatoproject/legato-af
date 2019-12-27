@@ -196,26 +196,6 @@ static void AtCmdModeHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Return a description string of err
- */
-//--------------------------------------------------------------------------------------------------
-static char* StrError
-(
-    int err
-)
-{
-    static char errMsg[DSIZE];
-
-#ifdef __USE_GNU
-    snprintf(errMsg, DSIZE, "%s", strerror_r(err, errMsg, DSIZE));
-#else /* XSI-compliant */
-    strerror_r(err, errMsg, sizeof(errMsg));
-#endif
-    return errMsg;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * This function is called when data are available to be read on fd
  */
 //--------------------------------------------------------------------------------------------------
@@ -233,7 +213,7 @@ static void RxNewData
         count = read(fd, buffer, READ_BYTES);
         if (-1 == count)
         {
-            LE_ERROR("read error: %s", StrError(errno));
+            LE_ERROR("read error: %s", LE_ERRNO_TXT(errno));
             return;
         }
         else if (count > 0)

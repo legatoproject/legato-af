@@ -31,7 +31,8 @@ void msgCommon_Init
     int result = pthread_key_create(&ThreadLocalRxMsgKey, NULL);
     if (result != 0)
     {
-        LE_FATAL("Failed to create thread local key: result = %d (%s).", result, strerror(result));
+        LE_FATAL("Failed to create thread local key: result = %d (%s).",
+                 result, LE_ERRNO_TXT(result));
     }
 }
 

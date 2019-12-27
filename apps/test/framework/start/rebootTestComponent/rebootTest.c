@@ -143,7 +143,7 @@ static void RegularShutDown
     // Reboot the system.
     if (le_ulpm_Reboot() != LE_OK)
     {
-        LE_FATAL("Failed to reboot. Errno = %s.", strerror(errno));
+        LE_FATAL("Failed to reboot. Errno = %s.", LE_ERRNO_TXT(errno));
     }
 }
 

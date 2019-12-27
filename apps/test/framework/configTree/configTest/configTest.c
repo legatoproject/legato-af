@@ -431,7 +431,7 @@ static void WriteConfigData
     while (   (fileRef == -1)
            && (errno == EINTR));
 
-    LE_FATAL_IF(fileRef == -1, "Could not create import file!!  Reason: %s", strerror(errno));
+    LE_FATAL_IF(fileRef == -1, "Could not create import file!!  Reason: %s", LE_ERRNO_TXT(errno));
 
 
     write(fileRef, testDataPtr, strlen(testDataPtr));
@@ -445,7 +445,7 @@ static void WriteConfigData
     }
     while ((retVal == -1) && (errno == EINTR));
 
-    LE_EMERG_IF(retVal == -1, "An error occured while closing the file: %s", strerror(errno));
+    LE_EMERG_IF(retVal == -1, "An error occured while closing the file: %s", LE_ERRNO_TXT(errno));
 }
 
 
@@ -468,7 +468,7 @@ static void CompareFile
     while (   (fileRef == -1)
            && (errno == EINTR));
 
-    LE_FATAL_IF(fileRef == -1, "Could open export file!!  Reason: %s", strerror(errno));
+    LE_FATAL_IF(fileRef == -1, "Could open export file!!  Reason: %s", LE_ERRNO_TXT(errno));
 
     struct stat st;
     stat(filePathPtr, &st);
@@ -496,7 +496,7 @@ static void CompareFile
     }
     while ((retVal == -1) && (errno == EINTR));
 
-    LE_EMERG_IF(retVal == -1, "An error occured while closing the file: %s", strerror(errno));
+    LE_EMERG_IF(retVal == -1, "An error occured while closing the file: %s", LE_ERRNO_TXT(errno));
 }
 
 
