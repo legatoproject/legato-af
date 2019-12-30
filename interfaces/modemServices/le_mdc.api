@@ -121,11 +121,11 @@
  * The Access Point Name can be retrieved by le_mdc_GetAPN(). The Data bearer
  * Technology can be retrieved by le_mdc_GetDataBearerTechnology().
  *
- * le_mdc_GetDisconnectionReason() or le_mdc_GetPlatformSpecificDisconnectionCode() let you get
+ * le_mdc_GetDisconnectionReasonExt() or le_mdc_GetPlatformSpecificDisconnectionCodeExt() let you get
  * the reason for disconnection of data session by retrieving the call end failure code
  * from @c le_mdc_ProfileRef_t.
  *
- * le_mdc_GetPlatformSpecificFailureConnectionReason() let you get the data session connection
+ * le_mdc_GetPlatformSpecificFailureConnectionReasonExt() let you get the data session connection
  * failure reason by retrieving the  call connection failure code and type from
  * @c le_mdc_ProfileRef_t.
  *
@@ -134,14 +134,6 @@
  *
  * A sample code can be seen in the following page:
  * - @subpage c_mdcDataSessions
- *
- * The following extended functions should be used to get the disconnection reason instead.
- * A pdpType parameter is required to specify which session's(IPv4 or IPv6 session) disconnect
- * reason to get for IPv4v6 mode. For IPv4 and IPv6 mode, the pdpType is ignored because there
- * is only one session.
- * - le_mdc_GetDisconnectionReasonExt()
- * - le_mdc_GetPlatformSpecificDisconnectionCodeExt()
- * - le_mdc_GetPlatformSpecificFailureConnectionReasonExt()
  *
  * @section le_mdc_dataStatistics Data Statistics
  *
@@ -1083,66 +1075,6 @@ FUNCTION le_result_t GetProfileFromApn
 (
     string  apnStr[APN_NAME_MAX_LEN] IN,    ///< The Access Point Name
     Profile profileRef  OUT                 ///< profile reference
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Called to get the disconnection reason.
- *
- * @return The disconnection reason.
- *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
- *
- * @deprecated This function is deprecated, le_mdc_GetDisconnectionReasonExt should be used for the
- *             new code.
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION DisconnectionReason GetDisconnectionReason
-(
-    Profile profileRef  IN                 ///< profile reference
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Called to get the platform specific disconnection code.
- *
- * Refer to @ref platformConstraintsSpecificErrorCodes for platform specific
- * disconnection code description.
- *
- * @return The platform specific disconnection code.
- *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
- *
- * @deprecated This function is deprecated, le_mdc_GetPlatformSpecificDisconnectionCodeExt should
- *             be used for the new code.
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION int32 GetPlatformSpecificDisconnectionCode
-(
-    Profile profileRef  IN                 ///< profile reference
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Called to get the platform specific connection failure reason.
- *
- * Refer to @ref platformConstraintsSpecificErrorCodes for platform specific
- * connection failure types and code descriptions.
- *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
- *
- * @deprecated This function is deprecated, le_mdc_GetPlatformSpecificFailureConnectionReasonExt
- *             should be used for new code.
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION GetPlatformSpecificFailureConnectionReason
-(
-    Profile profileRef  IN,      ///< profile reference
-    int32   failureType OUT,     ///< platform specific failure type
-    int32   failureCode OUT      ///< platform specific failure code
 );
 
 //--------------------------------------------------------------------------------------------------

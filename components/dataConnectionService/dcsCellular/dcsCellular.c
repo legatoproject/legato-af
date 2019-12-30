@@ -1092,9 +1092,28 @@ le_result_t le_dcsCellular_Start
     else
     {
         LE_ERROR("Failed to start cellular connection %s; error: %d", connName, ret);
-        failure_reason = le_mdc_GetDisconnectionReason(profileRef);
-        failure_code = le_mdc_GetPlatformSpecificDisconnectionCode(profileRef);
-        LE_ERROR("Failure reason %d, code %d", failure_reason, failure_code);
+
+        // Get disconnection reason
+        if (LE_MDC_PDP_IPV4V6 == le_mdc_GetPDP(profileRef))
+        {
+            failure_reason = le_mdc_GetDisconnectionReasonExt(profileRef, LE_MDC_PDP_IPV4);
+            failure_code = le_mdc_GetPlatformSpecificDisconnectionCodeExt(profileRef,
+                                                                          LE_MDC_PDP_IPV4);
+            LE_ERROR("IPV4 failure reason %d, code %d", failure_reason, failure_code);
+
+            failure_reason = le_mdc_GetDisconnectionReasonExt(profileRef, LE_MDC_PDP_IPV6);
+            failure_code = le_mdc_GetPlatformSpecificDisconnectionCodeExt(profileRef,
+                                                                          LE_MDC_PDP_IPV6);
+            LE_ERROR("IPV6 failure reason %d, code %d", failure_reason, failure_code);
+        }
+        else
+        {
+            failure_reason = le_mdc_GetDisconnectionReasonExt(profileRef, (le_mdc_Pdp_t)0);
+            failure_code = le_mdc_GetPlatformSpecificDisconnectionCodeExt(profileRef,
+                                                                          (le_mdc_Pdp_t)0);
+            LE_ERROR("Failure reason %d, code %d", failure_reason, failure_code);
+        }
+
         rc = le_dcsCellular_RetryConn(cellConnDb->connRef);
         switch (rc)
         {

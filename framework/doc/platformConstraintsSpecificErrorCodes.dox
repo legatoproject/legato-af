@@ -2,13 +2,13 @@
 
 @note The table below lists the supported platform specific error code functions for each platform.
 
-| specific error code APIs                            | AR755x | AR758x | AR759x | AR8652 | WP85xx | WP76xx |
-| ----------------------------------------------------| :----: | :----: | :----: | :----: | :-----:| :-----:|
-| le_mcc_GetPlatformSpecificTerminationCode()         |   X    |   X    |   X    |   X    |    X   |   X    |
-| le_mdc_GetPlatformSpecificDisconnectionCode()       |   X    |   X    |   X    |   X    |    X   |   X    |
-| le_mdc_GetPlatformSpecificFailureConnectionReason() |        |   X    |   X    |        |        |        |
-| le_mrc_GetPlatformSpecificRegistrationErrorCode()   |   X    |   X    |   X    |   X    |    X   |   X    |
-| le_sms_GetPlatformSpecificErrorCode()               |   X    |   X    |   X    |   X    |    X   |   X    |
+| specific error code APIs                               | AR755x | AR758x | AR759x | AR8652 | WP85xx | WP76xx |
+| -------------------------------------------------------| :----: | :----: | :----: | :----: | :-----:| :-----:|
+| le_mcc_GetPlatformSpecificTerminationCode()            |   X    |   X    |   X    |   X    |    X   |   X    |
+| le_mdc_GetPlatformSpecificDisconnectionCodeExt()       |   X    |   X    |   X    |   X    |    X   |   X    |
+| le_mdc_GetPlatformSpecificFailureConnectionReasonExt() |        |   X    |   X    |        |        |        |
+| le_mrc_GetPlatformSpecificRegistrationErrorCode()      |   X    |   X    |   X    |   X    |    X   |   X    |
+| le_sms_GetPlatformSpecificErrorCode()                  |   X    |   X    |   X    |   X    |    X   |   X    |
 
 <b>@subpage c_mcc :</b>
  - le_mcc_GetPlatformSpecificTerminationCode() returns the termination code from
@@ -348,7 +348,7 @@ le_mcc_GetPlatformSpecificTerminationCode() platform specific error codes:
    | CALL_END_CAUSE_REINVITE_COLLISION     |  NA    |   X    |   NA   |   NA   |   NA   |   X    |
 
 <b>@subpage c_mdc :</b>
- - le_mdc_GetPlatformSpecificDisconnectionCode() / le_mdc_GetPlatformSpecificDisconnectionCodeExt()
+ - le_mdc_GetPlatformSpecificDisconnectionCodeExt()
    returns the call end failure code which is retrieved from modem. The call end failure return
    values are described below
 
@@ -425,8 +425,7 @@ le_mcc_GetPlatformSpecificTerminationCode() platform specific error codes:
    CER_HDR_CS_TIMEOUT = 0x5E2,<br>
    CER_HDR_RELEASED_BY_CM = 0x5E3,<br>
 
- - le_mdc_GetPlatformSpecificFailureConnectionReason() /
-   le_mdc_GetPlatformSpecificFailureConnectionReasonExt() gets the call connection failure
+ - le_mdc_GetPlatformSpecificFailureConnectionReasonExt() gets the call connection failure
    type and code which are retrieved from modem. The call connection failure output values
    are described below
 
