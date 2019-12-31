@@ -719,6 +719,20 @@ typedef struct
 }
 DeviceContext_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Info for registering commands
+ *
+ * Used to call command registration handler for every command which has been registered
+ * before the handler
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_atServer_CmdRegistrationHandlerFunc_t clientHandlerFunc;
+    void *contextPtr;
+}
+CmdRegHandlerInfo_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -3468,6 +3482,43 @@ le_result_t le_atServer_Delete
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Call the command registration handler for AT commands that have been added before adding the
+ * handler.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool CallCmdRegistrationHandler
+(
+    const void* keyPtr,
+    const void* valuePtr,
+    void* contextPtr
+)
+{
+    if (valuePtr == NULL)
+    {
+        LE_WARN("AT command '%s' is not properly created", (char*)keyPtr);
+        return true;
+    }
+
+    const ATCmdSubscribed_t* cmdPtr = valuePtr;
+    if (!cmdPtr->handlerFunc)
+    {
+        LE_WARN("AT command '%s' does not have a handler", (char*)keyPtr);
+        return true;
+    }
+
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("No command registration handler found for AT command '%s'", (char*)keyPtr);
+        return true;
+    }
+
+    CmdRegHandlerInfo_t* handlerInfoPtr = (CmdRegHandlerInfo_t*)contextPtr;
+    (*handlerInfoPtr->clientHandlerFunc)(cmdPtr->cmdRef, handlerInfoPtr->contextPtr);
+    return true;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Add handler function for EVENT 'le_atServer_CmdRegistration'
  *
  * This event provides information when a new AT command is subscribed.
@@ -3496,6 +3547,13 @@ LE_SHARED le_atServer_CmdRegistrationHandlerRef_t le_atServer_AddCmdRegistration
                                             (le_event_HandlerFunc_t)handlerPtr);
 
     le_event_SetContextPtr(handlerRef, contextPtr);
+
+    // If some apps have added AT commands before adding the command registration handler, we need
+    // to call the handler with these commands to make sure they are properly registered.
+    CmdRegHandlerInfo_t handlerInfo;
+    handlerInfo.clientHandlerFunc = handlerPtr;
+    handlerInfo.contextPtr = contextPtr;
+    le_hashmap_ForEach(CmdHashMap, CallCmdRegistrationHandler, &handlerInfo);
 
     return (le_atServer_CmdRegistrationHandlerRef_t)(handlerRef);
 }
