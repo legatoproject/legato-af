@@ -214,14 +214,21 @@ void ParseSdefReadSearchPath
         // When app is being created
         if (appFoundPath.empty() && !handler.appSearchPath.empty())
         {
-            std::string absAppSearchPath = path::Minimize(handler.appSearchPath.front());
-
-            if (!path::IsAbsolute(absAppSearchPath))
+            if(path::IsAbsolute(handler.adefFilePath))
             {
-                absAppSearchPath = path::MakeAbsolute(absAppSearchPath);
+                handler.absAdefFilePath = handler.adefFilePath;
             }
+            else
+            {
+                std::string absAppSearchPath = path::Minimize(handler.appSearchPath.front());
 
-            handler.absAdefFilePath = absAppSearchPath + "/" + handler.adefFilePath;
+                if (!path::IsAbsolute(absAppSearchPath))
+                {
+                    absAppSearchPath = path::MakeAbsolute(absAppSearchPath);
+                }
+
+                handler.absAdefFilePath = absAppSearchPath + "/" + handler.adefFilePath;
+            }
         }
 
 
@@ -247,14 +254,21 @@ void ParseSdefReadSearchPath
             // When component is being created
             if (compFoundPath.empty() && !handler.compSearchPath.empty())
             {
-                std::string absCompSearchPath = path::Minimize(handler.compSearchPath.front());
-
-                if (!path::IsAbsolute(absCompSearchPath))
+                if(path::IsAbsolute(handler.cdefFilePath))
                 {
-                    absCompSearchPath = path::MakeAbsolute(absCompSearchPath);
+                    handler.absCdefFilePath = handler.cdefFilePath;
                 }
+                else
+                {
+                    std::string absCompSearchPath = path::Minimize(handler.compSearchPath.front());
 
-                handler.absCdefFilePath = absCompSearchPath + "/" + handler.cdefFilePath;
+                    if (!path::IsAbsolute(absCompSearchPath))
+                    {
+                        absCompSearchPath = path::MakeAbsolute(absCompSearchPath);
+                    }
+
+                    handler.absCdefFilePath = absCompSearchPath + "/" + handler.cdefFilePath;
+                }
             }
         }
 
@@ -296,14 +310,21 @@ void ParseSdefReadSearchPath
         // When module is being created
         if (modFoundPath.empty() && !handler.moduleSearchPath.empty())
         {
-            std::string absModSearchPath = path::Minimize(handler.moduleSearchPath.front());
-
-            if (!path::IsAbsolute(absModSearchPath))
+            if(path::IsAbsolute(handler.mdefFilePath))
             {
-                absModSearchPath = path::MakeAbsolute(absModSearchPath);
+                handler.absMdefFilePath = handler.mdefFilePath;
             }
+            else
+            {
+                std::string absModSearchPath = path::Minimize(handler.moduleSearchPath.front());
 
-            handler.absMdefFilePath = absModSearchPath + "/" + handler.mdefFilePath;
+                if (!path::IsAbsolute(absModSearchPath))
+                {
+                    absModSearchPath = path::MakeAbsolute(absModSearchPath);
+                }
+
+                handler.absMdefFilePath = absModSearchPath + "/" + handler.mdefFilePath;
+            }
         }
     }
 
