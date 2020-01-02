@@ -31,4 +31,5 @@ cflags:
     -Dle_update_GetCurrentSysIndex=UpdateGetCurrentSysIndex
     -Dle_update_GetPreviousSystemIndex=UpdateGetPreviousSystemIndex
     -Dle_update_GetSystemHash=UpdateGetSystemHash
+    -DIFGEN_PROVIDE_PROTOTYPES
 }

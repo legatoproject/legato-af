@@ -12,3 +12,8 @@ sources:
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_ips.c
     simu/components/le_pa/pa_ips_simu.c
 }
+
+cflags:
+{
+    -DIFGEN_PROVIDE_PROTOTYPES
+}

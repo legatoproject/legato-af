@@ -11,3 +11,8 @@ sources:
     main.c
     client.c
 }
+
+cflags:
+{
+    -DIFGEN_PROVIDE_PROTOTYPES
+}

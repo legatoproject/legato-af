@@ -12,6 +12,7 @@ requires:
 cflags:
 {
     -I${LEGATO_ROOT}/components/watchdogChain
+    -DIFGEN_PROVIDE_PROTOTYPES
 }
 
 sources:

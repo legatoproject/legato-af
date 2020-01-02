@@ -13,3 +13,8 @@ sources:
     main.c
     bridgeTest.c
 }
+
+cflags:
+{
+    -DIFGEN_PROVIDE_PROTOTYPES
+}

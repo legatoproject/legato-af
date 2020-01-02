@@ -24,4 +24,5 @@ cflags:
     -Dle_msg_SetServiceRecvHandler=MySetServiceRecvHandler
     -Dle_msg_AddServiceOpenHandler=MyAddServiceOpenHandler
     -Dle_msg_AddServiceCloseHandler=MyAddServiceCloseHandler
+    -DIFGEN_PROVIDE_PROTOTYPES
 }

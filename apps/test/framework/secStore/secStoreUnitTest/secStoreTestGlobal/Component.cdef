@@ -16,3 +16,7 @@ sources:
     ../../secStoreTestGlobal/secStoreTestGlobal.c
 }
 
+cflags:
+{
+    -DIFGEN_PROVIDE_PROTOTYPES
+}

@@ -180,7 +180,7 @@ static _ClientThreadData_t* GetClientThreadDataPtr
  * If the current thread does not have a session ref, then this is a fatal error.
  */
 //--------------------------------------------------------------------------------------------------
-__attribute__((unused)) static le_msg_SessionRef_t GetCurrentSessionRef
+le_msg_SessionRef_t _{{apiName}}_GetCurrentSessionRef
 (
     void
 )
@@ -507,7 +507,7 @@ void {{apiName}}_DisconnectService
 //--------------------------------------------------------------------------------------------------
 {{function.comment|FormatHeaderComment}}
 //--------------------------------------------------------------------------------------------------
-{{function.returnType|FormatType}} {{apiName}}_{{function.name}}
+LE_DEFINE_INLINE {{function.returnType|FormatType}} {{apiName}}_{{function.name}}
 (
     {%- for parameter in function|CAPIParameters %}
     {{parameter|FormatParameter}}{% if not loop.last %},{% endif %}
@@ -516,13 +516,5 @@ void {{apiName}}_DisconnectService
     {%-else%}
     void
     {%-endfor%}
-)
-{
-    {% if function.returnType %}return{% endif %} ifgen_{{apiBaseName}}_{{function.name}}(
-        GetCurrentSessionRef()
-        {%- for parameter in function|CAPIParameters %}{% if loop.first %},{% endif %}
-        {{parameter|FormatParameterName}}{% if not loop.last %},{% endif %}
-        {%- endfor %}
-    );
-}
+);
 {%- endfor %}
