@@ -944,7 +944,7 @@ static void SetDefaultSmackRules
     // Give unsandboxed apps access to "_"
     if (!appRef->sandboxed)
     {
-        smack_SetRule(appLabelPtr, "rwx", "_");
+        smack_SetRule(appLabelPtr, "rwax", "_");
     }
 
     static char* frameworkAppList[] =
