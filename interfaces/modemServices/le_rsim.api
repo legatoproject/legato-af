@@ -120,14 +120,9 @@
 //--------------------------------------------------------------------------------------------------
 /**
  * Remote SIM maximal message size
- *
- * @note
- *  The maximal message size of 276 bytes is based on the longest possible SAP message.
- *  This message is a @c TRANSFER_APDU_RESP composed of a 4-byte SAP header, a 8-byte ResultCode,
- *  a 4-byte ResponseAPDU header, 256 bytes of APDU data, 2 status bytes and 2 padding bytes.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE MAX_MSG_SIZE = (276);
+DEFINE MAX_MSG_SIZE = (1024);
 
 //--------------------------------------------------------------------------------------------------
 /**
