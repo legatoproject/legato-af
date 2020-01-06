@@ -638,6 +638,13 @@ le_result_t le_socket_Read
         return LE_FAULT;
     }
 
+    // Disable FD Monitor if it exists to avoid two different threads selecting the
+    // same file descriptor
+    if (contextPtr->monitorRef)
+    {
+        le_fdMonitor_Disable(contextPtr->monitorRef, POLLIN);
+    }
+
     if (contextPtr->isSecure)
     {
         status = secSocket_Read(contextPtr->secureCtxPtr, dataPtr, dataLenPtr, contextPtr->timeout);
@@ -650,6 +657,12 @@ le_result_t le_socket_Read
     if ((status != LE_OK) && (status != LE_WOULD_BLOCK))
     {
         LE_ERROR("Read failed. Status: %d", status);
+    }
+
+    // Re-enable fdMonitor
+    if (contextPtr->monitorRef)
+    {
+        le_fdMonitor_Enable(contextPtr->monitorRef, POLLIN);
     }
 
     return status;
