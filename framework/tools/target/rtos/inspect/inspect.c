@@ -122,7 +122,7 @@ InspectEndStatus_t;
 //--------------------------------------------------------------------------------------------------
 #define INTERNAL_ERR(formatString, ...)                                 \
     {                                                                   \
-        fprintf(stderr, "Internal error check logs for details.\n");    \
+        printf("Internal error check logs for details.\n");             \
         LE_EMERG(formatString, ##__VA_ARGS__);                          \
         IsExiting = true;                                               \
     }
@@ -239,6 +239,10 @@ static le_dls_Link_t* GetNextLink
 {
     INTERNAL_ERR_IF(listInfoRef == NULL,
                     "obj ref for accessing a list in the remote process is NULL.");
+    if (listInfoRef == NULL)
+    {
+        return NULL;
+    }
 
     // Create a fake list of nodes that has a single element.  Use this when iterating over the
     // links in the list because the links read from the mems file is in the address space of the
@@ -329,7 +333,7 @@ static void PrintHelp
     void
 )
 {
-    puts(
+    printf(
         "NAME:\n"
         "    inspect - Inspects the internal structures such as memory pools, timers, etc. of a\n"
         "              Legato process.\n"
@@ -345,7 +349,7 @@ static void PrintHelp
         "        Prints in verbose mode.\n"
         "\n"
         "    --help\n"
-        "        Display this help and exit.\n"
+        "        Display this help and exit.\n\n"
         );
 
     IsExiting = true;
@@ -566,7 +570,7 @@ static void PrintHeader
 
         i++;
     }
-    puts(TableLineBuffer);
+    printf("%s\n", TableLineBuffer);
 }
 
 
@@ -596,7 +600,7 @@ static void PrintInfo
 
         i++;
     }
-    puts(TableLineBuffer);
+    printf("%s\n", TableLineBuffer);
 }
 
 
@@ -660,6 +664,7 @@ static int PrintInspectHeader
 
         default:
             INTERNAL_ERR("unexpected inspect type %d.", InspectType);
+            return 0;
     }
 
     printf("\n");
@@ -871,6 +876,7 @@ static void InspectFunc
 
         default:
             INTERNAL_ERR("unexpected inspect type %d.", inspectType);
+            return;
     }
 
     // Create an iterator.
@@ -936,7 +942,7 @@ static void CommandArgHandler
     }
     else
     {
-        fprintf(stderr, "Invalid command '%s'.\n", command);
+        printf("Invalid command '%s'.\n", command);
         IsExiting = true;
     }
 }
