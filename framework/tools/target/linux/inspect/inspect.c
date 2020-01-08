@@ -812,6 +812,7 @@ static void* CreateThreadMemberObjIter
 
     // Create the iterator.
     ThreadMemberObjIter_t* iteratorPtr = le_mem_ForceAlloc(IteratorPool);
+    memset(iteratorPtr, 0, sizeof(ThreadMemberObjIter_t));
     InitRemoteDlsListAccessObj(&iteratorPtr->threadObjList);
     InitRemoteDlsListAccessObj(&iteratorPtr->threadMemberObjList);
 
@@ -1533,7 +1534,8 @@ static le_dls_Link_t* GetNextThreadMemberObjLinkPtr
         thread_Obj_t* remThreadObjPtr = CONTAINER_OF(remThreadObjNextLinkPtr, thread_Obj_t, link);
 
         // free last timer if applicable
-        if (localThreadObjRef->timerRecPtr[TIMER_NON_WAKEUP])
+        if ((memberObjType == INSPECT_INSP_TYPE_TIMER) &&
+            localThreadObjRef->timerRecPtr[TIMER_NON_WAKEUP])
         {
             le_mem_Release(localThreadObjRef->timerRecPtr[TIMER_NON_WAKEUP]);
             localThreadObjRef->timerRecPtr[TIMER_NON_WAKEUP] = NULL;
