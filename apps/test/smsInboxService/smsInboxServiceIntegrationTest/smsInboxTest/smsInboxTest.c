@@ -51,7 +51,7 @@ void Testmbx_GetDetails
     LE_INFO("IMSI tied to the message is \"%s\".", imsi);
 
     uintval = le_smsInbox1_GetMsgLen( msgId);
-    LE_INFO("Length of the message is %zd.", uintval);
+    LE_INFO("Length of the message is %"PRIdS".", uintval);
 
     format = le_smsInbox1_GetFormat( msgId);
     LE_INFO("SMS format is is %d.", format);

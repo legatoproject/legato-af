@@ -286,7 +286,7 @@ static void SetInstallObjState_
 )
 //--------------------------------------------------------------------------------------------------
 {
-    LE_DEBUG("### <%s: %zu>: Set object Legato/1 state/result: (%d) %s / (%d) %s",
+    LE_DEBUG("### <%s: %"PRIuS">: Set object Legato/1 state/result: (%d) %s / (%d) %s",
              functionNamePtr,
              line,
              state,

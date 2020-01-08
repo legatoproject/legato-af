@@ -462,6 +462,6 @@ le_result_t netSocket_Read
         return LE_FAULT;
     }
 
-    LE_INFO("Read size: %zu", *bufLenPtr);
+    LE_INFO("Read size: %"PRIuS, *bufLenPtr);
     return LE_OK;
 }

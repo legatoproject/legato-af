@@ -548,14 +548,14 @@ le_result_t le_info_GetPriId
 
     if (priIdPnStrNumElements > LE_INFO_MAX_PRIID_PN_BYTES)
     {
-        LE_ERROR("priIdPnStrNumElements lentgh (%zu) exceeds > %d",
+        LE_ERROR("priIdPnStrNumElements lentgh (%"PRIuS") exceeds > %d",
                         priIdPnStrNumElements, LE_INFO_MAX_PRIID_PN_BYTES);
         return LE_OVERFLOW;
     }
 
     if (priIdRevStrNumElements > LE_INFO_MAX_PRIID_REV_BYTES)
     {
-        LE_ERROR("priIdRevStrNumElements lentgh (%zu) exceeds > %d",
+        LE_ERROR("priIdRevStrNumElements lentgh (%"PRIuS") exceeds > %d",
                         priIdRevStrNumElements, LE_INFO_MAX_PRIID_REV_BYTES);
         return LE_OVERFLOW;
     }

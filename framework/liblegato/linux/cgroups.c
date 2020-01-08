@@ -923,7 +923,7 @@ le_result_t cgrp_cpu_SetShare
 {
     // Convert the value to a string.
     char shareStr[MAX_DIGITS];
-    LE_ASSERT(snprintf(shareStr, sizeof(shareStr), "%zd", share) < sizeof(shareStr));
+    LE_ASSERT(snprintf(shareStr, sizeof(shareStr), "%"PRIdS, share) < sizeof(shareStr));
 
     // Write the share value to the file.
     if (WriteToFile(CGRP_SUBSYS_CPU, cgroupNamePtr, CPU_SHARES_FILENAME, shareStr) != LE_OK)
@@ -955,7 +955,7 @@ le_result_t cgrp_mem_SetLimit
     // Convert the limit to a string.
     char limitStr[MAX_DIGITS];
 
-    LE_ASSERT(snprintf(limitStr, sizeof(limitStr), "%zd", limit * 1024) < sizeof(limitStr));
+    LE_ASSERT(snprintf(limitStr, sizeof(limitStr), "%"PRIdS, limit * 1024) < sizeof(limitStr));
 
     // Write the limit to the file.
     if (WriteToFile(CGRP_SUBSYS_MEM, cgroupNamePtr, MEM_LIMIT_FILENAME, limitStr) != LE_OK)

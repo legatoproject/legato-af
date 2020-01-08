@@ -191,7 +191,7 @@ le_msg_ProtocolRef_t le_msg_GetProtocolRef
     }
     else if (protocolPtr->maxPayloadSize != largestMsgSize)
     {
-        LE_FATAL("Wrong maximum message size (%zu) specified for protocol '%s' (expected %zu).",
+        LE_FATAL("Wrong maximum message size (%"PRIuS") specified for protocol '%s' (expected %"PRIuS").",
                  largestMsgSize,
                  protocolId,
                  protocolPtr->maxPayloadSize);

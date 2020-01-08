@@ -410,7 +410,7 @@ static void Testle_smsInbox_GetMsgLen
 {
     size_t uintval;
     uintval = le_smsInbox1_GetMsgLen(MyMsgId1);
-    LE_INFO("Length of the message is %zd.", uintval);
+    LE_INFO("Length of the message is %"PRIdS".", uintval);
 }
 
 //--------------------------------------------------------------------------------------------------

@@ -145,7 +145,7 @@ static void SocketEventHandler
             exit(EXIT_FAILURE);
         }
 
-        LE_INFO("Data received size: %zu", length);
+        LE_INFO("Data received size: %"PRIuS, length);
         LE_DUMP((const uint8_t*)buffer, length);
     }
 }
@@ -268,7 +268,7 @@ COMPONENT_INIT
             status = le_socket_Read(socketRef, buffer, &length);
             if (LE_OK == status)
             {
-                LE_INFO("Data received size: %zu", length);
+                LE_INFO("Data received size: %"PRIuS, length);
                 LE_DUMP((const uint8_t*)buffer, length);
                 chunkReceived = true;
 

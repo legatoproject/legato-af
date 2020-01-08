@@ -1130,8 +1130,11 @@ le_result_t le_flash_Read
         if (LE_OK != res)
         {
             LE_ERROR("Ubi Volume %u Partition \"%s\" MTD%d: Read failed at blockIndex %u,"
-                     " dataSize %zu: %d",
-                     partPtr->ubiVolume, partPtr->partitionName, partPtr->mtdNum, blockIndex,
+                     " dataSize %"PRIuS": %d",
+                     partPtr->ubiVolume,
+                     partPtr->partitionName,
+                     partPtr->mtdNum,
+                     (unsigned int) blockIndex,
                      readSize, res);
             res = LE_FAULT;
         }
@@ -1142,8 +1145,11 @@ le_result_t le_flash_Read
         res = pa_flash_ReadAtBlock( partPtr->desc, blockIndex, readData, *readDataSizePtr);
         if (LE_OK != res)
         {
-            LE_ERROR("Partition \"%s\" MTD%d: Read failed at blockIndex %u, dataSize %zu: %d",
-                     partPtr->partitionName, partPtr->mtdNum, blockIndex, *readDataSizePtr, res);
+            LE_ERROR("Partition \"%s\" MTD%d: Read failed at blockIndex %u, dataSize %"PRIuS": %d",
+                     partPtr->partitionName,
+                     partPtr->mtdNum,
+                     (unsigned int) blockIndex,
+                     *readDataSizePtr, res);
             res = LE_FAULT;
         }
     }
@@ -1202,9 +1208,13 @@ le_result_t le_flash_Write
         if (LE_OK != res)
         {
             LE_ERROR("Ubi Volume %u Partition \"%s\" MTD%d: Write failed at blockIndex %u,"
-                     " dataSize %zu: %d",
-                     partPtr->ubiVolume, partPtr->partitionName, partPtr->mtdNum, blockIndex,
-                     writeDataSize, res);
+                     " dataSize %"PRIuS": %d",
+                     partPtr->ubiVolume,
+                     partPtr->partitionName,
+                     partPtr->mtdNum,
+                     (unsigned int) blockIndex,
+                     writeDataSize,
+                     res);
             res = LE_FAULT;
         }
     }
@@ -1220,8 +1230,12 @@ le_result_t le_flash_Write
         res = pa_flash_WriteAtBlock( partPtr->desc, blockIndex, (uint8_t*)writeData, writeDataSize);
         if (LE_OK != res)
         {
-            LE_ERROR("Partition \"%s\" MTD%d: Write failed at blockIndex %u, dataSize %zu: %d",
-                     partPtr->partitionName, partPtr->mtdNum, blockIndex, writeDataSize, res);
+            LE_ERROR("Partition \"%s\" MTD%d: Write failed at blockIndex %u, dataSize %"PRIuS": %d",
+                     partPtr->partitionName,
+                     partPtr->mtdNum,
+                     (unsigned int) blockIndex,
+                     writeDataSize,
+                     res);
             res = LE_FAULT;
         }
     }

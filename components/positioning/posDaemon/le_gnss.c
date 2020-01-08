@@ -487,7 +487,7 @@ static void WriteNmeaPipe
                                    nmeaString + CurrentNmeaWritePosition,
                                    sizeToWrite);
 
-    LE_DEBUG("resultWrite %zd / %zd, error, errno.%d (%s)",writeSize, sizeToWrite, errno,
+    LE_DEBUG("resultWrite %"PRIdS" / %"PRIdS", error, errno.%d (%s)",writeSize, sizeToWrite, errno,
              LE_ERRNO_TXT(errno));
 
     if (-1 != writeSize)

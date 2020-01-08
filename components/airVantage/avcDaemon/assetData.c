@@ -1684,7 +1684,7 @@ static le_result_t TimeSeriesAddEntry
     if (currentSize > (fieldDataPtr->timeSeriesPtr->bufferSize - CBOR_RESERVED_BYTES))
     {
         LE_WARN("Time series buffer overflow on field %d.", fieldDataPtr->fieldId);
-        LE_DEBUG("currentSize = %zd.", currentSize);
+        LE_DEBUG("currentSize = %"PRIdS".", currentSize);
 
         return LE_OVERFLOW;
     }
@@ -1789,7 +1789,7 @@ static le_result_t TimeSeriesAddEntry
     {
         LE_WARN("Time series buffer full; flush and restart time series on field %d.",
                  fieldDataPtr->fieldId);
-        LE_DEBUG("currentSize = %zd.", currentSize);
+        LE_DEBUG("currentSize = %"PRIdS".", currentSize);
 
         return LE_NO_MEMORY;
     }

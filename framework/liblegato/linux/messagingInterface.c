@@ -197,7 +197,7 @@ static void InitInterface
                                       sizeof(interfacePtr->id.name),
                                       NULL);
     LE_FATAL_IF(result != LE_OK,
-                "Service ID '%s' too long (should only be %zu bytes total).",
+                "Service ID '%s' too long (should only be %"PRIuS" bytes total).",
                 interfaceName,
                 sizeof(interfacePtr->id.name));
 
@@ -302,7 +302,7 @@ static msgInterface_UnixService_t* GetService
 
     id.protocolRef = protocolRef;
     LE_FATAL_IF(le_utf8_Copy(id.name, interfaceName, sizeof(id.name), NULL) == LE_OVERFLOW,
-                "Service ID '%s' too long (should only be %zu bytes total).",
+                "Service ID '%s' too long (should only be %"PRIuS" bytes total).",
                 interfaceName,
                 sizeof(id.name));
 
@@ -345,7 +345,7 @@ static msgInterface_ClientInterface_t* GetClient
     id.protocolRef = protocolRef;
 
     LE_FATAL_IF(le_utf8_Copy(id.name, interfaceName, sizeof(id.name), NULL) == LE_OVERFLOW,
-                "Service ID '%s' too long (should only be %zu bytes total).",
+                "Service ID '%s' too long (should only be %"PRIuS" bytes total).",
                 interfaceName,
                 sizeof(id.name));
 

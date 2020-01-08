@@ -79,7 +79,7 @@ void installer_GetAppHashFromSymlink
     else if (bytesRead >= sizeof(linkContent))
     {
         linkContent[0] = '\0';
-        LE_FATAL("Contents of symlink '%s' too long (> %zu).", linkPath, sizeof(linkContent) - 1);
+        LE_FATAL("Contents of symlink '%s' too long (> %"PRIuS").", linkPath, sizeof(linkContent) - 1);
     }
     else
     {

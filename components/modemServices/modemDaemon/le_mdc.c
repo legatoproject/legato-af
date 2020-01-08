@@ -1137,7 +1137,7 @@ le_result_t le_mdc_GetProfileFromApn
     size_t apnLen = strlen(apnPtr);
     if ( apnLen > LE_MDC_APN_NAME_MAX_LEN )
     {
-        LE_CRIT("apnStr is too long (%zd) > LE_MDC_APN_NAME_MAX_LEN (%d)!",
+        LE_CRIT("apnStr is too long (%"PRIdS") > LE_MDC_APN_NAME_MAX_LEN (%d)!",
             apnLen,LE_MDC_APN_NAME_MAX_LEN);
         return LE_BAD_PARAMETER;
     }
@@ -2338,7 +2338,7 @@ le_result_t le_mdc_SetAPN
     size_t apnLen = strlen(apnPtr);
     if ( apnLen > LE_MDC_APN_NAME_MAX_LEN )
     {
-        LE_CRIT("apnStr is too long (%zd) > LE_MDC_APN_NAME_MAX_LEN (%d)!",
+        LE_CRIT("apnStr is too long (%"PRIdS") > LE_MDC_APN_NAME_MAX_LEN (%d)!",
             apnLen,LE_MDC_APN_NAME_MAX_LEN);
         return LE_BAD_PARAMETER;
     }
@@ -2552,13 +2552,13 @@ le_result_t le_mdc_SetAuthentication
     }
     if ( strlen(userName) > LE_MDC_USER_NAME_MAX_LEN )
     {
-        LE_KILL_CLIENT("User name is too long (%zd) > LE_MDC_USER_NAME_MAX_LEN (%d)!",
+        LE_KILL_CLIENT("User name is too long (%"PRIdS") > LE_MDC_USER_NAME_MAX_LEN (%d)!",
                         strlen(userName),LE_MDC_USER_NAME_MAX_LEN);
         return LE_FAULT;
     }
     if ( strlen(password) > LE_MDC_PASSWORD_NAME_MAX_LEN )
     {
-        LE_KILL_CLIENT("Password name is too long (%zd) > LE_MDC_PASSWORD_NAME_MAX_LEN (%d)!",
+        LE_KILL_CLIENT("Password name is too long (%"PRIdS") > LE_MDC_PASSWORD_NAME_MAX_LEN (%d)!",
                         strlen(password),LE_MDC_PASSWORD_NAME_MAX_LEN);
         return LE_FAULT;
     }

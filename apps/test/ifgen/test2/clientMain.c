@@ -40,7 +40,7 @@ void writeFdToLog(int fd)
         {
             buffer[numRead] = '\0';
         }
-        LE_PRINT_VALUE("%zd", numRead);
+        LE_PRINT_VALUE("%"PRIdS, numRead);
         LE_PRINT_VALUE("%s", buffer);
     }
 }

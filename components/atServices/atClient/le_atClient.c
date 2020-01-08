@@ -862,8 +862,8 @@ static bool CheckResponse
 
     le_dls_Link_t* linkPtr = le_dls_Peek(responseListPtr);
 
-    LE_DEBUG("Command: %s, size: %zu", cmdNamePtr, strlen(cmdNamePtr));
-    LE_DEBUG("Received response: %s, size: %zu", receivedRspPtr, lineSize);
+    LE_DEBUG("Command: %s, size: %"PRIuS, cmdNamePtr, strlen(cmdNamePtr));
+    LE_DEBUG("Received response: %s, size: %"PRIuS, receivedRspPtr, lineSize);
 
     if (strncmp(cmdNamePtr, receivedRspPtr, strlen(cmdNamePtr)) == 0)
     {
@@ -877,7 +877,7 @@ static bool CheckResponse
         RspString_t* currStringPtr = CONTAINER_OF(linkPtr,
                                                   RspString_t,
                                                   link);
-        LE_DEBUG("Item: %s, size: %zu", currStringPtr->line, strlen(currStringPtr->line));
+        LE_DEBUG("Item: %s, size: %"PRIuS, currStringPtr->line, strlen(currStringPtr->line));
 
         if ((strlen(currStringPtr->line) == 0) ||
            ((lineSize >= strlen(currStringPtr->line)) &&

@@ -64,7 +64,7 @@ static void TestFileSystemSize(void)
 
     // This is the file system size.  Compare it to the limit.
     LE_FATAL_IF(actualLimit != fileSysSize,
-                "File system size is %zd but expected size is %zd.",
+                "File system size is %"PRIdS" but expected size is %"PRIdS".",
                 fileSysSize, actualLimit);
 }
 

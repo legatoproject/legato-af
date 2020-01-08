@@ -63,8 +63,8 @@ static int CountStringfd(int fd)
         }
         else
         {
-            LE_FATAL("Test failed. String mismatch. WriteStr: '%s', ReadStr: '%s', len: %zd,"
-                     " readBytes: %zd",
+            LE_FATAL("Test failed. String mismatch. WriteStr: '%s', ReadStr: '%s', len: %"PRIdS","
+                     " readBytes: %"PRIdS,
                      WriteStr,
                      readStr,
                      len,

@@ -75,7 +75,7 @@ void async_FileTest
         {
             buffer[numRead] = '\0';
         }
-        LE_PRINT_VALUE("%zd", numRead);
+        LE_PRINT_VALUE("%"PRIdS, numRead);
         LE_PRINT_VALUE("%s", buffer);
     }
 
@@ -100,7 +100,7 @@ void async_FileTest
         {
             buffer[numRead] = '\0';
         }
-        LE_PRINT_VALUE("%zd", numRead);
+        LE_PRINT_VALUE("%"PRIdS, numRead);
         LE_PRINT_VALUE("%s", buffer);
     }
     // Return the response to the client

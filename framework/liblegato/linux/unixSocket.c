@@ -519,7 +519,7 @@ le_result_t unixSocket_SendMsg
 
     if (bytesSent < dataSize)
     {
-        LE_ERROR("The last %zu data bytes (of %zu total) were discarded by sendmsg()!",
+        LE_ERROR("The last %"PRIuS" data bytes (of %"PRIuS" total) were discarded by sendmsg()!",
                  dataSize - bytesSent,
                  dataSize);
         return LE_FAULT;

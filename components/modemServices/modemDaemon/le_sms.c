@@ -1498,7 +1498,7 @@ static le_result_t EncodeMessageToPdu
     switch (msgPtr->format)
     {
         case LE_SMS_FORMAT_TEXT:
-            LE_DEBUG("Try to encode Text Msg %p, tel.%s, text.%s, userdataLen %zd, protocol %d",
+            LE_DEBUG("Try to encode Text Msg %p, tel.%s, text.%s, userdataLen %"PRIdS", protocol %d",
                      msgPtr, msgPtr->tel, msgPtr->text, msgPtr->userdataLen, msgPtr->protocol);
 
             /* @todo send split messages */
@@ -1510,7 +1510,7 @@ static le_result_t EncodeMessageToPdu
             break;
 
         case LE_SMS_FORMAT_BINARY:
-            LE_DEBUG("Try to encode Binary Msg.%p, tel.%s, binary.%p, userdataLen.%zd, protocol %d",
+            LE_DEBUG("Try to encode Binary Msg.%p, tel.%s, binary.%p, userdataLen.%"PRIdS", protocol %d",
                      msgPtr, msgPtr->tel, msgPtr->binary, msgPtr->userdataLen, msgPtr->protocol);
 
             /* @todo send split messages */
@@ -1527,7 +1527,7 @@ static le_result_t EncodeMessageToPdu
             break;
 
         case LE_SMS_FORMAT_UCS2:
-            LE_DEBUG("Try to encode UCS2 Msg.%p, tel.%s, binary.%p, userdataLen.%zd, protocol %d",
+            LE_DEBUG("Try to encode UCS2 Msg.%p, tel.%s, binary.%p, userdataLen.%"PRIdS", protocol %d",
                      msgPtr, msgPtr->tel, msgPtr->binary, msgPtr->userdataLen, msgPtr->protocol);
 
             /* @todo send split messages */
@@ -3205,7 +3205,7 @@ le_result_t le_sms_SetText
     msgPtr->format = LE_SMS_FORMAT_TEXT;
     msgPtr->userdataLen = length;
     msgPtr->pduReady = false;
-    LE_DEBUG("Try to copy data %s, len.%zd @ msgPtr->text.%p for msgPtr.%p",
+    LE_DEBUG("Try to copy data %s, len.%"PRIdS" @ msgPtr->text.%p for msgPtr.%p",
              textPtr, length, msgPtr->text, msgPtr);
 
     le_utf8_Copy(msgPtr->text, textPtr, sizeof(msgPtr->text), NULL);
@@ -3269,7 +3269,7 @@ le_result_t le_sms_SetBinary
 
     memcpy(msgPtr->binary, binPtr, len);
 
-    LE_DEBUG("copy data, len.%zd @ msgPtr->userdata.%p for msgPtr.%p", len, msgPtr->binary, msgPtr);
+    LE_DEBUG("copy data, len.%"PRIdS" @ msgPtr->userdata.%p for msgPtr.%p", len, msgPtr->binary, msgPtr);
 
     msgPtr->pduReady = false;
 
@@ -3332,7 +3332,7 @@ le_result_t le_sms_SetPDU
 
     memcpy(msgPtr->pdu.data, pduPtr, len);
 
-    LE_DEBUG("copy data, len.%zd @ msgPtr->pdu.%p for msgPtr.%p", len, msgPtr->pdu.data, msgPtr);
+    LE_DEBUG("copy data, len.%"PRIdS" @ msgPtr->pdu.%p for msgPtr.%p", len, msgPtr->pdu.data, msgPtr);
 
     msgPtr->pduReady = true;
 
@@ -3406,7 +3406,7 @@ le_result_t le_sms_SetUCS2
 
     memcpy(msgPtr->binary, (uint8_t *) ucs2Ptr, msgPtr->userdataLen);
 
-    LE_DEBUG("copy data, ucs2NumElements.%zd @ msgPtr->userdata.%p for ucs2Ptr.%p",
+    LE_DEBUG("copy data, ucs2NumElements.%"PRIdS" @ msgPtr->userdata.%p for ucs2Ptr.%p",
         ucs2NumElements, msgPtr->binary, ucs2Ptr);
 
     msgPtr->pduReady = false;

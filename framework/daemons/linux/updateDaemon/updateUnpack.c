@@ -521,7 +521,7 @@ static void CopyBytesToPipeline
         // Handle end of file.
         if (readResult == 0)
         {
-            LE_ERROR("Unexpected early end of input after %zu bytes of %zu.",
+            LE_ERROR("Unexpected early end of input after %"PRIuS" bytes of %"PRIuS".",
                      PayloadBytesCopied,
                      PayloadSize);
             goto error;
@@ -560,7 +560,7 @@ static void CopyBytesToPipeline
     // If we have copied all the payload bytes to the pipeline's input, then we can stop
     // monitoring the input fd now, close the pipeline input write pipe, and wait for the pipeline
     // completion callback (UntarDone()).
-    LE_INFO("Payload copied: %zu/%zu", PayloadBytesCopied, PayloadSize);
+    LE_INFO("Payload copied: %"PRIuS"/%"PRIuS, PayloadBytesCopied, PayloadSize);
     LE_ASSERT(PayloadBytesCopied <= PayloadSize);
     if (PayloadBytesCopied == PayloadSize)
     {
@@ -627,7 +627,7 @@ static void DiscardPayloadBytes
 
         if (0 == readResult)
         {
-            LE_ERROR("Unexpected early end of input after %zu bytes of %zu.",
+            LE_ERROR("Unexpected early end of input after %"PRIuS" bytes of %"PRIuS".",
                      PayloadBytesCopied,
                      PayloadSize);
             HandleInternalError();
@@ -642,7 +642,7 @@ static void DiscardPayloadBytes
 
     // If we have read all the payload bytes, then we can stop monitoring the input fd for now
     // and wrap up this app.
-    LE_INFO("Payload discarded: %zu/%zu", PayloadBytesCopied, PayloadSize);
+    LE_INFO("Payload discarded: %"PRIuS"/%"PRIuS, PayloadBytesCopied, PayloadSize);
     LE_ASSERT(PayloadBytesCopied <= PayloadSize);
     if (PayloadBytesCopied == PayloadSize)
     {
@@ -1130,7 +1130,7 @@ static void SizeEventHandler
         }
         else
         {
-            LE_DEBUG("Size: '%zu'", PayloadSize);
+            LE_DEBUG("Size: '%"PRIuS"'", PayloadSize);
         }
     }
 }

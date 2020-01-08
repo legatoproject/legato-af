@@ -245,7 +245,7 @@ static bool TestRange(uint32_t min, uint32_t max, uint64_t numSamples)
             {
                 sampleSpeed = ((double)(i))/elapsedTime.sec;
             }
-            LE_INFO("[%.1f%%] Collecting ... %zd samples [%.1f ksamples/s]",
+            LE_INFO("[%.1f%%] Collecting ... %"PRIdS" samples [%.1f ksamples/s]",
                         ((float)(i)*100)/numSamples,
                         i,
                         sampleSpeed/1000);
@@ -270,7 +270,7 @@ static bool TestSmallBuffer(void)
 {
     uint8_t buf[16] = {0};
 
-    LE_INFO("Test small buffer (%zd)", sizeof(buf));
+    LE_INFO("Test small buffer (%"PRIdS")", sizeof(buf));
 
     le_rand_GetBuffer(buf, sizeof(buf));
 
@@ -287,7 +287,7 @@ static bool TestLargeBuffer(void)
 {
     uint64_t numSamples = 1024 * 1024; // 1MB
     size_t bufSize = numSamples / sizeof(uint8_t);
-    LE_INFO("Test large buffer (%zd)", bufSize);
+    LE_INFO("Test large buffer (%"PRIdS")", bufSize);
 
     uint8_t * buf = malloc(bufSize);
     LE_ASSERT(buf != NULL);

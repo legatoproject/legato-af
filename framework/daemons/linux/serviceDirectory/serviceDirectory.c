@@ -585,7 +585,7 @@ static le_result_t ReceiveMessage
     }
     else if ( (result == LE_OK) && (byteCount != msgSize) )
     {
-        LE_ERROR("Incorrect number of bytes received (%zd received, %zu expected).",
+        LE_ERROR("Incorrect number of bytes received (%"PRIdS" received, %"PRIuS" expected).",
                  byteCount,
                  msgSize);
         return LE_FAULT;
@@ -778,7 +778,7 @@ static le_result_t DispatchToServer
                 serverConnectionPtr->interface.maxProtocolMsgSize)
     {
         LE_ERROR("Client (uid %u '%s', pid %d) disagrees with server (uid %u '%s', pid %d) "
-                    "on max message size (%zu vs. %zu) of service '%s:%s'.",
+                    "on max message size (%"PRIuS" vs. %"PRIuS") of service '%s:%s'.",
                  clientConnectionPtr->userPtr->uid,
                  clientConnectionPtr->userPtr->name,
                  clientConnectionPtr->pid,
@@ -1958,7 +1958,7 @@ static void SdirToolListServices
             }
 
             dprintf(fd,
-                    ".%s  (protocol ID = '%s', max message size = %zu bytes)\n",
+                    ".%s  (protocol ID = '%s', max message size = %"PRIuS" bytes)\n",
                     connectionPtr->interface.interfaceName,
                     connectionPtr->interface.protocolId,
                     connectionPtr->interface.maxProtocolMsgSize);
@@ -2213,7 +2213,7 @@ static void SdirToolListServicesJson
                         "\"interface\":\"%s\""
                         "},"
                         "\"pid\":%d,"
-                        "\"maxMessageSize\":%zu,"
+                        "\"maxMessageSize\":%"PRIuS","
                         "\"protocolId\":\"%s\""
                         "}",
                         serverTypeStr,

@@ -228,7 +228,7 @@ static void CheckLabel
     LE_FATAL_IF(labelSize == 0, "SMACK label cannot be empty.");
 
     LE_FATAL_IF(labelSize > LIMIT_MAX_SMACK_LABEL_LEN,
-                "SMACK label length, %zd chars, is too long.  Labels must be less than %d chars",
+                "SMACK label length, %"PRIdS" chars, is too long.  Labels must be less than %d chars",
                 labelSize, LIMIT_MAX_SMACK_LABEL_LEN);
 
     // Check for invalid characters.

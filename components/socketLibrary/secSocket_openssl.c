@@ -208,7 +208,7 @@ le_result_t secSocket_AddCertificate
         return LE_BAD_PARAMETER;
     }
 
-    LE_INFO("Certificate: %p Len:%zu", certificatePtr, certificateLen);
+    LE_INFO("Certificate: %p Len:%"PRIuS, certificatePtr, certificateLen);
 
     // Get a BIO abstraction pointer
     bio = BIO_new_mem_buf((void*)certificatePtr, certificateLen);

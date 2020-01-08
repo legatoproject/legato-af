@@ -63,7 +63,7 @@ COMPONENT_INIT
     // Get file size
     size_t fileSize = 0;
     LE_ASSERT_OK(le_fs_GetSize(filePath, &fileSize));
-    printf("File size of '%s': %zu\n", filePath, fileSize);
+    printf("File size of '%s': %"PRIuS"\n", filePath, fileSize);
     LE_ASSERT(strlen((char*)dataToWrite) == fileSize);
 
     // Seek negative offset from the beginning
@@ -201,7 +201,7 @@ COMPONENT_INIT
     // Get file size
     fileSize = 0;
     LE_ASSERT_OK(le_fs_GetSize(newFilePath, &fileSize));
-    printf("File size of '%s': %zu\n", newFilePath, fileSize);
+    printf("File size of '%s': %"PRIuS"\n", newFilePath, fileSize);
     LE_ASSERT((2 * strlen((char*)dataToWrite)) == fileSize);
 
     // Create and open a new file

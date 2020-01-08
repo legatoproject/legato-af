@@ -1133,7 +1133,7 @@ static void UpdateClientSessionSettings
 
         if (byteCount >= maxSize)
         {
-            LE_CRIT("Message too long (%zu bytes) to send to component '%s' in process '%s' (pid %d).",
+            LE_CRIT("Message too long (%"PRIuS" bytes) to send to component '%s' in process '%s' (pid %d).",
                     byteCount,
                     logSessionPtr->componentName,
                     runningProcObjPtr->procNameObjPtr->name,
@@ -1186,7 +1186,7 @@ static void UpdateClientTraceSetting
 
     if (byteCount >= maxSize)
     {
-        LE_CRIT("Message too long (%zu bytes) to send to component '%s' in process '%s' (pid %d).",
+        LE_CRIT("Message too long (%"PRIuS" bytes) to send to component '%s' in process '%s' (pid %d).",
                 byteCount,
                 logSessionPtr->componentName,
                 runningProcObjPtr->procNameObjPtr->name,

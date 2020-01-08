@@ -1042,7 +1042,7 @@ static le_result_t DecodeUserDataField
             }
             else
             {
-                LE_ERROR("Overflow occurs when converting 8bits to 8bits %d>%zd",
+                LE_ERROR("Overflow occurs when converting 8bits to 8bits %d>%"PRIdS,
                          messageLen,destDataSize);
                 return LE_OVERFLOW;
             }
@@ -1081,7 +1081,7 @@ static le_result_t DecodeUserDataField
             }
             else
             {
-                LE_ERROR("Overflow occurs when copying UCS2 to UCS2 %d > %zd",
+                LE_ERROR("Overflow occurs when copying UCS2 to UCS2 %d > %"PRIdS,
                          messageLen, destDataSize);
                 return LE_OVERFLOW;
             }
@@ -2523,7 +2523,7 @@ static le_result_t SetCdmaMessageData
         {
             if (dataSize>sizeof(messagePtr->message.bearerData.userData.chari))
             {
-                LE_WARN("Overflow occur when encoding user data %zd>%zd",
+                LE_WARN("Overflow occur when encoding user data %"PRIdS">%"PRIdS,
                          dataSize,sizeof(messagePtr->message.bearerData.userData.chari));
                 return LE_OVERFLOW;
             }
@@ -2537,7 +2537,7 @@ static le_result_t SetCdmaMessageData
         {
             if (dataSize > sizeof(messagePtr->message.bearerData.userData.chari))
             {
-                LE_WARN("Overflow occurs when encoding user data %zd>%zd",
+                LE_WARN("Overflow occurs when encoding user data %"PRIdS">%"PRIdS,
                     dataSize,sizeof(messagePtr->message.bearerData.userData.chari));
                 return LE_OVERFLOW;
             }

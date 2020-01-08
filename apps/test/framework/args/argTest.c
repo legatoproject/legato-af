@@ -13,7 +13,7 @@ static void TestProgramName(void)
 
 static void TestNumberOfArgs(void)
 {
-    LE_DEBUG("The number of command line arguments: %zd", le_arg_NumArgs());
+    LE_DEBUG("The number of command line arguments: %"PRIdS, le_arg_NumArgs());
     LE_ASSERT(le_arg_NumArgs() == 4);
 }
 

@@ -213,7 +213,7 @@ void kill_ByName
 
     if (s >= sizeof(killCmd))
     {
-        LE_FATAL("Could not create 'killall' cmd, buffer is too small.  Buffer is %zd bytes but \
+        LE_FATAL("Could not create 'killall' cmd, buffer is too small.  Buffer is %"PRIdS" bytes but \
 needs to be %d bytes.", sizeof(killCmd), s);
     }
 

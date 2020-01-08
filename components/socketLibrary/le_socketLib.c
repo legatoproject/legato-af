@@ -421,7 +421,7 @@ le_result_t le_socket_AddCertificate
 
     if ((!certificatePtr) || (certificateLen == 0))
     {
-        LE_ERROR("Wrong parameter: %p, %zu", certificatePtr, certificateLen);
+        LE_ERROR("Wrong parameter: %p, %"PRIuS, certificatePtr, certificateLen);
         return LE_BAD_PARAMETER;
     }
     if (contextPtr->secureCtxPtr == NULL)

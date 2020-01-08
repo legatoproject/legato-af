@@ -1628,7 +1628,7 @@ static le_result_t TestEncodePdu
         size_t messageLength = strlen(assoc->text);
 
         LE_INFO("=> Index %d", i);
-        LE_INFO("Text (%zd): (%s)", messageLength, assoc->text);
+        LE_INFO("Text (%"PRIdS"): (%s)", messageLength, assoc->text);
 
         // Enable or disable SMS Status Report
         if (assoc->statusReportEnabled)
@@ -1738,7 +1738,7 @@ static le_result_t TestEncodePdu
 
         if ( res == LE_OK )
         {
-            LE_INFO("Source: (%zu)", assoc->gsm_7bits.length);
+            LE_INFO("Source: (%"PRIuS")", assoc->gsm_7bits.length);
             LE_INFO("Encoded: (%u)", pdu.dataLen);
 
             /* Check */
@@ -1840,7 +1840,7 @@ static le_result_t TestEncodePdu
 
             if ( res == LE_OK )
             {
-                LE_INFO("Source: (%zu)", assoc->gsm_ucs2.length);
+                LE_INFO("Source: (%"PRIuS")", assoc->gsm_ucs2.length);
                 LE_INFO("Encoded: (%u)", pdu.dataLen);
 
                 /* Check */
@@ -1930,7 +1930,7 @@ static le_result_t TestEncodePdu
             uint32_t timestampSize = 8;
             uint32_t indexAfterTimestamp = assoc->cdma_8bits.timestampIndex+timestampSize;
 
-            LE_INFO("Source: (%zu)", assoc->cdma_8bits.length);
+            LE_INFO("Source: (%"PRIuS")", assoc->cdma_8bits.length);
             LE_INFO("Encoded: (%u)", pdu.dataLen);
 
             /* Check, exclude timestamp*/
@@ -2018,7 +2018,7 @@ static le_result_t TestEncodePdu
             uint32_t timestampSize = 8;
             uint32_t indexAfterTimestamp = assoc->cdma_7bits.timestampIndex+timestampSize;
 
-            LE_INFO("Source: (%zu)", assoc->cdma_7bits.length);
+            LE_INFO("Source: (%"PRIuS")", assoc->cdma_7bits.length);
             LE_INFO("Encoded: (%u)", pdu.dataLen);
 
             /* Check, exclude timestamp*/

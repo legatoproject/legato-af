@@ -65,7 +65,7 @@ static void CheckString
 
     ResetBuffer(bufferPtr, sizeof(buffer));
 
-    printf("'%s' - [%zd] buffer[%zd] maxString[%d]:\n",
+    printf("'%s' - [%"PRIdS"] buffer[%"PRIdS"] maxString[%d]:\n",
            stringPtr,
            stringLen,
            reportedBufferSz,

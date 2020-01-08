@@ -907,7 +907,7 @@ static void MessageReceivedEventHandler
         {
             LE_WARN(
                 "Message arrived from broker, but it is too large to deliver using Legato IPC - "
-                "topicLength=%zu, payloadLength=%zu",
+                "topicLength=%"PRIuS", payloadLength=%"PRIuS,
                 storedMsgPtr->topicLength,
                 storedMsgPtr->payloadLength);
         }

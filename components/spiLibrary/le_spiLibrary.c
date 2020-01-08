@@ -122,7 +122,7 @@ le_result_t le_spiLib_WriteReadHD
         }
     };
 
-    LE_DEBUG("Transmitting this message...len:%zu", writeDataLength);
+    LE_DEBUG("Transmitting this message...len:%"PRIuS, writeDataLength);
 
     for (size_t i = 0; i < writeDataLength; i++)
     {
@@ -188,7 +188,7 @@ le_result_t le_spiLib_WriteHD
     };
 
 
-    LE_DEBUG("Transferring this message...len: %zu", writeDataLength);
+    LE_DEBUG("Transferring this message...len: %"PRIuS, writeDataLength);
     for (size_t i = 0; i < writeDataLength; i++)
     {
         LE_DEBUG("%.2X ", writeData[i]);
@@ -244,7 +244,7 @@ le_result_t le_spiLib_WriteReadFD
         },
     };
 
-    LE_DEBUG("Transmitting this message...len:%zu", dataLength);
+    LE_DEBUG("Transmitting this message...len:%"PRIuS, dataLength);
 
     for (size_t i = 0; i < dataLength; i++)
     {

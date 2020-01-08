@@ -264,7 +264,7 @@ static void SendSapTransferApduReq
     // Check message length
     if (size > RsimObject.maxMsgSize)
     {
-        LE_ERROR("SAP message too long! Size=%zu, MaxSize=%d",
+        LE_ERROR("SAP message too long! Size=%"PRIuS", MaxSize=%d",
                  size, RsimObject.maxMsgSize);
 
         // Send an APDU response error to the modem
@@ -546,7 +546,7 @@ static le_result_t SapCheckParameter
     uint8_t minSize = SAP_LENGTH_SAP_HEADER + (parameterNumber * SAP_LENGTH_PARAM);
     if (messageNumElements < minSize)
     {
-        LE_ERROR("SAP message too short: %zu bytes, expected %d bytes",
+        LE_ERROR("SAP message too short: %"PRIuS" bytes, expected %d bytes",
                  messageNumElements, minSize);
         return LE_FAULT;
     }
@@ -1880,7 +1880,7 @@ le_result_t le_rsim_SendMessage
     // Check message length
     if (messageNumElements > RsimObject.maxMsgSize)
     {
-        LE_ERROR("SAP message too long! Size=%zu, MaxSize=%d",
+        LE_ERROR("SAP message too long! Size=%"PRIuS", MaxSize=%d",
                  messageNumElements, RsimObject.maxMsgSize);
         return LE_BAD_PARAMETER;
     }

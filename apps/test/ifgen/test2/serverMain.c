@@ -47,7 +47,7 @@ void example_allParameters
     // parameters.  This could happen in a typical function, if an error is detected.
     if ( a == COMMON_ZERO )
     {
-        LE_PRINT_VALUE("%zd", *outputNumElementsPtr);
+        LE_PRINT_VALUE("%"PRIdS, *outputNumElementsPtr);
         LE_ASSERT( *outputNumElementsPtr <= 10 );
         LE_DEBUG("Returning right away");
         return;
@@ -101,7 +101,7 @@ void example_FileTest
         {
             buffer[numRead] = '\0';
         }
-        LE_PRINT_VALUE("%zd", numRead);
+        LE_PRINT_VALUE("%"PRIdS, numRead);
         LE_PRINT_VALUE("%s", buffer);
     }
 
@@ -125,7 +125,7 @@ void example_FileTest
         {
             buffer[numRead] = '\0';
         }
-        LE_PRINT_VALUE("%zd", numRead);
+        LE_PRINT_VALUE("%"PRIdS, numRead);
         LE_PRINT_VALUE("%s", buffer);
     }
 }

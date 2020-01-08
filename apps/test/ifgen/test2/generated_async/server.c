@@ -579,7 +579,7 @@ static void Handle_allParameters
     _msgBufPtr = UnpackData( _msgBufPtr, &outputNumElements, sizeof(size_t) );
     if ( outputNumElements > 10 )
     {
-        LE_DEBUG("Adjusting outputNumElements from %zd to 10", outputNumElements);
+        LE_DEBUG("Adjusting outputNumElements from %"PRIdS" to 10", outputNumElements);
         outputNumElements = 10;
     }
 

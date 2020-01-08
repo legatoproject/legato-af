@@ -1246,7 +1246,7 @@ void system_GetAppWriteableFilesDirPath
                      appNamePtr);
     if (n >= buffSize)
     {
-        LE_FATAL("Path buffer too small (< %zu).", buffSize);
+        LE_FATAL("Path buffer too small (< %"PRIuS").", buffSize);
     }
 }
 

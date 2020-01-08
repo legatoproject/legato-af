@@ -402,7 +402,7 @@ le_result_t le_ulpm_GetFirmwareVersion
 {
     if (version == NULL || versionNumElements <= 1)
     {
-        LE_KILL_CLIENT("Client supplied bad parameter (version: %p, versionNumElements: %zd)",
+        LE_KILL_CLIENT("Client supplied bad parameter (version: %p, versionNumElements: %"PRIdS")",
                         version,
                         versionNumElements);
         return LE_FAULT;

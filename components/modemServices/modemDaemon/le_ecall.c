@@ -2830,7 +2830,7 @@ le_result_t le_ecall_ImportMsd
 
     if (msdNumElements > sizeof(eCallPtr->builtMsd))
     {
-        LE_ERROR("Imported MSD is too long (%zd > %zd)",
+        LE_ERROR("Imported MSD is too long (%"PRIdS" > %"PRIdS")",
                  msdNumElements,
                  sizeof(eCallPtr->builtMsd));
         return LE_OVERFLOW;
@@ -2918,7 +2918,7 @@ le_result_t le_ecall_ExportMsd
 
     if (sizeof(eCallPtr->builtMsd) > *msdNumElementsPtr)
     {
-        LE_ERROR("Encoded MSD is too long for your buffer (%zd > %zd)!",
+        LE_ERROR("Encoded MSD is too long for your buffer (%"PRIdS" > %"PRIdS")!",
                  sizeof(eCallPtr->builtMsd),
                  *msdNumElementsPtr);
         return LE_OVERFLOW;
@@ -3382,7 +3382,7 @@ le_result_t le_ecall_SetPsapNumber
 
     if ((length == 0) || (length > LE_MDMDEFS_PHONE_NUM_MAX_LEN))
     {
-        LE_KILL_CLIENT( "PSAP number length (%zu) should not be empty or greater than %d",
+        LE_KILL_CLIENT( "PSAP number length (%"PRIuS") should not be empty or greater than %d",
                          length,
                          LE_MDMDEFS_PHONE_NUM_MAX_LEN);
         return LE_FAULT;
@@ -4841,7 +4841,7 @@ le_result_t le_ecall_SetVIN
 
     if (strlen(vin) != LE_ECALL_VIN_MAX_LEN)
     {
-        LE_WARN("VIN has to be %d bytes long: %s -> %zd",
+        LE_WARN("VIN has to be %d bytes long: %s -> %"PRIdS,
             LE_ECALL_VIN_MAX_LEN, vin, strlen(vin));
         return LE_FAULT;
     }

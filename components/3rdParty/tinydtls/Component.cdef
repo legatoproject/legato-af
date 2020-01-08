@@ -1,3 +1,8 @@
+cflags:
+{
+    -I$MAP_SRC_PATH/Core/include/sierra/rng
+}
+
 externalBuild:
 {
     "mkdir -p $${LEGATO_BUILD}/3rdParty/tinydtls"

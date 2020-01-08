@@ -338,7 +338,7 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
            (uintval != strlen(SHORT_TEXT_TEST_PATTERN)) &&
            (uintval != strlen(LARGE_TEXT_TEST_PATTERN)))
         {
-            LE_ERROR("-TEST  4- Check le_sms_GetLen, bad expected text length! (%zd)", uintval);
+            LE_ERROR("-TEST  4- Check le_sms_GetLen, bad expected text length! (%"PRIdS")", uintval);
             LE_ASSERT(true);
         }
         else
@@ -493,7 +493,7 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
         uintval = le_sms_GetUserdataLen(msg);
         if(uintval != (sizeof(UCS2_TEST_PATTERN) /2))
         {
-            LE_ERROR("-TEST  4- Check le_sms_GetLen, bad expected text length! (%zd)", uintval);
+            LE_ERROR("-TEST  4- Check le_sms_GetLen, bad expected text length! (%"PRIdS")", uintval);
             LE_ASSERT(uintval != (sizeof(UCS2_TEST_PATTERN) /2));
         }
         else

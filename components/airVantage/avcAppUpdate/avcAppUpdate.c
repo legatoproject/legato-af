@@ -877,7 +877,7 @@ static void SetObj9State_
 {
     int instanceId;
     assetData_GetInstanceId(instanceRef, &instanceId);
-    LE_DEBUG("<%s: %zu>: Set object 9 state/result on instance %d: (%d) %s / (%d) %s",
+    LE_DEBUG("<%s: %"PRIuS">: Set object 9 state/result on instance %d: (%d) %s / (%d) %s",
              functionNamePtr,
              line,
              instanceId,

@@ -348,7 +348,7 @@ static void CreateStatusFilePath
 {
     if (snprintf(buffPtr, size, "/legato/systems/%s/status", systemName) >= size)
     {
-        LE_FATAL("Status file path too long for buffer of size %zu", size);
+        LE_FATAL("Status file path too long for buffer of size %"PRIuS, size);
     }
 }
 

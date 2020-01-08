@@ -117,7 +117,7 @@ int main(int argc,char * argv[])
 
         patchHdrOffset = patchContextPtr->patchOffset;
 
-        LE_INFO("OrigNum %d DestNum %d, ubiVolId %u SSz %zx offset %lx, lastPatch %d\n",
+        LE_INFO("OrigNum %d DestNum %d, ubiVolId %u SSz %"PRIxS" offset %lx, lastPatch %d\n",
                 patchContextPtr->origImageDesc.flash.mtdNum,
                 patchContextPtr->destImageDesc.flash.mtdNum,
                 patchContextPtr->origImageDesc.flash.ubiVolId,
@@ -282,7 +282,7 @@ int main(int argc,char * argv[])
 	oldsize = patchContextPtr->origImageSize;
         if( newsize > patchContextPtr->segmentSize )
         {
-            LE_ERROR("Unable to apply patch. newsize is too big: %zd > %zu\n",
+            LE_ERROR("Unable to apply patch. newsize is too big: %"PRIdS" > %"PRIuS"\n",
                      newsize, patchContextPtr->segmentSize);
             goto errorfcloseall;
         }

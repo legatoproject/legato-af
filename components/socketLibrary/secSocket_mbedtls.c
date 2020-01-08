@@ -230,15 +230,14 @@ le_result_t secSocket_AddCertificate
     size_t            certificateLen    ///< [IN] Certificate Length
 )
 {
-    int              ret;
     MbedtlsCtx_t    *contextPtr = (MbedtlsCtx_t *) ctxPtr;
 
     LE_ASSERT(contextPtr != NULL);
     LE_ASSERT(certificatePtr != NULL);
     LE_ASSERT(certificateLen > 0);
 
-    LE_DEBUG("Certificate: %p Len:%zu", certificatePtr, certificateLen);
-    ret = mbedtls_x509_crt_parse(&(contextPtr->caCert), certificatePtr, certificateLen);
+    LE_DEBUG("Certificate: %p Len:%"PRIuS, certificatePtr, certificateLen);
+    int ret = mbedtls_x509_crt_parse(&(contextPtr->caCert), certificatePtr, certificateLen);
     if (ret < 0)
     {
         LE_ERROR("Failed!  mbedtls_x509_crt_parse returned -0x%x", -ret);

@@ -1978,7 +1978,7 @@ static void CaptureDebugData
     if (s >= sizeof(command))
     {
         LE_FATAL("Could not create command, buffer is too small.  "
-                 "Buffer is %zd bytes but needs to be %d bytes.",
+                 "Buffer is %"PRIdS" bytes but needs to be %d bytes.",
                  sizeof(command),
                  s);
     }

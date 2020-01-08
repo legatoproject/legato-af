@@ -250,7 +250,7 @@ void fa_event_TriggerEvent_NoLock
             }
             else
             {
-                LE_FATAL("write() returned %zd! (expected %zd)", writeSize, sizeof(writeBuff));
+                LE_FATAL("write() returned %"PRIdS"! (expected %"PRIdS")", writeSize, sizeof(writeBuff));
             }
         }
     }
@@ -292,7 +292,7 @@ uint64_t fa_event_WaitForEvent
             }
             else
             {
-                LE_FATAL("read() returned %zd! (expected %zd)", readSize, sizeof(readBuff));
+                LE_FATAL("read() returned %"PRIdS"! (expected %"PRIdS")", readSize, sizeof(readBuff));
             }
         }
     }

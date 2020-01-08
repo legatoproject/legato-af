@@ -117,7 +117,7 @@ static void TimerFdHandler
             LE_FATAL("TimerFD read failed with errno = %d (%m)", errno);
         }
     }
-    LE_ERROR_IF(numBytes != 8, "On TimerFD read, unexpected numBytes=%zd", numBytes);
+    LE_ERROR_IF(numBytes != 8, "On TimerFD read, unexpected numBytes=%"PRIdS, numBytes);
     LE_ERROR_IF(expiry != 1,  "On TimerFD read, unexpected expiry=%u", (unsigned int)expiry);
 
     timer_Handler(threadRecPtr);

@@ -598,7 +598,7 @@ static le_result_t GetName
             fclose(fd);
             if (NbAppsInTranslationTable != rc)
             {
-                LE_ERROR("Read of apps translation table failed (rc %zu != %u)",
+                LE_ERROR("Read of apps translation table failed (rc %"PRIuS" != %u)",
                          rc, NbAppsInTranslationTable);
                 return LE_FAULT;
             }
@@ -680,7 +680,7 @@ static le_result_t GetGroupName
             fclose(fd);
             if (NbAppsInTranslationTable != rc)
             {
-                LE_ERROR("Read of apps translation table failed (rc %zu != %u)",
+                LE_ERROR("Read of apps translation table failed (rc %"PRIuS" != %u)",
                          rc, NbAppsInTranslationTable);
                 return LE_FAULT;
             }
@@ -762,7 +762,7 @@ static le_result_t GetIDs
             fclose(fd);
             if (NbAppsInTranslationTable != rc)
             {
-                LE_ERROR("Read of apps translation table failed (rc %zu != %u)",
+                LE_ERROR("Read of apps translation table failed (rc %"PRIuS" != %u)",
                          rc, NbAppsInTranslationTable);
                 return LE_FAULT;
             }
@@ -879,7 +879,7 @@ static le_result_t GetGid
             fclose(fd);
             if (NbAppsInTranslationTable != rc)
             {
-                LE_ERROR("Read of apps translation table failed (rc %zu != %u)",
+                LE_ERROR("Read of apps translation table failed (rc %"PRIuS" != %u)",
                          rc, NbAppsInTranslationTable);
                 return LE_FAULT;
             }
@@ -1166,7 +1166,7 @@ le_result_t user_Create
             fclose(fd);
             if (NbAppsInTranslationTable != rc)
             {
-                LE_ERROR("Read of apps translation table failed (rc %zu != %u)",
+                LE_ERROR("Read of apps translation table failed (rc %"PRIuS" != %u)",
                          rc, NbAppsInTranslationTable);
                 return LE_FAULT;
             }
@@ -1210,7 +1210,7 @@ le_result_t user_Create
                     fclose(fd);
                     if (NbAppsInTranslationTable != rc)
                     {
-                        LE_ERROR("Write of apps translation table failed (rc %zu != %u)",
+                        LE_ERROR("Write of apps translation table failed (rc %"PRIuS" != %u)",
                                  rc, NbAppsInTranslationTable);
                         return LE_FAULT;
                     }
@@ -1604,7 +1604,7 @@ static le_result_t DeleteGroup
 
     if (result == ERANGE)
     {
-        LE_ERROR("Could not read group file buffer size (%zd) is too small.", sizeof(groupBuf));
+        LE_ERROR("Could not read group file buffer size (%"PRIdS") is too small.", sizeof(groupBuf));
         return LE_FAULT;
     }
 
@@ -1704,7 +1704,7 @@ static le_result_t DeleteUser
 
         if (result == ERANGE)
         {
-            LE_ERROR("Could not read passwd file buffer size (%zd) is too small.", sizeof(buf));
+            LE_ERROR("Could not read passwd file buffer size (%"PRIdS") is too small.", sizeof(buf));
             return LE_FAULT;
         }
 
@@ -1729,7 +1729,7 @@ static le_result_t DeleteUser
             fclose(fd);
             if (NbAppsInTranslationTable != rc)
             {
-                LE_ERROR("Read of apps translation table failed (rc %zu != %u)",
+                LE_ERROR("Read of apps translation table failed (rc %"PRIuS" != %u)",
                          rc, NbAppsInTranslationTable);
                 return LE_FAULT;
             }
@@ -1749,7 +1749,7 @@ static le_result_t DeleteUser
                     fclose(fd);
                     if (NbAppsInTranslationTable != rc)
                     {
-                        LE_ERROR("Write of apps translation table failed (rc %zu != %u)",
+                        LE_ERROR("Write of apps translation table failed (rc %"PRIuS" != %u)",
                                  rc, NbAppsInTranslationTable);
                         return LE_FAULT;
                     }

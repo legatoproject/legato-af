@@ -242,7 +242,7 @@ static void PrintMessage
 
             length = le_sms_GetUserdataLen(msgRef);
 
-            snprintf(header, sizeof(header), " Text (%zd)", length);
+            snprintf(header, sizeof(header), " Text (%"PRIdS")", length);
             cm_cmn_FormatPrint(header, content.text);
             break;
         }
@@ -256,7 +256,7 @@ static void PrintMessage
 
             length = le_sms_GetUserdataLen(msgRef);
 
-            snprintf(header, sizeof(header), " Binary (%zd)", length);
+            snprintf(header, sizeof(header), " Binary (%"PRIdS")", length);
             cm_cmn_FormatPrint(header, "");
             PrintBinaryData(content.binary, contentSz);
             break;
@@ -280,7 +280,7 @@ static void PrintMessage
 
             length = le_sms_GetPDULen(msgRef);
 
-            snprintf(header, sizeof(header), " PDU (%zd)", length);
+            snprintf(header, sizeof(header), " PDU (%"PRIdS")", length);
             cm_cmn_FormatPrint(header, "");
             PrintBinaryData(content.pdu, length);
             break;
@@ -296,7 +296,7 @@ static void PrintMessage
 
             length = le_sms_GetUserdataLen(msgRef);
 
-            snprintf(header, sizeof(header), " UserDataLen (%zd)", length);
+            snprintf(header, sizeof(header), " UserDataLen (%"PRIdS")", length);
             cm_cmn_FormatPrint(header, "UCS2");
             PrintUCS2Data(content.ucs2, length);
         }
@@ -679,7 +679,7 @@ static void HandleSendBin
             exit(EXIT_SUCCESS);
         }
 
-        printf("Sending '%d': length[%zd]\n", index, contentLen);
+        printf("Sending '%d': length[%"PRIdS"]\n", index, contentLen);
         PrintBinaryData(content, contentLen);
 
         cm_sms_SendBinary(number, content, contentLen);

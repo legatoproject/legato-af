@@ -599,7 +599,7 @@ COMPONENT_INIT
          (numBytesCopied != 4) ||
          (strncmp(destBuffer, longMultiByteStr, 4) != 0) )
     {
-        printf("Copy up to incorrect: %d, %zd\n", __LINE__, numBytesCopied);
+        printf("Copy up to incorrect: %d, %"PRIdS"\n", __LINE__, numBytesCopied);
         exit(EXIT_FAILURE);
     }
 

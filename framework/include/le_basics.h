@@ -189,7 +189,7 @@ le_onoff_t;
  *     }
  * }
  *
- * printf("The 'w' is at index %zu.\n", INDEX_OF_ARRAY_MEMBER(message, charPtr));
+ * printf("The 'w' is at index %"PRIuS".\n", INDEX_OF_ARRAY_MEMBER(message, charPtr));
  * @endcode
  **/
 //--------------------------------------------------------------------------------------------------

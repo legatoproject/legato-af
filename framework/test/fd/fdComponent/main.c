@@ -942,7 +942,7 @@ static void *FifoReadCloseMain(void *context)
 
     le_fd_Close(tCtx->fd);
 
-    LE_TEST_INFO("Read end closed, totalRead %zu", ret);
+    LE_TEST_INFO("Read end closed, totalRead %"PRIuS, ret);
 
     return NULL;
 }
@@ -952,7 +952,7 @@ static void *FifoWriteReadCloseMain(void *context)
     struct threadCtx *tCtx = (struct threadCtx *)context;
     ssize_t ret;
 
-    LE_TEST_INFO("Started with bufSize %zu", tCtx->bufSize);
+    LE_TEST_INFO("Started with bufSize %"PRIuS, tCtx->bufSize);
 
     ret = le_fd_Write(tCtx->fd, tCtx->buf, tCtx->bufSize);
     LE_TEST_OK((-1 == ret) && (EPIPE == errno), "error %s received ", LE_ERRNO_TXT(errno));
@@ -991,7 +991,7 @@ static void *FifoReadMain(void *context)
     }
     while (ret != 0);
 
-    LE_TEST_INFO("Read ended, totalRead %zd", totalRead);
+    LE_TEST_INFO("Read ended, totalRead %"PRIdS, totalRead);
     ReadSize = totalRead;
     return NULL;
 }
@@ -1001,7 +1001,7 @@ static void *FifoWriteMain(void *context)
     struct threadCtx *tCtx = (struct threadCtx *)context;
     ssize_t ret;
 
-    LE_TEST_INFO("Started with bufSize %zu", tCtx->bufSize);
+    LE_TEST_INFO("Started with bufSize %"PRIuS, tCtx->bufSize);
 
     ret = le_fd_Write(tCtx->fd, tCtx->buf, tCtx->bufSize);
     if ((ssize_t) tCtx->bufSize == ret)

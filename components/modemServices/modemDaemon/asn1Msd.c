@@ -50,7 +50,7 @@ static bool IsVinValid
 
     if (i != sizeof(vin))
     {
-        LE_ERROR("Invalid Vehicle Identification Number (%s), it must be a %zd-character string, "
+        LE_ERROR("Invalid Vehicle Identification Number (%s), it must be a %"PRIdS"-character string, "
                  "upper-case and it can't contain 'I', 'O' or 'Q' letters",
                  vinstr,
                  sizeof(vin));

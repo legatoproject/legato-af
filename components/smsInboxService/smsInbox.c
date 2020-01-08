@@ -1100,7 +1100,7 @@ static le_result_t AddMsgInAppCfg
         LE_ERROR("Message %s not found", path);
         return LE_FAULT;
     }
-    LE_DEBUG("Add messageId %d, path %s, array Size %zu", messageId,
+    LE_DEBUG("Add messageId %d, path %s, array Size %"PRIuS, messageId,
                                                           path,
                                                           json_array_size(jsonArrayPtr) );
 
