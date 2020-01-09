@@ -1159,7 +1159,7 @@ static void DisconnectAllAudio
     if(FileAudioRef)
     {
         le_audio_Close(FileAudioRef);
-        FeOutRef = NULL;
+        FileAudioRef = NULL;
     }
     if(FeInRef)
     {
@@ -1174,12 +1174,17 @@ static void DisconnectAllAudio
     if(MdmRxAudioRef)
     {
         le_audio_Close(MdmRxAudioRef);
-        FeOutRef = NULL;
+        MdmRxAudioRef = NULL;
     }
     if(MdmTxAudioRef)
     {
         le_audio_Close(MdmTxAudioRef);
-        FeOutRef = NULL;
+        MdmTxAudioRef = NULL;
+    }
+    if(MediaHandlerRef)
+    {
+        le_audio_RemoveMediaHandler(MediaHandlerRef);
+        MediaHandlerRef = NULL;
     }
 
     // Closing AudioFileFd is unnecessary since the messaging infrastructure underneath

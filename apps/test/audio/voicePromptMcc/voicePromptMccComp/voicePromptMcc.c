@@ -211,6 +211,11 @@ static void DisconnectAllAudio
         le_audio_Close(MdmTxAudioRef);
         MdmTxAudioRef = NULL;
     }
+    if(MediaHandlerRef)
+    {
+        le_audio_RemoveMediaHandler(MediaHandlerRef);
+        MediaHandlerRef = NULL;
+    }
 
     close(AudioFileFd);
     // Closing Pipefd[0] is unnecessary since the messaging infrastructure underneath

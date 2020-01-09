@@ -66,6 +66,11 @@ static void DisconnectAudio
         FeOutRef = NULL;
     }
 
+    if(MediaHandlerRef)
+    {
+        le_audio_RemoveMediaHandler(MediaHandlerRef);
+        MediaHandlerRef = NULL;
+    }
     // Closing AudioFileFd is unnecessary since the messaging infrastructure underneath
     // le_audio_xxx APIs that use it would close it.
 }
