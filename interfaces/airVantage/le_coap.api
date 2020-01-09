@@ -12,7 +12,7 @@
  * @section le_coap_overview External CoAP handler Overview
  *
  * An app can register an external CoAP handler by calling le_coap_AddMessageEventHandler().The
- * registered CoAP handler will receive all CoAP messages that target a non lwm2m URI. The app
+ * registered CoAP handler will receive all CoAP messages that target a non LwM2M URI. The app
  * has to process the received payload and respond using the api le_coap_SendResponse().
  * The function le_coap_SendResponse() will serialize a CoAP message based on the response code
  * received and send it to the server. No error checking is performed on the responses received
@@ -22,15 +22,15 @@
  * @section le_coap_Stream Streaming
  *
  * If the response or unsolicited message (Push) is larger than 1KB, the app can initiate a
- * streaming response by setting the stream status to LE_COAP_TX_STREAM_START. This will initiate
+ * streaming response by setting the stream status to @c LE_COAP_TX_STREAM_START. This will initiate
  * a CoAP block transfer <a href="https://tools.ietf.org/html/rfc7959">RFC-7959</a> from the
  * device to the server. On receiving an ack for the initiated block transfer, the app can
- * continue streaming by setting the stream status to LE_COAP_TX_STREAM_IN_PROGRESS and end it
- * with LE_COAP_TX_STREAM_END. If the stream status of the incoming message is
- * LE_COAP_RX_STREAM_START, it indicates that the server is sending a payload larger than 1KB.
- * The  server will continue streaming using LE_COAP_RX_STREAM_IN_PROGRESS and will end it
- * by setting the status to LE_COAP_RX_STREAM_END unless an error condition is detected.
- * LE_COAP_TX_STREAM_ERROR and LE_COAP_RX_STREAM_ERROR are error messages of the transmit
+ * continue streaming by setting the stream status to @c LE_COAP_TX_STREAM_IN_PROGRESS and end it
+ * with @c LE_COAP_TX_STREAM_END. If the stream status of the incoming message is
+ * @c LE_COAP_RX_STREAM_START, it indicates that the server is sending a payload larger than 1KB.
+ * The  server will continue streaming using @c LE_COAP_RX_STREAM_IN_PROGRESS and will end it
+ * by setting the status to @c LE_COAP_RX_STREAM_END unless an error condition is detected.
+ * @c LE_COAP_TX_STREAM_ERROR and @c LE_COAP_RX_STREAM_ERROR are error messages of the transmit
  * stream and receive stream respectively.
  * The client can cancel the stream by pushing a message with LE_COAP_TX_STREAM_CANCEL status.
  *
@@ -43,9 +43,9 @@
  * @code
  * static le_coap_Code_t CoapRxStreamHandler
  * (
- *     le_coap_StreamStatus_t streamStatus,
- *     const char* bufferPtr,
- *     size_t length
+ *     le_coap_StreamStatus_t streamStatus, ///< [IN] CoAP stream status
+ *     const char* bufferPtr,               ///< [IN] Payload poiner
+ *     size_t length                        ///< [IN] Payload length
  * )
  * {
  *     // Copy stream data to buffer or file
@@ -55,12 +55,14 @@
  *         case LE_COAP_RX_STREAM_START:
  *             LE_INFO("Stream start: Create file and write received data");
  *             CopyToFile(RECEIVED_STREAM_FILE, bufferPtr, length, true);
- *             return LE_COAP_CODE_NO_RESPONSE;
+ *             // Indicate to the server to continue the data stream
+ *             return LE_COAP_CODE_231_CONTINUE;
  *
  *         case LE_COAP_RX_STREAM_IN_PROGRESS:
  *             LE_INFO("Stream in progress: Copy received data to file");
  *             CopyToFile(RECEIVED_STREAM_FILE, bufferPtr, length, false);
- *             return LE_COAP_CODE_NO_RESPONSE;
+ *             // Indicate to the server to continue the data stream
+ *             return LE_COAP_CODE_231_CONTINUE;
  *
  *         case LE_COAP_RX_STREAM_END:
  *             LE_INFO("Stream completed: Start processing received data");
@@ -79,16 +81,17 @@
  *
  * static void ExternalCoapHandler
  * (
- *      le_coap_Code_t code,
- *      le_coap_StreamStatus_t streamStatus,
- *      uint16_t messageId,
- *      uint16_t contentType,
- *      const char* uri,
- *      const char* token,
- *      uint8_t tokenLength,
- *      const char* payload,
- *      size_t payloadLength,
- *      void* contextPtr
+ *     le_coap_Code_t code,                  ///< [IN] CoAP method or response code
+ *     le_coap_StreamStatus_t streamStatus,  ///< [IN] CoAP stream status
+ *     uint16_t messageId,                   ///< [IN] message id
+ *     uint16_t contentType,                 ///< [IN] content type
+ *     const char* uriPtr,                   ///< [IN] URI pointer of resource
+ *     const uint8_t* tokenPtr,              ///< [IN] token pointer
+ *     size_t tokenLength,                   ///< [IN] token length
+ *     const uint8_t* payloadPtr,            ///< [IN] CoAP payload pointer
+ *     size_t payloadLength,                 ///< [IN] CoAP payload length
+ *     uint16_t blockSize,                   ///< [IN] Block size
+ *     void* contextPtr                      ///< [IN] User context pointer
  * )
  * {
  *     switch (code)
@@ -99,13 +102,14 @@
  *                  // Process payload
  *                  // Send response
  *                  le_coap_SendResponse(messageId,
- *                                       token,
+ *                                       tokenPtr,
  *                                       tokenLength,
  *                                       LWM2M_CONTENT_CBOR,
  *                                       COAP_204_CHANGED,
- *                                       LE_COAP_STREAM_NONE,
+ *                                       streamStatus,
  *                                       responsePayload,
- *                                       responseLength);
+ *                                       responseLength,
+ *                                       blockSize);
  *            }
  *            else
  *            {
@@ -115,13 +119,14 @@
  *
  *                  // Send actual CoAP response.
  *                  le_coap_SendResponse(messageId,
- *                                       token,
+ *                                       tokenPtr,
  *                                       tokenLength,
  *                                       LWM2M_CONTENT_CBOR,
  *                                       coapResponseCode,
- *                                       LE_COAP_STREAM_NONE,
+ *                                       streamStatus,
  *                                       responsePayload,
- *                                       responseLength);
+ *                                       responseLength,
+ *                                       blockSize);
  *            }
  *            break;
  *        case LE_COAP_CODE_GET:
@@ -278,12 +283,12 @@ ENUM StreamStatus
 //--------------------------------------------------------------------------------------------------
 ENUM PushStatus
 {
-    PUSH_IDLE,
-    PUSH_START,
-    PUSH_IN_PROGRESS,
-    PUSH_SUCCESS,
-    PUSH_FAILED,
-    PUSH_TERMINATE
+    PUSH_IDLE,            ///< Push in idle state
+    PUSH_START,           ///< Push started
+    PUSH_IN_PROGRESS,     ///< Push in progress
+    PUSH_SUCCESS,         ///< Push success
+    PUSH_FAILED,          ///< Push failed
+    PUSH_TERMINATE        ///< Push terminated
 };
 
 
@@ -300,6 +305,10 @@ ENUM PushStatus
  *     assigned. The CoAP Content Formats sub-registry is at
  *     https://www.iana.org/assignments/core-parameters/core-parameters.xhtml#content-formats.
  *     A server might support a different format other than the ones described in the sub registry.
+ *
+ * @warning
+ *     Application needs to call le_coap_SendResponse API in order to acknowledge the incoming
+ *     CoAP message in a 2-sec time window.
  */
 //--------------------------------------------------------------------------------------------------
 HANDLER MessageHandler
@@ -310,7 +319,8 @@ HANDLER MessageHandler
     uint16 contentType                      IN,         ///< Content type of the payload
     string uri[MAX_URI_NUM_BYTES]           IN,         ///< URI of resource
     uint8 token[MAX_TOKEN_NUM_BYTES]        IN,         ///< Token in CoAP message header
-    uint8 payload[MAX_PAYLOAD_NUM_BYTES]    IN          ///< CoAP payload
+    uint8 payload[MAX_PAYLOAD_NUM_BYTES]    IN,         ///< CoAP payload
+    uint16 blockSize                        IN          ///< Block size
 );
 
 
@@ -324,6 +334,11 @@ HANDLER MessageHandler
  *
  * Note: This API will return success if it successful in sending the message down the stack.
  * Retransmission will be handled at CoAP layer.
+ *
+ * Note: @c blockSize parameter needs to be a value equal to 16, 32, 64, 128, 256, 512 or 1024.
+ * It allows the application to indicate to the server that the device wants to negociate another
+ * block size value. The @c blockSize value should be equal or smaller than @c blockSize provided
+ * in @c le_coap_MessageHandlerFunc_t handler.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SendResponse
@@ -333,7 +348,8 @@ FUNCTION le_result_t SendResponse
     uint16 contentType                      IN,         ///< Content type of the payload
     Code responseCode                       IN,         ///< Result of CoAP operation
     StreamStatus streamStatus               IN,         ///< Status of transmit stream
-    uint8 payload[MAX_PAYLOAD_NUM_BYTES]    IN          ///< CoAP payload
+    uint8 payload[MAX_PAYLOAD_NUM_BYTES]    IN,         ///< CoAP payload
+    uint16 blockSize                        IN          ///< Block size
 );
 
 
