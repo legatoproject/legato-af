@@ -18,5 +18,4 @@ cflags:
 {
     -Dle_msg_AddServiceCloseHandler=MyAddServiceCloseHandler
     '-DLE_GNSS_NMEA_NODE_PATH="/tmp/nmeaGnssUnitTest"'
-    -DIFGEN_PROVIDE_PROTOTYPES
 }

@@ -24,5 +24,4 @@ sources:
 cflags:
 {
     -Dle_msg_AddServiceCloseHandler=MyAddServiceCloseHandler
-    -DIFGEN_PROVIDE_PROTOTYPES
 }

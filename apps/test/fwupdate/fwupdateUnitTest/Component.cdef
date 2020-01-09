@@ -12,8 +12,3 @@ sources:
 {
     main.c
 }
-
-cflags:
-{
-    -DIFGEN_PROVIDE_PROTOTYPES
-}

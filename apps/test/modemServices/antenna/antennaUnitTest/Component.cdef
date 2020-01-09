@@ -12,8 +12,3 @@ sources:
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_antenna.c
     simu/components/le_pa/pa_antenna_simu.c
 }
-
-cflags:
-{
-    -DIFGEN_PROVIDE_PROTOTYPES
-}

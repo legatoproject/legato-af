@@ -12,8 +12,3 @@ sources:
     ${LEGATO_ROOT}/components/modemServices/rSimDaemon/le_rsim.c
     simu/components/le_pa_remotesim/pa_rsim_simu.c
 }
-
-cflags:
-{
-    -DIFGEN_PROVIDE_PROTOTYPES
-}

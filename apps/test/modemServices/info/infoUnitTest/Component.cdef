@@ -16,8 +16,3 @@ sources:
     simu/components/le_pa/pa_info_simu.c
     ${LEGATO_ROOT}/components/modemServices/platformAdaptor/default/le_pa_default/pa_sim_default.c
 }
-
-cflags:
-{
-    -DIFGEN_PROVIDE_PROTOTYPES
-}

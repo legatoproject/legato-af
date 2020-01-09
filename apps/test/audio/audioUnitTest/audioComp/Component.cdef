@@ -23,5 +23,4 @@ cflags:
 {
     -Dle_msg_AddServiceCloseHandler=MyAddServiceCloseHandler
     -Dle_thread_SetPriority=MyThreadSetPriority
-    -DIFGEN_PROVIDE_PROTOTYPES
 }

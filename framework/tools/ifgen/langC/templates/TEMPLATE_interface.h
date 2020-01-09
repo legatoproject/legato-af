@@ -99,48 +99,4 @@ void {{apiName}}_DisconnectService
 (
     void
 );
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Return the sessionRef for the current thread.
- *
- * If the current thread does not have a session ref, then this is a fatal error.
- */
-//--------------------------------------------------------------------------------------------------
-le_msg_SessionRef_t _{{apiName}}_GetCurrentSessionRef
-(
-    void
-);
-{%- endblock %}
-{% block AllFunctionDeclarations %}
-#if IFGEN_PROVIDE_PROTOTYPES
-{{ super() }}
-#elif !IFGEN_TYPES_ONLY
-{%- for function in functions %}
-{# Currently function prototype is formatter is copied & pasted from interface header template.
- # Should this be abstracted into a common macro?  The prototype is always copy/pasted for
- # legibility in real C code #}
-//--------------------------------------------------------------------------------------------------
-{{function.comment|FormatHeaderComment}}
-//--------------------------------------------------------------------------------------------------
-LE_DECLARE_INLINE {{function.returnType|FormatType}} {{apiName}}_{{function.name}}
-(
-    {%- for parameter in function|CAPIParameters %}
-    {{parameter|FormatParameter}}{% if not loop.last %},{% endif %}
-        ///< [{{parameter.direction|FormatDirection}}]
-             {{-parameter.comments|join("\n///<")|indent(8)}}
-    {%-else%}
-    void
-    {%-endfor%}
-)
-{
-    {% if function.returnType %}return{% endif %} ifgen_{{apiBaseName}}_{{function.name}}(
-        _{{apiName}}_GetCurrentSessionRef()
-        {%- for parameter in function|CAPIParameters %}{% if loop.first %},{% endif %}
-        {{parameter|FormatParameterName}}{% if not loop.last %},{% endif %}
-        {%- endfor %}
-    );
-}
-{%- endfor %}
-#endif
 {%- endblock %}

@@ -32,5 +32,4 @@ cflags:
 {
     -I${LEGATO_ROOT}/components/watchdogChain
     -Dle_msg_AddServiceCloseHandler=MyAddServiceCloseHandler
-    -DIFGEN_PROVIDE_PROTOTYPES
 }

@@ -19,8 +19,3 @@ sources:
     ${LEGATO_ROOT}/components/fwupdate/fwupdateDaemon/fwupdateServer.c
     ${LEGATO_ROOT}/components/fwupdate/fwupdateDaemon/le_flash.c
 }
-
-cflags:
-{
-    -DIFGEN_PROVIDE_PROTOTYPES
-}

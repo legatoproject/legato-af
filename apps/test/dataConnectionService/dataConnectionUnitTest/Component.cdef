@@ -23,5 +23,4 @@ cflags:
     -I$LEGATO_ROOT/components/dataConnectionService/dcs
     -I$LEGATO_ROOT/components/dataConnectionService/dcsCellular
     -I$LEGATO_ROOT/components/modemServices/platformAdaptor/inc
-    -DIFGEN_PROVIDE_PROTOTYPES
 }

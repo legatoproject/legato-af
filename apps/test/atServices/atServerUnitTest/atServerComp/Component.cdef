@@ -25,5 +25,4 @@ cflags:
     -I${LEGATO_ROOT}/components/atServices/Common
     -Dle_msg_AddServiceOpenHandler=AddServiceOpenHandler
     -Dle_msg_AddServiceCloseHandler=AddServiceCloseHandler
-    -DIFGEN_PROVIDE_PROTOTYPES
 }

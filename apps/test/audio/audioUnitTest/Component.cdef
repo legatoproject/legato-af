@@ -12,8 +12,3 @@ sources:
     main.c
     ${LEGATO_ROOT}/components/audio/le_media.c
 }
-
-cflags:
-{
-    -DIFGEN_PROVIDE_PROTOTYPES
-}

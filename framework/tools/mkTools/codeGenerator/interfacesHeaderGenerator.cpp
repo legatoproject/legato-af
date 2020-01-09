@@ -69,7 +69,6 @@ void GenerateCLangInterfacesHeader
     model::InterfaceCFiles_t cFiles;
 
     // #include the client-side .h for each of the .api files from which only data types are used.
-    fileStream << "#define IFGEN_TYPES_ONLY 1\n";
     for (auto interfacePtr : componentPtr->typesOnlyApis)
     {
         interfacePtr->GetInterfaceFiles(cFiles);
@@ -77,7 +76,6 @@ void GenerateCLangInterfacesHeader
                    << cFiles.interfaceFile
                    << "\"\n";
     }
-    fileStream << "#undef IFGEN_TYPES_ONLY\n";
 
     // For each of the component's client-side interfaces, #include the client-side .h file.
     for (auto interfacePtr : componentPtr->clientApis)

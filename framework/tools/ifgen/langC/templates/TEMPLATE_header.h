@@ -25,26 +25,15 @@
 {%- block InterfaceHeader %}{%- if imports %}
 
 // Interface specific includes
-#ifndef IFGEN_TYPES_ONLY
-#define IFGEN_TYPES_ONLY 1
 {%- for import in imports %}
 #include "{{import}}.h"
 {%- endfor %}
-#undef IFGEN_TYPES_ONLY
-#else
-{%- for import in imports %}
-#include "{{import}}.h"
-{%- endfor %}
-#endif
 {%- endif %}
 {%- endblock %}
 
 // Internal includes for this interface
 #include "{{apiBaseName}}_common.h"
-
-#if !IFGEN_TYPES_ONLY
 {% block GenericFunctions %}{% endblock %}
-#endif
 {% for define in definitions %}
 {%- if apiBaseName != apiName %}
 
@@ -75,7 +64,6 @@ typedef {{apiBaseName}}_{{type.name}}_t {{type|FormatType}};
 {%- endif %}
 {%- endif %}
 {% endfor %}
-{% block AllFunctionDeclarations %}
 {%- for function in functions %}{% block FunctionDeclaration scoped %}
 
 //--------------------------------------------------------------------------------------------------
@@ -92,6 +80,5 @@ typedef {{apiBaseName}}_{{type.name}}_t {{type|FormatType}};
     {%-endfor%}
 );
 {%- endblock %}{%- endfor %}
-{%- endblock %}
 
 #endif // {{apiName|upper}}_INTERFACE_H_INCLUDE_GUARD
