@@ -197,11 +197,6 @@ export class Profile
             // all 'interesting' model files.
             console.log(`An error occurred during model load.`);
             console.log(mkResponse);
-            // Adef file is not supported for Legato system view. So the warning message will not be displayed for it.
-            if (this.activeDefFile.slice(-5) === ".sdef")
-            {
-                this.client.connection.window.showWarningMessage("An error occurred when loading Legato system view: " + mkResponse);
-            }
             console.log('Watching the filesystem for changes.');
 
             let rootDirList: string[] = this.workspaceFolders.map(
@@ -235,11 +230,22 @@ export class Profile
             // Attempt to fix up the fix up the model, which should trigger a reload event if
             // successful.
 
-            this.attemptModelFixup(mkResponse, fileList);
+            if (this.attemptModelFixup(mkResponse, fileList))
+            {
+                this.reloadActiveModel();
+            }
+            else
+            {
+                // Adef file is not supported for Legato system view. So the warning message will not be displayed for it.
+                if (this.activeDefFile.slice(-5) === ".sdef")
+                {
+                    this.client.connection.window.showWarningMessage("An error occurred when loading Legato system view: " + mkResponse);
+                }
+            }
         }
     }
 
-    private attemptModelFixup(mkResponse: string, fileList: string[])
+    private attemptModelFixup(mkResponse: string, fileList: string[]): boolean
     {
         interface Extractor
         {
@@ -306,7 +312,7 @@ export class Profile
 
         if (name === undefined)
         {
-            return;
+            return false;
         }
 
         let foundDir: string = undefined;
@@ -332,13 +338,14 @@ export class Profile
 
         if (foundDir === undefined)
         {
-            return;
+            return false;
         }
 
         if (tooling.mkEditAddSearchPath(this, section, foundDir))
         {
             console.log('Error adding the search path!!');
         }
+        return true;
     }
 
     private notifyModelUpdate()
