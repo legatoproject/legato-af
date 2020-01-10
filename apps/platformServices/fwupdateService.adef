@@ -30,7 +30,7 @@ bindings:
 {
 #if ${LE_CONFIG_LINUX} = y
     fwupdateDaemon.watchdogChain.le_wdog -> <root>.le_wdog
-    fwupdateDaemon.fwupdateDaemon.le_pm -> <root>.le_pm
+    fwupdateDaemon.fwupdateDaemon.le_pm -> powerMgr.le_pm
 #endif
 }
 
