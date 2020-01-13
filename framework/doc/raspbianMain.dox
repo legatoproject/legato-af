@@ -148,10 +148,11 @@ iface wlan0 inet manual
 The @ref wifi_wifiap_testapp "WiFi access point sample app" demonstrates how one Internet connection
 can be shared with multiple WiFi devices. To have Wireless WAN connectivity on a Raspberry Pi, a
 module like <a href="http://linkwave.co.uk/">Linkwave</a>'s
-<a href="http://linkwave.co.uk/the-pilot">The PiloT</a> is required. The PiloT is known to work with
+<a href="https://linkwave.co.uk/pilot">The PiloT</a> is required. The PiloT is known to work with
 Legato and Raspberry Pi, and can be used to create a wireless WiFi hotspot with the
 @ref wifi_wifiap_testapp "WiFi access point sample app".
 
 Copyright (C) Sierra Wireless Inc.
 
 **/
+

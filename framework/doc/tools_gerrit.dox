@@ -88,7 +88,7 @@ clone all the different repositories needed to build either the Legato source co
 Distribution.
 
 Gerrit manifests can be found by cloning the manifest repo or by
-[browsing the manifest repo](https://gerrit.legato.io/plugins/gitiles/manifest/+/master).
+[browsing the manifest repo](https://gerrit.legato.io/gitweb?p=manifest.git).
 @verbatim
 git clone ssh://gerrit.legato.io:29418/manifest
 @endverbatim

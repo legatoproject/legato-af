@@ -16,7 +16,7 @@ which is then used as an input to the build process.
 
 The menus and configuration options are defined by KConfig files sprinkled
 throughout the source tree.  The format of these files is described in detail
-at http://ymorin.is-a-geek.org/git/kconfig-frontends/tree/docs/kconfig-language.txt?id=v4.11.0.1
+at https://raw.githubusercontent.com/legatoproject/legato-3rdParty-kconfig-frontends/v4.11.0.1/docs/kconfig-language.txt
 
 @section kconfigDescription_Legato What is it used for in Legato?
 
@@ -27,7 +27,7 @@ at @ref kconfigOptions "KConfig Options".  KConfig replaces a mixture of
 environment variables and preprocessor defines which were previously used to
 set the parameters of the build.
 
-Legato uses <a href="http://ymorin.is-a-geek.org/projects/kconfig-frontends">
+Legato uses <a href="https://github.com/legatoproject/legato-3rdParty-kconfig-frontends">
 kconfig-frontends</a> to manage KConfig files and configuration.  This is a
 version of the Linux kernel's KConfig system that has been extracted and
 tweaked for independent use.
