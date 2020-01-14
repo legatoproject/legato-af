@@ -902,12 +902,14 @@ void _le_log_ExitFatal
  * to be printed (depending on the contents of the format string).
  */
 //--------------------------------------------------------------------------------------------------
-#if !LE_CONFIG_DEBUG
-#define LE_FATAL(formatString, ...) \
+#ifndef LE_FATAL
+#   if !LE_CONFIG_DEBUG
+#       define LE_FATAL(formatString, ...) \
         { LE_EMERG(formatString, ##__VA_ARGS__); _le_log_ExitFatal(); }
-#else
-#define LE_FATAL(formatString, ...) \
+#   else
+#       define LE_FATAL(formatString, ...) \
         { LE_EMERG(formatString, ##__VA_ARGS__); abort(); }
+#   endif
 #endif
 
 
