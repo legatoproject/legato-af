@@ -66,8 +66,8 @@ static bool IsBootSourceTriggered
     // Failed to open boot source file. Bad boot source or firmware.
     if (fd == -1)
     {
-        LE_KILL_CLIENT("Unable to open file '%s' for reading (%m). Wrong boot-source or firmware ",
-                       bootSrcTrigPath);
+        LE_ERROR("Unable to open file '%s' for reading (%m). Wrong boot-source or firmware ",
+                  bootSrcTrigPath);
         return false;
     }
 
