@@ -35,9 +35,14 @@ requires:
     }
     component:
     {
-        ${LEGATO_FWUPDATE_PA}
+        // Symbol resolution is from bottom-to-top, so order matters
+        // and the default PA needs to be last when it comes to symbol
+        // resolution, which means it needs to be first in this list.
 #if ${LE_CONFIG_LINUX} = y
         ${LEGATO_FWUPDATE_PA_DEFAULT}
+#endif
+        ${LEGATO_FWUPDATE_PA}
+#if ${LE_CONFIG_LINUX} = y
         ${LEGATO_FWUPDATE_PA_DUALSYS}
         ${LEGATO_FWUPDATE_PA_SINGLESYS}
         ${LEGATO_FWUPDATE_PA_FLASH}
