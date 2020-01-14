@@ -131,6 +131,12 @@ static le_timer_Ref_t CreateTimer
              le_thread_GetMyName(), timerAttrRef->name, TimerCreateIdx);
 
     le_timer_Ref_t timerRef = le_timer_Create(timerNameBuffer);
+
+    // This function is called from ThreadMain() which increments TimerCreateIdx upon each
+    // timer creation. To test both wakeup and non-wakeup timers, the timer created here is
+    // set to the wakeup type if TimerCreateIdx is an odd index #, or non-wakeup if even.
+    le_timer_SetWakeup(timerRef, TimerCreateIdx%2 ? true : false);
+
     le_timer_SetHandler(timerRef, timerAttrRef->handlerRef);
     le_timer_SetInterval(timerRef, timerAttrRef->interval);
     le_timer_SetRepeat(timerRef, timerAttrRef->repeatCount);

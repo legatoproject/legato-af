@@ -282,7 +282,6 @@ InterfaceObjIter_t;
 static le_mem_PoolRef_t IteratorPool;
 static le_mem_PoolRef_t TimerRecPool;
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * ASCII code for the escape character.
@@ -393,6 +392,14 @@ uintptr_t ChildLibLegatoBaseAddr = 0;
  */
 //--------------------------------------------------------------------------------------------------
 int PendingChildSignal = 0;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Type of Timer under inspection: TIMER_NON_WAKEUP / TIMER_WAKEUP
+ */
+//--------------------------------------------------------------------------------------------------
+static int TimerTypeIndex = TIMER_NON_WAKEUP;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1532,14 +1539,14 @@ static le_dls_Link_t* GetThreadMemberObjList
             {
                 timer_ThreadRec_t* timerPtr = le_mem_ForceAlloc(TimerRecPool);
                 if (TargetReadAddress(PidToInspect,
-                            (uintptr_t)threadObjRef->timerRecPtr[TIMER_NON_WAKEUP],
+                            (uintptr_t)threadObjRef->timerRecPtr[TimerTypeIndex],
                             timerPtr,
                             sizeof(timer_ThreadRec_t)) != LE_OK)
                 {
                     INTERNAL_ERR(REMOTE_READ_ERR("timer object"));
                 }
-                threadObjRef->timerRecPtr[TIMER_NON_WAKEUP] = timerPtr;
-                return threadObjRef->timerRecPtr[TIMER_NON_WAKEUP]->activeTimerList.headLinkPtr;
+                threadObjRef->timerRecPtr[TimerTypeIndex] = timerPtr;
+                return threadObjRef->timerRecPtr[TimerTypeIndex]->activeTimerList.headLinkPtr;
             }
             break;
 
@@ -1609,7 +1616,27 @@ static le_dls_Link_t* GetNextThreadMemberObjLinkPtr
         // There are no more thread objects on the list (or list is empty)
         if (remThreadObjNextLinkPtr == NULL)
         {
-            return NULL;
+            if (TimerTypeIndex == TIMER_NON_WAKEUP)
+            {
+                /* let continue on wakeup timers */
+                TimerTypeIndex = TIMER_WAKEUP;
+
+                // retrieve the thread member obj list for the thread object; update our thread
+                // member obj list with that list, and reset our local copy of the thread member
+                // obj list head.
+                threadMemberObjItrRef->threadMemberObjList.List.headLinkPtr =
+                    GetThreadMemberObjList(memberObjType, localThreadObjRef);
+                threadMemberObjItrRef->threadMemberObjList.headLinkPtr = NULL;
+
+                // Get the next thread member obj.
+                remThreadMemberObjNextLinkPtr =
+                    GetNextDlsLink(&(threadMemberObjItrRef->threadMemberObjList), NULL);
+                continue;
+            }
+            else
+            {
+                return NULL;
+            }
         }
 
         // Get the address of thread obj.
@@ -1617,10 +1644,10 @@ static le_dls_Link_t* GetNextThreadMemberObjLinkPtr
 
         // free last timer if applicable
         if ((memberObjType == INSPECT_INSP_TYPE_TIMER) &&
-            localThreadObjRef->timerRecPtr[TIMER_NON_WAKEUP])
+            localThreadObjRef->timerRecPtr[TimerTypeIndex])
         {
-            le_mem_Release(localThreadObjRef->timerRecPtr[TIMER_NON_WAKEUP]);
-            localThreadObjRef->timerRecPtr[TIMER_NON_WAKEUP] = NULL;
+            le_mem_Release(localThreadObjRef->timerRecPtr[TimerTypeIndex]);
+            localThreadObjRef->timerRecPtr[TimerTypeIndex] = NULL;
         }
 
         // Read the thread obj into our own memory, and update the local reference
@@ -2166,7 +2193,8 @@ static ColumnInfo_t TimerTableInfo[] =
     {"REPEAT COUNT", "%*s", NULL, "%*u",  sizeof(uint32_t),           false, 0, true},
     {"ISACTIVE",     "%*s", NULL, "%*u",  sizeof(bool),               false, 0, true},
     {"EXPIRY TIME",  "%*s", NULL, "%*f",  sizeof(double),             false, 0, true},
-    {"EXPIRY COUNT", "%*s", NULL, "%*u",  sizeof(uint32_t),           false, 0, true}
+    {"EXPIRY COUNT", "%*s", NULL, "%*u",  sizeof(uint32_t),           false, 0, true},
+    {"ISWAKEUP",     "%*s", NULL, "%*u",  sizeof(bool),               false, 0, true}
 };
 static size_t TimerTableInfoSize = NUM_ARRAY_MEMBERS(TimerTableInfo);
 
@@ -3473,6 +3501,7 @@ static int PrintTimerInfo
         FillBoolColField  (timerRef->isActive,    TimerTableInfo, TimerTableInfoSize, &index);
         FillDoubleColField(expiryTime,            TimerTableInfo, TimerTableInfoSize, &index);
         FillUint32ColField(timerRef->expiryCount, TimerTableInfo, TimerTableInfoSize, &index);
+        FillBoolColField(timerRef->isWakeupEnabled, TimerTableInfo, TimerTableInfoSize, &index);
 
         PrintInfo(TimerTableInfo, TimerTableInfoSize);
         lineCount++;
@@ -3504,6 +3533,8 @@ static int PrintTimerInfo
         ExportDoubleToJson(expiryTime,            TimerTableInfo,
                                                   TimerTableInfoSize, &index, &printed);
         ExportUint32ToJson(timerRef->expiryCount, TimerTableInfo,
+                                                  TimerTableInfoSize, &index, &printed);
+        ExportBoolToJson(timerRef->isWakeupEnabled, TimerTableInfo,
                                                   TimerTableInfoSize, &index, &printed);
 
         printf("]");
