@@ -61,12 +61,6 @@ and @ref c_le_data.
 
 le_clk_SetTimezoneFile is now supported in @ref c_clock .
 
-@subsection rn1911_Features_tty tty Open change
-
-Previous versions of le_tty_Open() would exit the process with LE_FATAL if the tty failed
-to successfully open; now a file descriptor is either returned or -1 is returned on failure.
-
-
 @section rn1911_BFeatures Beta Features
 
 @subsection rn1911_BFeatures_IDE Experimental IDE
