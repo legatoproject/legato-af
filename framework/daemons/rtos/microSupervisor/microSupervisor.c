@@ -321,6 +321,8 @@ static le_result_t StartProc
     // set a pid for threads created by this task to inherit
     thread_SetPidOnStart(currentThread);
 
+    le_thread_SetJoinable(currentThread);
+
     le_thread_Start(currentThread);
 
     return LE_OK;
@@ -667,7 +669,7 @@ le_result_t LE_SHARED le_microSupervisor_RunCommand
     result = StartProc(appPtr, taskPtr, argc, argv, NULL);
 
     // Immediately stop process once COMPONENT_INIT is processed
-    if (result)
+    if (result == LE_OK)
     {
         le_event_QueueFunctionToThread(taskInfoPtr->threadRef, ExitThread, NULL, NULL);
         le_thread_Join(taskInfoPtr->threadRef, &retVal);
