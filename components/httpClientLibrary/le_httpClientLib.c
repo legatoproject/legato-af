@@ -573,16 +573,16 @@ static le_result_t BuildAndSendResource
     int reservedBytes = 6; // Bytes reserved for semantics (e.g: \r, \n, :, space)
     le_result_t status;
 
+    char keyBuf[REQUEST_BUFFER_SIZE/2] = {0};
+    char valueBuf[REQUEST_BUFFER_SIZE/2] = {0};
+    int keyLen;
+    int valueLen;
+
     if (!contextPtr->resourceUpdateCb)
     {
         status = LE_TERMINATED;
         goto end;
     }
-
-    char keyBuf[REQUEST_BUFFER_SIZE/2];
-    char valueBuf[REQUEST_BUFFER_SIZE/2];
-    int keyLen;
-    int valueLen;
 
     // Do not put these in the initializer -- ARM RVCT complains about
     // skipped initializer if you do.
