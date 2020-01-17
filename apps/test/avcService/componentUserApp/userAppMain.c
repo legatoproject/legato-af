@@ -29,7 +29,7 @@ COMPONENT_INIT
     LE_INFO("Got ref = %p", blockRef);
 
     // wait a bit
-    sleep(300);
+    le_thread_Sleep(300);
 
     le_avc_UnblockInstall(blockRef);
 
@@ -47,7 +47,7 @@ COMPONENT_INIT
     LE_INFO("Again got ref = %p", blockRef);
 
     // wait a bit
-    sleep(60);
+    le_thread_Sleep(60);
 
     exit(EXIT_SUCCESS);
 }

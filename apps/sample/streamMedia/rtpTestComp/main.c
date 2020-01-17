@@ -215,7 +215,7 @@ static void MyCallEventHandler
         }
 
         // 2-second pause: workaround to step over possible pcm_open error on AR8 platforms
-        sleep(2);
+        le_thread_Sleep(2);
 
         le_mcc_Delete(callRef);
         DisconnectAllAudio();

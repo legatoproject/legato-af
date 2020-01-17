@@ -114,7 +114,7 @@ static void RxMessageHandler3
 )
 {
     LE_INFO("A New SMS3 message is received with ref.%p", msgRef);
-    sleep(3);
+    le_thread_Sleep(3);
 
      le_sms_MsgListRef_t listRef = le_sms_CreateRxMsgList();
     if (listRef == NULL)
@@ -123,7 +123,7 @@ static void RxMessageHandler3
         LE_ASSERT(listRef == NULL);
     }
 
-    sleep(1);
+    le_thread_Sleep(1);
     if (listRef)
     {
         le_sms_DeleteList(listRef);
@@ -146,7 +146,7 @@ static void RxMessageHandler4
 )
 {
     LE_INFO("A New SMS4 message is received with ref.%p", msgRef);
-    sleep(6);
+    le_thread_Sleep(6);
 
     le_sms_Delete(msgRef);
 

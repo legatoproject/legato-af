@@ -66,7 +66,7 @@ static void mdc_DefaultPATest()
     LE_TEST_ASSERT(LE_FAULT == le_mdc_StopSession(profileRef), "Test le_mdc_StopSession()");
 
     LE_TEST_OUTPUT(" == End mdc test on default PA == ");
-    sleep(3);
+    le_thread_Sleep(3);
 }
 
 //--------------------------------------------------------------------------------------------------

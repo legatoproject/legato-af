@@ -32,7 +32,7 @@ static void ReadAndIncCount(bool useLocks)
 
     // Simulate doing something else for a little while by sleeping.  This should cause a race if
     // the files aren't locked.
-    sleep(1);
+    le_thread_Sleep(1);
 
     // Increment the count and write it back to the file.
     count++;

@@ -27,5 +27,5 @@ void sleep_Sleep
     int32_t sleepTime
 )
 {
-    sleep(sleepTime);
+    le_thread_Sleep(sleepTime);
 }

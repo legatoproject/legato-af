@@ -1112,7 +1112,7 @@ static le_result_t InstallEachKernelModule(KModuleObj_t *m, bool enableUseCount)
                 if (procModules.loadStatus != STATUS_INSTALLED)
                 {
                     LE_INFO("Module '%s' not in 'Live' state, wait for 10 seconds.", mod->name);
-                    sleep(10);
+                    le_thread_Sleep(10);
 
                     /* If the module is not in live state, wait for 10 seconds to see if the
                      * module recovers to live state, otherwise restart the system.

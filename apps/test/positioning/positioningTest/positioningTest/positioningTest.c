@@ -641,10 +641,10 @@ COMPONENT_INIT
     LE_INFO("Request activation of the positioning service");
     LE_ASSERT((activationRef = le_posCtrl_Request()) != NULL);
     LE_INFO("Wait 120 seconds for a 3D fix");
-    sleep(120);
+    le_thread_Sleep(120);
     Testle_pos_DistanceResolutionUpdate();
     Testle_pos_GetInfo();
-    sleep(1);
+    le_thread_Sleep(1);
     LE_INFO("Release the positioning service");
     le_posCtrl_Release(activationRef);
 

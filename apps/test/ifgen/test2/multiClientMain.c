@@ -165,7 +165,7 @@ void* NewThread
     // Wait a few seconds so that the output of the two tests does not overlap.  It makes it
     // much easier to verify the results.  Yes, this could be done with timers, but no harm
     // just using sleep() here, since this is not the main thread.
-    sleep(10);
+    le_thread_Sleep(10);
 
     // Start the test once the Event Loop is running.
     le_event_QueueFunction(StartTestNewThread, NULL, NULL);

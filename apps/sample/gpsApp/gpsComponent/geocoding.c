@@ -223,7 +223,7 @@ void gc_InitiateGeocode
     LE_INFO("asking to start channel %s", channelName);
     reqObj = le_dcs_Start(myChannel);
     LE_INFO("returned RequestObj %p", reqObj);
-    sleep(5);
+    le_thread_Sleep(5);
 
     // Setting default gateway
     LE_INFO("asking to add route for channel %s", channelName);
@@ -271,7 +271,7 @@ static void ConnectionStateHandler
     le_result_t res = LE_OK;
     if (event == LE_DCS_EVENT_UP)
     {
-        sleep(5);
+        le_thread_Sleep(5);
         res = GetUrl();
         if (res != LE_OK)
         {

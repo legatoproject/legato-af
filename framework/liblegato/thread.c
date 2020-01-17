@@ -1491,6 +1491,26 @@ le_result_t le_thread_Cancel
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Causes the calling thread to sleep.
+ *
+ * @return
+ *      -  0 if the sleep is successful.
+ *      - -1 if the call is interrupted by a signal handler or encounters an error.
+ */
+//--------------------------------------------------------------------------------------------------
+int le_thread_Sleep
+(
+    unsigned int seconds
+)
+{
+    struct timespec sleepTime = { .tv_sec = seconds, .tv_nsec = 0 };
+
+    return nanosleep(&sleepTime, NULL);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Gets the calling thread's thread reference.
  *
  * @return  The calling thread's thread reference.

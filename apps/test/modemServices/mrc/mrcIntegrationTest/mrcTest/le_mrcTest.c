@@ -261,7 +261,7 @@ static void Testle_mrc_Power
     }
     LE_ASSERT(res == LE_OK);
 
-    sleep(5);
+    le_thread_Sleep(5);
 
     res = le_mrc_GetRadioPower(&onoff);
     if ((res != LE_OK) || (onoff == LE_OFF))
@@ -274,13 +274,13 @@ static void Testle_mrc_Power
     res = le_mrc_SetRadioPower(LE_ON);
     LE_ASSERT(res == LE_OK);
 
-    sleep(5);
+    le_thread_Sleep(5);
 
     res = le_mrc_GetRadioPower(&onoff);
     LE_ASSERT(res == LE_OK);
     LE_ASSERT(onoff == LE_ON);
 
-    sleep(5);
+    le_thread_Sleep(5);
 }
 //! [Radio Power]
 #endif
@@ -508,7 +508,7 @@ static void Testle_mrc_RegisterMode
 
     LE_ASSERT(le_mrc_GetPlatformSpecificRegistrationErrorCode() == 0);
 
-    sleep(5);
+    le_thread_Sleep(5);
 
     memset(mccStr,0,LE_MRC_MCC_BYTES);
     memset(mncStr,0,LE_MRC_MNC_BYTES);
@@ -523,7 +523,7 @@ static void Testle_mrc_RegisterMode
     LE_INFO("le_mrc_SetManualRegisterMode %s,%s return %d",mccHomeStr, mncHomeStr, res);
     LE_ASSERT(res == LE_OK);
 
-    sleep(5);
+    le_thread_Sleep(5);
 
     memset(mccStr,0,LE_MRC_MCC_BYTES);
     memset(mncStr,0,LE_MRC_MNC_BYTES);
@@ -541,7 +541,7 @@ static void Testle_mrc_RegisterMode
     res = le_mrc_SetAutomaticRegisterMode();
     LE_ASSERT(res == LE_OK);
 
-    sleep(5);
+    le_thread_Sleep(5);
 
     memset(mccStr,0,LE_MRC_MCC_BYTES);
     memset(mncStr,0,LE_MRC_MNC_BYTES);
@@ -624,7 +624,7 @@ static void Testle_mrc_RegisterModeAsync
     res = le_mrc_SetAutomaticRegisterMode();
     LE_ASSERT(res == LE_OK);
 
-    sleep(5);
+    le_thread_Sleep(5);
 
     // Get the home PLMN to compare results.
     res = le_sim_GetHomeNetworkMccMnc(LE_SIM_EXTERNAL_SLOT_1, mccHomeStr, LE_MRC_MCC_BYTES,
@@ -646,7 +646,7 @@ static void Testle_mrc_RegisterModeAsync
     le_thread_Cancel(RegistrationThreadRef);
     le_sem_Delete(ThreadSemaphore);
 
-    sleep(SLEEP_5S);
+    le_thread_Sleep(SLEEP_5S);
 
     memset(mccStr,0,LE_MRC_MCC_BYTES);
     memset(mncStr,0,LE_MRC_MNC_BYTES);
@@ -662,11 +662,11 @@ static void Testle_mrc_RegisterModeAsync
     LE_INFO("le_mrc_GetRegisterMode %c, mcc.%s mnc.%s",
         (isManual ? 'Y':'N'), mccStr, mncStr);
 
-    sleep(SLEEP_5S);
+    le_thread_Sleep(SLEEP_5S);
     res = le_mrc_SetAutomaticRegisterMode();
     LE_ASSERT(res == LE_OK);
 
-    sleep(SLEEP_5S);
+    le_thread_Sleep(SLEEP_5S);
 }
 //! [Register]
 
@@ -1245,7 +1245,7 @@ static void Testle_mrc_PerformPciNetworkScanAsync
 
     le_mrc_SetRatPreferences(bitMaskOrigin);
 
-    sleep(5);
+    le_thread_Sleep(5);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1341,7 +1341,7 @@ static void Testle_mrc_PerformCellularNetworkScanAsync
 
     le_mrc_SetRatPreferences(bitMaskOrigin);
 
-    sleep(5);
+    le_thread_Sleep(5);
 }
 
 //! [Band Preferences]
@@ -1808,7 +1808,7 @@ static void Testle_mrc_SetSignalStrengthIndThresholds
     time1.sec = 150;
     time1.usec =0;
 
-    sleep(SLEEP_5S);
+    le_thread_Sleep(SLEEP_5S);
 
     LE_ASSERT_OK(le_mrc_GetRadioAccessTechInUse(&rat));
     LE_ASSERT(LE_MRC_RAT_UNKNOWN != rat);
@@ -2431,7 +2431,7 @@ static void* MyJammingDetectionThread
         return NULL;
     }
 
-    sleep(SLEEP_5S);
+    le_thread_Sleep(SLEEP_5S);
 
     testJammingHdlrRef = le_mrc_AddJammingDetectionEventHandler(TestJammingHandler, NULL);
     LE_ASSERT(testJammingHdlrRef);
@@ -2468,7 +2468,7 @@ static void Testle_mrc_JammingDetection
     le_clk_Time_t time1;
     le_result_t res;
 
-    sleep(SLEEP_5S);
+    le_thread_Sleep(SLEEP_5S);
 
     time1.sec = 150;
     time1.usec = 0;

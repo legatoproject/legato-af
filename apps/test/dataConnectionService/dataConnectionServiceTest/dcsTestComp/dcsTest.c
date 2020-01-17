@@ -223,7 +223,7 @@ static void DcsStateHandler
         GetDateTime();
 
         LE_INFO("Wait for 5 seconds before releasing the data connection.");
-        sleep(5);
+        le_thread_Sleep(5);
         DisconnectData();
         LE_INFO("Verify that the data connection is released by checking DCS events.");
     }

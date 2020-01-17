@@ -294,7 +294,7 @@ COMPONENT_INIT
         LE_ERROR("Could not connect to service on first try");
 
         // Let's wait a bit and try again
-        sleep(15);
+        le_thread_Sleep(15);
         result = example_TryConnectService();
         if ( result != LE_OK )
         {

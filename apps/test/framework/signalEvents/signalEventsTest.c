@@ -36,7 +36,7 @@ static void SigUser2Handler(int sigNum)
             LE_ASSERT(kill(getpid(), SIGUSR1) == 0);
 
             // Make sure that the signal to thread 1 is sent first.
-            sleep(1);
+            le_thread_Sleep(1);
 
             // Send to ourself and we should get it
             checkCount++;

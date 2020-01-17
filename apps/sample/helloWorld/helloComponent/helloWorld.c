@@ -5,6 +5,6 @@ COMPONENT_INIT
     while (1)
     {
         LE_INFO("Hello, world.");
-        sleep(5);
+        le_thread_Sleep(5);
     }
 }

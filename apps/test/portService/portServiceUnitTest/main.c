@@ -443,7 +443,7 @@ static void* ClientConnect
            && (counter < CLIENT_CONNECTION_TIMEOUT))
     {
         LE_INFO("Client socket is not connected!");
-        sleep(1);
+        le_thread_Sleep(1);
         counter++;
     }
     return NULL;
@@ -567,7 +567,7 @@ static void* UnitTestInit
     while (NULL == le_port_Request("modemPort"))
     {
         LE_INFO("JSON parsing is not completed!");
-        sleep(1);
+        le_thread_Sleep(1);
     }
 
     // Open client socket.

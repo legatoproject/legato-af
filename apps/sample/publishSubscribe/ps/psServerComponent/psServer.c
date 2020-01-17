@@ -79,7 +79,7 @@ static void* DisplayTempThread
 
       tempUpdated.sensorTemp = sensorTemp;
       le_event_Report(TemperatureUpdatedEvent, &tempUpdated, sizeof(tempUpdated));
-      sleep(1);
+      le_thread_Sleep(1);
 
       if (tempContextPtr->timeCounter >= MonitorTime)
       {

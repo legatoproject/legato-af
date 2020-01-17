@@ -386,7 +386,7 @@ static void RestartSession
 )
 {
     le_avc_StopSession();
-    sleep(10);
+    le_thread_Sleep(10);
     le_avc_StartSession();
 }
 

@@ -62,7 +62,7 @@ COMPONENT_INIT
 {
     le_dcs_ConnectService();
 #ifdef LE_CONFIG_LINUX
-    sleep(STARTUP_CHANNEL_SCAN_WAIT);
+    le_thread_Sleep(STARTUP_CHANNEL_SCAN_WAIT);
 #endif
     LE_INFO("Initializing data channels");
     le_dcs_GetChannels(dcsInternalChannelQueryHandler, NULL);

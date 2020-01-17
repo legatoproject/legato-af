@@ -39,7 +39,7 @@ COMPONENT_INIT
     if (strcmp(faultTypeStr, SIG_FAULT) == 0)
     {
         // sleep for 2 seconds so that we do not hit the fault limit.
-        sleep(2);
+        le_thread_Sleep(2);
 
         int i = *(volatile int*)0;
         LE_DEBUG("i is: %d", i);
@@ -47,7 +47,7 @@ COMPONENT_INIT
     else if (strcmp(faultTypeStr, PROG_FAULT) == 0)
     {
         // sleep for 2 seconds so that we do not hit the fault limit.
-        sleep(2);
+        le_thread_Sleep(2);
 
         LE_FATAL("Exiting with failure code.");
     }

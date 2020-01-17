@@ -830,7 +830,7 @@ void TestMultiProcessAccess
     if (childPID == 0)
     {
         // sleep for a while to make sure that parent process can put a write lock to the file
-        sleep(5);
+        le_thread_Sleep(5);
         int childFD = le_atomFile_Create(filePath, LE_FLOCK_WRITE, LE_FLOCK_REPLACE_IF_EXIST,
                                          S_IRWXU);
         LE_INFO("the lock is released!!!!!!!++++++++++++++");
@@ -848,10 +848,10 @@ void TestMultiProcessAccess
                                           S_IRWXU);
         WriteString(parentFD, NUM_WRITE);
         LE_INFO("Parent Finished writing");
-        sleep(5);
+        le_thread_Sleep(5);
         le_atomFile_Close(parentFD);
         LE_INFO("Parent closed file");
-        sleep(5);
+        le_thread_Sleep(5);
         kill(childPID, SIGKILL);
         LE_INFO("Parent killed child");
         IfNumStringWritten(NUM_WRITE, filePath);
@@ -886,12 +886,12 @@ void TestMultiProcessAccess
         LE_ASSERT(fd_WriteSize(childFD2, "Unsuccessful write",
                                           sizeof("Unsuccessful write")) == LE_FAULT);
         //Sleep for very long time, and parent will kill it by kill signal
-        sleep(2000);
+        le_thread_Sleep(2000);
     }
     // parent
     else if (childPID > 0)
     {
-        sleep(5);
+        le_thread_Sleep(5);
         LE_INFO("Parent killing child");
         kill(childPID, SIGKILL);
         LE_ASSERT(file_Exists(filePath) == false);
@@ -913,7 +913,7 @@ void TestMultiProcessAccess
     if (childPID == 0)
     {
         // sleep for a while to make sure that parent process can put a write lock to the file
-        sleep(5);
+        le_thread_Sleep(5);
         int childFD = le_atomFile_Open(filePath, LE_FLOCK_WRITE);
         LE_INFO("the lock is released!!!!!!!++++++++++++++");
         LE_INFO("Child is writing");
@@ -929,10 +929,10 @@ void TestMultiProcessAccess
         int parentFD = le_atomFile_Open(filePath, LE_FLOCK_WRITE);
         WriteString(parentFD, NUM_WRITE);
         LE_INFO("Parent Finished writing");
-        sleep(5);
+        le_thread_Sleep(5);
         le_atomFile_Close(parentFD);
         LE_INFO("Parent closed file");
-        sleep(5);
+        le_thread_Sleep(5);
         kill(childPID, SIGKILL);
         LE_INFO("Parent killed child");
         IfNumStringWritten(NUM_WRITE, filePath);
@@ -945,7 +945,7 @@ void TestMultiProcessAccess
     if (childPID == 0)
     {
         // sleep for a while to make sure that parent process can put a write lock to the file
-        sleep(5);
+        le_thread_Sleep(5);
         int childFD = le_atomFile_Create(filePath, LE_FLOCK_WRITE, LE_FLOCK_OPEN_IF_EXIST, S_IRWXU);
         LE_INFO("the lock is released!!!!!!!++++++++++++++");
         LE_INFO("Child is writing");
@@ -962,10 +962,10 @@ void TestMultiProcessAccess
                                           S_IRWXU);
         WriteString(parentFD, NUM_WRITE);
         LE_INFO("Parent Finished writing");
-        sleep(5);
+        le_thread_Sleep(5);
         le_atomFile_Close(parentFD);
         LE_INFO("Parent closed file");
-        sleep(5);
+        le_thread_Sleep(5);
         kill(childPID, SIGKILL);
         LE_INFO("Parent killed child");
         IfNumStringWritten(NUM_WRITE, filePath);
@@ -992,7 +992,7 @@ void TestMultiProcessAccess
     // parent
     else if (childPID > 0)
     {
-        sleep(5);
+        le_thread_Sleep(5);
         mode_t old_mode = umask(0);
         int parentFD = le_atomFile_Create(filePath, LE_FLOCK_WRITE, LE_FLOCK_OPEN_IF_EXIST,
                                           S_IRWXU);
@@ -1018,7 +1018,7 @@ void TestMultiProcessAccess
     if (childPID == 0)
     {
         // sleep for a while to make sure that parent process can put a write lock to the file
-        sleep(5);
+        le_thread_Sleep(5);
         LE_INFO("Child is trying to delete file: %s", filePath);
         le_result_t result = le_atomFile_TryDelete(filePath);
         LE_ASSERT(result == LE_WOULD_BLOCK);
@@ -1034,10 +1034,10 @@ void TestMultiProcessAccess
         int parentFD = le_atomFile_Create(filePath, LE_FLOCK_WRITE, LE_FLOCK_OPEN_IF_EXIST, S_IRWXU);
         LE_INFO("Parent writing in file: %s", filePath);
         WriteString(parentFD, NUM_WRITE);
-        sleep(10);
+        le_thread_Sleep(10);
         le_atomFile_Close(parentFD);
         LE_INFO("Parent Closed file: %s", filePath);
-        sleep(5);
+        le_thread_Sleep(5);
         le_result_t result = le_atomFile_Delete(filePath);
         LE_ASSERT(result == LE_NOT_FOUND);
     }

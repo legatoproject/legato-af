@@ -826,7 +826,7 @@ static le_result_t Testle_sms_Send_Text
     le_thread_Start(RxThread);
 
     // Wait for thread starting.
-    sleep(2);
+    le_thread_Sleep(2);
 
     // Check if Thread SMS RX handler has been started
     if (!RxHdlrRef)
@@ -919,7 +919,7 @@ static le_result_t Testle_sms_Send_UCS2
     le_thread_Start(RxThread);
 
     // Wait for thread starting.
-    sleep(2);
+    le_thread_Sleep(2);
 
     // Check if Thread SMS RX handler has been started
     if (!RxHdlrRef)
@@ -1250,7 +1250,7 @@ static le_result_t Testle_sms_ReceivedList()
     res = le_sms_Send(myMsg);
     LE_ASSERT((res != LE_FAULT) && (res != LE_FORMAT_ERROR));
 
-    sleep(10);
+    le_thread_Sleep(10);
 
     // List Received messages
     receivedList = le_sms_CreateRxMsgList();

@@ -319,7 +319,7 @@ static void* DisplayIpsThread
         le_ips_GetInputVoltage(&voltage);
         LE_INFO("le_ips_GetInputVoltage return %d mV => %d,%03d V",
             voltage, voltage/1000, voltage%1000);
-        sleep(2);
+        le_thread_Sleep(2);
     }
     while (WaitForNbEvents > 0);
 

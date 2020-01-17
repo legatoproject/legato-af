@@ -8,7 +8,7 @@ void printerExtended_Print(uint64_t numBytes, const char* message, uint32_t temp
     id++;
     LE_INFO("******** Client says numBytes [%" PRIu64 "],'%s', temperature [%" PRIu32 "]", numBytes, message, temperature);
     *idPtr = id;
-    sleep(2);
+    le_thread_Sleep(2);
     LE_INFO("******** Sending response back to Client, id [%" PRIu32 "]", *idPtr);
 }
 

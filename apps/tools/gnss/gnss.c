@@ -2035,7 +2035,7 @@ static int DoPosFix
         {
             count++;
             printf("TTFF not calculated (Position not fixed)\n");
-            sleep(1);
+            le_thread_Sleep(1);
         }
         else
         {
@@ -2198,7 +2198,7 @@ static int WatchGnssInfo
     le_thread_Start(positionThreadRef);
 
     printf("Watch positioning data for %ds\n", watchPeriod);
-    sleep(watchPeriod);
+    le_thread_Sleep(watchPeriod);
 
     le_gnss_RemovePositionHandler(PositionHandlerRef);
 

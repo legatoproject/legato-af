@@ -49,7 +49,7 @@ COMPONENT_INIT
             if (ECONNREFUSED == connectErrno)
             {
                 // Connection refused?  Wait a bit and try again.
-                sleep(1);
+                le_thread_Sleep(1);
             }
         }
     } while ((ret < 0) && ((EINTR == connectErrno) || (ECONNREFUSED == connectErrno)));

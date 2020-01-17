@@ -1164,7 +1164,7 @@ static void TestSim_LocalSwap
                                         NULL );
 
         // Wait a while for le_sim treatment
-        sleep(1);
+        le_thread_Sleep(1);
 
         // There's a semaphore in the le_sim to wait for the refresh => report refresh event
         StkEvent = LE_SIM_REFRESH;

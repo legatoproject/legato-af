@@ -449,7 +449,7 @@ COMPONENT_INIT
     le_thread_SetPriority(TestThreadRef, LE_THREAD_PRIORITY_MEDIUM);
     le_thread_Start(TestThreadRef);
 
-    sleep(INIT_SLEEP);
+    le_thread_Sleep(INIT_SLEEP);
 
     le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_wifiSecurityCleanup, NULL, NULL);
 
@@ -463,7 +463,7 @@ COMPONENT_INIT
         le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_GetChannels, NULL, NULL);
         for (i=0; i<WAIT_FOR_CHANNELS_LOOP; i++)
         {
-            sleep(WAIT_FOR_CHANNELS_LOOP_SLEEP);
+            le_thread_Sleep(WAIT_FOR_CHANNELS_LOOP_SLEEP);
             if (MyChannel)
             {
                 break;
@@ -476,11 +476,11 @@ COMPONENT_INIT
     for (i=0; i<TEST_LOOP; i++)
     {
         le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_Start, NULL, NULL);
-        sleep(LOOP_SLEEP24);
+        le_thread_Sleep(LOOP_SLEEP24);
         le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_Stop, NULL, NULL);
-        sleep(LOOP_SLEEP16);
+        le_thread_Sleep(LOOP_SLEEP16);
         le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_GetChannels, NULL, NULL);
-        sleep(LOOP_SLEEP20);
+        le_thread_Sleep(LOOP_SLEEP20);
     }
 
     le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_RmEventHandler, NULL, NULL);
@@ -489,7 +489,7 @@ COMPONENT_INIT
 
     le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_GetTechnology, NULL, NULL);
 
-    sleep(10);
+    le_thread_Sleep(10);
 
     le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_api_Stop, NULL, NULL);
 
@@ -508,16 +508,16 @@ COMPONENT_INIT
     {
         le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_data_api_Request, NULL, NULL);
 
-        sleep(LOOP_SLEEP30);
+        le_thread_Sleep(LOOP_SLEEP30);
 
         le_event_QueueFunctionToThread(TestThreadRef, Dcs_test_data_api_Release, NULL, NULL);
 
-        sleep(LOOP_SLEEP30);
+        le_thread_Sleep(LOOP_SLEEP30);
     }
 
 #endif
 
-    sleep(END_SLEEP);
+    le_thread_Sleep(END_SLEEP);
 
     LE_INFO("DCS-client: Done testing");
 }

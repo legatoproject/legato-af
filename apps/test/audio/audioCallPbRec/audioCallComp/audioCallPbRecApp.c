@@ -391,7 +391,7 @@ static void MyCallEventHandler
         le_audio_Close(FileAudioRef);
 
         // 2-second pause: workaround to step over possible pcm_open error on AR8 platforms
-        sleep(2);
+        le_thread_Sleep(2);
 
         ConnectAudioToFileLocalPlay();
 

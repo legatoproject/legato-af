@@ -154,7 +154,7 @@ static void* ECallLoopThread
     {
         LE_INFO("Wait for semaphore...");
         le_sem_Wait(ThreadSemaphore);
-        sleep(1);
+        le_thread_Sleep(1);
 
         if (LE_ECALL_STATE_STARTED == LastECallState)
         {

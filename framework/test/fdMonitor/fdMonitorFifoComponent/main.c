@@ -68,7 +68,7 @@ static void *FifoWriter
 
     // Delay to ensure main thread is sleeping
     LE_TEST_INFO("Delaying write");
-    sleep(1);
+    le_thread_Sleep(1);
 
     Completed = true;
     if (le_fd_Write(WriteFD, TestString, sizeof(TestString)) != sizeof(TestString))

@@ -174,7 +174,7 @@ static void* DisplayTempThread
                     TimeCounter++, paTemp, pcTemp);
             TimeCounter++;
         }
-        sleep(1);
+        le_thread_Sleep(1);
     }
     while (PoolingPause > 0);
 
@@ -432,7 +432,7 @@ static void Testle_temp_SetPcThresholdEvent
     PoolingPause = 2;
     LE_INFO("Set PoolingPause %d", PoolingPause);
 
-    sleep(WAIT_TIME);
+    le_thread_Sleep(WAIT_TIME);
 
     // Get current Power Controller Temperature
     le_temp_SensorRef_t pcSensorRef = le_temp_Request("POWER_CONTROLLER");
@@ -496,7 +496,7 @@ static void Testle_temp_SetPaThresholdEvent
     PoolingPause = 2;
     LE_INFO("Set PoolingPause %d", PoolingPause);
 
-    sleep(WAIT_TIME);
+    le_thread_Sleep(WAIT_TIME);
 
     // Get current PA Temperature
     le_temp_SensorRef_t paSensorRef = le_temp_Request("POWER_AMPLIFIER");

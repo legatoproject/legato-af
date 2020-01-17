@@ -1504,7 +1504,7 @@ static void WaitForTzLock
             // File doesn't exist - currently no lock, so let's proceed to try to run the command.
             break;
         }
-        sleep(TIME_ZONE_LOCK_RETRY_SLEEP);
+        le_thread_Sleep(TIME_ZONE_LOCK_RETRY_SLEEP);
     }
 }
 

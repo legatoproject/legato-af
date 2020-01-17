@@ -17,5 +17,5 @@ COMPONENT_INIT
     LE_INFO("Hello World!");
     le_wdogChain_Init(1);
     le_wdogChain_MonitorEventLoop(0, watchdogInterval);
-    sleep(20);
+    le_thread_Sleep(20);
 }

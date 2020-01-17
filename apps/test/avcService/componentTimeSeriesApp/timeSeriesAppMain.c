@@ -97,7 +97,7 @@ COMPONENT_INIT
                 PrintTimeSeriesStatus(instZeroRef, "Humidity");
                 LE_FATAL_IF(le_avdata_PushTimeSeries(instZeroRef, "Humidity", true) != LE_OK,
                             "Failed to push humidity history");
-                sleep(1);
+                le_thread_Sleep(1);
             }
         }
 
@@ -122,7 +122,7 @@ COMPONENT_INIT
                 PrintTimeSeriesStatus(instZeroRef, "Temperature");
                 LE_FATAL_IF(le_avdata_PushTimeSeries(instZeroRef, "Temperature", true) != LE_OK,
                             "Failed to push temperature history");
-                sleep(1);
+                le_thread_Sleep(1);
             }
         }
 
@@ -137,7 +137,7 @@ COMPONENT_INIT
         LE_FATAL_IF(le_avdata_PushTimeSeries(instZeroRef, "Humidity", true) != LE_OK,
                     "Failed to push humidity history");
 
-        sleep(1);
+        le_thread_Sleep(1);
     }
 
     result = le_avdata_IsObserve(instZeroRef, "Temperature", &isObserve);

@@ -30,7 +30,7 @@ COMPONENT_INIT
         le_wdogChain_Kick((1 + i) % 4);
         le_wdogChain_Kick((2 + i) % 4);
         le_wdogChain_Kick((3 + i) % 4);
-        sleep(SLEEP_TIME);
+        le_thread_Sleep(SLEEP_TIME);
         LE_TEST_OK(true, "4/4 active watchdogs: program running after %d seconds", (i+1)*2);
     }
     le_wdogChain_Stop(0);
@@ -39,7 +39,7 @@ COMPONENT_INIT
     for (i = 0; i < KICK_COUNT; ++i)
     {
         le_wdogChain_Kick(3);
-        sleep(SLEEP_TIME);
+        le_thread_Sleep(SLEEP_TIME);
         LE_TEST_OK(true, "1/4 active watchdogs: program running after %d seconds", (i+1)*2);
     }
     LE_TEST_EXIT;

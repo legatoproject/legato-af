@@ -62,6 +62,6 @@ COMPONENT_INIT
     /* Wait for reboot */
     while (1)
     {
-        sleep(10);
+        le_thread_Sleep(10);
     }
 }

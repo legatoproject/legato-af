@@ -508,6 +508,24 @@ LE_FULL_API le_result_t le_thread_Cancel
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Causes the calling thread to sleep.
+ *
+ * @return
+ *      -  0 if the sleep is successful.
+ *      - -1 if the call is interrupted by a signal handler or encounters an error.
+ *
+ * @note This function is not a full equivalence of nanosleep() as the remaining sleep time will not
+ *       be available to the caller if nanosleep() returns due to being interrupted by a signal.
+ */
+//--------------------------------------------------------------------------------------------------
+int le_thread_Sleep
+(
+    unsigned int seconds  ///< [IN] Time to sleep in seconds.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Gets the calling thread's thread reference.
  *
  * @return  Calling thread's thread reference.

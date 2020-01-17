@@ -170,7 +170,7 @@ static void LoadSimFromSecStore
                     LE_WARN("Sim-%d was busy when loading configuration,"
                             "retry in 1 seconds",simId);
                 }
-                sleep(1); // Retry in 1 second.
+                le_thread_Sleep(1); // Retry in 1 second.
                 break;
             case LE_SIM_READY:
                 LE_DEBUG("Sim-%d is ready",simId);

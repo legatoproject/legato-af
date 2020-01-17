@@ -112,7 +112,7 @@ static le_result_t GetCurrentLocation(
         else
         {
             // Sleep for one second before requesting the location again.
-            sleep(1);
+            le_thread_Sleep(1);
         }
     }
 

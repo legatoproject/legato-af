@@ -102,7 +102,7 @@ static int thisopen(const char* path)
         if (connect(sockfd, (struct sockaddr* )&that, sizeof(that)) < 0)  /* error */
         {
             LE_WARN("[%i] connect to '%s' failed (%d):%s",i,CUSTOM_PORT,errno,LE_ERRNO_TXT(errno));
-            sleep(1);
+            le_thread_Sleep(1);
         } else {
             isOpen=true;
         }

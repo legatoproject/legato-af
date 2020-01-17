@@ -921,7 +921,7 @@ static void ConnectAudioToFileLocalRec
                 LE_INFO("File is now recording.");
             }
 
-            sleep(1);
+            le_thread_Sleep(1);
 
             LE_INFO("Try again to record");
 

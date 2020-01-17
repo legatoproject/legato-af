@@ -35,7 +35,7 @@ COMPONENT_INIT
     LE_ASSERT(faultTypeStr != NULL);
 
     // sleep for 2 seconds so that we do not hit the fault limit.
-    sleep(2);
+    le_thread_Sleep(2);
 
     // Perform fault.
     if (strcmp(faultTypeStr, SIG_FAULT) == 0)

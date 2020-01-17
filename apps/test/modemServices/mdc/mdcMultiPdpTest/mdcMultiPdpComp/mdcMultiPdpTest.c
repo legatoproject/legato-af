@@ -126,7 +126,7 @@ static bool TestIpv4Connectivity
     LE_PRINT_VALUE("%s", gatewayAddr);
 
     LE_INFO("waiting a few seconds before setting the route for the default gateway");
-    sleep(5);
+    le_thread_Sleep(5);
 
     LOCK
     LE_ASSERT(snprintf(systemCmd, sizeof(systemCmd), "route add default gateway %s dev %s",
@@ -231,7 +231,7 @@ static bool TestIpv6Connectivity
     LE_PRINT_VALUE("%s", gatewayAddr);
 
     LE_INFO("waiting a few seconds before setting the route for the default gateway");
-    sleep(5);
+    le_thread_Sleep(5);
 
     LOCK
     snprintf(systemCmd, sizeof(systemCmd), "route -A inet6 add default gw %s", gatewayAddr);
@@ -315,7 +315,7 @@ static void* TestThread(void* contextPtr)
     LE_INFO("Start called");
 
     LE_INFO("waiting a few seconds");
-    sleep(20*NbConnection);
+    le_thread_Sleep(20*NbConnection);
 
     LOCK
     // Check returned error code if Data session is already started
@@ -336,7 +336,7 @@ static void* TestThread(void* contextPtr)
     // Wait a bit and then restart the data session and configure the network interface.
 
     LE_INFO("waiting a few more seconds");
-    sleep(10*NbConnection);
+    le_thread_Sleep(10*NbConnection);
 
     LOCK
 
@@ -350,7 +350,7 @@ static void* TestThread(void* contextPtr)
 
     UNLOCK
 
-    sleep(10*NbConnection);
+    le_thread_Sleep(10*NbConnection);
 
     TestIpv4Connectivity(profileRef);
 
@@ -420,7 +420,7 @@ static void* TestThreadMtPdp(void* contextPtr)
 
 
     LE_INFO("waiting a few seconds");
-    sleep(20);
+    le_thread_Sleep(20);
 
     LOCK
 
@@ -429,7 +429,7 @@ static void* TestThreadMtPdp(void* contextPtr)
     LE_ASSERT(le_mdc_StartSession(profileRef) == LE_DUPLICATE);
 
     LE_INFO("waiting a few seconds");
-    sleep(10);
+    le_thread_Sleep(10);
 
     if ( le_mdc_StopSession(profileRef) != LE_OK )
     {
@@ -622,7 +622,7 @@ COMPONENT_INIT
 
     }
 
-    sleep(1);
+    le_thread_Sleep(1);
 
     // Start the first test thread.
     le_thread_Start(le_thread_Create("MDC1_Test", TestThread, ProfileRef[0]));

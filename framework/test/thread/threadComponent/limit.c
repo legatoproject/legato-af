@@ -17,7 +17,7 @@ static void* SleepThread(void * contextPtr)
     LE_ERROR("[thread %" PRIuPTR "] Started", i);
     while(1)
     {
-        sleep(10000);
+        le_thread_Sleep(10000);
     }
 
     return NULL;

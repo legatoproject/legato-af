@@ -86,7 +86,7 @@ COMPONENT_INIT
             // Power Manager. By this, all wakeup sources will be released and destroyed
             // by the daemon.
             LE_ERROR("StayAwake() -> NO_MEMORY. Wait 5s before killing all PM clients");
-            sleep(5);
+            le_thread_Sleep(5);
             // Register our "successful" exit(3) handler
             atexit(PowerMgrTestExit);
             rc = le_pm_ForceRelaxAndDestroyAllWakeupSource();

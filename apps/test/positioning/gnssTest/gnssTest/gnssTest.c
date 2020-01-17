@@ -948,7 +948,7 @@ static void TestLeGnssPositionHandler
     LE_TEST_INFO("Start GNSS");
     LE_TEST_ASSERT(LE_OK == le_gnss_Start(), "Start GNSS");
     LE_TEST_INFO("Wait 5 seconds");
-    sleep(5);
+    le_thread_Sleep(5);
 
     // Test le_gnss_SetDataResolution() after starting GNSS
     LE_TEST_OK(LE_BAD_PARAMETER == le_gnss_SetDataResolution(LE_GNSS_DATA_VACCURACY,
@@ -961,7 +961,7 @@ static void TestLeGnssPositionHandler
 
     // test Cold Restart boosted by le_gnss_InjectUtcTime
     // EpochTime and timeAccuracy should be valid and saved by now
-    sleep(5);
+    le_thread_Sleep(5);
     LE_TEST_BEGIN_SKIP(!LINUX_OS, 3);
     LE_TEST_OK(LE_OK == le_gnss_ForceColdRestart(), "Force cold restart");
 
@@ -997,7 +997,7 @@ static void TestLeGnssPositionHandler
 
     le_gnss_RemovePositionHandler(PositionHandlerRef);
     LE_TEST_INFO("Wait 5 seconds");
-    sleep(5);
+    le_thread_Sleep(5);
 
     // stop thread
 #ifdef LE_CONFIG_LINUX
@@ -1050,7 +1050,7 @@ static void TestLeGnssStart
 
     /* Wait for a position fix */
     LE_TEST_INFO("Wait 120 seconds for a 3D fix");
-    sleep(120);
+    le_thread_Sleep(120);
 
     // Get TTFF
     result = le_gnss_GetTtff(&ttff);
@@ -1070,46 +1070,46 @@ static void TestLeGnssStart
     // Test le_gnss_StartMode()
     // HOT start
     LE_TEST_INFO("Ask for a Hot start in 3 seconds...");
-    sleep(3);
+    le_thread_Sleep(3);
     LE_TEST_OK(le_gnss_StartMode(LE_GNSS_UNKNOWN_START) == LE_BAD_PARAMETER, "Hot start");
 
     LE_TEST_ASSERT((le_gnss_StartMode(LE_GNSS_HOT_START)) == LE_OK, "le_gnss_StartMode(Hot start)");
 
     // Wait 5 sec
-    sleep(5);
+    le_thread_Sleep(5);
     // Stop GNSS engine
     LE_TEST_ASSERT((le_gnss_Stop()) == LE_OK, "Stop GNSS");
 
     /* WARM start */
     LE_TEST_INFO("Ask for a Warm start in 3 seconds...");
-    sleep(3);
+    le_thread_Sleep(3);
     LE_TEST_ASSERT((le_gnss_StartMode(LE_GNSS_WARM_START)) == LE_OK,
                    "le_gnss_StartMode(Warm start)");
 
     // Wait 5 sec
-    sleep(5);
+    le_thread_Sleep(5);
     // Stop GNSS engine
     LE_TEST_ASSERT((le_gnss_Stop()) == LE_OK, "Stop GNSS");
 
     /* COLD Restart */
     LE_TEST_INFO("Ask for a Cold start in 3 seconds...");
-    sleep(3);
+    le_thread_Sleep(3);
     LE_TEST_ASSERT((le_gnss_StartMode(LE_GNSS_COLD_START)) == LE_OK,
                    "le_gnss_StartMode(Cold start)");
 
     // Wait 5 sec
-    sleep(5);
+    le_thread_Sleep(5);
     // Stop GNSS engine
     LE_TEST_ASSERT((le_gnss_Stop()) == LE_OK, "Stop GNSS");
 
     // FACTORY start
     LE_TEST_INFO("Ask for a Factory start in 3 seconds...");
-    sleep(3);
+    le_thread_Sleep(3);
     LE_TEST_ASSERT((le_gnss_StartMode(LE_GNSS_FACTORY_START)) == LE_OK,
                    "le_gnss_StartMode(Factory start)");
 
     // Wait 5 sec
-    sleep(5);
+    le_thread_Sleep(5);
     // Stop GNSS engine
     LE_TEST_ASSERT((le_gnss_Stop()) == LE_OK, "Stop GNSS");
 
@@ -1118,7 +1118,7 @@ static void TestLeGnssStart
     LE_TEST_ASSERT(LE_OK == le_gnss_Start(), "Start GNSS");
     LE_TEST_INFO("GNSS running, confirm EXT_GPS_LNA_EN signal is high");
     LE_TEST_INFO("Wait 30 seconds");
-    sleep(30);
+    le_thread_Sleep(30);
 
     LE_TEST_OK(LE_NOT_PERMITTED == le_gnss_DisableExternalLna(),
                "Try to disable LNA when GNSS active");
@@ -1157,7 +1157,7 @@ static void TestLeGnssRestart
 
     /* Wait for a position fix */
     LE_TEST_INFO("Wait 60 seconds for a 3D fix");
-    sleep(60);
+    le_thread_Sleep(60);
     // Get TTFF
     result = le_gnss_GetTtff(&ttff);
     LE_TEST_OK((result == LE_OK) || (result == LE_BUSY), "Get TTFF");
@@ -1172,11 +1172,11 @@ static void TestLeGnssRestart
 
     /* HOT Restart */
     LE_TEST_INFO("Ask for a Hot restart in 3 seconds...");
-    sleep(3);
+    le_thread_Sleep(3);
     LE_TEST_OK(le_gnss_ForceHotRestart() == LE_OK, "Force hot restart");
     // Wait for a 3D fix
     LE_TEST_INFO("Wait 60 seconds for a 3D fix");
-    sleep(60);
+    le_thread_Sleep(60);
     // Get TTFF
     result = le_gnss_GetTtff(&ttff);
     LE_TEST_OK((result == LE_OK) || (result == LE_BUSY), "Get TTFF");
@@ -1191,11 +1191,11 @@ static void TestLeGnssRestart
 
     /* WARM Restart */
     LE_TEST_INFO("Ask for a Warm restart in 3 seconds...");
-    sleep(3);
+    le_thread_Sleep(3);
     LE_TEST_OK(le_gnss_ForceWarmRestart() == LE_OK, "Force warm restart");
     // Wait for a 3D fix
     LE_TEST_INFO("Wait 60 seconds for a 3D fix");
-    sleep(60);
+    le_thread_Sleep(60);
     // Get TTFF
     result = le_gnss_GetTtff(&ttff);
     LE_TEST_OK((result == LE_OK) || (result == LE_BUSY), "Get TTFF");
@@ -1210,10 +1210,10 @@ static void TestLeGnssRestart
 
     /* COLD Restart */
     LE_TEST_INFO("Ask for a Cold restart in 3 seconds...");
-    sleep(3);
+    le_thread_Sleep(3);
     LE_TEST_OK(le_gnss_ForceColdRestart() == LE_OK, "Force cold restart");
 
-    sleep(5);
+    le_thread_Sleep(5);
     // Get Epoch time : it should be 0 after a COLD restart
     positionSampleRef = le_gnss_GetLastSampleRef();
     LE_TEST_OK((LE_OUT_OF_RANGE == le_gnss_GetEpochTime(positionSampleRef, &epochTime)),
@@ -1222,7 +1222,7 @@ static void TestLeGnssRestart
 
     // Wait for a 3D fix
     LE_TEST_INFO("Wait 60 seconds for a 3D fix");
-    sleep(60);
+    le_thread_Sleep(60);
     // Get TTFF
     result = le_gnss_GetTtff(&ttff);
     LE_TEST_OK((result == LE_OK) || (result == LE_BUSY), "Get TTFF");
@@ -1237,14 +1237,14 @@ static void TestLeGnssRestart
 
     /* FACTORY Restart */
     LE_TEST_INFO("Ask for a Factory restart in 3 seconds...");
-    sleep(3);
+    le_thread_Sleep(3);
     LE_TEST_OK(le_gnss_ForceFactoryRestart() == LE_OK, "Force factory restart");
     // Get TTFF,position fix should be still in progress for the FACTORY start
     result = le_gnss_GetTtff(&ttff);
     LE_TEST_OK(result == LE_BUSY, "Get TTFF after factory restart");
     LE_TEST_INFO("TTFF is checked as not available immediatly after a FACTORY start");
 
-    sleep(5);
+    le_thread_Sleep(5);
     // Get Epoch time : it should be 0 after a FACTORY restart
     positionSampleRef = le_gnss_GetLastSampleRef();
     LE_TEST_OK((LE_OUT_OF_RANGE == le_gnss_GetEpochTime(positionSampleRef, &epochTime)),
@@ -1253,7 +1253,7 @@ static void TestLeGnssRestart
 
     // Wait for a 3D fix
     LE_TEST_INFO("Wait 60 seconds for a 3D fix");
-    sleep(60);
+    le_thread_Sleep(60);
     // Get TTFF
     result = le_gnss_GetTtff(&ttff);
     LE_TEST_OK((result == LE_OK) || (result == LE_BUSY), "Get TTFF");
@@ -1267,7 +1267,7 @@ static void TestLeGnssRestart
     }
 
     /* Stop GNSS engine*/
-    sleep(1);
+    le_thread_Sleep(1);
     LE_TEST_ASSERT((le_gnss_Stop()) == LE_OK, "Stop GNSS");
     EpochTime=0;
     TimeAccuracy=0;
@@ -1299,7 +1299,7 @@ static void LoopToGet3Dfix
         {
             cnt++;
             LE_TEST_INFO("TTFF not calculated (Position not fixed) BUSY");
-            sleep(1);
+            le_thread_Sleep(1);
         }
     }
 }
@@ -1329,14 +1329,14 @@ static void TestLeGnssTtffMeasurement
 
     /* HOT Restart */
     LE_TEST_INFO("Ask for a Hot restart in 3 seconds...");
-    sleep(3);
+    le_thread_Sleep(3);
     LE_TEST_OK(le_gnss_ForceHotRestart() == LE_OK, "Force hot restart");
 
     LE_TEST_INFO("loop to Wait for a 3D fix");
     LoopToGet3Dfix(&ttff);
 
     LE_TEST_INFO("Wait 5 seconds");
-    sleep(5);
+    le_thread_Sleep(5);
 
     LE_TEST_INFO("Stop GNSS");
     LE_TEST_ASSERT((le_gnss_Stop()) == LE_OK, "Stop GNSS");

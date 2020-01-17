@@ -362,7 +362,7 @@ static void SetNetworkConfiguration
 //                                                gatewayAddr);
     }
 
-    sleep(5);
+    le_thread_Sleep(5);
 /*
     LE_DEBUG("%s", systemCmd);
     LE_ASSERT( system(systemCmd) == 0 );
@@ -579,7 +579,7 @@ COMPONENT_INIT
     while (testsDef[test].testCase != TEST_MAX)
     {
         LE_INFO("======= MDC %s STARTED =======", testsDef[test].testName);
-        sleep(1);
+        le_thread_Sleep(1);
         // Start the profile
         switch (testsDef[test].testCase)
         {
@@ -615,7 +615,7 @@ COMPONENT_INIT
         // Set the network configuration
         SetNetworkConfiguration(profileRef);
 
-        sleep(5);
+        le_thread_Sleep(5);
 
         // Test the new interface
         TestConnectivity(profileRef);
@@ -651,7 +651,7 @@ COMPONENT_INIT
 
         LE_INFO("======= MDC %s PASSED =======", testsDef[test].testName);
 
-        sleep(5);
+        le_thread_Sleep(5);
 
         test++;
     }

@@ -129,7 +129,7 @@ void gnss_InitiateWatchGNSS
         LE_ERROR("Failed to start gnss");
         ctrlGPS_CleanUp(false);
     }
-    sleep(5);
+    le_thread_Sleep(5);
 
     // Add Position Handler
     PositionThreadRef = le_thread_Create("PositionThread", PositionThread, NULL);
@@ -145,7 +145,7 @@ void gnss_InitiateWatchGNSS
         {
             ctrlGPS_CleanUp(false);
         }
-        sleep(2);
+        le_thread_Sleep(2);
     }
 }
 

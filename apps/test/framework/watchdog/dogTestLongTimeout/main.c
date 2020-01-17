@@ -21,12 +21,12 @@ COMPONENT_INIT
          timeoutCount += checkIntervalSec)
     {
         LE_INFO("Alive for %d seconds", timeoutCount);
-        sleep(checkIntervalSec);
+        le_thread_Sleep(checkIntervalSec);
     }
 
     LE_INFO("Done test to ensure device doesn't reboot prematurely "
             "but need to ensure device reboots");
 
-    sleep(10);
+    le_thread_Sleep(10);
     LE_INFO("FAILED: Should not reach here");
 }

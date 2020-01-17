@@ -675,7 +675,7 @@ void Testle_ecall_StartManual
 
     le_ecall_Delete(testECallRef);
     //! [EcallSession]
-    sleep(5);
+    le_thread_Sleep(5);
 }
 
 //--------------------------------------------------------------------------------------------------

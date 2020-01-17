@@ -287,7 +287,7 @@ static void AdditionalTests
     le_timer_Start(longTimer);
 
     // Sleep 1 second for testing purpose only
-    sleep(1);
+    le_thread_Sleep(1);
 
     // Test the "get time remaining" functionality.
     le_clk_Time_t currentTime = le_clk_GetRelativeTime();

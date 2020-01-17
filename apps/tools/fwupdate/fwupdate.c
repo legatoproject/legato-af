@@ -118,7 +118,7 @@ static void* TimeoutThread
     char* serviceNamePtr = contextPtr;
 
     // This thread doesn't have to do anything else, at least for now, so just sleep.
-    sleep(20);
+    le_thread_Sleep(20);
 
     printf("Error: can't connect to service; is %s running?\n", serviceNamePtr);
     exit(EXIT_FAILURE);

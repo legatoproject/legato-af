@@ -74,7 +74,7 @@ static void SecondQueuedFunction
      */
     LE_INFO("starting sleep");
     le_event_QueueFunction(ThirdQueuedFunction, NULL, NULL);
-    sleep(2);
+    le_thread_Sleep(2);
     LE_INFO("finished sleep");
 }
 
@@ -123,7 +123,7 @@ void TimerTwoExpiryHandler
      */
     LE_INFO("starting sleep");
     le_event_QueueFunction(SecondQueuedFunction, NULL, NULL);
-    sleep(2);
+    le_thread_Sleep(2);
     LE_INFO("finished sleep");
 }
 
@@ -155,7 +155,7 @@ void TimerTest(void)
      */
     LE_INFO("starting sleep");
     le_event_QueueFunction(QueuedFunction, NULL, NULL);
-    sleep(2);
+    le_thread_Sleep(2);
     LE_INFO("finished sleep");
 }
 

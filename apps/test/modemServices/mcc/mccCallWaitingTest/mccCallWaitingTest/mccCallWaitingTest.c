@@ -189,7 +189,7 @@ static void TestIncomingCallConnected
 
     if (receivedCallEventCount == 2)
     {
-        sleep(5);
+        le_thread_Sleep(5);
         LE_INFO("Switch both calls");
         LE_ASSERT(le_mcc_ActivateCall(callRef) == LE_OK);
         TestState++;
@@ -231,7 +231,7 @@ static void TestCallsSwitched
     if (receivedCallEventCount == 2)
     {
         LE_INFO("switch done");
-        sleep(5);
+        le_thread_Sleep(5);
         LE_INFO("Hang-up incoming call");
         TestState++;
         LE_ASSERT(incomingCallRef != NULL);
@@ -329,7 +329,7 @@ static void ReleaseCallConnected
         // incoming call is active
         LE_ASSERT( strncmp(telNumber, IncomingNumber, LE_MDMDEFS_PHONE_NUM_MAX_BYTES) == 0 );
         incomingCallRef = callRef;
-        sleep(5);
+        le_thread_Sleep(5);
         receivedCallEventCount++;
     }
     else if (callEvent == LE_MCC_EVENT_ON_HOLD)
@@ -367,14 +367,14 @@ static void TestActiveOnHoldAndRelease
     {
         LE_ASSERT( strncmp(telNumber, IncomingNumber, LE_MDMDEFS_PHONE_NUM_MAX_BYTES) == 0 );
         le_mcc_Delete(callRef);
-        sleep(5);
+        le_thread_Sleep(5);
         // Activate the on hold call
         LE_ASSERT(le_mcc_ActivateCall(OutgoingCallRef) == LE_OK);
     }
     else if (callEvent == LE_MCC_EVENT_CONNECTED)
     {
         LE_ASSERT( strncmp(telNumber, OutgoingNumber, LE_MDMDEFS_PHONE_NUM_MAX_BYTES) == 0 );
-        sleep(5);
+        le_thread_Sleep(5);
         // End call
         le_mcc_HangUp(callRef);
         TestState++;

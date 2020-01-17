@@ -425,7 +425,7 @@ static void DisconnectAllAudio
         LE_INFO("delete DTMF handler 1\n");
         le_audio_RemoveDtmfDetectorHandler(DtmfHandlerRef1);
         DtmfHandlerRef1 = NULL;
-        sleep(1);
+        le_thread_Sleep(1);
     }
     if (DtmfHandlerRef2)
     {
