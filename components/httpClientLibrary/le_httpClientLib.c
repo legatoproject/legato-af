@@ -462,6 +462,7 @@ static le_result_t BuildAndSendRequest
     char buffer[REQUEST_BUFFER_SIZE] = {0};
     int length = 0;
     char* reqUriPtr = "";
+    const char* IPV6COLON = ":";
 
     if (uriPtr)
     {
@@ -477,12 +478,28 @@ static le_result_t BuildAndSendRequest
     }
 
     // Construct request line following user input
-    length = snprintf(buffer, sizeof(buffer), "%s /%s HTTP/1.1\r\n"
+    if( (char*)NULL != strstr(contextPtr->host, IPV6COLON) )
+    {
+        // The URI Host binding for ipv6 is with bracket and port number included
+        length = snprintf(buffer, sizeof(buffer), "%s /%s HTTP/1.1\r\n"
+                                              "Host: [%s]:%u\r\n",
+                                               SyntaxHttpCommandPtr[command],
+                                               reqUriPtr,
+                                               contextPtr->host,
+                                               contextPtr->port);
+
+    }
+    else
+    {
+        length = snprintf(buffer, sizeof(buffer), "%s /%s HTTP/1.1\r\n"
                                               "host: %s:%d\r\n",
                                                SyntaxHttpCommandPtr[command],
                                                reqUriPtr,
                                                contextPtr->host,
                                                contextPtr->port);
+    }
+
+
     if ((length < 0) || (length >= sizeof(buffer)))
     {
         LE_ERROR("Unable to construct request line");
