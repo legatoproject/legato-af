@@ -24,6 +24,7 @@ buildVars:
     LEGATO_FWUPDATE_PA = ''
     LEGATO_UARTMODE_PA = ''
     LEGATO_PORT_PA = ''
+    LEGATO_INSTALL_PA = ${LEGATO_ROOT}/apps/proprietary/atAirVantage/src/install/pa_install_default
 
     LEGATO_AUDIO_PA_DEFAULT =
         ${LEGATO_ROOT}/components/audio/platformAdaptor/default/le_pa_audio_default
