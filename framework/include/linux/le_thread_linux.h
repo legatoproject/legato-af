@@ -1,5 +1,5 @@
 //--------------------------------------------------------------------------------------------------
-/** @file thread.h
+/** @file thread_linux.h
  *
  * Linux-specific Legato Thread include file.
  *
@@ -9,8 +9,8 @@
  */
 //--------------------------------------------------------------------------------------------------
 
-#ifndef LINUX_LE_THREAD_H_INCLUDE_GUARD
-#define LINUX_LE_THREAD_H_INCLUDE_GUARD
+#ifndef LEGATO_THREAD_LINUX_H_INCLUDE_GUARD
+#define LEGATO_THREAD_LINUX_H_INCLUDE_GUARD
 
 #include <linux/param.h>
 
@@ -35,4 +35,4 @@
 //--------------------------------------------------------------------------------------------------
 #define LE_THREAD_STACK_ALIGNMENT   EXEC_PAGESIZE
 
-#endif /* end LINUX_LE_THREAD_H_INCLUDE_GUARD */
+#endif /* end LEGATO_THREAD_LINUX_H_INCLUDE_GUARD */

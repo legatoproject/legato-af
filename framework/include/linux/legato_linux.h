@@ -1,13 +1,13 @@
 /**
- * @file legato.h
+ * @file legato_linux.h
  *
  * This file includes all the commonly-used Linux-specific header files.
  *
  * Copyright (C) Sierra Wireless Inc.
  */
 
-#ifndef LINUX_LEGATO_H_INCLUDE_GUARD
-#define LINUX_LEGATO_H_INCLUDE_GUARD
+#ifndef LEGATO_LINUX_H_INCLUDE_GUARD
+#define LEGATO_LINUX_H_INCLUDE_GUARD
 
 #ifndef _GNU_SOURCE
 #   define _GNU_SOURCE 1
@@ -44,8 +44,8 @@
 #include <unistd.h>
 
 // Local includes -- definitions which are different between Linux & RTOS
-#include "le_fd.h"
-#include "le_fs.h"
-#include "le_thread.h"
+#include "le_fd_linux.h"
+#include "le_fs_linux.h"
+#include "le_thread_linux.h"
 
-#endif // LINUX_LEGATO_H_INCLUDE_GUARD
+#endif // LEGATO_LINUX_H_INCLUDE_GUARD

@@ -154,7 +154,7 @@
 
 // Platform-specific includes
 #if LE_CONFIG_LINUX
-#   include "linux/legato.h"
+#   include "linux/legato_linux.h"
 #elif LE_CONFIG_CUSTOM_OS
 #   include "fa.h"
 #else
