@@ -465,8 +465,6 @@ static void GnssPositionHandlerFunction
     // GPS time
     uint32_t gpsWeek;
     uint32_t gpsTimeOfWeek;
-    // Leap seconds in advance
-    uint8_t leapSeconds;
     // Position state
     le_gnss_FixState_t state;
     // Location
@@ -486,9 +484,9 @@ static void GnssPositionHandlerFunction
     uint32_t direction;
     uint32_t directionAccuracy;
     uint64_t EpochTime;
-    uint16_t hdopPtr, vdopPtr, pdopPtr;
+    uint16_t dop;
     uint32_t timeAccuracy;
-
+    le_gnss_DopType_t dopType = LE_GNSS_PDOP;
     LE_ASSERT(positionSampleRef != NULL);
 
     // Get UTC date
@@ -531,13 +529,6 @@ static void GnssPositionHandlerFunction
     result = le_gnss_GetTimeAccuracy(positionSampleRef, &timeAccuracy);
     LE_ASSERT((LE_OK == result) || (LE_OUT_OF_RANGE == result));
     LE_ASSERT(LE_FAULT == (le_gnss_GetTimeAccuracy(positionSampleRef, NULL)));
-
-    // Get UTC leap seconds in advance
-    result = le_gnss_GetGpsLeapSeconds(positionSampleRef, &leapSeconds);
-    LE_ASSERT((LE_OK == result) || (LE_OUT_OF_RANGE == result));
-    LE_ASSERT(LE_FAULT == (le_gnss_GetGpsLeapSeconds(positionSampleRef, NULL)));
-    // Pass invalid sample reference
-    LE_ASSERT(LE_FAULT == (le_gnss_GetGpsLeapSeconds(GnssPositionSampleRef, &leapSeconds)));
 
     // Get position state
     LE_ASSERT(LE_FAULT == (le_gnss_GetPositionState(positionSampleRef, NULL)));
@@ -612,9 +603,9 @@ static void GnssPositionHandlerFunction
                                                         &magneticDeviation)));
 
     // Get the DOP parameters
-    result = le_gnss_GetDop(positionSampleRef, &hdopPtr, &vdopPtr, &pdopPtr);
+    result = le_gnss_GetDilutionOfPrecision(positionSampleRef, dopType, &dop);
     LE_ASSERT((LE_OK == result) || (LE_OUT_OF_RANGE == result));
-    LE_ASSERT(LE_FAULT == (le_gnss_GetDop(GnssPositionSampleRef, &hdopPtr, &vdopPtr, &pdopPtr)));
+    LE_ASSERT(LE_FAULT == (le_gnss_GetDilutionOfPrecision(GnssPositionSampleRef, dopType, &dop)));
 
     // Satellites status
     uint8_t satsInViewCount;

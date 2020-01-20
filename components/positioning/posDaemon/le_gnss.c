@@ -2130,69 +2130,6 @@ le_result_t le_gnss_GetTimeAccuracy
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the position sample's UTC leap seconds in advance
- *
- * @return
- *  - LE_FAULT         Function failed to get the leap seconds.
- *  - LE_OUT_OF_RANGE  The retrieved time accuracy is invalid (set to UINT8_MAX).
- *  - LE_OK            Function succeeded.
- *
- * @note The leap seconds in advance is the accumulated time in seconds since the start of GPS Epoch
- * time (Jan 6, 1980). This value has to be added to the UTC time (since Jan. 1, 1970)
- *
- * @note Insertion of each UTC leap second is usually decided about six months in advance by the
- * International Earth Rotation and Reference Systems Service (IERS).
- *
- * @note If the caller is passing an invalid position sample reference or a null pointer into this
- *       function, it is a fatal error, the function will not return.
- *
- * @deprecated This function is deprecated, le_gnss_GetLeapSeconds should be used instead.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_gnss_GetGpsLeapSeconds
-(
-    le_gnss_SampleRef_t positionSampleRef,
-        ///< [IN] Position sample's reference.
-
-    uint8_t* leapSecondsPtr
-        ///< [OUT] UTC leap seconds in advance in seconds
-)
-{
-    le_result_t result;
-    le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr
-                                            = le_ref_Lookup(PositionSampleMap,positionSampleRef);
-
-    // Check input pointer
-    if (NULL == leapSecondsPtr)
-    {
-        LE_KILL_CLIENT("Invalid pointer provided!");
-        return LE_FAULT;
-    }
-
-    // Check position sample's reference
-    result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
-    if (result != LE_OK)
-    {
-        return result;
-    }
-
-    // Get the position sample's leap seconds
-    if (positionSampleRequestNodePtr->positionSampleNodePtr->leapSecondsValid)
-    {
-        result = LE_OK;
-        *leapSecondsPtr = positionSampleRequestNodePtr->positionSampleNodePtr->leapSeconds;
-    }
-    else
-    {
-        result = LE_OUT_OF_RANGE;
-        *leapSecondsPtr = UINT8_MAX;
-    }
-
-    return result;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Get the position sample's date.
  *
  * @return
@@ -2890,8 +2827,6 @@ le_result_t le_gnss_GetSatellitesStatus
  *  - LE_OUT_OF_RANGE  The retrieved parameter is invalid (set to UINT16_MAX).
  *  - LE_OK            Function succeeded.
  *
- * @note This function replaces the deprecated function le_gnss_GetDop().
- *
  * @note The DOP value is given with 3 decimal places by default like: DOP value 2200 = 2.200
  *       The resolution can be modified by calling @c le_gnss_SetDopResolution() function.
  *
@@ -2990,100 +2925,6 @@ le_result_t le_gnss_GetDilutionOfPrecision
     }
 
     return LE_OUT_OF_RANGE;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the DOP parameters (Dilution Of Precision) for the fixed position
- *
- * @return
- *  - LE_FAULT         Function failed to find the positionSample.
- *  - LE_OUT_OF_RANGE  At least one of the retrieved parameters is invalid (set to UINT16_MAX).
- *  - LE_OK            Function succeeded.
- *
- * @deprecated This function is deprecated, le_gnss_GetDilutionOfPrecision() should be used for
- *             new code.
- *
- * @note The DOP values are given with 3 decimal places like: DOP value 2200 = 2.200
- *
- * @note In case the function returns LE_OUT_OF_RANGE, some of the retrieved parameters may be
- *       valid. Please compare them with UINT16_MAX.
- *
- * @note If the caller is passing an invalid Position sample reference into this function,
- *       it is a fatal error, the function will not return.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_gnss_GetDop
-(
-    le_gnss_SampleRef_t positionSampleRef,
-        ///< [IN]
-        ///< Position sample's reference.
-
-    uint16_t* hdopPtr,
-        ///< [OUT]
-        ///< Horizontal Dilution of Precision [resolution 1e-3].
-
-    uint16_t* vdopPtr,
-        ///< [OUT]
-        ///< Vertical Dilution of Precision [resolution 1e-3].
-
-    uint16_t* pdopPtr
-        ///< [OUT]
-        ///< Position Dilution of Precision [resolution 1e-3].
-)
-{
-    le_result_t result = LE_OK;
-    le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr
-                                            = le_ref_Lookup(PositionSampleMap,positionSampleRef);
-
-    // Check position sample's reference
-    result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
-    if (LE_OK != result)
-    {
-        return result;
-    }
-
-    if (hdopPtr)
-    {
-        if ((positionSampleRequestNodePtr->positionSampleNodePtr->hdopValid) &&
-            (!(positionSampleRequestNodePtr->positionSampleNodePtr->hdop >> 16)))
-        {
-            *hdopPtr = (uint16_t)positionSampleRequestNodePtr->positionSampleNodePtr->hdop;
-        }
-        else
-        {
-            *hdopPtr = UINT16_MAX;
-            result = LE_OUT_OF_RANGE;
-        }
-    }
-    if (vdopPtr)
-    {
-        if ((positionSampleRequestNodePtr->positionSampleNodePtr->vdopValid) &&
-            (!(positionSampleRequestNodePtr->positionSampleNodePtr->vdop >> 16)))
-        {
-            *vdopPtr = (uint16_t)positionSampleRequestNodePtr->positionSampleNodePtr->vdop;
-        }
-        else
-        {
-            *vdopPtr = UINT16_MAX;
-            result = LE_OUT_OF_RANGE;
-        }
-    }
-    if (pdopPtr)
-    {
-        if ((positionSampleRequestNodePtr->positionSampleNodePtr->pdopValid) &&
-            (!(positionSampleRequestNodePtr->positionSampleNodePtr->pdop >> 16)))
-        {
-            *pdopPtr = (uint16_t)positionSampleRequestNodePtr->positionSampleNodePtr->pdop;
-        }
-        else
-        {
-            *pdopPtr = UINT16_MAX;
-            result = LE_OUT_OF_RANGE;
-        }
-    }
-
-    return result;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -4522,9 +4363,6 @@ le_result_t le_gnss_DeleteSuplCertificate
  *
  * @warning The settings are platform dependent. Please refer to
  *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
- *
- * @deprecated LE_GNSS_NMEA_MASK_PQXFI is deprecated. LE_GNSS_NMEA_MASK_PTYPE should be used
- *             instead. Setting LE_GNSS_NMEA_MASK_PTYPE will also set LE_GNSS_NMEA_MASK_PQXFI.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_SetNmeaSentences
