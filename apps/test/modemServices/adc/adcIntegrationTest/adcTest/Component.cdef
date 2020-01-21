@@ -1,0 +1,12 @@
+requires:
+{
+    api:
+    {
+        modemServices/le_adc.api
+    }
+}
+
+sources:
+{
+    testAdc.c
+}

@@ -1,0 +1,19 @@
+start: manual
+
+executables:
+{
+    adcTest = ( adcTest )
+}
+
+processes:
+{
+    run:
+    {
+        ( adcTest )
+    }
+}
+
+bindings:
+{
+    adcTest.adcTest.le_adc -> modemService.le_adc
+}
