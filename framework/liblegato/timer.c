@@ -286,8 +286,6 @@ static void RestartTimerPhys
     // Start the actual timer
     fa_timer_RestartTimer(threadRecPtr, &timerInterval);
 
-    LE_DEBUG("timer '%s' started", TIMER_NAME(timerPtr->name));
-
     // Store the timer for future reference
     threadRecPtr->firstTimerPtr = timerPtr;
 }
@@ -388,8 +386,6 @@ static void ProcessExpiredTimer
 )
 {
     timer_ThreadRec_t* threadRecPtr = fa_timer_GetThreadTimerRec(expiredTimer);
-
-    LE_DEBUG("Timer '%s' expired", TIMER_NAME(expiredTimer->name));
 
     // Keep track of the number of times the timer has expired, regardless of whether it repeats.
     expiredTimer->expiryCount++;
@@ -1100,9 +1096,6 @@ le_result_t le_timer_Start
     }
 
     // Timer is valid and not active; proceed with starting it.
-
-    LE_DEBUG("Starting timer '%s'", TIMER_NAME(timerPtr->name));
-
     timer_ThreadRec_t* threadRecPtr = fa_timer_GetThreadTimerRec(timerPtr);
 
     fa_timer_Start(timerPtr, threadRecPtr);
