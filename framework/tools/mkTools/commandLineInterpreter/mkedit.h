@@ -67,7 +67,8 @@ class ArgHandler_t
             ADD,
             CREATE,
             RENAME,
-            REMOVE
+            REMOVE,
+            DELETE
         };
 
         enum EditItemType_t {           ///< Enum for edit item type
@@ -105,6 +106,7 @@ class ArgHandler_t
         void Add();                     ///< Add action
         void Create();                  ///< Create action
         void Remove();                  ///< Remove action
+        void Delete();                  ///< Delete action
         void Rename();                  ///< Rename action
 
         // Vector to store the series of edit actions to complete a full edit

@@ -354,7 +354,8 @@ static std::string GetLineToWrite
     std::string writePath;
     std::string lineToWrite;
 
-    if (handler.editActionType == ArgHandler_t::EditActionType_t::REMOVE)
+    if ((handler.editActionType == ArgHandler_t::EditActionType_t::REMOVE)
+         || (handler.editActionType == ArgHandler_t::EditActionType_t::DELETE))
     {
         lineToWrite = "";
         return lineToWrite;
@@ -550,6 +551,11 @@ void ParseSdefUpdateItem
                     itemMustExist = handler.absAdefFilePath;
                     itemMustNotExist = "";
                 }
+                else if (handler.editActionType == ArgHandler_t::EditActionType_t::DELETE)
+                {
+                    itemMustExist = handler.absAdefFilePath;
+                    itemMustNotExist = "";
+                }
                 else if (handler.editActionType == ArgHandler_t::EditActionType_t::RENAME)
                 {
                     itemMustExist = handler.oldAdefFilePath;
@@ -581,6 +587,11 @@ void ParseSdefUpdateItem
                     itemMustNotExist = handler.absMdefFilePath;
                 }
                 else if (handler.editActionType == ArgHandler_t::EditActionType_t::REMOVE)
+                {
+                    itemMustExist = handler.absMdefFilePath;
+                    itemMustNotExist = "";
+                }
+                else if (handler.editActionType == ArgHandler_t::EditActionType_t::DELETE)
                 {
                     itemMustExist = handler.absMdefFilePath;
                     itemMustNotExist = "";
@@ -1477,6 +1488,12 @@ void GetAdefComponentEditLinePosition
             break;
         }
         case  ArgHandler_t::EditActionType_t::REMOVE:
+        {
+            compMustExist = handler.absCdefFilePath;
+            compMustNotExist = "";
+            break;
+        }
+        case  ArgHandler_t::EditActionType_t::DELETE:
         {
             compMustExist = handler.absCdefFilePath;
             compMustNotExist = "";

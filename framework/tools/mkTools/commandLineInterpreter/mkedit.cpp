@@ -540,7 +540,8 @@ void ArgHandler_t::operator()
                 {"add", EditActionType_t::ADD},
                 {"create", EditActionType_t::CREATE},
                 {"rename", EditActionType_t::RENAME},
-                {"remove", EditActionType_t::REMOVE}
+                {"remove", EditActionType_t::REMOVE},
+                {"delete", EditActionType_t::DELETE}
             };
 
             if (commands.find(arg) != commands.end())
@@ -958,10 +959,10 @@ void ArgHandler_t::Rename()
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Handler remove command.
+ * Handler delete command.
  **/
 //--------------------------------------------------------------------------------------------------
-void ArgHandler_t::Remove()
+void ArgHandler_t::Delete()
 {
     switch (editItemType)
     {
@@ -1056,6 +1057,86 @@ void ArgHandler_t::Remove()
         {
             AddAction(std::make_shared<CheckDefFileExistAction_t>(*this, absSdefFilePath, true));
             AddAction(std::make_shared<RemoveFileAction_t>(*this));
+            break;
+        }
+
+        default:
+        {
+            throw mk::Exception_t(LE_I18N("Internal error: edit item type is invalid"));
+            break;
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler remove command.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ArgHandler_t::Remove()
+{
+    switch (editItemType)
+    {
+        case APP:
+        {
+            AddAction(std::make_shared<CheckDefFileExistAction_t>(*this, absAdefFilePath, true));
+            AddAction(std::make_shared<CreateUpdateTempSdefAction_t>(*this));
+            AddAction(std::make_shared<RenameTempWorkToActiveFileAction_t>(*this, absSdefFilePath));
+            break;
+        }
+
+        case COMPONENT:
+        {
+            std::string absCdefFile = absCdefFilePath + "/" + COMP_CDEF;
+            AddAction(std::make_shared<CheckDirExistAction_t>(*this, absCdefFilePath, true));
+
+            if (!adefFilePath.empty())
+            {
+                // Push the specified app to the vector.
+                adefFilePathList.push_back(absAdefFilePath);
+            }
+            else
+            {
+                // Find apps that list the components to be removed and insert in adefFilePathList.
+                for (const auto& it : systemPtr->apps)
+                {
+                    for (auto const& itcomp : it.second->components)
+                    {
+                        if (itcomp->defFilePtr->path.compare(absCdefFile) == 0)
+                        {
+                            adefFilePathList.push_back(it.second->defFilePtr->path);
+                        }
+                    }
+                }
+            }
+
+            // Update each app in adefFilePathList.
+            for (const auto& it : adefFilePathList)
+            {
+                absAdefFilePath = it;
+                if (file::FileExists(absAdefFilePath))
+                {
+                    AddAction(std::make_shared<CreateUpdateTempAdefAction_t>(*this));
+                    AddAction(std::make_shared<RenameTempWorkToActiveFileAction_t>(*this,
+                                                                              absAdefFilePath));
+                }
+            }
+
+            break;
+        }
+
+        case MODULE:
+        {
+            AddAction(std::make_shared<CheckDefFileExistAction_t>(*this, absMdefFilePath, true));
+            AddAction(std::make_shared<CreateUpdateTempSdefAction_t>(*this));
+            AddAction(std::make_shared<RenameTempWorkToActiveFileAction_t>(*this, absSdefFilePath));
+            break;
+        }
+
+        case SYSTEM:
+        {
+            throw mk::Exception_t(LE_I18N("The remove action is not supported for system"));
             break;
         }
 
@@ -1175,6 +1256,10 @@ void ProcessCommand()
     else if (Handler.editActionType == ArgHandler_t::EditActionType_t::REMOVE)
     {
         Handler.Remove();
+    }
+    else if (Handler.editActionType == ArgHandler_t::EditActionType_t::DELETE)
+    {
+        Handler.Delete();
     }
     else
     {
