@@ -358,10 +358,6 @@ export class Profile
 
                 this.client.connection.sendNotification('le_UpdateLogicalView', logicalView);
             }
-            else
-            {
-                this.client.connection.sendNotification('le_UpdateLogicalView', "");
-            }
         }
     }
 
