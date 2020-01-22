@@ -41,6 +41,7 @@ GetSysrootDefs() {
     ar7 | ar86)
         if [[ "$yocto_mode" == "true" ]]; then
             SYSROOT_DEFS+=("swi-mdm9x15")
+            SYSROOT_DEFS+=("swi_mdm9x15-poky-linux")
         fi
         SYSROOT_DEFS+=("armv7a-vfp-neon-poky-linux-gnueabi")
         ;;
@@ -48,6 +49,7 @@ GetSysrootDefs() {
     wp85 | wp750x)
         if [[ "$yocto_mode" == "true" ]]; then
             SYSROOT_DEFS+=("swi-mdm9x15")
+            SYSROOT_DEFS+=("swi_mdm9x15-poky-linux")
         fi
         SYSROOT_DEFS+=("armv7a-neon-poky-linux-gnueabi")
         SYSROOT_DEFS+=("armv7ahf-neon-poky-linux-gnueabi")
@@ -57,7 +59,9 @@ GetSysrootDefs() {
     wp76xx | wp77xx)
         if [[ "$yocto_mode" == "true" ]]; then
             SYSROOT_DEFS+=("swi-mdm9x28-wp")
+            SYSROOT_DEFS+=("swi_mdm9x28_wp-poky-linux")
             SYSROOT_DEFS+=("swi-mdm9x28")
+            SYSROOT_DEFS+=("swi_mdm9x28-poky-linux")
         fi
         SYSROOT_DEFS+=("armv7a-neon-poky-linux-gnueabi")
         SYSROOT_DEFS+=("armv7ahf-neon-poky-linux-gnueabi")
@@ -66,6 +70,7 @@ GetSysrootDefs() {
     ar758x)
         if [[ "$yocto_mode" == "true" ]]; then
             SYSROOT_DEFS+=("swi-mdm9x28-ar758x")
+            SYSROOT_DEFS+=("swi_mdm9x28_ar758x-poky-linux")
         fi
         SYSROOT_DEFS+=("armv7a-neon-poky-linux-gnueabi")
         SYSROOT_DEFS+=("armv7ahf-neon-poky-linux-gnueabi")
@@ -74,6 +79,7 @@ GetSysrootDefs() {
     ar759x)
         if [[ "$yocto_mode" == "true" ]]; then
             SYSROOT_DEFS+=("swi-mdm9x40-ar759x")
+            SYSROOT_DEFS+=("swi_mdm9x40_ar759x-poky-linux")
         fi
         SYSROOT_DEFS+=("armv7a-neon-poky-linux-gnueabi")
         SYSROOT_DEFS+=("armv7ahf-neon-poky-linux-gnueabi")
@@ -82,13 +88,16 @@ GetSysrootDefs() {
     raspi | virt_arm | virt-arm)
         if [[ "$yocto_mode" == "true" ]]; then
             SYSROOT_DEFS+=("swi-virt-arm")
+            SYSROOT_DEFS+=("swi_virt_arm-poky-linux")
         fi
         SYSROOT_DEFS+=("armv5e-poky-linux-gnueabi")
+        SYSROOT_DEFS+=("swi_virt_x86-poky-linux")
         ;;
 
     virt_x86 | virt-x86)
         if [[ "$yocto_mode" == "true" ]]; then
             SYSROOT_DEFS+=("swi-virt-x86")
+            SYSROOT_DEFS+=("swi_virt_x86-poky-linux")
         fi
         SYSROOT_DEFS+=("i586-poky-linux")
         ;;
@@ -317,11 +326,13 @@ SelectToolchainDirs() {
         done
         ;;
     virt_x86 | virt-x86)
-        AppendYoctoBuildToolchain 'build_virt-x86' "${target}"       'i586-poky-linux'
-        AppendYoctoToolchain "LXSWI*+virt"         "${target}"       'i586-poky-linux'
+        for x86 in i686 i586; do
+            AppendYoctoBuildToolchain 'build_virt-x86' "${target}"       "${x86}-poky-linux"
+            AppendYoctoToolchain "LXSWI*+virt"         "${target}"       "${x86}-poky-linux"
 
-        for prefix in $(ListToolchainPrefix "$target"); do
-            AppendYoctoToolchain "${prefix}" "${target}" 'i586-poky-linux'
+            for prefix in $(ListToolchainPrefix "$target"); do
+                AppendYoctoToolchain "${prefix}" "${target}" "${x86}-poky-linux"
+            done
         done
         ;;
     virt)
