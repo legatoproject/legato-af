@@ -14,6 +14,7 @@
 #include "legato.h"
 #include "mem.h"
 #include "thread.h"
+#include "safeRef.h"
 #include "messagingInterface.h"
 #include "messagingProtocol.h"
 #include "messagingSession.h"
@@ -53,7 +54,11 @@
 #else
 #   define  SEM_NAME(var)   "<omitted>"
 #endif
-
+#if LE_CONFIG_SAFE_REF_NAMES_ENABLED
+#   define SAFE_REF_NAME(var)    (var)
+#else
+#   define SAFE_REF_NAME(var)    "<omitted>"
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -68,6 +73,7 @@ typedef struct TimerIter*           TimerIter_Ref_t;
 typedef struct MutexIter*           MutexIter_Ref_t;
 typedef struct SemaphoreIter*       SemaphoreIter_Ref_t;
 typedef struct ThreadMemberObjIter* ThreadMemberObjIter_Ref_t;
+typedef struct RefMapIter*          RefMapIter_Ref_t;
 typedef struct ServiceObjIter*      ServiceObjIter_Ref_t;
 typedef struct ClientObjIter*       ClientObjIter_Ref_t;
 typedef struct SessionObjIter*      SessionObjIter_Ref_t;
@@ -86,6 +92,7 @@ typedef enum
     INSPECT_INSP_TYPE_TIMER,
     INSPECT_INSP_TYPE_MUTEX,
     INSPECT_INSP_TYPE_SEMAPHORE,
+    INSPECT_INSP_TYPE_SAFE_REF,
     INSPECT_INSP_TYPE_IPC_SERVERS,
     INSPECT_INSP_TYPE_IPC_CLIENTS,
     INSPECT_INSP_TYPE_IPC_SERVERS_SESSIONS,
@@ -204,6 +211,13 @@ typedef struct ThreadMemberObjIter
     thread_Obj_t currThreadObj;
 }
 ThreadMemberObjIter_t;
+
+typedef struct RefMapIter
+{
+    RemoteDlsListAccess_t refMapList;  ///< Safe ref pool list
+    struct le_ref_Map currRefMap;      ///< Current safe reference map
+}
+RefMapIter_t;
 
 typedef struct ServiceObjIter
 {
@@ -880,6 +894,53 @@ static SemaphoreIter_Ref_t CreateSemaphoreIter
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Create an iterator that can be used to iterate over the list of available safe reference
+ * lists for a specific process.
+ *
+ * @note
+ *      The calling process must be root or have appropriate capabilities for this function and all
+ *      subsequent operators on the iterator to succeed.
+ *
+ * @return
+ *      An iterator to the list of safe references for the specific process.
+ */
+//--------------------------------------------------------------------------------------------------
+static RefMapIter_Ref_t CreateRefMapIter
+(
+    void
+)
+{
+    // Get the address offset of the safe ref list for the process to inspect.
+    uintptr_t listAddrOffset = GetRemoteAddress(PidToInspect, ref_GetRefMapList());
+
+    // Get the address offset of the safe ref list change counter for the process to inspect.
+    uintptr_t listChgCntAddrOffset = GetRemoteAddress(PidToInspect, ref_GetRefMapListChgCntRef());
+
+    // Create the iterator
+    RefMapIter_t* iteratorPtr = le_mem_ForceAlloc(IteratorPool);
+    InitRemoteDlsListAccessObj(&iteratorPtr->refMapList);
+
+    // Get the List for the process-under-inspection
+    if (TargetReadAddress(PidToInspect, listAddrOffset, &(iteratorPtr->refMapList.List),
+                          sizeof(iteratorPtr->refMapList.List)) != LE_OK)
+    {
+        INTERNAL_ERR(REMOTE_READ_ERR("saferef list"));
+    }
+
+    // Get the ListChngCntRef for the process-under-inspection.
+    if (TargetReadAddress(PidToInspect, listChgCntAddrOffset,
+                          &(iteratorPtr->refMapList.ListChgCntRef),
+                          sizeof(iteratorPtr->refMapList.ListChgCntRef)) != LE_OK)
+    {
+        INTERNAL_ERR(REMOTE_READ_ERR("saferef list change counter ref"));
+    }
+
+    return iteratorPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Creates an iterator that can be used to iterate over the map of interface objects. See the
  * comment block for CreateMemPoolIter for additional detail.
  *
@@ -1132,6 +1193,27 @@ static size_t GetThreadMemberObjListChgCnt
     }
 
     return (threadObjListChgCnt + threadMemberObjListChgCnt);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the safe reference map change counter from the specified iterator.
+ */
+//--------------------------------------------------------------------------------------------------
+static size_t GetRefMapListChgCnt
+(
+    RefMapIter_Ref_t iterator ///< [IN] The iterator to get the list change counter from.
+)
+{
+    size_t refMapListChgCnt;
+    if (TargetReadAddress(PidToInspect, (uintptr_t)(iterator->refMapList.ListChgCntRef),
+                          &refMapListChgCnt, sizeof(refMapListChgCnt)) != LE_OK)
+    {
+        INTERNAL_ERR(REMOTE_READ_ERR("saferef list change counter"));
+    }
+
+    return refMapListChgCnt;
 }
 
 
@@ -1702,6 +1784,42 @@ static Semaphore_t* GetNextSemaphore
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the pointer to the next safe reference map instance object.  For other details see
+ * GetNextMemPool.
+ *
+ * @return
+ *     A pointer to an interface instance object.
+ */
+//--------------------------------------------------------------------------------------------------
+static void* GetNextRefMap
+(
+    RefMapIter_Ref_t refMapIterRef ///< [IN] The iterator to get the next safe reference from.
+)
+{
+    le_dls_Link_t* linkPtr = GetNextDlsLink(&(refMapIterRef->refMapList),
+                                            &(refMapIterRef->currRefMap.entry));
+
+    if (linkPtr == NULL)
+    {
+        return NULL;
+    }
+
+    // Get the address of map.
+    struct le_ref_Map* refPtr = CONTAINER_OF(linkPtr, struct le_ref_Map, entry);
+
+    // Read the safeRef into our own memory.
+    if (TargetReadAddress(PidToInspect, (uintptr_t)refPtr, &(refMapIterRef->currRefMap),
+                          sizeof(refMapIterRef->currRefMap)) != LE_OK)
+    {
+        INTERNAL_ERR(REMOTE_READ_ERR("refmap object"));
+    }
+
+    return &(refMapIterRef->currRefMap);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Gets the pointer to the next interface instance object. For other detail see GetNextMemPool.
  *
  * @return
@@ -1916,11 +2034,12 @@ static void PrintHelp
         "              Legato process.\n"
         "\n"
         "SYNOPSIS:\n"
-        "    inspect <pools|threads|timers|mutexes|semaphores> [OPTIONS] PID\n"
+        "    inspect <pools|saferefs|threads|timers|mutexes|semaphores> [OPTIONS] PID\n"
         "    inspect ipc <servers|clients [sessions]> [OPTIONS] PID\n"
         "\n"
         "DESCRIPTION:\n"
         "    inspect pools              Prints the memory pools usage for the specified process.\n"
+        "    inspect saferefs           Prints the current safe references usage.\n"
         "    inspect threads            Prints the info of threads for the specified process.\n"
         "    inspect timers             Prints the info of timers in all threads for the"
                                         " specified process.\n"
@@ -2066,6 +2185,14 @@ static ColumnInfo_t SemaphoreTableInfo[] =
     {"WAITING LIST", "%*s", NULL, "%*s", MAX_THREAD_NAME_SIZE,           true,  0, true}
 };
 static size_t SemaphoreTableInfoSize = NUM_ARRAY_MEMBERS(SemaphoreTableInfo);
+
+static ColumnInfo_t RefMapTableInfo[] =
+{
+    {"NAME",         "%*s", NULL, "%*s", LIMIT_MAX_SAFE_REF_NAME_BYTES, true,   0, true},
+    {"MAX REFS",     "%*s", NULL, "%*zu", sizeof(size_t),               false,  0, true},
+    {"CUR SIZE",     "%*s", NULL, "%*zu", sizeof(size_t),               false,  0, true}
+};
+static size_t RefMapTableInfoSize = NUM_ARRAY_MEMBERS(RefMapTableInfo);
 
 static ColumnInfo_t ServiceObjTableInfo[] =
 {
@@ -2415,6 +2542,10 @@ static void InitDisplay
             InitDisplayTable(SemaphoreTableInfo, SemaphoreTableInfoSize);
             break;
 
+        case INSPECT_INSP_TYPE_SAFE_REF:
+            InitDisplayTable(RefMapTableInfo, RefMapTableInfoSize);
+            break;
+
         case INSPECT_INSP_TYPE_IPC_SERVERS:
             InitDisplayTable(ServiceObjTableInfo, ServiceObjTableInfoSize);
             break;
@@ -2608,6 +2739,12 @@ static int PrintInspectHeader
             strncpy(inspectTypeString, "Semaphores", inspectTypeStringSize);
             table = SemaphoreTableInfo;
             tableSize = SemaphoreTableInfoSize;
+            break;
+
+        case INSPECT_INSP_TYPE_SAFE_REF:
+            strncpy(inspectTypeString, "Safe References", inspectTypeStringSize);
+            table = RefMapTableInfo;
+            tableSize = RefMapTableInfoSize;
             break;
 
         case INSPECT_INSP_TYPE_IPC_SERVERS:
@@ -3804,6 +3941,69 @@ static void LookupThreadName
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Print safe ref information to stdout.
+ */
+//--------------------------------------------------------------------------------------------------
+static int PrintRefMapInfo
+(
+    struct le_ref_Map *refMap    ///< [IN] ref to safe ref map to be printed.
+)
+{
+    int lineCount = 0;
+
+    int index = 0;
+
+    if (!IsOutputJson)
+    {
+        FillStrColField(SAFE_REF_NAME(refMap->name),
+                        RefMapTableInfo,
+                        RefMapTableInfoSize, &index);
+        FillSizeTColField(refMap->maxRefs,
+                          RefMapTableInfo,
+                          RefMapTableInfoSize, &index);
+        FillSizeTColField(refMap->size,
+                          RefMapTableInfo,
+                          RefMapTableInfoSize, &index);
+
+        PrintInfo(RefMapTableInfo, RefMapTableInfoSize);
+        lineCount++;
+    }
+    else
+    {
+        if (!IsPrintedNodeFirst)
+        {
+            printf(",");
+        }
+        else
+        {
+            IsPrintedNodeFirst = false;
+        }
+
+        bool printed = false;
+        printf("[");
+
+        ExportStrToJson(SAFE_REF_NAME(refMap->name),
+                        RefMapTableInfo,
+                        RefMapTableInfoSize, &index,
+                        &printed);
+        ExportSizeTToJson(refMap->maxRefs,
+                          RefMapTableInfo,
+                          RefMapTableInfoSize, &index,
+                          &printed);
+        ExportSizeTToJson(refMap->size,
+                          RefMapTableInfo,
+                          RefMapTableInfoSize, &index,
+                          &printed);
+        printf("]");
+    }
+
+    return lineCount;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Print service object information to stdout.
  */
 //--------------------------------------------------------------------------------------------------
@@ -4188,6 +4388,13 @@ static void InspectFunc
             printNodeInfoFunc = (PrintNodeInfoFunc_t) PrintSemaphoreInfo;
             break;
 
+        case INSPECT_INSP_TYPE_SAFE_REF:
+            createIterFunc    = (CreateIterFunc_t)    CreateRefMapIter;
+            getListChgCntFunc = (GetListChgCntFunc_t) GetRefMapListChgCnt;
+            getNextNodeFunc   = (GetNextNodeFunc_t)   GetNextRefMap;
+            printNodeInfoFunc = (PrintNodeInfoFunc_t) PrintRefMapInfo;
+            break;
+
         case INSPECT_INSP_TYPE_IPC_SERVERS:
             createIterFunc    = (CreateIterFunc_t)    CreateServiceObjIter;
             getListChgCntFunc = (GetListChgCntFunc_t) GetInterfaceObjMapChgCnt;
@@ -4427,6 +4634,10 @@ static void CommandArgHandler
     {
         InspectType = INSPECT_INSP_TYPE_SEMAPHORE;
     }
+    else if (strcmp(command, "saferefs") == 0)
+    {
+        InspectType = INSPECT_INSP_TYPE_SAFE_REF;
+    }
     else if (strcmp(command, "ipc") == 0)
     {
         le_arg_AddPositionalCallback(IpcInterfaceTypeHandler);
@@ -4524,6 +4735,10 @@ static void InitIteratorPool
 
         case INSPECT_INSP_TYPE_SEMAPHORE:
             size = sizeof(SemaphoreIter_t);
+            break;
+
+        case INSPECT_INSP_TYPE_SAFE_REF:
+            size = sizeof(RefMapIter_t);
             break;
 
         case INSPECT_INSP_TYPE_IPC_SERVERS:

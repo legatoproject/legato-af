@@ -11,7 +11,22 @@
 
 #include "legato.h"
 #include "mem.h"
+#include "safeRef.h"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Insert a string name variable if configured or a placeholder string if not.
+ *
+ *  @param  nameVar Name variable to insert.
+ *
+ *  @return Name variable or a placeholder string depending on configuration.
+ **/
+//--------------------------------------------------------------------------------------------------
+#if CONFIG_SAFE_REF_NAMES_ENABLED
+#   define SAFE_REF_NAME(var)    (var)
+#else
+#   define SAFE_REF_NAME(var)    "<omitted>"
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -21,6 +36,7 @@
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct MemPoolIter*         MemPoolIter_Ref_t;
+typedef struct RefMapIter*          RefMapIter_Ref_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -31,10 +47,23 @@ typedef struct MemPoolIter*         MemPoolIter_Ref_t;
 typedef enum
 {
     INSPECT_INSP_TYPE_MEM_POOL,
+    INSPECT_INSP_TYPE_SAFE_REF,
     INSPECT_INSP_TYPE_LAST
 }
 InspType_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Object containing items necessary for accessing a doubly-linked list in the remote process.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_dls_List_t List;         ///< The list in the remote process.
+    size_t* ListChgCntRef;      ///< Change counter for the remote list.
+    le_dls_Link_t* headLinkPtr; ///< Pointer to the first link.
+}
+RemoteDlsListAccess_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -62,6 +91,13 @@ typedef struct MemPoolIter
     le_mem_Pool_t currMemPool;          ///< Current memory pool from the list.
 }
 MemPoolIter_t;
+
+typedef struct RefMapIter
+{
+    RemoteDlsListAccess_t refMapList;  ///< Safe ref pool list
+    struct le_ref_Map currRefMap;      ///< Current safe reference map
+}
+RefMapIter_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -137,6 +173,20 @@ InspectEndStatus_t;
 #define INTERNAL_ERR_IF(condition, formatString, ...)                                   \
         if (condition) { INTERNAL_ERR(formatString, ##__VA_ARGS__); }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize a RemoteDlsListAccess_t data struct.
+ */
+//--------------------------------------------------------------------------------------------------
+static void InitRemoteDlsListAccessObj
+(
+    RemoteDlsListAccess_t* remoteList
+)
+{
+    remoteList->List = LE_DLS_LIST_INIT;
+    remoteList->ListChgCntRef = NULL;
+    remoteList->headLinkPtr = NULL;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -187,6 +237,34 @@ static MemPoolIter_Ref_t CreateMemPoolIter
     return iteratorPtr;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create an iterator that can be used to iterate over the list of available safe reference
+ * lists for a specific process.
+ *
+ * @note
+ *      The calling process must be root or have appropriate capabilities for this function and all
+ *      subsequent operators on the iterator to succeed.
+ *
+ * @return
+ *      An iterator to the list of safe references for the specific process.
+ */
+//--------------------------------------------------------------------------------------------------
+static RefMapIter_Ref_t CreateRefMapIter
+(
+    void
+)
+{
+    // Create the iterator
+    RefMapIter_t* iteratorPtr = le_mem_ForceAlloc(IteratorPool);
+    InitRemoteDlsListAccessObj(&iteratorPtr->refMapList);
+
+    memcpy(&iteratorPtr->refMapList.List, ref_GetRefMapList(),
+        sizeof(iteratorPtr->refMapList.List));
+    iteratorPtr->refMapList.ListChgCntRef = *ref_GetRefMapListChgCntRef();
+
+    return iteratorPtr;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -212,6 +290,89 @@ static size_t GetMemPoolListChgCnt
     return count;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the safe reference map change counter from the specified iterator.
+ */
+//--------------------------------------------------------------------------------------------------
+static size_t GetRefMapListChgCnt
+(
+    RefMapIter_Ref_t iterator ///< [IN] The iterator to get the list change counter from.
+)
+{
+    size_t refMapListChgCnt;
+
+    refMapListChgCnt = *iterator->refMapList.ListChgCntRef;
+
+    return refMapListChgCnt;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the next link of the provided link. This is for accessing a list in a remote process,
+ * otherwise the doubly linked list API can simply be used. Note that "linkRef" is a ref to a
+ * locally existing link obj, which is a link for a remote node. Therefore GetNextDlsLink cannot be
+ * called back-to-back.
+ *
+ * Also, if GetNextDlsLink is called the first time for a given listInfoRef, linkRef is not used.
+ *
+ * After calling GetNextDlsLink, the returned link ptr must be used to read the associated remote
+ * node into the local memory space. One would then retrieve the link object from the node, and then
+ * GetNextDlsLink can be called on the ref of that link object.
+ *
+ * @return
+ *      Pointer to a link of a node in the remote process
+ */
+//--------------------------------------------------------------------------------------------------
+static le_dls_Link_t* GetNextDlsLink
+(
+    RemoteDlsListAccess_t* listInfoRef,    ///< [IN] Object for accessing a list in the remote process.
+    le_dls_Link_t* linkRef              ///< [IN] Link of a node in the remote process. This is a
+                                        ///<      ref to a locally existing link obj.
+)
+{
+    INTERNAL_ERR_IF(listInfoRef == NULL,
+                    "obj ref for accessing a list in the remote process is NULL.");
+
+    // Create a fake list of nodes that has a single element.  Use this when iterating over the
+    // links in the list because the links read from the mems file is in the address space of the
+    // process under test.  Using a fake list guarantees that the linked list operation does not
+    // accidentally reference memory in our own memory space.  This means that we have to check
+    // for the end of the list manually.
+    le_dls_List_t fakeList = LE_DLS_LIST_INIT;
+    le_dls_Link_t fakeLink = LE_DLS_LINK_INIT;
+    le_dls_Stack(&fakeList, &fakeLink);
+
+    // Get the next link in the list.
+    le_dls_Link_t* LinkPtr;
+
+    if (listInfoRef->headLinkPtr == NULL)
+    {
+        // Get the address of the first node's link.
+        LinkPtr = le_dls_Peek(&(listInfoRef->List));
+
+        // The list is empty
+        if (LinkPtr == NULL)
+        {
+            return NULL;
+        }
+
+        listInfoRef->headLinkPtr = LinkPtr;
+    }
+    else
+    {
+        // Get the address of the next node.
+        LinkPtr = le_dls_PeekNext(&fakeList, linkRef);
+
+        if (LinkPtr == listInfoRef->headLinkPtr)
+        {
+            // Looped back to the first node so there are no more nodes.
+            return NULL;
+        }
+    }
+
+    return LinkPtr;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -322,6 +483,37 @@ static le_mem_Pool_t* GetNextMemPool
     return &(memPoolIterRef->currMemPool);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the pointer to the next safe reference map instance object.  For other details see
+ * GetNextMemPool.
+ *
+ * @return
+ *     A pointer to an interface instance object.
+ */
+//--------------------------------------------------------------------------------------------------
+static void* GetNextRefMap
+(
+    RefMapIter_Ref_t refMapIterRef ///< [IN] The iterator to get the next safe reference from.
+)
+{
+    le_dls_Link_t* linkPtr = GetNextDlsLink(&(refMapIterRef->refMapList),
+                                            &(refMapIterRef->currRefMap.entry));
+
+    if (linkPtr == NULL)
+    {
+        return NULL;
+    }
+
+    // Get the address of map.
+    struct le_ref_Map* refPtr = CONTAINER_OF(linkPtr, struct le_ref_Map, entry);
+
+    // Read the safeRef into our own memory.
+    memcpy(&refMapIterRef->currRefMap, refPtr, sizeof(refMapIterRef->currRefMap));
+
+    return &(refMapIterRef->currRefMap);
+}
+
 // TODO: migrate the above to a separate module.
 //--------------------------------------------------------------------------------------------------
 /**
@@ -339,10 +531,11 @@ static void PrintHelp
         "              Legato process.\n"
         "\n"
         "SYNOPSIS:\n"
-        "    inspect <pools> [OPTIONS]\n"
+        "    inspect <pools|saferefs> [OPTIONS]\n"
         "\n"
         "DESCRIPTION:\n"
         "    inspect pools              Prints the current memory pools usage.\n"
+        "    inspect saferefs           Prints the current safe references usage.\n"
         "\n"
         "OPTIONS:\n"
         "    -v\n"
@@ -427,6 +620,14 @@ static ColumnInfo_t MemPoolTableInfo[] =
     {"SUB-POOL",    "%*s",  NULL, "%*s",        0,                           true,  0, true}
 };
 static size_t MemPoolTableInfoSize = NUM_ARRAY_MEMBERS(MemPoolTableInfo);
+
+static ColumnInfo_t RefMapTableInfo[] =
+{
+    {"NAME",         "%*s", NULL, "%*s",        LIMIT_MAX_SAFE_REF_NAME_BYTES, true,   0, true},
+    {"MAX REFS",     "%*s", NULL, "%*" PRIuS,   sizeof(size_t),                false,  0, true},
+    {"CUR SIZE",     "%*s", NULL, "%*" PRIuS,   sizeof(size_t),                false,  0, true}
+};
+static size_t RefMapTableInfoSize = NUM_ARRAY_MEMBERS(RefMapTableInfo);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -538,6 +739,10 @@ static void InitDisplay
             InitDisplayTable(MemPoolTableInfo, MemPoolTableInfoSize);
             break;
 
+        case INSPECT_INSP_TYPE_SAFE_REF:
+            InitDisplayTable(RefMapTableInfo, RefMapTableInfoSize);
+            break;
+
         default:
             INTERNAL_ERR("Failed to initialize display table - unexpected inspect type %d.",
                          inspectType);
@@ -644,8 +849,8 @@ static int PrintInspectHeader
 )
 {
     int lineCount = 0;
-    ColumnInfo_t* table;
-    size_t tableSize;
+    ColumnInfo_t* table = NULL;
+    size_t tableSize = 0;
 
     // The size should accomodate the longest inspectTypeString.
     #define inspectTypeStringSize 40
@@ -660,6 +865,12 @@ static int PrintInspectHeader
 #endif
             table = MemPoolTableInfo;
             tableSize = MemPoolTableInfoSize;
+            break;
+
+        case INSPECT_INSP_TYPE_SAFE_REF:
+            strncpy(inspectTypeString, "Safe References", inspectTypeStringSize);
+            table = RefMapTableInfo;
+            tableSize = RefMapTableInfoSize;
             break;
 
         default:
@@ -811,6 +1022,35 @@ static int PrintMemPoolInfo
     return lineCount;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print safe ref information to stdout.
+ */
+//--------------------------------------------------------------------------------------------------
+static int PrintRefMapInfo
+(
+    struct le_ref_Map *refMap    ///< [IN] ref to safe ref map to be printed.
+)
+{
+    int lineCount = 0;
+
+    int index = 0;
+
+    FillStrColField(SAFE_REF_NAME(refMap->name),
+                    RefMapTableInfo,
+                    RefMapTableInfoSize, &index);
+    FillSizeTColField(refMap->maxRefs,
+                      RefMapTableInfo,
+                      RefMapTableInfoSize, &index);
+    FillSizeTColField(refMap->size,
+                      RefMapTableInfo,
+                      RefMapTableInfoSize, &index);
+
+    PrintInfo(RefMapTableInfo, RefMapTableInfoSize);
+    lineCount++;
+
+    return lineCount;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -872,6 +1112,13 @@ static void InspectFunc
             getListChgCntFunc = (GetListChgCntFunc_t) GetMemPoolListChgCnt;
             getNextNodeFunc   = (GetNextNodeFunc_t)   GetNextMemPool;
             printNodeInfoFunc = (PrintNodeInfoFunc_t) PrintMemPoolInfo;
+            break;
+
+        case INSPECT_INSP_TYPE_SAFE_REF:
+            createIterFunc    = (CreateIterFunc_t)    CreateRefMapIter;
+            getListChgCntFunc = (GetListChgCntFunc_t) GetRefMapListChgCnt;
+            getNextNodeFunc   = (GetNextNodeFunc_t)   GetNextRefMap;
+            printNodeInfoFunc = (PrintNodeInfoFunc_t) PrintRefMapInfo;
             break;
 
         default:
@@ -940,6 +1187,10 @@ static void CommandArgHandler
     {
         InspectType = INSPECT_INSP_TYPE_MEM_POOL;
     }
+    else if (strcmp(command, "saferefs") == 0)
+    {
+        InspectType = INSPECT_INSP_TYPE_SAFE_REF;
+    }
     else
     {
         printf("Invalid command '%s'.\n", command);
@@ -955,14 +1206,26 @@ static void CommandArgHandler
 //--------------------------------------------------------------------------------------------------
 static void InitIteratorPool
 (
-    void
+    InspType_t inspectType ///< [IN] What to inspect.
 )
 {
+    size_t size;
     if (NULL == IteratorPool)
     {
-        // TODO: If other types are supported in the future, the block size should be the maximum of
-        //       all the iterator types.
-        size_t size = sizeof(MemPoolIter_t);
+        switch (inspectType)
+        {
+            case INSPECT_INSP_TYPE_MEM_POOL:
+                size = sizeof(MemPoolIter_t);
+                break;
+
+            case INSPECT_INSP_TYPE_SAFE_REF:
+                size = sizeof(RefMapIter_t);
+                break;
+
+            default:
+                INTERNAL_ERR("unexpected inspect type %d.", inspectType);
+                return;
+        }
 
         IteratorPool = le_mem_CreatePool("Iterators", size);
     }
@@ -992,7 +1255,7 @@ COMPONENT_INIT
     }
 
     // Create a memory pool for iterators.
-    InitIteratorPool();
+    InitIteratorPool(InspectType);
     if (IsExiting)
     {
         return;
