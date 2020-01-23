@@ -160,7 +160,7 @@ LE_SHARED le_result_t pa_ips_GetBatteryLevel
  *   - LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_ips_Init
+LE_SHARED le_result_t pa_ips_Init
 (
     void
 );
