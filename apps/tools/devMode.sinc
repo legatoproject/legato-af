@@ -1,0 +1,59 @@
+// If Debug is enabled, we should include the devMode app.  It includes essential tooling to enable
+// debugging and other introspection scenarios.
+
+#if ${LE_CONFIG_DEBUG} = y
+
+    buildVars:
+    {
+        LEGATO_DEV_MODE_ENABLE = 1
+    }
+
+#endif
+
+#if ${LEGATO_DEV_MODE_ENABLE} = 1
+
+    appSearch:
+    {
+        $LEGATO_ROOT/apps/tools
+    }
+
+    apps:
+    {
+        devMode
+    }
+
+    commands:
+    {
+        // Only set up these commands if devMode was able to package the.  DevMode is only able to
+        // package a tool if it was generated with the toolchain.
+
+        #if file_exists($LEGATO_SYSROOT/usr/bin/gdbserver)
+            gdbserver = devMode:/bin/gdbserver
+        #endif
+        #if file_exists($LEGATO_SYSROOT/usr/bin/strace)
+            strace = devMode:/bin/strace
+        #endif
+        #if file_exists($LEGATO_SYSROOT/usr/sbin/tcf-agent)
+            tcf_agent = devMode:/sbin/tcf-agent
+        #endif
+        #if file_exists($LEGATO_SYSROOT/usr/libexec/sftp-server)
+            sftp_server = devMode:/bin/sftp-server
+        #endif
+        #if file_exists($LEGATO_SYSROOT/usr/sbin/tcpdump)
+            tcpdump = devMode:/sbin/tcpdump
+        #endif
+        #if file_exists($LEGATO_SYSROOT/usr/bin/iperf3)
+            iperf3 = devMode:/bin/iperf3
+        #endif
+        #if file_exists($LEGATO_SYSROOT/usr/bin/usb-devices)
+            usb_devices = devMode:/bin/usb-devices
+        #endif
+        #if file_exists($LEGATO_SYSROOT/usr/bin/lsusb)
+            lsusb = devMode:/bin/lsusb
+        #endif
+        #if file_exists($LEGATO_SYSROOT/usr/sbin/lsof)
+            lsof = devMode:/sbin/lsof
+        #endif
+    }
+
+#endif
