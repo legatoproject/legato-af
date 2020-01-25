@@ -3653,10 +3653,6 @@ le_result_t le_gnss_Stop
             // Update GNSS device state
             if (LE_OK == result)
             {
-                // Initialize last Position sample
-                memset(&LastPositionSample, 0, sizeof(LastPositionSample));
-                LastPositionSample.fixState = LE_GNSS_STATE_FIX_NO_POS;
-
                 GnssState = LE_GNSS_STATE_READY;
             }
         }
