@@ -33,6 +33,7 @@ ifeq ($(TARGET),localhost)
         export TOOLCHAIN_PREFIX :=
     endif
 
+    export LEGATO_SYSROOT :=
     SDEF_TO_USE ?= localhost.sdef
 else
     ifeq ($($(TARGET_CAPS)_TOOLCHAIN_DIR),)
