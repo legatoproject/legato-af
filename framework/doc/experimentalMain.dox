@@ -17,6 +17,7 @@ The following are our current list of new experimental features in Legato
 | Feature                          | Description                                                   | Maturity     | First Release Version |
 | -------------------------------- | --------------------------------------------------------------| ------------ | ----------------------|
 | @subpage conceptsRPC             | Legato RPC framework                                          | Alpha        | Legato 19.04.0        |
+| @ref c_iks                       | Legato IoT Keystore API                                       | Alpha        | Legato 20.04.0        |
 
 Maturity Descriptions:
 - @b Alpha - the feature is still under development and should not be used on production targets as

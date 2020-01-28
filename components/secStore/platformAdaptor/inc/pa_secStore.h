@@ -14,6 +14,8 @@
 
 #include "legato.h"
 
+#include "pa_iotKeystore.h"
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Type of secure storage restore status

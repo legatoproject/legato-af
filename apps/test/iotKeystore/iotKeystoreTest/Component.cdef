@@ -1,0 +1,14 @@
+sources:
+{
+    iotKeystoreTest.c
+}
+
+requires:
+{
+    api:
+    {
+        iotKeystore/le_iks.api
+        iotKeystore/le_iks_aesMilenage.api
+        iotKeystore/le_iks_aesGcm.api
+    }
+}

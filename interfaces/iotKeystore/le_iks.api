@@ -1,0 +1,898 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_iks IoT Keystore Key Management API
+ *
+ * @ref le_iks_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * IOT Key Store's key and digest management API.
+ *
+ * The IOT Key Store can be used to store cryptographic keys as well as cryptographic hash digests.
+ * This module provides APIs for creating, configuring, updating and saving keys and digests.
+ *
+ * Keys can be created with either le_iks_CreateKey() or le_iks_CreateKeyByType().
+ *
+ * A newly created key does not have a key value.  A key value can either be generated using
+ * le_iks_GenKeyValue() or provisioned using le_iks_ProvisionKeyValue().
+ *
+ * Keys are initially created in non-persistent memory only and can be saved to persistent storage
+ * using le_iks_SaveKey().  Short-lived, ephemeral keys should not be saved to persistent storage.
+ *
+ * Previously, created keys can be retrieved using the le_iks_GetKey() function.
+ *
+ * Key modifications (using le_iks_GenKeyValue(), le_iks_ProvisionKeyValue(), etc.) and deletions
+ * (le_iks_DeleteKey()) may be performed freely unless the key is assigned an update key.
+ *
+ * Once an update key is assigned, key modification and deletion may only be performed using an
+ * authenticated command that is signed with the private portion of the update key.  The private
+ * portion of the update key should be held securely off target.  To ensure freshness and uniqueness
+ * of authenticated commands an authentication challenge must be obtained using
+ * le_iks_GetUpdateAuthChallenge() and incorporated into the command.  The authentication challenges
+ * are specific to each update key and is refreshed only once a challenge is consumed.
+ *
+ * Private and symmetric key values cannot be read out of the IOT Key Store while public key values
+ * can be extracted with le_iks_GetPubKeyValue().
+ *
+ * Digest management is very similar to key management and most of the functions are analogous to
+ * the key management functions.
+ *
+ * Key and digest identifiers may only contain alphanumeric characters, the hyphen '-' and
+ * underscore '_' characters.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_iks_interface.h
+ *
+ * Legato @ref c_iks API
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Key usage.  This type can be used to conveniently create keys for different usages.  IOT Key
+ * Store will select a default key type for the specified usage.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM KeyUsage
+{
+    KEY_USE_ENCRYPT,                    ///< Symmetric encryption/decryption.
+    KEY_USE_ASYMM_ENCRYPT,              ///< Public key encryption.
+    KEY_USE_ASYMM_DECRYPT,              ///< Private key decryption.
+    KEY_USE_SIG_GENERATION,             ///< Signature generation.
+    KEY_USE_SIG_VERIFICATION,           ///< Signature verification.
+    KEY_USE_KEY_UPDATE                  ///< Key Store key updates.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Key types
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM KeyType
+{
+    /* AES keys. */
+    KEY_TYPE_AES_GCM = 1,                           ///< AES GCM.
+    KEY_TYPE_AES_CBC = 2,                           ///< AES CBC.
+    KEY_TYPE_AES_CMAC = 3,                          ///< AES CMAC.
+    KEY_TYPE_AES_MILENAGE_K = 4,                    ///< AES Milenage K.
+    KEY_TYPE_AES_MILENAGE_OPC = 5,                  ///< AES Milenage OPc.
+
+
+    /* RSA keys. */
+    /* Private keys contain both the private and public key pairs. */
+    // RSA OAEP encryption/decryption.
+    KEY_TYPE_PRIV_RSAES_OAEP_SHA512 = 100,
+    KEY_TYPE_PUB_RSAES_OAEP_SHA512 = 101,
+
+    KEY_TYPE_PRIV_RSAES_OAEP_SHA384 = 102,
+    KEY_TYPE_PUB_RSAES_OAEP_SHA384 = 103,
+
+    KEY_TYPE_PRIV_RSAES_OAEP_SHA512_256 = 104,
+    KEY_TYPE_PUB_RSAES_OAEP_SHA512_256 = 105,
+
+    KEY_TYPE_PRIV_RSAES_OAEP_SHA256 = 106,
+    KEY_TYPE_PUB_RSAES_OAEP_SHA256 = 107,
+
+    KEY_TYPE_PRIV_RSAES_OAEP_SHA512_224 = 108,
+    KEY_TYPE_PUB_RSAES_OAEP_SHA512_224 = 109,
+
+    KEY_TYPE_PRIV_RSAES_OAEP_SHA224 = 110,
+    KEY_TYPE_PUB_RSAES_OAEP_SHA224 = 111,
+
+    // RSA PSS signature generation/verification.
+    KEY_TYPE_PRIV_RSASSA_PSS_SHA512 = 125,
+    KEY_TYPE_PUB_RSASSA_PSS_SHA512 = 126,
+
+    KEY_TYPE_PRIV_RSASSA_PSS_SHA384 = 127,
+    KEY_TYPE_PUB_RSASSA_PSS_SHA384 = 128,
+
+    KEY_TYPE_PRIV_RSASSA_PSS_SHA512_256 = 129,
+    KEY_TYPE_PUB_RSASSA_PSS_SHA512_256 = 130,
+
+    KEY_TYPE_PRIV_RSASSA_PSS_SHA256 = 131,
+    KEY_TYPE_PUB_RSASSA_PSS_SHA256 = 132,
+
+    KEY_TYPE_PRIV_RSASSA_PSS_SHA512_224 = 133,
+    KEY_TYPE_PUB_RSASSA_PSS_SHA512_224 = 134,
+
+    KEY_TYPE_PRIV_RSASSA_PSS_SHA224 = 135,
+    KEY_TYPE_PUB_RSASSA_PSS_SHA224 = 136,
+
+    // Update keys used to verify signatures of key management commands.
+    KEY_TYPE_UPDATE_RSASSA_PSS_SHA512 = 150,
+    KEY_TYPE_UPDATE_RSASSA_PSS_SHA384 = 151,
+    KEY_TYPE_UPDATE_RSASSA_PSS_SHA512_256 = 152,
+    KEY_TYPE_UPDATE_RSASSA_PSS_SHA256 = 153,
+    KEY_TYPE_UPDATE_RSASSA_PSS_SHA512_224 = 154,
+    KEY_TYPE_UPDATE_RSASSA_PSS_SHA224 = 155,
+
+    /* ECC keys.  Supports NIST prime fields curve y^2 = x^3 - 3x + b. */
+    /* Private keys contain both the private and public key pairs. */
+    // ECDH public key for key agreement.
+    KEY_TYPE_PRIV_ECDH = 200,
+    KEY_TYPE_PUB_ECDH = 201,
+
+    // ECDSA signature generation/verification.
+    KEY_TYPE_PRIV_ECDSA = 220,
+    KEY_TYPE_PUB_ECDSA = 221,
+
+    // Update keys used to verify signatures of key management commands.
+    KEY_TYPE_UPDATE_ECDSA = 240,
+
+    // ECIES encryption.  Follows the SEC 1 standard but uses modernized algorithms.
+    KEY_TYPE_PRIV_ECIES_HKDF_SHA512_GCM256 = 260,   ///< Uses HKDF with SHA512 and AES GCM 256
+                                                    ///  for bulk decryption.
+    KEY_TYPE_PUB_ECIES_HKDF_SHA512_GCM256 = 261,    ///< Uses HKDF with SHA512 and AES GCM 256
+                                                    ///  for bulk encryption.
+
+    KEY_TYPE_PRIV_ECIES_HKDF_SHA256_GCM128 = 262,   ///< Uses HKDF with SHA256 and AES GCM 128
+                                                    ///  for bulk decryption.
+    KEY_TYPE_PUB_ECIES_HKDF_SHA256_GCM128 = 263     ///< Uses HKDF with SHA256 and AES GCM 128
+                                                    ///  for bulk encryption.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum possible key buffer size.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_KEY_SIZE = 128;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum digest size in bytes.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_DIGEST_SIZE = 64;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum buffer size, in bytes, for ASN1 structured, DER encoded keys/digests.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_ASN1_VAL_BUF_SIZE = 3000;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Authenticated challenge size in bytes.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE CHALLENGE_SIZE = 32;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * AES block size in bytes.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE AES_BLOCK_SIZE = 16;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Hash function identifiers.
+ *
+ * @warning
+ *      The values in this enum must not be changed.  The list may be amended but binary
+ *      compatibility requires that the actual values never change.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM HashFunc
+{
+    HASH_SHA512 = 0,
+    HASH_SHA384 = 1,
+    HASH_SHA512_256 = 2,
+    HASH_SHA256 = 3,
+    HASH_SHA512_224 = 4,
+    HASH_SHA224 = 5
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum size of the Key ID
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_KEY_ID_SIZE = 255;
+DEFINE MAX_KEY_ID_BYTES = (MAX_KEY_ID_SIZE + 1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum size of the Digest ID
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_DIGEST_ID_SIZE = 255;
+DEFINE MAX_DIGEST_ID_BYTES = (MAX_KEY_ID_SIZE + 1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum size of the authentication command
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_AUTH_CMD_SIZE = 4096;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum size of the provisioning package
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_PROV_PACKAGE_SIZE = 4096;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum packet size.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_PACKET_SIZE = 4096;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum size, in bytes, of the module identifier.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_MODULE_ID_SIZE = 50;
+DEFINE MAX_MODULE_ID_BYTES = (MAX_MODULE_ID_SIZE + 1);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the module ID.  This module ID may be used to uniquely identify the module, device or chip
+ * that this instance of the IOT Key Store is running in.  The module ID is not secret and should
+ * generally not change for the life of the module.
+ *
+ * An update key can be set to delete the module ID.  If the update key is not set then the module
+ * ID may be viewed as OTP (one-time programmable).
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the update key reference is invalid
+ *                       or if idPtr NULL or is invalid.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if the module ID has already been set
+ *               or if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetModuleId
+(
+    string  idPtr[MAX_MODULE_ID_SIZE]   IN, ///< Module ID.
+    uint64  keyRef                      IN  ///< Key reference. NULL if not used.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the module ID.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the module ID has not been set.
+ *      LE_BAD_PARAMETER if bufPtr is NULL.
+ *      LE_OVERFLOW if the buffer is too small to hold the entire module ID.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetModuleId
+(
+    string  idPtr[MAX_MODULE_ID_SIZE]   OUT ///< Module ID.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deletes the module ID.
+ *
+ * This function is only possible if an update key was set when the module ID was set.  The
+ * authCmdPtr must contain a valid delete module ID command.  If the command is valid and authentic
+ * then the module ID is deleted.  Once the module ID is deleted a new module ID may be set.
+ *
+ * @note
+ *      See the comment block at the top of this page for the authenticated command format.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the module ID has not been set.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if there is no assigned update key or the authCmdPtr is not valid
+ *               or if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DeleteModuleId
+(
+    uint8       authCmd[MAX_AUTH_CMD_SIZE]  IN      ///< Authenticated command buffer.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets a reference to a key.
+ *
+ * @return
+ *      Reference to the key.
+ *      0 if the key could not be found.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint64 GetKey
+(
+    string keyId[MAX_KEY_ID_SIZE]   IN  ///< Identifier string.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a new key.
+ *
+ * This is a convenient way to create a key for a specific usage.  This function will choose a
+ * default key type to satisfy the specified usage.
+ *
+ * New keys initially have no value and cannot be used.  Key values can be set using either
+ * le_iks_GenKeyValue() or le_iks_ProvisionKeyValue().
+ *
+ * Created keys initially only exist in non-persistent memory, call le_iks_SaveKey() to save
+ * the key to persistent memory.
+ *
+ * @return
+ *      Reference to the key if successful.
+ *      0 if the keyId is already being used or is invalid or the keyUsage is invalid.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint64 CreateKey
+(
+    string keyId[MAX_KEY_ID_SIZE]   IN, ///< Identifier string.
+    KeyUsage keyUsage               IN  ///< Key usage.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a new key of a specific type.
+ *
+ * New keys initially have no value and cannot be used.  Key values can be set using either
+ * le_iks_GenKeyValue() or le_iks_ProvisionKeyValue().
+ *
+ * Created keys initially only exist in non-persistent memory, call le_iks_SaveKey() to save
+ * the key to persistent memory.
+ *
+ * @return
+ *      Reference to the key if successful.
+ *      0 if the keyId is already being used or if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint64 CreateKeyByType
+(
+    string keyId[MAX_KEY_ID_SIZE]   IN, ///< Identifier string.
+    KeyType keyType                 IN, ///< Key type.
+    uint32 keySize                  IN  ///< Key size in bytes.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the key type.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the key reference is invalid
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetKeyType
+(
+    uint64      keyRef      IN,     ///< Key reference.
+    KeyType     keyType     OUT     ///< Key type.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the key size in bytes.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the key reference is invalid
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetKeySize
+(
+    uint64      keyRef      IN,     ///< Key reference.
+    uint32      keySize     OUT     ///< Key size.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if the key size is valid.
+ *
+ * @return
+ *      LE_OK if the key size is valid.
+ *      LE_OUT_OF_RANGE if the key size is invalid.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t IsKeySizeValid
+(
+    KeyType     keyType     IN,     ///< Key type.
+    uint32      keySize     IN      ///< Key size.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if the key has a value.
+ *
+ * @return
+ *      LE_OK if the key has a value.
+ *      LE_BAD_PARAMETER if the key reference is invalid.
+ *      LE_NOT_FOUND if the key has no value.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t HasKeyValue
+(
+    uint64      keyRef      IN      ///< Key reference.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set an update key for the specified key.  The update key must be of type KEY_TYPE_KEY_UPDATE.
+ * The update key can be used at a later time to perform authenticated updates of the specified key.
+ * The same update key may be used for multiple keys and digests.
+ *
+ * @note
+ *      Once an update key is assigned the key parameters can no longer be modified except through
+ *      an authenticated update process.
+ *
+ *      Update keys can be assigned to themselves or other update keys.
+ *
+ * @warning
+ *      It is strongly recommended to save the update key before assigning it to other keys/digests.
+ *      Otherwise a sudden power loss could leave the update key reference pointing to a
+ *      non-existing update key allowing a new update key to be created with the same ID but a
+ *      different (unintended) value.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the key reference is invalid
+ *                       or if the update key reference is invalid or does not have a value.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if an update key has already been set
+ *               or if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetKeyUpdateKey
+(
+    uint64      keyRef          IN,     ///< Key reference.
+    uint64      updateKeyRef    IN      ///< Reference to an update key.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate a key value.
+ *
+ * If the specified key has an assigned update key then the authCmdPtr must contain a generate key
+ * command and a valid authentication challenge, obtained by le_iks_GetUpdateAuthChallenge(),
+ * and is signed with the update private key.  If the command is valid and authentic then a new key
+ * value is generated replacing the old value.
+ *
+ * If the specified key does not have an update key then the authCmdPtr is ignored.
+ *
+ * Public keys cannot be generated using this function.  They must be provisioned using
+ * le_iks_ProvisionKeyValue().
+ *
+ * @note
+ *      See the comment block at the top of this page for the authenticated command format.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the key reference is invalid
+ *                       or if the key is a public key.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if there is an update key set and the authCmdPtr does not contain a
+ *               valid authenticated command, or if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GenKeyValue
+(
+    uint64      keyRef                      IN,     ///< Key reference.
+    uint8       authCmd[MAX_AUTH_CMD_SIZE]  IN      ///< Authenticated command buffer.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Provision a key value.
+ *
+ * The provisioning package, provPackagePtr, must contain the key value to provision.
+ *
+ * Private key provisioning is not currently supported.
+ *
+ * If the key is a symmetric then the key value must be encrypted with the provisioning key.  If the
+ * key is a public key the key value must be provided in plaintext.
+ *
+ * If the specified key does not have an assigned update key then the provPackagePtr is treated as a
+ * buffer containing the key value.
+ *
+ * If the specified key has an assigned update key then the provPackagePtr must also contain a valid
+ * authentication challenge and be signed with the assigned update key.
+ *
+ * @note
+ *      See the comment block at the top of this page for the provisioning package format.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the key reference is invalid.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if the provPackagePtr is not validly encrypted and/or signed
+ *               or if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ProvisionKeyValue
+(
+    uint64      keyRef                              IN, ///< Key reference.
+    uint8       provPackage[MAX_PROV_PACKAGE_SIZE]  IN  ///< Provisioning package.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Saves a key to persistent storage.
+ *
+ * @note
+ *      Previously saved keys that have been updated do not need to be re-saved.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the key reference is invalid.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if the key is already in persistent storage
+ *               or if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SaveKey
+(
+    uint64      keyRef  IN      ///< Key reference.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete key.
+ *
+ * If the specified key has an assigned update key then the authCmdPtr must contain a delete key
+ * command and a valid authentication challenge, obtained by le_iks_GetUpdateAuthChallenge(), and is
+ * signed with the update private key.  If the command is valid and authentic then the key will be
+ * deleted.
+ *
+ * If the specified key does not have an assigned update key then then authCmdPtr is ignored.
+ *
+ * @warning
+ *      When deleting an update key, it is a good idea to delete all keys that depend on the update
+ *      key first.  Otherwise the dependent keys will be left non-updatable.
+ *
+ * @note
+ *      See the comment block at the top of this page for the authenticated command format.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the key reference is invalid.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if the key has an update key and the authCmdPtr is not valid.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DeleteKey
+(
+    uint64      keyRef                      IN, ///< Key reference.
+    uint8       authCmd[MAX_AUTH_CMD_SIZE]  IN  ///< Authenticated command buffer.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the public portion of an asymmetric key.
+ *
+ * The output will be in:
+ *      - PKCS #1 format (DER encoded) for RSA keys.
+ *      - ECPoint format defined in RFC5480 for ECC keys.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the key reference is invalid
+ *                       or if the key is not an asymmetric key.
+ *      LE_NOT_FOUND if the key reference does not have a value.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_OVERFLOW if the supplied buffer is too small to hold the key value.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPubKeyValue
+(
+    uint64      keyRef              IN, ///< Key reference.
+    uint8       buf[MAX_KEY_SIZE]   OUT ///< Buffer to hold key value.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets a reference to a digest.
+ *
+ * Digest IDs may only consist of alphanumeric characters, the underscore '_' and hyphen '-'.
+ *
+ * @return
+ *      Reference to the digest.
+ *      0 if the digest could not be found.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint64 GetDigest
+(
+    string  digestId[MAX_DIGEST_ID_SIZE]   IN  ///< Identifier string.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a new digest.
+ *
+ * New digests initially have no value.  Digest values can be set using le_iks_ProvisionDigest().
+ *
+ * Created digests initially only exist in non-persistent memory, call le_iks_SaveDigest() to save
+ * to persistent storage.
+ *
+ * Digest IDs may only consist of alphanumeric characters, the underscore '_' and hyphen '-'.
+ *
+ * @return
+ *      Reference to the digest if successful.
+ *      0 if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint64 CreateDigest
+(
+    string  digestId[MAX_DIGEST_ID_SIZE]    IN, ///< Identifier string.
+    uint32  digestSize                      IN  ///< Digest size. Must be <= MAX_DIGEST_SIZE.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the digest size in bytes.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the digest reference is invalid.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetDigestSize
+(
+    uint64      digestRef   IN,     ///< Digest reference.
+    uint32      digestSize  OUT     ///< Digest size.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set an update key for the specified digest.  The update key must be of type
+ * KEY_TYPE_KEY_UPDATE.  The update key can be used at a later time to perform authenticated
+ * updates of the specified digest.  The same update key may be used for multiple keys and digests.
+ *
+ * @note
+ *      Once an update key is assigned the digest parameters can no longer be modified except
+ *      through an authenticated update process.
+ *
+ * @warning
+ *      It is strongly recommended to save the update key before assigning it to other keys/digests.
+ *      Otherwise a sudden power loss could leave the update key reference pointing to a
+ *      non-existing update key allowing a new update key to be created with the same ID but a
+ *      different (unintended) value.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the digest reference is invalid
+ *                       or if the update key reference is invalid or does not have a value.
+ *      LE_FAULT if an update key has already been set
+ *               or if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetDigestUpdateKey
+(
+    uint64      digestRef       IN,     ///< Digest reference.
+    uint64      updateKeyRef    IN      ///< Reference to an update key.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Provision a digest value.
+ *
+ * The provisioning package, provPackagePtr, must contain the digest value to provision.
+ *
+ * If the specified digest does not have an assigned update key then the provPackagePtr is treated
+ * as a buffer containing the digest value.
+ *
+ * If the specified digest has an assigned update key then the provPackagePtr must also contain a
+ * valid authentication challenge and be signed with the assigned update key.
+ *
+ * @note
+ *      See the comment block at the top of this page for the provisioning package format.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the digest reference is invalid
+ *                       or if the digest value is too long.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if the provPackagePtr does not have a valid signature
+ *               or if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ProvisionDigest
+(
+    uint64      digestRef                           IN, ///< Digest reference.
+    uint8       provPackage[MAX_PROV_PACKAGE_SIZE]  IN  ///< Provisioning package.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Saves a digest to persistent storage.
+ *
+ * @note
+ *      Previously saved digests that have been updated do not need to be re-saved.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the digest reference is invalid
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if the digest is already in persistent storage
+ *               or if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SaveDigest
+(
+    uint64      digestRef           IN  ///< Digest reference.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete a digest.
+ *
+ * If the specified digest has an assigned update key then the authCmdPtr must contain a delete
+ * digest command and a valid authentication challenge, obtained by le_iks_GetUpdateAuthChallenge()
+ * and is signed with the update private key.  If the command is valid and authentic then the digest
+ * will be deleted.
+ *
+ * If the specified digest does not have an assigned update key then then authCmdPtr is ignored.
+ *
+ * @note
+ *      See the comment block at the top of this page for the authenticated command format.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the digest reference is invalid
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if the digest has an update key and the authCmdPtr is not valid.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DeleteDigest
+(
+    uint64          digestRef                   IN, ///< Digest reference.
+    uint8           authCmd[MAX_AUTH_CMD_SIZE]  IN  ///< Authenticated command buffer.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the digest value.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the digest reference is invalid.
+ *      LE_NOT_FOUND if the digest reference does not have a value.
+ *      LE_OVERFLOW if the supplied buffer is too small to hold the digest value.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetDigestValue
+(
+    uint64          digestRef                   IN, ///< Digest reference.
+    uint8           buf[MAX_DIGEST_SIZE]        OUT ///< Buffer to hold the digest value.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get update authentication challenge.
+ *
+ * This challenge code must be included in any update commands created using the specified update
+ * key.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the update key reference is invalid.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if there is an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetUpdateAuthChallenge
+(
+    uint64      keyRef              IN, ///< Key reference.
+    uint8       buf[CHALLENGE_SIZE] OUT ///< Buffer to hold the authentication challenge.
+                                        ///<   Assumed to be CHALLENGE_SIZE bytes.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the provisioning key.  This is a public key that is internally generated by the IOT Key Store
+ * and used to encrypt symmetric and private keys for provisioning into the IOT Key Store.  This key
+ * can only be used for this purpose.
+ *
+ * @note
+ *      The key is provided in ASN.1 structured DER encoded format.  Refer to the comment at the
+ *      top of this file for details of the file format.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the supplied buffer is too small.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if there is an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetProvisionKey
+(
+    uint8       buf[MAX_KEY_SIZE]       OUT    ///< Buffer to hold the provisioning key.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create a session.
+ *
+ * @return
+ *      A session reference if successful.
+ *      0 if the key reference is invalid or does not contain a key value.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint64 CreateSession
+(
+    uint64  keyRef  IN  ///< Key to use for this session.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete a session.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the session reference is invalid.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DeleteSession
+(
+    uint64  sessionRef  IN  ///< Session reference.
+);

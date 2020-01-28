@@ -2,7 +2,8 @@ sandboxed: false
 
 executables:
 {
-    secStore = ( $LEGATO_ROOT/components/secStore/secStoreDaemon )
+    secStore = ( $LEGATO_ROOT/components/secStore/secStoreDaemon
+                 $LEGATO_ROOT/components/secStore/iotKeystore )
 }
 
 processes:
@@ -23,6 +24,9 @@ processes:
 extern:
 {
     secStore.secStoreDaemon.le_secStore
+    secStore.iotKeystore.le_iks
+    secStore.iotKeystore.le_iks_aesMilenage
+    secStore.iotKeystore.le_iks_aesGcm
 
 #if ${LE_CONFIG_LINUX} = ""
     secStore.secStoreDaemon.le_appInfo

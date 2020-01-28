@@ -43,6 +43,8 @@ buildVars:
         ${LEGATO_ROOT}/components/dataConnectionService/platformAdaptor/default/le_pa_dcs_default
     LEGATO_SECSTORE_PA_DEFAULT =
         ${LEGATO_ROOT}/components/secStore/platformAdaptor/default/le_pa_secStore_default
+    LEGATO_IOT_KEYSTORE_PA_DEFAULT =
+        ${LEGATO_ROOT}/components/secStore/platformAdaptor/default/le_pa_iotKeystore_default
     LEGATO_FWUPDATE_PA_DEFAULT =
         ${LEGATO_ROOT}/components/fwupdate/platformAdaptor/default/le_pa_fwupdate_default
     LEGATO_PORT_PA_DEFAULT =

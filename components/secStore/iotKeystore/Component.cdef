@@ -1,0 +1,33 @@
+sources:
+{
+    iksKeyManagement.c
+    iksAesMilenage.c
+    iksAesGcm.c
+}
+
+cflags:
+{
+    -I$CURDIR/../platformAdaptor/inc
+}
+
+requires:
+{
+    component:
+    {
+#if ${LE_CONFIG_ENABLE_IOT_KEYSTORE_API} = y
+        $LEGATO_IOT_KEYSTORE_PA
+#else
+        $LEGATO_IOT_KEYSTORE_PA_DEFAULT
+#endif
+    }
+}
+
+provides:
+{
+    api:
+    {
+        iotKeystore/le_iks.api
+        iotKeystore/le_iks_aesMilenage.api
+        iotKeystore/le_iks_aesGcm.api
+    }
+}

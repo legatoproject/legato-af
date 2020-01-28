@@ -226,6 +226,13 @@ config IMA_SMACK
   ---help---
   SMACK label to use for IMA purposes.
 
+config ENABLE_IOT_KEYSTORE_API
+  bool "Enable IoT KeyStore library"
+  depends on EXPERIMENTAL
+  default n
+  ---help---
+  Enable Legato API for the IoT KeyStore library.
+
 # TODO: better description
 
 endmenu # end "Security Features"

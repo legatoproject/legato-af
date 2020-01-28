@@ -1,0 +1,343 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_iks_aesGcm IoT Keystore AES GCM API
+ *
+ * @ref le_iks_aesGcm_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * This module provides APIs for performing AES encryption in GCM mode.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_iks_aesGcm_interface.h
+ *
+ * Legato @ref c_iks API
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+USETYPES le_iks.api;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Nonce sizes in bytes.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE NONCE_SIZE = 12;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Tag sizes in bytes.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE TAG_SIZE = 16;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Encrypt and integrity protect a packet with AES in GCM mode.
+ *
+ * GCM is an AEAD (Authenticated Encryption with Associated Data) which means that it provides both
+ * confidentiality and integrity protection for plaintext data and provides integrity protection for
+ * associated data.  The associated data, also referred to as Additional Authenticated Data (AAD),
+ * is not encrypted but is integrity protected.  The output of the encryption is a randomly chosen
+ * nonce, the ciphertext corresponding to the plaintext and an authentication tag.  The
+ * authentication tag integrity protects the nonce, AAD and the ciphertext.
+ *
+ * ______________________
+ * |   AAD, plaintext   |
+ * ----------------------
+ *           |
+ *           V
+ * ______________________________
+ * |   nonce, ciphertext, tag   |
+ * ------------------------------
+ *
+ * This is especially useful in communication protocols where a packet's payload needs to be secret
+ * but the packet's header must be readable.  In this case the packet's header is the AAD.
+ *
+ * The AAD and plaintext are optional but they cannot both be omitted.  If the AAD is omitted then
+ * confidentiality and integrity is provided for just the plaintext.  If the plaintext is omitted
+ * then integrity protection is provided for just the AAD.
+ *
+ * The ciphertext size is the same as the plaintext size and it is assumed that the ciphertextPtr
+ * buffer is at least plaintextSize bytes long.
+ *
+ * The tag size is always LE_IKS_AES_GCM_TAG_SIZE bytes and it is assumed that the tagPtr buffer is
+ * large enough to hold the tag.
+ *
+ * A random nonce is chosen for each invocation of this function.  The nonce is passed out to the
+ * caller via noncePtr and is assumed to always be LE_IKS_AES_GCM_NONCE_SIZE bytes.
+ * The nonce does not need to be kept secret and can be passed in the clear.
+ *
+ * Nonce values must be unique for each invocation for the lifetime of the key.  In other words a
+ * (key, nonce) pair must be unique for every invocation for all time and for all users in the
+ * world.  This is a critical security requirement but can be difficult to satisfy that is why
+ * keys should be rotated frequently.
+ *
+ * Repeated nonces in GCM are particularly problematic as they can be used to recover the integrity
+ * key.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OUT_OF_RANGE if either the  aadSize or plaintextSize is the wrong size.
+ *      LE_BAD_PARAMETER if the key reference is invalid
+ *                       or if the key type is invalid
+ *                       or if either noncePtr, tagPtr, plaintextPtr or ciphertextPtr is NULL when
+ *                        they shouldn't be.
+ *      LE_FAULT if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t EncryptPacket
+(
+    uint64  keyRef                              IN,   ///< Key reference.
+    uint8   nonce[NONCE_SIZE]                   OUT,  ///< Buffer to hold the nonce.
+                                                      ///<   Assumed to be NONCE_SIZE bytes.
+    uint8   aad[le_iks.MAX_PACKET_SIZE]         IN,   ///< Additional authenticated data (AAD).
+                                                      ///<   NULL if not used.
+    uint8   plaintext[le_iks.MAX_PACKET_SIZE]   IN,   ///< Plaintext. NULL if not used.
+    uint8   ciphertext[le_iks.MAX_PACKET_SIZE]  OUT,  ///< Buffer to hold the ciphertext.
+    uint8   tag[TAG_SIZE]                       OUT   ///< Buffer to hold the authentication tag.
+                                                      ///<   Assumed to be TAG_SIZE.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decrypt and verify the integrity of a packet with AES in GCM mode.
+ *
+ * This function performs an integrity check of the AAD and the ciphertext and if the integrity
+ * passes provides the decrypted plaintext.
+ *
+ * The plaintext size is the same as the ciphertext size and it is assumed that the plaintextPtr
+ * buffer is at least ciphertextSize bytes long.
+ *
+ * The nonce, AAD, ciphertext and tag must be the values produced during encryption.
+ *
+ * ___________________________________
+ * |   nonce, AAD, ciphertext, tag   |
+ * -----------------------------------
+ *                  |
+ *                  V
+ *         _________________
+ *         |   plaintext   |
+ *         -----------------
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OUT_OF_RANGE if either the aadSize or ciphertextSize is too large.
+ *      LE_BAD_PARAMETER if the key reference is invalid
+ *                       or if the key type is invalid
+ *                       or if either noncePtr, tagPtr, plaintextPtr or ciphertextPtr is NULL when
+ *                        they shouldn't be.
+ *      LE_FAULT if the integrity check failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DecryptPacket
+(
+    uint64  keyRef                              IN,   ///< Key reference.
+    uint8   nonce[NONCE_SIZE]                   IN,   ///< Nonce used to encrypt the packet.
+                                                      ///<   Assumed to be NONCE_SIZE bytes.
+    uint8   aad[le_iks.MAX_PACKET_SIZE]         IN,   ///< Additional authenticated data (AAD).
+                                                      ///<   NULL if not used.
+    uint8   ciphertext[le_iks.MAX_PACKET_SIZE]  IN,   ///< Ciphertext. NULL if not used.
+    uint8   plaintext[le_iks.MAX_PACKET_SIZE]   OUT,  ///< Buffer to hold the plaintext.
+    uint8   tag[TAG_SIZE]                       IN    ///< Buffer to hold the authentication tag.
+                                                      ///<   Assumed to be TAG_SIZE.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Starts a process to encrypt and integrity protect a long packet with AES in GCM mode.  This
+ * function is useful for encrypting and integrity protecting packets that are larger than
+ * MAX_PACKET_SIZE.  Calling this function will cancel any previously started process using the
+ * same session.
+ *
+ * To encrypt a long packet the following sequence should be used:
+ *
+ * le_iks_aesGcm_StartEncrypt() // Start the encryption process.
+ * le_iks_aesGcm_ProcessAad()   // Call zero or more times until all AAD data is processed.
+ * le_iks_aesGcm_Encrypt()      // Call zero or more times until all plaintext is encrypted.
+ * le_iks_aesGcm_DoneEncrypt()  // Complete process and obtain authentication tag.
+ *
+ * All AAD must be processed before plaintext processing begins.
+ *
+ * A random nonce is chosen for each invocation of this function.  The nonce is passed out to the
+ * caller via noncePtr and is assumed to always be AES_GCM_NONCE_SIZE bytes.
+ * The nonce does not need to be kept secret and can be passed in the clear.
+ *
+ * Nonce values must be unique for each invocation for the lifetime of the key.  In other words a
+ * (key, nonce) pair must be unique for every invocation for all time and for all users in the
+ * world.  This is a critical security requirement but can be difficult to satisfy.  Therefore keys
+ * should be rotated frequently.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the session reference is invalid
+ *                       or if the key type is invalid
+ *                       or if noncePtr is NULL.
+ *      LE_FAULT if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t StartEncrypt
+(
+    uint64  session             IN,     ///< Session reference.
+    uint8   nonce[NONCE_SIZE]   OUT     ///< Buffer to hold the nonce.
+                                        ///<   Assumed to be NONCE_SIZE bytes.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Process a chunk of AAD (Additional Authenticated Data).  Either le_iks_aesGcm_StartEncrypt() or
+ * le_iks_aesGcm_StartDecrypt() must have been previously called to start either an encryption or
+ * decryption process.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the session reference is invalid
+ *                       or if the key type is invalid
+ *                       or if aadChunkPtr is NULL.
+ *      LE_OUT_OF_RANGE if aadChunkSize is too big.
+ *      LE_FAULT if an encryption or decryption process was not started or
+ *                            plaintext/ciphertext processing has already started.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ProcessAad
+(
+    uint64  session                     IN,     ///< Session reference.
+    uint8   aad[le_iks.MAX_PACKET_SIZE] IN      ///< Additional authenticated data (AAD).
+                                                ///<   NULL if not used.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Encrypt a chunk of plaintext.  le_iks_aesGcm_StartEncrypt() must have been previously called to
+ * start an encryption process.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the session reference is invalid
+ *                       or if the key type is invalid
+ *                       or if plaintextChunkPtr or ciphertextChunkPtr is NULL.
+ *      LE_OUT_OF_RANGE if textSize is too big.
+ *      LE_FAULT if an encryption process has not started.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Encrypt
+(
+    uint64  session                                 IN,     ///< Session reference.
+    uint8   plaintextChunk[le_iks.MAX_PACKET_SIZE]  IN,     ///< Plaintext.
+    uint8   ciphertextChunk[le_iks.MAX_PACKET_SIZE] OUT     ///< Buffer to hold the ciphertext.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Complete encryption and calculate the authentication tag.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the session reference is invalid
+ *                       or if the key type is invalid
+ *                       or if tagPtr is NULL.
+ *      LE_FAULT if an encryption process has not started or no data
+ *                            (AAD and plaintext) has been processed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DoneEncrypt
+(
+    uint64  session         IN,   ///< Session reference.
+    uint8   tag[TAG_SIZE]   OUT   ///< Buffer to hold the authentication tag.
+                                  ///<   Assumed to be TAG_SIZE.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Starts a process to decrypt and verify the integrity of a long packet with AES in GCM mode.  This
+ * function is useful for decrypting and verifying packets that are larger than MAX_PACKET_SIZE.
+ * Calling this function will cancel any previously started process using the same session.
+ *
+ * To decrypt a long packet the following sequence should be used:
+ *
+ * le_iks_aesGcm_StartDecrypt() // Start the decryption process.
+ * le_iks_aesGcm_ProcessAad()   // Call zero or more times until all AAD data is processed.
+ * le_iks_aesGcm_Decrypt()      // Call zero or more times until all ciphertext is decrypted.
+ * le_iks_aesGcm_DoneDecrypt()  // Complete decryption process.
+ *
+ * @warning
+ *      While decrypting long packets in this 'streaming' fashion plaintext chunks are released to
+ *      the caller before they are verified for integrity.  Ie. the caller will not know the
+ *      plaintext is correct until le_iks_aesGcm_DoneDecrypt() is called.  The caller therefore must
+ *      not release or make use of any plaintext chunks until after
+ *      le_iks_aesGcm_DoneDecrypt() returns with LE_OK.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the session reference is invalid
+ *                       or if the key type is not valid
+ *                       or if noncePtr is NULL.
+ *      LE_FAULT if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t StartDecrypt
+(
+    uint64  session             IN,   ///< Session reference.
+    uint8   nonce[NONCE_SIZE]   IN    ///< Nonce used to encrypt the packet.
+                                      ///<   Assumed to be NONCE_SIZE bytes.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decrypt a chunk of ciphertext.  le_iks_aesGcm_StartDecrypt() must have been previously called to
+ * start either a decryption process.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the session reference is invalid
+ *                       or if the key type is invalid
+ *                       or if plaintextChunkPtr or ciphertextChunkPtr is NULL.
+ *      LE_OUT_OF_RANGE if textSize is too big.
+ *      LE_FAULT if a decryption process has not started.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Decrypt
+(
+    uint64  session                                 IN,     ///< Session reference.
+    uint8   ciphertextChunk[le_iks.MAX_PACKET_SIZE] IN,     ///< Ciphertext chunk. NULL if not used.
+    uint8   plaintextChunk[le_iks.MAX_PACKET_SIZE]  OUT     ///< Buffer to hold the plaintext chunk.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Complete decryption and verify the integrity.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the session reference is invalid
+ *                       or if the key type is invalid
+ *                       or if tagPtr is NULL.
+ *      LE_FAULT if a decryption process has not started
+ *               or no data (AAD and ciphertext) has been processed
+ *               or the integrity check failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DoneDecrypt
+(
+    uint64  session         IN,   ///< Session reference.
+    uint8   tag[TAG_SIZE]   IN    ///< Buffer to hold the authentication tag.
+                                  ///<   Assumed to be TAG_SIZE.
+);

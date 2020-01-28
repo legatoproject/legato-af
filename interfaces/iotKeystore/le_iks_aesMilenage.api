@@ -1,0 +1,170 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_iks_aesMilenage IoT Keystore AES Milenage API
+ *
+ * @ref le_iks_aesMilenage_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * This module provides APIs for performing Milenage authentication and key derivation using AES as
+ * the PRP.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_iks_aesMilenage_interface.h
+ *
+ * Legato @ref c_iks API
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+USETYPES le_iks.api;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Key size in bytes.  This refers to the subscriber key, K.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE K_SIZE = le_iks.AES_BLOCK_SIZE;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * OPC size in bytes.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE OPC_SIZE = le_iks.AES_BLOCK_SIZE;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Milenage parameter sizes in bytes.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE RAND_SIZE    = le_iks.AES_BLOCK_SIZE;
+DEFINE AMF_SIZE     = 2;
+DEFINE SQN_SIZE     = 6;
+DEFINE MACA_SIZE    = 8;
+DEFINE MACS_SIZE    = 8;
+DEFINE RES_SIZE     = 8;
+DEFINE CK_SIZE      = le_iks.AES_BLOCK_SIZE;
+DEFINE IK_SIZE      = le_iks.AES_BLOCK_SIZE;
+DEFINE AK_SIZE      = 6;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Calculates the network authentication code MAC-A using the Milenage algorithm set with AES-128 as
+ * the block cipher.  Implements the Milenage function f1.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if either K or OPc reference is invalid
+ *                       or if either K or OPc key type is invalid
+ *                       or if either randPtr, amfPtr, sqnPtr, or macaPtr is NULL.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetMacA
+(
+    uint64      kRef                IN,     ///< Reference to K.
+    uint64      opcRef              IN,     ///< Reference to OPc.
+    uint8       rand[RAND_SIZE]     IN,     ///< RAND challenge. Assumed to be RAND_SIZE bytes.
+    uint8       amf[AMF_SIZE]       IN,     ///< Authentication management field, AMF.
+                                            ///<   Assumed to be AMF_SIZE bytes.
+    uint8       sqn[SQN_SIZE]       IN,     ///< Sequence number, SQN.
+                                            ///<   Assumed to be SQN_SIZE bytes.
+    uint8       maca[MACA_SIZE]     OUT     ///< Buffer to hold the network authentication code.
+                                            ///<   Assumed to be MACA_SIZE bytes.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Calculates the re-synchronisation authentication code MAC-S using the Milenage algorithm set with
+ * AES-128 as the block cipher.  Implements the Milenage function f1*.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if either K or OPc reference is invalid
+ *                       or if either K or OPc key type is invalid
+ *                       or if either randPtr, amfPtr, sqnPtr, or macsPtr is NULL.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetMacS
+(
+    uint64      kRef                IN,     ///< Reference to K.
+    uint64      opcRef              IN,     ///< Reference to OPc.
+    uint8       rand[RAND_SIZE]     IN,     ///< RAND challenge. Assumed to be RAND_SIZE bytes.
+    uint8       amf[AMF_SIZE]       IN,     ///< Authentication management field, AMF.
+                                            ///<   Assumed to be AMF_SIZE bytes.
+    uint8       sqn[SQN_SIZE]       IN,     ///< Sequence number, SQN.
+                                            ///<    Assumed to be SQN_SIZE bytes.
+    uint8       macs[MACS_SIZE]     OUT     ///< Buffer to hold the re-sync authentication code.
+                                            ///<   Assumed to be MACS_SIZE bytes.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Derives authentication response and keys using the Milenage algorithm set with AES-128 as the
+ * block cipher.  Implements the Milenage functions f2, f3, f4, f5.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if either K or OPc reference is invalid
+ *                       or if either K or OPc key type is invalid
+ *                       or if either randPtr, resPtr, ckPtr, ikPtr or akPtr is NULL.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetKeys
+(
+    uint64      kRef                IN,     ///< Reference to K.
+    uint64      opcRef              IN,     ///< Reference to OPc.
+    uint8       rand[RAND_SIZE]     IN,     ///< RAND challenge. Assumed to be RAND_SIZE bytes.
+    uint8       res[RES_SIZE]       OUT,    ///< Buffer to hold the authentication response RES.
+                                            ///<   Assumed to be RES_SIZE bytes.
+    uint8       ck[CK_SIZE]         OUT,    ///< Buffer to hold the confidentiality key CK.
+                                            ///<   Assumed to be CK_SIZE bytes.
+    uint8       ik[IK_SIZE]         OUT,    ///< Buffer to hold the integrity key IK.
+                                            ///<   Assumed to be IK_SIZE bytes.
+    uint8       ak[AK_SIZE]         OUT     ///< Buffer to hold the anonymity key AK.
+                                            ///<   Assumed to be AK_SIZE bytes.
+
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Derives the anonymity key for the re-synchronisation message using the Milenage algorithm set
+ * with AES-128 as the block cipher.  Implements the Milenage functions f5*.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if either K or OPc reference is invalid
+ *                       or if either K or OPc key type is invalid
+ *                       or if either randPtr or akPtr is NULL.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetAk
+(
+    uint64      kRef                IN,     ///< Reference to K.
+    uint64      opcRef              IN,     ///< Reference to OPc.
+    uint8       rand[RAND_SIZE]     IN,     ///< RAND challenge. Assumed to be RAND_SIZE bytes.
+    uint8       ak[AK_SIZE]         OUT     ///< Buffer to hold the anonymity key AK.
+                                            ///<   Assumed to be AK_SIZE bytes.
+);

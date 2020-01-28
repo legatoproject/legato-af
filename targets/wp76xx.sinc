@@ -27,9 +27,15 @@ buildVars:
     //LEGATO_AVC_PA = ${LEGATO_QMI_AVC_PA}
     LEGATO_SECSTORE_PA = ${LEGATO_QMI_SECSTORE_PA}
     LEGATO_SECSTORE_PA_TZ = ${PA_DIR}/trustZone/swi/components/le_pa_secStoreTz
+
     #if ${LE_CONFIG_SECSTORE_IKS_BACKEND} = y
         LEGATO_SECSTORE_PA_IKS_CRYPTO = ${PA_DIR}/trustZone/swi/components/le_pa_iksCrypto
     #endif
+
+    #if ${LE_CONFIG_ENABLE_IOT_KEYSTORE_API} = y
+        LEGATO_IOT_KEYSTORE_PA = ${PA_DIR}/trustZone/swi/components/le_pa_iksApi
+    #endif
+
     LEGATO_FWUPDATE_PA = ${LEGATO_QMI_FWUPDATE_PA}
     LEGATO_FWUPDATE_PA_SINGLESYS = ${PA_DIR}/fwupdate/mdm9x07/le_pa_fwupdate_singlesys
 

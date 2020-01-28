@@ -1,0 +1,9 @@
+sources:
+{
+    pa_iotKeystore_default.c
+}
+
+cflags:
+{
+    -I$CURDIR/../../inc
+}
