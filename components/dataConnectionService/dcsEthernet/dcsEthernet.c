@@ -317,7 +317,7 @@ le_result_t le_dcsEthernet_GetChannelList
         AllowEthernetChannelQuery = false;
     }
 
-    dcsTech_CollectChannelQueryResults(LE_DCS_TECH_ETHERNET, LE_OK, channelList, listLen);
+    dcsTech_CollectChannelQueryResults(LE_DCS_TECH_ETHERNET, LE_OK, channelList, i);
     return LE_OK;
 }
 
