@@ -51,7 +51,8 @@ the Legato Runtime Environment.  If your target supports it, the watchdog daemon
 to kick an external watchdog such as Linux watchdog device.
 
 @note To configure the external watchdog kick interval, add a @ref defFilesSdef_externalWatchdogKick
-section to your systems @ref defFilesSdef .
+section to your systems @ref defFilesSdef . Details about how to configure an external watchdog via
+Legato KConfig can be found at @ref kconfigOptions .
 
 The daemon monitors app's processes for hangs or freezing and if the process doesn't
 "kick" the watchdog daemon in a specified time (the default is @b 30 @b seconds), the watchdog
