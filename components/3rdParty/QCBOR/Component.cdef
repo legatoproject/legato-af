@@ -1,0 +1,13 @@
+externalBuild:
+{
+    "mkdir -p ${LEGATO_BUILD}/3rdParty/lib ${LEGATO_BUILD}/3rdParty/QCBOR"
+    "cp -R ${LEGATO_ROOT}/3rdParty/QCBOR/{Makefile,inc,src} ${LEGATO_BUILD}/3rdParty/QCBOR"
+    "sed -i -e 's/^CFLAGS=/CFLAGS+=/' -e 's/ -Wconversion / /g' ${LEGATO_BUILD}/3rdParty/QCBOR/Makefile"
+    "make -C ${LEGATO_BUILD}/3rdParty/QCBOR libqcbor.a"
+    "cp ${LEGATO_BUILD}/3rdParty/QCBOR/libqcbor.a ${LEGATO_BUILD}/3rdParty/lib"
+}
+
+ldflags:
+{
+    -L${LEGATO_BUILD}/3rdParty/lib
+}
