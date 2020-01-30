@@ -16,7 +16,6 @@ The following are our current list of new experimental features in Legato
 
 | Feature                          | Description                                                   | Maturity     | First Release Version |
 | -------------------------------- | --------------------------------------------------------------| ------------ | ----------------------|
-| @subpage legatoServicesDCS       | New data connect service to replace the current data service  | Alpha        | Legato 18.10.0        |
 | @subpage conceptsRPC             | Legato RPC framework                                          | Alpha        | Legato 19.04.0        |
 
 Maturity Descriptions:

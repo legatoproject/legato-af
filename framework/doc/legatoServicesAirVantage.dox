@@ -49,7 +49,7 @@ Server and setting up any Asset Data with the AirVantage Service.
 The AirVantage Connector is implemented by the @b avcService.
 
 The avcService depends on:
-  - @ref c_le_data "dataConnectionService"
+  - @ref legatoServicesDCS "dataConnectionService"
   - @ref legatoServicesModem "modemService"
   - @ref c_le_cellnet "cellNetService"
 

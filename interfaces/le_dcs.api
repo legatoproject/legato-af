@@ -3,6 +3,7 @@
  * @page c_le_dcs le_dcs Interface
  *
  * @ref le_dcs_interface.h "API Reference" <br>
+ * @ref sampleApps_gpsApp "Sample code" <br>
  *
  * When applications need to exchange data with other devices on the packet switched data network,
  * a data channel needs to be first established. After such channel is successfully established,

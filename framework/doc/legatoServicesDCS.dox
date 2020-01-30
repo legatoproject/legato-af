@@ -1,5 +1,10 @@
 /** @page legatoServicesDCS Data Channel Service
 
+A data connection is needed for applications that exchange data with devices where SMS messages
+are insufficient or not possible.  The data connection can be established over a mobile network,
+WiFi or a fixed link (e.g., ethernet).
+The data connection service provides a basic API for requesting and releasing a data connection.
+
 The Data Channel Service (DCS) provides an interface for a client application to configure and use
 the available data channels on its target.
 
@@ -8,6 +13,12 @@ named for and established by various connectivity technologies as a communicatio
 for sending and receiving data packets on a network or with another endpoint. DCS's currently supported
 connectivity technologies are cellular and WiFi, both of which would bring up the network layer for 
 their connections and employ IP addressing and routing to communicate.
+
+@note This interface does not support a data connection over a fixed link.
+
+@warning The dependency between the @c cellNetService and @c dataConnectionService has been
+removed. A data connection request will no longer ensure that the radio is on, or verify that the
+SIM is valid and unlocked.
 
 The following diagram illustrates at the overview level where the DCS interfaces are relative to
 client applications and the physical technologies underneath, as well as what the "channel",
@@ -55,11 +66,8 @@ another network interface instead. Thus, the network admin of any Legato device 
 @c le_data and @c le_dcs plus @c le_net would be used together has to understand the network
 topology and manage its routing configurations properly at any time.
 
-@section legatoServicesDCS_Concepts Concepts
 
-The concepts section is in the process of being written.
-
-@section legatoServicesDCS_API APIs
+@section legatoServicesDCS_API DCS APIs
 
 The Data Channel Service now provides the following API interfaces for managing and operating
 over network connections.
@@ -69,6 +77,7 @@ over network connections.
 | -------------------|------------------------------|----------------| --------------------------------------------------------------- |
 | @subpage c_le_dcs  | @subpage le_dcs_interface.h  | @c le_dcs.api  | Provides multi-connection data channel services                 |
 | @subpage c_le_net  | @subpage le_net_interface.h  | @c le_net.api  | Provides network services to data channels managed by @c le_dcs |
+| @subpage c_le_data | @subpage le_data_interface.h | @c le_data.api | Provides data channel services to a single data connection      |
 
 @section legatoServicesDCS_Binding IPC Interface Binding to DCS
 
@@ -101,6 +110,8 @@ To create IPC bindings:
    }
 @endverbatim
 
+The necessary IPC binding for using le_data is likewise.
+
 To create service connections, in the application's COMPONENT_INIT() code:
 @verbatim
     le_mdc_ConnectService();
@@ -111,9 +122,10 @@ To create service connections, in the application's COMPONENT_INIT() code:
 @section legatoServicesDCS__HowTo How Tos & Samples
 
 - @subpage howToDCSMigration "Migration tips" from le_data to le_dcs.
-- @subpage sampleApps_gpsApp "Sample apps using DCS". Please search through the code there for
+- @subpage sampleApps_gpsApp "Sample apps using le_dcs". Please search through the code there for
 API calls to @c le_dcs and @c le_net.
+- @ref le_data_sample "Sample code using le_data".
 
 Copyright (C) Sierra Wireless Inc.
 
- **/
+**/

@@ -8,7 +8,7 @@ Platform Services provide full-featured interface access to system and modem res
 | @subpage legatoServicesAirVantage     | Configure AirVantage Connect Service        | @image html green_dot.png |
 | @subpage c_audio                      | Control audio features                      |                           |
 | @subpage c_le_cellnet                 | Register and manage modems                  | @image html green_dot.png |
-| @subpage c_le_data                    | Configure, open, and close data connections | @image html green_dot.png |
+| @subpage legatoServicesDCS            | Manage data channels                        | @image html green_dot.png |
 | @subpage c_gpio                       | Configure general purpose input/output      |                           |
 | @subpage legatoServicesModem          | Modem services                              |                           |
 | @subpage legatoServicesPositioning    | Positioning services                        |                           |

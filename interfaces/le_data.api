@@ -1,21 +1,9 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * @page c_le_data Data Connection
+ * @page c_le_data le_data Interface
  *
  * @ref le_data_interface.h "API Reference" <br>
- * @ref le_data_sample <br>
- *
- * A data connection is needed for applications that exchange data with devices where SMS messages
- * are insufficient or not possible.  The data connection can be established over a mobile network,
- * WiFi or a fixed link (e.g., ethernet).
- *
- * The data connection service provides a basic API for requesting and releasing a data connection.
- *
- * @note This interface does not support a data connection over a fixed link.
- *
- * @warning The dependency between the @c cellNetService and @c dataConnectionService has been
- * removed. A data connection request will no longer ensure that the radio is on, or verify that the
- * SIM is valid and unlocked.
+ * @ref le_data_sample "Sample code" <br>
  *
  * @section c_le_data_default Default Data Connection
  *
