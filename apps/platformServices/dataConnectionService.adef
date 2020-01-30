@@ -13,7 +13,6 @@ executables:
                   $LEGATO_ROOT/components/dataConnectionService/dcsEthernet
     #endif
                 )
-    dcsInternal = ( $LEGATO_ROOT/components/dataConnectionService/dcsInternal )
 }
 
 processes:
@@ -21,7 +20,6 @@ processes:
     run:
     {
         (dcsDaemon)
-        (dcsInternal)
     }
 
     faultAction: restart
@@ -43,7 +41,6 @@ bindings:
     dcsDaemon.dcs.le_mrc -> modemService.le_mrc
     dcsDaemon.dcsCellular.le_mdc -> modemService.le_mdc
     dcsDaemon.dcsCellular.le_mrc -> modemService.le_mrc
-    dcsInternal.dcsInternal.le_dcs -> dcsDaemon.dcs.le_dcs
 #if ${LE_CONFIG_LINUX} = y
     dcsDaemon.dcs.le_appInfo -> <root>.le_appInfo
     dcsDaemon.dcsNet.le_appInfo -> <root>.le_appInfo

@@ -20,6 +20,12 @@
 #include "dcsServer.h"
 #include "dcsNet.h"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal client session reference key's value when invalid or unset
+ */
+//--------------------------------------------------------------------------------------------------
+#define DCS_INTERNAL_CLIENT_SESSION_REF_KEY_INVALID 0
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -65,24 +71,6 @@ DcsCommand_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function retrieves the internal session reference used by le_data saved in DcsInfo, since
- * le_data is an internal client of le_dcs and le_net.
- *
- * @return
- *     - internal client session reference for le_data
- */
-//--------------------------------------------------------------------------------------------------
-le_msg_SessionRef_t dcs_GetInternalSessionRef
-(
-    void
-)
-{
-    return DcsInfo.internalSessionRef;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Search thru DCS's master list of available technologies for the given technology specified in the
  * input argument by its enum & return its index # on this list
  *
@@ -105,6 +93,70 @@ static int16_t DcsGetListIndex
         }
     }
     return -1;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the client session reference key from the client session reference which le_dcs recieved
+ * via le_dcs_GetClientSessionRef() or as DCS_INTERNAL_CLIENT_SESSION_REF which is 0.
+ *
+ * This dcs_GetSessionRefKey() works with dcs_GetSessionRef() together, converting in both
+ * directions between a client session reference and its client session reference key.
+ *
+ * The need for such client session reference key is for le_data's being an internal client
+ * session of le_dcs and le_net, for which case such API call's sessionRef is 0. But 0 cannot be
+ * used as a reference ID for further DB and reference creations, e.g. creating a channelDb for
+ * a client session and then creating a reference for this channelDb, i.e. calling
+ * le_ref_CreateRef(map, 0) with 0 as the 2nd argument. Thus, the need for this
+ * dcs_GetSessionRefKey() to generate a session reference key from a client sessionRef.
+ *
+ * The requirements for dcs_GetSessionRefKey() are (1) uniqueness for its generated keys; (2)
+ * bidirectionally mappable & recoverable; (3) non-zero keys generated. A conventional way is to
+ * hash(sessionRef) to get sessionRefKey, but that is more complex than necessary. Thus, the
+ * algorithm used here is just +1 to sessionRef to get sessionRefKey, as no sessionRef is
+ * anticipated to have the value (uint)(0-1) to fail requirement #3 above.
+ *
+ * @return
+ *     - The session reference key for the given session reference, which should never be used as
+ *       a pointer address although it's of the void* type.
+ */
+//--------------------------------------------------------------------------------------------------
+void* dcs_GetSessionRefKey
+(
+    le_msg_SessionRef_t sessionRef      ///< [IN] an le_dcs client's session reference
+)
+{
+    void* sessionRefKey = (void*)((uint8_t*)sessionRef + 1);
+    LE_ASSERT(sessionRefKey != DCS_INTERNAL_CLIENT_SESSION_REF_KEY_INVALID);
+    return sessionRefKey;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the client session reference back from the client session reference key that was resulted
+ * from le_dcs's earlier call dcs_GetSessionRefKey(le_dcs_GetClientSessionRef()).
+ *
+ * This dcs_GetSessionRef() works with dcs_GetSessionRefKey() together, converting in both
+ * directions between a client session reference key and its client session reference.
+ *
+ * Regarding the algorithm used in this function-pair, please refer to dcs_GetSessionRefKey()'s
+ * header comment above for more details.
+ *
+ * @return
+ *     - The session reference for the given session reference key from which it was generated via
+ *       dcs_GetSessionRefKey().
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_SessionRef_t dcs_GetSessionRef
+(
+    void* sessionRefKey                 ///< [IN] the session reference key of an le_dcs client
+)
+{
+    LE_ASSERT(sessionRefKey != DCS_INTERNAL_CLIENT_SESSION_REF_KEY_INVALID);
+    le_msg_SessionRef_t sessionRef = (le_msg_SessionRef_t)((uint8_t*)sessionRefKey - 1);
+    return sessionRef;
 }
 
 
@@ -186,7 +238,7 @@ le_dcs_ChannelRef_t dcs_GetReference
     le_dcs_channelDb_t *channelDb = dcs_GetChannelDbFromName(name, technology);
     if (!channelDb || !name)
     {
-        LE_ERROR("Failed to find channel with name %s of technology %d", name, technology);
+        LE_WARN("Channel with name %s of technology %d not created yet", name, technology);
         return 0;
     }
     if (!channelDb->channelRef)
@@ -393,12 +445,7 @@ le_dcs_ReqObjRef_t dcs_Start
     char *channelName, appName[LE_DCS_APPNAME_MAX_LEN] = {0};
     pid_t pid = 0;
     uid_t uid = 0;
-
-    if (!sessionRef)
-    {
-        LE_ERROR("Failed to proceed with null session reference");
-        return NULL;
-    }
+    void *sessionRefKey = dcs_GetSessionRefKey(sessionRef);
 
     channelDb = dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
@@ -411,7 +458,7 @@ le_dcs_ReqObjRef_t dcs_Start
     LE_INFO("Starting channel %s of technology %s by app session with reference %p", channelName,
             dcs_ConvertTechEnumToName(channelDb->technology), sessionRef);
 
-    if ((sessionRef != DcsInfo.internalSessionRef) &&
+    if (sessionRef &&
         (LE_OK == le_msg_GetClientUserCreds(sessionRef, &uid, &pid)) &&
         (LE_OK == le_appInfo_GetName(pid, appName, sizeof(appName)-1)))
     {
@@ -421,7 +468,7 @@ le_dcs_ReqObjRef_t dcs_Start
     if ((channelDb->refCount > 0) && dcsTech_GetOpState(channelDb))
     {
         // channel already started; no need to send the request down to the technology again
-        reqRef = le_ref_CreateRef(dcs_GetRequestRefMap(), (void*)sessionRef);
+        reqRef = le_ref_CreateRef(dcs_GetRequestRefMap(), sessionRefKey);
         if (!dcs_AddStartRequestRef(reqRef, channelDb))
         {
             LE_ERROR("Failed to record Start Request reference");
@@ -453,7 +500,7 @@ le_dcs_ReqObjRef_t dcs_Start
     }
 
     // initiate a connect
-    reqRef = le_ref_CreateRef(dcs_GetRequestRefMap(), (void*)sessionRef);
+    reqRef = le_ref_CreateRef(dcs_GetRequestRefMap(), sessionRefKey);
     if (!dcs_AddStartRequestRef(reqRef, channelDb))
     {
         LE_ERROR("Failed to record Start Request reference");
@@ -510,12 +557,6 @@ le_result_t dcs_Stop
     pid_t pid;
     uid_t uid;
 
-    if (!sessionRef)
-    {
-        LE_ERROR("Failed to proceed with null session reference");
-        return LE_FAULT;
-    }
-
     le_dcs_startRequestRefDb_t *reqRefDb;
     channelDb = dcs_GetChannelDbFromStartRequestRef(reqRef, &reqRefDb);
     if (!channelDb)
@@ -546,7 +587,7 @@ le_result_t dcs_Stop
     LE_INFO("Stopping channel %s of technology %s", channelName,
             dcs_ConvertTechEnumToName(channelDb->technology));
 
-    if ((sessionRef != DcsInfo.internalSessionRef) &&
+    if (sessionRef &&
         (LE_OK == le_msg_GetClientUserCreds(sessionRef, &uid, &pid)) &&
         (LE_OK == le_appInfo_GetName(pid, appName, sizeof(appName)-1)))
     {
@@ -633,12 +674,7 @@ le_dcs_EventHandlerRef_t dcs_AddEventHandler
     le_dcs_channelDbEventHdlr_t *channelEvtHdlr;
     pid_t pid;
     uid_t uid;
-
-    if (!sessionRef)
-    {
-        LE_ERROR("Failed to proceed with null session reference");
-        return NULL;
-    }
+    void *sessionRefKey = dcs_GetSessionRefKey(sessionRef);
 
     channelDb = dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
@@ -659,7 +695,7 @@ le_dcs_EventHandlerRef_t dcs_AddEventHandler
     LE_INFO("Adding channel handler for channel %s of technology %s",
             channelName, dcs_ConvertTechEnumToName(channelDb->technology));
 
-    channelEvtHdlr = dcs_GetChannelAppEvtHdlr(channelDb, sessionRef);
+    channelEvtHdlr = dcs_GetChannelAppEvtHdlr(channelDb, sessionRefKey);
     if (channelEvtHdlr)
     {
         LE_DEBUG("Remove old event handler of channel %s before adding new", channelName);
@@ -674,7 +710,7 @@ le_dcs_EventHandlerRef_t dcs_AddEventHandler
         return NULL;
     }
 
-    if ((sessionRef != DcsInfo.internalSessionRef) &&
+    if (sessionRef &&
         (LE_OK == le_msg_GetClientUserCreds(sessionRef, &uid, &pid)) &&
         (LE_OK == le_appInfo_GetName(pid, appName, sizeof(appName)-1)))
     {
@@ -683,7 +719,7 @@ le_dcs_EventHandlerRef_t dcs_AddEventHandler
 
     // Each channelDb has its own event for reporting state changes
     snprintf(eventName, sizeof(eventName)-1, "%s:channel:%s", appName, channelName);
-    channelEvtHdlr->appSessionRef = sessionRef;
+    channelEvtHdlr->appSessionRefKey = sessionRefKey;
     channelEvtHdlr->channelEventId = le_event_CreateId(eventName,
                                                        sizeof(le_dcs_channelDbEventReport_t));
     channelEvtHdlr->channelEventHdlr = channelHandlerPtr;
@@ -767,53 +803,6 @@ void le_dcs_RemoveEventHandler
                            channelHandlerRef);
 }
 
-//--------------------------------------------------------------------------------------------------
-/**
- * This function is called only once upon Legato startup when the component dcsInternal is
- * initialized and calls le_dcs_GetChannels() to trigger the first channel list query to get an
- * initial channel list created.
- * Here it retrieves the client session reference of the caller and saves it in
- * DcsInfo.internalSessionRef as the internal client session reference for use with le_data in
- * DcsGetSessionRef() when the session app's name is found as DCS_INTERNAL_SESSION_NAME or
- * "dataConnectionService", which confirms the caller being the internal component dcsInternal.
- * This allows le_dcs to distinguish whether an API caller is external or its internal le_data
- * component. In another word, dcsInternal's client session reference in le_dcs is used as
- * le_data's session reference in its le_dcs API calls.
- */
-//--------------------------------------------------------------------------------------------------
-static void DcsInitInternalSession
-(
-    void
-)
-{
-    le_result_t ret;
-
-    pid_t pid = 0;
-    uid_t uid = 0;
-    char appName[LE_DCS_APPNAME_MAX_LEN] = {0};
-    le_msg_SessionRef_t sessionRef = le_dcs_GetClientSessionRef();
-
-    if (!sessionRef || (LE_OK != le_msg_GetClientUserCreds(sessionRef, &uid, &pid)))
-    {
-        LE_DEBUG("Client app's session info unknown");
-        return;
-    }
-
-    ret = le_appInfo_GetName(pid, appName, sizeof(appName)-1);
-    if (ret != LE_OK)
-    {
-        LE_DEBUG("Client app's name unknown; return code %d", ret);
-        return;
-    }
-
-    LE_DEBUG("Client app's name %s", appName);
-    if (strncmp(appName, DCS_INTERNAL_SESSION_NAME, LE_DCS_APPNAME_MAX_LEN) == 0)
-    {
-        LE_INFO("DCS internal session reference set to %p", sessionRef);
-        DcsInfo.internalSessionRef = sessionRef;
-    }
-}
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -827,19 +816,11 @@ void le_dcs_GetChannels
     void *contextPtr                             ///< [IN] requester's context
 )
 {
-    static bool InitialGetChannels = true;
     DcsCommand_t cmd = {
         .commandType = DCS_COMMAND_CHANNEL_QUERY,
         .channelQueryHandlerFunc = handlerPtr,
         .context = contextPtr
     };
-
-    if (InitialGetChannels)
-    {
-        LE_INFO("DCS' first channel list query to initialize channel list");
-        DcsInitInternalSession();
-        InitialGetChannels = false;
-    }
 
     LE_DEBUG("Send channel list query command of type %d to DCS", DCS_COMMAND_CHANNEL_QUERY);
     le_event_Report(DcsCommandEventId, &cmd, sizeof(cmd));
@@ -935,7 +916,7 @@ static void CloseSessionEventHandler
 
     while (LE_OK == result)
     {
-        le_msg_SessionRef_t session = (le_msg_SessionRef_t)le_ref_GetValue(iterRef);
+        le_msg_SessionRef_t session = dcs_GetSessionRef(le_ref_GetValue(iterRef));
 
         // Check if the session reference saved matches with the current session reference
         if (session == sessionRef)
@@ -980,6 +961,5 @@ COMPONENT_INIT
     DcsCommandEventId = le_event_CreateId("DcsCommandEventId", sizeof(DcsCommand_t));
     le_event_AddHandler("DcsCommand", DcsCommandEventId, DcsCommandHandler);
 
-    LE_INFO("Data Channel Service le_dcs is ready; server session reference %p",
-            DcsInfo.internalSessionRef);
+    LE_INFO("Data Channel Service le_dcs is ready");
 }

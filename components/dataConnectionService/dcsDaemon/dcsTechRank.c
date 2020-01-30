@@ -208,28 +208,21 @@ le_result_t dcsTechRank_SelectDataChannel
                 return LE_FAULT;
             }
             le_dcsCellular_GetNameFromIndex(index, dataChannelName);
-            dcs_ChannelSetChannelName(dataChannelName);
             dataChannelRef = dcs_GetReference(dataChannelName, dcsTech);
             if (!dataChannelRef)
             {
-            #ifdef LE_CONFIG_LINUX
-                dcs_ChannelSetChannelName(NULL);
-                LE_ERROR("Failed to select cellular profile index %d due to invalid channel "
-                         "reference", index);
-                return LE_FAULT;
-            #else
                 // Allow to create the channel Db even the request channel is not in channel list.
                 dataChannelRef = dcs_CreateChannelDb(dcsTech, dataChannelName);
                 if (!dataChannelRef)
                 {
-                    LE_ERROR("Failed to create dbs for new channel %s of technology %d",
+                    LE_ERROR("Failed to create dbs for channel %s of technology %d",
                              dataChannelName, dcsTech);
                     return LE_FAULT;
                 }
-                LE_DEBUG("Create dbs for new channel %s of technology %d",
+                LE_DEBUG("Dbs successfully created for channel %s of technology %d",
                          dataChannelName, dcsTech);
-            #endif
             }
+            dcs_ChannelSetChannelName(dataChannelName);
             dcs_ChannelSetCurrentReference(dataChannelRef);
             MdcIndexProfile = index;
             LE_INFO("Selected channel name %s", dataChannelName);
@@ -242,15 +235,21 @@ le_result_t dcsTechRank_SelectDataChannel
                 return LE_FAULT;
             }
             dataChannelRef = dcs_GetReference(ssid, dcsTech);
-            dcs_ChannelSetCurrentReference(dataChannelRef);
             if (!dataChannelRef)
             {
-                dcs_ChannelSetChannelName(NULL);
-                LE_ERROR("Failed to select Wifi SSID %s due to invalid channel reference", ssid);
-                return LE_FAULT;
+                // Allow to create the channel Db even the request channel is not in channel list.
+                dataChannelRef = dcs_CreateChannelDb(dcsTech, ssid);
+                if (!dataChannelRef)
+                {
+                    LE_ERROR("Failed to create dbs for channel %s of technology %d",
+                             ssid, dcsTech);
+                    return LE_FAULT;
+                }
+                LE_DEBUG("Dbs successfully created for channel %s of technology %d", ssid, dcsTech);
             }
             // Copy the validated SSID into the selected DataChannelName
             dcs_ChannelSetChannelName(ssid);
+            dcs_ChannelSetCurrentReference(dataChannelRef);
             LE_INFO("Selected channel name %s", ssid);
             return LE_OK;
 #endif

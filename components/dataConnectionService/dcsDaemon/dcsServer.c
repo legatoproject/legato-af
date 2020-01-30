@@ -454,9 +454,8 @@ static void SetDefaultGWConfiguration
     }
 
     LE_INFO("Setting default GW address on device");
-    le_msg_SessionRef_t internalSessionRef = dcs_GetInternalSessionRef();
-    net_BackupDefaultGW(internalSessionRef);
-    le_result_t ret = net_SetDefaultGW(internalSessionRef, DataChannelRef);
+    net_BackupDefaultGW(DCS_INTERNAL_CLIENT_SESSION_REF);
+    le_result_t ret = net_SetDefaultGW(DCS_INTERNAL_CLIENT_SESSION_REF, DataChannelRef);
     if (LE_OK != ret)
     {
         LE_ERROR("Failed to set default GW address");
@@ -619,7 +618,7 @@ static le_result_t SetDnsConfiguration
     }
 
     LE_INFO("Setting DNS server addresses on device");
-    ret = net_SetDNS(dcs_GetInternalSessionRef(), DataChannelRef);
+    ret = net_SetDNS(DCS_INTERNAL_CLIENT_SESSION_REF, DataChannelRef);
     if (LE_DUPLICATE == ret)
     {
         LE_DEBUG("DNS server addresses already set on device");
@@ -882,12 +881,12 @@ static void ChannelEventHandler
 #ifndef DCS_USE_AUTOMATIC_SETTINGS
             if (IsDnsSet)
             {
-                net_RestoreDNS(dcs_GetInternalSessionRef());
+                net_RestoreDNS(DCS_INTERNAL_CLIENT_SESSION_REF);
                 IsDnsSet = false;
             }
             if (IsDefaultRouteSet)
             {
-                net_RestoreDefaultGW(dcs_GetInternalSessionRef());
+                net_RestoreDefaultGW(DCS_INTERNAL_CLIENT_SESSION_REF);
                 IsDefaultRouteSet = false;
             }
             else if (RoutesAdded)
@@ -1017,7 +1016,7 @@ static void ResetDataChannel
     memset(DataChannelName, '\0', sizeof(DataChannelName));
     if (DataChannelEventHandlerRef)
     {
-        dcs_RemoveEventHandler(dcs_GetInternalSessionRef(), DataChannelEventHandlerRef);
+        dcs_RemoveEventHandler(DCS_INTERNAL_CLIENT_SESSION_REF, DataChannelEventHandlerRef);
         DataChannelEventHandlerRef = NULL;
     }
 }
@@ -1118,15 +1117,12 @@ static void TryStartTechSession
                  DataChannelReqRef);
     }
 
-    le_msg_SessionRef_t internalSessionRef = dcs_GetInternalSessionRef();
-
     if (DataChannelEventHandlerRef)
     {
-        dcs_RemoveEventHandler(internalSessionRef, DataChannelEventHandlerRef);
+        dcs_RemoveEventHandler(DCS_INTERNAL_CLIENT_SESSION_REF, DataChannelEventHandlerRef);
     }
-    DataChannelEventHandlerRef = dcs_AddEventHandler(internalSessionRef,
-                                                     DataChannelRef, ChannelEventHandler,
-                                                     NULL);
+    DataChannelEventHandlerRef = dcs_AddEventHandler(DCS_INTERNAL_CLIENT_SESSION_REF,
+                                                     DataChannelRef, ChannelEventHandler, NULL);
     if (!DataChannelEventHandlerRef)
     {
         LE_ERROR("Failed to add event handler for channel %s of technology %d", DataChannelName,
@@ -1136,7 +1132,7 @@ static void TryStartTechSession
     }
     LE_DEBUG("Data channel event handler %p added", DataChannelEventHandlerRef);
 
-    DataChannelReqRef = dcs_Start(internalSessionRef, DataChannelRef);
+    DataChannelReqRef = dcs_Start(DCS_INTERNAL_CLIENT_SESSION_REF, DataChannelRef);
     if (!DataChannelReqRef)
     {
         LE_ERROR("Failed to initiate the selected data channel");
@@ -1173,12 +1169,12 @@ static void TryStopTechSession
     // changes on it might not complete successfully.
     if (IsDnsSet)
     {
-        net_RestoreDNS(dcs_GetInternalSessionRef());
+        net_RestoreDNS(DCS_INTERNAL_CLIENT_SESSION_REF);
         IsDnsSet = false;
     }
     if (IsDefaultRouteSet)
     {
-        net_RestoreDefaultGW(dcs_GetInternalSessionRef());
+        net_RestoreDefaultGW(DCS_INTERNAL_CLIENT_SESSION_REF);
         IsDefaultRouteSet = false;
     }
     else if (RoutesAdded)
@@ -1189,7 +1185,7 @@ static void TryStopTechSession
     }
 #endif
 
-    if (LE_OK != dcs_Stop(dcs_GetInternalSessionRef(), DataChannelReqRef))
+    if (LE_OK != dcs_Stop(DCS_INTERNAL_CLIENT_SESSION_REF, DataChannelReqRef))
     {
         LE_ERROR("Failed to stop data channel with request reference %p", DataChannelReqRef);
         SendConnStateEvent(false);

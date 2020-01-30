@@ -203,8 +203,8 @@ static void DcsChannelDbDestructor
 //--------------------------------------------------------------------------------------------------
 le_dcs_channelDbEventHdlr_t *dcs_GetChannelAppEvtHdlr
 (
-    le_dcs_channelDb_t *channelDb,
-    le_msg_SessionRef_t appSessionRef
+    le_dcs_channelDb_t* channelDb,
+    void* appSessionRefKey
 )
 {
     le_dls_Link_t *evtHdlrPtr;
@@ -214,7 +214,7 @@ le_dcs_channelDbEventHdlr_t *dcs_GetChannelAppEvtHdlr
     while (evtHdlrPtr)
     {
         channelAppEvt = CONTAINER_OF(evtHdlrPtr, le_dcs_channelDbEventHdlr_t, hdlrLink);
-        if (channelAppEvt && (channelAppEvt->appSessionRef == appSessionRef))
+        if (channelAppEvt && (channelAppEvt->appSessionRefKey == appSessionRefKey))
         {
             return channelAppEvt;
         }
@@ -237,8 +237,9 @@ void dcs_ChannelEvtHdlrSendNotice
     le_dcs_Event_t evt
 )
 {
+    void* appSessionRefKey = dcs_GetSessionRefKey(appSessionRef);
     le_dcs_channelDbEventHdlr_t *channelAppEvt =
-        dcs_GetChannelAppEvtHdlr(channelDb, appSessionRef);
+        dcs_GetChannelAppEvtHdlr(channelDb, appSessionRefKey);
     le_dcs_channelDbEventReport_t evtReport;
     const char *eventString;
 
@@ -280,7 +281,7 @@ static void DcsApplyTechSystemDownEventAction
         // traverse all event handlers to trigger an event notification
         channelAppEvt = CONTAINER_OF(evtHdlrPtr, le_dcs_channelDbEventHdlr_t, hdlrLink);
         LE_DEBUG("Send Down event notice for channel %s to app with session reference %p",
-                 channelDb->channelName, channelAppEvt->appSessionRef);
+                 channelDb->channelName, dcs_GetSessionRef(channelAppEvt->appSessionRefKey));
         evtReport.channelDb = channelDb;
         evtReport.event = LE_DCS_EVENT_TEMP_DOWN;
         le_event_Report(channelAppEvt->channelEventId, &evtReport, sizeof(evtReport));

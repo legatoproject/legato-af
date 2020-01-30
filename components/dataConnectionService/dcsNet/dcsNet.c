@@ -1107,7 +1107,7 @@ static DcsDnsConfigDb_t* DcsNetInitDnsBackup
     LE_DEBUG("DNS addresses to install for client app with sessionRef %p: IPv4 %s and %s; "
              "IPv6 %s and %s", sessionRef, v4DnsAddr1, v4DnsAddr2, v6DnsAddr1, v6DnsAddr2);
 
-    if ((LE_OK == le_msg_GetClientUserCreds(sessionRef, &uid, &pid)) &&
+    if (sessionRef && (LE_OK == le_msg_GetClientUserCreds(sessionRef, &uid, &pid)) &&
         (LE_OK == le_appInfo_GetName(pid, appName, sizeof(appName)-1)))
     {
         LE_DEBUG("Client app's name %s", appName);

@@ -10,6 +10,14 @@
 #ifndef LEGATO_DCS_H_INCLUDE_GUARD
 #define LEGATO_DCS_H_INCLUDE_GUARD
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * DCS_INTERNAL_CLIENT_SESSION_REF
+ * DCS's internal client session reference which is received in the le_dcs and le_net code when
+ * it's called from le_data.
+ */
+//--------------------------------------------------------------------------------------------------
+#define DCS_INTERNAL_CLIENT_SESSION_REF 0
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -61,7 +69,6 @@ typedef struct
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_msg_SessionRef_t internalSessionRef;
     uint16_t reqCount;                            // the request count for the use of le_dcs APIs
     TechListDb_t techListDb[LE_DCS_TECHNOLOGY_MAX_COUNT];   // list of all technologies in action
 } DcsInfo_t;
@@ -75,10 +82,10 @@ typedef struct
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_event_Id_t channelEventId;                 ///< channel event ID of the app
-    le_dcs_EventHandlerFunc_t channelEventHdlr;   ///< channel event handler of the app
-    le_dcs_EventHandlerRef_t hdlrRef;             ///< handler reference as identifier upon removal
-    le_msg_SessionRef_t appSessionRef;            ///< session ref of the app owning this handler
+    le_event_Id_t channelEventId;                ///< channel event ID of the app
+    le_dcs_EventHandlerFunc_t channelEventHdlr;  ///< channel event handler of the app
+    le_dcs_EventHandlerRef_t hdlrRef;            ///< handler reference as identifier upon removal
+    void* appSessionRefKey;                      ///< session ref key of the app owning this handler
     le_dls_Link_t hdlrLink;
 } le_dcs_channelDbEventHdlr_t;
 
@@ -150,8 +157,9 @@ uint16_t dcs_GetChannelCount(le_dcs_Technology_t tech);
 uint16_t dcs_IncrementChannelCount(le_dcs_Technology_t tech);
 le_result_t dcs_DecrementChannelCount(le_dcs_Technology_t tech, uint16_t *newCount);
 void dcs_AdjustReqCount(le_dcs_channelDb_t *channelDb, bool up);
+void* dcs_GetSessionRefKey(le_msg_SessionRef_t sessionRef);
+le_msg_SessionRef_t dcs_GetSessionRef(void* sessionRefKey);
 LE_SHARED uint16_t dcs_GetReqCount(void);
-LE_SHARED le_msg_SessionRef_t dcs_GetInternalSessionRef(void);
 
 // map to DCS API to be used internally
 LE_SHARED le_dcs_EventHandlerRef_t dcs_AddEventHandler(
@@ -189,7 +197,7 @@ LE_SHARED void dcs_ChannelEvtHdlrSendNotice(le_dcs_channelDb_t *channelDb,
                                             le_msg_SessionRef_t appSessionRef,
                                             le_dcs_Event_t evt);
 LE_SHARED le_dcs_channelDbEventHdlr_t *dcs_GetChannelAppEvtHdlr(le_dcs_channelDb_t *channelDb,
-                                                         le_msg_SessionRef_t appSessionRef);
+                                                                void* appSessionRefKey);
 LE_SHARED bool dcs_ChannelQueryIsRunning(void);
 LE_SHARED void dcs_ChannelQueryNotifier(le_result_t result, le_dcs_ChannelInfo_t *channelList,
                                  size_t listSize);

@@ -1025,20 +1025,6 @@ void le_dcsCellular_GetNameFromIndex
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Stub function to get dummy internal messaging session.
- */
-//--------------------------------------------------------------------------------------------------
-le_msg_SessionRef_t dcs_GetInternalSessionRef
-(
-    void
-)
-{
-    return DCS_DUMMY_CLIENT_SESSION_REF;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Stub function for creating a channelDb for the given channel in the argument
  */
 //--------------------------------------------------------------------------------------------------
