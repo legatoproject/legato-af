@@ -272,8 +272,8 @@ void fdMon_ReportToThread
     uint32_t     eventFlags     ///< [in] OR'd together event flags.
 )
 {
-    le_event_QueueFunctionToThreadUnique(thread, &DispatchToHandler,
-                                         safeRef, (void *) (uintptr_t) eventFlags);
+    le_event_QueueFunctionToThread(thread, &DispatchToHandler,
+                                   safeRef, (void *) (uintptr_t) eventFlags);
 }
 
 

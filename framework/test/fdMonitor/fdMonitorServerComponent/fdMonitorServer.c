@@ -37,7 +37,8 @@ static void ClientListenerHandler
 
     LE_TEST_OK(events & POLLIN, "Detected POLLIN event.");
 
-    LE_TEST_OK(read(clientFd, msg, sizeof(msg)) <= sizeof(msg), "Read response from client");
+    LE_TEST_OK(read(clientFd, msg, sizeof(msg)) <= sizeof(msg),
+               "Read response from client, errno = %d", errno);
     LE_TEST_OK(strncmp(msg, PongMsg, sizeof(PongMsg)) == 0,
                "Received %s from client (expected %s)", msg, PongMsg);
 
@@ -71,7 +72,7 @@ static void SocketListenerHandler
     LE_TEST_OK(events & POLLIN, "Detected POLLIN event.");
 
     clientFd = accept(sockFd, NULL, NULL);
-    LE_TEST_ASSERT(clientFd != -1, "Client connection accepted.");
+    LE_TEST_ASSERT(clientFd != -1, "Client connection accepted, errno = %d.", errno);
 
     // Monitor client connection
     ClientFdMonitor = le_fdMonitor_Create("fdMonitorTestClient",
@@ -79,7 +80,7 @@ static void SocketListenerHandler
     LE_TEST_OK(ClientFdMonitor != NULL, "Created ClientFdMonitor test object on socket.");
 
     LE_TEST_OK(write(clientFd, PingMsg, sizeof(PingMsg)) == sizeof(PingMsg),
-               "Write ping to client");
+               "Write ping to client, errno = %d", errno);
 }
 
 COMPONENT_INIT
@@ -111,12 +112,12 @@ COMPONENT_INIT
 
     // Bind server - socket
     ret = bind(ServerFd, (struct sockaddr*) &myAddress, sizeof(myAddress));
-    LE_TEST_ASSERT(ret == 0, "Bind socket.");
+    LE_TEST_ASSERT(ret == 0, "Bind socket, errno = %d.", errno);
 
     // Listen will return immediately since socket is non-blocking.
     // Monitoring for connection will be done through ServerFdMonitor.
     ret = listen(ServerFd, 1);
-    LE_TEST_ASSERT(ret == 0, "Listen socket.");
+    LE_TEST_ASSERT(ret == 0, "Listen socket, errno = %d.", errno);
 
     // Monitor connection on the socket.
     ServerFdMonitor = le_fdMonitor_Create("fdMonitorTestServer",

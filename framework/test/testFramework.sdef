@@ -33,10 +33,7 @@ apps:
     timer/test_Timer
     semaphore/test_Semaphore
 #if ${LE_CONFIG_NETWORK} = y
-#if ${LEGATO_TARGET} = gill
-#else
     fdMonitor/test_FdMonitorSocket
-#endif
 #endif
     fdMonitor/test_FdMonitorFifo
     ipc/test_IpcC2C
