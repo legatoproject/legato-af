@@ -10,7 +10,7 @@ ARG QEMU_CONFIG_JSON=/data/qemu.json
 ARG QEMU_DIR=/opt/qemu
 
 # Build QEmu
-FROM alpine AS build
+FROM alpine:3.10 AS build
 ARG QEMU_DIR
 
 # Dependencies from https://git.alpinelinux.org/aports/tree/main/qemu/APKBUILD
@@ -77,7 +77,7 @@ RUN ( \
     )
 
 # Runtime image
-FROM alpine AS runtime
+FROM alpine:3.10 AS runtime
 ARG LEGATO_TARGET
 ARG FLASH_FILE
 ARG KERNEL_IMG

@@ -88,10 +88,9 @@ GetSysrootDefs() {
     raspi | virt_arm | virt-arm)
         if [[ "$yocto_mode" == "true" ]]; then
             SYSROOT_DEFS+=("swi-virt-arm")
-            SYSROOT_DEFS+=("swi_virt_arm-poky-linux")
+            SYSROOT_DEFS+=("swi_virt_arm-poky-linux-gnueabi")
         fi
         SYSROOT_DEFS+=("armv5e-poky-linux-gnueabi")
-        SYSROOT_DEFS+=("swi_virt_x86-poky-linux")
         ;;
 
     virt_x86 | virt-x86)
@@ -100,6 +99,7 @@ GetSysrootDefs() {
             SYSROOT_DEFS+=("swi_virt_x86-poky-linux")
         fi
         SYSROOT_DEFS+=("i586-poky-linux")
+        SYSROOT_DEFS+=("core2-32-poky-linux")
         ;;
 
     virt)

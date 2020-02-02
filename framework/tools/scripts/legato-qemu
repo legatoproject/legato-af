@@ -857,7 +857,11 @@ fi
 while true; do
     QEMU_START=$(date +%s)
 
-    $QEMU_BIN $ARGS -append "$CMDLINE"
+    if [ -n "$CMDLINE" ] && [ -n "$KERNEL_IMG" ] ; then
+        $QEMU_BIN $ARGS -append "$CMDLINE"
+    else
+        $QEMU_BIN $ARGS
+    fi
     EXIT_CODE=$?
 
     QEMU_END=$(date +%s)

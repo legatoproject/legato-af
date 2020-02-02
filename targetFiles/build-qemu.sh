@@ -204,6 +204,11 @@ if [ -e "${QEMU_CONFIG_JSON}" ]; then
             return
         fi
 
+        if ! command -v jq >/dev/null; then
+            echo "jq not available"
+            exit 1
+        fi
+
         value="$(jq -r "${json_key}" "${QEMU_CONFIG_JSON}" 2>/dev/null | grep -v null)"
         if [[ "$is_path" == "true" ]] && [ -n "$value" ]; then
             value="$(dirname "${QEMU_CONFIG_JSON}")/${value}"
