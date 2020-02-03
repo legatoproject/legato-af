@@ -1,0 +1,57 @@
+/** @page tools_vsCodeSystem vsCode Legato System View
+
+The Legato system view provides a logical view of a Legato System. It provides a way to view
+systems, apps, components and interfaces in a cohesive system that will be installed onto your
+target.
+
+The view provides commands to add, remove and modify the definition files in your system. For
+information on how to add sections to the definition files refer to @ref defFiles.
+
+Systems tie together all the apps and components within your Legato System.
+
+System
+  |
+  |_ your apps (.adef)
+  |    |_ api (.api)
+  |    |_ c code (.c)
+  |
+  |_ included apps - apps included from other .sdef (.adef)
+       |_ api (.api)
+
+
+@section tools_vsCodeSystem_addApp Add
+
+@c Add will search your workspace folder and provide a list of @c .adef or @c .cdef files to add
+to your system. Adding an app through the system view will save you time and automatically add any
+search paths that are needed into your @c .sdef or @c .adef.
+
+@section tools_vsCodeSystem_newApp New
+
+@c New @c will add a new application or component based on a simple template and create the starting
+@c .cdef and @c .c files needed to start off an application. It will also automatically add the app
+into the system (.sdef) and set up any needed search paths.
+
+Adding a new component will create the folders and @c .cdef file and a start @c .c file to add in
+your custom code and logic into the system.
+
+@section tools_vsCodeSystem_rename Rename
+
+Once you've selected or created a system, app or component, you can view the @c .xdef file by
+clicking on the name of the @c .sdef and then choosing the @c Rename option.  This will rename the
+@c .xdef and update all other @c .xdef files within your system.
+
+@section tools_vsCodeSystem_remove Remove
+
+@c remove will remove the app or component from your system and any associated references within
+the @c .xdefs within your system.
+
+At this time the remove app or component only works with apps/components that have been created with
+the Legato Plugin for vsCode. We are working to extend the tools to enhance this feature to work
+with all apps/components.
+
+@warning This does not remove the app or the component from your workspace directory, if you wish
+to delete the files, manually delete them through the File Explorer view.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

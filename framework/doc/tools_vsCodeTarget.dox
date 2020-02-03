@@ -1,0 +1,55 @@
+/** @page tools_vsCodeTarget vsCode Target Menu
+
+The target menu provides you hooks into tools that will connect to your target. The target menu is
+located on the bottom status bar of Visual Studio Code and will have the current IP of the target
+that it is connected to.
+
+@section tools_vsCodeTarget_IP Set IP of Target
+
+Specifies the IP address of the target that you wish to install Legato to.  Clicking this option
+will allow you to specify a new IP address. By default it is set to 192.168.2.2 for the target.
+
+@section tools_vsCodeTarget_Shell Open Target Shell
+
+Opens a connection to your target to the shell prompt.
+
+@note You have to have have already set up a connection to your target once.  See @ref basicTarget
+for details on connecting to your target for the first time.
+
+@section tools_vsCodeTarget_Logs Open Target Logs
+
+Opens a connection to your target and display @c logread @c -f within the shell.
+
+@section tools_vsCodeTarget_install Install .update on R/W partition
+
+This will allow you to select an .update file created by the build process and install that onto
+your target. You are able to use this function to install apps and/or systems. Using the update
+process to update the Legato runtime with this method will only update the read/write partition and
+if the system rolls back it will roll back to the previously installed version and it may
+downgrade your Legato version and roll back your apps.
+
+To prevent this first upgrade the Legato runtime with fwupdate or swiflash to update the read
+only partition and upgrade the base version of Legato.
+
+For more information on the update processes for your target see @ref conceptsUpdates
+
+@section tools_vsCodeTarget_flashfwupdate Flash .cwe/.spk to Target (via fwupdate)
+
+Updating using this tool will update the base version of Legato and this can be used to upgrade
+both the modem firmware and the OS of your target.  This tool uses the Legato runtime to update the
+target.
+
+@section tools_vsCodeTarget_flashswiflash Flash .cwe/.spk to Target (via swiflash)
+
+Updating using swiflash will update the base version of Legato and is mainly used to update the
+modem firmware, OS and base Legato version. swiflash is an external to Legato tool but is
+automatically included in the Legato Leaf packaging.
+
+@section tools_vsCodeTarget_reset Reset User Partition (delete all user data)
+
+This option deletes all the user data on the target by using the swiflash tool.  This will delete
+any data or custom settings you have added to your target.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

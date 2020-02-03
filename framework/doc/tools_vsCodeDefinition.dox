@@ -1,0 +1,36 @@
+/** @page tools_vsCodeDefinition vsCode .xdef menu
+
+The definition menu (.Xdef menu) indexes your workspace to display definition files that are able to
+be built and installed on a target.
+(i.e., .sdef and .adef files)
+
+@image html tools_vsCodeDefinition_xdefMenu.png
+
+Selecting a definition file will set the application or system as to what gets built and installed
+on your target when you use the <code>Legato: Build and install</code> task (Ctrl + Shift + B).
+
+tools_vsCodeDefinitionApps Application Build and Installs
+
+If you wish you build and install a single application select the appropriate .adef file from the
+list.
+
+Press <code>Ctrl + Shift + B</code> to open the Build menu.
+Either Choose, <b>Legato: Build and install</b> (to build and install the app on your target) or
+build to create an .update file that contains the app.
+
+@section tools_vsCodeDefinitionSystem System Build and Installs
+
+Selecting a System definition file (.sdef) will build the system and install it on your target.
+
+@note To have all the default Legato applications you must make sure that
+#include $LEGATO_ROOT/default.sdef is included in your sdef. It is there by default if you create
+a system using the IDE templates.
+
+Press <b>Ctrl + Shift + B</b> to display the Build menu.
+Choose <code>Legato: Build and install</code> (to build and install the app on your target) or
+<code>Legato: Build</code> to create an .update file that contains all the apps and configuration to
+update the read/write partition on your target.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
