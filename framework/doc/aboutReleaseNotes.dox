@@ -115,7 +115,7 @@ Network Manager to crash on your host and/or your target device to become unavai
 
 @b Recommended  @b Work  @b Around:
 - Uninstall @c modemmanager from Ubuntu or
-- [Downgrade @c modemmanager to version 1.0.0-2ubuntu1](http://packages.ubuntu.com/trusty/modemmanager)
+- [Downgrade @c modemmanager to version 1.0.0-2ubuntu1](https://packages.ubuntu.com/xenial/gir1.2-modemmanager-1.0)
 
 @subsubsection rn1911_ConstTrust FOTA upgrade warning
 
