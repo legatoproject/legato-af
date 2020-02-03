@@ -1,0 +1,88 @@
+/** @page tools_vsCodeMigrate Dev Studio to VSCode
+
+What does this mean for Developer Studio?
+
+Developer Studio is the previous IDE that was used to create and debug Legato systems. Developer
+Studio has served us well for the last 10 years but we couldn’t easily tie in the Developer Studio
+workflow with the Legato workflow in a consistent way that was easy to maintain for current and
+future features.
+
+Support for Developer Studio has ended and the Legato plugin for VSCode is now the currently
+supported IDE.
+
+@image html vsCode_devStudioTimeline.png
+
+@section tools_vsCodeMigrate_DevStudio Move apps to VSCode
+
+Moving your apps created in Developer Studio to VSCode is a fairly straight forward process. You
+will need to repeat the following process for each app you are migrating over.
+
+If you have system specific settings you will need to copy those over from the .sdef that was
+created in Developer Studio to the .sdef that is created in VSCode.
+
+@note This procedure assumes that you have not set up a VSCode folder already and are starting from
+scratch. If you already have a vsCode configured with a Leaf profile and a system skip to step X.
+
+@c 1. Copy your app(s) and all components needed into a folder you wish to set up as your VSCode
+workspace.
+
+@c 2. Install VSCode and set up a Leaf Profile by following @ref tools_vsCodeInstall .
+
+@note make sure that you "Create a new System" when prompted.  This will be the basis for the
+configuration for your VSCode project and creates an @ref defFilesSdef for your target.
+
+@c 3. Use the Legato System View to add the app(s) that you created with Developer Studio.
+
+@image html tools_vsCodeMigrate_AddApp.png
+
+> Select the application that you wish to include.
+
+@image html tools_vsCodeMigrate_ModifyApp.png
+
+> Customize anything that needs to be done to the application.
+
+@note Repeat for any additional applications.
+
+Once you have a system with all your apps can configuration set properly for your target you can
+then build and install your system on the target.
+
+@c 4. Use <b>Ctrl + Shift + B</b> to open the Build Menu and choose <b>Legato: Build and Install</b>
+to trigger the system build and install your apps onto the target for testing.
+
+@section tools_vsCodeMigrate_Troubleshooting Troubleshooting
+
+Some of the configuration options may have to be adapted from Developer Studio to VSCode.  If you
+added specific include paths or custom macro definitions in Developer Studio you will have to readd
+those settings to the relevant section (i.e.; cflags, cxxflags or ldflags) in the @ref defFilesCdef
+
+@section tools_vsCodeMigrate_Windows Windows Support
+
+At this time we can not officially support an IDE on Windows. The Legato Application Framework needs
+to be built within an Linux environment.
+
+Your options are to:
+
+1. Install a Linux VM on your Windows machine for Legato Development.  We recommend using the
+pre-configured [mangOh Virtual Machine.](https://mangoh.io/setting-up-vm)
+
+
+2. @b EXPERIMENTAL - WSL (Windows Subsystem for Linux) is an option for Windows 10 users that allows
+you to install a Linux Kernel within Windows and use the Linux Features.
+
+At this time Microsoft has released WSL version 1.0 and while the Legato Application Framework
+sucessfully builds within WSL 1.0 it is slow and build times can take up to 10 minutes.
+
+WSL 2.0 is set to be released Spring of 2020 and provides Windows with a fullLinux Kernel and
+provides good performance for building the Legato Application Framework.
+
+To try out the Legato Application Framework with WSL check out these
+[experimental instructions](https://forum.legato.io/t/run-leaf-vscode-in-windows-environment-without-vm-experimental/4757)
+to install Visual Studio Code and the Legato Application Framework.
+
+@note Once we finish testing and confirm good results with WSL 2.0 and Legato we will support this
+as an option for IDE development.
+
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

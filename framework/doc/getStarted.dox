@@ -21,17 +21,18 @@ environment to build the Legato Application Framework for your target.
 you. It lists, downloads, installs and configures the software needed to start developing Legato
 Systems.
 
-Alternatively, you can @ref basicBuild "set up your development environment manually" or use the
-[Sierra Wireless' IDE](https://source.sierrawireless.com/resources/legato/developerstudio/) for
-Legato.
+The Legato team has also developed a @ref confVSCode "Legato Plugin" for VSCode that integrates Leaf
+and the other Legato tools into a graphical IDE to help you develop and use the Legato tools easily.
 
-| Installation                                                                            | Description                                                               |
-| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| @subpage confLeaf                                                                       | Download, install, and setup, the Legato Application Framework using Leaf |
-| @subpage basicBuild                                                                     | Manually install software and tools for the Legato Application Framework  |
-| [Developer Studio](https://source.sierrawireless.com/resources/legato/developerstudio/) | Install and configure the Sierra Wireless IDE for Legato                  |
-| @ref basicTarget                                                                        | Configure a Sierra Wireless Target                                        |
-| @ref raspbianMain                                                                       | Configure the Legato Application Framework for a Raspberry Pi             |
+Alternatively, you can @ref basicBuild "set up your development environment manually".
+
+| Installation           | Description                                                               |
+| ---------------------- | ------------------------------------------------------------------------- |
+| @subpage confLeaf      | Download, install, and setup, the Legato Application Framework using Leaf |
+| @subpage tools_vsCode  | Install and configure VSCode and the Legato Plugin                        |
+| @subpage basicBuild    | Manually install software and tools for the Legato Application Framework  |
+| @ref basicTarget       | Configure a Sierra Wireless Target                                        |
+| @ref raspbianMain      | Configure the Legato Application Framework for a Raspberry Pi             |
 
 <h1> Leaf Quick Start </h1>
 
@@ -46,15 +47,15 @@ $ mkdir ~/myWorkspace; cd ~/myWorkspace
 Search and install a package for your target (downloads and automatically installs Legato, the
 toolchain and tools):
 @verbatim
-$ leaf search <target>                             # search for all available SDKs for your target
+$ leaf search -t <target>                          # search for all available SDKs for your target
 $ leaf setup -p <packageIdentifier> <profileName>  # download, install and sets up your environment
 @endverbatim
 
 List of supported targets (with default remote configuration):
-- @c wp75 - All wp75 family of modules
-- @c wp76 - All wp76 family of modules
-- @c wp77 - All wp77 family of modules
-- @c wp85 - All wp85 family of modules
+- @c wp750x - All wp75 family of modules
+- @c wp76xx - All wp76 family of modules
+- @c wp77xx - All wp77 family of modules
+- @c wp85   - All wp85 family of modules
 
 Start developing using the Leaf Shell to configure your environment:
 @verbatim
@@ -64,15 +65,35 @@ $ leaf shell
 @note
 Use your myWorkspace directory to create your System, Apps and Components. The Legato Application
 Framework comes pre-built for your target so there is no need to run @c make unless you make changes
-to the framework itself. The LEGATO_ROOT environment variable comes pre-configured into the
+to the framework itself. The $LEGATO_ROOT environment variable comes pre-configured into the
 environment and is @b profile @b aware, so you are able to reference or include Legato Systems,
 Platform Services and Apps in the Legato Application Framework by adding them to your own @c .sdef
 file using $LEGATO_ROOT in your path.
 
-<h1> Developer Studio Install </h1>
+<h1> Visual Studio Code Install </h1>
 
-To install Developer Studio follow the instructions on the
-[Sierra Wireless Source](https://source.sierrawireless.com/resources/legato/developerstudio/).
+The Legato Application Framework only builds on a Linux system.  Windows and Mac systems are only
+supported by using a Linux VM and installing the Legato Application Framework and Visual Studio Code
+on Linux.
+
+Step by step setup instructions are @ref tools_vsCodeInstall "included here".
+
+Download and install [Visual Studio Code](https://code.visualstudio.com/Download) for Linux.
+ - [Install Guide for VSCode](https://code.visualstudio.com/docs/)
+
+Install Leaf (if not already installed)
+@verbatim
+wget https://downloads.sierrawireless.com/tools/leaf/leaf_latest.deb -O /tmp/leaf_latest.deb && sudo apt install /tmp/leaf_latest.deb
+@endverbatim
+
+In the Microsoft marketplace search for @b Legato and install the plugin.
+
+Open a folder to use as your development workspace (Ctrl + K + 0)
+
+Use the @ref tools_vsCodeLeaf "Leaf Command Palate" to configure your development environment for
+your target and install the IDE support tools.
+
+@ref tools_vsCode "Start developing, building and installing your code on your target."
 
 <h1> Developer Mode App </h1>
 
@@ -93,6 +114,9 @@ specific for development:
 
 To install devMode on your target follow these @ref howToDevMode_installDev "install instructions".
 
+@note With the Visual Studio Code IDE, devMode gets automatically installed on your target
+when you use the debugging features.
+
 <h1> Tutorials </h1>
 
 Now you are ready to start developing apps and installing them on your target. We first recommend
@@ -112,6 +136,16 @@ combine it all into a system and then update your target with that system. While
 each app on a target, it is recommended to build all of your apps together into a cohesive @b system.
 When your apps are combined and built into a system it validates inter-app dependencies and
 conflicts and will help you resolve binding issues at build time instead of at runtime.
+
+Build tools:
+- @ref buildToolsmksys - Build tool to build systems (groups of applications)
+- @ref buildToolsmkapp - Build tool to build singular apps
+
+@ref conceptsUpdates "Update/Install" tools:
+- @ref toolsTarget_update - updates the read/write overlay partition of targets over USB.
+- @ref toolsTarget_fwUpdate - updates the read only base partitions of targets over USB.
+- [SWIflash](https://source.sierrawireless.com/resources/airprime/software/swiflash/) - recovery
+tool that flashes images to the target via USB.
 
 <h2> Tutorials </h2>
 

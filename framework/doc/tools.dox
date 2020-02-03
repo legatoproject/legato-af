@@ -15,6 +15,7 @@ to enable or disable Framework features.
 | Section                           | Description                                                  |
 | --------------------------------- | ------------------------------------------------------------ |
 | @subpage toolsLeaf                | Download, Install and Configure your development environment |
+| @subpage tools_vsCode             | Use Visual Studio Code IDE with Legato                       |
 | @subpage toolsGerrit              | Clone the source code of both Legato and the Linux Distros   |
 | @subpage toolsKconfig             | Configure the Legato Application Framework                   |
 

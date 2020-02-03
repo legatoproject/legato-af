@@ -1,0 +1,71 @@
+/** @page tools_vsCodeLeaf vsCode Leaf Integration
+
+The Leaf menu lets you visually search for and install software development kits (SDKs) for your
+target.
+
+@subsection tools_vsCodeLeaf_filters Filters
+
+Filters provide a way to minimize the list of SDK's that you are displayed to install, so you can
+quickly find the SDK that matches your target and the version of Legato that you are developing
+with.
+
+By default the [master] tag is pre-populated, if you un-check this you will get a list of all
+Leaf packages not just the SDK packages.
+
+Add a filter by clicking @c Add... to the right of the Filters heading.
+
+Using "@" will filter by the list of @c tags that associated with the SDK.  For example the latest
+release is always tagged with @c latest.
+
+You can also match the package names using standard regular expressions.
+
+@note Adding a tag for your target, and the latest version will give you a small list of the latest
+release for your target.  Adding the tag @c stable will give you the Sierra Wireless official
+product release versions, adding the @c dev tag will show you all the Legato versions on the latest
+stable firmware release.
+
+@subsection tools_vsCodeLeaf_Remote Remotes
+
+Remotes list the leaf repositories that you are connecting to to search for packages/SDKs.
+You can enable or disable remotes by clicking on the option to the right of the remote listing.
+
+Add a new remote by clicking the @c ADD button and select an @c alias for the remote and then
+enter in the URL for the remote. The list of available SDK's that match your filters will
+automatically update with the available packages in the remote you just added.
+
+@subsection tools_vsCodeLeaf_Profiles Profiles
+
+Profiles list the profiles that you've added to your workspace see @ref toolsLeafProfile for more
+details on how profiles work.
+
+From the profile section you can expand the profile to see what is installed in each version and
+remove any package that you have installed.  When the last package has been removed from a profile
+the profile will be deleted.
+
+@subsection tools_vsCodeLeaf_Installing Install an SDK
+
+Once you've found the SDK you wish you install in the @c Available list then click the version and
+choose <code>Add to profile...</code>.  Doing so will download the SDK to your workspace folder and
+install the environment into your folder.  This is all done using the leaf tool.
+
+@subsection tools_vsCodeLeaf_InstSupportTools Install VSCode Tools
+
+For version of Legato bellow 19.11 you must install the VSCode Support package into your profile.
+This provides an updated version of the Legato tools that are specifically enhanced to work with
+VS Code.
+
+- Add a filter for the @c ide (see above for instructions).
+- Add the @b latest @c swi-vscode-support package to the same profile you installed the SDK to.
+
+@subsection tools_vsCodeLeaf_SwitchProfiles Switching Profiles
+
+To switch between profiles use the active profile menu at the bottom of VSCode in the blue bar.
+The active profile name will be displayed, to change profiles click on the name and choose the new
+profile that you wish to use from the list.
+
+@note You may have to reload the window (Ctrl + Shift + P Developer: Reload Window) to have the
+new profile take effect.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

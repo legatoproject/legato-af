@@ -1,0 +1,93 @@
+/** @page tools_vsCodeInstall Install the Legato Plugin for VSCode
+
+To set up the Legato plugin:
+
+@note Support for the Legato plugin is only for @b Linux machines (either virtual or
+      physical). The Legato build tools rely on a Linux environment to make the system and app
+      images for your target(s).
+
+@c 1. Download and install [VSCode](https://code.visualstudio.com/Download)
+ - [Install guide for VSCode](https://code.visualstudio.com/docs/)
+
+@c 2. Search for “Legato” in the VSCode Marketplace
+
+@c 3. Open a @b folder as your Legato workspace. <b>Ctrl + K + 0</b>
+- @c a. Make or choose a folder to use as a workspace and click Ok
+
+@note The Leaf Menu will not work unless you already have a folder open.
+
+@c 4. Install @b Leaf on your dev machine if not already installed:
+@verbatim
+wget https://downloads.sierrawireless.com/tools/leaf/leaf_latest.deb -O /tmp/leaf_latest.deb && sudo apt-get install --install-recommends /tmp/leaf_latest.deb
+@endverbatim
+
+@image html vsCode_leafIcon.png
+
+@c 5. Click on the @b Leaf @b Icon on the right hand toolbar to
+search for and install a current SDK for your target (for example @c swi-wp76-4.0.0 for the @c wp76
+ target) (@ref confLeaf)
+- @c a. Add a filter for your target and then type the partial name for the target (i.e., @wp76xx,
+  @wp77xx, @wp85, @wp750x)
+
+@note Typing an "@" symbol in the "Add filters" dialog box will show you a list of the existing tags.
+
+@image html vsCode_leafFilter.png
+
+- @c b. Expand the @b Available list
+
+@image html vsCode_leafAvailable.png
+
+- @c c. Highlight the SDK you wish to install and click <b>Add to profile…</b>, name your profile
+and then follow any prompts in the terminal window.
+
+You have now successfully installed the Legato SDK for your target. The current profile will show up
+on the bottom toolbar of VSCode.
+@image html vsCode_leafProfile.png
+
+@c 6. Next, install the vscode Legato tools.
+
+Add a filter for @c ide (to install the latest legato tools for vscode support)
+@image html vsCode_leafSupportPkg.png
+"Add to profile" the swi-vscode-support package to your existing leaf profile
+
+@note You may have to reload your window to load the Legato System View Ctrl + Shift + P and choose
+<code>Developer: Reload Window</code>
+
+@c 7. Create a new system.  Either select your @c .sdef if you have one or create a new one from our
+template.
+@image html vsCode_sdefMsg.png
+
+@image html vsCode_legatoIcon.png
+A new Legato Icon will appear in the left-hand menu, this is the Legato System View and will
+show you the logical view and the relationships between systems, apps, components and apis.
+@image html vsCode_legatoSystemView.png
+
+- Expand the default.sdef apps to see the Platform Services included with Legato, or click on
+  @b “New @b app” to create your own application and start coding within Legato.
+- Creating a New App will create the components, a .c file and the .adef for you from templates. To
+  view these files and start working with them switch to the Explorer view and start coding.
+
+@image html vsCode_FileExpIcon.png
+
+@image html vsCode_newApp.png
+
+Building and Installing your Code onto your Target
+When you are ready click on the
+@image html vsCode_deviceMgmt.png
+IP Address at the bottom tool bar to configure your target:
+
+@image html vsCode_deviceMgmtMenu.png
+
+or press <b>Ctrl + Shift + B</b> to quickly Build or Build and Install your system onto your target.
+
+To view the logs, click on
+@image html vsCode_deviceMgmt.png
+Choose Open Device logs, this will open the logs in a terminal to troubleshoot any issues.
+@image html vsCode_logs.png
+
+Running Build on your code will parse the code with the mktools and provide you logs in the terminal
+that you can then use to figure out errors and issues.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
