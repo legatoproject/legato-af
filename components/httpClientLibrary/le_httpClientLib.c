@@ -473,7 +473,7 @@ static le_result_t BuildAndSendRequest
 
     // Construct request line following user input
     length = snprintf(buffer, sizeof(buffer), "%s /%s HTTP/1.1\r\n"
-                                              "host: %s\r\n",
+                                              "Host: %s\r\n\r\n",
                                                SyntaxHttpCommandPtr[command],
                                                reqUriPtr,
                                                contextPtr->host);
