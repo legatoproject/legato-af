@@ -15,7 +15,9 @@ requires:
     #if ${LE_CONFIG_ENABLE_CONFIG_TREE} = y
         le_cfg.api
     #endif
+#if ${LE_CONFIG_ENABLE_WIFI} = y
         ${LEGATO_ROOT}/interfaces/wifi/le_wifiClient.api [optional]
+#endif
     }
 
     component:

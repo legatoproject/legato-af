@@ -3,7 +3,7 @@ provides:
 {
     api:
     {
-        le_fwupdate.api
+        le_fwupdate.api [direct]
 #if ${LE_CONFIG_LINUX} = y
         le_dualsys.api
         le_flash.api

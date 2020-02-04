@@ -54,6 +54,11 @@ bindings:
 #else
     dcsDaemon.dcs.le_appInfo -> appInfo.le_appInfo
     dcsDaemon.dcsNet.le_appInfo -> appInfo.le_appInfo
+#if ${LE_CONFIG_ENABLE_CONFIG_TREE} = y
+    dcsDaemon.dcsDaemon.le_cfg -> configTree.le_cfg
+    dcsDaemon.dcsCellular.le_cfg -> configTree.le_cfg
+    dcsDaemon.dcs.le_cfg -> configTree.le_cfg
+#endif
 #endif
 }
 
