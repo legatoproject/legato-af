@@ -106,6 +106,20 @@ the main thread.  Legato components can start their own, private threads to avoi
 And any thread can run its own event loop if an event-driven thread with blocking event handlers
 is desired.
 
+@section conceptsComponents_ComponentInitialization Component Initialization
+
+On targets running real-time operating systems (RTOS) there is a need for special initialization
+for components which are included in more than one executable. On RTOS these will all be instances
+of the same component, so ordinary global or static variables will be shared across all instances
+of the component. The Legato Component Data API  provides a method to create per-component instance
+data (see le_cdata.h). To initialize per-component instance data COMPONENT_INIT is called in the
+context of event loop of every executable. To initialize data shared across all instances of the
+component another special function (<c>COMPONENT_INIT_ONCE</c> in C) is provided. This function is
+called only once in the context of Supervisor main thread before call(s) to COMPONENT_INIT.
+
+On targets running Linux OS  COMPONENT_INIT_ONCE is not required since all component instances have
+their own copies of data, but provided for code compatibility. It acts the same as COMPONENT_INIT,
+but is called before the event loop is started.
 
 @section conceptsComponents_LegacyCode Legacy Code
 
