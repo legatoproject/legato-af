@@ -1538,6 +1538,9 @@ FUNCTION ScanInformationList PerformCellularNetworkScan
  * @warning PCI scan is platform dependent. Please refer to @ref platformConstraintsMdc for further
  *          details.
  *
+ * @note On devices with the watchdog service enabled, the timeout is 4 mins. On those without, the
+ *       timeout is 5 mins.
+ *
  * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
