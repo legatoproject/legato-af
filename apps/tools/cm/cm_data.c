@@ -13,6 +13,15 @@
 #include "cm_data.h"
 #include "cm_common.h"
 
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * PID of the parent process having spawned the running CM command which would be
+ * "/bin/sh scripts/cm data <option>"
+ */
+//-------------------------------------------------------------------------------------------------
+static int ParentPid = 0;
+
 //-------------------------------------------------------------------------------------------------
 /**
  * Print the data help text to stdout.
@@ -423,6 +432,18 @@ static void PrintDataBearerInformation
     le_mdc_ProfileRef_t profileRef = (le_mdc_ProfileRef_t)le_timer_GetContextPtr(timerRef);
     DataBearerTechnologies_t currentDataBearerTechnologies;
     le_result_t result;
+    int pPid = getppid();
+
+    if (pPid != ParentPid)
+    {
+        // Stop the bearer timer if its parent "/bin/sh scripts/cm data watch", which pid is
+        // earlier saved as ParentPid, has been terminated, for example via Ctrl-C. After that
+        // happened, the latest parent pid returned via getppid() would have become different &
+        // been the pid of /legato/systems/current/bin/supervisor.
+        le_timer_Stop(DataBearerTimerRef);
+        DataBearerTimerRef = NULL;
+        exit(0);
+    }
 
     result = le_mdc_GetDataBearerTechnology(profileRef,
                     &(currentDataBearerTechnologies.downlink),
@@ -704,6 +725,10 @@ void cm_data_StartDataConnection
         if ( (result = StartTimer(timeoutPtr)) )
         {
             HandleResult("Failed to start data session timer",result, true);
+        }
+        else
+        {
+            exit(0);
         }
     }
 }
@@ -1127,6 +1152,8 @@ void cm_data_ProcessDataCommand
 )
 {
     const char*  dataParam = le_arg_GetArg(2);
+    ParentPid = getppid();
+
     if (strcmp(command, "help") == 0)
     {
         cm_data_PrintDataHelp();
@@ -1234,6 +1261,9 @@ void cm_data_ProcessDataCommand
     }
     else if (strcmp(command, "watch") == 0)
     {
+        // This command option includes no exit() because it keeps running over time to monitor
+        // data connection & print out its bearer info until it's terminated, e.g. via SIGKILL
+        // which comes via Ctrl-C on the command line
         cm_data_MonitorDataConnection();
     }
     else
