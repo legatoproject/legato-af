@@ -1005,7 +1005,7 @@ static void Testle_sms_Send
                                (void*) SMS_SEND_TEST_NUMBER_TIMOUT) == LE_OK);
     WaitForSem(SmsSendSemaphore, LONG_TIMEOUT, LE_OK);
 
-    pa_sms_SetSmsErrCause(LE_NOT_POSSIBLE);
+    pa_sms_SetSmsErrCause(LE_FAULT);
     myMsg = le_sms_Create();
     LE_ASSERT(myMsg);
     LE_ASSERT(le_sms_SetDestination(myMsg, DEST_TEST_PATTERN) == LE_OK);

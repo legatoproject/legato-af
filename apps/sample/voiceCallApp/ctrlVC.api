@@ -16,7 +16,7 @@
 *
 * @return
 *      - LE_OK              If voice call can be successfully made to the destination.
-*      - LE_NOT_POSSIBLE    If there is already an active voice call.
+*      - LE_BUSY            If there is already an active voice call.
 *      - LE_FAULT           If not able to initiate voice call.
 */
 //-------------------------------------------------------------------------------------------------

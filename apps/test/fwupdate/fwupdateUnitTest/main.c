@@ -91,7 +91,7 @@ static void Testle_fwupdate_Download
     // Check required values
     LE_ASSERT (result == LE_FAULT);
 
-    // Systems are not synchronized: API needs to return LE_NOT_POSSIBLE
+    // Systems are not synchronized: API needs to return LE_NOT_PERMITTED
     // Set returned error code for PA function: LE_OK
     pa_fwupdateSimu_SetReturnCode (LE_OK);
     // Set the synchronization state to false
@@ -99,7 +99,7 @@ static void Testle_fwupdate_Download
     // Call the function to be tested
     result = le_fwupdate_Download (fd);
     // Check required values
-    LE_ASSERT (result == LE_NOT_POSSIBLE);
+    LE_ASSERT (result == LE_NOT_PERMITTED);
 
     // No data received during timeout: API needs to return LE_TIMEOUT
     // Set returned error code for PA function: LE_TIMEOUT

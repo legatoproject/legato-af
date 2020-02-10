@@ -163,8 +163,6 @@ const char* _le_log_GetResultCodeString
             return "LE_OK";
         case LE_NOT_FOUND:
             return "LE_NOT_FOUND";
-        case LE_NOT_POSSIBLE:
-            return "LE_NOT_POSSIBLE";
         case LE_OUT_OF_RANGE:
             return "LE_OUT_OF_RANGE";
         case LE_NO_MEMORY:

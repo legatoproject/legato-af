@@ -798,7 +798,7 @@ static le_result_t HandleImportJSONIteration
                         default:
                             // Issue with node creation
                             fprintf(stderr, "Node conflict when importing, at node %s", name);
-                            return LE_NOT_POSSIBLE;
+                            return LE_FAULT;
                         break;
                     }
 

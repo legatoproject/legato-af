@@ -1364,8 +1364,7 @@ void le_thread_Start
  *      - LE_OK if successful.
  *      - LE_DEADLOCK if a thread tries to join with itself or two threads try to join each other.
  *      - LE_NOT_FOUND if the other thread doesn't exist.
- *      - LE_NOT_POSSIBLE if the other thread can't be joined with.
- * @deprecated the result code LE_NOT_POSSIBLE is scheduled to be removed before 15.04
+ *      - LE_FAULT if the other thread can't be joined with.
  *
  * @warning The other thread must be "joinable".  See le_thread_SetJoinable();
  *
@@ -1405,7 +1404,7 @@ le_result_t le_thread_Join
         {
             LE_CRIT("Attempt to join with non-joinable thread '%s'.", THREAD_NAME(threadPtr->name));
 
-            return LE_NOT_POSSIBLE;
+            return LE_FAULT;
         }
         else
         {
@@ -1434,7 +1433,7 @@ le_result_t le_thread_Join
                 default:
                     LE_CRIT("Unexpected return code from pthread_join(): %d",
                             error);
-                    return LE_NOT_POSSIBLE;
+                    return LE_FAULT;
             }
         }
     }

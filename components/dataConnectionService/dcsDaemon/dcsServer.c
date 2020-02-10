@@ -478,7 +478,7 @@ static void SetDefaultGWConfiguration
  *     - LE_FAULT upon failure for all attempts to add
  *     - LE_UNSUPPORTED if the technology of the selected data channel does not support DNS server
  *       address retrieval
- *     - LE_NOT_POSSIBLE if no DNS server address has been assigned for use for the selected data
+ *     - LE_UNAVAILABLE if no DNS server address has been assigned for use for the selected data
  *       channel
  */
 //--------------------------------------------------------------------------------------------------
@@ -538,7 +538,7 @@ static le_result_t SetDnsRoutes
     {
         LE_INFO("Data channel %s of technology %d got no DNS server address assigned",
                 DataChannelName, CurrentTech);
-        return LE_NOT_POSSIBLE;
+        return LE_UNAVAILABLE;
     }
     else
     {
@@ -591,7 +591,7 @@ static le_result_t SetDnsRoutes
         return LE_OK;
     }
 
-    return LE_NOT_POSSIBLE;
+    return LE_UNAVAILABLE;
 }
 
 
