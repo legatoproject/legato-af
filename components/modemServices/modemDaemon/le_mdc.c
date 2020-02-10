@@ -299,10 +299,10 @@ static void NewSessionStateHandler
             // Event report
             if (profilePtr->connectionStatus != sessionStatePtr->newState)
             {
-                // Report the event for the given profile
-                le_event_Report(profilePtr->sessionStateEvent, &profilePtr, sizeof(profilePtr));
                 // Update Connection Status
                 profilePtr->connectionStatus = sessionStatePtr->newState;
+                // Report the event for the given profile
+                le_event_Report(profilePtr->sessionStateEvent, &profilePtr, sizeof(profilePtr));
             }
         }
     }
@@ -1400,10 +1400,10 @@ le_result_t le_mdc_StopSession
             return LE_FAULT;
         }
         LE_ERROR("Get Connection failure %d, %"PRIi32", %"PRIi32", %"PRIi32"",
-                profilePtr->conFailurePtr->callEndFailure,
-                profilePtr->conFailurePtr->callEndFailureCode,
-                profilePtr->conFailurePtr->callConnectionFailureType,
-                profilePtr->conFailurePtr->callConnectionFailureCode);
+                 profilePtr->conFailurePtr->callEndFailure,
+                 profilePtr->conFailurePtr->callEndFailureCode,
+                 profilePtr->conFailurePtr->callConnectionFailureType,
+                 profilePtr->conFailurePtr->callConnectionFailureCode);
     }
 
     return result;
@@ -2214,6 +2214,12 @@ le_result_t le_mdc_SetPDP
         return result;
     }
 
+    if (pdp == profilePtr->modemData.pdp)
+    {
+        LE_DEBUG("No need to set the same PDP");
+        return LE_OK;
+    }
+
     result = le_mdc_GetSessionState(profileRef, &state);
     if (result != LE_OK)
     {
@@ -2336,6 +2342,12 @@ le_result_t le_mdc_SetAPN
         LE_ERROR("Error in reading profile at index %d; error %d", profilePtr->profileIndex,
                  result);
         return result;
+    }
+
+    if (0 == strcmp(apnPtr, profilePtr->modemData.apn))
+    {
+        LE_DEBUG("No need to set the same APN");
+        return LE_OK;
     }
 
     result = le_mdc_GetSessionState(profileRef, &state);
@@ -2550,6 +2562,14 @@ le_result_t le_mdc_SetAuthentication
         LE_ERROR("Error in reading profile at index %d; error %d", profilePtr->profileIndex,
                  result);
         return result;
+    }
+
+    if (type == profilePtr->modemData.authentication.type &&
+        0 == strcmp(userName, profilePtr->modemData.authentication.userName) &&
+        0 == strcmp(password, profilePtr->modemData.authentication.password))
+    {
+        LE_DEBUG("No need to set the same authentication credentials");
+        return LE_OK;
     }
 
     result = le_mdc_GetSessionState(profileRef, &state);
