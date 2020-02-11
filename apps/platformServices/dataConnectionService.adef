@@ -24,7 +24,7 @@ processes:
 
     faultAction: restart
     #if ${LE_CONFIG_SERVICES_WATCHDOG} = y
-        maxWatchdogTimeout: 120000
+        maxWatchdogTimeout: 160000
     #else
         watchdogTimeout: never
     #endif

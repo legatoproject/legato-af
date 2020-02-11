@@ -556,7 +556,7 @@ COMPONENT_INIT
 {
     le_mdc_ProfileRef_t profileRef  = NULL;
     le_clk_Time_t myTimeout = { 0, 0 };
-    myTimeout.sec = 120;
+    myTimeout.sec = 160;
     Testcase_t test = TEST_SYNC;
     le_thread_Ref_t testThread;
 
