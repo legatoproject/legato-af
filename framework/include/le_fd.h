@@ -40,7 +40,6 @@
     !defined(le_fd_Ioctl)       && \
     !defined(le_fd_MkFifo)      && \
     !defined(le_fd_MkPipe)      && \
-    !defined(le_fd_MkDataPipe)  && \
     !defined(le_fd_Open)        && \
     !defined(le_fd_Read)        && \
     !defined(le_fd_Write)
@@ -151,20 +150,6 @@ int le_fd_MkPipe
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Make a Data Pipe for bi-direction communication under the Data Mode.
- *
- * @return
- *  The new file descriptor, or -1 if an error occurred.
- */
-//--------------------------------------------------------------------------------------------------
-int le_fd_MkDataPipe
-(
-    const char *pathname,       ///< [IN] pathname of the fifo
-    mode_t mode                 ///< [IN] permissions of the file
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Create a copy of the file descriptor.
  *
  * @return
@@ -218,9 +203,6 @@ int le_fd_Fcntl
 #endif
 #if !defined(le_fd_MkPipe)
 #  error "File descriptor macros are overridden, but le_fd_MkPipe not defined.  Please define it."
-#endif
-#if !defined(le_fd_MkDataPipe)
-#  error "File descriptor macros are overridden, but le_fd_MkDataPipe not defined.  Please define it."
 #endif
 #if !defined(le_fd_Fcntl)
 #  error "File descriptor macros are overridden, but le_fd_Fcntl not defined.  Please define it."
