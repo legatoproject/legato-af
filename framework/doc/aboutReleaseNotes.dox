@@ -99,7 +99,7 @@ repositories on GitHub.
 @subsubsection rn2004_ConstraintsLinuxSupport Dev Machine Linux Version
 
 To develop applications within the Legato Application Framework, a current supported
-[Long Term Support version of Ubuntu Linux](https://www.ubuntu.com/info/release-end-of-life) is
+[Long Term Support version of Ubuntu Linux](https://ubuntu.com/about/release-cycle) is
 required on your dev machine (or running in a virtual box on Windows).  Ubuntu 18.04 is the current
 @b recommended version to use on your dev machine.
 
