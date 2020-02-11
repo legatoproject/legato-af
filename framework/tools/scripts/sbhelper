@@ -86,6 +86,7 @@ if [ $? -eq 0 ]; then
     CheckRet
 
     echo "Rebuilding app $APP_NAME."
+    rm -r _build_$APP_NAME
     mkapp $APP_NAME.adef -t $TARGET_TYPE
     CheckRet
 
