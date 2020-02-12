@@ -199,6 +199,13 @@ config ENABLE_SECSTORE_ADMIN
   permits reading, writing, and deleting secure storage files and should be
   used with caution.
 
+config SECSTORE_IKS_BACKEND
+  bool "Use IoT Keystore as SecStore encryption engine"
+  depends on EXPERIMENTAL
+  default n
+  ---help---
+    Use IoT Keystore as SecStore back-end to encrypt/decrypt the user data.
+
 endmenu # end "Secure Storage"
 
 menu "Positioning Service"

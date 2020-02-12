@@ -23,6 +23,9 @@ requires:
 #endif
         $LEGATO_SECSTORE_PA
         $LEGATO_SECSTORE_PA_TZ
+#if ${LE_CONFIG_SECSTORE_IKS_BACKEND} = y
+        $LEGATO_SECSTORE_PA_IKS_CRYPTO
+#endif
         $LEGATO_ROOT/components/watchdogChain
 
 #if ${MK_CONFIG_SECSTORE_DISABLE_LIMIT} = ""
