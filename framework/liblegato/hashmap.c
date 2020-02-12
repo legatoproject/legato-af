@@ -846,10 +846,11 @@ bool le_hashmap_ForEach
             le_hashmap_Entry_t* currentEntryPtr = CONTAINER_OF(theLinkPtr,
                                                                le_hashmap_Entry_t,
                                                                entryListLink);
+            le_hashmap_Link_t* nextLinkPtr = bucket_PeekNext(listHeadPtr, theLinkPtr);
             if (!forEachFn(currentEntryPtr->keyPtr, currentEntryPtr->valuePtr, context))
             {
                 // Check to see if this is the last element, and return false if not.
-                if (bucket_PeekNext(listHeadPtr, theLinkPtr) != NULL)
+                if (nextLinkPtr != NULL)
                 {
                      return false;
                 }
@@ -864,7 +865,7 @@ bool le_hashmap_ForEach
                 }
                 return true;   // Despite stopping early, all elements have been examined.
             }
-            theLinkPtr = bucket_PeekNext(listHeadPtr, theLinkPtr);
+            theLinkPtr = nextLinkPtr;
         }
     }
 
