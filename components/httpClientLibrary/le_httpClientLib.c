@@ -531,7 +531,10 @@ static le_result_t BuildAndSendCredential
         LE_ERROR("Unable to encode credential");
         return LE_FAULT;
     }
-    length += encodedCredLen;
+
+    // encodedCredLen includes the trailing NULL character, so when we calculate the length,
+    // we have to exclude this NULL character.
+    length += encodedCredLen - 1;
 
     // Add final CRLF to the request
     if ((length + sizeof(CRLF)) > sizeof(buffer))
@@ -539,6 +542,7 @@ static le_result_t BuildAndSendCredential
         LE_ERROR("Unable to append CRLF");
         return LE_FAULT;
     }
+
     le_utf8_Copy(buffer+length, CRLF, sizeof(buffer)-length, NULL);
     length += strlen(CRLF);
 
@@ -763,7 +767,7 @@ static le_result_t HandleHttpResponse
         // HTTP_GET command, then continue to read remaining data.
         if (HEAD_CMD_ENDED == needmore)
         {
-            if (HTTP_GET == contextPtr->command)
+            if (HTTP_GET == contextPtr->command && tinyCtxPtr->handler.contentlength > 0)
             {
                 LE_DEBUG("HTTP_HEAD response received, continue reading data");
                 break;
