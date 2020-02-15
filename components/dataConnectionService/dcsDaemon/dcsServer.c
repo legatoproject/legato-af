@@ -858,11 +858,11 @@ static void ChannelEventHandler
                         UpdateTechnologyStatus(CurrentTech, false, false);
                         break;
                 }
-                break;
 #else
                 LE_INFO("Channel state IsConnected after event: %d", IsConnected);
                 UpdateTechnologyStatus(CurrentTech, IsConnected, true);
 #endif
+                break;
             }
 
             // Down event
