@@ -41,6 +41,9 @@ export class Profile
     /** A loaded version of that definition file. */
     public activeModel: model.System | model.Application;
 
+    /** The error message occurs when the language server fails to parse Legato system file. */
+    private errorMessage: string;
+
     /** Watch the filesystem for any changes to any of the files that make up the active model. */
     private fileWatcher: fs_watcher.FSWatcher;
 
@@ -65,6 +68,7 @@ export class Profile
         this.workspaceFolders = [];
 
         this.activeModel = undefined;
+        this.errorMessage = "";
         this.fileWatcher = undefined;
         this.clientReceiveModelUpdates = false;
 
@@ -186,6 +190,7 @@ export class Profile
 
                 this.jsonDocument = mkResponse;
                 this.activeModel = systemInfo;
+                this.errorMessage = "";
             }
 
             this.watchFiles(watchPaths);
@@ -240,6 +245,7 @@ export class Profile
                 if (this.activeDefFile.slice(-5) === ".sdef")
                 {
                     this.client.connection.window.showWarningMessage("An error occurred when loading Legato system view: " + mkResponse);
+                    this.errorMessage = mkResponse;
                 }
             }
         }
@@ -358,6 +364,8 @@ export class Profile
 
                 this.client.connection.sendNotification('le_UpdateLogicalView', logicalView);
             }
+
+            this.client.connection.sendNotification('le_SendErrorMessage', this.errorMessage);
         }
     }
 
