@@ -744,7 +744,7 @@ static le_result_t HandleHttpResponse
     {
         if (status == LE_WOULD_BLOCK)
         {
-            LE_INFO("Socket would block");
+            LE_DEBUG("Socket would block");
             return LE_OK;
         }
 
