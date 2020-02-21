@@ -565,7 +565,8 @@ static void FirstLayerCellNetStateHandler
 )
 {
     le_cellnet_State_t* eventDataPtr = reportPtr;
-    le_cellnet_StateHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+    le_cellnet_StateHandlerFunc_t clientHandlerFunc =
+                                            (le_cellnet_StateHandlerFunc_t) secondLayerHandlerFunc;
 
     clientHandlerFunc(*eventDataPtr,
                       le_event_GetContextPtr());
