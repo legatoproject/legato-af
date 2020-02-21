@@ -59,9 +59,6 @@ typedef struct
     le_thread_Ref_t monitoredLoop;      ///< Event loop being monitored, or NULL if not
                                         ///< monitoring an event loop.
     bool isConnected;                   ///< Is this thread connected to watchdog service
-    bool shouldConnect;                 ///< Should this thread try to connect to watchdog service?
-                                        ///< If not bound to a watchdog service, don't try to
-                                        ///< reconnect
 }
 WatchdogObj_t;
 
@@ -243,7 +240,6 @@ static WatchdogObj_t *CreateNewWatchdog
     WatchdogObj_t* watchdogPtr = le_mem_ForceAlloc(WatchdogPool);
     watchdogPtr->watchdog = watchdog;
     watchdogPtr->isConnected = false;
-    watchdogPtr->shouldConnect = true;
     watchdogPtr->monitoredLoop = NULL;
     LE_CDATA_THIS->WatchdogList[watchdog] = watchdogPtr;
     watchdogPtr->timer = NULL;
@@ -314,19 +310,9 @@ static bool VerifyConnection
     WatchdogObj_t* watchdogPtr
 )
 {
-    if (watchdogPtr->shouldConnect && !watchdogPtr->isConnected)
+    if (!watchdogPtr->isConnected)
     {
-        le_result_t result;
-
-        result = le_wdog_TryConnectService();
-        if (LE_NOT_PERMITTED == result)
-        {
-            // No binding established for watchdog.  This won't change, so never try
-            // to connect
-            LE_INFO("Executable not bound to watchdog service; watchdog disabled");
-            watchdogPtr->shouldConnect = false;
-        }
-        else if (LE_OK != result)
+        if (LE_OK != le_wdog_TryConnectService())
         {
             LE_WARN("Failed to connect to watchdog service; watchdog not kicked");
         }
@@ -437,21 +423,16 @@ void le_wdogChain_MonitorEventLoop
     }
     else
     {
-        if (watchdogPtr->shouldConnect)
-        {
-            le_thread_Ref_t currentThread = le_thread_GetCurrent();
-            LE_FATAL_IF(watchdogPtr->monitoredLoop != currentThread,
-                        "Watchdog %"PRIu32" conflict: monitoring loop %p, but attempting to monitor"
-                        " loop %p", watchdog, watchdogPtr->monitoredLoop, currentThread);
-        }
+        le_thread_Ref_t currentThread = le_thread_GetCurrent();
+        LE_FATAL_IF(watchdogPtr->monitoredLoop != currentThread,
+                    "Watchdog %"PRIu32" conflict: monitoring loop %p, but attempting to monitor"
+                    " loop %p", watchdog, watchdogPtr->monitoredLoop, currentThread);
     }
 
     // Check connection
     VerifyConnection(watchdogPtr);
 
-    // If we aren't even trying to connect (i.e. not bound to watchdog daemon), don't start
-    // the timer either.
-    if (watchdogPtr->shouldConnect && watchdogPtr->timer == NULL)
+    if (watchdogPtr->timer == NULL)
     {
         char timerName[8];
         snprintf(timerName, sizeof(timerName), "Chain%02" PRId32, watchdog);
