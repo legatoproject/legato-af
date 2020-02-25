@@ -13,6 +13,21 @@
 #include "cm_sms.h"
 #include "cm_common.h"
 
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * PID of the parent process having spawned the running CM command.
+ */
+//-------------------------------------------------------------------------------------------------
+static int ParentPid = 0;
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * SMS handler reference
+ */
+//-------------------------------------------------------------------------------------------------
+static le_sms_RxMessageHandlerRef_t RxHdlrRef = NULL;
+
 //-------------------------------------------------------------------------------------------------
 /**
  * Print the SMS help text to stdout.
@@ -162,6 +177,17 @@ static void PrintMessage
     size_t length, contentSz;
     SmsContent_t content;
     char header[20];
+    int pPid = getppid();
+
+    if (pPid != ParentPid)
+    {
+        // Remove the handler if the parent pid which is saved earlier as ParentPid, has been
+        // terminated, ie. by Ctrl-C. After that, the latest parent pid returned via getppid() will
+        // be different.
+        le_sms_RemoveRxMessageHandler(RxHdlrRef);
+        RxHdlrRef = NULL;
+        exit(EXIT_SUCCESS);
+    }
 
     if ( (msgContextPtr->msgToPrint != -1) &&
          (msgContextPtr->msgToPrint != msgContextPtr->nbSms) )
@@ -308,11 +334,11 @@ void cm_sms_Monitor
 {
     static PrintMessageContext_t context = {
         .nbSms = 0,
-        .shouldDeleteMessages = true,
+        .shouldDeleteMessages = false,
         .msgToPrint = -1,
     };
 
-    le_sms_AddRxMessageHandler(PrintMessage, &context);
+    RxHdlrRef = le_sms_AddRxMessageHandler(PrintMessage, &context);
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -687,6 +713,7 @@ void cm_sms_ProcessSmsCommand
     size_t numArgs          ///< [IN] Number of arguments
 )
 {
+    ParentPid = getppid();
 
     if (strcmp(command, "help") == 0)
     {
@@ -695,6 +722,8 @@ void cm_sms_ProcessSmsCommand
     }
     else if (strcmp(command, "monitor") == 0)
     {
+        // This command includes no exit() because it keeps running over time to monitor and print
+        // incoming sms messages until it is terminated. e.g. via SIGINT from Ctrl-C
         cm_sms_Monitor();
     }
     else if (strcmp(command, "send") == 0)
