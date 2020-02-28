@@ -1,7 +1,7 @@
 /** @page aboutReleaseNotes Release Notes
 
-Version: <b>Legato 19.11.1</b><br>
-Date: <b>Feb 18th, 2020</b><br>
+Version: <b>Legato 20.04.0</b><br>
+Date: <b>March 28th, 2020</b><br>
 @ref aboutLicenses "Legato Application Framework Licensing Information"
 
 Visit the <a href="https://legato.io/releases">release page</a> to @b download the tarball,
@@ -19,103 +19,91 @@ Update your profile to the latest version:
 $ leaf update
 @endverbatim
 
-@section rn1911_Patch 19.11.1 Patch
+@section rn2004_Features New Features
 
-The 19.11.1 patch introduces:
-- clarification for MPL V2 licensing in Linux Scripts.
-- provides updated documentation and information on the Legato plugin for VSCode Version 1.0
+List of new features in the 20.04 Release:
 
-@section rn1911_Features New Features
+@subsection rn2004_Features_IDE Legato Plugin for Visual Studio Code
 
-List of new features in the 19.11 Release:
+The Legato team has launched version 1.0 of the @ref tools_vsCode "Legato Plugin for VSCode".
 
-@subsection rn1911_Features_secStore Enable secStore Admin
+@subsection rn2004_Features_APIDeprecated Deprecated APIs
 
-In order to enable the secure storage admin API, Legato must be compiled using the
-@c SECSTOREADMIN flag.
-@verbatim
-make distclean
-SECSTOREADMIN=1 make wp76xx
-@endverbatim
-Alternatively, you can enable the Secure Storage Admin API from within the kconfig menu system.
-@verbatim
-make menuconfig_wp76xx
-@endverbatim
-In the displayed configuration menu, enable SecStore Admin API flag by following the
-following menu path and enabling <code>Enable Secure Storage Administration API</code>
-Services > Secure Storage > Enable Secure Storage Administration API
+The following APIs have been removed and are no longer used within the Legato Application Framework
 
-@subsection rn1911_Features_lte LTE Band Support
+- @ref c_threading - LE_THREAD_PRIORITY_NORMAL(), replaced by LE_THREAD_PRIORITY_MEDIUM
+- @ref c_sms - le_sms_SetTimeout() removed as it was not needed.
+- @ref c_gnss - le_gnss_GetDop() removed, replaced by le_gnss_GetDilutionOfPrecision()
+- @ref c_gnss - le_gnss_GetGpsLeapSeconds() removed, replaced by le_gnss_GetLeapSeconds()
+- @ref c_gnss - LE_GNSS_NMEA_MASK_PQXFI, replaced by LE_GNSS_NMEA_MASK_PTYPE
+- swiQmi_CheckResponseCode(), replaced by swiQmi_CheckResponse()
+- swiQmi_OEMCheckResponseCode(), replaced by swiQmi_CheckResponse()
+- @ref c_atServer - le_atServer_SendFinalResponse(), replaced by le_atServer_SendFinalResultCode()
+- le_fd_MkDataPipe() has been removed as it is not supported in Linux.
+- le_sup_ctrl.api has been removed as it is no longer needed or referenced in Legato.
+- LE_NOT_POSSIBLE has been removed and replaced other error codes that are more clear.
 
-New support has been added for band 66 and 71, see @ref c_mrc for more details.
+@subsection rn2004_Features_ttyOpen tty API Behavior Change
 
-@subsection rn1911_Features_dcsChannels dcs GetChannels
+le_tty_Open() will now return a file descriptor or a -1 for a failure, this is a behavior change
+from previous version where le_tty_Open() would exit the process with an LE_FATAL.
 
-le_dcs_GetChannels() now returns a channel's admin state than then operational state.
+@subsection rn2004_Features_PCI Network Scan Timeout Change
 
-@subsection rn1911_Features_DNSConfig Multiple DNS Configuration
+The timeout value for le_mrc_PerformPciNetworkScan() has been changed from 300 seconds to 240
+seconds for targets that have watchdog enabled.
 
-@ref c_le_net now supports having multiple versions of DNS configuration.
+@subsection rn2004_Features_ecall eCall API changes
 
-@subsection rn1911_Features_dcs APN name deprecation
+A new API function has been added to eCall to set/get the dial duration for the maximum time the
+target has to connect to the emergency call center including redial attempts.
+- le_ecall_SetPanInitialDialDuration()
+- le_ecall_GetPanInitialDialDuration()
 
-The DCS functionality to populate the default APN name into the cellular channel's
-modem profile if blank at startup upon an attempt to start is now removed from both @ref c_le_dcs
-and @ref c_le_data.
+@subsection rn2004_Features_dcs APN name deprecation
 
-@subsection rn1911_Features_clock Timezone File Set
+@ref le_mdc_session_MO is a blocking function and has a maximum timeout of 155 seconds,
+previously it was set to 150 seconds.
 
-le_clk_SetTimezoneFile is now supported in @ref c_clock .
+@section rn2004_BFeatures Beta Features
 
-@subsection rn1911_Features_tty tty Open change
+@section rn2004_AFeatures Alpha Features
 
-Previous versions of le_tty_Open() would exit the process with LE_FATAL if the tty failed
-to successfully open; now a file descriptor is either returned or -1 is returned on failure.
-
-
-@section rn1911_BFeatures Beta Features
-
-@subsection rn1911_BFeatures_IDE Experimental IDE
-
-The Legato team has launched the @b beta version of a @ref tools_vsCode "Legato Plugin for VSCode".
-
-@section rn1911_AFeatures Alpha Features
-
-The following are the list of features that have been added into the 19.11 Release but are still
+The following are the list of features that have been added into the 20.04 Release but are still
 being developed and should not be used on production targets. Please provide feedback for these
 features on our [forums](https://forum.legato.io/):
 
-@subsection rn1911_AFeatures_RPC Legato RPC
+@subsection rn2004_AFeatures_RPC Legato RPC
 
 RPC has been added as an experimental feature (@ref conceptsRPC Remote procedure call). Please refer
 to @ref getStartRPC Legato RPC on how to get started.
 
-@section rn1911_Fixes Fixed Issues
+@section rn2004_Fixes Fixed Issues
 
-All changes are tagged in GitHub as "19.11.0".  The full list of changes and commit
+All changes are tagged in GitHub as "20.04.0".  The full list of changes and commit
 messages can be found on GitHub.
 
-- [Legato Application Framework 19.11.0 Fixes](https://github.com/legatoproject/legato-af/commits/19.11.0)
-- [Legato WiFi 19.11.0 Fixes](https://github.com/legatoproject/legato-WiFi/commits/19.11-release)
-- [Legato AirVantage Connector 19.11.0 Fixes](https://github.com/legatoproject/legato-Service-AirVantageConnector/commits/19.11-release)
-- [Legato DataHub 19.11.0 Fixes](https://github.com/legatoproject/legato-Service-DataHub/commits/19.11-release)
+- [Legato Application Framework 20.04.0 Fixes](https://github.com/legatoproject/legato-af/commits/20.04.0)
+- [Legato WiFi 20.04.0 Fixes](https://github.com/legatoproject/legato-WiFi/commits/20.04-release)
+- [Legato AirVantage Connector 20.04.0 Fixes](https://github.com/legatoproject/legato-Service-AirVantageConnector/commits/20.04-release)
+- [Legato DataHub 20.04.0 Fixes](https://github.com/legatoproject/legato-Service-DataHub/commits/20.04-release)
 
 @note This is only the list of fixes for the Application Framework and Platform Services, for the
-list of changes in the Platform Adapter view the commits under the tag 19.11.0 in individual
+list of changes in the Platform Adapter view the commits under the tag 20.04.0 in individual
 repositories on GitHub.
 
-@section rn1911_KnownIssues Known Issues
+@section rn2004_KnownIssues Known Issues
 
-@subsection rn1911_Constraints Constraints and Limitations
+@subsection rn2004_Constraints Constraints and Limitations
 
-@subsubsection rn1911_ConstraintsLinuxSupport Dev Machine Linux Version
+@subsubsection rn2004_ConstraintsLinuxSupport Dev Machine Linux Version
 
 To develop applications within the Legato Application Framework, a current supported
 [Long Term Support version of Ubuntu Linux](https://www.ubuntu.com/info/release-end-of-life) is
 required on your dev machine (or running in a virtual box on Windows).  Ubuntu 18.04 is the current
 @b recommended version to use on your dev machine.
 
-@subsubsection rn1911_ConstECMUSB ECM-USB modem manager issue
+@subsubsection rn2004_ConstECMUSB ECM-USB modem manager issue
 
 Ubuntu 15.10 and newer has Modem Manager version @c 1.4.12-1ubuntu1  installed by default which
 conflicts with the ECM-USB driver when connecting a target.  Modem manager may cause the Ubuntu
@@ -129,7 +117,7 @@ Network Manager to crash on your host and/or your target device to become unavai
 - Uninstall @c modemmanager from Ubuntu or
 - [Downgrade @c modemmanager to version 1.0.0-2ubuntu1](http://packages.ubuntu.com/trusty/modemmanager)
 
-@subsubsection rn1911_ConstTrust FOTA upgrade warning
+@subsubsection rn2004_ConstTrust FOTA upgrade warning
 
 A device that has trustzones enabled, may re-bootstrap (obtain new keys from the AirVantage server)
 durring a FOTA (firmware over-the-air) upgrade.
