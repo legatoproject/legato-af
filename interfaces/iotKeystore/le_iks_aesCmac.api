@@ -1,0 +1,114 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_iks_aesCmac IoT Keystore AES CBC API
+ *
+ * @ref le_iks_aesCmac_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * Legato IoT Keystore APIs for generating and verifying message authentication codes using AES in
+ * CMAC mode.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_iks_aesCmac_interface.h
+ *
+ * Legato @ref c_iks_aesCmac API
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+USETYPES le_iks.api;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Tag size in bytes.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_TAG_SIZE = 16;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Process message chunks.  This function may be called multiple times to process the entire
+ * message but once a message has been completely processed and le_iks_aesCmac_Done() or
+ * le_iks_aesCmac_Verify() has been called this function should not be called again with the same
+ * session.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the session reference is invalid
+ *                       or if the key type is invalid
+ *                       or if msgChunkPtr is NULL.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if no more messages can be processed, ie. le_iks_aesCmac_Done() or
+ *               le_iks_aesCmac_Verify() has already been called,
+ *               or if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ProcessChunk
+(
+    uint64  session                             IN, ///< Session reference.
+    uint8   msgChunk[le_iks.MAX_PACKET_SIZE]    IN  ///< Message chunk.
+                                                    ///< Must be <= MAX_PACKET_SIZE.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Complete message processing and get the processed message's authentication tag.
+ *
+ * The maximum size of the authentication tag is MAX_TAG_SIZE.  If the supplied buffer is
+ * smaller than the maximum tag size then the tag will be truncated.  However, all tags produced
+ * using the same key must use the same tag size.  It is up to the caller to ensure this.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the session reference is invalid
+ *                       or if the key type is invalid
+ *                       or if bufPtr is NULL.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if no message was processed or le_iks_aesCmac_Done() or
+ *               le_iks_aesCmac_Verify() has already been called,
+ *               or if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Done
+(
+    uint64  session                 IN, ///< Session reference.
+    uint8   tagBuf[MAX_TAG_SIZE]    OUT ///< Buffer to hold the authentication tag.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Complete message processing and compare the resulting authentication tag with the supplied tag.
+ *
+ * The maximum size of the authentication tag is MAX_TAG_SIZE.  If the supplied tag is
+ * smaller than the maximum tag size then only the first tagSize bytes of the tag is compared.
+ * However, all tags produced using the same key must use the same tag size.  It is up to the caller
+ * to ensure this.
+ *
+ * @return
+ *      LE_OK if the specified tag matches the calculated message tag.
+ *      LE_BAD_PARAMETER if the session reference is invalid
+ *                       or if the key type is invalid
+                         or if tagPtr is NULL or tagSize is zero.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if the specified tag does not match the calculated message tag,
+ *               or if no message was processed or le_iks_aesCmac_Done() or
+ *               or le_iks_aesCmac_Verify() has already been called,
+ *               or if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Verify
+(
+    uint64  session                 IN, ///< Session reference.
+    uint8   tagBuf[MAX_TAG_SIZE]    IN  ///< Authentication tag to check against.
+);

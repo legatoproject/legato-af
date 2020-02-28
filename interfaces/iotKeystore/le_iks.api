@@ -85,6 +85,10 @@ ENUM KeyType
     KEY_TYPE_AES_MILENAGE_K = 4,                    ///< AES Milenage K.
     KEY_TYPE_AES_MILENAGE_OPC = 5,                  ///< AES Milenage OPc.
 
+    /* HMAC keys. */
+    KEY_TYPE_HMAC_SHA512 = 81,
+    KEY_TYPE_HMAC_SHA384 = 82,
+    KEY_TYPE_HMAC_SHA256 = 83,
 
     /* RSA keys. */
     /* Private keys contain both the private and public key pairs. */
@@ -432,6 +436,7 @@ FUNCTION le_result_t GetKeySize
  * @return
  *      LE_OK if the key size is valid.
  *      LE_OUT_OF_RANGE if the key size is invalid.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t IsKeySizeValid
@@ -449,6 +454,7 @@ FUNCTION le_result_t IsKeySizeValid
  *      LE_OK if the key has a value.
  *      LE_BAD_PARAMETER if the key reference is invalid.
  *      LE_NOT_FOUND if the key has no value.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t HasKeyValue
@@ -713,6 +719,7 @@ FUNCTION le_result_t GetDigestSize
  *      LE_OK if successful.
  *      LE_BAD_PARAMETER if the digest reference is invalid
  *                       or if the update key reference is invalid or does not have a value.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  *      LE_FAULT if an update key has already been set
  *               or if there was an internal error.
  */
@@ -890,6 +897,7 @@ FUNCTION uint64 CreateSession
  * @return
  *      LE_OK if successful.
  *      LE_BAD_PARAMETER if the session reference is invalid.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t DeleteSession

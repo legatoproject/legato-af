@@ -27,6 +27,9 @@ extern:
     secStore.iotKeystore.le_iks
     secStore.iotKeystore.le_iks_aesMilenage
     secStore.iotKeystore.le_iks_aesGcm
+    secStore.iotKeystore.le_iks_hmac
+    secStore.iotKeystore.le_iks_aesCbc
+    secStore.iotKeystore.le_iks_aesCmac
 
 #if ${LE_CONFIG_LINUX} = ""
     secStore.secStoreDaemon.le_appInfo

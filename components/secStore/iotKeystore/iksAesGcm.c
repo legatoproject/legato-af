@@ -64,6 +64,7 @@
  *                       or if the key type is invalid
  *                       or if either noncePtr, tagPtr, plaintextPtr or ciphertextPtr is NULL when
  *                        they shouldn't be.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  *      LE_FAULT if there was an internal error.
  */
 //--------------------------------------------------------------------------------------------------
@@ -120,6 +121,7 @@ le_result_t le_iks_aesGcm_EncryptPacket
  *                       or if the key type is invalid
  *                       or if either noncePtr, tagPtr, plaintextPtr or ciphertextPtr is NULL when
  *                        they shouldn't be.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  *      LE_FAULT if the integrity check failed.
  */
 //--------------------------------------------------------------------------------------------------
@@ -178,6 +180,7 @@ le_result_t le_iks_aesGcm_DecryptPacket
  *      LE_BAD_PARAMETER if the session reference is invalid
  *                       or if the key type is invalid
  *                       or if noncePtr is NULL.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  *      LE_FAULT if there was an internal error.
  */
 //--------------------------------------------------------------------------------------------------
@@ -206,6 +209,7 @@ le_result_t le_iks_aesGcm_StartEncrypt
  *                       or if the key type is invalid
  *                       or if aadChunkPtr is NULL.
  *      LE_OUT_OF_RANGE if aadChunkSize is too big.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  *      LE_FAULT if an encryption or decryption process was not started or
  *                            plaintext/ciphertext processing has already started.
  */
@@ -232,6 +236,7 @@ le_result_t le_iks_aesGcm_ProcessAad
  *                       or if the key type is invalid
  *                       or if plaintextChunkPtr or ciphertextChunkPtr is NULL.
  *      LE_OUT_OF_RANGE if textSize is too big.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  *      LE_FAULT if an encryption process has not started.
  */
 //--------------------------------------------------------------------------------------------------
@@ -259,6 +264,7 @@ le_result_t le_iks_aesGcm_Encrypt
  *      LE_BAD_PARAMETER if the session reference is invalid
  *                       or if the key type is invalid
  *                       or if tagPtr is NULL.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  *      LE_FAULT if an encryption process has not started or no data
  *                            (AAD and plaintext) has been processed.
  */
@@ -301,6 +307,7 @@ le_result_t le_iks_aesGcm_DoneEncrypt
  *      LE_BAD_PARAMETER if the session reference is invalid
  *                       or if the key type is not valid
  *                       or if noncePtr is NULL.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  *      LE_FAULT if there was an internal error.
  */
 //--------------------------------------------------------------------------------------------------
@@ -327,6 +334,7 @@ le_result_t le_iks_aesGcm_StartDecrypt
  *                       or if the key type is invalid
  *                       or if plaintextChunkPtr or ciphertextChunkPtr is NULL.
  *      LE_OUT_OF_RANGE if textSize is too big.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  *      LE_FAULT if a decryption process has not started.
  */
 //--------------------------------------------------------------------------------------------------
@@ -354,6 +362,7 @@ le_result_t le_iks_aesGcm_Decrypt
  *      LE_BAD_PARAMETER if the session reference is invalid
  *                       or if the key type is invalid
  *                       or if tagPtr is NULL.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  *      LE_FAULT if a decryption process has not started
  *               or no data (AAD and ciphertext) has been processed
  *               or the integrity check failed.

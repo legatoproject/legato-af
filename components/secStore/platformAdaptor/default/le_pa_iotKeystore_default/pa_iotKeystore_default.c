@@ -277,15 +277,6 @@ LE_SHARED le_result_t pa_iks_GetProvisionKey
 }
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Create a session.
- *
- * @return
- *      A session reference if successful.
- *      0 if the key reference is invalid or does not contain a key value.
- */
-//--------------------------------------------------------------------------------------------------
 LE_SHARED uint64_t pa_iks_CreateSession
 (
     uint64_t            keyRef      ///< [IN] Key reference.
@@ -295,15 +286,6 @@ LE_SHARED uint64_t pa_iks_CreateSession
 }
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Delete a session.
- *
- * @return
- *      LE_OK
- *      LE_BAD_PARAMETER
- */
-//--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_iks_DeleteSession
 (
     uint64_t            sessionRef  ///< [IN] Session reference.
@@ -508,6 +490,136 @@ LE_SHARED le_result_t pa_iks_aesGcm_DoneDecrypt
     const uint8_t*  tagPtr,     ///< [IN] Buffer to hold the authentication tag.
     size_t          tagSize     ///< [IN] Authentication tag size.
                                 ///<         Expected to be LE_IKS_AESGCM_TAG_SIZE.
+)
+{
+    return LE_UNSUPPORTED;
+}
+
+
+//========================= AES CBC routines =====================
+
+
+LE_SHARED le_result_t pa_iks_aesCbc_StartEncrypt
+(
+    uint64_t session,           ///< [IN] Session reference.
+    const uint8_t* ivPtr,       ///< [IN] Initialization vector.
+    size_t ivSize               ///< [IN] IV size. Assumed to be LE_IKS_AESCBC_IV_SIZE bytes.
+)
+{
+    return LE_UNSUPPORTED;
+}
+
+
+LE_SHARED le_result_t pa_iks_aesCbc_Encrypt
+(
+    uint64_t session,                   ///< [IN] Session reference.
+    const uint8_t* plaintextChunkPtr,   ///< [IN] Plaintext chunk.
+    size_t plaintextChunkSize,          ///< [IN] Plaintext chunk size.
+                                        ///<      Must be <= LE_IKS_MAX_PACKET_SIZE and
+                                        ///<      a multiple of LE_IKS_AES_BLOCK_SIZE.
+    uint8_t* ciphertextChunkPtr,        ///< [OUT] Buffer to hold the ciphertext chunk.
+    size_t* ciphertextChunkSizePtr      ///< [INOUT] Ciphertext chunk size.
+                                        ///<         Must be >= plaintextChunkSize.
+
+)
+{
+    return LE_UNSUPPORTED;
+}
+
+
+LE_SHARED le_result_t pa_iks_aesCbc_StartDecrypt
+(
+    uint64_t session,       ///< [IN] Session reference.
+    const uint8_t* ivPtr,   ///< [IN] Initialization vector.
+    size_t ivSize           ///< [IN] IV size. Assumed to be LE_IKS_AESCBC_IV_SIZE bytes.
+)
+{
+    return LE_UNSUPPORTED;
+}
+
+
+LE_SHARED le_result_t pa_iks_aesCbc_Decrypt
+(
+    uint64_t session,                   ///< [IN] Session reference.
+    const uint8_t* ciphertextChunkPtr,  ///< [IN] Ciphertext chunk.
+    size_t ciphertextChunkSize,         ///< [IN] Ciphertext chunk size.
+                                        ///<      Must be <= LE_IKS_MAX_PACKET_SIZE and
+                                        ///<      a multiple of LE_IKS_AES_BLOCK_SIZE.
+    uint8_t* plaintextChunkPtr,         ///< [OUT] Buffer to hold the plaintext chunk.
+    size_t* plaintextChunkSizePtr       ///< [INOUT] Plaintext buffer size.
+                                        ///<         Must be >= ciphertextChunkSize.
+)
+{
+    return LE_UNSUPPORTED;
+}
+
+
+//========================= AES CMAC routines =====================
+
+
+LE_SHARED le_result_t pa_iks_aesCmac_ProcessChunk
+(
+    uint64_t session,           ///< [IN] Session reference.
+    const uint8_t* msgChunkPtr, ///< [IN] Message chunk.
+    size_t msgChunkSize         ///< [IN] Message chunk size. Must be <= LE_IKS_MAX_PACKET_SIZE.
+)
+{
+    return LE_UNSUPPORTED;
+}
+
+
+LE_SHARED le_result_t pa_iks_aesCmac_Done
+(
+    uint64_t session,       ///< [IN] Session reference.
+    uint8_t* tagBufPtr,     ///< [OUT] Buffer to hold the authentication tag.
+    size_t* tagBufSizePtr   ///< [INOUT] Authentication tag buffer size.
+)
+{
+    return LE_UNSUPPORTED;
+}
+
+
+LE_SHARED le_result_t pa_iks_aesCmac_Verify
+(
+    uint64_t session,           ///< [IN] Session reference.
+    const uint8_t* tagBufPtr,   ///< [IN] Authentication tag to check against.
+    size_t tagBufSize           ///< [IN] Authentication tag size. Cannot be zero.
+)
+{
+    return LE_UNSUPPORTED;
+}
+
+
+//========================= HMAC routines =====================
+
+
+LE_SHARED le_result_t pa_iks_hmac_ProcessChunk
+(
+    uint64_t session,           ///< [IN] Session reference.
+    const uint8_t* msgChunkPtr, ///< [IN] Message chunk.
+    size_t msgChunkSize         ///< [IN] Message chunk size. Must be <= LE_IKS_MAX_PACKET_SIZE.
+)
+{
+    return LE_UNSUPPORTED;
+}
+
+
+LE_SHARED le_result_t pa_iks_hmac_Done
+(
+    uint64_t session,       ///< [IN] Session reference.
+    uint8_t* tagBufPtr,     ///< [OUT] Buffer to hold the authentication tag.
+    size_t* tagBufSizePtr   ///< [INOUT] Authentication tag buffer size.
+)
+{
+    return LE_UNSUPPORTED;
+}
+
+
+LE_SHARED le_result_t pa_iks_hmac_Verify
+(
+    uint64_t session,           ///< [IN] Session reference.
+    const uint8_t* tagBufPtr,   ///< [IN] Authentication tag to check against.
+    size_t tagBufSize           ///< [IN] Authentication tag size. Cannot be zero.
 )
 {
     return LE_UNSUPPORTED;

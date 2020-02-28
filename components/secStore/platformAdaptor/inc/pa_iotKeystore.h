@@ -822,4 +822,206 @@ LE_SHARED le_result_t pa_iks_aesGcm_DoneDecrypt
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Starts a process to encrypt a message with AES in CBC mode.
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_UNSUPPORTED
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_aesCbc_StartEncrypt
+(
+    uint64_t session,           ///< [IN] Session reference.
+    const uint8_t* ivPtr,       ///< [IN] Initialization vector.
+    size_t ivSize               ///< [IN] IV size. Assumed to be LE_IKS_AESCBC_IV_SIZE bytes.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Encrypt a chunk of plaintext.
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_OUT_OF_RANGE
+ *      LE_UNSUPPORTED
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_aesCbc_Encrypt
+(
+    uint64_t session,                   ///< [IN] Session reference.
+    const uint8_t* plaintextChunkPtr,   ///< [IN] Plaintext chunk.
+    size_t plaintextChunkSize,          ///< [IN] Plaintext chunk size.
+                                        ///<      Must be <= LE_IKS_MAX_PACKET_SIZE and
+                                        ///<      a multiple of LE_IKS_AES_BLOCK_SIZE.
+    uint8_t* ciphertextChunkPtr,        ///< [OUT] Buffer to hold the ciphertext chunk.
+    size_t* ciphertextChunkSizePtr      ///< [INOUT] Ciphertext chunk size.
+                                        ///<         Must be >= plaintextChunkSize.
+
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Starts a process to decrypt a message with AES in CBC mode.
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_UNSUPPORTED
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_aesCbc_StartDecrypt
+(
+    uint64_t session,       ///< [IN] Session reference.
+    const uint8_t* ivPtr,   ///< [IN] Initialization vector.
+    size_t ivSize           ///< [IN] IV size. Assumed to be LE_IKS_AESCBC_IV_SIZE bytes.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decrypt a chunk of ciphertext.
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_OUT_OF_RANGE
+ *      LE_UNSUPPORTED
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_aesCbc_Decrypt
+(
+    uint64_t session,                   ///< [IN] Session reference.
+    const uint8_t* ciphertextChunkPtr,  ///< [IN] Ciphertext chunk.
+    size_t ciphertextChunkSize,         ///< [IN] Ciphertext chunk size.
+                                        ///<      Must be <= LE_IKS_MAX_PACKET_SIZE and
+                                        ///<      a multiple of LE_IKS_AES_BLOCK_SIZE.
+    uint8_t* plaintextChunkPtr,         ///< [OUT] Buffer to hold the plaintext chunk.
+    size_t* plaintextChunkSizePtr       ///< [INOUT] Plaintext buffer size.
+                                        ///<         Must be >= ciphertextChunkSize.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Process message chunks.
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_UNSUPPORTED
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_aesCmac_ProcessChunk
+(
+    uint64_t session,           ///< [IN] Session reference.
+    const uint8_t* msgChunkPtr, ///< [IN] Message chunk.
+    size_t msgChunkSize         ///< [IN] Message chunk size. Must be <= LE_IKS_MAX_PACKET_SIZE.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Complete message processing and get the processed message's authentication tag.
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_UNSUPPORTED
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_aesCmac_Done
+(
+    uint64_t session,       ///< [IN] Session reference.
+    uint8_t* tagBufPtr,     ///< [OUT] Buffer to hold the authentication tag.
+    size_t* tagBufSizePtr   ///< [INOUT] Authentication tag buffer size.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Complete message processing and compare the resulting authentication tag with the supplied tag.
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_UNSUPPORTED
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_aesCmac_Verify
+(
+    uint64_t session,           ///< [IN] Session reference.
+    const uint8_t* tagBufPtr,   ///< [IN] Authentication tag to check against.
+    size_t tagBufSize           ///< [IN] Authentication tag size. Cannot be zero.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Process message chunks.
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_UNSUPPORTED
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_hmac_ProcessChunk
+(
+    uint64_t session,           ///< [IN] Session reference.
+    const uint8_t* msgChunkPtr, ///< [IN] Message chunk.
+    size_t msgChunkSize         ///< [IN] Message chunk size. Must be <= LE_IKS_MAX_PACKET_SIZE.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Complete message processing and get the processed message's authentication tag.
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_UNSUPPORTED
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_hmac_Done
+(
+    uint64_t session,       ///< [IN] Session reference.
+    uint8_t* tagBufPtr,     ///< [OUT] Buffer to hold the authentication tag.
+    size_t* tagBufSizePtr   ///< [INOUT] Authentication tag buffer size.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Complete message processing and compare the resulting authentication tag with the supplied tag.
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_UNSUPPORTED
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_hmac_Verify
+(
+    uint64_t session,           ///< [IN] Session reference.
+    const uint8_t* tagBufPtr,   ///< [IN] Authentication tag to check against.
+    size_t tagBufSize           ///< [IN] Authentication tag size. Cannot be zero.
+);
+
 #endif // LEGATO_PA_IOT_KEYSTORE_INCLUDE_GUARD
