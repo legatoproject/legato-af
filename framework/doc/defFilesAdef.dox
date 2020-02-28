@@ -1048,6 +1048,9 @@ requires:
 
         // Need to write to log.txt. Read is required to open the file.
         [rw] /home/root/myFiles/log.txt      /usr/myFiles/
+
+        // I get read-only access to the NMEA port.
+        /dev/nmea         /dev/nmea
     }
 }
 @endcode
@@ -1131,8 +1134,6 @@ requires:
         // I get read-only access to the SPI port.
         [r]     /dev/sierra_spi   /dev/sierra_spi
 
-        // I get read-only access to the NMEA port.
-                /dev/nmea         /dev/nmea
 
         // I get read and write access to the I2C port.
         [rw]    /dev/sierra_i2c   /dev/
