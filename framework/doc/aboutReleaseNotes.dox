@@ -24,8 +24,17 @@ $ leaf update
 The 19.11.1 patch introduces:
 - clarification for MPL V2 licensing in Linux Scripts.
 - provides updated documentation and information on the Legato plugin for VSCode Version 1.0
+- fixed an issue where the AirVantage server is not notified that a reboot is pending on the target.
 
 @section rn1911_Features New Features
+
+List of new features in the 19.11.1 Release:
+
+@subsection rn1911_Features_avcAPI Ultra Low Power Mode Reboot
+
+A new API function, le_ulpm_Reboot() has been added to initiate the reboot of the processor and
+modem.
+
 
 List of new features in the 19.11 Release:
 
