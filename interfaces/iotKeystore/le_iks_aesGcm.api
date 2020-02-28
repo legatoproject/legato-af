@@ -93,6 +93,7 @@ DEFINE TAG_SIZE = 16;
  *                       or if the key type is invalid
  *                       or if either noncePtr, tagPtr, plaintextPtr or ciphertextPtr is NULL when
  *                        they shouldn't be.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  *      LE_FAULT if there was an internal error.
  */
 //--------------------------------------------------------------------------------------------------
@@ -138,6 +139,7 @@ FUNCTION le_result_t EncryptPacket
  *                       or if the key type is invalid
  *                       or if either noncePtr, tagPtr, plaintextPtr or ciphertextPtr is NULL when
  *                        they shouldn't be.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  *      LE_FAULT if the integrity check failed.
  */
 //--------------------------------------------------------------------------------------------------
@@ -185,6 +187,7 @@ FUNCTION le_result_t DecryptPacket
  *      LE_BAD_PARAMETER if the session reference is invalid
  *                       or if the key type is invalid
  *                       or if noncePtr is NULL.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  *      LE_FAULT if there was an internal error.
  */
 //--------------------------------------------------------------------------------------------------
@@ -208,6 +211,7 @@ FUNCTION le_result_t StartEncrypt
  *                       or if the key type is invalid
  *                       or if aadChunkPtr is NULL.
  *      LE_OUT_OF_RANGE if aadChunkSize is too big.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  *      LE_FAULT if an encryption or decryption process was not started or
  *                            plaintext/ciphertext processing has already started.
  */
@@ -231,6 +235,7 @@ FUNCTION le_result_t ProcessAad
  *                       or if the key type is invalid
  *                       or if plaintextChunkPtr or ciphertextChunkPtr is NULL.
  *      LE_OUT_OF_RANGE if textSize is too big.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  *      LE_FAULT if an encryption process has not started.
  */
 //--------------------------------------------------------------------------------------------------
@@ -251,6 +256,7 @@ FUNCTION le_result_t Encrypt
  *      LE_BAD_PARAMETER if the session reference is invalid
  *                       or if the key type is invalid
  *                       or if tagPtr is NULL.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  *      LE_FAULT if an encryption process has not started or no data
  *                            (AAD and plaintext) has been processed.
  */
@@ -288,6 +294,7 @@ FUNCTION le_result_t DoneEncrypt
  *      LE_BAD_PARAMETER if the session reference is invalid
  *                       or if the key type is not valid
  *                       or if noncePtr is NULL.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  *      LE_FAULT if there was an internal error.
  */
 //--------------------------------------------------------------------------------------------------
@@ -310,6 +317,7 @@ FUNCTION le_result_t StartDecrypt
  *                       or if the key type is invalid
  *                       or if plaintextChunkPtr or ciphertextChunkPtr is NULL.
  *      LE_OUT_OF_RANGE if textSize is too big.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  *      LE_FAULT if a decryption process has not started.
  */
 //--------------------------------------------------------------------------------------------------
@@ -330,6 +338,7 @@ FUNCTION le_result_t Decrypt
  *      LE_BAD_PARAMETER if the session reference is invalid
  *                       or if the key type is invalid
  *                       or if tagPtr is NULL.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
  *      LE_FAULT if a decryption process has not started
  *               or no data (AAD and ciphertext) has been processed
  *               or the integrity check failed.

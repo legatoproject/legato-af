@@ -599,21 +599,23 @@ static EntryIter_t* GetEntryIterPtr
  *
  * @return
  *      LE_OK if successful.
+ *      LE_OVERFLOW if the buffer is too small to hold the client name.
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t GetClientName
+LE_SHARED le_result_t secStoreServer_GetClientName
 (
+    le_msg_SessionRef_t sessionRef, ///< [IN] Reference to the session.
     char* bufPtr,                   ///< [OUT] Buffer to store the client name.
     size_t bufSize,                 ///< [IN] Size of the buffer.
-    bool* isApp                     ///< [OUT] Set to true if the client is an app.
+    bool* isAppPtr                  ///< [OUT] Set to true if the client is an app. May be NULL.
 )
 {
     // Get the client's credentials.
     pid_t pid;
     uid_t uid;
 
-    if (le_msg_GetClientUserCreds(le_secStore_GetClientSessionRef(), &uid, &pid) != LE_OK)
+    if (le_msg_GetClientUserCreds(sessionRef, &uid, &pid) != LE_OK)
     {
         LE_CRIT("Could not get credentials for the client.");
         return LE_FAULT;
@@ -622,26 +624,33 @@ static le_result_t GetClientName
     // Look up the process's application name.
     le_result_t result = le_appInfo_GetName(pid, bufPtr, bufSize);
 
-    if (result == LE_OK)
+    if (result == LE_OVERFLOW)
     {
-        *isApp = true;
+        LE_ERROR("Buffer too small to contain the application name.");
+        return result;
+    }
+    else if (result == LE_OK)
+    {
+        if (isAppPtr)
+        {
+            *isAppPtr = true;
+        }
         return LE_OK;
     }
 
-    LE_FATAL_IF(result == LE_OVERFLOW, "Buffer too small to contain the application name.");
-
     // The process was not an app.  Get the user name for the process.
+    if (isAppPtr)
+    {
+        *isAppPtr = false;
+    }
     result = user_GetName(uid, bufPtr, bufSize);
     if (result == LE_OK)
     {
-        *isApp = false;
         return LE_OK;
     }
 
-    LE_FATAL_IF(result == LE_OVERFLOW, "Buffer too small to contain the user name.");
-
     // Could not get the user name.
-    LE_CRIT("Could not get user name for pid %d (uid %d).", pid, uid);
+    LE_ERROR("Could not get user name for pid %d (uid %d).", pid, uid);
 
     return LE_FAULT;
 }
@@ -842,7 +851,8 @@ static le_result_t PrepareOp
         bool isApp;
         char clientName[LIMIT_MAX_USER_NAME_BYTES];
 
-        if (GetClientName(clientName, sizeof(clientName), &isApp) != LE_OK)
+        if (secStoreServer_GetClientName(le_secStore_GetClientSessionRef(), clientName,
+                                         sizeof(clientName), &isApp) != LE_OK)
         {
             LE_KILL_CLIENT("Could not get the client's name.");
             return LE_FAULT;

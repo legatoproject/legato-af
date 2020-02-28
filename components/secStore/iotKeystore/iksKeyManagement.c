@@ -10,6 +10,7 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "pa_iotKeystore.h"
+#include "secStoreServer.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -94,6 +95,59 @@ le_result_t le_iks_DeleteModuleId
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Convert Key ID by adding a prefix representing app or user name.
+ * keyId -> <clientName>.keyId
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the buffer is too small to hold the client name.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t ConvertKeyId
+(
+    const char* src,    ///< [IN] Original Key ID
+    char* dst,          ///< [OUT] Converted Key ID
+    size_t dstSize      ///< [IN] Destination buffer size
+)
+{
+    le_result_t result;
+    size_t offset = 0;
+
+    result = secStoreServer_GetClientName(le_iks_GetClientSessionRef(), dst, dstSize, NULL);
+    if (result != LE_OK)
+    {
+        LE_ERROR("Could not get the client's name.");
+        return result;
+    }
+
+    offset = strlen(dst);
+    // Must fit delimiter, at least one-character key ID, and terminating 0.
+    if (offset + 3 > dstSize)
+    {
+        LE_ERROR("Buffer too small to contain the client name: offset %" PRIuS " size %" PRIuS,
+                 offset, dstSize);
+        return LE_OVERFLOW;
+    }
+
+    dst[offset] = '.';
+    offset++;
+
+    result = le_utf8_Copy(dst + offset, src, dstSize - offset, NULL);
+    if (result != LE_OK)
+    {
+        LE_ERROR("Could not copy KeyId to the buffer: %s", LE_RESULT_TXT(result));
+        return result;
+    }
+
+    LE_DEBUG("Converted Key Id '%s'", dst);
+
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Gets a reference to a key.
  *
  * @return
@@ -106,7 +160,14 @@ uint64_t le_iks_GetKey
     const char*     keyId           ///< [IN] Identifier string.
 )
 {
-    return (uint32_t) pa_iks_GetKey(keyId);
+    char fullKeyIdBuf[LE_IKS_MAX_KEY_ID_BYTES] = {0};
+
+    if (LE_OK != ConvertKeyId(keyId, fullKeyIdBuf, sizeof(fullKeyIdBuf)))
+    {
+        LE_ERROR("Error converting key '%s'", keyId);
+        return 0;
+    }
+    return pa_iks_GetKey(fullKeyIdBuf);
 }
 
 
@@ -134,7 +195,15 @@ uint64_t le_iks_CreateKey
     le_iks_KeyUsage_t   keyUsage    ///< [IN] Key usage.
 )
 {
-    return (uint32_t) pa_iks_CreateKey(keyId, keyUsage);
+    char fullKeyIdBuf[LE_IKS_MAX_KEY_ID_BYTES] = {0};
+
+    if (LE_OK != ConvertKeyId(keyId, fullKeyIdBuf, sizeof(fullKeyIdBuf)))
+    {
+        LE_ERROR("Error converting key '%s'", keyId);
+        return 0;
+    }
+
+    return pa_iks_CreateKey(fullKeyIdBuf, keyUsage);
 }
 
 
@@ -160,7 +229,15 @@ uint64_t le_iks_CreateKeyByType
     uint32_t            keySize     ///< [IN] Key size in bytes.
 )
 {
-    return (uint32_t) pa_iks_CreateKeyByType(keyId, keyType, keySize);
+    char fullKeyIdBuf[LE_IKS_MAX_KEY_ID_BYTES] = {0};
+
+    if (LE_OK != ConvertKeyId(keyId, fullKeyIdBuf, sizeof(fullKeyIdBuf)))
+    {
+        LE_ERROR("Error converting key '%s'", keyId);
+        return 0;
+    }
+
+    return pa_iks_CreateKeyByType(fullKeyIdBuf, keyType, keySize);
 }
 
 

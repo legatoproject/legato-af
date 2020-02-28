@@ -1,0 +1,137 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_iks_aesCbc IoT Keystore AES CBC API
+ *
+ * @ref le_iks_aesCbc_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * Legato IoT Keystore APIs for performing AES encryption in CBC mode.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_iks_aesCbc_interface.h
+ *
+ * Legato @ref c_iks_aesCbc API
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+USETYPES le_iks.api;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * IV (initialization vector) size in bytes.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE IV_SIZE = 16;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Starts a process to encrypt a message with AES in CBC mode.  Calling this function will cancel
+ * any previously started process using the same session.
+ *
+ * To encrypt a message the following sequence should be used:
+ *
+ * le_iks_aesCbc_StartEncrypt() // Start the encryption process.
+ * le_iks_aesCbc_Encrypt()      // Call zero or more times until all plaintext is encrypted.
+ *
+ * The initialization vector, IV, does not need to be kept secret but must be unpredictable.  Thus
+ * the IV must be generated from a well seeded CPRNG each time this function is called.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the session reference is invalid
+ *                       or if the key type is invalid
+ *                       or if ivPtr is NULL.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t StartEncrypt
+(
+    uint64  session         IN, ///< Session reference.
+    uint8   iv[IV_SIZE]     IN  ///< Initialization vector.
+                                ///<   Assumed to be IV_SIZE bytes.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Encrypt a chunk of plaintext. le_iks_aesCbc_StartEncrypt() must have been previously called. The
+ * plaintest must be a multiple of the block size.  It is up to the caller to pad the plaintext as
+ * needed.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the session reference is invalid
+ *                       or if the key type is invalid
+ *                       or if plaintextChunkPtr or ciphertextChunkPtr is NULL.
+ *      LE_OUT_OF_RANGE if textSize is invalid.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if an encryption process has not started.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Encrypt
+(
+    uint64  session                                 IN,  ///< Session reference.
+    uint8   plaintextChunk[le_iks.MAX_PACKET_SIZE]  IN,  ///< Plaintext chunk.
+    uint8   ciphertextChunk[le_iks.MAX_PACKET_SIZE] OUT  ///< Buffer to hold the ciphertext chunk.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Starts a process to decrypt a message with AES in CBC mode.  Calling this function will cancel
+ * any previously started process using the same session.
+ *
+ * To decrypt a message the following sequence should be used:
+ *
+ * le_iks_aesCbc_StartDecrypt() // Start the decryption process.
+ * le_iks_aesCbc_Decrypt()      // Call zero or more times until all ciphertext is decrypted.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the session reference is invalid
+ *                       or if the key type is invalid
+ *                       or if ivPtr is NULL.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t StartDecrypt
+(
+    uint64  session         IN, ///< Session reference.
+    uint8   iv[IV_SIZE]     IN  ///< Initialization vector.
+                                ///<   Assumed to be AESCBC_IV_SIZE bytes.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decrypt a chunk of ciphertext. le_iks_aesCbc_StartDecrypt() must have been previously called to
+ * start a decryption process.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the session reference is invalid.
+ *                       or if the key type is invalid.
+ *                       or if plaintextChunkPtr or ciphertextChunkPtr is NULL.
+ *      LE_OUT_OF_RANGE if textSize is invalid.
+ *      LE_UNSUPPORTED if underlying resource does not support this operation.
+ *      LE_FAULT if a decryption process has not started.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Decrypt
+(
+    uint64  session                                 IN,  ///< Session reference.
+    uint8   ciphertextChunk[le_iks.MAX_PACKET_SIZE] IN,  ///< Ciphertext chunk.
+    uint8   plaintextChunk[le_iks.MAX_PACKET_SIZE]  OUT  ///< Buffer to hold the plaintext chunk.
+);

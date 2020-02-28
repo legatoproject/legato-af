@@ -472,6 +472,301 @@ static void AesGcmPacketTest
                "Decrypted text correctness check");
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Tests MAC generation and verification with HMAC.
+ */
+//--------------------------------------------------------------------------------------------------
+static void HmacTest(void)
+{
+    uint8_t mac[10];
+    uint64_t keyRef;
+    size_t macSize = sizeof(mac);
+    const char keyId[] = "HmacMsgKey";
+    le_result_t result;
+
+    LE_TEST_INFO("If key already exists, delete it");
+    keyRef = le_iks_GetKey(keyId);
+    if (keyRef != 0)
+    {
+        result = le_iks_DeleteKey(keyRef, NULL, 0);
+        LE_TEST_OK(result == LE_OK, "Deleting HMAC key");
+    }
+
+    // Create an HMAC key.
+    keyRef = le_iks_CreateKeyByType(keyId, LE_IKS_KEY_TYPE_HMAC_SHA256, 17);
+    LE_TEST_OK(keyRef != 0, "Create HMAC key.");
+
+    result = le_iks_GenKeyValue(keyRef, NULL, 0);
+    LE_TEST_OK(result == LE_OK, "Generate HMAC key: %s", LE_RESULT_TXT(result));
+
+    // Create a session.
+    uint64_t sessionPtr = le_iks_CreateSession(keyRef);
+    LE_TEST_OK(sessionPtr != 0, "Create session.");
+
+    // Attempt to get the MAC before processing any messages.
+    result = le_iks_hmac_Done(sessionPtr, mac, &macSize);
+    LE_TEST_OK(result == LE_FAULT, "Negative test: to get MAC when no messages are processed.");
+
+    // Generate a MAC in two parts.
+    uint8_t part1[] = "Do not go gentle into that goodnight.";
+    uint8_t part2[] = "Rage, rage against the dying of the light.";
+
+    result = le_iks_hmac_ProcessChunk(sessionPtr, part1, sizeof(part1));
+    LE_TEST_OK(result == LE_OK, "HMAC process chunk %s", LE_RESULT_TXT(result));
+
+    result = le_iks_hmac_ProcessChunk(sessionPtr, part2, sizeof(part2));
+    LE_TEST_OK(result == LE_OK, "HMAC process chunk %s", LE_RESULT_TXT(result));
+
+    // Get the MAC.
+    result = le_iks_hmac_Done(sessionPtr, mac, &macSize);
+    LE_TEST_OK(result == LE_OK, "Get MAC %s", LE_RESULT_TXT(result));
+
+    // Attempt to process more messages after getting the MAC.
+    result = le_iks_hmac_ProcessChunk(sessionPtr, part1, sizeof(part1));
+    LE_TEST_OK(result == LE_FAULT,
+               "Negative test: to process more messages after getting the MAC.");
+
+    // Cleanup.
+    result = le_iks_DeleteSession(sessionPtr);
+    LE_TEST_OK(result == LE_OK, "Delete session %s", LE_RESULT_TXT(result));
+
+    // Create a session.
+    sessionPtr = le_iks_CreateSession(keyRef);
+    LE_TEST_OK(sessionPtr != 0, "Create session.");
+
+    // Verify the MAC by recalculating it.
+    result = le_iks_hmac_ProcessChunk(sessionPtr, part1, sizeof(part1));
+    LE_TEST_OK(result == LE_OK, "Start HMAC process chunk %s", LE_RESULT_TXT(result));
+
+    result = le_iks_hmac_ProcessChunk(sessionPtr, part2, sizeof(part2));
+    LE_TEST_OK(result == LE_OK, "Start HMAC process chunk %s", LE_RESULT_TXT(result));
+
+    result = le_iks_hmac_Verify(sessionPtr, mac, macSize);
+    LE_TEST_OK(result == LE_OK, "Verify MAC %s", LE_RESULT_TXT(result));
+
+    // Attempt to get the mac again.
+    result = le_iks_hmac_Done(sessionPtr, mac, &macSize);
+    LE_TEST_OK(result == LE_FAULT, "Negative test: attempt to get MAC after verifying the MAC %s",
+               LE_RESULT_TXT(result));
+
+    // Ensure that the mac size has not changed.
+    LE_TEST_OK(macSize == sizeof(mac), "MAC size correctness");
+
+    // Cleanup.
+    result = le_iks_DeleteSession(sessionPtr);
+    LE_TEST_OK(result == LE_OK, "Delete session %s", LE_RESULT_TXT(result));
+
+    LE_TEST_INFO("Successfully performed HMAC generation and verification.  %zu", macSize);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Tests AES CMAC generation and verification with CMAC.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AesCmacTest(void)
+{
+    uint8_t mac[10];
+    uint64_t keyRef;
+    size_t macSize = sizeof(mac);
+    const char keyId[] = "CmacMsgKey";
+    le_result_t result;
+
+    LE_TEST_INFO("If key already exists, delete it");
+    keyRef = le_iks_GetKey(keyId);
+    if (keyRef != 0)
+    {
+        result = le_iks_DeleteKey(keyRef, NULL, 0);
+        LE_TEST_OK(result == LE_OK, "Deleting CMAC key");
+    }
+
+    // Create an CMAC key.
+    keyRef = le_iks_CreateKeyByType(keyId, LE_IKS_KEY_TYPE_AES_CMAC, 16);
+    LE_TEST_OK(keyRef != 0, "Create CMAC key.");
+
+    result = le_iks_GenKeyValue(keyRef, NULL, 0);
+    LE_TEST_OK(result == LE_OK, "Generate CMAC key: %s", LE_RESULT_TXT(result));
+
+    // Create a session.
+    uint64_t sessionPtr = le_iks_CreateSession(keyRef);
+    LE_TEST_OK(sessionPtr != 0, "Create session.");
+
+    // Attempt to get the MAC before processing any messages.
+    result = le_iks_aesCmac_Done(sessionPtr, mac, &macSize);
+    LE_TEST_OK(result == LE_FAULT, "Negative test: to get MAC when no messages are processed.");
+
+    // Generate a MAC in two parts.
+    uint8_t part1[] = "Do not go gentle into that goodnight.";
+    uint8_t part2[] = "Rage, rage against the dying of the light.";
+
+    result = le_iks_aesCmac_ProcessChunk(sessionPtr, part1, sizeof(part1));
+    LE_TEST_OK(result == LE_OK, "CMAC process chunk %s", LE_RESULT_TXT(result));
+
+    result = le_iks_aesCmac_ProcessChunk(sessionPtr, part2, sizeof(part2));
+    LE_TEST_OK(result == LE_OK, "CMAC process chunk %s", LE_RESULT_TXT(result));
+
+    // Get the MAC.
+    result = le_iks_aesCmac_Done(sessionPtr, mac, &macSize);
+    LE_TEST_OK(result == LE_OK, "Get MAC %s", LE_RESULT_TXT(result));
+
+    // Attempt to process more messages after getting the MAC.
+    result = le_iks_aesCmac_ProcessChunk(sessionPtr, part1, sizeof(part1));
+    LE_TEST_OK(result == LE_FAULT,
+               "Negative test: to process more messages after getting the MAC.");
+
+    // Cleanup.
+    result = le_iks_DeleteSession(sessionPtr);
+    LE_TEST_OK(result == LE_OK, "Delete session %s", LE_RESULT_TXT(result));
+
+    // Create a session.
+    sessionPtr = le_iks_CreateSession(keyRef);
+    LE_TEST_OK(sessionPtr != 0, "Create session.");
+
+    // Verify the MAC by recalculating it.
+    result = le_iks_aesCmac_ProcessChunk(sessionPtr, part1, sizeof(part1));
+    LE_TEST_OK(result == LE_OK, "Start CMAC process chunk %s", LE_RESULT_TXT(result));
+
+    result = le_iks_aesCmac_ProcessChunk(sessionPtr, part2, sizeof(part2));
+    LE_TEST_OK(result == LE_OK, "Start CMAC process chunk %s", LE_RESULT_TXT(result));
+
+    result = le_iks_aesCmac_Verify(sessionPtr, mac, macSize);
+    LE_TEST_OK(result == LE_OK, "Verify MAC %s", LE_RESULT_TXT(result));
+
+    // Attempt to get the mac again.
+    result = le_iks_aesCmac_Done(sessionPtr, mac, &macSize);
+    LE_TEST_OK(result == LE_FAULT, "Negative test: attempt to get MAC after verifying the MAC %s",
+               LE_RESULT_TXT(result));
+
+    // Ensure that the mac size has not changed.
+    LE_TEST_OK(macSize == sizeof(mac), "MAC size correctness");
+
+    // Cleanup.
+    result = le_iks_DeleteSession(sessionPtr);
+    LE_TEST_OK(result == LE_OK, "Delete session %s", LE_RESULT_TXT(result));
+
+    LE_TEST_INFO("Successfully performed CMAC generation and verification.  %zu", macSize);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Tests AES CBC encryption/decryption.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AesCbcTest(void)
+{
+    const char keyId[] = "CbcMsgKey";
+    le_result_t result;
+
+    LE_TEST_INFO("If key already exists, delete it");
+    uint64_t keyRef = le_iks_GetKey(keyId);
+    if (keyRef != 0)
+    {
+        result = le_iks_DeleteKey(keyRef, NULL, 0);
+        LE_TEST_OK(result == LE_OK, "Deleting AES CBC key %s", LE_RESULT_TXT(result));
+    }
+
+    // Create a CBC key.
+    keyRef = le_iks_CreateKeyByType(keyId, LE_IKS_KEY_TYPE_AES_CBC, 24);
+    LE_TEST_OK(keyRef != 0, "Could not create CBC key.");
+
+    result = le_iks_GenKeyValue(keyRef, NULL, 0);
+    LE_TEST_OK(result == LE_OK, "Generate CBC key %s", LE_RESULT_TXT(result));
+
+    // Create a session.
+    uint64_t sessionPtr = le_iks_CreateSession(keyRef);
+    LE_TEST_OK(sessionPtr != 0, "Could not create session.");
+
+    // Start encryption.
+    uint8_t plaintext[] = "0123456789012345 123456789012345";
+    int textSize = sizeof(plaintext)-1;
+    plaintext[textSize] = '\0';
+
+    uint8_t iv[LE_IKS_AESCBC_IV_SIZE] = {0};
+
+    result = le_iks_aesCbc_StartEncrypt(sessionPtr, iv, sizeof(iv));
+    LE_TEST_OK(result == LE_OK, "Start CBC encryption process %s", LE_RESULT_TXT(result));
+
+    // Attempt to encrypt a plaintext that is not a multiple of the block size.
+    uint8_t ct1[sizeof(plaintext)] = "";
+    ct1[sizeof(ct1)-1] = '\0';
+
+    size_t ct1Size = sizeof(ct1);
+    result = le_iks_aesCbc_Encrypt(sessionPtr, plaintext, textSize + 1, ct1, &ct1Size);
+    LE_TEST_OK(result == LE_OUT_OF_RANGE,
+               "Negative test: encrypt plaintext that is not a multiple of the block size %s",
+               LE_RESULT_TXT(result));
+
+    // Encrypt a message that is exactly two blocks.
+    result = le_iks_aesCbc_Encrypt(sessionPtr, plaintext, textSize, ct1, &ct1Size);
+    LE_TEST_OK(result == LE_OK, "CBC encrypt message %s", LE_RESULT_TXT(result));
+    LE_TEST_OK(memcmp(plaintext, ct1, textSize) != 0,
+               "Plaintext must be different from ciphertext.");
+
+    // Encrypt the message again with a different IV.
+    uint8_t ct2[sizeof(plaintext)] = "";
+    ct2[sizeof(ct2)-1] = '\0';
+
+    iv[2] = 8;
+    result = le_iks_aesCbc_StartEncrypt(sessionPtr, iv, sizeof(iv));
+    LE_TEST_OK(result == LE_OK, "Start CBC encryption process %s", LE_RESULT_TXT(result));
+
+    size_t ct2Size = sizeof(ct2);
+    result = le_iks_aesCbc_Encrypt(sessionPtr, plaintext, textSize, ct2, &ct2Size);
+    LE_TEST_OK(result == LE_OK, "CBC encrypt message %s", LE_RESULT_TXT(result));
+    LE_TEST_OK(memcmp(plaintext, ct2, textSize) != 0,
+               "Plaintext must be different from ciphertext.");
+    LE_TEST_OK(memcmp(ct1, ct2, textSize) != 0,
+               "Encryption with different IVs should produce different ciphertexts.");
+
+    // long message test, encrypt section 2 - same plaintext
+    ct1Size = sizeof(ct1);
+    result = le_iks_aesCbc_Encrypt(sessionPtr, plaintext, textSize, ct1, &ct1Size);
+    LE_TEST_OK(result == LE_OK, "CBC encrypt message %s", LE_RESULT_TXT(result));
+    LE_TEST_OK(memcmp(plaintext, ct1, textSize) != 0,
+               "Plaintext must be different from ciphertext.");
+    LE_TEST_OK(memcmp(ct1, ct2, textSize) != 0,
+               "Encryption with chaining mode should produce different ciphertexts.");
+
+    // Attempt to decrypt the message without starting a decryption process.
+    uint8_t pt[sizeof(plaintext)] = "";
+    pt[sizeof(pt)-1] = '\0';
+    size_t ptSize = sizeof(pt);
+
+    result = le_iks_aesCbc_Decrypt(sessionPtr, ct2, textSize, pt, &ptSize);
+    LE_TEST_OK(result == LE_FAULT,
+               "Negative test: attempt to decrypt without starting %s", LE_RESULT_TXT(result));
+
+    // Decrypt the message.
+    result = le_iks_aesCbc_StartDecrypt(sessionPtr, iv, sizeof(iv));
+    LE_TEST_OK(result == LE_OK, "Start CBC decryption process %s", LE_RESULT_TXT(result));
+
+    ptSize = sizeof(pt);
+    result = le_iks_aesCbc_Decrypt(sessionPtr, ct2, textSize, pt, &ptSize);
+    LE_TEST_OK(result == LE_OK, "CBC decrypt message %s", LE_RESULT_TXT(result));
+
+    LE_TEST_OK(memcmp(plaintext, pt, textSize) == 0, "Decrypted plaintext matches original.");
+    LE_TEST_INFO("PT = '%s'", pt);
+
+    // decrypt from another ciphertext
+    ptSize = sizeof(pt);
+    result = le_iks_aesCbc_Decrypt(sessionPtr, ct1, textSize, pt, &ptSize);
+    LE_TEST_OK(result == LE_OK, "CBC decrypt message %s", LE_RESULT_TXT(result));
+
+    LE_TEST_OK(memcmp(plaintext, pt, textSize) == 0, "Decrypted plaintext matches original.");
+    LE_TEST_INFO("PT = '%s'", pt);
+
+    // Cleanup.
+    result = le_iks_DeleteSession(sessionPtr);
+    LE_TEST_OK(result == LE_OK, "Delete session %s", LE_RESULT_TXT(result));
+
+    LE_TEST_INFO("CBC encrypt/decrypt test done.");
+}
+
+
 COMPONENT_INIT
 {
     LE_TEST_PLAN(LE_TEST_NO_PLAN);
@@ -479,6 +774,9 @@ COMPONENT_INIT
     LE_TEST_INFO("=== IoT Keystore test BEGIN ===");
     AesGcmPacketTest();
     if (0) MilenageTest();
+    HmacTest();
+    AesCbcTest();
+    AesCmacTest();
 
     LE_TEST_INFO("=== IoT Keystore test END ===");
 
