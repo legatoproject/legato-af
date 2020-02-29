@@ -361,12 +361,15 @@ void msgLocal_DeleteSession
 //--------------------------------------------------------------------------------------------------
 void msgLocal_OpenSessionSync
 (
-    msg_LocalSession_t*            sessionRef      ///< [in] Reference to the session.
+    le_msg_SessionRef_t            sessionRef      ///< [in] Reference to the session.
 )
 {
     // If no such session exists, fatal.
     LE_FATAL_IF(!sessionRef, "No such session");
-    le_msg_LocalService_t* servicePtr = sessionRef->servicePtr;
+
+    msg_LocalSession_t* localSessionPtr = CONTAINER_OF(sessionRef, msg_LocalSession_t, session);
+    le_msg_LocalService_t* servicePtr = localSessionPtr->servicePtr;
+    LE_ASSERT(servicePtr != NULL);
 
     // Wait for service to start
     WaitServiceReady(servicePtr);
@@ -387,7 +390,7 @@ void msgLocal_OpenSessionSync
  *
  * @return
  *  - LE_OK if the session was successfully opened.
- *  - LE_NOT_FOUND if the server is not currently offering the service to which the client is bound.
+ *  - LE_UNAVAILABLE if the server is not currently offering the service to which the client is bound.
  *  - LE_NOT_PERMITTED if the client interface is not bound to any service (doesn't have a binding).
  *  - LE_COMM_ERROR if the Service Directory cannot be reached.
  *
@@ -400,27 +403,33 @@ void msgLocal_OpenSessionSync
 //--------------------------------------------------------------------------------------------------
 le_result_t msgLocal_TryOpenSessionSync
 (
-    msg_LocalSession_t*            sessionRef      ///< [in] Reference to the session.
+    le_msg_SessionRef_t     sessionRef      ///< [in] Reference to the session.
 )
 {
-    // Check if session exists and is started.
+    // If sessionRef is NULL, return LE_NOT_PERMITTED but do not assert
     if (!sessionRef)
     {
-        // Bindings are static.  If the session ref is NULL, it means this service is not bound.
         return LE_NOT_PERMITTED;
     }
 
-    le_msg_LocalService_t* servicePtr = sessionRef->servicePtr;
+    msg_LocalSession_t* localSessionPtr = CONTAINER_OF(sessionRef, msg_LocalSession_t, session);
+    le_msg_LocalService_t* servicePtr = localSessionPtr->servicePtr;
 
-    // Do not lock; we want to fail if service is not yet started rather than blocking
-    // until service starts.
-    if (servicePtr->receiver.thread != NULL)
+    // Check if session exists and is started.
+    if (!servicePtr)
+    {
+        // Bindings are static. If the servicePtr is NULL, it means this service is not bound.
+        return LE_NOT_PERMITTED;
+    }
+    else if (servicePtr->receiver.thread != NULL)
     {
         return LE_OK;
     }
     else
     {
-        return LE_NOT_FOUND;
+        // Do not lock; we want to fail if service is not yet started rather than blocking
+        // until service starts.
+        return LE_UNAVAILABLE;
     }
 }
 
