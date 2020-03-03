@@ -767,7 +767,11 @@ static le_result_t HandleHttpResponse
         // HTTP_GET command, then continue to read remaining data.
         if (HEAD_CMD_ENDED == needmore)
         {
-            if (HTTP_GET == contextPtr->command && tinyCtxPtr->handler.contentlength > 0)
+            if ((HTTP_GET == contextPtr->command ||
+                HTTP_POST == contextPtr->command ||
+                HTTP_PUT == contextPtr->command ||
+                HTTP_DELETE == contextPtr->command) &&
+                tinyCtxPtr->handler.contentlength > 0)
             {
                 LE_DEBUG("HTTP_HEAD response received, continue reading data");
                 break;
