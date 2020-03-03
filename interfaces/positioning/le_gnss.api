@@ -155,6 +155,8 @@
  * The le_gnss_DisableExternalLna() function disables the EXT_GPS_LNA_EN signal. The pin remains off
  * regardless of the GNSS state.
  *
+ * The le_gnss_GetExternalLna() function read the EXT_GPS_LNA_EN status.
+ *
  * Please refer to @ref le_gnss_APIcallsRequirements.
  *
  * A sample code can be seen in the following page:
@@ -259,6 +261,7 @@
  *| le_gnss_GetNmeaSentences() | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
  *| le_gnss_EnableExternalLna() | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
  *| le_gnss_DisableExternalLna() | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
+ *| le_gnss_GetExternalLna() | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
  *
  * Also see @ref howToGNSS.
  *
@@ -2016,6 +2019,21 @@ FUNCTION le_result_t EnableExternalLna
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t DisableExternalLna
 (
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read the EXT_GPS_LNA_EN status
+ *
+ * @return LE_OK               Function succeeded.
+ * @return LE_NOT_PERMITTED    GNSS is not in the ready state
+ * @return LE_UNSUPPORTED      Function not supported on this platform
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetExternalLna
+(
+    uint8  lnaStatus OUT  ///< GNSS LNA Status
 );
 
 //--------------------------------------------------------------------------------------------------
