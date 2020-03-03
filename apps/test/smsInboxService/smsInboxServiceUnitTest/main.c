@@ -450,8 +450,7 @@ static void Simulate_smsInbox_cfgFileInit
 {
     LE_INFO("Init Sms InBox cfg files");
     char cfgCpCommand[512] = "cp -rf ";
-    size_t cfgFilePathLen = strlen(smsCfgFilePath);
-    strncat(cfgCpCommand, smsCfgFilePath, cfgFilePathLen + 1);
+    LE_ASSERT_OK(le_utf8_Append(cfgCpCommand, smsCfgFilePath, sizeof(cfgCpCommand), NULL));
     strncat(cfgCpCommand, SIMU_CONF_PATH, MAX_SIMU_PATH_LEN);
     system(cfgCpCommand);
 }
@@ -468,8 +467,7 @@ static void Simulate_smsInbox_msgFileInit
 {
     LE_INFO("Init Sms InBox msg files");
     char msgCpCommand[512]= "cp -rf ";
-    size_t msgFilePathLen = strlen(smsMsgFilePath);
-    strncat(msgCpCommand, smsMsgFilePath, msgFilePathLen + 1);
+    LE_ASSERT_OK(le_utf8_Append(msgCpCommand, smsMsgFilePath, sizeof(msgCpCommand), NULL));
     strncat(msgCpCommand, SIMU_MSG_PATH, MAX_SIMU_PATH_LEN);
     system(msgCpCommand);
 }
