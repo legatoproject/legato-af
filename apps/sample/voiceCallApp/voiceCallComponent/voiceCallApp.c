@@ -498,7 +498,7 @@ static le_result_t isNumValid
 *
 * @return
 *      - LE_OK             If voice call can be successfully made to the destination.
-*      - LE_BUSY           If there is already an active voice call.
+*      - LE_NOT_POSSIBLE   If there is already an active voice call.
 *      - LE_FAULT          If not able to initiate voice call.
 */
 //-------------------------------------------------------------------------------------------------
@@ -510,7 +510,7 @@ le_result_t ctrlVC_MakeCall
     if (callFlag)
     {
         LE_INFO("Cannot make voice call while there is already an active voice call. Please hang up and try again.");
-        return LE_BUSY;
+        return LE_NOT_POSSIBLE;
     }
     else
     {

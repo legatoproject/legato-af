@@ -563,13 +563,13 @@ static le_result_t StartTimer
     if (time == 0)
     {
         printf("Invalid argument for timeout value.\n");
-        return LE_BAD_PARAMETER;
+        return LE_NOT_POSSIBLE;
     }
 
     // Set timer for data connection request
    le_timer_Ref_t timerRef = NULL;
    le_clk_Time_t interval = { time, 0 };
-   le_result_t res = LE_UNAVAILABLE;
+   le_result_t res = LE_NOT_POSSIBLE;
 
    timerRef = le_timer_Create("Data_Request_Timeout");
    res = le_timer_SetInterval(timerRef, interval);
