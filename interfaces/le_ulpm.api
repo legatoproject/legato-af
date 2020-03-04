@@ -191,7 +191,7 @@ FUNCTION le_result_t GetFirmwareVersion
  *
  * @return
  *      - LE_OK if entry to ultra low power mode initiates properly.
- *      - LE_UNAVAILABLE if shutting is not possible now. Try again.
+ *      - LE_NOT_POSSIBLE if shutting is not possible now. Try again.
  *      - LE_NOT_PERMITTED if the process lacks sufficient permissions to perform a shutdown.
  *      - LE_UNSUPPORTED if the device lacks the ability to shutdown via ULPM.
  *      - LE_FAULT if there is a non-specific failure.
@@ -206,7 +206,7 @@ FUNCTION le_result_t ShutDown();
  *
  * @return
  *      - LE_OK if reboot initiates properly.
- *      - LE_UNAVAILABLE if rebooting is not possible now. Try again.
+ *      - LE_NOT_POSSIBLE if rebooting is not possible now. Try again.
  *      - LE_NOT_PERMITTED if the process lacks sufficient permissions to perform a reboot.
  *      - LE_UNSUPPORTED if the device lacks the ability to reboot via ULPM.
  *      - LE_FAULT if there is a non-specific failure.

@@ -92,8 +92,8 @@ static char* BuildPathName
  *
  * @return
  *  - LE_OK             The function succeeded.
- *  - LE_UNAVAILABLE    The prefix cannot be added and the function is unusable
- *  - LE_UNSUPPORTED    A directory in the tree belongs to a Read-Only space and cannot be created
+ *  - LE_UNSUPPORTED    The prefix cannot be added and the function is unusable
+ *  - LE_NOT_POSSIBLE   A directory in the tree belongs to a Read-Only space and cannot be created
  *  - LE_NOT_PERMITTED  A directory in the tree belongs has not access right and cannot be created
  *  - LE_FAULT          The function fails while creating or accessing to a directory.
  */
@@ -108,7 +108,7 @@ static le_result_t MkDirTree
 
     if (NULL == FsPrefixPtr)
     {
-        return LE_UNAVAILABLE;
+        return LE_UNSUPPORTED;
     }
 
     while ((slashPtr = strchr (slashPtr + 1, '/')))
@@ -119,7 +119,7 @@ static le_result_t MkDirTree
         {
             if (EROFS == errno)
             {
-                return LE_UNSUPPORTED;
+                return LE_NOT_POSSIBLE;
             }
             else if ((EPERM == errno) || (EACCES == errno))
             {
@@ -880,7 +880,7 @@ void fs_Init
                     FsPrefixPtr = *tempFsPrefixPtr;
                     break;
                 }
-                else if ((LE_UNSUPPORTED == res) || (LE_NOT_PERMITTED == res))
+                else if ((LE_NOT_POSSIBLE == res) || (LE_NOT_PERMITTED == res))
                 {
                     FsPrefixPtr = NULL;
                     tempFsPrefixPtr++;

@@ -75,28 +75,29 @@ class Result(IntEnum):
     """
     LE_OK = 0
     LE_NOT_FOUND = -1
-    LE_OUT_OF_RANGE = -2
-    LE_NO_MEMORY = -3
-    LE_NOT_PERMITTED = -4
-    LE_FAULT = -5
-    LE_COMM_ERROR = -6
-    LE_TIMEOUT = -7
-    LE_OVERFLOW = -8
-    LE_UNDERFLOW = -9
-    LE_WOULD_BLOCK = -10
-    LE_DEADLOCK = -11
-    LE_FORMAT_ERROR = -12
-    LE_DUPLICATE = -13
-    LE_BAD_PARAMETER = -14
-    LE_CLOSED = -15
-    LE_BUSY = -16
-    LE_UNSUPPORTED = -17
-    LE_IO_ERROR = -18
-    LE_NOT_IMPLEMENTED = -19
-    LE_UNAVAILABLE = -20
-    LE_TERMINATED = -21
-    LE_IN_PROGRESS = -22
-    LE_SUSPENDED = -23
+    LE_NOT_POSSIBLE = -2
+    LE_OUT_OF_RANGE = -3
+    LE_NO_MEMORY = -4
+    LE_NOT_PERMITTED = -5
+    LE_FAULT = -6
+    LE_COMM_ERROR = -7
+    LE_TIMEOUT = -8
+    LE_OVERFLOW = -9
+    LE_UNDERFLOW = -10
+    LE_WOULD_BLOCK = -11
+    LE_DEADLOCK = -12
+    LE_FORMAT_ERROR = -13
+    LE_DUPLICATE = -14
+    LE_BAD_PARAMETER = -15
+    LE_CLOSED = -16
+    LE_BUSY = -17
+    LE_UNSUPPORTED = -18
+    LE_IO_ERROR = -19
+    LE_NOT_IMPLEMENTED = -20
+    LE_UNAVAILABLE = -21
+    LE_TERMINATED = -22
+    LE_IN_PROGRESS = -23
+    LE_SUSPENDED = -24
 
 
 class Unbuffered(object):
