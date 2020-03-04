@@ -1645,9 +1645,9 @@ FUNCTION le_result_t GetSatellitesStatus
 FUNCTION le_result_t GetDilutionOfPrecision
 (
     Sample positionSampleRef IN,           ///< Position sample's reference.
-    DopType dopType IN,                    ///< Dilution of Precision type.
+    DopType dopType IN,                    ///< Dilution of Precision type [range 0..5].
     uint16 dop OUT                         ///< Dilution of Precision corresponding to the dopType
-                                           /// in the specified resolution.
+                                           /// in the specified resolution [range 0..65535].
 );
 
 //--------------------------------------------------------------------------------------------------

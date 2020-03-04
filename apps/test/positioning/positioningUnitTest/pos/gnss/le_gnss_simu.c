@@ -1373,9 +1373,9 @@ le_result_t le_gnss_GetSatellitesStatus
 le_result_t le_gnss_GetDilutionOfPrecision
 (
     le_gnss_SampleRef_t positionSampleRef,      ///< [IN] Position sample's reference.
-    le_gnss_DopType_t dopType,                  ///< [IN] Dilution of Precision type.
+    le_gnss_DopType_t dopType,                  ///< [IN] Dilution of Precision type [range 0..5].
     uint16_t* dopPtr                            ///< [OUT] Dilution of Precision corresponding to
-                                                ///< the dopType. [resolution 1e-3].
+                                                ///< the dopType. [resolution 1e-3] [range 0..65535]
 )
 {
     if (NULL == dopPtr)
