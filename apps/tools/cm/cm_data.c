@@ -12,7 +12,31 @@
 #include "interfaces.h"
 #include "cm_data.h"
 #include "cm_common.h"
+#include "dcs_utils.h"
 
+static char ConfigTreeRoot[LE_CFG_STR_LEN_BYTES] = {};
+static void ResetSessionCleanup(void);
+
+//--------------------------------------------------------------------------------------------------
+// le_dcs data channel event handler reference
+//--------------------------------------------------------------------------------------------------
+static le_dcs_EventHandlerRef_t DataChannelEventHandlerRef = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Currently used data channel with its technology type & object reference
+ */
+//--------------------------------------------------------------------------------------------------
+static char DataChannelName[LE_DCS_CHANNEL_NAME_MAX_LEN] = {0};
+static le_dcs_ChannelRef_t DataChannelRef = NULL;
+static char ConnectTimeout[8] = {};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Is the data connection connected
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsConnected = false;
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -122,19 +146,30 @@ NetConf_t;
 
 //-------------------------------------------------------------------------------------------------
 /**
- * Handle result
+ * Handle result of the cm data command execution.
+ *
+ * @Input
+ *    const char *msg:    the result message for the execution
+ *    le_result_t result: the execution's result
+ *    bool quit:          the cm process exit right away or not
+ *    bool cleanup:       perform cleanup in the moment or not
  */
 //-------------------------------------------------------------------------------------------------
 static void HandleResult
 (
     const char *msg,
     le_result_t result,
-    bool quit
+    bool quit,
+    bool cleanup
 )
 {
     FILE *stream = (result != LE_OK) ? stderr : stdout;
-
     fprintf(stream, "%s: %s\n", msg, LE_RESULT_TXT(result));
+
+    if (cleanup)
+    {
+        ResetSessionCleanup();
+    }
 
     if (quit)
     {
@@ -208,7 +243,7 @@ static le_result_t GetIPv4Configuration
                                    netConfIp->ip, sizeof(netConfIp->ip));
     if (result)
     {
-        HandleResult("Failed to get IP address",result, false);
+        HandleResult("Failed to get IP address", result, false, false);
         snprintf(netConfIp->ip, sizeof(netConfIp->ip), "N/A");
     }
 
@@ -216,7 +251,7 @@ static le_result_t GetIPv4Configuration
                                           netConfIp->gw, sizeof(netConfIp->gw));
     if (result)
     {
-        HandleResult("Failed to get Gateway address", result, false);
+        HandleResult("Failed to get Gateway address", result, false, false);
         snprintf(netConfIp->gw, sizeof(netConfIp->gw), "N/A");
     }
 
@@ -225,7 +260,7 @@ static le_result_t GetIPv4Configuration
                                         netConfIp->dns2, sizeof(netConfIp->dns2));
     if (result)
     {
-        HandleResult("Failed to get DNS addresses", result, false);
+        HandleResult("Failed to get DNS addresses", result, false, false);
     }
 
     if (netConfIp->dns1[0] == '\0')
@@ -264,14 +299,14 @@ static le_result_t GetIPv6Configuration
                                    netConfIp->ip, sizeof(netConfIp->ip));
     if (result)
     {
-        HandleResult("Failed to get IP address", result, false);
+        HandleResult("Failed to get IP address", result, false, false);
     }
 
     result = le_mdc_GetIPv6GatewayAddress(profileRef,
                                           netConfIp->gw, sizeof(netConfIp->gw));
     if (result)
     {
-        HandleResult("Failed to get Gateway address", result, false);
+        HandleResult("Failed to get Gateway address", result, false, false);
     }
 
     result = le_mdc_GetIPv6DNSAddresses(profileRef,
@@ -279,7 +314,7 @@ static le_result_t GetIPv6Configuration
                                         netConfIp->dns2, sizeof(netConfIp->dns2));
     if (result)
     {
-        HandleResult("Failed to get DNS addresses", result, false);
+        HandleResult("Failed to get DNS addresses", result, false, false);
     }
 
     if (netConfIp->ip[0] == '\0')
@@ -326,7 +361,7 @@ static le_result_t GetNetworkConfiguration
 
     if ( (result = le_mdc_GetSessionState(netConf->profile, &state)) )
     {
-        HandleResult("Failed to get connection state", result, false);
+        HandleResult("Failed to get connection state", result, false, false);
         return result;
     }
 
@@ -339,7 +374,7 @@ static le_result_t GetNetworkConfiguration
                                      netConf->itfName, sizeof(netConf->itfName));
     if (result)
     {
-        HandleResult("Failed to get interface name", result, false);
+        HandleResult("Failed to get interface name", result, false, false);
         snprintf(netConf->itfName, sizeof(netConf->itfName), "N/A");
     }
 
@@ -349,7 +384,7 @@ static le_result_t GetNetworkConfiguration
 
         if (GetIPv4Configuration(netConf->profile, &(netConf->ipv4)))
         {
-            HandleResult("Failed to get IPv4 configuration", LE_FAULT, false);
+            HandleResult("Failed to get IPv4 configuration", LE_FAULT, false, false);
             return LE_FAULT;
         }
     }
@@ -360,7 +395,7 @@ static le_result_t GetNetworkConfiguration
 
         if (GetIPv6Configuration(netConf->profile, &(netConf->ipv6)))
         {
-            HandleResult("Failed to get IPv6 configuration", LE_FAULT, false);
+            HandleResult("Failed to get IPv6 configuration", LE_FAULT, false, false);
             return LE_FAULT;
         }
     }
@@ -542,7 +577,7 @@ static void ConnectionStateHandler
 //--------------------------------------------------------------------------------------------------
 static void ExpiryHandler(le_timer_Ref_t timerRef)
 {
-    HandleResult("Timed out wating for data connection", LE_TIMEOUT, true);
+    HandleResult("Timed out wating for data connection", LE_TIMEOUT, true, true);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -667,70 +702,307 @@ static const char* ConvertAuthentication
 
 //-------------------------------------------------------------------------------------------------
 /**
- * Callback for the session Connection
+ * This function seeks to retrieve the le_dcs start request reference saved on the config tree
+ * which was previously returned by the le_dcs_Start() API call.
+ *
+ * @return:
+ *     - le_dcs_ReqObjRef_t: the start request ref retrieved; NULL otherwise
  */
 //-------------------------------------------------------------------------------------------------
-static void SessionHandler
+static le_dcs_ReqObjRef_t GetStartReqRef
 (
-    le_mdc_ProfileRef_t profile,
-    le_result_t result,
-    void* contextPtr
+    const char *channelName
 )
 {
-    if (!result)
+    intptr_t reqRef;
+    le_cfg_IteratorRef_t cfg;
+    char configPath[LE_CFG_STR_LEN_BYTES];
+
+    snprintf(configPath, sizeof(configPath), "%s/%d/%s", ConfigTreeRoot, LE_DCS_TECH_CELLULAR,
+             channelName);
+    cfg = le_cfg_CreateReadTxn(configPath);
+    if (!le_cfg_NodeExists(cfg, CFG_SESSION_CLEANUP_REQREF))
     {
-        HandleResult("Connection Success", result, true);
+        LE_DEBUG("No start request ref found");
+        le_cfg_CancelTxn(cfg);
+        return 0;
     }
-    else
+
+    reqRef = (intptr_t)le_cfg_GetInt(cfg, CFG_SESSION_CLEANUP_REQREF, 0);
+    LE_DEBUG("Start request ref found %p", (void*)reqRef);
+    le_cfg_CancelTxn(cfg);
+    return (le_dcs_ReqObjRef_t)reqRef;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function resets the session cleanup filtering parameters previously configured on the
+ * config tree for "cm data" as its client app. This is the step to deconfig its use of this
+ * filtering mechanism.
+ */
+//-------------------------------------------------------------------------------------------------
+static void ResetSessionCleanup
+(
+    void
+)
+{
+    char configPath[LE_CFG_STR_LEN_BYTES];
+    snprintf(configPath, sizeof(configPath), "%s/%s", ConfigTreeRoot, "tools");
+    le_cfg_QuickDeleteNode(configPath);
+
+    if (strlen(DataChannelName))
     {
-        HandleResult("Connection Failure", result, true);
+        snprintf(configPath, sizeof(configPath), "%s/%d/%s", ConfigTreeRoot,
+                  LE_DCS_TECH_CELLULAR, DataChannelName);
+        le_cfg_QuickDeleteNode(configPath);
+
+        // Delete the childless node/parent when found
+        snprintf(configPath, sizeof(configPath), "%s/%d", ConfigTreeRoot,
+                 LE_DCS_TECH_CELLULAR);
+        le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
+        if (le_cfg_GoToFirstChild(cfg) != LE_OK)
+        {
+            le_cfg_CancelTxn(cfg);
+            le_cfg_QuickDeleteNode(configPath);
+
+            le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(ConfigTreeRoot);
+            if (le_cfg_GoToFirstChild(cfg) != LE_OK)
+            {
+                le_cfg_CancelTxn(cfg);
+                le_cfg_QuickDeleteNode(ConfigTreeRoot);
+                return;
+            }
+            le_cfg_CancelTxn(cfg);
+            return;
+        }
+        le_cfg_CancelTxn(cfg);
+    }
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function configures onto the config tree the use of DCS's session cleanup filtering by
+ * "cm data" as its client app.
+ */
+//-------------------------------------------------------------------------------------------------
+static void SetSessionCleanup
+(
+    void
+)
+{
+    char configPath[LE_CFG_STR_LEN_BYTES];
+    snprintf(configPath, sizeof(configPath), "%s/%s", ConfigTreeRoot, "tools");
+    le_cfg_QuickSetBool(configPath, true);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This is the event handler to be added via le_dcs_AddEventHandler() for the selected channel to
+ * be started or stopped via le_dcs
+ */
+//--------------------------------------------------------------------------------------------------
+static void ChannelEventHandler
+(
+    le_dcs_ChannelRef_t channelRef, ///< [IN] The channel for which the event is
+    le_dcs_Event_t event,           ///< [IN] Event up or down
+    int32_t code,                   ///< [IN] Additional event code, like error code
+    void *contextPtr                ///< [IN] Associated user context pointer
+)
+{
+    LE_DEBUG("Received for channel ref %p event %d; original IsConnected=%s", channelRef,
+             event, IsConnected ? "Y" : "N");
+
+    if (channelRef != DataChannelRef)
+    {
+        LE_ERROR("Data channel event %d skipped; current channel in use: reference %p, name %s",
+                 event, DataChannelRef, DataChannelName);
+        // TODO
+        return;
+    }
+
+    IsConnected = (event == LE_DCS_EVENT_UP) ? true : false;
+    if (IsConnected)
+    {
+        // Up event
+        LE_DEBUG("Channel state IsConnected after event: %d", IsConnected);
+        HandleResult("Connection Succeeded", LE_OK, true, false);
+    }
+
+    // Down event
+    LE_DEBUG("Channel state IsConnected after Down event: %d", IsConnected);
+    HandleResult("Connection Disconnected", LE_OK, true, true);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function seeks to call le_dcs to start a data channel which can so far be only a cellular
+ * data channel, as all other technology types aren't supported yet. It will query the default
+ * modem profile to identify which channel to use, and then register a channel event handler for
+ * it with le_dcs.
+ * If the connect command has been time-limited to completed by a timeout command option, i.e.
+ * ConnectTimeout, it will start a timer with that value to limit its execution duration.
+ */
+//--------------------------------------------------------------------------------------------------
+static void StartConnection
+(
+    const char *channelName
+)
+{
+    le_dcs_ReqObjRef_t dataChannelReqRef;
+    le_result_t result;
+
+    LE_INFO("Starting channel %s", DataChannelName);
+
+    if (DataChannelEventHandlerRef)
+    {
+        LE_DEBUG("Removing event handler with reference %p", DataChannelEventHandlerRef);
+        le_dcs_RemoveEventHandler(DataChannelEventHandlerRef);
+    }
+
+    SetSessionCleanup();
+    DataChannelEventHandlerRef = le_dcs_AddEventHandler(DataChannelRef, ChannelEventHandler, NULL);
+    if (!DataChannelEventHandlerRef)
+    {
+        LE_ERROR("Failed to add channel event handler");
+        HandleResult("Failed to add event handler to start connection", LE_FAULT, true, true);
+    }
+    LE_INFO("New event handler ref %p added", DataChannelEventHandlerRef);
+
+    dataChannelReqRef = le_dcs_Start(DataChannelRef);
+    if (!dataChannelReqRef)
+    {
+        HandleResult("Connection Failure", LE_FAULT, true, true);
+    }
+
+    if (strlen(ConnectTimeout) == 0)
+    {
+        return;
+    }
+    else if ((result = StartTimer(ConnectTimeout)))
+    {
+        HandleResult("Failed to start data session timer", result, false, false);
     }
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Start a data connection.
+ * This is the channel query event handler for handling the results from le_dcs_GetChannels().
+ * After a successful channel scan and the retrieval of the channel reference of the data channel
+ * to be started, it will call StartConnection() to start connecting.
  */
 //--------------------------------------------------------------------------------------------------
-void cm_data_StartDataConnection
+static void ChannelQueryHandler
+(
+    le_result_t result,                       ///< [IN] Result of the query
+    const le_dcs_ChannelInfo_t *channelList,  ///< [IN] Channel list returned
+    size_t channelListSize,                   ///< [IN] Channel list's size
+    void *contextPtr                          ///< [IN] Associated user context pointer
+)
+{
+    LE_DEBUG("Scan results received for channel query %d: channel list size %"PRIuS, result,
+             channelListSize);
+
+    if ((result != LE_OK) ||
+        !(DataChannelRef = le_dcs_GetReference(DataChannelName, LE_DCS_TECH_CELLULAR)))
+    {
+        LE_ERROR("Failed to find wanted channel %s from scan results", DataChannelName);
+        HandleResult("Failed to find data channel to start connection", LE_FAULT, true, true);
+    }
+
+    StartConnection(DataChannelName);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start or stop a data connection according to the value of its input argument. A -1 input means
+ * to disconnect/stop the connection. A zero input means to connect without time-limit for the
+ * operation. Otherwise, the input specifies the time-limit imposed.
+ */
+//--------------------------------------------------------------------------------------------------
+static void cm_data_ConnectDataConnection
 (
     const char * timeoutPtr    ///< [IN] Data connection timeout timer
 )
 {
     le_mdc_ProfileRef_t profile;
     le_result_t result;
-
-    profile = GetDataProfile();
-
-    if (!timeoutPtr)
+    le_dcs_ReqObjRef_t dataChannelReqRef;
+    uint32_t profileIndex = GetProfileInUse();
+    profile = le_mdc_GetProfile(profileIndex);
+    if (!profile)
     {
-        if ( (result = le_mdc_StartSession(profile)) )
-        {
-            HandleResult("Connection Failure", result, true);
-        }
-
-        HandleResult("Connection Success", result, true);
+        LE_ERROR("No valid profile for index %"PRIu32, profileIndex);
+        return;
     }
-    else if (strtol(timeoutPtr, NULL, 10) == -1)
+
+    // Refresh profileIndex, i.e. get such index from the selected profile again as MDC might
+    // have set to use another default profile in the le_mdc_GetProfile() call above.
+    profileIndex = le_mdc_GetProfileIndex(profile);
+    if (strlen(DataChannelName) == 0)
     {
-        if ( (result = le_mdc_StopSession(profile)) )
+        snprintf(DataChannelName, LE_DCS_CHANNEL_NAME_MAX_LEN-1, "%"PRIu32"", profileIndex);
+    }
+    DataChannelRef = le_dcs_GetReference(DataChannelName, LE_DCS_TECH_CELLULAR);
+
+    // Setup the config tree root for the paths saving & retrieving connection parameters
+    le_utf8_Copy(ConfigTreeRoot, "dataConnectionService:/sessionCleanup", LE_CFG_STR_LEN, NULL);
+
+    if (timeoutPtr && strtol(timeoutPtr, NULL, 10) == -1)
+    {
+        // Disconnecting connection
+        LE_INFO("Stopping channel %s", DataChannelName);
+
+        if (DataChannelEventHandlerRef)
         {
-            HandleResult("Stop Failure", result, true);
+            LE_DEBUG("Removing event handler %p", DataChannelEventHandlerRef);
+            le_dcs_RemoveEventHandler(DataChannelEventHandlerRef);
+            DataChannelEventHandlerRef = NULL;
         }
-        HandleResult("Stop Success", result, true);
+
+        dataChannelReqRef = GetStartReqRef(DataChannelName);
+        if (!dataChannelReqRef)
+        {
+            HandleResult("Found no active connection to stop", LE_FAULT, true, true);
+        }
+
+        SetSessionCleanup();
+        DataChannelEventHandlerRef = le_dcs_AddEventHandler(DataChannelRef, ChannelEventHandler,
+                                                            NULL);
+        if (!DataChannelEventHandlerRef)
+        {
+            LE_ERROR("Failed to add channel event handler");
+            HandleResult("Failed to add event handler to stop connection", LE_FAULT, true, true);
+        }
+        LE_INFO("New event handler ref %p added", DataChannelEventHandlerRef);
+
+        result = le_dcs_Stop(dataChannelReqRef);
+        if (result != LE_OK)
+        {
+            HandleResult("Stop Failure", result, true, true);
+        }
+
+        HandleResult("Stop Success", result, false, false);
+        return;
+    }
+
+    // Establishing connection
+    if (timeoutPtr && strlen(timeoutPtr))
+    {
+        le_utf8_Copy(ConnectTimeout, timeoutPtr, sizeof(ConnectTimeout), NULL);
     }
     else
     {
-        le_mdc_StartSessionAsync(profile, SessionHandler, NULL);
-        if ( (result = StartTimer(timeoutPtr)) )
-        {
-            HandleResult("Failed to start data session timer",result, true);
-        }
-        else
-        {
-            exit(0);
-        }
+        ConnectTimeout[0] = '\0';
     }
+
+    if (!DataChannelRef)
+    {
+        LE_INFO("Trigger a channel scan to find modem channel with name %s", DataChannelName);
+        le_dcs_GetChannels(ChannelQueryHandler, NULL);
+        return;
+    }
+
+    StartConnection(DataChannelName);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1190,7 +1462,7 @@ void cm_data_ProcessDataCommand
         {
             LE_INFO("dataParam is NULL");
         }
-        cm_data_StartDataConnection(dataParam);
+        cm_data_ConnectDataConnection(dataParam);
     }
     else if (strcmp(command, "apn") == 0)
     {

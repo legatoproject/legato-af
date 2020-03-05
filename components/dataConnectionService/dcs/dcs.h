@@ -177,6 +177,16 @@ LE_SHARED le_result_t dcs_Stop(le_msg_SessionRef_t sessionRef,
 LE_SHARED const char *dcs_ConvertTechEnumToName(le_dcs_Technology_t tech);
 LE_SHARED const char *dcs_ConvertEventToString(le_dcs_Event_t event);
 le_result_t dcs_GetAdminState(le_dcs_ChannelRef_t channelRef, le_dcs_State_t *state);
+bool dcs_IsEventHandlerDeletable(le_dcs_channelDb_t *channelDb,
+                                 le_dcs_EventHandlerRef_t handlerRefToDelete);
+bool dcs_IsSessionExitChannelClosable(le_dcs_channelDb_t *channelDb,
+                                      le_dcs_ReqObjRef_t reqRefToDelete);
+void dcs_SessionCleanupSaveReqRef(char const* appName, le_msg_SessionRef_t sessionRef,
+                                  le_dcs_channelDb_t* channelDb, le_dcs_ReqObjRef_t reqRef);
+void dcs_SessionCleanupSaveEventHandler(char const* appName, le_msg_SessionRef_t sessionRef,
+                                        le_dcs_channelDb_t* channelDb,
+                                        le_event_HandlerRef_t handlerRef);
+void dcs_cleanConfigTree(void);
 
 // from dcs_db.c
 void dcs_CreateDbPool(void);
@@ -191,7 +201,7 @@ LE_SHARED le_dcs_channelDb_t *dcs_GetChannelDbFromRef(le_dcs_ChannelRef_t channe
 LE_SHARED le_dcs_channelDb_t *dcs_GetChannelDbFromName(const char *channelName,
                                                           le_dcs_Technology_t tech);
 LE_SHARED le_dcs_ChannelRef_t dcs_CreateChannelDb(le_dcs_Technology_t tech, const char *channelName);
-LE_SHARED le_dcs_channelDb_t *dcs_DelChannelEvtHdlr(le_dcs_EventHandlerRef_t hdlrRef);
+LE_SHARED le_dcs_channelDb_t *dcs_GetChannelEvtHdlr(le_dcs_EventHandlerRef_t hdlrRef, bool toDel);
 LE_SHARED le_dcs_channelDbEventHdlr_t *dcs_ChannelDbEvtHdlrInit(void);
 LE_SHARED void dcs_ChannelEvtHdlrSendNotice(le_dcs_channelDb_t *channelDb,
                                             le_msg_SessionRef_t appSessionRef,

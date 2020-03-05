@@ -485,6 +485,7 @@ le_dcs_ReqObjRef_t dcs_Start
             dcs_ChannelEvtHdlrSendNotice(channelDb, sessionRef, LE_DCS_EVENT_UP);
         }
         LE_DEBUG("Channel's session %p, reference %p", sessionRef, reqRef);
+        dcs_SessionCleanupSaveReqRef(appName, sessionRef, channelDb, reqRef);
         return reqRef;
     }
 
@@ -514,6 +515,7 @@ le_dcs_ReqObjRef_t dcs_Start
     le_event_Report(dcs_GetCommandEventId(), &cmdData, sizeof(cmdData));
     LE_INFO("Initiating technology to start channel %s for app session %p, request reference %p",
             channelName, sessionRef, reqRef);
+    dcs_SessionCleanupSaveReqRef(appName, sessionRef, channelDb, reqRef);
     return reqRef;
 }
 
@@ -698,7 +700,8 @@ le_dcs_EventHandlerRef_t dcs_AddEventHandler
     channelEvtHdlr = dcs_GetChannelAppEvtHdlr(channelDb, sessionRefKey);
     if (channelEvtHdlr)
     {
-        LE_DEBUG("Remove old event handler of channel %s before adding new", channelName);
+        LE_DEBUG("Remove old event handler ref %p of channel %s before adding new",
+                 channelEvtHdlr->hdlrRef, channelName);
         le_dls_Remove(&channelDb->evtHdlrs, &(channelEvtHdlr->hdlrLink));
         le_mem_Release(channelEvtHdlr);
     }
@@ -731,6 +734,8 @@ le_dcs_EventHandlerRef_t dcs_AddEventHandler
     channelEvtHdlr->hdlrRef = (le_dcs_EventHandlerRef_t)handlerRef;
     le_dls_Queue(&channelDb->evtHdlrs, &(channelEvtHdlr->hdlrLink));
     le_event_SetContextPtr(handlerRef, contextPtr);
+
+    dcs_SessionCleanupSaveEventHandler(appName, sessionRef, channelDb, handlerRef);
 
     LE_INFO("Event handler with reference %p and event ID %p added", handlerRef,
             channelEvtHdlr->channelEventId);
@@ -767,24 +772,36 @@ le_dcs_EventHandlerRef_t le_dcs_AddEventHandler
 //--------------------------------------------------------------------------------------------------
 void dcs_RemoveEventHandler
 (
-    le_msg_SessionRef_t sessionRef,    ///< [IN] Messaging session making stop request
+    le_msg_SessionRef_t sessionRef,              ///< [IN] Messaging session making stop request
     le_dcs_EventHandlerRef_t channelHandlerRef   ///< [IN] Channel event handler reference
 )
 {
-    // The session reference is currently unused, but keep it for consistency with
-    // dcs_AddEventHandler
-    LE_UNUSED(sessionRef);
+    le_dcs_channelDb_t *channelDb = dcs_GetChannelEvtHdlr(channelHandlerRef, false);
+    void *sessionRefKey;
+    le_dcs_channelDbEventHdlr_t *channelAppEvtHdlr;
 
-    le_dcs_channelDb_t *channelDb = dcs_DelChannelEvtHdlr(channelHandlerRef);
-    if (channelDb)
+    if (!channelDb)
     {
-        LE_INFO("Channel event handler for channel %s of technology %s removed",
-                channelDb->channelName, dcs_ConvertTechEnumToName(channelDb->technology));
+        LE_ERROR("Channel event handler %p not found for any channel Db", channelHandlerRef);
+        return;
     }
-    else
+
+    sessionRefKey = dcs_GetSessionRefKey(sessionRef);
+    channelAppEvtHdlr = dcs_GetChannelAppEvtHdlr(channelDb, sessionRefKey);
+
+    // Check session cleanup filtering config to see if this event handler can be deleted
+    if (channelAppEvtHdlr && !dcs_IsEventHandlerDeletable(channelDb, channelHandlerRef))
     {
-        LE_ERROR("Channel event handler %p not found for any channel Db",
-                 channelHandlerRef);
+        LE_DEBUG("Do not remove the app client's event handler ref %p for channel %s",
+                channelHandlerRef, channelDb->channelName);
+        return;
+    }
+
+    if (dcs_GetChannelEvtHdlr(channelHandlerRef, true))
+    {
+        LE_DEBUG("Client's event handler ref %p for channel %s of technology %s removed",
+                channelHandlerRef, channelDb->channelName,
+                 dcs_ConvertTechEnumToName(channelDb->technology));
     }
 }
 
@@ -893,18 +910,20 @@ static void DcsCommandHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Handler function for the close session service
+ * Handler function for closing the given service session
  */
 //--------------------------------------------------------------------------------------------------
-static void CloseSessionEventHandler
+static void CloseServiceSessionHandler
 (
-    le_msg_SessionRef_t sessionRef,
+    le_msg_SessionRef_t closingSessionRef,
     void*               contextPtr
 )
 {
-    LE_INFO("Client %p killed, remove allocated resources", sessionRef);
+    void *closingSessionRefKey = dcs_GetSessionRefKey(closingSessionRef);
 
-    if (!sessionRef)
+    LE_INFO("Client %p killed, remove allocated resources", closingSessionRef);
+
+    if (!closingSessionRef)
     {
         LE_ERROR("Failed resource clean up for a null sessionRef upon session closure");
         return;
@@ -912,25 +931,34 @@ static void CloseSessionEventHandler
 
     // Search the data reference used by the killed client
     le_ref_IterRef_t iterRef = le_ref_GetIterator(dcs_GetRequestRefMap());
-    le_result_t result = le_ref_NextNode(iterRef);
-
-    while (LE_OK == result)
+    while (le_ref_NextNode(iterRef) == LE_OK)
     {
-        le_msg_SessionRef_t session = dcs_GetSessionRef(le_ref_GetValue(iterRef));
+        void *sessionRefKey = le_ref_GetValue(iterRef);
+        le_dcs_ReqObjRef_t reqRef = (le_dcs_ReqObjRef_t)le_ref_GetSafeRef(iterRef);
 
         // Check if the session reference saved matches with the current session reference
-        if (session == sessionRef)
+        if (sessionRefKey == closingSessionRefKey)
         {
-            // Stop the data channel after moving iterRef to the next node, because in the
-            // stopping this node will be removed.
-            le_dcs_ReqObjRef_t reqRef = (le_dcs_ReqObjRef_t)le_ref_GetSafeRef(iterRef);
-            result = le_ref_NextNode(iterRef);
+            le_dcs_startRequestRefDb_t *reqRefDb;
+            le_dcs_channelDb_t *channelDb = dcs_GetChannelDbFromStartRequestRef(reqRef, &reqRefDb);
+            if (channelDb)
+            {
+                le_dcs_channelDbEventHdlr_t *channelAppEvtHdlr =
+                    dcs_GetChannelAppEvtHdlr(channelDb, sessionRefKey);
+
+                // Check session cleanup filtering config to see if this channel should be closed
+                if (channelAppEvtHdlr && !dcs_IsSessionExitChannelClosable(channelDb, reqRef))
+                {
+                    LE_DEBUG("Do not stop for app client with session ref %p & request ref %p "
+                             "for its channel %s", closingSessionRef, reqRef,
+                             channelDb->channelName);
+                    continue;
+                }
+            }
+
+            LE_INFO("Stopping for app client with session ref %p & request ref %p for "
+                    "its channel %s", closingSessionRef, reqRef, channelDb->channelName);
             le_dcs_Stop(reqRef);
-        }
-        else
-        {
-            // Move to the next node
-            result = le_ref_NextNode(iterRef);
         }
     }
 }
@@ -955,8 +983,10 @@ COMPONENT_INIT
 
     dcs_CreateDbPool();
 
+    dcs_cleanConfigTree();
+
     // Add a handler to the close session service
-    le_msg_AddServiceCloseHandler(le_dcs_GetServiceRef(), CloseSessionEventHandler, NULL);
+    le_msg_AddServiceCloseHandler(le_dcs_GetServiceRef(), CloseServiceSessionHandler, NULL);
 
     DcsCommandEventId = le_event_CreateId("DcsCommandEventId", sizeof(DcsCommand_t));
     le_event_AddHandler("DcsCommand", DcsCommandEventId, DcsCommandHandler);

@@ -15,6 +15,7 @@ requires:
         modemServices/le_rtc.api
         modemServices/le_mdmCfg.api
         le_cellnet.api
+        le_dcs.api
     }
 }
 
@@ -32,4 +33,9 @@ sources:
     cm_common.c
     cm_rtc.c
     cm_mdmCfg.c
+}
+
+cflags:
+{
+    -I $LEGATO_ROOT/components/dataConnectionService/dcs
 }

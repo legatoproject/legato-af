@@ -384,7 +384,7 @@ void dcs_ChannelQueryNotifier
     le_dls_Link_t *queryHdlrPtr;
     DcsChannelQueryHandlerDb_t *queryHdlrDb;
 
-    LE_DEBUG("Got channel list query result %d, list size %d", result, (uint16_t)listSize);
+    LE_DEBUG("Got channel list query result %d, list size %"PRIuS, result, listSize);
 
     if (le_timer_IsRunning(ChannelQueryTimeEnforcerTimer))
     {
@@ -538,23 +538,31 @@ void dcs_ChannelEventNotifier
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Delete a channel's event handler referred to by the given handler reference in the input
+ * Get a channel's event handler referred to by the given handler reference in the input. The
+ * second input argument specifies if it is to be deleted after the retrieval.
  *
  * @return
  *     - In the function return value, return the found channel db of the deleted event handler
  *     - If not found, NULL is returned
  */
 //--------------------------------------------------------------------------------------------------
-le_dcs_channelDb_t *dcs_DelChannelEvtHdlr
+le_dcs_channelDb_t *dcs_GetChannelEvtHdlr
 (
-    le_dcs_EventHandlerRef_t hdlrRef
+    le_dcs_EventHandlerRef_t hdlrRef,
+    bool toDel
 )
 {
-    le_ref_IterRef_t iterRef = le_ref_GetIterator(ChannelRefMap);
+    le_ref_IterRef_t iterRef;
     le_dcs_channelDb_t *channelDb;
     le_dls_Link_t *evtHdlrPtr;
     le_dcs_channelDbEventHdlr_t *channelAppEvt;
 
+    if (!hdlrRef)
+    {
+        return NULL;
+    }
+
+    iterRef = le_ref_GetIterator(ChannelRefMap);
     while (le_ref_NextNode(iterRef) == LE_OK)
     {
         channelDb = (le_dcs_channelDb_t *)le_ref_GetValue(iterRef);
@@ -564,6 +572,9 @@ le_dcs_channelDb_t *dcs_DelChannelEvtHdlr
             channelAppEvt = CONTAINER_OF(evtHdlrPtr, le_dcs_channelDbEventHdlr_t, hdlrLink);
             if (channelAppEvt && (channelAppEvt->hdlrRef == hdlrRef))
             {
+                if (!toDel) {
+                    return channelDb;
+                }
                 LE_DEBUG("Removing event handler with reference %p with event ID %p", hdlrRef,
                          channelAppEvt->channelEventId);
                 le_dls_Remove(&channelDb->evtHdlrs, &channelAppEvt->hdlrLink);
@@ -794,8 +805,8 @@ bool dcs_DeleteStartRequestRef
  * which it's found
  *
  * @return
- *     - If found, it returns the Start Request reference db in its return value and also the
- *       channel db in the 2nd function argument as output.
+ *     - If found, it returns the channel db in its return value and also the Start Request
+ *       reference db in the 2nd function argument as output.
  *     - Otherwise, it returns NULL in both its function return value & 2nd output argument
  */
 //--------------------------------------------------------------------------------------------------
