@@ -207,6 +207,10 @@ function CreateAppPack()
         # Get the path to the info.properties for the app.
         infoPropertiesPath=$(ls $BUILD_DIR/app/*/staging/info.properties)
 
+        if [[ "$UPDATE_FILE" == *"signed"* ]]; then
+            infoPropertiesPath=$(ls $BUILD_DIR/app/*/staging.signed/info.properties)
+        fi
+
         if [ -z "$infoPropertiesPath" ]
         then
             ExitWithError "Can't find any info.properties file."
