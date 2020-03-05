@@ -39,7 +39,8 @@
  *
  * @note All error codes are negative integers. They allow functions with signed
  *       integers to return non-negative values when successful or standard error codes on failure.
- * @deprecated the result code LE_NOT_POSSIBLE is scheduled to be removed.
+ * @deprecated the result code LE_NOT_POSSIBLE has been removed and replaced other
+ *       error codes that are more clear.
  */
 //--------------------------------------------------------------------------------------------------
 typedef enum
@@ -47,6 +48,8 @@ typedef enum
     LE_OK = 0,                  ///< Successful.
     LE_NOT_FOUND = -1,          ///< Referenced item does not exist or could not be found.
     LE_NOT_POSSIBLE = -2,       ///< @deprecated It is not possible to perform the requested action.
+                                ///< LE_NOT_POSSIBLE has been removed so attempting to use this error
+                                ///< code will result in an error.
     LE_OUT_OF_RANGE = -3,       ///< An index or other value is out of range.
     LE_NO_MEMORY = -4,          ///< Insufficient memory is available.
     LE_NOT_PERMITTED = -5,      ///< Current user does not have permission to perform requested action.

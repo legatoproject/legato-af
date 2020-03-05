@@ -102,7 +102,7 @@ static void ReleaseWakeLock
  *      - LE_OK              On success
  *      - LE_BAD_PARAMETER   If an input parameter is not valid
  *      - LE_TIMEOUT         After 900 seconds without data received
- *      - LE_NOT_POSSIBLE    The systems are not synced
+ *      - LE_NOT_PERMITTED   The systems are not synced
  *      - LE_UNAVAILABLE     The flash access is not granted for SW update
  *      - LE_CLOSED          File descriptor has been closed before all data have been received
  *      - LE_OUT_OF_RANGE    Storage is too small

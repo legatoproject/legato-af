@@ -13,7 +13,8 @@
  *
  * @note All error codes are negative integers. They allow functions with signed
  *       integers to return non-negative values when successful or standard error codes on failure.
- * @deprecated the result code LE_NOT_POSSIBLE is scheduled to be removed.
+ * @deprecated the result code LE_NOT_POSSIBLE has been removed and replaced other
+ *       error codes that are more clear.
  */
 //--------------------------------------------------------------------------------------------------
 typedef enum

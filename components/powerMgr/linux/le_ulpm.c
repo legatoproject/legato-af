@@ -483,7 +483,7 @@ le_result_t le_ulpm_GetFirmwareVersion
  *
  * @return
  *      - LE_OK if entry to ultra low power mode initiates properly.
- *      - LE_NOT_POSSIBLE if shutting is not possible now. Try again.
+ *      - LE_UNAVAILABLE if shutting is not possible now. Try again.
  *      - LE_NOT_PERMITTED if the process lacks sufficient permissions to perform a shutdown.
  *      - LE_UNSUPPORTED if the device lacks the ability to shutdown via ULPM.
  *      - LE_FAULT if there is a non-specific failure.
@@ -497,7 +497,7 @@ le_result_t le_ulpm_ShutDown
     if (pm_CheckWakeLock())
     {
         LE_ERROR("Wakelock held!! System can't be shut down. Try again.");
-        return LE_NOT_POSSIBLE;
+        return LE_UNAVAILABLE;
     }
 
     le_framework_NotifyExpectedReboot();
@@ -521,7 +521,7 @@ le_result_t le_ulpm_ShutDown
  *
  * @return
  *      - LE_OK if reboot initiates properly.
- *      - LE_NOT_POSSIBLE if rebooting is not possible now. Try again.
+ *      - LE_UNAVAILABLE if rebooting is not possible now. Try again.
  *      - LE_FAULT if there is a non-specific failure.
  */
 //--------------------------------------------------------------------------------------------------
@@ -533,7 +533,7 @@ le_result_t le_ulpm_Reboot
     if (pm_CheckWakeLock())
     {
         LE_ERROR("Wakelock held!! System can't be shut down. Try again.");
-        return LE_NOT_POSSIBLE;
+        return LE_UNAVAILABLE;
     }
 
     le_framework_NotifyExpectedReboot();
