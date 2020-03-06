@@ -371,6 +371,9 @@
  * on behalf of client F will start warning about the memory leak; time won't have to be
  * wasted looking at clients A through E to rule them out.
  *
+ * A visual side effect of using sub-pools is that their blocks will count as being in use by the
+ * super-pool but they will not count as allocations of the super-pool.
+ *
  * To create a sub-pool, call @c le_mem_CreateSubPool(). It takes a reference to the super-pool
  * and the number of objects to move to the sub-pool, and it returns a reference to the new sub-pool.
  *

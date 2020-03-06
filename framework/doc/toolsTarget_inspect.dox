@@ -74,6 +74,10 @@ TOTAL BLKS  USED BLKS   MAX USED  OVERFLOWS     ALLOCS  MEMORY POOL
       1567       1567       1567       1567       1567  EmployeePool
 @endverbatim
 
+@warning If the process has sub-pools, these statistics will count all the sub-pool blocks in the
+USED BLKS and MAX USED but not in the ALLOCS column for the super-pool. See @ref mem_sub_pools and
+@ref mem_reduced_pools for more details.
+
 Copyright (C) Sierra Wireless Inc.
 
 **/
