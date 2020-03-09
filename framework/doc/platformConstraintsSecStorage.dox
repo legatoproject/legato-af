@@ -1,6 +1,13 @@
 /** @page platformConstraintsSecStorage Secure Storage
 
-The total space and the available free space in secure storage can be retrived with
+@section platformConstraintsSecStorage_AR AR758x/AR759x Constraints
+
+The SFS automatic backup is not supported on AR758x/AR759x targets, users will need to explicitly
+call @c le_mdmCfg_storeCurrentConfiguration() after the SFS file update to preform a SFS backup.
+
+@section platformConstraintsSecStorage_All General Constraints
+
+The total space and the available free space in secure storage can be retrieved with
 secStoreAdmin_GetTotalSpace() function of @ref c_secStoreAdmin "Secure Storage Admin API".
 
 Copyright (C) Sierra Wireless Inc.
