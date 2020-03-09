@@ -256,9 +256,6 @@ for adef information overridden in the sdef, please do not remove.
 <DIV id="defFilesSdef_maxSecureStorageBytes">
 @ref defFilesAdef_maxSecureStorageBytes
 </DIV>
-<DIV id="defFilesSdef_pools">
-@ref defFilesAdef_pools
-</DIV>
 <DIV id="defFilesSdef_sandboxed">
 @ref defFilesAdef_sandboxed
 </DIV>
