@@ -225,6 +225,7 @@ ifneq ($(TARGET),nothing)
       export LEGATO_KERNELROOT    := $(shell $(FINDTOOLCHAIN) $(TARGET) kernelroot)
       export LEGATO_SYSROOT       := $(shell $(FINDTOOLCHAIN) $(TARGET) sysroot)
       export TOOLCHAIN_DIR        := $(shell $(FINDTOOLCHAIN) $(TARGET) dir)
+      export TOOLCHAIN_ROOT       := $(shell $(FINDTOOLCHAIN) $(TARGET) root)
       export TOOLCHAIN_PREFIX     := $(shell $(FINDTOOLCHAIN) $(TARGET) prefix)
     endif
   endif # end not localhost

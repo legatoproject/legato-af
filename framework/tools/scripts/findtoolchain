@@ -9,10 +9,10 @@ NAME
         $(basename $0) - search for an installed cross-build toolchain for a given type of target.
 
 SYNOPSIS
-        $(basename $0) TARGET [dir or prefix or sysroot or kernelroot]
+        $(basename $0) TARGET [dir or root or prefix or sysroot or kernelroot]
 
 DESCRIPTION
-        Will output the toolchain directory directory (or prefix, or sysroot, or kernelroot)
+        Will output the toolchain directory (or root, or prefix, or sysroot, or kernelroot)
         to stdout and exit with code 0 on success.
 
         Prints an error message to stderr and exits with a non-zero exit code on error.
@@ -132,12 +132,18 @@ GetSysroot() {
     echo "${sysroot_dir}"
 }
 
+GetToolchainRootYocto() {
+    local toolchain_dir="$1"
+
+    echo "$(readlink -f "${toolchain_dir}/../../..")"
+}
+
 # In the case of a Yocto build, enable the detection of the usage of the internal Yocto tools.
 AppendYoctoBuildToolchain() {
     local build_dir=$1
     local target="$2"
     local gcc_prefix="${3:-"arm-poky-linux-gnueabi"}"
-    local toolchain_dir work_dir sysroot_dir kernelroot_dir toolchain_prop
+    local toolchain_dir toolchain_root work_dir sysroot_dir kernelroot_dir toolchain_prop
 
     if [ ! -e "${LEGATO_ROOT}/../${build_dir}/tmp/sysroots-components/" ]; then
         # Legacy, global sysroot
@@ -181,7 +187,11 @@ AppendYoctoBuildToolchain() {
             fi
         fi
 
+        toolchain_root="$(GetToolchainRootYocto "${toolchain_dir}")"
+
         toolchain_prop="${toolchain_dir}"
+        toolchain_prop+="::"
+        toolchain_prop="${toolchain_root}"
         toolchain_prop+="::"
         toolchain_prop+="${sysroot_dir}"
         toolchain_prop+="::"
@@ -208,6 +218,7 @@ AppendYoctoToolchain() {
 
     while read -r entry_dir; do
         local toolchain_dir="${entry_dir}/sysroots/${HOST_ARCH}-pokysdk-linux/usr/bin/${gcc_prefix}"
+        local toolchain_root="${entry_dir}/sysroots/${HOST_ARCH}-pokysdk-linux"
 
         for sysroot_def in "${SYSROOT_DEFS[@]}"; do
             local sysroot_dir="$(GetSysroot "${toolchain_dir}" "${sysroot_def}")"
@@ -218,6 +229,8 @@ AppendYoctoToolchain() {
             local kernelroot_dir="${sysroot_dir}/usr/src/kernel"
 
             local toolchain_prop="${toolchain_dir}"
+            toolchain_prop+="::"
+            toolchain_prop+="${toolchain_root}"
             toolchain_prop+="::"
             toolchain_prop+="${sysroot_dir}"
             toolchain_prop+="::"
@@ -349,9 +362,14 @@ SelectToolchainDirs() {
             KERNELROOT="${!kernelroot_env}"
 
             if [ -n "${!toolchain_dir_env}" ]; then
-                TOOLCHAIN_INFO+=("${!toolchain_dir_env}/${!toolchain_prefix_env}::${SYSROOT}::${KERNELROOT}")
+                # Determine the toolchainroot in case of yocto toolchain.
+                if [[ "${TOOLCHAIN_DIR}" == *"-pokysdk-linux"* ]]; then
+                    TOOLCHAIN_ROOT="$(GetToolchainRootYocto "${!toolchain_dir_env}")"
+                fi
+
+                TOOLCHAIN_INFO+=("${!toolchain_dir_env}/${!toolchain_prefix_env}::${TOOLCHAIN_ROOT}::${SYSROOT}::${KERNELROOT}")
             else
-                TOOLCHAIN_INFO+=("${!toolchain_prefix_env}::${SYSROOT}::${KERNELROOT}")
+                TOOLCHAIN_INFO+=("${!toolchain_prefix_env}::::${SYSROOT}::${KERNELROOT}")
             fi
         else
             echo "****ERROR: Unrecognized target type '$1'." >&2
@@ -366,10 +384,12 @@ SelectToolchainDirs() {
 
 GetToolchainInfo() {
     local toolchain_info="$1"
+    local toolchain_dir toolchain_root sysroot_dir kernelroot_dir
 
-    local toolchain_dir="$(echo "${toolchain_info}" | sed 's/\(.*\)::\(.*\)::\(.*\)/\1/')"
-    local sysroot_dir="$(echo "${toolchain_info}" | sed 's/\(.*\)::\(.*\)::\(.*\)/\2/')"
-    local kernelroot_dir="$(echo "${toolchain_info}" | sed 's/\(.*\)::\(.*\)::\(.*\)/\3/')"
+    toolchain_dir="$(echo "${toolchain_info}" | sed 's/\(.*\)::\(.*\)::\(.*\)::\(.*\)/\1/')"
+    toolchain_root="$(echo "${toolchain_info}" | sed 's/\(.*\)::\(.*\)::\(.*\)::\(.*\)/\2/')"
+    sysroot_dir="$(echo "${toolchain_info}" | sed 's/\(.*\)::\(.*\)::\(.*\)::\(.*\)/\3/')"
+    kernelroot_dir="$(echo "${toolchain_info}" | sed 's/\(.*\)::\(.*\)::\(.*\)::\(.*\)/\4/')"
 
     local compiler_exec=gcc
     if [[ "$USE_CLANG" == "1" ]]; then
@@ -383,6 +403,8 @@ GetToolchainInfo() {
     while read -r -u 10 entry; do
         if [[ "$CMD" == "dir" ]]; then
             echo "${toolchain_dir}"
+        elif [[ "$CMD" == "root" ]]; then
+            echo "${toolchain_root}"
         elif [[ "$CMD" == "prefix" ]]; then
             basename "$entry" | sed 's/'$compiler_exec'$//'
         elif [[ "$CMD" == "sysroot" ]]; then
@@ -452,7 +474,14 @@ if [ -n "${TOOLCHAIN_DIR}" ]; then
         fi
     fi
 
-    TOOLCHAIN_INFO="${TOOLCHAIN_DIR}::${LEGATO_SYSROOT}::${LEGATO_KERNELROOT}"
+    # Determine the toolchainroot in case of yocto build/toolchain.
+    if [ -z "${TOOLCHAIN_ROOT}" ]; then
+        if [ "${YOCTO_MODE}" == "true" ] || [[ "${TOOLCHAIN_DIR}" == *"-pokysdk-linux"* ]]; then
+            TOOLCHAIN_ROOT="$(GetToolchainRootYocto "${TOOLCHAIN_DIR}")"
+        fi
+    fi
+
+    TOOLCHAIN_INFO=( "${TOOLCHAIN_DIR}::${TOOLCHAIN_ROOT}::${LEGATO_SYSROOT}::${LEGATO_KERNELROOT}" )
 
     if ! GetToolchainInfo "${TOOLCHAIN_INFO}"; then
         echo "Toolchain specified for target '$1' is invalid." >&2
