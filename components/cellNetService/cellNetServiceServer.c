@@ -917,6 +917,13 @@ COMPONENT_INIT
     le_wdogChain_Init(1);
     le_wdogChain_MonitorEventLoop(0, watchdogInterval);
 
+    // Try to load SIM PIN from secstore
+    le_sim_Id_t sim = le_sim_GetSelectedCard();
+    if (le_sim_IsPresent(sim))
+    {
+        LoadSimFromSecStore(sim);
+    }
+
     LE_INFO("Cellular Network Server is ready");
 }
 
