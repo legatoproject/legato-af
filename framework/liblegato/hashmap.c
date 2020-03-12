@@ -443,6 +443,7 @@ void* le_hashmap_Put
             {
                 const void* oldValue = currentEntryPtr->valuePtr;
                 currentEntryPtr->valuePtr = valuePtr;
+                currentEntryPtr->keyPtr = keyPtr;
 
                 HASHMAP_TRACE(
                     mapRef,
