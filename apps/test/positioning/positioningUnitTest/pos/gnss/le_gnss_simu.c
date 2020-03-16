@@ -997,46 +997,40 @@ le_result_t le_gnss_GetTimeAccuracy
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function gets leap seconds information
+ * Get the position sample's UTC leap seconds in advance
  *
  * @return
+ *  - LE_FAULT         Function failed to get the leap seconds.
+ *  - LE_OUT_OF_RANGE  The retrieved time accuracy is invalid (set to UINT8_MAX).
  *  - LE_OK            Function succeeded.
- *  - LE_FAULT         Function failed to get the data.
- *  - LE_TIMEOUT       Timeout occured.
- *  - LE_UNSUPPORTED   Not supported on this platform.
+ *
+ * @note The leap seconds in advance is the accumulated time in seconds since the start of GPS Epoch
+ * time (Jan 6, 1980). This value has to be added to the UTC time (since Jan. 1, 1970)
  *
  * @note Insertion of each UTC leap second is usually decided about six months in advance by the
  * International Earth Rotation and Reference Systems Service (IERS).
  *
- * @note If the caller is passing a null pointer into this function, it is considered a fatal
- * error and the function will not return.
- *
- * @note If the return value of a parameter is INT32_MAX/UINT64_MAX, the parameter is not valid.
+ * @note If the caller is passing an invalid position sample reference or a null pointer into this
+ *       function, it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_gnss_GetLeapSeconds
+le_result_t le_gnss_GetGpsLeapSeconds
 (
-    uint64_t* gpsTimePtr,              ///< [OUT] The number of milliseconds of GPS time since
-                                       ///<       Jan. 6, 1980
-    int32_t* currentLeapSecondsPtr,    ///< [OUT] Current UTC leap seconds value in milliseconds
-    uint64_t* changeEventTimePtr,      ///< [OUT] The number of milliseconds since Jan. 6, 1980
-                                       ///<       to the next leap seconds change event
-    int32_t* nextLeapSecondsPtr        ///< [OUT] UTC leap seconds value to be applied at the
-                                       ///<       change event time in milliseconds
+    le_gnss_SampleRef_t positionSampleRef,
+        ///< [IN] Position sample's reference.
+
+    uint8_t* leapSecondsPtr
+        ///< [OUT] UTC leap seconds in advance in seconds
 )
 {
-    if ((!gpsTimePtr) || (!currentLeapSecondsPtr) || (!changeEventTimePtr) || (!nextLeapSecondsPtr))
+    // Check input pointers
+    if (NULL == leapSecondsPtr)
     {
-        LE_ERROR("Null pointer provided: gpsTimePtr: %p, currentLeapSecondsPtr: %p, "
-                 "changeEventTimePtr: %p, nextLeapSecondsPtr: %p",
-                  gpsTimePtr, currentLeapSecondsPtr, changeEventTimePtr, nextLeapSecondsPtr);
-
+        LE_KILL_CLIENT("Invalid pointer provided!");
         return LE_FAULT;
     }
-
     return LE_OK;
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1355,6 +1349,47 @@ le_result_t le_gnss_GetSatellitesStatus
 {
     return LE_OK;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the DOP parameters (Dilution Of Precision) for the fixed position
+ *
+ * @return
+ *  - LE_FAULT         Function failed to find the positionSample.
+ *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to UINT16_MAX).
+ *  - LE_OK            Function succeeded.
+ *
+ * @deprecated This function is deprecated, le_gnss_GetDilutionOfPrecision() should be used for
+ *             new code.
+ *
+ * @note The DOP values are given with 3 decimal places like: DOP value 2200 = 2.200
+ *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetDop
+(
+    le_gnss_SampleRef_t positionSampleRef,
+        ///< [IN]
+        ///< Position sample's reference.
+
+    uint16_t* hdopPtr,
+        ///< [OUT]
+        ///< Horizontal Dilution of Precision [resolution 1e-3].
+
+    uint16_t* vdopPtr,
+        ///< [OUT]
+        ///< Vertical Dilution of Precision [resolution 1e-3].
+
+    uint16_t* pdopPtr
+        ///< [OUT]
+        ///< Position Dilution of Precision [resolution 1e-3].
+)
+{
+    return LE_OK;
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Get the DOP parameter (Dilution Of Precision) for the fixed position.
@@ -1363,6 +1398,8 @@ le_result_t le_gnss_GetSatellitesStatus
  *  - LE_FAULT         Function failed to find the DOP value.
  *  - LE_OUT_OF_RANGE  The retrieved parameter is invalid (set to INT16_MAX).
  *  - LE_OK            Function succeeded.
+ *
+ * @note This function replaces the deprecated function le_gnss_GetDop().
  *
  * @note The DOP value is given with 3 decimal places like: DOP value 2200 = 2.200
  *
@@ -2053,6 +2090,9 @@ le_result_t le_gnss_DeleteSuplCertificate
  *
  * @warning The settings are platform dependent. Please refer to
  *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
+ *
+ * @deprecated LE_GNSS_NMEA_MASK_PQXFI is deprecated. LE_GNSS_NMEA_MASK_PTYPE should be used
+ *             instead. Setting LE_GNSS_NMEA_MASK_PTYPE will also set LE_GNSS_NMEA_MASK_PQXFI.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_SetNmeaSentences
