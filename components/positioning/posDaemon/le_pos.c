@@ -840,9 +840,7 @@ static void PosSampleHandlerfunc
     uint16_t seconds;
     uint16_t milliseconds;
     // Leap seconds in advance
-    uint8_t leapSeconds = UINT8_MAX;
-    int32_t currentLeapSec = 0, nextLeapSec = 0;
-    uint64_t gpsTimeMs = 0, nextEventMs = 0;
+    uint8_t leapSeconds;
     PositionParam_t posParam;
     // the position fix state
     le_gnss_FixState_t gnssState;
@@ -1028,10 +1026,8 @@ static void PosSampleHandlerfunc
             posSampleRequestPtr->posSampleNodePtr->milliseconds = milliseconds;
 
             // Get UTC leap seconds in advance
-            if (LE_OK == le_gnss_GetLeapSeconds(&gpsTimeMs, &currentLeapSec, &nextEventMs, &nextLeapSec))
+            if (LE_OK == le_gnss_GetGpsLeapSeconds(positionSampleRef, &leapSeconds))
             {
-               //currentLeapSec is in millisecond and need to be traslated to second
-               leapSeconds = (uint8_t) (currentLeapSec / 1000);
                posSampleRequestPtr->posSampleNodePtr->leapSecondsValid = true;
             }
             else

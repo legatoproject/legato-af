@@ -1141,6 +1141,10 @@ static int GetNmeaSentences
             {
                 printf("\tPSTIS (GPS session start indication) enabled\n");
             }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_PQXFI)
+            {
+                printf("\tPQXFI (Proprietary Qualcomm eXtended Fix Information) enabled\n");
+            }
             if (nmeaMask & LE_GNSS_NMEA_MASK_PTYPE)
             {
                 printf("\tPTYPE (Proprietary Type mask) enabled\n");

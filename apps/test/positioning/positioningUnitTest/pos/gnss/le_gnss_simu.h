@@ -380,16 +380,13 @@ le_result_t le_gnss_GetTimeAccuracy
         ///< [OUT] Estimated time accuracy in nanoseconds
 );
 
-
-le_result_t le_gnss_GetLeapSeconds
+le_result_t le_gnss_GetGpsLeapSeconds
 (
-    uint64_t* gpsTimePtr,              ///< [OUT] The number of milliseconds of GPS time since
-                                       ///<       Jan. 6, 1980
-    int32_t* currentLeapSecondsPtr,    ///< [OUT] Current UTC leap seconds value in milliseconds
-    uint64_t* changeEventTimePtr,      ///< [OUT] The number of milliseconds since Jan. 6, 1980
-                                       ///<       to the next leap seconds change event
-    int32_t* nextLeapSecondsPtr        ///< [OUT] UTC leap seconds value to be applied at the
-                                       ///<       change event time in milliseconds
+    le_gnss_SampleRef_t positionSampleRef,
+        ///< [IN] Position sample's reference.
+
+    uint8_t* leapSecondsPtr
+        ///< [OUT] UTC leap seconds in advance in seconds
 );
 
 le_result_t le_gnss_GetDate
@@ -554,6 +551,25 @@ le_result_t le_gnss_GetDilutionOfPrecision
     uint16_t* dopPtr
         ///< [OUT] Dilution of Precision corresponding to
         ///<       the dopType. [resolution 1e-3].
+);
+
+le_result_t le_gnss_GetDop
+(
+    le_gnss_SampleRef_t positionSampleRef,
+        ///< [IN]
+        ///< Position sample's reference.
+
+    uint16_t* hdopPtr,
+        ///< [OUT]
+        ///< Horizontal Dilution of Precision [resolution 1e-3].
+
+    uint16_t* vdopPtr,
+        ///< [OUT]
+        ///< Vertical Dilution of Precision [resolution 1e-3].
+
+    uint16_t* pdopPtr
+        ///< [OUT]
+        ///< Position Dilution of Precision [resolution 1e-3].
 );
 
 le_result_t le_gnss_GetAltitudeOnWgs84
