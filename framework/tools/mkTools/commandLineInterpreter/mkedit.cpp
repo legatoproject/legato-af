@@ -204,6 +204,292 @@ static void ValidateAppSandboxedValue(std::string& appSandboxed)
 }
 
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * Checking the application definition adef file is able to be updated for the remove/rename
+ * component in the components: or executables: section of this adef file.
+ **/
+//-------------------------------------------------------------------------------------------------
+bool CheckAdefForComponentUpdating
+(
+    ArgHandler_t& handler,
+    const std::string& adefPath,
+    const std::string& cdefPath
+)
+{
+    bool sourcesSectionExist = false;
+    auto cdefFilePtr = parser::cdef::Parse(cdefPath, false);
+
+    // Iterate over the .cdef file's list of sections.
+    for (auto sectionPtr : cdefFilePtr->sections)
+    {
+        const std::string& sectionName = sectionPtr->firstTokenPtr->text;
+
+        if (sectionName == "sources")
+        {
+            sourcesSectionExist = true;
+        }
+    }
+
+    const std::string compList = path::GetContainingDir(cdefPath);
+
+    if (handler.isPrintLogging())
+    {
+        std::cout << mk::format(LE_I18N("\nSearching component '%s' in ADEF file '%s'."),
+                                        compList, adefPath);
+    }
+
+    auto adefFilePtr = parser::adef::Parse(adefPath, false);
+
+    // Boolean flag to check if the component is found in the components: or executables: section.
+    bool foundItem = false;
+
+    // Iterate over the .adef file's list of sections, processing content items.
+    for (auto sectionPtr : adefFilePtr->sections)
+    {
+        auto& sectionName = sectionPtr->firstTokenPtr->text;
+
+        if (sourcesSectionExist && (sectionName == "executables"))
+        {
+            auto exeSectionPtr = dynamic_cast<const parseTree::CompoundItemList_t*>(sectionPtr);
+
+            if (exeSectionPtr == NULL)
+            {
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("Internal error: '%s' section pointer is NULL"),
+                               sectionName)
+                );
+            }
+
+            for (auto itemPtr : exeSectionPtr->Contents())
+            {
+                const parseTree::Executable_t* exePtr = dynamic_cast
+                                                         <const parseTree::Executable_t*>(itemPtr);
+                if (exePtr == NULL)
+                {
+                    throw mk::Exception_t(
+                        mk::format(LE_I18N("Internal error: '%s' section content pointer is NULL"),
+                                   sectionName)
+                    );
+                }
+
+                for (auto tokenPtr : exePtr->Contents())
+                {
+                    // Resolve the path to the component.
+                    std::string componentPath = path::Unquote(DoSubstitution(tokenPtr));
+                    if (path::GetLastNode(compList).compare(path::GetLastNode(componentPath)) == 0)
+                    {
+                        foundItem = true;
+
+                        if (handler.isPrintLogging())
+                        {
+                            std::cout << mk::format(LE_I18N("\nComponent '%s' found in '%s' "
+                                                            "section '%s'"),
+                                                    path::GetLastNode(compList), sectionName,
+                                                    tokenPtr->GetLocation()
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!sourcesSectionExist && (sectionName == "components"))
+        {
+            auto componentSectionPtr =
+                        dynamic_cast<const parseTree::TokenListSection_t*>(sectionPtr);
+            if (componentSectionPtr == NULL)
+            {
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("Internal error: '%s' section pointer is NULL"),
+                               sectionName)
+                );
+            }
+
+            for (auto tokenPtr : componentSectionPtr->Contents())
+            {
+                // Resolve the path to the component.
+                std::string componentPath = path::Unquote(DoSubstitution(tokenPtr));
+
+                if (path::GetLastNode(compList).compare(path::GetLastNode(componentPath)) == 0)
+                {
+                    foundItem = true;
+                    if (handler.isPrintLogging())
+                    {
+                        std::cout << mk::format(LE_I18N("\nComponent '%s' found in '%s' "
+                                                        "section at '%s'"),
+                                                path::GetLastNode(compList), sectionName,
+                                                tokenPtr->GetLocation()
+                        );
+                    }
+                }
+            }
+        }
+    } // end of for
+
+    if (foundItem)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Checking the subsection have the remove/rename component as its element.
+ **/
+//-------------------------------------------------------------------------------------------------
+std::string EvaluateSubSection
+(
+    const parseTree::CompoundItemList_t *subsectionPtr,
+    const std::string& sectionName,
+    const std::string& subsectionName,
+    model::Component_t *itcomp,
+    const std::string& compList
+)
+{
+    std::string collectComponent;
+
+    for (auto itSecton = subsectionPtr->Contents().rbegin();
+        itSecton != subsectionPtr->Contents().rend();
+        ++itSecton)
+    {
+        auto compSectionPtr = dynamic_cast<const parseTree::CompoundItemList_t*>(subsectionPtr);
+
+        if (compSectionPtr == NULL)
+        {
+            throw mk::Exception_t(
+                mk::format(LE_I18N("Internal error: '%s' section pointer is NULL"), subsectionName)
+            );
+        }
+
+        for (auto itemPtr : compSectionPtr->Contents())
+        {
+            const parseTree::RequiredComponent_t* compPtr = dynamic_cast
+                                                <const parseTree::RequiredComponent_t*>(itemPtr);
+            if (compPtr == NULL)
+            {
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("Internal error: '%s' section content pointer is NULL"),
+                               sectionName)
+                );
+            }
+
+            for (auto tokenPtr : compPtr->Contents())
+            {
+                // If component to rename/remove is found
+                // in the list of components.
+                if (path::GetLastNode(compList).compare(path::GetLastNode(tokenPtr->text)) == 0)
+                {
+                    collectComponent = itcomp->defFilePtr->path;
+                    goto stop_in_sub_section;
+                }
+            }
+        }
+    }
+
+stop_in_sub_section:
+    return collectComponent;
+}
+
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Evaluate the subcomponent of the checking component.
+ * 1. Checking this component have the remove/rename component as its subcomponent.
+ * 2. If this component have the component: section, evaluate this component: subsection.
+ **/
+//-------------------------------------------------------------------------------------------------
+std::string EvaluateSubComponent
+(
+    model::Component_t *subComponentPtr,
+    model::Component_t *itcomp,
+    const std::string& compList,
+    const std::string& cdefPath
+)
+{
+    std::string collectComponent;
+    // If this component have the remove/rename component as its subcomponent
+    if (subComponentPtr->defFilePtr->path.compare(cdefPath) == 0)
+    {
+        // Iterate over the .cdef file's list of sections.
+        for (auto sectionPtr : itcomp->defFilePtr->sections)
+        {
+            const std::string& sectionName = sectionPtr->firstTokenPtr->text;
+
+            if (sectionName == "requires")
+            {
+                // "requires:" section is comprised of subsections
+                for (auto memberPtr : static_cast<const parseTree::ComplexSection_t*>
+                                                                        (sectionPtr)->Contents())
+                {
+                    const std::string& subsectionName = memberPtr->firstTokenPtr->text;
+
+                    if (subsectionName == "component")
+                    {
+                        auto subsectionPtr = parseTree::ToCompoundItemListPtr(memberPtr);
+                        collectComponent = EvaluateSubSection(subsectionPtr, sectionName,
+                                                              subsectionName, itcomp, compList);
+                        goto stop_in_sub_component;
+                    }
+                }
+            }
+        }
+    }
+
+stop_in_sub_component:
+    return collectComponent;
+}
+
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Find all components that belonging to the adefPath application and depending on the cdefPath
+ * component.
+ **/
+//-------------------------------------------------------------------------------------------------
+std::vector<std::string> CollectDependingComponents
+(
+    ArgHandler_t& handler,
+    const std::string& adefPath,
+    const std::string& cdefPath
+)
+{
+    std::vector<std::string> collectComponents;
+    std::string collectComponent;
+    const std::string compList = path::GetContainingDir(cdefPath);
+
+    // Iterate over the list of applications relating to this system.
+    for (const auto& it : handler.systemPtr->apps)
+    {
+        if (it.second->defFilePtr->path == adefPath)
+        {
+            // Iterate over the list of components relating to this application.
+            for (auto const& itcomp : it.second->components)
+            {
+                // Iterate over the list of subcomponents relating to this component.
+                for (auto subComponent : itcomp->subComponents)
+                {
+                    auto subComponentPtr = model::Component_t::GetComponent(
+                                                                   subComponent.componentPtr->dir);
+                    if (subComponentPtr != NULL)
+                    {
+                        collectComponent = EvaluateSubComponent(subComponentPtr, itcomp, compList,
+                                                                cdefPath);
+                        collectComponents.push_back(collectComponent);
+                    }
+                }
+            }
+        }
+    }
+    return collectComponents;
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Print logging based on the build parameter gathered from the command line.
@@ -914,15 +1200,53 @@ void ArgHandler_t::Rename()
                 adefFilePathList.push_back(absAdefFilePath);
             }
 
-            // Update each app in adefFilePathList.
+            std::vector<std::string> adefFilePathListUpdate;
+            std::vector<std::string> cdefFilePathListUpdate;
+
+            // Check each app in adefFilePathList.
             for (const auto& it : adefFilePathList)
             {
                 absAdefFilePath = it;
                 if (file::FileExists(absAdefFilePath))
                 {
+                    bool checkAdef = CheckAdefForComponentUpdating(*this, absAdefFilePath,
+                                                                   absOldCdefFile);
+
+                    if (checkAdef)
+                    {
+                        adefFilePathListUpdate.push_back(absAdefFilePath);
+                    }
+
+                    std::vector<std::string> cdefFilePathList = CollectDependingComponents (*this,
+                                                                  absAdefFilePath, absOldCdefFile);
+                    cdefFilePathListUpdate.insert(cdefFilePathListUpdate.end(),
+                                                  cdefFilePathList.begin(),
+                                                  cdefFilePathList.end());
+                }
+            }
+
+            // Update each app in adefFilePathListUpdate.
+            for (const auto& it : adefFilePathListUpdate)
+            {
+                std::string absAdefFilePathUpdate = it;
+                if (file::FileExists(absAdefFilePathUpdate))
+                {
                     AddAction(std::make_shared<CreateUpdateTempAdefAction_t>(*this));
                     AddAction(std::make_shared<RenameTempWorkToActiveFileAction_t>(*this,
-                                                                                  absAdefFilePath));
+                                                                        absAdefFilePathUpdate));
+                }
+            }
+
+            // Update each component in cdefFilePathList.
+            for (const auto& it : cdefFilePathListUpdate)
+            {
+                std::string absCdefFilePathUpdate = it;
+                if (file::FileExists(absCdefFilePathUpdate))
+                {
+                    AddAction(std::make_shared<CreateUpdateTempCdefAction_t>(*this,
+                                                                        absCdefFilePathUpdate));
+                    AddAction(std::make_shared<RenameTempWorkToActiveFileAction_t>(*this,
+                                                                        absCdefFilePathUpdate));
                 }
             }
 
@@ -1025,15 +1349,53 @@ void ArgHandler_t::Delete()
                 isCompSafeToRemove = true;
             }
 
-            // Update each app in adefFilePathList.
+            std::vector<std::string> adefFilePathListUpdate;
+            std::vector<std::string> cdefFilePathListUpdate;
+
+            // Check each app in adefFilePathList.
             for (const auto& it : adefFilePathList)
             {
                 absAdefFilePath = it;
                 if (file::FileExists(absAdefFilePath))
                 {
+                    bool checkAdef = CheckAdefForComponentUpdating(*this, absAdefFilePath,
+                                                                   absCdefFile);
+                    if (checkAdef)
+                    {
+                        adefFilePathListUpdate.push_back(absAdefFilePath);
+                    }
+                    std::vector<std::string> cdefFilePathList = CollectDependingComponents(*this,
+                                                                      absAdefFilePath,absCdefFile);
+                    cdefFilePathListUpdate.insert(cdefFilePathListUpdate.end(),
+                                                  cdefFilePathList.begin(),
+                                                  cdefFilePathList.end());
+                }
+            }
+
+            // Update each app in adefFilePathListUpdate.
+            for (const auto& it : adefFilePathListUpdate)
+            {
+                std::string absAdefFilePathUpdate = it;
+
+                if (file::FileExists(absAdefFilePathUpdate))
+                {
                     AddAction(std::make_shared<CreateUpdateTempAdefAction_t>(*this));
                     AddAction(std::make_shared<RenameTempWorkToActiveFileAction_t>(*this,
-                                                                              absAdefFilePath));
+                                                                        absAdefFilePathUpdate));
+                }
+            }
+
+            // Update each component in cdefFilePathList.
+            for (const auto& it : cdefFilePathListUpdate)
+            {
+                std::string absCdefFilePathUpdate = it;
+
+                if (file::FileExists(absCdefFilePathUpdate))
+                {
+                    AddAction(std::make_shared<CreateUpdateTempCdefAction_t>(*this,
+                                                                        absCdefFilePathUpdate));
+                    AddAction(std::make_shared<RenameTempWorkToActiveFileAction_t>(*this,
+                                                                        absCdefFilePathUpdate));
                 }
             }
 
@@ -1111,15 +1473,53 @@ void ArgHandler_t::Remove()
                 }
             }
 
-            // Update each app in adefFilePathList.
+            std::vector<std::string> adefFilePathListUpdate;
+            std::vector<std::string> cdefFilePathListUpdate;
+
+            // Check each app in adefFilePathList.
             for (const auto& it : adefFilePathList)
             {
                 absAdefFilePath = it;
                 if (file::FileExists(absAdefFilePath))
                 {
+                    bool checkAdef = CheckAdefForComponentUpdating(*this, absAdefFilePath,
+                                                                   absCdefFile);
+                    if (checkAdef)
+                    {
+                        adefFilePathListUpdate.push_back(absAdefFilePath);
+                    }
+                    std::vector<std::string> cdefFilePathList = CollectDependingComponents(*this,
+                                                                      absAdefFilePath,absCdefFile);
+                    cdefFilePathListUpdate.insert(cdefFilePathListUpdate.end(),
+                                                  cdefFilePathList.begin(),
+                                                  cdefFilePathList.end());
+                }
+            }
+
+            // Update each app in adefFilePathListUpdate.
+            for (const auto& it : adefFilePathListUpdate)
+            {
+                std::string absAdefFilePathUpdate = it;
+
+                if (file::FileExists(absAdefFilePathUpdate))
+                {
                     AddAction(std::make_shared<CreateUpdateTempAdefAction_t>(*this));
                     AddAction(std::make_shared<RenameTempWorkToActiveFileAction_t>(*this,
-                                                                              absAdefFilePath));
+                                                                        absAdefFilePathUpdate));
+                }
+            }
+
+            // Update each component in cdefFilePathList.
+            for (const auto& it : cdefFilePathListUpdate)
+            {
+                std::string absCdefFilePathUpdate = it;
+
+                if (file::FileExists(absCdefFilePathUpdate))
+                {
+                    AddAction(std::make_shared<CreateUpdateTempCdefAction_t>(*this,
+                                                                        absCdefFilePathUpdate));
+                    AddAction(std::make_shared<RenameTempWorkToActiveFileAction_t>(*this,
+                                                                        absCdefFilePathUpdate));
                 }
             }
 
@@ -1204,26 +1604,40 @@ void ProcessCommand()
         !Handler.cdefFilePath.empty() ||
         !Handler.mdefFilePath.empty())
     {
-        // Read the search paths to calculate the absolute paths
-        if (!path::IsAbsolute(Handler.adefFilePath) ||
-            !path::IsAbsolute(Handler.cdefFilePath) ||
-            !path::IsAbsolute(Handler.mdefFilePath))
-        {
-            // Parse Sdef to read the appSearch and componentSearch list
-            updateDefs::ParseSdefReadSearchPath(Handler);
+        // Parse Sdef to read the appSearch and componentSearch list
+        updateDefs::ParseSdefReadSearchPath(Handler);
 
+        // Read the search paths to calculate the absolute paths
+        if (!path::IsAbsolute(Handler.adefFilePath))
+        {
             if (Handler.appSearchPath.empty())
             {
                 Handler.absAdefFilePath = path::Combine(path::GetCurrentDir(),
                                                         Handler.adefFilePath);
             }
+        }
+        else
+        {
+           Handler.absAdefFilePath = path::MakeAbsolute(Handler.adefFilePath);
+        }
 
+        // Read the search paths to calculate the absolute paths
+        if (!path::IsAbsolute(Handler.cdefFilePath))
+        {
             if (Handler.compSearchPath.empty() && !Handler.cdefFilePath.empty())
             {
                 Handler.absCdefFilePath = path::Combine(path::GetCurrentDir(),
                                                         Handler.cdefFilePath);
             }
+        }
+        else
+        {
+           Handler.absCdefFilePath = path::MakeAbsolute(Handler.cdefFilePath);
+        }
 
+        // Read the search paths to calculate the absolute paths
+        if (!path::IsAbsolute(Handler.mdefFilePath))
+        {
             if (Handler.moduleSearchPath.empty())
             {
                 Handler.absMdefFilePath = path::Combine(path::GetCurrentDir(),
@@ -1232,8 +1646,6 @@ void ProcessCommand()
         }
         else
         {
-           Handler.absAdefFilePath = path::MakeAbsolute(Handler.adefFilePath);
-           Handler.absCdefFilePath = path::MakeAbsolute(Handler.cdefFilePath);
            Handler.absMdefFilePath = path::MakeAbsolute(Handler.mdefFilePath);
         }
     }

@@ -22,6 +22,21 @@ namespace cli
 namespace updateDefs
 {
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * Compare the position of two vectors
+ */
+//-------------------------------------------------------------------------------------------------
+bool ComparePosition
+(
+    const ArgHandler_t::LinePosition_t& p1,
+    const ArgHandler_t::LinePosition_t& p2
+)
+{
+    return (p1.beforePos < p2.beforePos);
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Update a given definition file with a string of line to write to the definition file at a
@@ -77,6 +92,10 @@ void UpdateDefinitionFile
 
     // Copy first part of sdef
     source.seekg(0, source.beg);
+
+    // Sort vector into ascending order
+    std::sort(handler.linePositionToWrite.begin(), handler.linePositionToWrite.end(),
+              ComparePosition);
 
     int startPos = 0;
     for (auto& it : handler.linePositionToWrite)
@@ -917,6 +936,231 @@ void ParseSdefUpdateItem
 }
 
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * Get the position of component element in the tracking file.
+ *
+ * handler: Handler argument passed on the command line.
+ * memberPtr: Pointer defines the subsection of the "sectionName" section.
+ * sectionName: The section name.
+ * compList: Component that must be already listed in the definition file.
+ * reqCompPosition: The position of component.
+ * reqCompPositionList: The list of the component's positions.
+ * foundItem: Boolean flag to check if the component is found.
+ **/
+//-------------------------------------------------------------------------------------------------
+static void GetPositionOfComponentElement
+(
+    ArgHandler_t& handler,
+    const parseTree::CompoundItem_t* memberPtr,
+    const std::string& sectionName,
+    const std::string& compList,
+    CompPosition_t& reqCompPosition,
+    std::vector<CompPosition_t>& reqCompPositionList,
+    bool& foundItem
+)
+{
+    auto subsectionPtr = parseTree::ToCompoundItemListPtr(memberPtr);
+    for (auto itSecton = subsectionPtr->Contents().rbegin();
+        itSecton != subsectionPtr->Contents().rend();
+        ++itSecton)
+    {
+        auto compSectionPtr = dynamic_cast<const parseTree::CompoundItemList_t*>(
+                                                                    subsectionPtr);
+
+        if (compSectionPtr == NULL)
+        {
+            throw mk::Exception_t(
+                mk::format(LE_I18N("Internal error: '%s' section pointer is NULL"),
+                            sectionName)
+            );
+        }
+
+        for (auto itemPtr : compSectionPtr->Contents())
+        {
+            const parseTree::RequiredComponent_t* compPtr =
+                dynamic_cast<const parseTree::RequiredComponent_t*>(itemPtr);
+
+            if (compPtr == NULL)
+            {
+                throw mk::Exception_t(
+                    mk::format(LE_I18N(
+                        "Internal error: '%s' section content pointer is NULL"),
+                        sectionName)
+                );
+            }
+
+            for (auto tokenPtr : compPtr->Contents())
+            {
+                // If component to rename/remove is found in the list of components
+                if (path::GetLastNode(compList).compare(
+                    path::GetLastNode(tokenPtr->text)) == 0)
+                {
+                    reqCompPosition.foundPos = tokenPtr->curPos;
+                    reqCompPosition.nextPos = tokenPtr->nextPtr->curPos;
+                    reqCompPosition.sectionPos = itemPtr->firstTokenPtr->curPos;
+                    reqCompPosition.sectionNextPos =
+                        itemPtr->lastTokenPtr->nextPtr->curPos;
+                    reqCompPositionList.push_back(reqCompPosition);
+                    foundItem =true;
+
+                    if (handler.isPrintLogging())
+                    {
+                        std::cout << mk::format(
+                            LE_I18N("\nComponent '%s' found in '%s' section '%s'"),
+                            path::GetLastNode(compList),
+                            sectionName,
+                            tokenPtr->GetLocation()
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Parse the component definition file to update the component: section.
+ * 1. Parse the cdef file to check if cdef contains components listed in coponent: section.
+ * 2. Update the cdef file by adding the component in coponent: section.
+ *
+ * compList: Component that must be already listed in the definition file.
+ * compNotList: Component that must not be already listed in the definition file.
+ **/
+//-------------------------------------------------------------------------------------------------
+static void ParseCdefGetEditLinePosition
+(
+    ArgHandler_t& handler,
+    const std::string& cdefPath,
+    const std::string& compList,
+    const std::string& compNotList
+)
+{
+    CompPosition_t reqCompPosition {false, 0, 0, 0, 0};
+    // Boolean flag to check if the component is found in the component: section.
+    bool foundItem = false;
+    // List of components found in the requires: component: section.
+    std::vector<CompPosition_t> reqCompPositionList;
+    handler.linePositionToWrite.clear();
+    auto cdefFilePtr = parser::cdef::Parse(cdefPath, false);
+    // Iterate over the .cdef file's list of sections.
+
+    for (auto sectionPtr : cdefFilePtr->sections)
+    {
+        const std::string& sectionName = sectionPtr->firstTokenPtr->text;
+
+        if (sectionName == "requires")
+        {
+            // "requires:" section is comprised of subsections
+            for (auto memberPtr :
+                static_cast<const parseTree::ComplexSection_t*>(sectionPtr)->Contents())
+            {
+                const std::string& subsectionName = memberPtr->firstTokenPtr->text;
+
+                if (subsectionName == "component")
+                {
+                    GetPositionOfComponentElement(handler, memberPtr, sectionName, compList,
+                                                reqCompPosition, reqCompPositionList, foundItem);
+                }
+            }
+        }
+    }
+
+    std::string compName;
+    std::string compPath;
+    compName = path::GetLastNode(compNotList);
+
+    // If componentSearch section is present, list the relative component name.
+    // No need to specify full absolute path.
+    for (const auto& it : handler.compSearchPath)
+    {
+        compPath = path::EraseCommonBasePath(compNotList, it, false);
+        if (!compPath.empty())
+        {
+            break;
+        }
+    }
+
+    if (compPath.empty())
+    {
+        compPath = path::EraseCommonBasePath(compNotList, handler.absCdefFilePath, true);
+    }
+
+    std::string lineToWrite1;
+    std::string lineToWrite2;
+    std::string lineToWrite3;
+
+    if (!compList.empty()  && !compNotList.empty())
+    {
+        // Rename component in adef
+        if (foundItem)
+        {
+            // Append the component path to the cdef in the component: section
+            lineToWrite1 =  compPath;
+
+            if (handler.isPrintLogging())
+            {
+                std::cout << mk::format(LE_I18N("\nRename component to '%s' in components: or "
+                                                "executables: section"), compPath
+                );
+            }
+        }
+        else
+        {
+            // Component to rename not found on the list, throw error.
+            throw mk::Exception_t(
+                mk::format(LE_I18N("Component '%s' not listed in either components: or "
+                                   "executables: section of '%s'."), compList, cdefPath)
+            );
+        }
+
+        for (auto it : reqCompPositionList)
+        {
+            handler.linePositionToWrite.push_back(
+                ArgHandler_t::LinePosition_t{lineToWrite1,it.foundPos, it.nextPos});
+        }
+    }
+    else if (!compList.empty() && compNotList.empty())
+    {
+        // Remove component from cdef.
+        if (foundItem)
+        {
+            for (const auto& it : reqCompPositionList)
+            {
+                handler.linePositionToWrite.push_back(
+                    ArgHandler_t::LinePosition_t{"", it.foundPos, it.nextPos});
+            }
+
+            if (handler.isPrintLogging())
+            {
+                std::cout << mk::format(LE_I18N(
+                                        "\nRemove component '%s' from components: or executables: "
+                                        "section."), path::GetLastNode(compList)
+                );
+            }
+        }
+        else
+        {
+            // Component to be removed not found on the list, throw error.
+            throw mk::Exception_t(
+                mk::format(LE_I18N("Component '%s' not listed in either components: or "
+                                   "executables: section of '%s'."), compList, cdefPath)
+            );
+        }
+    }
+    else
+    {
+        // Unhandled case.
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Internal error: Unhandled case when getting line to edit in '%s'"),
+                       cdefPath)
+        );
+    }
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Parse the application definition file to update the components: or executables: section.
@@ -975,10 +1219,14 @@ static void ParseAdefGetEditLinePosition
     // Boolean flag to check if the component name is found in the bindings: section.
     bool foundItem3 = false;
 
+    // Boolean flag to check if the component name is found in the extern: section.
+    bool foundItem4 = false;
+
     CompPosition_t compPosition {false, 0, 0, 0, 0};
     CompPosition_t exeCompPosition {false, 0, 0, 0, 0};
     CompPosition_t procRunPosition {false, 0, 0, 0, 0};
     CompPosition_t bindingPosition {false, 0, 0, 0, 0};
+    CompPosition_t externPosition {false, 0, 0, 0, 0};
 
     // List of components found in the components: section.
     std::vector<CompPosition_t> compPositionList;
@@ -988,6 +1236,8 @@ static void ParseAdefGetEditLinePosition
     std::vector<CompPosition_t> procRunPositionList;
     // List of components found in the bindings: section.
     std::vector<CompPosition_t> bindingPositionList;
+    // List of components found in the extern: section.
+    std::vector<CompPosition_t> externPositionList;
 
     // List of executables containing only single component.
     std::vector<std::string> singleCompExe;
@@ -1245,6 +1495,57 @@ static void ParseAdefGetEditLinePosition
                 }
             }
         } //end of if
+
+        if (sectionName == "extern")
+        {
+            auto externSectionPtr = dynamic_cast<const parseTree::CompoundItemList_t*>(sectionPtr);
+
+            if (externSectionPtr == NULL)
+            {
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("Internal error: '%s' section pointer is NULL"),
+                               sectionName)
+                );
+            }
+
+            for (auto itemPtr : externSectionPtr->Contents())
+            {
+                const parseTree::ExternApiInterface_t* externPtr =
+                                    dynamic_cast<const parseTree::ExternApiInterface_t*>(itemPtr);
+                if (externPtr == NULL)
+                {
+                    throw mk::Exception_t(
+                        mk::format(LE_I18N("Internal error: '%s' section content pointer is NULL"),
+                                   sectionName)
+                    );
+                }
+
+                for (auto tokenPtr : externPtr->Contents())
+                {
+                    // If component to rename/remove is found in the list of externs.
+                    if (path::GetLastNode(compList).compare(tokenPtr->text) == 0)
+                    {
+                        foundItem4  = true;
+
+                        externPosition.foundPos = tokenPtr->curPos;
+                        externPosition.nextPos = tokenPtr->nextPtr->curPos;
+                        externPosition.sectionPos = itemPtr->firstTokenPtr->curPos;
+                        externPosition.sectionNextPos = itemPtr->lastTokenPtr->nextPtr->curPos;
+
+                        externPositionList.push_back(externPosition);
+
+                        if (handler.isPrintLogging())
+                        {
+                            std::cout << mk::format(
+                                            LE_I18N("\nComponent '%s' found in '%s' section '%s'"),
+                                            path::GetLastNode(compList), sectionName,
+                                            tokenPtr->GetLocation()
+                                         );
+                        }
+                    }
+                }
+            }
+        } //end of if
     } // end of for
 
     std::string compName;
@@ -1271,6 +1572,7 @@ static void ParseAdefGetEditLinePosition
     std::string lineToWrite1;
     std::string lineToWrite2;
     std::string lineToWrite3;
+    std::string lineToWrite4;
 
     if (!compList.empty()  && !compNotList.empty())
     {
@@ -1332,6 +1634,24 @@ static void ParseAdefGetEditLinePosition
             {
                 std::cout << mk::format(LE_I18N("\nRename component to '%s' in bindings: section."),
                                         lineToWrite3
+                             );
+            }
+        }
+
+        if (foundItem4)
+        {
+            lineToWrite4 = path::GetLastNode(compNotList);
+
+            for (auto it : externPositionList)
+            {
+                handler.linePositionToWrite.push_back(ArgHandler_t::LinePosition_t{lineToWrite4,
+                                                                         it.foundPos, it.nextPos});
+            }
+
+            if (handler.isPrintLogging())
+            {
+                std::cout << mk::format(LE_I18N("\nRename component to '%s' in extern: section."),
+                                        lineToWrite4
                              );
             }
         }
@@ -1410,6 +1730,23 @@ static void ParseAdefGetEditLinePosition
                              );
             }
         }
+
+        if (foundItem4)
+        {
+            for (const auto& it : externPositionList)
+            {
+                handler.linePositionToWrite.push_back(
+                               ArgHandler_t::LinePosition_t{"", it.sectionPos, it.sectionNextPos});
+            }
+
+            if (handler.isPrintLogging())
+            {
+                std::cout << mk::format(
+                                LE_I18N("\nRemove extern with component '%s' from extern: "
+                                        "section."), path::GetLastNode(compList)
+                             );
+            }
+        }
     }
     else if (!compNotList.empty())
     {
@@ -1456,6 +1793,48 @@ static void ParseAdefGetEditLinePosition
                       "Internal error: Unhandled case when getting line to edit in '%s'"), adefPath)
         );
     }
+}
+
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Evaluate CDEF file path and component's relevant string
+ * and its position to write in another CDEF.
+ **/
+//-------------------------------------------------------------------------------------------------
+void GetCdefComponentEditLinePosition
+(
+    ArgHandler_t& handler,
+    const std::string& cdefTestFilePath
+)
+{
+    std::string compMustExist;
+    std::string compMustNotExist;
+
+    switch(handler.editActionType)
+    {
+        case  ArgHandler_t::EditActionType_t::REMOVE:
+        {
+            compMustExist = handler.absCdefFilePath;
+            compMustNotExist = "";
+            break;
+        }
+
+        case  ArgHandler_t::EditActionType_t::RENAME:
+        {
+            compMustExist = handler.oldCdefFilePath;
+            compMustNotExist = handler.absCdefFilePath;
+            break;
+        }
+
+        default:
+        {
+            throw mk::Exception_t(LE_I18N("Internal error: Invalid edit action type."));
+            break;
+        }
+    }
+    // Parse the definition files to get the line and its position to write.
+    ParseCdefGetEditLinePosition(handler, cdefTestFilePath, compMustExist, compMustNotExist);
 }
 
 
@@ -1644,6 +2023,34 @@ void GetAdefSectionEditLinePosition
         {
             std::cout << mk::format(LE_I18N("\nUpdate section '%s' to '%s' ."), section, strWrite);
         }
+    }
+}
+
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Evaluate the component definition file to update depending on the edit item type. Parse
+ * component defintion file to evaluate the line to be written and the position in component
+ * definition file to write.
+ **/
+//-------------------------------------------------------------------------------------------------
+void EvaluateCdefGetEditLinePosition
+(
+    ArgHandler_t& handler,
+    const std::string cdefTestFilePath
+)
+{
+    switch (handler.editItemType)
+    {
+        case ArgHandler_t::EditItemType_t::COMPONENT:
+            GetCdefComponentEditLinePosition(handler, cdefTestFilePath);
+            break;
+
+        default:
+            throw mk::Exception_t(
+                    LE_I18N("Internal error: Invalid edit item type.")
+            );
+            break;
     }
 }
 
