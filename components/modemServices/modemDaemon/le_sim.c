@@ -686,6 +686,7 @@ static le_result_t GetIMSI
  * @return
  *      - LE_OK on success
  *      - LE_FAULT on failure
+ *      - LE_BAD_PARAMETER on a bad input parameter, i.e. NULL
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t GetPhoneNumber
@@ -695,10 +696,9 @@ static le_result_t GetPhoneNumber
 {
     char phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
 
-    // Phone number has already been retreived and stored. No need to read it again from PA.
-    if (0 != simPtr->phoneNumber[0])
+    if (NULL == simPtr)
     {
-        return LE_OK;
+        return LE_BAD_PARAMETER;
     }
 
     // Select SIM card and attempt to read IMSI from PA.
@@ -713,6 +713,10 @@ static le_result_t GetPhoneNumber
         return LE_FAULT;
     }
 
+    // Retrieve the phone #, i.e. MSISDN, again even when it might have been set already in
+    // simPtr->phoneNumber, because earlier it might have been retrieved from the QMI Device
+    // Management Service while the QMI Phonebook Manager wasn't available. But this info
+    // would be more accurate from the latter than the former, e.g. any "+" prefix.
     if (LE_OK != pa_sim_GetSubscriberPhoneNumber(phoneNumber, sizeof(phoneNumber)))
     {
       return LE_FAULT;
@@ -1656,6 +1660,7 @@ le_result_t le_sim_GetSubscriberPhoneNumber
         return LE_FAULT;
     }
 
+    LE_INFO("MSISDN retrieved: %s", simPtr->phoneNumber);
     return le_utf8_Copy(phoneNumberStr,simPtr->phoneNumber,phoneNumberStrSize,NULL);
 }
 
