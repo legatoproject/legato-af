@@ -1061,7 +1061,7 @@ le_httpClient_Ref_t le_httpClient_Create
 )
 {
     char srcIpAddress[LE_MDC_IPV6_ADDR_MAX_BYTES] = {0};
-
+#if !LE_CONFIG_LINUX
     // use default profile
     le_mdc_ProfileRef_t profileRef = le_mdc_GetProfile((uint32_t)LE_MDC_DEFAULT_PROFILE);
     if(!profileRef)
@@ -1073,18 +1073,18 @@ le_httpClient_Ref_t le_httpClient_Create
     // Try IPv4, then Ipv6
     if (LE_OK == le_mdc_GetIPv4Address(profileRef, srcIpAddress, sizeof(srcIpAddress)))
     {
-        LE_INFO("le_httpClient_Create using IPv4 profile");
+        LE_INFO("le_httpClient_Create using IPv4 profile & source addr %s", srcIpAddress);
     }
     else if (LE_OK == le_mdc_GetIPv6Address(profileRef, srcIpAddress, sizeof(srcIpAddress)))
     {
-        LE_INFO("le_httpClient_Create using IPv6 profile");
+        LE_INFO("le_httpClient_Create using IPv6 profile & source addr %s", srcIpAddress);
     }
     else
     {
         LE_ERROR("le_httpClient_Create No IPv4 or IPv6 profile");
         return NULL;
     }
-
+#endif
     return le_httpClient_CreateOnSrcAddr(hostPtr, port, srcIpAddress);
 }
 
