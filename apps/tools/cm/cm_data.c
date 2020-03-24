@@ -718,8 +718,8 @@ static le_dcs_ReqObjRef_t GetStartReqRef
     le_cfg_IteratorRef_t cfg;
     char configPath[LE_CFG_STR_LEN_BYTES];
 
-    snprintf(configPath, sizeof(configPath), "%s/%d/%s", ConfigTreeRoot, LE_DCS_TECH_CELLULAR,
-             channelName);
+    LE_ASSERT(snprintf(configPath, sizeof(configPath), "%s/%d/%s", ConfigTreeRoot,
+                       LE_DCS_TECH_CELLULAR, channelName) < sizeof(configPath));
     cfg = le_cfg_CreateReadTxn(configPath);
     if (!le_cfg_NodeExists(cfg, CFG_SESSION_CLEANUP_REQREF))
     {
@@ -747,18 +747,19 @@ static void ResetSessionCleanup
 )
 {
     char configPath[LE_CFG_STR_LEN_BYTES];
-    snprintf(configPath, sizeof(configPath), "%s/%s", ConfigTreeRoot, "tools");
+    LE_ASSERT(snprintf(configPath, sizeof(configPath), "%s/%s",
+                       ConfigTreeRoot, "tools") < sizeof(configPath));
     le_cfg_QuickDeleteNode(configPath);
 
     if (strlen(DataChannelName))
     {
-        snprintf(configPath, sizeof(configPath), "%s/%d/%s", ConfigTreeRoot,
-                  LE_DCS_TECH_CELLULAR, DataChannelName);
+        LE_ASSERT(snprintf(configPath, sizeof(configPath), "%s/%d/%s", ConfigTreeRoot,
+                           LE_DCS_TECH_CELLULAR, DataChannelName) < sizeof(configPath));
         le_cfg_QuickDeleteNode(configPath);
 
         // Delete the childless node/parent when found
-        snprintf(configPath, sizeof(configPath), "%s/%d", ConfigTreeRoot,
-                 LE_DCS_TECH_CELLULAR);
+        LE_ASSERT(snprintf(configPath, sizeof(configPath), "%s/%d", ConfigTreeRoot,
+                           LE_DCS_TECH_CELLULAR) < sizeof(configPath));
         le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
         if (le_cfg_GoToFirstChild(cfg) != LE_OK)
         {
@@ -791,7 +792,8 @@ static void SetSessionCleanup
 )
 {
     char configPath[LE_CFG_STR_LEN_BYTES];
-    snprintf(configPath, sizeof(configPath), "%s/%s", ConfigTreeRoot, "tools");
+    LE_ASSERT(snprintf(configPath, sizeof(configPath), "%s/%s",
+                       ConfigTreeRoot, "tools") < sizeof(configPath));
     le_cfg_QuickSetBool(configPath, true);
 }
 
