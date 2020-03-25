@@ -486,9 +486,9 @@ static void GnssPositionHandlerFunction
     uint32_t direction;
     uint32_t directionAccuracy;
     uint64_t EpochTime;
-    uint16_t hdopPtr, vdopPtr, pdopPtr;
+    uint16_t dop;
     uint32_t timeAccuracy;
-
+    le_gnss_DopType_t dopType = LE_GNSS_PDOP;
     LE_ASSERT(positionSampleRef != NULL);
 
     // Get UTC date
@@ -612,9 +612,9 @@ static void GnssPositionHandlerFunction
                                                         &magneticDeviation)));
 
     // Get the DOP parameters
-    result = le_gnss_GetDop(positionSampleRef, &hdopPtr, &vdopPtr, &pdopPtr);
+    result = le_gnss_GetDilutionOfPrecision(positionSampleRef, dopType, &dop);
     LE_ASSERT((LE_OK == result) || (LE_OUT_OF_RANGE == result));
-    LE_ASSERT(LE_FAULT == (le_gnss_GetDop(GnssPositionSampleRef, &hdopPtr, &vdopPtr, &pdopPtr)));
+    LE_ASSERT(LE_FAULT == (le_gnss_GetDilutionOfPrecision(GnssPositionSampleRef, dopType, &dop)));
 
     // Satellites status
     uint8_t satsInViewCount;

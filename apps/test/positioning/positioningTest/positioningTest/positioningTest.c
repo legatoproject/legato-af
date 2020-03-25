@@ -483,19 +483,12 @@ static void Testle_pos_ActivateGpsNmeaSentences
 
     // @deprecated, PQXFI is deprecated. PTYPE is used instead.
     LE_TEST_BEGIN_SKIP(!LINUX_OS, 21);
-    LE_TEST_OK(LE_OK == le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_PQXFI),
-            "Set NMEA sentence mask to %08X", LE_GNSS_NMEA_MASK_PQXFI);
-    LE_TEST_OK(LE_OK == le_gnss_GetNmeaSentences(&nmeaMask), "Get NMEA sentences");
-    LE_TEST_OK(nmeaMask == (LE_GNSS_NMEA_MASK_PQXFI | LE_GNSS_NMEA_MASK_PTYPE),
-            "Confirm NMEA sentence mask is set to %08X",
-            (LE_GNSS_NMEA_MASK_PQXFI | LE_GNSS_NMEA_MASK_PTYPE));
-
     LE_TEST_OK(LE_OK == le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_PTYPE),
             "Set NMEA sentence mask to %08X",LE_GNSS_NMEA_MASK_PTYPE);
     LE_TEST_OK(le_gnss_GetNmeaSentences(&nmeaMask), "Get NMEA sentences");
-    LE_TEST_OK(nmeaMask == (LE_GNSS_NMEA_MASK_PQXFI | LE_GNSS_NMEA_MASK_PTYPE),
+    LE_TEST_OK(nmeaMask == LE_GNSS_NMEA_MASK_PTYPE,
             "Confirm NMEA sentence mask is set to %08X",
-            (LE_GNSS_NMEA_MASK_PQXFI | LE_GNSS_NMEA_MASK_PTYPE));
+            LE_GNSS_NMEA_MASK_PTYPE);
 
     LE_TEST_OK(LE_OK == le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_PSTIS),
             "Set NMEA sentence mask to %08X", LE_GNSS_NMEA_MASK_PSTIS);

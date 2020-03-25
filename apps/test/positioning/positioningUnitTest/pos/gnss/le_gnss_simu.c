@@ -1349,47 +1349,6 @@ le_result_t le_gnss_GetSatellitesStatus
 {
     return LE_OK;
 }
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the DOP parameters (Dilution Of Precision) for the fixed position
- *
- * @return
- *  - LE_FAULT         Function failed to find the positionSample.
- *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to UINT16_MAX).
- *  - LE_OK            Function succeeded.
- *
- * @deprecated This function is deprecated, le_gnss_GetDilutionOfPrecision() should be used for
- *             new code.
- *
- * @note The DOP values are given with 3 decimal places like: DOP value 2200 = 2.200
- *
- * @note If the caller is passing an invalid Position sample reference into this function,
- *       it is a fatal error, the function will not return.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_gnss_GetDop
-(
-    le_gnss_SampleRef_t positionSampleRef,
-        ///< [IN]
-        ///< Position sample's reference.
-
-    uint16_t* hdopPtr,
-        ///< [OUT]
-        ///< Horizontal Dilution of Precision [resolution 1e-3].
-
-    uint16_t* vdopPtr,
-        ///< [OUT]
-        ///< Vertical Dilution of Precision [resolution 1e-3].
-
-    uint16_t* pdopPtr
-        ///< [OUT]
-        ///< Position Dilution of Precision [resolution 1e-3].
-)
-{
-    return LE_OK;
-}
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Get the DOP parameter (Dilution Of Precision) for the fixed position.
@@ -1398,8 +1357,6 @@ le_result_t le_gnss_GetDop
  *  - LE_FAULT         Function failed to find the DOP value.
  *  - LE_OUT_OF_RANGE  The retrieved parameter is invalid (set to INT16_MAX).
  *  - LE_OK            Function succeeded.
- *
- * @note This function replaces the deprecated function le_gnss_GetDop().
  *
  * @note The DOP value is given with 3 decimal places like: DOP value 2200 = 2.200
  *
@@ -2090,9 +2047,6 @@ le_result_t le_gnss_DeleteSuplCertificate
  *
  * @warning The settings are platform dependent. Please refer to
  *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
- *
- * @deprecated LE_GNSS_NMEA_MASK_PQXFI is deprecated. LE_GNSS_NMEA_MASK_PTYPE should be used
- *             instead. Setting LE_GNSS_NMEA_MASK_PTYPE will also set LE_GNSS_NMEA_MASK_PQXFI.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_SetNmeaSentences
