@@ -25,6 +25,7 @@
 #include "test.h"
 #include "thread.h"
 #include "timer.h"
+#include "fa/atomFile.h"
 
 #include <locale.h>
 
@@ -115,6 +116,7 @@ static void InitLegatoFramework
     thread_Init();      // Uses event loop, memory pools and safe references.
     test_Init();        // Uses mutexes.
     msg_Init();         // Uses event loop.
+    atomFile_Init();    // Uses memory pools.
     fs_Init();          // Uses memory pools and safe references and path manipulation.
     fd_Init();
     json_Init();

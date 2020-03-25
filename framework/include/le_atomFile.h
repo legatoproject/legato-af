@@ -280,7 +280,7 @@
  *     File must be closed using le_atomFile_Close() or le_atomFile_Cancel() function.
  */
 //--------------------------------------------------------------------------------------------------
-int le_atomFile_Open
+LE_API_FILESYSTEM int le_atomFile_Open
 (
     const char* pathNamePtr,            ///< [IN] Path of the file to open
     le_flock_AccessMode_t accessMode    ///< [IN] Access mode to open the file.
@@ -313,7 +313,7 @@ int le_atomFile_Open
  *     File must be closed using le_atomFile_Close() or le_atomFile_Cancel() function.
  */
 //--------------------------------------------------------------------------------------------------
-int le_atomFile_Create
+LE_API_FILESYSTEM int le_atomFile_Create
 (
     const char* pathNamePtr,            ///< [IN] Path of the file to open
     le_flock_AccessMode_t accessMode,   ///< [IN] Access mode to open the file.
@@ -338,7 +338,7 @@ int le_atomFile_Create
  *     File must be closed using le_atomFile_Close() or le_atomFile_Cancel() function.
  */
 //--------------------------------------------------------------------------------------------------
-int le_atomFile_TryOpen
+LE_API_FILESYSTEM LE_FULL_API int le_atomFile_TryOpen
 (
     const char* pathNamePtr,            ///< [IN] Path of the file to open
     le_flock_AccessMode_t accessMode    ///< [IN] Access mode to open the file.
@@ -360,7 +360,7 @@ int le_atomFile_TryOpen
  *     File must be closed using le_atomFile_Close() or le_atomFile_Cancel() function.
  */
 //--------------------------------------------------------------------------------------------------
-int le_atomFile_TryCreate
+LE_API_FILESYSTEM LE_FULL_API int le_atomFile_TryCreate
 (
     const char* pathNamePtr,            ///< [IN] Path of the file to open
     le_flock_AccessMode_t accessMode,   ///< [IN] Access mode to open the file.
@@ -374,7 +374,7 @@ int le_atomFile_TryCreate
  * Cancels all changes and closes the file descriptor.
  */
 //--------------------------------------------------------------------------------------------------
-void le_atomFile_Cancel
+LE_API_FILESYSTEM void le_atomFile_Cancel
 (
     int fd                              /// [IN] The file descriptor to close.
 );
@@ -390,7 +390,7 @@ void le_atomFile_Cancel
  *      LE_FAULT if there was an error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_atomFile_Close
+LE_API_FILESYSTEM le_result_t le_atomFile_Close
 (
     int fd                              /// [IN] The file descriptor to close.
 );
@@ -420,7 +420,7 @@ le_result_t le_atomFile_Close
  *     function.
  */
 //--------------------------------------------------------------------------------------------------
-FILE* le_atomFile_OpenStream
+LE_API_FILESYSTEM LE_FULL_API FILE* le_atomFile_OpenStream
 (
     const char* pathNamePtr,            ///< [IN] Path of the file to open
     le_flock_AccessMode_t accessMode,   ///< [IN] Access mode to open the file.
@@ -459,7 +459,7 @@ FILE* le_atomFile_OpenStream
  *     function.
  */
 //--------------------------------------------------------------------------------------------------
-FILE* le_atomFile_CreateStream
+LE_API_FILESYSTEM LE_FULL_API FILE* le_atomFile_CreateStream
 (
     const char* pathNamePtr,            ///< [IN] Path of the file to open
     le_flock_AccessMode_t accessMode,   ///< [IN] Access mode to open the file.
@@ -490,7 +490,7 @@ FILE* le_atomFile_CreateStream
  *     function.
  */
 //--------------------------------------------------------------------------------------------------
-FILE* le_atomFile_TryOpenStream
+LE_API_FILESYSTEM LE_FULL_API FILE* le_atomFile_TryOpenStream
 (
     const char* pathNamePtr,            ///< [IN] Path of the file to open
     le_flock_AccessMode_t accessMode,   ///< [IN] Access mode to open the file.
@@ -517,7 +517,7 @@ FILE* le_atomFile_TryOpenStream
  *     function.
  */
 //--------------------------------------------------------------------------------------------------
-FILE* le_atomFile_TryCreateStream
+LE_API_FILESYSTEM LE_FULL_API FILE* le_atomFile_TryCreateStream
 (
     const char* pathNamePtr,            ///< [IN] Path of the file to open
     le_flock_AccessMode_t accessMode,   ///< [IN] Access mode to open the file.
@@ -532,7 +532,7 @@ FILE* le_atomFile_TryCreateStream
  * Cancels all changes and closes the file stream.
  */
 //--------------------------------------------------------------------------------------------------
-void le_atomFile_CancelStream
+LE_API_FILESYSTEM LE_FULL_API void le_atomFile_CancelStream
 (
     FILE* fileStreamPtr               ///< [IN] File stream pointer to close
 );
@@ -548,7 +548,7 @@ void le_atomFile_CancelStream
  *      LE_FAULT if there was an error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_atomFile_CloseStream
+LE_API_FILESYSTEM LE_FULL_API le_result_t le_atomFile_CloseStream
 (
     FILE* fileStreamPtr             ///< [IN] File stream pointer to close
 );
@@ -566,7 +566,7 @@ le_result_t le_atomFile_CloseStream
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_atomFile_Delete
+LE_API_FILESYSTEM le_result_t le_atomFile_Delete
 (
     const char* pathNamePtr            ///< [IN] Path of the file to delete
 );
@@ -584,7 +584,7 @@ le_result_t le_atomFile_Delete
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_atomFile_TryDelete
+LE_API_FILESYSTEM LE_FULL_API le_result_t le_atomFile_TryDelete
 (
     const char* pathNamePtr            ///< [IN] Path of the file to delete
 );
