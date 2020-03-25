@@ -1616,7 +1616,8 @@ static le_dls_Link_t* GetNextThreadMemberObjLinkPtr
         // There are no more thread objects on the list (or list is empty)
         if (remThreadObjNextLinkPtr == NULL)
         {
-            if (TimerTypeIndex == TIMER_NON_WAKEUP)
+            if ((memberObjType == INSPECT_INSP_TYPE_TIMER) &&
+                (TimerTypeIndex == TIMER_NON_WAKEUP))
             {
                 /* let continue on wakeup timers */
                 TimerTypeIndex = TIMER_WAKEUP;
