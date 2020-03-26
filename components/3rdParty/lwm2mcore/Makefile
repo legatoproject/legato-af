@@ -13,11 +13,9 @@ LWM2MCORE_SRC=\
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/objectManager/lwm2mcoreCoapHandlers.c \
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/security/lwm2mcoreSecurity.c
 
-# TODO: airVantageConnector/avcDaemon must be removed from include pathes once avc is merged for uLegato
 INCLUDES=\
     -I${LEGATO_ROOT}/framework/include \
     -I${LEGATO_ROOT}/apps/platformServices/airVantageConnector/avcDaemon/avcClient \
-    -I${LEGATO_ROOT}/apps/platformServices/airVantageConnector/avcClient \
     -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/include \
     -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/include/platform-specific/linux \
     -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/sessionManager \

@@ -981,10 +981,11 @@ le_result_t le_dcsCellular_GetDNSAddrs
 
 // -------------------------------------------------------------------------------------------------
 /**
- * This function handles a duplicate session request
+ * This function sends an update to the app right after a session is started if it's possible,
+ * meaning if mdc state and  packet switch state are both up.
  */
 // -------------------------------------------------------------------------------------------------
-static void DcsCellularDuplicateSessionUpdate
+static void DcsCellularSessionUpdateIfPossible
 (
     le_mdc_ProfileRef_t profileRef         ///< [IN] Mobile data connection profile reference
 )
@@ -996,6 +997,7 @@ static void DcsCellularDuplicateSessionUpdate
     le_mdc_ConState_t mdcState;
     uint16_t refcount;
     bool opState;
+    bool packetSwitchStateUp;
 
     le_dcsCellular_GetNameFromIndex(profileIndex, connName);
     cellConnDb = DcsCellularGetDbFromIndex(profileIndex);
@@ -1021,12 +1023,16 @@ static void DcsCellularDuplicateSessionUpdate
     {
         (void)DcsCellularGetConnState(connName, &mdcState);
         cellConnDb->opState = mdcState;
+        opState = DcsCellularMdcStateIsUp(cellConnDb->opState);
     }
+
+    packetSwitchStateUp = DcsCellularPacketSwitchStateIsUp(CellPacketSwitchState);
 
     // If it is the first request of the app, and session is already started,
     // send a connected event so that the app knows about the current state to move on
-    if ((refcount == 1) && opState)
+    if ((refcount == 1) && opState && packetSwitchStateUp)
     {
+        LE_INFO("Notifying the app that connection is Up");
         dcs_ChannelEventNotifier(channelRef, LE_DCS_EVENT_UP);
     }
 }
@@ -1069,7 +1075,7 @@ le_result_t le_dcsCellular_Start
 
     if (!DcsCellularPacketSwitchStateIsUp(CellPacketSwitchState))
     {
-        LE_DEBUG("Connection %s not immediately started due to down packet switch state",
+        LE_WARN("Connection %s not immediately started due to down packet switch state",
                  connName);
         return LE_UNAVAILABLE;
     }
@@ -1077,10 +1083,7 @@ le_result_t le_dcsCellular_Start
     ret = le_mdc_StartSession(profileRef);
     if ((ret == LE_DUPLICATE) || (ret == LE_OK))
     {
-        if (ret == LE_DUPLICATE)
-        {
-            DcsCellularDuplicateSessionUpdate(profileRef);
-        }
+        DcsCellularSessionUpdateIfPossible(profileRef);
         LE_INFO("Succeeded starting cellular connection %s", connName);
         cellConnDb->retries = 1;
         cellConnDb->backoff = CELLULAR_RETRY_BACKOFF_INIT;
