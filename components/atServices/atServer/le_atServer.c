@@ -2174,6 +2174,11 @@ static le_result_t ParseParam
         if ( cmdParserPtr->currentCharPtr > cmdParserPtr->lastCharPtr )
         {
             loop = false;
+            if (tokenQuote == true)
+            {
+                le_mem_Release(paramPtr);
+                return LE_FAULT;
+            }
         }
 
         if ((tokenQuote == false) &&
