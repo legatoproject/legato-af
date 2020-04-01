@@ -33,15 +33,11 @@ The following APIs have been removed and are no longer used within the Legato Ap
 
 - @ref c_threading - LE_THREAD_PRIORITY_NORMAL(), replaced by LE_THREAD_PRIORITY_MEDIUM
 - @ref c_sms - le_sms_SetTimeout() removed as it was not needed.
-- @ref c_gnss - le_gnss_GetDop() removed, replaced by le_gnss_GetDilutionOfPrecision()
-- @ref c_gnss - le_gnss_GetGpsLeapSeconds() removed, replaced by le_gnss_GetLeapSeconds()
-- @ref c_gnss - LE_GNSS_NMEA_MASK_PQXFI, replaced by LE_GNSS_NMEA_MASK_PTYPE
 - swiQmi_CheckResponseCode(), replaced by swiQmi_CheckResponse()
 - swiQmi_OEMCheckResponseCode(), replaced by swiQmi_CheckResponse()
 - @ref c_atServer - le_atServer_SendFinalResponse(), replaced by le_atServer_SendFinalResultCode()
 - le_fd_MkDataPipe() has been removed as it is not supported in Linux.
 - le_sup_ctrl.api has been removed as it is no longer needed or referenced in Legato.
-- LE_NOT_POSSIBLE has been removed and replaced other error codes that are more clear.
 
 @subsection rn2004_Features_ttyOpen tty API Behavior Change
 
