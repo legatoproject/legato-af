@@ -10,6 +10,7 @@
  * @section fd_dtr_api Available API
  *
  * It offers the following file operations:
+ * - create a resource with @c le_fd_Create(),
  * - open a resource with @c le_fd_Open(),
  * - close a resource with @c le_fd_Close(),
  * - read from a resource with @c le_fd_Read(),
@@ -40,9 +41,25 @@
     !defined(le_fd_Ioctl)       && \
     !defined(le_fd_MkFifo)      && \
     !defined(le_fd_MkPipe)      && \
+    !defined(le_fd_Create)      && \
     !defined(le_fd_Open)        && \
     !defined(le_fd_Read)        && \
     !defined(le_fd_Write)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create a new resource.
+ *
+ * @return
+ *  The new file descriptor, or -1 if an error occurred and errno is set.
+ */
+//--------------------------------------------------------------------------------------------------
+int le_fd_Create
+(
+    const char* pathName,             ///< [IN] Pathname to the resource
+    int flags,                        ///< [IN] Resource access flags
+    mode_t mode                       ///< [IN] Resource mode
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -185,6 +202,9 @@ int le_fd_Fcntl
 
 #if !defined(le_fd_Open)
 #  error "File descriptor macros are overridden, but le_fd_Open not defined.  Please define it."
+#endif
+#if !defined(le_fd_Create)
+#  error "File descriptor macros are overridden, but le_fd_Create not defined.  Please define it."
 #endif
 #if !defined(le_fd_Close)
 #  error "File descriptor macros are overridden, but le_fd_Close not defined.  Please define it."
