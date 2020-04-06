@@ -168,7 +168,10 @@ Client.connection.onInitialized(() =>
 
 Client.connection.onDidChangeConfiguration((settings: any) =>
     {
-        Client.profile.environment = settings;
+        if (settings["PATH"])
+        {
+            Client.profile.environment = settings;
+        }
     });
 
 
