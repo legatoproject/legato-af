@@ -61,7 +61,7 @@ case "$QEMU_TARGET" in
         VIRT_TARGET_ARCH="x86"
         YOCTO_BUILD_DIRS=("build_virt-${VIRT_TARGET_ARCH}")
         YOCTO_PLATFORMS+=("swi-virt-${VIRT_TARGET_ARCH}")
-        YOCTO_SYSROOTS+=("i586-poky-linux")
+        YOCTO_SYSROOTS+=("i586-poky-linux" "core2-32-poky-linux")
         DOCKER_IMAGE_TYPE="alpine"
         BUILD_ARGS+=" --build-arg QEMU_ARCH=i386"
         ;;
@@ -155,6 +155,9 @@ fi
 
 if [ -z "$BUILD_DIR" ]; then
     BUILD_DIR="${LEGATO_BUILD_DIR}/docker"
+fi
+if [[ "$BUILD_DIR" != "/"* ]]; then
+    BUILD_DIR="$PWD/$BUILD_DIR"
 fi
 
 mkdir -p "$BUILD_DIR"
@@ -344,7 +347,7 @@ cp "$(dirname ${SCRIPT_PATH})/Dockerfile.${DOCKER_IMAGE_TYPE}" "${BUILD_DIR}/sta
 
 cd $BUILD_DIR/staging/
 
-docker build $BUILD_ARGS . | tee -a "$BUILD_DIR/docker-build.log"
+docker build $BUILD_ARGS . 2>&1 | tee -a "$BUILD_DIR/docker-build.log"
 if [ ${PIPESTATUS[0]} -ne 0 ]; then
     echo "Image build failed"
     exit 1

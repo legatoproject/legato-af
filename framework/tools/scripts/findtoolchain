@@ -191,7 +191,7 @@ AppendYoctoBuildToolchain() {
 
         toolchain_prop="${toolchain_dir}"
         toolchain_prop+="::"
-        toolchain_prop="${toolchain_root}"
+        toolchain_prop+="${toolchain_root}"
         toolchain_prop+="::"
         toolchain_prop+="${sysroot_dir}"
         toolchain_prop+="::"
