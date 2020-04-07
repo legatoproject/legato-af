@@ -54,4 +54,6 @@ buildVars:
         ${LEGATO_ROOT}/components/uartMode/platformAdaptor/default/le_pa_uartMode_default
     LEGATO_MODEM_PA_RSIM_DEFAULT =
         ${LEGATO_ROOT}/components/modemServices/platformAdaptor/default/le_pa_remotesim_default
+
+    LEGATO_PROPRIETARY_APPS = ${LEGATO_ROOT}/apps/proprietary
 }
