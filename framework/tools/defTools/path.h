@@ -144,7 +144,8 @@ std::string MakeRelative
 //--------------------------------------------------------------------------------------------------
 std::string MakeCanonical
 (
-    const std::string& path
+    const std::string   &path,                  ///< Path to convert to canonical form.
+    bool                 followSymlinks = true  ///< Resolve symlinks when converting path.
 );
 
 

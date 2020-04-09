@@ -445,12 +445,51 @@ std::string MakeRelative
 //--------------------------------------------------------------------------------------------------
 std::string MakeCanonical
 (
-    const std::string& path
+    const std::string& path,
+    bool followSymlinks
 )
 //--------------------------------------------------------------------------------------------------
 {
-    char pathBuff[PATH_MAX];
-    char* cannonicalPath = realpath(path.c_str(), pathBuff);
+    char  pathBuff[PATH_MAX];
+    char *cannonicalPath = NULL;
+
+    if (readlink(path.c_str(), pathBuff, sizeof(pathBuff)) < 0 || followSymlinks)
+    {
+        // Not a symlink, or we don't care.
+        cannonicalPath = realpath(path.c_str(), pathBuff);
+    }
+    else
+    {
+        // Have a symlink, and we don't want to follow it.
+        char commandStr[PATH_MAX + 16];
+        if (snprintf(commandStr, sizeof(commandStr), "realpath -sz '%s'", path.c_str()) <
+            (int) sizeof(commandStr))
+        {
+            FILE *inStream = popen(commandStr, "r");
+            if (inStream != NULL)
+            {
+                size_t i;
+
+                memset(pathBuff, 0, sizeof(pathBuff));
+                for (i = 0; i < sizeof(pathBuff); ++i)
+                {
+                    int c = fgetc(inStream);
+                    if (c == EOF)
+                    {
+                        break;
+                    }
+
+                    pathBuff[i] = (char) c;
+                }
+
+                if (pclose(inStream) == 0 && pathBuff[sizeof(pathBuff) - 1] == '\0')
+                {
+                    // Succeeded and didn't truncate path.
+                    cannonicalPath = pathBuff;
+                }
+            }
+        }
+    }
 
     if (cannonicalPath == NULL)
     {
