@@ -92,6 +92,12 @@ config ENABLE_AV_SMS_COUNT
   When checked, SMS monitoring/counting is enabled and LWM2M resources
   lwm2m.7.0.x return valid statistic values related to SMS counting.
 
+config AVC_HTTP_TIMEOUT_MS
+  int "AVC HTTP connection timeout (msec)"
+  default 30000
+  ---help---
+  The timeout (msec) of the HTTP connection used to download the package.
+
 endmenu # end "AirVantage Connector"
 
 menu "AT Service"
