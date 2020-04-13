@@ -852,6 +852,15 @@ static void HttpClientStateMachine
         if (contextPtr->eventCb)
         {
             contextPtr->eventCb(contextPtr->reference, LE_HTTP_CLIENT_EVENT_CLOSED);
+
+            // It's possible that the contextPtr is freed in eventCb(), thus we need check it again
+            // before re-using it.
+            contextPtr = (HttpSessionCtx_t *)le_ref_Lookup(HttpSessionRefMap, userPtr);
+            if (contextPtr == NULL)
+            {
+                LE_INFO("Reference is already freed in eventCb(): %p", userPtr);
+                return;
+            }
         }
 
         if (contextPtr->state != STATE_IDLE)
