@@ -2143,7 +2143,7 @@ void le_mrc_Init
                                                     MrcCommandThread,
                                                     (void*)initSemaphore);
 
-#if LE_CONFIG_RTOS
+#ifdef MS_STACK_SIZE_MRC
     le_thread_SetStackSize(mrcThreadRef, MS_STACK_SIZE_MRC);
 #endif
 

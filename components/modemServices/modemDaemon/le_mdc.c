@@ -1041,7 +1041,7 @@ void le_mdc_Init
                                                     CommandThread,
                                                     (void*)initSemaphore);
 
-#if LE_CONFIG_RTOS
+#ifdef MS_STACK_SIZE_MDC
     le_thread_SetStackSize(mdcThreadRef, MS_STACK_SIZE_MDC);
 #endif
     le_thread_Start(mdcThreadRef);
