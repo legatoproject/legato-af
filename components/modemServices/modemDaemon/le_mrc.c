@@ -2143,10 +2143,6 @@ void le_mrc_Init
                                                     MrcCommandThread,
                                                     (void*)initSemaphore);
 
-#ifdef MS_STACK_SIZE_MRC
-    le_thread_SetStackSize(mrcThreadRef, MS_STACK_SIZE_MRC);
-#endif
-
     le_thread_Start(mrcThreadRef);
     le_sem_Wait(initSemaphore);
     le_sem_Delete(initSemaphore);
