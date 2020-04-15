@@ -478,10 +478,11 @@ static le_result_t BuildAndSendRequest
 
     // Construct request line following user input
     length = snprintf(buffer, sizeof(buffer), "%s /%s HTTP/1.1\r\n"
-                                              "host: %s\r\n",
+                                              "host: %s:%d\r\n",
                                                SyntaxHttpCommandPtr[command],
                                                reqUriPtr,
-                                               contextPtr->host);
+                                               contextPtr->host,
+                                               contextPtr->port);
     if ((length < 0) || (length >= sizeof(buffer)))
     {
         LE_ERROR("Unable to construct request line");
