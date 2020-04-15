@@ -282,14 +282,6 @@ static le_event_HandlerRef_t PaHandlerRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * PA NMEA handler's reference.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static le_event_HandlerRef_t PaNmeaHandlerRef = NULL;
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Number of position Handler functions that own position samples.
  *
  */
@@ -302,7 +294,7 @@ static int32_t NumOfPositionHandlers = 0;
  *
  */
 //--------------------------------------------------------------------------------------------------
-static le_dls_List_t PositionHandlerList = LE_DLS_LIST_INIT;
+static le_dls_List_t PositionHandlerList = LE_DLS_LIST_DECL_INIT;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -370,7 +362,7 @@ static le_mem_PoolRef_t   PositionSampleRequestPoolRef;
  *
  */
 //--------------------------------------------------------------------------------------------------
-static le_dls_List_t PositionSampleList = LE_DLS_LIST_INIT;
+static le_dls_List_t PositionSampleList = LE_DLS_LIST_DECL_INIT;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -396,6 +388,7 @@ static le_ref_MapRef_t PositionSampleMap;
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t ClientRequestRefMap;
 
+#ifdef MK_CONFIG_AT_GNSS
 //--------------------------------------------------------------------------------------------------
 /**
  * NMEA pipe file descriptor
@@ -490,7 +483,7 @@ static void WriteNmeaPipe
     size_t stringSize = strlen(nmeaString)+1;
     size_t sizeToWrite = stringSize - CurrentNmeaWritePosition;
 
-    size_t writeSize = le_fd_Write(NmeaPipeFd,
+    ssize_t writeSize = le_fd_Write(NmeaPipeFd,
                                    nmeaString + CurrentNmeaWritePosition,
                                    sizeToWrite);
 
@@ -641,6 +634,7 @@ static le_result_t OpenNmeaPipe
     }
     return LE_OK;
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -758,6 +752,7 @@ static void PaNmeaHandler
     char* nmeaPtr        // [IN] The NMEA string
 )
 {
+#ifdef MK_CONFIG_AT_GNSS
     LE_DEBUG("NMEA Handler %s", nmeaPtr);
 
     // Open the NMEA FIFO pipe
@@ -779,6 +774,11 @@ static void PaNmeaHandler
 
     CurrentNmeaWritePosition = 0;
     WriteNmeaPipe(nmeaPtr);
+#else
+    LE_DEBUG("AT GNSS disabled, dropping this NMEA frames notification");
+
+    le_mem_Release(nmeaPtr);
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1482,7 +1482,7 @@ le_result_t gnss_Init
     // That node is a FIFO (named pipe): it will be managed from Legato (User space).
     if ((resultStat == 0) && (S_ISFIFO(nmeaFileStat.st_mode))) // FIFO (named pipe)
     {
-         if ((PaNmeaHandlerRef=pa_gnss_AddNmeaHandler(PaNmeaHandler)) == NULL)
+         if (pa_gnss_AddNmeaHandler(PaNmeaHandler) == NULL)
          {
              LE_ERROR("Failed to add PA NMEA handler!");
          }
@@ -1497,7 +1497,7 @@ le_result_t gnss_Init
     else if(resultStat == -1) // No such file or directory
 #endif
     {
-        if ((PaNmeaHandlerRef=pa_gnss_AddNmeaHandler(PaNmeaHandler)) != NULL)
+        if (pa_gnss_AddNmeaHandler(PaNmeaHandler) != NULL)
         {
             // Create NMEA device folder
             CreateNmeaPipe();

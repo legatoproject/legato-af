@@ -240,7 +240,7 @@ static le_ref_MapRef_t ActivationRequestRefMap;
  *
  */
 //--------------------------------------------------------------------------------------------------
-static le_dls_List_t PosSampleList = LE_DLS_LIST_INIT;
+static le_dls_List_t PosSampleList = LE_DLS_LIST_DECL_INIT;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -248,7 +248,7 @@ static le_dls_List_t PosSampleList = LE_DLS_LIST_INIT;
  *
  */
 //--------------------------------------------------------------------------------------------------
-static le_dls_List_t PosSampleHandlerList = LE_DLS_LIST_INIT;
+static le_dls_List_t PosSampleHandlerList = LE_DLS_LIST_DECL_INIT ;
 
 //--------------------------------------------------------------------------------------------------
 /**
