@@ -555,6 +555,8 @@ void GenerateRtosRpcServices
     for (auto &serverApiEntry : systemPtr->externServerInterfaces)
     {
         outputFile << "extern le_msg_LocalService_t "
+                   << serverApiEntry.second->componentInstancePtr->exePtr->appPtr->name
+                   << "_"
                    << ConvertInterfaceNameToSymbol(serverApiEntry.second->name)
                    << ";\n";
     }
@@ -686,6 +688,8 @@ void GenerateRtosRpcServices
             "        .messageSize = IFGEN_" << defaultCapsPrefix << "_MSG_SIZE\n"
             "     },\n"
             "     .localServicePtr = &"
+                   << externServerEntry.second->componentInstancePtr->exePtr->appPtr->name
+                   << "_"
                    << ConvertInterfaceNameToSymbol(externServerEntry.second->name) << "\n"
             "};\n"
             "\n";
