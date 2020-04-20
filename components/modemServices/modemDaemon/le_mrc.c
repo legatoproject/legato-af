@@ -1611,6 +1611,7 @@ static void FirstLayerNetRegRejectHandler
  *
  */
 //--------------------------------------------------------------------------------------------------
+#ifndef MK_CONFIG_DISABLE_NETREJECT_HANDLER
 static void NetRegRejectHandler
 (
     le_mrc_NetRegRejectInd_t* networkRejectIndPtr
@@ -1622,6 +1623,7 @@ static void NetRegRejectHandler
 
     le_event_ReportWithRefCounting(NetRegRejectId, networkRejectIndPtr);
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2107,7 +2109,9 @@ void le_mrc_Init
     NetRegRejectId = le_event_CreateIdWithRefCounting("NetRegReject");
 
     // Register a handler function for network reject indication
+#ifndef MK_CONFIG_DISABLE_NETREJECT_HANDLER
     pa_mrc_AddNetworkRejectIndHandler(NetRegRejectHandler, NULL);
+#endif
 
     // Register a handler function for new Registration State indication
     pa_mrc_AddNetworkRegHandler(NewRegStateHandler);
