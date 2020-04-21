@@ -1160,10 +1160,19 @@ le_result_t le_thread_SetPriority
     }
 
 #if LE_CONFIG_THREAD_REALTIME_ONLY
-    if (priority < LE_THREAD_PRIORITY_RT_LOWEST)
+    // When only RT priorities are on, map the regular priorities to relative RT priorties to ensure
+    // there is some wiggle room for those who are explicitly configuring rtX values.
+    if (priority <= LE_THREAD_PRIORITY_LOW)
     {
-        // If Legato only uses real-time priority, bump up priority to lowest real-time priority
         priority = LE_THREAD_PRIORITY_RT_LOWEST;
+    }
+    else if (priority == LE_THREAD_PRIORITY_MEDIUM)
+    {
+        priority = LE_THREAD_PRIORITY_RT_5;
+    }
+    else if (priority == LE_THREAD_PRIORITY_HIGH)
+    {
+        priority = LE_THREAD_PRIORITY_RT_8;
     }
 #endif
 
