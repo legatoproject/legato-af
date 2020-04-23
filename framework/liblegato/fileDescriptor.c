@@ -76,7 +76,7 @@ void fd_Close
 {
     int result;
 
-    result = le_fd_Close(fd);
+    result = close(fd);
 
     if (result != 0)
     {
@@ -164,7 +164,7 @@ ssize_t fd_ReadSize
         tempStr = (char *)(bufPtr);
         tempStr = tempStr + tempBufSize;
 
-        bytesRd = le_fd_Read(fd, tempStr, rdReq);
+        bytesRd = read(fd, tempStr, rdReq);
 
         // If resource is temporarily unavailable, try again to read.
         if ((bytesRd == -1) && (errno != EINTR) && (errno != EAGAIN))
@@ -233,7 +233,7 @@ ssize_t fd_WriteSize
         tempStr = (char *)(bufPtr);
         tempStr = tempStr + tempBufSize;
 
-        bytesWr = le_fd_Write(fd, tempStr, wrReq);
+        bytesWr = write(fd, tempStr, wrReq);
 
         if ((bytesWr == -1) && (errno != EINTR))
         {
@@ -293,7 +293,7 @@ le_result_t fd_ReadLine
 
         do
         {
-            result = le_fd_Read(fd, &c, 1);
+            result = read(fd, &c, 1);
         }
         while ( (result == -1) && (errno == EINTR) );
 

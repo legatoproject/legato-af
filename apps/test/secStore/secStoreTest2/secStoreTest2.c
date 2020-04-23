@@ -223,7 +223,6 @@ static void Test7
     LE_TEST_INFO("End of Test7");
 }
 
-#if LE_CONFIG_LINUX
 // writing a large file
 // reading a large file, with sufficient read buffer size
 // delete a large file
@@ -269,7 +268,6 @@ static void Test8
 
     LE_TEST_INFO("End of Test8");
 }
-#endif
 
 COMPONENT_INIT
 {
@@ -284,10 +282,8 @@ COMPONENT_INIT
     Test5();
     Test6();
     Test7();
-// Test8 with large stack size requirement causes crash on ThreadX.
-#if LE_CONFIG_LINUX
     Test8();
-#endif
+
     LE_TEST_INFO("=== SecStoreTest2 END ===");
 
     LE_TEST_EXIT;
