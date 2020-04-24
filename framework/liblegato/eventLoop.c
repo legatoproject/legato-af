@@ -358,7 +358,7 @@ static le_ref_MapRef_t EventRefMap;
  * The static safe reference map to be used to create handler references.
  */
 //--------------------------------------------------------------------------------------------------
-LE_REF_DEFINE_STATIC_MAP(EventHandlers, LE_CONFIG_MAX_QUEUED_FUNCTION_POOL_SIZE);
+LE_REF_DEFINE_STATIC_MAP(EventHandlers, LE_CONFIG_MAX_HANDLER_POOL_SIZE);
 
 
 //--------------------------------------------------------------------------------------------------
