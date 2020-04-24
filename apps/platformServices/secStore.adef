@@ -19,6 +19,10 @@ processes:
 #else
     watchdogTimeout: never
 #endif
+#if ${LE_CONFIG_LINUX} = y
+#else
+    maxStackBytes: 8192
+#endif
 }
 
 extern:
