@@ -75,6 +75,7 @@ typedef struct pa_mrc_CellInfo
                                     ///  Intrafrequency of a LTE cell.
     uint32_t         earfcn;        ///< Neighbour frequency.
     uint8_t          bsic;          ///< Base station identify code (GSM only).
+    uint16_t         psc;           ///< Primary scrambling code.
 }
 pa_mrc_CellInfo_t;
 
@@ -1063,6 +1064,19 @@ LE_SHARED le_result_t pa_mrc_GetServingCellLteTracAreaCode
 LE_SHARED le_result_t pa_mrc_GetServingCellLocAreaCode
 (
     uint32_t* lacPtr ///< [OUT] Location Area Code of the serving cell.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the serving cell primary scrambling code.
+ *
+ * @return The serving cell primary scrambling code. UINT16_MAX value is returned if the value is
+ * not available.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED uint16_t pa_mrc_GetServingCellScramblingCode
+(
+    void
 );
 
 

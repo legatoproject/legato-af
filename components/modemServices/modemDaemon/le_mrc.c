@@ -5506,6 +5506,21 @@ uint32_t le_mrc_GetServingCellEarfcn
     return pa_mrc_GetServingCellEarfcn();
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the serving cell primary scrambling code.
+ *
+ * @return The serving cell primary scrambling code. UINT16_MAX value is returned if the value is
+ * not available.
+ */
+//--------------------------------------------------------------------------------------------------
+uint16_t le_mrc_GetServingCellScramblingCode
+(
+    void
+)
+{
+    return pa_mrc_GetServingCellScramblingCode();
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -5528,6 +5543,28 @@ uint32_t le_mrc_GetNeighborCellEarfcn
         return UINT32_MAX;
     }
     return (cellInfoPtr->earfcn);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the neighbor cell primary scrambling code.
+ *
+ * @return The neighbor cell primary scrambling code. UINT16_MAX value is returned if the value is
+ * not available.
+ */
+//--------------------------------------------------------------------------------------------------
+uint16_t le_mrc_GetNeighborCellScramblingCode
+(
+    le_mrc_CellInfoRef_t     ngbrCellInfoRef ///< [IN] The Cell information reference
+)
+{
+    pa_mrc_CellInfo_t* cellInfoPtr = le_ref_Lookup(CellRefMap, ngbrCellInfoRef);
+    if (cellInfoPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", ngbrCellInfoRef);
+        return UINT16_MAX;
+    }
+    return (cellInfoPtr->psc);
 }
 
 

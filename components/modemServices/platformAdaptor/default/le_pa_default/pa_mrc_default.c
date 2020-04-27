@@ -885,6 +885,23 @@ le_result_t pa_mrc_GetServingCellLocAreaCode
     return LE_FAULT;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the serving cell primary scrambling code.
+ *
+ * @return The serving cell primary scrambling code. UINT16_MAX value is returned if the value is
+ * not available.
+ */
+//--------------------------------------------------------------------------------------------------
+uint16_t pa_mrc_GetServingCellScramblingCode
+(
+    void
+)
+{
+    LE_ERROR("Unsupported function called");
+    return UINT16_MAX;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
