@@ -284,18 +284,16 @@ le_dcs_Technology_t le_dcs_GetTechnology
     le_dcs_ChannelRef_t channelRef  ///< [IN] channel which technology type is to be queried
 )
 {
-    le_dcs_Technology_t tech;
-    char *channelName;
     le_dcs_channelDb_t *channelDb = dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
     {
         LE_ERROR("Invalid channel reference %p for getting technology type", channelRef);
         return LE_DCS_TECH_UNKNOWN;
     }
-    channelName = channelDb->channelName;
-    tech = channelDb->technology;
-    LE_DEBUG("Channel %s is of technology %s", channelName, dcs_ConvertTechEnumToName(tech));
-    return tech;
+
+    LE_DEBUG("Channel %s is of technology %s",
+             channelDb->channelName, dcs_ConvertTechEnumToName(channelDb->technology));
+    return channelDb->technology;
 }
 
 
@@ -320,7 +318,6 @@ le_result_t le_dcs_GetState
 {
     bool netstate;
     le_result_t ret;
-    char *channelName;
     le_dcs_channelDb_t *channelDb;
 
     if (!state)
@@ -335,7 +332,6 @@ le_result_t le_dcs_GetState
         LE_ERROR("Invalid channel reference %p for getting channel status", channelRef);
         return LE_FAULT;
     }
-    channelName = channelDb->channelName;
 
     if (!interfaceName || (interfaceNameSize == 0))
     {
@@ -354,12 +350,13 @@ le_result_t le_dcs_GetState
     ret = dcs_GetAdminState(channelRef, state);
     if (LE_OK != ret)
     {
-        LE_ERROR("Failed to get admin state of channel %s of technology %s", channelName,
+        LE_ERROR("Failed to get admin state of channel %s of technology %s", channelDb->channelName,
                  dcs_ConvertTechEnumToName(channelDb->technology));
     }
     else
     {
-        LE_DEBUG("Channel %s of technology %s has network interface %s & state %d", channelName,
+        LE_DEBUG("Channel %s of technology %s has network interface %s & state %d",
+                 channelDb->channelName,
                  dcs_ConvertTechEnumToName(channelDb->technology), interfaceName, *state);
     }
     return ret;

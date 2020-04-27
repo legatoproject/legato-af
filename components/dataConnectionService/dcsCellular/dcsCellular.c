@@ -1054,8 +1054,6 @@ le_result_t le_dcsCellular_Start
     le_result_t ret, rc;
     char connName[LE_DCS_CHANNEL_NAME_MAX_LEN];
     le_mdc_ProfileRef_t profileRef;
-    le_mdc_DisconnectionReason_t failure_reason;
-    int32_t failure_code;
     cellular_connDb_t *cellConnDb;
 
     cellConnDb = DcsCellularGetDbFromRef((le_dcs_CellularConnectionRef_t)techRef);
@@ -1099,8 +1097,10 @@ le_result_t le_dcsCellular_Start
         // Get disconnection reason
         if (LE_MDC_PDP_IPV4V6 == le_mdc_GetPDP(profileRef))
         {
-            failure_reason = le_mdc_GetDisconnectionReasonExt(profileRef, LE_MDC_PDP_IPV4);
-            failure_code = le_mdc_GetPlatformSpecificDisconnectionCodeExt(profileRef,
+#if LE_ERROR_ENABLED
+            le_mdc_DisconnectionReason_t failure_reason =
+                le_mdc_GetDisconnectionReasonExt(profileRef, LE_MDC_PDP_IPV4);
+            int32_t failure_code = le_mdc_GetPlatformSpecificDisconnectionCodeExt(profileRef,
                                                                           LE_MDC_PDP_IPV4);
             LE_ERROR("IPV4 failure reason %d, code %d", failure_reason, failure_code);
 
@@ -1108,13 +1108,17 @@ le_result_t le_dcsCellular_Start
             failure_code = le_mdc_GetPlatformSpecificDisconnectionCodeExt(profileRef,
                                                                           LE_MDC_PDP_IPV6);
             LE_ERROR("IPV6 failure reason %d, code %d", failure_reason, failure_code);
+#endif
         }
         else
         {
-            failure_reason = le_mdc_GetDisconnectionReasonExt(profileRef, (le_mdc_Pdp_t)0);
-            failure_code = le_mdc_GetPlatformSpecificDisconnectionCodeExt(profileRef,
+#if LE_ERROR_ENABLED
+            le_mdc_DisconnectionReason_t failure_reason =
+                le_mdc_GetDisconnectionReasonExt(profileRef, (le_mdc_Pdp_t)0);
+            int32_t failure_code = le_mdc_GetPlatformSpecificDisconnectionCodeExt(profileRef,
                                                                           (le_mdc_Pdp_t)0);
             LE_ERROR("Failure reason %d, code %d", failure_reason, failure_code);
+#endif
         }
 
         rc = le_dcsCellular_RetryConn(cellConnDb->connRef);

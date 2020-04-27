@@ -560,7 +560,7 @@ static void ClientIndicationRecvHandler
     }
 
     // Pull out the callers thread
-    le_thread_Ref_t callersThreadRef = clientDataPtr->callersThreadRef;
+    __attribute__((unused)) le_thread_Ref_t callersThreadRef = clientDataPtr->callersThreadRef;
 
     _UNLOCK
 

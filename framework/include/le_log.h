@@ -397,16 +397,43 @@ le_log_Level_t;
 #   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_MAX
 #elif LE_CONFIG_LOG_STATIC_FILTER_EMERG
 #   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_EMERG
+
+#   define LE_EMERG_ENABLED 1
 #elif LE_CONFIG_LOG_STATIC_FILTER_CRIT
 #   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_CRIT
+
+#   define LE_EMERG_ENABLED 1
+#   define LE_CRIT_ENABLED  1
 #elif LE_CONFIG_LOG_STATIC_FILTER_ERR
 #   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_ERR
+
+#   define LE_EMERG_ENABLED 1
+#   define LE_CRIT_ENABLED  1
+#   define LE_ERROR_ENABLED 1
 #elif LE_CONFIG_LOG_STATIC_FILTER_WARN
 #   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_WARN
+
+#   define LE_EMERG_ENABLED 1
+#   define LE_CRIT_ENABLED  1
+#   define LE_ERROR_ENABLED 1
+#   define LE_WARN_ENABLED  1
 #elif LE_CONFIG_LOG_STATIC_FILTER_INFO
 #   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_INFO
+
+#   define LE_EMERG_ENABLED 1
+#   define LE_CRIT_ENABLED  1
+#   define LE_ERROR_ENABLED 1
+#   define LE_WARN_ENABLED  1
+#   define LE_INFO_ENABLED  1
 #else /* default to LE_DEBUG */
 #   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_DEBUG
+
+#   define LE_EMERG_ENABLED 1
+#   define LE_CRIT_ENABLED  1
+#   define LE_ERROR_ENABLED 1
+#   define LE_WARN_ENABLED  1
+#   define LE_INFO_ENABLED  1
+#   define LE_DEBUG_ENABLED 1
 #endif
 
 //--------------------------------------------------------------------------------------------------

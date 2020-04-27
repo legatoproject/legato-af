@@ -241,7 +241,6 @@ void dcs_ChannelEvtHdlrSendNotice
     le_dcs_channelDbEventHdlr_t *channelAppEvt =
         dcs_GetChannelAppEvtHdlr(channelDb, appSessionRefKey);
     le_dcs_channelDbEventReport_t evtReport;
-    const char *eventString;
 
     if (!channelAppEvt)
     {
@@ -250,9 +249,8 @@ void dcs_ChannelEvtHdlrSendNotice
         return;
     }
 
-    eventString = dcs_ConvertEventToString(evt);
     LE_DEBUG("Send %s event notice for channel %s to app with session reference %p",
-             eventString, channelDb->channelName, appSessionRef);
+             dcs_ConvertEventToString(evt), channelDb->channelName, appSessionRef);
     evtReport.channelDb = channelDb;
     evtReport.event = evt;
     le_event_Report(channelAppEvt->channelEventId, &evtReport, sizeof(evtReport));
@@ -919,7 +917,7 @@ le_dcs_ChannelRef_t dcs_CreateChannelDb
     const char *channelName
 )
 {
-    uint16_t channelCount;
+    __attribute__((unused)) uint16_t channelCount;
     le_dcs_channelDb_t *channelDb = dcs_GetChannelDbFromName(channelName, tech);
     if (channelDb)
     {

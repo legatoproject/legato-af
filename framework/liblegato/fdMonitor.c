@@ -487,7 +487,9 @@ void le_fdMonitor_Enable
     short               events      ///< [in] Bit map of events.
 )
 {
+#if LE_WARN_ENABLED
     char     textBuff[64];
+#endif
     fdMon_t *handlerMonitorPtr;
     fdMon_t *monitorPtr;
     short    filteredEvents;
@@ -536,7 +538,9 @@ void le_fdMonitor_Disable
     short               events      ///< [in] Bit map of events.
 )
 {
+#if LE_WARN_ENABLED
     char     textBuff[64];
+#endif
     fdMon_t *handlerMonitorPtr;
     fdMon_t *monitorPtr;
     short    filteredEvents;
