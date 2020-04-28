@@ -215,7 +215,7 @@ cm_data_connect () {
     update_dns connect ${dns_list}
 
     echo -n "Testing connection ... "
-    curl --silent $TEST_SITE > $LOG 2>&1
+    curl --head --silent $TEST_SITE > $LOG 2>&1
     handle_err $?
 
     exit 0
