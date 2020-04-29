@@ -1,243 +1,23 @@
 /**
- * @page c_pa_gnss Platform Adapter Global Navigation Satellite System API
+ * @file pa_gnss_default.c
  *
- * @ref pa_gnss.h "API Reference"
- *
- * <HR>
+ * Default implementation of @ref c_pa_gnss.
  *
  * Copyright (C) Sierra Wireless Inc.
  */
-
-
-/** @file pa_gnss.h
- *
- * Legato @ref c_pa_gnss include file.
- *
- * Copyright (C) Sierra Wireless Inc.
- */
-
-#ifndef LEGATO_PA_GNSS_INCLUDE_GUARD
-#define LEGATO_PA_GNSS_INCLUDE_GUARD
 
 #include "legato.h"
 #include "interfaces.h"
-
-//--------------------------------------------------------------------------------------------------
-// Symbol and Enum definitions.
-//--------------------------------------------------------------------------------------------------
-
+#include "pa_gnss.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Type of restart.
+ * Init this component
  */
 //--------------------------------------------------------------------------------------------------
-typedef enum {
-    PA_GNSS_UNKNOWN_RESTART = 0,    ///< Unknown case.
-    PA_GNSS_HOT_RESTART,            ///< Hot restart.
-    PA_GNSS_WARM_RESTART,           ///< Warm restart.
-    PA_GNSS_COLD_RESTART,           ///< Cold restart.
-    PA_GNSS_FACTORY_RESTART         ///< Factory restart.
-}pa_gnss_Restart_t;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Time structure.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct {
-    uint16_t hours;               ///< The Hours.
-    uint16_t minutes;             ///< The Minutes.
-    uint16_t seconds;             ///< The Seconds.
-    uint16_t milliseconds;        ///< The Milliseconds.
+COMPONENT_INIT
+{
 }
-pa_Gnss_Time_t;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Date structure.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct {
-    uint16_t year;                ///< The Year.
-    uint16_t month;               ///< The Month.
-    uint16_t day;                 ///< The Day.
-}
-pa_Gnss_Date_t;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Satellite Vehicle information.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct {
-    uint16_t                satId;        ///< Satellite in View ID number.
-    le_gnss_Constellation_t satConst;     ///< GNSS constellation type.
-    bool                    satUsed;      ///< TRUE if satellite in View is used for fix Navigation.
-    bool                    satTracked;   ///< TRUE if satellite in View is tracked for Navigation.
-    uint8_t                 satSnr;       ///< Satellite in View Signal To Noise Ratio [dBHz].
-    uint16_t                satAzim;      ///< Satellite in View Azimuth [degrees].
-                                          ///< Range: 0 to 360
-    uint8_t                satElev;       ///< Satellite in View Elevation [degrees].
-                                          ///< Range: 0 to 90
-}
-Pa_Gnss_SvInfo_t;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Satellite Measurement information.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct {
-    uint16_t satId;          ///< Satellite in View ID number.
-    int32_t  satLatency;     ///< Satellite latency measurement (age of measurement)
-                             ///< Units: Milliseconds.
-}
-Pa_Gnss_SvMeasurement_t;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Position structure.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct {
-    le_gnss_FixState_t fixState;      ///< Position Fix state
-
-    bool               latitudeValid; ///< if true, latitude is set
-    int32_t            latitude;  ///< The Latitude in degrees, positive North,
-                                  ///  with 6 decimal places (+48858300  = 48.858300 degrees North).
-
-    bool               longitudeValid; ///< if true, longitude is set
-    int32_t            longitude; ///< The Longitude in degrees, positive East,
-                                  ///  with 6 decimal places.
-
-    bool               altitudeValid; ///< if true, altitude is set
-    int32_t            altitude;  ///< The Altitude in meters, above Mean Sea Level,
-                                  ///  with 3 decimal places.
-
-    bool               altitudeAssumedValid; ///< if true, altitude assumed is set
-    bool               altitudeAssumed;  ///< if false, the altitude is calculated
-                                         ///< if true the altitude is assumed.
-
-    bool               altitudeOnWgs84Valid; ///< if true, altitudeOnWgs84 is set
-    int32_t            altitudeOnWgs84;  ///< The altitudeOnWgs84 in meters, between WGS-84 earth
-                                         ///  ellipsoid and mean sea level with 3 decimal places.
-
-    bool               hSpeedValid; ///< if true, horizontal speed is set
-    uint32_t           hSpeed;    ///< The horizontal Speed in m/sec, with 2 decimal places
-                                  ///  (125 = 1.25m/sec).
-
-    bool               vSpeedValid; ///< if true, vertical speed is set
-    uint32_t           vSpeed;    ///< The vertical Speed in m/sec, with 2 decimal places
-                                  ///  (125 = 1.25m/sec).
-
-    bool               directionValid;  ///< if true, direction is set
-    uint32_t           direction;       ///< Direction in degrees, where 0 is True North, with 1
-                                        ///  decimal place (308  = 30.8 degrees).
-
-    bool               headingValid; ///< if true, heading is set
-    uint32_t           heading;     ///< heading in degrees, where 0 is True North, with 1
-                                  ///  decimal place (308  = 30.8 degrees).
-
-    bool               hdopValid; ///< if true, horizontal dilution is set
-    uint32_t           hdop;      ///< The horizontal dilution of precision (DOP)
-
-    bool               pdopValid; ///< if true, position dilution is set
-    uint32_t           pdop;      ///< The position dilution of precision (DOP)
-
-    bool               vdopValid; ///< if true, vertical dilution is set
-    uint32_t           vdop;      ///< The vertical dilution of precision (DOP)
-
-    bool               gdopValid; ///< if true, geometric dilution is set
-    uint32_t           gdop;      ///< The geometric dilution of precision (DOP)
-
-    bool               tdopValid; ///< if true, time dilution is set
-    uint32_t           tdop;      ///< The time dilution of precision (DOP)
-
-    bool               hUncertaintyValid; ///< if true, horizontal uncertainty is set
-    uint32_t           hUncertainty;  ///< The horizontal uncertainty in meters,
-                                      ///  with 2 decimal places
-
-    bool               vUncertaintyValid; ///< if true, vertical uncertainty is set
-    uint32_t           vUncertainty;  ///< The vertical uncertainty in meters,
-                                      ///  with 1 decimal place
-
-    bool               hSpeedUncertaintyValid; ///< if true, horizontal speed uncertainty is set
-    uint32_t           hSpeedUncertainty;  ///< The horizontal speed uncertainty in m/sec,
-                                           ///  with 1 decimal place
-
-    bool               vSpeedUncertaintyValid; ///< if true, vertical speed uncertainty is set
-    uint32_t           vSpeedUncertainty;  ///< The vertical speed uncertainty in m/sec,
-                                           ///  with 1 decimal place
-
-    bool               magneticDeviationValid; ///< if true, magnetic deviation is set
-    int32_t            magneticDeviation;  ///< The magnetic deviation in degrees,
-                                           ///  with 1 decimal place
-
-    bool               directionUncertaintyValid;   ///< if true, direction uncertainty is set
-    uint32_t           directionUncertainty;        ///< The direction uncertainty in degrees,
-                                                    ///  with 1 decimal place
-    // UTC time
-    bool               timeValid;           ///< if true, time is set
-    pa_Gnss_Time_t     time;                ///< The time of the fix
-    uint64_t           epochTime;           ///< Epoch time in milliseconds since Jan. 1, 1970
-    bool               dateValid;           ///< if true, date is set
-    pa_Gnss_Date_t     date;                ///< The date of the fix
-
-    // Leap Seconds
-    bool               leapSecondsValid;    ///< if true, leapSeconds is set
-    uint8_t            leapSeconds;         ///< UTC leap seconds in advance in seconds
-
-    // GPS time
-    bool               gpsTimeValid;        ///< if true, GPS time is set
-    uint32_t           gpsWeek;             ///< GPS week number from midnight, Jan. 6, 1980.
-    uint32_t           gpsTimeOfWeek;       ///< Amount of time in milliseconds into the GPS week.
-    // Time accuracy
-    bool            timeAccuracyValid;      ///< if true, timeAccuracy is set
-    uint32_t        timeAccuracy;           ///< Estimated Accuracy for time in nanoseconds
-
-    // Position measurement latency
-    bool            positionLatencyValid;   ///< if true, positionLatency is set
-    uint32_t        positionLatency;        ///< Position measurement latency in milliseconds
-
-    // Satellite Vehicles information
-    bool                satsInViewCountValid;    ///< if true, satsInView is set
-    uint8_t             satsInViewCount;         ///< Satellites in View count.
-    bool                satsTrackingCountValid;  ///< if true, satsTrackingCount is set
-    uint8_t             satsTrackingCount;       ///< Tracking satellites in View.
-    bool                satsUsedCountValid;      ///< if true, satsUsedCount is set
-    uint8_t             satsUsedCount;           ///< Satellites in View used for Navigation.
-
-    bool                satInfoValid;       ///< if true, satInfo is set
-    Pa_Gnss_SvInfo_t    satInfo[LE_GNSS_SV_INFO_MAX_LEN];
-                                            ///< Satellite Vehicle information.
-    bool                    satMeasValid;   ///< if true, satInfo is set
-    Pa_Gnss_SvMeasurement_t satMeas[LE_GNSS_SV_INFO_MAX_LEN];
-                                            ///< Satellite measurement information.
-}
-pa_Gnss_Position_t;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Prototype for handler functions used to get GNSS position data.
- *
- * @param position The new position.
- */
-//--------------------------------------------------------------------------------------------------
-typedef void(*pa_gnss_PositionDataHandlerFunc_t)(pa_Gnss_Position_t* positionPtr);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Prototype for handler functions used to get NMEA frames.
- *
- * @param position The new position.
- */
-//--------------------------------------------------------------------------------------------------
-typedef void(*pa_gnss_NmeaHandlerFunc_t)(char* nmeaPtr);
-
-//--------------------------------------------------------------------------------------------------
-// APIs.
-//--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -247,10 +27,13 @@ typedef void(*pa_gnss_NmeaHandlerFunc_t)(char* nmeaPtr);
  * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_Init
+le_result_t __attribute__((weak)) pa_gnss_Init
 (
     void
-);
+)
+{
+    return LE_OK;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -260,10 +43,14 @@ LE_SHARED le_result_t pa_gnss_Init
  * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_Release
+le_result_t  __attribute__((weak)) pa_gnss_Release
 (
     void
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -275,11 +62,14 @@ LE_SHARED le_result_t pa_gnss_Release
  *  - LE_UNSUPPORTED request not supported
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_SetConstellation
+le_result_t __attribute__((weak)) pa_gnss_SetConstellation
 (
     le_gnss_ConstellationBitMask_t constellationMask  ///< [IN] GNSS constellation used in solution.
-);
-
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -290,11 +80,15 @@ LE_SHARED le_result_t pa_gnss_SetConstellation
 *  - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_GetConstellation
+le_result_t __attribute__((weak)) pa_gnss_GetConstellation
 (
     le_gnss_ConstellationBitMask_t *constellationMaskPtr ///< [OUT] GNSS constellation used
                                                          ///< in solution
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -304,10 +98,14 @@ LE_SHARED le_result_t pa_gnss_GetConstellation
  * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_Start
+le_result_t __attribute__((weak)) pa_gnss_Start
 (
     void
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -317,10 +115,14 @@ LE_SHARED le_result_t pa_gnss_Start
  * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_Stop
+le_result_t __attribute__((weak)) pa_gnss_Stop
 (
     void
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -333,10 +135,14 @@ LE_SHARED le_result_t pa_gnss_Stop
  *  - LE_TIMEOUT a time-out occurred
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_SetAcquisitionRate
+le_result_t __attribute__((weak)) pa_gnss_SetAcquisitionRate
 (
     uint32_t rate     ///< [IN] rate in milliseconds
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -347,10 +153,14 @@ LE_SHARED le_result_t pa_gnss_SetAcquisitionRate
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_GetAcquisitionRate
+le_result_t __attribute__((weak)) pa_gnss_GetAcquisitionRate
 (
     uint32_t* ratePtr     ///< [IN] rate in milliseconds
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -360,10 +170,14 @@ LE_SHARED le_result_t pa_gnss_GetAcquisitionRate
  * @return LE_FAULT            Function failed.
  */
 // -------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_GetMinNmeaRate
+le_result_t __attribute__((weak)) pa_gnss_GetMinNmeaRate
 (
     uint32_t* minNmeaRatePtr    ///< [OUT] Minimum NMEA rate in milliseconds.
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -373,10 +187,14 @@ LE_SHARED le_result_t pa_gnss_GetMinNmeaRate
  * @return LE_FAULT            Function failed.
  */
 // -------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_GetMaxNmeaRate
+le_result_t __attribute__((weak)) pa_gnss_GetMaxNmeaRate
 (
     uint32_t* maxNmeaRatePtr    ///< [OUT] Maximum NMEA rate in milliseconds.
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -386,10 +204,14 @@ LE_SHARED le_result_t pa_gnss_GetMaxNmeaRate
  * @return LE_FAULT            Function failed.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_GetSupportedNmeaSentences
+le_result_t __attribute__((weak)) pa_gnss_GetSupportedNmeaSentences
 (
     le_gnss_NmeaBitMask_t* nmeaMaskPtr    ///< [OUT] Supported NMEA sentences
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -399,10 +221,14 @@ LE_SHARED le_result_t pa_gnss_GetSupportedNmeaSentences
  * @return LE_FAULT            Function failed.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_GetSupportedConstellations
+le_result_t __attribute__((weak)) pa_gnss_GetSupportedConstellations
 (
     le_gnss_ConstellationBitMask_t* constellationMaskPtr    ///< [OUT] Supported GNSS constellations
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -413,10 +239,14 @@ LE_SHARED le_result_t pa_gnss_GetSupportedConstellations
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_event_HandlerRef_t pa_gnss_AddPositionDataHandler
+le_event_HandlerRef_t __attribute__((weak)) pa_gnss_AddPositionDataHandler
 (
     pa_gnss_PositionDataHandlerFunc_t handler ///< [IN] The handler function.
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return NULL;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -425,10 +255,13 @@ LE_SHARED le_event_HandlerRef_t pa_gnss_AddPositionDataHandler
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED void pa_gnss_RemovePositionDataHandler
+void __attribute__((weak)) pa_gnss_RemovePositionDataHandler
 (
     le_event_HandlerRef_t    handlerRef ///< [IN] The handler reference.
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -439,20 +272,27 @@ LE_SHARED void pa_gnss_RemovePositionDataHandler
  * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_event_HandlerRef_t pa_gnss_AddNmeaHandler
+le_event_HandlerRef_t __attribute__((weak)) pa_gnss_AddNmeaHandler
 (
     pa_gnss_NmeaHandlerFunc_t handler ///< [IN] The handler function.
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return NULL;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to remove a handler for NMEA frames notifications.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED void pa_gnss_RemoveNmeaHandler
+void __attribute__((weak)) pa_gnss_RemoveNmeaHandler
 (
     le_event_HandlerRef_t    handlerRef ///< [IN] The handler reference.
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -465,10 +305,14 @@ LE_SHARED void pa_gnss_RemoveNmeaHandler
  *
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_LoadExtendedEphemerisFile
+le_result_t __attribute__((weak)) pa_gnss_LoadExtendedEphemerisFile
 (
     int32_t       fd      ///< [IN] extended ephemeris file descriptor
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -478,11 +322,15 @@ LE_SHARED le_result_t pa_gnss_LoadExtendedEphemerisFile
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_GetExtendedEphemerisValidity
+le_result_t __attribute__((weak)) pa_gnss_GetExtendedEphemerisValidity
 (
     uint64_t *startTimePtr,    ///< [OUT] Start time in seconds (since Jan. 1, 1970)
     uint64_t *stopTimePtr      ///< [OUT] Stop time in seconds (since Jan. 1, 1970)
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -493,10 +341,14 @@ LE_SHARED le_result_t pa_gnss_GetExtendedEphemerisValidity
  *
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_EnableExtendedEphemerisFile
+le_result_t __attribute__((weak)) pa_gnss_EnableExtendedEphemerisFile
 (
     void
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -507,10 +359,14 @@ LE_SHARED le_result_t pa_gnss_EnableExtendedEphemerisFile
  *
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_DisableExtendedEphemerisFile
+le_result_t __attribute__((weak)) pa_gnss_DisableExtendedEphemerisFile
 (
     void
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -523,11 +379,15 @@ LE_SHARED le_result_t pa_gnss_DisableExtendedEphemerisFile
  *
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_InjectUtcTime
+le_result_t __attribute__((weak)) pa_gnss_InjectUtcTime
 (
     uint64_t timeUtc,      ///< [IN] UTC time since Jan. 1, 1970 in milliseconds
     uint32_t timeUnc       ///< [IN] Time uncertainty in milliseconds
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -539,10 +399,14 @@ LE_SHARED le_result_t pa_gnss_InjectUtcTime
  * @return LE_BAD_PARAMETER   Bad input parameter.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_DeleteAssistData
+le_result_t __attribute__((weak)) pa_gnss_DeleteAssistData
 (
     le_gnss_StartMode_t mode    ///< [IN] Start mode
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -552,10 +416,14 @@ LE_SHARED le_result_t pa_gnss_DeleteAssistData
  * @return LE_OK     The function succeed.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_ForceEngineStop
+le_result_t __attribute__((weak)) pa_gnss_ForceEngineStop
 (
     void
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -565,10 +433,14 @@ LE_SHARED le_result_t pa_gnss_ForceEngineStop
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_GetTtff
+le_result_t __attribute__((weak)) pa_gnss_GetTtff
 (
     uint32_t* ttffPtr     ///< [OUT] TTFF in milliseconds
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -579,10 +451,14 @@ LE_SHARED le_result_t pa_gnss_GetTtff
  *
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_Enable
+le_result_t __attribute__((weak)) pa_gnss_Enable
 (
     void
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -593,10 +469,14 @@ LE_SHARED le_result_t pa_gnss_Enable
  *
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_Disable
+le_result_t __attribute__((weak)) pa_gnss_Disable
 (
     void
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -609,10 +489,14 @@ LE_SHARED le_result_t pa_gnss_Disable
  *  - LE_TIMEOUT a time-out occurred
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_SetSuplAssistedMode
+le_result_t __attribute__((weak)) pa_gnss_SetSuplAssistedMode
 (
     le_gnss_AssistedMode_t  assistedMode      ///< [IN] Assisted-GNSS mode.
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -623,10 +507,14 @@ LE_SHARED le_result_t pa_gnss_SetSuplAssistedMode
  *  - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_GetSuplAssistedMode
+le_result_t __attribute__((weak)) pa_gnss_GetSuplAssistedMode
 (
     le_gnss_AssistedMode_t *assistedModePtr      ///< [OUT] Assisted-GNSS mode.
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -641,10 +529,14 @@ LE_SHARED le_result_t pa_gnss_GetSuplAssistedMode
  *  - LE_TIMEOUT a time-out occurred
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_SetSuplServerUrl
+le_result_t __attribute__((weak)) pa_gnss_SetSuplServerUrl
 (
     const char*  suplServerUrlPtr      ///< [IN] SUPL server URL.
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -657,7 +549,7 @@ LE_SHARED le_result_t pa_gnss_SetSuplServerUrl
  *  - LE_UNSUPPORTED   Not supported on this platform.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_GetLeapSeconds
+le_result_t __attribute__((weak)) pa_gnss_GetLeapSeconds
 (
     uint64_t* gpsTimePtr,              ///< [OUT] The number of milliseconds of GPS time since
                                        ///<       Jan. 6, 1980
@@ -666,7 +558,11 @@ LE_SHARED le_result_t pa_gnss_GetLeapSeconds
                                        ///<       to the next leap seconds change event
     int32_t* nextLeapSecondsPtr        ///< [OUT] UTC leap seconds value to be applied at the
                                        ///<       change event time in milliseconds
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -680,13 +576,17 @@ LE_SHARED le_result_t pa_gnss_GetLeapSeconds
  *  - LE_TIMEOUT a time-out occurred
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_InjectSuplCertificate
+le_result_t __attribute__((weak)) pa_gnss_InjectSuplCertificate
 (
     uint8_t  suplCertificateId,      ///< [IN] ID of the SUPL certificate.
                                      ///< Certificate ID range is 0 to 9
     uint16_t suplCertificateLen,     ///< [IN] SUPL certificate size in Bytes.
     const char*  suplCertificatePtr  ///< [IN] SUPL certificate contents.
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -700,11 +600,15 @@ LE_SHARED le_result_t pa_gnss_InjectSuplCertificate
  *  - LE_TIMEOUT a time-out occurred
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_DeleteSuplCertificate
+le_result_t __attribute__((weak)) pa_gnss_DeleteSuplCertificate
 (
     uint8_t  suplCertificateId  ///< [IN]  ID of the SUPL certificate.
                                 ///< Certificate ID range is 0 to 9
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -716,10 +620,14 @@ LE_SHARED le_result_t pa_gnss_DeleteSuplCertificate
  *  - LE_UNSUPPORTED request not supported
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_SetNmeaSentences
+le_result_t __attribute__((weak)) pa_gnss_SetNmeaSentences
 (
     le_gnss_NmeaBitMask_t nmeaMask ///< [IN] Bit mask for enabled NMEA sentences.
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -730,10 +638,14 @@ LE_SHARED le_result_t pa_gnss_SetNmeaSentences
  *  - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_GetNmeaSentences
+le_result_t __attribute__((weak)) pa_gnss_GetNmeaSentences
 (
     le_gnss_NmeaBitMask_t* nmeaMaskPtr ///< [OUT] Bit mask for enabled NMEA sentences.
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -745,10 +657,14 @@ LE_SHARED le_result_t pa_gnss_GetNmeaSentences
  *  - LE_UNSUPPORTED request not supported
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_SetMinElevation
+le_result_t __attribute__((weak)) pa_gnss_SetMinElevation
 (
-    uint8_t  minElevation      ///< [IN] Minimum elevation.
-);
+    uint8_t  minElevation      ///< [IN] Minimum elevation in degrees [range 0..90].
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -761,10 +677,14 @@ LE_SHARED le_result_t pa_gnss_SetMinElevation
  *  - LE_UNSUPPORTED request not supported
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_GetMinElevation
+le_result_t __attribute__((weak)) pa_gnss_GetMinElevation
 (
-   uint8_t*  minElevationPtr     ///< [OUT] Minimum elevation.
-);
+   uint8_t*  minElevationPtr     ///< [OUT] Minimum elevation in degrees [range 0..90].
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -777,11 +697,15 @@ LE_SHARED le_result_t pa_gnss_GetMinElevation
  *  - LE_BAD_PARAMETER on invalid constellation area
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_SetConstellationArea
+le_result_t __attribute__((weak)) pa_gnss_SetConstellationArea
 (
     le_gnss_Constellation_t satConstellation,        ///< [IN] GNSS constellation used in solution.
     le_gnss_ConstellationArea_t constellationArea    ///< [IN] GNSS constellation area.
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -793,11 +717,15 @@ LE_SHARED le_result_t pa_gnss_SetConstellationArea
  *  - LE_UNSUPPORTED request not supported
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_GetConstellationArea
+le_result_t __attribute__((weak)) pa_gnss_GetConstellationArea
 (
     le_gnss_Constellation_t satConstellation,         ///< [IN] GNSS constellation used in solution.
     le_gnss_ConstellationArea_t* constellationAreaPtr ///< [OUT] GNSS constellation area.
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -809,10 +737,14 @@ LE_SHARED le_result_t pa_gnss_GetConstellationArea
  * @note The EXT_GPS_LNA_EN signal will be set high when the GNSS state is active
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_EnableExternalLna
+le_result_t __attribute__((weak)) pa_gnss_EnableExternalLna
 (
     void
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -823,10 +755,14 @@ LE_SHARED le_result_t pa_gnss_EnableExternalLna
  *
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_DisableExternalLna
+le_result_t __attribute__((weak)) pa_gnss_DisableExternalLna
 (
     void
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -837,10 +773,14 @@ LE_SHARED le_result_t pa_gnss_DisableExternalLna
  *
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_GetExternalLna
+le_result_t __attribute__((weak)) pa_gnss_GetExternalLna
 (
-    uint8_t *lnaEnStatusPtr      ///< [OUT] GNSS LNA Status.
-);
+    uint8_t* lnaEnStatusPtr   ///< [OUT] GNSS LNA Status.
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -853,13 +793,15 @@ LE_SHARED le_result_t pa_gnss_GetExternalLna
  *  - LE_UNSUPPORTED request not supported
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_ConvertDataCoordinateSystem
+le_result_t __attribute__((weak)) pa_gnss_ConvertDataCoordinateSystem
 (
     le_gnss_CoordinateSystem_t coordinateSrc,    ///< [IN] Coordinate system to convert from.
     le_gnss_CoordinateSystem_t coordinateDst,    ///< [IN] Coordinate system to convert to.
     le_gnss_LocationDataType_t locationDataType, ///< [IN] Type of location data to convert.
     int64_t locationDataSrc,                     ///< [IN] Data to convert.
     int64_t* locationDataDstPtr                  ///< [OUT] Converted Data.
-);
-
-#endif // LEGATO_PA_GNSS_INCLUDE_GUARD
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}

@@ -38,6 +38,9 @@ requires:
 {
     component:
     {
+    #if ${LE_CONFIG_LINUX} = y
+        $LEGATO_GNSS_PA_DEFAULT
+    #endif
         $LEGATO_GNSS_PA
     }
 }
