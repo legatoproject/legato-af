@@ -531,10 +531,10 @@ static void Testle_mrc_RegisterMode
     LE_ASSERT(res == LE_OK);
     LE_ASSERT(isManual == true);
     cmpRes = strcmp(mccHomeStr, mccStr);
-    LE_WARN_IF(cmpRes, "Doesn't match mccHomeStr (%s) mccStr (%s)",mccHomeStr, mccStr)
+    LE_WARN_IF(cmpRes, "Doesn't match mccHomeStr (%s) mccStr (%s)",mccHomeStr, mccStr);
     LE_ASSERT(cmpRes == 0);
     cmpRes = strcmp(mncHomeStr, mncStr);
-    LE_WARN_IF(cmpRes, "Doesn't match mncHomeStr (%s) mncStr (%s)",mncHomeStr, mncStr)
+    LE_WARN_IF(cmpRes, "Doesn't match mncHomeStr (%s) mncStr (%s)",mncHomeStr, mncStr);
     LE_ASSERT(cmpRes == 0);
     LE_INFO("le_mrc_GetRegisterMode Manual(Y), mcc.%s mnc.%s", mccStr, mncStr);
 
@@ -654,10 +654,10 @@ static void Testle_mrc_RegisterModeAsync
     LE_ASSERT(res == LE_OK);
     LE_ASSERT(isManual == true);
     cmpRes = strcmp(mccHomeStr, mccStr);
-    LE_WARN_IF(cmpRes, "Doesn't match mccHomeStr (%s) mccStr (%s)",mccHomeStr, mccStr)
+    LE_WARN_IF(cmpRes, "Doesn't match mccHomeStr (%s) mccStr (%s)",mccHomeStr, mccStr);
     LE_ASSERT(cmpRes == 0);
     cmpRes = strcmp(mncHomeStr, mncStr);
-    LE_WARN_IF(cmpRes, "Doesn't match mncHomeStr (%s) mncStr (%s)",mncHomeStr, mncStr)
+    LE_WARN_IF(cmpRes, "Doesn't match mncHomeStr (%s) mncStr (%s)",mncHomeStr, mncStr);
     LE_ASSERT(cmpRes == 0);
     LE_INFO("le_mrc_GetRegisterMode %c, mcc.%s mnc.%s",
         (isManual ? 'Y':'N'), mccStr, mncStr);
@@ -1930,7 +1930,7 @@ static void Testle_mrc_SetSignalStrengthIndDelta
 
     LE_ASSERT((LE_MRC_RAT_UNKNOWN != rat) &&
               ((LE_MRC_REG_HOME == state) || (LE_MRC_REG_ROAMING == state))
-             )
+             );
     // Init the semaphore for asynchronous callback
     ThreadSemaphore = le_sem_Create("HandlerSignalStrength", 0);
 

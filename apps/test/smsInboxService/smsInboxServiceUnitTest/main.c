@@ -132,7 +132,7 @@ static void Testle_smsInbox_GetFirst
     MyMsgId1 = le_smsInbox1_GetFirst(MyMbx1Ref);
     LE_INFO("SmsInbox Get First msgId1 [%d]", MyMsgId1);
     LE_ASSERT(MyMsgId1 != 0);
-    LE_ASSERT(le_smsInbox1_GetFirst(NULL) == LE_BAD_PARAMETER)
+    LE_ASSERT(le_smsInbox1_GetFirst(NULL) == LE_BAD_PARAMETER);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -158,7 +158,7 @@ static void Testle_smsInbox_GetNext
     LE_ASSERT(MyMsgId2 != 0);
     LE_ASSERT(MyMsgId3 != 0);
     LE_INFO("SmsInbox Get Next msgId2 [%d], msgId3 [%d]", MyMsgId2, MyMsgId3);
-    LE_ASSERT(le_smsInbox1_GetFirst(NULL) == LE_BAD_PARAMETER)
+    LE_ASSERT(le_smsInbox1_GetFirst(NULL) == LE_BAD_PARAMETER);
 }
 
 //--------------------------------------------------------------------------------------------------

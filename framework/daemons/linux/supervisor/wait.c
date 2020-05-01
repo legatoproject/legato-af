@@ -36,7 +36,7 @@ pid_t wait_Peek
     }
     while ( (result == -1) && (errno == EINTR) );
 
-    LE_FATAL_IF(result == -1, "%m.")
+    LE_FATAL_IF(result == -1, "%m.");
 
     return childInfo.si_pid;
 }

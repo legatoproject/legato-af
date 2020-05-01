@@ -950,7 +950,7 @@ static le_gnss_Client_t* FindClientSessionReference
     while (LE_OK == result)
     {
         le_gnss_Client_t* gnssCtrlPtr = (le_gnss_Client_t*) le_ref_GetValue(iterRef);
-        LE_ASSERT(gnssCtrlPtr != NULL)
+        LE_ASSERT(gnssCtrlPtr != NULL);
 
         LE_DEBUG("gnssCtrlPtr %p, gnssCtrlPtr->sessionRef %p, sessionRef %p",
                  gnssCtrlPtr, gnssCtrlPtr->sessionRef, sessionRef);
@@ -1293,7 +1293,7 @@ static void CloseSessionEventHandler
     {
         le_gnss_PositionSampleRequest_t *positionSampleRequestPtr =
                                 (le_gnss_PositionSampleRequest_t*)le_ref_GetValue(iterRef);
-        LE_ASSERT(positionSampleRequestPtr != NULL)
+        LE_ASSERT(positionSampleRequestPtr != NULL);
         // Check if the session reference saved matchs with the current session reference.
         if (positionSampleRequestPtr->sessionRef == sessionRef)
         {
@@ -1313,7 +1313,7 @@ static void CloseSessionEventHandler
     while (LE_OK == result)
     {
         le_gnss_Client_t* gnssCtrlPtr = (le_gnss_Client_t*) le_ref_GetValue(iterRef);
-        LE_ASSERT(gnssCtrlPtr != NULL)
+        LE_ASSERT(gnssCtrlPtr != NULL);
         // Check if the session reference saved matchs with the current session reference.
         if (sessionRef == gnssCtrlPtr->sessionRef)
         {

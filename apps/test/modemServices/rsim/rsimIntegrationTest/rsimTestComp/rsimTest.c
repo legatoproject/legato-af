@@ -234,7 +234,7 @@ static void CallbackHandler
     LE_DEBUG("Sending result: messageId=%d, result=%d, context=%p", messageId, result, contextPtr);
 
     // Check sending result against expected result
-    LE_ASSERT(result == (le_result_t)contextPtr)
+    LE_ASSERT(result == (le_result_t)contextPtr);
 
     le_sem_Post(AppSemaphore);
 }

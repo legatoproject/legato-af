@@ -1145,7 +1145,7 @@ void Testle_audio_EchoCancellerNoiseSuppressor
 
     MdmTxAudioRef = le_audio_OpenModemVoiceTx();
 
-    LE_ASSERT(MdmTxAudioRef != NULL)
+    LE_ASSERT(MdmTxAudioRef != NULL);
 
     //------------
     // Sub-test 1

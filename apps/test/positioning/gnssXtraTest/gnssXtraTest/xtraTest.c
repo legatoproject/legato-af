@@ -41,7 +41,7 @@ static void ReadWeekNumber
     uint16_t weekNumRead=0;
 
     int fd = open(filePtr,O_RDONLY);
-    LE_ASSERT(fd!=-1)
+    LE_ASSERT(fd!=-1);
 
     LE_ASSERT(lseek(fd,WEEK_NUMBER_OFFSET_IN_FILE,SEEK_SET)==WEEK_NUMBER_OFFSET_IN_FILE);
 

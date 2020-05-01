@@ -590,7 +590,7 @@ static void AsyncResponse_{{apiName}}_{{function.name}}
     _msgBufPtr = _msgPtr->buffer;
 
     // Always pack the client context pointer first
-    LE_ASSERT(le_pack_PackReference( &_msgBufPtr, serverDataPtr->contextPtr ))
+    LE_ASSERT(le_pack_PackReference( &_msgBufPtr, serverDataPtr->contextPtr ));
 
     // Pack the input parameters
     {{ pack.PackInputs(handler.apiType.parameters) }}

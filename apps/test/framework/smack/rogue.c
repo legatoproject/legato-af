@@ -38,7 +38,7 @@ void CheckFdOpen
     else
     {
        close (fd);
-       LE_FATAL(" %s", errorString)
+       LE_FATAL(" %s", errorString);
     }
 }
 
