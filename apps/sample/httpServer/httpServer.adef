@@ -26,11 +26,8 @@ requires:
     dir:
     {
         /proc /    // needed by `app` script, and for listing running processes
-        /bin /
+        /bin /usr/bin
         /sbin /
-        /usr/lib /usr/
-        /usr/bin /usr/
-        /usr/include /usr/
         /legato/systems/current/bin /legato/systems/current/
         /legato/systems/current/lib /legato/systems/current/
         /legato/systems/current/apps /legato/systems/current/
