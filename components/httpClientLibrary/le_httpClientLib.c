@@ -38,7 +38,12 @@
  * Maximum number of HTTP sessions. Note that increasing this value increases memory consumption
  */
 //--------------------------------------------------------------------------------------------------
+#if MK_CONFIG_HTTP_MAX_SESSION_ID
+#define HTTP_SESSIONS_NB            MK_CONFIG_HTTP_MAX_SESSION_ID
+#else /* MK_CONFIG_HTTP_MAX_SESSION_ID */
 #define HTTP_SESSIONS_NB            2
+#endif
+
 
 //--------------------------------------------------------------------------------------------------
 /**
