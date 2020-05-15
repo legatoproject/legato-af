@@ -191,9 +191,11 @@ export HOST_CXX ?= $(CXX_NAME)
 
 # Use ccache by default if available
 ifeq ($(LE_CONFIG_USE_CCACHE),y)
-  ifeq ($(shell which ccache 2>/dev/null),)
-    LE_CONFIG_USE_CCACHE :=
-    unexport LE_CONFIG_USE_CCACHE
+  ifneq (${CCACHE},)
+    ifeq ($(shell which ccache 2>/dev/null),)
+      LE_CONFIG_USE_CCACHE :=
+      unexport LE_CONFIG_USE_CCACHE
+    endif
   endif
 endif
 ifeq ($(LE_CONFIG_USE_CCACHE),y)
@@ -209,9 +211,6 @@ ifeq ($(LE_CONFIG_USE_CCACHE),y)
     $(error "Unable to find ccache while it is enabled.")
   endif
   export CCACHE
-else
-  CCACHE :=
-  unexport CCACHE
 endif
 
 ifneq ($(TARGET),nothing)

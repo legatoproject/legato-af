@@ -250,6 +250,7 @@ config USE_CLANG
 
 config USE_CCACHE
   bool "Use CCache"
+  default "$(b2k,$(USE_CCACHE))" if !$(empty,$(USE_CCACHE))
   default !$(empty,$(getccache))
   ---help---
   Use CCache to speed up compilation times.
