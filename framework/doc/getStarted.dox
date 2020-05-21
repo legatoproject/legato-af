@@ -144,7 +144,7 @@ Build tools:
 @ref conceptsUpdates "Update/Install" tools:
 - @ref toolsTarget_update - updates the read/write overlay partition of targets over USB.
 - @ref toolsTarget_fwUpdate - updates the read only base partitions of targets over USB.
-- [SWIflash](https://source.sierrawireless.com/resources/airprime/software/swiflash/) - recovery
+- [swiflash](https://source.sierrawireless.com/resources/airprime/software/swiflash/) - recovery
 tool that flashes images to the target via USB.
 
 <h2> Tutorials </h2>
