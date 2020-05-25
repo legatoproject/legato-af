@@ -1568,7 +1568,8 @@ static void FirstLayerRsimMessageHandler
 {
     RsimMessage_t* messageEvent = reportPtr;
 
-    le_rsim_MessageHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+    le_rsim_MessageHandlerFunc_t clientHandlerFunc =
+        (le_rsim_MessageHandlerFunc_t)secondLayerHandlerFunc;
 
     clientHandlerFunc(messageEvent->message, messageEvent->messageSize, le_event_GetContextPtr());
 }

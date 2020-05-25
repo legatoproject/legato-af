@@ -26,8 +26,11 @@ requires:
 {
     component:
     {
+        #if ${LEGATO_MODEM_PA_RSIM} = ""
         $LEGATO_MODEM_PA_RSIM_DEFAULT
+        #else
         $LEGATO_MODEM_PA_RSIM
+        #endif
 
         ${LEGATO_ROOT}/components/watchdogChain
     }
