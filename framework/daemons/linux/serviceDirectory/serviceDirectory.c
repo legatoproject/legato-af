@@ -705,11 +705,6 @@ static le_result_t AllowCommunication
                               clientConnectionPtr->fd,
                               clientConnectionPtr->userPtr->uid,
                               clientConnectionPtr->userPtr->name);
-    if(strncmp(clientLabel, "framework", sizeof(clientLabel)) == 0)
-    {
-        // No need to allow communication from the framework as it is already granted by default.
-        return LE_OK;
-    }
 
     // Get server label
     res = smack_GetSocketLabels(serverConnectionPtr->fd,
