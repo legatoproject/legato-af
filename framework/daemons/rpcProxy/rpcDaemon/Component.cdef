@@ -3,6 +3,7 @@ sources:
     le_rpcProxy.c
     le_rpcProxyNetwork.c
     le_rpcProxyEventHandler.c
+    le_rpcProxyFileStream.c
 #if ${LE_CONFIG_RTOS} = y
     le_rpcProxyConfigLocal.c
 #elif ${LE_CONFIG_RPC_PROXY_LIBRARY} = y
@@ -15,6 +16,12 @@ sources:
     le_rpcProxyRuntimeConfigTree.c
 #else
     le_rpcProxyRuntimeStatic.c
+#endif
+
+#if ${LE_CONFIG_LINUX} = y
+    le_rpcProxyFileStreamPipe.c
+#else
+    le_rpcProxyFileStreamFifo.c
 #endif
 }
 

@@ -647,6 +647,14 @@ config RPC_PROXY_SERVICE_BINDINGS_MAX_NUM
   ---help---
   The maximum number of simultaneous RPC service bindings.
 
+config RPC_PROXY_FILE_STREAM_MAX_NUM
+  int "Maximum number of simultaneous file streams"
+  depends on RPC
+  range 0 30
+  default 5
+  ---help---
+  The maximum number of simultaneous RPC file streams.
+
 config RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM
   int "Maximum number of response message parameters"
   depends on RPC

@@ -1,0 +1,12 @@
+sources:
+{
+    server.c
+}
+
+provides:
+{
+    api:
+    {
+        fStream = $LEGATO_ROOT/apps/sample/helloRpc/fStream.api
+    }
+}

@@ -9,6 +9,7 @@
 #include "le_rpcProxy.h"
 #include "le_rpcProxyConfig.h"
 #include "le_rpcProxyNetwork.h"
+#include "le_rpcProxyFileStream.h"
 #include "le_comm.h"
 
 
@@ -744,6 +745,7 @@ void rpcProxyNetwork_DeleteNetworkCommunicationChannel
     // Hide all affected services
     rpcProxy_HideServices(systemName);
     rpcProxy_DisconnectSessions(systemName);
+    rpcFStream_DeleteStreamsBySystemName(systemName);
 
     // Delete the Communication channel
     result = le_comm_Delete(networkRecordPtr->handle);
@@ -957,7 +959,7 @@ le_result_t rpcProxyNetwork_ProcessKeepAliveRequest
     LE_INFO("Sending Proxy KEEPALIVE-Response Message, id [%" PRIu32 "]",
              proxyMessagePtr->commonHeader.id);
 
-    result = rpcProxy_SendMsg(systemName, proxyMessagePtr);
+    result = rpcProxy_SendMsg(systemName, proxyMessagePtr, NULL);
     if (result != LE_OK)
     {
         LE_ERROR("le_comm_Send failed, result %d", result);
@@ -1098,7 +1100,7 @@ void rpcProxyNetwork_SendKeepAliveRequest
              proxyMessagePtr->commonHeader.id);
 
     // Send Proxy Message to far-side
-    result = rpcProxy_SendMsg(systemName, proxyMessagePtr);
+    result = rpcProxy_SendMsg(systemName, proxyMessagePtr, NULL);
     if (result != LE_OK)
     {
         LE_ERROR("le_comm_Send failed, result %d", result);

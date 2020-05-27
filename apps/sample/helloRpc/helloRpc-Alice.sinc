@@ -11,8 +11,9 @@ appSearch:
 
 apps:
 {
-    printClientExtended
     printServer
+    printClientExtended
+    fStreamServer
 
 }
 
@@ -20,10 +21,10 @@ extern:
 {
     bobServer = printServer.printer
     aliceClient = printClientExtended.printerExtended
+    bobFStreamServer = fStreamServer.fStream
 }
 
 links:
 {
     LinkToBob = (serialComm)
 }
-

@@ -349,7 +349,7 @@ void rpcEventHandler_EventCallback
     proxyMessage.msgSize = le_msg_GetMaxPayloadSize(eventMsgRef);
 
     // Send Proxy Message to the far-side RPC Proxy
-    result = rpcProxy_SendMsg(systemName, &proxyMessage);
+    result = rpcProxy_SendMsg(systemName, &proxyMessage, NULL);
     if (result != LE_OK)
     {
         LE_ERROR("le_comm_Send failed, result %d", result);

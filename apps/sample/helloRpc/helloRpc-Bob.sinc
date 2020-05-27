@@ -13,18 +13,20 @@ apps:
 {
     printClient
     printServerExtended
-
+    fStreamClient
 }
 
 extern:
 {
     bobClient = printClient.printer
     aliceServer = printServerExtended.printerExtended
+    bobFStreamClient = fStreamClient.fStream
 }
 
 links:
 {
     LinkToAlice = (serialComm)
+
 }
 
 cflags:
