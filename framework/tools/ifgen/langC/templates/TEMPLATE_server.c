@@ -135,14 +135,14 @@ static le_mem_PoolRef_t _ServerDataPool;
  */
 //--------------------------------------------------------------------------------------------------
 LE_REF_DEFINE_STATIC_MAP({{apiName}}_ServerHandlers,
-    LE_MEM_BLOCKS({{apiName}}_ServerCmd, HIGH_SERVER_DATA_COUNT));
+    LE_MEM_BLOCKS({{apiName}}_ServerData, HIGH_SERVER_DATA_COUNT));
 
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Safe Reference Map for use with Add/Remove handler references
  *
- * @warning Use _Mutex, defined below, to protect accesses to this data.
+ * @warning Use {{apiName}}_Server, defined below, to protect accesses to this data.
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t _HandlerRefMap;
@@ -164,14 +164,14 @@ static le_mem_PoolRef_t _ServerCmdPool;
  * Unused attribute is needed because this variable may not always get used.
  */
 //--------------------------------------------------------------------------------------------------
-__attribute__((unused)) static pthread_mutex_t _Mutex = PTHREAD_MUTEX_INITIALIZER;
+__attribute__((unused)) static pthread_mutex_t {{apiName}}_ServerMutex = PTHREAD_MUTEX_INITIALIZER;
     {#- #}   // POSIX "Fast" mutex.
 
 /// Locks the mutex.
-#define _LOCK    LE_ASSERT(pthread_mutex_lock(&_Mutex) == 0);
+#define _LOCK    LE_ASSERT(pthread_mutex_lock(&{{apiName}}_ServerMutex) == 0);
 
 /// Unlocks the mutex.
-#define _UNLOCK  LE_ASSERT(pthread_mutex_unlock(&_Mutex) == 0);
+#define _UNLOCK  LE_ASSERT(pthread_mutex_unlock(&{{apiName}}_ServerMutex) == 0);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -445,8 +445,8 @@ void {{apiName}}_AdvertiseService
     {
         // Create safe reference map for handler references.
         // The size of the map should be based on the number of handlers defined for the server.
-        // Don't expect that to be more than 2-3, so use 3 as a reasonable guess.
-        _HandlerRefMap = le_ref_InitStaticMap({{apiName}}_ServerHandlers, HIGH_SERVER_DATA_COUNT);
+        _HandlerRefMap = le_ref_InitStaticMap({{apiName}}_ServerHandlers,
+                            LE_MEM_BLOCKS({{apiName}}_ServerData, HIGH_SERVER_DATA_COUNT));
     }
     _UNLOCK
 

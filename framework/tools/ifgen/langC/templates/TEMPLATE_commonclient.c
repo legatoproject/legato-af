@@ -78,7 +78,7 @@ LE_REF_DEFINE_STATIC_MAP({{apiBaseName}}_ClientHandlers,
 /**
  * Safe Reference Map for use with Add/Remove handler references
  *
- * @warning Use _Mutex, defined below, to protect accesses to this data.
+ * @warning Use {{apiBaseName}}_ClientMutex, defined below, to protect accesses to this data.
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t _HandlerRefMap;
@@ -91,14 +91,14 @@ static le_ref_MapRef_t _HandlerRefMap;
  * Unused attribute is needed because this variable may not always get used.
  */
 //--------------------------------------------------------------------------------------------------
-__attribute__((unused)) static pthread_mutex_t _Mutex = PTHREAD_MUTEX_INITIALIZER;
+__attribute__((unused)) static pthread_mutex_t {{apiBaseName}}_ClientMutex = PTHREAD_MUTEX_INITIALIZER;
     {#- #}   // POSIX "Fast" mutex.
 
 /// Locks the mutex.
-#define _LOCK    LE_ASSERT(pthread_mutex_lock(&_Mutex) == 0);
+#define _LOCK    LE_ASSERT(pthread_mutex_lock(&{{apiBaseName}}_ClientMutex) == 0);
 
 /// Unlocks the mutex.
-#define _UNLOCK  LE_ASSERT(pthread_mutex_unlock(&_Mutex) == 0);
+#define _UNLOCK  LE_ASSERT(pthread_mutex_unlock(&{{apiBaseName}}_ClientMutex) == 0);
 
 
 //--------------------------------------------------------------------------------------------------
