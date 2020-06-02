@@ -6,6 +6,8 @@ sources:
     iksHmac.c
     iksAesCbc.c
     iksAesCmac.c
+    iksRsa.c
+    iksEcc.c
 }
 
 cflags:
@@ -36,5 +38,7 @@ provides:
         iotKeystore/le_iks_hmac.api
         iotKeystore/le_iks_aesCbc.api
         iotKeystore/le_iks_aesCmac.api
+        iotKeystore/le_iks_rsa.api
+        iotKeystore/le_iks_ecc.api
     }
 }

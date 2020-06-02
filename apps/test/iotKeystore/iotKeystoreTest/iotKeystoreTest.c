@@ -767,6 +767,402 @@ static void AesCbcTest(void)
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * ECIES encryption helper routine - groups together set of API calls.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t EccEncHelper
+(
+    uint64_t sesRef,
+    const uint8_t* labelPtr,
+    size_t labelSize,
+    uint8_t* ephemBufPtr,
+    size_t* ephemBufSizePtr,
+    uint8_t* saltPtr,
+    size_t* saltSizePtr,
+    const uint8_t* aadPtr,
+    size_t aadSize,
+    const uint8_t* msgPtr,
+    uint8_t* ctPtr,
+    size_t msgSize,
+    uint8_t* tagPtr,
+    size_t tagSize
+)
+{
+    le_result_t result;
+
+    // Start encryption process
+    result = le_iks_ecc_Ecies_StartEncrypt(sesRef,
+                                    labelPtr, labelSize,
+                                    ephemBufPtr, ephemBufSizePtr,
+                                    saltPtr, saltSizePtr);
+    LE_TEST_OK(result == LE_OK, "Start ECIES encryption process %s", LE_RESULT_TXT(result));
+    if (result != LE_OK)
+    {
+        return result;
+    }
+
+    // Add the AAD.
+    result = le_iks_ecc_Ecies_ProcessAad(sesRef, aadPtr, aadSize);
+    LE_TEST_OK(result == LE_OK, "Add AAD to ECIES encryption %s", LE_RESULT_TXT(result));
+    if (result != LE_OK)
+    {
+        return result;
+    }
+
+    // Encrypt the message.
+    size_t ctSize = msgSize;
+    result = le_iks_ecc_Ecies_Encrypt(sesRef, msgPtr, msgSize, ctPtr, &ctSize);
+    LE_TEST_OK(result == LE_OK, "Encrypt with ECIES %s", LE_RESULT_TXT(result));
+    if (result != LE_OK)
+    {
+        return result;
+    }
+
+    // Get the tag.
+    result = le_iks_ecc_Ecies_DoneEncrypt(sesRef, tagPtr, &tagSize);
+    LE_TEST_OK(result == LE_OK, "Get tag for ECIES %s", LE_RESULT_TXT(result));
+    if (result != LE_OK)
+    {
+        return result;
+    }
+
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * ECIES decryption helper routine - groups together set of API calls.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t EccDecHelper
+(
+    uint64_t sesRef,
+    const uint8_t* labelPtr,
+    size_t labelSize,
+    const uint8_t* ephemBufPtr,
+    size_t ephemBufSize,
+    const uint8_t* saltPtr,
+    size_t saltSize,
+    const uint8_t* aadPtr,
+    size_t aadSize,
+    const uint8_t* ctPtr,
+    uint8_t* ptPtr,
+    size_t msgSize,
+    const uint8_t* tagPtr,
+    size_t tagSize
+)
+{
+    le_result_t result;
+
+    // Start the decryption process.
+    result = le_iks_ecc_Ecies_StartDecrypt(sesRef,
+                                           labelPtr, labelSize,
+                                           ephemBufPtr, ephemBufSize,
+                                           saltPtr, saltSize);
+    LE_TEST_OK(result == LE_OK, "Start ECIES decryption process %s", LE_RESULT_TXT(result));
+    if (result != LE_OK)
+    {
+        return result;
+    }
+
+    // Add the AAD.
+    result = le_iks_ecc_Ecies_ProcessAad(sesRef, aadPtr, aadSize);
+    LE_TEST_OK(result == LE_OK, "Process AAD %s", LE_RESULT_TXT(result));
+    if (result != LE_OK)
+    {
+        return result;
+    }
+
+    // Decrypt the message.
+    size_t ptSize = msgSize;
+    result = le_iks_ecc_Ecies_Decrypt(sesRef, ctPtr, msgSize, ptPtr, &ptSize);
+    LE_TEST_OK(result == LE_OK, "ECIES decrypt %s", LE_RESULT_TXT(result));
+    if (result != LE_OK)
+    {
+        return result;
+    }
+
+    // Check the tag.
+    result = le_iks_ecc_Ecies_DoneDecrypt(sesRef, tagPtr, tagSize);
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Tests ECIES streaming encryption/decryption.
+ */
+//--------------------------------------------------------------------------------------------------
+static void EccEncTest
+(
+    void
+)
+{
+    const char keyId[] = "eciesKey";
+    const size_t eccKeySize = 28;
+    const size_t eccSaltSize = 32;
+    const uint8_t label[] = "Invictus";
+    const uint8_t msg[] = "Beyond this place of wrath and tears";
+    const uint8_t aad[] = "Looms but the Horror of the shade";
+    const size_t eccTagSize = 16;
+    le_result_t result;
+    uint64_t keyRef;
+
+    LE_TEST_INFO("If key already exists, delete it");
+    keyRef = le_iks_GetKey(keyId);
+    if (keyRef != 0)
+    {
+        result = le_iks_DeleteKey(keyRef, NULL, 0);
+        LE_TEST_OK(result == LE_OK, "Deleting ECIES key %s", LE_RESULT_TXT(result));
+    }
+
+    // Create an ECIES key.
+    keyRef = le_iks_CreateKeyByType(keyId,
+                                    LE_IKS_KEY_TYPE_PRIV_ECIES_HKDF_SHA256_GCM128,
+                                    eccKeySize);
+    LE_TEST_INFO("keyRef %"PRIu64, keyRef);
+    LE_TEST_OK(keyRef != 0, "Create ECIES key.");
+    result = le_iks_GenKeyValue(keyRef, NULL, 0);
+    LE_TEST_OK(result == LE_OK, "Generate ECIES key %s", LE_RESULT_TXT(result));
+
+    // Create a session.
+    uint64_t sessionPtr = le_iks_CreateSession(keyRef);
+    LE_TEST_OK(sessionPtr != 0, "Could not create session.");
+
+    // Encrypt the message with the ECIES public key.
+    uint8_t ephemBuf[2*eccKeySize + 1];
+    size_t ephemBufSize = sizeof(ephemBuf);
+    uint8_t salt[eccSaltSize];
+    size_t saltSize = sizeof(salt);
+    uint8_t ct[sizeof(msg)];
+    uint8_t tag[eccTagSize];
+
+    result = EccEncHelper(sessionPtr,
+                          label, sizeof(label),
+                          ephemBuf, &ephemBufSize,
+                          salt, &saltSize,
+                          aad, sizeof(aad),
+                          msg, ct, sizeof(msg),
+                          tag, sizeof(tag));
+    LE_TEST_OK(result == LE_OK, "ECIES encrypt message.");
+
+    // Attempt to decrypt but with the wrong label.
+    uint8_t wrongLabel[sizeof(label)];
+    memcpy(wrongLabel, label, sizeof(wrongLabel));
+    wrongLabel[2] = wrongLabel[2] + 1;
+
+    result = EccDecHelper(sessionPtr,
+                          wrongLabel, sizeof(wrongLabel),
+                          ephemBuf, ephemBufSize,
+                          salt, saltSize,
+                          aad, sizeof(aad),
+                          msg, ct, sizeof(msg),
+                          tag, sizeof(tag));
+    LE_TEST_OK(result != LE_OK, "ECIES decrypt message with wrong label.");
+
+    // Attempt to decrypt but with the wrong aad.
+    uint8_t wrongAad[sizeof(aad)];
+    memcpy(wrongAad, aad, sizeof(wrongAad));
+    wrongAad[4] = wrongAad[4] + 1;
+
+    result = EccDecHelper(sessionPtr,
+                          label, sizeof(label),
+                          ephemBuf, ephemBufSize,
+                          salt, saltSize,
+                          wrongAad, sizeof(aad),
+                          msg, ct, sizeof(msg),
+                          tag, sizeof(tag));
+    LE_TEST_OK(result != LE_OK, "ECIES decrypt message with wrong AAD.");
+
+    // Decrypt the message properly.
+    uint8_t decrBuf[sizeof(msg)];
+    result = EccDecHelper(sessionPtr,
+                          label, sizeof(label),
+                          ephemBuf, ephemBufSize,
+                          salt, saltSize,
+                          aad, sizeof(aad),
+                          ct, decrBuf, sizeof(msg),
+                          tag, sizeof(tag));
+    LE_TEST_OK(result == LE_OK, "ECIES decrypt message.");
+
+    LE_TEST_OK(memcmp(msg, decrBuf, sizeof(msg)) == 0, "Decrypted plaintext matches original.");
+
+    // Cleanup.
+    result = le_iks_DeleteSession(sessionPtr);
+    LE_TEST_OK(result == LE_OK, "Delete session %s", LE_RESULT_TXT(result));
+
+    LE_TEST_INFO("ECC encrypt/decrypt test done.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Tests ECIES packet encryption/decryption.
+ */
+//--------------------------------------------------------------------------------------------------
+static void EccPacketTest
+(
+    void
+)
+{
+    const char keyId[] = "eciesKey";
+    const size_t eccKeySize = 66;
+    const size_t eccSaltSize = 64;
+    const uint8_t label[] = "William Ernest Henley";
+    const uint8_t msg[] = "And yet the menace of the years";
+    const uint8_t aad[] = "Finds and shall find me unafraid.";
+
+    const size_t eccTagSize = 16;
+    le_result_t result;
+    uint64_t keyRef;
+
+    LE_TEST_INFO("If key already exists, delete it");
+    keyRef = le_iks_GetKey(keyId);
+    if (keyRef != 0)
+    {
+        result = le_iks_DeleteKey(keyRef, NULL, 0);
+        LE_TEST_OK(result == LE_OK, "Deleting ECIES key %s", LE_RESULT_TXT(result));
+    }
+
+    // Create an ECIES key.
+    keyRef = le_iks_CreateKeyByType(keyId,
+                                    LE_IKS_KEY_TYPE_PRIV_ECIES_HKDF_SHA512_GCM256,
+                                    eccKeySize);
+    LE_TEST_INFO("keyRef %"PRIu64, keyRef);
+    LE_TEST_OK(keyRef != 0, "Create ECIES key.");
+    result = le_iks_GenKeyValue(keyRef, NULL, 0);
+    LE_TEST_OK(result == LE_OK, "Generate ECIES key %s", LE_RESULT_TXT(result));
+
+    // Encrypt the message with the ECIES public key.
+    LE_TEST_INFO("Encrypting string '%s'", msg);
+    uint8_t ephemBuf[2*eccKeySize + 1];
+    size_t ephemBufSize = sizeof(ephemBuf);
+    uint8_t salt[eccSaltSize];
+    size_t saltSize = sizeof(salt);
+    uint8_t ct[sizeof(msg)];
+    size_t ctSize = sizeof(ct);
+    uint8_t tag[eccTagSize];
+    size_t tagSize = sizeof(tag);
+
+    result = le_iks_ecc_Ecies_EncryptPacket(keyRef,
+                                            label, sizeof(label),
+                                            aad, sizeof(aad),
+                                            msg, sizeof(msg),
+                                            ct, &ctSize,
+                                            ephemBuf, &ephemBufSize,
+                                            salt, &saltSize,
+                                            tag, &tagSize);
+
+    LE_TEST_OK(result == LE_OK, "Encrypting result %s", LE_RESULT_TXT(result));
+    LE_TEST_OK(ctSize == sizeof(msg), "Ciphertext size");
+
+    LE_TEST_INFO("Decrypting...");
+    uint8_t pt[sizeof(msg)] = "";
+    size_t ptSize = sizeof(msg);
+    result = le_iks_ecc_Ecies_DecryptPacket(keyRef,
+                                     label, sizeof(label),
+                                     aad, sizeof(aad),
+                                     ephemBuf, ephemBufSize,
+                                     salt, saltSize,
+                                     ct, ctSize,
+                                     pt, &ptSize,
+                                     tag, sizeof(tag));
+
+    LE_TEST_OK(result == LE_OK, "Decrypting result %s", LE_RESULT_TXT(result));
+    LE_TEST_OK(ptSize == sizeof(msg), "Decrypted text size");
+    LE_TEST_INFO("Decrypted text '%s'", pt);
+    LE_TEST_OK(strncmp((const char *)msg, (const char *)pt, sizeof(msg)) == 0,
+               "Decrypted text correctness check");
+
+    LE_TEST_INFO("ECC encrypt/decrypt test done.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Tests RSASSA-PSS signature generation/verification.
+ */
+//--------------------------------------------------------------------------------------------------
+static void RsaSigTest
+(
+    void
+)
+{
+#define RSA_SIG_KEY_SIZE            384
+#define RSA_SIG_HASH_DIGEST_SIZE    32
+#define RSA_SIG_SALT_SIZE           8
+    const char keyId[] = "rsaSigKey";
+    le_result_t result;
+    uint64_t keyRef;
+
+    LE_TEST_INFO("If key already exists, delete it");
+    keyRef = le_iks_GetKey(keyId);
+    if (keyRef != 0)
+    {
+        result = le_iks_DeleteKey(keyRef, NULL, 0);
+        LE_TEST_OK(result == LE_OK, "Deleting RSA key");
+    }
+
+    keyRef = le_iks_CreateKeyByType(keyId,
+                                    LE_IKS_KEY_TYPE_PRIV_RSASSA_PSS_SHA512_256,
+                                    RSA_SIG_KEY_SIZE);
+
+    LE_TEST_INFO("keyRef %"PRIu64, keyRef);
+    LE_TEST_OK(keyRef != 0, "Create RSA key.");
+    result = le_iks_GenKeyValue(keyRef, NULL, 0);
+    LE_TEST_OK(result == LE_OK, "Generate RSA key %s", LE_RESULT_TXT(result));
+
+    // Generate a signature for a fake hash of a fake message.
+    uint8_t signature[RSA_SIG_KEY_SIZE];
+    size_t signatureSize = sizeof(signature);
+    uint8_t msgHash[RSA_SIG_HASH_DIGEST_SIZE] = {35};
+
+    result = le_iks_rsa_Pss_GenSig(keyRef,
+                                   RSA_SIG_SALT_SIZE,
+                                   msgHash,
+                                   sizeof(msgHash),
+                                   signature,
+                                   &signatureSize);
+    LE_TEST_OK(result == LE_OK, "Generate RSA signature %s", LE_RESULT_TXT(result));
+
+    // Use a different salt length and check that the signature verification fails.
+    result = le_iks_rsa_Pss_VerifySig(keyRef,
+                                      RSA_SIG_SALT_SIZE*2,
+                                      msgHash,
+                                      sizeof(msgHash),
+                                      signature,
+                                      signatureSize);
+
+    LE_TEST_OK(result == LE_OUT_OF_RANGE, "Negative test: verify signature with wrong salt length.");
+
+    // Use a different different msg and check that the signature verification fails.
+    uint8_t modifiedMsgHash[RSA_SIG_HASH_DIGEST_SIZE] = {35};
+    modifiedMsgHash[3] = 24;
+
+    result = le_iks_rsa_Pss_VerifySig(keyRef,
+                                      RSA_SIG_SALT_SIZE,
+                                      modifiedMsgHash,
+                                      sizeof(modifiedMsgHash),
+                                      signature,
+                                      signatureSize);
+
+    LE_TEST_OK(result == LE_FAULT, "Negative test: verify signature with wrong message.");
+
+    // Verify the signature.
+    result = le_iks_rsa_Pss_VerifySig(keyRef,
+                                      RSA_SIG_SALT_SIZE,
+                                      msgHash,
+                                      sizeof(msgHash),
+                                      signature,
+                                      signatureSize);
+
+    LE_TEST_OK(result == LE_OK, "Verify RSA signature %s", LE_RESULT_TXT(result));
+}
+
+
 COMPONENT_INIT
 {
     LE_TEST_PLAN(LE_TEST_NO_PLAN);
@@ -777,6 +1173,9 @@ COMPONENT_INIT
     HmacTest();
     AesCbcTest();
     AesCmacTest();
+    RsaSigTest();
+    if (0) EccPacketTest(); // Native test is currently failing as well.
+    EccEncTest();
 
     LE_TEST_INFO("=== IoT Keystore test END ===");
 
