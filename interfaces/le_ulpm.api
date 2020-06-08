@@ -96,6 +96,22 @@ ENUM GpioState
     GPIO_OFF,              ///< Gpio off.
 };
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Possible ULPS configurations to select before shutdown. Value 3 is skipped as it should not be
+ * used according to swimcu_pm documentation.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM ULPSConfiguration
+{
+    DISABLE_PSM = 0,             ///< Resquest to disable PSM
+    PSM_WITH_ULPM_FALLBACK = 1,  ///< Request enable PSM with ULPM fallback
+    POWER_OFF = 2,               ///< Request power off module
+    NO_REQUEST = 4,              ///< No request (Default value)
+    PSM_ONLY = 5,                ///< Request enable PSM only
+    ULPM_ONLY = 6,               ///< Request enable ULPM only
+};
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -194,6 +210,7 @@ FUNCTION le_result_t GetFirmwareVersion
  *      - LE_UNAVAILABLE if shutting is not possible now. Try again.
  *      - LE_NOT_PERMITTED if the process lacks sufficient permissions to perform a shutdown.
  *      - LE_UNSUPPORTED if the device lacks the ability to shutdown via ULPM.
+ *      - LE_BAD_PARAMETER if specified shutdown value is not valid.
  *      - LE_FAULT if there is a non-specific failure.
  */
 //--------------------------------------------------------------------------------------------------
@@ -213,3 +230,14 @@ FUNCTION le_result_t ShutDown();
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Reboot();
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Low Power Mode configuration to apply when le_ulpm_ShutDown is called.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetShutDownValue
+(
+    ULPSConfiguration ulpsConfig IN ///< Value used to configure ULPS.
+);
