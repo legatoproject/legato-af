@@ -47,7 +47,7 @@
  * Value need to be written in sysfs to enter ultra low power mode.
  */
 //--------------------------------------------------------------------------------------------------
-#define ULPM_ENABLE_VAL     "1"
+static le_ulpm_ULPSConfiguration_t ShutDownStrategy = LE_ULPM_PSM_WITH_ULPM_FALLBACK;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -502,10 +502,17 @@ le_result_t le_ulpm_ShutDown
 
     le_framework_NotifyExpectedReboot();
 
-    // No one holding the wakelock. Now write to sysfs file to enter ultra low power mode.
-    le_result_t result = WriteToSysfs(SHUTDOWN_INIT_FILE, ULPM_ENABLE_VAL);
+    // Convert shutdown value to a string
+    char shutDownStrategyStr[12];
+    if (snprintf(shutDownStrategyStr, sizeof(shutDownStrategyStr), "%d", ShutDownStrategy) < 0)
+    {
+        return LE_FAULT;
+    }
 
-    LE_FATAL_IF(result == LE_BAD_PARAMETER, "Shutdown value (%s) rejected", ULPM_ENABLE_VAL);
+    // No one holding the wakelock. Now write to sysfs file to enter ultra low power mode.
+    le_result_t result = WriteToSysfs(SHUTDOWN_INIT_FILE, shutDownStrategyStr);
+
+    LE_FATAL_IF(result == LE_BAD_PARAMETER, "Shutdown strategy (%s) rejected", shutDownStrategyStr);
 
     if (result == LE_NOT_FOUND)
     {
@@ -542,4 +549,30 @@ le_result_t le_ulpm_Reboot
 
     LE_ERROR("Failed to reboot!");
     return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Low Power Mode configuration to apply when le_ulpm_ShutDown is called.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if the value of a parameter is invalid
+ *      - LE_UNSUPPORTED if not supported
+ *      - LE_FAULT for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ulpm_SetShutDownStrategy
+(
+    le_ulpm_ULPSConfiguration_t ulpsConfig  ///< [IN] Value used to configure ULPS
+)
+{
+    if ( (ulpsConfig < LE_ULPM_DISABLE_PSM) || (ulpsConfig > LE_ULPM_ULPM_ONLY) )
+    {
+        LE_ERROR("Bad value %d for ulpsConfig", ulpsConfig);
+        return LE_BAD_PARAMETER;
+    }
+
+    ShutDownStrategy = ulpsConfig;
+    return LE_OK;
 }

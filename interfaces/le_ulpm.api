@@ -99,6 +99,24 @@ ENUM GpioState
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Possible ULPS (Ultra Low Power State) configurations to select before shutdown.
+ *
+ * Value 3 is skipped as it should not be used according to swimcu_pm documentation.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM ULPSConfiguration
+{
+    DISABLE_PSM = 0,             ///< Resquest to disable PSM
+    PSM_WITH_ULPM_FALLBACK = 1,  ///< Request enable PSM with ULPM fallback
+    POWER_OFF = 2,               ///< Request power off module
+    NO_REQUEST = 4,              ///< No request (Default value)
+    PSM_ONLY = 5,                ///< Request enable PSM only
+    ULPM_ONLY = 6,               ///< Request enable ULPM only
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Configure the system to boot based on a state change of a given GPIO.
  *
  * @return
@@ -213,3 +231,20 @@ FUNCTION le_result_t ShutDown();
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Reboot();
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Low Power Mode configuration to apply when le_ulpm_ShutDown is called.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if the value of a parameter is invalid
+ *      - LE_UNSUPPORTED if not supported
+ *      - LE_FAULT for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetShutDownStrategy
+(
+    ULPSConfiguration ulpsConfig IN     ///< Value used to configure ULPS.
+);
