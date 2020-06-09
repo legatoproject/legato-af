@@ -71,8 +71,10 @@ int le_fd_Create
 //--------------------------------------------------------------------------------------------------
 int le_fd_Open
 (
-    const char* pathName,             ///< [IN] Pathname to the resource
-    int flags                         ///< [IN] Resource access flags
+    const char  *pathName,  ///< [IN] Pathname to the resource.
+    int         flags,      ///< [IN] Resource access flags.
+    ...                     ///< [IN] Mode (single mode_t parameter) if creating file (O_CREAT flag
+                            ///<      specified).
 );
 
 //--------------------------------------------------------------------------------------------------

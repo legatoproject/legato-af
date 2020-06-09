@@ -20,7 +20,7 @@
 #define le_fd_MkFifo(pathname, mode)      mkfifo((pathname), (mode))
 #define le_fd_MkPipe(pathname, mode)      (-1)
 #define le_fd_Create(pathname, flags)     create((pathname), (flags))
-#define le_fd_Open(pathname, flags)       open((pathname), (flags))
+#define le_fd_Open(pathname, flags, ...)  open((pathname), (flags), ##__VA_ARGS__)
 #define le_fd_Read(fd, buf, count)        read((fd), (buf), (count))
 #define le_fd_Write(fd, buf, count)       write((fd), (buf), (count))
 
