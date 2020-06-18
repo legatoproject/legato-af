@@ -18,13 +18,13 @@ static void CloseFile(int fd)
 
     do
     {
-        err = close(fd);
+        err = le_fd_Close(fd);
     }
     while ( (err != 0) && (errno == EINTR) );
 
     if (err != 0)
     {
-        LE_ERROR("Could not open file.  %m.");
+        LE_ERROR("Could not open file.  errno=%d", errno);
     }
 }
 
@@ -52,13 +52,13 @@ static void WriteBuf(const char* fileNamePtr, const uint8_t* bufPtr, size_t bufS
         ssize_t c;
         do
         {
-            c = write(fd, currentPtr, bufSize - numBytes);
+            c = le_fd_Write(fd, currentPtr, bufSize - numBytes);
         } while ( (c == -1) && (errno == EINTR) );
 
         if(c == -1)
         {
             CloseFile(fd);
-            LE_TEST_FATAL("Could not write to %s.  %m.", fileNamePtr);
+            LE_TEST_FATAL("Could not write to %s.  errno=%d", fileNamePtr, errno);
         }
 
         numBytes += c;
@@ -85,7 +85,7 @@ static size_t ReadEntireFile(const char* fileNamePtr, uint8_t* bufPtr, size_t bu
     }
     while ( (fd == -1) && (errno == EINTR) );
 
-    LE_TEST_ASSERT(fd != -1, "Could not open file %s. errno=%d", fileNamePtr, errno);
+    LE_TEST_ASSERT(fd != -1, "Could not open file %s.  errno=%d", fileNamePtr, errno);
 
     uint8_t* currentPtr = bufPtr;
     size_t numBytes = 0;
@@ -95,13 +95,13 @@ static size_t ReadEntireFile(const char* fileNamePtr, uint8_t* bufPtr, size_t bu
         ssize_t c;
         do
         {
-            c = read(fd, currentPtr, bufSize - numBytes);
+            c = le_fd_Read(fd, currentPtr, bufSize - numBytes);
         } while ( (c == -1) && (errno == EINTR) );
 
         if (c == -1)
         {
             CloseFile(fd);
-            LE_TEST_FATAL("Could not read the %s.  %m.", fileNamePtr);
+            LE_TEST_FATAL("Could not read the %s.  errno=%d", fileNamePtr, errno);
         }
 
         if (c == 0)
@@ -119,7 +119,12 @@ static size_t ReadEntireFile(const char* fileNamePtr, uint8_t* bufPtr, size_t bu
     }
 }
 
+#if LE_CONFIG_TARGET_GILL
+#define BASE_LOCATION                       "/keys/"
+#else
 #define BASE_LOCATION                       "/mnt/flash/keys/"
+#endif
+
 #define TEST_DIR                            BASE_LOCATION"test/"
 //--------------------------------------------------------------------------------------------------
 /**
