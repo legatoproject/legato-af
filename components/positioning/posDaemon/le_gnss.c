@@ -4520,7 +4520,7 @@ le_result_t le_gnss_GetNmeaSentences
 
             if (LE_OK != result)
             {
-                LE_ERROR("Unable to get the enabled NMEA sentences, error = %d (%s)",
+                LE_ERROR("Unable to get the enabled NMEA sentences, error = %d (%s)",
                           result, LE_RESULT_TXT(result));
             }
         }
