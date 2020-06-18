@@ -34,7 +34,10 @@ system:
 | @subpage avRegister          | Register a target with AirVantage                            |
 | @subpage avInstallUpload     | Build an App Bundle and deploy using AirVantage              |
 
-
+@note System bundles are not currently supported and if a user wishes to update Legato remotely
+users must use the
+(AirVantage Firmware over-the-air)[https://source.sierrawireless.com/airvantage/avc/reference/monitor/howtos/upgradeAirPrimeFw/]
+(FOTA) tool.
 
 @section legatoServicesAirVantage_API APIs
 
