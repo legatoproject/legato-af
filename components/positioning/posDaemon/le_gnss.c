@@ -4453,7 +4453,7 @@ le_result_t le_gnss_SetNmeaSentences
 
                 if (LE_OK != result)
                 {
-                    LE_ERROR("Unable to set the enabled NMEA sentences, error = %d (%s)",
+                    LE_ERROR("Unable to set the enabled NMEA sentences, error = %d (%s)",
                               result, LE_RESULT_TXT(result));
                 }
             }
