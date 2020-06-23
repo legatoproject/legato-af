@@ -38,6 +38,20 @@
 #include "le_ms_local.h"
 #include "watchdogChain.h"
 
+//--------------------------------------------------------------------------------------------------
+// Defines.
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define LE_CONFIG_MODEM_DAEMON_PREFERRED_OPERATORS on Linux platform only.
+ * It's defined here than a more global file since it is only used in this file so far.
+ * Otherwise, it should be in build/wp76xx/framework/include/le_config.h or likewise.
+ */
+//--------------------------------------------------------------------------------------------------
+#ifdef LE_CONFIG_LINUX
+#define LE_CONFIG_MODEM_DAEMON_PREFERRED_OPERATORS
+#endif
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions.
