@@ -26,9 +26,7 @@ requires:
         $LEGATO_DCS_PA_DEFAULT
 #endif
         $LEGATO_DCS_PA
-    #if ${LE_CONFIG_SERVICES_WATCHDOG} = y
         ${LEGATO_ROOT}/components/watchdogChain
-    #endif
     }
 }
 
@@ -49,7 +47,5 @@ cflags:
     -I$LEGATO_ROOT/components/dataConnectionService/dcsNet
     -I$LEGATO_ROOT/components/dataConnectionService/dcsCellular
     -I$LEGATO_ROOT/components/clockService/clockSync
-#if ${LE_CONFIG_SERVICES_WATCHDOG} = y
     -I${LEGATO_ROOT}/components/watchdogChain
-#endif
 }

@@ -48,9 +48,7 @@
 #ifdef LE_CONFIG_LINUX
 #include "clockSync.h"
 #endif
-#if LE_CONFIG_SERVICES_WATCHDOG
 #include "watchdogChain.h"
-#endif
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions
@@ -84,14 +82,12 @@
 //--------------------------------------------------------------------------------------------------
 #define DEFAULT_NTP_SERVER              "pool.ntp.org"
 
-#if LE_CONFIG_SERVICES_WATCHDOG
 //--------------------------------------------------------------------------------------------------
 /**
  * The timer interval to kick the watchdog chain.
  */
 //--------------------------------------------------------------------------------------------------
 #define MS_WDOG_INTERVAL 8
-#endif
 //--------------------------------------------------------------------------------------------------
 /**
  * Retry Tech Timer's backoff durations:
@@ -1941,12 +1937,11 @@ COMPONENT_INIT
 
     // Register for command events
     le_event_AddHandler("ProcessCommand", dcs_CommandEventId, ProcessCommand);
-#if LE_CONFIG_SERVICES_WATCHDOG
+
     // Register main loop with watchdog chain
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_Init(1);
     le_wdogChain_MonitorEventLoop(0, watchdogInterval);
-#endif
     LE_INFO("Data Channel Service le_data is ready");
 }

@@ -18,14 +18,14 @@
 #include "pa_clkSync.h"
 #include "watchdogChain.h"
 
-#if LE_CONFIG_SERVICES_WATCHDOG
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Timer interval to kick the watchdog chain
  */
 //--------------------------------------------------------------------------------------------------
 #define MS_WDOG_INTERVAL 30
-#endif
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -793,12 +793,12 @@ COMPONENT_INIT
         le_dls_Sort(&ClockSyncSourcePrioritizedList, UpdateDbComparePriority);
     }
 
-#if LE_CONFIG_SERVICES_WATCHDOG
+
     // Register main loop with watchdog chain
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_Init(1);
     le_wdogChain_MonitorEventLoop(0, watchdogInterval);
-#endif
+
     LE_INFO("Clock Sync Service le_clkSync is ready");
 }
