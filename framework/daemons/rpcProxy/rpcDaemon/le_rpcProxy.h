@@ -93,6 +93,7 @@
 #define RPC_PROXY_KEEPALIVE_REQUEST            6
 #define RPC_PROXY_KEEPALIVE_RESPONSE           7
 #define RPC_PROXY_REQUEST_RESPONSE             8
+#define RPC_PROXY_SERVER_ASYNC_EVENT           9
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -393,6 +394,46 @@ le_hashmap_Ref_t rpcProxy_GetExpiryTimerRefByProxyId
 le_hashmap_Ref_t rpcProxy_GetServiceIDMapByName
 (
     void
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets reference to service using its id
+ *
+ * @return
+ *      Reference to the service with given id or NULL if not found
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_ServiceRef_t rpcProxy_GetServiceRefById
+(
+    uint32_t serviceId  ///< [IN] Service ID
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets reference to message using proxy id
+ *
+ * @return
+ *      Reference to the message with given proxy id or NULL if not found
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_MessageRef_t rpcProxy_GetMsgRefById
+(
+    uint32_t proxyId    ///< [IN] Proxy ID
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets system name using service id
+ *
+ * @return
+ *      RPC system name or NULL if not found
+ */
+//--------------------------------------------------------------------------------------------------
+const char* rpcProxy_GetSystemNameByServiceId
+(
+    uint32_t serviceId  ///< [IN] Service ID
 );
 
 #endif /* LE_RPC_PROXY_H_INCLUDE_GUARD */

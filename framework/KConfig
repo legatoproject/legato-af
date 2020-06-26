@@ -663,6 +663,23 @@ config RPC_PROXY_MAX_MESSAGE
   ---help---
   The maximum size of a RPC message that can be sent and received between RPC-enabled systems.
 
+config RPC_PROXY_ASYNC_EVENT_HANDLER_MAX_NUM
+  int "Maximum number of async event handlers"
+  depends on RPC
+  range 0 4294967295
+  default 5
+  ---help---
+  The maximum number of async event handlers client can register with server.
+
+config RPC_PROXY_ASYNC_EVENTS_MAX_NUM
+  int "Maximum number of simultaneous async events"
+  depends on RPC
+  range 2 4294967295
+  default 3
+  ---help---
+  The maximum number of async events that can be buffered before they are sent out
+  to wire or consumend by client.
+
 config RPC_PROXY_NETWORK_KEEPALIVE_SERVICE_INTERVAL
   int "Frequency of RPC Keep-Alive network service (in seconds)"
   depends on RPC

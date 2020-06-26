@@ -590,8 +590,11 @@ static void AsyncResponse_{{apiName}}_{{function.name}}
     _msgBufPtr = _msgPtr->buffer;
 
     // Always pack the client context pointer first
+#ifdef LE_CONFIG_RPC
+    LE_ASSERT(le_pack_PackTaggedReference( &_msgBufPtr, serverDataPtr->contextPtr, LE_PACK_CONTEXT_PTR_REFERENCE ));
+#else
     LE_ASSERT(le_pack_PackReference( &_msgBufPtr, serverDataPtr->contextPtr ));
-
+#endif
     // Pack the input parameters
     {{ pack.PackInputs(handler.apiType.parameters) }}
 
@@ -919,7 +922,15 @@ static void Handle_{{apiName}}_{{function.name}}
     {%- if function.returnType %}
 
     // Pack the result first
+    {%- if function is AddHandlerFunction %}
+#ifdef LE_CONFIG_RPC
+    LE_ASSERT(le_pack_PackTaggedReference( &_msgBufPtr, _result, LE_PACK_ASYNC_HANDLER_REFERENCE ));
+#else
     LE_ASSERT({{function.returnType|PackFunction}}( &_msgBufPtr, _result ));
+#endif
+    {%- else %}
+    LE_ASSERT({{function.returnType|PackFunction}}( &_msgBufPtr, _result ));
+    {%- endif %}
     {%- endif %}
 
     // Pack any "out" parameters

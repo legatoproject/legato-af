@@ -10,6 +10,7 @@
 #include "le_rpcProxy.h"
 #include "le_rpcProxyNetwork.h"
 #include "le_rpcProxyConfig.h"
+#include "le_rpcProxyEventHandler.h"
 
 #ifndef RPC_PROXY_LOCAL_SERVICE
 #include <dlfcn.h>
@@ -38,8 +39,8 @@ static void ServerMsgRecvHandler(le_msg_MessageRef_t, void*);
 #endif
 static le_result_t DoConnectService(const char*, const uint32_t, const char*);
 static void ProcessServerResponse(rpcProxy_Message_t*, bool);
-static le_result_t RepackMessage(rpcProxy_Message_t*, rpcProxy_Message_t*, bool);
-static le_result_t PreProcessResponse(void*, size_t*);
+static le_result_t RepackMessage(rpcProxy_Message_t*, rpcProxy_Message_t*, bool, le_msg_SessionRef_t*);
+static le_result_t PreProcessResponse(void*, size_t*, le_msg_SessionRef_t*);
 #ifndef RPC_PROXY_LOCAL_SERVICE
 static void SendDisconnectService(const char* systemName,
                                   const char* serviceInstanceName,
@@ -83,6 +84,8 @@ static const int ItemPackSize[] =
     [LE_PACK_REFERENCE] = LE_PACK_SIZEOF_REFERENCE,
     [LE_PACK_STRING_RESPONSE_SIZE] = LE_PACK_SIZEOF_SIZE,
     [LE_PACK_ARRAY_RESPONSE_SIZE] = LE_PACK_SIZEOF_SIZE,
+    [LE_PACK_CONTEXT_PTR_REFERENCE] = LE_PACK_SIZEOF_REFERENCE,
+    [LE_PACK_ASYNC_HANDLER_REFERENCE] = LE_PACK_SIZEOF_REFERENCE,
 };
 
 
@@ -323,6 +326,99 @@ static le_mem_PoolRef_t ResponseParameterArrayPoolRef = NULL;
 
 #endif
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets reference to service using its id
+ *
+ * @return
+ *      Reference to the service with given id or NULL if not found
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_ServiceRef_t rpcProxy_GetServiceRefById
+(
+    uint32_t serviceId  ///< [IN] Service ID
+)
+{
+    return le_hashmap_Get(ServiceRefMapByID, (void*)(uintptr_t) serviceId);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets reference to message using proxy id
+ *
+ * @return
+ *      Reference to the message with given proxy id or NULL if not found
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_MessageRef_t rpcProxy_GetMsgRefById
+(
+    uint32_t proxyId    ///< [IN] Proxy ID
+)
+{
+    return le_hashmap_Get(MsgRefMapByProxyId, (void*)(uintptr_t) proxyId);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets system name using service id
+ *
+ * @return
+ *      RPC system name or NULL if not found
+ */
+//--------------------------------------------------------------------------------------------------
+const char* rpcProxy_GetSystemNameByServiceId
+(
+    uint32_t serviceId  ///< [IN] Service ID
+)
+{
+    le_hashmap_It_Ref_t iter;
+    const char*         serviceName = NULL;
+
+    // Get service name by service ID
+    iter = le_hashmap_GetIterator(ServiceIDMapByName);
+    while (le_hashmap_NextNode(iter) == LE_OK)
+    {
+        uint32_t* nextVal = le_hashmap_GetValue(iter);
+
+        if (*nextVal == serviceId)
+        {
+            serviceName = le_hashmap_GetKey(iter);
+            break;
+        }
+    }
+
+    if(serviceName == NULL)
+    {
+        LE_ERROR("Unable to retrieve service name for service ID %lu", serviceId);
+        return NULL;
+    }
+
+    // Get system name by service name
+    return rpcProxyConfig_GetSystemNameByServiceName(serviceName);
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function for checking if message has variable length
+ *
+ * @return
+ *      TRUE if message has variable size
+ */
+//--------------------------------------------------------------------------------------------------
+static inline bool IsVariableLengthType
+(
+    uint8_t type
+)
+{
+    return  ((type == RPC_PROXY_CLIENT_REQUEST)  ||
+             (type == RPC_PROXY_SERVER_RESPONSE) ||
+             (type == RPC_PROXY_SERVER_ASYNC_EVENT));
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Function for displaying a message type string
@@ -361,6 +457,10 @@ static inline char* DisplayMessageType
 
         case RPC_PROXY_SERVER_RESPONSE:
             return "Server-Response";
+            break;
+
+        case RPC_PROXY_SERVER_ASYNC_EVENT:
+            return "Server-Event";
             break;
 
         default:
@@ -752,6 +852,7 @@ le_result_t rpcProxy_SendMsg
 
         case RPC_PROXY_CLIENT_REQUEST:
         case RPC_PROXY_SERVER_RESPONSE:
+        case RPC_PROXY_SERVER_ASYNC_EVENT:
         {
             // Set a Proxy Message pointer to the message
             proxyMessagePtr =
@@ -762,7 +863,7 @@ le_result_t rpcProxy_SendMsg
 #endif
 
             // Re-package proxy message before sending
-            result = RepackMessage(proxyMessagePtr, &tmpProxyMessage, true);
+            result = RepackMessage(proxyMessagePtr, &tmpProxyMessage, true, NULL);
             if (result != LE_OK)
             {
                 return result;
@@ -851,7 +952,8 @@ static le_result_t RecvMsg
 (
     void* handle, ///< [IN] Opaque handle to the le_comm communication channel
     NetworkMessageState_t* msgStatePtr, ///< [IN] Pointer to the Message State-Machine data
-    size_t* bufferSizePtr ///< [IN] Pointer to the size of the buffer
+    size_t* bufferSizePtr, ///< [IN] Pointer to the size of the buffer
+    le_msg_SessionRef_t* sessionRefPtr //< [OUT] Pointer to client's session reference
 )
 {
     le_result_t  result;
@@ -890,6 +992,7 @@ static le_result_t RecvMsg
 
                 case RPC_PROXY_CLIENT_REQUEST:
                 case RPC_PROXY_SERVER_RESPONSE:
+                case RPC_PROXY_SERVER_ASYNC_EVENT:
                     msgStatePtr->expectedSize =
                         LE_PACK_SIZEOF_UINT16;
                     break;
@@ -911,8 +1014,7 @@ static le_result_t RecvMsg
         }
         else if (msgStatePtr->recvState == NETWORK_MSG_MESSAGE) // MESSAGE State
         {
-            if ((msgStatePtr->type == RPC_PROXY_CLIENT_REQUEST) ||
-                (msgStatePtr->type == RPC_PROXY_SERVER_RESPONSE))
+            if(IsVariableLengthType(msgStatePtr->type))
             {
                 //
                 // Variable-length Message types
@@ -1008,7 +1110,7 @@ static le_result_t RecvMsg
     } // While-loop
 
     // Pre-process the buffer before processing the message payload
-    result = PreProcessResponse(msgStatePtr->buffer, bufferSizePtr);
+    result = PreProcessResponse(msgStatePtr->buffer, bufferSizePtr, sessionRefPtr);
     return result;
 }
 
@@ -1491,7 +1593,8 @@ static le_result_t RepackMessage
 (
     rpcProxy_Message_t *proxyMessagePtr, ///< [IN] Pointer to the original Proxy Message
     rpcProxy_Message_t *newProxyMessagePtr, ///< [IN] Pointer to the new Proxy Message
-    bool sending ///< [IN] Boolean to identify if message is in-coming or out-going
+    bool sending, ///< [IN] Boolean to identify if message is in-coming or out-going
+    le_msg_SessionRef_t *sessionRefPtr //< [OUT] Pointer to client's session reference
 )
 {
     uint8_t* msgBufPtr;
@@ -1571,6 +1674,27 @@ static le_result_t RepackMessage
             case LE_PACK_DOUBLE:
             {
                 msgBufPtr += (LE_PACK_SIZEOF_TAG_ID + ItemPackSize[tagId]);
+                break;
+            }
+
+            case LE_PACK_CONTEXT_PTR_REFERENCE:
+            case LE_PACK_ASYNC_HANDLER_REFERENCE:
+            {
+                // Copy the contents up to this tag into the new message buffer.
+                // After this call all message pointers are equal.
+                RepackCopyContents(&msgBufPtr, &previousMsgBufPtr, &newMsgBufPtr);
+
+                le_result_t result = rpcEventHandler_RepackContext(&msgBufPtr,
+                                                                   &previousMsgBufPtr,
+                                                                   &newMsgBufPtr,
+                                                                   &proxyMessagePtr->commonHeader,
+                                                                   sending,
+                                                                   sessionRefPtr);
+                if (result != LE_OK)
+                {
+                    return result;
+                }
+
                 break;
             }
 
@@ -1799,7 +1923,8 @@ static le_result_t RepackMessage
 static le_result_t PreProcessResponse
 (
     void* bufferPtr, ///< [IN] Pointer to buffer
-    size_t* bufferSizePtr ///< [IN] Pointer to the size of the buffer
+    size_t* bufferSizePtr, ///< [IN] Pointer to the size of the buffer
+    le_msg_SessionRef_t *sessionRefPtr //< [OUT] Pointer to client's session reference
 )
 {
     le_result_t result;
@@ -1851,7 +1976,11 @@ static le_result_t PreProcessResponse
                          commonHeaderPtr->id);
                 return LE_NOT_FOUND;
             }
+        }
+        // fall through
 
+        case RPC_PROXY_SERVER_ASYNC_EVENT:
+        {
             // Retrieve the Session reference, using the Service-ID
             le_msg_ServiceRef_t serviceRef =
                 le_hashmap_Get(ServiceRefMapByID, (void*)(uintptr_t) commonHeaderPtr->serviceId);
@@ -1885,7 +2014,7 @@ static le_result_t PreProcessResponse
 #endif
 
             // Re-package proxy message before processing
-            result = RepackMessage(proxyMessagePtr, &tmpProxyMessage, false);
+            result = RepackMessage(proxyMessagePtr, &tmpProxyMessage, false, sessionRefPtr);
             if (result != LE_OK)
             {
                 return result;
@@ -2755,6 +2884,8 @@ static void DeleteService
             // Delete the server side of the service
             le_msg_DeleteService(serviceRef);
 #endif
+            // Delete data structures allocated to handle async events
+            rpcEventHandler_DeleteAll(*serviceIdCopyPtr);
 
             // Remove sessionRef from hash-map
             le_hashmap_Remove(ServiceRefMapByID, (void*)(uintptr_t) *serviceIdCopyPtr);
@@ -2872,6 +3003,7 @@ void rpcProxy_AsyncRecvHandler
     size_t                   bufferSize = 0;
     rpcProxy_CommonHeader_t *commonHeaderPtr = NULL;
     le_result_t              result;
+    le_msg_SessionRef_t      sessionRef = NULL;
 
     // Retrieve the system-name from where this message has been sent
     // by a reverse look-up, using the handle
@@ -2904,7 +3036,7 @@ void rpcProxy_AsyncRecvHandler
         while (!done)
         {
             // Receive Proxy Message from far-side
-            result = RecvMsg(handle, &(networkRecordPtr->messageState), &bufferSize);
+            result = RecvMsg(handle, &(networkRecordPtr->messageState), &bufferSize, &sessionRef);
 
             if (result != LE_OK)
             {
@@ -3006,6 +3138,14 @@ void rpcProxy_AsyncRecvHandler
                         ProcessDisconnectService(
                             systemName,
                             (rpcProxy_ConnectServiceMessage_t*) buffer);
+                    break;
+                }
+
+                case RPC_PROXY_SERVER_ASYNC_EVENT:
+                {
+                    LE_INFO("Received Proxy Server-Event Message, id [%" PRIu32 "]",
+                             commonHeaderPtr->id);
+                    rpcEventHandler_ProcessEvent((rpcProxy_Message_t*) buffer, sessionRef);
                     break;
                 }
 
@@ -3462,6 +3602,8 @@ static le_result_t DoConnectService
                                           ClientServiceCloseHandler,
                                           (void*) bindingRefPtr);
 #endif
+
+            le_msg_SetSessionRecvHandler(sessionRef, rpcEventHandler_EventCallback, (void*)serviceId);
 
             // Try to Open the Session
             result = le_msg_TryOpenSessionSync(sessionRef);
@@ -3921,6 +4063,8 @@ le_result_t le_rpcProxy_Initialize
                                           RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM,
                                           le_hashmap_HashVoidPointer,
                                           le_hashmap_EqualsVoidPointer);
+
+    rpcEventHandler_Initialize();
 
     LE_INFO("RPC Proxy Service Init start");
 

@@ -442,8 +442,14 @@ LE_SHARED {{function.returnType|FormatType(useBaseName=True)}} ifgen_{{apiBaseNa
     handlerRef = ({{function.parameters[0].apiType|FormatType(useBaseName=True)}})
          clientDataPtr->handlerRef;
     le_mem_Release(clientDataPtr);
+#ifdef LE_CONFIG_RPC
+    LE_ASSERT(le_pack_PackTaggedReference( &_msgBufPtr,
+                                     {{function.parameters[0]|FormatParameterName}},
+                                     LE_PACK_ASYNC_HANDLER_REFERENCE ));
+#else
     LE_ASSERT(le_pack_PackReference( &_msgBufPtr,
                                      {{function.parameters[0]|FormatParameterName}} ));
+#endif
     {%- else %}
     {{- pack.PackInputs(function.parameters,initiatorWaits=True) }}
     {%- endif %}

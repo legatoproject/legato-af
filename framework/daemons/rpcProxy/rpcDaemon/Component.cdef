@@ -2,6 +2,7 @@ sources:
 {
     le_rpcProxy.c
     le_rpcProxyNetwork.c
+    le_rpcProxyEventHandler.c
 #if ${LE_CONFIG_RTOS} = y
     le_rpcProxyConfigLocal.c
 #elif ${LE_CONFIG_RPC_PROXY_LIBRARY} = y
