@@ -16,10 +16,8 @@
 CM=${CM:="/legato/systems/current/apps/tools/read-only/bin/cm"}
 IP=${IP:="/sbin/ip"}
 IFCONFIG=${IFCONFIG:="/sbin/ifconfig"}
-CURL=${CURL:-"/usr/bin/curl"}
 RESOLV_CONF=${RESOLV_CONF="/etc/resolv.conf"}
 LOG=${LOG:="/var/log/cm"}
-TEST_SITE=${TEST_SITE:="https://www.akamai.com"}
 RUN_TIME=${RUN_TIME:="/var/run/cm"}
 DEFAULT_ROUTE=${DEFAULT_ROUTE:="$RUN_TIME/default.bck"}
 DEFAULT_RESOLV_CONF=${DEFAULT_RESOLV_CONF:="$RUN_TIME/resolv.conf.bck"}
@@ -34,10 +32,6 @@ ip() {
 
 ifconfig() {
     $IFCONFIG $@
-}
-
-curl() {
-    $CURL $@
 }
 
 handle_err() {
@@ -213,10 +207,6 @@ cm_data_connect () {
         update_route connect $family $iface $gw
     done
     update_dns connect ${dns_list}
-
-    echo "Testing connection ... "
-    curl --silent $TEST_SITE > $LOG 2>&1
-    handle_err $?
 
     exit 0
 }

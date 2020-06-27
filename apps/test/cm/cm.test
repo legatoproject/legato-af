@@ -61,14 +61,6 @@ ifconfig_stub() {
 export -f ifconfig_stub
 export IFCONFIG=ifconfig_stub
 
-# a stubbed version of linux's ping tool
-# it returns an exit code
-curl_stub() {
-    return $CURL_EXIT_CODE
-}
-export -f curl_stub
-export CURL=curl_stub
-
 # a stubbed version of cm data info command that returns the needed info
 data_info_stub() {
     echo "Index:         $PROFILE"
@@ -154,7 +146,7 @@ export CM=cm_stub
 export RUN_TIME="$PWD/runtime"
 export RESOLV_CONF="$PWD/resolv.conf" LOG="$PWD/cm.log"
 
-export IP_EXIT_CODE=0 IFCONFIG_EXIT_CODE=0 CURL_EXIT_CODE=0 APN_EXIT_CODE=0 \
+export IP_EXIT_CODE=0 IFCONFIG_EXIT_CODE=0 APN_EXIT_CODE=0 \
     PDP_EXIT_CODE=0 AUTH_EXIT_CODE=0 CONNECT_EXIT_CODE=0
 
 export PROFILE="2" APN="orange" PDP="IPV4" IPV="IPv4" CONNECTED="no" AUTH="PAP" \
@@ -207,12 +199,6 @@ export CONNECTED="yes" IP_EXIT_CODE=1
 apps/tools/scripts/cm data connect
 handle_err "routing failure ..." $? 1
 export IP_EXIT_CODE=0
-
-# curl failure
-export CURL_EXIT_CODE=1
-apps/tools/scripts/cm data connect
-handle_err "curl failure ..." $? 1
-export CURL_EXIT_CODE=0
 
 # cleanup
 rm $RESOLV_CONF $LOG
