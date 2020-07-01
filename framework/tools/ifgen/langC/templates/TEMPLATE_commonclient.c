@@ -448,6 +448,10 @@ LE_SHARED {{function.returnType|FormatType(useBaseName=True)}} ifgen_{{apiBaseNa
     {{- pack.PackInputs(function.parameters,initiatorWaits=True) }}
     {%- endif %}
 
+#ifdef LE_CONFIG_RPC
+    // Add EOF TagID to the end of the message so RPC proxy knows when to stop repacking
+    *_msgBufPtr = LE_PACK_EOF;
+#endif
     // Send a request to the server and get the response.
     TRACE("Sending message to server and waiting for response : %ti bytes sent",
           _msgBufPtr-_msgPtr->buffer);

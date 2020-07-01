@@ -640,14 +640,15 @@ class Interface(object):
         Get size of largest possible message to a function or handler.
 
         A message is 4-bytes for message ID, optional 4
-        bytes for required output parameters, optional 1 byte for TagID,
+        bytes for required output parameters, optional 1 byte for required output parameters TagID,
+        optional 1 byte TagID for EOF,
         and a variable number of bytes to pack
         the return value (if the function has one), and all input and output parameters.
         """
         padding = 8
         if (os.environ.get('LE_CONFIG_RPC') == "y"):
-            # Include a 1-byte TagID
-            padding = padding + 1
+            # Include two 1-byte TagIDs
+            padding = padding + 2
         return padding + max([1] +
                        [function.GetMessageSize() for function in self.functions.values()] +
                        [handler.GetMessageSize()
