@@ -6,9 +6,16 @@
 
 menu "FTP Client"
 
+config SWIFTP
+  bool "Using SIERRA FTP feature"
+  depends on !LWIP
+  default n
+  ---help---
+  this will enable Sierra FTP feature based on le_socketlib.
+
 config FTPCLIENT_SESSION_MAX
   int "Maximum number simultaneous FTP client sessions"
-  depends on LWIP
+  depends on LWIP || SWIFTP
   range 1 1024
   default 2
   ---help---
@@ -34,7 +41,7 @@ config FTPCLIENT_BUFFER_SIZE
 
 config FTPCLIENT_SERVER_NAME_MAX
   int "Maximum size of server name"
-  depends on LWIP
+  depends on LWIP || SWIFTP
   range 2 1024
   default 64
   ---help---
@@ -43,7 +50,7 @@ config FTPCLIENT_SERVER_NAME_MAX
 
 config FTPCLIENT_USER_NAME_MAX
   int "Maximum size of user name"
-  depends on LWIP
+  depends on LWIP || SWIFTP
   range 2 1024
   default 32
   ---help---
@@ -52,7 +59,7 @@ config FTPCLIENT_USER_NAME_MAX
 
 config FTPCLIENT_PASSWORD_MAX
   int "Maximum size of user name"
-  depends on LWIP
+  depends on LWIP || SWIFTP
   range 2 1024
   default 32
   ---help---
