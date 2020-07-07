@@ -388,7 +388,7 @@ static le_ref_MapRef_t PositionSampleMap;
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t ClientRequestRefMap;
 
-#ifdef MK_CONFIG_AT_GNSS
+#ifndef MK_CONFIG_DISABLE_AT_GNSS
 //--------------------------------------------------------------------------------------------------
 /**
  * NMEA pipe file descriptor
@@ -634,7 +634,7 @@ static le_result_t OpenNmeaPipe
     }
     return LE_OK;
 }
-#endif
+#endif //MK_CONFIG_DISABLE_AT_GNSS
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -752,7 +752,7 @@ static void PaNmeaHandler
     char* nmeaPtr        // [IN] The NMEA string
 )
 {
-#ifdef MK_CONFIG_AT_GNSS
+#ifndef MK_CONFIG_DISABLE_AT_GNSS
     LE_DEBUG("NMEA Handler %s", nmeaPtr);
 
     // Open the NMEA FIFO pipe
