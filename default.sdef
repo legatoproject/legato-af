@@ -13,6 +13,10 @@
     #include "$LEGATO_EXTRA_SINC"
 #endif
 
+#if ${LE_CONFIG_ENABLE_WIFI} = y
+    #include "$LEGATO_ROOT/modules/WiFi/wifi.sinc"
+#endif
+
 apps:
 {
     // Platform services.
