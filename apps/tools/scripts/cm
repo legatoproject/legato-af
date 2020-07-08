@@ -157,6 +157,7 @@ cm_data_connect () {
         echo -n "Connecting ... "
         cm data connect $opt > $LOG 2>&1
         handle_err $?
+        sleep 2
     fi
 
     info=$(cm data info)
