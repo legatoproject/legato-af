@@ -431,7 +431,7 @@ $(DOXYGEN_DEFS): $(LEGATO_BUILD_KCONFIG)
 
 # Interactively select build options
 .PHONY: menuconfig
-menuconfig: $(LEGATO_KCONFIG)
+menuconfig:
 	$(L) KCONFIG $(LEGATO_KCONFIG)
 	$(Q)KCONFIG_CONFIG=$(LEGATO_KCONFIG) $(MENUCONFIG_TOOL) KConfig
 
