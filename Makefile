@@ -245,6 +245,7 @@ ifneq ($(TARGET),nothing)
   export TARGET_CC                       := $($(TARGET_CAPS)_CC)
   export TARGET_CXX                      := $($(TARGET_CAPS)_CXX)
   export TARGET_CPP                      := $($(TARGET_CAPS)_CPP)
+  export TARGET_SYSROOT                  := $($(TARGET_CAPS)_SYSROOT)
 
   ifeq ($(TARGET_CC),/$(CC_NAME))
     $(error Unable to find toolchain for target '$(TARGET)')
