@@ -43,33 +43,36 @@ LE_SHARED le_result_t pa_iks_DeleteModuleId
 }
 
 
-LE_SHARED uint64_t pa_iks_GetKey
+LE_SHARED le_result_t pa_iks_GetKey
 (
-    const char*     keyId           ///< [IN] Identifier string.
+    const char*     keyId,          ///< [IN] Identifier string.
+    uint64_t*       keyRefPtr       ///< [OUT] Key reference.
 )
 {
-    return 0;
+    return LE_UNSUPPORTED;
 }
 
 
-LE_SHARED uint64_t pa_iks_CreateKey
+LE_SHARED le_result_t pa_iks_CreateKey
 (
     const char*         keyId,      ///< [IN] Identifier string.
-    uint32_t            keyUsage    ///< [IN] Key usage.
+    uint32_t            keyUsage,   ///< [IN] Key usage.
+    uint64_t*           keyRefPtr   ///< [OUT] Key reference.
 )
 {
-    return 0;
+    return LE_UNSUPPORTED;
 }
 
 
-LE_SHARED uint64_t pa_iks_CreateKeyByType
+LE_SHARED le_result_t pa_iks_CreateKeyByType
 (
     const char*         keyId,      ///< [IN] Identifier string.
     int32_t             keyType,    ///< [IN] Key type.
-    uint32_t            keySize     ///< [IN] Key size in bytes.
+    uint32_t            keySize,    ///< [IN] Key size in bytes.
+    uint64_t*           keyRefPtr   ///< [OUT] Key reference.
 )
 {
-    return 0;
+    return LE_UNSUPPORTED;
 }
 
 
@@ -175,22 +178,24 @@ LE_SHARED le_result_t pa_iks_GetPubKeyValue
 }
 
 
-LE_SHARED uint64_t pa_iks_GetDigest
+LE_SHARED le_result_t pa_iks_GetDigest
 (
-    const char* digestId ///< [IN] Identifier string.
+    const char* digestId,       ///< [IN] Identifier string.
+    uint64_t*   digestRefPtr    ///< [OUT] Digest reference.
 )
 {
-    return 0;
+    return LE_UNSUPPORTED;
 }
 
 
-LE_SHARED uint64_t pa_iks_CreateDigest
+LE_SHARED le_result_t pa_iks_CreateDigest
 (
-    const char*     digestId,   ///< [IN] Identifier string.
-    uint32_t        digestSize  ///< [IN] Digest size. Must be <= MAX_DIGEST_SIZE.
+    const char*     digestId,       ///< [IN] Identifier string.
+    uint32_t        digestSize,     ///< [IN] Digest size. Must be <= MAX_DIGEST_SIZE.
+    uint64_t*       digestRefPtr    ///< [OUT] Digest reference.
 )
 {
-    return 0;
+    return LE_UNSUPPORTED;
 }
 
 
@@ -277,12 +282,13 @@ LE_SHARED le_result_t pa_iks_GetProvisionKey
 }
 
 
-LE_SHARED uint64_t pa_iks_CreateSession
+LE_SHARED le_result_t pa_iks_CreateSession
 (
-    uint64_t            keyRef      ///< [IN] Key reference.
+    uint64_t    keyRef,         ///< [IN] Key reference.
+    uint64_t*   sessionRefPtr   ///< [OUT] Session reference.
 )
 {
-    return 0;
+    return LE_UNSUPPORTED;
 }
 
 

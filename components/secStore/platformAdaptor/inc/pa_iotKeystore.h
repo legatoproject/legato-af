@@ -75,13 +75,17 @@ LE_SHARED le_result_t pa_iks_DeleteModuleId
  * Gets a reference to a key.
  *
  * @return
- *      Reference to the key.
- *      0 if the key could not be found.
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_NOT_FOUND
+ *      LE_NO_MEMORY
+ *      LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED uint64_t pa_iks_GetKey
+LE_SHARED le_result_t pa_iks_GetKey
 (
-    const char*     keyId           ///< [IN] Identifier string.
+    const char*     keyId,          ///< [IN] Identifier string.
+    uint64_t*       keyRefPtr       ///< [OUT] Key reference.
 );
 
 
@@ -90,14 +94,18 @@ LE_SHARED uint64_t pa_iks_GetKey
  * Creates a new key.
  *
  * @return
- *      Reference to the key if successful.
- *      0 if the keyId is already being used or is invalid or the keyUsage is invalid.
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_DUPLICATE
+ *      LE_NO_MEMORY
+ *      LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED uint64_t pa_iks_CreateKey
+LE_SHARED le_result_t pa_iks_CreateKey
 (
     const char*         keyId,      ///< [IN] Identifier string.
-    uint32_t            keyUsage    ///< [IN] Key usage.
+    uint32_t            keyUsage,   ///< [IN] Key usage.
+    uint64_t*           keyRefPtr   ///< [OUT] Key reference.
 );
 
 
@@ -106,15 +114,20 @@ LE_SHARED uint64_t pa_iks_CreateKey
  * Creates a new key of a specific type.
  *
  * @return
- *      Reference to the key if successful.
- *      0 if the keyId is already being used or if there was some other error.
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_DUPLICATE
+ *      LE_OUT_OF_RANGE
+ *      LE_NO_MEMORY
+ *      LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED uint64_t pa_iks_CreateKeyByType
+LE_SHARED le_result_t pa_iks_CreateKeyByType
 (
     const char*         keyId,      ///< [IN] Identifier string.
     int32_t             keyType,    ///< [IN] Key type.
-    uint32_t            keySize     ///< [IN] Key size in bytes.
+    uint32_t            keySize,    ///< [IN] Key size in bytes.
+    uint64_t*           keyRefPtr   ///< [OUT] Key reference.
 );
 
 
@@ -303,13 +316,17 @@ LE_SHARED le_result_t pa_iks_GetPubKeyValue
  * Gets a reference to a digest.
  *
  * @return
- *      Reference to the digest.
- *      0 if the digest could not be found.
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_NOT_FOUND
+ *      LE_NO_MEMORY
+ *      LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED uint64_t pa_iks_GetDigest
+LE_SHARED le_result_t pa_iks_GetDigest
 (
-    const char* digestId ///< [IN] Identifier string.
+    const char* digestId,       ///< [IN] Identifier string.
+    uint64_t*   digestRefPtr    ///< [OUT] Digest reference.
 );
 
 
@@ -318,14 +335,19 @@ LE_SHARED uint64_t pa_iks_GetDigest
  * Creates a new digest.
  *
  * @return
- *      Reference to the digest if successful.
- *      0 if there was an error.
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_DUPLICATE
+ *      LE_OUT_OF_RANGE
+ *      LE_NO_MEMORY
+ *      LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED uint64_t pa_iks_CreateDigest
+LE_SHARED le_result_t pa_iks_CreateDigest
 (
-    const char*     digestId,   ///< [IN] Identifier string.
-    uint32_t        digestSize  ///< [IN] Digest size. Must be <= MAX_DIGEST_SIZE.
+    const char*     digestId,       ///< [IN] Identifier string.
+    uint32_t        digestSize,     ///< [IN] Digest size. Must be <= MAX_DIGEST_SIZE.
+    uint64_t*       digestRefPtr    ///< [OUT] Digest reference.
 );
 
 
@@ -481,13 +503,16 @@ LE_SHARED le_result_t pa_iks_GetProvisionKey
  * Create a session.
  *
  * @return
- *      A session reference if successful.
- *      0 if the key reference is invalid or does not contain a key value.
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_NO_MEMORY
+ *      LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED uint64_t pa_iks_CreateSession
+LE_SHARED le_result_t pa_iks_CreateSession
 (
-    uint64_t            keyRef      ///< [IN] Key reference.
+    uint64_t    keyRef,         ///< [IN] Key reference.
+    uint64_t*   sessionRefPtr   ///< [OUT] Session reference.
 );
 
 
