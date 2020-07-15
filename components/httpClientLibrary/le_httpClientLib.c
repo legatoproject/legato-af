@@ -1281,6 +1281,16 @@ le_result_t le_httpClient_SetCredentials
         return LE_BAD_PARAMETER;
     }
 
+    /* If login and password are empty, make credential NULL to prevent sending
+       an Authorization: Basic header line */
+    if ((0 == strlen(loginPtr)) && (0 == strlen(passwordPtr)) )
+    {
+        memset(contextPtr->credential, 0, sizeof(contextPtr->credential));
+        return LE_OK;
+    }
+
+    /* Now that we know login and/or password have been set,
+       update the credential field used for preparing Authorization header line */
     offset = snprintf(contextPtr->credential, sizeof(contextPtr->credential), "%s:%s",
                                                                               loginPtr,
                                                                               passwordPtr);
