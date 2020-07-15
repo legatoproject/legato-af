@@ -507,37 +507,73 @@ void log_SetFrameworkLevelEnv
 {
     const char* envStrPtr = NULL;
 
-    envStrPtr = STRINGIZE(LE_SUPERVISOR_LOG_LEVEL);
+#ifdef LE_CONFIG_SUPERVISOR_LOG_LEVEL
+    envStrPtr = LE_CONFIG_SUPERVISOR_LOG_LEVEL;
+#endif
+    if(strcmp(envStrPtr, "") == 0)
+    {
+        envStrPtr = STRINGIZE(LE_SUPERVISOR_LOG_LEVEL);
+    }
     if ( (le_log_Level_t)-1 != log_StrToSeverityLevel(envStrPtr))
     {
         setenv("LE_SUPERVISOR_LOG_LEVEL", envStrPtr, 1);
     }
 
-    envStrPtr = STRINGIZE(LE_SERVICEDIRECTORY_LOG_LEVEL);
+#ifdef LE_CONFIG_SERVICEDIRECTORY_LOG_LEVEL
+    envStrPtr = LE_CONFIG_SERVICEDIRECTORY_LOG_LEVEL;
+#endif
+    if(strcmp(envStrPtr, "") == 0)
+    {
+        envStrPtr = STRINGIZE(LE_SERVICEDIRECTORY_LOG_LEVEL);
+    }
     if ( (le_log_Level_t)-1 != log_StrToSeverityLevel(envStrPtr))
     {
         setenv("LE_SERVICEDIRECTORY_LOG_LEVEL", envStrPtr, 1);
     }
 
-    envStrPtr = STRINGIZE(LE_LOGCTRLDAEMON_LOG_LEVEL);
+#ifdef LE_CONFIG_LOGCTRLDAEMON_LOG_LEVEL
+    envStrPtr = LE_CONFIG_LOGCTRLDAEMON_LOG_LEVEL;
+#endif
+    if(strcmp(envStrPtr, "") == 0)
+    {
+        envStrPtr = STRINGIZE(LE_LOGCTRLDAEMON_LOG_LEVEL);
+    }
     if ( (le_log_Level_t)-1 != log_StrToSeverityLevel(envStrPtr))
     {
         setenv("LE_LOGCTRLDAEMON_LOG_LEVEL", envStrPtr, 1);
     }
 
-    envStrPtr = STRINGIZE(LE_CONFIGTREE_LOG_LEVEL);
+#ifdef LE_CONFIG_CONFIGTREE_LOG_LEVEL
+    envStrPtr = LE_CONFIG_CONFIGTREE_LOG_LEVEL;
+#endif
+    if(strcmp(envStrPtr, "") == 0)
+    {
+        envStrPtr = STRINGIZE(LE_CONFIGTREE_LOG_LEVEL);
+    }
     if ( (le_log_Level_t)-1 != log_StrToSeverityLevel(envStrPtr))
     {
         setenv("LE_CONFIGTREE_LOG_LEVEL", envStrPtr, 1);
     }
 
-    envStrPtr = STRINGIZE(LE_UPDATEDAEMON_LOG_LEVEL);
+#ifdef LE_CONFIG_UPDATEDAEMON_LOG_LEVEL
+    envStrPtr = LE_CONFIG_UPDATEDAEMON_LOG_LEVEL;
+#endif
+    if(strcmp(envStrPtr, "") == 0)
+    {
+        envStrPtr = STRINGIZE(LE_UPDATEDAEMON_LOG_LEVEL);
+    }
     if ( (le_log_Level_t)-1 != log_StrToSeverityLevel(envStrPtr))
     {
         setenv("LE_UPDATEDAEMON_LOG_LEVEL", envStrPtr, 1);
     }
 
-    envStrPtr = STRINGIZE(LE_WATCHDOG_LOG_LEVEL);
+#ifdef LE_CONFIG_WATCHDOG_LOG_LEVEL
+    envStrPtr = LE_CONFIG_WATCHDOG_LOG_LEVEL;
+#endif
+    if(strcmp(envStrPtr, "") == 0)
+    {
+        envStrPtr = STRINGIZE(LE_WATCHDOG_LOG_LEVEL);
+    }
     if ( (le_log_Level_t)-1 != log_StrToSeverityLevel(envStrPtr))
     {
         setenv("LE_WATCHDOG_LOG_LEVEL", envStrPtr, 1);

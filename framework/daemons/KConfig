@@ -21,6 +21,292 @@ config WDOG_HASHTABLE_SIZE
   ---help---
   The maximum number of watchdogs to be monitored
 
+menu "Framework Daemon Log Level Settings"
+
+choice
+  prompt "Supervisor Log Level"
+  optional
+  ---help---
+  Supervisor Log Level Settings, toggle back to default via SPACEBAR.
+
+config SUPERVISOR_LOG_LEVEL_DEBUG
+  bool "Debug"
+  ---help---
+  Include all statements up to and including debug level.
+
+config SUPERVISOR_LOG_LEVEL_INFO
+  bool "Info"
+  ---help---
+  Include all statements up to and including info level.
+
+config SUPERVISOR_LOG_LEVEL_WARN
+  bool "Warning"
+  ---help---
+  Include all statements up to and including warning level.
+
+config SUPERVISOR_LOG_LEVEL_ERR
+  bool "Error"
+  ---help---
+  Include all statements up to and including error level.
+
+config SUPERVISOR_LOG_LEVEL_CRIT
+  bool "Critical"
+  ---help---
+  Include all statements up to and including critical level.
+
+config SUPERVISOR_LOG_LEVEL_EMERG
+  bool "Emergency"
+  ---help---
+  Include only emergency-level log statements.
+endchoice # end "Supervisor Log Level"
+
+choice
+  prompt "ServiceDirectory Log Level"
+  optional
+  ---help---
+  ServiceDirectory Log Level Settings, toggle back to default via SPACEBAR.
+
+config SERVICEDIRECTORY_LOG_LEVEL_DEBUG
+  bool "Debug"
+  ---help---
+  Include all statements up to and including debug level.
+
+config SERVICEDIRECTORY_LOG_LEVEL_INFO
+  bool "Info"
+  ---help---
+  Include all statements up to and including info level.
+
+config SERVICEDIRECTORY_LOG_LEVEL_WARN
+  bool "Warning"
+  ---help---
+  Include all statements up to and including warning level.
+
+config SERVICEDIRECTORY_LOG_LEVEL_ERR
+  bool "Error"
+  ---help---
+  Include all statements up to and including error level.
+
+config SERVICEDIRECTORY_LOG_LEVEL_CRIT
+  bool "Critical"
+  ---help---
+  Include all statements up to and including critical level.
+
+config SERVICEDIRECTORY_LOG_LEVEL_EMERG
+  bool "Emergency"
+  ---help---
+  Include only emergency-level log statements.
+endchoice # end "ServiceDirectory Log Level"
+
+choice
+  prompt "LogCtrlDaemon Log Level"
+  optional
+  ---help---
+  LogCtrlDaemon Log Level Settings, toggle back to default via SPACEBAR.
+
+config LOGCTRLDAEMON_LOG_LEVEL_DEBUG
+  bool "Debug"
+  ---help---
+  Include all statements up to and including debug level.
+
+config LOGCTRLDAEMON_LOG_LEVEL_INFO
+  bool "Info"
+  ---help---
+  Include all statements up to and including info level.
+
+config LOGCTRLDAEMON_LOG_LEVEL_WARN
+  bool "Warning"
+  ---help---
+  Include all statements up to and including warning level.
+
+config LOGCTRLDAEMON_LOG_LEVEL_ERR
+  bool "Error"
+  ---help---
+  Include all statements up to and including error level.
+
+config LOGCTRLDAEMON_LOG_LEVEL_CRIT
+  bool "Critical"
+  ---help---
+  Include all statements up to and including critical level.
+
+config LOGCTRLDAEMON_LOG_LEVEL_EMERG
+  bool "Emergency"
+  ---help---
+  Include only emergency-level log statements.
+endchoice # end "LogCtrlDaemon Log Level"
+
+choice
+  prompt "ConfigTree Log Level"
+  optional
+  ---help---
+  ConfigTree Log Level Settings, toggle back to default via SPACEBAR.
+
+config CONFIGTREE_LOG_LEVEL_DEBUG
+  bool "Debug"
+  ---help---
+  Include all statements up to and including debug level.
+
+config CONFIGTREE_LOG_LEVEL_INFO
+  bool "Info"
+  ---help---
+  Include all statements up to and including info level.
+
+config CONFIGTREE_LOG_LEVEL_WARN
+  bool "Warning"
+  ---help---
+  Include all statements up to and including warning level.
+
+config CONFIGTREE_LOG_LEVEL_ERR
+  bool "Error"
+  ---help---
+  Include all statements up to and including error level.
+
+config CONFIGTREE_LOG_LEVEL_CRIT
+  bool "Critical"
+  ---help---
+  Include all statements up to and including critical level.
+
+config CONFIGTREE_LOG_LEVEL_EMERG
+  bool "Emergency"
+  ---help---
+  Include only emergency-level log statements.
+endchoice # end "ConfigTree Log Level"
+
+choice
+  prompt "UpdateDaemon Log Level"
+  optional
+  ---help---
+  UpdateDaemon Log Level Settings, toggle back to default via SPACEBAR.
+
+config UPDATEDAEMON_LOG_LEVEL_DEBUG
+  bool "Debug"
+  ---help---
+  Include all statements up to and including debug level.
+
+config UPDATEDAEMON_LOG_LEVEL_INFO
+  bool "Info"
+  ---help---
+  Include all statements up to and including info level.
+
+config UPDATEDAEMON_LOG_LEVEL_WARN
+  bool "Warning"
+  ---help---
+  Include all statements up to and including warning level.
+
+config UPDATEDAEMON_LOG_LEVEL_ERR
+  bool "Error"
+  ---help---
+  Include all statements up to and including error level.
+
+config UPDATEDAEMON_LOG_LEVEL_CRIT
+  bool "Critical"
+  ---help---
+  Include all statements up to and including critical level.
+
+config UPDATEDAEMON_LOG_LEVEL_EMERG
+  bool "Emergency"
+  ---help---
+  Include only emergency-level log statements.
+endchoice # end "UpdateDaemon Log Level"
+
+choice
+  prompt "Watchdog Log Level"
+  optional
+  ---help---
+  Watchdog Log Level Settings, toggle back to default via SPACEBAR.
+
+config WATCHDOG_LOG_LEVEL_DEBUG
+  bool "Debug"
+  ---help---
+  Include all statements up to and including debug level.
+
+config WATCHDOG_LOG_LEVEL_INFO
+  bool "Info"
+  ---help---
+  Include all statements up to and including info level.
+
+config WATCHDOG_LOG_LEVEL_WARN
+  bool "Warning"
+  ---help---
+  Include all statements up to and including warning level.
+
+config WATCHDOG_LOG_LEVEL_ERR
+  bool "Error"
+  ---help---
+  Include all statements up to and including error level.
+
+config WATCHDOG_LOG_LEVEL_CRIT
+  bool "Critical"
+  ---help---
+  Include all statements up to and including critical level.
+
+config WATCHDOG_LOG_LEVEL_EMERG
+  bool "Emergency"
+  ---help---
+  Include only emergency-level log statements.
+endchoice # end "Watchdog Log Level"
+
+endmenu # end "Framework Daemon Log Level Settings"
+
+config SUPERVISOR_LOG_LEVEL
+  string
+  default "DEBUG" if SUPERVISOR_LOG_LEVEL_DEBUG
+  default "INFO" if SUPERVISOR_LOG_LEVEL_INFO
+  default "WARNING" if SUPERVISOR_LOG_LEVEL_WARN
+  default "ERROR" if SUPERVISOR_LOG_LEVEL_ERR
+  default "CRITICAL" if SUPERVISOR_LOG_LEVEL_CRIT
+  default "EMERGENCY" if SUPERVISOR_LOG_LEVEL_EMERG
+  default ""
+
+config SERVICEDIRECTORY_LOG_LEVEL
+  string
+  default "DEBUG" if SERVICEDIRECTORY_LOG_LEVEL_DEBUG
+  default "INFO" if SERVICEDIRECTORY_LOG_LEVEL_INFO
+  default "WARNING" if SERVICEDIRECTORY_LOG_LEVEL_WARN
+  default "ERROR" if SERVICEDIRECTORY_LOG_LEVEL_ERR
+  default "CRITICAL" if SERVICEDIRECTORY_LOG_LEVEL_CRIT
+  default "EMERGENCY" if SERVICEDIRECTORY_LOG_LEVEL_EMERG
+  default ""
+
+config LOGCTRLDAEMON_LOG_LEVEL
+  string
+  default "DEBUG" if LOGCTRLDAEMON_LOG_LEVEL_DEBUG
+  default "INFO" if LOGCTRLDAEMON_LOG_LEVEL_INFO
+  default "WARNING" if LOGCTRLDAEMON_LOG_LEVEL_WARN
+  default "ERROR" if LOGCTRLDAEMON_LOG_LEVEL_ERR
+  default "CRITICAL" if LOGCTRLDAEMON_LOG_LEVEL_CRIT
+  default "EMERGENCY" if LOGCTRLDAEMON_LOG_LEVEL_EMERG
+  default ""
+
+config CONFIGTREE_LOG_LEVEL
+  string
+  default "DEBUG" if CONFIGTREE_LOG_LEVEL_DEBUG
+  default "INFO" if CONFIGTREE_LOG_LEVEL_INFO
+  default "WARNING" if CONFIGTREE_LOG_LEVEL_WARN
+  default "ERROR" if CONFIGTREE_LOG_LEVEL_ERR
+  default "CRITICAL" if CONFIGTREE_LOG_LEVEL_CRIT
+  default "EMERGENCY" if CONFIGTREE_LOG_LEVEL_EMERG
+  default ""
+
+config UPDATEDAEMON_LOG_LEVEL
+  string
+  default "DEBUG" if UPDATEDAEMON_LOG_LEVEL_DEBUG
+  default "INFO" if UPDATEDAEMON_LOG_LEVEL_INFO
+  default "WARNING" if UPDATEDAEMON_LOG_LEVEL_WARN
+  default "ERROR" if UPDATEDAEMON_LOG_LEVEL_ERR
+  default "CRITICAL" if UPDATEDAEMON_LOG_LEVEL_CRIT
+  default "EMERGENCY" if UPDATEDAEMON_LOG_LEVEL_EMERG
+  default ""
+
+config WATCHDOG_LOG_LEVEL
+  string
+  default "DEBUG" if WATCHDOG_LOG_LEVEL_DEBUG
+  default "INFO" if WATCHDOG_LOG_LEVEL_INFO
+  default "WARNING" if WATCHDOG_LOG_LEVEL_WARN
+  default "ERROR" if WATCHDOG_LOG_LEVEL_ERR
+  default "CRITICAL" if WATCHDOG_LOG_LEVEL_CRIT
+  default "EMERGENCY" if WATCHDOG_LOG_LEVEL_EMERG
+  default ""
+
 rsource "linux/supervisor/KConfig"
 rsource "linux/serviceDirectory/KConfig"
 rsource "configTree/KConfig"
