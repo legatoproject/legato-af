@@ -237,12 +237,12 @@ SetSmackAttr() {
         $SETFATTR -h -n "security.SMACK64EXEC" -v "admin" "$STAGING_DIR/system/bin/startSystem"
         $SETFATTR -h -n "security.SMACK64EXEC" -v "admin" "$STAGING_DIR/system/bin/updateDaemon"
         $SETFATTR -h -n "security.SMACK64EXEC" -v "admin" "$STAGING_DIR/system/bin/supervisor"
-        $SETFATTR -h -n "security.SMACK64EXEC" -v "admin" "$STAGING_DIR/system/bin/serviceDirectory"
         $SETFATTR -h -n "security.SMACK64EXEC" -v "admin" "$STAGING_DIR/system/bin/_appStopClient"
         $SETFATTR -h -n "security.SMACK64EXEC" -v "admin" "$STAGING_DIR/system/bin/xattr"
 
         # The following on-target executable should execute as 'framework'
         $SETFATTR -h -n "security.SMACK64EXEC" -v "framework" "$STAGING_DIR/system/bin/sdir"
+        $SETFATTR -h -n "security.SMACK64EXEC" -v "framework" "$STAGING_DIR/system/bin/serviceDirectory"
 
         # The following on-target executable should execute as '_'
         $SETFATTR -h -n "security.SMACK64EXEC" -v "_" "$STAGING_DIR/system/bin/configEcm"

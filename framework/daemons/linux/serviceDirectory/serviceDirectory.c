@@ -2666,7 +2666,10 @@ COMPONENT_INIT
 
     // Open the sockets.
     ClientSocketFd = OpenSocket(LE_SVCDIR_CLIENT_SOCKET_NAME);
+    smack_SetLabel(LE_SVCDIR_CLIENT_SOCKET_NAME, "*");
+
     ServerSocketFd = OpenSocket(LE_SVCDIR_SERVER_SOCKET_NAME);
+    smack_SetLabel(LE_SVCDIR_SERVER_SOCKET_NAME, "*");
 
     // Start listening for connection attempts.
     ClientSocketMonitorRef = le_fdMonitor_Create("Client Socket",
