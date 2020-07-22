@@ -201,7 +201,7 @@ le_result_t rpcEventHandler_RepackContext
     }
 
     // Client receives async event from server
-    else if((tagId == LE_PACK_CONTEXT_PTR_REFERENCE) && !sending && (commonHeader->type == RPC_PROXY_SERVER_ASYNC_EVENT))
+    else if(!sending && (commonHeader->type == RPC_PROXY_SERVER_ASYNC_EVENT))
     {
         // Find client's session.
         // It was stored when the client sent request to add async event handler
@@ -212,11 +212,20 @@ le_result_t rpcEventHandler_RepackContext
             goto error;
         }
 
+        void *tempPtr = contextPtr;
+
         // Get back original client's context
         contextPtr = clientEventDataPtr->contextPtr;
 
         LE_ASSERT(sessionRefPtr);
         *sessionRefPtr = clientEventDataPtr->sessionRef;
+
+        // In case of "one-shot" callback delete the record.
+        if(tagId == LE_PACK_ASYNC_HANDLER_REFERENCE)
+        {
+            le_ref_DeleteRef(ClientEventDataSafeRefMap, tempPtr);
+            le_mem_Release(clientEventDataPtr);
+        }
     }
 
     // Client sends request to remove async event hsandler

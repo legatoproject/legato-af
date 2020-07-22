@@ -591,7 +591,11 @@ static void AsyncResponse_{{apiName}}_{{function.name}}
 
     // Always pack the client context pointer first
 #ifdef LE_CONFIG_RPC
+    {%- if function is not AddHandlerFunction %}
+    LE_ASSERT(le_pack_PackTaggedReference( &_msgBufPtr, serverDataPtr->contextPtr, LE_PACK_ASYNC_HANDLER_REFERENCE ));
+    {%- else %}
     LE_ASSERT(le_pack_PackTaggedReference( &_msgBufPtr, serverDataPtr->contextPtr, LE_PACK_CONTEXT_PTR_REFERENCE ));
+    {% endif %}
 #else
     LE_ASSERT(le_pack_PackReference( &_msgBufPtr, serverDataPtr->contextPtr ));
 #endif
