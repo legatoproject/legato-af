@@ -237,6 +237,7 @@ SetSmackAttr() {
         $SETFATTR -h -n "security.SMACK64EXEC" -v "admin" "$STAGING_DIR/system/bin/startSystem"
         $SETFATTR -h -n "security.SMACK64EXEC" -v "admin" "$STAGING_DIR/system/bin/updateDaemon"
         $SETFATTR -h -n "security.SMACK64EXEC" -v "admin" "$STAGING_DIR/system/bin/supervisor"
+        $SETFATTR -h -n "security.SMACK64EXEC" -v "admin" "$STAGING_DIR/system/bin/serviceDirectory"
         $SETFATTR -h -n "security.SMACK64EXEC" -v "admin" "$STAGING_DIR/system/bin/_appStopClient"
         $SETFATTR -h -n "security.SMACK64EXEC" -v "admin" "$STAGING_DIR/system/bin/xattr"
 

@@ -11,7 +11,7 @@
 #include "legato.h"
 #include "file.h"
 #include "dir.h"
-
+#include "smack.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -910,6 +910,7 @@ end:
     else
     {
         LE_DEBUG("FS prefix path \"%s\"", FsPrefixPtr);
+        smack_SetLabel(FsPrefixPtr, "framework");
     }
 
     FsFileRefPool = le_mem_CreatePool("FsFileRefPool", sizeof(File_t));

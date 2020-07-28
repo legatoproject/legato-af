@@ -130,9 +130,11 @@
  * The Supervisor sets SMACK labels for framework daemons, processes for apps, sandbox
  * directories and SMACK rules for IPC bindings.
  *
- * Framework daemons are given the SMACK label "framework".
+ * Framework daemons are given the SMACK label "framework" by the Supervisor when it executes
+ * them.
  *
- * All processes are given the same SMACK label as their app. All app labels are unique.
+ * All app processes are given the same SMACK label as their app when they are executed.
+ * All app labels are unique.
  *
  * SMACK rules are set so IPC bindings between apps work. Here's a code sample of rules to set if a
  * client app needs to access a server app:
@@ -153,7 +155,7 @@
  *
  * The Supervisor also sets up the SMACK rule so the app has the proper access to the directory:
  *
- * 'AppLabel' rx 'AppLabelrx'
+ * 'app.label' rx 'app.labelrx'
  *
  * App's directories are given different labels than the app itself so that if an IPC binding
  * is present, the remote app has access to the local app but doesn't have direct
@@ -163,6 +165,11 @@
  * supports passing file descriptors from one app to another. However, the
  * file descriptor can't be passed onto a third app.
  *
+ * Command-line tools, such as the sdir program must have their 'security.SMACK64EXEC' attribute
+ * set to 'framework' so they have permission to talk to other Legato processes through IPC.
+ * This causes the OS to run them with the 'framework' label (like setuid, but for SMACK labels).
+ * If this is not done, the server process that they are trying to communicate with will be
+ * unable to receive their client connection socket fd from the Service Directory.
  *
  * @section c_sup_smack_limitations SMACK Limitations
  *
@@ -970,13 +977,15 @@ static void SetupSmackOnlyCap
 
     // Set correct smack label for /data/le_fs
     smack_SetLabel("/data/le_fs", "framework");
+    smack_SetLabel("/mnt/flash/ufs/data/le_fs", "framework");
+    smack_SetLabel("/tmp/data/le_fs", "framework");
 
     // Remove previously set rule if cached from an update
     smack_SetRule("_", "-", "admin");
-    smack_SetRule("_", "-", "framework");
+    smack_SetRule("_", "w", "framework");
 
     // logDaemon needs read access to admin (fds)
-    smack_SetRule("framework", "r", "admin");
+    smack_SetRule("framework", "rw", "admin");
 
     // Set correct permissions for qmuxd
     smack_SetRule("qmuxd", "rwx", "_");
@@ -1262,6 +1271,8 @@ COMPONENT_INIT
     LE_CRIT("Set Child Subreaper not supported. Applications with forked processes may not shutdown properly.");
 #endif
 
+    // Switch supervisor label to 'admin'
+    smack_SetMyLabel("admin");
 
     // Initialize sub systems.
     user_Init();
@@ -1269,6 +1280,16 @@ COMPONENT_INIT
     smack_Init();
 
     SetupSmackOnlyCap();
+
+    // Allow "admin" (the Supervisor) and "framework" (the Framework Daemons and command-line tools)
+    // to send messages to each other via sockets.
+    smack_SetRule("admin", "w", "framework");
+    smack_SetRule("framework", "w", "admin");
+
+    smack_SetRule("framework", "w", "_");
+    smack_SetRule("_", "w", "framework");
+
+    smack_SetRule("admin", "w", "_");
 
     cgrp_Init();
 

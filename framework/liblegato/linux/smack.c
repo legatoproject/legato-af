@@ -375,6 +375,10 @@ void smack_Init
         LE_FATAL_IF(mount(SMACK_FS, SMACK_FS_DIR, "smackfs", 0, NULL) != 0,
                     "Could not mount SMACK file system.  %m.");
     }
+    else
+    {
+        LE_DEBUG("SMACK file system already mounted at %s.", SMACK_FS_DIR);
+    }
 
     // Set smack network exceptions
     SetSmackNetlabelExceptions();
@@ -424,6 +428,51 @@ void smack_SetMyLabel
     fd_Close(fd);
 
     LE_DEBUG("Setting process' SMACK label to '%s'.", labelPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the smack label of the calling process.
+ *
+ * @note If there's an error reading the SMACK label file, this function will
+ *      kill the calling process.
+ */
+//--------------------------------------------------------------------------------------------------
+void smack_GetMyLabel
+(
+    char* labelPtr,         ///< [OUT] Pointer to the buffer to get the calling process's label
+    uint32_t labelLen       ///< [IN] Size of the buffer pointed by labelPtr
+)
+{
+    // Open the calling process's smack file.
+    int fd;
+
+    if (!labelPtr)
+    {
+        LE_ERROR("Recevied NULL pointer for output.");
+        return;
+    }
+
+    do
+    {
+        fd = open(PROC_SMACK_FILE, O_RDONLY);
+    }
+    while ( (fd == -1) && (errno == EINTR) );
+
+    LE_FATAL_IF(fd == -1, "Could not open %s.  %m.\n", PROC_SMACK_FILE);
+
+    int result;
+
+    do
+    {
+        result = read(fd, labelPtr, labelLen);
+    }
+    while ( (result == -1) && (errno == EINTR) );
+
+    fd_Close(fd);
+
+    LE_DEBUG("Retrieved process' SMACK label as '%s'.", labelPtr);
 }
 
 
@@ -532,6 +581,149 @@ le_result_t smack_SetLabelExec
 
     LE_DEBUG("Set SMACK EXEC label to '%s' for %s.", labelPtr, objPathPtr);
 
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enable the SMACK64TRANSMUTE label for a directory.
+ *
+ * @return
+ *      LE_OK if the label was set correctly.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t smack_SetTransmuteLabel
+(
+    const char* objPathPtr         ///< [IN] Path to the object.
+)
+{
+    if (setxattr(objPathPtr, "security.SMACK64TRANSMUTE", "TRUE", strlen("TRUE"), 0) == -1)
+    {
+        LE_ERROR("Could not set SMACK transmute label for '%s'.  %m.", objPathPtr);
+        return LE_FAULT;
+    }
+
+    LE_DEBUG("Set SMACK transmute label to \"TRUE\"for %s.", objPathPtr);
+
+    return LE_OK;
+
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disable the SMACK64TRANSMUTE label for a directory.
+ *
+ * @return
+ *      LE_OK if the label was set correctly.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t smack_UnsetTransmuteLabel
+(
+    const char* objPathPtr         ///< [IN] Path to the object.
+)
+{
+    if (setxattr(objPathPtr, "security.SMACK64TRANSMUTE", "FALSE", strlen("FALSE"), 0) == -1)
+    {
+        LE_ERROR("Could not set SMACK transmute label for '%s'.  %m.", objPathPtr);
+        return LE_FAULT;
+    }
+
+    LE_DEBUG("Set SMACK transmute label to \"FALSE\"for %s.", objPathPtr);
+
+    return LE_OK;
+
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the smack labels of a socket object. The calling process must be a privileged process.
+ *
+ * @return
+ *      LE_OK if the label was set correctly.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t smack_GetSocketLabels
+(
+    int fd,                         ///< [IN] File descriptor of the object.
+    char* labelInBufPtr,            ///< [OUT] Label to get the object to.
+    size_t labelInBufSize,          ///< [IN] Size of the label input buffer.
+    char* labelOutBufPtr,           ///< [OUT] Label to set the object to.
+    size_t labelOutBufSize          ///< [IN] Size of the label output buffer.
+)
+{
+    if ((labelInBufPtr != NULL) && (labelInBufSize > 0))
+    {
+        if (fgetxattr(fd, "security.SMACK64IPIN", labelInBufPtr, labelInBufSize) < 0)
+        {
+            labelInBufPtr[0] = '\0';
+        }
+
+        LE_DEBUG("Socket label SMACK64IPIN[%d]: '%s'", fd,
+                                                       labelInBufPtr);
+    }
+
+    if ((labelOutBufPtr != NULL) && (labelOutBufSize > 0))
+    {
+        if (fgetxattr(fd, "security.SMACK64IPOUT", labelOutBufPtr, labelOutBufSize) < 0)
+        {
+            labelOutBufPtr[0] = '\0';
+        }
+
+        LE_DEBUG("Socket label SMACK64IPOUT[%d]: '%s'", fd,
+                                                        labelOutBufPtr);
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the smack label of a socket object. The calling process must be a privileged process.
+ *
+ * @return
+ *      LE_OK if the label was set correctly.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t smack_SetSocketLabels
+(
+    const int fd,                   ///< [IN] File descriptor of the object.
+    const char* labelInPtr,         ///< [IN] Label to set the object to.
+    const char* labelOutPtr         ///< [IN] Label to set the object to.
+)
+{
+    if (labelInPtr != NULL)
+    {
+        CheckLabel(labelInPtr);
+
+        if (fsetxattr(fd, "security.SMACK64IPIN", labelInPtr, strlen(labelInPtr), 0) == -1)
+        {
+            LE_ERROR("Could not set SMACK label SMACK64IPIN for socket %d to %s.  %m.",
+                     fd, labelInPtr);
+            return LE_FAULT;
+        }
+    }
+
+    if (labelOutPtr != NULL)
+    {
+        CheckLabel(labelOutPtr);
+
+        if (fsetxattr(fd, "security.SMACK64IPOUT", labelOutPtr, strlen(labelOutPtr), 0) == -1)
+        {
+            LE_ERROR("Could not set SMACK label SMACK64IPOUT for socket %d to %s.  %m.",
+                     fd, labelOutPtr);
+            return LE_FAULT;
+        }
+    }
+
+    LE_DEBUG("Set SMACK labels to in['%s'] out['%s'] for socket %d.", labelInPtr,
+                                                                      labelOutPtr,
+                                                                      fd);
     return LE_OK;
 }
 
@@ -961,6 +1153,29 @@ void smack_SetMyLabel
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Gets the smack label of the calling process.
+ *
+ * @note If there's an error reading the SMACK label file, this function will
+ *      kill the calling process.
+ */
+//--------------------------------------------------------------------------------------------------
+void smack_GetMyLabel
+(
+    char* labelPtr,         ///< [OUT] Pointer to the buffer to get the calling process's label
+    uint32_t labelLen       ///< [IN] Size of the buffer pointed by labelPtr
+    )
+{
+    if (labelLen > 0)
+    {
+        labelPtr[0] = '\0';
+    }
+
+    return;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get's a process's SMACK label.
  *
  * @return
@@ -1020,6 +1235,94 @@ le_result_t smack_SetLabelExec
     const char* labelPtr            ///< [IN] Label to set the object to.
 )
 {
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the smack labels of a socket object. The calling process must be a privileged process.
+ *
+ * @return
+ *      LE_OK if the label was set correctly.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t smack_GetSocketLabels
+(
+    int fd,                         ///< [IN] File descriptor of the object.
+    char* labelInBufPtr,            ///< [OUT] Label to set the object to.
+    size_t labelInBufSize,          ///< [IN] Size of the label input buffer.
+    char* labelOutBufPtr,           ///< [OUT] Label to set the object to.
+    size_t labelOutBufSize          ///< [IN] Size of the label output buffer.
+)
+{
+    if ((labelInBufPtr != NULL) && (labelInBufSize > 0))
+    {
+        labelInBufPtr[0] = '\0';
+    }
+
+    if ((labelOutBufPtr != NULL) && (labelOutBufSize > 0))
+    {
+        labelOutBufPtr[0] = '\0';
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the smack label of a socket object. The calling process must be a privileged process.
+ *
+ * @return
+ *      LE_OK if the label was set correctly.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t smack_SetSocketLabels
+(
+    const int fd,                   ///< [IN] File descriptor of the object.
+    const char* labelInPtr,         ///< [IN] Label to set the object to.
+    const char* labelOutPtr         ///< [IN] Label to set the object to.
+)
+{
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enable the SMACK64TRANSMUTE label for a directory.
+ *
+ * @return
+ *      LE_OK if the label was set correctly.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t smack_SetTransmuteLabel
+(
+    const char* objPathPtr         ///< [IN] Path to the object.
+)
+{
+    LE_INFO("Setting SMACK Transmute label is not supported in this build.");
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disable the SMACK64TRANSMUTE label for a directory.
+ *
+ * @return
+ *      LE_OK if the label was set correctly.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t smack_UnsetTransmuteLabel
+(
+    const char* objPathPtr         ///< [IN] Path to the object.
+)
+{
+    LE_INFO("Setting SMACK Transmute label is not supported in this build.");
     return LE_OK;
 }
 

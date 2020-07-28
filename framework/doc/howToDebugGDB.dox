@@ -196,6 +196,10 @@ $ (gdb) set debug-file-directory <debug-path>
 $ (gdb) set sysroot remote:/
 @endverbatim
 
+@note By default the <debug-path> would be $LEGATO_ROOT/build/<target>/debug/ .
+It is recommanded to archive that directory along with your releases as to be able to process
+core dumps.
+
 You should see GDB reading symbols for Legato components.
 
 You can now run any of the standard @c gdb debugging commands on @c hw_exe.
