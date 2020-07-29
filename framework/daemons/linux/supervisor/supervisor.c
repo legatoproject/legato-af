@@ -994,13 +994,6 @@ static void SetupSmackOnlyCap
     // Set admin label for the supervisor.
     smack_SetMyLabel("admin");
 
-#if LE_CONFIG_SMACK_ONLYCAP
-    // Set onlycap with 'admin' label
-    smack_SetOnlyCap("admin");
-    LE_INFO("SMACK onlycap enabled");
-#else /* not LE_CONFIG_SMACK_ONLYCAP */
-    LE_INFO("SMACK onlycap disabled");
-#endif /* end not LE_CONFIG_SMACK_ONLYCAP */
 }
 
 
@@ -1281,16 +1274,6 @@ COMPONENT_INIT
 
     SetupSmackOnlyCap();
 
-    // Allow "admin" (the Supervisor) and "framework" (the Framework Daemons and command-line tools)
-    // to send messages to each other via sockets.
-    smack_SetRule("admin", "w", "framework");
-    smack_SetRule("framework", "w", "admin");
-
-    smack_SetRule("framework", "w", "_");
-    smack_SetRule("_", "w", "framework");
-
-    smack_SetRule("admin", "w", "_");
-
     cgrp_Init();
 
     if (!fs_IsMountPoint(CURRENT_SYSTEM_PATH))
@@ -1414,4 +1397,12 @@ COMPONENT_INIT
         fd_Close(fd);
     }
 #endif
+
+#if LE_CONFIG_SMACK_ONLYCAP
+    // Set onlycap with 'admin' label
+    smack_SetOnlyCap("admin");
+    LE_INFO("SMACK onlycap enabled");
+#else /* not LE_CONFIG_SMACK_ONLYCAP */
+    LE_INFO("SMACK onlycap disabled");
+#endif /* end not LE_CONFIG_SMACK_ONLYCAP */
 }
