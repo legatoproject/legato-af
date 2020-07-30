@@ -1051,6 +1051,15 @@ le_result_t le_ftpClient_Connect
     return result;
 }
 
+le_result_t le_ftpClient_ConnectOnSrcAddr
+(
+    le_ftpClient_SessionRef_t sessionRef,   ///< Session reference.
+    char*                     srcAddr       ///< [IN] Source Address of PDP profile.
+)
+{
+    return le_ftpClient_Connect(sessionRef);
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  *  Close the active connection.  A new connection may be opened with le_ftpClient_Connect().

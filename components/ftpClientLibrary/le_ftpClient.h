@@ -224,9 +224,10 @@ typedef enum
     LE_FTP_CLIENT_EVENT_CLOSED,     ///< FTP connection closed asynchronously.
     LE_FTP_CLIENT_EVENT_TIMEOUT,    ///< Connection timed out.
     LE_FTP_CLIENT_EVENT_ERROR,      ///< Asynchronous error.
+    LE_FTP_CLIENT_EVENT_DATASTART,  ///< Data session connected.
     LE_FTP_CLIENT_EVENT_DATA,       ///< Buffer of file data to transmit or receive.
-    LE_FTP_CLIENT_EVENT_DATAEND,    ///< End of data.
-    LE_FTP_CLIENT_EVENT_MEMORY_FREE ///< Memory available to send more data
+    LE_FTP_CLIENT_EVENT_DATAEND,    ///< End of data(Data session disconnected).
+    LE_FTP_CLIENT_EVENT_MEMORY_FREE ///< Memory available to send more data.
 } le_ftpClient_Event_t;
 
 //--------------------------------------------------------------------------------------------------
@@ -338,6 +339,20 @@ LE_SHARED le_result_t le_ftpClient_SetEventCallback
 LE_SHARED le_result_t le_ftpClient_Connect
 (
     le_ftpClient_SessionRef_t sessionRef    ///< Session reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Open a new connection on dedicate source address to the configured server.
+ *
+ *  @return LE_OK on success or an appropriate error code on failure.
+ */
+//--------------------------------------------------------------------------------------------------
+
+LE_SHARED le_result_t le_ftpClient_ConnectOnSrcAddr
+(
+    le_ftpClient_SessionRef_t sessionRef,   ///< Session reference.
+    char*                     srcAddr       ///< [IN] Source Address of PDP profile.
 );
 
 //--------------------------------------------------------------------------------------------------

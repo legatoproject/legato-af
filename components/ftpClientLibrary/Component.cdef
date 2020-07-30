@@ -6,4 +6,19 @@ sources:
 
 cflags:
 {
+   -I${LEGATO_ROOT}/components/socketLibrary
 }
+
+requires:
+{
+    component:
+    {
+        $LEGATO_ROOT/components/socketLibrary
+    }
+
+    api:
+    {
+        modemServices/le_mdc.api
+    }
+}
+

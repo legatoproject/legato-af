@@ -340,6 +340,11 @@ LE_SHARED le_result_t le_ftpClient_Connect
     le_ftpClient_SessionRef_t sessionRef    ///< Session reference.
 );
 
+LE_SHARED le_result_t le_ftpClient_ConnectOnSrcAddr
+(
+    le_ftpClient_SessionRef_t sessionRef,   ///< Session reference.
+    char*                     srcAddr       ///< [IN] Source Address of PDP profile.
+);
 //--------------------------------------------------------------------------------------------------
 /**
  *  Close the active connection.  A new connection may be opened with le_ftpClient_Connect().
