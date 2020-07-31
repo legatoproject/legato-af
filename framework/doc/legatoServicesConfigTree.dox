@@ -8,8 +8,8 @@ apps:
 
 | API Guide              | API Reference                    | File Name          | Description                                          |
 | -----------------------|----------------------------------|--------------------| -----------------------------------------------------|
-| @subpage c_config      | @subpage le_cfg_interface.h      | @c le_cfg.api      | Functions to read and write data into the App's Tree |
-| @subpage c_configAdmin | @subpage le_cfgAdmin_interface.h | @c le_cfgAdmin.api | Tools facilitate the administration of App's Trees   |
+| @subpage c_config      | @subpage le_cfg                  | @c le_cfg.api      | Functions to read and write data into the App's Tree |
+| @subpage c_configAdmin | @subpage le_cfgadmin             | @c le_cfgAdmin.api | Tools facilitate the administration of App's Trees   |
 
 
 @section legatoServicesConfigTree_Perms Controlling Access

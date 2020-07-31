@@ -19,9 +19,9 @@ apps:
 
 The Positioning Service exposes two APIs that will manage connecting to Global Navigation Satellite Systems.
 
-| API Guide       | API Reference                | File Name      | Description                       |
-| ----------------|------------------------------|----------------|-----------------------------------|
-| @subpage c_le_voicecall | @subpage le_voicecall_interface.h | @c le_voicecall.api | Voice communication control               |
+| API Guide               | API Reference                | File Name           | Description                       |
+| ------------------------|------------------------------|---------------------|-----------------------------------|
+| @subpage c_le_voicecall | @subpage le_voicecall        | @c le_voicecall.api | Voice communication control       |
 
 To bind to this API customize the following bindings for your App's .adef:
 

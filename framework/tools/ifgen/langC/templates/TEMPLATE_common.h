@@ -15,6 +15,12 @@
  *
  * ====================== WARNING ======================
  */
+/**
+ * @file {{apiBaseName}}_common.h
+ *
+ * Type definitions for {{apiBaseName}}.
+ *
+ */
 #ifndef {{apiBaseName|upper}}_COMMON_H_INCLUDE_GUARD
 #define {{apiBaseName|upper}}_COMMON_H_INCLUDE_GUARD
 
@@ -42,7 +48,8 @@
 #  error "Unsupported pointer size -- only 32- and 64-bit are supported for local services."
 #endif
 {%- endif %}
-
+/** @addtogroup {{apiBaseName}}
+ *  @{ **/
 {% for define in definitions %}
 
 //--------------------------------------------------------------------------------------------------
@@ -161,5 +168,5 @@ LE_SHARED {{function.returnType|FormatType(useBaseName=True)}} ifgen_{{apiBaseNa
     {%-endfor%}
 );
 {%- endfor %}
-
+/** @} **/
 #endif // {{apiBaseName|upper}}_COMMON_H_INCLUDE_GUARD

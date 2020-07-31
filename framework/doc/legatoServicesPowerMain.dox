@@ -1,12 +1,10 @@
 /** @page legatoServicesPowerMain Power
 
-| Service                            | Description                                        | multi-app safe            |
-| ---------------------------------- | -------------------------------------------------- | :-----------------------: |
-| @subpage c_pm                      | Device power management                            |                           |
-| @subpage c_ulpm                      | Ultra-low device power management        |                           |
-| @subpage c_bootReason         | Device power management                         |                           |
-
-<HR>
+| Service                            | Description                             | multi-app safe            |
+| ---------------------------------- | --------------------------------------- | :-----------------------: |
+| @subpage c_pm                      | Device power management                 |                           |
+| @subpage c_ulpm                    | Ultra-low device power management       |                           |
+| @subpage c_bootReason              | Device power management                 |                           |
 
 Copyright (C) Sierra Wireless Inc.
 

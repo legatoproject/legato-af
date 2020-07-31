@@ -2,8 +2,8 @@
 
 | Service                            | Description                                        | multi-app safe            |
 | ---------------------------------- | -------------------------------------------------- | :-----------------------: |
-| @subpage c_secStore                     | secure storage access                        |    x    |
-| @subpage c_secStoreAdmin         | secure storage admin control                                 |   x     |
+| @subpage c_secStore                | secure storage access                              |    x    |
+| @subpage c_secStoreAdmin           | secure storage admin control                       |   x     |
 
  <br>
 

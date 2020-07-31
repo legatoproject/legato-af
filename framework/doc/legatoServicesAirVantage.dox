@@ -46,8 +46,8 @@ Server and setting up any Asset Data with the AirVantage Service.
 
 | API Guide            | API Reference                  | File Name        | Description                                        |
 | ---------------------|--------------------------------|------------------| ---------------------------------------------------|
-| @subpage c_le_avc    | @subpage le_avc_interface.h    | @c le_avc.api    | Control and configure upgrade and network settings |
-| @subpage c_le_avdata | @subpage le_avdata_interface.h | @c le_avdata.api | Send and receive data from the AirVantage Server   |
+| @subpage c_le_avc    | @subpage le_avc                | @c le_avc.api    | Control and configure upgrade and network settings |
+| @subpage c_le_avdata | @subpage le_avdata             | @c le_avdata.api | Send and receive data from the AirVantage Server   |
 
 The AirVantage Connector is implemented by the @b avcService.
 

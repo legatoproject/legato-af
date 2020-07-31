@@ -6,8 +6,8 @@ The WiFi Service exposes two APIs to manage Clients and Access Points.
 
 | API Guide                 | API Reference                      | File Name            |Description                                        | multi-app safe |
 | --------------------------| -----------------------------------| ---------------------| ------------------------------------------------- | :------------: |
-| @subpage c_le_wifi_ap     | @subpage le_wifiAp_interface.h     | @c le_wifiAp.api     |Create an access point that clients can connect to.|                |
-| @subpage c_le_wifi_client | @subpage le_wifiClient_interface.h | @c le_wifiClient.api |Connect to a WiFi access point.                    |                |
+| @subpage c_le_wifi_ap     | @subpage le_wifiap                 | @c le_wifiAp.api     |Create an access point that clients can connect to.|                |
+| @subpage c_le_wifi_client | @subpage le_wificlient             | @c le_wifiClient.api |Connect to a WiFi access point.                    |                |
 
 @section legatoServicesWifiImplementation App Implementation
 

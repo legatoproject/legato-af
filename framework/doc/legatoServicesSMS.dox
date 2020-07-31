@@ -19,10 +19,10 @@ apps:
 
 The SMS service exposes two APIs that will manage sending/receiving SMS messages. It also provides an inbox service for accessing SMS messages.
 
-| API Guide       | API Reference                | File Name      | Description                       |
-| ----------------|------------------------------|----------------|-----------------------------------|
-| @subpage c_sms | @subpage le_sms_interface.h | @c le_sms.api | SMS messaging               |
-| @subpage c_smsInbox | @subpage le_smsInbox1_interface.h | @c le_smsInbox1.api | SMS Inbox Service               |
+| API Guide       | API Reference                | File Name           | Description                       |
+| ----------------|------------------------------|---------------------|-----------------------------------|
+| @subpage c_sms | @subpage le_sms               | @c le_sms.api       | SMS messaging                     |
+| @subpage c_smsInbox | @subpage le_smsinbox1    | @c le_smsInbox1.api | SMS Inbox Service                 |
 
 To bind to this API customize the following bindings for your App's .adef:
 

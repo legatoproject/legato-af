@@ -4,20 +4,20 @@
 
 | API Guide            | API Reference                   | File Name         | Description                             | multi-app safe            |
 | -------------------- | ------------------------------- | ------------------| --------------------------------------- | :-----------------------: |
-| @subpage c_adc       | @subpage le_adc_interface.h     | @c le_adc.api     | Analog to digital converter             |                           |
-| @subpage c_antenna   | @subpage le_antenna_interface.h | @c le_antenna.api | Antenna diagnostics                     |                           |
-| @subpage c_ecall     | @subpage le_ecall_interface.h   | @c le_ecall.api   | EU auto accident assistance program     |                           |
-| @subpage c_ips       | @subpage le_ips_interface.h     | @c le_ips.api     | Input voltage data                      | @image html green_dot.png |
-| @subpage c_lpt       | @subpage le_lpt_interface.h     | @c le_lpt.api     | Control modem low power technologies    |                           |
-| @subpage c_mcc       | @subpage le_mcc_interface.h     | @c le_mcc.api     | Control voice calls                     |                           |
-| @subpage c_mdc       | @subpage le_mdc_interface.h     | @c le_mdc.api     | Control modem data connections          |                           |
-| @subpage c_info      | @subpage le_info_interface.h    | @c le_info.api    | Retrieve modem data information         |                           |
-| @subpage c_mrc       | @subpage le_mrc_interface.h     | @c le_mrc.api     | Modem radio controls                    | @image html yellow_dot.png|
-| @subpage c_rsim      | @subpage le_rsim_interface.h    | @c le_rsim.api    | Remote SIM service                      |                           |
-| @subpage c_riPin     | @subpage le_riPin_interface.h   | @c le_riPin.api   | Ring indicator for host wakeup          |                           |
-| @subpage c_sim       | @subpage le_sim_interface.h     | @c le_sim.api     | SIM access                              |                           |
-| @subpage c_temp      | @subpage le_temp_interface.h    | @c le_temp.api    | Temperature monitoring                  |                           |
-| @subpage c_rtc       | @subpage le_rtc_interface.h     | @c le_rtc.api     | Set user timebase for RTC               |                           |
+| @subpage c_adc       | @subpage le_adc                 | @c le_adc.api     | Analog to digital converter             |                           |
+| @subpage c_antenna   | @subpage le_antenna             | @c le_antenna.api | Antenna diagnostics                     |                           |
+| @subpage c_ecall     | @subpage le_ecall               | @c le_ecall.api   | EU auto accident assistance program     |                           |
+| @subpage c_ips       | @subpage le_ips                 | @c le_ips.api     | Input voltage data                      | @image html green_dot.png |
+| @subpage c_lpt       | @subpage le_lpt                 | @c le_lpt.api     | Control modem low power technologies    |                           |
+| @subpage c_mcc       | @subpage le_mcc                 | @c le_mcc.api     | Control voice calls                     |                           |
+| @subpage c_mdc       | @subpage le_mdc                 | @c le_mdc.api     | Control modem data connections          |                           |
+| @subpage c_info      | @subpage le_info                | @c le_info.api    | Retrieve modem data information         |                           |
+| @subpage c_mrc       | @subpage le_mrc                 | @c le_mrc.api     | Modem radio controls                    | @image html yellow_dot.png|
+| @subpage c_rsim      | @subpage le_rsim                | @c le_rsim.api    | Remote SIM service                      |                           |
+| @subpage c_riPin     | @subpage le_riPin               | @c le_riPin.api   | Ring indicator for host wakeup          |                           |
+| @subpage c_sim       | @subpage le_sim                 | @c le_sim.api     | SIM access                              |                           |
+| @subpage c_temp      | @subpage le_temp                | @c le_temp.api    | Temperature monitoring                  |                           |
+| @subpage c_rtc       | @subpage le_rtc                 | @c le_rtc.api     | Set user timebase for RTC               |                           |
 
 @section legatoServicesModem_addDocs Additional Documentation
 

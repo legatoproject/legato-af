@@ -3,6 +3,7 @@
   <navindex>
     <tab type="mainpage" visible="yes" title="Documentation"/>
     <tab type="filelist" visible="yes" title="Reference" intro=""/>
+    <tab type="modules" visible="yes" title="Modules"/>
   </navindex>
 
   <!-- Layout definition for a class page -->

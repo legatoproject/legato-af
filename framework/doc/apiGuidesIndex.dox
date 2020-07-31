@@ -13,16 +13,16 @@ control services and Apps:
 
 | Daemon       | API Guide           | API Reference                            | File Name              | Description                                                 |
 |--------------| ------------------- |------------------------------------------|------------------------| ----------------------------------------------------------- |
-| configTree   | @ref c_config       | @ref le_cfg_interface.h                  | @c le_cfg.api          | Functions to read and write data into the App's Tree        |
-| configTree   | @ref c_configAdmin  | @ref le_cfgAdmin_interface.h             | @c le_cfgAdmin.api     | Tools to facilitate the administration of App's Trees       |
-| supervisor   | @ref c_appCtrl      | @ref le_appCtrl_interface.h              | @c le_appCtrl.api      | Control Legato apps                                         |
-| supervisor   | @ref c_appInfo      | @ref le_appInfo_interface.h              | @c le_appInfo.api      | Legato app info retrieval                                   |
-| supervisor   | @ref c_framework    | @ref le_framework_interface.h            | @c le_framework.api    | Control the Legato Framework                                |
-| supervisor   | @ref c_kernelModule | @ref le_kernelModule_interface.h         | @c le_kernelModule.api | Module load and unload                                      |
-| update       | @ref c_update       | @ref le_update_interface.h               | @c le_update.api       | Control the update daemon on the target                     |
-| update       | @ref c_updateCtrl   | @ref le_updateCtrl_interface.h           | @c le_updateCtrl.api   | Tools to facilitate the administration of the update daemon |
-| update       | @ref c_le_instStat  | @ref le_instStat_interface.h             | @c le_instStat.api     | Notifications when apps are installed and uninstalled       |
-| watchdog     | @ref c_wdog         | @ref le_wdog_interface.h                 | @c le_wdog.api         | Monitor critical applications and services for deadlocks and other similar faults |
+| configTree   | @ref c_config       | @subpage le_cfg                          | @c le_cfg.api          | Functions to read and write data into the App's Tree        |
+| configTree   | @ref c_configAdmin  | @subpage le_cfgAdmin                     | @c le_cfgAdmin.api     | Tools to facilitate the administration of App's Trees       |
+| supervisor   | @ref c_appCtrl      | @subpage le_appCtrl                      | @c le_appCtrl.api      | Control Legato apps                                         |
+| supervisor   | @ref c_appInfo      | @subpage le_appInfo                      | @c le_appInfo.api      | Legato app info retrieval                                   |
+| supervisor   | @ref c_framework    | @subpage le_framework                    | @c le_framework.api    | Control the Legato Framework                                |
+| supervisor   | @ref c_kernelModule | @subpage le_kernelModule                 | @c le_kernelModule.api | Module load and unload                                      |
+| update       | @ref c_update       | @subpage le_update                       | @c le_update.api       | Control the update daemon on the target                     |
+| update       | @ref c_updateCtrl   | @subpage le_updateCtrl                   | @c le_updateCtrl.api   | Tools to facilitate the administration of the update daemon |
+| update       | @ref c_le_instStat  | @subpage le_instStat                     | @c le_instStat.api     | Notifications when apps are installed and uninstalled       |
+| watchdog     | @ref c_wdog         | @subpage le_wdog                         | @c le_wdog.api         | Monitor critical applications and services for deadlocks and other similar faults |
 
 @section apiGuidesIndex_platformServices Platform Service APIs
 
@@ -30,46 +30,46 @@ Platform Services provide full-featured interface access to system and modem res
 
 Location: @c $LEGATO_ROOT/interfaces
 
-| Service          | API Guide              | API Reference                     | File Name               | Description                                                                                                     |
-|------------------| ---------------------- |---------------------------------- |-------------------------| --------------------------------------------------------------------------------------------------------------- |
-| AirVantage       | @ref c_le_avc          | @ref le_avc_interface.h           | @c le_avc.api           | Control and configure upgrade and network settings                                                              |
-| AirVantage       | @ref c_le_avdata       | @ref le_avdata_interface.h        | @c le_avdata.api        | Send and receive data from the AirVantage Server                                                                |
-| Audio            | @ref c_audio           | @ref le_audio_interface.h         | @c le_audio.api         | Handles audio interfaces including play and record supported formats                                            |
-| Cellular Network | @ref c_le_cellnet      | @ref le_cellnet_interface.h       | @c le_cellnet.api       | Ensures that the modem is registered on the network when an user application makes a request for network access |
-| Data Channels    | @ref c_le_dcs          | @ref le_dcs_interface.h           | @c le_dcs.api           | Creates and manages multiple data channels                                                                      |
-| Data Channels    | @ref c_le_net          | @ref le_net_interface.h           | @c le_net.api           | Manages the network configs of data channels managed by le_dcs                                                  |
-| Data Channels    | @ref c_le_data         | @ref le_data_interface.h          | @c le_data.api          | Simplified interfaces for servicing a single data connection with no control over connection type & parameters  |
-| GPIO             | @ref c_gpio            | @ref le_gpio_interface.h          | @c le_gpio.api          | Controls general-purpose digital input/output pins                                                              |
-| Modem            | @ref c_adc             | @ref le_adc_interface.h           | @c le_adc.api           | Analog to digital converter                                                                                     |
-| Modem            | @ref c_antenna         | @ref le_antenna_interface.h       | @c le_antenna.api       | Antenna diagnostics                                                                                             |
-| Modem            | @ref c_ecall           | @ref le_ecall_interface.h         | @c le_ecall.api         | EU auto accident assistance program                                                                             |
-| Modem            | @ref c_ips             | @ref le_ips_interface.h           | @c le_ips.api           | Input voltage data                                                                                              |
-| Modem            | @ref c_lpt             | @ref le_lpt_interface.h           | @c le_lpt.api           | Control modem low power technologies                                                                            |
-| Modem            | @ref c_mcc             | @ref le_mcc_interface.h           | @c le_mcc.api           | Control voice calls                                                                                             |
-| Modem            | @ref c_mdc             | @ref le_mdc_interface.h           | @c le_mdc.api           | Control modem data connections                                                                                  |
-| Modem            | @ref c_info            | @ref le_info_interface.h          | @c le_info.api          | Retrieve modem data information                                                                                 |
-| Modem            | @ref c_mrc             | @ref le_mrc_interface.h           | @c le_mrc.api           | Modem radio controls                                                                                            |
-| Modem            | @ref c_rsim            | @ref le_rsim_interface.h          | @c le_rsim.api          | Remote SIM service                                                                                              |
-| Modem            | @ref c_riPin           | @ref le_riPin_interface.h         | @c le_riPin.api         | Ring indicator for host wakeup                                                                                  |
-| Modem            | @ref c_sim             | @ref le_sim_interface.h           | @c le_sim.api           | SIM access                                                                                                      |
-| Modem            | @ref c_temp            | @ref le_temp_interface.h          | @c le_temp.api          | Temperature monitoring                                                                                          |
-| Modem            | @ref c_rtc             | @ref le_rtc_interface.h           | @c le_rtc.api           | Set user time base for RTC                                                                                      |
-| Positioning      | @ref c_gnss            | @ref le_gnss_interface.h          | @c le_gnss.api          | GNSS device control                                                                                             |
-| Positioning      | @ref c_pos             | @ref le_pos_interface.h           | @c le_pos.api           | Device physical position/movement                                                                               |
-| Power            | @ref c_pm              | @ref le_pm_interface.h            | @c le_pm.api            | Device power management                                                                                         |
-| Power            | @ref c_ulpm            | @ref le_ulpm_interface.h          | @c le_ulpm.api          | Ultra-low device power management                                                                               |
-| Power            | @ref c_bootReason      | @ref le_bootReason_interface.h    | @c le_bootReason.api    | Device power management                                                                                         |
-| SecStore         | @ref c_secStore        | @ref le_secStore_interface.h      | @c le_secStore.api      | secure storage access                                                                                           |
-| SecStore         | @ref c_secStoreAdmin   | @ref secStoreAdmin_interface.h    | @c le_secStoreAdmin.api | secure storage admin control                                                                                    |
-| SMS              | @ref c_sms             | @ref le_sms_interface.h           | @c le_sms.api           | SMS messaging                                                                                                   |
-| SMS              | @ref c_smsInbox        | @ref le_smsInbox1_interface.h     | @c le_smsInbox1.api     | SMS Inbox Service                                                                                               |
-| SPI              | @ref c_spi             | @ref le_spi_interface.h           | @c le_spi.api           | Serial Port Interface                                                                                           |
-| VoiceCall        | @ref c_le_voicecall    | @ref le_voicecall_interface.h     | @c le_voicecall.api     | Controls the voice call service                                                                                 |
-| WiFi             | @ref c_le_wifi_ap      | @ref le_wifiAp_interface.h        | @c le_wifiAp.api        | Create an access point that clients can connect to                                                              |
-| WiFi             | @ref c_le_wifi_client  | @ref le_wifiClient_interface.h    | @c le_wifiClient.api    | Connect to a WiFi access point.                                                                                 |
-| AT               | @ref c_atClient        | @ref le_atClient_interface.h      | @c le_atClient.api      | AT commands client                                                                                              |
-| AT               | @ref c_atServer        | @ref le_atServer_interface.h      | @c le_atServer.api      | AT commands server                                                                                              |
-| Port             | @ref c_port            | @ref le_port_interface.h          | @c le_port.api          | Port service                                                                                                    |
+| Service          | API Guide              | API Reference                         | File Name               | Description                                                                                                     |
+|------------------| ---------------------- |-------------------------------------- |-------------------------| --------------------------------------------------------------------------------------------------------------- |
+| AirVantage       | @ref c_le_avc          | @subpage le_avc                       | @c le_avc.api           | Control and configure upgrade and network settings                                                              |
+| AirVantage       | @ref c_le_avdata       | @subpage le_avdata                    | @c le_avdata.api        | Send and receive data from the AirVantage Server                                                                |
+| Audio            | @ref c_audio           | @subpage le_audio                     | @c le_audio.api         | Handles audio interfaces including play and record supported formats                                            |
+| Cellular Network | @ref c_le_cellnet      | @subpage le_cellnet                   | @c le_cellnet.api       | Ensures that the modem is registered on the network when an user application makes a request for network access |
+| Data Channels    | @ref c_le_dcs          | @subpage le_dcs                       | @c le_dcs.api           | Creates and manages multiple data channels                                                                      |
+| Data Channels    | @ref c_le_net          | @subpage le_net                       | @c le_net.api           | Manages the network configs of data channels managed by le_dcs                                                  |
+| Data Channels    | @ref c_le_data         | @subpage le_data                      | @c le_data.api          | Simplified interfaces for servicing a single data connection with no control over connection type & parameters  |
+| GPIO             | @ref c_gpio            | @subpage le_gpio                      | @c le_gpio.api          | Controls general-purpose digital input/output pins                                                              |
+| Modem            | @ref c_adc             | @subpage le_adc                       | @c le_adc.api           | Analog to digital converter                                                                                     |
+| Modem            | @ref c_antenna         | @subpage le_antenna                   | @c le_antenna.api       | Antenna diagnostics                                                                                             |
+| Modem            | @ref c_ecall           | @subpage le_ecall                     | @c le_ecall.api         | EU auto accident assistance program                                                                             |
+| Modem            | @ref c_ips             | @subpage le_ips                       | @c le_ips.api           | Input voltage data                                                                                              |
+| Modem            | @ref c_lpt             | @subpage le_lpt                       | @c le_lpt.api           | Control modem low power technologies                                                                            |
+| Modem            | @ref c_mcc             | @subpage le_mcc                       | @c le_mcc.api           | Control voice calls                                                                                             |
+| Modem            | @ref c_mdc             | @subpage le_mdc                       | @c le_mdc.api           | Control modem data connections                                                                                  |
+| Modem            | @ref c_info            | @subpage le_info                      | @c le_info.api          | Retrieve modem data information                                                                                 |
+| Modem            | @ref c_mrc             | @subpage le_mrc                       | @c le_mrc.api           | Modem radio controls                                                                                            |
+| Modem            | @ref c_rsim            | @subpage le_rsim                      | @c le_rsim.api          | Remote SIM service                                                                                              |
+| Modem            | @ref c_riPin           | @subpage le_riPin                     | @c le_riPin.api         | Ring indicator for host wakeup                                                                                  |
+| Modem            | @ref c_sim             | @subpage le_sim                       | @c le_sim.api           | SIM access                                                                                                      |
+| Modem            | @ref c_temp            | @subpage le_temp                      | @c le_temp.api          | Temperature monitoring                                                                                          |
+| Modem            | @ref c_rtc             | @subpage le_rtc                       | @c le_rtc.api           | Set user time base for RTC                                                                                      |
+| Positioning      | @ref c_gnss            | @subpage le_gnss                      | @c le_gnss.api          | GNSS device control                                                                                             |
+| Positioning      | @ref c_pos             | @subpage le_pos                       | @c le_pos.api           | Device physical position/movement                                                                               |
+| Power            | @ref c_pm              | @subpage le_pm                        | @c le_pm.api            | Device power management                                                                                         |
+| Power            | @ref c_ulpm            | @subpage le_ulpm                      | @c le_ulpm.api          | Ultra-low device power management                                                                               |
+| Power            | @ref c_bootReason      | @subpage le_bootReason                | @c le_bootReason.api    | Device power management                                                                                         |
+| SecStore         | @ref c_secStore        | @subpage le_secStore                  | @c le_secStore.api      | secure storage access                                                                                           |
+| SecStore         | @ref c_secStoreAdmin   | @subpage secStoreAdmin                | @c le_secStoreAdmin.api | secure storage admin control                                                                                    |
+| SMS              | @ref c_sms             | @subpage le_sms                       | @c le_sms.api           | SMS messaging                                                                                                   |
+| SMS              | @ref c_smsInbox        | @subpage le_smsInbox1                 | @c le_smsInbox1.api     | SMS Inbox Service                                                                                               |
+| SPI              | @ref c_spi             | @subpage le_spi                       | @c le_spi.api           | Serial Port Interface                                                                                           |
+| VoiceCall        | @ref c_le_voicecall    | @subpage le_voicecall                 | @c le_voicecall.api     | Controls the voice call service                                                                                 |
+| WiFi             | @ref c_le_wifi_ap      | @subpage le_wifiAp                    | @c le_wifiAp.api        | Create an access point that clients can connect to                                                              |
+| WiFi             | @ref c_le_wifi_client  | @subpage le_wifiClient                | @c le_wifiClient.api    | Connect to a WiFi access point.                                                                                 |
+| AT               | @ref c_atClient        | @subpage le_atClient                  | @c le_atClient.api      | AT commands client                                                                                              |
+| AT               | @ref c_atServer        | @subpage le_atServer                  | @c le_atServer.api      | AT commands server                                                                                              |
+| Port             | @ref c_port            | @subpage le_port                      | @c le_port.api          | Port service                                                                                                    |
 
 @section apiGuidesIndex_libLegato Legato C APIs
 
