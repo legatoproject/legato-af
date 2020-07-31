@@ -215,14 +215,21 @@ write_config()
 
 ecm_enabled()
 {
-    local gadget_mode=/sys/class/android_usb/android0/functions
+    local gmode1=/sys/class/android_usb/android0/functions
+    local gmode2=/sys/kernel/config/usb_gadget/g1/configs/c.1/strings/0x409/configuration
+    local gadget_mode
 
-    if [ -f $gadget_mode ]; then
-        ecm=`cat ${gadget_mode} | sed -e 's/,/\n/g' | egrep -x "e[ce]m"`
-        if [ -z "$ecm" ] ; then
-            return 1
-        fi
+    if [ -f $gmode1 ]; then
+        gadget_mode=$gmode1
+    elif [ -f $gmode2 ]; then
+        gadget_mode=$gmode2
     else
+        echo "No gadget mode file."
+	return 1
+    fi
+
+    ecm=`cat ${gadget_mode} | sed -e 's/[,_]/\n/g' | egrep -ix "e[ce]m"`
+    if [ -z "$ecm" ] ; then
         return 1
     fi
 
