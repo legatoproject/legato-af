@@ -21,8 +21,8 @@ The Positioning Service exposes two APIs that will manage connecting to Global N
 
 | API Guide       | API Reference                | File Name      | Description                       |
 | ----------------|------------------------------|----------------|-----------------------------------|
-| @subpage c_gnss | @subpage le_gnss_interface.h | @c le_gnss.api | GNSS device control               |
-| @subpage c_pos  | @subpage le_pos_interface.h  | @c le_pos.api  | Device physical position/movement |
+| @subpage c_gnss | @subpage le_gnss             | @c le_gnss.api | GNSS device control               |
+| @subpage c_pos  | @subpage le_pos              | @c le_pos.api  | Device physical position/movement |
 
 To bind to these APIs customize the following bindings for your App's .adef:
 

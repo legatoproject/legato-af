@@ -33,6 +33,10 @@
 
 // Internal includes for this interface
 #include "{{apiBaseName}}_common.h"
+/** @addtogroup {{apiBaseName}} {{apiBaseName}} API Reference
+ * @{
+ * @file {{apiBaseName}}_common.h
+ * @file {{apiBaseName}}_interface.h **/
 {% block GenericFunctions %}{% endblock %}
 {% for define in definitions %}
 {%- if apiBaseName != apiName %}
@@ -80,5 +84,7 @@ typedef {{apiBaseName}}_{{type.name}}_t {{type|FormatType}};
     {%-endfor%}
 );
 {%- endblock %}{%- endfor %}
+
+/** @} **/
 
 #endif // {{apiName|upper}}_INTERFACE_H_INCLUDE_GUARD

@@ -232,9 +232,11 @@ function(generate_header API_FILE)
 
     set(API_PATH    "${CMAKE_CURRENT_SOURCE_DIR}/${API_FILE}")
     set(HEADER_PATH "${CMAKE_CURRENT_BINARY_DIR}/${API_NAME}_interface.h")
+    set(COMMON_PATH "${CMAKE_CURRENT_BINARY_DIR}/${API_NAME}_common.h")
 
-    add_custom_command( OUTPUT ${HEADER_PATH}
-                        COMMAND ${LEGATO_TOOL_IFGEN} --gen-interface ${API_PATH}
+    add_custom_command( OUTPUT ${HEADER_PATH} ${COMMON_PATH}
+                        COMMAND ${LEGATO_TOOL_IFGEN} --gen-interface --gen-common-interface
+                        ${API_PATH}
                         --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/audio
                         --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/modemServices
                         --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/atServices
@@ -245,7 +247,7 @@ function(generate_header API_FILE)
                         )
 
     add_custom_target(  ${API_NAME}_if
-                        DEPENDS ${HEADER_PATH}
+                        DEPENDS ${HEADER_PATH} ${COMMON_PATH}
                         )
 
     add_dependencies( api_headers ${API_NAME}_if)

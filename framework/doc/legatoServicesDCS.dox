@@ -75,9 +75,9 @@ over network connections.
 
 | API Guide          | API Reference                | File Name      | Description                                                     |
 | -------------------|------------------------------|----------------| --------------------------------------------------------------- |
-| @subpage c_le_dcs  | @subpage le_dcs_interface.h  | @c le_dcs.api  | Provides multi-connection data channel services                 |
-| @subpage c_le_net  | @subpage le_net_interface.h  | @c le_net.api  | Provides network services to data channels managed by @c le_dcs |
-| @subpage c_le_data | @subpage le_data_interface.h | @c le_data.api | Provides data channel services to a single data connection      |
+| @subpage c_le_dcs  | @subpage le_dcs              | @c le_dcs.api  | Provides multi-connection data channel services                 |
+| @subpage c_le_net  | @subpage le_net              | @c le_net.api  | Provides network services to data channels managed by @c le_dcs |
+| @subpage c_le_data | @subpage le_data             | @c le_data.api | Provides data channel services to a single data connection      |
 
 @section legatoServicesDCS_Binding IPC Interface Binding to DCS
 
