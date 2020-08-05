@@ -6,13 +6,6 @@ requires:
         le_cfgAdmin.api
     }
 }
-bundles:
-{
-    dir:
-    {
-        /legato/systems/current/config
-    }
-}
 
 sources:
 {

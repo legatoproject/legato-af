@@ -286,8 +286,12 @@ le_ref_MapRef_t _le_ref_InitStaticMap
  */
 //--------------------------------------------------------------------------------------------------
 #if LE_CONFIG_SAFE_REF_NAMES_ENABLED
-#   define le_ref_InitStaticMap(name, maxRefs) \
-        _le_ref_InitStaticMap(#name, (maxRefs), &_ref_##name##Map, _ref_##name##Data)
+#  define le_ref_InitStaticMap(name, maxRefs)                                           \
+    (inline_static_assert(                                                              \
+        sizeof(_ref_##name##Data) ==                                                    \
+            sizeof(void *[LE_REF_BLOCK_SIZE(maxRefs)]),                                 \
+        "initial map size does not match definition"),                                  \
+    _le_ref_InitStaticMap(#name, (maxRefs), &_ref_##name##Map, _ref_##name##Data))
 #else /* if not LE_CONFIG_SAFE_REF_NAMES_ENABLED */
 #   define le_ref_InitStaticMap(name, maxRefs) \
     _le_ref_InitStaticMap((maxRefs), &_ref_##name##Map, _ref_##name##Data)

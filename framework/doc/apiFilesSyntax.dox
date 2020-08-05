@@ -85,7 +85,7 @@ ENUM <name>
 };
 @endverbatim
 
-The @c elementList is a comma separated list of elements.  The elements should all be uppper-case.
+The @c elementList is a comma separated list of elements.  The elements should all be upper-case.
 Element values assigned are internally generated. Element values can also be assigned explicitly as
 below:
 

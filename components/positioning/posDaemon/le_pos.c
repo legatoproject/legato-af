@@ -240,7 +240,7 @@ static le_ref_MapRef_t ActivationRequestRefMap;
  *
  */
 //--------------------------------------------------------------------------------------------------
-static le_dls_List_t PosSampleList = LE_DLS_LIST_INIT;
+static le_dls_List_t PosSampleList = LE_DLS_LIST_DECL_INIT;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -248,7 +248,7 @@ static le_dls_List_t PosSampleList = LE_DLS_LIST_INIT;
  *
  */
 //--------------------------------------------------------------------------------------------------
-static le_dls_List_t PosSampleHandlerList = LE_DLS_LIST_INIT;
+static le_dls_List_t PosSampleHandlerList = LE_DLS_LIST_DECL_INIT ;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1202,7 +1202,7 @@ static void PosCloseSessionEventHandler
     while (result == LE_OK)
     {
         PosSampleRequest_t *posSampleRequestPtr = (PosSampleRequest_t*)le_ref_GetValue(iterRef);
-        LE_ASSERT(posSampleRequestPtr != NULL)
+        LE_ASSERT(posSampleRequestPtr != NULL);
 
         // Check if the session reference saved matchs with the current session reference.
         if (posSampleRequestPtr->sessionRef == sessionRef)
@@ -1274,16 +1274,15 @@ COMPONENT_INIT
                                                   sizeof(ClientRequest_t));
 
     // TODO define a policy for positioning device selection
-    if (IsGNSSAvailable() == true)
+    if (IsGNSSAvailable() == true && gnss_Init() == LE_OK)
     {
-        gnss_Init();
 #ifdef LE_CONFIG_ENABLE_GNSS_ACQUISITION_RATE_SETTING
         LoadPositioningFromConfigDb();
 #endif // LE_CONFIG_ENABLE_GNSS_ACQUISITION_RATE_SETTING
     }
     else
     {
-        LE_CRIT("GNSS module not available");
+        LE_CRIT("GNSS module not available or failed to initialize");
     }
 
     // Try to kick a couple of times before each timeout.

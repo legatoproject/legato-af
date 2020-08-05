@@ -84,8 +84,15 @@ void RtosSystemBuildScriptGenerator_t::GenerateLdFlags
     {
         script << " -Wl,-Map=" <<
             path::MakeAbsolute(path::Combine(buildParams.outputDir, "$target.map")) <<
-            " -Wl,--gc-sections -T $$LEGATO_ROOT/framework/rtos/rtos.ld"
-            " \"-L$$LEGATO_BUILD/framework/lib-static\" -llegato\n";
+            " -Wl,--gc-sections \"-L$$LEGATO_BUILD/framework/lib-static\" -llegato";
+        if (envVars::GetConfigBool("LE_CONFIG_MEM_HIBERNATION"))
+        {
+            script << " -T $$LEGATO_ROOT/framework/rtos/rtos.ld\n";
+        }
+        else
+        {
+            script << "\n";
+        }
     }
 
     script <<

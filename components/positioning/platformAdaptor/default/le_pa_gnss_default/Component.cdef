@@ -1,0 +1,17 @@
+sources:
+{
+    pa_gnss_default.c
+}
+
+cflags:
+{
+    -I$CURDIR/../../inc
+}
+
+requires:
+{
+    api:
+    {
+        le_gnss.api    [types-only]
+    }
+}

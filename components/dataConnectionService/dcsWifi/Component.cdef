@@ -3,13 +3,12 @@ requires:
     api:
     {
         $LEGATO_ROOT/interfaces/le_dcs.api [types-only]
+        $LEGATO_ROOT/interfaces/le_clkSync.api [types-only]
         ${LEGATO_ROOT}/interfaces/wifi/le_wifiClient.api [optional]
     }
 
     component:
     {
-        $LEGATO_DCS_PA_DEFAULT
-        $LEGATO_DCS_PA
         ${LEGATO_ROOT}/components/watchdogChain
     }
 }

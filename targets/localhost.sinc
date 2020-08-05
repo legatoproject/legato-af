@@ -7,4 +7,5 @@
 buildVars:
 {
     LEGATO_DCS_PA = ${PA_DIR}/dcs/linux/components/le_pa_dcs
+    LEGATO_CLOCKSYNC_PA = ${PA_DIR}/clock/linux/components/le_pa_clockSync
 }

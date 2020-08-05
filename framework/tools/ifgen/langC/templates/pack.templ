@@ -224,7 +224,11 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     _LOCK
     contextPtr = le_ref_CreateRef(_HandlerRefMap, _clientDataPtr);
     _UNLOCK
+#ifdef LE_CONFIG_RPC
+    LE_ASSERT(le_pack_PackTaggedReference( &_msgBufPtr, contextPtr, LE_PACK_CONTEXT_PTR_REFERENCE ));
+#else
     LE_ASSERT(le_pack_PackReference( &_msgBufPtr, contextPtr ));
+#endif
     {%- elif parameter.apiType is BasicType and parameter.apiType.name == 'file' %}
     le_msg_SetFd(_msgRef, {{parameter|FormatParameterName}});
     {%- else %}

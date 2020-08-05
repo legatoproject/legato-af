@@ -21,6 +21,7 @@ mkexe(${TEST_EXEC}
     -i ${LEGATO_ROOT}/components/cfgEntries
     -i ${LEGATO_DCS}/platformAdaptor/inc
     -i ${LEGATO_MODEM_SERVICES}/platformAdaptor/inc
+    -i ${LEGATO_ROOT}/components/clockService/clockSync
     ${CFLAGS}
     ${LFLAGS}
     -C "-fvisibility=default"

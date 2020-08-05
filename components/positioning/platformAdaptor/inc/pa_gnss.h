@@ -725,9 +725,9 @@ LE_SHARED le_result_t pa_gnss_SetNmeaSentences
 /**
  * Get the enabled NMEA sentences bit mask
  *
-* @return
-*  - LE_OK on success
-*  - LE_FAULT on failure
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_gnss_GetNmeaSentences
@@ -754,11 +754,11 @@ LE_SHARED le_result_t pa_gnss_SetMinElevation
 /**
  *   Get the GNSS minimum elevation.
  *
-* @return
-*  - LE_OK on success
-*  - LE_BAD_PARAMETER if minElevationPtr is NULL
-*  - LE_FAULT on failure
-*  - LE_UNSUPPORTED request not supported
+ * @return
+ *  - LE_OK on success
+ *  - LE_BAD_PARAMETER if minElevationPtr is NULL
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED request not supported
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_gnss_GetMinElevation

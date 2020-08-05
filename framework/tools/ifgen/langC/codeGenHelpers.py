@@ -366,14 +366,16 @@ def GetLocalMessageSize(interface, pointerSize):
     Get size of largest possible message to a function or handler.
 
     A message is 4-bytes for message ID, optional 4
-    bytes for required output parameters, optional 1 byte for TagID,
+    bytes for required output parameters, optional 1 byte for TagID of required output parameters
+    optional 1 byte TagID for EOF,
     and a variable number of bytes to pack
     the return value (if the function has one), and all input and output parameters.
     """
     padding = 8
     if (os.environ.get('LE_CONFIG_RPC') == "y"):
         pointerSize = pointerSize + 1
-        padding = padding + 1
+        # Include two 1-byte TagIDs
+        padding = padding + 2
     return padding + max([1] +
                    [GetLocalFunctionMsgSize(function, pointerSize)
                     for function in interface.functions.values()] +

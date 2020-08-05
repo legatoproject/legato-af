@@ -1,0 +1,243 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_le_clkSync Clock Service's Clock Sync Interface
+ *
+ * @ref le_clkSync_interface.h "API Reference" <br>
+ *
+ * This clock sync interface is part of Legato's Clock Service for managing and syncing the clock
+ * time on a Legato device. It includes the APIs for acquiring the current clock time from a given
+ * time server, with or without setting it into the device's system clock.
+ *
+ * @section Clock Time Sources
+ *
+ * A current clock time can be queried from a time source via different protocols. While the various
+ * types of sources are defined in @ref le_clkSync_ClockSource, the currently supported time
+ * protocols are:
+ *      - the Time Protocol, defined in <a href="https://tools.ietf.org/html/rfc868">RFC 868</a>.
+ *      - the Network Time Protocol, defined in
+ *        <a href="https://tools.ietf.org/html/rfc5905">RFC 5905</a>.
+ *
+ * Both of these sources run on an IP network and would require the device to have an active data
+ * channel established via DCS ahead of time. Each time server of these source types is thus
+ * specified by its IP address or host name. For each of these source types, 2 servers max can be
+ * configured, i.e. 2 IP addresses or host names.
+ *
+ * @section Clock Time Source's Priority
+ *
+ * Each configured clock time source can be assigned a numeric priority within the range 0-9, with
+ * 9 as the highest priority and 0 the lowest and the default if not explicitly specified. In an
+ * execution of the system clock update via a call to @ref le_clkSync_UpdateSystemTime, the source
+ * with the highest priority will first be attempted. And likewise down the prioritized list, each
+ * will be tried until a successful update is resulted.
+ *
+ * @section Clock Time Configurations
+ *
+ * These configurations are to be installed and maintained on Clock Service's config tree path
+ * clockTime:/source/. For each source, its priority and location configurations can be configured.
+ * The path for the former is clockTime:/source/<source>/priority. With TP or NTP as the source,
+ * its location configuration is the IP address or host name of its time server, and up to 2 can be
+ * configured. The paths used
+ * are clockTime:/source/<source>/config/1 and clockTime:/source/<source>/config/2.
+ * The following is an example:
+ * @verbatim
+    clockTime:/
+      source/
+        ntp/
+          priority<int> == 7
+          config/
+            1<string> == pool.ntp.org
+        tp/
+          config/
+            1<string> == time-a.timefreq.bldrdoc.gov
+            2<string> == time.nist.gov
+          priority<int> == 9
+   @endverbatim
+ *
+ * @note These clock time configurations can be installed and modified not only through the "config
+ * set" command on a device's console and Legato's le_cfg_Set APIs, but also AVC's write operation
+ * for Sierra Wireless' proprietary LWM2M object 33405 from a remote AirVantage server.
+ *
+ * @section Executing a Clock Time Update
+ *
+ * @warning It is a high risk system operation to update a device's system time, as there could be
+ * other time-sensitive activities running on the device. Also, it is an asynchronous operation
+ * that will take some time to try with different sources, complete acquiring the latest time,
+ * and installing it into the system clock. Thus, users have to use due diligence in calling the
+ * given API to trigger this execution. In many cases, it might even be necessary to schedule this
+ * execution to a maintenance time window within which all other activities are minimal, and to
+ * back off for a while by disallowing any new activities after it is triggered, and until the
+ * update is fully complete.
+ *
+ * To execute a clock time update into a device's system clock, a client app can call @ref
+ * le_clkSync_UpdateSystemTime. Upon such execution, a prioritized list of all the configured
+ * sources will be internally generated and then walked from the highest priority to the lowest in
+ * attempt to contact the source, acquire the current time, and install it into the system clock.
+ * Such attempt terminates upon either a success or the end of the list. The result of the last
+ * attempt with each source is archived, which is a per-source status and not a system-wide one.
+ *
+ * Note that this execution is asychronous. When @ref le_clkSync_UpdateSystemTime returns to its
+ * caller, only the triggering of the update is complete, and not the update itself. This API's
+ * input argument is an event handler of type @ref le_clkSync_UpdateSystemTimeHandlerFunc_t
+ * provided by the caller which will be upon the completion of the update. This is the way for
+ * caller to learn back about such completion. The output argument of this callback function is
+ * the overall status of the update execution of type @ref le_result_t.
+ *
+ * For more granular details, the status of the update attempt using each source can be found via
+ * the API @ref le_clkSync_GetUpdateSystemStatus, and this status code is defined in the enum @ref
+ * le_clkSync_UpdateSystemStatus which is an exact correspondence to the status code defined in
+ * Sierra Wireless' proprietary LWM2M object 33405's resource 3.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_clkSync_interface.h
+ *
+ * Legato @ref c_le_clkSync include file.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Max length of a clock source as an address or name. This is taken as the max length required for
+ * the max width of an IPv6 address, i.e. 128
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE IPV6_ADDR_LENGTH_MAX = (8 * 8 * 2);
+DEFINE SOURCE_CONFIG_LENGTH_MAX = IPV6_ADDR_LENGTH_MAX;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clock source's priority max and min values
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE SOURCE_PRIORITY_MAX = 9;
+DEFINE SOURCE_PRIORITY_MIN = 0;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Config tree root directory and node paths for clock time configurations
+ */
+//-------------------------------------------------------------------------------------------------
+DEFINE CONFIG_TREE_ROOT_SOURCE            = "clockTime:/source";
+DEFINE CONFIG_NODE_SOURCE                 = "source";
+DEFINE CONFIG_NODE_SOURCE_PRIORITY        = "priority";
+DEFINE CONFIG_NODE_SOURCE_CONFIG          = "config";
+DEFINE CONFIG_NODE_SOURCE_LAST_STATUS     = "lastStatus";
+DEFINE CONFIG_NODE_SOURCE_AVC_TIMESTAMP   = "timeStamp";
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clock source type. Note that these defined values are the same as defined in Sierra Wireless'
+ * proprietary LWM2M object 33405's instance ID
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM ClockSource
+{
+    CLOCK_SOURCE_TP = 0,                           ///< Time Protocol server provided clock
+    CLOCK_SOURCE_NTP,                              ///< Network Time Protocol server provided clock
+    CLOCK_SOURCE_GPS,                              ///< GPS provided clock
+    CLOCK_SOURCE_MAX                               ///< Max value in range
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clock source's update status. Note that these defined values are the same as defined in Sierra
+ * Wireless' proprietary LWM2M object 33405's resource 3
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM UpdateSystemStatus
+{
+    UPDATE_SYSTEM_STATUS_SUCCESS        = 0, ///< Successful
+    UPDATE_SYSTEM_STATUS_NOT_TRIED      = 1, ///< Not tried
+    UPDATE_SYSTEM_STATUS_IN_PROGRESS    = 2, ///< In progress & not finished
+    UPDATE_SYSTEM_STATUS_GENERAL_ERROR  = 3, ///< General error
+    UPDATE_SYSTEM_STATUS_NOT_CONFIGURED = 4, ///< Not configured
+    UPDATE_SYSTEM_STATUS_UNSUPPORTED    = 5, ///< Unsupported source type
+    UPDATE_SYSTEM_STATUS_UNAVAILABLE    = 6, ///< Unavailable source
+    UPDATE_SYSTEM_STATUS_GET_ERROR      = 7, ///< Failed to get clock time
+    UPDATE_SYSTEM_STATUS_UPDATE_ERROR   = 8, ///< Failed to update system time
+    UPDATE_SYSTEM_STATUS_MAX            = 9
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Data structure for clock time
+ */
+//--------------------------------------------------------------------------------------------------
+STRUCT ClockTime
+{
+    int32 msec;   ///< Milliseconds [0-999]
+    int32 sec;    ///< Seconds      [0-60]
+    int32 min;    ///< Minutes      [0-59]
+    int32 hour;   ///< Hours        [0-23]
+    int32 day;    ///< Day          [1-31]
+    int32 mon;    ///< Month        [1-12]
+    int32 year;   ///< Year
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve the current clock time from the clock source(s) configured and return it back to the
+ * caller without updating it into the system clock
+ *
+ * @return
+ *      - LE_OK             Function successful
+ *      - LE_BAD_PARAMETER  A parameter is incorrect
+ *      - LE_FAULT          Function failed
+ *      - LE_UNSUPPORTED    Function not supported by the target
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetCurrentTime
+(
+    ClockTime time               OUT,  ///< Clock time retrieved from configured source
+    ClockSource source           OUT   ///< Clock source from which the current time is acquired
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve the status of the execution of a system time update using the given source
+ *
+ * @return
+ *      - le_clkSync_UpdateSystemStatus_t
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION UpdateSystemStatus GetUpdateSystemStatus
+(
+    ClockSource source           IN    ///< Clock source used to get the current time
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for the receiving the status of the execution of a system time update
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER UpdateSystemTimeHandler
+(
+    le_result_t status           IN    ///< Overall status of the system time update execution
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Execute a system clock time update that will be completed asynchronously & return the resulting
+ * status back via its callback UpdateSystemTimeHandler
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION UpdateSystemTime
+(
+    UpdateSystemTimeHandler handler    ///< Requester's handler for receiving results
+);

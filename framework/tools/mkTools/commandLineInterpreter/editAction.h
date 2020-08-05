@@ -83,6 +83,27 @@ class CreateUpdateTempAdefAction_t : public EditAction_t
 };
 
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * Class to create a temporary working CDEF file and to update the required sections of the
+ * temporary CDEF file. The temporary CDEF file is later replaced with original CDEF file using
+ * RenameTempWorkToActiveFileAction_t.
+ */
+//-------------------------------------------------------------------------------------------------
+class CreateUpdateTempCdefAction_t : public EditAction_t
+{
+    private:
+        std::string cdefWorkingFilePath;
+
+    public:
+        CreateUpdateTempCdefAction_t(ArgHandler_t& arghandle, std::string filePath) :
+            EditAction_t(arghandle), cdefWorkingFilePath(filePath)
+        {}
+        void DoAction() override;
+        void UndoAction() override;
+};
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Class to create a temporary working SDEF file and to update the required sections of the

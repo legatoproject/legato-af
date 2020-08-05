@@ -282,6 +282,7 @@ LE_SHARED le_result_t pa_mdc_GetBipDefaultProfileIndex
  *
  * @return
  *      - LE_OK on success
+ *      - LE_BAD_PARAMETER on a null profileIndex
  *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
@@ -298,6 +299,8 @@ LE_SHARED le_result_t pa_mdc_ReadProfile
  *
  * @return
  *      - LE_OK on success
+ *      - LE_BAD_PARAMETER on parameters invalid.
+ *      - LE_TIMEOUT on no response received.
  *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
@@ -312,6 +315,8 @@ LE_SHARED le_result_t pa_mdc_InitializeProfile
  *
  * @return
  *      - LE_OK on success
+ *      - LE_BAD_PARAMETER on parameters invalid.
+ *      - LE_TIMEOUT on no response received.
  *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
@@ -491,8 +496,9 @@ LE_SHARED le_result_t pa_mdc_GetInterfaceName
  *
  * @return
  *      - LE_OK on success
+ *      - LE_TIMEOUT on no response received.
+ *      - LE_BAD_PARAMETER on parameters invalid.
  *      - LE_OVERFLOW if the IP address would not fit in gatewayAddrStr
- *      - LE_UNSUPPORTED if the IP version is unsupported
  *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------
@@ -555,6 +561,8 @@ LE_SHARED le_result_t pa_mdc_GetDNSAddresses
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the Access Point Name would not fit in apnNameStr
+ *      - LE_TIMEOUT on no response received.
+ *      - LE_BAD_PARAMETER on parameters invalid.
  *      - LE_FAULT for all other errors
  */
 //--------------------------------------------------------------------------------------------------

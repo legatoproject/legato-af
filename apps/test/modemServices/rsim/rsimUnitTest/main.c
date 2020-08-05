@@ -80,7 +80,7 @@ static size_t ExpectedMessageSize = 0;
 //--------------------------------------------------------------------------------------------------
 static uint8_t ConnectReq1[12] =
 {
-    0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x14, 0x00, 0x00
+    0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x04, 0x00, 0x00, 0x00
 };
 static size_t ConnectReq1Length = 12;
 static uint8_t ConnectReq2[12] =
@@ -176,7 +176,7 @@ static void CallbackHandler
     LE_DEBUG("Sending result: messageId=%d, result=%d, context=%p", messageId, result, contextPtr);
 
     // Check sending result against expected result
-    LE_ASSERT(result == (le_result_t)contextPtr)
+    LE_ASSERT(result == (le_result_t)contextPtr);
 
     le_sem_Post(AppSemaphore);
 }

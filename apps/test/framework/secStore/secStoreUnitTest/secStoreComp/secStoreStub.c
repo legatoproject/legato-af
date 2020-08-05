@@ -179,7 +179,7 @@ void appCfg_DeleteIter
     appCfg_Iter_t iter          ///< [IN] Iterator
 )
 {
-    LE_ASSERT(DEFAULT_APPCFG_ITER == iter)
+    LE_ASSERT(DEFAULT_APPCFG_ITER == iter);
 }
 
 //--------------------------------------------------------------------------------------------------

@@ -1622,6 +1622,19 @@ static le_dls_Link_t* GetNextThreadMemberObjLinkPtr
                 /* let continue on wakeup timers */
                 TimerTypeIndex = TIMER_WAKEUP;
 
+                // Get the address of head thread obj
+                thread_Obj_t* headThreadObjPtr =
+                    CONTAINER_OF(threadMemberObjItrRef->threadObjList.headLinkPtr,
+                                 thread_Obj_t, link);
+
+                // Read the thread obj into our own memory, and update the local reference
+                if (TargetReadAddress(PidToInspect, (uintptr_t)headThreadObjPtr,
+                                      localThreadObjRef,
+                                      sizeof(thread_Obj_t)) != LE_OK)
+                {
+                    INTERNAL_ERR(REMOTE_READ_ERR("thread object"));
+                }
+
                 // retrieve the thread member obj list for the thread object; update our thread
                 // member obj list with that list, and reset our local copy of the thread member
                 // obj list head.

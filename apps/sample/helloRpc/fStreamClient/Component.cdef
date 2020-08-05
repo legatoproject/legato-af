@@ -1,0 +1,22 @@
+sources:
+{
+    client.c
+}
+
+#if ${LE_CONFIG_LINUX} = y
+bundles:
+{
+    file:
+    {
+        [r] fStreamTestFile /
+    }
+}
+#endif
+
+requires:
+{
+    api:
+    {
+        fStream = $LEGATO_ROOT/apps/sample/helloRpc/fStream.api
+    }
+}

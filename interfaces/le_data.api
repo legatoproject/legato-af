@@ -113,10 +113,11 @@
  * @warning To get the date and time, use GetDateTime rather than sequential calls to GetDate and
  * GetTime to avoid the possibility of a date change between the two calls.
  *
- *
  * When the data connection service is connected, the date and time can be retrieved from a distant
- * server using le_data_GetDate() and le_data_GetTime(). The time protocol and time server to use
- * are configured through the @ref c_le_data_configdb database:
+ * server using le_data_GetDate() and le_data_GetTime().
+ *
+ * The time protocol and time server to use are configured through the @ref c_le_data_configdb
+ * database:
  * - Time protocol:
  *      - @ref LE_DATA_TP to use the Time Protocol, defined in
  *        <a href="https://tools.ietf.org/html/rfc868">RFC 868</a>.
@@ -124,6 +125,10 @@
  *        <a href="https://tools.ietf.org/html/rfc5905">RFC 5905</a>.
  * - Time server: address of the time server to connect to. If not set, the default value is
  * <tt> time.nist.gov </tt> for @ref LE_DATA_TP and to <tt> pool.ntp.org </tt> for @ref LE_DATA_NTP.
+ *
+ * @deprecated However, these time protocol and server configurations on DCS's config tree path
+ *             dataConnectionService:/time/ are deprecated and moved to the path clockTime:/
+ *             for Legato's @c clockService. Please refer to the @ref le_clkSync API for details.
  *
  * @note The configured time protocol needs to be supported by your platform to be used by the data
  * connection service.
@@ -145,6 +150,10 @@
  * - the Wi-Fi access point
  * - the cellular profile
  * - the time protocol and server.
+ *
+ * @deprecated However, these time protocol and server configurations on DCS's config tree path
+ *             dataConnectionService:/time/ are deprecated and moved to the path clockTime:/
+ *             for Legato's @c clockService. Please refer to the @ref le_clkSync API for details.
  *
  * The configuration is stored under the following path:
  * @verbatim
@@ -192,6 +201,7 @@
 
 USETYPES le_mdc;
 USETYPES le_dcs;
+USETYPES le_clkSync;
 
 //--------------------------------------------------------------------------------------------------
 // Objects references.

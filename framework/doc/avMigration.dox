@@ -17,6 +17,10 @@ of the new AirVantage 2.0 features see @ref c_le_avc.
 | TimeSeries resources are part of AssetData              | TimeSeries resources can be used separate from Asset Data     |
 | TimeSeries data points can only be pushed one at a time | TimeSeries can accommodate multiple data points pushed and acknowledge at one time |
 
+@note System updates have been deprecated in AVC 2.0, users must use the
+(AirVantage Firmware over-the-air)[https://source.sierrawireless.com/airvantage/avc/reference/monitor/howtos/upgradeAirPrimeFw/]
+(FOTA) tool to update the Legato Application Framework.
+
 @section avMigration_Migration Migrating from AVC 1.0 to AVC 2.0
 
 AVC 1.0 configurations are automatically migrated to AVC 2.0 when Legato AF 17.05+ is upgraded on

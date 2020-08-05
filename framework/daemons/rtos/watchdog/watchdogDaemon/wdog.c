@@ -250,6 +250,12 @@ void le_wdog_Timeout
 
     if (wdogPtr)
     {
+        if ((timeoutMs < 0) && (timeoutMs != LE_WDOG_TIMEOUT_NEVER))
+        {
+            LE_ERROR("Invalid watchdog timeout %" PRId32, timeoutMs);
+            return;
+        }
+
         SetupAppWatchdog(wdogPtr, timeoutMs);
     }
     else

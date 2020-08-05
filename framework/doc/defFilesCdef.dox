@@ -252,14 +252,14 @@ automatically, and will select the default value from code if the value is not p
 
 The "messaging" scope is denoted by prefixing the pool name with the literal string "<messaging>."
 and provides control over the pool sizes in the generated IPC messaging code.  The following pool
-names may be used in this scope, each corresponding to a generated memory pool (replace %api% here
-with the API name):
+names may be used in this scope, each corresponding to a generated memory pool (replace "API" here
+with the actual interface name):
 
- * `%api%_ClientThreadData`: Expected maximum simultaneous client threads.
- * `%api%_ClientData`: Expected maximum simultaneous client data items.
- * `%api%_Messages`: Expected number of clients of this server API.
- * `%api%_ServerData`: Expected number of simultaneous server data objects.
- * `%api%_ServerCmd`: Expected number of simultaneous async server commands.
+ * `API_ClientThreadData`: Expected maximum simultaneous client threads.
+ * `API_ClientData`: Expected maximum simultaneous client data items.
+ * `API_Messages`: Expected number of clients of this server API.
+ * `API_ServerData`: Expected number of simultaneous server data objects.
+ * `API_ServerCmd`: Expected number of simultaneous async server commands.
 
 @code
 pools:

@@ -123,21 +123,18 @@ pointer. The @c contextPtr passed to a regular function or ADD_HANDLER function 
 passed back to the handler function. If the @c contextPtr is not needed, then NULL can be used.
 
 
-@section apiFilesC_client Client-specific Functions
+@section apiFilesC_client Client Specific Functions
 
-These are client-specific functions:
+The API files provide the following client specific functions:
+- @c TryConnectService()
+- @c ConnectService()
+- @c DisconnectService()
+- @c SetServerDisconnectHandler()
 
-@code
-void ConnectService
-(
-    void
-);
-
-void DisconnectService
-(
-    void
-);
-@endcode
+If you wish to check that the API that you are connecting to is available or not use
+@c TryConnectService() first. This function must be called first, and while the ConnectServce()
+function is called automatically for the main thread, all other threads should use this function to
+make sure that they can successfully connect before they open a connection.
 
 To use a service, a client must connect to the server using @c ConnectService().  This
 connection is only created for the current thread. Other threads must also call ConnectService()
@@ -155,13 +152,15 @@ The DisconnectService() function closes a connection to the server.  It only
 closes the current thread connection; it must be called separately for each
 thread using a service. If a thread wants to use the service again, it must call
 ConnectService() to re-connect. When the app exits, all connections for all threads
-are automatically closed. A thread only needs to use DisconnectService() when it
+are automatically closed. A thread only needs to use @c DisconnectService() when it
 wants to disconnect from a service while the app is still running (e.g., no longer needs
-the service so it can conserve resources).
+the service so it can conserve resources). To handle disconnections use
+@c SetServerDisconnectHandler() to exit with LE_FATAL. If an app wants to continue without exiting
+call @c longjmp() from inside the handler.
 
-@section apiFilesC_server Server-specific Functions
+@section apiFilesC_server Server Specific Functions
 
-These are server-specific functions:
+These are server Wspecific functions:
 
 @code
 le_msg_ServiceRef_t GetServiceRef
@@ -252,8 +251,6 @@ Here's the generated client interface header file for the common.api file from @
 Here's the generated client interface header file for the example.api file from @ref apiFilesC_sampleAPI
 
 @verbinclude example_interface.h
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc.
 

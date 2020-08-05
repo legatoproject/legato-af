@@ -72,6 +72,7 @@ static le_event_Id_t CellNetStateEvent;
 //--------------------------------------------------------------------------------------------------
 static le_cellnet_State_t CurrentState = LE_CELLNET_REG_UNKNOWN;
 
+#if LE_DEBUG_ENABLED
 //--------------------------------------------------------------------------------------------------
 /**
  * List of cellular network state strings
@@ -86,6 +87,7 @@ static const char* cellNetStateStr[] =
      "LE_CELLNET_REG_UNKNOWN",
      "LE_CELLNET_SIM_ABSENT"
 };
+#endif
 
 
 //--------------------------------------------------------------------------------------------------
@@ -216,7 +218,7 @@ static le_cellnet_State_t TranslateToCellNetState
         case LE_MRC_REG_NONE:
         {
             le_onoff_t  radioState;
-            le_result_t result;
+            __attribute__((unused)) le_result_t result;
 
             // In this state, the radio should be OFF.
             if ((result = le_mrc_GetRadioPower(&radioState)) != LE_OK)

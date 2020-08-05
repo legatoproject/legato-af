@@ -1041,9 +1041,6 @@ void le_mdc_Init
                                                     CommandThread,
                                                     (void*)initSemaphore);
 
-#if LE_CONFIG_RTOS
-    le_thread_SetStackSize(mdcThreadRef, MS_STACK_SIZE_MDC);
-#endif
     le_thread_Start(mdcThreadRef);
     le_sem_Wait(initSemaphore);
     le_sem_Delete(initSemaphore);

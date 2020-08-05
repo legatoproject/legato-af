@@ -996,6 +996,13 @@ typedef struct
 } le_msg_LocalService_t;
 
 
+// This structure is used in liblegato which is in C.
+// So it's not needed in C++
+// and in ARM C++ the declaration
+// uint8_t data[] __attribute__((aligned));
+// is not allowed.
+
+#ifndef __cplusplus
 //--------------------------------------------------------------------------------------------------
 /**
  * Message that's sent over a queue transport.
@@ -1010,7 +1017,7 @@ typedef struct le_msg_LocalMessage
     le_msg_ResponseCallback_t completionCallback; ///< Function to be called when transaction done.
     void* contextPtr;                       ///< Opaque value to be passed to handler function.
     uint8_t data[] __attribute__((aligned));   ///< Start of message data.
-                                               ///< Align so any type of data can be stored inside.
+                                               ///< Align so any type of data can be stored inside
 } le_msg_LocalMessage_t;
 
 
@@ -1020,6 +1027,8 @@ typedef struct le_msg_LocalMessage
  */
 //--------------------------------------------------------------------------------------------------
 #define LE_MSG_LOCAL_HEADER_SIZE      sizeof(le_msg_LocalMessage_t)
+
+#endif //__cplusplus
 
 
 // =======================================

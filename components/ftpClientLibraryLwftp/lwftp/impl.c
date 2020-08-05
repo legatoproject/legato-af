@@ -252,6 +252,8 @@ static const char *EventString
             return "LE_FTP_CLIENT_EVENT_DATA";
         case LE_FTP_CLIENT_EVENT_DATAEND:
             return "LE_FTP_CLIENT_EVENT_DATAEND";
+        case LE_FTP_CLIENT_EVENT_MEMORY_FREE:
+            return "LE_FTP_CLIENT_EVENT_MEMORY_FREE";
     }
 
     return "Unknown";
@@ -272,20 +274,6 @@ static struct AsyncEvent *PeekEvent
 )
 {
     return (struct AsyncEvent *) le_sls_Peek(&sessionRef->eventQueue);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  Pop and free the item from the head of the event queue.
- */
-//--------------------------------------------------------------------------------------------------
-static void PopEvent
-(
-    le_ftpClient_SessionRef_t sessionRef    ///< Session instance.
-)
-{
-    struct AsyncEvent *eventPtr = (struct AsyncEvent *) le_sls_Pop(&sessionRef->eventQueue);
-    le_mem_Release(eventPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -319,7 +307,8 @@ static void SendEvent
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  Create a new asynchronous event instance.  Blocks until an event can be allocated.
+ *  Create a new asynchronous event instance.  If the EVT_BLOCK flag is set, blocks until an event
+ *  can be allocated.
  *
  *  @return New event instance, or NULL if not blocking and no instance is available.
  */
@@ -353,10 +342,11 @@ static struct AsyncEvent *NewEvent
     }
     else
     {
-        do
+        eventPtr = le_mem_TryAlloc(EventPool);
+        if(eventPtr == NULL)
         {
-            eventPtr = le_mem_TryAlloc(EventPool);
-        } while (eventPtr == NULL);
+            return NULL;
+        }
     }
     memset(eventPtr, 0, sizeof(*eventPtr));
 
@@ -373,14 +363,45 @@ static struct AsyncEvent *NewEvent
         }
         else
         {
-            do
+            eventPtr->bufferPtr = le_mem_TryAlloc(BufferPool);
+            if (eventPtr->bufferPtr == NULL)
             {
-                eventPtr->bufferPtr = le_mem_TryAlloc(BufferPool);
-            } while (eventPtr->bufferPtr == NULL);
+                // unable to allocate buffer for this event, therefore event must be released
+                le_mem_Release(eventPtr);
+                return NULL;
+            }
         }
         memset(eventPtr->bufferPtr, 0, sizeof(*eventPtr->bufferPtr));
     }
     return eventPtr;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Pop and free the item from the head of the event queue.
+ */
+//--------------------------------------------------------------------------------------------------
+static void PopEvent
+(
+    le_ftpClient_SessionRef_t sessionRef    ///< Session instance.
+)
+{
+    le_mem_PoolStats_t  stats;
+    struct AsyncEvent   *eventPtr = (struct AsyncEvent *) le_sls_Pop(&sessionRef->eventQueue);
+
+    le_mem_Release(eventPtr);
+
+    le_mem_GetStats(EventPool, &stats);
+    if (stats.numFree >= 2)
+    {
+        eventPtr = NewEvent(sessionRef, 0);
+        if (eventPtr != NULL)
+        {
+            eventPtr->result = LWFTP_RESULT_OK;
+            eventPtr->event = LE_FTP_CLIENT_EVENT_MEMORY_FREE;
+            le_event_ReportWithRefCounting(EventId[sessionRef->eventIdIndex].EventId, eventPtr);
+        }
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -602,6 +623,7 @@ static void HandleNonBlockingResult
     }
 
     eventPtr = NewEvent(sessionRef, EVT_FORCE);
+    LE_ASSERT(eventPtr!=NULL);
     eventPtr->event = event;
     eventPtr->result = result;
     le_event_ReportWithRefCounting(EventId[sessionRef->eventIdIndex].EventId, eventPtr);
@@ -712,6 +734,8 @@ static void EventHandler
             sessionRef->operation = OP_NONE;
             sessionRef->needsResume = false;
             break;
+        case LE_FTP_CLIENT_EVENT_MEMORY_FREE:
+            break;
         default:
             break;
     }
@@ -783,8 +807,7 @@ static void EventDestructor
     err_t                       error;
     le_ftpClient_SessionRef_t   sessionRef = eventPtr->sessionRef;
     bool                        resume = (sessionRef->operation == OP_RETRIEVE &&
-                                    sessionRef->needsResume);
-
+                                    sessionRef->needsResume && eventPtr->bufferPtr != NULL);
     le_mem_Release(sessionRef);
     if (eventPtr->bufferPtr != NULL)
     {

@@ -238,7 +238,7 @@ COMPONENT_INIT
     LE_INFO("Status: %d", status);
 
     // Check that the message reference of Status Report is the same as the message previously sent
-    LE_ASSERT(rxMessageReference == txMessageReference)
+    LE_ASSERT(rxMessageReference == txMessageReference);
 
     // Clean up
     le_sem_Delete(SyncSemRef);

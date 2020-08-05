@@ -32,6 +32,13 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum number of simultaneous file streams going on.
+ */
+//--------------------------------------------------------------------------------------------------
+#define RPC_PROXY_FILE_STREAM_MAX_NUM          LE_CONFIG_RPC_PROXY_FILE_STREAM_MAX_NUM
+
+//--------------------------------------------------------------------------------------------------
+/**
  * RPC Proxy Timer Interval Definitions
  */
 //--------------------------------------------------------------------------------------------------
@@ -69,8 +76,7 @@
 
 #define RPC_PROXY_MSG_SERVICE_NAME_SIZE        (sizeof(char) * LIMIT_MAX_IPC_INTERFACE_NAME_BYTES)
 
-#define RPC_PROXY_MSG_HEADER_SIZE              (sizeof(rpcProxy_CommonHeader_t) + \
-                                               sizeof(uint16_t))
+#define RPC_PROXY_MSG_HEADER_SIZE              (sizeof(rpcProxy_CommonHeader_t) + sizeof(uint16_t))
 
 #define RPC_PROXY_COMMON_MSG_HEADER_SIZE       sizeof(rpcProxy_CommonHeader_t)
 
@@ -79,6 +85,8 @@
 
 #define RPC_PROXY_KEEPALIVE_MSG_SIZE           (sizeof(rpcProxy_KeepAliveMessage_t) - \
                                                RPC_PROXY_COMMON_MSG_HEADER_SIZE)
+#define RPC_PROXY_MSG_METADATA_SIZE            (2 * LE_PACK_SIZEOF_TAG_ID + LE_PACK_SIZEOF_UINT32 +\
+                                               LE_PACK_SIZEOF_INT16)
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -93,6 +101,8 @@
 #define RPC_PROXY_KEEPALIVE_REQUEST            6
 #define RPC_PROXY_KEEPALIVE_RESPONSE           7
 #define RPC_PROXY_REQUEST_RESPONSE             8
+#define RPC_PROXY_SERVER_ASYNC_EVENT           9
+#define RPC_PROXY_FILESTREAM_MESSAGE           10
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -149,12 +159,24 @@ typedef struct __attribute__((packed))
 {
     rpcProxy_CommonHeader_t commonHeader; ///< RPC Proxy Common Message Header
                                           ///< NOTE: Must be defined as first parameter
-
     // Legato Message
     uint16_t  msgSize;                          ///< Size of the Legato Message payload.
     uint8_t   message[RPC_PROXY_MAX_MESSAGE];   ///< Buffer to hold Legato Message payload.
 }
 rpcProxy_Message_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * RPC Proxy Message metadata
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    uint16_t fileStreamId;                     ///< Contains Steam ID if any and flags
+    uint16_t fileStreamFlags;                  ///< Contains file stream flags if stream Id is valid
+    bool isFileStreamValid;                    ///< indicates whethere above two fields are valid
+}
+rpcProxy_MessageMetadata_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -362,7 +384,8 @@ uint32_t rpcProxy_GenerateProxyMessageId
 le_result_t rpcProxy_SendMsg
 (
     const char* systemName, ///< [IN] Name of the system message is being sent to
-    void* messagePtr ///< [IN] Void pointer to the message buffer
+    void* messagePtr, ///< [IN] Void pointer to the message buffer
+    rpcProxy_MessageMetadata_t *metaDataPtr ///< [IN] metadata of proxy message
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -393,6 +416,72 @@ le_hashmap_Ref_t rpcProxy_GetExpiryTimerRefByProxyId
 le_hashmap_Ref_t rpcProxy_GetServiceIDMapByName
 (
     void
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets reference to service using its id
+ *
+ * @return
+ *      Reference to the service with given id or NULL if not found
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_ServiceRef_t rpcProxy_GetServiceRefById
+(
+    uint32_t serviceId  ///< [IN] Service ID
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets reference to message using proxy id
+ *
+ * @return
+ *      Reference to the message with given proxy id or NULL if not found
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_MessageRef_t rpcProxy_GetMsgRefById
+(
+    uint32_t proxyId    ///< [IN] Proxy ID
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets system name using service id
+ *
+ * @return
+ *      RPC system name or NULL if not found
+ */
+//--------------------------------------------------------------------------------------------------
+const char* rpcProxy_GetSystemNameByServiceId
+(
+    uint32_t serviceId  ///< [IN] Service ID
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Allocate new rpcProxy message
+ *
+ * @return A newly allocated rpc Proxy message.
+ */
+//--------------------------------------------------------------------------------------------------
+rpcProxy_Message_t* rpcProxy_AllocateNewMessage
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to copy all un-copied content up from the Message Buffer into the new Messagge Buffer
+ */
+//--------------------------------------------------------------------------------------------------
+void rpcProxy_RepackCopyContents
+(
+    uint8_t** msgBufPtr,     ///< [IN] Pointer to current position in the Message Buffer pointer
+    uint8_t** previousMsgBufPtr, ///< [IN] Pointer to the previous position in the Message Buffer
+                                 ///pointer
+    uint8_t** newMsgBufPtr ///< [IN] Pointer to the current position in the New Message Buffer
+                           ///pointer
 );
 
 #endif /* LE_RPC_PROXY_H_INCLUDE_GUARD */

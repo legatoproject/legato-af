@@ -45,9 +45,10 @@
 #include "dcs.h"
 #include "dcsNet.h"
 #include "dcsTechRank.h"
-#if LE_CONFIG_SERVICES_WATCHDOG
-#include "watchdogChain.h"
+#ifdef LE_CONFIG_LINUX
+#include "clockSync.h"
 #endif
+#include "watchdogChain.h"
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions
@@ -81,14 +82,12 @@
 //--------------------------------------------------------------------------------------------------
 #define DEFAULT_NTP_SERVER              "pool.ntp.org"
 
-#if LE_CONFIG_SERVICES_WATCHDOG
 //--------------------------------------------------------------------------------------------------
 /**
  * The timer interval to kick the watchdog chain.
  */
 //--------------------------------------------------------------------------------------------------
 #define MS_WDOG_INTERVAL 8
-#endif
 //--------------------------------------------------------------------------------------------------
 /**
  * Retry Tech Timer's backoff durations:
@@ -98,6 +97,18 @@
 //--------------------------------------------------------------------------------------------------
 #define RETRY_TECH_BACKOFF_INIT 1                // init backoff: 1 sec
 #define RETRY_TECH_BACKOFF_MAX (60 * 60 * 6)     // max backoff: 6 hrs
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clock source types defined: TP, NTP (unsupported yet), GPS (unsupported yet), etc
+ */
+//--------------------------------------------------------------------------------------------------
+#define CLOCK_TIME_CONFIG_SOURCE_PRIORITY_MAX 9
+#ifndef DCS_USE_AUTOMATIC_SETTINGS
+#if LE_CONFIG_ENABLE_CONFIG_TREE
+static const char* ClockSourceTypeString[] = {"tp", "ntp"};
+#endif
+#endif
 
 //--------------------------------------------------------------------------------------------------
 // Data structures
@@ -730,6 +741,84 @@ static le_result_t SetDefaultRouteAndDns
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Convert DCS's time configs on the Config Tree on the path dataConnectionService:/ into Clock
+ * Service's time configs on the newer path clockTime:/
+ */
+//--------------------------------------------------------------------------------------------------
+static void ConvertDcsToClockServiceTimeConfigs
+(
+    void
+)
+{
+#if LE_CONFIG_ENABLE_CONFIG_TREE
+    bool setDefaultConfig = false;
+    le_data_TimeProtocol_t protocol;
+    char configPath[LE_CFG_STR_LEN_BYTES], timeServer[MAX_TIME_SERVER_LENGTH] = {0};
+    le_cfg_IteratorRef_t cfgNode, cfgRoot = le_cfg_CreateReadTxn(DCS_CONFIG_TREE_ROOT_DIR);
+    if (!le_cfg_NodeExists(cfgRoot, CFG_PATH_TIME))
+    {
+        le_cfg_CancelTxn(cfgRoot);
+        return;
+    }
+
+    le_cfg_CancelTxn(cfgRoot);
+    snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_TIME);
+    cfgNode = le_cfg_CreateReadTxn(configPath);
+
+    if (LE_OK != le_cfg_GetString(cfgNode, CFG_NODE_SERVER, timeServer, MAX_TIME_SERVER_LENGTH,
+                                  DEFAULT_TIMEPROTOCOL_SERVER))
+    {
+        LE_WARN("No valid DCS time server config retrieved");
+        setDefaultConfig = true;
+    }
+    protocol = le_cfg_GetInt(cfgNode, CFG_NODE_PROTOCOL, LE_DATA_TP);
+    if (protocol > LE_DATA_NTP)
+    {
+        LE_ERROR("No valid DCS time protocol retrieved");
+        le_cfg_CancelTxn(cfgNode);
+        cfgRoot = le_cfg_CreateWriteTxn(DCS_CONFIG_TREE_ROOT_DIR);
+        le_cfg_DeleteNode(cfgRoot, CFG_PATH_TIME);
+        le_cfg_CommitTxn(cfgRoot);
+        return;
+    }
+    le_cfg_CancelTxn(cfgNode);
+    if (setDefaultConfig)
+    {
+        if (protocol == LE_DATA_TP)
+        {
+            le_utf8_Copy(timeServer, DEFAULT_TIMEPROTOCOL_SERVER, MAX_TIME_SERVER_LENGTH, NULL);
+        }
+        else
+        {
+            le_utf8_Copy(timeServer, DEFAULT_NTP_SERVER, MAX_TIME_SERVER_LENGTH, NULL);
+        }
+    }
+    LE_DEBUG("DCS time configs retrieved: protocol %d, server %s", protocol, timeServer);
+
+    // Erase DCS's time configs from its Config Tree path
+    cfgRoot = le_cfg_CreateWriteTxn(DCS_CONFIG_TREE_ROOT_DIR);
+    le_cfg_DeleteNode(cfgRoot, CFG_PATH_TIME);
+    le_cfg_CommitTxn(cfgRoot);
+
+    // Install retrieved DCS time configs onto Clock Service's config tree path
+    snprintf(configPath, LE_CFG_STR_LEN_BYTES, "%s/%s", LE_CLKSYNC_CONFIG_TREE_ROOT_SOURCE,
+             ClockSourceTypeString[protocol]);
+    cfgNode = le_cfg_CreateWriteTxn(configPath);
+    le_cfg_SetInt(cfgNode, LE_CLKSYNC_CONFIG_NODE_SOURCE_PRIORITY,
+                  CLOCK_TIME_CONFIG_SOURCE_PRIORITY_MAX);
+    le_cfg_CommitTxn(cfgNode);
+    snprintf(configPath, LE_CFG_STR_LEN_BYTES, "%s/%s/%s", LE_CLKSYNC_CONFIG_TREE_ROOT_SOURCE,
+             ClockSourceTypeString[protocol], LE_CLKSYNC_CONFIG_NODE_SOURCE_CONFIG);
+    cfgNode = le_cfg_CreateWriteTxn(configPath);
+    le_cfg_SetString(cfgNode, "2", timeServer);
+    le_cfg_CommitTxn(cfgNode);
+
+    LE_INFO("Completed DCS time configs to Clock Service time configs conversion");
+#endif
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * SetDNSConfigTimer Handler for retrying setting DNS server addresses upon this timer's expiration
  */
 //--------------------------------------------------------------------------------------------------
@@ -903,6 +992,7 @@ static void ChannelEventHandler
     }
 }
 
+#ifndef LE_CONFIG_LINUX
 //--------------------------------------------------------------------------------------------------
 /**
  *  Get the time protocol to use from config tree
@@ -914,18 +1004,6 @@ static le_data_TimeProtocol_t GetTimeProtocol
 )
 {
     le_data_TimeProtocol_t protocol = LE_DATA_TP;
-
-#if LE_CONFIG_ENABLE_CONFIG_TREE
-    char configPath[LE_CFG_STR_LEN_BYTES];
-    snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_TIME);
-
-    le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
-    if (le_cfg_NodeExists(cfg, CFG_NODE_PROTOCOL))
-    {
-        protocol = le_cfg_GetInt(cfg, CFG_NODE_PROTOCOL, LE_DATA_TP);
-    }
-    le_cfg_CancelTxn(cfg);
-#endif
     LE_DEBUG("Use time protocol %d", protocol);
     return protocol;
 }
@@ -942,32 +1020,9 @@ static void GetTimeServer
     const char* defaultServerPtr    ///< [IN] Default time server
 )
 {
-#if LE_CONFIG_ENABLE_CONFIG_TREE
-    char configPath[LE_CFG_STR_LEN_BYTES];
-    snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_TIME);
-
-    le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
-    if (le_cfg_NodeExists(cfg, CFG_NODE_SERVER))
-    {
-        if (LE_OK != le_cfg_GetString(cfg,
-                                      CFG_NODE_SERVER,
-                                      serverPtr,
-                                      serverSize,
-                                      defaultServerPtr))
-        {
-            LE_ERROR("Unable to retrieve time server");
-            le_utf8_Copy(serverPtr, defaultServerPtr, serverSize, NULL);
-        }
-    }
-    else
-    {
-        LE_WARN("No server configured, use the default one");
-        le_utf8_Copy(serverPtr, defaultServerPtr, serverSize, NULL);
-    }
-    le_cfg_CancelTxn(cfg);
-#endif
     LE_INFO("Use time server '%s'", serverPtr);
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1463,9 +1518,27 @@ static le_result_t ChangeRoute
 //--------------------------------------------------------------------------------------------------
 static le_result_t RetrieveTimeFromServer
 (
+#ifdef LE_CONFIG_LINUX
+    le_clkSync_ClockTime_t* timePtr ///< [OUT] Time structure
+#else
     pa_dcs_TimeStruct_t* timePtr    ///< [OUT] Time structure
+#endif
 )
 {
+#ifndef DCS_USE_AUTOMATIC_SETTINGS
+    ConvertDcsToClockServiceTimeConfigs();
+#endif
+
+#ifdef LE_CONFIG_LINUX
+    le_clkSync_ClockSource_t source;
+    if (LE_OK != clkSync_GetCurrentTime(CLOCKSYNC_INTERNAL_CLIENT_SESSION_REF, timePtr, &source))
+    {
+        LE_ERROR("Unable to retrieve time from configured time server");
+        memset(timePtr, 0, sizeof(le_clkSync_ClockTime_t));
+        return LE_FAULT;
+    }
+    LE_INFO("Time retrieved from source %d", source);
+#else
     le_data_TimeProtocol_t timeProtocol = GetTimeProtocol();
     char timeServer[MAX_TIME_SERVER_LENGTH] = {0};
 
@@ -1493,10 +1566,11 @@ static le_result_t RetrieveTimeFromServer
             LE_WARN("Unsupported time protocol %d", timeProtocol);
             return LE_FAULT;
     }
+#endif
 
-    LE_DEBUG("Time retrieved from server: %04d-%02d-%02d %02d:%02d:%02d:%03d",
-             timePtr->year, timePtr->mon, timePtr->day,
-             timePtr->hour, timePtr->min, timePtr->sec, timePtr->msec);
+    LE_INFO("Time retrieved: %04d-%02d-%02d %02d:%02d:%02d:%03d",
+            timePtr->year, timePtr->mon, timePtr->day,
+            timePtr->hour, timePtr->min, timePtr->sec, timePtr->msec);
     return LE_OK;
 }
 
@@ -1774,7 +1848,11 @@ le_result_t le_data_GetDateTime
     uint16_t* millisecondsPtr   ///< [OUT] UTC Milliseconds into the second [range 0..999].
 )
 {
+#ifdef LE_CONFIG_LINUX
+    le_clkSync_ClockTime_t timeStruct;
+#else
     pa_dcs_TimeStruct_t timeStruct;
+#endif
 
     if ((!yearPtr) || (!monthPtr) || (!dayPtr) ||
         (!hoursPtr) || (!minutesPtr) || (!secondsPtr) || (!millisecondsPtr))
@@ -1859,12 +1937,11 @@ COMPONENT_INIT
 
     // Register for command events
     le_event_AddHandler("ProcessCommand", dcs_CommandEventId, ProcessCommand);
-#if LE_CONFIG_SERVICES_WATCHDOG
+
     // Register main loop with watchdog chain
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_Init(1);
     le_wdogChain_MonitorEventLoop(0, watchdogInterval);
-#endif
     LE_INFO("Data Channel Service le_data is ready");
 }

@@ -395,6 +395,76 @@ static LogSession_t* CreateSession
     return logSessionPtr;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Loads the default log filter level from the environment for framework daemons, if present.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void ReadFwDaemonLevelFromEnv
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    char strProcessPath[512] = {0};
+    char* processNamePtr = NULL;
+    const char* envStrPtr = NULL;
+
+    if (readlink("/proc/self/exe", strProcessPath, 512)  <= 0)
+    {
+        return;
+    }
+
+    processNamePtr = strrchr(strProcessPath, '/');
+
+    if ( NULL == processNamePtr)
+    {
+        processNamePtr = strProcessPath;
+    }
+    else
+    {
+        processNamePtr++;
+    }
+
+    if (strcmp(processNamePtr, "supervisor") == 0)
+    {
+        envStrPtr = getenv("LE_SUPERVISOR_LOG_LEVEL");
+    }
+    else if (strcmp(processNamePtr, "serviceDirectory") == 0)
+    {
+        envStrPtr = getenv("LE_SERVICEDIRECTORY_LOG_LEVEL");
+    }
+    else if (strcmp(processNamePtr, "logCtrlDaemon") == 0)
+    {
+        envStrPtr = getenv("LE_LOGCTRLDAEMON_LOG_LEVEL");
+    }
+    else if (strcmp(processNamePtr, "configTree") == 0)
+    {
+        envStrPtr = getenv("LE_CONFIGTREE_LOG_LEVEL");
+    }
+    else if (strcmp(processNamePtr, "updateDaemon") == 0)
+    {
+        envStrPtr = getenv("LE_UPDATEDAEMON_LOG_LEVEL");
+    }
+    else if (strcmp(processNamePtr, "watchdog") == 0)
+    {
+        envStrPtr = getenv("LE_WATCHDOG_LOG_LEVEL");
+    }
+
+    if (envStrPtr != NULL)
+    {
+        le_log_Level_t level = log_StrToSeverityLevel(envStrPtr);
+
+        if (level != (le_log_Level_t)-1)
+        {
+            DefaultLogSession.level = level;
+        }
+        else
+        {
+            LE_ERROR("invalid log level env value '%s' for process '%s'.", envStrPtr, processNamePtr);
+        }
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -424,6 +494,91 @@ static void ReadLevelFromEnv
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the the log level env for framework daemons. log level MACROs are configured at built time.
+ **/
+//--------------------------------------------------------------------------------------------------
+void log_SetFrameworkLevelEnv
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    const char* envStrPtr = NULL;
+
+#ifdef LE_CONFIG_SUPERVISOR_LOG_LEVEL
+    envStrPtr = LE_CONFIG_SUPERVISOR_LOG_LEVEL;
+#endif
+    if(strcmp(envStrPtr, "") == 0)
+    {
+        envStrPtr = STRINGIZE(LE_SUPERVISOR_LOG_LEVEL);
+    }
+    if ( (le_log_Level_t)-1 != log_StrToSeverityLevel(envStrPtr))
+    {
+        setenv("LE_SUPERVISOR_LOG_LEVEL", envStrPtr, 1);
+    }
+
+#ifdef LE_CONFIG_SERVICEDIRECTORY_LOG_LEVEL
+    envStrPtr = LE_CONFIG_SERVICEDIRECTORY_LOG_LEVEL;
+#endif
+    if(strcmp(envStrPtr, "") == 0)
+    {
+        envStrPtr = STRINGIZE(LE_SERVICEDIRECTORY_LOG_LEVEL);
+    }
+    if ( (le_log_Level_t)-1 != log_StrToSeverityLevel(envStrPtr))
+    {
+        setenv("LE_SERVICEDIRECTORY_LOG_LEVEL", envStrPtr, 1);
+    }
+
+#ifdef LE_CONFIG_LOGCTRLDAEMON_LOG_LEVEL
+    envStrPtr = LE_CONFIG_LOGCTRLDAEMON_LOG_LEVEL;
+#endif
+    if(strcmp(envStrPtr, "") == 0)
+    {
+        envStrPtr = STRINGIZE(LE_LOGCTRLDAEMON_LOG_LEVEL);
+    }
+    if ( (le_log_Level_t)-1 != log_StrToSeverityLevel(envStrPtr))
+    {
+        setenv("LE_LOGCTRLDAEMON_LOG_LEVEL", envStrPtr, 1);
+    }
+
+#ifdef LE_CONFIG_CONFIGTREE_LOG_LEVEL
+    envStrPtr = LE_CONFIG_CONFIGTREE_LOG_LEVEL;
+#endif
+    if(strcmp(envStrPtr, "") == 0)
+    {
+        envStrPtr = STRINGIZE(LE_CONFIGTREE_LOG_LEVEL);
+    }
+    if ( (le_log_Level_t)-1 != log_StrToSeverityLevel(envStrPtr))
+    {
+        setenv("LE_CONFIGTREE_LOG_LEVEL", envStrPtr, 1);
+    }
+
+#ifdef LE_CONFIG_UPDATEDAEMON_LOG_LEVEL
+    envStrPtr = LE_CONFIG_UPDATEDAEMON_LOG_LEVEL;
+#endif
+    if(strcmp(envStrPtr, "") == 0)
+    {
+        envStrPtr = STRINGIZE(LE_UPDATEDAEMON_LOG_LEVEL);
+    }
+    if ( (le_log_Level_t)-1 != log_StrToSeverityLevel(envStrPtr))
+    {
+        setenv("LE_UPDATEDAEMON_LOG_LEVEL", envStrPtr, 1);
+    }
+
+#ifdef LE_CONFIG_WATCHDOG_LOG_LEVEL
+    envStrPtr = LE_CONFIG_WATCHDOG_LOG_LEVEL;
+#endif
+    if(strcmp(envStrPtr, "") == 0)
+    {
+        envStrPtr = STRINGIZE(LE_WATCHDOG_LOG_LEVEL);
+    }
+    if ( (le_log_Level_t)-1 != log_StrToSeverityLevel(envStrPtr))
+    {
+        setenv("LE_WATCHDOG_LOG_LEVEL", envStrPtr, 1);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -734,6 +889,9 @@ void fa_log_Init
     // Load the default log level filter and output destination settings from the environment.
     ReadLevelFromEnv();
 
+    // Load framework daemons specific log level filter from environment.
+    ReadFwDaemonLevelFromEnv();
+
     // Create the keyword memory pool.
     KeywordMemPool = le_mem_CreatePool("TraceKeys", sizeof(KeywordObj_t));
     le_mem_ExpandPool(KeywordMemPool, 10);   /// @todo Make this configurable.
@@ -785,6 +943,10 @@ void le_log_ConnectToControlDaemon
     // NOTE: This is called when there is only one thread running, so no need to lock the mutex.
 
     // Attempt to open an IPC session with the Log Control Daemon.
+    if ( NULL != IpcSessionRef)
+    {
+        return;
+    }
 
     le_msg_ProtocolRef_t protocolRef;
     protocolRef = le_msg_GetProtocolRef(LOG_CONTROL_PROTOCOL_ID, LOG_MAX_CMD_PACKET_BYTES);
@@ -842,6 +1004,24 @@ void le_log_ConnectToControlDaemon
             linkPtr = le_sls_PeekNext(&SessionList, linkPtr);
         }
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disconnects from the Log Control Daemon.
+ */
+//--------------------------------------------------------------------------------------------------
+void log_DisconnectFromControlDaemon
+(
+    void
+)
+{
+        if (NULL == IpcSessionRef)
+        {
+            return;
+        }
+        le_msg_DeleteSession(IpcSessionRef);
+        IpcSessionRef = NULL;
 }
 
 /// Expose old symbol name to support apps compiled against an older liblegato.

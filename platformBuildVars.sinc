@@ -25,6 +25,7 @@ buildVars:
     LEGATO_UARTMODE_PA = ''
     LEGATO_PORT_PA = ''
     LEGATO_INSTALL_PA = ${LEGATO_ROOT}/apps/proprietary/atAirVantage/src/install/pa_install_default
+    LEGATO_CLOCKSYNC_PA = ''
 
     LEGATO_AUDIO_PA_DEFAULT =
         ${LEGATO_ROOT}/components/audio/platformAdaptor/default/le_pa_audio_default
@@ -54,6 +55,7 @@ buildVars:
         ${LEGATO_ROOT}/components/uartMode/platformAdaptor/default/le_pa_uartMode_default
     LEGATO_MODEM_PA_RSIM_DEFAULT =
         ${LEGATO_ROOT}/components/modemServices/platformAdaptor/default/le_pa_remotesim_default
-
     LEGATO_PROPRIETARY_APPS = ${LEGATO_ROOT}/apps/proprietary
+    LEGATO_CLOCKSYNC_PA_DEFAULT =
+        ${LEGATO_ROOT}/components/clockService/platformAdaptor/default/le_pa_clockSync_default
 }

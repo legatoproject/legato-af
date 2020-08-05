@@ -2,7 +2,9 @@ requires:
 {
     api:
     {
+    #if ${LE_CONFIG_ENABLE_CONFIG_TREE} = y
         le_cfg.api
+    #endif
     }
 
     component:
@@ -38,6 +40,9 @@ requires:
 {
     component:
     {
+    #if ${LE_CONFIG_LINUX} = y
+        $LEGATO_GNSS_PA_DEFAULT
+    #endif
         $LEGATO_GNSS_PA
     }
 }

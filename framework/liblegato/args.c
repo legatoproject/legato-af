@@ -555,6 +555,13 @@ static size_t HandlePositionalArgument
             {
                 le_sls_Queue(&argInfoPtr->PositionalCallbackList, linkPtr);
             }
+            else
+            {
+                // If IsMorePositionalArgsThanCallbacksAllowed is set, recPtr is added to the list
+                // and will eventually be released by ResetArgInfo. But if it's not set, we must
+                // release recPtr here because it was just removed from the list.
+                le_mem_Release(recPtr);
+            }
         }
         else
         {

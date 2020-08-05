@@ -351,7 +351,7 @@ void Testle_ecall_ConfigSettings
     LE_ASSERT(LE_ECALL_ERA_GLONASS == systemStandard);
 
     //! [MsdVersion]
-    LE_ASSERT_OK(le_ecall_SetMsdVersion(1))
+    LE_ASSERT_OK(le_ecall_SetMsdVersion(1));
 
     uint32_t msdVersion = 0;
     LE_ASSERT_OK(le_ecall_GetMsdVersion(&msdVersion));

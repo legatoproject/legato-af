@@ -10,6 +10,7 @@ requires:
         modemServices/le_mdc.api                            [types-only]
         modemServices/le_mrc.api                            [types-only]
         ${LEGATO_ROOT}/interfaces/wifi/le_wifiClient.api    [types-only]
+        le_clkSync.api                                      [types-only]
     }
 }
 
@@ -32,4 +33,5 @@ cflags:
     -I$LEGATO_ROOT/components/dataConnectionService/dcs
     -I$LEGATO_ROOT/components/dataConnectionService/dcsNet
     -I$LEGATO_ROOT/components/dataConnectionService/dcsCellular
+    -I$LEGATO_ROOT/components/clockService/clockSync
 }

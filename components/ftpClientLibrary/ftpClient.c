@@ -8,10 +8,7 @@
 
 #include "legato.h"
 #include "interfaces.h"
-
-#if LE_CONFIG_LWIP
-#   include "lwftp/impl.h"
-#endif
+#include "src/le_ftpClientLib.h"
 
 COMPONENT_INIT_ONCE
 {

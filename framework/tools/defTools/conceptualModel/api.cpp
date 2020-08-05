@@ -124,7 +124,7 @@ ApiFile_t* ApiFile_t::GetApiFile
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::string canonicalPath = path::MakeCanonical(path);
+    std::string canonicalPath = path::MakeCanonical(path, false);
 
     auto i = ApiFileMap.find(canonicalPath);
 
@@ -154,7 +154,7 @@ ApiFile_t* ApiFile_t::CreateApiFile
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::string canonicalPath = path::MakeCanonical(path);
+    std::string canonicalPath = path::MakeCanonical(path, false);
 
     auto i = ApiFileMap.find(canonicalPath);
 

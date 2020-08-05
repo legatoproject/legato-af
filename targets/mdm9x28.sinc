@@ -14,6 +14,7 @@ buildVars:
     LEGATO_QMI_RSIM_PA_SRC = ${PA_DIR}/qmi/src/components/le_pa_remotesim
     SPI_PRIMARY_BUS = 1
     SPI_SECONDARY_BUS = 2
+    LEGATO_LINUX_CLOCKSYNC_PA = ${PA_DIR}/clock/linux/components/le_pa_clockSync
 }
 
 #include mdm9xxx.sinc

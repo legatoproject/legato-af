@@ -259,10 +259,10 @@ LE_SHARED le_result_t pa_sim_GetSelectedCard
 /**
  * This function gets the card identification (ICCID).
  *
- * @return LE_BAD_PARAMETER The parameters are invalid.
- * @return LE_FAULT         The function failed.
- * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
+ * @return LE_BAD_PARAMETER The parameters are invalid.
+ * @return LE_TIMEOUT       No response was received.
+ * @return LE_FAULT         The function failed.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_sim_GetCardIdentification
@@ -274,10 +274,10 @@ LE_SHARED le_result_t pa_sim_GetCardIdentification
 /**
  * This function gets the International Mobile Subscriber Identity (IMSI).
  *
- * @return LE_BAD_PARAMETER The parameters are invalid.
- * @return LE_FAULT         The function failed.
- * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
+ * @return LE_BAD_PARAMETER The parameters are invalid.
+ * @return LE_TIMEOUT       No response was received.
+ * @return LE_FAULT         The function failed.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_sim_GetIMSI
@@ -304,10 +304,10 @@ LE_SHARED le_result_t pa_sim_GetCardEID
 /**
  * This function gets the SIM Status.
  *
- * @return LE_BAD_PARAMETER The parameters are invalid.
- * @return LE_FAULT         The function failed.
- * @return LE_TIMEOUT       No response was received.
  * @return LE_OK            The function succeeded.
+ * @return LE_BAD_PARAMETER The parameters are invalid.
+ * @return LE_TIMEOUT       No response was received.
+ * @return LE_FAULT         The function failed.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_sim_GetState

@@ -1,0 +1,14 @@
+externalBuild:
+{
+    "${CURDIR}/make.sh"
+}
+
+bundles:
+{
+    file:
+    {
+        [rx] $LEGATO_BUILD/3rdParty/iperf/bin/iperf3 /bin/
+
+        [rx] $LEGATO_BUILD/3rdParty/iperf/lib/libiperf.so.0 /lib/
+    }
+}

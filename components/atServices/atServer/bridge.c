@@ -363,7 +363,7 @@ static void TreatResponse
 
     le_atServer_CmdRef_t atServerCmdRef = modemCmdDescPtr->atServerCmdRef;
     le_atClient_CmdRef_t atClientCmdRef = modemCmdDescPtr->atClientCmdRef;
-    char rsp[LE_ATDEFS_RESPONSE_MAX_BYTES];
+    char rsp[LE_ATDEFS_RESPONSE_MAX_BYTES] = {0};
 
     // Get all intermediate responses from the AT client, and send back to the host through the AT
     // server.

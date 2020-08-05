@@ -15,9 +15,7 @@ requires:
 
     component:
     {
-    #if ${LE_CONFIG_SERVICES_WATCHDOG} = y
         ${LEGATO_ROOT}/components/watchdogChain
-    #endif
     }
 }
 
@@ -34,14 +32,15 @@ provides:
         modemServices/le_temp.api
         modemServices/le_riPin.api
         modemServices/le_adc.api
-
+    #if ${MK_CONFIG_MODEMSERVICE_NO_LPT} = ""
+        modemServices/le_lpt.api
+    #endif
     #if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
         modemServices/le_mcc.api
         modemServices/le_ecall.api
         modemServices/le_antenna.api
         modemServices/le_rtc.api
         modemServices/le_mdmCfg.api
-        modemServices/le_lpt.api
     #endif
     }
 }
@@ -60,6 +59,10 @@ sources:
     le_riPin.c
     sysResets.c
 
+#if ${MK_CONFIG_MODEMSERVICE_NO_LPT} = ""
+    le_lpt.c
+#endif
+
 #if ${MK_CONFIG_SMS_LIGHT} = y
     le_sms_stub.c
 #else
@@ -74,7 +77,6 @@ sources:
     le_antenna.c
     le_rtc.c
     le_mdmCfg.c
-    le_lpt.c
 #endif
 }
 

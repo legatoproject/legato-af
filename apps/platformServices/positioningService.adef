@@ -30,7 +30,9 @@ requires:
 
 bindings:
 {
+#if ${LE_CONFIG_LINUX} = y
     posDaemon.watchdogChain.le_wdog -> <root>.le_wdog
+#endif
 }
 
 extern:
@@ -38,4 +40,8 @@ extern:
     posDaemon.posDaemon.le_gnss
     posDaemon.posDaemon.le_pos
     posDaemon.posDaemon.le_posCtrl
+#if ${LE_CONFIG_LINUX} = y
+#else
+    posDaemon.watchdogChain.le_wdog
+#endif
 }

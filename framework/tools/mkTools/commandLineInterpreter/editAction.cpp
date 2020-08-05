@@ -154,6 +154,40 @@ void CreateUpdateTempAdefAction_t::UndoAction()
 }
 
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * Do action to create a temporary working CDEF file and update that file's required section
+ * with line to write.
+ **/
+//-------------------------------------------------------------------------------------------------
+void CreateUpdateTempCdefAction_t::DoAction()
+{
+    // List of do actions to update the temporary working component definition file.
+    handler.tempWorkDefFilePath = cdefWorkingFilePath + TEMP_EXT;
+    updateDefs::EvaluateCdefGetEditLinePosition(handler, cdefWorkingFilePath);
+    updateDefs::UpdateDefinitionFile(handler, cdefWorkingFilePath);
+}
+
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Undo action to delete the previously created temporary working CDEF file if it exists.
+ **/
+//-------------------------------------------------------------------------------------------------
+void CreateUpdateTempCdefAction_t::UndoAction()
+{
+    if (handler.buildParams.beVerbose)
+    {
+        std::cout << mk::format(
+                        LE_I18N("\nDeleting temporary definition file '%s'."),
+                        handler.tempWorkDefFilePath
+                     );
+    }
+
+    file::DeleteFile(handler.tempWorkDefFilePath);
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Do action to create a temporary working SDEF file and update that file's required section

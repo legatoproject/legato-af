@@ -1111,6 +1111,13 @@ void le_wdog_Timeout
 )
 {
     LE_DEBUG("Attempting to set new watchdog timeout to %d", milliseconds);
+
+    if ((milliseconds < 0) && (milliseconds != LE_WDOG_TIMEOUT_NEVER))
+    {
+        LE_ERROR("Invalid watchdog timeout %" PRId32, milliseconds);
+        return;
+    }
+
     ResetClientWatchdog(milliseconds);
 }
 

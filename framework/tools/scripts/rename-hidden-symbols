@@ -19,21 +19,24 @@ READELF = 'readelf'
 #
 #   @param fields           List of symbol table fields.
 #   @param rename_common    Rename common data symbols.
+#   @param arm_mode         True if compilator is arm
 #
 #   @return True if the type should be considered, False if not.
-def symbol_type_matches(fields, all_syms=False):
+def symbol_type_matches(fields, all_syms=False, arm_mode=False):
     return fields[3] in ['FUNC', 'OBJECT'] and \
            (all_syms or fields[5] == 'HIDDEN') and \
            fields[6] != 'UND' and \
-           not fields[7].startswith('__ARM')
+           not fields[7].startswith('__ARM') and \
+           (not arm_mode or not fields[7].startswith('_Z'))
 
 #   Generate list of renaming candidate symbols from an object.
 #
 #   @param obj              Path to object file.
 #   @param verbose          Display verbose messages.
+#   @param arm_mode         True if compilator is arm
 #
 #   @return Set of candidate symbols.
-def read_symbols(obj, all_syms=False, verbose=False):
+def read_symbols(obj, all_syms=False, verbose=False, arm_mode=False):
     symbols = set()
     if verbose:
         print("Scanning {0}....".format(obj))
@@ -45,7 +48,7 @@ def read_symbols(obj, all_syms=False, verbose=False):
     for line in output.splitlines():
         fields = line.split()
         if len(fields) >= 8:
-            if symbol_type_matches(fields, all_syms):
+            if symbol_type_matches(fields, all_syms, arm_mode=arm_mode):
                 symbols.add(fields[-1])
 
     return symbols
@@ -107,12 +110,13 @@ def rename_symbols_arm(obj, renames, verbose=False):
 #   @param externals        Path to file containing extra symbols to search for conflicts with.
 #   @param verbose          Display verbose messages.
 #   @param rename_symbols   Function to use to perform the symbol rename.
+#   @param arm_mode         True if the compilator is arm
 #
 #   @return Status, 0 for success, 1 for failure.
-def process(obj, entry=None, verbose=False, rename_symbols=rename_symbols_gnu):
+def process(obj, entry=None, verbose=False, rename_symbols=rename_symbols_gnu, arm_mode=False):
     symbols = {}
 
-    symbols = read_symbols(obj, verbose=verbose)
+    symbols = read_symbols(obj, verbose=verbose, arm_mode=arm_mode)
 
     if entry:
         renames = symbols.difference(set([entry]))
@@ -170,7 +174,7 @@ def main():
         renamer = rename_symbols_arm
     else:
         renamer = rename_symbols_gnu
-    return process(parsed.object_file, entry, parsed.verbose, rename_symbols=renamer)
+    return process(parsed.object_file, entry, parsed.verbose, rename_symbols=renamer, arm_mode=parsed.arm)
 
 if __name__ == '__main__':
     sys.exit(main())

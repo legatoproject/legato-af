@@ -379,8 +379,9 @@ LE_SHARED void pa_sms_RemoveStorageStatusHandler
  * This function sends a message in PDU mode.
  *
  * @return LE_OK              The function succeeded.
- * @return LE_FAULT           The function failed to send a message in PDU mode.
+ * @return LE_BAD_PARAMETER   The parameters are invalid.
  * @return LE_TIMEOUT         No response was received from the Modem.
+ * @return LE_FAULT           The function failed to send a message in PDU mode.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_sms_SendPduMsg
@@ -397,10 +398,11 @@ LE_SHARED le_result_t pa_sms_SendPduMsg
 /**
  * This function gets the message from the preferred message storage.
  *
- * @return LE_FAULT        The function failed to get the message from the preferred message
- *                         storage.
- * @return LE_TIMEOUT      No response was received from the Modem.
- * @return LE_OK           The function succeeded.
+ * @return LE_OK            The function succeeded.
+ * @return LE_BAD_PARAMETER The parameters are invalid.
+ * @return LE_TIMEOUT       No response was received from the Modem.
+ * @return LE_FAULT         The function failed to get the message from the preferred message
+ *                          storage.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_sms_RdPDUMsgFromMem
@@ -416,11 +418,11 @@ LE_SHARED le_result_t pa_sms_RdPDUMsgFromMem
  * This function gets the indexes of messages stored in the preferred memory for a specific
  * status.
  *
- * @return LE_FAULT          The function failed to get the indexes of messages stored in the
- *                           preferred memory.
+ * @return LE_OK             The function succeeded.
  * @return LE_BAD_PARAMETER  The parameters are invalid.
  * @return LE_TIMEOUT        No response was received from the Modem.
- * @return LE_OK             The function succeeded.
+ * @return LE_FAULT          The function failed to get the indexes of messages stored in the
+ *                           preferred memory.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_sms_ListMsgFromMem
@@ -437,10 +439,10 @@ LE_SHARED le_result_t pa_sms_ListMsgFromMem
 /**
  * This function deletes one specific Message from preferred message storage.
  *
+ * @return LE_OK             The function succeeded.
+ * @return LE_TIMEOUT        No response was received from the Modem.
  * @return LE_FAULT          The function failed to delete one specific Message from preferred
  *                           message storage.
- * @return LE_TIMEOUT        No response was received from the Modem.
- * @return LE_OK             The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_sms_DelMsgFromMem
@@ -454,9 +456,10 @@ LE_SHARED le_result_t pa_sms_DelMsgFromMem
 /**
  * This function deletes all Messages from preferred message storage.
  *
- * @return LE_FAULT        The function failed to delete all Messages from preferred message storage.
- * @return LE_TIMEOUT      No response was received from the Modem.
  * @return LE_OK           The function succeeded.
+ * @return LE_TIMEOUT      No response was received from the Modem.
+ * @return LE_FAULT        The function failed to delete all Messages from preferred message
+ *                         storage.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_sms_DelAllMsg
@@ -468,9 +471,9 @@ LE_SHARED le_result_t pa_sms_DelAllMsg
 /**
  * This function changes the message status.
  *
- * @return LE_FAULT        The function failed to change the message status.
- * @return LE_TIMEOUT      No response was received from the Modem.
  * @return LE_OK           The function succeeded.
+ * @return LE_TIMEOUT      No response was received from the Modem.
+ * @return LE_FAULT        The function failed to change the message status.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_sms_ChangeMessageStatus
@@ -486,8 +489,10 @@ LE_SHARED le_result_t pa_sms_ChangeMessageStatus
  * This function must be called to get the SMS center.
  *
  * @return
- *   - LE_FAULT        The function failed.
  *   - LE_OK           The function succeeded.
+ *   - LE_BAD_PARAMETER The parameters are invalid.
+ *   - LE_TIMEOUT      No response was received from the Modem.
+ *   - LE_FAULT        The function failed.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_sms_GetSmsc

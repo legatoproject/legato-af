@@ -22,5 +22,5 @@ sources:
 cflags:
 {
     -I$LEGATO_ROOT/components/dataConnectionService/platformAdaptor/inc
-    -I $LEGATO_ROOT/components/dataConnectionService/dcs
+    -I$LEGATO_ROOT/components/dataConnectionService/dcs
 }

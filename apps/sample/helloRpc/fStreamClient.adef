@@ -1,0 +1,18 @@
+executables:
+{
+    client = (fStreamClient)
+}
+
+processes:
+{
+    run:
+    {
+        (client)
+    }
+    faultAction: restart
+}
+
+extern:
+{
+    fStream = client.fStreamClient.fStream
+}

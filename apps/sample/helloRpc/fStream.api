@@ -1,0 +1,29 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set a fifo fd that can be used to communicate with the server
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetFifoFd
+(
+    file fifoFd IN                 ///< File descriptor of the fifo
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the file descriptor of a local file to be read by the remote server.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetFileFd
+(
+    file fileFd IN                 ///< File descriptor of the file
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Give the fd of standard out to the remote process to print logs
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION GetStdoutFd
+(
+    file stdOutFd OUT              ///< File descriptor of the standard out.
+);

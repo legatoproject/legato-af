@@ -1,0 +1,35 @@
+//--------------------------------------------------------------------------------------------------
+// Include this file in the .sdef file to include helloRpc app to your system.
+//
+// Copyright (C), Sierra Wireless Inc.
+//--------------------------------------------------------------------------------------------------
+
+appSearch:
+{
+    ${LEGATO_ROOT}/apps/sample/helloRpc
+}
+
+apps:
+{
+    printClient
+    printServerExtended
+    fStreamClient
+}
+
+extern:
+{
+    bobClient = printClient.printer
+    aliceServer = printServerExtended.printerExtended
+    bobFStreamClient = fStreamClient.fStream
+}
+
+links:
+{
+    LinkToAlice = (serialComm)
+
+}
+
+cflags:
+{
+    -DLE_COMM_SERVER
+}

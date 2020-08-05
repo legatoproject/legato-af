@@ -38,6 +38,20 @@
 #include "le_ms_local.h"
 #include "watchdogChain.h"
 
+//--------------------------------------------------------------------------------------------------
+// Defines.
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define LE_CONFIG_MODEM_DAEMON_PREFERRED_OPERATORS on Linux platform only.
+ * It's defined here than a more global file since it is only used in this file so far.
+ * Otherwise, it should be in build/wp76xx/framework/include/le_config.h or likewise.
+ */
+//--------------------------------------------------------------------------------------------------
+#ifdef LE_CONFIG_LINUX
+#define LE_CONFIG_MODEM_DAEMON_PREFERRED_OPERATORS
+#endif
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions.
@@ -2142,10 +2156,6 @@ void le_mrc_Init
     le_thread_Ref_t mrcThreadRef = le_thread_Create(WDOG_THREAD_NAME_MRC_COMMAND_PROCESS,
                                                     MrcCommandThread,
                                                     (void*)initSemaphore);
-
-#if LE_CONFIG_RTOS
-    le_thread_SetStackSize(mrcThreadRef, MS_STACK_SIZE_MRC);
-#endif
 
     le_thread_Start(mrcThreadRef);
     le_sem_Wait(initSemaphore);
@@ -5506,6 +5516,21 @@ uint32_t le_mrc_GetServingCellEarfcn
     return pa_mrc_GetServingCellEarfcn();
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the serving cell primary scrambling code.
+ *
+ * @return The serving cell primary scrambling code. UINT16_MAX value is returned if the value is
+ * not available.
+ */
+//--------------------------------------------------------------------------------------------------
+uint16_t le_mrc_GetServingCellScramblingCode
+(
+    void
+)
+{
+    return pa_mrc_GetServingCellScramblingCode();
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -5528,6 +5553,28 @@ uint32_t le_mrc_GetNeighborCellEarfcn
         return UINT32_MAX;
     }
     return (cellInfoPtr->earfcn);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the neighbor cell primary scrambling code.
+ *
+ * @return The neighbor cell primary scrambling code. UINT16_MAX value is returned if the value is
+ * not available.
+ */
+//--------------------------------------------------------------------------------------------------
+uint16_t le_mrc_GetNeighborCellScramblingCode
+(
+    le_mrc_CellInfoRef_t     ngbrCellInfoRef ///< [IN] The Cell information reference
+)
+{
+    pa_mrc_CellInfo_t* cellInfoPtr = le_ref_Lookup(CellRefMap, ngbrCellInfoRef);
+    if (cellInfoPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", ngbrCellInfoRef);
+        return UINT16_MAX;
+    }
+    return (cellInfoPtr->psc);
 }
 
 

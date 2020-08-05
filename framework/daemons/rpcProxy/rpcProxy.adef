@@ -41,6 +41,9 @@ requires:
 extern:
 {
     le_rpc = rpcDaemon.rpcDaemon.le_rpc
+#if ${LE_CONFIG_RTOS} = y
+    rpcDaemon.rpcDaemon.le_cfg
+#endif
 }
 #endif
 

@@ -109,6 +109,10 @@ endif
 # KConfig settings location.
 export LEGATO_KCONFIG ?= $(LEGATO_ROOT)/.config.$(TARGET)
 
+# KConfig setting location for the build -- KConfig is copied here.  This allows config to be
+# updated according to source changes
+LEGATO_BUILD_KCONFIG = build/$(TARGET)/.config
+
 # Makefile include generated from KConfig values
 MAKE_CONFIG := build/$(TARGET)/.config.mk
 
@@ -191,9 +195,11 @@ export HOST_CXX ?= $(CXX_NAME)
 
 # Use ccache by default if available
 ifeq ($(LE_CONFIG_USE_CCACHE),y)
-  ifeq ($(shell which ccache 2>/dev/null),)
-    LE_CONFIG_USE_CCACHE :=
-    unexport LE_CONFIG_USE_CCACHE
+  ifneq (${CCACHE},)
+    ifeq ($(shell which ccache 2>/dev/null),)
+      LE_CONFIG_USE_CCACHE :=
+      unexport LE_CONFIG_USE_CCACHE
+    endif
   endif
 endif
 ifeq ($(LE_CONFIG_USE_CCACHE),y)
@@ -209,9 +215,6 @@ ifeq ($(LE_CONFIG_USE_CCACHE),y)
     $(error "Unable to find ccache while it is enabled.")
   endif
   export CCACHE
-else
-  CCACHE :=
-  unexport CCACHE
 endif
 
 ifneq ($(TARGET),nothing)
@@ -242,6 +245,7 @@ ifneq ($(TARGET),nothing)
   export TARGET_CC                       := $($(TARGET_CAPS)_CC)
   export TARGET_CXX                      := $($(TARGET_CAPS)_CXX)
   export TARGET_CPP                      := $($(TARGET_CAPS)_CPP)
+  export TARGET_SYSROOT                  := $($(TARGET_CAPS)_SYSROOT)
 
   ifeq ($(TARGET_CC),/$(CC_NAME))
     $(error Unable to find toolchain for target '$(TARGET)')
@@ -378,8 +382,16 @@ ALL_SAMPLES_$(LE_CONFIG_JAVA) += samples_java
 # ========== CONFIGURATION RECIPES ============
 
 # Generate an initial KConfig from the environment.  This rule translates the old configuration
-# method using environment variables into an initial KConfig set.
-$(LEGATO_ROOT)/.config.$(TARGET): $(shell find . -name 'KConfig' -o -name '*.kconfig')
+# method using environment variables into an initial KConfig set.  LEGATO_KCONFIG file is a
+# dependency if it exists; otherwise generate default config
+ifneq ($(wildcard $(LEGATO_KCONFIG)),)
+$(LEGATO_BUILD_KCONFIG): export LE_CONFIG_CUSTOM_FA_PATH=$(shell sed -e 's/^LE_CONFIG_CUSTOM_FA_PATH="\([^"]*\)"$$/\1/;t;d' $(LEGATO_KCONFIG))
+endif
+$(LEGATO_BUILD_KCONFIG): $(wildcard $(LEGATO_KCONFIG))
+$(LEGATO_BUILD_KCONFIG): $(shell find . -name 'KConfig' -o -name '*.kconfig')
+	$(Q)env
+	$(Q)mkdir -p $(dir $@)
+	$(Q)if [ -f $(LEGATO_KCONFIG) ]; then cp $(LEGATO_KCONFIG) $@; fi
 ifeq ($(KNOWN_TARGET),1)
 	$(L) KSET "$@ - TARGET_$(TARGET_CAPS)"
 	$(Q)KCONFIG_CONFIG=$@ $(SETCONFIG_TOOL) --kconfig=KConfig "TARGET_$(TARGET_CAPS)=y" $(VOUTPUT)
@@ -390,13 +402,11 @@ endif
 
 	$(L) KCONFIG $@
 	$(Q)KCONFIG_CONFIG=$@ $(OLDDEFCONFIG_TOOL) KConfig $(VOUTPUT)
-	$(Q)rm -f $@.old
 
 # Generate the Makefile include containing the KConfig values
-$(MAKE_CONFIG): $(LEGATO_KCONFIG)
+$(MAKE_CONFIG): $(LEGATO_BUILD_KCONFIG)
 	$(Q)cat $< $(VOUTPUT)
 	$(L) GEN $@
-	$(Q)mkdir -p $(dir $@)
 	$(Q)sed -e 's/^LE_CONFIG_/export &/g' \
 		-e 's/="/=/g' \
 		-e 's/"$$//g' \
@@ -407,23 +417,22 @@ ifneq ($(KNOWN_TARGET),1)
 endif
 
 # Generate a shell include file containing the KConfig values
-$(SHELL_CONFIG): $(LEGATO_KCONFIG)
+$(SHELL_CONFIG): $(LEGATO_BUILD_KCONFIG)
 	$(L) GEN $@
-	$(Q)mkdir -p $(dir $@)
 	$(Q)sed -e 's/^LE_CONFIG_/export &/g' $< > $@
 ifneq ($(KNOWN_TARGET),1)
 	$(Q)printf '\n# Additional Definitions\nexport LE_CONFIG_TARGET_%s=y\n' "$(TARGET_CAPS)" >> $@
 endif
 
 # Generate doxygen configuration containing the KConfig definitions
-$(DOXYGEN_DEFS): $(LEGATO_KCONFIG)
+$(DOXYGEN_DEFS): $(LEGATO_BUILD_KCONFIG)
 	$(L) GEN $@
 	$(Q)mkdir -p $(dir $@)
 	$(Q)sed -e 's/^LE_CONFIG_/PREDEFINED += &/g' -e 's/=y/=1/g' $< > $@
 
 # Interactively select build options
 .PHONY: menuconfig
-menuconfig: $(LEGATO_KCONFIG)
+menuconfig:
 	$(L) KCONFIG $(LEGATO_KCONFIG)
 	$(Q)KCONFIG_CONFIG=$(LEGATO_KCONFIG) $(MENUCONFIG_TOOL) KConfig
 
@@ -506,7 +515,7 @@ package.properties: version sources.md5
 	$(Q)echo "md5=`cat sources.md5`" >> $@
 
 # Header containing all of the KConfig parameters
-$(HEADER_CONFIG): $(LEGATO_KCONFIG) Makefile
+$(HEADER_CONFIG): $(LEGATO_BUILD_KCONFIG) Makefile
 	$(L) GEN $@
 	$(Q)mkdir -p $(dir $@)
 	$(Q)printf '#ifndef LEGATO_CONFIG_INCLUDE_GUARD\n' > $@

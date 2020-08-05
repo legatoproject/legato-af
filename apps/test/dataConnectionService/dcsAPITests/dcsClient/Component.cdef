@@ -7,6 +7,7 @@ requires:
         le_net = $LEGATO_ROOT/interfaces/le_net.api
         le_mdc = $LEGATO_ROOT/interfaces/modemServices/le_mdc.api
         le_wifiClient = $LEGATO_ROOT/interfaces/wifi/le_wifiClient.api
+        le_clkSync = $LEGATO_ROOT/interfaces/le_clkSync.api
     }
 }
 

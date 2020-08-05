@@ -146,6 +146,28 @@ le_result_t rpcProxyConfig_ValidateConfiguration
 
             return LE_NOT_FOUND;
         }
+
+        // Make sure linkName is unique for each system.
+        for (uint32_t i = 0; rpcProxyConfig_GetSystemServiceArray(i)->systemName; i++)
+        {
+            if(index == i)
+            {
+                continue;
+            }
+
+            if (strcmp(linkName, rpcProxyConfig_GetSystemServiceArray(i)->linkName) == 0)
+            {
+                const char* pName1 = rpcProxyConfig_GetSystemServiceArray(index)->systemName;
+                const char* pName2 = rpcProxyConfig_GetSystemServiceArray(i)->systemName;
+
+                if (strcmp(pName1, pName2) != 0)
+                {
+                    LE_ERROR("Systems: %s and %s have same link name %s, %d %d",
+                             pName1, pName2, linkName, (int)i, (int)index);
+                    return LE_FAULT;
+                }
+            }
+        }
     }
 
     return LE_OK;

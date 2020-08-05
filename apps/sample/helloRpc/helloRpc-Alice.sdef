@@ -12,6 +12,7 @@ extern:
 {
     bobServer = printServer.printer
     aliceClient = printClientExtended.printerExtended
+    bobFStreamServer = fStreamServer.fStream
 }
 
 appSearch:
@@ -23,6 +24,7 @@ apps:
 {
     printClientExtended
     printServer
+    fStreamServer
 }
 
 componentSearch:

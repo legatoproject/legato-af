@@ -555,6 +555,8 @@ void GenerateRtosRpcServices
     for (auto &serverApiEntry : systemPtr->externServerInterfaces)
     {
         outputFile << "extern le_msg_LocalService_t "
+                   << serverApiEntry.second->componentInstancePtr->exePtr->appPtr->name
+                   << "_"
                    << ConvertInterfaceNameToSymbol(serverApiEntry.second->name)
                    << ";\n";
     }
@@ -640,7 +642,7 @@ void GenerateRtosRpcServices
             "    .initLocalServicePtr = &rpcProxy_Init" << externClientEntry.first << "Service\n"
             "};\n"
             "\n"
-            "LE_MEM_DEFINE_STATIC_POOL(" << externClientEntry.first << "Messages, 1,"
+            "LE_MEM_DEFINE_STATIC_POOL(" << externClientEntry.first << "Messages, LE_CONFIG_RPC_PROXY_ASYNC_EVENTS_MAX_NUM,"
             " IFGEN_" << defaultCapsPrefix << "_LOCAL_MSG_SIZE +\n"
             "                          LE_MSG_LOCAL_HEADER_SIZE);\n"
             "\n";
@@ -686,6 +688,8 @@ void GenerateRtosRpcServices
             "        .messageSize = IFGEN_" << defaultCapsPrefix << "_MSG_SIZE\n"
             "     },\n"
             "     .localServicePtr = &"
+                   << externServerEntry.second->componentInstancePtr->exePtr->appPtr->name
+                   << "_"
                    << ConvertInterfaceNameToSymbol(externServerEntry.second->name) << "\n"
             "};\n"
             "\n";
@@ -729,7 +733,7 @@ void GenerateRtosRpcServices
 
         outputFile <<
             "    le_mem_PoolRef_t serverMsgPoolRef = \n"
-            "        le_mem_InitStaticPool(" << externClientEntry.first << "Messages, 1, IFGEN_"
+            "        le_mem_InitStaticPool(" << externClientEntry.first << "Messages, LE_CONFIG_RPC_PROXY_ASYNC_EVENTS_MAX_NUM, IFGEN_"
                    << defaultCapsPrefix << "_LOCAL_MSG_SIZE +\n"
             "                              LE_MSG_LOCAL_HEADER_SIZE);\n"
             "\n"

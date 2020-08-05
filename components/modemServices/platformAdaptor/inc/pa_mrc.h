@@ -75,6 +75,7 @@ typedef struct pa_mrc_CellInfo
                                     ///  Intrafrequency of a LTE cell.
     uint32_t         earfcn;        ///< Neighbour frequency.
     uint8_t          bsic;          ///< Base station identify code (GSM only).
+    uint16_t         psc;           ///< Primary scrambling code.
 }
 pa_mrc_CellInfo_t;
 
@@ -567,11 +568,11 @@ LE_SHARED le_result_t pa_mrc_GetPacketSwitchRegState
 /**
  * This function gets the Signal Strength information.
  *
+ * @return LE_OK            The function succeeded.
  * @return LE_BAD_PARAMETER Bad parameter passed to the function
  * @return LE_OUT_OF_RANGE  The signal strength values are not known or not detectable.
- * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
- * @return LE_OK            The function succeeded.
+ * @return LE_FAULT         The function failed.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_mrc_GetSignalStrength
@@ -750,9 +751,10 @@ LE_SHARED le_result_t pa_mrc_RegisterNetwork
 /**
  * This function must be called to register automatically on network
  *
- * @return
- *      - LE_OK             on success
- *      - LE_FAULT          for all other errors
+ * @return LE_OK            The function succeeded.
+ * @return LE_BAD_PARAMETER The parameters are invalid.
+ * @return LE_TIMEOUT       No response was received.
+ * @return LE_FAULT         The function failed.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_mrc_SetAutomaticNetworkRegistration
@@ -764,8 +766,9 @@ LE_SHARED le_result_t pa_mrc_SetAutomaticNetworkRegistration
 /**
  * This function gets the Radio Access Technology currently in use.
  *
- * @return LE_FAULT The function failed to get the Radio Access Technology.
- * @return LE_OK    The function succeeded.
+ * @return LE_OK            The function succeeded.
+ * @return LE_TIMEOUT       No response was received.
+ * @return LE_FAULT         The function failed to get the Signal strength information.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_mrc_GetRadioAccessTechInUse
@@ -777,10 +780,9 @@ LE_SHARED le_result_t pa_mrc_GetRadioAccessTechInUse
 /**
  * Set the Radio Access Technology Preferences
  *
- * @return
- * - LE_OK              On success
- * - LE_FAULT           On failure
- * - LE_UNSUPPORTED     Not supported by platform
+ * @return LE_OK            The function succeeded.
+ * @return LE_BAD_PARAMETER The parameters are invalid.
+ * @return LE_FAULT         The function failed.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_mrc_SetRatPreferences
@@ -793,9 +795,9 @@ LE_SHARED le_result_t pa_mrc_SetRatPreferences
 /**
  * Set the Rat Automatic Radio Access Technology Preference
  *
- * @return
- * - LE_OK              on success
- * - LE_FAULT           on failure
+ * @return LE_OK            The function succeeded.
+ * @return LE_BAD_PARAMETER The parameters are invalid.
+ * @return LE_FAULT         The function failed.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_mrc_SetAutomaticRatPreference
@@ -937,6 +939,10 @@ LE_SHARED void pa_mrc_DeleteNeighborCellsInfo
 /**
  * This function must be called to get current registration mode
  *
+ * @return LE_OK            The function succeeded.
+ * @return LE_BAD_PARAMETER The parameters are invalid.
+ * @return LE_TIMEOUT       No response was received.
+ * @return LE_FAULT         The function failed.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_mrc_GetNetworkRegistrationMode
@@ -1055,14 +1061,28 @@ LE_SHARED le_result_t pa_mrc_GetServingCellLteTracAreaCode
 /**
  * This function must be called to get the Location Area Code of the serving cell.
  *
- * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ * @return LE_OK            The function succeeded.
+ * @return LE_BAD_PARAMETER The parameters are invalid.
+ * @return LE_TIMEOUT       No response was received.
+ * @return LE_FAULT         The function failed.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_mrc_GetServingCellLocAreaCode
 (
     uint32_t* lacPtr ///< [OUT] Location Area Code of the serving cell.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the serving cell primary scrambling code.
+ *
+ * @return The serving cell primary scrambling code. UINT16_MAX value is returned if the value is
+ * not available.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED uint16_t pa_mrc_GetServingCellScramblingCode
+(
+    void
 );
 
 

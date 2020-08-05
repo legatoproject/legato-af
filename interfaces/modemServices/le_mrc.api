@@ -275,6 +275,9 @@
  * le_mrc_GetServingCellGsmBsic() retrieves the Base Station Identity Code (BSIC) for the serving
  * cell on GSM network.
  *
+ * le_mrc_GetServingCellScramblingCode() retrieves the primary scrambling code for the serving cell
+ * on UMTS network.
+ *
  * The BSIC is a local colour code (CC) that allows a Mobile Station (MS) to distinguish between
  * different neighbouring base stations. BSIC is a 6-bit length code structured the following way:
  * NCC (PLMN colour code) 3 bits + BCC (BS colour code) 3 bits. More information is available
@@ -379,6 +382,8 @@
  * - le_mrc_GetPhysicalNeighborLteCellId() gets the physical neighbor cell Id in LTE. The physical
  *   cell Id is in the range from 0 to 503.
  * - le_mrc_GetNeighborCellGsmBsic() retrieves the Base Station Identity Code (BSIC) for the cell
+ *   specified with the le_mrc_CellInfoRef_t parameter.
+ * - le_mrc_GetNeighborCellScramblingCode() retrieves the primary scrambling code for the cell
  *   specified with the le_mrc_CellInfoRef_t parameter.
  *
  * A sample code can be seen in the following page:
@@ -2182,6 +2187,21 @@ FUNCTION le_result_t GetNeighborCellLteInterFreq
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function must be called to get the neighbor cell primary scrambling code.
+ *
+ * @return The neighbor cell primary scrambling code. UINT16_MAX value is returned if the value is
+ * not available.
+ *
+ * @note <b>multi-app safe</b>
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint16 GetNeighborCellScramblingCode
+(
+    CellInfo     ngbrCellInfoRef IN  ///< Cell information reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to measure the signal metrics. It creates and returns a reference
  * to the signal metrics.
  *
@@ -2372,6 +2392,20 @@ FUNCTION uint32 GetServingCellLocAreaCode
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION uint16 GetServingCellLteTracAreaCode
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the serving cell primary scrambling code.
+ *
+ * @return The serving cell primary scrambling code. UINT16_MAX value is returned if the value is
+ * not available.
+ *
+ * @note <b>multi-app safe</b>
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint16 GetServingCellScramblingCode
 (
 );
 

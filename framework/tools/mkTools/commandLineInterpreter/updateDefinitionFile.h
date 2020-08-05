@@ -24,6 +24,7 @@ namespace updateDefs
     void ParseSdefUpdateItem (ArgHandler_t& handler);
     void UpdateDefinitionFile(ArgHandler_t& handler, std::string sdefFilePath);
     void EvaluateAdefGetEditLinePosition (ArgHandler_t& handler, model::System_t* systemPtr);
+    void EvaluateCdefGetEditLinePosition (ArgHandler_t& handler, std::string cdefTestFilePath);
 }
 
 #endif

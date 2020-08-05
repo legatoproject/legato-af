@@ -88,7 +88,7 @@ static void TestTtyOpenClose
     struct flock ttyLock = {0};
 
     fd = TestTtyOpen();
-    LE_ASSERT(fd > -1)
+    LE_ASSERT(fd > -1);
 
     // Test lock
     if (0 > fcntl(fd, F_GETLK, &ttyLock))
@@ -97,7 +97,7 @@ static void TestTtyOpenClose
         fd_Close(fd);
         exit(EXIT_FAILURE);
     }
-    LE_ASSERT(ttyLock.l_type == F_UNLCK)
+    LE_ASSERT(ttyLock.l_type == F_UNLCK);
 
     TestTtyClose(fd);
 }
@@ -122,14 +122,14 @@ static void TestTtySettingBaudRate
         le_result_t result = le_tty_SetBaudRate(fd,SpeedTestTable[i]);
         if ( LE_OK == result )
         {
-            LE_ASSERT(LE_OK == le_tty_GetBaudRate(fd, &ispeed, &ospeed))
-            LE_ASSERT((i == ispeed) && (i == ospeed))
+            LE_ASSERT(LE_OK == le_tty_GetBaudRate(fd, &ispeed, &ospeed));
+            LE_ASSERT((i == ispeed) && (i == ospeed));
         }
         else
         {
-            LE_ASSERT(LE_UNSUPPORTED == result)
-            LE_ASSERT(LE_OK == le_tty_GetBaudRate(fd, &ispeed, &ospeed))
-            LE_ASSERT(!((i == ispeed) && (i == ospeed)))
+            LE_ASSERT(LE_UNSUPPORTED == result);
+            LE_ASSERT(LE_OK == le_tty_GetBaudRate(fd, &ispeed, &ospeed));
+            LE_ASSERT(!((i == ispeed) && (i == ospeed)));
         }
     }
 
@@ -164,17 +164,17 @@ static void TestTtySetFraming
                 result = le_tty_SetFraming(fd, parity[p],dataBits[d],stopBits[s]);
                 if ( LE_OK != result )
                 {
-                    LE_ASSERT(LE_UNSUPPORTED == result)
+                    LE_ASSERT(LE_UNSUPPORTED == result);
                 }
             }
         }
     }
 
-    LE_ASSERT(LE_NOT_FOUND == le_tty_SetFraming(fd, 'Z', 8, 1))
-    LE_ASSERT(LE_NOT_FOUND == le_tty_SetFraming(fd, 'N', 9, 1))
-    LE_ASSERT(LE_NOT_FOUND == le_tty_SetFraming(fd, 'N', 8, 0))
+    LE_ASSERT(LE_NOT_FOUND == le_tty_SetFraming(fd, 'Z', 8, 1));
+    LE_ASSERT(LE_NOT_FOUND == le_tty_SetFraming(fd, 'N', 9, 1));
+    LE_ASSERT(LE_NOT_FOUND == le_tty_SetFraming(fd, 'N', 8, 0));
 
-    LE_ASSERT(LE_OK == le_tty_SetFraming(fd, 'N', 8, 1))
+    LE_ASSERT(LE_OK == le_tty_SetFraming(fd, 'N', 8, 1));
 
     TestTtyClose(fd);
 }

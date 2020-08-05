@@ -1426,7 +1426,7 @@ static void TestSim_ApduOnLogicalChannel
     uint8_t expectedResult[] = {0x90, 0x00};
 
     // Test le_sim_OpenLogicalChannel() API
-    LE_ASSERT(LE_BAD_PARAMETER == le_sim_OpenLogicalChannel(NULL))
+    LE_ASSERT(LE_BAD_PARAMETER == le_sim_OpenLogicalChannel(NULL));
     LE_ASSERT_OK(le_sim_OpenLogicalChannel(&channel));
     LE_ASSERT(channel);
 

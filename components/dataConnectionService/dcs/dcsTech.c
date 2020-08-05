@@ -262,7 +262,6 @@ le_result_t dcsTech_GetNetInterface
 )
 {
     le_result_t ret;
-    char *channelName;
     le_dcs_channelDb_t *channelDb;
 
     if ((tech == LE_DCS_TECH_UNKNOWN) || (tech >= LE_DCS_TECH_MAX))
@@ -277,7 +276,6 @@ le_result_t dcsTech_GetNetInterface
         LE_ERROR("Invalid channel reference %p for getting network interface", channelRef);
         return LE_FAULT;
     }
-    channelName = channelDb->channelName;
 
     intfName[0] = '\0';
     switch (tech)
@@ -301,7 +299,8 @@ le_result_t dcsTech_GetNetInterface
     }
     if (LE_OK != ret)
     {
-        LE_ERROR("Failed to get network interface of channel %s of technology %s", channelName,
+        LE_ERROR("Failed to get network interface of channel %s of technology %s",
+                 channelDb->channelName,
                  dcs_ConvertTechEnumToName(tech));
     }
     return ret;

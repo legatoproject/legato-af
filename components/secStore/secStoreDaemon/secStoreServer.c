@@ -366,18 +366,13 @@ static le_result_t SetCurrSystem
     if (IsSystemInList(currIndex, &SecStoreSystems))
     {
         // Get the secure storage system's hash.
-        char secSysHash[MD5_STR_BYTES];
+        char secSysHash[MD5_STR_BYTES] = {0};
         size_t hashLen = sizeof(secSysHash);
         bool isReadOnly = (0 == access("/legato/systems/current/read-only", R_OK));
 
         result = pa_secStore_Read(secSysHashPath, (uint8_t*)secSysHash, &hashLen);
 
         LE_FATAL_IF(result == LE_OVERFLOW, "Hash value from '%s' is too long.", secSysHashPath);
-
-        if ( (result != LE_OK) && (result != LE_NOT_FOUND) )
-        {
-            return result;
-        }
 
         if (result == LE_OK)
         {
@@ -386,10 +381,13 @@ static le_result_t SetCurrSystem
             {
                 return LE_OK;
             }
+            LE_WARN("Hash values of '%s' mismatch, deleting its content.", secSysHashPath);
+            LE_WARN("Current hash is '%s', secStore hash is '%s'", currHash, secSysHash);
         }
-
-        LE_WARN("Hash values of '%s' mismatch, deleting its content.", secSysHashPath);
-        LE_WARN("Current hash is '%s', secStore hash is '%s'", currHash, secSysHash);
+        else
+        {
+            LE_WARN("Hash '%s' is unreadable, deleting the content", secSysHashPath);
+        }
 
         // This system is invalid and needs to be deleted.
         result = pa_secStore_Delete(CurrSysPath);

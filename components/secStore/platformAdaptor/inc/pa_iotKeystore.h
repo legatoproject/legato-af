@@ -75,13 +75,17 @@ LE_SHARED le_result_t pa_iks_DeleteModuleId
  * Gets a reference to a key.
  *
  * @return
- *      Reference to the key.
- *      0 if the key could not be found.
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_NOT_FOUND
+ *      LE_NO_MEMORY
+ *      LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED uint64_t pa_iks_GetKey
+LE_SHARED le_result_t pa_iks_GetKey
 (
-    const char*     keyId           ///< [IN] Identifier string.
+    const char*     keyId,          ///< [IN] Identifier string.
+    uint64_t*       keyRefPtr       ///< [OUT] Key reference.
 );
 
 
@@ -90,14 +94,18 @@ LE_SHARED uint64_t pa_iks_GetKey
  * Creates a new key.
  *
  * @return
- *      Reference to the key if successful.
- *      0 if the keyId is already being used or is invalid or the keyUsage is invalid.
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_DUPLICATE
+ *      LE_NO_MEMORY
+ *      LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED uint64_t pa_iks_CreateKey
+LE_SHARED le_result_t pa_iks_CreateKey
 (
     const char*         keyId,      ///< [IN] Identifier string.
-    uint32_t            keyUsage    ///< [IN] Key usage.
+    uint32_t            keyUsage,   ///< [IN] Key usage.
+    uint64_t*           keyRefPtr   ///< [OUT] Key reference.
 );
 
 
@@ -106,15 +114,20 @@ LE_SHARED uint64_t pa_iks_CreateKey
  * Creates a new key of a specific type.
  *
  * @return
- *      Reference to the key if successful.
- *      0 if the keyId is already being used or if there was some other error.
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_DUPLICATE
+ *      LE_OUT_OF_RANGE
+ *      LE_NO_MEMORY
+ *      LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED uint64_t pa_iks_CreateKeyByType
+LE_SHARED le_result_t pa_iks_CreateKeyByType
 (
     const char*         keyId,      ///< [IN] Identifier string.
     int32_t             keyType,    ///< [IN] Key type.
-    uint32_t            keySize     ///< [IN] Key size in bytes.
+    uint32_t            keySize,    ///< [IN] Key size in bytes.
+    uint64_t*           keyRefPtr   ///< [OUT] Key reference.
 );
 
 
@@ -303,13 +316,17 @@ LE_SHARED le_result_t pa_iks_GetPubKeyValue
  * Gets a reference to a digest.
  *
  * @return
- *      Reference to the digest.
- *      0 if the digest could not be found.
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_NOT_FOUND
+ *      LE_NO_MEMORY
+ *      LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED uint64_t pa_iks_GetDigest
+LE_SHARED le_result_t pa_iks_GetDigest
 (
-    const char* digestId ///< [IN] Identifier string.
+    const char* digestId,       ///< [IN] Identifier string.
+    uint64_t*   digestRefPtr    ///< [OUT] Digest reference.
 );
 
 
@@ -318,14 +335,19 @@ LE_SHARED uint64_t pa_iks_GetDigest
  * Creates a new digest.
  *
  * @return
- *      Reference to the digest if successful.
- *      0 if there was an error.
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_DUPLICATE
+ *      LE_OUT_OF_RANGE
+ *      LE_NO_MEMORY
+ *      LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED uint64_t pa_iks_CreateDigest
+LE_SHARED le_result_t pa_iks_CreateDigest
 (
-    const char*     digestId,   ///< [IN] Identifier string.
-    uint32_t        digestSize  ///< [IN] Digest size. Must be <= MAX_DIGEST_SIZE.
+    const char*     digestId,       ///< [IN] Identifier string.
+    uint32_t        digestSize,     ///< [IN] Digest size. Must be <= MAX_DIGEST_SIZE.
+    uint64_t*       digestRefPtr    ///< [OUT] Digest reference.
 );
 
 
@@ -481,13 +503,16 @@ LE_SHARED le_result_t pa_iks_GetProvisionKey
  * Create a session.
  *
  * @return
- *      A session reference if successful.
- *      0 if the key reference is invalid or does not contain a key value.
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_NO_MEMORY
+ *      LE_FAULT
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED uint64_t pa_iks_CreateSession
+LE_SHARED le_result_t pa_iks_CreateSession
 (
-    uint64_t            keyRef      ///< [IN] Key reference.
+    uint64_t    keyRef,         ///< [IN] Key reference.
+    uint64_t*   sessionRefPtr   ///< [OUT] Session reference.
 );
 
 
@@ -1022,6 +1047,384 @@ LE_SHARED le_result_t pa_iks_hmac_Verify
     uint64_t session,           ///< [IN] Session reference.
     const uint8_t* tagBufPtr,   ///< [IN] Authentication tag to check against.
     size_t tagBufSize           ///< [IN] Authentication tag size. Cannot be zero.
+);
+
+
+//========================= RSA routines =====================
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Encrypts a message with RSAES-OAEP (RSA Encryption Scheme - Optimal Asymmetric Encryption
+ * Padding).
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_OUT_OF_RANGE
+ *      LE_OVERFLOW
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_rsa_Oaep_Encrypt
+(
+    uint64_t keyRef,                ///< [IN] Key reference.
+    const uint8_t* labelPtr,        ///< [IN] Label. NULL if not used.
+    size_t labelSize,               ///< [IN] Label size.
+    const uint8_t* plaintextPtr,    ///< [IN] Plaintext. NULL if not used.
+    size_t plaintextSize,           ///< [IN] Plaintext size.
+    uint8_t* ciphertextPtr,         ///< [OUT] Buffer to hold the ciphertext.
+    size_t* ciphertextSizePtr       ///< [INOUT] Ciphertext buffer size.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decrypts a message with RSAES-OAEP (RSA Encryption Scheme - Optimal Asymmetric Encryption
+ * Padding).
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_OUT_OF_RANGE
+ *      LE_FORMAT_ERROR
+ *      LE_OVERFLOW
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_rsa_Oaep_Decrypt
+(
+    uint64_t keyRef,                ///< [IN] Key reference.
+    const uint8_t* labelPtr,        ///< [IN] Label. NULL if not used.
+    size_t labelSize,               ///< [IN] Label size.
+    const uint8_t* ciphertextPtr,   ///< [IN] Ciphertext.
+    size_t ciphertextSize,          ///< [IN] Ciphertext size.
+    uint8_t* plaintextPtr,          ///< [OUT] Buffer to hold the plaintext.
+    size_t* plaintextSizePtr        ///< [INOUT] Plaintext size.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generates a signature on the hash digest of a message with RSASSA-PSS (RSA Signature Scheme with
+ * Appendix - Probabilistic Signature Scheme).
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_OUT_OF_RANGE
+ *      LE_OVERFLOW
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_rsa_Pss_GenSig
+(
+    uint64_t keyRef,            ///< [IN] Key reference.
+    uint32_t saltSize,          ///< [IN] Salt size.
+    const uint8_t* digestPtr,   ///< [IN] Digest to sign.
+    size_t digestSize,          ///< [IN] Digest size.
+    uint8_t* signaturePtr,      ///< [OUT] Buffer to hold the signature.
+    size_t* signatureSizePtr    ///< [INOUT] Signature size.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Verifies a signature of the hash digest of a message with RSASSA-PSS (RSA Signature Scheme with
+ * Appendix - Probabilistic Signature Scheme).
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_OUT_OF_RANGE
+ *      LE_FORMAT_ERROR
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_rsa_Pss_VerifySig
+(
+    uint64_t keyRef,                ///< [IN] Key reference.
+    uint32_t saltSize,              ///< [IN] Salt size.
+    const uint8_t* digestPtr,       ///< [IN] Digest to sign.
+    size_t digestSize,              ///< [IN] Digest size.
+    const uint8_t* signaturePtr,    ///< [IN] Signature of the message.
+    size_t signatureSize            ///< [IN] Signature size.
+);
+
+
+//========================= ECC routines =====================
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate a shared secret between an ECC private key and an ECC public key.
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_ecc_Ecdh_GetSharedSecret
+(
+    uint64_t privKeyRef,    ///< [IN] Private key reference.
+    uint64_t pubKeyRef,     ///< [IN] Publid Key reference.
+    uint8_t* secretPtr,     ///< [OUT] Buffer to hold the shared secret.
+    size_t* secretSizePtr   ///< [INOUT] Shared secret size.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate an ECDSA signature on the hash digest of a message.
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_OVERFLOW
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_ecc_Ecdsa_GenSig
+(
+    uint64_t keyRef,            ///< [IN] Key reference.
+    const uint8_t* digestPtr,   ///< [IN] Digest to sign.
+    size_t digestSize,          ///< [IN] Digest size.
+    uint8_t* signaturePtr,      ///< [OUT] Buffer to hold the signature.
+    size_t* signatureSizePtr    ///< [INOUT] Signature size.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Verifies a signature of the hash digest of a message with ECDSA.
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_FORMAT_ERROR
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_ecc_Ecdsa_VerifySig
+(
+    uint64_t keyRef,                ///< [IN] Key reference.
+    const uint8_t* digestPtr,       ///< [IN] Digest of the message.
+    size_t digestSize,              ///< [IN] Digest size.
+    const uint8_t* signaturePtr,    ///< [IN] Signature of the message.
+    size_t signatureSize            ///< [IN] Signature size.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Encrypts and integrity protects of a short message with ECIES (Elliptic Curve Integrated
+ * Encryption System).
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_OUT_OF_RANGE
+ *      LE_OVERFLOW
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_ecc_Ecies_EncryptPacket
+(
+    uint64_t keyRef,                ///< [IN] Key reference.
+    const uint8_t* labelPtr,        ///< [IN] Label. NULL if not used.
+    size_t labelSize,               ///< [IN] Label size.
+    const uint8_t* aadPtr,          ///< [IN] AAD chunk. NULL if not used.
+    size_t aadSize,                 ///< [IN] AAD chunk size.
+    const uint8_t* plaintextPtr,    ///< [IN] Plaintext chunk. NULL if not used.
+    size_t plaintextSize,           ///< [IN] Plaintext chunk size.
+    uint8_t* ciphertextPtr,         ///< [OUT] Buffer to hold the ciphertext chunk.
+    size_t* ciphertextSizePtr,      ///< [INOUT] Ciphertext chunk size.
+    uint8_t* ephemKeyPtr,           ///< [OUT] Serialized ephemeral public key.
+    size_t* ephemKeySizePtr,        ///< [INOUT] Serialized ephemeral key size.
+    uint8_t* saltPtr,               ///< [OUT] Buffer to hold the salt.
+    size_t* saltSizePtr,            ///< [INOUT] Salt size.
+    uint8_t* tagPtr,                ///< [OUT] Buffer to hold the authentication tag.
+    size_t* tagSizePtr              ///< [INOUT] Tag size. Cannot be zero.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decrypts and checks the integrity of a short message with ECIES (Elliptic Curve Integrated
+ * Encryption System).
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_OUT_OF_RANGE
+ *      LE_OVERFLOW
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_ecc_Ecies_DecryptPacket
+(
+    uint64_t keyRef,                ///< [IN] Key reference.
+    const uint8_t* labelPtr,        ///< [IN] Label. NULL if not used.
+    size_t labelSize,               ///< [IN] Label size.
+    const uint8_t* aadPtr,          ///< [IN] AAD chunk. NULL if not used.
+    size_t aadSize,                 ///< [IN] AAD size.
+    const uint8_t* ephemKeyPtr,     ///< [IN] Serialized ephemeral public key.
+    size_t ephemKeySize,            ///< [IN] Ephemeral public key size.
+    const uint8_t* saltPtr,         ///< [IN] Salt.
+    size_t saltSize,                ///< [IN] Salt size.
+    const uint8_t* ciphertextPtr,   ///< [IN] Ciphertext chunk.
+    size_t ciphertextSize,          ///< [IN] Ciphertext chunk size.
+    uint8_t* plaintextPtr,          ///< [OUT] Buffer to hold the plaintext chunk.
+    size_t* plaintextSizePtr,       ///< [INOUT] Plaintext chunk size.
+    const uint8_t* tagPtr,          ///< [IN] Authentication tag.
+    size_t tagSize                  ///< [IN] Tag size.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Starts a process to encrypt and integrity protect a message with ECIES (Elliptic Curve Integrated
+ * Encryption System).
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_OUT_OF_RANGE
+ *      LE_OVERFLOW
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_ecc_Ecies_StartEncrypt
+(
+    uint64_t session,           ///< [IN] Session reference.
+    const uint8_t* labelPtr,    ///< [IN] Label. NULL if not used.
+    size_t labelSize,           ///< [IN] Label size.
+    uint8_t* ephemKeyPtr,       ///< [OUT] Serialized ephemeral public key.
+    size_t* ephemKeySizePtr,    ///< [INOUT] Ephemeral public key size.
+    uint8_t* saltPtr,           ///< [OUT] Buffer to hold the salt.
+    size_t* saltSizePtr         ///< [INOUT] Salt size.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Process a chunk of AAD (Additional Authenticated Data).
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_OUT_OF_RANGE
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_ecc_Ecies_ProcessAad
+(
+    uint64_t session,               ///< [IN] Session reference.
+    const uint8_t* aadChunkPtr,     ///< [IN] AAD chunk.
+    size_t aadChunkSize             ///< [IN] AAD chunk size.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Encrypt a chunk of plaintext.
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_OUT_OF_RANGE
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_ecc_Ecies_Encrypt
+(
+    uint64_t session,                   ///< [IN] Session reference.
+    const uint8_t* plaintextChunkPtr,   ///< [IN] Plaintext chunk. NULL if not used.
+    size_t plaintextChunkSize,          ///< [IN] Plaintext chunk size.
+    uint8_t* ciphertextChunkPtr,        ///< [OUT] Buffer to hold the ciphertext chunk.
+    size_t* ciphertextChunkSizePtr      ///< [INOUT] Ciphertext chunk size.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Complete encryption and calculate the authentication tag.
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_OVERFLOW
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_ecc_Ecies_DoneEncrypt
+(
+    uint64_t session,   ///< [IN] Session reference.
+    uint8_t* tagPtr,    ///< [OUT] Buffer to hold the authentication tag.
+    size_t* tagSizePtr  ///< [INOUT] Tag size.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Starts a process to decrypt and check the integrity of a message with ECIES (Elliptic Curve
+ * Integrated Encryption System).
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_OUT_OF_RANGE
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_ecc_Ecies_StartDecrypt
+(
+    uint64_t session,           ///< [IN] Session reference.
+    const uint8_t* labelPtr,    ///< [IN] Label. NULL if not used.
+    size_t labelSize,           ///< [IN] Label size.
+    const uint8_t* ephemKeyPtr, ///< [IN] Serialized ephemeral public key.
+    size_t ephemKeySize,        ///< [IN] Ephemeral public key size.
+    const uint8_t* saltPtr,     ///< [IN] Salt.
+    size_t saltSize             ///< [IN] Salt size.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decrypt a chunk of ciphertext.
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_OUT_OF_RANGE
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_ecc_Ecies_Decrypt
+(
+    uint64_t session,                   ///< [IN] Session reference.
+    const uint8_t* ciphertextChunkPtr,  ///< [IN] Ciphertext chunk.
+    size_t ciphertextChunkSize,         ///< [IN] Ciphertext chunk size.
+    uint8_t* plaintextChunkPtr,         ///< [OUT] Buffer to hold the plaintext chunk.
+    size_t* plaintextChunkSizePtr       ///< [INOUT] Plaintext chunk size.
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Complete decryption and verify the integrity.
+ *
+ * @return
+ *      LE_OK
+ *      LE_BAD_PARAMETER
+ *      LE_FAULT
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_iks_ecc_Ecies_DoneDecrypt
+(
+    uint64_t session,       ///< [IN] Session reference.
+    const uint8_t* tagPtr,  ///< [IN] Authentication tag.
+    size_t tagSize          ///< [IN] Tag size.
 );
 
 #endif // LEGATO_PA_IOT_KEYSTORE_INCLUDE_GUARD

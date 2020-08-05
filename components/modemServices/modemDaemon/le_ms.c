@@ -21,11 +21,14 @@
 #include "le_ips_local.h"
 #include "sysResets.h"
 
+#if !MK_CONFIG_MODEMSERVICE_NO_LPT
+#include "le_lpt_local.h"
+#endif
+
 #if !MK_CONFIG_MODEMSERVICE_SIMPLE
 #include "le_mcc_local.h"
 #include "le_ecall_local.h"
 #include "le_antenna_local.h"
-#include "le_lpt_local.h"
 #endif
 
 #include "watchdogChain.h"
@@ -54,9 +57,11 @@ COMPONENT_INIT
     le_sim_Init();
     le_sms_Init();
     le_mdc_Init();
+#if !MK_CONFIG_MODEMSERVICE_NO_LPT
+    le_lpt_Init();
+#endif
 #if !MK_CONFIG_MODEMSERVICE_SIMPLE
     le_mcc_Init();
-    le_lpt_Init();
 #endif
     le_ips_Init();
     le_temp_Init();

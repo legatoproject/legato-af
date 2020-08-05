@@ -642,15 +642,23 @@ config RPC_PROXY_SERVICE_BINDINGS_MAX_NUM
   int "Maximum number of RPC service bindings"
   depends on RPC
   range 0 30
-  default 10
+  default 4
   ---help---
   The maximum number of simultaneous RPC service bindings.
+
+config RPC_PROXY_FILE_STREAM_MAX_NUM
+  int "Maximum number of simultaneous file streams"
+  depends on RPC
+  range 0 30
+  default 5
+  ---help---
+  The maximum number of simultaneous RPC file streams.
 
 config RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM
   int "Maximum number of response message parameters"
   depends on RPC
   range 0 32
-  default 32
+  default 5
   ---help---
   The maximum number of "out" parameters per response message.
 
@@ -658,9 +666,26 @@ config RPC_PROXY_MAX_MESSAGE
   int "Maximum size of a RPC message"
   depends on RPC
   range 0 4096
-  default 1024
+  default 512
   ---help---
   The maximum size of a RPC message that can be sent and received between RPC-enabled systems.
+
+config RPC_PROXY_ASYNC_EVENT_HANDLER_MAX_NUM
+  int "Maximum number of async event handlers"
+  depends on RPC
+  range 0 4294967295
+  default 5
+  ---help---
+  The maximum number of async event handlers client can register with server.
+
+config RPC_PROXY_ASYNC_EVENTS_MAX_NUM
+  int "Maximum number of simultaneous async events"
+  depends on RPC
+  range 2 4294967295
+  default 3
+  ---help---
+  The maximum number of async events that can be buffered before they are sent out
+  to wire or consumend by client.
 
 config RPC_PROXY_NETWORK_KEEPALIVE_SERVICE_INTERVAL
   int "Frequency of RPC Keep-Alive network service (in seconds)"

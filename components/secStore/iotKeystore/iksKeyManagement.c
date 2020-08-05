@@ -151,13 +151,17 @@ static le_result_t ConvertKeyId
  * Gets a reference to a key.
  *
  * @return
- *      Reference to the key.
- *      0 if the key could not be found.
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the keyId is invalid or keyRef is NULL.
+ *      LE_NOT_FOUND if the key does not exist.
+ *      LE_NO_MEMORY if there is not enough memory to retrieve the key.
+ *      LE_FAULT if there was an internal error.
  */
 //--------------------------------------------------------------------------------------------------
-uint64_t le_iks_GetKey
+le_result_t le_iks_GetKey
 (
-    const char*     keyId           ///< [IN] Identifier string.
+    const char*     keyId,          ///< [IN] Identifier string.
+    uint64_t*       keyRefPtr       ///< [OUT] Key reference.
 )
 {
     char fullKeyIdBuf[LE_IKS_MAX_KEY_ID_BYTES] = {0};
@@ -165,9 +169,9 @@ uint64_t le_iks_GetKey
     if (LE_OK != ConvertKeyId(keyId, fullKeyIdBuf, sizeof(fullKeyIdBuf)))
     {
         LE_ERROR("Error converting key '%s'", keyId);
-        return 0;
+        return LE_FAULT;
     }
-    return pa_iks_GetKey(fullKeyIdBuf);
+    return pa_iks_GetKey(fullKeyIdBuf, keyRefPtr);
 }
 
 
@@ -185,14 +189,18 @@ uint64_t le_iks_GetKey
  * the key to persistent memory.
  *
  * @return
- *      Reference to the key if successful.
- *      0 if the keyId is already being used or is invalid or the keyUsage is invalid.
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the keyId or keyUsage is invalid or if keyRef is NULL.
+ *      LE_DUPLICATE if the keyId is already being used.
+ *      LE_NO_MEMORY if there is not enough memory to create the key.
+ *      LE_FAULT if there was an internal error.
  */
 //--------------------------------------------------------------------------------------------------
-uint64_t le_iks_CreateKey
+le_result_t le_iks_CreateKey
 (
     const char*         keyId,      ///< [IN] Identifier string.
-    le_iks_KeyUsage_t   keyUsage    ///< [IN] Key usage.
+    le_iks_KeyUsage_t   keyUsage,   ///< [IN] Key usage.
+    uint64_t*           keyRefPtr   ///< [OUT] Key reference.
 )
 {
     char fullKeyIdBuf[LE_IKS_MAX_KEY_ID_BYTES] = {0};
@@ -200,10 +208,10 @@ uint64_t le_iks_CreateKey
     if (LE_OK != ConvertKeyId(keyId, fullKeyIdBuf, sizeof(fullKeyIdBuf)))
     {
         LE_ERROR("Error converting key '%s'", keyId);
-        return 0;
+        return LE_FAULT;
     }
 
-    return pa_iks_CreateKey(fullKeyIdBuf, keyUsage);
+    return pa_iks_CreateKey(fullKeyIdBuf, keyUsage, keyRefPtr);
 }
 
 
@@ -218,15 +226,20 @@ uint64_t le_iks_CreateKey
  * the key to persistent memory.
  *
  * @return
- *      Reference to the key if successful.
- *      0 if the keyId is already being used or if there was some other error.
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the keyId or keyType is invalid or if keyRef is NULL.
+ *      LE_DUPLICATE if the keyId is already being used.
+ *      LE_OUT_OF_RANGE if the key size is invalid.
+ *      LE_NO_MEMORY if there is not enough memory to create the key.
+ *      LE_FAULT if there was an internal error.
  */
 //--------------------------------------------------------------------------------------------------
-uint64_t le_iks_CreateKeyByType
+le_result_t le_iks_CreateKeyByType
 (
     const char*         keyId,      ///< [IN] Identifier string.
     le_iks_KeyType_t    keyType,    ///< [IN] Key type.
-    uint32_t            keySize     ///< [IN] Key size in bytes.
+    uint32_t            keySize,    ///< [IN] Key size in bytes.
+    uint64_t*           keyRefPtr   ///< [OUT] Key reference.
 )
 {
     char fullKeyIdBuf[LE_IKS_MAX_KEY_ID_BYTES] = {0};
@@ -234,10 +247,10 @@ uint64_t le_iks_CreateKeyByType
     if (LE_OK != ConvertKeyId(keyId, fullKeyIdBuf, sizeof(fullKeyIdBuf)))
     {
         LE_ERROR("Error converting key '%s'", keyId);
-        return 0;
+        return LE_FAULT;
     }
 
-    return pa_iks_CreateKeyByType(fullKeyIdBuf, keyType, keySize);
+    return pa_iks_CreateKeyByType(fullKeyIdBuf, keyType, keySize, keyRefPtr);
 }
 
 
@@ -534,16 +547,20 @@ le_result_t le_iks_GetPubKeyValue
  * Digest IDs may only consist of alphanumeric characters, the underscore '_' and hyphen '-'.
  *
  * @return
- *      Reference to the digest.
- *      0 if the digest could not be found.
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the digestId is invalid or if digestRef is NULL.
+ *      LE_NOT_FOUND if the digest does not exist.
+ *      LE_NO_MEMORY if there is not enough memory to retrieve the digest.
+ *      LE_FAULT if there was an internal error.
  */
 //--------------------------------------------------------------------------------------------------
-uint64_t le_iks_GetDigest
+le_result_t le_iks_GetDigest
 (
-    const char* digestId ///< [IN] Identifier string.
+    const char* digestId,       ///< [IN] Identifier string.
+    uint64_t*   digestRefPtr    ///< [OUT] Digest reference.
 )
 {
-    return pa_iks_GetDigest(digestId);
+    return pa_iks_GetDigest(digestId, digestRefPtr);
 }
 
 
@@ -559,17 +576,22 @@ uint64_t le_iks_GetDigest
  * Digest IDs may only consist of alphanumeric characters, the underscore '_' and hyphen '-'.
  *
  * @return
- *      Reference to the digest if successful.
- *      0 if there was an error.
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the digestId is invalid or if digestRef is NULL.
+ *      LE_DUPLICATE if the digestId is already being used.
+ *      LE_OUT_OF_RANGE if the digest size is invalid.
+ *      LE_NO_MEMORY if there is not enough memory to create the digest.
+ *      LE_FAULT if there was an internal error.
  */
 //--------------------------------------------------------------------------------------------------
-uint64_t le_iks_CreateDigest
+le_result_t le_iks_CreateDigest
 (
-    const char*     digestId,   ///< [IN] Identifier string.
-    uint32_t        digestSize  ///< [IN] Digest size. Must be <= MAX_DIGEST_SIZE.
+    const char*     digestId,       ///< [IN] Identifier string.
+    uint32_t        digestSize,     ///< [IN] Digest size. Must be <= MAX_DIGEST_SIZE.
+    uint64_t*       digestRefPtr    ///< [OUT] Digest reference.
 )
 {
-    return pa_iks_CreateDigest(digestId, digestSize);
+    return pa_iks_CreateDigest(digestId, digestSize, digestRefPtr);
 }
 
 
@@ -799,16 +821,20 @@ le_result_t le_iks_GetProvisionKey
  * Create a session.
  *
  * @return
- *      A session reference if successful.
- *      0 if the key reference is invalid or does not contain a key value.
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the key reference is invalid
+ *                       or if the key does not contain a key value or sessionRef is NULL.
+ *      LE_NO_MEMORY if there is not enough memory to create the session.
+ *      LE_FAULT if there was an internal error.
  */
 //--------------------------------------------------------------------------------------------------
-uint64_t le_iks_CreateSession
+le_result_t le_iks_CreateSession
 (
-    uint64_t            keyRef      ///< [IN] Key reference.
+    uint64_t    keyRef,         ///< [IN] Key reference.
+    uint64_t*   sessionRefPtr   ///< [OUT] Session reference.
 )
 {
-    return pa_iks_CreateSession(keyRef);
+    return pa_iks_CreateSession(keyRef, sessionRefPtr);
 }
 
 

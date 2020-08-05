@@ -41,6 +41,7 @@
 //--------------------------------------------------------------------------------------------------
 
 #ifdef MK_CONFIG_SMS_LIGHT
+  #ifndef MK_CONFIG_DISABLE_SMS_INDICATION
 //--------------------------------------------------------------------------------------------------
 /**
  * Maximum number of session objects we expect to have at one time.
@@ -92,6 +93,7 @@ static le_sms_MsgRef_t MsgRef;
  */
 //--------------------------------------------------------------------------------------------------
 static HandlerCtx_t* HandlerCtxPtr = NULL;
+  #endif // MK_CONFIG_DISABLE_SMS_INDICATION
 
 #else
 //--------------------------------------------------------------------------------------------------
@@ -382,7 +384,7 @@ LE_MEM_DEFINE_STATIC_POOL(SmsReference,
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t   ReferencePool;
 
-
+#ifndef MK_CONFIG_DISABLE_SMS_INDICATION
 //--------------------------------------------------------------------------------------------------
 /**
  * Static memory pool for handlers context.
@@ -400,6 +402,7 @@ LE_MEM_DEFINE_STATIC_POOL(Handler,
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t   HandlerPool;
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -438,6 +441,7 @@ LE_MEM_DEFINE_STATIC_POOL(MsgRef,
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t   MsgRefPool;
 
+#ifndef MK_CONFIG_DISABLE_SMS_INDICATION
 //--------------------------------------------------------------------------------------------------
 /**
  * Static safe Reference Map for handlers objects.
@@ -453,6 +457,7 @@ LE_REF_DEFINE_STATIC_MAP(HandlerRefMap, SMS_MAX_SESSION);
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t HandlerRefMap;
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1716,6 +1721,7 @@ static void RemoveMsgRefFromSessionCtx
     }
 }
 
+#ifndef MK_CONFIG_DISABLE_SMS_INDICATION
 //--------------------------------------------------------------------------------------------------
 /**
  * Call all subscribed handlers.
@@ -1788,7 +1794,7 @@ static void MessageHandlers
         }
     }
 }
-
+#endif // MK_CONFIG_DISABLE_SMS_INDICATION
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2238,6 +2244,7 @@ static void CloseSessionEventHandler
 }
 #endif
 
+#ifndef MK_CONFIG_DISABLE_SMS_INDICATION
 //--------------------------------------------------------------------------------------------------
 /**
  * New SMS message handler function.
@@ -2386,6 +2393,7 @@ static void NewSmsHandler
              &newSmsMsgObjPtr, newSmsMsgObjPtr);
 #endif
 }
+#endif // MK_CONFIG_DISABLE_SMS_INDICATION
 
 //--------------------------------------------------------------------------------------------------
 //                                       Public declarations
@@ -5018,6 +5026,10 @@ le_sms_RxMessageHandlerRef_t le_sms_AddRxMessageHandler
     void*                         contextPtr      ///< [IN] The handler's context.
 )
 {
+#ifdef MK_CONFIG_DISABLE_SMS_INDICATION
+    LE_WARN("SMS indications are disabled, skipping handler registeration!");
+    return NULL;
+#else
     if (NULL == handlerFuncPtr)
     {
         LE_KILL_CLIENT("handlerFuncPtr is NULL !");
@@ -5068,6 +5080,7 @@ le_sms_RxMessageHandlerRef_t le_sms_AddRxMessageHandler
 
     return handlerCtxPtr->handlerRef;
 #endif
+#endif // MK_CONFIG_DISABLE_SMS_INDICATION
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -5082,6 +5095,10 @@ void le_sms_RemoveRxMessageHandler
     le_sms_RxMessageHandlerRef_t   handlerRef ///< [IN] The handler reference.
 )
 {
+#ifdef MK_CONFIG_DISABLE_SMS_INDICATION
+    LE_WARN("SMS indications are disabled, skipping handler removal!");
+    return;
+#else
 #ifdef MK_CONFIG_SMS_LIGHT
     if (!HandlerCtxPtr)
     {
@@ -5121,6 +5138,7 @@ void le_sms_RemoveRxMessageHandler
     le_dls_Remove(&(sessionCtxPtr->handlerList), &(handlerCtxPtr->link));
     le_mem_Release(handlerCtxPtr);
 #endif
+#endif // MK_CONFIG_DISABLE_SMS_INDICATION
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -5137,10 +5155,12 @@ le_result_t le_sms_Init
 )
 {
 #ifdef MK_CONFIG_SMS_LIGHT
+  #ifndef MK_CONFIG_DISABLE_SMS_INDICATION
     // Create pool for received message handler.
     HandlerPool = le_mem_InitStaticPool(Handler,
                                         SMS_MAX_SESSION,
                                         sizeof(HandlerCtx_t));
+  #endif
 #else
     // Initialize the smsPdu module.
     smsPdu_Initialize();
@@ -5176,6 +5196,7 @@ le_result_t le_sms_Init
                                        SMS_MAX_SESSION*MAX_NUM_OF_SMS_MSG,
                                        sizeof(MsgRefNode_t));
 
+#ifndef MK_CONFIG_DISABLE_SMS_INDICATION
     // Create pool for received message handler.
     HandlerPool = le_mem_InitStaticPool(Handler,
                                         SMS_MAX_SESSION,
@@ -5183,6 +5204,7 @@ le_result_t le_sms_Init
 
     // Create safe reference map to use handler object safe references.
     HandlerRefMap = le_ref_InitStaticMap(HandlerRefMap, SMS_MAX_SESSION);
+#endif
 
     // Create pool for client session list.
     SessionCtxPool = le_mem_InitStaticPool(SessionCtx,
@@ -5212,11 +5234,14 @@ le_result_t le_sms_Init
     le_sem_Wait(SmsSem);
 #endif
 
+#ifndef MK_CONFIG_DISABLE_SMS_INDICATION
     // Register a handler function for new message indication.
     if (pa_sms_SetNewMsgHandler(NewSmsHandler) != LE_OK)
     {
         LE_CRIT("Add pa_sms_SetNewMsgHandler failed");
         return LE_FAULT;
     }
+#endif
+
     return LE_OK;
 }

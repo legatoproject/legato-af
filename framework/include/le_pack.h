@@ -53,6 +53,10 @@ typedef uint8_t TagID_t;
 #define LE_PACK_OUT_ARRAY_POINTER     21
 #define LE_PACK_STRING_RESPONSE_SIZE  22
 #define LE_PACK_ARRAY_RESPONSE_SIZE   23
+#define LE_PACK_CONTEXT_PTR_REFERENCE 24
+#define LE_PACK_ASYNC_HANDLER_REFERENCE 25
+#define LE_PACK_FILESTREAM_ID         26
+#define LE_PACK_FILESTREAM_FLAG       27
 
 #define LE_PACK_SIZEOF_TAG_ID         sizeof(TagID_t)
 #define LE_PACK_SIZEOF_BOOL           sizeof(bool)
@@ -70,6 +74,8 @@ typedef uint8_t TagID_t;
 #define LE_PACK_SIZEOF_ONOFF          LE_PACK_SIZEOF_UINT32
 #define LE_PACK_SIZEOF_SIZE           LE_PACK_SIZEOF_UINT32
 #define LE_PACK_SIZEOF_REFERENCE      LE_PACK_SIZEOF_UINT32
+#define LE_PACK_SIZEOF_FILESTREAM_ID  LE_PACK_SIZEOF_UINT16
+#define LE_PACK_SIZEOF_FILESTREAM_FLAG LE_PACK_SIZEOF_UINT16
 #endif
 
 //--------------------------------------------------------------------------------------------------

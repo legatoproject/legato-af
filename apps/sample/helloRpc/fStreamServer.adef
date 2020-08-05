@@ -1,0 +1,20 @@
+
+sandboxed: false
+
+executables:
+{
+    server = (fStreamServer)
+}
+
+processes:
+{
+    run:
+    {
+        (server)
+    }
+}
+
+extern:
+{
+    fStream = server.fStreamServer.fStream
+}

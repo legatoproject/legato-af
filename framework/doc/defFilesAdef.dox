@@ -384,25 +384,6 @@ Default is @b 8K.
 maxSecureStorageBytes: 4K
 @endcode
 
-
-@section defFilesAdef_pools pools
-
-@warning This feature not yet implemented.
-
-Sets the number of memory pool blocks in a @ref c_memory "memory pool" in a given component
-in a given process.
-
-This overrides any setting for the same pool in the
-@ref defFilesCdef_pools "pools: section of the Component.cdef file".
-
-@code
-pools:
-{
-    myProc.myComponent.myPool = 100
-}
-@endcode
-
-
 @section defFilesAdef_process processes
 
 A @c processes section specifies processes to run when the app is started including

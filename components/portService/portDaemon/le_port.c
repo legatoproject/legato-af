@@ -35,6 +35,15 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Test if support pipe.
+ */
+//--------------------------------------------------------------------------------------------------
+#ifdef LE_FD_PIPE_SERVER
+#       define HAVE_NAMED_PIPE
+#endif
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Maximum number of client applications.
  */
 //--------------------------------------------------------------------------------------------------
@@ -955,6 +964,7 @@ static int32_t OpenSerialDevice
     return fd;
 }
 
+#ifdef HAVE_NAMED_PIPE
 //--------------------------------------------------------------------------------------------------
 /**
  * This function opens the pipe device.
@@ -971,7 +981,7 @@ static int32_t OpenPipeDevice
 {
     int32_t fd;
 
-    fd = le_fd_MkPipe(deviceName, O_RDWR);
+    fd = le_fd_Open(deviceName, O_RDWR | LE_FD_PIPE_SERVER);
     if (-1 == fd)
     {
         LE_ERROR("Failed to open pipe device");
@@ -980,6 +990,7 @@ static int32_t OpenPipeDevice
 
     return fd;
 }
+#endif // HAVE_NAMED_PIPE
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1388,6 +1399,7 @@ static le_result_t OpenInstanceLinks
                     }
                 }
             }
+#ifdef HAVE_NAMED_PIPE
             else if (0 == strcmp(instanceConfigPtr->linkInfo[i]->openingType, "pipeLink"))
             {
                 for (j = 0; j < MAX_POSSIBLE_MODES; j++)
@@ -1418,6 +1430,7 @@ static le_result_t OpenInstanceLinks
                     }
                 }
             }
+#endif // HAVE_NAMED_PIPE
 #if LE_CONFIG_LINUX
             else if (0 == strcmp(instanceConfigPtr->linkInfo[i]->openingType, "unixSocket"))
             {
@@ -1954,6 +1967,7 @@ le_result_t le_port_SetCommandMode
                             return LE_FAULT;
                         }
                     }
+#ifdef HAVE_NAMED_PIPE
                     else if (0 == strcmp(instanceConfigPtr->linkInfo[i]->openingType, "pipeLink"))
                     {
                         instanceConfigPtr->linkInfo[i]->fd =
@@ -1966,6 +1980,7 @@ le_result_t le_port_SetCommandMode
                             return LE_FAULT;
                         }
                     }
+#endif // HAVE_NAMED_PIPE
 #if LE_CONFIG_LINUX
                     else if (0 == strcmp(instanceConfigPtr->linkInfo[i]->openingType, "unixSocket"))
                     {

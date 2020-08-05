@@ -135,14 +135,14 @@ static le_mem_PoolRef_t _ServerDataPool;
  */
 //--------------------------------------------------------------------------------------------------
 LE_REF_DEFINE_STATIC_MAP({{apiName}}_ServerHandlers,
-    LE_MEM_BLOCKS({{apiName}}_ServerCmd, HIGH_SERVER_DATA_COUNT));
+    LE_MEM_BLOCKS({{apiName}}_ServerData, HIGH_SERVER_DATA_COUNT));
 
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Safe Reference Map for use with Add/Remove handler references
  *
- * @warning Use _Mutex, defined below, to protect accesses to this data.
+ * @warning Use {{apiName}}_Server, defined below, to protect accesses to this data.
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t _HandlerRefMap;
@@ -164,14 +164,14 @@ static le_mem_PoolRef_t _ServerCmdPool;
  * Unused attribute is needed because this variable may not always get used.
  */
 //--------------------------------------------------------------------------------------------------
-__attribute__((unused)) static pthread_mutex_t _Mutex = PTHREAD_MUTEX_INITIALIZER;
+__attribute__((unused)) static pthread_mutex_t {{apiName}}_ServerMutex = PTHREAD_MUTEX_INITIALIZER;
     {#- #}   // POSIX "Fast" mutex.
 
 /// Locks the mutex.
-#define _LOCK    LE_ASSERT(pthread_mutex_lock(&_Mutex) == 0);
+#define _LOCK    LE_ASSERT(pthread_mutex_lock(&{{apiName}}_ServerMutex) == 0);
 
 /// Unlocks the mutex.
-#define _UNLOCK  LE_ASSERT(pthread_mutex_unlock(&_Mutex) == 0);
+#define _UNLOCK  LE_ASSERT(pthread_mutex_unlock(&{{apiName}}_ServerMutex) == 0);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -445,8 +445,8 @@ void {{apiName}}_AdvertiseService
     {
         // Create safe reference map for handler references.
         // The size of the map should be based on the number of handlers defined for the server.
-        // Don't expect that to be more than 2-3, so use 3 as a reasonable guess.
-        _HandlerRefMap = le_ref_InitStaticMap({{apiName}}_ServerHandlers, HIGH_SERVER_DATA_COUNT);
+        _HandlerRefMap = le_ref_InitStaticMap({{apiName}}_ServerHandlers,
+                            LE_MEM_BLOCKS({{apiName}}_ServerData, HIGH_SERVER_DATA_COUNT));
     }
     _UNLOCK
 
@@ -590,8 +590,15 @@ static void AsyncResponse_{{apiName}}_{{function.name}}
     _msgBufPtr = _msgPtr->buffer;
 
     // Always pack the client context pointer first
-    LE_ASSERT(le_pack_PackReference( &_msgBufPtr, serverDataPtr->contextPtr ))
-
+#ifdef LE_CONFIG_RPC
+    {%- if function is not AddHandlerFunction %}
+    LE_ASSERT(le_pack_PackTaggedReference( &_msgBufPtr, serverDataPtr->contextPtr, LE_PACK_ASYNC_HANDLER_REFERENCE ));
+    {%- else %}
+    LE_ASSERT(le_pack_PackTaggedReference( &_msgBufPtr, serverDataPtr->contextPtr, LE_PACK_CONTEXT_PTR_REFERENCE ));
+    {% endif %}
+#else
+    LE_ASSERT(le_pack_PackReference( &_msgBufPtr, serverDataPtr->contextPtr ));
+#endif
     // Pack the input parameters
     {{ pack.PackInputs(handler.apiType.parameters) }}
 
@@ -919,20 +926,23 @@ static void Handle_{{apiName}}_{{function.name}}
     {%- if function.returnType %}
 
     // Pack the result first
+    {%- if function is AddHandlerFunction %}
+#ifdef LE_CONFIG_RPC
+    LE_ASSERT(le_pack_PackTaggedReference( &_msgBufPtr, _result, LE_PACK_ASYNC_HANDLER_REFERENCE ));
+#else
     LE_ASSERT({{function.returnType|PackFunction}}( &_msgBufPtr, _result ));
+#endif
+    {%- else %}
+    LE_ASSERT({{function.returnType|PackFunction}}( &_msgBufPtr, _result ));
+    {%- endif %}
     {%- endif %}
 
     // Pack any "out" parameters
     {{- pack.PackOutputs(function.parameters,initiatorWaits=True) }}
 
 #ifdef LE_CONFIG_RPC
-    // Check if we are at the end of the response buffer
-    if ((_msgBufPtr - _msgBufStartPtr) <
-        (int)(le_msg_GetMaxPayloadSize(_msgRef) - sizeof(uint32_t)))
-    {
-        // Add EOF TagID to the end of response message
-        *_msgBufPtr = LE_PACK_EOF;
-    }
+    // Add EOF TagID to the end of response message so RPC proxy knows when to stop repacking
+    *_msgBufPtr = LE_PACK_EOF;
 #endif
 
     // Return the response

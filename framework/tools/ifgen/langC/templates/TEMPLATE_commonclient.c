@@ -78,7 +78,7 @@ LE_REF_DEFINE_STATIC_MAP({{apiBaseName}}_ClientHandlers,
 /**
  * Safe Reference Map for use with Add/Remove handler references
  *
- * @warning Use _Mutex, defined below, to protect accesses to this data.
+ * @warning Use {{apiBaseName}}_ClientMutex, defined below, to protect accesses to this data.
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t _HandlerRefMap;
@@ -91,14 +91,14 @@ static le_ref_MapRef_t _HandlerRefMap;
  * Unused attribute is needed because this variable may not always get used.
  */
 //--------------------------------------------------------------------------------------------------
-__attribute__((unused)) static pthread_mutex_t _Mutex = PTHREAD_MUTEX_INITIALIZER;
+__attribute__((unused)) static pthread_mutex_t {{apiBaseName}}_ClientMutex = PTHREAD_MUTEX_INITIALIZER;
     {#- #}   // POSIX "Fast" mutex.
 
 /// Locks the mutex.
-#define _LOCK    LE_ASSERT(pthread_mutex_lock(&_Mutex) == 0);
+#define _LOCK    LE_ASSERT(pthread_mutex_lock(&{{apiBaseName}}_ClientMutex) == 0);
 
 /// Unlocks the mutex.
-#define _UNLOCK  LE_ASSERT(pthread_mutex_unlock(&_Mutex) == 0);
+#define _UNLOCK  LE_ASSERT(pthread_mutex_unlock(&{{apiBaseName}}_ClientMutex) == 0);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -442,12 +442,22 @@ LE_SHARED {{function.returnType|FormatType(useBaseName=True)}} ifgen_{{apiBaseNa
     handlerRef = ({{function.parameters[0].apiType|FormatType(useBaseName=True)}})
          clientDataPtr->handlerRef;
     le_mem_Release(clientDataPtr);
+#ifdef LE_CONFIG_RPC
+    LE_ASSERT(le_pack_PackTaggedReference( &_msgBufPtr,
+                                     {{function.parameters[0]|FormatParameterName}},
+                                     LE_PACK_ASYNC_HANDLER_REFERENCE ));
+#else
     LE_ASSERT(le_pack_PackReference( &_msgBufPtr,
                                      {{function.parameters[0]|FormatParameterName}} ));
+#endif
     {%- else %}
     {{- pack.PackInputs(function.parameters,initiatorWaits=True) }}
     {%- endif %}
 
+#ifdef LE_CONFIG_RPC
+    // Add EOF TagID to the end of the message so RPC proxy knows when to stop repacking
+    *_msgBufPtr = LE_PACK_EOF;
+#endif
     // Send a request to the server and get the response.
     TRACE("Sending message to server and waiting for response : %ti bytes sent",
           _msgBufPtr-_msgPtr->buffer);
@@ -560,7 +570,7 @@ static void ClientIndicationRecvHandler
     }
 
     // Pull out the callers thread
-    le_thread_Ref_t callersThreadRef = clientDataPtr->callersThreadRef;
+    __attribute__((unused)) le_thread_Ref_t callersThreadRef = clientDataPtr->callersThreadRef;
 
     _UNLOCK
 

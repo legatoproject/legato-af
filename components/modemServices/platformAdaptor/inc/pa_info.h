@@ -146,8 +146,8 @@ typedef char pa_info_DeviceModel_t[PA_INFO_MODEL_MAX_BYTES];
  *
  * @return
  *      - LE_OK on success
+ *      - LE_BAD_PARAMETER The parameters are invalid.
  *      - LE_NOT_FOUND if the version string is not available
- *      - LE_OVERFLOW if version string to big to fit in provided buffer
  *      - LE_FAULT for any other errors
  */
 //--------------------------------------------------------------------------------------------------
@@ -197,10 +197,10 @@ LE_SHARED le_result_t pa_info_GetResetInformation
 /**
  * This function get the International Mobile Equipment Identity (IMEI).
  *
- * @return
- * - LE_FAULT         The function failed to get the value.
- * - LE_TIMEOUT       No response was received from the Modem.
- * - LE_OK            The function succeeded.
+ * @return  LE_OK            The function succeeded.
+ * @return  LE_BAD_PARAMETER The parameters are invalid.
+ * @return  LE_TIMEOUT       No response was received from the Modem.
+ * @return  LE_FAULT         The function failed to get the value.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_info_GetImei
@@ -212,10 +212,10 @@ LE_SHARED le_result_t pa_info_GetImei
 /**
  * This function get the International Mobile Equipment Identity software version number (IMEISV).
  *
- * @return
- * - LE_FAULT         The function failed to get the value.
- * - LE_TIMEOUT       No response was received from the Modem.
- * - LE_OK            The function succeeded.
+ * @return  LE_OK            The function succeeded.
+ * @return  LE_BAD_PARAMETER The parameters are invalid.
+ * @return  LE_TIMEOUT       No response was received from the Modem.
+ * @return  LE_FAULT         The function failed to get the value.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_info_GetImeiSv
@@ -229,9 +229,10 @@ LE_SHARED le_result_t pa_info_GetImeiSv
  * This function gets the device model identity.
  *
  * @return
- * - LE_FAULT         The function failed to get the value.
- * - LE_OVERFLOW      The device model identity length exceed the maximum length.
  * - LE_OK            The function succeeded.
+ * - LE_BAD_PARAMETER The parameters are invalid.
+ * - LE_OVERFLOW      The device model identity length exceed the maximum length.
+ * - LE_FAULT         The function failed to get the value.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_info_GetDeviceModel

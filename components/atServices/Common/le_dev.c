@@ -29,6 +29,7 @@
 //--------------------------------------------------------------------------------------------------
 #define DSIZE_INFO_STR   1600
 
+#if LE_DEBUG_ENABLED
 //--------------------------------------------------------------------------------------------------
 /**
  * struct DevInfo contains useful information about the device in use
@@ -134,6 +135,8 @@ static le_result_t GetDeviceInformation
     return LE_FAULT;
 }
 #endif // CONFIG_LINUX
+#endif // LE_DEBUG_ENABLED
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to print a buffer byte by byte
@@ -147,6 +150,7 @@ static void PrintBuffer
     uint32_t  bufferSize     ///< Number of element to print
 )
 {
+#if LE_DEBUG_ENABLED
     if(le_log_GetFilterLevel() == LE_LOG_DEBUG)
     {
         uint32_t i;
@@ -207,6 +211,7 @@ static void PrintBuffer
             LE_DEBUG("'%s' -> %s", DevInfo.linkName, string);
         }
     }
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -243,12 +248,15 @@ ssize_t le_dev_Read
         return -1;
     }
 
+#if LE_DEBUG_ENABLED
     DevInfo.fd = devicePtr->fd;
+
 #if LE_CONFIG_LINUX
     if (!GetDeviceInformation())
     {
         LE_INFO("%s", DevInfo.devInfoStr);
     }
+#endif
 #endif
 
     count = le_fd_Read(devicePtr->fd, rxDataPtr, size);
@@ -283,12 +291,14 @@ int32_t le_dev_Write
     size_t sizeToWrite;
     ssize_t sizeWritten;
 
+#if LE_DEBUG_ENABLED
     DevInfo.fd = devicePtr->fd;
 #if LE_CONFIG_LINUX
     if (!GetDeviceInformation())
     {
         LE_DEBUG("%s", DevInfo.devInfoStr);
     }
+#endif
 #endif
 
     LE_FATAL_IF(devicePtr->fd==-1,"Write Handle error\n");
@@ -340,6 +350,7 @@ le_result_t le_dev_EnableFdMonitoring
 {
     char monitorName[64];
 
+#if LE_DEBUG_ENABLED
     DevInfo.fd = devicePtr->fd;
 
 #if LE_CONFIG_LINUX
@@ -347,6 +358,7 @@ le_result_t le_dev_EnableFdMonitoring
     {
         LE_DEBUG("%s", DevInfo.devInfoStr);
     }
+#endif
 #endif
 
     if (devicePtr->fdMonitor != NULL)
@@ -399,12 +411,14 @@ void le_dev_DeleteFdMonitoring
     Device_t*   devicePtr
 )
 {
+#if LE_DEBUG_ENABLED
     DevInfo.fd = devicePtr->fd;
 #if LE_CONFIG_LINUX
     if (!GetDeviceInformation())
     {
         LE_DEBUG("%s", DevInfo.devInfoStr);
     }
+#endif
 #endif
 
     if (devicePtr->fdMonitor)

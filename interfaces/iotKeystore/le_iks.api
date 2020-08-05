@@ -168,7 +168,7 @@ ENUM KeyType
  * Maximum possible key buffer size.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE MAX_KEY_SIZE = 128;
+DEFINE MAX_KEY_SIZE = 512;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -337,13 +337,17 @@ FUNCTION le_result_t DeleteModuleId
  * Gets a reference to a key.
  *
  * @return
- *      Reference to the key.
- *      0 if the key could not be found.
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the keyId is invalid or keyRef is NULL.
+ *      LE_NOT_FOUND if the key does not exist.
+ *      LE_NO_MEMORY if there is not enough memory to retrieve the key.
+ *      LE_FAULT if there was an internal error.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION uint64 GetKey
+FUNCTION le_result_t GetKey
 (
-    string keyId[MAX_KEY_ID_SIZE]   IN  ///< Identifier string.
+    string keyId[MAX_KEY_ID_SIZE]   IN, ///< Identifier string.
+    uint64 keyRef                   OUT ///< Key reference.
 );
 
 
@@ -361,14 +365,18 @@ FUNCTION uint64 GetKey
  * the key to persistent memory.
  *
  * @return
- *      Reference to the key if successful.
- *      0 if the keyId is already being used or is invalid or the keyUsage is invalid.
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the keyId or keyUsage is invalid or if keyRef is NULL.
+ *      LE_DUPLICATE if the keyId is already being used.
+ *      LE_NO_MEMORY if there is not enough memory to create the key.
+ *      LE_FAULT if there was an internal error.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION uint64 CreateKey
+FUNCTION le_result_t CreateKey
 (
     string keyId[MAX_KEY_ID_SIZE]   IN, ///< Identifier string.
-    KeyUsage keyUsage               IN  ///< Key usage.
+    KeyUsage keyUsage               IN, ///< Key usage.
+    uint64 keyRef                   OUT ///< Key reference.
 );
 
 
@@ -383,15 +391,20 @@ FUNCTION uint64 CreateKey
  * the key to persistent memory.
  *
  * @return
- *      Reference to the key if successful.
- *      0 if the keyId is already being used or if there was some other error.
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the keyId or keyType is invalid or if keyRef is NULL.
+ *      LE_DUPLICATE if the keyId is already being used.
+ *      LE_OUT_OF_RANGE if the key size is invalid.
+ *      LE_NO_MEMORY if there is not enough memory to create the key.
+ *      LE_FAULT if there was an internal error.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION uint64 CreateKeyByType
+FUNCTION le_result_t CreateKeyByType
 (
     string keyId[MAX_KEY_ID_SIZE]   IN, ///< Identifier string.
     KeyType keyType                 IN, ///< Key type.
-    uint32 keySize                  IN  ///< Key size in bytes.
+    uint32 keySize                  IN, ///< Key size in bytes.
+    uint64 keyRef                   OUT ///< Key reference.
 );
 
 
@@ -649,13 +662,17 @@ FUNCTION le_result_t GetPubKeyValue
  * Digest IDs may only consist of alphanumeric characters, the underscore '_' and hyphen '-'.
  *
  * @return
- *      Reference to the digest.
- *      0 if the digest could not be found.
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the digestId is invalid or if digestRef is NULL.
+ *      LE_NOT_FOUND if the digest does not exist.
+ *      LE_NO_MEMORY if there is not enough memory to retrieve the digest.
+ *      LE_FAULT if there was an internal error.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION uint64 GetDigest
+FUNCTION le_result_t GetDigest
 (
-    string  digestId[MAX_DIGEST_ID_SIZE]   IN  ///< Identifier string.
+    string  digestId[MAX_DIGEST_ID_SIZE]   IN,  ///< Identifier string.
+    uint64  digestRef                      OUT  ///< Digest reference.
 );
 
 
@@ -671,14 +688,19 @@ FUNCTION uint64 GetDigest
  * Digest IDs may only consist of alphanumeric characters, the underscore '_' and hyphen '-'.
  *
  * @return
- *      Reference to the digest if successful.
- *      0 if there was an error.
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the digestId is invalid or if digestRef is NULL.
+ *      LE_DUPLICATE if the digestId is already being used.
+ *      LE_OUT_OF_RANGE if the digest size is invalid.
+ *      LE_NO_MEMORY if there is not enough memory to create the digest.
+ *      LE_FAULT if there was an internal error.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION uint64 CreateDigest
+FUNCTION le_result_t CreateDigest
 (
     string  digestId[MAX_DIGEST_ID_SIZE]    IN, ///< Identifier string.
-    uint32  digestSize                      IN  ///< Digest size. Must be <= MAX_DIGEST_SIZE.
+    uint32  digestSize                      IN, ///< Digest size. Must be <= MAX_DIGEST_SIZE.
+    uint64  digestRef                       OUT ///< Digest reference.
 );
 
 
@@ -880,13 +902,17 @@ FUNCTION le_result_t GetProvisionKey
  * Create a session.
  *
  * @return
- *      A session reference if successful.
- *      0 if the key reference is invalid or does not contain a key value.
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if the key reference is invalid
+ *                       or if the key does not contain a key value or sessionRef is NULL.
+ *      LE_NO_MEMORY if there is not enough memory to create the session.
+ *      LE_FAULT if there was an internal error.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION uint64 CreateSession
+FUNCTION le_result_t CreateSession
 (
-    uint64  keyRef  IN  ///< Key to use for this session.
+    uint64  keyRef      IN,     ///< Key to use for this session.
+    uint64  sessionRef  OUT     ///< Session reference.
 );
 
 

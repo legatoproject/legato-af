@@ -559,17 +559,22 @@ le_data_Technology_t le_data_GetFirstUsedTechnology
         return firstTech;
     }
 
-    uint32_t firstRank = 0;
-    char techStr[DCS_TECH_BYTES] = {0};
-
     // Retrieve technology and rank
     TechRecord_t* techPtr = CONTAINER_OF(linkPtr, TechRecord_t, link);
     firstTech = techPtr->tech;
-    firstRank = techPtr->rank;
     // Store last peeked technology
     CurrTechPtr = linkPtr;
-    GetTechnologyString(firstTech, techStr, sizeof(techStr));
-    LE_DEBUG("First used technology: '%s' with rank %d", techStr, firstRank);
+
+#if LE_DEBUG_ENABLED
+    {
+        char techStr[DCS_TECH_BYTES] = {0};
+        uint32_t firstRank = techPtr->rank;
+
+        GetTechnologyString(firstTech, techStr, sizeof(techStr));
+        LE_DEBUG("First used technology: '%s' with rank %d", techStr, firstRank);
+    }
+#endif
+
     return firstTech;
 }
 
@@ -610,17 +615,22 @@ le_data_Technology_t le_data_GetNextUsedTechnology
         return nextTech;
     }
 
-    uint32_t nextRank = 0;
-    char techStr[DCS_TECH_BYTES] = {0};
-
     // Retrieve technology and rank
     TechRecord_t* techPtr = CONTAINER_OF(linkPtr, TechRecord_t, link);
     nextTech = techPtr->tech;
-    nextRank = techPtr->rank;
     // Store last peeked technology
     CurrTechPtr = linkPtr;
-    GetTechnologyString(nextTech, techStr, sizeof(techStr));
-    LE_DEBUG("Next used technology: '%s' with rank %d", techStr, nextRank);
+
+#if LE_DEBUG_ENABLED
+    {
+        char techStr[DCS_TECH_BYTES] = {0};
+        uint32_t nextRank = techPtr->rank;
+
+        GetTechnologyString(nextTech, techStr, sizeof(techStr));
+        LE_DEBUG("Next used technology: '%s' with rank %d", techStr, nextRank);
+    }
+#endif
+
     return nextTech;
 }
 

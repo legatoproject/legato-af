@@ -91,7 +91,7 @@ COMPONENT_INIT
     currentPosition += readLength;
     printf("Read %d bytes: '%s'\n", (int)readLength, readData);
     LE_ASSERT(expectedReadLength == readLength);
-    LE_ASSERT(0 == strncmp(" wo", (char*)readData, readLength))
+    LE_ASSERT(0 == strncmp(" wo", (char*)readData, readLength));
 
     // Seek from the current position
     offset = 2;
@@ -108,7 +108,7 @@ COMPONENT_INIT
     LE_ASSERT_OK(le_fs_Read(fileRef, readData, &readLength));
     printf("Read %d bytes: '%s'\n", (int)readLength, readData);
     LE_ASSERT(expectedReadLength == readLength);
-    LE_ASSERT(0 == strncmp("d!", (char*)readData, readLength))
+    LE_ASSERT(0 == strncmp("d!", (char*)readData, readLength));
 
     // Read 3 bytes from the current position: EOF is already reached
     memset(readData, '\0', sizeof(readData));
@@ -133,7 +133,7 @@ COMPONENT_INIT
     LE_ASSERT_OK(le_fs_Read(fileRef, readData, &readLength));
     printf("Read %d bytes: '%s'\n", (int)readLength, readData);
     LE_ASSERT(expectedReadLength == readLength);
-    LE_ASSERT(0 == strncmp("orl", (char*)readData, readLength))
+    LE_ASSERT(0 == strncmp("orl", (char*)readData, readLength));
 
     // Set current position to the beginning of the file
     offset = 0;
@@ -148,7 +148,7 @@ COMPONENT_INIT
     LE_ASSERT_OK(le_fs_Read(fileRef, readData, &readLength));
     printf("Read %d bytes: '%s'\n", (int)readLength, readData);
     LE_ASSERT(strlen((char*)dataToWrite) == readLength);
-    LE_ASSERT(0 == strncmp((char*)dataToWrite, (char*)readData, readLength))
+    LE_ASSERT(0 == strncmp((char*)dataToWrite, (char*)readData, readLength));
 
     // Error cases with useless actions
     printf("Test error cases with useless actions\n");
@@ -191,7 +191,7 @@ COMPONENT_INIT
     LE_ASSERT_OK(le_fs_Read(fileRef, readData, &readLength));
     printf("Read %d bytes: '%s'\n", (int)readLength, readData);
     LE_ASSERT((2 * strlen((char*)dataToWrite)) == readLength);
-    LE_ASSERT(0 == strncmp("Hello world!Hello world!", (char*)readData, readLength))
+    LE_ASSERT(0 == strncmp("Hello world!Hello world!", (char*)readData, readLength));
 
     // Close the opened file
     printf("Closing file handler: %p\n", fileRef);

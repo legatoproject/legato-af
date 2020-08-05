@@ -397,16 +397,43 @@ le_log_Level_t;
 #   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_MAX
 #elif LE_CONFIG_LOG_STATIC_FILTER_EMERG
 #   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_EMERG
+
+#   define LE_EMERG_ENABLED 1
 #elif LE_CONFIG_LOG_STATIC_FILTER_CRIT
 #   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_CRIT
+
+#   define LE_EMERG_ENABLED 1
+#   define LE_CRIT_ENABLED  1
 #elif LE_CONFIG_LOG_STATIC_FILTER_ERR
 #   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_ERR
+
+#   define LE_EMERG_ENABLED 1
+#   define LE_CRIT_ENABLED  1
+#   define LE_ERROR_ENABLED 1
 #elif LE_CONFIG_LOG_STATIC_FILTER_WARN
 #   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_WARN
+
+#   define LE_EMERG_ENABLED 1
+#   define LE_CRIT_ENABLED  1
+#   define LE_ERROR_ENABLED 1
+#   define LE_WARN_ENABLED  1
 #elif LE_CONFIG_LOG_STATIC_FILTER_INFO
 #   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_INFO
+
+#   define LE_EMERG_ENABLED 1
+#   define LE_CRIT_ENABLED  1
+#   define LE_ERROR_ENABLED 1
+#   define LE_WARN_ENABLED  1
+#   define LE_INFO_ENABLED  1
 #else /* default to LE_DEBUG */
 #   define LE_LOG_LEVEL_STATIC_FILTER   LE_LOG_DEBUG
+
+#   define LE_EMERG_ENABLED 1
+#   define LE_CRIT_ENABLED  1
+#   define LE_ERROR_ENABLED 1
+#   define LE_WARN_ENABLED  1
+#   define LE_INFO_ENABLED  1
+#   define LE_DEBUG_ENABLED 1
 #endif
 
 //--------------------------------------------------------------------------------------------------
@@ -606,19 +633,20 @@ extern LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
  * Logs the string if the keyword has been enabled by a runtime tool or configuration setting.
  */
 //--------------------------------------------------------------------------------------------------
-#define LE_TRACE(traceRef, string, ...)         \
-        if (le_log_IsTraceEnabled(traceRef))    \
-        {                                       \
-            _le_log_Send((le_log_Level_t)-1,    \
-                    traceRef,                   \
-                    LE_LOG_SESSION,             \
-                    STRINGIZE(LE_FILENAME),     \
-                    _LE_LOG_FUNCTION_NAME,      \
-                    __LINE__,                   \
-                    string,                     \
-                    ##__VA_ARGS__);             \
-        }
-
+#define LE_TRACE(traceRef, string, ...)             \
+    do  {                                           \
+            if (le_log_IsTraceEnabled(traceRef))    \
+            {                                       \
+                _le_log_Send((le_log_Level_t)-1,    \
+                        traceRef,                   \
+                        LE_LOG_SESSION,             \
+                        STRINGIZE(LE_FILENAME),     \
+                        _LE_LOG_FUNCTION_NAME,      \
+                        __LINE__,                   \
+                        string,                     \
+                        ##__VA_ARGS__);             \
+            }                                       \
+        } while(0)
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -874,24 +902,46 @@ void _le_log_ExitFatal
 //--------------------------------------------------------------------------------------------------
 
 /** @ref LE_DEBUG if condition is met. */
-#define LE_DEBUG_IF(condition, formatString, ...) \
-        if (condition) { LE_DEBUG(formatString, ##__VA_ARGS__); }
-/** @ref LE_INFO if condition is met. */
-#define LE_INFO_IF(condition, formatString, ...) \
-        if (condition) { LE_INFO(formatString, ##__VA_ARGS__); }
-/** @ref LE_WARN if condition is met. */
-#define LE_WARN_IF(condition, formatString, ...) \
-        if (condition) { LE_WARN(formatString, ##__VA_ARGS__); }
-/** @ref LE_ERROR if condition is met. */
-#define LE_ERROR_IF(condition, formatString, ...) \
-        if (condition) { LE_ERROR(formatString, ##__VA_ARGS__); }
-/** @ref LE_CRIT if condition is met. */
-#define LE_CRIT_IF(condition, formatString, ...) \
-        if (condition) { LE_CRIT(formatString, ##__VA_ARGS__); }
-/** @ref LE_EMERG if condition is met. */
-#define LE_EMERG_IF(condition, formatString, ...) \
-        if (condition) { LE_EMERG(formatString, ##__VA_ARGS__); }
+#define LE_DEBUG_IF(condition, formatString, ...)                   \
+    do                                                              \
+    {                                                               \
+        if (condition) { LE_DEBUG(formatString, ##__VA_ARGS__); }   \
+    } while (0)
 
+/** @ref LE_INFO if condition is met. */
+#define LE_INFO_IF(condition, formatString, ...)                    \
+    do                                                              \
+    {                                                               \
+        if (condition) { LE_INFO(formatString, ##__VA_ARGS__); }    \
+    } while (0)
+
+/** @ref LE_WARN if condition is met. */
+#define LE_WARN_IF(condition, formatString, ...)                    \
+    do                                                              \
+    {                                                               \
+        if (condition) { LE_WARN(formatString, ##__VA_ARGS__); }    \
+    } while (0)
+
+/** @ref LE_ERROR if condition is met. */
+#define LE_ERROR_IF(condition, formatString, ...)                   \
+    do                                                              \
+    {                                                               \
+        if (condition) { LE_ERROR(formatString, ##__VA_ARGS__); }   \
+    } while (0)
+
+/** @ref LE_CRIT if condition is met. */
+#define LE_CRIT_IF(condition, formatString, ...)                    \
+    do                                                              \
+    {                                                               \
+        if (condition) { LE_CRIT(formatString, ##__VA_ARGS__); }    \
+    } while (0)
+
+/** @ref LE_EMERG if condition is met. */
+#define LE_EMERG_IF(condition, formatString, ...)                   \
+    do                                                              \
+    {                                                               \
+        if (condition) { LE_EMERG(formatString, ##__VA_ARGS__); }   \
+    } while (0)
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -904,11 +954,15 @@ void _le_log_ExitFatal
 //--------------------------------------------------------------------------------------------------
 #ifndef LE_FATAL
 #   if !LE_CONFIG_DEBUG
-#       define LE_FATAL(formatString, ...) \
-        { LE_EMERG(formatString, ##__VA_ARGS__); _le_log_ExitFatal(); }
+#       define LE_FATAL(formatString, ...)                              \
+        do{                                                             \
+            LE_EMERG(formatString, ##__VA_ARGS__); _le_log_ExitFatal(); \
+        } while(0)
 #   else
-#       define LE_FATAL(formatString, ...) \
-        { LE_EMERG(formatString, ##__VA_ARGS__); abort(); }
+#       define LE_FATAL(formatString, ...)                              \
+        do {                                                            \
+            LE_EMERG(formatString, ##__VA_ARGS__); abort();             \
+        } while(0)
 #   endif
 #endif
 
@@ -922,8 +976,10 @@ void _le_log_ExitFatal
  * to be printed (depending on the contents of the format string).
  */
 //--------------------------------------------------------------------------------------------------
-#define LE_FATAL_IF(condition, formatString, ...) \
-        if (condition) { LE_FATAL(formatString, ##__VA_ARGS__) }
+#define LE_FATAL_IF(condition, formatString, ...)               \
+do{                                                             \
+    if (condition) { LE_FATAL(formatString, ##__VA_ARGS__); }   \
+}while(0)
 
 
 //--------------------------------------------------------------------------------------------------

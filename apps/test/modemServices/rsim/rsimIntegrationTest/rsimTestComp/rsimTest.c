@@ -27,7 +27,10 @@
 #include "legato.h"
 #include "interfaces.h"
 
-
+#ifdef LE_CONFIG_LINUX
+#else
+    #define exit(x)    pthread_exit(x)
+#endif
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions
 //--------------------------------------------------------------------------------------------------
@@ -214,7 +217,6 @@ static le_thread_Ref_t AppThreadRef;
 //--------------------------------------------------------------------------------------------------
 static uint8_t ExpectedMessageId = 0;
 
-
 //--------------------------------------------------------------------------------------------------
 // Utility functions
 //--------------------------------------------------------------------------------------------------
@@ -234,7 +236,7 @@ static void CallbackHandler
     LE_DEBUG("Sending result: messageId=%d, result=%d, context=%p", messageId, result, contextPtr);
 
     // Check sending result against expected result
-    LE_ASSERT(result == (le_result_t)contextPtr)
+    LE_ASSERT(result == (le_result_t)contextPtr);
 
     le_sem_Post(AppSemaphore);
 }
@@ -257,7 +259,6 @@ static void SendSapMessage
                                      rsimSendingPtr->messageSize,
                                      rsimSendingPtr->callbackPtr,
                                      rsimSendingPtr->context));
-
     // Release allocated memory
     le_mem_Release(rsimSendingPtr);
 }
@@ -778,7 +779,6 @@ static void SynchronizeTest
 )
 {
     le_clk_Time_t timeToWait = {5, 0};
-
     LE_ASSERT_OK(le_sem_WaitWithTimeOut(AppSemaphore, timeToWait));
 }
 

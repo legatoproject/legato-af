@@ -7,6 +7,9 @@ executables:
 #if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
     rSimDaemon  = ($LEGATO_ROOT/components/modemServices/rSimDaemon
                    $LEGATO_ROOT/components/watchdogChain)
+#elif ${MK_CONFIG_MODEMSERVICE_RSIM} = y
+    rSimDaemon  = ($LEGATO_ROOT/components/modemServices/rSimDaemon
+                   $LEGATO_ROOT/components/watchdogChain)
 #endif
 }
 
@@ -16,6 +19,8 @@ processes:
     {
         (modemDaemon)
     #if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
+        (rSimDaemon)
+    #elif ${MK_CONFIG_MODEMSERVICE_RSIM} = y
         (rSimDaemon)
     #endif
     }
@@ -65,9 +70,11 @@ extern:
     modemDaemon.modemDaemon.le_cfg
 #endif
     modemWDog = modemDaemon.watchdogChain.le_wdog
-    #if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
+#if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
     rSimWDog = rSimDaemon.watchdogChain.le_wdog
-    #endif
+#elif ${MK_CONFIG_MODEMSERVICE_RSIM} = y
+    rSimWDog = rSimDaemon.watchdogChain.le_wdog
+#endif
 }
 #endif
 
@@ -90,7 +97,9 @@ extern:
     modemDaemon.modemDaemon.le_temp
     modemDaemon.modemDaemon.le_riPin
     modemDaemon.modemDaemon.le_adc
-
+#if ${MK_CONFIG_MODEMSERVICE_NO_LPT} = ""
+    modemDaemon.modemDaemon.le_lpt
+#endif
 #if file_exists(${LEGATO_MODEM_PA}/exports)
 #include "${LEGATO_MODEM_PA}/exports"
 #endif
@@ -102,6 +111,7 @@ extern:
     modemDaemon.modemDaemon.le_rtc
     modemDaemon.modemDaemon.le_mdmCfg
     rSimDaemon.rSimDaemon.le_rsim
-    modemDaemon.modemDaemon.le_lpt
+#elif ${MK_CONFIG_MODEMSERVICE_RSIM} = y
+    rSimDaemon.rSimDaemon.le_rsim
 #endif
 }
