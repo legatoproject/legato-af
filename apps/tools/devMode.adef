@@ -11,12 +11,6 @@ bundles:
         #if file_exists($LEGATO_SYSROOT/usr/bin/strace)
             [rx] $LEGATO_SYSROOT/usr/bin/strace             /bin/strace
         #endif
-        #if file_exists($LEGATO_SYSROOT/usr/sbin/tcf-agent)
-            [rx] $LEGATO_SYSROOT/usr/sbin/tcf-agent         /sbin/tcf-agent
-        #endif
-        #if file_exists($LEGATO_SYSROOT/usr/libexec/sftp-server)
-            [rx] $LEGATO_SYSROOT/usr/libexec/sftp-server    /bin/sftp-server
-        #endif
         #if file_exists($LEGATO_SYSROOT/usr/sbin/tcpdump)
             [rx] $LEGATO_SYSROOT/usr/sbin/tcpdump           /sbin/tcpdump
         #endif

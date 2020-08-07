@@ -109,7 +109,6 @@ specific for development:
   - sets the probation period of apps to 10 seconds, to prevent aggressive roll-back.
  - holds a wake lock, so the target won't go to sleep when disconnected from USB.
  - removes the boot count file on startup to disable the boot loop detection feature of Legato.
- - runs the tcf-agent, so the target is auto discoverable by Developer Studio.
  - sets firewall rules to allow more permissive network access.
 
 To install devMode on your target follow these @ref howToDevMode_installDev "install instructions".

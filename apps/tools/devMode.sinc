@@ -33,12 +33,6 @@
         #if file_exists($LEGATO_SYSROOT/usr/bin/strace)
             strace = devMode:/bin/strace
         #endif
-        #if file_exists($LEGATO_SYSROOT/usr/sbin/tcf-agent)
-            tcf_agent = devMode:/sbin/tcf-agent
-        #endif
-        #if file_exists($LEGATO_SYSROOT/usr/libexec/sftp-server)
-            sftp_server = devMode:/bin/sftp-server
-        #endif
         #if file_exists($LEGATO_SYSROOT/usr/sbin/tcpdump)
             tcpdump = devMode:/sbin/tcpdump
         #endif
