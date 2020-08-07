@@ -49,6 +49,7 @@ typedef struct
     uint64_t             liveEventCount;    ///< Number of events ready for dequeing.  Ensures
                                             ///< balance between queued events and monitored fds
                                             ///< in le_event_ServiceLoop().
+    void*                currentEvent;      ///< Pointer to the current event report being processed
 }
 event_PerThreadRec_t;
 
