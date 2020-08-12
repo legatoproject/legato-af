@@ -933,7 +933,7 @@ static void SetDefaultSmackRules
     {
         smack_SetRule(appLabelPtr, "rx", LE_CONFIG_IMA_SMACK);
     }
-    smack_SetRule(appLabelPtr, "rwx", "framework");
+    smack_SetRule(appLabelPtr, "rwxt", "framework"); // 't' for le_fs data path
 
     // Set default permissions to allow the app to access the syslog.
     smack_SetRule(appLabelPtr, "w", "syslog");

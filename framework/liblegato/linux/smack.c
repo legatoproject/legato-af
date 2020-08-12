@@ -294,6 +294,10 @@ static void MakeSmackModeStr
                 bufPtr[3] = 'a';
                 break;
 
+            case 't':
+            case 'T':
+                bufPtr[4] = 't';
+
             case '-':
                 break;
 

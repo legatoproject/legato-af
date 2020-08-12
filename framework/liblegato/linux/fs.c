@@ -12,13 +12,7 @@
 #include "file.h"
 #include "dir.h"
 #include "smack.h"
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Default prefix path for RW if nothing is defined in the config tree
- */
-//--------------------------------------------------------------------------------------------------
-#define FS_PREFIX_DATA_PATH      "/data/le_fs/"
+#include "fs.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -858,7 +852,7 @@ void fs_Init
     char* fsPrefixArray[] =
     {
         FS_PREFIX_DATA_PATH,
-        "/tmp" FS_PREFIX_DATA_PATH,
+        ALT_FS_PREFIX_DATA_PATH,
         NULL,
     };
     char** tempFsPrefixPtr = fsPrefixArray;
@@ -890,7 +884,7 @@ void fs_Init
             }
             else
             {
-                LE_ERROR("Failed to access \"%s\": %m", *tempFsPrefixPtr);
+                LE_WARN("Failed to access \"%s\": %m", *tempFsPrefixPtr);
                 tempFsPrefixPtr++;
             }
         }
@@ -910,7 +904,6 @@ end:
     else
     {
         LE_DEBUG("FS prefix path \"%s\"", FsPrefixPtr);
-        smack_SetLabel(FsPrefixPtr, "framework");
     }
 
     FsFileRefPool = le_mem_CreatePool("FsFileRefPool", sizeof(File_t));

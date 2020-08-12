@@ -228,6 +228,7 @@
 #include "ima.h"
 #include "fs.h"
 #include "log.h"
+#include "dir.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -957,7 +958,7 @@ static void SetupSmackOnlyCap
 
     // Set correct smack permissions for app.tools and framework
     smack_SetRule("admin", "rwx", "app.tools");
-    smack_SetRule("admin", "rwx", "framework");
+    smack_SetRule("admin", "rwxt", "framework");// 't' for le_fs data path
 
     // Set correct smack permissions for syslog
     smack_SetRule("_", "rw", "syslog");
@@ -971,21 +972,25 @@ static void SetupSmackOnlyCap
     // framework needs wx access to tmpfs
     smack_SetRule("framework", "rwx", "_");
 
-    // Set correct smack label for /data
+    // Set correct smack labels for le_fs module's prefix paths: "/data/le_fs"
+    // and "/tmp/data/le_fs". At the same time, enable SMACK64TRANSMUTE label
+    // for the two dirs to ensure new file/dir created under them inherits the
+    // correct labels.
     smack_SetLabel("/data", "_");
+    smack_SetLabel(FS_PREFIX_DATA_PATH, "framework");
+    // creating the alternative prefix path anyways
+    dir_MakeSmack("/tmp/data", S_IRUSR | S_IXUSR | S_IROTH | S_IXOTH,"_");
+    dir_MakeSmack(ALT_FS_PREFIX_DATA_PATH, S_IRUSR | S_IXUSR | S_IROTH | S_IXOTH, "framework");
+    smack_SetTransmuteLabel(FS_PREFIX_DATA_PATH);
+    smack_SetTransmuteLabel(ALT_FS_PREFIX_DATA_PATH);
 
     // ToDo: Workaround to get le_fs have "framework" label.
     // Set correct smack label for /data
     fs_Init();
 
-    // Set correct smack label for /data/le_fs
-    smack_SetLabel("/data/le_fs", "framework");
-    smack_SetLabel("/mnt/flash/ufs/data/le_fs", "framework");
-    smack_SetLabel("/tmp/data/le_fs", "framework");
-
     // Remove previously set rule if cached from an update
     smack_SetRule("_", "-", "admin");
-    smack_SetRule("_", "w", "framework");
+    smack_SetRule("_", "wt", "framework"); // 't' for le_fs data path
 
     // logDaemon needs read access to admin (fds)
     smack_SetRule("framework", "rw", "admin");
