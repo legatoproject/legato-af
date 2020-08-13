@@ -1,7 +1,7 @@
 /** @page aboutReleaseNotes Release Notes
 
-Version: <b>Legato 20.04.0</b><br>
-Date: <b>March 28th, 2020</b><br>
+Version: <b>Legato 20.08.0</b><br>
+Date: <b>September 15th, 2020</b><br>
 @ref aboutLicenses "Legato Application Framework Licensing Information"
 
 Visit the <a href="https://legato.io/releases">release page</a> to @b download the tarball,
@@ -19,87 +19,119 @@ Update your profile to the latest version:
 $ leaf update
 @endverbatim
 
-@section rn2004_Features New Features
+@section rn2008_Features New Features
 
-List of new features in the 20.04 Release:
+List of new features in the 20.08 Release:
 
-@subsection rn2004_Features_IDE Legato Plugin for Visual Studio Code
+@subsection rn2008_Features_wifi New wifiClient.api functions
 
-The Legato team has launched version 1.0 of the @ref tools_vsCode "Legato Plugin for VSCode".
+3 new functions have been added to the @ref c_le_wifi_client:
+- GetCurrentSignalStrength() - returns the signal strength in dBm
+- GetRxData() - returns the data recieved from the access point in bytes
+- GetTxData() - returns the data transmitted to the access point in bytes
 
-@subsection rn2004_Features_APIDeprecated Deprecated APIs
+@subsection rn2008_Features_uplm New ulpm.api function
 
-The following APIs have been removed and are no longer used within the Legato Application Framework
+SetShutDownStratagy() function has been added to the @ref c_le_ulpm to configure the device
+behaviour on shutdown.
 
-- @ref c_threading - LE_THREAD_PRIORITY_NORMAL(), replaced by LE_THREAD_PRIORITY_MEDIUM
-- @ref c_sms - le_sms_SetTimeout() removed as it was not needed.
-- swiQmi_CheckResponseCode(), replaced by swiQmi_CheckResponse()
-- swiQmi_OEMCheckResponseCode(), replaced by swiQmi_CheckResponse()
-- @ref c_atServer - le_atServer_SendFinalResponse(), replaced by le_atServer_SendFinalResultCode()
-- le_fd_MkDataPipe() has been removed as it is not supported in Linux.
-- le_sup_ctrl.api has been removed as it is no longer needed or referenced in Legato.
+@subsection rn2008_Features_logLevels New Log Levels
 
-@subsection rn2004_Features_ttyOpen tty API Behavior Change
+Framework Daemon Log level settings have been added to the KConfig menus
 
-le_tty_Open() will now return a file descriptor or a -1 for a failure, this is a behavior change
-from previous version where le_tty_Open() would exit the process with an LE_FATAL.
+@verbatim
+Framework --> Daemon Setup --> Framework Daemon Log Level Setting
 
-@subsection rn2004_Features_PCI Network Scan Timeout Change
+Options:
+1. SUPERVISOR
+2. SERVICEDIRECTORY
+3. LOGCTRLDAEMON
+4. CONFIGTREE
+5. UPDATEDAEMON
+6. WATCHDOG
+@endverbatim
 
-The timeout value for le_mrc_PerformPciNetworkScan() has been changed from 300 seconds to 240
-seconds for targets that have watchdog enabled.
+The log levels can also be set from the build config:
+@verbatim
+LE_<daemon>_LOG_LEVEL= <log level> make <target>
+@endverbatim
 
-@subsection rn2004_Features_ecall eCall API changes
+Daemons Log Level:
+@verbatim
+LE_SUPERVISOR_LOG_LEVEL (supervisor)
+LE_SERVICEDIRECTORY_LOG_LEVEL (serviceDirectory)
+LE_LOGCTRLDAEMON_LOG_LEVEL (logCtrlDaemon)
+LE_CONFIGTREE_LOG_LEVEL (configTree)
+LE_UPDATEDAEMON_LOG_LEVEL (updateDaemon)
+LE_WATCHDOG_LOG_LEVEL (watchdog)
+@endverbatim
 
-A new API function has been added to eCall to set/get the dial duration for the maximum time the
-target has to connect to the emergency call center including redial attempts.
-- le_ecall_SetPanInitialDialDuration()
-- le_ecall_GetPanInitialDialDuration()
+@subsection rn2008_Features_gnss GNSS Extended Ephemeris File change
 
-@subsection rn2004_Features_dcs APN name deprecation
+The le_gnss_EnableExtendedEphemerisFile() is now set to 2 by default instead of 1.
 
-@ref le_mdc_session_MO is a blocking function and has a maximum timeout of 155 seconds,
-previously it was set to 150 seconds.
+@subsection rn2008_Features_le_audio le_audio API change
 
-@section rn2004_BFeatures Beta Features
+A new duration limit is set for the le_audio_PlayDtmf() function. If any of the given DTMF duration
+or pause is greater than 5 seconds, the function will return LE_FAULT.
 
-@section rn2004_AFeatures Alpha Features
+@subsection rn2008_Features_cmDataConnect cm data connect cmd change
 
-The following are the list of features that have been added into the 20.04 Release but are still
+The connection test in the cm data connect tool has been removed as it was causing issues for
+customers.
+
+@subsection rn2008_Features_deprecated Deprecated API/functions
+
+- The QMI_NAS_SET_EVENT_REPORT and QMI_NAS_GET_EVENT_REPORT have been deprecated and removed
+The replacement function is QMI_NAS_INDICATION_REGISTER.
+- QMI_NAS_SET_TECHNOLOGY_PREFERENCE and QMI_NAS_GET_TECHNOLOGY_PREFERENCE  have been deprecated and replaced
+by QMI_NAS_SET_SYSTEM_SELECTION_PREFERENCE and QMI_NAS_GET_SYSTEM_SELECTION_PREFERENCE.
+- le_gnss_GetDop() function has been removed and is replaced by le_gnss_GetDilutionOfPrecision().
+- LE_GNSS_NMEA_MASK_PQXFI has also been removed and replaced by LE_GNSS_NMEA_MASK_PTYPE.
+
+@subsection rn2008_Features_object10 eDRX AirVantage Support
+
+Legato now includes object10 enablement for [eRDX](https://www.sierrawireless.com/iot-blog/iot-blog/2020/06/edrx-lpwa/)
+
+@section rn2008_BFeatures Beta Features
+
+@section rn2008_AFeatures Alpha Features
+
+The following are the list of features that have been added into the 20.08 Release but are still
 being developed and should not be used on production targets. Please provide feedback for these
 features on our [forums](https://forum.legato.io/):
 
-@subsection rn2004_AFeatures_RPC Legato RPC
+@subsection rn2008_AFeatures_RPC Legato RPC
 
 RPC has been added as an experimental feature (@ref conceptsRPC Remote procedure call). Please refer
 to @ref getStartRPC Legato RPC on how to get started.
 
-@section rn2004_Fixes Fixed Issues
+@section rn2008_Fixes Fixed Issues
 
-All changes are tagged in GitHub as "20.04.0".  The full list of changes and commit
+All changes are tagged in GitHub as "20.08.0".  The full list of changes and commit
 messages can be found on GitHub.
 
-- [Legato Application Framework 20.04.0 Fixes](https://github.com/legatoproject/legato-af/commits/20.04.0)
-- [Legato WiFi 20.04.0 Fixes](https://github.com/legatoproject/legato-WiFi/commits/20.04-release)
-- [Legato AirVantage Connector 20.04.0 Fixes](https://github.com/legatoproject/legato-Service-AirVantageConnector/commits/20.04-release)
-- [Legato DataHub 20.04.0 Fixes](https://github.com/legatoproject/legato-Service-DataHub/commits/20.04-release)
+- [Legato Application Framework 20.08.0 Fixes](https://github.com/legatoproject/legato-af/commits/20.08.0)
+- [Legato WiFi 20.08.0 Fixes](https://github.com/legatoproject/legato-WiFi/commits/20.08-release)
+- [Legato AirVantage Connector 20.08.0 Fixes](https://github.com/legatoproject/legato-Service-AirVantageConnector/commits/20.08-release)
+- [Legato DataHub 20.08.0 Fixes](https://github.com/legatoproject/legato-Service-DataHub/commits/20.08-release)
 
 @note This is only the list of fixes for the Application Framework and Platform Services, for the
-list of changes in the Platform Adapter view the commits under the tag 20.04.0 in individual
+list of changes in the Platform Adapter view the commits under the tag 20.08.0 in individual
 repositories on GitHub.
 
-@section rn2004_KnownIssues Known Issues
+@section rn2008_KnownIssues Known Issues
 
-@subsection rn2004_Constraints Constraints and Limitations
+@subsection rn2008_Constraints Constraints and Limitations
 
-@subsubsection rn2004_ConstraintsLinuxSupport Dev Machine Linux Version
+@subsubsection rn2008_ConstraintsLinuxSupport Dev Machine Linux Version
 
 To develop applications within the Legato Application Framework, a current supported
 [Long Term Support version of Ubuntu Linux](https://ubuntu.com/about/release-cycle) is
 required on your dev machine (or running in a virtual box on Windows).  Ubuntu 18.04 is the current
 @b recommended version to use on your dev machine.
 
-@subsubsection rn2004_ConstECMUSB ECM-USB modem manager issue
+@subsubsection rn2008_ConstECMUSB ECM-USB modem manager issue
 
 Ubuntu 15.10 and newer has Modem Manager version @c 1.4.12-1ubuntu1  installed by default which
 conflicts with the ECM-USB driver when connecting a target.  Modem manager may cause the Ubuntu
@@ -113,7 +145,7 @@ Network Manager to crash on your host and/or your target device to become unavai
 - Uninstall @c modemmanager from Ubuntu or
 - [Downgrade @c modemmanager to version 1.0.0-2ubuntu1](http://packages.ubuntu.com/trusty/modemmanager)
 
-@subsubsection rn2004_ConstTrust FOTA upgrade warning
+@subsubsection rn2008_ConstTrust FOTA upgrade warning
 
 A device that has trustzones enabled, may re-bootstrap (obtain new keys from the AirVantage server)
 durring a FOTA (firmware over-the-air) upgrade.
