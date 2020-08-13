@@ -802,13 +802,14 @@ static bool IsValidName
 //--------------------------------------------------------------------------------------------------
 static le_result_t PrepareOp
 (
-    bool             isGlobal,          ///< [IN]  Is this an operation is the global domain?
-    const char      *name,              ///< [IN]  Name of the secure storage item.
-    size_t           bufNumElements,    ///< [IN]  Size of buffer.
-    bool             checkLimit,        ///< [IN]  Check buffer size against client's secure storage
-                                        ///<       limit?
-    char            *path               ///< [OUT] Buffer to write constructed path into.  Must be
-                                        ///<       SECSTORE_MAX_PATH_BYTES in size.
+    bool             isGlobal,              ///< [IN]  Is this an operation is the global domain?
+    bool             isSupportSpecialName,  ///< [IN]  Is the special name "*" supported?
+    const char      *name,                  ///< [IN]  Name of the secure storage item.
+    size_t           bufNumElements,        ///< [IN]  Size of buffer.
+    bool             checkLimit,            ///< [IN]  Check buffer size against client's secure
+                                            ///<       storage limit?
+    char            *path                   ///< [OUT] Buffer to write constructed path into. Must be
+                                            ///<       SECSTORE_MAX_PATH_BYTES in size.
 )
 {
     le_result_t result = LE_OK;
@@ -820,6 +821,22 @@ static le_result_t PrepareOp
         return LE_FAULT;
     }
 
+    // Supported only for deleting secure storage contents.
+    // If the operation is not in global domain, "*" is a special item name indicating all the
+    // contents for an application. Replace "*" with empty name which will be later translated to
+    // application name as path while passing to the platform adaptor.
+    if (strcmp(name, "*") == 0)
+    {
+        if ((isGlobal == false) && (isSupportSpecialName == true))
+        {
+            name = "";
+        }
+        else
+        {
+            LE_ERROR("Special name '*' is not supported with this secure storage operation");
+            return LE_FAULT;
+        }
+    }
 #if LE_CONFIG_SOTA
     // Make sure systems are initialized.
     if (!IsCurrSysPathValid)
@@ -907,7 +924,7 @@ static le_result_t Write
 
     LE_ASSERT(bufPtr != NULL);
 
-    result  = PrepareOp(isGlobal, name, bufNumElements, true, path);
+    result  = PrepareOp(isGlobal, false, name, bufNumElements, true, path);
     if (result != LE_OK)
     {
         return result;
@@ -1000,7 +1017,7 @@ static le_result_t Read
     LE_ASSERT(bufPtr != NULL);
     LE_ASSERT(bufNumElementsPtr != NULL);
 
-    result = PrepareOp(isGlobal, name, *bufNumElementsPtr, false, path);
+    result = PrepareOp(isGlobal, false, name, *bufNumElementsPtr, false, path);
     if (result != LE_OK)
     {
         return result;
@@ -1087,7 +1104,7 @@ le_result_t Delete
 )
 {
     char path[SECSTORE_MAX_PATH_BYTES] = {0};
-    le_result_t result = PrepareOp(isGlobal, name, 0, false, path);
+    le_result_t result = PrepareOp(isGlobal, true, name, 0, false, path);
     if (result != LE_OK)
     {
         return result;
