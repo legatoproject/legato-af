@@ -13,36 +13,6 @@
 #include "pa_iotKeystore.h"
 
 
-LE_SHARED le_result_t pa_iks_SetModuleId
-(
-    const char*     idPtr,      ///< [IN] Identifier string.
-    uint64_t        keyRef      ///< [IN] Key reference.
-)
-{
-    return LE_UNSUPPORTED;
-}
-
-
-LE_SHARED le_result_t pa_iks_GetModuleId
-(
-    char*       idPtr,        ///< [OUT] Module ID buffer.
-    size_t      idPtrSize     ///< [IN] Module ID buffer size.
-)
-{
-    return LE_UNSUPPORTED;
-}
-
-
-LE_SHARED le_result_t pa_iks_DeleteModuleId
-(
-    const uint8_t*  authCmdPtr,     ///< [IN] Authenticated command buffer.
-    size_t          authCmdSize     ///< [IN] Authenticated command buffer size.
-)
-{
-    return LE_UNSUPPORTED;
-}
-
-
 LE_SHARED le_result_t pa_iks_GetKey
 (
     const char*     keyId,          ///< [IN] Identifier string.
@@ -118,7 +88,7 @@ LE_SHARED le_result_t pa_iks_HasKeyValue
 LE_SHARED le_result_t pa_iks_SetKeyUpdateKey
 (
     uint64_t        keyRef,         ///< [IN] Key reference.
-    uint64_t        updateKeyRef    ///< [IN] Reference to an update key.
+    uint64_t        updateKeyRef    ///< [IN] Reference to an update key. 0 for not updatable.
 )
 {
     return LE_UNSUPPORTED;
@@ -211,8 +181,8 @@ LE_SHARED le_result_t pa_iks_GetDigestSize
 
 LE_SHARED le_result_t pa_iks_SetDigestUpdateKey
 (
-    uint64_t            digestRef,      ///< [IN] Digest reference.
-    uint64_t            updateKeyRef    ///< [IN] Reference to an update key.
+    uint64_t        digestRef,      ///< [IN] Digest reference.
+    uint64_t        updateKeyRef    ///< [IN] Reference to an update key. 0 for not updatable.
 )
 {
     return LE_UNSUPPORTED;
@@ -272,10 +242,10 @@ LE_SHARED le_result_t pa_iks_GetUpdateAuthChallenge
 }
 
 
-LE_SHARED le_result_t pa_iks_GetProvisionKey
+LE_SHARED le_result_t pa_iks_GetWrappingKey
 (
-    uint8_t*    bufPtr,     ///< [OUT] Buffer to hold the provisioning key.
-    size_t*     bufSizePtr  ///< [INOUT] Size of the buffer to hold the provisioning key.
+    uint8_t*    bufPtr,     ///< [OUT] Buffer to hold the wrapping key.
+    size_t*     bufSizePtr  ///< [INOUT] Size of the buffer to hold the wrapping key.
 )
 {
     return LE_UNSUPPORTED;
@@ -373,6 +343,18 @@ LE_SHARED le_result_t pa_iks_aesMilenage_GetAk
     return LE_UNSUPPORTED;
 }
 
+
+LE_SHARED le_result_t pa_iks_aesMilenage_DeriveOpc
+(
+    uint64_t        opRef,      ///< [IN] Reference to OP key.
+    const uint8_t*  kPtr,       ///< [IN] K.
+    size_t          kSize,      ///< [IN] K size. Assumed to be LE_IKS_AESMILENAGE_K_SIZE.
+    uint8_t*        opcPtr,     ///< [OUT] Buffer to hold the OPc value.
+    size_t*         opcSize     ///< [OUT] OPc size. Assumed to be LE_IKS_AESMILENAGE_OPC_SIZE.
+)
+{
+    return LE_UNSUPPORTED;
+}
 
 //========================= AES GCM routines =====================
 
@@ -738,16 +720,12 @@ LE_SHARED le_result_t pa_iks_ecc_Ecies_EncryptPacket
     uint64_t keyRef,                ///< [IN] Key reference.
     const uint8_t* labelPtr,        ///< [IN] Label. NULL if not used.
     size_t labelSize,               ///< [IN] Label size.
-    const uint8_t* aadPtr,          ///< [IN] AAD chunk. NULL if not used.
-    size_t aadSize,                 ///< [IN] AAD chunk size.
     const uint8_t* plaintextPtr,    ///< [IN] Plaintext chunk. NULL if not used.
     size_t plaintextSize,           ///< [IN] Plaintext chunk size.
     uint8_t* ciphertextPtr,         ///< [OUT] Buffer to hold the ciphertext chunk.
     size_t* ciphertextSizePtr,      ///< [INOUT] Ciphertext chunk size.
     uint8_t* ephemKeyPtr,           ///< [OUT] Serialized ephemeral public key.
     size_t* ephemKeySizePtr,        ///< [INOUT] Serialized ephemeral key size.
-    uint8_t* saltPtr,               ///< [OUT] Buffer to hold the salt.
-    size_t* saltSizePtr,            ///< [INOUT] Salt size.
     uint8_t* tagPtr,                ///< [OUT] Buffer to hold the authentication tag.
     size_t* tagSizePtr              ///< [INOUT] Tag size. Cannot be zero.
 )
@@ -761,12 +739,8 @@ LE_SHARED le_result_t pa_iks_ecc_Ecies_DecryptPacket
     uint64_t keyRef,                ///< [IN] Key reference.
     const uint8_t* labelPtr,        ///< [IN] Label. NULL if not used.
     size_t labelSize,               ///< [IN] Label size.
-    const uint8_t* aadPtr,          ///< [IN] AAD chunk. NULL if not used.
-    size_t aadSize,                 ///< [IN] AAD size.
     const uint8_t* ephemKeyPtr,     ///< [IN] Serialized ephemeral public key.
     size_t ephemKeySize,            ///< [IN] Ephemeral public key size.
-    const uint8_t* saltPtr,         ///< [IN] Salt.
-    size_t saltSize,                ///< [IN] Salt size.
     const uint8_t* ciphertextPtr,   ///< [IN] Ciphertext chunk.
     size_t ciphertextSize,          ///< [IN] Ciphertext chunk size.
     uint8_t* plaintextPtr,          ///< [OUT] Buffer to hold the plaintext chunk.
@@ -785,20 +759,7 @@ LE_SHARED le_result_t pa_iks_ecc_Ecies_StartEncrypt
     const uint8_t* labelPtr,    ///< [IN] Label. NULL if not used.
     size_t labelSize,           ///< [IN] Label size.
     uint8_t* ephemKeyPtr,       ///< [OUT] Serialized ephemeral public key.
-    size_t* ephemKeySizePtr,    ///< [INOUT] Ephemeral public key size.
-    uint8_t* saltPtr,           ///< [OUT] Buffer to hold the salt.
-    size_t* saltSizePtr         ///< [INOUT] Salt size.
-)
-{
-    return LE_UNSUPPORTED;
-}
-
-
-LE_SHARED le_result_t pa_iks_ecc_Ecies_ProcessAad
-(
-    uint64_t session,               ///< [IN] Session reference.
-    const uint8_t* aadChunkPtr,     ///< [IN] AAD chunk.
-    size_t aadChunkSize             ///< [IN] AAD chunk size.
+    size_t* ephemKeySizePtr     ///< [INOUT] Ephemeral public key size.
 )
 {
     return LE_UNSUPPORTED;
@@ -835,9 +796,7 @@ LE_SHARED le_result_t pa_iks_ecc_Ecies_StartDecrypt
     const uint8_t* labelPtr,    ///< [IN] Label. NULL if not used.
     size_t labelSize,           ///< [IN] Label size.
     const uint8_t* ephemKeyPtr, ///< [IN] Serialized ephemeral public key.
-    size_t ephemKeySize,        ///< [IN] Ephemeral public key size.
-    const uint8_t* saltPtr,     ///< [IN] Salt.
-    size_t saltSize             ///< [IN] Salt size.
+    size_t ephemKeySize         ///< [IN] Ephemeral public key size.
 )
 {
     return LE_UNSUPPORTED;

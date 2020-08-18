@@ -84,6 +84,7 @@ ENUM KeyType
     KEY_TYPE_AES_CMAC = 3,                          ///< AES CMAC.
     KEY_TYPE_AES_MILENAGE_K = 4,                    ///< AES Milenage K.
     KEY_TYPE_AES_MILENAGE_OPC = 5,                  ///< AES Milenage OPc.
+    KEY_TYPE_AES_MILENAGE_OP = 6,                   ///< AES Milenage OP.
 
     /* HMAC keys. */
     KEY_TYPE_HMAC_SHA512 = 81,
@@ -159,8 +160,12 @@ ENUM KeyType
 
     KEY_TYPE_PRIV_ECIES_HKDF_SHA256_GCM128 = 262,   ///< Uses HKDF with SHA256 and AES GCM 128
                                                     ///  for bulk decryption.
-    KEY_TYPE_PUB_ECIES_HKDF_SHA256_GCM128 = 263     ///< Uses HKDF with SHA256 and AES GCM 128
+    KEY_TYPE_PUB_ECIES_HKDF_SHA256_GCM128 = 263,    ///< Uses HKDF with SHA256 and AES GCM 128
                                                     ///  for bulk encryption.
+
+    // TLS 1.2 PSK keys (premaster secret).
+    KEY_TYPE_TLS_1_2_PSK_SHA384 = 500,              ///< PRF uses SHA384.
+    KEY_TYPE_TLS_1_2_PSK_SHA256 = 501               ///< PRF uses SHA256.
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -263,74 +268,6 @@ DEFINE MAX_PACKET_SIZE = 4096;
 DEFINE MAX_MODULE_ID_SIZE = 50;
 DEFINE MAX_MODULE_ID_BYTES = (MAX_MODULE_ID_SIZE + 1);
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Sets the module ID.  This module ID may be used to uniquely identify the module, device or chip
- * that this instance of the IOT Key Store is running in.  The module ID is not secret and should
- * generally not change for the life of the module.
- *
- * An update key can be set to delete the module ID.  If the update key is not set then the module
- * ID may be viewed as OTP (one-time programmable).
- *
- * @return
- *      LE_OK if successful.
- *      LE_BAD_PARAMETER if the update key reference is invalid
- *                       or if idPtr NULL or is invalid.
- *      LE_UNSUPPORTED if underlying resource does not support this operation.
- *      LE_FAULT if the module ID has already been set
- *               or if there was an internal error.
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t SetModuleId
-(
-    string  idPtr[MAX_MODULE_ID_SIZE]   IN, ///< Module ID.
-    uint64  keyRef                      IN  ///< Key reference. NULL if not used.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the module ID.
- *
- * @return
- *      LE_OK if successful.
- *      LE_NOT_FOUND if the module ID has not been set.
- *      LE_BAD_PARAMETER if bufPtr is NULL.
- *      LE_OVERFLOW if the buffer is too small to hold the entire module ID.
- *      LE_UNSUPPORTED if underlying resource does not support this operation.
- *      LE_FAULT if there was an internal error.
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t GetModuleId
-(
-    string  idPtr[MAX_MODULE_ID_SIZE]   OUT ///< Module ID.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Deletes the module ID.
- *
- * This function is only possible if an update key was set when the module ID was set.  The
- * authCmdPtr must contain a valid delete module ID command.  If the command is valid and authentic
- * then the module ID is deleted.  Once the module ID is deleted a new module ID may be set.
- *
- * @note
- *      See the comment block at the top of this page for the authenticated command format.
- *
- * @return
- *      LE_OK if successful.
- *      LE_NOT_FOUND if the module ID has not been set.
- *      LE_UNSUPPORTED if underlying resource does not support this operation.
- *      LE_FAULT if there is no assigned update key or the authCmdPtr is not valid
- *               or if there was an internal error.
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t DeleteModuleId
-(
-    uint8       authCmd[MAX_AUTH_CMD_SIZE]  IN      ///< Authenticated command buffer.
-);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -482,6 +419,9 @@ FUNCTION le_result_t HasKeyValue
  * The update key can be used at a later time to perform authenticated updates of the specified key.
  * The same update key may be used for multiple keys and digests.
  *
+ * The key can be made not updatable by setting the updateKeyRef parameter to zero.  Warning, this
+ * is a one-time, one-way operation.
+ *
  * @note
  *      Once an update key is assigned the key parameters can no longer be modified except through
  *      an authenticated update process.
@@ -506,7 +446,7 @@ FUNCTION le_result_t HasKeyValue
 FUNCTION le_result_t SetKeyUpdateKey
 (
     uint64      keyRef          IN,     ///< Key reference.
-    uint64      updateKeyRef    IN      ///< Reference to an update key.
+    uint64      updateKeyRef    IN      ///< Reference to an update key. 0 for not updatable.
 );
 
 
@@ -551,7 +491,7 @@ FUNCTION le_result_t GenKeyValue
  *
  * Private key provisioning is not currently supported.
  *
- * If the key is a symmetric then the key value must be encrypted with the provisioning key.  If the
+ * If the key is a symmetric then the key value must be wrapped with the wrapping key.  If the
  * key is a public key the key value must be provided in plaintext.
  *
  * If the specified key does not have an assigned update key then the provPackagePtr is treated as a
@@ -727,6 +667,9 @@ FUNCTION le_result_t GetDigestSize
  * KEY_TYPE_KEY_UPDATE.  The update key can be used at a later time to perform authenticated
  * updates of the specified digest.  The same update key may be used for multiple keys and digests.
  *
+ * The digest can be made not updatable by setting the updateKeyRef parameter to zero.  Warning,
+ * this is a one-time, one-way operation.
+ *
  * @note
  *      Once an update key is assigned the digest parameters can no longer be modified except
  *      through an authenticated update process.
@@ -749,7 +692,7 @@ FUNCTION le_result_t GetDigestSize
 FUNCTION le_result_t SetDigestUpdateKey
 (
     uint64      digestRef       IN,     ///< Digest reference.
-    uint64      updateKeyRef    IN      ///< Reference to an update key.
+    uint64      updateKeyRef    IN      ///< Reference to an update key. 0 for not updatable.
 );
 
 
@@ -876,9 +819,9 @@ FUNCTION le_result_t GetUpdateAuthChallenge
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the provisioning key.  This is a public key that is internally generated by the IOT Key Store
- * and used to encrypt symmetric and private keys for provisioning into the IOT Key Store.  This key
- * can only be used for this purpose.
+ * Get the wrapping key.  This is a public key that is internally generated by the IOT Key Store
+ * and used to encrypt (wrap) symmetric and private keys for provisioning into the IOT Key Store.
+ * This key can only be used for this purpose.
  *
  * @note
  *      The key is provided in ASN.1 structured DER encoded format.  Refer to the comment at the
@@ -891,9 +834,9 @@ FUNCTION le_result_t GetUpdateAuthChallenge
  *      LE_FAULT if there is an internal error.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t GetProvisionKey
+FUNCTION le_result_t GetWrappingKey
 (
-    uint8       buf[MAX_KEY_SIZE]       OUT    ///< Buffer to hold the provisioning key.
+    uint8       buf[MAX_KEY_SIZE]       OUT    ///< Buffer to hold the wrapping key.
 );
 
 
