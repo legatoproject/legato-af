@@ -41,10 +41,10 @@ do
     esac
 done
 
-REPO_EXCLUDE_PATTERN='(legato|qmi/src|proprietary/qct|proprietary/.*/src|docManagement)'
+REPO_EXCLUDE_PATTERN='(legato|qmi/src|proprietary/(qct|sierra)|proprietary/.*/src|docManagement)'
 
 RELEASE_DIR=$LEGATO_ROOT/releases
-VERSION=$(cat $LEGATO_ROOT/version)
+VERSION=$(cat "$LEGATO_ROOT/version")
 STAGE_NAME=legato-$VERSION
 STAGE_DIR=$RELEASE_DIR/$STAGE_NAME
 PKG_NAME=$STAGE_NAME.tar.bz2
