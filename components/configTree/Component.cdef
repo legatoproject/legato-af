@@ -6,6 +6,14 @@ provides:
     }
 }
 
+requires:
+{
+    api:
+    {
+        le_appInfo.api
+    }
+}
+
 sources:
 {
     le_cfg_unsupported.c

@@ -1,0 +1,29 @@
+//
+// Provides config tree as an application
+//
+// For use on RTOS platforms which use the microSupervisor
+//
+// Copyright (C) Sierra Wireless Inc.
+//
+
+executables:
+{
+    configTree = ( $LEGATO_ROOT/components/configTree )
+}
+
+processes:
+{
+    run:
+    {
+        ( configTree )
+    }
+
+    faultAction: restart
+    maxStackBytes: 8192
+}
+
+extern:
+{
+    configTree.configTree.le_appInfo
+    configTree.configTree.le_cfg
+}

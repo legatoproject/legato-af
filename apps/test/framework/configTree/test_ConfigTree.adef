@@ -13,6 +13,11 @@ executables:
      testConfigTree = (testConfigTree)
 }
 
+bindings:
+{
+    testConfigTree.testConfigTree.le_cfg -> configTree.le_cfg
+}
+
 processes:
 {
     run:

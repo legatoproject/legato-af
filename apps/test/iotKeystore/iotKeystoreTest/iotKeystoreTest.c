@@ -38,11 +38,11 @@ static void WriteBuf(const char* fileNamePtr, const uint8_t* bufPtr, size_t bufS
     int fd;
     do
     {
-        fd = open(fileNamePtr, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+        fd = le_fd_Open(fileNamePtr, O_WRONLY | O_CREAT | O_TRUNC);
     }
     while ( (fd == -1) && (errno == EINTR) );
 
-    LE_TEST_ASSERT(fd != -1, "Could not open file %s.  %m.", fileNamePtr);
+    LE_TEST_ASSERT(fd != -1, "Could not open file %s. errno=%d", fileNamePtr, errno);
 
     const uint8_t* currentPtr = bufPtr;
     size_t numBytes = 0;
@@ -81,11 +81,11 @@ static size_t ReadEntireFile(const char* fileNamePtr, uint8_t* bufPtr, size_t bu
     int fd;
     do
     {
-        fd = open(fileNamePtr, O_RDONLY);
+        fd = le_fd_Open(fileNamePtr, O_RDONLY);
     }
     while ( (fd == -1) && (errno == EINTR) );
 
-    LE_TEST_ASSERT(fd != -1, "Could not open file %s.  %m.", fileNamePtr);
+    LE_TEST_ASSERT(fd != -1, "Could not open file %s. errno=%d", fileNamePtr, errno);
 
     uint8_t* currentPtr = bufPtr;
     size_t numBytes = 0;
