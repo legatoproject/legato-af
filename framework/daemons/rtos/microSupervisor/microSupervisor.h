@@ -129,4 +129,17 @@ LE_SHARED bool microSupervisor_IsTaskRunning
     const Task_t* taskPtr
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Run a CLI specific command
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t microSupervisor_RunCliCommand
+(
+    const char*             appNameStr,     ///< [IN] App name
+    le_thread_MainFunc_t    entryPoint,     ///< [IN] Command's main entry point
+    int                     argc,           ///< [IN] Command argument count
+    const char*             argv[]          ///< [IN] Command argument list
+);
+
 #endif /* LEGATO_SRC_MICROSUPERVISOR_INTERN_INCLUDE_GUARD */

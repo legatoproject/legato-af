@@ -54,7 +54,7 @@ COMPONENT_INIT
 
     if (IsExiting)
     {
-        return;
+        le_thread_Exit(NULL);
     }
 
     le_ulpm_Reboot();

@@ -224,19 +224,20 @@ COMPONENT_INIT
     {
         case CMD_UNKNOWN:
             CommandHelpHandler();
-            return;
+            break;
         case CMD_ERROR:
             // Error occurred -- do nothing as error has already been reported
-            return;
+            break;
         case CMD_STATUS:
             le_microSupervisor_DebugAppStatus();
-            return;
+            break;
         case CMD_START_APP:
             le_microSupervisor_StartApp(AppNameStr);
-            return;
+            break;
         case CMD_START_PROC:
             ArgV[ArgC] = NULL;
             le_microSupervisor_RunProc(AppNameStr, ProcNameStr, ArgC, ArgV);
-            return;
+            break;
     }
+    le_thread_Exit(NULL);
 }

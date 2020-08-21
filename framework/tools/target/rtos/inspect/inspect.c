@@ -1251,22 +1251,24 @@ COMPONENT_INIT
     le_arg_Scan();
     if (le_arg_GetScanResult() != LE_OK || IsExiting || InspectType == INSPECT_INSP_TYPE_LAST)
     {
-        return;
+        goto end;
     }
 
     // Create a memory pool for iterators.
     InitIteratorPool(InspectType);
     if (IsExiting)
     {
-        return;
+        goto end;
     }
 
     InitDisplay(InspectType);
     if (IsExiting)
     {
-        return;
+        goto end;
     }
 
     // Start the inspection.
     InspectFunc(InspectType);
+end:
+    le_thread_Exit(NULL);
 }

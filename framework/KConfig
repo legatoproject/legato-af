@@ -397,6 +397,15 @@ config MAX_ARG_POSITIONAL_CALLBACKS
   Total number of command line positional arguments that can be handled by an
   app.  On RTOS, this pool is a shared resource for all apps.
 
+config CLI_STACK_SIZE
+  int "Size of CLI thread stack"
+  depends on RTOS
+  range 0 4294967295
+  default 2048
+  ---help---
+  All CLI commands are run by CLI thread. This value is a size (in bytes) of
+  stack for the CLI thread.
+
 endmenu # end "Performance Tuning"
 
 menu "Diagnostic Features"

@@ -683,6 +683,92 @@ le_result_t LE_SHARED le_microSupervisor_RunCommand
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Run a CLI specific command
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t microSupervisor_RunCliCommand
+(
+    const char*             appNameStr,     ///< [IN] App name
+    le_thread_MainFunc_t    entryPoint,     ///< [IN] Command's main entry point
+    int                     argc,           ///< [IN] Command argument count
+    const char*             argv[]          ///< [IN] Command argument list
+)
+{
+    // Define task, stack and all necessary structures in order to run CLI commands
+    // in dedicated thread.
+
+    #if LE_CONFIG_STATIC_THREAD_STACKS
+    LE_THREAD_DEFINE_STATIC_STACK(cli, LE_CONFIG_CLI_STACK_SIZE);
+    #endif
+
+    static const char* cli_Args[] =
+    {
+        NULL
+    };
+
+    static Task_t cliTask =
+    {
+        .nameStr = "cli",
+        .priority = LE_THREAD_PRIORITY_MEDIUM,
+    #if LE_CONFIG_STATIC_THREAD_STACKS
+        .stackSize = sizeof(_thread_stack_cli),
+        .stackPtr = _thread_stack_cli,
+    #else
+        .stackSize = 0,
+        .stackPtr = NULL,
+    #endif
+        .entryPoint = NULL,
+        .defaultArgc = 0,
+        .defaultArgv = cli_Args,
+        .watchdogTimeout = 0,
+        .maxWatchdogTimeout = 0,
+    };
+
+    static TaskInfo_t cliTaskInfo;
+
+    // Keep CLI task inside dummy application object. This object is updated
+    // every call to reflect different CLI commands and then passed to StartProc().
+    static App_t cliApp =
+    {
+        .taskCount = 1,
+        .taskList = &cliTask,
+        .threadList = &cliTaskInfo,
+    };
+
+    const App_t* appPtr;
+    Task_t*      taskPtr;
+    le_result_t  result;
+    void*        retVal;
+
+    le_arg_SetExitOnError(false);
+
+    appPtr = microSupervisor_FindApp(appNameStr);
+    if (!appPtr)
+    {
+        LE_WARN("No app found named '%s'", appNameStr);
+        return LE_NOT_FOUND;
+    }
+
+    // Update application name to reflect current CLI command
+    cliApp.appNameStr = appPtr->appNameStr;
+
+    // Update CLI task's entry point to main function of current CLI command
+    taskPtr = (Task_t*)cliApp.taskList;
+    taskPtr->entryPoint = entryPoint;
+
+    result = StartProc(&cliApp, taskPtr, argc, argv, NULL);
+
+    if (result == LE_OK)
+    {
+        le_thread_Join(cliApp.threadList->threadRef, &retVal);
+        result = (retVal) ? LE_FAULT : LE_OK;
+    }
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Print app status on serial port (using printf).
  */
 //--------------------------------------------------------------------------------------------------

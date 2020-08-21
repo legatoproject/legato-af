@@ -71,4 +71,5 @@ COMPONENT_INIT
     le_arg_AllowLessPositionalArgsThanCallbacks();
     le_arg_SetFlagCallback(DisplayHelp, "h", "help");
     le_arg_Scan();
+    le_thread_Exit(NULL);
 }
