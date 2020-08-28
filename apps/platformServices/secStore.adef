@@ -49,6 +49,16 @@ extern:
 #endif
 }
 
+#if ${LEGATO_SECSTORE_PA} = ${PA_DIR}/trustZone/swi/components/le_pa_secStoreTz
+#if ${LE_CONFIG_LINUX} = ""
+extern:
+{
+    secStore.le_pa_secStoreTz.le_cfg
+}
+#endif
+#endif
+
+
 #if ${LE_CONFIG_LINUX} = y
 bindings:
 {

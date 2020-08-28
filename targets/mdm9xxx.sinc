@@ -15,6 +15,7 @@ buildVars:
     LEGATO_QMI_GNSS_PA_SRC = ${PA_DIR}/qmi/src/components/le_pa_gnss
     LEGATO_QMI_AVC_PA_SRC = ${PA_DIR}/qmi/src/components/le_pa_avc
     LEGATO_QMI_SECSTORE_PA_SRC = ${PA_DIR}/qmi/src/components/le_pa_secStore
+    LEGATO_QMI_SECSTORE_COMPAT_SRC = ${PA_DIR}/qmi/src/components/sfsSecStore
     LEGATO_QMI_UARTMODE_PA_SRC = ${PA_DIR}/qmi/src/components/le_pa_uartMode
     LEGATO_QMI_UTIL_SRC_FILES = ${PA_DIR}/qmi/src/components/swiQmi
 
@@ -30,6 +31,7 @@ buildVars:
     LEGATO_QMI_GNSS_PA_BIN = ${PA_DIR}/qmi/bin/${LEGATO_TARGET}/components/le_pa_gnss
     LEGATO_QMI_AVC_PA_BIN = ${PA_DIR}/qmi/bin/${LEGATO_TARGET}/components/le_pa_avc
     LEGATO_QMI_SECSTORE_PA_BIN = ${PA_DIR}/qmi/bin/${LEGATO_TARGET}/components/le_pa_secStore
+    LEGATO_QMI_SECSTORE_COMPAT_BIN = ${PA_DIR}/qmi/bin/${LEGATO_TARGET}/components/sfsSecStore
     LEGATO_QMI_FWUPDATE_PA_BIN = ${PA_DIR}/qmi/bin/${LEGATO_TARGET}/components/le_pa_fwupdate
     LEGATO_QMI_UARTMODE_PA_BIN = ${PA_DIR}/qmi/bin/${LEGATO_TARGET}/components/le_pa_uartMode
     LEGATO_QMI_UTIL_BIN = ${PA_DIR}/qmi/bin/${LEGATO_TARGET}/components/swiQmi
@@ -70,6 +72,11 @@ buildVars:
         LEGATO_QMI_SECSTORE_PA = ${LEGATO_QMI_SECSTORE_PA_SRC}
     #else
         LEGATO_QMI_SECSTORE_PA = ${LEGATO_QMI_SECSTORE_PA_BIN}
+    #endif
+    #if dir_exists(${LEGATO_QMI_SECSTORE_COMPAT_SRC})
+        LEGATO_QMI_SECSTORE_COMPAT = ${LEGATO_QMI_SECSTORE_COMPAT_SRC}
+    #else
+        LEGATO_QMI_SECSTORE_COMPAT = ${LEGATO_QMI_SECSTORE_COMPAT_BIN}
     #endif
     #if dir_exists(${LEGATO_QMI_FWUPDATE_PA_SRC})
         LEGATO_QMI_FWUPDATE_PA = ${LEGATO_QMI_FWUPDATE_PA_SRC}
