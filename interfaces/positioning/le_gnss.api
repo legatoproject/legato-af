@@ -939,6 +939,21 @@ FUNCTION le_result_t DisableExtendedEphemerisFile
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function must be called to download an Assisted GNSS data from server
+ *
+ * @return
+ *  - LE_FAULT         The function failed to download 'predicted Ephemeris' data from server.
+ *  - LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DownloadExtendedEphemeris
+(
+    uint32       days    IN  ///< extended ephemeris data for number of days
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to load an 'Extended Ephemeris' file into the GNSS device.
  *
  * @return

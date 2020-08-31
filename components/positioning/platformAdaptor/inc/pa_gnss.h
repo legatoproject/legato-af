@@ -472,6 +472,20 @@ LE_SHARED le_result_t pa_gnss_LoadExtendedEphemerisFile
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function must be called to download an Assisted GNSS data
+ *
+ * @return LE_FAULT         Fail to download Assisted GNSS data from server
+ * @return LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_DownloadExtendedEphemeris
+(
+    uint32_t       days      ///< [IN] extended ephemeris data for number of days
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to get the validity of the last injected Extended Ephemeris.
  *
  * @return LE_FAULT         The function failed to get the validity

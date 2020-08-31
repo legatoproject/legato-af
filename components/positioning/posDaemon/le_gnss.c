@@ -3458,6 +3458,24 @@ le_result_t le_gnss_LoadExtendedEphemerisFile
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function must be called to download an Assisted GNSS data from server
+ *
+ * @return
+ *  - LE_FAULT         The function failed to download 'predicted Ephemeris' data from server.
+ *  - LE_OK            The function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_DownloadExtendedEphemeris
+(
+    uint32_t       days      ///< [IN] extended ephemeris data for number of days
+)
+{
+    return (pa_gnss_DownloadExtendedEphemeris(days));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to get the validity of the last injected Extended Ephemeris.
  *
  * @return
