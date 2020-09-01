@@ -73,10 +73,10 @@ CopyRepo() {
         fi
 
         echo "Copying [$path] $LINE"
+        mkdir -p $(dirname "$STAGE_DIR/$path/$LINE")
         if [ -L "$LINE" ]; then
             cp -Rd "$LINE" "$STAGE_DIR/$path/$LINE"
         else
-            mkdir -p $(dirname "$STAGE_DIR/$path/$LINE")
             cp "$LINE" "$STAGE_DIR/$path/$LINE"
         fi
     done
