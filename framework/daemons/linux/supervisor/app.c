@@ -984,6 +984,10 @@ static void SetDefaultSmackRules
             smack_SetRule(frameworkAppList[i], "rwx", "qmuxd");
             smack_SetRule("qmuxd", "rwx", frameworkAppList[i]);
 
+            // 'w' permission is required for apps that need to use socket
+            // communication from ServiceDirectory
+            smack_SetRule(frameworkAppList[i], "w", "framework");
+
             // Give app.fwupdateService r access to admin (pipe) in order to perform update
             if (0 == strcmp(frameworkAppList[i], "app.fwupdateService"))
             {

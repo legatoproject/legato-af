@@ -722,8 +722,8 @@ static le_result_t AllowCommunication
     }
 
     // Set the SMACK label to/from the server.
-    smack_SetSocketLabels(clientConnectionPtr->fd, serverLabel, clientLabel);
-    smack_SetSocketLabels(serverConnectionPtr->fd, clientLabel, serverLabel);
+    smack_SetSocketLabels(clientConnectionPtr->fd, serverLabel, "framework");
+    smack_SetSocketLabels(serverConnectionPtr->fd, "framework", clientLabel);
 
     LE_DEBUG("Access granted from '%s' to '%s'", clientLabel, serverLabel);
 
