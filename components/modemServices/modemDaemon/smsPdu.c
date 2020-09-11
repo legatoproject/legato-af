@@ -1745,22 +1745,23 @@ static le_result_t DecodeMessageGWCB
     size_t    destDataSize = sizeof(smsPtr->cellBroadcast.data);
     uint32_t * destDataLenPtr = &(smsPtr->cellBroadcast.dataLen);
     le_sms_Format_t * formatPtr = &(smsPtr->cellBroadcast.format);
+    size_t payloadSize = dataSize - 6;
 
     switch(encoding)
     {
         case SMSPDU_8_BITS:
         {
             *formatPtr = LE_SMS_FORMAT_BINARY;
-            if (dataSize < destDataSize)
+            if (payloadSize < destDataSize)
             {
                 /* Content of message started dataPtr + 6 */
-                memcpy(destDataPtr,&dataPtr[6],dataSize);
-                *destDataLenPtr = dataSize;
+                memcpy(destDataPtr, &dataPtr[6], payloadSize);
+                *destDataLenPtr = payloadSize;
             }
             else
             {
                 LE_ERROR("Overflow occurs when copying binary PDU %d>%d",
-                                (int) dataSize, (int)destDataSize);
+                                (int) payloadSize, (int)destDataSize);
                 return LE_OVERFLOW;
             }
         }
@@ -1769,16 +1770,16 @@ static le_result_t DecodeMessageGWCB
         case SMSPDU_UCS2_16_BITS:
         {
             *formatPtr = LE_SMS_FORMAT_UCS2;
-            if (dataSize < destDataSize)
+            if (payloadSize < destDataSize)
             {
                 /* Content of message started dataPtr + 6 */
-                memcpy(destDataPtr,&dataPtr[6],dataSize);
-                *destDataLenPtr = dataSize;
+                memcpy(destDataPtr, &dataPtr[6], payloadSize);
+                *destDataLenPtr = payloadSize;
             }
             else
             {
                 LE_ERROR("Overflow occurs when copying UCS2 PDU %d>%d",
-                                (int) dataSize, (int)destDataSize);
+                                (int) payloadSize, (int)destDataSize);
                 return LE_OVERFLOW;
             }
         }

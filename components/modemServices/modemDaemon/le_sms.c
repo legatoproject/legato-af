@@ -95,7 +95,7 @@ static le_sms_MsgRef_t MsgRef;
 static HandlerCtx_t* HandlerCtxPtr = NULL;
   #endif // MK_CONFIG_DISABLE_SMS_INDICATION
 
-#else
+#else // MK_CONFIG_SMS_LIGHT
 //--------------------------------------------------------------------------------------------------
 /**
  * Maximum Message IDs returned by the List SMS messages command.
@@ -1165,28 +1165,33 @@ static int32_t GetMessagesFromMem
         res = pa_sms_RdPDUMsgFromMem(arrayPtr[i],protocol, storage, &messagePdu);
         le_sem_Post(SmsSem);
 
-        if (res != LE_OK)
+        if (res != LE_OK && res != LE_OVERFLOW)
         {
-            LE_ERROR("pa_sms_RdMsgFromMem failed");
+            LE_ERROR("pa_sms_RdMsgFromMem failed: %s", LE_RESULT_TXT(res));
             continue;
         }
 
-        if (messagePdu.dataLen > LE_SMS_PDU_MAX_BYTES)
+        if (messagePdu.dataLen > PA_SMS_PDU_MAX_BYTES(protocol))
         {
             LE_ERROR("PDU length out of range (%u) for message %d !",
                             messagePdu.dataLen,
                             arrayPtr[i]);
-            continue;
+            messagePdu.dataLen = PA_SMS_PDU_MAX_BYTES(protocol);
+            res = LE_OVERFLOW;
         }
 
         // Try to decode message.
         pa_sms_Message_t messageConverted;
 
-        if (smsPdu_Decode(messagePdu.protocol,
-                          messagePdu.data,
-                          messagePdu.dataLen,
-                          true,
-                          &messageConverted) == LE_OK)
+        if (res == LE_OK)
+        {
+            res = smsPdu_Decode(messagePdu.protocol,
+                                messagePdu.data,
+                                messagePdu.dataLen,
+                                true,
+                                &messageConverted);
+        }
+        if (res == LE_OK)
         {
             if (messageConverted.type != PA_SMS_SUBMIT)
             {
@@ -2242,7 +2247,7 @@ static void CloseSessionEventHandler
         result = le_ref_NextNode(iterRef);
     }
 }
-#endif
+#endif // MK_CONFIG_SMS_LIGHT
 
 #ifndef MK_CONFIG_DISABLE_SMS_INDICATION
 //--------------------------------------------------------------------------------------------------
@@ -2261,7 +2266,7 @@ static void NewSmsHandler
     {
         HandlerCtxPtr->handlerFuncPtr(MsgRef, HandlerCtxPtr->userContext);
     }
-#else
+#else // MK_CONFIG_SMS_LIGHT
     pa_sms_Pdu_t messagePdu;
     memset(&messagePdu, 0, sizeof(pa_sms_Pdu_t));
     le_result_t res = LE_OK;
@@ -2314,26 +2319,31 @@ static void NewSmsHandler
         smscInfoPresent = false;
     }
 
-    if (LE_OK != res)
+    if (LE_OK != res && LE_OVERFLOW != res)
     {
-        LE_ERROR("pa_sms_RdPDUMsgFromMem failed");
+        LE_ERROR("pa_sms_RdPDUMsgFromMem failed: %s", LE_RESULT_TXT(res));
         return;
     }
 
     pa_sms_Message_t messageConverted;
     le_sms_Msg_t* newSmsMsgObjPtr = NULL;
 
-    if (messagePdu.dataLen > LE_SMS_PDU_MAX_BYTES)
+    if (messagePdu.dataLen > PA_SMS_PDU_MAX_BYTES(messagePdu.protocol))
     {
         LE_ERROR("PDU length out of range (%u) !", messagePdu.dataLen);
+        messagePdu.dataLen = PA_SMS_PDU_MAX_BYTES(messagePdu.protocol);
+        res = LE_OVERFLOW;
     }
 
-    // Try to decode message.
-    res = smsPdu_Decode(messagePdu.protocol,
-                        messagePdu.data,
-                        messagePdu.dataLen,
-                        smscInfoPresent,
-                        &messageConverted);
+    if (LE_OK == res)
+    {
+        // Try to decode message.
+        res = smsPdu_Decode(messagePdu.protocol,
+                            messagePdu.data,
+                            messagePdu.dataLen,
+                            smscInfoPresent,
+                            &messageConverted);
+    }
     if (   (LE_OK == res)
         && (   (messageConverted.type == PA_SMS_DELIVER)
             || (messageConverted.type == PA_SMS_CELL_BROADCAST)
@@ -2391,7 +2401,7 @@ static void NewSmsHandler
 
     LE_DEBUG("All the registered client's handlers notified with objPtr %p, Obj %p",
              &newSmsMsgObjPtr, newSmsMsgObjPtr);
-#endif
+#endif // MK_CONFIG_SMS_LIGHT
 }
 #endif // MK_CONFIG_DISABLE_SMS_INDICATION
 
@@ -5008,7 +5018,8 @@ le_result_t le_sms_GetTpSt
 
     return LE_OK;
 }
-#endif
+#endif // MK_CONFIG_SMS_LIGHT
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -5058,7 +5069,7 @@ le_sms_RxMessageHandlerRef_t le_sms_AddRxMessageHandler
 
     return HandlerCtxPtr->handlerRef;
 
-#else
+#else // MK_CONFIG_SMS_LIGHT
     // search the sessionCtx; create it if doesn't exist.
     SessionCtxNode_t* sessionCtxPtr = GetSessionCtx(le_sms_GetClientSessionRef());
     if (!sessionCtxPtr)
@@ -5079,7 +5090,7 @@ le_sms_RxMessageHandlerRef_t le_sms_AddRxMessageHandler
     le_dls_Queue(&(sessionCtxPtr->handlerList), &(handlerCtxPtr->link));
 
     return handlerCtxPtr->handlerRef;
-#endif
+#endif // MK_CONFIG_SMS_LIGHT
 #endif // MK_CONFIG_DISABLE_SMS_INDICATION
 }
 
@@ -5115,7 +5126,7 @@ void le_sms_RemoveRxMessageHandler
     le_mem_Release(HandlerCtxPtr);
     HandlerCtxPtr = NULL;
 
-#else
+#else // MK_CONFIG_SMS_LIGHT
     // Get the hander context
     HandlerCtxNode_t* handlerCtxPtr = le_ref_Lookup(HandlerRefMap, handlerRef);
     if (NULL == handlerCtxPtr)
@@ -5137,7 +5148,7 @@ void le_sms_RemoveRxMessageHandler
     // Remove the handler node from the session context.
     le_dls_Remove(&(sessionCtxPtr->handlerList), &(handlerCtxPtr->link));
     le_mem_Release(handlerCtxPtr);
-#endif
+#endif // MK_CONFIG_SMS_LIGHT
 #endif // MK_CONFIG_DISABLE_SMS_INDICATION
 }
 
@@ -5161,7 +5172,7 @@ le_result_t le_sms_Init
                                         SMS_MAX_SESSION,
                                         sizeof(HandlerCtx_t));
   #endif
-#else
+#else // MK_CONFIG_SMS_LIGHT
     // Initialize the smsPdu module.
     smsPdu_Initialize();
 
@@ -5232,7 +5243,7 @@ le_result_t le_sms_Init
     le_thread_Start(le_thread_Create(WDOG_THREAD_NAME_SMS_COMMAND_SENDING, SmsSenderThread, NULL));
 
     le_sem_Wait(SmsSem);
-#endif
+#endif // MK_CONFIG_SMS_LIGHT
 
 #ifndef MK_CONFIG_DISABLE_SMS_INDICATION
     // Register a handler function for new message indication.
