@@ -61,6 +61,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get PDU max length depending on protocol.
+ */
+//--------------------------------------------------------------------------------------------------
+#define PA_SMS_PDU_MAX_BYTES(proto) \
+    ((proto) == PA_SMS_PROTOCOL_GSM ? LE_SMS_GSM_PDU_MAX_BYTES : LE_SMS_PDU_MAX_BYTES)
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Option mask.
  * It is used to know which option is present in the pa_sms_Message_t.
  *
@@ -391,16 +399,17 @@ LE_SHARED le_result_t pa_sms_SendPduMsg
     pa_sms_SendingErrCode_t* errorCode   ///< [OUT] The error code.
 );
 
-//--------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 /**
  * This function gets the message from the preferred message storage.
  *
+ * @return LE_OK           The function succeeded.
+ * @return LE_OVERFLOW     Message truncated.
+ * @return LE_UNSUPPORTED  Unsupported protocol.
  * @return LE_FAULT        The function failed to get the message from the preferred message
  *                         storage.
- * @return LE_TIMEOUT      No response was received from the Modem.
- * @return LE_OK           The function succeeded.
  */
-//--------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_sms_RdPDUMsgFromMem
 (
     uint32_t            index,      ///< [IN]  The place of storage in memory.

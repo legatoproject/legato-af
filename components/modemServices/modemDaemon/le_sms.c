@@ -39,6 +39,7 @@
 //--------------------------------------------------------------------------------------------------
 // Symbols and enums.
 //--------------------------------------------------------------------------------------------------
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Maximum Message IDs returned by the List SMS messages command.
@@ -1023,28 +1024,33 @@ static int32_t GetMessagesFromMem
         res = pa_sms_RdPDUMsgFromMem(arrayPtr[i],protocol, storage, &messagePdu);
         le_sem_Post(SmsSem);
 
-        if (res != LE_OK)
+        if (res != LE_OK && res != LE_OVERFLOW)
         {
-            LE_ERROR("pa_sms_RdMsgFromMem failed");
+            LE_ERROR("pa_sms_RdMsgFromMem failed: %s", LE_RESULT_TXT(res));
             continue;
         }
 
-        if (messagePdu.dataLen > LE_SMS_PDU_MAX_BYTES)
+        if (messagePdu.dataLen > PA_SMS_PDU_MAX_BYTES(protocol))
         {
             LE_ERROR("PDU length out of range (%u) for message %d !",
                             messagePdu.dataLen,
                             arrayPtr[i]);
-            continue;
+            messagePdu.dataLen = PA_SMS_PDU_MAX_BYTES(protocol);
+            res = LE_OVERFLOW;
         }
 
         // Try to decode message.
         pa_sms_Message_t messageConverted;
 
-        if (smsPdu_Decode(messagePdu.protocol,
-                          messagePdu.data,
-                          messagePdu.dataLen,
-                          true,
-                          &messageConverted) == LE_OK)
+        if (res == LE_OK)
+        {
+            res = smsPdu_Decode(messagePdu.protocol,
+                                messagePdu.data,
+                                messagePdu.dataLen,
+                                true,
+                                &messageConverted);
+        }
+        if (res == LE_OK)
         {
             if (messageConverted.type != PA_SMS_SUBMIT)
             {
@@ -1715,26 +1721,31 @@ static void NewSmsHandler
         smscInfoPresent = false;
     }
 
-    if (LE_OK != res)
+    if (LE_OK != res && LE_OVERFLOW != res)
     {
-        LE_ERROR("pa_sms_RdPDUMsgFromMem failed");
+        LE_ERROR("pa_sms_RdPDUMsgFromMem failed: %s", LE_RESULT_TXT(res));
         return;
     }
 
     pa_sms_Message_t messageConverted;
     le_sms_Msg_t* newSmsMsgObjPtr = NULL;
 
-    if (messagePdu.dataLen > LE_SMS_PDU_MAX_BYTES)
+    if (messagePdu.dataLen > PA_SMS_PDU_MAX_BYTES(messagePdu.protocol))
     {
         LE_ERROR("PDU length out of range (%u) !", messagePdu.dataLen);
+        messagePdu.dataLen = PA_SMS_PDU_MAX_BYTES(messagePdu.protocol);
+        res = LE_OVERFLOW;
     }
 
-    // Try to decode message.
-    res = smsPdu_Decode(messagePdu.protocol,
-                        messagePdu.data,
-                        messagePdu.dataLen,
-                        smscInfoPresent,
-                        &messageConverted);
+    if (LE_OK == res)
+    {
+        // Try to decode message.
+        res = smsPdu_Decode(messagePdu.protocol,
+                            messagePdu.data,
+                            messagePdu.dataLen,
+                            smscInfoPresent,
+                            &messageConverted);
+    }
     if (   (LE_OK == res)
         && (   (messageConverted.type == PA_SMS_DELIVER)
             || (messageConverted.type == PA_SMS_CELL_BROADCAST)
