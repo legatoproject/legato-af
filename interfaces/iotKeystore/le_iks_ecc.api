@@ -143,7 +143,7 @@ FUNCTION le_result_t Ecdsa_VerifySig
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Encrypts and integrity protects of a short message with ECIES (Elliptic Curve Integrated
+ * Encrypts and integrity protects a short message with ECIES (Elliptic Curve Integrated
  * Encryption System).
  *
  * Hybrid encryption combines an asymmetric encryption system with a symmetric encryption system to
@@ -159,17 +159,14 @@ FUNCTION le_result_t Ecdsa_VerifySig
  * This implementation of ECIES generally follows the SEC 1 standard but supports modernized
  * algorithms for the KDF and bulk encryption.
  *
- * Either plaintextPtr or aadPtr can be NULL but not both.
- *
  * @return
  *      LE_OK if successful.
  *      LE_BAD_PARAMETER if the key reference is invalid
  *                       or if the key type is invalid.
- *                       or if either labelPtr, aadPtr, plaintextPtr, ciphertextPtr, ephemKeyPtr,
- *                         ephemKeySizePtr, saltPtr, saltSizePtr, tagPtr is NULL when they
- *                         shouldn't be.
- *      LE_OUT_OF_RANGE if the labelSize, aadSize, textSize is invalid.
- *      LE_OVERFLOW if either the ciphertextPtr, ephemKeyPtr, saltSizePtr buffer is too small.
+ *                       or if either labelPtr, plaintextPtr, ciphertextPtr, ephemKeyPtr,
+ *                         ephemKeySizePtr, tagPtr is NULL when they shouldn't be.
+ *      LE_OUT_OF_RANGE if the labelSize, textSize, tagSize is invalid.
+ *      LE_OVERFLOW if the ephemKeyPtr buffer is too small.
  *      LE_FAULT if there was an internal error.
  */
 //--------------------------------------------------------------------------------------------------
@@ -177,11 +174,9 @@ FUNCTION le_result_t Ecies_EncryptPacket
 (
     uint64  keyRef                              IN,     ///< Key reference.
     uint8   label[le_iks.MAX_PACKET_SIZE]       IN,     ///< Label. NULL if not used.
-    uint8   aad[le_iks.MAX_PACKET_SIZE]         IN,     ///< AAD chunk. NULL if not used.
     uint8   plaintext[le_iks.MAX_PACKET_SIZE]   IN,     ///< Plaintext chunk. NULL if not used.
     uint8   ciphertext[le_iks.MAX_PACKET_SIZE]  OUT,    ///< Buffer to hold the ciphertext chunk.
     uint8   ephemKey[MAX_SERIAL_KEY_SIZE]       OUT,    ///< Serialized ephemeral public key.
-    uint8   salt[le_iks.MAX_DIGEST_SIZE]        OUT,    ///< Buffer to hold the salt.
     uint8   tag[MAX_TAG_SIZE]                   OUT     ///< Buffer to hold the authentication tag.
 );
 
@@ -208,9 +203,9 @@ FUNCTION le_result_t Ecies_EncryptPacket
  *      LE_OK if successful.
  *      LE_BAD_PARAMETER if the key reference is invalid
  *                       or if the key reference is invalid
- *                       or if either the ephemKeyPtr, saltPtr, aadPtr, plaintextPtr,
- *                         ciphertextChunkPtr, tagPtr is NULL when they shouldn't be.
- *      LE_OUT_OF_RANGE if the labelSize, aadSize, textSize, tagSize is invalid.
+ *                       or if either the ephemKeyPtr, plaintextPtr,
+ *                         ciphertextPtr, tagPtr is NULL.
+ *      LE_OUT_OF_RANGE if the labelSize, textSize, tagSize is invalid.
  *      LE_OVERFLOW if plaintextPtr buffer is too small.
  *      LE_FAULT if there was an internal error.
  */
@@ -219,9 +214,7 @@ FUNCTION le_result_t Ecies_DecryptPacket
 (
     uint64  keyRef                              IN,     ///< Key reference.
     uint8   label[le_iks.MAX_PACKET_SIZE]       IN,     ///< Label. NULL if not used.
-    uint8   aad[le_iks.MAX_PACKET_SIZE]         IN,     ///< AAD chunk. NULL if not used.
     uint8   ephemKey[MAX_SERIAL_KEY_SIZE]       IN,     ///< Serialized ephemeral public key.
-    uint8   salt[le_iks.MAX_DIGEST_SIZE]        IN,     ///< Salt.
     uint8   ciphertext[le_iks.MAX_PACKET_SIZE]  IN,     ///< Ciphertext chunk.
     uint8   plaintext[le_iks.MAX_PACKET_SIZE]   OUT,    ///< Buffer to hold the plaintext chunk.
     uint8   tag[MAX_TAG_SIZE]                   IN      ///< Authentication tag.
@@ -244,7 +237,6 @@ FUNCTION le_result_t Ecies_DecryptPacket
  * To encrypt a long packet the following sequence should be used:
  *
  * Ecies_StartEncrypt()  // Start the encryption process.
- * Ecies_ProcessAad()    // Call zero or more times until all AAD data is processed.
  * Ecies_Encrypt()       // Call zero or more times until all plaintext is encrypted.
  * Ecies_DoneEncrypt()   // Complete the process and obtain the authentication tag.
  *
@@ -252,25 +244,18 @@ FUNCTION le_result_t Ecies_DecryptPacket
  *
  * The session must have been created with the public key used for encryption.
  *
- * The AAD and plaintext are optional but they cannot both be omitted.  All AAD must be processed
- * before plaintext processing begins.
- *
  * An optional label associated with the message can be added.
  *
  * The public portion of the ephemeral key used during the encrytion process is stored in the
  * ephemKeyPtr buffer.  It is encoded as an ECPoint as described in RFC5480.
  *
- * A random salt is used during the encryption process only if the KDF requires it.  Currently,
- * only HKDF requires a salt.  If present the salt will be the same size as the hash function output
- * size.  If no salt is used saltPtr is set to NULL.
- *
  * @return
  *      LE_OK if successful.
  *      LE_BAD_PARAMETER if the session reference is invalid
  *                       or if the key type is invalid
- *                       or if either the ephemKeyPtr, ephemKeySizePtr, saltPtr or saltSizePtr
- *                         is NULL.
- *      LE_OUT_OF_RANGE if the labelSize is too big.
+ *                       or if either labelPtr, ephemKeyPtr, ephemKeySizePtr is NULL
+ *                          when they shouldn't be.
+ *      LE_OUT_OF_RANGE if the labelSize is invalid.
  *      LE_OVERFLOW if any of the output buffers are too small.
  *      LE_FAULT if there was an internal error.
  */
@@ -279,31 +264,7 @@ FUNCTION le_result_t Ecies_StartEncrypt
 (
     uint64  session                             IN,     ///< Session reference.
     uint8   label[le_iks.MAX_PACKET_SIZE]       IN,     ///< Label. NULL if not used.
-    uint8   ephemKey[MAX_SERIAL_KEY_SIZE]       OUT,    ///< Serialized ephemeral public key.
-    uint8   salt[le_iks.MAX_DIGEST_SIZE]        OUT     ///< Buffer to hold the salt.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Process a chunk of AAD (Additional Authenticated Data).  Either Ecies_StartEncrypt() or
- * Ecies_StartDecrypt() must have been previously called to start either an encryption or
- * decryption process.
- *
- * @return
- *      LE_OK if successful.
- *      LE_BAD_PARAMETER if the session reference is invalid
- *                       or if the key type is invalid
- *                       or if aadChunkPtr is NULL.
- *      LE_OUT_OF_RANGE if aadChunkSize is too big.
- *      LE_FAULT if an encryption or decryption process was not started or
- *                            plaintext/ciphertext processing has already started.
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t Ecies_ProcessAad
-(
-    uint64  session                             IN,     ///< Session reference.
-    uint8   aadChunk[le_iks.MAX_PACKET_SIZE]    IN      ///< AAD chunk.
+    uint8   ephemKey[MAX_SERIAL_KEY_SIZE]       OUT     ///< Serialized ephemeral public key.
 );
 
 
@@ -344,9 +305,9 @@ FUNCTION le_result_t Ecies_Encrypt
  *      LE_BAD_PARAMETER if the session reference is invalid
  *                       or if the key type is invalid
  *                       or if tagPtr is NULL.
+ *      LE_OUT_OF_RANGE if tagSize if invalud.
  *      LE_OVERFLOW if the tagPtr buffer is too small.
- *      LE_FAULT if an encryption process has not started or no data
- *                            (AAD and plaintext) has been processed.
+ *      LE_FAULT if an encryption process has not started or no data has been processed.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Ecies_DoneEncrypt
@@ -377,13 +338,12 @@ FUNCTION le_result_t Ecies_DoneEncrypt
  * To decrypt a long packet the following sequence should be used:
  *
  * Ecies_StartDecrypt()  // Start the decryption process.
- * Ecies_ProcessAad()    // Call zero or more times until all AAD data is processed.
  * Ecies_Decrypt()       // Call zero or more times until all ciphertext is decrypted.
  * Ecies_DoneDecrypt()   // Complete the process and check the authentication tag.
  *
  * Calling this function will cancel any previously started process using the same session.
  *
- * The same label, ephemeral public key and salt used for encryption must be provided.
+ * The same label and ephemeral public key used for encryption must be provided.
  *
  * @warning
  *      While decrypting long packets in this 'streaming' fashion plaintext chunks are released to
@@ -396,9 +356,8 @@ FUNCTION le_result_t Ecies_DoneEncrypt
  *      LE_OK if successful.
  *      LE_BAD_PARAMETER if the session reference is invalid
  *                       or if the session key type or ephemeral key is invalid
- *                       or if either the ephemKeyPtr or saltPtr is NULL.
- *      LE_OUT_OF_RANGE if either the labelSize is too big or the saltSize or ephemKeySize is
- *                       incorrect.
+ *                       or if the ephemKeyPtr is NULL.
+ *      LE_OUT_OF_RANGE if either the labelSize or ephemKeySize is invalid.
  *      LE_FAULT if there was an internal error.
  */
 //--------------------------------------------------------------------------------------------------
@@ -406,8 +365,7 @@ FUNCTION le_result_t Ecies_StartDecrypt
 (
     uint64  session                             IN,     ///< Session reference.
     uint8   label[le_iks.MAX_PACKET_SIZE]       IN,     ///< Label. NULL if not used.
-    uint8   ephemKey[MAX_SERIAL_KEY_SIZE]       IN,     ///< Serialized ephemeral public key.
-    uint8   salt[le_iks.MAX_DIGEST_SIZE]        IN      ///< Salt.
+    uint8   ephemKey[MAX_SERIAL_KEY_SIZE]       IN      ///< Serialized ephemeral public key.
 );
 
 
@@ -421,7 +379,7 @@ FUNCTION le_result_t Ecies_StartDecrypt
  *      LE_BAD_PARAMETER if the session reference is invalid
  *                       or if the key type is invalid
  *                       or if plaintextChunkPtr or ciphertextChunkPtr is NULL.
- *      LE_OUT_OF_RANGE if textSize is too big.
+ *      LE_OUT_OF_RANGE if textSize is invalid.
  *      LE_FAULT if a decryption process has not started.
  */
 //--------------------------------------------------------------------------------------------------
@@ -442,8 +400,8 @@ FUNCTION le_result_t Ecies_Decrypt
  *      LE_BAD_PARAMETER if the session reference is invalid
  *                       or if the key type is invalid
  *                       or if tagPtr is NULL.
- *      LE_FAULT if a decryption process has not started or no data (AAD and
- *                 ciphertext) has been processed
+ *      LE_OUT_OF_RANGE if tagSize is invalid.
+ *      LE_FAULT if a decryption process has not started or no data has been processed
  *               or the integrity check failed.
  */
 //--------------------------------------------------------------------------------------------------

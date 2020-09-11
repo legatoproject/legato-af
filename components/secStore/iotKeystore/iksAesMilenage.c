@@ -155,3 +155,31 @@ le_result_t le_iks_aesMilenage_GetAk
 {
     return pa_iks_aesMilenage_GetAk(kRef, opcRef, randPtr, randSize, akPtr, akSize);
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Derive an OPc value from the specified K and the internal OP value.
+ *
+ * @note
+ *      This function is generally not used in devices as most OPc values are derived in a factory
+ *      or network setting.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_BAD_PARAMETER if OP reference is invalid
+ *                       or if kPtr, opcPtr is NULL.
+ *      LE_FAULT if there was an internal error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_iks_aesMilenage_DeriveOpc
+(
+    uint64_t        opRef,      ///< [IN] Reference to OP key.
+    const uint8_t*  kPtr,       ///< [IN] K.
+    size_t          kSize,      ///< [IN] K size. Assumed to be LE_IKS_AESMILENAGE_K_SIZE.
+    uint8_t*        opcPtr,     ///< [OUT] Buffer to hold the OPc value.
+    size_t*         opcSize     ///< [OUT] OPc size. Assumed to be LE_IKS_AESMILENAGE_OPC_SIZE.
+)
+{
+    return pa_iks_aesMilenage_DeriveOpc(opRef, kPtr, kSize, opcPtr, opcSize);
+}

@@ -1004,6 +1004,17 @@ static le_data_TimeProtocol_t GetTimeProtocol
 )
 {
     le_data_TimeProtocol_t protocol = LE_DATA_TP;
+#if LE_CONFIG_ENABLE_CONFIG_TREE
+    char configPath[LE_CFG_STR_LEN_BYTES];
+    snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_TIME);
+
+    le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
+    if (le_cfg_NodeExists(cfg, CFG_NODE_PROTOCOL))
+    {
+        protocol = le_cfg_GetInt(cfg, CFG_NODE_PROTOCOL, LE_DATA_TP);
+    }
+    le_cfg_CancelTxn(cfg);
+#endif                              // for #if LE_CONFIG_ENABLE_CONFIG_TREE
     LE_DEBUG("Use time protocol %d", protocol);
     return protocol;
 }
@@ -1020,9 +1031,33 @@ static void GetTimeServer
     const char* defaultServerPtr    ///< [IN] Default time server
 )
 {
+#if LE_CONFIG_ENABLE_CONFIG_TREE
+    char configPath[LE_CFG_STR_LEN_BYTES];
+    snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_TIME);
+
+    le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
+    if (le_cfg_NodeExists(cfg, CFG_NODE_SERVER))
+    {
+        if (LE_OK != le_cfg_GetString(cfg,
+                                      CFG_NODE_SERVER,
+                                      serverPtr,
+                                      serverSize,
+                                      defaultServerPtr))
+        {
+            LE_ERROR("Unable to retrieve time server");
+            le_utf8_Copy(serverPtr, defaultServerPtr, serverSize, NULL);
+        }
+    }
+    else
+    {
+        LE_WARN("No server configured, use the default one");
+        le_utf8_Copy(serverPtr, defaultServerPtr, serverSize, NULL);
+    }
+    le_cfg_CancelTxn(cfg);
+#endif                              // for #if LE_CONFIG_ENABLE_CONFIG_TREE
     LE_INFO("Use time server '%s'", serverPtr);
 }
-#endif
+#endif                              // for #ifndef LE_CONFIG_LINUX
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1525,7 +1560,7 @@ static le_result_t RetrieveTimeFromServer
 #endif
 )
 {
-#ifndef DCS_USE_AUTOMATIC_SETTINGS
+#if !defined(DCS_USE_AUTOMATIC_SETTINGS) && defined(LE_CONFIG_LINUX)
     ConvertDcsToClockServiceTimeConfigs();
 #endif
 

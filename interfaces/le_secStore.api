@@ -32,6 +32,10 @@
  * To read an item, use le_secStore_Read(), and specify the item's name. To delete an item, use
  * le_secStore_Delete().
  *
+ * For deleting all the contents of an app, special item name "*" is supported. Example,
+ * le_secStore_Delete("*") will erase all the securage storage contents of a given app. Note that
+ * the special item name is not supported for reading and writing from secure storage.
+ *
  * All the functions in this API are provided by the @b secStore service.
  *
  * Here's a code sample binding to this service:

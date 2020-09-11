@@ -2070,7 +2070,7 @@ le_result_t le_update_Start
         return LE_OK;    // Client is dead, so this value doesn't matter.
     }
 
-    le_result_t result;
+    le_result_t result = LE_FAULT;
 
     // Reject updates unless IDLE.
     switch (State)

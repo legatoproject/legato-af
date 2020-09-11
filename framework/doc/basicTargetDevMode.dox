@@ -13,11 +13,6 @@ deployed into production.
 - removes the boot count file on startup to disable the boot loop detection feature of Legato.
 - installs other debug/development tools such as tcpdump, lsusb, lsof and iperf3.
 
-@c devMode also provides specific tools for Developer Studio support:
-- tcf-agent, making the target is able to be auto-discoverable by Developer Studio.
-- enables SFTP for use over SSH, facilitating file transfers from Developer Studio to the target
-  (SFTP can also be used as an alternative for scp through the CLI).
-
 @warning Before deploying your system image or target in a production environment devMode must be
 uninstalled. devMode installs gdbserver which is licensed with
 [GPLv3](https://www.gnu.org/licenses/gpl-3.0.en.html), uninstalling devMode removes all GPLv3
@@ -82,9 +77,6 @@ To remove devMode from your target:
 It is advisable to remove the devMode app before deploying targets in production. This can
 be done by removing devMode from the system sdef file and rebuilding the system for the
 target device.
-
-@note The tcf-agent creates extra network traffic between the host and the target. Stopping or
-removing devMode will decrease the traffic.
 
 Copyright (C) Sierra Wireless Inc.
 

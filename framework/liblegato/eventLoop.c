@@ -576,6 +576,10 @@ void event_ProcessOneEventReport
     // Convert the link pointer into a pointer to the Report base class.
     reportObjPtr = CONTAINER_OF(linkPtr, Report_t, link);
 
+    // Hold on to the current event to release it in destructor in case thread is terminated
+    // before event processing finishes.
+    perThreadRecPtr->currentEvent = reportObjPtr;
+
     // If it's a queued function report,
     if (reportObjPtr->type == LE_EVENT_REPORT_QUEUED_FUNC)
     {
@@ -644,6 +648,7 @@ void event_ProcessOneEventReport
 
     // We are done with this report.
     le_mem_Release(reportObjPtr);
+    perThreadRecPtr->currentEvent = NULL;
 }
 
 
@@ -834,6 +839,9 @@ event_PerThreadRec_t* event_CreatePerThreadInfo
     // Initialize the FD Monitor module's thread-specific stuff.
     fdMon_InitThread(recPtr);
 
+    // Initialize the current event member:
+    recPtr->currentEvent = NULL;
+
     // Take note of the fact that the Event Loop for this thread has been initialized, but
     // not started.
     recPtr->state = LE_EVENT_LOOP_INITIALIZED;
@@ -890,7 +898,13 @@ void event_DestructThread
     // now, it's a fatal error.
     perThreadRecPtr->state = LE_EVENT_LOOP_DESTRUCTED;
 
-    // Delete all the handlers for this thread.
+    // If an event is being processed, release it:
+    if (perThreadRecPtr->currentEvent)
+    {
+        le_mem_Release(perThreadRecPtr->currentEvent);
+    }
+
+    //Delete all the handlers for this thread.
     while (NULL != (doubleLinkPtr = le_dls_Peek(&perThreadRecPtr->handlerList)))
     {
         Handler_t* handlerPtr = CONTAINER_OF(doubleLinkPtr, Handler_t, threadLink);

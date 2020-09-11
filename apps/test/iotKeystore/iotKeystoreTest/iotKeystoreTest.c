@@ -156,7 +156,7 @@ static void WrapKey
     uint8_t provKey[LE_IKS_MAX_ASN1_VAL_BUF_SIZE];
     size_t provKeySize = sizeof(provKey);
 
-    result = le_iks_GetProvisionKey(provKey, &provKeySize);
+    result = le_iks_GetWrappingKey(provKey, &provKeySize);
     LE_TEST_ASSERT(result == LE_OK, "Could not get provisioning key.");
 
     WriteBuf(provKeyFile, provKey, provKeySize);
@@ -793,10 +793,6 @@ static le_result_t EccEncHelper
     size_t labelSize,
     uint8_t* ephemBufPtr,
     size_t* ephemBufSizePtr,
-    uint8_t* saltPtr,
-    size_t* saltSizePtr,
-    const uint8_t* aadPtr,
-    size_t aadSize,
     const uint8_t* msgPtr,
     uint8_t* ctPtr,
     size_t msgSize,
@@ -809,17 +805,8 @@ static le_result_t EccEncHelper
     // Start encryption process
     result = le_iks_ecc_Ecies_StartEncrypt(sesRef,
                                     labelPtr, labelSize,
-                                    ephemBufPtr, ephemBufSizePtr,
-                                    saltPtr, saltSizePtr);
+                                    ephemBufPtr, ephemBufSizePtr);
     LE_TEST_OK(result == LE_OK, "Start ECIES encryption process %s", LE_RESULT_TXT(result));
-    if (result != LE_OK)
-    {
-        return result;
-    }
-
-    // Add the AAD.
-    result = le_iks_ecc_Ecies_ProcessAad(sesRef, aadPtr, aadSize);
-    LE_TEST_OK(result == LE_OK, "Add AAD to ECIES encryption %s", LE_RESULT_TXT(result));
     if (result != LE_OK)
     {
         return result;
@@ -836,7 +823,8 @@ static le_result_t EccEncHelper
 
     // Get the tag.
     result = le_iks_ecc_Ecies_DoneEncrypt(sesRef, tagPtr, &tagSize);
-    LE_TEST_OK(result == LE_OK, "Get tag for ECIES %s", LE_RESULT_TXT(result));
+    LE_TEST_OK(result == LE_OK, "Get tag for ECIES: size %zu rc %s", tagSize,
+               LE_RESULT_TXT(result));
     if (result != LE_OK)
     {
         return result;
@@ -858,10 +846,6 @@ static le_result_t EccDecHelper
     size_t labelSize,
     const uint8_t* ephemBufPtr,
     size_t ephemBufSize,
-    const uint8_t* saltPtr,
-    size_t saltSize,
-    const uint8_t* aadPtr,
-    size_t aadSize,
     const uint8_t* ctPtr,
     uint8_t* ptPtr,
     size_t msgSize,
@@ -874,17 +858,8 @@ static le_result_t EccDecHelper
     // Start the decryption process.
     result = le_iks_ecc_Ecies_StartDecrypt(sesRef,
                                            labelPtr, labelSize,
-                                           ephemBufPtr, ephemBufSize,
-                                           saltPtr, saltSize);
+                                           ephemBufPtr, ephemBufSize);
     LE_TEST_OK(result == LE_OK, "Start ECIES decryption process %s", LE_RESULT_TXT(result));
-    if (result != LE_OK)
-    {
-        return result;
-    }
-
-    // Add the AAD.
-    result = le_iks_ecc_Ecies_ProcessAad(sesRef, aadPtr, aadSize);
-    LE_TEST_OK(result == LE_OK, "Process AAD %s", LE_RESULT_TXT(result));
     if (result != LE_OK)
     {
         return result;
@@ -917,10 +892,8 @@ static void EccEncTest
 {
     const char keyId[] = "eciesKey";
     const size_t eccKeySize = 28;
-    const size_t eccSaltSize = 32;
     const uint8_t label[] = "Invictus";
     const uint8_t msg[] = "Beyond this place of wrath and tears";
-    const uint8_t aad[] = "Looms but the Horror of the shade";
     const size_t eccTagSize = 16;
     le_result_t result;
     uint64_t keyRef;
@@ -953,16 +926,12 @@ static void EccEncTest
     // Encrypt the message with the ECIES public key.
     uint8_t ephemBuf[2*eccKeySize + 1];
     size_t ephemBufSize = sizeof(ephemBuf);
-    uint8_t salt[eccSaltSize];
-    size_t saltSize = sizeof(salt);
     uint8_t ct[sizeof(msg)];
     uint8_t tag[eccTagSize];
 
     result = EccEncHelper(sessionRef,
                           label, sizeof(label),
                           ephemBuf, &ephemBufSize,
-                          salt, &saltSize,
-                          aad, sizeof(aad),
                           msg, ct, sizeof(msg),
                           tag, sizeof(tag));
     LE_TEST_OK(result == LE_OK, "ECIES encrypt message.");
@@ -972,39 +941,21 @@ static void EccEncTest
     memcpy(wrongLabel, label, sizeof(wrongLabel));
     wrongLabel[2] = wrongLabel[2] + 1;
 
+    uint8_t decrBuf[sizeof(msg)];
     result = EccDecHelper(sessionRef,
                           wrongLabel, sizeof(wrongLabel),
                           ephemBuf, ephemBufSize,
-                          salt, saltSize,
-                          aad, sizeof(aad),
-                          msg, ct, sizeof(msg),
+                          ct, decrBuf, sizeof(msg),
                           tag, sizeof(tag));
     LE_TEST_OK(result != LE_OK, "ECIES decrypt message with wrong label.");
 
-    // Attempt to decrypt but with the wrong aad.
-    uint8_t wrongAad[sizeof(aad)];
-    memcpy(wrongAad, aad, sizeof(wrongAad));
-    wrongAad[4] = wrongAad[4] + 1;
-
-    result = EccDecHelper(sessionRef,
-                          label, sizeof(label),
-                          ephemBuf, ephemBufSize,
-                          salt, saltSize,
-                          wrongAad, sizeof(aad),
-                          msg, ct, sizeof(msg),
-                          tag, sizeof(tag));
-    LE_TEST_OK(result != LE_OK, "ECIES decrypt message with wrong AAD.");
-
     // Decrypt the message properly.
-    uint8_t decrBuf[sizeof(msg)];
     result = EccDecHelper(sessionRef,
                           label, sizeof(label),
                           ephemBuf, ephemBufSize,
-                          salt, saltSize,
-                          aad, sizeof(aad),
                           ct, decrBuf, sizeof(msg),
                           tag, sizeof(tag));
-    LE_TEST_OK(result == LE_OK, "ECIES decrypt message.");
+    LE_TEST_OK(result == LE_OK, "ECIES decrypt message: rc %s", LE_RESULT_TXT(result));
 
     LE_TEST_OK(memcmp(msg, decrBuf, sizeof(msg)) == 0, "Decrypted plaintext matches original.");
 
@@ -1028,10 +979,8 @@ static void EccPacketTest
 {
     const char keyId[] = "eciesKey";
     const size_t eccKeySize = 66;
-    const size_t eccSaltSize = 64;
     const uint8_t label[] = "William Ernest Henley";
     const uint8_t msg[] = "And yet the menace of the years";
-    const uint8_t aad[] = "Finds and shall find me unafraid.";
 
     const size_t eccTagSize = 16;
     le_result_t result;
@@ -1062,8 +1011,6 @@ static void EccPacketTest
     LE_TEST_INFO("Encrypting string '%s'", msg);
     uint8_t ephemBuf[2*eccKeySize + 1];
     size_t ephemBufSize = sizeof(ephemBuf);
-    uint8_t salt[eccSaltSize];
-    size_t saltSize = sizeof(salt);
     uint8_t ct[sizeof(msg)];
     size_t ctSize = sizeof(ct);
     uint8_t tag[eccTagSize];
@@ -1071,11 +1018,9 @@ static void EccPacketTest
 
     result = le_iks_ecc_Ecies_EncryptPacket(keyRef,
                                             label, sizeof(label),
-                                            aad, sizeof(aad),
                                             msg, sizeof(msg),
                                             ct, &ctSize,
                                             ephemBuf, &ephemBufSize,
-                                            salt, &saltSize,
                                             tag, &tagSize);
 
     LE_TEST_OK(result == LE_OK, "Encrypting result %s", LE_RESULT_TXT(result));
@@ -1086,9 +1031,7 @@ static void EccPacketTest
     size_t ptSize = sizeof(msg);
     result = le_iks_ecc_Ecies_DecryptPacket(keyRef,
                                      label, sizeof(label),
-                                     aad, sizeof(aad),
                                      ephemBuf, ephemBufSize,
-                                     salt, saltSize,
                                      ct, ctSize,
                                      pt, &ptSize,
                                      tag, sizeof(tag));
@@ -1161,7 +1104,9 @@ static void RsaSigTest
                                       signature,
                                       signatureSize);
 
-    LE_TEST_OK(result == LE_OUT_OF_RANGE, "Negative test: verify signature with wrong salt length.");
+    LE_TEST_OK(result != LE_OK,
+               "Negative test: verify signature with wrong salt length: rc %s",
+               LE_RESULT_TXT(result));
 
     // Use a different different msg and check that the signature verification fails.
     uint8_t modifiedMsgHash[RSA_SIG_HASH_DIGEST_SIZE] = {35};

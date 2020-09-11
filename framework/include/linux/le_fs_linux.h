@@ -1,5 +1,5 @@
 //--------------------------------------------------------------------------------------------------
-/** @file fs.h
+/** @file fs_linux.h
  *
  * Linux-specific Legato File System inter-module include file.
  *
@@ -12,8 +12,8 @@
  */
 //--------------------------------------------------------------------------------------------------
 
-#ifndef LINUX_LE_FS_H_INCLUDE_GUARD
-#define LINUX_LE_FS_H_INCLUDE_GUARD
+#ifndef LEGATO_FS_LINUX_H_INCLUDE_GUARD
+#define LEGATO_FS_LINUX_H_INCLUDE_GUARD
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -23,4 +23,4 @@
 #define LE_FS_PATH_MAX_LEN PATH_MAX
 
 
-#endif /* end LINUX_LE_FS_H_INCLUDE_GUARD */
+#endif /* end LEGATO_FS_LINUX_H_INCLUDE_GUARD */

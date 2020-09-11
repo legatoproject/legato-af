@@ -1,5 +1,5 @@
 //--------------------------------------------------------------------------------------------------
-/** @file le_fd.h
+/** @file le_fd_linux.h
  *
  * Legato File Descriptor Linux-specific definitions.
  *
@@ -10,8 +10,8 @@
  */
 //--------------------------------------------------------------------------------------------------
 
-#ifndef LINUX_LE_FD_H_INCLUDE_GUARD
-#define LINUX_LE_FD_H_INCLUDE_GUARD
+#ifndef LEGATO_FD_LINUX_H_INCLUDE_GUARD
+#define LEGATO_FD_LINUX_H_INCLUDE_GUARD
 
 #define le_fd_Close(fd)                   close(fd)
 #define le_fd_Dup(oldfd)                  dup(oldfd)
@@ -19,9 +19,8 @@
 #define le_fd_Ioctl(fd, request, argp)    ioctl((fd), (request), (argp))
 #define le_fd_MkFifo(pathname, mode)      mkfifo((pathname), (mode))
 #define le_fd_MkPipe(pathname, mode)      (-1)
-#define le_fd_Create(pathname, flags)     create((pathname), (flags))
 #define le_fd_Open(pathname, flags, ...)  open((pathname), (flags), ##__VA_ARGS__)
 #define le_fd_Read(fd, buf, count)        read((fd), (buf), (count))
 #define le_fd_Write(fd, buf, count)       write((fd), (buf), (count))
 
-#endif /* end LINUX_LE_FD_H_INCLUDE_GUARD */
+#endif /* end LEGATO_FD_LINUX_H_INCLUDE_GUARD */

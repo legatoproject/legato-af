@@ -1,0 +1,13 @@
+provides:
+{
+    api:
+    {
+        le_cfg.api
+    }
+}
+
+sources:
+{
+    le_cfg_unsupported.c
+    le_cfg.c
+}

@@ -389,7 +389,7 @@ $(LEGATO_BUILD_KCONFIG): export LE_CONFIG_CUSTOM_FA_PATH=$(shell sed -e 's/^LE_C
 endif
 $(LEGATO_BUILD_KCONFIG): $(wildcard $(LEGATO_KCONFIG))
 $(LEGATO_BUILD_KCONFIG): $(shell find . -name 'KConfig' -o -name '*.kconfig')
-	$(Q)env
+	$(Q)env $(VOUTPUT)
 	$(Q)mkdir -p $(dir $@)
 	$(Q)if [ -f $(LEGATO_KCONFIG) ]; then cp $(LEGATO_KCONFIG) $@; fi
 ifeq ($(KNOWN_TARGET),1)

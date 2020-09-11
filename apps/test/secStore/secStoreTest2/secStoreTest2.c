@@ -271,6 +271,63 @@ static void Test8
 }
 #endif
 
+// Write 2 normal files
+// Read 2 normal files, with sufficient read buffer size
+// Delete both files, i.e. delete all the contents of an application using "*" name
+// Verify both files cannot be found
+static void Test9
+(
+    void
+)
+{
+    LE_TEST_INFO("Test9");
+
+    char outBuffer[1024] = {0};
+    size_t outBufferSize = sizeof(outBuffer);
+    le_result_t result;
+
+    result = le_secStore_Write("file1", (uint8_t*)"string321", 10);
+    LE_TEST_OK(result == LE_OK, "Create a 10-byte file: [%s]", LE_RESULT_TXT(result));
+
+
+    result = le_secStore_Read("file1", (uint8_t*)outBuffer, &outBufferSize);
+    LE_TEST_OK(result == LE_OK, "Read from the 10-byte file: [%s]", LE_RESULT_TXT(result));
+
+    LE_TEST_OK(strcmp(outBuffer, "string321") == 0,
+               "Checking secStore item contents '%s', expecting 'string321'",
+               outBuffer);
+
+    result = le_secStore_Write("file2", (uint8_t*)"string789", 10);
+    LE_TEST_OK(result == LE_OK, "Create a 10-byte file: [%s]", LE_RESULT_TXT(result));
+
+
+    result = le_secStore_Read("file2", (uint8_t*)outBuffer, &outBufferSize);
+    LE_TEST_OK(result == LE_OK, "Read from the 10-byte file: [%s]", LE_RESULT_TXT(result));
+
+    LE_TEST_OK(strcmp(outBuffer, "string789") == 0,
+               "Checking secStore item contents '%s', expecting 'string789'",
+               outBuffer);
+
+    result = le_secStore_Delete("*");
+    LE_TEST_OK(result == LE_OK, "Delete the app contents: [%s]", LE_RESULT_TXT(result));
+
+    result = le_secStore_Read("*", (uint8_t*)outBuffer, &outBufferSize);
+    LE_TEST_OK(result == LE_FAULT, "Invalid special name for reading: [%s]", LE_RESULT_TXT(result));
+
+    result = le_secStore_Write("*", (uint8_t*)"string456", 10);
+    LE_TEST_OK(result == LE_FAULT, "Invalid special name for writing: [%s]", LE_RESULT_TXT(result));
+
+    result = le_secStore_Read("file1", (uint8_t*)outBuffer, &outBufferSize);
+    LE_TEST_OK(result == LE_NOT_FOUND, "Read from the file with deleted contents: [%s]",
+               LE_RESULT_TXT(result));
+
+    result = le_secStore_Read("file2", (uint8_t*)outBuffer, &outBufferSize);
+    LE_TEST_OK(result == LE_NOT_FOUND, "Read from the file with contents deleted: [%s]",
+               LE_RESULT_TXT(result));
+
+    LE_TEST_INFO("End of Test9");
+}
+
 COMPONENT_INIT
 {
     LE_TEST_PLAN(23);
@@ -288,6 +345,7 @@ COMPONENT_INIT
 #if LE_CONFIG_LINUX
     Test8();
 #endif
+    Test9();
     LE_TEST_INFO("=== SecStoreTest2 END ===");
 
     LE_TEST_EXIT;

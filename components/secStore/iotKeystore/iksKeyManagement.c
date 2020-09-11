@@ -15,86 +15,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Sets the module ID.  This module ID may be used to uniquely identify the module, device or chip
- * that this instance of the IOT Key Store is running in.  The module ID is not secret and should
- * generally not change for the life of the module.
- *
- * An update key can be set to delete the module ID.  If the update key is not set then the module
- * ID may be viewed as OTP (one-time programmable).
- *
- * @return
- *      LE_OK if successful.
- *      LE_BAD_PARAMETER if the update key reference is invalid
- *                       or if idPtr NULL or is invalid.
- *      LE_UNSUPPORTED if underlying resource does not support this operation.
- *      LE_FAULT if the module ID has already been set
- *               or if there was an internal error.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_iks_SetModuleId
-(
-    const char*     idPtr,      ///< [IN] Identifier string.
-    uint64_t        keyRef      ///< [IN] Key reference.
-)
-{
-    return pa_iks_SetModuleId(idPtr, keyRef);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the module ID.
- *
- * @return
- *      LE_OK if successful.
- *      LE_NOT_FOUND if the module ID has not been set.
- *      LE_BAD_PARAMETER if bufPtr is NULL.
- *      LE_OVERFLOW if the buffer is too small to hold the entire module ID.
- *      LE_UNSUPPORTED if underlying resource does not support this operation.
- *      LE_FAULT if there was an internal error.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_iks_GetModuleId
-(
-    char*       idPtr,        ///< [OUT] Module ID buffer.
-    size_t      idPtrSize     ///< [IN] Module ID buffer size.
-)
-{
-    return pa_iks_GetModuleId(idPtr, idPtrSize);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Deletes the module ID.
- *
- * This function is only possible if an update key was set when the module ID was set.  The
- * authCmdPtr must contain a valid delete module ID command.  If the command is valid and authentic
- * then the module ID is deleted.  Once the module ID is deleted a new module ID may be set.
- *
- * @note
- *      See the comment block at the top of this page for the authenticated command format.
- *
- * @return
- *      LE_OK if successful.
- *      LE_NOT_FOUND if the module ID has not been set.
- *      LE_UNSUPPORTED if underlying resource does not support this operation.
- *      LE_FAULT if there is no assigned update key or the authCmdPtr is not valid.
- *               or if there was an internal error.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_iks_DeleteModuleId
-(
-    const uint8_t*  authCmdPtr,     ///< [IN] Authenticated command buffer.
-    size_t          authCmdSize     ///< [IN] Authenticated command buffer size.
-)
-{
-    return pa_iks_DeleteModuleId(authCmdPtr, authCmdSize);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Convert Key ID by adding a prefix representing app or user name.
  * keyId -> <clientName>.keyId
  *
@@ -344,6 +264,9 @@ le_result_t le_iks_HasKeyValue
  * The update key can be used at a later time to perform authenticated updates of the specified key.
  * The same update key may be used for multiple keys and digests.
  *
+ * The key can be made not updatable by setting the updateKeyRef parameter to zero.  Warning, this
+ * is a one-time, one-way operation.
+ *
  * @note
  *      Once an update key is assigned the key parameters can no longer be modified except through
  *      an authenticated update process.
@@ -368,7 +291,7 @@ le_result_t le_iks_HasKeyValue
 le_result_t le_iks_SetKeyUpdateKey
 (
     uint64_t        keyRef,         ///< [IN] Key reference.
-    uint64_t        updateKeyRef    ///< [IN] Reference to an update key.
+    uint64_t        updateKeyRef    ///< [IN] Reference to an update key. 0 for not updatable.
 )
 {
     return pa_iks_SetKeyUpdateKey(keyRef, updateKeyRef);
@@ -621,6 +544,9 @@ le_result_t le_iks_GetDigestSize
  * KEY_TYPE_KEY_UPDATE.  The update key can be used at a later time to perform authenticated
  * updates of the specified digest.  The same update key may be used for multiple keys and digests.
  *
+ * The digest can be made not updatable by setting the updateKeyRef parameter to zero.  Warning,
+ * this is a one-time, one-way operation.
+ *
  * @note
  *      Once an update key is assigned the digest parameters can no longer be modified except
  *      through an authenticated update process.
@@ -643,7 +569,7 @@ le_result_t le_iks_GetDigestSize
 le_result_t le_iks_SetDigestUpdateKey
 (
     uint64_t            digestRef,      ///< [IN] Digest reference.
-    uint64_t            updateKeyRef    ///< [IN] Reference to an update key.
+    uint64_t            updateKeyRef    ///< [IN] Reference to an update key. 0 for not updatable.
 )
 {
     return pa_iks_SetDigestUpdateKey(digestRef, updateKeyRef);
@@ -791,9 +717,9 @@ le_result_t le_iks_GetUpdateAuthChallenge
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the provisioning key.  This is a public key that is internally generated by the IOT Key Store
- * and used to encrypt symmetric and private keys for provisioning into the IOT Key Store.  This key
- * can only be used for this purpose.
+ * Get the wrapping key.  This is a public key that is internally generated by the IOT Key Store
+ * and used to encrypt (wrap) symmetric and private keys for provisioning into the IOT Key Store.
+ * This key can only be used for this purpose.
  *
  * @note
  *      The key is provided in ASN.1 structured DER encoded format.  Refer to the comment at the
@@ -806,13 +732,13 @@ le_result_t le_iks_GetUpdateAuthChallenge
  *      LE_FAULT if there is an internal error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_iks_GetProvisionKey
+le_result_t le_iks_GetWrappingKey
 (
-    uint8_t*    bufPtr,     ///< [OUT] Buffer to hold the provisioning key.
-    size_t*     bufSizePtr  ///< [INOUT] Size of the buffer to hold the provisioning key.
+    uint8_t*    bufPtr,     ///< [OUT] Buffer to hold the wrapping key.
+    size_t*     bufSizePtr  ///< [INOUT] Size of the buffer to hold the wrapping key.
 )
 {
-    return pa_iks_GetProvisionKey(bufPtr, bufSizePtr);
+    return pa_iks_GetWrappingKey(bufPtr, bufSizePtr);
 }
 
 

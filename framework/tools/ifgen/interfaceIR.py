@@ -211,7 +211,7 @@ class StructStringMember(StructMember):
 
     def MaxSize(self):
         # Add the leading UINT32 for the length of the string
-        return UINT32_TYPE.size + self.maxCount * self.apiType.size
+        return UINT32_TYPE.size + self.maxCount
 
     def __str__(self):
         return "{} {}[{}]".format(self.apiType, self.name, self.maxCount)
