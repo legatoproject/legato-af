@@ -1020,6 +1020,17 @@ static void SetDefaultSmackRules
             {
                 smack_SetRule(frameworkAppList[i], "w", "admin");
             }
+
+            // On kernel 4.14, atService and atQmiLinker require mutual write
+            // permissions to ensure AVC functionality
+            else if (0 == strcmp(frameworkAppList[i], "app.atService"))
+            {
+                smack_SetRule(frameworkAppList[i], "w", "app.atQmiLinker");
+            }
+            else if (0 == strcmp(frameworkAppList[i], "app.atQmiLinker"))
+            {
+                smack_SetRule(frameworkAppList[i], "w", "app.atService");
+            }
         }
     }
 }
