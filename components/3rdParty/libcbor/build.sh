@@ -2,7 +2,7 @@
 set -xe
 
 # Set up directories.
-LEGATO_BUILD="${LEGATO_ROOT}/build/${TARGET}"
+LEGATO_BUILD="${LEGATO_ROOT}/build/${LEGATO_TARGET}"
 BUILDDIR="${LEGATO_BUILD}/3rdParty/libcbor"
 LIBDIR="${LEGATO_BUILD}/3rdParty/lib"
 SRCDIR="${LEGATO_ROOT}/3rdParty/libcbor"
@@ -10,12 +10,8 @@ SRCDIR="${LEGATO_ROOT}/3rdParty/libcbor"
 mkdir -p "${BUILDDIR}"
 cd "${BUILDDIR}"
 
-# Import build environment.
-varname=${TARGET^^}_CFLAGS
-export CMAKE_C_FLAGS="${CFLAGS} ${!varname} ${EXTRA_CFLAGS}"
-
 # Build libcbor
-cmake -DCMAKE_SYSTEM_NAME=$1 -DWITH_EXAMPLES=OFF -DCMAKE_BUILD_TYPE=Release -DCBOR_CUSTOM_ALLOC=ON "${SRCDIR}"
+cmake -DCMAKE_SYSTEM_NAME=$1 -DCMAKE_TRY_COMPILE_TARGET_TYPE="STATIC_LIBRARY" -DWITH_EXAMPLES=OFF "${SRCDIR}"
 make
 
 # Copy the libraries to the final directory.

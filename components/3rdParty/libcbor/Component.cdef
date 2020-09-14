@@ -7,19 +7,3 @@ externalBuild:
     "${CURDIR}/build.sh Generic"
 #endif
 }
-
-
-#if ${LE_CONFIG_LINUX} = y
-bundles:
-{
-    file:
-    {
-        ${LEGATO_BUILD}/3rdParty/lib/libcbor.so.0.7.0 /lib/libcbor.so.0.7.0
-    }
-}
-#endif
-
-ldflags:
-{
-    -L${LEGATO_BUILD}/3rdParty/lib
-}
