@@ -395,7 +395,7 @@ const char* rpcProxy_GetSystemNameByServiceId
 
     if(serviceName == NULL)
     {
-        LE_ERROR("Unable to retrieve service name for service ID %lu", serviceId);
+        LE_ERROR("Unable to retrieve service name for service ID %" PRIu32, serviceId);
         return NULL;
     }
 
