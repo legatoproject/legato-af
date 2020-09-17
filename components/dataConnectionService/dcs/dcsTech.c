@@ -419,7 +419,7 @@ le_result_t le_dcsTech_Stop
 
     if ((ret != LE_OK) && (ret != LE_DUPLICATE))
     {
-        LE_ERROR("Failed to stop channel %s; error: %d", channelName, ret);
+        LE_WARN("Failed to stop channel %s; error: %d", channelName, ret);
     }
     else
     {
@@ -469,7 +469,7 @@ bool le_dcsTech_GetOpState
  * technology itself, the failure cause & code are retrievable.
  */
 //--------------------------------------------------------------------------------------------------
-void le_dcsTech_RetryChannel
+le_result_t le_dcsTech_RetryChannel
 (
     le_dcs_channelDb_t *channelDb
 )
@@ -477,13 +477,13 @@ void le_dcsTech_RetryChannel
     switch (channelDb->technology)
     {
         case LE_DCS_TECH_CELLULAR:
-            (void)le_dcsCellular_RetryConn(channelDb->techRef);
-            break;
+            return le_dcsCellular_RetryConn(channelDb->techRef);
         case LE_DCS_TECH_WIFI:
         default:
             LE_ERROR("Unsupported technology %s",
                      le_dcs_ConvertTechEnumToName(channelDb->technology));
     }
+    return LE_FAULT;
 }
 
 
