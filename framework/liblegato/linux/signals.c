@@ -347,7 +347,7 @@ static void ShowStackSignalHandler
     // gdbserver(1) attached to ourself.
     if (GdbServerPort)
     {
-        char gdbServerPortString[10], pidString[10];
+        char gdbServerPortString[12], pidString[10];
         int gdbPid, gdbStatus;
         snprintf(gdbServerPortString, sizeof(gdbServerPortString), ":%u", GdbServerPort);
         snprintf(pidString, sizeof(pidString), "%d", getpid());

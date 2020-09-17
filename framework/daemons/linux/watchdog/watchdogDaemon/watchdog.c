@@ -948,7 +948,7 @@ static MandatoryWatchdogObj_t* CreateFrameworkWatchdog
 
     memset(newDogPtr, 0, sizeof(MandatoryWatchdogObj_t));
     strncpy(newDogPtr->key.appName, "framework", sizeof(newDogPtr->key.appName));
-    strncpy(newDogPtr->key.procName, procNamePtr, sizeof(newDogPtr->key.procName));
+    snprintf(newDogPtr->key.procName, LIMIT_MAX_PROCESS_NAME_BYTES, "%s", procNamePtr);
     LE_ASSERT(newDogPtr->key.procName[LIMIT_MAX_PROCESS_NAME_LEN] == '\0');
 
     // Create watchdog setting initial timeout to max timeout.  This allows the maximum
