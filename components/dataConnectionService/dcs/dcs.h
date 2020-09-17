@@ -242,7 +242,7 @@ le_result_t dcsTech_GetChannelList(le_dcs_Technology_t tech);
 void *dcsTech_CreateTechRef(le_dcs_Technology_t tech, const char *channelName);
 void dcsTech_ReleaseTechRef(le_dcs_Technology_t tech, void *techRef);
 bool dcsTech_GetOpState(le_dcs_channelDb_t *channelDb);
-void dcsTech_RetryChannel(le_dcs_channelDb_t *channelDb);
+le_result_t dcsTech_RetryChannel(le_dcs_channelDb_t *channelDb);
 bool dcsTech_ChannelQueryIsPending(le_dcs_Technology_t tech);
 
 #endif

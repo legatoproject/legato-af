@@ -264,7 +264,7 @@ void dcs_ChannelEvtHdlrSendNotice
  * transition for all.
  */
 //--------------------------------------------------------------------------------------------------
-static void DcsApplyTechSystemDownEventAction
+static le_result_t DcsApplyTechSystemDownEventAction
 (
     le_dcs_channelDb_t *channelDb
 )
@@ -285,6 +285,7 @@ static void DcsApplyTechSystemDownEventAction
         le_event_Report(channelAppEvt->channelEventId, &evtReport, sizeof(evtReport));
         evtHdlrPtr = le_dls_PeekNext(&channelDb->evtHdlrs, evtHdlrPtr);
     }
+    return LE_OK;
 }
 
 
@@ -303,7 +304,7 @@ void dcs_EventNotifierTechStateTransition
 {
     le_ref_IterRef_t iterRef = le_ref_GetIterator(ChannelRefMap);
     le_dcs_channelDb_t *channelDb;
-    void (* func)(le_dcs_channelDb_t *);
+    le_result_t (* func)(le_dcs_channelDb_t *);
 
     LE_INFO("Notify all channels of technology %d of system state transition to %s",
             tech, techState ? "up" : "down");
@@ -325,7 +326,26 @@ void dcs_EventNotifierTechStateTransition
         }
         if (channelDb->refCount > 0)
         {
-            (*func)(channelDb);
+            if (LE_DUPLICATE == (*func)(channelDb))
+            {
+                // In this moment, only le_dcsTech_RetryChannel() would return LE_DUPLICATE to get
+                // this logic executed
+                le_dls_Link_t *evtHdlrPtr = le_dls_Peek(&channelDb->evtHdlrs);
+                le_dcs_channelDbEventHdlr_t *channelAppEvt;
+                le_dcs_channelDbEventReport_t evtReport;
+                while (evtHdlrPtr)
+                {
+                    // traverse all event handlers to trigger an event notification
+                    channelAppEvt = CONTAINER_OF(evtHdlrPtr, le_dcs_channelDbEventHdlr_t, hdlrLink);
+                    LE_DEBUG("Send Up event notice for channel %s to app with session reference %p",
+                             channelDb->channelName,
+                             dcs_GetSessionRef(channelAppEvt->appSessionRefKey));
+                    evtReport.channelDb = channelDb;
+                    evtReport.event = techState ? LE_DCS_EVENT_UP : LE_DCS_EVENT_DOWN;
+                    le_event_Report(channelAppEvt->channelEventId, &evtReport, sizeof(evtReport));
+                    evtHdlrPtr = le_dls_PeekNext(&channelDb->evtHdlrs, evtHdlrPtr);
+                }
+            }
         }
     }
 }

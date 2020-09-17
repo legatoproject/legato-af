@@ -1184,7 +1184,7 @@ le_result_t le_dcsCellular_Stop
     ret = le_mdc_StopSession(profileRef);
     if (ret != LE_OK)
     {
-        LE_ERROR("Failed to stop cellular connection %s; error: %d", connName, ret);
+        LE_WARN("Failed to stop cellular connection %s; error: %d", connName, ret);
     }
     else
     {
