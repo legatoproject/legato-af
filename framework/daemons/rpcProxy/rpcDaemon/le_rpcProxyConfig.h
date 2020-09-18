@@ -70,6 +70,17 @@
 //--------------------------------------------------------------------------------------------------
 /**
  * Convenience macro to add a static configuration entry.
+ *
+ * @note The index parameter is only expanded once, so it is safe to use the postfix increment
+ *       operator on it.
+ *
+ * @param   index   Index of service entry.
+ * @param   system  Remote system name.
+ * @param   link    Name of link to remote system.
+ * @param   local   Local API to expose.
+ * @param   remote  Remote API to connect to.
+ * @param   argc    Number of arguments to link driver.
+ * @param   argv    Array of arguments to link driver.
  */
 //--------------------------------------------------------------------------------------------------
 #define LE_RPC_PROXY_ADD_API(index, system, link, local, remote, argc, argv)    \
