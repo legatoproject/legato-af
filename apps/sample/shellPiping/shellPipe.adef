@@ -24,6 +24,7 @@ requires:
         /bin/echo               /usr/local/bin/
         /lib/libtinfo.so.5      /lib/
         /lib/libtinfo.so.5.9    /lib/
+        /lib/libresolv.so.2     /lib/
     }
 }
 
