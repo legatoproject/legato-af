@@ -184,22 +184,6 @@ static char *PoolStrDup
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Exit the current thread.  Designed to be queued to a thread to exit via QueueFunctionToThread
- */
-//--------------------------------------------------------------------------------------------------
-static void ExitThread
-(
-    void *param1Ptr,
-    void *param2Ptr
-)
-{
-    LE_UNUSED(param2Ptr);
-
-    le_thread_Exit(param1Ptr);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Start a task, given a pointer to the task structure.
  */
 //--------------------------------------------------------------------------------------------------
@@ -673,7 +657,6 @@ le_result_t LE_SHARED le_microSupervisor_RunCommand
     // Immediately stop process once COMPONENT_INIT is processed
     if (result == LE_OK)
     {
-        le_event_QueueFunctionToThread(taskInfoPtr->threadRef, ExitThread, NULL, NULL);
         le_thread_Join(taskInfoPtr->threadRef, &retVal);
     }
 
