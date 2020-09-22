@@ -169,3 +169,57 @@ FUNCTION le_result_t Delete
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the size of the buffer required to read an item from the secure storage.
+ * It can be actual size of the data, or some slightly greater number.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the path doesn't exist.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetMinimumBufferSize
+(
+    string path[MAX_NAME_SIZE] IN,              ///< Path of the secure storage item.
+    uint32 size OUT                             ///< Number that is equal to or greater than
+                                                ///<   the size of the item, in bytes.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start the "batch write" that aggregates multiple write/delete operation into a single batch
+ * with the purpose of improving the performance.
+ *
+ * The performance is optimized by postponing the data serialization (triggered by write/delete
+ * API calls by this particular client) until the function EndBatchWrite is called.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t StartBatchWrite
+(
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Ends the "batch write" operation and serializes the data to the persistent storage.
+ *
+ * @note  - Failure to finish the (previously started) batch write may result in data loss.
+ *        - This is not a transactional mechanism, i.e. the possibility to roll back the changes
+ *          is not provided.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t EndBatchWrite
+(
+);

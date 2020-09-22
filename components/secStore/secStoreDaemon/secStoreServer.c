@@ -1156,6 +1156,184 @@ le_result_t secStoreGlobal_Delete
 
 #endif /* end !MK_CONFIG_SECSTORE_DISABLE_GLOBAL_ACCESS */
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the size of the buffer required to read an item from the secure storage.
+ * It can be actual size of the data, or some slightly greater number.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the path doesn't exist.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+static le_result_t GetMinimumBufferSize
+(
+    bool isGlobal,      ///< [IN] Is this an operation is the global domain?
+    const char* name,   ///< [IN] Name of the secure storage item.
+    uint32_t* sizePtr   ///< [OUT] Number that is equal to or greater than
+                        ///<   the size of the item, in bytes.
+)
+{
+
+    char path[SECSTORE_MAX_PATH_BYTES] = {0};
+    le_result_t result = PrepareOp(isGlobal, true, name, 0, false, path);
+    if (result != LE_OK)
+    {
+        return result;
+    }
+
+    size_t size = 0;
+
+    // TODO: replace with more efficient call
+    // (to avoid decryption of the data and/or iteration through descendent nodes)
+    result = pa_secStore_GetSize(path, &size);
+
+    *sizePtr = (uint32_t) size;
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the size of the buffer required to read an item from the secure storage.
+ * It can be actual size of the data, or some slightly greater number.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the path doesn't exist.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_secStore_GetMinimumBufferSize
+(
+    const char* name,   ///< [IN] Name of the secure storage item.
+    uint32_t* sizePtr   ///< [OUT] Number that is equal to or greater than
+                        ///<   the size of the item, in bytes.
+)
+{
+    return GetMinimumBufferSize(false, name, sizePtr);
+}
+
+#if !MK_CONFIG_SECSTORE_DISABLE_GLOBAL_ACCESS
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the size of the buffer required to read an item from the secure storage.
+ * It can be actual size of the data, or some slightly greater number.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the path doesn't exist.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secStoreGlobal_GetMinimumBufferSize
+(
+    const char* name,   ///< [IN] Name of the secure storage item.
+    uint32_t* sizePtr   ///< [OUT] Number that is equal to or greater than
+                        ///<   the size of the item, in bytes.
+)
+{
+    return GetMinimumBufferSize(true, name, sizePtr);
+}
+
+#endif /* end !MK_CONFIG_SECSTORE_DISABLE_GLOBAL_ACCESS */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start the "batch write" that aggregates multiple write/delete operation into a single batch
+ * with the purpose of improving the performance.
+ *
+ * The performance is optimized by postponing the data serialization (triggered by write/delete
+ * API calls by this particular client) until the function EndBatchWrite is called.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_secStore_StartBatchWrite
+(
+    void
+)
+{
+    return LE_OK;
+}
+
+#if !MK_CONFIG_SECSTORE_DISABLE_GLOBAL_ACCESS
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start the "batch write" that aggregates multiple write/delete operation into a single batch
+ * with the purpose of improving the performance.
+ *
+ * The performance is optimized by postponing the data serialization (triggered by write/delete
+ * API calls by this particular client) until the function EndBatchWrite is called.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secStoreGlobal_StartBatchWrite
+(
+    void
+)
+{
+    return LE_OK;
+}
+
+#endif /* end !MK_CONFIG_SECSTORE_DISABLE_GLOBAL_ACCESS */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Ends the "batch write" operation and serializes the data to the persistent storage.
+ *
+ * @note  - Failure to finish the (previously started) batch write may result in data loss.
+ *        - This is not a transactional mechanism, i.e. the possibility to roll back the changes
+ *          is not provided.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_secStore_EndBatchWrite
+(
+    void
+)
+{
+    return LE_OK;
+}
+
+#if !MK_CONFIG_SECSTORE_DISABLE_GLOBAL_ACCESS
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Ends the "batch write" operation and serializes the data to the persistent storage.
+ *
+ * @note  - Failure to finish the (previously started) batch write may result in data loss.
+ *        - This is not a transactional mechanism, i.e. the possibility to roll back the changes
+ *          is not provided.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secStoreGlobal_EndBatchWrite
+(
+    void
+)
+{
+    return LE_OK;
+}
+
+#endif /* end !MK_CONFIG_SECSTORE_DISABLE_GLOBAL_ACCESS */
+
 #if !MK_CONFIG_SECSTORE_DISABLE_ADMIN
 
 //--------------------------------------------------------------------------------------------------
