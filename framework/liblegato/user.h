@@ -192,6 +192,23 @@ LE_FULL_API le_result_t user_GetGroupName
     size_t nameBufSize          ///< [IN] The size of the buffer that the group name will be stored in.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets an application's name for a user based on its user name.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the provided buffer is too small and only part of the name was copied.
+ *      LE_NOT_FOUND if the username does not correspond to an application's name.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t user_GetAppNameFromUserName
+(
+    const char* userName,       ///< [IN] The username.
+    char* nameBufPtr,           ///< [OUT] The buffer to store the app name in.
+    size_t nameBufSize          ///< [IN] The size of the buffer that the app name will be stored in.
+);
+
 
 //--------------------------------------------------------------------------------------------------
 /**

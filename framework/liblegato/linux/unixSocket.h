@@ -463,6 +463,7 @@ le_result_t unixSocket_SendDataMsg
  * @return
  * - LE_OK if successful
  * - LE_NO_MEMORY if more data was received than could fit in the buffer provided.
+ * - LE_NOT_PERMITTED if the function was not allowed to retrieve a resource.
  * - LE_WOULD_BLOCK if the socket is set non-blocking and there is nothing to be received.
  * - LE_CLOSED if the connection closed.
  * - LE_FAULT if failed for some other reason (check your logs).

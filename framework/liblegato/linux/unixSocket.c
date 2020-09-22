@@ -12,7 +12,14 @@
 /// Size of the ancillary (control) message buffer needed to send or receive one file descriptor
 /// and one set of process credentials through a Unix domain socket.
 /// @note We use CMSG_SPACE to ensure this is big enough to hold the cmsghdr structures.
-#define CMSG_BUFF_SIZE (CMSG_SPACE(sizeof(int)) + CMSG_SPACE(sizeof(struct ucred)))
+#define CMSG_BUFF_SIZE (CMSG_SPACE(sizeof(struct ucred)) + \
+                        CMSG_SPACE(sizeof(struct timeval)) + \
+                        CMSG_SPACE(sizeof(int)))
+
+/// Define missing SCM_SECURITY declaration.
+#ifndef SCM_SECURITY
+# define SCM_SECURITY 3
+#endif
 
 
 //--------------------------------------------------------------------------------------------------
@@ -139,6 +146,11 @@ static void ExtractAncillaryData
                          credPtr->gid);
             }
         }
+        else if (cmsgHeaderPtr->cmsg_type == SCM_SECURITY)
+        {
+            // We received security context (e.g., SMACK label).
+            // We don't care about that right now.
+        }
         else
         {
             LE_ERROR("Received unexpected ancillary data message type %d.",
@@ -245,6 +257,15 @@ int unixSocket_CreateSeqPacketUnnamed
     {
         LE_ERROR("socket(AF_UNIX, SOCK_SEQPACKET, 0) failed. Errno = %d (%m). See 'man 7 unix'.",
                  errno);
+        return LE_FAULT;
+    }
+
+    // Enable security information passing on this socket.
+    const int one = 1;
+    if (setsockopt(fd, SOL_SOCKET, SO_PASSSEC, &one, sizeof(one)) < 0)
+    {
+        LE_ERROR("Failed to enable SO_PASSSEC socket option. %m");
+        fd_Close(fd);
         return LE_FAULT;
     }
 
@@ -555,6 +576,7 @@ le_result_t unixSocket_SendDataMsg
  * @return
  * - LE_OK if successful
  * - LE_NO_MEMORY if more data was received than could fit in the buffer provided.
+ * - LE_NOT_PERMITTED if the function was not allowed to retrieve a resource.
  * - LE_WOULD_BLOCK if the socket is set non-blocking and there is nothing to be received.
  * - LE_CLOSED if the connection closed.
  * - LE_FAULT if failed for some other reason (check your logs).
@@ -650,6 +672,21 @@ le_result_t unixSocket_ReceiveMsg
         }
     }
 
+    // Check if ancillary data was discarded.
+    if ((msgHeader.msg_flags & MSG_CTRUNC) != 0)
+    {
+        // Check if we were not able to receive a fd (likely rejected by SMACK)
+        if (fdPtr != NULL)
+        {
+            LE_ERROR("Unable to receive fd");
+            return LE_NOT_PERMITTED;
+        }
+        else
+        {
+            LE_WARN("Ancillary data was discarded because it couldn't fit in our buffer.");
+        }
+    }
+
     // If we received any ancillary data messages (control messages), extract what we want
     // from them.
     if (msgHeader.msg_controllen > 0)
@@ -657,15 +694,7 @@ le_result_t unixSocket_ReceiveMsg
         ExtractAncillaryData(&msgHeader, fdPtr, credPtr);
     }
 
-    // Check if ancillary data was discarded.
-    if ((msgHeader.msg_flags & MSG_CTRUNC) != 0)
-    {
-        LE_WARN("Ancillary data was discarded because it couldn't fit in our buffer.");
-        if (bytesReceived == 0)
-        {
-            return LE_FAULT;
-        }
-    }
+
     // If we didn't receive any ancillary data, and recvmsg() still returned zero,
     // then the socket must have closed.
     else if (msgHeader.msg_controllen == 0 && bytesReceived == 0)

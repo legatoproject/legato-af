@@ -12,6 +12,23 @@
 #ifndef FS_INCLUDE_GUARD
 #define FS_INCLUDE_GUARD
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Default prefix path for RW if nothing is defined in the config tree
+ */
+//--------------------------------------------------------------------------------------------------
+#define FS_PREFIX_DATA_PATH      "/data/le_fs/"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Alternative prefix path for RW if nothing is defined in the config tree
+ */
+//--------------------------------------------------------------------------------------------------
+#define ALT_FS_PREFIX_DATA_PATH      ("/tmp" FS_PREFIX_DATA_PATH)
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Initializes the file system service.

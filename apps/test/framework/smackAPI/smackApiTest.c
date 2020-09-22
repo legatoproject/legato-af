@@ -22,7 +22,7 @@ static const char* GetProcLabel
     pid_t pid
 )
 {
-    static char label[24];
+    static char label[LIMIT_MAX_SMACK_LABEL_BYTES];
 
     LE_TEST(smack_GetProcLabel(pid, label, sizeof(label)) == LE_OK);
 
@@ -37,6 +37,8 @@ COMPONENT_INIT
     LE_INFO("******** Starting SMACK API Test. *******");
 
     // Test setting of file system object labels.
+    LE_INFO("Current label: %s", GetProcLabel(getpid()));
+
     LE_TEST(smack_SetLabel("/fileThatDoesntExist", "testLabel1") == LE_FAULT);
 
     LE_TEST(smack_SetLabel("/dev/null", "testLabel1") == LE_OK);

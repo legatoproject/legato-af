@@ -933,7 +933,7 @@ static void SetDefaultSmackRules
     {
         smack_SetRule(appLabelPtr, "rx", LE_CONFIG_IMA_SMACK);
     }
-    smack_SetRule(appLabelPtr, "rwx", "framework");
+    smack_SetRule(appLabelPtr, "rwxt", "framework"); // 't' for le_fs data path
 
     // Set default permissions to allow the app to access the syslog.
     smack_SetRule(appLabelPtr, "w", "syslog");
@@ -984,6 +984,10 @@ static void SetDefaultSmackRules
             smack_SetRule(frameworkAppList[i], "rwx", "qmuxd");
             smack_SetRule("qmuxd", "rwx", frameworkAppList[i]);
 
+            // 'w' permission is required for apps that need to use socket
+            // communication from ServiceDirectory
+            smack_SetRule(frameworkAppList[i], "w", "framework");
+
             // Give app.fwupdateService r access to admin (pipe) in order to perform update
             if (0 == strcmp(frameworkAppList[i], "app.fwupdateService"))
             {
@@ -1015,6 +1019,17 @@ static void SetDefaultSmackRules
             else if (0 == strcmp(frameworkAppList[i], "app.dataConnectionService"))
             {
                 smack_SetRule(frameworkAppList[i], "w", "admin");
+            }
+
+            // On kernel 4.14, atService and atQmiLinker require mutual write
+            // permissions to ensure AVC functionality
+            else if (0 == strcmp(frameworkAppList[i], "app.atService"))
+            {
+                smack_SetRule(frameworkAppList[i], "w", "app.atQmiLinker");
+            }
+            else if (0 == strcmp(frameworkAppList[i], "app.atQmiLinker"))
+            {
+                smack_SetRule(frameworkAppList[i], "w", "app.atService");
             }
         }
     }

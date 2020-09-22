@@ -11,14 +11,8 @@
 #include "legato.h"
 #include "file.h"
 #include "dir.h"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Default prefix path for RW if nothing is defined in the config tree
- */
-//--------------------------------------------------------------------------------------------------
-#define FS_PREFIX_DATA_PATH      "/data/le_fs/"
+#include "smack.h"
+#include "fs.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -858,7 +852,7 @@ void fs_Init
     char* fsPrefixArray[] =
     {
         FS_PREFIX_DATA_PATH,
-        "/tmp" FS_PREFIX_DATA_PATH,
+        ALT_FS_PREFIX_DATA_PATH,
         NULL,
     };
     char** tempFsPrefixPtr = fsPrefixArray;
@@ -890,7 +884,7 @@ void fs_Init
             }
             else
             {
-                LE_ERROR("Failed to access \"%s\": %m", *tempFsPrefixPtr);
+                LE_WARN("Failed to access \"%s\": %m", *tempFsPrefixPtr);
                 tempFsPrefixPtr++;
             }
         }

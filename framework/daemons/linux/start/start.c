@@ -540,7 +540,10 @@ static void MakeDir
     const char* dirPath
 )
 {
-    le_result_t result = dir_MakeSmack(dirPath, DEFAULT_PERMS, "framework");
+    // TODO: Should provide more flexibility for caller to control the SMACK
+    // access label for the new dir
+
+    le_result_t result = dir_MakeSmack(dirPath, DEFAULT_PERMS, "_");
 
     if ((result != LE_OK) && (result != LE_DUPLICATE))
     {

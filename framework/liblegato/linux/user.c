@@ -2213,6 +2213,33 @@ le_result_t user_GetGroupName
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Gets an application's name for a user based on its user name.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the provided buffer is too small and only part of the name was copied.
+ *      LE_NOT_FOUND if the username does not correspond to an application's name.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t user_GetAppNameFromUserName
+(
+    const char* userName,       ///< [IN] The username.
+    char* nameBufPtr,           ///< [OUT] The buffer to store the app name in.
+    size_t nameBufSize          ///< [IN] The size of the buffer that the app name will be stored in.
+)
+{
+    if (strstr(userName, USERNAME_PREFIX) != userName)
+    {
+        // This is not an app.
+        return LE_NOT_FOUND;
+    }
+
+    return le_utf8_Copy(nameBufPtr, userName + sizeof(USERNAME_PREFIX) - 1, nameBufSize, NULL);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Gets an application's name for a user.
  *
  * @return
@@ -2237,13 +2264,7 @@ le_result_t user_GetAppName
         return result;
     }
 
-    if (strstr(username, USERNAME_PREFIX) != username)
-    {
-        // This is not an app.
-        return LE_NOT_FOUND;
-    }
-
-    return le_utf8_Copy(nameBufPtr, username + sizeof(USERNAME_PREFIX) - 1, nameBufSize, NULL);
+    return user_GetAppNameFromUserName(username, nameBufPtr, nameBufSize);
 }
 
 

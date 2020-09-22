@@ -242,6 +242,7 @@ SetSmackAttr() {
 
         # The following on-target executable should execute as 'framework'
         $SETFATTR -h -n "security.SMACK64EXEC" -v "framework" "$STAGING_DIR/system/bin/sdir"
+        $SETFATTR -h -n "security.SMACK64EXEC" -v "framework" "$STAGING_DIR/system/bin/serviceDirectory"
 
         # The following on-target executable should execute as '_'
         $SETFATTR -h -n "security.SMACK64EXEC" -v "_" "$STAGING_DIR/system/bin/configEcm"

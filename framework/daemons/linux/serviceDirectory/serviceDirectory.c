@@ -206,6 +206,8 @@ User List ------> User --+---> Name               |        |        |
 #include "fileDescriptor.h"
 #include "limit.h"
 #include "user.h"
+#include "smack.h"
+#include "dir.h"
 
 // =======================================
 //  PRIVATE DATA
@@ -672,6 +674,61 @@ static bool IsDuplicateService
     return true;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Allow a client to communicate with a server by setting appropriate SMACK rules.
+ *
+ * @return  LE_NOT_PERMITTED if the client permission does not allow it to communicate with the
+ *                           server.
+ *          LE_OK if the communication rights were granted.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t AllowCommunication
+(
+    ClientConnection_t* clientConnectionPtr, ///< [in] Client connection to be dispatched.
+    ServerConnection_t* serverConnectionPtr  ///< [in] Server connection to dispatch client to.
+)
+{
+    le_result_t res = LE_OK;
+
+    char clientLabel[LIMIT_MAX_SMACK_LABEL_BYTES] = {0};
+    char serverLabel[LIMIT_MAX_SMACK_LABEL_BYTES] = {0};
+
+    // TODO: Should we determine if an app should be allowed to communicate
+    // with a server? Something like what has been done during binding.
+
+    // Get client label
+    res = smack_GetSocketLabels(clientConnectionPtr->fd,
+                          clientLabel, sizeof(clientLabel),
+                          NULL, 0);
+    LE_FATAL_IF(res != LE_OK, "Could not get smack label from fd %d for client user [%d, %s]",
+                              clientConnectionPtr->fd,
+                              clientConnectionPtr->userPtr->uid,
+                              clientConnectionPtr->userPtr->name);
+
+    // Get server label
+    res = smack_GetSocketLabels(serverConnectionPtr->fd,
+                          serverLabel, sizeof(serverLabel),
+                          NULL, 0);
+    LE_FATAL_IF(res != LE_OK, "Could not get smack label from fd %d for server user [%d, %s]",
+                              serverConnectionPtr->fd,
+                              serverConnectionPtr->userPtr->uid,
+                              serverConnectionPtr->userPtr->name);
+
+    if(strncmp(clientLabel, serverLabel, sizeof(serverLabel)) == 0)
+    {
+        // No need to set labels from a client to itself.
+        return LE_OK;
+    }
+
+    // Set the SMACK label to/from the server.
+    smack_SetSocketLabels(clientConnectionPtr->fd, serverLabel, "framework");
+    smack_SetSocketLabels(serverConnectionPtr->fd, "framework", clientLabel);
+
+    LE_DEBUG("Access granted from '%s' to '%s'", clientLabel, serverLabel);
+
+    return LE_OK;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -717,8 +774,8 @@ static le_result_t DispatchToServer
 
     // Check that the client agrees with the server on the protocol's maximum message size.
     // If not, drop the client connection without dispatching it to the server.
-    else if (   clientConnectionPtr->interface.maxProtocolMsgSize
-        != serverConnectionPtr->interface.maxProtocolMsgSize )
+    else if (clientConnectionPtr->interface.maxProtocolMsgSize !=
+                serverConnectionPtr->interface.maxProtocolMsgSize)
     {
         LE_ERROR("Client (uid %u '%s', pid %d) disagrees with server (uid %u '%s', pid %d) "
                     "on max message size (%zu vs. %zu) of service '%s:%s'.",
@@ -738,12 +795,32 @@ static le_result_t DispatchToServer
 
     else
     {
+        le_result_t result = LE_OK;
+
+        // Enable communication between client and server
+        result = AllowCommunication(clientConnectionPtr, serverConnectionPtr);
+        if (result != LE_OK)
+        {
+            LE_ERROR("Rejecting communication between client (uid %u '%s', pid %d) and "
+                     "server (uid %u '%s', pid %d) for service '%s' (protocol ID = '%s').",
+                         clientConnectionPtr->userPtr->uid,
+                         clientConnectionPtr->userPtr->name,
+                         clientConnectionPtr->pid,
+                         serverConnectionPtr->userPtr->uid,
+                         serverConnectionPtr->userPtr->name,
+                         serverConnectionPtr->pid,
+                         serverConnectionPtr->interface.interfaceName,
+                         serverConnectionPtr->interface.protocolId);
+
+            RejectClient(clientConnectionPtr, LE_FAULT);
+        }
+
         // Send the client connection fd to the server.
-        le_result_t result = unixSocket_SendMsg(serverConnectionPtr->fd,
-                                                NULL,   // dataPtr
-                                                0,      // dataSize
-                                                clientConnectionPtr->fd, // fdToSend
-                                                false); // sendCredentials
+        result = unixSocket_SendMsg(serverConnectionPtr->fd,
+                                    NULL,   // dataPtr
+                                    0,      // dataSize
+                                    clientConnectionPtr->fd, // fdToSend
+                                    false); // sendCredentials
 
         if (result == LE_OK)
         {
@@ -1393,7 +1470,7 @@ static void ClientConnectionDestructor
 //--------------------------------------------------------------------------------------------------
 static void ClientConnectHandler
 (
-    int fd,     ///< [in] File descriptor of the socket that has received a connection request.
+    int fd,         ///< [in] File descriptor of the socket that has received a connection request.
     short events    ///< [in] Event set (bit map).  Should be only POLLIN.
 )
 //--------------------------------------------------------------------------------------------------
@@ -2581,7 +2658,7 @@ COMPONENT_INIT
     CreateHardCodedBindings();
 
     // Create the Legato runtime directory if it doesn't already exists.
-    LE_ASSERT(le_dir_Make(LE_CONFIG_RUNTIME_DIR, S_IRWXU | S_IXOTH) != LE_FAULT);
+    LE_ASSERT(dir_MakeSmack(LE_CONFIG_RUNTIME_DIR, S_IRWXU | S_IXOTH, "framework") != LE_FAULT);
 
     /// @todo Check permissions of directory containing client and server socket addresses.
     ///       Only the current user or root should be allowed write access.
@@ -2589,7 +2666,10 @@ COMPONENT_INIT
 
     // Open the sockets.
     ClientSocketFd = OpenSocket(LE_SVCDIR_CLIENT_SOCKET_NAME);
+    smack_SetLabel(LE_SVCDIR_CLIENT_SOCKET_NAME, "*");
+
     ServerSocketFd = OpenSocket(LE_SVCDIR_SERVER_SOCKET_NAME);
+    smack_SetLabel(LE_SVCDIR_SERVER_SOCKET_NAME, "*");
 
     // Start listening for connection attempts.
     ClientSocketMonitorRef = le_fdMonitor_Create("Client Socket",
