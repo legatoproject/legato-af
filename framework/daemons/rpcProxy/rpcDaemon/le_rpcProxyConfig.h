@@ -67,7 +67,21 @@
 //--------------------------------------------------------------------------------------------------
 #define RPC_PROXY_CONFIG_SERVER_REFERENCES_TREE_NODE  "system:/framework/serverReferences"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convenience macro to add a static configuration entry.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_RPC_PROXY_ADD_API(index, system, link, local, remote, argc, argv)    \
+    *(rpcProxyConfig_GetSystemServiceArray(index)) =                            \
+    (rpcProxy_SystemServiceConfig_t) { (system), (link), (local), (remote), (argc), (argv) }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convenience macro to terminate static configuration array.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_RPC_PROXY_END_APIS(index) LE_RPC_PROXY_ADD_API((index), NULL, NULL, NULL, NULL, 0, NULL)
 
 //--------------------------------------------------------------------------------------------------
 /**

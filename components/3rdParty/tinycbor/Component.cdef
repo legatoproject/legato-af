@@ -6,6 +6,7 @@ externalBuild:
     "cd ${LEGATO_ROOT}/3rdParty/tinycbor/src && cp cbor.h ${LEGATO_BUILD}/3rdParty/inc/tinycbor/"
 }
 
+#if LE_CONFIG_RTOS = ""
 bundles:
 {
     file:
@@ -13,6 +14,7 @@ bundles:
         ${LEGATO_BUILD}/3rdParty/lib/libtinycbor.so.0 /lib/libtinycbor.so.0
     }
 }
+#endif
 
 ldflags:
 {
