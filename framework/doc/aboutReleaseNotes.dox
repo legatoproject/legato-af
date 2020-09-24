@@ -1,7 +1,7 @@
 /** @page aboutReleaseNotes Release Notes
 
-Version: <b>Legato 19.11.1</b><br>
-Date: <b>Feb 18th, 2020</b><br>
+Version: <b>Legato 19.11.3</b><br>
+Date: <b>October 15th, 2020</b><br>
 @ref aboutLicenses "Legato Application Framework Licensing Information"
 
 Visit the <a href="https://legato.io/releases">release page</a> to @b download the tarball,
@@ -12,6 +12,10 @@ Get started with the latest version of Legato by installing the SDK through @ref
 Search for the latest version for your target (using wp76xx as an example):
 @verbatim
 $ leaf search -t wp76xx -t latest
+
+OR 
+
+$ leaf search -t wp77xx -t latest
 @endverbatim
 
 Update your profile to the latest version:
@@ -19,26 +23,43 @@ Update your profile to the latest version:
 $ leaf update
 @endverbatim
 
-@section rn1911_Patch 19.11.1 Patch
+@note The 19.11 release branch is the long term supported version for Sierra Wireless modules.
+Future Sierra Wireless module releases will be using the 19.11 release.  The 19.11 branch is
+the last version that will support the Linux 3.18/3.14 kernel. 
+
+@section rn19113_Patch3 19.11.3 Patch
+
+The 19.11.3 patch introduces:
+- reduced logging for the AirVantage client to clean up redundant messaging.
+- a bug fix to allow over 176 bytes to be recieved by the SMS service.
+- support for NTP through AirVantage.
+
+@section rn19113_Patch1 19.11.1 Patch
 
 The 19.11.1 patch introduces:
 - clarification for MPL V2 licensing in Linux Scripts.
-- provides updated documentation and information on the Legato plugin for VSCode Version 1.0
+- provides updated documentation and information on the Legato plugin for VSCode Version 1.0.
 - fixed an issue where the AirVantage server is not notified that a reboot is pending on the target.
 
-@section rn1911_Features New Features
+@section rn19113_Features New Features
 
-List of new features in the 19.11.1 Release:
+List of new features in the 19.11.3 Patch:
 
-@subsection rn1911_Features_avcAPI Ultra Low Power Mode Reboot
+@subsection rn19113_Features_uplmAPI Ultra Low Power Mode 
+
+An API function, le_ulpm_SetShutDownStrategy() has been modified to configure low power mode before
+shutting down the module.
+
+List of new features in the 19.11.1 Patch:
+
+@subsection rn19113_Features_avcAPI Ultra Low Power Mode Reboot
 
 A new API function, le_ulpm_Reboot() has been added to initiate the reboot of the processor and
 modem.
 
-
 List of new features in the 19.11 Release:
 
-@subsection rn1911_Features_secStore Enable secStore Admin
+@subsection rn19113_Features_secStore Enable secStore Admin
 
 In order to enable the secure storage admin API, Legato must be compiled using the
 @c SECSTOREADMIN flag.
@@ -54,52 +75,52 @@ In the displayed configuration menu, enable SecStore Admin API flag by following
 following menu path and enabling <code>Enable Secure Storage Administration API</code>
 Services > Secure Storage > Enable Secure Storage Administration API
 
-@subsection rn1911_Features_lte LTE Band Support
+@subsection rn19113_Features_lte LTE Band Support
 
 New support has been added for band 66 and 71, see @ref c_mrc for more details.
 
-@subsection rn1911_Features_dcsChannels dcs GetChannels
+@subsection rn19113_Features_dcsChannels dcs GetChannels
 
 le_dcs_GetChannels() now returns a channel's admin state than then operational state.
 
-@subsection rn1911_Features_DNSConfig Multiple DNS Configuration
+@subsection rn19113_Features_DNSConfig Multiple DNS Configuration
 
 @ref c_le_net now supports having multiple versions of DNS configuration.
 
-@subsection rn1911_Features_dcs APN name deprecation
+@subsection rn19113_Features_dcs APN name deprecation
 
 The DCS functionality to populate the default APN name into the cellular channel's
 modem profile if blank at startup upon an attempt to start is now removed from both @ref c_le_dcs
 and @ref c_le_data.
 
-@subsection rn1911_Features_clock Timezone File Set
+@subsection rn19113_Features_clock Timezone File Set
 
 le_clk_SetTimezoneFile is now supported in @ref c_clock .
 
-@subsection rn1911_Features_tty tty Open change
+@subsection rn19113_Features_tty tty Open change
 
 Previous versions of le_tty_Open() would exit the process with LE_FATAL if the tty failed
 to successfully open; now a file descriptor is either returned or -1 is returned on failure.
 
 
-@section rn1911_BFeatures Beta Features
+@section rn19113_BFeatures Beta Features
 
-@subsection rn1911_BFeatures_IDE Experimental IDE
+@subsection rn19113_BFeatures_IDE Experimental IDE
 
 The Legato team has launched the @b beta version of a @ref tools_vsCode "Legato Plugin for VSCode".
 
-@section rn1911_AFeatures Alpha Features
+@section rn19113_AFeatures Alpha Features
 
 The following are the list of features that have been added into the 19.11 Release but are still
 being developed and should not be used on production targets. Please provide feedback for these
 features on our [forums](https://forum.legato.io/):
 
-@subsection rn1911_AFeatures_RPC Legato RPC
+@subsection rn19113_AFeatures_RPC Legato RPC
 
 RPC has been added as an experimental feature (@ref conceptsRPC Remote procedure call). Please refer
 to @ref getStartRPC Legato RPC on how to get started.
 
-@section rn1911_Fixes Fixed Issues
+@section rn19113_Fixes Fixed Issues
 
 All changes are tagged in GitHub as "19.11.0".  The full list of changes and commit
 messages can be found on GitHub.
@@ -113,18 +134,18 @@ messages can be found on GitHub.
 list of changes in the Platform Adapter view the commits under the tag 19.11.0 in individual
 repositories on GitHub.
 
-@section rn1911_KnownIssues Known Issues
+@section rn19113_KnownIssues Known Issues
 
-@subsection rn1911_Constraints Constraints and Limitations
+@subsection rn19113_Constraints Constraints and Limitations
 
-@subsubsection rn1911_ConstraintsLinuxSupport Dev Machine Linux Version
+@subsubsection rn19113_ConstraintsLinuxSupport Dev Machine Linux Version
 
 To develop applications within the Legato Application Framework, a current supported
 [Long Term Support version of Ubuntu Linux](https://www.ubuntu.com/info/release-end-of-life) is
 required on your dev machine (or running in a virtual box on Windows).  Ubuntu 18.04 is the current
 @b recommended version to use on your dev machine.
 
-@subsubsection rn1911_ConstECMUSB ECM-USB modem manager issue
+@subsubsection rn19113_ConstECMUSB ECM-USB modem manager issue
 
 Ubuntu 15.10 and newer has Modem Manager version @c 1.4.12-1ubuntu1  installed by default which
 conflicts with the ECM-USB driver when connecting a target.  Modem manager may cause the Ubuntu
@@ -138,7 +159,7 @@ Network Manager to crash on your host and/or your target device to become unavai
 - Uninstall @c modemmanager from Ubuntu or
 - [Downgrade @c modemmanager to version 1.0.0-2ubuntu1](http://packages.ubuntu.com/trusty/modemmanager)
 
-@subsubsection rn1911_ConstTrust FOTA upgrade warning
+@subsubsection rn19113_ConstTrust FOTA upgrade warning
 
 A device that has trustzones enabled, may re-bootstrap (obtain new keys from the AirVantage server)
 durring a FOTA (firmware over-the-air) upgrade.
