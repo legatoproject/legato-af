@@ -38,6 +38,7 @@
     !defined(le_fd_Dup)         && \
     !defined(le_fd_Fcntl)       && \
     !defined(le_fd_Ioctl)       && \
+    !defined(le_fd_Fstat)       && \
     !defined(le_fd_MkFifo)      && \
     !defined(le_fd_MkPipe)      && \
     !defined(le_fd_Open)        && \
@@ -125,6 +126,20 @@ int le_fd_Ioctl
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Return information about a file, specified by the file descriptor fd.
+ *
+ * @return
+ *  Zero on success, or -1 if an error occurred.
+ */
+//--------------------------------------------------------------------------------------------------
+int le_fd_Fstat
+(
+    int fd,                           ///< [IN]    File descriptor
+    struct stat *bufPtr              ///< [OUT]   Stat structure
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Make a FIFO.
  *
  * @return
@@ -200,6 +215,9 @@ int le_fd_Fcntl
 #endif
 #if !defined(le_fd_Ioctl)
 #  error "File descriptor macros are overridden, but le_fd_Ioctl not defined.  Please define it."
+#endif
+#if !defined(le_fd_Fstat)
+#  error "File descriptor macros are overridden, but le_fd_Fstat not defined.  Please define it."
 #endif
 #if !defined(le_fd_MkFifo)
 #  error "File descriptor macros are overridden, but le_fd_MkFifo not defined.  Please define it."

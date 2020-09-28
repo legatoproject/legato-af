@@ -17,6 +17,7 @@
 #define le_fd_Dup(oldfd)                  dup(oldfd)
 #define le_fd_Fcntl                       fcntl
 #define le_fd_Ioctl(fd, request, argp)    ioctl((fd), (request), (argp))
+#define le_fd_Fstat(fd, buf)              fstat((fd), (buf))
 #define le_fd_MkFifo(pathname, mode)      mkfifo((pathname), (mode))
 #define le_fd_MkPipe(pathname, mode)      (-1)
 #define le_fd_Open(pathname, flags, ...)  open((pathname), (flags), ##__VA_ARGS__)
