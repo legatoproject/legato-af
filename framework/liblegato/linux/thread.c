@@ -22,3 +22,18 @@ void fa_thread_Init
 {
     // No platform initialization needed on Linux
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Perform platform-specific priority mapping.
+ * @return Mapped priority.
+ */
+//--------------------------------------------------------------------------------------------------
+le_thread_Priority_t fa_thread_Priority
+(
+    le_thread_Priority_t priority   /// [IN] Thread priority
+)
+{
+    // No mapping needed on Linux
+    return priority;
+}

@@ -1159,22 +1159,8 @@ le_result_t le_thread_SetPriority
         return LE_OUT_OF_RANGE;
     }
 
-#if LE_CONFIG_THREAD_REALTIME_ONLY
-    // When only RT priorities are on, map the regular priorities to relative RT priorties to ensure
-    // there is some wiggle room for those who are explicitly configuring rtX values.
-    if (priority <= LE_THREAD_PRIORITY_LOW)
-    {
-        priority = LE_THREAD_PRIORITY_RT_LOWEST;
-    }
-    else if (priority == LE_THREAD_PRIORITY_MEDIUM)
-    {
-        priority = LE_THREAD_PRIORITY_RT_5;
-    }
-    else if (priority == LE_THREAD_PRIORITY_HIGH)
-    {
-        priority = LE_THREAD_PRIORITY_RT_8;
-    }
-#endif
+    // Perform a platform-specific priority mapping.
+    priority = fa_thread_Priority(priority);
 
     SetSchedPriority(threadPtr, priority);
 

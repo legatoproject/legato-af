@@ -20,4 +20,15 @@ void fa_thread_Init
     void
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Perform platform-specific priority mapping.
+ * @return Mapped priority.
+ */
+//--------------------------------------------------------------------------------------------------
+le_thread_Priority_t fa_thread_Priority
+(
+    le_thread_Priority_t priority   /// [IN] Thread priority
+);
+
 #endif /* FA_THREAD_H_INCLUDE_GUARD */
