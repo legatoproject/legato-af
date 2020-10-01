@@ -1,0 +1,267 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_atProxy AT Command interface
+ *
+ * @ref le_atProxy_interface.h "API Reference"
+ *
+ * @section atProxy_handler Command Handler
+ *
+ * @subsection Defining a New AT Command
+ *
+ * To define a new AT command, you must first statically define and add
+ * the AT Command in the AT Proxy.  To do this,
+ *
+ *   1) Add the new AT command to the AT Command Registry index enumeration,
+ *      le_atProxy_atCommand, defined in the file atProxyCmdRegistry.h.  This will assign
+ *      an index (enumeration) for the new AT command that will be used to
+ *      identify the AT command.
+ *
+ *   2) Add the new AT command string to the AT Command Registry structure,
+ *      AtCmdRegistry, declared in the file atProxyCmdRegistry.h.  Ensure that
+ *      the position (index) in the structure matches the index assigned by the enumeration,
+ *      le_atProxy_atCommand.
+ *
+ *
+ * @subsection Registering AT Command Handler Callback
+ *
+ * To receive a notification when an AT command has been received through the AT port,
+ * an application must register a command handler callback, using the interface
+ * le_atProxy_AddCommandHandler().  Identification of the AT Command is done using
+ * the index of the statically defined AT Command Registry index enumeration,
+ * le_atProxy_atCommand.
+ *
+ *
+ * @subsection De-registering AT Command Handler Callback
+ *
+ * Conversely, de-registration of a command handle callback is done using the interface,
+ * le_atProxy_RemoveCommandHandler().
+ *
+ *
+ * @subsection Get Command Name
+ *
+ * To retrieve the name of the AT command, the called handler
+ * (le_atProxy_CommandHandlerFunc_t prototype) can use the interface
+ * le_atProxy_GetCommandName() to retrieve the AT command name string.
+ *
+ *
+ * @subsection Get Parameter
+ *
+ * To retrieve a parameter specified with the AT command, the called handler
+ * (le_atProxy_CommandHandlerFunc_t prototype) can use the interface
+ * le_atProxy_GetParameter() to retrieve the parameter for the specified inndex. This
+ * function gets the string sent through the AT command.
+ *
+ *
+ * @section atProxy_responses Responses
+ *
+ * @subsection intermediateRsp Intermediate response
+ *
+ * The application can send intermediate responses through
+ * le_atProxy_SendIntermediateResponse().
+ *
+ * @note If le_atProxy_SendIntermediateResponse() returns LE_FAULT, the final response
+ * must still be sent.
+ *
+ *
+ * @subsection finalResultCode Final result code
+ *
+ * The application must return a final result code using le_atProxy_SendFinalResultCode().
+ * The corresponding device will be locked until the final response is sent.
+ *
+ * If no answer is sent, the device will not accept any new AT commands (an error will be
+ * returned).
+ *
+ * le_atProxy_SendFinalResultCode() takes as arguments the AT command reference, a pattern (which
+ * is the prefix of the final response), a final response type as defined in
+ *  @ref le_atProxy_FinalRsp_t and an error code identifier.
+ *
+ * The final response type permits the AT command Server to continue or stop the parsing of
+ * concatenated commands: if one command fails, the remaining concatenated commands
+ * are not executed, the final result of the concatenated AT command is the last error.
+ *
+ *
+ * @subsection unsolicitedRsp Unsolicited response
+ *
+ * The application can also send unsolicited responses to notify a host
+ * application using le_atProxy_SendUnsolicitedResponse().
+ *
+ * This response is sent when no AT command is being processing on the device (i.e. unsolicited
+ * response is sent between the latest final response and the next reception of an AT command).
+ *
+ * If an unsolicited response is sent when an AT command is in progress, the unsolicited response
+ * is buffered and sent as soon as the device becomes available (i.e. after the processing
+ * AT command sends its final response).
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_atProxy_interface.h
+ *
+ * Legato @ref c_atProxy include file.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+USETYPES le_atDefs;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  CME error pattern
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE CME_ERROR = "+CME ERROR: ";
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  CMS error pattern
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE CMS_ERROR = "+CMS ERROR: ";
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Reference type for an AT command.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Cmd;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Received AT command type.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Type
+{
+    TYPE_ACT,  ///< Action AT command (e.g. 'AT+CMD')
+    TYPE_PARA, ///< AT command received with parameters (e.g. 'AT+CMD=x,y')
+    TYPE_TEST, ///< Test AT command (e.g. 'AT+CMD=?')
+    TYPE_READ  ///< Read AT command (e.g. 'AT+CMD?')
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Final response.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM FinalRsp
+{
+    OK,         ///< AT command successfully treated
+    NO_CARRIER, ///< Connection terminated
+    ERROR,      ///< Error in AT command treatement
+    NO_DIALTONE,///< No dialtone detected
+    BUSY        ///< Busy signal detected
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for the AT command processing.
+ *
+ * @note The argument "parametersNumber" is set only when "type" parameter value is
+ * LE_AT_PROXY_TYPE_PARA
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER CommandHandler
+(
+    Cmd       commandRef       IN,      ///< Received AT command reference
+    Type      type             IN,      ///< Received AT command type
+    uint32    parametersNumber IN       ///< Parameters number
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information when the AT command is detected.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT Command
+(
+    uint32         command      IN,   ///< AT Command index
+    CommandHandler handler      IN    ///< Handler to called when the AT command is detected
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function can be used to get the parameters of a received AT command.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the requested parameter.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetParameter
+(
+    Cmd    commandRef                               IN, ///< AT command reference
+    uint32 index                                    IN, ///< agument index
+    string parameter[le_atDefs.PARAMETER_MAX_LEN]   OUT ///< parameter value
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function can be used to get the AT command string.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the AT command string.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetCommandName
+(
+    Cmd    commandRef                      IN,  ///< AT command reference
+    string name[le_atDefs.COMMAND_MAX_LEN] OUT  ///< AT command string
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function can be used to send an intermediate response.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to send the intermediate response.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SendIntermediateResponse
+(
+    Cmd      commandRef                                 IN, ///< AT command reference
+    string   responseStr[le_atDefs.RESPONSE_MAX_BYTES]  IN  ///< Intermediate response to be sent
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function can be used to send the final result code.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to send the final result code.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SendFinalResultCode
+(
+    Cmd        commandRef                             IN, ///< AT command reference
+    FinalRsp   finalResult                            IN, ///< Final result code to be sent
+    string     pattern[le_atDefs.RESPONSE_MAX_BYTES]  IN, ///< Prefix of the return message
+    uint32     errorCode                              IN  ///< Numeric error code
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function can be used to send the unsolicited response.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to send the unsolicited response.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SendUnsolicitedResponse
+(
+    string   responseStr[le_atDefs.RESPONSE_MAX_BYTES]  IN  ///< Unsolicited response to be sent
+);
