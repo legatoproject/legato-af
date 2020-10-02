@@ -246,6 +246,30 @@ LE_SHARED le_result_t le_socket_Connect
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Secures an existing connection by performing TLS negotiation.
+ *
+ * @note
+ *   - Certificate must be added beforehand via @c le_socket_AddCertificate() to succeed
+ *   - Only supported on RTOS based systems
+ *
+ * @return
+ *  - LE_OK                 Function success
+ *  - LE_BAD_PARAMETER      Invalid parameter
+ *  - LE_NOT_FOUND          Certificate not found
+ *  - LE_CLOSED             Socket is not connected
+ *  - LE_NOT_IMPLEMENTED    Not implemented for device
+ *  - LE_TIMEOUT            Timeout during execution
+ *  - LE_FAULT              Internal error
+ *  - LE_NO_MEMORY          Memory allocation issue
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_socket_SecureConnection
+(
+    le_socket_Ref_t   ref              ///< [IN] Socket context reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Close the socket connection.
  *
  * @return

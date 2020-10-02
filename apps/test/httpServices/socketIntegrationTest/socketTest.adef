@@ -18,3 +18,8 @@ processes:
     maxStackBytes: 8192
 #endif
 }
+
+bindings:
+{
+    socketTest.socketLibrary.le_mdc -> modemService.le_mdc
+}

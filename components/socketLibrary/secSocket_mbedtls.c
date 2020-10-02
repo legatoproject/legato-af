@@ -266,57 +266,29 @@ le_result_t secSocket_AddCertificate
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Initiate a connection with host:port and the given protocol
- *
- * @note
- *  - srcAddrPtr can be a Null string. In this case, the default PDP profile will be used
- *    and the address family will be selected in the following order: Try IPv4 first, then
- *    try IPv6
+ * Performs TLS Handshake
  *
  * @return
- *  - LE_OK            The function succeeded
- *  - LE_BAD_PARAMETER Invalid parameter
- *  - LE_TIMEOUT       Timeout during execution
- *  - LE_UNAVAILABLE   Unable to reach the server or DNS issue
- *  - LE_FAULT         Internal error
- *  - LE_NO_MEMORY     Memory allocation issue
- *  - LE_CLOSED        In case of end of file error
- *  - LE_COMM_ERROR    Connection failure
+ *  - LE_OK                 The function succeeded
+ *  - LE_NOT_IMPLEMENTED    Not implemented for device
+ *  - LE_TIMEOUT            Timeout during execution
+ *  - LE_FAULT              Internal error
+ *  - LE_NO_MEMORY          Memory allocation issue
+ *  - LE_CLOSED             In case of end of file error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t secSocket_Connect
+le_result_t secSocket_PerformHandshake
 (
-    secSocket_Ctx_t* ctxPtr,     ///< [INOUT] Secure socket context pointer
-    char*            hostPtr,    ///< [IN] Host to connect on
-    uint16_t         port,       ///< [IN] Port to connect on
-    char*            srcAddrPtr, ///< [IN] Source address pointer
-    SocketType_t     type,       ///< [IN] Socket type (TCP, UDP)
-    int*             fdPtr       ///< [OUT] Socket file descriptor
+    secSocket_Ctx_t*    ctxPtr,    ///< [INOUT] Secure socket context pointer
+    char*               hostPtr    ///< [IN] Host to connect on
 )
 {
-    char             portBuffer[6] = {0};
     int              ret;
     MbedtlsCtx_t    *contextPtr = (MbedtlsCtx_t *) ctxPtr;
 
     LE_ASSERT(contextPtr != NULL);
     LE_ASSERT(hostPtr != NULL);
-    LE_ASSERT(fdPtr != NULL);
-
-    // Start the connection
-    snprintf(portBuffer, sizeof(portBuffer), "%d", port);
-    LE_INFO("Connecting to %d/%s:%d - %s:%s...", type, hostPtr, port, hostPtr, portBuffer);
-
-    le_result_t result = netSocket_Connect(hostPtr, port, srcAddrPtr, TCP_TYPE,
-                                           (int *)&(contextPtr->sock));
-    if ( result != LE_OK)
-    {
-        LE_ERROR("Failed! mbedtls_net_connect returned %d", result);
-        return result;
-    }
-
-    //Get the file descriptor
-    *fdPtr = contextPtr->sock.fd;
-    LE_DEBUG("File descriptor: %d", *fdPtr);
+    LE_ASSERT(contextPtr->sock.fd != -1);
 
     // Setup
     LE_INFO("Setting up the SSL/TLS structure...");
@@ -392,6 +364,62 @@ le_result_t secSocket_Connect
     }
 
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initiate a connection with host:port and the given protocol
+ *
+ * @note
+ *  - srcAddrPtr can be a Null string. In this case, the default PDP profile will be used
+ *    and the address family will be selected in the following order: Try IPv4 first, then
+ *    try IPv6
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_TIMEOUT       Timeout during execution
+ *  - LE_UNAVAILABLE   Unable to reach the server or DNS issue
+ *  - LE_FAULT         Internal error
+ *  - LE_NO_MEMORY     Memory allocation issue
+ *  - LE_CLOSED        In case of end of file error
+ *  - LE_COMM_ERROR    Connection failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_Connect
+(
+    secSocket_Ctx_t* ctxPtr,     ///< [INOUT] Secure socket context pointer
+    char*            hostPtr,    ///< [IN] Host to connect on
+    uint16_t         port,       ///< [IN] Port to connect on
+    char*            srcAddrPtr, ///< [IN] Source address pointer
+    SocketType_t     type,       ///< [IN] Socket type (TCP, UDP)
+    int*             fdPtr       ///< [OUT] Socket file descriptor
+)
+{
+    char             portBuffer[6] = {0};
+    MbedtlsCtx_t    *contextPtr = (MbedtlsCtx_t *) ctxPtr;
+
+    LE_ASSERT(contextPtr != NULL);
+    LE_ASSERT(hostPtr != NULL);
+    LE_ASSERT(fdPtr != NULL);
+
+    // Start the connection
+    snprintf(portBuffer, sizeof(portBuffer), "%d", port);
+    LE_INFO("Connecting to %d/%s:%d - %s:%s...", type, hostPtr, port, hostPtr, portBuffer);
+
+    le_result_t result = netSocket_Connect(hostPtr, port, srcAddrPtr, TCP_TYPE,
+                                           (int *)&(contextPtr->sock));
+    if ( result != LE_OK)
+    {
+        LE_ERROR("Failed! mbedtls_net_connect returned %d", result);
+        return result;
+    }
+
+    //Get the file descriptor
+    *fdPtr = contextPtr->sock.fd;
+    LE_DEBUG("File descriptor: %d", *fdPtr);
+
+    return secSocket_PerformHandshake(ctxPtr, hostPtr);
 }
 
 //--------------------------------------------------------------------------------------------------

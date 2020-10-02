@@ -14,6 +14,10 @@ requires:
 
 cflags:
 {
+#if ${BUILD_COMPILER} = "ARMCC"
+    --c99
+#else
     -std=c99
+#endif
     -I$LEGATO_ROOT/components/socketLibrary
 }

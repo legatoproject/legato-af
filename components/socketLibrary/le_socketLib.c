@@ -34,7 +34,8 @@ typedef struct
     char               srcAddr[ADDR_MAX_LEN];  ///< Source IP address
     SocketType_t       type;                   ///< Socket type (TCP, UDP)
     uint32_t           timeout;                ///< Communication timeout in milliseconds
-    bool               isSecure;               ///< True if the socket uses a certificate
+    bool               isSecure;               ///< True if the socket is secure
+    bool               hasCert;                ///< True if the socket has a valid certificate
     bool               isMonitoring;           ///< True if the socket is being monitored
     le_fdMonitor_Ref_t monitorRef;             ///< Reference to the monitor object
     secSocket_Ctx_t*   secureCtxPtr;           ///< Secure socket context pointer
@@ -118,6 +119,9 @@ static SocketCtx_t* NewSocketContext
 
     // Create a safe reference for this object
     contextPtr->reference = le_ref_CreateRef(SocketRefMap, contextPtr);
+
+    // Ensure socket context pointer is NULL
+    contextPtr->secureCtxPtr = NULL;
 
     return contextPtr;
 }
@@ -419,7 +423,7 @@ le_result_t le_socket_AddCertificate
         LE_ERROR("Wrong parameter: %p, %zu", certificatePtr, certificateLen);
         return LE_BAD_PARAMETER;
     }
-    if (contextPtr->isSecure == 0)
+    if (contextPtr->secureCtxPtr == NULL)
     {
         // Need to initialize the secure socket before adding the certificate
         status = secSocket_Init(&(contextPtr->secureCtxPtr));
@@ -428,12 +432,14 @@ le_result_t le_socket_AddCertificate
             LE_ERROR("Unable to initialize the secure socket");
             return status;
         }
-
-        contextPtr->isSecure = 1;
     }
 
     status = secSocket_AddCertificate(contextPtr->secureCtxPtr, certificatePtr, certificateLen);
-    if (status != LE_OK)
+    if (status == LE_OK)
+    {
+        contextPtr->hasCert = true;
+    }
+    else
     {
         LE_ERROR("Unable to add certificate");
     }
@@ -470,11 +476,12 @@ le_result_t le_socket_Connect
         return LE_BAD_PARAMETER;
     }
 
-    if (contextPtr->isSecure)
+    if (contextPtr->hasCert)
     {
         status = secSocket_Connect(contextPtr->secureCtxPtr, contextPtr->host,
                                    contextPtr->port, contextPtr->srcAddr,
                                    contextPtr->type, &(contextPtr->fd));
+        contextPtr->isSecure = (status == LE_OK);
     }
     else
     {
@@ -500,6 +507,62 @@ le_result_t le_socket_Connect
     }
 
     return status;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Secures an existing connection by performing TLS negotiation.
+ *
+ * @note
+ *   - Certificate must be added beforehand via @c le_socket_AddCertificate() to succeed
+ *   - Only supported on RTOS based systems
+ *
+ * @return
+ *  - LE_OK                 Function success
+ *  - LE_BAD_PARAMETER      Invalid parameter
+ *  - LE_NOT_FOUND          Certificate not found
+ *  - LE_CLOSED             Socket is not connected
+ *  - LE_NOT_IMPLEMENTED    Not implemented for device
+ *  - LE_TIMEOUT            Timeout during execution
+ *  - LE_FAULT              Internal error
+ *  - LE_NO_MEMORY          Memory allocation issue
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_socket_SecureConnection
+(
+    le_socket_Ref_t   ref              ///< [IN] Socket context reference
+)
+{
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (!contextPtr->hasCert)
+    {
+        LE_ERROR("No certificate associated to socket");
+        return LE_NOT_FOUND;
+    }
+
+    if (contextPtr->fd == -1)
+    {
+        LE_ERROR("Socket not connected");
+        return LE_CLOSED;
+    }
+
+    status = secSocket_PerformHandshake(contextPtr->secureCtxPtr, contextPtr->host);
+    if (status != LE_OK)
+    {
+        LE_ERROR("Socket not connected");
+        return status;
+    }
+
+    contextPtr->isSecure = true;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------

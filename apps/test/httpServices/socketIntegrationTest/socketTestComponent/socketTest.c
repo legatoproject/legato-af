@@ -16,6 +16,8 @@
  *   - Secure:   app runProc socketTest socketTest -- 1 m2mop.net 443 TCP DATA
  *
  * Note:
+ *   - On RTOS devices, it is required to first establish a connection to the cellular network
+ *     via AT commands before the test is ran
  *   - Security flag only uses a default certificate to connect to m2mop.net remote server.
  *   - If data field is not specified, a sample HTTP HEAD request is sent to remote server.
  *
@@ -28,6 +30,13 @@
 #include "interfaces.h"
 #include "le_socketLib.h"
 #include "defaultDerKey.h"
+
+//--------------------------------------------------------------------------------------------------
+// Macro definitions
+//--------------------------------------------------------------------------------------------------
+#ifndef LE_CONFIG_LINUX
+#define exit(x)    pthread_exit(NULL)
+#endif
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions
@@ -166,6 +175,7 @@ COMPONENT_INIT
     long portNumber   = strtol(le_arg_GetArg(2), NULL, 10);
     char* typePtr     = (char*)le_arg_GetArg(3);
     char* dataPtr     = (le_arg_NumArgs() == 5) ? (char*)le_arg_GetArg(4) : (char*)sampleRequest;
+    int i             = REQUESTS_LOOP;
 
     // Check parameters validity
     if ((!hostPtr) || (!typePtr))
@@ -197,7 +207,7 @@ COMPONENT_INIT
 
     LE_INFO("Creating the %s socket...", typePtr);
     //! [SocketCreate]
-    socketRef = le_socket_Create(hostPtr, (uint16_t)portNumber, type);
+    socketRef = le_socket_Create(hostPtr, (uint16_t)portNumber, NULL, type);
     if (!socketRef)
     {
         LE_ERROR("Failed to connect socket");
@@ -237,7 +247,6 @@ COMPONENT_INIT
     //! [SocketConnect]
 
     LE_INFO("Sending data through socket %d times...", REQUESTS_LOOP);
-    int i = REQUESTS_LOOP;
 
     while (i)
     {

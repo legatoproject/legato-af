@@ -65,6 +65,25 @@ le_result_t secSocket_AddCertificate
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Performs TLS Handshake
+ *
+ * @return
+ *  - LE_OK                 The function succeeded
+ *  - LE_NOT_IMPLEMENTED    Not implemented for device
+ *  - LE_TIMEOUT            Timeout during execution
+ *  - LE_FAULT              Internal error
+ *  - LE_NO_MEMORY          Memory allocation issue
+ *  - LE_CLOSED             In case of end of file error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_PerformHandshake
+(
+    secSocket_Ctx_t*    ctxPtr,    ///< [INOUT] Secure socket context pointer
+    char*               hostPtr    ///< [IN] Host to connect on
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initiate a connection with host:port and the given protocol
  *
  * @return
