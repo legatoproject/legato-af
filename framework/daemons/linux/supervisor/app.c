@@ -1726,6 +1726,88 @@ static void StopProc
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the permissions from the config tree for directories.
+ *
+ * @return
+ *      LE_OK if we reset the permissions to the smack label.
+ *      LE_UNSUPPORTED if it is not running ONLYCAP.
+ *      LE_NOT_FOUND if ONLYCAP but no specified settings.
+ *      LE_FAULT if the function is called incorrectly.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetConfigTreePermSmack
+(
+    app_Ref_t appRef,                   ///< [IN] Application reference.
+    const char* destDirName,            ///< [IN] Directory name to find for in config tree.
+    char* smackAppLabel,                ///< [OUT] Directory label being modified.
+    size_t smackLabelSize               ///< [IN] Size of label.
+)
+{
+    if(appRef == NULL || destDirName == NULL || strcmp(destDirName, "") == 0)
+    {
+        LE_INFO("Missing necessary parameters");
+        return LE_FAULT;
+    }
+
+#if LE_CONFIG_SMACK_ONLYCAP
+    // If we're in ONLYCAP, we will check if the dir is set to specific permissions
+    char configPath[LIMIT_MAX_PATH_BYTES] = "";
+    char dirPerm[MAX_DEVICE_PERM_STR_BYTES] = {};
+    char appLabel[LIMIT_MAX_SMACK_LABEL_LEN];
+
+    smack_GetAppLabel(app_GetName(appRef), appLabel, sizeof(appLabel));
+    snprintf(configPath, sizeof(configPath), "apps/%s", app_GetName(appRef));
+    le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(configPath);
+
+    // Needs to iterate to the 'dirs' node
+    le_cfg_GoToNode(appCfg, CFG_NODE_BUNDLES);
+    le_cfg_GoToNode(appCfg, CFG_NODE_DIRS);
+    if (le_cfg_GoToFirstChild(appCfg) == LE_OK)
+    {
+        do
+        {
+            char dirPath[LIMIT_MAX_PATH_BYTES];
+            le_cfg_GetString(appCfg, "src", dirPath, sizeof(dirPath), "");
+            char* dirName = basename(dirPath);
+            if(strcmp(dirName, destDirName) == 0)
+            {
+                // Set permissions according to config tree
+                int index = 0;
+                if((le_cfg_GetBool(appCfg,"isReadable",false)))
+                {
+                    dirPerm[index++] = 'r';
+                }
+                if((le_cfg_GetBool(appCfg,"isWritable",false)))
+                {
+                    dirPerm[index++] = 'w';
+                }
+                if((le_cfg_GetBool(appCfg,"isExecutable",false)))
+                {
+                    dirPerm[index++] = 'x';
+                }
+
+                // Check if none set implies default to Read-Only
+                if (index == 0)
+                {
+                    dirPerm[index] = 'r';
+                }
+                LE_ASSERT(snprintf(smackAppLabel, smackLabelSize, "%s%s", appLabel, dirPerm)
+                            < smackLabelSize);
+                le_cfg_CancelTxn(appCfg);
+                return LE_OK;
+            }
+        }
+        while(le_cfg_GoToNextSibling(appCfg) == LE_OK);
+    }
+    le_cfg_CancelTxn(appCfg);
+    return LE_NOT_FOUND;
+#endif /*LE_CONFIG_SMACK_ONLYCAP*/
+    return LE_UNSUPPORTED;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Create the sandbox app's /tmp folder and mount a tmpfs at that location.
  *
  * @return
@@ -1837,7 +1919,8 @@ static le_result_t GetAbsDestPath
 static le_result_t CreateIntermediateDirs
 (
     const char* pathPtr,                ///< [IN] Path.
-    const char* smackLabelPtr           ///< [IN] SMACK label to use for the created dirs.
+    const char* smackLabelPtr,          ///< [IN] SMACK label to use for the created dirs.
+    app_Ref_t appRef                    ///< [IN] App Ref used for getting permissions
 )
 {
     char dirPath[LIMIT_MAX_PATH_BYTES] = "";
@@ -1846,6 +1929,21 @@ static le_result_t CreateIntermediateDirs
     {
         LE_ERROR("Path '%s' is too long.", dirPath);
         return LE_FAULT;
+    }
+
+    // Configure the newSmackOnlyCapLabel IFF ONLYCAP and its set within the config tree
+    char newSmackOnlyCapLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+    if(GetConfigTreePermSmack(appRef, basename(dirPath), newSmackOnlyCapLabel,
+                            sizeof(newSmackOnlyCapLabel)) == LE_OK)
+    {
+        LE_DEBUG("Resetting the app smack (ONLYCAP) label to '%s'", newSmackOnlyCapLabel);
+        if (dir_MakePathSmack(dirPath,
+                            S_IRUSR | S_IXUSR | S_IROTH | S_IXOTH,
+                            newSmackOnlyCapLabel) == LE_FAULT)
+        {
+            return LE_FAULT;
+        }
+        return LE_OK;
     }
 
     if (dir_MakePathSmack(dirPath,
@@ -1966,7 +2064,7 @@ static le_result_t CreateDirLink
     }
 
     // Create the necessary intermediate directories along the destination path.
-    if (CreateIntermediateDirs(destPath, appDirLabelPtr) != LE_OK)
+    if (CreateIntermediateDirs(destPath, appDirLabelPtr, appRef) != LE_OK)
     {
         goto failure;
     }
@@ -2060,7 +2158,7 @@ static le_result_t CreateFileLink
     }
 
     // Create the necessary intermediate directories along the destination path.
-    if (CreateIntermediateDirs(destPath, appDirLabelPtr) != LE_OK)
+    if (CreateIntermediateDirs(destPath, appDirLabelPtr, appRef) != LE_OK)
     {
         goto failure;
     }

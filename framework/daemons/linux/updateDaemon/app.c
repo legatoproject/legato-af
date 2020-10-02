@@ -28,6 +28,7 @@
 #include "interfaces.h"
 #include "limit.h"
 #include "appUser.h"
+#include "le_cfg_interface.h"
 #include "file.h"
 #include "dir.h"
 #include "app.h"
@@ -204,6 +205,106 @@ static void ExecPostinstallHook
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the permissions from the config tree.
+ *
+ * @return
+ *      LE_OK if we reset the permissions to the smack label.
+ *      LE_UNSUPPORTED if it is not running ONLYCAP.
+ *      LE_NOT_FOUND if ONLYCAP but no specified settings.
+ *      LE_FAULT if the function is called incorrectly.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetSmackLabelConfigTreePerm
+(
+    const char* appNamePtr,             ///< [IN] Application name.
+    const char* fileName,               ///< [IN] File or directory name to find in config tree.
+    unsigned short fileType,            ///< [IN] File type (FTS_D = 1 FTS_F = 8).
+    char* smackAppLabel,                ///< [OUT] Directory label being modified.
+    size_t smackLabelSize               ///< [IN] Size of label.
+)
+{
+    if(appNamePtr == NULL || fileName == NULL ||
+    strcmp(appNamePtr,"") == 0 || strcmp(fileName, "") == 0)
+    {
+        LE_INFO("Missing necessary parameters");
+        return LE_FAULT;
+    }
+#if LE_CONFIG_SMACK_ONLYCAP
+    // If we're in ONLYCAP, check config tree for permissions
+    char configPath[LIMIT_MAX_PATH_BYTES] = "";
+    char filePerm[10] = {};
+
+    char appLabel[LIMIT_MAX_SMACK_LABEL_LEN];
+    smack_GetAppLabel(appNamePtr, appLabel, sizeof(appLabel));
+    snprintf(configPath, sizeof(configPath), "apps/%s", appNamePtr);
+
+    // Needs to iterate to the 'files/dirs' node
+    le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(configPath);
+    le_cfg_GoToNode(appCfg, "bundles");
+
+    if(fileType == FTS_D)
+    {
+        le_cfg_GoToNode(appCfg, "dirs");
+    }
+    else if(fileType == FTS_F)
+    {
+        le_cfg_GoToNode(appCfg, "files");
+    }
+    else
+    {
+        LE_INFO("Unsupported file type: %d", fileType);
+        return LE_UNSUPPORTED;
+    }
+
+    if (le_cfg_GoToFirstChild(appCfg) == LE_OK)
+    {
+        do
+        {
+            char srcPath[LIMIT_MAX_PATH_BYTES];
+            le_cfg_GetString(appCfg, "src", srcPath, sizeof(srcPath), "");
+            char* cfgFileName = basename(srcPath);
+            if(strcmp(cfgFileName, fileName) == 0)
+            {
+                // Reset the smacklabel first
+                memset(smackAppLabel, 0, smackLabelSize);
+
+                // Set permissions according to config tree
+                int index = 0;
+                if((le_cfg_GetBool(appCfg,"isReadable",false)))
+                {
+                    filePerm[index++] = 'r';
+                }
+                if((le_cfg_GetBool(appCfg,"isWritable",false)))
+                {
+                    filePerm[index++] = 'w';
+                }
+                if((le_cfg_GetBool(appCfg,"isExecutable",false)))
+                {
+                    filePerm[index++] = 'x';
+                }
+                // Check if none set implies default to Read-Only
+                if (index == 0)
+                {
+                    filePerm[index] = 'r';
+                }
+                LE_ASSERT(snprintf(smackAppLabel, smackLabelSize, "%s%s", appLabel, filePerm)
+                            < smackLabelSize);
+                le_cfg_CancelTxn(appCfg);
+                return LE_OK;
+            }
+        }
+        while(le_cfg_GoToNextSibling(appCfg) == LE_OK);
+    }
+    le_cfg_CancelTxn(appCfg);
+    return LE_NOT_FOUND;
+#endif /*LE_CONFIG_SMACK_ONLYCAP*/
+    return LE_UNSUPPORTED;
+}
+//--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Recursively sets the permissions for all files and directories in application read-only directory.
  *
  * returns LE_OK if successful, LE_FAULT if fails.
@@ -263,6 +364,10 @@ static le_result_t SetSmackPermReadOnlyDir
 
                     n = snprintf(dirLabel, sizeof(dirLabel), "%s%s", fileLabel, dirPerm);
                     LE_ASSERT(n < sizeof(dirLabel));
+
+                    // Get smack label if the config tree permissions exists
+                    GetSmackLabelConfigTreePerm(appNamePtr, entPtr->fts_name,
+                                                FTS_D, dirLabel, sizeof(dirLabel));
                     // These are directories, visited in pre-order. Set the SMACK label.
                     LE_DEBUG("Setting SMACK label: '%s' for directory: '%s'", dirLabel,
                              entPtr->fts_accpath);
@@ -297,6 +402,10 @@ static le_result_t SetSmackPermReadOnlyDir
                 }
                 else
                 {
+                    // Get smack label if the config tree permissions exists
+                    GetSmackLabelConfigTreePerm(appNamePtr, entPtr->fts_name,
+                                                FTS_F, fileLabel, sizeof(fileLabel));
+
                     LE_DEBUG("Setting SMACK label: '%s' for file: '%s'", fileLabel,
                                entPtr->fts_accpath);
                     result = smack_SetLabel(entPtr->fts_accpath, fileLabel);
@@ -332,14 +441,16 @@ static le_result_t SetSmackPermReadOnlyDir
 //--------------------------------------------------------------------------------------------------
 /**
  * Recursively sets the SMACK permissions for directories under apps writeable directory.
+ * Also set file permissions according to config tree.
  *
  * returns LE_OK if successful, LE_FAULT if fails.
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t SetPermAppWritableDir
+static le_result_t SetPermAppWritableDirAndFile
 (
     const char* appWritableDir,  ///< [IN] Path to apps writable directory.
-    const char* appLabel        ///< [IN] App SMACK label.
+    const char* appLabel,        ///< [IN] App SMACK label.
+    const char* appNamePtr       ///< [IN] App name used to get directory permissions.
 )
 {
 
@@ -378,16 +489,37 @@ static le_result_t SetPermAppWritableDir
                     {
                         dirPerm[index++] = 'x';
                     }
-
                     LE_ASSERT(snprintf(dirLabel, sizeof(dirLabel), "%s%s", appLabel, dirPerm)
                               < sizeof(dirLabel));
+
+                    // Get smack label if the config tree permissions exists
+                    GetSmackLabelConfigTreePerm(appNamePtr, entPtr->fts_name,
+                                                FTS_D, dirLabel, sizeof(dirLabel));
                     // These are directories, visited in pre-order. Set the SMACK label.
                     LE_DEBUG("Setting SMACK label: '%s' for directory: '%s'", dirLabel,
                              entPtr->fts_accpath);
                     result = smack_SetLabel(entPtr->fts_accpath, dirLabel);
+                    break;
+                }
+            case FTS_F:
+                {
+                    char dirLabel[LIMIT_MAX_SMACK_LABEL_BYTES] = "";
+
+                    // Get smack label if the config tree permissions exists
+                    GetSmackLabelConfigTreePerm(appNamePtr, entPtr->fts_name,
+                                                FTS_F, dirLabel, sizeof(dirLabel));
+
+                    // Check if dirLabel was found inside config tree
+                    if(strcmp(dirLabel, "") != 0)
+                    {
+                        // These are files. Set the SMACK label.
+                        LE_DEBUG("Setting SMACK label: '%s' for file path: '%s'", dirLabel,
+                             entPtr->fts_accpath);
+                        result = smack_SetLabel(entPtr->fts_accpath, dirLabel);
+                    }
+                    break;
                 }
                 break;
-
         }
 
         if (result != LE_OK)
@@ -415,6 +547,8 @@ static le_result_t PerformAppUpgrade
 {
     // Attempt to umount appsWritable/<appName> because it may have been mounted as a sandbox.
     char path[PATH_MAX] = "";
+    char destDir[PATH_MAX];
+    char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES] = "";
     LE_ASSERT(le_path_Concat("/", path, sizeof(path),
                              APPS_WRITEABLE_DIR, appNamePtr, NULL) == LE_OK);
 
@@ -423,17 +557,31 @@ static le_result_t PerformAppUpgrade
     // Run the pre-install hook.
     ExecPreinstallHook(appMd5Ptr, appNamePtr);
 
+    // Load the root.cfg from the new version of the app into the system config tree.
+    ImportConfig(appMd5Ptr, appNamePtr);
+
     // Set smackfs file permission for installed files
     SetSmackPermReadOnlyDir(appMd5Ptr, appNamePtr);
 
     // Update non-writeable files dir symlink to point to the new version of the app
     system_SymlinkApp("current", appMd5Ptr, appNamePtr);
 
-    // Load the root.cfg from the new version of the app into the system config tree.
-    ImportConfig(appMd5Ptr, appNamePtr);
 
     // Update the writeable files.
     system_UpdateCurrentAppWriteableFiles(appMd5Ptr, appNamePtr);
+
+    // Get the path for the destination for the app
+    system_GetAppWriteableFilesDirPath(destDir, sizeof(destDir), "current", appNamePtr);
+
+    // Get the app's label
+    smack_GetAppLabel(appNamePtr, appLabel, sizeof(appLabel));
+
+    // Directories SMACK permission was not properly during upgrade. Set it now.
+    if (SetPermAppWritableDirAndFile(destDir, appLabel, appNamePtr) != LE_OK)
+    {
+        LE_ERROR("Failed to set SMACK permission in directory '%s'", destDir);
+        return LE_FAULT;
+    }
 
     return LE_OK;
 }
@@ -455,6 +603,9 @@ static le_result_t PerformAppInstall
     // Run the pre-install hook.
     ExecPreinstallHook(appMd5Ptr, appNamePtr);
 
+    // Import the applications config.
+    ImportConfig(appMd5Ptr, appNamePtr);
+
     // Set smackfs file permission for installed files
     SetSmackPermReadOnlyDir(appMd5Ptr, appNamePtr);
 
@@ -471,9 +622,6 @@ static le_result_t PerformAppInstall
 
     // Create a user for this new app.
     appUser_Add(appNamePtr);
-
-    // Import the applications config.
-    ImportConfig(appMd5Ptr, appNamePtr);
 
     // Install the writeable files if there are any.
     if (le_dir_IsDir(srcDir))
@@ -501,7 +649,7 @@ static le_result_t PerformAppInstall
         }
 
         // While copying file, directories SMACK permission was not properly. Set it now.
-        if (SetPermAppWritableDir(destDir, appLabel) != LE_OK)
+        if (SetPermAppWritableDirAndFile(destDir, appLabel, appNamePtr) != LE_OK)
         {
             LE_ERROR("Failed to set SMACK permission in directory '%s'", destDir);
             return LE_FAULT;
