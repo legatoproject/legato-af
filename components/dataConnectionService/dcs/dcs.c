@@ -774,8 +774,6 @@ void dcs_RemoveEventHandler
 )
 {
     le_dcs_channelDb_t *channelDb = dcs_GetChannelEvtHdlr(channelHandlerRef, false);
-    void *sessionRefKey;
-    le_dcs_channelDbEventHdlr_t *channelAppEvtHdlr;
 
     if (!channelDb)
     {
@@ -783,21 +781,10 @@ void dcs_RemoveEventHandler
         return;
     }
 
-    sessionRefKey = dcs_GetSessionRefKey(sessionRef);
-    channelAppEvtHdlr = dcs_GetChannelAppEvtHdlr(channelDb, sessionRefKey);
-
-    // Check session cleanup filtering config to see if this event handler can be deleted
-    if (channelAppEvtHdlr && !dcs_IsEventHandlerDeletable(channelDb, channelHandlerRef))
-    {
-        LE_DEBUG("Do not remove the app client's event handler ref %p for channel %s",
-                channelHandlerRef, channelDb->channelName);
-        return;
-    }
-
     if (dcs_GetChannelEvtHdlr(channelHandlerRef, true))
     {
         LE_DEBUG("Client's event handler ref %p for channel %s of technology %s removed",
-                channelHandlerRef, channelDb->channelName,
+                 channelHandlerRef, channelDb->channelName,
                  dcs_ConvertTechEnumToName(channelDb->technology));
     }
 }
@@ -940,11 +927,8 @@ static void CloseServiceSessionHandler
             le_dcs_channelDb_t *channelDb = dcs_GetChannelDbFromStartRequestRef(reqRef, &reqRefDb);
             if (channelDb)
             {
-                le_dcs_channelDbEventHdlr_t *channelAppEvtHdlr =
-                    dcs_GetChannelAppEvtHdlr(channelDb, sessionRefKey);
-
                 // Check session cleanup filtering config to see if this channel should be closed
-                if (channelAppEvtHdlr && !dcs_IsSessionExitChannelClosable(channelDb, reqRef))
+                if (!dcs_IsSessionExitChannelClosable(channelDb, reqRef))
                 {
                     LE_DEBUG("Do not stop for app client with session ref %p & request ref %p "
                              "for its channel %s", closingSessionRef, reqRef,
