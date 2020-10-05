@@ -3385,6 +3385,13 @@ static void ServerMsgRecvHandler
     // Allocate memory for a Proxy Message buffer
     proxyMessagePtr = le_mem_ForceAlloc(ProxyMessagesPoolRef);
 
+    if (sizeof(proxyMessagePtr->message) < le_msg_GetMaxPayloadSize(msgRef))
+    {
+        // Raise an error message and return
+        LE_ERROR("Proxy Message buffer too small");
+        goto exit;
+    }
+
     // Copy the Message Reference payload into the Proxy Message
     memcpy(proxyMessagePtr->message,
            le_msg_GetPayloadPtr(msgRef),
@@ -3420,13 +3427,6 @@ static void ServerMsgRecvHandler
     else
     {
         proxyMessagePtr->commonHeader.serviceId = *serviceIdPtr;
-
-        if (sizeof(proxyMessagePtr->message) < le_msg_GetMaxPayloadSize(msgRef))
-        {
-            // Raise an error message and return
-            LE_ERROR("Proxy Message buffer too small");
-            goto exit;
-        }
     }
 
     // Check if message should be sent to the far-side
