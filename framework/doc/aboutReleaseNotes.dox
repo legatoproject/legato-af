@@ -122,6 +122,9 @@ repositories on GitHub.
 
 @section rn2008_KnownIssues Known Issues
 
+Giving LE_MRC_BITMASK_RAT_ALL as the input in le_mrc_SetRatPreferences() to set the Radio Access
+Technology (RAT) to auto mode isn't supported on WP77.
+
 @subsection rn2008_Constraints Constraints and Limitations
 
 @subsubsection rn2008_ConstraintsLinuxSupport Dev Machine Linux Version
