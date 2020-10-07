@@ -18,6 +18,7 @@ The following are our current list of new experimental features in Legato
 | -------------------------------- | --------------------------------------------------------------| ------------ | ----------------------|
 | @subpage conceptsRPC             | Legato RPC framework                                          | Alpha        | Legato 19.04.0        |
 | @ref c_iks                       | Legato IoT Keystore API                                       | Alpha        | Legato 20.04.0        |
+| @subpage conceptsEDM             | Legato AVC Extended Device Management (EDM) feature           | Alpha        | Legato 20.11.0        |
 
 Maturity Descriptions:
 - @b Alpha - the feature is still under development and should not be used on production targets as

@@ -1,0 +1,37 @@
+/** @page conceptsEDM Extended Device Management
+
+@warning EXPERIMENTAL
+
+Extended Device management (EDM) is a part of the SIM Reachability functionality.
+It allows the SIM configuration data (APDU) to be provisioned through Legato to the
+modem firmware, using LWM2M mechanism, and AVC as LWM2M client. It also allows to
+propagate the SIM response back to the server.
+
+For this purpose, a new LWM2M object 33408 is introduced. It includes writable/executable
+resources to provision APDU to the SIM card, and "APDU response" readable resource to propagate
+SIM response back to the server.
+
+New Device Management (DM) server is introduced specifically for the purpose of supporting
+object 33408: @b EDM @b server. This server is not capable of supporting other types of
+LWM2M objects, and not intended to be contacted by device on the regular basis (but rather, only when
+SIM config needs to be modified).
+
+Feature consists of the following parts:
+
+- AVC is able to store credentials for more than one Device Management (DM) server.
+- AVC can receive two or more sets of DM credentials from the Bootstrap server
+(and handle multiple instances of the LWM2M Object 0 and Object 1).
+- New AVC API is introduced to initiate the connection to the EDM server.
+(or any other specific DM server, identified by the Server ID).
+- New AT command to initiate the connection to the EDM (or any ohter specific DM server).
+- New AT command to propagate the APDU response from the modem firmware to Legato, and
+store it temporarily in the ConfigTree.
+- LWM2M core library to be able to support the new Object 33408.
+
+Related information
+
+@ref legatoServicesAirVantage <br>
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

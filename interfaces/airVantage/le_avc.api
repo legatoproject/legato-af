@@ -645,6 +645,41 @@ DEFINE COMM_INFO_COAP_503_SERVICE_UNAVAILABLE   = 0xA3;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * When used as a Server ID, indicate that the operation is applicable to all servers.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE SERVER_ID_ALL_SERVERS = 0xFFFF;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Server ID of the AirVantage server (by convention).
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE SERVER_ID_AIRVANTAGE = 1;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Config tree root to store the SIM APDU data
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE CONFIG_TREE_ROOT = "avcService:/";
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Config tree entry to store the SIM APDU data
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE CONFIG_SIM_APDU_PATH = "SIM_APDU";
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Config tree entry to store the SIM APDU response
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE CONFIG_SIM_APDU_RESP_PATH = "SIM_APDU_RESP";
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Status of session or update
  *
  * If an update is pending, it must first be downloaded and then installed.
@@ -781,6 +816,16 @@ ENUM CredentialStatus
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Type of the configuration to pass to the API
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM ConfigType
+{
+    CONFIG_TYPE_SIM_APDU_RESPONSE = 1   ///< SIM APDU response
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Handler for update availability status
  */
 //--------------------------------------------------------------------------------------------------
@@ -873,7 +918,47 @@ FUNCTION le_result_t StartSession
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Stop a session with the AirVantage server
+ * Start a session with a specific Device Management (DM) server.
+ *
+ * This function is similar to le_avc_StartSession(), with the main difference of adding extra
+ * parameter to specify the Server ID of the DM server; this way, it provides flexibility to
+ * connect to any DM server, not just AirVantage.
+ *
+ * For example, the device may need to communicate with EDM server that is providing support
+ * for the SIM Reachability features (LWM2M proprietory object 33408).
+ *
+ * Reserved Server IDs are:
+ * 0 for Bootstrap server
+ * 1 for AirVantage server
+ * 1000 for EDM server
+ *
+ * @note DM servers may have different capabilities in terms of which LWM2M objects they support.
+ * For instance, EDM server supports only one specific type of object (Object 33408), and does
+ * not support Objects 5 and 9, which means it doesn't allow SOTA/FOTA operations.
+ *
+ * @note To initiate a session with AirVantage server, it's preferable to use le_avc_StartSession()
+ * which exists specifically for this purpose.
+ *
+ * @note If the device doesn't have credentials for the specificed DM server, the boostrapping
+ * process will be automatically initiated.
+ *
+ * @return
+ *      - LE_OK if connection request has been sent.
+ *      - LE_FAULT on failure
+ *      - LE_DUPLICATE if already connected to the server.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t StartDmSession
+(
+    uint16  serverId            IN, ///< Short ID of the DM server. If equals to ALL_SERVERS, the
+                                    ///<   session will be started with all available DM servers.
+    bool    isAutoDisconnect    IN  ///< Whether the session should be auto disconnected
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop a session with the DM server
  *
  * If a download is in progress and the user agreement is enabled, this suspends the download,
  * otherwise if the user agreement is disabled, a new connection is automatically initiated in order

@@ -98,6 +98,13 @@ config AVC_HTTP_TIMEOUT_MS
   ---help---
   The timeout (msec) of the HTTP connection used to download the package.
 
+config AVC_FEATURE_EDM
+  bool "Enable Extended Device Management (EDM)"
+  depends on EXPERIMENTAL
+  default n
+  ---help---
+  Enable Extended Device Management (EDM)
+
 endmenu # end "AirVantage Connector"
 
 menu "AT Service"
