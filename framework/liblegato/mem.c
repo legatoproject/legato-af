@@ -1171,9 +1171,9 @@ void* le_mem_ForceAlloc
         LE_DEBUG("Memory pool '%s' overflowed. Expanded to %" PRIuS " blocks.",
             MEMPOOL_NAME(pool->name), pool->totalBlocks);
 #   endif
-            mem_Unlock();
+        mem_Unlock();
 
-        }
+    }
 #else /* !LE_CONFIG_MEM_POOLS */
         objPtr = le_mem_AssertAlloc(pool);
 #endif /* end !LE_CONFIG_MEM_POOLS */

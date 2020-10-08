@@ -1263,7 +1263,7 @@ static void RepackAllocateResponseMemory
 )
 {
     // Allocate a local message memory tracker record
-    rpcProxy_LocalMessage_t* localMessagePtr = le_mem_ForceAlloc(LocalMessagePoolRef);
+    rpcProxy_LocalMessage_t* localMessagePtr = le_mem_Alloc(LocalMessagePoolRef);
 
     // Allocate memory to hold the data
     localMessagePtr->dataPtr = le_mem_AssertVarAlloc(MessageDataPtrPoolRef, size + 1);
@@ -1458,7 +1458,7 @@ static le_result_t RepackStoreResponsePointer
     {
         // Allocate the response parameter array, in which to
         // store the repsonse pointers
-        arrayPtr = le_mem_ForceAlloc(ResponseParameterArrayPoolRef);
+        arrayPtr = le_mem_Alloc(ResponseParameterArrayPoolRef);
         memset(arrayPtr, 0, sizeof(responseParameterArray_t));
     }
 
@@ -2918,7 +2918,7 @@ static le_result_t ProcessConnectServiceResponse
             }
 
             // Allocate memory from Service Name string pool to hold the service-name
-            char* serviceNameCopyPtr = le_mem_ForceAlloc(ServiceNameStringPoolRef);
+            char* serviceNameCopyPtr = le_mem_Alloc(ServiceNameStringPoolRef);
 
             // Copy the service-name string
             le_utf8_Copy(serviceNameCopyPtr,
@@ -2926,7 +2926,7 @@ static le_result_t ProcessConnectServiceResponse
                          LIMIT_MAX_IPC_INTERFACE_NAME_BYTES, NULL);
 
             // Allocate memory from Service-ID pool
-            uint32_t* serviceIdCopyPtr = le_mem_ForceAlloc(ServiceIdPoolRef);
+            uint32_t* serviceIdCopyPtr = le_mem_Alloc(ServiceIdPoolRef);
 
             // Copy the Service-ID
             *serviceIdCopyPtr = proxyMessagePtr->commonHeader.serviceId;
@@ -3378,19 +3378,20 @@ static void ServerMsgRecvHandler
         return;
     }
 
+    if (RPC_PROXY_MAX_MESSAGE < le_msg_GetMaxPayloadSize(msgRef))
+    {
+        // Raise an error message and return
+        LE_ERROR("Proxy Message buffer too small (%u) relative to incoming message payload "
+                 "(%" PRIuS ")", RPC_PROXY_MAX_MESSAGE, le_msg_GetMaxPayloadSize(msgRef));
+        return;
+    }
+
     //
     // Prepare a Client-Request Proxy Message
     //
 
     // Allocate memory for a Proxy Message buffer
-    proxyMessagePtr = le_mem_ForceAlloc(ProxyMessagesPoolRef);
-
-    if (sizeof(proxyMessagePtr->message) < le_msg_GetMaxPayloadSize(msgRef))
-    {
-        // Raise an error message and return
-        LE_ERROR("Proxy Message buffer too small");
-        goto exit;
-    }
+    proxyMessagePtr = le_mem_Alloc(ProxyMessagesPoolRef);
 
     // Copy the Message Reference payload into the Proxy Message
     memcpy(proxyMessagePtr->message,
@@ -3588,7 +3589,7 @@ static void SendSessionConnectRequest
 
     // Allocate memory for a Proxy Message
     rpcProxy_ConnectServiceMessage_t *proxyMessagePtr =
-        le_mem_ForceAlloc(ProxyConnectServiceMessagesPoolRef);
+        le_mem_Alloc(ProxyConnectServiceMessagesPoolRef);
 
     // Generate the proxy message id
     proxyMessagePtr->commonHeader.id = rpcProxy_GenerateProxyMessageId();
@@ -3785,7 +3786,7 @@ static le_result_t DoConnectService
                     bindingRefPtr->serviceName);
 
             // Allocate memory from Service Name string pool
-            char* serviceNameCopyPtr = le_mem_ForceAlloc(ServiceNameStringPoolRef);
+            char* serviceNameCopyPtr = le_mem_Alloc(ServiceNameStringPoolRef);
 
             le_utf8_Copy(serviceNameCopyPtr,
                          bindingRefPtr->serviceName,
@@ -3793,7 +3794,7 @@ static le_result_t DoConnectService
                          NULL);
 
             // Allocate memory from Service ID pool
-            uint32_t* serviceIdCopyPtr = le_mem_ForceAlloc(ServiceIdPoolRef);
+            uint32_t* serviceIdCopyPtr = le_mem_Alloc(ServiceIdPoolRef);
             *serviceIdCopyPtr = serviceId;
 
             // Store the Service-ID in a hashmap, using the service-name as a key

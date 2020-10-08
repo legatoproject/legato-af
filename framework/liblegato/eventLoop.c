@@ -462,7 +462,7 @@ static Event_t* CreateEvent
 )
 //--------------------------------------------------------------------------------------------------
 {
-    Event_t*    eventPtr = le_mem_ForceAlloc(EventPool);
+    Event_t*    eventPtr = le_mem_Alloc(EventPool);
 #if LE_CONFIG_EVENT_NAMES_ENABLED
     le_result_t result;
 #endif
@@ -720,7 +720,7 @@ static void QueueFunction_NoLock
 //--------------------------------------------------------------------------------------------------
 {
     // Allocate a Queued Function Report object.
-    QueuedFunctionReport_t* reportPtr = le_mem_ForceAlloc(ReportPoolRef);
+    QueuedFunctionReport_t* reportPtr = le_mem_Alloc(ReportPoolRef);
 
     // Initialize it.
     reportPtr->baseClass.link = LE_SLS_LINK_INIT;
@@ -1125,7 +1125,7 @@ le_event_HandlerRef_t _le_event_AddLayeredHandler
     event_PerThreadRec_t* threadRecPtr = thread_GetEventRecPtr();
 
     // Allocate the Handler object.
-    Handler_t*  handlerPtr = le_mem_ForceAlloc(HandlerPool);
+    Handler_t*  handlerPtr = le_mem_Alloc(HandlerPool);
 
     // Initialize the Handler object's members.
     handlerPtr->eventLink = LE_DLS_LINK_INIT;
@@ -1240,7 +1240,7 @@ void le_event_Report
             EVENT_NAME(handlerPtr->name));
 
         // Queue a report to the handler's thread's Event Queue.
-        PubSubEventReport_t* reportObjPtr = le_mem_ForceAlloc(eventPtr->reportPoolRef);
+        PubSubEventReport_t* reportObjPtr = le_mem_Alloc(eventPtr->reportPoolRef);
         reportObjPtr->baseClass.link = LE_SLS_LINK_INIT;
         reportObjPtr->baseClass.type = LE_EVENT_REPORT_PLAIN;
         reportObjPtr->handlerRef = handlerPtr->safeRef;
@@ -1301,7 +1301,7 @@ void le_event_ReportWithRefCounting
         TRACE("  ...to handler '%s'.", EVENT_NAME(handlerPtr->name));
 
         // Queue a report to the handler's thread's Event Queue.
-        PubSubEventReport_t* reportObjPtr = le_mem_ForceAlloc(eventPtr->reportPoolRef);
+        PubSubEventReport_t* reportObjPtr = le_mem_Alloc(eventPtr->reportPoolRef);
         reportObjPtr->baseClass.link = LE_SLS_LINK_INIT;
         reportObjPtr->baseClass.type = LE_EVENT_REPORT_COUNTED_REF;
         reportObjPtr->handlerRef = handlerPtr->safeRef;

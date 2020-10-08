@@ -254,7 +254,7 @@ void rpcProxyNetwork_StartNetworkConnectionRetryTimer
     le_timer_SetWakeup(networkStatusTimerRef, false);
 
     // Allocate memory for the Network Timer event
-    NetworkTimerRecord_t* networkTimerPtr = le_mem_ForceAlloc(NetworkTimerRecordPoolRef);
+    NetworkTimerRecord_t* networkTimerPtr = le_mem_Alloc(NetworkTimerRecordPoolRef);
 
     // Set the Network Timer event type
     networkTimerPtr->event = RECONNECT;
@@ -330,7 +330,7 @@ static void StartNetworkKeepAliveService
     le_timer_SetWakeup(networkRecordPtr->keepAliveTimerRef, false);
 
     // Allocate memory for the Network Timer event
-    networkTimerPtr = le_mem_ForceAlloc(NetworkTimerRecordPoolRef);
+    networkTimerPtr = le_mem_Alloc(NetworkTimerRecordPoolRef);
     networkTimerPtr->event = KEEPALIVE;
     le_utf8_Copy(networkTimerPtr->systemName,
                  systemName,
@@ -567,7 +567,7 @@ le_result_t rpcProxyNetwork_CreateNetworkCommunicationChannel
     if (networkRecordPtr == NULL)
     {
         // Need allocate a Network Record
-        networkRecordPtr = le_mem_ForceAlloc(NetworkRecordPoolRef);
+        networkRecordPtr = le_mem_Alloc(NetworkRecordPoolRef);
 
         // Initialize the Network Record
         networkRecordPtr->state = NETWORK_DOWN;
@@ -1086,7 +1086,8 @@ void rpcProxyNetwork_SendKeepAliveRequest
     le_result_t                  result;
 
     // Allocate memory for a Proxy Message copy
-    proxyMessagePtr = le_mem_ForceAlloc(ProxyKeepAliveMessagesPoolRef);
+    proxyMessagePtr = le_mem_Alloc(ProxyKeepAliveMessagesPoolRef);
+    memset(proxyMessagePtr, 0, sizeof(*proxyMessagePtr));
 
     // Create an Keep-Alive Request Message
     proxyMessagePtr->commonHeader.id = rpcProxy_GenerateProxyMessageId();
@@ -1094,7 +1095,7 @@ void rpcProxyNetwork_SendKeepAliveRequest
     proxyMessagePtr->commonHeader.serviceId = 0;
 
     // Set the System-Name
-    memcpy(proxyMessagePtr->systemName, systemName, sizeof(proxyMessagePtr->systemName));
+    strncpy(proxyMessagePtr->systemName, systemName, sizeof(proxyMessagePtr->systemName) - 1);
 
     LE_INFO("Sending Proxy KEEPALIVE-Request Message, id [%" PRIu32 "]",
              proxyMessagePtr->commonHeader.id);
