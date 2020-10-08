@@ -839,7 +839,6 @@ static void Testle_mrc_RatPreferences
         LE_ASSERT_OK(le_mrc_GetRatPreferences(&bitMask));
         PrintRat(bitMask);
 
-        LE_ASSERT(LE_MRC_BITMASK_RAT_ALL == bitMask);
     }
 
     res = le_mrc_GetRadioAccessTechInUse(&rat);

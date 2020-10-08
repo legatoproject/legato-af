@@ -483,10 +483,6 @@ int cm_mrc_GetRat
         printf("CDMA ");
     }
 
-    if (LE_MRC_BITMASK_RAT_ALL == rat)
-    {
-        printf("AUTO ");
-    }
     printf("\n");
     return LE_OK;
 
