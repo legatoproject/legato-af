@@ -1,7 +1,7 @@
 /** @page aboutReleaseNotes Release Notes
 
 Version: <b>Legato 20.08.0</b><br>
-Date: <b>September 15th, 2020</b><br>
+Date: <b>October 13th, 2020</b><br>
 @ref aboutLicenses "Legato Application Framework Licensing Information"
 
 Visit the <a href="https://legato.io/releases">release page</a> to @b download the tarball,
@@ -126,6 +126,19 @@ Giving LE_MRC_BITMASK_RAT_ALL as the input in le_mrc_SetRatPreferences() to set 
 Technology (RAT) to auto mode isn't supported on WP77.
 
 @subsection rn2008_Constraints Constraints and Limitations
+
+@subsubsection rn2008_ConstraintsLeImageUpdate Legato Image Update
+
+@warning Legato image has to be upgraded or downgraded via a bundle across an image incompatibility
+boundary described below.
+
+In the Legato upgrade from pre-20.08.0 versions (e.g. 20.04.0) to 20.08.0+, an image
+incompatibility boundary has been introduced. This is due to the included Yocto update from version
+2.5 to 3.0 in which are different libssl versions.
+
+Whenever the Legato image is upgraded or downgraded across this boundary line, it has to be done
+together with its corresponding LXSWI image in a bundle. Otherwise, Legato would not run and not
+take any image update to recover.
 
 @subsubsection rn2008_ConstraintsLinuxSupport Dev Machine Linux Version
 
