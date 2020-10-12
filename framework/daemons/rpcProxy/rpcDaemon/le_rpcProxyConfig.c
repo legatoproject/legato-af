@@ -583,13 +583,12 @@ static le_result_t LoadServerReferencesFromConfigTree
         rpcProxy_LinuxServerReferenceArray[index].localServiceInstanceName =
             localServiceInstanceNameCopyPtr;
 
+        // Set the Server Reference Array pointer
+        rpcProxy_ServerReferenceArray[index] = &rpcProxy_LinuxServerReferenceArray[index].common;
+
         index++;
     }
     while (le_cfg_GoToNextSibling(iteratorRef) == LE_OK);
-
-    // Set the Server Reference Array pointer
-    rpcProxy_ServerReferenceArray[0] = &rpcProxy_LinuxServerReferenceArray[0].common;
-    rpcProxy_ServerReferenceArray[index] = NULL;
 
     // Close the transaction and return success
     le_cfg_CancelTxn(iteratorRef);
@@ -767,13 +766,12 @@ static le_result_t LoadClientReferencesFromConfigTree
         rpcProxy_LinuxClientReferenceArray[index].localServiceInstanceName =
             localServiceInstanceNameCopyPtr;
 
+        // Set the Client Reference Array pointer
+        rpcProxy_ClientReferenceArray[index] = &rpcProxy_LinuxClientReferenceArray[index].common;
+
         index++;
     }
     while (le_cfg_GoToNextSibling(iteratorRef) == LE_OK);
-
-    // Set the Client Reference Array pointer
-    rpcProxy_ClientReferenceArray[0] = &rpcProxy_LinuxClientReferenceArray[0].common;
-    rpcProxy_ClientReferenceArray[index] = NULL;
 
     // Close the transaction and return success
     le_cfg_CancelTxn(iteratorRef);

@@ -1,4 +1,4 @@
-TARGETS := wp85 wp750x wp76xx wp77xx
+TARGETS := $(MAKECMDGOALS)
 
 # List of "utility" recipies
 UTILITIES := clean

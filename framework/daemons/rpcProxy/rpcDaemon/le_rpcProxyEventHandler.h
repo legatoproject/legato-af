@@ -9,17 +9,31 @@
 #include "legato.h"
 #include "le_rpcProxy.h"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function for sending RemoveHandler messages to far-side rpcProxy for all
+ * ClientEventData_t records when the given client session is closed.
+ */
+//--------------------------------------------------------------------------------------------------
+void rpcEventHandler_SendRemoveHandlerMessage
+(
+    ///< [IN] Name of the system
+    const char* systemName,
+    ///< [IN] Client session reference
+    le_msg_SessionRef_t sessionRef
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Function for deleting all ClientEventData_t records for given service
+ * Function for deleting all ClientEventData_t records for given service and client session.
+ * If specified client session is NULL , deleting all records of the given service.
  */
 //--------------------------------------------------------------------------------------------------
 void rpcEventHandler_DeleteAll
 (
-    uint32_t serviceId  /// [IN] Service ID
+    uint32_t serviceId,                  ///< [IN] Service ID
+    le_msg_SessionRef_t sessionRef       ///< [IN] Client session reference
 );
-
 
 //--------------------------------------------------------------------------------------------------
 /**

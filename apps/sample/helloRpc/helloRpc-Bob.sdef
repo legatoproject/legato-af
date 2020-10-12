@@ -6,7 +6,13 @@
 // Copyright (C) Sierra Wireless Inc.
 //--------------------------------------------------------------------------------------------------
 
-#include "$LEGATO_ROOT/default.sdef"
+#if ${LE_CONFIG_TARGET_AR758X} = "y"
+    #include "$LEGATO_ROOT/modules/Dualsys/ar758x.sdef"
+#elif  ${LE_CONFIG_TARGET_AR759X} = "y"
+    #include "$LEGATO_ROOT/modules/Dualsys/ar759x.sdef"
+#else
+    #include "$LEGATO_ROOT/default.sdef"
+#endif
 
 extern:
 {

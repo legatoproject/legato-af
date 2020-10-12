@@ -605,7 +605,7 @@ le_result_t rpcProxyNetwork_CreateNetworkCommunicationChannel
                 (networkRecordPtr->handle == NULL))
             {
                 LE_INFO("Unable to Create RPC Communication Handle, result [%d]", result);
-                return result;
+                return LE_FAULT;
             }
 
             LE_DEBUG("Successfully created network communication channel, "

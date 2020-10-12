@@ -392,7 +392,8 @@ LE_SHARED void* le_comm_Create
         // Set the result pointer with a fault code
         *resultPtr = LE_FAULT;
         connectionRecordPtr->fd = -1;
-        return (connectionRecordPtr);
+        le_mem_Release(connectionRecordPtr);
+        return NULL;
     }
 
     //
@@ -409,7 +410,8 @@ LE_SHARED void* le_comm_Create
         connectionRecordPtr->fd = -1;
 
         *resultPtr = LE_FAULT;
-        return (connectionRecordPtr);
+        le_mem_Release(connectionRecordPtr);
+        return NULL;
     }
 
     // Set Non-Blocking socket option
@@ -422,7 +424,24 @@ LE_SHARED void* le_comm_Create
         connectionRecordPtr->fd = -1;
 
         *resultPtr = LE_FAULT;
-        return (connectionRecordPtr);
+        le_mem_Release(connectionRecordPtr);
+        return NULL;
+    }
+
+    // Set SO_REUSEADDR when rebinding the same address.
+    int enable = 1;
+    int result = setsockopt(connectionRecordPtr->fd,
+                            SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
+    if (result < 0)
+    {
+        LE_ERROR("setsockopt(SO_REUSEADDR) failed");
+        // Close the Socket handle
+        close(connectionRecordPtr->fd);
+        connectionRecordPtr->fd = -1;
+
+        *resultPtr = LE_FAULT;
+        le_mem_Release(connectionRecordPtr);
+        return NULL;
     }
 
 #ifdef SOCKET_SERVER
@@ -446,7 +465,8 @@ LE_SHARED void* le_comm_Create
 
         // Set the result pointer with a fault code
         *resultPtr = LE_FAULT;
-        return (connectionRecordPtr);
+        le_mem_Release(connectionRecordPtr);
+        return NULL;
     }
 #endif
 
@@ -531,6 +551,14 @@ LE_SHARED le_result_t le_comm_Delete (void* handle)
     HandleRecord_t* connectionRecordPtr = (HandleRecord_t*) handle;
 
     LE_INFO("Deleting AF_INET socket, fd %d .........", connectionRecordPtr->fd);
+
+    if ((ConnectionFdMonitorRef != NULL) &&
+        (le_fdMonitor_GetFd(ConnectionFdMonitorRef) == connectionRecordPtr->fd))
+    {
+        // Delete FD monitor
+        le_fdMonitor_Delete(ConnectionFdMonitorRef);
+        ConnectionFdMonitorRef = NULL;
+    }
 
     if ((FdMonitorRef != NULL) &&
         (le_fdMonitor_GetFd(FdMonitorRef) == connectionRecordPtr->fd))

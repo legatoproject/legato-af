@@ -30,9 +30,22 @@ typedef struct ClientEventData
     void*               contextPtr;   ///< Client's context pointer
     void*               handlerRef;   ///< Server's handle reference
     uint32_t            serviceId;    ///< Service ID
+    uint32_t            ipcMsgId;     ///< IPC message ID
+    uint16_t            ipcMsgSize;   ///< IPC message SIZE
 }
 ClientEventData_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Structure is used to save common IPC payload data buffer.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct CommonPayloadData
+{
+    uint32_t id;
+    uint8_t buffer[0];
+}
+CommonPayloadData_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -65,28 +78,141 @@ LE_MEM_DEFINE_STATIC_POOL(ClientHandlerPool,
                           sizeof(ClientEventData_t));
 static le_mem_PoolRef_t ClientHandlerPoolRef = NULL;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function for sending RemoveHandler messages to far-side rpcProxy for all
+ * ClientEventData_t records when the given client session is closed.
+ */
+//--------------------------------------------------------------------------------------------------
+void rpcEventHandler_SendRemoveHandlerMessage
+(
+    ///< [IN] Name of the system
+    const char* systemName,
+    ///< [IN] Client session reference
+    le_msg_SessionRef_t sessionRef
+)
+{
+    rpcProxy_Message_t   rpcMsg;
+    rpcProxy_Message_t*  rpcMsgPtr;
+    CommonPayloadData_t* _msgPtr;
+    uint8_t*             _msgBufPtr;
+    void*                handlerRef;
+    le_result_t          result;
+    bool                 recheck = 1;
 
+    if (sessionRef == NULL)
+    {
+        LE_ERROR("sessionRef is NULL.");
+        return;
+    }
 
+    if(systemName == NULL)
+    {
+        LE_ERROR("SystemName is NULL.");
+        return;
+    }
+
+    while (recheck)
+    {
+        rpcMsgPtr = NULL;
+        le_ref_IterRef_t iterRef = le_ref_GetIterator(ClientEventDataSafeRefMap);
+        while(le_ref_NextNode(iterRef) == LE_OK)
+        {
+            ClientEventData_t *clientEventDataPtr = le_ref_GetValue(iterRef);
+            if ((clientEventDataPtr != NULL) &&
+                (clientEventDataPtr->sessionRef == sessionRef) &&
+                (clientEventDataPtr->handlerRef != NULL))
+            {
+                // Set the rpcProxy message header.
+                rpcMsgPtr = &rpcMsg;
+                rpcMsgPtr->msgSize = clientEventDataPtr->ipcMsgSize;
+                rpcMsgPtr->commonHeader.serviceId = clientEventDataPtr->serviceId;
+                rpcMsgPtr->commonHeader.id = rpcProxy_GenerateProxyMessageId();
+                rpcMsgPtr->commonHeader.type = RPC_PROXY_CLIENT_REQUEST;
+
+                // Fill the rpcProxy message buffer.
+                _msgPtr = (CommonPayloadData_t*)rpcMsgPtr->message;
+                _msgBufPtr = _msgPtr->buffer;
+                _msgPtr->id = clientEventDataPtr->ipcMsgId;
+                handlerRef = (void*)le_ref_GetSafeRef(iterRef);
+
+                LE_ASSERT(le_pack_PackTaggedReference(&_msgBufPtr, handlerRef,
+                                                      LE_PACK_ASYNC_HANDLER_REFERENCE ));
+                *_msgBufPtr = LE_PACK_EOF;
+
+                break;
+            }
+        }
+
+        if (rpcMsgPtr != NULL)
+        {
+            // Send the rpcProxy message with removeHandler command to far-side.
+            result = rpcProxy_SendMsg(systemName, rpcMsgPtr, NULL);
+            if (result != LE_OK)
+            {
+                LE_ERROR("le_comm_Send failed, result %d", result);
+                recheck = 0;
+            }
+            else
+            {
+                // ClientEventData record will be freed in rpcProxy_SendMsg() when it gets
+                // get returned successfully.
+                LE_INFO("rpcMsgId=%"PRIu32" ipcMsgId=%"PRIu32" for removeHandler (%p).",
+                        rpcMsgPtr->commonHeader.id, _msgPtr->id, handlerRef);
+            }
+        }
+        else
+        {
+            recheck = 0;
+        }
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Function for deleting all ClientEventData_t records for given service
+ * Function for deleting all ClientEventData_t records for given service and client session
+ * If specified client session is NULL , deleting all records of the given service.
  */
 //--------------------------------------------------------------------------------------------------
 void rpcEventHandler_DeleteAll
 (
     /// [IN] Service ID
-    uint32_t serviceId
+    uint32_t serviceId,
+    /// [IN] Client session reference
+    le_msg_SessionRef_t sessionRef
 )
 {
+    le_hashmap_It_Ref_t iter = le_hashmap_GetIterator(ProxyRefMapByMsgId);
+
+    // Traverse the entire ProxyRefMapByMsgId map
+    while (le_hashmap_NextNode(iter) == LE_OK)
+    {
+        // Get the proxy reference
+         void* proxyRef = (void*) le_hashmap_GetValue(iter);
+
+        ClientEventData_t* clientEventDataPtr =
+            le_ref_Lookup(ClientEventDataSafeRefMap, proxyRef);
+
+        if ((clientEventDataPtr != NULL) &&
+            (clientEventDataPtr->serviceId == serviceId) &&
+            (sessionRef == NULL || clientEventDataPtr->sessionRef == sessionRef))
+        {
+            LE_INFO("Removed proxy reference for service id: %" PRIu32 "", serviceId);
+            le_hashmap_Remove(ProxyRefMapByMsgId, le_hashmap_GetKey(iter));
+        }
+    }
+
     le_ref_IterRef_t iterRef = le_ref_GetIterator(ClientEventDataSafeRefMap);
 
     while(le_ref_NextNode(iterRef) == LE_OK)
     {
         ClientEventData_t *clientEventDataPtr = le_ref_GetValue(iterRef);
 
-        if(clientEventDataPtr->serviceId == serviceId)
+        if ((clientEventDataPtr != NULL) &&
+            (clientEventDataPtr->serviceId == serviceId) &&
+            (sessionRef == NULL || clientEventDataPtr->sessionRef == sessionRef))
         {
+            LE_INFO("Removed clientEventData for service id: %" PRIu32 "", serviceId);
             le_ref_DeleteRef(ClientEventDataSafeRefMap, (void*)le_ref_GetSafeRef(iterRef));
             le_mem_Release(clientEventDataPtr);
         }
@@ -153,6 +279,10 @@ le_result_t rpcEventHandler_RepackContext
         clientEventDataPtr->sessionRef = le_msg_GetSession(msgRef);
         clientEventDataPtr->handlerRef = NULL;
         clientEventDataPtr->serviceId = commonHeader->serviceId;
+        // Save IPC msg ID and msg SIZE of corresponding removeHandler.
+        clientEventDataPtr->ipcMsgId =
+            ((CommonPayloadData_t*)le_msg_GetPayloadPtr(msgRef))->id + 1;
+        clientEventDataPtr->ipcMsgSize = le_msg_GetMaxPayloadSize(msgRef);
 
         // Create safe reference for the new structure
         contextPtr = le_ref_CreateRef(ClientEventDataSafeRefMap, clientEventDataPtr);
@@ -238,6 +368,8 @@ le_result_t rpcEventHandler_RepackContext
             goto error;
         }
 
+        LE_INFO("Removed ClientEventData (contextPtr=%p, handlerRef=%p)",
+                contextPtr, clientEventDataPtr->handlerRef);
         le_ref_DeleteRef(ClientEventDataSafeRefMap, contextPtr);
         contextPtr = clientEventDataPtr->handlerRef;
         le_mem_Release(clientEventDataPtr);
@@ -336,7 +468,7 @@ void rpcEventHandler_EventCallback
     systemName = rpcProxy_GetSystemNameByServiceId(serviceId);
     if (systemName == NULL)
     {
-        LE_ERROR("Unable to retrieve system name for service id %lu", serviceId);
+        LE_ERROR("Unable to retrieve system name for service id %"PRIu32"", serviceId);
         goto end;
     }
 
