@@ -110,18 +110,57 @@ FUNCTION EchoSmallBitMask(SmallBitMask InValue IN,
 FUNCTION EchoLargeBitMask(LargeBitMask InValue IN,
                           LargeBitMask OutValue OUT);
 
+FUNCTION EchoBoolean(bool InValue IN,
+                     bool OutValue OUT);
+
+FUNCTION EchoResult(le_result_t InValue IN,
+                    le_result_t OutValue OUT);
+
+FUNCTION le_result_t ReturnResult(le_result_t InValue IN);
+
+FUNCTION EchoOnOff(le_onoff_t InValue IN,
+                   le_onoff_t OutValue OUT);
+
+FUNCTION EchoDouble(double InValue IN,
+                    double OutValue OUT);
+
 FUNCTION EchoReference(Simple InRef IN,
                        Simple OutRef OUT);
 
 FUNCTION EchoString(string InString[256] IN,
                     string OutString[256] OUT);
 
-// FUNCTION EchoArray(int64 InArray[32] IN,
-//                    int64 OutArray[32] OUT);
+FUNCTION EchoArray(int64 InArray[32] IN,
+                   int64 OutArray[32] OUT);
+
+FUNCTION EchoByteString(uint8 InArray[32] IN,
+                        uint8 OutArray[32] OUT);
+
+STRUCT TheStruct
+{
+    string name[10];
+    int8 index;
+};
+
+FUNCTION EchoStruct(TheStruct InStruct IN,
+                    TheStruct OutStruct OUT);
+
+FUNCTION EchoStructArray(TheStruct InStructArray[5] IN,
+                         TheStruct OutStructArray[5] OUT);
 
 HANDLER EchoHandler(int32 cookie);
 
+HANDLER EchoComplexHandler(int32 cookie,
+                    string cookieString[15],
+                    int16 cookieArray[10]);
+
 EVENT EchoEvent(EchoHandler handler);
+
+EVENT EchoComplexEvent(EchoComplexHandler handler);
+
+FUNCTION EchoTriggerComplexEvent(int32 cookie,
+                          string cookieString[15],
+                          int16 cookieArray[10]);
 
 FUNCTION EchoTriggerEvent(int32 cookie);
 

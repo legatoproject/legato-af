@@ -39,18 +39,6 @@ static le_hashmap_Ref_t SystemNameByAsyncHandle = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This pool is used to allocate memory for the Proxy Keep-Alive Messages.
- * Initialized in rpcProxy_COMPONENT_INIT().
- */
-//--------------------------------------------------------------------------------------------------
-LE_MEM_DEFINE_STATIC_POOL(ProxyKeepAliveMessagePool,
-                          RPC_PROXY_NETWORK_SYSTEM_MAX_NUM,
-                          sizeof(rpcProxy_KeepAliveMessage_t));
-static le_mem_PoolRef_t ProxyKeepAliveMessagesPoolRef = NULL;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * This pool is used to allocate memory for the Network Timer record, which is used for
  * Network RECONNECT and KEEPALIVE timer events.
  * Initialized in rpcProxy_COMPONENT_INIT().
@@ -911,14 +899,29 @@ le_result_t rpcProxyNetwork_ConnectNetworkCommunicationChannel
 //--------------------------------------------------------------------------------------------------
 le_result_t rpcProxyNetwork_ProcessKeepAliveRequest
 (
-    const char* systemName, ///< System name
-    rpcProxy_KeepAliveMessage_t* proxyMessagePtr ///< Pointer to the Proxy Message
+    void* handle,                  ///< [IN] Opaque handle to the le_comm communication channel
+    const char* systemName,        ///< [IN] Name of the system that sent the Client-Request
+    StreamState_t* streamStatePtr, ///< [IN] Pointer to the Message State-Machine data
+    void* proxyMessagePtr          ///< Pointer to the Proxy Message
 )
 {
+    rpcProxy_KeepAliveMessage_t* keepAliveMsgPtr = (rpcProxy_KeepAliveMessage_t*) proxyMessagePtr;
     le_result_t result;
 
     // Sanity Check - Verify Message Type
-    LE_ASSERT(proxyMessagePtr->commonHeader.type == RPC_PROXY_KEEPALIVE_REQUEST);
+    LE_ASSERT(keepAliveMsgPtr->commonHeader.type == RPC_PROXY_KEEPALIVE_REQUEST);
+
+    le_result_t recvRes = rpcProxy_RecvStream(handle, streamStatePtr, keepAliveMsgPtr);
+    if (recvRes == LE_IN_PROGRESS)
+    {
+        // return now, come back later
+        return LE_OK;
+    }
+    else if (recvRes != LE_OK)
+    {
+        LE_ERROR("Error when receiving a keepalive request message from %s", systemName);
+        return LE_FAULT;
+    }
 
     //
     // Restart Keep-Alive Network timer for the specified system
@@ -954,12 +957,12 @@ le_result_t rpcProxyNetwork_ProcessKeepAliveRequest
     //
 
     // Set the Proxy Message type to SERVER_RESPONSE
-    proxyMessagePtr->commonHeader.type = RPC_PROXY_KEEPALIVE_RESPONSE;
+    keepAliveMsgPtr->commonHeader.type = RPC_PROXY_KEEPALIVE_RESPONSE;
 
     LE_INFO("Sending Proxy KEEPALIVE-Response Message, id [%" PRIu32 "]",
-             proxyMessagePtr->commonHeader.id);
+             keepAliveMsgPtr->commonHeader.id);
 
-    result = rpcProxy_SendMsg(systemName, proxyMessagePtr, NULL);
+    result = rpcProxy_SendMsg(systemName, keepAliveMsgPtr);
     if (result != LE_OK)
     {
         LE_ERROR("le_comm_Send failed, result %d", result);
@@ -975,33 +978,48 @@ le_result_t rpcProxyNetwork_ProcessKeepAliveRequest
 //--------------------------------------------------------------------------------------------------
 le_result_t rpcProxyNetwork_ProcessKeepAliveResponse
 (
-    const char* systemName, ///< System name
-    rpcProxy_KeepAliveMessage_t* proxyMessagePtr ///< Pointer to the Proxy Message
+    void* handle,                  ///< [IN] Opaque handle to the le_comm communication channel
+    const char* systemName,        ///< [IN] Name of the system that sent the Client-Request
+    StreamState_t* streamStatePtr, ///< [IN] Pointer to the Message State-Machine data
+    void* proxyMessagePtr          ///< Pointer to the Proxy Message
 )
 {
+    rpcProxy_KeepAliveMessage_t* keepAliveMsgPtr = (rpcProxy_KeepAliveMessage_t*) proxyMessagePtr;
     // Sanity Check - Verify Message Type
-    LE_ASSERT(proxyMessagePtr->commonHeader.type == RPC_PROXY_KEEPALIVE_RESPONSE);
+    LE_ASSERT(keepAliveMsgPtr->commonHeader.type == RPC_PROXY_KEEPALIVE_RESPONSE);
+
+    le_result_t recvRes = rpcProxy_RecvStream(handle, streamStatePtr, keepAliveMsgPtr);
+    if (recvRes == LE_IN_PROGRESS)
+    {
+        // return now, come back later
+        return LE_OK;
+    }
+    else if (recvRes != LE_OK)
+    {
+        LE_ERROR("Error when receiving a keep alive response from %s", systemName);
+        return LE_FAULT;
+    }
 
     // Sanity Check - Verify that the responding system matches the destination system
-    if (strcmp(systemName, proxyMessagePtr->systemName) != 0)
+    if (strcmp(systemName, keepAliveMsgPtr->systemName) != 0)
     {
         LE_ERROR("Sanity Check Failure: System-name mismatch, systemName [%s], "
                  "systemName [%s], proxy id [%" PRIu32 "]",
                  systemName,
-                 proxyMessagePtr->systemName,
-                 proxyMessagePtr->commonHeader.id);
+                 keepAliveMsgPtr->systemName,
+                 keepAliveMsgPtr->commonHeader.id);
 
         return LE_FAULT;
     }
 
     // Retrieve the Network Record for this system
     NetworkRecord_t* networkRecordPtr =
-        le_hashmap_Get(NetworkRecordHashMapByName, proxyMessagePtr->systemName);
+        le_hashmap_Get(NetworkRecordHashMapByName, keepAliveMsgPtr->systemName);
 
     if (networkRecordPtr == NULL)
     {
         LE_ERROR("Unable to retrieve network record, "
-                 "system-name [%s] - unknown system", proxyMessagePtr->systemName);
+                 "system-name [%s] - unknown system", keepAliveMsgPtr->systemName);
         return LE_FAULT;
     }
 
@@ -1010,53 +1028,23 @@ le_result_t rpcProxyNetwork_ProcessKeepAliveResponse
     {
         // Inconsistent state
         LE_ERROR("Sanity Check: Unexpected Network state, system [%s]",
-                 proxyMessagePtr->systemName);
+                 keepAliveMsgPtr->systemName);
     }
 
     // Retrieve and delete the timer associated with Proxy Message ID
     le_timer_Ref_t timerRef =
         le_hashmap_Get(rpcProxy_GetExpiryTimerRefByProxyId(),
-                       (void*)(uintptr_t) proxyMessagePtr->commonHeader.id);
+                       (void*)(uintptr_t) keepAliveMsgPtr->commonHeader.id);
 
     if (timerRef != NULL)
     {
-        rpcProxy_KeepAliveMessage_t* proxyMessageCopyPtr = NULL;
-
         LE_DEBUG("Deleting timer for KEEPALIVE-Request, '%s', id [%" PRIu32 "]",
-                 proxyMessagePtr->systemName,
-                 proxyMessagePtr->commonHeader.id);
+                 keepAliveMsgPtr->systemName,
+                 keepAliveMsgPtr->commonHeader.id);
 
         // Remove timer entry associated with Proxy Message ID from hash-map
         le_hashmap_Remove(rpcProxy_GetExpiryTimerRefByProxyId(),
-                          (void*)(uintptr_t) proxyMessagePtr->commonHeader.id);
-
-        //
-        // Clean up Proxy Message Copy
-        //
-
-        // Retrieve ContextPtr data (proxyMessage copy)
-        proxyMessageCopyPtr = le_timer_GetContextPtr(timerRef);
-        if (proxyMessageCopyPtr == NULL)
-        {
-            LE_ERROR("Error extracting copy of Proxy Message from timer record");
-        }
-        else
-        {
-            // Sanity Check - Verify Proxy Message ID and Service-Name
-            if ((proxyMessageCopyPtr->commonHeader.id != proxyMessagePtr->commonHeader.id) ||
-                (strcmp(proxyMessageCopyPtr->systemName, proxyMessagePtr->systemName) != 0))
-            {
-                // Proxy Messages are different
-                LE_ERROR("Proxy Message Sanity Failure - inconsistent timer record");
-            }
-
-            LE_DEBUG("Deleting copy of Proxy Message, system-name '%s', proxy id [%" PRIu32 "]",
-                     proxyMessageCopyPtr->systemName,
-                     proxyMessageCopyPtr->commonHeader.id);
-
-            // Free Proxy Message Copy Memory
-            le_mem_Release(proxyMessageCopyPtr);
-        }
+                          (void*)(uintptr_t) keepAliveMsgPtr->commonHeader.id);
 
         // Delete Timer
         le_timer_Delete(timerRef);
@@ -1065,11 +1053,40 @@ le_result_t rpcProxyNetwork_ProcessKeepAliveResponse
     else
     {
         LE_ERROR("Unable to find matching Timer record, system-name [%s], proxy id [%" PRIu32 "]",
-                 proxyMessagePtr->systemName,
-                 proxyMessagePtr->commonHeader.id);
+                 keepAliveMsgPtr->systemName,
+                 keepAliveMsgPtr->commonHeader.id);
     }
 
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Timer expiry handler for keep alive messages
+ */
+//--------------------------------------------------------------------------------------------------
+void rpcProxyNetwork_KeepAliveTimerExpiryHandler
+(
+    le_timer_Ref_t timerRef    ///< This timer has expired
+)
+{
+    const char* systemName = (const char*) le_timer_GetContextPtr(timerRef);
+
+    if (systemName != NULL)
+    {
+        LE_INFO("KEEPALIVE-Request timer expired; "
+                "Declare the network down, system [%s]", systemName);
+
+        // Delete the Network Communication Channel
+        rpcProxyNetwork_DeleteNetworkCommunicationChannel(systemName);
+    }
+    else
+    {
+        LE_ERROR("Unable to retrieve system name of the Proxy Keep-Alive Message Reference");
+    }
+
+    // Timer Reference deleted as a part of the
+    // Network Communication Channel deletion.
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1082,12 +1099,12 @@ void rpcProxyNetwork_SendKeepAliveRequest
     const char* systemName ///< System name
 )
 {
-    rpcProxy_KeepAliveMessage_t *proxyMessagePtr = NULL;
+    rpcProxy_KeepAliveMessage_t  keepAliveProxyMessage = {0};
     le_result_t                  result;
 
+
     // Allocate memory for a Proxy Message copy
-    proxyMessagePtr = le_mem_Alloc(ProxyKeepAliveMessagesPoolRef);
-    memset(proxyMessagePtr, 0, sizeof(*proxyMessagePtr));
+     rpcProxy_KeepAliveMessage_t * proxyMessagePtr = &keepAliveProxyMessage;
 
     // Create an Keep-Alive Request Message
     proxyMessagePtr->commonHeader.id = rpcProxy_GenerateProxyMessageId();
@@ -1101,7 +1118,7 @@ void rpcProxyNetwork_SendKeepAliveRequest
              proxyMessagePtr->commonHeader.id);
 
     // Send Proxy Message to far-side
-    result = rpcProxy_SendMsg(systemName, proxyMessagePtr, NULL);
+    result = rpcProxy_SendMsg(systemName, proxyMessagePtr);
     if (result != LE_OK)
     {
         LE_ERROR("le_comm_Send failed, result %d", result);
@@ -1118,11 +1135,11 @@ void rpcProxyNetwork_SendKeepAliveRequest
     // Create a timer to handle "lost" requests
     keepAliveRequestTimerRef = le_timer_Create("KEEPALIVE-Request timer");
     le_timer_SetInterval(keepAliveRequestTimerRef, timerInterval);
-    le_timer_SetHandler(keepAliveRequestTimerRef, rpcProxy_ProxyMessageTimerExpiryHandler);
+    le_timer_SetHandler(keepAliveRequestTimerRef, rpcProxyNetwork_KeepAliveTimerExpiryHandler);
     le_timer_SetWakeup(keepAliveRequestTimerRef, false);
 
-    // Set Proxy Message (copy) in the timer event
-    le_timer_SetContextPtr(keepAliveRequestTimerRef, proxyMessagePtr);
+    // Set system name in the timer event
+    le_timer_SetContextPtr(keepAliveRequestTimerRef, (void*)systemName);
 
     // Start timer
     le_timer_Start(keepAliveRequestTimerRef);
@@ -1216,12 +1233,6 @@ le_result_t rpcProxyNetwork_Initialize
     void
 )
 {
-    // Initialize memory pool for allocating Keep-Alive messages.
-    ProxyKeepAliveMessagesPoolRef = le_mem_InitStaticPool(
-                                         ProxyKeepAliveMessagePool,
-                                         RPC_PROXY_NETWORK_SYSTEM_MAX_NUM,
-                                         sizeof(rpcProxy_KeepAliveMessage_t));
-
     // Initialize memory pool for allocating Network Timer Records.
     NetworkTimerRecordPoolRef = le_mem_InitStaticPool(NetworkTimerRecordPool,
                                                       RPC_PROXY_NETWORK_TIMER_RECORD_MAX_NUM,

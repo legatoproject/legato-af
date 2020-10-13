@@ -139,6 +139,11 @@ class BitmaskType(Type):
 class ReferenceType(Type):
     def __init__(self, name, location):
         super(ReferenceType, self).__init__(name, location, 4)
+        if (os.environ.get('LE_CONFIG_RPC') == "y"):
+            # Include 3 bytes for semantic tag and 1 byte for reference value tag
+            self.size = 4 + 3 + 1
+        else:
+            self.size = 4
 
     def __str__(self):
         return "Reference %s" % (self.name)
@@ -165,6 +170,12 @@ class HandlerType(Type):
         # Handlers are the size of a reference
         super(HandlerType, self).__init__(name, location, 4)
         self.parameters = parameters
+        if (os.environ.get('LE_CONFIG_RPC') == "y"):
+            # Include 3 bytes for semantic tag and 1 byte for reference value tag
+            self.size = 4 + 3 + 1
+        else:
+            self.size = 4
+
 
         if any([isinstance(parameter.apiType, HandlerType) for parameter in self.parameters]):
             raise Exception("Handlers cannot have handler parameters")
@@ -222,8 +233,13 @@ class StructArrayMember(StructMember):
         self.maxCount = maxCount
 
     def MaxSize(self):
-        # Add the leading UINT32 for the length of the array
-        return UINT32_TYPE.size + self.maxCount * self.apiType.size
+        apiType = self.apiType
+        if apitype == interfaceIR.UINT8_TYPE or apitype == interfaceIR.INT8_TYPE or \
+           apitype == interfaceIR.CHAR_TYPE:
+            return UINT32_TYPE.size + self.maxCount
+        else:
+            # Add the leading UINT32 for the length of the array
+            return UINT32_TYPE.size + self.maxCount * self.apiType.size
 
     def __str__(self):
         return "{} {}[{}]".format(self.apiType, self.name, self.maxCount)
@@ -237,6 +253,8 @@ class StructType(Type):
         for member in members:
             assert isinstance(member, StructMember)
             size += member.MaxSize()
+        if (os.environ.get('LE_CONFIG_RPC') == "y"):
+            size += 2 # for indef array start and end.
 
         super(StructType, self).__init__(name, location, size)
         self.members = list(members)
@@ -320,14 +338,21 @@ class ArrayParameter(Parameter):
         self.maxCount = maxCount
 
     def GetMaxSize(self, direction):
+        apiType = self.apiType
         if direction == DIR_IN:
             if self.direction & DIR_IN != 0:
-                return UINT32_TYPE.size + self.apiType.size * self.maxCount
+                if apiType == UINT8_TYPE or apiType == INT8_TYPE or apiType == CHAR_TYPE:
+                    return UINT32_TYPE.size + self.maxCount
+                else:
+                    return UINT32_TYPE.size + self.apiType.size * self.maxCount
             else:
-                return UINT32_TYPE.size
+                return UINT32_TYPE.size + UINT16_TYPE.size
         elif direction == DIR_OUT:
             if self.direction & DIR_OUT:
-                return UINT32_TYPE.size + self.apiType.size * self.maxCount
+                if apiType == UINT8_TYPE or apiType == INT8_TYPE or apiType == CHAR_TYPE:
+                    return UINT32_TYPE.size + self.maxCount
+                else:
+                    return UINT32_TYPE.size + self.apiType.size * self.maxCount
             else:
                 return 0
 
@@ -641,14 +666,15 @@ class Interface(object):
 
         A message is 4-bytes for message ID, optional 4
         bytes for required output parameters, optional 1 byte for required output parameters TagID,
-        optional 1 byte TagID for EOF,
+        optional 2 byte INFARRAY and BREAK,
         and a variable number of bytes to pack
         the return value (if the function has one), and all input and output parameters.
+        optional 3 bytes for async tag : only needed if there's handler
         """
         padding = 8
         if (os.environ.get('LE_CONFIG_RPC') == "y"):
             # Include two 1-byte TagIDs
-            padding = padding + 2
+            padding = padding + 3 + 3
         return padding + max([1] +
                        [function.GetMessageSize() for function in self.functions.values()] +
                        [handler.GetMessageSize()

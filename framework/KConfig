@@ -671,8 +671,16 @@ config RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM
   ---help---
   The maximum number of "out" parameters per response message.
 
-config RPC_PROXY_MAX_MESSAGE
-  int "Maximum size of a RPC message"
+config RPC_PROXY_MAX_OUT_PARAMETER_SIZE
+  int "Maximum size of a response parameter"
+  depends on RPC && (RTOS || RPC_PROXY_LIBRARY)
+  range 0 4096
+  default 512
+  ---help---
+  The maximum size of an "out" parameter
+
+config RPC_PROXY_MAX_FILE_STREAM_PAYLOAD
+  int "Maximum payload size for file stream messages"
   depends on RPC
   range 0 4096
   default 512

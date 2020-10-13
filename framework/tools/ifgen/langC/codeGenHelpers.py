@@ -287,7 +287,7 @@ def GetParameterCount(param):
             return "%sSize" % (param.name,)
     else:
         if isinstance(param, interfaceIR.StringParameter):
-            return "(%sSize-1)" % (param.name,)
+            return "((%sSize)?%sSize-1:0)" % (param.name, param.name)
         elif isinstance(param, interfaceIR.ArrayParameter):
             return "(*%sSizePtr)" % (param.name,)
 
@@ -346,9 +346,18 @@ def GetUnpackFunction(context, apiType):
 def EscapeString(string):
     return string.encode('string_escape').replace('"', '\\"')
 
+
+def OptimizableArray(parameter):
+    apitype = parameter.apiType
+    if apitype == interfaceIR.UINT8_TYPE or apitype == interfaceIR.INT8_TYPE or \
+       apitype == interfaceIR.CHAR_TYPE:
+        return True;
+    else:
+        return False;
+
 def GetLocalParameterMsgSize(parameter, pointerSize, direction):
     if isinstance(parameter, interfaceIR.StringParameter) or \
-       isinstance(parameter, interfaceIR.ArrayParameter):
+       (isinstance(parameter, interfaceIR.ArrayParameter) and OptimizableArray(parameter)):
         return interfaceIR.UINT32_TYPE.size + pointerSize
     else:
         return parameter.GetMaxSize(direction)

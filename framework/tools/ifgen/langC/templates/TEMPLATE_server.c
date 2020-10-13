@@ -589,6 +589,8 @@ static void AsyncResponse_{{apiName}}_{{function.name}}
     _msgPtr->id = _MSGID_{{apiBaseName}}_{{function.name}};
     _msgBufPtr = _msgPtr->buffer;
 
+
+    le_pack_PackIndefArrayHeader(&_msgBufPtr);
     // Always pack the client context pointer first
 #ifdef LE_CONFIG_RPC
     {%- if function is not AddHandlerFunction %}
@@ -601,6 +603,8 @@ static void AsyncResponse_{{apiName}}_{{function.name}}
 #endif
     // Pack the input parameters
     {{ pack.PackInputs(handler.apiType.parameters) }}
+
+    le_pack_PackEndOfIndefArray(&_msgBufPtr);
 
     // Send the async response to the client
     TRACE("Sending message to client session %p : %ti bytes sent",
@@ -649,6 +653,8 @@ void {{apiName}}_{{function.name}}Respond
 
     // Ensure that this Respond function has not already been called
     LE_FATAL_IF( !le_msg_NeedsResponse(_msgRef), "Response has already been sent");
+
+    le_pack_PackIndefArrayHeader(&_msgBufPtr);
     {%- if function.returnType %}
 
     // Pack the result first
@@ -661,10 +667,10 @@ void {{apiName}}_{{function.name}}Respond
     {% if parameter is ArrayParameter %}
     size_t* {{parameter.name}}SizePtr = &{{parameter.name}}Size;
     LE_ASSERT({{parameter|FormatParameterName}});
-    {%- elif parameter is not StringParameter %}
-    {{parameter.apiType|FormatType}}* {{parameter|FormatParameterName}} = &{{parameter.name}};
-    {%- else %}
+    {%- elif parameter is StringParameter or parameter.apiType is StructType %}
     LE_ASSERT({{parameter|FormatParameterName}});
+    {%- else %}
+    {{parameter.apiType|FormatType}}* {{parameter|FormatParameterName}} = &{{parameter.name}};
     {%- endif %}
     if (!(_cmdRef->requiredOutputs & (1 << {{loop.index0}})))
     {
@@ -674,6 +680,9 @@ void {{apiName}}_{{function.name}}Respond
 
     // Pack any "out" parameters
     {{- pack.PackOutputs(function.parameters,initiatorWaits=True) }}
+
+    le_pack_PackEndOfIndefArray(&_msgBufPtr);
+
     {%- if args.localService %}
 
     // And copy any output parameter buffers
@@ -726,6 +735,10 @@ static void Handle_{{apiName}}_{{function.name}}
     __attribute__((unused)) uint8_t* _msgBufPtr =
         ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
 
+    if(!le_pack_UnpackIndefArrayHeader(&_msgBufPtr))
+    {
+        goto {{error_unpack_label}};
+    }
     // Unpack which outputs are needed.
     _serverCmdPtr->requiredOutputs = 0;
     {%- if any(function.parameters, "OutParameter") %}
@@ -739,6 +752,11 @@ static void Handle_{{apiName}}_{{function.name}}
     {%- call pack.UnpackInputs(function.parameters,initiatorWaits=True) %}
         goto {{error_unpack_label}};
     {%- endcall %}
+
+    if (!le_pack_UnpackEndOfIndefArray(&_msgBufPtr))
+    {
+        goto {{error_unpack_label}};
+    }
     {%- if args.localService %}
 
     // And save any destination buffers
@@ -801,7 +819,7 @@ static void Handle_{{apiName}}_{{function.name}}
     {%- for parameter in function.parameters if parameter is OutParameter %}
     {%- if args.localService and parameter is StringParameter %}
     /* No storage needed for {{parameter.name}} */
-    {%- elif args.localService and parameter is ArrayParameter %}
+    {%- elif args.localService and parameter is OptimizableArray %}
     size_t *{{parameter.name}}SizePtr = &{{parameter.name}}Size;
     {%- elif parameter is StringParameter %}
     char {{parameter.name}}Buffer[{{parameter.maxCount + 1}}] = { 0 };
@@ -817,9 +835,25 @@ static void Handle_{{apiName}}_{{function.name}}
     {%- endif %}
     {%- endfor %}
 
-    // Unpack which outputs are needed
     {%- if any(function.parameters, "OutParameter") %}
     uint32_t _requiredOutputs = 0;
+    {%- endif %}
+    {%- if function is RemoveHandlerFunction %}
+    {#- Remove handlers only have one parameter which is treated specially,
+     # so do separate handling
+     #}
+    {{function.parameters[0].apiType|FormatType}} {{function.parameters[0]|FormatParameterName}}
+        {#- #} = {{function.parameters[0].apiType|FormatTypeInitializer}};
+    {%- endif %}
+
+
+    if(!le_pack_UnpackIndefArrayHeader(&_msgBufPtr))
+    {
+        goto {{error_unpack_label}};
+    }
+
+    // Unpack which outputs are needed
+    {%- if any(function.parameters, "OutParameter") %}
     if (!le_pack_UnpackUint32(&_msgBufPtr, &_requiredOutputs))
     {
         goto {{error_unpack_label}};
@@ -841,10 +875,8 @@ static void Handle_{{apiName}}_{{function.name}}
     {#- Remove handlers only have one parameter which is treated specially,
      # so do separate handling
      #}
-    {{function.parameters[0].apiType|FormatType}} {{function.parameters[0]|FormatParameterName}}
-        {#- #} = {{function.parameters[0].apiType|FormatTypeInitializer}};
     if (!le_pack_UnpackReference( &_msgBufPtr,
-                                  &{{function.parameters[0]|FormatParameterName}} ))
+                                  &{{function.parameters[0]|FormatParameterName}}, NULL ))
     {
         goto {{error_unpack_label}};
     }
@@ -869,6 +901,12 @@ static void Handle_{{apiName}}_{{function.name}}
         goto {{error_unpack_label}};
     {%- endcall %}
     {%- endif %}
+
+    if (!le_pack_UnpackEndOfIndefArray(&_msgBufPtr))
+    {
+        goto {{error_unpack_label}};
+    }
+
     {#- Now create handler parameters, if there are any.  Should be zero or one #}
     {%- for handler in function.parameters if handler.apiType is HandlerType %}
 
@@ -923,6 +961,7 @@ static void Handle_{{apiName}}_{{function.name}}
 
     // Re-use the message buffer for the response
     _msgBufPtr = _msgBufStartPtr;
+    le_pack_PackIndefArrayHeader(&_msgBufPtr);
     {%- if function.returnType %}
 
     // Pack the result first
@@ -939,17 +978,12 @@ static void Handle_{{apiName}}_{{function.name}}
 
     // Pack any "out" parameters
     {{- pack.PackOutputs(function.parameters,initiatorWaits=True) }}
-
-#ifdef LE_CONFIG_RPC
-    // Add EOF TagID to the end of response message so RPC proxy knows when to stop repacking
-    *_msgBufPtr = LE_PACK_EOF;
-#endif
+    le_pack_PackEndOfIndefArray(&_msgBufPtr);
 
     // Return the response
     TRACE("Sending response to client session %p : %ti bytes sent",
           le_msg_GetSession(_msgRef),
           _msgBufPtr-_msgBufStartPtr);
-
 
     le_msg_Respond(_msgRef);
 

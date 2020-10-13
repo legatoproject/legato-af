@@ -95,7 +95,8 @@ typedef struct
     char {{member.name|DecorateName}}[{{member.maxCount}} + 1];
     {%- else %}
     {{member.apiType|FormatType(useBaseName=True)}} {{member.name|DecorateName}}
-    {%- if member is ArrayMember %}[{{member.maxCount}}]{% endif %};
+    {%- if member is ArrayMember %}[{{member.maxCount}}];
+    size_t {{member.name}}Count{% endif %};
     {%- endif %}
     {%- endfor %}
 }

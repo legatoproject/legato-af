@@ -80,96 +80,6 @@ static le_mem_PoolRef_t ClientHandlerPoolRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Function for sending RemoveHandler messages to far-side rpcProxy for all
- * ClientEventData_t records when the given client session is closed.
- */
-//--------------------------------------------------------------------------------------------------
-void rpcEventHandler_SendRemoveHandlerMessage
-(
-    ///< [IN] Name of the system
-    const char* systemName,
-    ///< [IN] Client session reference
-    le_msg_SessionRef_t sessionRef
-)
-{
-    rpcProxy_Message_t   rpcMsg;
-    rpcProxy_Message_t*  rpcMsgPtr;
-    CommonPayloadData_t* _msgPtr;
-    uint8_t*             _msgBufPtr;
-    void*                handlerRef;
-    le_result_t          result;
-    bool                 recheck = 1;
-
-    if (sessionRef == NULL)
-    {
-        LE_ERROR("sessionRef is NULL.");
-        return;
-    }
-
-    if(systemName == NULL)
-    {
-        LE_ERROR("SystemName is NULL.");
-        return;
-    }
-
-    while (recheck)
-    {
-        rpcMsgPtr = NULL;
-        le_ref_IterRef_t iterRef = le_ref_GetIterator(ClientEventDataSafeRefMap);
-        while(le_ref_NextNode(iterRef) == LE_OK)
-        {
-            ClientEventData_t *clientEventDataPtr = le_ref_GetValue(iterRef);
-            if ((clientEventDataPtr != NULL) &&
-                (clientEventDataPtr->sessionRef == sessionRef) &&
-                (clientEventDataPtr->handlerRef != NULL))
-            {
-                // Set the rpcProxy message header.
-                rpcMsgPtr = &rpcMsg;
-                rpcMsgPtr->msgSize = clientEventDataPtr->ipcMsgSize;
-                rpcMsgPtr->commonHeader.serviceId = clientEventDataPtr->serviceId;
-                rpcMsgPtr->commonHeader.id = rpcProxy_GenerateProxyMessageId();
-                rpcMsgPtr->commonHeader.type = RPC_PROXY_CLIENT_REQUEST;
-
-                // Fill the rpcProxy message buffer.
-                _msgPtr = (CommonPayloadData_t*)rpcMsgPtr->message;
-                _msgBufPtr = _msgPtr->buffer;
-                _msgPtr->id = clientEventDataPtr->ipcMsgId;
-                handlerRef = (void*)le_ref_GetSafeRef(iterRef);
-
-                LE_ASSERT(le_pack_PackTaggedReference(&_msgBufPtr, handlerRef,
-                                                      LE_PACK_ASYNC_HANDLER_REFERENCE ));
-                *_msgBufPtr = LE_PACK_EOF;
-
-                break;
-            }
-        }
-
-        if (rpcMsgPtr != NULL)
-        {
-            // Send the rpcProxy message with removeHandler command to far-side.
-            result = rpcProxy_SendMsg(systemName, rpcMsgPtr, NULL);
-            if (result != LE_OK)
-            {
-                LE_ERROR("le_comm_Send failed, result %d", result);
-                recheck = 0;
-            }
-            else
-            {
-                // ClientEventData record will be freed in rpcProxy_SendMsg() when it gets
-                // get returned successfully.
-                LE_INFO("rpcMsgId=%"PRIu32" ipcMsgId=%"PRIu32" for removeHandler (%p).",
-                        rpcMsgPtr->commonHeader.id, _msgPtr->id, handlerRef);
-            }
-        }
-        else
-        {
-            recheck = 0;
-        }
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Function for deleting all ClientEventData_t records for given service and client session
  * If specified client session is NULL , deleting all records of the given service.
  */
@@ -219,50 +129,31 @@ void rpcEventHandler_DeleteAll
     }
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
- * Function for repacking client context in certain cases related to adding async event
- * handler to server and handling these events.
- * Packing and unpacking is always done on client side
+ * Get new context pointer to send.
+ *
+ * When a reference pointer is seen in an IPC message, this function must be used to convert the
+ * pointer in the IPC message to a new value that can be packed into the outgoing rpc message.
+ *
+ * @return
+ *      -LE_OK if successfully converted the context pointer
+ *      -LE_FAULT otherwise
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t rpcEventHandler_RepackContext
+le_result_t rpcEventHandler_RepackOutgoingContext
 (
-    /// [IN/OUT] Pointer to current position in the Message Buffer pointer
-    uint8_t**                msgBufPtr,
-
-    /// [IN/OUT] Pointer to the previous position in the Message Buffer pointer
-    uint8_t**                previousMsgBufPtr,
-
-    /// [IN/OUT] Pointer to the current position in the New Message Buffer pointer
-    uint8_t**                newMsgBufPtr,
-
-    ///< [IN] Pointer to commont header needed to get message type and id
-    rpcProxy_CommonHeader_t* commonHeader,
-
-    ///< [IN] Boolean to identify if message is in-coming or out-going
-    bool                     sending,
-
-    //< [OUT] Pointer to client's session reference
-    le_msg_SessionRef_t *sessionRefPtr
+    le_pack_SemanticTag_t    tagId,           ///< [IN] Tag id that appear before context pointer
+    void*                    contextPtr,      ///< [IN] Context pointer in ipc message
+    void**                   contextPtrPtr,   ///< [OUT] New context pointer
+    rpcProxy_Message_t*      proxyMessagePtr  ///< [IN] Pointer to outgoing proxy message
 )
 {
+    rpcProxy_CommonHeader_t* commonHeader = &(proxyMessagePtr->commonHeader);
     ClientEventData_t *clientEventDataPtr;
-    void            *contextPtr;
-    TagID_t          tagId = **msgBufPtr;
-
-    // Extract contextPtr from source message
-    if(!le_pack_UnpackReference( msgBufPtr, &contextPtr ))
-    {
-        LE_ERROR("Unpacking failure");
-        goto error;
-    }
-
     // Client sends request to add async event handler
-    if((tagId == LE_PACK_CONTEXT_PTR_REFERENCE) && sending && (commonHeader->type == RPC_PROXY_CLIENT_REQUEST))
+    if((tagId == LE_PACK_CONTEXT_PTR_REFERENCE) && (commonHeader->type == RPC_PROXY_CLIENT_REQUEST))
     {
-
         // Retrieve Message reference from hash map, using the Proxy Message Id.
         // We need message reference to get client's session which we want to save
         // for future use.
@@ -291,9 +182,53 @@ le_result_t rpcEventHandler_RepackContext
         // Store the proxy reference in a hash map using the proxy Id as the key.
         le_hashmap_Put(ProxyRefMapByMsgId, (void*)(uintptr_t) commonHeader->id, contextPtr);
     }
+    // Client sends request to remove async event hsandler
+    else if((tagId == LE_PACK_ASYNC_HANDLER_REFERENCE) && (commonHeader->type == RPC_PROXY_CLIENT_REQUEST))
+    {
+        clientEventDataPtr = le_ref_Lookup(ClientEventDataSafeRefMap, contextPtr);
+        if(clientEventDataPtr == NULL)
+        {
+            LE_ERROR("Attempt to remove event handler for unknown client");
+            goto error;
+        }
 
+        le_ref_DeleteRef(ClientEventDataSafeRefMap, contextPtr);
+        contextPtr = clientEventDataPtr->handlerRef;
+        le_mem_Release(clientEventDataPtr);
+    }
+
+    *contextPtrPtr = contextPtr;
+    return LE_OK;
+
+error:
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function for repacking client context seen in an incoming PPC message.
+ * This function converts the context pointer seen in the RPC message into a new value that can be
+ * packed into IPC message.
+ *
+ * @return
+ *      -LE_OK if successfully converted the context pointer
+ *      -LE_FAULT otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t rpcEventHandler_RepackIncomingContext
+(
+    le_pack_SemanticTag_t    tagId,           ///< [IN] Tag id that appear before context pointer
+    void*                    contextPtr,      ///< [IN] Context pointer in in rpc message
+    void**                   contextPtrPtr,   ///< [OUT] New context pointer
+    rpcProxy_Message_t*      proxyMessagePtr  ///< [IN] Pointer to incoming proxy message
+)
+{
+    ClientEventData_t *clientEventDataPtr;
+
+    rpcProxy_CommonHeader_t* commonHeader = &(proxyMessagePtr->commonHeader);
+    (void) contextPtrPtr;
     // Client receives response for request to add async event handler
-    else if((tagId == LE_PACK_ASYNC_HANDLER_REFERENCE) && !sending && (commonHeader->type == RPC_PROXY_SERVER_RESPONSE))
+    if((tagId == LE_PACK_ASYNC_HANDLER_REFERENCE) && (commonHeader->type == RPC_PROXY_SERVER_RESPONSE))
     {
         void* proxyRef = le_hashmap_Get(ProxyRefMapByMsgId, (void*)(uintptr_t) commonHeader->id);
         if(proxyRef == NULL)
@@ -320,7 +255,7 @@ le_result_t rpcEventHandler_RepackContext
             clientEventDataPtr->handlerRef = contextPtr;
 
             // Pass proxy reference to client
-            contextPtr = proxyRef;
+            *contextPtrPtr = proxyRef;
         }
         // Async event handler wasn't added. Delete ClientEventData_t record.
         else
@@ -331,7 +266,7 @@ le_result_t rpcEventHandler_RepackContext
     }
 
     // Client receives async event from server
-    else if(!sending && (commonHeader->type == RPC_PROXY_SERVER_ASYNC_EVENT))
+    else if(commonHeader->type == RPC_PROXY_SERVER_ASYNC_EVENT)
     {
         // Find client's session.
         // It was stored when the client sent request to add async event handler
@@ -345,10 +280,11 @@ le_result_t rpcEventHandler_RepackContext
         void *tempPtr = contextPtr;
 
         // Get back original client's context
-        contextPtr = clientEventDataPtr->contextPtr;
+        *contextPtrPtr = clientEventDataPtr->contextPtr;
 
-        LE_ASSERT(sessionRefPtr);
-        *sessionRefPtr = clientEventDataPtr->sessionRef;
+        le_msg_SessionRef_t sessionRef = clientEventDataPtr->sessionRef;
+
+        proxyMessagePtr->msgRef = le_msg_CreateMsg(sessionRef);
 
         // In case of "one-shot" callback delete the record.
         if(tagId == LE_PACK_ASYNC_HANDLER_REFERENCE)
@@ -357,34 +293,12 @@ le_result_t rpcEventHandler_RepackContext
             le_mem_Release(clientEventDataPtr);
         }
     }
-
-    // Client sends request to remove async event hsandler
-    else if((tagId == LE_PACK_ASYNC_HANDLER_REFERENCE) && sending && (commonHeader->type == RPC_PROXY_CLIENT_REQUEST))
+    // in other cases the new reference is the same:
+    else
     {
-        clientEventDataPtr = le_ref_Lookup(ClientEventDataSafeRefMap, contextPtr);
-        if(clientEventDataPtr == NULL)
-        {
-            LE_ERROR("Attempt to remove event handler for unknown client");
-            goto error;
-        }
-
-        LE_INFO("Removed ClientEventData (contextPtr=%p, handlerRef=%p)",
-                contextPtr, clientEventDataPtr->handlerRef);
-        le_ref_DeleteRef(ClientEventDataSafeRefMap, contextPtr);
-        contextPtr = clientEventDataPtr->handlerRef;
-        le_mem_Release(clientEventDataPtr);
+        *contextPtrPtr = contextPtr;
     }
 
-
-    // Replace server reference by proxy reference in destiantiom message
-    if(!le_pack_PackTaggedReference( newMsgBufPtr, contextPtr, tagId ))
-    {
-        LE_ERROR("Packing failure");
-        goto error;
-    }
-
-    // Update the previous message buffer pointer to reflect what has been processed
-    *previousMsgBufPtr = *msgBufPtr;
     return LE_OK;
 
 error:
@@ -394,54 +308,42 @@ error:
 //--------------------------------------------------------------------------------------------------
 /**
  * Function for Processing Asynchronous Server Events on the client side
+ *
+ * @return
+ *      -LE_OK if async message was process successfully
+ *      -LE_FAULT otherwise.
  */
 //--------------------------------------------------------------------------------------------------
-void rpcEventHandler_ProcessEvent
+le_result_t rpcEventHandler_ProcessEvent
 (
-    rpcProxy_Message_t *proxyMessagePtr, ///< [IN] Pointer to the Proxy Message
-    le_msg_SessionRef_t sessionRef       ///< [IN] Client session reference
+    void* handle,                  ///< [IN] Opaque handle to the le_comm communication channel
+    const char* systemName,        ///< [IN] Name of the system that sent the event
+    StreamState_t* streamStatePtr, ///< [IN] Pointer to the streaming State-Machine data
+    void *proxyMessagePtr          ///< [IN] Pointer to the Proxy Message
 )
 {
-    le_msg_MessageRef_t msgRef;
-    void* msgPtr;
-
+    rpcProxy_Message_t* eventMsgPtr = (rpcProxy_Message_t*) proxyMessagePtr;
     // Sanity Check - Verify Message Type
-    LE_ASSERT(proxyMessagePtr->commonHeader.type == RPC_PROXY_SERVER_ASYNC_EVENT);
+    LE_ASSERT(eventMsgPtr->commonHeader.type == RPC_PROXY_SERVER_ASYNC_EVENT);
 
-    LE_ASSERT(sessionRef);
-
-    // Retrieve the Service reference, using the Service-ID
-    le_msg_ServiceRef_t serviceRef = rpcProxy_GetServiceRefById(proxyMessagePtr->commonHeader.serviceId);
-
-    if (serviceRef == NULL)
+    le_result_t recvRes = rpcProxy_RecvStream(handle, streamStatePtr, eventMsgPtr);
+    if (recvRes == LE_IN_PROGRESS)
     {
-        LE_INFO("Error retrieving Service Reference, service id [%" PRIu32 "]",
-                proxyMessagePtr->commonHeader.serviceId);
-        return;
+        // return now, come back later
+        return LE_OK;
     }
-
-    msgRef = le_msg_CreateMsg(sessionRef);
-    msgPtr = le_msg_GetPayloadPtr(msgRef);
-
-    if (le_msg_GetMaxPayloadSize(msgRef) < proxyMessagePtr->msgSize)
+    else if (recvRes != LE_OK)
     {
-        LE_ERROR("Message Reference buffer too small, "
-                    "msgRef [%" PRIuS "], byteCount [%" PRIu16 "]",
-                    le_msg_GetMaxPayloadSize(msgRef),
-                    proxyMessagePtr->msgSize);
-        return;
+        LE_ERROR("Error when receiving an event stream from %s", systemName);
+        return LE_FAULT;
     }
-
-    // Copy the message payload
-    memcpy(msgPtr, proxyMessagePtr->message, proxyMessagePtr->msgSize);
 
     // Send event to client
-    LE_DEBUG("Sending event to client session %p : %u bytes sent",
-                le_msg_GetSession(msgRef),
-                proxyMessagePtr->msgSize);
+    LE_DEBUG("Sending event to client session %p", le_msg_GetSession(eventMsgPtr->msgRef));
 
     // Send response
-    le_msg_Send(msgRef);
+    le_msg_Send(eventMsgPtr->msgRef);
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -456,7 +358,7 @@ void rpcEventHandler_EventCallback
     void*               contextPtr   ///< [IN] Context pointer
 )
 {
-    rpcProxy_Message_t proxyMessage;
+    rpcProxy_Message_t proxyMessage = {0};
 
     le_result_t         result;
     uint32_t            serviceId;
@@ -481,16 +383,10 @@ void rpcEventHandler_EventCallback
     proxyMessage.commonHeader.serviceId = serviceId;
     proxyMessage.commonHeader.type = RPC_PROXY_SERVER_ASYNC_EVENT;
 
-    // Copy the message payload
-    memcpy(proxyMessage.message,
-           le_msg_GetPayloadPtr(eventMsgRef),
-           le_msg_GetMaxPayloadSize(eventMsgRef));
-
-    // Save the message payload size
-    proxyMessage.msgSize = le_msg_GetMaxPayloadSize(eventMsgRef);
+    proxyMessage.msgRef = eventMsgRef;
 
     // Send Proxy Message to the far-side RPC Proxy
-    result = rpcProxy_SendMsg(systemName, &proxyMessage, NULL);
+    result = rpcProxy_SendMsg(systemName, &proxyMessage);
     if (result != LE_OK)
     {
         LE_ERROR("le_comm_Send failed, result %d", result);

@@ -4,6 +4,7 @@ sources:
     le_rpcProxyNetwork.c
     le_rpcProxyEventHandler.c
     le_rpcProxyFileStream.c
+    le_rpcProxyStream.c
 #if ${LE_CONFIG_RTOS} = y
     le_rpcProxyConfigLocal.c
 #elif ${LE_CONFIG_RPC_PROXY_LIBRARY} = y
@@ -23,6 +24,16 @@ sources:
 #else
     le_rpcProxyFileStreamFifo.c
 #endif
+
+#if ${LE_CONFIG_RTOS} = y
+    $LEGATO_ROOT/3rdParty/libcbor/src/cbor/encoding.c
+    $LEGATO_ROOT/3rdParty/libcbor/src/cbor/internal/encoders.c
+    $LEGATO_ROOT/3rdParty/libcbor/src/cbor/internal/loaders.c
+    $LEGATO_ROOT/3rdParty/libcbor/src/cbor/streaming.c
+    $LEGATO_ROOT/3rdParty/libcbor/src/cbor/common.c
+    $LEGATO_ROOT/3rdParty/libcbor/src/cbor/callbacks.c
+#endif
+
 }
 
 requires:
@@ -40,6 +51,20 @@ requires:
 #endif
 }
 
+#if ${LE_CONFIG_LINUX} = y
+requires:
+{
+    component:
+    {
+        3rdParty/libcbor
+    }
+    lib:
+    {
+        cbor
+    }
+}
+#endif
+
 provides:
 {
     api:
@@ -49,10 +74,24 @@ provides:
 #endif
     }
 }
+#if ${LE_CONFIG_LINUX} = y
+ldflags:
+{
+    -L${LEGATO_BUILD}/3rdParty/lib
+}
+#endif
 
 cflags:
 {
+#if ${LE_CONFIG_RTOS} = y
+#if ${BUILD_COMPILER} = ""
+    -Wno-unused-parameter
+    -Wno-old-style-declaration
+#endif
+#endif
     -I$LEGATO_ROOT/framework/daemons/rpcProxy
     -I$LEGATO_ROOT/framework/daemons/rpcProxy/rpcDaemon
     -I$LEGATO_ROOT/framework/liblegato
+    -I$LEGATO_ROOT/3rdParty/libcbor/src
+    -I$LEGATO_ROOT/build/$LEGATO_TARGET/3rdParty/inc
 }

@@ -308,6 +308,8 @@ def Main():
           'InParameter':   ifgenJinjaExtensions.IsInParameter,
           'OutParameter':  ifgenJinjaExtensions.IsOutParameter,
           'ArrayParameter': ifgenJinjaExtensions.IsArrayParameter,
+          'OptimizableArray':ifgenJinjaExtensions.IsArrayOptimizable,
+          'ByteStringArray':ifgenJinjaExtensions.IsByteStringArray,
           'StringParameter': ifgenJinjaExtensions.IsStringParameter,
           'ArrayMember':   ifgenJinjaExtensions.IsArrayMember,
           'StringMember':  ifgenJinjaExtensions.IsStringMember,

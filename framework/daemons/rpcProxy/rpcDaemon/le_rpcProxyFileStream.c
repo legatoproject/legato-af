@@ -189,18 +189,16 @@ static void SendFileStreamErrorMessage
     uint16_t flags                   ///< [IN] flags to include
 )
 {
-    rpcProxy_Message_t proxyMessage;
-    proxyMessage.commonHeader.id = rpcProxy_GenerateProxyMessageId();
-    proxyMessage.commonHeader.serviceId = serviceId;
-    proxyMessage.commonHeader.type = RPC_PROXY_FILESTREAM_MESSAGE;
+    rpcProxy_FileStreamMessage_t fileStreamMsg = {0};
+    fileStreamMsg.commonHeader.id = rpcProxy_GenerateProxyMessageId();
+    fileStreamMsg.commonHeader.serviceId = serviceId;
+    fileStreamMsg.commonHeader.type = RPC_PROXY_FILESTREAM_MESSAGE;
 
-    rpcProxy_MessageMetadata_t metaData = {.fileStreamId = streamId,
-                                           .fileStreamFlags = flags,
-                                           .isFileStreamValid = true};
+    fileStreamMsg.metaData.fileStreamId = streamId;
+    fileStreamMsg.metaData.fileStreamFlags = flags;
+    fileStreamMsg.metaData.isFileStreamValid = true;
 
-    proxyMessage.msgSize = 0;
-
-    le_result_t result = rpcProxy_SendMsg(systemName, &proxyMessage, &metaData);
+    le_result_t result = rpcProxy_SendMsg(systemName, &fileStreamMsg);
     if (result != LE_OK)
     {
         LE_ERROR("le_comm_Send failed, result [%" PRId32 "]", (int32_t)result);
@@ -232,28 +230,21 @@ static void HandlePollinOutgoing
     {
         // There's something to read, read it and send to the other side.
         // note: rpcFd is non blocking
-        rpcProxy_MessageMetadata_t metaData = {0};
         const char* systemName = fileStreamRef->remoteSystemName;
-        rpcProxy_Message_t * proxyMessagePtr = rpcProxy_AllocateNewMessage();
-        if (proxyMessagePtr == NULL)
-        {
-            LE_INFO("Unable to allocate rpcProxy message to handle file stream event");
-            return;
-        }
-        metaData.fileStreamFlags |= RPC_FSTREAM_DATA_PACKET;
-        metaData.fileStreamFlags |= (fileStreamRef->owner)? RPC_FSTREAM_OWNER : 0;
-        metaData.fileStreamId = fileStreamRef->streamId;
-        metaData.isFileStreamValid = true;
-        proxyMessagePtr->commonHeader.id = rpcProxy_GenerateProxyMessageId();
-        proxyMessagePtr->commonHeader.type = RPC_PROXY_FILESTREAM_MESSAGE;
-        proxyMessagePtr->commonHeader.serviceId = fileStreamRef->serviceId;
-        size_t bytesToRead = (fileStreamRef->requestedSize > RPC_PROXY_MAX_MESSAGE)?
-            RPC_PROXY_MAX_MESSAGE:fileStreamRef->requestedSize;
+        rpcProxy_FileStreamMessage_t fileStreamMsg = {0};
+        rpcProxy_MessageMetadata_t* metaDataPtr = &(fileStreamMsg.metaData);
+        metaDataPtr->fileStreamFlags = 0;
+        metaDataPtr->fileStreamFlags |= RPC_FSTREAM_DATA_PACKET;
+        metaDataPtr->fileStreamFlags |= (fileStreamRef->owner)? RPC_FSTREAM_OWNER : 0;
+        metaDataPtr->fileStreamId = fileStreamRef->streamId;
+        metaDataPtr->isFileStreamValid = true;
+        fileStreamMsg.commonHeader.id = rpcProxy_GenerateProxyMessageId();
+        fileStreamMsg.commonHeader.type = RPC_PROXY_FILESTREAM_MESSAGE;
+        fileStreamMsg.commonHeader.serviceId = fileStreamRef->serviceId;
+        size_t bytesToRead = (fileStreamRef->requestedSize > RPC_PROXY_MAX_FILESTREAM_PAYLOAD_SIZE)?
+            RPC_PROXY_MAX_FILESTREAM_PAYLOAD_SIZE:fileStreamRef->requestedSize;
         size_t totalBytesRead = 0;
-        uint8_t* buffPtr = proxyMessagePtr->message;
-        // leave room for array header that comes first:
-        buffPtr += LE_PACK_SIZEOF_TAG_ID + LE_PACK_SIZEOF_SIZE;
-        proxyMessagePtr->msgSize = LE_PACK_SIZEOF_TAG_ID + LE_PACK_SIZEOF_SIZE;
+        uint8_t* buffPtr = fileStreamMsg.payload;
         int fd = fileStreamRef->rpcFd;
         while(totalBytesRead < bytesToRead)
         {
@@ -271,7 +262,7 @@ static void HandlePollinOutgoing
                 {
                     // serious error while reading from fifo:
                     RemoveFileStreamInstance(fileStreamRef);
-                    metaData.fileStreamFlags |= RPC_FSTREAM_IOERROR;
+                    metaDataPtr->fileStreamFlags |= RPC_FSTREAM_IOERROR;
                     fileStreamRef = NULL;
                     break;
                 }
@@ -283,13 +274,13 @@ static void HandlePollinOutgoing
                 {
                     // EOF is reached
                     RemoveFileStreamInstance(fileStreamRef);
-                    metaData.fileStreamFlags |= RPC_FSTREAM_EOF;
+                    metaDataPtr->fileStreamFlags |= RPC_FSTREAM_EOF;
                     fileStreamRef = NULL;
                     break;
                 }
             }
         } // End of while
-        proxyMessagePtr->msgSize += totalBytesRead;
+        fileStreamMsg.payloadSize += totalBytesRead;
         if (fileStreamRef)
         {
             /* Reset the requestedSize and disable the fd monitor. The other side will
@@ -299,19 +290,15 @@ static void HandlePollinOutgoing
             fileStreamRef->requestedSize = 0;
             le_fdMonitor_Disable(fileStreamRef->fdMonitorRef, POLLIN);
         }
-        //proxyMessagePtr is ready to be sent:
-        uint8_t* msgBufPtr = &proxyMessagePtr->message[0];
-        le_pack_PackArrayHeader(&msgBufPtr, NULL, sizeof(uint8_t), totalBytesRead, bytesToRead);
 #if RPC_PROXY_HEX_DUMP
         LE_INFO("Sending this rpc filestream data messgae to %s:", systemName);
-        LE_LOG_DUMP(LE_LOG_INFO, proxyMessagePtr->message, proxyMessagePtr->msgSize);
+        LE_LOG_DUMP(LE_LOG_INFO, fileStreamMsg.payload, fileStreamMsg.payloadSize);
 #endif
-        le_result_t result = rpcProxy_SendMsg(systemName, proxyMessagePtr, &metaData);
+        le_result_t result = rpcProxy_SendMsg(systemName, &fileStreamMsg);
         if (result != LE_OK)
         {
             LE_ERROR("le_comm_Send failed, result [%" PRId32 "]", (int32_t)result);
         }
-        le_mem_Release(proxyMessagePtr);
     }
 }
 
@@ -327,7 +314,6 @@ static void HandlePolloutIncoming
 {
     LE_ASSERT(fileStreamRef->direction = INCOMING_FILESTREAM);
     const char* systemName = fileStreamRef->remoteSystemName;
-    rpcProxy_MessageMetadata_t metaData = {0};
     uint32_t bytesToRequest;
     if (rpcFStream_GetAvailableSpace(fileStreamRef, &bytesToRequest) != LE_OK)
     {
@@ -343,36 +329,29 @@ static void HandlePolloutIncoming
          */
         return;
     }
-    rpcProxy_Message_t * proxyMessagePtr = rpcProxy_AllocateNewMessage();
-    if (proxyMessagePtr == NULL)
-    {
-        LE_INFO("Unable to allocate rpcProxy message to handle file stream event");
-        return;
-    }
-    metaData.fileStreamId = fileStreamRef->streamId;
-    metaData.fileStreamFlags |= RPC_FSTREAM_REQUEST_DATA;
-    metaData.fileStreamFlags |= (fileStreamRef->owner)? RPC_FSTREAM_OWNER : 0;
-    metaData.isFileStreamValid = true;
-    proxyMessagePtr->msgSize = LE_PACK_SIZEOF_TAG_ID + LE_PACK_SIZEOF_UINT32;
+    rpcProxy_FileStreamMessage_t fileStreamMsg = {0};
+    rpcProxy_MessageMetadata_t* metaDataPtr = &(fileStreamMsg.metaData);
+    metaDataPtr->fileStreamId = fileStreamRef->streamId;
+    metaDataPtr->fileStreamFlags |= RPC_FSTREAM_REQUEST_DATA;
+    metaDataPtr->fileStreamFlags |= (fileStreamRef->owner)? RPC_FSTREAM_OWNER : 0;
+    metaDataPtr->isFileStreamValid = true;
+    fileStreamMsg.requestedSize = bytesToRequest;
+    fileStreamMsg.payloadSize = 0;
 
-    uint8_t* msgBufPtr = &proxyMessagePtr->message[0];
-    le_pack_PackUint32(&msgBufPtr, bytesToRequest);
-    proxyMessagePtr->commonHeader.id = rpcProxy_GenerateProxyMessageId();
-    proxyMessagePtr->commonHeader.type = RPC_PROXY_FILESTREAM_MESSAGE;
-    proxyMessagePtr->commonHeader.serviceId = fileStreamRef->serviceId;
+    fileStreamMsg.commonHeader.id = rpcProxy_GenerateProxyMessageId();
+    fileStreamMsg.commonHeader.type = RPC_PROXY_FILESTREAM_MESSAGE;
+    fileStreamMsg.commonHeader.serviceId = fileStreamRef->serviceId;
 
     //disable this fd monitor:
     le_fdMonitor_Disable(fileStreamRef->fdMonitorRef, POLLOUT);
 #if RPC_PROXY_HEX_DUMP
     LE_INFO("Sending request message to %s, request size:[%" PRId32 "]", systemName, bytesToRequest);
-    LE_LOG_DUMP(LE_LOG_INFO, proxyMessagePtr->message, proxyMessagePtr->msgSize);
 #endif
-    le_result_t result = rpcProxy_SendMsg(systemName, proxyMessagePtr, &metaData);
+    le_result_t result = rpcProxy_SendMsg(systemName, &fileStreamMsg);
     if (result != LE_OK)
     {
         LE_ERROR("le_comm_Send failed, result [%" PRId32 "]", (int32_t)result);
     }
-    le_mem_Release(proxyMessagePtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -758,14 +737,30 @@ end:
 //--------------------------------------------------------------------------------------------------
 le_result_t rpcFStream_ProcessFileStreamMessage
 (
-    const char* systemName,                ///< [IN] name of system this message was received from
-    rpcProxy_Message_t* proxyMessagePtr,   ///< [IN] pointer to rpc message received
-    rpcProxy_MessageMetadata_t* metaDataPtr///< [IN] metadata of file stream message
+    void* handle,                   ///< [IN] Opaque handle to the le_comm communication channel
+    const char* systemName,         ///< [IN] name of system this message was received from
+    StreamState_t* streamStatePtr,  ///< [IN] Pointer to the Stream State-Machine data
+    void* proxyMessagePtr           ///< [IN] pointer to rpc message received
 )
 {
+    rpcProxy_FileStreamMessage_t* fileStreamMsgPtr = (rpcProxy_FileStreamMessage_t*) proxyMessagePtr;
+    le_result_t recvRes = rpcProxy_RecvStream(handle, streamStatePtr, fileStreamMsgPtr);
+    if (recvRes == LE_IN_PROGRESS)
+    {
+        // return now, come back later
+        return LE_OK;
+    }
+    else if (recvRes != LE_OK)
+    {
+        LE_ERROR("Error when receiving a file stream");
+        return LE_FAULT;
+    }
+
+    rpcProxy_MessageMetadata_t* metaDataPtr = &(fileStreamMsgPtr->metaData);
+
     uint16_t fStreamId = metaDataPtr->fileStreamId;
     uint16_t fStreamFlags = metaDataPtr->fileStreamFlags;
-    uint8_t* msgBufPtr = &proxyMessagePtr->message[0];
+    uint8_t* msgBufPtr = &fileStreamMsgPtr->payload[0];
     /*
      * The owner flag is set from the perspective of the sender so it must be inverted to reflect
      * our ownership of the filestream
@@ -779,14 +774,15 @@ le_result_t rpcFStream_ProcessFileStreamMessage
     }
     else
     {
-        LE_ERROR("Cannot find file stream id send by %s in local list", systemName);
+        LE_ERROR("Cannot find file stream id %"PRIu16" send by %s in local list", fStreamId,
+                 systemName);
         uint32_t flags = RPC_FSTREAM_FORCE_CLOSE;
         flags |= (owner)? RPC_FSTREAM_OWNER : 0;
-        SendFileStreamErrorMessage(systemName, proxyMessagePtr->commonHeader.serviceId,
+        SendFileStreamErrorMessage(systemName, fileStreamMsgPtr->commonHeader.serviceId,
                                    fStreamId, flags);
         return LE_FAULT;
     }
-    if (fileStreamRef->serviceId != proxyMessagePtr->commonHeader.serviceId)
+    if (fileStreamRef->serviceId != fileStreamMsgPtr->commonHeader.serviceId)
     {
         LE_ERROR("rpcProxy file stream message service id does not match expected value");
         return LE_FAULT;
@@ -800,16 +796,9 @@ le_result_t rpcFStream_ProcessFileStreamMessage
     {
 #if RPC_PROXY_HEX_DUMP
         LE_INFO("Received this data packet from %s:", systemName);
-        LE_LOG_DUMP(LE_LOG_INFO, proxyMessagePtr->message, proxyMessagePtr->msgSize);
+        LE_LOG_DUMP(LE_LOG_INFO, fileStreamMsgPtr->payload, fileStreamMsgPtr->payloadSize);
 #endif
-        size_t bufferSize = 0;
-        TagID_t tagId = *msgBufPtr;
-        if (tagId != LE_PACK_ARRAYHEADER)
-        {
-            LE_ERROR("rpcProxy file stream message payload has unexpected format");
-            return LE_FAULT;
-        }
-        le_pack_UnpackArrayHeader(&msgBufPtr, NULL, sizeof(uint8_t), &bufferSize, 0);
+        size_t bufferSize = fileStreamMsgPtr->payloadSize;
         LE_INFO("Received file stream message with DATA_PACKET flag. size: %d", bufferSize);
         ssize_t bytesWritten = 0;
 
@@ -851,10 +840,9 @@ le_result_t rpcFStream_ProcessFileStreamMessage
         LE_DEBUG("Received file stream message with REQUEST_DATA flag from system %s", systemName);
 #if RPC_PROXY_HEX_DUMP
         LE_INFO("Received this data request message from %s:", systemName);
-        LE_LOG_DUMP(LE_LOG_INFO, proxyMessagePtr->message, proxyMessagePtr->msgSize);
+        LE_LOG_DUMP(LE_LOG_INFO, fileStreamMsgPtr->payload, fileStreamMsgPtr->payloadSize);
 #endif
-        uint32_t requested_size;
-        le_pack_UnpackUint32(&msgBufPtr, &requested_size);
+        uint32_t requested_size = fileStreamMsgPtr->requestedSize;;
         LE_INFO("Other side of stream id:[%" PRIu16 "] at system: [%s] requested [%" PRIu32 "] "
                  "bytes", fStreamId, systemName, requested_size);
         fileStreamRef->requestedSize = requested_size;
@@ -878,119 +866,6 @@ le_result_t rpcFStream_ProcessFileStreamMessage
                 "system [%s]", fStreamId, systemName);
         RemoveFileStreamInstance(fileStreamRef);
         fileStreamRef = NULL;
-    }
-    return LE_OK;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Pack rpc file stream message for sending
- *
- * @return
- *      - LE_OK if message was repacked successfully.
- *      - LE_FORMAT_ERROR otherwise.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t rpcFStream_RepackMessage
-(
-    rpcProxy_Message_t* proxyMessagePtr,     ///< [IN] Pointer to the original Proxy Message
-    rpcProxy_Message_t* newProxyMessagePtr,  ///< [OUT] Pointer to the new Proxy Message
-    rpcProxy_MessageMetadata_t* metaDataPtr, ///< [INOUT] metadata of proxy message
-    bool sending   ///< [IN] Boolean to identify if message is in-coming or out-going
-)
-{
-    uint8_t* msgBufPtr = &proxyMessagePtr->message[0];
-    uint8_t* newMsgBufPtr = &newProxyMessagePtr->message[0];
-    uint8_t* previousMsgBufPtr = msgBufPtr;
-
-    if (sending)
-    {
-       LE_ASSERT(metaDataPtr && metaDataPtr->isFileStreamValid);
-       le_pack_PackTaggedUint16(&newMsgBufPtr, metaDataPtr->fileStreamId, LE_PACK_FILESTREAM_ID);
-       le_pack_PackTaggedUint16(&newMsgBufPtr, metaDataPtr->fileStreamFlags, LE_PACK_FILESTREAM_FLAG);
-       memcpy(newMsgBufPtr, msgBufPtr, proxyMessagePtr->msgSize);
-       newProxyMessagePtr->msgSize = proxyMessagePtr->msgSize + RPC_PROXY_MSG_METADATA_SIZE;
-    }
-    else
-    {
-        bool done = false;
-        metaDataPtr->fileStreamFlags = 0;
-        metaDataPtr->isFileStreamValid = false;
-        while (((msgBufPtr - &proxyMessagePtr->message[0]) < proxyMessagePtr->msgSize) && !done)
-        {
-            TagID_t tagId = *msgBufPtr;
-            switch(tagId)
-            {
-                case LE_PACK_FILESTREAM_ID:
-                {
-                    rpcProxy_RepackCopyContents(&msgBufPtr, &previousMsgBufPtr, &newMsgBufPtr);
-                    le_pack_UnpackUint16(&msgBufPtr, &metaDataPtr->fileStreamId);
-                    previousMsgBufPtr = msgBufPtr;
-                    metaDataPtr->isFileStreamValid = true;
-                    break;
-                }
-                case LE_PACK_FILESTREAM_FLAG:
-                {
-                    rpcProxy_RepackCopyContents(&msgBufPtr, &previousMsgBufPtr, &newMsgBufPtr);
-                    le_pack_UnpackUint16(&msgBufPtr, &metaDataPtr->fileStreamFlags);
-                    previousMsgBufPtr = msgBufPtr;
-                    break;
-                }
-                case LE_PACK_UINT32:
-                {
-                    msgBufPtr += (LE_PACK_SIZEOF_TAG_ID + LE_PACK_SIZEOF_UINT32);
-                    break;
-                }
-                case LE_PACK_ARRAYHEADER:
-                {
-                    size_t value;
-
-                    // Unpack the array size
-                    if (!le_pack_UnpackSize(&msgBufPtr, &value))
-                    {
-                        return LE_FORMAT_ERROR;
-                    }
-
-                    // Verify validity of the array size
-                    if (((msgBufPtr + value) - &proxyMessagePtr->message[0]) >=
-                          RPC_PROXY_MAX_MESSAGE)
-                    {
-                        // Insufficient space to store the array data
-                        LE_ERROR("Format Error - Insufficient space "
-                                 "to store Array data, "
-                                 "proxy id [%" PRIu32 "], tagId [%d]",
-                                 proxyMessagePtr->commonHeader.id,
-                                 tagId);
-
-                        return LE_FORMAT_ERROR;
-                    }
-
-                    // Increment msgBufPtr by "value"
-                    msgBufPtr = msgBufPtr + value;
-
-                    // Copy the contents
-                    rpcProxy_RepackCopyContents(&msgBufPtr, &previousMsgBufPtr, &newMsgBufPtr);
-                    break;
-                }
-                default:
-                {
-                    done = true;
-                }
-            } // End of switch
-        } // End of while
-        rpcProxy_RepackCopyContents(&msgBufPtr, &previousMsgBufPtr, &newMsgBufPtr);
-        uint16_t count = (newMsgBufPtr - &(newProxyMessagePtr->message[0]));
-        newProxyMessagePtr->msgSize = count;
-        /*
-         * verifying received metadata:
-         * There must be a file stream id and file stream flag in the file stream message.
-         */
-        if (!metaDataPtr->isFileStreamValid || metaDataPtr->fileStreamFlags == 0)
-        {
-            LE_ERROR("Received ill formatted rpcProxy file stream message");
-            return LE_FORMAT_ERROR;
-        }
     }
     return LE_OK;
 }

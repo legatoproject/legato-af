@@ -78,8 +78,6 @@ void ipcServer_EchoString
     ipcClient_EchoString(InString, OutString, OutStringSize);
 }
 
-#if 0
-// Not currently supported on Java.
 void ipcServer_EchoArray
 (
     const int64_t* InArrayPtr,
@@ -88,9 +86,8 @@ void ipcServer_EchoArray
     size_t* OutArraySizePtr
 )
 {
-    ipcClient_EchoArray(InArrayPtr, InArraySize, OutArrayPtr, OutArraySizePtr
+    ipcClient_EchoArray(InArrayPtr, InArraySize, OutArrayPtr, OutArraySizePtr);
 }
-#endif
 
 void ipcServer_ExitServer
 (
@@ -98,6 +95,34 @@ void ipcServer_ExitServer
 )
 {
     ipcClient_ExitServer();
+}
+
+ipcServer_EchoComplexEventHandlerRef_t ipcServer_AddEchoComplexEventHandler
+(
+    ipcServer_EchoComplexHandlerFunc_t handlerPtr,
+    void* contextPtr
+)
+{
+    return (ipcServer_EchoComplexEventHandlerRef_t)ipcClient_AddEchoComplexEventHandler(handlerPtr, contextPtr);
+}
+
+void ipcServer_RemoveEchoComplexEventHandler
+(
+    ipcServer_EchoComplexEventHandlerRef_t handlerRef
+)
+{
+    ipcClient_RemoveEchoComplexEventHandler((ipcClient_EchoComplexEventHandlerRef_t)handlerRef);
+}
+
+void ipcServer_EchoTriggerComplexEvent
+(
+    int32_t cookie,
+    const char* LE_NONNULL cookieString,
+    const int16_t* cookieArrayPtr,
+    size_t cookieArraySize
+)
+{
+    ipcClient_EchoTriggerComplexEvent(cookie, cookieString, cookieArrayPtr, cookieArraySize);
 }
 
 ipcServer_EchoEventHandlerRef_t ipcServer_AddEchoEventHandler
@@ -120,12 +145,10 @@ void ipcServer_RemoveEchoEventHandler
 void ipcServer_EchoTriggerEvent
 (
     int32_t cookie
-        ///< [IN]
 )
 {
     ipcClient_EchoTriggerEvent(cookie);
 }
-
 
 COMPONENT_INIT
 {

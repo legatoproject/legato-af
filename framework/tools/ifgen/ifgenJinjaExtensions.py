@@ -7,6 +7,7 @@
 # Copyright (c) Sierra Wireless Inc.
 #
 
+import os
 import interfaceIR
 import itertools
 from jinja2 import contextfunction
@@ -50,6 +51,23 @@ def IsStringParameter(paramObj):
 
 def IsArrayParameter(paramObj):
     return isinstance(paramObj, interfaceIR.ArrayParameter)
+
+def IsByteStringArray(paramObj):
+    if isinstance(paramObj, interfaceIR.ArrayParameter):
+        apiType = paramObj.apiType
+        return (apiType == interfaceIR.UINT8_TYPE or
+                apiType == interfaceIR.INT8_TYPE or apiType == interfaceIR.CHAR_TYPE)
+    else:
+        return False;
+
+def IsArrayOptimizable(paramObj):
+    if isinstance(paramObj, interfaceIR.ArrayParameter):
+        if (os.environ.get('LE_CONFIG_RPC') == "y"):
+            return IsByteStringArray(paramObj);
+        else:
+            return True;
+    else:
+        return False;
 
 ### Structure member tests
 def IsStringMember(memberObj):

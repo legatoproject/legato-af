@@ -277,9 +277,13 @@ static void _Handle_ifgen_{{apiBaseName}}_{{function.name}}
         // parameter. We also want to make sure that the "sent" clientDataPtr is the same as
         // the one we pull via reference
 
+        if(!le_pack_UnpackIndefArrayHeader(&_msgBufPtr))
+        {
+            goto {{error_unpack_label}};
+        }
         void* _clientContextPtr;
         if (!le_pack_UnpackReference( &_msgBufPtr,
-                                      &_clientContextPtr ))
+                                      &_clientContextPtr, NULL ))
         {
             goto {{error_unpack_label}};
         }
@@ -315,6 +319,11 @@ static void _Handle_ifgen_{{apiBaseName}}_{{function.name}}
         {%- call pack.UnpackInputs(handler.apiType.parameters,useBaseName=True) %}
             goto {{error_unpack_label}};
         {%- endcall %}
+
+        if (!le_pack_UnpackEndOfIndefArray(&_msgBufPtr))
+        {
+            goto {{error_unpack_label}};
+        }
 
         // Call the registered handler
         if ( _handlerRef_ifgen_{{apiBaseName}}_{{function.name}} != NULL )
@@ -418,6 +427,7 @@ LE_SHARED {{function.returnType|FormatType(useBaseName=True)}} ifgen_{{apiBaseNa
     _msgPtr->id = _MSGID_{{apiBaseName}}_{{function.name}};
     _msgBufPtr = _msgPtr->buffer;
 
+    le_pack_PackIndefArrayHeader(&_msgBufPtr);
     // Pack a list of outputs requested by the client.
     {%- if any(function.parameters, "OutParameter") %}
     uint32_t _requiredOutputs = 0;
@@ -453,11 +463,8 @@ LE_SHARED {{function.returnType|FormatType(useBaseName=True)}} ifgen_{{apiBaseNa
     {%- else %}
     {{- pack.PackInputs(function.parameters,initiatorWaits=True) }}
     {%- endif %}
+    le_pack_PackEndOfIndefArray(&_msgBufPtr);
 
-#ifdef LE_CONFIG_RPC
-    // Add EOF TagID to the end of the message so RPC proxy knows when to stop repacking
-    *_msgBufPtr = LE_PACK_EOF;
-#endif
     // Send a request to the server and get the response.
     TRACE("Sending message to server and waiting for response : %ti bytes sent",
           _msgBufPtr-_msgPtr->buffer);
@@ -484,9 +491,18 @@ LE_SHARED {{function.returnType|FormatType(useBaseName=True)}} ifgen_{{apiBaseNa
     // Process the result and/or output parameters, if there are any.
     _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
     _msgBufPtr = _msgPtr->buffer;
-    {%- if function.returnType %}
 
+    if(!le_pack_UnpackIndefArrayHeader(&_msgBufPtr))
+    {
+        goto {{error_unpack_label}};
+    }
     // Unpack the result first
+    {%- if function.returnType is ReferenceType %}
+    if (!{{function.returnType|UnpackFunction}}( &_msgBufPtr, &_result, NULL ))
+    {
+        goto {{error_unpack_label}};
+    }
+    {%- elif function.returnType %}
     if (!{{function.returnType|UnpackFunction}}( &_msgBufPtr, &_result ))
     {
         goto {{error_unpack_label}};
@@ -514,7 +530,10 @@ LE_SHARED {{function.returnType|FormatType(useBaseName=True)}} ifgen_{{apiBaseNa
     {%- call pack.UnpackOutputs(function.parameters,initiatorWaits=True) %}
         goto {{error_unpack_label}};
     {%- endcall %}
-
+    if (!le_pack_UnpackEndOfIndefArray(&_msgBufPtr))
+    {
+        goto {{error_unpack_label}};
+    }
     // Release the message object, now that all results/output has been copied.
     le_msg_ReleaseMsg(_responseMsgRef);
     {%- if function.returnType %}
@@ -547,10 +566,15 @@ static void ClientIndicationRecvHandler
     _Message_t* msgPtr = le_msg_GetPayloadPtr(msgRef);
     uint8_t* _msgBufPtr = msgPtr->buffer;
 
+    if(!le_pack_UnpackIndefArrayHeader(&_msgBufPtr))
+    {
+        LE_FATAL("Couldn't find inf array header");
+        return;
+    }
     // Have to partially unpack the received message in order to know which thread
     // the queued function should actually go to.
     void* clientContextPtr;
-    if (!le_pack_UnpackReference( &_msgBufPtr, &clientContextPtr ))
+    if (!le_pack_UnpackReference( &_msgBufPtr, &clientContextPtr, NULL ))
     {
         LE_FATAL("Failed to unpack message from server.");
         return;

@@ -32,17 +32,31 @@ extern le_result_t rpcDaemonTest_ProcessClientRequest(rpcProxy_Message_t* proxyM
 // Forward Function Declarations
 //
 //--------------------------------------------------------------------------------------------------
-static le_result_t ProcessConnectServiceRequest(const char*, rpcProxy_ConnectServiceMessage_t*);
+static le_result_t ProcessConnectServiceRequest(void* handle, const char* systemName,
+                                                StreamState_t* streamStatePtr,
+                                                void* proxyMessagePtr);
+static le_result_t ProcessConnectServiceResponse(void* handle, const char* systemName,
+                                                 StreamState_t* streamStatePtr,
+                                                 void* proxyMessagePtr);
+static le_result_t ProcessServerResponse(void* handle, const char* systemName,
+                                         StreamState_t* streamStatePtr,
+                                         void* proxyMessagePtr);
+static le_result_t ProcessClientRequest(void* handle, const char* systemName,
+                                        StreamState_t* streamStatePtr,
+                                        void* proxyMessagePtr);
+static le_result_t ProcessDisconnectService(void* handle, const char* systemName,
+                                            StreamState_t* streamStatePtr,
+                                            void* proxyMessagePtr);
 #ifdef RPC_PROXY_UNIT_TEST
-void ServerMsgRecvHandler(le_msg_MessageRef_t, void*);
+void ServerMsgRecvHandler(le_msg_MessageRef_t msgRef, void* contextPtr);
 #else
-static void ServerMsgRecvHandler(le_msg_MessageRef_t, void*);
+static void ServerMsgRecvHandler(le_msg_MessageRef_t msgRef, void* contextPtr);
 #endif
-static le_result_t DoConnectService(const char*, const uint32_t, const char*);
-static void ProcessServerResponse(const char*, rpcProxy_Message_t*,rpcProxy_MessageMetadata_t*, bool);
-static le_result_t RepackMessage(rpcProxy_Message_t*, rpcProxy_Message_t*, le_msg_SessionRef_t*,
-        rpcProxy_MessageMetadata_t*, bool);
-static le_result_t PreProcessResponse(void*, size_t*, le_msg_SessionRef_t*, rpcProxy_MessageMetadata_t*);
+static le_result_t DoConnectService(const char* serviceName, const uint32_t serviceId,
+                                    const char* protocolId);
+
+static le_result_t PreProcessReceivedHeader(rpcProxy_CommonHeader_t * commonHeaderPtr);
+
 #ifndef RPC_PROXY_LOCAL_SERVICE
 static void SendDisconnectService(const char* systemName,
                                   const char* serviceInstanceName,
@@ -51,47 +65,6 @@ static void SendDisconnectService(const char* systemName,
 static void SendSessionConnectRequest(const char* systemName,
                                       const char* serviceInstanceName,
                                       const char* protocolIdStr);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Maximum number of Response "out" parameters per message.
- */
-//--------------------------------------------------------------------------------------------------
-#define RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM    LE_CONFIG_RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Array of non-variable message field pack sizes, indexed by TagID.
- * NOTE: If the TagID_t definition changes, this will need to be changed to match accordingly.
- */
-//--------------------------------------------------------------------------------------------------
-static const int ItemPackSize[] =
-{
-    [LE_PACK_UINT8]     = LE_PACK_SIZEOF_UINT8,
-    [LE_PACK_UINT16]    = LE_PACK_SIZEOF_UINT16,
-    [LE_PACK_UINT32]    = LE_PACK_SIZEOF_UINT32,
-    [LE_PACK_UINT64]    = LE_PACK_SIZEOF_UINT64,
-    [LE_PACK_INT8]      = LE_PACK_SIZEOF_INT8,
-    [LE_PACK_INT16]     = LE_PACK_SIZEOF_INT16,
-    [LE_PACK_INT32]     = LE_PACK_SIZEOF_INT32,
-    [LE_PACK_INT64]     = LE_PACK_SIZEOF_INT64,
-    [LE_PACK_SIZE]      = LE_PACK_SIZEOF_SIZE,
-    [LE_PACK_BOOL]      = LE_PACK_SIZEOF_BOOL,
-    [LE_PACK_CHAR]      = LE_PACK_SIZEOF_CHAR,
-    [LE_PACK_DOUBLE]    = LE_PACK_SIZEOF_DOUBLE,
-    [LE_PACK_RESULT]    = LE_PACK_SIZEOF_RESULT,
-    [LE_PACK_ONOFF]     = LE_PACK_SIZEOF_ONOFF,
-    [LE_PACK_REFERENCE] = LE_PACK_SIZEOF_REFERENCE,
-    [LE_PACK_STRING_RESPONSE_SIZE] = LE_PACK_SIZEOF_SIZE,
-    [LE_PACK_ARRAY_RESPONSE_SIZE] = LE_PACK_SIZEOF_SIZE,
-    [LE_PACK_CONTEXT_PTR_REFERENCE] = LE_PACK_SIZEOF_REFERENCE,
-    [LE_PACK_ASYNC_HANDLER_REFERENCE] = LE_PACK_SIZEOF_REFERENCE,
-	[LE_PACK_FILESTREAM_ID]   = LE_PACK_SIZEOF_UINT16,
-    [LE_PACK_FILESTREAM_FLAG] = LE_PACK_SIZEOF_UINT16,
-};
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -102,31 +75,35 @@ static const NetworkMessageReceiveState_t NetworkMessageNextRecvState[] =
 {
     [NETWORK_MSG_IDLE]                         = NETWORK_MSG_PARTIAL_HEADER,
     [NETWORK_MSG_PARTIAL_HEADER]               = NETWORK_MSG_HEADER,
-    [NETWORK_MSG_HEADER]                       = NETWORK_MSG_PARTIAL_MESSAGE,
-    [NETWORK_MSG_PARTIAL_MESSAGE]              = NETWORK_MSG_MESSAGE,
-    [NETWORK_MSG_MESSAGE]                      = NETWORK_MSG_PARTIAL_VARIABLE_LEN_MESSAGE,
-    [NETWORK_MSG_PARTIAL_VARIABLE_LEN_MESSAGE] = NETWORK_MSG_DONE,
+    [NETWORK_MSG_HEADER]                       = NETWORK_MSG_STREAM,
+    // Note: Transition from STREAM state to DONE is handled by a secondary state machine that is
+    // called from within process functions.
+    [NETWORK_MSG_STREAM]                       = NETWORK_MSG_STREAM,
     [NETWORK_MSG_DONE]                         = NETWORK_MSG_IDLE,
 };
 
-
-#ifdef RPC_PROXY_LOCAL_SERVICE
 //--------------------------------------------------------------------------------------------------
 /**
- * Structure of response pointers provided by the client.
+ * Process functions for different message types:
+ *
+ * These functions are used in the NETWORK_MSG_STREAM state to receive and process a message body
+ * after the header is received
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct responseParameterArray
-{
-#if UINTPTR_MAX == UINT32_MAX
-    uint32_t pointer[RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM];
-#elif UINTPTR_MAX == UINT64_MAX
-    uint64_t pointer[RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM];
-#endif
-}
-responseParameterArray_t;
-#endif
+typedef le_result_t (*process_fpt)(void*, const char*, StreamState_t* streamStatePtr, void*);
 
+static const process_fpt NetworkMessageProcessFuncTable[RPC_PROXY_NUM_MESSAGE_TYPES] =
+{
+    [RPC_PROXY_CONNECT_SERVICE_REQUEST]  = ProcessConnectServiceRequest,
+    [RPC_PROXY_CONNECT_SERVICE_RESPONSE] = ProcessConnectServiceResponse,
+    [RPC_PROXY_DISCONNECT_SERVICE]       = ProcessDisconnectService,
+    [RPC_PROXY_CLIENT_REQUEST]           = ProcessClientRequest,
+    [RPC_PROXY_SERVER_RESPONSE]          = ProcessServerResponse,
+    [RPC_PROXY_KEEPALIVE_REQUEST]        = rpcProxyNetwork_ProcessKeepAliveRequest,
+    [RPC_PROXY_KEEPALIVE_RESPONSE]       = rpcProxyNetwork_ProcessKeepAliveResponse,
+    [RPC_PROXY_SERVER_ASYNC_EVENT]       = rpcEventHandler_ProcessEvent,
+    [RPC_PROXY_FILESTREAM_MESSAGE]       = rpcFStream_ProcessFileStreamMessage,
+};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -210,16 +187,6 @@ static le_hashmap_Ref_t ExpiryTimerRefByServiceId = NULL;
 LE_HASHMAP_DEFINE_STATIC(RequestResponseRefHashMap, RPC_PROXY_MSG_REFERENCE_MAX_NUM);
 static le_hashmap_Ref_t RequestResponseRefByProxyId = NULL;
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Hash Map to store Response "out" parameter pointers (value), using the Proxy Message ID (key).
- * Initialized in rpcProxy_COMPONENT_INIT().
- */
-//--------------------------------------------------------------------------------------------------
-LE_HASHMAP_DEFINE_STATIC(ResponseParameterArrayHashMap, RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM);
-static le_hashmap_Ref_t ResponseParameterArrayByProxyId = NULL;
-
 //--------------------------------------------------------------------------------------------------
 /**
  * This pool is used for the Service-Name string, which is used as a key in the
@@ -241,18 +208,6 @@ LE_MEM_DEFINE_STATIC_POOL(ServiceIdPool,
                           RPC_PROXY_SERVICE_BINDINGS_MAX_NUM,
                           sizeof(uint32_t));
 static le_mem_PoolRef_t ServiceIdPoolRef = NULL;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This pool is used to allocate memory for the Proxy Messages.
- * Initialized in rpcProxy_COMPONENT_INIT().
- */
-//--------------------------------------------------------------------------------------------------
-LE_MEM_DEFINE_STATIC_POOL(ProxyMessagePool,
-                          RPC_PROXY_MSG_REFERENCE_MAX_NUM,
-                          sizeof(rpcProxy_Message_t));
-static le_mem_PoolRef_t ProxyMessagesPoolRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -287,49 +242,7 @@ static le_mem_PoolRef_t ProxyClientRequestResponseRecordPoolRef = NULL;
 LE_HASHMAP_DEFINE_STATIC(ServerRefHashMap, RPC_PROXY_SERVICE_BINDINGS_MAX_NUM);
 static le_hashmap_Ref_t ServerRefMapByName = NULL;
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This pool is used to allocate memory for local message pointers to String and Array Parameters.
- * Initialized in rpcProxy_COMPONENT_INIT().
- */
-//--------------------------------------------------------------------------------------------------
-LE_MEM_DEFINE_STATIC_POOL(MessageDataPtrPool,
-                          RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM,
-                          RPC_LOCAL_MAX_MESSAGE);
-static le_mem_PoolRef_t MessageDataPtrPoolRef = NULL;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This pool is used to allocate memory for local message linked list.
- * Initialized in rpcProxy_COMPONENT_INIT().
- */
-//--------------------------------------------------------------------------------------------------
-LE_MEM_DEFINE_STATIC_POOL(LocalMessagePool,
-                          RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM,
-                          sizeof(rpcProxy_LocalMessage_t));
-static le_mem_PoolRef_t LocalMessagePoolRef = NULL;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Doubly linked list to track outstanding local message memory allocation
- */
-//--------------------------------------------------------------------------------------------------
-static le_dls_List_t LocalMessageList = LE_DLS_LIST_INIT;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This pool is used to allocate memory for the Response "out" parameter response array.
- * Initialized in rpcProxy_COMPONENT_INIT().
- */
-//--------------------------------------------------------------------------------------------------
-LE_MEM_DEFINE_STATIC_POOL(ResponseParameterArrayPool,
-                          RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM,
-                          sizeof(responseParameterArray_t));
-static le_mem_PoolRef_t ResponseParameterArrayPoolRef = NULL;
-
 #endif
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -347,7 +260,6 @@ le_msg_ServiceRef_t rpcProxy_GetServiceRefById
     return le_hashmap_Get(ServiceRefMapByID, (void*)(uintptr_t) serviceId);
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * This function gets reference to message using proxy id
@@ -362,6 +274,21 @@ le_msg_MessageRef_t rpcProxy_GetMsgRefById
 )
 {
     return le_hashmap_Get(MsgRefMapByProxyId, (void*)(uintptr_t) proxyId);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  This function gets reference an ipc session using service ID
+ *  @return
+ *      reference to ipc session
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_SessionRef_t rpcProxy_GetSessionRefById
+(
+    uint32_t serviceId  ///< [IN] Service ID
+)
+{
+    return le_hashmap_Get(SessionRefMapByID, (void*)(uintptr_t) serviceId);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -402,8 +329,6 @@ const char* rpcProxy_GetSystemNameByServiceId
     // Get system name by service name
     return rpcProxyConfig_GetSystemNameByServiceName(serviceName);
 }
-
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -468,6 +393,10 @@ static inline char* DisplayMessageType
             return "Server-Event";
             break;
 
+        case RPC_PROXY_FILESTREAM_MESSAGE:
+            return "File-Stream";
+            break;
+
         default:
             return "Unknown";
             break;
@@ -477,6 +406,7 @@ static inline char* DisplayMessageType
 //--------------------------------------------------------------------------------------------------
 /**
  * Generic function for generating Server-Response Error Messages
+ * TODO: Error handling LE-15100
  */
 //--------------------------------------------------------------------------------------------------
 static void GenerateServerResponseErrorMessage
@@ -485,234 +415,94 @@ static void GenerateServerResponseErrorMessage
     le_result_t resultCode
 )
 {
-    //
-    // Generate a Server-Response Error Message
-    //
-
-    // First field in message is the Msg ID (uint32_t)
-    // Skip forward four bytes
-    // Set pointer to buffer field in the message
-    uint8_t* msgBufPtr = &proxyMessagePtr->message[LE_PACK_SIZEOF_UINT32];
-
-    // Pack a result-code into the Proxy Message
-    LE_ASSERT(le_pack_PackResult(&msgBufPtr, resultCode));
-
+    LE_UNUSED(resultCode);
     // Set Proxy Message size and type
-    proxyMessagePtr->msgSize = (msgBufPtr - &proxyMessagePtr->message[0]);
     proxyMessagePtr->commonHeader.type = RPC_PROXY_SERVER_RESPONSE;
 }
 
-#ifdef RPC_PROXY_LOCAL_SERVICE
+
 //--------------------------------------------------------------------------------------------------
 /**
- * Function for Cleaning-up Local Message Memory Pool resources that have been allocated
- * in order to facilitate string and array memory optimizations
+ * timer expiery handler for client request message
  */
 //--------------------------------------------------------------------------------------------------
-static void CleanUpLocalMessageResources
+void rpcProxy_ClientRequestTimerExpiryHandler
 (
-    uint32_t proxyMsgId
+    le_timer_Ref_t timerRef    ///< This timer has expired
 )
 {
-    //
-    // Clean-up local message memory allocation associated with this Proxy message ID
-    //
-    le_dls_Link_t* linkPtr = le_dls_Peek(&LocalMessageList);
+    uint32_t proxyMsgId = (uint32_t) le_timer_GetContextPtr(timerRef);
 
-    while (linkPtr != NULL)
+    LE_WARN("Client-Request has timed out, proxy id [%" PRIu32 "];", proxyMsgId);
+
+    // Retrieve Message Reference from hash map, using the Proxy Message Id
+    le_msg_MessageRef_t msgRef = le_hashmap_Get(MsgRefMapByProxyId,
+                                                (void*)(uintptr_t) proxyMsgId);
+
+    if (msgRef == NULL)
     {
-        rpcProxy_LocalMessage_t* localMessagePtr = CONTAINER_OF(linkPtr, rpcProxy_LocalMessage_t, link);
-
-        // Move the linkPtr to the next node in the list now, in case we have to remove
-        // the node it currently points to.
-        linkPtr = le_dls_PeekNext(&LocalMessageList, linkPtr);
-
-        // Verify if this is associated with our Proxy Message
-        if (localMessagePtr->id == proxyMsgId)
-        {
-            LE_DEBUG("Cleaning up local-message resources, proxy id [%" PRIu32 "]", proxyMsgId);
-
-            // Remove entry from linked list
-            le_dls_Remove(&LocalMessageList, &(localMessagePtr->link));
-
-            // Free memory allocated for the data pointer
-            le_mem_Release(localMessagePtr->dataPtr);
-
-            // Free memory allocated for this Local Message memory
-            le_mem_Release(localMessagePtr);
-        }
+        LE_ERROR("Unable to retrieve Message Reference for timedout proxy message,"
+                "proxy id [%" PRIu32 "]", proxyMsgId);
+    }
+    else
+    {
+        le_msg_CloseSession(le_msg_GetSession(msgRef));
     }
 
-    //
-    // Clean-up the Response "out" parameter hashmap
-    //
-
-    // Retrieve the Response out" parameter hashmap entry
-    responseParameterArray_t* arrayPtr =
-        le_hashmap_Get(ResponseParameterArrayByProxyId, (void*) proxyMsgId);
-
-    if (arrayPtr != NULL)
-    {
-        LE_DEBUG("Releasing response parameter array, proxy id [%" PRIu32 "]", proxyMsgId);
-
-        // Free memory allocate for the Response "out" parameter array
-        le_mem_Release(arrayPtr);
-
-        // Delete Response "out" parameter hashmap entry
-        le_hashmap_Remove(ResponseParameterArrayByProxyId, (void*) proxyMsgId);
-    }
+    // Remove entries from hash-map
+    le_hashmap_Remove(MsgRefMapByProxyId, (void*)(uintptr_t) proxyMsgId);
+    le_hashmap_Remove(ExpiryTimerRefByProxyId, (void*)(uintptr_t) proxyMsgId);
+    le_timer_Delete(timerRef);
+    timerRef = NULL;
 }
-#endif
-
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler function for Generic Expired Proxy Message Timers
  */
 //--------------------------------------------------------------------------------------------------
-void rpcProxy_ProxyMessageTimerExpiryHandler
+void rpcProxy_ConnectServiceTimerExpiryHandler
 (
     le_timer_Ref_t timerRef    ///< This timer has expired
 )
 {
-    rpcProxy_CommonHeader_t* commonHeaderPtr = NULL;
+    // Retrieve the Connect-Service-Request message from the timer context
+    rpcProxy_ConnectServiceMessage_t* proxyMessagePtr =
+        (rpcProxy_ConnectServiceMessage_t*) le_timer_GetContextPtr(timerRef);
 
-    // Retrieve ContextPtr data (Proxy Message Common Header copy)
-    commonHeaderPtr = (rpcProxy_CommonHeader_t*) le_timer_GetContextPtr(timerRef);
-
-    if (commonHeaderPtr == NULL)
+    if (proxyMessagePtr == NULL)
     {
-        LE_ERROR("Error extracting copy of Proxy Message from timer record");
-        return;
+        LE_ERROR("Unable to retrieve copy of the "
+                 "Proxy Connect-Service Message Reference");
     }
-
-    // Switch on the Message Type
-    switch (commonHeaderPtr->type)
+    else
     {
-        case RPC_PROXY_KEEPALIVE_REQUEST:
+        LE_WARN("%s timer expired; Re-trigger "
+                "connect-service request '%s', service-id [%" PRIu32 "]",
+                DisplayMessageType(proxyMessagePtr->commonHeader.type),
+                proxyMessagePtr->serviceName,
+                proxyMessagePtr->commonHeader.serviceId);
+
+        // Re-trigger connect-service-request to the remote system
+        le_result_t result =
+            rpcProxy_SendMsg(proxyMessagePtr->systemName, proxyMessagePtr);
+
+        if (result == LE_OK)
         {
-            rpcProxy_KeepAliveMessage_t* proxyMessageCopyPtr =
-                (rpcProxy_KeepAliveMessage_t*) le_timer_GetContextPtr(timerRef);
-
-            if (proxyMessageCopyPtr != NULL)
-            {
-                LE_INFO("KEEPALIVE-Request timer expired; "
-                        "Declare the network down, system [%s]",
-                        proxyMessageCopyPtr->systemName);
-
-                // Delete the Network Communication Channel
-                rpcProxyNetwork_DeleteNetworkCommunicationChannel(
-                    proxyMessageCopyPtr->systemName);
-            }
-            else
-            {
-                LE_ERROR("Unable to retrieve copy of the "
-                         "Proxy Keep-Alive Message Reference");
-            }
-
-            // Timer Reference deleted as a part of the
-            // Network Communication Channel deletion - Skip to exit.
-            goto exit;
+            // Re-start the timer
+            le_timer_Start(timerRef);
+            goto end;
         }
-
-        case RPC_PROXY_CONNECT_SERVICE_REQUEST:
+        else
         {
-            // Retrieve the Connect-Service-Request message from the timer context
-            rpcProxy_ConnectServiceMessage_t* proxyMessagePtr =
-                (rpcProxy_ConnectServiceMessage_t*) le_timer_GetContextPtr(timerRef);
-
-            if (proxyMessagePtr == NULL)
-            {
-                LE_ERROR("Unable to retrieve copy of the "
-                         "Proxy Connect-Service Message Reference");
-            }
-
-            LE_INFO("%s timer expired; Re-trigger "
-                    "connect-service request '%s', service-id [%" PRIu32 "]",
-                    DisplayMessageType(proxyMessagePtr->commonHeader.type),
-                    proxyMessagePtr->serviceName,
-                    proxyMessagePtr->commonHeader.serviceId);
-
-            // Re-trigger connect-service-request to the remote system
-            le_result_t result =
-                rpcProxy_SendMsg(proxyMessagePtr->systemName, proxyMessagePtr, NULL);
-
-            if (result == LE_OK)
-            {
-                // Re-start the timer
-                le_timer_Start(timerRef);
-                goto exit;
-            }
-            else
-            {
-                LE_ERROR("le_comm_Send failed, result %d", result);
-            }
-            break;
-        }
-
-        case RPC_PROXY_CLIENT_REQUEST:
-        {
-            rpcProxy_Message_t* proxyMessagePtr =
-                (rpcProxy_Message_t*) le_timer_GetContextPtr(timerRef);
-
-            if (proxyMessagePtr != NULL)
-            {
-                LE_INFO("Client-Request has timed out, "
-                        "service-id [%" PRIu32 "], proxy id [%" PRIu32 "]; "
-                        "check if client-response needs to be generated",
-                        proxyMessagePtr->commonHeader.serviceId,
-                        proxyMessagePtr->commonHeader.id);
-
-                // Retrieve Message Reference from hash map, using the Proxy Message Id
-                le_msg_MessageRef_t msgRef =
-                    le_hashmap_Get(MsgRefMapByProxyId,
-                                   (void*)(uintptr_t) proxyMessagePtr->commonHeader.id);
-
-                if (msgRef == NULL)
-                {
-                    LE_INFO("Unable to retrieve Message Reference, proxy id [%" PRIu32 "] - "
-                            "do not generate response message",
-                            proxyMessagePtr->commonHeader.id);
-                }
-                else
-                {
-                    // Generate LE_TIMEOUT Server-Response
-                    GenerateServerResponseErrorMessage(
-                        proxyMessagePtr,
-                        LE_TIMEOUT);
-
-                    // Trigger a response back to the client
-                    ProcessServerResponse(NULL, proxyMessagePtr, NULL, true);
-                }
-
-                // Remove entry from hash-map
-                le_hashmap_Remove(
-                    ExpiryTimerRefByProxyId,
-                    (void*)(uintptr_t) proxyMessagePtr->commonHeader.id);
-
-                // Free Proxy Message Copy Memory
-                le_mem_Release(proxyMessagePtr);
-                proxyMessagePtr = NULL;
-            }
-            else
-            {
-                LE_ERROR("Unable to retrieve copy of the Proxy Message Reference");
-            }
-            break;
-        }
-
-        default:
-        {
-            LE_ERROR("Unexpected Proxy Message, type [0x%x]", commonHeaderPtr->type);
-            break;
+            LE_ERROR("le_comm_Send failed, result %d", result);
         }
     }
-
     // Delete Timer
     le_timer_Delete(timerRef);
     timerRef = NULL;
 
-exit:
+end:
     return;
 }
 
@@ -762,34 +552,17 @@ uint32_t rpcProxy_GenerateProxyMessageId
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Allocate new rpcProxy message
- */
-//--------------------------------------------------------------------------------------------------
-rpcProxy_Message_t* rpcProxy_AllocateNewMessage
-(
-    void
-)
-{
-    return le_mem_Alloc(ProxyMessagesPoolRef);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Function for sending Proxy Messages to the far side via the le_comm API
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t rpcProxy_SendMsg
 (
     const char* systemName, ///< [IN] Name of the system message is being sent to
-    void* messagePtr, ///< [IN] Void pointer to the message buffer
-    rpcProxy_MessageMetadata_t *metaDataPtr ///< [IN] metadata of proxy message
+    void* messagePtr ///< [IN] Void pointer to the message buffer
 )
 {
     le_result_t         result;
     size_t              byteCount;
-    rpcProxy_Message_t  tmpProxyMessage;
-    rpcProxy_Message_t *proxyMessagePtr;
     void               *sendMessagePtr;
 
     // Retrieve the Network Record for this system
@@ -860,85 +633,19 @@ le_result_t rpcProxy_SendMsg
             break;
         }
         case RPC_PROXY_FILESTREAM_MESSAGE:
-        {
-            // Set a Proxy Message pointer to the message
-            proxyMessagePtr =
-                (rpcProxy_Message_t*) messagePtr;
-
-            result = rpcFStream_RepackMessage(proxyMessagePtr, &tmpProxyMessage, metaDataPtr, true);
-            if (result != LE_OK)
-            {
-                return result;
-            }
-            // proxy message (header + message)
-            byteCount = RPC_PROXY_MSG_HEADER_SIZE + tmpProxyMessage.msgSize;
-
-            // Prepare the Proxy Message Common Header
-            commonHeaderPtr->id = htobe32(commonHeaderPtr->id);
-            commonHeaderPtr->serviceId = htobe32(commonHeaderPtr->serviceId);
-
-            // Set the Message Id, Service Id, and type
-            tmpProxyMessage.commonHeader.id = commonHeaderPtr->id;
-            tmpProxyMessage.commonHeader.serviceId = commonHeaderPtr->serviceId;
-            tmpProxyMessage.commonHeader.type =
-                proxyMessagePtr->commonHeader.type;
-
-            // Put msgSize into Network-Order before sending
-            tmpProxyMessage.msgSize = htobe16(tmpProxyMessage.msgSize);
-            // Set send pointer to the message pointer
-            sendMessagePtr = &tmpProxyMessage;
-            break;
-        }
         case RPC_PROXY_CLIENT_REQUEST:
         case RPC_PROXY_SERVER_RESPONSE:
         case RPC_PROXY_SERVER_ASYNC_EVENT:
         {
-            // Set a Proxy Message pointer to the message
-            proxyMessagePtr =
-                (rpcProxy_Message_t*) messagePtr;
-
-#if RPC_PROXY_HEX_DUMP
-            LE_INFO("send:%s before repack, size: %d", DisplayMessageType(commonHeaderPtr->type),
-                    proxyMessagePtr->msgSize);
-            LE_LOG_DUMP(LE_LOG_INFO, proxyMessagePtr->message, proxyMessagePtr->msgSize);
-#endif
-
-            // Re-package proxy message before sending
-            result = RepackMessage(proxyMessagePtr, &tmpProxyMessage, NULL, metaDataPtr, true);
-            if (result != LE_OK)
-            {
-                return result;
-            }
-
-#if RPC_PROXY_HEX_DUMP
-            LE_INFO("send:%s after repack, size: %d", DisplayMessageType(commonHeaderPtr->type),
-                    tmpProxyMessage.msgSize);
-            LE_LOG_DUMP(LE_LOG_INFO, tmpProxyMessage.message, tmpProxyMessage.msgSize);
-#endif
-
-            // Calculate the total size of the repacked
-            // proxy message (header + message)
-            byteCount = RPC_PROXY_MSG_HEADER_SIZE + tmpProxyMessage.msgSize;
-
-            //
-            // Prepare the Proxy Common Message Header of the tmpProxyMessage
-            //
+            // For these messages, the header and body are sent out separately.
+            byteCount = RPC_PROXY_COMMON_HEADER_SIZE;
 
             // Prepare the Proxy Message Common Header
             commonHeaderPtr->id = htobe32(commonHeaderPtr->id);
             commonHeaderPtr->serviceId = htobe32(commonHeaderPtr->serviceId);
 
-            // Set the Message Id, Service Id, and type
-            tmpProxyMessage.commonHeader.id = commonHeaderPtr->id;
-            tmpProxyMessage.commonHeader.serviceId = commonHeaderPtr->serviceId;
-            tmpProxyMessage.commonHeader.type =
-                proxyMessagePtr->commonHeader.type;
-
-            // Put msgSize into Network-Order before sending
-            tmpProxyMessage.msgSize = htobe16(tmpProxyMessage.msgSize);
-
-            // Set send pointer to the tmpProxyMessage
-            sendMessagePtr = &tmpProxyMessage;
+            // Set send pointer
+            sendMessagePtr = messagePtr;
             break;
         }
 
@@ -969,6 +676,12 @@ le_result_t rpcProxy_SendMsg
     commonHeaderPtr->id = be32toh(commonHeaderPtr->id);
     commonHeaderPtr->serviceId = be32toh(commonHeaderPtr->serviceId);
 
+    if (result == LE_OK && IsVariableLengthType(commonHeaderPtr->type))
+    {
+        //now send the message body for variable length messages:
+        result = rpcProxy_SendVariableLengthMsgBody(networkRecordPtr->handle, messagePtr);
+    }
+
     return result;
 }
 
@@ -991,1332 +704,203 @@ static void AdvanceRecvMsgState
  * Function for receiving Proxy Messages from the far side via the le_comm API
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t RecvMsg
+static le_result_t RecvRpcMsg
 (
     void* handle, ///< [IN] Opaque handle to the le_comm communication channel
-    NetworkMessageState_t* msgStatePtr, ///< [IN] Pointer to the Message State-Machine data
-    size_t* bufferSizePtr, ///< [IN] Pointer to the size of the buffer
-    le_msg_SessionRef_t* sessionRefPtr, //< [OUT] Pointer to client's session reference
-	rpcProxy_MessageMetadata_t *metaDataPtr///< [OUT] metadata of proxy message
+    const char* systemName, ///< [IN] Name of the system that sent the message
+    NetworkMessageState_t* msgStatePtr ///< [IN] Pointer to the Message State-Machine data
 )
 {
     le_result_t  result;
-    bool done = false;
-
     //
-    // Message Re-assembly State Machine
+    // Message Receive State Machine, loop is exited once there is no more data to be received.
     //
-    while (!done)
+    while (true)
     {
         if (msgStatePtr->recvState == NETWORK_MSG_IDLE) // IDLE State
         {
             // Read the entire Common Header, if available
-            msgStatePtr->expectedSize = RPC_PROXY_COMMON_MSG_HEADER_SIZE;
+            msgStatePtr->expectedSize = RPC_PROXY_COMMON_HEADER_SIZE;
             msgStatePtr->recvSize = 0;
             msgStatePtr->offSet = 0;
             msgStatePtr->type = 0;
         }
+        else if (msgStatePtr->recvState == NETWORK_MSG_PARTIAL_HEADER) // Partial HEADER State
+        {
+            // Calculate the amount of data to be read (expected minus recv)
+            size_t remainingData = (msgStatePtr->expectedSize - msgStatePtr->recvSize);
+            size_t receivedSize = remainingData;
+
+            result = le_comm_Receive(handle,
+                                     msgStatePtr->buffer + msgStatePtr->offSet, &receivedSize);
+            if (result != LE_OK || receivedSize > remainingData)
+            {
+                return LE_COMM_ERROR;
+            }
+            // Adjust offSet to reflect data read into buffer
+            msgStatePtr->offSet += receivedSize;
+            if (receivedSize < remainingData)
+            {
+                // Partial header received (Incomplete RPC Message)
+                // Cache the amount of data that has been received
+                msgStatePtr->recvSize += receivedSize;
+                // Return and wait until more data arrives
+                return LE_OK;
+            }
+        }
         else if (msgStatePtr->recvState == NETWORK_MSG_HEADER) // HEADER State
         {
-            // Identify the Message type and size,
-            // using the Header
-
             // Set a pointer to the common message header
             rpcProxy_CommonHeader_t *commonHeaderPtr =
                 (rpcProxy_CommonHeader_t*) msgStatePtr->buffer;
 
-            switch(commonHeaderPtr->type)
+#if RPC_PROXY_HEX_DUMP
+            LE_INFO("RPC Proxy received this header from: %s", systemName);
+            LE_LOG_DUMP(LE_LOG_INFO, (const unsigned char*)commonHeaderPtr,
+                        RPC_PROXY_COMMON_HEADER_SIZE);
+#endif
+            if (PreProcessReceivedHeader(commonHeaderPtr) == LE_OK)
             {
-                case RPC_PROXY_CONNECT_SERVICE_REQUEST:
-                case RPC_PROXY_CONNECT_SERVICE_RESPONSE:
-                case RPC_PROXY_DISCONNECT_SERVICE:
-                    msgStatePtr->expectedSize =
-                        RPC_PROXY_CONNECT_SERVICE_MSG_SIZE;
-                    break;
-
-                case RPC_PROXY_CLIENT_REQUEST:
-                case RPC_PROXY_SERVER_RESPONSE:
-                case RPC_PROXY_SERVER_ASYNC_EVENT:
-				case RPC_PROXY_FILESTREAM_MESSAGE:
-                    msgStatePtr->expectedSize =
-                        LE_PACK_SIZEOF_UINT16;
-                    break;
-
-                case RPC_PROXY_KEEPALIVE_REQUEST:
-                case RPC_PROXY_KEEPALIVE_RESPONSE:
-                    msgStatePtr->expectedSize =
-                        RPC_PROXY_KEEPALIVE_MSG_SIZE;
-                    break;
-
-                default:
-                    LE_ERROR("Unexpected Proxy Message, type [0x%x]",
-                             commonHeaderPtr->type);
+                msgStatePtr->type = commonHeaderPtr->type;
+                LE_DEBUG("Initializing stream state to receive a %s message from %s",
+                        DisplayMessageType(commonHeaderPtr->type), systemName);
+                void* messageBuffer = msgStatePtr->buffer;
+                if (rpcProxy_InitializeStreamState(&(msgStatePtr->streamState),
+                                                   messageBuffer) != LE_OK)
+                {
+                    LE_ERROR("Failed to initialize stream state to receive a %s message from %s",
+                            DisplayMessageType(commonHeaderPtr->type), systemName);
                     return LE_COMM_ERROR;
-                    break;
-            }
-            msgStatePtr->recvSize = 0;
-            msgStatePtr->type = commonHeaderPtr->type;
-        }
-        else if (msgStatePtr->recvState == NETWORK_MSG_MESSAGE) // MESSAGE State
-        {
-            if(IsVariableLengthType(msgStatePtr->type))
-            {
-                //
-                // Variable-length Message types
-                //
-                uint16_t msgSize = 0;
-                memcpy(&msgSize,
-                       msgStatePtr->buffer + msgStatePtr->offSet - sizeof(msgSize),
-                       sizeof(msgSize));
-
-                msgStatePtr->expectedSize = be16toh(msgSize);
-                msgStatePtr->recvSize = 0;
-
-                LE_DEBUG("MsgSize = [%" PRIu16 "]",
-                         msgStatePtr->expectedSize);
+                }
             }
             else
             {
-                msgStatePtr->recvState = NETWORK_MSG_DONE;
-                continue;
+                LE_ERROR("Failed to process rpc message header received from %s", systemName);
+                return LE_COMM_ERROR;
             }
         }
-        else if (msgStatePtr->recvState == NETWORK_MSG_DONE) // DONE State
+        else if (msgStatePtr->recvState == NETWORK_MSG_STREAM)
         {
-            // Set the buffer size using the offSet
-            *bufferSizePtr = msgStatePtr->offSet;
-
-            LE_DEBUG("Done: Received %" PRIuS " bytes", *bufferSizePtr);
-
-            // Set done to TRUE
-            done = true;
-
-            // Reset Message State-Machine
-            msgStatePtr->recvState = NETWORK_MSG_IDLE;
-            continue;
+            // call the appropriate process function.
+            StreamState_t* streamStatePtr = &(msgStatePtr->streamState);
+            void* messageBuffer = msgStatePtr->buffer;
+            if (NetworkMessageProcessFuncTable[msgStatePtr->type](handle, systemName, streamStatePtr,
+                    messageBuffer) != LE_OK)
+            {
+                LE_ERROR("Error happened when processing a proxy message from %s", systemName);
+                return LE_COMM_ERROR;
+            }
+            break;
         }
-
-        // Calculate the amount of data to be read (expected minus recv)
-        size_t remainingData = (msgStatePtr->expectedSize - msgStatePtr->recvSize);
-
-        // Set the buffer size to the remainder
-        *bufferSizePtr = remainingData;
-        LE_DEBUG("Looking for %" PRIuS " bytes", *bufferSizePtr);
-
-        // Read the Message buffer
-        result = le_comm_Receive(
-                     handle,
-                     msgStatePtr->buffer + msgStatePtr->offSet,
-                     bufferSizePtr);
-
-        if (result != LE_OK)
-        {
-            return result;
-        }
-
-        // Check the size of the data returned
-        if (*bufferSizePtr > remainingData)
-        {
-            return LE_OVERFLOW;
-        }
-
-        if ((msgStatePtr->recvState == NETWORK_MSG_IDLE) ||  // IDLE State
-            (msgStatePtr->recvState == NETWORK_MSG_HEADER) ||  // HEADER State
-            (msgStatePtr->recvState == NETWORK_MSG_MESSAGE))    // MESSAGE State
-        {
-            // Increment the state to a PARTIAL State
-            AdvanceRecvMsgState(msgStatePtr);
-        }
-
-        // Adjust offSet to reflect data read into buffer
-        msgStatePtr->offSet += *bufferSizePtr;
-
-        LE_DEBUG("Received [%i] bytes", *bufferSizePtr);
-        LE_DEBUG("expecting [%i]", msgStatePtr->expectedSize);
-        LE_DEBUG("total read [%i]", msgStatePtr->offSet);
-
-        if (*bufferSizePtr < remainingData)
-        {
-            // Partial data received (Incomplete RPC Message)
-
-            // Cache the amount of data that has been received
-            msgStatePtr->recvSize += *bufferSizePtr;
-
-            // Set the bufferSize to zero
-            *bufferSizePtr = 0;
-
-            // Return and wait until more data arrives
-            return LE_OK;
-        }
-
         // Increment recv state to the next COMPLETE State
         AdvanceRecvMsgState(msgStatePtr);
-
     } // While-loop
-
-    // Pre-process the buffer before processing the message payload
-    result = PreProcessResponse(msgStatePtr->buffer, bufferSizePtr, sessionRefPtr, metaDataPtr);
-    return result;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Function to copy all un-copied content up from the Message Buffer into the new Messagge Buffer
- */
-//--------------------------------------------------------------------------------------------------
-void rpcProxy_RepackCopyContents
-(
-    /// [IN]Pointer to current position in the Message Buffer pointer
-    uint8_t** msgBufPtr,
-    /// [IN] Pointer to the previous position in the Message Buffer pointer
-    uint8_t** previousMsgBufPtr,
-    /// [IN] Pointer to the current position in the New Message Buffer pointer
-    uint8_t** newMsgBufPtr
-)
-{
-    // Calculate the number of bytes to be copied
-    uint16_t byteCount = (*msgBufPtr - *previousMsgBufPtr);
-
-    // Copy the contents before further processing
-    memcpy(*newMsgBufPtr, *previousMsgBufPtr, byteCount);
-    *newMsgBufPtr += byteCount;
-    *previousMsgBufPtr = *msgBufPtr;
-}
-
-
-#ifdef RPC_PROXY_LOCAL_SERVICE
-//--------------------------------------------------------------------------------------------------
-/**
- * Function to retrieve a response memory buffer.
- * Helper function for facilitating rolling-up un-optimized data that is received over the wire.
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t RepackRetrieveResponsePointer
-(
-    /// [IN] Pointer to the Proxy Message
-    rpcProxy_Message_t *proxyMessagePtr,
-    /// [IN] Pointer to the slot-index in the response buffer array
-    uint8_t* slotIndexPtr,
-    /// [IN] Pointer to the response buffer pointer
-    uint8_t** responsePtr
-)
-{
-    // Retrieve existing array pointer, if it exists
-    responseParameterArray_t* arrayPtr =
-        le_hashmap_Get(ResponseParameterArrayByProxyId,
-                       (void*)(uintptr_t) proxyMessagePtr->commonHeader.id);
-
-    if (arrayPtr == NULL)
-    {
-        // Unable to find response parameter array - Not expected
-        LE_ERROR("Pointer to response array is NULL, service-id [%" PRIu32 "], "
-                 "proxy id [%" PRIu32 "]; Dropping packet",
-                 proxyMessagePtr->commonHeader.serviceId,
-                 proxyMessagePtr->commonHeader.id);
-
-        return LE_BAD_PARAMETER;
-    }
-
-    if (*slotIndexPtr == RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM)
-    {
-        LE_ERROR("Response array overflow error - out of array elements");
-        return LE_OVERFLOW;
-    }
-
-    *responsePtr = (uint8_t*) arrayPtr->pointer[*slotIndexPtr];
-    if (*responsePtr == NULL)
-    {
-        // Unable to find response parameter array - Not expected
-        LE_ERROR("Response Pointer is NULL, service-id [%" PRIu32 "], "
-                 "proxy id [%" PRIu32 "]; Dropping packet",
-                 proxyMessagePtr->commonHeader.serviceId,
-                 proxyMessagePtr->commonHeader.id);
-
-        return LE_BAD_PARAMETER;
-    }
-
-    LE_DEBUG("Retrieving response pointer, proxy id [%" PRIu32 "], "
-             "slot id [%" PRIu8 "], pointer [%" PRIuS "]",
-             proxyMessagePtr->commonHeader.id,
-             *slotIndexPtr,
-             (size_t) arrayPtr->pointer[*slotIndexPtr]);
-
-    // Increment the slotIndex
-    *slotIndexPtr = *slotIndexPtr + 1;
 
     return LE_OK;
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
- * Function for allocating a response memory buffer.
- * Helper function for facilitating rolling-up un-optimized data that is received over the wire.
+ * Function for pre-processing the Proxy Message header before receiving the message payload
+ *
+ *  @return:
+ *      - LE_OK if header was successfully processed.
+ *      - LE_FAULT if header format or content was not expected.
  */
 //--------------------------------------------------------------------------------------------------
-static void RepackAllocateResponseMemory
+static le_result_t PreProcessReceivedHeader
 (
-    rpcProxy_Message_t *proxyMessagePtr, ///< [IN] Pointer to the Proxy Message
-    TagID_t tagId, ///< [IN] Tag ID being processed
-    size_t size, ///< [IN] Size for the response buffer
-    uint8_t** responsePtr ///< [IN] Pointer to the response pointer
+    rpcProxy_CommonHeader_t *commonHeaderPtr
 )
 {
-    // Allocate a local message memory tracker record
-    rpcProxy_LocalMessage_t* localMessagePtr = le_mem_Alloc(LocalMessagePoolRef);
-
-    // Allocate memory to hold the data
-    localMessagePtr->dataPtr = le_mem_AssertVarAlloc(MessageDataPtrPoolRef, size + 1);
-    memset(localMessagePtr->dataPtr, 0, size + 1);
-
-    // Set the Proxy Message Id this belongs to
-    localMessagePtr->id = proxyMessagePtr->commonHeader.id;
-
-    // Set the Tag ID
-    localMessagePtr->tagId = tagId;
-
-    // Initialize the link
-    localMessagePtr->link = LE_DLS_LINK_INIT;
-
-    // Enqueue this in the Local Message List
-    le_dls_Queue(&LocalMessageList, &(localMessagePtr->link));
-
-    *responsePtr = localMessagePtr->dataPtr;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Function for Rolling-up un-optimized data.  It copies the data from the Message Buffer into
- * the response memory after being received over the wire.
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t RepackUnOptimizedData
-(
-    /// [IN] Pointer to current position in the Message Buffer pointer
-    uint8_t** msgBufPtr,
-    /// [IN] Pointer to the previous position in the Message Buffer pointer
-    uint8_t** previousMsgBufPtr,
-    /// [IN] Pointer to the current position in the New Message Buffer pointer
-    uint8_t** newMsgBufPtr,
-    /// [IN] Pointer to the original Proxy Message
-    rpcProxy_Message_t *proxyMessagePtr,
-    /// [IN] Current tag ID
-    TagID_t tagId,
-    /// [IN] Pointer to the slot-index in the response buffer array
-    uint8_t* slotIndexPtr
-)
-{
-    le_result_t result = LE_OK;
-
-    // Copy the contents up to this tag into the new message buffer
-    rpcProxy_RepackCopyContents(msgBufPtr, previousMsgBufPtr, newMsgBufPtr);
-
-    if (proxyMessagePtr->commonHeader.type == RPC_PROXY_SERVER_RESPONSE)
+    if (commonHeaderPtr->type > 0 && commonHeaderPtr->type < RPC_PROXY_NUM_MESSAGE_TYPES)
     {
-        uint32_t value = 0;
-
-        // Unpack the string size
-        LE_ASSERT(le_pack_UnpackUint32(msgBufPtr, &value));
-
-        LE_DEBUG("Received string [%s], size [%" PRIu32 "]",
-                 (const char* ) *msgBufPtr,
-                 value);
-
-        // Verify validity of the string size
-        if (((*msgBufPtr + value) - &proxyMessagePtr->message[0]) >=
-              RPC_PROXY_MAX_MESSAGE)
-        {
-            // Insufficient space to store the array data
-            // Drop entire dataset
-            LE_ERROR("Format Error - Insufficient space "
-                     "to store String data, "
-                     "proxy id [%" PRIu32 "], tagId [%d]",
-                     proxyMessagePtr->commonHeader.id,
-                     tagId);
-
-            return LE_FORMAT_ERROR;
-        }
-
-        // Retrieve the response pointer
-        uint8_t* responsePtr;
-        result = RepackRetrieveResponsePointer(
-                    proxyMessagePtr,
-                    slotIndexPtr,
-                    &responsePtr);
-
-        if (result != LE_OK)
-        {
-            return result;
-        }
-
-        // Copy data from Proxy Message into local response buffer
-        memcpy(responsePtr, *msgBufPtr, value);
-        responsePtr[value] = 0;
-
-        // Increment msgBufPtr by "newValue"
-        *msgBufPtr = *msgBufPtr + value;
+        commonHeaderPtr->id = be32toh(commonHeaderPtr->id);
+        commonHeaderPtr->serviceId = be32toh(commonHeaderPtr->serviceId);
+        return LE_OK;
     }
     else
     {
-        size_t value;
-
-        // Retrieve data size from the Proxy Message
-        LE_ASSERT(le_pack_UnpackSize(msgBufPtr, &value));
-
-        // Verify validity of the pointer data size
-        if (((*msgBufPtr + value) - &proxyMessagePtr->message[0]) >=
-                RPC_PROXY_MAX_MESSAGE)
-        {
-            // Insufficient space to store the pointer data
-            LE_ERROR("Format Error - Insufficient space "
-                     "to store Pointer data, "
-                     "proxy id [%" PRIu32 "], tagId [%d]",
-                     proxyMessagePtr->commonHeader.id,
-                     tagId);
-
-            return LE_FORMAT_ERROR;
-        }
-
-        // Allocate the "in" parameter memory
-        uint8_t* responsePtr;
-        RepackAllocateResponseMemory(proxyMessagePtr, tagId, value, &responsePtr);
-
-        if ((tagId != LE_PACK_STRING_RESPONSE_SIZE) &&
-            (tagId != LE_PACK_ARRAY_RESPONSE_SIZE))
-        {
-            // Copy data from Proxy Message into local buffer
-            memcpy(responsePtr, *msgBufPtr, value);
-
-            LE_DEBUG("String = %s", responsePtr);
-
-            // Increment msgBufPtr by "newValue"
-            *msgBufPtr = *msgBufPtr + value;
-        }
-
-        // Pack memory pointer
-#if UINTPTR_MAX == UINT32_MAX
-        // Set pointer to data in new message buffer
-        LE_ASSERT(le_pack_PackTaggedUint32Tuple(
-                      newMsgBufPtr,
-                      value,
-                      (uint32_t) responsePtr,
-                      ((tagId == LE_PACK_STRING_RESPONSE_SIZE) ||
-                      (tagId == LE_PACK_ARRAY_RESPONSE_SIZE)) ? tagId :
-                      (tagId == LE_PACK_STRING) ?
-                      LE_PACK_IN_STRING_POINTER : LE_PACK_IN_ARRAY_POINTER));
-
-#elif UINTPTR_MAX == UINT64_MAX
-        // Set pointer to data in new message buffer
-        LE_ASSERT(le_pack_PackTaggedUint64Tuple(
-                      newMsgBufPtr,
-                      value,
-                      (uint64_t) responsePtr,
-                      ((tagId == LE_PACK_STRING_RESPONSE_SIZE) ||
-                      (tagId == LE_PACK_ARRAY_RESPONSE_SIZE)) ? tagId :
-                      (tagId == LE_PACK_STRING) ?
-                      LE_PACK_IN_STRING_POINTER : LE_PACK_IN_ARRAY_POINTER));
-#endif
-
-        LE_DEBUG("Rolling-up data, dataSize [%" PRIuS "], "
-                 "proxy id [%" PRIu32 "], pointer [%p]",
-                 value,
-                 proxyMessagePtr->commonHeader.id,
-                 responsePtr);
+        LE_ERROR("Unexpected Proxy Message type [0x%x]", commonHeaderPtr->type);
+        return LE_FAULT;
     }
-
-    // Update the previous message buffer pointer to reflect what has been processed
-    *previousMsgBufPtr = *msgBufPtr;
-    return result;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Function to store a response memory buffer.
- * Helper function for facilitating un-rolling optimized data before it is sent over the wire.
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t RepackStoreResponsePointer
-(
-    rpcProxy_Message_t *proxyMessagePtr, ///< [IN] Pointer to the Proxy Message
-    uint8_t* slotIndexPtr, ///< [IN] Pointer to the slot-index in the response buffer array
-#if UINTPTR_MAX == UINT32_MAX
-    uint32_t pointer ///< [IN] Pointer to the response buffer
-#elif UINTPTR_MAX == UINT64_MAX
-    uint64_t pointer ///< [IN] Pointer to the response buffer
-#endif
-)
-{
-    // Retrieve existing array pointer, if it exists
-    responseParameterArray_t* arrayPtr =
-        le_hashmap_Get(
-            ResponseParameterArrayByProxyId,
-            (void*)(uintptr_t) proxyMessagePtr->commonHeader.id);
-
-    if (arrayPtr == NULL)
-    {
-        // Allocate the response parameter array, in which to
-        // store the repsonse pointers
-        arrayPtr = le_mem_Alloc(ResponseParameterArrayPoolRef);
-        memset(arrayPtr, 0, sizeof(responseParameterArray_t));
-    }
-
-    if (*slotIndexPtr == RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM)
-    {
-        LE_ERROR("Response array overflow error - out of array elements");
-        return LE_OVERFLOW;
-    }
-
-
-    // Store the response pointer in the array, using the slot Id
-    arrayPtr->pointer[*slotIndexPtr] = pointer;
-
-#if UINTPTR_MAX == UINT32_MAX
-    LE_DEBUG("Storing response pointer, proxy id [%" PRIu32 "], "
-             "slot id [%" PRIu8 "], pointer [%" PRIu32 "]",
-             proxyMessagePtr->commonHeader.id,
-             *slotIndexPtr,
-             pointer);
-#elif UINTPTR_MAX == UINT64_MAX
-    LE_DEBUG("Storing response pointer, proxy id [%" PRIu32 "], "
-             "slot id [%" PRIu8 "], pointer [%" PRIu64 "]",
-             proxyMessagePtr->commonHeader.id,
-             *slotIndexPtr,
-             pointer);
-#endif
-
-    // Store the array of memory pointer until
-    // the server response is received, using the proxy message Id
-    le_hashmap_Put(ResponseParameterArrayByProxyId,
-                   (void*)(uintptr_t) proxyMessagePtr->commonHeader.id,
-                   arrayPtr);
-
-    // Increment the slotIndex
-    *slotIndexPtr = *slotIndexPtr + 1;
-
-    return LE_OK;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Function for Un-rolling optimized data.  It copies the contents in memory into the
- * new Message Buffer before being sent it out on the wire.
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t RepackOptimizedData
-(
-    /// [IN] Pointer to current position in the Message Buffer pointer
-    uint8_t** msgBufPtr,
-    /// [IN] Pointer to the previous position in the Message Buffer pointer
-    uint8_t** previousMsgBufPtr,
-    /// [IN] Pointer to the current position in the New Message Buffer pointer
-    uint8_t** newMsgBufPtr,
-    /// [IN] Pointer to the original Proxy Message
-    rpcProxy_Message_t *proxyMessagePtr,
-    /// [IN] Pointer to the new Proxy Message
-    rpcProxy_Message_t *newProxyMessagePtr,
-    /// [IN] Current tag ID
-    TagID_t tagId,
-    /// [IN] index to the response buffer array
-    uint8_t* slotIndexPtr
-)
-{
-    le_result_t result = LE_OK;
-    size_t size;
-
-    // Copy all content up to, but not including the Tuple TagID
-    rpcProxy_RepackCopyContents(msgBufPtr, previousMsgBufPtr, newMsgBufPtr);
-
-    // Retrieve the Array size and pointer from the Proxy Message
-#if UINTPTR_MAX == UINT32_MAX
-    uint32_t pointer;
-    LE_ASSERT(le_pack_UnpackUint32Tuple(msgBufPtr, &size, &pointer));
-
-    LE_DEBUG("Received message, pointer [%" PRIu32 "]",
-             (uint32_t) pointer);
-#elif UINTPTR_MAX == UINT64_MAX
-    uint64_t pointer;
-    LE_ASSERT(le_pack_UnpackUint64Tuple(msgBufPtr, &size, &pointer));
-
-    LE_DEBUG("Received message, pointer [%" PRIu64 "]",
-             (uint64_t) pointer);
-#endif
-
-    // Verify there is sufficient space to store the array
-    if (((*newMsgBufPtr + size) - &newProxyMessagePtr->message[0]) >=
-          RPC_PROXY_MAX_MESSAGE)
-    {
-        // Insufficient space to store the pointer data
-        LE_ERROR("Format Error - Insufficient space "
-                 "to store Pointer data, "
-                 "proxy id [%" PRIu32 "], tagId [%d]",
-                 proxyMessagePtr->commonHeader.id,
-                 tagId);
-
-         return LE_FORMAT_ERROR;
-    }
-
-    switch (tagId)
-    {
-        case LE_PACK_OUT_STRING_POINTER:
-        case LE_PACK_OUT_ARRAY_POINTER:
-            if (proxyMessagePtr->commonHeader.type != RPC_PROXY_CLIENT_REQUEST)
-            {
-                return LE_FORMAT_ERROR;
-            }
-
-            // Store the response pointer for later
-            result = RepackStoreResponsePointer(
-                        proxyMessagePtr,
-                        slotIndexPtr,
-                        pointer);
-            if (result != LE_OK)
-            {
-                return result;
-            }
-
-            // Pack the size of the response buffer into the new message buffer
-            LE_ASSERT(le_pack_PackTaggedSize(
-                          newMsgBufPtr,
-                          size,
-                          (tagId == LE_PACK_OUT_STRING_POINTER) ?
-                          LE_PACK_STRING_RESPONSE_SIZE :
-                          LE_PACK_ARRAY_RESPONSE_SIZE));
-            break;
-
-        case LE_PACK_IN_STRING_POINTER:
-            LE_DEBUG("Un-rolling string, dataSize [%" PRIuS "], "
-                     "proxy id [%" PRIu32 "]",
-                     size,
-                     proxyMessagePtr->commonHeader.id);
-
-            LE_DEBUG("String [%s]", (const char *)pointer);
-
-            // Pack the string into the new message buffer
-            LE_ASSERT(le_pack_PackString(newMsgBufPtr, (const char*) pointer, size));
-            break;
-
-        case LE_PACK_IN_ARRAY_POINTER:
-            LE_DEBUG("Un-rolling array, dataSize [%" PRIuS "], "
-                     "proxy id [%" PRIu32 "]",
-                     size,
-                     proxyMessagePtr->commonHeader.id);
-
-            // Pack the array data into the new message buffer
-            LE_PACK_PACKARRAY(newMsgBufPtr,
-                              &pointer,
-                              size,
-                              ((*newMsgBufPtr + size) - &newProxyMessagePtr->message[0]),
-                              le_pack_PackUint8,
-                              &result);
-            break;
-
-        default:
-            return LE_BAD_PARAMETER;
-            break;
-    }
-
-    // Update the previous message buffer pointer
-    // to reflect what has been processed
-    *previousMsgBufPtr = *msgBufPtr;
-    return result;
-}
-#endif
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Function for preparing Proxy Messages either being sent to or received from the far side
- *
- * It handles local-session string and array optimizations, endianness, and
- * 32-bit/64-bit architectural differences.  Uses the Tag ID to achieve this.
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t RepackMessage
-(
-    rpcProxy_Message_t *proxyMessagePtr, ///< [IN] Pointer to the original Proxy Message
-    rpcProxy_Message_t *newProxyMessagePtr, ///< [IN] Pointer to the new Proxy Message
-	le_msg_SessionRef_t *sessionRefPtr, //< [OUT] Pointer to client's session reference
-    rpcProxy_MessageMetadata_t *metaDataPtr,///< [INOUT] metadata of proxy message
-    bool sending ///< [IN] Boolean to identify if message is in-coming or out-going
-)
-{
-    uint8_t* msgBufPtr;
-    uint8_t* previousMsgBufPtr;
-    uint8_t* newMsgBufPtr;
-    uint32_t id = 0;
-    uint16_t count = 0;
-    bool done = false;
-#ifdef RPC_PROXY_LOCAL_SERVICE
-    uint8_t  slotIndex = 0;
-#endif
-
-    // Initialize the message buffer size
-    newProxyMessagePtr->msgSize = 0;
-
-    // Initialize Message Buffer Pointers
-    msgBufPtr = &proxyMessagePtr->message[0];
-    newMsgBufPtr = &newProxyMessagePtr->message[0];
-
-    // Initialize metadata if receiving:
-    if (!sending)
-    {
-        metaDataPtr->fileStreamId = 0;
-        metaDataPtr->fileStreamFlags = 0;
-        metaDataPtr->isFileStreamValid = false;
-    }
-    // Verify Message Size
-    if (proxyMessagePtr->msgSize != 0)
-    {
-        // First field in message is the Msg ID (uint32_t)
-         memcpy((uint8_t*) &id, msgBufPtr, LE_PACK_SIZEOF_UINT32);
-    }
-    if (sending)
-    {
-        // Sending out on the wire - convert to Network Order
-        id = htobe32(id);
-
-    } else {
-        // Receiving from off the wire - convert to Host Order
-        id = be32toh(id);
-    }
-
-    // Copy Msg ID into new buffer
-    memcpy(newMsgBufPtr, (uint8_t*) &id, LE_PACK_SIZEOF_UINT32);
-
-    // Skip forward four bytes
-    msgBufPtr = msgBufPtr + LE_PACK_SIZEOF_UINT32;
-    previousMsgBufPtr = msgBufPtr;
-
-    newMsgBufPtr = newMsgBufPtr + LE_PACK_SIZEOF_UINT32;
-    // Tag the metadata:
-    if (sending && metaDataPtr && metaDataPtr->isFileStreamValid)
-    {
-        le_pack_PackTaggedUint16(&newMsgBufPtr, metaDataPtr->fileStreamId, LE_PACK_FILESTREAM_ID);
-        le_pack_PackTaggedUint16(&newMsgBufPtr, metaDataPtr->fileStreamFlags, LE_PACK_FILESTREAM_FLAG);
-        if (proxyMessagePtr->msgSize == 0)
-        {
-            count = (newMsgBufPtr - &(newProxyMessagePtr->message[0]));
-            newProxyMessagePtr->msgSize = count;
-        }
-    }
-
-    if (proxyMessagePtr->msgSize == 0)
-    {
-        // Empty message payload - no need to proceed with repack
-        return LE_OK;
-    }
-    // Traverse through the Message buffer, using the Tag IDs as a reference
-    while (((msgBufPtr - &proxyMessagePtr->message[0]) < proxyMessagePtr->msgSize) && !done)
-    {
-        TagID_t tagId = *msgBufPtr;
-
-        LE_DEBUG("Proxy Message size [%" PRIu16 "], index [%" PRIu32 "], tagId [%d]",
-                 proxyMessagePtr->msgSize,
-                 (uint32_t)(msgBufPtr - &proxyMessagePtr->message[0]),
-                 tagId);
-
-        // Switch on the TagID
-        switch(tagId)
-        {
-            // Fixed-length Types
-            case LE_PACK_UINT8:
-            case LE_PACK_INT8:
-            case LE_PACK_BOOL:
-            case LE_PACK_CHAR:
-            case LE_PACK_UINT16:
-            case LE_PACK_INT16:
-            case LE_PACK_RESULT:
-            case LE_PACK_ONOFF:
-            case LE_PACK_UINT32:
-            case LE_PACK_INT32:
-            case LE_PACK_REFERENCE:
-            case LE_PACK_SIZE:
-            case LE_PACK_UINT64:
-            case LE_PACK_INT64:
-            case LE_PACK_DOUBLE:
-            {
-                msgBufPtr += (LE_PACK_SIZEOF_TAG_ID + ItemPackSize[tagId]);
-                break;
-            }
-
-            case LE_PACK_CONTEXT_PTR_REFERENCE:
-            case LE_PACK_ASYNC_HANDLER_REFERENCE:
-            {
-                // Copy the contents up to this tag into the new message buffer.
-                // After this call all message pointers are equal.
-                rpcProxy_RepackCopyContents(&msgBufPtr, &previousMsgBufPtr, &newMsgBufPtr);
-
-                le_result_t result = rpcEventHandler_RepackContext(&msgBufPtr,
-                                                                   &previousMsgBufPtr,
-                                                                   &newMsgBufPtr,
-                                                                   &proxyMessagePtr->commonHeader,
-                                                                   sending,
-                                                                   sessionRefPtr);
-                if (result != LE_OK)
-                {
-                    return result;
-                }
-
-                break;
-            }
-            case LE_PACK_FILESTREAM_ID:
-            {
-                LE_ASSERT(!sending);
-                // TODO: Throw out the message instead of assert
-                rpcProxy_RepackCopyContents(&msgBufPtr, &previousMsgBufPtr, &newMsgBufPtr);
-                le_pack_UnpackUint16(&msgBufPtr, &metaDataPtr->fileStreamId);
-                metaDataPtr->isFileStreamValid = true;
-                previousMsgBufPtr = msgBufPtr;
-                break;
-            }
-            case LE_PACK_FILESTREAM_FLAG:
-            {
-                LE_ASSERT(!sending);
-                // TODO: Throw out the message instead of assert
-                rpcProxy_RepackCopyContents(&msgBufPtr, &previousMsgBufPtr, &newMsgBufPtr);
-                le_pack_UnpackUint16(&msgBufPtr, &metaDataPtr->fileStreamFlags);
-                previousMsgBufPtr = msgBufPtr;
-                break;
-            }
-#ifndef RPC_PROXY_LOCAL_SERVICE
-            case LE_PACK_STRING_RESPONSE_SIZE:
-            case LE_PACK_ARRAY_RESPONSE_SIZE:
-            {
-                // Should only be called when receiving a string or array
-                // coming in from the wire
-                LE_ASSERT(!sending);
-
-                msgBufPtr += (LE_PACK_SIZEOF_TAG_ID + ItemPackSize[tagId]);
-                break;
-            }
-
-            // Variable-length Type, bundled with a size
-            case LE_PACK_STRING:
-            {
-                uint32_t value = 0;
-
-                // Unpack the string size
-                // TODO: Throw out the message instead of assert
-                LE_ASSERT(le_pack_UnpackUint32(&msgBufPtr, &value));
-
-                // Verify validity of the string size
-                if (((msgBufPtr + value) - &proxyMessagePtr->message[0]) >=
-                          RPC_PROXY_MAX_MESSAGE)
-                {
-                    // Insufficient space to store the array data
-                    // Drop entire dataset
-                    LE_ERROR("Format Error - Insufficient space "
-                             "to store String data, "
-                             "proxy id [%" PRIu32 "], tagId [%d]",
-                             proxyMessagePtr->commonHeader.id,
-                             tagId);
-
-                    return LE_FORMAT_ERROR;
-                }
-
-                // Increment msgBufPtr by "value"
-                msgBufPtr = msgBufPtr + value;
-
-                // Copy the contents
-                rpcProxy_RepackCopyContents(&msgBufPtr, &previousMsgBufPtr, &newMsgBufPtr);
-                break;
-            }
-
-            // Variable-length Type, bundled with a size
-            case LE_PACK_ARRAYHEADER:
-            {
-                size_t value;
-
-                // Unpack the array size
-                // TODO: Throw out the message instead of assert
-                LE_ASSERT(le_pack_UnpackSize(&msgBufPtr, &value));
-
-                // Verify validity of the array size
-                if (((msgBufPtr + value) - &proxyMessagePtr->message[0]) >=
-                          RPC_PROXY_MAX_MESSAGE)
-                {
-                    // Insufficient space to store the array data
-                    LE_ERROR("Format Error - Insufficient space "
-                             "to store Array data, "
-                             "proxy id [%" PRIu32 "], tagId [%d]",
-                             proxyMessagePtr->commonHeader.id,
-                             tagId);
-
-                    return LE_FORMAT_ERROR;
-                }
-
-                // Increment msgBufPtr by "value"
-                msgBufPtr = msgBufPtr + value;
-
-                // Copy the contents
-                rpcProxy_RepackCopyContents(&msgBufPtr, &previousMsgBufPtr, &newMsgBufPtr);
-                break;
-            }
-
-#else
-            // Variable-length Type, bundled with a size
-            // Requires repack
-            case LE_PACK_STRING:
-            case LE_PACK_ARRAYHEADER:
-            case LE_PACK_STRING_RESPONSE_SIZE:
-            case LE_PACK_ARRAY_RESPONSE_SIZE:
-            {
-                // Should only be called when receiving a string or array
-                // coming in from the wire
-                // TODO: Throw out the message instead of assert
-                LE_ASSERT(!sending);
-
-                // Roll-up un-optimized data (string or array) coming in
-                // from wire
-                le_result_t result =
-                    RepackUnOptimizedData(
-                        &msgBufPtr,
-                        &previousMsgBufPtr,
-                        &newMsgBufPtr,
-                        proxyMessagePtr,
-                        tagId,
-                        &slotIndex);
-
-                if (result != LE_OK)
-                {
-                    return result;
-                }
-                break;
-            }
-
-            // Special Types that indicate a repack is required
-            case LE_PACK_IN_STRING_POINTER:
-            case LE_PACK_OUT_STRING_POINTER:
-            case LE_PACK_IN_ARRAY_POINTER:
-            case LE_PACK_OUT_ARRAY_POINTER:
-            {
-                // Should only be called when sending an optimized array
-                // out on the wire
-                // TODO: Throw out the message instead of assert
-                LE_ASSERT(sending);
-
-                // Un-roll optimized data (string or array) before it is sent
-                // over wire
-                le_result_t result =
-                    RepackOptimizedData(
-                        &msgBufPtr,
-                        &previousMsgBufPtr,
-                        &newMsgBufPtr,
-                        proxyMessagePtr,
-                        newProxyMessagePtr,
-                        tagId,
-                        &slotIndex);
-
-                if (result != LE_OK)
-                {
-                    return result;
-                }
-                break;
-            }
-#endif
-
-            default:
-                done = true;
-                break;
-
-        }  // End of switch-statement
-    } // End of while-statement
-
-    // Copy the contents
-    rpcProxy_RepackCopyContents(&msgBufPtr, &previousMsgBufPtr, &newMsgBufPtr);
-
-#ifdef RPC_PROXY_LOCAL_SERVICE
-    // Repack the contents of the response buffer pointers,
-    // which have been allocated for the Server "out" parameter response,
-    // into the RPC Proxy message.
-    if (proxyMessagePtr->commonHeader.type == RPC_PROXY_SERVER_RESPONSE)
-    {
-        if (sending)
-        {
-            le_dls_Link_t* linkPtr = le_dls_Peek(&LocalMessageList);
-            le_result_t result = LE_OK;
-
-            while (linkPtr != NULL)
-            {
-                rpcProxy_LocalMessage_t* localMessagePtr =
-                    CONTAINER_OF(linkPtr, rpcProxy_LocalMessage_t, link);
-
-                // Move the linkPtr to the next node in the list now.
-                linkPtr = le_dls_PeekNext(&LocalMessageList, linkPtr);
-
-                // Set the size
-                size_t size = le_mem_GetBlockSize(localMessagePtr->dataPtr);
-
-                // Verify if this is associated with our Proxy Message
-                if (localMessagePtr->id == proxyMessagePtr->commonHeader.id)
-                {
-                    if (localMessagePtr->tagId == LE_PACK_STRING_RESPONSE_SIZE)
-                    {
-                        LE_DEBUG("String [%s]", (const char *)localMessagePtr->dataPtr);
-
-                        // Pack the string into the new message buffer
-                        // TODO: Throw out the message instead of assert
-                        LE_ASSERT(le_pack_PackString(
-                                      &newMsgBufPtr,
-                                      (const char*) localMessagePtr->dataPtr,
-                                      size));
-                    }
-                    else if (localMessagePtr->tagId == LE_PACK_ARRAY_RESPONSE_SIZE)
-                    {
-                        // Pack the array data into the new message buffer
-                        LE_PACK_PACKARRAY(
-                            &newMsgBufPtr,
-                            (const char*) localMessagePtr->dataPtr,
-                            size,
-                            ((newMsgBufPtr + size) - &newProxyMessagePtr->message[0]),
-                            le_pack_PackUint8,
-                            &result);
-
-                        if (result != LE_OK)
-                        {
-                            LE_ERROR("LE_PACK_PACKARRAY error, result %d", result);
-                        }
-                    }
-                    else
-                    {
-                        // Ignore
-                    }
-                }
-            }
-        }
-    }
-#endif
-
-    // Calculate the new message size
-    count = (newMsgBufPtr - &(newProxyMessagePtr->message[0]));
-
-    LE_DEBUG("Re-packing Proxy Message, proxy id [%" PRIu32 "], "
-             "previous msgSize [%u], new msgSize [%u]",
-             proxyMessagePtr->commonHeader.id,
-             proxyMessagePtr->msgSize,
-             count);
-
-    newProxyMessagePtr->msgSize = count;
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Function for pre-processing the Proxy Message before processing the message payload
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t PreProcessResponse
-(
-    void* bufferPtr, ///< [IN] Pointer to buffer
-    size_t* bufferSizePtr, ///< [IN] Pointer to the size of the buffer
-    le_msg_SessionRef_t *sessionRefPtr, //< [OUT] Pointer to client's session reference
-	rpcProxy_MessageMetadata_t *metaDataPtr///< [OUT] metadata of proxy message
-)
-{
-    le_result_t result;
-
-    // Set a pointer to the common message header
-    rpcProxy_CommonHeader_t *commonHeaderPtr = (rpcProxy_CommonHeader_t*) bufferPtr;
-
-    // Convert message id and service-id into Host-Order before processing
-    commonHeaderPtr->id = be32toh(commonHeaderPtr->id);
-    commonHeaderPtr->serviceId = be32toh(commonHeaderPtr->serviceId);
-
-    switch (commonHeaderPtr->type)
-    {
-        case RPC_PROXY_CONNECT_SERVICE_REQUEST:
-        case RPC_PROXY_CONNECT_SERVICE_RESPONSE:
-        case RPC_PROXY_DISCONNECT_SERVICE:
-        {
-            // Set a pointer to the message
-            rpcProxy_ConnectServiceMessage_t* proxyMsgPtr =
-                (rpcProxy_ConnectServiceMessage_t*) bufferPtr;
-
-            // Convert service-code into Host-Order before processing
-            proxyMsgPtr->serviceCode = be32toh(proxyMsgPtr->serviceCode);
-            break;
-        }
-
-        case RPC_PROXY_KEEPALIVE_REQUEST:
-        case RPC_PROXY_KEEPALIVE_RESPONSE:
-        {
-            // No further pre-processing to do; break
-            break;
-        }
-        case RPC_PROXY_FILESTREAM_MESSAGE:
-        {
-            rpcProxy_Message_t *proxyMessagePtr;
-            rpcProxy_Message_t tmpProxyMessage;
-
-            // Set a Proxy Message pointer to the message
-            proxyMessagePtr =
-                (rpcProxy_Message_t*) bufferPtr;
-
-            // Put msgSize into Host-Order before processing
-            proxyMessagePtr->msgSize = be16toh(proxyMessagePtr->msgSize);
-
-            result = rpcFStream_RepackMessage(proxyMessagePtr, &tmpProxyMessage, metaDataPtr, false);
-            if (result != LE_OK)
-            {
-                return result;
-            }
-            // Set the message id, service-id and type
-            tmpProxyMessage.commonHeader.id = proxyMessagePtr->commonHeader.id;
-            tmpProxyMessage.commonHeader.serviceId = proxyMessagePtr->commonHeader.serviceId;
-            tmpProxyMessage.commonHeader.type = proxyMessagePtr->commonHeader.type;
-
-            // Copy the repacked message back into the message receive buffer
-            memcpy(proxyMessagePtr, &tmpProxyMessage, (RPC_PROXY_MSG_HEADER_SIZE + tmpProxyMessage.msgSize));
-            break;
-        }
-        case RPC_PROXY_SERVER_RESPONSE:
-        {
-            //
-            // Step 1. Verify Proxy Message Id is valid
-            //
-
-            // Retrieve Message Reference from hash map, using the Proxy Message Id
-            le_msg_MessageRef_t msgRef =
-                le_hashmap_Get(MsgRefMapByProxyId, (void*)(uintptr_t) commonHeaderPtr->id);
-
-            if (msgRef == NULL)
-            {
-                LE_ERROR("Unknown Proxy Message Id, service-id ""[%" PRIu32 "], "
-                         "proxy id [%" PRIu32 "]; Dropping packet",
-                         commonHeaderPtr->serviceId,
-                         commonHeaderPtr->id);
-                return LE_NOT_FOUND;
-            }
-        }
-        // fall through
-
-        case RPC_PROXY_SERVER_ASYNC_EVENT:
-        {
-            // Retrieve the Session reference, using the Service-ID
-            le_msg_ServiceRef_t serviceRef =
-                le_hashmap_Get(ServiceRefMapByID, (void*)(uintptr_t) commonHeaderPtr->serviceId);
-
-            if (serviceRef == NULL)
-            {
-                LE_ERROR("Unknown Service Reference, service-id [%" PRIu32 "]; "
-                        " Dropping packet",
-                        commonHeaderPtr->serviceId);
-                return LE_NOT_FOUND;
-            }
-        }
-        // fall through
-        case RPC_PROXY_CLIENT_REQUEST:
-        {
-            //
-            // Step 2. Re-package the message
-            //
-            rpcProxy_Message_t tmpProxyMessage;
-            rpcProxy_Message_t *proxyMessagePtr;
-
-            // Set a Proxy Message pointer to the message
-            proxyMessagePtr =
-                (rpcProxy_Message_t*) bufferPtr;
-
-            // Put msgSize into Host-Order before processing
-            proxyMessagePtr->msgSize = be16toh(proxyMessagePtr->msgSize);
-
-#if RPC_PROXY_HEX_DUMP
-            LE_INFO("recv:%s before repack, size: %d",
-                    DisplayMessageType(commonHeaderPtr->type), proxyMessagePtr->msgSize);
-            LE_LOG_DUMP(LE_LOG_INFO, proxyMessagePtr->message, proxyMessagePtr->msgSize);
-#endif
-
-            // Re-package proxy message before processing
-            result = RepackMessage(proxyMessagePtr, &tmpProxyMessage, sessionRefPtr, metaDataPtr, false);
-            if (result != LE_OK)
-            {
-                return result;
-            }
-
-            //
-            // Step 3. Prepare the Proxy Common Message Header of the tmpProxyMessage
-            //
-
-            // Set the message id, service-id and type
-            tmpProxyMessage.commonHeader.id = proxyMessagePtr->commonHeader.id;
-            tmpProxyMessage.commonHeader.serviceId = proxyMessagePtr->commonHeader.serviceId;
-            tmpProxyMessage.commonHeader.type = proxyMessagePtr->commonHeader.type;
-
-            // Copy the repacked message back into the message receive buffer
-            memcpy(proxyMessagePtr, &tmpProxyMessage, (RPC_PROXY_MSG_HEADER_SIZE + tmpProxyMessage.msgSize));
-
-#if RPC_PROXY_HEX_DUMP
-            LE_INFO("recv:%s after repack, size: %d",
-                    DisplayMessageType(commonHeaderPtr->type), proxyMessagePtr->msgSize);
-            LE_LOG_DUMP(LE_LOG_INFO, proxyMessagePtr->message, proxyMessagePtr->msgSize);
-#endif
-            break;
-        }
-
-        default:
-        {
-            LE_ERROR("Unknown Proxy Message, type [0x%x]; Dropping packet", commonHeaderPtr->type);
-            return LE_FORMAT_ERROR;
-            break;
-        }
-    } // End of switch-statement
-
-    LE_DEBUG("Receiving %s Proxy Message, service-id [%" PRIu32 "], "
-             "proxy id [%" PRIu32 "], size [%" PRIuS "]",
-             DisplayMessageType(commonHeaderPtr->type),
-             commonHeaderPtr->serviceId,
-             commonHeaderPtr->id,
-             *bufferSizePtr);
-
-    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Function for Processing Server Responses
+ *
+ * @return
+ *      - LE_OK if server response message was processed successfully.
+ *      - LE_FAULT if an error happened.
  */
 //--------------------------------------------------------------------------------------------------
-static void ProcessServerResponse
+static le_result_t ProcessServerResponse
 (
-    const char* systemName,              ///< [IN] Name of system this message was received from
-    rpcProxy_Message_t *proxyMessagePtr, ///< [IN] Pointer to the Proxy Message
-    rpcProxy_MessageMetadata_t *metaDataPtr, ///< [IN] metadata of proxy message
-    bool triggeredByTimer ///< [IN] Boolean indicating if this was triggered by a timer
+    void* handle,                  ///< [IN] Opaque handle to the le_comm communication channel
+    const char* systemName,        ///< [IN] Name of the system that sent the message
+    StreamState_t* streamStatePtr, ///< [IN] Pointer to the Message State-Machine data
+    void *proxyMessagePtr          ///< [IN] Pointer to the Proxy Message
 )
 {
+    rpcProxy_Message_t* serverResponseMsgPtr = (rpcProxy_Message_t*) proxyMessagePtr;
     // Sanity Check - Verify Message Type
-    LE_ASSERT(proxyMessagePtr->commonHeader.type == RPC_PROXY_SERVER_RESPONSE);
+    LE_ASSERT(serverResponseMsgPtr->commonHeader.type == RPC_PROXY_SERVER_RESPONSE);
 
-    // Retrieve Message Reference from hash map, using the Proxy Message Id
-    le_msg_MessageRef_t msgRef =
-        le_hashmap_Get(MsgRefMapByProxyId, (void*)(uintptr_t) proxyMessagePtr->commonHeader.id);
-
-    if (msgRef == NULL)
-    {
-        LE_INFO("Error retrieving Message Reference, proxy id [%" PRIu32 "]",
-                proxyMessagePtr->commonHeader.id);
-        return;
-    }
-
-    // Don't check for the Service-Reference if triggered by timer -
-    // Service may no longer exist when client-request timer expires
-    if (!triggeredByTimer)
-    {
-        // Retrieve the Session reference, using the Service-ID
-        le_msg_ServiceRef_t serviceRef =
-            le_hashmap_Get(ServiceRefMapByID,
-                           (void*)(uintptr_t) proxyMessagePtr->commonHeader.serviceId);
-        if (serviceRef == NULL)
-        {
-            LE_INFO("Error retrieving Service Reference, service id [%" PRIu32 "]",
-                    proxyMessagePtr->commonHeader.serviceId);
-            return;
-        }
-    }
-
-    LE_DEBUG("Successfully retrieved Message Reference, proxy id [%" PRIu32 "]",
-             proxyMessagePtr->commonHeader.id);
-
+    le_msg_MessageRef_t msgRef = serverResponseMsgPtr->msgRef;
     // Check if a client response is required
     if (le_msg_NeedsResponse(msgRef))
     {
-        // Check if timer needs to be cleaned up
-        if (!triggeredByTimer)
+        le_result_t recvRes = rpcProxy_RecvStream(handle, streamStatePtr, serverResponseMsgPtr);
+        if (recvRes == LE_IN_PROGRESS)
         {
-            // Retrieve and delete timer associated with Proxy Message ID
-            le_timer_Ref_t timerRef =
-                le_hashmap_Get(
-                    ExpiryTimerRefByProxyId,
-                    (void*)(uintptr_t) proxyMessagePtr->commonHeader.id);
-
-            if (timerRef != NULL)
-            {
-                rpcProxy_Message_t* proxyMessageCopyPtr = NULL;
-
-                LE_DEBUG("Deleting timer for Client-Request, "
-                         "service-id [%" PRIu32 "], id [%" PRIu32 "]",
-                         proxyMessagePtr->commonHeader.serviceId,
-                         proxyMessagePtr->commonHeader.id);
-
-                // Remove timer entry associated with Proxy Message ID from hash-map
-                le_hashmap_Remove(
-                    ExpiryTimerRefByProxyId,
-                    (void*)(uintptr_t) proxyMessagePtr->commonHeader.id);
-
-                //
-                // Clean up Proxy Message Copy
-                //
-
-                // Retrieve ContextPtr data (proxyMessage copy)
-                proxyMessageCopyPtr = le_timer_GetContextPtr(timerRef);
-
-                if (proxyMessageCopyPtr == NULL)
-                {
-                    LE_ERROR("Error extracting copy of Proxy Message from timer record");
-                }
-                else
-                {
-                    // Sanity Check - Verify Proxy Message ID and Service-Name
-                    if ((proxyMessageCopyPtr->commonHeader.id !=
-                            proxyMessagePtr->commonHeader.id) ||
-                        (proxyMessageCopyPtr->commonHeader.serviceId !=
-                            proxyMessagePtr->commonHeader.serviceId))
-                    {
-                        // Proxy Messages are different
-                        LE_ERROR("Proxy Message Sanity Failure - inconsistent timer record");
-                    }
-
-                    LE_DEBUG("Deleting copy of Proxy Message, "
-                             "service-id [%" PRIu32 "], id [%" PRIu32 "]",
-                             proxyMessageCopyPtr->commonHeader.serviceId,
-                             proxyMessageCopyPtr->commonHeader.id);
-
-                    // Free Proxy Message Copy Memory
-                    le_mem_Release(proxyMessageCopyPtr);
-                }
-
-                // Delete Timer
-                le_timer_Delete(timerRef);
-                timerRef = NULL;
-            }
-            else
-            {
-                LE_ERROR("Unable to find Timer record, proxy id [%" PRIu32 "]",
-                         proxyMessagePtr->commonHeader.id);
-            }
-
-        } // cleanUpTimer
-
-
-        if(!triggeredByTimer && rpcFStream_HandleStreamId(msgRef, metaDataPtr,
-                                                          proxyMessagePtr->commonHeader.serviceId,
-                                                          systemName) != LE_OK)
+            // return now, come back later
+            return LE_OK;
+        }
+        else if (recvRes != LE_OK)
         {
-            LE_ERROR("Error in handling proxy message stream id");
+            LE_ERROR("Error when receiving a server response stream from %s", systemName);
+            return LE_FAULT;
+        }
+        // At this point, we're done receiving the message:
+        // Clean up the timer
+        // Retrieve and delete timer associated with Proxy Message ID
+        le_timer_Ref_t timerRef =
+            le_hashmap_Get(
+                ExpiryTimerRefByProxyId,
+                (void*)(uintptr_t) serverResponseMsgPtr->commonHeader.id);
+
+        if (timerRef != NULL)
+        {
+            LE_DEBUG("Deleting timer for Client-Request, "
+                     "service-id [%" PRIu32 "], id [%" PRIu32 "]",
+                     serverResponseMsgPtr->commonHeader.serviceId,
+                     serverResponseMsgPtr->commonHeader.id);
+
+            // Remove timer entry associated with Proxy Message ID from hash-map
+            le_hashmap_Remove(
+                ExpiryTimerRefByProxyId,
+                (void*)(uintptr_t) serverResponseMsgPtr->commonHeader.id);
+
+            // Delete Timer
+            le_timer_Delete(timerRef);
+            timerRef = NULL;
+        }
+        else
+        {
+            LE_ERROR("Unable to find Timer record, proxy id [%" PRIu32 "]",
+                     serverResponseMsgPtr->commonHeader.id);
         }
 
-        // Get the message buffer pointer
-        void* msgPtr = le_msg_GetPayloadPtr(msgRef);
 
-        if (le_msg_GetMaxPayloadSize(msgRef) < proxyMessagePtr->msgSize)
+        if(rpcFStream_HandleStreamId(msgRef, &(serverResponseMsgPtr->metaData),
+                                     serverResponseMsgPtr->commonHeader.serviceId,
+                                     systemName) != LE_OK)
         {
-            LE_ERROR("Message Reference buffer too small, "
-                     "msgRef [%" PRIuS "], byteCount [%" PRIu16 "]",
-                     le_msg_GetMaxPayloadSize(msgRef),
-                     proxyMessagePtr->msgSize);
-            return;
+            LE_ERROR("Error in handling proxy message file stream id");
         }
-
-        // Copy the message payload
-        memcpy(msgPtr, proxyMessagePtr->message, proxyMessagePtr->msgSize);
-
         // Return the response
-        LE_DEBUG("Sending response to client session %p : %u bytes sent",
-                 le_msg_GetSession(msgRef),
-                 proxyMessagePtr->msgSize);
+        LE_DEBUG("Sending response to client session %p", le_msg_GetSession(msgRef));
 
         // Send response
         le_msg_Respond(msgRef);
@@ -2329,11 +913,12 @@ static void ProcessServerResponse
 
 #ifdef RPC_PROXY_LOCAL_SERVICE
     // Clean-up Local Message memory allocation associated with this Proxy Message ID
-    CleanUpLocalMessageResources(proxyMessagePtr->commonHeader.id);
+    rpcProxy_CleanUpLocalMessageResources(serverResponseMsgPtr->commonHeader.id);
 #endif
 
     // Delete Message Reference from hash map
-    le_hashmap_Remove(MsgRefMapByProxyId, (void*)(uintptr_t) proxyMessagePtr->commonHeader.id);
+    le_hashmap_Remove(MsgRefMapByProxyId, (void*)(uintptr_t) serverResponseMsgPtr->commonHeader.id);
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2347,7 +932,7 @@ static void ServerResponseCompletionCallback
     void*               contextPtr ///< [IN] Context pointer
 )
 {
-    rpcProxy_Message_t proxyMessage;
+    rpcProxy_Message_t proxyMessage = {0};
     rpcProxy_ClientRequestResponseRecord_t* requestResponsePtr = NULL;
     le_result_t result;
 
@@ -2368,7 +953,7 @@ static void ServerResponseCompletionCallback
     }
 
     // Sanity Check - Verify Message Type
-    if (requestResponsePtr->commonHeader.type != RPC_PROXY_REQUEST_RESPONSE)
+    if (requestResponsePtr->commonHeader.type != RPC_PROXY_SERVER_RESPONSE)
     {
         LE_ERROR("Unexpected Proxy Message, type [0x%x]",
                  requestResponsePtr->commonHeader.type);
@@ -2384,38 +969,31 @@ static void ServerResponseCompletionCallback
     proxyMessage.commonHeader.serviceId = requestResponsePtr->commonHeader.serviceId;
     proxyMessage.commonHeader.type = RPC_PROXY_SERVER_RESPONSE;
 
-    // Copy the message payload
-    memcpy(proxyMessage.message,
-           le_msg_GetPayloadPtr(responseMsgRef),
-           le_msg_GetMaxPayloadSize(responseMsgRef));
-
-    // Save the message payload size
-    proxyMessage.msgSize = le_msg_GetMaxPayloadSize(responseMsgRef);
-    rpcProxy_MessageMetadata_t metaData;
-    if (rpcFStream_HandleFileDescriptor(responseMsgRef, &metaData,
+    if (rpcFStream_HandleFileDescriptor(responseMsgRef, &(proxyMessage.metaData),
                                         requestResponsePtr->commonHeader.serviceId,
                                         requestResponsePtr->systemName) != LE_OK)
     {
         LE_ERROR("Error in handling file descriptor in the ipc message");
         // we're still sending the main message to the other side but fd will be -1.
     }
+
+    proxyMessage.msgRef = responseMsgRef;
     // Send a request to the server and get the response.
-    LE_DEBUG("Sending response back to RPC Proxy : %u bytes sent",
-             proxyMessage.msgSize);
+    LE_DEBUG("Sending response back to RPC Proxy");
 
     // Send Proxy Message to the far-side RPC Proxy
-    result = rpcProxy_SendMsg(requestResponsePtr->systemName, &proxyMessage, &metaData);
+    result = rpcProxy_SendMsg(requestResponsePtr->systemName, &proxyMessage);
     if (result != LE_OK)
     {
         LE_ERROR("le_comm_Send failed, result %d", result);
-        rpcFStream_DeleteOurStream(metaData.fileStreamId, requestResponsePtr->systemName);
+        rpcFStream_DeleteOurStream(proxyMessage.metaData.fileStreamId, requestResponsePtr->systemName);
     }
 
 
 exit:
 #ifdef RPC_PROXY_LOCAL_SERVICE
     // Clean-up Local Message memory allocation associated with this Proxy Message ID
-    CleanUpLocalMessageResources(requestResponsePtr->commonHeader.id);
+    rpcProxy_CleanUpLocalMessageResources(requestResponsePtr->commonHeader.id);
 #endif
 
     // Release the message object, now that all results/output has been copied.
@@ -2436,85 +1014,44 @@ exit:
 //--------------------------------------------------------------------------------------------------
 static le_result_t ProcessClientRequest
 (
-    const char* systemName, ///< [IN] Name of the system that sent the Client-Request
-    rpcProxy_Message_t* proxyMessagePtr, ///< [IN] Pointer to the Proxy Message
-    rpcProxy_MessageMetadata_t *metaDataPtr ///< [IN] metadata of proxy message
+    void* handle,                  ///< [IN] Opaque handle to the le_comm communication channel
+    const char* systemName,        ///< [IN] Name of the system that sent the Client-Request
+    StreamState_t* streamStatePtr, ///< [IN] Pointer to the Message State-Machine data
+    void* proxyMessagePtr          ///< [IN] Pointer to the Proxy Message
 )
 {
-    //
+    rpcProxy_Message_t* clientRequestMsgPtr = (rpcProxy_Message_t*) proxyMessagePtr;
     // Send Client Message to the Server
-    //
-    le_msg_MessageRef_t msgRef;
-    le_msg_SessionRef_t sessionRef;
-    void*               msgPtr;
-
-    // Sanity Check - Verify Message Type
-    LE_ASSERT(proxyMessagePtr->commonHeader.type == RPC_PROXY_CLIENT_REQUEST);
-
 #ifndef RPC_PROXY_UNIT_TEST
-    //
-    // Create a new message object and get the message buffer
-    //
+    // Sanity Check - Verify Message Type
+    LE_ASSERT(clientRequestMsgPtr->commonHeader.type == RPC_PROXY_CLIENT_REQUEST);
 
-    // Retrieve the Session reference for the specified Service-ID
-    sessionRef =
-        le_hashmap_Get(
-            SessionRefMapByID,
-            (void*)(uintptr_t) proxyMessagePtr->commonHeader.serviceId);
-
-    if (sessionRef == NULL)
+    le_result_t recvRes = rpcProxy_RecvStream(handle, streamStatePtr, clientRequestMsgPtr);
+    if (recvRes == LE_IN_PROGRESS)
     {
-        LE_ERROR("Unable to find matching Session Reference "
-                 "in hashmap, service-id [%" PRIu32 "]",
-                 proxyMessagePtr->commonHeader.serviceId);
-
-        // Generate LE_UNAVAILABLE Server-Response
-        GenerateServerResponseErrorMessage(
-            proxyMessagePtr,
-            LE_UNAVAILABLE);
-
-        // Send the Response to the far-side
-        le_result_t result =
-            rpcProxy_SendMsg(systemName, proxyMessagePtr, NULL);
-
-        if (result != LE_OK)
-        {
-            LE_ERROR("le_comm_Send failed, result %d", result);
-        }
-
-#ifdef RPC_PROXY_LOCAL_SERVICE
-        // Clean-up Local Message memory allocation associated with this Proxy Message ID
-        CleanUpLocalMessageResources(proxyMessagePtr->commonHeader.id);
-#endif
-
-        return LE_UNAVAILABLE;
+        // return now, come back later
+        return LE_OK;
+    }
+    else if (recvRes != LE_OK)
+    {
+        LE_ERROR("Error when receiving a client request stream");
+        return LE_FAULT;
     }
 
-    LE_DEBUG("Successfully retrieved Session Reference, "
-             "session safe reference [%" PRIuPTR "]",
-             (uintptr_t) sessionRef);
+    le_msg_MessageRef_t msgRef = clientRequestMsgPtr->msgRef;
 
-    // Create Client Message
-    msgRef = le_msg_CreateMsg(sessionRef);
-
-    if(rpcFStream_HandleStreamId(msgRef, metaDataPtr, proxyMessagePtr->commonHeader.serviceId,
-                                 systemName) != LE_OK)
+    if(rpcFStream_HandleStreamId(msgRef, &(clientRequestMsgPtr->metaData),
+                                 clientRequestMsgPtr->commonHeader.serviceId, systemName) != LE_OK)
     {
-        LE_ERROR("Error in handling proxy message stream id");
+        LE_ERROR("Error in handling proxy message file stream id");
     }
 
-    msgPtr = le_msg_GetPayloadPtr(msgRef);
-
-    // Copy Proxy Message content into the out-going Message
-    memcpy(msgPtr, proxyMessagePtr->message, proxyMessagePtr->msgSize);
-
-    LE_DEBUG("Sending message to server and waiting for response : %u bytes sent",
-             proxyMessagePtr->msgSize);
+    LE_DEBUG("Sending message to server and waiting for response");
 
     LE_DEBUG("Allocating memory for Request-Response Record, "
              "service-id [%" PRIu32 "], proxy id [%" PRIu32 "]",
-             proxyMessagePtr->commonHeader.serviceId,
-             proxyMessagePtr->commonHeader.id);
+             clientRequestMsgPtr->commonHeader.serviceId,
+             clientRequestMsgPtr->commonHeader.id);
 
 #ifdef LE_CONFIG_DEBUG
     le_mem_PoolStats_t poolStats;
@@ -2531,14 +1068,14 @@ static le_result_t ProcessClientRequest
     if (requestResponsePtr == NULL)
     {
 #ifdef RPC_PROXY_LOCAL_SERVICE
-        uint32_t proxyId = proxyMessagePtr->commonHeader.id;
+        uint32_t proxyId = clientRequestMsgPtr->commonHeader.id;
 #endif
 
         LE_WARN("Request-Response Record memory pool is exhausted, "
                 "service-id [%" PRIu32 "], proxy id [%" PRIu32 "] - "
                 "Dropping request and returning error",
-                proxyMessagePtr->commonHeader.serviceId,
-                proxyMessagePtr->commonHeader.id);
+                clientRequestMsgPtr->commonHeader.serviceId,
+                clientRequestMsgPtr->commonHeader.id);
 
         //
         // Generate a LE_NO_MEMORY event
@@ -2546,11 +1083,11 @@ static le_result_t ProcessClientRequest
 
         // Generate LE_NO_MEMORY Server-Response
         GenerateServerResponseErrorMessage(
-            proxyMessagePtr,
+            clientRequestMsgPtr,
             LE_NO_MEMORY);
 
         // Send the Response to the far-side
-        le_result_t result = rpcProxy_SendMsg(systemName, proxyMessagePtr, NULL);
+        le_result_t result = rpcProxy_SendMsg(systemName, clientRequestMsgPtr);
         if (result != LE_OK)
         {
             LE_ERROR("le_comm_Send failed, result %d", result);
@@ -2558,7 +1095,7 @@ static le_result_t ProcessClientRequest
 
 #ifdef RPC_PROXY_LOCAL_SERVICE
         // Clean-up Local Message memory allocation associated with this Proxy Message ID
-        CleanUpLocalMessageResources(proxyId);
+        rpcProxy_CleanUpLocalMessageResources(proxyId);
 #endif
 
         return LE_NO_MEMORY;
@@ -2569,33 +1106,29 @@ static le_result_t ProcessClientRequest
     //
 
     // Set the Proxy Message ID, Service-Id, and type
-    requestResponsePtr->commonHeader.id = proxyMessagePtr->commonHeader.id;
-    requestResponsePtr->commonHeader.serviceId = proxyMessagePtr->commonHeader.serviceId;
-    requestResponsePtr->commonHeader.type = RPC_PROXY_REQUEST_RESPONSE;
+    requestResponsePtr->commonHeader.id = clientRequestMsgPtr->commonHeader.id;
+    requestResponsePtr->commonHeader.serviceId = clientRequestMsgPtr->commonHeader.serviceId;
+    requestResponsePtr->commonHeader.type = RPC_PROXY_SERVER_RESPONSE;
 
     // Copy the Source of the request (system-name) so we know who to send the response back to
     le_utf8_Copy(requestResponsePtr->systemName,
                  systemName,
                  sizeof(requestResponsePtr->systemName), NULL);
 
-    // Copy the Legato Msg-Id, in the event we need to generate a
-    // timeout response back to the requesting system
-    memcpy(&requestResponsePtr->msgId, &proxyMessagePtr->message[0], LE_PACK_SIZEOF_UINT32);
-
     // Send an asynchronous request-response to the server.
     le_msg_RequestResponse(msgRef, &ServerResponseCompletionCallback,
-                           (void*)(uintptr_t) proxyMessagePtr->commonHeader.id);
+                           (void*)(uintptr_t) clientRequestMsgPtr->commonHeader.id);
 
     // Store the Request-Response Record Ptr in a hashmap,
-    // using the Proxy Message ID as a key, so that it can be retreived later by either
+    // using the Proxy Message ID as a key, so that it can be retrieved later by either
     // requestResponseTimerExpiryHandler() or ServerResponseCompletionCallback()
     le_hashmap_Put(RequestResponseRefByProxyId,
-                   (void*)(uintptr_t) proxyMessagePtr->commonHeader.id,
+                   (void*)(uintptr_t) clientRequestMsgPtr->commonHeader.id,
                    requestResponsePtr);
 
 #else
     // Evaluate Unit-Test results
-    rpcDaemonTest_ProcessClientRequest(proxyMessagePtr);
+    rpcDaemonTest_ProcessClientRequest(clientRequestMsgPtr);
 #endif
 
     return LE_OK;
@@ -2616,8 +1149,7 @@ static void DeleteClientRequestTimer
 )
 {
     // Create iterator to traverse ExpiryTimerRefByProxyId map
-    le_hashmap_It_Ref_t iter =
-        le_hashmap_GetIterator(rpcProxy_GetExpiryTimerRefByProxyId());
+    le_hashmap_It_Ref_t iter = le_hashmap_GetIterator(rpcProxy_GetExpiryTimerRefByProxyId());
 
     // Traverse the entire ExpiryTimerRefByProxyId map
     while (le_hashmap_NextNode(iter) == LE_OK)
@@ -2626,43 +1158,28 @@ static void DeleteClientRequestTimer
         le_timer_Ref_t timerRef =
             (le_timer_Ref_t) le_hashmap_GetValue(iter);
 
-        // Retrieve ContextPtr data (Proxy Message Common Header copy)
-        rpcProxy_CommonHeader_t* commonHeaderPtr =
-            (rpcProxy_CommonHeader_t*) le_timer_GetContextPtr(timerRef);
+        uint32_t proxyMsgId = (uint32_t) le_timer_GetContextPtr(timerRef);
 
-        if ((commonHeaderPtr != NULL) &&
-            (commonHeaderPtr->type == RPC_PROXY_CLIENT_REQUEST) &&
-            (commonHeaderPtr->serviceId == serviceId))
+        // Retrieve Message Reference from hash map, using the Proxy Message Id
+        le_msg_MessageRef_t msgRef = le_hashmap_Get(MsgRefMapByProxyId,
+                                                    (void*)(uintptr_t) proxyMsgId);
+
+        if ((sessionRef == NULL) ||(le_msg_GetSession(msgRef) == sessionRef))
         {
-            rpcProxy_Message_t* proxyMessageCopyPtr =
-                (rpcProxy_Message_t*) le_timer_GetContextPtr(timerRef);
+            // Free the IPC msgRef
+            LE_INFO("Free msgRef for service id [%" PRIuPTR "]  sessionRef [%p] ",
+                    (uintptr_t)serviceId, sessionRef);
+            le_msg_ReleaseMsg(msgRef);
 
-            le_msg_MessageRef_t msgRef =
-                le_hashmap_Get(MsgRefMapByProxyId,
-                               (void*)(uintptr_t) proxyMessageCopyPtr->commonHeader.id);
+            // Remove the msgRef from hash-map
+            le_hashmap_Remove(MsgRefMapByProxyId, (void*)(uintptr_t) proxyMsgId);
 
-            if ((sessionRef == NULL) ||(le_msg_GetSession(msgRef) == sessionRef))
-            {
-                // Free the IPC msgRef
-                LE_INFO("Free msgRef for service id [%" PRIuPTR "]  sessionRef [%p] ",
-                        (uintptr_t)serviceId, sessionRef);
-                le_msg_ReleaseMsg(msgRef);
+            // Remove the timer entry from hash-map
+            le_hashmap_Remove(ExpiryTimerRefByProxyId, (void*)(uintptr_t) proxyMsgId);
 
-                // Remove the msgRef from hash-map
-                le_hashmap_Remove(MsgRefMapByProxyId,
-                                  (void*)(uintptr_t) proxyMessageCopyPtr->commonHeader.id);
-
-                // Remove the timer entry from hash-map
-                le_hashmap_Remove(ExpiryTimerRefByProxyId,
-                                  (void*)(uintptr_t) proxyMessageCopyPtr->commonHeader.id);
-
-                // Delete Timer
-                le_timer_Delete(timerRef);
-                timerRef = NULL;
-
-                // Free Proxy Message Copy Memory
-                le_mem_Release(proxyMessageCopyPtr);
-            }
+            // Delete Timer
+            le_timer_Delete(timerRef);
+            timerRef = NULL;
         }
     }
 }
@@ -2706,9 +1223,6 @@ static void ServerCloseSessionHandler
                  contextDataPtr->serviceName);
         return;
     }
-
-    // Send RemoveHandler commands for given service id and client session
-    rpcEventHandler_SendRemoveHandlerMessage(systemName, sessionRef);
 
     // Retrieve the Service-ID, using the service-name
     uint32_t* serviceIdCopyPtr =
@@ -2872,7 +1386,6 @@ static void ClientServiceCloseHandler
 }
 #endif
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Delete and clean-up the Connect-Service-Request timer.
@@ -2899,34 +1412,20 @@ static le_result_t DeleteConnectServiceRequestTimer
              "service-id [%" PRIu32 "]",
              serviceId);
 
+    // Retrieve the Connect-Service-Request message from the timer context
+    rpcProxy_ConnectServiceMessage_t* proxyMessagePtr =
+        (rpcProxy_ConnectServiceMessage_t*) le_timer_GetContextPtr(timerRef);
+
+    // Release the connect service proxy message
+    le_mem_Release(proxyMessagePtr);
+
     // Remove timer entry associated with Service-ID from hash-map
     le_hashmap_Remove(ExpiryTimerRefByServiceId, (void*)(uintptr_t) serviceId);
-
-    //
-    // Clean up Proxy Message Copy
-    //
-
-    // Retrieve ContextPtr data (proxyMessage copy)
-    rpcProxy_Message_t* proxyMessageCopyPtr = le_timer_GetContextPtr(timerRef);
-
-    if (proxyMessageCopyPtr == NULL)
-    {
-        LE_ERROR("Error extracting copy of Proxy Message from timer record");
-        return LE_FAULT;
-    }
-
-    LE_DEBUG("Deleting copy of Proxy Message, "
-             "service-id [%" PRIu32 "]",
-             serviceId);
-
-    // Free Proxy Message Copy Memory
-    le_mem_Release(proxyMessageCopyPtr);
 
     // Delete Timer
     le_timer_Delete(timerRef);
     return LE_OK;
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2935,29 +1434,60 @@ static le_result_t DeleteConnectServiceRequestTimer
 //--------------------------------------------------------------------------------------------------
 static le_result_t ProcessConnectServiceResponse
 (
-    rpcProxy_ConnectServiceMessage_t* proxyMessagePtr ///< [IN] Pointer to the Proxy Message
+    void* handle,                  ///< [IN] Opaque handle to the le_comm communication channel
+    const char* systemName,        ///< [IN] Name of the system that sent the message
+    StreamState_t* streamStatePtr, ///< [IN] Pointer to the Message State-Machine data
+    void* proxyMessagePtr          ///< [IN] Pointer to the Proxy Message
 )
 {
-    le_result_t result = LE_OK;
+    rpcProxy_ConnectServiceMessage_t* connectServiceMsgPtr =
+        (rpcProxy_ConnectServiceMessage_t*) proxyMessagePtr;
 
     // Sanity Check - Verify Message Type
-    LE_ASSERT(proxyMessagePtr->commonHeader.type == RPC_PROXY_CONNECT_SERVICE_RESPONSE);
+    LE_ASSERT(connectServiceMsgPtr->commonHeader.type == RPC_PROXY_CONNECT_SERVICE_RESPONSE);
+
+    le_result_t recvRes = rpcProxy_RecvStream(handle, streamStatePtr, connectServiceMsgPtr);
+    if (recvRes == LE_IN_PROGRESS)
+    {
+        // return now, come back later
+        return LE_OK;
+    }
+    else if (recvRes != LE_OK)
+    {
+        LE_ERROR("Error when receiving a connect service response message from %s", systemName);
+        return LE_FAULT;
+    }
+
+    // Now that the message is fully received, preprocess this message before continuing:
+    connectServiceMsgPtr->serviceCode = be32toh(connectServiceMsgPtr->serviceCode);
 
     // Check if service has been established successfully on the far-side
-    if (proxyMessagePtr->serviceCode != LE_OK)
+    if (connectServiceMsgPtr->serviceCode != LE_OK)
     {
         // Remote-side failed to set-up service
         LE_INFO("%s failed, serviceId "
                 "[%" PRIu32 "], service-code [%" PRIi32 "] - retry later",
-                DisplayMessageType(proxyMessagePtr->commonHeader.type),
-                proxyMessagePtr->commonHeader.serviceId,
-                proxyMessagePtr->serviceCode);
+                DisplayMessageType(connectServiceMsgPtr->commonHeader.type),
+                connectServiceMsgPtr->commonHeader.serviceId,
+                connectServiceMsgPtr->serviceCode);
 
-        return proxyMessagePtr->serviceCode;
+        /*
+         * The return value of this functions being something other than LE_OK means there was a
+         * problem when receiving the message during processing of the message, and causes the
+         * connection being teared down which affects all services on that connection.
+         * On the other hand, connectServiceMsgPtr->serviceCode being non LE_OK simply means the
+         * other side could not setup the service, this can happen if the server app that RPCclient
+         * was supposed to connect to hadn't started yet.
+         * Because at this point, we've received and processed the message successfully we should
+         * return LE_OK. It's just the message content says there was a problem with this service on
+         * the other side. We obviously won't proceed with this service anymore and return now but
+         * as far as the caller, receive state machine, is concerned our result should be LE_OK.
+         */
+        return LE_OK;
     }
 
     // Delete and clean-up the Connect-Service-Request timer
-    DeleteConnectServiceRequestTimer(proxyMessagePtr->commonHeader.serviceId);
+    DeleteConnectServiceRequestTimer(connectServiceMsgPtr->commonHeader.serviceId);
 
     // Traverse all Service Reference entries in the Service Reference array and
     // search for matching service-name
@@ -2981,19 +1511,19 @@ static le_result_t ProcessConnectServiceResponse
 
         // Retrieve the service-name for the specified remote service-name
         const char* serviceName =
-            rpcProxyConfig_GetServiceNameByRemoteServiceName(proxyMessagePtr->serviceName);
+            rpcProxyConfig_GetServiceNameByRemoteServiceName(connectServiceMsgPtr->serviceName);
 
         if (serviceName == NULL)
         {
             LE_ERROR("Unable to retrieve service-name for remote service-name '%s'",
-                     proxyMessagePtr->serviceName);
+                     connectServiceMsgPtr->serviceName);
             return LE_FAULT;
         }
 
         // Compare the system-name, remote service-name, and protocol-Id-str
-        if ((strcmp(systemName, proxyMessagePtr->systemName) == 0) &&
+        if ((strcmp(systemName, connectServiceMsgPtr->systemName) == 0) &&
             (strcmp(serviceRefPtr->serviceName, serviceName) == 0) &&
-            (strcmp(serviceRefPtr->protocolIdStr, proxyMessagePtr->protocolIdStr) == 0))
+            (strcmp(serviceRefPtr->protocolIdStr, connectServiceMsgPtr->protocolIdStr) == 0))
         {
             le_msg_ServiceRef_t serviceRef = NULL;
 
@@ -3002,7 +1532,7 @@ static le_result_t ProcessConnectServiceResponse
             serviceRef =
                 le_hashmap_Get(
                     ServiceRefMapByID,
-                    (void*)(uintptr_t) proxyMessagePtr->commonHeader.serviceId);
+                    (void*)(uintptr_t) connectServiceMsgPtr->commonHeader.serviceId);
 
             if (serviceRef == NULL)
             {
@@ -3071,7 +1601,7 @@ static le_result_t ProcessConnectServiceResponse
             uint32_t* serviceIdCopyPtr = le_mem_Alloc(ServiceIdPoolRef);
 
             // Copy the Service-ID
-            *serviceIdCopyPtr = proxyMessagePtr->commonHeader.serviceId;
+            *serviceIdCopyPtr = connectServiceMsgPtr->commonHeader.serviceId;
 
             // Store the Service-ID in a hashmap, using the service-name as a key
             le_hashmap_Put(ServiceIDMapByName, serviceNameCopyPtr, serviceIdCopyPtr);
@@ -3083,18 +1613,18 @@ static le_result_t ProcessConnectServiceResponse
 
             // Store the serviceRef in a hashmap, using the Service-ID as a key
             le_hashmap_Put(ServiceRefMapByID,
-                           (void*)(uintptr_t) proxyMessagePtr->commonHeader.serviceId, serviceRef);
+                           (void*)(uintptr_t) connectServiceMsgPtr->commonHeader.serviceId,
+                           serviceRef);
 
             LE_INFO("Successfully saved Service Reference, "
                     "service safe reference [%" PRIuPTR "], service-id [%" PRIu32 "]",
                     (uintptr_t) serviceRef,
-                    proxyMessagePtr->commonHeader.serviceId);
+                    connectServiceMsgPtr->commonHeader.serviceId);
         }
     }
 
-    return result;
+    return LE_OK;
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -3103,34 +1633,53 @@ static le_result_t ProcessConnectServiceResponse
 //--------------------------------------------------------------------------------------------------
 static le_result_t ProcessConnectServiceRequest
 (
-    const char* systemName, ///< [IN] Name of the system that sent the Connect-Service Request
-    rpcProxy_ConnectServiceMessage_t* proxyMessagePtr ///< [IN] Pointer to the Proxy Message
+    void* handle,                  ///< [IN] Opaque handle to the le_comm communication channel
+    const char* systemName,        ///< [IN] Name of the system that sent the message
+    StreamState_t* streamStatePtr, ///< [IN] Pointer to the Message State-Machine data
+    void* proxyMessagePtr          ///< [IN] Pointer to the Proxy Message
 )
 {
+    rpcProxy_ConnectServiceMessage_t* connectServiceMsgPtr =
+        (rpcProxy_ConnectServiceMessage_t*) proxyMessagePtr;
     le_result_t  result;
 
     // Sanity Check - Verify Message Type
-    LE_ASSERT(proxyMessagePtr->commonHeader.type == RPC_PROXY_CONNECT_SERVICE_REQUEST);
+    LE_ASSERT(connectServiceMsgPtr->commonHeader.type == RPC_PROXY_CONNECT_SERVICE_REQUEST);
+
+    le_result_t recvRes = rpcProxy_RecvStream(handle, streamStatePtr, connectServiceMsgPtr);
+    if (recvRes == LE_IN_PROGRESS)
+    {
+        // return now, come back later
+        return LE_OK;
+    }
+    else if (recvRes != LE_OK)
+    {
+        LE_ERROR("Error when receiving a process connect service request from %s", systemName);
+        return LE_FAULT;
+    }
+
+    // Now that the message is fully received, preprocess this message before continuing:
+    connectServiceMsgPtr->serviceCode = be32toh(connectServiceMsgPtr->serviceCode);
 
     LE_INFO("======= Starting RPC Proxy client for '%s' service, '%s' protocol ========",
-            proxyMessagePtr->serviceName, proxyMessagePtr->protocolIdStr);
+            connectServiceMsgPtr->serviceName, connectServiceMsgPtr->protocolIdStr);
 
     // Generate Do-Connect-Service call on behalf of the remote client
-    result = DoConnectService(proxyMessagePtr->serviceName,
-                              proxyMessagePtr->commonHeader.serviceId,
-                              proxyMessagePtr->protocolIdStr);
+    result = DoConnectService(connectServiceMsgPtr->serviceName,
+                              connectServiceMsgPtr->commonHeader.serviceId,
+                              connectServiceMsgPtr->protocolIdStr);
     //
     // Prepare a Session-Connect-Response Proxy Message
     //
 
     // Set the Proxy Message type to CONNECT_SERVICE_RESPONSE
-    proxyMessagePtr->commonHeader.type = RPC_PROXY_CONNECT_SERVICE_RESPONSE;
+    connectServiceMsgPtr->commonHeader.type = RPC_PROXY_CONNECT_SERVICE_RESPONSE;
 
     // Set the service-code with the DoConnectService result-code
-    proxyMessagePtr->serviceCode = result;
+    connectServiceMsgPtr->serviceCode = result;
 
     // Send Proxy Message to far-side
-    result = rpcProxy_SendMsg(systemName, proxyMessagePtr, NULL);
+    result = rpcProxy_SendMsg(systemName, connectServiceMsgPtr);
     if (result != LE_OK)
     {
         LE_ERROR("le_comm_Send failed, result %d", result);
@@ -3281,18 +1830,37 @@ static void DeleteService
 //--------------------------------------------------------------------------------------------------
 static le_result_t ProcessDisconnectService
 (
-    const char* systemName, ///< [IN] Name of the system that sent the Connect-Service Request
-    rpcProxy_ConnectServiceMessage_t* proxyMessagePtr ///< [IN] Pointer to the Proxy Message
+    void* handle,                  ///< [IN] Opaque handle to the le_comm communication channel
+    const char* systemName,        ///< [IN] Name of the system that sent the message
+    StreamState_t* streamStatePtr, ///< [IN] Pointer to the Message State-Machine data
+    void* proxyMessagePtr          ///< [IN] Pointer to the Proxy Message
 )
 {
+    rpcProxy_ConnectServiceMessage_t* disconnectServiceMsgPtr =
+        (rpcProxy_ConnectServiceMessage_t*) proxyMessagePtr;
     // Sanity Check - Verify Message Type
-    LE_ASSERT(proxyMessagePtr->commonHeader.type == RPC_PROXY_DISCONNECT_SERVICE);
+    LE_ASSERT(disconnectServiceMsgPtr->commonHeader.type == RPC_PROXY_DISCONNECT_SERVICE);
+
+    le_result_t recvRes = rpcProxy_RecvStream(handle, streamStatePtr, disconnectServiceMsgPtr);
+    if (recvRes == LE_IN_PROGRESS)
+    {
+        // return now, come back later
+        return LE_OK;
+    }
+    else if (recvRes != LE_OK)
+    {
+        LE_ERROR("Error when receiving a client request stream");
+        return LE_FAULT;
+    }
+
+    // Now that the message is fully received, preprocess this message before continuing:
+    disconnectServiceMsgPtr->serviceCode = be32toh(disconnectServiceMsgPtr->serviceCode);
 
     LE_INFO("======= Stopping RPC Proxy server for '%s' service, '%s' protocol ========",
-            proxyMessagePtr->serviceName, proxyMessagePtr->protocolIdStr);
+            disconnectServiceMsgPtr->serviceName, disconnectServiceMsgPtr->protocolIdStr);
 
     const char* serviceName =
-        rpcProxyConfig_GetServiceNameByRemoteServiceName(proxyMessagePtr->serviceName);
+        rpcProxyConfig_GetServiceNameByRemoteServiceName(disconnectServiceMsgPtr->serviceName);
 
     const char* remoteServiceName =
         rpcProxyConfig_GetRemoteServiceNameByServiceName(serviceName);
@@ -3300,15 +1868,15 @@ static le_result_t ProcessDisconnectService
     if (serviceName == NULL)
     {
         LE_ERROR("Unable to retrieve service-name for remote service-name '%s'",
-                 proxyMessagePtr->serviceName);
+                 disconnectServiceMsgPtr->serviceName);
         return LE_FAULT;
     }
 
     // delete all rpc file stream instances:
-    rpcFStream_DeleteStreamsByServiceId(proxyMessagePtr->commonHeader.serviceId);
+    rpcFStream_DeleteStreamsByServiceId(disconnectServiceMsgPtr->commonHeader.serviceId);
 
     // Delete all timers associated with the service-name
-    DeleteAllTimers(proxyMessagePtr->serviceName);
+    DeleteAllTimers(disconnectServiceMsgPtr->serviceName);
 
     // Delete the Service associated with the service-name
     DeleteService(serviceName);
@@ -3318,11 +1886,10 @@ static le_result_t ProcessDisconnectService
     SendSessionConnectRequest(
         systemName,
         remoteServiceName,
-        proxyMessagePtr->protocolIdStr);
+        disconnectServiceMsgPtr->protocolIdStr);
 
     return LE_OK;
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -3336,11 +1903,8 @@ void rpcProxy_AsyncRecvHandler
 )
 {
     char*                    systemName;
-    size_t                   bufferSize = 0;
-    rpcProxy_CommonHeader_t *commonHeaderPtr = NULL;
     le_result_t              result;
-    le_msg_SessionRef_t      sessionRef = NULL;
-
+    NetworkMessageState_t*   msgStatePtr = NULL;
     // Retrieve the system-name from where this message has been sent
     // by a reverse look-up, using the handle
     systemName = rpcProxyNetwork_GetSystemNameByHandle(handle);
@@ -3366,142 +1930,17 @@ void rpcProxy_AsyncRecvHandler
             LE_ERROR("Unknown Network Record");
             return;
         }
+        msgStatePtr = &(networkRecordPtr->messageState);
+        // Receive Proxy Message Header from far-side
+        result = RecvRpcMsg(handle, systemName, msgStatePtr);
 
-        bool done = false;
-        rpcProxy_MessageMetadata_t metaData;
-        while (!done)
+        if (result != LE_OK)
         {
-            // Receive Proxy Message from far-side
-            result = RecvMsg(handle, &(networkRecordPtr->messageState), &bufferSize, &sessionRef, &metaData);
+            LE_ERROR("Receiving proxy message from %s failed, result %d", systemName, result);
 
-            if (result != LE_OK)
-            {
-                if ((result != LE_FORMAT_ERROR) &&
-                    (result != LE_NOT_FOUND) &&
-                    (result != LE_BAD_PARAMETER) &&
-                    (result != LE_IN_PROGRESS))
-                {
-                    LE_ERROR("le_comm_Receive failed, result %d", result);
-
-                    // Delete the Network Communication Channel, using the communication handle
-                    rpcProxyNetwork_DeleteNetworkCommunicationChannelByHandle(handle);
-                }
-                // Do not proceed any further - return
-                return;
-            }
-
-            if (bufferSize == 0)
-            {
-                // No more data in buffer
-                done = true;
-                continue;
-            }
-
-            // Set a pointer to the State-Machine Message Buffer
-            char* buffer = networkRecordPtr->messageState.buffer;
-
-            // Set a pointer to the common message header
-            commonHeaderPtr = (rpcProxy_CommonHeader_t*) buffer;
-
-            // Test the Proxy Message type and dispatch the event
-            switch (commonHeaderPtr->type)
-            {
-                case RPC_PROXY_KEEPALIVE_REQUEST:
-                {
-                    LE_DEBUG("Received Proxy KEEPALIVE-Request Message, id [%" PRIu32 "]",
-                             commonHeaderPtr->id);
-
-                    result = rpcProxyNetwork_ProcessKeepAliveRequest(
-                                systemName,
-                                (rpcProxy_KeepAliveMessage_t*) buffer);
-                    break;
-                }
-
-                case RPC_PROXY_KEEPALIVE_RESPONSE:
-                {
-                    LE_DEBUG("Received Proxy KEEPALIVE-Response Message, id [%" PRIu32 "]",
-                             commonHeaderPtr->id);
-
-                    result = rpcProxyNetwork_ProcessKeepAliveResponse(
-                                systemName,
-                                (rpcProxy_KeepAliveMessage_t*) buffer);
-                    break;
-                }
-
-                case RPC_PROXY_CLIENT_REQUEST:
-                {
-                    LE_DEBUG("Received Proxy Client-Request Message, id [%" PRIu32 "]",
-                             commonHeaderPtr->id);
-
-                    result = ProcessClientRequest(systemName, (rpcProxy_Message_t*) buffer,
-                            &metaData);
-                    break;
-                }
-
-                case RPC_PROXY_SERVER_RESPONSE:
-                {
-                    LE_DEBUG("Received Proxy Server-Response Message, proxy id [%" PRIu32 "]",
-                             commonHeaderPtr->id);
-                    ProcessServerResponse(systemName, (rpcProxy_Message_t*) buffer, &metaData,
-                            false);
-                    break;
-                }
-
-                case RPC_PROXY_CONNECT_SERVICE_REQUEST:
-                {
-                    LE_DEBUG("Received Proxy Connect-Service-Request Message, id [%" PRIu32 "]",
-                             commonHeaderPtr->id);
-                    result =
-                        ProcessConnectServiceRequest(
-                            systemName,
-                            (rpcProxy_ConnectServiceMessage_t*) buffer);
-                    break;
-                }
-
-                case RPC_PROXY_CONNECT_SERVICE_RESPONSE:
-                {
-                    LE_DEBUG("Received Proxy Connect-Service-Response Message, id [%" PRIu32 "]",
-                             commonHeaderPtr->id);
-                    result =
-                        ProcessConnectServiceResponse(
-                            (rpcProxy_ConnectServiceMessage_t*) buffer);
-                    break;
-                }
-
-                case RPC_PROXY_DISCONNECT_SERVICE:
-                {
-                    LE_DEBUG("Received Proxy Disconnect-Service Message, id [%" PRIu32 "]",
-                             commonHeaderPtr->id);
-                    result =
-                        ProcessDisconnectService(
-                            systemName,
-                            (rpcProxy_ConnectServiceMessage_t*) buffer);
-                    break;
-                }
-                case RPC_PROXY_SERVER_ASYNC_EVENT:
-                {
-                    LE_INFO("Received Proxy Server-Event Message, id [%" PRIu32 "]",
-                             commonHeaderPtr->id);
-                    rpcEventHandler_ProcessEvent((rpcProxy_Message_t*) buffer, sessionRef);
-                    break;
-                }
-				case RPC_PROXY_FILESTREAM_MESSAGE:
-                {
-                    LE_DEBUG("Received rpc proxy file stream message");
-                    result = rpcFStream_ProcessFileStreamMessage(systemName,
-                            (rpcProxy_Message_t*)buffer, &metaData);
-                    break;
-                }
-                default:
-                {
-                    LE_ERROR("Un-expected Proxy Message, type [0x%x], id [%" PRIu32 "]",
-                             commonHeaderPtr->type,
-                             commonHeaderPtr->id);
-                    return;
-                    break;
-                }
-            } // End of switch-statement
-        } // End of while-statement
+            // Delete the Network Communication Channel, using the communication handle
+            rpcProxyNetwork_DeleteNetworkCommunicationChannelByHandle(handle);
+        }
     }
     else if (events & (POLLRDHUP | POLLHUP | POLLERR))
     {
@@ -3543,7 +1982,6 @@ static void ServerMsgRecvHandler
     void*               contextPtr
 )
 {
-    rpcProxy_Message_t *proxyMessagePtr = NULL;
     le_result_t         result;
     bool                send = true;
 
@@ -3569,40 +2007,23 @@ static void ServerMsgRecvHandler
         return;
     }
 
-    if (RPC_PROXY_MAX_MESSAGE < le_msg_GetMaxPayloadSize(msgRef))
-    {
-        // Raise an error message and return
-        LE_ERROR("Proxy Message buffer too small (%u) relative to incoming message payload "
-                 "(%" PRIuS ")", RPC_PROXY_MAX_MESSAGE, le_msg_GetMaxPayloadSize(msgRef));
-        return;
-    }
-
     //
     // Prepare a Client-Request Proxy Message
     //
 
     // Allocate memory for a Proxy Message buffer
-    proxyMessagePtr = le_mem_Alloc(ProxyMessagesPoolRef);
+    rpcProxy_Message_t proxyMessage = {0};
 
-    // Copy the Message Reference payload into the Proxy Message
-    memcpy(proxyMessagePtr->message,
-           le_msg_GetPayloadPtr(msgRef),
-           le_msg_GetMaxPayloadSize(msgRef));
-
-    // Save the message payload size
-    proxyMessagePtr->msgSize = le_msg_GetMaxPayloadSize(msgRef);
-
-    LE_DEBUG("Received message from client, msgSize [%u]", proxyMessagePtr->msgSize);
-
+    LE_DEBUG("Received message from client");
 
     // Set the Proxy Message common header id and type
-    proxyMessagePtr->commonHeader.id = rpcProxy_GenerateProxyMessageId();
-    proxyMessagePtr->commonHeader.type = RPC_PROXY_CLIENT_REQUEST;
+    proxyMessage.commonHeader.id = rpcProxy_GenerateProxyMessageId();
+    proxyMessage.commonHeader.type = RPC_PROXY_CLIENT_REQUEST;
 
     // Cache Message Reference to use later.
     // Store the Message Reference in a hash map using the proxy Id as the key.
     le_hashmap_Put(MsgRefMapByProxyId,
-                   (void*)(uintptr_t) proxyMessagePtr->commonHeader.id,
+                   (void*)(uintptr_t) proxyMessage.commonHeader.id,
                    msgRef);
 
     // Retrieve the Service-ID for the specified service-name
@@ -3611,14 +2032,14 @@ static void ServerMsgRecvHandler
     {
         // Raise a warning message
         LE_WARN("Service is not available, service-name [%s]", serviceName);
-        proxyMessagePtr->commonHeader.serviceId = 0;
+        proxyMessage.commonHeader.serviceId = 0;
 
         // Service is not available - do not send message to far-side
         send = false;
     }
     else
     {
-        proxyMessagePtr->commonHeader.serviceId = *serviceIdPtr;
+        proxyMessage.commonHeader.serviceId = *serviceIdPtr;
     }
 
     // Check if message should be sent to the far-side
@@ -3627,24 +2048,24 @@ static void ServerMsgRecvHandler
         goto exit;
     }
 
-    rpcProxy_MessageMetadata_t metaData;
-    if (rpcFStream_HandleFileDescriptor(msgRef, &metaData, *serviceIdPtr, systemName) != LE_OK)
+
+    if (rpcFStream_HandleFileDescriptor(msgRef, &(proxyMessage.metaData), *serviceIdPtr, systemName) != LE_OK)
     {
         LE_ERROR("Error in handling file descriptor in the ipc message");
         // we're still sending the main message to the other side but fd will be -1.
     }
 
     // Send a request to the server and get the response.
-    LE_DEBUG("Sending message to '%s' RPC Proxy and waiting for response : %u bytes sent",
-             systemName,
-             proxyMessagePtr->msgSize);
+    LE_DEBUG("Sending message to '%s' RPC Proxy and waiting for response", systemName);
 
-    // Send Proxy Message to far-side
-    result = rpcProxy_SendMsg(systemName, proxyMessagePtr, &metaData);
+    proxyMessage.msgRef = msgRef;
+
+    // Send Proxy Message HEADER to far-side
+    result = rpcProxy_SendMsg(systemName, &proxyMessage);
     if (result != LE_OK)
     {
         LE_ERROR("le_comm_Send failed, result %d", result);
-        rpcFStream_DeleteOurStream(metaData.fileStreamId, systemName);
+        rpcFStream_DeleteOurStream(proxyMessage.metaData.fileStreamId, systemName);
     }
 
 exit:
@@ -3661,11 +2082,12 @@ exit:
         // Create a timer to handle "lost" requests
         clientRequestTimerRef = le_timer_Create("Client-Request timer");
         le_timer_SetInterval(clientRequestTimerRef, timerInterval);
-        le_timer_SetHandler(clientRequestTimerRef, rpcProxy_ProxyMessageTimerExpiryHandler);
+        le_timer_SetHandler(clientRequestTimerRef, rpcProxy_ClientRequestTimerExpiryHandler);
         le_timer_SetWakeup(clientRequestTimerRef, false);
 
-        // Set Proxy Message (copy) in the timer event
-        le_timer_SetContextPtr(clientRequestTimerRef, proxyMessagePtr);
+
+        le_timer_SetContextPtr(clientRequestTimerRef,
+                               (void*)(uintptr_t) proxyMessage.commonHeader.id);
 
         // Start timer
         le_timer_Start(clientRequestTimerRef);
@@ -3673,21 +2095,16 @@ exit:
         // Store the timerRef in a hashmap, using the Proxy Message ID as a key, so that
         // it can be retrieved later
         le_hashmap_Put(ExpiryTimerRefByProxyId,
-                       (void*)(uintptr_t) proxyMessagePtr->commonHeader.id,
+                       (void*)(uintptr_t) proxyMessage.commonHeader.id,
                        clientRequestTimerRef);
 
         LE_DEBUG("Starting timer (%d secs.) for Client-Request, "
                  "service-name [%s], id [%" PRIu32 "]",
                  RPC_PROXY_CLIENT_REQUEST_TIMER_INTERVAL,
                  serviceName,
-                 proxyMessagePtr->commonHeader.id);
-    }
-    else
-    {
-        le_mem_Release(proxyMessagePtr);
+                 proxyMessage.commonHeader.id);
     }
 }
-
 
 #ifndef RPC_PROXY_LOCAL_SERVICE
 //--------------------------------------------------------------------------------------------------
@@ -3750,14 +2167,13 @@ static void SendDisconnectService
             proxyMessage.serviceName);
 
     // Send Proxy Message to far-side
-    result = rpcProxy_SendMsg(systemName, &proxyMessage, NULL);
+    result = rpcProxy_SendMsg(systemName, &proxyMessage);
     if (result != LE_OK)
     {
         LE_ERROR("le_comm_Send failed, result %d", result);
     }
 }
 #endif
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -3833,14 +2249,13 @@ static void SendSessionConnectRequest
     proxyMessagePtr->serviceCode = LE_OK;
 
     // Send Proxy Message to far-side
-    result = rpcProxy_SendMsg(systemName, proxyMessagePtr, NULL);
+    result = rpcProxy_SendMsg(systemName, proxyMessagePtr);
     if (result != LE_OK)
     {
         LE_ERROR("le_comm_Send failed, result %d", result);
 
         // Free the Service-ID Safe Reference now that the Service is being deleted
         le_ref_DeleteRef(ServiceIDSafeRefMap, (void*)(uintptr_t) serviceId);
-        le_mem_Release(proxyMessagePtr);
         return;
     }
 
@@ -3854,7 +2269,7 @@ static void SendSessionConnectRequest
     // Create a timer to trigger a Try-Connect-Service retry
     connectServiceTimerRef = le_timer_Create("Connect-Service-Request timer");
     le_timer_SetInterval(connectServiceTimerRef, timerInterval);
-    le_timer_SetHandler(connectServiceTimerRef, rpcProxy_ProxyMessageTimerExpiryHandler);
+    le_timer_SetHandler(connectServiceTimerRef, rpcProxy_ConnectServiceTimerExpiryHandler);
     le_timer_SetWakeup(connectServiceTimerRef, false);
 
     // Set Proxy Message (copy) in the timer event
@@ -4046,7 +2461,6 @@ static le_result_t DoConnectService
 
     return LE_OK;
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -4244,14 +2658,14 @@ void rpcProxy_DisconnectSessions
 
 #ifdef RPC_PROXY_LOCAL_SERVICE
                         // Clean-up Local Message memory allocation associated with this Proxy Message ID
-                        CleanUpLocalMessageResources(requestResponsePtr->commonHeader.id);
+                        rpcProxy_CleanUpLocalMessageResources(requestResponsePtr->commonHeader.id);
 #endif
 
                         // Remove entry from hash-map, using the Proxy Message Id
                         le_hashmap_Remove(RequestResponseRefByProxyId,
                                           (void*)(uintptr_t) requestResponsePtr->commonHeader.id);
 
-                        // Free Proxy Message Copy Memory
+                        // Free request response Proxy Message Copy Memory
                         le_mem_Release(requestResponsePtr);
                     }
                 }
@@ -4262,6 +2676,10 @@ void rpcProxy_DisconnectSessions
                 le_hashmap_GetStoredKey(
                     ServiceIDMapByName,
                     sessionRefPtr->serviceName);
+            if (serviceNameCopyPtr == NULL)
+            {
+                return;
+            }
 
             if (serviceNameCopyPtr != NULL)
             {
@@ -4279,7 +2697,6 @@ void rpcProxy_DisconnectSessions
 
     return;
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -4331,7 +2748,6 @@ le_result_t le_rpcProxy_InitializeOnce
     return LE_OK;
 }
 
-
 #ifndef LE_CONFIG_RPC_PROXY_LIBRARY
 //--------------------------------------------------------------------------------------------------
 /**
@@ -4343,7 +2759,6 @@ COMPONENT_INIT_ONCE
     le_rpcProxy_InitializeOnce();
 }
 #endif
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -4374,10 +2789,6 @@ le_result_t le_rpcProxy_Initialize
                                              RPC_PROXY_SERVICE_BINDINGS_MAX_NUM,
                                              sizeof(uint32_t));
 
-    ProxyMessagesPoolRef = le_mem_InitStaticPool(ProxyMessagePool,
-                                                 RPC_PROXY_MSG_REFERENCE_MAX_NUM,
-                                                 sizeof(rpcProxy_Message_t));
-
     ProxyConnectServiceMessagesPoolRef = le_mem_InitStaticPool(
                                              ProxyConnectServiceMessagePool,
                                              RPC_PROXY_MSG_REFERENCE_MAX_NUM,
@@ -4389,21 +2800,6 @@ le_result_t le_rpcProxy_Initialize
                                                   sizeof(rpcProxy_ClientRequestResponseRecord_t));
 
     rpcFStream_InitFileStreamPool();
-
-#ifdef RPC_PROXY_LOCAL_SERVICE
-    MessageDataPtrPoolRef = le_mem_InitStaticPool(MessageDataPtrPool,
-                                                  RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM,
-                                                  RPC_LOCAL_MAX_MESSAGE);
-
-    LocalMessagePoolRef = le_mem_InitStaticPool(LocalMessagePool,
-                                                RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM,
-                                                sizeof(rpcProxy_LocalMessage_t));
-
-    ResponseParameterArrayPoolRef = le_mem_InitStaticPool(
-                                        ResponseParameterArrayPool,
-                                        RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM,
-                                        sizeof(responseParameterArray_t));
-#endif
 
     // Create hash map for message references (value), using the Proxy Message ID (key)
     MsgRefMapByProxyId = le_hashmap_InitStatic(MsgRefHashMap,
@@ -4453,13 +2849,8 @@ le_result_t le_rpcProxy_Initialize
                                       le_hashmap_HashVoidPointer,
                                       le_hashmap_EqualsVoidPointer);
 
-    // Create hash map for response "OUT" parameter pointers, using the Proxy Message ID (key).
-    ResponseParameterArrayByProxyId = le_hashmap_InitStatic(
-                                          ResponseParameterArrayHashMap,
-                                          RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM,
-                                          le_hashmap_HashVoidPointer,
-                                          le_hashmap_EqualsVoidPointer);
 
+    rpcProxy_InitializeStreamingMemPools();
     rpcEventHandler_Initialize();
 
     LE_INFO("RPC Proxy Service Init start");
@@ -4569,10 +2960,8 @@ le_result_t le_rpcProxy_Initialize
 
     LE_INFO("RPC Proxy Service Init done");
 end:
-
     return result;
 }
-
 
 #ifndef LE_CONFIG_RPC_PROXY_LIBRARY
 //--------------------------------------------------------------------------------------------------

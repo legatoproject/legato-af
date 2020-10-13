@@ -332,7 +332,7 @@ le_result_t rpcDaemonTest_ProcessClientRequest
             LE_TEST_OK(tagId == id, "TEST CASE 15 - Tag ID Sanity Check");
 
             // Unpack the Reference value
-            LE_ASSERT(le_pack_UnpackReference(&msgBufPtr, &value));
+            LE_ASSERT(le_pack_UnpackReference(&msgBufPtr, &value, NULL));
             LE_TEST_OK(value == TEST_CASE_15_VALUE, "TEST CASE 15");
             break;
         }

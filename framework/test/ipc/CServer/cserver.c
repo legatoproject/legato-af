@@ -69,6 +69,62 @@ void ipcTest_EchoLargeBitMask
     }
 }
 
+void ipcTest_EchoBoolean
+(
+    bool InValue,
+    bool* OutValuePtr
+)
+{
+    if (OutValuePtr)
+    {
+        *OutValuePtr = InValue;
+    }
+}
+
+void ipcTest_EchoResult
+(
+    le_result_t InValue,
+    le_result_t* OutValuePtr
+)
+{
+    if (OutValuePtr)
+    {
+        *OutValuePtr = InValue;
+    }
+}
+
+le_result_t ipcTest_ReturnResult
+(
+    le_result_t InValue
+)
+{
+    return InValue;
+}
+
+void ipcTest_EchoOnOff
+(
+    le_onoff_t InValue,
+    le_onoff_t* OutValuePtr
+)
+{
+    if (OutValuePtr)
+    {
+        *OutValuePtr = InValue;
+    }
+}
+
+void ipcTest_EchoDouble
+(
+    double InValue,
+    double* OutValuePtr
+)
+{
+    if (OutValuePtr)
+    {
+        *OutValuePtr = InValue;
+    }
+}
+
 void ipcTest_EchoReference
 (
     ipcTest_SimpleRef_t InRef,
@@ -95,8 +151,6 @@ void ipcTest_EchoString
     }
 }
 
-#if 0
-// Not currently supported on Java.
 void ipcTest_EchoArray
 (
     const int64_t* InArrayPtr,
@@ -118,7 +172,65 @@ void ipcTest_EchoArray
         }
     }
 }
-#endif
+
+
+void ipcTest_EchoByteString
+(
+    const uint8_t* InArrayPtr,
+    size_t InArraySize,
+    uint8_t* OutArrayPtr,
+    size_t* OutArraySizePtr
+)
+{
+    if (OutArrayPtr)
+    {
+        if (InArraySize <= *OutArraySizePtr)
+        {
+            memcpy(OutArrayPtr, InArrayPtr, InArraySize*sizeof(uint8_t));
+            *OutArraySizePtr = InArraySize;
+        }
+        else
+        {
+            memcpy(OutArrayPtr, InArrayPtr, (*OutArraySizePtr)*sizeof(uint8_t));
+        }
+    }
+}
+
+void ipcTest_EchoStruct
+(
+    const ipcTest_TheStruct_t * LE_NONNULL InStructPtr,
+    ipcTest_TheStruct_t * OutStructPtr
+)
+{
+    if (OutStructPtr)
+    {
+        memcpy(OutStructPtr, InStructPtr, sizeof(ipcTest_TheStruct_t));
+    }
+}
+
+void ipcTest_EchoStructArray
+(
+    const ipcTest_TheStruct_t* InStructArrayPtr,
+    size_t InStructArraySize,
+    ipcTest_TheStruct_t* OutStructArrayPtr,
+    size_t* OutStructArraySizePtr
+)
+{
+    if (OutStructArrayPtr)
+    {
+        if (InStructArraySize <= *OutStructArraySizePtr)
+        {
+            memcpy(OutStructArrayPtr, InStructArrayPtr,
+                   InStructArraySize * sizeof(ipcTest_TheStruct_t));
+            *OutStructArraySizePtr = InStructArraySize;
+        }
+        else
+        {
+            memcpy(OutStructArrayPtr, InStructArrayPtr,
+                   (*OutStructArraySizePtr) * sizeof(ipcTest_TheStruct_t));
+        }
+    }
+}
 
 void ipcTest_ExitServer
 (
@@ -141,6 +253,7 @@ ipcTest_EchoEventHandlerRef_t ipcTest_AddEchoEventHandler
     void* contextPtr
 )
 {
+    LE_INFO("Adding Event Handler");
     // For simplicity, only allow a single event handler
     if (EchoEventHandlerPtr)
     {
@@ -158,6 +271,7 @@ void ipcTest_RemoveEchoEventHandler
     ipcTest_EchoEventHandlerRef_t handlerRef
 )
 {
+    LE_INFO("Removing event handler");
     // Remove if this is the current handler.
     if ((size_t)handlerRef == EchoEventRef)
     {
@@ -169,13 +283,70 @@ void ipcTest_RemoveEchoEventHandler
 
 void ipcTest_EchoTriggerEvent
 (
-    int32_t cookie
-        ///< [IN]
+    int32_t cookie ///< [IN]
 )
 {
+    LE_INFO("Triggering an Event");
     if (EchoEventHandlerPtr)
     {
         EchoEventHandlerPtr(cookie, EchoEventContextPtr);
+    }
+}
+
+
+/**
+ * Storage for pointer to Complex event handlers
+ */
+static ipcTest_EchoComplexHandlerFunc_t EchoComplexEventHandlerPtr = NULL;
+static void* EchoComplexEventContextPtr = NULL;
+size_t EchoComplexEventRef=1;
+
+ipcTest_EchoComplexEventHandlerRef_t ipcTest_AddEchoComplexEventHandler
+(
+    ipcTest_EchoComplexHandlerFunc_t handlerPtr,
+    void* contextPtr
+)
+{
+    LE_INFO("Adding Complex Event Handler");
+    // For simplicity, only allow a single event handler
+    if (EchoComplexEventHandlerPtr)
+    {
+        return NULL;
+    }
+
+    EchoComplexEventHandlerPtr = handlerPtr;
+    EchoComplexEventContextPtr = contextPtr;
+
+    return (ipcTest_EchoComplexEventHandlerRef_t)EchoComplexEventRef;
+}
+
+void ipcTest_RemoveEchoComplexEventHandler
+(
+    ipcTest_EchoComplexEventHandlerRef_t handlerRef
+)
+{
+    // Remove if this is the current handler.
+    if ((size_t)handlerRef == EchoComplexEventRef)
+    {
+        EchoComplexEventRef += 2;
+        EchoComplexEventHandlerPtr = NULL;
+        EchoComplexEventContextPtr = NULL;
+    }
+}
+
+void ipcTest_EchoTriggerComplexEvent
+(
+    int32_t cookie,
+    const char* LE_NONNULL cookieString,
+    const int16_t* cookieArrayPtr,
+    size_t cookieArraySize
+)
+{
+    LE_INFO("Triggering a complex Event");
+    if (EchoComplexEventHandlerPtr)
+    {
+        EchoComplexEventHandlerPtr(cookie, cookieString, cookieArrayPtr, cookieArraySize,
+                            EchoComplexEventContextPtr);
     }
 }
 

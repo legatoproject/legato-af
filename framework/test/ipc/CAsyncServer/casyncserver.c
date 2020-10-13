@@ -197,6 +197,76 @@ void ipcTest_ExitServer
 }
 
 /**
+ * Storage for pointer to Complex event handlers
+ */
+static ipcTest_EchoComplexHandlerFunc_t EchoEventHandlerComplexPtr = NULL;
+static void* EchoComplexEventContextPtr = NULL;
+size_t EchoComplexEventRef=1;
+
+ipcTest_EchoComplexEventHandlerRef_t ipcTest_AddEchoComplexEventHandler
+(
+    ipcTest_EchoComplexHandlerFunc_t handlerPtr,
+    void* contextPtr
+)
+{
+    // For simplicity, only allow a single event handler
+    if (EchoEventHandlerComplexPtr)
+    {
+        return NULL;
+    }
+
+    EchoEventHandlerComplexPtr = handlerPtr;
+    EchoComplexEventContextPtr = contextPtr;
+
+    return (ipcTest_EchoComplexEventHandlerRef_t)EchoComplexEventRef;
+}
+
+void ipcTest_RemoveEchoComplexEventHandler
+(
+    ipcTest_EchoComplexEventHandlerRef_t handlerRef
+)
+{
+    // Remove if this is the current handler.
+    if ((size_t)handlerRef == EchoComplexEventRef)
+    {
+        EchoComplexEventRef += 2;
+        EchoEventHandlerComplexPtr = NULL;
+        EchoComplexEventContextPtr = NULL;
+    }
+}
+
+void AsyncServer_EchoTriggerComplexEventRespond
+(
+    void* serverCmdPtr,
+    void* context
+)
+{
+    LE_UNUSED(context);
+    ipcTest_EchoTriggerComplexEventRespond(serverCmdPtr);
+}
+
+
+void ipcTest_EchoTriggerComplexEvent
+(
+    ipcTest_ServerCmdRef_t serverCmdPtr,
+    int32_t cookie,
+    const char* LE_NONNULL cookieString,
+    const int16_t* cookieArrayPtr,
+    size_t cookieArraySize
+)
+{
+    if (EchoEventHandlerComplexPtr)
+    {
+        EchoEventHandlerComplexPtr(cookie, cookieString, cookieArrayPtr, cookieArraySize,
+                                   EchoComplexEventContextPtr);
+    }
+
+    le_event_QueueFunction(AsyncServer_EchoTriggerComplexEventRespond,
+                           serverCmdPtr,
+                           NULL);
+}
+
+/**
  * Storage for pointer to event handlers
  */
 static ipcTest_EchoHandlerFunc_t EchoEventHandlerPtr = NULL;
@@ -245,26 +315,20 @@ void AsyncServer_EchoTriggerEventRespond
     ipcTest_EchoTriggerEventRespond(serverCmdPtr);
 }
 
-
 void ipcTest_EchoTriggerEvent
 (
     ipcTest_ServerCmdRef_t serverCmdPtr,
     int32_t cookie
-        ///< [IN]
 )
 {
     if (EchoEventHandlerPtr)
     {
         EchoEventHandlerPtr(cookie, EchoEventContextPtr);
     }
-
     le_event_QueueFunction(AsyncServer_EchoTriggerEventRespond,
                            serverCmdPtr,
                            NULL);
 }
-
-
-
 
 COMPONENT_INIT
 {

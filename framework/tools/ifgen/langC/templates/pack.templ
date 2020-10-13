@@ -55,6 +55,9 @@ static inline bool {{type.iface.name}}_Pack{{type.name}}
 
     LE_ASSERT(valuePtr);
 
+    subResult = le_pack_PackIndefArrayHeader(bufferPtr);
+    result = result && subResult;
+
     {%- for member in type.members %}
     {%- if member is StringMember %}
     subResult = le_pack_PackString( bufferPtr,
@@ -74,6 +77,9 @@ static inline bool {{type.iface.name}}_Pack{{type.name}}
     result = result && subResult;
     {%- endfor %}
 
+    subResult = le_pack_PackEndOfIndefArray(bufferPtr);
+    result = result && subResult;
+
     return result;
 }
 
@@ -84,6 +90,11 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
 )
 {
     bool result = true;
+
+    if (result)
+    {
+        result = le_pack_PackIndefArrayHeader(bufferPtr);
+    }
     {%- for member in type.members %}
     {%- if member is StringMember %}
     if (result)
@@ -92,6 +103,15 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
                                       valuePtr->{{member.name|DecorateName}},
                                       sizeof(valuePtr->{{member.name|DecorateName}}),
                                       {{member.maxCount}});
+    }
+    {%- elif member is ArrayMember and member.apiType is ReferenceType %}
+    if (result)
+    {
+        LE_PACK_UNPACKTAGGEDARRAY( bufferPtr,
+                                &valuePtr->{{member.name|DecorateName}},
+                                &valuePtr->{{member.name}}Count,
+                                {{member.maxCount}}, {{member.apiType|UnpackFunction}},
+                                &result );
     }
     {%- elif member is ArrayMember %}
     if (result)
@@ -102,6 +122,12 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
                              {{member.maxCount}}, {{member.apiType|UnpackFunction}},
                              &result );
     }
+    {%- elif member.apiType is ReferenceType %}
+    if (result)
+    {
+        result = {{member.apiType|UnpackFunction}}(bufferPtr,
+                                                   &valuePtr->{{member.name|DecorateName}}, NULL);
+    }
     {%- else %}
     if (result)
     {
@@ -110,6 +136,12 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     }
     {%- endif %}
     {%- endfor %}
+
+    if (result)
+    {
+        result = le_pack_PackEndOfIndefArray(bufferPtr);
+    }
+
     return result;
 }
 {%- endmacro %}
@@ -121,78 +153,45 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
            or parameter is StringParameter
            or parameter is ArrayParameter %}
     {%- if initiatorWaits and args.localService and (parameter is StringParameter or
-                                                  parameter is ArrayParameter) %}
-#ifdef LE_CONFIG_RPC
+                                                  parameter is OptimizableArray) %}
     // Pack TagID to allow external identification of the
     // StringParameter or ArrayParameter tuple
     {%- if parameter is InParameter %}
     // "In" Parameters
     {%- if parameter is StringParameter %}
-#if IFGEN_PTR32
-    LE_ASSERT(le_pack_PackTaggedUint32Tuple( &_msgBufPtr,
+    LE_ASSERT(le_pack_PackTaggedSizePointerTuple( &_msgBufPtr,
                                              {{parameter|GetParameterCount}},
-                                             (uint32_t){{parameter|FormatParameterName}},
+                                             (void*){{parameter|FormatParameterName}},
                                              LE_PACK_IN_STRING_POINTER ));
-#elif IFGEN_PTR64
-    LE_ASSERT(le_pack_PackTaggedUint64Tuple( &_msgBufPtr,
-                                             {{parameter|GetParameterCount}},
-                                             (uint64_t){{parameter|FormatParameterName}},
-                                             LE_PACK_IN_STRING_POINTER ));
-#endif
+
     {%- else %}
-#if IFGEN_PTR32
-    LE_ASSERT(le_pack_PackTaggedUint32Tuple( &_msgBufPtr,
+    LE_ASSERT(le_pack_PackTaggedSizePointerTuple( &_msgBufPtr,
                                              {{parameter|GetParameterCount}},
-                                             (uint32_t){{parameter|FormatParameterName}},
-                                             LE_PACK_IN_ARRAY_POINTER ));
-#elif IFGEN_PTR64
-    LE_ASSERT(le_pack_PackTaggedUint64Tuple( &_msgBufPtr,
-                                             {{parameter|GetParameterCount}},
-                                             (uint64_t){{parameter|FormatParameterName}},
-                                             LE_PACK_IN_ARRAY_POINTER ));
-#endif
+                                             (void*){{parameter|FormatParameterName}},
+                                             LE_PACK_IN_BYTE_STR_POINTER ));
     {%- endif %}
     {%- else %}
     // "Out" Parameters
     {%- if parameter is StringParameter %}
-#if IFGEN_PTR32
-    LE_ASSERT(le_pack_PackTaggedUint32Tuple( &_msgBufPtr,
+    LE_ASSERT(le_pack_PackTaggedSizePointerTuple( &_msgBufPtr,
                                              {{parameter|GetParameterCount}},
-                                             (uint32_t){{parameter|FormatParameterName}},
+                                             (void*){{parameter|FormatParameterName}},
                                              LE_PACK_OUT_STRING_POINTER ));
-#elif IFGEN_PTR64
-    LE_ASSERT(le_pack_PackTaggedUint64Tuple( &_msgBufPtr,
-                                             {{parameter|GetParameterCount}},
-                                             (uint64_t){{parameter|FormatParameterName}},
-                                             LE_PACK_OUT_STRING_POINTER ));
-#endif
     {%- else %}
-#if IFGEN_PTR32
-    LE_ASSERT(le_pack_PackTaggedUint32Tuple( &_msgBufPtr,
+    LE_ASSERT(le_pack_PackTaggedSizePointerTuple( &_msgBufPtr,
                                              {{parameter|GetParameterCount}},
-                                             (uint32_t){{parameter|FormatParameterName}},
-                                             LE_PACK_OUT_ARRAY_POINTER ));
-#elif IFGEN_PTR64
-    LE_ASSERT(le_pack_PackTaggedUint64Tuple( &_msgBufPtr,
-                                             {{parameter|GetParameterCount}},
-                                             (uint64_t){{parameter|FormatParameterName}},
-                                             LE_PACK_OUT_ARRAY_POINTER ));
-#endif
+                                             (void*){{parameter|FormatParameterName}},
+                                             LE_PACK_OUT_BYTE_STR_POINTER ));
     {%- endif %}
     {%- endif %}
-#else
-    LE_ASSERT(le_pack_PackSize( &_msgBufPtr, {{parameter|GetParameterCount}} ));
-
-#if IFGEN_PTR32
-    LE_ASSERT(le_pack_PackUint32( &_msgBufPtr, (uint32_t){{parameter|FormatParameterName}} ));
-#elif IFGEN_PTR64
-    LE_ASSERT(le_pack_PackUint64( &_msgBufPtr, (uint64_t){{parameter|FormatParameterName}} ));
-#endif
-#endif // LE_CONFIG_RPC
     {%- elif parameter is not InParameter %}
     if ({{parameter|FormatParameterName}})
     {
         LE_ASSERT(le_pack_PackSize( &_msgBufPtr, {{parameter|GetParameterCount}} ));
+    }
+    else
+    {
+        LE_ASSERT(le_pack_PackSize( &_msgBufPtr, 0 ));
     }
     {%- elif parameter is StringParameter %}
     LE_ASSERT(le_pack_PackString( &_msgBufPtr,
@@ -204,6 +203,10 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
                        {{parameter|FormatParameterName}}, {{parameter|GetParameterCount}},
                        {{parameter.maxCount}}, {{parameter.apiType|PackFunction}},
                        &{{parameter.name}}Result );
+        {%- elif parameter is ByteStringArray %}
+            {{parameter.name}}Result = le_pack_PackByteString( &_msgBufPtr,
+                                        {{parameter|FormatParameterName}},
+                                        {{parameter|GetParameterCount}});
         {%- else %}
             LE_PACK_PACKARRAY( &_msgBufPtr,
                        {{parameter|FormatParameterName}}, {{parameter|GetParameterCount}},
@@ -262,7 +265,7 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
            or parameter is StringParameter
            or parameter is ArrayParameter %}
     {%- if args.localService and initiatorWaits and (parameter is StringParameter or
-                                                  parameter is ArrayParameter) %}
+                                                  parameter is OptimizableArray) %}
     __attribute__((unused))
     size_t {{parameter.name}}Size = 0;
     {%- if parameter is ArrayParameter %}
@@ -272,7 +275,7 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {%- else %}
     void
     {%- endif %}
-        *{{parameter|FormatParameterName}};
+        *{{parameter|FormatParameterName}} = NULL;
     {%- elif parameter is not InParameter %}
     size_t {{parameter.name}}Size = 0;
     {%- elif parameter is StringParameter %}
@@ -320,36 +323,10 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
            or parameter is StringParameter
            or parameter is ArrayParameter %}
     {%- if args.localService and initiatorWaits and (parameter is StringParameter or
-                                                  parameter is ArrayParameter) %}
-#ifdef LE_CONFIG_RPC
-#if IFGEN_PTR32
-    if (!le_pack_UnpackUint32Tuple( &_msgBufPtr,
+                                                  parameter is OptimizableArray) %}
+    if (!le_pack_UnpackSizePointerTuple( &_msgBufPtr,
                                     &{{parameter.name}}Size,
-                                    (uint32_t*)&{{parameter|FormatParameterName}} ))
-    {
-        {{- caller() }}
-    }
-#elif IFGEN_PTR64
-    if (!le_pack_UnpackUint64Tuple( &_msgBufPtr,
-                                    &{{parameter.name}}Size,
-                                    (uint64_t*)&{{parameter|FormatParameterName}} ))
-    {
-        {{- caller() }}
-    }
-#endif
-    {%- if parameter is StringParameter %}
-    if ({{parameter.name}}Size >= UINT32_MAX)
-    {
-        {{parameter.name}}Size = UINT32_MAX;
-    }
-    else
-    {
-        {{parameter.name}}Size++;
-    }
-    {%- endif %}
-#else
-    if (!le_pack_UnpackSize( &_msgBufPtr,
-                             &{{parameter.name}}Size ))
+                                    (void**)&{{parameter|FormatParameterName}}, NULL ))
     {
         {{- caller() }}
     }
@@ -363,20 +340,6 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
         {{parameter.name}}Size++;
     }
     {%- endif %}
-#if IFGEN_PTR32
-    if (!le_pack_UnpackUint32( &_msgBufPtr,
-                               (uint32_t*)&{{parameter|FormatParameterName}} ))
-    {
-        {{- caller() }}
-    }
-#elif IFGEN_PTR64
-    if (!le_pack_UnpackUint64( &_msgBufPtr,
-                               (uint64_t*)&{{parameter|FormatParameterName}} ))
-    {
-         {{- caller() }}
-    }
-#endif
-#endif // LE_CONFIG_RPC
     {%- elif parameter is not InParameter %}
     if (!le_pack_UnpackSize( &_msgBufPtr,
                              &{{parameter.name}}Size ))
@@ -415,6 +378,15 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
                          {{parameter.maxCount}},
                          {{parameter.apiType|UnpackFunction}},
                          &{{parameter.name}}Result );
+        {%- elif parameter is ByteStringArray %}
+            {{parameter.name}}Result = le_pack_UnpackByteString( &_msgBufPtr,
+                {{parameter|FormatParameterName}}, &{{parameter.name}}Size, {{parameter.maxCount}});
+        {%- elif parameter.apiType is ReferenceType %}
+            LE_PACK_UNPACKTAGGEDARRAY( &_msgBufPtr,
+                         {{parameter|FormatParameterName}}, &{{parameter.name}}Size,
+                         {{parameter.maxCount}},
+                         {{parameter.apiType|UnpackFunction}},
+                         &{{parameter.name}}Result );
         {%- else %}
             LE_PACK_UNPACKARRAY( &_msgBufPtr,
                          {{parameter|FormatParameterName}}, &{{parameter.name}}Size,
@@ -427,12 +399,18 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
         {{- caller() }}
     }
     {%- elif parameter.apiType is HandlerType %}
-    if (!le_pack_UnpackReference( &_msgBufPtr, &contextPtr ))
+    if (!le_pack_UnpackReference( &_msgBufPtr, &contextPtr, NULL ))
     {
         {{- caller() }}
     }
     {%- elif parameter.apiType is BasicType and parameter.apiType.name == 'file' %}
     {{parameter.name|DecorateName}} = le_msg_GetFd(_msgRef);
+    {%- elif parameter.apiType is ReferenceType %}
+    if (!{{parameter.apiType|UnpackFunction}}( &_msgBufPtr,
+                                               &{{parameter.name|DecorateName}}, NULL ))
+    {
+        {{- caller() }}
+    }
     {%- else %}
     if (!{{parameter.apiType|UnpackFunction}}( &_msgBufPtr,
                                                &{{parameter.name|DecorateName}} ))
@@ -448,7 +426,7 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {%- if args.localService and initiatorWaits and parameter is StringParameter %}
 
     /* No packing needed for {{parameter.name}} */
-    {%- elif args.localService and initiatorWaits and parameter is ArrayParameter %}
+    {%- elif args.localService and initiatorWaits and parameter is OptimizableArray %}
     LE_ASSERT(le_pack_PackSize( &_msgBufPtr,
                                {{parameter|GetParameterCount}} ));
     /* No data packing needed for {{parameter.name}} */
@@ -467,6 +445,10 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
                            {{parameter|FormatParameterName}}, {{parameter|GetParameterCount}},
                            {{parameter.maxCount}}, {{parameter.apiType|PackFunction}},
                            &{{parameter.name}}Result );
+        {%- elif parameter is ByteStringArray %}
+            {{parameter.name}}Result = le_pack_PackByteString( &_msgBufPtr,
+                                        {{parameter|FormatParameterName}},
+                                        {{parameter|GetParameterCount}});
         {%- else %}
             LE_PACK_PACKARRAY( &_msgBufPtr,
                            {{parameter|FormatParameterName}}, {{parameter|GetParameterCount}},
@@ -510,7 +492,7 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {%- if args.localService and initiatorWaits and parameter is StringParameter %}
 
     /* No unpacking needed for {{parameter.name}} */
-    {%- elif args.localService and initiatorWaits and parameter is ArrayParameter %}
+    {%- elif args.localService and initiatorWaits and parameter is OptimizableArray %}
     LE_ASSERT(le_pack_UnpackSize( &_msgBufPtr,
                                {{parameter|GetParameterCountPtr}} ));
     /* No data unpacking needed for {{parameter.name}} */
@@ -532,6 +514,17 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
                              {{parameter|FormatParameterName}}, {{parameter|GetParameterCountPtr}},
                              {{parameter.maxCount}}, {{parameter.apiType|UnpackFunction}},
                              &{{parameter.name}}Result );
+        {%- elif parameter is ByteStringArray %}
+            {{parameter.name}}Result = le_pack_UnpackByteString( &_msgBufPtr,
+                                                                {{parameter|FormatParameterName}},
+                                                                {{parameter|GetParameterCountPtr}},
+                                                                {{parameter.maxCount}});
+        {%- elif parameter.apiType is ReferenceType %}
+            LE_PACK_UNPACKTAGGEDARRAY( &_msgBufPtr,
+                         {{parameter|FormatParameterName}}, &{{parameter.name}}Size,
+                         {{parameter.maxCount}},
+                         {{parameter.apiType|UnpackFunction}},
+                         &{{parameter.name}}Result );
         {%- else %}
             LE_PACK_UNPACKARRAY( &_msgBufPtr,
                              {{parameter|FormatParameterName}}, {{parameter|GetParameterCountPtr}},
@@ -547,6 +540,13 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     if ({{parameter|FormatParameterName}})
     {
         *{{parameter|FormatParameterName}} = le_msg_GetFd(_responseMsgRef);
+    }
+    {%- elif parameter.apiType is ReferenceType %}
+    if ({{parameter|FormatParameterName}} &&
+        (!{{parameter.apiType|UnpackFunction}}( &_msgBufPtr,
+                                               {{parameter|FormatParameterPtr}}, NULL )))
+    {
+        {{- caller() }}
     }
     {%- else %}
     if ({{parameter|FormatParameterName}} &&

@@ -8,6 +8,7 @@
 
 #include "legato.h"
 #include "le_rpcProxy.h"
+#include "le_rpcProxyNetwork.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -349,26 +350,10 @@ le_result_t rpcFStream_HandleStreamId
 //--------------------------------------------------------------------------------------------------
 le_result_t rpcFStream_ProcessFileStreamMessage
 (
-    const char* systemName,                ///< [IN] name of system this message was received from
-    rpcProxy_Message_t* proxyMessagePtr,   ///< [IN] pointer to rpc message received
-    rpcProxy_MessageMetadata_t* metaDataPtr///< [IN] metadata of file stream message
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Pack rpc file stream message for sending
- *
- * @return
- *      - LE_OK if message was repacked successfully.
- *      - LE_FORMAT_ERROR otherwise.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t rpcFStream_RepackMessage
-(
-    rpcProxy_Message_t* proxyMessagePtr,     ///< [IN] Pointer to the original Proxy Message
-    rpcProxy_Message_t* newProxyMessagePtr,  ///< [IN] Pointer to the new Proxy Message
-    rpcProxy_MessageMetadata_t* metaDataPtr, ///< [INOUT] metadata of proxy message
-    bool sending   ///< [IN] Boolean to identify if message is in-coming or out-going
+    void* handle,                     ///< [IN] Opaque handle to the le_comm communication channel
+    const char* systemName,           ///< [IN] name of system this message was received from
+    StreamState_t* streamStatePtr,    ///< [IN] Pointer to the Stream State-Machine data
+    void* proxyMessagePtr             ///< [IN] pointer to rpc message received
 );
 
 //--------------------------------------------------------------------------------------------------
