@@ -70,6 +70,7 @@ Location: @c $LEGATO_ROOT/interfaces
 | AT               | @ref c_atClient        | @subpage le_atClient                  | @c le_atClient.api      | AT commands client                                                                                              |
 | AT               | @ref c_atServer        | @subpage le_atServer                  | @c le_atServer.api      | AT commands server                                                                                              |
 | Port             | @ref c_port            | @subpage le_port                      | @c le_port.api          | Port service                                                                                                    |
+| Clock Service    | @ref c_le_clkSync      | @subpage le_clkSync                   | @c le_clkSync.api       | Manages and syncs clock time on a Legato device                                                                 |
 
 @section apiGuidesIndex_libLegato Legato C APIs
 
