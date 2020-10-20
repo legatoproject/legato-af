@@ -41,7 +41,7 @@ do
     esac
 done
 
-REPO_EXCLUDE_PATTERN='(legato|qmi/src|proprietary/(qct|sierra)|proprietary/.*/src|docManagement)'
+REPO_EXCLUDE_PATTERN='(legato|interfaces/proprietary|qmi/src|proprietary/(qct|sierra)|proprietary/.*/src|docManagement)'
 
 RELEASE_DIR=$LEGATO_ROOT/releases
 VERSION=$(cat "$LEGATO_ROOT/version")
