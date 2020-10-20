@@ -1,0 +1,42 @@
+sources:
+{
+    mqttClient.c
+    mqttAdaptor.c
+    mqttTimer.c
+    ${LEGATO_ROOT}/3rdParty/paho.mqtt.embedded-c/MQTTClient-C/src/MQTTClient.c
+}
+cflags:
+{
+    -I${LEGATO_ROOT}/3rdParty/paho.mqtt.embedded-c/MQTTPacket/src/
+    -I${LEGATO_ROOT}/3rdParty/paho.mqtt.embedded-c/MQTTClient-C/src/
+    -I${LEGATO_ROOT}/components/socketLibrary
+    -I${CURDIR}
+
+    -DMQTTCLIENT_PLATFORM_HEADER=mqttAdaptor.h
+    -DREVERSED
+    -DMQTT_TASK
+}
+
+requires:
+{
+    component:
+    {
+        ${LEGATO_ROOT}/components/3rdParty/paho.mqtt.embedded-c
+        ${LEGATO_ROOT}/components/socketLibrary
+    }
+
+    api:
+    {
+        modemServices/le_mdc.api
+    }
+
+    lib:
+    {
+        libmqttpatcketclient.a
+    }
+}
+
+ldflags:
+{
+    -L${LEGATO_BUILD}/3rdParty/paho.mqtt.embedded-c/lib
+}

@@ -1,0 +1,14 @@
+externalBuild:
+{
+    "make -f ${LEGATO_ROOT}/components/3rdParty/paho.mqtt.embedded-c/Makefile mqttpacketclient"
+    "mkdir -p ${LEGATO_BUILD}/3rdParty/paho.mqtt.embedded-c/lib"
+    "cp libmqttpacketclient.a ${LEGATO_BUILD}/3rdParty/paho.mqtt.embedded-c/lib/"
+}
+
+provides:
+{
+    lib:
+    {
+        libmqttpacketclient.a
+    }
+}
