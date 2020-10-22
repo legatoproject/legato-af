@@ -103,6 +103,8 @@ static const char* _Get_Node_Type_Txt
 {
     switch (nodeCode)
     {
+        case NODE_TYPE_EMPTY:
+            return "NODE_TYPE_EMPTY";
         case NODE_TYPE_BOOL:
             return "NODE_TYPE_BOOL";
         case NODE_TYPE_INTEGER:
@@ -285,6 +287,7 @@ static int ReadValue
     int         fd = 0;
     le_result_t result = LE_OK;
     struct stat fileStat = {0};
+    int result_atomfile = 0;
 
     LE_ASSERT(bufferPtr != NULL);
     memset(bufferPtr, 0, bufferSize);
@@ -310,32 +313,39 @@ static int ReadValue
     // Read the first byte which specifies what is stored by the node
     if (le_fd_Read(fd, &nodeTypeRead, 1) < 0)
     {
-        LE_CRIT("Tried reading an empty file - \'%s\'", fullPathStr);
-        return LE_NOT_FOUND;
+        LE_CRIT("Error in reading node type of file '%s'", fullPathStr);
+        result = LE_FAULT;
+        goto error;
     }
     // Return LE_NOT_FOUND if the node type is wrong for the API
     else if (nodeTypeRead != nodeType)
     {
         LE_CRIT("Node \'%s\' is of type %s but API called is for type %s",
             fullPathStr, _Get_Node_Type_Txt(nodeTypeRead), _Get_Node_Type_Txt(nodeType));
-        return LE_NOT_FOUND;
+        result = LE_NOT_FOUND;
+        goto error;
     }
 
     bytesRead = le_fd_Read(fd, (uint8 *)bufferPtr, bufferSize);
-
-    result = le_atomFile_Close(fd);
-
     if (bytesRead < 0)
     {
-        return LE_NOT_FOUND;
+        LE_CRIT("Error (%s) reading buffer from file '%s'", strerror(errno), fullPathStr);
+        result = LE_FAULT;
+        goto error;
     }
-    else if (result != LE_OK)
+
+    result_atomfile = le_atomFile_Close(fd);
+    if (result_atomfile < 0)
     {
-        LE_ERROR("Failed to close atomic file");
-        return result;
+        LE_ERROR("Failed to close atomic file '%s'", fullPathStr);
+        return LE_FAULT;
     }
 
     return bytesRead;
+
+error:
+    le_atomFile_Cancel(fd);
+    return result;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -377,20 +387,33 @@ static le_result_t WriteValue
         return LE_FAULT;
     }
 
-    if ((nodeType != NODE_TYPE_EMPTY) && bufSize && bufPtr)
+    if ((nodeType != NODE_TYPE_EMPTY) && bufPtr)
     {
         // Write the first byte as the node type
-        le_fd_Write(fd, (const uint8 *)&nodeType, 1);
-
-        bytesWr = le_fd_Write(fd, (const uint8 *)bufPtr, bufSize);
-        if (-1 == bytesWr)
+        bytesWr = le_fd_Write(fd, (const uint8 *)&nodeType, 1);
+        if (bytesWr == -1)
         {
-            LE_CRIT("Error while writing file");
-            return LE_FAULT;
+            LE_CRIT("Error (%d) while writing node type to the file '%s'", errno, fullPathStr);
+            goto error;
+        }
+
+        // If size of the buffer to write is 0, no need to write to fd
+        if (bufSize != 0)
+        {
+            bytesWr = le_fd_Write(fd, (const uint8 *)bufPtr, bufSize);
+            if (bytesWr == -1)
+            {
+                LE_CRIT("Error (%d) while writing buffer to file '%s'", errno, fullPathStr);
+                goto error;
+            }
         }
     }
 
     return le_atomFile_Close(fd);
+
+error:
+    le_atomFile_Cancel(fd);
+    return LE_FAULT;
 }
 
 // -------------------------------------------------------------------------------------------------
