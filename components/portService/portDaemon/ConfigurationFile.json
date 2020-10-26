@@ -3,7 +3,7 @@
     {
         "link1":
         {
-            "path": "/dev/ttyHSL1",
+            "path": "/dev/ttyMSM1",
             "openingType": "serialLink",
             "possibleMode": ["AT","DATA"]
         },
