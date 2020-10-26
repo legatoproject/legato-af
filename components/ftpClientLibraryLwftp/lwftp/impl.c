@@ -996,6 +996,28 @@ LE_SHARED le_result_t le_ftpClient_SetEventCallback
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *  Open a new secure connection on a dedicated source address to the configured server.
+ *
+ *  @note certificatePtr must be allocated via le_mem API
+ *
+ *  @return LE_OK on success or an appropriate error code on failure.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_ftpClient_SecureConnectOnSrcAddr
+(
+    le_ftpClient_SessionRef_t sessionRef,       ///< [IN] Session reference.
+    char*                     srcAddr,          ///< [IN] Source Address of PDP profile.
+    const uint8_t*            certificatePtr,   ///< [IN] Pointer to certificate. Data buffer must
+                                                ///<      be allocated via le_mem API
+    size_t                    certificateLen    ///< [IN] Certificate Length
+)
+{
+    LE_ERROR("FTPS is not supported on lwip-based products");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  *  Open a new connection to the configured server.
  *
  *  @return LE_OK on success or an appropriate error code on failure.

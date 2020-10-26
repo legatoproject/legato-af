@@ -348,11 +348,28 @@ LE_SHARED le_result_t le_ftpClient_Connect
  *  @return LE_OK on success or an appropriate error code on failure.
  */
 //--------------------------------------------------------------------------------------------------
-
 LE_SHARED le_result_t le_ftpClient_ConnectOnSrcAddr
 (
     le_ftpClient_SessionRef_t sessionRef,   ///< Session reference.
     char*                     srcAddr       ///< [IN] Source Address of PDP profile.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Open a new secure connection on dedicate source address to the configured server.
+ *
+ *  @note certificatePtr must be allocated via le_mem API
+ *
+ *  @return LE_OK on success or an appropriate error code on failure.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_ftpClient_SecureConnectOnSrcAddr
+(
+    le_ftpClient_SessionRef_t sessionRef,       ///< [IN] Session reference.
+    char*                     srcAddr,          ///< [IN] Source Address of PDP profile.
+    const uint8_t*            certificatePtr,   ///< [IN] Pointer to certificate. Data buffer must
+                                                ///<      be allocated via le_mem API
+    size_t                    certificateLen    ///< [IN] Certificate Length
 );
 
 //--------------------------------------------------------------------------------------------------

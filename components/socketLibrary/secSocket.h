@@ -79,7 +79,8 @@ le_result_t secSocket_AddCertificate
 le_result_t secSocket_PerformHandshake
 (
     secSocket_Ctx_t*    ctxPtr,    ///< [INOUT] Secure socket context pointer
-    char*               hostPtr    ///< [IN] Host to connect on
+    char*               hostPtr,   ///< [IN] Host to connect on
+    int                 fd         ///< [IN] File descriptor
 );
 
 //--------------------------------------------------------------------------------------------------

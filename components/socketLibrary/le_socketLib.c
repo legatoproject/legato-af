@@ -554,7 +554,9 @@ le_result_t le_socket_SecureConnection
         return LE_CLOSED;
     }
 
-    status = secSocket_PerformHandshake(contextPtr->secureCtxPtr, contextPtr->host);
+    status = secSocket_PerformHandshake(contextPtr->secureCtxPtr,
+                                        contextPtr->host,
+                                        contextPtr->fd);
     if (status != LE_OK)
     {
         LE_ERROR("Socket not connected");

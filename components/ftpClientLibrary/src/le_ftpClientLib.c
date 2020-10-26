@@ -29,6 +29,7 @@
 /// FTP  possible response code
 #define RESP_LOGGED_IN           230
 #define RESP_SERVER_READY        220
+#define RESP_AUTH_OK             234
 #define RESP_USER_OK             331
 #define RESP_COMMAND_OK          200
 #define RESP_PASV_PASSIVE        227
@@ -51,6 +52,17 @@
 #define FTP_RESP_MAX_SIZE        513
 /// FTP data buffer size
 #define FTP_DATA_MAX_SIZE        1025
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Security mode.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    LE_FTP_CLIENT_NONSECURE,    ///< Non-secure FTP
+    LE_FTP_CLIENT_SECURE        ///< Explicit FTPS
+} le_ftpClient_SecurityMode_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -77,6 +89,8 @@ typedef enum
 {
     FTP_CLOSED=0,   ///< Client is closed.
     FTP_CONNECTED,  ///< Connected to server.
+    FTP_AUTH_SENT,  ///< AUTH command is sent
+    FTP_TLS_HSHAKE, ///< TLS Handshake complete
     FTP_USER_SENT,  ///< user name is sent to server.
     FTP_PASS_SENT,  ///< password is sent to server.
     FTP_LOGGED,     ///< Logged into server with specfied user/pwd.
@@ -111,12 +125,15 @@ struct le_ftpClient_Session
     uint16_t dsPort;                                        ///< Data session port.
     uint16_t serverPort;                                    ///< Server port.
     enum Operation               operation;                 ///< Current operation.
+    le_ftpClient_SecurityMode_t  securityMode;              ///< Security mode
     union
     {
         le_ftpClient_WriteFunc_t writeFunc;                 ///< Callback to write downloaded data.
         uint64_t                 fileSize;                  ///< Size of remote file.
     };
     void                         *userDataPtr;              ///< User data passed to writeFunc.
+    const uint8_t                *certPtr;                  ///< Pointer to certificate
+    size_t                       certSize;                  ///< Certificate size in bytes
     bool                         isConnected;               ///< Connection status.
     int                          ipAddrFamily;              ///< AF_INET (IPV4) or AF_INET6 (IPV6)
     le_result_t                  result;                    ///< Result of the current operation.
@@ -197,6 +214,12 @@ static void FtpClientClose
     {
         le_timer_Delete(sessionRef->timerRef);
         sessionRef->timerRef = NULL;
+    }
+
+    if (sessionRef->certPtr != NULL)
+    {
+        le_mem_Release((void *)sessionRef->certPtr);
+        sessionRef->certPtr = NULL;
     }
 
     sessionRef->controlState = FTP_CLOSED;
@@ -928,15 +951,76 @@ static void FtpClientStateMachine
                 contextPtr->response = response;
                 if ((status == LE_OK) && (response == RESP_SERVER_READY))
                 {
-                    msgLen = snprintf(msgBuf, sizeof(msgBuf), "USER %s\r\n", contextPtr->userStr);
-                    LE_FATAL_IF(msgLen >= sizeof(msgBuf), "Failed to build USER command.");
-                    status = SendRequestMessage(contextPtr, msgBuf, msgLen);
+                    if (contextPtr->securityMode == LE_FTP_CLIENT_NONSECURE)
+                    {
+                        msgLen = snprintf(msgBuf, sizeof(msgBuf),
+                                          "USER %s\r\n", contextPtr->userStr);
+                        LE_FATAL_IF(msgLen >= sizeof(msgBuf), "Failed to build USER command.");
+                        status = SendRequestMessage(contextPtr, msgBuf, msgLen);
+                        if (LE_OK == status)
+                        {
+                            contextPtr->controlState = FTP_USER_SENT;
+                            restartLoop = true;
+                            break;
+                        }
+                    }
+                    else if (contextPtr->securityMode == LE_FTP_CLIENT_SECURE)
+                    {
+                        msgLen = snprintf(msgBuf, sizeof(msgBuf), "AUTH TLS\r\n");
+                        LE_FATAL_IF(msgLen >= sizeof(msgBuf), "Failed to build AUTH command.");
+                        status = SendRequestMessage(contextPtr, msgBuf, msgLen);
+                        if (LE_OK == status)
+                        {
+                            contextPtr->controlState = FTP_AUTH_SENT;
+                            restartLoop = true;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        LE_FATAL("Undefined security mode");
+                    }
+                }
+
+                // Fail case.
+                contextPtr->result = status;
+                contextPtr->controlState = FTP_CLOSING;
+                restartLoop = true;
+                break;
+
+            case FTP_AUTH_SENT:
+
+                status = FtpClientGetResponseCode(contextPtr, &response);
+                contextPtr->response = response;
+                if ((status == LE_OK) && (response == RESP_AUTH_OK))
+                {
+                    LE_DEBUG("TLS Handshaking.../");
+                    status = le_socket_SecureConnection(contextPtr->ctrlSocketRef);
                     if (LE_OK == status)
                     {
-                        contextPtr->controlState = FTP_USER_SENT;
+                        contextPtr->controlState = FTP_TLS_HSHAKE;
                         restartLoop = true;
                         break;
                     }
+                }
+
+                // Fail case.
+                contextPtr->result = status;
+                contextPtr->controlState = FTP_CLOSING;
+                restartLoop = true;
+                break;
+
+            case FTP_TLS_HSHAKE:
+
+                msgLen = snprintf(msgBuf, sizeof(msgBuf),
+                                  "USER %s\r\n", contextPtr->userStr);
+                LE_FATAL_IF(msgLen >= sizeof(msgBuf), "Failed to build USER command.");
+                status = SendRequestMessage(contextPtr, msgBuf, msgLen);
+                if (LE_OK == status)
+                {
+                    contextPtr->controlState = FTP_USER_SENT;
+                    restartLoop = true;
+                    break;
                 }
 
                 // Fail case.
@@ -1409,8 +1493,8 @@ static void FtpClientStateMachine
 //--------------------------------------------------------------------------------------------------
 static le_result_t FtpClientConnectServer
 (
-    le_ftpClient_SessionRef_t sessionRef,  ///< [IN] ftp client session ref
-    char*            srcAddr               ///< [IN] Source Address of PDP profile
+    le_ftpClient_SessionRef_t sessionRef,       ///< [IN] ftp client session ref
+    char*                     srcAddr           ///< [IN] Source Address of PDP profile
 )
 {
     LE_FATAL_IF(sessionRef == NULL, "FTP client session is NULL.");
@@ -1422,6 +1506,8 @@ static le_result_t FtpClientConnectServer
 
     LE_FATAL_IF(sessionRef->ctrlSocketRef != NULL, "control socket is already created!");
     LE_FATAL_IF(sessionRef->timerRef != NULL, "connection timer is already created!");
+    LE_FATAL_IF((sessionRef->securityMode == LE_FTP_CLIENT_SECURE)
+                    && (sessionRef->certPtr == NULL), "Null certificate passed");
 
     // Create the connection timer.
     if ( LE_OK != FtpClientCreateTimer(sessionRef))
@@ -1453,6 +1539,17 @@ static le_result_t FtpClientConnectServer
         LE_ERROR("Failed to connect FTP server %s:%u.", sessionRef->serverStr,
                  sessionRef->serverPort);
         goto freeSocket;
+    }
+
+    if (sessionRef->securityMode == LE_FTP_CLIENT_SECURE)
+    {
+        if (le_socket_AddCertificate(sessionRef->ctrlSocketRef,
+                                     sessionRef->certPtr,
+                                     sessionRef->certSize) != LE_OK)
+        {
+            LE_ERROR("Failed to add certificate.");
+            goto freeSocket;
+        }
     }
 
     // For connect command call FtpClientStateMachine() in sync mode.
@@ -1670,6 +1767,8 @@ le_ftpClient_SessionRef_t le_ftpClient_CreateSession
     sessionRef->ctrlSocketRef = NULL;
     sessionRef->dataSocketRef = NULL;
     sessionRef->timerRef = NULL;
+    sessionRef->certPtr = NULL;
+    sessionRef->certSize = 0;
 
     LE_INFO("Created FTP client session (%p).", sessionRef);
     return sessionRef;
@@ -1754,6 +1853,59 @@ le_result_t le_ftpClient_ConnectOnSrcAddr
 
     // Start sync operation.
     sessionRef->operation = OP_CONNECT;
+    sessionRef->securityMode = LE_FTP_CLIENT_NONSECURE;
+    result = FtpClientConnectServer(sessionRef, srcAddr);
+    sessionRef->isConnected = (result == LE_OK);
+    sessionRef->operation = OP_NONE;
+    // End sync operation.
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Open a new secure connection on a dedicated source address to the configured server.
+ *
+ *  @note certificatePtr must be allocated via le_mem API
+ *
+ *  @return LE_OK on success or an appropriate error code on failure.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_ftpClient_SecureConnectOnSrcAddr
+(
+    le_ftpClient_SessionRef_t sessionRef,       ///< [IN] Session reference.
+    char*                     srcAddr,          ///< [IN] Source Address of PDP profile.
+    const uint8_t*            certificatePtr,   ///< [IN] Pointer to certificate. Data buffer must
+                                                ///<      be allocated via le_mem API
+    size_t                    certificateLen    ///< [IN] Certificate Length
+)
+{
+    le_result_t  result;
+
+    if ((sessionRef == NULL) || (certificatePtr == NULL))
+    {
+        return LE_BAD_PARAMETER;
+    }
+
+    if (sessionRef->isConnected)
+    {
+        return LE_OK;
+    }
+
+    if (LE_OK != FtpServerDnsQuery(sessionRef))
+    {
+        LE_ERROR("FTPS Server name resolution failed.");
+        return LE_UNAVAILABLE;
+    }
+
+    // Store reference to certificate
+    le_mem_AddRef((void *)certificatePtr);
+    sessionRef->certPtr = certificatePtr;
+    sessionRef->certSize = certificateLen;
+
+    // Start sync operation.
+    sessionRef->operation = OP_CONNECT;
+    sessionRef->securityMode = LE_FTP_CLIENT_SECURE;
     result = FtpClientConnectServer(sessionRef, srcAddr);
     sessionRef->isConnected = (result == LE_OK);
     sessionRef->operation = OP_NONE;

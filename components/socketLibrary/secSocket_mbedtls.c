@@ -280,7 +280,8 @@ le_result_t secSocket_AddCertificate
 le_result_t secSocket_PerformHandshake
 (
     secSocket_Ctx_t*    ctxPtr,    ///< [INOUT] Secure socket context pointer
-    char*               hostPtr    ///< [IN] Host to connect on
+    char*               hostPtr,   ///< [IN] Host to connect on
+    int                 fd         ///< [IN] File descriptor
 )
 {
     int              ret;
@@ -288,7 +289,10 @@ le_result_t secSocket_PerformHandshake
 
     LE_ASSERT(contextPtr != NULL);
     LE_ASSERT(hostPtr != NULL);
-    LE_ASSERT(contextPtr->sock.fd != -1);
+    LE_ASSERT(fd != -1);
+
+    // Set the secure socket fd to the original netsocket fd
+    contextPtr->sock.fd = fd;
 
     // Setup
     LE_INFO("Setting up the SSL/TLS structure...");
@@ -419,7 +423,7 @@ le_result_t secSocket_Connect
     *fdPtr = contextPtr->sock.fd;
     LE_DEBUG("File descriptor: %d", *fdPtr);
 
-    return secSocket_PerformHandshake(ctxPtr, hostPtr);
+    return secSocket_PerformHandshake(ctxPtr, hostPtr, contextPtr->sock.fd);
 }
 
 //--------------------------------------------------------------------------------------------------

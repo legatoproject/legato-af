@@ -263,7 +263,7 @@ LE_SHARED le_result_t le_socket_Connect
  *  - LE_NO_MEMORY          Memory allocation issue
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_socket_SecureConnection
+LE_SHARED le_result_t le_socket_SecureConnection
 (
     le_socket_Ref_t   ref              ///< [IN] Socket context reference
 );
