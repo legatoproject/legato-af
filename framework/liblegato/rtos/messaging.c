@@ -552,3 +552,41 @@ le_result_t le_msg_GetClientUserCreds
 
     return result;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets an opaque context value (void pointer) that can be retrieved from that session later using
+ * le_msg_GetSessionContextPtr().
+ */
+//--------------------------------------------------------------------------------------------------
+void le_msg_SetSessionContextPtr
+(
+    le_msg_SessionRef_t sessionRef, ///< [in] Reference to the session.
+
+    void*               contextPtr  ///< [in] Opaque value to be returned by
+                                    ///         le_msg_GetSessionContextPtr().
+)
+//--------------------------------------------------------------------------------------------------
+{
+    LE_ASSERT(sessionRef);
+    msgLocal_SetSessionContextPtr(sessionRef, contextPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fetches the opaque context value (void pointer) that was set earlier using
+ * le_msg_SetSessionContextPtr().
+ *
+ * @return  The contextPtr value passed into le_msg_SetSessionContextPtr(), or NULL if
+ *          le_msg_SetSessionContextPtr() has not been called for this session yet.
+ */
+//--------------------------------------------------------------------------------------------------
+void* le_msg_GetSessionContextPtr
+(
+    le_msg_SessionRef_t sessionRef  ///< [in] Reference to the session.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    LE_ASSERT(sessionRef);
+    return msgLocal_GetSessionContextPtr(sessionRef);
+}

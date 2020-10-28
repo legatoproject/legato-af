@@ -380,5 +380,33 @@ le_thread_Ref_t msgLocal_GetClientThreadRef
     le_msg_SessionRef_t sessionRef     ///< [IN] Session reference
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets an opaque context value (void pointer) that can be retrieved from that session later using
+ * msgLocal_GetSessionContextPtr().
+ */
+//--------------------------------------------------------------------------------------------------
+void msgLocal_SetSessionContextPtr
+(
+    le_msg_SessionRef_t sessionRef, ///< [in] Reference to the session.
+
+    void*               contextPtr  ///< [in] Opaque value to be returned by
+                                    ///         msgLocal_GetSessionContextPtr().
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fetches the opaque context value (void pointer) that was set earlier using
+ * msgLocal_SetSessionContextPtr().
+ *
+ * @return  The contextPtr value passed into msgLocal_SetSessionContextPtr(), or NULL if
+ *          msgLocal_SetSessionContextPtr() has not been called for this session yet.
+ */
+//--------------------------------------------------------------------------------------------------
+void* msgLocal_GetSessionContextPtr
+(
+    le_msg_SessionRef_t sessionRef  ///< [in] Reference to the session.
+);
+
 
 #endif /* LEGATO_LIBLEGATO_MESSAGING_LOCAL_INCLUDE_GUARD */

@@ -34,6 +34,7 @@ typedef struct le_msg_LocalSession
     struct le_msg_Session session;           ///< Generic session object.
     le_msg_LocalService_t* servicePtr;       ///< Service endpoint for this session
     le_msg_LocalReceiver_t receiver;         ///< Destination of messages to this session
+    void* contextPtr;                        ///< The session's context pointer.
 } msg_LocalSession_t;
 
 
@@ -307,6 +308,7 @@ le_msg_SessionRef_t le_msg_CreateLocalSession
     clientSessionPtr->session.type = LE_MSG_SESSION_LOCAL;
     clientSessionPtr->receiver.thread = le_thread_GetCurrent();
     clientSessionPtr->servicePtr = servicePtr;
+    clientSessionPtr->contextPtr = NULL;
 
     return &clientSessionPtr->session;
 }
@@ -855,4 +857,44 @@ le_thread_Ref_t msgLocal_GetClientThreadRef
     msg_LocalSession_t* localSessionPtr = CONTAINER_OF(sessionRef, msg_LocalSession_t, session);
 
     return localSessionPtr->receiver.thread;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets an opaque context value (void pointer) that can be retrieved from that session later using
+ * msgLocal_GetSessionContextPtr().
+ */
+//--------------------------------------------------------------------------------------------------
+void msgLocal_SetSessionContextPtr
+(
+    le_msg_SessionRef_t sessionRef, ///< [in] Reference to the session.
+
+    void*               contextPtr  ///< [in] Opaque value to be returned by
+                                    ///         msgLocal_GetSessionContextPtr().
+)
+//--------------------------------------------------------------------------------------------------
+{
+    LE_ASSERT(sessionRef);
+    msg_LocalSession_t* localSessionPtr = CONTAINER_OF(sessionRef, msg_LocalSession_t, session);
+    localSessionPtr->contextPtr = contextPtr;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fetches the opaque context value (void pointer) that was set earlier using
+ * msgLocal_SetSessionContextPtr().
+ *
+ * @return  The contextPtr value passed into msgLocal_SetSessionContextPtr(), or NULL if
+ *          msgLocal_SetSessionContextPtr() has not been called for this session yet.
+ */
+//--------------------------------------------------------------------------------------------------
+void* msgLocal_GetSessionContextPtr
+(
+    le_msg_SessionRef_t sessionRef  ///< [in] Reference to the session.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    LE_ASSERT(sessionRef);
+    msg_LocalSession_t* localSessionPtr = CONTAINER_OF(sessionRef, msg_LocalSession_t, session);
+    return localSessionPtr->contextPtr;
 }

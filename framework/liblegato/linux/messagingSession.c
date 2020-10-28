@@ -1984,7 +1984,7 @@ void le_msg_SetSessionContextPtr
     switch (sessionRef->type)
     {
         case LE_MSG_SESSION_LOCAL:
-            LE_FATAL("SetSessionContextPointer not implemented for local sessions");
+            msgLocal_SetSessionContextPtr(sessionRef, contextPtr);
             break;
         case LE_MSG_SESSION_UNIX_SOCKET:
             msgSession_GetUnixSessionPtr(sessionRef)->contextPtr = contextPtr;
@@ -2013,8 +2013,7 @@ void* le_msg_GetSessionContextPtr
     switch (sessionRef->type)
     {
         case LE_MSG_SESSION_LOCAL:
-            LE_FATAL("SetSessionContextPointer not implemented for local sessions");
-            break;
+            return msgLocal_GetSessionContextPtr(sessionRef);
         case LE_MSG_SESSION_UNIX_SOCKET:
             return msgSession_GetUnixSessionPtr(sessionRef)->contextPtr;
         default:

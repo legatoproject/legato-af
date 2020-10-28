@@ -1118,7 +1118,7 @@ le_msg_SessionRef_t le_msg_CreateLocalSession
  * le_msg_GetSessionContextPtr().
  */
 //--------------------------------------------------------------------------------------------------
-LE_FULL_API void le_msg_SetSessionContextPtr
+void le_msg_SetSessionContextPtr
 (
     le_msg_SessionRef_t sessionRef, ///< [in] Reference to the session.
 
@@ -1135,7 +1135,7 @@ LE_FULL_API void le_msg_SetSessionContextPtr
  *          le_msg_SetSessionContextPtr() has not been called for this session yet.
  */
 //--------------------------------------------------------------------------------------------------
-LE_FULL_API void* le_msg_GetSessionContextPtr
+void* le_msg_GetSessionContextPtr
 (
     le_msg_SessionRef_t sessionRef  ///< [in] Reference to the session.
 );
