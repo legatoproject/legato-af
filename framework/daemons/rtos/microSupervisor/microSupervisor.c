@@ -680,6 +680,13 @@ LE_SHARED le_result_t microSupervisor_RunCliCommand
     // Define task, stack and all necessary structures in order to run CLI commands
     // in dedicated thread.
 
+    // Force static stacks as a workaround for LE-15486.
+    // TODO: remove this once LE-15486 is fixed.
+    #if LE_CONFIG_TARGET_HL78
+    #    undef LE_CONFIG_STATIC_THREAD_STACKS
+    #    define LE_CONFIG_STATIC_THREAD_STACKS 1
+    #endif
+
     #if LE_CONFIG_STATIC_THREAD_STACKS
     LE_THREAD_DEFINE_STATIC_STACK(cli, LE_CONFIG_CLI_STACK_SIZE);
     #endif
