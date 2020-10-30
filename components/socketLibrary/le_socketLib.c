@@ -437,6 +437,7 @@ le_result_t le_socket_AddCertificate
     status = secSocket_AddCertificate(contextPtr->secureCtxPtr, certificatePtr, certificateLen);
     if (status == LE_OK)
     {
+        LE_DEBUG("Added a certificate");
         contextPtr->hasCert = true;
     }
     else

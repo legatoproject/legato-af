@@ -441,10 +441,24 @@ le_result_t secSocket_Disconnect
 )
 {
     MbedtlsCtx_t *contextPtr = (MbedtlsCtx_t *) ctxPtr;
+    int status;
     LE_ASSERT(contextPtr != NULL);
 
+    status = mbedtls_ssl_close_notify(&(contextPtr->sslCtx));
+    if (status != 0)
+    {
+        LE_ERROR("Failed to close SSL connection. Error: %d", status);
+    }
     mbedtls_net_free(&(contextPtr->sock));
-    return LE_OK;
+
+    if (status == 0)
+    {
+        return LE_OK;
+    }
+    else
+    {
+        return LE_FAULT;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -537,7 +551,7 @@ le_result_t secSocket_Read
     {
         return LE_TIMEOUT;
     }
-    else if (count < 0)
+    else if (count <= 0)
     {
         LE_INFO("ERROR on reading data from stream");
         return LE_FAULT;

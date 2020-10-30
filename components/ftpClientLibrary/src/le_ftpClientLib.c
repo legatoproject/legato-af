@@ -31,6 +31,7 @@
 #define RESP_SERVER_READY        220
 #define RESP_AUTH_OK             234
 #define RESP_USER_OK             331
+#define RESP_USER_LOGGED_IN      232
 #define RESP_COMMAND_OK          200
 #define RESP_PASV_PASSIVE        227
 #define RESP_EPSV_PASSIVE        229
@@ -93,6 +94,8 @@ typedef enum
     FTP_TLS_HSHAKE, ///< TLS Handshake complete
     FTP_USER_SENT,  ///< user name is sent to server.
     FTP_PASS_SENT,  ///< password is sent to server.
+    FTP_PBSZ_SENT,  ///< PBSZ command is sent.
+    FTP_PROT_SENT,  ///< PROT command is sent.
     FTP_LOGGED,     ///< Logged into server with specfied user/pwd.
     FTP_TYPE_SENT,  ///< TYPE command is sent.
     FTP_PASV_SENT,  ///< PASV command is sent.
@@ -734,7 +737,7 @@ static void FtpClientDataHandler
     {
         if (contextPtr->operation == OP_RETRIEVE)
         {
-            if (LE_OK ==  le_socket_Read(contextPtr->dataSocketRef, buffer, &length))
+            if (LE_OK == le_socket_Read(contextPtr->dataSocketRef, buffer, &length))
             {
                 if (contextPtr->writeFunc != NULL)
                 {
@@ -773,6 +776,11 @@ transfer_end:
                                          contextPtr->result,
                                          contextPtr->eventHandlerDataPtr);
         }
+    }
+    else if (contextPtr->securityMode == LE_FTP_CLIENT_SECURE)
+    {
+        LE_INFO("FTPS Server closed the connection.");
+        FtpClientDisconnectDataServer(contextPtr);
     }
     else
     {
@@ -818,6 +826,18 @@ static le_result_t FtpClientConnectDataServer
     {
        LE_ERROR("Failed to set response timeout.");
        goto freeSocket;
+    }
+
+    // Add a certificate for FTPS
+    if (sessionRef->securityMode == LE_FTP_CLIENT_SECURE)
+    {
+        LE_INFO("Adding a certificate to data channel");
+        if (le_socket_AddCertificate(sessionRef->dataSocketRef,
+                                     sessionRef->certPtr,
+                                     sessionRef->certSize) != LE_OK)
+        {   LE_ERROR("Failed to add certificate.");
+            goto freeSocket;
+        }
     }
 
     // Connect to the data port of the remote FTP server.
@@ -994,7 +1014,7 @@ static void FtpClientStateMachine
                 contextPtr->response = response;
                 if ((status == LE_OK) && (response == RESP_AUTH_OK))
                 {
-                    LE_DEBUG("TLS Handshaking.../");
+                    LE_DEBUG("TLS Handshaking...");
                     status = le_socket_SecureConnection(contextPtr->ctrlSocketRef);
                     if (LE_OK == status)
                     {
@@ -1033,17 +1053,32 @@ static void FtpClientStateMachine
 
                 status = FtpClientGetResponseCode(contextPtr, &response);
                 contextPtr->response = response;
-                if ((status == LE_OK) && (response == RESP_USER_OK))
+                if (status == LE_OK)
                 {
-                    msgLen = snprintf(msgBuf, sizeof(msgBuf), "PASS %s\r\n",
-                                      contextPtr->passwordStr);
-                    LE_FATAL_IF(msgLen >= sizeof(msgBuf), "Failed to build PASS command.");
-                    status = SendRequestMessage(contextPtr, msgBuf, msgLen);
-                    if (LE_OK == status)
+                    if (response == RESP_USER_OK)
                     {
-                        contextPtr->controlState = FTP_PASS_SENT;
-                        restartLoop = true;
-                        break;
+                        msgLen = snprintf(msgBuf, sizeof(msgBuf), "PASS %s\r\n",
+                                        contextPtr->passwordStr);
+                        LE_FATAL_IF(msgLen >= sizeof(msgBuf), "Failed to build PASS command.");
+                        status = SendRequestMessage(contextPtr, msgBuf, msgLen);
+                        if (LE_OK == status)
+                        {
+                            contextPtr->controlState = FTP_PASS_SENT;
+                            restartLoop = true;
+                            break;
+                        }
+                    }
+                    else if (response == RESP_USER_LOGGED_IN)
+                    {
+                        msgLen = snprintf(msgBuf, sizeof(msgBuf), "PBSZ 0\r\n");
+                        LE_FATAL_IF(msgLen >= sizeof(msgBuf), "Failed to build PBSZ command.");
+                        status = SendRequestMessage(contextPtr, msgBuf, msgLen);
+                        if (LE_OK == status)
+                        {
+                            contextPtr->controlState = FTP_PBSZ_SENT;
+                            restartLoop = true;
+                            break;
+                        }
                     }
                 }
 
@@ -1058,6 +1093,63 @@ static void FtpClientStateMachine
                 status = FtpClientGetResponseCode(contextPtr, &response);
                 contextPtr->response = response;
                 if ((status == LE_OK) && (response == RESP_LOGGED_IN))
+                {
+                    if (contextPtr->securityMode == LE_FTP_CLIENT_SECURE)
+                    {
+                        msgLen = snprintf(msgBuf, sizeof(msgBuf), "PBSZ 0\r\n");
+                        LE_FATAL_IF(msgLen >= sizeof(msgBuf), "Failed to build PBSZ command.");
+                        status = SendRequestMessage(contextPtr, msgBuf, msgLen);
+                        if (LE_OK == status)
+                        {
+                            contextPtr->controlState = FTP_PBSZ_SENT;
+                            restartLoop = true;
+                            break;
+                        }
+                    }
+                    else if (contextPtr->securityMode == LE_FTP_CLIENT_NONSECURE)
+                    {
+                        contextPtr->result = LE_OK;
+                        contextPtr->controlState = FTP_LOGGED;
+                        break;
+                    }
+
+                    LE_ERROR("Unsupported security mode");
+                }
+
+                // Fail case.
+                contextPtr->result = status;
+                contextPtr->controlState = FTP_CLOSING;
+                restartLoop = true;
+                break;
+
+            case FTP_PBSZ_SENT:
+
+                status = FtpClientGetResponseCode(contextPtr, &response);
+                contextPtr->response = response;
+                if ((status == LE_OK) && (response == RESP_COMMAND_OK))
+                {
+                    msgLen = snprintf(msgBuf, sizeof(msgBuf), "PROT P\r\n");
+                    LE_FATAL_IF(msgLen >= sizeof(msgBuf), "Failed to build PROT command.");
+                    status = SendRequestMessage(contextPtr, msgBuf, msgLen);
+                    if (LE_OK == status)
+                    {
+                        contextPtr->controlState = FTP_PROT_SENT;
+                        restartLoop = true;
+                        break;
+                    }
+                }
+
+                // Fail case.
+                contextPtr->result = status;
+                contextPtr->controlState = FTP_CLOSING;
+                restartLoop = true;
+                break;
+
+            case FTP_PROT_SENT:
+
+                status = FtpClientGetResponseCode(contextPtr, &response);
+                contextPtr->response = response;
+                if ((status == LE_OK) && (response == RESP_COMMAND_OK))
                 {
                     contextPtr->result = LE_OK;
                     contextPtr->controlState = FTP_LOGGED;
@@ -1158,10 +1250,11 @@ static void FtpClientStateMachine
 
                 if (LE_OK == status)
                 {
-                    status = FtpClientConnectDataServer(contextPtr, NULL);
+                    status = SendRequestMessage(contextPtr, msgBuf, msgLen);
                     if (LE_OK == status)
                     {
-                        status = SendRequestMessage(contextPtr, msgBuf, msgLen);
+                        status = FtpClientConnectDataServer(contextPtr, NULL);
+
                         if (LE_OK == status)
                         {
                             contextPtr->result = LE_OK;
@@ -1558,8 +1651,9 @@ static le_result_t FtpClientConnectServer
 
     // Check the result.
     if ((sessionRef->controlState == FTP_LOGGED) &&
-        (sessionRef->response == RESP_LOGGED_IN) &&
-        (sessionRef->result == LE_OK))
+        (sessionRef->result == LE_OK) &&
+            ((sessionRef->response == RESP_LOGGED_IN) ||
+             (sessionRef->response == RESP_COMMAND_OK)) )
     {
         // Set the socket event callback for fd monitor.
         if (LE_OK != le_socket_AddEventHandler(sessionRef->ctrlSocketRef,
