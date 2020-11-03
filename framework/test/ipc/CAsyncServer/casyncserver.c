@@ -12,8 +12,19 @@
 #define MAX_VALUE_SIZE  257
 #define VALUE_ENTRIES   6
 
+typedef struct OutArrayInfo
+{
+    void* arrayPtr;
+    size_t outArraySize;
+} OutArrayInfo_t;
+
 LE_MEM_DEFINE_STATIC_POOL(ValuePool, VALUE_ENTRIES, MAX_VALUE_SIZE);
+LE_MEM_DEFINE_STATIC_POOL(OutArrayInfoPool, VALUE_ENTRIES, sizeof(OutArrayInfo_t));
+LE_MEM_DEFINE_STATIC_POOL(TheStructPool, VALUE_ENTRIES, sizeof(ipcTest_TheStruct_t));
 le_mem_PoolRef_t ValuePool;
+le_mem_PoolRef_t OutArrayInfoPool;
+le_mem_PoolRef_t TheStructPool;
+
 
 void AsyncServer_EchoSimpleRespond
 (
@@ -134,6 +145,113 @@ void ipcTest_EchoLargeBitMask
                            valuePtr);
 }
 
+void AsyncServer_EchoBooleanRespond
+(
+    void* serverCmdPtr,
+    void* valuePtr
+)
+{
+    ipcTest_EchoBooleanRespond(serverCmdPtr, (bool)valuePtr);
+}
+
+void ipcTest_EchoBoolean
+(
+    ipcTest_ServerCmdRef_t serverCmdPtr,
+    bool InValue
+)
+{
+    le_event_QueueFunction(AsyncServer_EchoBooleanRespond,
+                           serverCmdPtr,
+                           (void*) InValue);
+}
+
+
+void AsyncServer_EchoResultRespond
+(
+    void* serverCmdPtr,
+    void* valuePtr
+)
+{
+    ipcTest_EchoResultRespond(serverCmdPtr, (le_result_t)((intptr_t) valuePtr));
+}
+
+void ipcTest_EchoResult
+(
+    ipcTest_ServerCmdRef_t serverCmdPtr,
+    le_result_t InValue
+)
+{
+    le_event_QueueFunction(AsyncServer_EchoResultRespond,
+                           serverCmdPtr,
+                           (void*) InValue);
+}
+
+void AsyncServer_ReturnResultRespond
+(
+    void* serverCmdPtr,
+    void* valuePtr
+)
+{
+    ipcTest_ReturnResultRespond(serverCmdPtr, (le_result_t)((intptr_t) valuePtr));
+}
+
+
+void ipcTest_ReturnResult
+(
+    ipcTest_ServerCmdRef_t serverCmdPtr,
+    le_result_t InValue
+)
+{
+    le_event_QueueFunction(AsyncServer_ReturnResultRespond,
+                           serverCmdPtr,
+                           (void*) InValue);
+}
+
+
+void AsyncServer_EchoOnOffRespond
+(
+    void* serverCmdPtr,
+    void* valuePtr
+)
+{
+    ipcTest_EchoOnOffRespond(serverCmdPtr, (le_onoff_t)((uintptr_t)valuePtr));
+}
+
+void ipcTest_EchoOnOff
+(
+    ipcTest_ServerCmdRef_t serverCmdPtr,
+    le_onoff_t InValue
+)
+{
+    le_event_QueueFunction(AsyncServer_EchoOnOffRespond,
+                           serverCmdPtr,
+                           (void*) InValue);
+}
+
+
+void AsyncServer_EchoDoubleRespond
+(
+    void* serverCmdPtr,
+    void* valuePtr
+)
+{
+    ipcTest_EchoDoubleRespond(serverCmdPtr, *(double*)valuePtr);
+    le_mem_Release(valuePtr);
+}
+
+void ipcTest_EchoDouble
+(
+    ipcTest_ServerCmdRef_t serverCmdPtr,
+    double InValue
+)
+{
+    double* valuePtr = le_mem_AssertAlloc(ValuePool);
+    *valuePtr = InValue;
+    le_event_QueueFunction(AsyncServer_EchoDoubleRespond,
+                           serverCmdPtr,
+                           (void*) valuePtr);
+}
+
 void AsyncServer_EchoReferenceRespond
 (
     void* serverCmdPtr,
@@ -186,6 +304,126 @@ void ipcTest_EchoString
                            OutString);
 }
 
+void AsyncServer_EchoArrayRespond
+(
+    void* serverCmdPtr,
+    void* valuePtr
+)
+{
+    OutArrayInfo_t* arrayInfoPtr = (OutArrayInfo_t*) valuePtr;
+    ipcTest_EchoArrayRespond(serverCmdPtr, (int64_t*) arrayInfoPtr->arrayPtr,
+                             arrayInfoPtr->outArraySize);
+    le_mem_Release(arrayInfoPtr->arrayPtr);
+    le_mem_Release(arrayInfoPtr);
+}
+
+void ipcTest_EchoArray
+(
+    ipcTest_ServerCmdRef_t serverCmdPtr,
+    const int64_t* InArrayPtr,
+    size_t InArraySize,
+    size_t OutArraySize
+)
+{
+
+    char* OutArrayPtr = le_mem_AssertAlloc(ValuePool);
+    memcpy(OutArrayPtr, InArrayPtr, InArraySize * sizeof(int64_t));
+    OutArrayInfo_t* arrayInfoPtr = le_mem_AssertAlloc(OutArrayInfoPool);
+    arrayInfoPtr->arrayPtr = OutArrayPtr;
+    arrayInfoPtr->outArraySize = OutArraySize;
+    le_event_QueueFunction(AsyncServer_EchoArrayRespond,
+                           serverCmdPtr,
+                           arrayInfoPtr);
+}
+
+void AsyncServer_EchoByteStringRespond
+(
+    void* serverCmdPtr,
+    void* valuePtr
+)
+{
+    OutArrayInfo_t* arrayInfoPtr = (OutArrayInfo_t*) valuePtr;
+    ipcTest_EchoByteStringRespond(serverCmdPtr, (uint8_t*) arrayInfoPtr->arrayPtr,
+                                  arrayInfoPtr->outArraySize);
+    le_mem_Release(arrayInfoPtr->arrayPtr);
+    le_mem_Release(arrayInfoPtr);
+}
+
+void ipcTest_EchoByteString
+(
+    ipcTest_ServerCmdRef_t serverCmdPtr,
+    const uint8_t* InArrayPtr,
+    size_t InArraySize,
+    size_t OutArraySize
+)
+{
+    char* OutArrayPtr = le_mem_AssertAlloc(ValuePool);
+    memcpy(OutArrayPtr, InArrayPtr, InArraySize * sizeof(int64_t));
+    OutArrayInfo_t* arrayInfoPtr = le_mem_AssertAlloc(OutArrayInfoPool);
+    arrayInfoPtr->arrayPtr = OutArrayPtr;
+    arrayInfoPtr->outArraySize = OutArraySize;
+    le_event_QueueFunction(AsyncServer_EchoByteStringRespond,
+                           serverCmdPtr,
+                           arrayInfoPtr);
+}
+
+void AsyncServer_EchoStructRespond
+(
+    void* serverCmdPtr,
+    void* valuePtr
+)
+{
+    ipcTest_TheStruct_t* outStructPtr = (ipcTest_TheStruct_t*) valuePtr;
+    ipcTest_EchoStructRespond(serverCmdPtr, outStructPtr);
+    le_mem_Release(outStructPtr);
+}
+
+void ipcTest_EchoStruct
+(
+    ipcTest_ServerCmdRef_t serverCmdPtr,
+    const ipcTest_TheStruct_t * LE_NONNULL InStructPtr
+)
+{
+    ipcTest_TheStruct_t* OutStructPtr = le_mem_AssertAlloc(TheStructPool);
+    memcpy(OutStructPtr, InStructPtr, sizeof(ipcTest_TheStruct_t));
+    le_event_QueueFunction(AsyncServer_EchoStructRespond,
+                           serverCmdPtr,
+                           OutStructPtr);
+
+}
+
+
+void AsyncServer_EchoStructArrayRespond
+(
+    void* serverCmdPtr,
+    void* valuePtr
+)
+{
+    OutArrayInfo_t* arrayInfoPtr = (OutArrayInfo_t*) valuePtr;
+    ipcTest_EchoStructArrayRespond(serverCmdPtr, arrayInfoPtr->arrayPtr,
+                                   arrayInfoPtr->outArraySize);
+    le_mem_Release(arrayInfoPtr->arrayPtr);
+    le_mem_Release(arrayInfoPtr);
+}
+
+void ipcTest_EchoStructArray
+(
+    ipcTest_ServerCmdRef_t serverCmdPtr,
+    const ipcTest_TheStruct_t* InStructArrayPtr,
+    size_t InStructArraySize,
+    size_t OutStructArraySize
+)
+{
+    ipcTest_TheStruct_t* OutArrayPtr = le_mem_AssertAlloc(ValuePool);
+    memcpy(OutArrayPtr, InStructArrayPtr, InStructArraySize * sizeof(ipcTest_TheStruct_t));
+    OutArrayInfo_t* arrayInfoPtr = le_mem_AssertAlloc(OutArrayInfoPool);
+    arrayInfoPtr->arrayPtr = OutArrayPtr;
+    arrayInfoPtr->outArraySize = OutStructArraySize;
+    le_event_QueueFunction(AsyncServer_EchoStructArrayRespond,
+                           serverCmdPtr,
+                           arrayInfoPtr);
+
+}
 
 void ipcTest_ExitServer
 (
@@ -333,4 +571,8 @@ void ipcTest_EchoTriggerEvent
 COMPONENT_INIT
 {
     ValuePool = le_mem_InitStaticPool(ValuePool, VALUE_ENTRIES, MAX_VALUE_SIZE);
+    OutArrayInfoPool = le_mem_InitStaticPool(OutArrayInfoPool, VALUE_ENTRIES,
+                                             sizeof(OutArrayInfo_t));
+    TheStructPool = le_mem_InitStaticPool(TheStructPool, VALUE_ENTRIES,
+                                          sizeof(ipcTest_TheStruct_t));
 }

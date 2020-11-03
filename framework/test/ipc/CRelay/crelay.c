@@ -58,6 +58,50 @@ void ipcServer_EchoLargeBitMask
                                (ipcClient_LargeBitMask_t*)OutValuePtr);
 }
 
+void ipcServer_EchoBoolean
+(
+    bool InValue,
+    bool* OutValuePtr
+)
+{
+    ipcClient_EchoBoolean(InValue, OutValuePtr);
+}
+
+void ipcServer_EchoResult
+(
+    le_result_t InValue,
+    le_result_t* OutValuePtr
+)
+{
+    ipcClient_EchoResult(InValue, OutValuePtr);
+}
+
+le_result_t ipcServer_ReturnResult
+(
+    le_result_t InValue
+)
+{
+    return ipcClient_ReturnResult(InValue);
+}
+
+void ipcServer_EchoOnOff
+(
+    le_onoff_t InValue,
+    le_onoff_t* OutValuePtr
+)
+{
+    ipcClient_EchoOnOff(InValue, OutValuePtr);
+}
+
+void ipcServer_EchoDouble
+(
+    double InValue,
+    double* OutValuePtr
+)
+{
+    ipcClient_EchoDouble(InValue, OutValuePtr);
+}
+
 void ipcServer_EchoReference
 (
     ipcServer_SimpleRef_t InRef,
@@ -87,6 +131,38 @@ void ipcServer_EchoArray
 )
 {
     ipcClient_EchoArray(InArrayPtr, InArraySize, OutArrayPtr, OutArraySizePtr);
+}
+
+void ipcServer_EchoByteString
+(
+    const uint8_t* InArrayPtr,
+    size_t InArraySize,
+    uint8_t* OutArrayPtr,
+    size_t* OutArraySizePtr
+)
+{
+    ipcClient_EchoByteString(InArrayPtr, InArraySize, OutArrayPtr, OutArraySizePtr);
+}
+
+void ipcServer_EchoStruct
+(
+    const ipcServer_TheStruct_t * LE_NONNULL InStructPtr,
+    ipcServer_TheStruct_t * OutStructPtr
+)
+{
+    ipcClient_EchoStruct(InStructPtr, OutStructPtr);
+}
+
+void ipcServer_EchoStructArray
+(
+    const ipcServer_TheStruct_t* InStructArrayPtr,
+    size_t InStructArraySize,
+    ipcServer_TheStruct_t* OutStructArrayPtr,
+    size_t* OutStructArraySizePtr
+)
+{
+    ipcClient_EchoStructArray(InStructArrayPtr, InStructArraySize, OutStructArrayPtr,
+                              OutStructArraySizePtr);
 }
 
 void ipcServer_ExitServer
