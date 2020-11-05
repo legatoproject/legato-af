@@ -663,21 +663,37 @@ config RPC_PROXY_FILE_STREAM_MAX_NUM
   ---help---
   The maximum number of simultaneous RPC file streams.
 
-config RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM
-  int "Maximum number of response message parameters"
+config RPC_PROXY_MSG_LARGE_OUT_PARAMETER_MAX_NUM
+  int "Maximum number of large string/array parameters to be buffered simultaneously"
   depends on RPC
   range 0 32
   default 5
   ---help---
-  The maximum number of "out" parameters per response message.
+  The maximum number of large string/array parameters to be buffered simultaneously
 
-config RPC_PROXY_MAX_OUT_PARAMETER_SIZE
-  int "Maximum size of a response parameter"
+config RPC_PROXY_MSG_SMALL_OUT_PARAMETER_MAX_NUM
+  int "Maximum number of small string/array parameters to be buffered simultaneously"
+  depends on RPC
+  range 0 32
+  default 10
+  ---help---
+  The maximum number of small string/array parameters to be buffered simultaneously
+
+config RPC_PROXY_MAX_LARGE_OUT_PARAMETER_SIZE
+  int "Maximum size of a large string/array parameter"
   depends on RPC && (RTOS || RPC_PROXY_LIBRARY)
   range 0 4096
-  default 512
+  default 1024
   ---help---
-  The maximum size of an "out" parameter
+  The maximum size of a large string/array parameter
+
+config RPC_PROXY_MAX_SMALL_OUT_PARAMETER_SIZE
+  int "Maximum size of a small string/array parameter"
+  depends on RPC && (RTOS || RPC_PROXY_LIBRARY)
+  range 0 4096
+  default 128
+  ---help---
+  The maximum size of a small string/array parameter
 
 config RPC_PROXY_MAX_FILE_STREAM_PAYLOAD
   int "Maximum payload size for file stream messages"

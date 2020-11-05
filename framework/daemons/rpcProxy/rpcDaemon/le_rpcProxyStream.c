@@ -19,7 +19,10 @@
  * macros and defines:
  */
 //--------------------------------------------------------------------------------------------------
-#define RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM    LE_CONFIG_RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM
+#define RPC_PROXY_LARGE_OUT_PARAMETER_MAX_NUM  LE_CONFIG_RPC_PROXY_MSG_LARGE_OUT_PARAMETER_MAX_NUM
+#define RPC_PROXY_SMALL_OUT_PARAMETER_MAX_NUM  LE_CONFIG_RPC_PROXY_MSG_SMALL_OUT_PARAMETER_MAX_NUM
+#define RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM    (RPC_PROXY_LARGE_OUT_PARAMETER_MAX_NUM + \
+                                                RPC_PROXY_SMALL_OUT_PARAMETER_MAX_NUM)
 #define IPC_MSG_ID_SIZE                        sizeof(uint32_t)
 // Initial number of bytes expected to parse an async (event) message:
 // 4 for id, 1 for indef array header, 1 for async handler tag, 2 for async handler tag value
@@ -459,18 +462,18 @@ static const struct cbor_callbacks* StateToCallbacksTable[SEND_NUM_STATES] =
 //--------------------------------------------------------------------------------------------------
 /**
  * This pool is used to allocate memory for local message pointers to String and Array Parameters.
- * Initialized in rpcProxy_COMPONENT_INIT().
+ * Initialized in rpcProxy_InitializeStreamingMemPools().
  */
 //--------------------------------------------------------------------------------------------------
-LE_MEM_DEFINE_STATIC_POOL(MessageDataPtrPool,
-                          RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM,
-                          RPC_LOCAL_MAX_MESSAGE);
+LE_MEM_DEFINE_STATIC_POOL(MessageDataPtrParentPool,
+                          RPC_PROXY_LARGE_OUT_PARAMETER_MAX_NUM,
+                          RPC_LOCAL_MAX_LARGE_OUT_PARAMETER_SIZE);
 static le_mem_PoolRef_t MessageDataPtrPoolRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
  * This pool is used to allocate memory for local message linked list.
- * Initialized in rpcProxy_COMPONENT_INIT().
+ * Initialized in rpcProxy_InitializeStreamingMemPools().
  */
 //--------------------------------------------------------------------------------------------------
 LE_MEM_DEFINE_STATIC_POOL(LocalMessagePool,
@@ -491,7 +494,7 @@ ResponseParameterArray_t;
 //--------------------------------------------------------------------------------------------------
 /**
  * Hash Map to store Response "out" parameter pointers (value), using the Proxy Message ID (key).
- * Initialized in rpcProxy_COMPONENT_INIT().
+ * Initialized in rpcProxy_InitializeStreamingMemPools().
  */
 //--------------------------------------------------------------------------------------------------
 LE_HASHMAP_DEFINE_STATIC(ResponseParameterArrayHashMap, RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM);
@@ -507,7 +510,7 @@ static le_dls_List_t LocalMessageList = LE_DLS_LIST_INIT;
 //--------------------------------------------------------------------------------------------------
 /**
  * This pool is used to allocate memory for the Response "out" parameter response array.
- * Initialized in rpcProxy_COMPONENT_INIT().
+ * Initialized in rpcProxy_InitializeStreamingMemPools().
  */
 //--------------------------------------------------------------------------------------------------
 LE_MEM_DEFINE_STATIC_POOL(ResponseParameterArrayPool,
@@ -1303,9 +1306,12 @@ void rpcProxy_InitializeStreamingMemPools()
 {
 #ifdef RPC_PROXY_LOCAL_SERVICE
 
-    MessageDataPtrPoolRef = le_mem_InitStaticPool(MessageDataPtrPool,
-                                                  RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM,
-                                                  RPC_LOCAL_MAX_MESSAGE);
+
+    le_mem_PoolRef_t parentPoolRef = le_mem_InitStaticPool(MessageDataPtrParentPool,
+                                                           RPC_PROXY_LARGE_OUT_PARAMETER_MAX_NUM,
+                                                           RPC_LOCAL_MAX_LARGE_OUT_PARAMETER_SIZE);
+    MessageDataPtrPoolRef = le_mem_CreateReducedPool(parentPoolRef, "MessageDataPtrPool",
+            RPC_PROXY_SMALL_OUT_PARAMETER_MAX_NUM, RPC_LOCAL_MAX_SMALL_OUT_PARAMETER_SIZE);
 
     LocalMessagePoolRef = le_mem_InitStaticPool(LocalMessagePool,
                                                 RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM,
