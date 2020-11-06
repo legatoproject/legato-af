@@ -14,8 +14,11 @@
 #include "netSocket.h"
 
 #if LE_CONFIG_LINUX
-#include <arpa/inet.h>
 #include <netdb.h>
+#endif
+
+#if !LE_CONFIG_RTOS
+#include <arpa/inet.h>
 #endif
 
 //--------------------------------------------------------------------------------------------------
@@ -28,6 +31,7 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define PORT_STR_LEN      6
+#define TCP_PENDING_CONNECTION 5
 
 //-----------------------------------------------------------------------------------------------
 /**
@@ -79,6 +83,7 @@ static le_result_t GetSrcSocketInfo
             return result;
         }
         tmpSrcIpAddressPtr = tmpSrcIpAddress;
+        memcpy(srcIpAddress, tmpSrcIpAddress, LE_MDC_IPV6_ADDR_MAX_BYTES);
     }
 
     // Get socket address and family from source IP string
@@ -160,7 +165,7 @@ le_result_t netSocket_Connect
     // Initialize socket structure from source IP string
     if (GetSrcSocketInfo(srcAddrPtr, &(hints.ai_family), &srcSocket) != LE_OK)
     {
-        LE_ERROR("Error on function: getaddrinfo");
+        LE_ERROR("Error on function: GetSrcSocketInfo");
         return LE_UNAVAILABLE;
     }
 
@@ -204,6 +209,114 @@ le_result_t netSocket_Connect
 
     freeaddrinfo(addrList);
     return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initiate a server connection by listening on the specified port.
+ *
+ * @return
+ *  - LE_OK             Function success
+ *  - LE_BAD_PARAMETER  Invalid parameter
+ *  - LE_UNAVAILABLE    Unable to reach the server or DNS issue
+ *  - LE_COMM_ERROR     Connection failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t netSocket_Listen
+(
+    uint16_t        port,       ///< [IN] Port number
+    char*           srcAddrPtr, ///< [IN] Source address pointer
+    SocketType_t    type,       ///< [IN] Socket type (TCP, UDP)
+    int*            fdPtr       ///< [OUT] Socket file descriptor
+)
+{
+    struct addrinfo serverInfo;
+    struct sockaddr_storage srcSocket = {0};
+    int fd = -1;
+
+    if ((!srcAddrPtr) || (!fdPtr))
+    {
+        LE_ERROR("Wrong parameter provided: %p, %p", srcAddrPtr, fdPtr);
+        return LE_BAD_PARAMETER;
+    }
+
+    // Do name resolution with both IPv6 and IPv4
+    memset(&serverInfo, 0, sizeof(serverInfo));
+    serverInfo.ai_family = AF_UNSPEC;
+    serverInfo.ai_socktype = (type == UDP_TYPE) ? SOCK_DGRAM : SOCK_STREAM;
+    serverInfo.ai_protocol = (type == UDP_TYPE) ? IPPROTO_UDP : IPPROTO_TCP;
+
+    // Initialize socket structure from source IP string
+    if (GetSrcSocketInfo(srcAddrPtr, &(serverInfo.ai_family), &srcSocket) != LE_OK)
+    {
+        LE_ERROR("Error on function: GetSrcSocketInfo");
+        return LE_UNAVAILABLE;
+    }
+
+    if(AF_INET == serverInfo.ai_family)
+    {
+        ((struct sockaddr_in*)&srcSocket)->sin_port = htons(port);
+    }
+    else
+    {
+        ((struct sockaddr_in6*)&srcSocket)->sin6_port = htons(port);
+    }
+
+    fd = socket(serverInfo.ai_family, serverInfo.ai_socktype, 0);
+    if (fd < 0)
+    {
+        LE_ERROR("Unable to create a socket");
+        return LE_COMM_ERROR;
+    }
+
+    // Bind socket to source address
+    if(-1 == bind(fd, (struct sockaddr*)&srcSocket, sizeof(struct sockaddr_storage)))
+    {
+        LE_ERROR("ERROR binding to the socket (%d)", errno);
+        close(fd);
+        return LE_COMM_ERROR;
+    }
+
+    if (-1 == listen(fd, TCP_PENDING_CONNECTION))
+    {
+        LE_ERROR("ERROR listening to the socket (%d)", errno);
+        close(fd);
+        return LE_COMM_ERROR;
+    }
+    *fdPtr = fd;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Accept a client connection from remote host and get the address info
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_UNAVAILABLE   Unable to accept a client socket
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t netSocket_Accept
+(
+    int               fd,         ///< [IN] Socket file descriptor
+    struct sockaddr*  hostAddr,   ///< [OUT] Accepted host info
+    int*              hostFd      ///< [OUT] Accepted socket file descriptor
+)
+{
+    int acceptedFd = -1;
+    socklen_t addrLen = sizeof(struct sockaddr_storage);
+
+    acceptedFd = accept(fd, hostAddr, &addrLen);
+
+    if(-1 == acceptedFd)
+    {
+        LE_ERROR("ERROR accepting the socket (%d)", errno);
+        return LE_UNAVAILABLE;
+    }
+
+    *hostFd = acceptedFd;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -252,6 +365,14 @@ le_result_t netSocket_Write
     {
         return LE_BAD_PARAMETER;
     }
+
+#if LE_CONFIG_TARGET_GILL
+    struct timeval timeout = {1, 0};
+    if(0 != setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout)))
+    {
+        return LE_FAULT;
+    }
+#endif
 
     while (bufLen)
     {

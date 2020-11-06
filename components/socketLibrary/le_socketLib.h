@@ -322,6 +322,44 @@ LE_SHARED le_result_t le_socket_Read
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Initiate a server connection by listening on the specified port.
+ *
+ * @return
+ *  - LE_OK               Function success
+ *  - LE_BAD_PARAMETER    Invalid parameter
+ *  - LE_FAULT            Internal error
+ *  - LE_UNAVAILABLE      Unable to reach the server or DNS issue
+ *  - LE_COMM_ERROR       Connection failure
+ *  - LE_NOT_IMPLEMENTED  Function not supported
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_Listen
+(
+    le_socket_Ref_t    ref       ///< [IN] Socket context reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Accept a remote client connection and store the spawned socket info
+ *
+ * @return
+ *  - LE_OK               Function success
+ *  - LE_BAD_PARAMETER    Invalid parameter
+ *  - LE_UNAVAILABLE      Unable to accept a client socket
+ *  - LE_NOT_IMPLEMENTED  Function not supported
+ *  - LE_FAULT            Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_Accept
+(
+    le_socket_Ref_t   ref,          ///< [IN]  Socket context reference
+    char*             childAddr,    ///< [OUT] Accepted IP address
+    int*              childPort,    ///< [OUT] Accepted port number
+    le_socket_Ref_t*  childSockRef  ///< [OUT] Accepted socket context reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Set the socket communication timeout. This timeout specifies the interval that the read API
  * should block waiting for data reception.
  *

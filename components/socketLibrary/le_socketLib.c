@@ -15,6 +15,14 @@
 #include "netSocket.h"
 #include "secSocket.h"
 
+#if LE_CONFIG_LINUX
+#include <netdb.h>
+#endif
+
+#if !LE_CONFIG_RTOS
+#include <arpa/inet.h>
+#endif
+
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions
 //--------------------------------------------------------------------------------------------------
@@ -727,6 +735,148 @@ le_result_t le_socket_Read
     }
 
     return status;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initiate a server connection by listening on the specified port.
+ *
+ * @return
+ *  - LE_OK               Function success
+ *  - LE_BAD_PARAMETER    Invalid parameter
+ *  - LE_FAULT            Internal error
+ *  - LE_UNAVAILABLE      Unable to reach the server or DNS issue
+ *  - LE_COMM_ERROR       Connection failure
+ *  - LE_NOT_IMPLEMENTED  Function not supported
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_socket_Listen
+(
+    le_socket_Ref_t    ref       ///< [IN] Socket context reference
+)
+{
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->isSecure)
+    {
+        LE_ERROR("Function not supported");
+        return LE_NOT_IMPLEMENTED;
+    }
+    else
+    {
+        status = netSocket_Listen(contextPtr->port, contextPtr->srcAddr,
+                                   contextPtr->type, &(contextPtr->fd));
+    }
+
+    if ((contextPtr->isMonitoring) && (!contextPtr->monitorRef))
+    {
+        contextPtr->monitorRef = le_fdMonitor_Create("SocketLibrary", contextPtr->fd,
+                                                     SocketEventsHandler,
+                                                     POLLIN | POLLRDHUP | POLLOUT);
+        if (!contextPtr->monitorRef)
+        {
+            LE_ERROR("Unable to create an FD monitor object");
+            return LE_FAULT;
+        }
+    }
+
+    if (status != LE_OK)
+    {
+        LE_ERROR("Listen failed. Status: %d", status);
+    }
+
+    return status;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Accept a remote client connection and store the spawned socket info
+ *
+ * @return
+ *  - LE_OK               Function success
+ *  - LE_BAD_PARAMETER    Invalid parameter
+ *  - LE_UNAVAILABLE      Unable to accept a client socket
+ *  - LE_NOT_IMPLEMENTED  Function not supported
+ *  - LE_FAULT            Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_socket_Accept
+(
+    le_socket_Ref_t   ref,          ///< [IN]  Socket context reference
+    char*             childAddr,    ///< [OUT] Accepted IP address
+    int*              childPort,    ///< [OUT] Accepted port number
+    le_socket_Ref_t*  childSockRef  ///< [OUT] Accepted socket context reference
+)
+{
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+    SocketCtx_t* childContextPtr = NULL;
+    struct sockaddr_storage clientAddress;
+    int acceptedFd = -1;
+    char clientIp[ADDR_MAX_LEN]={0};
+
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->isSecure)
+    {
+        LE_ERROR("Function not supported");
+        return LE_NOT_IMPLEMENTED;
+    }
+    else
+    {
+        status = netSocket_Accept(contextPtr->fd,
+                                  (struct sockaddr*)&clientAddress,
+                                  &acceptedFd);
+    }
+
+    if (status != LE_OK)
+    {
+        LE_ERROR("Accept failed. Status: %d", status);
+        return status;
+    }
+
+    childContextPtr = NewSocketContext();
+    if (NULL == childContextPtr)
+    {
+        LE_ERROR("Unable to allocate a socket context from pool");
+        netSocket_Disconnect(acceptedFd);
+        return LE_FAULT;
+    }
+
+    if (AF_INET == clientAddress.ss_family)
+    {
+        struct sockaddr_in *temp = (struct sockaddr_in*)&clientAddress;
+        inet_ntop(AF_INET, &(temp->sin_addr), clientIp, ADDR_MAX_LEN);
+        childContextPtr->port = (int)ntohs(temp->sin_port);
+    }
+    else
+    {
+        struct sockaddr_in6 *temp = (struct sockaddr_in6*)&clientAddress;
+        inet_ntop(AF_INET6, &(temp->sin6_addr), clientIp, ADDR_MAX_LEN);
+        childContextPtr->port = (int)ntohs(temp->sin6_port);
+    }
+    childContextPtr->type    = contextPtr->type;
+    childContextPtr->fd      = acceptedFd;
+    childContextPtr->timeout = COMM_TIMEOUT_DEFAULT_MS;
+    childContextPtr->isMonitoring = false;
+    strncpy(childContextPtr->host, clientIp, ADDR_MAX_LEN);
+    strncpy(childAddr, clientIp, ADDR_MAX_LEN);
+    *childPort = childContextPtr->port;
+    *childSockRef = childContextPtr->reference;
+    LE_INFO("Accepted connection on FD:%d, address:%s, port:%d", acceptedFd,
+                                                                 childContextPtr->host,
+                                                                 childContextPtr->port);
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------

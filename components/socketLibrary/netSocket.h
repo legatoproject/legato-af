@@ -47,6 +47,41 @@ le_result_t netSocket_Connect
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Initiate a server connection by listening on the specified port.
+ *
+ * @return
+ *  - LE_OK             Function success
+ *  - LE_BAD_PARAMETER  Invalid parameter
+ *  - LE_UNAVAILABLE    Unable to reach the server or DNS issue
+ *  - LE_COMM_ERROR     Connection failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t netSocket_Listen
+(
+    uint16_t        port,       ///< [IN] Port number
+    char*           srcAddrPtr, ///< [IN] Source address pointer
+    SocketType_t    type,       ///< [IN] Socket type (TCP, UDP)
+    int*            fdPtr       ///< [OUT] Socket file descriptor
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Accept a client connection from remote host and get the address info
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_UNAVAILABLE   Unable to accept a client socket
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t netSocket_Accept
+(
+    int               fd,         ///< [IN] Socket file descriptor
+    struct sockaddr*  hostAddr,   ///< [OUT] Accepted host info
+    int*              hostFd      ///< [OUT] Accepted socket file descriptor
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Gracefully close the socket connection
  *
  * @return
