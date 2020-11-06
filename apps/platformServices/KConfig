@@ -260,3 +260,21 @@ config SMS_SERVICE_ENABLED
   default y
   ---help---
     Enable SMS Service, which is not supported on RTOS systems.
+
+menu "MQTT Service"
+
+config MQTT_CLIENT_BUFFER_SIZE_MAX_NUM
+  int "Maximum size of buffers used for MQTT Client read and write operations"
+  range 0 4096
+  default 512
+  ---help---
+  The maximum size of MQTT Client read and write buffers.
+
+config MQTT_CLIENT_SESSION_MAX_NUM
+  int "Maximum number of MQTT Client sessions"
+  range 0 4096
+  default 5
+  ---help---
+  The maximum number of MQTT Client sessions.
+
+endmenu # end "MQTT Service"

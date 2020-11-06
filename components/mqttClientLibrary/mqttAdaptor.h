@@ -23,6 +23,10 @@ typedef void (*MqttThreadFunc)(void*);
 typedef int (*MqttReadFunc) (struct Network*, unsigned char*, int, int);
 typedef int (*MqttWriteFunc) (struct Network*, unsigned char*, int, int);
 
+// Asynchronous callback function for Network Status
+typedef void (*networkStatusHandler)(short events, void* contextPtr);
+
+
 // Network structure
 typedef struct Network
 {
@@ -32,6 +36,8 @@ typedef struct Network
     size_t certificateLen;              ///< length of certificate
     MqttReadFunc mqttread;              ///< read function pointer
     MqttWriteFunc mqttwrite;            ///< write function pointer
+    networkStatusHandler handlerFunc;   ///< Network status callback function
+    void* contextPtr;                   ///< Network status callback function context pointer
 } Network;
 
 
@@ -113,9 +119,12 @@ void NetworkInit
 //--------------------------------------------------------------------------------------------------
 le_result_t NetworkConnect
 (
-    struct Network* net,        /// [IN] Network structure
-    char*           addr,       /// [IN] Remote server address
-    int             port        /// [IN] Remote server port
+    struct Network*       net,         /// [IN] Network structure
+    char*                 addr,        /// [IN] Remote server address
+    int                   port,        /// [IN] Remote server port
+    int                   timeoutMs,   /// [IN] Connection timeout in milliseconds
+    networkStatusHandler  handlerFunc, /// [IN] Network status callback function
+    void*                 contextPtr   /// [IN] Network status callback function context pointer
 );
 
 //--------------------------------------------------------------------------------------------------

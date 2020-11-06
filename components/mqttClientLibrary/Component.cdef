@@ -1,10 +1,14 @@
 sources:
 {
+    le_mqttClientLib.c
+
     mqttClient.c
     mqttAdaptor.c
     mqttTimer.c
+
     ${LEGATO_ROOT}/3rdParty/paho.mqtt.embedded-c/MQTTClient-C/src/MQTTClient.c
 }
+
 cflags:
 {
     -I${LEGATO_ROOT}/3rdParty/paho.mqtt.embedded-c/MQTTPacket/src/
@@ -19,15 +23,15 @@ cflags:
 
 requires:
 {
+    api:
+    {
+        modemServices/le_mdc.api
+    }
+
     component:
     {
         ${LEGATO_ROOT}/components/3rdParty/paho.mqtt.embedded-c
         ${LEGATO_ROOT}/components/socketLibrary
-    }
-
-    api:
-    {
-        modemServices/le_mdc.api
     }
 
     lib:

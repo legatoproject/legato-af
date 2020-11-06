@@ -1,0 +1,41 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * testMQTT Subscriber app
+ *
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+start: manual
+
+executables:
+{
+    testMQTTSub = ( testMQTTSubscriber )
+    testMQTTPub = ( testMQTTPublisher  )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        (testMQTTSub)
+        (testMQTTPub)
+    }
+
+    maxStackBytes: 8192
+}
+
+bindings:
+{
+    testMQTTSub.mqttClientLibrary.le_mdc -> modemService.le_mdc
+    testMQTTSub.socketLibrary.le_mdc -> modemService.le_mdc
+    testMQTTPub.mqttClientLibrary.le_mdc -> modemService.le_mdc
+    testMQTTPub.socketLibrary.le_mdc -> modemService.le_mdc
+
+}

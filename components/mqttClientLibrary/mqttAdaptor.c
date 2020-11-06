@@ -12,7 +12,6 @@
 
 #include "mqttAdaptor.h"
 
-#define MQTT_TIMEOUT_MS    5000
 
 // Structure for MQTT task
 typedef struct
@@ -24,6 +23,45 @@ typedef struct
 // Forward declaration
 static int MqttRead(Network*, unsigned char*, int, int);
 static int MqttWrite(Network*, unsigned char*, int, int);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Asynchronous callback function for handling socket status events
+ *  for all MQTT client sessions.
+ *
+ *  @return void
+ */
+//--------------------------------------------------------------------------------------------------
+static void StatusRecvHandler
+(
+    le_socket_Ref_t  ref,       ///< [IN] Socket context reference
+    short            events,    ///< [IN] Bitmap of events that occurred
+    void*            userPtr    ///< [IN] User-defined pointer
+)
+{
+    LE_UNUSED(ref);
+
+    if (events & POLLOUT)
+    {
+        return;
+    }
+
+    LE_INFO("[%s] - events [0x%x]", __FUNCTION__, events);
+    struct Network* networkPtr = (struct Network*) userPtr;
+
+    if (networkPtr)
+    {
+        if (networkPtr->handlerFunc)
+        {
+            LE_INFO("[%s] - Calling handler function, events [0x%x]", __FUNCTION__, events);
+
+            // Call the registered MQTT client session receive
+            // handler function for this network
+            networkPtr->handlerFunc(events, networkPtr->contextPtr);
+        }
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -141,6 +179,8 @@ void NetworkInit
 )
 {
     net->socketRef = NULL;
+    net->handlerFunc = NULL;
+    net->contextPtr = NULL;
     net->secure = secure;
     net->certificatePtr = certPtr;
     net->certificateLen = certLen;
@@ -161,9 +201,12 @@ void NetworkInit
 //--------------------------------------------------------------------------------------------------
 le_result_t NetworkConnect
 (
-    struct Network* net,        /// [IN] Network structure
-    char*           addr,       /// [IN] Remote server address
-    int             port        /// [IN] Remote server port
+    struct Network*       net,         /// [IN] Network structure
+    char*                 addr,        /// [IN] Remote server address
+    int                   port,        /// [IN] Remote server port
+    int                   timeoutMs,   /// [IN] Connection timeout in milliseconds
+    networkStatusHandler  handlerFunc, /// [IN] Network status callback function
+    void*                 contextPtr   /// [IN] Network status callback function context pointer
 )
 {
     char srcIpAddress[LE_MDC_IPV6_ADDR_MAX_BYTES] = {0};
@@ -216,9 +259,27 @@ le_result_t NetworkConnect
     }
 
     // Set response timeout.
-    if (LE_OK != le_socket_SetTimeout(net->socketRef, MQTT_TIMEOUT_MS))
+    if (LE_OK != le_socket_SetTimeout(net->socketRef, timeoutMs))
     {
        LE_ERROR("Failed to set response timeout.");
+       goto freeSocket;
+    }
+
+    // Store the receive handler callback function and context pointer
+    net->handlerFunc = handlerFunc;
+    net->contextPtr = contextPtr;
+
+    LE_INFO("[%s] Registering callback function", __FUNCTION__);
+    if (LE_OK != le_socket_AddEventHandler(net->socketRef, StatusRecvHandler, net))
+    {
+        LE_ERROR("Failed to add socket event handler");
+        goto freeSocket;
+    }
+
+    // Enable async mode and start fd monitor.
+    if (LE_OK != le_socket_SetMonitoring(net->socketRef, true))
+    {
+       LE_ERROR("Failed to enable data socket monitor.");
        goto freeSocket;
     }
 
@@ -236,6 +297,8 @@ freeSocket:
     {
         le_socket_Delete(net->socketRef);
         net->socketRef = NULL;
+        net->handlerFunc = NULL;
+        net->contextPtr = NULL;
     }
     return LE_COMM_ERROR;
 }
@@ -257,6 +320,8 @@ void NetworkDisconnect
         le_socket_Disconnect(net->socketRef);
         le_socket_Delete(net->socketRef);
         net->socketRef = NULL;
+        net->handlerFunc = NULL;
+        net->contextPtr = NULL;
     }
 }
 

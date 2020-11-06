@@ -1,0 +1,23 @@
+sources:
+{
+    testMQTT.c
+    ${LEGATO_ROOT}/apps/test/httpServices/socketIntegrationTest/socketTestComponent/defaultDerKey.c
+}
+
+requires:
+{
+    component:
+    {
+        ${LEGATO_ROOT}/components/mqttClientLibrary
+    }
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}/3rdParty/paho.mqtt.embedded-c/MQTTPacket/src/
+    -I${LEGATO_ROOT}/3rdParty/paho.mqtt.embedded-c/MQTTClient-C/src/
+    -I${LEGATO_ROOT}/components/socketLibrary
+    -I${LEGATO_ROOT}/components/mqttClientLibrary
+    -I${CURDIR}
+    -I${LEGATO_ROOT}/apps/test/httpServices/socketIntegrationTest/socketTestComponent
+}
