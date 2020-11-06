@@ -1008,6 +1008,10 @@ static void FtpClientStateMachine
                     status = SendRequestMessage(contextPtr, msgBuf, msgLen);
                     if (LE_OK == status)
                     {
+                        if (OP_STORE == contextPtr->operation)
+                        {
+                            restartLoop = true;
+                        }
                         contextPtr->controlState = FTP_PASV_SENT;
                         break;
                     }
@@ -1051,12 +1055,14 @@ static void FtpClientStateMachine
                             msgLen = snprintf(msgBuf, sizeof(msgBuf),
                                               "APPE %s\r\n", contextPtr->remotePath);
                             LE_FATAL_IF(msgLen >= sizeof(msgBuf), "Failed to build APPE command.");
+                            restartLoop = true;
                             break;
 
                         case FTP_STOR_SENT:
                             msgLen = snprintf(msgBuf, sizeof(msgBuf),
                                               "STOR %s\r\n", contextPtr->remotePath);
                             LE_FATAL_IF(msgLen >= sizeof(msgBuf), "Failed to build STOR command.");
+                            restartLoop = true;
                             break;
 
                         default:
@@ -1193,8 +1199,12 @@ static void FtpClientStateMachine
                 {
                     if ((response == RESP_DC_OPENED) || (response == RESP_OPENING_DC))
                     {
-                        contextPtr->controlState = FTP_XFERING;
-                        break;
+                        // Get back into async mode
+                        if (LE_OK == le_socket_SetMonitoring(contextPtr->ctrlSocketRef, true))
+                        {
+                            contextPtr->controlState = FTP_XFERING;
+                            break;
+                        }
                     }
                 }
 
@@ -1958,6 +1968,11 @@ le_result_t le_ftpClient_Store
         {
             sessionRef->targetState = FTP_STOR_SENT;
         }
+
+        // Disable monitoring and switch to sync mode until ready to send
+        le_socket_SetMonitoring(sessionRef->ctrlSocketRef, false);
+        FtpClientStateMachine(sessionRef->ctrlSocketRef, POLLIN, sessionRef);
+        status = sessionRef->result;
     }
 
     return status;
