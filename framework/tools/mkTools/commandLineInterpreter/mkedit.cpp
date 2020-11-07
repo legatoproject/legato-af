@@ -1853,6 +1853,9 @@ static void GetCommandLineArgs
     // Validate command line arguments.
     ValidateCommandLineArguments();
 
+    // Finish setting build parameters
+    Handler.buildParams.FinishConfig();
+
     // Add the directory containing the .sdef file to the list of source search directories
     // and the list of interface search directories.
     std::string sdefFileDir = path::GetContainingDir(Handler.sdefFilePath);
