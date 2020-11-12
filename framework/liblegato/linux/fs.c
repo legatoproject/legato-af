@@ -77,6 +77,7 @@ static char* BuildPathName
         return NULL;
     }
     snprintf(pathPtr, pathSize, "%s%s", FsPrefixPtr, filePathPtr);
+    LE_DEBUG("Built path including le_fs '%s'", pathPtr);
     return pathPtr;
 }
 

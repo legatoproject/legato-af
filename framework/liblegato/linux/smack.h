@@ -400,4 +400,31 @@ void smack_SetOnlyCap
     const char* labelPtr            ///< [IN] Label to set the calling process to.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if the SMACK FS has been mounted.
+ *
+ * @return
+ *      true if has been mounted.
+ *      false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+bool smack_IsMounted
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if the smack label in onlycap is set.
+ *
+ * @return
+ *      true if at least one smack onlycap label has been set.
+ *      false if there isn't any smack onlycap label set.
+ */
+//--------------------------------------------------------------------------------------------------
+bool smack_IsOnlyCapSet
+(
+    void
+);
 #endif // LEGATO_SRC_SMACK_INCLUDE_GUARD

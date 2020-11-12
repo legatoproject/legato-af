@@ -629,13 +629,13 @@ le_result_t smack_UnsetTransmuteLabel
     const char* objPathPtr         ///< [IN] Path to the object.
 )
 {
-    if (setxattr(objPathPtr, "security.SMACK64TRANSMUTE", "FALSE", strlen("FALSE"), 0) == -1)
+    if (removexattr(objPathPtr, "security.SMACK64TRANSMUTE") == -1)
     {
         LE_ERROR("Could not set SMACK transmute label for '%s'.  %m.", objPathPtr);
         return LE_FAULT;
     }
 
-    LE_DEBUG("Set SMACK transmute label to \"FALSE\"for %s.", objPathPtr);
+    LE_DEBUG("Delete SMACK transmute label for '%s'.", objPathPtr);
 
     return LE_OK;
 
@@ -1067,7 +1067,11 @@ void smack_SetOnlyCap
     const char* labelPtr            ///< [IN] Label to set the calling process to.
 )
 {
-    CheckLabel(labelPtr);
+    // Don't need to check if it's a valid label if we're removing the OnlyCap settings
+    if(strcmp(labelPtr, "-") != 0)
+    {
+        CheckLabel(labelPtr);
+    }
 
     // Open the SMACK onlycap file
     int fd;
@@ -1092,13 +1096,72 @@ void smack_SetOnlyCap
     while ( (result == -1) && (errno == EINTR) );
 
     LE_FATAL_IF(result != labelSize,
-                "Could not write to %s.  %m.\n", PROC_SMACK_FILE);
+                "Could not write to %s.  %m.\n", SMACK_ONLYCAP_FILE);
 
     fd_Close(fd);
 
     LE_INFO("Set SMACK label '%s' onlycap.", labelPtr);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if the SMACK FS has been mounted.
+ *
+ * @return
+ *      true if has been mounted.
+ *      false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+bool smack_IsMounted
+(
+    void
+)
+{
+    return fs_IsMounted(SMACK_FS, SMACK_FS_DIR);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if the smack label in onlycap is set.
+ *
+ * @return
+ *      true if at least one smack onlycap label has been set.
+ *      false if there isn't any smack onlycap label set.
+ */
+//--------------------------------------------------------------------------------------------------
+bool smack_IsOnlyCapSet
+(
+    void
+)
+{
+    int fd;
+
+    do
+    {
+        fd = open(SMACK_ONLYCAP_FILE, O_RDONLY);
+    }
+    while ( (fd == -1) && (errno == EINTR) );
+
+    LE_FATAL_IF(fd == -1, "Could not open %s.  %m.\n", SMACK_ONLYCAP_FILE);
+
+    char labelPtr[LIMIT_MAX_SMACK_LABEL_LEN];
+
+     // Read the smack ONLYCAP label.
+    le_result_t result = fd_ReadLine(fd, labelPtr, sizeof(labelPtr));
+
+    fd_Close(fd);
+
+    if ( (result == LE_OUT_OF_RANGE) || (result == LE_FAULT) )
+    {
+        LE_DEBUG("No SMACK ONLYCAP label set");
+        return false;
+    }
+    else
+    {
+        LE_DEBUG("SMACK ONLYCAP label(s) set: '%s'", labelPtr);
+        return true;
+    }
+}
 
 //********  SMACK is disabled.  ******************************************************************//
 #else
@@ -1492,5 +1555,41 @@ void smack_SetOnlyCap
     const char* labelPtr            ///< [IN] Label to set the calling process to.
 )
 {
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if the SMACK FS has been mounted.
+ *
+ * @return
+ *      true if has been mounted.
+ *      false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+bool smack_IsMounted
+(
+    void
+)
+{
+    return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if the smack label in onlycap is set.
+ *
+ * @return
+ *      true if at least one smack onlycap label has been set.
+ *      false if there isn't any smack onlycap label set.
+ */
+//--------------------------------------------------------------------------------------------------
+bool smack_IsOnlyCapSet
+(
+    void
+)
+{
+    return false;
 }
 #endif

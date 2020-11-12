@@ -51,8 +51,8 @@ bindings:
         dcsDaemon.watchdogChain.le_wdog -> <root>.le_wdog
     #endif
     #if ${LE_CONFIG_ENABLE_WIFI} = y
-        dcsDaemon.dcsDaemon.le_wifiClient -> <root>.le_wifiClient
-        dcsDaemon.dcsWifi.le_wifiClient -> <root>.le_wifiClient
+        dcsDaemon.dcsDaemon.le_wifiClient -> wifiService.le_wifiClient
+        dcsDaemon.dcsWifi.le_wifiClient -> wifiService.le_wifiClient
     #endif
 #else
     dcsDaemon.dcs.le_appInfo -> appInfo.le_appInfo
