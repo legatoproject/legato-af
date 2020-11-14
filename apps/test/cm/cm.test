@@ -164,41 +164,26 @@ apps/tools/scripts/cm data connect
 handle_err "blocking connect ..." $? 0
 rm $RESOLV_CONF
 
+# disconnect
+apps/tools/scripts/cm data disconnect
+handle_err "disconnect ..." $? 0
+
 # timed connect
 apps/tools/scripts/cm data connect 5
 handle_err "timed connect ..." $? 0
 rm $RESOLV_CONF
 
-# connected but not routed
-export CONNECTED="yes"
-apps/tools/scripts/cm data connect
-handle_err "connected but not routed ..." $? 0
-
-# connected and routed
-export CONNECTED="yes" ROUTED=1
-apps/tools/scripts/cm data connect
-handle_err "connected and routed ..." $? 0
-export ROUTED=0
-
 # disconnect
-apps/tools/scripts/cm data connect -1
+apps/tools/scripts/cm data disconnect
 handle_err "disconnect ..." $? 0
 
 # wrong number of args
 apps/tools/scripts/cm data connect 5 3
 handle_err "wrong number of arguments ..." $? 1
 
-# device not found
-export IFCONFIG_EXIT_CODE=1
-apps/tools/scripts/cm data connect
-handle_err "device not found ..." $? 1
-export IFCONFIG_EXIT_CODE=0
-
-# routing failure
-export CONNECTED="yes" IP_EXIT_CODE=1
-apps/tools/scripts/cm data connect
-handle_err "routing failure ..." $? 1
-export IP_EXIT_CODE=0
+# invalid args
+apps/tools/scripts/cm data connect -1
+handle_err "invalid argument ..." $? 1
 
 # cleanup
-rm $RESOLV_CONF $LOG
+rm $LOG

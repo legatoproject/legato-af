@@ -160,6 +160,9 @@ cm_data_connect () {
         cm data connect $opt > $LOG 2>&1
         handle_err $?
         sleep 2
+    else
+        echo "Disconnect active connection before reconnecting"
+        exit 1
     fi
 
     info=$(cm data info)
@@ -218,7 +221,12 @@ if [ "$1" = "data" ]; then
     if [ "$2" = "connect" ] && [ $# -le 3 ]; then
         mkdir -p $RUN_TIME
         shift 2
-        cm_data_connect $@
+        if  [ $# -gt 0 ] && [ $1 -le 0 ]; then
+           echo "connect timeout value $1 invalid"
+           exit 1
+        else
+           cm_data_connect $@
+        fi
     elif [ "$2" = "disconnect" ] && [ $# -le 2 ]; then
         mkdir -p $RUN_TIME
         cm_data_connect -1
