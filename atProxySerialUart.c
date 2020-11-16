@@ -100,3 +100,25 @@ void atProxySerialUart_init(void)
                             (le_fdMonitor_HandlerFunc_t) &atProxyCmdHandler_AsyncRecvHandler,
                             POLLIN);
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enable monitoring POLLIN event for the AT Port External Serial UART
+ */
+//--------------------------------------------------------------------------------------------------
+void atProxySerialUart_disable(void)
+{
+    LE_DEBUG("Disabling POLLIN for MUX channel");
+    le_fdMonitor_Disable(FdMonitorRef, POLLIN);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disable monitoring POLLIN event for the AT Port External Serial UART
+ */
+//--------------------------------------------------------------------------------------------------
+void atProxySerialUart_enable(void)
+{
+    LE_DEBUG("Enabling POLLIN for MUX channel");
+    le_fdMonitor_Enable(FdMonitorRef, POLLIN);
+}

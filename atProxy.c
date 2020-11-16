@@ -11,6 +11,7 @@
 #include "atProxy.h"
 #include "atProxyCmdHandler.h"
 #include "atProxySerialUart.h"
+#include "atProxyAdaptor.h"
 
 #define AT_PROXY_CMD_REGISTRY_IMPL   1
 #include "atProxyCmdRegistry.h"
@@ -296,6 +297,9 @@ void le_atProxy_SendFinalResultCode
     }
 
     le_atProxy_SendFinalResultCodeRespond(_cmdRef, result);
+
+    // After sending out final response, set current AT session to complete
+    atProxyCmdHandler_complete();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -316,8 +320,14 @@ void le_atProxy_SendUnsolicitedResponse
 {
     le_result_t result = LE_OK;
 
-    // Write Unsolicited Response string to the Serial UART
-    atProxySerialUart_write((char*) responseStr, strlen(responseStr));
+    // Queue the response and defer outputting it if current AT session is active (in process)
+    if (atProxyCmdHandler_isActive())
+    {
+        atProxyCmdHandler_StoreUnsolicitedResponse(_cmdRef, responseStr);
+        return;
+    }
+
+    atProxySerialUart_write((char *)responseStr, strlen(responseStr));
     atProxySerialUart_write("\r\n", strlen("\r\n"));
 
     le_atProxy_SendUnsolicitedResponseRespond(_cmdRef, result);
@@ -335,13 +345,6 @@ COMPONENT_INIT
     // AT Command Reference pool allocation
     AtCmdRefMap = le_ref_InitStaticMap(AtCmdRefMap, AT_CMD_MAX);
 
-    #if NO_EXTERNAL_STDOUT_PORT
-    // Initialize the AT Port External Serial UART
-    atProxySerialUart_init();
-
-    // Initialize the AT Command Handler
-    atProxyCmdHandler_init();
-    #else
-    LE_WARN("Unable to initialize AT Proxy");
-    #endif
+    // Call platform-specific initializer
+    le_atProxy_init();
 }

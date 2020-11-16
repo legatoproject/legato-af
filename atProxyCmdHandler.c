@@ -16,6 +16,7 @@
 #include "atProxySerialUart.h"
 #include "atProxyCmdHandler.h"
 #include "atProxyCmdRegistry.h"
+#include "atProxyRemote.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -58,6 +59,95 @@ static struct le_atProxy_AtCommandSession  AtCmd;
 
 // AT Command Session Reference
 static void* AtCmdRef = NULL;
+
+// Semephore to allow to receive input from AT port
+static le_sem_Ref_t AtSem = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Command responses pool size
+ */
+//--------------------------------------------------------------------------------------------------
+#define UNSOLICITED_RSP_COUNT       2
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * AT command response structure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_atProxy_RspString
+{
+    le_dls_Link_t   link;               ///< link for list
+    le_atProxy_ServerCmdRef_t cmdRef;   ///< Asynchronous Server Command Reference
+    const char* resp;                   ///< string pointer
+} le_atProxy_RspString_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static pool for response
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(UnsoliRspPool,
+                          UNSOLICITED_RSP_COUNT,
+                          sizeof(le_atProxy_RspString_t));
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool for response
+ * w string
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t  UnsoliRspPoolRef;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send backed-up unsolicited responses
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void ProcessStoredURC
+(
+    struct le_atProxy_AtCommandSession* atSession      ///< [IN] AT Command Session Pointer
+)
+{
+    le_dls_Link_t* linkPtr;
+
+    if (!atSession)
+    {
+        LE_ERROR("Bad parameter!");
+        return;
+    }
+
+    while ( (linkPtr = le_dls_Pop(&atSession->unsolicitedList)) != NULL )
+    {
+        le_atProxy_RspString_t* rspStringPtr = CONTAINER_OF(linkPtr,
+                                                            le_atProxy_RspString_t,
+                                                            link);
+
+        le_atProxy_SendUnsolicitedResponse(rspStringPtr->cmdRef, rspStringPtr->resp);
+
+        le_mem_Release(rspStringPtr);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Allocate and initialize a new unsolicited response structure
+ */
+//--------------------------------------------------------------------------------------------------
+static le_atProxy_RspString_t* CreateResponse
+(
+    const char* rspStr                  ///< [IN] Unsolicited Response String
+)
+{
+    le_atProxy_RspString_t* rspStringPtr = le_mem_Alloc(UnsoliRspPoolRef);
+
+    memset(rspStringPtr, 0, sizeof(le_atProxy_RspString_t));
+    rspStringPtr->resp = rspStr;
+
+    return rspStringPtr;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -245,11 +335,13 @@ static void ProcessAtCmd
     struct le_atProxy_AtCommandSession* atCmdPtr   ///< AT Command Session Pointer
 )
 {
+    le_result_t result;
+
     if (atCmdPtr->local == true)
     {
         struct le_atProxy_StaticCommand* atCmdRegistryPtr = le_atProxy_GetCmdRegistry();
 
-        le_result_t result = CreateParameterList(atCmdPtr);
+        result = CreateParameterList(atCmdPtr);
         if (result != LE_OK)
         {
             // Send an error to the Serial UART
@@ -263,6 +355,9 @@ static void ProcessAtCmd
 
         if (atCmdRegistryPtr[atCmdPtr->registryIndex].commandHandlerPtr != NULL)
         {
+            atCmdPtr->active = true;
+            atProxySerialUart_disable();
+
             // Trigger the AT Command Handler callback registered for this "local"
             // AT Command
             atCmdRegistryPtr[atCmdPtr->registryIndex].commandHandlerPtr(
@@ -280,8 +375,24 @@ static void ProcessAtCmd
     }
     else
     {
-        // TBD - Send AT Command to MAP via the EMUX AT Port
-        LE_WARN("Remote (MAP) AT command pass-through not currently supported!!");
+        // Send AT Command to remote end (MAP)
+        LE_DEBUG("Sending AT command [%s] to remote", atCmdPtr->command);
+
+        atCmdPtr->active = true;
+        atProxySerialUart_disable();
+
+        result = atProxyRemote_send(atCmdPtr->command,
+                                  strnlen(atCmdPtr->command, LE_ATDEFS_COMMAND_MAX_BYTES));
+
+        if (LE_OK != result)
+        {
+            LE_ERROR("Failed sending command to MAP!");
+            atProxySerialUart_enable();
+            return;
+        }
+
+        le_sem_Wait(AtSem);
+        atProxySerialUart_enable();
     }
 }
 
@@ -512,7 +623,7 @@ void atProxyCmdHandler_AsyncRecvHandler
     short events            ///< [IN] events that has happened on this fd
 )
 {
-    LE_DEBUG("Handle provided to fd monitor got called, fd [%" PRIiPTR "]", (intptr_t) handle);
+    LE_DEBUG("Handle provided to fd monitor got called, fd [%d]", (intptr_t) handle);
     if (handle == -1)
     {
         LE_ERROR("Invalid serial handle fd");
@@ -534,8 +645,15 @@ void atProxyCmdHandler_AsyncRecvHandler
                 atProxySerialUart_write(&AtCmd.command[AtCmd.index], 1);
             }
 
-            // Parse the incoming string (character)
-            ParseBuffer(&AtCmd, count);
+            if (AtCmd.dataMode)
+            {
+                atProxyRemote_send(&AtCmd.command[AtCmd.index], 1);
+            }
+            else
+            {
+                // Parse the incoming string (character)
+                ParseBuffer(&AtCmd, count);
+            }
 
             // Read the next character if available
             count = atProxySerialUart_read(&AtCmd.command[AtCmd.index], 1);
@@ -543,7 +661,6 @@ void atProxyCmdHandler_AsyncRecvHandler
     }
 
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -563,4 +680,121 @@ void atProxyCmdHandler_init(void)
 
     // Initialize the AT Command Sesison record
     memset(&AtCmd, 0, sizeof(AtCmd));
+
+    // Parameters pool allocation
+    // Typically, we only need cache one unsolicited response for one AT backend (such as ORP),
+    // but we use memory pool here in case there are multiple AT backends.
+    UnsoliRspPoolRef = le_mem_InitStaticPool(
+                                    UnsoliRspPool,
+                                    UNSOLICITED_RSP_COUNT,
+                                    sizeof(le_atProxy_RspString_t));
+
+    AtSem = le_sem_Create("AtSem", 0);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Complete the current AT command session
+ *
+ * @return none
+ */
+//--------------------------------------------------------------------------------------------------
+void atProxyCmdHandler_complete
+(
+    void
+)
+{
+    AtCmd.active = false;
+    AtCmd.dataMode = false;
+
+    // Process unsolicited message from local
+    ProcessStoredURC(&AtCmd);
+
+    // Process unsolicited messages from remote
+    atProxyRemote_processUnsolicitedMsg();
+
+    if (AtCmd.local)
+    {
+        atProxySerialUart_enable();
+    }
+    else
+    {
+        le_sem_Post(AtSem);
+    }
+
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start AT command data mode
+ *
+ * @return none
+ */
+//--------------------------------------------------------------------------------------------------
+void atProxyCmdHandler_startDataMode
+(
+    void
+)
+{
+    // Currently only remote MAP commands support data mode.
+    if (!AtCmd.local)
+    {
+        AtCmd.dataMode = true;
+        le_sem_Post(AtSem);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if the current session is local and active
+ *
+ * @return true if current session is local and active, false otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+bool atProxyCmdHandler_isLocalSessionActive
+(
+    void
+)
+{
+    return AtCmd.local && AtCmd.active;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if the current session is active
+ *
+ * @return true if current session is active, false otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+bool atProxyCmdHandler_isActive
+(
+    void
+)
+{
+    return AtCmd.active;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Queue the unsolicited response
+ *
+ * @return none
+ */
+//--------------------------------------------------------------------------------------------------
+void atProxyCmdHandler_StoreUnsolicitedResponse
+(
+    le_atProxy_ServerCmdRef_t cmdRef,   ///< [IN] Asynchronous Server Command Reference
+    const char* responseStr             ///< [IN] Unsolicited Response String
+)
+{
+    if (!cmdRef || !responseStr)
+    {
+        LE_ERROR("Bad parameter!");
+        return;
+    }
+
+    le_atProxy_RspString_t* rspStringPtr = CreateResponse(responseStr);
+
+    rspStringPtr->cmdRef = cmdRef;
+    le_dls_Queue(&(AtCmd.unsolicitedList), &(rspStringPtr->link));
 }

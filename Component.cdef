@@ -17,6 +17,8 @@ sources:
     atProxy.c
     atProxyCmdHandler.c
     atProxySerialUart.c
+    atProxyAdaptor.c
+    atProxyEmux.c
 }
 
 pools:

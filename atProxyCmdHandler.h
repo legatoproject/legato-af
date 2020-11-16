@@ -9,6 +9,7 @@
 #ifndef LE_AT_PROXY_CMD_HANDLER_H_INCLUDE_GUARD
 #define LE_AT_PROXY_CMD_HANDLER_H_INCLUDE_GUARD
 
+#include "atProxy.h"
 typedef enum
 {
     PARSER_SEARCH_A,
@@ -30,6 +31,9 @@ struct le_atProxy_AtCommandSession
     char atCmdParameterList[AT_PROXY_PARAMETER_LIST_MAX][LE_ATDEFS_PARAMETER_MAX_BYTES];
                               ///< Parameter list
     uint32_t parameterIndex;  ///< Parameter index (count)
+    bool active;              ///< Indicates if this session is active (i.e., in processing)
+    bool dataMode;            ///< Indicates if current session is in data mode
+    le_dls_List_t unsolicitedList;           ///< unsolicited list to be sent
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -43,8 +47,32 @@ void atProxyCmdHandler_AsyncRecvHandler
     short events            ///< [IN] events that has happened on this fd
 );
 
-
 // Initialize the AT Port Command Handler
 void atProxyCmdHandler_init(void);
+
+// Complete the current AT command session
+void atProxyCmdHandler_complete(void);
+
+// Start AT command data mode
+void atProxyCmdHandler_startDataMode(void);
+
+// Check if the current session is local and active
+bool atProxyCmdHandler_isLocalSessionActive(void);
+
+// Check if the current session is active
+bool atProxyCmdHandler_isActive(void);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Queue the unsolicited response
+ *
+ * @return none
+ */
+//--------------------------------------------------------------------------------------------------
+void atProxyCmdHandler_StoreUnsolicitedResponse
+(
+    le_atProxy_ServerCmdRef_t cmdRef,   ///< [IN] Asynchronous Server Command Reference
+    const char* responseStr             ///< [IN] Unsolicited Response String
+);
 
 #endif /* LE_AT_PROXY_CMD_HANDLER_H_INCLUDE_GUARD */
