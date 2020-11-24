@@ -337,14 +337,6 @@ maxMemoryBytes: 1000K
 
 @note Will be rounded to the nearest memory page boundary.
 
-@section defFilesAdef_maxMQueueBytes maxMQueueBytes
-
-Specifies the maximum number of bytes that can be allocated for POSIX MQueues. Default is @b 512.
-
-@code
-maxMQueueBytes: 16K
-@endcode
-
 @section defFilesAdef_maxQueuedSignals maxQueuedSignals
 
 Specifies the maximum number of signals that can be waiting for delivery to processes in the app.
