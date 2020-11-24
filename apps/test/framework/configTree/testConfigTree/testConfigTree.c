@@ -24,6 +24,11 @@
 #define STRING_VALUE         "hello"
 #define STRING_DEFAULT_VALUE "goodbye"
 
+#define BINARY_VALUE         "0123456789abcde"
+#define BINARY_SIZE          16
+#define BINARY_DEFAULT_VALUE "default"
+#define BINARY_DEFAULT_SIZE  8
+
 #define MAX_CFG_TREE_SIZE           8192
 #define WRITE_TEST_BENCHMARK_MS     2000
 #define WRITE_TEST_ITERATIONS       100
@@ -147,7 +152,12 @@ static void CheckConfigTree
     float floatExpectedValue     = (expectSuccess?FLOAT_VALUE :FLOAT_DEFAULT_VALUE );
     int intExpectedValue         = (expectSuccess?INT_VALUE   :INT_DEFAULT_VALUE   );
     const char* strExpectedValue = (expectSuccess?STRING_VALUE:STRING_DEFAULT_VALUE);
+    const uint8_t* binExpectedValue = (expectSuccess?(uint8_t *) BINARY_VALUE :
+                                                     (uint8_t *) BINARY_DEFAULT_VALUE);
+    size_t binExpectedSize = (expectSuccess? BINARY_SIZE :
+                                             BINARY_DEFAULT_SIZE);
     char strBuffer[64];
+    uint8_t binBuffer[64];
 
     LE_TEST_OK(le_cfg_GetBool(txnRef, "bool", BOOL_DEFAULT_VALUE) == boolExpectedValue,
                "get bool %s", descriptionStr);
@@ -164,6 +174,15 @@ static void CheckConfigTree
                "get string result %s", descriptionStr);
     LE_TEST_OK(strcmp(strExpectedValue, strBuffer) == 0,
                "get string value %s", descriptionStr);
+    size_t binSize = sizeof(binBuffer);
+    le_result_t rc;
+    rc = le_cfg_GetBinary(txnRef, "binary",
+                                (uint8_t*) binBuffer, &binSize,
+                                (uint8_t*) BINARY_DEFAULT_VALUE, BINARY_DEFAULT_SIZE);
+    LE_TEST_OK(LE_OK == rc,
+               "get binary result %s", descriptionStr);
+    LE_TEST_OK(memcmp(binExpectedValue, binBuffer, binExpectedSize) == 0,
+               "get binary value %s", descriptionStr);
     LE_TEST_OK(le_cfg_GetBool(txnRef, "stem/bool", BOOL_DEFAULT_VALUE) == boolExpectedValue,
                "get stem/bool %s", descriptionStr);
 }
@@ -260,6 +279,7 @@ static void WriteConfigTree
     le_cfg_SetFloat(txnRef, "float", FLOAT_VALUE);
     le_cfg_SetInt(txnRef, "int", INT_VALUE);
     le_cfg_SetString(txnRef, "string", STRING_VALUE);
+    le_cfg_SetBinary(txnRef, "binary", (uint8_t *) BINARY_VALUE, BINARY_SIZE);
     le_cfg_SetBool(txnRef, "stem/bool", BOOL_VALUE);
 }
 
