@@ -51,6 +51,8 @@ struct App_t : public HasTargetInfo_t
 
     enum {AUTO, MANUAL} startTrigger;    ///< Start automatically or only when asked?
 
+    uint8_t runGroup;               ///< What overlay group is this app part of (for RTOS)?
+
     PreloadedMode_t preloadedMode;  ///< Whether this app is preloaded, and in which mode.
 
     bool isPreBuilt;    ///< true = app is a pre-built app.  Affects how some error messages are

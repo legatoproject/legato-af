@@ -44,6 +44,34 @@ static void BindToRootService
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the server which a binding refers to (if known)
+ */
+//--------------------------------------------------------------------------------------------------
+static model::App_t *GetServerForBinding
+(
+    model::System_t* systemPtr,
+    model::Binding_t* bindingPtr
+)
+{
+    if (bindingPtr->serverType != model::Binding_t::EXTERNAL_APP)
+    {
+        return NULL;
+    }
+
+    auto appMapIter = systemPtr->apps.find(bindingPtr->serverAgentName);
+    if (appMapIter == systemPtr->apps.end())
+    {
+        return NULL;
+    }
+    else
+    {
+        return appMapIter->second;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Checks the validity of a binding's target.
  *
  * @throw mk::Exception_t if the binding is definitely invalid.
@@ -62,15 +90,14 @@ void CheckBindingTarget
     // they will have been checked when the binding was created.
     if (bindingPtr->serverType == model::Binding_t::EXTERNAL_APP)
     {
-        auto appMapIter = systemPtr->apps.find(bindingPtr->serverAgentName);
-        if (appMapIter == systemPtr->apps.end())
+        auto appPtr = GetServerForBinding(systemPtr, bindingPtr);
+        if (!appPtr)
         {
             bindingPtr->parseTreePtr->ThrowException(
                 mk::format(LE_I18N("Binding to non-existent server app '%s'."),
                            bindingPtr->serverAgentName)
             );
         }
-        auto appPtr = appMapIter->second;
 
         auto ifMapIter = appPtr->externServerInterfaces.find(bindingPtr->serverIfName);
         if (ifMapIter == appPtr->externServerInterfaces.end())
@@ -84,6 +111,51 @@ void CheckBindingTarget
                                bindingPtr->serverIfName, bindingPtr->serverAgentName)
                 );
             }
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check the server will always be available from the client based on runGroup
+ *
+ * @throw mk::Exception_t if the binding is definitely invalid.
+ **/
+//--------------------------------------------------------------------------------------------------
+void CheckBindingRunGroup
+(
+    model::System_t* systemPtr,
+    model::Binding_t* bindingPtr,
+    uint8_t runGroup
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto appPtr = GetServerForBinding(systemPtr, bindingPtr);
+
+    // Can't find app binding.  This either means binding is invalid (which is checked by
+    // CheckBindingTarget()) or the binding target cannot be determined at compile time (only
+    // on Linux).  In these situations runGroup matching can be ignored
+    if (!appPtr)
+    {
+        return;
+    }
+
+    // If the server is in a run group (i.e. not always running)
+    if (appPtr->runGroup)
+    {
+        // Ensure it is in the same run group as the client
+        if (runGroup != appPtr->runGroup)
+        {
+            bindingPtr->parseTreePtr->ThrowException(
+                mk::format(
+                    LE_I18N("Binding between client '%s' in runGroup %d and"
+                            " server '%s' in runGroup %d must be optional."),
+                           bindingPtr->clientAgentName,
+                           runGroup,
+                           bindingPtr->serverAgentName,
+                           appPtr->runGroup
+                )
+            );
         }
     }
 }
@@ -115,6 +187,13 @@ void EnsureClientInterfacesBound
         {
             // It has a binding, but is it a good binding?
             CheckBindingTarget(systemPtr, ifInstancePtr->bindingPtr);
+
+            // If the binding isn't optional, ensure the server will always be loaded when
+            // the client is
+            if (!ifInstancePtr->ifPtr->optional)
+            {
+                CheckBindingRunGroup(systemPtr, ifInstancePtr->bindingPtr, appPtr->runGroup);
+            }
             continue;
         }
 
@@ -757,6 +836,35 @@ void SetStart
                                                           "unexpected startup option."));
     }
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the run group for the application.  On RTOS only one run group can be started at a time.
+ * If the run group is not set, the application will always be started.
+ */
+//--------------------------------------------------------------------------------------------------
+void SetRunGroup
+(
+    model::App_t* appPtr,
+    const parseTree::SimpleSection_t* sectionPtr
+)
+{
+    size_t runGroup = GetPositiveInt(sectionPtr);
+
+    if (runGroup <= UINT8_MAX)
+    {
+        appPtr->runGroup = (uint8_t)runGroup;
+    }
+    else
+    {
+        sectionPtr->Contents()[0]->ThrowException(
+            mk::format(LE_I18N("Application group must be in the range 0-%d"),
+                       UINT8_MAX)
+        );
+    }
+
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**

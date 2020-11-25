@@ -61,6 +61,14 @@
 static le_mem_PoolRef_t ArgStringPoolRef;
 LE_MEM_DEFINE_STATIC_POOL(ParentArgStringPool, ARG_STRING_POOL_SIZE, ARG_STRING_POOL_BYTES);
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Active application group
+ */
+//--------------------------------------------------------------------------------------------------
+static uint8_t ActiveRunGroup = 0;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * List of all apps on a system.
@@ -184,6 +192,22 @@ static char *PoolStrDup
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Determine if an app is in the active run group.
+ *
+ * Group 0 is always active; up to one additional run group may be active as well.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool InActiveRunGroup
+(
+    const App_t      *appPtr
+)
+{
+    return !appPtr->runGroup || (appPtr->runGroup == ActiveRunGroup);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Start a task, given a pointer to the task structure.
  */
 //--------------------------------------------------------------------------------------------------
@@ -201,6 +225,16 @@ static le_result_t StartProc
     le_result_t      result = LE_OK;
     le_thread_Ref_t  currentThread = NULL;
     TaskInfo_t      *taskInfoPtr;
+
+    if (!InActiveRunGroup(appPtr))
+    {
+        LE_WARN("Not starting %s (group %d).  Active group is %d.",
+                appPtr->appNameStr,
+                appPtr->runGroup,
+                ActiveRunGroup);
+
+        return LE_BUSY;
+    }
 
     LE_DEBUG(" (%d) Creating task %s", taskNum, taskPtr->nameStr);
 
@@ -337,6 +371,17 @@ static le_result_t StartApp
 )
 {
     uint32_t taskNum;
+
+    if (!InActiveRunGroup(appPtr))
+    {
+        LE_WARN("Not starting %s (group %d).  Active group is %d.",
+                appPtr->appNameStr,
+                appPtr->runGroup,
+                ActiveRunGroup);
+
+        return LE_BUSY;
+    }
+
     for (taskNum = 0; taskNum < appPtr->taskCount; ++taskNum)
     {
         const Task_t* currentTaskPtr = &appPtr->taskList[taskNum];
@@ -462,6 +507,39 @@ LE_SHARED bool microSupervisor_IsTaskRunning
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the active run group.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED uint8_t le_microSupervisor_GetActiveRunGroup
+(
+    void
+)
+{
+    return ActiveRunGroup;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the active run group.
+ *
+ * If used, must be called before calling le_microSupervisor_Main()
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void le_microSupervisor_SetActiveRunGroup
+(
+    uint8_t runGroup
+)
+{
+    // Ensure Legato has not been started
+    LE_ASSERT(!ArgStringPoolRef);
+
+    ActiveRunGroup = runGroup;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Supervisor entry point.  Kick off all threads in all apps.
  */
 //--------------------------------------------------------------------------------------------------
@@ -496,6 +574,14 @@ LE_SHARED void le_microSupervisor_Main
         }
 
         LE_DEBUG("Starting app %s", currentAppPtr->appNameStr);
+
+        if (!InActiveRunGroup(currentAppPtr))
+        {
+            LE_DEBUG("Skipping app in group %d (active group %d)",
+                     currentAppPtr->runGroup,
+                     ActiveRunGroup);
+            continue;
+        }
 
         if (StartApp(currentAppPtr) != LE_OK)
         {

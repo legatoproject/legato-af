@@ -303,6 +303,12 @@ le_msg_SessionRef_t le_msg_CreateLocalSession
         return NULL;
     }
 
+    if (servicePtr->service.type == LE_MSG_SERVICE_NULL)
+    {
+        // Service not initialized, treat as unbound (for RTOS overlays)
+        return NULL;
+    }
+
     msg_LocalSession_t* clientSessionPtr = le_mem_Alloc(SessionPool);
     memset(clientSessionPtr, 0, sizeof(msg_LocalSession_t));
     clientSessionPtr->session.type = LE_MSG_SESSION_LOCAL;

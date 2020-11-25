@@ -54,6 +54,8 @@ typedef struct
 {
     const char   *appNameStr;          ///< Application name
     bool          manualStart;         ///< If this app should not be started on system start.
+    uint8_t       runGroup;            ///< Application group.  Only applications for group 0 and
+                                       ///< one other group can be started at once
     uint32_t      taskCount;           ///< Number of tasks in this application
     const Task_t *taskList;            ///< Pointer to array of task definitions
                                        ///< for this application.

@@ -126,6 +126,10 @@ static void ModelAppOverrides
                 procEnvPtr->maxStackBytes = GetPositiveInt(ToSimpleSectionPtr(subsectionPtr));
             }
         }
+        else if (subsectionName == "runGroup")
+        {
+            SetRunGroup(appPtr, ToSimpleSectionPtr(subsectionPtr));
+        }
         else if (subsectionName == "start")
         {
             SetStart(appPtr, ToSimpleSectionPtr(subsectionPtr));

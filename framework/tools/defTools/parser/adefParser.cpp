@@ -648,6 +648,10 @@ static parseTree::CompoundItem_t* ParseSection
     {
         return ParseComplexSection(lexer, sectionNameTokenPtr, internal::ParseRequiresSubsection);
     }
+    else if (sectionName == "runGroup")
+    {
+        return ParseSimpleSection(lexer, sectionNameTokenPtr, parseTree::Token_t::INTEGER);
+    }
     else if (sectionName == "sandboxed")
     {
         return ParseSimpleSection(lexer, sectionNameTokenPtr, parseTree::Token_t::NAME);

@@ -932,8 +932,6 @@ typedef void (* le_msg_ResponseCallback_t)
 );
 
 
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Generic service object.  Used internally as part of low-level messaging implementation.
@@ -943,6 +941,7 @@ struct le_msg_Service
 {
     enum
     {
+        LE_MSG_SERVICE_NULL = 0,
         LE_MSG_SERVICE_UNIX_SOCKET,
         LE_MSG_SERVICE_LOCAL
     } type;

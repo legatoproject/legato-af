@@ -300,6 +300,7 @@ void GenerateRtosSystemTasks
             "        .appNameStr = \"" << appPtr->name << "\",\n"
             "        .manualStart = " << ((appPtr->startTrigger == model::App_t::MANUAL)?
                                           "true":"false") << ",\n"
+            "        .runGroup = " << (int)appPtr->runGroup << ",\n"
             "        .taskCount = " << appPtr->GetProcessCount() << ",\n";
         if (appPtr->GetProcessCount())
         {
@@ -400,15 +401,35 @@ void GenerateRtosSystemTasks
         "(\n"
         "    void\n"
         ")\n"
-        "{\n";
+        "{\n"
+        "    __attribute__((unused)) uint8_t activeRunGroup = " \
+                "le_microSupervisor_GetActiveRunGroup();\n"
+        "\n";
     for (auto appItem : systemPtr->apps)
     {
         auto appPtr = appItem.second;
+        if (appPtr->runGroup)
+        {
+            outputFile
+                << "    if (" << (int)appPtr->runGroup << " == activeRunGroup)\n"
+                << "    {\n";
+        }
         for (auto exeItem : appPtr->executables)
         {
             auto exePtr = exeItem.second;
+
+            if (appPtr->runGroup)
+            {
+                outputFile << "    ";
+            }
+
             outputFile
                 << "    " << exePtr->GetTargetInfo<target::RtosExeInfo_t>()->initFunc << "();\n";
+        }
+        if (appPtr->runGroup)
+        {
+            outputFile
+                << "    }\n";
         }
     }
     outputFile << "\n"

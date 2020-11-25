@@ -178,6 +178,18 @@ void SetStart
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Sets the run group for the application.  On RTOS only one run group can be started at a time.
+ * If the run group is not set, the application will always be started.
+ */
+//--------------------------------------------------------------------------------------------------
+void SetRunGroup
+(
+    model::App_t* appPtr,
+    const parseTree::SimpleSection_t* sectionPtr
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Sets whether the Supervisor will load the module automatically at system start-up,
  * or only when asked to do so, based on the contents of a "load:" section in the parse tree.
  */

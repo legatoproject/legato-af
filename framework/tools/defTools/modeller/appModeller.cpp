@@ -1566,6 +1566,12 @@ void PrintSummary
         std::cout << LE_I18N("  Will only start when requested to start.") << std::endl;
     }
 
+    // Application group.  Only display if non-zero
+    if (appPtr->runGroup)
+    {
+        std::cout << mk::format(LE_I18N("  In run group %d."), appPtr->runGroup) << std::endl;
+    }
+
     // Process list
     bool containsAtLeastOneProcess = false;
     for (auto procEnvPtr : appPtr->processEnvs)
@@ -2140,6 +2146,10 @@ model::App_t* GetApp
         else if (sectionName == "start")
         {
             SetStart(appPtr, ToSimpleSectionPtr(sectionPtr));
+        }
+        else if (sectionName == "group")
+        {
+            SetRunGroup(appPtr, ToSimpleSectionPtr(sectionPtr));
         }
         else if (sectionName == "version")
         {

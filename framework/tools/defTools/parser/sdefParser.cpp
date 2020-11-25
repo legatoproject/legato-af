@@ -192,6 +192,10 @@ static parseTree::CompoundItem_t* ParseAppOverride
                                                parseTree::Content_t::POOL,
                                                parseTree::Token_t::NAME);
     }
+    else if (sectionName == "runGroup")
+    {
+        return ParseSimpleSection(lexer, sectionNameTokenPtr, parseTree::Token_t::INTEGER);
+    }
     else if (sectionName == "sandboxed")
     {
         return ParseSimpleSection(lexer, sectionNameTokenPtr, parseTree::Token_t::BOOLEAN);

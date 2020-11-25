@@ -17,8 +17,8 @@ struct le_msg_Session
 {
     enum
     {
-        LE_MSG_SESSION_UNIX_SOCKET,
-        LE_MSG_SESSION_LOCAL
+        LE_MSG_SESSION_UNIX_SOCKET = LE_MSG_SERVICE_UNIX_SOCKET,
+        LE_MSG_SESSION_LOCAL = LE_MSG_SERVICE_LOCAL
     } type;
 };
 
