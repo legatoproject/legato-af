@@ -863,7 +863,7 @@ le_mem_PoolRef_t rpcProxyConfig_GetStringPoolRef
  *      - LE_OK if successful.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t rpcProxyConfig_Initialize
+le_result_t rpcProxyConfig_InitializeOnce
 (
     void
 )

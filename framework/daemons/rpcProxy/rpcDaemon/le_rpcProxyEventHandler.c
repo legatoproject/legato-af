@@ -402,11 +402,11 @@ end:
  * This function initializes and starts the RPC Proxy Event Handler Services.
  *
  * @note Must be called either directly, such as in the case of the RPC Proxy Library,
- *       or indirectly as a Legato component via the RPC Proxy's COMPONENT_INIT.
+ *       or indirectly as a Legato component via the RPC Proxy's COMPONENT_INIT_ONCE.
  *
  */
 //--------------------------------------------------------------------------------------------------
-void rpcEventHandler_Initialize
+void rpcEventHandler_InitializeOnce
 (
     void
 )

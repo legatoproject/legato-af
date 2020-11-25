@@ -186,4 +186,18 @@ bool secSocket_IsDataAvailable
     secSocket_Ctx_t* ctxPtr       ///< [INOUT] Secure socket context pointer
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * One-time init for Secure Socket component
+ *
+ * This pre-initializes the secSocket memory pools.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_InitializeOnce
+(
+    void
+);
+
 #endif /* LE_SEC_SOCKET_LIB_H */

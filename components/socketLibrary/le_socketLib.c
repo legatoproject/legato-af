@@ -99,13 +99,6 @@ static SocketCtx_t* NewSocketContext
 {
     SocketCtx_t* contextPtr = NULL;
 
-    // Initialize the socket pool and the socket reference map if not yet done
-    if (!SocketPoolRef)
-    {
-        SocketPoolRef = le_mem_InitStaticPool(SocketPool, MAX_SOCKET_NB, sizeof(SocketCtx_t));
-        SocketRefMap = le_ref_CreateMap("le_socketLibMap", MAX_SOCKET_NB);
-    }
-
     // Alloc memory from pool
     contextPtr = le_mem_TryAlloc(SocketPoolRef);
 
@@ -916,6 +909,21 @@ le_result_t le_socket_TrigMonitoring
     le_fdMonitor_Enable(contextPtr->monitorRef, POLLOUT);
 
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Component once initializer.
+ */
+//--------------------------------------------------------------------------------------------------
+COMPONENT_INIT_ONCE
+{
+    // Initialize the socket pool and the socket reference map
+    SocketPoolRef = le_mem_InitStaticPool(SocketPool, MAX_SOCKET_NB, sizeof(SocketCtx_t));
+    SocketRefMap = le_ref_CreateMap("le_socketLibMap", MAX_SOCKET_NB);
+
+    // Initialize the secure socket memory pools
+    secSocket_InitializeOnce();
 }
 
 //--------------------------------------------------------------------------------------------------

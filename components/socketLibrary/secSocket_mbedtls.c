@@ -199,14 +199,6 @@ le_result_t secSocket_Init
 
     LE_ASSERT(ctxPtr != NULL);
 
-    // Initialize the socket context pool
-    if (!SocketCtxPoolRef)
-    {
-        SocketCtxPoolRef = le_mem_InitStaticPool(SocketCtxPool,
-                                                 MAX_SOCKET_NB,
-                                                 sizeof(MbedtlsCtx_t));
-    }
-
     // Alloc memory from pool
     contextPtr = le_mem_Alloc(SocketCtxPoolRef);
 
@@ -578,4 +570,24 @@ bool secSocket_IsDataAvailable
 
     LE_ASSERT(contextPtr != NULL);
     return (mbedtls_ssl_get_bytes_avail(&(contextPtr->sslCtx)) != 0);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * One-time init for Secure Socket component
+ *
+ * This pre-initializes the secSocket memory pools.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_InitializeOnce
+(
+    void
+)
+{
+    // Initialize the socket context pool
+    SocketCtxPoolRef = le_mem_InitStaticPool(SocketCtxPool,
+                                             MAX_SOCKET_NB,
+                                             sizeof(MbedtlsCtx_t));
 }

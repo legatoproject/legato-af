@@ -258,7 +258,7 @@ const char* rpcProxyConfig_GetSystemNameByLinkName
  *      - LE_OK if successful.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t rpcProxyConfig_Initialize
+le_result_t rpcProxyConfig_InitializeOnce
 (
     void
 );

@@ -326,7 +326,7 @@ le_result_t rpcProxyNetwork_ProcessKeepAliveResponse
  * @note If the initialization failed, it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t rpcProxyNetwork_Initialize
+le_result_t rpcProxyNetwork_InitializeOnce
 (
     void
 );

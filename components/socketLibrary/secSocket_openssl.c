@@ -138,14 +138,6 @@ le_result_t secSocket_Init
         return LE_BAD_PARAMETER;
     }
 
-    // Initialize the socket context pool
-    if (!SocketCtxPoolRef)
-    {
-        SocketCtxPoolRef = le_mem_InitStaticPool(SocketCtxPool,
-                                                 MAX_SOCKET_NB,
-                                                 sizeof(OpensslCtx_t));
-    }
-
     // Check if the socket is already initialized
     OpensslCtx_t* contextPtr = GetContext(*ctxPtr);
     if ((contextPtr) && (contextPtr->isInit))
@@ -664,4 +656,24 @@ bool secSocket_IsDataAvailable
     }
 
     return (BIO_pending(contextPtr->bioPtr) ? true: false);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * One-time init for Secure Socket component
+ *
+ * This pre-initializes the secSocket memory pools.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_InitializeOnce
+(
+    void
+)
+{
+    // Initialize the socket context pool
+    SocketCtxPoolRef = le_mem_InitStaticPool(SocketCtxPool,
+                                             MAX_SOCKET_NB,
+                                             sizeof(OpensslCtx_t));
 }

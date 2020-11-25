@@ -239,15 +239,6 @@ static HttpSessionCtx_t* NewHttpSessionContext
 {
     HttpSessionCtx_t* contextPtr = NULL;
 
-    // Initialize the socket pool and the socket reference map if not yet done
-    if (!HttpSessionPoolRef)
-    {
-        HttpSessionPoolRef = le_mem_InitStaticPool(HttpContextPool,
-                                                   HTTP_SESSIONS_NB,
-                                                   sizeof(HttpSessionCtx_t));
-        HttpSessionRefMap = le_ref_CreateMap("le_httpClientMap", HTTP_SESSIONS_NB);
-    }
-
     // Alloc memory from pool
     contextPtr = le_mem_TryAlloc(HttpSessionPoolRef);
 
@@ -299,11 +290,6 @@ static void* TinyHttpReallocCb
     (void)opaquePtr;
 
     LE_INFO("Request to allocate: %d in %p", size, dataPtr);
-
-    if (!MemPoolRef)
-    {
-        MemPoolRef = le_mem_InitStaticPool(MemPool, MEM_MAX_COUNT, MEM_MAX);
-    }
 
     if (size > MEM_MAX)
     {
@@ -1774,6 +1760,23 @@ le_result_t le_httpClient_Resume
     }
 
     return le_socket_TrigMonitoring(contextPtr->socketRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Component once initializer.
+ */
+//--------------------------------------------------------------------------------------------------
+COMPONENT_INIT_ONCE
+{
+    // Initialize the mem pool
+    MemPoolRef = le_mem_InitStaticPool(MemPool, MEM_MAX_COUNT, MEM_MAX);
+
+    // Initialize the socket pool and the socket reference map
+    HttpSessionPoolRef = le_mem_InitStaticPool(HttpContextPool,
+                                                HTTP_SESSIONS_NB,
+                                                sizeof(HttpSessionCtx_t));
+    HttpSessionRefMap = le_ref_CreateMap("le_httpClientMap", HTTP_SESSIONS_NB);
 }
 
 //--------------------------------------------------------------------------------------------------

@@ -513,6 +513,6 @@ void rpcProxy_CleanUpLocalMessageResources
  * Initialize streaming memory pools and hash tables
  */
 //--------------------------------------------------------------------------------------------------
-void rpcProxy_InitializeStreamingMemPools();
+void rpcProxy_InitializeOnceStreamingMemPools();
 
 #endif /* LE_RPC_PROXY_H_INCLUDE_GUARD */

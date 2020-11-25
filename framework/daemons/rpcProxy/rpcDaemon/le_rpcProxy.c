@@ -2716,6 +2716,8 @@ le_result_t le_rpcProxy_InitializeOnce
     void
 )
 {
+    le_result_t  result;
+
 #ifdef RPC_PROXY_LOCAL_SERVICE
     // Create hash map for server references, using Service Name as key.
     ServerRefMapByName = le_hashmap_InitStatic(ServerRefHashMap,
@@ -2744,42 +2746,6 @@ le_result_t le_rpcProxy_InitializeOnce
                        serviceRef);
     }
 #endif
-
-    return LE_OK;
-}
-
-#ifndef LE_CONFIG_RPC_PROXY_LIBRARY
-//--------------------------------------------------------------------------------------------------
-/**
- * Component once initializer.
- */
-//--------------------------------------------------------------------------------------------------
-COMPONENT_INIT_ONCE
-{
-    le_rpcProxy_InitializeOnce();
-}
-#endif
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function initializes and starts the RPC Proxy Services.
- *
- * @note Must be called either directly, such as in the case of the RPC Proxy Library,
- *       or indirectly as a Legato component via the RPC Proxy's COMPONENT_INIT.
- *
- * @return
- *      - LE_OK if successful.
- *      - LE_NOT_FOUND if mandatory configuration is not found.
- *      - LE_BAD_PARAMETER if number of elements exceeds the storage array size.
- *      - LE_FAULT for all other errors.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_rpcProxy_Initialize
-(
-    void
-)
-{
-    le_result_t  result = LE_OK;
 
     ServiceNameStringPoolRef = le_mem_InitStaticPool(ServiceNameStringPool,
                                                      RPC_PROXY_SERVICE_BINDINGS_MAX_NUM,
@@ -2850,18 +2816,63 @@ le_result_t le_rpcProxy_Initialize
                                       le_hashmap_EqualsVoidPointer);
 
 
-    rpcProxy_InitializeStreamingMemPools();
-    rpcEventHandler_Initialize();
+    rpcProxy_InitializeOnceStreamingMemPools();
+    rpcEventHandler_InitializeOnce();
 
     LE_INFO("RPC Proxy Service Init start");
 
     // Initialize the RPC Proxy Configuration service before accessing
-    result = rpcProxyConfig_Initialize();
+    result = rpcProxyConfig_InitializeOnce();
     if (result != LE_OK)
     {
         LE_ERROR("Error initializing RPC Proxy Network services, result [%d]", result);
         goto end;
     }
+
+    // Initialize the RPC Proxy Network services
+    result = rpcProxyNetwork_InitializeOnce();
+    if (result != LE_OK)
+    {
+        LE_ERROR("Error initializing RPC Proxy Network services, result [%d]", result);
+        goto end;
+    }
+
+end:
+    return result;
+}
+
+#ifndef LE_CONFIG_RPC_PROXY_LIBRARY
+//--------------------------------------------------------------------------------------------------
+/**
+ * Component once initializer.
+ */
+//--------------------------------------------------------------------------------------------------
+COMPONENT_INIT_ONCE
+{
+    le_rpcProxy_InitializeOnce();
+}
+#endif
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function initializes and starts the RPC Proxy Services.
+ *
+ * @note Must be called either directly, such as in the case of the RPC Proxy Library,
+ *       or indirectly as a Legato component via the RPC Proxy's COMPONENT_INIT.
+ *
+ * @return
+ *      - LE_OK if successful.
+ *      - LE_NOT_FOUND if mandatory configuration is not found.
+ *      - LE_BAD_PARAMETER if number of elements exceeds the storage array size.
+ *      - LE_FAULT for all other errors.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_rpcProxy_Initialize
+(
+    void
+)
+{
+    le_result_t  result = LE_OK;
 
     // Load the ConfigTree configuration for links, bindings and references
     result = rpcProxyConfig_LoadSystemLinks();
@@ -2889,14 +2900,6 @@ le_result_t le_rpcProxy_Initialize
     if (result != LE_OK)
     {
         LE_ERROR("Configuration validation error, result [%d]", result);
-        goto end;
-    }
-
-    // Initialize the RPC Proxy Network services
-    result = rpcProxyNetwork_Initialize();
-    if (result != LE_OK)
-    {
-        LE_ERROR("Error initializing RPC Proxy Network services, result [%d]", result);
         goto end;
     }
 

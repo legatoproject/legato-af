@@ -1302,7 +1302,7 @@ le_result_t rpcProxy_SendVariableLengthMsgBody
  * Initialize streaming memory pools and hash tables
  */
 //--------------------------------------------------------------------------------------------------
-void rpcProxy_InitializeStreamingMemPools()
+void rpcProxy_InitializeOnceStreamingMemPools()
 {
 #ifdef RPC_PROXY_LOCAL_SERVICE
 
