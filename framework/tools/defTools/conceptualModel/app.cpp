@@ -118,6 +118,18 @@ ComponentInstance_t* App_t::FindComponentInstance
         }
     }
 
+    for (auto fileSystemObjPtr : bundledBinaries)
+    {
+        // If an executable is listed as binary bundle then allow any component in the executable.
+        // This is relevant in the case of using an app generated as binary app package.
+        // .app does not have direct visibility of what components it has and .app should not be
+        // exposing internal code details as well.
+        if (exeName == path::GetLastNode(fileSystemObjPtr.get()->srcPath))
+        {
+            return nullptr;
+        }
+    }
+
     exeTokenPtr->ThrowException(
         mk::format(LE_I18N("Executable '%s' not defined in application."), exeName)
     );
@@ -170,6 +182,10 @@ ApiServerInterfaceInstance_t* App_t::FindServerInterface
         {
             // Find the component instance specified.
             auto componentInstancePtr = FindComponentInstance(exeTokenPtr, componentTokenPtr);
+            if (componentInstancePtr == nullptr)
+            {
+                return nullptr;
+            }
 
             // Find the interface in the component instance's list of server interfaces,
             ifInstancePtr = componentInstancePtr->FindServerInterface(interfaceName);
@@ -231,6 +247,10 @@ ApiClientInterfaceInstance_t* App_t::FindClientInterface
     {
         // Find the component instance specified.
         auto componentInstancePtr = FindComponentInstance(exeTokenPtr, componentTokenPtr);
+        if (componentInstancePtr == nullptr)
+        {
+            return nullptr;
+        }
 
         // Find the interface in the component instance's list of client interfaces,
         ifInstancePtr = componentInstancePtr->FindClientInterface(interfaceName);
