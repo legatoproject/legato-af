@@ -204,10 +204,10 @@ __attribute__((unused)) static le_msg_SessionRef_t GetCurrentSessionRef
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Init data that is common across all threads.
+ * One-time init data that is common across all threads.
  */
 //--------------------------------------------------------------------------------------------------
-static void InitCommonData(void)
+void {{apiName}}_InitOnceCommonData(void)
 {
     // Perform common initialization across all instances of this API.
     ifgen_{{apiBaseName}}_InitCommonData();
@@ -216,7 +216,16 @@ static void InitCommonData(void)
     _ClientThreadDataPool = le_mem_InitStaticPool({{apiName}}_ClientThreadData,
                                                   LE_CDATA_COMPONENT_COUNT,
                                                   sizeof(_ClientThreadData_t));
+}
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Init data that is common across all threads.
+ */
+//--------------------------------------------------------------------------------------------------
+static void InitCommonData(void)
+{
     // Create the thread-local data key to be used to store a pointer to each thread object.
     LE_ASSERT(pthread_key_create(&_ThreadDataKey, NULL) == 0);
 }

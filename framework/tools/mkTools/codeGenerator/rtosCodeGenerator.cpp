@@ -157,6 +157,7 @@ void GenerateRtosComponentMainFile
         fileStream << "void " << interfacePtr->internalName
                    << "_SetBinding(le_msg_LocalService_t* servicePtr);\n";
         fileStream << "void " << interfacePtr->internalName << "_ConnectService(void);\n";
+        fileStream << "void " << interfacePtr->internalName << "_InitOnceCommonData(void);\n";
     }
 
     // For each of the component's server-side interfaces,
@@ -199,8 +200,16 @@ void GenerateRtosComponentMainFile
     fileStream << "\n"
                   "    // Perform one-time initialization\n"
                   "    if (!ComponentOnceInit)\n"
-                  "    {\n"
-                  "        COMPONENT_INIT_ONCE_NAME(NULL, NULL);\n"
+                  "    {\n";
+
+    // For each of the component's client-side interfaces,
+    for (auto interfacePtr : componentPtr->clientApis)
+    {
+        // Call the one-time client-side interface initialization function.
+        fileStream << "        " << interfacePtr->internalName << "_InitOnceCommonData();\n";
+    }
+
+    fileStream << "        COMPONENT_INIT_ONCE_NAME(NULL, NULL);\n"
                   "        ComponentOnceInit = true;\n"
                   "    }\n"
                   "}\n"

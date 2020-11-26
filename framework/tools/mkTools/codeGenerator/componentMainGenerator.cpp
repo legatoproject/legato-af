@@ -114,8 +114,9 @@ void GenerateCLangComponentMainFile
     {
         DefineServiceNameVars(fileStream, interfacePtr, componentPtr->isStandAloneComp);
 
-        // Declare the client-side interface initialization function.
+        // Declare the client-side interface initialization functions.
         fileStream << "void " << interfacePtr->internalName << "_ConnectService(void);\n";
+        fileStream << "void " << interfacePtr->internalName << "_InitOnceCommonData(void);\n";
     }
 
     // For each of the component's server-side interfaces,
@@ -151,6 +152,19 @@ void GenerateCLangComponentMainFile
                   "{\n"
                   "    LE_DEBUG(\"Initializing " << compName << " component library.\");\n"
                   "\n";
+
+    // Call each of the component's client-side InitOnceCommonData functions
+    if (!componentPtr->clientApis.empty())
+    {
+        fileStream << "    // Initialize once client-side IPC interfaces.\n";
+
+        for (auto ifPtr : componentPtr->clientApis)
+        {
+            fileStream << "    " << ifPtr->internalName << "_InitOnceCommonData();\n";
+        }
+
+        fileStream << "\n";
+    }
 
     // Call each of the component's server-side interfaces' initialization functions,
     // except those that are marked [manual-start].
