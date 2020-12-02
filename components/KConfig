@@ -8,7 +8,6 @@ menu "FTP Client"
 
 config SWIFTP
   bool "Using SIERRA FTP feature"
-  depends on !LWIP
   default n
   ---help---
   this will enable Sierra FTP feature based on le_socketlib.

@@ -56,6 +56,20 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Calculate minimum of two values.
+ *
+ * @param   a   First value.
+ * @param   b   Second value.
+ *
+ * @return Smallest value.
+ */
+//--------------------------------------------------------------------------------------------------
+#ifndef MIN
+#  define MIN(a, b)   ((a) < (b) ? (a) : (b))
+#endif
+
+//--------------------------------------------------------------------------------------------------
+/**
  *  Security mode.
  */
 //--------------------------------------------------------------------------------------------------
@@ -609,13 +623,15 @@ static le_result_t FtpClientGetServerAddress
         ptr += 1;
         if (response == RESP_PASV_PASSIVE)
         {
-            if (sscanf(ptr, "%u,%u,%u,%u,%hu,%hu", &a, &b, &c, &d, &ph, &pl) != 6)
+            if (sscanf(ptr, "%"SCNu32",%"SCNu32",%"SCNu32",%"SCNu32",%"SCNu16",%"SCNu16,
+                        &a, &b, &c, &d, &ph, &pl) != 6)
             {
                 LE_ERROR("Invalid address in EPSV response.");
                 return LE_FAULT;
             }
 
-            LE_FATAL_IF(snprintf(serverPtr, len, "%u.%u.%u.%u", a, b, c, d) >= len,
+            LE_FATAL_IF(snprintf(serverPtr, len, "%"PRIu32".%"PRIu32".%"PRIu32".%"PRIu32,
+                            a, b, c, d) >= len,
                         "serverPtr buffer overflow.");
 
             *portPtr = (ph << 8) | (pl & 255);
