@@ -1207,6 +1207,9 @@ COMPONENT_INIT
     // Init and configure PA MRC simu
     mrc_simu_Init();
 
+    // Initialize mrc pools:
+    le_mrc_InitPools();
+
     // Init le_mrc
     le_mrc_Init();
 

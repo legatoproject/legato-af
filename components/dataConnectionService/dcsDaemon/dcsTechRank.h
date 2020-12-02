@@ -20,6 +20,7 @@ void dcs_ChannelSetCurrentTech(le_data_Technology_t technology);
 void dcs_ChannelSetChannelName(const char *channelName);
 
 void dcsTechRank_Init(void);
+void dcsTechRank_InitPools(void);
 le_data_Technology_t dcsTechRank_GetNextTech(le_data_Technology_t technology);
 le_result_t dcsTechRank_SelectDataChannel(le_data_Technology_t technology);
 le_dcs_Technology_t dcsTechRank_ConvertToDcsTechEnum(le_data_Technology_t leDataTech);

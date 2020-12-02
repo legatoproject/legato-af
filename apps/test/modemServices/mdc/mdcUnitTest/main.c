@@ -1074,6 +1074,9 @@ COMPONENT_INIT
     // pa simu init */
     pa_mdcSimu_Init();
 
+    // Initialzie mdc pools:
+    le_mdc_InitPools();
+
     /* init the le_mdc service */
     le_mdc_Init();
 

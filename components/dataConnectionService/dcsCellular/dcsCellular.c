@@ -32,6 +32,7 @@
 #define CELLULAR_RETRY_MAX 4
 #define CELLULAR_RETRY_BACKOFF_INIT 1
 
+LE_MEM_DEFINE_STATIC_POOL(CellularConnDbPool, CELL_CONNDBS_MAX, sizeof(cellular_connDb_t));
 static le_mem_PoolRef_t CellularConnDbPool;
 static le_mrc_NetRegState_t CellPacketSwitchState = LE_MRC_REG_NONE;
 static le_mrc_PacketSwitchedChangeHandlerRef_t CellPacketSwitchStateHdlrRef;
@@ -42,6 +43,7 @@ static le_mrc_NetRegRejectHandlerRef_t         DcsNetRegRejectHdlrRef;
  * Safe Reference Map for cellular connection database objects
  */
 //--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(CellularConnectionRefMap, CELL_CONNDBS_MAX);
 static le_ref_MapRef_t CellularConnectionRefMap;
 
 
@@ -1379,6 +1381,21 @@ void le_dcsCellular_ReleaseConnDb
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Component initialization called only once.
+ */
+//--------------------------------------------------------------------------------------------------
+COMPONENT_INIT_ONCE
+{
+    // Allocate the connection DB app event pool, and set the max number of objects
+    CellularConnDbPool = le_mem_InitStaticPool(CellularConnDbPool, CELL_CONNDBS_MAX,
+                                               sizeof(cellular_connDb_t));
+    le_mem_SetDestructor(CellularConnDbPool, DcsCellularConnDbDestructor);
+
+    // Create a safe reference map for cellular connection objects
+    CellularConnectionRefMap = le_ref_InitStaticMap(CellularConnectionRefMap, CELL_CONNDBS_MAX);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1387,15 +1404,6 @@ void le_dcsCellular_ReleaseConnDb
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    // Allocate the connection DB app event pool, and set the max number of objects
-    CellularConnDbPool = le_mem_CreatePool("CellularConnDbPool", sizeof(cellular_connDb_t));
-    le_mem_ExpandPool(CellularConnDbPool, CELL_CONNDBS_MAX);
-    le_mem_SetDestructor(CellularConnDbPool, DcsCellularConnDbDestructor);
-
-    // Create a safe reference map for cellular connection objects
-    CellularConnectionRefMap = le_ref_CreateMap("Cellular Connection Reference Map",
-                                                CELL_CONNDBS_MAX);
-
     (void)le_mrc_GetPacketSwitchedState(&CellPacketSwitchState);
     CellPacketSwitchStateHdlrRef =
         le_mrc_AddPacketSwitchedChangeHandler(DcsCellularPacketSwitchHandler, NULL);

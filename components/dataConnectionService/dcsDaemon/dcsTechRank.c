@@ -68,6 +68,7 @@ static le_data_Technology_t DefaultTechList[DCS_TECH_NUMBER] = {LE_DATA_WIFI, LE
  * Pool used to store the list of technologies to use
  */
 //--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(TechListPoolRef, DCS_TECH_NUMBER, sizeof(TechRecord_t));
 static le_mem_PoolRef_t TechListPoolRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
@@ -786,6 +787,18 @@ le_result_t le_data_SetTechnologyRank
     return LE_OK;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Initialize memory pools
+ */
+//--------------------------------------------------------------------------------------------------
+void dcsTechRank_InitPools
+(
+    void
+)
+{
+    TechListPoolRef = le_mem_InitStaticPool(TechListPoolRef, DCS_TECH_NUMBER, sizeof(TechRecord_t));
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -797,10 +810,6 @@ void dcsTechRank_Init
     void
 )
 {
-    // Create memory pool and expand it
-    TechListPoolRef = le_mem_CreatePool("Technologies list pool", sizeof(TechRecord_t));
-    le_mem_ExpandPool(TechListPoolRef, DCS_TECH_NUMBER);
-
     // Services required by DCS
 
     // 1. Mobile services

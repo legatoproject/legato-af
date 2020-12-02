@@ -944,6 +944,15 @@ static void CloseServiceSessionHandler
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Component initialization called only once.
+ */
+//--------------------------------------------------------------------------------------------------
+COMPONENT_INIT_ONCE
+{
+    dcs_InitDbPools();
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -962,7 +971,7 @@ COMPONENT_INIT
                 LE_DCS_TECH_MAX_NAME_LEN);
     }
 
-    dcs_CreateDbPool();
+    dcs_InitDbTimers();
 
     dcs_cleanConfigTree();
 

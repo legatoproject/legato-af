@@ -157,6 +157,13 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum number of monitors for jamming detection:
+ */
+//--------------------------------------------------------------------------------------------------
+#define MRC_MAX_NUM_JAMMING_DETECTION_MONITORS 1
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Mutex to prevent race condition with asynchronous functions.
  */
 //--------------------------------------------------------------------------------------------------
@@ -689,6 +696,8 @@ static le_event_Id_t JammingDetectionIndId;
  * Memory Pool for listed jamming detection references.
  */
 //--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(JammingDetectionListPool, MRC_MAX_NUM_JAMMING_DETECTION_MONITORS,
+                          sizeof(JammingDetectionRef_t));
 static le_mem_PoolRef_t  JammingDetectionListPool;
 
 //--------------------------------------------------------------------------------------------------
@@ -1997,17 +2006,14 @@ static void RetrySyncNetworkTimeHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to initialize the MRC component.
+ * Initialize MRC memory pools
  */
 //--------------------------------------------------------------------------------------------------
-void le_mrc_Init
+void le_mrc_InitPools
 (
     void
 )
 {
-    le_result_t                 result=LE_OK;
-    pa_mrc_NetworkRegSetting_t  setting;
-
     ScanInformationListPool = le_mem_InitStaticPool(ScanInformationList,
                                                     MRC_MAX_SCANLIST,
                                                     sizeof(ScanInfoList_t));
@@ -2097,6 +2103,26 @@ void le_mrc_Init
     // Create the Safe Reference Map to use for Signal Metrics object Safe References.
     MetricsRefMap = le_ref_InitStaticMap(MetricsRefMap, MAX_NUM_METRICS);
 
+    JammingDetectionListPool = le_mem_InitStaticPool(JammingDetectionListPool,
+                                                     MRC_MAX_NUM_JAMMING_DETECTION_MONITORS,
+                                                     sizeof(JammingDetectionRef_t));
+
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to initialize the MRC component.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mrc_Init
+(
+    void
+)
+{
+    le_result_t                 result=LE_OK;
+    pa_mrc_NetworkRegSetting_t  setting;
+
+
     // Add a handler to the close session service
     le_msg_ServiceRef_t msgService = le_mrc_GetServiceRef();
     le_msg_AddServiceCloseHandler(msgService, CloseSessionEventHandler, NULL);
@@ -2135,8 +2161,6 @@ void le_mrc_Init
     // Register a handler function for Signal Strength change indication
     pa_mrc_AddSignalStrengthIndHandler(SignalStrengthIndHandlerFunc, NULL);
 
-    JammingDetectionListPool = le_mem_CreatePool("JammingDetectionListPool",
-                                                 sizeof(JammingDetectionRef_t));
 
     // Session reference list init for jamming detection
     JammingSessionRefList = LE_DLS_LIST_INIT;

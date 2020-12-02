@@ -105,6 +105,8 @@ typedef struct
     le_dls_Link_t dbLink;                  ///< Double-link used to order elements as a LIFO stack
 } DcsDefaultGwConfigDb_t;
 
+LE_MEM_DEFINE_STATIC_POOL(DcsDefaultGwConfigDataDbPool, LE_DCS_CLIENT_APPS_MAX,
+                          sizeof(DcsDefaultGwConfigDb_t));
 static le_mem_PoolRef_t DcsDefaultGwConfigDataDbPool;
 static le_dls_List_t DcsDefaultGwConfigDbList;
 
@@ -135,6 +137,8 @@ typedef struct
     le_dls_Link_t dbLink;                  ///< Double-link used to order elements as a LIFO stack
 } DcsDnsConfigDb_t;
 
+LE_MEM_DEFINE_STATIC_POOL(DcsDnsConfigDataDbPool, LE_DCS_CLIENT_APPS_MAX,
+                          sizeof(DcsDnsConfigDb_t));
 static le_mem_PoolRef_t DcsDnsConfigDataDbPool;
 static le_dls_List_t DcsDnsConfigDbList;
 
@@ -1676,21 +1680,28 @@ static void DcsDnsConfigDbDestructor
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *  Component initialization called only once.
+ */
+//--------------------------------------------------------------------------------------------------
+COMPONENT_INIT_ONCE
+{
+    DcsDefaultGwConfigDataDbPool = le_mem_InitStaticPool(DcsDefaultGwConfigDataDbPool,
+                                                         LE_DCS_CLIENT_APPS_MAX,
+                                                         sizeof(DcsDefaultGwConfigDb_t));
+    le_mem_SetDestructor(DcsDefaultGwConfigDataDbPool, DcsDefaultGwConfigDbDestructor);
+    DcsDnsConfigDataDbPool = le_mem_InitStaticPool(DcsDnsConfigDataDbPool, LE_DCS_CLIENT_APPS_MAX,
+                                                   sizeof(DcsDnsConfigDb_t));
+    le_mem_SetDestructor(DcsDnsConfigDataDbPool, DcsDnsConfigDbDestructor);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  *  Server initialization
  */
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
     DcsDefaultGwConfigDbList = LE_DLS_LIST_INIT;
-    DcsDefaultGwConfigDataDbPool = le_mem_CreatePool("DcsDefaultGwConfigDataDbPool",
-                                               sizeof(DcsDefaultGwConfigDb_t));
-    le_mem_ExpandPool(DcsDefaultGwConfigDataDbPool, LE_DCS_CLIENT_APPS_MAX);
-    le_mem_SetDestructor(DcsDefaultGwConfigDataDbPool, DcsDefaultGwConfigDbDestructor);
-
     DcsDnsConfigDbList = LE_DLS_LIST_INIT;
-    DcsDnsConfigDataDbPool = le_mem_CreatePool("DcsDnsConfigDataDbPool", sizeof(DcsDnsConfigDb_t));
-    le_mem_ExpandPool(DcsDnsConfigDataDbPool, LE_DCS_CLIENT_APPS_MAX);
-    le_mem_SetDestructor(DcsDnsConfigDataDbPool, DcsDnsConfigDbDestructor);
-
     LE_INFO("Data Channel Service's network component is ready");
 }

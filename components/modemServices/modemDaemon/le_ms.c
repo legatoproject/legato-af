@@ -35,6 +35,17 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *  Component initialization called only once.
+ */
+//--------------------------------------------------------------------------------------------------
+COMPONENT_INIT_ONCE
+{
+    le_mrc_InitPools();
+    le_mdc_InitPools();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to initialize the Modem Services.
  *
  * @note If the initialization failed, it is a fatal error, the function will not return.

@@ -189,7 +189,8 @@ void dcs_SessionCleanupSaveEventHandler(char const* appName, le_msg_SessionRef_t
 void dcs_cleanConfigTree(void);
 
 // from dcs_db.c
-void dcs_CreateDbPool(void);
+void dcs_InitDbPools(void);
+void dcs_InitDbTimers(void);
 LE_SHARED bool dcs_DeleteChannelDb(le_dcs_Technology_t tech, void *techRef);
 LE_SHARED void dcs_ChannelEventNotifier(le_dcs_ChannelRef_t channelRef, le_dcs_Event_t evt);
 LE_SHARED le_dcs_ChannelRef_t dcs_GetChannelRefFromTechRef(le_dcs_Technology_t tech,

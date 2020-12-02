@@ -13,6 +13,16 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Initialize MRC memory pools
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mrc_InitPools
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to initialize the MRC component.
  *
  * @note If the initialization failed, it is a fatal error, the function will not return.

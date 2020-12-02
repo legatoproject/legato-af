@@ -202,6 +202,7 @@ AsyncHandlerDb_t;
  * Although it might matter little, AsyncHandlerDbList is implemented as a FIFO double linked-list.
  */
 //--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(AsyncHandlerDbPool, MDC_ASYNC_HDLRS_MAX, sizeof(AsyncHandlerDb_t));
 static le_mem_PoolRef_t AsyncHandlerDbPool;
 static le_dls_List_t AsyncHandlerDbList;
 
@@ -991,6 +992,30 @@ static void CloseSessionEventHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Initialize MDC memory pools
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mdc_InitPools
+(
+    void
+)
+{
+    // Allocate the profile pool, and set the max number of objects, since it is already known.
+    DataProfilePool = le_mem_InitStaticPool(DataProfile,
+                                            PA_MDC_MAX_PROFILE,
+                                            sizeof(le_mdc_Profile_t));
+    le_mem_SetDestructor(DataProfilePool, DataProfileDestructor);
+
+    // Create the Safe Reference Map to use for data profile object Safe References.
+    DataProfileRefMap = le_ref_InitStaticMap(DataProfileMap, PA_MDC_MAX_PROFILE);
+
+    AsyncHandlerDbPool = le_mem_InitStaticPool(AsyncHandlerDbPool, MDC_ASYNC_HDLRS_MAX,
+                                               sizeof(AsyncHandlerDb_t));
+    le_mem_SetDestructor(AsyncHandlerDbPool, AsyncHandlerDbDestructor);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initialize the MDC component.
  *
  */
@@ -1004,15 +1029,6 @@ void le_mdc_Init
     // Get a reference to the trace keyword that is used to control tracing in this module.
     TraceRef = le_log_GetTraceRef("mdc");
 #endif
-
-    // Allocate the profile pool, and set the max number of objects, since it is already known.
-    DataProfilePool = le_mem_InitStaticPool(DataProfile,
-                                            PA_MDC_MAX_PROFILE,
-                                            sizeof(le_mdc_Profile_t));
-    le_mem_SetDestructor(DataProfilePool, DataProfileDestructor);
-
-    // Create the Safe Reference Map to use for data profile object Safe References.
-    DataProfileRefMap = le_ref_InitStaticMap(DataProfileMap, PA_MDC_MAX_PROFILE);
 
     // Subscribe to the session state handler
     pa_mdc_AddSessionStateHandler(NewSessionStateHandler, NULL);
@@ -1050,9 +1066,6 @@ void le_mdc_Init
 
     // Initialize the list for archiving async handler data structures
     AsyncHandlerDbList = LE_DLS_LIST_INIT;
-    AsyncHandlerDbPool = le_mem_CreatePool("MdcAsyncHandlerDbPool", sizeof(AsyncHandlerDb_t));
-    le_mem_ExpandPool(AsyncHandlerDbPool, MDC_ASYNC_HDLRS_MAX);
-    le_mem_SetDestructor(AsyncHandlerDbPool, AsyncHandlerDbDestructor);
 
     // Add a close session event handler for doing cleanup for closing clients
     le_msg_AddServiceCloseHandler(le_mdc_GetServiceRef(), CloseSessionEventHandler, NULL);

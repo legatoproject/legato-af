@@ -20,6 +20,7 @@
  * Safe Reference Map for channel database objects
  */
 //--------------------------------------------------------------------------------------------------
+LE_REF_DEFINE_STATIC_MAP(ChannelRefMap, LE_DCS_CHANNELDBS_MAX);
 static le_ref_MapRef_t ChannelRefMap;
 
 
@@ -28,20 +29,14 @@ static le_ref_MapRef_t ChannelRefMap;
  * The memory pools for channel DB objects
  */
 //--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(ChannelDbPool, LE_DCS_CHANNELDBS_MAX, sizeof(le_dcs_channelDb_t));
 static le_mem_PoolRef_t ChannelDbPool;
+LE_MEM_DEFINE_STATIC_POOL(ChannelDbEvtHdlrPool, LE_DCS_CHANNELDB_EVTHDLRS_MAX,
+                          sizeof(le_dcs_channelDbEventHdlr_t));
 static le_mem_PoolRef_t ChannelDbEvtHdlrPool;
+LE_MEM_DEFINE_STATIC_POOL(StartRequestRefDbPool, LE_DCF_START_REQ_REF_MAP_SIZE,
+                          sizeof(le_dcs_startRequestRefDb_t));
 static le_mem_PoolRef_t StartRequestRefDbPool;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The memory pool for channel query handler dbs as well as the typedef of such db which saves
- * the async callback function and context of each app which has provided them in a channel list
- * query
- */
-//--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t ChannelQueryHandlerDbPool;
-static le_dls_List_t DcsChannelQueryHandlerDbList;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -59,6 +54,17 @@ typedef struct
 }
 DcsChannelQueryHandlerDb_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * The memory pool for channel query handler dbs as well as the typedef of such db which saves
+ * the async callback function and context of each app which has provided them in a channel list
+ * query
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(ChannelQueryHandlerDbPool, LE_DCS_CHANNEL_QUERY_HDLRS_MAX,
+                          sizeof(DcsChannelQueryHandlerDb_t));
+static le_mem_PoolRef_t ChannelQueryHandlerDbPool;
+static le_dls_List_t DcsChannelQueryHandlerDbList;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1018,44 +1024,17 @@ bool dcs_DeleteChannelDb
     return true;
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
- * Allocate memory pools, event pools and reference maps during DCS' init
+ *  Initialize timers during dcs init.
  */
 //--------------------------------------------------------------------------------------------------
-void dcs_CreateDbPool
+void dcs_InitDbTimers
 (
     void
 )
 {
-    // Allocate the channelDb pool, and set the max number of objects
-    ChannelDbPool = le_mem_CreatePool("ChannelDbPool", sizeof(le_dcs_channelDb_t));
-    le_mem_ExpandPool(ChannelDbPool, LE_DCS_CHANNELDBS_MAX);
-    le_mem_SetDestructor(ChannelDbPool, DcsChannelDbDestructor);
-
-    // Allocate the channel Db app event pool, and set the max number of objects
-    ChannelDbEvtHdlrPool = le_mem_CreatePool("ChannelDbEvtHdlrPool",
-                                             sizeof(le_dcs_channelDbEventHdlr_t));
-    le_mem_ExpandPool(ChannelDbEvtHdlrPool, LE_DCS_CHANNELDB_EVTHDLRS_MAX);
-    le_mem_SetDestructor(ChannelDbEvtHdlrPool, DcsChannelDbEventHandlersDestructor);
-
-    // Create a safe reference map for data channel objects
-    ChannelRefMap = le_ref_CreateMap("Channel Reference Map", LE_DCS_CHANNELDBS_MAX);
-
-    DcsChannelQueryHandlerDbList = LE_DLS_LIST_INIT;
-    ChannelQueryHandlerDbPool = le_mem_CreatePool("ChannelQueryHandlerDbPool",
-                                                  sizeof(DcsChannelQueryHandlerDb_t));
-    le_mem_ExpandPool(ChannelQueryHandlerDbPool, LE_DCS_CHANNEL_QUERY_HDLRS_MAX);
-    le_mem_SetDestructor(ChannelQueryHandlerDbPool, DcsChannelQueryHandlerDbDestructor);
-
-    // Allocate the Start Request reference db pool, and set the max number of objects
-    StartRequestRefDbPool = le_mem_CreatePool("ChannelStartRequestRefDbPool",
-                                              sizeof(le_dcs_startRequestRefDb_t));
-    le_mem_ExpandPool(StartRequestRefDbPool, LE_DCF_START_REQ_REF_MAP_SIZE);
-    le_mem_SetDestructor(StartRequestRefDbPool, DcsStartRequestRefDbDestructor);
-
-    // Init the channel query query time enforcer timer
+    // Init the channel query time enforcer timer
     ChannelQueryTimeEnforcerTimer = le_timer_Create("ChannelQueryTimeEnforcerTimer");
     le_clk_Time_t ChannelQueryTimeEnforcerMax = {GETCHANNELS_TIME_ENFORCER_LIMIT, 0};
     if ((LE_OK != le_timer_SetHandler(ChannelQueryTimeEnforcerTimer, ChannelQueryTimeEnforcerTimerHandler))
@@ -1069,4 +1048,41 @@ void dcs_CreateDbPool
     {
         EnforceChannelQueryTimeLimit = true;
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Allocate memory pools, event pools and reference maps during DCS' init
+ */
+//--------------------------------------------------------------------------------------------------
+void dcs_InitDbPools
+(
+    void
+)
+{
+    // Allocate the channelDb pool, and set the max number of objects
+    ChannelDbPool = le_mem_InitStaticPool(ChannelDbPool, LE_DCS_CHANNELDBS_MAX,
+                                          sizeof(le_dcs_channelDb_t));
+    le_mem_SetDestructor(ChannelDbPool, DcsChannelDbDestructor);
+
+    // Allocate the channel Db app event pool, and set the max number of objects
+    ChannelDbEvtHdlrPool = le_mem_InitStaticPool(ChannelDbEvtHdlrPool,
+                                                 LE_DCS_CHANNELDB_EVTHDLRS_MAX,
+                                                 sizeof(le_dcs_channelDbEventHdlr_t));
+    le_mem_SetDestructor(ChannelDbEvtHdlrPool, DcsChannelDbEventHandlersDestructor);
+
+    // Create a safe reference map for data channel objects
+    ChannelRefMap = le_ref_InitStaticMap(ChannelRefMap, LE_DCS_CHANNELDBS_MAX);
+
+    DcsChannelQueryHandlerDbList = LE_DLS_LIST_INIT;
+    ChannelQueryHandlerDbPool = le_mem_InitStaticPool(ChannelQueryHandlerDbPool,
+                                                      LE_DCS_CHANNEL_QUERY_HDLRS_MAX,
+                                                      sizeof(DcsChannelQueryHandlerDb_t));
+    le_mem_SetDestructor(ChannelQueryHandlerDbPool, DcsChannelQueryHandlerDbDestructor);
+
+    // Allocate the Start Request reference db pool, and set the max number of objects
+    StartRequestRefDbPool = le_mem_InitStaticPool(StartRequestRefDbPool,
+                                                  LE_DCF_START_REQ_REF_MAP_SIZE,
+                                                  sizeof(le_dcs_startRequestRefDb_t));
+    le_mem_SetDestructor(StartRequestRefDbPool, DcsStartRequestRefDbDestructor);
 }
