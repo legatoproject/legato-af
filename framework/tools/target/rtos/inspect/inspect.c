@@ -28,6 +28,13 @@
 #   define SAFE_REF_NAME(var)    "<omitted>"
 #endif
 
+#define INSPECT_ITERATOR_POOL_SIZE           1
+#define INSPECT_COLUMN_FIELD_MAX_LEN         33
+#define INSPECT_COLUMN_FIELD_MAX_BYTES       (INSPECT_COLUMN_FIELD_MAX_LEN + 1)
+#define INSPECT_TABLE_LINE_BUFFER_MAX_LEN    200
+#define INSPECT_TABLE_LINE_BUFFER_MAX_BYTES  (INSPECT_TABLE_LINE_BUFFER_MAX_LEN + 1)
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Objects of these types are used to refer to lists of memory pools, thread objects, timers,
@@ -99,11 +106,22 @@ typedef struct RefMapIter
 }
 RefMapIter_t;
 
+typedef union IteratorPoolUnion
+{
+    MemPoolIter_t  memPoolIter;
+    RefMapIter_t   refMapIter;
+}
+IteratorPoolUnion_t;
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Local memory pool that is used for allocating an inspection object iterator.
+ * The memory pool is sized to fit the largest of the two supported iterator types
+ * (Memory Pool and Safe References).
  */
 //--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(IteratorPool, INSPECT_ITERATOR_POOL_SIZE, sizeof(IteratorPoolUnion_t));
 static le_mem_PoolRef_t IteratorPool = NULL;
 
 
@@ -162,6 +180,7 @@ InspectEndStatus_t;
         LE_EMERG(formatString, ##__VA_ARGS__);                          \
         IsExiting = true;                                               \
     }
+
 
 
 //--------------------------------------------------------------------------------------------------
@@ -223,7 +242,7 @@ static MemPoolIter_Ref_t CreateMemPoolIter
 )
 {
     // Create the iterator.
-    MemPoolIter_t* iteratorPtr = le_mem_ForceAlloc(IteratorPool);
+    MemPoolIter_t* iteratorPtr = le_mem_Alloc(IteratorPool);
     InitRemoteListAccessObj(&iteratorPtr->memPoolList);
 
     mem_Lock();
@@ -256,7 +275,7 @@ static RefMapIter_Ref_t CreateRefMapIter
 )
 {
     // Create the iterator
-    RefMapIter_t* iteratorPtr = le_mem_ForceAlloc(IteratorPool);
+    RefMapIter_t* iteratorPtr = le_mem_Alloc(IteratorPool);
     InitRemoteDlsListAccessObj(&iteratorPtr->refMapList);
 
     memcpy(&iteratorPtr->refMapList.List, ref_GetRefMapList(),
@@ -558,7 +577,7 @@ typedef struct
 {
     char* colTitle;      ///< Column title.
     char* titleFormat;   ///< Format template for the column title.
-    char* colField;      ///< Column field.
+    char colField[INSPECT_COLUMN_FIELD_MAX_BYTES];  ///< Column field.
     char* fieldFormat;   ///< Format template for a column field.
     uint8_t maxDataSize; ///< Max data size. For strings, string length; otherwise, data size in
                          ///< number of bytes.
@@ -585,7 +604,8 @@ static char ColumnSpacers[] = " | ";
 //--------------------------------------------------------------------------------------------------
 static size_t TableLineLen = 0;
 #define TableLineBytes (TableLineLen + 1)
-static char* TableLineBuffer;
+
+static char TableLineBuffer[INSPECT_TABLE_LINE_BUFFER_MAX_BYTES];
 
 
 //--------------------------------------------------------------------------------------------------
@@ -609,23 +629,23 @@ static char SuperPoolStr[] = "";
 //--------------------------------------------------------------------------------------------------
 static ColumnInfo_t MemPoolTableInfo[] =
 {
-    {"TOTAL BLKS",  "%*s",  NULL, "%*" PRIuS,   sizeof(size_t),              false, 0, true},
-    {"USED BLKS",   "%*s",  NULL, "%*" PRIuS,   sizeof(size_t),              false, 0, true},
-    {"MAX USED",    "%*s",  NULL, "%*" PRIuS,   sizeof(size_t),              false, 0, true},
-    {"OVERFLOWS",   "%*s",  NULL, "%*" PRIuS,   sizeof(size_t),              false, 0, true},
-    {"ALLOCS",      "%*s",  NULL, "%*" PRIu64,  sizeof(uint64_t),            false, 0, true},
-    {"BLK BYTES",   "%*s",  NULL, "%*" PRIuS,   sizeof(size_t),              false, 0, true},
-    {"USED BYTES",  "%*s",  NULL, "%*" PRIuS,   sizeof(size_t),              false, 0, true},
-    {"MEMORY POOL", "%-*s", NULL, "%-*s",       LIMIT_MAX_MEM_POOL_NAME_LEN, true,  0, true},
-    {"SUB-POOL",    "%*s",  NULL, "%*s",        0,                           true,  0, true}
+    {"TOTAL BLKS",  "%*s",  "", "%*" PRIuS,   sizeof(size_t),              false, 0, true},
+    {"USED BLKS",   "%*s",  "", "%*" PRIuS,   sizeof(size_t),              false, 0, true},
+    {"MAX USED",    "%*s",  "", "%*" PRIuS,   sizeof(size_t),              false, 0, true},
+    {"OVERFLOWS",   "%*s",  "", "%*" PRIuS,   sizeof(size_t),              false, 0, true},
+    {"ALLOCS",      "%*s",  "", "%*" PRIu64,  sizeof(uint64_t),            false, 0, true},
+    {"BLK BYTES",   "%*s",  "", "%*" PRIuS,   sizeof(size_t),              false, 0, true},
+    {"USED BYTES",  "%*s",  "", "%*" PRIuS,   sizeof(size_t),              false, 0, true},
+    {"MEMORY POOL", "%-*s", "", "%-*s",       LIMIT_MAX_MEM_POOL_NAME_LEN, true,  0, true},
+    {"SUB-POOL",    "%*s",  "", "%*s",        0,                           true,  0, true}
 };
 static size_t MemPoolTableInfoSize = NUM_ARRAY_MEMBERS(MemPoolTableInfo);
 
 static ColumnInfo_t RefMapTableInfo[] =
 {
-    {"NAME",         "%*s", NULL, "%*s",        LIMIT_MAX_SAFE_REF_NAME_BYTES, true,   0, true},
-    {"MAX REFS",     "%*s", NULL, "%*" PRIuS,   sizeof(size_t),                false,  0, true},
-    {"CUR SIZE",     "%*s", NULL, "%*" PRIuS,   sizeof(size_t),                false,  0, true}
+    {"NAME",         "%*s", "", "%*s",        LIMIT_MAX_SAFE_REF_NAME_BYTES, true,   0, true},
+    {"MAX REFS",     "%*s", "", "%*" PRIuS,   sizeof(size_t),                false,  0, true},
+    {"CUR SIZE",     "%*s", "", "%*" PRIuS,   sizeof(size_t),                false,  0, true}
 };
 static size_t RefMapTableInfoSize = NUM_ARRAY_MEMBERS(RefMapTableInfo);
 
@@ -643,7 +663,7 @@ static void InitDisplayTableMaxDataSize
     size_t maxDataSize   ///< [IN] Max data size to init the column with.
 )
 {
-    int i;
+    size_t i;
     for (i = 0; i < tableSize; i++)
     {
         if (strcmp(table[i].colTitle, colTitle) == 0)
@@ -670,6 +690,9 @@ static void InitDisplayTable
     size_t tableSize     ///< [IN] Table size.
 )
 {
+    // Initialize Table Line Length
+    TableLineLen = 0;
+
     // Some columns in ThreadObjTableInfo needs its maxDataSize figured out.
     // Determine largest text size out of all possible text in a number-text table; update the
     // sizes to the thread object display table.
@@ -682,7 +705,7 @@ static void InitDisplayTable
         InitDisplayTableMaxDataSize("SUB-POOL", table, tableSize, subPoolColumnStrLen);
     }
 
-    int i;
+    size_t i;
     for (i = 0; i < tableSize; i++)
     {
         size_t headerTextWidth = strlen(table[i].colTitle);
@@ -702,7 +725,13 @@ static void InitDisplayTable
 
         // Now that column width is figured out, we can use that to allocate buffer for colField.
         #define colBytes table[i].colWidth + 1
-        table[i].colField = (char*)malloc(colBytes);
+        if ((int) sizeof(table[i].colField) < colBytes)
+        {
+            INTERNAL_ERR("Table colField buffer is too small, required [%d], available [%d].",
+                         colBytes,
+                         sizeof(table[i].colField));
+            return;
+        }
         // Initialize the buffer
         memset(table[i].colField, 0, colBytes);
         #undef colBytes
@@ -711,11 +740,12 @@ static void InitDisplayTable
         TableLineLen += table[i].colWidth + strlen(ColumnSpacers);
     }
 
-    // allocate and init the line buffer
-    TableLineBuffer = (char*)malloc(TableLineBytes);
-    if (!TableLineBuffer)
+    // Verify table line buffer is large enough to display the entire line
+    if (sizeof(TableLineBuffer) < TableLineBytes)
     {
-       INTERNAL_ERR("TableLineBuffer is NULL.");
+       INTERNAL_ERR("TableLineBuffer is too small, required [%d], available [%d].",
+                    TableLineBytes,
+                    sizeof(TableLineBuffer));
        return;
     }
     memset(TableLineBuffer, 0, TableLineBytes);
@@ -762,7 +792,7 @@ static void PrintHeader
 )
 {
     int index = 0;
-    int i = 0;
+    size_t i = 0;
     while (i < tableSize)
     {
         if ((table[i].isPrintSimple == true) || (IsVerbose == true))
@@ -792,7 +822,7 @@ static void PrintInfo
 )
 {
     int index = 0;
-    int i = 0;
+    size_t i = 0;
     while (i < tableSize)
     {
         if ((table[i].isPrintSimple == true) || (IsVerbose == true))
@@ -821,7 +851,7 @@ static ColumnInfo_t* GetNextColumn
     int* indexRef        ///< [IN/OUT] Iterator to parse the table.
 )
 {
-    int i = *indexRef;
+    size_t i = *indexRef;
 
     if (i == tableSize)
     {
@@ -1204,31 +1234,26 @@ static void CommandArgHandler
  * Create a memory pool for the iterators.
  **/
 //--------------------------------------------------------------------------------------------------
-static void InitIteratorPool
-(
-    InspType_t inspectType ///< [IN] What to inspect.
-)
+static void InitIteratorPool(void)
 {
-    size_t size;
     if (NULL == IteratorPool)
     {
-        switch (inspectType)
-        {
-            case INSPECT_INSP_TYPE_MEM_POOL:
-                size = sizeof(MemPoolIter_t);
-                break;
-
-            case INSPECT_INSP_TYPE_SAFE_REF:
-                size = sizeof(RefMapIter_t);
-                break;
-
-            default:
-                INTERNAL_ERR("unexpected inspect type %d.", inspectType);
-                return;
-        }
-
-        IteratorPool = le_mem_CreatePool("Iterators", size);
+        IteratorPool = le_mem_InitStaticPool(
+                            IteratorPool,
+                            INSPECT_ITERATOR_POOL_SIZE,
+                            sizeof(IteratorPoolUnion_t));
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Component once initializer.
+ */
+//--------------------------------------------------------------------------------------------------
+COMPONENT_INIT_ONCE
+{
+    // Create a memory pool for iterators.
+    InitIteratorPool();
 }
 
 
@@ -1254,8 +1279,11 @@ COMPONENT_INIT
         goto end;
     }
 
-    // Create a memory pool for iterators.
-    InitIteratorPool(InspectType);
+    if ((InspectType != INSPECT_INSP_TYPE_MEM_POOL) &&
+        (InspectType != INSPECT_INSP_TYPE_SAFE_REF))
+    {
+        INTERNAL_ERR("unexpected inspect type %d.", InspectType);
+    }
     if (IsExiting)
     {
         goto end;
