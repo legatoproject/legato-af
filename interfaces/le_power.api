@@ -1,0 +1,126 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_power Platform Power Source Information API
+ *
+ * @ref le_power_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * The Platform Power Source API is used to set and get information related to the platform power
+ * sources.
+ *
+ * @section le_power_SetPowerInfo Set power sources information
+ *
+ * This functionality allows to set data related to the available platform power sources, such as
+ * the type of power sources , power voltage, power current, and battery level and status when
+ * internal battery is used.
+ *
+ * @section le_power_GetPowerInfo Get power sources information
+ *
+ * This functionality allows to retrieve data related to the available platform power sources,
+ * such as the type of power sources , power voltage, and power current. When internal battery
+ * is used, the battery level and status can be retrieved.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_power_interface.h
+ *
+ * Legato @ref c_power include file.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define the maximum number of the power souce information
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE SOURCE_MAX_NB = 8;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Platform power source type.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM PowerSource
+{
+    DC_POWER,           ///< Platform is powered by DC power.
+    INTERNAL_BATTERY,   ///< Platform is powered by an internal battery.
+    EXTERNAL_BATTERY,   ///< Platform is powered by an external battery.
+    UNDEFINED,          ///< Platform is powered by undefined power source.
+    POE,                ///< Platform is powered by POE.
+    USB,                ///< Platform is powered by USB.
+    AC_POWER,           ///< Platform is powered by an external battery.
+    SOLAR               ///< Platform is powered by solar.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Platform battery status.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM BatteryStatus
+{
+    NORMAL,           ///< The battery is operating normally and not on power.
+    CHARGING,         ///< The battery is currently charging.
+    CHARGE_COMPLETE,  ///< The battery is fully charged and still on power.
+    DAMAGED,          ///< The battery has some problem.
+    LOW,              ///< The battery is low on charge.
+    NOT_INSTALL,      ///< The battery is not installed.
+    UNKNOWN           ///< The battery information is not available.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This is the structure with information about a given power source
+ */
+//--------------------------------------------------------------------------------------------------
+STRUCT PowerInfo
+{
+    PowerSource      source;
+    uint32           voltage;
+    uint16           current;
+    uint8            level;
+    BatteryStatus    status;
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the available power sources of the platform.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPowerInfo
+(
+    PowerInfo    powerInfo[SOURCE_MAX_NB]  OUT ///< [OUT] The power source information array
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the available power source of the platform.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to set the value.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetPowerInfo
+(
+    PowerInfo    powerInfoPtr  IN ///< [IN] The power source information
+);

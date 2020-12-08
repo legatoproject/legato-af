@@ -1,0 +1,12 @@
+provides:
+{
+    api:
+    {
+        le_power.api [direct]
+    }
+}
+
+sources:
+{
+    power.c
+}

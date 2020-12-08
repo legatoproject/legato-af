@@ -74,7 +74,6 @@ cflags:
     -DEUICC
 
     // LwM2MCore flags
-    -DLWM2M_OBJECT_3_BATTERY
     -DLWM2M_OBJECT_9
     -DMK_CONFIG_SECSTORE_DISABLE_LIMIT
 }
