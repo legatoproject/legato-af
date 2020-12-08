@@ -17,4 +17,5 @@ apps:
             ${LEGATO_ROOT}/apps/platformServices/airVantage/avcCompat
         #endif
     #endif
+        ${LEGATO_ROOT}/apps/platformServices/powerService
 }

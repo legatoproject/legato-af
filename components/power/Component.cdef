@@ -1,0 +1,16 @@
+provides:
+{
+    api:
+    {
+#if ${LE_CONFIG_LINUX} = y
+        le_power.api
+#else
+        le_power.api [direct]
+#endif
+    }
+}
+
+sources:
+{
+    power.c
+}

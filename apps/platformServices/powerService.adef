@@ -1,0 +1,21 @@
+sandboxed: false
+
+executables:
+{
+    powerDaemon = ( $LEGATO_ROOT/components/power )
+}
+
+processes:
+{
+    run:
+    {
+        (powerDaemon)
+    }
+
+    faultAction: restart
+}
+
+extern:
+{
+    powerDaemon.power.le_power
+}

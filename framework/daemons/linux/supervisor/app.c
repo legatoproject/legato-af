@@ -974,7 +974,8 @@ static void SetDefaultSmackRules
            "app.wifiApTest",
            "app.wifiClientTest",
            "app.wifiService",
-           "app.wifiWebAp"
+           "app.wifiWebAp",
+           "app.powerService"
        };
 
     // Providing legato platform service access to qmuxd
