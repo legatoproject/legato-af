@@ -13,6 +13,7 @@
 #include "le_atProxy_common.h"
 #include "atProxy.h"
 #include "atProxyCmdHandler.h"
+#include "atProxyUnsolicitedRsp.h"
 
 // AT proxy Emux channel
 #define AT_PROXY_EMUX_CH    2
@@ -50,8 +51,6 @@ static int RespInd;
 // Emux handle to AT proxy channel
 static emux_handle_t EmuxHandle;
 
-// Counter of bytes for missed unsolicited messages
-static int missedBytes;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -228,7 +227,7 @@ static void MUXRxReceived
     // from MAP
     if (atProxyCmdHandler_isLocalSessionActive())
     {
-        missedBytes++;
+        atProxyUnsolicitedRsp_parse(ch);
         return;
     }
 
@@ -241,13 +240,13 @@ static void MUXRxReceived
         switch (FindResponse())
         {
             case LE_AT_PROXY_FINAL_RESP:
-                LE_INFO("Final response detected!");
+                LE_DEBUG("Final response detected!");
                 memset(RespFinal, 0, AT_PROXY_FINAL_RESPONSE_MAX_LEN);
                 atProxyCmdHandler_complete();
             break;
 
             case LE_AT_PROXY_DATA_MODE:
-                LE_INFO("Intermediate response CONNECT detected!");
+                LE_DEBUG("Intermediate response CONNECT detected!");
                 atProxyCmdHandler_startDataMode();
             break;
 
@@ -275,15 +274,7 @@ void atProxyRemote_processUnsolicitedMsg
     void
 )
 {
-    if (missedBytes > 0)
-    {
-        char msg[LE_ATDEFS_COMMAND_MAX_BYTES];
-        snprintf(msg, LE_ATDEFS_COMMAND_MAX_BYTES, "[UNSOLICITED]: %d bytes missed!", missedBytes);
-        LE_INFO(msg);
-        atProxySerialUart_write(msg, strnlen(msg, LE_ATDEFS_COMMAND_MAX_BYTES));
-    }
-
-    missedBytes = 0;
+    atProxyUnsolicitedRsp_output();
 }
 
 //--------------------------------------------------------------------------------------------------

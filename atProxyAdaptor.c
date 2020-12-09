@@ -11,6 +11,23 @@
 #include "atProxyCmdHandler.h"
 #include "atProxySerialUart.h"
 #include "atProxyRemote.h"
+#include "atProxyUnsolicitedRsp.h"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Perform platform initialization once for all component instances
+ *
+ * @return none
+ */
+//--------------------------------------------------------------------------------------------------
+void le_atProxy_initOnce(void)
+{
+#if NO_EXTERNAL_STDOUT_PORT
+    // Initialize pool for unsolicited messages
+    atProxyUnsolicitedRsp_init();
+#endif
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**

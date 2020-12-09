@@ -19,6 +19,7 @@ sources:
     atProxySerialUart.c
     atProxyAdaptor.c
     atProxyEmux.c
+    atProxyUnsolicitedRsp.c
 }
 
 pools:
