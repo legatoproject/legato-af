@@ -21,9 +21,6 @@ processes:
         (rpcDaemon)
     }
 
-#if ${LE_CONFIG_RTOS} = y
-    maxStackBytes: 7168
-#endif
     faultAction: restart
 }
 
