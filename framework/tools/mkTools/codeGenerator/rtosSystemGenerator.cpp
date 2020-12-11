@@ -148,6 +148,14 @@ void GenerateProcessList
             auto taskName = appPtr->name + std::string("_") + processPtr->GetName();
             auto exePtr = appPtr->executables[model::Exe_t::NameFromPath(processPtr->exePath)];
 
+            if (!exePtr)
+            {
+                processPtr->parseTreePtr->ThrowException(
+                    mk::format(LE_I18N("Cannot find executable '%s'"),
+                               model::Exe_t::NameFromPath(processPtr->exePath))
+                );
+            }
+
             outputFile <<
                 "    {\n"
                 "        .nameStr = \""
