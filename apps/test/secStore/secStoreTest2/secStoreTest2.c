@@ -224,36 +224,36 @@ static void Test7
 }
 
 #if LE_CONFIG_LINUX
-// writing a large file
-// reading a large file, with sufficient read buffer size
-// delete a large file
-static void Test8
+
+// Write, read, verify, delete entry of a given size
+static void WriteReadVerifyDelete
 (
-    void
+    size_t dataLen
 )
 {
-    LE_TEST_INFO("Test8");
-
     uint8_t inBuffer[5000] = {0};
     uint8_t outBuffer[5000] = {0};
-    size_t inBufferSize = sizeof(outBuffer);
-    size_t outBufferSize = sizeof(outBuffer);
+    size_t inBufferSize = dataLen;
+    size_t outBufferSize = dataLen;
     le_result_t result;
 
+    LE_TEST_INFO("Write/Read/Verify/Delete: data length %zu", dataLen);
+
     int i;
-    for (i = 0; i < sizeof(inBuffer); i++)
+    for (i = 0; i < dataLen; i++)
     {
         inBuffer[i] = i % 256;
     }
     result = le_secStore_Write("file1", inBuffer, inBufferSize);
-    LE_TEST_OK(result == LE_OK, "Create a 5000-byte file: [%s]", LE_RESULT_TXT(result));
+    LE_TEST_OK(result == LE_OK, "Create a %zu-byte file: [%s]", dataLen, LE_RESULT_TXT(result));
 
 
     result = le_secStore_Read("file1", (uint8_t*)outBuffer, &outBufferSize);
-    LE_TEST_OK(result == LE_OK, "Read from the 5000-byte file: [%s]", LE_RESULT_TXT(result));
+    LE_TEST_OK(result == LE_OK, "Read from the %zu-byte file: [%s]", dataLen,
+               LE_RESULT_TXT(result));
 
     int mismatch = 0;
-    for (i = 0; i < sizeof(outBuffer); i++)
+    for (i = 0; i < dataLen; i++)
     {
         if (outBuffer[i] != i % 256)
         {
@@ -265,10 +265,31 @@ static void Test8
                mismatch);
 
     result = le_secStore_Delete("file1");
-    LE_TEST_OK(result == LE_OK, "Delete the 5000-byte file: [%s]", LE_RESULT_TXT(result));
+    LE_TEST_OK(result == LE_OK, "Delete the %zu-byte file: [%s]", dataLen, LE_RESULT_TXT(result));
+
+    LE_TEST_INFO("End of Write/Read/Verify/Delete: data length %zu", dataLen);
+}
+
+// Writing a large file
+// Reading a large file, with sufficient read buffer size
+// Delete a large file
+// Repeat for different file sizes
+static void Test8
+(
+    void
+)
+{
+    LE_TEST_INFO("Test8");
+
+    WriteReadVerifyDelete(1024);
+    WriteReadVerifyDelete(2047);
+    WriteReadVerifyDelete(2048);
+    WriteReadVerifyDelete(2049);
+    WriteReadVerifyDelete(5000);
 
     LE_TEST_INFO("End of Test8");
 }
+
 #endif
 
 // Write 2 normal files
@@ -328,6 +349,60 @@ static void Test9
     LE_TEST_INFO("End of Test9");
 }
 
+#define TV_TO_MS(x) ((x.tv_sec * 1000) + (x.tv_usec / 1000))
+
+static void Test10
+(
+    void
+)
+{
+    uint8_t inBuffer[100] = {0};
+    size_t dataLen = sizeof(inBuffer);
+    size_t inBufferSize = dataLen;
+    le_result_t result;
+    int numWrites = 100;
+    int i;
+    char entry[32] = {0};
+    struct timeval tv0, tv1, tv2;
+
+    LE_TEST_INFO("Write/Read/Verify/Delete: data length %zu", dataLen);
+
+    for (i = 0; i < dataLen; i++)
+    {
+        inBuffer[i] = i % 256;
+    }
+
+    gettimeofday(&tv0, NULL);
+    for (i = 0; i < numWrites; i++)
+    {
+        sprintf(entry, "file%d", i);
+        result = le_secStore_Write(entry, inBuffer, inBufferSize);
+        if (result != LE_OK)
+        {
+            LE_TEST_FATAL("Error writing data");
+        }
+    }
+    gettimeofday(&tv1, NULL);
+
+    LE_TEST_INFO("Time to write %d entries (%zu bytes): %lu ms",
+                 numWrites, dataLen,
+                 TV_TO_MS(tv1) - TV_TO_MS(tv0));
+    for (i = 0; i < numWrites; i++)
+    {
+        sprintf(entry, "file%d", i);
+        result = le_secStore_Delete(entry);
+        if (result != LE_OK)
+        {
+            LE_TEST_FATAL("Error deleting data");
+        }
+    }
+    gettimeofday(&tv2, NULL);
+
+    LE_TEST_INFO("Time to delete %d entries (%zu bytes): %lu ms",
+                 numWrites, dataLen,
+                 TV_TO_MS(tv2) - TV_TO_MS(tv1));
+}
+
 COMPONENT_INIT
 {
     LE_TEST_PLAN(23);
@@ -346,6 +421,7 @@ COMPONENT_INIT
     Test8();
 #endif
     Test9();
+    Test10();
     LE_TEST_INFO("=== SecStoreTest2 END ===");
 
     LE_TEST_EXIT;
