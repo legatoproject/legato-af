@@ -9,7 +9,7 @@
 #ifndef LE_AT_PROXY_H_INCLUDE_GUARD
 #define LE_AT_PROXY_H_INCLUDE_GUARD
 
-#include "le_atProxy_server.h"
+#include "le_atServer_server.h"
 
 // Final response.
 #define LE_AT_PROXY_ERROR       "\r\nERROR\r\n"
@@ -28,7 +28,7 @@
 struct le_atProxy_StaticCommand
 {
     const char *commandStr;
-    le_atProxy_CommandHandlerFunc_t commandHandlerPtr;
+    le_atServer_CommandHandlerFunc_t commandHandlerPtr;
     void* contextPtr;
 };
 
@@ -52,7 +52,7 @@ struct le_atProxy_StaticCommand* le_atProxy_GetCmdRegistryEntry(uint32_t command
 //--------------------------------------------------------------------------------------------------
 void le_atProxy_SendUnsolicitedResponse
 (
-    le_atProxy_ServerCmdRef_t _cmdRef,  ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t _cmdRef,  ///< [IN] Asynchronous Server Command Reference
     const char* LE_NONNULL responseStr  ///< [IN] Unsolicited Response String
 );
 

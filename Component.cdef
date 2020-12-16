@@ -8,7 +8,7 @@ provides:
 {
     api:
     {
-        le_atProxy.api [async]
+        le_atServer.api [async]
     }
 }
 
@@ -20,6 +20,7 @@ sources:
     atProxyAdaptor.c
     atProxyEmux.c
     atProxyUnsolicitedRsp.c
+    atProxyStub.c
 }
 
 pools:
@@ -27,5 +28,5 @@ pools:
     /* Clients may call le_atProxy APIs from inside the CommandHandler which is
      * registered with le_atProxy
      */
-    <messaging>.le_atProxy_Messages = 2
+    <messaging>.le_atServer_Messages = 2
 }

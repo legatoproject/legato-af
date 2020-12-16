@@ -16,6 +16,40 @@
 #define AT_PROXY_CMD_REGISTRY_IMPL   1
 #include "atProxyCmdRegistry.h"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * A magic number used to convert between command index and reference
+ * This macro is temporarily needed to adapt static command registration to le_atServer.api, and
+ * can be removed when change le_atServer_AddCommandHandler() in le_atServer.api to use command
+ * index instead of reference.
+ */
+//--------------------------------------------------------------------------------------------------
+#define AT_PROXY_CMD_MAGIC_NUMBER   0xF0000001
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert command index to reference
+ *
+ * This macro is temporarily needed to adapt static command registration to le_atServer.api, and
+ * can be removed when change le_atServer_AddCommandHandler() in le_atServer.api to use command
+ * index instead of reference.
+ */
+//--------------------------------------------------------------------------------------------------
+#define AT_PROXY_CONVERT_IND2REF(ind)   \
+    ((le_atServer_CmdRef_t)(((ind) << 1) | AT_PROXY_CMD_MAGIC_NUMBER))
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert command reference to index
+ *
+ * This macro is temporarily needed to adapt static command registration to le_atServer.api, and
+ * can be removed when change le_atServer_AddCommandHandler() in le_atServer.api to use command
+ * index instead of reference.
+ */
+//--------------------------------------------------------------------------------------------------
+#define AT_PROXY_CONVERT_REF2IND(ref)    \
+    (((uint32_t)(ref) & (~AT_PROXY_CMD_MAGIC_NUMBER)) >> 1)
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -78,11 +112,11 @@ struct le_atProxy_StaticCommand* le_atProxy_GetCmdRegistryEntry
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_atProxy_CommandHandlerRef_t le_atProxy_AddCommandHandler
+le_atServer_CommandHandlerRef_t le_atServer_AddCommandHandler
 (
-    uint32_t command,
+    le_atServer_CmdRef_t cmdRef,
         ///< [IN] AT Command index
-    le_atProxy_CommandHandlerFunc_t handlerPtr,
+    le_atServer_CommandHandlerFunc_t handlerPtr,
         ///< [IN] Handler to called when the AT command is detected
     void* contextPtr
         ///< [IN] Context pointer provided by caller and returned when handlePtr is called
@@ -90,7 +124,9 @@ le_atProxy_CommandHandlerRef_t le_atProxy_AddCommandHandler
 {
     LE_DEBUG("Calling le_atProxy_AddCommandHandler");
 
-    if (command >= AT_CMD_MAX)
+    uint32_t command = AT_PROXY_CONVERT_REF2IND(cmdRef);
+
+    if (NULL == cmdRef || command >= AT_CMD_MAX)
     {
         return NULL;
     }
@@ -112,9 +148,9 @@ le_atProxy_CommandHandlerRef_t le_atProxy_AddCommandHandler
  * Remove handler function for EVENT 'le_atProxy_Command'
  */
 //--------------------------------------------------------------------------------------------------
-void le_atProxy_RemoveCommandHandler
+void le_atServer_RemoveCommandHandler
 (
-    le_atProxy_CommandHandlerRef_t handlerRef
+    le_atServer_CommandHandlerRef_t handlerRef
         ///< [IN] Reference of Command Handler to be removed
 )
 {
@@ -147,10 +183,10 @@ void le_atProxy_RemoveCommandHandler
  *
  */
 //--------------------------------------------------------------------------------------------------
-void le_atProxy_GetParameter
+void le_atServer_GetParameter
 (
-    le_atProxy_ServerCmdRef_t _cmdRef,  ///< [IN] Asynchronous Server Command Reference
-    le_atProxy_CmdRef_t commandRef, ///< [IN] AT Command Reference
+    le_atServer_ServerCmdRef_t _cmdRef,  ///< [IN] Asynchronous Server Command Reference
+    le_atServer_CmdRef_t commandRef, ///< [IN] AT Command Reference
     uint32_t index, ///< [IN] Index of Parameter to be retrieved
     size_t parameterSize  ///< [IN] Size of parameterSize buffer
 )
@@ -179,7 +215,7 @@ void le_atProxy_GetParameter
     }
 
     // Send response to client
-    le_atProxy_GetParameterRespond(_cmdRef, result, parameter);
+    le_atServer_GetParameterRespond(_cmdRef, result, parameter);
 }
 
 
@@ -193,10 +229,10 @@ void le_atProxy_GetParameter
  *
  */
 //--------------------------------------------------------------------------------------------------
-void le_atProxy_GetCommandName
+void le_atServer_GetCommandName
 (
-    le_atProxy_ServerCmdRef_t _cmdRef,  ///< [IN] Asynchronous Server Command Reference
-    le_atProxy_CmdRef_t commandRef,  ///< [IN] AT Command Reference
+    le_atServer_ServerCmdRef_t _cmdRef,  ///< [IN] Asynchronous Server Command Reference
+    le_atServer_CmdRef_t commandRef,  ///< [IN] AT Command Reference
     size_t nameSize  ///< [IN] Size of nameSize buffer
 )
 {
@@ -224,7 +260,7 @@ void le_atProxy_GetCommandName
     }
 
     // Send response to client
-    le_atProxy_GetCommandNameRespond(_cmdRef, result, name);
+    le_atServer_GetCommandNameRespond(_cmdRef, result, name);
 }
 
 
@@ -238,10 +274,10 @@ void le_atProxy_GetCommandName
  *
  */
 //--------------------------------------------------------------------------------------------------
-void le_atProxy_SendIntermediateResponse
+void le_atServer_SendIntermediateResponse
 (
-    le_atProxy_ServerCmdRef_t _cmdRef,  ///< [IN] Asynchronous Server Command Reference
-    le_atProxy_CmdRef_t commandRef,  ///< [IN] AT Command Reference
+    le_atServer_ServerCmdRef_t _cmdRef,  ///< [IN] Asynchronous Server Command Reference
+    le_atServer_CmdRef_t commandRef,  ///< [IN] AT Command Reference
     const char* LE_NONNULL responseStr  ///< [IN] Intermediate Response String
 )
 {
@@ -253,7 +289,7 @@ void le_atProxy_SendIntermediateResponse
     atProxySerialUart_write((char*) responseStr, strlen(responseStr));
     atProxySerialUart_write("\r\n", strlen("\r\n"));
 
-    le_atProxy_SendIntermediateResponseRespond(_cmdRef, result);
+    le_atServer_SendIntermediateResponseRespond(_cmdRef, result);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -266,11 +302,11 @@ void le_atProxy_SendIntermediateResponse
  *
  */
 //--------------------------------------------------------------------------------------------------
-void le_atProxy_SendFinalResultCode
+void le_atServer_SendFinalResultCode
 (
-    le_atProxy_ServerCmdRef_t _cmdRef,  ///< [IN] Asynchronous Server Command Reference
-    le_atProxy_CmdRef_t commandRef,  ///< [IN] AT Command Reference
-    le_atProxy_FinalRsp_t finalResult,  ///< [IN] Final Response Result
+    le_atServer_ServerCmdRef_t _cmdRef,  ///< [IN] Asynchronous Server Command Reference
+    le_atServer_CmdRef_t commandRef,  ///< [IN] AT Command Reference
+    le_atServer_FinalRsp_t finalResult,  ///< [IN] Final Response Result
     const char* LE_NONNULL pattern,  ///< [IN] Final Response Pattern String
     uint32_t errorCode  ///< [IN] Final Response Error Code
 )
@@ -290,19 +326,19 @@ void le_atProxy_SendFinalResultCode
 
     switch (finalResult)
     {
-        case LE_ATPROXY_OK:
+        case LE_ATSERVER_OK:
             atProxySerialUart_write(LE_AT_PROXY_OK, strlen(LE_AT_PROXY_OK));
             break;
 
-        case LE_ATPROXY_NO_CARRIER:
+        case LE_ATSERVER_NO_CARRIER:
             atProxySerialUart_write(LE_AT_PROXY_NO_CARRIER, strlen(LE_AT_PROXY_NO_CARRIER));
             break;
 
-        case LE_ATPROXY_NO_DIALTONE:
+        case LE_ATSERVER_NO_DIALTONE:
             atProxySerialUart_write(LE_AT_PROXY_NO_DIALTONE, strlen(LE_AT_PROXY_NO_DIALTONE));
             break;
 
-        case LE_ATPROXY_BUSY:
+        case LE_ATSERVER_BUSY:
             atProxySerialUart_write(LE_AT_PROXY_BUSY, strlen(LE_AT_PROXY_BUSY));
             break;
 
@@ -312,7 +348,7 @@ void le_atProxy_SendFinalResultCode
             break;
     }
 
-    le_atProxy_SendFinalResultCodeRespond(_cmdRef, result);
+    le_atServer_SendFinalResultCodeRespond(_cmdRef, result);
 
     // After sending out final response, set current AT session to complete
     atProxyCmdHandler_complete();
@@ -328,12 +364,17 @@ void le_atProxy_SendFinalResultCode
  *
  */
 //--------------------------------------------------------------------------------------------------
-void le_atProxy_SendUnsolicitedResponse
+void le_atServer_SendUnsolicitedResponse
 (
-    le_atProxy_ServerCmdRef_t _cmdRef,  ///< [IN] Asynchronous Server Command Reference
-    const char* LE_NONNULL responseStr  ///< [IN] Unsolicited Response String
+    le_atServer_ServerCmdRef_t _cmdRef,            ///< [IN] Asynchronous Server Command Reference
+    const char* LE_NONNULL responseStr,            ///< [IN] Unsolicited Response String
+    le_atServer_AvailableDevice_t availableDevice, ///< [IN] device to send the unsolicited response
+    le_atServer_DeviceRef_t device                 ///< [IN] device reference where the unsolicited
+                                                   ///<      response has to be sent
 )
 {
+    LE_UNUSED(availableDevice);
+    LE_UNUSED(device);
     le_result_t result = LE_OK;
 
     // Queue the response and defer outputting it if current AT session is active (in process)
@@ -346,7 +387,41 @@ void le_atProxy_SendUnsolicitedResponse
     atProxySerialUart_write((char *)responseStr, strlen(responseStr));
     atProxySerialUart_write("\r\n", strlen("\r\n"));
 
-    le_atProxy_SendUnsolicitedResponseRespond(_cmdRef, result);
+    le_atServer_SendUnsolicitedResponseRespond(_cmdRef, result);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function creates an AT command and registers it into the AT parser.
+ *
+ * @return
+ *      - Reference to the AT command.
+ *      - NULL if an error occurs.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_atServer_Create
+(
+    le_atServer_ServerCmdRef_t _cmdRef, ///< [IN] Asynchronous Server Command Reference
+    const char* namePtr                 ///< [IN] AT command name string
+)
+{
+    int i, num = sizeof(AtCmdRegistry)/sizeof(AtCmdRegistry[0]);
+    le_atServer_CmdRef_t cmdRef = NULL;
+
+    for (i=0; i<num; i++)
+    {
+        if (0 == strncmp(AtCmdRegistry[i].commandStr, namePtr, LE_ATDEFS_COMMAND_MAX_LEN))
+        {
+            break;
+        }
+    }
+
+    if (i != num)
+    {
+        cmdRef = AT_PROXY_CONVERT_IND2REF((uint32_t)i);
+    }
+
+    le_atServer_CreateRespond(_cmdRef, cmdRef);
 }
 
 //-------------------------------------------------------------------------------------------------

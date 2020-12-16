@@ -82,7 +82,7 @@ static bool AtEchoMode = true;
 typedef struct le_atProxy_RspString
 {
     le_dls_Link_t   link;               ///< link for list
-    le_atProxy_ServerCmdRef_t cmdRef;   ///< Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t cmdRef;   ///< Asynchronous Server Command Reference
     const char* resp;                   ///< string pointer
 } le_atProxy_RspString_t;
 
@@ -128,7 +128,10 @@ static void ProcessStoredURC
                                                             le_atProxy_RspString_t,
                                                             link);
 
-        le_atProxy_SendUnsolicitedResponse(rspStringPtr->cmdRef, rspStringPtr->resp);
+        le_atServer_SendUnsolicitedResponse(rspStringPtr->cmdRef,
+                                            rspStringPtr->resp,
+                                            LE_ATSERVER_ALL_DEVICES,
+                                            NULL);
 
         le_mem_Release(rspStringPtr);
     }
@@ -519,7 +522,7 @@ static void ParseBuffer
                         atCmdPtr->operatorIndex = i;
 
                         // Set the operation type to 'Action'
-                        atCmdPtr->type = LE_ATPROXY_TYPE_ACT;
+                        atCmdPtr->type = LE_ATSERVER_TYPE_ACT;
 
                         // Try to look for AT Command in the
                         // AT Command Registry
@@ -558,7 +561,7 @@ static void ParseBuffer
                                 atCmdPtr->operatorIndex = i;
 
                                 // Set the operation type to 'Parameter'
-                                atCmdPtr->type = LE_ATPROXY_TYPE_PARA;
+                                atCmdPtr->type = LE_ATSERVER_TYPE_PARA;
 
                                 // Try to look for AT Command in the
                                 // AT Command Registry
@@ -573,7 +576,7 @@ static void ParseBuffer
                                 atCmdPtr->operatorIndex = i;
 
                                 // Set the operation type to 'Read'
-                                atCmdPtr->type = LE_ATPROXY_TYPE_READ;
+                                atCmdPtr->type = LE_ATSERVER_TYPE_READ;
 
                                 // Try to look for AT Command in the
                                 // AT Command Registry
@@ -582,7 +585,7 @@ static void ParseBuffer
                             else
                             {
                                 // Set the operation type to 'Read'
-                                atCmdPtr->type = LE_ATPROXY_TYPE_TEST;
+                                atCmdPtr->type = LE_ATSERVER_TYPE_TEST;
                             }
                         break;
 
@@ -677,8 +680,8 @@ void atProxyCmdHandler_AsyncRecvHandler
 //--------------------------------------------------------------------------------------------------
 static void atProxyCmdHandler_echoModeDisable
 (
-    le_atProxy_CmdRef_t  commandRef,        ///< [IN] AT Command Reference
-    le_atProxy_Type_t    type,              ///< [IN] AT Command Type
+    le_atServer_CmdRef_t commandRef,        ///< [IN] AT Command Reference
+    le_atServer_Type_t   type,              ///< [IN] AT Command Type
     uint32_t             parametersNumber,  ///< [IN] Number of parameters
     void                *contextPtr         ///< [IN] Context pointer
 )
@@ -695,7 +698,7 @@ static void atProxyCmdHandler_echoModeDisable
         LE_ERROR("AT Command Session reference pointer is NULL");
         atProxySerialUart_write(LE_AT_PROXY_ERROR, strlen(LE_AT_PROXY_ERROR));
     }
-    else if (type != LE_ATPROXY_TYPE_ACT)
+    else if (type != LE_ATSERVER_TYPE_ACT)
     {
         LE_DEBUG("Unsupported command type %d", type);
         atProxySerialUart_write(LE_AT_PROXY_ERROR, strlen(LE_AT_PROXY_ERROR));
@@ -722,8 +725,8 @@ static void atProxyCmdHandler_echoModeDisable
 //--------------------------------------------------------------------------------------------------
 static void atProxyCmdHandler_echoModeEnable
 (
-    le_atProxy_CmdRef_t  commandRef,        ///< [IN] AT Command Reference
-    le_atProxy_Type_t    type,              ///< [IN] AT Command Type
+    le_atServer_CmdRef_t commandRef,        ///< [IN] AT Command Reference
+    le_atServer_Type_t   type,              ///< [IN] AT Command Type
     uint32_t             parametersNumber,  ///< [IN] Number of parameters
     void                *contextPtr         ///< [IN] Context pointer
 )
@@ -740,7 +743,7 @@ static void atProxyCmdHandler_echoModeEnable
         LE_ERROR("AT Command Session reference pointer is NULL");
         atProxySerialUart_write(LE_AT_PROXY_ERROR, strlen(LE_AT_PROXY_ERROR));
     }
-    else if (type != LE_ATPROXY_TYPE_ACT)
+    else if (type != LE_ATSERVER_TYPE_ACT)
     {
         LE_DEBUG("Unsupported command type %d", type);
         atProxySerialUart_write(LE_AT_PROXY_ERROR, strlen(LE_AT_PROXY_ERROR));
@@ -894,7 +897,7 @@ bool atProxyCmdHandler_isActive
 //--------------------------------------------------------------------------------------------------
 void atProxyCmdHandler_StoreUnsolicitedResponse
 (
-    le_atProxy_ServerCmdRef_t cmdRef,   ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t cmdRef,   ///< [IN] Asynchronous Server Command Reference
     const char* responseStr             ///< [IN] Unsolicited Response String
 )
 {

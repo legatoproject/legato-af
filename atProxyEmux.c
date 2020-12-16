@@ -10,7 +10,7 @@
 #include "atProxyRemote.h"
 #include "emux.h"
 #include "atProxySerialUart.h"
-#include "le_atProxy_common.h"
+#include "le_atServer_common.h"
 #include "atProxy.h"
 #include "atProxyCmdHandler.h"
 #include "atProxyUnsolicitedRsp.h"

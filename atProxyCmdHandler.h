@@ -25,7 +25,7 @@ struct le_atProxy_AtCommandSession
     le_atProxy_RxParserState_t rxState;       ///< input string parser state
     uint16_t index;           ///< Parse Buffer index
     uint16_t operatorIndex;   ///< Index of operator ("=" or "?")
-    le_atProxy_Type_t type;   ///< AT Command type (i.e. Action, parameter, read, or test)
+    le_atServer_Type_t type;  ///< AT Command type (i.e. Action, parameter, read, or test)
     bool local;               ///< Indicates if this is a "local" or "remote" AT Command
     uint32_t registryIndex;   ///< For "local" commands, index of AT Cmd in Registry
     char atCmdParameterList[AT_PROXY_PARAMETER_LIST_MAX][LE_ATDEFS_PARAMETER_MAX_BYTES];
@@ -71,7 +71,7 @@ bool atProxyCmdHandler_isActive(void);
 //--------------------------------------------------------------------------------------------------
 void atProxyCmdHandler_StoreUnsolicitedResponse
 (
-    le_atProxy_ServerCmdRef_t cmdRef,   ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t cmdRef,   ///< [IN] Asynchronous Server Command Reference
     const char* responseStr             ///< [IN] Unsolicited Response String
 );
 
