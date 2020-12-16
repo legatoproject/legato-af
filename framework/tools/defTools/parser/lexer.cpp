@@ -693,7 +693,7 @@ void Lexer_t::NextTokenOrDirective
  * Returns the target line/col.
  */
 //--------------------------------------------------------------------------------------------------
-std::vector<parseTree::Token_t*> Lexer_t::BailUntil
+void Lexer_t::BailUntil
 (
     parseTree::Token_t::Type_t untilType,  ///< Eat tokens until this type is hit.
     bool stopAtNewline                     ///< Or should we also abandon the search at the next
@@ -701,7 +701,6 @@ std::vector<parseTree::Token_t*> Lexer_t::BailUntil
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::vector<parseTree::Token_t*> tokenPtrList;
     parseTree::Token_t* phonyTokenPtr = new parseTree::Token_t(parseTree::Token_t::COMMENT,
                                                                context.top().filePtr,
                                                                context.top().line,
@@ -727,7 +726,6 @@ std::vector<parseTree::Token_t*> Lexer_t::BailUntil
         {
             std::cerr << mk::format(LE_I18N("to %d:%d"), context.top().line, context.top().column)
                       << std::endl;
-            tokenPtrList.push_back(Pull(untilType));
             done = true;
         }
         else if (IsMatch(parseTree::Token_t::END_OF_FILE))
@@ -737,12 +735,9 @@ std::vector<parseTree::Token_t*> Lexer_t::BailUntil
         else
         {
             AdvanceOneCharacter(phonyTokenPtr);
-            tokenPtrList.push_back(phonyTokenPtr);
         }
     }
     while (done == false);
-
-    return tokenPtrList;
 }
 
 
@@ -2622,6 +2617,25 @@ void Lexer_t::UnexpectedChar
                                                  message));
 }
 
+void Lexer_t::ContinueAfterError
+(
+    const mk::Exception_t &e,
+    parseTree::Token_t::Type_t nextType,
+    bool stopAtNewline
+)
+{
+    std::cerr << "[ERROR] " << e.what() << std::endl;
+    BailUntil(nextType, stopAtNewline);
+
+    if (this->recoverFromErrors)
+    {
+        errorList.push_back(e);
+    }
+    else
+    {
+        throw e;
+    }
+}
 
 
 } // namespace parser

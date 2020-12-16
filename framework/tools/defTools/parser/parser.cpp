@@ -39,8 +39,7 @@ parseTree::SimpleSection_t* ParseSimpleSection
     }
     catch (mk::Exception_t &e)
     {
-        std::cerr << "[ERROR] " << e.what() << std::endl;
-        lexer.BailUntil(parseTree::Token_t::END_OF_FILE, true);
+        lexer.ContinueAfterError(e, parseTree::Token_t::END_OF_FILE, true);
     }
 
     return sectionPtr;
@@ -120,8 +119,7 @@ parseTree::TokenList_t* ParseTokenListSection
         }
         catch (mk::Exception_t& e)
         {
-            std::cerr << "[ERROR] " << e.what() << std::endl;
-            lexer.BailUntil(parseTree::Token_t::CLOSE_CURLY);
+            lexer.ContinueAfterError(e, parseTree::Token_t::CLOSE_CURLY);
             return sectionPtr;
         }
     }
@@ -301,8 +299,7 @@ parseTree::CompoundItemList_t* ParseComplexSection
         }
         catch (mk::Exception_t& e)
         {
-            std::cerr << "[ERROR] " << e.what() << std::endl;
-            lexer.BailUntil(parseTree::Token_t::CLOSE_CURLY);
+            lexer.ContinueAfterError(e, parseTree::Token_t::CLOSE_CURLY);
             return sectionPtr;
         }
     }
@@ -359,8 +356,7 @@ parseTree::CompoundItemList_t* ParseNamedComplexSection
         }
         catch (mk::Exception_t &e)
         {
-            std::cerr << "[ERROR] " << e.what() << std::endl;
-            lexer.BailUntil(parseTree::Token_t::CLOSE_CURLY);
+            lexer.ContinueAfterError(e, parseTree::Token_t::CLOSE_CURLY);
             return sectionPtr;
         }
     }
@@ -448,8 +444,23 @@ void ParseFile
         }
         catch (mk::Exception_t &e)
         {
-            std::cerr << "[ERROR (root level)] " << e.what() << std::endl;
-            lexer.BailUntil(parseTree::Token_t::CLOSE_CURLY);
+            lexer.ContinueAfterError(e, parseTree::Token_t::CLOSE_CURLY);
+        }
+    }
+
+    if (!lexer.errorList.empty())
+    {
+        size_t errorCount = lexer.errorList.size();
+
+        if (errorCount == 1)
+        {
+            throw mk::Exception_t(mk::format(LE_I18N("%d error"),
+                                             errorCount));
+        }
+        else
+        {
+            throw mk::Exception_t(mk::format(LE_I18N("%d errors"),
+                                             errorCount));
         }
     }
 }

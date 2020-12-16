@@ -21,6 +21,12 @@
 //--------------------------------------------------------------------------------------------------
 class Lexer_t
 {
+    private:
+        // Abandon current section, skipping to just after the next closing '}'
+        // Used as part of error recovery
+        void BailUntil(parseTree::Token_t::Type_t untilType,
+                       bool stopAtNewline = false);
+
     public:
 
         // Constructor.  Takes a def file object to be populated as the root of the parse tree.
@@ -31,10 +37,6 @@ class Lexer_t
 
         // Pull a token from the file being parsed. Advances to the next token in the file.
         parseTree::Token_t* Pull(parseTree::Token_t::Type_t type);
-
-        // Abandon current section, skipping to just after the next closing '}'
-        std::vector<parseTree::Token_t*> BailUntil(parseTree::Token_t::Type_t untilType,
-                                                   bool stopAtNewline = false);
 
         // Reset parser back to immediately after a given token.  Later tokens cannot have already
         // been stored in a parse tree.
@@ -59,6 +61,11 @@ class Lexer_t
         // Throw an exception with the file, line and column at the front.
         void ThrowException(const std::string& message) __attribute__ ((noreturn));
         void UnexpectedChar(const std::string& message) __attribute__ ((noreturn));
+
+        // Recover after an error and continue parsing to try to detect further errors.
+        void ContinueAfterError(const mk::Exception_t &e,
+                                parseTree::Token_t::Type_t nextType,
+                                bool stopAtNewline = false);
 
     private:
         // Lexer context.  As each new file is included, a new context will be created.
