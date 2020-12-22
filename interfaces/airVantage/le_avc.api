@@ -716,7 +716,8 @@ ENUM Status
     AUTH_FAILED,            ///< Authentication with AirVantage device management server or
                             ///< bootstrap server failed
     CERTIFICATION_OK,       ///< Package is certified sent by a trusted server
-    CERTIFICATION_KO        ///< Package is not certified sent by a trusted server
+    CERTIFICATION_KO,       ///< Package is not certified sent by a trusted server
+    DOWNLOAD_TIMEOUT        ///< Download timeout
 };
 
 //--------------------------------------------------------------------------------------------------
