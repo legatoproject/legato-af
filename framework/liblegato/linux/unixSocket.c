@@ -11,11 +11,12 @@
 
 /// Size of the ancillary (control) message buffer needed to send or receive one file descriptor
 /// and one set of process credentials through a Unix domain socket.
+/// Gives additional space to hold SCM_SECURITY data.
 /// @note We use CMSG_SPACE to ensure this is big enough to hold the cmsghdr structures.
 #define CMSG_BUFF_SIZE (CMSG_SPACE(sizeof(struct ucred)) + \
                         CMSG_SPACE(sizeof(struct timeval)) + \
-                        CMSG_SPACE(sizeof(int)))
-
+                        CMSG_SPACE(sizeof(int)) + \
+                        CMSG_SPACE(NAME_MAX))
 /// Define missing SCM_SECURITY declaration.
 #ifndef SCM_SECURITY
 # define SCM_SECURITY 3
@@ -676,9 +677,10 @@ le_result_t unixSocket_ReceiveMsg
     if ((msgHeader.msg_flags & MSG_CTRUNC) != 0)
     {
         // Check if we were not able to receive a fd (likely rejected by SMACK)
+        // It can also be because the buffer is too small and the SCM_RIGHTS have been truncated
         if (fdPtr != NULL)
         {
-            LE_ERROR("Unable to receive fd");
+            LE_ERROR("Unable to receive fd because control data has been truncated");
             return LE_NOT_PERMITTED;
         }
         else
@@ -693,8 +695,6 @@ le_result_t unixSocket_ReceiveMsg
     {
         ExtractAncillaryData(&msgHeader, fdPtr, credPtr);
     }
-
-
     // If we didn't receive any ancillary data, and recvmsg() still returned zero,
     // then the socket must have closed.
     else if (msgHeader.msg_controllen == 0 && bytesReceived == 0)
