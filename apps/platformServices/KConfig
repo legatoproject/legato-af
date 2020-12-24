@@ -92,6 +92,14 @@ config ENABLE_AV_SMS_COUNT
   When checked, SMS monitoring/counting is enabled and LWM2M resources
   lwm2m.7.0.x return valid statistic values related to SMS counting.
 
+config ENABLE_AVC_FEATURE_ETH
+  bool "Enable AV Ethernet connection"
+  default y if TARGET_WP76XX
+  default y if TARGET_WP77XX
+  default n
+  ---help---
+  Select this to enable support for AV Ethernet connection.
+
 config AVC_HTTP_TIMEOUT_MS
   int "AVC HTTP connection timeout (msec)"
   default 30000

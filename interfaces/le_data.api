@@ -241,7 +241,8 @@ ENUM Technology
 {
     WIFI,       ///< Wi-Fi
     CELLULAR,   ///< Cellular
-    MAX         ///< Unknown state.
+    MAX,        ///< Unknown state
+    ETHERNET_EXT,   ///< Ethernet
 };
 
 //--------------------------------------------------------------------------------------------------
