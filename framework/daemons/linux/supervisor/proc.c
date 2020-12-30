@@ -1068,18 +1068,33 @@ static void RedirectStdStream
 /**
  * Redirects the calling process's standard in, standard out and standard error to either the
  * process's stored file descriptors (possibly set by a client process) or to the specified log
- * pipes.  The log pipes are always closed afterwards.
+ * pipes.  The log pipes are always closed afterwards. The process' FD are also labelled according
+ * to the new process' SMACK label, allowing the process to manage them.
  */
 //--------------------------------------------------------------------------------------------------
 static void RedirectStdStreams
 (
     proc_Ref_t procRef,         ///< [IN] Process reference.
     int stdOutLogPipe[2],       ///< [IN] Log standard out pipe.
-    int stdErrLogPipe[2]        ///< [IN] Log standard in pipe.
+    int stdErrLogPipe[2],       ///< [IN] Log standard in pipe.
+    const char* appSmackLabel   ///< [IN] New process' SMACK label
 )
 {
     RedirectStdStream(procRef->stdErrFd, stdErrLogPipe, STDERR_FILENO);
     RedirectStdStream(procRef->stdOutFd, stdOutLogPipe, STDOUT_FILENO);
+
+    // At this point the STDERR_FILENO and STDOUT_FILENO has either the process FD or pipe's write
+    // FD already redirected to them.
+    // Set the smack label of the pipe's FD to the new processes app label.
+    // appSmackLabel checking will be done within smack_SetFdSmackLabel.
+    if (LE_OK != smack_SetFdSmackLabel(STDERR_FILENO, appSmackLabel))
+    {
+        LE_ERROR("Unable to set the fd smack label for STDERR (2) to '%s'", appSmackLabel);
+    }
+    if (LE_OK != smack_SetFdSmackLabel(STDOUT_FILENO, appSmackLabel))
+    {
+        LE_ERROR("Unable to set the fd smack label for STDOUT (1) to '%s'", appSmackLabel);
+    }
 
     if (procRef->stdInFd >= 0)
     {
@@ -1310,13 +1325,14 @@ le_result_t proc_Start
 
         // The parent has allowed us to continue.
 
-        // Redirect the process's standard streams.
-        RedirectStdStreams(procRef, logStdOutPipe, logStdErrPipe);
-
-        // Set the process's SMACK label.
+        // Get process' SMACK label
         char smackLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
         smack_GetAppLabel(app_GetName(procRef->appRef), smackLabel, sizeof(smackLabel));
 
+        // Redirect the process's standard streams and set the child FD's to process's labels.
+        RedirectStdStreams(procRef, logStdOutPipe, logStdErrPipe, smackLabel);
+
+        // Set the process' SMACK label.
         smack_SetMyLabel(smackLabel);
 
         // Set the umask so that files are not accidentally created with global permissions.

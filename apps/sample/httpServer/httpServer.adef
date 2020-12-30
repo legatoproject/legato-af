@@ -4,7 +4,7 @@ bundles:
 {
     dir:
     {
-        pages /pages
+        [rw] pages /pages
         cfg /cfg
     }
 }
@@ -17,6 +17,9 @@ requires:
         /etc/nsswitch.conf /etc/nsswitch.conf
         /lib/libnss_compat.so.2 /lib/libnss_compat.so.2
         /lib/libnsl.so.1 /lib/libnsl.so.1
+        /lib/libresolv.so.2 /lib/libresolv.so.2 // Needs this to run shell.
+        /usr/lib/libprocps.so.7.1.0 /lib/libprocps.so.7.1.0
+        /usr/lib/libprocps.so.7 /lib/libprocps.so.7 // Need this for ps.
         /etc/passwd /etc/passwd    // needed by python to lookup user
         /legato/systems/current/version /legato/systems/current/version
         /legato/systems/current/status /legato/systems/current/status
@@ -26,7 +29,7 @@ requires:
     dir:
     {
         /proc /    // needed by `app` script, and for listing running processes
-        /bin /usr/bin
+        /bin /
         /sbin /
         /legato/systems/current/bin /legato/systems/current/
         /legato/systems/current/lib /legato/systems/current/

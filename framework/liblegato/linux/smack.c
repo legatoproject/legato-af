@@ -1163,6 +1163,58 @@ bool smack_IsOnlyCapSet
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the smack labels of a file descriptor. The calling process must be a privileged process.
+ */
+//--------------------------------------------------------------------------------------------------
+void smack_GetFdSmackLabel
+(
+    int fd,                         ///< [IN] File descriptor.
+    char *labelPtr,                 ///< [IN/OUT] Label of the FD.
+    size_t labelLens                ///< [IN] Size of labelPtr.
+)
+{
+    if (fgetxattr(fd, "security.SMACK64", labelPtr, labelLens) < 0)
+    {
+        labelPtr[0] = '\0';
+    }
+    LE_DEBUG("File Descriptor label SMACK64[%d]: '%s'", fd,
+                labelPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the smack labels to a file descriptor. The calling process must be a privileged process.
+ *
+ * @return
+ *      LE_OK if the label was set correctly.
+ *      LE_BAD_PARAMETER if labelPtr is NULL.
+ *      LE_FAULT if unable to set the label to file.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t smack_SetFdSmackLabel
+(
+    int fd,                         ///< [IN] File Descriptor.
+    const char *labelPtr            ///< [IN] SMACK label to set FD to.
+)
+{
+    if (labelPtr == NULL)
+    {
+        return LE_BAD_PARAMETER;
+    }
+
+    CheckLabel(labelPtr);
+
+    if (fsetxattr(fd, "security.SMACK64", labelPtr, strlen(labelPtr), 0) == -1)
+    {
+        LE_ERROR("Could not set SMACK label SMACK64 for socket %d to %s.  %m.",
+                    fd, labelPtr);
+        return LE_FAULT;
+    }
+    return LE_OK;
+}
+
 //********  SMACK is disabled.  ******************************************************************//
 #else
 
@@ -1591,5 +1643,39 @@ bool smack_IsOnlyCapSet
 )
 {
     return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the smack labels of a file descriptor. The calling process must be a privileged process.
+ */
+//--------------------------------------------------------------------------------------------------
+void smack_GetFdSmackLabel
+(
+    int fd,                         ///< [IN] File descriptor.
+    char *labelPtr,                 ///< [IN/OUT] Label of the FD.
+    size_t labelLens                ///< [IN] Size of labelPtr.
+)
+{
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the smack labels to a file descriptor. The calling process must be a privileged process.
+ *
+ *      LE_OK if the label was set correctly.
+ *      LE_BAD_PARAMETER if labelPtr is NULL.
+ *      LE_FAULT if unable to set the label to file.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t smack_SetFdSmackLabel
+(
+    int fd,                         ///< [IN] File Descriptor.
+    const char *labelPtr            ///< [IN] SMACK label to set FD to.
+)
+{
+    return LE_OK;
 }
 #endif
