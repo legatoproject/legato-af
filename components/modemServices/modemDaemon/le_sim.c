@@ -561,6 +561,7 @@ static void FirstLayerIccidChangeHandler
  *      - LE_OK on success
  *      - LE_FAULT on failure
  *      - LE_BAD_PARAMETER on invalid parameters
+ *      - LE_UNSUPPORTED when eSIM isn't selected
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t GetEID
@@ -585,6 +586,12 @@ static le_result_t GetEID
     if (LE_OK != SelectSIMCard(simPtr->simId))
     {
         return LE_FAULT;
+    }
+
+    if (LE_SIM_EMBEDDED != simPtr->simId)
+    {
+        LE_WARN("The SIM is not an embedded SIM, thus there isn't an eUICC ID");
+        return LE_UNSUPPORTED;
     }
 
     if (false == simPtr->isReacheable)
@@ -1569,7 +1576,8 @@ le_result_t le_sim_GetICCID
  * @return LE_OK             EID was successfully retrieved.
  * @return LE_OVERFLOW       eidPtr buffer was too small for the EID.
  * @return LE_BAD_PARAMETER  Invalid parameters.
- * @return LE_FAULT          The EID could not be retrieved.
+ * @return LE_UNSUPPORTED    Embedded SIM is not selected.
+ * @return LE_FAULT          The EID could not be retrieved or SIM card is not present.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -1603,6 +1611,18 @@ le_result_t  le_sim_GetEID
     {
         LE_ERROR("Incorrect buffer size");
         return LE_OVERFLOW;
+    }
+
+    if (!le_sim_IsPresent(simId))
+    {
+        LE_ERROR("SIM card is not present");
+        return LE_FAULT;
+    }
+
+    if (LE_SIM_EMBEDDED != simId)
+    {
+        LE_WARN("The SIM is not an embedded SIM, thus there isn't an eUICC ID");
+        return LE_UNSUPPORTED;
     }
 
     simPtr = GetSimContext(simId);

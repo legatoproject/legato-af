@@ -851,6 +851,7 @@ static void TestSim_SimCardInformation
     char imsi[LE_SIM_IMSI_BYTES];
     char eid[LE_SIM_EID_BYTES];
     char phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
+    le_sim_Id_t tempSimId = CurrentSimId; // Store previous SimId to go back to after this test.
 
     // Start in ABSENT state
     CurrentSimState = LE_SIM_ABSENT;
@@ -869,6 +870,11 @@ static void TestSim_SimCardInformation
     LE_ASSERT(LE_FAULT == le_sim_GetSubscriberPhoneNumber( CurrentSimId,
                                                 phoneNumber,
                                                 LE_MDMDEFS_PHONE_NUM_MAX_BYTES));
+    // Embedded SIM is required when attempting to retrieve an eUICC ID.
+    CurrentSimId = LE_SIM_EMBEDDED;
+    pa_simSimu_SetSelectCard(CurrentSimId);
+    le_sim_SelectCard(CurrentSimId);
+
     // SIM is now ready
     CurrentSimState = LE_SIM_READY;
     pa_simSimu_ReportSIMState(CurrentSimState);
@@ -898,6 +904,11 @@ static void TestSim_SimCardInformation
 
     // Check that all handlers have been called as expected
     LE_ASSERT(0 == le_sem_GetValue(ThreadSemaphore));
+
+    // Revert the SIM from embedded back to using external slot 2.
+    CurrentSimId = tempSimId;
+    pa_simSimu_SetSelectCard(CurrentSimId);
+    le_sim_SelectCard(CurrentSimId);
 }
 
 //--------------------------------------------------------------------------------------------------

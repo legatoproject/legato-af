@@ -301,7 +301,12 @@ int cm_sim_GetSimEid
     if (LE_OK != res)
     {
         eid[0] = '\0';
-        ret = EXIT_FAILURE;
+        // If it's LE_UNSUPPORTED it implies that we aren't using an eSim, thus return
+        // EXIT_SUCCESS but inside le_sim_GetEID will return a warning about this.
+        if (LE_UNSUPPORTED != res)
+        {
+            ret = EXIT_FAILURE;
+        }
     }
 
     cm_cmn_FormatPrint("EID", eid);
