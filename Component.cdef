@@ -18,9 +18,12 @@ sources:
     atProxyCmdHandler.c
     atProxySerialUart.c
     atProxyAdaptor.c
-    atProxyEmux.c
-    atProxyUnsolicitedRsp.c
     atProxyStub.c
+#if ${MK_CONFIG_ATSERVER_LITE} = y
+#else
+    atProxyUnsolicitedRsp.c
+    atProxyEmux.c
+#endif
 }
 
 pools:

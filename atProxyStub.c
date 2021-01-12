@@ -276,9 +276,9 @@ void le_atServer_OpenBridge
 )
 {
     LE_UNUSED(fd);
-    le_atServer_BridgeRef_t bridgeRef = NULL;
 
 #if MK_CONFIG_DISABLE_AT_BRIDGE
+    le_atServer_BridgeRef_t bridgeRef = NULL;
     LE_WARN("Not implemented!");
     le_atServer_OpenBridgeRespond(_cmdRef, bridgeRef);
 #else

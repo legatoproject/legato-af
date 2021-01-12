@@ -824,8 +824,10 @@ void atProxyCmdHandler_complete
     // Process unsolicited message from local
     ProcessStoredURC(&AtCmd);
 
+#ifndef MK_CONFIG_ATSERVER_LITE
     // Process unsolicited messages from remote
     atProxyRemote_processUnsolicitedMsg();
+#endif
 
     if (AtCmd.local)
     {
@@ -835,7 +837,6 @@ void atProxyCmdHandler_complete
     {
         le_sem_Post(AtSem);
     }
-
 }
 
 //--------------------------------------------------------------------------------------------------
