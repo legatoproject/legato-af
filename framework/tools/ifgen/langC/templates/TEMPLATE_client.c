@@ -68,7 +68,7 @@ LE_MEM_DEFINE_STATIC_POOL({{apiName}}_ClientThreadData,
  * The memory pool for client thread objects
  */
 //--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t _ClientThreadDataPool;
+static le_mem_PoolRef_t _ClientThreadDataPool = NULL;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -226,6 +226,12 @@ void {{apiName}}_InitOnceCommonData(void)
 //--------------------------------------------------------------------------------------------------
 static void InitCommonData(void)
 {
+    // Make sure that one-time init data has been initialized
+    if ( _ClientThreadDataPool == NULL )
+    {
+        {{apiName}}_InitOnceCommonData();
+    }
+
     // Create the thread-local data key to be used to store a pointer to each thread object.
     LE_ASSERT(pthread_key_create(&_ThreadDataKey, NULL) == 0);
 }
