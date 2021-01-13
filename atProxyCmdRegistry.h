@@ -16,7 +16,9 @@
 // NOTE: Add NEW AT Commands before AT_CMD_MAX
 enum le_atProxy_atCommand
 {
-    AT_CMD_ORP,  ///< "AT+ORP" AT Command
+    AT_CMD_ORP,   ///< "AT+ORP" AT Command
+    AT_CMD_ATE0,  ///< "ATE0" Disable Echo Command
+    AT_CMD_ATE1,  ///< "ATE1" Enable Echo Command
     AT_CMD_MAX
 };
 
@@ -25,6 +27,8 @@ enum le_atProxy_atCommand
 static struct le_atProxy_StaticCommand  AtCmdRegistry[AT_CMD_MAX] =
 {
     { "AT+ORP", NULL, NULL },   ///< AT+ORP AT Command
+    { "ATE0", NULL, NULL},      ///< ATE0 AT Command
+    { "ATE1", NULL, NULL},      ///< ATE1 AT Command
 };
  #endif /* end AT_PROXY_CMD_REGISTRY_IMPL */
 

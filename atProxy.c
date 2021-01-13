@@ -53,6 +53,22 @@ struct le_atProxy_StaticCommand* le_atProxy_GetCmdRegistry
     return &AtCmdRegistry[0];
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to retrieve the AT Command Registry entry for a specific command
+ */
+//--------------------------------------------------------------------------------------------------
+struct le_atProxy_StaticCommand* le_atProxy_GetCmdRegistryEntry
+(
+    uint32_t command
+)
+{
+    // Verify the command index is within range
+    LE_ASSERT(command < AT_CMD_MAX);
+
+    return &AtCmdRegistry[command];
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**

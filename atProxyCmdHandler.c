@@ -63,6 +63,9 @@ static void* AtCmdRef = NULL;
 // Semephore to allow to receive input from AT port
 static le_sem_Ref_t AtSem = NULL;
 
+// AT Echo Command Mode (Global)
+static bool AtEchoMode = true;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Command responses pool size
@@ -636,13 +639,18 @@ void atProxyCmdHandler_AsyncRecvHandler
         uint32_t count = atProxySerialUart_read(&AtCmd.command[AtCmd.index], 1);
         while (count > 0)
         {
-            if (AtCmd.command[AtCmd.index] == 0x0D)
+            // Only display incoming characters from the AT Port if
+            // Echo Command mode is enabled
+            if (AtEchoMode)
             {
-                atProxySerialUart_write("\r\n", strlen("\r\n"));
-            }
-            else
-            {
-                atProxySerialUart_write(&AtCmd.command[AtCmd.index], 1);
+                if (AtCmd.command[AtCmd.index] == 0x0D)
+                {
+                    atProxySerialUart_write("\r\n", strlen("\r\n"));
+                }
+                else
+                {
+                    atProxySerialUart_write(&AtCmd.command[AtCmd.index], 1);
+                }
             }
 
             if (AtCmd.dataMode)
@@ -661,6 +669,96 @@ void atProxyCmdHandler_AsyncRecvHandler
     }
 
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * ATE0 Handler
+ */
+//--------------------------------------------------------------------------------------------------
+static void atProxyCmdHandler_echoModeDisable
+(
+    le_atProxy_CmdRef_t  commandRef,        ///< [IN] AT Command Reference
+    le_atProxy_Type_t    type,              ///< [IN] AT Command Type
+    uint32_t             parametersNumber,  ///< [IN] Number of parameters
+    void                *contextPtr         ///< [IN] Context pointer
+)
+{
+    LE_UNUSED(contextPtr);
+    LE_UNUSED(parametersNumber);
+
+    struct le_atProxy_AtCommandSession* atCmdSessionPtr =
+        le_ref_Lookup(atCmdSessionRefMap, commandRef);
+
+    // Verify AT Command Session pointer is valid
+    if (atCmdSessionPtr == NULL)
+    {
+        LE_ERROR("AT Command Session reference pointer is NULL");
+        atProxySerialUart_write(LE_AT_PROXY_ERROR, strlen(LE_AT_PROXY_ERROR));
+    }
+    else if (type != LE_ATPROXY_TYPE_ACT)
+    {
+        LE_DEBUG("Unsupported command type %d", type);
+        atProxySerialUart_write(LE_AT_PROXY_ERROR, strlen(LE_AT_PROXY_ERROR));
+    }
+    else
+    {
+        // Disable AT Echo Command mode
+        AtEchoMode = false;
+
+        LE_INFO("Setting AtEchoMode OFF");
+
+        atProxySerialUart_write(LE_AT_PROXY_OK, strlen(LE_AT_PROXY_OK));
+    }
+
+    // After sending out final response, set current AT session to complete
+    atProxyCmdHandler_complete();
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * ATE1 Handler
+ */
+//--------------------------------------------------------------------------------------------------
+static void atProxyCmdHandler_echoModeEnable
+(
+    le_atProxy_CmdRef_t  commandRef,        ///< [IN] AT Command Reference
+    le_atProxy_Type_t    type,              ///< [IN] AT Command Type
+    uint32_t             parametersNumber,  ///< [IN] Number of parameters
+    void                *contextPtr         ///< [IN] Context pointer
+)
+{
+    LE_UNUSED(contextPtr);
+    LE_UNUSED(parametersNumber);
+
+    struct le_atProxy_AtCommandSession* atCmdSessionPtr =
+        le_ref_Lookup(atCmdSessionRefMap, commandRef);
+
+    // Verify AT Command Session pointer is valid
+    if (atCmdSessionPtr == NULL)
+    {
+        LE_ERROR("AT Command Session reference pointer is NULL");
+        atProxySerialUart_write(LE_AT_PROXY_ERROR, strlen(LE_AT_PROXY_ERROR));
+    }
+    else if (type != LE_ATPROXY_TYPE_ACT)
+    {
+        LE_DEBUG("Unsupported command type %d", type);
+        atProxySerialUart_write(LE_AT_PROXY_ERROR, strlen(LE_AT_PROXY_ERROR));
+    }
+    else
+    {
+        // Enable AT Echo Command mode
+        AtEchoMode = true;
+
+        LE_INFO("Setting AtEchoMode ON");
+
+        atProxySerialUart_write(LE_AT_PROXY_OK, strlen(LE_AT_PROXY_OK));
+    }
+
+    // After sending out final response, set current AT session to complete
+    atProxyCmdHandler_complete();
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -690,6 +788,19 @@ void atProxyCmdHandler_init(void)
                                     sizeof(le_atProxy_RspString_t));
 
     AtSem = le_sem_Create("AtSem", 0);
+
+
+    // Set pointer to AT Command Register entry for 'ATE0' Command
+    struct le_atProxy_StaticCommand* atCmdRegistryPtr = le_atProxy_GetCmdRegistryEntry(AT_CMD_ATE0);
+
+    // Set the Command Handler Callback function
+    atCmdRegistryPtr->commandHandlerPtr = atProxyCmdHandler_echoModeDisable;
+
+    // Set pointer to AT Command Register entry for 'ATE1' Command
+    atCmdRegistryPtr = le_atProxy_GetCmdRegistryEntry(AT_CMD_ATE1);
+
+    // Set the Command Handler Callback function
+    atCmdRegistryPtr->commandHandlerPtr = atProxyCmdHandler_echoModeEnable;
 }
 
 //--------------------------------------------------------------------------------------------------

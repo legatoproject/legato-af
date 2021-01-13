@@ -36,6 +36,10 @@ struct le_atProxy_StaticCommand
 // Function to retrieve the AT Command Registry
 struct le_atProxy_StaticCommand* le_atProxy_GetCmdRegistry(void);
 
+// Function to retrieve the AT Command Registry entry for a specific command
+struct le_atProxy_StaticCommand* le_atProxy_GetCmdRegistryEntry(uint32_t command);
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function can be used to send the unsolicited response.
