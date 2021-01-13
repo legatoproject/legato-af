@@ -135,6 +135,7 @@ FtpSessionState_t;
 //--------------------------------------------------------------------------------------------------
 struct le_ftpClient_Session
 {
+    char    srcIpAddr[LE_MDC_IPV6_ADDR_MAX_BYTES];          ///< Source IP address
     char    serverStr[LE_CONFIG_FTPCLIENT_SERVER_NAME_MAX]; ///< Server hostname/address.
     char    userStr[LE_CONFIG_FTPCLIENT_USER_NAME_MAX];     ///< User name.
     char    passwordStr[LE_CONFIG_FTPCLIENT_PASSWORD_MAX];  ///< User's password.
@@ -813,8 +814,7 @@ transfer_end:
 //--------------------------------------------------------------------------------------------------
 static le_result_t FtpClientConnectDataServer
 (
-    le_ftpClient_SessionRef_t sessionRef,  ///< [IN] ftp client session ref
-    char*            srcAddr               ///< [IN] Source Address of PDP profile
+    le_ftpClient_SessionRef_t sessionRef  ///< [IN] ftp client session ref
 )
 {
     LE_FATAL_IF(sessionRef == NULL, "FTP client session is NULL.");
@@ -828,8 +828,8 @@ static le_result_t FtpClientConnectDataServer
 
     // Create the data socket.
     sessionRef->dataSocketRef = le_socket_Create(sessionRef->dsAddrStr,
-                                                    sessionRef->dsPort,
-                                                    srcAddr, TCP_TYPE);
+                                                 sessionRef->dsPort,
+                                                 sessionRef->srcIpAddr, TCP_TYPE);
     if (NULL == sessionRef->dataSocketRef)
     {
         LE_ERROR("Failed to create data socket for server %s:%u.", sessionRef->dsAddrStr,
@@ -1269,7 +1269,7 @@ static void FtpClientStateMachine
                     status = SendRequestMessage(contextPtr, msgBuf, msgLen);
                     if (LE_OK == status)
                     {
-                        status = FtpClientConnectDataServer(contextPtr, NULL);
+                        status = FtpClientConnectDataServer(contextPtr);
 
                         if (LE_OK == status)
                         {
@@ -1602,8 +1602,7 @@ static void FtpClientStateMachine
 //--------------------------------------------------------------------------------------------------
 static le_result_t FtpClientConnectServer
 (
-    le_ftpClient_SessionRef_t sessionRef,       ///< [IN] ftp client session ref
-    char*                     srcAddr           ///< [IN] Source Address of PDP profile
+    le_ftpClient_SessionRef_t sessionRef  ///< [IN] ftp client session ref
 )
 {
     LE_FATAL_IF(sessionRef == NULL, "FTP client session is NULL.");
@@ -1626,8 +1625,8 @@ static le_result_t FtpClientConnectServer
 
     // Create the control socket.
     sessionRef->ctrlSocketRef = le_socket_Create(sessionRef->serverStr,
-                                                    sessionRef->serverPort,
-                                                    srcAddr, TCP_TYPE);
+                                                 sessionRef->serverPort,
+                                                 sessionRef->srcIpAddr, TCP_TYPE);
     if (NULL == sessionRef->ctrlSocketRef)
     {
         LE_ERROR("Failed to create control socket for server %s:%u.", sessionRef->serverStr,
@@ -1946,7 +1945,7 @@ le_result_t le_ftpClient_ConnectOnSrcAddr
 {
     le_result_t  result;
 
-    if (sessionRef == NULL)
+    if (sessionRef == NULL || srcAddr == NULL)
     {
         return LE_BAD_PARAMETER;
     }
@@ -1961,10 +1960,11 @@ le_result_t le_ftpClient_ConnectOnSrcAddr
         return LE_UNAVAILABLE;
     }
 
+    memcpy(sessionRef->srcIpAddr, srcAddr, LE_MDC_IPV6_ADDR_MAX_BYTES);
     // Start sync operation.
     sessionRef->operation = OP_CONNECT;
     sessionRef->securityMode = LE_FTP_CLIENT_NONSECURE;
-    result = FtpClientConnectServer(sessionRef, srcAddr);
+    result = FtpClientConnectServer(sessionRef);
     sessionRef->isConnected = (result == LE_OK);
     sessionRef->operation = OP_NONE;
     // End sync operation.
@@ -1992,7 +1992,7 @@ LE_SHARED le_result_t le_ftpClient_SecureConnectOnSrcAddr
 {
     le_result_t  result;
 
-    if ((sessionRef == NULL) || (certificatePtr == NULL))
+    if ((sessionRef == NULL) || (certificatePtr == NULL) || (srcAddr == NULL))
     {
         return LE_BAD_PARAMETER;
     }
@@ -2013,10 +2013,13 @@ LE_SHARED le_result_t le_ftpClient_SecureConnectOnSrcAddr
     sessionRef->certPtr = certificatePtr;
     sessionRef->certSize = certificateLen;
 
+    // Set session source address
+    memcpy(sessionRef->srcIpAddr, srcAddr, LE_MDC_IPV6_ADDR_MAX_BYTES);
+
     // Start sync operation.
     sessionRef->operation = OP_CONNECT;
     sessionRef->securityMode = LE_FTP_CLIENT_SECURE;
-    result = FtpClientConnectServer(sessionRef, srcAddr);
+    result = FtpClientConnectServer(sessionRef);
     sessionRef->isConnected = (result == LE_OK);
     sessionRef->operation = OP_NONE;
     // End sync operation.
