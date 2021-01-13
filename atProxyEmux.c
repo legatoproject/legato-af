@@ -326,4 +326,7 @@ void atProxyRemote_init
     }
 
     MUX_StartRxDataEventCallback(EmuxHandle, MUXRxReceived, NULL);
+
+    // Disable Echo Commmand on Remote Server
+    atProxyRemote_send("ATE0\r", strlen("ATE0\r"));
 }
